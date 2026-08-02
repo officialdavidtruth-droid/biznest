@@ -1,0 +1,588 @@
+// ============================================================================
+// BizNest — Prisma Schema
+// This file is the single source of truth for the data model. It is split
+// conceptually (via comments) into the subsystems described in the product
+// spec. Build phases 2+ should extend these models rather than create
+// parallel ones.
+// ============================================================================
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ----------------------------------------------------------------------------
+// AUTH & USERS
+// ----------------------------------------------------------------------------
+
+enum UserRole {
+  CUSTOMER
+  STORE_OWNER
+  PLATFORM_ADMIN
+  SUPPORT_MODERATOR
+}
+
+model User {
+  id                String    @id @default(cuid())
+  name              String?
+  email             String    @unique
+  emailVerified     DateTime?
+  passwordHash      String? // null for OAuth-only accounts
+  image             String?
+  role              UserRole  @default(CUSTOMER)
+  twoFactorEnabled  Boolean   @default(false)
+  twoFactorSecret   String?
+  phone             String?
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+
+  accounts          Account[]
+  sessions          Session[]
+  business          Business?
+  orders            Order[]         @relation("BuyerOrders")
+  reviews           Review[]
+  reviewResponses   ReviewResponse[]
+  messages          Message[]
+  conversations     ConversationParticipant[]
+  notifications     Notification[]
+  auditLogs         AuditLog[]
+  disputesRaised    Dispute[]       @relation("DisputeRaisedBy")
+
+  @@index([role])
+}
+
+// Auth.js required models
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String? @db.Text
+  access_token      String? @db.Text
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String? @db.Text
+  session_state     String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+  type       VerificationTokenType @default(EMAIL)
+
+  @@unique([identifier, token])
+}
+
+enum VerificationTokenType {
+  EMAIL
+  PASSWORD_RESET
+  TWO_FACTOR
+}
+
+// ----------------------------------------------------------------------------
+// BUSINESS VERIFICATION (KYC)
+// ----------------------------------------------------------------------------
+
+enum VerificationStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  SUSPENDED
+}
+
+enum BusinessRegistrationType {
+  REGISTERED   // has a business registration certificate
+  UNREGISTERED // requires ID + selfie + guarantors
+}
+
+model Business {
+  id                    String                    @id @default(cuid())
+  userId                String                    @unique
+  user                  User                      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  businessName          String
+  category              String
+  description           String                    @db.Text
+  phone                 String
+  email                 String
+  country               String
+  state                 String
+  city                  String
+
+  registrationType      BusinessRegistrationType
+  registrationCertUrl   String? // required if REGISTERED
+  governmentIdUrl        String? // required if UNREGISTERED
+  selfieUrl              String? // required if UNREGISTERED
+
+  fraudPolicyAcceptedAt DateTime?
+
+  verificationStatus    VerificationStatus        @default(PENDING)
+  verificationBadge     Boolean                   @default(false)
+  reviewedByAdminId     String?
+  reviewedAt            DateTime?
+  rejectionReason       String?
+
+  guarantors             Guarantor[]
+  store                  Store?
+
+  createdAt              DateTime @default(now())
+  updatedAt               DateTime @updatedAt
+
+  @@index([verificationStatus])
+}
+
+model Guarantor {
+  id           String   @id @default(cuid())
+  businessId   String
+  business     Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+
+  fullName     String
+  phone        String
+  email        String
+  governmentIdUrl String
+  relationship String
+
+  createdAt    DateTime @default(now())
+}
+
+// ----------------------------------------------------------------------------
+// STORE
+// ----------------------------------------------------------------------------
+
+enum StoreStatus {
+  ACTIVE
+  SUSPENDED
+  CLOSED
+}
+
+model Store {
+  id            String      @id @default(cuid())
+  businessId    String      @unique
+  business      Business    @relation(fields: [businessId], references: [id], onDelete: Cascade)
+
+  name          String
+  slug          String      @unique
+  customDomain  String?     @unique
+  status        StoreStatus @default(ACTIVE)
+
+  templateId    String?
+  template      StoreTemplate? @relation(fields: [templateId], references: [id])
+
+  logoUrl       String?
+  bannerUrl     String?
+  themeColors   Json? // { primary, secondary, accent, ... }
+  fontFamily    String?
+
+  seoTitle      String?
+  seoDescription String?
+
+  socialLinks   Json? // { instagram, facebook, twitter, tiktok, whatsapp }
+  contactEmail  String?
+  contactPhone  String?
+
+  subscriptionId String?
+  subscription   Subscription? @relation(fields: [subscriptionId], references: [id])
+
+  products      Product[]
+  services      Service[]
+  orders        Order[]
+  coupons       Coupon[]
+  reviews       Review[]
+  pages         StorePage[]
+  inventory     InventoryItem[]
+
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+
+  @@index([status])
+}
+
+model StoreTemplate {
+  id          String   @id @default(cuid())
+  name        String   @unique // e.g. "Restaurant", "Hotel", "Fashion Store"
+  category    String
+  previewUrl  String?
+  config      Json     // default sections/layout config
+  isActive    Boolean  @default(true)
+
+  stores      Store[]
+  createdAt   DateTime @default(now())
+}
+
+// Website builder pages (Homepage, About, Gallery, FAQ, Blog, Contact, Policies...)
+model StorePage {
+  id        String   @id @default(cuid())
+  storeId   String
+  store     Store    @relation(fields: [storeId], references: [id], onDelete: Cascade)
+
+  slug      String   // "home", "about", "gallery", "faq", "blog", "contact", "policies"
+  title     String
+  content   Json      // block-based content for the builder
+  isPublished Boolean @default(true)
+
+  updatedAt DateTime @updatedAt
+
+  @@unique([storeId, slug])
+}
+
+// ----------------------------------------------------------------------------
+// CATALOG: PRODUCTS & SERVICES
+// ----------------------------------------------------------------------------
+
+enum ProductType {
+  PHYSICAL
+  DIGITAL
+  RENTAL
+}
+
+model Category {
+  id       String     @id @default(cuid())
+  name     String     @unique
+  type     CategoryType
+  parentId String?
+  parent   Category?  @relation("CategoryTree", fields: [parentId], references: [id])
+  children Category[] @relation("CategoryTree")
+
+  products Product[]
+  services Service[]
+}
+
+enum CategoryType {
+  PRODUCT
+  SERVICE
+}
+
+model Product {
+  id           String      @id @default(cuid())
+  storeId      String
+  store        Store       @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  categoryId   String?
+  category     Category?   @relation(fields: [categoryId], references: [id])
+
+  type         ProductType @default(PHYSICAL)
+  name         String
+  slug         String
+  description  String      @db.Text
+  price        Decimal     @db.Decimal(12, 2)
+  compareAtPrice Decimal?  @db.Decimal(12, 2)
+  currency     String      @default("NGN")
+  images       String[]
+  isPublished  Boolean     @default(true)
+
+  digitalFileUrl String?   // for DIGITAL type
+  rentalPeriodUnit String? // "day" | "week" | "month" for RENTAL type
+
+  inventory    InventoryItem?
+  orderItems   OrderItem[]
+  reviews      Review[]
+
+  createdAt    DateTime    @default(now())
+  updatedAt    DateTime    @updatedAt
+
+  @@unique([storeId, slug])
+  @@index([storeId])
+}
+
+model Service {
+  id           String    @id @default(cuid())
+  storeId      String
+  store        Store     @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  categoryId   String?
+  category     Category? @relation(fields: [categoryId], references: [id])
+
+  name         String
+  slug         String
+  description  String    @db.Text
+  price        Decimal   @db.Decimal(12, 2)
+  currency     String    @default("NGN")
+  images       String[]
+  isPublished  Boolean   @default(true)
+
+  isBookable   Boolean   @default(false) // enables appointments/bookings
+  durationMins Int?
+
+  bookings     Booking[]
+  orderItems   OrderItem[]
+  reviews      Review[]
+
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  @@unique([storeId, slug])
+  @@index([storeId])
+}
+
+model InventoryItem {
+  id         String   @id @default(cuid())
+  productId  String   @unique
+  product    Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  storeId    String
+  store      Store    @relation(fields: [storeId], references: [id], onDelete: Cascade)
+
+  sku        String?
+  quantity   Int      @default(0)
+  lowStockThreshold Int @default(5)
+
+  updatedAt  DateTime @updatedAt
+}
+
+enum BookingStatus {
+  PENDING
+  CONFIRMED
+  COMPLETED
+  CANCELLED
+}
+
+model Booking {
+  id         String        @id @default(cuid())
+  serviceId  String
+  service    Service       @relation(fields: [serviceId], references: [id], onDelete: Cascade)
+  customerId String
+  scheduledAt DateTime
+  status     BookingStatus @default(PENDING)
+  notes      String?
+  createdAt  DateTime      @default(now())
+}
+
+// ----------------------------------------------------------------------------
+// ORDERS, PAYMENTS, ESCROW, DISPUTES
+// ----------------------------------------------------------------------------
+
+enum OrderStatus {
+  PENDING_PAYMENT
+  PAID
+  IN_PROGRESS
+  DELIVERED
+  COMPLETED
+  CANCELLED
+  REFUNDED
+  DISPUTED
+}
+
+enum PaymentProvider {
+  PAYSTACK
+  FLUTTERWAVE
+}
+
+model Order {
+  id            String        @id @default(cuid())
+  storeId       String
+  store         Store         @relation(fields: [storeId], references: [id])
+  buyerId       String
+  buyer         User          @relation("BuyerOrders", fields: [buyerId], references: [id])
+
+  status        OrderStatus   @default(PENDING_PAYMENT)
+  subtotal      Decimal       @db.Decimal(12, 2)
+  commission    Decimal       @db.Decimal(12, 2) @default(0)
+  total         Decimal       @db.Decimal(12, 2)
+  currency      String        @default("NGN")
+
+  paymentProvider PaymentProvider?
+  paymentReference String?
+  escrowReleasedAt DateTime?
+
+  items         OrderItem[]
+  dispute       Dispute?
+  conversation  Conversation?
+
+  shippingAddress Json?
+
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+
+  @@index([storeId])
+  @@index([buyerId])
+}
+
+model OrderItem {
+  id        String   @id @default(cuid())
+  orderId   String
+  order     Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  productId String?
+  product   Product? @relation(fields: [productId], references: [id])
+  serviceId String?
+  service   Service? @relation(fields: [serviceId], references: [id])
+
+  quantity  Int      @default(1)
+  unitPrice Decimal  @db.Decimal(12, 2)
+}
+
+enum DisputeStatus {
+  OPEN
+  UNDER_REVIEW
+  RESOLVED_BUYER
+  RESOLVED_SELLER
+  CLOSED
+}
+
+model Dispute {
+  id            String        @id @default(cuid())
+  orderId       String        @unique
+  order         Order         @relation(fields: [orderId], references: [id])
+  raisedById    String
+  raisedBy      User          @relation("DisputeRaisedBy", fields: [raisedById], references: [id])
+
+  reason        String        @db.Text
+  evidenceUrls  String[]
+  status        DisputeStatus @default(OPEN)
+  adminNotes    String?
+
+  createdAt     DateTime      @default(now())
+  resolvedAt    DateTime?
+}
+
+model Coupon {
+  id          String   @id @default(cuid())
+  storeId     String
+  store       Store    @relation(fields: [storeId], references: [id], onDelete: Cascade)
+
+  code        String
+  discountType String  // "PERCENT" | "FIXED"
+  discountValue Decimal @db.Decimal(12, 2)
+  maxUses     Int?
+  usedCount   Int      @default(0)
+  expiresAt   DateTime?
+  isActive    Boolean  @default(true)
+
+  @@unique([storeId, code])
+}
+
+// ----------------------------------------------------------------------------
+// REVIEWS
+// ----------------------------------------------------------------------------
+
+model Review {
+  id         String   @id @default(cuid())
+  storeId    String
+  store      Store    @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  productId  String?
+  product    Product? @relation(fields: [productId], references: [id])
+  serviceId  String?
+  service    Service? @relation(fields: [serviceId], references: [id])
+  authorId   String
+  author     User     @relation(fields: [authorId], references: [id])
+
+  rating     Int      // 1-5
+  comment    String?  @db.Text
+  images     String[]
+  videos     String[]
+
+  response   ReviewResponse?
+
+  createdAt  DateTime @default(now())
+}
+
+model ReviewResponse {
+  id        String   @id @default(cuid())
+  reviewId  String   @unique
+  review    Review   @relation(fields: [reviewId], references: [id], onDelete: Cascade)
+  authorId  String
+  author    User     @relation(fields: [authorId], references: [id])
+  content   String   @db.Text
+  createdAt DateTime @default(now())
+}
+
+// ----------------------------------------------------------------------------
+// MESSAGING
+// ----------------------------------------------------------------------------
+
+model Conversation {
+  id        String   @id @default(cuid())
+  orderId   String?  @unique
+  order     Order?   @relation(fields: [orderId], references: [id])
+
+  participants ConversationParticipant[]
+  messages     Message[]
+
+  createdAt DateTime @default(now())
+}
+
+model ConversationParticipant {
+  id             String       @id @default(cuid())
+  conversationId String
+  conversation   Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  userId         String
+  user           User         @relation(fields: [userId], references: [id])
+
+  @@unique([conversationId, userId])
+}
+
+model Message {
+  id             String       @id @default(cuid())
+  conversationId String
+  conversation   Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  senderId       String
+  sender         User         @relation(fields: [senderId], references: [id])
+
+  content        String       @db.Text
+  attachmentUrls String[]
+  readAt         DateTime?
+
+  createdAt      DateTime     @default(now())
+}
+
+model Notification {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  type      String   // "ORDER_UPDATE" | "MESSAGE" | "VERIFICATION" | ...
+  title     String
+  body      String
+  readAt    DateTime?
+  createdAt DateTime @default(now())
+}
+
+// ----------------------------------------------------------------------------
+// SUBSCRIPTIONS / PLATFORM SETTINGS / AUDIT
+// ----------------------------------------------------------------------------
+
+model Subscription {
+  id        String   @id @default(cuid())
+  name      String   @unique // "Free" | "Starter" | "Growth" | "Pro"
+  price     Decimal  @db.Decimal(12, 2)
+  interval  String   // "MONTHLY" | "YEARLY"
+  features  Json
+  commissionRate Decimal @db.Decimal(5, 2) @default(0) // percentage
+
+  stores    Store[]
+}
+
+model AuditLog {
+  id        String   @id @default(cuid())
+  userId    String?
+  user      User?    @relation(fields: [userId], references: [id])
+
+  action    String
+  entity    String
+  entityId  String
+  metadata  Json?
+  createdAt DateTime @default(now())
+
+  @@index([entity, entityId])
+}
+
+model PlatformSetting {
+  id    String @id @default(cuid())
+  key   String @unique
+  value Json
+}
