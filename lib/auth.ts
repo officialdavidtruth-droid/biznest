@@ -1,3 +1,4 @@
+import type { UserRole } from "@prisma/client";
 import NextAuth from "next-auth";
 import Credentials from "next-auth/providers/credentials";
 import Google from "next-auth/providers/google";
@@ -26,19 +27,15 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       authorize: async (credentials) => {
         const parsed = loginSchema.safeParse(credentials);
         if (!parsed.success) return null;
-
         const user = await prisma.user.findUnique({
           where: { email: parsed.data.email },
         });
         if (!user?.passwordHash) return null;
-
         const valid = await bcrypt.compare(parsed.data.password, user.passwordHash);
         if (!valid) return null;
-
         if (!user.emailVerified) {
           throw new Error("EMAIL_NOT_VERIFIED");
         }
-
         return {
           id: user.id,
           email: user.email,
@@ -59,7 +56,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
     async session({ session, token }) {
       if (session.user) {
         session.user.id = token.id as string;
-        session.user.role = token.role;
+        session.user.role = token.role as UserRole;
       }
       return session;
     },
