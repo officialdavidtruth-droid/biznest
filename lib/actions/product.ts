@@ -101,7 +101,7 @@ export async function createProduct(
       digitalFileUrl: data.digitalFileUrl || null,
       rentalPeriodUnit: data.rentalPeriodUnit ?? null,
       inventory: {
-        create: { quantity: data.quantity },
+        create: { quantity: data.quantity, storeId: access.store.id },
       },
     },
   });
