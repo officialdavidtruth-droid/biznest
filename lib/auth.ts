@@ -36,9 +36,14 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         const valid = await bcrypt.compare(parsed.data.password, user.passwordHash);
         if (!valid) return null;
 
-        if (!user.emailVerified) {
-          throw new Error("EMAIL_NOT_VERIFIED");
-        }
+        // TEMPORARILY DISABLED: email verification is required in principle,
+        // but Resend is still in sandbox mode (only delivers to the
+        // account's own email), so real users can't yet complete it. Add
+        // this check back once a verified sending domain is configured —
+        // see EMAIL_FROM in .env.example.
+        // if (!user.emailVerified) {
+        //   throw new Error("EMAIL_NOT_VERIFIED");
+        // }
 
         return {
           id: user.id,
