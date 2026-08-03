@@ -24,3 +24,40 @@
     @apply bg-background text-foreground;
   }
 }
+
+/* --- BizNest landing page design tokens ---
+   Deep aubergine/plum ground with marigold + jade accents — evokes market-stall
+   textiles and dye colors rather than the generic cream+terracotta or
+   near-black+acid-green AI-design defaults. */
+:root {
+  --bn-ink: #1b1030;
+  --bn-ink-raised: #241541;
+  --bn-ink-line: #3a2a5c;
+  --bn-marigold: #f2a93b;
+  --bn-jade: #2f9e6e;
+  --bn-ivory: #f6f1e7;
+  --bn-mute: #a89bc0;
+}
+
+@keyframes bn-marquee-left {
+  from { transform: translateX(0); }
+  to { transform: translateX(-50%); }
+}
+@keyframes bn-marquee-right {
+  from { transform: translateX(-50%); }
+  to { transform: translateX(0); }
+}
+@keyframes bn-fade-up {
+  from { opacity: 0; transform: translateY(14px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.bn-marquee-left { animation: bn-marquee-left 38s linear infinite; }
+.bn-marquee-right { animation: bn-marquee-right 44s linear infinite; }
+.bn-fade-up { animation: bn-fade-up 0.7s cubic-bezier(0.16, 1, 0.3, 1) both; }
+
+@media (prefers-reduced-motion: reduce) {
+  .bn-marquee-left, .bn-marquee-right, .bn-fade-up {
+    animation: none !important;
+  }
+}

@@ -5,15 +5,14 @@ import { useRouter } from "next/navigation";
 import { createStore } from "@/lib/actions/store";
 import { toast } from "sonner";
 import slugify from "slugify";
-
-type Template = { id: string; name: string; category: string };
+import { TemplateGallery, type TemplateOption } from "@/components/dashboard/template-gallery";
 
 export function CreateStoreForm({
   businessId,
   templates,
 }: {
   businessId: string;
-  templates: Template[];
+  templates: TemplateOption[];
 }) {
   const router = useRouter();
   const [storeName, setStoreName] = useState("");
@@ -38,7 +37,7 @@ export function CreateStoreForm({
   }
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-5">
+    <form onSubmit={handleSubmit} className="space-y-6">
       <div>
         <label className="mb-1 block text-sm font-medium">Store name</label>
         <input
@@ -54,19 +53,8 @@ export function CreateStoreForm({
 
       {templates.length > 0 && (
         <div>
-          <label className="mb-1 block text-sm font-medium">Starting template</label>
-          <select
-            className="w-full rounded-md border px-3 py-2 text-sm"
-            value={templateId ?? ""}
-            onChange={(e) => setTemplateId(e.target.value || undefined)}
-          >
-            <option value="">Blank / choose later</option>
-            {templates.map((t) => (
-              <option key={t.id} value={t.id}>
-                {t.name} — {t.category}
-              </option>
-            ))}
-          </select>
+          <p className="mb-2 text-sm font-medium">Choose a starting template</p>
+          <TemplateGallery templates={templates} selectedId={templateId} onSelect={setTemplateId} />
         </div>
       )}
 

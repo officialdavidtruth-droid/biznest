@@ -23,7 +23,7 @@ export default async function CreateStorePage() {
   });
 
   return (
-    <div className="mx-auto max-w-xl px-6 py-12">
+    <div className="mx-auto max-w-4xl px-6 py-12">
       <h1 className="mb-1 text-2xl font-semibold">Name your store</h1>
       <p className="mb-6 text-sm text-muted-foreground">
         Your store gets a public page and an admin dashboard automatically.
