@@ -4,14 +4,14 @@
 
 @layer base {
   :root {
-    --background: 0 0% 100%;
-    --foreground: 222 47% 11%;
-    --primary: 222 89% 55%;
-    --primary-foreground: 0 0% 100%;
-    --muted: 210 40% 96%;
-    --muted-foreground: 215 16% 47%;
-    --border: 214 32% 91%;
-    --destructive: 0 84% 60%;
+    --background: 258 45% 12%;       /* bn-ink */
+    --foreground: 39 45% 93%;        /* bn-ivory */
+    --primary: 36 87% 60%;           /* bn-marigold */
+    --primary-foreground: 258 45% 12%; /* bn-ink, for text on marigold */
+    --muted: 258 42% 17%;            /* bn-ink-raised */
+    --muted-foreground: 267 22% 68%; /* bn-mute */
+    --border: 264 36% 25%;           /* bn-ink-line */
+    --destructive: 0 84% 65%;
     --radius: 0.5rem;
   }
 }
@@ -22,6 +22,12 @@
   }
   body {
     @apply bg-background text-foreground;
+  }
+  input, select, textarea {
+    @apply bg-muted text-foreground placeholder:text-muted-foreground;
+  }
+  input:focus, select:focus, textarea:focus {
+    @apply outline-none ring-1 ring-primary;
   }
 }
 

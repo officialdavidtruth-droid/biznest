@@ -43,7 +43,14 @@ export async function registerUser(input: RegisterInput): Promise<ActionResult<{
     },
   });
 
-  await sendVerificationEmail(user.email, token);
+  try {
+    await sendVerificationEmail(user.email, token);
+  } catch (err) {
+    // The account still exists at this point — a broken email provider
+    // shouldn't block signup. Log for now; a resend-verification-email
+    // action is a natural follow-up if this starts showing up often.
+    console.error("Failed to send verification email:", err);
+  }
 
   return { success: true, data: { userId: user.id } };
 }
