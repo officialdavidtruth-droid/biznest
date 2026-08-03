@@ -11,7 +11,7 @@ import { toast } from "sonner";
 export function LoginForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const callbackUrl = searchParams.get("callbackUrl") ?? "/";
+  const callbackUrl = searchParams.get("callbackUrl") ?? "/onboarding/business-verification";
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const {

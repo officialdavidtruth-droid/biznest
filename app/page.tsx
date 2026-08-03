@@ -1,5 +1,7 @@
 import Link from "next/link";
 import { Space_Grotesk, Inter, JetBrains_Mono } from "next/font/google";
+import { auth } from "@/lib/auth";
+import { SignOutButton } from "@/components/forms/sign-out-button";
 
 const display = Space_Grotesk({ subsets: ["latin"], variable: "--font-display", weight: ["500", "700"] });
 const body = Inter({ subsets: ["latin"], variable: "--font-body" });
@@ -44,7 +46,8 @@ const CATEGORIES = [
   "Health & Fitness", "Real Estate", "Logistics",
 ];
 
-export default function HomePage() {
+export default async function HomePage() {
+  const session = await auth();
   return (
     <div
       className={`${display.variable} ${body.variable} ${mono.variable} min-h-screen`}
@@ -56,16 +59,27 @@ export default function HomePage() {
           BizNest
         </span>
         <nav className="flex items-center gap-3 text-sm sm:gap-6">
-          <Link href="/login" className="opacity-80 transition hover:opacity-100">
-            Sign in
-          </Link>
-          <Link
-            href="/register"
-            className="rounded-full px-4 py-2 text-sm font-medium transition hover:brightness-110"
-            style={{ background: "var(--bn-marigold)", color: "var(--bn-ink)" }}
-          >
-            Open your store
-          </Link>
+          {session?.user ? (
+            <>
+              <Link href="/onboarding/business-verification" className="opacity-80 transition hover:opacity-100">
+                Dashboard
+              </Link>
+              <SignOutButton className="rounded-full px-4 py-2 text-sm font-medium transition hover:brightness-110" />
+            </>
+          ) : (
+            <>
+              <Link href="/login" className="opacity-80 transition hover:opacity-100">
+                Sign in
+              </Link>
+              <Link
+                href="/register"
+                className="rounded-full px-4 py-2 text-sm font-medium transition hover:brightness-110"
+                style={{ background: "var(--bn-marigold)", color: "var(--bn-ink)" }}
+              >
+                Open your store
+              </Link>
+            </>
+          )}
         </nav>
       </header>
 
@@ -91,20 +105,32 @@ export default function HomePage() {
             a real dashboard, and real payments — verified, protected, and built to grow with you.
           </p>
           <div className="mt-8 flex flex-wrap gap-3">
-            <Link
-              href="/register"
-              className="rounded-full px-6 py-3 text-sm font-medium transition hover:brightness-110"
-              style={{ background: "var(--bn-marigold)", color: "var(--bn-ink)" }}
-            >
-              Start selling — it's free
-            </Link>
-            <Link
-              href="/login"
-              className="rounded-full px-6 py-3 text-sm font-medium transition"
-              style={{ border: "1px solid var(--bn-ink-line)", color: "var(--bn-ivory)" }}
-            >
-              I already have a store
-            </Link>
+            {session?.user ? (
+              <Link
+                href="/onboarding/business-verification"
+                className="rounded-full px-6 py-3 text-sm font-medium transition hover:brightness-110"
+                style={{ background: "var(--bn-marigold)", color: "var(--bn-ink)" }}
+              >
+                Go to your dashboard
+              </Link>
+            ) : (
+              <>
+                <Link
+                  href="/register"
+                  className="rounded-full px-6 py-3 text-sm font-medium transition hover:brightness-110"
+                  style={{ background: "var(--bn-marigold)", color: "var(--bn-ink)" }}
+                >
+                  Start selling — it's free
+                </Link>
+                <Link
+                  href="/login"
+                  className="rounded-full px-6 py-3 text-sm font-medium transition"
+                  style={{ border: "1px solid var(--bn-ink-line)", color: "var(--bn-ivory)" }}
+                >
+                  I already have a store
+                </Link>
+              </>
+            )}
           </div>
           <div
             className="mt-10 flex gap-8 text-sm"
