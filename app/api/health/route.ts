@@ -1,10 +1,15 @@
 import { prisma } from "@/lib/prisma";
 import { NextResponse } from "next/server";
 
-// TEMPORARY — for diagnosing the production database connection.
-// Delete this file (or at least stop deploying it) once things are working;
-// it's not something you want reachable indefinitely.
-export async function GET() {
+// Protected the same way as /api/promote-admin — this leaks user counts,
+// so it shouldn't be open to the public.
+export async function GET(req: Request) {
+  const { searchParams } = new URL(req.url);
+  const secret = searchParams.get("secret");
+  if (!process.env.ADMIN_BOOTSTRAP_SECRET || secret !== process.env.ADMIN_BOOTSTRAP_SECRET) {
+    return NextResponse.json({ success: false, message: "Invalid or missing secret." }, { status: 403 });
+  }
+
   try {
     const result = await prisma.$queryRaw`SELECT 1 as ok`;
     const userCount = await prisma.user.count();

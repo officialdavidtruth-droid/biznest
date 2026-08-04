@@ -33,8 +33,30 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         });
         if (!user?.passwordHash) return null;
 
+        if (user.lockedUntil && user.lockedUntil > new Date()) {
+          throw new Error("ACCOUNT_LOCKED");
+        }
+
         const valid = await bcrypt.compare(parsed.data.password, user.passwordHash);
-        if (!valid) return null;
+        if (!valid) {
+          const attempts = user.failedLoginAttempts + 1;
+          const MAX_ATTEMPTS = 5;
+          await prisma.user.update({
+            where: { id: user.id },
+            data: {
+              failedLoginAttempts: attempts,
+              lockedUntil: attempts >= MAX_ATTEMPTS ? new Date(Date.now() + 15 * 60 * 1000) : null,
+            },
+          });
+          return null;
+        }
+
+        if (user.failedLoginAttempts > 0 || user.lockedUntil) {
+          await prisma.user.update({
+            where: { id: user.id },
+            data: { failedLoginAttempts: 0, lockedUntil: null },
+          });
+        }
 
         if (user.isBanned) {
           throw new Error("ACCOUNT_BANNED");

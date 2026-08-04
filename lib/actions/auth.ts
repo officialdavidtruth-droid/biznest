@@ -2,12 +2,23 @@
 
 import bcrypt from "bcryptjs";
 import { nanoid } from "nanoid";
+import { headers } from "next/headers";
 import { prisma } from "@/lib/prisma";
 import { registerSchema, type RegisterInput } from "@/lib/validations/auth";
 import { sendVerificationEmail } from "@/lib/email/send";
+import { checkRateLimit, getClientIp } from "@/lib/rate-limit";
 import type { ActionResult } from "@/types/actions";
 
 export async function registerUser(input: RegisterInput): Promise<ActionResult<{ userId: string }>> {
+  const ip = getClientIp(await headers());
+  const rateLimit = await checkRateLimit(`register:${ip}`, 5, 60 * 60 * 1000); // 5/hour/IP
+  if (!rateLimit.allowed) {
+    return {
+      success: false,
+      error: `Too many signups from this connection. Try again in ${Math.ceil((rateLimit.retryAfterSeconds ?? 3600) / 60)} minutes.`,
+    };
+  }
+
   const parsed = registerSchema.safeParse(input);
   if (!parsed.success) {
     return {

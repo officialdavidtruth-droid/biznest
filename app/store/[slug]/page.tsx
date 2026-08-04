@@ -1,6 +1,8 @@
 import { prisma } from "@/lib/prisma";
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
+import { AddToCartButton } from "@/components/storefront/add-to-cart-button";
+import { CartLink } from "@/components/storefront/cart-link";
 
 export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }): Promise<Metadata> {
   const { slug } = await params;
@@ -34,6 +36,7 @@ export default async function StorefrontPage({ params }: { params: Promise<{ slu
           {store.logoUrl && <img src={store.logoUrl} alt={store.name} className="h-8 w-8 rounded" />}
           <h1 className="text-lg font-semibold">{store.name}</h1>
         </div>
+        <CartLink storeSlug={slug} />
       </header>
 
       <section className="px-6 py-10">
@@ -41,10 +44,24 @@ export default async function StorefrontPage({ params }: { params: Promise<{ slu
         <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
           {store.products.map((p) => (
             <div key={p.id} className="rounded-lg border p-3">
+              {p.images[0] && (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={p.images[0]} alt={p.name} className="mb-2 h-24 w-full rounded object-cover" />
+              )}
               <p className="text-sm font-medium">{p.name}</p>
               <p className="text-sm text-muted-foreground">
-                {p.currency} {p.price.toString()}
+                {p.currency} {Number(p.price).toLocaleString()}
               </p>
+              {p.type === "PHYSICAL" && (
+                <AddToCartButton
+                  storeSlug={slug}
+                  productId={p.id}
+                  name={p.name}
+                  price={Number(p.price)}
+                  currency={p.currency}
+                  image={p.images[0] ?? null}
+                />
+              )}
             </div>
           ))}
           {store.products.length === 0 && (
@@ -58,7 +75,7 @@ export default async function StorefrontPage({ params }: { params: Promise<{ slu
             <div key={s.id} className="rounded-lg border p-3">
               <p className="text-sm font-medium">{s.name}</p>
               <p className="text-sm text-muted-foreground">
-                {s.currency} {s.price.toString()}
+                {s.currency} {Number(s.price).toLocaleString()}
               </p>
             </div>
           ))}

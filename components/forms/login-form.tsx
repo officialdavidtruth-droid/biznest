@@ -26,11 +26,12 @@ export function LoginForm() {
     setIsSubmitting(false);
 
     if (result?.error) {
-      toast.error(
-        result.error === "EMAIL_NOT_VERIFIED"
-          ? "Please verify your email before signing in."
-          : "Invalid email or password."
-      );
+      const messages: Record<string, string> = {
+        EMAIL_NOT_VERIFIED: "Please verify your email before signing in.",
+        ACCOUNT_LOCKED: "Too many failed attempts. Try again in 15 minutes.",
+        ACCOUNT_BANNED: "This account has been suspended. Contact support.",
+      };
+      toast.error(messages[result.error] ?? "Invalid email or password.");
       return;
     }
     router.push(callbackUrl);

@@ -242,10 +242,15 @@ export default async function HomePage() {
       </section>
 
       <footer
-        className="px-6 py-8 text-center text-xs sm:px-10"
+        className="flex flex-col items-center gap-2 px-6 py-8 text-center text-xs sm:flex-row sm:justify-between sm:px-10"
         style={{ borderTop: "1px solid var(--bn-ink-line)", color: "var(--bn-mute)" }}
       >
-        © {new Date().getFullYear()} BizNest. All rights reserved.
+        <span>© {new Date().getFullYear()} BizNest. All rights reserved.</span>
+        <span className="flex gap-4">
+          <Link href="/privacy" className="hover:opacity-80">Privacy Policy</Link>
+          <Link href="/terms" className="hover:opacity-80">Terms of Service</Link>
+          <Link href="/seller-agreement" className="hover:opacity-80">Seller Agreement</Link>
+        </span>
       </footer>
     </div>
   );

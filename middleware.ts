@@ -2,7 +2,7 @@ import { auth } from "@/lib/auth";
 import { NextResponse } from "next/server";
 
 // Routes that require an authenticated session at all.
-const PROTECTED_PREFIXES = ["/onboarding", "/dashboard", "/admin", "/supaadmin", "/account"];
+const PROTECTED_PREFIXES = ["/onboarding", "/dashboard", "/admin", "/supaadmin", "/account", "/orders"];
 
 // Store admin routes: /store/[slug]/admin/** — ownership is verified inside
 // the route handlers/layout (needs a DB lookup middleware can't cheaply do

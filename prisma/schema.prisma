@@ -37,6 +37,8 @@ model User {
   role              UserRole  @default(CUSTOMER)
   isBanned          Boolean   @default(false)
   bannedReason      String?
+  failedLoginAttempts Int     @default(0)
+  lockedUntil       DateTime?
   twoFactorEnabled  Boolean   @default(false)
   twoFactorSecret   String?
   phone             String?
@@ -204,6 +206,9 @@ model Store {
 
   subscriptionId String?
   subscription   Subscription? @relation(fields: [subscriptionId], references: [id])
+
+  paystackSubaccountCode   String?
+  flutterwaveSubaccountId  String?
 
   products      Product[]
   services      Service[]
@@ -588,4 +593,14 @@ model PlatformSetting {
   id    String @id @default(cuid())
   key   String @unique
   value Json
+}
+
+// Generic rate limiter, keyed by e.g. "register:203.0.113.5" or
+// "login:someone@example.com". No Redis needed at this scale — a row per
+// key with a rolling window is more than enough for tens of thousands of
+// requests/day on Postgres.
+model RateLimitEntry {
+  key     String   @id
+  count   Int      @default(0)
+  resetAt DateTime
 }
