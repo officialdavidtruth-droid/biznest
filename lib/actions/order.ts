@@ -112,7 +112,10 @@ export async function getOrderForBuyer(orderId: string) {
 
   return prisma.order.findFirst({
     where: { id: orderId, buyerId: session.user.id },
-    include: { items: { include: { product: true } }, store: { select: { name: true, slug: true } } },
+    include: {
+      items: { include: { product: true, service: true } },
+      store: { select: { name: true, slug: true } },
+    },
   });
 }
 
