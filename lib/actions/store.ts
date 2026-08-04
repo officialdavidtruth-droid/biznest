@@ -107,3 +107,48 @@ export async function createStore(
     },
   };
 }
+
+async function assertStoreAccess(slug: string) {
+  const session = await auth();
+  if (!session?.user?.id) return { success: false as const, error: "You must be signed in." };
+
+  const store = await prisma.store.findUnique({ where: { slug }, include: { business: true } });
+  if (!store) return { success: false as const, error: "Store not found." };
+
+  const isOwner = store.business.userId === session.user.id;
+  const isStaff = session.user.role === "PLATFORM_ADMIN" || session.user.role === "SUPPORT_MODERATOR";
+  if (!isOwner && !isStaff) return { success: false as const, error: "You don't have access to this store." };
+
+  return { success: true as const, store };
+}
+
+/** Storefront settings: branding, theme colors, contact info, social links. */
+export async function updateStoreSettings(slug: string, formData: FormData) {
+  const access = await assertStoreAccess(slug);
+  if (!access.success) return;
+
+  const name = String(formData.get("name") ?? "").trim();
+  const contactEmail = String(formData.get("contactEmail") ?? "").trim() || null;
+  const contactPhone = String(formData.get("contactPhone") ?? "").trim() || null;
+  const primary = String(formData.get("primary") ?? "").trim();
+  const secondary = String(formData.get("secondary") ?? "").trim();
+  const accent = String(formData.get("accent") ?? "").trim();
+  const instagram = String(formData.get("instagram") ?? "").trim();
+  const whatsapp = String(formData.get("whatsapp") ?? "").trim();
+
+  if (!name) return;
+
+  await prisma.store.update({
+    where: { id: access.store.id },
+    data: {
+      name,
+      contactEmail,
+      contactPhone,
+      themeColors: { primary, secondary, accent },
+      socialLinks: { instagram, whatsapp },
+    },
+  });
+
+  revalidatePath(`/store/${slug}/admin/settings`);
+  revalidatePath(`/store/${slug}`);
+}

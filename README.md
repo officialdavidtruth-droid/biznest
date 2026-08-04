@@ -58,6 +58,59 @@ Generate `AUTH_SECRET` with `npx auth secret`. For Paystack/Flutterwave you only
 need platform-level keys for now — the "sellers connect their own account" OAuth
 flow is phase 3.
 
+---
+
+## Fixes applied (this pass)
+
+**Root cause of the site-wide 404s:** `components/dashboard/sidebar.tsx` links to
+17 admin routes, but only 5 existed as real pages. Every link to Services,
+Customers, Inventory, Coupons, Payments, Analytics, Reviews, Marketing, Messages,
+Settings, Verification, Subscription, and Support 404'd because the files simply
+didn't exist. All 12 are now built under `app/store/[slug]/admin/*/page.tsx`,
+querying your actual Prisma models (no placeholders):
+
+- **Services / Customers / Inventory / Reviews** — real list views against `Service`, derived-from-`Order` customer rollups, `InventoryItem`, and `Review`.
+- **Coupons** — list + working create form (`lib/actions/coupon.ts`, new file).
+- **Payments** — Paystack/Flutterwave subaccount connection status + gross sales and commission totals.
+- **Analytics** — 30-day revenue bar chart and headline stats, computed from `Order`, no charting library needed.
+- **Marketing** — surfaces coupons + social links as the current toolkit, honest about what's not built yet (email campaigns).
+- **Messages** — lists `Conversation`/`Message` rows tied to orders.
+- **Settings** — edit store name, contact info, theme colors, and social links (`updateStoreSettings` action added to `lib/actions/store.ts`).
+- **Verification** — shows `Business.verificationStatus`, rejection reason if any, and guarantors.
+- **Subscription** — current plan vs. available `Subscription` tiers.
+- **Support** — contact channel (ticketing intentionally not faked).
+
+**Root cause of "no template for the user website":** `app/store/[slug]/page.tsx`
+never read `store.template` at all — every store rendered as the same unstyled
+`<div>` grid, and `prisma/seed.ts` backed that up: all 25 seeded templates shared
+one identical placeholder config. Fixed with:
+
+- `lib/template-themes.ts` (new) — real, distinct palette/typography/hero copy for
+  every major category (Restaurant, Fashion, Videography, Law Firm, Hospital,
+  Real Estate, etc.), plus a deterministic fallback so any uncurated category still
+  renders a stable, distinct look instead of one generic default. Store-level
+  overrides from Settings (`themeColors`, `fontFamily`) win over the template
+  default — same relationship as a Shopify theme + merchant customization.
+- `app/store/[slug]/page.tsx` rewritten — sticky header with logo/verified badge,
+  themed hero, WooCommerce-style product grid (price, compare-at price, digital/
+  rental badges, add-to-cart wired to your existing cart context), services grid,
+  footer with social links.
+
+**Known follow-up:** `AddToCartButton` still uses a hardcoded CSS variable
+(`--bn-marigold`) instead of the per-store accent color — cosmetic only, doesn't
+block anything, but worth wiring up if you want the button to match each store's
+theme exactly.
+
+## What's next toward the Shopify/WooCommerce bar
+
+This pass fixed what was broken. Bigger lifts still ahead, roughly in priority order:
+1. Product variants/attributes (size, color) — core WooCommerce parity gap.
+2. Website Builder drag-and-drop section editor (currently JSON-only `StorePage.content`).
+3. Booking flow UI for bookable services (schema exists, no admin/customer UI yet).
+4. Real-time order/message notifications.
+5. Storefront theme picker in Settings (swap between curated palettes per niche, not just color tweaks).
+
+
 Deploying to Vercel: connect the repo, add the same env vars in Project Settings →
 Environment Variables, and set `DATABASE_URL` to a Vercel Postgres/Neon instance.
 Prisma migrations run via `npm run build` (`prisma generate` is wired into the
