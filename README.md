@@ -101,6 +101,40 @@ one identical placeholder config. Fixed with:
 block anything, but worth wiring up if you want the button to match each store's
 theme exactly.
 
+## Fixes applied (round 2 — template gallery + dashboard UI)
+
+**Root cause of "no templates showing":** not a bug in the gallery component —
+`prisma/schema.prisma`'s `StoreTemplate` table was simply empty on your
+deployment. The `build` script ran `prisma db push` (creates tables) but never
+ran the seed script, so every fresh deploy ships with zero templates and the
+gallery correctly (if confusingly) reports "no templates match." Fixed:
+
+- `package.json` — `build` now runs `tsx prisma/seed.ts` after `db push`, before
+  `next build`. The seed uses `upsert`/`skipDuplicates` throughout, so it's safe
+  to run on every deploy — it won't duplicate or wipe existing data.
+- If you're not redeploying right away: run `npm run db:seed` once against your
+  current database and the gallery will populate immediately.
+
+**UI upgrade**, scoped to what actually renders sitewide so it isn't just one
+screen:
+
+- `components/dashboard/template-gallery.tsx` — rebuilt. Each card now renders
+  a real mini-preview of that template's theme (from `lib/template-themes.ts`:
+  actual background, accent, headline, CTA), not a flat gradient block. Added
+  category filter chips, a live "X of Y templates" count, and two distinct
+  empty states — one for "the catalog is genuinely empty" (tells you to seed)
+  and one for "your search matched nothing" (offers to clear filters). These
+  were previously indistinguishable, which is exactly what you ran into.
+- `components/dashboard/sidebar.tsx` — rebuilt with grouped sections (Overview
+  / Sell / Grow / Store / Account) instead of one flat 17-item list, a left
+  accent bar + tinted background on the active item, and a store-initial badge
+  at the top. Same aubergine/marigold/jade palette you already had — this is
+  a structure and polish pass, not a re-theme.
+- `app/store/[slug]/admin/layout.tsx` — content area now has a max-width and
+  consistent page padding instead of every page managing its own spacing.
+- `app/globals.css` — added a shared `.bn-card` elevation style so dashboard
+  surfaces can converge on one shadow/radius language over time.
+
 ## What's next toward the Shopify/WooCommerce bar
 
 This pass fixed what was broken. Bigger lifts still ahead, roughly in priority order:

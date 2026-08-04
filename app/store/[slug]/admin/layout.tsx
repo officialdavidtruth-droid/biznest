@@ -32,7 +32,9 @@ export default async function StoreAdminLayout({
   return (
     <div className="flex min-h-screen">
       <DashboardSidebar slug={slug} storeName={store.name} />
-      <main className="flex-1 bg-muted/20 p-6">{children}</main>
+      <main className="flex-1 bg-muted/10">
+        <div className="mx-auto max-w-6xl px-6 py-8">{children}</div>
+      </main>
     </div>
   );
 }
