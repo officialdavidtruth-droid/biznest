@@ -36,6 +36,10 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         const valid = await bcrypt.compare(parsed.data.password, user.passwordHash);
         if (!valid) return null;
 
+        if (user.isBanned) {
+          throw new Error("ACCOUNT_BANNED");
+        }
+
         // TEMPORARILY DISABLED: email verification is required in principle,
         // but Resend is still in sandbox mode (only delivers to the
         // account's own email), so real users can't yet complete it. Add

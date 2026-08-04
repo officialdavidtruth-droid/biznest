@@ -2,7 +2,7 @@ import { auth } from "@/lib/auth";
 import { NextResponse } from "next/server";
 
 // Routes that require an authenticated session at all.
-const PROTECTED_PREFIXES = ["/onboarding", "/dashboard", "/admin", "/account"];
+const PROTECTED_PREFIXES = ["/onboarding", "/dashboard", "/admin", "/supaadmin", "/account"];
 
 // Store admin routes: /store/[slug]/admin/** — ownership is verified inside
 // the route handlers/layout (needs a DB lookup middleware can't cheaply do
@@ -10,7 +10,7 @@ const PROTECTED_PREFIXES = ["/onboarding", "/dashboard", "/admin", "/account"];
 const STORE_ADMIN_PATTERN = /^\/store\/[^/]+\/admin/;
 
 // Platform admin routes require PLATFORM_ADMIN or SUPPORT_MODERATOR role.
-const PLATFORM_ADMIN_PATTERN = /^\/admin/;
+const PLATFORM_ADMIN_PATTERN = /^\/(admin|supaadmin)/;
 
 export default auth((req) => {
   const { pathname } = req.nextUrl;

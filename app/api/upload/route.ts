@@ -33,16 +33,25 @@ export async function POST(req: Request) {
   const arrayBuffer = await file.arrayBuffer();
   const buffer = Buffer.from(arrayBuffer);
 
-  const result = await new Promise<{ secure_url: string }>((resolve, reject) => {
-    const uploadStream = cloudinary.uploader.upload_stream(
-      { folder: `biznest/${session.user.id}`, resource_type: "auto" },
-      (error, result) => {
-        if (error || !result) reject(error);
-        else resolve(result);
-      }
-    );
-    uploadStream.end(buffer);
-  });
+  try {
+    const result = await new Promise<{ secure_url: string }>((resolve, reject) => {
+      const uploadStream = cloudinary.uploader.upload_stream(
+        { folder: `biznest/${session.user.id}`, resource_type: "auto" },
+        (error, result) => {
+          if (error || !result) reject(error);
+          else resolve(result);
+        }
+      );
+      uploadStream.end(buffer);
+    });
 
-  return NextResponse.json({ url: result.secure_url });
+    return NextResponse.json({ url: result.secure_url });
+  } catch (err) {
+    console.error("Cloudinary upload failed:", err);
+    const message =
+      err instanceof Error
+        ? err.message
+        : "Upload provider isn't configured correctly. Check CLOUDINARY_* environment variables.";
+    return NextResponse.json({ error: message }, { status: 502 });
+  }
 }

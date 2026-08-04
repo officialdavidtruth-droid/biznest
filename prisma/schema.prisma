@@ -35,6 +35,8 @@ model User {
   passwordHash      String? // null for OAuth-only accounts
   image             String?
   role              UserRole  @default(CUSTOMER)
+  isBanned          Boolean   @default(false)
+  bannedReason      String?
   twoFactorEnabled  Boolean   @default(false)
   twoFactorSecret   String?
   phone             String?
