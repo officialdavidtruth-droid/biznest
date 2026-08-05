@@ -22,7 +22,17 @@ export default async function StoreDashboardHome({ params }: { params: Promise<{
   ];
 
   const isEmpty = productCount === 0 && serviceCount === 0;
-  const seedForStore = seedSampleListings.bind(null, slug);
+
+  // <form action> requires a handler returning void | Promise<void> — a
+  // thin wrapper here rather than binding seedSampleListings directly,
+  // since that action returns ActionResult for programmatic callers
+  // elsewhere. This was a real TS build failure caught by `next build`'s
+  // type checking, not a runtime issue — good that it was caught before
+  // deploy rather than after.
+  async function seedForStore() {
+    "use server";
+    await seedSampleListings(slug);
+  }
 
   return (
     <div>

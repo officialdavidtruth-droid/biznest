@@ -77,14 +77,50 @@ export default async function StorefrontPage({ params }: { params: Promise<{ slu
         }
       })}
 
-      <footer style={{ borderTop: `1px solid ${theme.ink}1a`, padding: "28px 24px", display: "flex", flexWrap: "wrap", gap: 12, alignItems: "center", justifyContent: "space-between", fontSize: 12, opacity: 0.7 }}>
-        <span>© {new Date().getFullYear()} {store.name}</span>
-        <div style={{ display: "flex", gap: 14 }}>
-          {social.instagram && <a href={social.instagram} style={{ color: theme.ink }}>Instagram</a>}
-          {social.whatsapp && <a href={`https://wa.me/${social.whatsapp}`} style={{ color: theme.ink }}>WhatsApp</a>}
-          {store.contactEmail && <a href={`mailto:${store.contactEmail}`} style={{ color: theme.ink }}>Contact</a>}
+      <footer style={{ borderTop: `1px solid ${theme.ink}1a`, marginTop: 20 }}>
+        <div style={{ maxWidth: 1100, margin: "0 auto", padding: "40px 24px 28px", display: "grid", gap: 28, gridTemplateColumns: "1.3fr 1fr 1fr" }}>
+          <div>
+            <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10 }}>
+              {store.logoUrl ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={store.logoUrl} alt={store.name} style={{ height: 26, width: 26, borderRadius: 6, objectFit: "cover" }} />
+              ) : (
+                <div style={{ height: 26, width: 26, borderRadius: 6, background: theme.accent, display: "flex", alignItems: "center", justifyContent: "center", color: theme.bg, fontWeight: 800, fontSize: 12 }}>
+                  {store.name.charAt(0).toUpperCase()}
+                </div>
+              )}
+              <span style={{ fontWeight: 700, fontSize: 14 }}>{store.name}</span>
+            </div>
+            {store.business.description && (
+              <p style={{ fontSize: 13, lineHeight: 1.6, opacity: 0.75, maxWidth: 320 }}>
+                {store.business.description.length > 140 ? store.business.description.slice(0, 140) + "…" : store.business.description}
+              </p>
+            )}
+          </div>
+
+          <div>
+            <p style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.06em", textTransform: "uppercase", opacity: 0.5, marginBottom: 10 }}>Shop</p>
+            <div style={{ display: "flex", flexDirection: "column", gap: 8, fontSize: 13 }}>
+              {(store.products.length > 0 || store.services.length > 0) && <a href="#catalog" style={{ color: theme.ink, opacity: 0.8, textDecoration: "none" }}>{catalogLabel}</a>}
+              {sectionEnabled.about && <a href="#about" style={{ color: theme.ink, opacity: 0.8, textDecoration: "none" }}>About</a>}
+              {sectionEnabled.contact && <a href="#contact" style={{ color: theme.ink, opacity: 0.8, textDecoration: "none" }}>Contact</a>}
+            </div>
+          </div>
+
+          <div>
+            <p style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.06em", textTransform: "uppercase", opacity: 0.5, marginBottom: 10 }}>Connect</p>
+            <div style={{ display: "flex", flexDirection: "column", gap: 8, fontSize: 13 }}>
+              {social.instagram && <a href={social.instagram} style={{ color: theme.ink, opacity: 0.8, textDecoration: "none" }}>Instagram</a>}
+              {social.whatsapp && <a href={`https://wa.me/${social.whatsapp}`} style={{ color: theme.ink, opacity: 0.8, textDecoration: "none" }}>WhatsApp</a>}
+              {store.contactEmail && <a href={`mailto:${store.contactEmail}`} style={{ color: theme.ink, opacity: 0.8, textDecoration: "none" }}>Email</a>}
+              {store.contactPhone && <a href={`tel:${store.contactPhone}`} style={{ color: theme.ink, opacity: 0.8, textDecoration: "none" }}>Call</a>}
+            </div>
+          </div>
         </div>
-        <span>Secured by BizNest · SSL encrypted</span>
+        <div style={{ borderTop: `1px solid ${theme.ink}1a`, padding: "16px 24px", display: "flex", flexWrap: "wrap", gap: 8, justifyContent: "space-between", maxWidth: 1100, margin: "0 auto", fontSize: 11.5, opacity: 0.6 }}>
+          <span>© {new Date().getFullYear()} {store.name}</span>
+          <span>Powered by BizNest · Secured checkout · SSL encrypted</span>
+        </div>
       </footer>
     </div>
   );

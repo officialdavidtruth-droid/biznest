@@ -187,7 +187,7 @@ export default async function HomePage() {
       </section>
 
       {/* Categories */}
-      <section className="px-6 py-16 sm:px-10 lg:py-20" style={{ background: "var(--bn-ink-raised)" }}>
+      <section id="categories" className="px-6 py-16 sm:px-10 lg:py-20" style={{ background: "var(--bn-ink-raised)" }}>
         <h2 className="mb-8 text-2xl sm:text-3xl" style={{ fontFamily: "var(--font-display)", fontWeight: 700 }}>
           Whatever you sell, there's a stall for it
         </h2>
@@ -224,6 +224,26 @@ export default async function HomePage() {
         </p>
       </section>
 
+      {/* Trust & security — states what's actually built, not generic marketing claims */}
+      <section className="px-6 py-16 sm:px-10 lg:py-24">
+        <h2 className="mb-10 text-2xl sm:text-3xl" style={{ fontFamily: "var(--font-display)", fontWeight: 700 }}>
+          Built for trust, not just transactions
+        </h2>
+        <div className="grid gap-6 sm:grid-cols-3">
+          {[
+            { icon: "🪪", title: "Verified sellers", body: "ID and guarantor checks (or business registration) before anyone opens a store — reviewed by a real person." },
+            { icon: "🔐", title: "Two-factor by default", body: "Every store admin dashboard requires 2FA. Your storefront can't be hijacked from a leaked password alone." },
+            { icon: "🏦", title: "Payments go straight to you", body: "Paystack and Flutterwave subaccounts settle directly to your bank. We never hold your money." },
+          ].map((f) => (
+            <div key={f.title} className="rounded-2xl p-6" style={{ background: "var(--bn-ink-raised)", border: "1px solid var(--bn-ink-line)" }}>
+              <span className="text-2xl">{f.icon}</span>
+              <h3 className="mt-3 text-base font-semibold">{f.title}</h3>
+              <p className="mt-2 text-sm leading-relaxed" style={{ color: "var(--bn-mute)" }}>{f.body}</p>
+            </div>
+          ))}
+        </div>
+      </section>
+
       {/* Final CTA */}
       <section className="px-6 py-20 text-center sm:px-10 lg:py-28">
         <h2
@@ -241,16 +261,50 @@ export default async function HomePage() {
         </Link>
       </section>
 
-      <footer
-        className="flex flex-col items-center gap-2 px-6 py-8 text-center text-xs sm:flex-row sm:justify-between sm:px-10"
-        style={{ borderTop: "1px solid var(--bn-ink-line)", color: "var(--bn-mute)" }}
-      >
-        <span>© {new Date().getFullYear()} BizNest. All rights reserved.</span>
-        <span className="flex gap-4">
-          <Link href="/privacy" className="hover:opacity-80">Privacy Policy</Link>
-          <Link href="/terms" className="hover:opacity-80">Terms of Service</Link>
-          <Link href="/seller-agreement" className="hover:opacity-80">Seller Agreement</Link>
-        </span>
+      <footer style={{ borderTop: "1px solid var(--bn-ink-line)" }}>
+        <div className="mx-auto grid max-w-6xl gap-10 px-6 py-14 sm:grid-cols-2 sm:px-10 lg:grid-cols-4">
+          <div>
+            <span className="text-lg tracking-tight" style={{ fontFamily: "var(--font-display)", fontWeight: 700 }}>
+              BizNest
+            </span>
+            <p className="mt-3 max-w-xs text-sm leading-relaxed" style={{ color: "var(--bn-mute)" }}>
+              A verified marketplace for products, services, and bookings — your store,
+              your payments, your own domain on ours.
+            </p>
+          </div>
+
+          <div>
+            <p className="mb-3 text-xs font-semibold uppercase tracking-wider" style={{ color: "var(--bn-ivory)" }}>Platform</p>
+            <ul className="space-y-2 text-sm" style={{ color: "var(--bn-mute)" }}>
+              <li><Link href="/register" className="hover:opacity-80">Open a store</Link></li>
+              <li><Link href="/login" className="hover:opacity-80">Sign in</Link></li>
+              <li><a href="#categories" className="hover:opacity-80">Categories</a></li>
+            </ul>
+          </div>
+
+          <div>
+            <p className="mb-3 text-xs font-semibold uppercase tracking-wider" style={{ color: "var(--bn-ivory)" }}>Legal</p>
+            <ul className="space-y-2 text-sm" style={{ color: "var(--bn-mute)" }}>
+              <li><Link href="/privacy" className="hover:opacity-80">Privacy Policy</Link></li>
+              <li><Link href="/terms" className="hover:opacity-80">Terms of Service</Link></li>
+              <li><Link href="/seller-agreement" className="hover:opacity-80">Seller Agreement</Link></li>
+            </ul>
+          </div>
+
+          <div>
+            <p className="mb-3 text-xs font-semibold uppercase tracking-wider" style={{ color: "var(--bn-ivory)" }}>Support</p>
+            <ul className="space-y-2 text-sm" style={{ color: "var(--bn-mute)" }}>
+              <li><a href="mailto:support@biznest.space" className="hover:opacity-80">support@biznest.space</a></li>
+            </ul>
+          </div>
+        </div>
+        <div
+          className="flex flex-col items-center gap-2 px-6 py-6 text-center text-xs sm:flex-row sm:justify-between sm:px-10"
+          style={{ borderTop: "1px solid var(--bn-ink-line)", color: "var(--bn-mute)" }}
+        >
+          <span>© {new Date().getFullYear()} BizNest. All rights reserved.</span>
+          <span>Payments by Paystack & Flutterwave · SSL encrypted</span>
+        </div>
       </footer>
     </div>
   );
