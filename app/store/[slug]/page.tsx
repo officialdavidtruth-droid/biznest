@@ -34,23 +34,23 @@ export default async function StorefrontPage({ params }: { params: Promise<{ slu
   // shared per-category lookup. Read it directly; only fall back to the
   // niche-hash default if a store somehow has no template config at all.
   const templateConfig = store.template?.config as Partial<TemplateTheme> | null;
-  const overrides = store.themeColors as { primary?: string; secondary?: string; accent?: string } | null;
+  const themeOverrides = store.themeColors as { primary?: string; secondary?: string; accent?: string } | null;
   const baseTheme: TemplateTheme = templateConfig?.bg
     ? (templateConfig as TemplateTheme)
-    : resolveStoreTheme(store.template?.category, store.name, overrides, store.fontFamily);
+    : resolveStoreTheme(store.template?.category, store.name, themeOverrides, store.fontFamily);
   const theme: TemplateTheme = {
     ...baseTheme,
-    bg: overrides?.secondary || baseTheme.bg,
-    accent: overrides?.primary || overrides?.accent || baseTheme.accent,
+    bg: themeOverrides?.secondary || baseTheme.bg,
+    accent: themeOverrides?.primary || themeOverrides?.accent || baseTheme.accent,
     font: store.fontFamily || baseTheme.font,
   };
   // Vendor-controlled arrangement (Website Builder → Sections) layered on
   // top of the template's default order/visibility. Hero can't be hidden
   // by the vendor; a section can still be absent even if not hidden here
   // when it has no real data behind it (sectionEnabled below handles that).
-  const overrides = store.sectionOverrides as { order?: Section[]; hidden?: Section[] } | null;
-  const sections: Section[] = overrides?.order?.length
-    ? overrides.order.filter((s) => s === "hero" || !overrides.hidden?.includes(s))
+  const sectionOverrides = store.sectionOverrides as { order?: Section[]; hidden?: Section[] } | null;
+  const sections: Section[] = sectionOverrides?.order?.length
+    ? sectionOverrides.order.filter((s) => s === "hero" || !sectionOverrides.hidden?.includes(s))
     : theme.sections;
   const catalogLabel = theme.catalogLabel;
 
