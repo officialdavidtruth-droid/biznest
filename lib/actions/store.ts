@@ -5,6 +5,8 @@ import { prisma } from "@/lib/prisma";
 import { createStoreSchema, type CreateStoreInput } from "@/lib/validations/business";
 import { generateUniqueStoreSlug, storeAdminUrl, storePublicUrl } from "@/lib/utils/slug";
 import { revalidatePath } from "next/cache";
+import slugify from "slugify";
+import { SAMPLE_LISTINGS } from "@/lib/sample-listings";
 import type { ActionResult } from "@/types/actions";
 
 const DEFAULT_PAGES: Array<{ slug: string; title: string }> = [
@@ -79,6 +81,44 @@ export async function createStore(
       })),
     });
 
+    // Seed 2 starter listings matching the chosen template's niche, so the
+    // storefront looks like a real, designed template immediately instead
+    // of an empty shell — the vendor edits or deletes these like any other
+    // listing. Without this, every new store is genuinely blank until the
+    // vendor manually adds something, which reads as "broken" even when
+    // the template itself is rendering correctly (see round 5 discussion).
+    const template = await tx.storeTemplate.findUnique({ where: { id: parsed.data.templateId } });
+    const samples = template ? SAMPLE_LISTINGS[template.category] ?? [] : [];
+    for (const sample of samples) {
+      const listingSlug = slugify(sample.name, { lower: true, strict: true });
+      if (sample.kind === "product") {
+        await tx.product.create({
+          data: {
+            storeId: created.id,
+            name: sample.name,
+            slug: listingSlug,
+            description: sample.description,
+            price: sample.price,
+            attributes: sample.attributes ?? undefined,
+            isPublished: true,
+          },
+        });
+      } else {
+        await tx.service.create({
+          data: {
+            storeId: created.id,
+            name: sample.name,
+            slug: listingSlug,
+            description: sample.description,
+            price: sample.price,
+            isBookable: sample.isBookable ?? false,
+            durationMins: sample.durationMins,
+            isPublished: true,
+          },
+        });
+      }
+    }
+
     // Promote the user so dashboard/role-gated routes recognize them.
     await tx.user.update({
       where: { id: session.user.id },
@@ -106,6 +146,59 @@ export async function createStore(
       adminUrl: storeAdminUrl(store.slug),
     },
   };
+}
+
+export async function seedSampleListings(slug: string): Promise<ActionResult> {
+  const access = await assertStoreAccess(slug);
+  if (!access.success) return { success: false, error: access.error };
+
+  const [productCount, serviceCount] = await Promise.all([
+    prisma.product.count({ where: { storeId: access.store.id } }),
+    prisma.service.count({ where: { storeId: access.store.id } }),
+  ]);
+  if (productCount > 0 || serviceCount > 0) {
+    return { success: false, error: "This store already has listings — starter samples are only for empty stores." };
+  }
+
+  const store = await prisma.store.findUnique({ where: { id: access.store.id }, include: { template: true } });
+  const samples = store?.template ? SAMPLE_LISTINGS[store.template.category] ?? [] : [];
+  if (samples.length === 0) {
+    return { success: false, error: "No starter listings are defined for this store's template yet." };
+  }
+
+  for (const sample of samples) {
+    const listingSlug = slugify(sample.name, { lower: true, strict: true });
+    if (sample.kind === "product") {
+      await prisma.product.create({
+        data: {
+          storeId: access.store.id,
+          name: sample.name,
+          slug: listingSlug,
+          description: sample.description,
+          price: sample.price,
+          attributes: sample.attributes ?? undefined,
+          isPublished: true,
+        },
+      });
+    } else {
+      await prisma.service.create({
+        data: {
+          storeId: access.store.id,
+          name: sample.name,
+          slug: listingSlug,
+          description: sample.description,
+          price: sample.price,
+          isBookable: sample.isBookable ?? false,
+          durationMins: sample.durationMins,
+          isPublished: true,
+        },
+      });
+    }
+  }
+
+  revalidatePath(`/store/${slug}/admin`);
+  revalidatePath(`/store/${slug}`);
+  return { success: true, data: undefined };
 }
 
 async function assertStoreAccess(slug: string) {

@@ -248,6 +248,50 @@ no delivery-zone geofencing (a vendor names a zone, they don't draw it on a
 map), no saved-search or agent contact flow for real estate. Each is a
 reasonable next increment if one of these becomes the priority.
 
+## Fixes applied (round 5 — sitewide sign-in outage, empty-template perception)
+
+**Sign-in was broken sitewide** — not a config issue, a real regression I
+introduced in round 3. `middleware.ts` imported `auth` directly from
+`lib/auth.ts`, which includes the Prisma adapter and a `jwt` callback that
+queries the database (the fix for the stale-role bug). Next.js Middleware
+always runs on the Edge Runtime — not configurable — and Prisma Client
+cannot execute there at all, so every request through middleware crashed
+with `PrismaClient is not configured to run in Edge Runtime`, breaking
+sign-in entirely. Fixed using Auth.js's own documented split-config pattern:
+- `lib/auth.config.ts` (new) — Prisma-free base config (session strategy,
+  pages, a `jwt`/`session` callback that only decodes the token). Safe for Edge.
+- `lib/auth.ts` — now builds on that base config, adding the Prisma adapter,
+  Credentials/Google providers, and the DB role re-check. Used by Server
+  Components, Route Handlers, and Server Actions (Node.js runtime).
+- `middleware.ts` — builds its own lightweight `auth()` from only the
+  Edge-safe base config. Never imports `lib/auth.ts` again.
+- Trade-off: middleware's coarse role pre-filter can now lag a promotion by
+  one login, same as before round 3's fix — but the check that actually
+  matters (`app/supaadmin/layout.tsx`) still re-checks the DB live, safely,
+  since layouts run on Node.js.
+
+**"The template looks empty."** Working as designed, but the design was
+wrong: a brand-new store has zero products/services, so the storefront
+correctly hid the Catalog/About/Testimonials sections rather than fabricate
+content — right for a live store, but it meant every new store looked
+barren before the vendor added anything, which reads as "broken template"
+even when the template itself renders correctly. Fixed:
+- `lib/sample-listings.ts` (new) — two realistic starter listings per niche
+  (23 niches × 2), seeded automatically when a store is created
+  (`lib/actions/store.ts`). Real Shopify/WooCommerce setups do the same —
+  sample content the merchant edits or deletes, not permanent filler.
+  Real estate samples include `attributes` (bedrooms, lat/lng) so the
+  map/filter feature has something to show immediately too.
+- **Backfill for stores created before this fix** (like the one in the
+  screenshot): the admin Overview page now shows an "Add starter listings"
+  prompt whenever a store has zero products and zero services, calling the
+  new `seedSampleListings` action.
+- `app/store/[slug]/page.tsx` — the split-hero's image slot (shown when no
+  `bannerUrl` is set) was a flat single-color rectangle that read as an
+  unfinished placeholder box. Replaced with a layered radial-gradient
+  treatment plus a large faint store-initial monogram — looks intentional
+  even before a vendor uploads a real photo.
+
 ## What's next toward the Shopify/WooCommerce bar (round 4)
 
 This pass fixed what was broken. Bigger lifts still ahead, roughly in priority order:

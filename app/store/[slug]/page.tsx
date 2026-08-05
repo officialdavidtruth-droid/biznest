@@ -160,10 +160,27 @@ function Hero({ store, theme, hasCatalog, catalogLabel }: { store: StoreWithRela
           <p style={{ fontSize: 16, opacity: 0.8, marginTop: 14, maxWidth: 460 }}>{theme.sub}</p>
           {cta && <HeroCta href="#catalog" theme={theme}>{cta}</HeroCta>}
         </div>
-        <div style={{ aspectRatio: "4/3", borderRadius: theme.radius, overflow: "hidden", background: store.bannerUrl ? undefined : `linear-gradient(135deg, ${theme.accent}, ${theme.bg})` }}>
-          {store.bannerUrl && (
+        <div
+          style={{
+            aspectRatio: "4/3",
+            borderRadius: theme.radius,
+            overflow: "hidden",
+            position: "relative",
+            background: store.bannerUrl
+              ? undefined
+              : `radial-gradient(circle at 25% 20%, ${theme.accent}55, transparent 55%), radial-gradient(circle at 80% 75%, ${theme.accent}33, transparent 50%), ${theme.card}`,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+          }}
+        >
+          {store.bannerUrl ? (
             // eslint-disable-next-line @next/next/no-img-element
             <img src={store.bannerUrl} alt={store.name} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+          ) : (
+            <span style={{ fontFamily: theme.font, fontSize: "min(30vw, 130px)", fontWeight: 800, color: `${theme.accent}33`, lineHeight: 1, userSelect: "none" }}>
+              {store.name.charAt(0).toUpperCase()}
+            </span>
           )}
         </div>
       </section>
