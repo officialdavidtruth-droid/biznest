@@ -126,18 +126,14 @@ export function TemplateGallery({
                   : "border-border hover:-translate-y-0.5 hover:border-primary/50 hover:shadow-lg"
               }`}
             >
-              {/* Mini mockup preview — this template's own stored theme, not a shared category default */}
+              {/* Mini mockup preview — structurally reflects this template's actual
+                  hero layout (centered/split/fullbleed), not just its colors, so
+                  browsing the gallery shows real differences, not color swaps. */}
               <div
-                className="relative flex h-36 flex-col justify-between overflow-hidden p-4"
+                className="relative h-36 overflow-hidden"
                 style={{ background: theme.bg, color: theme.ink, fontFamily: theme.font }}
               >
-                <div className="flex items-center justify-between">
-                  <span
-                    className="rounded px-2 py-0.5 text-[9px] font-bold uppercase tracking-wide"
-                    style={{ color: theme.accent, border: `1px solid ${theme.accent}` }}
-                  >
-                    {theme.eyebrow}
-                  </span>
+                <div className="absolute right-3 top-3 z-10 flex items-center gap-1">
                   {isLocked ? (
                     <span className="flex h-5 w-5 items-center justify-center rounded-full bg-black/60">
                       <Lock className="h-3 w-3 text-white" />
@@ -148,15 +144,44 @@ export function TemplateGallery({
                     </span>
                   ) : null}
                 </div>
-                <div>
-                  <p className="text-sm font-bold leading-tight">{theme.headline}</p>
-                  <span
-                    className="mt-2 inline-block px-2.5 py-1 text-[10px] font-bold"
-                    style={{ background: theme.accent, color: theme.bg, borderRadius: theme.radius }}
+
+                {theme.heroStyle === "split" ? (
+                  <div className="flex h-full">
+                    <div className="flex flex-1 flex-col justify-center gap-2 p-4">
+                      <span className="w-fit rounded px-1.5 py-0.5 text-[8px] font-bold uppercase tracking-wide" style={{ color: theme.accent, border: `1px solid ${theme.accent}` }}>
+                        {theme.eyebrow}
+                      </span>
+                      <p className="text-xs font-bold leading-tight">{theme.headline}</p>
+                      <span className="mt-1 w-fit px-2 py-1 text-[9px] font-bold" style={{ background: theme.accent, color: theme.bg, borderRadius: theme.radius }}>
+                        {theme.cta}
+                      </span>
+                    </div>
+                    <div className="w-1/3" style={{ background: `linear-gradient(160deg, ${theme.accent}, ${theme.bg})` }} />
+                  </div>
+                ) : theme.heroStyle === "fullbleed" ? (
+                  <div
+                    className="flex h-full flex-col justify-end p-4"
+                    style={{ background: `radial-gradient(circle at 30% 20%, ${theme.accent}55, transparent 60%), ${theme.bg}` }}
                   >
-                    {theme.cta}
-                  </span>
-                </div>
+                    <span className="mb-1 w-fit rounded px-1.5 py-0.5 text-[8px] font-bold uppercase tracking-wide" style={{ color: theme.accent, border: `1px solid ${theme.accent}` }}>
+                      {theme.eyebrow}
+                    </span>
+                    <p className="text-sm font-bold leading-tight">{theme.headline}</p>
+                    <span className="mt-2 w-fit px-2.5 py-1 text-[9px] font-bold" style={{ background: theme.accent, color: theme.bg, borderRadius: theme.radius }}>
+                      {theme.cta}
+                    </span>
+                  </div>
+                ) : (
+                  <div className="flex h-full flex-col items-center justify-center gap-2 p-4 text-center">
+                    <span className="w-fit rounded px-1.5 py-0.5 text-[8px] font-bold uppercase tracking-wide" style={{ color: theme.accent, border: `1px solid ${theme.accent}` }}>
+                      {theme.eyebrow}
+                    </span>
+                    <p className="text-sm font-bold leading-tight">{theme.headline}</p>
+                    <span className="w-fit px-2.5 py-1 text-[9px] font-bold" style={{ background: theme.accent, color: theme.bg, borderRadius: theme.radius }}>
+                      {theme.cta}
+                    </span>
+                  </div>
+                )}
                 <div className="pointer-events-none absolute -right-3 -top-3 h-16 w-16 rounded-full opacity-20" style={{ background: theme.accent }} />
               </div>
 

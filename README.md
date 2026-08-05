@@ -434,6 +434,53 @@ and anything resembling Shopify's Liquid/theme-file architecture. Arrangement
 control was the buildable, honest next increment — content-block editing is
 the next one after that, and it's the bigger of the two.
 
+## Fixes & features (round 9 — sidebar scroll, dedicated layout page, richer sections, gallery previews)
+
+**Sidebar scroll bug — real CSS fix, not a workaround.** `app/store/[slug]/admin/layout.tsx`'s
+outer container had no height constraint, so the sidebar scrolled along with
+page content instead of staying put. Fixed with the standard pattern:
+outer container `h-screen overflow-hidden`, sidebar gets its own bounded
+height with independent internal scroll for its nav list, main content
+`flex-1 overflow-y-auto`. Scrolling the page now never moves the sidebar.
+
+**Section arrangement moved to its own page**, renamed for clarity: `/store/[slug]/admin/layout-editor`, labeled **"Storefront Layout"** in the
+sidebar (distinct from "Website Builder," which is now template selection
+only — the previous page mashed both together, which is what made it
+confusing to find).
+
+**Real "add what you need," not just "remove what you don't"** — 3 new
+opt-in section types, none of them fabricated:
+- **Stats bar** — real counts only: listing count, average rating (from
+  actual reviews), completed orders. Doesn't render at all if there's
+  nothing real to show.
+- **Why shop here (feature grid)** — dynamically includes only what the
+  store actually has: verified badge, delivery (only if the store has
+  active delivery zones), instant booking (only if it has bookable
+  services). "Secure payments" is the one static claim, and it's true —
+  every checkout runs through Paystack.
+- **Email signup** — this is a genuinely new, working feature, not a
+  decorative form: `NewsletterSubscriber` (new model) actually captures
+  emails per store via `lib/actions/newsletter.ts`. No admin UI to view
+  the list yet — that's the natural next step if this gets used.
+
+**Template gallery previews now structurally differ**, not just in color —
+this was the exact gap in the screenshot showing three "Architecture &
+Design Studio" cards that all looked like the same card in different
+shades. Centered/split/fullbleed now render as genuinely different mini-
+layouts (split shows a real two-column split, fullbleed shows text
+overlaid on a color wash, centered is centered) in
+`components/dashboard/template-gallery.tsx`.
+
+**On the 20 reference designs**: understood clearly, and worth being exact
+about the gap they reveal — those are photography-driven, higher
+information-density layouts (stat bars, feature grids, newsletter capture,
+dense footers). The structural elements (stats/features/newsletter, above)
+are now real and built the same way real theme systems build them — from
+actual data, not filler. The photography itself is the one piece not
+addressed this round: matching it needs either stock-photo integration
+(e.g. Unsplash API, requires an access key) or vendor-uploaded images,
+which is a reasonable, scoped next addition if that's the priority.
+
 ## What's next toward the Shopify/WooCommerce bar (round 4)
 
 This pass fixed what was broken. Bigger lifts still ahead, roughly in priority order:

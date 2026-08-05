@@ -6,6 +6,7 @@ import { CartLink } from "@/components/storefront/cart-link";
 import { BookingWidget } from "@/components/storefront/booking-widget";
 import { PropertyCatalog, type PropertyListing } from "@/components/storefront/property-catalog";
 import { resolveStoreTheme, type Section, type TemplateTheme } from "@/lib/template-themes";
+import { subscribeToNewsletter } from "@/lib/actions/newsletter";
 
 export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }): Promise<Metadata> {
   const { slug } = await params;
@@ -59,12 +60,24 @@ export default async function StorefrontPage({ params }: { params: Promise<{ slu
   const hasServices = store.services.length > 0;
   const hasCatalog = hasProducts || hasServices;
   const goodReviews = store.reviews.filter((r) => r.rating >= 4 && r.comment);
+  const hasBookableServices = store.services.some((s) => s.isBookable);
+
+  const [completedOrders, deliveryZoneCount] = await Promise.all([
+    prisma.order.count({ where: { storeId: store.id, status: { in: ["DELIVERED", "COMPLETED"] } } }),
+    prisma.deliveryZone.count({ where: { storeId: store.id, isActive: true } }),
+  ]);
+  const avgRating = store.reviews.length
+    ? store.reviews.reduce((sum, r) => sum + r.rating, 0) / store.reviews.length
+    : null;
 
   const sectionEnabled: Record<Section, boolean> = {
     hero: true,
     catalog: hasCatalog,
     about: Boolean(store.business.description),
+    stats: hasCatalog || store.reviews.length > 0,
+    features: true,
     testimonials: goodReviews.length > 0,
+    newsletter: true,
     contact: Boolean(store.contactEmail || store.contactPhone || social.whatsapp),
   };
 
@@ -81,8 +94,31 @@ export default async function StorefrontPage({ params }: { params: Promise<{ slu
             return <Catalog key={s} store={store} theme={theme} slug={slug} label={catalogLabel} niche={store.template?.category} />;
           case "about":
             return <About key={s} store={store} theme={theme} />;
+          case "stats":
+            return (
+              <Stats
+                key={s}
+                theme={theme}
+                listingCount={store.products.length + store.services.length}
+                reviewCount={store.reviews.length}
+                avgRating={avgRating}
+                completedOrders={completedOrders}
+              />
+            );
+          case "features":
+            return (
+              <Features
+                key={s}
+                theme={theme}
+                verified={store.business.verificationBadge}
+                hasDelivery={deliveryZoneCount > 0}
+                hasBooking={hasBookableServices}
+              />
+            );
           case "testimonials":
             return <Testimonials key={s} reviews={goodReviews} theme={theme} />;
+          case "newsletter":
+            return <Newsletter key={s} slug={slug} theme={theme} />;
           case "contact":
             return <Contact key={s} store={store} theme={theme} social={social} />;
           default:
@@ -382,6 +418,80 @@ function About({ store, theme }: { store: StoreWithRelations; theme: TemplateThe
     <section id="about" style={{ maxWidth: 780, margin: "0 auto", padding: "12px 24px 56px" }}>
       <h2 style={{ fontSize: 13, fontWeight: 700, letterSpacing: "0.06em", textTransform: "uppercase", opacity: 0.6, marginBottom: 14 }}>About</h2>
       <p style={{ fontSize: 16, lineHeight: 1.7, opacity: 0.9 }}>{store.business.description}</p>
+    </section>
+  );
+}
+
+function Stats({ theme, listingCount, reviewCount, avgRating, completedOrders }: {
+  theme: TemplateTheme; listingCount: number; reviewCount: number; avgRating: number | null; completedOrders: number;
+}) {
+  const items = [
+    { value: `${listingCount}+`, label: "Listings" },
+    ...(avgRating ? [{ value: `${avgRating.toFixed(1)}★`, label: `${reviewCount} review${reviewCount === 1 ? "" : "s"}` }] : []),
+    ...(completedOrders > 0 ? [{ value: `${completedOrders}+`, label: "Orders completed" }] : []),
+  ];
+  if (items.length < 2) return null; // one lonely number isn't a "stats bar"
+
+  return (
+    <section style={{ background: theme.card, padding: "28px 24px" }}>
+      <div style={{ maxWidth: 1100, margin: "0 auto", display: "flex", flexWrap: "wrap", gap: 32, justifyContent: "space-around" }}>
+        {items.map((it) => (
+          <div key={it.label} style={{ textAlign: "center" }}>
+            <p style={{ fontSize: 28, fontWeight: 800, color: theme.accent }}>{it.value}</p>
+            <p style={{ fontSize: 12, opacity: 0.7, marginTop: 2 }}>{it.label}</p>
+          </div>
+        ))}
+      </div>
+    </section>
+  );
+}
+
+function Features({ theme, verified, hasDelivery, hasBooking }: {
+  theme: TemplateTheme; verified: boolean; hasDelivery: boolean; hasBooking: boolean;
+}) {
+  const items = [
+    verified && { icon: "🪪", title: "Verified seller", body: "ID and business checks completed before this store went live." },
+    { icon: "🔒", title: "Secure payments", body: "Every checkout runs through Paystack — your card details never touch this store directly." },
+    hasDelivery && { icon: "🚚", title: "Local delivery", body: "Delivery pricing shown at checkout for supported areas." },
+    hasBooking && { icon: "📅", title: "Instant booking", body: "Pick a real open slot and confirm — no back-and-forth." },
+  ].filter(Boolean) as Array<{ icon: string; title: string; body: string }>;
+
+  return (
+    <section style={{ maxWidth: 1100, margin: "0 auto", padding: "12px 24px 48px" }}>
+      <h2 style={{ fontSize: 13, fontWeight: 700, letterSpacing: "0.06em", textTransform: "uppercase", opacity: 0.6, marginBottom: 18 }}>Why shop here</h2>
+      <div style={{ display: "grid", gap: 16, gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))" }}>
+        {items.map((it) => (
+          <div key={it.title} style={{ background: theme.card, borderRadius: theme.radius, padding: 18 }}>
+            <span style={{ fontSize: 20 }}>{it.icon}</span>
+            <p style={{ fontWeight: 700, fontSize: 14, marginTop: 8 }}>{it.title}</p>
+            <p style={{ fontSize: 12.5, opacity: 0.75, marginTop: 4, lineHeight: 1.5 }}>{it.body}</p>
+          </div>
+        ))}
+      </div>
+    </section>
+  );
+}
+
+function Newsletter({ slug, theme }: { slug: string; theme: TemplateTheme }) {
+  async function subscribe(formData: FormData) {
+    "use server";
+    await subscribeToNewsletter(slug, formData);
+  }
+  return (
+    <section style={{ background: theme.card, padding: "32px 24px" }}>
+      <div style={{ maxWidth: 560, margin: "0 auto", textAlign: "center" }}>
+        <p style={{ fontWeight: 700, fontSize: 16 }}>Get notified about new drops</p>
+        <p style={{ fontSize: 13, opacity: 0.7, marginTop: 4 }}>No spam — just this store's updates.</p>
+        <form action={subscribe} style={{ display: "flex", gap: 8, marginTop: 16, flexWrap: "wrap", justifyContent: "center" }}>
+          <input
+            name="email" type="email" required placeholder="you@email.com"
+            style={{ flex: "1 1 220px", padding: "10px 14px", borderRadius: theme.radius, border: `1px solid ${theme.ink}33`, background: "transparent", color: theme.ink, fontSize: 13 }}
+          />
+          <button style={{ background: theme.accent, color: theme.bg, border: 0, padding: "10px 22px", borderRadius: theme.radius, fontWeight: 700, fontSize: 13, cursor: "pointer" }}>
+            Subscribe
+          </button>
+        </form>
+      </div>
     </section>
   );
 }

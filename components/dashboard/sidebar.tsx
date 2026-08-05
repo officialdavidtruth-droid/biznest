@@ -5,7 +5,7 @@ import { usePathname } from "next/navigation";
 import {
   LayoutDashboard, ShoppingCart, Package, Wrench, Users, Boxes, Ticket,
   CreditCard, BarChart3, Star, Megaphone, MessageSquare, LayoutTemplate,
-  Settings, BadgeCheck, Wallet, LifeBuoy, Truck,
+  Settings, BadgeCheck, Wallet, LifeBuoy, Truck, Rows3,
 } from "lucide-react";
 
 const NAV_GROUPS: Array<{
@@ -40,6 +40,7 @@ const NAV_GROUPS: Array<{
     label: "Store",
     items: [
       { label: "Website Builder", href: "/builder", icon: LayoutTemplate },
+      { label: "Storefront Layout", href: "/layout-editor", icon: Rows3 },
       { label: "Messages", href: "/messages", icon: MessageSquare },
       { label: "Payments", href: "/payments", icon: CreditCard },
       { label: "Settings", href: "/settings", icon: Settings },
@@ -60,7 +61,7 @@ export function DashboardSidebar({ slug, storeName }: { slug: string; storeName:
   const base = `/store/${slug}/admin`;
 
   return (
-    <aside className="flex w-64 shrink-0 flex-col border-r border-border bg-background">
+    <aside className="flex h-full w-64 shrink-0 flex-col border-r border-border bg-background">
       <div className="border-b border-border px-4 py-4">
         <div className="flex items-center gap-2.5">
           <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-primary text-sm font-bold text-primary-foreground">

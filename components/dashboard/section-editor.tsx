@@ -10,7 +10,10 @@ const LABELS: Record<Section, string> = {
   hero: "Hero",
   catalog: "Catalog (products/services)",
   about: "About",
+  stats: "Stats bar (listings, rating, orders)",
+  features: "Why choose us (feature grid)",
   testimonials: "Testimonials",
+  newsletter: "Email signup",
   contact: "Contact",
 };
 
@@ -58,11 +61,11 @@ export function SectionEditor({
 
   return (
     <div className="rounded-lg border bg-background p-4">
-      <p className="mb-1 text-sm font-medium">Sections</p>
+      <p className="mb-1 text-sm font-medium">Arrange sections</p>
       <p className="mb-3 text-xs text-muted-foreground">
-        Reorder or hide sections on your storefront. A section still won't show if it has
+        Reorder, hide, or add sections. A section still won't show on the live storefront if it has
         nothing real behind it yet (e.g. Testimonials with zero reviews) — this controls
-        arrangement, not content.
+        arrangement, not fabricated content.
       </p>
       <div className="space-y-1.5">
         {order.map((s, i) => (

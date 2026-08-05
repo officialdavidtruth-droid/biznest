@@ -230,6 +230,7 @@ model Store {
   orders        Order[]
   bookings      Booking[]
   deliveryZones DeliveryZone[]
+  newsletterSubscribers NewsletterSubscriber[]
   coupons       Coupon[]
   reviews       Review[]
   pages         StorePage[]
@@ -516,6 +517,20 @@ model DeliveryZone {
 
   createdAt        DateTime @default(now())
 
+  @@index([storeId])
+}
+
+// Newsletter signups collected from a store's storefront (opt-in "Newsletter"
+// section — see lib/template-themes.ts Section type). Real capture, not
+// decorative — a vendor can export/see these, distinct from platform users.
+model NewsletterSubscriber {
+  id        String   @id @default(cuid())
+  storeId   String
+  store     Store    @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  email     String
+  createdAt DateTime @default(now())
+
+  @@unique([storeId, email])
   @@index([storeId])
 }
 

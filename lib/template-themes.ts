@@ -23,7 +23,7 @@
  */
 
 export type HeroStyle = "centered" | "split" | "fullbleed";
-export type Section = "hero" | "catalog" | "about" | "testimonials" | "contact";
+export type Section = "hero" | "catalog" | "about" | "testimonials" | "contact" | "stats" | "features" | "newsletter";
 export type ColorMode = "signature" | "inverse";
 
 export type TemplateTheme = {
