@@ -9,10 +9,12 @@ export function BuilderClient({
   slug,
   templates,
   currentTemplateId,
+  planRank,
 }: {
   slug: string;
   templates: TemplateOption[];
   currentTemplateId: string | null;
+  planRank: number;
 }) {
   const [selected, setSelected] = useState<string | null>(currentTemplateId);
   const [isSaving, setIsSaving] = useState(false);
@@ -32,7 +34,7 @@ export function BuilderClient({
 
   return (
     <div>
-      <TemplateGallery templates={templates} selectedId={selected} onSelect={handleSelect} />
+      <TemplateGallery templates={templates} selectedId={selected} onSelect={handleSelect} planRank={planRank} />
       {isSaving && <p className="mt-4 text-xs text-muted-foreground">Applying template…</p>}
     </div>
   );

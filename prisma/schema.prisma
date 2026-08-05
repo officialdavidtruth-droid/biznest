@@ -237,10 +237,11 @@ model Store {
 
 model StoreTemplate {
   id          String   @id @default(cuid())
-  name        String   @unique // e.g. "Restaurant", "Hotel", "Fashion Store"
-  category    String
+  name        String   @unique // e.g. "Restaurant & Food Delivery — Midnight Split"
+  category    String   // niche, e.g. "Restaurant & Food Delivery" — many templates share one category
   previewUrl  String?
-  config      Json     // default sections/layout config
+  config      Json     // full resolved theme: palette, fonts, hero style, sections, catalog label
+  tierRank    Int      @default(1) // 1=Free, 2=Entrepreneur, 3=Enterprise, 4=Business Mogul — a store can pick any template with tierRank <= its plan's rank
   isActive    Boolean  @default(true)
 
   stores      Store[]

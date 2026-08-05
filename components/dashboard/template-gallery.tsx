@@ -1,19 +1,40 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { Check, Search } from "lucide-react";
-import { getTemplateTheme } from "@/lib/template-themes";
+import { Check, Lock, Search } from "lucide-react";
+import type { TemplateTheme } from "@/lib/template-themes";
 
-export type TemplateOption = { id: string; name: string; category: string };
+export type TemplateOption = {
+  id: string;
+  name: string;
+  category: string;
+  tierRank: number;
+  config: unknown; // GeneratedTemplate JSON from the DB — validated loosely at render time
+};
+
+const TIER_LABEL: Record<number, string> = {
+  1: "Free",
+  2: "Entrepreneur",
+  3: "Enterprise",
+  4: "Business Mogul",
+};
+
+function themeFromConfig(config: unknown): TemplateTheme | null {
+  const c = config as Partial<TemplateTheme> | null;
+  if (!c || typeof c !== "object" || !c.bg) return null;
+  return c as TemplateTheme;
+}
 
 export function TemplateGallery({
   templates,
   selectedId,
   onSelect,
+  planRank,
 }: {
   templates: TemplateOption[];
   selectedId?: string | null;
   onSelect: (id: string) => void;
+  planRank: number;
 }) {
   const [query, setQuery] = useState("");
   const [activeCategory, setActiveCategory] = useState<string | null>(null);
@@ -30,8 +51,8 @@ export function TemplateGallery({
     return matchesQuery && matchesCategory;
   });
 
-  // No rows at all — this is a data problem (empty StoreTemplate table),
-  // not a search problem. Say so plainly instead of implying "try another search."
+  const unlockedCount = templates.filter((t) => t.tierRank <= planRank).length;
+
   if (templates.length === 0) {
     return (
       <div className="rounded-xl border border-dashed border-border p-10 text-center">
@@ -57,7 +78,9 @@ export function TemplateGallery({
             className="w-full rounded-lg border border-border bg-background py-2.5 pl-9 pr-3 text-sm transition focus:border-primary"
           />
         </div>
-        <p className="text-xs text-muted-foreground">{filtered.length} of {templates.length} templates</p>
+        <p className="text-xs text-muted-foreground">
+          {unlockedCount} of {templates.length} templates unlocked on your plan
+        </p>
       </div>
 
       <div className="mb-6 flex flex-wrap gap-2">
@@ -84,18 +107,26 @@ export function TemplateGallery({
 
       <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
         {filtered.map((t) => {
-          const theme = getTemplateTheme(t.category, t.name);
+          const theme = themeFromConfig(t.config);
+          if (!theme) return null;
           const isSelected = selectedId === t.id;
+          const isLocked = t.tierRank > planRank;
+
           return (
             <button
               key={t.id}
               type="button"
-              onClick={() => onSelect(t.id)}
+              onClick={() => !isLocked && onSelect(t.id)}
+              disabled={isLocked}
               className={`group overflow-hidden rounded-xl border text-left transition-all ${
-                isSelected ? "border-primary ring-2 ring-primary/50" : "border-border hover:-translate-y-0.5 hover:border-primary/50 hover:shadow-lg"
+                isLocked
+                  ? "cursor-not-allowed border-border opacity-60"
+                  : isSelected
+                  ? "border-primary ring-2 ring-primary/50"
+                  : "border-border hover:-translate-y-0.5 hover:border-primary/50 hover:shadow-lg"
               }`}
             >
-              {/* Mini mockup preview — the store's actual hero, scaled down */}
+              {/* Mini mockup preview — this template's own stored theme, not a shared category default */}
               <div
                 className="relative flex h-36 flex-col justify-between overflow-hidden p-4"
                 style={{ background: theme.bg, color: theme.ink, fontFamily: theme.font }}
@@ -107,33 +138,36 @@ export function TemplateGallery({
                   >
                     {theme.eyebrow}
                   </span>
-                  {isSelected && (
+                  {isLocked ? (
+                    <span className="flex h-5 w-5 items-center justify-center rounded-full bg-black/60">
+                      <Lock className="h-3 w-3 text-white" />
+                    </span>
+                  ) : isSelected ? (
                     <span className="flex h-5 w-5 items-center justify-center rounded-full bg-white shadow">
                       <Check className="h-3 w-3" style={{ color: theme.bg }} />
                     </span>
-                  )}
+                  ) : null}
                 </div>
                 <div>
-                  <p className="text-sm font-bold leading-tight" style={{ fontFamily: theme.font }}>
-                    {theme.headline}
-                  </p>
+                  <p className="text-sm font-bold leading-tight">{theme.headline}</p>
                   <span
-                    className="mt-2 inline-block rounded px-2.5 py-1 text-[10px] font-bold"
+                    className="mt-2 inline-block px-2.5 py-1 text-[10px] font-bold"
                     style={{ background: theme.accent, color: theme.bg, borderRadius: theme.radius }}
                   >
                     {theme.cta}
                   </span>
                 </div>
-                {/* faux product chips to hint at layout density */}
                 <div className="pointer-events-none absolute -right-3 -top-3 h-16 w-16 rounded-full opacity-20" style={{ background: theme.accent }} />
               </div>
 
               <div className="flex items-center justify-between p-3">
                 <div className="min-w-0">
-                  <p className="truncate text-sm font-medium">{t.name}</p>
-                  <p className="truncate text-xs text-muted-foreground">{t.category}</p>
+                  <p className="truncate text-sm font-medium">{t.category}</p>
+                  <p className="truncate text-xs text-muted-foreground">
+                    {isLocked ? `Requires ${TIER_LABEL[t.tierRank] ?? "a higher plan"}` : theme.heroStyle}
+                  </p>
                 </div>
-                {isSelected && <span className="shrink-0 text-[10px] font-semibold text-primary">In use</span>}
+                {isSelected && !isLocked && <span className="shrink-0 text-[10px] font-semibold text-primary">In use</span>}
               </div>
             </button>
           );

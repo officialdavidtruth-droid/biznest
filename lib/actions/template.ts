@@ -9,7 +9,7 @@ export async function setStoreTemplate(slug: string, templateId: string): Promis
   const session = await auth();
   if (!session?.user?.id) return { success: false, error: "You must be signed in." };
 
-  const store = await prisma.store.findUnique({ where: { slug }, include: { business: true } });
+  const store = await prisma.store.findUnique({ where: { slug }, include: { business: true, subscription: true } });
   if (!store) return { success: false, error: "Store not found." };
   if (store.business.userId !== session.user.id) {
     return { success: false, error: "You don't have access to this store." };
@@ -17,6 +17,15 @@ export async function setStoreTemplate(slug: string, templateId: string): Promis
 
   const template = await prisma.storeTemplate.findUnique({ where: { id: templateId } });
   if (!template) return { success: false, error: "Template not found." };
+
+  // Enforced here, not just in the gallery UI — a locked template must
+  // actually be unselectable, not just visually greyed out. The gallery's
+  // lock icon is a convenience; this check is what actually matters.
+  const features = store.subscription?.features as { templateTier?: number } | null;
+  const planRank = features?.templateTier ?? 1;
+  if (template.tierRank > planRank) {
+    return { success: false, error: "This template requires a higher plan. Upgrade in Subscription to unlock it." };
+  }
 
   await prisma.store.update({ where: { id: store.id }, data: { templateId } });
 

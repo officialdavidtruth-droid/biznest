@@ -1,5 +1,5 @@
-import { PrismaClient } from "@prisma/client";
-import { NICHE_TEMPLATES, NICHE_NAMES } from "../lib/template-themes";
+import { PrismaClient, type Prisma } from "@prisma/client";
+import { NICHE_NAMES, generateNicheVariations } from "../lib/template-themes";
 
 const prisma = new PrismaClient();
 
@@ -30,11 +30,14 @@ const SERVICE_CATEGORIES = [
 // named paid tiers below are what's actually being sold. commissionRate and
 // product/service caps step down as price goes up; customDomain unlocks at
 // Enterprise and above. -1 in features means unlimited.
+// templateTier: 1=Free, 2=Entrepreneur, 3=Enterprise, 4=Business Mogul.
+// A store can pick any StoreTemplate whose tierRank <= its plan's templateTier
+// — matches TIER_RANK in lib/template-themes.ts, keep both in sync.
 const SUBSCRIPTIONS = [
-  { name: "Free", price: 0, interval: "MONTHLY", commissionRate: 8, features: { products: 20, services: 10, customDomain: false } },
-  { name: "Entrepreneur", price: 35000, interval: "MONTHLY", commissionRate: 5, features: { products: 300, services: 150, customDomain: false } },
-  { name: "Enterprise", price: 67000, interval: "MONTHLY", commissionRate: 3, features: { products: 3000, services: 1500, customDomain: true } },
-  { name: "Business Mogul", price: 139000, interval: "MONTHLY", commissionRate: 1, features: { products: -1, services: -1, customDomain: true } },
+  { name: "Free", price: 0, interval: "MONTHLY", commissionRate: 8, features: { products: 20, services: 10, customDomain: false, templateTier: 1 } },
+  { name: "Entrepreneur", price: 35000, interval: "MONTHLY", commissionRate: 5, features: { products: 300, services: 150, customDomain: false, templateTier: 2 } },
+  { name: "Enterprise", price: 67000, interval: "MONTHLY", commissionRate: 3, features: { products: 3000, services: 1500, customDomain: true, templateTier: 3 } },
+  { name: "Business Mogul", price: 139000, interval: "MONTHLY", commissionRate: 1, features: { products: -1, services: -1, customDomain: true, templateTier: 4 } },
 ];
 const ACTIVE_SUBSCRIPTION_NAMES = SUBSCRIPTIONS.map((s) => s.name);
 
@@ -52,29 +55,32 @@ async function main() {
   // catalog label, and hero style — not just a name — so the storefront
   // renderer (lib/template-themes.ts + app/store/[slug]/page.tsx) has
   // everything it needs even before falling back to the code-side table.
+  // 12-18 real, distinct templates per niche (see lib/template-themes.ts
+  // for the generation formula — color mode x accent x hero layout, never
+  // just a recolor). Every generated template is its own StoreTemplate row,
+  // with the full resolved theme stored in config so the storefront never
+  // needs to re-derive it from category name alone.
+  const allVariationNames: string[] = [];
   for (const name of NICHE_NAMES) {
-    const t = NICHE_TEMPLATES[name];
-    await prisma.storeTemplate.upsert({
-      where: { name },
-      update: {
-        category: name,
-        isActive: true,
-        config: { sections: t.sections, catalogLabel: t.catalogLabel, heroStyle: t.heroStyle, layout: t.layout },
-      },
-      create: {
-        name,
-        category: name,
-        config: { sections: t.sections, catalogLabel: t.catalogLabel, heroStyle: t.heroStyle, layout: t.layout },
-      },
-    });
+    const variations = generateNicheVariations(name);
+    for (const [idx, v] of variations.entries()) {
+      const templateName = `${name} — #${idx + 1} (${v.variationName})`;
+      allVariationNames.push(templateName);
+      await prisma.storeTemplate.upsert({
+        where: { name: templateName },
+        update: { category: name, isActive: true, tierRank: v.tierRank, config: v as unknown as Prisma.InputJsonValue },
+        create: { name: templateName, category: name, tierRank: v.tierRank, config: v as unknown as Prisma.InputJsonValue },
+      });
+    }
   }
 
-  // Retire any templates from an older seed run that aren't part of the
-  // current 23 — deactivate rather than delete, since a store might still
+  // Retire any templates from an older seed run (the old 1-per-niche set,
+  // or any prior naming scheme) that aren't part of the current generated
+  // set — deactivate rather than delete, since a store might still
   // reference one (Store.templateId). Deactivated templates stop showing
   // in the gallery but existing stores using them keep working.
   await prisma.storeTemplate.updateMany({
-    where: { name: { notIn: NICHE_NAMES } },
+    where: { name: { notIn: allVariationNames } },
     data: { isActive: false },
   });
 

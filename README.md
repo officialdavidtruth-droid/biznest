@@ -358,6 +358,38 @@ and shipped. If there's a specific feature or flow you want improved next,
 name it and I'll go after it the same way — real, working, and honest about
 what's still simplified.
 
+## Fixes & features (round 7 — many templates per niche, tier-gated)
+
+**12-18 genuinely distinct templates per niche now, not 1.** Real variation,
+not padding — see `lib/template-themes.ts` header for the exact formula:
+every niche combines 2 color modes (its own signature palette + a neutral
+light/dark inverse) × its accent colors (base + 1-2 alternates) × the 3 hero
+layouts (centered/split/fullbleed). Minimum per niche is 12 (comfortably
+over the 8 floor); niches with 2 alt accents get 18. Counts are fixed per
+niche, not reshuffled on every deploy — a stable, reproducible catalog.
+
+- Each generated template is its own `StoreTemplate` row with a **complete**
+  resolved theme in `config` (not just category + a few overrides like
+  before) — `app/store/[slug]/page.tsx` now reads a template's theme
+  directly from its own config, since templates in the same category are no
+  longer identical.
+- `StoreTemplate.tierRank` (1-4) — **gated by pricing plan**, exactly as
+  asked: Free sees rank-1 templates, Entrepreneur unlocks rank 2, Enterprise
+  rank 3, Business Mogul unlocks everything. Tiers cycle through each
+  niche's generated list so every plan — including Free — has real choices.
+  `Subscription.features.templateTier` (added to the seed) is the source of
+  truth for a plan's rank.
+- `lib/actions/template.ts` — **this was a real gap, not just a UI nicety**:
+  the template-selection action had zero server-side tier check before this.
+  A locked template being greyed out in the gallery is only a convenience;
+  the actual enforcement is here now, so the lock can't be bypassed by
+  calling the action directly.
+- `components/dashboard/template-gallery.tsx` — rewritten for the new
+  scale: locked templates show a lock icon and their required tier instead
+  of being hidden, category filter chips (essential now with 12-18 per
+  niche instead of 1), and each preview renders that specific template's
+  own stored theme rather than one shared per-category default.
+
 ## What's next toward the Shopify/WooCommerce bar (round 4)
 
 This pass fixed what was broken. Bigger lifts still ahead, roughly in priority order:

@@ -29,17 +29,23 @@ export default async function StorefrontPage({ params }: { params: Promise<{ slu
 
   if (!store || store.status !== "ACTIVE") notFound();
 
-  const theme = resolveStoreTheme(
-    store.template?.category,
-    store.name,
-    store.themeColors as { primary?: string; secondary?: string; accent?: string } | null,
-    store.fontFamily
-  );
-  // A template's own config (from Settings/seed) can refine catalogLabel/sections
-  // beyond the code-side default without needing a redeploy.
-  const config = (store.template?.config as { sections?: Section[]; catalogLabel?: string } | null) ?? null;
-  const sections: Section[] = config?.sections ?? theme.sections;
-  const catalogLabel = config?.catalogLabel ?? theme.catalogLabel;
+  // Each StoreTemplate row is now a fully self-contained theme snapshot
+  // (one of many variations per niche — see lib/template-themes.ts), not a
+  // shared per-category lookup. Read it directly; only fall back to the
+  // niche-hash default if a store somehow has no template config at all.
+  const templateConfig = store.template?.config as Partial<TemplateTheme> | null;
+  const overrides = store.themeColors as { primary?: string; secondary?: string; accent?: string } | null;
+  const baseTheme: TemplateTheme = templateConfig?.bg
+    ? (templateConfig as TemplateTheme)
+    : resolveStoreTheme(store.template?.category, store.name, overrides, store.fontFamily);
+  const theme: TemplateTheme = {
+    ...baseTheme,
+    bg: overrides?.secondary || baseTheme.bg,
+    accent: overrides?.primary || overrides?.accent || baseTheme.accent,
+    font: store.fontFamily || baseTheme.font,
+  };
+  const sections: Section[] = theme.sections;
+  const catalogLabel = theme.catalogLabel;
 
   const social = (store.socialLinks as Record<string, string> | null) ?? {};
   const hasProducts = store.products.length > 0;

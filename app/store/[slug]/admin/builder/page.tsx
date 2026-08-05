@@ -4,14 +4,17 @@ import { BuilderClient } from "@/components/dashboard/builder-client";
 
 export default async function BuilderPage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
-  const store = await prisma.store.findUnique({ where: { slug } });
+  const store = await prisma.store.findUnique({ where: { slug }, include: { subscription: true } });
   if (!store) notFound();
 
   const templates = await prisma.storeTemplate.findMany({
     where: { isActive: true },
-    orderBy: { name: "asc" },
-    select: { id: true, name: true, category: true },
+    orderBy: [{ category: "asc" }, { tierRank: "asc" }],
+    select: { id: true, name: true, category: true, tierRank: true, config: true },
   });
+
+  const features = store.subscription?.features as { templateTier?: number } | null;
+  const planRank = features?.templateTier ?? 1; // Free = 1 if no subscription set yet
 
   return (
     <div>
@@ -20,7 +23,7 @@ export default async function BuilderPage({ params }: { params: Promise<{ slug: 
         Choose a starting template for {store.name}. You can switch anytime — your products and
         pages carry over.
       </p>
-      <BuilderClient slug={slug} templates={templates} currentTemplateId={store.templateId} />
+      <BuilderClient slug={slug} templates={templates} currentTemplateId={store.templateId} planRank={planRank} />
     </div>
   );
 }
