@@ -10,9 +10,11 @@ import { TemplateGallery, type TemplateOption } from "@/components/dashboard/tem
 export function CreateStoreForm({
   businessId,
   templates,
+  planRank,
 }: {
   businessId: string;
   templates: TemplateOption[];
+  planRank: number;
 }) {
   const router = useRouter();
   const [storeName, setStoreName] = useState("");
@@ -54,7 +56,7 @@ export function CreateStoreForm({
       {templates.length > 0 && (
         <div>
           <p className="mb-2 text-sm font-medium">Choose a starting template</p>
-          <TemplateGallery templates={templates} selectedId={templateId} onSelect={setTemplateId} />
+          <TemplateGallery templates={templates} selectedId={templateId} onSelect={setTemplateId} planRank={planRank} />
         </div>
       )}
 

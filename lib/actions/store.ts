@@ -61,6 +61,17 @@ export async function createStore(
     return { success: false, error: "This business already has a store." };
   }
 
+  // A brand-new store has no subscription yet, so it starts at Free (rank
+  // 1) — reject any template above that here, not just in the gallery UI.
+  // Same gap this exact check closed in lib/actions/template.ts: a client-
+  // side lock is a convenience, not enforcement.
+  if (parsed.data.templateId) {
+    const chosenTemplate = await prisma.storeTemplate.findUnique({ where: { id: parsed.data.templateId } });
+    if (chosenTemplate && chosenTemplate.tierRank > 1) {
+      return { success: false, error: "That template requires a paid plan. Pick a Free template for now — you can upgrade and switch after your store is created." };
+    }
+  }
+
   const slug = await generateUniqueStoreSlug(parsed.data.storeName);
 
   const store = await prisma.$transaction(async (tx) => {
