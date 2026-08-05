@@ -1,5 +1,6 @@
 import { PrismaClient, type Prisma } from "@prisma/client";
 import { NICHE_NAMES, generateNicheVariations } from "../lib/template-themes";
+import { fetchDemoPhoto } from "../lib/demo-images";
 
 const prisma = new PrismaClient();
 
@@ -63,13 +64,19 @@ async function main() {
   const allVariationNames: string[] = [];
   for (const name of NICHE_NAMES) {
     const variations = generateNicheVariations(name);
+    // One real photo per niche, reused across all its variations — not one
+    // per variation, which would mean 300+ API calls on every seed run for
+    // no real benefit (the color/layout already differs; the category
+    // photo doesn't need to). This is what actually shows up in the
+    // template gallery's preview cards instead of a placeholder circle.
+    const previewUrl = await fetchDemoPhoto(name);
     for (const [idx, v] of variations.entries()) {
       const templateName = `${name} — #${idx + 1} (${v.variationName})`;
       allVariationNames.push(templateName);
       await prisma.storeTemplate.upsert({
         where: { name: templateName },
-        update: { category: name, isActive: true, tierRank: v.tierRank, config: v as unknown as Prisma.InputJsonValue },
-        create: { name: templateName, category: name, tierRank: v.tierRank, config: v as unknown as Prisma.InputJsonValue },
+        update: { category: name, isActive: true, tierRank: v.tierRank, previewUrl, config: v as unknown as Prisma.InputJsonValue },
+        create: { name: templateName, category: name, tierRank: v.tierRank, previewUrl, config: v as unknown as Prisma.InputJsonValue },
       });
     }
   }

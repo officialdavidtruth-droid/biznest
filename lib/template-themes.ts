@@ -197,7 +197,7 @@ export const NICHE_TEMPLATES: Record<string, NicheBase> = {
     layout: "list", catalogLabel: "Projects", sections: ["hero", "catalog", "about", "testimonials", "contact"],
   },
   "Architecture & Design Studio": {
-    bg: "#FAFAF9", ink: "#1A1A1A", card: "#FFFFFF", accent: "#1A1A1A", altAccents: ["#B4452C", "#4F9EE8"],
+    bg: "#FAFAF9", ink: "#1A1A1A", card: "#FFFFFF", accent: "#B4452C", altAccents: ["#4F9EE8"],
     font: "'Space Grotesk', sans-serif", radius: "0",
     eyebrow: "Portfolio", headline: "Form follows function.", sub: "Residential and commercial design.", cta: "View projects",
     layout: "grid", catalogLabel: "Projects", sections: ["hero", "catalog", "about", "contact"],

@@ -9,6 +9,7 @@ export type TemplateOption = {
   name: string;
   category: string;
   tierRank: number;
+  previewUrl: string | null;
   config: unknown; // GeneratedTemplate JSON from the DB — validated loosely at render time
 };
 
@@ -127,11 +128,19 @@ export function TemplateGallery({
               }`}
             >
               {/* Mini mockup preview — structurally reflects this template's actual
-                  hero layout (centered/split/fullbleed), not just its colors, so
-                  browsing the gallery shows real differences, not color swaps. */}
+                  hero layout (centered/split/fullbleed), not just its colors, plus a
+                  real category photo (previewUrl, seeded via lib/demo-images.ts) so
+                  browsing the gallery shows what a populated store actually looks
+                  like, not a placeholder circle. */}
               <div
                 className="relative h-36 overflow-hidden"
-                style={{ background: theme.bg, color: theme.ink, fontFamily: theme.font }}
+                style={{
+                  background: t.previewUrl
+                    ? `linear-gradient(0deg, ${theme.bg}f2, ${theme.bg}99), url(${t.previewUrl}) center/cover`
+                    : theme.bg,
+                  color: theme.ink,
+                  fontFamily: theme.font,
+                }}
               >
                 <div className="absolute right-3 top-3 z-10 flex items-center gap-1">
                   {isLocked ? (
@@ -161,7 +170,11 @@ export function TemplateGallery({
                 ) : theme.heroStyle === "fullbleed" ? (
                   <div
                     className="flex h-full flex-col justify-end p-4"
-                    style={{ background: `radial-gradient(circle at 30% 20%, ${theme.accent}55, transparent 60%), ${theme.bg}` }}
+                    style={{
+                      background: t.previewUrl
+                        ? "transparent"
+                        : `radial-gradient(circle at 30% 20%, ${theme.accent}55, transparent 60%), ${theme.bg}`,
+                    }}
                   >
                     <span className="mb-1 w-fit rounded px-1.5 py-0.5 text-[8px] font-bold uppercase tracking-wide" style={{ color: theme.accent, border: `1px solid ${theme.accent}` }}>
                       {theme.eyebrow}
@@ -182,7 +195,9 @@ export function TemplateGallery({
                     </span>
                   </div>
                 )}
-                <div className="pointer-events-none absolute -right-3 -top-3 h-16 w-16 rounded-full opacity-20" style={{ background: theme.accent }} />
+                {!t.previewUrl && (
+                  <div className="pointer-events-none absolute -right-3 -top-3 h-16 w-16 rounded-full opacity-20" style={{ background: theme.accent }} />
+                )}
               </div>
 
               <div className="flex items-center justify-between p-3">

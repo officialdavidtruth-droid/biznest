@@ -10,7 +10,7 @@ export default async function BuilderPage({ params }: { params: Promise<{ slug: 
   const templates = await prisma.storeTemplate.findMany({
     where: { isActive: true },
     orderBy: [{ category: "asc" }, { tierRank: "asc" }],
-    select: { id: true, name: true, category: true, tierRank: true, config: true },
+    select: { id: true, name: true, category: true, tierRank: true, previewUrl: true, config: true },
   });
 
   const features = store.subscription?.features as { templateTier?: number } | null;
