@@ -10,12 +10,26 @@ export default async function SettingsPage({ params }: { params: Promise<{ slug:
   const theme = (store.themeColors as Record<string, string> | null) ?? {};
   const social = (store.socialLinks as Record<string, string> | null) ?? {};
   const save = updateStoreSettings.bind(null, slug);
-  const saveDomain = setCustomDomain.bind(null, slug);
-  const recheck = recheckDomainStatus.bind(null, slug);
-  const remove = removeCustomDomain.bind(null, slug);
 
   const features = store.subscription?.features as { customDomain?: boolean } | null;
   const domainUnlocked = Boolean(features?.customDomain);
+
+  // <form action> requires void | Promise<void>; the domain actions return
+  // ActionResult for other callers, so bind through thin void-returning
+  // wrappers here — same pattern used everywhere else in this file's
+  // sibling admin pages (see admin/page.tsx, supaadmin/domains/page.tsx).
+  async function saveDomain(formData: FormData) {
+    "use server";
+    await setCustomDomain(slug, formData);
+  }
+  async function recheck() {
+    "use server";
+    await recheckDomainStatus(slug);
+  }
+  async function remove() {
+    "use server";
+    await removeCustomDomain(slug);
+  }
 
   return (
     <div className="max-w-xl">

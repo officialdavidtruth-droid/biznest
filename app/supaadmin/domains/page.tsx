@@ -15,6 +15,15 @@ export default async function DomainsOverview() {
     orderBy: { updatedAt: "desc" },
   });
 
+  // <form action> requires a handler returning void | Promise<void>;
+  // markDomainVerifiedManually returns ActionResult for programmatic
+  // callers, so bind through a thin void-returning wrapper instead —
+  // same pattern as seedForStore in admin/page.tsx.
+  async function markVerified(storeId: string) {
+    "use server";
+    await markDomainVerifiedManually(storeId);
+  }
+
   return (
     <div>
       <h1 className="mb-2 text-xl font-semibold">Custom domains</h1>
@@ -40,7 +49,7 @@ export default async function DomainsOverview() {
                 </td>
                 <td className="px-4 py-3">
                   {s.customDomainStatus !== "VERIFIED" && (
-                    <form action={markDomainVerifiedManually.bind(null, s.id)}>
+                    <form action={markVerified.bind(null, s.id)}>
                       <button className="text-xs font-medium text-primary hover:underline">Mark verified</button>
                     </form>
                   )}
