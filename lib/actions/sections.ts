@@ -2,6 +2,7 @@
 
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import type { Prisma } from "@prisma/client";
 import { revalidatePath } from "next/cache";
 import type { Section } from "@/lib/template-themes";
 import type { ActionResult } from "@/types/actions";
@@ -42,7 +43,7 @@ export async function updateSectionOverrides(slug: string, formData: FormData): 
 
   await prisma.store.update({
     where: { id: access.store.id },
-    data: { sectionOverrides: { order: cleanOrder, hidden } },
+    data: { sectionOverrides: { order: cleanOrder, hidden } as unknown as Prisma.InputJsonValue },
   });
 
   revalidatePath(`/store/${slug}/admin/builder`);
