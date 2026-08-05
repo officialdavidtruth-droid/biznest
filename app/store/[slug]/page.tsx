@@ -183,6 +183,7 @@ export default async function StorefrontPage({ params }: { params: Promise<{ slu
 
 type StoreWithRelations = NonNullable<Awaited<ReturnType<typeof prisma.store.findUnique>>> & {
   business: { description: string; verificationBadge: boolean };
+  template: { previewUrl: string | null } | null;
   products: Array<{ id: string; name: string; price: unknown; compareAtPrice: unknown; currency: string; images: string[]; type: string; rentalPeriodUnit: string | null; attributes: unknown; category: { name: string } | null }>;
   services: Array<{ id: string; name: string; description: string; price: unknown; currency: string; images: string[]; isBookable: boolean; category: { name: string } | null }>;
   reviews: Array<{ id: string; rating: number; comment: string | null; author: { name: string | null } }>;
@@ -219,10 +220,17 @@ function SiteHeader({ store, theme, slug, hasProducts, hasServices, sectionEnabl
 
 function Hero({ store, theme, hasCatalog, catalogLabel }: { store: StoreWithRelations; theme: TemplateTheme; hasCatalog: boolean; catalogLabel: string }) {
   const cta = hasCatalog ? theme.cta : null;
+  // A vendor's own upload always wins; falls back to the template's demo
+  // photo (lib/demo-images.ts, seeded per niche) so a store looks populated
+  // immediately even before the vendor uploads anything of their own. This
+  // was the actual bug — previewUrl was wired into the gallery but never
+  // into the live storefront, which is why it showed in one place and not
+  // the other.
+  const heroImage = store.bannerUrl || store.template?.previewUrl || null;
 
   if (theme.heroStyle === "fullbleed") {
-    const bg = store.bannerUrl
-      ? `linear-gradient(0deg, ${theme.bg}f2, ${theme.bg}66), url(${store.bannerUrl}) center/cover`
+    const bg = heroImage
+      ? `linear-gradient(0deg, ${theme.bg}f2, ${theme.bg}66), url(${heroImage}) center/cover`
       : `linear-gradient(135deg, ${theme.accent}33, ${theme.bg})`;
     return (
       <section style={{ background: bg, padding: "88px 24px 64px" }}>
@@ -251,7 +259,7 @@ function Hero({ store, theme, hasCatalog, catalogLabel }: { store: StoreWithRela
             borderRadius: theme.radius,
             overflow: "hidden",
             position: "relative",
-            background: store.bannerUrl
+            background: heroImage
               ? undefined
               : `radial-gradient(circle at 25% 20%, ${theme.accent}55, transparent 55%), radial-gradient(circle at 80% 75%, ${theme.accent}33, transparent 50%), ${theme.card}`,
             display: "flex",
@@ -259,9 +267,9 @@ function Hero({ store, theme, hasCatalog, catalogLabel }: { store: StoreWithRela
             justifyContent: "center",
           }}
         >
-          {store.bannerUrl ? (
+          {heroImage ? (
             // eslint-disable-next-line @next/next/no-img-element
-            <img src={store.bannerUrl} alt={store.name} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+            <img src={heroImage} alt={store.name} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
           ) : (
             <span style={{ fontFamily: theme.font, fontSize: "min(30vw, 130px)", fontWeight: 800, color: `${theme.accent}33`, lineHeight: 1, userSelect: "none" }}>
               {store.name.charAt(0).toUpperCase()}
