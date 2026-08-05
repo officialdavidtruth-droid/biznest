@@ -8,7 +8,7 @@ import { generateUniqueStoreSlug, storeAdminUrl, storePublicUrl } from "@/lib/ut
 import { revalidatePath } from "next/cache";
 import slugify from "slugify";
 import { SAMPLE_LISTINGS } from "@/lib/sample-listings";
-import { fetchUnsplashPhoto, fetchUnsplashPhotos } from "@/lib/unsplash";
+import { fetchDemoPhoto, fetchDemoPhotos } from "@/lib/demo-images";
 import type { ActionResult } from "@/types/actions";
 
 const DEFAULT_PAGES: Array<{ slug: string; title: string }> = [
@@ -77,12 +77,14 @@ export async function createStore(
 
   // Fetched before the transaction, not inside it — holding a DB
   // transaction open across external HTTP calls risks connection timeouts.
-  // See lib/unsplash.ts: no-ops (nulls) if UNSPLASH_ACCESS_KEY isn't set.
+  // Real stock photography (lib/demo-images.ts) — works with zero config
+  // (LoremFlickr fallback), upgrades automatically to Unsplash if
+  // UNSPLASH_ACCESS_KEY is set.
   const template = await prisma.storeTemplate.findUnique({ where: { id: parsed.data.templateId } });
   const samples = template ? SAMPLE_LISTINGS[template.category] ?? [] : [];
   const [samplePhotos, bannerPhoto] = await Promise.all([
-    fetchUnsplashPhotos(samples.map((s) => s.name)),
-    template ? fetchUnsplashPhoto(template.category) : Promise.resolve(null),
+    fetchDemoPhotos(samples.map((s) => s.name)),
+    template ? fetchDemoPhoto(template.category) : Promise.resolve(null),
   ]);
 
   const store = await prisma.$transaction(async (tx) => {
@@ -174,6 +176,43 @@ export async function createStore(
   };
 }
 
+/**
+ * For listings that already exist but have no photo — e.g. created before
+ * demo photography existed, or added manually without an image. Only fills
+ * in what's missing; never touches a listing that already has an image.
+ */
+export async function backfillListingImages(slug: string): Promise<ActionResult> {
+  const access = await assertStoreAccess(slug);
+  if (!access.success) return { success: false, error: access.error };
+
+  const [products, services] = await Promise.all([
+    prisma.product.findMany({ where: { storeId: access.store.id, images: { isEmpty: true } } }),
+    prisma.service.findMany({ where: { storeId: access.store.id, images: { isEmpty: true } } }),
+  ]);
+  if (products.length === 0 && services.length === 0) {
+    return { success: false, error: "Every listing already has a photo." };
+  }
+
+  const photos = await fetchDemoPhotos([...products.map((p) => p.name), ...services.map((s) => s.name)]);
+
+  await Promise.all([
+    ...products.map((p, i) =>
+      photos[i]
+        ? prisma.product.update({ where: { id: p.id }, data: { images: [photos[i] as string] } })
+        : Promise.resolve()
+    ),
+    ...services.map((s, i) =>
+      photos[products.length + i]
+        ? prisma.service.update({ where: { id: s.id }, data: { images: [photos[products.length + i] as string] } })
+        : Promise.resolve()
+    ),
+  ]);
+
+  revalidatePath(`/store/${slug}/admin`);
+  revalidatePath(`/store/${slug}`);
+  return { success: true, data: undefined };
+}
+
 export async function seedSampleListings(slug: string): Promise<ActionResult> {
   const access = await assertStoreAccess(slug);
   if (!access.success) return { success: false, error: access.error };
@@ -192,13 +231,13 @@ export async function seedSampleListings(slug: string): Promise<ActionResult> {
     return { success: false, error: "No starter listings are defined for this store's template yet." };
   }
 
-  // Real stock photography, not fabricated — see lib/unsplash.ts. Fetched
-  // once here and persisted to the listing/store rows, never re-fetched on
-  // every page view. No-ops (returns nulls) if UNSPLASH_ACCESS_KEY isn't
-  // set — samples still get created, just without photos, same as before.
-  const photos = await fetchUnsplashPhotos(samples.map((s) => s.name));
+  // Real stock photography, not fabricated — see lib/demo-images.ts. Works
+  // with zero config (LoremFlickr fallback); upgrades automatically to
+  // Unsplash if UNSPLASH_ACCESS_KEY is set. Fetched once here and
+  // persisted to the listing/store rows, never re-fetched on every page view.
+  const photos = await fetchDemoPhotos(samples.map((s) => s.name));
   if (store && !store.bannerUrl && store.template) {
-    const bannerPhoto = await fetchUnsplashPhoto(store.template.category);
+    const bannerPhoto = await fetchDemoPhoto(store.template.category);
     if (bannerPhoto) {
       await prisma.store.update({ where: { id: store.id }, data: { bannerUrl: bannerPhoto } });
     }

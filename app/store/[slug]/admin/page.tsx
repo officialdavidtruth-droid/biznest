@@ -1,17 +1,19 @@
 import { prisma } from "@/lib/prisma";
 import { notFound } from "next/navigation";
-import { seedSampleListings } from "@/lib/actions/store";
+import { seedSampleListings, backfillListingImages } from "@/lib/actions/store";
 
 export default async function StoreDashboardHome({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
   const store = await prisma.store.findUnique({ where: { slug } });
   if (!store) notFound();
 
-  const [orderCount, productCount, serviceCount, pendingOrders] = await Promise.all([
+  const [orderCount, productCount, serviceCount, pendingOrders, productsWithoutPhotos, servicesWithoutPhotos] = await Promise.all([
     prisma.order.count({ where: { storeId: store.id } }),
     prisma.product.count({ where: { storeId: store.id } }),
     prisma.service.count({ where: { storeId: store.id } }),
     prisma.order.count({ where: { storeId: store.id, status: "PENDING_PAYMENT" } }),
+    prisma.product.count({ where: { storeId: store.id, images: { isEmpty: true } } }),
+    prisma.service.count({ where: { storeId: store.id, images: { isEmpty: true } } }),
   ]);
 
   const cards = [
@@ -22,16 +24,18 @@ export default async function StoreDashboardHome({ params }: { params: Promise<{
   ];
 
   const isEmpty = productCount === 0 && serviceCount === 0;
+  const missingPhotoCount = productsWithoutPhotos + servicesWithoutPhotos;
 
-  // <form action> requires a handler returning void | Promise<void> — a
-  // thin wrapper here rather than binding seedSampleListings directly,
-  // since that action returns ActionResult for programmatic callers
-  // elsewhere. This was a real TS build failure caught by `next build`'s
-  // type checking, not a runtime issue — good that it was caught before
-  // deploy rather than after.
+  // <form action> requires a handler returning void | Promise<void> — thin
+  // wrappers here rather than binding the actions directly, since they
+  // return ActionResult for programmatic callers elsewhere.
   async function seedForStore() {
     "use server";
     await seedSampleListings(slug);
+  }
+  async function backfillPhotos() {
+    "use server";
+    await backfillListingImages(slug);
   }
 
   return (
@@ -39,7 +43,7 @@ export default async function StoreDashboardHome({ params }: { params: Promise<{
       <h1 className="mb-6 text-xl font-semibold">Overview</h1>
 
       {isEmpty && (
-        <form action={seedForStore} className="mb-6 flex flex-wrap items-center justify-between gap-3 rounded-lg border border-primary/30 bg-primary/5 p-4">
+        <form action={seedForStore} className="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-lg border border-primary/30 bg-primary/5 p-4">
           <div>
             <p className="text-sm font-medium">Your storefront has no listings yet</p>
             <p className="mt-0.5 text-xs text-muted-foreground">
@@ -50,6 +54,21 @@ export default async function StoreDashboardHome({ params }: { params: Promise<{
           </div>
           <button className="shrink-0 rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground">
             Add starter listings
+          </button>
+        </form>
+      )}
+
+      {!isEmpty && missingPhotoCount > 0 && (
+        <form action={backfillPhotos} className="mb-6 flex flex-wrap items-center justify-between gap-3 rounded-lg border border-primary/30 bg-primary/5 p-4">
+          <div>
+            <p className="text-sm font-medium">{missingPhotoCount} listing{missingPhotoCount === 1 ? "" : "s"} missing a photo</p>
+            <p className="mt-0.5 text-xs text-muted-foreground">
+              Auto-fill with a matching demo photo for anything that doesn't have one yet —
+              only fills gaps, never replaces a photo you've already set.
+            </p>
+          </div>
+          <button className="shrink-0 rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground">
+            Add photos
           </button>
         </form>
       )}
