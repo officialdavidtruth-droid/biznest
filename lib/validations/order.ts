@@ -4,6 +4,7 @@ export const checkoutSchema = z.object({
   items: z
     .array(z.object({ productId: z.string().cuid(), quantity: z.coerce.number().int().min(1) }))
     .min(1, "Your cart is empty"),
+  deliveryZoneId: z.string().cuid().optional(),
   shippingAddress: z.object({
     fullName: z.string().min(2),
     phone: z.string().min(7),

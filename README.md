@@ -135,7 +135,120 @@ screen:
 - `app/globals.css` — added a shared `.bn-card` elevation style so dashboard
   surfaces can converge on one shadow/radius language over time.
 
-## What's next toward the Shopify/WooCommerce bar
+## Fixes applied (round 3 — 23 niche templates, real section rendering, supa admin redirect)
+
+**Supa admin redirect bug — found and fixed.** Not a permissions problem on
+your end. `lib/auth.ts` uses JWT session strategy, and the `jwt` callback only
+wrote `token.role` when a fresh `user` object was present — i.e. only at
+sign-in. After you called `/api/promote-admin` to become `PLATFORM_ADMIN`, the
+database updated but your *existing session cookie* still carried your old
+role, so `app/supaadmin/layout.tsx`'s role check kept failing and redirected
+you to `/`. Fixed: the `jwt` callback now re-checks your role from the
+database on every request, so a promotion (or a ban) takes effect immediately
+without needing to log out and back in. Sign out and back in once to pick up
+a clean token right away, or just wait — your very next request resolves it.
+
+**23 full niche templates**, replacing the old 26-template placeholder set
+(all of which shared one identical `{sections:["home","about","gallery","contact"]}`
+config, which is why every template looked the same regardless of category):
+
+- `lib/template-themes.ts` — rewritten around a `TemplateTheme` type carrying
+  real per-niche identity: palette, type, a hero *style* (`centered` /
+  `split` / `fullbleed`), which homepage sections appear and in what order,
+  and niche-correct labeling (a hotel shows "Rooms", a law firm shows
+  "Practice Areas", a videographer shows "Showreel" — not a generic
+  "Products").
+- `prisma/seed.ts` — seeds exactly these 23 templates with their section
+  config stored in the DB (`StoreTemplate.config`), and **deactivates** any
+  leftover templates from the old 26-name set rather than deleting them (a
+  store could already reference one — deactivating removes it from the
+  gallery without breaking an existing store). Run `npm run db:seed` to apply.
+- `app/store/[slug]/page.tsx` — rewritten to render per-section:
+  - **Hero** — one of three real layouts (full-bleed banner, split image/text,
+    or centered), not just recolored copy.
+  - **Catalog** — relabeled per niche; product/service cards unchanged from round 2.
+  - **About** — pulled from `Business.description` (real onboarding data).
+  - **Testimonials** — real `Review` rows, 4★+ with a comment, not fabricated.
+  - **Contact** — WhatsApp / call / email actions built from the store's own contact fields.
+  A section with no backing data simply doesn't render — no placeholder
+  "Lorem ipsum about us" text anywhere.
+
+**Honest scope note:** this is genuinely differentiated template variety —
+distinct visuals, layouts, and information architecture per niche, driven by
+each store's real data. It is not 23 bespoke applications: a hotel template
+doesn't have a room-availability calendar, a restaurant doesn't have menu
+categories or delivery-radius logic, and real estate doesn't have map/filter
+search. That kind of niche-specific *functionality* is what would take this
+the rest of the way to "exactly like Shopify," and each one is a substantial
+build in its own right — happy to take them one at a time.
+
+## Fixes applied (round 4 — booking calendars, delivery zones, real estate map)
+
+The three niche-functionality gaps flagged at the end of round 3, now built:
+
+**Booking calendars for services.** This also closed a gap that predated the
+booking request: there was no way to create a service at all before this —
+only products had a creation form.
+- Schema: `Service.availability` (weekly working hours as JSON). `Booking`
+  was fixed, not just extended — it previously had a bare `customerId`
+  string field with no actual relation to `User`, meaning booking history
+  couldn't be joined or queried. It now has a real `buyerId` → `User`
+  relation (same pattern as `Order.buyerId`), a `storeId` for direct
+  store-scoped queries, and a snapshotted `durationMins` so a later change
+  to a service's duration doesn't reshape past bookings. **This changes the
+  Booking table shape — run `npx prisma db push --accept-data-loss` (already
+  your convention) and any pre-existing Booking rows will be dropped, same
+  as any other schema change at this stage.**
+- `lib/actions/service.ts` + `app/store/[slug]/admin/services/new/page.tsx` —
+  vendors can now actually create a service, mark it bookable, set an
+  appointment length, and set weekly hours per day.
+- `lib/actions/booking.ts` — computes real open slots (working hours minus
+  already-booked times that day, and never offers a past time for today).
+- `components/storefront/booking-widget.tsx` — live date/slot picker
+  attached to bookable services on the storefront.
+- Admin Services page now shows an upcoming-bookings inbox.
+- **Known simplification:** slot times are computed in server-local time,
+  not the store's own timezone. Fine for a single-country launch; flag it if
+  you need multi-timezone vendors later.
+
+**Delivery zones + real menu categories for food/physical-goods stores.**
+- New `DeliveryZone` model, admin CRUD at `/admin/delivery` (added to the
+  sidebar — a route with nowhere to click into is the exact bug from round 2).
+- Checkout now shows a zone picker, and the fee is folded into the actual
+  Paystack charge (`lib/actions/order.ts` — `deliveryFee` added to `total`,
+  `subtotal` kept separate so commission is still calculated on product
+  revenue only, not on pass-through delivery cost).
+- Storefront catalog now genuinely groups products by category once a store
+  has 2+ categories in use — not food-specific, any niche using categories
+  benefits. A store with one or zero categories still gets the plain flat
+  grid, unchanged.
+
+**Real estate map + filters.**
+- `Product.attributes` (JSON) added for niche-specific fields — bedrooms,
+  bathrooms, area, address, lat/lng — without bloating the shared `Product`
+  table with real-estate-only columns every other niche would carry too.
+- `components/storefront/property-catalog.tsx` — price and bedroom filters,
+  client-side over the store's own listings.
+- `components/storefront/property-map.tsx` — Leaflet map with price-labeled
+  pins, dynamically imported so it never touches `window` during server
+  rendering. Added `leaflet` + `react-leaflet` + `@types/leaflet` to
+  `package.json` — run `npm install` to pick them up.
+- The storefront automatically renders this instead of the generic product
+  grid when a store's template category is "Real Estate & Property."
+- **Known gap:** there's no admin UI yet for entering a property's
+  bedrooms/bathrooms/lat-lng — those attributes exist on the schema and
+  render correctly once set, but a vendor currently has no form field for
+  them (the generic product form doesn't know about niche-specific
+  attributes). That's the natural next step if you want to unblock real
+  estate vendors specifically.
+
+**Honest scope note, still true:** these are real, working features, not
+polish. They are also still v1 versions of each — no timezone-aware booking,
+no delivery-zone geofencing (a vendor names a zone, they don't draw it on a
+map), no saved-search or agent contact flow for real estate. Each is a
+reasonable next increment if one of these becomes the priority.
+
+## What's next toward the Shopify/WooCommerce bar (round 4)
 
 This pass fixed what was broken. Bigger lifts still ahead, roughly in priority order:
 1. Product variants/attributes (size, color) — core WooCommerce parity gap.

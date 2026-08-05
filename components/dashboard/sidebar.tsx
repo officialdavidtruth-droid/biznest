@@ -5,7 +5,7 @@ import { usePathname } from "next/navigation";
 import {
   LayoutDashboard, ShoppingCart, Package, Wrench, Users, Boxes, Ticket,
   CreditCard, BarChart3, Star, Megaphone, MessageSquare, LayoutTemplate,
-  Settings, BadgeCheck, Wallet, LifeBuoy,
+  Settings, BadgeCheck, Wallet, LifeBuoy, Truck,
 } from "lucide-react";
 
 const NAV_GROUPS: Array<{
@@ -23,6 +23,7 @@ const NAV_GROUPS: Array<{
       { label: "Products", href: "/products", icon: Package },
       { label: "Services", href: "/services", icon: Wrench },
       { label: "Inventory", href: "/inventory", icon: Boxes },
+      { label: "Delivery zones", href: "/delivery", icon: Truck },
     ],
   },
   {

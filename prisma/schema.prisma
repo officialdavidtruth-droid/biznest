@@ -49,6 +49,7 @@ model User {
   sessions          Session[]
   business          Business?
   orders            Order[]         @relation("BuyerOrders")
+  bookings          Booking[]       @relation("BuyerBookings")
   reviews           Review[]
   reviewResponses   ReviewResponse[]
   messages          Message[]
@@ -213,6 +214,8 @@ model Store {
   products      Product[]
   services      Service[]
   orders        Order[]
+  bookings      Booking[]
+  deliveryZones DeliveryZone[]
   coupons       Coupon[]
   reviews       Review[]
   pages         StorePage[]
@@ -298,6 +301,11 @@ model Product {
 
   digitalFileUrl String?   // for DIGITAL type
   rentalPeriodUnit String? // "day" | "week" | "month" for RENTAL type
+  // Flexible niche-specific fields instead of bloating this table per
+  // vertical, e.g. real estate: { bedrooms, bathrooms, areaSqm, address, lat, lng }.
+  // Read by the storefront only for niches that know what to do with it
+  // (see lib/template-themes.ts) — absent/unknown keys are ignored.
+  attributes     Json?
 
   inventory    InventoryItem?
   orderItems   OrderItem[]
@@ -327,6 +335,10 @@ model Service {
 
   isBookable   Boolean   @default(false) // enables appointments/bookings
   durationMins Int?
+  // Weekly availability, e.g. { "mon": [["09:00","17:00"]], "tue": [["09:00","13:00"],["14:00","17:00"]] }.
+  // Days omitted are treated as closed. Null means "not configured yet" —
+  // the booking widget shows a setup prompt to the vendor instead of guessing hours.
+  availability Json?
 
   bookings     Booking[]
   orderItems   OrderItem[]
@@ -361,14 +373,24 @@ enum BookingStatus {
 }
 
 model Booking {
-  id         String        @id @default(cuid())
-  serviceId  String
-  service    Service       @relation(fields: [serviceId], references: [id], onDelete: Cascade)
-  customerId String
+  id          String        @id @default(cuid())
+  storeId     String
+  store       Store         @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  serviceId   String
+  service     Service       @relation(fields: [serviceId], references: [id], onDelete: Cascade)
+  buyerId     String
+  buyer       User          @relation("BuyerBookings", fields: [buyerId], references: [id])
+
   scheduledAt DateTime
-  status     BookingStatus @default(PENDING)
-  notes      String?
-  createdAt  DateTime      @default(now())
+  // Redundant with Service.durationMins at booking time, snapshotted so a
+  // later change to the service's duration doesn't reshape past bookings.
+  durationMins Int
+  status      BookingStatus @default(PENDING)
+  notes       String?
+  createdAt   DateTime      @default(now())
+
+  @@index([serviceId, scheduledAt])
+  @@index([storeId])
 }
 
 // ----------------------------------------------------------------------------
@@ -407,6 +429,10 @@ model Order {
   paymentProvider PaymentProvider?
   paymentReference String?
   escrowReleasedAt DateTime?
+
+  deliveryZoneId String?
+  deliveryZone   DeliveryZone? @relation(fields: [deliveryZoneId], references: [id])
+  deliveryFee    Decimal       @db.Decimal(12, 2) @default(0)
 
   items         OrderItem[]
   dispute       Dispute?
@@ -456,6 +482,26 @@ model Dispute {
 
   createdAt     DateTime      @default(now())
   resolvedAt    DateTime?
+}
+
+// Local delivery pricing for physical-goods stores (food, groceries, etc.).
+// A store with no zones defined is treated as "delivery not offered yet" —
+// checkout falls back to pickup/no shipping fee rather than blocking sale.
+model DeliveryZone {
+  id               String   @id @default(cuid())
+  storeId          String
+  store            Store    @relation(fields: [storeId], references: [id], onDelete: Cascade)
+
+  name             String   // e.g. "Wuse & Garki", "Lekki Phase 1"
+  fee              Decimal  @db.Decimal(12, 2)
+  estimatedMinutes Int?
+  isActive         Boolean  @default(true)
+
+  orders           Order[]
+
+  createdAt        DateTime @default(now())
+
+  @@index([storeId])
 }
 
 model Coupon {

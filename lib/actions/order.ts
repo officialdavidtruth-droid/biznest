@@ -46,6 +46,16 @@ export async function startCheckout(
 
   if (subtotal <= 0) return { success: false, error: "Cart total must be greater than zero." };
 
+  let deliveryFee = 0;
+  if (data.deliveryZoneId) {
+    const zone = await prisma.deliveryZone.findFirst({
+      where: { id: data.deliveryZoneId, storeId: store.id, isActive: true },
+    });
+    if (!zone) return { success: false, error: "That delivery area is no longer available — pick another." };
+    deliveryFee = Number(zone.fee);
+  }
+
+  const total = subtotal + deliveryFee;
   const commissionRate = store.subscription ? Number(store.subscription.commissionRate) : 8;
   const commission = Math.round(subtotal * (commissionRate / 100) * 100) / 100;
 
@@ -56,7 +66,9 @@ export async function startCheckout(
       status: "PENDING_PAYMENT",
       subtotal,
       commission,
-      total: subtotal,
+      total,
+      deliveryZoneId: data.deliveryZoneId ?? null,
+      deliveryFee,
       currency: products[0]?.currency ?? "NGN",
       shippingAddress: data.shippingAddress,
       items: {
@@ -70,7 +82,7 @@ export async function startCheckout(
 
   const initResult = await initializePaystackTransaction({
     email: session.user.email ?? data.shippingAddress.fullName,
-    amountKobo: Math.round(subtotal * 100),
+    amountKobo: Math.round(total * 100),
     reference: order.id,
     callbackUrl: `${APP_URL}/api/payments/paystack/callback`,
     subaccountCode: store.paystackSubaccountCode,

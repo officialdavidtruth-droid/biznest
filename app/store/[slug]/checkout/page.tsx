@@ -1,21 +1,32 @@
 "use client";
 
-import { use, useState } from "react";
-import { useRouter } from "next/navigation";
+import { use, useEffect, useState } from "react";
 import { useCart } from "@/lib/cart-context";
 import { startCheckout } from "@/lib/actions/order";
+import { listActiveDeliveryZones } from "@/lib/actions/delivery-zone";
 import { toast } from "sonner";
+
+type Zone = { id: string; name: string; fee: unknown; estimatedMinutes: number | null };
 
 export default function CheckoutPage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = use(params);
-  const router = useRouter();
   const { items, storeSlug, subtotal } = useCart();
   const cartItems = storeSlug === slug ? items : [];
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [zones, setZones] = useState<Zone[]>([]);
+  const [zoneId, setZoneId] = useState<string>("");
 
   const [form, setForm] = useState({
     fullName: "", phone: "", address: "", city: "", state: "", country: "Nigeria",
   });
+
+  useEffect(() => {
+    listActiveDeliveryZones(slug).then(setZones);
+  }, [slug]);
+
+  const selectedZone = zones.find((z) => z.id === zoneId);
+  const deliveryFee = selectedZone ? Number(selectedZone.fee) : 0;
+  const total = subtotal + deliveryFee;
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -24,6 +35,7 @@ export default function CheckoutPage({ params }: { params: Promise<{ slug: strin
     setIsSubmitting(true);
     const result = await startCheckout(slug, {
       items: cartItems.map((i) => ({ productId: i.productId, quantity: i.quantity })),
+      deliveryZoneId: zoneId || undefined,
       shippingAddress: form,
     });
     setIsSubmitting(false);
@@ -54,11 +66,35 @@ export default function CheckoutPage({ params }: { params: Promise<{ slug: strin
             <span>{i.currency} {(i.price * i.quantity).toLocaleString()}</span>
           </div>
         ))}
-        <div className="mt-2 flex justify-between border-t pt-2 font-medium">
-          <span>Total</span>
+        <div className="flex justify-between border-t pt-2 mt-2">
+          <span>Subtotal</span>
           <span>{cartItems[0].currency} {subtotal.toLocaleString()}</span>
         </div>
+        {selectedZone && (
+          <div className="flex justify-between py-1 text-muted-foreground">
+            <span>Delivery ({selectedZone.name})</span>
+            <span>{cartItems[0].currency} {deliveryFee.toLocaleString()}</span>
+          </div>
+        )}
+        <div className="mt-1 flex justify-between border-t pt-2 font-medium">
+          <span>Total</span>
+          <span>{cartItems[0].currency} {total.toLocaleString()}</span>
+        </div>
       </div>
+
+      {zones.length > 0 && (
+        <div className="mb-4">
+          <label className="mb-1 block text-xs font-medium text-muted-foreground">Delivery area</label>
+          <select className="input" value={zoneId} onChange={(e) => setZoneId(e.target.value)}>
+            <option value="">Pickup / no delivery fee</option>
+            {zones.map((z) => (
+              <option key={z.id} value={z.id}>
+                {z.name} — {Number(z.fee).toLocaleString()}{z.estimatedMinutes ? ` (~${z.estimatedMinutes} min)` : ""}
+              </option>
+            ))}
+          </select>
+        </div>
+      )}
 
       <form onSubmit={handleSubmit} className="space-y-3">
         <input required placeholder="Full name" className="input" value={form.fullName}
@@ -82,7 +118,7 @@ export default function CheckoutPage({ params }: { params: Promise<{ slug: strin
           className="w-full rounded-md py-3 text-sm font-medium disabled:opacity-50"
           style={{ background: "var(--bn-marigold)", color: "var(--bn-ink)" }}
         >
-          {isSubmitting ? "Redirecting to payment…" : "Pay now"}
+          {isSubmitting ? "Redirecting to payment…" : `Pay ${cartItems[0].currency} ${total.toLocaleString()}`}
         </button>
       </form>
 

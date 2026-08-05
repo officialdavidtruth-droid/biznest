@@ -85,6 +85,24 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       if (user) {
         token.id = user.id;
         token.role = user.role;
+      } else if (token.id) {
+        // Session strategy is JWT, so the token is normally just decoded and
+        // reused across requests without touching the DB again. That means
+        // a role change (e.g. via /api/promote-admin, or a ban) never took
+        // effect until the user logged out and back in — which is exactly
+        // why a freshly-promoted PLATFORM_ADMIN kept getting bounced out of
+        // /supaadmin. Re-check the DB role on every request so promotions
+        // (and bans) apply immediately. This is one indexed PK lookup — fine
+        // at this scale, same tradeoff as RateLimitEntry elsewhere in this
+        // codebase; revisit if/when this needs to scale further.
+        const current = await prisma.user.findUnique({
+          where: { id: token.id as string },
+          select: { role: true, isBanned: true },
+        });
+        if (current) {
+          token.role = current.role;
+          token.banned = current.isBanned;
+        }
       }
       return token;
     },

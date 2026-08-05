@@ -1,4 +1,5 @@
 import { PrismaClient } from "@prisma/client";
+import { NICHE_TEMPLATES, NICHE_NAMES } from "../lib/template-themes";
 
 const prisma = new PrismaClient();
 
@@ -25,15 +26,6 @@ const SERVICE_CATEGORIES = [
   "Printing", "Photography Studio Rental", "Hotel Services",
 ];
 
-const TEMPLATES = [
-  "Restaurant", "Hotel", "Fashion Store", "Beauty Store", "Electronics",
-  "Supermarket", "Furniture", "Photography", "Videography", "Agency",
-  "Law Firm", "Hospital", "Pharmacy", "Mechanic", "Salon", "Spa", "Church",
-  "School", "Restaurant Delivery", "Construction", "Architecture",
-  "Engineering", "Real Estate", "Personal Portfolio", "Freelancer",
-  "Marketplace",
-];
-
 const SUBSCRIPTIONS = [
   { name: "Free", price: 0, interval: "MONTHLY", commissionRate: 8, features: { products: 20, services: 10 } },
   { name: "Starter", price: 5000, interval: "MONTHLY", commissionRate: 5, features: { products: 200, services: 100 } },
@@ -51,13 +43,35 @@ async function main() {
     skipDuplicates: true,
   });
 
-  for (const name of TEMPLATES) {
+  // 23 full niche templates. Each stores its real section composition,
+  // catalog label, and hero style — not just a name — so the storefront
+  // renderer (lib/template-themes.ts + app/store/[slug]/page.tsx) has
+  // everything it needs even before falling back to the code-side table.
+  for (const name of NICHE_NAMES) {
+    const t = NICHE_TEMPLATES[name];
     await prisma.storeTemplate.upsert({
       where: { name },
-      update: {},
-      create: { name, category: name, config: { sections: ["home", "about", "gallery", "contact"] } },
+      update: {
+        category: name,
+        isActive: true,
+        config: { sections: t.sections, catalogLabel: t.catalogLabel, heroStyle: t.heroStyle, layout: t.layout },
+      },
+      create: {
+        name,
+        category: name,
+        config: { sections: t.sections, catalogLabel: t.catalogLabel, heroStyle: t.heroStyle, layout: t.layout },
+      },
     });
   }
+
+  // Retire any templates from an older seed run that aren't part of the
+  // current 23 — deactivate rather than delete, since a store might still
+  // reference one (Store.templateId). Deactivated templates stop showing
+  // in the gallery but existing stores using them keep working.
+  await prisma.storeTemplate.updateMany({
+    where: { name: { notIn: NICHE_NAMES } },
+    data: { isActive: false },
+  });
 
   for (const sub of SUBSCRIPTIONS) {
     await prisma.subscription.upsert({
