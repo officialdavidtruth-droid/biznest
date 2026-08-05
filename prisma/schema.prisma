@@ -205,6 +205,12 @@ model Store {
   bannerUrl     String?
   themeColors   Json? // { primary, secondary, accent, ... }
   fontFamily    String?
+  // Vendor control over which of the template's sections actually show,
+  // and in what order — { hidden: Section[], order: Section[] }. "hero" can
+  // never be hidden. A section still won't render if it has no real data
+  // behind it regardless of this override (see app/store/[slug]/page.tsx) —
+  // this controls arrangement, not fabrication.
+  sectionOverrides Json?
 
   seoTitle      String?
   seoDescription String?

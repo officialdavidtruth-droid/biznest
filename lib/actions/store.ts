@@ -233,6 +233,7 @@ export async function updateStoreSettings(slug: string, formData: FormData) {
   if (!access.success) return;
 
   const name = String(formData.get("name") ?? "").trim();
+  const description = String(formData.get("description") ?? "").trim();
   const contactEmail = String(formData.get("contactEmail") ?? "").trim() || null;
   const contactPhone = String(formData.get("contactPhone") ?? "").trim() || null;
   const primary = String(formData.get("primary") ?? "").trim();
@@ -253,6 +254,19 @@ export async function updateStoreSettings(slug: string, formData: FormData) {
       socialLinks: { instagram, whatsapp },
     },
   });
+
+  // Business.description backs the storefront's About section — it was
+  // only ever set once, during onboarding, with no way to edit it after.
+  // That's how a vendor ends up permanently stuck with placeholder/test
+  // text on their live storefront. Optional here on purpose: leave it
+  // untouched if the field is submitted empty, rather than blanking real
+  // content by accident.
+  if (description) {
+    await prisma.business.update({
+      where: { id: access.store.business.id },
+      data: { description },
+    });
+  }
 
   revalidatePath(`/store/${slug}/admin/settings`);
   revalidatePath(`/store/${slug}`);

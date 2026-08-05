@@ -4,7 +4,7 @@ import { setCustomDomain, recheckDomainStatus, removeCustomDomain } from "@/lib/
 
 export default async function SettingsPage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
-  const store = await prisma.store.findUnique({ where: { slug }, include: { subscription: true } });
+  const store = await prisma.store.findUnique({ where: { slug }, include: { subscription: true, business: true } });
   if (!store) return null;
 
   const theme = (store.themeColors as Record<string, string> | null) ?? {};
@@ -42,7 +42,15 @@ export default async function SettingsPage({ params }: { params: Promise<{ slug:
           <label className="mb-1 block text-xs text-muted-foreground">Contact email</label>
           <input name="contactEmail" type="email" defaultValue={store.contactEmail ?? ""} className="mb-3 w-full rounded-md border px-3 py-1.5 text-sm" />
           <label className="mb-1 block text-xs text-muted-foreground">Contact phone</label>
-          <input name="contactPhone" defaultValue={store.contactPhone ?? ""} className="w-full rounded-md border px-3 py-1.5 text-sm" />
+          <input name="contactPhone" defaultValue={store.contactPhone ?? ""} className="mb-3 w-full rounded-md border px-3 py-1.5 text-sm" />
+          <label className="mb-1 block text-xs text-muted-foreground">About your business</label>
+          <textarea
+            name="description"
+            defaultValue={store.business.description}
+            rows={4}
+            placeholder="What you do, what makes you different — this shows on your storefront's About section."
+            className="w-full rounded-md border px-3 py-1.5 text-sm"
+          />
         </div>
 
         <div className="rounded-lg border bg-background p-4">

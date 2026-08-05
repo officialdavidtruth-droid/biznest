@@ -44,7 +44,14 @@ export default async function StorefrontPage({ params }: { params: Promise<{ slu
     accent: overrides?.primary || overrides?.accent || baseTheme.accent,
     font: store.fontFamily || baseTheme.font,
   };
-  const sections: Section[] = theme.sections;
+  // Vendor-controlled arrangement (Website Builder → Sections) layered on
+  // top of the template's default order/visibility. Hero can't be hidden
+  // by the vendor; a section can still be absent even if not hidden here
+  // when it has no real data behind it (sectionEnabled below handles that).
+  const overrides = store.sectionOverrides as { order?: Section[]; hidden?: Section[] } | null;
+  const sections: Section[] = overrides?.order?.length
+    ? overrides.order.filter((s) => s === "hero" || !overrides.hidden?.includes(s))
+    : theme.sections;
   const catalogLabel = theme.catalogLabel;
 
   const social = (store.socialLinks as Record<string, string> | null) ?? {};

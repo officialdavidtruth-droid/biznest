@@ -3,6 +3,7 @@
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { revalidatePath } from "next/cache";
+import { seedSampleListings } from "@/lib/actions/store";
 import type { ActionResult } from "@/types/actions";
 
 export async function setStoreTemplate(slug: string, templateId: string): Promise<ActionResult> {
@@ -29,6 +30,14 @@ export async function setStoreTemplate(slug: string, templateId: string): Promis
 
   await prisma.store.update({ where: { id: store.id }, data: { templateId } });
 
+  // Switching templates previously never touched listings — a store that
+  // switched from an empty state (or was created before sample seeding
+  // existed) stayed empty after switching too, which is exactly what made
+  // the new template look "plain" with no demo content. seedSampleListings
+  // is a no-op if the store already has real listings — never overwrites them.
+  await seedSampleListings(slug);
+
   revalidatePath(`/store/${slug}/admin/builder`);
+  revalidatePath(`/store/${slug}`);
   return { success: true, data: undefined };
 }

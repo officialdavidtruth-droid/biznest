@@ -390,6 +390,50 @@ niche, not reshuffled on every deploy — a stable, reproducible catalog.
   niche instead of 1), and each preview renders that specific template's
   own stored theme rather than one shared per-category default.
 
+## Fixes & features (round 8 — empty-after-switch, uneditable About text, section control)
+
+**Confirming a scope gap directly, not glossing over it:** what this app has
+is a fixed, code-defined section order per template that shows or hides
+based on whether real data exists. What Shopify actually has is a full
+block-level page builder — merchants add, remove, reorder, and edit the
+content of arbitrary sections. Those are fundamentally different amounts of
+engineering. This round ships the real *first* piece of the second one
+(arrangement control), not the whole thing — said plainly rather than
+implied to be more than it is.
+
+**Two concrete bugs, both from the same screenshot:**
+- `lib/actions/template.ts` — switching templates never seeded sample
+  listings, only initial store creation did. A store that switched templates
+  from an empty state (or predated the sample-listings feature) stayed
+  empty after switching, which is exactly what made a freshly-picked
+  template look "plain, no demo." Now calls the same `seedSampleListings`
+  used elsewhere — safe, since it's a no-op if the store already has real
+  listings.
+- `Business.description` (the storefront's About text) was only ever set
+  once, during onboarding, with **no edit path afterward** — the actual
+  cause of the garbled placeholder text stuck on a live storefront. Added a
+  real textarea to Settings, wired through `updateStoreSettings`.
+
+**New: section arrangement control**, the real building block toward "take
+out what you don't need, add what you need":
+- `Store.sectionOverrides` (new field) — `{ order, hidden }`.
+- `lib/actions/sections.ts` (new) — hero can never be hidden; everything
+  else can be reordered or toggled off.
+- `components/dashboard/section-editor.tsx` (new) — up/down reordering (no
+  drag-and-drop library dependency) and hide checkboxes, on the Website
+  Builder page.
+- `app/store/[slug]/page.tsx` — applies the override on top of the
+  template's default order. A hidden-but-empty distinction still holds: a
+  section absent of real data won't render even if not explicitly hidden —
+  this feature controls arrangement, not fabrication.
+
+**Still not built, said explicitly:** per-section *content* editing (e.g.
+rewriting the About section's layout, adding a custom block, editing hero
+copy without going through Settings), drag-and-drop (this is click-to-move),
+and anything resembling Shopify's Liquid/theme-file architecture. Arrangement
+control was the buildable, honest next increment — content-block editing is
+the next one after that, and it's the bigger of the two.
+
 ## What's next toward the Shopify/WooCommerce bar (round 4)
 
 This pass fixed what was broken. Bigger lifts still ahead, roughly in priority order:
