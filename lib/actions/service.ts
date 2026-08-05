@@ -42,6 +42,14 @@ export async function createService(slug: string, formData: FormData): Promise<A
   const durationMins = isBookable ? Number(formData.get("durationMins") ?? 0) || null : null;
   const isPublished = formData.get("isPublished") === "on";
 
+  let images: string[] = [];
+  try {
+    const parsed = JSON.parse(String(formData.get("images") ?? "[]"));
+    if (Array.isArray(parsed)) images = parsed.filter((x): x is string => typeof x === "string");
+  } catch {
+    images = [];
+  }
+
   if (!name || name.length < 2) return { success: false, error: "Give the service a name." };
   if (!(price >= 0)) return { success: false, error: "Enter a valid price." };
   if (isBookable && !durationMins) return { success: false, error: "Bookable services need a duration." };
@@ -57,6 +65,7 @@ export async function createService(slug: string, formData: FormData): Promise<A
       slug: svcSlug,
       description,
       price,
+      images,
       isBookable,
       durationMins,
       availability,

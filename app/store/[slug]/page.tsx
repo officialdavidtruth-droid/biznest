@@ -184,7 +184,7 @@ export default async function StorefrontPage({ params }: { params: Promise<{ slu
 type StoreWithRelations = NonNullable<Awaited<ReturnType<typeof prisma.store.findUnique>>> & {
   business: { description: string; verificationBadge: boolean };
   products: Array<{ id: string; name: string; price: unknown; compareAtPrice: unknown; currency: string; images: string[]; type: string; rentalPeriodUnit: string | null; attributes: unknown; category: { name: string } | null }>;
-  services: Array<{ id: string; name: string; description: string; price: unknown; currency: string; isBookable: boolean; category: { name: string } | null }>;
+  services: Array<{ id: string; name: string; description: string; price: unknown; currency: string; images: string[]; isBookable: boolean; category: { name: string } | null }>;
   reviews: Array<{ id: string; rating: number; comment: string | null; author: { name: string | null } }>;
 };
 
@@ -394,16 +394,22 @@ function Catalog({ store, theme, slug, label, niche }: { store: StoreWithRelatio
           </h2>
           <div style={{ display: "grid", gap: 18, gridTemplateColumns: "repeat(auto-fill, minmax(220px, 1fr))" }}>
             {store.services.map((s) => (
-              <div key={s.id} style={{ background: theme.card, borderRadius: theme.radius, padding: 18 }}>
-                <p style={{ fontWeight: 600, fontSize: 15 }}>{s.name}</p>
-                <p style={{ fontSize: 13, opacity: 0.75, marginTop: 6, lineHeight: 1.5 }}>{s.description.length > 100 ? s.description.slice(0, 100) + "…" : s.description}</p>
-                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginTop: 14 }}>
-                  <span style={{ fontWeight: 700 }}>{s.currency} {Number(s.price).toLocaleString()}</span>
-                  {s.isBookable && <span style={{ fontSize: 11, fontWeight: 700, color: theme.accent, border: `1px solid ${theme.accent}`, borderRadius: 999, padding: "4px 10px" }}>Bookable</span>}
-                </div>
-                {s.isBookable && (
-                  <BookingWidget storeSlug={slug} serviceId={s.id} serviceName={s.name} accent={theme.accent} ink={theme.ink} bg={theme.bg} radius={theme.radius} />
+              <div key={s.id} style={{ background: theme.card, borderRadius: theme.radius, overflow: "hidden" }}>
+                {s.images[0] && (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img src={s.images[0]} alt={s.name} style={{ width: "100%", aspectRatio: "16/9", objectFit: "cover" }} />
                 )}
+                <div style={{ padding: 18 }}>
+                  <p style={{ fontWeight: 600, fontSize: 15 }}>{s.name}</p>
+                  <p style={{ fontSize: 13, opacity: 0.75, marginTop: 6, lineHeight: 1.5 }}>{s.description.length > 100 ? s.description.slice(0, 100) + "…" : s.description}</p>
+                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginTop: 14 }}>
+                    <span style={{ fontWeight: 700 }}>{s.currency} {Number(s.price).toLocaleString()}</span>
+                    {s.isBookable && <span style={{ fontSize: 11, fontWeight: 700, color: theme.accent, border: `1px solid ${theme.accent}`, borderRadius: 999, padding: "4px 10px" }}>Bookable</span>}
+                  </div>
+                  {s.isBookable && (
+                    <BookingWidget storeSlug={slug} serviceId={s.id} serviceName={s.name} accent={theme.accent} ink={theme.ink} bg={theme.bg} radius={theme.radius} />
+                  )}
+                </div>
               </div>
             ))}
           </div>

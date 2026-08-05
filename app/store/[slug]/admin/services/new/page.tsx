@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import { createService } from "@/lib/actions/service";
 import { redirect } from "next/navigation";
+import { ServiceImagesField } from "@/components/forms/service-images-field";
 
 const DAYS: Array<{ key: string; label: string }> = [
   { key: "mon", label: "Mon" }, { key: "tue", label: "Tue" }, { key: "wed", label: "Wed" },
@@ -42,7 +43,9 @@ export default async function NewServicePage({ params, searchParams }: { params:
           <textarea name="description" rows={3} required className="mb-3 w-full rounded-md border px-3 py-1.5 text-sm" />
 
           <label className="mb-1 block text-xs text-muted-foreground">Price (NGN)</label>
-          <input name="price" type="number" min="0" step="0.01" required className="w-full rounded-md border px-3 py-1.5 text-sm" />
+          <input name="price" type="number" min="0" step="0.01" required className="mb-3 w-full rounded-md border px-3 py-1.5 text-sm" />
+
+          <ServiceImagesField />
         </div>
 
         <div className="rounded-lg border bg-background p-4">

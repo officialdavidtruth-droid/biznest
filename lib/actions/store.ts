@@ -8,6 +8,7 @@ import { generateUniqueStoreSlug, storeAdminUrl, storePublicUrl } from "@/lib/ut
 import { revalidatePath } from "next/cache";
 import slugify from "slugify";
 import { SAMPLE_LISTINGS } from "@/lib/sample-listings";
+import { fetchUnsplashPhoto, fetchUnsplashPhotos } from "@/lib/unsplash";
 import type { ActionResult } from "@/types/actions";
 
 const DEFAULT_PAGES: Array<{ slug: string; title: string }> = [
@@ -74,6 +75,16 @@ export async function createStore(
 
   const slug = await generateUniqueStoreSlug(parsed.data.storeName);
 
+  // Fetched before the transaction, not inside it — holding a DB
+  // transaction open across external HTTP calls risks connection timeouts.
+  // See lib/unsplash.ts: no-ops (nulls) if UNSPLASH_ACCESS_KEY isn't set.
+  const template = await prisma.storeTemplate.findUnique({ where: { id: parsed.data.templateId } });
+  const samples = template ? SAMPLE_LISTINGS[template.category] ?? [] : [];
+  const [samplePhotos, bannerPhoto] = await Promise.all([
+    fetchUnsplashPhotos(samples.map((s) => s.name)),
+    template ? fetchUnsplashPhoto(template.category) : Promise.resolve(null),
+  ]);
+
   const store = await prisma.$transaction(async (tx) => {
     const created = await tx.store.create({
       data: {
@@ -81,6 +92,7 @@ export async function createStore(
         name: parsed.data.storeName,
         slug,
         templateId: parsed.data.templateId,
+        bannerUrl: bannerPhoto ?? undefined,
       },
     });
 
@@ -99,10 +111,10 @@ export async function createStore(
     // listing. Without this, every new store is genuinely blank until the
     // vendor manually adds something, which reads as "broken" even when
     // the template itself is rendering correctly (see round 5 discussion).
-    const template = await tx.storeTemplate.findUnique({ where: { id: parsed.data.templateId } });
-    const samples = template ? SAMPLE_LISTINGS[template.category] ?? [] : [];
-    for (const sample of samples) {
+    // template/samples/samplePhotos were fetched before this transaction opened.
+    for (const [i, sample] of samples.entries()) {
       const listingSlug = slugify(sample.name, { lower: true, strict: true });
+      const images = samplePhotos[i] ? [samplePhotos[i] as string] : [];
       if (sample.kind === "product") {
         await tx.product.create({
           data: {
@@ -111,6 +123,7 @@ export async function createStore(
             slug: listingSlug,
             description: sample.description,
             price: sample.price,
+            images,
             attributes: (sample.attributes as unknown as Prisma.InputJsonValue | undefined) ?? undefined,
             isPublished: true,
           },
@@ -123,6 +136,7 @@ export async function createStore(
             slug: listingSlug,
             description: sample.description,
             price: sample.price,
+            images,
             isBookable: sample.isBookable ?? false,
             durationMins: sample.durationMins,
             isPublished: true,
@@ -178,8 +192,21 @@ export async function seedSampleListings(slug: string): Promise<ActionResult> {
     return { success: false, error: "No starter listings are defined for this store's template yet." };
   }
 
-  for (const sample of samples) {
+  // Real stock photography, not fabricated — see lib/unsplash.ts. Fetched
+  // once here and persisted to the listing/store rows, never re-fetched on
+  // every page view. No-ops (returns nulls) if UNSPLASH_ACCESS_KEY isn't
+  // set — samples still get created, just without photos, same as before.
+  const photos = await fetchUnsplashPhotos(samples.map((s) => s.name));
+  if (store && !store.bannerUrl && store.template) {
+    const bannerPhoto = await fetchUnsplashPhoto(store.template.category);
+    if (bannerPhoto) {
+      await prisma.store.update({ where: { id: store.id }, data: { bannerUrl: bannerPhoto } });
+    }
+  }
+
+  for (const [i, sample] of samples.entries()) {
     const listingSlug = slugify(sample.name, { lower: true, strict: true });
+    const images = photos[i] ? [photos[i] as string] : [];
     if (sample.kind === "product") {
       await prisma.product.create({
         data: {
@@ -188,6 +215,7 @@ export async function seedSampleListings(slug: string): Promise<ActionResult> {
           slug: listingSlug,
           description: sample.description,
           price: sample.price,
+          images,
           attributes: (sample.attributes as unknown as Prisma.InputJsonValue | undefined) ?? undefined,
           isPublished: true,
         },
@@ -200,6 +228,7 @@ export async function seedSampleListings(slug: string): Promise<ActionResult> {
           slug: listingSlug,
           description: sample.description,
           price: sample.price,
+          images,
           isBookable: sample.isBookable ?? false,
           durationMins: sample.durationMins,
           isPublished: true,
@@ -236,6 +265,8 @@ export async function updateStoreSettings(slug: string, formData: FormData) {
   const description = String(formData.get("description") ?? "").trim();
   const contactEmail = String(formData.get("contactEmail") ?? "").trim() || null;
   const contactPhone = String(formData.get("contactPhone") ?? "").trim() || null;
+  const logoUrl = String(formData.get("logoUrl") ?? "").trim() || null;
+  const bannerUrl = String(formData.get("bannerUrl") ?? "").trim() || null;
   const primary = String(formData.get("primary") ?? "").trim();
   const secondary = String(formData.get("secondary") ?? "").trim();
   const accent = String(formData.get("accent") ?? "").trim();
@@ -250,6 +281,8 @@ export async function updateStoreSettings(slug: string, formData: FormData) {
       name,
       contactEmail,
       contactPhone,
+      logoUrl,
+      bannerUrl,
       themeColors: { primary, secondary, accent },
       socialLinks: { instagram, whatsapp },
     },

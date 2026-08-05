@@ -481,6 +481,48 @@ addressed this round: matching it needs either stock-photo integration
 (e.g. Unsplash API, requires an access key) or vendor-uploaded images,
 which is a reasonable, scoped next addition if that's the priority.
 
+## Fixes & features (round 10 — real uploads everywhere, auto-populated demo photography)
+
+**Correction to what I said last round:** upload infrastructure already
+existed — `/api/upload` (authenticated, Cloudinary-backed) plus two working
+components (`FileUploadField`, `MultiImageUpload`), already wired into
+product creation. The actual gaps, now closed:
+
+- **Settings had zero logo/banner upload** — `Store.logoUrl`/`bannerUrl`
+  were read everywhere (storefront header, hero fallback, gallery) but
+  never once settable. `components/forms/logo-banner-fields.tsx` (new) is a
+  small client island that slots into Settings' otherwise-plain
+  server-rendered form via hidden inputs — `updateStoreSettings` now
+  actually persists both.
+- **Service creation had no image upload at all**, and even if it had,
+  **the storefront never rendered service images anyway** — both fixed:
+  `ServiceImagesField` (new) reuses `MultiImageUpload` (now takes a `label`
+  prop instead of a hardcoded "Product images"), and the storefront's
+  service cards now show the first uploaded image, matching how product
+  cards already worked.
+
+**Auto-populated demo photography** — `lib/unsplash.ts` (new), entirely
+optional via `UNSPLASH_ACCESS_KEY`:
+- Sample listings seeded at store creation, template switch, or the
+  "Add starter listings" button now get a real matching stock photo per
+  item, not just a name and price.
+- A store's banner auto-fills with a niche-relevant photo *only if* the
+  vendor hasn't set one — a real upload always wins and is never overwritten.
+- Fetched **once, at creation/seeding time, and persisted** — never on a
+  storefront page view. `createStore`'s photo fetches happen *before* its
+  DB transaction opens, not inside it — holding a transaction open across
+  external HTTP calls risks connection timeouts, so photos are resolved
+  first and passed in as plain values.
+- Without a key configured: every function in `lib/unsplash.ts` returns
+  `null`, and every caller already had a fallback (CSS gradient/monogram)
+  from before — nothing breaks, it just looks like it did previously.
+
+**Honest remaining gap:** this closes vendor uploads and automatic demo
+photography for *listings*. It does not add a stock-photo picker inside the
+manual upload flow (e.g. "search Unsplash" button next to the upload
+button) — vendors can only upload their own or get what's auto-generated at
+creation time. That's a reasonable next increment if wanted.
+
 ## What's next toward the Shopify/WooCommerce bar (round 4)
 
 This pass fixed what was broken. Bigger lifts still ahead, roughly in priority order:

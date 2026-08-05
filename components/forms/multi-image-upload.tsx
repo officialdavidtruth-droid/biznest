@@ -7,10 +7,12 @@ export function MultiImageUpload({
   value,
   onChange,
   max = 8,
+  label = "Product images",
 }: {
   value: string[];
   onChange: (urls: string[]) => void;
   max?: number;
+  label?: string;
 }) {
   const [isUploading, setIsUploading] = useState(false);
 
@@ -34,7 +36,7 @@ export function MultiImageUpload({
 
   return (
     <div>
-      <label className="mb-1 block text-sm font-medium">Product images</label>
+      <label className="mb-1 block text-sm font-medium">{label}</label>
       <div className="flex flex-wrap gap-3">
         {value.map((url, i) => (
           <div key={url + i} className="group relative h-20 w-20 overflow-hidden rounded-md border">

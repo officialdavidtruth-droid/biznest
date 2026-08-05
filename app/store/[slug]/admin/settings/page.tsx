@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import { updateStoreSettings } from "@/lib/actions/store";
 import { setCustomDomain, recheckDomainStatus, removeCustomDomain } from "@/lib/actions/domain";
+import { LogoBannerFields } from "@/components/forms/logo-banner-fields";
 
 export default async function SettingsPage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
@@ -35,6 +36,7 @@ export default async function SettingsPage({ params }: { params: Promise<{ slug:
     <div className="max-w-xl">
       <h1 className="mb-6 text-xl font-semibold">Settings</h1>
       <form action={save} className="space-y-6">
+        <LogoBannerFields initialLogo={store.logoUrl ?? ""} initialBanner={store.bannerUrl ?? ""} />
         <div className="rounded-lg border bg-background p-4">
           <p className="mb-3 text-sm font-medium">Store details</p>
           <label className="mb-1 block text-xs text-muted-foreground">Store name</label>
