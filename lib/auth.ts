@@ -10,6 +10,12 @@ import { loginSchema } from "@/lib/validations/auth";
 export const { handlers, auth, signIn, signOut } = NextAuth({
   adapter: PrismaAdapter(prisma),
   session: { strategy: "jwt" },
+  // Required for custom domains behind Vercel (biznest.space, not a
+  // *.vercel.app subdomain). Without this, Auth.js can reject the request's
+  // host header and the client hangs waiting on a response that never
+  // resolves cleanly — this is very likely what's causing the stuck
+  // "Signing in…" state. See https://authjs.dev/reference/faq#trusthost.
+  trustHost: true,
   pages: {
     signIn: "/login",
     error: "/login",

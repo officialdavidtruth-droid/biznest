@@ -22,19 +22,28 @@ export function LoginForm() {
 
   async function onSubmit(values: LoginInput) {
     setIsSubmitting(true);
-    const result = await signIn("credentials", { ...values, redirect: false });
-    setIsSubmitting(false);
+    try {
+      const result = await signIn("credentials", { ...values, redirect: false });
 
-    if (result?.error) {
-      const messages: Record<string, string> = {
-        EMAIL_NOT_VERIFIED: "Please verify your email before signing in.",
-        ACCOUNT_LOCKED: "Too many failed attempts. Try again in 15 minutes.",
-        ACCOUNT_BANNED: "This account has been suspended. Contact support.",
-      };
-      toast.error(messages[result.error] ?? "Invalid email or password.");
-      return;
+      if (result?.error) {
+        const messages: Record<string, string> = {
+          EMAIL_NOT_VERIFIED: "Please verify your email before signing in.",
+          ACCOUNT_LOCKED: "Too many failed attempts. Try again in 15 minutes.",
+          ACCOUNT_BANNED: "This account has been suspended. Contact support.",
+        };
+        toast.error(messages[result.error] ?? "Invalid email or password.");
+        return;
+      }
+      router.push(callbackUrl);
+    } catch {
+      // A thrown error here (vs. a normal {error} result) means the
+      // sign-in request itself failed at the network/host level — this is
+      // exactly what previously left the button stuck on "Signing in…"
+      // forever with no feedback. Surface it instead of hanging silently.
+      toast.error("Couldn't reach the server. Please try again in a moment.");
+    } finally {
+      setIsSubmitting(false);
     }
-    router.push(callbackUrl);
   }
 
   return (
