@@ -7,6 +7,20 @@ import bcrypt from "bcryptjs";
 import { prisma } from "@/lib/prisma";
 import { loginSchema } from "@/lib/validations/auth";
 
+// If the database call inside authorize() hangs (e.g. DATABASE_URL pointing
+// at an unreachable or misconfigured connection), the whole sign-in request
+// hangs with it — no error, no timeout, nothing, indefinitely. This wraps
+// any promise with a hard deadline so a DB problem shows up as a real error
+// within 8 seconds instead of leaving the user staring at "Signing in…"
+// forever. This does not fix a bad DATABASE_URL — it just makes a bad one
+// loud instead of silent.
+function withTimeout<T>(promise: Promise<T>, ms = 8000): Promise<T> {
+  return Promise.race([
+    promise,
+    new Promise<T>((_, reject) => setTimeout(() => reject(new Error("DB_TIMEOUT")), ms)),
+  ]);
+}
+
 export const { handlers, auth, signIn, signOut } = NextAuth({
   adapter: PrismaAdapter(prisma),
   session: { strategy: "jwt" },
@@ -34,9 +48,23 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         const parsed = loginSchema.safeParse(credentials);
         if (!parsed.success) return null;
 
-        const user = await prisma.user.findUnique({
-          where: { email: parsed.data.email },
-        });
+        let user;
+        try {
+          user = await withTimeout(
+            prisma.user.findUnique({ where: { email: parsed.data.email } })
+          );
+        } catch (err) {
+          if (err instanceof Error && err.message === "DB_TIMEOUT") {
+            // Surfaces as a normal NextAuth error the login form already
+            // handles, rather than an unhandled hang. If you see this in
+            // practice, it confirms the database — not auth config — is
+            // the problem: check DATABASE_URL in Vercel's env vars against
+            // Supabase's *pooled* connection string (port 6543,
+            // ?pgbouncer=true), not the direct one (port 5432).
+            throw new Error("DB_UNAVAILABLE");
+          }
+          throw err;
+        }
         if (!user?.passwordHash) return null;
 
         if (user.lockedUntil && user.lockedUntil > new Date()) {

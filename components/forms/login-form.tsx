@@ -30,6 +30,7 @@ export function LoginForm() {
           EMAIL_NOT_VERIFIED: "Please verify your email before signing in.",
           ACCOUNT_LOCKED: "Too many failed attempts. Try again in 15 minutes.",
           ACCOUNT_BANNED: "This account has been suspended. Contact support.",
+          DB_UNAVAILABLE: "Couldn't reach the database. Check DATABASE_URL in Vercel's project settings.",
         };
         toast.error(messages[result.error] ?? "Invalid email or password.");
         return;
