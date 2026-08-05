@@ -23,7 +23,7 @@
  */
 
 export type HeroStyle = "centered" | "split" | "fullbleed";
-export type Section = "hero" | "catalog" | "about" | "testimonials" | "contact" | "stats" | "features" | "newsletter";
+export type Section = "hero" | "catalog" | "about" | "testimonials" | "contact" | "stats" | "features" | "newsletter" | "categories" | "deal";
 export type ColorMode = "signature" | "inverse";
 
 export type TemplateTheme = {
@@ -110,13 +110,13 @@ export const NICHE_TEMPLATES: Record<string, NicheBase> = {
     bg: "#0D1117", ink: "#E6EDF3", card: "#161B22", accent: "#4F9EE8", altAccents: ["#8FB4FF", "#57C1A3"],
     font: "'Space Grotesk', sans-serif", radius: "0.5rem",
     eyebrow: "In stock", headline: "Tech that keeps up.", sub: "Genuine devices, fair prices.", cta: "Browse devices",
-    layout: "grid", catalogLabel: "Devices", sections: ["hero", "stats", "catalog", "features", "testimonials", "newsletter", "contact"],
+    layout: "grid", catalogLabel: "Devices", sections: ["hero", "categories", "stats", "catalog", "deal", "features", "testimonials", "newsletter", "contact"],
   },
   "Grocery & Supermarket": {
     bg: "#F4F8F1", ink: "#1D2B18", card: "#FFFFFF", accent: "#3E7C4F", altAccents: ["#D9A441"],
     font: "'Inter', sans-serif", radius: "0.5rem",
     eyebrow: "Fresh weekly", headline: "Everyday essentials.", sub: "Groceries delivered to your door.", cta: "Start shopping",
-    layout: "grid", catalogLabel: "Groceries", sections: ["hero", "features", "catalog", "stats", "newsletter", "contact"],
+    layout: "grid", catalogLabel: "Groceries", sections: ["hero", "features", "categories", "deal", "catalog", "stats", "newsletter", "contact"],
   },
   "Furniture & Home Decor": {
     bg: "#F6F1E9", ink: "#2C2013", card: "#FFFFFF", accent: "#8A5A34", altAccents: ["#7a6a4f", "#0B3D2E"],
@@ -224,13 +224,13 @@ export const NICHE_TEMPLATES: Record<string, NicheBase> = {
     bg: "#0A0A0A", ink: "#F5F5F0", card: "#161616", accent: "#FF6A1A", altAccents: ["#FFC93C", "#3DDC97"],
     font: "'Space Grotesk', sans-serif", radius: "0.25rem",
     eyebrow: "Fresh drops weekly", headline: "Reimagined comfort.", sub: "Not just shoes — a lifestyle.", cta: "Shop the drop",
-    layout: "grid", catalogLabel: "Sneakers", sections: ["hero", "stats", "catalog", "features", "testimonials", "newsletter", "contact"],
+    layout: "grid", catalogLabel: "Sneakers", sections: ["hero", "stats", "categories", "catalog", "deal", "features", "testimonials", "newsletter", "contact"],
   },
   "General Marketplace": {
     bg: "#FBF6EF", ink: "#221A10", card: "#FFFFFF", accent: "#E8722A", altAccents: ["#0B3D2E", "#3D5FA6"],
     font: "'Inter', sans-serif", radius: "0.75rem",
     eyebrow: "Shop more, save more", headline: "Everything you need, one stop.", sub: "Quality picks, everyday prices.", cta: "Explore deals",
-    layout: "grid", catalogLabel: "Shop", sections: ["hero", "features", "catalog", "stats", "testimonials", "newsletter", "contact"],
+    layout: "grid", catalogLabel: "Shop", sections: ["hero", "features", "categories", "deal", "catalog", "stats", "testimonials", "newsletter", "contact"],
   },
 };
 

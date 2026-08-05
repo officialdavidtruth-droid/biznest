@@ -69,6 +69,13 @@ export default async function StorefrontPage({ params }: { params: Promise<{ slu
   const avgRating = store.reviews.length
     ? store.reviews.reduce((sum, r) => sum + r.rating, 0) / store.reviews.length
     : null;
+  const distinctCategories = new Set([
+    ...store.products.map((p) => p.category?.name).filter(Boolean),
+    ...store.services.map((s) => s.category?.name).filter(Boolean),
+  ]);
+  const discountedProduct = store.products.find(
+    (p) => p.compareAtPrice && Number(p.compareAtPrice) > Number(p.price)
+  );
 
   const sectionEnabled: Record<Section, boolean> = {
     hero: true,
@@ -76,6 +83,8 @@ export default async function StorefrontPage({ params }: { params: Promise<{ slu
     about: Boolean(store.business.description),
     stats: hasCatalog || store.reviews.length > 0,
     features: true,
+    categories: distinctCategories.size >= 2,
+    deal: Boolean(discountedProduct),
     testimonials: goodReviews.length > 0,
     newsletter: true,
     contact: Boolean(store.contactEmail || store.contactPhone || social.whatsapp),
@@ -115,6 +124,12 @@ export default async function StorefrontPage({ params }: { params: Promise<{ slu
                 hasBooking={hasBookableServices}
               />
             );
+          case "categories":
+            return <CategoryStrip key={s} store={store} theme={theme} slug={slug} />;
+          case "deal":
+            return discountedProduct ? (
+              <DealBanner key={s} store={store} theme={theme} slug={slug} product={discountedProduct} />
+            ) : null;
           case "testimonials":
             return <Testimonials key={s} reviews={goodReviews} theme={theme} />;
           case "newsletter":
@@ -432,6 +447,95 @@ function About({ store, theme }: { store: StoreWithRelations; theme: TemplateThe
     <section id="about" style={{ maxWidth: 780, margin: "0 auto", padding: "12px 24px 56px" }}>
       <h2 style={{ fontSize: 13, fontWeight: 700, letterSpacing: "0.06em", textTransform: "uppercase", opacity: 0.6, marginBottom: 14 }}>About</h2>
       <p style={{ fontSize: 16, lineHeight: 1.7, opacity: 0.9 }}>{store.business.description}</p>
+    </section>
+  );
+}
+
+function CategoryStrip({ store, theme, slug }: { store: StoreWithRelations; theme: TemplateTheme; slug: string }) {
+  const counts = new Map<string, number>();
+  for (const p of store.products) {
+    const name = p.category?.name;
+    if (name) counts.set(name, (counts.get(name) ?? 0) + 1);
+  }
+  for (const s of store.services) {
+    const name = s.category?.name;
+    if (name) counts.set(name, (counts.get(name) ?? 0) + 1);
+  }
+  const categories = Array.from(counts.entries()).sort((a, b) => b[1] - a[1]).slice(0, 8);
+  if (categories.length === 0) return null;
+
+  return (
+    <section style={{ maxWidth: 1100, margin: "0 auto", padding: "8px 24px 40px" }}>
+      <h2 style={{ fontSize: 13, fontWeight: 700, letterSpacing: "0.06em", textTransform: "uppercase", opacity: 0.6, marginBottom: 18 }}>
+        Shop by category
+      </h2>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(120px, 1fr))", gap: 12 }}>
+        {categories.map(([name, count]) => (
+          <a
+            key={name}
+            href="#catalog"
+            style={{
+              display: "flex", flexDirection: "column", alignItems: "center", gap: 8,
+              padding: "18px 12px", borderRadius: theme.radius, background: theme.card,
+              border: `1px solid ${theme.ink}14`, textDecoration: "none", color: theme.ink,
+              textAlign: "center",
+            }}
+          >
+            <span
+              style={{
+                width: 40, height: 40, borderRadius: "50%", background: `${theme.accent}22`,
+                color: theme.accent, display: "flex", alignItems: "center", justifyContent: "center",
+                fontWeight: 700, fontSize: 15,
+              }}
+            >
+              {name.charAt(0).toUpperCase()}
+            </span>
+            <span style={{ fontSize: 12.5, fontWeight: 600 }}>{name}</span>
+            <span style={{ fontSize: 11, opacity: 0.55 }}>{count} item{count !== 1 ? "s" : ""}</span>
+          </a>
+        ))}
+      </div>
+    </section>
+  );
+}
+
+function DealBanner({ store, theme, slug, product }: {
+  store: StoreWithRelations; theme: TemplateTheme; slug: string;
+  product: StoreWithRelations["products"][number];
+}) {
+  const price = Number(product.price);
+  const compareAt = Number(product.compareAtPrice);
+  const pctOff = Math.round((1 - price / compareAt) * 100);
+
+  return (
+    <section style={{ maxWidth: 1100, margin: "0 auto", padding: "8px 24px 40px" }}>
+      <div
+        style={{
+          display: "flex", flexWrap: "wrap", alignItems: "center", justifyContent: "space-between",
+          gap: 20, padding: "28px 32px", borderRadius: theme.radius,
+          background: `linear-gradient(120deg, ${theme.accent}, ${theme.accent}bb)`, color: theme.bg,
+        }}
+      >
+        <div>
+          <p style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase", opacity: 0.85, marginBottom: 6 }}>
+            Deal of the day · {pctOff}% off
+          </p>
+          <h3 style={{ fontSize: 22, fontWeight: 700, margin: 0 }}>{product.name}</h3>
+          <p style={{ marginTop: 8, fontSize: 15 }}>
+            <span style={{ fontWeight: 700 }}>{product.currency} {price.toLocaleString()}</span>{" "}
+            <span style={{ opacity: 0.7, textDecoration: "line-through" }}>{product.currency} {compareAt.toLocaleString()}</span>
+          </p>
+        </div>
+        <a
+          href="#catalog"
+          style={{
+            background: theme.bg, color: theme.accent, padding: "12px 24px", borderRadius: theme.radius,
+            fontWeight: 700, fontSize: 14, textDecoration: "none", whiteSpace: "nowrap",
+          }}
+        >
+          Shop the deal →
+        </a>
+      </div>
     </section>
   );
 }

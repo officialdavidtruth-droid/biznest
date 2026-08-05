@@ -12,6 +12,8 @@ const LABELS: Record<Section, string> = {
   about: "About",
   stats: "Stats bar (listings, rating, orders)",
   features: "Why choose us (feature grid)",
+  categories: "Shop by category",
+  deal: "Deal banner (shows when a product has a discount)",
   testimonials: "Testimonials",
   newsletter: "Email signup",
   contact: "Contact",
