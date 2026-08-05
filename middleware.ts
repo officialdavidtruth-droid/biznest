@@ -1,5 +1,13 @@
-import { auth } from "@/lib/auth";
+import NextAuth from "next-auth";
 import { NextResponse } from "next/server";
+import { authConfig } from "@/lib/auth.config";
+
+// Edge-safe auth instance, built only from the Prisma-free base config.
+// Do NOT import { auth } from "@/lib/auth" here — that pulls in Prisma via
+// the adapter/Credentials provider, and middleware always runs on the Edge
+// Runtime, which cannot run Prisma Client. See lib/auth.config.ts for the
+// full explanation; this was the exact cause of a sitewide sign-in outage.
+const { auth } = NextAuth(authConfig);
 
 // Routes that require an authenticated session at all.
 const PROTECTED_PREFIXES = ["/onboarding", "/dashboard", "/admin", "/supaadmin", "/account", "/orders"];

@@ -6,6 +6,7 @@ import { PrismaAdapter } from "@auth/prisma-adapter";
 import bcrypt from "bcryptjs";
 import { prisma } from "@/lib/prisma";
 import { loginSchema } from "@/lib/validations/auth";
+import { authConfig } from "@/lib/auth.config";
 
 // If the database call inside authorize() hangs (e.g. DATABASE_URL pointing
 // at an unreachable or misconfigured connection), the whole sign-in request
@@ -21,19 +22,16 @@ function withTimeout<T>(promise: Promise<T>, ms = 8000): Promise<T> {
   ]);
 }
 
+// IMPORTANT: this file must never be imported from middleware.ts. It pulls
+// in Prisma (via the adapter, Credentials provider, and the jwt callback
+// below), and Next.js Middleware always runs on the Edge Runtime, which
+// cannot run Prisma Client. middleware.ts has its own lightweight `auth()`
+// built from lib/auth.config.ts instead — see that file for the full
+// explanation. Importing this file from middleware.ts is exactly the
+// regression that broke sign-in sitewide; don't reintroduce it.
 export const { handlers, auth, signIn, signOut } = NextAuth({
+  ...authConfig,
   adapter: PrismaAdapter(prisma),
-  session: { strategy: "jwt" },
-  // Required for custom domains behind Vercel (biznest.space, not a
-  // *.vercel.app subdomain). Without this, Auth.js can reject the request's
-  // host header and the client hangs waiting on a response that never
-  // resolves cleanly — this is very likely what's causing the stuck
-  // "Signing in…" state. See https://authjs.dev/reference/faq#trusthost.
-  trustHost: true,
-  pages: {
-    signIn: "/login",
-    error: "/login",
-  },
   providers: [
     Google({
       clientId: process.env.GOOGLE_CLIENT_ID,
@@ -115,6 +113,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
     }),
   ],
   callbacks: {
+    ...authConfig.callbacks,
     async jwt({ token, user }) {
       if (user) {
         token.id = user.id;
@@ -123,12 +122,12 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         // Session strategy is JWT, so the token is normally just decoded and
         // reused across requests without touching the DB again. That means
         // a role change (e.g. via /api/promote-admin, or a ban) never took
-        // effect until the user logged out and back in — which is exactly
-        // why a freshly-promoted PLATFORM_ADMIN kept getting bounced out of
-        // /supaadmin. Re-check the DB role on every request so promotions
-        // (and bans) apply immediately. This is one indexed PK lookup — fine
-        // at this scale, same tradeoff as RateLimitEntry elsewhere in this
-        // codebase; revisit if/when this needs to scale further.
+        // effect until the user logged out and back in. Re-check the DB
+        // role here so promotions/bans apply immediately — safe in this
+        // file specifically because everything that imports lib/auth.ts
+        // (Server Components, Route Handlers, Server Actions) runs on the
+        // Node.js runtime, not Edge. One indexed PK lookup — fine at this
+        // scale, same tradeoff as RateLimitEntry elsewhere in this codebase.
         const current = await prisma.user.findUnique({
           where: { id: token.id as string },
           select: { role: true, isBanned: true },
