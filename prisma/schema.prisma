@@ -180,6 +180,13 @@ enum StoreStatus {
   CLOSED
 }
 
+enum DomainStatus {
+  NONE
+  PENDING
+  VERIFIED
+  FAILED
+}
+
 model Store {
   id            String      @id @default(cuid())
   businessId    String      @unique
@@ -188,6 +195,7 @@ model Store {
   name          String
   slug          String      @unique
   customDomain  String?     @unique
+  customDomainStatus DomainStatus @default(NONE)
   status        StoreStatus @default(ACTIVE)
 
   templateId    String?
@@ -612,11 +620,12 @@ model Notification {
 
 model Subscription {
   id        String   @id @default(cuid())
-  name      String   @unique // "Free" | "Starter" | "Growth" | "Pro"
+  name      String   @unique // "Free" | "Entrepreneur" | "Enterprise" | "Business Mogul"
   price     Decimal  @db.Decimal(12, 2)
   interval  String   // "MONTHLY" | "YEARLY"
-  features  Json
+  features  Json     // { products, services, customDomain } — -1 means unlimited
   commissionRate Decimal @db.Decimal(5, 2) @default(0) // percentage
+  isActive  Boolean  @default(true) // retired plans are hidden from pricing/upgrade UI, not deleted — a store may still reference one
 
   stores    Store[]
 }

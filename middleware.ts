@@ -20,12 +20,50 @@ const STORE_ADMIN_PATTERN = /^\/store\/[^/]+\/admin/;
 // Platform admin routes require PLATFORM_ADMIN or SUPPORT_MODERATOR role.
 const PLATFORM_ADMIN_PATTERN = /^\/(admin|supaadmin)/;
 
-export default auth((req) => {
-  const { pathname } = req.nextUrl;
+// Hosts that are BizNest itself, not a vendor's custom domain.
+function isPlatformHost(host: string): boolean {
+  return (
+    host === "biznest.space" ||
+    host === "www.biznest.space" ||
+    host === "localhost" ||
+    host.endsWith(".vercel.app")
+  );
+}
+
+/**
+ * Resolves a custom domain (e.g. mystore.com, an Enterprise/Business Mogul
+ * feature) to its store slug by calling app/api/resolve-domain (Node.js
+ * runtime, so it can use Prisma safely — middleware itself cannot).
+ */
+async function resolveCustomDomain(host: string, origin: string): Promise<string | null> {
+  if (isPlatformHost(host)) return null;
+  try {
+    const res = await fetch(new URL(`/api/resolve-domain?host=${host}`, origin));
+    if (!res.ok) return null;
+    const { slug } = (await res.json()) as { slug: string | null };
+    return slug;
+  } catch {
+    // Resolver unreachable — fail open to "not a known custom domain"
+    // rather than break the request entirely.
+    return null;
+  }
+}
+
+export default auth(async (req) => {
+  const slug = await resolveCustomDomain(req.nextUrl.hostname.toLowerCase(), req.nextUrl.origin);
+  const url = req.nextUrl.clone();
+
+  if (slug) {
+    url.pathname = `/store/${slug}${url.pathname === "/" ? "" : url.pathname}`;
+  }
+
+  const { pathname } = url;
   const isProtected =
     PROTECTED_PREFIXES.some((p) => pathname.startsWith(p)) || STORE_ADMIN_PATTERN.test(pathname);
 
-  if (!isProtected) return NextResponse.next();
+  if (!isProtected) {
+    return slug ? NextResponse.rewrite(url) : NextResponse.next();
+  }
 
   if (!req.auth?.user) {
     const loginUrl = new URL("/login", req.nextUrl.origin);
@@ -40,7 +78,7 @@ export default auth((req) => {
     }
   }
 
-  return NextResponse.next();
+  return slug ? NextResponse.rewrite(url) : NextResponse.next();
 });
 
 export const config = {

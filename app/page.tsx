@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { Space_Grotesk, Inter, JetBrains_Mono } from "next/font/google";
 import { auth } from "@/lib/auth";
+import { prisma } from "@/lib/prisma";
 import { SignOutButton } from "@/components/forms/sign-out-button";
 
 const display = Space_Grotesk({ subsets: ["latin"], variable: "--font-display", weight: ["500", "700"] });
@@ -48,6 +49,7 @@ const CATEGORIES = [
 
 export default async function HomePage() {
   const session = await auth();
+  const plans = await prisma.subscription.findMany({ where: { isActive: true }, orderBy: { price: "asc" } });
   return (
     <div
       className={`${display.variable} ${body.variable} ${mono.variable} min-h-screen`}
@@ -224,6 +226,62 @@ export default async function HomePage() {
         </p>
       </section>
 
+      {/* Pricing — pulled live from the Subscription table, not hardcoded copy,
+          so this page can never drift out of sync with what a store actually gets. */}
+      <section id="pricing" className="px-6 py-16 sm:px-10 lg:py-24">
+        <h2 className="mb-3 text-2xl sm:text-3xl" style={{ fontFamily: "var(--font-display)", fontWeight: 700 }}>
+          Simple pricing, real ownership
+        </h2>
+        <p className="mb-10 max-w-lg text-sm" style={{ color: "var(--bn-mute)" }}>
+          Start free. Upgrade when you're ready for higher limits, a lower commission,
+          and your own domain name.
+        </p>
+        <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
+          {plans.map((p) => {
+            const features = p.features as { products?: number; services?: number; customDomain?: boolean };
+            const featured = p.name === "Enterprise";
+            return (
+              <div
+                key={p.id}
+                className="relative rounded-2xl p-6"
+                style={{
+                  background: featured ? "var(--bn-marigold)" : "var(--bn-ink-raised)",
+                  color: featured ? "var(--bn-ink)" : "var(--bn-ivory)",
+                  border: featured ? "none" : "1px solid var(--bn-ink-line)",
+                }}
+              >
+                {featured && (
+                  <span className="absolute -top-3 left-6 rounded-full bg-black/80 px-3 py-1 text-[10px] font-bold uppercase tracking-wide text-white">
+                    Most popular
+                  </span>
+                )}
+                <p className="text-sm font-semibold">{p.name}</p>
+                <p className="mt-2 text-3xl font-bold" style={{ fontFamily: "var(--font-display)" }}>
+                  {Number(p.price) === 0 ? "Free" : `₦${Number(p.price).toLocaleString()}`}
+                  {Number(p.price) > 0 && <span className="text-sm font-normal opacity-70">/mo</span>}
+                </p>
+                <ul className="mt-5 space-y-2 text-sm" style={{ opacity: featured ? 0.85 : 0.75 }}>
+                  <li>{Number(p.commissionRate)}% commission per sale</li>
+                  <li>{features.products === -1 ? "Unlimited products" : `Up to ${features.products ?? 0} products`}</li>
+                  <li>{features.services === -1 ? "Unlimited services" : `Up to ${features.services ?? 0} services`}</li>
+                  <li className="font-medium">{features.customDomain ? "✓ Your own domain name" : "Runs on your biznest.space address"}</li>
+                </ul>
+                <Link
+                  href={session?.user ? "/onboarding/business-verification" : "/register"}
+                  className="mt-6 block rounded-full py-2.5 text-center text-sm font-medium transition hover:brightness-110"
+                  style={{
+                    background: featured ? "var(--bn-ink)" : "var(--bn-marigold)",
+                    color: featured ? "var(--bn-ivory)" : "var(--bn-ink)",
+                  }}
+                >
+                  {Number(p.price) === 0 ? "Start free" : "Get started"}
+                </Link>
+              </div>
+            );
+          })}
+        </div>
+      </section>
+
       {/* Trust & security — states what's actually built, not generic marketing claims */}
       <section className="px-6 py-16 sm:px-10 lg:py-24">
         <h2 className="mb-10 text-2xl sm:text-3xl" style={{ fontFamily: "var(--font-display)", fontWeight: 700 }}>
@@ -278,6 +336,7 @@ export default async function HomePage() {
             <ul className="space-y-2 text-sm" style={{ color: "var(--bn-mute)" }}>
               <li><Link href="/register" className="hover:opacity-80">Open a store</Link></li>
               <li><Link href="/login" className="hover:opacity-80">Sign in</Link></li>
+              <li><a href="#pricing" className="hover:opacity-80">Pricing</a></li>
               <li><a href="#categories" className="hover:opacity-80">Categories</a></li>
             </ul>
           </div>

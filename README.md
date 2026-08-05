@@ -292,6 +292,72 @@ even when the template itself renders correctly. Fixed:
   treatment plus a large faint store-initial monogram — looks intentional
   even before a vendor uploads a real photo.
 
+## Fixes & features (round 6 — real pricing tiers, custom domains, supa admin)
+
+**Pricing is now a real, single source of truth**, not homepage copy that
+can drift out of sync with what a store actually gets:
+- `prisma/seed.ts` — the `Subscription` table now has Free (unchanged) plus
+  three paid tiers exactly as specified: **Entrepreneur** ₦35,000/mo,
+  **Enterprise** ₦67,000/mo, **Business Mogul** ₦139,000/mo — each with its
+  own commission rate, product/service caps, and a `customDomain` flag.
+  Old plan names are deactivated (`isActive: false`), not deleted, so a
+  store already on one keeps working.
+- `app/page.tsx` — new pricing section rendered directly from the
+  `Subscription` table.
+- `app/store/[slug]/admin/subscription/page.tsx` — plan cards now show real
+  feature comparisons, and "Upgrade" actually works (see below) instead of
+  being a dead button.
+
+**Custom domains for Enterprise and Business Mogul**, built end-to-end:
+- `Store.customDomain` already existed in the schema; added
+  `customDomainStatus` (`NONE`/`PENDING`/`VERIFIED`/`FAILED`).
+- `lib/vercel-domains.ts` (new) — calls Vercel's REST API to actually attach
+  a vendor's domain to this project. Requires `VERCEL_API_TOKEN` and
+  `VERCEL_PROJECT_ID` (see `.env.example`) — without these set, the feature
+  fails with a clear error rather than silently doing nothing.
+- `lib/actions/domain.ts` (new) — plan-gated (`features.customDomain` must
+  be true), validates the domain, checks it's not already claimed by
+  another store, calls Vercel, persists status.
+- **Routing** — this was the trickiest part, on purpose done carefully
+  given the exact same mistake broke sign-in two rounds ago:
+  `app/api/resolve-domain/route.ts` is a Node.js Route Handler that looks up
+  a custom domain's store slug via Prisma. `middleware.ts` — which always
+  runs on Edge and cannot use Prisma — calls that route via `fetch()` and
+  rewrites the request into `/store/[slug]/*`, the same paths
+  `biznest.space/store/[slug]` already uses. Known trade-off: one extra
+  network round-trip per custom-domain request, since there's no edge-cached
+  lookup layer yet — fine at 50-user scale, worth revisiting if custom
+  domains see real traffic.
+- Settings page — a plan-gated domain connection UI: enter a domain, see its
+  verification status, DNS instructions (CNAME to `cname.vercel-dns.com`),
+  re-check status, or remove it.
+
+**Plan upgrades now charge real money**, not just flip a database flag:
+- `lib/actions/subscription.ts` (new) — initiates a Paystack transaction
+  charged directly to the platform account (no subaccount split, since this
+  is the vendor paying BizNest, not a customer paying the vendor).
+- `app/api/payments/paystack/subscription-callback/route.ts` (new) —
+  separate from the existing order-payment callback on purpose, so the two
+  can never be confused. Verifies server-side against Paystack before
+  applying the plan change — the redirect alone is never treated as proof
+  of payment, same discipline as the order flow.
+
+**Supa admin now covers what was asked**: "the page for me, the builder of
+the app" needs visibility into money and infrastructure, not just
+moderation. Added:
+- `/supaadmin/subscriptions` — MRR total, per-plan store counts, and a full
+  store → plan → domain table.
+- `/supaadmin/domains` — every connected custom domain across the platform,
+  its status, and a manual "mark verified" override for the rare case where
+  a vendor's DNS is confirmed live but Vercel's automatic check is stuck.
+
+**On "upgrade the app features and functions to be better"** — I want to be
+direct rather than pretend I acted on this: it's too broad to turn into
+specific work without knowing what you mean. Everything above is concrete
+and shipped. If there's a specific feature or flow you want improved next,
+name it and I'll go after it the same way — real, working, and honest about
+what's still simplified.
+
 ## What's next toward the Shopify/WooCommerce bar (round 4)
 
 This pass fixed what was broken. Bigger lifts still ahead, roughly in priority order:

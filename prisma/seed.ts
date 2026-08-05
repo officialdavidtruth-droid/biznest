@@ -26,12 +26,17 @@ const SERVICE_CATEGORIES = [
   "Printing", "Photography Studio Rental", "Hotel Services",
 ];
 
+// Pricing tiers. "Free" stays as the entry tier for new vendors — the three
+// named paid tiers below are what's actually being sold. commissionRate and
+// product/service caps step down as price goes up; customDomain unlocks at
+// Enterprise and above. -1 in features means unlimited.
 const SUBSCRIPTIONS = [
-  { name: "Free", price: 0, interval: "MONTHLY", commissionRate: 8, features: { products: 20, services: 10 } },
-  { name: "Starter", price: 5000, interval: "MONTHLY", commissionRate: 5, features: { products: 200, services: 100 } },
-  { name: "Growth", price: 15000, interval: "MONTHLY", commissionRate: 3, features: { products: 2000, services: 1000 } },
-  { name: "Pro", price: 40000, interval: "MONTHLY", commissionRate: 1.5, features: { products: -1, services: -1 } },
+  { name: "Free", price: 0, interval: "MONTHLY", commissionRate: 8, features: { products: 20, services: 10, customDomain: false } },
+  { name: "Entrepreneur", price: 35000, interval: "MONTHLY", commissionRate: 5, features: { products: 300, services: 150, customDomain: false } },
+  { name: "Enterprise", price: 67000, interval: "MONTHLY", commissionRate: 3, features: { products: 3000, services: 1500, customDomain: true } },
+  { name: "Business Mogul", price: 139000, interval: "MONTHLY", commissionRate: 1, features: { products: -1, services: -1, customDomain: true } },
 ];
+const ACTIVE_SUBSCRIPTION_NAMES = SUBSCRIPTIONS.map((s) => s.name);
 
 async function main() {
   await prisma.category.createMany({
@@ -76,10 +81,19 @@ async function main() {
   for (const sub of SUBSCRIPTIONS) {
     await prisma.subscription.upsert({
       where: { name: sub.name },
-      update: {},
+      update: { price: sub.price, commissionRate: sub.commissionRate, features: sub.features, isActive: true },
       create: sub,
     });
   }
+
+  // Retire old plan names (e.g. the previous Starter/Growth/Pro) rather than
+  // delete — a store may still reference one via subscriptionId, which has
+  // no cascading delete. Deactivated plans disappear from pricing/upgrade
+  // UI but keep working for whoever's already on one.
+  await prisma.subscription.updateMany({
+    where: { name: { notIn: ACTIVE_SUBSCRIPTION_NAMES } },
+    data: { isActive: false },
+  });
 
   console.log("Seed complete.");
 }

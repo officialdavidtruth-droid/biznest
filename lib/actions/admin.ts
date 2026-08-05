@@ -261,3 +261,26 @@ export async function reinstateStoreStatus(storeId: string): Promise<ActionResul
   revalidatePath("/supaadmin/stores");
   return { success: true, data: undefined };
 }
+
+// --- Domains ----------------------------------------------------------------
+
+/**
+ * Manual override for when a vendor's DNS is confirmed live but the
+ * automatic Vercel status check is stuck (transient API failure, etc.).
+ * Doesn't call Vercel — just corrects our own record. Use sparingly.
+ */
+export async function markDomainVerifiedManually(storeId: string): Promise<ActionResult> {
+  const access = await assertPlatformStaff();
+  if (!access.success) return { success: false, error: access.error };
+
+  const store = await prisma.store.findUnique({ where: { id: storeId } });
+  if (!store?.customDomain) return { success: false, error: "No domain set on this store." };
+
+  await prisma.store.update({ where: { id: storeId }, data: { customDomainStatus: "VERIFIED" } });
+  await prisma.auditLog.create({
+    data: { userId: access.userId, action: "DOMAIN_MANUALLY_VERIFIED", entity: "Store", entityId: storeId, metadata: { domain: store.customDomain } },
+  });
+
+  revalidatePath("/supaadmin/domains");
+  return { success: true, data: undefined };
+}
