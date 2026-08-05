@@ -2,6 +2,7 @@
 
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import type { Prisma } from "@prisma/client";
 import { createStoreSchema, type CreateStoreInput } from "@/lib/validations/business";
 import { generateUniqueStoreSlug, storeAdminUrl, storePublicUrl } from "@/lib/utils/slug";
 import { revalidatePath } from "next/cache";
@@ -99,7 +100,7 @@ export async function createStore(
             slug: listingSlug,
             description: sample.description,
             price: sample.price,
-            attributes: sample.attributes ?? undefined,
+            attributes: (sample.attributes as unknown as Prisma.InputJsonValue | undefined) ?? undefined,
             isPublished: true,
           },
         });
@@ -176,7 +177,7 @@ export async function seedSampleListings(slug: string): Promise<ActionResult> {
           slug: listingSlug,
           description: sample.description,
           price: sample.price,
-          attributes: sample.attributes ?? undefined,
+          attributes: (sample.attributes as unknown as Prisma.InputJsonValue | undefined) ?? undefined,
           isPublished: true,
         },
       });
