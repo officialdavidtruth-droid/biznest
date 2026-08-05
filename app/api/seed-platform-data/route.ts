@@ -1,10 +1,16 @@
 import { prisma } from "@/lib/prisma";
 import { NextResponse } from "next/server";
+import { NICHE_NAMES, generateNicheVariations } from "@/lib/template-themes";
+import { fetchDemoPhoto } from "@/lib/demo-images";
+import type { Prisma } from "@prisma/client";
 
-// TEMPORARY — populates categories, store templates, and subscription tiers.
-// Same reasoning as /api/promote-admin: there's no local terminal with DB
-// access to run `npm run db:seed`, so this does it over HTTP once instead.
-// Safe to call multiple times (everything is upserted).
+// Mirrors prisma/seed.ts exactly (categories, generated niche template
+// variations with real theme configs, subscription tiers) so it can be run
+// over HTTP against production with no local terminal/DB access needed.
+// Keep in sync with prisma/seed.ts if that file changes — this is the only
+// way to (re)seed production as things currently stand. Safe to call more
+// than once: everything is upsert/createMany+skipDuplicates.
+export const maxDuration = 60;
 
 const PRODUCT_CATEGORIES = [
   "Fashion", "Beauty", "Electronics", "Phones", "Computers", "Food",
@@ -29,21 +35,13 @@ const SERVICE_CATEGORIES = [
   "Printing", "Photography Studio Rental", "Hotel Services",
 ];
 
-const TEMPLATES = [
-  "Restaurant", "Hotel", "Fashion Store", "Beauty Store", "Electronics",
-  "Supermarket", "Furniture", "Photography", "Videography", "Agency",
-  "Law Firm", "Hospital", "Pharmacy", "Mechanic", "Salon", "Spa", "Church",
-  "School", "Restaurant Delivery", "Construction", "Architecture",
-  "Engineering", "Real Estate", "Personal Portfolio", "Freelancer",
-  "Marketplace",
-];
-
 const SUBSCRIPTIONS = [
-  { name: "Free", price: 0, interval: "MONTHLY", commissionRate: 8, features: { products: 20, services: 10 } },
-  { name: "Starter", price: 5000, interval: "MONTHLY", commissionRate: 5, features: { products: 200, services: 100 } },
-  { name: "Growth", price: 15000, interval: "MONTHLY", commissionRate: 3, features: { products: 2000, services: 1000 } },
-  { name: "Pro", price: 40000, interval: "MONTHLY", commissionRate: 1.5, features: { products: -1, services: -1 } },
+  { name: "Free", price: 0, interval: "MONTHLY", commissionRate: 8, features: { products: 20, services: 10, customDomain: false, templateTier: 1 } },
+  { name: "Entrepreneur", price: 35000, interval: "MONTHLY", commissionRate: 5, features: { products: 300, services: 150, customDomain: false, templateTier: 2 } },
+  { name: "Enterprise", price: 67000, interval: "MONTHLY", commissionRate: 3, features: { products: 3000, services: 1500, customDomain: true, templateTier: 3 } },
+  { name: "Business Mogul", price: 139000, interval: "MONTHLY", commissionRate: 1, features: { products: -1, services: -1, customDomain: true, templateTier: 4 } },
 ];
+const ACTIVE_SUBSCRIPTION_NAMES = SUBSCRIPTIONS.map((s) => s.name);
 
 export async function GET(req: Request) {
   const { searchParams } = new URL(req.url);
@@ -61,23 +59,44 @@ export async function GET(req: Request) {
     skipDuplicates: true,
   });
 
-  for (const name of TEMPLATES) {
-    await prisma.storeTemplate.upsert({
-      where: { name },
-      update: {},
-      create: { name, category: name, config: { sections: ["home", "about", "gallery", "contact"] } },
-    });
+  const allVariationNames: string[] = [];
+  for (const name of NICHE_NAMES) {
+    const variations = generateNicheVariations(name);
+    const previewUrl = await fetchDemoPhoto(name);
+    for (const [idx, v] of variations.entries()) {
+      const templateName = `${name} — #${idx + 1} (${v.variationName})`;
+      allVariationNames.push(templateName);
+      await prisma.storeTemplate.upsert({
+        where: { name: templateName },
+        update: { category: name, isActive: true, tierRank: v.tierRank, previewUrl, config: v as unknown as Prisma.InputJsonValue },
+        create: { name: templateName, category: name, tierRank: v.tierRank, previewUrl, config: v as unknown as Prisma.InputJsonValue },
+      });
+    }
   }
 
+  await prisma.storeTemplate.updateMany({
+    where: { name: { notIn: allVariationNames } },
+    data: { isActive: false },
+  });
+
   for (const sub of SUBSCRIPTIONS) {
-    await prisma.subscription.upsert({ where: { name: sub.name }, update: {}, create: sub });
+    await prisma.subscription.upsert({
+      where: { name: sub.name },
+      update: { price: sub.price, commissionRate: sub.commissionRate, features: sub.features, isActive: true },
+      create: sub,
+    });
   }
+  await prisma.subscription.updateMany({
+    where: { name: { notIn: ACTIVE_SUBSCRIPTION_NAMES } },
+    data: { isActive: false },
+  });
 
   const counts = {
     categories: await prisma.category.count(),
-    templates: await prisma.storeTemplate.count(),
-    subscriptions: await prisma.subscription.count(),
+    activeTemplates: await prisma.storeTemplate.count({ where: { isActive: true } }),
+    subscriptions: await prisma.subscription.count({ where: { isActive: true } }),
+    niches: NICHE_NAMES.length,
   };
 
-  return NextResponse.json({ success: true, message: "Seed complete.", counts });
+  return NextResponse.json({ success: true, message: "Platform data seeded.", counts });
 }
