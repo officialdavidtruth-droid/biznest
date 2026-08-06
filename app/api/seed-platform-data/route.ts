@@ -1,6 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import { NextResponse } from "next/server";
-import { generateNicheVariations, TEMPLATE_NAME } from "@/lib/template-themes";
+import { generateNicheVariations, TEMPLATE_NAME, generateHeenzyVariation, TEMPLATE_NAME_HEENZY } from "@/lib/template-themes";
 import { fetchDemoPhoto } from "@/lib/demo-images";
 import type { Prisma } from "@prisma/client";
 
@@ -67,8 +67,16 @@ export async function GET(req: Request) {
     create: { name: TEMPLATE_NAME, category: TEMPLATE_NAME, tierRank: freshTemplate.tierRank, previewUrl, config: freshTemplate as unknown as Prisma.InputJsonValue },
   });
 
+  const heenzyTemplate = generateHeenzyVariation();
+  const heenzyPreviewUrl = await fetchDemoPhoto(TEMPLATE_NAME_HEENZY);
+  await prisma.storeTemplate.upsert({
+    where: { name: TEMPLATE_NAME_HEENZY },
+    update: { category: TEMPLATE_NAME_HEENZY, isActive: true, tierRank: heenzyTemplate.tierRank, previewUrl: heenzyPreviewUrl, config: heenzyTemplate as unknown as Prisma.InputJsonValue },
+    create: { name: TEMPLATE_NAME_HEENZY, category: TEMPLATE_NAME_HEENZY, tierRank: heenzyTemplate.tierRank, previewUrl: heenzyPreviewUrl, config: heenzyTemplate as unknown as Prisma.InputJsonValue },
+  });
+
   await prisma.storeTemplate.updateMany({
-    where: { name: { not: TEMPLATE_NAME } },
+    where: { name: { notIn: [TEMPLATE_NAME, TEMPLATE_NAME_HEENZY] } },
     data: { isActive: false },
   });
 

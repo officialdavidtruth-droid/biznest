@@ -1,0 +1,295 @@
+import { AddToCartButton } from "@/components/storefront/add-to-cart-button";
+import { CartLink } from "@/components/storefront/cart-link";
+import { BookingWidget } from "@/components/storefront/booking-widget";
+import { HEENZY } from "@/lib/template-themes";
+import { subscribeToNewsletter } from "@/lib/actions/newsletter";
+
+// All images below (logo, banner, category thumb, product/service photos,
+// promo art, review avatars) come straight from the store owner's own
+// uploads (Store.logoUrl / Store.bannerUrl / Product.images / Service.images
+// via the existing dashboard upload fields). Nothing here is hardcoded
+// artwork — when a field is empty a plain placeholder block is shown
+// instead, ready for the owner to fill in from Settings / Products / Services.
+
+type CatalogItem = {
+  id: string; kind: "product" | "service"; name: string; description: string | null;
+  price: number; currency: string; image: string | null; categoryName: string | null;
+  type: string; rentalUnit: string | null; isBookable: boolean;
+};
+
+type Review = { id: string; rating: number; comment: string | null; author: { name: string | null } };
+
+export function HeenzyStorefront({
+  store, slug, catalogItems, catalogCategories, goodReviews, avgRating, completedOrders, social,
+}: {
+  store: {
+    name: string; logoUrl: string | null; bannerUrl: string | null;
+    contactEmail: string | null; contactPhone: string | null;
+    business: { description: string | null };
+  };
+  slug: string;
+  catalogItems: CatalogItem[];
+  catalogCategories: string[];
+  goodReviews: Review[];
+  avgRating: number | null;
+  completedOrders: number;
+  social: Record<string, string>;
+}) {
+  const heroImage = store.bannerUrl;
+
+  return (
+    <div className="hz-root">
+      <HeenzyNav store={store} slug={slug} hasCatalog={catalogItems.length > 0} />
+
+      <div className="hz-wrap hz-top-grid">
+        {/* ---------- HERO ---------- */}
+        <div className="hz-hero">
+          {heroImage && <div className="hz-hero-bg" style={{ backgroundImage: `url(${heroImage})` }} />}
+          <div className="hz-hero-overlay" />
+          <div className="hz-hero-content">
+            <h1 className="hz-hero-title">
+              {store.name} <span className="hz-accent">Reimagined</span>
+            </h1>
+            <p className="hz-hero-sub">{store.business.description || "Built for every mood, every move, and every milestone. Unleash the lifestyle in you."}</p>
+            <div className="hz-pill-row">
+              <button className="hz-pill active">Style</button>
+              <button className="hz-pill">Comfort</button>
+              <button className="hz-pill">Trendy</button>
+            </div>
+            {catalogItems.length > 0 && <a href="#catalog" className="hz-btn hz-btn-yellow">Shop Now</a>}
+          </div>
+          <div className="hz-social-proof">
+            <div className="hz-avatars">
+              {store.logoUrl && <img src={store.logoUrl} alt="" />}
+            </div>
+            {avgRating != null ? `${avgRating.toFixed(1)}★ · ${completedOrders}+ happy customers` : "New store"}
+          </div>
+        </div>
+
+        {/* ---------- RIGHT RAIL ---------- */}
+        <div className="hz-rail">
+          <div className="hz-promo-card">
+            {store.logoUrl && <img src={store.logoUrl} alt="" className="hz-promo-img" />}
+            <div>
+              <h3>Step Into <span className="hz-accent">Greatness</span></h3>
+              <p>Discover pieces that move with your lifestyle.</p>
+            </div>
+            {catalogItems.length > 0 && <a href="#catalog" className="hz-btn hz-btn-light">Shop Now</a>}
+          </div>
+
+          {catalogCategories.length > 0 && (
+            <div>
+              <div className="hz-section-head"><h2>Shop By Categories</h2></div>
+              <div className="hz-cat-row" style={{ gridTemplateColumns: "repeat(2,1fr)" }}>
+                {catalogCategories.slice(0, 4).map((cat) => {
+                  const sample = catalogItems.find((i) => i.categoryName === cat && i.image);
+                  return (
+                    <div key={cat} className="hz-cat-card">
+                      <div className="hz-cat-thumb">
+                        {sample?.image ? <img src={sample.image} alt={cat} /> : null}
+                      </div>
+                      <div className="hz-cat-name">{cat}</div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
+          {catalogItems.length > 0 && (
+            <div>
+              <div className="hz-section-head"><h2>Trending Now</h2></div>
+              {catalogItems.slice(0, 4).map((item) => (
+                <div key={`${item.kind}-${item.id}`} className="hz-trend-row">
+                  <div className="hz-trend-thumb">{item.image ? <img src={item.image} alt={item.name} /> : null}</div>
+                  <div className="hz-trend-info">
+                    <p className="hz-name">{item.name}</p>
+                    {item.categoryName && <span className="hz-rating">{item.categoryName}</span>}
+                  </div>
+                  <div className="hz-trend-price">{item.currency} {item.price.toLocaleString()}</div>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {catalogItems.length > 0 && (
+            <div className="hz-offer-strip">
+              {heroImage && <img src={heroImage} alt="" />}
+              <div className="hz-content">
+                <div className="hz-eyebrow">Limited Time Offer</div>
+                <h3>Up to 30% Off on Selected Items</h3>
+                <a href="#catalog" className="hz-btn hz-btn-yellow">Shop Now</a>
+              </div>
+            </div>
+          )}
+
+          <div className="hz-trust-strip">
+            <div className="hz-trust-item">🚚 Free Shipping</div>
+            <div className="hz-trust-item">↩️ Easy Returns</div>
+            <div className="hz-trust-item">🔒 Secure Checkout</div>
+          </div>
+
+          {goodReviews.length > 0 && (
+            <div>
+              <div className="hz-section-head"><h2>What Customers Say</h2></div>
+              <div className="hz-testimonial">
+                <span className="hz-quote-mark">&ldquo;</span>
+                <p>{goodReviews[0].comment}</p>
+                <div className="hz-testimonial-author">
+                  <div className="hz-name">{goodReviews[0].author.name ?? "Verified buyer"}</div>
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* ---------- LIFESTYLE ---------- */}
+      {store.business.description && (
+        <div className="hz-wrap">
+          <div className="hz-lifestyle">
+            <div className="hz-lifestyle-copy">
+              <h2>Not Just Products —<br />A Lifestyle</h2>
+              <p>{store.business.description}</p>
+              {catalogItems.length > 0 && <a href="#catalog" className="hz-btn hz-btn-dark">Explore Collection</a>}
+            </div>
+            <div className="hz-lifestyle-grid">
+              <div className="hz-tall">{heroImage ? <img src={heroImage} alt="" /> : <div style={{ background: HEENZY.offwhite, width: "100%", height: "100%" }} />}</div>
+              <div className="hz-short">{store.logoUrl ? <img src={store.logoUrl} alt="" /> : <div style={{ background: HEENZY.offwhite, width: "100%", height: "100%" }} />}</div>
+              <div className="hz-short">{catalogItems[0]?.image ? <img src={catalogItems[0].image} alt="" /> : <div style={{ background: HEENZY.offwhite, width: "100%", height: "100%" }} />}</div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ---------- STATS ---------- */}
+      <div className="hz-wrap">
+        <div className="hz-stats-bar">
+          <div className="hz-stat"><div><div className="hz-stat-num">{completedOrders}+</div><div className="hz-stat-label">Happy Customers</div></div></div>
+          <div className="hz-stat"><div><div className="hz-stat-num">{catalogItems.length}+</div><div className="hz-stat-label">Collection</div></div></div>
+          {avgRating != null && (
+            <div className="hz-stat"><div><div className="hz-stat-num">{avgRating.toFixed(1)}/5</div><div className="hz-stat-label">Satisfaction Rate</div></div></div>
+          )}
+        </div>
+      </div>
+
+      {/* ---------- CATALOG / NEW ARRIVALS ---------- */}
+      {catalogItems.length > 0 && (
+        <div className="hz-wrap" id="catalog">
+          <div className="hz-section-head"><h2>New Arrivals</h2></div>
+          <div className="hz-catalog-grid">
+            {catalogItems.map((item) => (
+              <HeenzyProductCard key={`${item.kind}-${item.id}`} item={item} slug={slug} storeName={store.name} />
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* ---------- NEWSLETTER ---------- */}
+      <HeenzyNewsletter slug={slug} storeName={store.name} />
+
+      {/* ---------- FOOTER ---------- */}
+      <footer className="hz-footer">
+        <div className="hz-wrap">
+          <div className="hz-footer-grid">
+            <div>
+              <div className="hz-logo" style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10 }}>
+                {store.logoUrl ? <img src={store.logoUrl} alt={store.name} style={{ height: 26, width: 26, borderRadius: 6, objectFit: "cover" }} /> : null}
+                {store.name}
+              </div>
+              {store.business.description && <p style={{ fontSize: 13, color: HEENZY.gray, lineHeight: 1.6, maxWidth: 240 }}>{store.business.description.slice(0, 130)}</p>}
+            </div>
+            <div>
+              <h4>Shop</h4>
+              <ul>
+                {catalogCategories.slice(0, 4).map((c) => <li key={c}><a href="#catalog">{c}</a></li>)}
+              </ul>
+            </div>
+            <div>
+              <h4>Help</h4>
+              <ul><li><a href={`/store/${slug}/cart`}>Cart</a></li><li><a href="#catalog">Shop</a></li></ul>
+            </div>
+            <div>
+              <h4>Company</h4>
+              <ul><li><a href="#">About Us</a></li></ul>
+            </div>
+            <div>
+              <h4>Contact</h4>
+              <ul>
+                {store.contactEmail && <li><a href={`mailto:${store.contactEmail}`}>{store.contactEmail}</a></li>}
+                {store.contactPhone && <li><a href={`tel:${store.contactPhone}`}>{store.contactPhone}</a></li>}
+              </ul>
+            </div>
+          </div>
+          <div className="hz-footer-bottom">
+            <span>© {new Date().getFullYear()} {store.name}. All rights reserved.</span>
+            <span>Powered by BizNest</span>
+          </div>
+        </div>
+      </footer>
+    </div>
+  );
+}
+
+function HeenzyNav({ store, slug, hasCatalog }: { store: { name: string; logoUrl: string | null }; slug: string; hasCatalog: boolean }) {
+  return (
+    <nav className="hz-root" style={{ position: "sticky", top: 0, zIndex: 50, background: "rgba(255,255,255,.92)", backdropFilter: "blur(10px)", borderBottom: "1px solid #e7e7e7" }}>
+      <div className="hz-wrap hz-nav">
+        <a href={`/store/${slug}`} className="hz-logo" style={{ display: "flex", alignItems: "center", gap: 8, textDecoration: "none", color: HEENZY.black }}>
+          {store.logoUrl ? <img src={store.logoUrl} alt={store.name} /> : null}
+          {store.name}
+        </a>
+        <ul className="hz-nav-links">
+          <li><a href={`/store/${slug}`}>Home</a></li>
+          {hasCatalog && <li><a href="#catalog">Shop</a></li>}
+        </ul>
+        <div className="hz-nav-icons">
+          <CartLink storeSlug={slug} accent={HEENZY.black} ink={HEENZY.black} />
+        </div>
+      </div>
+    </nav>
+  );
+}
+
+function HeenzyProductCard({ item, slug, storeName }: { item: CatalogItem; slug: string; storeName: string }) {
+  return (
+    <div className="hz-product-card">
+      <div className="hz-product-img-wrap">
+        {item.image ? <img src={item.image} alt={item.name} /> : <span style={{ fontSize: 28, opacity: .4, display: "flex", height: "100%", alignItems: "center", justifyContent: "center" }}>{storeName.charAt(0)}</span>}
+      </div>
+      <p className="hz-product-name">{item.name}</p>
+      <div className="hz-product-meta">
+        <span className="hz-product-price">{item.currency} {item.price.toLocaleString()}</span>
+      </div>
+      <div style={{ marginTop: 10 }}>
+        {item.kind === "product" && item.type === "PHYSICAL" && (
+          <AddToCartButton storeSlug={slug} productId={item.id} name={item.name} price={item.price} currency={item.currency} image={item.image} accent={HEENZY.black} onAccent="#fff" />
+        )}
+        {item.kind === "service" && item.isBookable && (
+          <BookingWidget storeSlug={slug} serviceId={item.id} serviceName={item.name} accent={HEENZY.black} ink={HEENZY.black} bg={HEENZY.white} radius="10px" />
+        )}
+      </div>
+    </div>
+  );
+}
+
+function HeenzyNewsletter({ slug, storeName }: { slug: string; storeName: string }) {
+  async function subscribe(formData: FormData) {
+    "use server";
+    await subscribeToNewsletter(slug, formData);
+  }
+  return (
+    <div className="hz-wrap" style={{ padding: "56px 24px" }}>
+      <div style={{ background: HEENZY.black, borderRadius: 14, padding: "36px 40px", display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 20, color: "#fff" }}>
+        <div>
+          <h3 style={{ fontSize: 20, fontWeight: 800, margin: "0 0 4px" }}>Stay in the Loop</h3>
+          <p style={{ fontSize: 13, opacity: .7, margin: 0 }}>Get the latest drops, offers, and updates from {storeName}.</p>
+        </div>
+        <form action={subscribe} style={{ display: "flex", gap: 10 }}>
+          <input name="email" type="email" required placeholder="Enter your email" style={{ padding: "12px 16px", borderRadius: 10, border: "none", minWidth: 220, fontSize: 13 }} />
+          <button type="submit" className="hz-btn hz-btn-yellow">Subscribe</button>
+        </form>
+      </div>
+    </div>
+  );
+}

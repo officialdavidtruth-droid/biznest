@@ -2,6 +2,10 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Template 2 — "Heenzy" storefront design. Scoped under .hz-root so it
+   never affects Template 1 (Fresh & Co.) or the dashboard. */
+@import "../styles/heenzy-template.css";
+
 @layer base {
   :root {
     --background: 258 45% 12%;       /* bn-ink */

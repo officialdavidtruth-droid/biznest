@@ -1,12 +1,15 @@
 /**
  * Storefront template system.
  *
- * The platform now ships exactly ONE storefront template — the "Fresh & Co"
- * design (forest green / leaf green / citrus, rounded hero banner, service
- * grid, dark story block, steps, testimonials, appointment/quote section).
- * There is no per-niche generation anymore: every store renders with this
- * same theme. Only real store data (name, logo, banner, catalog, reviews,
- * contact info) changes what's shown — copy and layout are fixed.
+ * The platform ships two storefront templates:
+ *   1. "Fresh & Co." — forest green / leaf green / citrus service theme.
+ *   2. "Heenzy Sneaker Co." — black / white / yellow retail/catalog theme
+ *      (see styles/heenzy-template.css and
+ *      components/storefront/templates/heenzy-home.tsx).
+ * A store picks one from the Template Gallery in its dashboard; only real
+ * store data (name, logo, banner, catalog, reviews, contact info) changes
+ * what's shown inside whichever template is selected — copy and layout are
+ * fixed per template.
  */
 
 export type HeroStyle = "centered" | "split" | "fullbleed";
@@ -73,26 +76,69 @@ export const FRESH_THEME: TemplateTheme = {
 
 export const TEMPLATE_NAME = "Fresh & Co.";
 
-/** The catalog now always has exactly one template. */
+/** ---------- Template 2: "Heenzy Sneaker Co." ---------- */
+export const HEENZY = {
+  black: "#0d0d0d",
+  charcoal: "#1a1a1a",
+  white: "#ffffff",
+  offwhite: "#f7f7f7",
+  yellow: "#f4c60d",
+  gray: "#6b6b6b",
+  font: "'Inter', sans-serif",
+  headlineFont: "'Inter', sans-serif",
+  radius: "14px",
+} as const;
+
+export const HEENZY_THEME: TemplateTheme = {
+  bg: HEENZY.white,
+  ink: HEENZY.black,
+  card: HEENZY.white,
+  accent: HEENZY.yellow,
+  font: HEENZY.font,
+  headlineFont: HEENZY.headlineFont,
+  radius: HEENZY.radius,
+  eyebrow: "Step Into Greatness",
+  headline: "Comfort Reimagined",
+  sub: "Built for every mood, every move, and every milestone. Unleash the lifestyle in you.",
+  cta: "Shop Now",
+  layout: "grid",
+  heroStyle: "fullbleed",
+  catalogLabel: "Products",
+  sections: ["hero", "categories", "catalog", "about", "stats", "testimonials", "newsletter", "contact"],
+};
+
+export const TEMPLATE_NAME_HEENZY = "Heenzy Sneaker Co.";
+
+export function isHeenzyTemplate(templateName: string | null | undefined): boolean {
+  return templateName === TEMPLATE_NAME_HEENZY;
+}
+
+/** The catalog has exactly two templates: Fresh & Co. (tier 1) and Heenzy Sneaker Co. (tier 2). */
 export function generateNicheVariations(_nicheName: string): GeneratedTemplate[] {
   return [{ ...FRESH_THEME, variationName: TEMPLATE_NAME, tierRank: 1 }];
+}
+
+export function generateHeenzyVariation(): GeneratedTemplate {
+  return { ...HEENZY_THEME, variationName: TEMPLATE_NAME_HEENZY, tierRank: 2 };
 }
 
 export function getTemplateTheme(_category: string | undefined, _storeName: string): TemplateTheme {
   return FRESH_THEME;
 }
 
-/** Merge a store's saved overrides (from Settings) on top of the Fresh & Co default. */
+/** Merge a store's saved overrides (from Settings) on top of its selected template's default. */
 export function resolveStoreTheme(
   _templateCategory: string | undefined,
   _storeName: string,
   overrides: { primary?: string; secondary?: string; accent?: string } | null | undefined,
-  fontFamily: string | null | undefined
+  fontFamily: string | null | undefined,
+  templateName?: string | null
 ): TemplateTheme {
+  const base = isHeenzyTemplate(templateName) ? HEENZY_THEME : FRESH_THEME;
   return {
-    ...FRESH_THEME,
-    bg: overrides?.secondary || FRESH_THEME.bg,
-    accent: overrides?.primary || overrides?.accent || FRESH_THEME.accent,
-    font: fontFamily || FRESH_THEME.font,
+    ...base,
+    bg: overrides?.secondary || base.bg,
+    accent: overrides?.primary || overrides?.accent || base.accent,
+    font: fontFamily || base.font,
   };
 }

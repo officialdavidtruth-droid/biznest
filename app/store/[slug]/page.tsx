@@ -5,8 +5,9 @@ import type { Metadata } from "next";
 import { AddToCartButton } from "@/components/storefront/add-to-cart-button";
 import { CartLink } from "@/components/storefront/cart-link";
 import { BookingWidget } from "@/components/storefront/booking-widget";
-import { resolveStoreTheme, FRESH, type TemplateTheme } from "@/lib/template-themes";
+import { resolveStoreTheme, FRESH, isHeenzyTemplate, type TemplateTheme } from "@/lib/template-themes";
 import { subscribeToNewsletter } from "@/lib/actions/newsletter";
+import { HeenzyStorefront } from "@/components/storefront/templates/heenzy-home";
 
 export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }): Promise<Metadata> {
   const { slug } = await params;
@@ -38,7 +39,7 @@ export default async function StorefrontPage({ params }: { params: Promise<{ slu
   if (!store || store.status !== "ACTIVE") notFound();
 
   const themeOverrides = store.themeColors as { primary?: string; secondary?: string; accent?: string } | null;
-  const theme: TemplateTheme = resolveStoreTheme(store.template?.category, store.name, themeOverrides, store.fontFamily);
+  const theme: TemplateTheme = resolveStoreTheme(store.template?.category, store.name, themeOverrides, store.fontFamily, store.template?.name);
 
   const social = (store.socialLinks as Record<string, string> | null) ?? {};
   const catalogItems: CatalogItem[] = [
@@ -63,6 +64,22 @@ export default async function StorefrontPage({ params }: { params: Promise<{ slu
   const completedOrders = await prisma.order.count({ where: { storeId: store.id, status: { in: ["DELIVERED", "COMPLETED"] } } });
 
   const heroImage = store.bannerUrl || store.template?.previewUrl || null;
+
+  // ---------- TEMPLATE 2: Heenzy Sneaker Co. ----------
+  if (isHeenzyTemplate(store.template?.name)) {
+    return (
+      <HeenzyStorefront
+        store={store}
+        slug={slug}
+        catalogItems={catalogItems}
+        catalogCategories={catalogCategories}
+        goodReviews={goodReviews}
+        avgRating={avgRating}
+        completedOrders={completedOrders}
+        social={social}
+      />
+    );
+  }
 
   return (
     <div style={{ fontFamily: theme.font, color: theme.ink, background: FRESH.ivory }}>

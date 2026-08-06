@@ -1,5 +1,5 @@
 import { PrismaClient, type Prisma } from "@prisma/client";
-import { generateNicheVariations, TEMPLATE_NAME } from "../lib/template-themes";
+import { generateNicheVariations, TEMPLATE_NAME, generateHeenzyVariation, TEMPLATE_NAME_HEENZY } from "../lib/template-themes";
 import { fetchDemoPhoto } from "../lib/demo-images";
 
 const prisma = new PrismaClient();
@@ -52,9 +52,9 @@ async function main() {
     skipDuplicates: true,
   });
 
-  // The platform now ships exactly ONE storefront template — "Fresh & Co."
-  // (see lib/template-themes.ts). Every store uses this single design;
-  // there is no per-niche generation anymore.
+  // The platform ships two storefront templates — "Fresh & Co." and
+  // "Heenzy Sneaker Co." (see lib/template-themes.ts). Every store picks
+  // one of these two designs from the Template Gallery.
   const [freshTemplate] = generateNicheVariations("Fresh & Co.");
   const previewUrl = await fetchDemoPhoto("Fresh & Co.");
   await prisma.storeTemplate.upsert({
@@ -63,12 +63,20 @@ async function main() {
     create: { name: TEMPLATE_NAME, category: TEMPLATE_NAME, tierRank: freshTemplate.tierRank, previewUrl, config: freshTemplate as unknown as Prisma.InputJsonValue },
   });
 
+  const heenzyTemplate = generateHeenzyVariation();
+  const heenzyPreviewUrl = await fetchDemoPhoto(TEMPLATE_NAME_HEENZY);
+  await prisma.storeTemplate.upsert({
+    where: { name: TEMPLATE_NAME_HEENZY },
+    update: { category: TEMPLATE_NAME_HEENZY, isActive: true, tierRank: heenzyTemplate.tierRank, previewUrl: heenzyPreviewUrl, config: heenzyTemplate as unknown as Prisma.InputJsonValue },
+    create: { name: TEMPLATE_NAME_HEENZY, category: TEMPLATE_NAME_HEENZY, tierRank: heenzyTemplate.tierRank, previewUrl: heenzyPreviewUrl, config: heenzyTemplate as unknown as Prisma.InputJsonValue },
+  });
+
   // Retire every other template row (the old niche-generated set, or any
   // prior naming scheme) — deactivate rather than delete, since a store
   // might still reference one (Store.templateId). Deactivated templates
   // stop showing in the gallery but existing stores using them keep working.
   await prisma.storeTemplate.updateMany({
-    where: { name: { not: TEMPLATE_NAME } },
+    where: { name: { notIn: [TEMPLATE_NAME, TEMPLATE_NAME_HEENZY] } },
     data: { isActive: false },
   });
 
