@@ -1,6 +1,7 @@
 import NextAuth from "next-auth";
-import { NextResponse } from "next/server";
+import { NextResponse, type NextRequest } from "next/server";
 import { authConfig } from "@/lib/auth.config";
+import { ADMIN_COOKIE_NAME, verifyAdminToken } from "@/lib/admin-pin-auth";
 
 // Edge-safe auth instance, built only from the Prisma-free base config.
 // Do NOT import { auth } from "@/lib/auth" here — that pulls in Prisma via
@@ -9,8 +10,10 @@ import { authConfig } from "@/lib/auth.config";
 // full explanation; this was the exact cause of a sitewide sign-in outage.
 const { auth } = NextAuth(authConfig);
 
-// Routes that require an authenticated session at all.
-const PROTECTED_PREFIXES = ["/onboarding", "/dashboard", "/admin", "/supaadmin", "/account", "/orders"];
+// Routes that require an authenticated *user* session (NextAuth). Deliberately
+// excludes /supaadmin — that's gated by its own PIN cookie below, completely
+// independent of user accounts. See lib/admin-pin-auth.ts for why.
+const PROTECTED_PREFIXES = ["/onboarding", "/dashboard", "/admin", "/account", "/orders"];
 
 // Store admin routes: /store/[slug]/admin/** — ownership is verified inside
 // the route handlers/layout (needs a DB lookup middleware can't cheaply do
@@ -18,7 +21,7 @@ const PROTECTED_PREFIXES = ["/onboarding", "/dashboard", "/admin", "/supaadmin",
 const STORE_ADMIN_PATTERN = /^\/store\/[^/]+\/admin/;
 
 // Platform admin routes require PLATFORM_ADMIN or SUPPORT_MODERATOR role.
-const PLATFORM_ADMIN_PATTERN = /^\/(admin|supaadmin)/;
+const PLATFORM_ADMIN_PATTERN = /^\/admin/;
 
 // The platform-admin panel is served as a plain path (biznest.space/supaadmin)
 // off the main site — no subdomain, no separate DNS record required.
@@ -52,8 +55,38 @@ async function resolveCustomDomain(host: string, origin: string): Promise<string
   }
 }
 
+/**
+ * /supaadmin (including its own login page) must always be reachable, even
+ * when site-wide maintenance mode is on — otherwise there'd be no way to
+ * turn maintenance mode back off. Root layout can't see the pathname
+ * directly, so we forward it as a request header it can check.
+ */
+function passThroughSupaAdmin(req: NextRequest) {
+  const headers = new Headers(req.headers);
+  headers.set("x-bn-skip-maintenance", "1");
+  return NextResponse.next({ request: { headers } });
+}
+
 export default auth(async (req) => {
   const host = req.nextUrl.hostname.toLowerCase();
+  const rawPathname = req.nextUrl.pathname;
+
+  // /supaadmin is gated entirely separately from everything else on this
+  // site — a shared PIN, not a user login. Handle it first and return
+  // early, so it never touches the NextAuth session logic below at all.
+  if (rawPathname === "/supaadmin" || rawPathname.startsWith("/supaadmin/")) {
+    if (rawPathname === "/supaadmin/login") {
+      return passThroughSupaAdmin(req);
+    }
+    const token = req.cookies.get(ADMIN_COOKIE_NAME)?.value;
+    const valid = await verifyAdminToken(token);
+    if (!valid) {
+      const loginUrl = new URL("/supaadmin/login", req.nextUrl.origin);
+      loginUrl.searchParams.set("callbackUrl", `${req.nextUrl.origin}${rawPathname}${req.nextUrl.search}`);
+      return NextResponse.redirect(loginUrl);
+    }
+    return passThroughSupaAdmin(req);
+  }
 
   const slug = await resolveCustomDomain(host, req.nextUrl.origin);
   const url = req.nextUrl.clone();
@@ -84,8 +117,8 @@ export default auth(async (req) => {
   if (PLATFORM_ADMIN_PATTERN.test(pathname)) {
     const role = req.auth.user.role;
     if (role !== "PLATFORM_ADMIN" && role !== "SUPPORT_MODERATOR") {
-      // Non-admins hitting /admin or /supaadmin just get bounced to the
-      // homepage — no subdomain special-casing needed anymore.
+      // Non-admins hitting /admin get bounced to the homepage. (/supaadmin
+      // is handled entirely separately above via the PIN cookie.)
       return NextResponse.redirect(new URL("/", req.nextUrl.origin));
     }
   }

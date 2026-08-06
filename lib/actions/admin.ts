@@ -1,31 +1,27 @@
 "use server";
 
-import { auth } from "@/lib/auth";
+import { cookies } from "next/headers";
 import { prisma } from "@/lib/prisma";
 import { revalidatePath } from "next/cache";
 import type { ActionResult } from "@/types/actions";
 import type { VerificationStatus, UserRole } from "@prisma/client";
+import { ADMIN_COOKIE_NAME, verifyAdminToken } from "@/lib/admin-pin-auth";
 
+// Platform-admin access is gated by the shared ADMIN_PIN cookie now, not by
+// a signed-in user's role — see lib/admin-pin-auth.ts. There's only one
+// admin identity, so there's no userId to attribute actions to; audit log
+// entries below use null and rely on the action name + entity for context.
 async function assertPlatformStaff() {
-  const session = await auth();
-  if (!session?.user?.id) return { success: false as const, error: "You must be signed in." };
-  if (session.user.role !== "PLATFORM_ADMIN" && session.user.role !== "SUPPORT_MODERATOR") {
-    return { success: false as const, error: "Platform staff access required." };
-  }
-  return { success: true as const, userId: session.user.id, role: session.user.role };
+  const token = cookies().get(ADMIN_COOKIE_NAME)?.value;
+  const valid = await verifyAdminToken(token);
+  if (!valid) return { success: false as const, error: "Admin PIN session expired or invalid. Please sign in again." };
+  return { success: true as const, userId: null as string | null };
 }
 
-// Role/user-deletion/plan-pricing/gateway changes are deliberately
-// PLATFORM_ADMIN-only — a step above the general staff check above, which
-// SUPPORT_MODERATOR also passes for the day-to-day moderation actions.
-async function assertPlatformAdmin() {
-  const session = await auth();
-  if (!session?.user?.id) return { success: false as const, error: "You must be signed in." };
-  if (session.user.role !== "PLATFORM_ADMIN") {
-    return { success: false as const, error: "Platform admin access required." };
-  }
-  return { success: true as const, userId: session.user.id };
-}
+// Kept as a distinct name for call sites that previously required the
+// stricter PLATFORM_ADMIN-only role — with a single shared PIN there's no
+// tier distinction left, so this is now identical to assertPlatformStaff.
+const assertPlatformAdmin = assertPlatformStaff;
 
 // --- Overview -----------------------------------------------------------
 

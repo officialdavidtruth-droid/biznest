@@ -34,12 +34,10 @@ export function LoginForm() {
         toast.error(messages[result.error] ?? "Invalid email or password.");
         return;
       }
-      // A plain browser navigation, not router.push(): callbackUrl can now
-      // point at a different subdomain (e.g. supaadmin.biznest.space while
-      // this form is rendered on www.biznest.space, or vice versa). Next's
-      // client-side router only navigates within the current site, so it
-      // was silently keeping people on whichever host they signed in from
-      // instead of actually taking them to the admin subdomain.
+      // A plain browser navigation, not router.push(): callbackUrl can point
+      // anywhere on the site. Next's client-side router only navigates
+      // within pages it knows about, so a full navigation is more reliable
+      // here regardless of destination.
       window.location.href = callbackUrl;
     } catch {
       // A thrown error here (vs. a normal {error} result) means the

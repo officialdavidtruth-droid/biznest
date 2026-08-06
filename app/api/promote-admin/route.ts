@@ -1,10 +1,11 @@
 import { prisma } from "@/lib/prisma";
 import { NextResponse } from "next/server";
 
-// Bootstraps the first PLATFORM_ADMIN. Protected by a secret so random
-// visitors can't self-promote. Set ADMIN_BOOTSTRAP_SECRET in Vercel env
-// vars, visit this once with the matching secret, then consider removing
-// it (or at least rotating the secret) once you have your admin account.
+// Bootstraps a PLATFORM_ADMIN-role user. Note: this role no longer grants
+// access to /supaadmin — that panel is gated by the separate ADMIN_PIN
+// (see lib/admin-pin-auth.ts). This role is still used for a few override
+// checks elsewhere in the app (e.g. staff being able to view/edit any
+// store). Protected by a secret so random visitors can't self-promote.
 export async function GET(req: Request) {
   const { searchParams } = new URL(req.url);
   const email = searchParams.get("email");
@@ -26,6 +27,6 @@ export async function GET(req: Request) {
 
   return NextResponse.json({
     success: true,
-    message: `${email} is now a PLATFORM_ADMIN. Visit https://biznest.space/supaadmin.`,
+    message: `${email} is now a PLATFORM_ADMIN. Note: this does NOT grant /supaadmin access — that requires the separate ADMIN_PIN.`,
   });
 }

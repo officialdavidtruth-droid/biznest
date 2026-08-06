@@ -1,18 +1,17 @@
 "use server";
 
-import { auth } from "@/lib/auth";
+import { cookies } from "next/headers";
 import { prisma } from "@/lib/prisma";
 import { revalidatePath } from "next/cache";
 import type { ActionResult } from "@/types/actions";
 import { SETTING_KEYS } from "@/lib/constants/site-settings";
+import { ADMIN_COOKIE_NAME, verifyAdminToken } from "@/lib/admin-pin-auth";
 
 async function assertPlatformAdmin() {
-  const session = await auth();
-  if (!session?.user?.id) return { success: false as const, error: "You must be signed in." };
-  if (session.user.role !== "PLATFORM_ADMIN") {
-    return { success: false as const, error: "Platform admin access required." };
-  }
-  return { success: true as const, userId: session.user.id };
+  const token = cookies().get(ADMIN_COOKIE_NAME)?.value;
+  const valid = await verifyAdminToken(token);
+  if (!valid) return { success: false as const, error: "Admin PIN session expired or invalid. Please sign in again." };
+  return { success: true as const, userId: null as string | null };
 }
 
 export type MaintenanceValue = { enabled: boolean; message: string };
