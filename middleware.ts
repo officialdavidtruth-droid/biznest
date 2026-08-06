@@ -97,7 +97,10 @@ export default auth(async (req) => {
 
   if (!req.auth?.user) {
     const loginUrl = new URL("/login", req.nextUrl.origin);
-    loginUrl.searchParams.set("callbackUrl", pathname);
+    // Absolute URL, not just `pathname` — a bare path like "/supaadmin" has
+    // no host in it, so NextAuth's redirect callback would resolve it
+    // against AUTH_URL (www.biznest.space) and lose the subdomain entirely.
+    loginUrl.searchParams.set("callbackUrl", `${req.nextUrl.origin}${pathname}`);
     return NextResponse.redirect(loginUrl);
   }
 

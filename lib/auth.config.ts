@@ -80,5 +80,25 @@ export const authConfig: NextAuthConfig = {
       }
       return session;
     },
+    // NextAuth's built-in default here only allows a redirect target whose
+    // origin exactly matches `baseUrl` (i.e. AUTH_URL, www.biznest.space) —
+    // anything else, including supaadmin.biznest.space, gets silently
+    // swapped for baseUrl. That's what was sending admins back to
+    // www.biznest.space after signing in on the subdomain instead of
+    // staying there. This widens the check to also trust biznest.space and
+    // any of its subdomains, while still refusing to redirect to some
+    // unrelated, attacker-controlled host.
+    async redirect({ url, baseUrl }) {
+      try {
+        const target = new URL(url, baseUrl);
+        const rootHost = new URL(baseUrl).hostname.replace(/^www\./, ""); // "biznest.space"
+        if (target.hostname === rootHost || target.hostname.endsWith(`.${rootHost}`)) {
+          return target.toString();
+        }
+      } catch {
+        // Malformed url — fall through to the safe default below.
+      }
+      return baseUrl;
+    },
   },
 };

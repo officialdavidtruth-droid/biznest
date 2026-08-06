@@ -5,11 +5,10 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { loginSchema, type LoginInput } from "@/lib/validations/auth";
 import { signIn } from "next-auth/react";
 import { useState } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useSearchParams } from "next/navigation";
 import { toast } from "sonner";
 
 export function LoginForm() {
-  const router = useRouter();
   const searchParams = useSearchParams();
   const callbackUrl = searchParams.get("callbackUrl") ?? "/onboarding/business-verification";
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -35,7 +34,13 @@ export function LoginForm() {
         toast.error(messages[result.error] ?? "Invalid email or password.");
         return;
       }
-      router.push(callbackUrl);
+      // A plain browser navigation, not router.push(): callbackUrl can now
+      // point at a different subdomain (e.g. supaadmin.biznest.space while
+      // this form is rendered on www.biznest.space, or vice versa). Next's
+      // client-side router only navigates within the current site, so it
+      // was silently keeping people on whichever host they signed in from
+      // instead of actually taking them to the admin subdomain.
+      window.location.href = callbackUrl;
     } catch {
       // A thrown error here (vs. a normal {error} result) means the
       // sign-in request itself failed at the network/host level — this is
