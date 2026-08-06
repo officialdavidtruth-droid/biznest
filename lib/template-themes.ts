@@ -1,30 +1,54 @@
 /**
  * Storefront template system.
  *
- * Each niche has its own identity (copy, catalog label, section order,
- * a signature palette) — but a niche now offers MANY selectable templates,
- * not one. Real variation, not padding: every generated template differs
- * in at least color mode (light/dark) or accent color, AND hero layout.
- * Nothing is a duplicate with a different name.
+ * Every store on the platform now renders with the same Lumina design
+ * system (see the `LUMINA` constants below) — one shared palette, type
+ * ramp and shape language, matching the platform's design spec exactly.
+ * What still makes a niche's templates distinct isn't color, it's copy,
+ * catalog label, section order, and hero layout.
  *
  * How the count is produced: for each niche, combine
- *   2 color modes (the niche's own "signature" mode + a neutral inverse)
- *   × N accent choices (the niche's base accent + its altAccents)
+ *   N "variant" slots (one per accent the niche used to define, now just
+ *     a stable way to keep catalog size/tier spread reproducible)
  *   × 3 hero layouts (centered / split / fullbleed)
- * Every niche defines at least 2 accents (2 × 2 × 3 = 12 templates,
- * comfortably over the 8 minimum); niches with 3 accents get 18. Which
- * niches get 3 vs 2 is fixed per niche below (not random per build — a
- * stable, reproducible catalog, not one that reshuffles on every deploy).
+ * Niches with 2 altAccents yield 9 templates, niches with 1 yield 6 —
+ * see `generateNicheVariations` for the exact loop.
  *
  * Tier gating: templates are assigned a tierRank (1-4) cycling through the
  * generated list, so every tier — including Free — has real choices, and
- * each tier up unlocks more. See TIER_RANK below; keep in sync with
- * prisma/seed.ts's SUBSCRIPTIONS features.templateTier.
+ * each tier up unlocks more. Keep in sync with prisma/seed.ts's
+ * SUBSCRIPTIONS features.templateTier.
  */
 
 export type HeroStyle = "centered" | "split" | "fullbleed";
 export type Section = "hero" | "catalog" | "about" | "testimonials" | "contact" | "stats" | "features" | "newsletter" | "categories" | "deal";
-export type ColorMode = "signature" | "inverse";
+
+/**
+ * Lumina design system — the single storefront look shared by every store
+ * on the platform (see /mnt/user-data/uploads Lumina SaaS Commerce spec).
+ * Every niche used to carry its own palette; now the palette, type ramp
+ * and shape language are fixed and identical everywhere. What still varies
+ * per niche is copy, catalog label, section order and hero layout — the
+ * things that actually differentiate a bakery from an electronics shop
+ * without touching the visual system a buyer learns to trust.
+ */
+export const LUMINA = {
+  bg: "#F6FAFF", // surface
+  bgDim: "#ECF5FE", // surface-container-low — alternating section bg
+  ink: "#141D23", // on-surface
+  inkMuted: "#434656", // on-surface-variant
+  card: "#FFFFFF", // surface-container-lowest
+  cardAlt: "#E6EFF8", // surface-container
+  inverse: "#293138", // inverse-surface — dark "power block" sections
+  inverseInk: "#E9F2FB", // inverse-on-surface
+  accent: "#0041C8", // primary — electric blue
+  accentBright: "#0055FF", // primary-container
+  outline: "#C3C5D9", // outline-variant
+  font: "'Inter', sans-serif", // body/UI
+  headlineFont: "'Plus Jakarta Sans', sans-serif", // display/headline
+  radius: "1rem", // container radius (cards/media)
+  radiusSm: "0.5rem", // input/small control radius
+} as const;
 
 export type TemplateTheme = {
   bg: string;
@@ -32,6 +56,7 @@ export type TemplateTheme = {
   card: string;
   accent: string;
   font: string;
+  headlineFont: string;
   radius: string;
   eyebrow: string;
   headline: string;
@@ -66,20 +91,6 @@ export type GeneratedTemplate = TemplateTheme & {
 };
 
 const HERO_STYLES: HeroStyle[] = ["centered", "split", "fullbleed"];
-
-// Fixed neutral counterpart for whichever mode the niche's own palette ISN'T.
-// Keeps every "inverse" variation cohesive rather than a jarring random flip.
-const NEUTRAL_DARK = { bg: "#141414", ink: "#F2EFE9", card: "#1E1E1E" };
-const NEUTRAL_LIGHT = { bg: "#FAF8F3", ink: "#1A1A1A", card: "#FFFFFF" };
-
-function isDarkHex(hex: string): boolean {
-  const h = hex.replace("#", "");
-  const r = parseInt(h.substring(0, 2), 16);
-  const g = parseInt(h.substring(2, 4), 16);
-  const b = parseInt(h.substring(4, 6), 16);
-  // Standard relative luminance approximation.
-  return (0.299 * r + 0.587 * g + 0.114 * b) / 255 < 0.5;
-}
 
 export const NICHE_TEMPLATES: Record<string, NicheBase> = {
   "Restaurant & Food Delivery": {
@@ -241,37 +252,39 @@ export function generateNicheVariations(nicheName: string): GeneratedTemplate[] 
   const base = NICHE_TEMPLATES[nicheName];
   if (!base) return [];
 
-  const signatureIsDark = isDarkHex(base.bg);
-  const modes: Record<ColorMode, { bg: string; ink: string; card: string }> = {
-    signature: { bg: base.bg, ink: base.ink, card: base.card },
-    inverse: signatureIsDark ? NEUTRAL_LIGHT : NEUTRAL_DARK,
-  };
-  const accents = [base.accent, ...base.altAccents];
+  // Every "combo" is now a Lumina-themed template — colors, fonts and radius
+  // are fixed to the shared design system. Layout/copy still comes from the
+  // niche, and hero style is the one real structural variation on offer
+  // (kept as a loop of the old accent count purely so each niche keeps a
+  // stable, reproducible catalog size and tier spread, not because the
+  // color changes between entries anymore).
+  const variantCount = 1 + base.altAccents.length;
 
   const combos: GeneratedTemplate[] = [];
   let i = 0;
-  for (const mode of ["signature", "inverse"] as ColorMode[]) {
-    for (const accent of accents) {
-      for (const heroStyle of HERO_STYLES) {
-        const tierRank = ((Math.floor(i / 2) % 4) + 1) as 1 | 2 | 3 | 4; // cycles 1,1,2,2,3,3,4,4,...
-        combos.push({
-          ...modes[mode],
-          accent,
-          font: base.font,
-          radius: base.radius,
-          eyebrow: base.eyebrow,
-          headline: base.headline,
-          sub: base.sub,
-          cta: base.cta,
-          layout: base.layout,
-          heroStyle,
-          catalogLabel: base.catalogLabel,
-          sections: base.sections,
-          variationName: `${mode === "signature" ? "Signature" : "Midnight/Light"} · ${accent} · ${heroStyle}`,
-          tierRank,
-        });
-        i++;
-      }
+  for (let v = 0; v < variantCount; v++) {
+    for (const heroStyle of HERO_STYLES) {
+      const tierRank = ((Math.floor(i / 2) % 4) + 1) as 1 | 2 | 3 | 4; // cycles 1,1,2,2,3,3,4,4,...
+      combos.push({
+        bg: LUMINA.bg,
+        ink: LUMINA.ink,
+        card: LUMINA.card,
+        accent: LUMINA.accent,
+        font: LUMINA.font,
+        headlineFont: LUMINA.headlineFont,
+        radius: LUMINA.radius,
+        eyebrow: base.eyebrow,
+        headline: base.headline,
+        sub: base.sub,
+        cta: base.cta,
+        layout: base.layout,
+        heroStyle,
+        catalogLabel: base.catalogLabel,
+        sections: base.sections,
+        variationName: `Lumina · ${heroStyle}${variantCount > 1 ? ` · ${v + 1}` : ""}`,
+        tierRank,
+      });
+      i++;
     }
   }
   return combos;
@@ -285,17 +298,36 @@ function hashString(s: string): number {
   return h;
 }
 
+function luminaThemeFor(base: NicheBase): TemplateTheme {
+  return {
+    bg: LUMINA.bg,
+    ink: LUMINA.ink,
+    card: LUMINA.card,
+    accent: LUMINA.accent,
+    font: LUMINA.font,
+    headlineFont: LUMINA.headlineFont,
+    radius: LUMINA.radius,
+    eyebrow: base.eyebrow,
+    headline: base.headline,
+    sub: base.sub,
+    cta: base.cta,
+    layout: base.layout,
+    heroStyle: "centered",
+    catalogLabel: base.catalogLabel,
+    sections: base.sections,
+  };
+}
+
 export function getTemplateTheme(category: string | undefined, storeName: string): TemplateTheme {
   if (category && NICHE_TEMPLATES[category]) {
-    const b = NICHE_TEMPLATES[category];
-    return { ...b, heroStyle: "centered" };
+    return luminaThemeFor(NICHE_TEMPLATES[category]);
   }
   const pool = Object.values(NICHE_TEMPLATES);
   const b = pool[hashString(category ?? storeName) % pool.length];
-  return { ...b, heroStyle: "centered" };
+  return luminaThemeFor(b);
 }
 
-/** Merge a store's saved overrides (from Settings) on top of the template default. */
+/** Merge a store's saved overrides (from Settings) on top of the Lumina default. */
 export function resolveStoreTheme(
   templateCategory: string | undefined,
   storeName: string,

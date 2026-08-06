@@ -24,7 +24,7 @@ export type PropertyListing = {
 
 export function PropertyCatalog({ listings, theme }: {
   listings: PropertyListing[];
-  theme: { bg: string; ink: string; card: string; accent: string; radius: string };
+  theme: { bg: string; ink: string; card: string; accent: string; radius: string; headlineFont?: string };
 }) {
   const [maxPrice, setMaxPrice] = useState<number | "">("");
   const [minBeds, setMinBeds] = useState<number | "">("");
@@ -49,11 +49,11 @@ export function PropertyCatalog({ listings, theme }: {
 
   return (
     <div>
-      <div style={{ display: "flex", flexWrap: "wrap", gap: 10, marginBottom: 18 }}>
+      <div style={{ display: "flex", flexWrap: "wrap", gap: 10, marginBottom: 24 }}>
         <select
           value={maxPrice}
           onChange={(e) => setMaxPrice(e.target.value ? Number(e.target.value) : "")}
-          style={{ fontSize: 13, padding: "8px 12px", borderRadius: 8, border: `1px solid ${theme.ink}33`, background: theme.card, color: theme.ink }}
+          style={{ fontSize: 13, padding: "10px 14px", borderRadius: 8, border: `1px solid ${theme.ink}22`, background: theme.card, color: theme.ink, boxShadow: "0 1px 2px rgba(18,18,18,0.06)" }}
         >
           <option value="">Any price</option>
           <option value={5000000}>Up to ₦5,000,000</option>
@@ -64,7 +64,7 @@ export function PropertyCatalog({ listings, theme }: {
         <select
           value={minBeds}
           onChange={(e) => setMinBeds(e.target.value ? Number(e.target.value) : "")}
-          style={{ fontSize: 13, padding: "8px 12px", borderRadius: 8, border: `1px solid ${theme.ink}33`, background: theme.card, color: theme.ink }}
+          style={{ fontSize: 13, padding: "10px 14px", borderRadius: 8, border: `1px solid ${theme.ink}22`, background: theme.card, color: theme.ink, boxShadow: "0 1px 2px rgba(18,18,18,0.06)" }}
         >
           <option value="">Any bedrooms</option>
           {[1, 2, 3, 4, 5].map((n) => <option key={n} value={n}>{n}+ bed</option>)}
@@ -73,15 +73,15 @@ export function PropertyCatalog({ listings, theme }: {
       </div>
 
       {mapPoints.length > 0 && (
-        <div style={{ marginBottom: 20 }}>
+        <div style={{ marginBottom: 24, borderRadius: theme.radius, overflow: "hidden" }}>
           <PropertyMap properties={mapPoints} accent={theme.accent} />
         </div>
       )}
 
-      <div style={{ display: "grid", gap: 18, gridTemplateColumns: "repeat(auto-fill, minmax(240px, 1fr))" }}>
+      <div style={{ display: "grid", gap: 24, gridTemplateColumns: "repeat(auto-fill, minmax(250px, 1fr))" }}>
         {filtered.map((l) => (
-          <div key={l.id} style={{ background: theme.card, borderRadius: theme.radius, overflow: "hidden" }}>
-            <div style={{ aspectRatio: "4/3", background: `${theme.accent}22`, display: "flex", alignItems: "center", justifyContent: "center", overflow: "hidden" }}>
+          <div key={l.id} style={{ background: theme.card, borderRadius: theme.radius, overflow: "hidden", boxShadow: "0 1px 3px rgba(18,18,18,0.06)" }} className="transition-shadow hover:shadow-lg">
+            <div style={{ aspectRatio: "4/3", background: `${theme.accent}14`, display: "flex", alignItems: "center", justifyContent: "center", overflow: "hidden" }}>
               {l.image ? (
                 // eslint-disable-next-line @next/next/no-img-element
                 <img src={l.image} alt={l.name} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
@@ -89,11 +89,11 @@ export function PropertyCatalog({ listings, theme }: {
                 <span style={{ fontSize: 22, opacity: 0.4 }}>{l.name.charAt(0)}</span>
               )}
             </div>
-            <div style={{ padding: 14 }}>
-              <p style={{ fontWeight: 700, fontSize: 15 }}>{l.currency} {l.price.toLocaleString()}</p>
-              <p style={{ fontSize: 13, fontWeight: 600, marginTop: 2 }}>{l.name}</p>
-              {l.attributes.address && <p style={{ fontSize: 12, opacity: 0.65, marginTop: 2 }}>{l.attributes.address}</p>}
-              <div style={{ display: "flex", gap: 10, marginTop: 8, fontSize: 12, opacity: 0.8 }}>
+            <div style={{ padding: 18 }}>
+              <p style={{ fontFamily: theme.headlineFont, fontWeight: 700, fontSize: 16 }}>{l.currency} {l.price.toLocaleString()}</p>
+              <p style={{ fontSize: 13.5, fontWeight: 600, marginTop: 3, opacity: 0.9 }}>{l.name}</p>
+              {l.attributes.address && <p style={{ fontSize: 12, opacity: 0.6, marginTop: 3 }}>{l.attributes.address}</p>}
+              <div style={{ display: "flex", gap: 10, marginTop: 10, fontSize: 12, opacity: 0.75 }}>
                 {l.attributes.bedrooms != null && <span>{l.attributes.bedrooms} bed</span>}
                 {l.attributes.bathrooms != null && <span>{l.attributes.bathrooms} bath</span>}
                 {l.attributes.areaSqm != null && <span>{l.attributes.areaSqm} m²</span>}

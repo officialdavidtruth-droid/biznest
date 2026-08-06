@@ -10,6 +10,8 @@ export function AddToCartButton({
   price,
   currency,
   image,
+  accent = "#0041C8",
+  onAccent = "#FFFFFF",
 }: {
   storeSlug: string;
   productId: string;
@@ -17,6 +19,8 @@ export function AddToCartButton({
   price: number;
   currency: string;
   image: string | null;
+  accent?: string;
+  onAccent?: string;
 }) {
   const { addItem } = useCart();
 
@@ -26,8 +30,8 @@ export function AddToCartButton({
         addItem(storeSlug, { productId, name, price, currency, image });
         toast.success(`Added ${name} to cart`);
       }}
-      className="mt-2 w-full rounded-md py-1.5 text-xs font-medium transition hover:brightness-110"
-      style={{ background: "var(--bn-marigold)", color: "var(--bn-ink)" }}
+      className="mt-2 w-full rounded-lg py-2 text-xs font-semibold tracking-wide transition-all hover:-translate-y-0.5 hover:brightness-110"
+      style={{ background: accent, color: onAccent, boxShadow: `0 4px 14px ${accent}4d` }}
     >
       Add to cart
     </button>

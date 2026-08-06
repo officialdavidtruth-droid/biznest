@@ -141,19 +141,19 @@ export default async function StorefrontPage({ params }: { params: Promise<{ slu
         }
       })}
 
-      <footer style={{ borderTop: `1px solid ${theme.ink}1a`, marginTop: 20 }}>
-        <div style={{ maxWidth: 1100, margin: "0 auto", padding: "40px 24px 28px", display: "grid", gap: 28, gridTemplateColumns: "1.3fr 1fr 1fr" }}>
+      <footer style={{ background: LUMINA_BG_DIM, marginTop: 20 }}>
+        <div style={{ maxWidth: 1280, margin: "0 auto", padding: "56px 24px 28px", display: "grid", gap: 28, gridTemplateColumns: "1.3fr 1fr 1fr" }}>
           <div>
             <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10 }}>
               {store.logoUrl ? (
                 // eslint-disable-next-line @next/next/no-img-element
                 <img src={store.logoUrl} alt={store.name} style={{ height: 26, width: 26, borderRadius: 6, objectFit: "cover" }} />
               ) : (
-                <div style={{ height: 26, width: 26, borderRadius: 6, background: theme.accent, display: "flex", alignItems: "center", justifyContent: "center", color: theme.bg, fontWeight: 800, fontSize: 12 }}>
+                <div style={{ height: 26, width: 26, borderRadius: 6, background: theme.accent, display: "flex", alignItems: "center", justifyContent: "center", color: "#fff", fontWeight: 800, fontSize: 12 }}>
                   {store.name.charAt(0).toUpperCase()}
                 </div>
               )}
-              <span style={{ fontWeight: 700, fontSize: 14 }}>{store.name}</span>
+              <span style={{ fontFamily: theme.headlineFont, fontWeight: 600, fontSize: 15 }}>{store.name}</span>
             </div>
             {store.business.description && (
               <p style={{ fontSize: 13, lineHeight: 1.6, opacity: 0.75, maxWidth: 320 }}>
@@ -181,7 +181,7 @@ export default async function StorefrontPage({ params }: { params: Promise<{ slu
             </div>
           </div>
         </div>
-        <div style={{ borderTop: `1px solid ${theme.ink}1a`, padding: "16px 24px", display: "flex", flexWrap: "wrap", gap: 8, justifyContent: "space-between", maxWidth: 1100, margin: "0 auto", fontSize: 11.5, opacity: 0.6 }}>
+        <div style={{ borderTop: `1px solid ${theme.ink}1a`, padding: "16px 24px", display: "flex", flexWrap: "wrap", gap: 8, justifyContent: "space-between", maxWidth: 1280, margin: "0 auto", fontSize: 11.5, opacity: 0.6 }}>
           <span>© {new Date().getFullYear()} {store.name}</span>
           <span>Powered by BizNest · Secured checkout · SSL encrypted</span>
         </div>
@@ -189,6 +189,10 @@ export default async function StorefrontPage({ params }: { params: Promise<{ slu
     </div>
   );
 }
+
+// Lumina "surface-container-low" — the light off-white used to separate
+// the footer from the page's base surface without a hard border.
+const LUMINA_BG_DIM = "#ECF5FE";
 
 // ---------------------------------------------------------------------------
 // Sections — each one reads only real store/business/order data. A section
@@ -208,27 +212,34 @@ function SiteHeader({ store, theme, slug, hasProducts, hasServices, sectionEnabl
   store: StoreWithRelations; theme: TemplateTheme; slug: string; hasProducts: boolean; hasServices: boolean; sectionEnabled: Record<Section, boolean>;
 }) {
   return (
-    <header style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "18px 24px", borderBottom: `1px solid ${theme.ink}1a`, position: "sticky", top: 0, backdropFilter: "blur(8px)", background: `${theme.bg}e6`, zIndex: 10 }}>
-      <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-        {store.logoUrl ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img src={store.logoUrl} alt={store.name} style={{ height: 32, width: 32, borderRadius: 8, objectFit: "cover" }} />
-        ) : (
-          <div style={{ height: 32, width: 32, borderRadius: 8, background: theme.accent, display: "flex", alignItems: "center", justifyContent: "center", color: theme.bg, fontWeight: 800, fontSize: 14 }}>
-            {store.name.charAt(0).toUpperCase()}
-          </div>
-        )}
-        <span style={{ fontWeight: 700, fontSize: 17 }}>{store.name}</span>
-        {store.business.verificationBadge && (
-          <span style={{ fontSize: 11, fontWeight: 700, border: `1px solid ${theme.accent}`, color: theme.accent, borderRadius: 999, padding: "3px 10px" }}>✓ Verified</span>
-        )}
+    <header
+      style={{ background: `${theme.bg}e6`, boxShadow: "0 1px 8px rgba(0,0,0,0.04)" }}
+      className="sticky top-0 z-20 w-full backdrop-blur-xl"
+    >
+      <div style={{ maxWidth: 1280 }} className="mx-auto flex h-20 items-center justify-between px-6">
+        <div className="flex items-center gap-2.5">
+          {store.logoUrl ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img src={store.logoUrl} alt={store.name} style={{ height: 32, width: 32, borderRadius: 8, objectFit: "cover" }} />
+          ) : (
+            <div style={{ height: 32, width: 32, borderRadius: 8, background: theme.accent, color: "#fff" }} className="flex items-center justify-center font-extrabold text-sm">
+              {store.name.charAt(0).toUpperCase()}
+            </div>
+          )}
+          <span style={{ fontFamily: theme.headlineFont }} className="text-lg font-semibold">{store.name}</span>
+          {store.business.verificationBadge && (
+            <span style={{ fontSize: 11, fontWeight: 700, border: `1px solid ${theme.accent}`, color: theme.accent, borderRadius: 999, padding: "3px 10px" }}>✓ Verified</span>
+          )}
+        </div>
+        <nav className="hidden items-center gap-8 text-sm font-medium md:flex" style={{ color: theme.ink }}>
+          {(hasProducts || hasServices) && <a href="#catalog" className="opacity-70 transition-opacity hover:opacity-100 hover:!text-[var(--lumina-accent)]" style={{ ["--lumina-accent" as string]: theme.accent }}>Shop</a>}
+          {sectionEnabled.about && <a href="#about" className="opacity-70 transition-opacity hover:opacity-100">About</a>}
+          {sectionEnabled.contact && <a href="#contact" className="opacity-70 transition-opacity hover:opacity-100">Contact</a>}
+        </nav>
+        <div className="flex items-center gap-5">
+          <CartLink storeSlug={slug} accent={theme.accent} ink={theme.ink} />
+        </div>
       </div>
-      <nav style={{ display: "flex", alignItems: "center", gap: 18, fontSize: 14 }}>
-        {(hasProducts || hasServices) && <a href="#catalog" style={{ color: theme.ink, textDecoration: "none", opacity: 0.85 }}>Shop</a>}
-        {sectionEnabled.about && <a href="#about" style={{ color: theme.ink, textDecoration: "none", opacity: 0.85 }}>About</a>}
-        {sectionEnabled.contact && <a href="#contact" style={{ color: theme.ink, textDecoration: "none", opacity: 0.85 }}>Contact</a>}
-        <span style={{ color: theme.ink }}><CartLink storeSlug={slug} /></span>
-      </nav>
     </header>
   );
 }
@@ -245,14 +256,14 @@ function Hero({ store, theme, hasCatalog, catalogLabel }: { store: StoreWithRela
 
   if (theme.heroStyle === "fullbleed") {
     const bg = heroImage
-      ? `linear-gradient(0deg, ${theme.bg}f2, ${theme.bg}66), url(${heroImage}) center/cover`
-      : `linear-gradient(135deg, ${theme.accent}33, ${theme.bg})`;
+      ? `linear-gradient(90deg, ${theme.bg}cc 0%, ${theme.bg}66 55%, transparent 100%), url(${heroImage}) center/cover`
+      : `linear-gradient(135deg, ${theme.accent}22, ${theme.bg})`;
     return (
-      <section style={{ background: bg, padding: "88px 24px 64px" }}>
-        <div style={{ maxWidth: 1100, margin: "0 auto" }}>
-          <Eyebrow theme={theme} />
-          <h1 style={{ fontSize: "clamp(2.2rem, 6vw, 3.8rem)", fontWeight: 700, lineHeight: 1.06, maxWidth: 700, margin: 0 }}>{theme.headline}</h1>
-          <p style={{ fontSize: 17, opacity: 0.85, marginTop: 14, maxWidth: 520 }}>{theme.sub}</p>
+      <section className="relative flex min-h-[560px] items-center overflow-hidden" style={{ background: bg }}>
+        <div style={{ maxWidth: 1280 }} className="relative z-10 mx-auto w-full px-6 py-24">
+          <Eyebrow theme={theme} pill />
+          <h1 style={{ fontFamily: theme.headlineFont, letterSpacing: "-0.02em" }} className="mt-4 max-w-2xl text-[2.5rem] font-extrabold leading-[1.1] sm:text-[3.5rem]">{theme.headline}</h1>
+          <p style={{ opacity: 0.75 }} className="mt-4 max-w-lg text-lg leading-relaxed">{theme.sub}</p>
           {cta && <HeroCta href="#catalog" theme={theme}>{cta}</HeroCta>}
         </div>
       </section>
@@ -261,32 +272,29 @@ function Hero({ store, theme, hasCatalog, catalogLabel }: { store: StoreWithRela
 
   if (theme.heroStyle === "split") {
     return (
-      <section style={{ maxWidth: 1100, margin: "0 auto", padding: "56px 24px 44px", display: "grid", gridTemplateColumns: "1.1fr 0.9fr", gap: 32, alignItems: "center" }}>
+      <section style={{ maxWidth: 1280 }} className="mx-auto grid items-center gap-10 px-6 py-16 md:grid-cols-2">
         <div>
           <Eyebrow theme={theme} />
-          <h1 style={{ fontSize: "clamp(2rem, 5vw, 3.2rem)", fontWeight: 700, lineHeight: 1.08, margin: 0 }}>{theme.headline}</h1>
-          <p style={{ fontSize: 16, opacity: 0.8, marginTop: 14, maxWidth: 460 }}>{theme.sub}</p>
+          <h1 style={{ fontFamily: theme.headlineFont, letterSpacing: "-0.02em" }} className="mt-4 text-[2.25rem] font-extrabold leading-[1.1] sm:text-[3rem]">{theme.headline}</h1>
+          <p style={{ opacity: 0.7 }} className="mt-4 max-w-md text-base leading-relaxed">{theme.sub}</p>
           {cta && <HeroCta href="#catalog" theme={theme}>{cta}</HeroCta>}
         </div>
         <div
           style={{
             aspectRatio: "4/3",
             borderRadius: theme.radius,
-            overflow: "hidden",
-            position: "relative",
             background: heroImage
               ? undefined
-              : `radial-gradient(circle at 25% 20%, ${theme.accent}55, transparent 55%), radial-gradient(circle at 80% 75%, ${theme.accent}33, transparent 50%), ${theme.card}`,
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
+              : `radial-gradient(circle at 25% 20%, ${theme.accent}33, transparent 55%), radial-gradient(circle at 80% 75%, ${theme.accent}22, transparent 50%), ${theme.card}`,
+            boxShadow: "0 10px 40px rgba(18,18,18,0.08)",
           }}
+          className="relative flex items-center justify-center overflow-hidden"
         >
           {heroImage ? (
             // eslint-disable-next-line @next/next/no-img-element
             <img src={heroImage} alt={store.name} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
           ) : (
-            <span style={{ fontFamily: theme.font, fontSize: "min(30vw, 130px)", fontWeight: 800, color: `${theme.accent}33`, lineHeight: 1, userSelect: "none" }}>
+            <span style={{ fontFamily: theme.headlineFont, fontSize: "min(28vw, 120px)", fontWeight: 800, color: `${theme.accent}33`, lineHeight: 1, userSelect: "none" }}>
               {store.name.charAt(0).toUpperCase()}
             </span>
           )}
@@ -297,12 +305,12 @@ function Hero({ store, theme, hasCatalog, catalogLabel }: { store: StoreWithRela
 
   // centered (default)
   return (
-    <section style={{ padding: "64px 24px 48px", maxWidth: 780, margin: "0 auto", textAlign: "center" }}>
-      <Eyebrow theme={theme} />
-      <h1 style={{ fontSize: "clamp(2rem, 5vw, 3.2rem)", fontWeight: 700, lineHeight: 1.08, margin: "0 auto" }}>{theme.headline}</h1>
-      <p style={{ fontSize: 16, opacity: 0.8, marginTop: 14, maxWidth: 460, margin: "14px auto 0" }}>{theme.sub}</p>
+    <section style={{ maxWidth: 780 }} className="mx-auto px-6 pb-14 pt-20 text-center">
+      <Eyebrow theme={theme} pill center />
+      <h1 style={{ fontFamily: theme.headlineFont, letterSpacing: "-0.02em" }} className="mx-auto mt-4 text-[2.25rem] font-extrabold leading-[1.1] sm:text-[3rem]">{theme.headline}</h1>
+      <p style={{ opacity: 0.7 }} className="mx-auto mt-4 max-w-md text-base leading-relaxed">{theme.sub}</p>
       {cta && (
-        <div style={{ marginTop: 8 }}>
+        <div className="mt-2 flex justify-center">
           <HeroCta href="#catalog" theme={theme}>{cta}</HeroCta>
         </div>
       )}
@@ -310,17 +318,34 @@ function Hero({ store, theme, hasCatalog, catalogLabel }: { store: StoreWithRela
   );
 }
 
-function Eyebrow({ theme }: { theme: TemplateTheme }) {
+function Eyebrow({ theme, pill = false, center = false }: { theme: TemplateTheme; pill?: boolean; center?: boolean }) {
+  if (pill) {
+    return (
+      <span
+        style={{ background: `${theme.card}cc`, color: theme.ink, backdropFilter: "blur(6px)" }}
+        className={`inline-block rounded-full px-4 py-1.5 text-xs font-semibold uppercase tracking-widest ${center ? "" : ""}`}
+      >
+        {theme.eyebrow}
+      </span>
+    );
+  }
   return (
-    <p style={{ fontSize: 12, fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase", color: theme.accent, marginBottom: 12 }}>
+    <p style={{ fontSize: 12, fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase", color: theme.accent }}>
       {theme.eyebrow}
     </p>
   );
 }
 
 function HeroCta({ href, theme, children }: { href: string; theme: TemplateTheme; children: React.ReactNode }) {
+  // Hover color-swap via a CSS variable + Tailwind arbitrary value, since
+  // this renders inside a Server Component tree and can't carry JS event
+  // handlers (onMouseEnter/etc aren't allowed there).
   return (
-    <a href={href} style={{ display: "inline-block", marginTop: 24, background: theme.accent, color: theme.bg, padding: "12px 28px", borderRadius: theme.radius, fontWeight: 700, textDecoration: "none", fontSize: 14 }}>
+    <a
+      href={href}
+      style={{ ["--hero-cta-hover" as string]: theme.accent, background: theme.ink, color: theme.bg, boxShadow: "0 8px 30px rgba(20,29,35,0.12)" }}
+      className="mt-6 inline-flex h-12 items-center rounded-full px-8 text-sm font-semibold no-underline transition-all duration-300 hover:-translate-y-0.5 hover:!bg-[var(--hero-cta-hover)] hover:!text-white"
+    >
       {children}
     </a>
   );
@@ -337,8 +362,8 @@ function Catalog({ store, theme, slug, label, niche }: { store: StoreWithRelatio
       attributes: (p.attributes as PropertyListing["attributes"]) ?? {},
     }));
     return (
-      <section id="catalog" style={{ maxWidth: 1100, margin: "0 auto", padding: "12px 24px 48px" }}>
-        <h2 style={{ fontSize: 13, fontWeight: 700, letterSpacing: "0.06em", textTransform: "uppercase", opacity: 0.6, marginBottom: 18 }}>{label}</h2>
+      <section id="catalog" style={{ maxWidth: 1280 }} className="mx-auto px-6 pb-16 pt-4">
+        <h2 style={{ fontFamily: theme.headlineFont }} className="mb-5 text-2xl font-bold">{label}</h2>
         <PropertyCatalog listings={listings} theme={theme} />
       </section>
     );
@@ -362,47 +387,78 @@ function Catalog({ store, theme, slug, label, niche }: { store: StoreWithRelatio
     : [[null, store.products]];
 
   return (
-    <section id="catalog" style={{ maxWidth: 1100, margin: "0 auto", padding: "12px 24px 48px" }}>
+    <section id="catalog" style={{ maxWidth: 1280 }} className="mx-auto px-6 pb-16 pt-4">
       {store.products.length > 0 && (
         <>
           {!grouped && (
-            <h2 style={{ fontSize: 13, fontWeight: 700, letterSpacing: "0.06em", textTransform: "uppercase", opacity: 0.6, marginBottom: 18 }}>{label}</h2>
+            <h2 style={{ fontFamily: theme.headlineFont }} className="mb-5 text-2xl font-bold">{label}</h2>
           )}
           {productGroups.map(([groupName, items], gi) => (
             <div key={groupName ?? "uncategorized"} style={{ marginBottom: gi === productGroups.length - 1 && store.services.length === 0 ? 0 : 32 }}>
               {grouped && (
-                <h2 style={{ fontSize: 15, fontWeight: 700, marginBottom: 14, paddingBottom: 8, borderBottom: `1px solid ${theme.ink}1a` }}>
+                <h2 style={{ fontFamily: theme.headlineFont }} className="mb-4 border-b pb-2 text-base font-semibold" >
                   {groupName ?? "More"}
                 </h2>
               )}
-              <div style={{ display: "grid", gap: 18, gridTemplateColumns: theme.layout === "grid" ? "repeat(auto-fill, minmax(200px, 1fr))" : "1fr" }}>
+              <div style={{ display: "grid", gap: 24, gridTemplateColumns: theme.layout === "grid" ? "repeat(auto-fill, minmax(220px, 1fr))" : "1fr" }}>
                 {items.map((p) => (
-                  <div key={p.id} style={{ background: theme.card, borderRadius: theme.radius, overflow: "hidden", display: theme.layout === "list" ? "flex" : "block", gap: 16, alignItems: "center" }}>
-                    <div style={{ aspectRatio: theme.layout === "list" ? undefined : "4/3", width: theme.layout === "list" ? 120 : "100%", height: theme.layout === "list" ? 90 : undefined, flexShrink: 0, background: `${theme.accent}22`, display: "flex", alignItems: "center", justifyContent: "center", overflow: "hidden" }}>
-                      {p.images[0] ? (
-                        // eslint-disable-next-line @next/next/no-img-element
-                        <img src={p.images[0]} alt={p.name} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
-                      ) : (
-                        <span style={{ fontSize: 22, opacity: 0.4 }}>{store.name.charAt(0)}</span>
-                      )}
+                  theme.layout === "list" ? (
+                    <div key={p.id} style={{ background: theme.card, borderRadius: theme.radius, boxShadow: "0 1px 3px rgba(18,18,18,0.06)" }} className="flex items-center gap-4 overflow-hidden">
+                      <div style={{ width: 120, height: 90, background: theme.bg }} className="flex flex-shrink-0 items-center justify-center overflow-hidden">
+                        {p.images[0] ? (
+                          // eslint-disable-next-line @next/next/no-img-element
+                          <img src={p.images[0]} alt={p.name} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                        ) : (
+                          <span style={{ fontSize: 22, opacity: 0.4 }}>{store.name.charAt(0)}</span>
+                        )}
+                      </div>
+                      <div className="flex-1 py-3 pr-4">
+                        <p className="text-sm font-semibold">{p.name}</p>
+                        <p className="mt-1 text-sm font-bold">
+                          {p.currency} {Number(p.price).toLocaleString()}
+                          {p.compareAtPrice != null && (
+                            <span className="ml-2 text-xs font-normal opacity-50 line-through">{Number(p.compareAtPrice).toLocaleString()}</span>
+                          )}
+                        </p>
+                        {p.type === "PHYSICAL" && (
+                          <div className="mt-2 max-w-[180px]">
+                            <AddToCartButton storeSlug={slug} productId={p.id} name={p.name} price={Number(p.price)} currency={p.currency} image={p.images[0] ?? null} accent={theme.accent} onAccent="#fff" />
+                          </div>
+                        )}
+                        {p.type === "DIGITAL" && <span className="mt-2 inline-block text-xs font-semibold opacity-60">Digital delivery</span>}
+                        {p.type === "RENTAL" && <span className="mt-2 inline-block text-xs font-semibold opacity-60">For rent{p.rentalPeriodUnit ? ` · per ${p.rentalPeriodUnit}` : ""}</span>}
+                      </div>
                     </div>
-                    <div style={{ padding: theme.layout === "list" ? "10px 16px 10px 0" : 14 }}>
-                      <p style={{ fontWeight: 600, fontSize: 14 }}>{p.name}</p>
-                      <p style={{ fontWeight: 700, fontSize: 15, marginTop: 4 }}>
+                  ) : (
+                    <div key={p.id} className="group">
+                      <div
+                        style={{ background: theme.card, borderRadius: theme.radius, boxShadow: "0 1px 3px rgba(18,18,18,0.06)" }}
+                        className="relative mb-3 flex aspect-[4/5] items-center justify-center overflow-hidden p-4 transition-shadow group-hover:shadow-lg"
+                      >
+                        {p.compareAtPrice != null && (
+                          <span style={{ background: `${theme.accent}1a`, color: theme.accent }} className="absolute left-3 top-3 rounded px-2 py-1 text-[11px] font-semibold">Sale</span>
+                        )}
+                        {p.images[0] ? (
+                          // eslint-disable-next-line @next/next/no-img-element
+                          <img src={p.images[0]} alt={p.name} className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105" />
+                        ) : (
+                          <span style={{ fontSize: 30, opacity: 0.3 }}>{store.name.charAt(0)}</span>
+                        )}
+                      </div>
+                      <p className="text-sm font-semibold">{p.name}</p>
+                      <p style={{ opacity: 0.65 }} className="mt-1 text-sm">
                         {p.currency} {Number(p.price).toLocaleString()}
                         {p.compareAtPrice != null && (
-                          <span style={{ marginLeft: 8, fontSize: 12, opacity: 0.5, textDecoration: "line-through" }}>{Number(p.compareAtPrice).toLocaleString()}</span>
+                          <span className="ml-2 text-xs line-through opacity-70">{Number(p.compareAtPrice).toLocaleString()}</span>
                         )}
                       </p>
                       {p.type === "PHYSICAL" && (
-                        <div style={{ marginTop: 8, maxWidth: theme.layout === "list" ? 160 : undefined }}>
-                          <AddToCartButton storeSlug={slug} productId={p.id} name={p.name} price={Number(p.price)} currency={p.currency} image={p.images[0] ?? null} />
-                        </div>
+                        <AddToCartButton storeSlug={slug} productId={p.id} name={p.name} price={Number(p.price)} currency={p.currency} image={p.images[0] ?? null} accent={theme.accent} onAccent="#fff" />
                       )}
-                      {p.type === "DIGITAL" && <span style={{ display: "inline-block", marginTop: 8, fontSize: 11, fontWeight: 600, opacity: 0.6 }}>Digital delivery</span>}
-                      {p.type === "RENTAL" && <span style={{ display: "inline-block", marginTop: 8, fontSize: 11, fontWeight: 600, opacity: 0.6 }}>For rent{p.rentalPeriodUnit ? ` · per ${p.rentalPeriodUnit}` : ""}</span>}
+                      {p.type === "DIGITAL" && <span className="mt-2 inline-block text-xs font-semibold opacity-60">Digital delivery</span>}
+                      {p.type === "RENTAL" && <span className="mt-2 inline-block text-xs font-semibold opacity-60">For rent{p.rentalPeriodUnit ? ` · per ${p.rentalPeriodUnit}` : ""}</span>}
                     </div>
-                  </div>
+                  )
                 ))}
               </div>
             </div>
@@ -412,22 +468,22 @@ function Catalog({ store, theme, slug, label, niche }: { store: StoreWithRelatio
 
       {store.services.length > 0 && (
         <>
-          <h2 style={{ fontSize: 13, fontWeight: 700, letterSpacing: "0.06em", textTransform: "uppercase", opacity: 0.6, marginBottom: 18 }}>
+          <h2 style={{ fontFamily: theme.headlineFont }} className="mb-4 mt-2 text-xl font-bold">
             {store.products.length > 0 ? "Services" : label}
           </h2>
-          <div style={{ display: "grid", gap: 18, gridTemplateColumns: "repeat(auto-fill, minmax(220px, 1fr))" }}>
+          <div style={{ display: "grid", gap: 24, gridTemplateColumns: "repeat(auto-fill, minmax(240px, 1fr))" }}>
             {store.services.map((s) => (
-              <div key={s.id} style={{ background: theme.card, borderRadius: theme.radius, overflow: "hidden" }}>
+              <div key={s.id} style={{ background: theme.card, borderRadius: theme.radius, boxShadow: "0 1px 3px rgba(18,18,18,0.06)" }} className="overflow-hidden transition-shadow hover:shadow-lg">
                 {s.images[0] && (
                   // eslint-disable-next-line @next/next/no-img-element
-                  <img src={s.images[0]} alt={s.name} style={{ width: "100%", aspectRatio: "16/9", objectFit: "cover" }} />
+                  <img src={s.images[0]} alt={s.name} className="aspect-video w-full object-cover" />
                 )}
-                <div style={{ padding: 18 }}>
-                  <p style={{ fontWeight: 600, fontSize: 15 }}>{s.name}</p>
-                  <p style={{ fontSize: 13, opacity: 0.75, marginTop: 6, lineHeight: 1.5 }}>{s.description.length > 100 ? s.description.slice(0, 100) + "…" : s.description}</p>
-                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginTop: 14 }}>
-                    <span style={{ fontWeight: 700 }}>{s.currency} {Number(s.price).toLocaleString()}</span>
-                    {s.isBookable && <span style={{ fontSize: 11, fontWeight: 700, color: theme.accent, border: `1px solid ${theme.accent}`, borderRadius: 999, padding: "4px 10px" }}>Bookable</span>}
+                <div className="p-5">
+                  <p className="text-base font-semibold">{s.name}</p>
+                  <p style={{ opacity: 0.7 }} className="mt-1.5 text-sm leading-relaxed">{s.description.length > 100 ? s.description.slice(0, 100) + "…" : s.description}</p>
+                  <div className="mt-3.5 flex items-center justify-between">
+                    <span className="font-bold">{s.currency} {Number(s.price).toLocaleString()}</span>
+                    {s.isBookable && <span style={{ color: theme.accent, border: `1px solid ${theme.accent}` }} className="rounded-full px-2.5 py-1 text-[11px] font-semibold">Bookable</span>}
                   </div>
                   {s.isBookable && (
                     <BookingWidget storeSlug={slug} serviceId={s.id} serviceName={s.name} accent={theme.accent} ink={theme.ink} bg={theme.bg} radius={theme.radius} />
@@ -444,9 +500,9 @@ function Catalog({ store, theme, slug, label, niche }: { store: StoreWithRelatio
 
 function About({ store, theme }: { store: StoreWithRelations; theme: TemplateTheme }) {
   return (
-    <section id="about" style={{ maxWidth: 780, margin: "0 auto", padding: "12px 24px 56px" }}>
-      <h2 style={{ fontSize: 13, fontWeight: 700, letterSpacing: "0.06em", textTransform: "uppercase", opacity: 0.6, marginBottom: 14 }}>About</h2>
-      <p style={{ fontSize: 16, lineHeight: 1.7, opacity: 0.9 }}>{store.business.description}</p>
+    <section id="about" style={{ maxWidth: 780 }} className="mx-auto px-6 pb-16 pt-4">
+      <h2 style={{ fontFamily: theme.headlineFont }} className="mb-4 text-2xl font-bold">About</h2>
+      <p style={{ opacity: 0.85 }} className="text-base leading-relaxed">{store.business.description}</p>
     </section>
   );
 }
@@ -465,33 +521,26 @@ function CategoryStrip({ store, theme, slug }: { store: StoreWithRelations; them
   if (categories.length === 0) return null;
 
   return (
-    <section style={{ maxWidth: 1100, margin: "0 auto", padding: "8px 24px 40px" }}>
-      <h2 style={{ fontSize: 13, fontWeight: 700, letterSpacing: "0.06em", textTransform: "uppercase", opacity: 0.6, marginBottom: 18 }}>
+    <section style={{ maxWidth: 1280 }} className="mx-auto px-6 pb-14 pt-4">
+      <h2 style={{ fontFamily: theme.headlineFont }} className="mb-5 text-2xl font-bold">
         Shop by category
       </h2>
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(120px, 1fr))", gap: 12 }}>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(130px, 1fr))", gap: 14 }}>
         {categories.map(([name, count]) => (
           <a
             key={name}
             href="#catalog"
-            style={{
-              display: "flex", flexDirection: "column", alignItems: "center", gap: 8,
-              padding: "18px 12px", borderRadius: theme.radius, background: theme.card,
-              border: `1px solid ${theme.ink}14`, textDecoration: "none", color: theme.ink,
-              textAlign: "center",
-            }}
+            style={{ borderRadius: theme.radius, background: theme.card, boxShadow: "0 1px 3px rgba(18,18,18,0.06)", color: theme.ink }}
+            className="flex flex-col items-center gap-2 px-3 py-5 text-center no-underline transition-shadow hover:shadow-md"
           >
             <span
-              style={{
-                width: 40, height: 40, borderRadius: "50%", background: `${theme.accent}22`,
-                color: theme.accent, display: "flex", alignItems: "center", justifyContent: "center",
-                fontWeight: 700, fontSize: 15,
-              }}
+              style={{ background: `${theme.accent}1a`, color: theme.accent }}
+              className="flex h-10 w-10 items-center justify-center rounded-full text-base font-bold"
             >
               {name.charAt(0).toUpperCase()}
             </span>
-            <span style={{ fontSize: 12.5, fontWeight: 600 }}>{name}</span>
-            <span style={{ fontSize: 11, opacity: 0.55 }}>{count} item{count !== 1 ? "s" : ""}</span>
+            <span className="text-sm font-semibold">{name}</span>
+            <span style={{ opacity: 0.55 }} className="text-xs">{count} item{count !== 1 ? "s" : ""}</span>
           </a>
         ))}
       </div>
@@ -508,30 +557,26 @@ function DealBanner({ store, theme, slug, product }: {
   const pctOff = Math.round((1 - price / compareAt) * 100);
 
   return (
-    <section style={{ maxWidth: 1100, margin: "0 auto", padding: "8px 24px 40px" }}>
+    <section style={{ maxWidth: 1280 }} className="mx-auto px-6 pb-10 pt-2">
       <div
-        style={{
-          display: "flex", flexWrap: "wrap", alignItems: "center", justifyContent: "space-between",
-          gap: 20, padding: "28px 32px", borderRadius: theme.radius,
-          background: `linear-gradient(120deg, ${theme.accent}, ${theme.accent}bb)`, color: theme.bg,
-        }}
+        style={{ borderRadius: theme.radius, background: LUMINA_INVERSE, color: LUMINA_INVERSE_INK }}
+        className="relative flex flex-wrap items-center justify-between gap-5 overflow-hidden px-8 py-8"
       >
-        <div>
-          <p style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase", opacity: 0.85, marginBottom: 6 }}>
+        <div style={{ background: `${theme.accent}33` }} className="pointer-events-none absolute -right-24 -top-24 h-72 w-72 rounded-full blur-3xl" />
+        <div className="relative z-10">
+          <p style={{ opacity: 0.85 }} className="mb-1.5 text-xs font-semibold uppercase tracking-widest">
             Deal of the day · {pctOff}% off
           </p>
-          <h3 style={{ fontSize: 22, fontWeight: 700, margin: 0 }}>{product.name}</h3>
-          <p style={{ marginTop: 8, fontSize: 15 }}>
-            <span style={{ fontWeight: 700 }}>{product.currency} {price.toLocaleString()}</span>{" "}
-            <span style={{ opacity: 0.7, textDecoration: "line-through" }}>{product.currency} {compareAt.toLocaleString()}</span>
+          <h3 style={{ fontFamily: theme.headlineFont }} className="text-2xl font-bold">{product.name}</h3>
+          <p className="mt-2 text-base">
+            <span className="font-bold">{product.currency} {price.toLocaleString()}</span>{" "}
+            <span style={{ opacity: 0.7 }} className="line-through">{product.currency} {compareAt.toLocaleString()}</span>
           </p>
         </div>
         <a
           href="#catalog"
-          style={{
-            background: theme.bg, color: theme.accent, padding: "12px 24px", borderRadius: theme.radius,
-            fontWeight: 700, fontSize: 14, textDecoration: "none", whiteSpace: "nowrap",
-          }}
+          style={{ background: theme.accent, color: "#fff" }}
+          className="relative z-10 whitespace-nowrap rounded-full px-6 py-3 text-sm font-semibold no-underline transition-transform hover:-translate-y-0.5"
         >
           Shop the deal →
         </a>
@@ -539,6 +584,11 @@ function DealBanner({ store, theme, slug, product }: {
     </section>
   );
 }
+
+// Lumina "inverse surface" — the dark power-block used for high-contrast
+// promo/CTA sections against the otherwise light, airy Lumina palette.
+const LUMINA_INVERSE = "#293138";
+const LUMINA_INVERSE_INK = "#E9F2FB";
 
 function Stats({ theme, listingCount, reviewCount, avgRating, completedOrders }: {
   theme: TemplateTheme; listingCount: number; reviewCount: number; avgRating: number | null; completedOrders: number;
@@ -551,12 +601,12 @@ function Stats({ theme, listingCount, reviewCount, avgRating, completedOrders }:
   if (items.length < 2) return null; // one lonely number isn't a "stats bar"
 
   return (
-    <section style={{ background: theme.card, padding: "28px 24px" }}>
-      <div style={{ maxWidth: 1100, margin: "0 auto", display: "flex", flexWrap: "wrap", gap: 32, justifyContent: "space-around" }}>
+    <section style={{ background: theme.card }} className="py-8">
+      <div style={{ maxWidth: 1280 }} className="mx-auto flex flex-wrap justify-around gap-8 px-6">
         {items.map((it) => (
-          <div key={it.label} style={{ textAlign: "center" }}>
-            <p style={{ fontSize: 28, fontWeight: 800, color: theme.accent }}>{it.value}</p>
-            <p style={{ fontSize: 12, opacity: 0.7, marginTop: 2 }}>{it.label}</p>
+          <div key={it.label} className="text-center">
+            <p style={{ fontFamily: theme.headlineFont, color: theme.accent }} className="text-3xl font-extrabold">{it.value}</p>
+            <p style={{ opacity: 0.7 }} className="mt-1 text-xs">{it.label}</p>
           </div>
         ))}
       </div>
@@ -575,14 +625,14 @@ function Features({ theme, verified, hasDelivery, hasBooking }: {
   ].filter(Boolean) as Array<{ icon: string; title: string; body: string }>;
 
   return (
-    <section style={{ maxWidth: 1100, margin: "0 auto", padding: "12px 24px 48px" }}>
-      <h2 style={{ fontSize: 13, fontWeight: 700, letterSpacing: "0.06em", textTransform: "uppercase", opacity: 0.6, marginBottom: 18 }}>Why shop here</h2>
-      <div style={{ display: "grid", gap: 16, gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))" }}>
+    <section style={{ maxWidth: 1280 }} className="mx-auto px-6 pb-14 pt-4">
+      <h2 style={{ fontFamily: theme.headlineFont }} className="mb-5 text-2xl font-bold">Why shop here</h2>
+      <div style={{ display: "grid", gap: 16, gridTemplateColumns: "repeat(auto-fit, minmax(210px, 1fr))" }}>
         {items.map((it) => (
-          <div key={it.title} style={{ background: theme.card, borderRadius: theme.radius, padding: 18 }}>
-            <span style={{ fontSize: 20 }}>{it.icon}</span>
-            <p style={{ fontWeight: 700, fontSize: 14, marginTop: 8 }}>{it.title}</p>
-            <p style={{ fontSize: 12.5, opacity: 0.75, marginTop: 4, lineHeight: 1.5 }}>{it.body}</p>
+          <div key={it.title} style={{ background: theme.card, borderRadius: theme.radius, boxShadow: "0 1px 3px rgba(18,18,18,0.06)" }} className="p-5">
+            <span className="text-xl">{it.icon}</span>
+            <p className="mt-2 text-sm font-semibold">{it.title}</p>
+            <p style={{ opacity: 0.7 }} className="mt-1 text-[13px] leading-relaxed">{it.body}</p>
           </div>
         ))}
       </div>
@@ -596,16 +646,17 @@ function Newsletter({ slug, theme }: { slug: string; theme: TemplateTheme }) {
     await subscribeToNewsletter(slug, formData);
   }
   return (
-    <section style={{ background: theme.card, padding: "32px 24px" }}>
-      <div style={{ maxWidth: 560, margin: "0 auto", textAlign: "center" }}>
-        <p style={{ fontWeight: 700, fontSize: 16 }}>Get notified about new drops</p>
-        <p style={{ fontSize: 13, opacity: 0.7, marginTop: 4 }}>No spam — just this store's updates.</p>
-        <form action={subscribe} style={{ display: "flex", gap: 8, marginTop: 16, flexWrap: "wrap", justifyContent: "center" }}>
+    <section style={{ background: theme.card }} className="px-6 py-10">
+      <div style={{ maxWidth: 560 }} className="mx-auto text-center">
+        <p style={{ fontFamily: theme.headlineFont }} className="text-lg font-semibold">Get notified about new drops</p>
+        <p style={{ opacity: 0.7 }} className="mt-1 text-sm">No spam — just this store's updates.</p>
+        <form action={subscribe} className="mt-4 flex flex-wrap justify-center gap-2">
           <input
             name="email" type="email" required placeholder="you@email.com"
-            style={{ flex: "1 1 220px", padding: "10px 14px", borderRadius: theme.radius, border: `1px solid ${theme.ink}33`, background: "transparent", color: theme.ink, fontSize: 13 }}
+            style={{ flex: "1 1 220px", borderRadius: "0.5rem", border: `1px solid ${theme.ink}33`, background: theme.bg, color: theme.ink }}
+            className="px-4 py-2.5 text-sm outline-none"
           />
-          <button style={{ background: theme.accent, color: theme.bg, border: 0, padding: "10px 22px", borderRadius: theme.radius, fontWeight: 700, fontSize: 13, cursor: "pointer" }}>
+          <button style={{ background: theme.accent, color: "#fff" }} className="rounded-lg px-6 py-2.5 text-sm font-semibold">
             Subscribe
           </button>
         </form>
@@ -616,14 +667,14 @@ function Newsletter({ slug, theme }: { slug: string; theme: TemplateTheme }) {
 
 function Testimonials({ reviews, theme }: { reviews: StoreWithRelations["reviews"]; theme: TemplateTheme }) {
   return (
-    <section style={{ maxWidth: 1100, margin: "0 auto", padding: "12px 24px 56px" }}>
-      <h2 style={{ fontSize: 13, fontWeight: 700, letterSpacing: "0.06em", textTransform: "uppercase", opacity: 0.6, marginBottom: 18 }}>What people say</h2>
-      <div style={{ display: "grid", gap: 16, gridTemplateColumns: "repeat(auto-fill, minmax(240px, 1fr))" }}>
+    <section style={{ maxWidth: 1280 }} className="mx-auto px-6 pb-16 pt-4">
+      <h2 style={{ fontFamily: theme.headlineFont }} className="mb-5 text-2xl font-bold">What people say</h2>
+      <div style={{ display: "grid", gap: 16, gridTemplateColumns: "repeat(auto-fill, minmax(250px, 1fr))" }}>
         {reviews.slice(0, 3).map((r) => (
-          <div key={r.id} style={{ background: theme.card, borderRadius: theme.radius, padding: 18 }}>
-            <div style={{ color: theme.accent, fontSize: 13, marginBottom: 8 }}>{"★".repeat(r.rating)}{"☆".repeat(5 - r.rating)}</div>
-            <p style={{ fontSize: 14, lineHeight: 1.6, opacity: 0.9 }}>"{r.comment}"</p>
-            <p style={{ fontSize: 12, opacity: 0.6, marginTop: 10 }}>— {r.author.name ?? "Verified buyer"}</p>
+          <div key={r.id} style={{ background: theme.card, borderRadius: theme.radius, boxShadow: "0 1px 3px rgba(18,18,18,0.06)" }} className="p-5">
+            <div style={{ color: theme.accent }} className="mb-2 text-sm">{"★".repeat(r.rating)}{"☆".repeat(5 - r.rating)}</div>
+            <p style={{ opacity: 0.9 }} className="text-sm leading-relaxed">&ldquo;{r.comment}&rdquo;</p>
+            <p style={{ opacity: 0.6 }} className="mt-2.5 text-xs">— {r.author.name ?? "Verified buyer"}</p>
           </div>
         ))}
       </div>
@@ -633,21 +684,21 @@ function Testimonials({ reviews, theme }: { reviews: StoreWithRelations["reviews
 
 function Contact({ store, theme, social }: { store: StoreWithRelations; theme: TemplateTheme; social: Record<string, string> }) {
   return (
-    <section id="contact" style={{ maxWidth: 780, margin: "0 auto", padding: "12px 24px 64px" }}>
-      <h2 style={{ fontSize: 13, fontWeight: 700, letterSpacing: "0.06em", textTransform: "uppercase", opacity: 0.6, marginBottom: 14 }}>Get in touch</h2>
-      <div style={{ background: theme.card, borderRadius: theme.radius, padding: 22, display: "flex", flexWrap: "wrap", gap: 12 }}>
+    <section id="contact" style={{ maxWidth: 780 }} className="mx-auto px-6 pb-16 pt-4">
+      <h2 style={{ fontFamily: theme.headlineFont }} className="mb-4 text-2xl font-bold">Get in touch</h2>
+      <div style={{ background: theme.card, borderRadius: theme.radius, boxShadow: "0 1px 3px rgba(18,18,18,0.06)" }} className="flex flex-wrap gap-3 p-6">
         {social.whatsapp && (
-          <a href={`https://wa.me/${social.whatsapp}`} style={{ background: theme.accent, color: theme.bg, padding: "11px 22px", borderRadius: theme.radius, fontWeight: 700, fontSize: 14, textDecoration: "none" }}>
+          <a href={`https://wa.me/${social.whatsapp}`} style={{ background: theme.accent, color: "#fff" }} className="rounded-full px-6 py-2.5 text-sm font-semibold no-underline">
             Message on WhatsApp
           </a>
         )}
         {store.contactPhone && (
-          <a href={`tel:${store.contactPhone}`} style={{ border: `1px solid ${theme.ink}33`, color: theme.ink, padding: "11px 22px", borderRadius: theme.radius, fontWeight: 600, fontSize: 14, textDecoration: "none" }}>
+          <a href={`tel:${store.contactPhone}`} style={{ border: `1px solid ${theme.ink}33`, color: theme.ink }} className="rounded-full px-6 py-2.5 text-sm font-semibold no-underline">
             Call {store.contactPhone}
           </a>
         )}
         {store.contactEmail && (
-          <a href={`mailto:${store.contactEmail}`} style={{ border: `1px solid ${theme.ink}33`, color: theme.ink, padding: "11px 22px", borderRadius: theme.radius, fontWeight: 600, fontSize: 14, textDecoration: "none" }}>
+          <a href={`mailto:${store.contactEmail}`} style={{ border: `1px solid ${theme.ink}33`, color: theme.ink }} className="rounded-full px-6 py-2.5 text-sm font-semibold no-underline">
             Email {store.contactEmail}
           </a>
         )}
