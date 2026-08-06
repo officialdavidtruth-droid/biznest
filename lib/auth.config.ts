@@ -41,14 +41,12 @@ export const authConfig: NextAuthConfig = {
     signIn: "/login",
     error: "/login",
   },
-  // /supaadmin now lives on supaadmin.biznest.space (see middleware.ts)
-  // instead of a path under the main site. A NextAuth cookie is host-only
-  // by default, so a session created while signed in on www.biznest.space
-  // would NOT be sent to that subdomain — the admin would look logged out
-  // there even though they aren't. Scoping the cookie to ".biznest.space"
-  // makes it valid across both hosts. Only done in production: a fixed
-  // domain here would silently break auth on localhost and on *.vercel.app
-  // preview deployments, which aren't subdomains of biznest.space.
+  // /supaadmin is just a path on the main site now, so a host-scoped cookie
+  // already works for it. We still scope the cookie to ".biznest.space"
+  // (rather than the default host-only) so a session stays valid if any
+  // other subdomain is added later — harmless today, cheap insurance later.
+  // Only done in production: a fixed domain here would silently break auth
+  // on localhost and on *.vercel.app preview deployments.
   cookies: isBizNestProd
     ? {
         sessionToken: {

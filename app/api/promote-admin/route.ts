@@ -26,6 +26,6 @@ export async function GET(req: Request) {
 
   return NextResponse.json({
     success: true,
-    message: `${email} is now a PLATFORM_ADMIN. Visit https://supaadmin.biznest.space.`,
+    message: `${email} is now a PLATFORM_ADMIN. Visit https://biznest.space/supaadmin.`,
   });
 }
