@@ -39,7 +39,7 @@ export async function getPlatformStats() {
     prisma.store.count(),
     prisma.order.count(),
     prisma.user.count({ where: { isBanned: true } }),
-    prisma.order.findMany({ where: { status: { in: ["PAID", "FULFILLED", "DELIVERED"] } }, select: { total: true } }),
+    prisma.order.findMany({ where: { status: { in: ["PAID", "IN_PROGRESS", "DELIVERED", "COMPLETED"] } }, select: { total: true } }),
     prisma.store.findMany({ where: { subscriptionId: { not: null } }, select: { subscription: { select: { price: true } } } }),
     prisma.auditLog.findMany({ orderBy: { createdAt: "desc" }, take: 8, include: { user: { select: { name: true, email: true } } } }),
   ]);
