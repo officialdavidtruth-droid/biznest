@@ -1,5 +1,5 @@
 import { PrismaClient, type Prisma } from "@prisma/client";
-import { NICHE_NAMES, generateNicheVariations } from "../lib/template-themes";
+import { NICHE_NAMES, generateNicheVariations, LUMINA } from "../lib/template-themes";
 import { fetchDemoPhoto } from "../lib/demo-images";
 
 const prisma = new PrismaClient();
@@ -90,6 +90,39 @@ async function main() {
     where: { name: { notIn: allVariationNames } },
     data: { isActive: false },
   });
+
+  // Design-system backfill: force EVERY StoreTemplate row — including ones
+  // just retired above — onto the current Lumina color/font tokens, without
+  // touching the layout/copy fields already baked into its config. This is
+  // what actually makes a palette/typeface change like Lumina show up on
+  // already-provisioned stores. The upsert above only touches rows whose
+  // generated `name` matches exactly; a stable-across-releases string (this
+  // one includes the variation label), so a naming-scheme change — like the
+  // one that introduced Lumina — creates new rows instead of updating old
+  // ones, leaving every existing store's Store.templateId pointed at a
+  // stale row with the old palette. This loop is what actually fixes that:
+  // it patches every row by id, so it doesn't matter whether a store is on
+  // a freshly upserted row or one from three seed runs ago.
+  const allTemplates = await prisma.storeTemplate.findMany({ select: { id: true, config: true } });
+  for (const t of allTemplates) {
+    const config = t.config as Record<string, unknown> | null;
+    if (!config) continue;
+    await prisma.storeTemplate.update({
+      where: { id: t.id },
+      data: {
+        config: {
+          ...config,
+          bg: LUMINA.bg,
+          ink: LUMINA.ink,
+          card: LUMINA.card,
+          accent: LUMINA.accent,
+          font: LUMINA.font,
+          headlineFont: LUMINA.headlineFont,
+          radius: LUMINA.radius,
+        } as unknown as Prisma.InputJsonValue,
+      },
+    });
+  }
 
   for (const sub of SUBSCRIPTIONS) {
     await prisma.subscription.upsert({
