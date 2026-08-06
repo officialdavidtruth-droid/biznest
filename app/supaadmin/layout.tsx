@@ -16,6 +16,8 @@ export default async function SupaAdminLayout({ children }: { children: React.Re
     { href: "/supaadmin/stores", label: "Stores" },
     { href: "/supaadmin/subscriptions", label: "Subscriptions" },
     { href: "/supaadmin/domains", label: "Domains" },
+    { href: "/supaadmin/logs", label: "Activity log" },
+    { href: "/supaadmin/settings", label: "Settings" },
   ];
 
   return (

@@ -3,7 +3,7 @@
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { checkoutSchema, type CheckoutInput } from "@/lib/validations/order";
-import { initializePaystackTransaction } from "@/lib/payments/paystack";
+import { chargeCustomer, getActiveGateway } from "@/lib/payments/gateway";
 import { revalidatePath } from "next/cache";
 import type { ActionResult } from "@/types/actions";
 import type { OrderStatus, Store, Business } from "@prisma/client";
@@ -80,22 +80,30 @@ export async function startCheckout(
     },
   });
 
-  const initResult = await initializePaystackTransaction({
-    email: session.user.email ?? data.shippingAddress.fullName,
-    amountKobo: Math.round(total * 100),
+  const gateway = await getActiveGateway();
+  const callbackUrl =
+    gateway === "FLUTTERWAVE"
+      ? `${APP_URL}/api/payments/flutterwave/callback`
+      : `${APP_URL}/api/payments/paystack/callback`;
+
+  const charge = await chargeCustomer({
+    email: session.user.email ?? "guest@biznest.space",
+    customerName: data.shippingAddress.fullName,
+    amountNaira: total,
     reference: order.id,
-    callbackUrl: `${APP_URL}/api/payments/paystack/callback`,
-    subaccountCode: store.paystackSubaccountCode,
+    callbackUrl,
+    paystackSubaccountCode: store.paystackSubaccountCode,
+    flutterwaveSubaccountId: store.flutterwaveSubaccountId,
   });
 
-  if (!initResult.status || !initResult.data) {
+  if (!charge.success) {
     await prisma.order.update({ where: { id: order.id }, data: { status: "CANCELLED" } });
-    return { success: false, error: initResult.message || "Couldn't start payment. Please try again." };
+    return { success: false, error: charge.error };
   }
 
-  await prisma.order.update({ where: { id: order.id }, data: { paymentProvider: "PAYSTACK" } });
+  await prisma.order.update({ where: { id: order.id }, data: { paymentProvider: charge.gateway } });
 
-  return { success: true, data: { authorizationUrl: initResult.data.authorization_url } };
+  return { success: true, data: { authorizationUrl: charge.authorizationUrl } };
 }
 
 // --- Order management (store owner) ------------------------------------

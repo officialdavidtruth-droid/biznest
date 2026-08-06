@@ -6,6 +6,8 @@ export default async function SupaAdminOverview() {
   if (!stats) return null;
 
   const cards = [
+    { label: "Gross merchandise value", value: `₦${stats.gmv.toLocaleString()}` },
+    { label: "Monthly recurring revenue", value: `₦${stats.mrr.toLocaleString()}` },
     { label: "Total users", value: stats.totalUsers },
     { label: "Pending business reviews", value: stats.pendingBusinesses, href: "/supaadmin/businesses", highlight: stats.pendingBusinesses > 0 },
     { label: "Total stores", value: stats.totalStores },
@@ -45,6 +47,29 @@ export default async function SupaAdminOverview() {
           </Link>
         </div>
       )}
+
+      <div className="mt-8">
+        <div className="mb-3 flex items-center justify-between">
+          <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">Recent activity</h2>
+          <Link href="/supaadmin/logs" className="text-xs font-medium text-primary hover:underline">View all →</Link>
+        </div>
+        <div className="overflow-hidden rounded-lg border bg-background">
+          <ul className="divide-y">
+            {stats.recentLogs.map((log) => (
+              <li key={log.id} className="flex items-center justify-between px-4 py-2.5 text-sm">
+                <div>
+                  <span className="font-medium">{log.user?.email ?? "System"}</span>{" "}
+                  <span className="text-muted-foreground">— {log.action.replaceAll("_", " ").toLowerCase()}</span>
+                </div>
+                <span className="text-xs text-muted-foreground">{new Date(log.createdAt).toLocaleString()}</span>
+              </li>
+            ))}
+            {stats.recentLogs.length === 0 && (
+              <li className="px-4 py-8 text-center text-sm text-muted-foreground">No activity yet.</li>
+            )}
+          </ul>
+        </div>
+      </div>
     </div>
   );
 }

@@ -10,6 +10,8 @@ import slugify from "slugify";
 import { SAMPLE_LISTINGS } from "@/lib/sample-listings";
 import { fetchDemoPhoto, fetchDemoPhotos } from "@/lib/demo-images";
 import type { ActionResult } from "@/types/actions";
+import { resolvePaystackAccount, createPaystackSubaccount } from "@/lib/payments/paystack";
+import { resolveFlutterwaveAccount, createFlutterwaveSubaccount } from "@/lib/payments/flutterwave";
 
 const DEFAULT_PAGES: Array<{ slug: string; title: string }> = [
   { slug: "home", title: "Home" },
@@ -342,4 +344,130 @@ export async function updateStoreSettings(slug: string, formData: FormData) {
 
   revalidatePath(`/store/${slug}/admin/settings`);
   revalidatePath(`/store/${slug}`);
+}
+
+// --- Payout account (seller connects Paystack or Flutterwave to get paid) --
+
+async function assertStoreOwner(slug: string) {
+  const session = await auth();
+  if (!session?.user?.id) return { success: false as const, error: "You must be signed in." };
+
+  const store = await prisma.store.findUnique({ where: { slug }, include: { business: true, subscription: true } });
+  if (!store) return { success: false as const, error: "Store not found." };
+  if (store.business.userId !== session.user.id) {
+    return { success: false as const, error: "You don't have access to this store." };
+  }
+  return { success: true as const, store };
+}
+
+export async function getPayoutStatus(slug: string) {
+  const access = await assertStoreOwner(slug);
+  if (!access.success) return null;
+  const { store } = access;
+  return {
+    paystackConnected: Boolean(store.paystackSubaccountCode),
+    flutterwaveConnected: Boolean(store.flutterwaveSubaccountId),
+    payoutDetails: store.payoutDetails as { bankName?: string; accountName?: string; maskedAccountNumber?: string; provider?: "PAYSTACK" | "FLUTTERWAVE" } | null,
+    verifiedAt: store.payoutVerifiedAt,
+    commissionRate: Number(store.subscription?.commissionRate ?? 8),
+  };
+}
+
+/**
+ * Resolves the account name first (so a mistyped account number is caught
+ * before we save anything), then creates a real subaccount with the
+ * relevant gateway so future order payments split automatically — the
+ * store's cut lands directly in their bank account, ours in the platform's.
+ */
+export async function connectPayoutAccount(
+  slug: string,
+  input: { provider: "PAYSTACK" | "FLUTTERWAVE"; bankCode: string; bankName: string; accountNumber: string }
+): Promise<ActionResult> {
+  const access = await assertStoreOwner(slug);
+  if (!access.success) return { success: false, error: access.error };
+  const { store } = access;
+
+  if (!/^\d{10}$/.test(input.accountNumber)) {
+    return { success: false, error: "Enter a valid 10-digit account number." };
+  }
+
+  const commissionRate = Number(store.subscription?.commissionRate ?? 8);
+  const masked = `••••••${input.accountNumber.slice(-4)}`;
+
+  if (input.provider === "PAYSTACK") {
+    const resolved = await resolvePaystackAccount(input.accountNumber, input.bankCode);
+    if (!resolved.status || !resolved.data) {
+      return { success: false, error: resolved.message || "Couldn't verify that account number." };
+    }
+
+    const subaccount = await createPaystackSubaccount({
+      businessName: store.name,
+      bankCode: input.bankCode,
+      accountNumber: input.accountNumber,
+      commissionPercentage: commissionRate,
+    });
+    if (!subaccount.status || !subaccount.data) {
+      return { success: false, error: subaccount.message || "Couldn't connect this account to Paystack." };
+    }
+
+    await prisma.store.update({
+      where: { id: store.id },
+      data: {
+        paystackSubaccountCode: subaccount.data.subaccount_code,
+        payoutVerifiedAt: new Date(),
+        payoutDetails: { provider: "PAYSTACK", bankName: input.bankName, accountName: resolved.data.account_name, maskedAccountNumber: masked },
+      },
+    });
+  } else {
+    const resolved = await resolveFlutterwaveAccount(input.accountNumber, input.bankCode);
+    if (resolved.status !== "success" || !resolved.data) {
+      return { success: false, error: resolved.message || "Couldn't verify that account number." };
+    }
+
+    const subaccount = await createFlutterwaveSubaccount({
+      businessName: store.name,
+      bankCode: input.bankCode,
+      accountNumber: input.accountNumber,
+      splitPercentage: commissionRate,
+    });
+    if (subaccount.status !== "success" || !subaccount.data) {
+      return { success: false, error: subaccount.message || "Couldn't connect this account to Flutterwave." };
+    }
+
+    await prisma.store.update({
+      where: { id: store.id },
+      data: {
+        flutterwaveSubaccountId: subaccount.data.subaccount_id ?? String(subaccount.data.id),
+        payoutVerifiedAt: new Date(),
+        payoutDetails: { provider: "FLUTTERWAVE", bankName: input.bankName, accountName: resolved.data.account_name, maskedAccountNumber: masked },
+      },
+    });
+  }
+
+  await prisma.auditLog.create({
+    data: { userId: access.store.business.userId, action: "PAYOUT_ACCOUNT_CONNECTED", entity: "Store", entityId: store.id, metadata: { provider: input.provider } },
+  });
+
+  revalidatePath(`/store/${slug}/admin/payouts`);
+  return { success: true, data: undefined };
+}
+
+export async function disconnectPayoutAccount(slug: string, provider: "PAYSTACK" | "FLUTTERWAVE"): Promise<ActionResult> {
+  const access = await assertStoreOwner(slug);
+  if (!access.success) return { success: false, error: access.error };
+
+  await prisma.store.update({
+    where: { id: access.store.id },
+    data:
+      provider === "PAYSTACK"
+        ? { paystackSubaccountCode: null }
+        : { flutterwaveSubaccountId: null },
+  });
+
+  await prisma.auditLog.create({
+    data: { userId: access.store.business.userId, action: "PAYOUT_ACCOUNT_DISCONNECTED", entity: "Store", entityId: access.store.id, metadata: { provider } },
+  });
+
+  revalidatePath(`/store/${slug}/admin/payouts`);
+  return { success: true, data: undefined };
 }

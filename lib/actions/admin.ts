@@ -4,7 +4,7 @@ import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { revalidatePath } from "next/cache";
 import type { ActionResult } from "@/types/actions";
-import type { VerificationStatus } from "@prisma/client";
+import type { VerificationStatus, UserRole } from "@prisma/client";
 
 async function assertPlatformStaff() {
   const session = await auth();
@@ -15,21 +15,39 @@ async function assertPlatformStaff() {
   return { success: true as const, userId: session.user.id, role: session.user.role };
 }
 
+// Role/user-deletion/plan-pricing/gateway changes are deliberately
+// PLATFORM_ADMIN-only — a step above the general staff check above, which
+// SUPPORT_MODERATOR also passes for the day-to-day moderation actions.
+async function assertPlatformAdmin() {
+  const session = await auth();
+  if (!session?.user?.id) return { success: false as const, error: "You must be signed in." };
+  if (session.user.role !== "PLATFORM_ADMIN") {
+    return { success: false as const, error: "Platform admin access required." };
+  }
+  return { success: true as const, userId: session.user.id };
+}
+
 // --- Overview -----------------------------------------------------------
 
 export async function getPlatformStats() {
   const access = await assertPlatformStaff();
   if (!access.success) return null;
 
-  const [totalUsers, pendingBusinesses, totalStores, totalOrders, bannedUsers] = await Promise.all([
+  const [totalUsers, pendingBusinesses, totalStores, totalOrders, bannedUsers, paidOrders, activeSubs, recentLogs] = await Promise.all([
     prisma.user.count(),
     prisma.business.count({ where: { verificationStatus: "PENDING" } }),
     prisma.store.count(),
     prisma.order.count(),
     prisma.user.count({ where: { isBanned: true } }),
+    prisma.order.findMany({ where: { status: { in: ["PAID", "FULFILLED", "DELIVERED"] } }, select: { total: true } }),
+    prisma.store.findMany({ where: { subscriptionId: { not: null } }, select: { subscription: { select: { price: true } } } }),
+    prisma.auditLog.findMany({ orderBy: { createdAt: "desc" }, take: 8, include: { user: { select: { name: true, email: true } } } }),
   ]);
 
-  return { totalUsers, pendingBusinesses, totalStores, totalOrders, bannedUsers };
+  const gmv = paidOrders.reduce((sum, o) => sum + Number(o.total), 0);
+  const mrr = activeSubs.reduce((sum, s) => sum + Number(s.subscription?.price ?? 0), 0);
+
+  return { totalUsers, pendingBusinesses, totalStores, totalOrders, bannedUsers, gmv, mrr, recentLogs };
 }
 
 // --- Business verification review ---------------------------------------
@@ -282,5 +300,146 @@ export async function markDomainVerifiedManually(storeId: string): Promise<Actio
   });
 
   revalidatePath("/supaadmin/domains");
+  return { success: true, data: undefined };
+}
+
+// --- User role management (upgrade/downgrade) ------------------------------
+
+const ASSIGNABLE_ROLES: UserRole[] = ["CUSTOMER", "STORE_OWNER", "SUPPORT_MODERATOR", "PLATFORM_ADMIN"];
+
+export async function changeUserRole(userId: string, role: UserRole): Promise<ActionResult> {
+  const access = await assertPlatformAdmin();
+  if (!access.success) return { success: false, error: access.error };
+  if (!ASSIGNABLE_ROLES.includes(role)) return { success: false, error: "Not a valid role." };
+  if (access.userId === userId && role !== "PLATFORM_ADMIN") {
+    return { success: false, error: "You can't downgrade your own account." };
+  }
+
+  const target = await prisma.user.findUnique({ where: { id: userId } });
+  if (!target) return { success: false, error: "User not found." };
+
+  await prisma.user.update({ where: { id: userId }, data: { role } });
+  await prisma.auditLog.create({
+    data: { userId: access.userId, action: "USER_ROLE_CHANGED", entity: "User", entityId: userId, metadata: { from: target.role, to: role } },
+  });
+
+  revalidatePath("/supaadmin/users");
+  return { success: true, data: undefined };
+}
+
+/**
+ * Hard delete. Only allowed for users with no store/business behind them
+ * (customers, or staff accounts) — a store owner with an active business
+ * should be suspended/banned instead, since deleting them would orphan
+ * their orders, products, and everything a real customer bought from them.
+ * Use banUser for that case; this is for cleaning up spam/test accounts.
+ */
+export async function deleteUser(userId: string): Promise<ActionResult> {
+  const access = await assertPlatformAdmin();
+  if (!access.success) return { success: false, error: access.error };
+  if (access.userId === userId) return { success: false, error: "You can't delete your own account." };
+
+  const target = await prisma.user.findUnique({ where: { id: userId }, include: { business: true } });
+  if (!target) return { success: false, error: "User not found." };
+  if (target.business) {
+    return { success: false, error: "This user owns a business/store. Suspend or ban them instead of deleting — deleting would orphan their store's orders and products." };
+  }
+
+  await prisma.user.delete({ where: { id: userId } });
+  await prisma.auditLog.create({
+    data: { userId: access.userId, action: "USER_DELETED", entity: "User", entityId: userId, metadata: { email: target.email } },
+  });
+
+  revalidatePath("/supaadmin/users");
+  return { success: true, data: undefined };
+}
+
+// --- Activity log -----------------------------------------------------------
+
+export async function listActivityLogs(params: { query?: string; action?: string; page?: number } = {}) {
+  const access = await assertPlatformStaff();
+  if (!access.success) return { logs: [], total: 0 };
+
+  const page = params.page ?? 1;
+  const pageSize = 50;
+  const where = {
+    ...(params.action ? { action: params.action } : {}),
+    ...(params.query
+      ? {
+          OR: [
+            { entity: { contains: params.query, mode: "insensitive" as const } },
+            { entityId: { contains: params.query, mode: "insensitive" as const } },
+            { user: { email: { contains: params.query, mode: "insensitive" as const } } },
+          ],
+        }
+      : {}),
+  };
+
+  const [logs, total] = await Promise.all([
+    prisma.auditLog.findMany({
+      where,
+      include: { user: { select: { name: true, email: true, role: true } } },
+      orderBy: { createdAt: "desc" },
+      skip: (page - 1) * pageSize,
+      take: pageSize,
+    }),
+    prisma.auditLog.count({ where }),
+  ]);
+
+  return { logs, total, pageSize };
+}
+
+export async function listDistinctLogActions() {
+  const access = await assertPlatformStaff();
+  if (!access.success) return [];
+  const rows = await prisma.auditLog.findMany({ distinct: ["action"], select: { action: true }, orderBy: { action: "asc" } });
+  return rows.map((r) => r.action);
+}
+
+// --- Plan pricing (billing) -------------------------------------------------
+// Prices edited here are the single source of truth — the landing page
+// pricing section and every store owner's upgrade screen both read live
+// from the Subscription table, so a change here takes effect everywhere
+// immediately with no other code to touch.
+
+export async function listPlans() {
+  const access = await assertPlatformStaff();
+  if (!access.success) return [];
+  return prisma.subscription.findMany({ orderBy: { price: "asc" } });
+}
+
+export async function updatePlanPricing(
+  planId: string,
+  input: { price: number; commissionRate: number; isActive: boolean }
+): Promise<ActionResult> {
+  const access = await assertPlatformAdmin();
+  if (!access.success) return { success: false, error: access.error };
+  if (input.price < 0 || input.commissionRate < 0 || input.commissionRate > 100) {
+    return { success: false, error: "Enter a valid price and commission rate (0–100%)." };
+  }
+
+  const plan = await prisma.subscription.findUnique({ where: { id: planId } });
+  if (!plan) return { success: false, error: "Plan not found." };
+
+  await prisma.subscription.update({
+    where: { id: planId },
+    data: { price: input.price, commissionRate: input.commissionRate, isActive: input.isActive },
+  });
+
+  await prisma.auditLog.create({
+    data: {
+      userId: access.userId,
+      action: "PLAN_PRICING_UPDATED",
+      entity: "Subscription",
+      entityId: planId,
+      metadata: { plan: plan.name, from: { price: plan.price, commissionRate: plan.commissionRate }, to: input },
+    },
+  });
+
+  // Landing page + every store's /admin/subscription screen read this table
+  // live on every request, so no extra revalidation is strictly required —
+  // these just cover any statically-cached edge cases.
+  revalidatePath("/");
+  revalidatePath("/supaadmin/subscriptions");
   return { success: true, data: undefined };
 }

@@ -1,5 +1,6 @@
 import { listUsers } from "@/lib/actions/admin";
 import { UserBanButton } from "@/components/dashboard/user-ban-button";
+import { UserRoleSelect, DeleteUserButton } from "@/components/dashboard/user-role-controls";
 
 export default async function UsersPage({
   searchParams,
@@ -42,7 +43,7 @@ export default async function UsersPage({
                   <p className="font-medium">{u.name ?? "—"}</p>
                   <p className="text-xs text-muted-foreground">{u.email}</p>
                 </td>
-                <td className="px-4 py-3 text-muted-foreground">{u.role}</td>
+                <td className="px-4 py-3"><UserRoleSelect userId={u.id} role={u.role} /></td>
                 <td className="px-4 py-3 text-muted-foreground">{u.emailVerified ? "Yes" : "No"}</td>
                 <td className="px-4 py-3 text-muted-foreground">{new Date(u.createdAt).toLocaleDateString()}</td>
                 <td className="px-4 py-3">
@@ -52,8 +53,11 @@ export default async function UsersPage({
                     <span className="rounded-full bg-green-100 px-2 py-0.5 text-xs text-green-700">Active</span>
                   )}
                 </td>
-                <td className="px-4 py-3 text-right">
-                  <UserBanButton userId={u.id} isBanned={u.isBanned} />
+                <td className="px-4 py-3">
+                  <div className="flex items-center justify-end gap-3">
+                    <UserBanButton userId={u.id} isBanned={u.isBanned} />
+                    <DeleteUserButton userId={u.id} email={u.email} />
+                  </div>
                 </td>
               </tr>
             ))}

@@ -2,7 +2,7 @@
 
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { initializePaystackTransaction } from "@/lib/payments/paystack";
+import { chargeCustomer, getActiveGateway } from "@/lib/payments/gateway";
 import { nanoid } from "nanoid";
 import type { ActionResult } from "@/types/actions";
 
@@ -42,18 +42,24 @@ export async function initiatePlanUpgrade(
   }
 
   const reference = buildReference(store.id, plan.id);
-  const init = await initializePaystackTransaction({
+  const gateway = await getActiveGateway();
+  const callbackUrl =
+    gateway === "FLUTTERWAVE"
+      ? `${APP_URL}/api/payments/flutterwave/subscription-callback`
+      : `${APP_URL}/api/payments/paystack/subscription-callback`;
+
+  // No subaccount passed — this charge goes straight to the platform
+  // account, unlike order payments which split to the vendor's subaccount.
+  const charge = await chargeCustomer({
     email: session.user.email ?? `${store.slug}@biznest.space`,
-    amountKobo: Math.round(Number(plan.price) * 100),
+    amountNaira: Number(plan.price),
     reference,
-    callbackUrl: `${APP_URL}/api/payments/paystack/subscription-callback`,
-    // No subaccountCode — this charge goes straight to the platform account,
-    // unlike order payments which split to the vendor's subaccount.
+    callbackUrl,
   });
 
-  if (!init.status || !init.data) {
-    return { success: false, error: init.message || "Couldn't start the upgrade payment." };
+  if (!charge.success) {
+    return { success: false, error: charge.error };
   }
 
-  return { success: true, data: { authorizationUrl: init.data.authorization_url } };
+  return { success: true, data: { authorizationUrl: charge.authorizationUrl } };
 }

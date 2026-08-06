@@ -224,6 +224,11 @@ model Store {
 
   paystackSubaccountCode   String?
   flutterwaveSubaccountId  String?
+  // Display-only info the owner entered when connecting payout (bank name,
+  // account name, masked number) — the actual subaccount codes above are
+  // what payments are actually split to; this is just what we show them.
+  payoutDetails            Json?
+  payoutVerifiedAt         DateTime?
 
   products      Product[]
   services      Service[]
