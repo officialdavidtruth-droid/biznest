@@ -1,11 +1,11 @@
+import type React from "react";
 import { prisma } from "@/lib/prisma";
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
 import { AddToCartButton } from "@/components/storefront/add-to-cart-button";
 import { CartLink } from "@/components/storefront/cart-link";
 import { BookingWidget } from "@/components/storefront/booking-widget";
-import { PropertyCatalog, type PropertyListing } from "@/components/storefront/property-catalog";
-import { resolveStoreTheme, type Section, type TemplateTheme } from "@/lib/template-themes";
+import { resolveStoreTheme, FRESH, type TemplateTheme } from "@/lib/template-themes";
 import { subscribeToNewsletter } from "@/lib/actions/newsletter";
 
 export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }): Promise<Metadata> {
@@ -15,6 +15,13 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
   return { title: store.seoTitle ?? store.name, description: store.seoDescription ?? undefined };
 }
 
+// The storefront now has exactly one template — "Fresh & Co." (see
+// lib/template-themes.ts). Every store renders this same design; only
+// real store data (name, logo, banner, catalog, reviews, contact info)
+// changes what's shown. All imagery (logo, banner, product/service
+// photos) comes from the store owner's own uploads via the existing
+// dashboard upload fields (logo-banner-fields.tsx, multi-image-upload.tsx,
+// service-images-field.tsx) — nothing here is hardcoded artwork.
 export default async function StorefrontPage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
   const store = await prisma.store.findUnique({
@@ -30,723 +37,426 @@ export default async function StorefrontPage({ params }: { params: Promise<{ slu
 
   if (!store || store.status !== "ACTIVE") notFound();
 
-  // Each StoreTemplate row is now a fully self-contained theme snapshot
-  // (one of many variations per niche — see lib/template-themes.ts), not a
-  // shared per-category lookup. Read it directly; only fall back to the
-  // niche-hash default if a store somehow has no template config at all.
-  const templateConfig = store.template?.config as Partial<TemplateTheme> | null;
   const themeOverrides = store.themeColors as { primary?: string; secondary?: string; accent?: string } | null;
-  const baseTheme: TemplateTheme = templateConfig?.bg
-    ? (templateConfig as TemplateTheme)
-    : resolveStoreTheme(store.template?.category, store.name, themeOverrides, store.fontFamily);
-  const theme: TemplateTheme = {
-    ...baseTheme,
-    bg: themeOverrides?.secondary || baseTheme.bg,
-    accent: themeOverrides?.primary || themeOverrides?.accent || baseTheme.accent,
-    font: store.fontFamily || baseTheme.font,
-  };
-  // Vendor-controlled arrangement (Website Builder → Sections) layered on
-  // top of the template's default order/visibility. Hero can't be hidden
-  // by the vendor; a section can still be absent even if not hidden here
-  // when it has no real data behind it (sectionEnabled below handles that).
-  const sectionOverrides = store.sectionOverrides as { order?: Section[]; hidden?: Section[] } | null;
-  const sections: Section[] = sectionOverrides?.order?.length
-    ? sectionOverrides.order.filter((s) => s === "hero" || !sectionOverrides.hidden?.includes(s))
-    : theme.sections;
-  const catalogLabel = theme.catalogLabel;
+  const theme: TemplateTheme = resolveStoreTheme(store.template?.category, store.name, themeOverrides, store.fontFamily);
 
   const social = (store.socialLinks as Record<string, string> | null) ?? {};
-  const hasProducts = store.products.length > 0;
-  const hasServices = store.services.length > 0;
-  const hasCatalog = hasProducts || hasServices;
+  const catalogItems: CatalogItem[] = [
+    ...store.products.map((p) => ({
+      id: p.id, kind: "product" as const, name: p.name, description: null as string | null,
+      price: Number(p.price), currency: p.currency, image: p.images[0] ?? null,
+      categoryName: p.category?.name ?? null, type: p.type, rentalUnit: p.rentalPeriodUnit,
+      isBookable: false,
+    })),
+    ...store.services.map((s) => ({
+      id: s.id, kind: "service" as const, name: s.name, description: s.description,
+      price: Number(s.price), currency: s.currency, image: s.images[0] ?? null,
+      categoryName: s.category?.name ?? null, type: "SERVICE", rentalUnit: null,
+      isBookable: s.isBookable,
+    })),
+  ];
+  const catalogCategories = Array.from(new Set(catalogItems.map((i) => i.categoryName).filter(Boolean))) as string[];
   const goodReviews = store.reviews.filter((r) => r.rating >= 4 && r.comment);
-  const hasBookableServices = store.services.some((s) => s.isBookable);
-
-  const [completedOrders, deliveryZoneCount] = await Promise.all([
-    prisma.order.count({ where: { storeId: store.id, status: { in: ["DELIVERED", "COMPLETED"] } } }),
-    prisma.deliveryZone.count({ where: { storeId: store.id, isActive: true } }),
-  ]);
   const avgRating = store.reviews.length
     ? store.reviews.reduce((sum, r) => sum + r.rating, 0) / store.reviews.length
     : null;
-  const distinctCategories = new Set([
-    ...store.products.map((p) => p.category?.name).filter(Boolean),
-    ...store.services.map((s) => s.category?.name).filter(Boolean),
-  ]);
-  const discountedProduct = store.products.find(
-    (p) => p.compareAtPrice && Number(p.compareAtPrice) > Number(p.price)
-  );
+  const completedOrders = await prisma.order.count({ where: { storeId: store.id, status: { in: ["DELIVERED", "COMPLETED"] } } });
 
-  const sectionEnabled: Record<Section, boolean> = {
-    hero: true,
-    catalog: hasCatalog,
-    about: Boolean(store.business.description),
-    stats: hasCatalog || store.reviews.length > 0,
-    features: true,
-    categories: distinctCategories.size >= 2,
-    deal: Boolean(discountedProduct),
-    testimonials: goodReviews.length > 0,
-    newsletter: true,
-    contact: Boolean(store.contactEmail || store.contactPhone || social.whatsapp),
-    gallery: store.galleryImages.length > 0,
-  };
+  const heroImage = store.bannerUrl || store.template?.previewUrl || null;
 
   return (
-    <div style={{ background: theme.bg, color: theme.ink, minHeight: "100vh", fontFamily: theme.font }}>
-      <SiteHeader store={store} theme={theme} slug={slug} hasProducts={hasProducts} hasServices={hasServices} sectionEnabled={sectionEnabled} />
+    <div style={{ fontFamily: theme.font, color: theme.ink, background: FRESH.ivory }}>
+      <SiteNav store={store} slug={slug} hasCatalog={catalogItems.length > 0} />
 
-      {sections.map((s) => {
-        if (!sectionEnabled[s]) return null;
-        switch (s) {
-          case "hero":
-            return <Hero key={s} store={store} theme={theme} hasCatalog={hasCatalog} catalogLabel={catalogLabel} />;
-          case "catalog":
-            return <Catalog key={s} store={store} theme={theme} slug={slug} label={catalogLabel} niche={store.template?.category} />;
-          case "about":
-            return <About key={s} store={store} theme={theme} />;
-          case "gallery":
-            return <Gallery key={s} images={store.galleryImages} theme={theme} storeName={store.name} />;
-          case "stats":
-            return (
-              <Stats
-                key={s}
-                theme={theme}
-                listingCount={store.products.length + store.services.length}
-                reviewCount={store.reviews.length}
-                avgRating={avgRating}
-                completedOrders={completedOrders}
-              />
-            );
-          case "features":
-            return (
-              <Features
-                key={s}
-                theme={theme}
-                verified={store.business.verificationBadge}
-                hasDelivery={deliveryZoneCount > 0}
-                hasBooking={hasBookableServices}
-              />
-            );
-          case "categories":
-            return <CategoryStrip key={s} store={store} theme={theme} slug={slug} />;
-          case "deal":
-            return discountedProduct ? (
-              <DealBanner key={s} store={store} theme={theme} slug={slug} product={discountedProduct} />
-            ) : null;
-          case "testimonials":
-            return <Testimonials key={s} reviews={goodReviews} theme={theme} />;
-          case "newsletter":
-            return <Newsletter key={s} slug={slug} theme={theme} />;
-          case "contact":
-            return <Contact key={s} store={store} theme={theme} social={social} />;
-          default:
-            return null;
-        }
-      })}
+      {/* ---------- HERO ---------- */}
+      <header style={{ padding: "36px 0 0", background: FRESH.ivory }}>
+        <div style={wrap}>
+          <div
+            style={{
+              position: "relative", borderRadius: 26, overflow: "hidden", minHeight: 460,
+              display: "flex", alignItems: "center",
+              background: heroImage
+                ? `linear-gradient(100deg, rgba(10,30,18,.82) 0%, rgba(10,30,18,.58) 38%, rgba(10,30,18,.12) 62%), url(${heroImage}) center/cover`
+                : `linear-gradient(200deg,#5fc98a 0%, #2c8a52 45%, #1c5c37 100%)`,
+            }}
+          >
+            <div style={{ position: "relative", zIndex: 2, padding: "60px 56px", maxWidth: 640 }}>
+              <div style={{ ...eyebrow, color: FRESH.citrus }}>{theme.eyebrow}</div>
+              <h1 style={{ ...h1, color: "#fff", fontSize: "clamp(34px,5vw,56px)" }}>{store.name}</h1>
+              <p style={{ marginTop: 18, color: "rgba(255,255,255,.82)", maxWidth: 440, fontSize: 15.5, lineHeight: 1.6 }}>
+                {store.business.description || theme.sub}
+              </p>
+              <div style={{ marginTop: 30, display: "flex", gap: 16, alignItems: "center", flexWrap: "wrap" }}>
+                {catalogItems.length > 0 && (
+                  <a href="#catalog" style={btnPrimary}>{theme.cta} <ArrowChip /></a>
+                )}
+              </div>
+            </div>
+            {avgRating != null && (
+              <div style={{ position: "absolute", zIndex: 2, bottom: 34, right: 40, background: "#fff", color: FRESH.forest, padding: "14px 18px", borderRadius: 16, boxShadow: shadow, fontSize: 12 }}>
+                <div style={{ color: FRESH.citrus, letterSpacing: 2, fontSize: 13 }}>{"★".repeat(Math.round(avgRating))}{"☆".repeat(5 - Math.round(avgRating))}</div>
+                <b style={{ display: "block", fontFamily: FRESH.headlineFont, fontSize: 19, color: FRESH.forest, fontWeight: 800 }}>{avgRating.toFixed(1)} Rating</b>
+                {store.reviews.length}+ glowing reviews
+              </div>
+            )}
+          </div>
 
-      <footer style={{ background: LUMINA_BG_DIM, marginTop: 20 }}>
-        <div style={{ maxWidth: 1280, margin: "0 auto", padding: "56px 24px 28px", display: "grid", gap: 28, gridTemplateColumns: "1.3fr 1fr 1fr" }}>
+          <div style={{ display: "flex", gap: 36, padding: "34px 0 0", flexWrap: "wrap" }}>
+            <Stat value={`${catalogItems.length}+`} label="Services offered" />
+            <Stat value={`${completedOrders}+`} label="Jobs completed" />
+            {avgRating != null && <Stat value={`${avgRating.toFixed(1)}/5`} label="Average rating" />}
+          </div>
+
+          <Marquee />
+        </div>
+      </header>
+
+      {/* ---------- WHY CHOOSE US ---------- */}
+      {store.business.description && (
+        <section style={{ padding: "80px 0" }}>
+          <div style={{ ...wrap, display: "grid", gridTemplateColumns: "0.9fr 1.1fr", gap: 50, alignItems: "center" }}>
+            <div>
+              <div style={eyebrow}>Why choose us</div>
+              <h2 style={{ ...h1, fontSize: "clamp(26px,3.6vw,38px)", marginBottom: 16 }}>
+                Why should you choose <span style={accentText}>our services?</span>
+              </h2>
+              <p style={{ color: FRESH.inkSoft, fontSize: 14.5, lineHeight: 1.7, maxWidth: 420 }}>{store.business.description}</p>
+              {catalogCategories.slice(0, 3).map((cat, i) => (
+                <div key={cat} style={{ display: "flex", gap: 16, padding: "18px 0", borderTop: `1px solid ${line}` }}>
+                  <div style={{ fontFamily: "monospace", fontSize: 12, color: FRESH.leaf, paddingTop: 4 }}>{String(i + 1).padStart(2, "0")}</div>
+                  <div>
+                    <h4 style={{ fontSize: 17, marginBottom: 6, fontFamily: FRESH.headlineFont, fontWeight: 700 }}>{cat}</h4>
+                    <p style={{ color: FRESH.inkSoft, fontSize: 14, lineHeight: 1.6 }}>Trained crews and quality service, every time.</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
+              <Tile img={store.logoUrl} gradient={`linear-gradient(150deg,${FRESH.leafLight},${FRESH.forest})`} />
+              <Tile img={heroImage} gradient={`linear-gradient(150deg,${FRESH.citrus},#c98a12)`} marginTop={32} />
+            </div>
+          </div>
+        </section>
+      )}
+
+      {/* ---------- CATALOG / SERVICES ---------- */}
+      {catalogItems.length > 0 && (
+        <section id="catalog" style={{ padding: "80px 0", background: FRESH.paper }}>
+          <div style={wrap}>
+            <div style={sectionHead}>
+              <div>
+                <div style={eyebrow}>Our {theme.catalogLabel.toLowerCase()}</div>
+                <h2 style={h2}>Our company provides the <span style={accentText}>best service</span></h2>
+              </div>
+              <p style={{ maxWidth: 340, color: FRESH.inkSoft, fontSize: 15, lineHeight: 1.6 }}>Bundle what you need — every visit comes with our satisfaction guarantee.</p>
+            </div>
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(240px, 1fr))", gap: 20 }}>
+              {catalogItems.map((item) => (
+                <CatalogCard key={`${item.kind}-${item.id}`} item={item} storeName={store.name} slug={slug} accent={FRESH.leaf} />
+              ))}
+            </div>
+          </div>
+        </section>
+      )}
+
+      {/* ---------- STORY / CTA (dark block) ---------- */}
+      {store.business.description && (
+        <section style={{ padding: "80px 0" }}>
+          <div style={wrap}>
+            <div style={{ display: "grid", gridTemplateColumns: "0.95fr 1.05fr", borderRadius: 24, overflow: "hidden", background: FRESH.forest, color: "#fff" }}>
+              <div style={{ padding: "60px 50px" }}>
+                <div style={{ ...eyebrow, color: FRESH.citrus }}>What we do</div>
+                <h2 style={{ ...h1, color: "#fff", fontSize: "clamp(26px,3.2vw,38px)" }}>
+                  Behind the <span style={{ color: FRESH.leafLight }}>{store.name}</span> story.
+                </h2>
+                <p style={{ color: "rgba(255,255,255,.65)", marginTop: 16, maxWidth: 400, fontSize: 15, lineHeight: 1.7 }}>{store.business.description}</p>
+                <div style={{ display: "flex", gap: 36, marginTop: 34 }}>
+                  <div><b style={{ fontFamily: FRESH.headlineFont, fontSize: 28, color: FRESH.citrus, display: "block" }}>{catalogItems.length}+</b><span style={{ fontSize: 12, color: "rgba(255,255,255,.55)" }}>Services offered</span></div>
+                  <div><b style={{ fontFamily: FRESH.headlineFont, fontSize: 28, color: FRESH.citrus, display: "block" }}>{completedOrders}+</b><span style={{ fontSize: 12, color: "rgba(255,255,255,.55)" }}>Jobs completed</span></div>
+                </div>
+                {catalogItems.length > 0 && <a href="#catalog" style={{ ...btnPrimary, marginTop: 30 }}>Get Started <ArrowChip /></a>}
+              </div>
+              <div style={{ position: "relative", background: heroImage ? `url(${heroImage}) center/cover` : `linear-gradient(160deg,#1c4a32,#0a1f15)`, minHeight: 280 }} />
+            </div>
+          </div>
+        </section>
+      )}
+
+      {/* ---------- TESTIMONIALS ---------- */}
+      {goodReviews.length > 0 && (
+        <section style={{ padding: "80px 0" }}>
+          <div style={{ ...wrap, display: "grid", gridTemplateColumns: "0.85fr 1.15fr", gap: 44, alignItems: "center" }}>
+            <div style={{ height: 300, borderRadius: 24, background: heroImage ? `url(${heroImage}) center/cover` : `linear-gradient(150deg,${FRESH.leafLight},${FRESH.forest})`, position: "relative" }}>
+              {avgRating != null && (
+                <div style={{ position: "absolute", bottom: 18, left: 18, background: "#fff", borderRadius: 14, padding: "10px 14px", boxShadow: shadow }}>
+                  <b style={{ fontFamily: FRESH.headlineFont, fontSize: 18 }}>{avgRating.toFixed(1)} / 5</b>
+                  <span style={{ fontSize: 11, color: FRESH.inkSoft, display: "block" }}>{store.reviews.length}+ reviews</span>
+                </div>
+              )}
+            </div>
+            <div>
+              <div style={eyebrow}>What clients say</div>
+              <h2 style={{ ...h2, marginBottom: 22 }}>Hear what our <span style={accentText}>clients</span> say</h2>
+              <div style={{ color: FRESH.citrus, letterSpacing: 3, marginBottom: 16, fontSize: 15 }}>{"★".repeat(goodReviews[0].rating)}</div>
+              <p style={{ fontFamily: FRESH.headlineFont, fontSize: "clamp(18px,2.4vw,26px)", lineHeight: 1.5, color: FRESH.forest, fontWeight: 700 }}>
+                &ldquo;{goodReviews[0].comment}&rdquo;
+              </p>
+              <div style={{ marginTop: 20, display: "flex", alignItems: "center", gap: 12 }}>
+                <div style={{ width: 42, height: 42, borderRadius: "50%", background: `linear-gradient(150deg,${FRESH.leafLight},${FRESH.forest})` }} />
+                <div>
+                  <h5 style={{ fontSize: 14, fontWeight: 700 }}>{goodReviews[0].author.name ?? "Verified client"}</h5>
+                  <span style={{ fontSize: 12, color: FRESH.inkSoft }}>Client</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+      )}
+
+      {/* ---------- APPOINTMENT / QUOTE ---------- */}
+      <section style={{ padding: "80px 0", background: FRESH.paper }}>
+        <div style={wrap}>
+          <div style={{ display: "grid", gridTemplateColumns: "1.1fr 0.9fr", borderRadius: 24, overflow: "hidden" }}>
+            <div style={{ background: FRESH.forestDark, color: "#fff", padding: 50 }}>
+              <div style={{ ...eyebrow, color: FRESH.citrus }}>Get a quote</div>
+              <h2 style={{ ...h1, color: "#fff", fontSize: "clamp(24px,3vw,32px)" }}>
+                Schedule your <span style={{ color: FRESH.leafLight }}>appointment</span> today!
+              </h2>
+              <p style={{ color: "rgba(255,255,255,.6)", marginTop: 10, fontSize: 14 }}>Tell us about your needs and we&apos;ll reply within the hour.</p>
+              <QuoteForm slug={slug} services={catalogItems.map((i) => i.name)} contactEmail={store.contactEmail} social={social} />
+            </div>
+            <div style={{ position: "relative", background: `linear-gradient(155deg,${FRESH.leafLight},#0d281b)`, minHeight: 260 }}>
+              <div style={{ position: "absolute", left: 0, right: 0, bottom: 0, background: FRESH.leaf, padding: "22px 28px", display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 8 }}>
+                <h4 style={{ color: "#fff", fontSize: 18, fontFamily: FRESH.headlineFont, fontWeight: 700 }}>100% Satisfaction</h4>
+                <span style={{ color: "rgba(255,255,255,.75)", fontSize: 12 }}>Guaranteed on every visit</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* ---------- CONTACT ---------- */}
+      {(store.contactEmail || store.contactPhone || social.whatsapp) && (
+        <section style={{ padding: "80px 0" }}>
+          <div style={{ ...wrap, maxWidth: 780 }}>
+            <h2 style={{ ...h2, marginBottom: 16, fontSize: 26 }}>Get in touch</h2>
+            <div style={{ background: "#fff", borderRadius: 16, border: `1px solid ${line}`, display: "flex", flexWrap: "wrap", gap: 12, padding: 24 }}>
+              {social.whatsapp && <a href={`https://wa.me/${social.whatsapp}`} style={btnPrimary}>Message on WhatsApp</a>}
+              {store.contactPhone && <a href={`tel:${store.contactPhone}`} style={btnGhost}>Call {store.contactPhone}</a>}
+              {store.contactEmail && <a href={`mailto:${store.contactEmail}`} style={btnGhost}>Email {store.contactEmail}</a>}
+            </div>
+          </div>
+        </section>
+      )}
+
+      {/* ---------- NEWSLETTER ---------- */}
+      <NewsletterSection slug={slug} storeName={store.name} />
+
+      {/* ---------- FOOTER ---------- */}
+      <footer style={{ background: FRESH.forestDark, color: "rgba(255,255,255,.6)", padding: "60px 0 0" }}>
+        <div style={{ ...wrap, display: "grid", gridTemplateColumns: "1.4fr 1fr 1fr 1.2fr", gap: 36, paddingBottom: 44, borderBottom: "1px solid rgba(255,255,255,.1)" }}>
           <div>
-            <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10 }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 12 }}>
               {store.logoUrl ? (
                 // eslint-disable-next-line @next/next/no-img-element
                 <img src={store.logoUrl} alt={store.name} style={{ height: 26, width: 26, borderRadius: 6, objectFit: "cover" }} />
               ) : (
-                <div style={{ height: 26, width: 26, borderRadius: 6, background: theme.accent, display: "flex", alignItems: "center", justifyContent: "center", color: "#fff", fontWeight: 800, fontSize: 12 }}>
-                  {store.name.charAt(0).toUpperCase()}
-                </div>
+                <div style={{ height: 26, width: 26, borderRadius: 6, background: FRESH.citrus }} />
               )}
-              <span style={{ fontFamily: theme.headlineFont, fontWeight: 600, fontSize: 15 }}>{store.name}</span>
+              <span style={{ fontFamily: FRESH.headlineFont, fontWeight: 700, fontSize: 15, color: "#fff" }}>{store.name}</span>
             </div>
             {store.business.description && (
-              <p style={{ fontSize: 13, lineHeight: 1.6, opacity: 0.75, maxWidth: 320 }}>
+              <p style={{ fontSize: 13, lineHeight: 1.7, maxWidth: 250 }}>
                 {store.business.description.length > 140 ? store.business.description.slice(0, 140) + "…" : store.business.description}
               </p>
             )}
           </div>
-
           <div>
-            <p style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.06em", textTransform: "uppercase", opacity: 0.5, marginBottom: 10 }}>Shop</p>
-            <div style={{ display: "flex", flexDirection: "column", gap: 8, fontSize: 13 }}>
-              {(store.products.length > 0 || store.services.length > 0) && <a href="#catalog" style={{ color: theme.ink, opacity: 0.8, textDecoration: "none" }}>{catalogLabel}</a>}
-              {sectionEnabled.about && <a href="#about" style={{ color: theme.ink, opacity: 0.8, textDecoration: "none" }}>About</a>}
-              {sectionEnabled.contact && <a href="#contact" style={{ color: theme.ink, opacity: 0.8, textDecoration: "none" }}>Contact</a>}
-            </div>
+            <h5 style={footHead}>Services</h5>
+            {catalogCategories.slice(0, 4).map((c) => <div key={c} style={footLink}>{c}</div>)}
           </div>
-
           <div>
-            <p style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.06em", textTransform: "uppercase", opacity: 0.5, marginBottom: 10 }}>Connect</p>
-            <div style={{ display: "flex", flexDirection: "column", gap: 8, fontSize: 13 }}>
-              {social.instagram && <a href={social.instagram} style={{ color: theme.ink, opacity: 0.8, textDecoration: "none" }}>Instagram</a>}
-              {social.whatsapp && <a href={`https://wa.me/${social.whatsapp}`} style={{ color: theme.ink, opacity: 0.8, textDecoration: "none" }}>WhatsApp</a>}
-              {store.contactEmail && <a href={`mailto:${store.contactEmail}`} style={{ color: theme.ink, opacity: 0.8, textDecoration: "none" }}>Email</a>}
-              {store.contactPhone && <a href={`tel:${store.contactPhone}`} style={{ color: theme.ink, opacity: 0.8, textDecoration: "none" }}>Call</a>}
-            </div>
+            <h5 style={footHead}>Pages</h5>
+            <div style={footLink}>Home</div>
+            {catalogItems.length > 0 && <div style={footLink}>{theme.catalogLabel}</div>}
+            <div style={footLink}>Contact</div>
+          </div>
+          <div>
+            <h5 style={footHead}>Get in touch</h5>
+            {store.contactEmail && <div style={footLink}>{store.contactEmail}</div>}
+            {store.contactPhone && <div style={footLink}>{store.contactPhone}</div>}
           </div>
         </div>
-        <div style={{ borderTop: `1px solid ${theme.ink}1a`, padding: "16px 24px", display: "flex", flexWrap: "wrap", gap: 8, justifyContent: "space-between", maxWidth: 1280, margin: "0 auto", fontSize: 11.5, opacity: 0.6 }}>
-          <span>© {new Date().getFullYear()} {store.name}</span>
-          <span>Powered by BizNest · Secured checkout · SSL encrypted</span>
+        <div style={{ display: "flex", justifyContent: "space-between", padding: "22px 28px", fontSize: 12, flexWrap: "wrap", gap: 8, maxWidth: 1180, margin: "0 auto" }}>
+          <span>© {new Date().getFullYear()} {store.name}. All rights reserved.</span>
+          <span>Powered by BizNest</span>
         </div>
       </footer>
     </div>
   );
 }
 
-// Lumina "surface-container-low" — the light off-white used to separate
-// the footer from the page's base surface without a hard border.
-const LUMINA_BG_DIM = "#ECF5FE";
-
 // ---------------------------------------------------------------------------
-// Sections — each one reads only real store/business/order data. A section
-// with nothing to show doesn't render (handled by `sectionEnabled` above),
-// rather than showing an empty or fabricated block.
+// Shared style tokens (Fresh & Co. palette — lib/template-themes.ts FRESH)
 // ---------------------------------------------------------------------------
+const wrap: React.CSSProperties = { maxWidth: 1180, margin: "0 auto", padding: "0 28px" };
+const line = "rgba(18,53,36,0.10)";
+const shadow = "0 18px 44px -22px rgba(13,40,27,0.35)";
+const eyebrow: React.CSSProperties = { fontFamily: "monospace", fontSize: 12, letterSpacing: "0.14em", textTransform: "uppercase", color: FRESH.leaf, fontWeight: 600, marginBottom: 14 };
+const h1: React.CSSProperties = { fontFamily: FRESH.headlineFont, fontWeight: 700, lineHeight: 1.14, letterSpacing: "-0.01em" };
+const h2: React.CSSProperties = { ...h1, fontSize: "clamp(26px,3.4vw,40px)", maxWidth: 560 };
+const accentText: React.CSSProperties = { color: FRESH.leaf, fontWeight: 800 };
+const sectionHead: React.CSSProperties = { display: "flex", justifyContent: "space-between", alignItems: "flex-end", gap: 30, marginBottom: 46, flexWrap: "wrap" };
+const btnPrimary: React.CSSProperties = { display: "inline-flex", alignItems: "center", gap: 10, padding: "15px 26px", borderRadius: 100, fontWeight: 600, fontSize: 15, background: FRESH.leaf, color: "#fff", textDecoration: "none", whiteSpace: "nowrap" };
+const btnGhost: React.CSSProperties = { display: "inline-flex", alignItems: "center", gap: 10, padding: "15px 26px", borderRadius: 100, fontWeight: 600, fontSize: 15, background: "transparent", color: FRESH.forest, border: "1.5px solid " + line, textDecoration: "none", whiteSpace: "nowrap" };
+const footHead: React.CSSProperties = { color: "#fff", fontFamily: "monospace", fontSize: 11.5, letterSpacing: "0.08em", textTransform: "uppercase", marginBottom: 16 };
+const footLink: React.CSSProperties = { fontSize: 13.5, marginBottom: 10 };
 
-type StoreWithRelations = NonNullable<Awaited<ReturnType<typeof prisma.store.findUnique>>> & {
-  business: { description: string; verificationBadge: boolean };
-  template: { previewUrl: string | null } | null;
-  products: Array<{ id: string; name: string; price: unknown; compareAtPrice: unknown; currency: string; images: string[]; type: string; rentalPeriodUnit: string | null; attributes: unknown; category: { name: string } | null }>;
-  services: Array<{ id: string; name: string; description: string; price: unknown; currency: string; images: string[]; isBookable: boolean; category: { name: string } | null }>;
-  reviews: Array<{ id: string; rating: number; comment: string | null; author: { name: string | null } }>;
+function ArrowChip() {
+  return <span style={{ width: 34, height: 34, borderRadius: "50%", background: "rgba(255,255,255,.22)", display: "inline-flex", alignItems: "center", justifyContent: "center", fontSize: 14 }}>→</span>;
+}
+
+function Stat({ value, label }: { value: string; label: string }) {
+  return (
+    <div>
+      <b style={{ fontFamily: FRESH.headlineFont, fontSize: 25, display: "block", color: FRESH.forest, fontWeight: 800 }}>{value}</b>
+      <span style={{ fontSize: 12.5, color: FRESH.inkSoft }}>{label}</span>
+    </div>
+  );
+}
+
+function Tile({ img, gradient, marginTop }: { img: string | null; gradient: string; marginTop?: number }) {
+  return (
+    <div style={{ borderRadius: 20, height: 210, marginTop, overflow: "hidden", background: img ? `url(${img}) center/cover` : gradient }} />
+  );
+}
+
+function Marquee() {
+  const words = ["VACUUM", "CLEANING", "SWEEPING", "SANITIZE", "POLISH", "DUSTING"];
+  return (
+    <div style={{ borderTop: `1px solid ${line}`, padding: "22px 0", overflow: "hidden", whiteSpace: "nowrap" }}>
+      <span style={{ fontFamily: FRESH.headlineFont, fontWeight: 700, fontSize: 19, color: line }}>
+        {[...words, ...words].map((w, i) => (
+          <span key={i} style={{ margin: "0 22px", color: i % 2 === 0 ? FRESH.leaf : "#d8ded9" }}>{w}</span>
+        ))}
+      </span>
+    </div>
+  );
+}
+
+type CatalogItem = {
+  id: string; kind: "product" | "service"; name: string; description: string | null;
+  price: number; currency: string; image: string | null; categoryName: string | null;
+  type: string; rentalUnit: string | null; isBookable: boolean;
 };
 
-function SiteHeader({ store, theme, slug, hasProducts, hasServices, sectionEnabled }: {
-  store: StoreWithRelations; theme: TemplateTheme; slug: string; hasProducts: boolean; hasServices: boolean; sectionEnabled: Record<Section, boolean>;
-}) {
+function CatalogCard({ item, storeName, slug, accent }: { item: CatalogItem; storeName: string; slug: string; accent: string }) {
   return (
-    <header
-      style={{ background: `${theme.bg}e6`, boxShadow: "0 1px 8px rgba(0,0,0,0.04)" }}
-      className="sticky top-0 z-20 w-full backdrop-blur-xl"
-    >
-      <div style={{ maxWidth: 1280 }} className="mx-auto flex h-20 items-center justify-between px-6">
-        <div className="flex items-center gap-2.5">
+    <div style={{ background: "#fff", borderRadius: 16, overflow: "hidden", border: `1px solid ${line}`, boxShadow: "0 1px 3px rgba(18,18,18,0.06)" }}>
+      <div style={{ height: 160, background: `linear-gradient(140deg,${FRESH.mint2},${FRESH.leafLight})`, position: "relative", display: "flex", alignItems: "center", justifyContent: "center" }}>
+        {item.image ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img src={item.image} alt={item.name} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+        ) : (
+          <span style={{ fontSize: 30, opacity: 0.4 }}>{storeName.charAt(0)}</span>
+        )}
+      </div>
+      <div style={{ padding: 20 }}>
+        {item.categoryName && <div style={{ fontFamily: "monospace", fontSize: 10.5, color: FRESH.leaf, textTransform: "uppercase", marginBottom: 8 }}>{item.categoryName}</div>}
+        <h4 style={{ fontSize: 16.5, marginBottom: 8, fontFamily: FRESH.headlineFont, fontWeight: 700 }}>{item.name}</h4>
+        {item.description && <p style={{ fontSize: 13, color: FRESH.inkSoft, lineHeight: 1.5, marginBottom: 16 }}>{item.description.length > 100 ? item.description.slice(0, 100) + "…" : item.description}</p>}
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+          <span style={{ fontFamily: FRESH.headlineFont, fontSize: 20, fontWeight: 600, color: FRESH.forest }}>
+            {item.currency} {item.price.toLocaleString()}
+          </span>
+          {item.kind === "product" && item.type === "PHYSICAL" && (
+            <AddToCartButton storeSlug={slug} productId={item.id} name={item.name} price={item.price} currency={item.currency} image={item.image} accent={accent} onAccent="#fff" />
+          )}
+        </div>
+        {item.kind === "service" && item.isBookable && (
+          <div style={{ marginTop: 12 }}>
+            <BookingWidget storeSlug={slug} serviceId={item.id} serviceName={item.name} accent={accent} ink={FRESH.ink} bg={FRESH.ivory} radius="0.75rem" />
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function SiteNav({ store, slug, hasCatalog }: { store: { name: string; logoUrl: string | null }; slug: string; hasCatalog: boolean }) {
+  return (
+    <nav style={{ position: "sticky", top: 0, zIndex: 50, background: "rgba(251,249,244,.9)", backdropFilter: "blur(10px)", borderBottom: `1px solid ${line}` }}>
+      <div style={{ ...wrap, display: "flex", alignItems: "center", justifyContent: "space-between", padding: "16px 28px" }}>
+        <a href={`/store/${slug}`} style={{ fontFamily: FRESH.headlineFont, fontWeight: 700, fontSize: 23, color: FRESH.forest, display: "flex", alignItems: "center", gap: 8, textDecoration: "none" }}>
           {store.logoUrl ? (
             // eslint-disable-next-line @next/next/no-img-element
             <img src={store.logoUrl} alt={store.name} style={{ height: 32, width: 32, borderRadius: 8, objectFit: "cover" }} />
           ) : (
-            <div style={{ height: 32, width: 32, borderRadius: 8, background: theme.accent, color: "#fff" }} className="flex items-center justify-center font-extrabold text-sm">
-              {store.name.charAt(0).toUpperCase()}
-            </div>
+            <span style={{ width: 9, height: 9, borderRadius: "50%", background: FRESH.citrus, display: "inline-block" }} />
           )}
-          <span style={{ fontFamily: theme.headlineFont }} className="text-lg font-semibold">{store.name}</span>
-          {store.business.verificationBadge && (
-            <span style={{ fontSize: 11, fontWeight: 700, border: `1px solid ${theme.accent}`, color: theme.accent, borderRadius: 999, padding: "3px 10px" }}>✓ Verified</span>
-          )}
-        </div>
-        <nav className="hidden items-center gap-8 text-sm font-medium md:flex" style={{ color: theme.ink }}>
-          {(hasProducts || hasServices) && <a href="#catalog" className="opacity-70 transition-opacity hover:opacity-100 hover:!text-[var(--lumina-accent)]" style={{ ["--lumina-accent" as string]: theme.accent }}>Shop</a>}
-          {sectionEnabled.about && <a href="#about" className="opacity-70 transition-opacity hover:opacity-100">About</a>}
-          {sectionEnabled.contact && <a href="#contact" className="opacity-70 transition-opacity hover:opacity-100">Contact</a>}
-        </nav>
-        <div className="flex items-center gap-5">
-          <CartLink storeSlug={slug} accent={theme.accent} ink={theme.ink} />
-        </div>
-      </div>
-    </header>
-  );
-}
-
-function Hero({ store, theme, hasCatalog, catalogLabel }: { store: StoreWithRelations; theme: TemplateTheme; hasCatalog: boolean; catalogLabel: string }) {
-  const cta = hasCatalog ? theme.cta : null;
-  // A vendor's own upload always wins; falls back to the template's demo
-  // photo (lib/demo-images.ts, seeded per niche) so a store looks populated
-  // immediately even before the vendor uploads anything of their own. This
-  // was the actual bug — previewUrl was wired into the gallery but never
-  // into the live storefront, which is why it showed in one place and not
-  // the other.
-  const heroImage = store.bannerUrl || store.template?.previewUrl || null;
-
-  if (theme.heroStyle === "fullbleed") {
-    const bg = heroImage
-      ? `linear-gradient(90deg, ${theme.bg}cc 0%, ${theme.bg}66 55%, transparent 100%), url(${heroImage}) center/cover`
-      : `linear-gradient(135deg, ${theme.accent}22, ${theme.bg})`;
-    return (
-      <section className="relative flex min-h-[560px] items-center overflow-hidden" style={{ background: bg }}>
-        <div style={{ maxWidth: 1280 }} className="relative z-10 mx-auto w-full px-6 py-24">
-          <Eyebrow theme={theme} pill />
-          <h1 style={{ fontFamily: theme.headlineFont, letterSpacing: "-0.02em" }} className="mt-4 max-w-2xl text-[2.5rem] font-extrabold leading-[1.1] sm:text-[3.5rem]">{theme.headline}</h1>
-          <p style={{ opacity: 0.75 }} className="mt-4 max-w-lg text-lg leading-relaxed">{theme.sub}</p>
-          {cta && <HeroCta href="#catalog" theme={theme}>{cta}</HeroCta>}
-        </div>
-      </section>
-    );
-  }
-
-  if (theme.heroStyle === "split") {
-    return (
-      <section style={{ maxWidth: 1280 }} className="mx-auto grid items-center gap-10 px-6 py-16 md:grid-cols-2">
-        <div>
-          <Eyebrow theme={theme} />
-          <h1 style={{ fontFamily: theme.headlineFont, letterSpacing: "-0.02em" }} className="mt-4 text-[2.25rem] font-extrabold leading-[1.1] sm:text-[3rem]">{theme.headline}</h1>
-          <p style={{ opacity: 0.7 }} className="mt-4 max-w-md text-base leading-relaxed">{theme.sub}</p>
-          {cta && <HeroCta href="#catalog" theme={theme}>{cta}</HeroCta>}
-        </div>
-        <div
-          style={{
-            aspectRatio: "4/3",
-            borderRadius: theme.radius,
-            background: heroImage
-              ? undefined
-              : `radial-gradient(circle at 25% 20%, ${theme.accent}33, transparent 55%), radial-gradient(circle at 80% 75%, ${theme.accent}22, transparent 50%), ${theme.card}`,
-            boxShadow: "0 10px 40px rgba(18,18,18,0.08)",
-          }}
-          className="relative flex items-center justify-center overflow-hidden"
-        >
-          {heroImage ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img src={heroImage} alt={store.name} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
-          ) : (
-            <span style={{ fontFamily: theme.headlineFont, fontSize: "min(28vw, 120px)", fontWeight: 800, color: `${theme.accent}33`, lineHeight: 1, userSelect: "none" }}>
-              {store.name.charAt(0).toUpperCase()}
-            </span>
-          )}
-        </div>
-      </section>
-    );
-  }
-
-  // centered (default)
-  return (
-    <section style={{ maxWidth: 780 }} className="mx-auto px-6 pb-14 pt-20 text-center">
-      <Eyebrow theme={theme} pill center />
-      <h1 style={{ fontFamily: theme.headlineFont, letterSpacing: "-0.02em" }} className="mx-auto mt-4 text-[2.25rem] font-extrabold leading-[1.1] sm:text-[3rem]">{theme.headline}</h1>
-      <p style={{ opacity: 0.7 }} className="mx-auto mt-4 max-w-md text-base leading-relaxed">{theme.sub}</p>
-      {cta && (
-        <div className="mt-2 flex justify-center">
-          <HeroCta href="#catalog" theme={theme}>{cta}</HeroCta>
-        </div>
-      )}
-    </section>
-  );
-}
-
-function Eyebrow({ theme, pill = false, center = false }: { theme: TemplateTheme; pill?: boolean; center?: boolean }) {
-  if (pill) {
-    return (
-      <span
-        style={{ background: `${theme.card}cc`, color: theme.ink, backdropFilter: "blur(6px)" }}
-        className={`inline-block rounded-full px-4 py-1.5 text-xs font-semibold uppercase tracking-widest ${center ? "" : ""}`}
-      >
-        {theme.eyebrow}
-      </span>
-    );
-  }
-  return (
-    <p style={{ fontSize: 12, fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase", color: theme.accent }}>
-      {theme.eyebrow}
-    </p>
-  );
-}
-
-function HeroCta({ href, theme, children }: { href: string; theme: TemplateTheme; children: React.ReactNode }) {
-  // Hover color-swap via a CSS variable + Tailwind arbitrary value, since
-  // this renders inside a Server Component tree and can't carry JS event
-  // handlers (onMouseEnter/etc aren't allowed there).
-  return (
-    <a
-      href={href}
-      style={{ ["--hero-cta-hover" as string]: theme.accent, background: theme.ink, color: theme.bg, boxShadow: "0 8px 30px rgba(20,29,35,0.12)" }}
-      className="mt-6 inline-flex h-12 items-center rounded-full px-8 text-sm font-semibold no-underline transition-all duration-300 hover:-translate-y-0.5 hover:!bg-[var(--hero-cta-hover)] hover:!text-white"
-    >
-      {children}
-    </a>
-  );
-}
-
-function Catalog({ store, theme, slug, label, niche }: { store: StoreWithRelations; theme: TemplateTheme; slug: string; label: string; niche?: string }) {
-  if (niche === "Real Estate & Property" && store.products.length > 0) {
-    const listings: PropertyListing[] = store.products.map((p) => ({
-      id: p.id,
-      name: p.name,
-      price: Number(p.price),
-      currency: p.currency,
-      image: p.images[0] ?? null,
-      attributes: (p.attributes as PropertyListing["attributes"]) ?? {},
-    }));
-    return (
-      <section id="catalog" style={{ maxWidth: 1280 }} className="mx-auto px-6 pb-16 pt-4">
-        <h2 style={{ fontFamily: theme.headlineFont }} className="mb-5 text-2xl font-bold">{label}</h2>
-        <PropertyCatalog listings={listings} theme={theme} />
-      </section>
-    );
-  }
-
-  // Group by category when a store has actually organized its catalog that
-  // way (2+ distinct categories present) — this is the real "menu
-  // categories" behavior for food stores and anyone else using categories.
-  // A store with one or zero categories just gets the flat grid, unchanged.
-  const categoryNames = new Set(store.products.map((p) => p.category?.name).filter(Boolean));
-  const grouped = categoryNames.size >= 2;
-  const productGroups: Array<[string | null, typeof store.products]> = grouped
-    ? Array.from(
-        store.products.reduce((map, p) => {
-          const key = p.category?.name ?? null;
-          if (!map.has(key)) map.set(key, []);
-          map.get(key)!.push(p);
-          return map;
-        }, new Map<string | null, typeof store.products>())
-      )
-    : [[null, store.products]];
-
-  return (
-    <section id="catalog" style={{ maxWidth: 1280 }} className="mx-auto px-6 pb-16 pt-4">
-      {store.products.length > 0 && (
-        <>
-          {!grouped && (
-            <h2 style={{ fontFamily: theme.headlineFont }} className="mb-5 text-2xl font-bold">{label}</h2>
-          )}
-          {productGroups.map(([groupName, items], gi) => (
-            <div key={groupName ?? "uncategorized"} style={{ marginBottom: gi === productGroups.length - 1 && store.services.length === 0 ? 0 : 32 }}>
-              {grouped && (
-                <h2 style={{ fontFamily: theme.headlineFont }} className="mb-4 border-b pb-2 text-base font-semibold" >
-                  {groupName ?? "More"}
-                </h2>
-              )}
-              <div style={{ display: "grid", gap: 24, gridTemplateColumns: theme.layout === "grid" ? "repeat(auto-fill, minmax(220px, 1fr))" : "1fr" }}>
-                {items.map((p) => (
-                  theme.layout === "list" ? (
-                    <div key={p.id} style={{ background: theme.card, borderRadius: theme.radius, boxShadow: "0 1px 3px rgba(18,18,18,0.06)" }} className="flex items-center gap-4 overflow-hidden">
-                      <div style={{ width: 120, height: 90, background: theme.bg }} className="flex flex-shrink-0 items-center justify-center overflow-hidden">
-                        {p.images[0] ? (
-                          // eslint-disable-next-line @next/next/no-img-element
-                          <img src={p.images[0]} alt={p.name} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
-                        ) : (
-                          <span style={{ fontSize: 22, opacity: 0.4 }}>{store.name.charAt(0)}</span>
-                        )}
-                      </div>
-                      <div className="flex-1 py-3 pr-4">
-                        <p className="text-sm font-semibold">{p.name}</p>
-                        <p className="mt-1 text-sm font-bold">
-                          {p.currency} {Number(p.price).toLocaleString()}
-                          {p.compareAtPrice != null && (
-                            <span className="ml-2 text-xs font-normal opacity-50 line-through">{Number(p.compareAtPrice).toLocaleString()}</span>
-                          )}
-                        </p>
-                        {p.type === "PHYSICAL" && (
-                          <div className="mt-2 max-w-[180px]">
-                            <AddToCartButton storeSlug={slug} productId={p.id} name={p.name} price={Number(p.price)} currency={p.currency} image={p.images[0] ?? null} accent={theme.accent} onAccent="#fff" />
-                          </div>
-                        )}
-                        {p.type === "DIGITAL" && <span className="mt-2 inline-block text-xs font-semibold opacity-60">Digital delivery</span>}
-                        {p.type === "RENTAL" && <span className="mt-2 inline-block text-xs font-semibold opacity-60">For rent{p.rentalPeriodUnit ? ` · per ${p.rentalPeriodUnit}` : ""}</span>}
-                      </div>
-                    </div>
-                  ) : (
-                    <div key={p.id} className="group">
-                      <div
-                        style={{ background: theme.card, borderRadius: theme.radius, boxShadow: "0 1px 3px rgba(18,18,18,0.06)" }}
-                        className="relative mb-3 flex aspect-[4/5] items-center justify-center overflow-hidden p-4 transition-shadow group-hover:shadow-lg"
-                      >
-                        {p.compareAtPrice != null && (
-                          <span style={{ background: `${theme.accent}1a`, color: theme.accent }} className="absolute left-3 top-3 rounded px-2 py-1 text-[11px] font-semibold">Sale</span>
-                        )}
-                        {p.images[0] ? (
-                          // eslint-disable-next-line @next/next/no-img-element
-                          <img src={p.images[0]} alt={p.name} className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105" />
-                        ) : (
-                          <span style={{ fontSize: 30, opacity: 0.3 }}>{store.name.charAt(0)}</span>
-                        )}
-                      </div>
-                      <p className="text-sm font-semibold">{p.name}</p>
-                      <p style={{ opacity: 0.65 }} className="mt-1 text-sm">
-                        {p.currency} {Number(p.price).toLocaleString()}
-                        {p.compareAtPrice != null && (
-                          <span className="ml-2 text-xs line-through opacity-70">{Number(p.compareAtPrice).toLocaleString()}</span>
-                        )}
-                      </p>
-                      {p.type === "PHYSICAL" && (
-                        <AddToCartButton storeSlug={slug} productId={p.id} name={p.name} price={Number(p.price)} currency={p.currency} image={p.images[0] ?? null} accent={theme.accent} onAccent="#fff" />
-                      )}
-                      {p.type === "DIGITAL" && <span className="mt-2 inline-block text-xs font-semibold opacity-60">Digital delivery</span>}
-                      {p.type === "RENTAL" && <span className="mt-2 inline-block text-xs font-semibold opacity-60">For rent{p.rentalPeriodUnit ? ` · per ${p.rentalPeriodUnit}` : ""}</span>}
-                    </div>
-                  )
-                ))}
-              </div>
-            </div>
-          ))}
-        </>
-      )}
-
-      {store.services.length > 0 && (
-        <>
-          <h2 style={{ fontFamily: theme.headlineFont }} className="mb-4 mt-2 text-xl font-bold">
-            {store.products.length > 0 ? "Services" : label}
-          </h2>
-          <div style={{ display: "grid", gap: 24, gridTemplateColumns: "repeat(auto-fill, minmax(240px, 1fr))" }}>
-            {store.services.map((s) => (
-              <div key={s.id} style={{ background: theme.card, borderRadius: theme.radius, boxShadow: "0 1px 3px rgba(18,18,18,0.06)" }} className="overflow-hidden transition-shadow hover:shadow-lg">
-                {s.images[0] && (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img src={s.images[0]} alt={s.name} className="aspect-video w-full object-cover" />
-                )}
-                <div className="p-5">
-                  <p className="text-base font-semibold">{s.name}</p>
-                  <p style={{ opacity: 0.7 }} className="mt-1.5 text-sm leading-relaxed">{s.description.length > 100 ? s.description.slice(0, 100) + "…" : s.description}</p>
-                  <div className="mt-3.5 flex items-center justify-between">
-                    <span className="font-bold">{s.currency} {Number(s.price).toLocaleString()}</span>
-                    {s.isBookable && <span style={{ color: theme.accent, border: `1px solid ${theme.accent}` }} className="rounded-full px-2.5 py-1 text-[11px] font-semibold">Bookable</span>}
-                  </div>
-                  {s.isBookable && (
-                    <BookingWidget storeSlug={slug} serviceId={s.id} serviceName={s.name} accent={theme.accent} ink={theme.ink} bg={theme.bg} radius={theme.radius} />
-                  )}
-                </div>
-              </div>
-            ))}
-          </div>
-        </>
-      )}
-    </section>
-  );
-}
-
-function About({ store, theme }: { store: StoreWithRelations; theme: TemplateTheme }) {
-  // Vendor-uploaded photo, editable from Settings → Storefront photos. No
-  // fallback image here on purpose — an empty About stays a plain text
-  // section rather than showing a stand-in photo of nothing in particular.
-  if (store.aboutImage) {
-    return (
-      <section id="about" style={{ maxWidth: 1280 }} className="mx-auto grid items-center gap-10 px-6 pb-16 pt-4 md:grid-cols-2">
-        <div
-          style={{ borderRadius: theme.radius, boxShadow: "0 10px 40px rgba(18,18,18,0.08)" }}
-          className="aspect-[4/3] overflow-hidden order-2 md:order-1"
-        >
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src={store.aboutImage} alt={`${store.name} — about`} className="h-full w-full object-cover" />
-        </div>
-        <div className="order-1 md:order-2">
-          <h2 style={{ fontFamily: theme.headlineFont }} className="mb-4 text-2xl font-bold">About</h2>
-          <p style={{ opacity: 0.85 }} className="text-base leading-relaxed">{store.business.description}</p>
-        </div>
-      </section>
-    );
-  }
-
-  return (
-    <section id="about" style={{ maxWidth: 780 }} className="mx-auto px-6 pb-16 pt-4">
-      <h2 style={{ fontFamily: theme.headlineFont }} className="mb-4 text-2xl font-bold">About</h2>
-      <p style={{ opacity: 0.85 }} className="text-base leading-relaxed">{store.business.description}</p>
-    </section>
-  );
-}
-
-function Gallery({ images, theme, storeName }: { images: string[]; theme: TemplateTheme; storeName: string }) {
-  if (images.length === 0) return null;
-  return (
-    <section style={{ maxWidth: 1280 }} className="mx-auto px-6 pb-16 pt-4">
-      <h2 style={{ fontFamily: theme.headlineFont }} className="mb-5 text-2xl font-bold">Gallery</h2>
-      <div style={{ display: "grid", gap: 14, gridTemplateColumns: "repeat(auto-fill, minmax(200px, 1fr))" }}>
-        {images.map((url, i) => (
-          <div
-            key={url + i}
-            style={{ borderRadius: theme.radius, boxShadow: "0 1px 3px rgba(18,18,18,0.06)" }}
-            className="aspect-square overflow-hidden"
-          >
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={url} alt={`${storeName} — photo ${i + 1}`} className="h-full w-full object-cover" />
-          </div>
-        ))}
-      </div>
-    </section>
-  );
-}
-
-function CategoryStrip({ store, theme, slug }: { store: StoreWithRelations; theme: TemplateTheme; slug: string }) {
-  const counts = new Map<string, number>();
-  for (const p of store.products) {
-    const name = p.category?.name;
-    if (name) counts.set(name, (counts.get(name) ?? 0) + 1);
-  }
-  for (const s of store.services) {
-    const name = s.category?.name;
-    if (name) counts.set(name, (counts.get(name) ?? 0) + 1);
-  }
-  const categories = Array.from(counts.entries()).sort((a, b) => b[1] - a[1]).slice(0, 8);
-  if (categories.length === 0) return null;
-
-  return (
-    <section style={{ maxWidth: 1280 }} className="mx-auto px-6 pb-14 pt-4">
-      <h2 style={{ fontFamily: theme.headlineFont }} className="mb-5 text-2xl font-bold">
-        Shop by category
-      </h2>
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(130px, 1fr))", gap: 14 }}>
-        {categories.map(([name, count]) => (
-          <a
-            key={name}
-            href="#catalog"
-            style={{ borderRadius: theme.radius, background: theme.card, boxShadow: "0 1px 3px rgba(18,18,18,0.06)", color: theme.ink }}
-            className="flex flex-col items-center gap-2 px-3 py-5 text-center no-underline transition-shadow hover:shadow-md"
-          >
-            <span
-              style={{ background: `${theme.accent}1a`, color: theme.accent }}
-              className="flex h-10 w-10 items-center justify-center rounded-full text-base font-bold"
-            >
-              {name.charAt(0).toUpperCase()}
-            </span>
-            <span className="text-sm font-semibold">{name}</span>
-            <span style={{ opacity: 0.55 }} className="text-xs">{count} item{count !== 1 ? "s" : ""}</span>
-          </a>
-        ))}
-      </div>
-    </section>
-  );
-}
-
-function DealBanner({ store, theme, slug, product }: {
-  store: StoreWithRelations; theme: TemplateTheme; slug: string;
-  product: StoreWithRelations["products"][number];
-}) {
-  const price = Number(product.price);
-  const compareAt = Number(product.compareAtPrice);
-  const pctOff = Math.round((1 - price / compareAt) * 100);
-
-  return (
-    <section style={{ maxWidth: 1280 }} className="mx-auto px-6 pb-10 pt-2">
-      <div
-        style={{ borderRadius: theme.radius, background: LUMINA_INVERSE, color: LUMINA_INVERSE_INK }}
-        className="relative flex flex-wrap items-center justify-between gap-5 overflow-hidden px-8 py-8"
-      >
-        <div style={{ background: `${theme.accent}33` }} className="pointer-events-none absolute -right-24 -top-24 h-72 w-72 rounded-full blur-3xl" />
-        <div className="relative z-10">
-          <p style={{ opacity: 0.85 }} className="mb-1.5 text-xs font-semibold uppercase tracking-widest">
-            Deal of the day · {pctOff}% off
-          </p>
-          <h3 style={{ fontFamily: theme.headlineFont }} className="text-2xl font-bold">{product.name}</h3>
-          <p className="mt-2 text-base">
-            <span className="font-bold">{product.currency} {price.toLocaleString()}</span>{" "}
-            <span style={{ opacity: 0.7 }} className="line-through">{product.currency} {compareAt.toLocaleString()}</span>
-          </p>
-        </div>
-        <a
-          href="#catalog"
-          style={{ background: theme.accent, color: "#fff" }}
-          className="relative z-10 whitespace-nowrap rounded-full px-6 py-3 text-sm font-semibold no-underline transition-transform hover:-translate-y-0.5"
-        >
-          Shop the deal →
+          {store.name}
         </a>
+        <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
+          {hasCatalog && <a href="#catalog" style={{ fontSize: 14.5, fontWeight: 500, color: FRESH.inkSoft, textDecoration: "none" }}>Services</a>}
+          <CartLink storeSlug={slug} accent={FRESH.leaf} ink={FRESH.ink} />
+          {hasCatalog && <a href="#catalog" style={{ ...btnPrimary, padding: "11px 20px", fontSize: 13.5 }}>Get a Quote</a>}
+        </div>
       </div>
-    </section>
+    </nav>
   );
 }
 
-// Lumina "inverse surface" — the dark power-block used for high-contrast
-// promo/CTA sections against the otherwise light, airy Lumina palette.
-const LUMINA_INVERSE = "#293138";
-const LUMINA_INVERSE_INK = "#E9F2FB";
-
-function Stats({ theme, listingCount, reviewCount, avgRating, completedOrders }: {
-  theme: TemplateTheme; listingCount: number; reviewCount: number; avgRating: number | null; completedOrders: number;
-}) {
-  const items = [
-    { value: `${listingCount}+`, label: "Listings" },
-    ...(avgRating ? [{ value: `${avgRating.toFixed(1)}★`, label: `${reviewCount} review${reviewCount === 1 ? "" : "s"}` }] : []),
-    ...(completedOrders > 0 ? [{ value: `${completedOrders}+`, label: "Orders completed" }] : []),
-  ];
-  if (items.length < 2) return null; // one lonely number isn't a "stats bar"
-
-  return (
-    <section style={{ background: theme.card }} className="py-8">
-      <div style={{ maxWidth: 1280 }} className="mx-auto flex flex-wrap justify-around gap-8 px-6">
-        {items.map((it) => (
-          <div key={it.label} className="text-center">
-            <p style={{ fontFamily: theme.headlineFont, color: theme.accent }} className="text-3xl font-extrabold">{it.value}</p>
-            <p style={{ opacity: 0.7 }} className="mt-1 text-xs">{it.label}</p>
-          </div>
-        ))}
-      </div>
-    </section>
-  );
-}
-
-function Features({ theme, verified, hasDelivery, hasBooking }: {
-  theme: TemplateTheme; verified: boolean; hasDelivery: boolean; hasBooking: boolean;
-}) {
-  const items = [
-    verified && { icon: "🪪", title: "Verified seller", body: "ID and business checks completed before this store went live." },
-    { icon: "🔒", title: "Secure payments", body: "Every checkout runs through Paystack — your card details never touch this store directly." },
-    hasDelivery && { icon: "🚚", title: "Local delivery", body: "Delivery pricing shown at checkout for supported areas." },
-    hasBooking && { icon: "📅", title: "Instant booking", body: "Pick a real open slot and confirm — no back-and-forth." },
-  ].filter(Boolean) as Array<{ icon: string; title: string; body: string }>;
-
-  return (
-    <section style={{ maxWidth: 1280 }} className="mx-auto px-6 pb-14 pt-4">
-      <h2 style={{ fontFamily: theme.headlineFont }} className="mb-5 text-2xl font-bold">Why shop here</h2>
-      <div style={{ display: "grid", gap: 16, gridTemplateColumns: "repeat(auto-fit, minmax(210px, 1fr))" }}>
-        {items.map((it) => (
-          <div key={it.title} style={{ background: theme.card, borderRadius: theme.radius, boxShadow: "0 1px 3px rgba(18,18,18,0.06)" }} className="p-5">
-            <span className="text-xl">{it.icon}</span>
-            <p className="mt-2 text-sm font-semibold">{it.title}</p>
-            <p style={{ opacity: 0.7 }} className="mt-1 text-[13px] leading-relaxed">{it.body}</p>
-          </div>
-        ))}
-      </div>
-    </section>
-  );
-}
-
-function Newsletter({ slug, theme }: { slug: string; theme: TemplateTheme }) {
+function QuoteForm({ slug, services, contactEmail, social }: { slug: string; services: string[]; contactEmail: string | null; social: Record<string, string> }) {
   async function subscribe(formData: FormData) {
     "use server";
     await subscribeToNewsletter(slug, formData);
   }
   return (
-    <section style={{ background: theme.card }} className="px-6 py-10">
-      <div style={{ maxWidth: 560 }} className="mx-auto text-center">
-        <p style={{ fontFamily: theme.headlineFont }} className="text-lg font-semibold">Get notified about new drops</p>
-        <p style={{ opacity: 0.7 }} className="mt-1 text-sm">No spam — just this store's updates.</p>
-        <form action={subscribe} className="mt-4 flex flex-wrap justify-center gap-2">
-          <input
-            name="email" type="email" required placeholder="you@email.com"
-            style={{ flex: "1 1 220px", borderRadius: "0.5rem", border: `1px solid ${theme.ink}33`, background: theme.bg, color: theme.ink }}
-            className="px-4 py-2.5 text-sm outline-none"
-          />
-          <button style={{ background: theme.accent, color: "#fff" }} className="rounded-lg px-6 py-2.5 text-sm font-semibold">
-            Subscribe
-          </button>
+    <form action={subscribe} style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14, marginTop: 26 }}>
+      <Field label="First name"><input name="firstName" placeholder="Jordan" style={input} /></Field>
+      <Field label="Last name"><input name="lastName" placeholder="Avery" style={input} /></Field>
+      <Field label="Email address" full><input name="email" type="email" required placeholder="you@email.com" style={input} /></Field>
+      {services.length > 0 && (
+        <Field label="Service" full>
+          <select name="service" style={input}>
+            {services.map((s) => <option key={s}>{s}</option>)}
+          </select>
+        </Field>
+      )}
+      <div style={{ gridColumn: "1/-1" }}>
+        <button type="submit" style={{ ...btnPrimary, width: "100%", justifyContent: "center" }}>Request a Service <ArrowChip /></button>
+      </div>
+    </form>
+  );
+}
+
+function Field({ label, children, full }: { label: string; children: React.ReactNode; full?: boolean }) {
+  return (
+    <div style={{ gridColumn: full ? "1/-1" : undefined }}>
+      <label style={{ display: "block", fontSize: 11.5, color: "rgba(255,255,255,.55)", marginBottom: 7, fontFamily: "monospace" }}>{label}</label>
+      {children}
+    </div>
+  );
+}
+
+const input: React.CSSProperties = { width: "100%", background: "rgba(255,255,255,.06)", border: "1px solid rgba(255,255,255,.16)", borderRadius: 10, padding: "12px 14px", color: "#fff", fontSize: 14 };
+
+function NewsletterSection({ slug, storeName }: { slug: string; storeName: string }) {
+  async function subscribe(formData: FormData) {
+    "use server";
+    await subscribeToNewsletter(slug, formData);
+  }
+  return (
+    <section style={{ padding: "60px 0", background: FRESH.paper }}>
+      <div style={{ ...wrap, display: "flex", justifyContent: "space-between", alignItems: "center", gap: 26, flexWrap: "wrap" }}>
+        <div>
+          <div style={eyebrow}>Stay up to date</div>
+          <h2 style={{ ...h1, fontSize: "clamp(22px,3vw,30px)" }}>Join the <span style={accentText}>{storeName}</span> newsletter</h2>
+        </div>
+        <form action={subscribe} style={{ display: "flex", borderRadius: 100, overflow: "hidden", border: `1.5px solid ${line}`, background: "#fff", minWidth: 320 }}>
+          <input name="email" type="email" required placeholder="Enter your email address" style={{ flex: 1, border: "none", padding: "15px 18px", fontSize: 14, background: "transparent", outline: "none" }} />
+          <button type="submit" style={{ background: FRESH.leaf, color: "#fff", padding: "15px 22px", fontWeight: 600, fontSize: 13, border: "none" }}>Subscribe →</button>
         </form>
-      </div>
-    </section>
-  );
-}
-
-function Testimonials({ reviews, theme }: { reviews: StoreWithRelations["reviews"]; theme: TemplateTheme }) {
-  return (
-    <section style={{ maxWidth: 1280 }} className="mx-auto px-6 pb-16 pt-4">
-      <h2 style={{ fontFamily: theme.headlineFont }} className="mb-5 text-2xl font-bold">What people say</h2>
-      <div style={{ display: "grid", gap: 16, gridTemplateColumns: "repeat(auto-fill, minmax(250px, 1fr))" }}>
-        {reviews.slice(0, 3).map((r) => (
-          <div key={r.id} style={{ background: theme.card, borderRadius: theme.radius, boxShadow: "0 1px 3px rgba(18,18,18,0.06)" }} className="p-5">
-            <div style={{ color: theme.accent }} className="mb-2 text-sm">{"★".repeat(r.rating)}{"☆".repeat(5 - r.rating)}</div>
-            <p style={{ opacity: 0.9 }} className="text-sm leading-relaxed">&ldquo;{r.comment}&rdquo;</p>
-            <p style={{ opacity: 0.6 }} className="mt-2.5 text-xs">— {r.author.name ?? "Verified buyer"}</p>
-          </div>
-        ))}
-      </div>
-    </section>
-  );
-}
-
-function Contact({ store, theme, social }: { store: StoreWithRelations; theme: TemplateTheme; social: Record<string, string> }) {
-  return (
-    <section id="contact" style={{ maxWidth: 780 }} className="mx-auto px-6 pb-16 pt-4">
-      <h2 style={{ fontFamily: theme.headlineFont }} className="mb-4 text-2xl font-bold">Get in touch</h2>
-      <div style={{ background: theme.card, borderRadius: theme.radius, boxShadow: "0 1px 3px rgba(18,18,18,0.06)" }} className="flex flex-wrap gap-3 p-6">
-        {social.whatsapp && (
-          <a href={`https://wa.me/${social.whatsapp}`} style={{ background: theme.accent, color: "#fff" }} className="rounded-full px-6 py-2.5 text-sm font-semibold no-underline">
-            Message on WhatsApp
-          </a>
-        )}
-        {store.contactPhone && (
-          <a href={`tel:${store.contactPhone}`} style={{ border: `1px solid ${theme.ink}33`, color: theme.ink }} className="rounded-full px-6 py-2.5 text-sm font-semibold no-underline">
-            Call {store.contactPhone}
-          </a>
-        )}
-        {store.contactEmail && (
-          <a href={`mailto:${store.contactEmail}`} style={{ border: `1px solid ${theme.ink}33`, color: theme.ink }} className="rounded-full px-6 py-2.5 text-sm font-semibold no-underline">
-            Email {store.contactEmail}
-          </a>
-        )}
       </div>
     </section>
   );

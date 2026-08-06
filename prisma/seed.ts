@@ -1,5 +1,5 @@
 import { PrismaClient, type Prisma } from "@prisma/client";
-import { NICHE_NAMES, generateNicheVariations, LUMINA } from "../lib/template-themes";
+import { generateNicheVariations, TEMPLATE_NAME } from "../lib/template-themes";
 import { fetchDemoPhoto } from "../lib/demo-images";
 
 const prisma = new PrismaClient();
@@ -52,77 +52,25 @@ async function main() {
     skipDuplicates: true,
   });
 
-  // 23 full niche templates. Each stores its real section composition,
-  // catalog label, and hero style — not just a name — so the storefront
-  // renderer (lib/template-themes.ts + app/store/[slug]/page.tsx) has
-  // everything it needs even before falling back to the code-side table.
-  // 12-18 real, distinct templates per niche (see lib/template-themes.ts
-  // for the generation formula — color mode x accent x hero layout, never
-  // just a recolor). Every generated template is its own StoreTemplate row,
-  // with the full resolved theme stored in config so the storefront never
-  // needs to re-derive it from category name alone.
-  const allVariationNames: string[] = [];
-  for (const name of NICHE_NAMES) {
-    const variations = generateNicheVariations(name);
-    // One real photo per niche, reused across all its variations — not one
-    // per variation, which would mean 300+ API calls on every seed run for
-    // no real benefit (the color/layout already differs; the category
-    // photo doesn't need to). This is what actually shows up in the
-    // template gallery's preview cards instead of a placeholder circle.
-    const previewUrl = await fetchDemoPhoto(name);
-    for (const [idx, v] of variations.entries()) {
-      const templateName = `${name} — #${idx + 1} (${v.variationName})`;
-      allVariationNames.push(templateName);
-      await prisma.storeTemplate.upsert({
-        where: { name: templateName },
-        update: { category: name, isActive: true, tierRank: v.tierRank, previewUrl, config: v as unknown as Prisma.InputJsonValue },
-        create: { name: templateName, category: name, tierRank: v.tierRank, previewUrl, config: v as unknown as Prisma.InputJsonValue },
-      });
-    }
-  }
-
-  // Retire any templates from an older seed run (the old 1-per-niche set,
-  // or any prior naming scheme) that aren't part of the current generated
-  // set — deactivate rather than delete, since a store might still
-  // reference one (Store.templateId). Deactivated templates stop showing
-  // in the gallery but existing stores using them keep working.
-  await prisma.storeTemplate.updateMany({
-    where: { name: { notIn: allVariationNames } },
-    data: { isActive: false },
+  // The platform now ships exactly ONE storefront template — "Fresh & Co."
+  // (see lib/template-themes.ts). Every store uses this single design;
+  // there is no per-niche generation anymore.
+  const [freshTemplate] = generateNicheVariations("Fresh & Co.");
+  const previewUrl = await fetchDemoPhoto("Fresh & Co.");
+  await prisma.storeTemplate.upsert({
+    where: { name: TEMPLATE_NAME },
+    update: { category: TEMPLATE_NAME, isActive: true, tierRank: freshTemplate.tierRank, previewUrl, config: freshTemplate as unknown as Prisma.InputJsonValue },
+    create: { name: TEMPLATE_NAME, category: TEMPLATE_NAME, tierRank: freshTemplate.tierRank, previewUrl, config: freshTemplate as unknown as Prisma.InputJsonValue },
   });
 
-  // Design-system backfill: force EVERY StoreTemplate row — including ones
-  // just retired above — onto the current Lumina color/font tokens, without
-  // touching the layout/copy fields already baked into its config. This is
-  // what actually makes a palette/typeface change like Lumina show up on
-  // already-provisioned stores. The upsert above only touches rows whose
-  // generated `name` matches exactly; a stable-across-releases string (this
-  // one includes the variation label), so a naming-scheme change — like the
-  // one that introduced Lumina — creates new rows instead of updating old
-  // ones, leaving every existing store's Store.templateId pointed at a
-  // stale row with the old palette. This loop is what actually fixes that:
-  // it patches every row by id, so it doesn't matter whether a store is on
-  // a freshly upserted row or one from three seed runs ago.
-  const allTemplates = await prisma.storeTemplate.findMany({ select: { id: true, config: true } });
-  for (const t of allTemplates) {
-    const config = t.config as Record<string, unknown> | null;
-    if (!config) continue;
-    await prisma.storeTemplate.update({
-      where: { id: t.id },
-      data: {
-        config: {
-          ...config,
-          bg: LUMINA.bg,
-          ink: LUMINA.ink,
-          card: LUMINA.card,
-          accent: LUMINA.accent,
-          font: LUMINA.font,
-          headlineFont: LUMINA.headlineFont,
-          radius: LUMINA.radius,
-        } as unknown as Prisma.InputJsonValue,
-      },
-    });
-  }
+  // Retire every other template row (the old niche-generated set, or any
+  // prior naming scheme) — deactivate rather than delete, since a store
+  // might still reference one (Store.templateId). Deactivated templates
+  // stop showing in the gallery but existing stores using them keep working.
+  await prisma.storeTemplate.updateMany({
+    where: { name: { not: TEMPLATE_NAME } },
+    data: { isActive: false },
+  });
 
   for (const sub of SUBSCRIPTIONS) {
     await prisma.subscription.upsert({

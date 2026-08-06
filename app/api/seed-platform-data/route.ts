@@ -1,6 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import { NextResponse } from "next/server";
-import { NICHE_NAMES, generateNicheVariations } from "@/lib/template-themes";
+import { generateNicheVariations, TEMPLATE_NAME } from "@/lib/template-themes";
 import { fetchDemoPhoto } from "@/lib/demo-images";
 import type { Prisma } from "@prisma/client";
 
@@ -59,23 +59,16 @@ export async function GET(req: Request) {
     skipDuplicates: true,
   });
 
-  const allVariationNames: string[] = [];
-  for (const name of NICHE_NAMES) {
-    const variations = generateNicheVariations(name);
-    const previewUrl = await fetchDemoPhoto(name);
-    for (const [idx, v] of variations.entries()) {
-      const templateName = `${name} — #${idx + 1} (${v.variationName})`;
-      allVariationNames.push(templateName);
-      await prisma.storeTemplate.upsert({
-        where: { name: templateName },
-        update: { category: name, isActive: true, tierRank: v.tierRank, previewUrl, config: v as unknown as Prisma.InputJsonValue },
-        create: { name: templateName, category: name, tierRank: v.tierRank, previewUrl, config: v as unknown as Prisma.InputJsonValue },
-      });
-    }
-  }
+  const [freshTemplate] = generateNicheVariations(TEMPLATE_NAME);
+  const previewUrl = await fetchDemoPhoto(TEMPLATE_NAME);
+  await prisma.storeTemplate.upsert({
+    where: { name: TEMPLATE_NAME },
+    update: { category: TEMPLATE_NAME, isActive: true, tierRank: freshTemplate.tierRank, previewUrl, config: freshTemplate as unknown as Prisma.InputJsonValue },
+    create: { name: TEMPLATE_NAME, category: TEMPLATE_NAME, tierRank: freshTemplate.tierRank, previewUrl, config: freshTemplate as unknown as Prisma.InputJsonValue },
+  });
 
   await prisma.storeTemplate.updateMany({
-    where: { name: { notIn: allVariationNames } },
+    where: { name: { not: TEMPLATE_NAME } },
     data: { isActive: false },
   });
 
@@ -95,7 +88,7 @@ export async function GET(req: Request) {
     categories: await prisma.category.count(),
     activeTemplates: await prisma.storeTemplate.count({ where: { isActive: true } }),
     subscriptions: await prisma.subscription.count({ where: { isActive: true } }),
-    niches: NICHE_NAMES.length,
+    niches: 1,
   };
 
   return NextResponse.json({ success: true, message: "Platform data seeded.", counts });

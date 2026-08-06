@@ -10,7 +10,6 @@ const LABELS: Record<Section, string> = {
   hero: "Hero",
   catalog: "Catalog (products/services)",
   about: "About",
-  gallery: "Photo gallery",
   stats: "Stats bar (listings, rating, orders)",
   features: "Why choose us (feature grid)",
   categories: "Shop by category",
