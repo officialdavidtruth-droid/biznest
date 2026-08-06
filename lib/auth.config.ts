@@ -30,6 +30,10 @@ import type { UserRole } from "@prisma/client";
  * promotion might bounce off middleware once before working — a much
  * smaller and more tolerable issue than the sitewide crash this replaces.
  */
+// AUTH_URL is only set to the real biznest.space production URL (see
+// .env.example) — unset on localhost and on Vercel preview deployments.
+const isBizNestProd = process.env.AUTH_URL?.endsWith("biznest.space") ?? false;
+
 export const authConfig: NextAuthConfig = {
   session: { strategy: "jwt" },
   trustHost: true,
@@ -37,6 +41,28 @@ export const authConfig: NextAuthConfig = {
     signIn: "/login",
     error: "/login",
   },
+  // /supaadmin now lives on supaadmin.biznest.space (see middleware.ts)
+  // instead of a path under the main site. A NextAuth cookie is host-only
+  // by default, so a session created while signed in on www.biznest.space
+  // would NOT be sent to that subdomain — the admin would look logged out
+  // there even though they aren't. Scoping the cookie to ".biznest.space"
+  // makes it valid across both hosts. Only done in production: a fixed
+  // domain here would silently break auth on localhost and on *.vercel.app
+  // preview deployments, which aren't subdomains of biznest.space.
+  cookies: isBizNestProd
+    ? {
+        sessionToken: {
+          name: "__Secure-authjs.session-token",
+          options: {
+            httpOnly: true,
+            sameSite: "lax",
+            path: "/",
+            secure: true,
+            domain: ".biznest.space",
+          },
+        },
+      }
+    : undefined,
   providers: [], // Real providers only exist in lib/auth.ts (Node-only: Credentials needs bcrypt+Prisma).
   callbacks: {
     async jwt({ token, user }) {

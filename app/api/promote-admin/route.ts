@@ -24,5 +24,8 @@ export async function GET(req: Request) {
 
   await prisma.user.update({ where: { email }, data: { role: "PLATFORM_ADMIN" } });
 
-  return NextResponse.json({ success: true, message: `${email} is now a PLATFORM_ADMIN. Visit /supaadmin.` });
+  return NextResponse.json({
+    success: true,
+    message: `${email} is now a PLATFORM_ADMIN. Visit https://supaadmin.biznest.space.`,
+  });
 }

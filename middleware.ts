@@ -20,11 +20,23 @@ const STORE_ADMIN_PATTERN = /^\/store\/[^/]+\/admin/;
 // Platform admin routes require PLATFORM_ADMIN or SUPPORT_MODERATOR role.
 const PLATFORM_ADMIN_PATTERN = /^\/(admin|supaadmin)/;
 
+// The platform-admin panel (/supaadmin/**) is served on its own subdomain
+// rather than as a path off the main site.
+const SUPAADMIN_HOST = "supaadmin.biznest.space";
+
+function isSupaAdminHost(host: string): boolean {
+  // ".startsWith" (not "===") so "supaadmin.localhost:3000" also works for
+  // local testing — hostname strips the port, so this still matches.
+  return host === SUPAADMIN_HOST || host.startsWith("supaadmin.localhost");
+}
+
 // Hosts that are BizNest itself, not a vendor's custom domain.
 function isPlatformHost(host: string): boolean {
   return (
     host === "biznest.space" ||
     host === "www.biznest.space" ||
+    host === SUPAADMIN_HOST ||
+    host.startsWith("supaadmin.localhost") ||
     host === "localhost" ||
     host.endsWith(".vercel.app")
   );
@@ -50,19 +62,37 @@ async function resolveCustomDomain(host: string, origin: string): Promise<string
 }
 
 export default auth(async (req) => {
-  const slug = await resolveCustomDomain(req.nextUrl.hostname.toLowerCase(), req.nextUrl.origin);
+  const host = req.nextUrl.hostname.toLowerCase();
+
+  // Legacy path-based links (biznest.space/supaadmin/...) now live on their
+  // own subdomain — send them there instead of rendering in place. 308
+  // since this is a permanent move, and it preserves the request method.
+  if (isPlatformHost(host) && !isSupaAdminHost(host) && req.nextUrl.pathname.startsWith("/supaadmin")) {
+    const target = new URL(`${req.nextUrl.pathname}${req.nextUrl.search}`, `https://${SUPAADMIN_HOST}`);
+    return NextResponse.redirect(target, 308);
+  }
+
+  const slug = await resolveCustomDomain(host, req.nextUrl.origin);
   const url = req.nextUrl.clone();
 
   if (slug) {
     url.pathname = `/store/${slug}${url.pathname === "/" ? "" : url.pathname}`;
+  } else if (isSupaAdminHost(host) && url.pathname === "/") {
+    // Bare visits to the subdomain (supaadmin.biznest.space) land on the
+    // dashboard. Every other path — including /login and the /supaadmin/**
+    // links already used throughout the admin UI — is left untouched, so
+    // nothing else needs to change.
+    url.pathname = "/supaadmin";
   }
 
   const { pathname } = url;
   const isProtected =
     PROTECTED_PREFIXES.some((p) => pathname.startsWith(p)) || STORE_ADMIN_PATTERN.test(pathname);
 
+  const rewritten = slug !== null || pathname !== req.nextUrl.pathname;
+
   if (!isProtected) {
-    return slug ? NextResponse.rewrite(url) : NextResponse.next();
+    return rewritten ? NextResponse.rewrite(url) : NextResponse.next();
   }
 
   if (!req.auth?.user) {
@@ -78,7 +108,7 @@ export default auth(async (req) => {
     }
   }
 
-  return slug ? NextResponse.rewrite(url) : NextResponse.next();
+  return rewritten ? NextResponse.rewrite(url) : NextResponse.next();
 });
 
 export const config = {
