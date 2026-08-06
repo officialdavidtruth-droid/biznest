@@ -8,7 +8,8 @@ import { SETTING_KEYS } from "@/lib/constants/site-settings";
 import { ADMIN_COOKIE_NAME, verifyAdminToken } from "@/lib/admin-pin-auth";
 
 async function assertPlatformAdmin() {
-  const token = cookies().get(ADMIN_COOKIE_NAME)?.value;
+  const cookieStore = await cookies();
+  const token = cookieStore.get(ADMIN_COOKIE_NAME)?.value;
   const valid = await verifyAdminToken(token);
   if (!valid) return { success: false as const, error: "Admin PIN session expired or invalid. Please sign in again." };
   return { success: true as const, userId: null as string | null };

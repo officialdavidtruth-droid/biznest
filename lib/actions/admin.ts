@@ -12,7 +12,8 @@ import { ADMIN_COOKIE_NAME, verifyAdminToken } from "@/lib/admin-pin-auth";
 // admin identity, so there's no userId to attribute actions to; audit log
 // entries below use null and rely on the action name + entity for context.
 async function assertPlatformStaff() {
-  const token = cookies().get(ADMIN_COOKIE_NAME)?.value;
+  const cookieStore = await cookies();
+  const token = cookieStore.get(ADMIN_COOKIE_NAME)?.value;
   const valid = await verifyAdminToken(token);
   if (!valid) return { success: false as const, error: "Admin PIN session expired or invalid. Please sign in again." };
   return { success: true as const, userId: null as string | null };

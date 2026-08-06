@@ -15,13 +15,14 @@ export const metadata: Metadata = {
 };
 
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
-  const [session, maintenance, announcement, isPinAdmin, headerList] = await Promise.all([
+  const [session, maintenance, announcement, cookieStore, headerList] = await Promise.all([
     auth(),
     getMaintenanceSetting(),
     getAnnouncementSetting(),
-    verifyAdminToken(cookies().get(ADMIN_COOKIE_NAME)?.value),
+    cookies(),
     headers(),
   ]);
+  const isPinAdmin = await verifyAdminToken(cookieStore.get(ADMIN_COOKIE_NAME)?.value);
 
   // Platform staff can always get through, so they can turn maintenance
   // mode back off from /supaadmin/settings without locking themselves out.
