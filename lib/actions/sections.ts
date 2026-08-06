@@ -7,7 +7,7 @@ import { revalidatePath } from "next/cache";
 import type { Section } from "@/lib/template-themes";
 import type { ActionResult } from "@/types/actions";
 
-const ALL_SECTIONS: Section[] = ["hero", "catalog", "about", "stats", "features", "testimonials", "newsletter", "contact"];
+const ALL_SECTIONS: Section[] = ["hero", "catalog", "about", "gallery", "stats", "features", "categories", "deal", "testimonials", "newsletter", "contact"];
 
 async function assertStoreAccess(slug: string) {
   const session = await auth();
