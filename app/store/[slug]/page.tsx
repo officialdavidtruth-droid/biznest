@@ -88,6 +88,7 @@ export default async function StorefrontPage({ params }: { params: Promise<{ slu
     testimonials: goodReviews.length > 0,
     newsletter: true,
     contact: Boolean(store.contactEmail || store.contactPhone || social.whatsapp),
+    gallery: store.galleryImages.length > 0,
   };
 
   return (
@@ -103,6 +104,8 @@ export default async function StorefrontPage({ params }: { params: Promise<{ slu
             return <Catalog key={s} store={store} theme={theme} slug={slug} label={catalogLabel} niche={store.template?.category} />;
           case "about":
             return <About key={s} store={store} theme={theme} />;
+          case "gallery":
+            return <Gallery key={s} images={store.galleryImages} theme={theme} storeName={store.name} />;
           case "stats":
             return (
               <Stats
@@ -499,10 +502,52 @@ function Catalog({ store, theme, slug, label, niche }: { store: StoreWithRelatio
 }
 
 function About({ store, theme }: { store: StoreWithRelations; theme: TemplateTheme }) {
+  // Vendor-uploaded photo, editable from Settings → Storefront photos. No
+  // fallback image here on purpose — an empty About stays a plain text
+  // section rather than showing a stand-in photo of nothing in particular.
+  if (store.aboutImage) {
+    return (
+      <section id="about" style={{ maxWidth: 1280 }} className="mx-auto grid items-center gap-10 px-6 pb-16 pt-4 md:grid-cols-2">
+        <div
+          style={{ borderRadius: theme.radius, boxShadow: "0 10px 40px rgba(18,18,18,0.08)" }}
+          className="aspect-[4/3] overflow-hidden order-2 md:order-1"
+        >
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src={store.aboutImage} alt={`${store.name} — about`} className="h-full w-full object-cover" />
+        </div>
+        <div className="order-1 md:order-2">
+          <h2 style={{ fontFamily: theme.headlineFont }} className="mb-4 text-2xl font-bold">About</h2>
+          <p style={{ opacity: 0.85 }} className="text-base leading-relaxed">{store.business.description}</p>
+        </div>
+      </section>
+    );
+  }
+
   return (
     <section id="about" style={{ maxWidth: 780 }} className="mx-auto px-6 pb-16 pt-4">
       <h2 style={{ fontFamily: theme.headlineFont }} className="mb-4 text-2xl font-bold">About</h2>
       <p style={{ opacity: 0.85 }} className="text-base leading-relaxed">{store.business.description}</p>
+    </section>
+  );
+}
+
+function Gallery({ images, theme, storeName }: { images: string[]; theme: TemplateTheme; storeName: string }) {
+  if (images.length === 0) return null;
+  return (
+    <section style={{ maxWidth: 1280 }} className="mx-auto px-6 pb-16 pt-4">
+      <h2 style={{ fontFamily: theme.headlineFont }} className="mb-5 text-2xl font-bold">Gallery</h2>
+      <div style={{ display: "grid", gap: 14, gridTemplateColumns: "repeat(auto-fill, minmax(200px, 1fr))" }}>
+        {images.map((url, i) => (
+          <div
+            key={url + i}
+            style={{ borderRadius: theme.radius, boxShadow: "0 1px 3px rgba(18,18,18,0.06)" }}
+            className="aspect-square overflow-hidden"
+          >
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src={url} alt={`${storeName} — photo ${i + 1}`} className="h-full w-full object-cover" />
+          </div>
+        ))}
+      </div>
     </section>
   );
 }

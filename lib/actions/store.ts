@@ -306,6 +306,15 @@ export async function updateStoreSettings(slug: string, formData: FormData) {
   const contactPhone = String(formData.get("contactPhone") ?? "").trim() || null;
   const logoUrl = String(formData.get("logoUrl") ?? "").trim() || null;
   const bannerUrl = String(formData.get("bannerUrl") ?? "").trim() || null;
+  const aboutImage = String(formData.get("aboutImage") ?? "").trim() || null;
+  const galleryImages = (() => {
+    try {
+      const parsed = JSON.parse(String(formData.get("galleryImages") ?? "[]"));
+      return Array.isArray(parsed) ? parsed.filter((u) => typeof u === "string" && u) : [];
+    } catch {
+      return [];
+    }
+  })();
   const primary = String(formData.get("primary") ?? "").trim();
   const secondary = String(formData.get("secondary") ?? "").trim();
   const accent = String(formData.get("accent") ?? "").trim();
@@ -322,6 +331,8 @@ export async function updateStoreSettings(slug: string, formData: FormData) {
       contactPhone,
       logoUrl,
       bannerUrl,
+      aboutImage,
+      galleryImages,
       themeColors: { primary, secondary, accent },
       socialLinks: { instagram, whatsapp },
     },

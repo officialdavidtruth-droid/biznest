@@ -203,6 +203,8 @@ model Store {
 
   logoUrl       String?
   bannerUrl     String?
+  aboutImage    String? // shown beside the About section's text, vendor-uploaded
+  galleryImages String[] @default([]) // photo strip (team/work/space) shown on the storefront
   themeColors   Json? // { primary, secondary, accent, ... }
   fontFamily    String?
   // Vendor control over which of the template's sections actually show,
