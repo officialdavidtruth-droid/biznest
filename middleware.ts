@@ -107,7 +107,14 @@ export default auth(async (req) => {
   if (PLATFORM_ADMIN_PATTERN.test(pathname)) {
     const role = req.auth.user.role;
     if (role !== "PLATFORM_ADMIN" && role !== "SUPPORT_MODERATOR") {
-      return NextResponse.redirect(new URL("/", req.nextUrl.origin));
+      // On the supaadmin subdomain, "/" itself gets rewritten right back
+      // into "/supaadmin" (see above) — redirecting a non-admin to "/" here
+      // would just bounce them into this exact same check forever
+      // (ERR_TOO_MANY_REDIRECTS). Send them to the real homepage on the
+      // main site instead, since they have no reason to be on this
+      // subdomain at all.
+      const target = isSupaAdminHost(host) ? `https://www.biznest.space/` : new URL("/", req.nextUrl.origin);
+      return NextResponse.redirect(target);
     }
   }
 
