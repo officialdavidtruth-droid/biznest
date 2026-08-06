@@ -4,6 +4,7 @@ import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { revalidatePath } from "next/cache";
 import type { ActionResult } from "@/types/actions";
+import { SETTING_KEYS } from "@/lib/constants/site-settings";
 
 async function assertPlatformAdmin() {
   const session = await auth();
@@ -13,14 +14,6 @@ async function assertPlatformAdmin() {
   }
   return { success: true as const, userId: session.user.id };
 }
-
-// Keys used in PlatformSetting. Centralized here so nothing typos a key
-// string in three different files.
-export const SETTING_KEYS = {
-  MAINTENANCE: "site.maintenance",
-  ANNOUNCEMENT: "site.announcement",
-  ACTIVE_GATEWAY: "payments.active_gateway",
-} as const;
 
 export type MaintenanceValue = { enabled: boolean; message: string };
 export type AnnouncementValue = { enabled: boolean; message: string; tone: "info" | "warning" | "success" };
