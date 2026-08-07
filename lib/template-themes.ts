@@ -126,6 +126,176 @@ export function getTemplateTheme(_category: string | undefined, _storeName: stri
   return FRESH_THEME;
 }
 
+/**
+ * ---------- "Fashion & Lifestyle" category (4 templates) ----------
+ * All four reuse the shared generic storefront renderer (the same one
+ * FRESH_THEME uses in app/store/[slug]/page.tsx) plus the shared, already
+ * theme-neutral cart/checkout/payment flow — so every one of them ships
+ * with a working landing → catalog → cart → checkout → payment path out
+ * of the box. What makes each one distinct is its own palette, hero
+ * layout, and section order, matching the request that every template in
+ * a category look genuinely different rather than being a recolor.
+ */
+export const NOVA = {
+  bg: "#f5f4fb",
+  ink: "#1c1a2e",
+  inkSoft: "#6b6880",
+  card: "#ffffff",
+  primary: "#6c4fe0",
+  primaryDark: "#4d33b3",
+  accent: "#ff5a7a",
+  font: "'Inter', sans-serif",
+  headlineFont: "'Inter', sans-serif",
+  radius: "16px",
+} as const;
+
+/** Template 1 — "NovaShop": bold split hero, purple/coral, dense deal-driven grid (Image: NovaShop dashboard-style storefront). */
+export const NOVA_THEME: TemplateTheme = {
+  bg: NOVA.bg,
+  ink: NOVA.ink,
+  card: NOVA.card,
+  accent: NOVA.primary,
+  font: NOVA.font,
+  headlineFont: NOVA.headlineFont,
+  radius: NOVA.radius,
+  eyebrow: "New Collection",
+  headline: "Find Your Style, Love Your Look",
+  sub: "Discover the latest trends in fashion, beauty, and lifestyle — curated deals, refreshed daily.",
+  cta: "Shop Now",
+  layout: "grid",
+  heroStyle: "split",
+  catalogLabel: "Best deals for you",
+  sections: ["hero", "categories", "deal", "catalog", "stats", "testimonials", "newsletter", "contact"],
+};
+export const TEMPLATE_NAME_NOVA = "NovaShop";
+
+export const AURORA = {
+  bg: "#0b0f0e",
+  ink: "#eafff5",
+  inkSoft: "#9fb8ae",
+  card: "#121816",
+  primary: "#39e6a8",
+  primaryDark: "#1fae7c",
+  accent: "#d9ff4f",
+  font: "'Inter', sans-serif",
+  headlineFont: "'Inter', sans-serif",
+  radius: "14px",
+} as const;
+
+/** Template 2 — "Aurora Store": dark mode, teal/lime gradient banners, countdown-driven sale layout. */
+export const AURORA_THEME: TemplateTheme = {
+  bg: AURORA.bg,
+  ink: AURORA.ink,
+  card: AURORA.card,
+  accent: AURORA.primary,
+  font: AURORA.font,
+  headlineFont: AURORA.headlineFont,
+  radius: AURORA.radius,
+  eyebrow: "New Collection",
+  headline: "Elevate Your Everyday",
+  sub: "Premium products. Timeless design. Experience the perfect blend of style and performance.",
+  cta: "Shop Now",
+  layout: "grid",
+  heroStyle: "fullbleed",
+  catalogLabel: "Best selling",
+  sections: ["hero", "categories", "catalog", "deal", "stats", "testimonials", "newsletter", "contact"],
+};
+export const TEMPLATE_NAME_AURORA = "Aurora Store";
+
+export const SHOPEASE = {
+  bg: "#fbf7f2",
+  ink: "#20241f",
+  inkSoft: "#6d6a63",
+  card: "#ffffff",
+  primary: "#1f3a2a",
+  primaryDark: "#122019",
+  accent: "#e8622c",
+  font: "'Inter', sans-serif",
+  headlineFont: "'Plus Jakarta Sans', sans-serif",
+  radius: "10px",
+} as const;
+
+/** Template 3 — "ShopEase": warm editorial hero banner, category tiles, deal-of-the-day block. */
+export const SHOPEASE_THEME: TemplateTheme = {
+  bg: SHOPEASE.bg,
+  ink: SHOPEASE.ink,
+  card: SHOPEASE.card,
+  accent: SHOPEASE.accent,
+  font: SHOPEASE.font,
+  headlineFont: SHOPEASE.headlineFont,
+  radius: SHOPEASE.radius,
+  eyebrow: "Limited Time Only",
+  headline: "Shop More, Save More",
+  sub: "Discover amazing deals on your favorite products — best prices guaranteed, fast delivery worldwide.",
+  cta: "Explore Collection",
+  layout: "grid",
+  heroStyle: "centered",
+  catalogLabel: "New arrivals",
+  sections: ["hero", "features", "categories", "deal", "catalog", "newsletter", "contact"],
+};
+export const TEMPLATE_NAME_SHOPEASE = "ShopEase";
+
+export const TECHNEST = {
+  bg: "#ffffff",
+  ink: "#111111",
+  inkSoft: "#5c5c5c",
+  card: "#f4f4f4",
+  primary: "#0d0d0d",
+  primaryDark: "#000000",
+  accent: "#2fae4e",
+  font: "'Inter', sans-serif",
+  headlineFont: "'Inter', sans-serif",
+  radius: "8px",
+} as const;
+
+/** Template 4 — minimal black/white/green catalog-first layout, no hero photo, straight into featured products. */
+export const TECHNEST_THEME: TemplateTheme = {
+  bg: TECHNEST.bg,
+  ink: TECHNEST.ink,
+  card: TECHNEST.card,
+  accent: TECHNEST.accent,
+  font: TECHNEST.font,
+  headlineFont: TECHNEST.headlineFont,
+  radius: TECHNEST.radius,
+  eyebrow: "New In",
+  headline: "Top Picks for Your Lifestyle",
+  sub: "Explore the latest arrivals and everyday essentials, picked for quality and value.",
+  cta: "Shop Now",
+  layout: "list",
+  heroStyle: "split",
+  catalogLabel: "Featured products",
+  sections: ["hero", "catalog", "features", "categories", "testimonials", "newsletter", "contact"],
+};
+export const TEMPLATE_NAME_TECHNEST = "TechNest Lifestyle";
+
+export type FashionTemplateName =
+  | typeof TEMPLATE_NAME_NOVA
+  | typeof TEMPLATE_NAME_AURORA
+  | typeof TEMPLATE_NAME_SHOPEASE
+  | typeof TEMPLATE_NAME_TECHNEST;
+
+const FASHION_TEMPLATES: Record<FashionTemplateName, TemplateTheme> = {
+  [TEMPLATE_NAME_NOVA]: NOVA_THEME,
+  [TEMPLATE_NAME_AURORA]: AURORA_THEME,
+  [TEMPLATE_NAME_SHOPEASE]: SHOPEASE_THEME,
+  [TEMPLATE_NAME_TECHNEST]: TECHNEST_THEME,
+};
+
+export const FASHION_CATEGORY = "Fashion & Lifestyle";
+
+export function isFashionTemplate(templateName: string | null | undefined): templateName is FashionTemplateName {
+  return !!templateName && templateName in FASHION_TEMPLATES;
+}
+
+export function generateFashionVariations(): GeneratedTemplate[] {
+  return [
+    { ...NOVA_THEME, variationName: TEMPLATE_NAME_NOVA, tierRank: 1 },
+    { ...AURORA_THEME, variationName: TEMPLATE_NAME_AURORA, tierRank: 2 },
+    { ...SHOPEASE_THEME, variationName: TEMPLATE_NAME_SHOPEASE, tierRank: 2 },
+    { ...TECHNEST_THEME, variationName: TEMPLATE_NAME_TECHNEST, tierRank: 3 },
+  ];
+}
+
 /** Merge a store's saved overrides (from Settings) on top of its selected template's default. */
 export function resolveStoreTheme(
   _templateCategory: string | undefined,
@@ -134,7 +304,11 @@ export function resolveStoreTheme(
   fontFamily: string | null | undefined,
   templateName?: string | null
 ): TemplateTheme {
-  const base = isHeenzyTemplate(templateName) ? HEENZY_THEME : FRESH_THEME;
+  const base = isHeenzyTemplate(templateName)
+    ? HEENZY_THEME
+    : isFashionTemplate(templateName)
+    ? FASHION_TEMPLATES[templateName]
+    : FRESH_THEME;
   return {
     ...base,
     bg: overrides?.secondary || base.bg,
