@@ -133,6 +133,14 @@ model Business {
   businessName          String
   category              String
   description           String                    @db.Text
+
+  // What this business actually sells — set once at onboarding and driving
+  // which dashboard sections/storefront layout are shown. Hybrid stores
+  // have both true; every business must have at least one true (enforced
+  // in lib/validations/business.ts, not at the DB level, since Prisma
+  // can't express a "not both false" constraint).
+  sellsProducts         Boolean                   @default(true)
+  offersServices        Boolean                   @default(false)
   phone                 String
   email                 String
   country               String

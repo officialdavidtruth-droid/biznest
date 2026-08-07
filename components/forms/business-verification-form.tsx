@@ -32,6 +32,8 @@ export function BusinessVerificationForm({
     resolver: zodResolver(businessVerificationSchema),
     defaultValues: {
       registrationType: "REGISTERED",
+      sellsProducts: true,
+      offersServices: false,
       guarantors: [
         { fullName: "", phone: "", email: "", governmentIdUrl: "", relationship: "" },
         { fullName: "", phone: "", email: "", governmentIdUrl: "", relationship: "" },
@@ -100,6 +102,39 @@ export function BusinessVerificationForm({
             <input className="input" {...register("city")} />
           </Field>
         </div>
+      </fieldset>
+
+      <fieldset className="space-y-3 rounded-lg border p-4">
+        <legend className="px-1 text-sm font-medium">What does your business do?</legend>
+        <p className="text-xs text-muted-foreground">
+          This decides what shows up in your dashboard and on your storefront — pick both if you
+          do both. You can't continue without selecting at least one.
+        </p>
+        <div className="grid gap-3 sm:grid-cols-2">
+          <label className="flex cursor-pointer items-start gap-3 rounded-lg border p-3 text-sm has-[:checked]:border-primary has-[:checked]:bg-primary/5">
+            <input type="checkbox" className="mt-0.5" {...register("sellsProducts")} />
+            <span>
+              <span className="block font-medium">I sell products</span>
+              <span className="block text-xs text-muted-foreground">
+                Physical goods, digital downloads, or rentals — buyers add to cart and check out.
+              </span>
+            </span>
+          </label>
+          <label className="flex cursor-pointer items-start gap-3 rounded-lg border p-3 text-sm has-[:checked]:border-primary has-[:checked]:bg-primary/5">
+            <input type="checkbox" className="mt-0.5" {...register("offersServices")} />
+            <span>
+              <span className="block font-medium">I offer services</span>
+              <span className="block text-xs text-muted-foreground">
+                Appointments or bookings — buyers pick a time slot instead of a shipping address.
+              </span>
+            </span>
+          </label>
+        </div>
+        {(errors as Record<string, { message?: string }>).sellsProducts?.message && (
+          <p className="text-xs text-destructive">
+            {(errors as Record<string, { message?: string }>).sellsProducts?.message}
+          </p>
+        )}
       </fieldset>
 
       <fieldset className="space-y-4 rounded-lg border p-4">

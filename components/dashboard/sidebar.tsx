@@ -8,57 +8,86 @@ import {
   Settings, BadgeCheck, Wallet, LifeBuoy, Truck, Rows3,
 } from "lucide-react";
 
-const NAV_GROUPS: Array<{
-  label: string;
-  items: Array<{ label: string; href: string; icon: typeof LayoutDashboard }>;
-}> = [
-  {
-    label: "Overview",
-    items: [{ label: "Dashboard", href: "", icon: LayoutDashboard }],
-  },
-  {
-    label: "Sell",
-    items: [
-      { label: "Orders", href: "/orders", icon: ShoppingCart },
-      { label: "Products", href: "/products", icon: Package },
-      { label: "Services", href: "/services", icon: Wrench },
-      { label: "Inventory", href: "/inventory", icon: Boxes },
-      { label: "Delivery zones", href: "/delivery", icon: Truck },
-    ],
-  },
-  {
-    label: "Grow",
-    items: [
-      { label: "Customers", href: "/customers", icon: Users },
-      { label: "Coupons", href: "/coupons", icon: Ticket },
-      { label: "Marketing", href: "/marketing", icon: Megaphone },
-      { label: "Reviews", href: "/reviews", icon: Star },
-      { label: "Analytics", href: "/analytics", icon: BarChart3 },
-    ],
-  },
-  {
-    label: "Store",
-    items: [
-      { label: "Website Builder", href: "/builder", icon: LayoutTemplate },
-      { label: "Storefront Layout", href: "/layout-editor", icon: Rows3 },
-      { label: "Messages", href: "/messages", icon: MessageSquare },
-      { label: "Payments", href: "/payments", icon: CreditCard },
-      { label: "Settings", href: "/settings", icon: Settings },
-    ],
-  },
-  {
-    label: "Account",
-    items: [
-      { label: "Verification", href: "/verification", icon: BadgeCheck },
-      { label: "Subscription", href: "/subscription", icon: Wallet },
-      { label: "Support", href: "/support", icon: LifeBuoy },
-    ],
-  },
-];
+type NavItem = { label: string; href: string; icon: typeof LayoutDashboard };
 
-export function DashboardSidebar({ slug, storeName }: { slug: string; storeName: string }) {
+// Items in the "Sell" group that only make sense for one niche. Anything
+// not listed here (Orders) is shared by every business, since orders and
+// bookings both flow through the same order record.
+const PRODUCT_ONLY_HREFS = new Set(["/products", "/inventory", "/delivery"]);
+const SERVICE_ONLY_HREFS = new Set(["/services"]);
+
+function buildNavGroups(business: { sellsProducts: boolean; offersServices: boolean }): Array<{
+  label: string;
+  items: NavItem[];
+}> {
+  const sellItems: NavItem[] = [
+    { label: "Orders", href: "/orders", icon: ShoppingCart },
+    { label: "Products", href: "/products", icon: Package },
+    { label: "Services", href: "/services", icon: Wrench },
+    { label: "Inventory", href: "/inventory", icon: Boxes },
+    { label: "Delivery zones", href: "/delivery", icon: Truck },
+  ].filter((item) => {
+    if (PRODUCT_ONLY_HREFS.has(item.href)) return business.sellsProducts;
+    if (SERVICE_ONLY_HREFS.has(item.href)) return business.offersServices;
+    return true;
+  });
+
+  return [
+    {
+      label: "Overview",
+      items: [{ label: "Dashboard", href: "", icon: LayoutDashboard }],
+    },
+    {
+      label: "Sell",
+      items: sellItems,
+    },
+    {
+      label: "Grow",
+      items: [
+        { label: "Customers", href: "/customers", icon: Users },
+        { label: "Coupons", href: "/coupons", icon: Ticket },
+        { label: "Marketing", href: "/marketing", icon: Megaphone },
+        { label: "Reviews", href: "/reviews", icon: Star },
+        { label: "Analytics", href: "/analytics", icon: BarChart3 },
+      ],
+    },
+    {
+      label: "Store",
+      items: [
+        { label: "Website Builder", href: "/builder", icon: LayoutTemplate },
+        { label: "Storefront Layout", href: "/layout-editor", icon: Rows3 },
+        { label: "Messages", href: "/messages", icon: MessageSquare },
+        { label: "Payments", href: "/payments", icon: CreditCard },
+        { label: "Settings", href: "/settings", icon: Settings },
+      ],
+    },
+    {
+      label: "Account",
+      items: [
+        { label: "Verification", href: "/verification", icon: BadgeCheck },
+        { label: "Subscription", href: "/subscription", icon: Wallet },
+        { label: "Support", href: "/support", icon: LifeBuoy },
+      ],
+    },
+  ];
+}
+
+export function DashboardSidebar({
+  slug,
+  storeName,
+  sellsProducts,
+  offersServices,
+}: {
+  slug: string;
+  storeName: string;
+  // What this business does — controls which "Sell" items appear. Both
+  // default true/false-safe (a hybrid store just passes both true).
+  sellsProducts: boolean;
+  offersServices: boolean;
+}) {
   const pathname = usePathname();
   const base = `/store/${slug}/admin`;
+  const NAV_GROUPS = buildNavGroups({ sellsProducts, offersServices });
 
   return (
     <aside className="flex h-full w-64 shrink-0 flex-col border-r border-border bg-background">
