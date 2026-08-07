@@ -25,6 +25,7 @@ export function BookingWidget({
   ink,
   bg,
   radius,
+  startOpen = false,
 }: {
   storeSlug: string;
   serviceId: string;
@@ -33,8 +34,9 @@ export function BookingWidget({
   ink: string;
   bg: string;
   radius: string;
+  startOpen?: boolean;
 }) {
-  const [open, setOpen] = useState(false);
+  const [open, setOpen] = useState(startOpen);
   const [date, setDate] = useState<string | null>(null);
   const [slots, setSlots] = useState<string[] | null>(null);
   const [selectedTime, setSelectedTime] = useState<string | null>(null);

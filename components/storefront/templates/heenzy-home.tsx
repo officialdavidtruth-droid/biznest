@@ -1,6 +1,4 @@
-import { AddToCartButton } from "@/components/storefront/add-to-cart-button";
 import { CartLink } from "@/components/storefront/cart-link";
-import { BookingWidget } from "@/components/storefront/booking-widget";
 import { HEENZY } from "@/lib/template-themes";
 import { subscribeToNewsletter } from "@/lib/actions/newsletter";
 
@@ -173,15 +171,19 @@ export function HeenzyStorefront({
         </div>
       </div>
 
-      {/* ---------- CATALOG / NEW ARRIVALS ---------- */}
+      {/* ---------- CATALOG, GROUPED BY CATEGORY ---------- */}
       {catalogItems.length > 0 && (
         <div className="hz-wrap" id="catalog">
-          <div className="hz-section-head"><h2>New Arrivals</h2></div>
-          <div className="hz-catalog-grid">
-            {catalogItems.map((item) => (
-              <HeenzyProductCard key={`${item.kind}-${item.id}`} item={item} slug={slug} storeName={store.name} />
-            ))}
-          </div>
+          {groupByCategory(catalogItems).map(([cat, items]) => (
+            <div key={cat} style={{ marginBottom: 40 }}>
+              <div className="hz-section-head"><h2>{cat}</h2></div>
+              <div className="hz-catalog-grid">
+                {items.map((item) => (
+                  <HeenzyProductCard key={`${item.kind}-${item.id}`} item={item} slug={slug} storeName={store.name} />
+                ))}
+              </div>
+            </div>
+          ))}
         </div>
       )}
 
@@ -251,9 +253,20 @@ function HeenzyNav({ store, slug, hasCatalog }: { store: { name: string; logoUrl
   );
 }
 
+function groupByCategory(items: CatalogItem[]): [string, CatalogItem[]][] {
+  const map = new Map<string, CatalogItem[]>();
+  for (const item of items) {
+    const key = item.categoryName || "Uncategorized";
+    if (!map.has(key)) map.set(key, []);
+    map.get(key)!.push(item);
+  }
+  return Array.from(map.entries());
+}
+
 function HeenzyProductCard({ item, slug, storeName }: { item: CatalogItem; slug: string; storeName: string }) {
+  const href = `/store/${slug}/${item.kind === "product" ? "product" : "service"}/${item.id}`;
   return (
-    <div className="hz-product-card">
+    <a href={href} className="hz-product-card" style={{ display: "block", textDecoration: "none", color: "inherit" }}>
       <div className="hz-product-img-wrap">
         {item.image ? <img src={item.image} alt={item.name} /> : <span style={{ fontSize: 28, opacity: .4, display: "flex", height: "100%", alignItems: "center", justifyContent: "center" }}>{storeName.charAt(0)}</span>}
       </div>
@@ -261,15 +274,10 @@ function HeenzyProductCard({ item, slug, storeName }: { item: CatalogItem; slug:
       <div className="hz-product-meta">
         <span className="hz-product-price">{item.currency} {item.price.toLocaleString()}</span>
       </div>
-      <div style={{ marginTop: 10 }}>
-        {item.kind === "product" && item.type === "PHYSICAL" && (
-          <AddToCartButton storeSlug={slug} productId={item.id} name={item.name} price={item.price} currency={item.currency} image={item.image} accent={HEENZY.black} onAccent="#fff" />
-        )}
-        {item.kind === "service" && item.isBookable && (
-          <BookingWidget storeSlug={slug} serviceId={item.id} serviceName={item.name} accent={HEENZY.black} ink={HEENZY.black} bg={HEENZY.white} radius="10px" />
-        )}
+      <div style={{ marginTop: 10, fontSize: 12, fontWeight: 700, color: HEENZY.black, textDecoration: "underline" }}>
+        {item.kind === "service" ? (item.isBookable ? "Book now →" : "View details →") : "View & buy →"}
       </div>
-    </div>
+    </a>
   );
 }
 

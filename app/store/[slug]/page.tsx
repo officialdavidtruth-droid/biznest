@@ -2,9 +2,7 @@ import type React from "react";
 import { prisma } from "@/lib/prisma";
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
-import { AddToCartButton } from "@/components/storefront/add-to-cart-button";
 import { CartLink } from "@/components/storefront/cart-link";
-import { BookingWidget } from "@/components/storefront/booking-widget";
 import { resolveStoreTheme, FRESH, isHeenzyTemplate, type TemplateTheme } from "@/lib/template-themes";
 import { subscribeToNewsletter } from "@/lib/actions/newsletter";
 import { HeenzyStorefront } from "@/components/storefront/templates/heenzy-home";
@@ -156,7 +154,7 @@ export default async function StorefrontPage({ params }: { params: Promise<{ slu
         </section>
       )}
 
-      {/* ---------- CATALOG / SERVICES ---------- */}
+      {/* ---------- CATALOG / SERVICES, GROUPED BY CATEGORY ---------- */}
       {catalogItems.length > 0 && (
         <section id="catalog" style={{ padding: "80px 0", background: FRESH.paper }}>
           <div style={wrap}>
@@ -167,11 +165,18 @@ export default async function StorefrontPage({ params }: { params: Promise<{ slu
               </div>
               <p style={{ maxWidth: 340, color: FRESH.inkSoft, fontSize: 15, lineHeight: 1.6 }}>Bundle what you need — every visit comes with our satisfaction guarantee.</p>
             </div>
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(240px, 1fr))", gap: 20 }}>
-              {catalogItems.map((item) => (
-                <CatalogCard key={`${item.kind}-${item.id}`} item={item} storeName={store.name} slug={slug} accent={FRESH.leaf} />
-              ))}
-            </div>
+            {groupByCategory(catalogItems).map(([cat, items]) => (
+              <div key={cat} style={{ marginBottom: 44 }}>
+                <h3 style={{ fontFamily: FRESH.headlineFont, fontSize: 18, fontWeight: 700, color: FRESH.forest, marginBottom: 18, paddingBottom: 10, borderBottom: `1px solid ${line}` }}>
+                  {cat}
+                </h3>
+                <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(240px, 1fr))", gap: 20 }}>
+                  {items.map((item) => (
+                    <CatalogCard key={`${item.kind}-${item.id}`} item={item} storeName={store.name} slug={slug} accent={FRESH.leaf} />
+                  ))}
+                </div>
+              </div>
+            ))}
           </div>
         </section>
       )}
@@ -367,34 +372,44 @@ type CatalogItem = {
   type: string; rentalUnit: string | null; isBookable: boolean;
 };
 
+function groupByCategory(items: CatalogItem[]): [string, CatalogItem[]][] {
+  const map = new Map<string, CatalogItem[]>();
+  for (const item of items) {
+    const key = item.categoryName || "Uncategorized";
+    if (!map.has(key)) map.set(key, []);
+    map.get(key)!.push(item);
+  }
+  return Array.from(map.entries());
+}
+
 function CatalogCard({ item, storeName, slug, accent }: { item: CatalogItem; storeName: string; slug: string; accent: string }) {
+  const href = `/store/${slug}/${item.kind === "product" ? "product" : "service"}/${item.id}`;
   return (
     <div style={{ background: "#fff", borderRadius: 16, overflow: "hidden", border: `1px solid ${line}`, boxShadow: "0 1px 3px rgba(18,18,18,0.06)" }}>
-      <div style={{ height: 160, background: `linear-gradient(140deg,${FRESH.mint2},${FRESH.leafLight})`, position: "relative", display: "flex", alignItems: "center", justifyContent: "center" }}>
-        {item.image ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img src={item.image} alt={item.name} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
-        ) : (
-          <span style={{ fontSize: 30, opacity: 0.4 }}>{storeName.charAt(0)}</span>
-        )}
-      </div>
-      <div style={{ padding: 20 }}>
-        {item.categoryName && <div style={{ fontFamily: "monospace", fontSize: 10.5, color: FRESH.leaf, textTransform: "uppercase", marginBottom: 8 }}>{item.categoryName}</div>}
-        <h4 style={{ fontSize: 16.5, marginBottom: 8, fontFamily: FRESH.headlineFont, fontWeight: 700 }}>{item.name}</h4>
-        {item.description && <p style={{ fontSize: 13, color: FRESH.inkSoft, lineHeight: 1.5, marginBottom: 16 }}>{item.description.length > 100 ? item.description.slice(0, 100) + "…" : item.description}</p>}
+      <a href={href} style={{ display: "block", textDecoration: "none", color: "inherit" }}>
+        <div style={{ height: 160, background: `linear-gradient(140deg,${FRESH.mint2},${FRESH.leafLight})`, position: "relative", display: "flex", alignItems: "center", justifyContent: "center" }}>
+          {item.image ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img src={item.image} alt={item.name} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+          ) : (
+            <span style={{ fontSize: 30, opacity: 0.4 }}>{storeName.charAt(0)}</span>
+          )}
+        </div>
+        <div style={{ padding: "20px 20px 0" }}>
+          {item.categoryName && <div style={{ fontFamily: "monospace", fontSize: 10.5, color: FRESH.leaf, textTransform: "uppercase", marginBottom: 8 }}>{item.categoryName}</div>}
+          <h4 style={{ fontSize: 16.5, marginBottom: 8, fontFamily: FRESH.headlineFont, fontWeight: 700 }}>{item.name}</h4>
+          {item.description && <p style={{ fontSize: 13, color: FRESH.inkSoft, lineHeight: 1.5, marginBottom: 16 }}>{item.description.length > 100 ? item.description.slice(0, 100) + "…" : item.description}</p>}
+        </div>
+      </a>
+      <div style={{ padding: "0 20px 20px" }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
           <span style={{ fontFamily: FRESH.headlineFont, fontSize: 20, fontWeight: 600, color: FRESH.forest }}>
             {item.currency} {item.price.toLocaleString()}
           </span>
-          {item.kind === "product" && item.type === "PHYSICAL" && (
-            <AddToCartButton storeSlug={slug} productId={item.id} name={item.name} price={item.price} currency={item.currency} image={item.image} accent={accent} onAccent="#fff" />
-          )}
+          <a href={href} style={{ ...btnGhost, padding: "9px 16px", fontSize: 12.5 }}>
+            {item.kind === "service" ? (item.isBookable ? "Book now" : "View details") : "View & buy"}
+          </a>
         </div>
-        {item.kind === "service" && item.isBookable && (
-          <div style={{ marginTop: 12 }}>
-            <BookingWidget storeSlug={slug} serviceId={item.id} serviceName={item.name} accent={accent} ink={FRESH.ink} bg={FRESH.ivory} radius="0.75rem" />
-          </div>
-        )}
       </div>
     </div>
   );
