@@ -37,6 +37,11 @@ model User {
   role              UserRole  @default(CUSTOMER)
   isBanned          Boolean   @default(false)
   bannedReason      String?
+  // Bumped to "now" by the admin force-logout action. Any JWT issued before
+  // this timestamp is rejected on its next use (see lib/auth.ts) — this is
+  // what makes "force logout" actually work under a JWT session strategy,
+  // where there's no server-side session row to just delete.
+  sessionsInvalidatedAt DateTime?
   failedLoginAttempts Int     @default(0)
   lockedUntil       DateTime?
   twoFactorEnabled  Boolean   @default(false)
@@ -221,6 +226,12 @@ model Store {
 
   subscriptionId String?
   subscription   Subscription? @relation(fields: [subscriptionId], references: [id])
+  // Set by a platform admin granting a free trial of a paid plan (see
+  // grantUserTrial in lib/actions/admin.ts). While in the future, the store
+  // gets that plan's features without actually being billed for it — this
+  // field is purely a marker for admin/UI purposes, not enforced by any
+  // billing code path itself. Null means "not on a trial."
+  trialEndsAt    DateTime?
 
   paystackSubaccountCode   String?
   flutterwaveSubaccountId  String?

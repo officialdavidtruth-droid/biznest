@@ -8,13 +8,13 @@
 
 @layer base {
   :root {
-    --background: 258 45% 12%;       /* bn-ink */
-    --foreground: 39 45% 93%;        /* bn-ivory */
-    --primary: 36 87% 60%;           /* bn-marigold */
-    --primary-foreground: 258 45% 12%; /* bn-ink, for text on marigold */
-    --muted: 258 42% 17%;            /* bn-ink-raised */
-    --muted-foreground: 267 22% 68%; /* bn-mute */
-    --border: 264 36% 25%;           /* bn-ink-line */
+    --background: 0 0% 100%;         /* white */
+    --foreground: 160 60% 12%;       /* deep green-black, for text */
+    --primary: 152 65% 32%;          /* bn-green */
+    --primary-foreground: 0 0% 100%; /* white, for text on green */
+    --muted: 150 40% 96%;            /* pale green */
+    --muted-foreground: 155 20% 38%; /* muted green-gray */
+    --border: 150 30% 88%;           /* soft green border */
     --destructive: 0 84% 65%;
     --radius: 0.5rem;
   }
@@ -25,7 +25,13 @@
     @apply border-border;
   }
   body {
-    @apply bg-background text-foreground;
+    @apply text-foreground;
+    /* Green-to-white gradient backdrop for the whole app, rather than a
+       flat fill — fixed attachment so it doesn't visibly repeat/tile as
+       the page scrolls on long views. */
+    background: linear-gradient(160deg, hsl(152 55% 94%) 0%, hsl(0 0% 100%) 45%, hsl(150 45% 97%) 100%);
+    background-attachment: fixed;
+    min-height: 100vh;
   }
   input, select, textarea {
     @apply bg-muted text-foreground placeholder:text-muted-foreground;
@@ -41,21 +47,38 @@
   border-radius: 0.75rem;
   border: 1px solid hsl(var(--border));
   background: hsl(var(--background));
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.25);
+  box-shadow: 0 1px 2px rgba(16, 90, 60, 0.08);
 }
 
-/* --- BizNest landing page design tokens ---
-   Deep aubergine/plum ground with marigold + jade accents — evokes market-stall
-   textiles and dye colors rather than the generic cream+terracotta or
-   near-black+acid-green AI-design defaults. */
+/* Reusable green→white gradient for heroes, buttons, and accent surfaces —
+   the literal "mix of green and white" treatment, distinct from the
+   subtler full-page backdrop above. */
+.bn-gradient {
+  background: linear-gradient(135deg, hsl(152 65% 32%) 0%, hsl(150 55% 55%) 55%, hsl(0 0% 100%) 100%);
+}
+.bn-gradient-text {
+  background: linear-gradient(135deg, hsl(152 70% 28%), hsl(150 60% 45%));
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+/* --- BizNest brand tokens ---
+   Green + white, evoking growth/marketplace freshness rather than the
+   previous aubergine/marigold palette. Variable names kept the same so
+   every file already referencing them (app/page.tsx, order confirmation,
+   etc.) updates automatically with no further edits needed. */
 :root {
-  --bn-ink: #1b1030;
-  --bn-ink-raised: #241541;
-  --bn-ink-line: #3a2a5c;
-  --bn-marigold: #f2a93b;
-  --bn-jade: #2f9e6e;
-  --bn-ivory: #f6f1e7;
-  --bn-mute: #a89bc0;
+  --bn-ink: #f6fbf8;       /* was near-black plum — now near-white, since
+                               the surfaces that used this as a dark ground
+                               are being flipped to sit on white/pale green */
+  --bn-ink-raised: #eaf7f0;
+  --bn-ink-line: #cdeadd;
+  --bn-marigold: #2f9e6e;  /* now the primary green accent (was marigold) */
+  --bn-jade: #1f7a52;      /* deeper green for hover/emphasis states */
+  --bn-ivory: #0f2e21;     /* near-black green, for text on light surfaces
+                               (was the ivory text-on-dark color) */
+  --bn-mute: #5f8f7a;
 }
 
 @keyframes bn-marquee-left {

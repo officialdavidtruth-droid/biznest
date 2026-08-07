@@ -203,6 +203,16 @@ export async function listUsers(query?: string) {
     select: {
       id: true, name: true, email: true, role: true, isBanned: true,
       emailVerified: true, createdAt: true,
+      business: {
+        select: {
+          store: {
+            select: {
+              id: true, subscriptionId: true, trialEndsAt: true,
+              subscription: { select: { id: true, name: true } },
+            },
+          },
+        },
+      },
     },
     orderBy: { createdAt: "desc" },
     take: 200,
@@ -345,6 +355,117 @@ export async function deleteUser(userId: string): Promise<ActionResult> {
   await prisma.user.delete({ where: { id: userId } });
   await prisma.auditLog.create({
     data: { userId: access.userId, action: "USER_DELETED", entity: "User", entityId: userId, metadata: { email: target.email } },
+  });
+
+  revalidatePath("/supaadmin/users");
+  return { success: true, data: undefined };
+}
+
+// --- User plan management (upgrade/downgrade/free trials) ------------------
+// Plans live on Store, not User (a store's plan is what actually gates
+// features/commission), so these look up the user's store under the hood.
+// changeUserRole above still exists for the handful of override checks
+// elsewhere in the app, but the Users page itself no longer surfaces role —
+// plan + trial are what platform staff actually manage per-user day to day.
+
+async function getUserStore(userId: string) {
+  const user = await prisma.user.findUnique({
+    where: { id: userId },
+    include: { business: { include: { store: true } } },
+  });
+  return user?.business?.store ?? null;
+}
+
+export async function forceLogoutUser(userId: string): Promise<ActionResult> {
+  const access = await assertPlatformStaff();
+  if (!access.success) return { success: false, error: access.error };
+
+  await prisma.user.update({ where: { id: userId }, data: { sessionsInvalidatedAt: new Date() } });
+
+  await prisma.auditLog.create({
+    data: { userId: access.userId, action: "USER_FORCE_LOGOUT", entity: "User", entityId: userId },
+  });
+
+  return { success: true, data: undefined };
+}
+
+export async function changeUserPlan(userId: string, subscriptionId: string | null): Promise<ActionResult> {
+  const access = await assertPlatformStaff();
+  if (!access.success) return { success: false, error: access.error };
+
+  const store = await getUserStore(userId);
+  if (!store) return { success: false, error: "This user doesn't have a store yet." };
+
+  if (subscriptionId) {
+    const plan = await prisma.subscription.findUnique({ where: { id: subscriptionId } });
+    if (!plan) return { success: false, error: "Plan not found." };
+  }
+
+  await prisma.store.update({
+    where: { id: store.id },
+    // A manual plan change (as opposed to a trial) clears any existing
+    // trial — the new plan is the real, billed plan from here on.
+    data: { subscriptionId, trialEndsAt: null },
+  });
+
+  await prisma.auditLog.create({
+    data: {
+      userId: access.userId,
+      action: "USER_PLAN_CHANGED",
+      entity: "Store",
+      entityId: store.id,
+      metadata: { from: store.subscriptionId, to: subscriptionId },
+    },
+  });
+
+  revalidatePath("/supaadmin/users");
+  return { success: true, data: undefined };
+}
+
+export async function grantUserTrial(userId: string, subscriptionId: string, days: number): Promise<ActionResult> {
+  const access = await assertPlatformStaff();
+  if (!access.success) return { success: false, error: access.error };
+  if (!Number.isFinite(days) || days < 1 || days > 365) {
+    return { success: false, error: "Enter a trial length between 1 and 365 days." };
+  }
+
+  const store = await getUserStore(userId);
+  if (!store) return { success: false, error: "This user doesn't have a store yet." };
+
+  const plan = await prisma.subscription.findUnique({ where: { id: subscriptionId } });
+  if (!plan) return { success: false, error: "Plan not found." };
+
+  const trialEndsAt = new Date(Date.now() + days * 24 * 60 * 60 * 1000);
+  await prisma.store.update({
+    where: { id: store.id },
+    data: { subscriptionId, trialEndsAt },
+  });
+
+  await prisma.auditLog.create({
+    data: {
+      userId: access.userId,
+      action: "USER_TRIAL_GRANTED",
+      entity: "Store",
+      entityId: store.id,
+      metadata: { plan: plan.name, days, trialEndsAt },
+    },
+  });
+
+  revalidatePath("/supaadmin/users");
+  return { success: true, data: undefined };
+}
+
+export async function endUserTrial(userId: string): Promise<ActionResult> {
+  const access = await assertPlatformStaff();
+  if (!access.success) return { success: false, error: access.error };
+
+  const store = await getUserStore(userId);
+  if (!store) return { success: false, error: "This user doesn't have a store yet." };
+
+  await prisma.store.update({ where: { id: store.id }, data: { trialEndsAt: null } });
+
+  await prisma.auditLog.create({
+    data: { userId: access.userId, action: "USER_TRIAL_ENDED", entity: "Store", entityId: store.id },
   });
 
   revalidatePath("/supaadmin/users");

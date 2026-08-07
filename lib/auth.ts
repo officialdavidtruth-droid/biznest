@@ -130,12 +130,20 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         // scale, same tradeoff as RateLimitEntry elsewhere in this codebase.
         const current = await prisma.user.findUnique({
           where: { id: token.id as string },
-          select: { role: true, isBanned: true },
+          select: { role: true, isBanned: true, sessionsInvalidatedAt: true },
         });
-        if (current) {
-          token.role = current.role;
-          token.banned = current.isBanned;
+        if (!current) return null; // user deleted since token was issued
+
+        // Returning null here signs the user out on their very next request
+        // — Next-Auth treats a null jwt() return as "no session." Two cases:
+        // they've since been banned, or an admin hit "force logout" (which
+        // bumps sessionsInvalidatedAt to now) after this token was issued.
+        if (current.isBanned) return null;
+        if (current.sessionsInvalidatedAt && typeof token.iat === "number" && token.iat * 1000 < current.sessionsInvalidatedAt.getTime()) {
+          return null;
         }
+
+        token.role = current.role;
       }
       return token;
     },

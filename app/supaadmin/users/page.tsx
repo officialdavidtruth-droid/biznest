@@ -1,6 +1,6 @@
-import { listUsers } from "@/lib/actions/admin";
-import { UserBanButton } from "@/components/dashboard/user-ban-button";
-import { UserRoleSelect, DeleteUserButton } from "@/components/dashboard/user-role-controls";
+import { listUsers, listPlans } from "@/lib/actions/admin";
+import { UserPlanSelect, UserTrialControl, UserActionButtons } from "@/components/dashboard/user-plan-controls";
+import { Search } from "lucide-react";
 
 export default async function UsersPage({
   searchParams,
@@ -8,62 +8,89 @@ export default async function UsersPage({
   searchParams: Promise<{ q?: string }>;
 }) {
   const { q } = await searchParams;
-  const users = await listUsers(q);
+  const [users, plans] = await Promise.all([listUsers(q), listPlans()]);
 
   return (
-    <div>
-      <div className="mb-4 flex items-center justify-between">
-        <h1 className="text-xl font-semibold">Users</h1>
-        <form>
+    <div className="space-y-4">
+      <div className="flex items-center justify-between gap-3">
+        <h1 className="text-xl font-bold" style={{ color: "hsl(var(--foreground))" }}>
+          Users ({users.length})
+        </h1>
+        <form className="relative">
+          <Search size={13} className="absolute left-3 top-1/2 -translate-y-1/2" style={{ color: "hsl(var(--muted-foreground))" }} />
           <input
             name="q"
             defaultValue={q}
             placeholder="Search name or email…"
-            className="rounded-md border px-3 py-2 text-sm"
+            className="w-64 rounded-xl border py-2 pl-8 pr-3 text-xs outline-none"
+            style={{ background: "hsl(var(--muted))", borderColor: "hsl(var(--border))", color: "hsl(var(--foreground))" }}
           />
         </form>
       </div>
 
-      <div className="overflow-hidden rounded-lg border bg-background">
+      <div className="overflow-hidden rounded-2xl" style={{ background: "hsl(var(--muted))", border: "1px solid hsl(var(--border))" }}>
         <table className="w-full text-sm">
-          <thead className="border-b bg-muted/40 text-left text-xs uppercase text-muted-foreground">
-            <tr>
-              <th className="px-4 py-2">User</th>
-              <th className="px-4 py-2">Role</th>
-              <th className="px-4 py-2">Email verified</th>
-              <th className="px-4 py-2">Joined</th>
-              <th className="px-4 py-2">Status</th>
-              <th className="px-4 py-2"></th>
+          <thead>
+            <tr style={{ borderBottom: "1px solid hsl(var(--border))" }}>
+              {["User", "Email", "Plan", "Status", "Joined", "Actions"].map((h) => (
+                <th
+                  key={h}
+                  className="whitespace-nowrap px-4 py-3 text-left text-[10px] font-bold uppercase tracking-wide"
+                  style={{ color: "hsl(var(--muted-foreground))" }}
+                >
+                  {h}
+                </th>
+              ))}
             </tr>
           </thead>
           <tbody>
             {users.map((u) => (
-              <tr key={u.id} className="border-b last:border-0">
+              <tr key={u.id} style={{ borderBottom: "1px solid hsl(var(--border))" }}>
                 <td className="px-4 py-3">
-                  <p className="font-medium">{u.name ?? "—"}</p>
-                  <p className="text-xs text-muted-foreground">{u.email}</p>
-                </td>
-                <td className="px-4 py-3"><UserRoleSelect userId={u.id} role={u.role} /></td>
-                <td className="px-4 py-3 text-muted-foreground">{u.emailVerified ? "Yes" : "No"}</td>
-                <td className="px-4 py-3 text-muted-foreground">{new Date(u.createdAt).toLocaleDateString()}</td>
-                <td className="px-4 py-3">
-                  {u.isBanned ? (
-                    <span className="rounded-full bg-destructive/10 px-2 py-0.5 text-xs text-destructive">Banned</span>
-                  ) : (
-                    <span className="rounded-full bg-green-100 px-2 py-0.5 text-xs text-green-700">Active</span>
-                  )}
-                </td>
-                <td className="px-4 py-3">
-                  <div className="flex items-center justify-end gap-3">
-                    <UserBanButton userId={u.id} isBanned={u.isBanned} />
-                    <DeleteUserButton userId={u.id} email={u.email} />
+                  <div className="flex items-center gap-2.5">
+                    <div
+                      className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-xs font-bold"
+                      style={{ background: "hsl(var(--primary) / 0.15)", color: "hsl(var(--primary))" }}
+                    >
+                      {u.name?.charAt(0).toUpperCase() ?? "?"}
+                    </div>
+                    <span className="font-semibold" style={{ color: "hsl(var(--foreground))" }}>
+                      {u.name ?? "—"}
+                    </span>
                   </div>
+                </td>
+                <td className="px-4 py-3 text-xs" style={{ color: "hsl(var(--muted-foreground))" }}>
+                  {u.email}
+                </td>
+                <td className="px-4 py-3">
+                  <UserPlanSelect userId={u.id} store={u.business?.store ?? null} plans={plans} />
+                  <div>
+                    <UserTrialControl userId={u.id} store={u.business?.store ?? null} plans={plans} />
+                  </div>
+                </td>
+                <td className="px-4 py-3">
+                  <span
+                    className="rounded-full px-2 py-0.5 text-[10px] font-bold"
+                    style={
+                      u.isBanned
+                        ? { background: "hsl(0 84% 65% / 0.12)", color: "hsl(0 84% 55%)" }
+                        : { background: "hsl(var(--primary) / 0.12)", color: "hsl(var(--primary))" }
+                    }
+                  >
+                    {u.isBanned ? "Banned" : "Active"}
+                  </span>
+                </td>
+                <td className="px-4 py-3 text-xs" style={{ color: "hsl(var(--muted-foreground))" }}>
+                  {new Date(u.createdAt).toLocaleDateString()}
+                </td>
+                <td className="px-4 py-3">
+                  <UserActionButtons userId={u.id} email={u.email} isBanned={u.isBanned} />
                 </td>
               </tr>
             ))}
             {users.length === 0 && (
               <tr>
-                <td colSpan={6} className="px-4 py-10 text-center text-muted-foreground">
+                <td colSpan={6} className="px-4 py-12 text-center text-xs" style={{ color: "hsl(var(--muted-foreground))" }}>
                   No users found.
                 </td>
               </tr>
