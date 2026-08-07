@@ -5,8 +5,9 @@ import { usePathname } from "next/navigation";
 import {
   LayoutDashboard, ShoppingCart, Package, Wrench, Users, Boxes, Ticket,
   CreditCard, BarChart3, Star, Megaphone, MessageSquare, LayoutTemplate,
-  Settings, BadgeCheck, Wallet, LifeBuoy, Truck, Rows3,
+  Settings, BadgeCheck, Wallet, LifeBuoy, Truck, Rows3, Wand2,
 } from "lucide-react";
+import { getCategoryDashboard } from "@/lib/constants/category-dashboard";
 
 type NavItem = { label: string; href: string; icon: typeof LayoutDashboard };
 
@@ -16,7 +17,7 @@ type NavItem = { label: string; href: string; icon: typeof LayoutDashboard };
 const PRODUCT_ONLY_HREFS = new Set(["/products", "/inventory", "/delivery"]);
 const SERVICE_ONLY_HREFS = new Set(["/services"]);
 
-function buildNavGroups(business: { sellsProducts: boolean; offersServices: boolean }): Array<{
+function buildNavGroups(business: { sellsProducts: boolean; offersServices: boolean; category?: string | null }): Array<{
   label: string;
   items: NavItem[];
 }> {
@@ -31,6 +32,14 @@ function buildNavGroups(business: { sellsProducts: boolean; offersServices: bool
     if (SERVICE_ONLY_HREFS.has(item.href)) return business.offersServices;
     return true;
   });
+
+  // The category picked at onboarding can add one more trade-specific tool
+  // (e.g. "Bookings" for a salon, "Delivery zones" for a restaurant) — but
+  // only if it isn't already present from sellsProducts/offersServices above.
+  const categoryConfig = getCategoryDashboard(business.category);
+  if (categoryConfig.extraNavItem && !sellItems.some((i) => i.href === categoryConfig.extraNavItem!.href)) {
+    sellItems.push(categoryConfig.extraNavItem);
+  }
 
   return [
     {
@@ -54,6 +63,7 @@ function buildNavGroups(business: { sellsProducts: boolean; offersServices: bool
     {
       label: "Store",
       items: [
+        { label: "Customize Website", href: "/customize", icon: Wand2 },
         { label: "Website Builder", href: "/builder", icon: LayoutTemplate },
         { label: "Storefront Layout", href: "/layout-editor", icon: Rows3 },
         { label: "Messages", href: "/messages", icon: MessageSquare },
@@ -77,6 +87,7 @@ export function DashboardSidebar({
   storeName,
   sellsProducts,
   offersServices,
+  category,
 }: {
   slug: string;
   storeName: string;
@@ -84,10 +95,12 @@ export function DashboardSidebar({
   // default true/false-safe (a hybrid store just passes both true).
   sellsProducts: boolean;
   offersServices: boolean;
+  // The category chosen at onboarding — adds one trade-specific nav item.
+  category?: string | null;
 }) {
   const pathname = usePathname();
   const base = `/store/${slug}/admin`;
-  const NAV_GROUPS = buildNavGroups({ sellsProducts, offersServices });
+  const NAV_GROUPS = buildNavGroups({ sellsProducts, offersServices, category });
 
   return (
     <aside className="flex h-full w-64 shrink-0 flex-col border-r border-border bg-background">
