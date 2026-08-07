@@ -1,503 +1,394 @@
-import type React from "react";
+import Link from "next/link";
+import { Space_Grotesk, Inter, JetBrains_Mono } from "next/font/google";
+import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { notFound } from "next/navigation";
-import type { Metadata } from "next";
-import { CartLink } from "@/components/storefront/cart-link";
-import { resolveStoreTheme, FRESH, isHeenzyTemplate, type TemplateTheme } from "@/lib/template-themes";
-import { subscribeToNewsletter } from "@/lib/actions/newsletter";
-import { HeenzyStorefront } from "@/components/storefront/templates/heenzy-home";
+import { SignOutButton } from "@/components/forms/sign-out-button";
 
-// This page reads live store/template/section data straight from Prisma
-// and is republished from the Customizer via revalidatePath — it must
-// never be statically cached, or template/section changes (and the
-// Customizer's own live preview iframe, which loads this same route)
-// silently keep serving the old version after a save.
-export const dynamic = "force-dynamic";
-export const revalidate = 0;
+const display = Space_Grotesk({ subsets: ["latin"], variable: "--font-display", weight: ["500", "700"] });
+const body = Inter({ subsets: ["latin"], variable: "--font-body" });
+const mono = JetBrains_Mono({ subsets: ["latin"], variable: "--font-mono", weight: ["500"] });
 
-export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }): Promise<Metadata> {
-  const { slug } = await params;
-  const store = await prisma.store.findUnique({ where: { slug } });
-  if (!store) return {};
-  return { title: store.seoTitle ?? store.name, description: store.seoDescription ?? undefined };
-}
+const STALLS = [
+  { name: "Stacey's Paradise", cat: "Fashion" },
+  { name: "Lens & Light Studio", cat: "Photography" },
+  { name: "Kaya Kitchen", cat: "Catering" },
+  { name: "Voltage Repairs", cat: "Automotive" },
+  { name: "Bloom & Co.", cat: "Beauty" },
+  { name: "Nairaworks", cat: "Software" },
+  { name: "The Grain House", cat: "Groceries" },
+  { name: "Studio Nine", cat: "Design" },
+  { name: "FitCore", cat: "Fitness" },
+  { name: "Hearth Interiors", cat: "Furniture" },
+  { name: "Loom Tailors", cat: "Tailoring" },
+  { name: "Pulse Events", cat: "Event Planning" },
+];
 
-// The storefront now has exactly one template — "Fresh & Co." (see
-// lib/template-themes.ts). Every store renders this same design; only
-// real store data (name, logo, banner, catalog, reviews, contact info)
-// changes what's shown. All imagery (logo, banner, product/service
-// photos) comes from the store owner's own uploads via the existing
-// dashboard upload fields (logo-banner-fields.tsx, multi-image-upload.tsx,
-// service-images-field.tsx) — nothing here is hardcoded artwork.
-export default async function StorefrontPage({ params }: { params: Promise<{ slug: string }> }) {
-  const { slug } = await params;
-  const store = await prisma.store.findUnique({
-    where: { slug },
-    include: {
-      template: true,
-      business: true,
-      products: { where: { isPublished: true }, take: 24, include: { category: true } },
-      services: { where: { isPublished: true }, take: 24, include: { category: true } },
-      reviews: { include: { author: true }, orderBy: { createdAt: "desc" }, take: 6 },
-    },
-  });
+const STEPS = [
+  {
+    n: "01",
+    title: "Verify your business",
+    body: "Registered or not — upload your certificate, or your ID, a selfie, and two guarantors. Reviewed by a real person, not a black box.",
+  },
+  {
+    n: "02",
+    title: "Open your store",
+    body: "Pick a name, get a live storefront and admin dashboard on the spot. No code, no waiting on a developer.",
+  },
+  {
+    n: "03",
+    title: "Sell, get paid",
+    body: "List products, services, or bookings. Payments land in your own Paystack or Flutterwave account — we never touch your funds directly.",
+  },
+];
 
-  if (!store || store.status !== "ACTIVE") notFound();
+const CATEGORIES = [
+  "Fashion", "Electronics", "Beauty", "Food & Groceries", "Home & Furniture",
+  "Photography", "Software Development", "Event Planning", "Automotive",
+  "Health & Fitness", "Real Estate", "Logistics",
+];
 
-  const themeOverrides = store.themeColors as { primary?: string; secondary?: string; accent?: string } | null;
-  const theme: TemplateTheme = resolveStoreTheme(store.template?.category, store.name, themeOverrides, store.fontFamily, store.template?.name);
-
-  const social = (store.socialLinks as Record<string, string> | null) ?? {};
-  const catalogItems: CatalogItem[] = [
-    ...store.products.map((p) => ({
-      id: p.id, kind: "product" as const, name: p.name, description: null as string | null,
-      price: Number(p.price), currency: p.currency, image: p.images[0] ?? null,
-      categoryName: p.category?.name ?? null, type: p.type, rentalUnit: p.rentalPeriodUnit,
-      isBookable: false,
-    })),
-    ...store.services.map((s) => ({
-      id: s.id, kind: "service" as const, name: s.name, description: s.description,
-      price: Number(s.price), currency: s.currency, image: s.images[0] ?? null,
-      categoryName: s.category?.name ?? null, type: "SERVICE", rentalUnit: null,
-      isBookable: s.isBookable,
-    })),
-  ];
-  const catalogCategories = Array.from(new Set(catalogItems.map((i) => i.categoryName).filter(Boolean))) as string[];
-  const goodReviews = store.reviews.filter((r) => r.rating >= 4 && r.comment);
-  const avgRating = store.reviews.length
-    ? store.reviews.reduce((sum, r) => sum + r.rating, 0) / store.reviews.length
-    : null;
-  const completedOrders = await prisma.order.count({ where: { storeId: store.id, status: { in: ["DELIVERED", "COMPLETED"] } } });
-
-  const heroImage = store.bannerUrl || store.template?.previewUrl || null;
-
-  // ---------- TEMPLATE 2: Heenzy Sneaker Co. ----------
-  if (isHeenzyTemplate(store.template?.name)) {
-    return (
-      <HeenzyStorefront
-        store={store}
-        slug={slug}
-        catalogItems={catalogItems}
-        catalogCategories={catalogCategories}
-        goodReviews={goodReviews}
-        avgRating={avgRating}
-        completedOrders={completedOrders}
-        social={social}
-      />
-    );
-  }
-
+export default async function HomePage() {
+  const session = await auth();
+  const plans = await prisma.subscription.findMany({ where: { isActive: true }, orderBy: { price: "asc" } });
   return (
-    <div style={{ fontFamily: theme.font, color: theme.ink, background: FRESH.ivory }}>
-      <SiteNav store={store} slug={slug} hasCatalog={catalogItems.length > 0} />
-
-      {/* ---------- HERO ---------- */}
-      <header style={{ padding: "36px 0 0", background: FRESH.ivory }}>
-        <div style={wrap}>
-          <div
-            style={{
-              position: "relative", borderRadius: 26, overflow: "hidden", minHeight: 460,
-              display: "flex", alignItems: "center",
-              background: heroImage
-                ? `linear-gradient(100deg, rgba(10,30,18,.82) 0%, rgba(10,30,18,.58) 38%, rgba(10,30,18,.12) 62%), url(${heroImage}) center/cover`
-                : `linear-gradient(200deg,#5fc98a 0%, #2c8a52 45%, #1c5c37 100%)`,
-            }}
-          >
-            <div style={{ position: "relative", zIndex: 2, padding: "60px 56px", maxWidth: 640 }}>
-              <div style={{ ...eyebrow, color: FRESH.citrus }}>{theme.eyebrow}</div>
-              <h1 style={{ ...h1, color: "#fff", fontSize: "clamp(34px,5vw,56px)" }}>{store.name}</h1>
-              <p style={{ marginTop: 18, color: "rgba(255,255,255,.82)", maxWidth: 440, fontSize: 15.5, lineHeight: 1.6 }}>
-                {store.business.description || theme.sub}
-              </p>
-              <div style={{ marginTop: 30, display: "flex", gap: 16, alignItems: "center", flexWrap: "wrap" }}>
-                {catalogItems.length > 0 && (
-                  <a href="#catalog" style={btnPrimary}>{theme.cta} <ArrowChip /></a>
-                )}
-              </div>
-            </div>
-            {avgRating != null && (
-              <div style={{ position: "absolute", zIndex: 2, bottom: 34, right: 40, background: "#fff", color: FRESH.forest, padding: "14px 18px", borderRadius: 16, boxShadow: shadow, fontSize: 12 }}>
-                <div style={{ color: FRESH.citrus, letterSpacing: 2, fontSize: 13 }}>{"★".repeat(Math.round(avgRating))}{"☆".repeat(5 - Math.round(avgRating))}</div>
-                <b style={{ display: "block", fontFamily: FRESH.headlineFont, fontSize: 19, color: FRESH.forest, fontWeight: 800 }}>{avgRating.toFixed(1)} Rating</b>
-                {store.reviews.length}+ glowing reviews
-              </div>
-            )}
-          </div>
-
-          <div style={{ display: "flex", gap: 36, padding: "34px 0 0", flexWrap: "wrap" }}>
-            <Stat value={`${catalogItems.length}+`} label="Services offered" />
-            <Stat value={`${completedOrders}+`} label="Jobs completed" />
-            {avgRating != null && <Stat value={`${avgRating.toFixed(1)}/5`} label="Average rating" />}
-          </div>
-
-          <Marquee />
-        </div>
+    <div
+      className={`${display.variable} ${body.variable} ${mono.variable} min-h-screen`}
+      style={{ background: "var(--bn-ink)", color: "var(--bn-ivory)", fontFamily: "var(--font-body)" }}
+    >
+      {/* Nav */}
+      <header className="flex items-center justify-between px-6 py-5 sm:px-10">
+        <span className="text-lg tracking-tight" style={{ fontFamily: "var(--font-display)", fontWeight: 700 }}>
+          BizNest
+        </span>
+        <nav className="flex items-center gap-3 text-sm sm:gap-6">
+          {session?.user ? (
+            <>
+              <Link href="/onboarding/business-verification" className="opacity-80 transition hover:opacity-100">
+                Dashboard
+              </Link>
+              <SignOutButton className="rounded-full px-4 py-2 text-sm font-medium transition hover:brightness-110" />
+            </>
+          ) : (
+            <>
+              <Link href="/login" className="opacity-80 transition hover:opacity-100">
+                Sign in
+              </Link>
+              <Link
+                href="/register"
+                className="rounded-full px-4 py-2 text-sm font-medium transition hover:brightness-110"
+                style={{ background: "var(--bn-marigold)", color: "var(--bn-ink)" }}
+              >
+                Open your store
+              </Link>
+            </>
+          )}
+        </nav>
       </header>
 
-      {/* ---------- WHY CHOOSE US ---------- */}
-      {store.business.description && (
-        <section style={{ padding: "80px 0" }}>
-          <div style={{ ...wrap, display: "grid", gridTemplateColumns: "0.9fr 1.1fr", gap: 50, alignItems: "center" }}>
+      {/* Hero */}
+      <section className="grid gap-10 px-6 pb-16 pt-8 sm:px-10 lg:grid-cols-2 lg:items-center lg:gap-6 lg:pt-16">
+        <div className="bn-fade-up">
+          <p
+            className="mb-4 text-xs uppercase tracking-[0.2em]"
+            style={{ color: "var(--bn-marigold)", fontFamily: "var(--font-mono)" }}
+          >
+            One marketplace, every kind of business
+          </p>
+          <h1
+            className="text-4xl leading-[1.05] tracking-tight sm:text-5xl lg:text-6xl"
+            style={{ fontFamily: "var(--font-display)", fontWeight: 700 }}
+          >
+            Your store belongs
+            <br />
+            in the <span style={{ color: "var(--bn-marigold)" }}>nest</span>.
+          </h1>
+          <p className="mt-5 max-w-md text-base leading-relaxed" style={{ color: "var(--bn-mute)" }}>
+            BizNest is where sellers of products, services, and bookings get a real storefront,
+            a real dashboard, and real payments — verified, protected, and built to grow with you.
+          </p>
+          <div className="mt-8 flex flex-wrap gap-3">
+            {session?.user ? (
+              <Link
+                href="/onboarding/business-verification"
+                className="rounded-full px-6 py-3 text-sm font-medium transition hover:brightness-110"
+                style={{ background: "var(--bn-marigold)", color: "var(--bn-ink)" }}
+              >
+                Go to your dashboard
+              </Link>
+            ) : (
+              <>
+                <Link
+                  href="/register"
+                  className="rounded-full px-6 py-3 text-sm font-medium transition hover:brightness-110"
+                  style={{ background: "var(--bn-marigold)", color: "var(--bn-ink)" }}
+                >
+                  Start selling — it's free
+                </Link>
+                <Link
+                  href="/login"
+                  className="rounded-full px-6 py-3 text-sm font-medium transition"
+                  style={{ border: "1px solid var(--bn-ink-line)", color: "var(--bn-ivory)" }}
+                >
+                  I already have a store
+                </Link>
+              </>
+            )}
+          </div>
+          <div
+            className="mt-10 flex gap-8 text-sm"
+            style={{ fontFamily: "var(--font-mono)", color: "var(--bn-mute)" }}
+          >
             <div>
-              <div style={eyebrow}>Why choose us</div>
-              <h2 style={{ ...h1, fontSize: "clamp(26px,3.6vw,38px)", marginBottom: 16 }}>
-                Why should you choose <span style={accentText}>our services?</span>
-              </h2>
-              <p style={{ color: FRESH.inkSoft, fontSize: 14.5, lineHeight: 1.7, maxWidth: 420 }}>{store.business.description}</p>
-              {catalogCategories.slice(0, 3).map((cat, i) => (
-                <div key={cat} style={{ display: "flex", gap: 16, padding: "18px 0", borderTop: `1px solid ${line}` }}>
-                  <div style={{ fontFamily: "monospace", fontSize: 12, color: FRESH.leaf, paddingTop: 4 }}>{String(i + 1).padStart(2, "0")}</div>
-                  <div>
-                    <h4 style={{ fontSize: 17, marginBottom: 6, fontFamily: FRESH.headlineFont, fontWeight: 700 }}>{cat}</h4>
-                    <p style={{ color: FRESH.inkSoft, fontSize: 14, lineHeight: 1.6 }}>Trained crews and quality service, every time.</p>
-                  </div>
-                </div>
-              ))}
-            </div>
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
-              <Tile img={store.logoUrl} gradient={`linear-gradient(150deg,${FRESH.leafLight},${FRESH.forest})`} />
-              <Tile img={heroImage} gradient={`linear-gradient(150deg,${FRESH.citrus},#c98a12)`} marginTop={32} />
-            </div>
-          </div>
-        </section>
-      )}
-
-      {/* ---------- CATALOG / SERVICES, GROUPED BY CATEGORY ---------- */}
-      {catalogItems.length > 0 && (
-        <section id="catalog" style={{ padding: "80px 0", background: FRESH.paper }}>
-          <div style={wrap}>
-            <div style={sectionHead}>
-              <div>
-                <div style={eyebrow}>Our {theme.catalogLabel.toLowerCase()}</div>
-                <h2 style={h2}>Our company provides the <span style={accentText}>best service</span></h2>
-              </div>
-              <p style={{ maxWidth: 340, color: FRESH.inkSoft, fontSize: 15, lineHeight: 1.6 }}>Bundle what you need — every visit comes with our satisfaction guarantee.</p>
-            </div>
-            {groupByCategory(catalogItems).map(([cat, items]) => (
-              <div key={cat} style={{ marginBottom: 44 }}>
-                <h3 style={{ fontFamily: FRESH.headlineFont, fontSize: 18, fontWeight: 700, color: FRESH.forest, marginBottom: 18, paddingBottom: 10, borderBottom: `1px solid ${line}` }}>
-                  {cat}
-                </h3>
-                <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(240px, 1fr))", gap: 20 }}>
-                  {items.map((item) => (
-                    <CatalogCard key={`${item.kind}-${item.id}`} item={item} storeName={store.name} slug={slug} accent={FRESH.leaf} />
-                  ))}
-                </div>
-              </div>
-            ))}
-          </div>
-        </section>
-      )}
-
-      {/* ---------- STORY / CTA (dark block) ---------- */}
-      {store.business.description && (
-        <section style={{ padding: "80px 0" }}>
-          <div style={wrap}>
-            <div style={{ display: "grid", gridTemplateColumns: "0.95fr 1.05fr", borderRadius: 24, overflow: "hidden", background: FRESH.forest, color: "#fff" }}>
-              <div style={{ padding: "60px 50px" }}>
-                <div style={{ ...eyebrow, color: FRESH.citrus }}>What we do</div>
-                <h2 style={{ ...h1, color: "#fff", fontSize: "clamp(26px,3.2vw,38px)" }}>
-                  Behind the <span style={{ color: FRESH.leafLight }}>{store.name}</span> story.
-                </h2>
-                <p style={{ color: "rgba(255,255,255,.65)", marginTop: 16, maxWidth: 400, fontSize: 15, lineHeight: 1.7 }}>{store.business.description}</p>
-                <div style={{ display: "flex", gap: 36, marginTop: 34 }}>
-                  <div><b style={{ fontFamily: FRESH.headlineFont, fontSize: 28, color: FRESH.citrus, display: "block" }}>{catalogItems.length}+</b><span style={{ fontSize: 12, color: "rgba(255,255,255,.55)" }}>Services offered</span></div>
-                  <div><b style={{ fontFamily: FRESH.headlineFont, fontSize: 28, color: FRESH.citrus, display: "block" }}>{completedOrders}+</b><span style={{ fontSize: 12, color: "rgba(255,255,255,.55)" }}>Jobs completed</span></div>
-                </div>
-                {catalogItems.length > 0 && <a href="#catalog" style={{ ...btnPrimary, marginTop: 30 }}>Get Started <ArrowChip /></a>}
-              </div>
-              <div style={{ position: "relative", background: heroImage ? `url(${heroImage}) center/cover` : `linear-gradient(160deg,#1c4a32,#0a1f15)`, minHeight: 280 }} />
-            </div>
-          </div>
-        </section>
-      )}
-
-      {/* ---------- TESTIMONIALS ---------- */}
-      {goodReviews.length > 0 && (
-        <section style={{ padding: "80px 0" }}>
-          <div style={{ ...wrap, display: "grid", gridTemplateColumns: "0.85fr 1.15fr", gap: 44, alignItems: "center" }}>
-            <div style={{ height: 300, borderRadius: 24, background: heroImage ? `url(${heroImage}) center/cover` : `linear-gradient(150deg,${FRESH.leafLight},${FRESH.forest})`, position: "relative" }}>
-              {avgRating != null && (
-                <div style={{ position: "absolute", bottom: 18, left: 18, background: "#fff", borderRadius: 14, padding: "10px 14px", boxShadow: shadow }}>
-                  <b style={{ fontFamily: FRESH.headlineFont, fontSize: 18 }}>{avgRating.toFixed(1)} / 5</b>
-                  <span style={{ fontSize: 11, color: FRESH.inkSoft, display: "block" }}>{store.reviews.length}+ reviews</span>
-                </div>
-              )}
+              <span className="block text-xl" style={{ color: "var(--bn-ivory)" }}>50+</span>
+              product & service categories
             </div>
             <div>
-              <div style={eyebrow}>What clients say</div>
-              <h2 style={{ ...h2, marginBottom: 22 }}>Hear what our <span style={accentText}>clients</span> say</h2>
-              <div style={{ color: FRESH.citrus, letterSpacing: 3, marginBottom: 16, fontSize: 15 }}>{"★".repeat(goodReviews[0].rating)}</div>
-              <p style={{ fontFamily: FRESH.headlineFont, fontSize: "clamp(18px,2.4vw,26px)", lineHeight: 1.5, color: FRESH.forest, fontWeight: 700 }}>
-                &ldquo;{goodReviews[0].comment}&rdquo;
-              </p>
-              <div style={{ marginTop: 20, display: "flex", alignItems: "center", gap: 12 }}>
-                <div style={{ width: 42, height: 42, borderRadius: "50%", background: `linear-gradient(150deg,${FRESH.leafLight},${FRESH.forest})` }} />
-                <div>
-                  <h5 style={{ fontSize: 14, fontWeight: 700 }}>{goodReviews[0].author.name ?? "Verified client"}</h5>
-                  <span style={{ fontSize: 12, color: FRESH.inkSoft }}>Client</span>
-                </div>
-              </div>
+              <span className="block text-xl" style={{ color: "var(--bn-ivory)" }}>2</span>
+              payment providers, your account
             </div>
           </div>
-        </section>
-      )}
+        </div>
 
-      {/* ---------- APPOINTMENT / QUOTE ---------- */}
-      <section style={{ padding: "80px 0", background: FRESH.paper }}>
-        <div style={wrap}>
-          <div style={{ display: "grid", gridTemplateColumns: "1.1fr 0.9fr", borderRadius: 24, overflow: "hidden" }}>
-            <div style={{ background: FRESH.forestDark, color: "#fff", padding: 50 }}>
-              <div style={{ ...eyebrow, color: FRESH.citrus }}>Get a quote</div>
-              <h2 style={{ ...h1, color: "#fff", fontSize: "clamp(24px,3vw,32px)" }}>
-                Schedule your <span style={{ color: FRESH.leafLight }}>appointment</span> today!
-              </h2>
-              <p style={{ color: "rgba(255,255,255,.6)", marginTop: 10, fontSize: 14 }}>Tell us about your needs and we&apos;ll reply within the hour.</p>
-              <QuoteForm slug={slug} services={catalogItems.map((i) => i.name)} contactEmail={store.contactEmail} social={social} />
-            </div>
-            <div style={{ position: "relative", background: `linear-gradient(155deg,${FRESH.leafLight},#0d281b)`, minHeight: 260 }}>
-              <div style={{ position: "absolute", left: 0, right: 0, bottom: 0, background: FRESH.leaf, padding: "22px 28px", display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 8 }}>
-                <h4 style={{ color: "#fff", fontSize: 18, fontFamily: FRESH.headlineFont, fontWeight: 700 }}>100% Satisfaction</h4>
-                <span style={{ color: "rgba(255,255,255,.75)", fontSize: 12 }}>Guaranteed on every visit</span>
-              </div>
-            </div>
-          </div>
+        {/* Signature element: two rows of storefront tiles drifting past each other,
+            like walking down a market alley of many different stores. */}
+        <div
+          className="relative -mx-6 overflow-hidden py-2 sm:-mx-10 lg:mx-0 lg:rounded-2xl"
+          style={{
+            background: "var(--bn-ink-raised)",
+            border: "1px solid var(--bn-ink-line)",
+            maskImage: "linear-gradient(90deg, transparent, black 8%, black 92%, transparent)",
+          }}
+        >
+          <Row stalls={STALLS} direction="left" />
+          <Row stalls={[...STALLS].reverse()} direction="right" />
+          <Row stalls={STALLS.slice().sort(() => 1)} direction="left" />
         </div>
       </section>
 
-      {/* ---------- CONTACT ---------- */}
-      {(store.contactEmail || store.contactPhone || social.whatsapp) && (
-        <section style={{ padding: "80px 0" }}>
-          <div style={{ ...wrap, maxWidth: 780 }}>
-            <h2 style={{ ...h2, marginBottom: 16, fontSize: 26 }}>Get in touch</h2>
-            <div style={{ background: "#fff", borderRadius: 16, border: `1px solid ${line}`, display: "flex", flexWrap: "wrap", gap: 12, padding: 24 }}>
-              {social.whatsapp && <a href={`https://wa.me/${social.whatsapp}`} style={btnPrimary}>Message on WhatsApp</a>}
-              {store.contactPhone && <a href={`tel:${store.contactPhone}`} style={btnGhost}>Call {store.contactPhone}</a>}
-              {store.contactEmail && <a href={`mailto:${store.contactEmail}`} style={btnGhost}>Email {store.contactEmail}</a>}
-            </div>
-          </div>
-        </section>
-      )}
-
-      {/* ---------- NEWSLETTER ---------- */}
-      <NewsletterSection slug={slug} storeName={store.name} />
-
-      {/* ---------- FOOTER ---------- */}
-      <footer style={{ background: FRESH.forestDark, color: "rgba(255,255,255,.6)", padding: "60px 0 0" }}>
-        <div style={{ ...wrap, display: "grid", gridTemplateColumns: "1.4fr 1fr 1fr 1.2fr", gap: 36, paddingBottom: 44, borderBottom: "1px solid rgba(255,255,255,.1)" }}>
-          <div>
-            <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 12 }}>
-              {store.logoUrl ? (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img src={store.logoUrl} alt={store.name} style={{ height: 26, width: 26, borderRadius: 6, objectFit: "cover" }} />
-              ) : (
-                <div style={{ height: 26, width: 26, borderRadius: 6, background: FRESH.citrus }} />
-              )}
-              <span style={{ fontFamily: FRESH.headlineFont, fontWeight: 700, fontSize: 15, color: "#fff" }}>{store.name}</span>
-            </div>
-            {store.business.description && (
-              <p style={{ fontSize: 13, lineHeight: 1.7, maxWidth: 250 }}>
-                {store.business.description.length > 140 ? store.business.description.slice(0, 140) + "…" : store.business.description}
+      {/* How it works — a real 3-step sequence, so numbering earns its place */}
+      <section className="px-6 py-16 sm:px-10 lg:py-24">
+        <h2 className="mb-10 text-2xl sm:text-3xl" style={{ fontFamily: "var(--font-display)", fontWeight: 700 }}>
+          From idea to open for business
+        </h2>
+        <div className="grid gap-8 sm:grid-cols-3">
+          {STEPS.map((s) => (
+            <div key={s.n}>
+              <span
+                className="text-sm"
+                style={{ fontFamily: "var(--font-mono)", color: "var(--bn-marigold)" }}
+              >
+                {s.n}
+              </span>
+              <h3 className="mt-2 text-lg font-semibold">{s.title}</h3>
+              <p className="mt-2 text-sm leading-relaxed" style={{ color: "var(--bn-mute)" }}>
+                {s.body}
               </p>
-            )}
-          </div>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      {/* Categories */}
+      <section id="categories" className="px-6 py-16 sm:px-10 lg:py-20" style={{ background: "var(--bn-ink-raised)" }}>
+        <h2 className="mb-8 text-2xl sm:text-3xl" style={{ fontFamily: "var(--font-display)", fontWeight: 700 }}>
+          Whatever you sell, there's a stall for it
+        </h2>
+        <div className="flex flex-wrap gap-3">
+          {CATEGORIES.map((c) => (
+            <span
+              key={c}
+              className="rounded-full px-4 py-2 text-sm"
+              style={{ border: "1px solid var(--bn-ink-line)", color: "var(--bn-mute)" }}
+            >
+              {c}
+            </span>
+          ))}
+          <span
+            className="rounded-full px-4 py-2 text-sm"
+            style={{ background: "var(--bn-jade)", color: "var(--bn-ink)" }}
+          >
+            +40 more
+          </span>
+        </div>
+      </section>
+
+      {/* Quote */}
+      <section className="px-6 py-20 sm:px-10 lg:py-28">
+        <blockquote
+          className="max-w-2xl text-2xl leading-snug sm:text-3xl"
+          style={{ fontFamily: "var(--font-display)", fontWeight: 500 }}
+        >
+          "I didn't touch a line of code. I verified my business on Monday, and by Friday
+          customers were paying me directly through my own Paystack account."
+        </blockquote>
+        <p className="mt-4 text-sm" style={{ color: "var(--bn-mute)" }}>
+          — a BizNest store owner
+        </p>
+      </section>
+
+      {/* Pricing — pulled live from the Subscription table, not hardcoded copy,
+          so this page can never drift out of sync with what a store actually gets. */}
+      <section id="pricing" className="px-6 py-16 sm:px-10 lg:py-24">
+        <h2 className="mb-3 text-2xl sm:text-3xl" style={{ fontFamily: "var(--font-display)", fontWeight: 700 }}>
+          Simple pricing, real ownership
+        </h2>
+        <p className="mb-10 max-w-lg text-sm" style={{ color: "var(--bn-mute)" }}>
+          Start free. Upgrade when you're ready for higher limits, a lower commission,
+          and your own domain name.
+        </p>
+        <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
+          {plans.map((p) => {
+            const features = p.features as { products?: number; services?: number; customDomain?: boolean };
+            const featured = p.name === "Enterprise";
+            return (
+              <div
+                key={p.id}
+                className="relative rounded-2xl p-6"
+                style={{
+                  background: featured ? "var(--bn-marigold)" : "var(--bn-ink-raised)",
+                  color: featured ? "var(--bn-ink)" : "var(--bn-ivory)",
+                  border: featured ? "none" : "1px solid var(--bn-ink-line)",
+                }}
+              >
+                {featured && (
+                  <span className="absolute -top-3 left-6 rounded-full bg-black/80 px-3 py-1 text-[10px] font-bold uppercase tracking-wide text-white">
+                    Most popular
+                  </span>
+                )}
+                <p className="text-sm font-semibold">{p.name}</p>
+                <p className="mt-2 text-3xl font-bold" style={{ fontFamily: "var(--font-display)" }}>
+                  {Number(p.price) === 0 ? "Free" : `₦${Number(p.price).toLocaleString()}`}
+                  {Number(p.price) > 0 && <span className="text-sm font-normal opacity-70">/mo</span>}
+                </p>
+                <ul className="mt-5 space-y-2 text-sm" style={{ opacity: featured ? 0.85 : 0.75 }}>
+                  <li>{Number(p.commissionRate)}% commission per sale</li>
+                  <li>{features.products === -1 ? "Unlimited products" : `Up to ${features.products ?? 0} products`}</li>
+                  <li>{features.services === -1 ? "Unlimited services" : `Up to ${features.services ?? 0} services`}</li>
+                  <li className="font-medium">{features.customDomain ? "✓ Your own domain name" : "Runs on your biznest.space address"}</li>
+                </ul>
+                <Link
+                  href={session?.user ? "/onboarding/business-verification" : "/register"}
+                  className="mt-6 block rounded-full py-2.5 text-center text-sm font-medium transition hover:brightness-110"
+                  style={{
+                    background: featured ? "var(--bn-ink)" : "var(--bn-marigold)",
+                    color: featured ? "var(--bn-ivory)" : "var(--bn-ink)",
+                  }}
+                >
+                  {Number(p.price) === 0 ? "Start free" : "Get started"}
+                </Link>
+              </div>
+            );
+          })}
+        </div>
+      </section>
+
+      {/* Trust & security — states what's actually built, not generic marketing claims */}
+      <section className="px-6 py-16 sm:px-10 lg:py-24">
+        <h2 className="mb-10 text-2xl sm:text-3xl" style={{ fontFamily: "var(--font-display)", fontWeight: 700 }}>
+          Built for trust, not just transactions
+        </h2>
+        <div className="grid gap-6 sm:grid-cols-3">
+          {[
+            { icon: "🪪", title: "Verified sellers", body: "ID and guarantor checks (or business registration) before anyone opens a store — reviewed by a real person." },
+            { icon: "🔐", title: "Two-factor by default", body: "Every store admin dashboard requires 2FA. Your storefront can't be hijacked from a leaked password alone." },
+            { icon: "🏦", title: "Payments go straight to you", body: "Paystack and Flutterwave subaccounts settle directly to your bank. We never hold your money." },
+          ].map((f) => (
+            <div key={f.title} className="rounded-2xl p-6" style={{ background: "var(--bn-ink-raised)", border: "1px solid var(--bn-ink-line)" }}>
+              <span className="text-2xl">{f.icon}</span>
+              <h3 className="mt-3 text-base font-semibold">{f.title}</h3>
+              <p className="mt-2 text-sm leading-relaxed" style={{ color: "var(--bn-mute)" }}>{f.body}</p>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      {/* Final CTA */}
+      <section className="px-6 py-20 text-center sm:px-10 lg:py-28">
+        <h2
+          className="mx-auto max-w-xl text-3xl sm:text-4xl"
+          style={{ fontFamily: "var(--font-display)", fontWeight: 700 }}
+        >
+          Your stall is waiting.
+        </h2>
+        <Link
+          href="/register"
+          className="mt-8 inline-block rounded-full px-8 py-3.5 text-sm font-medium transition hover:brightness-110"
+          style={{ background: "var(--bn-marigold)", color: "var(--bn-ink)" }}
+        >
+          Open your store
+        </Link>
+      </section>
+
+      <footer style={{ borderTop: "1px solid var(--bn-ink-line)" }}>
+        <div className="mx-auto grid max-w-6xl gap-10 px-6 py-14 sm:grid-cols-2 sm:px-10 lg:grid-cols-4">
           <div>
-            <h5 style={footHead}>Services</h5>
-            {catalogCategories.slice(0, 4).map((c) => <div key={c} style={footLink}>{c}</div>)}
+            <span className="text-lg tracking-tight" style={{ fontFamily: "var(--font-display)", fontWeight: 700 }}>
+              BizNest
+            </span>
+            <p className="mt-3 max-w-xs text-sm leading-relaxed" style={{ color: "var(--bn-mute)" }}>
+              A verified marketplace for products, services, and bookings — your store,
+              your payments, your own domain on ours.
+            </p>
           </div>
+
           <div>
-            <h5 style={footHead}>Pages</h5>
-            <div style={footLink}>Home</div>
-            {catalogItems.length > 0 && <div style={footLink}>{theme.catalogLabel}</div>}
-            <div style={footLink}>Contact</div>
+            <p className="mb-3 text-xs font-semibold uppercase tracking-wider" style={{ color: "var(--bn-ivory)" }}>Platform</p>
+            <ul className="space-y-2 text-sm" style={{ color: "var(--bn-mute)" }}>
+              <li><Link href="/register" className="hover:opacity-80">Open a store</Link></li>
+              <li><Link href="/login" className="hover:opacity-80">Sign in</Link></li>
+              <li><a href="#pricing" className="hover:opacity-80">Pricing</a></li>
+              <li><a href="#categories" className="hover:opacity-80">Categories</a></li>
+            </ul>
           </div>
+
           <div>
-            <h5 style={footHead}>Get in touch</h5>
-            {store.contactEmail && <div style={footLink}>{store.contactEmail}</div>}
-            {store.contactPhone && <div style={footLink}>{store.contactPhone}</div>}
+            <p className="mb-3 text-xs font-semibold uppercase tracking-wider" style={{ color: "var(--bn-ivory)" }}>Legal</p>
+            <ul className="space-y-2 text-sm" style={{ color: "var(--bn-mute)" }}>
+              <li><Link href="/privacy" className="hover:opacity-80">Privacy Policy</Link></li>
+              <li><Link href="/terms" className="hover:opacity-80">Terms of Service</Link></li>
+              <li><Link href="/seller-agreement" className="hover:opacity-80">Seller Agreement</Link></li>
+            </ul>
+          </div>
+
+          <div>
+            <p className="mb-3 text-xs font-semibold uppercase tracking-wider" style={{ color: "var(--bn-ivory)" }}>Support</p>
+            <ul className="space-y-2 text-sm" style={{ color: "var(--bn-mute)" }}>
+              <li><a href="mailto:support@biznest.space" className="hover:opacity-80">support@biznest.space</a></li>
+            </ul>
           </div>
         </div>
-        <div style={{ display: "flex", justifyContent: "space-between", padding: "22px 28px", fontSize: 12, flexWrap: "wrap", gap: 8, maxWidth: 1180, margin: "0 auto" }}>
-          <span>© {new Date().getFullYear()} {store.name}. All rights reserved.</span>
-          <span>Powered by BizNest</span>
+        <div
+          className="flex flex-col items-center gap-2 px-6 py-6 text-center text-xs sm:flex-row sm:justify-between sm:px-10"
+          style={{ borderTop: "1px solid var(--bn-ink-line)", color: "var(--bn-mute)" }}
+        >
+          <span>© {new Date().getFullYear()} BizNest. All rights reserved.</span>
+          <span>Payments by Paystack & Flutterwave · SSL encrypted</span>
         </div>
       </footer>
     </div>
   );
 }
 
-// ---------------------------------------------------------------------------
-// Shared style tokens (Fresh & Co. palette — lib/template-themes.ts FRESH)
-// ---------------------------------------------------------------------------
-const wrap: React.CSSProperties = { maxWidth: 1180, margin: "0 auto", padding: "0 28px" };
-const line = "rgba(18,53,36,0.10)";
-const shadow = "0 18px 44px -22px rgba(13,40,27,0.35)";
-const eyebrow: React.CSSProperties = { fontFamily: "monospace", fontSize: 12, letterSpacing: "0.14em", textTransform: "uppercase", color: FRESH.leaf, fontWeight: 600, marginBottom: 14 };
-const h1: React.CSSProperties = { fontFamily: FRESH.headlineFont, fontWeight: 700, lineHeight: 1.14, letterSpacing: "-0.01em" };
-const h2: React.CSSProperties = { ...h1, fontSize: "clamp(26px,3.4vw,40px)", maxWidth: 560 };
-const accentText: React.CSSProperties = { color: FRESH.leaf, fontWeight: 800 };
-const sectionHead: React.CSSProperties = { display: "flex", justifyContent: "space-between", alignItems: "flex-end", gap: 30, marginBottom: 46, flexWrap: "wrap" };
-const btnPrimary: React.CSSProperties = { display: "inline-flex", alignItems: "center", gap: 10, padding: "15px 26px", borderRadius: 100, fontWeight: 600, fontSize: 15, background: FRESH.leaf, color: "#fff", textDecoration: "none", whiteSpace: "nowrap" };
-const btnGhost: React.CSSProperties = { display: "inline-flex", alignItems: "center", gap: 10, padding: "15px 26px", borderRadius: 100, fontWeight: 600, fontSize: 15, background: "transparent", color: FRESH.forest, border: "1.5px solid " + line, textDecoration: "none", whiteSpace: "nowrap" };
-const footHead: React.CSSProperties = { color: "#fff", fontFamily: "monospace", fontSize: 11.5, letterSpacing: "0.08em", textTransform: "uppercase", marginBottom: 16 };
-const footLink: React.CSSProperties = { fontSize: 13.5, marginBottom: 10 };
-
-function ArrowChip() {
-  return <span style={{ width: 34, height: 34, borderRadius: "50%", background: "rgba(255,255,255,.22)", display: "inline-flex", alignItems: "center", justifyContent: "center", fontSize: 14 }}>→</span>;
-}
-
-function Stat({ value, label }: { value: string; label: string }) {
+function Row({ stalls, direction }: { stalls: typeof STALLS; direction: "left" | "right" }) {
+  const loop = [...stalls, ...stalls];
   return (
-    <div>
-      <b style={{ fontFamily: FRESH.headlineFont, fontSize: 25, display: "block", color: FRESH.forest, fontWeight: 800 }}>{value}</b>
-      <span style={{ fontSize: 12.5, color: FRESH.inkSoft }}>{label}</span>
-    </div>
-  );
-}
-
-function Tile({ img, gradient, marginTop }: { img: string | null; gradient: string; marginTop?: number }) {
-  return (
-    <div style={{ borderRadius: 20, height: 210, marginTop, overflow: "hidden", background: img ? `url(${img}) center/cover` : gradient }} />
-  );
-}
-
-function Marquee() {
-  const words = ["VACUUM", "CLEANING", "SWEEPING", "SANITIZE", "POLISH", "DUSTING"];
-  return (
-    <div style={{ borderTop: `1px solid ${line}`, padding: "22px 0", overflow: "hidden", whiteSpace: "nowrap" }}>
-      <span style={{ fontFamily: FRESH.headlineFont, fontWeight: 700, fontSize: 19, color: line }}>
-        {[...words, ...words].map((w, i) => (
-          <span key={i} style={{ margin: "0 22px", color: i % 2 === 0 ? FRESH.leaf : "#d8ded9" }}>{w}</span>
-        ))}
-      </span>
-    </div>
-  );
-}
-
-type CatalogItem = {
-  id: string; kind: "product" | "service"; name: string; description: string | null;
-  price: number; currency: string; image: string | null; categoryName: string | null;
-  type: string; rentalUnit: string | null; isBookable: boolean;
-};
-
-function groupByCategory(items: CatalogItem[]): [string, CatalogItem[]][] {
-  const map = new Map<string, CatalogItem[]>();
-  for (const item of items) {
-    const key = item.categoryName || "Uncategorized";
-    if (!map.has(key)) map.set(key, []);
-    map.get(key)!.push(item);
-  }
-  return Array.from(map.entries());
-}
-
-function CatalogCard({ item, storeName, slug, accent }: { item: CatalogItem; storeName: string; slug: string; accent: string }) {
-  const href = `/store/${slug}/${item.kind === "product" ? "product" : "service"}/${item.id}`;
-  return (
-    <div style={{ background: "#fff", borderRadius: 16, overflow: "hidden", border: `1px solid ${line}`, boxShadow: "0 1px 3px rgba(18,18,18,0.06)" }}>
-      <a href={href} style={{ display: "block", textDecoration: "none", color: "inherit" }}>
-        <div style={{ height: 160, background: `linear-gradient(140deg,${FRESH.mint2},${FRESH.leafLight})`, position: "relative", display: "flex", alignItems: "center", justifyContent: "center" }}>
-          {item.image ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img src={item.image} alt={item.name} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
-          ) : (
-            <span style={{ fontSize: 30, opacity: 0.4 }}>{storeName.charAt(0)}</span>
-          )}
-        </div>
-        <div style={{ padding: "20px 20px 0" }}>
-          {item.categoryName && <div style={{ fontFamily: "monospace", fontSize: 10.5, color: FRESH.leaf, textTransform: "uppercase", marginBottom: 8 }}>{item.categoryName}</div>}
-          <h4 style={{ fontSize: 16.5, marginBottom: 8, fontFamily: FRESH.headlineFont, fontWeight: 700 }}>{item.name}</h4>
-          {item.description && <p style={{ fontSize: 13, color: FRESH.inkSoft, lineHeight: 1.5, marginBottom: 16 }}>{item.description.length > 100 ? item.description.slice(0, 100) + "…" : item.description}</p>}
-        </div>
-      </a>
-      <div style={{ padding: "0 20px 20px" }}>
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-          <span style={{ fontFamily: FRESH.headlineFont, fontSize: 20, fontWeight: 600, color: FRESH.forest }}>
-            {item.currency} {item.price.toLocaleString()}
+    <div className={`flex w-max gap-3 px-3 py-1.5 ${direction === "left" ? "bn-marquee-left" : "bn-marquee-right"}`}>
+      {loop.map((s, i) => (
+        <div
+          key={`${s.name}-${i}`}
+          className="flex w-44 shrink-0 flex-col rounded-xl px-4 py-3"
+          style={{ background: "var(--bn-ink)", border: "1px solid var(--bn-ink-line)" }}
+        >
+          <span
+            className="h-1.5 w-6 rounded-full"
+            style={{ background: i % 3 === 0 ? "var(--bn-marigold)" : "var(--bn-jade)" }}
+          />
+          <span className="mt-2 truncate text-sm font-medium">{s.name}</span>
+          <span className="text-xs" style={{ color: "var(--bn-mute)" }}>
+            {s.cat}
           </span>
-          <a href={href} style={{ ...btnGhost, padding: "9px 16px", fontSize: 12.5 }}>
-            {item.kind === "service" ? (item.isBookable ? "Book now" : "View details") : "View & buy"}
-          </a>
         </div>
-      </div>
+      ))}
     </div>
-  );
-}
-
-function SiteNav({ store, slug, hasCatalog }: { store: { name: string; logoUrl: string | null }; slug: string; hasCatalog: boolean }) {
-  return (
-    <nav style={{ position: "sticky", top: 0, zIndex: 50, background: "rgba(251,249,244,.9)", backdropFilter: "blur(10px)", borderBottom: `1px solid ${line}` }}>
-      <div style={{ ...wrap, display: "flex", alignItems: "center", justifyContent: "space-between", padding: "16px 28px" }}>
-        <a href={`/store/${slug}`} style={{ fontFamily: FRESH.headlineFont, fontWeight: 700, fontSize: 23, color: FRESH.forest, display: "flex", alignItems: "center", gap: 8, textDecoration: "none" }}>
-          {store.logoUrl ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img src={store.logoUrl} alt={store.name} style={{ height: 32, width: 32, borderRadius: 8, objectFit: "cover" }} />
-          ) : (
-            <span style={{ width: 9, height: 9, borderRadius: "50%", background: FRESH.citrus, display: "inline-block" }} />
-          )}
-          {store.name}
-        </a>
-        <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
-          {hasCatalog && <a href="#catalog" style={{ fontSize: 14.5, fontWeight: 500, color: FRESH.inkSoft, textDecoration: "none" }}>Services</a>}
-          <CartLink storeSlug={slug} accent={FRESH.leaf} ink={FRESH.ink} />
-          {hasCatalog && <a href="#catalog" style={{ ...btnPrimary, padding: "11px 20px", fontSize: 13.5 }}>Get a Quote</a>}
-        </div>
-      </div>
-    </nav>
-  );
-}
-
-function QuoteForm({ slug, services, contactEmail, social }: { slug: string; services: string[]; contactEmail: string | null; social: Record<string, string> }) {
-  async function subscribe(formData: FormData) {
-    "use server";
-    await subscribeToNewsletter(slug, formData);
-  }
-  return (
-    <form action={subscribe} style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14, marginTop: 26 }}>
-      <Field label="First name"><input name="firstName" placeholder="Jordan" style={input} /></Field>
-      <Field label="Last name"><input name="lastName" placeholder="Avery" style={input} /></Field>
-      <Field label="Email address" full><input name="email" type="email" required placeholder="you@email.com" style={input} /></Field>
-      {services.length > 0 && (
-        <Field label="Service" full>
-          <select name="service" style={input}>
-            {services.map((s) => <option key={s}>{s}</option>)}
-          </select>
-        </Field>
-      )}
-      <div style={{ gridColumn: "1/-1" }}>
-        <button type="submit" style={{ ...btnPrimary, width: "100%", justifyContent: "center" }}>Request a Service <ArrowChip /></button>
-      </div>
-    </form>
-  );
-}
-
-function Field({ label, children, full }: { label: string; children: React.ReactNode; full?: boolean }) {
-  return (
-    <div style={{ gridColumn: full ? "1/-1" : undefined }}>
-      <label style={{ display: "block", fontSize: 11.5, color: "rgba(255,255,255,.55)", marginBottom: 7, fontFamily: "monospace" }}>{label}</label>
-      {children}
-    </div>
-  );
-}
-
-const input: React.CSSProperties = { width: "100%", background: "rgba(255,255,255,.06)", border: "1px solid rgba(255,255,255,.16)", borderRadius: 10, padding: "12px 14px", color: "#fff", fontSize: 14 };
-
-function NewsletterSection({ slug, storeName }: { slug: string; storeName: string }) {
-  async function subscribe(formData: FormData) {
-    "use server";
-    await subscribeToNewsletter(slug, formData);
-  }
-  return (
-    <section style={{ padding: "60px 0", background: FRESH.paper }}>
-      <div style={{ ...wrap, display: "flex", justifyContent: "space-between", alignItems: "center", gap: 26, flexWrap: "wrap" }}>
-        <div>
-          <div style={eyebrow}>Stay up to date</div>
-          <h2 style={{ ...h1, fontSize: "clamp(22px,3vw,30px)" }}>Join the <span style={accentText}>{storeName}</span> newsletter</h2>
-        </div>
-        <form action={subscribe} style={{ display: "flex", borderRadius: 100, overflow: "hidden", border: `1.5px solid ${line}`, background: "#fff", minWidth: 320 }}>
-          <input name="email" type="email" required placeholder="Enter your email address" style={{ flex: 1, border: "none", padding: "15px 18px", fontSize: 14, background: "transparent", outline: "none" }} />
-          <button type="submit" style={{ background: FRESH.leaf, color: "#fff", padding: "15px 22px", fontWeight: 600, fontSize: 13, border: "none" }}>Subscribe →</button>
-        </form>
-      </div>
-    </section>
   );
 }

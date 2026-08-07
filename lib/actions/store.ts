@@ -311,6 +311,7 @@ export async function updateStoreSettings(slug: string, formData: FormData) {
   const primary = String(formData.get("primary") ?? "").trim();
   const secondary = String(formData.get("secondary") ?? "").trim();
   const accent = String(formData.get("accent") ?? "").trim();
+  const fontFamily = String(formData.get("fontFamily") ?? "").trim() || null;
   const instagram = String(formData.get("instagram") ?? "").trim();
   const whatsapp = String(formData.get("whatsapp") ?? "").trim();
 
@@ -325,6 +326,7 @@ export async function updateStoreSettings(slug: string, formData: FormData) {
       logoUrl,
       bannerUrl,
       themeColors: { primary, secondary, accent },
+      fontFamily,
       socialLinks: { instagram, whatsapp },
     },
   });

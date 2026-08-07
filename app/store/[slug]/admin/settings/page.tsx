@@ -74,6 +74,21 @@ export default async function SettingsPage({ params }: { params: Promise<{ slug:
         </div>
 
         <div className="rounded-lg border bg-background p-4">
+          <p className="mb-3 text-sm font-medium">Typography</p>
+          <label className="mb-1 block text-xs text-muted-foreground">Body font</label>
+          <select name="fontFamily" defaultValue={store.fontFamily ?? ""} className="w-full rounded-md border px-3 py-1.5 text-sm">
+            <option value="">Template default</option>
+            <option value="'Inter', sans-serif">Inter (clean, modern)</option>
+            <option value="'Plus Jakarta Sans', sans-serif">Plus Jakarta Sans (friendly, rounded)</option>
+            <option value="'Georgia', serif">Georgia (classic, editorial)</option>
+            <option value="'Playfair Display', serif">Playfair Display (elegant, upscale)</option>
+            <option value="'Space Grotesk', sans-serif">Space Grotesk (bold, technical)</option>
+            <option value="'Courier New', monospace">Courier New (typewriter)</option>
+          </select>
+          <p className="mt-1 text-xs text-muted-foreground">Applies to your storefront's body text.</p>
+        </div>
+
+        <div className="rounded-lg border bg-background p-4">
           <p className="mb-3 text-sm font-medium">Social links</p>
           <label className="mb-1 block text-xs text-muted-foreground">Instagram</label>
           <input name="instagram" defaultValue={social.instagram ?? ""} placeholder="https://instagram.com/yourstore" className="mb-3 w-full rounded-md border px-3 py-1.5 text-sm" />
