@@ -61,6 +61,9 @@ export default async function HomePage() {
           BizNest
         </span>
         <nav className="flex items-center gap-3 text-sm sm:gap-6">
+          <Link href="/templates" className="opacity-80 transition hover:opacity-100">
+            Templates
+          </Link>
           {session?.user ? (
             <>
               <Link href="/onboarding/business-verification" className="opacity-80 transition hover:opacity-100">
