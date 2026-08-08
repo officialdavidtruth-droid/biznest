@@ -1,5 +1,5 @@
 import { PrismaClient, type Prisma } from "@prisma/client";
-import { generateNicheVariations, TEMPLATE_NAME, generateHeenzyVariation, TEMPLATE_NAME_HEENZY } from "../lib/template-themes";
+import { generateNicheVariations, TEMPLATE_NAME, generateHeenzyVariation, TEMPLATE_NAME_HEENZY, generateNovaVariation, TEMPLATE_NAME_NOVA } from "../lib/template-themes";
 import { fetchDemoPhoto } from "../lib/demo-images";
 
 const prisma = new PrismaClient();
@@ -52,9 +52,9 @@ async function main() {
     skipDuplicates: true,
   });
 
-  // The platform ships two storefront templates — "Fresh & Co." and
-  // "Heenzy Sneaker Co." (see lib/template-themes.ts). Every store picks
-  // one of these two designs from the Template Gallery.
+  // The platform ships three storefront templates — "Fresh & Co.",
+  // "Heenzy Sneaker Co.", and "Nova Studio" (see lib/template-themes.ts).
+  // Every store picks one of these designs from the Template Gallery.
   const [freshTemplate] = generateNicheVariations("Fresh & Co.");
   const previewUrl = await fetchDemoPhoto("Fresh & Co.");
   await prisma.storeTemplate.upsert({
@@ -71,12 +71,20 @@ async function main() {
     create: { name: TEMPLATE_NAME_HEENZY, category: TEMPLATE_NAME_HEENZY, tierRank: heenzyTemplate.tierRank, previewUrl: heenzyPreviewUrl, config: heenzyTemplate as unknown as Prisma.InputJsonValue },
   });
 
+  const novaTemplate = generateNovaVariation();
+  const novaPreviewUrl = await fetchDemoPhoto(TEMPLATE_NAME_NOVA);
+  await prisma.storeTemplate.upsert({
+    where: { name: TEMPLATE_NAME_NOVA },
+    update: { category: TEMPLATE_NAME_NOVA, isActive: true, tierRank: novaTemplate.tierRank, previewUrl: novaPreviewUrl, config: novaTemplate as unknown as Prisma.InputJsonValue },
+    create: { name: TEMPLATE_NAME_NOVA, category: TEMPLATE_NAME_NOVA, tierRank: novaTemplate.tierRank, previewUrl: novaPreviewUrl, config: novaTemplate as unknown as Prisma.InputJsonValue },
+  });
+
   // Retire every other template row (the old niche-generated set, or any
   // prior naming scheme) — deactivate rather than delete, since a store
   // might still reference one (Store.templateId). Deactivated templates
   // stop showing in the gallery but existing stores using them keep working.
   await prisma.storeTemplate.updateMany({
-    where: { name: { notIn: [TEMPLATE_NAME, TEMPLATE_NAME_HEENZY] } },
+    where: { name: { notIn: [TEMPLATE_NAME, TEMPLATE_NAME_HEENZY, TEMPLATE_NAME_NOVA] } },
     data: { isActive: false },
   });
 

@@ -229,6 +229,10 @@ model Store {
   // store.name / business.description / theme.cta when a key is absent, so
   // this only overrides what a vendor has actually customized in the visual editor.
   heroOverrides Json?
+  // Click-to-edit "story" block overrides (About section) — same pattern as
+  // heroOverrides. { eyebrow?, heading?, body? }. body falls back to
+  // business.description, same as before this override existed.
+  storyOverrides Json?
 
   seoTitle      String?
   seoDescription String?

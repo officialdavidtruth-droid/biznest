@@ -4,7 +4,7 @@ import { CustomizerClient } from "@/components/dashboard/customizer-client";
 import type { Section } from "@/lib/template-themes";
 
 const TEMPLATE_DEFAULT_SECTIONS: Section[] = ["hero", "catalog", "about", "testimonials", "contact"];
-const OPT_IN_SECTIONS: Section[] = ["stats", "features", "newsletter"];
+const OPT_IN_SECTIONS: Section[] = ["stats", "newsletter"];
 
 // The single entry point for editing what a store's public website looks
 // like — template, section order/visibility, and a live preview — laid

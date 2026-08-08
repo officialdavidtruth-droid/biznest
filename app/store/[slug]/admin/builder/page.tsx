@@ -1,30 +1,11 @@
-import { prisma } from "@/lib/prisma";
-import { notFound } from "next/navigation";
-import { BuilderClient } from "@/components/dashboard/builder-client";
+import { redirect } from "next/navigation";
 
-export default async function BuilderPage({ params }: { params: Promise<{ slug: string }> }) {
+// "Website builder" (template picker) was a subset of what "Customize
+// Website" already does (template picker + section order + live preview),
+// so this page now redirects there instead of maintaining a second,
+// smaller template picker. Kept as a route (rather than deleted) so old
+// bookmarks/links don't 404.
+export default async function BuilderRedirect({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
-  const store = await prisma.store.findUnique({ where: { slug }, include: { subscription: true } });
-  if (!store) notFound();
-
-  const templates = await prisma.storeTemplate.findMany({
-    where: { isActive: true },
-    orderBy: [{ category: "asc" }, { tierRank: "asc" }],
-    select: { id: true, name: true, category: true, tierRank: true, previewUrl: true, config: true },
-  });
-
-  const features = store.subscription?.features as { templateTier?: number } | null;
-  const planRank = features?.templateTier ?? 1; // Free = 1 if no subscription set yet
-
-  return (
-    <div>
-      <h1 className="mb-1 text-xl font-semibold">Website builder</h1>
-      <p className="mb-6 text-sm text-muted-foreground">
-        Choose a starting template for {store.name}. You can switch anytime — your products and
-        pages carry over. To control which sections show and in what order, see{" "}
-        <span className="font-medium text-foreground">Storefront Layout</span> in the sidebar.
-      </p>
-      <BuilderClient slug={slug} templates={templates} currentTemplateId={store.templateId} planRank={planRank} />
-    </div>
-  );
+  redirect(`/store/${slug}/admin/customize`);
 }

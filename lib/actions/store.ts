@@ -351,6 +351,28 @@ export async function updateStoreSettings(slug: string, formData: FormData) {
 export type HeroOverrides = { headline?: string; subtitle?: string; ctaLabel?: string };
 
 /**
+ * Click-to-edit save for the hero background image. Separate from
+ * updateStoreSettings (which also writes bannerUrl) because the hero editor
+ * saves fields independently as the vendor clicks through blocks — reusing
+ * the same underlying bannerUrl column that Settings already uses, so a
+ * change here is reflected in Settings too, and vice versa.
+ */
+export async function updateHeroImage(slug: string, bannerUrl: string): Promise<ActionResult> {
+  const access = await assertStoreAccess(slug);
+  if (!access.success) return { success: false, error: access.error };
+
+  await prisma.store.update({
+    where: { id: access.store.id },
+    data: { bannerUrl: bannerUrl.trim() || null },
+  });
+
+  revalidatePath(`/store/${slug}/admin/website-editor`);
+  revalidatePath(`/store/${slug}/admin/settings`);
+  revalidatePath(`/store/${slug}`);
+  return { success: true, data: undefined };
+}
+
+/**
  * Click-to-edit hero block save (see components/dashboard/hero-block-editor.tsx).
  * Distinct from updateStoreSettings on purpose: the hero editor saves one block
  * at a time as the vendor edits in place, so it shouldn't touch — or require
@@ -369,6 +391,32 @@ export async function updateHeroOverrides(slug: string, overrides: HeroOverrides
   await prisma.store.update({
     where: { id: access.store.id },
     data: { heroOverrides: { ...existing, ...clean } },
+  });
+
+  revalidatePath(`/store/${slug}/admin/website-editor`);
+  revalidatePath(`/store/${slug}`);
+  return { success: true, data: undefined };
+}
+
+export type StoryOverrides = { eyebrow?: string; heading?: string; body?: string };
+
+/**
+ * Click-to-edit save for the "story" (About) block — same one-block-at-a-time
+ * pattern as updateHeroOverrides above.
+ */
+export async function updateStoryOverrides(slug: string, overrides: StoryOverrides): Promise<ActionResult> {
+  const access = await assertStoreAccess(slug);
+  if (!access.success) return { success: false, error: access.error };
+
+  const clean: StoryOverrides = {};
+  if (overrides.eyebrow?.trim()) clean.eyebrow = overrides.eyebrow.trim();
+  if (overrides.heading?.trim()) clean.heading = overrides.heading.trim();
+  if (overrides.body?.trim()) clean.body = overrides.body.trim();
+
+  const existing = (access.store.storyOverrides as StoryOverrides | null) ?? {};
+  await prisma.store.update({
+    where: { id: access.store.id },
+    data: { storyOverrides: { ...existing, ...clean } },
   });
 
   revalidatePath(`/store/${slug}/admin/website-editor`);

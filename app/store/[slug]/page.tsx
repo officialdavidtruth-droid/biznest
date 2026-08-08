@@ -3,9 +3,10 @@ import { prisma } from "@/lib/prisma";
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
 import { CartLink } from "@/components/storefront/cart-link";
-import { resolveStoreTheme, FRESH, isHeenzyTemplate, type TemplateTheme } from "@/lib/template-themes";
+import { resolveStoreTheme, FRESH, isHeenzyTemplate, isNovaTemplate, type TemplateTheme } from "@/lib/template-themes";
 import { subscribeToNewsletter } from "@/lib/actions/newsletter";
 import { HeenzyStorefront } from "@/components/storefront/templates/heenzy-home";
+import { NovaStorefront } from "@/components/storefront/templates/nova-home";
 
 export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }): Promise<Metadata> {
   const { slug } = await params;
@@ -63,6 +64,15 @@ export default async function StorefrontPage({ params }: { params: Promise<{ slu
 
   const heroImage = store.bannerUrl || store.template?.previewUrl || null;
   const heroOverrides = store.heroOverrides as { headline?: string; subtitle?: string; ctaLabel?: string } | null;
+  const storyOverrides = store.storyOverrides as { eyebrow?: string; heading?: string; body?: string } | null;
+
+  // Which sections a vendor has turned off in Customize → Sections & Layout.
+  // NOTE: only "hidden" is applied here, not custom "order" — the sections
+  // below are still rendered in a fixed order. Full drag-to-reorder support
+  // would need each section extracted into an array this function maps
+  // over, which is a larger refactor than this pass covers.
+  const sectionOverrides = store.sectionOverrides as { hidden?: string[] } | null;
+  const hiddenSections = new Set(sectionOverrides?.hidden ?? []);
 
   // ---------- TEMPLATE 2: Heenzy Sneaker Co. ----------
   if (isHeenzyTemplate(store.template?.name)) {
@@ -72,6 +82,21 @@ export default async function StorefrontPage({ params }: { params: Promise<{ slu
         slug={slug}
         catalogItems={catalogItems}
         catalogCategories={catalogCategories}
+        goodReviews={goodReviews}
+        avgRating={avgRating}
+        completedOrders={completedOrders}
+        social={social}
+      />
+    );
+  }
+
+  // ---------- TEMPLATE 3: Nova Studio ----------
+  if (isNovaTemplate(store.template?.name)) {
+    return (
+      <NovaStorefront
+        store={store}
+        slug={slug}
+        catalogItems={catalogItems}
         goodReviews={goodReviews}
         avgRating={avgRating}
         completedOrders={completedOrders}
@@ -117,18 +142,20 @@ export default async function StorefrontPage({ params }: { params: Promise<{ slu
             )}
           </div>
 
-          <div style={{ display: "flex", gap: 36, padding: "34px 0 0", flexWrap: "wrap" }}>
-            <Stat value={`${catalogItems.length}+`} label="Services offered" />
-            <Stat value={`${completedOrders}+`} label="Jobs completed" />
-            {avgRating != null && <Stat value={`${avgRating.toFixed(1)}/5`} label="Average rating" />}
-          </div>
+          {!hiddenSections.has("stats") && (
+            <div style={{ display: "flex", gap: 36, padding: "34px 0 0", flexWrap: "wrap" }}>
+              {catalogItems.length > 0 && <Stat value={`${catalogItems.length}+`} label="Services offered" />}
+              {completedOrders > 0 && <Stat value={`${completedOrders}+`} label="Jobs completed" />}
+              {avgRating != null && <Stat value={`${avgRating.toFixed(1)}/5`} label="Average rating" />}
+            </div>
+          )}
 
           <Marquee />
         </div>
       </header>
 
       {/* ---------- WHY CHOOSE US ---------- */}
-      {store.business.description && (
+      {store.business.description && !hiddenSections.has("about") && (
         <section style={{ padding: "80px 0" }}>
           <div style={{ ...wrap, display: "grid", gridTemplateColumns: "0.9fr 1.1fr", gap: 50, alignItems: "center" }}>
             <div>
@@ -156,7 +183,7 @@ export default async function StorefrontPage({ params }: { params: Promise<{ slu
       )}
 
       {/* ---------- CATALOG / SERVICES, GROUPED BY CATEGORY ---------- */}
-      {catalogItems.length > 0 && (
+      {catalogItems.length > 0 && !hiddenSections.has("catalog") && (
         <section id="catalog" style={{ padding: "80px 0", background: FRESH.paper }}>
           <div style={wrap}>
             <div style={sectionHead}>
@@ -183,19 +210,19 @@ export default async function StorefrontPage({ params }: { params: Promise<{ slu
       )}
 
       {/* ---------- STORY / CTA (dark block) ---------- */}
-      {store.business.description && (
+      {store.business.description && !hiddenSections.has("about") && (
         <section style={{ padding: "80px 0" }}>
           <div style={wrap}>
             <div style={{ display: "grid", gridTemplateColumns: "0.95fr 1.05fr", borderRadius: 24, overflow: "hidden", background: FRESH.forest, color: "#fff" }}>
               <div style={{ padding: "60px 50px" }}>
-                <div style={{ ...eyebrow, color: FRESH.citrus }}>What we do</div>
+                <div style={{ ...eyebrow, color: FRESH.citrus }}>{storyOverrides?.eyebrow || "What we do"}</div>
                 <h2 style={{ ...h1, color: "#fff", fontSize: "clamp(26px,3.2vw,38px)" }}>
-                  Behind the <span style={{ color: FRESH.leafLight }}>{store.name}</span> story.
+                  {storyOverrides?.heading || <>Behind the <span style={{ color: FRESH.leafLight }}>{store.name}</span> story.</>}
                 </h2>
-                <p style={{ color: "rgba(255,255,255,.65)", marginTop: 16, maxWidth: 400, fontSize: 15, lineHeight: 1.7 }}>{store.business.description}</p>
+                <p style={{ color: "rgba(255,255,255,.65)", marginTop: 16, maxWidth: 400, fontSize: 15, lineHeight: 1.7 }}>{storyOverrides?.body || store.business.description}</p>
                 <div style={{ display: "flex", gap: 36, marginTop: 34 }}>
-                  <div><b style={{ fontFamily: FRESH.headlineFont, fontSize: 28, color: FRESH.citrus, display: "block" }}>{catalogItems.length}+</b><span style={{ fontSize: 12, color: "rgba(255,255,255,.55)" }}>Services offered</span></div>
-                  <div><b style={{ fontFamily: FRESH.headlineFont, fontSize: 28, color: FRESH.citrus, display: "block" }}>{completedOrders}+</b><span style={{ fontSize: 12, color: "rgba(255,255,255,.55)" }}>Jobs completed</span></div>
+                  {catalogItems.length > 0 && <div><b style={{ fontFamily: FRESH.headlineFont, fontSize: 28, color: FRESH.citrus, display: "block" }}>{catalogItems.length}+</b><span style={{ fontSize: 12, color: "rgba(255,255,255,.55)" }}>Services offered</span></div>}
+                  {completedOrders > 0 && <div><b style={{ fontFamily: FRESH.headlineFont, fontSize: 28, color: FRESH.citrus, display: "block" }}>{completedOrders}+</b><span style={{ fontSize: 12, color: "rgba(255,255,255,.55)" }}>Jobs completed</span></div>}
                 </div>
                 {catalogItems.length > 0 && <a href="#catalog" style={{ ...btnPrimary, marginTop: 30 }}>Get Started <ArrowChip /></a>}
               </div>
@@ -206,7 +233,7 @@ export default async function StorefrontPage({ params }: { params: Promise<{ slu
       )}
 
       {/* ---------- TESTIMONIALS ---------- */}
-      {goodReviews.length > 0 && (
+      {goodReviews.length > 0 && !hiddenSections.has("testimonials") && (
         <section style={{ padding: "80px 0" }}>
           <div style={{ ...wrap, display: "grid", gridTemplateColumns: "0.85fr 1.15fr", gap: 44, alignItems: "center" }}>
             <div style={{ height: 300, borderRadius: 24, background: heroImage ? `url(${heroImage}) center/cover` : `linear-gradient(150deg,${FRESH.leafLight},${FRESH.forest})`, position: "relative" }}>
@@ -259,7 +286,7 @@ export default async function StorefrontPage({ params }: { params: Promise<{ slu
       </section>
 
       {/* ---------- CONTACT ---------- */}
-      {(store.contactEmail || store.contactPhone || social.whatsapp) && (
+      {(store.contactEmail || store.contactPhone || social.whatsapp) && !hiddenSections.has("contact") && (
         <section style={{ padding: "80px 0" }}>
           <div style={{ ...wrap, maxWidth: 780 }}>
             <h2 style={{ ...h2, marginBottom: 16, fontSize: 26 }}>Get in touch</h2>
@@ -273,7 +300,7 @@ export default async function StorefrontPage({ params }: { params: Promise<{ slu
       )}
 
       {/* ---------- NEWSLETTER ---------- */}
-      <NewsletterSection slug={slug} storeName={store.name} />
+      {!hiddenSections.has("newsletter") && <NewsletterSection slug={slug} storeName={store.name} />}
 
       {/* ---------- FOOTER ---------- */}
       <footer style={{ background: FRESH.forestDark, color: "rgba(255,255,255,.6)", padding: "60px 0 0" }}>

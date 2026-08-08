@@ -1,11 +1,15 @@
 /**
  * Storefront template system.
  *
- * The platform ships two storefront templates:
+ * The platform ships three storefront templates:
  *   1. "Fresh & Co." — forest green / leaf green / citrus service theme.
  *   2. "Heenzy Sneaker Co." — black / white / yellow retail/catalog theme
  *      (see styles/heenzy-template.css and
  *      components/storefront/templates/heenzy-home.tsx).
+ *   3. "Nova Studio" — dark, editorial/magazine layout with a sticky side
+ *      nav and serif display type (see
+ *      components/storefront/templates/nova-home.tsx). Structurally
+ *      different from the other two, not just a palette swap.
  * A store picks one from the Template Gallery in its dashboard; only real
  * store data (name, logo, banner, catalog, reviews, contact info) changes
  * what's shown inside whichever template is selected — copy and layout are
@@ -113,6 +117,44 @@ export function isHeenzyTemplate(templateName: string | null | undefined): boole
   return templateName === TEMPLATE_NAME_HEENZY;
 }
 
+/** ---------- Template 3: "Nova Studio" — dark editorial/magazine layout ---------- */
+export const NOVA = {
+  black: "#0a0a0c",
+  charcoal: "#141417",
+  cream: "#f5f2ea",
+  offwhite: "#faf9f6",
+  gold: "#c9a24b",
+  gray: "#8a8a8f",
+  line: "rgba(245,242,234,0.14)",
+  font: "'Inter', sans-serif",
+  headlineFont: "'Playfair Display', serif",
+  radius: "2px",
+} as const;
+
+export const NOVA_THEME: TemplateTheme = {
+  bg: NOVA.black,
+  ink: NOVA.cream,
+  card: NOVA.charcoal,
+  accent: NOVA.gold,
+  font: NOVA.font,
+  headlineFont: NOVA.headlineFont,
+  radius: NOVA.radius,
+  eyebrow: "Est. — Crafted with Intention",
+  headline: "Where Craft Meets Character",
+  sub: "A studio built on precision, patience, and a refusal to cut corners. Every piece tells you why.",
+  cta: "Explore the Collection",
+  layout: "list",
+  heroStyle: "split",
+  catalogLabel: "The Collection",
+  sections: ["hero", "about", "catalog", "testimonials", "stats", "newsletter", "contact"],
+};
+
+export const TEMPLATE_NAME_NOVA = "Nova Studio";
+
+export function isNovaTemplate(templateName: string | null | undefined): boolean {
+  return templateName === TEMPLATE_NAME_NOVA;
+}
+
 /** The catalog has exactly two templates: Fresh & Co. (tier 1) and Heenzy Sneaker Co. (tier 2). */
 export function generateNicheVariations(_nicheName: string): GeneratedTemplate[] {
   return [{ ...FRESH_THEME, variationName: TEMPLATE_NAME, tierRank: 1 }];
@@ -120,6 +162,10 @@ export function generateNicheVariations(_nicheName: string): GeneratedTemplate[]
 
 export function generateHeenzyVariation(): GeneratedTemplate {
   return { ...HEENZY_THEME, variationName: TEMPLATE_NAME_HEENZY, tierRank: 2 };
+}
+
+export function generateNovaVariation(): GeneratedTemplate {
+  return { ...NOVA_THEME, variationName: TEMPLATE_NAME_NOVA, tierRank: 3 };
 }
 
 export function getTemplateTheme(_category: string | undefined, _storeName: string): TemplateTheme {
@@ -134,7 +180,7 @@ export function resolveStoreTheme(
   fontFamily: string | null | undefined,
   templateName?: string | null
 ): TemplateTheme {
-  const base = isHeenzyTemplate(templateName) ? HEENZY_THEME : FRESH_THEME;
+  const base = isHeenzyTemplate(templateName) ? HEENZY_THEME : isNovaTemplate(templateName) ? NOVA_THEME : FRESH_THEME;
   return {
     ...base,
     bg: overrides?.secondary || base.bg,

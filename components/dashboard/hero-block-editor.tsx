@@ -2,10 +2,10 @@
 
 import { useState } from "react";
 import { toast } from "sonner";
-import { updateHeroOverrides, type HeroOverrides } from "@/lib/actions/store";
+import { updateHeroOverrides, updateHeroImage, type HeroOverrides } from "@/lib/actions/store";
 import { FRESH, type TemplateTheme } from "@/lib/template-themes";
 
-type BlockId = "headline" | "subtitle" | "cta" | null;
+type BlockId = "headline" | "subtitle" | "cta" | "image" | null;
 
 /**
  * A WordPress-style click-to-edit surface for the storefront hero: click a
@@ -30,6 +30,7 @@ export function HeroBlockEditor({
   const [headline, setHeadline] = useState(initial.headline || storeName);
   const [subtitle, setSubtitle] = useState(initial.subtitle || theme.sub);
   const [ctaLabel, setCtaLabel] = useState(initial.ctaLabel || theme.cta);
+  const [image, setImage] = useState(heroImage || "");
   const [selected, setSelected] = useState<BlockId>(null);
   const [isSaving, setIsSaving] = useState(false);
 
@@ -44,6 +45,17 @@ export function HeroBlockEditor({
     toast.success("Block updated");
   }
 
+  async function saveImage(value: string) {
+    setIsSaving(true);
+    const result = await updateHeroImage(slug, value);
+    setIsSaving(false);
+    if (!result.success) {
+      toast.error(result.error);
+      return;
+    }
+    toast.success("Image updated");
+  }
+
   function outline(id: BlockId) {
     return selected === id
       ? { outline: `2px solid ${FRESH.leaf}`, outlineOffset: 4, borderRadius: 6, cursor: "pointer" }
@@ -55,32 +67,34 @@ export function HeroBlockEditor({
       {/* ---------- CANVAS ---------- */}
       <div className="overflow-hidden rounded-lg border bg-white">
         <div
+          onClick={() => setSelected("image")}
           style={{
+            ...outline("image"),
             position: "relative",
             minHeight: 380,
             display: "flex",
             alignItems: "center",
-            background: heroImage
-              ? `linear-gradient(100deg, rgba(10,30,18,.82) 0%, rgba(10,30,18,.58) 38%, rgba(10,30,18,.12) 62%), url(${heroImage}) center/cover`
+            background: image
+              ? `linear-gradient(100deg, rgba(10,30,18,.82) 0%, rgba(10,30,18,.58) 38%, rgba(10,30,18,.12) 62%), url(${image}) center/cover`
               : `linear-gradient(200deg,#5fc98a 0%, #2c8a52 45%, #1c5c37 100%)`,
           }}
         >
           <div style={{ position: "relative", zIndex: 2, padding: "48px 44px", maxWidth: 560 }}>
             <h1
-              onClick={() => setSelected("headline")}
+              onClick={(e) => { e.stopPropagation(); setSelected("headline"); }}
               style={{ ...outline("headline"), color: "#fff", fontFamily: theme.headlineFont, fontWeight: 700, fontSize: "clamp(28px,4vw,44px)", lineHeight: 1.14, margin: 0, padding: 4 }}
             >
               {headline}
             </h1>
             <p
-              onClick={() => setSelected("subtitle")}
+              onClick={(e) => { e.stopPropagation(); setSelected("subtitle"); }}
               style={{ ...outline("subtitle"), marginTop: 16, color: "rgba(255,255,255,.85)", fontSize: 15, lineHeight: 1.6, padding: 4 }}
             >
               {subtitle}
             </p>
             <div style={{ marginTop: 24 }}>
               <span
-                onClick={() => setSelected("cta")}
+                onClick={(e) => { e.stopPropagation(); setSelected("cta"); }}
                 style={{
                   ...outline("cta"),
                   display: "inline-block",
@@ -105,6 +119,27 @@ export function HeroBlockEditor({
       <div className="rounded-lg border bg-background p-4">
         {!selected ? (
           <p className="text-sm text-muted-foreground">Select a block on the left to edit its content.</p>
+        ) : selected === "image" ? (
+          <div>
+            <div className="mb-3 flex items-center justify-between">
+              <p className="text-sm font-medium">Background image</p>
+              <button onClick={() => setSelected(null)} className="text-xs text-muted-foreground hover:text-foreground">Close</button>
+            </div>
+            <p className="mb-3 text-xs text-muted-foreground">Paste an image URL. Same field as Banner in Settings — updating it here updates it there too.</p>
+            <input
+              value={image}
+              onChange={(e) => setImage(e.target.value)}
+              placeholder="https://…"
+              className="mb-3 w-full rounded-md border px-3 py-1.5 text-sm"
+            />
+            <button
+              onClick={() => saveImage(image)}
+              disabled={isSaving}
+              className="rounded-md bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground disabled:opacity-50"
+            >
+              {isSaving ? "Saving…" : "Save"}
+            </button>
+          </div>
         ) : selected === "headline" ? (
           <BlockPanel
             label="Headline block"

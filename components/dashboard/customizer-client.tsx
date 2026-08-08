@@ -5,7 +5,7 @@ import Link from "next/link";
 import { toast } from "sonner";
 import {
   X, Monitor, Tablet, Smartphone, LayoutTemplate, Rows3, ChevronRight,
-  ArrowUp, ArrowDown, RotateCw,
+  ArrowUp, ArrowDown, RotateCw, MousePointerClick,
 } from "lucide-react";
 import { setStoreTemplate } from "@/lib/actions/template";
 import { updateSectionOverrides } from "@/lib/actions/sections";
@@ -150,6 +150,15 @@ export function CustomizerClient({
               </span>
               <ChevronRight className="h-4 w-4 text-muted-foreground" />
             </button>
+            <Link
+              href={`/store/${slug}/admin/website-editor`}
+              className="mt-1 flex w-full items-center justify-between rounded-md px-3 py-3 text-left text-sm font-medium hover:bg-muted"
+            >
+              <span className="flex items-center gap-2">
+                <MousePointerClick className="h-4 w-4" /> Edit text & images
+              </span>
+              <ChevronRight className="h-4 w-4 text-muted-foreground" />
+            </Link>
           </div>
         ) : (
           <div className="flex flex-1 flex-col overflow-hidden">
