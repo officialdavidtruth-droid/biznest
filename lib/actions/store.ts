@@ -373,7 +373,7 @@ export async function updateHeroOverrides(slug: string, overrides: HeroOverrides
 
   revalidatePath(`/store/${slug}/admin/website-editor`);
   revalidatePath(`/store/${slug}`);
-  return { success: true };
+  return { success: true, data: undefined };
 }
 
 // --- Payout account (seller connects Paystack or Flutterwave to get paid) --
