@@ -62,6 +62,7 @@ export default async function StorefrontPage({ params }: { params: Promise<{ slu
   const completedOrders = await prisma.order.count({ where: { storeId: store.id, status: { in: ["DELIVERED", "COMPLETED"] } } });
 
   const heroImage = store.bannerUrl || store.template?.previewUrl || null;
+  const heroOverrides = store.heroOverrides as { headline?: string; subtitle?: string; ctaLabel?: string } | null;
 
   // ---------- TEMPLATE 2: Heenzy Sneaker Co. ----------
   if (isHeenzyTemplate(store.template?.name)) {
@@ -97,13 +98,13 @@ export default async function StorefrontPage({ params }: { params: Promise<{ slu
           >
             <div style={{ position: "relative", zIndex: 2, padding: "60px 56px", maxWidth: 640 }}>
               <div style={{ ...eyebrow, color: FRESH.citrus }}>{theme.eyebrow}</div>
-              <h1 style={{ ...h1, color: "#fff", fontSize: "clamp(34px,5vw,56px)" }}>{store.name}</h1>
+              <h1 style={{ ...h1, color: "#fff", fontSize: "clamp(34px,5vw,56px)" }}>{heroOverrides?.headline || store.name}</h1>
               <p style={{ marginTop: 18, color: "rgba(255,255,255,.82)", maxWidth: 440, fontSize: 15.5, lineHeight: 1.6 }}>
-                {store.business.description || theme.sub}
+                {heroOverrides?.subtitle || store.business.description || theme.sub}
               </p>
               <div style={{ marginTop: 30, display: "flex", gap: 16, alignItems: "center", flexWrap: "wrap" }}>
                 {catalogItems.length > 0 && (
-                  <a href="#catalog" style={btnPrimary}>{theme.cta} <ArrowChip /></a>
+                  <a href="#catalog" style={btnPrimary}>{heroOverrides?.ctaLabel || theme.cta} <ArrowChip /></a>
                 )}
               </div>
             </div>

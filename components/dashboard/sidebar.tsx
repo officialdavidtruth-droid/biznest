@@ -5,7 +5,7 @@ import { usePathname } from "next/navigation";
 import {
   LayoutDashboard, ShoppingCart, Package, Wrench, Users, Boxes, Ticket,
   CreditCard, BarChart3, Star, Megaphone, MessageSquare, LayoutTemplate,
-  Settings, BadgeCheck, Wallet, LifeBuoy, Truck, Rows3, Wand2,
+  Settings, BadgeCheck, Wallet, LifeBuoy, Truck, Rows3, Wand2, MousePointerClick,
 } from "lucide-react";
 import { getCategoryDashboard } from "@/lib/constants/category-dashboard";
 
@@ -65,6 +65,7 @@ function buildNavGroups(business: { sellsProducts: boolean; offersServices: bool
       items: [
         { label: "Customize Website", href: "/customize", icon: Wand2 },
         { label: "Website Builder", href: "/builder", icon: LayoutTemplate },
+        { label: "Website Editor (beta)", href: "/website-editor", icon: MousePointerClick },
         { label: "Storefront Layout", href: "/layout-editor", icon: Rows3 },
         { label: "Messages", href: "/messages", icon: MessageSquare },
         { label: "Payments", href: "/payments", icon: CreditCard },

@@ -224,6 +224,11 @@ model Store {
   // behind it regardless of this override (see app/store/[slug]/page.tsx) —
   // this controls arrangement, not fabrication.
   sectionOverrides Json?
+  // Click-to-edit hero block overrides (see components/dashboard/hero-block-editor.tsx).
+  // { headline?, subtitle?, ctaLabel? } — all optional; page.tsx falls back to
+  // store.name / business.description / theme.cta when a key is absent, so
+  // this only overrides what a vendor has actually customized in the visual editor.
+  heroOverrides Json?
 
   seoTitle      String?
   seoDescription String?

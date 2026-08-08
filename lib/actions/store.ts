@@ -348,6 +348,34 @@ export async function updateStoreSettings(slug: string, formData: FormData) {
   revalidatePath(`/store/${slug}`);
 }
 
+export type HeroOverrides = { headline?: string; subtitle?: string; ctaLabel?: string };
+
+/**
+ * Click-to-edit hero block save (see components/dashboard/hero-block-editor.tsx).
+ * Distinct from updateStoreSettings on purpose: the hero editor saves one block
+ * at a time as the vendor edits in place, so it shouldn't touch — or require
+ * resubmitting — the rest of the settings form.
+ */
+export async function updateHeroOverrides(slug: string, overrides: HeroOverrides): Promise<ActionResult> {
+  const access = await assertStoreAccess(slug);
+  if (!access.success) return { success: false, error: access.error };
+
+  const clean: HeroOverrides = {};
+  if (overrides.headline?.trim()) clean.headline = overrides.headline.trim();
+  if (overrides.subtitle?.trim()) clean.subtitle = overrides.subtitle.trim();
+  if (overrides.ctaLabel?.trim()) clean.ctaLabel = overrides.ctaLabel.trim();
+
+  const existing = (access.store.heroOverrides as HeroOverrides | null) ?? {};
+  await prisma.store.update({
+    where: { id: access.store.id },
+    data: { heroOverrides: { ...existing, ...clean } },
+  });
+
+  revalidatePath(`/store/${slug}/admin/website-editor`);
+  revalidatePath(`/store/${slug}`);
+  return { success: true };
+}
+
 // --- Payout account (seller connects Paystack or Flutterwave to get paid) --
 
 async function assertStoreOwner(slug: string) {
