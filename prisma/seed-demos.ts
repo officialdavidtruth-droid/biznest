@@ -138,7 +138,7 @@ async function main() {
           currency: "NGN",
           images: image ? [image] : [],
           isPublished: true,
-          inventory: { create: { quantity: 50, lowStockThreshold: 5 } },
+          inventory: { create: { quantity: 50, lowStockThreshold: 5, store: { connect: { id: store.id } } } },
         },
       });
     }
