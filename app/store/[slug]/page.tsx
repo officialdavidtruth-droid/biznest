@@ -7,6 +7,8 @@ import { resolveStoreTheme, FRESH, isHeenzyTemplate, isNovaTemplate, type Templa
 import { subscribeToNewsletter } from "@/lib/actions/newsletter";
 import { HeenzyStorefront } from "@/components/storefront/templates/heenzy-home";
 import { NovaStorefront } from "@/components/storefront/templates/nova-home";
+import { CategoryNav, type CategoryLink } from "@/components/storefront/category-nav";
+import { Reveal } from "@/components/storefront/reveal";
 
 export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }): Promise<Metadata> {
   const { slug } = await params;
@@ -56,6 +58,30 @@ export default async function StorefrontPage({ params }: { params: Promise<{ slu
     })),
   ];
   const catalogCategories = Array.from(new Set(catalogItems.map((i) => i.categoryName).filter(Boolean))) as string[];
+
+  // Full category breakdown (with counts) for the category nav bar — a
+  // separate query from catalogItems above, since that one is capped at 24
+  // items per kind and shouldn't silently under-count categories in the nav.
+  const [categoryProductCounts, categoryServiceCounts] = await Promise.all([
+    prisma.product.groupBy({ by: ["categoryId"], where: { storeId: store.id, isPublished: true, categoryId: { not: null } }, _count: true }),
+    prisma.service.groupBy({ by: ["categoryId"], where: { storeId: store.id, isPublished: true, categoryId: { not: null } }, _count: true }),
+  ]);
+  const categoryIdCounts = new Map<string, number>();
+  for (const row of [...categoryProductCounts, ...categoryServiceCounts]) {
+    if (!row.categoryId) continue;
+    categoryIdCounts.set(row.categoryId, (categoryIdCounts.get(row.categoryId) ?? 0) + row._count);
+  }
+  const navCategories: CategoryLink[] = categoryIdCounts.size
+    ? (await prisma.category.findMany({ where: { id: { in: [...categoryIdCounts.keys()] } } }))
+        .map((c) => ({ id: c.id, name: c.name, count: categoryIdCounts.get(c.id) ?? 0 }))
+        .sort((a, b) => b.count - a.count)
+    : [];
+
+  // Homepage only teases a handful of items — the full catalog lives on its
+  // own page (/catalog) and each category has its own dedicated listing
+  // page, same pattern as most real ecommerce sites (Jumia, Amazon, etc).
+  const featuredItems = catalogItems.slice(0, 8);
+
   const goodReviews = store.reviews.filter((r) => r.rating >= 4 && r.comment);
   const avgRating = store.reviews.length
     ? store.reviews.reduce((sum, r) => sum + r.rating, 0) / store.reviews.length
@@ -108,6 +134,7 @@ export default async function StorefrontPage({ params }: { params: Promise<{ slu
   return (
     <div style={{ fontFamily: theme.font, color: theme.ink, background: FRESH.ivory }}>
       <SiteNav store={store} slug={slug} hasCatalog={catalogItems.length > 0} />
+      <CategoryNav slug={slug} categories={navCategories} accent={FRESH.leaf} ink={FRESH.ink} bg={FRESH.ivory} border={line} />
 
       {/* ---------- HERO ---------- */}
       <header style={{ padding: "36px 0 0", background: FRESH.ivory }}>
@@ -157,7 +184,7 @@ export default async function StorefrontPage({ params }: { params: Promise<{ slu
       {/* ---------- WHY CHOOSE US ---------- */}
       {store.business.description && !hiddenSections.has("about") && (
         <section style={{ padding: "80px 0" }}>
-          <div style={{ ...wrap, display: "grid", gridTemplateColumns: "0.9fr 1.1fr", gap: 50, alignItems: "center" }}>
+          <Reveal style={{ ...wrap, display: "grid", gridTemplateColumns: "0.9fr 1.1fr", gap: 50, alignItems: "center" }}>
             <div>
               <div style={eyebrow}>Why choose us</div>
               <h2 style={{ ...h1, fontSize: "clamp(26px,3.6vw,38px)", marginBottom: 16 }}>
@@ -178,33 +205,30 @@ export default async function StorefrontPage({ params }: { params: Promise<{ slu
               <Tile img={store.logoUrl} gradient={`linear-gradient(150deg,${FRESH.leafLight},${FRESH.forest})`} />
               <Tile img={heroImage} gradient={`linear-gradient(150deg,${FRESH.citrus},#c98a12)`} marginTop={32} />
             </div>
-          </div>
+          </Reveal>
         </section>
       )}
 
-      {/* ---------- CATALOG / SERVICES, GROUPED BY CATEGORY ---------- */}
-      {catalogItems.length > 0 && !hiddenSections.has("catalog") && (
+      {/* ---------- BEST SELLERS — a teaser, not the full catalog ---------- */}
+      {featuredItems.length > 0 && !hiddenSections.has("catalog") && (
         <section id="catalog" style={{ padding: "80px 0", background: FRESH.paper }}>
           <div style={wrap}>
-            <div style={sectionHead}>
-              <div>
-                <div style={eyebrow}>Our {theme.catalogLabel.toLowerCase()}</div>
-                <h2 style={h2}>Our company provides the <span style={accentText}>best service</span></h2>
-              </div>
-              <p style={{ maxWidth: 340, color: FRESH.inkSoft, fontSize: 15, lineHeight: 1.6 }}>Bundle what you need — every visit comes with our satisfaction guarantee.</p>
-            </div>
-            {groupByCategory(catalogItems).map(([cat, items]) => (
-              <div key={cat} style={{ marginBottom: 44 }}>
-                <h3 style={{ fontFamily: FRESH.headlineFont, fontSize: 18, fontWeight: 700, color: FRESH.forest, marginBottom: 18, paddingBottom: 10, borderBottom: `1px solid ${line}` }}>
-                  {cat}
-                </h3>
-                <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(240px, 1fr))", gap: 20 }}>
-                  {items.map((item) => (
-                    <CatalogCard key={`${item.kind}-${item.id}`} item={item} storeName={store.name} slug={slug} accent={FRESH.leaf} />
-                  ))}
+            <Reveal>
+              <div style={sectionHead}>
+                <div>
+                  <div style={eyebrow}>Our {theme.catalogLabel.toLowerCase()}</div>
+                  <h2 style={h2}>Our company provides the <span style={accentText}>best service</span></h2>
                 </div>
+                <a href={`/store/${slug}/catalog`} style={btnGhost}>View all {theme.catalogLabel.toLowerCase()} →</a>
               </div>
-            ))}
+            </Reveal>
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(240px, 1fr))", gap: 20 }}>
+              {featuredItems.map((item, i) => (
+                <Reveal key={`${item.kind}-${item.id}`} delayMs={i * 60}>
+                  <CatalogCard item={item} storeName={store.name} slug={slug} accent={FRESH.leaf} />
+                </Reveal>
+              ))}
+            </div>
           </div>
         </section>
       )}
@@ -235,7 +259,7 @@ export default async function StorefrontPage({ params }: { params: Promise<{ slu
       {/* ---------- TESTIMONIALS ---------- */}
       {goodReviews.length > 0 && !hiddenSections.has("testimonials") && (
         <section style={{ padding: "80px 0" }}>
-          <div style={{ ...wrap, display: "grid", gridTemplateColumns: "0.85fr 1.15fr", gap: 44, alignItems: "center" }}>
+          <Reveal style={{ ...wrap, display: "grid", gridTemplateColumns: "0.85fr 1.15fr", gap: 44, alignItems: "center" }}>
             <div style={{ height: 300, borderRadius: 24, background: heroImage ? `url(${heroImage}) center/cover` : `linear-gradient(150deg,${FRESH.leafLight},${FRESH.forest})`, position: "relative" }}>
               {avgRating != null && (
                 <div style={{ position: "absolute", bottom: 18, left: 18, background: "#fff", borderRadius: 14, padding: "10px 14px", boxShadow: shadow }}>
@@ -259,7 +283,7 @@ export default async function StorefrontPage({ params }: { params: Promise<{ slu
                 </div>
               </div>
             </div>
-          </div>
+          </Reveal>
         </section>
       )}
 
@@ -400,15 +424,6 @@ type CatalogItem = {
   type: string; rentalUnit: string | null; isBookable: boolean;
 };
 
-function groupByCategory(items: CatalogItem[]): [string, CatalogItem[]][] {
-  const map = new Map<string, CatalogItem[]>();
-  for (const item of items) {
-    const key = item.categoryName || "Uncategorized";
-    if (!map.has(key)) map.set(key, []);
-    map.get(key)!.push(item);
-  }
-  return Array.from(map.entries());
-}
 
 function CatalogCard({ item, storeName, slug, accent }: { item: CatalogItem; storeName: string; slug: string; accent: string }) {
   const href = `/store/${slug}/${item.kind === "product" ? "product" : "service"}/${item.id}`;
