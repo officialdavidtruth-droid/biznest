@@ -1,6 +1,9 @@
 import { getOrder } from "@/lib/actions/order";
 import { notFound } from "next/navigation";
 import { OrderStatusControl } from "@/components/dashboard/order-status-control";
+import { RefundControl } from "@/components/dashboard/refund-control";
+
+const REFUNDABLE_STATUSES = ["PAID", "IN_PROGRESS", "DELIVERED", "COMPLETED"];
 
 export default async function StoreOrderDetailPage({
   params,
@@ -58,10 +61,17 @@ export default async function StoreOrderDetailPage({
         )}
       </div>
 
-      <div className="rounded-lg border bg-background p-4">
+      <div className="mb-6 rounded-lg border bg-background p-4">
         <h2 className="mb-3 text-sm font-semibold">Status</h2>
         <OrderStatusControl storeSlug={slug} orderId={order.id} currentStatus={order.status} />
       </div>
+
+      {REFUNDABLE_STATUSES.includes(order.status) && (
+        <div className="rounded-lg border bg-background p-4">
+          <h2 className="mb-3 text-sm font-semibold">Refund</h2>
+          <RefundControl storeSlug={slug} orderId={order.id} />
+        </div>
+      )}
     </div>
   );
 }

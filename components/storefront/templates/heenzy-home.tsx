@@ -1,6 +1,9 @@
 import { CartLink } from "@/components/storefront/cart-link";
 import { HEENZY } from "@/lib/template-themes";
 import { subscribeToNewsletter } from "@/lib/actions/newsletter";
+import { CategoryNav } from "@/components/storefront/category-nav";
+import { Reveal } from "@/components/storefront/reveal";
+import type { CategoryTreeNode } from "@/lib/storefront-categories";
 
 // All images below (logo, banner, category thumb, product/service photos,
 // promo art, review avatars) come straight from the store owner's own
@@ -18,7 +21,7 @@ type CatalogItem = {
 type Review = { id: string; rating: number; comment: string | null; author: { name: string | null } };
 
 export function HeenzyStorefront({
-  store, slug, catalogItems, catalogCategories, goodReviews, avgRating, completedOrders, social,
+  store, slug, catalogItems, catalogCategories, navCategories, goodReviews, avgRating, completedOrders, social,
 }: {
   store: {
     name: string; logoUrl: string | null; bannerUrl: string | null;
@@ -28,16 +31,19 @@ export function HeenzyStorefront({
   slug: string;
   catalogItems: CatalogItem[];
   catalogCategories: string[];
+  navCategories: CategoryTreeNode[];
   goodReviews: Review[];
   avgRating: number | null;
   completedOrders: number;
   social: Record<string, string>;
 }) {
   const heroImage = store.bannerUrl;
+  const featuredItems = catalogItems.slice(0, 8);
 
   return (
     <div className="hz-root">
       <HeenzyNav store={store} slug={slug} hasCatalog={catalogItems.length > 0} />
+      <CategoryNav slug={slug} categories={navCategories} accent={HEENZY.black} ink={HEENZY.black} bg="#fff" border="#e7e7e7" />
 
       <div className="hz-wrap hz-top-grid">
         {/* ---------- HERO ---------- */}
@@ -75,19 +81,19 @@ export function HeenzyStorefront({
             {catalogItems.length > 0 && <a href="#catalog" className="hz-btn hz-btn-light">Shop Now</a>}
           </div>
 
-          {catalogCategories.length > 0 && (
+          {navCategories.length > 0 && (
             <div>
               <div className="hz-section-head"><h2>Shop By Categories</h2></div>
               <div className="hz-cat-row" style={{ gridTemplateColumns: "repeat(2,1fr)" }}>
-                {catalogCategories.slice(0, 4).map((cat) => {
-                  const sample = catalogItems.find((i) => i.categoryName === cat && i.image);
+                {navCategories.slice(0, 4).map((cat) => {
+                  const sample = catalogItems.find((i) => i.categoryName === cat.name && i.image);
                   return (
-                    <div key={cat} className="hz-cat-card">
+                    <a key={cat.id} href={`/store/${slug}/category/${cat.id}`} className="hz-cat-card" style={{ textDecoration: "none", color: "inherit" }}>
                       <div className="hz-cat-thumb">
-                        {sample?.image ? <img src={sample.image} alt={cat} /> : null}
+                        {sample?.image ? <img src={sample.image} alt={cat.name} /> : null}
                       </div>
-                      <div className="hz-cat-name">{cat}</div>
-                    </div>
+                      <div className="hz-cat-name">{cat.name}</div>
+                    </a>
                   );
                 })}
               </div>
@@ -171,19 +177,22 @@ export function HeenzyStorefront({
         </div>
       </div>
 
-      {/* ---------- CATALOG, GROUPED BY CATEGORY ---------- */}
-      {catalogItems.length > 0 && (
+      {/* ---------- BEST SELLERS — a teaser, not the full catalog ---------- */}
+      {featuredItems.length > 0 && (
         <div className="hz-wrap" id="catalog">
-          {groupByCategory(catalogItems).map(([cat, items]) => (
-            <div key={cat} style={{ marginBottom: 40 }}>
-              <div className="hz-section-head"><h2>{cat}</h2></div>
-              <div className="hz-catalog-grid">
-                {items.map((item) => (
-                  <HeenzyProductCard key={`${item.kind}-${item.id}`} item={item} slug={slug} storeName={store.name} />
-                ))}
-              </div>
+          <Reveal>
+            <div className="hz-section-head" style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+              <h2>Best Sellers</h2>
+              <a href={`/store/${slug}/catalog`} style={{ fontSize: 13, fontWeight: 700, color: HEENZY.black, textDecoration: "underline" }}>View all →</a>
             </div>
-          ))}
+          </Reveal>
+          <div className="hz-catalog-grid">
+            {featuredItems.map((item, i) => (
+              <Reveal key={`${item.kind}-${item.id}`} delayMs={i * 60}>
+                <HeenzyProductCard item={item} slug={slug} storeName={store.name} />
+              </Reveal>
+            ))}
+          </div>
         </div>
       )}
 
@@ -204,7 +213,7 @@ export function HeenzyStorefront({
             <div>
               <h4>Shop</h4>
               <ul>
-                {catalogCategories.slice(0, 4).map((c) => <li key={c}><a href="#catalog">{c}</a></li>)}
+                {navCategories.slice(0, 4).map((c) => <li key={c.id}><a href={`/store/${slug}/category/${c.id}`}>{c.name}</a></li>)}
               </ul>
             </div>
             <div>
@@ -243,7 +252,8 @@ function HeenzyNav({ store, slug, hasCatalog }: { store: { name: string; logoUrl
         </a>
         <ul className="hz-nav-links">
           <li><a href={`/store/${slug}`}>Home</a></li>
-          {hasCatalog && <li><a href="#catalog">Shop</a></li>}
+          {hasCatalog && <li><a href={`/store/${slug}/catalog`}>Shop</a></li>}
+          {hasCatalog && <li><a href={`/store/${slug}/search`}>Search</a></li>}
         </ul>
         <div className="hz-nav-icons">
           <CartLink storeSlug={slug} accent={HEENZY.black} ink={HEENZY.black} />
@@ -251,16 +261,6 @@ function HeenzyNav({ store, slug, hasCatalog }: { store: { name: string; logoUrl
       </div>
     </nav>
   );
-}
-
-function groupByCategory(items: CatalogItem[]): [string, CatalogItem[]][] {
-  const map = new Map<string, CatalogItem[]>();
-  for (const item of items) {
-    const key = item.categoryName || "Uncategorized";
-    if (!map.has(key)) map.set(key, []);
-    map.get(key)!.push(item);
-  }
-  return Array.from(map.entries());
 }
 
 function HeenzyProductCard({ item, slug, storeName }: { item: CatalogItem; slug: string; storeName: string }) {

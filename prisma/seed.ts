@@ -1,5 +1,5 @@
 import { PrismaClient, type Prisma } from "@prisma/client";
-import { generateNicheVariations, TEMPLATE_NAME, generateHeenzyVariation, TEMPLATE_NAME_HEENZY, generateNovaVariation, TEMPLATE_NAME_NOVA } from "../lib/template-themes";
+import { generateNicheVariations, TEMPLATE_NAME, generateHeenzyVariation, TEMPLATE_NAME_HEENZY, generateNovaVariation, TEMPLATE_NAME_NOVA, generateVioletVariation, TEMPLATE_NAME_VIOLET, generatePremiumVariation, TEMPLATE_NAME_PREMIUM, generateHomeVistaVariation, TEMPLATE_NAME_HOMEVISTA, generateRrwVariation, TEMPLATE_NAME_RRW, generateMarketplaceVariation, TEMPLATE_NAME_MARKETPLACE } from "../lib/template-themes";
 import { fetchDemoPhoto } from "../lib/demo-images";
 
 const prisma = new PrismaClient();
@@ -11,6 +11,26 @@ const PRODUCT_CATEGORIES = [
   "Pets", "Office Supplies", "Art", "Music", "Gaming", "Toys",
   "Collectibles", "Industrial Equipment",
 ];
+
+// Subcategories, keyed by parent category name (must match a name in
+// PRODUCT_CATEGORIES above). Rendered as a flyout under each category chip
+// in the storefront category nav, and as filter chips on category pages.
+const PRODUCT_SUBCATEGORIES: Record<string, string[]> = {
+  Fashion: ["Men's Clothing", "Women's Clothing", "Men's Shoes", "Women's Shoes", "Kids' Wear", "Bags", "Fashion Accessories", "Traditional Wear"],
+  Beauty: ["Skincare", "Makeup", "Haircare", "Fragrances", "Bath & Body", "Beauty Tools & Brushes"],
+  Electronics: ["TVs", "Audio & Headphones", "Cameras", "Wearables", "Home Theater", "Electronics Accessories"],
+  Phones: ["Smartphones", "Tablets", "Phone Accessories", "Chargers & Cables", "Cases & Covers"],
+  Computers: ["Laptops", "Desktops", "Monitors", "Keyboards & Mice", "Storage", "Networking"],
+  Jewelry: ["Rings", "Necklaces", "Earrings", "Bracelets", "Watches"],
+  "Home Appliances": ["Kitchen Appliances", "Refrigerators", "Washing Machines", "Air Conditioners", "Small Appliances"],
+  Furniture: ["Living Room", "Bedroom", "Office Furniture", "Outdoor", "Storage Furniture"],
+  Sports: ["Fitness Equipment", "Team Sports", "Sports Footwear", "Outdoor & Camping", "Cycling"],
+  Groceries: ["Fresh Produce", "Pantry Staples", "Beverages", "Snacks", "Dairy & Eggs"],
+  "Baby Products": ["Diapers & Wipes", "Baby Clothing", "Feeding", "Toys & Gear"],
+  Automotive: ["Car Parts", "Car Accessories", "Motorcycle", "Automotive Tools & Equipment"],
+  Gaming: ["Consoles", "Video Games", "Gaming Accessories", "PC Gaming"],
+  Toys: ["Action Figures", "Educational Toys", "Outdoor Play", "Board Games"],
+};
 
 const SERVICE_CATEGORIES = [
   "Graphic Design", "Logo Design", "Branding", "Photography", "Videography",
@@ -52,8 +72,21 @@ async function main() {
     skipDuplicates: true,
   });
 
-  // The platform ships three storefront templates — "Fresh & Co.",
-  // "Heenzy Sneaker Co.", and "Nova Studio" (see lib/template-themes.ts).
+  // Subcategories — created after their parents exist, since parentId needs
+  // the parent's real id. skipDuplicates on name (globally unique) makes
+  // this safe to re-run.
+  for (const [parentName, subNames] of Object.entries(PRODUCT_SUBCATEGORIES)) {
+    const parent = await prisma.category.findUnique({ where: { name: parentName } });
+    if (!parent) continue;
+    await prisma.category.createMany({
+      data: subNames.map((name) => ({ name, type: "PRODUCT" as const, parentId: parent.id })),
+      skipDuplicates: true,
+    });
+  }
+
+  // The platform ships eight storefront templates — "Fresh & Co.",
+  // "Heenzy Sneaker Co.", "Nova Studio", "Violet", "Premium Marketplace",
+  // "HomeVista", "rRW Premium Rental", and "Marketplace Hub" (see lib/template-themes.ts).
   // Every store picks one of these designs from the Template Gallery.
   const [freshTemplate] = generateNicheVariations("Fresh & Co.");
   const previewUrl = await fetchDemoPhoto("Fresh & Co.");
@@ -79,12 +112,52 @@ async function main() {
     create: { name: TEMPLATE_NAME_NOVA, category: TEMPLATE_NAME_NOVA, tierRank: novaTemplate.tierRank, previewUrl: novaPreviewUrl, config: novaTemplate as unknown as Prisma.InputJsonValue },
   });
 
+  const violetTemplate = generateVioletVariation();
+  const violetPreviewUrl = await fetchDemoPhoto(TEMPLATE_NAME_VIOLET);
+  await prisma.storeTemplate.upsert({
+    where: { name: TEMPLATE_NAME_VIOLET },
+    update: { category: TEMPLATE_NAME_VIOLET, isActive: true, tierRank: violetTemplate.tierRank, previewUrl: violetPreviewUrl, config: violetTemplate as unknown as Prisma.InputJsonValue },
+    create: { name: TEMPLATE_NAME_VIOLET, category: TEMPLATE_NAME_VIOLET, tierRank: violetTemplate.tierRank, previewUrl: violetPreviewUrl, config: violetTemplate as unknown as Prisma.InputJsonValue },
+  });
+
+  const premiumTemplate = generatePremiumVariation();
+  const premiumPreviewUrl = await fetchDemoPhoto(TEMPLATE_NAME_PREMIUM);
+  await prisma.storeTemplate.upsert({
+    where: { name: TEMPLATE_NAME_PREMIUM },
+    update: { category: TEMPLATE_NAME_PREMIUM, isActive: true, tierRank: premiumTemplate.tierRank, previewUrl: premiumPreviewUrl, config: premiumTemplate as unknown as Prisma.InputJsonValue },
+    create: { name: TEMPLATE_NAME_PREMIUM, category: TEMPLATE_NAME_PREMIUM, tierRank: premiumTemplate.tierRank, previewUrl: premiumPreviewUrl, config: premiumTemplate as unknown as Prisma.InputJsonValue },
+  });
+
+  const homevistaTemplate = generateHomeVistaVariation();
+  const homevistaPreviewUrl = await fetchDemoPhoto(TEMPLATE_NAME_HOMEVISTA);
+  await prisma.storeTemplate.upsert({
+    where: { name: TEMPLATE_NAME_HOMEVISTA },
+    update: { category: TEMPLATE_NAME_HOMEVISTA, isActive: true, tierRank: homevistaTemplate.tierRank, previewUrl: homevistaPreviewUrl, config: homevistaTemplate as unknown as Prisma.InputJsonValue },
+    create: { name: TEMPLATE_NAME_HOMEVISTA, category: TEMPLATE_NAME_HOMEVISTA, tierRank: homevistaTemplate.tierRank, previewUrl: homevistaPreviewUrl, config: homevistaTemplate as unknown as Prisma.InputJsonValue },
+  });
+
+  const rrwTemplate = generateRrwVariation();
+  const rrwPreviewUrl = await fetchDemoPhoto(TEMPLATE_NAME_RRW);
+  await prisma.storeTemplate.upsert({
+    where: { name: TEMPLATE_NAME_RRW },
+    update: { category: TEMPLATE_NAME_RRW, isActive: true, tierRank: rrwTemplate.tierRank, previewUrl: rrwPreviewUrl, config: rrwTemplate as unknown as Prisma.InputJsonValue },
+    create: { name: TEMPLATE_NAME_RRW, category: TEMPLATE_NAME_RRW, tierRank: rrwTemplate.tierRank, previewUrl: rrwPreviewUrl, config: rrwTemplate as unknown as Prisma.InputJsonValue },
+  });
+
+  const marketplaceTemplate = generateMarketplaceVariation();
+  const marketplacePreviewUrl = await fetchDemoPhoto(TEMPLATE_NAME_MARKETPLACE);
+  await prisma.storeTemplate.upsert({
+    where: { name: TEMPLATE_NAME_MARKETPLACE },
+    update: { category: TEMPLATE_NAME_MARKETPLACE, isActive: true, tierRank: marketplaceTemplate.tierRank, previewUrl: marketplacePreviewUrl, config: marketplaceTemplate as unknown as Prisma.InputJsonValue },
+    create: { name: TEMPLATE_NAME_MARKETPLACE, category: TEMPLATE_NAME_MARKETPLACE, tierRank: marketplaceTemplate.tierRank, previewUrl: marketplacePreviewUrl, config: marketplaceTemplate as unknown as Prisma.InputJsonValue },
+  });
+
   // Retire every other template row (the old niche-generated set, or any
   // prior naming scheme) — deactivate rather than delete, since a store
   // might still reference one (Store.templateId). Deactivated templates
   // stop showing in the gallery but existing stores using them keep working.
   await prisma.storeTemplate.updateMany({
-    where: { name: { notIn: [TEMPLATE_NAME, TEMPLATE_NAME_HEENZY, TEMPLATE_NAME_NOVA] } },
+    where: { name: { notIn: [TEMPLATE_NAME, TEMPLATE_NAME_HEENZY, TEMPLATE_NAME_NOVA, TEMPLATE_NAME_VIOLET, TEMPLATE_NAME_PREMIUM, TEMPLATE_NAME_HOMEVISTA, TEMPLATE_NAME_RRW, TEMPLATE_NAME_MARKETPLACE] } },
     data: { isActive: false },
   });
 

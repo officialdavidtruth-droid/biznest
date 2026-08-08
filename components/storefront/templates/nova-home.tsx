@@ -2,6 +2,9 @@ import type React from "react";
 import { CartLink } from "@/components/storefront/cart-link";
 import { NOVA } from "@/lib/template-themes";
 import { subscribeToNewsletter } from "@/lib/actions/newsletter";
+import { CategoryNav } from "@/components/storefront/category-nav";
+import { Reveal } from "@/components/storefront/reveal";
+import type { CategoryTreeNode } from "@/lib/storefront-categories";
 
 // All images (logo, banner, product/service photos) come from the store
 // owner's own uploads — nothing here is hardcoded artwork. This template is
@@ -23,7 +26,7 @@ const serif: React.CSSProperties = { fontFamily: NOVA.headlineFont };
 const label: React.CSSProperties = { fontFamily: "monospace", fontSize: 11, letterSpacing: "0.22em", textTransform: "uppercase", color: NOVA.gold };
 
 export function NovaStorefront({
-  store, slug, catalogItems, goodReviews, avgRating, completedOrders, social,
+  store, slug, catalogItems, navCategories, goodReviews, avgRating, completedOrders, social,
 }: {
   store: {
     name: string; logoUrl: string | null; bannerUrl: string | null;
@@ -32,12 +35,14 @@ export function NovaStorefront({
   };
   slug: string;
   catalogItems: CatalogItem[];
+  navCategories: CategoryTreeNode[];
   goodReviews: Review[];
   avgRating: number | null;
   completedOrders: number;
   social: Record<string, string>;
 }) {
   const heroImage = store.bannerUrl;
+  const featuredItems = catalogItems.slice(0, 8);
 
   return (
     <div style={{ background: NOVA.black, color: NOVA.cream, fontFamily: NOVA.font, minHeight: "100vh" }}>
@@ -52,9 +57,12 @@ export function NovaStorefront({
         </a>
         <div style={{ display: "flex", alignItems: "center", gap: 26 }}>
           {catalogItems.length > 0 && <a href="#collection" style={{ ...label, textDecoration: "none" }}>The Collection</a>}
+          {catalogItems.length > 0 && <a href={`/store/${slug}/search`} style={{ ...label, textDecoration: "none" }}>Search</a>}
           <CartLink storeSlug={slug} accent={NOVA.gold} ink={NOVA.cream} />
         </div>
       </div>
+
+      <CategoryNav slug={slug} categories={navCategories} accent={NOVA.gold} ink={NOVA.cream} bg={NOVA.black} border={NOVA.line} />
 
       {/* ---------- SPLIT HERO ---------- */}
       <header style={{ display: "grid", gridTemplateColumns: "1.1fr 0.9fr", minHeight: "82vh" }}>
@@ -85,37 +93,43 @@ export function NovaStorefront({
       {/* ---------- ABOUT — full-width, centered, serif pull statement ---------- */}
       {store.business.description && (
         <section style={{ padding: "120px 0", borderTop: `1px solid ${NOVA.line}` }}>
-          <div style={{ ...wrap, maxWidth: 900, textAlign: "center" }}>
+          <Reveal style={{ ...wrap, maxWidth: 900, textAlign: "center" }}>
             <div style={label}>What we believe</div>
             <p style={{ ...serif, fontSize: "clamp(24px,3.2vw,38px)", lineHeight: 1.4, marginTop: 22, color: NOVA.cream }}>
               &ldquo;{store.business.description}&rdquo;
             </p>
-          </div>
+          </Reveal>
         </section>
       )}
 
-      {/* ---------- COLLECTION — numbered full-width rows, not a card grid ---------- */}
-      {catalogItems.length > 0 && (
+      {/* ---------- COLLECTION — a teaser of numbered rows, not the full catalog ---------- */}
+      {featuredItems.length > 0 && (
         <section id="collection" style={{ padding: "0 0 120px", borderTop: `1px solid ${NOVA.line}` }}>
           <div style={wrap}>
-            <div style={{ padding: "60px 0 40px" }}>
-              <div style={label}>The Collection</div>
-              <h2 style={{ ...serif, fontSize: "clamp(30px,3.6vw,44px)", marginTop: 14 }}>Every piece, chosen with care.</h2>
-            </div>
-            {catalogItems.map((item, i) => (
-              <a
-                key={`${item.kind}-${item.id}`}
-                href={`/store/${slug}/${item.kind === "product" ? "product" : "service"}/${item.id}`}
-                style={{ display: "grid", gridTemplateColumns: "80px 140px 1fr auto", alignItems: "center", gap: 30, padding: "30px 0", borderTop: `1px solid ${NOVA.line}`, textDecoration: "none", color: "inherit" }}
-              >
-                <span style={{ ...serif, fontSize: 15, color: NOVA.gray }}>{String(i + 1).padStart(2, "0")}</span>
-                <div style={{ width: 140, height: 96, background: item.image ? `url(${item.image}) center/cover` : NOVA.charcoal, border: `1px solid ${NOVA.line}` }} />
+            <Reveal>
+              <div style={{ padding: "60px 0 40px", display: "flex", justifyContent: "space-between", alignItems: "flex-end", flexWrap: "wrap", gap: 16 }}>
                 <div>
-                  <h4 style={{ ...serif, fontSize: 20, fontWeight: 700 }}>{item.name}</h4>
-                  {item.categoryName && <span style={{ ...label, marginTop: 6, display: "inline-block" }}>{item.categoryName}</span>}
+                  <div style={label}>The Collection</div>
+                  <h2 style={{ ...serif, fontSize: "clamp(30px,3.6vw,44px)", marginTop: 14 }}>Every piece, chosen with care.</h2>
                 </div>
-                <span style={{ ...serif, fontSize: 18, color: NOVA.gold, whiteSpace: "nowrap" }}>{item.currency} {item.price.toLocaleString()}</span>
-              </a>
+                <a href={`/store/${slug}/catalog`} style={{ ...label, textDecoration: "underline" }}>View full collection →</a>
+              </div>
+            </Reveal>
+            {featuredItems.map((item, i) => (
+              <Reveal key={`${item.kind}-${item.id}`} delayMs={i * 40} as="section">
+                <a
+                  href={`/store/${slug}/${item.kind === "product" ? "product" : "service"}/${item.id}`}
+                  style={{ display: "grid", gridTemplateColumns: "80px 140px 1fr auto", alignItems: "center", gap: 30, padding: "30px 0", borderTop: `1px solid ${NOVA.line}`, textDecoration: "none", color: "inherit" }}
+                >
+                  <span style={{ ...serif, fontSize: 15, color: NOVA.gray }}>{String(i + 1).padStart(2, "0")}</span>
+                  <div style={{ width: 140, height: 96, background: item.image ? `url(${item.image}) center/cover` : NOVA.charcoal, border: `1px solid ${NOVA.line}` }} />
+                  <div>
+                    <h4 style={{ ...serif, fontSize: 20, fontWeight: 700 }}>{item.name}</h4>
+                    {item.categoryName && <span style={{ ...label, marginTop: 6, display: "inline-block" }}>{item.categoryName}</span>}
+                  </div>
+                  <span style={{ ...serif, fontSize: 18, color: NOVA.gold, whiteSpace: "nowrap" }}>{item.currency} {item.price.toLocaleString()}</span>
+                </a>
+              </Reveal>
             ))}
           </div>
         </section>
@@ -124,11 +138,11 @@ export function NovaStorefront({
       {/* ---------- TESTIMONIAL — single large quote, not a card ---------- */}
       {goodReviews.length > 0 && goodReviews[0].comment && (
         <section style={{ padding: "110px 0", borderTop: `1px solid ${NOVA.line}`, background: NOVA.charcoal }}>
-          <div style={{ ...wrap, maxWidth: 820, textAlign: "center" }}>
+          <Reveal style={{ ...wrap, maxWidth: 820, textAlign: "center" }}>
             <div style={{ color: NOVA.gold, fontSize: 20, letterSpacing: 4, marginBottom: 22 }}>{"★".repeat(goodReviews[0].rating)}</div>
             <p style={{ ...serif, fontSize: "clamp(22px,2.8vw,32px)", lineHeight: 1.5 }}>&ldquo;{goodReviews[0].comment}&rdquo;</p>
             <p style={{ marginTop: 26, ...label }}>{goodReviews[0].author.name ?? "Verified client"}</p>
-          </div>
+          </Reveal>
         </section>
       )}
 

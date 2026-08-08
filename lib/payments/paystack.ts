@@ -1,3 +1,5 @@
+import crypto from "crypto";
+
 const PAYSTACK_BASE = "https://api.paystack.co";
 
 type InitializeParams = {
@@ -55,6 +57,64 @@ export async function verifyPaystackTransaction(reference: string): Promise<Veri
   });
 
   return res.json();
+}
+
+type RefundResponse = {
+  status: boolean;
+  message: string;
+  data?: { id: number; status: string; amount: number; transaction_reference?: string };
+};
+
+/**
+ * Issues a refund against a previously successful charge. Paystack refunds
+ * by transaction reference (the same value we stored as Payment.reference),
+ * not a separate refund-specific id. Omitting `amountKobo` refunds the full
+ * amount; Paystack settles the refund back to the original payment method
+ * on their own schedule (typically a few business days).
+ *
+ * https://paystack.com/docs/api/refund/
+ */
+export async function refundPaystackTransaction(
+  reference: string,
+  amountKobo?: number
+): Promise<RefundResponse> {
+  const secretKey = process.env.PAYSTACK_SECRET_KEY;
+  if (!secretKey) {
+    return { status: false, message: "Payments aren't configured yet (missing PAYSTACK_SECRET_KEY)." };
+  }
+
+  const res = await fetch(`${PAYSTACK_BASE}/refund`, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${secretKey}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      transaction: reference,
+      ...(amountKobo ? { amount: amountKobo } : {}),
+    }),
+  });
+
+  return res.json();
+}
+
+/**
+ * Confirms a Paystack webhook request actually came from Paystack. Paystack
+ * signs every webhook body with HMAC-SHA512 using your secret key and sends
+ * the result in the `x-paystack-signature` header — recomputing it locally
+ * and comparing is the only way to trust a webhook payload, since anyone
+ * can POST to a public URL claiming to be Paystack otherwise.
+ */
+export function verifyPaystackWebhookSignature(rawBody: string, signature: string | null): boolean {
+  const secretKey = process.env.PAYSTACK_SECRET_KEY;
+  if (!secretKey || !signature) return false;
+  const hash = crypto.createHmac("sha512", secretKey).update(rawBody).digest("hex");
+  // Constant-time comparison so signature checking itself can't leak timing
+  // information about the expected value.
+  const a = Buffer.from(hash);
+  const b = Buffer.from(signature);
+  if (a.length !== b.length) return false;
+  return crypto.timingSafeEqual(a, b);
 }
 
 /**

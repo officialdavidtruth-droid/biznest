@@ -1,4 +1,5 @@
 import { auth } from "@/lib/auth";
+import { checkRateLimit } from "@/lib/rate-limit";
 import { NextResponse } from "next/server";
 import { v2 as cloudinary } from "cloudinary";
 
@@ -15,6 +16,17 @@ export async function POST(req: Request) {
   const session = await auth();
   if (!session?.user?.id) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  // 20 uploads / 10 minutes per user — keyed on user ID since this route is
+  // already auth-gated, rather than IP (which is unreliable behind shared
+  // networks/proxies anyway).
+  const rate = await checkRateLimit(`upload:${session.user.id}`, 20, 10 * 60 * 1000);
+  if (!rate.allowed) {
+    return NextResponse.json(
+      { error: "Too many uploads — please wait a bit before trying again." },
+      { status: 429, headers: rate.retryAfterSeconds ? { "Retry-After": String(rate.retryAfterSeconds) } : undefined }
+    );
   }
 
   const formData = await req.formData();

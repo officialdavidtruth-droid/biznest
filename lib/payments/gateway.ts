@@ -1,8 +1,9 @@
 import { getActiveGateway } from "@/lib/actions/site-settings";
 
 export { getActiveGateway };
-import { initializePaystackTransaction } from "@/lib/payments/paystack";
-import { initializeFlutterwaveTransaction } from "@/lib/payments/flutterwave";
+import { initializePaystackTransaction, refundPaystackTransaction } from "@/lib/payments/paystack";
+import { initializeFlutterwaveTransaction, refundFlutterwaveTransaction } from "@/lib/payments/flutterwave";
+import type { PaymentProvider } from "@prisma/client";
 
 type ChargeParams = {
   email: string;
@@ -52,4 +53,40 @@ export async function chargeCustomer(params: ChargeParams): Promise<ChargeResult
     return { success: false, error: init.message || "Couldn't start the Paystack payment." };
   }
   return { success: true, authorizationUrl: init.data.authorization_url, gateway: "PAYSTACK" };
+}
+
+type RefundParams = {
+  provider: PaymentProvider;
+  /** Payment.reference for Paystack; for Flutterwave this must be the
+   *  gateway's own numeric transaction id (see refundPayment's caller —
+   *  it's pulled from the stored verification rawPayload, since our
+   *  tx_ref isn't what Flutterwave's refund endpoint accepts). */
+  gatewayTransactionRef: string;
+  amountNaira?: number;
+};
+
+type RefundResult = { success: true; refundReference: string } | { success: false; error: string };
+
+/**
+ * Single entry point for issuing a refund, mirroring chargeCustomer above.
+ * Unlike chargeCustomer this doesn't consult the platform's "active
+ * gateway" setting — a refund must go back through whichever provider
+ * actually processed the original charge, not whichever one is currently
+ * switched on.
+ */
+export async function refundPayment(params: RefundParams): Promise<RefundResult> {
+  if (params.provider === "FLUTTERWAVE") {
+    const res = await refundFlutterwaveTransaction(params.gatewayTransactionRef, params.amountNaira);
+    if (res.status !== "success" || !res.data) {
+      return { success: false, error: res.message || "Flutterwave declined the refund." };
+    }
+    return { success: true, refundReference: String(res.data.id) };
+  }
+
+  const amountKobo = params.amountNaira ? Math.round(params.amountNaira * 100) : undefined;
+  const res = await refundPaystackTransaction(params.gatewayTransactionRef, amountKobo);
+  if (!res.status || !res.data) {
+    return { success: false, error: res.message || "Paystack declined the refund." };
+  }
+  return { success: true, refundReference: String(res.data.id) };
 }

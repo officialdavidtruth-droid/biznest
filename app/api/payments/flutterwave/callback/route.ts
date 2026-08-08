@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import { verifyFlutterwaveTransaction } from "@/lib/payments/flutterwave";
+import { checkRateLimit, getClientIp } from "@/lib/rate-limit";
 import { NextResponse } from "next/server";
 
 const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? "https://biznest.vercel.app";
@@ -16,13 +17,39 @@ export async function GET(req: Request) {
     return NextResponse.redirect(`${APP_URL}/?payment=missing_reference`);
   }
 
+  const ip = getClientIp(req.headers);
+  const rate = await checkRateLimit(`payment-callback:${ip}`, 30, 60 * 1000);
+  if (!rate.allowed) {
+    return NextResponse.redirect(`${APP_URL}/?payment=rate_limited`);
+  }
+
   const order = await prisma.order.findUnique({ where: { id: txRef }, include: { store: true } });
   if (!order) {
     return NextResponse.redirect(`${APP_URL}/?payment=order_not_found`);
   }
 
+  // The webhook is the authoritative path and may already have resolved
+  // this order by the time the browser makes it back here. If it has,
+  // route the customer to the right page without re-verifying or
+  // mutating anything — a stale/duplicate callback must never be able to
+  // cancel an order that's already PAID or further along.
+  if (order.status !== "PENDING_PAYMENT") {
+    return order.status === "CANCELLED"
+      ? NextResponse.redirect(`${APP_URL}/store/${order.store.slug}?payment=failed`)
+      : NextResponse.redirect(`${APP_URL}/store/${order.store.slug}/orders/${order.id}/confirmation`);
+  }
+
   if (status === "cancelled") {
-    await prisma.order.update({ where: { id: order.id }, data: { status: "CANCELLED" } });
+    const result = await prisma.order.updateMany({
+      where: { id: order.id, status: "PENDING_PAYMENT" },
+      data: { status: "CANCELLED" },
+    });
+    if (result.count > 0) {
+      await prisma.payment.updateMany({
+        where: { reference: txRef, status: "PENDING" },
+        data: { status: "FAILED" },
+      });
+    }
     return NextResponse.redirect(`${APP_URL}/store/${order.store.slug}?payment=failed`);
   }
 
@@ -32,13 +59,32 @@ export async function GET(req: Request) {
   const amountMatches = verification.data && Number(verification.data.amount) >= Number(order.total);
 
   if (verification.status === "success" && verification.data?.status === "successful" && amountMatches) {
-    await prisma.order.update({
-      where: { id: order.id },
+    // Idempotent by design: only transition an order still awaiting
+    // payment, and use the update's own affected-row count — not the
+    // read above — to decide whether this request actually won the race
+    // against a concurrent webhook delivery for the same reference.
+    const result = await prisma.order.updateMany({
+      where: { id: order.id, status: "PENDING_PAYMENT" },
       data: { status: "PAID", paymentReference: txRef },
     });
+    if (result.count > 0) {
+      await prisma.payment.updateMany({
+        where: { reference: txRef, status: "PENDING" },
+        data: { status: "SUCCESSFUL", rawPayload: verification as object, verifiedAt: new Date() },
+      });
+    }
     return NextResponse.redirect(`${APP_URL}/store/${order.store.slug}/orders/${order.id}/confirmation`);
   }
 
-  await prisma.order.update({ where: { id: order.id }, data: { status: "CANCELLED" } });
+  const result = await prisma.order.updateMany({
+    where: { id: order.id, status: "PENDING_PAYMENT" },
+    data: { status: "CANCELLED" },
+  });
+  if (result.count > 0) {
+    await prisma.payment.updateMany({
+      where: { reference: txRef, status: "PENDING" },
+      data: { status: "FAILED", rawPayload: verification as object },
+    });
+  }
   return NextResponse.redirect(`${APP_URL}/store/${order.store.slug}?payment=failed`);
 }

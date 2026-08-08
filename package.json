@@ -12,7 +12,10 @@
     "db:push": "prisma db push",
     "db:studio": "prisma studio",
     "db:seed": "tsx prisma/seed.ts",
-    "db:seed:demos": "tsx prisma/seed-demos.ts"
+    "db:seed:demos": "tsx prisma/seed-demos.ts",
+    "db:migrate:deploy": "prisma migrate deploy",
+    "test": "vitest run",
+    "test:watch": "vitest"
   },
   "dependencies": {
     "next": "^15.0.0",
@@ -63,6 +66,7 @@
     "postcss": "^8.4.40",
     "eslint": "^8.57.0",
     "eslint-config-next": "^15.0.0",
-    "tsx": "^4.16.5"
+    "tsx": "^4.16.5",
+    "vitest": "^2.1.1"
   }
 }

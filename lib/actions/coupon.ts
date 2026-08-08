@@ -2,6 +2,7 @@
 
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { checkRateLimit } from "@/lib/rate-limit";
 import { revalidatePath } from "next/cache";
 
 async function assertStoreAccess(slug: string) {
@@ -21,6 +22,11 @@ async function assertStoreAccess(slug: string) {
 export async function createCoupon(slug: string, formData: FormData) {
   const access = await assertStoreAccess(slug);
   if (!access.success) return;
+
+  // Loose backstop (this is already store-owner-gated) against a runaway
+  // script rather than a real abuse vector.
+  const rate = await checkRateLimit(`coupon-create:${access.store.id}`, 20, 10 * 60 * 1000);
+  if (!rate.allowed) return;
 
   const code = String(formData.get("code") ?? "").trim().toUpperCase();
   const discountType = String(formData.get("discountType") ?? "PERCENT");

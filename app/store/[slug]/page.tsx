@@ -3,11 +3,17 @@ import { prisma } from "@/lib/prisma";
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
 import { CartLink } from "@/components/storefront/cart-link";
-import { resolveStoreTheme, FRESH, isHeenzyTemplate, isNovaTemplate, type TemplateTheme } from "@/lib/template-themes";
+import { resolveStoreTheme, FRESH, isHeenzyTemplate, isNovaTemplate, isVioletTemplate, isPremiumTemplate, isHomeVistaTemplate, isRrwTemplate, isMarketplaceTemplate, type TemplateTheme } from "@/lib/template-themes";
 import { subscribeToNewsletter } from "@/lib/actions/newsletter";
 import { HeenzyStorefront } from "@/components/storefront/templates/heenzy-home";
 import { NovaStorefront } from "@/components/storefront/templates/nova-home";
-import { CategoryNav, type CategoryLink } from "@/components/storefront/category-nav";
+import { VioletStorefront } from "@/components/storefront/templates/violet-home";
+import { PremiumStorefront } from "@/components/storefront/templates/premium-home";
+import { HomeVistaStorefront } from "@/components/storefront/templates/homevista-home";
+import { RrwStorefront } from "@/components/storefront/templates/rrw-home";
+import { MarketplaceStorefront } from "@/components/storefront/templates/marketplace-home";
+import { CategoryNav } from "@/components/storefront/category-nav";
+import { getStoreCategoryTree } from "@/lib/storefront-categories";
 import { Reveal } from "@/components/storefront/reveal";
 
 export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }): Promise<Metadata> {
@@ -59,23 +65,10 @@ export default async function StorefrontPage({ params }: { params: Promise<{ slu
   ];
   const catalogCategories = Array.from(new Set(catalogItems.map((i) => i.categoryName).filter(Boolean))) as string[];
 
-  // Full category breakdown (with counts) for the category nav bar — a
-  // separate query from catalogItems above, since that one is capped at 24
-  // items per kind and shouldn't silently under-count categories in the nav.
-  const [categoryProductCounts, categoryServiceCounts] = await Promise.all([
-    prisma.product.groupBy({ by: ["categoryId"], where: { storeId: store.id, isPublished: true, categoryId: { not: null } }, _count: true }),
-    prisma.service.groupBy({ by: ["categoryId"], where: { storeId: store.id, isPublished: true, categoryId: { not: null } }, _count: true }),
-  ]);
-  const categoryIdCounts = new Map<string, number>();
-  for (const row of [...categoryProductCounts, ...categoryServiceCounts]) {
-    if (!row.categoryId) continue;
-    categoryIdCounts.set(row.categoryId, (categoryIdCounts.get(row.categoryId) ?? 0) + row._count);
-  }
-  const navCategories: CategoryLink[] = categoryIdCounts.size
-    ? (await prisma.category.findMany({ where: { id: { in: [...categoryIdCounts.keys()] } } }))
-        .map((c) => ({ id: c.id, name: c.name, count: categoryIdCounts.get(c.id) ?? 0 }))
-        .sort((a, b) => b.count - a.count)
-    : [];
+  // Full category tree (with subcategories + counts) for the category nav
+  // bar — a separate query from catalogItems above, since that one is
+  // capped at 24 items per kind and shouldn't silently under-count.
+  const navCategories = await getStoreCategoryTree(store.id);
 
   // Homepage only teases a handful of items — the full catalog lives on its
   // own page (/catalog) and each category has its own dedicated listing
@@ -108,6 +101,7 @@ export default async function StorefrontPage({ params }: { params: Promise<{ slu
         slug={slug}
         catalogItems={catalogItems}
         catalogCategories={catalogCategories}
+        navCategories={navCategories}
         goodReviews={goodReviews}
         avgRating={avgRating}
         completedOrders={completedOrders}
@@ -123,6 +117,87 @@ export default async function StorefrontPage({ params }: { params: Promise<{ slu
         store={store}
         slug={slug}
         catalogItems={catalogItems}
+        navCategories={navCategories}
+        goodReviews={goodReviews}
+        avgRating={avgRating}
+        completedOrders={completedOrders}
+        social={social}
+      />
+    );
+  }
+
+  // ---------- TEMPLATE 4: Violet ----------
+  if (isVioletTemplate(store.template?.name)) {
+    return (
+      <VioletStorefront
+        store={store}
+        slug={slug}
+        catalogItems={catalogItems}
+        navCategories={navCategories}
+        goodReviews={goodReviews}
+        avgRating={avgRating}
+        completedOrders={completedOrders}
+        social={social}
+      />
+    );
+  }
+
+  // ---------- TEMPLATE 5: Premium Marketplace ----------
+  if (isPremiumTemplate(store.template?.name)) {
+    return (
+      <PremiumStorefront
+        store={store}
+        slug={slug}
+        catalogItems={catalogItems}
+        navCategories={navCategories}
+        goodReviews={goodReviews}
+        avgRating={avgRating}
+        completedOrders={completedOrders}
+        social={social}
+      />
+    );
+  }
+
+  // ---------- TEMPLATE 6: HomeVista ----------
+  if (isHomeVistaTemplate(store.template?.name)) {
+    return (
+      <HomeVistaStorefront
+        store={store}
+        slug={slug}
+        catalogItems={catalogItems}
+        navCategories={navCategories}
+        goodReviews={goodReviews}
+        avgRating={avgRating}
+        completedOrders={completedOrders}
+        social={social}
+      />
+    );
+  }
+
+  // ---------- TEMPLATE 7: rRW Premium Rental ----------
+  if (isRrwTemplate(store.template?.name)) {
+    return (
+      <RrwStorefront
+        store={store}
+        slug={slug}
+        catalogItems={catalogItems}
+        navCategories={navCategories}
+        goodReviews={goodReviews}
+        avgRating={avgRating}
+        completedOrders={completedOrders}
+        social={social}
+      />
+    );
+  }
+
+  // ---------- TEMPLATE 8: Marketplace Hub ----------
+  if (isMarketplaceTemplate(store.template?.name)) {
+    return (
+      <MarketplaceStorefront
+        store={store}
+        slug={slug}
+        catalogItems={catalogItems}
+        navCategories={navCategories}
         goodReviews={goodReviews}
         avgRating={avgRating}
         completedOrders={completedOrders}
@@ -472,6 +547,7 @@ function SiteNav({ store, slug, hasCatalog }: { store: { name: string; logoUrl: 
           {store.name}
         </a>
         <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
+          {hasCatalog && <a href={`/store/${slug}/search`} style={{ fontSize: 14.5, fontWeight: 500, color: FRESH.inkSoft, textDecoration: "none" }}>Search</a>}
           {hasCatalog && <a href="#catalog" style={{ fontSize: 14.5, fontWeight: 500, color: FRESH.inkSoft, textDecoration: "none" }}>Services</a>}
           <CartLink storeSlug={slug} accent={FRESH.leaf} ink={FRESH.ink} />
           {hasCatalog && <a href="#catalog" style={{ ...btnPrimary, padding: "11px 20px", fontSize: 13.5 }}>Get a Quote</a>}

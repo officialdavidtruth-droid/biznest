@@ -2,6 +2,7 @@
 
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { checkRateLimit } from "@/lib/rate-limit";
 import { revalidatePath } from "next/cache";
 import type { ActionResult } from "@/types/actions";
 
@@ -86,6 +87,13 @@ export async function createBooking(
 ): Promise<ActionResult<{ bookingId: string }>> {
   const session = await auth();
   if (!session?.user?.id) return { success: false, error: "Please sign in to book." };
+
+  // 10 attempts / 5 minutes per user — a real customer never needs more
+  // than a handful of tries; this is a backstop against calendar-spamming.
+  const rate = await checkRateLimit(`booking:${session.user.id}`, 10, 5 * 60 * 1000);
+  if (!rate.allowed) {
+    return { success: false, error: "Too many booking attempts — please wait a few minutes and try again." };
+  }
 
   const service = await prisma.service.findUnique({ where: { id: serviceId } });
   if (!service || !service.isBookable || !service.durationMins) {

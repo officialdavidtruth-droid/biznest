@@ -4,6 +4,7 @@ import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { checkoutSchema, type CheckoutInput } from "@/lib/validations/order";
 import { chargeCustomer, getActiveGateway } from "@/lib/payments/gateway";
+import { calculateOrderTotals } from "@/lib/utils/pricing";
 import { revalidatePath } from "next/cache";
 import type { ActionResult } from "@/types/actions";
 import type { OrderStatus, Store, Business } from "@prisma/client";
@@ -39,25 +40,28 @@ export async function startCheckout(
     return { success: false, error: "One or more items in your cart are no longer available." };
   }
 
-  const subtotal = data.items.reduce((sum, item) => {
+  const lines = data.items.map((item) => {
     const product = products.find((p) => p.id === item.productId)!;
-    return sum + Number(product.price) * item.quantity;
-  }, 0);
+    return { unitPrice: Number(product.price), quantity: item.quantity };
+  });
 
-  if (subtotal <= 0) return { success: false, error: "Cart total must be greater than zero." };
-
-  let deliveryFee = 0;
+  let deliveryFeeInput = 0;
   if (data.deliveryZoneId) {
     const zone = await prisma.deliveryZone.findFirst({
       where: { id: data.deliveryZoneId, storeId: store.id, isActive: true },
     });
     if (!zone) return { success: false, error: "That delivery area is no longer available — pick another." };
-    deliveryFee = Number(zone.fee);
+    deliveryFeeInput = Number(zone.fee);
   }
 
-  const total = subtotal + deliveryFee;
   const commissionRate = store.subscription ? Number(store.subscription.commissionRate) : 8;
-  const commission = Math.round(subtotal * (commissionRate / 100) * 100) / 100;
+  const { subtotal, deliveryFee, commission, total } = calculateOrderTotals(
+    lines,
+    deliveryFeeInput,
+    commissionRate
+  );
+
+  if (subtotal <= 0) return { success: false, error: "Cart total must be greater than zero." };
 
   const order = await prisma.order.create({
     data: {
@@ -102,6 +106,23 @@ export async function startCheckout(
   }
 
   await prisma.order.update({ where: { id: order.id }, data: { paymentProvider: charge.gateway } });
+
+  // One Payment row per real charge attempt — this is the row the callback
+  // and webhook routes verify against and update to SUCCESSFUL/FAILED.
+  // Order.paymentProvider/paymentReference above stay as the fast "what
+  // actually paid this" pointer; this table is the full audit trail.
+  await prisma.payment.create({
+    data: {
+      orderId: order.id,
+      storeId: store.id,
+      purpose: "ORDER",
+      provider: charge.gateway,
+      reference: order.id,
+      status: "PENDING",
+      amount: total,
+      currency: products[0]?.currency ?? "NGN",
+    },
+  });
 
   return { success: true, data: { authorizationUrl: charge.authorizationUrl } };
 }

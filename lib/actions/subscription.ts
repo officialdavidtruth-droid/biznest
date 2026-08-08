@@ -61,5 +61,19 @@ export async function initiatePlanUpgrade(
     return { success: false, error: charge.error };
   }
 
+  // Same audit-trail row as order checkout — see the matching comment in
+  // lib/actions/order.ts.
+  await prisma.payment.create({
+    data: {
+      storeId: store.id,
+      purpose: "SUBSCRIPTION_UPGRADE",
+      provider: charge.gateway,
+      reference,
+      status: "PENDING",
+      amount: plan.price,
+      currency: "NGN",
+    },
+  });
+
   return { success: true, data: { authorizationUrl: charge.authorizationUrl } };
 }

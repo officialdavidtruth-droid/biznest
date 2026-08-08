@@ -1,3 +1,5 @@
+import crypto from "crypto";
+
 const FLW_BASE = "https://api.flutterwave.com/v3";
 
 type InitializeParams = {
@@ -62,6 +64,57 @@ export async function verifyFlutterwaveTransaction(transactionId: string): Promi
   });
 
   return res.json();
+}
+
+type RefundResponse = {
+  status: "success" | "error";
+  message: string;
+  data?: { id: number; amount_refunded: number; status: string };
+};
+
+/**
+ * Issues a refund against a previously successful charge. Unlike Paystack,
+ * Flutterwave refunds by their internal numeric transaction id (the same
+ * id `verifyFlutterwaveTransaction` takes) rather than our tx_ref.
+ * Omitting `amountNaira` refunds the full amount.
+ *
+ * https://developer.flutterwave.com/reference/endpoints/refunds
+ */
+export async function refundFlutterwaveTransaction(
+  transactionId: string,
+  amountNaira?: number
+): Promise<RefundResponse> {
+  const secretKey = process.env.FLUTTERWAVE_SECRET_KEY;
+  if (!secretKey) {
+    return { status: "error", message: "Payments aren't configured yet (missing FLUTTERWAVE_SECRET_KEY)." };
+  }
+
+  const res = await fetch(`${FLW_BASE}/transactions/${encodeURIComponent(transactionId)}/refund`, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${secretKey}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(amountNaira ? { amount: amountNaira } : {}),
+  });
+
+  return res.json();
+}
+
+/**
+ * Confirms a Flutterwave webhook request actually came from Flutterwave.
+ * Unlike Paystack, Flutterwave doesn't HMAC-sign the body — you configure a
+ * static secret hash in the dashboard, and every webhook echoes it back in
+ * the `verif-hash` header. A plain equality check against that configured
+ * value is what Flutterwave's own docs specify.
+ */
+export function verifyFlutterwaveWebhookSignature(signature: string | null): boolean {
+  const secretHash = process.env.FLUTTERWAVE_SECRET_HASH;
+  if (!secretHash || !signature) return false;
+  const a = Buffer.from(secretHash);
+  const b = Buffer.from(signature);
+  if (a.length !== b.length) return false;
+  return crypto.timingSafeEqual(a, b);
 }
 
 /**

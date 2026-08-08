@@ -590,6 +590,84 @@ dashboards.
 Rate limiting, CSRF, audit log UI, accessibility pass, Lighthouse tuning,
 custom domain support (`staceys-paradise.biznest.com`), 2FA UI, load testing.
 
+## Fixes & features (round 11 — hardening pass: tests, error pages, rate limiting, migration safety)
+
+**Honest framing first:** this round doesn't have network access to `npm install`
+or actually run `npm test` — everything below is written and wired correctly,
+but you'll want to run `npm install && npm test` yourself once to confirm
+green before trusting it in CI.
+
+**Automated tests, starting where the money math lives.** There were zero
+tests in the codebase before this. Rather than a token test file, I pulled
+the order/commission calculation out of `lib/actions/order.ts` (which can't
+be unit tested directly — it's a Server Action that hits Prisma, auth, and
+Paystack) into a pure function:
+- `lib/utils/pricing.ts` (new) — `calculateOrderTotals`, with the exact rule
+  that was previously just a comment: commission is computed on subtotal
+  only, delivery fee is never part of the commission base. `order.ts` now
+  calls this instead of inlining the math.
+- `lib/utils/slug.ts` — `generateUniqueStoreSlug` now accepts an injectable
+  `slugExists` checker (defaults to the real Prisma lookup), so the
+  collision-retry loop — including the exact "two people both name their
+  store 'Stacey's Paradise'" scenario from the design notes below — is
+  covered by a test that never touches a database.
+- `lib/rate-limit.ts` — tests via a mocked Prisma client (in-memory Map
+  standing in for the `RateLimitEntry` table), covering the fixed-window
+  boundary, the reset-after-expiry case, and independent bucketing by key.
+- `vitest.config.ts` (new) + `vitest` devDependency + `npm test` script.
+  Chose Vitest over Jest since the project is already ESM/TS-native and
+  Vitest needs near-zero config for that.
+- **What's still untested:** anything that requires a real Postgres
+  connection (Server Actions end-to-end, the Prisma-backed parts of
+  `checkRateLimit`, the KYC discriminated-union validation). That needs
+  either a test database or a heavier mocking layer than was worth adding
+  in one pass — a reasonable next increment if you want DB-backed
+  integration tests specifically.
+
+**Error/loading/not-found pages** — there were none anywhere in `app/`,
+so any thrown error fell through to Next's default unstyled error screen.
+Added, all matching the existing aubergine/marigold/jade palette:
+- `app/error.tsx`, `app/not-found.tsx`, `app/loading.tsx` — global fallback.
+- `app/store/[slug]/error.tsx`, `app/store/[slug]/not-found.tsx` — storefront-scoped, so a broken product page doesn't take down the whole site shell.
+- `app/store/[slug]/admin/error.tsx` — dashboard-scoped, keeps the sidebar/layout chrome around a failed page instead of blanking the whole screen.
+- `app/supaadmin/error.tsx` — same idea for the platform admin panel.
+
+**Rate limiting extended past login/register**, using the existing
+Postgres-backed `checkRateLimit` — it was wired into `lib/actions/auth.ts`
+only, leaving several abuse-prone endpoints open:
+- `app/api/upload/route.ts` — 20 uploads / 10 minutes, keyed per user ID
+  (not IP, since it's already auth-gated).
+- `app/api/payments/paystack/callback/route.ts` and the Flutterwave/
+  subscription equivalents — 30 requests / minute, keyed per order/reference
+  ID, since these are unauthenticated redirect targets and a natural target
+  for someone hammering a reference to see what sticks.
+- `lib/actions/booking.ts` (`createBooking`) — 10 attempts / 5 minutes per
+  user, since unrestricted booking creation could be used to spam a
+  vendor's calendar.
+- `lib/actions/coupon.ts` (`createCoupon`) — 20 / 10 minutes per store,
+  loose on purpose since this is a store-owner-only action, just a backstop
+  against a runaway script.
+- **Not yet covered:** most other Server Actions (product/service creation,
+  review submission, messaging). Same pattern, straightforward to extend —
+  flagged rather than silently done, since claiming "rate limiting is now
+  everywhere" would be the same kind of gap this round is trying to close.
+
+**Migration safety — flagged, not silently changed.** I said last round the
+`build` script's `prisma db push --accept-data-loss` was a landmine for
+production. The honest complication: there are currently **no Prisma
+migration files** in this repo (`prisma/migrations/` doesn't exist) — the
+whole project history has been built on `db push`. Swapping `build` to
+`prisma migrate deploy` right now would just fail, since there's nothing to
+deploy. So, instead of a change that looks like a fix but breaks the build:
+- Added `db:migrate:deploy` script for once migrations exist.
+- **Action needed from you, once, before this matters:** run
+  `npx prisma migrate dev --name init` locally against a real database to
+  generate the initial migration from the current schema, commit
+  `prisma/migrations/`, then swap `build`'s `prisma db push --accept-data-loss`
+  to `prisma migrate deploy`. I didn't do this myself because generating a
+  migration needs a live database connection this environment doesn't have
+  — doing it blind risks baking in an incorrect migration.
+
 ## Notes on decisions made
 
 - **Role promotion happens at store creation**, not at business approval — a

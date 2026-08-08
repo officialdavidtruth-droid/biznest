@@ -5,6 +5,8 @@ import type { Metadata } from "next";
 import { resolveStoreTheme, FRESH, isHeenzyTemplate, isNovaTemplate, HEENZY, NOVA, type TemplateTheme } from "@/lib/template-themes";
 import { CartLink } from "@/components/storefront/cart-link";
 import { CategoryNav } from "@/components/storefront/category-nav";
+import { getStoreCategoryTree } from "@/lib/storefront-categories";
+import { CatalogGrid } from "@/components/storefront/catalog-grid";
 
 export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }): Promise<Metadata> {
   const { slug } = await params;
@@ -24,19 +26,13 @@ export default async function CatalogPage({ params }: { params: Promise<{ slug: 
   ]);
 
   const items = [
-    ...products.map((p) => ({ id: p.id, kind: "product" as const, name: p.name, price: Number(p.price), currency: p.currency, image: p.images[0] ?? null, categoryId: p.categoryId })),
-    ...services.map((s) => ({ id: s.id, kind: "service" as const, name: s.name, price: Number(s.price), currency: s.currency, image: s.images[0] ?? null, categoryId: s.categoryId })),
+    ...products.map((p) => ({ id: p.id, kind: "product" as const, name: p.name, price: Number(p.price), currency: p.currency, image: p.images[0] ?? null })),
+    ...services.map((s) => ({ id: s.id, kind: "service" as const, name: s.name, price: Number(s.price), currency: s.currency, image: s.images[0] ?? null })),
   ];
-  if (items.length === 0) notFound();
+  // An empty catalog is a real, valid state for a new store — show a
+  // friendly message rather than a 404.
 
-  const categoryCounts = new Map<string, { id: string; name: string; count: number }>();
-  for (const p of [...products, ...services]) {
-    if (!p.category) continue;
-    const c = categoryCounts.get(p.category.id) ?? { id: p.category.id, name: p.category.name, count: 0 };
-    c.count += 1;
-    categoryCounts.set(p.category.id, c);
-  }
-  const categories = Array.from(categoryCounts.values()).sort((a, b) => b.count - a.count);
+  const categories = await getStoreCategoryTree(store.id);
 
   const themeOverrides = store.themeColors as { primary?: string; secondary?: string; accent?: string } | null;
   const theme: TemplateTheme = resolveStoreTheme(store.template?.category, store.name, themeOverrides, store.fontFamily, store.template?.name);
@@ -56,7 +52,7 @@ export default async function CatalogPage({ params }: { params: Promise<{ slug: 
         </div>
       </nav>
 
-      <CategoryNav slug={slug} categories={categories} accent={accent} ink={ink} border={`${ink}14`} />
+      <CategoryNav slug={slug} categories={categories} accent={accent} ink={ink} bg={bg} border={`${ink}14`} />
 
       <div style={{ maxWidth: 1180, margin: "0 auto", padding: "36px 28px 80px" }}>
         <div style={{ fontSize: 12.5, marginBottom: 22, opacity: 0.65 }}>
@@ -68,21 +64,13 @@ export default async function CatalogPage({ params }: { params: Promise<{ slug: 
         <h1 style={{ fontSize: "clamp(24px,3.4vw,34px)", fontWeight: 800, marginBottom: 8 }}>Everything at {store.name}</h1>
         <p style={{ fontSize: 13.5, opacity: 0.65, marginBottom: 32 }}>{items.length} {items.length === 1 ? "item" : "items"}</p>
 
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(220px, 1fr))", gap: 20 }}>
-          {items.map((item) => (
-            <a
-              key={`${item.kind}-${item.id}`}
-              href={`/store/${slug}/${item.kind}/${item.id}`}
-              style={{ display: "block", textDecoration: "none", color: "inherit", border: `1px solid ${ink}14`, borderRadius: radius, overflow: "hidden", background: `${ink}05` }}
-            >
-              <div style={{ aspectRatio: "1/1", background: item.image ? `url(${item.image}) center/cover` : `${ink}0d` }} />
-              <div style={{ padding: 14 }}>
-                <h4 style={{ fontSize: 14.5, fontWeight: 700, marginBottom: 6 }}>{item.name}</h4>
-                <span style={{ fontSize: 15, fontWeight: 800, color: accent }}>{item.currency} {item.price.toLocaleString()}</span>
-              </div>
-            </a>
-          ))}
-        </div>
+        {items.length === 0 ? (
+          <div style={{ border: `1px dashed ${ink}22`, borderRadius: 16, padding: 60, textAlign: "center", opacity: 0.7 }}>
+            <p style={{ fontSize: 14 }}>Nothing published here yet — check back soon.</p>
+          </div>
+        ) : (
+          <CatalogGrid items={items} slug={slug} accent={accent} ink={ink} radius={radius} />
+        )}
       </div>
     </div>
   );
