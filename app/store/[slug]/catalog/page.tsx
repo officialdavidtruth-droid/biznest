@@ -2,7 +2,7 @@ import { prisma } from "@/lib/prisma";
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import type { Metadata } from "next";
-import { resolveStoreTheme, isVioletTemplate, isMarketplaceTemplate, isArcovaTemplate, isNovaTemplate, isPremiumTemplate, isHomeVistaTemplate, type TemplateTheme } from "@/lib/template-themes";
+import { resolveStoreTheme, isVioletTemplate, isMarketplaceTemplate, isArcovaTemplate, isNovaTemplate, isPremiumTemplate, isHomeVistaTemplate, isRrwTemplate, type TemplateTheme } from "@/lib/template-themes";
 import { CartLink } from "@/components/storefront/cart-link";
 import { CategoryNav } from "@/components/storefront/category-nav";
 import { getStoreCategoryTree } from "@/lib/storefront-categories";
@@ -13,6 +13,7 @@ import { ArcovaHeader, ArcovaFooter, wrap as arcovaWrap } from "@/components/sto
 import { NovaHeader, NovaFooter, wrap as novaWrap } from "@/components/storefront/templates/nova-chrome";
 import { PremiumHeader, PremiumFooter, wrap as premiumWrap } from "@/components/storefront/templates/premium-chrome";
 import { HomeVistaHeader, HomeVistaFooter, wrap as homevistaWrap } from "@/components/storefront/templates/homevista-chrome";
+import { RrwHeader, RrwFooter, wrap as rrwWrap } from "@/components/storefront/templates/rrw-chrome";
 
 export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }): Promise<Metadata> {
   const { slug } = await params;
@@ -134,6 +135,17 @@ export default async function CatalogPage({ params }: { params: Promise<{ slug: 
         <HomeVistaHeader store={store} slug={slug} navCategories={categories} crumbs={crumbs} />
         <div style={{ ...homevistaWrap, padding: "22px 0 60px" }}>{body}</div>
         <HomeVistaFooter store={store} slug={slug} social={social} />
+      </div>
+    );
+  }
+
+  if (isRrwTemplate(store.template?.name)) {
+    const social = (store.socialLinks as Record<string, string> | null) ?? {};
+    return (
+      <div style={{ background: "#fff", color: ink, fontFamily: theme.font, minHeight: "100vh" }}>
+        <RrwHeader store={store} slug={slug} navCategories={categories} crumbs={crumbs} />
+        <div style={{ ...rrwWrap, padding: "22px 6% 40px" }}>{body}</div>
+        <RrwFooter store={store} slug={slug} social={social} />
       </div>
     );
   }
