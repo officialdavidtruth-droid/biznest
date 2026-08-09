@@ -40,6 +40,10 @@ export function FileUploadField({
   return (
     <div>
       <label className="mb-1 block text-sm font-medium">{label}</label>
+      {value && !isUploading && (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img src={value} alt="" className="mb-2 h-20 w-20 rounded-md border object-cover" />
+      )}
       <input
         type="file"
         accept="image/jpeg,image/png,image/webp,application/pdf"
@@ -52,7 +56,11 @@ export function FileUploadField({
       />
       <p className="mt-1 text-xs text-muted-foreground">JPG, PNG, WEBP, or PDF — up to 10MB.</p>
       {isUploading && <p className="mt-1 text-xs text-muted-foreground">Uploading…</p>}
-      {value && !isUploading && <p className="mt-1 truncate text-xs text-green-600">Uploaded ✓</p>}
+      {value && !isUploading && (
+        <button type="button" onClick={() => onChange("")} className="mt-1 text-xs text-muted-foreground underline hover:text-foreground">
+          Remove image
+        </button>
+      )}
       {uploadError && <p className="mt-1 text-xs text-destructive">{uploadError}</p>}
       {error && <p className="mt-1 text-xs text-destructive">{error}</p>}
     </div>

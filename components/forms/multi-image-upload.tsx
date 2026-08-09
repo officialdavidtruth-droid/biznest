@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { X, Plus } from "lucide-react";
+import { toast } from "sonner";
 
 export function MultiImageUpload({
   value,
@@ -22,9 +23,11 @@ export function MultiImageUpload({
       const formData = new FormData();
       formData.append("file", file);
       const res = await fetch("/api/upload", { method: "POST", body: formData });
-      if (!res.ok) throw new Error("Upload failed");
-      const { url } = await res.json();
-      onChange([...value, url]);
+      const body = await res.json().catch(() => null);
+      if (!res.ok) throw new Error(body?.error ?? "Upload failed");
+      onChange([...value, body.url]);
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Upload failed");
     } finally {
       setIsUploading(false);
     }

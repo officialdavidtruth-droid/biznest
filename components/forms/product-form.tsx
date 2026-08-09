@@ -9,7 +9,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 
-type Category = { id: string; name: string };
+type Category = { id: string; name: string; parentId: string | null };
 
 export function ProductForm({
   storeSlug,
@@ -65,6 +65,14 @@ export function ProductForm({
 
   const images = watch("images");
 
+  const topLevelCategories = categories.filter((c) => !c.parentId);
+  const childrenByParent = new Map<string, Category[]>();
+  for (const c of categories) {
+    if (!c.parentId) continue;
+    if (!childrenByParent.has(c.parentId)) childrenByParent.set(c.parentId, []);
+    childrenByParent.get(c.parentId)!.push(c);
+  }
+
   async function onSubmit(values: ProductInput) {
     setIsSubmitting(true);
     const result = product
@@ -109,8 +117,13 @@ export function ProductForm({
           <label className="mb-1 block text-sm font-medium">Category</label>
           <select className="input" {...register("categoryId")}>
             <option value="">Uncategorized</option>
-            {categories.map((c) => (
-              <option key={c.id} value={c.id}>{c.name}</option>
+            {topLevelCategories.map((c) => (
+              <optgroup key={c.id} label={c.name}>
+                <option value={c.id}>{c.name} (all)</option>
+                {(childrenByParent.get(c.id) ?? []).map((child) => (
+                  <option key={child.id} value={child.id}>{child.name}</option>
+                ))}
+              </optgroup>
             ))}
           </select>
         </div>

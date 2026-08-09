@@ -30,6 +30,15 @@ async function uniqueServiceSlug(storeId: string, base: string): Promise<string>
   return candidate;
 }
 
+export async function getService(slug: string, serviceId: string) {
+  const access = await assertStoreAccess(slug);
+  if (!access.success) return null;
+
+  return prisma.service.findFirst({
+    where: { id: serviceId, storeId: access.store.id },
+  });
+}
+
 export async function createService(slug: string, formData: FormData): Promise<ActionResult<{ id: string }>> {
   const access = await assertStoreAccess(slug);
   if (!access.success) return { success: false, error: access.error };
@@ -76,6 +85,68 @@ export async function createService(slug: string, formData: FormData): Promise<A
   revalidatePath(`/store/${slug}/admin/services`);
   revalidatePath(`/store/${slug}`);
   return { success: true, data: { id: service.id } };
+}
+
+export async function updateService(slug: string, serviceId: string, formData: FormData): Promise<ActionResult<{ id: string }>> {
+  const access = await assertStoreAccess(slug);
+  if (!access.success) return { success: false, error: access.error };
+
+  const existing = await prisma.service.findFirst({ where: { id: serviceId, storeId: access.store.id } });
+  if (!existing) return { success: false, error: "Service not found." };
+
+  const name = String(formData.get("name") ?? "").trim();
+  const description = String(formData.get("description") ?? "").trim();
+  const price = Number(formData.get("price") ?? 0);
+  const categoryId = String(formData.get("categoryId") ?? "") || null;
+  const isBookable = formData.get("isBookable") === "on";
+  const durationMins = isBookable ? Number(formData.get("durationMins") ?? 0) || null : null;
+  const isPublished = formData.get("isPublished") === "on";
+
+  let images: string[] = [];
+  try {
+    const parsed = JSON.parse(String(formData.get("images") ?? "[]"));
+    if (Array.isArray(parsed)) images = parsed.filter((x): x is string => typeof x === "string");
+  } catch {
+    images = [];
+  }
+
+  if (!name || name.length < 2) return { success: false, error: "Give the service a name." };
+  if (!(price >= 0)) return { success: false, error: "Enter a valid price." };
+  if (isBookable && !durationMins) return { success: false, error: "Bookable services need a duration." };
+
+  const availability = isBookable ? parseAvailability(formData) : existing.availability;
+
+  await prisma.service.update({
+    where: { id: serviceId },
+    data: {
+      categoryId,
+      name,
+      description,
+      price,
+      images,
+      isBookable,
+      durationMins,
+      availability,
+      isPublished,
+    },
+  });
+
+  revalidatePath(`/store/${slug}/admin/services`);
+  revalidatePath(`/store/${slug}`);
+  return { success: true, data: { id: serviceId } };
+}
+
+export async function deleteService(slug: string, serviceId: string): Promise<ActionResult> {
+  const access = await assertStoreAccess(slug);
+  if (!access.success) return { success: false, error: access.error };
+
+  const existing = await prisma.service.findFirst({ where: { id: serviceId, storeId: access.store.id } });
+  if (!existing) return { success: false, error: "Service not found." };
+
+  await prisma.service.delete({ where: { id: serviceId } });
+
+  revalidatePath(`/store/${slug}/admin/services`);
+  return { success: true, data: undefined };
 }
 
 export async function updateServiceAvailabilityForm(slug: string, serviceId: string, formData: FormData): Promise<ActionResult> {

@@ -3,8 +3,8 @@
 import { useState } from "react";
 import { MultiImageUpload } from "./multi-image-upload";
 
-export function ServiceImagesField() {
-  const [images, setImages] = useState<string[]>([]);
+export function ServiceImagesField({ initialImages = [] }: { initialImages?: string[] }) {
+  const [images, setImages] = useState<string[]>(initialImages);
   return (
     <div>
       <input type="hidden" name="images" value={JSON.stringify(images)} />

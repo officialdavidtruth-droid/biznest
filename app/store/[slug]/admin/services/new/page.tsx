@@ -36,7 +36,14 @@ export default async function NewServicePage({ params, searchParams }: { params:
           <label className="mb-1 block text-xs text-muted-foreground">Category</label>
           <select name="categoryId" className="mb-3 w-full rounded-md border px-3 py-1.5 text-sm">
             <option value="">No category</option>
-            {categories.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+            {categories.filter((c) => !c.parentId).map((c) => (
+              <optgroup key={c.id} label={c.name}>
+                <option value={c.id}>{c.name} (all)</option>
+                {categories.filter((child) => child.parentId === c.id).map((child) => (
+                  <option key={child.id} value={child.id}>{child.name}</option>
+                ))}
+              </optgroup>
+            ))}
           </select>
 
           <label className="mb-1 block text-xs text-muted-foreground">Description</label>

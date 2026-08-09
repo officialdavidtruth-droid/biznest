@@ -17,7 +17,7 @@ const PRODUCT_CATEGORIES = [
 // in the storefront category nav, and as filter chips on category pages.
 const PRODUCT_SUBCATEGORIES: Record<string, string[]> = {
   Fashion: ["Men's Clothing", "Women's Clothing", "Men's Shoes", "Women's Shoes", "Kids' Wear", "Bags", "Fashion Accessories", "Traditional Wear"],
-  Beauty: ["Skincare", "Makeup", "Haircare", "Fragrances", "Bath & Body", "Beauty Tools & Brushes"],
+  Beauty: ["Skincare", "Makeup Products", "Haircare", "Fragrances", "Bath & Body", "Beauty Tools & Brushes"],
   Electronics: ["TVs", "Audio & Headphones", "Cameras", "Wearables", "Home Theater", "Electronics Accessories"],
   Phones: ["Smartphones", "Tablets", "Phone Accessories", "Chargers & Cables", "Cases & Covers"],
   Computers: ["Laptops", "Desktops", "Monitors", "Keyboards & Mice", "Storage", "Networking"],
@@ -46,6 +46,36 @@ const SERVICE_CATEGORIES = [
   "Logistics", "Courier", "Automobile Repairs", "Mechanics", "Painting",
   "Printing", "Photography Studio Rental", "Hotel Services",
 ];
+
+// Subcategories for services, same pattern as PRODUCT_SUBCATEGORIES above.
+const SERVICE_SUBCATEGORIES: Record<string, string[]> = {
+  "Graphic Design": ["Flyer Design", "Packaging Design", "Illustration", "Print Design"],
+  Photography: ["Wedding Photography", "Portrait Photography", "Product Photography", "Event Photography"],
+  Videography: ["Wedding Videography", "Corporate Video", "Music Video", "Drone Footage"],
+  "Digital Marketing": ["SEO", "Paid Ads", "Email Marketing", "Content Marketing", "Influencer Marketing"],
+  "Social Media Management": ["Instagram Management", "TikTok Management", "Content Creation", "Community Management"],
+  "Website Design": ["Landing Pages", "E-commerce Sites", "Portfolio Sites", "Website Maintenance"],
+  "Software Development": ["Backend Development", "Frontend Development", "API Integration", "DevOps"],
+  "Mobile App Development": ["iOS Development", "Android Development", "Cross-Platform Apps"],
+  Writing: ["Copywriting", "Ghostwriting", "Technical Writing", "Resume Writing", "Blog Writing"],
+  "Legal Services": ["Contract Drafting", "Business Registration", "Intellectual Property", "Litigation Support"],
+  Electrical Services: ["Wiring Installation", "Solar Installation", "Electrical Repairs", "Inverter Installation"],
+  Plumbing: ["Pipe Installation", "Leak Repairs", "Drainage Services", "Bathroom Fitting"],
+  Tailoring: ["Bespoke Suits", "Alterations", "Native Wear", "Uniform Tailoring"],
+  "Fashion Design": ["Bridal Wear", "Ready-to-Wear", "Costume Design"],
+  "Hair Styling": ["Braiding", "Wig Installation", "Barbing", "Natural Hair Care"],
+  Makeup: ["Bridal Makeup", "Editorial Makeup", "Special Effects Makeup"],
+  Cleaning: ["Home Cleaning", "Office Cleaning", "Post-Construction Cleaning", "Deep Cleaning"],
+  Catering: ["Wedding Catering", "Corporate Catering", "Small Chops", "Continental Cuisine"],
+  "Event Planning": ["Wedding Planning", "Birthday Planning", "Corporate Events", "Decor & Styling"],
+  "Real Estate": ["Property Sales", "Property Rentals", "Property Management", "Land Surveying"],
+  "Interior Design": ["Residential Design", "Office Design", "Furniture Sourcing"],
+  Tutoring: ["Exam Prep", "Language Tutoring", "STEM Tutoring", "Music Lessons"],
+  Fitness: ["Personal Training", "Yoga Instruction", "Nutrition Coaching", "Group Classes"],
+  "Automobile Repairs": ["Engine Repair", "Auto Electrical", "Panel Beating", "Car AC Repair"],
+  Mechanics: ["General Servicing", "Diagnostics", "Tire & Wheel Services"],
+};
+
 
 // Pricing tiers. "Free" stays as the entry tier for new vendors — the three
 // named paid tiers below are what's actually being sold. commissionRate and
@@ -80,6 +110,14 @@ async function main() {
     if (!parent) continue;
     await prisma.category.createMany({
       data: subNames.map((name) => ({ name, type: "PRODUCT" as const, parentId: parent.id })),
+      skipDuplicates: true,
+    });
+  }
+  for (const [parentName, subNames] of Object.entries(SERVICE_SUBCATEGORIES)) {
+    const parent = await prisma.category.findUnique({ where: { name: parentName } });
+    if (!parent) continue;
+    await prisma.category.createMany({
+      data: subNames.map((name) => ({ name, type: "SERVICE" as const, parentId: parent.id })),
       skipDuplicates: true,
     });
   }
