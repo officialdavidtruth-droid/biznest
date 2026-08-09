@@ -1,6 +1,6 @@
 import type React from "react";
 import { CartLink } from "@/components/storefront/cart-link";
-import { PREMIUM } from "@/lib/template-themes";
+import { PREMIUM, PREMIUM_THEME } from "@/lib/template-themes";
 import { subscribeToNewsletter } from "@/lib/actions/newsletter";
 import { CategoryNav } from "@/components/storefront/category-nav";
 import { Reveal } from "@/components/storefront/reveal";
@@ -103,13 +103,13 @@ export function PremiumStorefront({
           }}
         >
           <div style={{ position: "absolute", left: 25, top: 30, zIndex: 2, maxWidth: 300 }}>
-            <small style={{ fontSize: 10, letterSpacing: 1, opacity: 0.85 }}>{PREMIUM.eyebrow}</small>
+            <small style={{ fontSize: 10, letterSpacing: 1, opacity: 0.85 }}>{PREMIUM_THEME.eyebrow}</small>
             <h1 style={{ fontSize: 22, lineHeight: 1.1, margin: "7px 0" }}>{store.name}</h1>
-            <p style={{ fontSize: 10, maxWidth: 260 }}>{store.business.description || PREMIUM.sub}</p>
+            <p style={{ fontSize: 10, maxWidth: 260 }}>{store.business.description || PREMIUM_THEME.sub}</p>
             {catalogItems.length > 0 && (
               <div style={{ marginTop: 10 }}>
                 <a href="#flash" style={{ display: "inline-block", background: "#fff", color: "#5d4033", borderRadius: 18, padding: "8px 13px", fontWeight: 800, textDecoration: "none", fontSize: 11 }}>
-                  {PREMIUM.cta}
+                  {PREMIUM_THEME.cta}
                 </a>
               </div>
             )}

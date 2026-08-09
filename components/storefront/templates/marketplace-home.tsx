@@ -1,6 +1,6 @@
 import type React from "react";
 import { CartLink } from "@/components/storefront/cart-link";
-import { MARKETPLACE } from "@/lib/template-themes";
+import { MARKETPLACE, MARKETPLACE_THEME } from "@/lib/template-themes";
 import { subscribeToNewsletter } from "@/lib/actions/newsletter";
 import { CategoryNav } from "@/components/storefront/category-nav";
 import { Reveal } from "@/components/storefront/reveal";
@@ -196,7 +196,7 @@ export function MarketplaceStorefront({
           >
             <div style={{ position: "absolute", left: "8%", top: "28%", maxWidth: 320 }}>
               <h1 style={{ fontSize: 27, lineHeight: 1.1, margin: "0 0 8px" }}>{store.name}</h1>
-              <p style={{ fontSize: 10, maxWidth: 260 }}>{store.business.description || MARKETPLACE.sub}</p>
+              <p style={{ fontSize: 10, maxWidth: 260 }}>{store.business.description || MARKETPLACE_THEME.sub}</p>
               {catalogItems.length > 0 && (
                 <a href="#catalog" style={{ display: "inline-block", background: "#111", color: "#fff", border: 0, padding: "8px 20px", fontSize: 9, marginTop: 8, textDecoration: "none" }}>
                   Shop Now

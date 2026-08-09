@@ -1,6 +1,6 @@
 import type React from "react";
 import { CartLink } from "@/components/storefront/cart-link";
-import { RRW } from "@/lib/template-themes";
+import { RRW, RRW_THEME } from "@/lib/template-themes";
 import { subscribeToNewsletter } from "@/lib/actions/newsletter";
 import { CategoryNav } from "@/components/storefront/category-nav";
 import { Reveal } from "@/components/storefront/reveal";
@@ -89,11 +89,11 @@ export function RrwStorefront({
         <div style={{ position: "absolute", left: "6%", bottom: 65, color: "#fff", zIndex: 4, width: "48%" }}>
           <h1 style={{ fontSize: 39, lineHeight: 0.94, letterSpacing: "-2px", margin: 0 }}>{store.name}</h1>
           <p style={{ marginTop: 14, maxWidth: 380, fontSize: 12, lineHeight: 1.6 }}>
-            {store.business.description || RRW.sub}
+            {store.business.description || RRW_THEME.sub}
           </p>
           {catalogItems.length > 0 && (
             <a href="#fleet" style={{ display: "inline-block", marginTop: 16, background: RRW.accent, color: "#fff", border: 0, borderRadius: 18, padding: "10px 18px", fontWeight: 700, fontSize: 10, textDecoration: "none" }}>
-              {RRW.cta}
+              {RRW_THEME.cta}
             </a>
           )}
         </div>

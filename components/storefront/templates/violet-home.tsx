@@ -1,6 +1,6 @@
 import type React from "react";
 import { CartLink } from "@/components/storefront/cart-link";
-import { VIOLET } from "@/lib/template-themes";
+import { VIOLET, VIOLET_THEME } from "@/lib/template-themes";
 import { subscribeToNewsletter } from "@/lib/actions/newsletter";
 import { CategoryNav } from "@/components/storefront/category-nav";
 import { Reveal } from "@/components/storefront/reveal";
@@ -95,14 +95,14 @@ export function VioletStorefront({
           }}
         >
           <div style={{ position: "absolute", zIndex: 2, left: "7%", top: "50%", transform: "translateY(-50%)", maxWidth: 480 }}>
-            <span style={{ fontSize: 11, fontWeight: 900, letterSpacing: 2, opacity: 0.8 }}>{VIOLET.eyebrow}</span>
+            <span style={{ fontSize: 11, fontWeight: 900, letterSpacing: 2, opacity: 0.8 }}>{VIOLET_THEME.eyebrow}</span>
             <h1 style={{ fontSize: 48, lineHeight: 1, margin: "12px 0" }}>{store.name}</h1>
             <p style={{ fontSize: 15, lineHeight: 1.6, opacity: 0.9 }}>
-              {store.business.description || VIOLET.sub}
+              {store.business.description || VIOLET_THEME.sub}
             </p>
             {catalogItems.length > 0 && (
               <a href="#collection" style={{ display: "inline-block", marginTop: 16, background: "#fff", color: VIOLET.navy, border: 0, borderRadius: 25, padding: "13px 21px", fontWeight: 800, textDecoration: "none" }}>
-                {VIOLET.cta} →
+                {VIOLET_THEME.cta} →
               </a>
             )}
           </div>
