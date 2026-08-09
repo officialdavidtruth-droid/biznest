@@ -6,6 +6,7 @@ import {
   LayoutDashboard, ShoppingCart, Package, Wrench, Users, Boxes, Ticket,
   CreditCard, BarChart3, Star, Megaphone, MessageSquare,
   Settings, BadgeCheck, Wallet, LifeBuoy, Truck, Wand2, MousePointerClick,
+  LayoutTemplate,
 } from "lucide-react";
 import { getCategoryDashboard } from "@/lib/constants/category-dashboard";
 
@@ -63,6 +64,7 @@ function buildNavGroups(business: { sellsProducts: boolean; offersServices: bool
     {
       label: "Store",
       items: [
+        { label: "Templates", href: "/templates", icon: LayoutTemplate },
         { label: "Customize Website", href: "/customize", icon: Wand2 },
         { label: "Website Editor (beta)", href: "/website-editor", icon: MousePointerClick },
         { label: "Messages", href: "/messages", icon: MessageSquare },

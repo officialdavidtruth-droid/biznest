@@ -233,6 +233,12 @@ model Store {
   // heroOverrides. { eyebrow?, heading?, body? }. body falls back to
   // business.description, same as before this override existed.
   storyOverrides Json?
+  // Image for the Story/About block, set independently via the click-to-edit
+  // editor (see components/dashboard/story-block-editor.tsx). Previously the
+  // About section silently reused bannerUrl with no way to change it here --
+  // this column makes that image its own editable field. Falls back to
+  // bannerUrl, then the template's previewUrl, when unset.
+  storyImage    String?
 
   seoTitle      String?
   seoDescription String?

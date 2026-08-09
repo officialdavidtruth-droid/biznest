@@ -7,9 +7,7 @@ import {
   X, Monitor, Tablet, Smartphone, LayoutTemplate, Rows3, ChevronRight,
   ArrowUp, ArrowDown, RotateCw, MousePointerClick,
 } from "lucide-react";
-import { setStoreTemplate } from "@/lib/actions/template";
 import { updateSectionOverrides } from "@/lib/actions/sections";
-import { TemplateGallery, type TemplateOption } from "@/components/dashboard/template-gallery";
 import type { Section } from "@/lib/template-themes";
 
 type Device = "desktop" | "tablet" | "mobile";
@@ -28,35 +26,32 @@ const SECTION_LABELS: Record<Section, string> = {
   contact: "Contact",
 };
 
-type Panel = "templates" | "sections" | null;
+type Panel = "sections" | null;
 
 /**
- * A WordPress-Customizer-style editor: a narrow control panel on the left
- * ("Templates" and "Sections" — the two things that shape a store's public
- * page), a live preview of the actual storefront on the right that updates
- * after every save, and device-width toggles across the top — same idea as
- * WordPress's own theme customizer.
+ * A WordPress-Customizer-style editor for a store's already-chosen template:
+ * a narrow control panel on the left ("Sections & Layout" — the one thing
+ * this page shapes now), a live preview of the actual storefront on the
+ * right that updates after every save, and device-width toggles across the
+ * top. Picking *which* template to use lives on its own page
+ * (/admin/templates, see templates-page-client.tsx) — this component only
+ * shows the current one, read-only, with a link to go change it there.
  */
 export function CustomizerClient({
   slug,
   storeName,
-  templates,
-  currentTemplateId,
-  planRank,
+  currentTemplateName,
   initialOrder,
   initialHidden,
 }: {
   slug: string;
   storeName: string;
-  templates: TemplateOption[];
-  currentTemplateId: string | null;
-  planRank: number;
+  currentTemplateName: string | null;
   initialOrder: Section[];
   initialHidden: Section[];
 }) {
-  const [panel, setPanel] = useState<Panel>("templates");
+  const [panel, setPanel] = useState<Panel>(null);
   const [device, setDevice] = useState<Device>("desktop");
-  const [templateId, setTemplateId] = useState<string | null>(currentTemplateId);
   const [order, setOrder] = useState<Section[]>(initialOrder);
   const [hidden, setHidden] = useState<Set<Section>>(new Set(initialHidden));
   const [isSaving, setIsSaving] = useState(false);
@@ -67,19 +62,6 @@ export function CustomizerClient({
 
   function refreshPreview() {
     setPreviewKey((k) => k + 1);
-  }
-
-  async function handleSelectTemplate(id: string) {
-    setTemplateId(id);
-    setIsSaving(true);
-    const result = await setStoreTemplate(slug, id);
-    setIsSaving(false);
-    if (!result.success) {
-      toast.error(result.error);
-      return;
-    }
-    toast.success("Template applied");
-    refreshPreview();
   }
 
   function move(index: number, dir: -1 | 1) {
@@ -132,15 +114,20 @@ export function CustomizerClient({
 
         {panel === null ? (
           <div className="flex-1 overflow-y-auto p-2">
-            <button
-              onClick={() => setPanel("templates")}
-              className="flex w-full items-center justify-between rounded-md px-3 py-3 text-left text-sm font-medium hover:bg-muted"
-            >
-              <span className="flex items-center gap-2">
-                <LayoutTemplate className="h-4 w-4" /> Templates
-              </span>
-              <ChevronRight className="h-4 w-4 text-muted-foreground" />
-            </button>
+            <div className="mb-1 flex items-center justify-between rounded-md border border-border px-3 py-3">
+              <div className="min-w-0">
+                <p className="flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+                  <LayoutTemplate className="h-3.5 w-3.5" /> Template
+                </p>
+                <p className="mt-1 truncate text-sm font-medium">{currentTemplateName ?? "None selected"}</p>
+              </div>
+              <Link
+                href={`/store/${slug}/admin/templates`}
+                className="shrink-0 rounded-md border border-border px-2.5 py-1.5 text-xs font-medium hover:bg-muted"
+              >
+                Change
+              </Link>
+            </div>
             <button
               onClick={() => setPanel("sections")}
               className="flex w-full items-center justify-between rounded-md px-3 py-3 text-left text-sm font-medium hover:bg-muted"
@@ -168,17 +155,6 @@ export function CustomizerClient({
             >
               <ChevronRight className="h-3.5 w-3.5 rotate-180" /> Back
             </button>
-
-            {panel === "templates" && (
-              <div className="flex-1 overflow-y-auto p-4">
-                <TemplateGallery
-                  templates={templates}
-                  selectedId={templateId}
-                  onSelect={handleSelectTemplate}
-                  planRank={planRank}
-                />
-              </div>
-            )}
 
             {panel === "sections" && (
               <div className="flex-1 overflow-y-auto p-4">

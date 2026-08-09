@@ -1,5 +1,5 @@
 import { prisma } from "@/lib/prisma";
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import { CustomizerClient } from "@/components/dashboard/customizer-client";
 import type { Section } from "@/lib/template-themes";
 
@@ -7,22 +7,16 @@ const TEMPLATE_DEFAULT_SECTIONS: Section[] = ["hero", "catalog", "about", "testi
 const OPT_IN_SECTIONS: Section[] = ["stats", "newsletter"];
 
 // The single entry point for editing what a store's public website looks
-// like — template, section order/visibility, and a live preview — laid
-// out like the WordPress Customizer (left control panel, live site on the
-// right, Publish at the top).
+// like — section order/visibility and a live preview — laid out like the
+// WordPress Customizer (left control panel, live site on the right).
+// Choosing *which* template lives on its own page (/admin/templates); a
+// store with none picked yet is sent there first, since there's nothing
+// to arrange until a template exists.
 export default async function CustomizePage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
   const store = await prisma.store.findUnique({ where: { slug }, include: { subscription: true, template: true } });
   if (!store) notFound();
-
-  const templates = await prisma.storeTemplate.findMany({
-    where: { isActive: true },
-    orderBy: [{ category: "asc" }, { tierRank: "asc" }],
-    select: { id: true, name: true, category: true, tierRank: true, previewUrl: true, config: true },
-  });
-
-  const features = store.subscription?.features as { templateTier?: number } | null;
-  const planRank = features?.templateTier ?? 1;
+  if (!store.templateId) redirect(`/store/${slug}/admin/templates`);
 
   const overrides = store.sectionOverrides as { order?: Section[]; hidden?: Section[] } | null;
   const templateSections = (store.template?.config as { sections?: Section[] } | null)?.sections ?? TEMPLATE_DEFAULT_SECTIONS;
@@ -35,9 +29,7 @@ export default async function CustomizePage({ params }: { params: Promise<{ slug
     <CustomizerClient
       slug={slug}
       storeName={store.name}
-      templates={templates}
-      currentTemplateId={store.templateId}
-      planRank={planRank}
+      currentTemplateName={store.template?.name ?? null}
       initialOrder={initialOrder}
       initialHidden={initialHidden}
     />

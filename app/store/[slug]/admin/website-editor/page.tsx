@@ -13,6 +13,7 @@ export default async function WebsiteEditorPage({ params }: { params: Promise<{ 
   const themeOverrides = store.themeColors as { primary?: string; secondary?: string; accent?: string } | null;
   const theme = resolveStoreTheme(store.template?.category, store.name, themeOverrides, store.fontFamily, store.template?.name);
   const heroImage = store.bannerUrl || store.template?.previewUrl || null;
+  const storyImage = store.storyImage || store.bannerUrl || store.template?.previewUrl || null;
   const heroOverrides = (store.heroOverrides as HeroOverrides | null) ?? {};
   const storyOverrides = (store.storyOverrides as StoryOverrides | null) ?? {};
 
@@ -34,7 +35,7 @@ export default async function WebsiteEditorPage({ params }: { params: Promise<{ 
             slug={slug}
             storeName={store.name}
             description={store.business.description}
-            heroImage={heroImage}
+            storyImage={storyImage}
             initial={storyOverrides}
           />
         </>

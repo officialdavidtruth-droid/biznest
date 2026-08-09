@@ -86,6 +86,7 @@ export default async function StorefrontPage({ params }: { params: Promise<{ slu
   const completedOrders = await prisma.order.count({ where: { storeId: store.id, status: { in: ["DELIVERED", "COMPLETED"] } } });
 
   const heroImage = store.bannerUrl || store.template?.previewUrl || null;
+  const storyImage = store.storyImage || store.bannerUrl || store.template?.previewUrl || null;
   const heroOverrides = store.heroOverrides as { headline?: string; subtitle?: string; ctaLabel?: string } | null;
   const storyOverrides = store.storyOverrides as { eyebrow?: string; heading?: string; body?: string } | null;
 
@@ -393,7 +394,7 @@ export default async function StorefrontPage({ params }: { params: Promise<{ slu
                 </div>
                 {catalogItems.length > 0 && <a href="#catalog" style={{ ...btnPrimary, marginTop: 30 }}>Get Started <ArrowChip /></a>}
               </div>
-              <div style={{ position: "relative", background: heroImage ? `url(${heroImage}) center/cover` : `linear-gradient(160deg,#1c4a32,#0a1f15)`, minHeight: 280 }} />
+              <div style={{ position: "relative", background: storyImage ? `url(${storyImage}) center/cover` : `linear-gradient(160deg,#1c4a32,#0a1f15)`, minHeight: 280 }} />
             </div>
           </div>
         </section>

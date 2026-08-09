@@ -398,6 +398,27 @@ export async function updateHeroOverrides(slug: string, overrides: HeroOverrides
   return { success: true, data: undefined };
 }
 
+/**
+ * Click-to-edit save for the Story/About block's own image. Separate column
+ * (storyImage) from bannerUrl -- previously the About section just displayed
+ * bannerUrl with no click handler at all, which is why it looked
+ * uneditable. Falls back to bannerUrl/template preview when unset, same
+ * fallback chain as before, but a vendor can now override it independently.
+ */
+export async function updateStoryImage(slug: string, imageUrl: string): Promise<ActionResult> {
+  const access = await assertStoreAccess(slug);
+  if (!access.success) return { success: false, error: access.error };
+
+  await prisma.store.update({
+    where: { id: access.store.id },
+    data: { storyImage: imageUrl.trim() || null },
+  });
+
+  revalidatePath(`/store/${slug}/admin/website-editor`);
+  revalidatePath(`/store/${slug}`);
+  return { success: true, data: undefined };
+}
+
 export type StoryOverrides = { eyebrow?: string; heading?: string; body?: string };
 
 /**
