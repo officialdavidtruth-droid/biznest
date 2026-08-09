@@ -119,7 +119,7 @@ export function PremiumStorefront({
         <div style={{ height: 184, borderRadius: 9, padding: 15, background: `linear-gradient(145deg,${PREMIUM.side1},${PREMIUM.side2})`, color: "#fff" }}>
           <small style={{ fontSize: 10, opacity: 0.85 }}>FEATURED</small>
           {avgRating != null ? (
-            <h3 style={{ fontSize: 13, marginTop: 45 }}>{avgRating.toFixed(1)} / 5 — {store.reviews?.length ?? goodReviews.length}+ reviews</h3>
+            <h3 style={{ fontSize: 13, marginTop: 45 }}>{avgRating.toFixed(1)} / 5 — {goodReviews.length}+ reviews</h3>
           ) : (
             <h3 style={{ fontSize: 13, marginTop: 45 }}>{store.name}</h3>
           )}
