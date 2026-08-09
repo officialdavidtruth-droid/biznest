@@ -2,11 +2,12 @@ import { prisma } from "@/lib/prisma";
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import type { Metadata } from "next";
-import { resolveStoreTheme, type TemplateTheme } from "@/lib/template-themes";
+import { resolveStoreTheme, isVioletTemplate, type TemplateTheme } from "@/lib/template-themes";
 import { CartLink } from "@/components/storefront/cart-link";
 import { CategoryNav } from "@/components/storefront/category-nav";
 import { getStoreCategoryTree } from "@/lib/storefront-categories";
 import { CatalogGrid } from "@/components/storefront/catalog-grid";
+import { VioletHeader, VioletFooter, wrap as violetWrap } from "@/components/storefront/templates/violet-chrome";
 
 export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }): Promise<Metadata> {
   const { slug } = await params;
@@ -43,6 +44,40 @@ export default async function CatalogPage({ params }: { params: Promise<{ slug: 
   const theme: TemplateTheme = resolveStoreTheme(store.template?.category, store.name, themeOverrides, store.fontFamily, store.template?.name);
   const { accent, ink, bg, radius } = theme;
 
+  const crumbs = (
+    <>
+      <Link href={`/store/${slug}`} style={{ color: ink, textDecoration: "none" }}>Home</Link>
+      {" / "}
+      <span>All</span>
+    </>
+  );
+
+  const body = (
+    <>
+      <h1 style={{ fontSize: "clamp(24px,3.4vw,34px)", fontWeight: 800, marginBottom: 8 }}>Everything at {store.name}</h1>
+      <p style={{ fontSize: 13.5, opacity: 0.65, marginBottom: 32 }}>{items.length} {items.length === 1 ? "item" : "items"}</p>
+
+      {items.length === 0 ? (
+        <div style={{ border: `1px dashed ${ink}22`, borderRadius: 16, padding: 60, textAlign: "center", opacity: 0.7 }}>
+          <p style={{ fontSize: 14 }}>Nothing published here yet — check back soon.</p>
+        </div>
+      ) : (
+        <CatalogGrid items={items} slug={slug} accent={accent} ink={ink} radius={radius} />
+      )}
+    </>
+  );
+
+  if (isVioletTemplate(store.template?.name)) {
+    const social = (store.socialLinks as Record<string, string> | null) ?? {};
+    return (
+      <div style={{ background: theme.bg, color: ink, fontFamily: theme.font, minHeight: "100vh" }}>
+        <VioletHeader store={store} slug={slug} navCategories={categories} crumbs={crumbs} />
+        <div style={{ ...violetWrap, padding: "22px 0 80px" }}>{body}</div>
+        <VioletFooter store={store} slug={slug} social={social} />
+      </div>
+    );
+  }
+
   return (
     <div style={{ fontFamily: theme.font, color: ink, background: bg, minHeight: "100vh" }}>
       <nav style={{ position: "sticky", top: 0, zIndex: 50, background: `${bg}f2`, backdropFilter: "blur(10px)", borderBottom: `1px solid ${ink}14` }}>
@@ -55,22 +90,8 @@ export default async function CatalogPage({ params }: { params: Promise<{ slug: 
       <CategoryNav slug={slug} categories={categories} accent={accent} ink={ink} bg={bg} border={`${ink}14`} />
 
       <div style={{ maxWidth: 1180, margin: "0 auto", padding: "36px 28px 80px" }}>
-        <div style={{ fontSize: 12.5, marginBottom: 22, opacity: 0.65 }}>
-          <Link href={`/store/${slug}`} style={{ color: ink, textDecoration: "none" }}>Home</Link>
-          {" / "}
-          <span>All</span>
-        </div>
-
-        <h1 style={{ fontSize: "clamp(24px,3.4vw,34px)", fontWeight: 800, marginBottom: 8 }}>Everything at {store.name}</h1>
-        <p style={{ fontSize: 13.5, opacity: 0.65, marginBottom: 32 }}>{items.length} {items.length === 1 ? "item" : "items"}</p>
-
-        {items.length === 0 ? (
-          <div style={{ border: `1px dashed ${ink}22`, borderRadius: 16, padding: 60, textAlign: "center", opacity: 0.7 }}>
-            <p style={{ fontSize: 14 }}>Nothing published here yet — check back soon.</p>
-          </div>
-        ) : (
-          <CatalogGrid items={items} slug={slug} accent={accent} ink={ink} radius={radius} />
-        )}
+        <div style={{ fontSize: 12.5, marginBottom: 22, opacity: 0.65 }}>{crumbs}</div>
+        {body}
       </div>
     </div>
   );

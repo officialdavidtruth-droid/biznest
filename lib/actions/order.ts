@@ -155,7 +155,13 @@ export async function getOrderForBuyer(orderId: string) {
     where: { id: orderId, buyerId: session.user.id },
     include: {
       items: { include: { product: true, service: true } },
-      store: { select: { name: true, slug: true } },
+      store: {
+        select: {
+          name: true, slug: true, logoUrl: true, contactEmail: true, contactPhone: true, socialLinks: true,
+          template: { select: { name: true } },
+          business: { select: { description: true } },
+        },
+      },
     },
   });
 }
