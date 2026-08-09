@@ -2,7 +2,7 @@ import { prisma } from "@/lib/prisma";
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import type { Metadata } from "next";
-import { resolveStoreTheme, FRESH, isHeenzyTemplate, isNovaTemplate, HEENZY, NOVA, type TemplateTheme } from "@/lib/template-themes";
+import { resolveStoreTheme, type TemplateTheme } from "@/lib/template-themes";
 import { CartLink } from "@/components/storefront/cart-link";
 import { CategoryNav } from "@/components/storefront/category-nav";
 import { getStoreCategoryTree } from "@/lib/storefront-categories";
@@ -35,13 +35,13 @@ export default async function CatalogPage({ params }: { params: Promise<{ slug: 
   const categories = await getStoreCategoryTree(store.id);
 
   const themeOverrides = store.themeColors as { primary?: string; secondary?: string; accent?: string } | null;
+  // Use this template's own real palette/radius (every template already
+  // defines a full theme in lib/template-themes.ts) instead of falling back
+  // to the Fresh & Co. look for anything that isn't Heenzy or Nova — that
+  // fallback was why every catalog/category page looked the same regardless
+  // of which template the store actually uses.
   const theme: TemplateTheme = resolveStoreTheme(store.template?.category, store.name, themeOverrides, store.fontFamily, store.template?.name);
-  const heenzy = isHeenzyTemplate(store.template?.name);
-  const nova = isNovaTemplate(store.template?.name);
-  const accent = heenzy ? HEENZY.black : nova ? NOVA.gold : FRESH.leaf;
-  const ink = heenzy ? HEENZY.black : nova ? NOVA.cream : FRESH.ink;
-  const bg = heenzy ? HEENZY.white : nova ? NOVA.black : FRESH.ivory;
-  const radius = heenzy ? "10px" : nova ? "0px" : "0.9rem";
+  const { accent, ink, bg, radius } = theme;
 
   return (
     <div style={{ fontFamily: theme.font, color: ink, background: bg, minHeight: "100vh" }}>

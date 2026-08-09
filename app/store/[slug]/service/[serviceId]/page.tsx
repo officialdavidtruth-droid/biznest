@@ -2,7 +2,7 @@ import { prisma } from "@/lib/prisma";
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import type { Metadata } from "next";
-import { resolveStoreTheme, FRESH, HEENZY, isHeenzyTemplate, type TemplateTheme } from "@/lib/template-themes";
+import { resolveStoreTheme, type TemplateTheme } from "@/lib/template-themes";
 import { BookingWidget } from "@/components/storefront/booking-widget";
 import { CartLink } from "@/components/storefront/cart-link";
 
@@ -29,12 +29,9 @@ export default async function ServicePage({ params }: { params: Promise<{ slug: 
   if (!service) notFound();
 
   const themeOverrides = store.themeColors as { primary?: string; secondary?: string; accent?: string } | null;
+  // This template's own real palette/radius, not a Heenzy-only fallback.
   const theme: TemplateTheme = resolveStoreTheme(store.template?.category, store.name, themeOverrides, store.fontFamily, store.template?.name);
-  const heenzy = isHeenzyTemplate(store.template?.name);
-  const accent = heenzy ? HEENZY.black : FRESH.leaf;
-  const ink = heenzy ? HEENZY.black : FRESH.ink;
-  const bg = heenzy ? HEENZY.white : FRESH.ivory;
-  const radius = heenzy ? "10px" : "0.9rem";
+  const { accent, ink, bg, radius } = theme;
 
   return (
     <div style={{ fontFamily: theme.font, color: ink, background: bg, minHeight: "100vh" }}>

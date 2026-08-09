@@ -2,8 +2,7 @@ import { prisma } from "@/lib/prisma";
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import type { Metadata } from "next";
-import { resolveStoreTheme, FRESH, isHeenzyTemplate, type TemplateTheme } from "@/lib/template-themes";
-import { HEENZY } from "@/lib/template-themes";
+import { resolveStoreTheme, type TemplateTheme } from "@/lib/template-themes";
 import { ProductDetail } from "@/components/storefront/product-detail";
 import { CartLink } from "@/components/storefront/cart-link";
 
@@ -30,12 +29,11 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
   if (!product) notFound();
 
   const themeOverrides = store.themeColors as { primary?: string; secondary?: string; accent?: string } | null;
+  // This template's own real palette/radius (see catalog/page.tsx for why
+  // the old Heenzy-only fallback made every other template's product page
+  // look like Fresh & Co. regardless of the store's actual template).
   const theme: TemplateTheme = resolveStoreTheme(store.template?.category, store.name, themeOverrides, store.fontFamily, store.template?.name);
-  const heenzy = isHeenzyTemplate(store.template?.name);
-  const accent = heenzy ? HEENZY.black : FRESH.leaf;
-  const ink = heenzy ? HEENZY.black : FRESH.ink;
-  const bg = heenzy ? HEENZY.white : FRESH.ivory;
-  const radius = heenzy ? "10px" : "0.9rem";
+  const { accent, ink, bg, radius } = theme;
 
   const inStock = product.type !== "PHYSICAL" || !product.inventory || product.inventory.quantity > 0;
 

@@ -2,7 +2,7 @@ import { prisma } from "@/lib/prisma";
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import type { Metadata } from "next";
-import { resolveStoreTheme, FRESH, isHeenzyTemplate, isNovaTemplate, HEENZY, NOVA, type TemplateTheme } from "@/lib/template-themes";
+import { resolveStoreTheme, type TemplateTheme } from "@/lib/template-themes";
 import { CartLink } from "@/components/storefront/cart-link";
 import { CategoryNav } from "@/components/storefront/category-nav";
 import { getStoreCategoryTree } from "@/lib/storefront-categories";
@@ -48,13 +48,9 @@ export default async function SearchPage({
   ];
 
   const themeOverrides = store.themeColors as { primary?: string; secondary?: string; accent?: string } | null;
+  // This template's own real palette/radius, not a Heenzy/Nova-only fallback.
   const theme: TemplateTheme = resolveStoreTheme(store.template?.category, store.name, themeOverrides, store.fontFamily, store.template?.name);
-  const heenzy = isHeenzyTemplate(store.template?.name);
-  const nova = isNovaTemplate(store.template?.name);
-  const accent = heenzy ? HEENZY.black : nova ? NOVA.gold : FRESH.leaf;
-  const ink = heenzy ? HEENZY.black : nova ? NOVA.cream : FRESH.ink;
-  const bg = heenzy ? HEENZY.white : nova ? NOVA.black : FRESH.ivory;
-  const radius = heenzy ? "10px" : nova ? "0px" : "0.9rem";
+  const { accent, ink, bg, radius } = theme;
 
   return (
     <div style={{ fontFamily: theme.font, color: ink, background: bg, minHeight: "100vh" }}>
