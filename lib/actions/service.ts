@@ -2,6 +2,7 @@
 
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { Prisma } from "@prisma/client";
 import { revalidatePath } from "next/cache";
 import slugify from "slugify";
 import type { ActionResult } from "@/types/actions";
@@ -114,7 +115,11 @@ export async function updateService(slug: string, serviceId: string, formData: F
   if (!(price >= 0)) return { success: false, error: "Enter a valid price." };
   if (isBookable && !durationMins) return { success: false, error: "Bookable services need a duration." };
 
-  const availability = isBookable ? parseAvailability(formData) : existing.availability;
+  const availability = isBookable
+    ? parseAvailability(formData)
+    : existing.availability === null
+      ? Prisma.JsonNull
+      : (existing.availability as Prisma.InputJsonValue);
 
   await prisma.service.update({
     where: { id: serviceId },
