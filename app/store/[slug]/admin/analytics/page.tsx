@@ -1,5 +1,5 @@
 import { prisma } from "@/lib/prisma";
-import { SELLER_VISIBLE_ORDER_STATUSES } from "@/lib/actions/order";
+import { SELLER_VISIBLE_ORDER_STATUSES } from "@/lib/constants/order";
 
 const PAID_STATUSES = ["PAID", "IN_PROGRESS", "DELIVERED", "COMPLETED"] as const;
 

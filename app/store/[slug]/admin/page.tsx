@@ -3,7 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { notFound } from "next/navigation";
 import { seedSampleListings, backfillListingImages } from "@/lib/actions/store";
 import { getCategoryDashboard } from "@/lib/constants/category-dashboard";
-import { SELLER_VISIBLE_ORDER_STATUSES } from "@/lib/actions/order";
+import { SELLER_VISIBLE_ORDER_STATUSES } from "@/lib/constants/order";
 
 export default async function StoreDashboardHome({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
