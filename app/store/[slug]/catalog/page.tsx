@@ -2,7 +2,7 @@ import { prisma } from "@/lib/prisma";
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import type { Metadata } from "next";
-import { resolveStoreTheme, isVioletTemplate, isMarketplaceTemplate, isArcovaTemplate, isNovaTemplate, isPremiumTemplate, isHomeVistaTemplate, isRrwTemplate, type TemplateTheme } from "@/lib/template-themes";
+import { resolveStoreTheme, isVioletTemplate, isMarketplaceTemplate, isArcovaTemplate, isNovaTemplate, isPremiumTemplate, isHomeVistaTemplate, isRrwTemplate, isHeenzyTemplate, isRivoraTemplate, isFabtexTemplate, isJuiceLifeTemplate, type TemplateTheme } from "@/lib/template-themes";
 import { CartLink } from "@/components/storefront/cart-link";
 import { CategoryNav } from "@/components/storefront/category-nav";
 import { getStoreCategoryTree } from "@/lib/storefront-categories";
@@ -14,6 +14,10 @@ import { NovaHeader, NovaFooter, wrap as novaWrap } from "@/components/storefron
 import { PremiumHeader, PremiumFooter, wrap as premiumWrap } from "@/components/storefront/templates/premium-chrome";
 import { HomeVistaHeader, HomeVistaFooter, wrap as homevistaWrap } from "@/components/storefront/templates/homevista-chrome";
 import { RrwHeader, RrwFooter, wrap as rrwWrap } from "@/components/storefront/templates/rrw-chrome";
+import { HeenzyHeader, HeenzyFooter, wrap as heenzyWrap } from "@/components/storefront/templates/heenzy-chrome";
+import { RivoraHeader, RivoraFooter, wrap as rivoraWrap } from "@/components/storefront/templates/rivora-chrome";
+import { FabtexHeader, FabtexFooter, wrap as fabtexWrap } from "@/components/storefront/templates/fabtex-chrome";
+import { JuiceLifeHeader, JuiceLifeFooter, wrap as juicelifeWrap } from "@/components/storefront/templates/juicelife-chrome";
 
 export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }): Promise<Metadata> {
   const { slug } = await params;
@@ -146,6 +150,49 @@ export default async function CatalogPage({ params }: { params: Promise<{ slug: 
         <RrwHeader store={store} slug={slug} navCategories={categories} crumbs={crumbs} />
         <div style={{ ...rrwWrap, padding: "22px 6% 40px" }}>{body}</div>
         <RrwFooter store={store} slug={slug} social={social} />
+      </div>
+    );
+  }
+
+  if (isHeenzyTemplate(store.template?.name)) {
+    return (
+      <>
+        <HeenzyHeader store={store} slug={slug} navCategories={categories} crumbs={crumbs} />
+        <div style={{ ...heenzyWrap, padding: "26px 24px 60px" }}>{body}</div>
+        <HeenzyFooter store={store} slug={slug} navCategories={categories} />
+      </>
+    );
+  }
+
+  if (isRivoraTemplate(store.template?.name)) {
+    const social = (store.socialLinks as Record<string, string> | null) ?? {};
+    return (
+      <div style={{ background: "#f7f9f6", color: ink, fontFamily: theme.font, minHeight: "100vh" }}>
+        <RivoraHeader store={store} slug={slug} navCategories={categories} crumbs={crumbs} />
+        <div style={{ ...rivoraWrap, padding: "26px 0 60px" }}>{body}</div>
+        <RivoraFooter store={store} slug={slug} social={social} />
+      </div>
+    );
+  }
+
+  if (isFabtexTemplate(store.template?.name)) {
+    const social = (store.socialLinks as Record<string, string> | null) ?? {};
+    return (
+      <div style={{ background: theme.bg, color: ink, fontFamily: theme.font, minHeight: "100vh" }}>
+        <FabtexHeader store={store} slug={slug} navCategories={categories} crumbs={crumbs} />
+        <div style={{ ...fabtexWrap, padding: "26px 0 60px" }}>{body}</div>
+        <FabtexFooter store={store} slug={slug} social={social} />
+      </div>
+    );
+  }
+
+  if (isJuiceLifeTemplate(store.template?.name)) {
+    const social = (store.socialLinks as Record<string, string> | null) ?? {};
+    return (
+      <div style={{ background: "#ffffff", color: ink, fontFamily: theme.font, minHeight: "100vh" }}>
+        <JuiceLifeHeader store={store} slug={slug} navCategories={categories} crumbs={crumbs} />
+        <div style={{ ...juicelifeWrap, padding: "26px 0 60px" }}>{body}</div>
+        <JuiceLifeFooter store={store} slug={slug} social={social} />
       </div>
     );
   }

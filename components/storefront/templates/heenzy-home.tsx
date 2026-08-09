@@ -242,7 +242,7 @@ export function HeenzyStorefront({
   );
 }
 
-function HeenzyNav({ store, slug, hasCatalog }: { store: { name: string; logoUrl: string | null }; slug: string; hasCatalog: boolean }) {
+export function HeenzyNav({ store, slug, hasCatalog }: { store: { name: string; logoUrl: string | null }; slug: string; hasCatalog: boolean }) {
   return (
     <nav className="hz-root" style={{ position: "sticky", top: 0, zIndex: 50, background: "rgba(255,255,255,.92)", backdropFilter: "blur(10px)", borderBottom: "1px solid #e7e7e7" }}>
       <div className="hz-wrap hz-nav">

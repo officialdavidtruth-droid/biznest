@@ -2,12 +2,16 @@ import { getOrderForBuyer } from "@/lib/actions/order";
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import { CheckCircle2, Circle, Package, Truck, Home, XCircle, RotateCcw, AlertTriangle, Clock } from "lucide-react";
-import { isVioletTemplate, isMarketplaceTemplate, isArcovaTemplate, isNovaTemplate, isPremiumTemplate, VIOLET, MARKETPLACE, ARCOVA, NOVA, PREMIUM } from "@/lib/template-themes";
+import { isVioletTemplate, isMarketplaceTemplate, isArcovaTemplate, isNovaTemplate, isPremiumTemplate, isHeenzyTemplate, isHomeVistaTemplate, isRrwTemplate, isRivoraTemplate, VIOLET, MARKETPLACE, ARCOVA, NOVA, PREMIUM, HEENZY, HOMEVISTA, RRW, RIVORA } from "@/lib/template-themes";
 import { VioletHeader, VioletFooter } from "@/components/storefront/templates/violet-chrome";
 import { MarketplaceHeader, MarketplaceFooter } from "@/components/storefront/templates/marketplace-chrome";
 import { ArcovaHeader, ArcovaFooter } from "@/components/storefront/templates/arcova-chrome";
 import { NovaHeader, NovaFooter } from "@/components/storefront/templates/nova-chrome";
 import { PremiumHeader, PremiumFooter } from "@/components/storefront/templates/premium-chrome";
+import { HeenzyHeader, HeenzyFooter } from "@/components/storefront/templates/heenzy-chrome";
+import { HomeVistaHeader, HomeVistaFooter } from "@/components/storefront/templates/homevista-chrome";
+import { RrwHeader, RrwFooter } from "@/components/storefront/templates/rrw-chrome";
+import { RivoraHeader, RivoraFooter } from "@/components/storefront/templates/rivora-chrome";
 import { getStoreCategoryTree } from "@/lib/storefront-categories";
 
 const ACCENT = "#0041C8";
@@ -80,13 +84,17 @@ export default async function OrderConfirmationPage({
   const arcova = isArcovaTemplate(order.store.template?.name);
   const nova = isNovaTemplate(order.store.template?.name);
   const premium = isPremiumTemplate(order.store.template?.name);
-  const accent = violet ? VIOLET.accent : marketplace ? MARKETPLACE.blue : arcova ? ARCOVA.accent : nova ? NOVA.gold : premium ? PREMIUM.accent : ACCENT;
-  const ink = violet ? VIOLET.ink : marketplace ? MARKETPLACE.ink : arcova ? ARCOVA.ink : nova ? NOVA.cream : premium ? PREMIUM.ink : INK;
-  const cardRadius = violet ? 20 : marketplace ? 4 : arcova ? 0 : nova ? 2 : premium ? 9 : 16;
-  const cardShadow = violet ? "0 5px 20px #20144b0a" : marketplace ? "none" : arcova ? "none" : nova ? "none" : premium ? "none" : "0 1px 3px rgba(18,18,18,0.06)";
-  const cardBorder = marketplace ? `1px solid ${MARKETPLACE.border}` : arcova ? `1px solid ${ARCOVA.border}` : nova ? `1px solid ${NOVA.line}` : premium ? "1px solid #e2e7e9" : "none";
-  const pillRadius = violet ? 100 : marketplace ? 3 : arcova ? 0 : nova ? 2 : premium ? 20 : 8;
-  const cardBg = nova ? NOVA.charcoal : "#fff";
+  const heenzy = isHeenzyTemplate(order.store.template?.name);
+  const homevista = isHomeVistaTemplate(order.store.template?.name);
+  const rrw = isRrwTemplate(order.store.template?.name);
+  const rivora = isRivoraTemplate(order.store.template?.name);
+  const accent = violet ? VIOLET.accent : marketplace ? MARKETPLACE.blue : arcova ? ARCOVA.accent : nova ? NOVA.gold : premium ? PREMIUM.accent : heenzy ? HEENZY.black : homevista ? HOMEVISTA.accent : rrw ? RRW.accent : rivora ? RIVORA.green : ACCENT;
+  const ink = violet ? VIOLET.ink : marketplace ? MARKETPLACE.ink : arcova ? ARCOVA.ink : nova ? NOVA.cream : premium ? PREMIUM.ink : heenzy ? HEENZY.black : homevista ? HOMEVISTA.ink : rrw ? RRW.ink : rivora ? RIVORA.ink : INK;
+  const cardRadius = violet ? 20 : marketplace ? 4 : arcova ? 0 : nova ? 2 : premium ? 9 : heenzy ? 14 : homevista ? 8 : rrw ? 3 : rivora ? 11 : 16;
+  const cardShadow = violet ? "0 5px 20px #20144b0a" : marketplace ? "none" : arcova ? "none" : nova ? "none" : premium ? "none" : heenzy ? "none" : homevista ? "none" : rrw ? "none" : rivora ? "none" : "0 1px 3px rgba(18,18,18,0.06)";
+  const cardBorder = marketplace ? `1px solid ${MARKETPLACE.border}` : arcova ? `1px solid ${ARCOVA.border}` : nova ? `1px solid ${NOVA.line}` : premium ? "1px solid #e2e7e9" : heenzy ? "1px solid #e7e7e7" : homevista ? "1px solid #e2e7e5" : rrw ? "1px solid #e7e7e7" : "none";
+  const pillRadius = violet ? 100 : marketplace ? 3 : arcova ? 0 : nova ? 2 : premium ? 20 : heenzy ? 100 : homevista ? 20 : rrw ? 3 : rivora ? 7 : 8;
+  const cardBg = nova ? NOVA.charcoal : heenzy ? HEENZY.offwhite : "#fff";
 
   const StatusIcon = isPaid ? CheckCircle2 : statusInfo?.icon ?? Clock;
   const iconColor = isPaid ? "#16A34A" : statusInfo?.iconColor || accent;
@@ -223,6 +231,53 @@ export default async function OrderConfirmationPage({
         <PremiumHeader store={order.store} slug={slug} navCategories={navCategories} />
         {body}
         <PremiumFooter store={order.store} slug={slug} social={social} />
+      </div>
+    );
+  }
+
+  if (heenzy) {
+    const navCategories = await getStoreCategoryTree(order.storeId);
+    return (
+      <>
+        <HeenzyHeader store={order.store} slug={slug} navCategories={navCategories} />
+        {body}
+        <HeenzyFooter store={order.store} slug={slug} navCategories={navCategories} />
+      </>
+    );
+  }
+
+  if (homevista) {
+    const navCategories = await getStoreCategoryTree(order.storeId);
+    const social = (order.store.socialLinks as Record<string, string> | null) ?? {};
+    return (
+      <div style={{ background: "#fff", color: HOMEVISTA.ink, fontFamily: HOMEVISTA.font, fontSize: 13, minHeight: "100vh" }}>
+        <HomeVistaHeader store={order.store} slug={slug} navCategories={navCategories} />
+        {body}
+        <HomeVistaFooter store={order.store} slug={slug} social={social} />
+      </div>
+    );
+  }
+
+  if (rrw) {
+    const navCategories = await getStoreCategoryTree(order.storeId);
+    const social = (order.store.socialLinks as Record<string, string> | null) ?? {};
+    return (
+      <div style={{ background: "#fff", color: RRW.ink, fontFamily: RRW.font, minHeight: "100vh" }}>
+        <RrwHeader store={order.store} slug={slug} navCategories={navCategories} />
+        {body}
+        <RrwFooter store={order.store} slug={slug} social={social} />
+      </div>
+    );
+  }
+
+  if (rivora) {
+    const navCategories = await getStoreCategoryTree(order.storeId);
+    const social = (order.store.socialLinks as Record<string, string> | null) ?? {};
+    return (
+      <div style={{ background: "#f7f9f6", color: RIVORA.ink, fontFamily: RIVORA.font, minHeight: "100vh" }}>
+        <RivoraHeader store={order.store} slug={slug} navCategories={navCategories} />
+        {body}
+        <RivoraFooter store={order.store} slug={slug} social={social} />
       </div>
     );
   }
