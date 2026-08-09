@@ -1,8 +1,14 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { Check, Lock, Search } from "lucide-react";
+import { Check, Lock, Search, Eye } from "lucide-react";
 import type { TemplateTheme } from "@/lib/template-themes";
+import { DEMO_STORES } from "@/lib/demo-stores";
+
+// Real, permanent live-demo stores exist for a subset of templates (see
+// lib/demo-stores.ts). Map template name -> demo slug so the gallery can
+// link straight to the actual running storefront instead of a mockup.
+const DEMO_SLUG_BY_TEMPLATE = new Map(DEMO_STORES.map((d) => [d.templateName, d.slug]));
 
 export type TemplateOption = {
   id: string;
@@ -112,36 +118,50 @@ export function TemplateGallery({
           if (!theme) return null;
           const isSelected = selectedId === t.id;
           const isLocked = t.tierRank > planRank;
+          const demoSlug = DEMO_SLUG_BY_TEMPLATE.get(t.name);
 
           return (
-            <button
+            <div
               key={t.id}
-              type="button"
-              onClick={() => !isLocked && onSelect(t.id)}
-              disabled={isLocked}
               className={`group overflow-hidden rounded-xl border text-left transition-all ${
                 isLocked
-                  ? "cursor-not-allowed border-border opacity-60"
+                  ? "border-border opacity-60"
                   : isSelected
                   ? "border-primary ring-2 ring-primary/50"
                   : "border-border hover:-translate-y-0.5 hover:border-primary/50 hover:shadow-lg"
               }`}
             >
-              {/* Mini mockup preview — structurally reflects this template's actual
-                  hero layout (centered/split/fullbleed), not just its colors, plus a
-                  real category photo (previewUrl, seeded via lib/demo-images.ts) so
-                  browsing the gallery shows what a populated store actually looks
-                  like, not a placeholder circle. */}
-              <div
-                className="relative h-36 overflow-hidden"
-                style={{
-                  background: t.previewUrl
-                    ? `linear-gradient(0deg, ${theme.bg}f2, ${theme.bg}99), url(${t.previewUrl}) center/cover`
-                    : theme.bg,
-                  color: theme.ink,
-                  fontFamily: theme.font,
-                }}
+              {/* Real cover image: an actual screenshot of this template's live
+                  storefront (t.previewUrl), not a re-drawn mockup — so every card
+                  visibly looks like the store it represents instead of the same
+                  generic hero shape with different colors. */}
+              <button
+                type="button"
+                onClick={() => !isLocked && onSelect(t.id)}
+                disabled={isLocked}
+                className={`relative block h-40 w-full overflow-hidden bg-muted ${isLocked ? "cursor-not-allowed" : ""}`}
               >
+                {t.previewUrl ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img
+                    src={t.previewUrl}
+                    alt={`${t.name} template preview`}
+                    className="h-full w-full object-cover object-top transition group-hover:scale-[1.03]"
+                  />
+                ) : (
+                  <div
+                    className="flex h-full flex-col items-center justify-center gap-1 p-4 text-center"
+                    style={{ background: theme.bg, color: theme.ink, fontFamily: theme.font }}
+                  >
+                    <span className="w-fit rounded px-1.5 py-0.5 text-[8px] font-bold uppercase tracking-wide" style={{ color: theme.accent, border: `1px solid ${theme.accent}` }}>
+                      {theme.eyebrow}
+                    </span>
+                    <p className="text-xs font-bold leading-tight">No preview image yet</p>
+                  </div>
+                )}
+
+                <div className="absolute inset-0 bg-gradient-to-t from-black/50 via-transparent to-transparent" />
+
                 <div className="absolute right-3 top-3 z-10 flex items-center gap-1">
                   {isLocked ? (
                     <span className="flex h-5 w-5 items-center justify-center rounded-full bg-black/60">
@@ -154,62 +174,39 @@ export function TemplateGallery({
                   ) : null}
                 </div>
 
-                {theme.heroStyle === "split" ? (
-                  <div className="flex h-full">
-                    <div className="flex flex-1 flex-col justify-center gap-2 p-4">
-                      <span className="w-fit rounded px-1.5 py-0.5 text-[8px] font-bold uppercase tracking-wide" style={{ color: theme.accent, border: `1px solid ${theme.accent}` }}>
-                        {theme.eyebrow}
-                      </span>
-                      <p className="text-xs font-bold leading-tight">{theme.headline}</p>
-                      <span className="mt-1 w-fit px-2 py-1 text-[9px] font-bold" style={{ background: theme.accent, color: theme.bg, borderRadius: theme.radius }}>
-                        {theme.cta}
-                      </span>
-                    </div>
-                    <div className="w-1/3" style={{ background: `linear-gradient(160deg, ${theme.accent}, ${theme.bg})` }} />
-                  </div>
-                ) : theme.heroStyle === "fullbleed" ? (
-                  <div
-                    className="flex h-full flex-col justify-end p-4"
-                    style={{
-                      background: t.previewUrl
-                        ? "transparent"
-                        : `radial-gradient(circle at 30% 20%, ${theme.accent}55, transparent 60%), ${theme.bg}`,
-                    }}
-                  >
-                    <span className="mb-1 w-fit rounded px-1.5 py-0.5 text-[8px] font-bold uppercase tracking-wide" style={{ color: theme.accent, border: `1px solid ${theme.accent}` }}>
-                      {theme.eyebrow}
-                    </span>
-                    <p className="text-sm font-bold leading-tight">{theme.headline}</p>
-                    <span className="mt-2 w-fit px-2.5 py-1 text-[9px] font-bold" style={{ background: theme.accent, color: theme.bg, borderRadius: theme.radius }}>
-                      {theme.cta}
-                    </span>
-                  </div>
-                ) : (
-                  <div className="flex h-full flex-col items-center justify-center gap-2 p-4 text-center">
-                    <span className="w-fit rounded px-1.5 py-0.5 text-[8px] font-bold uppercase tracking-wide" style={{ color: theme.accent, border: `1px solid ${theme.accent}` }}>
-                      {theme.eyebrow}
-                    </span>
-                    <p className="text-sm font-bold leading-tight">{theme.headline}</p>
-                    <span className="w-fit px-2.5 py-1 text-[9px] font-bold" style={{ background: theme.accent, color: theme.bg, borderRadius: theme.radius }}>
-                      {theme.cta}
-                    </span>
-                  </div>
-                )}
-                {!t.previewUrl && (
-                  <div className="pointer-events-none absolute -right-3 -top-3 h-16 w-16 rounded-full opacity-20" style={{ background: theme.accent }} />
-                )}
-              </div>
+                <p className="absolute bottom-2 left-3 right-3 truncate text-left text-xs font-semibold text-white drop-shadow">
+                  {t.name}
+                </p>
+              </button>
 
-              <div className="flex items-center justify-between p-3">
+              <div className="flex items-center justify-between gap-2 p-3">
                 <div className="min-w-0">
                   <p className="truncate text-sm font-medium">{t.category}</p>
                   <p className="truncate text-xs text-muted-foreground">
-                    {isLocked ? `Requires ${TIER_LABEL[t.tierRank] ?? "a higher plan"}` : theme.heroStyle}
+                    {isLocked ? `Requires ${TIER_LABEL[t.tierRank] ?? "a higher plan"}` : isSelected ? "In use" : theme.heroStyle}
                   </p>
                 </div>
-                {isSelected && !isLocked && <span className="shrink-0 text-[10px] font-semibold text-primary">In use</span>}
+
+                {/* Distinct from selecting: opens the real, fully working live
+                    demo store for this template in a new tab so you can click
+                    through it before committing. */}
+                {demoSlug ? (
+                  <a
+                    href={`/store/${demoSlug}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    onClick={(e) => e.stopPropagation()}
+                    className="flex shrink-0 items-center gap-1 rounded-full border border-border px-2.5 py-1 text-[11px] font-medium text-foreground transition hover:border-primary/50 hover:text-primary"
+                  >
+                    <Eye className="h-3 w-3" /> Preview
+                  </a>
+                ) : (
+                  <span className="shrink-0 rounded-full border border-dashed border-border px-2.5 py-1 text-[11px] font-medium text-muted-foreground">
+                    Preview soon
+                  </span>
+                )}
               </div>
-            </button>
+            </div>
           );
         })}
 
