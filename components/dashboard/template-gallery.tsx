@@ -4,6 +4,7 @@ import { useMemo, useState } from "react";
 import { Check, Lock, Search, Eye } from "lucide-react";
 import type { TemplateTheme } from "@/lib/template-themes";
 import { DEMO_STORES } from "@/lib/demo-stores";
+import { LiveTemplatePreview } from "@/components/storefront/live-template-preview";
 
 // Real, permanent live-demo stores exist for a subset of templates (see
 // lib/demo-stores.ts). Map template name -> demo slug so the gallery can
@@ -31,6 +32,7 @@ function themeFromConfig(config: unknown): TemplateTheme | null {
   if (!c || typeof c !== "object" || !c.bg) return null;
   return c as TemplateTheme;
 }
+
 
 export function TemplateGallery({
   templates,
@@ -131,23 +133,20 @@ export function TemplateGallery({
                   : "border-border hover:-translate-y-0.5 hover:border-primary/50 hover:shadow-lg"
               }`}
             >
-              {/* Real cover image: an actual screenshot of this template's live
-                  storefront (t.previewUrl), not a re-drawn mockup — so every card
-                  visibly looks like the store it represents instead of the same
-                  generic hero shape with different colors. */}
+              {/* Real cover: a live, scaled-down render of this template's actual
+                  demo storefront running in an iframe — not a stock photo and
+                  not a redrawn mockup, so what you see here is pixel-for-pixel
+                  what the real template looks like. Falls back to a plain
+                  "no live preview yet" panel for templates without a seeded
+                  demo store rather than showing an unrelated photo. */}
               <button
                 type="button"
                 onClick={() => !isLocked && onSelect(t.id)}
                 disabled={isLocked}
                 className={`relative block h-40 w-full overflow-hidden bg-muted ${isLocked ? "cursor-not-allowed" : ""}`}
               >
-                {t.previewUrl ? (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img
-                    src={t.previewUrl}
-                    alt={`${t.name} template preview`}
-                    className="h-full w-full object-cover object-top transition group-hover:scale-[1.03]"
-                  />
+                {demoSlug ? (
+                  <LiveTemplatePreview slug={demoSlug} title={`${t.name} live preview`} />
                 ) : (
                   <div
                     className="flex h-full flex-col items-center justify-center gap-1 p-4 text-center"
@@ -156,7 +155,7 @@ export function TemplateGallery({
                     <span className="w-fit rounded px-1.5 py-0.5 text-[8px] font-bold uppercase tracking-wide" style={{ color: theme.accent, border: `1px solid ${theme.accent}` }}>
                       {theme.eyebrow}
                     </span>
-                    <p className="text-xs font-bold leading-tight">No preview image yet</p>
+                    <p className="text-xs font-bold leading-tight">Live preview coming soon</p>
                   </div>
                 )}
 

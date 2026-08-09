@@ -4,6 +4,7 @@ import { useState } from "react";
 import { toast } from "sonner";
 import { updateHeroOverrides, updateHeroImage, type HeroOverrides } from "@/lib/actions/store";
 import { FRESH, type TemplateTheme } from "@/lib/template-themes";
+import { FileUploadField } from "@/components/forms/file-upload-field";
 
 type BlockId = "headline" | "subtitle" | "cta" | "image" | null;
 
@@ -125,20 +126,26 @@ export function HeroBlockEditor({
               <p className="text-sm font-medium">Background image</p>
               <button onClick={() => setSelected(null)} className="text-xs text-muted-foreground hover:text-foreground">Close</button>
             </div>
-            <p className="mb-3 text-xs text-muted-foreground">Paste an image URL. Same field as Banner in Settings — updating it here updates it there too.</p>
-            <input
-              value={image}
-              onChange={(e) => setImage(e.target.value)}
-              placeholder="https://…"
-              className="mb-3 w-full rounded-md border px-3 py-1.5 text-sm"
-            />
-            <button
-              onClick={() => saveImage(image)}
-              disabled={isSaving}
-              className="rounded-md bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground disabled:opacity-50"
-            >
-              {isSaving ? "Saving…" : "Save"}
-            </button>
+            <p className="mb-3 text-xs text-muted-foreground">Upload an image from your device. Same field as Banner in Settings — updating it here updates it there too.</p>
+            <FileUploadField label="" value={image} onChange={(url) => { setImage(url); saveImage(url); }} />
+            <details className="mt-3">
+              <summary className="cursor-pointer text-xs text-muted-foreground hover:text-foreground">Or paste an image URL instead</summary>
+              <div className="mt-2 flex gap-2">
+                <input
+                  value={image}
+                  onChange={(e) => setImage(e.target.value)}
+                  placeholder="https://…"
+                  className="w-full rounded-md border px-3 py-1.5 text-sm"
+                />
+                <button
+                  onClick={() => saveImage(image)}
+                  disabled={isSaving}
+                  className="shrink-0 rounded-md bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground disabled:opacity-50"
+                >
+                  {isSaving ? "Saving…" : "Save"}
+                </button>
+              </div>
+            </details>
           </div>
         ) : selected === "headline" ? (
           <BlockPanel

@@ -39,7 +39,7 @@ export function FileUploadField({
 
   return (
     <div>
-      <label className="mb-1 block text-sm font-medium">{label}</label>
+      {label && <label className="mb-1 block text-sm font-medium">{label}</label>}
       {value && !isUploading && (
         // eslint-disable-next-line @next/next/no-img-element
         <img src={value} alt="" className="mb-2 h-20 w-20 rounded-md border object-cover" />
