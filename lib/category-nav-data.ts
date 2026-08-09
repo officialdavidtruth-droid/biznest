@@ -1,5 +1,5 @@
 import { prisma } from "@/lib/prisma";
-import type { CategoryLink } from "@/components/storefront/category-nav";
+import type { CategoryTreeNode } from "@/lib/storefront-categories";
 
 /**
  * Given a Map of categoryId -> item count (from a store's published
@@ -8,7 +8,7 @@ import type { CategoryLink } from "@/components/storefront/category-nav";
  * every storefront template's homepage plus the /catalog and /category
  * pages, so the nav bar behaves the same everywhere.
  */
-export async function buildCategoryNav(categoryIdCounts: Map<string, number>): Promise<CategoryLink[]> {
+export async function buildCategoryNav(categoryIdCounts: Map<string, number>): Promise<CategoryTreeNode[]> {
   if (categoryIdCounts.size === 0) return [];
 
   const rows = await prisma.category.findMany({
@@ -35,13 +35,13 @@ export async function buildCategoryNav(categoryIdCounts: Map<string, number>): P
 
   return topLevel
     .map((c) => {
-      const children = (byParent.get(c.id) ?? []).map((sub) => ({ id: sub.id, name: sub.name }));
+      const children = (byParent.get(c.id) ?? []).map((sub) => ({ id: sub.id, name: sub.name, count: categoryIdCounts.get(sub.id) ?? 0 }));
       const childCount = children.reduce((sum, sub) => sum + (categoryIdCounts.get(sub.id) ?? 0), 0);
       return {
         id: c.id,
         name: c.name,
         count: (categoryIdCounts.get(c.id) ?? 0) + childCount,
-        children: children.length ? children : undefined,
+        children,
       };
     })
     .sort((a, b) => b.count - a.count);
