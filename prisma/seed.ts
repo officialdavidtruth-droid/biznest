@@ -59,7 +59,7 @@ const SERVICE_SUBCATEGORIES: Record<string, string[]> = {
   "Mobile App Development": ["iOS Development", "Android Development", "Cross-Platform Apps"],
   Writing: ["Copywriting", "Ghostwriting", "Technical Writing", "Resume Writing", "Blog Writing"],
   "Legal Services": ["Contract Drafting", "Business Registration", "Intellectual Property", "Litigation Support"],
-  Electrical Services: ["Wiring Installation", "Solar Installation", "Electrical Repairs", "Inverter Installation"],
+  "Electrical Services": ["Wiring Installation", "Solar Installation", "Electrical Repairs", "Inverter Installation"],
   Plumbing: ["Pipe Installation", "Leak Repairs", "Drainage Services", "Bathroom Fitting"],
   Tailoring: ["Bespoke Suits", "Alterations", "Native Wear", "Uniform Tailoring"],
   "Fashion Design": ["Bridal Wear", "Ready-to-Wear", "Costume Design"],
