@@ -2,13 +2,14 @@ import { prisma } from "@/lib/prisma";
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import type { Metadata } from "next";
-import { resolveStoreTheme, isVioletTemplate, isMarketplaceTemplate, isArcovaTemplate, isNovaTemplate, type TemplateTheme } from "@/lib/template-themes";
+import { resolveStoreTheme, isVioletTemplate, isMarketplaceTemplate, isArcovaTemplate, isNovaTemplate, isPremiumTemplate, type TemplateTheme } from "@/lib/template-themes";
 import { ProductDetail } from "@/components/storefront/product-detail";
 import { CartLink } from "@/components/storefront/cart-link";
 import { VioletHeader, VioletFooter, wrap as violetWrap } from "@/components/storefront/templates/violet-chrome";
 import { MarketplaceHeader, MarketplaceFooter, wrap as marketplaceWrap } from "@/components/storefront/templates/marketplace-chrome";
 import { ArcovaHeader, ArcovaFooter, wrap as arcovaWrap } from "@/components/storefront/templates/arcova-chrome";
 import { NovaHeader, NovaFooter, wrap as novaWrap } from "@/components/storefront/templates/nova-chrome";
+import { PremiumHeader, PremiumFooter, wrap as premiumWrap } from "@/components/storefront/templates/premium-chrome";
 import { getStoreCategoryTree } from "@/lib/storefront-categories";
 
 export async function generateMetadata({ params }: { params: Promise<{ slug: string; productId: string }> }): Promise<Metadata> {
@@ -115,6 +116,18 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
         <NovaHeader store={store} slug={slug} navCategories={navCategories} crumbs={crumbs} />
         <div style={{ ...novaWrap, padding: "40px 0 80px" }}>{productDetail}</div>
         <NovaFooter store={store} slug={slug} social={social} />
+      </div>
+    );
+  }
+
+  if (isPremiumTemplate(store.template?.name)) {
+    const navCategories = await getStoreCategoryTree(store.id);
+    const social = (store.socialLinks as Record<string, string> | null) ?? {};
+    return (
+      <div style={{ background: theme.bg, color: ink, fontFamily: theme.font, fontSize: 13, minHeight: "100vh" }}>
+        <PremiumHeader store={store} slug={slug} navCategories={navCategories} crumbs={crumbs} />
+        <div style={{ ...premiumWrap, padding: "22px 0 60px" }}>{productDetail}</div>
+        <PremiumFooter store={store} slug={slug} social={social} />
       </div>
     );
   }

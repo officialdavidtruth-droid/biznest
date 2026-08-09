@@ -1,15 +1,17 @@
 import { prisma } from "@/lib/prisma";
-import { isHeenzyTemplate, isVioletTemplate, isMarketplaceTemplate, isArcovaTemplate, isNovaTemplate, VIOLET, MARKETPLACE, ARCOVA, NOVA } from "@/lib/template-themes";
+import { isHeenzyTemplate, isVioletTemplate, isMarketplaceTemplate, isArcovaTemplate, isNovaTemplate, isPremiumTemplate, VIOLET, MARKETPLACE, ARCOVA, NOVA, PREMIUM } from "@/lib/template-themes";
 import { CartClient } from "./cart-client";
 import { HeenzyCartClient } from "./heenzy-cart-client";
 import { VioletCartClient } from "./violet-cart-client";
 import { MarketplaceCartClient } from "./marketplace-cart-client";
 import { ArcovaCartClient } from "./arcova-cart-client";
 import { NovaCartClient } from "./nova-cart-client";
+import { PremiumCartClient } from "./premium-cart-client";
 import { VioletHeader, VioletFooter } from "@/components/storefront/templates/violet-chrome";
 import { MarketplaceHeader, MarketplaceFooter } from "@/components/storefront/templates/marketplace-chrome";
 import { ArcovaHeader, ArcovaFooter } from "@/components/storefront/templates/arcova-chrome";
 import { NovaHeader, NovaFooter } from "@/components/storefront/templates/nova-chrome";
+import { PremiumHeader, PremiumFooter } from "@/components/storefront/templates/premium-chrome";
 import { getStoreCategoryTree } from "@/lib/storefront-categories";
 
 export default async function CartPage({ params }: { params: Promise<{ slug: string }> }) {
@@ -20,6 +22,7 @@ export default async function CartPage({ params }: { params: Promise<{ slug: str
   const marketplace = store && isMarketplaceTemplate(store.template?.name);
   const arcova = store && isArcovaTemplate(store.template?.name);
   const nova = store && isNovaTemplate(store.template?.name);
+  const premium = store && isPremiumTemplate(store.template?.name);
 
   if (violet && store) {
     const navCategories = await getStoreCategoryTree(store.id);
@@ -65,6 +68,18 @@ export default async function CartPage({ params }: { params: Promise<{ slug: str
         <NovaHeader store={store} slug={slug} navCategories={navCategories} />
         <NovaCartClient slug={slug} />
         <NovaFooter store={store} slug={slug} social={social} />
+      </div>
+    );
+  }
+
+  if (premium && store) {
+    const navCategories = await getStoreCategoryTree(store.id);
+    const social = (store.socialLinks as Record<string, string> | null) ?? {};
+    return (
+      <div style={{ background: PREMIUM.bg, color: PREMIUM.ink, fontFamily: PREMIUM.font, fontSize: 13, minHeight: "100vh" }}>
+        <PremiumHeader store={store} slug={slug} navCategories={navCategories} />
+        <PremiumCartClient slug={slug} />
+        <PremiumFooter store={store} slug={slug} social={social} />
       </div>
     );
   }

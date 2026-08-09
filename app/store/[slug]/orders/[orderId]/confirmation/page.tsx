@@ -1,12 +1,13 @@
 import { getOrderForBuyer } from "@/lib/actions/order";
 import { notFound } from "next/navigation";
 import Link from "next/link";
-import { CheckCircle2, Circle, Package, Truck, Home } from "lucide-react";
-import { isVioletTemplate, isMarketplaceTemplate, isArcovaTemplate, isNovaTemplate, VIOLET, MARKETPLACE, ARCOVA, NOVA } from "@/lib/template-themes";
+import { CheckCircle2, Circle, Package, Truck, Home, XCircle, RotateCcw, AlertTriangle, Clock } from "lucide-react";
+import { isVioletTemplate, isMarketplaceTemplate, isArcovaTemplate, isNovaTemplate, isPremiumTemplate, VIOLET, MARKETPLACE, ARCOVA, NOVA, PREMIUM } from "@/lib/template-themes";
 import { VioletHeader, VioletFooter } from "@/components/storefront/templates/violet-chrome";
 import { MarketplaceHeader, MarketplaceFooter } from "@/components/storefront/templates/marketplace-chrome";
 import { ArcovaHeader, ArcovaFooter } from "@/components/storefront/templates/arcova-chrome";
 import { NovaHeader, NovaFooter } from "@/components/storefront/templates/nova-chrome";
+import { PremiumHeader, PremiumFooter } from "@/components/storefront/templates/premium-chrome";
 import { getStoreCategoryTree } from "@/lib/storefront-categories";
 
 const ACCENT = "#0041C8";
@@ -22,6 +23,42 @@ const STEPS = [
   { key: "COMPLETED", label: "Completed", icon: Home },
 ];
 
+// Terminal/non-progressing states each get their own icon, color, and
+// copy — previously any status other than PENDING_PAYMENT (including
+// CANCELLED, REFUNDED, DISPUTED) fell through to the "paid" branch and
+// rendered the green "Order confirmed" checkmark + progress tracker,
+// which is wrong for an order the buyer or seller cancelled.
+const STATUS_COPY: Record<string, { title: string; message: (storeName: string) => string; icon: typeof CheckCircle2; iconColor: string; iconBg: string }> = {
+  PENDING_PAYMENT: {
+    title: "Order received",
+    message: () => "We're finalizing your payment — this can take a moment.",
+    icon: Clock,
+    iconColor: "", // resolved to the template accent at render time
+    iconBg: "",
+  },
+  CANCELLED: {
+    title: "Order cancelled",
+    message: (storeName) => `This order was cancelled. If you were charged, you'll be refunded — ${storeName} has been notified.`,
+    icon: XCircle,
+    iconColor: "#DC2626",
+    iconBg: "#FEE2E2",
+  },
+  REFUNDED: {
+    title: "Order refunded",
+    message: () => "This order was refunded. It can take a few days to reflect on your statement.",
+    icon: RotateCcw,
+    iconColor: "#B45309",
+    iconBg: "#FEF3C7",
+  },
+  DISPUTED: {
+    title: "Order under dispute",
+    message: (storeName) => `This order is being reviewed. ${storeName} and our support team have been notified.`,
+    icon: AlertTriangle,
+    iconColor: "#B45309",
+    iconBg: "#FEF3C7",
+  },
+};
+
 export default async function OrderConfirmationPage({
   params,
 }: {
@@ -32,35 +69,46 @@ export default async function OrderConfirmationPage({
   if (!order) notFound();
 
   const stepIndex = Math.max(0, STEPS.findIndex((s) => s.key === order.status));
-  const isPaid = order.status !== "PENDING_PAYMENT";
+  // Only these statuses represent a successfully paid order progressing
+  // through fulfillment — everything else (pending, cancelled, refunded,
+  // disputed) is a distinct, non-"confirmed" state.
+  const isPaid = ["PAID", "IN_PROGRESS", "DELIVERED", "COMPLETED"].includes(order.status);
+  const statusInfo = STATUS_COPY[order.status];
 
   const violet = isVioletTemplate(order.store.template?.name);
   const marketplace = isMarketplaceTemplate(order.store.template?.name);
   const arcova = isArcovaTemplate(order.store.template?.name);
   const nova = isNovaTemplate(order.store.template?.name);
-  const accent = violet ? VIOLET.accent : marketplace ? MARKETPLACE.blue : arcova ? ARCOVA.accent : nova ? NOVA.gold : ACCENT;
-  const ink = violet ? VIOLET.ink : marketplace ? MARKETPLACE.ink : arcova ? ARCOVA.ink : nova ? NOVA.cream : INK;
-  const cardRadius = violet ? 20 : marketplace ? 4 : arcova ? 0 : nova ? 2 : 16;
-  const cardShadow = violet ? "0 5px 20px #20144b0a" : marketplace ? "none" : arcova ? "none" : nova ? "none" : "0 1px 3px rgba(18,18,18,0.06)";
-  const cardBorder = marketplace ? `1px solid ${MARKETPLACE.border}` : arcova ? `1px solid ${ARCOVA.border}` : nova ? `1px solid ${NOVA.line}` : "none";
-  const pillRadius = violet ? 100 : marketplace ? 3 : arcova ? 0 : nova ? 2 : 8;
+  const premium = isPremiumTemplate(order.store.template?.name);
+  const accent = violet ? VIOLET.accent : marketplace ? MARKETPLACE.blue : arcova ? ARCOVA.accent : nova ? NOVA.gold : premium ? PREMIUM.accent : ACCENT;
+  const ink = violet ? VIOLET.ink : marketplace ? MARKETPLACE.ink : arcova ? ARCOVA.ink : nova ? NOVA.cream : premium ? PREMIUM.ink : INK;
+  const cardRadius = violet ? 20 : marketplace ? 4 : arcova ? 0 : nova ? 2 : premium ? 9 : 16;
+  const cardShadow = violet ? "0 5px 20px #20144b0a" : marketplace ? "none" : arcova ? "none" : nova ? "none" : premium ? "none" : "0 1px 3px rgba(18,18,18,0.06)";
+  const cardBorder = marketplace ? `1px solid ${MARKETPLACE.border}` : arcova ? `1px solid ${ARCOVA.border}` : nova ? `1px solid ${NOVA.line}` : premium ? "1px solid #e2e7e9" : "none";
+  const pillRadius = violet ? 100 : marketplace ? 3 : arcova ? 0 : nova ? 2 : premium ? 20 : 8;
   const cardBg = nova ? NOVA.charcoal : "#fff";
+
+  const StatusIcon = isPaid ? CheckCircle2 : statusInfo?.icon ?? Clock;
+  const iconColor = isPaid ? "#16A34A" : statusInfo?.iconColor || accent;
+  const iconBg = isPaid ? "#DCFCE7" : statusInfo?.iconBg || `${ink}0d`;
+  const title = isPaid ? "Order confirmed" : statusInfo?.title ?? "Order status";
+  const message = isPaid
+    ? `Your payment went through. ${order.store.name} has been notified.`
+    : statusInfo?.message(order.store.name) ?? "";
 
   const body = (
     <div className="mx-auto max-w-lg px-6 py-16 text-center">
       <div
-        style={{ background: isPaid ? "#DCFCE7" : `${ink}0d`, borderRadius: "50%" }}
+        style={{ background: iconBg, borderRadius: "50%" }}
         className="mx-auto mb-5 flex h-16 w-16 items-center justify-center"
       >
-        <CheckCircle2 className="h-8 w-8" style={{ color: isPaid ? "#16A34A" : accent }} />
+        <StatusIcon className="h-8 w-8" style={{ color: iconColor }} />
       </div>
       <h1 className="mb-1 text-2xl font-extrabold">
-        {isPaid ? "Order confirmed" : "Order received"}
+        {title}
       </h1>
       <p style={{ opacity: 0.65 }} className="mb-8 text-sm">
-        {isPaid
-          ? `Your payment went through. ${order.store.name} has been notified.`
-          : "We're finalizing your payment — this can take a moment."}
+        {message}
       </p>
 
       {/* ---------- STATUS TRACKER ---------- */}
@@ -163,6 +211,18 @@ export default async function OrderConfirmationPage({
         <NovaHeader store={order.store} slug={slug} navCategories={navCategories} />
         {body}
         <NovaFooter store={order.store} slug={slug} social={social} />
+      </div>
+    );
+  }
+
+  if (premium) {
+    const navCategories = await getStoreCategoryTree(order.storeId);
+    const social = (order.store.socialLinks as Record<string, string> | null) ?? {};
+    return (
+      <div style={{ background: PREMIUM.bg, color: PREMIUM.ink, fontFamily: PREMIUM.font, fontSize: 13, minHeight: "100vh" }}>
+        <PremiumHeader store={order.store} slug={slug} navCategories={navCategories} />
+        {body}
+        <PremiumFooter store={order.store} slug={slug} social={social} />
       </div>
     );
   }

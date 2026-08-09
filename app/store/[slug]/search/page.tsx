@@ -2,7 +2,7 @@ import { prisma } from "@/lib/prisma";
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import type { Metadata } from "next";
-import { resolveStoreTheme, isVioletTemplate, isMarketplaceTemplate, isArcovaTemplate, isNovaTemplate, type TemplateTheme } from "@/lib/template-themes";
+import { resolveStoreTheme, isVioletTemplate, isMarketplaceTemplate, isArcovaTemplate, isNovaTemplate, isPremiumTemplate, type TemplateTheme } from "@/lib/template-themes";
 import { CartLink } from "@/components/storefront/cart-link";
 import { CategoryNav } from "@/components/storefront/category-nav";
 import { getStoreCategoryTree } from "@/lib/storefront-categories";
@@ -10,6 +10,7 @@ import { VioletHeader, VioletFooter, wrap as violetWrap } from "@/components/sto
 import { MarketplaceHeader, MarketplaceFooter, wrap as marketplaceWrap } from "@/components/storefront/templates/marketplace-chrome";
 import { ArcovaHeader, ArcovaFooter, wrap as arcovaWrap } from "@/components/storefront/templates/arcova-chrome";
 import { NovaHeader, NovaFooter, wrap as novaWrap } from "@/components/storefront/templates/nova-chrome";
+import { PremiumHeader, PremiumFooter, wrap as premiumWrap } from "@/components/storefront/templates/premium-chrome";
 
 export async function generateMetadata({ searchParams }: { searchParams: Promise<{ q?: string }> }): Promise<Metadata> {
   const { q } = await searchParams;
@@ -133,6 +134,17 @@ export default async function SearchPage({
         <NovaHeader store={store} slug={slug} navCategories={categories} />
         <div style={{ ...novaWrap, padding: "40px 0 80px" }}>{body}</div>
         <NovaFooter store={store} slug={slug} social={social} />
+      </div>
+    );
+  }
+
+  if (isPremiumTemplate(store.template?.name)) {
+    const social = (store.socialLinks as Record<string, string> | null) ?? {};
+    return (
+      <div style={{ background: theme.bg, color: ink, fontFamily: theme.font, fontSize: 13, minHeight: "100vh" }}>
+        <PremiumHeader store={store} slug={slug} navCategories={categories} />
+        <div style={{ ...premiumWrap, padding: "22px 0 60px" }}>{body}</div>
+        <PremiumFooter store={store} slug={slug} social={social} />
       </div>
     );
   }
