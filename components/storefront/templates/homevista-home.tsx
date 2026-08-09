@@ -1,6 +1,6 @@
 import type React from "react";
 import { CartLink } from "@/components/storefront/cart-link";
-import { HOMEVISTA } from "@/lib/template-themes";
+import { HOMEVISTA, HOMEVISTA_THEME } from "@/lib/template-themes";
 import { subscribeToNewsletter } from "@/lib/actions/newsletter";
 import { CategoryNav } from "@/components/storefront/category-nav";
 import { Reveal } from "@/components/storefront/reveal";
@@ -90,11 +90,11 @@ export function HomeVistaStorefront({
             {store.name}
           </h1>
           <p style={{ maxWidth: 400, color: heroImage ? "rgba(255,255,255,.85)" : "#556266", fontSize: 13, lineHeight: 1.55 }}>
-            {store.business.description || HOMEVISTA.sub}
+            {store.business.description || HOMEVISTA_THEME.sub}
           </p>
           {catalogItems.length > 0 && (
             <a href="#listings" style={{ display: "inline-block", background: HOMEVISTA.accent, color: "#fff", border: 0, borderRadius: 7, padding: "12px 18px", fontWeight: 800, fontSize: 10, margin: "4px 6px 0 0", textDecoration: "none" }}>
-              {HOMEVISTA.cta} →
+              {HOMEVISTA_THEME.cta} →
             </a>
           )}
         </div>
