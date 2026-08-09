@@ -1,12 +1,16 @@
 import { prisma } from "@/lib/prisma";
+import { SELLER_VISIBLE_ORDER_STATUSES } from "@/lib/actions/order";
 
 export default async function CustomersPage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
   const store = await prisma.store.findUnique({ where: { slug } });
   if (!store) return null;
 
+  // Only orders that were actually paid for count toward a customer's
+  // order count / total spent — an abandoned or failed checkout was never
+  // real money changing hands and shouldn't inflate these numbers.
   const orders = await prisma.order.findMany({
-    where: { storeId: store.id },
+    where: { storeId: store.id, status: { in: SELLER_VISIBLE_ORDER_STATUSES } },
     include: { buyer: true },
     orderBy: { createdAt: "desc" },
   });

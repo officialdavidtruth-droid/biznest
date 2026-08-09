@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/prisma";
+import { SELLER_VISIBLE_ORDER_STATUSES } from "@/lib/actions/order";
 
 const PAID_STATUSES = ["PAID", "IN_PROGRESS", "DELIVERED", "COMPLETED"] as const;
 
@@ -29,9 +30,11 @@ export default async function AnalyticsPage({ params }: { params: Promise<{ slug
   const max = Math.max(1, ...days.map((d) => d.total));
   const revenue30 = days.reduce((s, d) => s + d.total, 0);
 
+  // "All-time orders" only counts orders that were actually paid for —
+  // never a checkout that was started but abandoned or failed.
   const [productCount, viewsProxy] = await Promise.all([
     prisma.product.count({ where: { storeId: store.id, isPublished: true } }),
-    prisma.order.count({ where: { storeId: store.id } }),
+    prisma.order.count({ where: { storeId: store.id, status: { in: SELLER_VISIBLE_ORDER_STATUSES } } }),
   ]);
 
   return (

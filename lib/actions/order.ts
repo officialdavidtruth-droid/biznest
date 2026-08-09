@@ -11,6 +11,25 @@ import type { OrderStatus, Store, Business } from "@prisma/client";
 
 const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? "https://biznest.vercel.app";
 
+// An Order row is created the moment a buyer clicks "checkout" — before
+// the gateway confirms anything — so we have a reference to charge
+// against and reconcile in the callback/webhook. That means
+// PENDING_PAYMENT (checkout started, not yet paid) and CANCELLED
+// (payment failed/abandoned) rows exist in the DB for carts that were
+// never actually paid for. A seller must never see those as real orders:
+// it's exactly the gap a dishonest buyer could point to and claim "I paid
+// but you cancelled it" when they didn't. Every store-owner-facing query
+// (order list, order detail, customer totals, dashboard counts) should
+// filter to this list rather than querying orders unfiltered.
+export const SELLER_VISIBLE_ORDER_STATUSES: OrderStatus[] = [
+  "PAID",
+  "IN_PROGRESS",
+  "DELIVERED",
+  "COMPLETED",
+  "REFUNDED",
+  "DISPUTED",
+];
+
 // --- Checkout (customer-facing) ---------------------------------------
 
 export async function startCheckout(
@@ -185,7 +204,7 @@ export async function listOrders(slug: string) {
   if (!access.success) return [];
 
   return prisma.order.findMany({
-    where: { storeId: access.store.id },
+    where: { storeId: access.store.id, status: { in: SELLER_VISIBLE_ORDER_STATUSES } },
     include: {
       buyer: { select: { name: true, email: true } },
       items: { include: { product: true, service: true } },
@@ -199,7 +218,7 @@ export async function getOrder(slug: string, orderId: string) {
   if (!access.success) return null;
 
   return prisma.order.findFirst({
-    where: { id: orderId, storeId: access.store.id },
+    where: { id: orderId, storeId: access.store.id, status: { in: SELLER_VISIBLE_ORDER_STATUSES } },
     include: {
       buyer: { select: { name: true, email: true } },
       items: { include: { product: true, service: true } },

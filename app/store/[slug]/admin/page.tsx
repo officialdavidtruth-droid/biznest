@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { notFound } from "next/navigation";
 import { seedSampleListings, backfillListingImages } from "@/lib/actions/store";
 import { getCategoryDashboard } from "@/lib/constants/category-dashboard";
+import { SELLER_VISIBLE_ORDER_STATUSES } from "@/lib/actions/order";
 
 export default async function StoreDashboardHome({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
@@ -14,18 +15,23 @@ export default async function StoreDashboardHome({ params }: { params: Promise<{
   const categoryDashboard = getCategoryDashboard(store.business.category);
   const CategoryIcon = categoryDashboard.icon;
 
-  const [orderCount, productCount, serviceCount, pendingOrders, productsWithoutPhotos, servicesWithoutPhotos] = await Promise.all([
-    prisma.order.count({ where: { storeId: store.id } }),
+  // "Total orders" and "In progress" only ever count orders that were
+  // actually paid for — a checkout that was started but never completed
+  // (PENDING_PAYMENT) or that failed/was abandoned (CANCELLED) is not a
+  // real order and must never show up here or anywhere else in the
+  // dashboard, so a buyer can't point to it and claim they paid.
+  const [orderCount, productCount, serviceCount, inProgressOrders, productsWithoutPhotos, servicesWithoutPhotos] = await Promise.all([
+    prisma.order.count({ where: { storeId: store.id, status: { in: SELLER_VISIBLE_ORDER_STATUSES } } }),
     prisma.product.count({ where: { storeId: store.id } }),
     prisma.service.count({ where: { storeId: store.id } }),
-    prisma.order.count({ where: { storeId: store.id, status: "PENDING_PAYMENT" } }),
+    prisma.order.count({ where: { storeId: store.id, status: "IN_PROGRESS" } }),
     prisma.product.count({ where: { storeId: store.id, images: { isEmpty: true } } }),
     prisma.service.count({ where: { storeId: store.id, images: { isEmpty: true } } }),
   ]);
 
   const cards = [
     { label: "Total orders", value: orderCount },
-    { label: "Pending orders", value: pendingOrders },
+    { label: "In progress", value: inProgressOrders },
     { label: "Products", value: productCount },
     { label: "Services", value: serviceCount },
   ];

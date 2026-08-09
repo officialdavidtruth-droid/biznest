@@ -1,5 +1,5 @@
 import { prisma } from "@/lib/prisma";
-import { isHeenzyTemplate, isVioletTemplate, isMarketplaceTemplate, isArcovaTemplate, isNovaTemplate, isPremiumTemplate, VIOLET, MARKETPLACE, ARCOVA, NOVA, PREMIUM } from "@/lib/template-themes";
+import { isHeenzyTemplate, isVioletTemplate, isMarketplaceTemplate, isArcovaTemplate, isNovaTemplate, isPremiumTemplate, isHomeVistaTemplate, VIOLET, MARKETPLACE, ARCOVA, NOVA, PREMIUM, HOMEVISTA } from "@/lib/template-themes";
 import { CheckoutClient } from "./checkout-client";
 import { HeenzyCheckoutClient } from "./heenzy-checkout-client";
 import { VioletCheckoutClient } from "./violet-checkout-client";
@@ -7,11 +7,13 @@ import { MarketplaceCheckoutClient } from "./marketplace-checkout-client";
 import { ArcovaCheckoutClient } from "./arcova-checkout-client";
 import { NovaCheckoutClient } from "./nova-checkout-client";
 import { PremiumCheckoutClient } from "./premium-checkout-client";
+import { HomeVistaCheckoutClient } from "./homevista-checkout-client";
 import { VioletHeader, VioletFooter } from "@/components/storefront/templates/violet-chrome";
 import { MarketplaceHeader, MarketplaceFooter } from "@/components/storefront/templates/marketplace-chrome";
 import { ArcovaHeader, ArcovaFooter } from "@/components/storefront/templates/arcova-chrome";
 import { NovaHeader, NovaFooter } from "@/components/storefront/templates/nova-chrome";
 import { PremiumHeader, PremiumFooter } from "@/components/storefront/templates/premium-chrome";
+import { HomeVistaHeader, HomeVistaFooter } from "@/components/storefront/templates/homevista-chrome";
 import { getStoreCategoryTree } from "@/lib/storefront-categories";
 
 export default async function CheckoutPage({ params }: { params: Promise<{ slug: string }> }) {
@@ -23,6 +25,7 @@ export default async function CheckoutPage({ params }: { params: Promise<{ slug:
   const arcova = store && isArcovaTemplate(store.template?.name);
   const nova = store && isNovaTemplate(store.template?.name);
   const premium = store && isPremiumTemplate(store.template?.name);
+  const homevista = store && isHomeVistaTemplate(store.template?.name);
 
   if (violet && store) {
     const navCategories = await getStoreCategoryTree(store.id);
@@ -80,6 +83,18 @@ export default async function CheckoutPage({ params }: { params: Promise<{ slug:
         <PremiumHeader store={store} slug={slug} navCategories={navCategories} />
         <PremiumCheckoutClient slug={slug} />
         <PremiumFooter store={store} slug={slug} social={social} />
+      </div>
+    );
+  }
+
+  if (homevista && store) {
+    const navCategories = await getStoreCategoryTree(store.id);
+    const social = (store.socialLinks as Record<string, string> | null) ?? {};
+    return (
+      <div style={{ background: "#fff", color: HOMEVISTA.ink, fontFamily: HOMEVISTA.font, fontSize: 13, minHeight: "100vh" }}>
+        <HomeVistaHeader store={store} slug={slug} navCategories={navCategories} />
+        <HomeVistaCheckoutClient slug={slug} />
+        <HomeVistaFooter store={store} slug={slug} social={social} />
       </div>
     );
   }
