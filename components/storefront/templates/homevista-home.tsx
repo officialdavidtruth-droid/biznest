@@ -42,6 +42,10 @@ export function HomeVistaStorefront({
   completedOrders: number;
   social: Record<string, string>;
 }) {
+  async function subscribeNewsletter(formData: FormData) {
+    "use server";
+    await subscribeToNewsletter(slug, formData);
+  }
   const heroImage = store.bannerUrl;
   const featuredItems = catalogItems.slice(0, 5);
   const heroListing = catalogItems[0];
@@ -213,7 +217,7 @@ export function HomeVistaStorefront({
             <h2 style={{ fontSize: 18, margin: "0 0 5px" }}>Get Exclusive Updates</h2>
             <p style={{ fontSize: 9, color: "#c4d3d0" }}>Subscribe for new listings and special offers from {store.name}.</p>
           </div>
-          <form action={subscribeToNewsletter} style={{ marginLeft: "auto", display: "flex", background: "#fff", borderRadius: 6, overflow: "hidden", width: 360 }}>
+          <form action={subscribeNewsletter} style={{ marginLeft: "auto", display: "flex", background: "#fff", borderRadius: 6, overflow: "hidden", width: 360 }}>
             <input type="hidden" name="slug" value={slug} />
             <input name="email" type="email" required placeholder="Enter your email address" style={{ border: 0, outline: 0, padding: 12, flex: 1, fontSize: 9 }} />
             <button type="submit" style={{ border: 0, background: HOMEVISTA.accent, color: "#fff", padding: "0 16px", fontSize: 10, fontWeight: 800, cursor: "pointer" }}>Subscribe</button>

@@ -93,6 +93,10 @@ export function MarketplaceStorefront({
   completedOrders: number;
   social: Record<string, string>;
 }) {
+  async function subscribeNewsletter(formData: FormData) {
+    "use server";
+    await subscribeToNewsletter(slug, formData);
+  }
   const heroImage = store.bannerUrl;
   const catalogCategories = Array.from(new Set(catalogItems.map((i) => i.categoryName).filter(Boolean))) as string[];
 
@@ -314,7 +318,7 @@ export function MarketplaceStorefront({
           <div>
             <h4 style={{ fontSize: 10, color: "#fff", margin: "0 0 10px" }}>Sign up for our newsletter</h4>
             <p style={{ fontSize: 8, margin: "0 0 8px" }}>Get product news and special offers.</p>
-            <form action={subscribeToNewsletter} style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+            <form action={subscribeNewsletter} style={{ display: "flex", flexDirection: "column", gap: 6 }}>
               <input type="hidden" name="slug" value={slug} />
               <input name="email" type="email" required placeholder="Your email address" style={{ border: "1px solid #6f93ae", background: "#234d70", padding: 8, color: "#fff", fontSize: 8 }} />
               <button type="submit" style={{ background: MARKETPLACE.orange, border: 0, color: "#fff", padding: "7px 12px", fontSize: 8, cursor: "pointer" }}>SUBSCRIBE</button>

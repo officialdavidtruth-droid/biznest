@@ -41,6 +41,10 @@ export function VioletStorefront({
   completedOrders: number;
   social: Record<string, string>;
 }) {
+  async function subscribeNewsletter(formData: FormData) {
+    "use server";
+    await subscribeToNewsletter(slug, formData);
+  }
   const heroImage = store.bannerUrl;
   const catalogCategories = Array.from(new Set(catalogItems.map((i) => i.categoryName).filter(Boolean))) as string[];
   const featuredItems = catalogItems.slice(0, 4);
@@ -176,7 +180,7 @@ export function VioletStorefront({
         <div style={{ ...wrap, textAlign: "center" }}>
           <h3 style={{ fontSize: 20, marginBottom: 8 }}>Stay in the loop</h3>
           <p style={{ fontSize: 13, opacity: 0.75, marginBottom: 18 }}>New arrivals and offers from {store.name}, straight to your inbox.</p>
-          <form action={subscribeToNewsletter} style={{ display: "flex", gap: 10, justifyContent: "center", flexWrap: "wrap" }}>
+          <form action={subscribeNewsletter} style={{ display: "flex", gap: 10, justifyContent: "center", flexWrap: "wrap" }}>
             <input type="hidden" name="slug" value={slug} />
             <input name="email" type="email" required placeholder="you@example.com" style={{ borderRadius: 25, border: 0, padding: "13px 18px", minWidth: 260, fontSize: 13 }} />
             <button type="submit" style={{ background: VIOLET.accent, color: "#fff", border: 0, borderRadius: 25, padding: "13px 21px", fontWeight: 800, cursor: "pointer" }}>Subscribe</button>

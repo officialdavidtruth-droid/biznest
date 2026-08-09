@@ -43,6 +43,10 @@ export function RivoraStorefront({
   completedOrders: number;
   social: Record<string, string>;
 }) {
+  async function subscribeNewsletter(formData: FormData) {
+    "use server";
+    await subscribeToNewsletter(slug, formData);
+  }
   const heroImage = store.bannerUrl;
   const featuredProducts = catalogItems.slice(0, 6);
 
@@ -198,7 +202,7 @@ export function RivoraStorefront({
           <h2 style={{ margin: "0 0 4px", fontSize: 18 }}>Subscribe to our newsletter</h2>
           <p style={{ margin: 0, color: "#abc0b5", fontSize: 9 }}>Get the latest updates on new products and special offers.</p>
         </div>
-        <form action={subscribeToNewsletter} style={{ display: "flex", width: "min(100%, 380px)" }}>
+        <form action={subscribeNewsletter} style={{ display: "flex", width: "min(100%, 380px)" }}>
           <input type="hidden" name="slug" value={slug} />
           <input type="email" name="email" required placeholder="Enter your email" style={{ flex: 1, border: "1px solid #245740", background: "#0b4531", color: "#fff", padding: 12, borderRadius: "7px 0 0 7px", fontSize: 11 }} />
           <button type="submit" style={{ width: 130, background: RIVORA.lime, color: "#173700", border: 0, borderRadius: "0 7px 7px 0", fontWeight: 700, fontSize: 11 }}>Subscribe</button>

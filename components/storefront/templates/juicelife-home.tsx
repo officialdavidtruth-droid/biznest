@@ -41,6 +41,10 @@ export function JuiceLifeStorefront({
   completedOrders: number;
   social: Record<string, string>;
 }) {
+  async function subscribeNewsletter(formData: FormData) {
+    "use server";
+    await subscribeToNewsletter(slug, formData);
+  }
   const heroImage = store.bannerUrl;
   const bestsellers = catalogItems.slice(0, 4);
   const menu = catalogItems.slice(0, 8);
@@ -209,7 +213,7 @@ export function JuiceLifeStorefront({
           <h2 style={{ margin: "0 0 5px", fontSize: 22 }}>Join the <em style={{ fontFamily: "cursive", color: JUICELIFE.orange, fontStyle: "normal" }}>{store.name}</em> family</h2>
           <p style={{ margin: 0, fontSize: 10, color: "#c7ddc9" }}>Subscribe to get exclusive offers, health tips and updates.</p>
         </div>
-        <form action={subscribeToNewsletter} style={{ display: "flex", width: "min(100%, 420px)" }}>
+        <form action={subscribeNewsletter} style={{ display: "flex", width: "min(100%, 420px)" }}>
           <input type="hidden" name="slug" value={slug} />
           <input type="email" name="email" required placeholder="Enter your email" style={{ flex: 1, border: 0, padding: "13px 16px", borderRadius: "22px 0 0 22px" }} />
           <button type="submit" style={{ border: 0, background: JUICELIFE.orange, color: "#fff", padding: "0 22px", borderRadius: "0 22px 22px 0", fontWeight: 700 }}>Subscribe</button>

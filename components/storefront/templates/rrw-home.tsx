@@ -45,6 +45,10 @@ export function RrwStorefront({
   completedOrders: number;
   social: Record<string, string>;
 }) {
+  async function subscribeNewsletter(formData: FormData) {
+    "use server";
+    await subscribeToNewsletter(slug, formData);
+  }
   const heroImage = store.bannerUrl;
   const trending = catalogItems.slice(0, 4);
   const promoItem = [...catalogItems].sort((a, b) => b.price - a.price)[0];
@@ -202,7 +206,7 @@ export function RrwStorefront({
         <div>
           <h4 style={{ margin: "0 0 12px", color: "#111" }}>{store.name}</h4>
           <p>{store.business.description || "Premium rental, made simple."}</p>
-          <form action={subscribeToNewsletter} style={{ display: "flex", border: "1px solid #ddd", borderRadius: 18, overflow: "hidden", width: 160, marginTop: 10 }}>
+          <form action={subscribeNewsletter} style={{ display: "flex", border: "1px solid #ddd", borderRadius: 18, overflow: "hidden", width: 160, marginTop: 10 }}>
             <input type="hidden" name="slug" value={slug} />
             <input name="email" type="email" required placeholder="Email" style={{ border: 0, padding: 8, outline: 0, width: 130, fontSize: 8 }} />
             <button type="submit" style={{ border: 0, background: "#111", color: "#fff", width: 30, cursor: "pointer" }}>→</button>
