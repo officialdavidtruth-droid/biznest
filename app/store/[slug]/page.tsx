@@ -3,7 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
 import { CartLink } from "@/components/storefront/cart-link";
-import { resolveStoreTheme, FRESH, isHeenzyTemplate, isNovaTemplate, isVioletTemplate, isPremiumTemplate, isHomeVistaTemplate, isRrwTemplate, isMarketplaceTemplate, type TemplateTheme } from "@/lib/template-themes";
+import { resolveStoreTheme, FRESH, isHeenzyTemplate, isNovaTemplate, isVioletTemplate, isPremiumTemplate, isHomeVistaTemplate, isRrwTemplate, isMarketplaceTemplate, isArcovaTemplate, isRivoraTemplate, isJuiceLifeTemplate, isFabtexTemplate, type TemplateTheme } from "@/lib/template-themes";
 import { subscribeToNewsletter } from "@/lib/actions/newsletter";
 import { HeenzyStorefront } from "@/components/storefront/templates/heenzy-home";
 import { NovaStorefront } from "@/components/storefront/templates/nova-home";
@@ -12,6 +12,10 @@ import { PremiumStorefront } from "@/components/storefront/templates/premium-hom
 import { HomeVistaStorefront } from "@/components/storefront/templates/homevista-home";
 import { RrwStorefront } from "@/components/storefront/templates/rrw-home";
 import { MarketplaceStorefront } from "@/components/storefront/templates/marketplace-home";
+import { ArcovaStorefront } from "@/components/storefront/templates/arcova-home";
+import { RivoraStorefront } from "@/components/storefront/templates/rivora-home";
+import { JuiceLifeStorefront } from "@/components/storefront/templates/juicelife-home";
+import { FabtexStorefront } from "@/components/storefront/templates/fabtex-home";
 import { CategoryNav } from "@/components/storefront/category-nav";
 import { getStoreCategoryTree } from "@/lib/storefront-categories";
 import { Reveal } from "@/components/storefront/reveal";
@@ -194,6 +198,70 @@ export default async function StorefrontPage({ params }: { params: Promise<{ slu
   if (isMarketplaceTemplate(store.template?.name)) {
     return (
       <MarketplaceStorefront
+        store={store}
+        slug={slug}
+        catalogItems={catalogItems}
+        navCategories={navCategories}
+        goodReviews={goodReviews}
+        avgRating={avgRating}
+        completedOrders={completedOrders}
+        social={social}
+      />
+    );
+  }
+
+  // ---------- TEMPLATE 9: Arcova Architecture ----------
+  if (isArcovaTemplate(store.template?.name)) {
+    return (
+      <ArcovaStorefront
+        store={store}
+        slug={slug}
+        catalogItems={catalogItems}
+        navCategories={navCategories}
+        goodReviews={goodReviews}
+        avgRating={avgRating}
+        completedOrders={completedOrders}
+        social={social}
+      />
+    );
+  }
+
+  // ---------- TEMPLATE 10: Rivora Fresh ----------
+  if (isRivoraTemplate(store.template?.name)) {
+    return (
+      <RivoraStorefront
+        store={store}
+        slug={slug}
+        catalogItems={catalogItems}
+        navCategories={navCategories}
+        goodReviews={goodReviews}
+        avgRating={avgRating}
+        completedOrders={completedOrders}
+        social={social}
+      />
+    );
+  }
+
+  // ---------- TEMPLATE 11: JuiceLife ----------
+  if (isJuiceLifeTemplate(store.template?.name)) {
+    return (
+      <JuiceLifeStorefront
+        store={store}
+        slug={slug}
+        catalogItems={catalogItems}
+        navCategories={navCategories}
+        goodReviews={goodReviews}
+        avgRating={avgRating}
+        completedOrders={completedOrders}
+        social={social}
+      />
+    );
+  }
+
+  // ---------- TEMPLATE 12: Fabtex ----------
+  if (isFabtexTemplate(store.template?.name)) {
+    return (
+      <FabtexStorefront
         store={store}
         slug={slug}
         catalogItems={catalogItems}

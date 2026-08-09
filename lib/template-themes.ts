@@ -363,6 +363,151 @@ export function isMarketplaceTemplate(templateName: string | null | undefined): 
   return templateName === TEMPLATE_NAME_MARKETPLACE;
 }
 
+/** ---------- Template 9: "Arcova" -- dark editorial architecture/agency layout, ported from arcova-react-nestjs.zip ---------- */
+export const ARCOVA = {
+  ink: "#141414",
+  paper: "#ffffff",
+  dark: "#0d0d0d",
+  accent: "#c9a86a",
+  border: "#e6e6e6",
+  font: "'Helvetica Neue', Arial, sans-serif",
+  headlineFont: "'Helvetica Neue', Arial, sans-serif",
+  radius: "0px",
+} as const;
+
+export const ARCOVA_THEME: TemplateTheme = {
+  bg: "#ffffff",
+  ink: ARCOVA.ink,
+  card: "#ffffff",
+  accent: ARCOVA.accent,
+  font: ARCOVA.font,
+  headlineFont: ARCOVA.headlineFont,
+  radius: ARCOVA.radius,
+  eyebrow: "Built around you",
+  headline: "We build timeless spaces.",
+  sub: "From concept to completion, we craft extraordinary spaces that elevate living and stand the test of time.",
+  cta: "Explore our work",
+  layout: "grid",
+  heroStyle: "split",
+  catalogLabel: "Projects",
+  sections: ["hero", "catalog", "features", "about", "testimonials", "contact"],
+};
+
+export const TEMPLATE_NAME_ARCOVA = "Arcova Architecture";
+
+export function isArcovaTemplate(templateName: string | null | undefined): boolean {
+  return templateName === TEMPLATE_NAME_ARCOVA;
+}
+
+/** ---------- Template 10: "Rivora Fresh" -- deep-green/lime grocery storefront, ported from rivora-fresh-react-nestjs.zip ---------- */
+export const RIVORA = {
+  deep: "#03291c",
+  green: "#07502f",
+  lime: "#9fe52e",
+  muted: "#718078",
+  ink: "#11281d",
+  font: "Inter, Arial, sans-serif",
+  headlineFont: "Inter, Arial, sans-serif",
+  radius: "11px",
+} as const;
+
+export const RIVORA_THEME: TemplateTheme = {
+  bg: "#f7f9f6",
+  ink: RIVORA.ink,
+  card: "#ffffff",
+  accent: RIVORA.lime,
+  font: RIVORA.font,
+  headlineFont: RIVORA.headlineFont,
+  radius: RIVORA.radius,
+  eyebrow: "Fresh - Natural - Premium",
+  headline: "Fresh choices, better life.",
+  sub: "Premium quality fruits and vegetables, delivered fresh to your doorstep.",
+  cta: "Shop now",
+  layout: "grid",
+  heroStyle: "split",
+  catalogLabel: "Products",
+  sections: ["hero", "categories", "about", "catalog", "newsletter", "contact"],
+};
+
+export const TEMPLATE_NAME_RIVORA = "Rivora Fresh";
+
+export function isRivoraTemplate(templateName: string | null | undefined): boolean {
+  return templateName === TEMPLATE_NAME_RIVORA;
+}
+
+/** ---------- Template 11: "JuiceLife" -- green/orange cold-pressed juice storefront, ported from juicelife-react-nestjs.zip ---------- */
+export const JUICELIFE = {
+  green: "#176b20",
+  greenDark: "#0d5717",
+  orange: "#f29a20",
+  soft: "#f7faf1",
+  ink: "#152015",
+  muted: "#687068",
+  font: "Arial, Helvetica, sans-serif",
+  headlineFont: "Arial, Helvetica, sans-serif",
+  radius: "12px",
+} as const;
+
+export const JUICELIFE_THEME: TemplateTheme = {
+  bg: "#ffffff",
+  ink: JUICELIFE.ink,
+  card: "#ffffff",
+  accent: JUICELIFE.green,
+  font: JUICELIFE.font,
+  headlineFont: JUICELIFE.headlineFont,
+  radius: JUICELIFE.radius,
+  eyebrow: "100% Natural & Fresh",
+  headline: "Good juice. Good life.",
+  sub: "Made with real fruits and vegetables. No sugar added. Just pure goodness in every sip.",
+  cta: "Shop now",
+  layout: "grid",
+  heroStyle: "split",
+  catalogLabel: "Menu",
+  sections: ["hero", "catalog", "features", "about", "newsletter", "contact"],
+};
+
+export const TEMPLATE_NAME_JUICELIFE = "JuiceLife";
+
+export function isJuiceLifeTemplate(templateName: string | null | undefined): boolean {
+  return templateName === TEMPLATE_NAME_JUICELIFE;
+}
+
+/** ---------- Template 12: "Fabtex" -- dark industrial fabric/textile B2B storefront, ported from fabtex-react-nestjs-storefront.zip ---------- */
+export const FABTEX = {
+  dark: "#211f1f",
+  black: "#090909",
+  panel: "#292626",
+  orange: "#f15a24",
+  muted: "#aaaaaa",
+  font: "Arial, Helvetica, sans-serif",
+  headlineFont: "Arial, Helvetica, sans-serif",
+  radius: "0px",
+} as const;
+
+export const FABTEX_THEME: TemplateTheme = {
+  bg: FABTEX.dark,
+  ink: "#ffffff",
+  card: FABTEX.panel,
+  accent: FABTEX.orange,
+  font: FABTEX.font,
+  headlineFont: FABTEX.headlineFont,
+  radius: FABTEX.radius,
+  eyebrow: "Performance fabric solutions",
+  headline: "Everything. Right where you need it.",
+  sub: "The performance fabric partner for hospitality, healthcare and commercial interiors.",
+  cta: "Check out our fabrics now",
+  layout: "grid",
+  heroStyle: "fullbleed",
+  catalogLabel: "Products",
+  sections: ["hero", "catalog", "features", "about", "contact"],
+};
+
+export const TEMPLATE_NAME_FABTEX = "Fabtex";
+
+export function isFabtexTemplate(templateName: string | null | undefined): boolean {
+  return templateName === TEMPLATE_NAME_FABTEX;
+}
+
 /** The catalog has exactly two templates: Fresh & Co. (tier 1) and Heenzy Sneaker Co. (tier 2). */
 export function generateNicheVariations(_nicheName: string): GeneratedTemplate[] {
   return [{ ...FRESH_THEME, variationName: TEMPLATE_NAME, tierRank: 1 }];
@@ -396,6 +541,22 @@ export function generateMarketplaceVariation(): GeneratedTemplate {
   return { ...MARKETPLACE_THEME, variationName: TEMPLATE_NAME_MARKETPLACE, tierRank: 4 };
 }
 
+export function generateArcovaVariation(): GeneratedTemplate {
+  return { ...ARCOVA_THEME, variationName: TEMPLATE_NAME_ARCOVA, tierRank: 4 };
+}
+
+export function generateRivoraVariation(): GeneratedTemplate {
+  return { ...RIVORA_THEME, variationName: TEMPLATE_NAME_RIVORA, tierRank: 3 };
+}
+
+export function generateJuiceLifeVariation(): GeneratedTemplate {
+  return { ...JUICELIFE_THEME, variationName: TEMPLATE_NAME_JUICELIFE, tierRank: 2 };
+}
+
+export function generateFabtexVariation(): GeneratedTemplate {
+  return { ...FABTEX_THEME, variationName: TEMPLATE_NAME_FABTEX, tierRank: 3 };
+}
+
 export function getTemplateTheme(_category: string | undefined, _storeName: string): TemplateTheme {
   return FRESH_THEME;
 }
@@ -422,6 +583,14 @@ export function resolveStoreTheme(
     ? RRW_THEME
     : isMarketplaceTemplate(templateName)
     ? MARKETPLACE_THEME
+    : isArcovaTemplate(templateName)
+    ? ARCOVA_THEME
+    : isRivoraTemplate(templateName)
+    ? RIVORA_THEME
+    : isJuiceLifeTemplate(templateName)
+    ? JUICELIFE_THEME
+    : isFabtexTemplate(templateName)
+    ? FABTEX_THEME
     : FRESH_THEME;
   return {
     ...base,

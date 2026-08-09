@@ -1,5 +1,5 @@
 // ============================================================================
-// BizNest — Prisma Schema
+// BizNest -- Prisma Schema
 // This file is the single source of truth for the data model. It is split
 // conceptually (via comments) into the subsystems described in the product
 // spec. Build phases 2+ should extend these models rather than create
@@ -38,7 +38,7 @@ model User {
   isBanned          Boolean   @default(false)
   bannedReason      String?
   // Bumped to "now" by the admin force-logout action. Any JWT issued before
-  // this timestamp is rejected on its next use (see lib/auth.ts) — this is
+  // this timestamp is rejected on its next use (see lib/auth.ts) -- this is
   // what makes "force logout" actually work under a JWT session strategy,
   // where there's no server-side session row to just delete.
   sessionsInvalidatedAt DateTime?
@@ -134,7 +134,7 @@ model Business {
   category              String
   description           String                    @db.Text
 
-  // What this business actually sells — set once at onboarding and driving
+  // What this business actually sells -- set once at onboarding and driving
   // which dashboard sections/storefront layout are shown. Hybrid stores
   // have both true; every business must have at least one true (enforced
   // in lib/validations/business.ts, not at the DB level, since Prisma
@@ -219,17 +219,17 @@ model Store {
   themeColors   Json? // { primary, secondary, accent, ... }
   fontFamily    String?
   // Vendor control over which of the template's sections actually show,
-  // and in what order — { hidden: Section[], order: Section[] }. "hero" can
+  // and in what order -- { hidden: Section[], order: Section[] }. "hero" can
   // never be hidden. A section still won't render if it has no real data
-  // behind it regardless of this override (see app/store/[slug]/page.tsx) —
+  // behind it regardless of this override (see app/store/[slug]/page.tsx) --
   // this controls arrangement, not fabrication.
   sectionOverrides Json?
   // Click-to-edit hero block overrides (see components/dashboard/hero-block-editor.tsx).
-  // { headline?, subtitle?, ctaLabel? } — all optional; page.tsx falls back to
+  // { headline?, subtitle?, ctaLabel? } -- all optional; page.tsx falls back to
   // store.name / business.description / theme.cta when a key is absent, so
   // this only overrides what a vendor has actually customized in the visual editor.
   heroOverrides Json?
-  // Click-to-edit "story" block overrides (About section) — same pattern as
+  // Click-to-edit "story" block overrides (About section) -- same pattern as
   // heroOverrides. { eyebrow?, heading?, body? }. body falls back to
   // business.description, same as before this override existed.
   storyOverrides Json?
@@ -245,7 +245,7 @@ model Store {
   subscription   Subscription? @relation(fields: [subscriptionId], references: [id])
   // Set by a platform admin granting a free trial of a paid plan (see
   // grantUserTrial in lib/actions/admin.ts). While in the future, the store
-  // gets that plan's features without actually being billed for it — this
+  // gets that plan's features without actually being billed for it -- this
   // field is purely a marker for admin/UI purposes, not enforced by any
   // billing code path itself. Null means "not on a trial."
   trialEndsAt    DateTime?
@@ -253,7 +253,7 @@ model Store {
   paystackSubaccountCode   String?
   flutterwaveSubaccountId  String?
   // Display-only info the owner entered when connecting payout (bank name,
-  // account name, masked number) — the actual subaccount codes above are
+  // account name, masked number) -- the actual subaccount codes above are
   // what payments are actually split to; this is just what we show them.
   payoutDetails            Json?
   payoutVerifiedAt         DateTime?
@@ -278,11 +278,11 @@ model Store {
 
 model StoreTemplate {
   id          String   @id @default(cuid())
-  name        String   @unique // e.g. "Restaurant & Food Delivery — Midnight Split"
-  category    String   // niche, e.g. "Restaurant & Food Delivery" — many templates share one category
+  name        String   @unique // e.g. "Restaurant & Food Delivery -- Midnight Split"
+  category    String   // niche, e.g. "Restaurant & Food Delivery" -- many templates share one category
   previewUrl  String?
   config      Json     // full resolved theme: palette, fonts, hero style, sections, catalog label
-  tierRank    Int      @default(1) // 1=Free, 2=Entrepreneur, 3=Enterprise, 4=Business Mogul — a store can pick any template with tierRank <= its plan's rank
+  tierRank    Int      @default(1) // 1=Free, 2=Entrepreneur, 3=Enterprise, 4=Business Mogul -- a store can pick any template with tierRank <= its plan's rank
   isActive    Boolean  @default(true)
 
   stores      Store[]
@@ -354,7 +354,7 @@ model Product {
   // Flexible niche-specific fields instead of bloating this table per
   // vertical, e.g. real estate: { bedrooms, bathrooms, areaSqm, address, lat, lng }.
   // Read by the storefront only for niches that know what to do with it
-  // (see lib/template-themes.ts) — absent/unknown keys are ignored.
+  // (see lib/template-themes.ts) -- absent/unknown keys are ignored.
   attributes     Json?
 
   inventory    InventoryItem?
@@ -386,7 +386,7 @@ model Service {
   isBookable   Boolean   @default(false) // enables appointments/bookings
   durationMins Int?
   // Weekly availability, e.g. { "mon": [["09:00","17:00"]], "tue": [["09:00","13:00"],["14:00","17:00"]] }.
-  // Days omitted are treated as closed. Null means "not configured yet" —
+  // Days omitted are treated as closed. Null means "not configured yet" --
   // the booking widget shows a setup prompt to the vendor instead of guessing hours.
   availability Json?
 
@@ -511,22 +511,20 @@ model OrderItem {
   unitPrice Decimal  @db.Decimal(12, 2)
 }
 
-/**
- * One row per real charge attempt against a payment gateway — the audit
- * trail and reconciliation source of truth that used to live only as a
- * couple of fields on Order. An order can have more than one Payment row
- * over its life (a failed attempt followed by a successful retry); Order's
- * own paymentProvider/paymentReference fields stay in place as a fast
- * "what actually got it PAID" pointer, but this table is where every
- * attempt — successful or not — gets recorded, along with the raw gateway
- * payload for debugging and dispute evidence.
- */
+// One row per real charge attempt against a payment gateway -- the audit
+// trail and reconciliation source of truth that used to live only as a
+// couple of fields on Order. An order can have more than one Payment row
+// over its life (a failed attempt followed by a successful retry); Order's
+// own paymentProvider/paymentReference fields stay in place as a fast
+// "what actually got it PAID" pointer, but this table is where every
+// attempt -- successful or not -- gets recorded, along with the raw gateway
+// payload for debugging and dispute evidence.
 model Payment {
   id          String          @id @default(cuid())
 
   orderId     String?
   order       Order?          @relation(fields: [orderId], references: [id])
-  // Subscription-upgrade payments aren't tied to an Order, only a Store —
+  // Subscription-upgrade payments aren't tied to an Order, only a Store --
   // set for both purposes so a store's full payment history (orders +
   // subscription upgrades) can be queried from one place.
   storeId     String?
@@ -545,16 +543,16 @@ model Payment {
   currency    String          @default("NGN")
 
   // Full verify-endpoint response body from whichever route last touched
-  // this row (browser callback or webhook) — kept for debugging and as
+  // this row (browser callback or webhook) -- kept for debugging and as
   // evidence if a dispute/chargeback needs to be investigated later.
   rawPayload  Json?
   // Set the first time server-side verification against the gateway
-  // succeeds — null while still PENDING.
+  // succeeds -- null while still PENDING.
   verifiedAt  DateTime?
 
   // Refund tracking, set when a support/admin agent issues a refund
   // against this charge (see lib/actions/refund.ts). refundReference is
-  // the gateway's own refund id — unique so the same charge can't somehow
+  // the gateway's own refund id -- unique so the same charge can't somehow
   // collect two successful refund rows. refundedAmount lets a future
   // partial-refund flow reuse this same table without a schema change.
   refundReference   String?   @unique
@@ -608,7 +606,7 @@ model Dispute {
 }
 
 // Local delivery pricing for physical-goods stores (food, groceries, etc.).
-// A store with no zones defined is treated as "delivery not offered yet" —
+// A store with no zones defined is treated as "delivery not offered yet" --
 // checkout falls back to pickup/no shipping fee rather than blocking sale.
 model DeliveryZone {
   id               String   @id @default(cuid())
@@ -628,8 +626,8 @@ model DeliveryZone {
 }
 
 // Newsletter signups collected from a store's storefront (opt-in "Newsletter"
-// section — see lib/template-themes.ts Section type). Real capture, not
-// decorative — a vendor can export/see these, distinct from platform users.
+// section -- see lib/template-themes.ts Section type). Real capture, not
+// decorative -- a vendor can export/see these, distinct from platform users.
 model NewsletterSubscriber {
   id        String   @id @default(cuid())
   storeId   String
@@ -752,9 +750,9 @@ model Subscription {
   name      String   @unique // "Free" | "Entrepreneur" | "Enterprise" | "Business Mogul"
   price     Decimal  @db.Decimal(12, 2)
   interval  String   // "MONTHLY" | "YEARLY"
-  features  Json     // { products, services, customDomain } — -1 means unlimited
+  features  Json     // { products, services, customDomain } -- -1 means unlimited
   commissionRate Decimal @db.Decimal(5, 2) @default(0) // percentage
-  isActive  Boolean  @default(true) // retired plans are hidden from pricing/upgrade UI, not deleted — a store may still reference one
+  isActive  Boolean  @default(true) // retired plans are hidden from pricing/upgrade UI, not deleted -- a store may still reference one
 
   stores    Store[]
 }
@@ -780,7 +778,7 @@ model PlatformSetting {
 }
 
 // Generic rate limiter, keyed by e.g. "register:203.0.113.5" or
-// "login:someone@example.com". No Redis needed at this scale — a row per
+// "login:someone@example.com". No Redis needed at this scale -- a row per
 // key with a rolling window is more than enough for tens of thousands of
 // requests/day on Postgres.
 model RateLimitEntry {

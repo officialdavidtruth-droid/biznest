@@ -1,5 +1,5 @@
 import { PrismaClient, type Prisma } from "@prisma/client";
-import { generateNicheVariations, TEMPLATE_NAME, generateHeenzyVariation, TEMPLATE_NAME_HEENZY, generateNovaVariation, TEMPLATE_NAME_NOVA, generateVioletVariation, TEMPLATE_NAME_VIOLET, generatePremiumVariation, TEMPLATE_NAME_PREMIUM, generateHomeVistaVariation, TEMPLATE_NAME_HOMEVISTA, generateRrwVariation, TEMPLATE_NAME_RRW, generateMarketplaceVariation, TEMPLATE_NAME_MARKETPLACE } from "../lib/template-themes";
+import { generateNicheVariations, TEMPLATE_NAME, generateHeenzyVariation, TEMPLATE_NAME_HEENZY, generateNovaVariation, TEMPLATE_NAME_NOVA, generateVioletVariation, TEMPLATE_NAME_VIOLET, generatePremiumVariation, TEMPLATE_NAME_PREMIUM, generateHomeVistaVariation, TEMPLATE_NAME_HOMEVISTA, generateRrwVariation, TEMPLATE_NAME_RRW, generateMarketplaceVariation, TEMPLATE_NAME_MARKETPLACE, generateArcovaVariation, TEMPLATE_NAME_ARCOVA, generateRivoraVariation, TEMPLATE_NAME_RIVORA, generateJuiceLifeVariation, TEMPLATE_NAME_JUICELIFE, generateFabtexVariation, TEMPLATE_NAME_FABTEX } from "../lib/template-themes";
 import { fetchDemoPhoto } from "../lib/demo-images";
 
 const prisma = new PrismaClient();
@@ -152,12 +152,44 @@ async function main() {
     create: { name: TEMPLATE_NAME_MARKETPLACE, category: TEMPLATE_NAME_MARKETPLACE, tierRank: marketplaceTemplate.tierRank, previewUrl: marketplacePreviewUrl, config: marketplaceTemplate as unknown as Prisma.InputJsonValue },
   });
 
+  const arcovaTemplate = generateArcovaVariation();
+  const arcovaPreviewUrl = await fetchDemoPhoto(TEMPLATE_NAME_ARCOVA);
+  await prisma.storeTemplate.upsert({
+    where: { name: TEMPLATE_NAME_ARCOVA },
+    update: { category: TEMPLATE_NAME_ARCOVA, isActive: true, tierRank: arcovaTemplate.tierRank, previewUrl: arcovaPreviewUrl, config: arcovaTemplate as unknown as Prisma.InputJsonValue },
+    create: { name: TEMPLATE_NAME_ARCOVA, category: TEMPLATE_NAME_ARCOVA, tierRank: arcovaTemplate.tierRank, previewUrl: arcovaPreviewUrl, config: arcovaTemplate as unknown as Prisma.InputJsonValue },
+  });
+
+  const rivoraTemplate = generateRivoraVariation();
+  const rivoraPreviewUrl = await fetchDemoPhoto(TEMPLATE_NAME_RIVORA);
+  await prisma.storeTemplate.upsert({
+    where: { name: TEMPLATE_NAME_RIVORA },
+    update: { category: TEMPLATE_NAME_RIVORA, isActive: true, tierRank: rivoraTemplate.tierRank, previewUrl: rivoraPreviewUrl, config: rivoraTemplate as unknown as Prisma.InputJsonValue },
+    create: { name: TEMPLATE_NAME_RIVORA, category: TEMPLATE_NAME_RIVORA, tierRank: rivoraTemplate.tierRank, previewUrl: rivoraPreviewUrl, config: rivoraTemplate as unknown as Prisma.InputJsonValue },
+  });
+
+  const juicelifeTemplate = generateJuiceLifeVariation();
+  const juicelifePreviewUrl = await fetchDemoPhoto(TEMPLATE_NAME_JUICELIFE);
+  await prisma.storeTemplate.upsert({
+    where: { name: TEMPLATE_NAME_JUICELIFE },
+    update: { category: TEMPLATE_NAME_JUICELIFE, isActive: true, tierRank: juicelifeTemplate.tierRank, previewUrl: juicelifePreviewUrl, config: juicelifeTemplate as unknown as Prisma.InputJsonValue },
+    create: { name: TEMPLATE_NAME_JUICELIFE, category: TEMPLATE_NAME_JUICELIFE, tierRank: juicelifeTemplate.tierRank, previewUrl: juicelifePreviewUrl, config: juicelifeTemplate as unknown as Prisma.InputJsonValue },
+  });
+
+  const fabtexTemplate = generateFabtexVariation();
+  const fabtexPreviewUrl = await fetchDemoPhoto(TEMPLATE_NAME_FABTEX);
+  await prisma.storeTemplate.upsert({
+    where: { name: TEMPLATE_NAME_FABTEX },
+    update: { category: TEMPLATE_NAME_FABTEX, isActive: true, tierRank: fabtexTemplate.tierRank, previewUrl: fabtexPreviewUrl, config: fabtexTemplate as unknown as Prisma.InputJsonValue },
+    create: { name: TEMPLATE_NAME_FABTEX, category: TEMPLATE_NAME_FABTEX, tierRank: fabtexTemplate.tierRank, previewUrl: fabtexPreviewUrl, config: fabtexTemplate as unknown as Prisma.InputJsonValue },
+  });
+
   // Retire every other template row (the old niche-generated set, or any
   // prior naming scheme) — deactivate rather than delete, since a store
   // might still reference one (Store.templateId). Deactivated templates
   // stop showing in the gallery but existing stores using them keep working.
   await prisma.storeTemplate.updateMany({
-    where: { name: { notIn: [TEMPLATE_NAME, TEMPLATE_NAME_HEENZY, TEMPLATE_NAME_NOVA, TEMPLATE_NAME_VIOLET, TEMPLATE_NAME_PREMIUM, TEMPLATE_NAME_HOMEVISTA, TEMPLATE_NAME_RRW, TEMPLATE_NAME_MARKETPLACE] } },
+    where: { name: { notIn: [TEMPLATE_NAME, TEMPLATE_NAME_HEENZY, TEMPLATE_NAME_NOVA, TEMPLATE_NAME_VIOLET, TEMPLATE_NAME_PREMIUM, TEMPLATE_NAME_HOMEVISTA, TEMPLATE_NAME_RRW, TEMPLATE_NAME_MARKETPLACE, TEMPLATE_NAME_ARCOVA, TEMPLATE_NAME_RIVORA, TEMPLATE_NAME_JUICELIFE, TEMPLATE_NAME_FABTEX] } },
     data: { isActive: false },
   });
 
