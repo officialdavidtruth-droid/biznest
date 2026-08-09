@@ -4,7 +4,7 @@ import { useMemo, useState } from "react";
 import { Check, Lock, Search, Eye } from "lucide-react";
 import type { TemplateTheme } from "@/lib/template-themes";
 import { DEMO_STORES } from "@/lib/demo-stores";
-import { LiveTemplatePreview } from "@/components/storefront/live-template-preview";
+import { TemplateCover } from "@/components/storefront/template-cover";
 
 // Real, permanent live-demo stores exist for a subset of templates (see
 // lib/demo-stores.ts). Map template name -> demo slug so the gallery can
@@ -133,33 +133,21 @@ export function TemplateGallery({
                   : "border-border hover:-translate-y-0.5 hover:border-primary/50 hover:shadow-lg"
               }`}
             >
-              {/* Real cover: a live, scaled-down render of this template's actual
-                  demo storefront running in an iframe — not a stock photo and
-                  not a redrawn mockup, so what you see here is pixel-for-pixel
-                  what the real template looks like. Falls back to a plain
-                  "no live preview yet" panel for templates without a seeded
-                  demo store rather than showing an unrelated photo. */}
+              {/* Real cover: a static facsimile of this template's actual
+                  layout, colors, type, and copy — the same approach
+                  WordPress uses for theme thumbnails. Built purely from the
+                  template's own theme tokens, so it always renders correctly
+                  for every template (not just the handful with a seeded demo
+                  store) and never shows a blank/404 iframe. */}
               <button
                 type="button"
                 onClick={() => !isLocked && onSelect(t.id)}
                 disabled={isLocked}
                 className={`relative block h-40 w-full overflow-hidden bg-muted ${isLocked ? "cursor-not-allowed" : ""}`}
               >
-                {demoSlug ? (
-                  <LiveTemplatePreview slug={demoSlug} title={`${t.name} live preview`} />
-                ) : (
-                  <div
-                    className="flex h-full flex-col items-center justify-center gap-1 p-4 text-center"
-                    style={{ background: theme.bg, color: theme.ink, fontFamily: theme.font }}
-                  >
-                    <span className="w-fit rounded px-1.5 py-0.5 text-[8px] font-bold uppercase tracking-wide" style={{ color: theme.accent, border: `1px solid ${theme.accent}` }}>
-                      {theme.eyebrow}
-                    </span>
-                    <p className="text-xs font-bold leading-tight">Live preview coming soon</p>
-                  </div>
-                )}
+                <TemplateCover theme={theme} />
 
-                <div className="absolute inset-0 bg-gradient-to-t from-black/50 via-transparent to-transparent" />
+                <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent" />
 
                 <div className="absolute right-3 top-3 z-10 flex items-center gap-1">
                   {isLocked ? (

@@ -4,7 +4,7 @@ import { Space_Grotesk, Inter } from "next/font/google";
 import { prisma } from "@/lib/prisma";
 import { DEMO_STORES } from "@/lib/demo-stores";
 import type { TemplateTheme } from "@/lib/template-themes";
-import { LiveTemplatePreview } from "@/components/storefront/live-template-preview";
+import { TemplateCover } from "@/components/storefront/template-cover";
 
 const display = Space_Grotesk({ subsets: ["latin"], variable: "--font-display", weight: ["500", "700"] });
 const body = Inter({ subsets: ["latin"], variable: "--font-body" });
@@ -74,19 +74,10 @@ export default async function TemplatesPage() {
               style={{ borderColor: "var(--bn-ink-line)", background: "var(--bn-ink-raised)" }}
             >
               <div className="relative h-44 overflow-hidden" style={{ background: theme.bg }}>
-                {demoSlug ? (
-                  // A real, live-scaled render of the actual demo storefront —
-                  // not a stock photo, not a redrawn hero. What's shown here is
-                  // exactly what clicking "View live demo" opens.
-                  <LiveTemplatePreview slug={demoSlug} title={`${t.name} live preview`} />
-                ) : (
-                  <div className="flex h-full flex-col items-center justify-center gap-1 p-5 text-center" style={{ color: theme.ink, fontFamily: theme.font }}>
-                    <span className="mb-1 w-fit rounded px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide" style={{ color: theme.accent, border: `1px solid ${theme.accent}` }}>
-                      {theme.eyebrow}
-                    </span>
-                    <p className="text-sm font-bold leading-tight opacity-80">Live demo coming soon</p>
-                  </div>
-                )}
+                {/* Static facsimile built from the template's own theme
+                    tokens (WordPress-style theme thumbnail) — always
+                    renders correctly, not dependent on a seeded demo store. */}
+                <TemplateCover theme={theme} />
               </div>
 
               <div className="p-5">
