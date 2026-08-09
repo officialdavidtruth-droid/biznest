@@ -1,9 +1,15 @@
 import { prisma } from "@/lib/prisma";
-import { isHeenzyTemplate, isVioletTemplate, VIOLET } from "@/lib/template-themes";
+import { isHeenzyTemplate, isVioletTemplate, isMarketplaceTemplate, isArcovaTemplate, isNovaTemplate, VIOLET, MARKETPLACE, ARCOVA, NOVA } from "@/lib/template-themes";
 import { CheckoutClient } from "./checkout-client";
 import { HeenzyCheckoutClient } from "./heenzy-checkout-client";
 import { VioletCheckoutClient } from "./violet-checkout-client";
+import { MarketplaceCheckoutClient } from "./marketplace-checkout-client";
+import { ArcovaCheckoutClient } from "./arcova-checkout-client";
+import { NovaCheckoutClient } from "./nova-checkout-client";
 import { VioletHeader, VioletFooter } from "@/components/storefront/templates/violet-chrome";
+import { MarketplaceHeader, MarketplaceFooter } from "@/components/storefront/templates/marketplace-chrome";
+import { ArcovaHeader, ArcovaFooter } from "@/components/storefront/templates/arcova-chrome";
+import { NovaHeader, NovaFooter } from "@/components/storefront/templates/nova-chrome";
 import { getStoreCategoryTree } from "@/lib/storefront-categories";
 
 export default async function CheckoutPage({ params }: { params: Promise<{ slug: string }> }) {
@@ -11,6 +17,9 @@ export default async function CheckoutPage({ params }: { params: Promise<{ slug:
   const store = await prisma.store.findUnique({ where: { slug }, include: { template: true, business: true } });
   const heenzy = isHeenzyTemplate(store?.template?.name);
   const violet = store && isVioletTemplate(store.template?.name);
+  const marketplace = store && isMarketplaceTemplate(store.template?.name);
+  const arcova = store && isArcovaTemplate(store.template?.name);
+  const nova = store && isNovaTemplate(store.template?.name);
 
   if (violet && store) {
     const navCategories = await getStoreCategoryTree(store.id);
@@ -20,6 +29,42 @@ export default async function CheckoutPage({ params }: { params: Promise<{ slug:
         <VioletHeader store={store} slug={slug} navCategories={navCategories} />
         <VioletCheckoutClient slug={slug} />
         <VioletFooter store={store} slug={slug} social={social} />
+      </div>
+    );
+  }
+
+  if (marketplace && store) {
+    const navCategories = await getStoreCategoryTree(store.id);
+    const social = (store.socialLinks as Record<string, string> | null) ?? {};
+    return (
+      <div style={{ background: "#fff", color: MARKETPLACE.ink, fontFamily: MARKETPLACE.font, fontSize: 12, minHeight: "100vh" }}>
+        <MarketplaceHeader store={store} slug={slug} navCategories={navCategories} />
+        <MarketplaceCheckoutClient slug={slug} />
+        <MarketplaceFooter store={store} slug={slug} social={social} />
+      </div>
+    );
+  }
+
+  if (arcova && store) {
+    const navCategories = await getStoreCategoryTree(store.id);
+    const social = (store.socialLinks as Record<string, string> | null) ?? {};
+    return (
+      <div style={{ background: ARCOVA.paper, color: ARCOVA.ink, fontFamily: ARCOVA.font, minHeight: "100vh" }}>
+        <ArcovaHeader store={store} slug={slug} navCategories={navCategories} />
+        <ArcovaCheckoutClient slug={slug} />
+        <ArcovaFooter store={store} slug={slug} social={social} />
+      </div>
+    );
+  }
+
+  if (nova && store) {
+    const navCategories = await getStoreCategoryTree(store.id);
+    const social = (store.socialLinks as Record<string, string> | null) ?? {};
+    return (
+      <div style={{ background: NOVA.black, color: NOVA.cream, fontFamily: NOVA.font, minHeight: "100vh" }}>
+        <NovaHeader store={store} slug={slug} navCategories={navCategories} />
+        <NovaCheckoutClient slug={slug} />
+        <NovaFooter store={store} slug={slug} social={social} />
       </div>
     );
   }

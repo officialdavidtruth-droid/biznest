@@ -2,8 +2,11 @@ import { getOrderForBuyer } from "@/lib/actions/order";
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import { CheckCircle2, Circle, Package, Truck, Home } from "lucide-react";
-import { isVioletTemplate, VIOLET } from "@/lib/template-themes";
+import { isVioletTemplate, isMarketplaceTemplate, isArcovaTemplate, isNovaTemplate, VIOLET, MARKETPLACE, ARCOVA, NOVA } from "@/lib/template-themes";
 import { VioletHeader, VioletFooter } from "@/components/storefront/templates/violet-chrome";
+import { MarketplaceHeader, MarketplaceFooter } from "@/components/storefront/templates/marketplace-chrome";
+import { ArcovaHeader, ArcovaFooter } from "@/components/storefront/templates/arcova-chrome";
+import { NovaHeader, NovaFooter } from "@/components/storefront/templates/nova-chrome";
 import { getStoreCategoryTree } from "@/lib/storefront-categories";
 
 const ACCENT = "#0041C8";
@@ -32,11 +35,16 @@ export default async function OrderConfirmationPage({
   const isPaid = order.status !== "PENDING_PAYMENT";
 
   const violet = isVioletTemplate(order.store.template?.name);
-  const accent = violet ? VIOLET.accent : ACCENT;
-  const ink = violet ? VIOLET.ink : INK;
-  const cardRadius = violet ? 20 : 16;
-  const cardShadow = violet ? "0 5px 20px #20144b0a" : "0 1px 3px rgba(18,18,18,0.06)";
-  const pillRadius = violet ? 100 : 8;
+  const marketplace = isMarketplaceTemplate(order.store.template?.name);
+  const arcova = isArcovaTemplate(order.store.template?.name);
+  const nova = isNovaTemplate(order.store.template?.name);
+  const accent = violet ? VIOLET.accent : marketplace ? MARKETPLACE.blue : arcova ? ARCOVA.accent : nova ? NOVA.gold : ACCENT;
+  const ink = violet ? VIOLET.ink : marketplace ? MARKETPLACE.ink : arcova ? ARCOVA.ink : nova ? NOVA.cream : INK;
+  const cardRadius = violet ? 20 : marketplace ? 4 : arcova ? 0 : nova ? 2 : 16;
+  const cardShadow = violet ? "0 5px 20px #20144b0a" : marketplace ? "none" : arcova ? "none" : nova ? "none" : "0 1px 3px rgba(18,18,18,0.06)";
+  const cardBorder = marketplace ? `1px solid ${MARKETPLACE.border}` : arcova ? `1px solid ${ARCOVA.border}` : nova ? `1px solid ${NOVA.line}` : "none";
+  const pillRadius = violet ? 100 : marketplace ? 3 : arcova ? 0 : nova ? 2 : 8;
+  const cardBg = nova ? NOVA.charcoal : "#fff";
 
   const body = (
     <div className="mx-auto max-w-lg px-6 py-16 text-center">
@@ -57,7 +65,7 @@ export default async function OrderConfirmationPage({
 
       {/* ---------- STATUS TRACKER ---------- */}
       {isPaid && (
-        <div style={{ background: "#fff", borderRadius: cardRadius, boxShadow: cardShadow }} className="mb-6 p-6 text-left">
+        <div style={{ background: cardBg, borderRadius: cardRadius, boxShadow: cardShadow, border: cardBorder }} className="mb-6 p-6 text-left">
           <div className="flex items-center justify-between">
             {STEPS.map((step, i) => {
               const Icon = i <= stepIndex ? step.icon : Circle;
@@ -78,7 +86,7 @@ export default async function OrderConfirmationPage({
         </div>
       )}
 
-      <div style={{ background: "#fff", borderRadius: cardRadius, boxShadow: cardShadow }} className="mb-6 p-5 text-left text-sm">
+      <div style={{ background: cardBg, borderRadius: cardRadius, boxShadow: cardShadow, border: cardBorder }} className="mb-6 p-5 text-left text-sm">
         <p style={{ opacity: 0.55 }} className="mb-3 text-xs font-semibold uppercase tracking-wide">Order #{order.id.slice(-8).toUpperCase()}</p>
         {order.items.map((item) => (
           <div key={item.id} className="flex justify-between py-1.5">
@@ -119,6 +127,42 @@ export default async function OrderConfirmationPage({
         <VioletHeader store={order.store} slug={slug} navCategories={navCategories} />
         {body}
         <VioletFooter store={order.store} slug={slug} social={social} />
+      </div>
+    );
+  }
+
+  if (marketplace) {
+    const navCategories = await getStoreCategoryTree(order.storeId);
+    const social = (order.store.socialLinks as Record<string, string> | null) ?? {};
+    return (
+      <div style={{ background: "#fff", color: MARKETPLACE.ink, fontFamily: MARKETPLACE.font, fontSize: 12, minHeight: "100vh" }}>
+        <MarketplaceHeader store={order.store} slug={slug} navCategories={navCategories} />
+        {body}
+        <MarketplaceFooter store={order.store} slug={slug} social={social} />
+      </div>
+    );
+  }
+
+  if (arcova) {
+    const navCategories = await getStoreCategoryTree(order.storeId);
+    const social = (order.store.socialLinks as Record<string, string> | null) ?? {};
+    return (
+      <div style={{ background: ARCOVA.paper, color: ARCOVA.ink, fontFamily: ARCOVA.font, minHeight: "100vh" }}>
+        <ArcovaHeader store={order.store} slug={slug} navCategories={navCategories} />
+        {body}
+        <ArcovaFooter store={order.store} slug={slug} social={social} />
+      </div>
+    );
+  }
+
+  if (nova) {
+    const navCategories = await getStoreCategoryTree(order.storeId);
+    const social = (order.store.socialLinks as Record<string, string> | null) ?? {};
+    return (
+      <div style={{ background: NOVA.black, color: NOVA.cream, fontFamily: NOVA.font, minHeight: "100vh" }}>
+        <NovaHeader store={order.store} slug={slug} navCategories={navCategories} />
+        {body}
+        <NovaFooter store={order.store} slug={slug} social={social} />
       </div>
     );
   }
