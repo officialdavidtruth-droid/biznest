@@ -94,7 +94,7 @@ export async function emitPlatformWebhookEvent(
   await Promise.all(
     subscribed.map(async (endpoint) => {
       const delivery = await prisma.webhookDelivery.create({
-        data: { endpointId: endpoint.id, eventType, payload: body },
+        data: { endpointId: endpoint.id, eventType, payload: body as Prisma.InputJsonValue },
       });
       await attemptDelivery(delivery.id);
     })
