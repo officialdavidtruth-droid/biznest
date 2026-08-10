@@ -7,7 +7,6 @@ import { prisma } from "@/lib/prisma";
 import { registerSchema, type RegisterInput } from "@/lib/validations/auth";
 import { sendVerificationEmail } from "@/lib/email/send";
 import { checkRateLimit, getClientIp } from "@/lib/rate-limit";
-import { emitPlatformWebhookEvent } from "@/lib/webhooks/dispatch";
 import type { ActionResult } from "@/types/actions";
 
 export async function registerUser(input: RegisterInput): Promise<ActionResult<{ userId: string }>> {
@@ -63,12 +62,6 @@ export async function registerUser(input: RegisterInput): Promise<ActionResult<{
     // action is a natural follow-up if this starts showing up often.
     console.error("Failed to send verification email:", err);
   }
-
-  await emitPlatformWebhookEvent("CUSTOMER_CREATED", {
-    userId: user.id,
-    email: user.email,
-    name: user.name,
-  });
 
   return { success: true, data: { userId: user.id } };
 }

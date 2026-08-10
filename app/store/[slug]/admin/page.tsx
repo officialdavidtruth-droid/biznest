@@ -5,8 +5,6 @@ import { AlertTriangle, Info } from "lucide-react";
 import { seedSampleListings, backfillListingImages } from "@/lib/actions/store";
 import { getCategoryDashboard } from "@/lib/constants/category-dashboard";
 import { getDashboardInsights } from "@/lib/actions/analytics";
-import { getTrustScoreBreakdown } from "@/lib/actions/trust-score";
-import { TrustScoreCard } from "@/components/dashboard/trust-score-card";
 
 export default async function StoreDashboardHome({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
@@ -18,13 +16,12 @@ export default async function StoreDashboardHome({ params }: { params: Promise<{
   const categoryDashboard = getCategoryDashboard(store.business.category);
   const CategoryIcon = categoryDashboard.icon;
 
-  const [productCount, serviceCount, productsWithoutPhotos, servicesWithoutPhotos, insights, trustScore] = await Promise.all([
+  const [productCount, serviceCount, productsWithoutPhotos, servicesWithoutPhotos, insights] = await Promise.all([
     prisma.product.count({ where: { storeId: store.id } }),
     prisma.service.count({ where: { storeId: store.id } }),
     prisma.product.count({ where: { storeId: store.id, images: { isEmpty: true } } }),
     prisma.service.count({ where: { storeId: store.id, images: { isEmpty: true } } }),
     getDashboardInsights(store.id, slug),
-    getTrustScoreBreakdown(store.business.id),
   ]);
 
   const isEmpty = productCount === 0 && serviceCount === 0;
@@ -127,14 +124,8 @@ export default async function StoreDashboardHome({ params }: { params: Promise<{
             <p className="text-xs text-muted-foreground">{s.label}</p>
             <p className="mt-1 truncate text-2xl font-semibold" title={s.value}>{s.value}</p>
           </div>
+        ))}
       </div>
-
-      {trustScore && (
-        <div className="mb-8">
-          <p className="mb-3 text-sm font-medium">Your BizNest Trust Score</p>
-          <TrustScoreCard breakdown={trustScore} />
-        </div>
-      )}
 
       {insights.recommendations.length > 0 && (
         <div>

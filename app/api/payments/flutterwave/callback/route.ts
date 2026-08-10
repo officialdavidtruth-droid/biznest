@@ -1,8 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import { verifyFlutterwaveTransaction } from "@/lib/payments/flutterwave";
 import { checkRateLimit, getClientIp } from "@/lib/rate-limit";
-import { settleInvoicePayment } from "@/lib/actions/invoice";
-import { settleQuoteDeposit } from "@/lib/actions/quote";
 import { NextResponse } from "next/server";
 
 const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? "https://biznest.vercel.app";
@@ -23,21 +21,6 @@ export async function GET(req: Request) {
   const rate = await checkRateLimit(`payment-callback:${ip}`, 30, 60 * 1000);
   if (!rate.allowed) {
     return NextResponse.redirect(`${APP_URL}/?payment=rate_limited`);
-  }
-
-  // Invoice payments and quote deposits use their own reference prefixes —
-  // see the matching branch in the Paystack callback route.
-  if (txRef.startsWith("INV-") || txRef.startsWith("QDEP-")) {
-    const isInvoice = txRef.startsWith("INV-");
-    const id = txRef.split("-")[1];
-    const verification = await verifyFlutterwaveTransaction(transactionId);
-
-    if (verification.status === "success" && verification.data?.status === "successful") {
-      if (isInvoice) await settleInvoicePayment(txRef, verification as object);
-      else await settleQuoteDeposit(txRef, verification as object);
-      return NextResponse.redirect(isInvoice ? `${APP_URL}/invoices/${id}` : `${APP_URL}/quotes/${id}`);
-    }
-    return NextResponse.redirect(`${APP_URL}/${isInvoice ? "invoices" : "quotes"}/${id}?payment=failed`);
   }
 
   const order = await prisma.order.findUnique({ where: { id: txRef }, include: { store: true } });

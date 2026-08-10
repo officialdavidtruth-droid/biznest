@@ -18,16 +18,9 @@ async function assertPlatformAdmin() {
 export type MaintenanceValue = { enabled: boolean; message: string };
 export type AnnouncementValue = { enabled: boolean; message: string; tone: "info" | "warning" | "success" };
 export type ActiveGateway = "PAYSTACK" | "FLUTTERWAVE";
-// pointsPerNaira: how many points a customer earns per ₦1 spent (order total).
-// nairaPerPoint: how many naira one point is worth when cashed out as a coupon.
-export type LoyaltyRates = { pointsPerNaira: number; nairaPerPoint: number };
 
 const DEFAULT_MAINTENANCE: MaintenanceValue = { enabled: false, message: "" };
 const DEFAULT_ANNOUNCEMENT: AnnouncementValue = { enabled: false, message: "", tone: "info" };
-// Default: ₦100 spent -> 1 point, 1 point cashed out -> ₦1 coupon value.
-// Deliberately conservative; platform admin can tune both independently
-// from supaadmin once the loyalty settings UI exists.
-const DEFAULT_LOYALTY_RATES: LoyaltyRates = { pointsPerNaira: 0.01, nairaPerPoint: 1 };
 
 async function getSetting<T>(key: string, fallback: T): Promise<T> {
   const row = await prisma.platformSetting.findUnique({ where: { key } });
@@ -73,33 +66,7 @@ export async function getGatewayAvailability() {
   };
 }
 
-/**
- * Single global loyalty rate for the whole platform (per product decision —
- * no per-merchant override). lib/actions/loyalty.ts is the only other
- * caller; kept here alongside the other platform-wide settings rather than
- * in loyalty.ts so every PlatformSetting read/write goes through one file.
- */
-export async function getLoyaltyRates(): Promise<LoyaltyRates> {
-  return getSetting(SETTING_KEYS.LOYALTY_RATES, DEFAULT_LOYALTY_RATES);
-}
-
 // --- Admin writes ---
-
-export async function updateLoyaltyRates(value: LoyaltyRates): Promise<ActionResult> {
-  const access = await assertPlatformAdmin();
-  if (!access.success) return { success: false, error: access.error };
-
-  if (value.pointsPerNaira <= 0 || value.nairaPerPoint <= 0) {
-    return { success: false, error: "Loyalty rates must be greater than zero." };
-  }
-
-  await setSetting(SETTING_KEYS.LOYALTY_RATES, value);
-  await prisma.auditLog.create({
-    data: { userId: access.userId, action: "LOYALTY_RATES_UPDATED", entity: "PlatformSetting", entityId: SETTING_KEYS.LOYALTY_RATES, metadata: value },
-  });
-
-  return { success: true, data: undefined };
-}
 
 export async function updateMaintenanceSetting(value: MaintenanceValue): Promise<ActionResult> {
   const access = await assertPlatformAdmin();

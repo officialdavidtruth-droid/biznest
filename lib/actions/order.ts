@@ -8,9 +8,6 @@ import { calculateOrderTotals } from "@/lib/utils/pricing";
 import { revalidatePath } from "next/cache";
 import type { ActionResult } from "@/types/actions";
 import type { OrderStatus, Store, Business } from "@prisma/client";
-import { awardLoyaltyPointsForOrder } from "@/lib/actions/loyalty";
-import { recomputeAndPersistTrustScore } from "@/lib/actions/trust-score";
-import { emitWebhookEvent } from "@/lib/webhooks/dispatch";
 // Which order statuses a seller should ever see (excludes PENDING_PAYMENT /
 // CANCELLED carts that were never actually paid for). Lives outside this
 // file because a "use server" file may only export async functions — a
@@ -132,15 +129,6 @@ export async function startCheckout(
     },
   });
 
-  await emitWebhookEvent("ORDER_CREATED", store.id, {
-    orderId: order.id,
-    storeId: store.id,
-    status: order.status,
-    subtotal: Number(order.subtotal),
-    total: Number(order.total),
-    currency: order.currency,
-  });
-
   return { success: true, data: { authorizationUrl: charge.authorizationUrl } };
 }
 
@@ -192,7 +180,6 @@ export async function listOrdersForBuyer() {
     include: {
       items: { include: { product: true, service: true } },
       store: { select: { name: true, slug: true } },
-      dispute: { select: { id: true, status: true } },
     },
     orderBy: { createdAt: "desc" },
   });
@@ -244,36 +231,6 @@ export async function updateOrderStatus(
       escrowReleasedAt: status === "COMPLETED" ? new Date() : order.escrowReleasedAt,
     },
   });
-
-  // Append-only timeline entry — this is what lets a later dispute's
-  // "Delivery information" section show exactly when the seller marked
-  // this order delivered/completed, not just Order.updatedAt (which gets
-  // overwritten on every subsequent transition).
-  await prisma.orderStatusEvent.create({ data: { orderId, status } });
-
-  // Fire-and-forget from the caller's perspective, but awaited here so a
-  // failure surfaces in logs rather than silently dropping points -- this
-  // never blocks the status update itself since it runs after it commits.
-  if (status === "COMPLETED" && order.status !== "COMPLETED") {
-    await awardLoyaltyPointsForOrder(orderId);
-  }
-
-  // Completed/cancelled/refunded all feed Trust Score factors
-  // (completedTransactions, cancellationRate, refundRate) -- refresh the
-  // persisted score so marketplace search sort/filter picks it up. Other
-  // statuses (e.g. PENDING -> SHIPPED) don't move any factor, so skip the
-  // write for those.
-  if (status !== order.status && ["COMPLETED", "CANCELLED", "REFUNDED"].includes(status)) {
-    await recomputeAndPersistTrustScore(access.store.business.id);
-  }
-
-  if (status !== order.status) {
-    if (status === "CANCELLED") {
-      await emitWebhookEvent("ORDER_CANCELLED", access.store.id, { orderId, status });
-    } else if (status === "DELIVERED") {
-      await emitWebhookEvent("ORDER_FULFILLED", access.store.id, { orderId, status });
-    }
-  }
 
   revalidatePath(`/store/${slug}/admin/orders`);
   return { success: true, data: undefined };

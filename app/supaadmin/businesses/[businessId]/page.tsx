@@ -1,6 +1,4 @@
 import { getBusinessDetail } from "@/lib/actions/admin";
-import { getTrustScoreBreakdown } from "@/lib/actions/trust-score";
-import { TrustScoreCard } from "@/components/dashboard/trust-score-card";
 import { notFound } from "next/navigation";
 import { BusinessReviewActions } from "@/components/dashboard/business-review-actions";
 
@@ -12,7 +10,6 @@ export default async function BusinessDetailPage({
   const { businessId } = await params;
   const business = await getBusinessDetail(businessId);
   if (!business) notFound();
-  const trustScore = await getTrustScoreBreakdown(businessId);
 
   return (
     <div className="max-w-3xl">
@@ -25,12 +22,6 @@ export default async function BusinessDetailPage({
         </div>
         <StatusPill status={business.verificationStatus} />
       </div>
-
-      {trustScore && (
-        <div className="mb-6">
-          <TrustScoreCard breakdown={trustScore} />
-        </div>
-      )}
 
       <Section title="Business details">
         <Grid>

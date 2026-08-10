@@ -1,14 +1,13 @@
-import { getMaintenanceSetting, getAnnouncementSetting, getGatewayAvailability, getLoyaltyRates } from "@/lib/actions/site-settings";
+import { getMaintenanceSetting, getAnnouncementSetting, getGatewayAvailability } from "@/lib/actions/site-settings";
 import { listPlans } from "@/lib/actions/admin";
-import { MaintenanceForm, AnnouncementForm, GatewayToggle, PlanPricingRow, LoyaltyRatesForm } from "@/components/dashboard/settings-forms";
+import { MaintenanceForm, AnnouncementForm, GatewayToggle, PlanPricingRow } from "@/components/dashboard/settings-forms";
 
 export default async function SupaAdminSettingsPage() {
-  const [maintenance, announcement, gatewayAvailability, plans, loyaltyRates] = await Promise.all([
+  const [maintenance, announcement, gatewayAvailability, plans] = await Promise.all([
     getMaintenanceSetting(),
     getAnnouncementSetting(),
     getGatewayAvailability(),
     listPlans(),
-    getLoyaltyRates(),
   ]);
 
   return (
@@ -33,13 +32,6 @@ export default async function SupaAdminSettingsPage() {
           paystackConfigured={gatewayAvailability.paystackConfigured}
           flutterwaveConfigured={gatewayAvailability.flutterwaveConfigured}
         />
-      </section>
-
-      <section>
-        <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-muted-foreground">Loyalty</h2>
-        <div className="grid gap-4 md:grid-cols-2">
-          <LoyaltyRatesForm initial={loyaltyRates} />
-        </div>
       </section>
 
       <section>

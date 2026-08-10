@@ -7,11 +7,9 @@ import {
   updateMaintenanceSetting,
   updateAnnouncementSetting,
   setActiveGateway,
-  updateLoyaltyRates,
   type MaintenanceValue,
   type AnnouncementValue,
   type ActiveGateway,
-  type LoyaltyRates,
 } from "@/lib/actions/site-settings";
 import { updatePlanPricing } from "@/lib/actions/admin";
 
@@ -247,79 +245,5 @@ export function PlanPricingRow({ plan }: { plan: Plan }) {
         </button>
       </td>
     </tr>
-  );
-}
-
-// --- Loyalty rates --------------------------------------------------------
-
-export function LoyaltyRatesForm({ initial }: { initial: LoyaltyRates }) {
-  const router = useRouter();
-  const [pointsPerNaira, setPointsPerNaira] = useState(String(initial.pointsPerNaira));
-  const [nairaPerPoint, setNairaPerPoint] = useState(String(initial.nairaPerPoint));
-  const [saving, setSaving] = useState(false);
-
-  const pointsPerNairaNum = Number(pointsPerNaira);
-  const nairaPerPointNum = Number(nairaPerPoint);
-  const sampleSpend = 10000;
-  const samplePoints = pointsPerNairaNum > 0 ? Math.floor(sampleSpend * pointsPerNairaNum) : 0;
-  const sampleValue = nairaPerPointNum > 0 ? samplePoints * nairaPerPointNum : 0;
-
-  async function handleSave() {
-    if (pointsPerNairaNum <= 0 || nairaPerPointNum <= 0) {
-      toast.error("Loyalty rates must be greater than zero.");
-      return;
-    }
-    setSaving(true);
-    const result = await updateLoyaltyRates({ pointsPerNaira: pointsPerNairaNum, nairaPerPoint: nairaPerPointNum });
-    setSaving(false);
-    if (!result.success) return toast.error(result.error);
-    toast.success("Loyalty rates updated.");
-    router.refresh();
-  }
-
-  return (
-    <div className="rounded-lg border bg-background p-4">
-      <h3 className="mb-1 text-sm font-semibold">Loyalty rate</h3>
-      <p className="mb-3 text-xs text-muted-foreground">
-        Applies platform-wide — how customers earn points on orders, and what those points are worth when cashed out.
-      </p>
-
-      <div className="mb-3 grid grid-cols-2 gap-3">
-        <label className="text-xs text-muted-foreground">
-          Points earned per ₦1 spent
-          <input
-            value={pointsPerNaira}
-            onChange={(e) => setPointsPerNaira(e.target.value)}
-            type="number"
-            min="0"
-            step="0.0001"
-            className="mt-1 w-full rounded-md border px-3 py-1.5 text-sm"
-          />
-        </label>
-        <label className="text-xs text-muted-foreground">
-          ₦ value per point cashed out
-          <input
-            value={nairaPerPoint}
-            onChange={(e) => setNairaPerPoint(e.target.value)}
-            type="number"
-            min="0"
-            step="0.01"
-            className="mt-1 w-full rounded-md border px-3 py-1.5 text-sm"
-          />
-        </label>
-      </div>
-
-      <p className="mb-3 text-xs text-muted-foreground">
-        Example: a ₦{sampleSpend.toLocaleString()} order earns {samplePoints.toLocaleString()} points, worth ₦{sampleValue.toLocaleString()} if cashed out.
-      </p>
-
-      <button
-        onClick={handleSave}
-        disabled={saving}
-        className="rounded-md bg-primary px-3 py-1.5 text-sm text-primary-foreground disabled:opacity-50"
-      >
-        {saving ? "Saving…" : "Save"}
-      </button>
-    </div>
   );
 }

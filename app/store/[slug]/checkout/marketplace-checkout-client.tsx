@@ -5,12 +5,11 @@ import Link from "next/link";
 import { useCart } from "@/lib/cart-context";
 import { startCheckout } from "@/lib/actions/order";
 import { listActiveDeliveryZones } from "@/lib/actions/delivery-zone";
-import { DeliveryZoneOptions } from "@/components/checkout/delivery-zone-options";
 import { toast } from "sonner";
 import { ShieldCheck, Lock, Truck, ChevronLeft } from "lucide-react";
 import { MARKETPLACE } from "@/lib/template-themes";
 
-type Zone = { id: string; name: string; city: string | null; fee: unknown; estimatedMinutes: number | null };
+type Zone = { id: string; name: string; fee: unknown; estimatedMinutes: number | null };
 
 // Marketplace Hub design tokens — mirrors violet-checkout-client.tsx's
 // structure, recolored/reshaped to match the Marketplace homepage/cart
@@ -101,7 +100,11 @@ export function MarketplaceCheckoutClient({ slug }: { slug: string }) {
                 className="w-full px-3 py-2.5 text-xs outline-none"
               >
                 <option value="">Pickup / no delivery fee</option>
-                <DeliveryZoneOptions zones={zones} />
+                {zones.map((z) => (
+                  <option key={z.id} value={z.id}>
+                    {z.name} — {Number(z.fee).toLocaleString()}{z.estimatedMinutes ? ` (~${z.estimatedMinutes} min)` : ""}
+                  </option>
+                ))}
               </select>
             </div>
           )}

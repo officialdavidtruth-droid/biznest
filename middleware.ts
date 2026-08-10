@@ -13,7 +13,7 @@ const { auth } = NextAuth(authConfig);
 // Routes that require an authenticated *user* session (NextAuth). Deliberately
 // excludes /supaadmin — that's gated by its own PIN cookie below, completely
 // independent of user accounts. See lib/admin-pin-auth.ts for why.
-const PROTECTED_PREFIXES = ["/onboarding", "/dashboard", "/admin", "/account", "/orders", "/disputes"];
+const PROTECTED_PREFIXES = ["/onboarding", "/dashboard", "/admin", "/account", "/orders"];
 
 // Store admin routes: /store/[slug]/admin/** — ownership is verified inside
 // the route handlers/layout (needs a DB lookup middleware can't cheaply do

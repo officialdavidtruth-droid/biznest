@@ -1,5 +1,4 @@
 import type React from "react";
-import { TrustBadge } from "@/components/storefront/trust-badge";
 import { CartLink } from "@/components/storefront/cart-link";
 import { RRW, RRW_THEME } from "@/lib/template-themes";
 import { subscribeToNewsletter } from "@/lib/actions/newsletter";
@@ -32,7 +31,7 @@ type Review = { id: string; rating: number; comment: string | null; author: { na
 const wrap: React.CSSProperties = { maxWidth: 1180, margin: "0 auto", padding: "32px 6%" };
 
 export function RrwStorefront({
-  store, slug, catalogItems, navCategories, goodReviews, avgRating, completedOrders, trustScore, social,
+  store, slug, catalogItems, navCategories, goodReviews, avgRating, completedOrders, social,
 }: {
   store: {
     name: string; logoUrl: string | null; bannerUrl: string | null;
@@ -44,7 +43,6 @@ export function RrwStorefront({
   navCategories: CategoryTreeNode[];
   goodReviews: Review[];
   avgRating: number | null;
-  trustScore: number | null;
   completedOrders: number;
   social: Record<string, string>;
 }) {
@@ -201,7 +199,6 @@ export function RrwStorefront({
           {catalogItems.length > 0 && <div><strong style={{ fontSize: 26, display: "block" }}>{catalogItems.length}+</strong><span style={{ fontSize: 10, color: "#777" }}>Vehicles/items listed</span></div>}
           {completedOrders > 0 && <div><strong style={{ fontSize: 26, display: "block" }}>{completedOrders}+</strong><span style={{ fontSize: 10, color: "#777" }}>Bookings completed</span></div>}
           {avgRating != null && <div><strong style={{ fontSize: 26, display: "block" }}>{avgRating.toFixed(1)}/5</strong><span style={{ fontSize: 10, color: "#777" }}>Average rating</span></div>}
-          {trustScore != null && <div><TrustBadge score={trustScore} /></div>}
         </section>
       )}
 

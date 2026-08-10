@@ -6,7 +6,6 @@ import { productSchema, type ProductInput } from "@/lib/validations/product";
 import { revalidatePath } from "next/cache";
 import slugify from "slugify";
 import type { ActionResult } from "@/types/actions";
-import { emitWebhookEvent } from "@/lib/webhooks/dispatch";
 
 import type { Store, Business } from "@prisma/client";
 
@@ -107,14 +106,6 @@ export async function createProduct(
     },
   });
 
-  await emitWebhookEvent("PRODUCT_CREATED", access.store.id, {
-    productId: product.id,
-    name: product.name,
-    price: Number(product.price),
-    currency: product.currency,
-    isPublished: product.isPublished,
-  });
-
   revalidatePath(`/store/${slug}/admin/products`);
   return { success: true, data: { productId: product.id } };
 }
@@ -163,14 +154,6 @@ export async function updateProduct(
         },
       },
     },
-  });
-
-  await emitWebhookEvent("PRODUCT_UPDATED", access.store.id, {
-    productId,
-    name: data.name,
-    price: data.price,
-    currency: data.currency,
-    isPublished: data.isPublished,
   });
 
   revalidatePath(`/store/${slug}/admin/products`);

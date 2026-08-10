@@ -1,5 +1,4 @@
 import type React from "react";
-import { TrustBadge } from "@/components/storefront/trust-badge";
 import { CartLink } from "@/components/storefront/cart-link";
 import { ARCOVA } from "@/lib/template-themes";
 import { CategoryNav } from "@/components/storefront/category-nav";
@@ -37,7 +36,7 @@ const PROCESS_STEPS = [
 ];
 
 export function ArcovaStorefront({
-  store, slug, catalogItems, navCategories, goodReviews, avgRating, completedOrders, trustScore, social,
+  store, slug, catalogItems, navCategories, goodReviews, avgRating, completedOrders, social,
 }: {
   store: {
     name: string; logoUrl: string | null; bannerUrl: string | null;
@@ -49,7 +48,6 @@ export function ArcovaStorefront({
   navCategories: CategoryTreeNode[];
   goodReviews: Review[];
   avgRating: number | null;
-  trustScore: number | null;
   completedOrders: number;
   social: Record<string, string>;
 }) {
@@ -105,7 +103,6 @@ export function ArcovaStorefront({
               </div>
             ))}
           </div>
-          {trustScore != null && <TrustBadge score={trustScore} style={{ marginTop: 14 }} />}
         </div>
       </section>
 

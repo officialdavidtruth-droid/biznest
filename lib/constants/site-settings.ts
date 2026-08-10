@@ -6,5 +6,4 @@ export const SETTING_KEYS = {
   MAINTENANCE: "site.maintenance",
   ANNOUNCEMENT: "site.announcement",
   ACTIVE_GATEWAY: "payments.active_gateway",
-  LOYALTY_RATES: "loyalty.rates",
 } as const;

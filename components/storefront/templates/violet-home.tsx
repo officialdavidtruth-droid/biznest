@@ -1,5 +1,4 @@
 import type React from "react";
-import { TrustBadge } from "@/components/storefront/trust-badge";
 import { CartLink } from "@/components/storefront/cart-link";
 import { VIOLET, VIOLET_THEME, type TemplateTheme } from "@/lib/template-themes";
 import { subscribeToNewsletter } from "@/lib/actions/newsletter";
@@ -49,7 +48,7 @@ function resolveVioletPalette(theme: TemplateTheme) {
 }
 
 export function VioletStorefront({
-  store, slug, catalogItems, navCategories, goodReviews, avgRating, completedOrders, trustScore, social, theme = VIOLET_THEME, heroOverrides,
+  store, slug, catalogItems, navCategories, goodReviews, avgRating, completedOrders, social, theme = VIOLET_THEME, heroOverrides,
 }: {
   store: {
     name: string; logoUrl: string | null; bannerUrl: string | null;
@@ -61,7 +60,6 @@ export function VioletStorefront({
   navCategories: CategoryTreeNode[];
   goodReviews: Review[];
   avgRating: number | null;
-  trustScore: number | null;
   completedOrders: number;
   social: Record<string, string>;
   /** Which Violet variant to render (colors, type, spacing). Defaults to the original purple/indigo theme. */
@@ -201,7 +199,6 @@ export function VioletStorefront({
           {catalogItems.length > 0 && <div><b style={{ fontSize: 26, display: "block", color: p.accent }}>{catalogItems.length}+</b><span style={{ fontSize: 12, color: p.muted }}>In the shop</span></div>}
           {completedOrders > 0 && <div><b style={{ fontSize: 26, display: "block", color: p.accent }}>{completedOrders}+</b><span style={{ fontSize: 12, color: p.muted }}>Orders completed</span></div>}
           {avgRating != null && <div><b style={{ fontSize: 26, display: "block", color: p.accent }}>{avgRating.toFixed(1)}/5</b><span style={{ fontSize: 12, color: p.muted }}>Average rating</span></div>}
-          {trustScore != null && <div><TrustBadge score={trustScore} /></div>}
         </section>
       )}
 

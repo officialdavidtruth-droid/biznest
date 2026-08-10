@@ -62,89 +62,8 @@ model User {
   notifications     Notification[]
   auditLogs         AuditLog[]
   disputesRaised    Dispute[]       @relation("DisputeRaisedBy")
-  disputeEvidence   DisputeEvidence[]
-
-  // --- Customer account system (additive) ---
-  addresses         Address[]
-  wishlistItems     WishlistItem[]
-  recentlyViewed    RecentlyViewed[]
-  favoriteBusinesses FavoriteBusiness[]
-  savedCarts        SavedCart[]
-
-  // --- Loyalty / invoicing / quotations (additive) ---
-  loyaltyAccount    LoyaltyAccount?
-  invoices          Invoice[]
-  quotes            Quote[]
 
   @@index([role])
-}
-
-model Address {
-  id        String   @id @default(cuid())
-  userId    String
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  label     String?  // "Home", "Office"
-  fullName  String
-  phone     String
-  line1     String
-  line2     String?
-  city      String
-  state     String
-  country   String   @default("Nigeria")
-  isDefault Boolean  @default(false)
-  createdAt DateTime @default(now())
-
-  @@index([userId])
-}
-
-model WishlistItem {
-  id        String   @id @default(cuid())
-  userId    String
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  productId String?
-  product   Product? @relation(fields: [productId], references: [id], onDelete: Cascade)
-  serviceId String?
-  service   Service? @relation(fields: [serviceId], references: [id], onDelete: Cascade)
-  createdAt DateTime @default(now())
-
-  @@unique([userId, productId, serviceId])
-  @@index([userId])
-}
-
-model RecentlyViewed {
-  id        String   @id @default(cuid())
-  userId    String
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  productId String?
-  product   Product? @relation(fields: [productId], references: [id], onDelete: Cascade)
-  serviceId String?
-  service   Service? @relation(fields: [serviceId], references: [id], onDelete: Cascade)
-  viewedAt  DateTime @default(now())
-
-  @@index([userId, viewedAt])
-}
-
-model FavoriteBusiness {
-  id         String   @id @default(cuid())
-  userId     String
-  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  businessId String
-  business   Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
-  createdAt  DateTime @default(now())
-
-  @@unique([userId, businessId])
-}
-
-model SavedCart {
-  id        String   @id @default(cuid())
-  userId    String
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  storeId   String
-  store     Store    @relation(fields: [storeId], references: [id], onDelete: Cascade)
-  items     Json     // [{ productId, quantity }]
-  updatedAt DateTime @updatedAt
-
-  @@unique([userId, storeId])
 }
 
 // Auth.js required models
@@ -241,40 +160,13 @@ model Business {
   reviewedAt            DateTime?
   rejectionReason       String?
 
-  // --- Marketplace discovery fields (additive; existing rows default in) ---
-  latitude              Float?
-  longitude             Float?
-  // Search visibility, kept independent of verificationStatus/verificationBadge
-  // so admins can suppress a business from platform-wide discovery without
-  // touching its trust/verification record.
-  searchVisible         Boolean                   @default(true)
-  // Denormalized from Review, recomputed on review create/update/delete
-  // (see lib/actions/reviews.ts) -- avoids aggregating Review on every
-  // search request. Null/0 until the recompute job/backfill runs.
-  avgRating             Float?
-  reviewCount           Int                       @default(0)
-
-  // Denormalized copy of getTrustScoreBreakdown(...).score (see
-  // lib/actions/trust-score.ts). The dashboard still computes the full
-  // breakdown live; this column exists only so marketplace search can
-  // sort/filter by Trust Score without recomputing it per row. Kept in
-  // sync by recomputeAndPersistTrustScore() -- see that file for which
-  // write paths trigger a refresh and the accepted staleness window.
-  trustScore            Int?
-  trustScoreUpdatedAt   DateTime?
-
   guarantors             Guarantor[]
   store                  Store?
-  favoritedBy            FavoriteBusiness[]
 
   createdAt              DateTime @default(now())
   updatedAt               DateTime @updatedAt
 
   @@index([verificationStatus])
-  @@index([category])
-  @@index([city, state])
-  @@index([latitude, longitude])
-  @@index([trustScore])
 }
 
 model Guarantor {
@@ -322,8 +214,6 @@ model Store {
   templateId    String?
   template      StoreTemplate? @relation(fields: [templateId], references: [id])
 
-  webhookEndpoints WebhookEndpoint[]
-
   logoUrl       String?
   bannerUrl     String?
   themeColors   Json? // { primary, secondary, accent, ... }
@@ -333,13 +223,6 @@ model Store {
   // never be hidden. A section still won't render if it has no real data
   // behind it regardless of this override (see app/store/[slug]/page.tsx) --
   // this controls arrangement, not fabrication.
-  // Per-store sequential counters for human-facing document numbers
-  // (e.g. "BN-INV-7" for a store's 7th invoice). Incremented inside the
-  // same transaction that creates the Invoice/Quote row to avoid races.
-  nextInvoiceNo Int @default(1)
-  nextQuoteNo   Int @default(1)
-  nextPoNo      Int @default(1)
-
   sectionOverrides Json?
   // Click-to-edit hero block overrides (see components/dashboard/hero-block-editor.tsx).
   // { headline?, subtitle?, ctaLabel? } -- all optional; page.tsx falls back to
@@ -388,18 +271,11 @@ model Store {
   deliveryZones DeliveryZone[]
   newsletterSubscribers NewsletterSubscriber[]
   coupons       Coupon[]
-  invoices      Invoice[]
-  quotes        Quote[]
   reviews       Review[]
   pages         StorePage[]
   inventory     InventoryItem[]
-  variants      ProductVariant[]
-  stockMovements StockMovement[]
-  suppliers     Supplier[]
-  purchaseOrders PurchaseOrder[]
   payments      Payment[]
   visits        StoreVisit[]
-  savedCarts    SavedCart[]
 
   createdAt     DateTime    @default(now())
   updatedAt     DateTime    @updatedAt
@@ -454,30 +330,8 @@ model Category {
   parent   Category?  @relation("CategoryTree", fields: [parentId], references: [id])
   children Category[] @relation("CategoryTree")
 
-  // Defines which Product/Service.attributes keys are filterable for this
-  // category and how the discovery UI should render/query them. Read only
-  // by the marketplace filter panel -- never enforced at the DB level, same
-  // pattern as Product.attributes itself. Null = no filter panel yet.
-  filterSchema Json?
-
   products Product[]
   services Service[]
-}
-
-// Logged platform-wide marketplace searches, for ranking and analytics.
-// Independent of Business/Store -- purely additive, no FK on existing tables.
-model SearchQuery {
-  id                String   @id @default(cuid())
-  rawQuery          String?
-  category          String?
-  city              String?
-  state             String?
-  resultCount       Int
-  clickedBusinessId String?
-  createdAt         DateTime @default(now())
-
-  @@index([category, city])
-  @@index([createdAt])
 }
 
 enum CategoryType {
@@ -510,76 +364,14 @@ model Product {
   // (see lib/template-themes.ts) -- absent/unknown keys are ignored.
   attributes     Json?
 
-  // True once this product has at least one ProductVariant. Existing
-  // single-SKU products keep using the InventoryItem below unchanged --
-  // variants only kick in once the merchant opts in, so nothing about
-  // simple products has to change.
-  hasVariants  Boolean     @default(false)
-  // Defines the option axes for this product's variants, e.g.
-  // [{ "name": "Size", "values": ["S","M","L"] }, { "name": "Color", "values": ["Red","Blue"] }].
-  // Purely descriptive -- used to render the variant matrix in the editor;
-  // each ProductVariant.optionValues carries its own resolved combo.
-  variantOptions Json?
-
   inventory    InventoryItem?
-  variants     ProductVariant[]
   orderItems   OrderItem[]
   reviews      Review[]
-  wishlistedBy WishlistItem[]
-  viewedBy     RecentlyViewed[]
-  supplierLinks    SupplierProduct[]
-  purchaseOrderItems PurchaseOrderItem[]
 
   createdAt    DateTime    @default(now())
   updatedAt    DateTime    @updatedAt
 
   @@unique([storeId, slug])
-  @@index([storeId])
-}
-
-// One row per sellable size/color/etc combo of a variant-enabled product.
-// Each variant carries its own SKU, barcode, price override, and stock --
-// mirroring InventoryItem's fields rather than reusing it, since a variant
-// isn't a standalone product and needs the optionValues/product link
-// instead of a 1:1 product relation.
-model ProductVariant {
-  id           String   @id @default(cuid())
-  productId    String
-  product      Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
-  storeId      String
-  store        Store    @relation(fields: [storeId], references: [id], onDelete: Cascade)
-
-  // Resolved combo for this variant, e.g. { "Size": "M", "Color": "Blue" }.
-  optionValues Json
-  // Human-readable label built from optionValues (e.g. "M / Blue"), stored
-  // so listings/order history don't need to recompute it from the option
-  // schema, which may change after the order was placed.
-  label        String
-
-  sku          String?
-  barcode      String?
-  // Null means "use the parent product's price" -- most variants (e.g. a
-  // plain size change) don't need their own price, only ones that actually
-  // cost more/less (e.g. a larger size) set this.
-  price        Decimal? @db.Decimal(12, 2)
-  images       String[]
-  isActive     Boolean  @default(true)
-
-  quantity     Int      @default(0)
-  lowStockThreshold Int @default(5)
-  costPrice    Decimal? @db.Decimal(12, 2)
-  autoUnpublished Boolean @default(false)
-
-  movements    StockMovement[]
-  orderItems   OrderItem[]
-  purchaseOrderItems PurchaseOrderItem[]
-
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
-
-  @@unique([storeId, sku])
-  @@unique([storeId, barcode])
-  @@index([productId])
   @@index([storeId])
 }
 
@@ -608,8 +400,6 @@ model Service {
   bookings     Booking[]
   orderItems   OrderItem[]
   reviews      Review[]
-  wishlistedBy WishlistItem[]
-  viewedBy     RecentlyViewed[]
 
   createdAt    DateTime  @default(now())
   updatedAt    DateTime  @updatedAt
@@ -626,65 +416,10 @@ model InventoryItem {
   store      Store    @relation(fields: [storeId], references: [id], onDelete: Cascade)
 
   sku        String?
-  barcode    String?
   quantity   Int      @default(0)
   lowStockThreshold Int @default(5)
-  // What the merchant paid per unit -- optional since older/existing items
-  // won't have this set until the merchant fills it in. Powers the
-  // profit/margin figures on the inventory dashboard; never shown to buyers.
-  costPrice  Decimal? @db.Decimal(12, 2)
-  // True only when the out-of-stock automation (not the merchant) took this
-  // product's listing down, so a later restock knows it's safe to
-  // auto-republish -- see adjustStock in lib/actions/inventory.ts. A
-  // merchant who manually unpublishes a well-stocked item never has this
-  // set, so restocking never overrides their own choice.
-  autoUnpublished Boolean @default(false)
-
-  movements  StockMovement[]
 
   updatedAt  DateTime @updatedAt
-
-  @@unique([storeId, sku])
-  @@unique([storeId, barcode])
-}
-
-// Append-only ledger of every quantity change on an InventoryItem -- the
-// "Stock history" merchants see per product. Written by adjustStock, never
-// mutated after the fact, so it stays a trustworthy audit trail even if the
-// current quantity is later corrected.
-model StockMovement {
-  id              String            @id @default(cuid())
-  // Exactly one of inventoryItemId / variantId is set, matching whichever
-  // kind of stock this movement adjusted -- a plain product's InventoryItem,
-  // or one ProductVariant of a variant-enabled product.
-  inventoryItemId String?
-  inventoryItem   InventoryItem?    @relation(fields: [inventoryItemId], references: [id], onDelete: Cascade)
-  variantId       String?
-  variant         ProductVariant?   @relation(fields: [variantId], references: [id], onDelete: Cascade)
-  storeId         String
-  store           Store             @relation(fields: [storeId], references: [id], onDelete: Cascade)
-
-  type            StockMovementType
-  // Signed delta applied by this movement (+10 restock, -1 sale, etc).
-  quantityChange  Int
-  // Resulting on-hand quantity right after this movement, so history reads
-  // as a running balance without recomputing from the full ledger.
-  quantityAfter   Int
-  note            String?
-
-  createdAt       DateTime          @default(now())
-
-  @@index([inventoryItemId, createdAt])
-  @@index([variantId, createdAt])
-  @@index([storeId])
-}
-
-enum StockMovementType {
-  RESTOCK
-  SALE
-  RETURN
-  MANUAL_ADJUSTMENT
-  CORRECTION
 }
 
 enum BookingStatus {
@@ -735,105 +470,6 @@ enum PaymentProvider {
   FLUTTERWAVE
 }
 
-// ----------------------------------------------------------------------------
-// WEBHOOKS (outbound) -- lets a store owner (or platform-level integration)
-// register a URL and get real-time HTTP POSTs for things happening in their
-// store, instead of polling the API. Two tables, same ledger pattern used
-// elsewhere in this schema (StockMovement, OrderStatusEvent): WebhookEndpoint
-// is the subscription itself, WebhookDelivery is an append-only record of
-// every attempt made against it -- what makes retries, backoff, and the
-// "delivery log" UI possible without re-deriving history from logs.
-// ----------------------------------------------------------------------------
-
-enum WebhookEventType {
-  ORDER_CREATED
-  ORDER_PAID
-  ORDER_CANCELLED
-  ORDER_FULFILLED
-
-  PAYMENT_SUCCESS
-  PAYMENT_FAILED
-  PAYMENT_REFUNDED
-
-  BOOKING_CREATED
-  BOOKING_CONFIRMED
-  BOOKING_CANCELLED
-
-  CUSTOMER_CREATED
-
-  PRODUCT_CREATED
-  PRODUCT_UPDATED
-}
-
-enum WebhookDeliveryStatus {
-  PENDING
-  SUCCEEDED
-  FAILED // exhausted retries
-}
-
-// A registered subscriber. storeId is null for platform-level endpoints
-// (e.g. an internal integration listening across every store) -- store
-// owners can only ever create/see endpoints scoped to their own store, an
-// admin-only surface is what would create a storeId: null one.
-model WebhookEndpoint {
-  id          String   @id @default(cuid())
-  storeId     String?
-  store       Store?   @relation(fields: [storeId], references: [id], onDelete: Cascade)
-
-  url         String
-  description String?
-  // Signing secret used to HMAC-SHA256 the raw request body -- sent back
-  // to the subscriber only once, at creation/rotation time, same pattern
-  // as an API key. Never rendered again after that.
-  secret      String
-  // Which of the WebhookEventType values this endpoint wants. Empty array
-  // means "all events" so a first-time integrator doesn't have to know
-  // every event name up front.
-  events      WebhookEventType[]
-  isActive    Boolean  @default(true)
-
-  deliveries  WebhookDelivery[]
-
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-
-  @@index([storeId])
-}
-
-// One row per delivery attempt-chain to a given endpoint for a given
-// event. Re-attempts update the same row (attemptCount, lastAttemptAt,
-// nextAttemptAt) rather than inserting a new one per try, so "has this
-// event been delivered to this endpoint" stays a single lookup -- the
-// per-try detail (status code, response snippet) is overwritten with the
-// latest attempt's result, which is what a delivery-log UI wants to show.
-model WebhookDelivery {
-  id            String                @id @default(cuid())
-  endpointId    String
-  endpoint      WebhookEndpoint       @relation(fields: [endpointId], references: [id], onDelete: Cascade)
-
-  eventType     WebhookEventType
-  // The exact JSON body sent (and re-sent on retry) -- kept so a retry
-  // doesn't have to reconstruct the payload from current DB state, which
-  // could have moved on since the event fired.
-  payload       Json
-
-  status        WebhookDeliveryStatus @default(PENDING)
-  attemptCount  Int                   @default(0)
-  lastStatusCode Int?
-  // Truncated response body from the subscriber's endpoint, for debugging
-  // failed deliveries from the dashboard without needing server logs.
-  lastResponse  String?
-  lastAttemptAt DateTime?
-  // When the retry cron should next pick this row up. Null once the
-  // delivery has SUCCEEDED or exhausted its retries (FAILED).
-  nextAttemptAt DateTime?
-
-  createdAt     DateTime              @default(now())
-
-  @@index([endpointId])
-  @@index([status, nextAttemptAt])
-}
-
 model Order {
   id            String        @id @default(cuid())
   storeId       String
@@ -860,14 +496,7 @@ model Order {
   conversation  Conversation?
   payments      Payment[]
 
-  // --- Loyalty / invoicing / quotations (additive) ---
-  loyaltyEntries LoyaltyEntry[]
-  invoice        Invoice?
-  quote          Quote?
-
   shippingAddress Json?
-
-  statusEvents  OrderStatusEvent[]
 
   createdAt     DateTime      @default(now())
   updatedAt     DateTime      @updatedAt
@@ -876,33 +505,12 @@ model Order {
   @@index([buyerId])
 }
 
-// Append-only timeline of Order.status transitions -- this is what lets the
-// dispute Resolution Center show real "delivery information" (when it was
-// marked in progress/delivered/completed, and by what action) instead of
-// just the single most-recent Order.updatedAt, which gets overwritten on
-// every transition. Written from updateOrderStatus, issueRefund, and the
-// dispute actions below -- never mutated after the fact, same ledger
-// pattern as StockMovement.
-model OrderStatusEvent {
-  id        String      @id @default(cuid())
-  orderId   String
-  order     Order       @relation(fields: [orderId], references: [id], onDelete: Cascade)
-  status    OrderStatus
-  note      String?
-
-  createdAt DateTime    @default(now())
-
-  @@index([orderId, createdAt])
-}
-
 model OrderItem {
   id        String   @id @default(cuid())
   orderId   String
   order     Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
   productId String?
   product   Product? @relation(fields: [productId], references: [id])
-  variantId String?
-  variant   ProductVariant? @relation(fields: [variantId], references: [id])
   serviceId String?
   service   Service? @relation(fields: [serviceId], references: [id])
 
@@ -963,10 +571,6 @@ model Payment {
   createdAt   DateTime        @default(now())
   updatedAt   DateTime        @updatedAt
 
-  // --- Invoicing / quotations (additive) ---
-  invoice     Invoice?
-  quoteDepositFor Quote?
-
   @@index([orderId])
   @@index([storeId])
   @@index([status])
@@ -975,8 +579,6 @@ model Payment {
 enum PaymentPurpose {
   ORDER
   SUBSCRIPTION_UPGRADE
-  INVOICE
-  QUOTE_DEPOSIT
 }
 
 enum PaymentStatus {
@@ -994,15 +596,6 @@ enum DisputeStatus {
   CLOSED
 }
 
-// The BizNest Resolution Center. One Dispute per Order (a buyer or seller
-// opens it, e.g. "I didn't receive my order" vs "Order was delivered"),
-// with a full paper trail an admin can review before deciding: evidence
-// (DisputeEvidence -- photos/files/notes from either side), the order's
-// Conversation/Message thread (reused as-is, keyed off the same orderId),
-// delivery info (Order.shippingAddress/deliveryZone + OrderStatusEvent
-// timeline), and payment info (Order.payments). The admin decision itself
-// is just adminNotes + status -- RESOLVED_BUYER/RESOLVED_SELLER/CLOSED --
-// there's no separate "outcome" enum because the status already encodes it.
 model Dispute {
   id            String        @id @default(cuid())
   orderId       String        @unique
@@ -1011,39 +604,12 @@ model Dispute {
   raisedBy      User          @relation("DisputeRaisedBy", fields: [raisedById], references: [id])
 
   reason        String        @db.Text
+  evidenceUrls  String[]
   status        DisputeStatus @default(OPEN)
-  evidence      DisputeEvidence[]
-
-  adminNotes    String?       @db.Text
-  // Mirrors Business.reviewedByAdminId -- the shared-PIN /supaadmin panel
-  // has no per-person identity, so this is null unless a future per-admin
-  // login replaces the PIN (see lib/admin-pin-auth.ts).
-  resolvedByAdminId String?
+  adminNotes    String?
 
   createdAt     DateTime      @default(now())
   resolvedAt    DateTime?
-
-  @@index([status])
-}
-
-// One row per piece of evidence a buyer or seller submits to a dispute --
-// a photo (fileUrl), a document (fileUrl), or a plain note. Kept as its own
-// append-only table rather than a flat string[] so the Resolution Center
-// can show who submitted what and when, the same trail an admin needs to
-// actually adjudicate "I didn't receive it" vs "it was delivered".
-model DisputeEvidence {
-  id            String   @id @default(cuid())
-  disputeId     String
-  dispute       Dispute  @relation(fields: [disputeId], references: [id], onDelete: Cascade)
-  submittedById String
-  submittedBy   User     @relation(fields: [submittedById], references: [id])
-
-  fileUrl       String?
-  note          String?  @db.Text
-
-  createdAt     DateTime @default(now())
-
-  @@index([disputeId])
 }
 
 // Local delivery pricing for physical-goods stores (food, groceries, etc.).
@@ -1071,7 +637,6 @@ model DeliveryZone {
   storeId          String
   store            Store    @relation(fields: [storeId], references: [id], onDelete: Cascade)
 
-  city             String?  // optional grouping, e.g. "Abuja" — zones with no city render ungrouped
   name             String   // e.g. "Wuse & Garki", "Lekki Phase 1"
   fee              Decimal  @db.Decimal(12, 2)
   estimatedMinutes Int?
@@ -1082,7 +647,6 @@ model DeliveryZone {
   createdAt        DateTime @default(now())
 
   @@index([storeId])
-  @@index([storeId, city])
 }
 
 // Newsletter signups collected from a store's storefront (opt-in "Newsletter"
@@ -1245,304 +809,4 @@ model RateLimitEntry {
   key     String   @id
   count   Int      @default(0)
   resetAt DateTime
-}
-
-// ----------------------------------------------------------------------------
-// LOYALTY
-//
-// Cash-out only: points accrue from completed orders at a single global
-// rate (read from PlatformSetting, key "LOYALTY_EARN_RATE", shape
-// { pointsPerNaira: number }), and a customer redeems them for a Coupon
-// scoped to whichever store they're cashing out at (PlatformSetting key
-// "LOYALTY_REDEEM_RATE", shape { nairaPerPoint: number }). There is no
-// auto-apply-at-checkout path -- redemption always goes through the
-// explicit cash-out action.
-// ----------------------------------------------------------------------------
-
-model LoyaltyAccount {
-  id            String         @id @default(cuid())
-  userId        String         @unique
-  user          User           @relation(fields: [userId], references: [id], onDelete: Cascade)
-  pointsBalance Int            @default(0)
-  entries       LoyaltyEntry[]
-  updatedAt     DateTime       @updatedAt
-}
-
-model LoyaltyEntry {
-  id               String           @id @default(cuid())
-  loyaltyAccountId String
-  loyaltyAccount   LoyaltyAccount   @relation(fields: [loyaltyAccountId], references: [id], onDelete: Cascade)
-
-  // Set for EARN entries (which order generated the points). Null for
-  // REDEEM (cash-out) and ADJUSTMENT entries.
-  orderId          String?
-  order            Order?           @relation(fields: [orderId], references: [id])
-
-  type             LoyaltyEntryType
-  // Positive for EARN/ADJUSTMENT-credit, negative for REDEEM.
-  points           Int
-  note             String?
-
-  createdAt        DateTime         @default(now())
-
-  @@index([loyaltyAccountId])
-}
-
-enum LoyaltyEntryType {
-  EARN
-  REDEEM
-  ADJUSTMENT
-}
-
-// ----------------------------------------------------------------------------
-// INVOICING
-//
-// Numbered per-store using Store.nextInvoiceNo (incremented transactionally
-// on creation). A store's Nth invoice reads e.g. "BN-INV-{N}" -- the display
-// prefix is applied in lib/actions/invoice.ts, invoiceNo here just stores
-// the rendered string so historical numbers never shift if formatting rules
-// change later.
-// ----------------------------------------------------------------------------
-
-model Invoice {
-  id           String        @id @default(cuid())
-  invoiceNo    String        @unique
-
-  storeId      String
-  store        Store         @relation(fields: [storeId], references: [id])
-
-  // A platform customer, if the invoice was raised against one (e.g.
-  // generated from an existing Order or Conversation).
-  customerId   String?
-  customer     User?         @relation(fields: [customerId], references: [id])
-  // Optional link back to an Order this invoice documents.
-  orderId      String?       @unique
-  order        Order?        @relation(fields: [orderId], references: [id])
-
-  // Free-text fallback so merchants can invoice someone who isn't a
-  // registered BizNest customer yet.
-  customerName  String?
-  customerEmail String?
-  customerPhone String?
-
-  items        InvoiceItem[]
-
-  subtotal     Decimal       @db.Decimal(12, 2)
-  tax          Decimal       @db.Decimal(12, 2) @default(0)
-  discount     Decimal       @db.Decimal(12, 2) @default(0)
-  deliveryFee  Decimal       @db.Decimal(12, 2) @default(0)
-  total        Decimal       @db.Decimal(12, 2)
-  currency     String        @default("NGN")
-
-  status       InvoiceStatus @default(DRAFT)
-  paidAt       DateTime?
-  // The Payment row that satisfied this invoice, once paid (whether
-  // collected in-app via gateway or manually marked paid by the merchant).
-  paymentId    String?       @unique
-  payment      Payment?      @relation(fields: [paymentId], references: [id])
-
-  pdfUrl       String?
-  sentAt       DateTime?
-  sentVia      String?       // "email" | "whatsapp" | "both"
-
-  createdAt    DateTime      @default(now())
-  updatedAt    DateTime      @updatedAt
-
-  @@index([storeId])
-  @@index([customerId])
-}
-
-model InvoiceItem {
-  id          String   @id @default(cuid())
-  invoiceId   String
-  invoice     Invoice  @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
-  description String
-  quantity    Int      @default(1)
-  unitPrice   Decimal  @db.Decimal(12, 2)
-}
-
-enum InvoiceStatus {
-  DRAFT
-  SENT
-  PAID
-  CANCELLED
-}
-
-// ----------------------------------------------------------------------------
-// QUOTATIONS
-//
-// Numbered per-store using Store.nextQuoteNo, same pattern as invoices.
-// Accepting a quote and paying the deposit auto-creates a real Order
-// (status PENDING_PAYMENT) linked via Quote.orderId, so dispute/escrow
-// machinery is live for the rest of the engagement -- see
-// lib/actions/quote.ts:acceptQuoteAndPayDeposit.
-// ----------------------------------------------------------------------------
-
-model Quote {
-  id            String       @id @default(cuid())
-  quoteNo       String       @unique
-
-  storeId       String
-  store         Store        @relation(fields: [storeId], references: [id])
-  customerId    String?
-  customer      User?        @relation(fields: [customerId], references: [id])
-
-  customerName  String?
-  customerEmail String?
-  customerPhone String?
-
-  items         QuoteItem[]
-
-  subtotal      Decimal      @db.Decimal(12, 2)
-  total         Decimal      @db.Decimal(12, 2)
-  currency      String       @default("NGN")
-
-  depositRequired   Decimal?  @db.Decimal(12, 2)
-  depositPaymentId  String?   @unique
-  depositPayment    Payment?  @relation(fields: [depositPaymentId], references: [id])
-
-  status        QuoteStatus  @default(DRAFT)
-  sentAt        DateTime?
-  respondedAt   DateTime?
-  expiresAt     DateTime?
-
-  // Set once accepted + deposit paid -- see module doc above.
-  orderId       String?      @unique
-  order         Order?       @relation(fields: [orderId], references: [id])
-
-  createdAt     DateTime     @default(now())
-  updatedAt     DateTime     @updatedAt
-
-  @@index([storeId])
-  @@index([customerId])
-}
-
-model QuoteItem {
-  id          String  @id @default(cuid())
-  quoteId     String
-  quote       Quote   @relation(fields: [quoteId], references: [id], onDelete: Cascade)
-  description String
-  quantity    Int     @default(1)
-  unitPrice   Decimal @db.Decimal(12, 2)
-}
-
-enum QuoteStatus {
-  DRAFT
-  SENT
-  ACCEPTED
-  DECLINED
-  EXPIRED
-}
-
-// ----------------------------------------------------------------------------
-// PURCHASING
-//
-// Suppliers a merchant buys stock from, and the purchase orders raised
-// against them. A PO moves DRAFT -> SENT -> (PARTIALLY_RECEIVED ->) RECEIVED,
-// or CANCELLED from DRAFT/SENT. Receiving a line item is the one write path
-// that touches inventory -- it goes through the same adjustStock/
-// adjustVariantStock ledger as any other restock, so "Stock history" on a
-// product shows PO receipts exactly like a manual restock, just tagged with
-// the PO number in its note.
-// ----------------------------------------------------------------------------
-
-model Supplier {
-  id           String    @id @default(cuid())
-  storeId      String
-  store        Store     @relation(fields: [storeId], references: [id], onDelete: Cascade)
-
-  name         String
-  contactName  String?
-  email        String?
-  phone        String?
-  address      Json?
-  notes        String?
-
-  isArchived   Boolean   @default(false)
-
-  products       SupplierProduct[]
-  purchaseOrders PurchaseOrder[]
-
-  createdAt    DateTime  @default(now())
-  updatedAt    DateTime  @updatedAt
-
-  @@index([storeId])
-}
-
-// Links a Supplier to the products they supply, with the supplier's own SKU
-// and last-known cost for that product -- lets the PO form pre-fill lines
-// once a merchant picks a supplier + product, without guessing at cost.
-model SupplierProduct {
-  id           String   @id @default(cuid())
-  supplierId   String
-  supplier     Supplier @relation(fields: [supplierId], references: [id], onDelete: Cascade)
-  productId    String
-  product      Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
-
-  supplierSku  String?
-  costPrice    Decimal? @db.Decimal(12, 2)
-
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
-
-  @@unique([supplierId, productId])
-  @@index([productId])
-}
-
-model PurchaseOrder {
-  id           String              @id @default(cuid())
-  poNumber     String              @unique
-
-  storeId      String
-  store        Store               @relation(fields: [storeId], references: [id])
-  supplierId   String
-  supplier     Supplier            @relation(fields: [supplierId], references: [id])
-
-  status       PurchaseOrderStatus @default(DRAFT)
-  currency     String              @default("NGN")
-  subtotal     Decimal             @db.Decimal(12, 2) @default(0)
-  notes        String?
-  expectedAt   DateTime?
-
-  sentAt       DateTime?
-  receivedAt   DateTime?
-  cancelledAt  DateTime?
-
-  items        PurchaseOrderItem[]
-
-  createdAt    DateTime            @default(now())
-  updatedAt    DateTime            @updatedAt
-
-  @@index([storeId])
-  @@index([supplierId])
-}
-
-model PurchaseOrderItem {
-  id               String        @id @default(cuid())
-  purchaseOrderId  String
-  purchaseOrder    PurchaseOrder @relation(fields: [purchaseOrderId], references: [id], onDelete: Cascade)
-
-  productId        String?
-  product          Product?      @relation(fields: [productId], references: [id])
-  variantId        String?
-  variant          ProductVariant? @relation(fields: [variantId], references: [id])
-
-  // Snapshot of the product/variant name at order time, so a line still
-  // reads sensibly even if the product is later renamed or deleted.
-  description      String
-  quantityOrdered  Int
-  quantityReceived Int           @default(0)
-  unitCost         Decimal       @db.Decimal(12, 2)
-
-  @@index([purchaseOrderId])
-  @@index([productId])
-  @@index([variantId])
-}
-
-enum PurchaseOrderStatus {
-  DRAFT
-  SENT
-  PARTIALLY_RECEIVED
-  RECEIVED
-  CANCELLED
 }

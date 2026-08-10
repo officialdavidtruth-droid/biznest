@@ -4,9 +4,8 @@ import { cookies } from "next/headers";
 import { prisma } from "@/lib/prisma";
 import { revalidatePath } from "next/cache";
 import type { ActionResult } from "@/types/actions";
-import type { VerificationStatus, UserRole, DisputeStatus } from "@prisma/client";
+import type { VerificationStatus, UserRole } from "@prisma/client";
 import { ADMIN_COOKIE_NAME, verifyAdminToken } from "@/lib/admin-pin-auth";
-import { recomputeAndPersistTrustScore } from "@/lib/actions/trust-score";
 
 // Platform-admin access is gated by the shared ADMIN_PIN cookie now, not by
 // a signed-in user's role — see lib/admin-pin-auth.ts. There's only one
@@ -31,7 +30,7 @@ export async function getPlatformStats() {
   const access = await assertPlatformStaff();
   if (!access.success) return null;
 
-  const [totalUsers, pendingBusinesses, totalStores, totalOrders, bannedUsers, paidOrders, activeSubs, recentLogs, openDisputes] = await Promise.all([
+  const [totalUsers, pendingBusinesses, totalStores, totalOrders, bannedUsers, paidOrders, activeSubs, recentLogs] = await Promise.all([
     prisma.user.count(),
     prisma.business.count({ where: { verificationStatus: "PENDING" } }),
     prisma.store.count(),
@@ -40,13 +39,12 @@ export async function getPlatformStats() {
     prisma.order.findMany({ where: { status: { in: ["PAID", "IN_PROGRESS", "DELIVERED", "COMPLETED"] } }, select: { total: true } }),
     prisma.store.findMany({ where: { subscriptionId: { not: null } }, select: { subscription: { select: { price: true } } } }),
     prisma.auditLog.findMany({ orderBy: { createdAt: "desc" }, take: 8, include: { user: { select: { name: true, email: true } } } }),
-    prisma.dispute.count({ where: { status: { in: ["OPEN", "UNDER_REVIEW"] } } }),
   ]);
 
   const gmv = paidOrders.reduce((sum, o) => sum + Number(o.total), 0);
   const mrr = activeSubs.reduce((sum, s) => sum + Number(s.subscription?.price ?? 0), 0);
 
-  return { totalUsers, pendingBusinesses, totalStores, totalOrders, bannedUsers, gmv, mrr, recentLogs, openDisputes };
+  return { totalUsers, pendingBusinesses, totalStores, totalOrders, bannedUsers, gmv, mrr, recentLogs };
 }
 
 // --- Business verification review ---------------------------------------
@@ -98,7 +96,6 @@ export async function approveBusiness(businessId: string): Promise<ActionResult>
     data: { userId: access.userId, action: "BUSINESS_APPROVED", entity: "Business", entityId: businessId },
   });
 
-  await recomputeAndPersistTrustScore(businessId);
   revalidatePath("/supaadmin/businesses");
   return { success: true, data: undefined };
 }
@@ -132,7 +129,6 @@ export async function rejectBusiness(businessId: string, reason: string): Promis
     },
   });
 
-  await recomputeAndPersistTrustScore(businessId);
   revalidatePath("/supaadmin/businesses");
   return { success: true, data: undefined };
 }
@@ -168,7 +164,6 @@ export async function suspendBusiness(businessId: string, reason: string): Promi
     },
   });
 
-  await recomputeAndPersistTrustScore(businessId);
   revalidatePath("/supaadmin/businesses");
   return { success: true, data: undefined };
 }
@@ -191,7 +186,6 @@ export async function reinstateBusiness(businessId: string): Promise<ActionResul
     data: { userId: access.userId, action: "BUSINESS_REINSTATED", entity: "Business", entityId: businessId },
   });
 
-  await recomputeAndPersistTrustScore(businessId);
   revalidatePath("/supaadmin/businesses");
   return { success: true, data: undefined };
 }
@@ -565,179 +559,5 @@ export async function updatePlanPricing(
   // these just cover any statically-cached edge cases.
   revalidatePath("/");
   revalidatePath("/supaadmin/subscriptions");
-  return { success: true, data: undefined };
-}
-
-// --- Dispute resolution (Resolution Center) ---------------------------------
-//
-// The platform-side half of app/disputes/[orderId]/page.tsx (which is where
-// the buyer and seller submit evidence, message each other, and see delivery
-// / payment info). Everything here is read-only for admins except the final
-// decision — admins never edit evidence or post into the buyer/seller thread,
-// only review it and rule.
-
-export async function listDisputes(status?: DisputeStatus) {
-  const access = await assertPlatformStaff();
-  if (!access.success) return [];
-
-  return prisma.dispute.findMany({
-    where: status ? { status } : undefined,
-    include: {
-      raisedBy: { select: { name: true, email: true } },
-      order: {
-        select: {
-          id: true,
-          total: true,
-          currency: true,
-          status: true,
-          buyer: { select: { name: true, email: true } },
-          store: { select: { name: true, slug: true } },
-        },
-      },
-    },
-    orderBy: { createdAt: "desc" },
-  });
-}
-
-export async function getDisputeForAdmin(disputeId: string) {
-  const access = await assertPlatformStaff();
-  if (!access.success) return null;
-
-  const dispute = await prisma.dispute.findUnique({
-    where: { id: disputeId },
-    include: {
-      raisedBy: { select: { id: true, name: true, email: true } },
-      evidence: {
-        include: { submittedBy: { select: { id: true, name: true, email: true } } },
-        orderBy: { createdAt: "asc" },
-      },
-      order: {
-        include: {
-          items: { include: { product: true, service: true } },
-          buyer: { select: { id: true, name: true, email: true, phone: true } },
-          deliveryZone: true,
-          payments: { orderBy: { createdAt: "desc" } },
-          statusEvents: { orderBy: { createdAt: "asc" } },
-          store: {
-            select: {
-              name: true,
-              slug: true,
-              contactEmail: true,
-              contactPhone: true,
-              business: { select: { userId: true, businessName: true, phone: true, email: true } },
-            },
-          },
-        },
-      },
-    },
-  });
-  if (!dispute) return null;
-
-  const conversation = await prisma.conversation.findUnique({
-    where: { orderId: dispute.orderId },
-    include: { messages: { orderBy: { createdAt: "asc" }, include: { sender: { select: { id: true, name: true } } } } },
-  });
-
-  return { dispute, messages: conversation?.messages ?? [] };
-}
-
-export async function claimDisputeForReview(disputeId: string): Promise<ActionResult> {
-  const access = await assertPlatformStaff();
-  if (!access.success) return { success: false, error: access.error };
-
-  const dispute = await prisma.dispute.findUnique({ where: { id: disputeId } });
-  if (!dispute) return { success: false, error: "Dispute not found." };
-  if (dispute.status !== "OPEN") return { success: false, error: "Only an open dispute can be moved to review." };
-
-  await prisma.dispute.update({ where: { id: disputeId }, data: { status: "UNDER_REVIEW" } });
-  await prisma.auditLog.create({
-    data: { userId: access.userId, action: "DISPUTE_UNDER_REVIEW", entity: "Dispute", entityId: disputeId },
-  });
-
-  revalidatePath("/supaadmin/disputes");
-  revalidatePath(`/supaadmin/disputes/${disputeId}`);
-  return { success: true, data: undefined };
-}
-
-const DISPUTE_DECISIONS: DisputeStatus[] = ["RESOLVED_BUYER", "RESOLVED_SELLER", "CLOSED"];
-
-/**
- * The admin decision. RESOLVED_BUYER sides with the buyer (order flips to
- * REFUNDED — the actual gateway refund still has to be issued from the
- * store's refund control, same as any other refund, so support can attach
- * the right payment reference); RESOLVED_SELLER sides with the seller
- * (order returns to COMPLETED); CLOSED ends it with no action either way
- * (order returns to whatever it would've been — COMPLETED — since "closed,
- * no fault found" isn't a cancellation).
- */
-export async function resolveDispute(
-  disputeId: string,
-  decision: DisputeStatus,
-  adminNotes: string
-): Promise<ActionResult> {
-  const access = await assertPlatformStaff();
-  if (!access.success) return { success: false, error: access.error };
-  if (!DISPUTE_DECISIONS.includes(decision)) return { success: false, error: "Invalid decision." };
-  if (!adminNotes.trim()) return { success: false, error: "A note explaining the decision is required." };
-
-  const dispute = await prisma.dispute.findUnique({ where: { id: disputeId } });
-  if (!dispute) return { success: false, error: "Dispute not found." };
-  if (dispute.status === "RESOLVED_BUYER" || dispute.status === "RESOLVED_SELLER" || dispute.status === "CLOSED") {
-    return { success: false, error: "This dispute has already been resolved." };
-  }
-
-  const nextOrderStatus = decision === "RESOLVED_BUYER" ? "REFUNDED" : "COMPLETED";
-
-  await prisma.$transaction([
-    prisma.dispute.update({
-      where: { id: disputeId },
-      data: {
-        status: decision,
-        adminNotes: adminNotes.trim(),
-        resolvedByAdminId: access.userId,
-        resolvedAt: new Date(),
-      },
-    }),
-    prisma.order.update({ where: { id: dispute.orderId }, data: { status: nextOrderStatus } }),
-    prisma.orderStatusEvent.create({
-      data: { orderId: dispute.orderId, status: nextOrderStatus, note: `Dispute resolved: ${decision.replace("_", " ").toLowerCase()}` },
-    }),
-  ]);
-
-  const order = await prisma.order.findUnique({
-    where: { id: dispute.orderId },
-    select: { buyerId: true, store: { select: { business: { select: { id: true, userId: true } } } } },
-  });
-  if (order) {
-    // Dispute resolution feeds the "complaints" Trust Score factor
-    // (upheld-complaint rate) and, via nextOrderStatus above, potentially
-    // the refund-rate factor too.
-    await recomputeAndPersistTrustScore(order.store.business.id);
-    const notifyBoth = [order.buyerId, order.store.business.userId];
-    await prisma.notification
-      .createMany({
-        data: notifyBoth.map((userId) => ({
-          userId,
-          type: "DISPUTE",
-          title: "Your dispute has been resolved",
-          body: `Order #${dispute.orderId.slice(-8).toUpperCase()}: ${adminNotes.trim().slice(0, 140)}`,
-        })),
-      })
-      .catch(() => {});
-  }
-
-  await prisma.auditLog.create({
-    data: {
-      userId: access.userId,
-      action: "DISPUTE_RESOLVED",
-      entity: "Dispute",
-      entityId: disputeId,
-      metadata: { decision, adminNotes: adminNotes.trim() },
-    },
-  });
-
-  revalidatePath("/supaadmin/disputes");
-  revalidatePath(`/supaadmin/disputes/${disputeId}`);
-  revalidatePath(`/disputes/${dispute.orderId}`);
   return { success: true, data: undefined };
 }

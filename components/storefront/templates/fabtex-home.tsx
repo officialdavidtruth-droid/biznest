@@ -1,5 +1,4 @@
 import type React from "react";
-import { TrustBadge } from "@/components/storefront/trust-badge";
 import { CartLink } from "@/components/storefront/cart-link";
 import { FABTEX } from "@/lib/template-themes";
 import { CategoryNav } from "@/components/storefront/category-nav";
@@ -30,7 +29,7 @@ type Review = { id: string; rating: number; comment: string | null; author: { na
 const wrap: React.CSSProperties = { maxWidth: 1180, margin: "0 auto", padding: "0 7%" };
 
 export function FabtexStorefront({
-  store, slug, catalogItems, navCategories, goodReviews, avgRating, completedOrders, trustScore, social,
+  store, slug, catalogItems, navCategories, goodReviews, avgRating, completedOrders, social,
 }: {
   store: {
     name: string; logoUrl: string | null; bannerUrl: string | null;
@@ -42,7 +41,6 @@ export function FabtexStorefront({
   navCategories: CategoryTreeNode[];
   goodReviews: Review[];
   avgRating: number | null;
-  trustScore: number | null;
   completedOrders: number;
   social: Record<string, string>;
 }) {
@@ -156,7 +154,6 @@ export function FabtexStorefront({
             {avgRating && (
               <p style={{ color: FABTEX.orange, fontSize: 12, fontWeight: 700 }}>{"★".repeat(Math.round(avgRating))} {avgRating.toFixed(1)} average</p>
             )}
-            {trustScore != null && <TrustBadge score={trustScore} />}
             {goodReviews.slice(0, 2).map((r) => (
               <div key={r.id} style={{ display: "flex", gap: 10, padding: "8px 0", borderBottom: "1px solid #333" }}>
                 <div>

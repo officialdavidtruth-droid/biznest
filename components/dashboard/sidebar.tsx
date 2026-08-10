@@ -6,7 +6,7 @@ import {
   LayoutDashboard, ShoppingCart, Package, Wrench, Users, Boxes, Ticket,
   CreditCard, BarChart3, Star, Megaphone, MessageSquare,
   Settings, BadgeCheck, Wallet, LifeBuoy, Truck, Wand2, MousePointerClick,
-  LayoutTemplate, FileText, FileSignature,
+  LayoutTemplate,
 } from "lucide-react";
 import { getCategoryDashboard } from "@/lib/constants/category-dashboard";
 
@@ -15,7 +15,7 @@ type NavItem = { label: string; href: string; icon: typeof LayoutDashboard };
 // Items in the "Sell" group that only make sense for one niche. Anything
 // not listed here (Orders) is shared by every business, since orders and
 // bookings both flow through the same order record.
-const PRODUCT_ONLY_HREFS = new Set(["/products", "/inventory", "/delivery", "/suppliers", "/purchase-orders"]);
+const PRODUCT_ONLY_HREFS = new Set(["/products", "/inventory", "/delivery"]);
 const SERVICE_ONLY_HREFS = new Set(["/services"]);
 
 function buildNavGroups(business: { sellsProducts: boolean; offersServices: boolean; category?: string | null }): Array<{
@@ -27,11 +27,7 @@ function buildNavGroups(business: { sellsProducts: boolean; offersServices: bool
     { label: "Products", href: "/products", icon: Package },
     { label: "Services", href: "/services", icon: Wrench },
     { label: "Inventory", href: "/inventory", icon: Boxes },
-    { label: "Suppliers", href: "/suppliers", icon: Users },
-    { label: "Purchase orders", href: "/purchase-orders", icon: FileSignature },
     { label: "Delivery zones", href: "/delivery", icon: Truck },
-    { label: "Invoices", href: "/invoices", icon: FileText },
-    { label: "Quotes", href: "/quotes", icon: FileSignature },
   ].filter((item) => {
     if (PRODUCT_ONLY_HREFS.has(item.href)) return business.sellsProducts;
     if (SERVICE_ONLY_HREFS.has(item.href)) return business.offersServices;

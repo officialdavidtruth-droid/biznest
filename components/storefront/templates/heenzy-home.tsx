@@ -1,5 +1,4 @@
 import { CartLink } from "@/components/storefront/cart-link";
-import { TrustBadge } from "@/components/storefront/trust-badge";
 import { HEENZY, HEENZY_THEME, type TemplateTheme } from "@/lib/template-themes";
 import { subscribeToNewsletter } from "@/lib/actions/newsletter";
 import { CategoryNav } from "@/components/storefront/category-nav";
@@ -44,7 +43,7 @@ type CatalogItem = {
 type Review = { id: string; rating: number; comment: string | null; author: { name: string | null } };
 
 export function HeenzyStorefront({
-  store, slug, catalogItems, catalogCategories, navCategories, goodReviews, avgRating, completedOrders, trustScore, social, theme = HEENZY_THEME,
+  store, slug, catalogItems, catalogCategories, navCategories, goodReviews, avgRating, completedOrders, social, theme = HEENZY_THEME,
 }: {
   store: {
     name: string; logoUrl: string | null; bannerUrl: string | null;
@@ -57,7 +56,6 @@ export function HeenzyStorefront({
   navCategories: CategoryTreeNode[];
   goodReviews: Review[];
   avgRating: number | null;
-  trustScore: number | null;
   completedOrders: number;
   social: Record<string, string>;
   /** Which Heenzy variant to render (colors, type, corner radius). Defaults to the original streetwear theme. */
@@ -199,9 +197,6 @@ export function HeenzyStorefront({
           <div className="hz-stat"><div><div className="hz-stat-num">{catalogItems.length}+</div><div className="hz-stat-label">Collection</div></div></div>
           {avgRating != null && (
             <div className="hz-stat"><div><div className="hz-stat-num">{avgRating.toFixed(1)}/5</div><div className="hz-stat-label">Satisfaction Rate</div></div></div>
-          )}
-          {trustScore != null && (
-            <div className="hz-stat"><TrustBadge score={trustScore} /></div>
           )}
         </div>
       </div>

@@ -1,7 +1,6 @@
 import { listOrdersForBuyer } from "@/lib/actions/order";
-import { DISPUTABLE_ORDER_STATUSES } from "@/lib/actions/dispute";
 import Link from "next/link";
-import { Package, Clock, CheckCircle2, XCircle, RotateCcw, AlertTriangle, ArrowUpRight, ShoppingBag, ShieldAlert } from "lucide-react";
+import { Package, Clock, CheckCircle2, XCircle, RotateCcw, AlertTriangle, ArrowUpRight, ShoppingBag } from "lucide-react";
 
 // Buyer-facing order history — deliberately NOT themed per-store (a buyer's
 // order list spans every store they've ever bought from, so it can't pick
@@ -96,71 +95,51 @@ export default async function BuyerOrdersPage() {
               const firstImage = order.items.find((i) => i.product?.images?.[0] || i.service?.images?.[0]);
               const image = firstImage?.product?.images?.[0] ?? firstImage?.service?.images?.[0] ?? null;
               const itemNames = order.items.map((i) => i.product?.name ?? i.service?.name).filter(Boolean).join(", ");
-              const canDispute = (DISPUTABLE_ORDER_STATUSES as readonly string[]).includes(order.status);
-              const hasDispute = !!order.dispute;
 
               return (
-                <div
+                <Link
                   key={order.id}
-                  className="group overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm transition-all hover:-translate-y-0.5 hover:border-violet-200 hover:shadow-md"
+                  href={`/store/${order.store.slug}/orders/${order.id}/confirmation`}
+                  className="group flex items-center gap-4 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm transition-all hover:-translate-y-0.5 hover:border-violet-200 hover:shadow-md"
                 >
-                  <Link
-                    href={`/store/${order.store.slug}/orders/${order.id}/confirmation`}
-                    className="flex items-center gap-4 p-4"
-                  >
-                    {/* Thumbnail: product image if we have one, otherwise a gradient store-initial tile */}
-                    <div className="relative h-16 w-16 flex-shrink-0 overflow-hidden rounded-xl bg-slate-100">
-                      {image ? (
-                        // eslint-disable-next-line @next/next/no-img-element
-                        <img src={image} alt="" className="h-full w-full object-cover" />
-                      ) : (
-                        <div className={`flex h-full w-full items-center justify-center bg-gradient-to-br ${gradientFor(order.store.name)} text-lg font-bold text-white`}>
-                          {order.store.name.charAt(0).toUpperCase()}
-                        </div>
-                      )}
-                      {order.items.length > 1 && (
-                        <span className="absolute -bottom-1 -right-1 flex h-5 min-w-5 items-center justify-center rounded-full bg-slate-900 px-1 text-[10px] font-bold text-white ring-2 ring-white">
-                          {order.items.length}
-                        </span>
-                      )}
-                    </div>
-
-                    <div className="min-w-0 flex-1">
-                      <div className="flex items-center gap-2">
-                        <p className="truncate text-sm font-bold text-slate-900">{order.store.name}</p>
-                        <span className={`inline-flex flex-shrink-0 items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-semibold ring-1 ring-inset ${status.bg} ${status.text} ${status.ring}`}>
-                          <StatusIcon className="h-3 w-3" />
-                          {status.label}
-                        </span>
+                  {/* Thumbnail: product image if we have one, otherwise a gradient store-initial tile */}
+                  <div className="relative h-16 w-16 flex-shrink-0 overflow-hidden rounded-xl bg-slate-100">
+                    {image ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img src={image} alt="" className="h-full w-full object-cover" />
+                    ) : (
+                      <div className={`flex h-full w-full items-center justify-center bg-gradient-to-br ${gradientFor(order.store.name)} text-lg font-bold text-white`}>
+                        {order.store.name.charAt(0).toUpperCase()}
                       </div>
-                      <p className="mt-0.5 truncate text-xs text-slate-400">
-                        #{order.id.slice(-8).toUpperCase()} · {new Date(order.createdAt).toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" })}
-                      </p>
-                      {itemNames && <p className="mt-1 truncate text-xs text-slate-500">{itemNames}</p>}
-                    </div>
+                    )}
+                    {order.items.length > 1 && (
+                      <span className="absolute -bottom-1 -right-1 flex h-5 min-w-5 items-center justify-center rounded-full bg-slate-900 px-1 text-[10px] font-bold text-white ring-2 ring-white">
+                        {order.items.length}
+                      </span>
+                    )}
+                  </div>
 
-                    <div className="flex flex-shrink-0 flex-col items-end gap-1.5">
-                      <span className="text-sm font-extrabold text-slate-900">{order.currency} {Number(order.total).toLocaleString()}</span>
-                      <span className="flex items-center gap-0.5 text-[11px] font-medium text-slate-400 opacity-0 transition-opacity group-hover:opacity-100">
-                        View <ArrowUpRight className="h-3 w-3" />
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center gap-2">
+                      <p className="truncate text-sm font-bold text-slate-900">{order.store.name}</p>
+                      <span className={`inline-flex flex-shrink-0 items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-semibold ring-1 ring-inset ${status.bg} ${status.text} ${status.ring}`}>
+                        <StatusIcon className="h-3 w-3" />
+                        {status.label}
                       </span>
                     </div>
-                  </Link>
+                    <p className="mt-0.5 truncate text-xs text-slate-400">
+                      #{order.id.slice(-8).toUpperCase()} · {new Date(order.createdAt).toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" })}
+                    </p>
+                    {itemNames && <p className="mt-1 truncate text-xs text-slate-500">{itemNames}</p>}
+                  </div>
 
-                  {(hasDispute || canDispute) && (
-                    <div className="border-t border-slate-100 bg-slate-50/60 px-4 py-2">
-                      <Link
-                        href={`/disputes/${order.id}`}
-                        className={`inline-flex items-center gap-1.5 text-[11px] font-semibold ${
-                          hasDispute ? "text-blue-600 hover:text-blue-700" : "text-red-600 hover:text-red-700"
-                        }`}
-                      >
-                        <ShieldAlert className="h-3.5 w-3.5" />
-                        {hasDispute ? "View dispute" : "Report a problem"}
-                      </Link>
-                    </div>
-                  )}
-                </div>
+                  <div className="flex flex-shrink-0 flex-col items-end gap-1.5">
+                    <span className="text-sm font-extrabold text-slate-900">{order.currency} {Number(order.total).toLocaleString()}</span>
+                    <span className="flex items-center gap-0.5 text-[11px] font-medium text-slate-400 opacity-0 transition-opacity group-hover:opacity-100">
+                      View <ArrowUpRight className="h-3 w-3" />
+                    </span>
+                  </div>
+                </Link>
               );
             })}
           </div>

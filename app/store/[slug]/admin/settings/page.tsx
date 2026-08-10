@@ -2,8 +2,6 @@ import { prisma } from "@/lib/prisma";
 import { updateStoreSettings } from "@/lib/actions/store";
 import { setCustomDomain, recheckDomainStatus, removeCustomDomain } from "@/lib/actions/domain";
 import { LogoBannerFields } from "@/components/forms/logo-banner-fields";
-import { WebhooksPanel } from "@/components/dashboard/webhooks-panel";
-import { listWebhookEndpoints, availableWebhookEvents } from "@/lib/actions/webhook";
 
 export default async function SettingsPage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
@@ -16,11 +14,6 @@ export default async function SettingsPage({ params }: { params: Promise<{ slug:
 
   const features = store.subscription?.features as { customDomain?: boolean } | null;
   const domainUnlocked = Boolean(features?.customDomain);
-
-  const [webhookEndpoints, webhookEventOptions] = await Promise.all([
-    listWebhookEndpoints(slug),
-    availableWebhookEvents(),
-  ]);
 
   // <form action> requires void | Promise<void>; the domain actions return
   // ActionResult for other callers, so bind through thin void-returning
@@ -145,10 +138,6 @@ export default async function SettingsPage({ params }: { params: Promise<{ slug:
             <button className="rounded-md bg-primary px-3 py-1.5 text-sm font-medium text-primary-foreground">Connect</button>
           </form>
         )}
-      </div>
-
-      <div className="mt-6">
-        <WebhooksPanel slug={slug} endpoints={webhookEndpoints} eventOptions={webhookEventOptions} />
       </div>
     </div>
   );

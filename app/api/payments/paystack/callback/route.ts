@@ -1,8 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import { verifyPaystackTransaction } from "@/lib/payments/paystack";
 import { checkRateLimit, getClientIp } from "@/lib/rate-limit";
-import { settleInvoicePayment } from "@/lib/actions/invoice";
-import { settleQuoteDeposit } from "@/lib/actions/quote";
 import { NextResponse } from "next/server";
 
 const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? "https://biznest.vercel.app";
@@ -22,22 +20,6 @@ export async function GET(req: Request) {
   const rate = await checkRateLimit(`payment-callback:${ip}`, 30, 60 * 1000);
   if (!rate.allowed) {
     return NextResponse.redirect(`${APP_URL}/?payment=rate_limited`);
-  }
-
-  // Invoice payments and quote deposits use their own reference prefixes
-  // and redirect targets — see settleInvoicePayment/settleQuoteDeposit for
-  // why settlement lives in those action files rather than inline here.
-  if (reference.startsWith("INV-") || reference.startsWith("QDEP-")) {
-    const isInvoice = reference.startsWith("INV-");
-    const id = reference.split("-")[1];
-    const verification = await verifyPaystackTransaction(reference);
-
-    if (verification.status && verification.data?.status === "success") {
-      if (isInvoice) await settleInvoicePayment(reference, verification as object);
-      else await settleQuoteDeposit(reference, verification as object);
-      return NextResponse.redirect(isInvoice ? `${APP_URL}/invoices/${id}` : `${APP_URL}/quotes/${id}`);
-    }
-    return NextResponse.redirect(`${APP_URL}/${isInvoice ? "invoices" : "quotes"}/${id}?payment=failed`);
   }
 
   const order = await prisma.order.findUnique({ where: { id: reference }, include: { store: true } });
