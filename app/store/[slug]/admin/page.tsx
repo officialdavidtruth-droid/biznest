@@ -127,6 +127,7 @@ export default async function StoreDashboardHome({ params }: { params: Promise<{
             <p className="text-xs text-muted-foreground">{s.label}</p>
             <p className="mt-1 truncate text-2xl font-semibold" title={s.value}>{s.value}</p>
           </div>
+        ))}
       </div>
 
       {trustScore && (
