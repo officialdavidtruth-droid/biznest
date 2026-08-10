@@ -42,7 +42,7 @@ export default async function DeliveryPage({ params }: { params: Promise<{ slug:
           </thead>
           <tbody>
             {zones.map((z) => (
-              <DeliveryZoneRow key={z.id} storeSlug={slug} currency={currency} zone={z} />
+              <DeliveryZoneRow key={z.id} storeSlug={slug} currency={currency} zone={{ ...z, fee: Number(z.fee) }} />
             ))}
             {zones.length === 0 && (
               <tr><td colSpan={5} className="px-4 py-10 text-center text-muted-foreground">No zones yet — add one above. Until then, checkout won't charge a delivery fee.</td></tr>
