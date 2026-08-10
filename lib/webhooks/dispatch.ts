@@ -1,5 +1,6 @@
 import crypto from "crypto";
 import { prisma } from "@/lib/prisma";
+import { Prisma } from "@prisma/client";
 import type { WebhookEventType } from "@prisma/client";
 import { WEBHOOK_EVENT_NAMES } from "@/lib/webhooks/events";
 
@@ -61,7 +62,7 @@ export async function emitWebhookEvent(
         data: {
           endpointId: endpoint.id,
           eventType,
-          payload: body,
+          payload: body as Prisma.InputJsonValue,
         },
       });
       await attemptDelivery(delivery.id);
