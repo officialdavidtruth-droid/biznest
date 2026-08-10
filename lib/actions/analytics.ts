@@ -98,7 +98,9 @@ export async function getDashboardInsights(storeId: string, slug: string): Promi
     prisma.product.count({
       where: { storeId, isPublished: true, reviews: { none: {} } },
     }),
-    prisma.coupon.findFirst({ where: { storeId, createdAt: { gte: since7d } }, select: { id: true } }),
+    // Coupon has no createdAt field, so we can't check "created in the last
+    // 7 days" — fall back to whether an active coupon exists at all.
+    prisma.coupon.findFirst({ where: { storeId, isActive: true }, select: { id: true } }),
   ]);
 
   const revenueToday = Number(revenueAgg._sum.total ?? 0);
@@ -162,7 +164,7 @@ export async function getDashboardInsights(storeId: string, slug: string): Promi
     recommendations.push({
       id: "no-promo-this-week",
       severity: "info",
-      message: "You haven't posted a promotion this week. A short-term coupon is one of the fastest ways to bring visitors back.",
+      message: "You don't have an active promotion right now. A short-term coupon is one of the fastest ways to bring visitors back.",
       actionLabel: "Create a coupon",
       actionHref: `/store/${slug}/admin/marketing`,
     });
