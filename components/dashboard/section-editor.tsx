@@ -17,6 +17,11 @@ const LABELS: Record<Section, string> = {
   testimonials: "Testimonials",
   newsletter: "Email signup",
   contact: "Contact",
+  gallery: "Gallery",
+  amenities: "Amenities",
+  availability: "Availability / booking",
+  map: "Map / location",
+  packages: "Packages / pricing",
 };
 
 export function SectionEditor({
