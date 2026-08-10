@@ -1,4 +1,5 @@
 import type React from "react";
+import { TrustBadge } from "@/components/storefront/trust-badge";
 import { PREMIUM, PREMIUM_THEME } from "@/lib/template-themes";
 import { Reveal } from "@/components/storefront/reveal";
 import type { CategoryTreeNode } from "@/lib/storefront-categories";
@@ -24,7 +25,7 @@ type CatalogItem = {
 type Review = { id: string; rating: number; comment: string | null; author: { name: string | null } };
 
 export function PremiumStorefront({
-  store, slug, catalogItems, navCategories, goodReviews, avgRating, completedOrders, social,
+  store, slug, catalogItems, navCategories, goodReviews, avgRating, completedOrders, trustScore, social,
 }: {
   store: {
     name: string; logoUrl: string | null; bannerUrl: string | null;
@@ -36,6 +37,7 @@ export function PremiumStorefront({
   navCategories: CategoryTreeNode[];
   goodReviews: Review[];
   avgRating: number | null;
+  trustScore: number | null;
   completedOrders: number;
   social: Record<string, string>;
 }) {
@@ -194,6 +196,7 @@ export function PremiumStorefront({
           {catalogItems.length > 0 && <div><b style={{ fontSize: 20, display: "block", color: PREMIUM.accent }}>{catalogItems.length}+</b><span style={{ fontSize: 10, color: "#5d6870" }}>In the shop</span></div>}
           {completedOrders > 0 && <div><b style={{ fontSize: 20, display: "block", color: PREMIUM.accent }}>{completedOrders}+</b><span style={{ fontSize: 10, color: "#5d6870" }}>Orders completed</span></div>}
           {avgRating != null && <div><b style={{ fontSize: 20, display: "block", color: PREMIUM.accent }}>{avgRating.toFixed(1)}/5</b><span style={{ fontSize: 10, color: "#5d6870" }}>Average rating</span></div>}
+          {trustScore != null && <div><TrustBadge score={trustScore} /></div>}
         </section>
       )}
 

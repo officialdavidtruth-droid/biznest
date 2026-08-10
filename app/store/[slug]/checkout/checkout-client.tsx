@@ -5,10 +5,11 @@ import Link from "next/link";
 import { useCart } from "@/lib/cart-context";
 import { startCheckout } from "@/lib/actions/order";
 import { listActiveDeliveryZones } from "@/lib/actions/delivery-zone";
+import { DeliveryZoneOptions } from "@/components/checkout/delivery-zone-options";
 import { toast } from "sonner";
 import { ShieldCheck, Lock, Truck, ChevronLeft } from "lucide-react";
 
-type Zone = { id: string; name: string; fee: unknown; estimatedMinutes: number | null };
+type Zone = { id: string; name: string; city: string | null; fee: unknown; estimatedMinutes: number | null };
 
 // Lumina design tokens — matches cart/cart-client.tsx exactly, so the
 // checkout doesn't feel like a different, lower-effort product from the
@@ -110,11 +111,7 @@ export function CheckoutClient({ slug }: { slug: string }) {
                   className="w-full rounded-lg px-4 py-2.5 text-sm outline-none focus:border-[#0041C8]"
                 >
                   <option value="">Pickup / no delivery fee</option>
-                  {zones.map((z) => (
-                    <option key={z.id} value={z.id}>
-                      {z.name} — {Number(z.fee).toLocaleString()}{z.estimatedMinutes ? ` (~${z.estimatedMinutes} min)` : ""}
-                    </option>
-                  ))}
+                  <DeliveryZoneOptions zones={zones} />
                 </select>
               </div>
             )}

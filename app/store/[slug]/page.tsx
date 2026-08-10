@@ -6,6 +6,7 @@ import { CartLink } from "@/components/storefront/cart-link";
 import { resolveStoreTheme, FRESH, isHeenzyTemplate, isNovaTemplate, isVioletTemplate, isPremiumTemplate, isHomeVistaTemplate, isRrwTemplate, isMarketplaceTemplate, isArcovaTemplate, isRivoraTemplate, isJuiceLifeTemplate, isFabtexTemplate, type TemplateTheme } from "@/lib/template-themes";
 import { subscribeToNewsletter } from "@/lib/actions/newsletter";
 import { recordStoreVisit } from "@/lib/actions/analytics";
+import { getTrustScoreBreakdown } from "@/lib/actions/trust-score";
 import { HeenzyStorefront } from "@/components/storefront/templates/heenzy-home";
 import { NovaStorefront } from "@/components/storefront/templates/nova-home";
 import { VioletStorefront } from "@/components/storefront/templates/violet-home";
@@ -89,6 +90,11 @@ export default async function StorefrontPage({ params }: { params: Promise<{ slu
     : null;
   const completedOrders = await prisma.order.count({ where: { storeId: store.id, status: { in: ["DELIVERED", "COMPLETED"] } } });
 
+  // Trust Score is compute-on-read (see lib/actions/trust-score.ts) — cheap
+  // enough for a single storefront page view. `business` can be null this
+  // early in onboarding, in which case there's nothing to score yet.
+  const trustScore = store.business ? (await getTrustScoreBreakdown(store.business.id))?.score ?? null : null;
+
   const heroImage = store.bannerUrl || store.template?.previewUrl || null;
   const storyImage = store.storyImage || store.bannerUrl || store.template?.previewUrl || null;
   const heroOverrides = store.heroOverrides as { headline?: string; subtitle?: string; ctaLabel?: string } | null;
@@ -113,6 +119,7 @@ export default async function StorefrontPage({ params }: { params: Promise<{ slu
         navCategories={navCategories}
         goodReviews={goodReviews}
         avgRating={avgRating}
+        trustScore={trustScore}
         completedOrders={completedOrders}
         social={social}
       />
@@ -129,6 +136,7 @@ export default async function StorefrontPage({ params }: { params: Promise<{ slu
         navCategories={navCategories}
         goodReviews={goodReviews}
         avgRating={avgRating}
+        trustScore={trustScore}
         completedOrders={completedOrders}
         social={social}
         theme={theme}
@@ -147,6 +155,7 @@ export default async function StorefrontPage({ params }: { params: Promise<{ slu
         navCategories={navCategories}
         goodReviews={goodReviews}
         avgRating={avgRating}
+        trustScore={trustScore}
         completedOrders={completedOrders}
         social={social}
         theme={theme}
@@ -165,6 +174,7 @@ export default async function StorefrontPage({ params }: { params: Promise<{ slu
         navCategories={navCategories}
         goodReviews={goodReviews}
         avgRating={avgRating}
+        trustScore={trustScore}
         completedOrders={completedOrders}
         social={social}
       />
@@ -181,6 +191,7 @@ export default async function StorefrontPage({ params }: { params: Promise<{ slu
         navCategories={navCategories}
         goodReviews={goodReviews}
         avgRating={avgRating}
+        trustScore={trustScore}
         completedOrders={completedOrders}
         social={social}
       />
@@ -197,6 +208,7 @@ export default async function StorefrontPage({ params }: { params: Promise<{ slu
         navCategories={navCategories}
         goodReviews={goodReviews}
         avgRating={avgRating}
+        trustScore={trustScore}
         completedOrders={completedOrders}
         social={social}
       />
@@ -213,6 +225,7 @@ export default async function StorefrontPage({ params }: { params: Promise<{ slu
         navCategories={navCategories}
         goodReviews={goodReviews}
         avgRating={avgRating}
+        trustScore={trustScore}
         completedOrders={completedOrders}
         social={social}
       />
@@ -229,6 +242,7 @@ export default async function StorefrontPage({ params }: { params: Promise<{ slu
         navCategories={navCategories}
         goodReviews={goodReviews}
         avgRating={avgRating}
+        trustScore={trustScore}
         completedOrders={completedOrders}
         social={social}
       />
@@ -245,6 +259,7 @@ export default async function StorefrontPage({ params }: { params: Promise<{ slu
         navCategories={navCategories}
         goodReviews={goodReviews}
         avgRating={avgRating}
+        trustScore={trustScore}
         completedOrders={completedOrders}
         social={social}
       />
@@ -261,6 +276,7 @@ export default async function StorefrontPage({ params }: { params: Promise<{ slu
         navCategories={navCategories}
         goodReviews={goodReviews}
         avgRating={avgRating}
+        trustScore={trustScore}
         completedOrders={completedOrders}
         social={social}
       />
@@ -277,6 +293,7 @@ export default async function StorefrontPage({ params }: { params: Promise<{ slu
         navCategories={navCategories}
         goodReviews={goodReviews}
         avgRating={avgRating}
+        trustScore={trustScore}
         completedOrders={completedOrders}
         social={social}
       />

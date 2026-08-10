@@ -1,4 +1,5 @@
 import type React from "react";
+import { TrustBadge } from "@/components/storefront/trust-badge";
 import { CartLink } from "@/components/storefront/cart-link";
 import { HOMEVISTA, HOMEVISTA_THEME } from "@/lib/template-themes";
 import { subscribeToNewsletter } from "@/lib/actions/newsletter";
@@ -27,7 +28,7 @@ type Review = { id: string; rating: number; comment: string | null; author: { na
 const wrap: React.CSSProperties = { width: "90%", maxWidth: 1200, margin: "0 auto" };
 
 export function HomeVistaStorefront({
-  store, slug, catalogItems, navCategories, goodReviews, avgRating, completedOrders, social,
+  store, slug, catalogItems, navCategories, goodReviews, avgRating, completedOrders, trustScore, social,
 }: {
   store: {
     name: string; logoUrl: string | null; bannerUrl: string | null;
@@ -39,6 +40,7 @@ export function HomeVistaStorefront({
   navCategories: CategoryTreeNode[];
   goodReviews: Review[];
   avgRating: number | null;
+  trustScore: number | null;
   completedOrders: number;
   social: Record<string, string>;
 }) {
@@ -207,6 +209,7 @@ export function HomeVistaStorefront({
           {catalogItems.length > 0 && <div><b style={{ fontSize: 22, display: "block", color: HOMEVISTA.accent }}>{catalogItems.length}+</b><span style={{ fontSize: 10, color: "#526164" }}>Listings</span></div>}
           {completedOrders > 0 && <div><b style={{ fontSize: 22, display: "block", color: HOMEVISTA.accent }}>{completedOrders}+</b><span style={{ fontSize: 10, color: "#526164" }}>Deals closed</span></div>}
           {avgRating != null && <div><b style={{ fontSize: 22, display: "block", color: HOMEVISTA.accent }}>{avgRating.toFixed(1)}/5</b><span style={{ fontSize: 10, color: "#526164" }}>Average rating</span></div>}
+          {trustScore != null && <div><TrustBadge score={trustScore} /></div>}
         </section>
       )}
 

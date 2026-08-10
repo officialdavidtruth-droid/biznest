@@ -1,4 +1,5 @@
 import type React from "react";
+import { TrustBadge } from "@/components/storefront/trust-badge";
 import { CartLink } from "@/components/storefront/cart-link";
 import { NOVA, NOVA_THEME, type TemplateTheme } from "@/lib/template-themes";
 import { subscribeToNewsletter } from "@/lib/actions/newsletter";
@@ -48,7 +49,7 @@ function resolveNovaPalette(theme: TemplateTheme) {
 }
 
 export function NovaStorefront({
-  store, slug, catalogItems, navCategories, goodReviews, avgRating, completedOrders, social, theme = NOVA_THEME, heroOverrides,
+  store, slug, catalogItems, navCategories, goodReviews, avgRating, completedOrders, trustScore, social, theme = NOVA_THEME, heroOverrides,
 }: {
   store: {
     name: string; logoUrl: string | null; bannerUrl: string | null;
@@ -60,6 +61,7 @@ export function NovaStorefront({
   navCategories: CategoryTreeNode[];
   goodReviews: Review[];
   avgRating: number | null;
+  trustScore: number | null;
   completedOrders: number;
   social: Record<string, string>;
   /** Which Nova Studio variant to render (colors, type, spacing). Defaults to the original Noir theme. */
@@ -113,6 +115,7 @@ export function NovaStorefront({
           {avgRating != null && (
             <div style={{ position: "absolute", left: 0, bottom: 40, background: p.gold, color: p.bg, padding: "16px 26px" }}>
               <b style={{ ...p.serif, fontSize: 22, display: "block" }}>{avgRating.toFixed(1)} / 5</b>
+              {trustScore != null && <TrustBadge score={trustScore} style={{ marginTop: 4 }} />}
               <span style={{ fontSize: 11, letterSpacing: "0.08em", textTransform: "uppercase" }}>{goodReviews.length}+ reviews</span>
             </div>
           )}

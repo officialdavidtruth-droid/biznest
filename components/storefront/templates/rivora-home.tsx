@@ -1,4 +1,5 @@
 import type React from "react";
+import { TrustBadge } from "@/components/storefront/trust-badge";
 import { CartLink } from "@/components/storefront/cart-link";
 import { RIVORA } from "@/lib/template-themes";
 import { subscribeToNewsletter } from "@/lib/actions/newsletter";
@@ -31,7 +32,7 @@ const wrap: React.CSSProperties = { maxWidth: 1180, margin: "0 auto", padding: "
 const RIVORA_BG = "#f7f9f6";
 
 export function RivoraStorefront({
-  store, slug, catalogItems, navCategories, goodReviews, avgRating, completedOrders, social,
+  store, slug, catalogItems, navCategories, goodReviews, avgRating, completedOrders, trustScore, social,
 }: {
   store: {
     name: string; logoUrl: string | null; bannerUrl: string | null;
@@ -43,6 +44,7 @@ export function RivoraStorefront({
   navCategories: CategoryTreeNode[];
   goodReviews: Review[];
   avgRating: number | null;
+  trustScore: number | null;
   completedOrders: number;
   social: Record<string, string>;
 }) {
@@ -102,6 +104,7 @@ export function RivoraStorefront({
             <div style={{ display: "flex", alignItems: "center", gap: 10, marginTop: 10 }}>
               <strong style={{ color: RIVORA.lime, fontSize: 13 }}>{"★".repeat(Math.round(avgRating))}</strong>
               <small style={{ fontSize: 9, color: "#aabcb3" }}>{avgRating.toFixed(1)} average rating &middot; {completedOrders} orders completed</small>
+              {trustScore != null && <TrustBadge score={trustScore} size="sm" style={{ marginTop: 4 }} />}
             </div>
           )}
         </div>
