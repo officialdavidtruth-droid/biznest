@@ -1,5 +1,5 @@
 import { listOrdersForBuyer } from "@/lib/actions/order";
-import { DISPUTABLE_ORDER_STATUSES } from "@/lib/actions/dispute";
+import { DISPUTABLE_ORDER_STATUSES } from "@/lib/constants/dispute";
 import Link from "next/link";
 import { Package, Clock, CheckCircle2, XCircle, RotateCcw, AlertTriangle, ArrowUpRight, ShoppingBag, ShieldAlert } from "lucide-react";
 

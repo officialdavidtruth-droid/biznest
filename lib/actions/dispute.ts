@@ -4,14 +4,7 @@ import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { revalidatePath } from "next/cache";
 import type { ActionResult } from "@/types/actions";
-
-// Order statuses a dispute can be opened from. Mirrors REFUNDABLE_ORDER_STATUSES
-// in lib/actions/refund.ts — a dispute is a way of contesting money that has
-// actually moved, so PENDING_PAYMENT/CANCELLED carts and already-REFUNDED/
-// already-DISPUTED orders don't qualify.
-export const DISPUTABLE_ORDER_STATUSES = ["PAID", "IN_PROGRESS", "DELIVERED", "COMPLETED"] as const;
-
-export type DisputeViewerRole = "buyer" | "seller";
+import { DISPUTABLE_ORDER_STATUSES, type DisputeViewerRole } from "@/lib/constants/dispute";
 
 async function assertOrderParticipant(orderId: string) {
   const session = await auth();

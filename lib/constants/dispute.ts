@@ -1,5 +1,9 @@
 import type { DisputeStatus } from "@prisma/client";
 
+export const DISPUTABLE_ORDER_STATUSES = ["PAID", "IN_PROGRESS", "DELIVERED", "COMPLETED"] as const;
+
+export type DisputeViewerRole = "buyer" | "seller";
+
 export const DISPUTE_STATUS_CONFIG: Record<DisputeStatus, { label: string; bg: string; text: string; ring: string }> = {
   OPEN: { label: "Open", bg: "bg-amber-50", text: "text-amber-700", ring: "ring-amber-200" },
   UNDER_REVIEW: { label: "Under review", bg: "bg-blue-50", text: "text-blue-700", ring: "ring-blue-200" },
