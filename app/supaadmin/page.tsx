@@ -2,7 +2,7 @@ import { getPlatformStats } from "@/lib/actions/admin";
 import Link from "next/link";
 import {
   DollarSign, TrendingUp, Users, ShieldAlert, Store,
-  ShoppingCart, Ban, ArrowRight,
+  ShoppingCart, Ban, ArrowRight, Gavel,
 } from "lucide-react";
 
 export default async function SupaAdminOverview() {
@@ -22,6 +22,13 @@ export default async function SupaAdminOverview() {
     },
     { label: "Total stores", value: stats.totalStores, icon: Store },
     { label: "Total orders", value: stats.totalOrders, icon: ShoppingCart },
+    {
+      label: "Open disputes",
+      value: stats.openDisputes,
+      href: "/supaadmin/disputes",
+      highlight: stats.openDisputes > 0,
+      icon: Gavel,
+    },
     { label: "Banned users", value: stats.bannedUsers, icon: Ban },
   ];
 
@@ -82,6 +89,19 @@ export default async function SupaAdminOverview() {
           You have <strong>{stats.pendingBusinesses}</strong> business verification{" "}
           {stats.pendingBusinesses === 1 ? "request" : "requests"} waiting for review.{" "}
           <Link href="/supaadmin/businesses" className="font-semibold" style={{ color: "hsl(var(--primary))" }}>
+            Review now →
+          </Link>
+        </div>
+      )}
+
+      {stats.openDisputes > 0 && (
+        <div
+          className="rounded-2xl p-4 text-sm"
+          style={{ background: "hsl(var(--primary) / 0.08)", border: "1px solid hsl(var(--primary) / 0.35)", color: "hsl(var(--foreground))" }}
+        >
+          You have <strong>{stats.openDisputes}</strong> open{" "}
+          {stats.openDisputes === 1 ? "dispute" : "disputes"} waiting in the Resolution Center.{" "}
+          <Link href="/supaadmin/disputes" className="font-semibold" style={{ color: "hsl(var(--primary))" }}>
             Review now →
           </Link>
         </div>

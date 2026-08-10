@@ -3,6 +3,7 @@
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { checkRateLimit } from "@/lib/rate-limit";
+import { emitWebhookEvent } from "@/lib/webhooks/dispatch";
 import { revalidatePath } from "next/cache";
 import type { ActionResult } from "@/types/actions";
 
@@ -120,6 +121,13 @@ export async function createBooking(
     },
   });
 
+  await emitWebhookEvent("BOOKING_CREATED", service.storeId, {
+    bookingId: booking.id,
+    serviceId,
+    scheduledAt: booking.scheduledAt,
+    durationMins: booking.durationMins,
+  });
+
   revalidatePath(`/store/${storeSlug}`);
   return { success: true, data: { bookingId: booking.id } };
 }
@@ -143,6 +151,13 @@ export async function updateBookingStatus(slug: string, bookingId: string, statu
   if (!booking) return { success: false, error: "Booking not found." };
 
   await prisma.booking.update({ where: { id: bookingId }, data: { status } });
+
+  if (status === "CONFIRMED") {
+    await emitWebhookEvent("BOOKING_CONFIRMED", access.store.id, { bookingId, status });
+  } else if (status === "CANCELLED") {
+    await emitWebhookEvent("BOOKING_CANCELLED", access.store.id, { bookingId, status });
+  }
+
   revalidatePath(`/store/${slug}/admin/services`);
   return { success: true, data: undefined };
 }

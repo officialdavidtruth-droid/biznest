@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { toast } from "sonner";
 import { updateStoryOverrides, updateStoryImage, type StoryOverrides } from "@/lib/actions/store";
-import { FRESH, type TemplateTheme } from "@/lib/template-themes";
+import type { TemplateTheme } from "@/lib/template-themes";
 import { FileUploadField } from "@/components/forms/file-upload-field";
 
 type BlockId = "eyebrow" | "heading" | "body" | "image" | null;
@@ -14,12 +14,17 @@ type BlockId = "eyebrow" | "heading" | "body" | "image" | null;
  * hero-block-editor.tsx. Kept as a separate component (rather than one
  * mega-editor) so each section's canvas markup can diverge without one
  * component accumulating every section's layout logic.
+ *
+ * Reads its dark panel/accent/font colors from `theme`, same fix as
+ * hero-block-editor.tsx — previously hardcoded to Fresh & Co.'s forest
+ * green regardless of the store's actual template.
  */
 export function StoryBlockEditor({
   slug,
   storeName,
   description,
   storyImage,
+  theme,
   initial,
 }: {
   slug: string;
@@ -28,6 +33,7 @@ export function StoryBlockEditor({
   // The image actually shown for this block (storyImage override, falling
   // back to bannerUrl/template preview) -- resolved by the parent page.
   storyImage: string | null;
+  theme: TemplateTheme;
   initial: StoryOverrides;
 }) {
   const [eyebrowText, setEyebrowText] = useState(initial.eyebrow || "What we do");
@@ -61,25 +67,27 @@ export function StoryBlockEditor({
 
   function outline(id: BlockId) {
     return selected === id
-      ? { outline: `2px solid ${FRESH.leaf}`, outlineOffset: 4, borderRadius: 6, cursor: "pointer" }
+      ? { outline: `2px solid ${theme.accent}`, outlineOffset: 4, borderRadius: 6, cursor: "pointer" }
       : { outline: "2px solid transparent", outlineOffset: 4, borderRadius: 6, cursor: "pointer" };
   }
+
+  const dark = theme.surfaceDark ?? theme.ink;
 
   return (
     <div className="grid gap-4 lg:grid-cols-[1fr_320px]">
       {/* ---------- CANVAS ---------- */}
-      <div className="overflow-hidden rounded-lg border" style={{ background: FRESH.forest }}>
+      <div className="overflow-hidden rounded-lg border" style={{ background: dark }}>
         <div style={{ display: "grid", gridTemplateColumns: "1fr 0.7fr" }}>
           <div style={{ padding: "44px 40px", color: "#fff" }}>
             <div
               onClick={() => setSelected("eyebrow")}
-              style={{ ...outline("eyebrow"), display: "inline-block", fontFamily: "monospace", fontSize: 12, letterSpacing: "0.14em", textTransform: "uppercase", color: FRESH.citrus, fontWeight: 600, padding: 4 }}
+              style={{ ...outline("eyebrow"), display: "inline-block", fontFamily: "monospace", fontSize: 12, letterSpacing: "0.14em", textTransform: "uppercase", color: theme.accent, fontWeight: 600, padding: 4 }}
             >
               {eyebrowText}
             </div>
             <h2
               onClick={() => setSelected("heading")}
-              style={{ ...outline("heading"), fontFamily: FRESH.headlineFont, fontWeight: 700, fontSize: "clamp(22px,2.8vw,32px)", lineHeight: 1.2, margin: "12px 0 0", padding: 4 }}
+              style={{ ...outline("heading"), fontFamily: theme.headlineFont, fontWeight: 700, fontSize: "clamp(22px,2.8vw,32px)", lineHeight: 1.2, margin: "12px 0 0", padding: 4 }}
             >
               {heading}
             </h2>
@@ -95,7 +103,7 @@ export function StoryBlockEditor({
             style={{
               ...outline("image"),
               minHeight: 220,
-              background: image ? `url(${image}) center/cover` : `linear-gradient(160deg,#1c4a32,#0a1f15)`,
+              background: image ? `url(${image}) center/cover` : `linear-gradient(160deg, ${dark}, #0a0a0c)`,
             }}
           />
         </div>

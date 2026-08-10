@@ -3,6 +3,7 @@ import { Space_Grotesk, Inter, JetBrains_Mono } from "next/font/google";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { SignOutButton } from "@/components/forms/sign-out-button";
+import { ALL_BUSINESS_TYPE_NAMES } from "@/lib/capabilities";
 
 const display = Space_Grotesk({ subsets: ["latin"], variable: "--font-display", weight: ["500", "700"] });
 const body = Inter({ subsets: ["latin"], variable: "--font-body" });
@@ -41,11 +42,10 @@ const STEPS = [
   },
 ];
 
-const CATEGORIES = [
-  "Fashion", "Electronics", "Beauty", "Food & Groceries", "Home & Furniture",
-  "Photography", "Software Development", "Event Planning", "Automotive",
-  "Health & Fitness", "Real Estate", "Logistics",
-];
+// Sourced from lib/capabilities.ts — the same list onboarding actually
+// supports, instead of a hand-maintained duplicate that can (and did)
+// silently drift out of sync (see lib/capabilities.ts's doc comment).
+const CATEGORIES = ALL_BUSINESS_TYPE_NAMES;
 
 export default async function HomePage() {
   const session = await auth();
@@ -61,6 +61,9 @@ export default async function HomePage() {
           BizNest
         </span>
         <nav className="flex items-center gap-3 text-sm sm:gap-6">
+          <Link href="/search" className="opacity-80 transition hover:opacity-100">
+            Browse
+          </Link>
           <Link href="/templates" className="opacity-80 transition hover:opacity-100">
             Templates
           </Link>

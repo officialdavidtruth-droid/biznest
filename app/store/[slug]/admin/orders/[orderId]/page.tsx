@@ -1,7 +1,10 @@
 import { getOrder } from "@/lib/actions/order";
 import { notFound } from "next/navigation";
+import Link from "next/link";
+import { ShieldAlert } from "lucide-react";
 import { OrderStatusControl } from "@/components/dashboard/order-status-control";
 import { RefundControl } from "@/components/dashboard/refund-control";
+import { DISPUTE_STATUS_CONFIG } from "@/lib/constants/dispute";
 
 const REFUNDABLE_STATUSES = ["PAID", "IN_PROGRESS", "DELIVERED", "COMPLETED"];
 
@@ -65,6 +68,31 @@ export default async function StoreOrderDetailPage({
         <h2 className="mb-3 text-sm font-semibold">Status</h2>
         <OrderStatusControl storeSlug={slug} orderId={order.id} currentStatus={order.status} />
       </div>
+
+      {order.dispute && (
+        <div className="mb-6 rounded-lg border border-red-200 bg-red-50 p-4">
+          <div className="flex items-center justify-between gap-3">
+            <h2 className="flex items-center gap-1.5 text-sm font-semibold text-red-900">
+              <ShieldAlert className="h-4 w-4" />
+              Dispute
+            </h2>
+            <span
+              className={`inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-semibold ring-1 ring-inset ${DISPUTE_STATUS_CONFIG[order.dispute.status].bg} ${DISPUTE_STATUS_CONFIG[order.dispute.status].text} ${DISPUTE_STATUS_CONFIG[order.dispute.status].ring}`}
+            >
+              {DISPUTE_STATUS_CONFIG[order.dispute.status].label}
+            </span>
+          </div>
+          <p className="mt-1.5 text-sm text-red-800">
+            The buyer has opened a dispute on this order. Head to the Resolution Center to review evidence and respond.
+          </p>
+          <Link
+            href={`/disputes/${order.id}`}
+            className="mt-3 inline-flex items-center gap-1 text-sm font-semibold text-red-700 hover:text-red-900"
+          >
+            Open dispute thread →
+          </Link>
+        </div>
+      )}
 
       {REFUNDABLE_STATUSES.includes(order.status) && (
         <div className="rounded-lg border bg-background p-4">

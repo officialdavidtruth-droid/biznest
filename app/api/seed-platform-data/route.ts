@@ -1,6 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import { NextResponse } from "next/server";
-import { generateNicheVariations, TEMPLATE_NAME, generateHeenzyVariation, TEMPLATE_NAME_HEENZY } from "@/lib/template-themes";
+import { generateNicheVariations, TEMPLATE_NAME, generateHeenzyVariations, TEMPLATE_NAME_HEENZY } from "@/lib/template-themes";
 import { fetchDemoPhoto } from "@/lib/demo-images";
 import type { Prisma } from "@prisma/client";
 
@@ -67,16 +67,22 @@ export async function GET(req: Request) {
     create: { name: TEMPLATE_NAME, category: TEMPLATE_NAME, tierRank: freshTemplate.tierRank, previewUrl, config: freshTemplate as unknown as Prisma.InputJsonValue },
   });
 
-  const heenzyTemplate = generateHeenzyVariation();
+  // Seeds every Heenzy variant (see prisma/seed.ts for the same pattern) —
+  // previously seeded only the single legacy theme via the now-removed
+  // generateHeenzyVariation(), which left the Boutique Rose variant (and
+  // any future ones) unreachable when bootstrapping over HTTP.
   const heenzyPreviewUrl = await fetchDemoPhoto(TEMPLATE_NAME_HEENZY);
-  await prisma.storeTemplate.upsert({
-    where: { name: TEMPLATE_NAME_HEENZY },
-    update: { category: TEMPLATE_NAME_HEENZY, isActive: true, tierRank: heenzyTemplate.tierRank, previewUrl: heenzyPreviewUrl, config: heenzyTemplate as unknown as Prisma.InputJsonValue },
-    create: { name: TEMPLATE_NAME_HEENZY, category: TEMPLATE_NAME_HEENZY, tierRank: heenzyTemplate.tierRank, previewUrl: heenzyPreviewUrl, config: heenzyTemplate as unknown as Prisma.InputJsonValue },
-  });
+  const heenzyVariants = generateHeenzyVariations();
+  for (const heenzyTemplate of heenzyVariants) {
+    await prisma.storeTemplate.upsert({
+      where: { name: heenzyTemplate.variationName },
+      update: { category: TEMPLATE_NAME_HEENZY, isActive: true, tierRank: heenzyTemplate.tierRank, previewUrl: heenzyPreviewUrl, config: heenzyTemplate as unknown as Prisma.InputJsonValue },
+      create: { name: heenzyTemplate.variationName, category: TEMPLATE_NAME_HEENZY, tierRank: heenzyTemplate.tierRank, previewUrl: heenzyPreviewUrl, config: heenzyTemplate as unknown as Prisma.InputJsonValue },
+    });
+  }
 
   await prisma.storeTemplate.updateMany({
-    where: { name: { notIn: [TEMPLATE_NAME, TEMPLATE_NAME_HEENZY] } },
+    where: { name: { notIn: [TEMPLATE_NAME, ...heenzyVariants.map((v) => v.variationName)] } },
     data: { isActive: false },
   });
 

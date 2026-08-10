@@ -4,6 +4,7 @@ import Link from "next/link";
 import type { Metadata } from "next";
 import { resolveStoreTheme, isVioletTemplate, isMarketplaceTemplate, isArcovaTemplate, isNovaTemplate, isPremiumTemplate, isHomeVistaTemplate, isRrwTemplate, isHeenzyTemplate, isRivoraTemplate, isFabtexTemplate, isJuiceLifeTemplate, type TemplateTheme } from "@/lib/template-themes";
 import { ProductDetail } from "@/components/storefront/product-detail";
+import { recordStoreVisit } from "@/lib/actions/analytics";
 import { CartLink } from "@/components/storefront/cart-link";
 import { VioletHeader, VioletFooter, wrap as violetWrap } from "@/components/storefront/templates/violet-chrome";
 import { MarketplaceHeader, MarketplaceFooter, wrap as marketplaceWrap } from "@/components/storefront/templates/marketplace-chrome";
@@ -39,6 +40,9 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
     include: { category: true, inventory: true },
   });
   if (!product) notFound();
+
+  // Fire-and-forget: never await-block a buyer's page render on analytics.
+  void recordStoreVisit(store.id, `/store/${slug}/product/${productId}`);
 
   const themeOverrides = store.themeColors as { primary?: string; secondary?: string; accent?: string } | null;
   // This template's own real palette/radius (see catalog/page.tsx for why

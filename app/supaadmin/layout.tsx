@@ -1,7 +1,7 @@
 import Link from "next/link";
 import {
   LayoutDashboard, ShieldCheck, Users, Store, CreditCard,
-  Globe, FileClock, Settings, ShieldAlert,
+  Globe, FileClock, Settings, ShieldAlert, Gavel,
 } from "lucide-react";
 import { SupaAdminLogoutButton } from "@/components/dashboard/supaadmin-logout-button";
 
@@ -13,6 +13,7 @@ const LINKS = [
   { href: "/supaadmin/businesses", label: "Business verification", icon: ShieldCheck },
   { href: "/supaadmin/users", label: "Users", icon: Users },
   { href: "/supaadmin/stores", label: "Stores", icon: Store },
+  { href: "/supaadmin/disputes", label: "Disputes", icon: Gavel },
   { href: "/supaadmin/subscriptions", label: "Subscriptions", icon: CreditCard },
   { href: "/supaadmin/domains", label: "Domains", icon: Globe },
   { href: "/supaadmin/logs", label: "Activity log", icon: FileClock },

@@ -10,6 +10,8 @@
  * Keep these slugs stable — /templates links directly to them.
  */
 
+import { TEMPLATE_NAME_HEENZY, TEMPLATE_NAME_NOVA } from "./template-themes";
+
 export type DemoProduct = {
   name: string;
   description: string;
@@ -73,7 +75,7 @@ export const DEMO_STORES: DemoStoreSeed[] = [
   },
   {
     slug: "demo-heenzy",
-    templateName: "Heenzy Sneaker Co.",
+    templateName: TEMPLATE_NAME_HEENZY,
     storeName: "Heenzy Sneaker Co.",
     businessCategory: "Fashion & Apparel",
     description:
@@ -105,7 +107,11 @@ export const DEMO_STORES: DemoStoreSeed[] = [
   },
   {
     slug: "demo-nova",
-    templateName: "Nova Studio",
+    // The seeded template row name (not the store's own display name below) —
+    // must match one of the variants StoreTemplate.name can take so the
+    // gallery's "Preview" link resolves. Imported rather than hardcoded so
+    // renaming/adding a Nova variant can't silently break this mapping again.
+    templateName: TEMPLATE_NAME_NOVA,
     storeName: "Nova Studio",
     businessCategory: "Creative Agency",
     description:

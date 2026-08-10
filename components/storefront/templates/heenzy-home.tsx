@@ -1,5 +1,6 @@
 import { CartLink } from "@/components/storefront/cart-link";
-import { HEENZY } from "@/lib/template-themes";
+import { TrustBadge } from "@/components/storefront/trust-badge";
+import { HEENZY, HEENZY_THEME, type TemplateTheme } from "@/lib/template-themes";
 import { subscribeToNewsletter } from "@/lib/actions/newsletter";
 import { CategoryNav } from "@/components/storefront/category-nav";
 import { Reveal } from "@/components/storefront/reveal";
@@ -11,6 +12,28 @@ import type { CategoryTreeNode } from "@/lib/storefront-categories";
 // via the existing dashboard upload fields). Nothing here is hardcoded
 // artwork — when a field is empty a plain placeholder block is shown
 // instead, ready for the owner to fill in from Settings / Products / Services.
+//
+// Theming works differently here than in Nova: styles/heenzy-template.css
+// already scopes its colors as CSS custom properties on `.hz-root`
+// (--hz-black, --hz-yellow, etc.), so instead of rewriting ~130 className
+// references to inline styles, `heenzyCssVars()` below overrides those
+// custom properties inline wherever `.hz-root` appears, and the existing
+// stylesheet re-themes itself through normal CSS cascade. Exported so
+// heenzy-chrome.tsx's `.hz-root` element can apply the same override.
+// `theme` defaults to HEENZY_THEME so callers that don't pass one render
+// exactly as before.
+
+export function heenzyCssVars(theme: TemplateTheme): React.CSSProperties {
+  return {
+    "--hz-black": theme.ink,
+    "--hz-white": theme.bg,
+    "--hz-offwhite": theme.card,
+    "--hz-yellow": theme.accent,
+    "--hz-gray": theme.muted ?? HEENZY.gray,
+    "--hz-border": theme.border ?? "#e7e7e7",
+    "--hz-radius": theme.radius,
+  } as React.CSSProperties;
+}
 
 type CatalogItem = {
   id: string; kind: "product" | "service"; name: string; description: string | null;
@@ -21,7 +44,7 @@ type CatalogItem = {
 type Review = { id: string; rating: number; comment: string | null; author: { name: string | null } };
 
 export function HeenzyStorefront({
-  store, slug, catalogItems, catalogCategories, navCategories, goodReviews, avgRating, completedOrders, social,
+  store, slug, catalogItems, catalogCategories, navCategories, goodReviews, avgRating, completedOrders, trustScore, social, theme = HEENZY_THEME,
 }: {
   store: {
     name: string; logoUrl: string | null; bannerUrl: string | null;
@@ -34,16 +57,19 @@ export function HeenzyStorefront({
   navCategories: CategoryTreeNode[];
   goodReviews: Review[];
   avgRating: number | null;
+  trustScore: number | null;
   completedOrders: number;
   social: Record<string, string>;
+  /** Which Heenzy variant to render (colors, type, corner radius). Defaults to the original streetwear theme. */
+  theme?: TemplateTheme;
 }) {
   const heroImage = store.bannerUrl;
   const featuredItems = catalogItems.slice(0, 8);
 
   return (
-    <div className="hz-root">
-      <HeenzyNav store={store} slug={slug} hasCatalog={catalogItems.length > 0} />
-      <CategoryNav slug={slug} categories={navCategories} accent={HEENZY.black} ink={HEENZY.black} bg="#fff" border="#e7e7e7" />
+    <div className="hz-root" style={heenzyCssVars(theme)}>
+      <HeenzyNav store={store} slug={slug} hasCatalog={catalogItems.length > 0} theme={theme} />
+      <CategoryNav slug={slug} categories={navCategories} accent="var(--hz-black)" ink="var(--hz-black)" bg="#fff" border="#e7e7e7" />
 
       <div className="hz-wrap hz-top-grid">
         {/* ---------- HERO ---------- */}
@@ -54,13 +80,13 @@ export function HeenzyStorefront({
             <h1 className="hz-hero-title">
               {store.name} <span className="hz-accent">Reimagined</span>
             </h1>
-            <p className="hz-hero-sub">{store.business.description || "Built for every mood, every move, and every milestone. Unleash the lifestyle in you."}</p>
+            <p className="hz-hero-sub">{store.business.description || theme.sub}</p>
             <div className="hz-pill-row">
               <button className="hz-pill active">Style</button>
               <button className="hz-pill">Comfort</button>
               <button className="hz-pill">Trendy</button>
             </div>
-            {catalogItems.length > 0 && <a href="#catalog" className="hz-btn hz-btn-yellow">Shop Now</a>}
+            {catalogItems.length > 0 && <a href="#catalog" className="hz-btn hz-btn-yellow">{theme.cta}</a>}
           </div>
           <div className="hz-social-proof">
             <div className="hz-avatars">
@@ -158,9 +184,9 @@ export function HeenzyStorefront({
               {catalogItems.length > 0 && <a href="#catalog" className="hz-btn hz-btn-dark">Explore Collection</a>}
             </div>
             <div className="hz-lifestyle-grid">
-              <div className="hz-tall">{heroImage ? <img src={heroImage} alt="" /> : <div style={{ background: HEENZY.offwhite, width: "100%", height: "100%" }} />}</div>
-              <div className="hz-short">{store.logoUrl ? <img src={store.logoUrl} alt="" /> : <div style={{ background: HEENZY.offwhite, width: "100%", height: "100%" }} />}</div>
-              <div className="hz-short">{catalogItems[0]?.image ? <img src={catalogItems[0].image} alt="" /> : <div style={{ background: HEENZY.offwhite, width: "100%", height: "100%" }} />}</div>
+              <div className="hz-tall">{heroImage ? <img src={heroImage} alt="" /> : <div style={{ background: "var(--hz-offwhite)", width: "100%", height: "100%" }} />}</div>
+              <div className="hz-short">{store.logoUrl ? <img src={store.logoUrl} alt="" /> : <div style={{ background: "var(--hz-offwhite)", width: "100%", height: "100%" }} />}</div>
+              <div className="hz-short">{catalogItems[0]?.image ? <img src={catalogItems[0].image} alt="" /> : <div style={{ background: "var(--hz-offwhite)", width: "100%", height: "100%" }} />}</div>
             </div>
           </div>
         </div>
@@ -174,6 +200,9 @@ export function HeenzyStorefront({
           {avgRating != null && (
             <div className="hz-stat"><div><div className="hz-stat-num">{avgRating.toFixed(1)}/5</div><div className="hz-stat-label">Satisfaction Rate</div></div></div>
           )}
+          {trustScore != null && (
+            <div className="hz-stat"><TrustBadge score={trustScore} /></div>
+          )}
         </div>
       </div>
 
@@ -183,7 +212,7 @@ export function HeenzyStorefront({
           <Reveal>
             <div className="hz-section-head" style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
               <h2>Best Sellers</h2>
-              <a href={`/store/${slug}/catalog`} style={{ fontSize: 13, fontWeight: 700, color: HEENZY.black, textDecoration: "underline" }}>View all →</a>
+              <a href={`/store/${slug}/catalog`} style={{ fontSize: 13, fontWeight: 700, color: "var(--hz-black)", textDecoration: "underline" }}>View all →</a>
             </div>
           </Reveal>
           <div className="hz-catalog-grid">
@@ -208,7 +237,7 @@ export function HeenzyStorefront({
                 {store.logoUrl ? <img src={store.logoUrl} alt={store.name} style={{ height: 26, width: 26, borderRadius: 6, objectFit: "cover" }} /> : null}
                 {store.name}
               </div>
-              {store.business.description && <p style={{ fontSize: 13, color: HEENZY.gray, lineHeight: 1.6, maxWidth: 240 }}>{store.business.description.slice(0, 130)}</p>}
+              {store.business.description && <p style={{ fontSize: 13, color: "var(--hz-gray)", lineHeight: 1.6, maxWidth: 240 }}>{store.business.description.slice(0, 130)}</p>}
             </div>
             <div>
               <h4>Shop</h4>
@@ -242,11 +271,11 @@ export function HeenzyStorefront({
   );
 }
 
-export function HeenzyNav({ store, slug, hasCatalog }: { store: { name: string; logoUrl: string | null }; slug: string; hasCatalog: boolean }) {
+export function HeenzyNav({ store, slug, hasCatalog, theme = HEENZY_THEME }: { store: { name: string; logoUrl: string | null }; slug: string; hasCatalog: boolean; theme?: TemplateTheme }) {
   return (
-    <nav className="hz-root" style={{ position: "sticky", top: 0, zIndex: 50, background: "rgba(255,255,255,.92)", backdropFilter: "blur(10px)", borderBottom: "1px solid #e7e7e7" }}>
+    <nav className="hz-root" style={{ ...heenzyCssVars(theme), position: "sticky", top: 0, zIndex: 50, background: "rgba(255,255,255,.92)", backdropFilter: "blur(10px)", borderBottom: "1px solid #e7e7e7" }}>
       <div className="hz-wrap hz-nav">
-        <a href={`/store/${slug}`} className="hz-logo" style={{ display: "flex", alignItems: "center", gap: 8, textDecoration: "none", color: HEENZY.black }}>
+        <a href={`/store/${slug}`} className="hz-logo" style={{ display: "flex", alignItems: "center", gap: 8, textDecoration: "none", color: "var(--hz-black)" }}>
           {store.logoUrl ? <img src={store.logoUrl} alt={store.name} /> : null}
           {store.name}
         </a>
@@ -256,7 +285,7 @@ export function HeenzyNav({ store, slug, hasCatalog }: { store: { name: string; 
           {hasCatalog && <li><a href={`/store/${slug}/search`}>Search</a></li>}
         </ul>
         <div className="hz-nav-icons">
-          <CartLink storeSlug={slug} accent={HEENZY.black} ink={HEENZY.black} />
+          <CartLink storeSlug={slug} accent="var(--hz-black)" ink="var(--hz-black)" />
         </div>
       </div>
     </nav>
@@ -274,7 +303,7 @@ function HeenzyProductCard({ item, slug, storeName }: { item: CatalogItem; slug:
       <div className="hz-product-meta">
         <span className="hz-product-price">{item.currency} {item.price.toLocaleString()}</span>
       </div>
-      <div style={{ marginTop: 10, fontSize: 12, fontWeight: 700, color: HEENZY.black, textDecoration: "underline" }}>
+      <div style={{ marginTop: 10, fontSize: 12, fontWeight: 700, color: "var(--hz-black)", textDecoration: "underline" }}>
         {item.kind === "service" ? (item.isBookable ? "Book now →" : "View details →") : "View & buy →"}
       </div>
     </a>
@@ -288,7 +317,7 @@ function HeenzyNewsletter({ slug, storeName }: { slug: string; storeName: string
   }
   return (
     <div className="hz-wrap" style={{ padding: "56px 24px" }}>
-      <div style={{ background: HEENZY.black, borderRadius: 14, padding: "36px 40px", display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 20, color: "#fff" }}>
+      <div style={{ background: "var(--hz-black)", borderRadius: 14, padding: "36px 40px", display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 20, color: "#fff" }}>
         <div>
           <h3 style={{ fontSize: 20, fontWeight: 800, margin: "0 0 4px" }}>Stay in the Loop</h3>
           <p style={{ fontSize: 13, opacity: .7, margin: 0 }}>Get the latest drops, offers, and updates from {storeName}.</p>

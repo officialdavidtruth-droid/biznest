@@ -13,7 +13,10 @@ import type { CategoryTreeNode } from "@/lib/storefront-categories";
 // Marketplace Hub, Arcova, Nova, Premium Marketplace, HomeVista, rRW,
 // Heenzy and Rivora).
 
-export const wrap: React.CSSProperties = { padding: "0 7%" };
+// See rivora-chrome.tsx for why maxWidth matters: without it, this wrap
+// stretches edge-to-edge on wide screens, and anything sized as a fraction
+// of it (e.g. a 1/1 aspect-ratio product photo) balloons on large monitors.
+export const wrap: React.CSSProperties = { maxWidth: 1180, margin: "0 auto", padding: "0 7%" };
 
 type ChromeStore = {
   name: string;
