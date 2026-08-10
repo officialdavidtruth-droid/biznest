@@ -54,7 +54,12 @@ export function ProductDetail({
   return (
     <div style={{ display: "grid", gridTemplateColumns: "minmax(0,1fr) minmax(0,1fr)", gap: 40 }} className="pd-grid">
       <div>
-        <div style={{ aspectRatio: "1/1", borderRadius: radius, overflow: "hidden", background: `${ink}0d`, display: "flex", alignItems: "center", justifyContent: "center" }}>
+        {/* maxWidth/maxHeight are a safety net: this column is `1fr` of
+            whatever wraps it, so if a template's outer container is ever
+            missing its own maxWidth cap (as rivora-chrome.tsx was), the
+            1/1 aspect-ratio box below would otherwise scale up with the
+            viewport and produce an oversized square product photo. */}
+        <div style={{ aspectRatio: "1/1", maxWidth: 560, maxHeight: 560, margin: "0 auto", borderRadius: radius, overflow: "hidden", background: `${ink}0d`, display: "flex", alignItems: "center", justifyContent: "center" }}>
           {images[active] ? (
             // eslint-disable-next-line @next/next/no-img-element
             <img src={images[active]} alt={name} style={{ width: "100%", height: "100%", objectFit: "cover" }} />

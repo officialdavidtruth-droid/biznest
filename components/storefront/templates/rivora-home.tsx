@@ -24,7 +24,10 @@ type CatalogItem = {
 };
 type Review = { id: string; rating: number; comment: string | null; author: { name: string | null } };
 
-const wrap: React.CSSProperties = { padding: "0 5%" };
+// Kept in sync with the same constant in rivora-chrome.tsx — see the
+// comment there for why maxWidth matters (uncapped width made the product
+// page's square image balloon on wide screens).
+const wrap: React.CSSProperties = { maxWidth: 1180, margin: "0 auto", padding: "0 5%" };
 const RIVORA_BG = "#f7f9f6";
 
 export function RivoraStorefront({

@@ -13,7 +13,13 @@ import type { CategoryTreeNode } from "@/lib/storefront-categories";
 // Violet, Marketplace Hub, Arcova, Nova, Premium Marketplace, HomeVista,
 // rRW, and Heenzy).
 
-export const wrap: React.CSSProperties = { padding: "0 5%" };
+// `maxWidth` is the important part here: without it, this wrap stretches
+// edge-to-edge on wide desktop screens, so anything sized as a fraction of
+// it (most visibly the square product photo on the product page, which is
+// `aspectRatio: "1/1"` at ~1fr of this container) balloons to 800px+ tall.
+// Every other template's wrapper caps out around 1080–1180px; Rivora didn't,
+// which is what made the product page look broken/huge on large monitors.
+export const wrap: React.CSSProperties = { maxWidth: 1180, margin: "0 auto", padding: "0 5%" };
 export const RIVORA_BG = "#f7f9f6";
 
 type ChromeStore = {
