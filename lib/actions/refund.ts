@@ -3,6 +3,7 @@
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { refundPayment } from "@/lib/payments/gateway";
+import { emitWebhookEvent } from "@/lib/webhooks/dispatch";
 import { revalidatePath } from "next/cache";
 import type { ActionResult } from "@/types/actions";
 
@@ -107,6 +108,15 @@ export async function issueRefund(
   }
 
   await prisma.order.update({ where: { id: order.id }, data: { status: "REFUNDED" } });
+  await prisma.orderStatusEvent.create({ data: { orderId: order.id, status: "REFUNDED", note: reason.trim() } });
+
+  await emitWebhookEvent("PAYMENT_REFUNDED", access.store.id, {
+    orderId: order.id,
+    paymentId: payment.id,
+    amount: Number(payment.amount),
+    currency: payment.currency,
+    reason: reason.trim(),
+  });
 
   revalidatePath(`/store/${slug}/admin/orders/${orderId}`);
   revalidatePath(`/store/${slug}/admin/orders`);

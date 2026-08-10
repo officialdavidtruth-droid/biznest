@@ -1,5 +1,8 @@
 import { prisma } from "@/lib/prisma";
 import { verifyFlutterwaveTransaction, verifyFlutterwaveWebhookSignature } from "@/lib/payments/flutterwave";
+import { settleInvoicePayment } from "@/lib/actions/invoice";
+import { settleQuoteDeposit } from "@/lib/actions/quote";
+import { emitWebhookEvent } from "@/lib/webhooks/dispatch";
 import { NextResponse } from "next/server";
 
 /**
@@ -28,6 +31,20 @@ export async function POST(req: Request) {
     event = JSON.parse(rawBody);
   } catch {
     return NextResponse.json({ error: "Invalid payload" }, { status: 400 });
+  }
+
+  if (event.event === "charge.completed" && event.data?.tx_ref && (event.data as { status?: string }).status !== "successful") {
+    const payment = await prisma.payment.findUnique({ where: { reference: event.data.tx_ref } });
+    if (payment?.orderId) {
+      const order = await prisma.order.findUnique({ where: { id: payment.orderId } });
+      if (order) {
+        await emitWebhookEvent("PAYMENT_FAILED", order.storeId, {
+          orderId: order.id,
+          reference: event.data.tx_ref,
+          provider: "FLUTTERWAVE",
+        });
+      }
+    }
   }
 
   if (event.event !== "charge.completed" || !event.data?.id || !event.data?.tx_ref) {
@@ -60,6 +77,17 @@ export async function POST(req: Request) {
     return NextResponse.json({ received: true });
   }
 
+  // See the matching comment in the Paystack webhook — invoice/quote-deposit
+  // settlement lives in their own action files.
+  if (txRef.startsWith("INV-")) {
+    await settleInvoicePayment(txRef, verification as object);
+    return NextResponse.json({ received: true });
+  }
+  if (txRef.startsWith("QDEP-")) {
+    await settleQuoteDeposit(txRef, verification as object);
+    return NextResponse.json({ received: true });
+  }
+
   // Idempotent by design — see the matching comment in the Paystack
   // webhook. The amount check still needs the order row, but the actual
   // transition happens via an atomic updateMany so a webhook retry racing
@@ -77,6 +105,14 @@ export async function POST(req: Request) {
           where: { reference: txRef, status: "PENDING" },
           data: { status: "SUCCESSFUL", rawPayload: verification as object, verifiedAt: new Date() },
         });
+        await emitWebhookEvent("PAYMENT_SUCCESS", order.storeId, {
+          orderId: order.id,
+          reference: txRef,
+          provider: "FLUTTERWAVE",
+          amount: Number(order.total),
+          currency: order.currency,
+        });
+        await emitWebhookEvent("ORDER_PAID", order.storeId, { orderId: order.id, status: "PAID" });
       }
     }
   }

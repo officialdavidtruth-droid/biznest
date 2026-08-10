@@ -1,5 +1,5 @@
 import { PrismaClient, type Prisma } from "@prisma/client";
-import { generateNicheVariations, TEMPLATE_NAME, generateHeenzyVariation, TEMPLATE_NAME_HEENZY, generateNovaVariation, TEMPLATE_NAME_NOVA, generateVioletVariation, TEMPLATE_NAME_VIOLET, generatePremiumVariation, TEMPLATE_NAME_PREMIUM, generateHomeVistaVariation, TEMPLATE_NAME_HOMEVISTA, generateRrwVariation, TEMPLATE_NAME_RRW, generateMarketplaceVariation, TEMPLATE_NAME_MARKETPLACE, generateArcovaVariation, TEMPLATE_NAME_ARCOVA, generateRivoraVariation, TEMPLATE_NAME_RIVORA, generateJuiceLifeVariation, TEMPLATE_NAME_JUICELIFE, generateFabtexVariation, TEMPLATE_NAME_FABTEX } from "../lib/template-themes";
+import { generateNicheVariations, TEMPLATE_NAME, generateHeenzyVariations, TEMPLATE_NAME_HEENZY, TEMPLATE_NAME_HEENZY_BOUTIQUE, generateNovaVariations, TEMPLATE_NAME_NOVA, TEMPLATE_NAME_NOVA_IVORY, generateVioletVariations, TEMPLATE_NAME_VIOLET, TEMPLATE_NAME_VIOLET_SUNSET, generatePremiumVariation, TEMPLATE_NAME_PREMIUM, generateHomeVistaVariation, TEMPLATE_NAME_HOMEVISTA, generateRrwVariation, TEMPLATE_NAME_RRW, generateMarketplaceVariation, TEMPLATE_NAME_MARKETPLACE, generateArcovaVariation, TEMPLATE_NAME_ARCOVA, generateRivoraVariation, TEMPLATE_NAME_RIVORA, generateJuiceLifeVariation, TEMPLATE_NAME_JUICELIFE, generateFabtexVariation, TEMPLATE_NAME_FABTEX } from "../lib/template-themes";
 import { fetchDemoPhoto } from "../lib/demo-images";
 
 const prisma = new PrismaClient();
@@ -134,29 +134,37 @@ async function main() {
     create: { name: TEMPLATE_NAME, category: TEMPLATE_NAME, tierRank: freshTemplate.tierRank, previewUrl, config: freshTemplate as unknown as Prisma.InputJsonValue },
   });
 
-  const heenzyTemplate = generateHeenzyVariation();
+  // Heenzy now ships as multiple variants (same component + stylesheet,
+  // different config) — same pattern as Nova Studio below.
   const heenzyPreviewUrl = await fetchDemoPhoto(TEMPLATE_NAME_HEENZY);
-  await prisma.storeTemplate.upsert({
-    where: { name: TEMPLATE_NAME_HEENZY },
-    update: { category: TEMPLATE_NAME_HEENZY, isActive: true, tierRank: heenzyTemplate.tierRank, previewUrl: heenzyPreviewUrl, config: heenzyTemplate as unknown as Prisma.InputJsonValue },
-    create: { name: TEMPLATE_NAME_HEENZY, category: TEMPLATE_NAME_HEENZY, tierRank: heenzyTemplate.tierRank, previewUrl: heenzyPreviewUrl, config: heenzyTemplate as unknown as Prisma.InputJsonValue },
-  });
+  for (const heenzyTemplate of generateHeenzyVariations()) {
+    await prisma.storeTemplate.upsert({
+      where: { name: heenzyTemplate.variationName },
+      update: { category: TEMPLATE_NAME_HEENZY, isActive: true, tierRank: heenzyTemplate.tierRank, previewUrl: heenzyPreviewUrl, config: heenzyTemplate as unknown as Prisma.InputJsonValue },
+      create: { name: heenzyTemplate.variationName, category: TEMPLATE_NAME_HEENZY, tierRank: heenzyTemplate.tierRank, previewUrl: heenzyPreviewUrl, config: heenzyTemplate as unknown as Prisma.InputJsonValue },
+    });
+  }
 
-  const novaTemplate = generateNovaVariation();
+  // Nova Studio now ships as multiple variants (same component, different
+  // config — see generateNovaVariations) rather than one template per row.
+  // This loop is the pattern the rest of the templates migrate to.
   const novaPreviewUrl = await fetchDemoPhoto(TEMPLATE_NAME_NOVA);
-  await prisma.storeTemplate.upsert({
-    where: { name: TEMPLATE_NAME_NOVA },
-    update: { category: TEMPLATE_NAME_NOVA, isActive: true, tierRank: novaTemplate.tierRank, previewUrl: novaPreviewUrl, config: novaTemplate as unknown as Prisma.InputJsonValue },
-    create: { name: TEMPLATE_NAME_NOVA, category: TEMPLATE_NAME_NOVA, tierRank: novaTemplate.tierRank, previewUrl: novaPreviewUrl, config: novaTemplate as unknown as Prisma.InputJsonValue },
-  });
+  for (const novaTemplate of generateNovaVariations()) {
+    await prisma.storeTemplate.upsert({
+      where: { name: novaTemplate.variationName },
+      update: { category: TEMPLATE_NAME_NOVA, isActive: true, tierRank: novaTemplate.tierRank, previewUrl: novaPreviewUrl, config: novaTemplate as unknown as Prisma.InputJsonValue },
+      create: { name: novaTemplate.variationName, category: TEMPLATE_NAME_NOVA, tierRank: novaTemplate.tierRank, previewUrl: novaPreviewUrl, config: novaTemplate as unknown as Prisma.InputJsonValue },
+    });
+  }
 
-  const violetTemplate = generateVioletVariation();
   const violetPreviewUrl = await fetchDemoPhoto(TEMPLATE_NAME_VIOLET);
-  await prisma.storeTemplate.upsert({
-    where: { name: TEMPLATE_NAME_VIOLET },
-    update: { category: TEMPLATE_NAME_VIOLET, isActive: true, tierRank: violetTemplate.tierRank, previewUrl: violetPreviewUrl, config: violetTemplate as unknown as Prisma.InputJsonValue },
-    create: { name: TEMPLATE_NAME_VIOLET, category: TEMPLATE_NAME_VIOLET, tierRank: violetTemplate.tierRank, previewUrl: violetPreviewUrl, config: violetTemplate as unknown as Prisma.InputJsonValue },
-  });
+  for (const violetTemplate of generateVioletVariations()) {
+    await prisma.storeTemplate.upsert({
+      where: { name: violetTemplate.variationName },
+      update: { category: TEMPLATE_NAME_VIOLET, isActive: true, tierRank: violetTemplate.tierRank, previewUrl: violetPreviewUrl, config: violetTemplate as unknown as Prisma.InputJsonValue },
+      create: { name: violetTemplate.variationName, category: TEMPLATE_NAME_VIOLET, tierRank: violetTemplate.tierRank, previewUrl: violetPreviewUrl, config: violetTemplate as unknown as Prisma.InputJsonValue },
+    });
+  }
 
   const premiumTemplate = generatePremiumVariation();
   const premiumPreviewUrl = await fetchDemoPhoto(TEMPLATE_NAME_PREMIUM);
@@ -227,7 +235,7 @@ async function main() {
   // might still reference one (Store.templateId). Deactivated templates
   // stop showing in the gallery but existing stores using them keep working.
   await prisma.storeTemplate.updateMany({
-    where: { name: { notIn: [TEMPLATE_NAME, TEMPLATE_NAME_HEENZY, TEMPLATE_NAME_NOVA, TEMPLATE_NAME_VIOLET, TEMPLATE_NAME_PREMIUM, TEMPLATE_NAME_HOMEVISTA, TEMPLATE_NAME_RRW, TEMPLATE_NAME_MARKETPLACE, TEMPLATE_NAME_ARCOVA, TEMPLATE_NAME_RIVORA, TEMPLATE_NAME_JUICELIFE, TEMPLATE_NAME_FABTEX] } },
+    where: { name: { notIn: [TEMPLATE_NAME, TEMPLATE_NAME_HEENZY, TEMPLATE_NAME_HEENZY_BOUTIQUE, TEMPLATE_NAME_NOVA, TEMPLATE_NAME_NOVA_IVORY, TEMPLATE_NAME_VIOLET, TEMPLATE_NAME_VIOLET_SUNSET, TEMPLATE_NAME_PREMIUM, TEMPLATE_NAME_HOMEVISTA, TEMPLATE_NAME_RRW, TEMPLATE_NAME_MARKETPLACE, TEMPLATE_NAME_ARCOVA, TEMPLATE_NAME_RIVORA, TEMPLATE_NAME_JUICELIFE, TEMPLATE_NAME_FABTEX] } },
     data: { isActive: false },
   });
 

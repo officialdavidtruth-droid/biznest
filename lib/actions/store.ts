@@ -96,7 +96,11 @@ export async function createStore(
         name: parsed.data.storeName,
         slug,
         templateId: parsed.data.templateId,
-        bannerUrl: bannerPhoto ?? undefined,
+        // A logo/banner uploaded in the onboarding wizard's branding step
+        // wins over the auto-fetched demo banner — that photo is only a
+        // placeholder for stores that skipped branding.
+        logoUrl: parsed.data.logoUrl || undefined,
+        bannerUrl: parsed.data.bannerUrl || bannerPhoto || undefined,
       },
     });
 

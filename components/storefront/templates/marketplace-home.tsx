@@ -1,4 +1,5 @@
 import type React from "react";
+import { TrustBadge } from "@/components/storefront/trust-badge";
 import { CartLink } from "@/components/storefront/cart-link";
 import { MARKETPLACE, MARKETPLACE_THEME } from "@/lib/template-themes";
 import { subscribeToNewsletter } from "@/lib/actions/newsletter";
@@ -78,7 +79,7 @@ function CatalogRow({ title, items, slug }: { title: string; items: CatalogItem[
 }
 
 export function MarketplaceStorefront({
-  store, slug, catalogItems, navCategories, goodReviews, avgRating, completedOrders, social,
+  store, slug, catalogItems, navCategories, goodReviews, avgRating, completedOrders, trustScore, social,
 }: {
   store: {
     name: string; logoUrl: string | null; bannerUrl: string | null;
@@ -90,6 +91,7 @@ export function MarketplaceStorefront({
   navCategories: CategoryTreeNode[];
   goodReviews: Review[];
   avgRating: number | null;
+  trustScore: number | null;
   completedOrders: number;
   social: Record<string, string>;
 }) {
@@ -266,6 +268,7 @@ export function MarketplaceStorefront({
               {catalogItems.length > 0 && <span style={{ fontSize: 11, color: "#666" }}><b>{catalogItems.length}+</b> in stock</span>}
               {completedOrders > 0 && <span style={{ fontSize: 11, color: "#666" }}><b>{completedOrders}+</b> orders completed</span>}
               {avgRating != null && <span style={{ fontSize: 11, color: "#666" }}><b>{avgRating.toFixed(1)}/5</b> average rating</span>}
+              {trustScore != null && <TrustBadge score={trustScore} size="sm" />}
             </div>
           )}
         </main>

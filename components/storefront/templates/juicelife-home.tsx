@@ -1,4 +1,5 @@
 import type React from "react";
+import { TrustBadge } from "@/components/storefront/trust-badge";
 import { CartLink } from "@/components/storefront/cart-link";
 import { JUICELIFE } from "@/lib/template-themes";
 import { subscribeToNewsletter } from "@/lib/actions/newsletter";
@@ -23,10 +24,11 @@ type CatalogItem = {
 };
 type Review = { id: string; rating: number; comment: string | null; author: { name: string | null } };
 
-const wrap: React.CSSProperties = { padding: "0 6%" };
+// Kept in sync with juicelife-chrome.tsx.
+const wrap: React.CSSProperties = { maxWidth: 1180, margin: "0 auto", padding: "0 6%" };
 
 export function JuiceLifeStorefront({
-  store, slug, catalogItems, navCategories, goodReviews, avgRating, completedOrders, social,
+  store, slug, catalogItems, navCategories, goodReviews, avgRating, completedOrders, trustScore, social,
 }: {
   store: {
     name: string; logoUrl: string | null; bannerUrl: string | null;
@@ -38,6 +40,7 @@ export function JuiceLifeStorefront({
   navCategories: CategoryTreeNode[];
   goodReviews: Review[];
   avgRating: number | null;
+  trustScore: number | null;
   completedOrders: number;
   social: Record<string, string>;
 }) {
@@ -161,6 +164,7 @@ export function JuiceLifeStorefront({
               {avgRating && (
                 <p style={{ fontSize: 12, color: JUICELIFE.green, fontWeight: 700 }}>{"★".repeat(Math.round(avgRating))} {avgRating.toFixed(1)} average &middot; {completedOrders} orders completed</p>
               )}
+              {trustScore != null && <TrustBadge score={trustScore} />}
             </div>
             <div style={{ height: 300, borderRadius: 14, background: "linear-gradient(135deg, #dcefcf, #71ad4e 55%, #234f24)" }} />
           </div>

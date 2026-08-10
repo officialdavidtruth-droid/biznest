@@ -36,6 +36,7 @@ export default async function WebsiteEditorPage({ params }: { params: Promise<{ 
             storeName={store.name}
             description={store.business.description}
             storyImage={storyImage}
+            theme={theme}
             initial={storyOverrides}
           />
         </>

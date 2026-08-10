@@ -37,7 +37,11 @@
  */
 
 export type HeroStyle = "centered" | "split" | "fullbleed";
-export type Section = "hero" | "catalog" | "about" | "testimonials" | "contact" | "stats" | "features" | "newsletter" | "categories" | "deal";
+// "gallery" | "amenities" | "availability" | "map" | "packages" are new,
+// added for lib/capabilities.ts — a business type's capabilities determine
+// which of these a template is expected to render. Additive only: no
+// existing template's `sections` array needs to change to keep working.
+export type Section = "hero" | "catalog" | "about" | "testimonials" | "contact" | "stats" | "features" | "newsletter" | "categories" | "deal" | "gallery" | "amenities" | "availability" | "map" | "packages";
 
 export const FRESH = {
   forest: "#123524",
@@ -56,6 +60,14 @@ export const FRESH = {
   radius: "1rem",
 } as const;
 
+// Optional "style pack" tokens layered on top of a base template's layout.
+// These are what let one component (e.g. NovaStorefront) render genuinely
+// different-feeling variants — "Nova Studio — Noir" vs "Nova Studio —
+// Ivory Minimal" — from config alone, with no new .tsx file. Every field
+// is optional so the 9 templates not yet migrated to read from `theme`
+// keep working unchanged (their components still import a hardcoded
+// palette const directly); components that DO read these should fall
+// back to a sensible constant when a field is absent, never crash on it.
 export type TemplateTheme = {
   bg: string;
   ink: string;
@@ -72,6 +84,16 @@ export type TemplateTheme = {
   heroStyle: HeroStyle;
   catalogLabel: string;
   sections: Section[];
+  /** Secondary/body text color. Falls back to a muted version of `ink` when unset. */
+  muted?: string;
+  /** Divider / hairline border color. Falls back to a low-opacity `ink` when unset. */
+  border?: string;
+  /** Spacing scale — "compact" tightens section padding/gaps for a denser, more minimal feel. Defaults to "relaxed". */
+  density?: "compact" | "relaxed";
+  /** Strong dark surface for topbars/footers/newsletter bands that are darker than `card` but not literally `ink`. Falls back to `ink` when unset. */
+  surfaceDark?: string;
+  /** Softer/lighter tint of `accent`, used in gradients and subtle fills. Falls back to `accent` when unset. */
+  accentSoft?: string;
 };
 
 export type GeneratedTemplate = TemplateTheme & {
@@ -129,12 +151,62 @@ export const HEENZY_THEME: TemplateTheme = {
   heroStyle: "fullbleed",
   catalogLabel: "Products",
   sections: ["hero", "categories", "catalog", "about", "stats", "testimonials", "newsletter", "contact"],
+  muted: HEENZY.gray,
+  border: "#e7e7e7",
+  density: "relaxed",
+};
+
+// Second Heenzy variant — same component and CSS file, different config:
+// a softer boutique palette (blush accent on off-black instead of street
+// yellow-on-black) and "compact" density for tighter cards/spacing. Proves
+// the CSS-custom-property approach (theme colors override --hz-* variables
+// scoped to .hz-root) works for a stylesheet-based template, not just
+// Nova's inline-style one.
+const HEENZY_BOUTIQUE = {
+  black: "#1c1a1f",
+  charcoal: "#2a262d",
+  white: "#ffffff",
+  offwhite: "#faf6f5",
+  accent: "#c98a93",
+  gray: "#78727a",
+  border: "#ece5e3",
+  font: "'Inter', sans-serif",
+  headlineFont: "'Playfair Display', serif",
+  radius: "6px",
+} as const;
+
+export const HEENZY_BOUTIQUE_THEME: TemplateTheme = {
+  bg: HEENZY_BOUTIQUE.white,
+  ink: HEENZY_BOUTIQUE.black,
+  card: HEENZY_BOUTIQUE.offwhite,
+  accent: HEENZY_BOUTIQUE.accent,
+  font: HEENZY_BOUTIQUE.font,
+  headlineFont: HEENZY_BOUTIQUE.headlineFont,
+  radius: HEENZY_BOUTIQUE.radius,
+  eyebrow: "Curated, Not Crowded",
+  headline: "Pieces You'll Actually Wear",
+  sub: "A small, considered edit — restocked often, never overstuffed.",
+  cta: "Shop the Edit",
+  layout: "grid",
+  heroStyle: "fullbleed",
+  catalogLabel: "The Edit",
+  sections: ["hero", "categories", "catalog", "about", "stats", "testimonials", "newsletter", "contact"],
+  muted: HEENZY_BOUTIQUE.gray,
+  border: HEENZY_BOUTIQUE.border,
+  density: "compact",
 };
 
 export const TEMPLATE_NAME_HEENZY = "Heenzy Sneaker Co.";
+export const TEMPLATE_NAME_HEENZY_BOUTIQUE = "Heenzy — Boutique Rose";
+
+const HEENZY_TEMPLATE_NAMES = new Set([TEMPLATE_NAME_HEENZY, TEMPLATE_NAME_HEENZY_BOUTIQUE]);
 
 export function isHeenzyTemplate(templateName: string | null | undefined): boolean {
-  return templateName === TEMPLATE_NAME_HEENZY;
+  return !!templateName && HEENZY_TEMPLATE_NAMES.has(templateName);
+}
+
+function resolveHeenzyTheme(templateName: string | null | undefined): TemplateTheme {
+  return templateName === TEMPLATE_NAME_HEENZY_BOUTIQUE ? HEENZY_BOUTIQUE_THEME : HEENZY_THEME;
 }
 
 /** ---------- Template 3: "Nova Studio" — dark editorial/magazine layout ---------- */
@@ -167,12 +239,63 @@ export const NOVA_THEME: TemplateTheme = {
   heroStyle: "split",
   catalogLabel: "The Collection",
   sections: ["hero", "about", "catalog", "testimonials", "stats", "newsletter", "contact"],
+  muted: NOVA.gray,
+  border: NOVA.line,
+  density: "relaxed",
 };
 
-export const TEMPLATE_NAME_NOVA = "Nova Studio";
+// Second Nova Studio variant — same component, same layout structure,
+// entirely different config: ivory/black instead of black/gold, tighter
+// "compact" spacing, sharper corners. Proves the style-pack tokens above
+// actually change the rendered page, not just the gallery thumbnail.
+const NOVA_IVORY = {
+  black: "#141110",
+  charcoal: "#f6f3ee",
+  cream: "#141110",
+  gold: "#8a7a5c",
+  gray: "#8a8580",
+  line: "rgba(20,17,16,0.12)",
+  font: "'Inter', sans-serif",
+  headlineFont: "'Playfair Display', serif",
+  radius: "0px",
+} as const;
+
+export const NOVA_IVORY_THEME: TemplateTheme = {
+  bg: NOVA_IVORY.charcoal,
+  ink: NOVA_IVORY.black,
+  card: "#ffffff",
+  accent: NOVA_IVORY.gold,
+  font: NOVA_IVORY.font,
+  headlineFont: NOVA_IVORY.headlineFont,
+  radius: NOVA_IVORY.radius,
+  eyebrow: "Est. — Considered, Not Crowded",
+  headline: "Less, But Better",
+  sub: "A pared-back studio built around restraint — every piece earns its place before it earns a shelf.",
+  cta: "View the Collection",
+  layout: "list",
+  heroStyle: "split",
+  catalogLabel: "The Collection",
+  sections: ["hero", "about", "catalog", "testimonials", "stats", "newsletter", "contact"],
+  muted: NOVA_IVORY.gray,
+  border: NOVA_IVORY.line,
+  density: "compact",
+};
+
+export const TEMPLATE_NAME_NOVA = "Nova Studio — Noir";
+export const TEMPLATE_NAME_NOVA_IVORY = "Nova Studio — Ivory Minimal";
+// Legacy name from before this template had variants. Kept so stores
+// created under the old single-variant name still resolve correctly
+// instead of silently losing their theme after this migration.
+const TEMPLATE_NAME_NOVA_LEGACY = "Nova Studio";
+
+const NOVA_TEMPLATE_NAMES = new Set([TEMPLATE_NAME_NOVA, TEMPLATE_NAME_NOVA_IVORY, TEMPLATE_NAME_NOVA_LEGACY]);
 
 export function isNovaTemplate(templateName: string | null | undefined): boolean {
-  return templateName === TEMPLATE_NAME_NOVA;
+  return !!templateName && NOVA_TEMPLATE_NAMES.has(templateName);
+}
+
+function resolveNovaTheme(templateName: string | null | undefined): TemplateTheme {
+  return templateName === TEMPLATE_NAME_NOVA_IVORY ? NOVA_IVORY_THEME : NOVA_THEME;
 }
 
 /** ---------- Template 4: "Violet" — purple/indigo commerce layout, ported from violet_store_template.zip ---------- */
@@ -203,12 +326,61 @@ export const VIOLET_THEME: TemplateTheme = {
   heroStyle: "split",
   catalogLabel: "Shop",
   sections: ["hero", "categories", "catalog", "testimonials", "stats", "newsletter", "contact"],
+  muted: "#888888",
+  border: "#eeeeee",
+  density: "relaxed",
+  surfaceDark: VIOLET.navy,
+  accentSoft: VIOLET.lilac,
+};
+
+// Second Violet variant — same component, warm coral/sunset palette instead
+// of purple/indigo, tighter "compact" spacing and a smaller corner radius.
+// Config-only, same proof as Nova Ivory / Heenzy Boutique.
+const VIOLET_SUNSET = {
+  navy: "#2b1710",
+  ink: "#241512",
+  accent: "#f5734c",
+  lilac: "#ffd9c2",
+  bg: "#fffaf7",
+  font: "'Inter', sans-serif",
+  headlineFont: "'Inter', sans-serif",
+  radius: "12px",
+} as const;
+
+export const VIOLET_SUNSET_THEME: TemplateTheme = {
+  bg: VIOLET_SUNSET.bg,
+  ink: VIOLET_SUNSET.ink,
+  card: "#ffffff",
+  accent: VIOLET_SUNSET.accent,
+  font: VIOLET_SUNSET.font,
+  headlineFont: VIOLET_SUNSET.headlineFont,
+  radius: VIOLET_SUNSET.radius,
+  eyebrow: "New Arrivals, Weekly",
+  headline: "Warmth you can wear.",
+  sub: "A hand-picked edit of everyday pieces, restocked often.",
+  cta: "Shop the edit",
+  layout: "grid",
+  heroStyle: "split",
+  catalogLabel: "The Edit",
+  sections: ["hero", "categories", "catalog", "testimonials", "stats", "newsletter", "contact"],
+  muted: "#8a7a72",
+  border: "#f1e3db",
+  density: "compact",
+  surfaceDark: VIOLET_SUNSET.navy,
+  accentSoft: VIOLET_SUNSET.lilac,
 };
 
 export const TEMPLATE_NAME_VIOLET = "Violet";
+export const TEMPLATE_NAME_VIOLET_SUNSET = "Violet — Sunset";
+
+const VIOLET_TEMPLATE_NAMES = new Set([TEMPLATE_NAME_VIOLET, TEMPLATE_NAME_VIOLET_SUNSET]);
 
 export function isVioletTemplate(templateName: string | null | undefined): boolean {
-  return templateName === TEMPLATE_NAME_VIOLET;
+  return !!templateName && VIOLET_TEMPLATE_NAMES.has(templateName);
+}
+
+function resolveVioletTheme(templateName: string | null | undefined): TemplateTheme {
+  return templateName === TEMPLATE_NAME_VIOLET_SUNSET ? VIOLET_SUNSET_THEME : VIOLET_THEME;
 }
 
 /** ---------- Template 5: "Premium Marketplace" — dense enterprise marketplace layout, ported from premium_marketplace_template.zip ---------- */
@@ -513,16 +685,31 @@ export function generateNicheVariations(_nicheName: string): GeneratedTemplate[]
   return [{ ...FRESH_THEME, variationName: TEMPLATE_NAME, tierRank: 1 }];
 }
 
-export function generateHeenzyVariation(): GeneratedTemplate {
-  return { ...HEENZY_THEME, variationName: TEMPLATE_NAME_HEENZY, tierRank: 2 };
+export function generateHeenzyVariations(): GeneratedTemplate[] {
+  return [
+    { ...HEENZY_THEME, variationName: TEMPLATE_NAME_HEENZY, tierRank: 2 },
+    { ...HEENZY_BOUTIQUE_THEME, variationName: TEMPLATE_NAME_HEENZY_BOUTIQUE, tierRank: 2 },
+  ];
 }
 
-export function generateNovaVariation(): GeneratedTemplate {
-  return { ...NOVA_THEME, variationName: TEMPLATE_NAME_NOVA, tierRank: 3 };
+/**
+ * Returns every seedable Nova Studio variant. This is the pattern the
+ * other 10 templates should move to as they migrate onto style-pack
+ * tokens: one base layout component, N config objects, N rows in
+ * StoreTemplate — instead of one generator returning exactly one theme.
+ */
+export function generateNovaVariations(): GeneratedTemplate[] {
+  return [
+    { ...NOVA_THEME, variationName: TEMPLATE_NAME_NOVA, tierRank: 3 },
+    { ...NOVA_IVORY_THEME, variationName: TEMPLATE_NAME_NOVA_IVORY, tierRank: 3 },
+  ];
 }
 
-export function generateVioletVariation(): GeneratedTemplate {
-  return { ...VIOLET_THEME, variationName: TEMPLATE_NAME_VIOLET, tierRank: 4 };
+export function generateVioletVariations(): GeneratedTemplate[] {
+  return [
+    { ...VIOLET_THEME, variationName: TEMPLATE_NAME_VIOLET, tierRank: 4 },
+    { ...VIOLET_SUNSET_THEME, variationName: TEMPLATE_NAME_VIOLET_SUNSET, tierRank: 4 },
+  ];
 }
 
 export function generatePremiumVariation(): GeneratedTemplate {
@@ -570,11 +757,11 @@ export function resolveStoreTheme(
   templateName?: string | null
 ): TemplateTheme {
   const base = isHeenzyTemplate(templateName)
-    ? HEENZY_THEME
+    ? resolveHeenzyTheme(templateName)
     : isNovaTemplate(templateName)
-    ? NOVA_THEME
+    ? resolveNovaTheme(templateName)
     : isVioletTemplate(templateName)
-    ? VIOLET_THEME
+    ? resolveVioletTheme(templateName)
     : isPremiumTemplate(templateName)
     ? PREMIUM_THEME
     : isHomeVistaTemplate(templateName)

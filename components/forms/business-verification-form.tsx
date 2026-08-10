@@ -8,11 +8,14 @@ import { FileUploadField } from "@/components/forms/file-upload-field";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
+import { ALL_BUSINESS_TYPE_NAMES } from "@/lib/capabilities";
 
-const CATEGORIES = [
-  "Fashion", "Electronics", "Food & Groceries", "Beauty", "Home & Furniture",
-  "Health", "Professional Services", "Automotive", "Agriculture", "Other",
-];
+// Sourced from lib/capabilities.ts — this used to be a separate
+// hand-maintained list that only covered 10 of the categories the
+// marketing homepage advertised, so picking "Real Estate" or "Photography"
+// or "Hotel & Lodging" here wasn't actually possible even though the
+// homepage said it was. Single source of truth now.
+const CATEGORIES = [...ALL_BUSINESS_TYPE_NAMES, "Other"];
 
 export function BusinessVerificationForm({
   existingRejection,

@@ -1,5 +1,8 @@
 import { prisma } from "@/lib/prisma";
 import { verifyPaystackTransaction, verifyPaystackWebhookSignature } from "@/lib/payments/paystack";
+import { settleInvoicePayment } from "@/lib/actions/invoice";
+import { settleQuoteDeposit } from "@/lib/actions/quote";
+import { emitWebhookEvent } from "@/lib/webhooks/dispatch";
 import { NextResponse } from "next/server";
 
 /**
@@ -35,6 +38,21 @@ export async function POST(req: Request) {
   // Paystack sends many event types (transfer.success, subscription.*,
   // etc.) — a signed request only proves it came from Paystack, not that
   // it's the event we care about here.
+  if (event.event === "charge.failed" && event.data?.reference) {
+    const payment = await prisma.payment.findUnique({ where: { reference: event.data.reference } });
+    if (payment?.orderId) {
+      const order = await prisma.order.findUnique({ where: { id: payment.orderId } });
+      if (order) {
+        await emitWebhookEvent("PAYMENT_FAILED", order.storeId, {
+          orderId: order.id,
+          reference: event.data.reference,
+          provider: "PAYSTACK",
+        });
+      }
+    }
+    return NextResponse.json({ received: true });
+  }
+
   if (event.event !== "charge.success" || !event.data?.reference) {
     return NextResponse.json({ received: true });
   }
@@ -64,6 +82,20 @@ export async function POST(req: Request) {
     return NextResponse.json({ received: true });
   }
 
+  // Invoice payments ("INV-{invoiceId}-{random}") and quote deposits
+  // ("QDEP-{quoteId}-{random}") are settled by their own action files
+  // rather than inline here, since each has its own idempotent
+  // side-effects (marking an Invoice PAID, or converting a Quote into a
+  // real Order) beyond just flipping the Payment row.
+  if (reference.startsWith("INV-")) {
+    await settleInvoicePayment(reference, verification as object);
+    return NextResponse.json({ received: true });
+  }
+  if (reference.startsWith("QDEP-")) {
+    await settleQuoteDeposit(reference, verification as object);
+    return NextResponse.json({ received: true });
+  }
+
   // Idempotent by design: only transition orders still awaiting payment,
   // via an atomic updateMany rather than read-then-write, so a webhook
   // retry racing the browser callback for the same reference can't both
@@ -71,7 +103,7 @@ export async function POST(req: Request) {
   // marked this PAID (whichever path wins the race is fine, both agree),
   // or a store owner may have since moved the order further along the
   // fulfillment pipeline — a late webhook retry must never stomp that.
-  await prisma.order.updateMany({
+  const updated = await prisma.order.updateMany({
     where: { id: reference, status: "PENDING_PAYMENT" },
     data: { status: "PAID", paymentReference: reference },
   });
@@ -79,6 +111,22 @@ export async function POST(req: Request) {
     where: { reference, status: "PENDING" },
     data: { status: "SUCCESSFUL", rawPayload: verification as object, verifiedAt: new Date() },
   });
+
+  // Only fire on the request that actually made the transition, so a
+  // retried/duplicate webhook doesn't emit the event twice.
+  if (updated.count > 0) {
+    const order = await prisma.order.findUnique({ where: { id: reference } });
+    if (order) {
+      await emitWebhookEvent("PAYMENT_SUCCESS", order.storeId, {
+        orderId: order.id,
+        reference,
+        provider: "PAYSTACK",
+        amount: Number(order.total),
+        currency: order.currency,
+      });
+      await emitWebhookEvent("ORDER_PAID", order.storeId, { orderId: order.id, status: "PAID" });
+    }
+  }
 
   return NextResponse.json({ received: true });
 }

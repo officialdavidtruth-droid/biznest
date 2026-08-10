@@ -4,9 +4,10 @@ import { useEffect, useState } from "react";
 import { useCart } from "@/lib/cart-context";
 import { startCheckout } from "@/lib/actions/order";
 import { listActiveDeliveryZones } from "@/lib/actions/delivery-zone";
+import { DeliveryZoneOptions } from "@/components/checkout/delivery-zone-options";
 import { toast } from "sonner";
 
-type Zone = { id: string; name: string; fee: unknown; estimatedMinutes: number | null };
+type Zone = { id: string; name: string; city: string | null; fee: unknown; estimatedMinutes: number | null };
 
 export function HeenzyCheckoutClient({ slug }: { slug: string }) {
   const { items, storeSlug, subtotal } = useCart();
@@ -84,11 +85,7 @@ export function HeenzyCheckoutClient({ slug }: { slug: string }) {
             <label>Delivery area</label>
             <select value={zoneId} onChange={(e) => setZoneId(e.target.value)}>
               <option value="">Pickup / no delivery fee</option>
-              {zones.map((z) => (
-                <option key={z.id} value={z.id}>
-                  {z.name} — {Number(z.fee).toLocaleString()}{z.estimatedMinutes ? ` (~${z.estimatedMinutes} min)` : ""}
-                </option>
-              ))}
+              <DeliveryZoneOptions zones={zones} />
             </select>
           </div>
         )}

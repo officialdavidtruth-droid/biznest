@@ -1,9 +1,12 @@
 import Link from "next/link";
 import { prisma } from "@/lib/prisma";
 import { notFound } from "next/navigation";
+import { AlertTriangle, Info } from "lucide-react";
 import { seedSampleListings, backfillListingImages } from "@/lib/actions/store";
 import { getCategoryDashboard } from "@/lib/constants/category-dashboard";
-import { SELLER_VISIBLE_ORDER_STATUSES } from "@/lib/constants/order";
+import { getDashboardInsights } from "@/lib/actions/analytics";
+import { getTrustScoreBreakdown } from "@/lib/actions/trust-score";
+import { TrustScoreCard } from "@/components/dashboard/trust-score-card";
 
 export default async function StoreDashboardHome({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
@@ -15,26 +18,14 @@ export default async function StoreDashboardHome({ params }: { params: Promise<{
   const categoryDashboard = getCategoryDashboard(store.business.category);
   const CategoryIcon = categoryDashboard.icon;
 
-  // "Total orders" and "In progress" only ever count orders that were
-  // actually paid for — a checkout that was started but never completed
-  // (PENDING_PAYMENT) or that failed/was abandoned (CANCELLED) is not a
-  // real order and must never show up here or anywhere else in the
-  // dashboard, so a buyer can't point to it and claim they paid.
-  const [orderCount, productCount, serviceCount, inProgressOrders, productsWithoutPhotos, servicesWithoutPhotos] = await Promise.all([
-    prisma.order.count({ where: { storeId: store.id, status: { in: SELLER_VISIBLE_ORDER_STATUSES } } }),
+  const [productCount, serviceCount, productsWithoutPhotos, servicesWithoutPhotos, insights, trustScore] = await Promise.all([
     prisma.product.count({ where: { storeId: store.id } }),
     prisma.service.count({ where: { storeId: store.id } }),
-    prisma.order.count({ where: { storeId: store.id, status: "IN_PROGRESS" } }),
     prisma.product.count({ where: { storeId: store.id, images: { isEmpty: true } } }),
     prisma.service.count({ where: { storeId: store.id, images: { isEmpty: true } } }),
+    getDashboardInsights(store.id, slug),
+    getTrustScoreBreakdown(store.business.id),
   ]);
-
-  const cards = [
-    { label: "Total orders", value: orderCount },
-    { label: "In progress", value: inProgressOrders },
-    { label: "Products", value: productCount },
-    { label: "Services", value: serviceCount },
-  ];
 
   const isEmpty = productCount === 0 && serviceCount === 0;
   const missingPhotoCount = productsWithoutPhotos + servicesWithoutPhotos;
@@ -50,6 +41,15 @@ export default async function StoreDashboardHome({ params }: { params: Promise<{
     "use server";
     await backfillListingImages(slug);
   }
+
+  const stats: { label: string; value: string }[] = [
+    { label: "Revenue", value: `₦${insights.revenueToday.toLocaleString()}` },
+    { label: "Orders", value: insights.ordersToday.toLocaleString() },
+    { label: "Visitors", value: insights.visitorsToday.toLocaleString() },
+    { label: "Conversion", value: insights.conversionRate !== null ? `${insights.conversionRate}%` : "—" },
+    { label: "Best product", value: insights.bestProduct?.name ?? "—" },
+    { label: "Returning customers", value: insights.returningCustomerRate !== null ? `${insights.returningCustomerRate}%` : "—" },
+  ];
 
   return (
     <div>
@@ -120,14 +120,51 @@ export default async function StoreDashboardHome({ params }: { params: Promise<{
         </form>
       )}
 
-      <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
-        {cards.map((c) => (
-          <div key={c.label} className="rounded-lg border bg-background p-4">
-            <p className="text-xs text-muted-foreground">{c.label}</p>
-            <p className="mt-1 text-2xl font-semibold">{c.value}</p>
+      <p className="mb-3 text-sm font-medium">Your business today</p>
+      <div className="mb-8 grid grid-cols-2 gap-4 md:grid-cols-3">
+        {stats.map((s) => (
+          <div key={s.label} className="rounded-lg border bg-background p-4">
+            <p className="text-xs text-muted-foreground">{s.label}</p>
+            <p className="mt-1 truncate text-2xl font-semibold" title={s.value}>{s.value}</p>
           </div>
-        ))}
       </div>
+
+      {trustScore && (
+        <div className="mb-8">
+          <p className="mb-3 text-sm font-medium">Your BizNest Trust Score</p>
+          <TrustScoreCard breakdown={trustScore} />
+        </div>
+      )}
+
+      {insights.recommendations.length > 0 && (
+        <div>
+          <p className="mb-3 text-sm font-medium">BizNest recommends</p>
+          <div className="flex flex-col gap-2">
+            {insights.recommendations.map((r) => {
+              const Icon = r.severity === "warning" ? AlertTriangle : Info;
+              return (
+                <div
+                  key={r.id}
+                  className={`flex flex-wrap items-center justify-between gap-3 rounded-lg border p-4 ${
+                    r.severity === "warning" ? "border-amber-300/60 bg-amber-50 dark:bg-amber-950/20" : "border-border bg-background"
+                  }`}
+                >
+                  <div className="flex items-start gap-2.5">
+                    <Icon className={`mt-0.5 h-4 w-4 shrink-0 ${r.severity === "warning" ? "text-amber-600" : "text-muted-foreground"}`} />
+                    <p className="text-sm">{r.message}</p>
+                  </div>
+                  <Link
+                    href={r.actionHref}
+                    className="shrink-0 rounded-md border border-border bg-background px-3 py-1.5 text-xs font-medium transition hover:border-primary/50"
+                  >
+                    {r.actionLabel}
+                  </Link>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
     </div>
   );
 }

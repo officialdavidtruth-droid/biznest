@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { toast } from "sonner";
 import { updateHeroOverrides, updateHeroImage, type HeroOverrides } from "@/lib/actions/store";
-import { FRESH, type TemplateTheme } from "@/lib/template-themes";
+import type { TemplateTheme } from "@/lib/template-themes";
 import { FileUploadField } from "@/components/forms/file-upload-field";
 
 type BlockId = "headline" | "subtitle" | "cta" | "image" | null;
@@ -14,6 +14,11 @@ type BlockId = "headline" | "subtitle" | "cta" | "image" | null;
  * just that piece, save writes only that field. Proof-of-concept for one
  * section — same pattern (canvas + per-block panel) can extend to other
  * sections later instead of the current all-fields-in-one-form Settings page.
+ *
+ * Canvas colors are read from `theme` (not a hardcoded palette) so a store
+ * running Nova, Violet, Heenzy, etc. sees its own actual colors here instead
+ * of always showing Fresh & Co.'s green — this used to be hardcoded to the
+ * FRESH constant regardless of which template the store had picked.
  */
 export function HeroBlockEditor({
   slug,
@@ -59,7 +64,7 @@ export function HeroBlockEditor({
 
   function outline(id: BlockId) {
     return selected === id
-      ? { outline: `2px solid ${FRESH.leaf}`, outlineOffset: 4, borderRadius: 6, cursor: "pointer" }
+      ? { outline: `2px solid ${theme.accent}`, outlineOffset: 4, borderRadius: 6, cursor: "pointer" }
       : { outline: "2px solid transparent", outlineOffset: 4, borderRadius: 6, cursor: "pointer" };
   }
 
@@ -77,7 +82,7 @@ export function HeroBlockEditor({
             alignItems: "center",
             background: image
               ? `linear-gradient(100deg, rgba(10,30,18,.82) 0%, rgba(10,30,18,.58) 38%, rgba(10,30,18,.12) 62%), url(${image}) center/cover`
-              : `linear-gradient(200deg,#5fc98a 0%, #2c8a52 45%, #1c5c37 100%)`,
+              : `linear-gradient(200deg, ${theme.accentSoft ?? theme.accent}, ${theme.surfaceDark ?? theme.ink})`,
           }}
         >
           <div style={{ position: "relative", zIndex: 2, padding: "48px 44px", maxWidth: 560 }}>
@@ -99,8 +104,8 @@ export function HeroBlockEditor({
                 style={{
                   ...outline("cta"),
                   display: "inline-block",
-                  background: FRESH.citrus,
-                  color: FRESH.forestDark,
+                  background: theme.accent,
+                  color: theme.ink,
                   fontWeight: 700,
                   fontSize: 14,
                   padding: "10px 20px",

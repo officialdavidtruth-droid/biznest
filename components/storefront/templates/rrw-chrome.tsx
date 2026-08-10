@@ -18,7 +18,10 @@ import { subscribeToNewsletter } from "@/lib/actions/newsletter";
 // instead so the pill shape and nav links still read as "the same site"
 // without needing a hero behind them.
 
-export const wrap: React.CSSProperties = { padding: "0 6%" };
+// See rivora-chrome.tsx for why maxWidth matters: without it, this wrap
+// stretches edge-to-edge on wide screens, and anything sized as a fraction
+// of it (e.g. a 1/1 aspect-ratio product photo) balloons on large monitors.
+export const wrap: React.CSSProperties = { maxWidth: 1180, margin: "0 auto", padding: "0 6%" };
 
 type ChromeStore = {
   name: string;

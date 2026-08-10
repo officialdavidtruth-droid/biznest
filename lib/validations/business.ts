@@ -67,6 +67,11 @@ export const createStoreSchema = z.object({
     .min(3, "Store name must be at least 3 characters")
     .max(60, "Store name must be under 60 characters"),
   templateId: z.string().cuid().optional(),
+  // Collected in the branding step of the onboarding wizard. Both optional —
+  // a vendor can skip and add these later from the dashboard. When set,
+  // logoUrl/bannerUrl override the auto-fetched demo banner in createStore.
+  logoUrl: z.string().url().optional().or(z.literal("")),
+  bannerUrl: z.string().url().optional().or(z.literal("")),
 });
 
 export type CreateStoreInput = z.infer<typeof createStoreSchema>;
