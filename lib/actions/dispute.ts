@@ -98,7 +98,11 @@ export async function getDisputeThread(orderId: string) {
   ]);
   if (!order) return null;
 
-  let messages: Awaited<ReturnType<typeof prisma.message.findMany>> = [];
+  let messages: Array<
+    Awaited<ReturnType<typeof prisma.message.findMany>>[number] & {
+      sender: { id: string; name: string | null };
+    }
+  > = [];
   if (dispute) {
     const conversation = await prisma.conversation.findUnique({
       where: { orderId },
