@@ -12,6 +12,12 @@ export default async function DeliveryPage({ params }: { params: Promise<{ slug:
     orderBy: [{ city: "asc" }, { fee: "asc" }],
   });
 
+  const firstProduct = await prisma.product.findFirst({
+    where: { storeId: store.id },
+    select: { currency: true },
+  });
+  const currency = firstProduct?.currency ?? "NGN";
+
   return (
     <div className="max-w-3xl">
       <h1 className="mb-1 text-xl font-semibold">Delivery zones</h1>
@@ -21,7 +27,7 @@ export default async function DeliveryPage({ params }: { params: Promise<{ slug:
         checkout — no zone selected means no delivery fee is added.
       </p>
 
-      <DeliveryZoneForm storeSlug={slug} currency={store.currency} />
+      <DeliveryZoneForm storeSlug={slug} currency={currency} />
 
       <div className="overflow-hidden rounded-lg border bg-background">
         <table className="w-full text-sm">
@@ -36,7 +42,7 @@ export default async function DeliveryPage({ params }: { params: Promise<{ slug:
           </thead>
           <tbody>
             {zones.map((z) => (
-              <DeliveryZoneRow key={z.id} storeSlug={slug} currency={store.currency} zone={z} />
+              <DeliveryZoneRow key={z.id} storeSlug={slug} currency={currency} zone={z} />
             ))}
             {zones.length === 0 && (
               <tr><td colSpan={5} className="px-4 py-10 text-center text-muted-foreground">No zones yet — add one above. Until then, checkout won't charge a delivery fee.</td></tr>
