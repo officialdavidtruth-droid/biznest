@@ -8,9 +8,10 @@ import { NextResponse } from "next/server";
  * regenerate, and this avoids adding a storage dependency just for this.
  * Invoice.pdfUrl (set by generateInvoicePdf) always points back here.
  */
-export async function GET(_req: Request, { params }: { params: { id: string } }) {
+export async function GET(_req: Request, { params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params;
   const invoice = await prisma.invoice.findUnique({
-    where: { id: params.id },
+    where: { id },
     include: { items: true, store: true, customer: true },
   });
   if (!invoice) return NextResponse.json({ error: "Invoice not found" }, { status: 404 });
