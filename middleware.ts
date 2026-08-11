@@ -23,17 +23,44 @@ const STORE_ADMIN_PATTERN = /^\/store\/[^/]+\/admin/;
 // Platform admin routes require PLATFORM_ADMIN or SUPPORT_MODERATOR role.
 const PLATFORM_ADMIN_PATTERN = /^\/admin/;
 
-// The platform-admin panel is served as a plain path (biznest.space/supaadmin)
-// off the main site — no subdomain, no separate DNS record required.
+// The platform-admin panel lives on its own subdomain, supaadmin.biznest.space.
+// Requires a `supaadmin.biznest.space` DNS record (or it can ride the
+// existing `*.biznest.space` wildcard) pointed at the same Vercel project —
+// no separate deployment needed, since this is still just the /supaadmin
+// route tree under the hood, reached via a different host.
+
+const ROOT_DOMAIN = "biznest.space";
+const SUPAADMIN_HOST = `supaadmin.${ROOT_DOMAIN}`;
 
 // Hosts that are BizNest itself, not a vendor's custom domain.
 function isPlatformHost(host: string): boolean {
   return (
-    host === "biznest.space" ||
-    host === "www.biznest.space" ||
+    host === ROOT_DOMAIN ||
+    host === `www.${ROOT_DOMAIN}` ||
+    host === SUPAADMIN_HOST ||
     host === "localhost" ||
     host.endsWith(".vercel.app")
   );
+}
+
+/**
+ * Every store gets a free `<slug>.biznest.space` address out of the box —
+ * no DB lookup needed here, since the subdomain *is* the slug (unlike a
+ * vendor's fully custom domain, where we have to look up which store owns
+ * it via resolveCustomDomain). Requires a `*.biznest.space` wildcard DNS
+ * record and a matching wildcard domain on the Vercel project; see notes
+ * in lib/utils/slug.ts.
+ */
+function subdomainSlug(host: string): string | null {
+  const suffix = `.${ROOT_DOMAIN}`;
+  if (!host.endsWith(suffix)) return null;
+  const sub = host.slice(0, -suffix.length);
+  // "supaadmin" is reserved for the platform admin panel, not a store slug
+  // (see the reserved-word guard in generateUniqueStoreSlug), but check here
+  // too so this host can never be mistaken for a store subdomain even if
+  // that guard is ever bypassed (e.g. a manually-edited slug in the DB).
+  if (!sub || sub === "www" || sub === "supaadmin") return null;
+  return sub;
 }
 
 /**
@@ -71,6 +98,17 @@ export default auth(async (req) => {
   const host = req.nextUrl.hostname.toLowerCase();
   const rawPathname = req.nextUrl.pathname;
 
+  // supaadmin.biznest.space/ is just an easier-to-remember front door to the
+  // panel — everything under it is still the plain /supaadmin route tree
+  // (see all the hardcoded "/supaadmin/..." hrefs and revalidatePath calls
+  // throughout the admin/dispute/site-settings actions), so visiting the
+  // subdomain lands you on /supaadmin and every link from there behaves
+  // exactly as it already did on the apex domain. biznest.space/supaadmin
+  // keeps working too, unchanged, for anyone with it bookmarked.
+  if (host === SUPAADMIN_HOST && rawPathname === "/") {
+    return NextResponse.redirect(new URL("/supaadmin", req.nextUrl.origin));
+  }
+
   // /supaadmin is gated entirely separately from everything else on this
   // site — a shared PIN, not a user login. Handle it first and return
   // early, so it never touches the NextAuth session logic below at all.
@@ -88,7 +126,7 @@ export default auth(async (req) => {
     return passThroughSupaAdmin(req);
   }
 
-  const slug = await resolveCustomDomain(host, req.nextUrl.origin);
+  const slug = subdomainSlug(host) ?? (await resolveCustomDomain(host, req.nextUrl.origin));
   const url = req.nextUrl.clone();
 
   if (slug) {

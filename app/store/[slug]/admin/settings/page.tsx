@@ -110,7 +110,7 @@ export default async function SettingsPage({ params }: { params: Promise<{ slug:
         <p className="mb-1 text-sm font-medium">Custom domain</p>
         {!domainUnlocked ? (
           <p className="text-xs text-muted-foreground">
-            Connect your own domain (e.g. yourstore.com) instead of biznest.space/store/{slug}.
+            Connect your own domain (e.g. yourstore.com) instead of {slug}.biznest.space.
             This is an Enterprise and Business Mogul feature —{" "}
             <a href={`/store/${slug}/admin/subscription`} className="font-medium text-primary hover:underline">upgrade your plan</a> to unlock it.
           </p>

@@ -1,5 +1,5 @@
-import { describe, expect, it } from "vitest";
-import { generateUniqueStoreSlug } from "../slug";
+import { afterEach, describe, expect, it } from "vitest";
+import { generateUniqueStoreSlug, storePublicUrl } from "../slug";
 
 describe("generateUniqueStoreSlug", () => {
   it("slugifies a simple name with no collisions", async () => {
@@ -35,5 +35,25 @@ describe("generateUniqueStoreSlug", () => {
     expect(slug).toMatch(/^[a-z0-9-]+$/);
     expect(slug.startsWith("-")).toBe(false);
     expect(slug.endsWith("-")).toBe(false);
+  });
+});
+
+describe("storePublicUrl", () => {
+  const ORIGINAL_APP_URL = process.env.NEXT_PUBLIC_APP_URL;
+
+  afterEach(() => {
+    process.env.NEXT_PUBLIC_APP_URL = ORIGINAL_APP_URL;
+  });
+
+  it("uses a <slug>.biznest.space subdomain in production", () => {
+    process.env.NEXT_PUBLIC_APP_URL = "https://www.biznest.space";
+    expect(storePublicUrl("velox-space")).toBe("https://velox-space.biznest.space");
+  });
+
+  it("falls back to the path-based URL off biznest.space (e.g. Vercel previews, localhost)", () => {
+    process.env.NEXT_PUBLIC_APP_URL = "https://biznest-git-preview.vercel.app";
+    expect(storePublicUrl("velox-space")).toBe(
+      "https://biznest-git-preview.vercel.app/store/velox-space"
+    );
   });
 });
