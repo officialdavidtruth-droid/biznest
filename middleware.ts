@@ -160,8 +160,25 @@ export default auth(async (req) => {
 
   const rewritten = slug !== null || pathname !== req.nextUrl.pathname;
 
+  // TEMPORARY DIAGNOSTIC — remove once subdomain routing is confirmed working.
+  // Stamps every response with headers showing what this middleware decided,
+  // so we can check the Network tab (Response Headers) and immediately tell:
+  //   - x-bn-mw: "1" confirms THIS middleware build actually ran (rules out
+  //     a stale Production deployment without this code).
+  //   - x-bn-mw-host / x-bn-mw-slug / x-bn-mw-rewritten show whether the
+  //     subdomain was detected and whether a rewrite to /store/<slug> fired.
+  const diagHeaders = {
+    "x-bn-mw": "1",
+    "x-bn-mw-host": host,
+    "x-bn-mw-slug": slug ?? "(none)",
+    "x-bn-mw-rewritten": String(rewritten),
+    "x-bn-mw-pathname": pathname,
+  };
+
   if (!isProtected) {
-    return rewritten ? NextResponse.rewrite(url) : NextResponse.next();
+    const res = rewritten ? NextResponse.rewrite(url) : NextResponse.next();
+    Object.entries(diagHeaders).forEach(([k, v]) => res.headers.set(k, v));
+    return res;
   }
 
   if (!req.auth?.user) {
@@ -170,7 +187,9 @@ export default auth(async (req) => {
     // no host in it, so NextAuth's redirect callback would resolve it
     // against AUTH_URL (www.biznest.space) and lose the subdomain entirely.
     loginUrl.searchParams.set("callbackUrl", `${req.nextUrl.origin}${pathname}`);
-    return NextResponse.redirect(loginUrl);
+    const res = NextResponse.redirect(loginUrl);
+    Object.entries(diagHeaders).forEach(([k, v]) => res.headers.set(k, v));
+    return res;
   }
 
   if (PLATFORM_ADMIN_PATTERN.test(pathname)) {
@@ -178,11 +197,15 @@ export default auth(async (req) => {
     if (role !== "PLATFORM_ADMIN" && role !== "SUPPORT_MODERATOR") {
       // Non-admins hitting /admin get bounced to the homepage. (/supaadmin
       // is handled entirely separately above via the PIN cookie.)
-      return NextResponse.redirect(new URL("/", req.nextUrl.origin));
+      const res = NextResponse.redirect(new URL("/", req.nextUrl.origin));
+      Object.entries(diagHeaders).forEach(([k, v]) => res.headers.set(k, v));
+      return res;
     }
   }
 
-  return rewritten ? NextResponse.rewrite(url) : NextResponse.next();
+  const res = rewritten ? NextResponse.rewrite(url) : NextResponse.next();
+  Object.entries(diagHeaders).forEach(([k, v]) => res.headers.set(k, v));
+  return res;
 });
 
 export const config = {
