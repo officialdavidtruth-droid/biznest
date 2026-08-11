@@ -53,7 +53,7 @@ export function JuiceLifeStorefront({
   const menu = catalogItems.slice(0, 8);
 
   return (
-    <div style={{ background: "#ffffff", color: JUICELIFE.ink, fontFamily: JUICELIFE.font, minHeight: "100vh" }}>
+    <div style={{ background: "#ffffff", color: JUICELIFE.ink, fontFamily: JUICELIFE.font, minHeight: "100vh" }} className="storefront-root">
       {/* ---------- TOPBAR ---------- */}
       <div style={{ height: 30, background: JUICELIFE.greenDark, color: "#fff", fontSize: 11, ...wrap, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
         <span>🍃 Free delivery on orders over $30</span>

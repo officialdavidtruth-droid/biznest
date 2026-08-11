@@ -190,3 +190,64 @@
 @media (prefers-reduced-motion: reduce) {
   .bn-pulse-dot { animation: none !important; }
 }
+
+/* --- Storefront "premium" interaction layer ---
+   Every storefront template (12 of them) links its catalog/product cards
+   the same structural way: an <a href="/store/{slug}/product/{id}"> or
+   .../service/{id}"> wrapping a thumbnail <img>. Rather than hand-editing
+   hover states into 12 separately-styled template files (each with its
+   own bespoke inline-style card markup), this targets that shared href
+   pattern directly — one place, consistent premium feel everywhere,
+   never fights each template's own inline colors/radii/shadows. */
+a[href*="/product/"],
+a[href*="/service/"] {
+  transition: transform 0.28s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.28s cubic-bezier(0.16, 1, 0.3, 1), background-color 0.2s ease;
+  will-change: transform;
+}
+a[href*="/product/"]:hover,
+a[href*="/service/"]:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 24px 46px -24px rgba(0, 0, 0, 0.35);
+  z-index: 1;
+  position: relative;
+}
+a[href*="/product/"] img,
+a[href*="/service/"] img {
+  transition: transform 0.6s cubic-bezier(0.16, 1, 0.3, 1);
+}
+a[href*="/product/"]:hover img,
+a[href*="/service/"]:hover img {
+  transform: scale(1.06);
+}
+
+/* Every storefront button (Add to cart, quantity steppers, form submits,
+   filters) gets the same tactile press/lift instead of a dead flat click. */
+.storefront-root button:not(:disabled),
+.hz-root button:not(:disabled),
+.pd-grid button:not(:disabled) {
+  transition: transform 0.15s ease, filter 0.15s ease, box-shadow 0.15s ease, opacity 0.15s ease;
+}
+.storefront-root button:not(:disabled):hover,
+.hz-root button:not(:disabled):hover,
+.pd-grid button:not(:disabled):hover {
+  transform: translateY(-2px);
+  filter: brightness(1.06);
+}
+.storefront-root button:not(:disabled):active,
+.hz-root button:not(:disabled):active,
+.pd-grid button:not(:disabled):active {
+  transform: translateY(0);
+  filter: brightness(0.97);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  a[href*="/product/"], a[href*="/service/"], a[href*="/product/"] img, a[href*="/service/"] img,
+  .storefront-root button, .pd-grid button {
+    transition: none !important;
+  }
+  a[href*="/product/"]:hover, a[href*="/service/"]:hover,
+  a[href*="/product/"]:hover img, a[href*="/service/"]:hover img,
+  .storefront-root button:hover, .pd-grid button:hover {
+    transform: none !important;
+  }
+}

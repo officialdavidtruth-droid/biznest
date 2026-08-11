@@ -125,7 +125,7 @@ export function MarketplaceStorefront({
   ];
 
   return (
-    <div style={{ fontFamily: MARKETPLACE.font, color: MARKETPLACE.ink, background: "#fff", fontSize: 12, minHeight: "100vh" }}>
+    <div style={{ fontFamily: MARKETPLACE.font, color: MARKETPLACE.ink, background: "#fff", fontSize: 12, minHeight: "100vh" }} className="storefront-root">
       {/* ---------- TOPLINE ---------- */}
       <div style={{ height: 28, background: "#fafafa", borderBottom: "1px solid #eee", display: "flex", alignItems: "center", justifyContent: "center", color: "#777", fontSize: 10 }}>
         Welcome to {store.name} — {store.business.description ? store.business.description.slice(0, 70) : "quality products, delivered."}

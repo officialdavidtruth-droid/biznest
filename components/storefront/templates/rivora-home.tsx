@@ -56,7 +56,7 @@ export function RivoraStorefront({
   const featuredProducts = catalogItems.slice(0, 6);
 
   return (
-    <div style={{ background: RIVORA_BG, color: RIVORA.ink, fontFamily: RIVORA.font, minHeight: "100vh" }}>
+    <div style={{ background: RIVORA_BG, color: RIVORA.ink, fontFamily: RIVORA.font, minHeight: "100vh" }} className="storefront-root">
       {/* ---------- TOPBAR ---------- */}
       <div style={{ height: 30, background: "#032718", color: "#dce8df", ...wrap, display: "flex", justifyContent: "space-between", alignItems: "center", fontSize: 10 }}>
         <span>Fresh picks, delivered fast</span>

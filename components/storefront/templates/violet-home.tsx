@@ -79,7 +79,7 @@ export function VioletStorefront({
   const featuredItems = catalogItems.slice(0, 4);
 
   return (
-    <div style={{ background: p.bg, color: p.ink, fontFamily: p.font, minHeight: "100vh" }}>
+    <div style={{ background: p.bg, color: p.ink, fontFamily: p.font, minHeight: "100vh" }} className="storefront-root">
       {/* ---------- TOPBAR ---------- */}
       <div style={{ background: p.navy, color: "#fff", textAlign: "center", padding: 9, fontSize: 12 }}>
         {store.contactPhone ? `Questions? Call ${store.contactPhone}` : `Welcome to ${store.name}`}

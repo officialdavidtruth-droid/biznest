@@ -50,7 +50,7 @@ export function FabtexStorefront({
   const featured = catalogItems.slice(0, 6);
 
   return (
-    <div style={{ background: FABTEX.dark, color: "#ffffff", fontFamily: FABTEX.font, minHeight: "100vh" }}>
+    <div style={{ background: FABTEX.dark, color: "#ffffff", fontFamily: FABTEX.font, minHeight: "100vh" }} className="storefront-root">
       {/* ---------- TOPBAR ---------- */}
       <div style={{ height: 30, background: "#181616", borderBottom: "1px solid #2c2929", ...wrap, display: "flex", alignItems: "center", justifyContent: "flex-end", gap: 20 }}>
         {store.contactPhone && <span style={{ fontSize: 9, color: "#aaa" }}>☎ {store.contactPhone}</span>}

@@ -53,7 +53,7 @@ export function HomeVistaStorefront({
   const heroListing = catalogItems[0];
 
   return (
-    <div style={{ background: "#fff", color: HOMEVISTA.ink, fontFamily: HOMEVISTA.font, fontSize: 13, minHeight: "100vh" }}>
+    <div style={{ background: "#fff", color: HOMEVISTA.ink, fontFamily: HOMEVISTA.font, fontSize: 13, minHeight: "100vh" }} className="storefront-root">
       {/* ---------- TOPBAR ---------- */}
       <div style={{ height: 30, background: HOMEVISTA.topbar, display: "flex", justifyContent: "space-between", alignItems: "center", padding: "0 4.5%", fontSize: 9, color: "#526164" }}>
         <span>{store.contactEmail ? `✉ ${store.contactEmail}` : ""} {store.contactPhone ? `☎ ${store.contactPhone}` : ""}</span>

@@ -63,7 +63,7 @@ export function CheckoutClient({ slug }: { slug: string }) {
 
   if (cartItems.length === 0) {
     return (
-      <div style={{ background: SURFACE, minHeight: "100vh" }}>
+      <div style={{ background: SURFACE, minHeight: "100vh" }} className="storefront-root">
         <div style={{ background: CARD, borderRadius: "1rem", boxShadow: "0 1px 3px rgba(18,18,18,0.06)" }} className="mx-auto mt-24 max-w-md px-8 py-14 text-center">
           <p style={{ color: INK, opacity: 0.75 }} className="text-sm">Your cart is empty.</p>
           <Link href={`/store/${slug}`} style={{ color: ACCENT }} className="mt-3 inline-block text-sm font-semibold no-underline hover:opacity-80">
@@ -75,7 +75,7 @@ export function CheckoutClient({ slug }: { slug: string }) {
   }
 
   return (
-    <div style={{ background: SURFACE, color: INK, minHeight: "100vh", fontFamily: "'Inter', sans-serif" }}>
+    <div style={{ background: SURFACE, color: INK, minHeight: "100vh", fontFamily: "'Inter', sans-serif" }} className="storefront-root">
       <div style={{ maxWidth: 1280 }} className="mx-auto px-6 py-14">
         {/* ---------- HEADER + STEP INDICATOR ---------- */}
         <div className="mb-8">

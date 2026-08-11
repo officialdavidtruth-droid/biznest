@@ -301,7 +301,7 @@ export default async function StorefrontPage({ params }: { params: Promise<{ slu
   }
 
   return (
-    <div style={{ fontFamily: theme.font, color: theme.ink, background: FRESH.ivory }}>
+    <div style={{ fontFamily: theme.font, color: theme.ink, background: FRESH.ivory }} className="storefront-root">
       <SiteNav store={store} slug={slug} hasCatalog={catalogItems.length > 0} />
       <CategoryNav slug={slug} categories={navCategories} accent={FRESH.leaf} ink={FRESH.ink} bg={FRESH.ivory} border={line} />
 
@@ -312,6 +312,7 @@ export default async function StorefrontPage({ params }: { params: Promise<{ slu
             style={{
               position: "relative", borderRadius: 26, overflow: "hidden", minHeight: 460,
               display: "flex", alignItems: "center",
+              boxShadow: "0 40px 80px -36px rgba(10,30,18,0.45)",
               background: heroImage
                 ? `linear-gradient(100deg, rgba(10,30,18,.82) 0%, rgba(10,30,18,.58) 38%, rgba(10,30,18,.12) 62%), url(${heroImage}) center/cover`
                 : `linear-gradient(200deg,#5fc98a 0%, #2c8a52 45%, #1c5c37 100%)`,

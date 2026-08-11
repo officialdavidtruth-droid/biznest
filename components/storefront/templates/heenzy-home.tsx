@@ -67,7 +67,7 @@ export function HeenzyStorefront({
   const featuredItems = catalogItems.slice(0, 8);
 
   return (
-    <div className="hz-root" style={heenzyCssVars(theme)}>
+    <div className="hz-root storefront-root" style={heenzyCssVars(theme)}>
       <HeenzyNav store={store} slug={slug} hasCatalog={catalogItems.length > 0} theme={theme} />
       <CategoryNav slug={slug} categories={navCategories} accent="var(--hz-black)" ink="var(--hz-black)" bg="#fff" border="#e7e7e7" />
 

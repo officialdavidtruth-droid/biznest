@@ -5,7 +5,6 @@ import type { Metadata } from "next";
 import { resolveStoreTheme, isVioletTemplate, isMarketplaceTemplate, isArcovaTemplate, isNovaTemplate, isPremiumTemplate, isHomeVistaTemplate, isRrwTemplate, isHeenzyTemplate, isRivoraTemplate, isFabtexTemplate, isJuiceLifeTemplate, type TemplateTheme } from "@/lib/template-themes";
 import { ProductDetail } from "@/components/storefront/product-detail";
 import { recordStoreVisit } from "@/lib/actions/analytics";
-import { CartLink } from "@/components/storefront/cart-link";
 import { VioletHeader, VioletFooter, wrap as violetWrap } from "@/components/storefront/templates/violet-chrome";
 import { MarketplaceHeader, MarketplaceFooter, wrap as marketplaceWrap } from "@/components/storefront/templates/marketplace-chrome";
 import { ArcovaHeader, ArcovaFooter, wrap as arcovaWrap } from "@/components/storefront/templates/arcova-chrome";
@@ -17,6 +16,7 @@ import { HeenzyHeader, HeenzyFooter, wrap as heenzyWrap } from "@/components/sto
 import { RivoraHeader, RivoraFooter, wrap as rivoraWrap } from "@/components/storefront/templates/rivora-chrome";
 import { FabtexHeader, FabtexFooter, wrap as fabtexWrap } from "@/components/storefront/templates/fabtex-chrome";
 import { JuiceLifeHeader, JuiceLifeFooter, wrap as juicelifeWrap } from "@/components/storefront/templates/juicelife-chrome";
+import { FreshHeader, FreshFooter, wrap as freshWrap } from "@/components/storefront/templates/fresh-chrome";
 import { getStoreCategoryTree } from "@/lib/storefront-categories";
 
 export async function generateMetadata({ params }: { params: Promise<{ slug: string; productId: string }> }): Promise<Metadata> {
@@ -86,7 +86,7 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
     const navCategories = await getStoreCategoryTree(store.id);
     const social = (store.socialLinks as Record<string, string> | null) ?? {};
     return (
-      <div style={{ background: theme.bg, color: ink, fontFamily: theme.font, minHeight: "100vh" }}>
+      <div style={{ background: theme.bg, color: ink, fontFamily: theme.font, minHeight: "100vh" }} className="storefront-root">
         <VioletHeader store={store} slug={slug} navCategories={navCategories} crumbs={crumbs} />
         <div style={{ ...violetWrap, padding: "22px 0 80px" }}>{productDetail}</div>
         <VioletFooter store={store} slug={slug} social={social} />
@@ -98,7 +98,7 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
     const navCategories = await getStoreCategoryTree(store.id);
     const social = (store.socialLinks as Record<string, string> | null) ?? {};
     return (
-      <div style={{ fontFamily: theme.font, color: ink, background: "#fff", fontSize: 12, minHeight: "100vh" }}>
+      <div style={{ fontFamily: theme.font, color: ink, background: "#fff", fontSize: 12, minHeight: "100vh" }} className="storefront-root">
         <MarketplaceHeader store={store} slug={slug} navCategories={navCategories} crumbs={crumbs} />
         <div style={{ ...marketplaceWrap, padding: "18px 0 60px" }}>{productDetail}</div>
         <MarketplaceFooter store={store} slug={slug} social={social} />
@@ -110,7 +110,7 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
     const navCategories = await getStoreCategoryTree(store.id);
     const social = (store.socialLinks as Record<string, string> | null) ?? {};
     return (
-      <div style={{ background: theme.bg, color: ink, fontFamily: theme.font, minHeight: "100vh" }}>
+      <div style={{ background: theme.bg, color: ink, fontFamily: theme.font, minHeight: "100vh" }} className="storefront-root">
         <ArcovaHeader store={store} slug={slug} navCategories={navCategories} crumbs={crumbs} />
         <div style={{ ...arcovaWrap, padding: "30px 0 70px" }}>{productDetail}</div>
         <ArcovaFooter store={store} slug={slug} social={social} />
@@ -122,7 +122,7 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
     const navCategories = await getStoreCategoryTree(store.id);
     const social = (store.socialLinks as Record<string, string> | null) ?? {};
     return (
-      <div style={{ background: theme.bg, color: ink, fontFamily: theme.font, minHeight: "100vh" }}>
+      <div style={{ background: theme.bg, color: ink, fontFamily: theme.font, minHeight: "100vh" }} className="storefront-root">
         <NovaHeader store={store} slug={slug} navCategories={navCategories} crumbs={crumbs} />
         <div style={{ ...novaWrap, padding: "40px 0 80px" }}>{productDetail}</div>
         <NovaFooter store={store} slug={slug} social={social} />
@@ -134,7 +134,7 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
     const navCategories = await getStoreCategoryTree(store.id);
     const social = (store.socialLinks as Record<string, string> | null) ?? {};
     return (
-      <div style={{ background: theme.bg, color: ink, fontFamily: theme.font, fontSize: 13, minHeight: "100vh" }}>
+      <div style={{ background: theme.bg, color: ink, fontFamily: theme.font, fontSize: 13, minHeight: "100vh" }} className="storefront-root">
         <PremiumHeader store={store} slug={slug} navCategories={navCategories} crumbs={crumbs} />
         <div style={{ ...premiumWrap, padding: "22px 0 60px" }}>{productDetail}</div>
         <PremiumFooter store={store} slug={slug} social={social} />
@@ -146,7 +146,7 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
     const navCategories = await getStoreCategoryTree(store.id);
     const social = (store.socialLinks as Record<string, string> | null) ?? {};
     return (
-      <div style={{ background: "#fff", color: ink, fontFamily: theme.font, fontSize: 13, minHeight: "100vh" }}>
+      <div style={{ background: "#fff", color: ink, fontFamily: theme.font, fontSize: 13, minHeight: "100vh" }} className="storefront-root">
         <HomeVistaHeader store={store} slug={slug} navCategories={navCategories} crumbs={crumbs} />
         <div style={{ ...homevistaWrap, padding: "22px 0 60px" }}>{productDetail}</div>
         <HomeVistaFooter store={store} slug={slug} social={social} />
@@ -158,7 +158,7 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
     const navCategories = await getStoreCategoryTree(store.id);
     const social = (store.socialLinks as Record<string, string> | null) ?? {};
     return (
-      <div style={{ background: "#fff", color: ink, fontFamily: theme.font, minHeight: "100vh" }}>
+      <div style={{ background: "#fff", color: ink, fontFamily: theme.font, minHeight: "100vh" }} className="storefront-root">
         <RrwHeader store={store} slug={slug} navCategories={navCategories} crumbs={crumbs} />
         <div style={{ ...rrwWrap, padding: "22px 6% 0" }}>{productDetail}</div>
         <RrwFooter store={store} slug={slug} social={social} />
@@ -181,7 +181,7 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
     const navCategories = await getStoreCategoryTree(store.id);
     const social = (store.socialLinks as Record<string, string> | null) ?? {};
     return (
-      <div style={{ background: "#f7f9f6", color: ink, fontFamily: theme.font, minHeight: "100vh" }}>
+      <div style={{ background: "#f7f9f6", color: ink, fontFamily: theme.font, minHeight: "100vh" }} className="storefront-root">
         <RivoraHeader store={store} slug={slug} navCategories={navCategories} crumbs={crumbs} />
         <div style={{ ...rivoraWrap, padding: "26px 0 60px" }}>{productDetail}</div>
         <RivoraFooter store={store} slug={slug} social={social} />
@@ -193,7 +193,7 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
     const navCategories = await getStoreCategoryTree(store.id);
     const social = (store.socialLinks as Record<string, string> | null) ?? {};
     return (
-      <div style={{ background: theme.bg, color: ink, fontFamily: theme.font, minHeight: "100vh" }}>
+      <div style={{ background: theme.bg, color: ink, fontFamily: theme.font, minHeight: "100vh" }} className="storefront-root">
         <FabtexHeader store={store} slug={slug} navCategories={navCategories} crumbs={crumbs} />
         <div style={{ ...fabtexWrap, padding: "26px 0 60px" }}>{productDetail}</div>
         <FabtexFooter store={store} slug={slug} social={social} />
@@ -205,7 +205,7 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
     const navCategories = await getStoreCategoryTree(store.id);
     const social = (store.socialLinks as Record<string, string> | null) ?? {};
     return (
-      <div style={{ background: "#ffffff", color: ink, fontFamily: theme.font, minHeight: "100vh" }}>
+      <div style={{ background: "#ffffff", color: ink, fontFamily: theme.font, minHeight: "100vh" }} className="storefront-root">
         <JuiceLifeHeader store={store} slug={slug} navCategories={navCategories} crumbs={crumbs} />
         <div style={{ ...juicelifeWrap, padding: "26px 0 60px" }}>{productDetail}</div>
         <JuiceLifeFooter store={store} slug={slug} social={social} />
@@ -213,19 +213,16 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
     );
   }
 
+  // Fresh & Co. — the platform's base/default template. Every other
+  // template now has its own chrome (see imports above); this was the
+  // last one still falling back to a bare, undersized nav bar with no
+  // category strip, hero styling, or footer to match its homepage.
+  const navCategories = await getStoreCategoryTree(store.id);
   return (
-    <div style={{ fontFamily: theme.font, color: ink, background: bg, minHeight: "100vh" }}>
-      <nav style={{ position: "sticky", top: 0, zIndex: 50, background: `${bg}f2`, backdropFilter: "blur(10px)", borderBottom: `1px solid ${ink}14` }}>
-        <div style={{ maxWidth: 1180, margin: "0 auto", padding: "16px 28px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-          <Link href={`/store/${slug}`} style={{ fontWeight: 800, fontSize: 18, color: ink, textDecoration: "none" }}>{store.name}</Link>
-          <CartLink storeSlug={slug} accent={accent} ink={ink} />
-        </div>
-      </nav>
-
-      <div style={{ maxWidth: 1080, margin: "0 auto", padding: "36px 28px 80px" }}>
-        <div style={{ fontSize: 12.5, marginBottom: 22, opacity: 0.65 }}>{crumbs}</div>
-        {productDetail}
-      </div>
+    <div style={{ fontFamily: theme.font, color: ink, background: bg, minHeight: "100vh" }} className="storefront-root">
+      <FreshHeader store={store} slug={slug} navCategories={navCategories} crumbs={crumbs} />
+      <div style={{ ...freshWrap, padding: "26px 28px 60px" }}>{productDetail}</div>
+      <FreshFooter store={store} slug={slug} catalogLabel="Catalog" />
     </div>
   );
 }

@@ -47,7 +47,7 @@ export function PremiumStorefront({
   const railTitles = ["Recommended for You", "Trending", "Best Sellers", "New Arrivals"];
 
   return (
-    <div style={{ background: PREMIUM.bg, color: PREMIUM.ink, fontFamily: PREMIUM.font, fontSize: 13, minHeight: "100vh" }}>
+    <div style={{ background: PREMIUM.bg, color: PREMIUM.ink, fontFamily: PREMIUM.font, fontSize: 13, minHeight: "100vh" }} className="storefront-root">
       <PremiumHeader store={store} slug={slug} navCategories={navCategories} />
 
       {/* ---------- HERO SHELL (category sidebar + hero + side promo) ---------- */}

@@ -58,7 +58,7 @@ export function ArcovaStorefront({
   const heroImage = store.bannerUrl;
 
   return (
-    <div style={{ background: ARCOVA.paper, color: ARCOVA.ink, fontFamily: ARCOVA.font, minHeight: "100vh" }}>
+    <div style={{ background: ARCOVA.paper, color: ARCOVA.ink, fontFamily: ARCOVA.font, minHeight: "100vh" }} className="storefront-root">
       {/* ---------- NAV ---------- */}
       <header style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "22px 0", borderBottom: `1px solid ${ARCOVA.border}` }}>
         <div style={wrap}>

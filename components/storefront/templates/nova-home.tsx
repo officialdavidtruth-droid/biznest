@@ -76,7 +76,7 @@ export function NovaStorefront({
   const featuredItems = catalogItems.slice(0, 8);
 
   return (
-    <div style={{ background: p.bg, color: p.ink, fontFamily: p.font, minHeight: "100vh" }}>
+    <div style={{ background: p.bg, color: p.ink, fontFamily: p.font, minHeight: "100vh" }} className="storefront-root">
       {/* ---------- SIDE RAIL NAV (sticky, not a top bar) ---------- */}
       <div style={{ position: "sticky", top: 0, zIndex: 50, display: "flex", alignItems: "center", justifyContent: "space-between", padding: p.navPad, borderBottom: `1px solid ${p.line}`, background: p.bg, backdropFilter: "blur(10px)" }}>
         <a href={`/store/${slug}`} style={{ ...p.serif, fontSize: 22, fontWeight: 700, color: p.ink, textDecoration: "none", letterSpacing: "0.02em" }}>

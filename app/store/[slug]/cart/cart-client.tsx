@@ -22,7 +22,7 @@ export function CartClient({ slug }: { slug: string }) {
   const itemCount = cartItems.reduce((n, i) => n + i.quantity, 0);
 
   return (
-    <div style={{ background: SURFACE, color: INK, minHeight: "100vh", fontFamily: "'Inter', sans-serif" }}>
+    <div style={{ background: SURFACE, color: INK, minHeight: "100vh", fontFamily: "'Inter', sans-serif" }} className="storefront-root">
       <div style={{ maxWidth: 1280 }} className="mx-auto px-6 py-14">
         <div style={{ borderBottom: `1px solid ${INK}1a` }} className="mb-8 flex items-baseline justify-between pb-4">
           <h1 style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }} className="text-3xl font-extrabold sm:text-4xl">Your Cart</h1>

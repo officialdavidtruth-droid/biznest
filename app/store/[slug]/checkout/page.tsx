@@ -44,7 +44,7 @@ export default async function CheckoutPage({ params }: { params: Promise<{ slug:
     const navCategories = await getStoreCategoryTree(store.id);
     const social = (store.socialLinks as Record<string, string> | null) ?? {};
     return (
-      <div style={{ background: VIOLET.bg, color: VIOLET.ink, fontFamily: VIOLET.font, minHeight: "100vh" }}>
+      <div style={{ background: VIOLET.bg, color: VIOLET.ink, fontFamily: VIOLET.font, minHeight: "100vh" }} className="storefront-root">
         <VioletHeader store={store} slug={slug} navCategories={navCategories} />
         <VioletCheckoutClient slug={slug} />
         <VioletFooter store={store} slug={slug} social={social} />
@@ -56,7 +56,7 @@ export default async function CheckoutPage({ params }: { params: Promise<{ slug:
     const navCategories = await getStoreCategoryTree(store.id);
     const social = (store.socialLinks as Record<string, string> | null) ?? {};
     return (
-      <div style={{ background: "#fff", color: MARKETPLACE.ink, fontFamily: MARKETPLACE.font, fontSize: 12, minHeight: "100vh" }}>
+      <div style={{ background: "#fff", color: MARKETPLACE.ink, fontFamily: MARKETPLACE.font, fontSize: 12, minHeight: "100vh" }} className="storefront-root">
         <MarketplaceHeader store={store} slug={slug} navCategories={navCategories} />
         <MarketplaceCheckoutClient slug={slug} />
         <MarketplaceFooter store={store} slug={slug} social={social} />
@@ -68,7 +68,7 @@ export default async function CheckoutPage({ params }: { params: Promise<{ slug:
     const navCategories = await getStoreCategoryTree(store.id);
     const social = (store.socialLinks as Record<string, string> | null) ?? {};
     return (
-      <div style={{ background: ARCOVA.paper, color: ARCOVA.ink, fontFamily: ARCOVA.font, minHeight: "100vh" }}>
+      <div style={{ background: ARCOVA.paper, color: ARCOVA.ink, fontFamily: ARCOVA.font, minHeight: "100vh" }} className="storefront-root">
         <ArcovaHeader store={store} slug={slug} navCategories={navCategories} />
         <ArcovaCheckoutClient slug={slug} />
         <ArcovaFooter store={store} slug={slug} social={social} />
@@ -80,7 +80,7 @@ export default async function CheckoutPage({ params }: { params: Promise<{ slug:
     const navCategories = await getStoreCategoryTree(store.id);
     const social = (store.socialLinks as Record<string, string> | null) ?? {};
     return (
-      <div style={{ background: NOVA.black, color: NOVA.cream, fontFamily: NOVA.font, minHeight: "100vh" }}>
+      <div style={{ background: NOVA.black, color: NOVA.cream, fontFamily: NOVA.font, minHeight: "100vh" }} className="storefront-root">
         <NovaHeader store={store} slug={slug} navCategories={navCategories} />
         <NovaCheckoutClient slug={slug} />
         <NovaFooter store={store} slug={slug} social={social} />
@@ -92,7 +92,7 @@ export default async function CheckoutPage({ params }: { params: Promise<{ slug:
     const navCategories = await getStoreCategoryTree(store.id);
     const social = (store.socialLinks as Record<string, string> | null) ?? {};
     return (
-      <div style={{ background: PREMIUM.bg, color: PREMIUM.ink, fontFamily: PREMIUM.font, fontSize: 13, minHeight: "100vh" }}>
+      <div style={{ background: PREMIUM.bg, color: PREMIUM.ink, fontFamily: PREMIUM.font, fontSize: 13, minHeight: "100vh" }} className="storefront-root">
         <PremiumHeader store={store} slug={slug} navCategories={navCategories} />
         <PremiumCheckoutClient slug={slug} />
         <PremiumFooter store={store} slug={slug} social={social} />
@@ -104,7 +104,7 @@ export default async function CheckoutPage({ params }: { params: Promise<{ slug:
     const navCategories = await getStoreCategoryTree(store.id);
     const social = (store.socialLinks as Record<string, string> | null) ?? {};
     return (
-      <div style={{ background: "#fff", color: HOMEVISTA.ink, fontFamily: HOMEVISTA.font, fontSize: 13, minHeight: "100vh" }}>
+      <div style={{ background: "#fff", color: HOMEVISTA.ink, fontFamily: HOMEVISTA.font, fontSize: 13, minHeight: "100vh" }} className="storefront-root">
         <HomeVistaHeader store={store} slug={slug} navCategories={navCategories} />
         <HomeVistaCheckoutClient slug={slug} />
         <HomeVistaFooter store={store} slug={slug} social={social} />
@@ -116,7 +116,7 @@ export default async function CheckoutPage({ params }: { params: Promise<{ slug:
     const navCategories = await getStoreCategoryTree(store.id);
     const social = (store.socialLinks as Record<string, string> | null) ?? {};
     return (
-      <div style={{ background: "#fff", color: RRW.ink, fontFamily: RRW.font, minHeight: "100vh" }}>
+      <div style={{ background: "#fff", color: RRW.ink, fontFamily: RRW.font, minHeight: "100vh" }} className="storefront-root">
         <RrwHeader store={store} slug={slug} navCategories={navCategories} />
         <RrwCheckoutClient slug={slug} />
         <RrwFooter store={store} slug={slug} social={social} />
@@ -139,7 +139,7 @@ export default async function CheckoutPage({ params }: { params: Promise<{ slug:
     const navCategories = await getStoreCategoryTree(store.id);
     const social = (store.socialLinks as Record<string, string> | null) ?? {};
     return (
-      <div style={{ background: "#f7f9f6", minHeight: "100vh" }}>
+      <div style={{ background: "#f7f9f6", minHeight: "100vh" }} className="storefront-root">
         <RivoraHeader store={store} slug={slug} navCategories={navCategories} />
         <RivoraCheckoutClient slug={slug} />
         <RivoraFooter store={store} slug={slug} social={social} />
@@ -151,7 +151,7 @@ export default async function CheckoutPage({ params }: { params: Promise<{ slug:
     const navCategories = await getStoreCategoryTree(store.id);
     const social = (store.socialLinks as Record<string, string> | null) ?? {};
     return (
-      <div style={{ background: FABTEX.dark, minHeight: "100vh" }}>
+      <div style={{ background: FABTEX.dark, minHeight: "100vh" }} className="storefront-root">
         <FabtexHeader store={store} slug={slug} navCategories={navCategories} />
         <FabtexCheckoutClient slug={slug} />
         <FabtexFooter store={store} slug={slug} social={social} />
@@ -163,7 +163,7 @@ export default async function CheckoutPage({ params }: { params: Promise<{ slug:
     const navCategories = await getStoreCategoryTree(store.id);
     const social = (store.socialLinks as Record<string, string> | null) ?? {};
     return (
-      <div style={{ background: "#ffffff", minHeight: "100vh" }}>
+      <div style={{ background: "#ffffff", minHeight: "100vh" }} className="storefront-root">
         <JuiceLifeHeader store={store} slug={slug} navCategories={navCategories} />
         <JuiceLifeCheckoutClient slug={slug} />
         <JuiceLifeFooter store={store} slug={slug} social={social} />

@@ -179,7 +179,7 @@ export default async function OrderConfirmationPage({
     const navCategories = await getStoreCategoryTree(order.storeId);
     const social = (order.store.socialLinks as Record<string, string> | null) ?? {};
     return (
-      <div style={{ background: VIOLET.bg, color: VIOLET.ink, fontFamily: VIOLET.font, minHeight: "100vh" }}>
+      <div style={{ background: VIOLET.bg, color: VIOLET.ink, fontFamily: VIOLET.font, minHeight: "100vh" }} className="storefront-root">
         <VioletHeader store={order.store} slug={slug} navCategories={navCategories} />
         {body}
         <VioletFooter store={order.store} slug={slug} social={social} />
@@ -191,7 +191,7 @@ export default async function OrderConfirmationPage({
     const navCategories = await getStoreCategoryTree(order.storeId);
     const social = (order.store.socialLinks as Record<string, string> | null) ?? {};
     return (
-      <div style={{ background: "#fff", color: MARKETPLACE.ink, fontFamily: MARKETPLACE.font, fontSize: 12, minHeight: "100vh" }}>
+      <div style={{ background: "#fff", color: MARKETPLACE.ink, fontFamily: MARKETPLACE.font, fontSize: 12, minHeight: "100vh" }} className="storefront-root">
         <MarketplaceHeader store={order.store} slug={slug} navCategories={navCategories} />
         {body}
         <MarketplaceFooter store={order.store} slug={slug} social={social} />
@@ -203,7 +203,7 @@ export default async function OrderConfirmationPage({
     const navCategories = await getStoreCategoryTree(order.storeId);
     const social = (order.store.socialLinks as Record<string, string> | null) ?? {};
     return (
-      <div style={{ background: ARCOVA.paper, color: ARCOVA.ink, fontFamily: ARCOVA.font, minHeight: "100vh" }}>
+      <div style={{ background: ARCOVA.paper, color: ARCOVA.ink, fontFamily: ARCOVA.font, minHeight: "100vh" }} className="storefront-root">
         <ArcovaHeader store={order.store} slug={slug} navCategories={navCategories} />
         {body}
         <ArcovaFooter store={order.store} slug={slug} social={social} />
@@ -215,7 +215,7 @@ export default async function OrderConfirmationPage({
     const navCategories = await getStoreCategoryTree(order.storeId);
     const social = (order.store.socialLinks as Record<string, string> | null) ?? {};
     return (
-      <div style={{ background: NOVA.black, color: NOVA.cream, fontFamily: NOVA.font, minHeight: "100vh" }}>
+      <div style={{ background: NOVA.black, color: NOVA.cream, fontFamily: NOVA.font, minHeight: "100vh" }} className="storefront-root">
         <NovaHeader store={order.store} slug={slug} navCategories={navCategories} />
         {body}
         <NovaFooter store={order.store} slug={slug} social={social} />
@@ -227,7 +227,7 @@ export default async function OrderConfirmationPage({
     const navCategories = await getStoreCategoryTree(order.storeId);
     const social = (order.store.socialLinks as Record<string, string> | null) ?? {};
     return (
-      <div style={{ background: PREMIUM.bg, color: PREMIUM.ink, fontFamily: PREMIUM.font, fontSize: 13, minHeight: "100vh" }}>
+      <div style={{ background: PREMIUM.bg, color: PREMIUM.ink, fontFamily: PREMIUM.font, fontSize: 13, minHeight: "100vh" }} className="storefront-root">
         <PremiumHeader store={order.store} slug={slug} navCategories={navCategories} />
         {body}
         <PremiumFooter store={order.store} slug={slug} social={social} />
@@ -250,7 +250,7 @@ export default async function OrderConfirmationPage({
     const navCategories = await getStoreCategoryTree(order.storeId);
     const social = (order.store.socialLinks as Record<string, string> | null) ?? {};
     return (
-      <div style={{ background: "#fff", color: HOMEVISTA.ink, fontFamily: HOMEVISTA.font, fontSize: 13, minHeight: "100vh" }}>
+      <div style={{ background: "#fff", color: HOMEVISTA.ink, fontFamily: HOMEVISTA.font, fontSize: 13, minHeight: "100vh" }} className="storefront-root">
         <HomeVistaHeader store={order.store} slug={slug} navCategories={navCategories} />
         {body}
         <HomeVistaFooter store={order.store} slug={slug} social={social} />
@@ -262,7 +262,7 @@ export default async function OrderConfirmationPage({
     const navCategories = await getStoreCategoryTree(order.storeId);
     const social = (order.store.socialLinks as Record<string, string> | null) ?? {};
     return (
-      <div style={{ background: "#fff", color: RRW.ink, fontFamily: RRW.font, minHeight: "100vh" }}>
+      <div style={{ background: "#fff", color: RRW.ink, fontFamily: RRW.font, minHeight: "100vh" }} className="storefront-root">
         <RrwHeader store={order.store} slug={slug} navCategories={navCategories} />
         {body}
         <RrwFooter store={order.store} slug={slug} social={social} />
@@ -274,7 +274,7 @@ export default async function OrderConfirmationPage({
     const navCategories = await getStoreCategoryTree(order.storeId);
     const social = (order.store.socialLinks as Record<string, string> | null) ?? {};
     return (
-      <div style={{ background: "#f7f9f6", color: RIVORA.ink, fontFamily: RIVORA.font, minHeight: "100vh" }}>
+      <div style={{ background: "#f7f9f6", color: RIVORA.ink, fontFamily: RIVORA.font, minHeight: "100vh" }} className="storefront-root">
         <RivoraHeader store={order.store} slug={slug} navCategories={navCategories} />
         {body}
         <RivoraFooter store={order.store} slug={slug} social={social} />
@@ -283,7 +283,7 @@ export default async function OrderConfirmationPage({
   }
 
   return (
-    <div style={{ background: SURFACE, color: INK, minHeight: "100vh", fontFamily: "'Inter', sans-serif" }}>
+    <div style={{ background: SURFACE, color: INK, minHeight: "100vh", fontFamily: "'Inter', sans-serif" }} className="storefront-root">
       {body}
     </div>
   );

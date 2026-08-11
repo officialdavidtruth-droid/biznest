@@ -57,7 +57,7 @@ export function RrwStorefront({
   const promoItem = [...catalogItems].sort((a, b) => b.price - a.price)[0];
 
   return (
-    <div style={{ fontFamily: RRW.font, color: RRW.ink, background: "#fff", minHeight: "100vh" }}>
+    <div style={{ fontFamily: RRW.font, color: RRW.ink, background: "#fff", minHeight: "100vh" }} className="storefront-root">
       {/* ---------- HERO ---------- */}
       <div
         style={{

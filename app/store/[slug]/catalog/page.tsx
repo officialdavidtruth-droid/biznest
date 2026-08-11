@@ -80,7 +80,7 @@ export default async function CatalogPage({ params }: { params: Promise<{ slug: 
   if (isVioletTemplate(store.template?.name)) {
     const social = (store.socialLinks as Record<string, string> | null) ?? {};
     return (
-      <div style={{ background: theme.bg, color: ink, fontFamily: theme.font, minHeight: "100vh" }}>
+      <div style={{ background: theme.bg, color: ink, fontFamily: theme.font, minHeight: "100vh" }} className="storefront-root">
         <VioletHeader store={store} slug={slug} navCategories={categories} crumbs={crumbs} />
         <div style={{ ...violetWrap, padding: "22px 0 80px" }}>{body}</div>
         <VioletFooter store={store} slug={slug} social={social} />
@@ -91,7 +91,7 @@ export default async function CatalogPage({ params }: { params: Promise<{ slug: 
   if (isMarketplaceTemplate(store.template?.name)) {
     const social = (store.socialLinks as Record<string, string> | null) ?? {};
     return (
-      <div style={{ fontFamily: theme.font, color: ink, background: "#fff", fontSize: 12, minHeight: "100vh" }}>
+      <div style={{ fontFamily: theme.font, color: ink, background: "#fff", fontSize: 12, minHeight: "100vh" }} className="storefront-root">
         <MarketplaceHeader store={store} slug={slug} navCategories={categories} crumbs={crumbs} />
         <div style={{ ...marketplaceWrap, padding: "18px 0 60px" }}>{body}</div>
         <MarketplaceFooter store={store} slug={slug} social={social} />
@@ -102,7 +102,7 @@ export default async function CatalogPage({ params }: { params: Promise<{ slug: 
   if (isArcovaTemplate(store.template?.name)) {
     const social = (store.socialLinks as Record<string, string> | null) ?? {};
     return (
-      <div style={{ background: theme.bg, color: ink, fontFamily: theme.font, minHeight: "100vh" }}>
+      <div style={{ background: theme.bg, color: ink, fontFamily: theme.font, minHeight: "100vh" }} className="storefront-root">
         <ArcovaHeader store={store} slug={slug} navCategories={categories} crumbs={crumbs} />
         <div style={{ ...arcovaWrap, padding: "30px 0 70px" }}>{body}</div>
         <ArcovaFooter store={store} slug={slug} social={social} />
@@ -113,7 +113,7 @@ export default async function CatalogPage({ params }: { params: Promise<{ slug: 
   if (isNovaTemplate(store.template?.name)) {
     const social = (store.socialLinks as Record<string, string> | null) ?? {};
     return (
-      <div style={{ background: theme.bg, color: ink, fontFamily: theme.font, minHeight: "100vh" }}>
+      <div style={{ background: theme.bg, color: ink, fontFamily: theme.font, minHeight: "100vh" }} className="storefront-root">
         <NovaHeader store={store} slug={slug} navCategories={categories} crumbs={crumbs} />
         <div style={{ ...novaWrap, padding: "40px 0 80px" }}>{body}</div>
         <NovaFooter store={store} slug={slug} social={social} />
@@ -124,7 +124,7 @@ export default async function CatalogPage({ params }: { params: Promise<{ slug: 
   if (isPremiumTemplate(store.template?.name)) {
     const social = (store.socialLinks as Record<string, string> | null) ?? {};
     return (
-      <div style={{ background: theme.bg, color: ink, fontFamily: theme.font, fontSize: 13, minHeight: "100vh" }}>
+      <div style={{ background: theme.bg, color: ink, fontFamily: theme.font, fontSize: 13, minHeight: "100vh" }} className="storefront-root">
         <PremiumHeader store={store} slug={slug} navCategories={categories} crumbs={crumbs} />
         <div style={{ ...premiumWrap, padding: "22px 0 60px" }}>{body}</div>
         <PremiumFooter store={store} slug={slug} social={social} />
@@ -135,7 +135,7 @@ export default async function CatalogPage({ params }: { params: Promise<{ slug: 
   if (isHomeVistaTemplate(store.template?.name)) {
     const social = (store.socialLinks as Record<string, string> | null) ?? {};
     return (
-      <div style={{ background: "#fff", color: ink, fontFamily: theme.font, fontSize: 13, minHeight: "100vh" }}>
+      <div style={{ background: "#fff", color: ink, fontFamily: theme.font, fontSize: 13, minHeight: "100vh" }} className="storefront-root">
         <HomeVistaHeader store={store} slug={slug} navCategories={categories} crumbs={crumbs} />
         <div style={{ ...homevistaWrap, padding: "22px 0 60px" }}>{body}</div>
         <HomeVistaFooter store={store} slug={slug} social={social} />
@@ -146,7 +146,7 @@ export default async function CatalogPage({ params }: { params: Promise<{ slug: 
   if (isRrwTemplate(store.template?.name)) {
     const social = (store.socialLinks as Record<string, string> | null) ?? {};
     return (
-      <div style={{ background: "#fff", color: ink, fontFamily: theme.font, minHeight: "100vh" }}>
+      <div style={{ background: "#fff", color: ink, fontFamily: theme.font, minHeight: "100vh" }} className="storefront-root">
         <RrwHeader store={store} slug={slug} navCategories={categories} crumbs={crumbs} />
         <div style={{ ...rrwWrap, padding: "22px 6% 40px" }}>{body}</div>
         <RrwFooter store={store} slug={slug} social={social} />
@@ -167,7 +167,7 @@ export default async function CatalogPage({ params }: { params: Promise<{ slug: 
   if (isRivoraTemplate(store.template?.name)) {
     const social = (store.socialLinks as Record<string, string> | null) ?? {};
     return (
-      <div style={{ background: "#f7f9f6", color: ink, fontFamily: theme.font, minHeight: "100vh" }}>
+      <div style={{ background: "#f7f9f6", color: ink, fontFamily: theme.font, minHeight: "100vh" }} className="storefront-root">
         <RivoraHeader store={store} slug={slug} navCategories={categories} crumbs={crumbs} />
         <div style={{ ...rivoraWrap, padding: "26px 0 60px" }}>{body}</div>
         <RivoraFooter store={store} slug={slug} social={social} />
@@ -178,7 +178,7 @@ export default async function CatalogPage({ params }: { params: Promise<{ slug: 
   if (isFabtexTemplate(store.template?.name)) {
     const social = (store.socialLinks as Record<string, string> | null) ?? {};
     return (
-      <div style={{ background: theme.bg, color: ink, fontFamily: theme.font, minHeight: "100vh" }}>
+      <div style={{ background: theme.bg, color: ink, fontFamily: theme.font, minHeight: "100vh" }} className="storefront-root">
         <FabtexHeader store={store} slug={slug} navCategories={categories} crumbs={crumbs} />
         <div style={{ ...fabtexWrap, padding: "26px 0 60px" }}>{body}</div>
         <FabtexFooter store={store} slug={slug} social={social} />
@@ -189,7 +189,7 @@ export default async function CatalogPage({ params }: { params: Promise<{ slug: 
   if (isJuiceLifeTemplate(store.template?.name)) {
     const social = (store.socialLinks as Record<string, string> | null) ?? {};
     return (
-      <div style={{ background: "#ffffff", color: ink, fontFamily: theme.font, minHeight: "100vh" }}>
+      <div style={{ background: "#ffffff", color: ink, fontFamily: theme.font, minHeight: "100vh" }} className="storefront-root">
         <JuiceLifeHeader store={store} slug={slug} navCategories={categories} crumbs={crumbs} />
         <div style={{ ...juicelifeWrap, padding: "26px 0 60px" }}>{body}</div>
         <JuiceLifeFooter store={store} slug={slug} social={social} />
@@ -198,7 +198,7 @@ export default async function CatalogPage({ params }: { params: Promise<{ slug: 
   }
 
   return (
-    <div style={{ fontFamily: theme.font, color: ink, background: bg, minHeight: "100vh" }}>
+    <div style={{ fontFamily: theme.font, color: ink, background: bg, minHeight: "100vh" }} className="storefront-root">
       <nav style={{ position: "sticky", top: 0, zIndex: 50, background: `${bg}f2`, backdropFilter: "blur(10px)", borderBottom: `1px solid ${ink}14` }}>
         <div style={{ maxWidth: 1180, margin: "0 auto", padding: "16px 28px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
           <Link href={`/store/${slug}`} style={{ fontWeight: 800, fontSize: 18, color: ink, textDecoration: "none" }}>{store.name}</Link>
