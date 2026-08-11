@@ -18,6 +18,24 @@
     --destructive: 0 84% 65%;
     --radius: 0.5rem;
   }
+
+  /* Dark variant of the same token set, using the exact brand colors the
+     marketing homepage already reads directly (--bn-ink, --bn-marigold,
+     etc — see "BizNest brand tokens" below). Applied via a `.dark` class
+     on a surface's root (see app/store/[slug]/admin/layout.tsx and
+     app/supaadmin/layout.tsx) so admin/back-office surfaces match the
+     homepage's dark forest look while storefront/checkout/auth pages,
+     which aren't wrapped in `.dark`, stay on the light token set above. */
+  .dark {
+    --background: 147 47% 7%;         /* == --bn-ink #0a1c12 */
+    --foreground: 0 0% 100%;          /* == --bn-ivory */
+    --primary: 158 64% 52%;           /* == --bn-marigold #34d399 */
+    --primary-foreground: 152 45% 8%; /* dark ink, for text on the emerald accent */
+    --muted: 151 45% 13%;             /* == --bn-ink-raised #123024 */
+    --muted-foreground: 150 19% 63%;  /* == --bn-mute #8fb3a1 */
+    --border: 151 41% 21%;            /* == --bn-ink-line #1f4a35 */
+    --destructive: 0 70% 58%;
+  }
 }
 
 @layer base {

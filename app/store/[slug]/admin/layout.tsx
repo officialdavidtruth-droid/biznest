@@ -30,7 +30,7 @@ export default async function StoreAdminLayout({
   }
 
   return (
-    <div className="flex h-screen overflow-hidden">
+    <div className="dark flex h-screen overflow-hidden bg-background text-foreground">
       <DashboardSidebar
         slug={slug}
         storeName={store.name}
@@ -38,7 +38,7 @@ export default async function StoreAdminLayout({
         offersServices={store.business.offersServices}
         category={store.business.category}
       />
-      <main className="flex-1 overflow-y-auto bg-muted/10">
+      <main className="flex-1 overflow-y-auto">
         <div className="mx-auto max-w-6xl px-6 py-8">{children}</div>
       </main>
     </div>

@@ -23,7 +23,7 @@ const LINKS = [
 
 export default function SupaAdminLayout({ children }: { children: React.ReactNode }) {
   return (
-    <div className="flex min-h-screen" style={{ background: "hsl(var(--background))" }}>
+    <div className="dark flex min-h-screen" style={{ background: "hsl(var(--background))" }}>
       <aside
         className="flex w-60 shrink-0 flex-col border-r"
         style={{ borderColor: "hsl(var(--border))", background: "hsl(var(--muted))" }}
