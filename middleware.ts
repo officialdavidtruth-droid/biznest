@@ -130,7 +130,11 @@ export default auth(async (req) => {
   const url = req.nextUrl.clone();
 
   if (slug) {
-    url.pathname = `/store/${slug}${url.pathname === "/" ? "" : url.pathname}`;
+    const storePrefix = `/store/${slug}`;
+    const alreadyPrefixed = url.pathname === storePrefix || url.pathname.startsWith(`${storePrefix}/`);
+    url.pathname = alreadyPrefixed
+      ? url.pathname
+      : `${storePrefix}${url.pathname === "/" ? "" : url.pathname}`;
   }
 
   const { pathname } = url;

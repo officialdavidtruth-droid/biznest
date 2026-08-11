@@ -4,6 +4,7 @@ import { useMemo, useState } from "react";
 import { Check, Lock, Search, Eye } from "lucide-react";
 import type { TemplateTheme } from "@/lib/template-themes";
 import { DEMO_STORES } from "@/lib/demo-stores";
+import { storePublicUrl } from "@/lib/utils/store-url";
 import { TemplateCover } from "@/components/storefront/template-cover";
 
 // Real, permanent live-demo stores exist for a subset of templates (see
@@ -179,7 +180,7 @@ export function TemplateGallery({
                     through it before committing. */}
                 {demoSlug ? (
                   <a
-                    href={`/store/${demoSlug}`}
+                    href={storePublicUrl(demoSlug)}
                     target="_blank"
                     rel="noopener noreferrer"
                     onClick={(e) => e.stopPropagation()}
