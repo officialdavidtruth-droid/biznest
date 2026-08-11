@@ -109,27 +109,6 @@ export default auth(async (req) => {
     return NextResponse.redirect(new URL("/supaadmin", req.nextUrl.origin));
   }
 
-  // A store's canonical address is its subdomain (slug.biznest.space), but
-  // plenty of internal links — dashboard nav, payment-callback redirects via
-  // APP_URL, older bookmarks — are written as relative "/store/[slug]" paths
-  // and so resolve against whatever host they were clicked from. If that's
-  // the apex domain, bounce to the subdomain so the address bar matches what
-  // storePublicUrl() advertises everywhere else. GET only: POSTs are Server
-  // Action submissions already firing from whatever host the page loaded on,
-  // and redirecting those across hosts would just break the action instead
-  // of fixing anything. The session cookie is domain-scoped to ".biznest.space"
-  // (see lib/auth.config.ts) so auth survives the hop. Wildcard subdomains
-  // only exist in production, so this only fires for the real apex host —
-  // localhost and *.vercel.app previews keep serving the path form as-is.
-  if (req.method === "GET" && (host === ROOT_DOMAIN || host === `www.${ROOT_DOMAIN}`)) {
-    const storeMatch = rawPathname.match(/^\/store\/([^/]+)(\/.*)?$/);
-    if (storeMatch) {
-      const [, storeSlug, rest = ""] = storeMatch;
-      const target = new URL(`${rest || "/"}${req.nextUrl.search}`, `https://${storeSlug}.${ROOT_DOMAIN}`);
-      return NextResponse.redirect(target);
-    }
-  }
-
   // /supaadmin is gated entirely separately from everything else on this
   // site — a shared PIN, not a user login. Handle it first and return
   // early, so it never touches the NextAuth session logic below at all.
@@ -160,32 +139,8 @@ export default auth(async (req) => {
 
   const rewritten = slug !== null || pathname !== req.nextUrl.pathname;
 
-  // TEMPORARY DIAGNOSTIC — remove once subdomain routing is confirmed working.
-  // Stamps every response with headers showing what this middleware decided,
-  // so we can check the Network tab (Response Headers) and immediately tell:
-  //   - x-bn-mw: "1" confirms THIS middleware build actually ran (rules out
-  //     a stale Production deployment without this code).
-  //   - x-bn-mw-host / x-bn-mw-slug / x-bn-mw-rewritten show whether the
-  //     subdomain was detected and whether a rewrite to /store/<slug> fired.
-  const diagHeaders = {
-    "x-bn-mw": "1",
-    "x-bn-mw-host": host,
-    "x-bn-mw-slug": slug ?? "(none)",
-    "x-bn-mw-rewritten": String(rewritten),
-    "x-bn-mw-pathname": pathname,
-    // Char-code dump to rule out invisible/non-ASCII characters sneaking
-    // into ROOT_DOMAIN or the host string (e.g. a non-breaking space or a
-    // homoglyph introduced by copy-paste) that would make an otherwise
-    // identical-looking string comparison silently fail.
-    "x-bn-mw-root-domain-codes": Array.from(ROOT_DOMAIN).map((c) => c.charCodeAt(0)).join(","),
-    "x-bn-mw-host-codes": Array.from(host).map((c) => c.charCodeAt(0)).join(","),
-    "x-bn-mw-endswith-check": String(host.endsWith(`.${ROOT_DOMAIN}`)),
-  };
-
   if (!isProtected) {
-    const res = rewritten ? NextResponse.rewrite(url) : NextResponse.next();
-    Object.entries(diagHeaders).forEach(([k, v]) => res.headers.set(k, v));
-    return res;
+    return rewritten ? NextResponse.rewrite(url) : NextResponse.next();
   }
 
   if (!req.auth?.user) {
@@ -194,9 +149,7 @@ export default auth(async (req) => {
     // no host in it, so NextAuth's redirect callback would resolve it
     // against AUTH_URL (www.biznest.space) and lose the subdomain entirely.
     loginUrl.searchParams.set("callbackUrl", `${req.nextUrl.origin}${pathname}`);
-    const res = NextResponse.redirect(loginUrl);
-    Object.entries(diagHeaders).forEach(([k, v]) => res.headers.set(k, v));
-    return res;
+    return NextResponse.redirect(loginUrl);
   }
 
   if (PLATFORM_ADMIN_PATTERN.test(pathname)) {
@@ -204,15 +157,11 @@ export default auth(async (req) => {
     if (role !== "PLATFORM_ADMIN" && role !== "SUPPORT_MODERATOR") {
       // Non-admins hitting /admin get bounced to the homepage. (/supaadmin
       // is handled entirely separately above via the PIN cookie.)
-      const res = NextResponse.redirect(new URL("/", req.nextUrl.origin));
-      Object.entries(diagHeaders).forEach(([k, v]) => res.headers.set(k, v));
-      return res;
+      return NextResponse.redirect(new URL("/", req.nextUrl.origin));
     }
   }
 
-  const res = rewritten ? NextResponse.rewrite(url) : NextResponse.next();
-  Object.entries(diagHeaders).forEach(([k, v]) => res.headers.set(k, v));
-  return res;
+  return rewritten ? NextResponse.rewrite(url) : NextResponse.next();
 });
 
 export const config = {
