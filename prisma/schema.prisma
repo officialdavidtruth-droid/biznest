@@ -1231,6 +1231,52 @@ model AuditLog {
   @@index([entity, entityId])
 }
 
+// ----------------------------------------------------------------------------
+// OBSERVABILITY
+//
+// One row per notable thing that happened somewhere the platform can't just
+// let fail silently -- a caught exception, a slow request, a bounced email.
+// Deliberately generic (category + level + message + metadata) rather than
+// one table per subsystem, since the volume here is "hundreds/day", not
+// "millions/day" -- a proper APM (Sentry/Datadog) is the right call past
+// this scale, but this gets a self-hosted MVP most of the way there with
+// zero new infra. See lib/observability/log.ts for the write path and
+// app/supaadmin/system-health for the read path.
+// ----------------------------------------------------------------------------
+model SystemEvent {
+  id         String        @id @default(cuid())
+  category   EventCategory
+  level      EventLevel
+  message    String
+  // Freeform context -- stack trace snippet, request path, provider error
+  // code, whatever's useful for that category. Never put PII/secrets here.
+  metadata   Json?
+  // Set only for API-latency events (see withObservability); lets the
+  // health page compute p95/avg without a separate metrics table.
+  durationMs Int?
+  createdAt  DateTime      @default(now())
+
+  @@index([category, createdAt])
+  @@index([level, createdAt])
+}
+
+enum EventCategory {
+  DATABASE
+  PAYMENTS
+  EMAIL
+  WEBHOOKS
+  STORAGE
+  AUTH
+  API
+  JOBS
+}
+
+enum EventLevel {
+  INFO
+  WARN
+  ERROR
+}
+
 model PlatformSetting {
   id    String @id @default(cuid())
   key   String @unique

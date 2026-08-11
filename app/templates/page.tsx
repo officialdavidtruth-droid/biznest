@@ -31,7 +31,7 @@ export default async function TemplatesPage() {
   return (
     <div
       className={`${display.variable} ${body.variable} min-h-screen`}
-      style={{ background: "var(--bn-ink)", color: "var(--bn-ivory)", fontFamily: "var(--font-body)" }}
+      style={{ background: "var(--bn-hero-gradient)", color: "var(--bn-ivory)", fontFamily: "var(--font-body)" }}
     >
       <header className="flex items-center justify-between px-6 py-5 sm:px-10">
         <Link href="/" className="text-lg tracking-tight" style={{ fontFamily: "var(--font-display)", fontWeight: 700, color: "var(--bn-ivory)", textDecoration: "none" }}>
@@ -42,7 +42,7 @@ export default async function TemplatesPage() {
           <Link
             href="/register"
             className="rounded-full px-4 py-2 text-sm font-medium transition hover:brightness-110"
-            style={{ background: "var(--bn-marigold)", color: "var(--bn-ink)" }}
+            style={{ background: "var(--bn-accent-gradient)", color: "var(--bn-ink)" }}
           >
             Open your store
           </Link>
@@ -85,7 +85,7 @@ export default async function TemplatesPage() {
                   <h2 style={{ fontFamily: "var(--font-display)", fontWeight: 700 }} className="text-lg">
                     {t.name}
                   </h2>
-                  <span className="rounded-full px-2.5 py-1 text-[11px] font-semibold" style={{ background: "var(--bn-marigold)", color: "var(--bn-ink)" }}>
+                  <span className="rounded-full px-2.5 py-1 text-[11px] font-semibold" style={{ background: "var(--bn-accent-gradient)", color: "var(--bn-ink)" }}>
                     {TIER_LABEL[t.tierRank] ?? "Free"}
                   </span>
                 </div>
@@ -98,7 +98,7 @@ export default async function TemplatesPage() {
                       href={`/store/${demoSlug}`}
                       target="_blank"
                       className="flex-1 rounded-full px-4 py-2.5 text-center text-sm font-semibold transition hover:brightness-110"
-                      style={{ background: "var(--bn-marigold)", color: "var(--bn-ink)" }}
+                      style={{ background: "var(--bn-accent-gradient)", color: "var(--bn-ink)" }}
                     >
                       View live demo →
                     </Link>

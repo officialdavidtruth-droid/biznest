@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { Prisma } from "@prisma/client";
 import type { WebhookEventType } from "@prisma/client";
 import { WEBHOOK_EVENT_NAMES } from "@/lib/webhooks/events";
+import { logError, logWarn } from "@/lib/observability/log";
 
 const MAX_ATTEMPTS = 8;
 const REQUEST_TIMEOUT_MS = 10_000;
@@ -148,6 +149,21 @@ export async function attemptDelivery(deliveryId: string): Promise<void> {
   const exhausted = attemptCount >= MAX_ATTEMPTS;
   const backoffMinutes =
     BACKOFF_SCHEDULE_MINUTES[Math.min(attemptCount - 1, BACKOFF_SCHEDULE_MINUTES.length - 1)];
+
+  if (!ok) {
+    const meta = {
+      endpointId: delivery.endpointId,
+      url: delivery.endpoint.url,
+      eventType: delivery.eventType,
+      attemptCount,
+      statusCode,
+      responseSnippet,
+    };
+    // WARN while it's still retrying (transient), ERROR once we've given
+    // up on it entirely -- that's the signal worth waking someone up for.
+    if (exhausted) void logError("WEBHOOKS", "Webhook delivery exhausted all retries", meta);
+    else void logWarn("WEBHOOKS", "Webhook delivery attempt failed, will retry", meta);
+  }
 
   await prisma.webhookDelivery.update({
     where: { id: delivery.id },

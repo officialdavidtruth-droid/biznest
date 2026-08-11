@@ -4,6 +4,7 @@ export { getActiveGateway };
 import { initializePaystackTransaction, refundPaystackTransaction } from "@/lib/payments/paystack";
 import { initializeFlutterwaveTransaction, refundFlutterwaveTransaction } from "@/lib/payments/flutterwave";
 import type { PaymentProvider } from "@prisma/client";
+import { logError } from "@/lib/observability/log";
 
 type ChargeParams = {
   email: string;
@@ -37,6 +38,7 @@ export async function chargeCustomer(params: ChargeParams): Promise<ChargeResult
       subaccountId: params.flutterwaveSubaccountId,
     });
     if (init.status !== "success" || !init.data) {
+      void logError("PAYMENTS", "Flutterwave charge init failed", { reference: params.reference, message: init.message });
       return { success: false, error: init.message || "Couldn't start the Flutterwave payment." };
     }
     return { success: true, authorizationUrl: init.data.link, gateway: "FLUTTERWAVE" };
@@ -50,6 +52,7 @@ export async function chargeCustomer(params: ChargeParams): Promise<ChargeResult
     subaccountCode: params.paystackSubaccountCode,
   });
   if (!init.status || !init.data) {
+    void logError("PAYMENTS", "Paystack charge init failed", { reference: params.reference, message: init.message });
     return { success: false, error: init.message || "Couldn't start the Paystack payment." };
   }
   return { success: true, authorizationUrl: init.data.authorization_url, gateway: "PAYSTACK" };
@@ -78,6 +81,7 @@ export async function refundPayment(params: RefundParams): Promise<RefundResult>
   if (params.provider === "FLUTTERWAVE") {
     const res = await refundFlutterwaveTransaction(params.gatewayTransactionRef, params.amountNaira);
     if (res.status !== "success" || !res.data) {
+      void logError("PAYMENTS", "Flutterwave refund failed", { ref: params.gatewayTransactionRef, message: res.message });
       return { success: false, error: res.message || "Flutterwave declined the refund." };
     }
     return { success: true, refundReference: String(res.data.id) };
@@ -86,6 +90,7 @@ export async function refundPayment(params: RefundParams): Promise<RefundResult>
   const amountKobo = params.amountNaira ? Math.round(params.amountNaira * 100) : undefined;
   const res = await refundPaystackTransaction(params.gatewayTransactionRef, amountKobo);
   if (!res.status || !res.data) {
+    void logError("PAYMENTS", "Paystack refund failed", { ref: params.gatewayTransactionRef, message: res.message });
     return { success: false, error: res.message || "Paystack declined the refund." };
   }
   return { success: true, refundReference: String(res.data.id) };

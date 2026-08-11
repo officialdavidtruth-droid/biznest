@@ -1,31 +1,62 @@
 import { Resend } from "resend";
+import { logError } from "@/lib/observability/log";
 
 const resend = new Resend(process.env.RESEND_API_KEY);
 const FROM = process.env.EMAIL_FROM ?? "BizNest <no-reply@biznest.app>";
 const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? "https://biznest.vercel.app";
 
+/**
+ * Every send goes through here so a bounced/rejected/misconfigured email
+ * always lands a SystemEvent, regardless of which of the helpers below
+ * (or a future one) triggered it. Resend's SDK resolves with
+ * { data, error } rather than throwing on API-level failures, so we check
+ * both that and a genuine throw (network blip, bad API key at the client
+ * level, etc).
+ */
+async function send(params: Parameters<typeof resend.emails.send>[0], context: { kind: string; to: string }) {
+  try {
+    const result = await resend.emails.send(params);
+    if (result.error) {
+      void logError("EMAIL", `Send failed: ${context.kind}`, { to: context.to, message: result.error.message });
+    }
+    return result;
+  } catch (err) {
+    void logError("EMAIL", `Send threw: ${context.kind}`, {
+      to: context.to,
+      error: err instanceof Error ? err.message : String(err),
+    });
+    throw err;
+  }
+}
+
 export async function sendVerificationEmail(email: string, token: string) {
   const url = `${APP_URL}/verify-email?token=${token}`;
-  return resend.emails.send({
-    from: FROM,
-    to: email,
-    subject: "Verify your BizNest email",
-    html: `<p>Welcome to BizNest. Confirm your email to get started:</p>
+  return send(
+    {
+      from: FROM,
+      to: email,
+      subject: "Verify your BizNest email",
+      html: `<p>Welcome to BizNest. Confirm your email to get started:</p>
            <p><a href="${url}">${url}</a></p>
            <p>This link expires in 24 hours.</p>`,
-  });
+    },
+    { kind: "verification", to: email }
+  );
 }
 
 export async function sendPasswordResetEmail(email: string, token: string) {
   const url = `${APP_URL}/reset-password?token=${token}`;
-  return resend.emails.send({
-    from: FROM,
-    to: email,
-    subject: "Reset your BizNest password",
-    html: `<p>We received a request to reset your password.</p>
+  return send(
+    {
+      from: FROM,
+      to: email,
+      subject: "Reset your BizNest password",
+      html: `<p>We received a request to reset your password.</p>
            <p><a href="${url}">${url}</a></p>
            <p>If you didn't request this, you can ignore this email.</p>`,
-  });
+    },
+    { kind: "password-reset", to: email }
+  );
 }
 
 export async function sendBusinessStatusEmail(
@@ -40,7 +71,7 @@ export async function sendBusinessStatusEmail(
       ? "Congratulations — your business has been verified. You can now create your store."
       : `Your business verification could not be approved.${reason ? ` Reason: ${reason}` : ""} You may correct the details and resubmit.`;
 
-  return resend.emails.send({ from: FROM, to: email, subject, html: `<p>${body}</p>` });
+  return send({ from: FROM, to: email, subject, html: `<p>${body}</p>` }, { kind: "business-status", to: email });
 }
 
 export async function sendOrderNotificationEmail(
@@ -48,5 +79,5 @@ export async function sendOrderNotificationEmail(
   subject: string,
   message: string
 ) {
-  return resend.emails.send({ from: FROM, to: email, subject, html: `<p>${message}</p>` });
+  return send({ from: FROM, to: email, subject, html: `<p>${message}</p>` }, { kind: "order-notification", to: email });
 }

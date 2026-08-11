@@ -2,6 +2,8 @@ import { auth } from "@/lib/auth";
 import { checkRateLimit } from "@/lib/rate-limit";
 import { NextResponse } from "next/server";
 import { v2 as cloudinary } from "cloudinary";
+import { withObservability } from "@/lib/observability/api-wrapper";
+import { logError } from "@/lib/observability/log";
 
 cloudinary.config({
   cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
@@ -12,7 +14,7 @@ cloudinary.config({
 const MAX_FILE_BYTES = 10 * 1024 * 1024; // 10MB
 const ALLOWED_TYPES = new Set(["image/jpeg", "image/png", "image/webp", "application/pdf"]);
 
-export async function POST(req: Request) {
+export const POST = withObservability("upload", async (req: Request) => {
   const session = await auth();
   if (!session?.user?.id) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -59,11 +61,11 @@ export async function POST(req: Request) {
 
     return NextResponse.json({ url: result.secure_url });
   } catch (err) {
-    console.error("Cloudinary upload failed:", err);
     const message =
       err instanceof Error
         ? err.message
         : "Upload provider isn't configured correctly. Check CLOUDINARY_* environment variables.";
+    void logError("STORAGE", "Cloudinary upload failed", { userId: session.user.id, message });
     return NextResponse.json({ error: message }, { status: 502 });
   }
-}
+});

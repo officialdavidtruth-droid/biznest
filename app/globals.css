@@ -9,12 +9,12 @@
 @layer base {
   :root {
     --background: 0 0% 100%;         /* white */
-    --foreground: 160 60% 12%;       /* deep green-black, for text */
-    --primary: 152 65% 32%;          /* bn-green */
+    --foreground: 152 45% 8%;        /* near-black forest, for text */
+    --primary: 152 62% 20%;          /* deep lush forest green */
     --primary-foreground: 0 0% 100%; /* white, for text on green */
-    --muted: 150 40% 96%;            /* pale green */
-    --muted-foreground: 155 20% 38%; /* muted green-gray */
-    --border: 150 30% 88%;           /* soft green border */
+    --muted: 150 35% 96%;            /* pale sage */
+    --muted-foreground: 155 18% 36%; /* muted green-gray */
+    --border: 150 25% 88%;           /* soft sage border */
     --destructive: 0 84% 65%;
     --radius: 0.5rem;
   }
@@ -26,10 +26,12 @@
   }
   body {
     @apply text-foreground;
-    /* Green-to-white gradient backdrop for the whole app, rather than a
-       flat fill — fixed attachment so it doesn't visibly repeat/tile as
-       the page scrolls on long views. */
-    background: linear-gradient(160deg, hsl(152 55% 94%) 0%, hsl(0 0% 100%) 45%, hsl(150 45% 97%) 100%);
+    /* Faint forest-tinted backdrop for light (dashboard/form) surfaces —
+       fixed attachment so it doesn't visibly repeat/tile as the page
+       scrolls on long views. The lush dark-forest treatment itself lives
+       in --bn-gradient-hero/.bn-gradient-dark, used on the marketing
+       surfaces (see app/page.tsx) that read var(--bn-ink) directly. */
+    background: linear-gradient(160deg, hsl(150 38% 95%) 0%, hsl(0 0% 100%) 45%, hsl(150 30% 97%) 100%);
     background-attachment: fixed;
     min-height: 100vh;
   }
@@ -47,38 +49,61 @@
   border-radius: 0.75rem;
   border: 1px solid hsl(var(--border));
   background: hsl(var(--background));
-  box-shadow: 0 1px 2px rgba(16, 90, 60, 0.08);
+  box-shadow: 0 1px 2px rgba(6, 40, 26, 0.08);
 }
 
-/* Reusable green→white gradient for heroes, buttons, and accent surfaces —
-   the literal "mix of green and white" treatment, distinct from the
-   subtler full-page backdrop above. */
+/* Reusable forest→emerald→white gradient for heroes, buttons, and accent
+   surfaces on LIGHT backgrounds (dashboard CTAs, upgrade banners, etc). */
 .bn-gradient {
-  background: linear-gradient(135deg, hsl(152 65% 32%) 0%, hsl(150 55% 55%) 55%, hsl(0 0% 100%) 100%);
+  background: linear-gradient(135deg, hsl(152 62% 16%) 0%, hsl(152 58% 34%) 55%, hsl(0 0% 100%) 100%);
 }
 .bn-gradient-text {
-  background: linear-gradient(135deg, hsl(152 70% 28%), hsl(150 60% 45%));
+  background: linear-gradient(135deg, hsl(152 65% 22%), hsl(150 70% 42%));
   -webkit-background-clip: text;
   background-clip: text;
   color: transparent;
 }
 
+/* Deep forest gradient for DARK surfaces — the marketing hero, footer,
+   promo/summary cards, and any panel that wants the "lush forest" mood
+   rather than sitting flat on --bn-ink. A soft emerald glow in the
+   top-left keeps a large solid dark area from feeling flat/dead. */
+.bn-gradient-dark {
+  background:
+    radial-gradient(120% 90% at 12% -10%, rgba(52, 211, 153, 0.16) 0%, transparent 55%),
+    linear-gradient(165deg, #0e2b1c 0%, #0a1c12 45%, #05100a 100%);
+}
+/* Emerald→jade gradient for primary CTAs/pills on dark surfaces — used
+   instead of a flat accent fill so buttons read as "lush", not flat. */
+.bn-gradient-accent {
+  background: linear-gradient(135deg, #34d399 0%, #10967a 100%);
+}
+
 /* --- BizNest brand tokens ---
-   Green + white, evoking growth/marketplace freshness rather than the
-   previous aubergine/marigold palette. Variable names kept the same so
-   every file already referencing them (app/page.tsx, order confirmation,
-   etc.) updates automatically with no further edits needed. */
+   Dark lush forest + white, with the accent doing double duty as the
+   "lush" gradient pop (see .bn-gradient-accent above). Variable names
+   kept stable so every file already referencing them (app/page.tsx,
+   order confirmation, error/loading screens, etc.) picks this up with
+   no further edits needed. */
 :root {
-  --bn-ink: #f6fbf8;       /* was near-black plum — now near-white, since
-                               the surfaces that used this as a dark ground
-                               are being flipped to sit on white/pale green */
-  --bn-ink-raised: #eaf7f0;
-  --bn-ink-line: #cdeadd;
-  --bn-marigold: #2f9e6e;  /* now the primary green accent (was marigold) */
-  --bn-jade: #1f7a52;      /* deeper green for hover/emphasis states */
-  --bn-ivory: #0f2e21;     /* near-black green, for text on light surfaces
-                               (was the ivory text-on-dark color) */
-  --bn-mute: #5f8f7a;
+  --bn-ink: #0a1c12;       /* deep, near-black forest — the dark ground for
+                               marketing/hero surfaces */
+  --bn-ink-raised: #123024; /* one step up — cards/panels sitting on --bn-ink */
+  --bn-ink-line: #1f4a35;   /* subtle green-tinted border on dark surfaces */
+  --bn-marigold: #34d399;  /* bright emerald accent — the "pop" against the
+                               dark forest ground (name kept for compat) */
+  --bn-jade: #10967a;      /* deeper jade, for secondary accents/hover */
+  --bn-ivory: #ffffff;     /* white, for text on dark surfaces */
+  --bn-mute: #8fb3a1;      /* muted sage, for secondary text on dark */
+
+  /* Gradient variants of the above, for spots that want the "lush" gradient
+     pop directly in an inline style rather than a class (e.g. a background
+     that's conditionally either this or a flat color). Same visual recipe
+     as .bn-gradient-dark / .bn-gradient-accent above. */
+  --bn-hero-gradient:
+    radial-gradient(120% 90% at 12% -10%, rgba(52, 211, 153, 0.16) 0%, transparent 55%),
+    linear-gradient(165deg, #0e2b1c 0%, #0a1c12 45%, #05100a 100%);
+  --bn-accent-gradient: linear-gradient(135deg, #34d399 0%, #10967a 100%);
 }
 
 @keyframes bn-marquee-left {
@@ -102,4 +127,48 @@
   .bn-marquee-left, .bn-marquee-right, .bn-fade-up {
     animation: none !important;
   }
+}
+
+/* --- Homepage texture & decoration utilities ---
+   Small, reusable building blocks for a fuller, more layered marketing
+   page without introducing a new visual language. */
+
+/* Faint dot-grid, for sections that want a touch of depth on --bn-ink. */
+.bn-dot-grid {
+  background-image: radial-gradient(rgba(143, 179, 161, 0.16) 1px, transparent 1px);
+  background-size: 22px 22px;
+}
+
+/* Soft blurred color pool used behind headings/hero content for atmosphere.
+   Purely decorative -- kept out of the tab order and given no content. */
+.bn-glow-orb {
+  position: absolute;
+  border-radius: 9999px;
+  filter: blur(64px);
+  pointer-events: none;
+  z-index: 0;
+}
+
+/* Receipt-style row: label ..... value, evoking a till printout to match
+   the marketplace/commerce motif used for the stats strip. */
+.bn-receipt-row {
+  display: flex;
+  align-items: baseline;
+  gap: 0.5rem;
+}
+.bn-receipt-row::after {
+  content: "";
+  flex: 1;
+  border-bottom: 1px dashed var(--bn-ink-line);
+  transform: translateY(-3px);
+}
+
+@keyframes bn-pulse-dot {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.35; }
+}
+.bn-pulse-dot { animation: bn-pulse-dot 2s ease-in-out infinite; }
+
+@media (prefers-reduced-motion: reduce) {
+  .bn-pulse-dot { animation: none !important; }
 }

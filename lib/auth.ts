@@ -7,6 +7,7 @@ import bcrypt from "bcryptjs";
 import { prisma } from "@/lib/prisma";
 import { loginSchema } from "@/lib/validations/auth";
 import { authConfig } from "@/lib/auth.config";
+import { logError, logWarn } from "@/lib/observability/log";
 
 // If the database call inside authorize() hangs (e.g. DATABASE_URL pointing
 // at an unreachable or misconfigured connection), the whole sign-in request
@@ -59,6 +60,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
             // the problem: check DATABASE_URL in Vercel's env vars against
             // Supabase's *pooled* connection string (port 6543,
             // ?pgbouncer=true), not the direct one (port 5432).
+            void logError("DATABASE", "Login lookup timed out", { email: parsed.data.email });
             throw new Error("DB_UNAVAILABLE");
           }
           throw err;
@@ -66,6 +68,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         if (!user?.passwordHash) return null;
 
         if (user.lockedUntil && user.lockedUntil > new Date()) {
+          void logWarn("AUTH", "Login attempt on locked account", { userId: user.id });
           throw new Error("ACCOUNT_LOCKED");
         }
 
@@ -80,6 +83,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
               lockedUntil: attempts >= MAX_ATTEMPTS ? new Date(Date.now() + 15 * 60 * 1000) : null,
             },
           });
+          void logWarn("AUTH", "Failed login attempt", { userId: user.id, attempts, locked: attempts >= MAX_ATTEMPTS });
           return null;
         }
 
@@ -91,6 +95,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         }
 
         if (user.isBanned) {
+          void logWarn("AUTH", "Login attempt on banned account", { userId: user.id });
           throw new Error("ACCOUNT_BANNED");
         }
 

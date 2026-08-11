@@ -15,17 +15,17 @@ export default function AdminError({
 
   return (
     <div className="flex min-h-[50vh] flex-col items-center justify-center gap-4 px-6 text-center">
-      <h1 className="text-lg font-semibold" style={{ color: "var(--bn-ivory)" }}>
+      <h1 className="text-lg font-semibold" style={{ color: "hsl(var(--foreground))" }}>
         This page didn't load
       </h1>
-      <p className="max-w-sm text-sm" style={{ color: "var(--bn-mute)" }}>
+      <p className="max-w-sm text-sm" style={{ color: "hsl(var(--muted-foreground))" }}>
         Something went wrong loading this dashboard page. The rest of your dashboard is fine —
         try reloading this section.
       </p>
       <button
         onClick={() => reset()}
         className="rounded-md px-4 py-2 text-sm font-medium text-white"
-        style={{ background: "var(--bn-marigold)" }}
+        style={{ background: "var(--bn-jade)" }}
       >
         Reload section
       </button>

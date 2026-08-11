@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import "./globals.css";
 import { Toaster } from "sonner";
 import { CartProvider } from "@/lib/cart-context";
@@ -12,6 +12,10 @@ import { ADMIN_COOKIE_NAME, verifyAdminToken } from "@/lib/admin-pin-auth";
 export const metadata: Metadata = {
   title: "BizNest — Build, Sell, Grow",
   description: "The all-in-one marketplace and website builder for products, services, and bookings.",
+};
+
+export const viewport: Viewport = {
+  themeColor: "#0a1c12",
 };
 
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
