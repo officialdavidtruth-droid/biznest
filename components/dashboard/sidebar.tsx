@@ -9,7 +9,6 @@ import {
   LayoutTemplate, FileText, FileSignature,
 } from "lucide-react";
 import { getCategoryDashboard } from "@/lib/constants/category-dashboard";
-import { storePublicUrl } from "@/lib/utils/store-url";
 
 type NavItem = { label: string; href: string; icon: typeof LayoutDashboard };
 
@@ -117,9 +116,7 @@ export function DashboardSidebar({
           </div>
           <div className="min-w-0">
             <p className="truncate text-sm font-semibold leading-tight">{storeName}</p>
-            <p className="truncate text-xs text-muted-foreground">
-              {storePublicUrl(slug).replace(/^https?:\/\//, "")}
-            </p>
+            <p className="truncate text-xs text-muted-foreground">/store/{slug}</p>
           </div>
         </div>
       </div>
@@ -159,14 +156,9 @@ export function DashboardSidebar({
       </nav>
 
       <div className="border-t border-border px-4 py-3">
-        <a
-          href={storePublicUrl(slug)}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="text-xs font-medium text-muted-foreground hover:text-primary"
-        >
+        <Link href={`/store/${slug}`} className="text-xs font-medium text-muted-foreground hover:text-primary">
           View live store →
-        </a>
+        </Link>
       </div>
     </aside>
   );

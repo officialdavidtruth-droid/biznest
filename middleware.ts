@@ -20,6 +20,14 @@ const PROTECTED_PREFIXES = ["/onboarding", "/dashboard", "/admin", "/account", "
 // on every request), but middleware still blocks unauthenticated access.
 const STORE_ADMIN_PATTERN = /^\/store\/[^/]+\/admin/;
 
+// Matches the customer-facing /store/[slug] path tree, capturing the slug and
+// whatever comes after it, so it can be split into "is this /admin or not".
+const STORE_PATH_PATTERN = /^\/store\/([^/]+)((?:\/.*)?)$/;
+
+function isStoreAdminSubpath(rest: string): boolean {
+  return rest === "/admin" || rest.startsWith("/admin/");
+}
+
 // Platform admin routes require PLATFORM_ADMIN or SUPPORT_MODERATOR role.
 const PLATFORM_ADMIN_PATTERN = /^\/admin/;
 
@@ -41,6 +49,15 @@ function isPlatformHost(host: string): boolean {
     host === "localhost" ||
     host.endsWith(".vercel.app")
   );
+}
+
+// The real production apex — deliberately narrower than isPlatformHost,
+// which also covers localhost and *.vercel.app previews. We only want to
+// force the slug.biznest.space / biznest.space split where the wildcard
+// subdomain actually resolves (production), so local dev and preview
+// deployments keep working over plain /store/[slug] paths, admin included.
+function isProductionRootHost(host: string): boolean {
+  return host === ROOT_DOMAIN || host === `www.${ROOT_DOMAIN}`;
 }
 
 /**
@@ -126,15 +143,41 @@ export default auth(async (req) => {
     return passThroughSupaAdmin(req);
   }
 
+  // The customer-facing storefront must live at slug.biznest.space only —
+  // biznest.space/store/[slug] should never be a second reachable address
+  // for shoppers. Bounce it to the subdomain, but leave /store/[slug]/admin
+  // alone: the dashboard is the one thing that's supposed to stay on the
+  // root domain (see the admin-on-subdomain redirect below for the mirror
+  // case). Scoped to isProductionRootHost so localhost and Vercel previews,
+  // which don't have the wildcard subdomain, keep working over plain paths.
+  if (isProductionRootHost(host)) {
+    const storeMatch = rawPathname.match(STORE_PATH_PATTERN);
+    if (storeMatch) {
+      const [, matchedSlug, rest] = storeMatch;
+      if (!isStoreAdminSubpath(rest)) {
+        const redirectUrl = new URL(`https://${matchedSlug}.${ROOT_DOMAIN}${rest || "/"}`);
+        redirectUrl.search = req.nextUrl.search;
+        return NextResponse.redirect(redirectUrl, 308);
+      }
+    }
+  }
+
   const slug = subdomainSlug(host) ?? (await resolveCustomDomain(host, req.nextUrl.origin));
   const url = req.nextUrl.clone();
 
   if (slug) {
-    const storePrefix = `/store/${slug}`;
-    const alreadyPrefixed = url.pathname === storePrefix || url.pathname.startsWith(`${storePrefix}/`);
-    url.pathname = alreadyPrefixed
-      ? url.pathname
-      : `${storePrefix}${url.pathname === "/" ? "" : url.pathname}`;
+    // Mirror image of the redirect above: the seller dashboard is only
+    // supposed to be reachable from the root biznest.space domain, never
+    // from the storefront's own slug.biznest.space (or a vendor's custom
+    // domain) — sellers manage the store from biznest.space, customers shop
+    // at the subdomain. Check the *original* pathname (before it gets the
+    // /store/[slug] prefix rewritten onto it below).
+    if (isStoreAdminSubpath(rawPathname === "/" ? "" : rawPathname)) {
+      const redirectUrl = new URL(`https://${ROOT_DOMAIN}/store/${slug}${rawPathname}`);
+      redirectUrl.search = req.nextUrl.search;
+      return NextResponse.redirect(redirectUrl, 308);
+    }
+    url.pathname = `/store/${slug}${url.pathname === "/" ? "" : url.pathname}`;
   }
 
   const { pathname } = url;

@@ -36,9 +36,28 @@ export async function generateUniqueStoreSlug(
   return candidate;
 }
 
-// Re-exported here (rather than defined here) so existing importers of
-// this module keep working. The implementation lives in store-url.ts,
-// which has no Prisma import, so it can also be imported directly from
-// client components without dragging @prisma/client into the browser
-// bundle — see the comment there.
-export { storePublicUrl, storeAdminUrl } from "@/lib/utils/store-url";
+export function storePublicUrl(slug: string): string {
+  const base = process.env.NEXT_PUBLIC_APP_URL ?? "https://biznest.vercel.app";
+  const { protocol, host } = new URL(base);
+  const root = host.replace(/^www\./, "");
+
+  // Subdomain storefronts (yourname.biznest.space) only work where we
+  // actually control wildcard DNS + a wildcard domain on the Vercel
+  // project — that's just production. Local dev and Vercel preview
+  // deployments fall back to the path-based /store/[slug] URL, which
+  // middleware.ts still serves directly regardless of host.
+  if (root === "biznest.space") {
+    return `${protocol}//${slug}.${root}`;
+  }
+  return `${base}/store/${slug}`;
+}
+
+export function storeAdminUrl(slug: string): string {
+  // Unlike storePublicUrl, this deliberately never returns a
+  // slug.biznest.space address: the seller dashboard is only reachable from
+  // the root biznest.space domain (see the matching redirects in
+  // middleware.ts), so sellers get one link that always works, and
+  // shoppers browsing the storefront subdomain never land on it.
+  const base = process.env.NEXT_PUBLIC_APP_URL ?? "https://biznest.vercel.app";
+  return `${base}/store/${slug}/admin`;
+}

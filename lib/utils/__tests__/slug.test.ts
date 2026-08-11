@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it } from "vitest";
-import { generateUniqueStoreSlug, storePublicUrl } from "../slug";
+import { generateUniqueStoreSlug, storeAdminUrl, storePublicUrl } from "../slug";
 
 describe("generateUniqueStoreSlug", () => {
   it("slugifies a simple name with no collisions", async () => {
@@ -54,6 +54,28 @@ describe("storePublicUrl", () => {
     process.env.NEXT_PUBLIC_APP_URL = "https://biznest-git-preview.vercel.app";
     expect(storePublicUrl("velox-space")).toBe(
       "https://biznest-git-preview.vercel.app/store/velox-space"
+    );
+  });
+});
+
+describe("storeAdminUrl", () => {
+  const ORIGINAL_APP_URL = process.env.NEXT_PUBLIC_APP_URL;
+
+  afterEach(() => {
+    process.env.NEXT_PUBLIC_APP_URL = ORIGINAL_APP_URL;
+  });
+
+  it("always stays on the root biznest.space domain, even in production", () => {
+    // Unlike storePublicUrl, this must NOT become a slug.biznest.space
+    // address — the dashboard is root-domain-only (see middleware.ts).
+    process.env.NEXT_PUBLIC_APP_URL = "https://www.biznest.space";
+    expect(storeAdminUrl("velox-space")).toBe("https://www.biznest.space/store/velox-space/admin");
+  });
+
+  it("uses the path-based URL on Vercel previews and localhost", () => {
+    process.env.NEXT_PUBLIC_APP_URL = "https://biznest-git-preview.vercel.app";
+    expect(storeAdminUrl("velox-space")).toBe(
+      "https://biznest-git-preview.vercel.app/store/velox-space/admin"
     );
   });
 });
