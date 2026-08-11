@@ -173,6 +173,13 @@ export default auth(async (req) => {
     "x-bn-mw-slug": slug ?? "(none)",
     "x-bn-mw-rewritten": String(rewritten),
     "x-bn-mw-pathname": pathname,
+    // Char-code dump to rule out invisible/non-ASCII characters sneaking
+    // into ROOT_DOMAIN or the host string (e.g. a non-breaking space or a
+    // homoglyph introduced by copy-paste) that would make an otherwise
+    // identical-looking string comparison silently fail.
+    "x-bn-mw-root-domain-codes": Array.from(ROOT_DOMAIN).map((c) => c.charCodeAt(0)).join(","),
+    "x-bn-mw-host-codes": Array.from(host).map((c) => c.charCodeAt(0)).join(","),
+    "x-bn-mw-endswith-check": String(host.endsWith(`.${ROOT_DOMAIN}`)),
   };
 
   if (!isProtected) {
