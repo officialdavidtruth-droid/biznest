@@ -109,6 +109,27 @@ export default auth(async (req) => {
     return NextResponse.redirect(new URL("/supaadmin", req.nextUrl.origin));
   }
 
+  // A store's canonical address is its subdomain (slug.biznest.space), but
+  // plenty of internal links — dashboard nav, payment-callback redirects via
+  // APP_URL, older bookmarks — are written as relative "/store/[slug]" paths
+  // and so resolve against whatever host they were clicked from. If that's
+  // the apex domain, bounce to the subdomain so the address bar matches what
+  // storePublicUrl() advertises everywhere else. GET only: POSTs are Server
+  // Action submissions already firing from whatever host the page loaded on,
+  // and redirecting those across hosts would just break the action instead
+  // of fixing anything. The session cookie is domain-scoped to ".biznest.space"
+  // (see lib/auth.config.ts) so auth survives the hop. Wildcard subdomains
+  // only exist in production, so this only fires for the real apex host —
+  // localhost and *.vercel.app previews keep serving the path form as-is.
+  if (req.method === "GET" && (host === ROOT_DOMAIN || host === `www.${ROOT_DOMAIN}`)) {
+    const storeMatch = rawPathname.match(/^\/store\/([^/]+)(\/.*)?$/);
+    if (storeMatch) {
+      const [, storeSlug, rest = ""] = storeMatch;
+      const target = new URL(`${rest || "/"}${req.nextUrl.search}`, `https://${storeSlug}.${ROOT_DOMAIN}`);
+      return NextResponse.redirect(target);
+    }
+  }
+
   // /supaadmin is gated entirely separately from everything else on this
   // site — a shared PIN, not a user login. Handle it first and return
   // early, so it never touches the NextAuth session logic below at all.
