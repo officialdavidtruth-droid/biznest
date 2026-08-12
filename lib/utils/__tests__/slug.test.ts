@@ -36,6 +36,13 @@ describe("generateUniqueStoreSlug", () => {
     expect(slug.startsWith("-")).toBe(false);
     expect(slug.endsWith("-")).toBe(false);
   });
+
+  it("skips reserved slugs that would collide with a real top-level route", async () => {
+    // "Account" slugifies to "account", which is a real route
+    // (biznest.space/account) — must fall through to "account-2".
+    const slug = await generateUniqueStoreSlug("Account", async () => false);
+    expect(slug).toBe("account-2");
+  });
 });
 
 describe("storePublicUrl", () => {
@@ -45,15 +52,15 @@ describe("storePublicUrl", () => {
     process.env.NEXT_PUBLIC_APP_URL = ORIGINAL_APP_URL;
   });
 
-  it("uses a <slug>.biznest.space subdomain in production", () => {
+  it("uses the path-based biznest.space/<slug> URL in production", () => {
     process.env.NEXT_PUBLIC_APP_URL = "https://www.biznest.space";
-    expect(storePublicUrl("velox-space")).toBe("https://velox-space.biznest.space");
+    expect(storePublicUrl("velox-space")).toBe("https://biznest.space/velox-space");
   });
 
-  it("falls back to the path-based URL off biznest.space (e.g. Vercel previews, localhost)", () => {
+  it("uses the same path-based scheme off biznest.space (e.g. Vercel previews, localhost)", () => {
     process.env.NEXT_PUBLIC_APP_URL = "https://biznest-git-preview.vercel.app";
     expect(storePublicUrl("velox-space")).toBe(
-      "https://biznest-git-preview.vercel.app/store/velox-space"
+      "https://biznest-git-preview.vercel.app/velox-space"
     );
   });
 });

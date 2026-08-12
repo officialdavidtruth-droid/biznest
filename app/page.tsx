@@ -105,7 +105,7 @@ const FAQS = [
   },
   {
     q: "Can I use my own domain name?",
-    a: "Yes, on paid plans. Your store starts on a free yourname.biznest.space address and you can point a custom domain at it once you upgrade.",
+    a: "Yes, on paid plans. Your store starts on a free biznest.space/yourname address and you can point a custom domain at it once you upgrade.",
   },
   {
     q: "What can I actually sell?",

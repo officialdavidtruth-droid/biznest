@@ -1,10 +1,10 @@
 import slugify from "slugify";
 import { prisma } from "@/lib/prisma";
+import { RESERVED_SLUGS } from "@/lib/constants/reserved-slugs";
 
-// Subdomains middleware.ts treats specially, and so must never be handed out
-// as a store slug — supaadmin.biznest.space is the platform admin panel
-// (see subdomainSlug's guard in middleware.ts), "www" is the apex site.
-const RESERVED_SLUGS = new Set(["supaadmin", "www"]);
+// RESERVED_SLUGS (shared with middleware.ts) covers every top-level route —
+// biznest.space/<slug> now resolves to a store, so a slug can never be
+// allowed to collide with a real route like /account or /supaadmin.
 
 /**
  * Generates a unique, URL-safe slug for a store, e.g.
@@ -41,15 +41,11 @@ export function storePublicUrl(slug: string): string {
   const { protocol, host } = new URL(base);
   const root = host.replace(/^www\./, "");
 
-  // Subdomain storefronts (yourname.biznest.space) only work where we
-  // actually control wildcard DNS + a wildcard domain on the Vercel
-  // project — that's just production. Local dev and Vercel preview
-  // deployments fall back to the path-based /store/[slug] URL, which
-  // middleware.ts still serves directly regardless of host.
-  if (root === "biznest.space") {
-    return `${protocol}//${slug}.${root}`;
-  }
-  return `${base}/store/${slug}`;
+  // Every store lives at biznest.space/<slug> — middleware.ts rewrites
+  // this to /store/<slug> internally for any segment that isn't in
+  // RESERVED_SLUGS. Works the same in prod, previews, and local dev,
+  // since it doesn't depend on wildcard DNS the way subdomains did.
+  return `${protocol}//${root}/${slug}`;
 }
 
 export function storeAdminUrl(slug: string): string {

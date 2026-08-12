@@ -27,7 +27,7 @@ export function StorefrontPreviewMock() {
           className="flex-1 truncate rounded-full px-3 py-1 text-center text-[11px]"
           style={{ background: "var(--bn-ink)", color: "var(--bn-mute)", fontFamily: "var(--font-mono)" }}
         >
-          stacey.biznest.space
+          biznest.space/stacey
         </div>
       </div>
 

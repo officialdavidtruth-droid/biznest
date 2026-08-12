@@ -2,6 +2,7 @@ import NextAuth from "next-auth";
 import { NextResponse, type NextRequest } from "next/server";
 import { authConfig } from "@/lib/auth.config";
 import { ADMIN_COOKIE_NAME, verifyAdminToken } from "@/lib/admin-pin-auth";
+import { RESERVED_SLUGS } from "@/lib/constants/reserved-slugs";
 
 // Edge-safe auth instance, built only from the Prisma-free base config.
 // Do NOT import { auth } from "@/lib/auth" here — that pulls in Prisma via
@@ -23,11 +24,12 @@ const STORE_ADMIN_PATTERN = /^\/store\/[^/]+\/admin/;
 // Platform admin routes require PLATFORM_ADMIN or SUPPORT_MODERATOR role.
 const PLATFORM_ADMIN_PATTERN = /^\/admin/;
 
-// The platform-admin panel lives on its own subdomain, supaadmin.biznest.space.
-// Requires a `supaadmin.biznest.space` DNS record (or it can ride the
-// existing `*.biznest.space` wildcard) pointed at the same Vercel project —
-// no separate deployment needed, since this is still just the /supaadmin
-// route tree under the hood, reached via a different host.
+// The platform-admin panel additionally lives on its own subdomain,
+// supaadmin.biznest.space — this is unrelated to store slugs (which are
+// path-based, see pathSlug below) and still needs its own DNS record
+// pointed at the same Vercel project. No separate deployment needed,
+// since this is still just the /supaadmin route tree under the hood,
+// reached via a different host.
 
 const ROOT_DOMAIN = "biznest.space";
 const SUPAADMIN_HOST = `supaadmin.${ROOT_DOMAIN}`;
@@ -44,23 +46,24 @@ function isPlatformHost(host: string): boolean {
 }
 
 /**
- * Every store gets a free `<slug>.biznest.space` address out of the box —
- * no DB lookup needed here, since the subdomain *is* the slug (unlike a
- * vendor's fully custom domain, where we have to look up which store owns
- * it via resolveCustomDomain). Requires a `*.biznest.space` wildcard DNS
- * record and a matching wildcard domain on the Vercel project; see notes
- * in lib/utils/slug.ts.
+ * Every store lives at biznest.space/<slug> — no DB lookup needed here,
+ * since the first path segment *is* the slug (unlike a vendor's fully
+ * custom domain, where we have to look up which store owns it via
+ * resolveCustomDomain). We only need to make sure the segment isn't one
+ * of the site's real top-level routes; RESERVED_SLUGS (shared with
+ * generateUniqueStoreSlug, so a store can never be created with a
+ * colliding slug in the first place) is the single source of truth for
+ * that. Non-existent slugs still fall through to /store/[slug]'s own
+ * not-found handling, same as before.
  */
-function subdomainSlug(host: string): string | null {
-  const suffix = `.${ROOT_DOMAIN}`;
-  if (!host.endsWith(suffix)) return null;
-  const sub = host.slice(0, -suffix.length);
-  // "supaadmin" is reserved for the platform admin panel, not a store slug
-  // (see the reserved-word guard in generateUniqueStoreSlug), but check here
-  // too so this host can never be mistaken for a store subdomain even if
-  // that guard is ever bypassed (e.g. a manually-edited slug in the DB).
-  if (!sub || sub === "www" || sub === "supaadmin") return null;
-  return sub;
+function pathSlug(pathname: string): { slug: string | null; rest: string } {
+  const segments = pathname.split("/").filter(Boolean);
+  const [first, ...remaining] = segments;
+  if (!first || RESERVED_SLUGS.has(first)) {
+    return { slug: null, rest: pathname };
+  }
+  const rest = `/${remaining.join("/")}`;
+  return { slug: first, rest: rest === "/" ? "" : rest };
 }
 
 /**
@@ -126,11 +129,25 @@ export default auth(async (req) => {
     return passThroughSupaAdmin(req);
   }
 
-  const slug = subdomainSlug(host) ?? (await resolveCustomDomain(host, req.nextUrl.origin));
   const url = req.nextUrl.clone();
+  let slug: string | null = null;
 
-  if (slug) {
-    url.pathname = `/store/${slug}${url.pathname === "/" ? "" : url.pathname}`;
+  if (isPlatformHost(host)) {
+    // biznest.space/<slug> — strip the slug off the front of the path and
+    // rewrite what's left onto /store/<slug>.
+    const parsed = pathSlug(rawPathname);
+    slug = parsed.slug;
+    if (slug) {
+      url.pathname = `/store/${slug}${parsed.rest}`;
+    }
+  } else {
+    // A vendor's own custom domain (e.g. mystore.com) maps entirely onto
+    // one store — the whole path belongs to it, unlike the platform host
+    // above where only the first segment is the slug.
+    slug = await resolveCustomDomain(host, req.nextUrl.origin);
+    if (slug) {
+      url.pathname = `/store/${slug}${rawPathname === "/" ? "" : rawPathname}`;
+    }
   }
 
   const { pathname } = url;
