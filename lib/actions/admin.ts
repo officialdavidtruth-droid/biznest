@@ -49,6 +49,22 @@ export async function getPlatformStats() {
   return { totalUsers, pendingBusinesses, totalStores, totalOrders, bannedUsers, gmv, mrr, recentLogs, openDisputes };
 }
 
+// Cheap counts for sidebar nav badges — deliberately separate from
+// getPlatformStats (which also pulls GMV/MRR/order sums) so every admin
+// page render doesn't pay for the heavier aggregation just to paint a
+// couple of nav badges.
+export async function getAdminBadgeCounts() {
+  const access = await assertPlatformStaff();
+  if (!access.success) return { pendingBusinesses: 0, openDisputes: 0 };
+
+  const [pendingBusinesses, openDisputes] = await Promise.all([
+    prisma.business.count({ where: { verificationStatus: "PENDING" } }),
+    prisma.dispute.count({ where: { status: { in: ["OPEN", "UNDER_REVIEW"] } } }),
+  ]);
+
+  return { pendingBusinesses, openDisputes };
+}
+
 // --- Business verification review ---------------------------------------
 
 export async function listBusinesses(status?: VerificationStatus) {
