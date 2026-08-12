@@ -53,11 +53,5 @@ export function storePublicUrl(slug: string): string {
 }
 
 export function storeAdminUrl(slug: string): string {
-  // Unlike storePublicUrl, this deliberately never returns a
-  // slug.biznest.space address: the seller dashboard is only reachable from
-  // the root biznest.space domain (see the matching redirects in
-  // middleware.ts), so sellers get one link that always works, and
-  // shoppers browsing the storefront subdomain never land on it.
-  const base = process.env.NEXT_PUBLIC_APP_URL ?? "https://biznest.vercel.app";
-  return `${base}/store/${slug}/admin`;
+  return `${storePublicUrl(slug)}/admin`;
 }
