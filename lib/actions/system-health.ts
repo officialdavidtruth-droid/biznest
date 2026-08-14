@@ -35,6 +35,7 @@ const LABELS: Record<EventCategory, string> = {
   DATABASE: "Database",
   PAYMENTS: "Payments",
   EMAIL: "Email",
+  MESSAGING: "Messaging",
   WEBHOOKS: "Webhooks",
   STORAGE: "Storage",
   AUTH: "Authentication",
