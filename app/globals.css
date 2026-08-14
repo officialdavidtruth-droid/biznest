@@ -44,13 +44,11 @@
   }
   body {
     @apply text-foreground;
-    /* Faint forest-tinted backdrop for light (dashboard/form) surfaces —
-       fixed attachment so it doesn't visibly repeat/tile as the page
-       scrolls on long views. The lush dark-forest treatment itself lives
-       in --bn-gradient-hero/.bn-gradient-dark, used on the marketing
-       surfaces (see app/page.tsx) that read var(--bn-ink) directly. */
-    background: linear-gradient(160deg, hsl(150 38% 95%) 0%, hsl(0 0% 100%) 45%, hsl(150 30% 97%) 100%);
-    background-attachment: fixed;
+    /* Pure white backdrop for light (dashboard/form) surfaces. The lush
+       dark-forest treatment itself lives in --bn-gradient-hero/.bn-gradient-dark,
+       used on the marketing surfaces (see app/page.tsx) that read
+       var(--bn-ink) directly. */
+    background: hsl(0 0% 100%);
     min-height: 100vh;
   }
   input, select, textarea {
