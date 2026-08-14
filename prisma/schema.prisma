@@ -60,6 +60,7 @@ model User {
   messages          Message[]
   conversations     ConversationParticipant[]
   notifications     Notification[]
+  pushSubscriptions PushSubscription[]
   auditLogs         AuditLog[]
   disputesRaised    Dispute[]       @relation("DisputeRaisedBy")
   disputeEvidence   DisputeEvidence[]
@@ -262,7 +263,6 @@ model Business {
   // write paths trigger a refresh and the accepted staleness window.
   trustScore            Int?
   trustScoreUpdatedAt   DateTime?
-
   guarantors             Guarantor[]
   store                  Store?
   favoritedBy            FavoriteBusiness[]
@@ -736,6 +736,42 @@ enum PaymentProvider {
 }
 
 // ----------------------------------------------------------------------------
+// ABANDONED CHECKOUT RECOVERY -- deliberately not a separate "cart snapshot"
+// table. startCheckout() already creates an Order row at PENDING_PAYMENT the
+// moment a buyer begins checking out, with the full item list attached, so
+// an "abandoned checkout" IS a PENDING_PAYMENT order that's gone stale (see
+// ABANDONED_CHECKOUT_THRESHOLD_MINUTES in lib/constants/order.ts) rather than
+// something we need to track separately. This table only records the
+// merchant's outbound "you left something in your cart" nudges against that
+// order -- one row per send attempt, same append-only ledger pattern as
+// OrderStatusEvent/StockMovement, so a merchant can see what's already gone
+// out before firing another channel at the same customer.
+// ----------------------------------------------------------------------------
+
+enum NotificationChannel {
+  EMAIL
+  WHATSAPP
+  SMS
+}
+
+enum NotificationStatus {
+  SENT
+  FAILED
+}
+
+model AbandonedCheckoutNotification {
+  id        String              @id @default(cuid())
+  orderId   String
+  order     Order               @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  channel   NotificationChannel
+  status    NotificationStatus
+  error     String?
+  sentAt    DateTime            @default(now())
+
+  @@index([orderId])
+}
+
+// ----------------------------------------------------------------------------
 // WEBHOOKS (outbound) -- lets a store owner (or platform-level integration)
 // register a URL and get real-time HTTP POSTs for things happening in their
 // store, instead of polling the API. Two tables, same ledger pattern used
@@ -868,6 +904,15 @@ model Order {
   shippingAddress Json?
 
   statusEvents  OrderStatusEvent[]
+
+  // Recovery nudges sent while this order was stuck at PENDING_PAYMENT --
+  // see AbandonedCheckoutNotification above.
+  abandonedNotifications AbandonedCheckoutNotification[]
+  // Set once the *merchant* (not the buyer) has been alerted that this
+  // cart went stale, via app/api/cron/abandoned-checkout-alerts. Distinct
+  // from abandonedNotifications, which tracks the buyer-facing recovery
+  // messages the merchant sends out manually.
+  merchantAlertedAt DateTime?
 
   createdAt     DateTime      @default(now())
   updatedAt     DateTime      @updatedAt
@@ -1061,6 +1106,10 @@ model StoreVisit {
   storeId   String
   store     Store    @relation(fields: [storeId], references: [id], onDelete: Cascade)
   path      String
+  // Raw HTTP Referer header captured at visit time (see recordStoreVisit in
+  // lib/actions/analytics.ts). Null for direct visits and for rows that
+  // predate this column. Bucketed into source categories at read time.
+  referrer  String?
   createdAt DateTime @default(now())
 
   @@index([storeId, createdAt])
@@ -1197,8 +1246,33 @@ model Notification {
   type      String   // "ORDER_UPDATE" | "MESSAGE" | "VERIFICATION" | ...
   title     String
   body      String
+  url       String?  // where tapping the notification (in-app or push) should take the merchant
   readAt    DateTime?
   createdAt DateTime @default(now())
+
+  @@index([userId, readAt])
+}
+
+// ----------------------------------------------------------------------------
+// PUSH NOTIFICATIONS -- Web Push (VAPID), not FCM/APNs directly. A merchant's
+// browser (mobile Chrome on Android is the primary target -- see
+// lib/push/send.ts) registers a subscription per device via the service
+// worker in public/sw.js. One user can have several rows here (phone +
+// laptop both subscribed); a dead/expired one is pruned automatically the
+// next time a send to it 404s/410s rather than needing a cleanup job.
+// ----------------------------------------------------------------------------
+model PushSubscription {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  endpoint  String   @unique
+  p256dh    String
+  auth      String
+  userAgent String?
+  createdAt DateTime @default(now())
+
+  @@index([userId])
 }
 
 // ----------------------------------------------------------------------------
@@ -1264,6 +1338,7 @@ enum EventCategory {
   DATABASE
   PAYMENTS
   EMAIL
+  MESSAGING
   WEBHOOKS
   STORAGE
   AUTH

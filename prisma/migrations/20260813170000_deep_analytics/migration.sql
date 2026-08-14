@@ -1,0 +1,14 @@
+-- Deep analytics: traffic-source attribution.
+--
+-- referrer: raw HTTP Referer header captured at visit time (see
+-- recordStoreVisit in lib/actions/analytics.ts), bucketed into a small set
+-- of source categories at read time rather than write time -- keeps the
+-- bucketing logic changeable later without a backfill. Null for direct
+-- visits (no Referer header) and for every StoreVisit row that predates
+-- this migration.
+--
+-- Profit reporting needed no new cost column: InventoryItem.costPrice and
+-- ProductVariant.costPrice already exist and already power
+-- getInventoryProfitSummary() -- analytics-report.ts reuses those instead
+-- of adding a competing Product-level cost field.
+ALTER TABLE "StoreVisit" ADD COLUMN "referrer" TEXT;

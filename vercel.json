@@ -1,1 +1,6 @@
-{}
+{
+  "crons": [
+    { "path": "/api/cron/webhooks", "schedule": "* * * * *" },
+    { "path": "/api/cron/abandoned-checkout-alerts", "schedule": "*/15 * * * *" }
+  ]
+}

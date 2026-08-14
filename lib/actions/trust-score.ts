@@ -26,6 +26,86 @@ export type TrustScoreBreakdown = {
   factors: TrustScoreFactor[];
 };
 
+// --- Customer-facing checklist ----------------------------------------------
+// The dashboard breakdown above is seller-facing (factor points/max, for a
+// business to see what to improve). This is the buyer-facing translation:
+// short, plain-language, pass/fail claims for a storefront trust panel.
+// Every item here is backed by a real column we actually track -- there is
+// no "phone verified" item because Business has no phoneVerifiedAt field
+// yet (see note on getTrustScoreChecklist). Don't add a checklist line
+// unless there's a real DB fact behind it; a false "verified" claim is a
+// liability, not a differentiator.
+
+export type TrustScoreChecklistItem = {
+  key: string;
+  label: string;
+  met: boolean;
+};
+
+export type TrustScoreChecklist = {
+  score: number;
+  items: TrustScoreChecklistItem[];
+};
+
+export async function getTrustScoreChecklist(businessId: string): Promise<TrustScoreChecklist | null> {
+  const business = await prisma.business.findUnique({
+    where: { id: businessId },
+    include: { store: true },
+  });
+  if (!business) return null;
+
+  const storeId = business.store?.id;
+  const breakdown = await getTrustScoreBreakdown(businessId);
+  if (!breakdown) return null;
+
+  const completedFactor = breakdown.factors.find((f) => f.key === "completedTransactions");
+  const disputesFactor = breakdown.factors.find((f) => f.key === "complaints");
+  const completedOrders = completedFactor
+    ? Number(completedFactor.detail.match(/^\d[\d,]*/)?.[0].replace(/,/g, "") ?? 0)
+    : 0;
+
+  const months = (Date.now() - business.createdAt.getTime()) / (1000 * 60 * 60 * 24 * 30);
+
+  const items: TrustScoreChecklistItem[] = [
+    {
+      key: "identity",
+      label: business.registrationType === "UNREGISTERED" ? "Identity verified" : "Business verified",
+      met: business.verificationStatus === "APPROVED",
+    },
+    {
+      key: "payment",
+      // Backed by Store.payoutVerifiedAt, set when a real Paystack/Flutterwave
+      // subaccount is connected (see connectPayoutAccount in lib/actions/store.ts).
+      met: Boolean(business.store?.payoutVerifiedAt),
+      label: "Payment verified",
+    },
+    {
+      key: "orders",
+      label: completedOrders > 0 ? `${completedOrders.toLocaleString()} successful order${completedOrders === 1 ? "" : "s"}` : "No completed orders yet",
+      met: completedOrders > 0,
+    },
+    {
+      key: "rating",
+      label: business.avgRating != null && business.reviewCount > 0
+        ? `${business.avgRating.toFixed(1)}/5 customer rating`
+        : "No customer ratings yet",
+      met: business.avgRating != null && business.avgRating >= 4 && business.reviewCount > 0,
+    },
+    {
+      key: "disputes",
+      label: "Low dispute rate",
+      met: (disputesFactor?.points ?? 0) >= (disputesFactor?.max ?? 10) * 0.7,
+    },
+    {
+      key: "active",
+      label: months < 1 ? "Newly joined BizNest" : `Active for ${Math.floor(months)} month${Math.floor(months) === 1 ? "" : "s"}`,
+      met: months >= 1,
+    },
+  ];
+
+  return { score: breakdown.score, items };
+}
+
 const WEIGHTS = {
   verification: 15,
   completedTransactions: 20,

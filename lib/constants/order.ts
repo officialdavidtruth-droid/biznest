@@ -18,3 +18,12 @@ export const SELLER_VISIBLE_ORDER_STATUSES: OrderStatus[] = [
   "REFUNDED",
   "DISPUTED",
 ];
+
+// --- Abandoned checkout recovery -----------------------------------------
+// A checkout counts as "abandoned" once its Order has sat at
+// PENDING_PAYMENT for longer than this without the buyer completing (or the
+// gateway callback marking it CANCELLED). No separate "abandoned" status or
+// cron job flips a flag -- this is evaluated at read time in
+// lib/actions/abandoned-checkout.ts, the same way SELLER_VISIBLE_ORDER_STATUSES
+// filters at read time rather than mutating rows.
+export const ABANDONED_CHECKOUT_THRESHOLD_MINUTES = 30;

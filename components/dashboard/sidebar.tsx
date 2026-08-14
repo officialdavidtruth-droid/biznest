@@ -2,90 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import {
-  LayoutDashboard, ShoppingCart, Package, Wrench, Users, Boxes, Ticket,
-  CreditCard, BarChart3, Star, Megaphone, MessageSquare,
-  Settings, BadgeCheck, Wallet, LifeBuoy, Truck, Wand2, MousePointerClick,
-  LayoutTemplate, FileText, FileSignature,
-} from "lucide-react";
-import { getCategoryDashboard } from "@/lib/constants/category-dashboard";
-
-type NavItem = { label: string; href: string; icon: typeof LayoutDashboard };
-
-// Items in the "Sell" group that only make sense for one niche. Anything
-// not listed here (Orders) is shared by every business, since orders and
-// bookings both flow through the same order record.
-const PRODUCT_ONLY_HREFS = new Set(["/products", "/inventory", "/delivery", "/suppliers", "/purchase-orders"]);
-const SERVICE_ONLY_HREFS = new Set(["/services"]);
-
-function buildNavGroups(business: { sellsProducts: boolean; offersServices: boolean; category?: string | null }): Array<{
-  label: string;
-  items: NavItem[];
-}> {
-  const sellItems: NavItem[] = [
-    { label: "Orders", href: "/orders", icon: ShoppingCart },
-    { label: "Products", href: "/products", icon: Package },
-    { label: "Services", href: "/services", icon: Wrench },
-    { label: "Inventory", href: "/inventory", icon: Boxes },
-    { label: "Suppliers", href: "/suppliers", icon: Users },
-    { label: "Purchase orders", href: "/purchase-orders", icon: FileSignature },
-    { label: "Delivery zones", href: "/delivery", icon: Truck },
-    { label: "Invoices", href: "/invoices", icon: FileText },
-    { label: "Quotes", href: "/quotes", icon: FileSignature },
-  ].filter((item) => {
-    if (PRODUCT_ONLY_HREFS.has(item.href)) return business.sellsProducts;
-    if (SERVICE_ONLY_HREFS.has(item.href)) return business.offersServices;
-    return true;
-  });
-
-  // The category picked at onboarding can add one more trade-specific tool
-  // (e.g. "Bookings" for a salon, "Delivery zones" for a restaurant) — but
-  // only if it isn't already present from sellsProducts/offersServices above.
-  const categoryConfig = getCategoryDashboard(business.category);
-  if (categoryConfig.extraNavItem && !sellItems.some((i) => i.href === categoryConfig.extraNavItem!.href)) {
-    sellItems.push(categoryConfig.extraNavItem);
-  }
-
-  return [
-    {
-      label: "Overview",
-      items: [{ label: "Dashboard", href: "", icon: LayoutDashboard }],
-    },
-    {
-      label: "Sell",
-      items: sellItems,
-    },
-    {
-      label: "Grow",
-      items: [
-        { label: "Customers", href: "/customers", icon: Users },
-        { label: "Coupons", href: "/coupons", icon: Ticket },
-        { label: "Marketing", href: "/marketing", icon: Megaphone },
-        { label: "Reviews", href: "/reviews", icon: Star },
-        { label: "Analytics", href: "/analytics", icon: BarChart3 },
-      ],
-    },
-    {
-      label: "Store",
-      items: [
-        { label: "Templates", href: "/templates", icon: LayoutTemplate },
-        { label: "Customize Website", href: "/customize", icon: Wand2 },
-        { label: "Website Editor (beta)", href: "/website-editor", icon: MousePointerClick },
-        { label: "Messages", href: "/messages", icon: MessageSquare },
-        { label: "Payments", href: "/payments", icon: CreditCard },
-        { label: "Settings", href: "/settings", icon: Settings },
-      ],
-    },
-    {
-      label: "Account",
-      items: [
-        { label: "Verification", href: "/verification", icon: BadgeCheck },
-        { label: "Subscription", href: "/subscription", icon: Wallet },
-        { label: "Support", href: "/support", icon: LifeBuoy },
-      ],
-    },
-  ];
-}
+import { buildNavGroups } from "@/lib/constants/dashboard-nav";
 
 export function DashboardSidebar({
   slug,
@@ -108,7 +25,11 @@ export function DashboardSidebar({
   const NAV_GROUPS = buildNavGroups({ sellsProducts, offersServices, category });
 
   return (
-    <aside className="flex h-full w-64 shrink-0 flex-col border-r border-border bg-background">
+    // Desktop/tablet only — below lg, MobileDashboardChrome (top bar +
+    // drawer + bottom tab bar) is the primary nav. This isn't the same
+    // component squeezed into a hamburger; mobile gets its own layout
+    // tuned for one-thumb use, not a shrunk desktop sidebar.
+    <aside className="hidden h-full w-64 shrink-0 flex-col border-r border-border bg-background lg:flex">
       <div className="border-b border-border px-4 py-4">
         <div className="flex items-center gap-2.5">
           <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-primary text-sm font-bold text-primary-foreground">

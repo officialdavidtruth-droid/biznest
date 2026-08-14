@@ -25,11 +25,16 @@ export default async function MarketingPage({ params }: { params: Promise<{ slug
           <p className="mt-1 text-sm text-muted-foreground">{socialCount} connected — shown on your storefront footer.</p>
           <p className="mt-3 text-xs font-medium text-primary">Edit in settings →</p>
         </Link>
+        <Link href={`/store/${slug}/admin/abandoned-checkouts`} className="rounded-lg border bg-background p-5 transition-colors hover:border-primary">
+          <p className="font-medium">Abandoned checkouts</p>
+          <p className="mt-1 text-sm text-muted-foreground">Nudge buyers who started checkout but didn&apos;t pay — by email, WhatsApp, or SMS.</p>
+          <p className="mt-3 text-xs font-medium text-primary">Review &amp; recover →</p>
+        </Link>
       </div>
 
       <div className="mt-6 rounded-lg border border-dashed p-6 text-sm text-muted-foreground">
-        Email campaigns and abandoned-cart recovery are on the roadmap — coupons and
-        social sharing are live today.
+        Email campaigns are on the roadmap — coupons, social sharing, and abandoned-checkout
+        recovery are live today.
       </div>
     </div>
   );

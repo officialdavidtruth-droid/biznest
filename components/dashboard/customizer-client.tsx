@@ -5,10 +5,12 @@ import Link from "next/link";
 import { toast } from "sonner";
 import {
   X, Monitor, Tablet, Smartphone, LayoutTemplate, Rows3, ChevronRight,
-  ArrowUp, ArrowDown, RotateCw, MousePointerClick,
+  ArrowUp, ArrowDown, RotateCw, PenSquare, FileText,
 } from "lucide-react";
 import { updateSectionOverrides } from "@/lib/actions/sections";
-import type { Section } from "@/lib/template-themes";
+import type { Section, TemplateTheme } from "@/lib/template-themes";
+import type { HeroOverrides, StoryOverrides } from "@/lib/actions/store";
+import { ContentPanel } from "@/components/dashboard/content-panel";
 
 type Device = "desktop" | "tablet" | "mobile";
 const DEVICE_WIDTH: Record<Device, string> = { desktop: "100%", tablet: "768px", mobile: "390px" };
@@ -31,7 +33,7 @@ const SECTION_LABELS: Record<Section, string> = {
   packages: "Packages / pricing",
 };
 
-type Panel = "sections" | null;
+type Panel = "sections" | "content" | "pages" | null;
 
 /**
  * A WordPress-Customizer-style editor for a store's already-chosen template:
@@ -48,12 +50,24 @@ export function CustomizerClient({
   currentTemplateName,
   initialOrder,
   initialHidden,
+  theme,
+  heroImage,
+  heroOverrides,
+  storyImage,
+  storyOverrides,
+  storyDescription,
 }: {
   slug: string;
   storeName: string;
   currentTemplateName: string | null;
   initialOrder: Section[];
   initialHidden: Section[];
+  theme: TemplateTheme;
+  heroImage: string | null;
+  heroOverrides: HeroOverrides;
+  storyImage: string | null;
+  storyOverrides: StoryOverrides;
+  storyDescription: string | null;
 }) {
   const [panel, setPanel] = useState<Panel>(null);
   const [device, setDevice] = useState<Device>("desktop");
@@ -134,6 +148,15 @@ export function CustomizerClient({
               </Link>
             </div>
             <button
+              onClick={() => setPanel("content")}
+              className="flex w-full items-center justify-between rounded-md px-3 py-3 text-left text-sm font-medium hover:bg-muted"
+            >
+              <span className="flex items-center gap-2">
+                <PenSquare className="h-4 w-4" /> Content (text & images)
+              </span>
+              <ChevronRight className="h-4 w-4 text-muted-foreground" />
+            </button>
+            <button
               onClick={() => setPanel("sections")}
               className="flex w-full items-center justify-between rounded-md px-3 py-3 text-left text-sm font-medium hover:bg-muted"
             >
@@ -142,15 +165,15 @@ export function CustomizerClient({
               </span>
               <ChevronRight className="h-4 w-4 text-muted-foreground" />
             </button>
-            <Link
-              href={`/store/${slug}/admin/website-editor`}
-              className="mt-1 flex w-full items-center justify-between rounded-md px-3 py-3 text-left text-sm font-medium hover:bg-muted"
+            <button
+              onClick={() => setPanel("pages")}
+              className="flex w-full items-center justify-between rounded-md px-3 py-3 text-left text-sm font-medium hover:bg-muted"
             >
               <span className="flex items-center gap-2">
-                <MousePointerClick className="h-4 w-4" /> Edit text & images
+                <FileText className="h-4 w-4" /> Pages
               </span>
               <ChevronRight className="h-4 w-4 text-muted-foreground" />
-            </Link>
+            </button>
           </div>
         ) : (
           <div className="flex flex-1 flex-col overflow-hidden">
@@ -195,6 +218,32 @@ export function CustomizerClient({
                 >
                   {isSaving ? "Publishing…" : "Publish layout"}
                 </button>
+              </div>
+            )}
+
+            {panel === "content" && (
+              <ContentPanel
+                slug={slug}
+                storeName={storeName}
+                theme={theme}
+                heroImage={heroImage}
+                heroOverrides={heroOverrides}
+                storyImage={storyImage}
+                storyOverrides={storyOverrides}
+                storyDescription={storyDescription}
+                onSaved={refreshPreview}
+              />
+            )}
+
+            {panel === "pages" && (
+              <div className="flex-1 overflow-y-auto p-4">
+                <p className="mb-3 text-xs text-muted-foreground">
+                  Extra pages (About, Gallery, FAQ, Blog, Contact, Policies) beyond the homepage.
+                </p>
+                <div className="rounded-md border border-dashed border-border p-4 text-center text-xs text-muted-foreground">
+                  Page management is coming to this panel next — for now, homepage content lives under
+                  "Content" and "Sections & Layout".
+                </div>
               </div>
             )}
           </div>

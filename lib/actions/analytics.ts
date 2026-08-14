@@ -1,5 +1,6 @@
 "use server";
 
+import { headers } from "next/headers";
 import { prisma } from "@/lib/prisma";
 import { SELLER_VISIBLE_ORDER_STATUSES } from "@/lib/constants/order";
 
@@ -12,10 +13,16 @@ import { SELLER_VISIBLE_ORDER_STATUSES } from "@/lib/constants/order";
  * category, product — see those page.tsx files), never from /admin. A
  * seller looking at their own dashboard, or the template gallery rendering
  * a cover preview, must never inflate their own visitor count.
+ *
+ * Captures the raw HTTP Referer header (not document.referrer -- this runs
+ * server-side) so traffic-source reporting has something real to bucket
+ * instead of guessing. Absent for direct visits, which is expected.
  */
 export async function recordStoreVisit(storeId: string, path: string): Promise<void> {
   try {
-    await prisma.storeVisit.create({ data: { storeId, path } });
+    const h = await headers();
+    const referrer = h.get("referer") || null;
+    await prisma.storeVisit.create({ data: { storeId, path, referrer } });
   } catch {
     // Never let analytics logging take down a storefront page.
   }

@@ -3,6 +3,7 @@ import { verifyPaystackTransaction, verifyPaystackWebhookSignature } from "@/lib
 import { settleInvoicePayment } from "@/lib/actions/invoice";
 import { settleQuoteDeposit } from "@/lib/actions/quote";
 import { emitWebhookEvent } from "@/lib/webhooks/dispatch";
+import { notifyStoreOwnerOfPaidOrder } from "@/lib/notifications/notify";
 import { NextResponse } from "next/server";
 
 /**
@@ -125,6 +126,7 @@ export async function POST(req: Request) {
         currency: order.currency,
       });
       await emitWebhookEvent("ORDER_PAID", order.storeId, { orderId: order.id, status: "PAID" });
+      void notifyStoreOwnerOfPaidOrder(order.storeId, order.id, Number(order.total), order.currency);
     }
   }
 

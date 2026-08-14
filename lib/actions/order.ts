@@ -150,7 +150,7 @@ type StoreAccessResult =
   | { success: true; store: Store & { business: Business } }
   | { success: false; error: string };
 
-async function assertStoreAccess(slug: string): Promise<StoreAccessResult> {
+export async function assertStoreAccess(slug: string): Promise<StoreAccessResult> {
   const session = await auth();
   if (!session?.user?.id) return { success: false, error: "You must be signed in." };
 

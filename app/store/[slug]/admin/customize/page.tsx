@@ -1,7 +1,8 @@
 import { prisma } from "@/lib/prisma";
 import { notFound, redirect } from "next/navigation";
 import { CustomizerClient } from "@/components/dashboard/customizer-client";
-import type { Section } from "@/lib/template-themes";
+import { resolveStoreTheme, type Section } from "@/lib/template-themes";
+import type { HeroOverrides, StoryOverrides } from "@/lib/actions/store";
 
 const TEMPLATE_DEFAULT_SECTIONS: Section[] = ["hero", "catalog", "about", "testimonials", "contact"];
 const OPT_IN_SECTIONS: Section[] = ["stats", "newsletter"];
@@ -14,7 +15,7 @@ const OPT_IN_SECTIONS: Section[] = ["stats", "newsletter"];
 // to arrange until a template exists.
 export default async function CustomizePage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
-  const store = await prisma.store.findUnique({ where: { slug }, include: { subscription: true, template: true } });
+  const store = await prisma.store.findUnique({ where: { slug }, include: { subscription: true, template: true, business: true } });
   if (!store) notFound();
   if (!store.templateId) redirect(`/store/${slug}/admin/templates`);
 
@@ -25,6 +26,14 @@ export default async function CustomizePage({ params }: { params: Promise<{ slug
   const initialOrder = [...baseOrder, ...missingOptIns];
   const initialHidden = overrides?.hidden ?? missingOptIns;
 
+  // Content (hero + story) needs the same data the old standalone
+  // /website-editor page used, now folded into this screen as a "Content"
+  // panel instead of a separate route + page navigation.
+  const themeOverrides = store.themeColors as { primary?: string; secondary?: string; accent?: string } | null;
+  const theme = resolveStoreTheme(store.template?.category, store.name, themeOverrides, store.fontFamily, store.template?.name);
+  const heroImage = store.bannerUrl || store.template?.previewUrl || null;
+  const storyImage = store.storyImage || store.bannerUrl || store.template?.previewUrl || null;
+
   return (
     <CustomizerClient
       slug={slug}
@@ -32,6 +41,12 @@ export default async function CustomizePage({ params }: { params: Promise<{ slug
       currentTemplateName={store.template?.name ?? null}
       initialOrder={initialOrder}
       initialHidden={initialHidden}
+      theme={theme}
+      heroImage={heroImage}
+      heroOverrides={(store.heroOverrides as HeroOverrides | null) ?? {}}
+      storyImage={storyImage}
+      storyOverrides={(store.storyOverrides as StoryOverrides | null) ?? {}}
+      storyDescription={store.business.description ?? null}
     />
   );
 }

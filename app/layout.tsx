@@ -12,6 +12,8 @@ import { ADMIN_COOKIE_NAME, verifyAdminToken } from "@/lib/admin-pin-auth";
 export const metadata: Metadata = {
   title: "BizNest — Build, Sell, Grow",
   description: "The all-in-one marketplace and website builder for products, services, and bookings.",
+  manifest: "/manifest.json",
+  icons: { icon: "/icon-192.png", apple: "/icon-192.png" },
 };
 
 export const viewport: Viewport = {
