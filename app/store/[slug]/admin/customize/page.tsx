@@ -19,6 +19,8 @@ export default async function CustomizePage({ params }: { params: Promise<{ slug
   if (!store) notFound();
   if (!store.templateId) redirect(`/store/${slug}/admin/templates`);
 
+  const pages = await prisma.storePage.findMany({ where: { storeId: store.id }, orderBy: { updatedAt: "desc" } });
+
   const overrides = store.sectionOverrides as { order?: Section[]; hidden?: Section[] } | null;
   const templateSections = (store.template?.config as { sections?: Section[] } | null)?.sections ?? TEMPLATE_DEFAULT_SECTIONS;
   const baseOrder = overrides?.order?.length ? overrides.order : templateSections;
@@ -47,6 +49,13 @@ export default async function CustomizePage({ params }: { params: Promise<{ slug
       storyImage={storyImage}
       storyOverrides={(store.storyOverrides as StoryOverrides | null) ?? {}}
       storyDescription={store.business.description ?? null}
+      pages={pages.map((p) => ({
+        id: p.id,
+        slug: p.slug,
+        title: p.title,
+        body: (p.content as { body?: string } | null)?.body ?? "",
+        isPublished: p.isPublished,
+      }))}
     />
   );
 }
