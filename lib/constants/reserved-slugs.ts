@@ -34,6 +34,7 @@ export const RESERVED_SLUGS = new Set([
   "terms",
   "privacy",
   "onboarding",
+  "staff",
   // app/(auth)
   "login",
   "register",
