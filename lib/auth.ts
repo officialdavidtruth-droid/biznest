@@ -1,5 +1,5 @@
 import type { UserRole } from "@prisma/client";
-import NextAuth from "next-auth";
+import NextAuth, { CredentialsSignin } from "next-auth";
 import Credentials from "next-auth/providers/credentials";
 import Google from "next-auth/providers/google";
 import { PrismaAdapter } from "@auth/prisma-adapter";
@@ -11,6 +11,29 @@ import { logError, logWarn } from "@/lib/observability/log";
 import { verifyTurnstileToken } from "@/lib/turnstile";
 import { getClientIp } from "@/lib/rate-limit";
 import { headers } from "next/headers";
+
+// Auth.js v5 quirk that cost real debugging time: a plain `throw new
+// Error("ACCOUNT_LOCKED")` inside authorize() does NOT reach the client as
+// that message. It collapses into the generic "CredentialsSignin" error
+// type, indistinguishable from a genuinely wrong password — the messages
+// map in login-form.tsx would never match it and every failure mode
+// (locked, banned, DB down, bot-check-failed, actually-wrong-password) all
+// showed the same "Invalid email or password" text. The documented fix is
+// to throw a subclass of CredentialsSignin with a `code`, which Auth.js
+// preserves through to result.error on the client instead of collapsing it.
+// See https://authjs.dev/getting-started/providers/credentials#error-handling
+class BotCheckFailedError extends CredentialsSignin {
+  code = "BOT_CHECK_FAILED";
+}
+class DbUnavailableError extends CredentialsSignin {
+  code = "DB_UNAVAILABLE";
+}
+class AccountLockedError extends CredentialsSignin {
+  code = "ACCOUNT_LOCKED";
+}
+class AccountBannedError extends CredentialsSignin {
+  code = "ACCOUNT_BANNED";
+}
 
 // If the database call inside authorize() hangs (e.g. DATABASE_URL pointing
 // at an unreachable or misconfigured connection), the whole sign-in request
@@ -61,7 +84,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           void logWarn("AUTH", "Turnstile verification failed on login", {
             errorCodes: turnstile.errorCodes,
           });
-          throw new Error("BOT_CHECK_FAILED");
+          throw new BotCheckFailedError();
         }
 
         const parsed = loginSchema.safeParse(credentials);
@@ -91,7 +114,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
             // Supabase's *pooled* connection string (port 6543,
             // ?pgbouncer=true), not the direct one (port 5432).
             void logError("DATABASE", "Login lookup timed out", { email: parsed.data.email });
-            throw new Error("DB_UNAVAILABLE");
+            throw new DbUnavailableError();
           }
           throw err;
         }
@@ -99,7 +122,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
 
         if (user.lockedUntil && user.lockedUntil > new Date()) {
           void logWarn("AUTH", "Login attempt on locked account", { userId: user.id });
-          throw new Error("ACCOUNT_LOCKED");
+          throw new AccountLockedError();
         }
 
         const valid = await bcrypt.compare(parsed.data.password, user.passwordHash);
@@ -126,7 +149,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
 
         if (user.isBanned) {
           void logWarn("AUTH", "Login attempt on banned account", { userId: user.id });
-          throw new Error("ACCOUNT_BANNED");
+          throw new AccountBannedError();
         }
 
         // TEMPORARILY DISABLED: email verification is required in principle,

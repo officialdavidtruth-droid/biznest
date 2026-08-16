@@ -28,7 +28,17 @@ export function LoginForm() {
     try {
       const result = await signIn("credentials", { ...values, turnstileToken, redirect: false });
 
-      if (result?.error) {
+      // NextAuth v5 (beta) has changed which field carries a custom
+      // CredentialsSignin `code` across versions — some betas put it on
+      // `result.code`, others only ever exposed `result.error` (either as
+      // the literal thrown value, or collapsed to the generic
+      // "CredentialsSignin" type). Checking both means this keeps working
+      // regardless of which behavior the installed beta actually has,
+      // instead of silently falling back to the generic message for every
+      // failure mode (locked/banned/DB-down/bot-check) the way it did
+      // before these error subclasses existed in lib/auth.ts.
+      const errorCode = (result as { code?: string })?.code ?? result?.error;
+      if (errorCode) {
         const messages: Record<string, string> = {
           EMAIL_NOT_VERIFIED: "Please verify your email before signing in.",
           ACCOUNT_LOCKED: "Too many failed attempts. Try again in 15 minutes.",
@@ -36,7 +46,7 @@ export function LoginForm() {
           DB_UNAVAILABLE: "Couldn't reach the database. Check DATABASE_URL in Vercel's project settings.",
           BOT_CHECK_FAILED: "Verification failed. Please retry the challenge below and try again.",
         };
-        toast.error(messages[result.error] ?? "Invalid email or password.");
+        toast.error(messages[errorCode] ?? "Invalid email or password.");
         return;
       }
       // A plain browser navigation, not router.push(): callbackUrl can point
