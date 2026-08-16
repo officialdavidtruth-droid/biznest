@@ -41,7 +41,15 @@ export async function registerUser(
     };
   }
 
-  const existing = await prisma.user.findUnique({ where: { email: parsed.data.email } });
+  // Lowercased at the point of storage so every future lookup (login,
+  // password reset, staff invites, etc.) can rely on email always being
+  // stored consistently, and case-insensitive here too so
+  // "Name@Gmail.com" can't register a second account alongside an existing
+  // "name@gmail.com" one. See lib/auth.ts's authorize() for why login
+  // itself also has to tolerate case for accounts created before this.
+  const normalizedEmail = parsed.data.email.trim().toLowerCase();
+
+  const existing = await prisma.user.findFirst({ where: { email: { equals: normalizedEmail, mode: "insensitive" } } });
   if (existing) {
     return { success: false, error: "An account with this email already exists." };
   }
@@ -51,7 +59,7 @@ export async function registerUser(
   const user = await prisma.user.create({
     data: {
       name: parsed.data.name,
-      email: parsed.data.email,
+      email: normalizedEmail,
       passwordHash,
       role: "CUSTOMER", // upgraded to STORE_OWNER once business verification is approved
     },
@@ -107,7 +115,7 @@ export async function requestPasswordReset(input: ForgotPasswordInput): Promise<
     return { success: false, error: "Enter a valid email address." };
   }
 
-  const user = await prisma.user.findUnique({ where: { email: parsed.data.email } });
+  const user = await prisma.user.findFirst({ where: { email: { equals: parsed.data.email, mode: "insensitive" } } });
 
   // Also rate-limit per-email so a leaked/guessed address can't be spammed
   // with reset emails even from rotating IPs.

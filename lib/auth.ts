@@ -67,10 +67,20 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         const parsed = loginSchema.safeParse(credentials);
         if (!parsed.success) return null;
 
+        // Case-insensitive on purpose: registerUser didn't normalize casing
+        // (email is stored exactly as typed at signup), so an existing
+        // account like "Name@Gmail.com" would never match a login attempt
+        // of "name@gmail.com" with a plain findUnique — the password check
+        // never even runs, and the person just sees "Invalid email or
+        // password" no matter how correct their password is. New signups
+        // are normalized going forward (see registerUser in
+        // lib/actions/auth.ts), but this covers accounts created before
+        // that and needs to stay even after every account is normalized,
+        // since email is meant to be case-insensitive by convention anyway.
         let user;
         try {
           user = await withTimeout(
-            prisma.user.findUnique({ where: { email: parsed.data.email } })
+            prisma.user.findFirst({ where: { email: { equals: parsed.data.email, mode: "insensitive" } } })
           );
         } catch (err) {
           if (err instanceof Error && err.message === "DB_TIMEOUT") {
