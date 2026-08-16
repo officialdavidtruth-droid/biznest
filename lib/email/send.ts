@@ -29,6 +29,27 @@ async function send(params: Parameters<typeof resend.emails.send>[0], context: {
   }
 }
 
+export async function sendStaffInviteEmail(
+  email: string,
+  token: string,
+  storeName: string,
+  inviterName: string,
+  role: "MANAGER" | "STAFF"
+) {
+  const url = `${APP_URL}/staff/accept?token=${token}`;
+  return send(
+    {
+      from: FROM,
+      to: email,
+      subject: `${inviterName} invited you to manage ${storeName} on BizNest`,
+      html: `<p>${inviterName} added you as a <strong>${role === "MANAGER" ? "Manager" : "Staff member"}</strong> on <strong>${storeName}</strong>'s BizNest dashboard.</p>
+           <p><a href="${url}">${url}</a></p>
+           <p>If you don't already have a BizNest account with this email, you'll be asked to create one first.</p>`,
+    },
+    { kind: "staff-invite", to: email }
+  );
+}
+
 export async function sendVerificationEmail(email: string, token: string) {
   const url = `${APP_URL}/verify-email?token=${token}`;
   return send(

@@ -7,10 +7,12 @@ import { registerUser } from "@/lib/actions/auth";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
+import { TurnstileWidget } from "@/components/forms/turnstile-widget";
 
 export function RegisterForm() {
   const router = useRouter();
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [turnstileToken, setTurnstileToken] = useState("");
   const {
     register,
     handleSubmit,
@@ -19,7 +21,7 @@ export function RegisterForm() {
 
   async function onSubmit(values: RegisterInput) {
     setIsSubmitting(true);
-    const result = await registerUser(values);
+    const result = await registerUser(values, turnstileToken);
     setIsSubmitting(false);
 
     if (!result.success) {
@@ -81,6 +83,8 @@ export function RegisterForm() {
           <p className="mt-1 text-xs text-destructive">{errors.confirmPassword.message}</p>
         )}
       </div>
+
+      <TurnstileWidget onVerify={setTurnstileToken} />
 
       <button
         type="submit"

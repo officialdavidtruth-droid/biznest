@@ -6,7 +6,7 @@ import {
 } from "lucide-react";
 import { getCategoryDashboard } from "@/lib/constants/category-dashboard";
 
-export type NavItem = { label: string; href: string; icon: typeof LayoutDashboard };
+export type NavItem = { label: string; href: string; icon: typeof LayoutDashboard; ownerOnly?: boolean };
 
 // Items in the "Sell" group that only make sense for one niche. Anything
 // not listed here (Orders) is shared by every business, since orders and
@@ -69,6 +69,7 @@ export function buildNavGroups(business: { sellsProducts: boolean; offersService
       label: "Store",
       items: [
         { label: "Templates", href: "/templates", icon: LayoutTemplate },
+        { label: "AI Store Builder", href: "/ai-store-builder", icon: Wand2 },
         { label: "Customize Website", href: "/customize", icon: Wand2 },
         { label: "Website Editor (beta)", href: "/website-editor", icon: MousePointerClick },
         { label: "Messages", href: "/messages", icon: MessageSquare },
@@ -80,11 +81,30 @@ export function buildNavGroups(business: { sellsProducts: boolean; offersService
       label: "Account",
       items: [
         { label: "Verification", href: "/verification", icon: BadgeCheck },
-        { label: "Subscription", href: "/subscription", icon: Wallet },
+        { label: "Subscription", href: "/subscription", icon: Wallet, ownerOnly: true },
+        { label: "Staff", href: "/staff", icon: Users, ownerOnly: true },
         { label: "Support", href: "/support", icon: LifeBuoy },
       ],
     },
   ];
+}
+
+/**
+ * Filters ownerOnly items (billing, staff management) out of a nav group
+ * list for anyone who isn't OWNER/PLATFORM_STAFF — used by both the
+ * desktop sidebar and mobile chrome so a MANAGER/STAFF account never even
+ * sees a link to a page it can't use. This is a UI convenience only; the
+ * actual enforcement lives in each page/action (see lib/access/store-access.ts)
+ * since a hidden nav link is not an access control mechanism.
+ */
+export function filterNavGroupsForRole<T extends { items: NavItem[] }>(
+  groups: T[],
+  canManageOwnerOnly: boolean
+): T[] {
+  if (canManageOwnerOnly) return groups;
+  return groups
+    .map((g) => ({ ...g, items: g.items.filter((i) => !i.ownerOnly) }))
+    .filter((g) => g.items.length > 0) as T[];
 }
 
 // The 4 highest-frequency destinations, for the mobile bottom tab bar — a

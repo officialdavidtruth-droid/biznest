@@ -2,7 +2,8 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { buildNavGroups } from "@/lib/constants/dashboard-nav";
+import { buildNavGroups, filterNavGroupsForRole } from "@/lib/constants/dashboard-nav";
+import type { StoreAccessRole } from "@/lib/access/store-access";
 
 export function DashboardSidebar({
   slug,
@@ -10,6 +11,7 @@ export function DashboardSidebar({
   sellsProducts,
   offersServices,
   category,
+  staffRole,
 }: {
   slug: string;
   storeName: string;
@@ -19,10 +21,16 @@ export function DashboardSidebar({
   offersServices: boolean;
   // The category chosen at onboarding — adds one trade-specific nav item.
   category?: string | null;
+  // Undefined/OWNER/PLATFORM_STAFF shows everything; MANAGER/STAFF hides
+  // billing + staff-management links (see filterNavGroupsForRole).
+  staffRole?: StoreAccessRole;
 }) {
   const pathname = usePathname();
   const base = `/store/${slug}/admin`;
-  const NAV_GROUPS = buildNavGroups({ sellsProducts, offersServices, category });
+  const NAV_GROUPS = filterNavGroupsForRole(
+    buildNavGroups({ sellsProducts, offersServices, category }),
+    staffRole === undefined || staffRole === "OWNER" || staffRole === "PLATFORM_STAFF"
+  );
 
   return (
     // Desktop/tablet only — below lg, MobileDashboardChrome (top bar +

@@ -5,6 +5,7 @@ import { DashboardSidebar } from "@/components/dashboard/sidebar";
 import { MobileDashboardChrome } from "@/components/dashboard/mobile-dashboard-chrome";
 import { NotificationBell } from "@/components/dashboard/notification-bell";
 import { listMyNotifications } from "@/lib/actions/notifications";
+import { getStoreAccessRole } from "@/lib/access/store-access";
 
 export default async function StoreAdminLayout({
   children,
@@ -25,11 +26,15 @@ export default async function StoreAdminLayout({
 
   if (!store) notFound();
 
-  const isOwner = store.business.userId === session.user.id;
-  const isPlatformStaff = ["PLATFORM_ADMIN", "SUPPORT_MODERATOR"].includes(session.user.role);
+  const role = await getStoreAccessRole(session.user.id, session.user.role, store);
+  if (role === null) redirect("/");
 
-  if (!isOwner && !isPlatformStaff) {
-    redirect("/");
+  // No free tier — a store isn't usable until it's on a paid plan. Staff
+  // (owner-invited or platform) can still get in while unpaid so platform
+  // support can investigate, but an unpaid store blocks its own owner and
+  // invited staff the same way — see /onboarding/select-plan.
+  if (!store.subscriptionId && role !== "PLATFORM_STAFF") {
+    redirect(`/onboarding/select-plan?slug=${slug}`);
   }
 
   return (
@@ -40,6 +45,7 @@ export default async function StoreAdminLayout({
         sellsProducts={store.business.sellsProducts}
         offersServices={store.business.offersServices}
         category={store.business.category}
+        staffRole={role}
       />
 
       {/* Mobile top bar + fixed bottom tab bar + drawer — see component for

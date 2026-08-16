@@ -331,7 +331,10 @@ export default async function StorefrontPage({ params }: { params: Promise<{ slu
             }}
           >
             <div style={{ position: "relative", zIndex: 2, padding: "60px 56px", maxWidth: 640 }}>
-              <div style={{ ...eyebrow, color: FRESH.citrus }}>{theme.eyebrow}</div>
+              <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+                <div style={{ ...eyebrow, color: FRESH.citrus }}>{theme.eyebrow}</div>
+                {store.business.verificationBadge && <VerifiedBadge />}
+              </div>
               <h1 style={{ ...h1, color: "#fff", fontSize: "clamp(34px,5vw,56px)" }}>{heroOverrides?.headline || store.name}</h1>
               <p style={{ marginTop: 18, color: "rgba(255,255,255,.82)", maxWidth: 440, fontSize: 15.5, lineHeight: 1.6 }}>
                 {heroOverrides?.subtitle || store.business.description || theme.sub}
@@ -578,6 +581,36 @@ function Stat({ value, label }: { value: string; label: string }) {
       <b style={{ fontFamily: FRESH.headlineFont, fontSize: 25, display: "block", color: FRESH.forest, fontWeight: 800 }}>{value}</b>
       <span style={{ fontSize: 12.5, color: FRESH.inkSoft }}>{label}</span>
     </div>
+  );
+}
+
+// Shown only when Business.verificationBadge is true — set by a platform
+// admin after reviewing the business's verification documents (see
+// app/supaadmin/businesses). Never inferred client-side; always the raw DB
+// flag, so this can't drift from what an admin actually approved.
+function VerifiedBadge() {
+  return (
+    <span
+      style={{
+        display: "inline-flex",
+        alignItems: "center",
+        gap: 4,
+        padding: "3px 9px",
+        borderRadius: 999,
+        background: "rgba(255,255,255,.16)",
+        border: "1px solid rgba(255,255,255,.3)",
+        fontSize: 11.5,
+        fontWeight: 700,
+        color: "#fff",
+        letterSpacing: 0.2,
+      }}
+    >
+      <svg width="12" height="12" viewBox="0 0 20 20" fill="currentColor">
+        <path d="M10 1.5l2.13 1.7 2.72-.28.7 2.65 2.5 1.15-1.02 2.58 1.02 2.58-2.5 1.15-.7 2.65-2.72-.28L10 18.5l-2.13-1.7-2.72.28-.7-2.65-2.5-1.15L2.97 10 1.95 7.42l2.5-1.15.7-2.65 2.72.28L10 1.5z" opacity="0.35" />
+        <path fillRule="evenodd" clipRule="evenodd" d="M13.4 7.4a.75.75 0 010 1.06l-3.75 3.75a.75.75 0 01-1.06 0L6.6 10.2a.75.75 0 111.06-1.06l1.44 1.44 3.22-3.22a.75.75 0 011.08.04z" />
+      </svg>
+      Verified business
+    </span>
   );
 }
 

@@ -77,7 +77,7 @@ export function StoreSetupWizard({
       return;
     }
     toast.success("Store created! Welcome to BizNest.");
-    router.push(result.data.adminUrl.replace(/^https?:\/\/[^/]+/, ""));
+    router.push(`/onboarding/select-plan?slug=${encodeURIComponent(result.data.slug)}`);
   }
 
   return (

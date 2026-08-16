@@ -7,11 +7,23 @@ import { prisma } from "@/lib/prisma";
 import { registerSchema, type RegisterInput } from "@/lib/validations/auth";
 import { sendVerificationEmail } from "@/lib/email/send";
 import { checkRateLimit, getClientIp } from "@/lib/rate-limit";
+import { verifyTurnstileToken } from "@/lib/turnstile";
 import { emitPlatformWebhookEvent } from "@/lib/webhooks/dispatch";
 import type { ActionResult } from "@/types/actions";
 
-export async function registerUser(input: RegisterInput): Promise<ActionResult<{ userId: string }>> {
+export async function registerUser(
+  input: RegisterInput,
+  turnstileToken?: string
+): Promise<ActionResult<{ userId: string }>> {
   const ip = getClientIp(await headers());
+
+  // Bot protection first — cheapest check, keeps automated signups from
+  // ever touching the rate limiter or DB.
+  const turnstile = await verifyTurnstileToken(turnstileToken, ip);
+  if (!turnstile.success) {
+    return { success: false, error: "Verification failed. Please retry the challenge and try again." };
+  }
+
   const rateLimit = await checkRateLimit(`register:${ip}`, 5, 60 * 60 * 1000); // 5/hour/IP
   if (!rateLimit.allowed) {
     return {

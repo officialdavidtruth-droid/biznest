@@ -29,7 +29,23 @@ export async function GET(req: Request) {
   const verification = await verifyPaystackTransaction(reference);
 
   if (verification.status && verification.data?.status === "success") {
-    await prisma.store.update({ where: { id: store.id }, data: { subscriptionId } });
+    // Save the reusable authorization so the renewal cron can charge next
+    // month with no card re-entry, and set the next renewal date to exactly
+    // one calendar month out from this successful payment.
+    const nextRenewal = new Date();
+    nextRenewal.setMonth(nextRenewal.getMonth() + 1);
+
+    await prisma.store.update({
+      where: { id: store.id },
+      data: {
+        subscriptionId,
+        paystackAuthorizationCode: verification.data.authorization?.reusable
+          ? verification.data.authorization.authorization_code
+          : store.paystackAuthorizationCode,
+        subscriptionRenewsAt: nextRenewal,
+        subscriptionPastDueSince: null,
+      },
+    });
     await prisma.payment.updateMany({
       where: { reference, status: "PENDING" },
       data: { status: "SUCCESSFUL", rawPayload: verification as object, verifiedAt: new Date() },

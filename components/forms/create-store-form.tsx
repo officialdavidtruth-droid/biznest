@@ -35,7 +35,7 @@ export function CreateStoreForm({
     }
 
     toast.success("Store created!");
-    router.push(result.data.adminUrl.replace(/^https?:\/\/[^/]+/, ""));
+    router.push(`/onboarding/select-plan?slug=${encodeURIComponent(result.data.slug)}`);
   }
 
   return (

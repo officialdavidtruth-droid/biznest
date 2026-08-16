@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import { NextResponse } from "next/server";
+import { checkRateLimit, getClientIp } from "@/lib/rate-limit";
 
 // Bootstraps a PLATFORM_ADMIN-role user. Note: this role no longer grants
 // access to /supaadmin — that panel is gated by the separate ADMIN_PIN
@@ -10,6 +11,16 @@ export async function GET(req: Request) {
   const { searchParams } = new URL(req.url);
   const email = searchParams.get("email");
   const secret = searchParams.get("secret");
+
+  // This endpoint grants PLATFORM_ADMIN and is guarded by a single static
+  // secret in a URL query string — without rate limiting it's brute-forceable.
+  // 5 attempts / hour / IP is generous for legitimate bootstrap use, tight
+  // enough to make guessing the secret impractical.
+  const ip = getClientIp(req.headers);
+  const rate = await checkRateLimit(`promote-admin:${ip}`, 5, 60 * 60 * 1000);
+  if (!rate.allowed) {
+    return NextResponse.json({ success: false, message: "Too many attempts." }, { status: 429 });
+  }
 
   if (!process.env.ADMIN_BOOTSTRAP_SECRET || secret !== process.env.ADMIN_BOOTSTRAP_SECRET) {
     return NextResponse.json({ success: false, message: "Invalid or missing secret." }, { status: 403 });

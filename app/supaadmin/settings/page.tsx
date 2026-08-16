@@ -48,7 +48,8 @@ export default async function SupaAdminSettingsPage() {
           These prices feed the landing page pricing section and every store owner&apos;s upgrade screen directly — there&apos;s nowhere else to edit them.
         </p>
         <div className="overflow-hidden rounded-lg border bg-background">
-          <table className="w-full text-sm">
+          <div className="overflow-x-auto">
+          <table className="w-full min-w-[560px] text-sm">
             <thead className="border-b bg-muted/40 text-left text-xs uppercase text-muted-foreground">
               <tr>
                 <th className="px-4 py-2">Plan</th>
@@ -71,6 +72,7 @@ export default async function SupaAdminSettingsPage() {
               )}
             </tbody>
           </table>
+          </div>
         </div>
       </section>
     </div>

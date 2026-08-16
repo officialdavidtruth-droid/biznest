@@ -1,4 +1,7 @@
 import { prisma } from "@/lib/prisma";
+import { auth } from "@/lib/auth";
+import { redirect } from "next/navigation";
+import { getStoreAccessRole, canManageBillingAndStaff } from "@/lib/access/store-access";
 import { UpgradeButton } from "@/components/forms/upgrade-button";
 
 export default async function SubscriptionPage({
@@ -10,8 +13,13 @@ export default async function SubscriptionPage({
 }) {
   const { slug } = await params;
   const { upgraded, payment } = await searchParams;
-  const store = await prisma.store.findUnique({ where: { slug }, include: { subscription: true } });
+  const store = await prisma.store.findUnique({ where: { slug }, include: { subscription: true, business: true } });
   if (!store) return null;
+
+  const session = await auth();
+  if (!session?.user?.id) redirect(`/login?callbackUrl=/store/${slug}/admin/subscription`);
+  const role = await getStoreAccessRole(session.user.id, session.user.role, store);
+  if (!canManageBillingAndStaff(role)) redirect(`/store/${slug}/admin`);
 
   const plans = await prisma.subscription.findMany({ where: { isActive: true }, orderBy: { price: "asc" } });
 

@@ -7,11 +7,13 @@ import { signIn } from "next-auth/react";
 import { useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { toast } from "sonner";
+import { TurnstileWidget } from "@/components/forms/turnstile-widget";
 
 export function LoginForm() {
   const searchParams = useSearchParams();
   const callbackUrl = searchParams.get("callbackUrl") ?? "/onboarding/business-verification";
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [turnstileToken, setTurnstileToken] = useState("");
 
   const {
     register,
@@ -22,7 +24,7 @@ export function LoginForm() {
   async function onSubmit(values: LoginInput) {
     setIsSubmitting(true);
     try {
-      const result = await signIn("credentials", { ...values, redirect: false });
+      const result = await signIn("credentials", { ...values, turnstileToken, redirect: false });
 
       if (result?.error) {
         const messages: Record<string, string> = {
@@ -30,6 +32,7 @@ export function LoginForm() {
           ACCOUNT_LOCKED: "Too many failed attempts. Try again in 15 minutes.",
           ACCOUNT_BANNED: "This account has been suspended. Contact support.",
           DB_UNAVAILABLE: "Couldn't reach the database. Check DATABASE_URL in Vercel's project settings.",
+          BOT_CHECK_FAILED: "Verification failed. Please retry the challenge below and try again.",
         };
         toast.error(messages[result.error] ?? "Invalid email or password.");
         return;
@@ -63,6 +66,7 @@ export function LoginForm() {
           <input type="password" className="w-full rounded-md border px-3 py-2 text-sm" {...register("password")} />
           {errors.password && <p className="mt-1 text-xs text-destructive">{errors.password.message}</p>}
         </div>
+        <TurnstileWidget onVerify={setTurnstileToken} />
         <button
           type="submit"
           disabled={isSubmitting}

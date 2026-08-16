@@ -29,7 +29,8 @@ export default async function UsersPage({
       </div>
 
       <div className="overflow-hidden rounded-2xl" style={{ background: "hsl(var(--muted))", border: "1px solid hsl(var(--border))" }}>
-        <table className="w-full text-sm">
+        <div className="overflow-x-auto">
+        <table className="w-full min-w-[720px] text-sm">
           <thead>
             <tr style={{ borderBottom: "1px solid hsl(var(--border))" }}>
               {["User", "Email", "Plan", "Status", "Joined", "Actions"].map((h) => (
@@ -97,6 +98,7 @@ export default async function UsersPage({
             )}
           </tbody>
         </table>
+        </div>
       </div>
     </div>
   );

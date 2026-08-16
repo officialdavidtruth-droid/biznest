@@ -8,6 +8,9 @@ import { prisma } from "@/lib/prisma";
 import { loginSchema } from "@/lib/validations/auth";
 import { authConfig } from "@/lib/auth.config";
 import { logError, logWarn } from "@/lib/observability/log";
+import { verifyTurnstileToken } from "@/lib/turnstile";
+import { getClientIp } from "@/lib/rate-limit";
+import { headers } from "next/headers";
 
 // If the database call inside authorize() hangs (e.g. DATABASE_URL pointing
 // at an unreachable or misconfigured connection), the whole sign-in request
@@ -42,8 +45,25 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       credentials: {
         email: { label: "Email", type: "email" },
         password: { label: "Password", type: "password" },
+        turnstileToken: { label: "Turnstile token", type: "text" },
       },
       authorize: async (credentials) => {
+        // Bot protection: every credentials sign-in must carry a fresh,
+        // valid Turnstile token. This runs before the DB lookup below on
+        // purpose — it's the cheapest possible check, so a bot burns a
+        // Cloudflare challenge, not a database round trip.
+        const ip = getClientIp(await headers());
+        const turnstile = await verifyTurnstileToken(
+          credentials?.turnstileToken as string | undefined,
+          ip
+        );
+        if (!turnstile.success) {
+          void logWarn("AUTH", "Turnstile verification failed on login", {
+            errorCodes: turnstile.errorCodes,
+          });
+          throw new Error("BOT_CHECK_FAILED");
+        }
+
         const parsed = loginSchema.safeParse(credentials);
         if (!parsed.success) return null;
 

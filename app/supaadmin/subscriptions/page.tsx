@@ -35,7 +35,8 @@ export default async function SubscriptionsOverview() {
       </div>
 
       <div className="overflow-hidden rounded-lg border bg-background">
-        <table className="w-full text-sm">
+        <div className="overflow-x-auto">
+        <table className="w-full min-w-[640px] text-sm">
           <thead className="border-b bg-muted/40 text-left text-xs uppercase text-muted-foreground">
             <tr><th className="px-4 py-2">Store</th><th className="px-4 py-2">Owner</th><th className="px-4 py-2">Plan</th><th className="px-4 py-2">Domain</th></tr>
           </thead>
@@ -53,6 +54,7 @@ export default async function SubscriptionsOverview() {
             )}
           </tbody>
         </table>
+        </div>
       </div>
     </div>
   );

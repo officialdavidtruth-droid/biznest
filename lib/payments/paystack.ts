@@ -19,7 +19,13 @@ type InitializeResponse = {
 type VerifyResponse = {
   status: boolean;
   message: string;
-  data?: { status: "success" | "failed" | "abandoned"; reference: string; amount: number };
+  data?: {
+    status: "success" | "failed" | "abandoned";
+    reference: string;
+    amount: number;
+    customer?: { customer_code: string };
+    authorization?: { authorization_code: string; reusable: boolean };
+  };
 };
 
 export async function initializePaystackTransaction(params: InitializeParams): Promise<InitializeResponse> {
@@ -154,4 +160,43 @@ export async function createPaystackSubaccount(params: {
     }),
   });
   return res.json() as Promise<{ status: boolean; message: string; data?: { subaccount_code: string } }>;
+}
+
+type ChargeAuthResponse = {
+  status: boolean;
+  message: string;
+  data?: { status: "success" | "failed"; reference: string; amount: number };
+};
+
+/**
+ * Charges a card Paystack already has on file (from a prior successful
+ * transaction that returned a reusable `authorization_code`), with no
+ * further customer interaction. This is what makes subscription *renewal*
+ * possible without the owner re-entering their card every month — see
+ * app/api/cron/subscription-renewals, which calls this for every store due
+ * to renew.
+ */
+export async function chargePaystackAuthorization(params: {
+  email: string;
+  amountKobo: number;
+  authorizationCode: string;
+  reference: string;
+}): Promise<ChargeAuthResponse> {
+  const secretKey = process.env.PAYSTACK_SECRET_KEY;
+  if (!secretKey) return { status: false, message: "Payments aren't configured yet (missing PAYSTACK_SECRET_KEY)." };
+
+  const res = await fetch(`${PAYSTACK_BASE}/transaction/charge_authorization`, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${secretKey}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      email: params.email,
+      amount: params.amountKobo,
+      authorization_code: params.authorizationCode,
+      reference: params.reference,
+    }),
+  });
+  return res.json();
 }

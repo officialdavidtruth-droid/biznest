@@ -35,11 +35,32 @@ const SERVICE_CATEGORIES = [
   "Printing", "Photography Studio Rental", "Hotel Services",
 ];
 
+// Kept in sync with prisma/seed.ts by hand — this route re-seeds the same
+// platform reference data (categories/templates/subscriptions) in
+// environments where running `prisma db seed` directly isn't convenient.
+// No free tier: every plan is paid monthly.
 const SUBSCRIPTIONS = [
-  { name: "Free", price: 0, interval: "MONTHLY", commissionRate: 8, features: { products: 20, services: 10, customDomain: false, templateTier: 1 } },
-  { name: "Entrepreneur", price: 35000, interval: "MONTHLY", commissionRate: 5, features: { products: 300, services: 150, customDomain: false, templateTier: 2 } },
-  { name: "Enterprise", price: 67000, interval: "MONTHLY", commissionRate: 3, features: { products: 3000, services: 1500, customDomain: true, templateTier: 3 } },
-  { name: "Business Mogul", price: 139000, interval: "MONTHLY", commissionRate: 1, features: { products: -1, services: -1, customDomain: true, templateTier: 4 } },
+  {
+    name: "Store Templates",
+    price: 15000,
+    interval: "MONTHLY",
+    commissionRate: 5,
+    features: { products: 300, services: 150, customDomain: false, templateTier: 2, aiStoreBuilder: false },
+  },
+  {
+    name: "Custom AI-Built Store",
+    price: 45000,
+    interval: "MONTHLY",
+    commissionRate: 3,
+    features: { products: 3000, services: 1500, customDomain: true, templateTier: 3, aiStoreBuilder: true },
+  },
+  {
+    name: "Business Mogul",
+    price: 139000,
+    interval: "MONTHLY",
+    commissionRate: 1,
+    features: { products: -1, services: -1, customDomain: true, templateTier: 4, aiStoreBuilder: true },
+  },
 ];
 const ACTIVE_SUBSCRIPTION_NAMES = SUBSCRIPTIONS.map((s) => s.name);
 

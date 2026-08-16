@@ -385,13 +385,13 @@ export default async function HomePage() {
           Simple pricing, real ownership
         </h2>
         <p className="mb-10 max-w-lg text-sm" style={{ color: "var(--bn-mute)" }}>
-          Start free. Upgrade when you're ready for higher limits, a lower commission,
-          and your own domain name.
+          Every plan is paid monthly — no free tier. Higher tiers unlock the AI Store
+          Builder, a lower commission, and your own domain name.
         </p>
         <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
           {plans.map((p) => {
-            const features = p.features as { products?: number; services?: number; customDomain?: boolean };
-            const featured = p.name === "Enterprise";
+            const features = p.features as { products?: number; services?: number; customDomain?: boolean; aiStoreBuilder?: boolean };
+            const featured = p.name === "Custom AI-Built Store";
             return (
               <div
                 key={p.id}
@@ -416,6 +416,7 @@ export default async function HomePage() {
                   <li>{Number(p.commissionRate)}% commission per sale</li>
                   <li>{features.products === -1 ? "Unlimited products" : `Up to ${features.products ?? 0} products`}</li>
                   <li>{features.services === -1 ? "Unlimited services" : `Up to ${features.services ?? 0} services`}</li>
+                  {features.aiStoreBuilder && <li>✓ AI Store Builder</li>}
                   <li className="font-medium">{features.customDomain ? "✓ Your own domain name" : "Runs on your biznest.space address"}</li>
                 </ul>
                 <Link
@@ -471,7 +472,7 @@ export default async function HomePage() {
             Your stall is waiting.
           </h2>
           <p className="mx-auto mt-3 max-w-sm text-sm" style={{ color: "var(--bn-mute)" }}>
-            Free to open. No card required. Verified in as little as a day.
+            Open in minutes. Pick your plan, verified in as little as a day.
           </p>
           <div className="mt-8 flex flex-wrap items-center justify-center gap-3">
             <Link

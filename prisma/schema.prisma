@@ -61,6 +61,7 @@ model User {
   conversations     ConversationParticipant[]
   notifications     Notification[]
   pushSubscriptions PushSubscription[]
+  staffMemberships  StoreStaff[]
   auditLogs         AuditLog[]
   disputesRaised    Dispute[]       @relation("DisputeRaisedBy")
   disputeEvidence   DisputeEvidence[]
@@ -373,6 +374,24 @@ model Store {
   // billing code path itself. Null means "not on a trial."
   trialEndsAt    DateTime?
 
+  // --- Recurring billing state (see app/api/cron/subscription-renewals) ---
+  // Paystack's reusable authorization_code from the store owner's first
+  // successful checkout -- lets the renewal cron charge_authorization each
+  // month with no card re-entry. Null until the first successful payment;
+  // also null again if a saved card is ever declined outright (Paystack
+  // marks non-reusable authorizations as unusable for future charges).
+  paystackAuthorizationCode String?
+  // When the current paid period ends and the next automatic charge is due.
+  // Null for stores that haven't completed checkout yet (see
+  // app/onboarding/select-plan). Set on both the first payment and every
+  // successful renewal.
+  subscriptionRenewsAt      DateTime?
+  // Set the first time a renewal charge fails; cleared on the next
+  // successful charge. Distinct from subscriptionRenewsAt so the renewal
+  // cron can tell "due today" apart from "already tried and failed" and
+  // apply grace-period/downgrade logic without re-deriving state.
+  subscriptionPastDueSince  DateTime?
+
   paystackSubaccountCode   String?
   flutterwaveSubaccountId  String?
   // Display-only info the owner entered when connecting payout (bank name,
@@ -400,11 +419,58 @@ model Store {
   payments      Payment[]
   visits        StoreVisit[]
   savedCarts    SavedCart[]
+  staffMembers  StoreStaff[]
 
   createdAt     DateTime    @default(now())
   updatedAt     DateTime    @updatedAt
 
   @@index([status])
+}
+
+enum StaffRole {
+  MANAGER // Full dashboard access except billing/subscription and staff management
+  STAFF   // Products, services, orders, messages -- no settings, billing, or staff
+}
+
+enum StaffInviteStatus {
+  PENDING
+  ACTIVE
+  REVOKED
+}
+
+/**
+ * A non-owner user with access to a store's dashboard. Ownership itself
+ * (Business.userId) is unchanged and still the only role that can manage
+ * billing/subscription or invite/revoke staff -- see
+ * lib/access/store-access.ts, the single source of truth for "can this
+ * user touch this store" that both the dashboard layout gate and
+ * individual server actions should call instead of re-deriving ownership
+ * logic ad hoc.
+ *
+ * Invite flow: owner invites by email (userId null, status PENDING) ->
+ * invitee visits /staff/accept?token=... while logged in with a matching
+ * email -> userId set, status ACTIVE. See lib/actions/staff.ts.
+ */
+model StoreStaff {
+  id            String             @id @default(cuid())
+  storeId       String
+  store         Store              @relation(fields: [storeId], references: [id], onDelete: Cascade)
+
+  invitedEmail  String
+  userId        String?
+  user          User?              @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  role          StaffRole          @default(STAFF)
+  status        StaffInviteStatus  @default(PENDING)
+
+  inviteToken   String             @unique
+  invitedByUserId String
+  invitedAt     DateTime           @default(now())
+  acceptedAt    DateTime?
+
+  @@unique([storeId, invitedEmail])
+  @@index([userId])
+  @@index([inviteToken])
 }
 
 model StoreTemplate {
@@ -1020,6 +1086,7 @@ model Payment {
 enum PaymentPurpose {
   ORDER
   SUBSCRIPTION_UPGRADE
+  SUBSCRIPTION_RENEWAL
   INVOICE
   QUOTE_DEPOSIT
 }

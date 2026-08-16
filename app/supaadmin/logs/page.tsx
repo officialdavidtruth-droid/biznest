@@ -41,7 +41,8 @@ export default async function ActivityLogPage({
       </form>
 
       <div className="overflow-hidden rounded-lg border bg-background">
-        <table className="w-full text-sm">
+        <div className="overflow-x-auto">
+        <table className="w-full min-w-[640px] text-sm">
           <thead className="border-b bg-muted/40 text-left text-xs uppercase text-muted-foreground">
             <tr>
               <th className="px-4 py-2">When</th>
@@ -85,6 +86,7 @@ export default async function ActivityLogPage({
             )}
           </tbody>
         </table>
+        </div>
       </div>
 
       {totalPages > 1 && (

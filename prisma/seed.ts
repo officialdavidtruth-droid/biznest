@@ -84,11 +84,34 @@ const SERVICE_SUBCATEGORIES: Record<string, string[]> = {
 // templateTier: 1=Free, 2=Entrepreneur, 3=Enterprise, 4=Business Mogul.
 // A store can pick any StoreTemplate whose tierRank <= its plan's templateTier
 // — matches TIER_RANK in lib/template-themes.ts, keep both in sync.
+// Only two plans, both paid monthly — no free tier. Users choose one during
+// mandatory checkout right after onboarding (see app/onboarding/select-plan)
+// and can't reach their dashboard until Store.subscriptionId is set (see
+// app/store/[slug]/admin/layout.tsx). Old tiers below are deactivated by the
+// updateMany at the bottom of main(), not deleted, since existing stores may
+// still reference them via Store.subscriptionId.
 const SUBSCRIPTIONS = [
-  { name: "Free", price: 0, interval: "MONTHLY", commissionRate: 8, features: { products: 20, services: 10, customDomain: false, templateTier: 1 } },
-  { name: "Entrepreneur", price: 35000, interval: "MONTHLY", commissionRate: 5, features: { products: 300, services: 150, customDomain: false, templateTier: 2 } },
-  { name: "Enterprise", price: 67000, interval: "MONTHLY", commissionRate: 3, features: { products: 3000, services: 1500, customDomain: true, templateTier: 3 } },
-  { name: "Business Mogul", price: 139000, interval: "MONTHLY", commissionRate: 1, features: { products: -1, services: -1, customDomain: true, templateTier: 4 } },
+  {
+    name: "Store Templates",
+    price: 15000,
+    interval: "MONTHLY",
+    commissionRate: 5,
+    features: { products: 300, services: 150, customDomain: false, templateTier: 2, aiStoreBuilder: false },
+  },
+  {
+    name: "Custom AI-Built Store",
+    price: 45000,
+    interval: "MONTHLY",
+    commissionRate: 3,
+    features: { products: 3000, services: 1500, customDomain: true, templateTier: 3, aiStoreBuilder: true },
+  },
+  {
+    name: "Business Mogul",
+    price: 139000,
+    interval: "MONTHLY",
+    commissionRate: 1,
+    features: { products: -1, services: -1, customDomain: true, templateTier: 4, aiStoreBuilder: true },
+  },
 ];
 const ACTIVE_SUBSCRIPTION_NAMES = SUBSCRIPTIONS.map((s) => s.name);
 
