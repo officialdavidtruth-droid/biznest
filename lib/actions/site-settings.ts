@@ -2,7 +2,7 @@
 
 import { cookies } from "next/headers";
 import { prisma } from "@/lib/prisma";
-import { revalidatePath } from "next/cache";
+import { revalidatePath, revalidateTag, unstable_cache } from "next/cache";
 import type { ActionResult } from "@/types/actions";
 import { SETTING_KEYS } from "@/lib/constants/site-settings";
 import { ADMIN_COOKIE_NAME, verifyAdminToken } from "@/lib/admin-pin-auth";
@@ -44,14 +44,25 @@ async function setSetting(key: string, value: unknown) {
 }
 
 // --- Public reads (no auth needed — root layout, checkout, etc. call these) ---
+//
+// These two run on EVERY page load via the root layout, so they're wrapped
+// in unstable_cache instead of hitting Postgres per-request. Cache is
+// invalidated by tag whenever an admin updates either setting (see
+// updateMaintenanceSetting / updateAnnouncementSetting below), so this never
+// serves stale data after a real change — it just skips the DB round-trip
+// for the (extremely common) case where nothing changed.
 
-export async function getMaintenanceSetting(): Promise<MaintenanceValue> {
-  return getSetting(SETTING_KEYS.MAINTENANCE, DEFAULT_MAINTENANCE);
-}
+export const getMaintenanceSetting = unstable_cache(
+  async (): Promise<MaintenanceValue> => getSetting(SETTING_KEYS.MAINTENANCE, DEFAULT_MAINTENANCE),
+  ["site-setting-maintenance"],
+  { tags: ["site-settings"], revalidate: 60 }
+);
 
-export async function getAnnouncementSetting(): Promise<AnnouncementValue> {
-  return getSetting(SETTING_KEYS.ANNOUNCEMENT, DEFAULT_ANNOUNCEMENT);
-}
+export const getAnnouncementSetting = unstable_cache(
+  async (): Promise<AnnouncementValue> => getSetting(SETTING_KEYS.ANNOUNCEMENT, DEFAULT_ANNOUNCEMENT),
+  ["site-setting-announcement"],
+  { tags: ["site-settings"], revalidate: 60 }
+);
 
 /**
  * Which gateway checkout/subscription-upgrade should use right now.
@@ -110,6 +121,7 @@ export async function updateMaintenanceSetting(value: MaintenanceValue): Promise
     data: { userId: access.userId, action: "SITE_MAINTENANCE_UPDATED", entity: "PlatformSetting", entityId: SETTING_KEYS.MAINTENANCE, metadata: value },
   });
 
+  revalidateTag("site-settings");
   revalidatePath("/", "layout");
   revalidatePath("/supaadmin/settings");
   return { success: true, data: undefined };
@@ -124,6 +136,7 @@ export async function updateAnnouncementSetting(value: AnnouncementValue): Promi
     data: { userId: access.userId, action: "SITE_ANNOUNCEMENT_UPDATED", entity: "PlatformSetting", entityId: SETTING_KEYS.ANNOUNCEMENT, metadata: value },
   });
 
+  revalidateTag("site-settings");
   revalidatePath("/", "layout");
   revalidatePath("/supaadmin/settings");
   return { success: true, data: undefined };

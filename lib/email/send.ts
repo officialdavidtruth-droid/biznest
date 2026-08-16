@@ -2,7 +2,7 @@ import { Resend } from "resend";
 import { logError } from "@/lib/observability/log";
 
 const resend = new Resend(process.env.RESEND_API_KEY);
-const FROM = process.env.EMAIL_FROM ?? "BizNest <no-reply@biznest.app>";
+const FROM = process.env.EMAIL_FROM ?? "BizNest <no-reply@biznest.space>";
 const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? "https://biznest.vercel.app";
 
 /**
