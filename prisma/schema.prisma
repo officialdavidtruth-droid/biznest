@@ -438,19 +438,17 @@ enum StaffInviteStatus {
   REVOKED
 }
 
-/**
- * A non-owner user with access to a store's dashboard. Ownership itself
- * (Business.userId) is unchanged and still the only role that can manage
- * billing/subscription or invite/revoke staff -- see
- * lib/access/store-access.ts, the single source of truth for "can this
- * user touch this store" that both the dashboard layout gate and
- * individual server actions should call instead of re-deriving ownership
- * logic ad hoc.
- *
- * Invite flow: owner invites by email (userId null, status PENDING) ->
- * invitee visits /staff/accept?token=... while logged in with a matching
- * email -> userId set, status ACTIVE. See lib/actions/staff.ts.
- */
+// A non-owner user with access to a store's dashboard. Ownership itself
+// (Business.userId) is unchanged and still the only role that can manage
+// billing/subscription or invite/revoke staff -- see
+// lib/access/store-access.ts, the single source of truth for "can this
+// user touch this store" that both the dashboard layout gate and
+// individual server actions should call instead of re-deriving ownership
+// logic ad hoc.
+//
+// Invite flow: owner invites by email (userId null, status PENDING) ->
+// invitee visits /staff/accept?token=... while logged in with a matching
+// email -> userId set, status ACTIVE. See lib/actions/staff.ts.
 model StoreStaff {
   id            String             @id @default(cuid())
   storeId       String
