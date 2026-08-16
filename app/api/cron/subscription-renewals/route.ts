@@ -63,7 +63,7 @@ export async function GET(req: Request) {
       });
       reminded++;
     } catch (err) {
-      void logError("CRON", "Renewal reminder failed", errorMeta(err), { storeId: store.id });
+      void logError("CRON", "Renewal reminder failed", errorMeta(err, { storeId: store.id }));
     }
   }
 
@@ -119,7 +119,7 @@ export async function GET(req: Request) {
         failed++;
       }
     } catch (err) {
-      void logError("CRON", "Renewal charge failed", errorMeta(err), { storeId: store.id });
+      void logError("CRON", "Renewal charge failed", errorMeta(err, { storeId: store.id }));
       await handleRenewalFailure(store, graceCutoff).catch(() => {});
       failed++;
     }
@@ -146,7 +146,7 @@ export async function GET(req: Request) {
       });
       downgraded++;
     } catch (err) {
-      void logError("CRON", "Downgrade failed", errorMeta(err), { storeId: store.id });
+      void logError("CRON", "Downgrade failed", errorMeta(err, { storeId: store.id }));
     }
   }
 
