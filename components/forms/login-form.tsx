@@ -8,6 +8,8 @@ import { useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { toast } from "sonner";
 import { TurnstileWidget } from "@/components/forms/turnstile-widget";
+import { PasswordInput } from "@/components/forms/password-input";
+import Link from "next/link";
 
 export function LoginForm() {
   const searchParams = useSearchParams();
@@ -62,8 +64,13 @@ export function LoginForm() {
           {errors.email && <p className="mt-1 text-xs text-destructive">{errors.email.message}</p>}
         </div>
         <div>
-          <label className="mb-1 block text-sm font-medium">Password</label>
-          <input type="password" className="w-full rounded-md border px-3 py-2 text-sm" {...register("password")} />
+          <div className="mb-1 flex items-center justify-between">
+            <label className="block text-sm font-medium">Password</label>
+            <Link href="/forgot-password" className="text-xs text-muted-foreground hover:underline">
+              Forgot password?
+            </Link>
+          </div>
+          <PasswordInput {...register("password")} />
           {errors.password && <p className="mt-1 text-xs text-destructive">{errors.password.message}</p>}
         </div>
         <TurnstileWidget onVerify={setTurnstileToken} />

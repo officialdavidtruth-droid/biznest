@@ -38,6 +38,8 @@ export const RESERVED_SLUGS = new Set([
   // app/(auth)
   "login",
   "register",
+  "forgot-password",
+  "reset-password",
   // protected prefixes referenced in middleware.ts that don't have a
   // route folder yet but are reserved for future use
   "admin",

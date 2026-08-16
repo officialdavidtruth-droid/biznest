@@ -4,8 +4,8 @@ import bcrypt from "bcryptjs";
 import { nanoid } from "nanoid";
 import { headers } from "next/headers";
 import { prisma } from "@/lib/prisma";
-import { registerSchema, type RegisterInput } from "@/lib/validations/auth";
-import { sendVerificationEmail } from "@/lib/email/send";
+import { registerSchema, forgotPasswordSchema, resetPasswordSchema, type RegisterInput, type ForgotPasswordInput, type ResetPasswordInput } from "@/lib/validations/auth";
+import { sendVerificationEmail, sendPasswordResetEmail } from "@/lib/email/send";
 import { checkRateLimit, getClientIp } from "@/lib/rate-limit";
 import { verifyTurnstileToken } from "@/lib/turnstile";
 import { emitPlatformWebhookEvent } from "@/lib/webhooks/dispatch";
@@ -83,4 +83,94 @@ export async function registerUser(
   });
 
   return { success: true, data: { userId: user.id } };
+}
+
+/**
+ * Always returns success regardless of whether the email is registered —
+ * a differing response here would let anyone enumerate which emails have
+ * BizNest accounts. The UI shows the same "check your email" message
+ * either way; only a real account actually gets a token + email.
+ */
+export async function requestPasswordReset(input: ForgotPasswordInput): Promise<ActionResult<void>> {
+  const ip = getClientIp(await headers());
+
+  const rateLimit = await checkRateLimit(`password-reset:${ip}`, 5, 60 * 60 * 1000); // 5/hour/IP
+  if (!rateLimit.allowed) {
+    return {
+      success: false,
+      error: `Too many reset requests from this connection. Try again in ${Math.ceil((rateLimit.retryAfterSeconds ?? 3600) / 60)} minutes.`,
+    };
+  }
+
+  const parsed = forgotPasswordSchema.safeParse(input);
+  if (!parsed.success) {
+    return { success: false, error: "Enter a valid email address." };
+  }
+
+  const user = await prisma.user.findUnique({ where: { email: parsed.data.email } });
+
+  // Also rate-limit per-email so a leaked/guessed address can't be spammed
+  // with reset emails even from rotating IPs.
+  if (user) {
+    const perEmailLimit = await checkRateLimit(`password-reset-email:${user.email}`, 3, 60 * 60 * 1000);
+    if (perEmailLimit.allowed) {
+      const token = nanoid(32);
+      await prisma.verificationToken.create({
+        data: {
+          identifier: user.email,
+          token,
+          type: "PASSWORD_RESET",
+          expires: new Date(Date.now() + 1000 * 60 * 60), // 1h — shorter-lived than email verification
+        },
+      });
+      try {
+        await sendPasswordResetEmail(user.email, token);
+      } catch (err) {
+        console.error("Failed to send password reset email:", err);
+      }
+    }
+  }
+
+  return { success: true, data: undefined };
+}
+
+export async function resetPassword(input: ResetPasswordInput): Promise<ActionResult<void>> {
+  const parsed = resetPasswordSchema.safeParse(input);
+  if (!parsed.success) {
+    return {
+      success: false,
+      error: "Invalid input",
+      fieldErrors: parsed.error.flatten().fieldErrors,
+    };
+  }
+
+  const record = await prisma.verificationToken.findUnique({
+    where: { token: parsed.data.token },
+  });
+
+  if (!record || record.type !== "PASSWORD_RESET" || record.expires < new Date()) {
+    return { success: false, error: "This reset link is invalid or has expired. Request a new one." };
+  }
+
+  const passwordHash = await bcrypt.hash(parsed.data.password, 12);
+
+  await prisma.user.update({
+    where: { email: record.identifier },
+    data: {
+      passwordHash,
+      // Resetting a password is also a reasonable moment to clear any
+      // existing lockout — the person just proved control of the mailbox.
+      failedLoginAttempts: 0,
+      lockedUntil: null,
+      // Invalidate any other active sessions, same mechanism the
+      // ban/force-logout path in lib/auth.ts's jwt() callback already
+      // checks — a stolen session shouldn't survive a password reset.
+      sessionsInvalidatedAt: new Date(),
+    },
+  });
+
+  // One-time use — delete immediately so the same link can't be replayed.
+  await prisma.verificationToken.delete({ where: { token: parsed.data.token } });
+
+  return { success: true, data: undefined };
 }
