@@ -1,4 +1,4 @@
-import { auth } from "@/lib/auth";
+import { auth, signOut } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { redirect } from "next/navigation";
 import { AcceptInviteButton } from "@/components/dashboard/accept-invite-button";
@@ -76,10 +76,32 @@ export default async function AcceptStaffInvitePage({
       {!emailMatches ? (
         // By this point existingUser must be true — the no-account case
         // already redirected to /register above.
-        <p className="mt-4 rounded-lg border border-border p-4 text-sm text-muted-foreground">
-          This invite was sent to <strong>{invite.invitedEmail}</strong>, but you're signed in as{" "}
-          <strong>{session.user.email}</strong>. Sign out and sign in with the invited email to accept.
-        </p>
+        <div className="mt-4 rounded-lg border border-border p-4 text-sm text-muted-foreground">
+          <p>
+            This invite was sent to <strong>{invite.invitedEmail}</strong>, but you're signed in with a different
+            account.
+          </p>
+          <form
+            className="mt-4"
+            action={async () => {
+              "use server";
+              // Actually sign the current account out instead of just
+              // telling the person to do it manually — lands them on
+              // /login pre-filled with the invited email so they can go
+              // straight into that account and come right back here.
+              await signOut({
+                redirectTo: `/login?callbackUrl=${encodeURIComponent(callbackUrl)}&email=${encodeURIComponent(invite.invitedEmail)}`,
+              });
+            }}
+          >
+            <button
+              type="submit"
+              className="inline-block rounded-md bg-primary px-5 py-2 text-sm font-medium text-primary-foreground"
+            >
+              Sign out &amp; continue as {invite.invitedEmail}
+            </button>
+          </form>
+        </div>
       ) : (
         <AcceptInviteButton token={token} />
       )}
