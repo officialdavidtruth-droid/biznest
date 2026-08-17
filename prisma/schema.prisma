@@ -455,6 +455,9 @@ model StoreStaff {
   store         Store              @relation(fields: [storeId], references: [id], onDelete: Cascade)
 
   invitedEmail  String
+  invitedName   String?
+  position      String?
+  permissions   String[]           @default([])
   userId        String?
   user          User?              @relation(fields: [userId], references: [id], onDelete: SetNull)
 

@@ -6,6 +6,7 @@ import { nanoid } from "nanoid";
 import { sendStaffInviteEmail } from "@/lib/email/send";
 import { canManageBillingAndStaff, getStoreAccessRole } from "@/lib/access/store-access";
 import { notifyUser } from "@/lib/notifications/notify";
+import { STAFF_PERMISSION_IDS } from "@/lib/access/staff-permissions";
 import type { ActionResult } from "@/types/actions";
 
 const MAX_STAFF_PER_STORE = 20;
@@ -21,7 +22,10 @@ async function requireOwner(slug: string, userId: string, userRole: string) {
 export async function inviteStaffMember(
   slug: string,
   email: string,
-  role: "MANAGER" | "STAFF"
+  role: "MANAGER" | "STAFF",
+  name: string,
+  position: string,
+  permissions: string[]
 ): Promise<ActionResult<void>> {
   const session = await auth();
   if (!session?.user?.id) return { success: false, error: "You must be signed in." };
@@ -35,6 +39,16 @@ export async function inviteStaffMember(
   }
   if (normalizedEmail === session.user.email?.toLowerCase()) {
     return { success: false, error: "You're already the owner of this store." };
+  }
+
+  const trimmedName = name.trim();
+  if (!trimmedName) return { success: false, error: "Enter the staff member's name." };
+  const trimmedPosition = position.trim();
+  if (!trimmedPosition) return { success: false, error: "Enter the staff member's position." };
+
+  const validPermissions = permissions.filter((p) => STAFF_PERMISSION_IDS.includes(p as (typeof STAFF_PERMISSION_IDS)[number]));
+  if (validPermissions.length === 0) {
+    return { success: false, error: "Select at least one area they should have access to." };
   }
 
   const existingCount = await prisma.storeStaff.count({
@@ -55,13 +69,26 @@ export async function inviteStaffMember(
   if (existing) {
     await prisma.storeStaff.update({
       where: { id: existing.id },
-      data: { role, status: "PENDING", inviteToken: token, invitedByUserId: session.user.id, invitedAt: new Date(), acceptedAt: null },
+      data: {
+        role,
+        invitedName: trimmedName,
+        position: trimmedPosition,
+        permissions: validPermissions,
+        status: "PENDING",
+        inviteToken: token,
+        invitedByUserId: session.user.id,
+        invitedAt: new Date(),
+        acceptedAt: null,
+      },
     });
   } else {
     await prisma.storeStaff.create({
       data: {
         storeId: store.id,
         invitedEmail: normalizedEmail,
+        invitedName: trimmedName,
+        position: trimmedPosition,
+        permissions: validPermissions,
         role,
         inviteToken: token,
         invitedByUserId: session.user.id,
@@ -70,7 +97,16 @@ export async function inviteStaffMember(
   }
 
   try {
-    await sendStaffInviteEmail(normalizedEmail, token, store.name, session.user.name ?? "The store owner", role);
+    await sendStaffInviteEmail(
+      normalizedEmail,
+      token,
+      store.name,
+      session.user.name ?? "The store owner",
+      role,
+      trimmedName,
+      trimmedPosition,
+      validPermissions
+    );
   } catch {
     return { success: false, error: "Invite saved, but the email couldn't be sent. Try resending it." };
   }
@@ -78,9 +114,20 @@ export async function inviteStaffMember(
   return { success: true, data: undefined };
 }
 
-export async function listStaffMembers(
-  slug: string
-): Promise<ActionResult<{ id: string; email: string; role: string; status: string; invitedAt: Date; name: string | null }[]>> {
+export async function listStaffMembers(slug: string): Promise<
+  ActionResult<
+    {
+      id: string;
+      email: string;
+      role: string;
+      status: string;
+      invitedAt: Date;
+      name: string | null;
+      position: string | null;
+      permissions: string[];
+    }[]
+  >
+> {
   const session = await auth();
   if (!session?.user?.id) return { success: false, error: "You must be signed in." };
 
@@ -101,7 +148,9 @@ export async function listStaffMembers(
       role: m.role,
       status: m.status,
       invitedAt: m.invitedAt,
-      name: m.user?.name ?? null,
+      name: m.user?.name ?? m.invitedName ?? null,
+      position: m.position ?? null,
+      permissions: m.permissions,
     })),
   };
 }

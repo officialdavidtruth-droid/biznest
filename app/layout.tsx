@@ -13,7 +13,15 @@ export const metadata: Metadata = {
   title: "BizNest — Build, Sell, Grow",
   description: "The all-in-one marketplace and website builder for products, services, and bookings.",
   manifest: "/manifest.json",
-  icons: { icon: "/icon-192.png", apple: "/icon-192.png" },
+  icons: {
+    icon: [
+      { url: "/favicon.ico", sizes: "any" },
+      { url: "/icon-32.png", sizes: "32x32", type: "image/png" },
+      { url: "/icon-192.png", sizes: "192x192", type: "image/png" },
+    ],
+    apple: "/icon-192.png",
+    shortcut: "/favicon.ico",
+  },
 };
 
 export const viewport: Viewport = {

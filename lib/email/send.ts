@@ -34,17 +34,96 @@ export async function sendStaffInviteEmail(
   token: string,
   storeName: string,
   inviterName: string,
-  role: "MANAGER" | "STAFF"
+  role: "MANAGER" | "STAFF",
+  staffName: string,
+  position: string,
+  permissions: string[]
 ) {
+  const { labelForPermission } = await import("@/lib/access/staff-permissions");
   const url = `${APP_URL}/staff/accept?token=${token}`;
+  const roleLabel = role === "MANAGER" ? "Manager" : "Staff member";
+  const permissionsList = permissions
+    .map(
+      (p) =>
+        `<tr><td style="padding:6px 0;color:#374151;font-size:14px;line-height:20px;">
+           <span style="display:inline-block;width:6px;height:6px;border-radius:50%;background:#0f6410;margin-right:10px;vertical-align:middle;"></span>
+           ${labelForPermission(p)}
+         </td></tr>`
+    )
+    .join("");
+
+  const html = `<!DOCTYPE html>
+<html>
+  <body style="margin:0;padding:0;background-color:#f3f4f6;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;">
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:#f3f4f6;padding:32px 16px;">
+      <tr>
+        <td align="center">
+          <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:520px;background-color:#ffffff;border-radius:12px;overflow:hidden;box-shadow:0 1px 3px rgba(0,0,0,0.08);">
+            <tr>
+              <td style="background-color:#0b6413;padding:24px 32px;">
+                <img src="${APP_URL}/email-logo.png" alt="BizNest.space" width="160" style="display:block;height:auto;border:0;" />
+              </td>
+            </tr>
+            <tr>
+              <td style="padding:32px;">
+                <p style="margin:0 0 16px;color:#111827;font-size:16px;line-height:24px;">Hi ${staffName},</p>
+                <p style="margin:0 0 24px;color:#374151;font-size:15px;line-height:24px;">
+                  <strong>${inviterName}</strong> invited you to join <strong>${storeName}</strong> on BizNest as
+                  a <strong>${position}</strong> (${roleLabel}).
+                </p>
+
+                <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:#f9fafb;border-radius:8px;padding:16px 20px;margin-bottom:24px;">
+                  <tr>
+                    <td style="padding-bottom:4px;color:#6b7280;font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:0.05em;">
+                      You'll have access to
+                    </td>
+                  </tr>
+                  ${permissionsList}
+                </table>
+
+                <table role="presentation" cellpadding="0" cellspacing="0" style="margin:0 auto 24px;">
+                  <tr>
+                    <td align="center" style="border-radius:8px;background-color:#0f6410;">
+                      <a href="${url}" style="display:inline-block;padding:12px 28px;color:#ffffff;font-size:15px;font-weight:600;text-decoration:none;border-radius:8px;">
+                        Accept invite
+                      </a>
+                    </td>
+                  </tr>
+                </table>
+
+                <p style="margin:0 0 8px;color:#9ca3af;font-size:13px;line-height:20px;">
+                  If the button doesn't work, copy and paste this link into your browser:
+                </p>
+                <p style="margin:0 0 24px;word-break:break-all;">
+                  <a href="${url}" style="color:#0f6410;font-size:13px;text-decoration:underline;">${url}</a>
+                </p>
+
+                <p style="margin:0;color:#9ca3af;font-size:13px;line-height:20px;">
+                  Don't have a BizNest account with this email yet? No problem — you'll be prompted to create one first.
+                </p>
+              </td>
+            </tr>
+            <tr>
+              <td style="padding:20px 32px;background-color:#f9fafb;border-top:1px solid #f0f0f0;">
+                <p style="margin:0;color:#9ca3af;font-size:12px;line-height:18px;">
+                  This invite was sent because someone added ${email} as a team member on BizNest.
+                  If you weren't expecting this, you can safely ignore this email.
+                </p>
+              </td>
+            </tr>
+          </table>
+        </td>
+      </tr>
+    </table>
+  </body>
+</html>`;
+
   return send(
     {
       from: FROM,
       to: email,
-      subject: `${inviterName} invited you to manage ${storeName} on BizNest`,
-      html: `<p>${inviterName} added you as a <strong>${role === "MANAGER" ? "Manager" : "Staff member"}</strong> on <strong>${storeName}</strong>'s BizNest dashboard.</p>
-           <p><a href="${url}">${url}</a></p>
-           <p>If you don't already have a BizNest account with this email, you'll be asked to create one first.</p>`,
+      subject: `${inviterName} invited you to join ${storeName} on BizNest`,
+      html,
     },
     { kind: "staff-invite", to: email }
   );
