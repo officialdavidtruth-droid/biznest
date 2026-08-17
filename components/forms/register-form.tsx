@@ -8,14 +8,23 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 
-export function RegisterForm() {
+export function RegisterForm({
+  defaultEmail,
+  callbackUrl,
+}: {
+  defaultEmail?: string;
+  callbackUrl?: string;
+}) {
   const router = useRouter();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const {
     register,
     handleSubmit,
     formState: { errors },
-  } = useForm<RegisterInput>({ resolver: zodResolver(registerSchema) });
+  } = useForm<RegisterInput>({
+    resolver: zodResolver(registerSchema),
+    defaultValues: { email: defaultEmail },
+  });
 
   async function onSubmit(values: RegisterInput) {
     setIsSubmitting(true);
@@ -28,7 +37,14 @@ export function RegisterForm() {
     }
 
     toast.success("Account created. Check your email to verify your address.");
-    router.push("/login");
+    // Carries a staff-invite link (or any other pending destination) through
+    // registration → login, so e.g. someone accepting a staff invite lands
+    // back on /staff/accept?token=... automatically instead of having to
+    // find the original email again after creating their account.
+    const loginUrl = callbackUrl
+      ? `/login?callbackUrl=${encodeURIComponent(callbackUrl)}&email=${encodeURIComponent(values.email)}`
+      : "/login";
+    router.push(loginUrl);
   }
 
   return (

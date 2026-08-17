@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { buildNavGroups, filterNavGroupsForRole } from "@/lib/constants/dashboard-nav";
 import type { StoreAccessRole } from "@/lib/access/store-access";
+import { SignOutButton } from "@/components/forms/sign-out-button";
 
 export function DashboardSidebar({
   slug,
@@ -84,10 +85,11 @@ export function DashboardSidebar({
         ))}
       </nav>
 
-      <div className="border-t border-border px-4 py-3">
-        <Link href={`/store/${slug}`} className="text-xs font-medium text-muted-foreground hover:text-primary">
+      <div className="space-y-2 border-t border-border px-4 py-3">
+        <Link href={`/store/${slug}`} className="block text-xs font-medium text-muted-foreground hover:text-primary">
           View live store →
         </Link>
+        <SignOutButton className="text-xs font-medium text-muted-foreground hover:text-destructive" />
       </div>
     </aside>
   );

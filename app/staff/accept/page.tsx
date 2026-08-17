@@ -22,7 +22,19 @@ export default async function AcceptStaffInvitePage({
 
   const session = await auth();
   if (!session?.user?.id) {
-    redirect(`/login?callbackUrl=${encodeURIComponent(`/staff/accept?token=${token}`)}`);
+    const callbackUrl = `/staff/accept?token=${token}`;
+    // Previously this always sent people to /login, which is a dead end
+    // for anyone invited who doesn't have a BizNest account yet — login
+    // just rejects them with no path forward. Check first, and send new
+    // people to register (with their email pre-filled) instead.
+    const existingUser = await prisma.user.findFirst({
+      where: { email: { equals: invite.invitedEmail, mode: "insensitive" } },
+      select: { id: true },
+    });
+    const destination = existingUser ? "/login" : "/register";
+    redirect(
+      `${destination}?callbackUrl=${encodeURIComponent(callbackUrl)}&email=${encodeURIComponent(invite.invitedEmail)}`
+    );
   }
 
   const emailMatches = session.user.email?.toLowerCase() === invite.invitedEmail.toLowerCase();

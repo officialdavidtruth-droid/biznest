@@ -13,13 +13,17 @@ import Link from "next/link";
 export function LoginForm() {
   const searchParams = useSearchParams();
   const callbackUrl = searchParams.get("callbackUrl") ?? "/onboarding/business-verification";
+  const prefillEmail = searchParams.get("email") ?? undefined;
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const {
     register,
     handleSubmit,
     formState: { errors },
-  } = useForm<LoginInput>({ resolver: zodResolver(loginSchema) });
+  } = useForm<LoginInput>({
+    resolver: zodResolver(loginSchema),
+    defaultValues: { email: prefillEmail },
+  });
 
   async function onSubmit(values: LoginInput) {
     setIsSubmitting(true);

@@ -7,6 +7,7 @@ import { Menu, X } from "lucide-react";
 import { buildNavGroups, buildBottomTabItems } from "@/lib/constants/dashboard-nav";
 import { NotificationBell } from "@/components/dashboard/notification-bell";
 import { PushSubscribePrompt } from "@/components/dashboard/push-subscribe-prompt";
+import { SignOutButton } from "@/components/forms/sign-out-button";
 
 type NotificationItem = {
   id: string;
@@ -147,10 +148,11 @@ export function MobileDashboardChrome({
                 </div>
               ))}
             </div>
-            <div className="border-t border-border px-4 py-3">
-              <Link href={`/store/${slug}`} className="text-xs font-medium text-muted-foreground">
+            <div className="space-y-2 border-t border-border px-4 py-3">
+              <Link href={`/store/${slug}`} className="block text-xs font-medium text-muted-foreground">
                 View live store →
               </Link>
+              <SignOutButton className="text-xs font-medium text-muted-foreground" />
             </div>
           </div>
         </div>
