@@ -8,23 +8,17 @@ import { prisma } from "@/lib/prisma";
 import { loginSchema } from "@/lib/validations/auth";
 import { authConfig } from "@/lib/auth.config";
 import { logError, logWarn } from "@/lib/observability/log";
-import { verifyTurnstileToken } from "@/lib/turnstile";
-import { getClientIp } from "@/lib/rate-limit";
-import { headers } from "next/headers";
 
 // Auth.js v5 quirk that cost real debugging time: a plain `throw new
 // Error("ACCOUNT_LOCKED")` inside authorize() does NOT reach the client as
 // that message. It collapses into the generic "CredentialsSignin" error
 // type, indistinguishable from a genuinely wrong password — the messages
 // map in login-form.tsx would never match it and every failure mode
-// (locked, banned, DB down, bot-check-failed, actually-wrong-password) all
-// showed the same "Invalid email or password" text. The documented fix is
-// to throw a subclass of CredentialsSignin with a `code`, which Auth.js
-// preserves through to result.error on the client instead of collapsing it.
+// (locked, banned, DB down, actually-wrong-password) all showed the same
+// "Invalid email or password" text. The documented fix is to throw a
+// subclass of CredentialsSignin with a `code`, which Auth.js preserves
+// through to result.error on the client instead of collapsing it.
 // See https://authjs.dev/getting-started/providers/credentials#error-handling
-class BotCheckFailedError extends CredentialsSignin {
-  code = "BOT_CHECK_FAILED";
-}
 class DbUnavailableError extends CredentialsSignin {
   code = "DB_UNAVAILABLE";
 }
@@ -68,25 +62,8 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       credentials: {
         email: { label: "Email", type: "email" },
         password: { label: "Password", type: "password" },
-        turnstileToken: { label: "Turnstile token", type: "text" },
       },
       authorize: async (credentials) => {
-        // Bot protection: every credentials sign-in must carry a fresh,
-        // valid Turnstile token. This runs before the DB lookup below on
-        // purpose — it's the cheapest possible check, so a bot burns a
-        // Cloudflare challenge, not a database round trip.
-        const ip = getClientIp(await headers());
-        const turnstile = await verifyTurnstileToken(
-          credentials?.turnstileToken as string | undefined,
-          ip
-        );
-        if (!turnstile.success) {
-          void logWarn("AUTH", "Turnstile verification failed on login", {
-            errorCodes: turnstile.errorCodes,
-          });
-          throw new BotCheckFailedError();
-        }
-
         const parsed = loginSchema.safeParse(credentials);
         if (!parsed.success) return null;
 

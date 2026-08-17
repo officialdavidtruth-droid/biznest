@@ -7,7 +7,6 @@ import { signIn } from "next-auth/react";
 import { useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { toast } from "sonner";
-import { TurnstileWidget } from "@/components/forms/turnstile-widget";
 import { PasswordInput } from "@/components/forms/password-input";
 import Link from "next/link";
 
@@ -15,7 +14,6 @@ export function LoginForm() {
   const searchParams = useSearchParams();
   const callbackUrl = searchParams.get("callbackUrl") ?? "/onboarding/business-verification";
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [turnstileToken, setTurnstileToken] = useState("");
 
   const {
     register,
@@ -26,7 +24,7 @@ export function LoginForm() {
   async function onSubmit(values: LoginInput) {
     setIsSubmitting(true);
     try {
-      const result = await signIn("credentials", { ...values, turnstileToken, redirect: false });
+      const result = await signIn("credentials", { ...values, redirect: false });
 
       // NextAuth v5 (beta) has changed which field carries a custom
       // CredentialsSignin `code` across versions — some betas put it on
@@ -35,8 +33,8 @@ export function LoginForm() {
       // "CredentialsSignin" type). Checking both means this keeps working
       // regardless of which behavior the installed beta actually has,
       // instead of silently falling back to the generic message for every
-      // failure mode (locked/banned/DB-down/bot-check) the way it did
-      // before these error subclasses existed in lib/auth.ts.
+      // failure mode (locked/banned/DB-down) the way it did before these
+      // error subclasses existed in lib/auth.ts.
       const errorCode = (result as { code?: string })?.code ?? result?.error;
       if (errorCode) {
         const messages: Record<string, string> = {
@@ -44,7 +42,6 @@ export function LoginForm() {
           ACCOUNT_LOCKED: "Too many failed attempts. Try again in 15 minutes.",
           ACCOUNT_BANNED: "This account has been suspended. Contact support.",
           DB_UNAVAILABLE: "Couldn't reach the database. Check DATABASE_URL in Vercel's project settings.",
-          BOT_CHECK_FAILED: "Verification failed. Please retry the challenge below and try again.",
         };
         toast.error(messages[errorCode] ?? "Invalid email or password.");
         return;
@@ -83,7 +80,6 @@ export function LoginForm() {
           <PasswordInput {...register("password")} />
           {errors.password && <p className="mt-1 text-xs text-destructive">{errors.password.message}</p>}
         </div>
-        <TurnstileWidget onVerify={setTurnstileToken} />
         <button
           type="submit"
           disabled={isSubmitting}
