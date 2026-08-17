@@ -29,6 +29,49 @@ async function send(params: Parameters<typeof resend.emails.send>[0], context: {
   }
 }
 
+/**
+ * Shared wrapper for every transactional email: header, card shell, footer.
+ * The header is a plain text wordmark rather than an <img> — the previous
+ * logo image (public/email-logo.png fetched over ${APP_URL}) rendered as a
+ * broken-image icon in Gmail and others, since most mail clients proxy or
+ * block remote images by default and there was no reliable fallback. Text
+ * can't fail to load, so this is the safer choice for something every
+ * email depends on.
+ */
+function emailShell(opts: { preheader?: string; body: string; footer: string }) {
+  return `<!DOCTYPE html>
+<html>
+  <body style="margin:0;padding:0;background-color:#f3f4f6;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;">
+    ${opts.preheader ? `<div style="display:none;max-height:0;overflow:hidden;opacity:0;">${opts.preheader}</div>` : ""}
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:#f3f4f6;padding:32px 16px;">
+      <tr>
+        <td align="center">
+          <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:520px;background-color:#ffffff;border-radius:12px;overflow:hidden;box-shadow:0 1px 3px rgba(0,0,0,0.08);">
+            <tr>
+              <td style="background-color:#0b6413;padding:20px 32px;">
+                <span style="font-size:20px;font-weight:700;letter-spacing:-0.01em;color:#ffffff;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;">
+                  BizNest<span style="color:#8fe3a0;">.space</span>
+                </span>
+              </td>
+            </tr>
+            <tr>
+              <td style="padding:32px;">
+                ${opts.body}
+              </td>
+            </tr>
+            <tr>
+              <td style="padding:20px 32px;background-color:#f9fafb;border-top:1px solid #f0f0f0;">
+                <p style="margin:0;color:#9ca3af;font-size:12px;line-height:18px;">${opts.footer}</p>
+              </td>
+            </tr>
+          </table>
+        </td>
+      </tr>
+    </table>
+  </body>
+</html>`;
+}
+
 export async function sendStaffInviteEmail(
   email: string,
   token: string,
@@ -52,71 +95,48 @@ export async function sendStaffInviteEmail(
     )
     .join("");
 
-  const html = `<!DOCTYPE html>
-<html>
-  <body style="margin:0;padding:0;background-color:#f3f4f6;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;">
-    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:#f3f4f6;padding:32px 16px;">
-      <tr>
-        <td align="center">
-          <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:520px;background-color:#ffffff;border-radius:12px;overflow:hidden;box-shadow:0 1px 3px rgba(0,0,0,0.08);">
-            <tr>
-              <td style="background-color:#0b6413;padding:24px 32px;">
-                <img src="${APP_URL}/email-logo.png" alt="BizNest.space" width="160" style="display:block;height:auto;border:0;" />
-              </td>
-            </tr>
-            <tr>
-              <td style="padding:32px;">
-                <p style="margin:0 0 16px;color:#111827;font-size:16px;line-height:24px;">Hi ${staffName},</p>
-                <p style="margin:0 0 24px;color:#374151;font-size:15px;line-height:24px;">
-                  <strong>${inviterName}</strong> invited you to join <strong>${storeName}</strong> on BizNest as
-                  a <strong>${position}</strong> (${roleLabel}).
-                </p>
+  const html = emailShell({
+    preheader: `${inviterName} invited you to join ${storeName} on BizNest`,
+    body: `
+      <p style="margin:0 0 16px;color:#111827;font-size:16px;line-height:24px;">Hi ${staffName},</p>
+      <p style="margin:0 0 24px;color:#374151;font-size:15px;line-height:24px;">
+        <strong>${inviterName}</strong> invited you to join <strong>${storeName}</strong> on BizNest as
+        a <strong>${position}</strong> (${roleLabel}).
+      </p>
 
-                <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:#f9fafb;border-radius:8px;padding:16px 20px;margin-bottom:24px;">
-                  <tr>
-                    <td style="padding-bottom:4px;color:#6b7280;font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:0.05em;">
-                      You'll have access to
-                    </td>
-                  </tr>
-                  ${permissionsList}
-                </table>
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:#f9fafb;border-radius:8px;padding:16px 20px;margin-bottom:24px;">
+        <tr>
+          <td style="padding-bottom:4px;color:#6b7280;font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:0.05em;">
+            You'll have access to
+          </td>
+        </tr>
+        ${permissionsList}
+      </table>
 
-                <table role="presentation" cellpadding="0" cellspacing="0" style="margin:0 auto 24px;">
-                  <tr>
-                    <td align="center" style="border-radius:8px;background-color:#0f6410;">
-                      <a href="${url}" style="display:inline-block;padding:12px 28px;color:#ffffff;font-size:15px;font-weight:600;text-decoration:none;border-radius:8px;">
-                        Accept invite
-                      </a>
-                    </td>
-                  </tr>
-                </table>
+      <table role="presentation" cellpadding="0" cellspacing="0" style="margin:0 auto 24px;">
+        <tr>
+          <td align="center" style="border-radius:8px;background-color:#0f6410;">
+            <a href="${url}" style="display:inline-block;padding:12px 28px;color:#ffffff;font-size:15px;font-weight:600;text-decoration:none;border-radius:8px;">
+              Accept invite
+            </a>
+          </td>
+        </tr>
+      </table>
 
-                <p style="margin:0 0 8px;color:#9ca3af;font-size:13px;line-height:20px;">
-                  If the button doesn't work, copy and paste this link into your browser:
-                </p>
-                <p style="margin:0 0 24px;word-break:break-all;">
-                  <a href="${url}" style="color:#0f6410;font-size:13px;text-decoration:underline;">${url}</a>
-                </p>
+      <p style="margin:0 0 8px;color:#9ca3af;font-size:13px;line-height:20px;">
+        If the button doesn't work, copy and paste this link into your browser:
+      </p>
+      <p style="margin:0 0 24px;word-break:break-all;">
+        <a href="${url}" style="color:#0f6410;font-size:13px;text-decoration:underline;">${url}</a>
+      </p>
 
-                <p style="margin:0;color:#9ca3af;font-size:13px;line-height:20px;">
-                  Don't have a BizNest account with this email yet? No problem — you'll be prompted to create one first.
-                </p>
-              </td>
-            </tr>
-            <tr>
-              <td style="padding:20px 32px;background-color:#f9fafb;border-top:1px solid #f0f0f0;">
-                <p style="margin:0;color:#9ca3af;font-size:12px;line-height:18px;">
-                  This invite was sent because someone added ${email} as a team member on BizNest.
-                  If you weren't expecting this, you can safely ignore this email.
-                </p>
-              </td>
-            </tr>
-          </table>
-        </td>
-      </tr>
-    </table>
-  </body>
-</html>`;
+      <p style="margin:0;color:#9ca3af;font-size:13px;line-height:20px;">
+        Don't have a BizNest account with this email yet? No problem — you'll be prompted to create one first.
+      </p>
+    `,
+    footer: `This invite was sent because someone added ${email} as a team member on BizNest.
+      If you weren't expecting this, you can safely ignore this email.`,
+  });
 
   return send(
     {
@@ -131,14 +151,46 @@ export async function sendStaffInviteEmail(
 
 export async function sendVerificationEmail(email: string, token: string) {
   const url = `${APP_URL}/verify-email?token=${token}`;
+
+  const html = emailShell({
+    preheader: "Confirm your email to get started on BizNest",
+    body: `
+      <p style="margin:0 0 16px;color:#111827;font-size:16px;line-height:24px;">Welcome to BizNest 👋</p>
+      <p style="margin:0 0 24px;color:#374151;font-size:15px;line-height:24px;">
+        Confirm your email address to finish setting up your account and get started.
+      </p>
+
+      <table role="presentation" cellpadding="0" cellspacing="0" style="margin:0 auto 24px;">
+        <tr>
+          <td align="center" style="border-radius:8px;background-color:#0f6410;">
+            <a href="${url}" style="display:inline-block;padding:12px 28px;color:#ffffff;font-size:15px;font-weight:600;text-decoration:none;border-radius:8px;">
+              Verify email
+            </a>
+          </td>
+        </tr>
+      </table>
+
+      <p style="margin:0 0 8px;color:#9ca3af;font-size:13px;line-height:20px;">
+        If the button doesn't work, copy and paste this link into your browser:
+      </p>
+      <p style="margin:0 0 24px;word-break:break-all;">
+        <a href="${url}" style="color:#0f6410;font-size:13px;text-decoration:underline;">${url}</a>
+      </p>
+
+      <p style="margin:0;color:#9ca3af;font-size:13px;line-height:20px;">
+        This link expires in 24 hours.
+      </p>
+    `,
+    footer: `This email was sent to ${email} because an account was created with this address on BizNest.
+      If you didn't do this, you can safely ignore this email.`,
+  });
+
   return send(
     {
       from: FROM,
       to: email,
       subject: "Verify your BizNest email",
-      html: `<p>Welcome to BizNest. Confirm your email to get started:</p>
-           <p><a href="${url}">${url}</a></p>
-           <p>This link expires in 24 hours.</p>`,
+      html,
     },
     { kind: "verification", to: email }
   );

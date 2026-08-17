@@ -35,6 +35,7 @@ export const RESERVED_SLUGS = new Set([
   "privacy",
   "onboarding",
   "staff",
+  "verify-email",
   // app/(auth)
   "login",
   "register",

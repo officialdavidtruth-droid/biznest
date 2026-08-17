@@ -89,7 +89,7 @@ export function StaffManager({ slug, initialMembers }: { slug: string; initialMe
           </div>
         </div>
 
-        <div className="grid gap-3 sm:grid-cols-[1fr_auto]">
+        <div className="grid gap-3 sm:grid-cols-[1fr_140px]">
           <div>
             <label className="text-xs font-medium text-muted-foreground">Email address</label>
             <input
@@ -100,11 +100,13 @@ export function StaffManager({ slug, initialMembers }: { slug: string; initialMe
             />
           </div>
           <div>
-            <label className="text-xs font-medium text-muted-foreground">Access level</label>
+            <label className="block whitespace-nowrap text-xs font-medium text-muted-foreground">
+              Access level
+            </label>
             <select
               value={role}
               onChange={(e) => setRole(e.target.value as "MANAGER" | "STAFF")}
-              className="mt-1 w-full rounded border border-border bg-background p-2 text-sm sm:w-auto"
+              className="mt-1 w-full rounded border border-border bg-background p-2 text-sm"
             >
               <option value="STAFF">Staff</option>
               <option value="MANAGER">Manager</option>

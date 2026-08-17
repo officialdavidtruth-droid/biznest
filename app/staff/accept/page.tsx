@@ -1,4 +1,3 @@
-import Link from "next/link";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { redirect } from "next/navigation";
@@ -35,14 +34,21 @@ export default async function AcceptStaffInvitePage({
   });
 
   const session = await auth();
-  if (!session?.user?.id) {
-    const destination = existingUser ? "/login" : "/register";
-    redirect(
-      `${destination}?callbackUrl=${encodeURIComponent(callbackUrl)}&email=${encodeURIComponent(invite.invitedEmail)}`
-    );
+  const emailMatches = session?.user?.email?.toLowerCase() === invite.invitedEmail.toLowerCase();
+
+  // No session, or signed in as someone else, and the invited email has no
+  // account yet: send straight to signup instead of showing an
+  // "existing user" style message. There's no other account to reveal or
+  // compare against in this case, so there's nothing to gain by mentioning
+  // whichever email happens to be signed in right now — it just needs to
+  // become a create-account prompt.
+  if ((!session?.user?.id || !emailMatches) && !existingUser) {
+    redirect(`/register?callbackUrl=${encodeURIComponent(callbackUrl)}&email=${encodeURIComponent(invite.invitedEmail)}`);
   }
 
-  const emailMatches = session.user.email?.toLowerCase() === invite.invitedEmail.toLowerCase();
+  if (!session?.user?.id) {
+    redirect(`/login?callbackUrl=${encodeURIComponent(callbackUrl)}&email=${encodeURIComponent(invite.invitedEmail)}`);
+  }
   const roleLabel = invite.role === "MANAGER" ? "Manager" : "Staff member";
 
   return (
@@ -68,26 +74,12 @@ export default async function AcceptStaffInvitePage({
       )}
 
       {!emailMatches ? (
-        existingUser ? (
-          <p className="mt-4 rounded-lg border border-border p-4 text-sm text-muted-foreground">
-            This invite was sent to <strong>{invite.invitedEmail}</strong>, but you're signed in as{" "}
-            <strong>{session.user.email}</strong>. Sign out and sign in with the invited email to accept.
-          </p>
-        ) : (
-          <div className="mt-4 rounded-lg border border-border p-4 text-sm text-muted-foreground">
-            <p>
-              This invite was sent to <strong>{invite.invitedEmail}</strong>, but you're signed in as{" "}
-              <strong>{session.user.email}</strong>. That email doesn't have a BizNest account yet — create one to
-              accept this invite.
-            </p>
-            <Link
-              href={`/register?callbackUrl=${encodeURIComponent(callbackUrl)}&email=${encodeURIComponent(invite.invitedEmail)}`}
-              className="mt-4 inline-block rounded-md bg-primary px-5 py-2 text-sm font-medium text-primary-foreground"
-            >
-              Sign up with {invite.invitedEmail}
-            </Link>
-          </div>
-        )
+        // By this point existingUser must be true — the no-account case
+        // already redirected to /register above.
+        <p className="mt-4 rounded-lg border border-border p-4 text-sm text-muted-foreground">
+          This invite was sent to <strong>{invite.invitedEmail}</strong>, but you're signed in as{" "}
+          <strong>{session.user.email}</strong>. Sign out and sign in with the invited email to accept.
+        </p>
       ) : (
         <AcceptInviteButton token={token} />
       )}
