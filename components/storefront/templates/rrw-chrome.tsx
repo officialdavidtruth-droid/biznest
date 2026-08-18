@@ -53,7 +53,7 @@ export function RrwHeader({
             alignItems: "center", padding: "0 18px", boxShadow: "0 4px 20px #00000012",
           }}
         >
-          <a href={`/store/${slug}`} style={{ fontWeight: 900, fontSize: 20, letterSpacing: "-2px", textDecoration: "none", color: RRW.ink, display: "flex", alignItems: "center", gap: 8 }}>
+          <a href={`/${slug}`} style={{ fontWeight: 900, fontSize: 20, letterSpacing: "-2px", textDecoration: "none", color: RRW.ink, display: "flex", alignItems: "center", gap: 8 }}>
             {store.logoUrl ? (
               // eslint-disable-next-line @next/next/no-img-element
               <img src={store.logoUrl} alt={store.name} style={{ height: 26, width: 26, borderRadius: "50%", objectFit: "cover" }} />

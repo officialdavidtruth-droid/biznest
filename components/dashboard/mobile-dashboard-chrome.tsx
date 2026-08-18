@@ -3,12 +3,13 @@
 import { useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Menu, X } from "lucide-react";
+import { Menu, X, ExternalLink } from "lucide-react";
 import { buildNavGroups, buildBottomTabItems, filterNavGroupsForRole } from "@/lib/constants/dashboard-nav";
 import type { StoreAccessRole } from "@/lib/access/store-access";
 import { NotificationBell } from "@/components/dashboard/notification-bell";
 import { PushSubscribePrompt } from "@/components/dashboard/push-subscribe-prompt";
 import { SignOutButton } from "@/components/forms/sign-out-button";
+import { StoreLogo } from "@/components/dashboard/store-logo";
 
 type NotificationItem = {
   id: string;
@@ -35,6 +36,7 @@ type NotificationItem = {
 export function MobileDashboardChrome({
   slug,
   storeName,
+  logoUrl,
   sellsProducts,
   offersServices,
   category,
@@ -45,6 +47,7 @@ export function MobileDashboardChrome({
 }: {
   slug: string;
   storeName: string;
+  logoUrl?: string | null;
   sellsProducts: boolean;
   offersServices: boolean;
   category?: string | null;
@@ -76,9 +79,7 @@ export function MobileDashboardChrome({
           >
             <Menu className="h-5 w-5" />
           </button>
-          <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-primary text-xs font-bold text-primary-foreground">
-            {storeName.charAt(0).toUpperCase()}
-          </div>
+          <StoreLogo logoUrl={logoUrl} storeName={storeName} size="sm" />
           <p className="truncate text-sm font-semibold">{storeName}</p>
         </div>
         <NotificationBell notifications={notifications} unreadCount={unreadCount} />
@@ -122,9 +123,20 @@ export function MobileDashboardChrome({
         <div className="fixed inset-0 z-40">
           <div className="absolute inset-0 bg-black/50" onClick={() => setDrawerOpen(false)} />
           <div className="absolute inset-y-0 left-0 flex w-[82%] max-w-xs flex-col overflow-y-auto bg-background pb-[env(safe-area-inset-bottom)]">
-            <div className="flex items-center justify-between border-b border-border px-4 py-4">
-              <p className="truncate text-sm font-semibold">{storeName}</p>
-              <button onClick={() => setDrawerOpen(false)} aria-label="Close menu" className="p-1">
+            <div className="flex items-center gap-3 border-b border-border px-4 py-4">
+              <StoreLogo logoUrl={logoUrl} storeName={storeName} />
+              <div className="min-w-0 flex-1">
+                <p className="truncate text-sm font-semibold leading-tight">{storeName}</p>
+                <Link
+                  href={`/${slug}`}
+                  className="mt-0.5 flex items-center gap-1 truncate text-xs text-muted-foreground"
+                  onClick={() => setDrawerOpen(false)}
+                >
+                  <span className="truncate">biznest.space/{slug}</span>
+                  <ExternalLink className="h-3 w-3 shrink-0" />
+                </Link>
+              </div>
+              <button onClick={() => setDrawerOpen(false)} aria-label="Close menu" className="shrink-0 p-1">
                 <X className="h-5 w-5" />
               </button>
             </div>
@@ -158,7 +170,7 @@ export function MobileDashboardChrome({
               ))}
             </div>
             <div className="space-y-2 border-t border-border px-4 py-3">
-              <Link href={`/store/${slug}`} className="block text-xs font-medium text-muted-foreground">
+              <Link href={`/${slug}`} className="block text-xs font-medium text-muted-foreground">
                 View live store →
               </Link>
               <SignOutButton className="text-xs font-medium text-muted-foreground" />

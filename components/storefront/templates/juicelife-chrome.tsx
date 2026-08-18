@@ -48,7 +48,7 @@ export function JuiceLifeHeader({
 
       {/* ---------- NAV ---------- */}
       <header style={{ height: 82, display: "flex", alignItems: "center", ...wrap, gap: 30, background: "#fff", position: "sticky", top: 0, zIndex: 20, borderBottom: "1px solid #edf1ea" }}>
-        <a href={`/store/${slug}`} style={{ fontWeight: 800, fontSize: 22, color: JUICELIFE.green, lineHeight: 0.8, textDecoration: "none", display: "flex", alignItems: "center", gap: 8 }}>
+        <a href={`/${slug}`} style={{ fontWeight: 800, fontSize: 22, color: JUICELIFE.green, lineHeight: 0.8, textDecoration: "none", display: "flex", alignItems: "center", gap: 8 }}>
           {store.logoUrl ? (
             // eslint-disable-next-line @next/next/no-img-element
             <img src={store.logoUrl} alt={store.name} style={{ height: 34, width: "auto", borderRadius: 6 }} />
@@ -57,7 +57,7 @@ export function JuiceLifeHeader({
           )}
         </a>
         <nav style={{ display: "flex", gap: 24, margin: "0 auto", fontSize: 12 }}>
-          <a href={`/store/${slug}`} style={{ color: JUICELIFE.ink, textDecoration: "none" }}>Home</a>
+          <a href={`/${slug}`} style={{ color: JUICELIFE.ink, textDecoration: "none" }}>Home</a>
           <a href={`/store/${slug}/catalog`} style={{ color: JUICELIFE.ink, textDecoration: "none" }}>Shop</a>
           <a href={`/store/${slug}/search`} style={{ color: JUICELIFE.ink, textDecoration: "none" }}>Search</a>
         </nav>
@@ -92,7 +92,7 @@ export function JuiceLifeFooter({
         <h4 style={{ color: "#222", margin: "0 0 15px", fontSize: 11 }}>Contact us</h4>
         {store.contactPhone && <p style={{ margin: "7px 0" }}>☎ {store.contactPhone}</p>}
         {store.contactEmail && <p style={{ margin: "7px 0" }}>✉ {store.contactEmail}</p>}
-        <a href={`/store/${slug}`} style={{ display: "block", margin: "7px 0", color: "#697169", textDecoration: "none" }}>Back to shop</a>
+        <a href={`/${slug}`} style={{ display: "block", margin: "7px 0", color: "#697169", textDecoration: "none" }}>Back to shop</a>
       </div>
       <div>
         <h4 style={{ color: "#222", margin: "0 0 15px", fontSize: 11 }}>Follow us</h4>

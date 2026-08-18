@@ -32,7 +32,7 @@ export function buildNavGroups(business: { sellsProducts: boolean; offersService
   label: string;
   items: NavItem[];
 }> {
-  const sellItems: NavItem[] = [
+  const allSellItems: NavItem[] = [
     { label: "Orders", href: "/orders", icon: ShoppingCart, permission: "orders" },
     { label: "Products", href: "/products", icon: Package, permission: "products" },
     { label: "Services", href: "/services", icon: Wrench, permission: "products" },
@@ -42,7 +42,14 @@ export function buildNavGroups(business: { sellsProducts: boolean; offersService
     { label: "Delivery zones", href: "/delivery", icon: Truck, permission: "settings" },
     { label: "Invoices", href: "/invoices", icon: FileText, permission: "orders" },
     { label: "Quotes", href: "/quotes", icon: FileSignature, permission: "orders" },
-  ].filter((item) => {
+  ];
+  // Split into its own statement (rather than chaining .filter() straight
+  // off the literal) so the `: NavItem[]` annotation above actually
+  // contextually types each object literal's `permission` field as the
+  // StaffPermissionId union — chaining .filter() directly off the array
+  // literal stops that contextual typing from applying, which widened
+  // `permission` to plain `string` and failed to satisfy NavItem[].
+  const sellItems: NavItem[] = allSellItems.filter((item) => {
     if (PRODUCT_ONLY_HREFS.has(item.href)) return business.sellsProducts;
     if (SERVICE_ONLY_HREFS.has(item.href)) return business.offersServices;
     return true;

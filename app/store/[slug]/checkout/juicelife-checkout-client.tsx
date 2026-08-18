@@ -59,7 +59,7 @@ export function JuiceLifeCheckoutClient({ slug }: { slug: string }) {
     return (
       <div style={{ background: "#fff", borderRadius: JUICELIFE.radius, border: "1px solid #edf1eb", color: JUICELIFE.ink }} className="mx-auto mt-24 max-w-md px-8 py-14 text-center">
         <p style={{ color: JUICELIFE.muted, fontSize: 13 }}>Your cart is empty.</p>
-        <Link href={`/store/${slug}`} style={{ color: JUICELIFE.green }} className="mt-3 inline-block text-xs font-bold no-underline hover:opacity-70">
+        <Link href={`/${slug}`} style={{ color: JUICELIFE.green }} className="mt-3 inline-block text-xs font-bold no-underline hover:opacity-70">
           Continue shopping →
         </Link>
       </div>

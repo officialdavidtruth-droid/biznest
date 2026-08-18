@@ -65,7 +65,7 @@ export function JuiceLifeStorefront({
 
       {/* ---------- NAV ---------- */}
       <header style={{ height: 82, display: "flex", alignItems: "center", ...wrap, gap: 30, background: "#fff", position: "sticky", top: 0, zIndex: 20, borderBottom: "1px solid #edf1ea" }}>
-        <a href={`/store/${slug}`} style={{ fontWeight: 800, fontSize: 22, color: JUICELIFE.green, lineHeight: 0.8, textDecoration: "none", display: "flex", alignItems: "center", gap: 8 }}>
+        <a href={`/${slug}`} style={{ fontWeight: 800, fontSize: 22, color: JUICELIFE.green, lineHeight: 0.8, textDecoration: "none", display: "flex", alignItems: "center", gap: 8 }}>
           {store.logoUrl ? (
             // eslint-disable-next-line @next/next/no-img-element
             <img src={store.logoUrl} alt={store.name} style={{ height: 34, width: "auto", borderRadius: 6 }} />

@@ -28,7 +28,7 @@ export function NovaCartClient({ slug }: { slug: string }) {
       {cartItems.length === 0 ? (
         <div style={{ border: `1px solid ${NOVA.line}` }} className="p-14 text-center">
           <p style={{ color: NOVA.gray, fontSize: 13 }}>Your cart is empty.</p>
-          <Link href={`/store/${slug}`} style={{ ...label, color: NOVA.cream, borderBottom: `1px solid ${NOVA.line}` }} className="mt-4 inline-block pb-1 no-underline hover:opacity-70">
+          <Link href={`/${slug}`} style={{ ...label, color: NOVA.cream, borderBottom: `1px solid ${NOVA.line}` }} className="mt-4 inline-block pb-1 no-underline hover:opacity-70">
             Continue shopping →
           </Link>
         </div>

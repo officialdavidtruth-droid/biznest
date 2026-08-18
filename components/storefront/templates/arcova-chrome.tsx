@@ -39,7 +39,7 @@ export function ArcovaHeader({
       <header style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "22px 0", borderBottom: `1px solid ${ARCOVA.border}` }}>
         <div style={wrap}>
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-            <a href={`/store/${slug}`} style={{ textDecoration: "none", color: ARCOVA.ink, display: "flex", alignItems: "center", gap: 10 }}>
+            <a href={`/${slug}`} style={{ textDecoration: "none", color: ARCOVA.ink, display: "flex", alignItems: "center", gap: 10 }}>
               {store.logoUrl ? (
                 // eslint-disable-next-line @next/next/no-img-element
                 <img src={store.logoUrl} alt={store.name} style={{ height: 32, width: "auto" }} />

@@ -95,7 +95,7 @@ export function VioletStorefront({
           alignItems: "center", gap: 25, padding: "0 5%", position: "sticky", top: 0, zIndex: 20,
         }}
       >
-        <a href={`/store/${slug}`} style={{ fontSize: 24, fontWeight: 900, textDecoration: "none", color: p.ink, display: "flex", alignItems: "center", gap: 10 }}>
+        <a href={`/${slug}`} style={{ fontSize: 24, fontWeight: 900, textDecoration: "none", color: p.ink, display: "flex", alignItems: "center", gap: 10 }}>
           {store.logoUrl ? (
             // eslint-disable-next-line @next/next/no-img-element
             <img src={store.logoUrl} alt={store.name} style={{ height: 34, width: 34, borderRadius: "50%", objectFit: "cover" }} />

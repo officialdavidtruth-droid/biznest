@@ -285,12 +285,12 @@ export function HeenzyNav({ store, slug, hasCatalog, theme = HEENZY_THEME }: { s
   return (
     <nav className="hz-root" style={{ ...heenzyCssVars(theme), position: "sticky", top: 0, zIndex: 50, background: "rgba(255,255,255,.92)", backdropFilter: "blur(10px)", borderBottom: "1px solid #e7e7e7" }}>
       <div className="hz-wrap hz-nav">
-        <a href={`/store/${slug}`} className="hz-logo" style={{ display: "flex", alignItems: "center", gap: 8, textDecoration: "none", color: "var(--hz-black)" }}>
+        <a href={`/${slug}`} className="hz-logo" style={{ display: "flex", alignItems: "center", gap: 8, textDecoration: "none", color: "var(--hz-black)" }}>
           {store.logoUrl ? <img src={store.logoUrl} alt={store.name} /> : null}
           {store.name}
         </a>
         <ul className="hz-nav-links">
-          <li><a href={`/store/${slug}`}>Home</a></li>
+          <li><a href={`/${slug}`}>Home</a></li>
           {hasCatalog && <li><a href={`/store/${slug}/catalog`}>Shop</a></li>}
           {hasCatalog && <li><a href={`/store/${slug}/search`}>Search</a></li>}
         </ul>

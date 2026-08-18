@@ -60,7 +60,7 @@ export function RrwCheckoutClient({ slug }: { slug: string }) {
     return (
       <div style={{ border: "1px solid #ddd" }} className="mx-auto mt-24 max-w-md px-8 py-14 text-center">
         <p style={{ opacity: 0.6, fontSize: 11 }}>Your cart is empty.</p>
-        <Link href={`/store/${slug}`} style={{ color: RRW.ink, fontWeight: 700, borderBottom: `1px solid ${RRW.ink}` }} className="mt-3 inline-block pb-0.5 text-xs no-underline hover:opacity-70">
+        <Link href={`/${slug}`} style={{ color: RRW.ink, fontWeight: 700, borderBottom: `1px solid ${RRW.ink}` }} className="mt-3 inline-block pb-0.5 text-xs no-underline hover:opacity-70">
           Continue browsing &rarr;
         </Link>
       </div>

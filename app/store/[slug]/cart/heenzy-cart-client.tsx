@@ -20,7 +20,7 @@ export function HeenzyCartClient({ slug }: { slug: string }) {
         {cartItems.length === 0 ? (
           <div style={{ background: "#f7f7f7", borderRadius: 14, padding: 48, textAlign: "center" }}>
             <p style={{ color: "#6b6b6b", fontSize: 14 }}>Your cart is empty.</p>
-            <Link href={`/store/${slug}`} className="hz-btn hz-btn-dark" style={{ marginTop: 14 }}>Continue shopping</Link>
+            <Link href={`/${slug}`} className="hz-btn hz-btn-dark" style={{ marginTop: 14 }}>Continue shopping</Link>
           </div>
         ) : (
           <div style={{ display: "grid", gap: 32, gridTemplateColumns: "1.6fr 1fr" }}>

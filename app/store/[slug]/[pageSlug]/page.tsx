@@ -39,7 +39,7 @@ export default async function StorePagePage({
     <div style={{ background: theme.bg, color: theme.ink, fontFamily: theme.font, minHeight: "100vh" }}>
       <div className="mx-auto max-w-2xl px-6 py-12">
         <Link
-          href={`/store/${slug}`}
+          href={`/${slug}`}
           className="mb-8 inline-flex items-center gap-1.5 text-sm opacity-70 hover:opacity-100"
         >
           <ArrowLeft className="h-3.5 w-3.5" /> Back to {store.name}

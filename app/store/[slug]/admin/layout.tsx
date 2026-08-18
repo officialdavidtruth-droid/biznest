@@ -68,6 +68,7 @@ export default async function StoreAdminLayout({
       <DashboardSidebar
         slug={slug}
         storeName={store.name}
+        logoUrl={store.logoUrl}
         sellsProducts={store.business.sellsProducts}
         offersServices={store.business.offersServices}
         category={store.business.category}
@@ -80,6 +81,7 @@ export default async function StoreAdminLayout({
       <MobileDashboardChrome
         slug={slug}
         storeName={store.name}
+        logoUrl={store.logoUrl}
         sellsProducts={store.business.sellsProducts}
         offersServices={store.business.offersServices}
         category={store.business.category}
@@ -90,9 +92,11 @@ export default async function StoreAdminLayout({
       />
 
       <div className="flex flex-1 flex-col overflow-hidden">
-        {/* Desktop-only top bar, just for the bell — mobile gets its own in
-            MobileDashboardChrome above. */}
-        <div className="hidden shrink-0 items-center justify-end border-b border-border px-6 py-3 lg:flex">
+        {/* Desktop-only top bar — mobile gets its own in MobileDashboardChrome
+            above. Shows the current section so the bar isn't just an empty
+            strip with a bell floating at the far end. */}
+        <div className="hidden shrink-0 items-center justify-between border-b border-border bg-muted/20 px-6 py-3 lg:flex">
+          <p className="text-sm font-medium text-muted-foreground">{store.name} admin</p>
           <NotificationBell notifications={notifications} unreadCount={unreadCount} />
         </div>
 

@@ -59,7 +59,7 @@ export function VioletCheckoutClient({ slug }: { slug: string }) {
     return (
       <div style={{ background: "#fff", borderRadius: 20, boxShadow: "0 5px 20px #20144b0a" }} className="mx-auto mt-24 max-w-md px-8 py-14 text-center">
         <p style={{ opacity: 0.75 }} className="text-sm">Your cart is empty.</p>
-        <Link href={`/store/${slug}`} style={{ color: VIOLET.accent }} className="mt-3 inline-block text-sm font-semibold no-underline hover:opacity-80">
+        <Link href={`/${slug}`} style={{ color: VIOLET.accent }} className="mt-3 inline-block text-sm font-semibold no-underline hover:opacity-80">
           Continue shopping →
         </Link>
       </div>

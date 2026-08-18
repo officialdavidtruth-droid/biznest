@@ -43,7 +43,7 @@ export function PremiumHeader({
 
       {/* ---------- NAV ---------- */}
       <header style={{ height: 68, background: "#fff", borderBottom: "1px solid #e2e7e9", display: "flex", alignItems: "center", gap: 16, padding: "0 4.8%", position: "sticky", top: 0, zIndex: 20 }}>
-        <a href={`/store/${slug}`} style={{ fontSize: 21, fontWeight: 900, minWidth: 175, textDecoration: "none", color: PREMIUM.ink, display: "flex", alignItems: "center", gap: 8 }}>
+        <a href={`/${slug}`} style={{ fontSize: 21, fontWeight: 900, minWidth: 175, textDecoration: "none", color: PREMIUM.ink, display: "flex", alignItems: "center", gap: 8 }}>
           {store.logoUrl ? (
             // eslint-disable-next-line @next/next/no-img-element
             <img src={store.logoUrl} alt={store.name} style={{ height: 32, width: 32, borderRadius: "50%", objectFit: "cover" }} />

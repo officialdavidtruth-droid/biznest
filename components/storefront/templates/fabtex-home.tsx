@@ -62,7 +62,7 @@ export function FabtexStorefront({
 
       {/* ---------- HEADER ---------- */}
       <header style={{ height: 64, background: FABTEX.dark, ...wrap, display: "flex", alignItems: "center", gap: 30, borderBottom: "1px solid #343131" }}>
-        <a href={`/store/${slug}`} style={{ fontWeight: 700, fontSize: 22, letterSpacing: 6, textDecoration: "none", color: "#fff", whiteSpace: "nowrap", display: "flex", alignItems: "center", gap: 10 }}>
+        <a href={`/${slug}`} style={{ fontWeight: 700, fontSize: 22, letterSpacing: 6, textDecoration: "none", color: "#fff", whiteSpace: "nowrap", display: "flex", alignItems: "center", gap: 10 }}>
           {store.logoUrl ? (
             // eslint-disable-next-line @next/next/no-img-element
             <img src={store.logoUrl} alt={store.name} style={{ height: 30, width: "auto" }} />

@@ -48,7 +48,7 @@ export function FabtexHeader({
 
       {/* ---------- HEADER ---------- */}
       <header style={{ height: 64, background: FABTEX.dark, ...wrap, display: "flex", alignItems: "center", gap: 30, borderBottom: "1px solid #343131", position: "sticky", top: 0, zIndex: 30 }}>
-        <a href={`/store/${slug}`} style={{ fontWeight: 700, fontSize: 22, letterSpacing: 6, textDecoration: "none", color: "#fff", whiteSpace: "nowrap", display: "flex", alignItems: "center", gap: 10 }}>
+        <a href={`/${slug}`} style={{ fontWeight: 700, fontSize: 22, letterSpacing: 6, textDecoration: "none", color: "#fff", whiteSpace: "nowrap", display: "flex", alignItems: "center", gap: 10 }}>
           {store.logoUrl ? (
             // eslint-disable-next-line @next/next/no-img-element
             <img src={store.logoUrl} alt={store.name} style={{ height: 30, width: "auto" }} />
@@ -57,7 +57,7 @@ export function FabtexHeader({
           )}
         </a>
         <nav style={{ display: "flex", gap: 2, flex: 1 }}>
-          <a href={`/store/${slug}`} style={{ fontSize: 10, textDecoration: "none", color: "#fff", padding: "10px 11px" }}>Home</a>
+          <a href={`/${slug}`} style={{ fontSize: 10, textDecoration: "none", color: "#fff", padding: "10px 11px" }}>Home</a>
           <a href={`/store/${slug}/catalog`} style={{ fontSize: 10, textDecoration: "none", color: "#fff", padding: "10px 11px" }}>Catalog</a>
           <a href={`/store/${slug}/search`} style={{ fontSize: 10, textDecoration: "none", color: "#fff", padding: "10px 11px" }}>Search</a>
         </nav>
@@ -95,7 +95,7 @@ export function FabtexFooter({
           <h4 style={{ fontSize: 10, marginBottom: 10 }}>CONTACT</h4>
           {store.contactEmail && <p style={{ fontSize: 9, color: "#aaa" }}>{store.contactEmail}</p>}
           {store.contactPhone && <p style={{ fontSize: 9, color: "#aaa" }}>{store.contactPhone}</p>}
-          <a href={`/store/${slug}`} style={{ display: "block", fontSize: 9, color: "#aaa", marginTop: 8, textDecoration: "none" }}>Back to shop</a>
+          <a href={`/${slug}`} style={{ display: "block", fontSize: 9, color: "#aaa", marginTop: 8, textDecoration: "none" }}>Back to shop</a>
         </div>
         <div>
           <h4 style={{ fontSize: 10, marginBottom: 10 }}>FOLLOW US</h4>

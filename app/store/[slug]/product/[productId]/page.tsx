@@ -75,7 +75,7 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
 
   const crumbs = (
     <>
-      <Link href={`/store/${slug}`} style={{ color: ink, textDecoration: "none" }}>Home</Link>
+      <Link href={`/${slug}`} style={{ color: ink, textDecoration: "none" }}>Home</Link>
       {" / "}
       {product.category?.name ? <>{product.category.name}{" / "}</> : null}
       <span>{product.name}</span>

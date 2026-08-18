@@ -56,7 +56,7 @@ export default async function CatalogPage({ params }: { params: Promise<{ slug: 
 
   const crumbs = (
     <>
-      <Link href={`/store/${slug}`} style={{ color: ink, textDecoration: "none" }}>Home</Link>
+      <Link href={`/${slug}`} style={{ color: ink, textDecoration: "none" }}>Home</Link>
       {" / "}
       <span>All</span>
     </>
@@ -201,7 +201,7 @@ export default async function CatalogPage({ params }: { params: Promise<{ slug: 
     <div style={{ fontFamily: theme.font, color: ink, background: bg, minHeight: "100vh" }} className="storefront-root">
       <nav style={{ position: "sticky", top: 0, zIndex: 50, background: `${bg}f2`, backdropFilter: "blur(10px)", borderBottom: `1px solid ${ink}14` }}>
         <div style={{ maxWidth: 1180, margin: "0 auto", padding: "16px 28px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-          <Link href={`/store/${slug}`} style={{ fontWeight: 800, fontSize: 18, color: ink, textDecoration: "none" }}>{store.name}</Link>
+          <Link href={`/${slug}`} style={{ fontWeight: 800, fontSize: 18, color: ink, textDecoration: "none" }}>{store.name}</Link>
           <CartLink storeSlug={slug} accent={accent} ink={ink} />
         </div>
       </nav>

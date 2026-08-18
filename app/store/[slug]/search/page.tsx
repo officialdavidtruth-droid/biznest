@@ -224,7 +224,7 @@ export default async function SearchPage({
     <div style={{ fontFamily: theme.font, color: ink, background: bg, minHeight: "100vh" }} className="storefront-root">
       <nav style={{ position: "sticky", top: 0, zIndex: 50, background: `${bg}f2`, backdropFilter: "blur(10px)", borderBottom: `1px solid ${ink}14` }}>
         <div style={{ maxWidth: 1180, margin: "0 auto", padding: "16px 28px", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 20 }}>
-          <Link href={`/store/${slug}`} style={{ fontWeight: 800, fontSize: 18, color: ink, textDecoration: "none", flexShrink: 0 }}>{store.name}</Link>
+          <Link href={`/${slug}`} style={{ fontWeight: 800, fontSize: 18, color: ink, textDecoration: "none", flexShrink: 0 }}>{store.name}</Link>
           <form action={`/store/${slug}/search`} style={{ flex: 1, maxWidth: 420 }}>
             <input
               name="q"

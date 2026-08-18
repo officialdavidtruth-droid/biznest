@@ -26,7 +26,7 @@ export function HomeVistaCartClient({ slug }: { slug: string }) {
       {cartItems.length === 0 ? (
         <div style={{ border: "1px solid #e2e8e6", borderRadius: 8 }} className="p-12 text-center">
           <p style={{ opacity: 0.65, fontSize: 12 }}>Your cart is empty.</p>
-          <Link href={`/store/${slug}`} style={{ color: HOMEVISTA.accent, fontWeight: 700 }} className="mt-3 inline-block text-xs no-underline hover:opacity-70">
+          <Link href={`/${slug}`} style={{ color: HOMEVISTA.accent, fontWeight: 700 }} className="mt-3 inline-block text-xs no-underline hover:opacity-70">
             Continue browsing &rarr;
           </Link>
         </div>

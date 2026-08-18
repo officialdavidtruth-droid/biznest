@@ -66,7 +66,7 @@ export function CheckoutClient({ slug }: { slug: string }) {
       <div style={{ background: SURFACE, minHeight: "100vh" }} className="storefront-root">
         <div style={{ background: CARD, borderRadius: "1rem", boxShadow: "0 1px 3px rgba(18,18,18,0.06)" }} className="mx-auto mt-24 max-w-md px-8 py-14 text-center">
           <p style={{ color: INK, opacity: 0.75 }} className="text-sm">Your cart is empty.</p>
-          <Link href={`/store/${slug}`} style={{ color: ACCENT }} className="mt-3 inline-block text-sm font-semibold no-underline hover:opacity-80">
+          <Link href={`/${slug}`} style={{ color: ACCENT }} className="mt-3 inline-block text-sm font-semibold no-underline hover:opacity-80">
             Continue shopping →
           </Link>
         </div>

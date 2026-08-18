@@ -26,7 +26,7 @@ export function ArcovaCartClient({ slug }: { slug: string }) {
       {cartItems.length === 0 ? (
         <div style={{ border: `1px solid ${ARCOVA.border}` }} className="p-12 text-center">
           <p style={{ opacity: 0.65, fontSize: 13 }}>Your cart is empty.</p>
-          <Link href={`/store/${slug}`} style={{ color: ARCOVA.ink, borderBottom: `1px solid ${ARCOVA.ink}` }} className="mt-3 inline-block pb-0.5 text-xs font-semibold uppercase tracking-wide no-underline hover:opacity-70">
+          <Link href={`/${slug}`} style={{ color: ARCOVA.ink, borderBottom: `1px solid ${ARCOVA.ink}` }} className="mt-3 inline-block pb-0.5 text-xs font-semibold uppercase tracking-wide no-underline hover:opacity-70">
             Continue shopping &rarr;
           </Link>
         </div>

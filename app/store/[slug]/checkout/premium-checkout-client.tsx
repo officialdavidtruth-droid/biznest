@@ -60,7 +60,7 @@ export function PremiumCheckoutClient({ slug }: { slug: string }) {
     return (
       <div style={{ background: "#fff", border: "1px solid #e2e7e9", borderRadius: PREMIUM.radius }} className="mx-auto mt-20 max-w-md px-8 py-12 text-center">
         <p style={{ opacity: 0.7, fontSize: 13 }}>Your cart is empty.</p>
-        <Link href={`/store/${slug}`} style={{ color: PREMIUM.accent, fontSize: 13 }} className="mt-3 inline-block font-semibold no-underline hover:opacity-80">
+        <Link href={`/${slug}`} style={{ color: PREMIUM.accent, fontSize: 13 }} className="mt-3 inline-block font-semibold no-underline hover:opacity-80">
           Continue shopping →
         </Link>
       </div>

@@ -51,7 +51,7 @@ export function NovaHeader({
     <>
       {/* ---------- SIDE-RAIL-STYLE STICKY NAV (not a top bar) ---------- */}
       <div style={{ position: "sticky", top: 0, zIndex: 50, display: "flex", alignItems: "center", justifyContent: "space-between", padding: "26px 60px", borderBottom: `1px solid ${line}`, background: theme.bg, backdropFilter: "blur(10px)" }}>
-        <a href={`/store/${slug}`} style={{ ...serif, fontSize: 22, fontWeight: 700, color: theme.ink, textDecoration: "none", letterSpacing: "0.02em", display: "flex", alignItems: "center" }}>
+        <a href={`/${slug}`} style={{ ...serif, fontSize: 22, fontWeight: 700, color: theme.ink, textDecoration: "none", letterSpacing: "0.02em", display: "flex", alignItems: "center" }}>
           {store.logoUrl ? (
             // eslint-disable-next-line @next/next/no-img-element
             <img src={store.logoUrl} alt={store.name} style={{ height: 30, width: 30, borderRadius: "50%", objectFit: "cover", marginRight: 10, verticalAlign: "middle" }} />

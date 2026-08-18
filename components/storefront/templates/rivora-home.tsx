@@ -68,7 +68,7 @@ export function RivoraStorefront({
 
       {/* ---------- NAV ---------- */}
       <header style={{ height: 78, background: "#052d20", color: "#fff", ...wrap, display: "flex", alignItems: "center", gap: 28, position: "sticky", top: 0, zIndex: 30, borderBottom: "1px solid #164634" }}>
-        <a href={`/store/${slug}`} style={{ display: "flex", alignItems: "center", gap: 8, color: "#fff", textDecoration: "none", minWidth: 180 }}>
+        <a href={`/${slug}`} style={{ display: "flex", alignItems: "center", gap: 8, color: "#fff", textDecoration: "none", minWidth: 180 }}>
           {store.logoUrl ? (
             // eslint-disable-next-line @next/next/no-img-element
             <img src={store.logoUrl} alt={store.name} style={{ height: 34, width: "auto", borderRadius: 6 }} />

@@ -63,7 +63,7 @@ export function NovaCheckoutClient({ slug }: { slug: string }) {
     return (
       <div style={{ border: `1px solid ${NOVA.line}`, background: NOVA.black, color: NOVA.cream }} className="mx-auto mt-24 max-w-md px-8 py-14 text-center">
         <p style={{ color: NOVA.gray, fontSize: 13 }}>Your cart is empty.</p>
-        <Link href={`/store/${slug}`} style={{ ...label, color: NOVA.cream, borderBottom: `1px solid ${NOVA.line}` }} className="mt-4 inline-block pb-1 no-underline hover:opacity-70">
+        <Link href={`/${slug}`} style={{ ...label, color: NOVA.cream, borderBottom: `1px solid ${NOVA.line}` }} className="mt-4 inline-block pb-1 no-underline hover:opacity-70">
           Continue shopping →
         </Link>
       </div>

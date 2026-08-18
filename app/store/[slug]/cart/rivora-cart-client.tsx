@@ -25,7 +25,7 @@ export function RivoraCartClient({ slug }: { slug: string }) {
       {cartItems.length === 0 ? (
         <div style={{ background: "#fff", borderRadius: 11 }} className="p-12 text-center">
           <p style={{ color: RIVORA.muted, fontSize: 13 }}>Your cart is empty.</p>
-          <Link href={`/store/${slug}`} style={{ color: RIVORA.green }} className="mt-3 inline-block text-xs font-bold no-underline hover:opacity-70">
+          <Link href={`/${slug}`} style={{ color: RIVORA.green }} className="mt-3 inline-block text-xs font-bold no-underline hover:opacity-70">
             Continue shopping →
           </Link>
         </div>

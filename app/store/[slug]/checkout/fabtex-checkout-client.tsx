@@ -59,7 +59,7 @@ export function FabtexCheckoutClient({ slug }: { slug: string }) {
     return (
       <div style={{ background: FABTEX.panel, border: "1px solid #393535", color: "#fff" }} className="mx-auto mt-24 max-w-md px-8 py-14 text-center">
         <p style={{ color: FABTEX.muted, fontSize: 12 }}>Your cart is empty.</p>
-        <Link href={`/store/${slug}`} style={{ color: FABTEX.orange }} className="mt-3 inline-block text-[11px] font-bold uppercase tracking-wide no-underline hover:opacity-70">
+        <Link href={`/${slug}`} style={{ color: FABTEX.orange }} className="mt-3 inline-block text-[11px] font-bold uppercase tracking-wide no-underline hover:opacity-70">
           Continue shopping →
         </Link>
       </div>

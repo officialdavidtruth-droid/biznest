@@ -45,7 +45,7 @@ export function FreshHeader({
     <>
       <nav style={{ position: "sticky", top: 0, zIndex: 50, background: "rgba(251,249,244,.9)", backdropFilter: "blur(10px)", borderBottom: `1px solid ${line}` }}>
         <div style={{ ...wrap, display: "flex", alignItems: "center", justifyContent: "space-between", padding: "14px 28px" }}>
-          <a href={`/store/${slug}`} style={{ fontFamily: FRESH.headlineFont, fontWeight: 700, fontSize: 21, color: FRESH.forest, display: "flex", alignItems: "center", gap: 8, textDecoration: "none" }}>
+          <a href={`/${slug}`} style={{ fontFamily: FRESH.headlineFont, fontWeight: 700, fontSize: 21, color: FRESH.forest, display: "flex", alignItems: "center", gap: 8, textDecoration: "none" }}>
             {store.logoUrl ? (
               // eslint-disable-next-line @next/next/no-img-element
               <img src={store.logoUrl} alt={store.name} style={{ height: 30, width: 30, borderRadius: 8, objectFit: "cover" }} />
@@ -107,7 +107,7 @@ export function FreshFooter({
         </div>
         <div>
           <h5 style={footHead}>Pages</h5>
-          <div style={footLink}><a href={`/store/${slug}`} style={{ color: "inherit", textDecoration: "none" }}>Home</a></div>
+          <div style={footLink}><a href={`/${slug}`} style={{ color: "inherit", textDecoration: "none" }}>Home</a></div>
           {hasCatalog && <div style={footLink}><a href={`/store/${slug}/catalog`} style={{ color: "inherit", textDecoration: "none" }}>{catalogLabel}</a></div>}
           <div style={footLink}>Contact</div>
         </div>

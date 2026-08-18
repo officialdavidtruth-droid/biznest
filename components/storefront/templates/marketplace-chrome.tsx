@@ -45,7 +45,7 @@ export function MarketplaceHeader({
 
       {/* ---------- HEADER ---------- */}
       <header style={{ height: 70, display: "flex", alignItems: "center", padding: "0 6%", gap: 28, borderBottom: "1px solid #ddd" }}>
-        <a href={`/store/${slug}`} style={{ fontSize: 24, fontWeight: 700, letterSpacing: "-1px", color: "#111", textDecoration: "none", display: "flex", alignItems: "center", gap: 8 }}>
+        <a href={`/${slug}`} style={{ fontSize: 24, fontWeight: 700, letterSpacing: "-1px", color: "#111", textDecoration: "none", display: "flex", alignItems: "center", gap: 8 }}>
           {store.logoUrl ? (
             // eslint-disable-next-line @next/next/no-img-element
             <img src={store.logoUrl} alt={store.name} style={{ height: 32, width: 32, borderRadius: "50%", objectFit: "cover" }} />

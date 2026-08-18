@@ -25,7 +25,7 @@ export function FabtexCartClient({ slug }: { slug: string }) {
       {cartItems.length === 0 ? (
         <div style={{ background: FABTEX.panel, border: "1px solid #393535" }} className="p-12 text-center">
           <p style={{ color: FABTEX.muted, fontSize: 12 }}>Your cart is empty.</p>
-          <Link href={`/store/${slug}`} style={{ color: FABTEX.orange }} className="mt-3 inline-block text-[11px] font-bold uppercase tracking-wide no-underline hover:opacity-70">
+          <Link href={`/${slug}`} style={{ color: FABTEX.orange }} className="mt-3 inline-block text-[11px] font-bold uppercase tracking-wide no-underline hover:opacity-70">
             Continue shopping →
           </Link>
         </div>

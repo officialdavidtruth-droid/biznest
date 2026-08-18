@@ -60,7 +60,7 @@ export function RivoraCheckoutClient({ slug }: { slug: string }) {
     return (
       <div style={{ background: "#fff", borderRadius: 11, color: RIVORA.ink }} className="mx-auto mt-24 max-w-md px-8 py-14 text-center">
         <p style={{ color: RIVORA.muted, fontSize: 13 }}>Your cart is empty.</p>
-        <Link href={`/store/${slug}`} style={{ color: RIVORA.green }} className="mt-3 inline-block text-xs font-bold no-underline hover:opacity-70">
+        <Link href={`/${slug}`} style={{ color: RIVORA.green }} className="mt-3 inline-block text-xs font-bold no-underline hover:opacity-70">
           Continue shopping →
         </Link>
       </div>

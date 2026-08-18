@@ -52,7 +52,7 @@ export function RivoraHeader({
 
       {/* ---------- NAV ---------- */}
       <header style={{ height: 78, background: "#052d20", color: "#fff", ...wrap, display: "flex", alignItems: "center", gap: 28, position: "sticky", top: 0, zIndex: 30, borderBottom: "1px solid #164634" }}>
-        <a href={`/store/${slug}`} style={{ display: "flex", alignItems: "center", gap: 8, color: "#fff", textDecoration: "none", minWidth: 180 }}>
+        <a href={`/${slug}`} style={{ display: "flex", alignItems: "center", gap: 8, color: "#fff", textDecoration: "none", minWidth: 180 }}>
           {store.logoUrl ? (
             // eslint-disable-next-line @next/next/no-img-element
             <img src={store.logoUrl} alt={store.name} style={{ height: 34, width: "auto", borderRadius: 6 }} />
@@ -62,7 +62,7 @@ export function RivoraHeader({
           <span style={{ fontWeight: 800, fontSize: 14 }}>{store.name}</span>
         </a>
         <nav style={{ display: "flex", gap: 22, flex: 1, justifyContent: "center", fontSize: 11 }}>
-          <a href={`/store/${slug}`} style={{ color: "#d8e2dc", textDecoration: "none" }}>Home</a>
+          <a href={`/${slug}`} style={{ color: "#d8e2dc", textDecoration: "none" }}>Home</a>
           <a href={`/store/${slug}/catalog`} style={{ color: "#d8e2dc", textDecoration: "none" }}>Shop</a>
           <a href={`/store/${slug}/search`} style={{ color: "#d8e2dc", textDecoration: "none" }}>Search</a>
         </nav>

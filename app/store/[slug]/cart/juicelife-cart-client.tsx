@@ -25,7 +25,7 @@ export function JuiceLifeCartClient({ slug }: { slug: string }) {
       {cartItems.length === 0 ? (
         <div style={{ background: "#fff", borderRadius: JUICELIFE.radius, border: "1px solid #edf1eb" }} className="p-12 text-center">
           <p style={{ color: JUICELIFE.muted, fontSize: 13 }}>Your cart is empty.</p>
-          <Link href={`/store/${slug}`} style={{ color: JUICELIFE.green }} className="mt-3 inline-block text-xs font-bold no-underline hover:opacity-70">
+          <Link href={`/${slug}`} style={{ color: JUICELIFE.green }} className="mt-3 inline-block text-xs font-bold no-underline hover:opacity-70">
             Continue shopping →
           </Link>
         </div>

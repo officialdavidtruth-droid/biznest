@@ -60,7 +60,7 @@ export function HomeVistaCheckoutClient({ slug }: { slug: string }) {
     return (
       <div style={{ border: "1px solid #e2e8e6", borderRadius: 8 }} className="mx-auto mt-24 max-w-md px-8 py-14 text-center">
         <p style={{ opacity: 0.65, fontSize: 12 }}>Your cart is empty.</p>
-        <Link href={`/store/${slug}`} style={{ color: HOMEVISTA.accent, fontWeight: 700 }} className="mt-3 inline-block text-xs no-underline hover:opacity-70">
+        <Link href={`/${slug}`} style={{ color: HOMEVISTA.accent, fontWeight: 700 }} className="mt-3 inline-block text-xs no-underline hover:opacity-70">
           Continue browsing &rarr;
         </Link>
       </div>

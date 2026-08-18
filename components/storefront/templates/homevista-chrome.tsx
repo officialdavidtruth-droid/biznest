@@ -43,7 +43,7 @@ export function HomeVistaHeader({
 
       {/* ---------- NAV ---------- */}
       <header style={{ height: 70, display: "flex", alignItems: "center", padding: "0 4.5%", gap: 28, borderBottom: "1px solid #edf0ef", background: "#fff" }}>
-        <a href={`/store/${slug}`} style={{ fontSize: 19, color: HOMEVISTA.dark, minWidth: 175, textDecoration: "none", display: "flex", alignItems: "center", gap: 8 }}>
+        <a href={`/${slug}`} style={{ fontSize: 19, color: HOMEVISTA.dark, minWidth: 175, textDecoration: "none", display: "flex", alignItems: "center", gap: 8 }}>
           {store.logoUrl ? (
             // eslint-disable-next-line @next/next/no-img-element
             <img src={store.logoUrl} alt={store.name} style={{ height: 32, width: 32, borderRadius: "50%", objectFit: "cover" }} />
