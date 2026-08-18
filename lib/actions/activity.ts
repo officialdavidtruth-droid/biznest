@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { auth } from "@/lib/auth";
 import { getStoreAccessRole, canManageBillingAndStaff } from "@/lib/access/store-access";
 import type { ActionResult } from "@/types/actions";
+import type { Prisma } from "@prisma/client";
 
 /**
  * Records one entry in a store's activity log. Call this from any server
@@ -34,7 +35,11 @@ export async function logStoreActivity(params: {
         actorRole: params.actor.role,
         action: params.action,
         target: params.target,
-        metadata: params.metadata,
+        // Prisma's Json input type doesn't accept a plain
+        // Record<string, unknown> directly (it wants InputJsonValue,
+        // whose object variant is structurally narrower) — this cast is
+        // safe since we only ever pass plain JSON-serializable data here.
+        metadata: params.metadata as Prisma.InputJsonValue | undefined,
       },
     });
   } catch (err) {
