@@ -117,7 +117,7 @@ export function HeenzyStorefront({
                 {navCategories.slice(0, 4).map((cat) => {
                   const sample = catalogItems.find((i) => i.categoryName === cat.name && i.image);
                   return (
-                    <a key={cat.id} href={`/store/${slug}/category/${cat.id}`} className="hz-cat-card" style={{ textDecoration: "none", color: "inherit" }}>
+                    <a key={cat.id} href={`/${slug}/category/${cat.id}`} className="hz-cat-card" style={{ textDecoration: "none", color: "inherit" }}>
                       <div className="hz-cat-thumb">
                         {sample?.image ? <img src={sample.image} alt={cat.name} /> : null}
                       </div>
@@ -222,7 +222,7 @@ export function HeenzyStorefront({
           <Reveal>
             <div className="hz-section-head" style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
               <h2>Best Sellers</h2>
-              <a href={`/store/${slug}/catalog`} style={{ fontSize: 13, fontWeight: 700, color: "var(--hz-black)", textDecoration: "underline" }}>View all →</a>
+              <a href={`/${slug}/catalog`} style={{ fontSize: 13, fontWeight: 700, color: "var(--hz-black)", textDecoration: "underline" }}>View all →</a>
             </div>
           </Reveal>
           <div className="hz-catalog-grid">
@@ -252,12 +252,12 @@ export function HeenzyStorefront({
             <div>
               <h4>Shop</h4>
               <ul>
-                {navCategories.slice(0, 4).map((c) => <li key={c.id}><a href={`/store/${slug}/category/${c.id}`}>{c.name}</a></li>)}
+                {navCategories.slice(0, 4).map((c) => <li key={c.id}><a href={`/${slug}/category/${c.id}`}>{c.name}</a></li>)}
               </ul>
             </div>
             <div>
               <h4>Help</h4>
-              <ul><li><a href={`/store/${slug}/cart`}>Cart</a></li><li><a href="#catalog">Shop</a></li></ul>
+              <ul><li><a href={`/${slug}/cart`}>Cart</a></li><li><a href="#catalog">Shop</a></li></ul>
             </div>
             <div>
               <h4>Company</h4>
@@ -291,8 +291,8 @@ export function HeenzyNav({ store, slug, hasCatalog, theme = HEENZY_THEME }: { s
         </a>
         <ul className="hz-nav-links">
           <li><a href={`/${slug}`}>Home</a></li>
-          {hasCatalog && <li><a href={`/store/${slug}/catalog`}>Shop</a></li>}
-          {hasCatalog && <li><a href={`/store/${slug}/search`}>Search</a></li>}
+          {hasCatalog && <li><a href={`/${slug}/catalog`}>Shop</a></li>}
+          {hasCatalog && <li><a href={`/${slug}/search`}>Search</a></li>}
         </ul>
         <div className="hz-nav-icons">
           <CartLink storeSlug={slug} accent="var(--hz-black)" ink="var(--hz-black)" />
@@ -303,7 +303,7 @@ export function HeenzyNav({ store, slug, hasCatalog, theme = HEENZY_THEME }: { s
 }
 
 function HeenzyProductCard({ item, slug, storeName }: { item: CatalogItem; slug: string; storeName: string }) {
-  const href = `/store/${slug}/${item.kind === "product" ? "product" : "service"}/${item.id}`;
+  const href = `/${slug}/${item.kind === "product" ? "product" : "service"}/${item.id}`;
   return (
     <a href={href} className="hz-product-card" style={{ display: "block", textDecoration: "none", color: "inherit" }}>
       <div className="hz-product-img-wrap">

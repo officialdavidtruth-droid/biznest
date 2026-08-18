@@ -54,7 +54,7 @@ export function HeenzyCartClient({ slug }: { slug: string }) {
                 <div className="hz-summary-line"><span>Subtotal</span><span style={{ fontWeight: 700, opacity: 1 }}>{cartItems[0]?.currency} {subtotal.toLocaleString()}</span></div>
                 <div className="hz-summary-line"><span>Shipping</span><span>Calculated next step</span></div>
                 <div className="hz-summary-total"><span>Total</span><span>{cartItems[0]?.currency} {subtotal.toLocaleString()}</span></div>
-                <Link href={`/store/${slug}/checkout`} className="hz-btn hz-btn-yellow" style={{ width: "100%", justifyContent: "center", marginTop: 18 }}>
+                <Link href={`/${slug}/checkout`} className="hz-btn hz-btn-yellow" style={{ width: "100%", justifyContent: "center", marginTop: 18 }}>
                   Proceed to Checkout <ArrowRight className="h-4 w-4" style={{ marginLeft: 6 }} />
                 </Link>
               </div>

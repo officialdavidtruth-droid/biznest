@@ -38,7 +38,7 @@ const seeAll: React.CSSProperties = { marginLeft: "auto", fontSize: 10, color: "
 function ItemCard({ item, slug }: { item: CatalogItem; slug: string }) {
   return (
     <a
-      href={`/store/${slug}/${item.kind === "product" ? "product" : "service"}/${item.id}`}
+      href={`/${slug}/${item.kind === "product" ? "product" : "service"}/${item.id}`}
       style={{ border: `1px solid #e4e4e4`, minHeight: 170, padding: 8, position: "relative", background: "#fff", display: "block", textDecoration: "none", color: MARKETPLACE.ink }}
     >
       <div style={{ height: 95, background: "#f2f2f2", position: "relative", overflow: "hidden" }}>
@@ -67,7 +67,7 @@ function CatalogRow({ title, items, slug }: { title: string; items: CatalogItem[
     <section style={{ marginTop: 18 }}>
       <div style={sectionHead}>
         <h2 style={sectionHeadTitle}>{title}</h2>
-        <a href={`/store/${slug}/catalog`} style={seeAll}>View all ›</a>
+        <a href={`/${slug}/catalog`} style={seeAll}>View all ›</a>
       </div>
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(150px, 1fr))", gap: 8 }}>
         {items.map((item, i) => (
@@ -155,16 +155,16 @@ export function MarketplaceStorefront({
 
       {/* ---------- BLUE SEARCH BAR ---------- */}
       <div style={{ height: 34, background: MARKETPLACE.blue, display: "flex", padding: "0 6%", alignItems: "center", color: "#fff" }}>
-        <a href={`/store/${slug}/catalog`} style={{ background: MARKETPLACE.orange, minWidth: 165, height: 34, display: "flex", alignItems: "center", padding: "0 14px", fontWeight: 700, fontSize: 10, color: "#fff", textDecoration: "none" }}>
+        <a href={`/${slug}/catalog`} style={{ background: MARKETPLACE.orange, minWidth: 165, height: 34, display: "flex", alignItems: "center", padding: "0 14px", fontWeight: 700, fontSize: 10, color: "#fff", textDecoration: "none" }}>
           ☰&nbsp;&nbsp;ALL CATEGORIES
         </a>
-        <form action={`/store/${slug}/search`} style={{ display: "flex", flex: 1, marginLeft: 10, maxWidth: 520 }}>
+        <form action={`/${slug}/search`} style={{ display: "flex", flex: 1, marginLeft: 10, maxWidth: 520 }}>
           <input name="q" style={{ height: 24, flex: 1, border: 0, padding: "0 10px", fontSize: 9 }} placeholder="Search products and categories" />
           <button type="submit" style={{ height: 24, width: 35, background: MARKETPLACE.orangeDark, border: 0, color: "#fff" }}>⌕</button>
         </form>
         <div style={{ display: "flex", gap: 22, marginLeft: 15, fontSize: 9 }}>
           {catalogCategories.slice(0, 4).map((c) => (
-            <a key={c} href={`/store/${slug}/catalog?category=${encodeURIComponent(c)}`} style={{ color: "#fff" }}>{c}</a>
+            <a key={c} href={`/${slug}/catalog?category=${encodeURIComponent(c)}`} style={{ color: "#fff" }}>{c}</a>
           ))}
         </div>
       </div>
@@ -177,12 +177,12 @@ export function MarketplaceStorefront({
           <div style={{ background: MARKETPLACE.orange, color: "#fff", padding: 9, fontWeight: 700, fontSize: 10 }}>ALL CATEGORIES</div>
           {navCategories.length > 0
             ? navCategories.slice(0, 14).map((c) => (
-                <a key={c.id} href={`/store/${slug}/category/${c.id}`} style={{ display: "block", padding: "6px 10px", borderBottom: "1px solid #eee", fontSize: 9, color: "inherit" }}>
+                <a key={c.id} href={`/${slug}/category/${c.id}`} style={{ display: "block", padding: "6px 10px", borderBottom: "1px solid #eee", fontSize: 9, color: "inherit" }}>
                   {c.name} ›
                 </a>
               ))
             : (
-                <a href={`/store/${slug}/catalog`} style={{ display: "block", padding: "6px 10px", borderBottom: "1px solid #eee", fontSize: 9, color: "inherit" }}>
+                <a href={`/${slug}/catalog`} style={{ display: "block", padding: "6px 10px", borderBottom: "1px solid #eee", fontSize: 9, color: "inherit" }}>
                   Browse catalog ›
                 </a>
               )}
@@ -234,11 +234,11 @@ export function MarketplaceStorefront({
             <section style={{ marginTop: 18 }}>
               <div style={sectionHead}>
                 <h2 style={sectionHeadTitle}>SHOP BY CATEGORIES</h2>
-                <a href={`/store/${slug}/catalog`} style={seeAll}>View all ›</a>
+                <a href={`/${slug}/catalog`} style={seeAll}>View all ›</a>
               </div>
               <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(120px, 1fr))", gap: 7 }}>
                 {catalogCategories.slice(0, 8).map((cat) => (
-                  <a key={cat} href={`/store/${slug}/catalog?category=${encodeURIComponent(cat)}`} style={{ textAlign: "center", fontSize: 8, border: "1px solid #eee", paddingBottom: 7, textDecoration: "none", color: "inherit", display: "block" }}>
+                  <a key={cat} href={`/${slug}/catalog?category=${encodeURIComponent(cat)}`} style={{ textAlign: "center", fontSize: 8, border: "1px solid #eee", paddingBottom: 7, textDecoration: "none", color: "inherit", display: "block" }}>
                     <div style={{ height: 85, background: "#eee" }} />
                     <span>{cat}</span>
                   </a>
@@ -288,7 +288,7 @@ export function MarketplaceStorefront({
             <h3 style={{ margin: 0, background: MARKETPLACE.blueDark, color: "#fff", padding: 7, fontSize: 9 }}>MOST VIEWED</h3>
             {mostViewed.length > 0
               ? mostViewed.map((item) => (
-                  <a key={`${item.kind}-${item.id}`} href={`/store/${slug}/${item.kind === "product" ? "product" : "service"}/${item.id}`} style={{ display: "flex", justifyContent: "space-between", padding: 8, borderBottom: "1px solid #eee", fontSize: 8, textDecoration: "none", color: "inherit" }}>
+                  <a key={`${item.kind}-${item.id}`} href={`/${slug}/${item.kind === "product" ? "product" : "service"}/${item.id}`} style={{ display: "flex", justifyContent: "space-between", padding: 8, borderBottom: "1px solid #eee", fontSize: 8, textDecoration: "none", color: "inherit" }}>
                     {item.name}<b>{item.currency} {item.price.toLocaleString()}</b>
                   </a>
                 ))
@@ -316,8 +316,8 @@ export function MarketplaceStorefront({
           </div>
           <div>
             <h4 style={{ fontSize: 10, color: "#fff", margin: "0 0 10px" }}>Shop</h4>
-            <a href={`/store/${slug}/catalog`} style={{ display: "block", fontSize: 8, margin: "6px 0", color: "inherit" }}>Full catalog</a>
-            <a href={`/store/${slug}/cart`} style={{ display: "block", fontSize: 8, margin: "6px 0", color: "inherit" }}>Cart</a>
+            <a href={`/${slug}/catalog`} style={{ display: "block", fontSize: 8, margin: "6px 0", color: "inherit" }}>Full catalog</a>
+            <a href={`/${slug}/cart`} style={{ display: "block", fontSize: 8, margin: "6px 0", color: "inherit" }}>Cart</a>
           </div>
           <div>
             <h4 style={{ fontSize: 10, color: "#fff", margin: "0 0 10px" }}>Contact</h4>

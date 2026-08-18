@@ -25,7 +25,7 @@ export default async function InventoryItemPage({
 
   return (
     <div className="max-w-2xl">
-      <Link href={`/store/${slug}/admin/inventory`} className="mb-4 inline-flex items-center gap-1 text-xs font-medium text-muted-foreground hover:text-foreground">
+      <Link href={`/${slug}/admin/inventory`} className="mb-4 inline-flex items-center gap-1 text-xs font-medium text-muted-foreground hover:text-foreground">
         <ArrowLeft className="h-3.5 w-3.5" /> Back to inventory
       </Link>
 

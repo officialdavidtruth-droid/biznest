@@ -15,7 +15,7 @@ export default async function CreateStorePage() {
   if (!business) redirect("/onboarding/business-verification");
   if (business.verificationStatus !== "APPROVED") redirect("/onboarding/business-verification");
   if (!business.fraudPolicyAcceptedAt) redirect("/onboarding/fraud-policy");
-  if (business.store) redirect(`/store/${business.store.slug}/admin`);
+  if (business.store) redirect(`/${business.store.slug}/admin`);
 
   const templates = await prisma.storeTemplate.findMany({
     where: { isActive: true },

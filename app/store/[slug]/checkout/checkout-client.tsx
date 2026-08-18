@@ -79,7 +79,7 @@ export function CheckoutClient({ slug }: { slug: string }) {
       <div style={{ maxWidth: 1280 }} className="mx-auto px-6 py-14">
         {/* ---------- HEADER + STEP INDICATOR ---------- */}
         <div className="mb-8">
-          <Link href={`/store/${slug}/cart`} style={{ color: INK, opacity: 0.6 }} className="mb-4 inline-flex items-center gap-1 text-xs font-semibold no-underline hover:opacity-100">
+          <Link href={`/${slug}/cart`} style={{ color: INK, opacity: 0.6 }} className="mb-4 inline-flex items-center gap-1 text-xs font-semibold no-underline hover:opacity-100">
             <ChevronLeft className="h-3.5 w-3.5" /> Back to cart
           </Link>
           <div style={{ borderBottom: `1px solid ${INK}1a` }} className="flex items-baseline justify-between pb-4">

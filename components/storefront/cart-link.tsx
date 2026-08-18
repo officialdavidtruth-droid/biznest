@@ -19,7 +19,7 @@ export function CartLink({
   const count = cartStoreSlug === storeSlug ? items.reduce((n, i) => n + i.quantity, 0) : 0;
 
   return (
-    <Link href={`/store/${storeSlug}/cart`} className="relative flex items-center" aria-label="Cart">
+    <Link href={`/${storeSlug}/cart`} className="relative flex items-center" aria-label="Cart">
       <ShoppingBag className="h-5 w-5 transition-colors" style={{ color: ink, opacity: 0.85 }} />
       {count > 0 && (
         <span

@@ -70,12 +70,12 @@ export default async function CategoryPage({ params }: { params: Promise<{ slug:
       {" / "}
       {category.parent ? (
         <>
-          <Link href={`/store/${slug}/category/${category.parent.id}`} style={{ color: ink, textDecoration: "none" }}>{category.parent.name}</Link>
+          <Link href={`/${slug}/category/${category.parent.id}`} style={{ color: ink, textDecoration: "none" }}>{category.parent.name}</Link>
           {" / "}
         </>
       ) : (
         <>
-          <Link href={`/store/${slug}/catalog`} style={{ color: ink, textDecoration: "none" }}>All</Link>
+          <Link href={`/${slug}/catalog`} style={{ color: ink, textDecoration: "none" }}>All</Link>
           {" / "}
         </>
       )}
@@ -94,7 +94,7 @@ export default async function CategoryPage({ params }: { params: Promise<{ slug:
           {category.children.map((child) => (
             <Link
               key={child.id}
-              href={`/store/${slug}/category/${child.id}`}
+              href={`/${slug}/category/${child.id}`}
               style={{ padding: "7px 14px", borderRadius: 100, fontSize: 12.5, fontWeight: 600, border: `1px solid ${ink}1f`, color: ink, textDecoration: "none" }}
             >
               {child.name}

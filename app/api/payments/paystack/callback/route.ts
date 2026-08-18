@@ -53,8 +53,8 @@ export async function GET(req: Request) {
   // be able to cancel an order that's already PAID or further along.
   if (order.status !== "PENDING_PAYMENT") {
     return order.status === "CANCELLED"
-      ? NextResponse.redirect(`${APP_URL}/store/${order.store.slug}?payment=failed`)
-      : NextResponse.redirect(`${APP_URL}/store/${order.store.slug}/orders/${order.id}/confirmation`);
+      ? NextResponse.redirect(`${APP_URL}/${order.store.slug}?payment=failed`)
+      : NextResponse.redirect(`${APP_URL}/${order.store.slug}/orders/${order.id}/confirmation`);
   }
 
   // Always verify server-side against Paystack directly — the redirect
@@ -76,7 +76,7 @@ export async function GET(req: Request) {
         data: { status: "SUCCESSFUL", rawPayload: verification as object, verifiedAt: new Date() },
       });
     }
-    return NextResponse.redirect(`${APP_URL}/store/${order.store.slug}/orders/${order.id}/confirmation`);
+    return NextResponse.redirect(`${APP_URL}/${order.store.slug}/orders/${order.id}/confirmation`);
   }
 
   // Same guard on the failure path — a webhook that landed between our
@@ -92,5 +92,5 @@ export async function GET(req: Request) {
       data: { status: "FAILED", rawPayload: verification as object },
     });
   }
-  return NextResponse.redirect(`${APP_URL}/store/${order.store.slug}?payment=failed`);
+  return NextResponse.redirect(`${APP_URL}/${order.store.slug}?payment=failed`);
 }

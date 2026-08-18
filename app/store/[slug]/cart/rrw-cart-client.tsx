@@ -97,7 +97,7 @@ export function RrwCartClient({ slug }: { slug: string }) {
                 <span style={{ color: RRW.accent }} className="text-2xl font-bold leading-none">{cartItems[0]?.currency} {subtotal.toLocaleString()}</span>
               </div>
               <Link
-                href={`/store/${slug}/checkout`}
+                href={`/${slug}/checkout`}
                 style={{ background: RRW.accent, color: "#fff", borderRadius: 20 }}
                 className="mt-1 flex items-center justify-center gap-2 py-3 text-xs font-bold no-underline transition hover:opacity-90"
               >

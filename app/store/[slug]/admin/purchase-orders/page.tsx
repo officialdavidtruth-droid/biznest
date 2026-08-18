@@ -18,7 +18,7 @@ export default async function PurchaseOrdersListPage({ params }: { params: Promi
       <div className="mb-6 flex items-center justify-between">
         <h1 className="text-xl font-semibold">Purchase orders</h1>
         <Link
-          href={`/store/${slug}/admin/purchase-orders/new`}
+          href={`/${slug}/admin/purchase-orders/new`}
           className="rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground"
         >
           New purchase order
@@ -50,7 +50,7 @@ export default async function PurchaseOrdersListPage({ params }: { params: Promi
                   </span>
                 </td>
                 <td className="px-4 py-3 text-right">
-                  <Link href={`/store/${slug}/admin/purchase-orders/${po.id}`} className="text-xs font-medium text-primary hover:underline">
+                  <Link href={`/${slug}/admin/purchase-orders/${po.id}`} className="text-xs font-medium text-primary hover:underline">
                     View
                   </Link>
                 </td>

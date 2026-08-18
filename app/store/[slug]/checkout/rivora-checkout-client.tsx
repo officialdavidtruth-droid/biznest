@@ -70,7 +70,7 @@ export function RivoraCheckoutClient({ slug }: { slug: string }) {
   return (
     <div style={{ maxWidth: 1180, margin: "0 auto", fontFamily: RIVORA.font, color: RIVORA.ink, background: "#f7f9f6" }} className="px-[5%] py-10">
       <div className="mb-7">
-        <Link href={`/store/${slug}/cart`} style={{ color: RIVORA.muted }} className="mb-3 inline-flex items-center gap-1 text-xs font-bold no-underline hover:opacity-100">
+        <Link href={`/${slug}/cart`} style={{ color: RIVORA.muted }} className="mb-3 inline-flex items-center gap-1 text-xs font-bold no-underline hover:opacity-100">
           <ChevronLeft className="h-3.5 w-3.5" /> Back to cart
         </Link>
         <div style={{ borderBottom: "1px solid #dfe8e2" }} className="flex items-baseline justify-between pb-4">

@@ -71,7 +71,7 @@ export function ArcovaCheckoutClient({ slug }: { slug: string }) {
   return (
     <div style={{ maxWidth: 1180, margin: "0 auto", fontFamily: ARCOVA.font, color: ARCOVA.ink }} className="px-6 py-10">
       <div className="mb-8">
-        <Link href={`/store/${slug}/cart`} style={{ color: ARCOVA.ink, opacity: 0.6 }} className="mb-4 inline-flex items-center gap-1 text-xs font-semibold uppercase tracking-wide no-underline hover:opacity-100">
+        <Link href={`/${slug}/cart`} style={{ color: ARCOVA.ink, opacity: 0.6 }} className="mb-4 inline-flex items-center gap-1 text-xs font-semibold uppercase tracking-wide no-underline hover:opacity-100">
           <ChevronLeft className="h-3.5 w-3.5" /> Back to cart
         </Link>
         <div style={{ borderBottom: `1px solid ${ARCOVA.border}` }} className="flex items-baseline justify-between pb-4">

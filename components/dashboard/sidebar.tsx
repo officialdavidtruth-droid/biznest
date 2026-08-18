@@ -34,7 +34,7 @@ export function DashboardSidebar({
   staffPermissions?: string[] | null;
 }) {
   const pathname = usePathname();
-  const base = `/store/${slug}/admin`;
+  const base = `/${slug}/admin`;
   const canManageOwnerOnly = staffRole === undefined || staffRole === "OWNER" || staffRole === "PLATFORM_STAFF";
   const NAV_GROUPS = filterNavGroupsForRole(buildNavGroups({ sellsProducts, offersServices, category }), {
     canManageOwnerOnly,

@@ -97,7 +97,7 @@ export function VioletCartClient({ slug }: { slug: string }) {
                 <span className="text-2xl font-extrabold leading-none">{cartItems[0]?.currency} {subtotal.toLocaleString()}</span>
               </div>
               <Link
-                href={`/store/${slug}/checkout`}
+                href={`/${slug}/checkout`}
                 style={{ background: VIOLET.accent, color: "#fff" }}
                 className="mt-1 flex items-center justify-center gap-2 rounded-full py-3.5 text-sm font-semibold no-underline transition-transform hover:-translate-y-0.5"
               >

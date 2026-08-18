@@ -190,7 +190,7 @@ async function main() {
       }
     }
 
-    console.log(`Seeded demo store: /store/${seed.slug} (${seed.templateName})`);
+    console.log(`Seeded demo store: /${seed.slug} (${seed.templateName})`);
   }
 
   console.log("Demo stores seed complete.");

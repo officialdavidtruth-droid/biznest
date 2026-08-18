@@ -51,7 +51,7 @@ export function TemplatesPageClient({
         <h1 className="text-xl font-semibold">Templates</h1>
         {templateId && (
           <Link
-            href={`/store/${slug}/admin/customize`}
+            href={`/${slug}/admin/customize`}
             className="flex shrink-0 items-center gap-1.5 rounded-md bg-primary px-3 py-2 text-xs font-medium text-primary-foreground hover:brightness-110"
           >
             Continue to Customize Website <ArrowRight className="h-3.5 w-3.5" />

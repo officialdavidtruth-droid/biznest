@@ -98,7 +98,7 @@ export function FabtexCartClient({ slug }: { slug: string }) {
                 <span style={{ fontSize: 20, fontWeight: 700, color: FABTEX.orange }} className="leading-none">{cartItems[0]?.currency} {subtotal.toLocaleString()}</span>
               </div>
               <Link
-                href={`/store/${slug}/checkout`}
+                href={`/${slug}/checkout`}
                 style={{ background: FABTEX.orange, color: "#fff" }}
                 className="mt-1 flex items-center justify-center gap-2 py-3.5 text-[11px] font-bold uppercase tracking-wide no-underline transition hover:opacity-90"
               >

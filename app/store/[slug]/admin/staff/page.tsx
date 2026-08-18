@@ -8,13 +8,13 @@ import { StaffManager } from "@/components/dashboard/staff-manager";
 export default async function StaffPage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
   const session = await auth();
-  if (!session?.user?.id) redirect(`/login?callbackUrl=/store/${slug}/admin/staff`);
+  if (!session?.user?.id) redirect(`/login?callbackUrl=/${slug}/admin/staff`);
 
   const store = await prisma.store.findUnique({ where: { slug }, include: { business: true } });
   if (!store) notFound();
 
   const role = await getStoreAccessRole(session.user.id, session.user.role, store);
-  if (!canManageBillingAndStaff(role)) redirect(`/store/${slug}/admin`);
+  if (!canManageBillingAndStaff(role)) redirect(`/${slug}/admin`);
 
   const result = await listStaffMembers(slug);
   const members = result.success ? result.data : [];

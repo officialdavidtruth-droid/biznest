@@ -38,7 +38,7 @@ export async function GET(req: Request) {
         type: "ABANDONED_CHECKOUT",
         title: "A customer left their cart",
         body: `${order.currency} ${Number(order.total).toLocaleString()} (${label}${order.items.length > 1 ? ` +${order.items.length - 1} more` : ""}) at ${order.store.name} — send a reminder?`,
-        url: `/store/${order.store.slug}/admin/abandoned-checkouts`,
+        url: `/${order.store.slug}/admin/abandoned-checkouts`,
       });
       await prisma.order.update({ where: { id: order.id }, data: { merchantAlertedAt: new Date() } });
     } catch (err) {

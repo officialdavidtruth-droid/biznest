@@ -17,9 +17,9 @@ export default async function SubscriptionPage({
   if (!store) return null;
 
   const session = await auth();
-  if (!session?.user?.id) redirect(`/login?callbackUrl=/store/${slug}/admin/subscription`);
+  if (!session?.user?.id) redirect(`/login?callbackUrl=/${slug}/admin/subscription`);
   const role = await getStoreAccessRole(session.user.id, session.user.role, store);
-  if (!canManageBillingAndStaff(role)) redirect(`/store/${slug}/admin`);
+  if (!canManageBillingAndStaff(role)) redirect(`/${slug}/admin`);
 
   const plans = await prisma.subscription.findMany({ where: { isActive: true }, orderBy: { price: "asc" } });
 

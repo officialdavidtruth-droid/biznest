@@ -76,7 +76,7 @@ export function CatalogGrid({
         {sorted.map((item) => (
           <a
             key={`${item.kind}-${item.id}`}
-            href={`/store/${slug}/${item.kind}/${item.id}`}
+            href={`/${slug}/${item.kind}/${item.id}`}
             style={{ display: "block", textDecoration: "none", color: "inherit", border: `1px solid ${ink}14`, borderRadius: radius, overflow: "hidden", background: `${ink}05` }}
           >
             <div style={{ aspectRatio: "1/1", background: item.image ? `url(${item.image}) center/cover` : `${ink}0d` }} />

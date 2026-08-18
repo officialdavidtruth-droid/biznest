@@ -62,13 +62,13 @@ export function VioletHeader({
           ) : null}
           {store.name}
         </a>
-        <form action={`/store/${slug}/search`} style={{ height: 44, borderRadius: 25, background: "#f4f4f7", color: "#888", display: "flex", alignItems: "center", padding: "0 15px", flex: 1, maxWidth: 520 }}>
+        <form action={`/${slug}/search`} style={{ height: 44, borderRadius: 25, background: "#f4f4f7", color: "#888", display: "flex", alignItems: "center", padding: "0 15px", flex: 1, maxWidth: 520 }}>
           ⌕
           <input name="q" placeholder="Search products, brands and categories" style={{ marginLeft: 8, fontSize: 13, border: 0, background: "transparent", outline: "none", flex: 1, color: theme.ink }} />
         </form>
         <nav style={{ display: "flex", gap: 18, fontSize: 13, fontWeight: 700 }}>
-          <a href={`/store/${slug}/catalog`} style={{ textDecoration: "none", color: theme.ink }}>Shop</a>
-          {navCategories.length > 0 && <a href={`/store/${slug}/catalog`} style={{ textDecoration: "none", color: theme.ink }}>Categories</a>}
+          <a href={`/${slug}/catalog`} style={{ textDecoration: "none", color: theme.ink }}>Shop</a>
+          {navCategories.length > 0 && <a href={`/${slug}/catalog`} style={{ textDecoration: "none", color: theme.ink }}>Categories</a>}
         </nav>
         <div style={{ display: "flex", gap: 15, alignItems: "center" }}>
           <CartLink storeSlug={slug} accent={theme.accent} ink={theme.ink} />
@@ -126,11 +126,11 @@ export function VioletFooter({
         </div>
         <div>
           <b style={{ fontSize: 16 }}>Shop</b>
-          <a href={`/store/${slug}/catalog`} style={{ display: "block", color: "#aaa", fontSize: 12, margin: "9px 0", textDecoration: "none" }}>Catalog</a>
+          <a href={`/${slug}/catalog`} style={{ display: "block", color: "#aaa", fontSize: 12, margin: "9px 0", textDecoration: "none" }}>Catalog</a>
         </div>
         <div>
           <b style={{ fontSize: 16 }}>Support</b>
-          <a href={`/store/${slug}/cart`} style={{ display: "block", color: "#aaa", fontSize: 12, margin: "9px 0", textDecoration: "none" }}>Cart</a>
+          <a href={`/${slug}/cart`} style={{ display: "block", color: "#aaa", fontSize: 12, margin: "9px 0", textDecoration: "none" }}>Cart</a>
           {Object.entries(social).map(([k, v]) => (
             <a key={k} href={v} style={{ display: "block", color: "#aaa", fontSize: 12, margin: "9px 0", textDecoration: "none" }}>{k}</a>
           ))}

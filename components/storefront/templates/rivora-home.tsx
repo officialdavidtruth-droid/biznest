@@ -126,14 +126,14 @@ export function RivoraStorefront({
         <Reveal>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 18 }}>
             <h2 style={{ fontSize: 19, margin: 0 }}>Shop by category</h2>
-            <a href={`/store/${slug}/catalog`} style={{ color: "#5a9348", textDecoration: "none", fontSize: 10 }}>View all &rarr;</a>
+            <a href={`/${slug}/catalog`} style={{ color: "#5a9348", textDecoration: "none", fontSize: 10 }}>View all &rarr;</a>
           </div>
           {navCategories.length === 0 ? (
             <p style={{ opacity: 0.6, fontSize: 13 }}>Categories will appear here as products are added.</p>
           ) : (
             <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(150px, 1fr))", gap: 12 }}>
               {navCategories.slice(0, 6).map((c) => (
-                <a key={c.id} href={`/store/${slug}/category/${c.id}`} style={{ background: "#fff", border: "1px solid #e5eae5", borderRadius: 11, padding: 10, textDecoration: "none", color: RIVORA.ink, boxShadow: "0 4px 16px #1526190a" }}>
+                <a key={c.id} href={`/${slug}/category/${c.id}`} style={{ background: "#fff", border: "1px solid #e5eae5", borderRadius: 11, padding: 10, textDecoration: "none", color: RIVORA.ink, boxShadow: "0 4px 16px #1526190a" }}>
                   <div style={{ height: 90, borderRadius: 8, background: "linear-gradient(135deg,#f3f7ef,#cfe7bc)" }} />
                   <h3 style={{ fontSize: 11, margin: "9px 0 2px" }}>{c.name}</h3>
                   <small style={{ fontSize: 9, color: "#78817b" }}>{c.count} items</small>
@@ -172,14 +172,14 @@ export function RivoraStorefront({
         <Reveal>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 18 }}>
             <h2 style={{ fontSize: 19, margin: 0 }}>Best selling products</h2>
-            <a href={`/store/${slug}/catalog`} style={{ color: "#5a9348", textDecoration: "none", fontSize: 10 }}>View all products &rarr;</a>
+            <a href={`/${slug}/catalog`} style={{ color: "#5a9348", textDecoration: "none", fontSize: 10 }}>View all products &rarr;</a>
           </div>
           {featuredProducts.length === 0 ? (
             <p style={{ opacity: 0.6, fontSize: 13 }}>No products published yet -- check back soon.</p>
           ) : (
             <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(160px, 1fr))", gap: 12 }}>
               {featuredProducts.map((p) => (
-                <a key={p.id} href={`/store/${slug}/${p.kind}/${p.id}`} style={{ background: "#fff", border: "1px solid #e4e9e4", borderRadius: 11, padding: 10, position: "relative", textDecoration: "none", color: RIVORA.ink, display: "block" }}>
+                <a key={p.id} href={`/${slug}/${p.kind}/${p.id}`} style={{ background: "#fff", border: "1px solid #e4e9e4", borderRadius: 11, padding: 10, position: "relative", textDecoration: "none", color: RIVORA.ink, display: "block" }}>
                   {p.categoryName && (
                     <label style={{ position: "absolute", top: 10, left: 10, background: "#8bd632", color: "#173b09", borderRadius: 8, padding: "4px 7px", fontSize: 7, fontWeight: 700 }}>{p.categoryName}</label>
                   )}

@@ -52,8 +52,8 @@ export async function GET(req: Request) {
   // cancel an order that's already PAID or further along.
   if (order.status !== "PENDING_PAYMENT") {
     return order.status === "CANCELLED"
-      ? NextResponse.redirect(`${APP_URL}/store/${order.store.slug}?payment=failed`)
-      : NextResponse.redirect(`${APP_URL}/store/${order.store.slug}/orders/${order.id}/confirmation`);
+      ? NextResponse.redirect(`${APP_URL}/${order.store.slug}?payment=failed`)
+      : NextResponse.redirect(`${APP_URL}/${order.store.slug}/orders/${order.id}/confirmation`);
   }
 
   if (status === "cancelled") {
@@ -67,7 +67,7 @@ export async function GET(req: Request) {
         data: { status: "FAILED" },
       });
     }
-    return NextResponse.redirect(`${APP_URL}/store/${order.store.slug}?payment=failed`);
+    return NextResponse.redirect(`${APP_URL}/${order.store.slug}?payment=failed`);
   }
 
   // Always verify server-side against Flutterwave directly, and re-check
@@ -90,7 +90,7 @@ export async function GET(req: Request) {
         data: { status: "SUCCESSFUL", rawPayload: verification as object, verifiedAt: new Date() },
       });
     }
-    return NextResponse.redirect(`${APP_URL}/store/${order.store.slug}/orders/${order.id}/confirmation`);
+    return NextResponse.redirect(`${APP_URL}/${order.store.slug}/orders/${order.id}/confirmation`);
   }
 
   const result = await prisma.order.updateMany({
@@ -103,5 +103,5 @@ export async function GET(req: Request) {
       data: { status: "FAILED", rawPayload: verification as object },
     });
   }
-  return NextResponse.redirect(`${APP_URL}/store/${order.store.slug}?payment=failed`);
+  return NextResponse.redirect(`${APP_URL}/${order.store.slug}?payment=failed`);
 }

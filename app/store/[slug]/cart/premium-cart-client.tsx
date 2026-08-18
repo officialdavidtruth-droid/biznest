@@ -98,7 +98,7 @@ export function PremiumCartClient({ slug }: { slug: string }) {
                 <span style={{ fontSize: 19 }} className="font-extrabold leading-none">{cartItems[0]?.currency} {subtotal.toLocaleString()}</span>
               </div>
               <Link
-                href={`/store/${slug}/checkout`}
+                href={`/${slug}/checkout`}
                 style={{ background: PREMIUM.accent, color: "#fff", borderRadius: 20 }}
                 className="mt-1 flex items-center justify-center gap-2 py-3 text-xs font-bold uppercase tracking-wide no-underline transition hover:opacity-90"
               >

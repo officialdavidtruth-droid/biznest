@@ -85,7 +85,7 @@ export function RrwStorefront({
           </a>
           <nav style={{ display: "flex", gap: 28, margin: "0 auto", fontSize: 10 }}>
             {catalogItems.length > 0 && <a href="#fleet" style={{ textDecoration: "none", color: RRW.ink }}>Fleet</a>}
-            {navCategories.length > 0 && <a href={`/store/${slug}/catalog`} style={{ textDecoration: "none", color: RRW.ink }}>Categories</a>}
+            {navCategories.length > 0 && <a href={`/${slug}/catalog`} style={{ textDecoration: "none", color: RRW.ink }}>Categories</a>}
           </nav>
           <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
             <CartLink storeSlug={slug} accent={RRW.accent} ink={RRW.ink} />
@@ -115,7 +115,7 @@ export function RrwStorefront({
             {navCategories.slice(0, 4).map((c, i) => (
               <a
                 key={c.id}
-                href={`/store/${slug}/category/${c.id}`}
+                href={`/${slug}/category/${c.id}`}
                 style={{
                   height: 185, position: "relative", overflow: "hidden", padding: 14,
                   background: [RRW.cat0, RRW.cat1, RRW.cat2, RRW.cat3][i % 4],
@@ -137,7 +137,7 @@ export function RrwStorefront({
           <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", border: "1px solid #ddd" }}>
             {trending.map((item, i) => (
               <Reveal key={`${item.kind}-${item.id}`} delayMs={i * 40}>
-                <a href={`/store/${slug}/${item.kind === "product" ? "product" : "service"}/${item.id}`} style={{ background: "#fff", borderRight: "1px solid #ddd", overflow: "hidden", display: "block", textDecoration: "none", color: RRW.ink }}>
+                <a href={`/${slug}/${item.kind === "product" ? "product" : "service"}/${item.id}`} style={{ background: "#fff", borderRight: "1px solid #ddd", overflow: "hidden", display: "block", textDecoration: "none", color: RRW.ink }}>
                   <div style={{ height: 145, background: "#fff", position: "relative" }}>
                     {item.image ? (
                       // eslint-disable-next-line @next/next/no-img-element
@@ -171,7 +171,7 @@ export function RrwStorefront({
         <section style={{ height: 300, background: "linear-gradient(135deg,#292b30,#0c0d10)", color: "#fff", position: "relative", overflow: "hidden", padding: "35px 6%", display: "flex" }}>
           <div>
             <h2 style={{ fontSize: 28, lineHeight: 1.05 }}>Featured:<br />{promoItem.name}</h2>
-            <a href={`/store/${slug}/${promoItem.kind === "product" ? "product" : "service"}/${promoItem.id}`} style={{ display: "inline-block", marginTop: 12, background: RRW.accent, color: "#fff", border: 0, borderRadius: 18, padding: "10px 18px", fontWeight: 700, fontSize: 10, textDecoration: "none" }}>
+            <a href={`/${slug}/${promoItem.kind === "product" ? "product" : "service"}/${promoItem.id}`} style={{ display: "inline-block", marginTop: 12, background: RRW.accent, color: "#fff", border: 0, borderRadius: 18, padding: "10px 18px", fontWeight: 700, fontSize: 10, textDecoration: "none" }}>
               View Details
             </a>
           </div>
@@ -226,8 +226,8 @@ export function RrwStorefront({
         </div>
         <div>
           <h4 style={{ margin: "0 0 12px", color: "#111" }}>Links</h4>
-          <a href={`/store/${slug}/catalog`} style={{ display: "block", margin: "8px 0" }}>Fleet</a>
-          <a href={`/store/${slug}/cart`} style={{ display: "block", margin: "8px 0" }}>Cart</a>
+          <a href={`/${slug}/catalog`} style={{ display: "block", margin: "8px 0" }}>Fleet</a>
+          <a href={`/${slug}/cart`} style={{ display: "block", margin: "8px 0" }}>Cart</a>
         </div>
         <div>
           <h4 style={{ margin: "0 0 12px", color: "#111" }}>Contact</h4>

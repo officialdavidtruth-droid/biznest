@@ -58,7 +58,7 @@ export function MobileDashboardChrome({
 }) {
   const [drawerOpen, setDrawerOpen] = useState(false);
   const pathname = usePathname();
-  const base = `/store/${slug}/admin`;
+  const base = `/${slug}/admin`;
   const business = { sellsProducts, offersServices, category };
   const canManageOwnerOnly = staffRole === undefined || staffRole === "OWNER" || staffRole === "PLATFORM_STAFF";
   const navGroups = filterNavGroupsForRole(buildNavGroups(business), {

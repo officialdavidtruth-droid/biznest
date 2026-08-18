@@ -123,14 +123,14 @@ export function JuiceLifeStorefront({
               <div style={{ fontSize: 11, color: JUICELIFE.green, fontWeight: 700 }}>HANDPICKED FOR YOU</div>
               <h2 style={{ fontSize: 27, margin: "5px 0" }}>Our bestsellers</h2>
             </div>
-            <a href={`/store/${slug}/catalog`} style={{ borderRadius: 25, padding: "13px 24px", background: JUICELIFE.green, color: "#fff", fontWeight: 700, fontSize: 11, textDecoration: "none" }}>View all products &rarr;</a>
+            <a href={`/${slug}/catalog`} style={{ borderRadius: 25, padding: "13px 24px", background: JUICELIFE.green, color: "#fff", fontWeight: 700, fontSize: 11, textDecoration: "none" }}>View all products &rarr;</a>
           </div>
           {bestsellers.length === 0 ? (
             <p style={{ opacity: 0.6, fontSize: 13 }}>No products published yet -- check back soon.</p>
           ) : (
             <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(200px, 1fr))", gap: 16 }}>
               {bestsellers.map((p) => (
-                <a key={p.id} href={`/store/${slug}/${p.kind}/${p.id}`} style={{ background: "#fff", border: "1px solid #edf1eb", borderRadius: 12, padding: 16, textDecoration: "none", color: JUICELIFE.ink, display: "block", boxShadow: "0 5px 18px #233a2410" }}>
+                <a key={p.id} href={`/${slug}/${p.kind}/${p.id}`} style={{ background: "#fff", border: "1px solid #edf1eb", borderRadius: 12, padding: 16, textDecoration: "none", color: JUICELIFE.ink, display: "block", boxShadow: "0 5px 18px #233a2410" }}>
                   <div style={{ height: 160, borderRadius: 9, background: p.image ? `url(${p.image}) center/cover` : "#f7faf3" }} />
                   <h3 style={{ fontSize: 13, margin: "13px 0 6px" }}>{p.name}</h3>
                   <p style={{ fontSize: 9, color: "#777", height: 28, margin: 0 }}>{p.description || p.categoryName}</p>
@@ -191,7 +191,7 @@ export function JuiceLifeStorefront({
           ) : (
             <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(200px, 1fr))", gap: 16 }}>
               {menu.map((p) => (
-                <a key={p.id} href={`/store/${slug}/${p.kind}/${p.id}`} style={{ background: "#fff", border: "1px solid #edf1eb", borderRadius: 12, padding: 16, textDecoration: "none", color: JUICELIFE.ink, display: "block" }}>
+                <a key={p.id} href={`/${slug}/${p.kind}/${p.id}`} style={{ background: "#fff", border: "1px solid #edf1eb", borderRadius: 12, padding: 16, textDecoration: "none", color: JUICELIFE.ink, display: "block" }}>
                   <div style={{ height: 130, borderRadius: 9, background: p.image ? `url(${p.image}) center/cover` : "#f7faf3" }} />
                   <h3 style={{ fontSize: 12, margin: "10px 0 4px" }}>{p.name}</h3>
                   <b style={{ fontSize: 11, color: JUICELIFE.green }}>{p.currency} {p.price.toLocaleString()}</b>

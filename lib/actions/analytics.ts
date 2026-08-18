@@ -140,7 +140,7 @@ export async function getDashboardInsights(storeId: string, slug: string): Promi
       severity: "warning",
       message: `Your store received ${visitorsToday.toLocaleString()} visitors but only ${conversionRate}% purchased. Add product reviews to improve conversion.`,
       actionLabel: "Review products",
-      actionHref: `/store/${slug}/admin/reviews`,
+      actionHref: `/${slug}/admin/reviews`,
     });
   }
 
@@ -153,7 +153,7 @@ export async function getDashboardInsights(storeId: string, slug: string): Promi
       severity: "warning",
       message: `Your best-selling product, ${bestProduct!.name}, is running low on stock.`,
       actionLabel: "Restock now",
-      actionHref: `/store/${slug}/admin/inventory`,
+      actionHref: `/${slug}/admin/inventory`,
     });
   }
 
@@ -163,7 +163,7 @@ export async function getDashboardInsights(storeId: string, slug: string): Promi
       severity: "warning",
       message: `You have ${abandonedCartCount} abandoned cart${abandonedCartCount === 1 ? "" : "s"} from the last 7 days. Following up can recover some of that revenue.`,
       actionLabel: "View orders",
-      actionHref: `/store/${slug}/admin/orders`,
+      actionHref: `/${slug}/admin/orders`,
     });
   }
 
@@ -173,7 +173,7 @@ export async function getDashboardInsights(storeId: string, slug: string): Promi
       severity: "info",
       message: "You don't have an active promotion right now. A short-term coupon is one of the fastest ways to bring visitors back.",
       actionLabel: "Create a coupon",
-      actionHref: `/store/${slug}/admin/marketing`,
+      actionHref: `/${slug}/admin/marketing`,
     });
   }
 
@@ -183,7 +183,7 @@ export async function getDashboardInsights(storeId: string, slug: string): Promi
       severity: "info",
       message: `${productsMissingReviews} product${productsMissingReviews === 1 ? " has" : "s have"} no reviews yet. Reviews are one of the strongest trust signals for new buyers.`,
       actionLabel: "View products",
-      actionHref: `/store/${slug}/admin/products`,
+      actionHref: `/${slug}/admin/products`,
     });
   }
 

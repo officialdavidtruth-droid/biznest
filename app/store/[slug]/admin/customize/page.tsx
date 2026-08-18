@@ -17,7 +17,7 @@ export default async function CustomizePage({ params }: { params: Promise<{ slug
   const { slug } = await params;
   const store = await prisma.store.findUnique({ where: { slug }, include: { subscription: true, template: true, business: true } });
   if (!store) notFound();
-  if (!store.templateId) redirect(`/store/${slug}/admin/templates`);
+  if (!store.templateId) redirect(`/${slug}/admin/templates`);
 
   const pages = await prisma.storePage.findMany({ where: { storeId: store.id }, orderBy: { updatedAt: "desc" } });
 

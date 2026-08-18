@@ -23,13 +23,13 @@ function describe(action: string): string {
 export default async function ActivityPage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
   const session = await auth();
-  if (!session?.user?.id) redirect(`/login?callbackUrl=/store/${slug}/admin/activity`);
+  if (!session?.user?.id) redirect(`/login?callbackUrl=/${slug}/admin/activity`);
 
   const store = await prisma.store.findUnique({ where: { slug }, include: { business: true } });
   if (!store) notFound();
 
   const role = await getStoreAccessRole(session.user.id, session.user.role, store);
-  if (!canManageBillingAndStaff(role)) redirect(`/store/${slug}/admin`);
+  if (!canManageBillingAndStaff(role)) redirect(`/${slug}/admin`);
 
   const result = await listStoreActivity(slug);
   const entries = result.success ? result.data : [];

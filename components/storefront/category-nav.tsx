@@ -48,7 +48,7 @@ export function CategoryNav({
   return (
     <nav aria-label="Browse categories" style={{ background: bg, borderBottom: border ? `1px solid ${border}` : undefined, position: "relative", zIndex: 40 }}>
       <div className="bn-category-nav" style={{ display: "flex", gap: 10, padding: "14px 28px", maxWidth: 1180, margin: "0 auto", overflowX: "auto" }}>
-        <a href={`/store/${slug}/catalog`} style={{ ...chipBase, background: accent, color: "#fff", border: "none" }}>All</a>
+        <a href={`/${slug}/catalog`} style={{ ...chipBase, background: accent, color: "#fff", border: "none" }}>All</a>
 
         {categories.map((c) => (
           <div
@@ -58,7 +58,7 @@ export function CategoryNav({
             style={{ position: "relative", flexShrink: 0 }}
           >
             <a
-              href={`/store/${slug}/category/${c.id}`}
+              href={`/${slug}/category/${c.id}`}
               onClick={(e) => {
                 if (c.children.length > 0 && openId !== c.id) {
                   e.preventDefault();
@@ -83,7 +83,7 @@ export function CategoryNav({
                 {c.children.map((child) => (
                   <a
                     key={child.id}
-                    href={`/store/${slug}/category/${child.id}`}
+                    href={`/${slug}/category/${child.id}`}
                     style={{ display: "flex", justifyContent: "space-between", gap: 12, padding: "8px 10px", borderRadius: 8, fontSize: 13, color: ink, textDecoration: "none" }}
                   >
                     <span>{child.name}</span>

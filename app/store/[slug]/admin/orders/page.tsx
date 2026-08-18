@@ -49,7 +49,7 @@ export default async function StoreOrdersPage({ params }: { params: Promise<{ sl
                   {new Date(order.createdAt).toLocaleDateString()}
                 </td>
                 <td className="px-4 py-3 text-right">
-                  <Link href={`/store/${slug}/admin/orders/${order.id}`} className="text-xs font-medium text-primary hover:underline">
+                  <Link href={`/${slug}/admin/orders/${order.id}`} className="text-xs font-medium text-primary hover:underline">
                     View
                   </Link>
                 </td>

@@ -42,7 +42,7 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
   if (!product) notFound();
 
   // Fire-and-forget: never await-block a buyer's page render on analytics.
-  void recordStoreVisit(store.id, `/store/${slug}/product/${productId}`);
+  void recordStoreVisit(store.id, `/${slug}/product/${productId}`);
 
   const themeOverrides = store.themeColors as { primary?: string; secondary?: string; accent?: string } | null;
   // This template's own real palette/radius (see catalog/page.tsx for why

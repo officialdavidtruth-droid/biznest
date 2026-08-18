@@ -18,7 +18,7 @@ export function AcceptInviteButton({ token }: { token: string }) {
       return;
     }
     toast.success("You're in!");
-    router.push(`/store/${result.data.storeSlug}/admin`);
+    router.push(`/${result.data.storeSlug}/admin`);
   }
 
   return (

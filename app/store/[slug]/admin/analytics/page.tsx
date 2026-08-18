@@ -85,7 +85,7 @@ export default async function AnalyticsPage({
           {RANGES.map((r) => (
             <Link
               key={r.value}
-              href={`/store/${slug}/admin/analytics?range=${r.value}`}
+              href={`/${slug}/admin/analytics?range=${r.value}`}
               className={`rounded-md px-3 py-1 text-xs font-medium ${
                 rangeDays === r.value ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:bg-muted"
               }`}
@@ -132,7 +132,7 @@ export default async function AnalyticsPage({
           <p className="mt-1 text-2xl font-semibold">{summary.abandonedCarts.toLocaleString()}</p>
           <p className="mt-0.5 text-xs text-muted-foreground">
             Checkouts started but never paid, in the last {rangeDays} days.{" "}
-            <Link href={`/store/${slug}/admin/orders`} className="underline">
+            <Link href={`/${slug}/admin/orders`} className="underline">
               View orders
             </Link>
           </p>
@@ -218,7 +218,7 @@ export default async function AnalyticsPage({
             <p className="mt-0.5 text-xs text-muted-foreground">
               Based on {data.profit.coveragePct}% of revenue — only items with a cost price set on their inventory
               record are included.{" "}
-              <Link href={`/store/${slug}/admin/inventory`} className="underline">
+              <Link href={`/${slug}/admin/inventory`} className="underline">
                 Add cost prices
               </Link>{" "}
               to widen this.
@@ -227,7 +227,7 @@ export default async function AnalyticsPage({
         ) : (
           <p className="text-xs text-muted-foreground">
             No inventory items have a cost price set yet, so profit can&apos;t be calculated.{" "}
-            <Link href={`/store/${slug}/admin/inventory`} className="underline">
+            <Link href={`/${slug}/admin/inventory`} className="underline">
               Add cost prices in Inventory
             </Link>{" "}
             to start tracking profit here.

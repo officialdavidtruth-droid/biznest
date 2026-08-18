@@ -65,7 +65,7 @@ export default async function StoreDashboardHome({ params }: { params: Promise<{
           {categoryDashboard.quickActions.map((qa) => (
             <Link
               key={qa.href}
-              href={`/store/${slug}/admin${qa.href}`}
+              href={`/${slug}/admin${qa.href}`}
               className="rounded-md border border-border bg-background px-3 py-1.5 text-xs font-medium transition hover:border-primary/50"
             >
               {qa.label}
@@ -75,7 +75,7 @@ export default async function StoreDashboardHome({ params }: { params: Promise<{
       </div>
 
       <Link
-        href={`/store/${slug}/admin/customize`}
+        href={`/${slug}/admin/customize`}
         className="mb-6 flex items-center justify-between gap-3 rounded-lg border border-border bg-background p-4 transition hover:border-primary/50"
       >
         <div>

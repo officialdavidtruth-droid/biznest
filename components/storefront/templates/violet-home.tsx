@@ -107,7 +107,7 @@ export function VioletStorefront({
         </div>
         <nav style={{ display: "flex", gap: 18, fontSize: 13, fontWeight: 700 }}>
           {catalogItems.length > 0 && <a href="#collection" style={{ textDecoration: "none", color: p.ink }}>Shop</a>}
-          {navCategories.length > 0 && <a href={`/store/${slug}/catalog`} style={{ textDecoration: "none", color: p.ink }}>Categories</a>}
+          {navCategories.length > 0 && <a href={`/${slug}/catalog`} style={{ textDecoration: "none", color: p.ink }}>Categories</a>}
         </nav>
         <div style={{ display: "flex", gap: 15, alignItems: "center" }}>
           <CartLink storeSlug={slug} accent={p.accent} ink={p.ink} />
@@ -146,11 +146,11 @@ export function VioletStorefront({
         <section style={{ ...wrap, padding: p.sectionPad }}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
             <h2 style={{ fontSize: 22, margin: 0 }}>Shop by category</h2>
-            <a href={`/store/${slug}/catalog`} style={{ fontSize: 13, color: p.accent, fontWeight: 800, textDecoration: "none" }}>See all</a>
+            <a href={`/${slug}/catalog`} style={{ fontSize: 13, color: p.accent, fontWeight: 800, textDecoration: "none" }}>See all</a>
           </div>
           <div style={{ display: "grid", gridTemplateColumns: `repeat(${Math.min(catalogCategories.length, 6)}, 1fr)`, gap: 14 }}>
             {catalogCategories.slice(0, 6).map((cat) => (
-              <a key={cat} href={`/store/${slug}/catalog?category=${encodeURIComponent(cat)}`} style={{ background: p.card, borderRadius: 17, padding: "17px 8px", textAlign: "center", boxShadow: "0 5px 20px #20144b0a", textDecoration: "none", color: p.ink }}>
+              <a key={cat} href={`/${slug}/catalog?category=${encodeURIComponent(cat)}`} style={{ background: p.card, borderRadius: 17, padding: "17px 8px", textAlign: "center", boxShadow: "0 5px 20px #20144b0a", textDecoration: "none", color: p.ink }}>
                 <b style={{ display: "block", fontSize: 13 }}>{cat}</b>
               </a>
             ))}
@@ -163,12 +163,12 @@ export function VioletStorefront({
         <section id="collection" style={{ ...wrap, padding: p.sectionPad }}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
             <h2 style={{ fontSize: 22, margin: 0 }}>Trending now</h2>
-            <a href={`/store/${slug}/catalog`} style={{ fontSize: 13, color: p.accent, fontWeight: 800, textDecoration: "none" }}>View all</a>
+            <a href={`/${slug}/catalog`} style={{ fontSize: 13, color: p.accent, fontWeight: 800, textDecoration: "none" }}>View all</a>
           </div>
           <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 16 }}>
             {featuredItems.map((item, i) => (
               <Reveal key={`${item.kind}-${item.id}`} delayMs={i * 40}>
-                <a href={`/store/${slug}/${item.kind === "product" ? "product" : "service"}/${item.id}`} style={{ background: p.card, borderRadius: p.radius, overflow: "hidden", display: "block", textDecoration: "none", color: p.ink }}>
+                <a href={`/${slug}/${item.kind === "product" ? "product" : "service"}/${item.id}`} style={{ background: p.card, borderRadius: p.radius, overflow: "hidden", display: "block", textDecoration: "none", color: p.ink }}>
                   <div style={{ height: 235, background: "#eeeaf4", position: "relative" }}>
                     {item.image ? (
                       // eslint-disable-next-line @next/next/no-img-element
@@ -236,11 +236,11 @@ export function VioletStorefront({
         </div>
         <div>
           <b style={{ fontSize: 16 }}>Shop</b>
-          <a href={`/store/${slug}/catalog`} style={{ display: "block", color: "#aaa", fontSize: 12, margin: "9px 0", textDecoration: "none" }}>Catalog</a>
+          <a href={`/${slug}/catalog`} style={{ display: "block", color: "#aaa", fontSize: 12, margin: "9px 0", textDecoration: "none" }}>Catalog</a>
         </div>
         <div>
           <b style={{ fontSize: 16 }}>Support</b>
-          <a href={`/store/${slug}/cart`} style={{ display: "block", color: "#aaa", fontSize: 12, margin: "9px 0", textDecoration: "none" }}>Cart</a>
+          <a href={`/${slug}/cart`} style={{ display: "block", color: "#aaa", fontSize: 12, margin: "9px 0", textDecoration: "none" }}>Cart</a>
           {Object.entries(social).map(([k, v]) => (
             <a key={k} href={v} style={{ display: "block", color: "#aaa", fontSize: 12, margin: "9px 0", textDecoration: "none" }}>{k}</a>
           ))}

@@ -179,7 +179,7 @@ export function TemplateGallery({
                     through it before committing. */}
                 {demoSlug ? (
                   <a
-                    href={`/store/${demoSlug}`}
+                    href={`/${demoSlug}`}
                     target="_blank"
                     rel="noopener noreferrer"
                     onClick={(e) => e.stopPropagation()}

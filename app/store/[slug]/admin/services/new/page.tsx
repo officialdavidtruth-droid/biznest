@@ -16,8 +16,8 @@ export default async function NewServicePage({ params, searchParams }: { params:
   async function submit(formData: FormData) {
     "use server";
     const result = await createService(slug, formData);
-    if (result.success) redirect(`/store/${slug}/admin/services`);
-    redirect(`/store/${slug}/admin/services/new?error=${encodeURIComponent(result.error)}`);
+    if (result.success) redirect(`/${slug}/admin/services`);
+    redirect(`/${slug}/admin/services/new?error=${encodeURIComponent(result.error)}`);
   }
 
   return (

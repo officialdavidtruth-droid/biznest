@@ -29,8 +29,8 @@ export default async function EditServicePage({
   async function submit(formData: FormData) {
     "use server";
     const result = await updateService(slug, serviceId, formData);
-    if (result.success) redirect(`/store/${slug}/admin/services`);
-    redirect(`/store/${slug}/admin/services/${serviceId}/edit?error=${encodeURIComponent(result.error)}`);
+    if (result.success) redirect(`/${slug}/admin/services`);
+    redirect(`/${slug}/admin/services/${serviceId}/edit?error=${encodeURIComponent(result.error)}`);
   }
 
   return (

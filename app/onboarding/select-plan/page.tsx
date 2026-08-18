@@ -28,7 +28,7 @@ export default async function SelectPlanPage({
   if (store.business.userId !== session.user.id) redirect("/");
 
   // Already paid — nothing to do here.
-  if (store.subscriptionId) redirect(`/store/${store.slug}/admin`);
+  if (store.subscriptionId) redirect(`/${store.slug}/admin`);
 
   const plans = await prisma.subscription.findMany({
     where: { isActive: true },

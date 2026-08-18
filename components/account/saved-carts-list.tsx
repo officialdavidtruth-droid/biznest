@@ -41,7 +41,7 @@ export function SavedCartsList({ initialCarts }: { initialCarts: SavedCart[] }) 
     <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
       {carts.map((cart) => (
         <div key={cart.id} className="flex items-center justify-between rounded-2xl border border-slate-100 bg-white p-4 shadow-sm">
-          <Link href={`/store/${cart.store.slug}`} className="min-w-0">
+          <Link href={`/${cart.store.slug}`} className="min-w-0">
             <div className="truncate text-sm font-semibold text-slate-900">{cart.store.name}</div>
             <div className="text-xs text-slate-500">
               {itemCount(cart.items)} item{itemCount(cart.items) === 1 ? "" : "s"} · saved{" "}

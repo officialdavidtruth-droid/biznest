@@ -99,7 +99,7 @@ export function HomeVistaCartClient({ slug }: { slug: string }) {
                 <span style={{ color: "#5cd39a" }} className="text-2xl font-bold leading-none">{cartItems[0]?.currency} {subtotal.toLocaleString()}</span>
               </div>
               <Link
-                href={`/store/${slug}/checkout`}
+                href={`/${slug}/checkout`}
                 style={{ background: HOMEVISTA.accent, color: "#fff", borderRadius: 7 }}
                 className="mt-1 flex items-center justify-center gap-2 py-3 text-xs font-bold no-underline transition hover:opacity-90"
               >

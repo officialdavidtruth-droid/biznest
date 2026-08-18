@@ -126,7 +126,7 @@ export function ArcovaStorefront({
                 <div style={{ fontSize: 11, letterSpacing: 2, color: ARCOVA.accent, marginBottom: 8 }}>FEATURED PROJECTS</div>
                 <h2 style={{ fontSize: 30, fontWeight: 700, margin: 0 }}>Spaces that define excellence</h2>
               </div>
-              <a href={`/store/${slug}/catalog`} style={{ fontSize: 12, letterSpacing: 1, color: ARCOVA.ink, textDecoration: "none", borderBottom: `1px solid ${ARCOVA.ink}`, paddingBottom: 3 }}>
+              <a href={`/${slug}/catalog`} style={{ fontSize: 12, letterSpacing: 1, color: ARCOVA.ink, textDecoration: "none", borderBottom: `1px solid ${ARCOVA.ink}`, paddingBottom: 3 }}>
                 VIEW ALL &rarr;
               </a>
             </div>
@@ -135,7 +135,7 @@ export function ArcovaStorefront({
             ) : (
               <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(260px, 1fr))", gap: 20 }}>
                 {featured.map((item) => (
-                  <a key={item.id} href={`/store/${slug}/${item.kind}/${item.id}`} style={{ textDecoration: "none", color: ARCOVA.ink, display: "block" }}>
+                  <a key={item.id} href={`/${slug}/${item.kind}/${item.id}`} style={{ textDecoration: "none", color: ARCOVA.ink, display: "block" }}>
                     <div style={{ aspectRatio: "4/3", background: item.image ? `url(${item.image}) center/cover` : "#eee" }} />
                     <div style={{ padding: "14px 0" }}>
                       <h3 style={{ fontSize: 16, margin: "0 0 4px" }}>{item.name}</h3>
@@ -160,7 +160,7 @@ export function ArcovaStorefront({
             ) : (
               <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(220px, 1fr))", gap: 20 }}>
                 {services.map((s) => (
-                  <a key={s.id} href={`/store/${slug}/service/${s.id}`} style={{ textDecoration: "none", color: "#fff", border: "1px solid rgba(255,255,255,0.15)", padding: 22 }}>
+                  <a key={s.id} href={`/${slug}/service/${s.id}`} style={{ textDecoration: "none", color: "#fff", border: "1px solid rgba(255,255,255,0.15)", padding: 22 }}>
                     <h3 style={{ fontSize: 16, margin: "0 0 8px" }}>{s.name}</h3>
                     <p style={{ fontSize: 13, opacity: 0.65, margin: 0 }}>{s.description || `Starting at ${s.currency} ${s.price.toLocaleString()}`}</p>
                   </a>

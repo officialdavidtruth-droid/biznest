@@ -112,7 +112,7 @@ export default async function SettingsPage({ params }: { params: Promise<{ slug:
           <p className="text-xs text-muted-foreground">
             Connect your own domain (e.g. yourstore.com) instead of biznest.space/{slug}.
             This is an Enterprise and Business Mogul feature —{" "}
-            <a href={`/store/${slug}/admin/subscription`} className="font-medium text-primary hover:underline">upgrade your plan</a> to unlock it.
+            <a href={`/${slug}/admin/subscription`} className="font-medium text-primary hover:underline">upgrade your plan</a> to unlock it.
           </p>
         ) : store.customDomain ? (
           <div className="text-sm">

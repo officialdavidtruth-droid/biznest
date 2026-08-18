@@ -16,7 +16,7 @@ export default async function ProductsListPage({ params }: { params: Promise<{ s
       <div className="mb-6 flex items-center justify-between">
         <h1 className="text-xl font-semibold">Products</h1>
         <Link
-          href={`/store/${slug}/admin/products/new`}
+          href={`/${slug}/admin/products/new`}
           className="rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground"
         >
           Add product

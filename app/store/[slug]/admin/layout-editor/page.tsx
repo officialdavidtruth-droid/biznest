@@ -6,5 +6,5 @@ import { redirect } from "next/navigation";
 // bookmarks/links don't 404.
 export default async function LayoutEditorRedirect({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
-  redirect(`/store/${slug}/admin/customize`);
+  redirect(`/${slug}/admin/customize`);
 }

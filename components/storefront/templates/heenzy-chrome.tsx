@@ -72,12 +72,12 @@ export function HeenzyFooter({
           <div>
             <h4>Shop</h4>
             <ul>
-              {navCategories.slice(0, 4).map((c) => <li key={c.id}><a href={`/store/${slug}/category/${c.id}`}>{c.name}</a></li>)}
+              {navCategories.slice(0, 4).map((c) => <li key={c.id}><a href={`/${slug}/category/${c.id}`}>{c.name}</a></li>)}
             </ul>
           </div>
           <div>
             <h4>Help</h4>
-            <ul><li><a href={`/store/${slug}/cart`}>Cart</a></li><li><a href={`/store/${slug}/catalog`}>Shop</a></li></ul>
+            <ul><li><a href={`/${slug}/cart`}>Cart</a></li><li><a href={`/${slug}/catalog`}>Shop</a></li></ul>
           </div>
           <div>
             <h4>Company</h4>

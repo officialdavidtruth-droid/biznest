@@ -64,7 +64,7 @@ export async function sendAbandonedCheckoutRecovery(
   if (!order) return { success: false, error: "That abandoned checkout could not be found." };
 
   const shipping = order.shippingAddress as { phone?: string; fullName?: string } | null;
-  const cartUrl = `${APP_URL}/store/${slug}/cart`;
+  const cartUrl = `${APP_URL}/${slug}/cart`;
   const storeName = access.store.name;
   const label = cartLabel(order.items);
   const textMessage = `Hi${shipping?.fullName ? ` ${shipping.fullName.split(" ")[0]}` : ""}, you left ${label} in your ${storeName} cart. Complete your order: ${cartUrl}`;

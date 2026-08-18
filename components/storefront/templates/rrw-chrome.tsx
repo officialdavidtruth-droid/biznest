@@ -61,8 +61,8 @@ export function RrwHeader({
             {store.name}
           </a>
           <nav style={{ display: "flex", gap: 28, margin: "0 auto", fontSize: 10 }}>
-            <a href={`/store/${slug}#fleet`} style={{ textDecoration: "none", color: RRW.ink }}>Fleet</a>
-            {navCategories.length > 0 && <a href={`/store/${slug}/catalog`} style={{ textDecoration: "none", color: RRW.ink }}>Categories</a>}
+            <a href={`/${slug}#fleet`} style={{ textDecoration: "none", color: RRW.ink }}>Fleet</a>
+            {navCategories.length > 0 && <a href={`/${slug}/catalog`} style={{ textDecoration: "none", color: RRW.ink }}>Categories</a>}
           </nav>
           <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
             <CartLink storeSlug={slug} accent={RRW.accent} ink={RRW.ink} />
@@ -117,8 +117,8 @@ export function RrwFooter({
         </div>
         <div>
           <h4 style={{ margin: "0 0 12px", color: "#111" }}>Links</h4>
-          <a href={`/store/${slug}/catalog`} style={{ display: "block", margin: "8px 0" }}>Fleet</a>
-          <a href={`/store/${slug}/cart`} style={{ display: "block", margin: "8px 0" }}>Cart</a>
+          <a href={`/${slug}/catalog`} style={{ display: "block", margin: "8px 0" }}>Fleet</a>
+          <a href={`/${slug}/cart`} style={{ display: "block", margin: "8px 0" }}>Cart</a>
         </div>
         <div>
           <h4 style={{ margin: "0 0 12px", color: "#111" }}>Contact</h4>

@@ -98,7 +98,7 @@ export function ArcovaCartClient({ slug }: { slug: string }) {
                 <span style={{ color: ARCOVA.accent }} className="text-2xl font-bold leading-none">{cartItems[0]?.currency} {subtotal.toLocaleString()}</span>
               </div>
               <Link
-                href={`/store/${slug}/checkout`}
+                href={`/${slug}/checkout`}
                 style={{ background: ARCOVA.accent, color: "#141414" }}
                 className="mt-1 flex items-center justify-center gap-2 py-3.5 text-xs font-bold uppercase tracking-widest no-underline transition hover:opacity-90"
               >

@@ -69,7 +69,7 @@ export function JuiceLifeCheckoutClient({ slug }: { slug: string }) {
   return (
     <div style={{ maxWidth: 1180, margin: "0 auto", fontFamily: JUICELIFE.font, color: JUICELIFE.ink, background: JUICELIFE.soft }} className="px-[6%] py-10">
       <div className="mb-7">
-        <Link href={`/store/${slug}/cart`} style={{ color: JUICELIFE.muted }} className="mb-3 inline-flex items-center gap-1 text-xs font-bold no-underline hover:opacity-100">
+        <Link href={`/${slug}/cart`} style={{ color: JUICELIFE.muted }} className="mb-3 inline-flex items-center gap-1 text-xs font-bold no-underline hover:opacity-100">
           <ChevronLeft className="h-3.5 w-3.5" /> Back to cart
         </Link>
         <div style={{ borderBottom: "1px solid #e5e9e2" }} className="flex items-baseline justify-between pb-4">

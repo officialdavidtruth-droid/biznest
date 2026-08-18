@@ -55,9 +55,9 @@ export function FreshHeader({
             {store.name}
           </a>
           <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
-            {hasCatalog && <a href={`/store/${slug}/search`} style={{ fontSize: 14, fontWeight: 500, color: FRESH.inkSoft, textDecoration: "none" }}>Search</a>}
+            {hasCatalog && <a href={`/${slug}/search`} style={{ fontSize: 14, fontWeight: 500, color: FRESH.inkSoft, textDecoration: "none" }}>Search</a>}
             <CartLink storeSlug={slug} accent={FRESH.leaf} ink={FRESH.ink} />
-            {hasCatalog && <a href={`/store/${slug}/catalog`} style={btnPrimary}>Get a Quote</a>}
+            {hasCatalog && <a href={`/${slug}/catalog`} style={btnPrimary}>Get a Quote</a>}
           </div>
         </div>
       </nav>
@@ -108,7 +108,7 @@ export function FreshFooter({
         <div>
           <h5 style={footHead}>Pages</h5>
           <div style={footLink}><a href={`/${slug}`} style={{ color: "inherit", textDecoration: "none" }}>Home</a></div>
-          {hasCatalog && <div style={footLink}><a href={`/store/${slug}/catalog`} style={{ color: "inherit", textDecoration: "none" }}>{catalogLabel}</a></div>}
+          {hasCatalog && <div style={footLink}><a href={`/${slug}/catalog`} style={{ color: "inherit", textDecoration: "none" }}>{catalogLabel}</a></div>}
           <div style={footLink}>Contact</div>
         </div>
         <div>

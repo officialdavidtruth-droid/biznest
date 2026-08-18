@@ -10,7 +10,7 @@ export default async function SuppliersListPage({ params }: { params: Promise<{ 
       <div className="mb-6 flex items-center justify-between">
         <h1 className="text-xl font-semibold">Suppliers</h1>
         <Link
-          href={`/store/${slug}/admin/suppliers/new`}
+          href={`/${slug}/admin/suppliers/new`}
           className="rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground"
         >
           Add supplier
@@ -36,7 +36,7 @@ export default async function SuppliersListPage({ params }: { params: Promise<{ 
                 <td className="px-4 py-3">{s._count.products}</td>
                 <td className="px-4 py-3">{s._count.purchaseOrders}</td>
                 <td className="px-4 py-3 text-right">
-                  <Link href={`/store/${slug}/admin/suppliers/${s.id}`} className="text-xs font-medium text-primary hover:underline">
+                  <Link href={`/${slug}/admin/suppliers/${s.id}`} className="text-xs font-medium text-primary hover:underline">
                     View
                   </Link>
                 </td>

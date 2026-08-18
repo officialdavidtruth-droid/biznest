@@ -101,7 +101,7 @@ export function NovaCartClient({ slug }: { slug: string }) {
                 <span style={{ ...serif, color: NOVA.gold }} className="text-2xl font-bold leading-none">{cartItems[0]?.currency} {subtotal.toLocaleString()}</span>
               </div>
               <Link
-                href={`/store/${slug}/checkout`}
+                href={`/${slug}/checkout`}
                 style={{ background: NOVA.gold, color: NOVA.black }}
                 className="mt-1 flex items-center justify-center gap-2 py-3.5 text-xs font-bold uppercase tracking-widest no-underline transition hover:opacity-90"
               >

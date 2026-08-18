@@ -99,7 +99,7 @@ export default async function CustomerInvoicePage({
         )}
 
         <div className="mt-6 text-center">
-          <Link href={`/store/${invoice.store.slug}`} className="text-xs font-medium text-slate-500 hover:text-primary">
+          <Link href={`/${invoice.store.slug}`} className="text-xs font-medium text-slate-500 hover:text-primary">
             Visit {invoice.store.name} →
           </Link>
         </div>

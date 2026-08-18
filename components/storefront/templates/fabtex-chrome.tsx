@@ -58,8 +58,8 @@ export function FabtexHeader({
         </a>
         <nav style={{ display: "flex", gap: 2, flex: 1 }}>
           <a href={`/${slug}`} style={{ fontSize: 10, textDecoration: "none", color: "#fff", padding: "10px 11px" }}>Home</a>
-          <a href={`/store/${slug}/catalog`} style={{ fontSize: 10, textDecoration: "none", color: "#fff", padding: "10px 11px" }}>Catalog</a>
-          <a href={`/store/${slug}/search`} style={{ fontSize: 10, textDecoration: "none", color: "#fff", padding: "10px 11px" }}>Search</a>
+          <a href={`/${slug}/catalog`} style={{ fontSize: 10, textDecoration: "none", color: "#fff", padding: "10px 11px" }}>Catalog</a>
+          <a href={`/${slug}/search`} style={{ fontSize: 10, textDecoration: "none", color: "#fff", padding: "10px 11px" }}>Search</a>
         </nav>
         <CartLink storeSlug={slug} accent={FABTEX.orange} onAccent="#ffffff" ink="#ffffff" />
       </header>

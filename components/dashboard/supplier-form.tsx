@@ -35,7 +35,7 @@ export function SupplierForm({
       return;
     }
     toast.success(supplierId ? "Supplier updated" : "Supplier added");
-    router.push(`/store/${storeSlug}/admin/suppliers`);
+    router.push(`/${storeSlug}/admin/suppliers`);
     router.refresh();
   }
 

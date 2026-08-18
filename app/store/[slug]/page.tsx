@@ -52,7 +52,7 @@ export default async function StorefrontPage({ params }: { params: Promise<{ slu
   if (!store || store.status !== "ACTIVE") notFound();
 
   // Fire-and-forget: never await-block a buyer's page render on analytics.
-  void recordStoreVisit(store.id, `/store/${slug}`);
+  void recordStoreVisit(store.id, `/${slug}`);
 
   const themeOverrides = store.themeColors as { primary?: string; secondary?: string; accent?: string } | null;
   const theme: TemplateTheme = resolveStoreTheme(store.template?.category, store.name, themeOverrides, store.fontFamily, store.template?.name);
@@ -404,7 +404,7 @@ export default async function StorefrontPage({ params }: { params: Promise<{ slu
                   <div style={eyebrow}>Our {theme.catalogLabel.toLowerCase()}</div>
                   <h2 style={h2}>Our company provides the <span style={accentText}>best service</span></h2>
                 </div>
-                <a href={`/store/${slug}/catalog`} style={btnGhost}>View all {theme.catalogLabel.toLowerCase()} →</a>
+                <a href={`/${slug}/catalog`} style={btnGhost}>View all {theme.catalogLabel.toLowerCase()} →</a>
               </div>
             </Reveal>
             <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(240px, 1fr))", gap: 20 }}>
@@ -641,7 +641,7 @@ type CatalogItem = {
 
 
 function CatalogCard({ item, storeName, slug, accent }: { item: CatalogItem; storeName: string; slug: string; accent: string }) {
-  const href = `/store/${slug}/${item.kind === "product" ? "product" : "service"}/${item.id}`;
+  const href = `/${slug}/${item.kind === "product" ? "product" : "service"}/${item.id}`;
   return (
     <div style={{ background: "#fff", borderRadius: 16, overflow: "hidden", border: `1px solid ${line}`, boxShadow: "0 1px 3px rgba(18,18,18,0.06)" }}>
       <a href={href} style={{ display: "block", textDecoration: "none", color: "inherit" }}>
@@ -687,7 +687,7 @@ function SiteNav({ store, slug, hasCatalog }: { store: { name: string; logoUrl: 
           {store.name}
         </a>
         <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
-          {hasCatalog && <a href={`/store/${slug}/search`} style={{ fontSize: 14.5, fontWeight: 500, color: FRESH.inkSoft, textDecoration: "none" }}>Search</a>}
+          {hasCatalog && <a href={`/${slug}/search`} style={{ fontSize: 14.5, fontWeight: 500, color: FRESH.inkSoft, textDecoration: "none" }}>Search</a>}
           {hasCatalog && <a href="#catalog" style={{ fontSize: 14.5, fontWeight: 500, color: FRESH.inkSoft, textDecoration: "none" }}>Services</a>}
           <CartLink storeSlug={slug} accent={FRESH.leaf} ink={FRESH.ink} />
           {hasCatalog && <a href="#catalog" style={{ ...btnPrimary, padding: "11px 20px", fontSize: 13.5 }}>Get a Quote</a>}

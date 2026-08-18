@@ -50,12 +50,12 @@ export async function GET(req: Request) {
       where: { reference, status: "PENDING" },
       data: { status: "SUCCESSFUL", rawPayload: verification as object, verifiedAt: new Date() },
     });
-    return NextResponse.redirect(`${APP_URL}/store/${store.slug}/admin/subscription?upgraded=1`);
+    return NextResponse.redirect(`${APP_URL}/${store.slug}/admin/subscription?upgraded=1`);
   }
 
   await prisma.payment.updateMany({
     where: { reference, status: "PENDING" },
     data: { status: "FAILED", rawPayload: verification as object },
   });
-  return NextResponse.redirect(`${APP_URL}/store/${store.slug}/admin/subscription?payment=failed`);
+  return NextResponse.redirect(`${APP_URL}/${store.slug}/admin/subscription?payment=failed`);
 }

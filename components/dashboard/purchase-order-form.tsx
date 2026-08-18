@@ -95,7 +95,7 @@ export function PurchaseOrderForm({
       return;
     }
     toast.success(`${result.data.poNumber} created as a draft.`);
-    router.push(`/store/${storeSlug}/admin/purchase-orders/${result.data.purchaseOrderId}`);
+    router.push(`/${storeSlug}/admin/purchase-orders/${result.data.purchaseOrderId}`);
     router.refresh();
   }
 

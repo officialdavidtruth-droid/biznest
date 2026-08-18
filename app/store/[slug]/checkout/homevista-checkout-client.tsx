@@ -70,7 +70,7 @@ export function HomeVistaCheckoutClient({ slug }: { slug: string }) {
   return (
     <div style={{ width: "90%", maxWidth: 1200, margin: "0 auto", fontFamily: HOMEVISTA.font, color: HOMEVISTA.ink }} className="py-10">
       <div className="mb-8">
-        <Link href={`/store/${slug}/cart`} style={{ color: HOMEVISTA.ink, opacity: 0.6 }} className="mb-4 inline-flex items-center gap-1 text-xs font-semibold no-underline hover:opacity-100">
+        <Link href={`/${slug}/cart`} style={{ color: HOMEVISTA.ink, opacity: 0.6 }} className="mb-4 inline-flex items-center gap-1 text-xs font-semibold no-underline hover:opacity-100">
           <ChevronLeft className="h-3.5 w-3.5" /> Back to cart
         </Link>
         <div style={{ borderBottom: "1px solid #e2e8e6" }} className="flex items-baseline justify-between pb-4">

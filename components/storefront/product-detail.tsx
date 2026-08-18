@@ -133,10 +133,10 @@ export function ProductDetail({
 
             {added && (
               <div style={{ marginTop: 14, display: "flex", gap: 10, flexWrap: "wrap" }}>
-                <Link href={`/store/${storeSlug}/cart`} style={{ fontSize: 13, fontWeight: 700, color: accent, textDecoration: "underline" }}>
+                <Link href={`/${storeSlug}/cart`} style={{ fontSize: 13, fontWeight: 700, color: accent, textDecoration: "underline" }}>
                   View cart →
                 </Link>
-                <Link href={`/store/${storeSlug}/checkout`} style={{ fontSize: 13, fontWeight: 700, color: ink, textDecoration: "underline" }}>
+                <Link href={`/${storeSlug}/checkout`} style={{ fontSize: 13, fontWeight: 700, color: ink, textDecoration: "underline" }}>
                   Checkout now →
                 </Link>
               </div>

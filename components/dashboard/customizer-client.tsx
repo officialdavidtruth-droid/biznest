@@ -127,7 +127,7 @@ export function CustomizerClient({
         {/* Top bar */}
         <div className="flex items-center gap-2 border-b border-border px-4 py-3">
           <Link
-            href={`/store/${slug}/admin`}
+            href={`/${slug}/admin`}
             className="flex h-8 w-8 items-center justify-center rounded-md text-muted-foreground hover:bg-muted"
           >
             <X className="h-4 w-4" />
@@ -148,7 +148,7 @@ export function CustomizerClient({
                 <p className="mt-1 truncate text-sm font-medium">{currentTemplateName ?? "None selected"}</p>
               </div>
               <Link
-                href={`/store/${slug}/admin/templates`}
+                href={`/${slug}/admin/templates`}
                 className="shrink-0 rounded-md border border-border px-2.5 py-1.5 text-xs font-medium hover:bg-muted"
               >
                 Change

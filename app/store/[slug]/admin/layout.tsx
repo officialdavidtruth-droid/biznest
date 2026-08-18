@@ -19,7 +19,7 @@ export default async function StoreAdminLayout({
   const { slug } = await params;
 
   const session = await auth();
-  if (!session?.user?.id) redirect(`/login?callbackUrl=/store/${slug}/admin`);
+  if (!session?.user?.id) redirect(`/login?callbackUrl=/${slug}/admin`);
 
   const [store, { notifications, unreadCount }] = await Promise.all([
     prisma.store.findUnique({ where: { slug }, include: { business: true } }),
@@ -60,7 +60,7 @@ export default async function StoreAdminLayout({
     const blocked =
       navItem?.ownerOnly ||
       (navItem?.permission && !hasStorePermission(role, staffPermissions, navItem.permission));
-    if (blocked) redirect(`/store/${slug}/admin`);
+    if (blocked) redirect(`/${slug}/admin`);
   }
 
   return (

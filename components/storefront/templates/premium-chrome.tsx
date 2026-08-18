@@ -54,8 +54,8 @@ export function PremiumHeader({
           ⌕<span style={{ marginLeft: 7, fontSize: 12 }}>Search the catalog…</span>
         </div>
         <nav style={{ display: "flex", gap: 15, fontSize: 11, fontWeight: 700 }}>
-          <a href={`/store/${slug}/catalog`} style={{ textDecoration: "none", color: PREMIUM.ink }}>Shop</a>
-          {navCategories.length > 0 && <a href={`/store/${slug}/catalog`} style={{ textDecoration: "none", color: PREMIUM.ink }}>Categories</a>}
+          <a href={`/${slug}/catalog`} style={{ textDecoration: "none", color: PREMIUM.ink }}>Shop</a>
+          {navCategories.length > 0 && <a href={`/${slug}/catalog`} style={{ textDecoration: "none", color: PREMIUM.ink }}>Categories</a>}
         </nav>
         <div style={{ marginLeft: "auto", display: "flex", gap: 15, alignItems: "center" }}>
           <CartLink storeSlug={slug} accent={PREMIUM.accent} ink={PREMIUM.ink} />
@@ -110,11 +110,11 @@ export function PremiumFooter({
         </div>
         <div>
           <b style={{ fontSize: 12 }}>Shop</b>
-          <a href={`/store/${slug}/catalog`} style={{ display: "block", color: "#6e7980", fontSize: 10, margin: "6px 0", textDecoration: "none" }}>Catalog</a>
+          <a href={`/${slug}/catalog`} style={{ display: "block", color: "#6e7980", fontSize: 10, margin: "6px 0", textDecoration: "none" }}>Catalog</a>
         </div>
         <div>
           <b style={{ fontSize: 12 }}>Support</b>
-          <a href={`/store/${slug}/cart`} style={{ display: "block", color: "#6e7980", fontSize: 10, margin: "6px 0", textDecoration: "none" }}>Cart</a>
+          <a href={`/${slug}/cart`} style={{ display: "block", color: "#6e7980", fontSize: 10, margin: "6px 0", textDecoration: "none" }}>Cart</a>
           {Object.entries(social).map(([k, v]) => (
             <a key={k} href={v} style={{ display: "block", color: "#6e7980", fontSize: 10, margin: "6px 0", textDecoration: "none" }}>{k}</a>
           ))}

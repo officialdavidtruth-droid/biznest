@@ -58,8 +58,8 @@ export function JuiceLifeHeader({
         </a>
         <nav style={{ display: "flex", gap: 24, margin: "0 auto", fontSize: 12 }}>
           <a href={`/${slug}`} style={{ color: JUICELIFE.ink, textDecoration: "none" }}>Home</a>
-          <a href={`/store/${slug}/catalog`} style={{ color: JUICELIFE.ink, textDecoration: "none" }}>Shop</a>
-          <a href={`/store/${slug}/search`} style={{ color: JUICELIFE.ink, textDecoration: "none" }}>Search</a>
+          <a href={`/${slug}/catalog`} style={{ color: JUICELIFE.ink, textDecoration: "none" }}>Shop</a>
+          <a href={`/${slug}/search`} style={{ color: JUICELIFE.ink, textDecoration: "none" }}>Search</a>
         </nav>
         <CartLink storeSlug={slug} accent={JUICELIFE.green} onAccent="#ffffff" ink={JUICELIFE.ink} />
       </header>

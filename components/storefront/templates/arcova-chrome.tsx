@@ -47,9 +47,9 @@ export function ArcovaHeader({
               <span style={{ fontSize: 18, fontWeight: 700, letterSpacing: 1 }}>{store.name.toUpperCase()}</span>
             </a>
             <nav style={{ display: "flex", alignItems: "center", gap: 26, fontSize: 12, letterSpacing: 1 }}>
-              <a href={`/store/${slug}/catalog`} style={{ color: ARCOVA.ink, textDecoration: "none" }}>PROJECTS</a>
-              {store.business.description && <a href={`/store/${slug}#services`} style={{ color: ARCOVA.ink, textDecoration: "none" }}>SERVICES</a>}
-              {(store.contactEmail || store.contactPhone) && <a href={`/store/${slug}#contact`} style={{ color: ARCOVA.ink, textDecoration: "none" }}>CONTACT</a>}
+              <a href={`/${slug}/catalog`} style={{ color: ARCOVA.ink, textDecoration: "none" }}>PROJECTS</a>
+              {store.business.description && <a href={`/${slug}#services`} style={{ color: ARCOVA.ink, textDecoration: "none" }}>SERVICES</a>}
+              {(store.contactEmail || store.contactPhone) && <a href={`/${slug}#contact`} style={{ color: ARCOVA.ink, textDecoration: "none" }}>CONTACT</a>}
               <CartLink storeSlug={slug} accent={ARCOVA.accent} onAccent="#ffffff" ink={ARCOVA.ink} />
             </nav>
           </div>

@@ -128,7 +128,7 @@ export function InventoryRow({ storeSlug, item }: { storeSlug: string; item: Inv
       </td>
 
       <td className="px-4 py-3 text-right">
-        <Link href={`/store/${storeSlug}/admin/inventory/${item.inventoryItemId}`} className="text-xs font-medium text-primary hover:underline">
+        <Link href={`/${storeSlug}/admin/inventory/${item.inventoryItemId}`} className="text-xs font-medium text-primary hover:underline">
           Manage
         </Link>
       </td>

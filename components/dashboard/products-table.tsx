@@ -207,7 +207,7 @@ export function ProductsTable({
                 <td className="px-4 py-3 text-right">
                   <div className="flex justify-end gap-3">
                     <Link
-                      href={`/store/${storeSlug}/admin/products/${p.id}/edit`}
+                      href={`/${storeSlug}/admin/products/${p.id}/edit`}
                       className="text-xs font-medium text-primary hover:underline"
                     >
                       Edit

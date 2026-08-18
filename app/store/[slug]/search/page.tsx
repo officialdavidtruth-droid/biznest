@@ -75,7 +75,7 @@ export default async function SearchPage({
       {query && items.length === 0 && (
         <div style={{ border: `1px dashed ${ink}22`, borderRadius: 16, padding: 48, textAlign: "center", opacity: 0.7 }}>
           <p style={{ fontSize: 14 }}>No results for &ldquo;{query}&rdquo;.</p>
-          <Link href={`/store/${slug}/catalog`} style={{ color: accent, fontSize: 13, fontWeight: 700, textDecoration: "underline" }}>Browse everything instead →</Link>
+          <Link href={`/${slug}/catalog`} style={{ color: accent, fontSize: 13, fontWeight: 700, textDecoration: "underline" }}>Browse everything instead →</Link>
         </div>
       )}
 
@@ -84,7 +84,7 @@ export default async function SearchPage({
           {items.map((item) => (
             <a
               key={`${item.kind}-${item.id}`}
-              href={`/store/${slug}/${item.kind}/${item.id}`}
+              href={`/${slug}/${item.kind}/${item.id}`}
               style={{ display: "block", textDecoration: "none", color: "inherit", border: `1px solid ${ink}14`, borderRadius: radius, overflow: "hidden", background: `${ink}05` }}
             >
               <div style={{ aspectRatio: "1/1", background: item.image ? `url(${item.image}) center/cover` : `${ink}0d` }} />
@@ -225,7 +225,7 @@ export default async function SearchPage({
       <nav style={{ position: "sticky", top: 0, zIndex: 50, background: `${bg}f2`, backdropFilter: "blur(10px)", borderBottom: `1px solid ${ink}14` }}>
         <div style={{ maxWidth: 1180, margin: "0 auto", padding: "16px 28px", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 20 }}>
           <Link href={`/${slug}`} style={{ fontWeight: 800, fontSize: 18, color: ink, textDecoration: "none", flexShrink: 0 }}>{store.name}</Link>
-          <form action={`/store/${slug}/search`} style={{ flex: 1, maxWidth: 420 }}>
+          <form action={`/${slug}/search`} style={{ flex: 1, maxWidth: 420 }}>
             <input
               name="q"
               defaultValue={query}

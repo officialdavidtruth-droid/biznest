@@ -98,7 +98,7 @@ export function JuiceLifeCartClient({ slug }: { slug: string }) {
                 <span style={{ fontSize: 22, fontWeight: 900, color: JUICELIFE.orange }} className="leading-none">{cartItems[0]?.currency} {subtotal.toLocaleString()}</span>
               </div>
               <Link
-                href={`/store/${slug}/checkout`}
+                href={`/${slug}/checkout`}
                 style={{ background: JUICELIFE.orange, color: "#fff", borderRadius: 22 }}
                 className="mt-1 flex items-center justify-center gap-2 py-3.5 text-xs font-extrabold no-underline transition hover:opacity-90"
               >

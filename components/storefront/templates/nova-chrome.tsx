@@ -59,8 +59,8 @@ export function NovaHeader({
           {store.name}
         </a>
         <div style={{ display: "flex", alignItems: "center", gap: 26 }}>
-          <a href={`/store/${slug}/catalog`} style={{ ...label, textDecoration: "none" }}>The Collection</a>
-          <a href={`/store/${slug}/search`} style={{ ...label, textDecoration: "none" }}>Search</a>
+          <a href={`/${slug}/catalog`} style={{ ...label, textDecoration: "none" }}>The Collection</a>
+          <a href={`/${slug}/search`} style={{ ...label, textDecoration: "none" }}>Search</a>
           <CartLink storeSlug={slug} accent={theme.accent} ink={theme.ink} />
         </div>
       </div>

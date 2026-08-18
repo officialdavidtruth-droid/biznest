@@ -95,7 +95,7 @@ export default async function TemplatesPage() {
                 <div className="mt-5 flex items-center gap-3">
                   {demoSlug ? (
                     <Link
-                      href={`/store/${demoSlug}`}
+                      href={`/${demoSlug}`}
                       target="_blank"
                       className="flex-1 rounded-full px-4 py-2.5 text-center text-sm font-semibold transition hover:brightness-110"
                       style={{ background: "var(--bn-accent-gradient)", color: "var(--bn-ink)" }}

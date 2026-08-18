@@ -118,7 +118,7 @@ export function CartClient({ slug }: { slug: string }) {
                   <span className="text-2xl font-extrabold leading-none">{cartItems[0]?.currency} {subtotal.toLocaleString()}</span>
                 </div>
                 <Link
-                  href={`/store/${slug}/checkout`}
+                  href={`/${slug}/checkout`}
                   style={{ background: ACCENT, color: "#fff", boxShadow: `0 8px 20px ${ACCENT}4d` }}
                   className="mt-1 flex items-center justify-center gap-2 rounded-xl py-3.5 text-sm font-semibold no-underline transition-transform hover:-translate-y-0.5"
                 >

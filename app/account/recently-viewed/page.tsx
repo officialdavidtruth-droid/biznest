@@ -23,7 +23,7 @@ export default async function RecentlyViewedPage() {
         return (
           <Link
             key={item.id}
-            href={`/store/${store.slug}`}
+            href={`/${store.slug}`}
             className="group overflow-hidden rounded-2xl border border-slate-100 bg-white shadow-sm transition hover:shadow-md"
           >
             <div className="aspect-square bg-slate-100">

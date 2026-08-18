@@ -95,7 +95,7 @@ export default async function CustomerQuotePage({
         )}
 
         <div className="mt-6 text-center">
-          <Link href={`/store/${quote.store.slug}`} className="text-xs font-medium text-slate-500 hover:text-primary">
+          <Link href={`/${quote.store.slug}`} className="text-xs font-medium text-slate-500 hover:text-primary">
             Visit {quote.store.name} →
           </Link>
         </div>

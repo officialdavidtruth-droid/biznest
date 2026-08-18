@@ -21,7 +21,7 @@ export default async function FavoriteBusinessesPage() {
         return (
           <Link
             key={id}
-            href={`/store/${business.store.slug}`}
+            href={`/${business.store.slug}`}
             className="flex items-center gap-3 rounded-2xl border border-slate-100 bg-white p-4 shadow-sm transition hover:shadow-md"
           >
             <div className="h-12 w-12 shrink-0 overflow-hidden rounded-full bg-slate-100">

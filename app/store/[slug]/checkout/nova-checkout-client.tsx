@@ -73,7 +73,7 @@ export function NovaCheckoutClient({ slug }: { slug: string }) {
   return (
     <div style={{ maxWidth: 1180, margin: "0 auto", fontFamily: NOVA.font, color: NOVA.cream, background: NOVA.black }} className="px-6 py-10">
       <div className="mb-8">
-        <Link href={`/store/${slug}/cart`} style={{ ...label, color: NOVA.cream }} className="mb-4 inline-flex items-center gap-1 no-underline hover:opacity-75">
+        <Link href={`/${slug}/cart`} style={{ ...label, color: NOVA.cream }} className="mb-4 inline-flex items-center gap-1 no-underline hover:opacity-75">
           <ChevronLeft className="h-3.5 w-3.5" /> Back to cart
         </Link>
         <div style={{ borderBottom: `1px solid ${NOVA.line}` }} className="flex items-baseline justify-between pb-5">

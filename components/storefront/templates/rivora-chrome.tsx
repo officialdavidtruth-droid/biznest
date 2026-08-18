@@ -63,8 +63,8 @@ export function RivoraHeader({
         </a>
         <nav style={{ display: "flex", gap: 22, flex: 1, justifyContent: "center", fontSize: 11 }}>
           <a href={`/${slug}`} style={{ color: "#d8e2dc", textDecoration: "none" }}>Home</a>
-          <a href={`/store/${slug}/catalog`} style={{ color: "#d8e2dc", textDecoration: "none" }}>Shop</a>
-          <a href={`/store/${slug}/search`} style={{ color: "#d8e2dc", textDecoration: "none" }}>Search</a>
+          <a href={`/${slug}/catalog`} style={{ color: "#d8e2dc", textDecoration: "none" }}>Shop</a>
+          <a href={`/${slug}/search`} style={{ color: "#d8e2dc", textDecoration: "none" }}>Search</a>
         </nav>
         <CartLink storeSlug={slug} accent={RIVORA.lime} onAccent="#153600" ink="#fff" />
       </header>

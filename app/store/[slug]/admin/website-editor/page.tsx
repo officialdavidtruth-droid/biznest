@@ -7,5 +7,5 @@ import { redirect } from "next/navigation";
 // don't 404 — same pattern as /admin/builder's redirect.
 export default async function WebsiteEditorRedirect({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
-  redirect(`/store/${slug}/admin/customize`);
+  redirect(`/${slug}/admin/customize`);
 }

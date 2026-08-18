@@ -25,7 +25,7 @@ export default async function ServicesPage({ params }: { params: Promise<{ slug:
     <div>
       <div className="mb-6 flex items-center justify-between">
         <h1 className="text-xl font-semibold">Services</h1>
-        <Link href={`/store/${slug}/admin/services/new`} className="rounded-md bg-primary px-3 py-1.5 text-sm font-medium text-primary-foreground">
+        <Link href={`/${slug}/admin/services/new`} className="rounded-md bg-primary px-3 py-1.5 text-sm font-medium text-primary-foreground">
           + Add service
         </Link>
       </div>
@@ -49,7 +49,7 @@ export default async function ServicesPage({ params }: { params: Promise<{ slug:
                   </span>
                 </td>
                 <td className="px-4 py-3 text-right">
-                  <Link href={`/store/${slug}/admin/services/${s.id}/edit`} className="text-xs font-medium text-primary hover:underline">
+                  <Link href={`/${slug}/admin/services/${s.id}/edit`} className="text-xs font-medium text-primary hover:underline">
                     Edit
                   </Link>
                 </td>

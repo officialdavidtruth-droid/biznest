@@ -105,7 +105,7 @@ export default async function BuyerOrdersPage() {
                   className="group overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm transition-all hover:-translate-y-0.5 hover:border-violet-200 hover:shadow-md"
                 >
                   <Link
-                    href={`/store/${order.store.slug}/orders/${order.id}/confirmation`}
+                    href={`/${order.store.slug}/orders/${order.id}/confirmation`}
                     className="flex items-center gap-4 p-4"
                   >
                     {/* Thumbnail: product image if we have one, otherwise a gradient store-initial tile */}

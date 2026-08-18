@@ -91,7 +91,7 @@ export function NovaStorefront({
         </a>
         <div style={{ display: "flex", alignItems: "center", gap: 26 }}>
           {catalogItems.length > 0 && <a href="#collection" style={{ ...label, textDecoration: "none" }}>The Collection</a>}
-          {catalogItems.length > 0 && <a href={`/store/${slug}/search`} style={{ ...label, textDecoration: "none" }}>Search</a>}
+          {catalogItems.length > 0 && <a href={`/${slug}/search`} style={{ ...label, textDecoration: "none" }}>Search</a>}
           <CartLink storeSlug={slug} accent={p.gold} ink={p.ink} />
         </div>
       </div>
@@ -152,13 +152,13 @@ export function NovaStorefront({
                   <div style={label}>{theme.catalogLabel}</div>
                   <h2 style={{ ...p.serif, fontSize: "clamp(30px,3.6vw,44px)", marginTop: 14 }}>Every piece, chosen with care.</h2>
                 </div>
-                <a href={`/store/${slug}/catalog`} style={{ ...label, textDecoration: "underline" }}>View full collection →</a>
+                <a href={`/${slug}/catalog`} style={{ ...label, textDecoration: "underline" }}>View full collection →</a>
               </div>
             </Reveal>
             {featuredItems.map((item, i) => (
               <Reveal key={`${item.kind}-${item.id}`} delayMs={i * 40} as="section">
                 <a
-                  href={`/store/${slug}/${item.kind === "product" ? "product" : "service"}/${item.id}`}
+                  href={`/${slug}/${item.kind === "product" ? "product" : "service"}/${item.id}`}
                   style={{ display: "grid", gridTemplateColumns: "80px 140px 1fr auto", alignItems: "center", gap: 30, padding: "30px 0", borderTop: `1px solid ${p.line}`, textDecoration: "none", color: "inherit" }}
                 >
                   <span style={{ ...p.serif, fontSize: 15, color: p.gray }}>{String(i + 1).padStart(2, "0")}</span>

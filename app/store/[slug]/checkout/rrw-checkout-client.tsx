@@ -70,7 +70,7 @@ export function RrwCheckoutClient({ slug }: { slug: string }) {
   return (
     <div style={{ padding: "32px 6% 60px", fontFamily: RRW.font, color: RRW.ink }}>
       <div className="mb-8">
-        <Link href={`/store/${slug}/cart`} style={{ color: RRW.ink, opacity: 0.55 }} className="mb-4 inline-flex items-center gap-1 text-xs font-semibold no-underline hover:opacity-100">
+        <Link href={`/${slug}/cart`} style={{ color: RRW.ink, opacity: 0.55 }} className="mb-4 inline-flex items-center gap-1 text-xs font-semibold no-underline hover:opacity-100">
           <ChevronLeft className="h-3.5 w-3.5" /> Back to cart
         </Link>
         <div style={{ borderBottom: "1px solid #ddd" }} className="flex items-baseline justify-between pb-4">

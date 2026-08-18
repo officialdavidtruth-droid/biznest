@@ -98,7 +98,7 @@ export function RivoraCartClient({ slug }: { slug: string }) {
                 <span style={{ fontSize: 22, fontWeight: 900, color: RIVORA.lime }} className="leading-none">{cartItems[0]?.currency} {subtotal.toLocaleString()}</span>
               </div>
               <Link
-                href={`/store/${slug}/checkout`}
+                href={`/${slug}/checkout`}
                 style={{ background: RIVORA.lime, color: "#153600", borderRadius: 7 }}
                 className="mt-1 flex items-center justify-center gap-2 py-3.5 text-xs font-extrabold no-underline transition hover:opacity-90"
               >

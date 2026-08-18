@@ -53,8 +53,8 @@ export function HomeVistaHeader({
           <b>{store.name}</b>
         </a>
         <nav style={{ display: "flex", gap: 25, fontSize: 11, fontWeight: 700 }}>
-          <a href={`/store/${slug}#listings`} style={{ textDecoration: "none", color: HOMEVISTA.ink }}>Listings</a>
-          {navCategories.length > 0 && <a href={`/store/${slug}/catalog`} style={{ textDecoration: "none", color: HOMEVISTA.accent, borderBottom: `2px solid ${HOMEVISTA.accent}`, paddingBottom: 25 }}>Categories</a>}
+          <a href={`/${slug}#listings`} style={{ textDecoration: "none", color: HOMEVISTA.ink }}>Listings</a>
+          {navCategories.length > 0 && <a href={`/${slug}/catalog`} style={{ textDecoration: "none", color: HOMEVISTA.accent, borderBottom: `2px solid ${HOMEVISTA.accent}`, paddingBottom: 25 }}>Categories</a>}
         </nav>
         <div style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: 20 }}>
           <CartLink storeSlug={slug} accent={HOMEVISTA.accent} ink={HOMEVISTA.ink} />
@@ -87,8 +87,8 @@ export function HomeVistaFooter({
       </div>
       <div>
         <b style={{ fontSize: 11 }}>Quick Links</b>
-        <a href={`/store/${slug}/catalog`} style={{ display: "block", color: "#b8cbc7", fontSize: 8, margin: "7px 0", textDecoration: "none" }}>Listings</a>
-        <a href={`/store/${slug}/cart`} style={{ display: "block", color: "#b8cbc7", fontSize: 8, margin: "7px 0", textDecoration: "none" }}>Cart</a>
+        <a href={`/${slug}/catalog`} style={{ display: "block", color: "#b8cbc7", fontSize: 8, margin: "7px 0", textDecoration: "none" }}>Listings</a>
+        <a href={`/${slug}/cart`} style={{ display: "block", color: "#b8cbc7", fontSize: 8, margin: "7px 0", textDecoration: "none" }}>Cart</a>
       </div>
       <div>
         <b style={{ fontSize: 11 }}>Contact</b>

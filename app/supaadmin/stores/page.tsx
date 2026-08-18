@@ -23,7 +23,7 @@ export default async function StoresPage() {
             {stores.map((s) => (
               <tr key={s.id} className="border-b last:border-0">
                 <td className="px-4 py-3">
-                  <Link href={`/store/${s.slug}`} target="_blank" className="font-medium text-primary hover:underline">
+                  <Link href={`/${s.slug}`} target="_blank" className="font-medium text-primary hover:underline">
                     {s.name}
                   </Link>
                   <p className="text-xs text-muted-foreground">/store/{s.slug}</p>

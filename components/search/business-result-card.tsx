@@ -47,7 +47,7 @@ export function BusinessResultCard({ business }: { business: SearchResultBusines
 
   return (
     <Link
-      href={`/store/${store.slug}`}
+      href={`/${store.slug}`}
       className="bn-card group flex flex-col overflow-hidden transition hover:shadow-md"
     >
       <div className="relative h-36 w-full overflow-hidden bg-muted">

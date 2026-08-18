@@ -85,7 +85,7 @@ export function ProductForm({
       return;
     }
     toast.success(product ? "Product updated" : "Product created");
-    router.push(`/store/${storeSlug}/admin/products`);
+    router.push(`/${storeSlug}/admin/products`);
     router.refresh();
   }
 
