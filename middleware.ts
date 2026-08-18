@@ -178,6 +178,23 @@ export default auth(async (req) => {
     }
   }
 
+  // Forward which admin sub-page this is (e.g. "/settings") as a header so
+  // the layout — which runs on the Node runtime and can actually query
+  // StoreStaff.permissions — can enforce per-staff-member permissions
+  // (see findNavItemForPath in lib/constants/dashboard-nav.ts and its use
+  // in app/store/[slug]/admin/layout.tsx). Middleware itself can't do this
+  // check: it's Edge runtime and cannot run Prisma.
+  const storeAdminMatch = STORE_ADMIN_PATTERN.test(pathname);
+  if (storeAdminMatch) {
+    const adminIndex = pathname.indexOf("/admin");
+    const subpath = pathname.slice(adminIndex + "/admin".length) || "/";
+    const headers = new Headers(req.headers);
+    headers.set("x-bn-admin-subpath", subpath);
+    return rewritten
+      ? NextResponse.rewrite(url, { request: { headers } })
+      : NextResponse.next({ request: { headers } });
+  }
+
   return rewritten ? NextResponse.rewrite(url) : NextResponse.next();
 });
 

@@ -4,7 +4,8 @@ import { useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Menu, X } from "lucide-react";
-import { buildNavGroups, buildBottomTabItems } from "@/lib/constants/dashboard-nav";
+import { buildNavGroups, buildBottomTabItems, filterNavGroupsForRole } from "@/lib/constants/dashboard-nav";
+import type { StoreAccessRole } from "@/lib/access/store-access";
 import { NotificationBell } from "@/components/dashboard/notification-bell";
 import { PushSubscribePrompt } from "@/components/dashboard/push-subscribe-prompt";
 import { SignOutButton } from "@/components/forms/sign-out-button";
@@ -39,6 +40,8 @@ export function MobileDashboardChrome({
   category,
   notifications,
   unreadCount,
+  staffRole,
+  staffPermissions,
 }: {
   slug: string;
   storeName: string;
@@ -47,13 +50,19 @@ export function MobileDashboardChrome({
   category?: string | null;
   notifications: NotificationItem[];
   unreadCount: number;
+  staffRole?: StoreAccessRole;
+  staffPermissions?: string[] | null;
 }) {
   const [drawerOpen, setDrawerOpen] = useState(false);
   const pathname = usePathname();
   const base = `/store/${slug}/admin`;
   const business = { sellsProducts, offersServices, category };
-  const navGroups = buildNavGroups(business);
-  const bottomItems = buildBottomTabItems(business);
+  const canManageOwnerOnly = staffRole === undefined || staffRole === "OWNER" || staffRole === "PLATFORM_STAFF";
+  const navGroups = filterNavGroupsForRole(buildNavGroups(business), {
+    canManageOwnerOnly,
+    permissions: staffPermissions,
+  });
+  const bottomItems = buildBottomTabItems(business, { canManageOwnerOnly, permissions: staffPermissions });
 
   return (
     <div className="lg:hidden">

@@ -420,6 +420,7 @@ model Store {
   visits        StoreVisit[]
   savedCarts    SavedCart[]
   staffMembers  StoreStaff[]
+  activityLogs  StoreActivityLog[]
 
   createdAt     DateTime    @default(now())
   updatedAt     DateTime    @updatedAt
@@ -472,6 +473,30 @@ model StoreStaff {
   @@unique([storeId, invitedEmail])
   @@index([userId])
   @@index([inviteToken])
+}
+
+// Append-only audit trail of what staff/managers (and the owner) did
+// inside a store's dashboard, so the owner has visibility into actions
+// taken by people they've delegated access to. Written via
+// logStoreActivity() in lib/actions/activity.ts — see that file for the
+// list of instrumented actions. Never updated or deleted, only inserted.
+model StoreActivityLog {
+  id          String   @id @default(cuid())
+  storeId     String
+  store       Store    @relation(fields: [storeId], references: [id], onDelete: Cascade)
+
+  actorUserId String?
+  actorName   String
+  actorEmail  String
+  actorRole   String
+
+  action      String
+  target      String?
+  metadata    Json?
+
+  createdAt   DateTime @default(now())
+
+  @@index([storeId, createdAt])
 }
 
 model StoreTemplate {

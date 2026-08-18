@@ -6,7 +6,8 @@ import { nanoid } from "nanoid";
 import { sendStaffInviteEmail } from "@/lib/email/send";
 import { canManageBillingAndStaff, getStoreAccessRole } from "@/lib/access/store-access";
 import { notifyUser } from "@/lib/notifications/notify";
-import { STAFF_PERMISSION_IDS } from "@/lib/access/staff-permissions";
+import { STAFF_PERMISSION_IDS, labelForPermission } from "@/lib/access/staff-permissions";
+import { logStoreActivity } from "@/lib/actions/activity";
 import type { ActionResult } from "@/types/actions";
 
 const MAX_STAFF_PER_STORE = 20;
@@ -111,6 +112,14 @@ export async function inviteStaffMember(
     return { success: false, error: "Invite saved, but the email couldn't be sent. Try resending it." };
   }
 
+  await logStoreActivity({
+    storeId: store.id,
+    actor: { id: session.user.id, name: session.user.name, email: session.user.email, role: "OWNER" },
+    action: existing ? "staff.reinvited" : "staff.invited",
+    target: normalizedEmail,
+    metadata: { role, position: trimmedPosition, permissions: validPermissions },
+  });
+
   return { success: true, data: undefined };
 }
 
@@ -155,6 +164,52 @@ export async function listStaffMembers(slug: string): Promise<
   };
 }
 
+export async function updateStaffAccess(
+  slug: string,
+  staffId: string,
+  role: "MANAGER" | "STAFF",
+  permissions: string[]
+): Promise<ActionResult<void>> {
+  const session = await auth();
+  if (!session?.user?.id) return { success: false, error: "You must be signed in." };
+
+  const { store, error } = await requireOwner(slug, session.user.id, session.user.role);
+  if (!store) return { success: false, error: error! };
+
+  const validPermissions = permissions.filter((p) => STAFF_PERMISSION_IDS.includes(p as (typeof STAFF_PERMISSION_IDS)[number]));
+  if (validPermissions.length === 0) {
+    return { success: false, error: "Select at least one area they should have access to." };
+  }
+
+  const member = await prisma.storeStaff.findFirst({ where: { id: staffId, storeId: store.id } });
+  if (!member) return { success: false, error: "Staff member not found." };
+  if (member.status === "REVOKED") return { success: false, error: "This person's access has been revoked." };
+
+  await prisma.storeStaff.update({
+    where: { id: member.id },
+    data: { role, permissions: validPermissions },
+  });
+
+  await logStoreActivity({
+    storeId: store.id,
+    actor: { id: session.user.id, name: session.user.name, email: session.user.email, role: "OWNER" },
+    action: "staff.access_updated",
+    target: member.invitedEmail,
+    metadata: { role, permissions: validPermissions },
+  });
+
+  if (member.userId) {
+    await notifyUser({
+      userId: member.userId,
+      type: "STAFF_ACCESS_UPDATED",
+      title: "Your access was updated",
+      body: `Your access to ${store.name}'s dashboard is now: ${validPermissions.map(labelForPermission).join(", ")}.`,
+    });
+  }
+
+  return { success: true, data: undefined };
+}
+
 export async function revokeStaffMember(slug: string, staffId: string): Promise<ActionResult<void>> {
   const session = await auth();
   if (!session?.user?.id) return { success: false, error: "You must be signed in." };
@@ -166,6 +221,13 @@ export async function revokeStaffMember(slug: string, staffId: string): Promise<
   if (!member) return { success: false, error: "Staff member not found." };
 
   await prisma.storeStaff.update({ where: { id: member.id }, data: { status: "REVOKED" } });
+
+  await logStoreActivity({
+    storeId: store.id,
+    actor: { id: session.user.id, name: session.user.name, email: session.user.email, role: "OWNER" },
+    action: "staff.removed",
+    target: member.invitedEmail,
+  });
 
   if (member.userId) {
     await notifyUser({
@@ -204,6 +266,13 @@ export async function acceptStaffInvite(token: string): Promise<ActionResult<{ s
   await prisma.storeStaff.update({
     where: { id: invite.id },
     data: { userId: session.user.id, status: "ACTIVE", acceptedAt: new Date() },
+  });
+
+  await logStoreActivity({
+    storeId: invite.storeId,
+    actor: { id: session.user.id, name: session.user.name, email: session.user.email, role: invite.role },
+    action: "staff.joined",
+    target: invite.invitedEmail,
   });
 
   return { success: true, data: { storeSlug: invite.store.slug } };

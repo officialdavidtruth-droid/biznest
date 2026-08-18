@@ -13,6 +13,7 @@ export function DashboardSidebar({
   offersServices,
   category,
   staffRole,
+  staffPermissions,
 }: {
   slug: string;
   storeName: string;
@@ -23,15 +24,18 @@ export function DashboardSidebar({
   // The category chosen at onboarding — adds one trade-specific nav item.
   category?: string | null;
   // Undefined/OWNER/PLATFORM_STAFF shows everything; MANAGER/STAFF hides
-  // billing + staff-management links (see filterNavGroupsForRole).
+  // billing + staff-management links (see filterNavGroupsForRole) and,
+  // via staffPermissions, anything they weren't individually granted.
   staffRole?: StoreAccessRole;
+  staffPermissions?: string[] | null;
 }) {
   const pathname = usePathname();
   const base = `/store/${slug}/admin`;
-  const NAV_GROUPS = filterNavGroupsForRole(
-    buildNavGroups({ sellsProducts, offersServices, category }),
-    staffRole === undefined || staffRole === "OWNER" || staffRole === "PLATFORM_STAFF"
-  );
+  const canManageOwnerOnly = staffRole === undefined || staffRole === "OWNER" || staffRole === "PLATFORM_STAFF";
+  const NAV_GROUPS = filterNavGroupsForRole(buildNavGroups({ sellsProducts, offersServices, category }), {
+    canManageOwnerOnly,
+    permissions: staffPermissions,
+  });
 
   return (
     // Desktop/tablet only — below lg, MobileDashboardChrome (top bar +

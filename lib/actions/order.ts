@@ -11,6 +11,8 @@ import type { OrderStatus, Store, Business } from "@prisma/client";
 import { awardLoyaltyPointsForOrder } from "@/lib/actions/loyalty";
 import { recomputeAndPersistTrustScore } from "@/lib/actions/trust-score";
 import { emitWebhookEvent } from "@/lib/webhooks/dispatch";
+import { assertStorePermission } from "@/lib/access/assert-store-access";
+import { logStoreActivity } from "@/lib/actions/activity";
 // Which order statuses a seller should ever see (excludes PENDING_PAYMENT /
 // CANCELLED carts that were never actually paid for). Lives outside this
 // file because a "use server" file may only export async functions — a
@@ -150,18 +152,14 @@ type StoreAccessResult =
   | { success: true; store: Store & { business: Business } }
   | { success: false; error: string };
 
+/**
+ * "orders" permission — see product.ts's assertStoreAccess for why this
+ * delegates to assertStorePermission instead of the old owner-only check.
+ */
 export async function assertStoreAccess(slug: string): Promise<StoreAccessResult> {
-  const session = await auth();
-  if (!session?.user?.id) return { success: false, error: "You must be signed in." };
-
-  const store = await prisma.store.findUnique({ where: { slug }, include: { business: true } });
-  if (!store) return { success: false, error: "Store not found." };
-
-  const isOwner = store.business.userId === session.user.id;
-  const isStaff = session.user.role === "PLATFORM_ADMIN" || session.user.role === "SUPPORT_MODERATOR";
-  if (!isOwner && !isStaff) return { success: false, error: "You don't have access to this store." };
-
-  return { success: true, store };
+  const result = await assertStorePermission(slug, "orders");
+  if (!result.success) return result;
+  return { success: true, store: result.store };
 }
 
 export async function getOrderForBuyer(orderId: string) {
@@ -274,6 +272,15 @@ export async function updateOrderStatus(
       await emitWebhookEvent("ORDER_FULFILLED", access.store.id, { orderId, status });
     }
   }
+
+  const session = await auth();
+  await logStoreActivity({
+    storeId: access.store.id,
+    actor: { id: session?.user?.id, name: session?.user?.name, email: session?.user?.email, role: session?.user?.role ?? "unknown" },
+    action: "order.status_updated",
+    target: orderId,
+    metadata: { from: order.status, to: status },
+  });
 
   revalidatePath(`/store/${slug}/admin/orders`);
   return { success: true, data: undefined };

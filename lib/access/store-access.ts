@@ -44,3 +44,18 @@ export function canManageBillingAndStaff(role: StoreAccessRole): boolean {
 export function canAccessDashboard(role: StoreAccessRole): boolean {
   return role !== null;
 }
+
+/**
+ * Whether a MANAGER/STAFF account was granted a specific area (see
+ * lib/access/staff-permissions.ts) at invite time. OWNER and
+ * PLATFORM_STAFF always pass — the permission checklist only restricts
+ * invited staff, never the store's own owner or platform support.
+ */
+export function hasStorePermission(
+  role: StoreAccessRole,
+  permissions: string[] | null | undefined,
+  permissionId: string
+): boolean {
+  if (role === "OWNER" || role === "PLATFORM_STAFF") return true;
+  return (permissions ?? []).includes(permissionId);
+}

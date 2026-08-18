@@ -1,11 +1,13 @@
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { redirect, notFound } from "next/navigation";
+import { headers } from "next/headers";
 import { DashboardSidebar } from "@/components/dashboard/sidebar";
 import { MobileDashboardChrome } from "@/components/dashboard/mobile-dashboard-chrome";
 import { NotificationBell } from "@/components/dashboard/notification-bell";
 import { listMyNotifications } from "@/lib/actions/notifications";
-import { getStoreAccessRole } from "@/lib/access/store-access";
+import { getStoreAccessRole, hasStorePermission } from "@/lib/access/store-access";
+import { findNavItemForPath } from "@/lib/constants/dashboard-nav";
 
 export default async function StoreAdminLayout({
   children,
@@ -37,6 +39,30 @@ export default async function StoreAdminLayout({
     redirect(`/onboarding/select-plan?slug=${slug}`);
   }
 
+  // MANAGER/STAFF only get the specific areas they were granted at invite
+  // time (see lib/access/staff-permissions.ts). This is the actual
+  // enforcement — the sidebar/mobile nav filtering is just so they don't
+  // see links to pages they can't use; a staff member typing a URL
+  // directly still hits this check.
+  let staffPermissions: string[] | null = null;
+  if (role === "MANAGER" || role === "STAFF") {
+    const membership = await prisma.storeStaff.findFirst({
+      where: { storeId: store.id, userId: session.user.id, status: "ACTIVE" },
+      select: { permissions: true },
+    });
+    staffPermissions = membership?.permissions ?? [];
+
+    const subpath = (await headers()).get("x-bn-admin-subpath") ?? "/";
+    const navItem = findNavItemForPath(
+      { sellsProducts: store.business.sellsProducts, offersServices: store.business.offersServices, category: store.business.category },
+      subpath
+    );
+    const blocked =
+      navItem?.ownerOnly ||
+      (navItem?.permission && !hasStorePermission(role, staffPermissions, navItem.permission));
+    if (blocked) redirect(`/store/${slug}/admin`);
+  }
+
   return (
     <div className="dark flex h-screen flex-col overflow-hidden bg-background text-foreground lg:flex-row">
       <DashboardSidebar
@@ -46,6 +72,7 @@ export default async function StoreAdminLayout({
         offersServices={store.business.offersServices}
         category={store.business.category}
         staffRole={role}
+        staffPermissions={staffPermissions}
       />
 
       {/* Mobile top bar + fixed bottom tab bar + drawer — see component for
@@ -58,6 +85,8 @@ export default async function StoreAdminLayout({
         category={store.business.category}
         notifications={notifications}
         unreadCount={unreadCount}
+        staffRole={role}
+        staffPermissions={staffPermissions}
       />
 
       <div className="flex flex-1 flex-col overflow-hidden">

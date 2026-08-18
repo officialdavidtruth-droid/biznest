@@ -1,24 +1,18 @@
 "use server";
 
-import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { Prisma } from "@prisma/client";
 import { revalidatePath } from "next/cache";
 import slugify from "slugify";
 import type { ActionResult } from "@/types/actions";
+import { assertStorePermission } from "@/lib/access/assert-store-access";
 
+// "products" permission — services live under the same "Products &
+// inventory" checkbox as products. See product.ts's assertStoreAccess for
+// why this delegates to assertStorePermission instead of the old
+// owner-only check.
 async function assertStoreAccess(slug: string) {
-  const session = await auth();
-  if (!session?.user?.id) return { success: false as const, error: "You must be signed in." };
-
-  const store = await prisma.store.findUnique({ where: { slug }, include: { business: true } });
-  if (!store) return { success: false as const, error: "Store not found." };
-
-  const isOwner = store.business.userId === session.user.id;
-  const isStaff = session.user.role === "PLATFORM_ADMIN" || session.user.role === "SUPPORT_MODERATOR";
-  if (!isOwner && !isStaff) return { success: false as const, error: "You don't have access to this store." };
-
-  return { success: true as const, store };
+  return assertStorePermission(slug, "products");
 }
 
 async function uniqueServiceSlug(storeId: string, base: string): Promise<string> {

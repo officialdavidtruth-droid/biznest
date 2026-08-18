@@ -5,8 +5,19 @@ import {
   LayoutTemplate, FileText, FileSignature, MailWarning,
 } from "lucide-react";
 import { getCategoryDashboard } from "@/lib/constants/category-dashboard";
+import type { StaffPermissionId } from "@/lib/access/staff-permissions";
 
-export type NavItem = { label: string; href: string; icon: typeof LayoutDashboard; ownerOnly?: boolean };
+export type NavItem = {
+  label: string;
+  href: string;
+  icon: typeof LayoutDashboard;
+  ownerOnly?: boolean;
+  // Which invite-time checkbox (see lib/access/staff-permissions.ts) gates
+  // this page for MANAGER/STAFF accounts. Undefined = no specific
+  // permission needed, just active staff/owner status (e.g. Dashboard,
+  // Support). OWNER/PLATFORM_STAFF always bypass this.
+  permission?: StaffPermissionId;
+};
 
 // Items in the "Sell" group that only make sense for one niche. Anything
 // not listed here (Orders) is shared by every business, since orders and
@@ -22,15 +33,15 @@ export function buildNavGroups(business: { sellsProducts: boolean; offersService
   items: NavItem[];
 }> {
   const sellItems: NavItem[] = [
-    { label: "Orders", href: "/orders", icon: ShoppingCart },
-    { label: "Products", href: "/products", icon: Package },
-    { label: "Services", href: "/services", icon: Wrench },
-    { label: "Inventory", href: "/inventory", icon: Boxes },
-    { label: "Suppliers", href: "/suppliers", icon: Users },
-    { label: "Purchase orders", href: "/purchase-orders", icon: FileSignature },
-    { label: "Delivery zones", href: "/delivery", icon: Truck },
-    { label: "Invoices", href: "/invoices", icon: FileText },
-    { label: "Quotes", href: "/quotes", icon: FileSignature },
+    { label: "Orders", href: "/orders", icon: ShoppingCart, permission: "orders" },
+    { label: "Products", href: "/products", icon: Package, permission: "products" },
+    { label: "Services", href: "/services", icon: Wrench, permission: "products" },
+    { label: "Inventory", href: "/inventory", icon: Boxes, permission: "products" },
+    { label: "Suppliers", href: "/suppliers", icon: Users, permission: "products" },
+    { label: "Purchase orders", href: "/purchase-orders", icon: FileSignature, permission: "products" },
+    { label: "Delivery zones", href: "/delivery", icon: Truck, permission: "settings" },
+    { label: "Invoices", href: "/invoices", icon: FileText, permission: "orders" },
+    { label: "Quotes", href: "/quotes", icon: FileSignature, permission: "orders" },
   ].filter((item) => {
     if (PRODUCT_ONLY_HREFS.has(item.href)) return business.sellsProducts;
     if (SERVICE_ONLY_HREFS.has(item.href)) return business.offersServices;
@@ -42,7 +53,7 @@ export function buildNavGroups(business: { sellsProducts: boolean; offersService
   // only if it isn't already present from sellsProducts/offersServices above.
   const categoryConfig = getCategoryDashboard(business.category);
   if (categoryConfig.extraNavItem && !sellItems.some((i) => i.href === categoryConfig.extraNavItem!.href)) {
-    sellItems.push(categoryConfig.extraNavItem);
+    sellItems.push({ permission: "products", ...categoryConfig.extraNavItem });
   }
 
   return [
@@ -57,32 +68,33 @@ export function buildNavGroups(business: { sellsProducts: boolean; offersService
     {
       label: "Grow",
       items: [
-        { label: "Customers", href: "/customers", icon: Users },
-        { label: "Coupons", href: "/coupons", icon: Ticket },
-        { label: "Marketing", href: "/marketing", icon: Megaphone },
-        { label: "Abandoned checkouts", href: "/abandoned-checkouts", icon: MailWarning },
-        { label: "Reviews", href: "/reviews", icon: Star },
-        { label: "Analytics", href: "/analytics", icon: BarChart3 },
+        { label: "Customers", href: "/customers", icon: Users, permission: "customers" },
+        { label: "Coupons", href: "/coupons", icon: Ticket, permission: "marketing" },
+        { label: "Marketing", href: "/marketing", icon: Megaphone, permission: "marketing" },
+        { label: "Abandoned checkouts", href: "/abandoned-checkouts", icon: MailWarning, permission: "marketing" },
+        { label: "Reviews", href: "/reviews", icon: Star, permission: "marketing" },
+        { label: "Analytics", href: "/analytics", icon: BarChart3, permission: "analytics" },
       ],
     },
     {
       label: "Store",
       items: [
-        { label: "Templates", href: "/templates", icon: LayoutTemplate },
-        { label: "AI Store Builder", href: "/ai-store-builder", icon: Wand2 },
-        { label: "Customize Website", href: "/customize", icon: Wand2 },
-        { label: "Website Editor (beta)", href: "/website-editor", icon: MousePointerClick },
-        { label: "Messages", href: "/messages", icon: MessageSquare },
-        { label: "Payments", href: "/payments", icon: CreditCard },
-        { label: "Settings", href: "/settings", icon: Settings },
+        { label: "Templates", href: "/templates", icon: LayoutTemplate, permission: "settings" },
+        { label: "AI Store Builder", href: "/ai-store-builder", icon: Wand2, permission: "settings" },
+        { label: "Customize Website", href: "/customize", icon: Wand2, permission: "settings" },
+        { label: "Website Editor (beta)", href: "/website-editor", icon: MousePointerClick, permission: "settings" },
+        { label: "Messages", href: "/messages", icon: MessageSquare, permission: "messages" },
+        { label: "Payments", href: "/payments", icon: CreditCard, permission: "payments" },
+        { label: "Settings", href: "/settings", icon: Settings, permission: "settings" },
       ],
     },
     {
       label: "Account",
       items: [
-        { label: "Verification", href: "/verification", icon: BadgeCheck },
+        { label: "Verification", href: "/verification", icon: BadgeCheck, permission: "settings" },
         { label: "Subscription", href: "/subscription", icon: Wallet, ownerOnly: true },
         { label: "Staff", href: "/staff", icon: Users, ownerOnly: true },
+        { label: "Activity log", href: "/activity", icon: FileText, ownerOnly: true },
         { label: "Support", href: "/support", icon: LifeBuoy },
       ],
     },
@@ -90,32 +102,72 @@ export function buildNavGroups(business: { sellsProducts: boolean; offersService
 }
 
 /**
- * Filters ownerOnly items (billing, staff management) out of a nav group
- * list for anyone who isn't OWNER/PLATFORM_STAFF — used by both the
- * desktop sidebar and mobile chrome so a MANAGER/STAFF account never even
- * sees a link to a page it can't use. This is a UI convenience only; the
- * actual enforcement lives in each page/action (see lib/access/store-access.ts)
- * since a hidden nav link is not an access control mechanism.
+ * Filters ownerOnly items (billing, staff management, activity log) out
+ * for anyone who isn't OWNER/PLATFORM_STAFF, and — for MANAGER/STAFF —
+ * additionally filters out items gated behind a permission (see NavItem
+ * above) that this particular staff member wasn't granted. Used by both
+ * the desktop sidebar and mobile chrome so a MANAGER/STAFF account never
+ * even sees a link to a page it can't use. This is a UI convenience only;
+ * the actual enforcement lives in the admin layout + each server action
+ * (see lib/access/store-access.ts) since a hidden nav link is not an
+ * access control mechanism.
  */
 export function filterNavGroupsForRole<T extends { items: NavItem[] }>(
   groups: T[],
-  canManageOwnerOnly: boolean
+  opts: { canManageOwnerOnly: boolean; permissions?: string[] | null }
 ): T[] {
-  if (canManageOwnerOnly) return groups;
+  if (opts.canManageOwnerOnly) return groups;
+  const granted = new Set(opts.permissions ?? []);
   return groups
-    .map((g) => ({ ...g, items: g.items.filter((i) => !i.ownerOnly) }))
+    .map((g) => ({
+      ...g,
+      items: g.items.filter((i) => !i.ownerOnly && (!i.permission || granted.has(i.permission))),
+    }))
     .filter((g) => g.items.length > 0) as T[];
+}
+
+/**
+ * The reverse lookup used by the admin layout to enforce access
+ * server-side: given the sub-path a MANAGER/STAFF request is hitting
+ * (e.g. "/settings"), find which permission (if any) it requires. Falls
+ * back to matching on the longest href prefix so nested routes under a
+ * gated section (e.g. "/products/123/edit") inherit that section's
+ * permission requirement without needing their own NavItem entry.
+ */
+export function findNavItemForPath(business: {
+  sellsProducts: boolean;
+  offersServices: boolean;
+  category?: string | null;
+}, subpath: string): NavItem | undefined {
+  const items = buildNavGroups(business).flatMap((g) => g.items);
+  const normalized = subpath === "" ? "/" : subpath;
+  const exact = items.find((i) => (i.href || "/") === normalized);
+  if (exact) return exact;
+  return items
+    .filter((i) => i.href && normalized.startsWith(`${i.href}/`))
+    .sort((a, b) => b.href.length - a.href.length)[0];
 }
 
 // The 4 highest-frequency destinations, for the mobile bottom tab bar — a
 // merchant checking their phone between customers needs these one thumb-tap
 // away, not two taps deep in a drawer. The 5th slot is always "Menu" (opens
 // the full drawer with everything else), not a nav item itself.
-export function buildBottomTabItems(business: { sellsProducts: boolean; offersServices: boolean; category?: string | null }): NavItem[] {
+export function buildBottomTabItems(
+  business: { sellsProducts: boolean; offersServices: boolean; category?: string | null },
+  opts?: { canManageOwnerOnly: boolean; permissions?: string[] | null }
+): NavItem[] {
   const groups = buildNavGroups(business);
-  const dashboard = groups[0].items[0];
-  const orders = groups[1].items.find((i) => i.href === "/orders")!;
-  const catalog = groups[1].items.find((i) => i.href === "/products" || i.href === "/services") ?? groups[1].items[1];
-  const abandoned = groups[2].items.find((i) => i.href === "/abandoned-checkouts")!;
-  return [dashboard, orders, catalog, abandoned];
+  const filtered = opts ? filterNavGroupsForRole(groups, opts) : groups;
+  const items = filtered.flatMap((g) => g.items);
+  // Dashboard is never permission-gated, so it's always present. The rest
+  // are the next-highest-priority items still available to this account,
+  // falling back down the list if a preferred one was filtered out.
+  const preferred = [
+    items.find((i) => i.href === ""),
+    items.find((i) => i.href === "/orders"),
+    items.find((i) => i.href === "/products" || i.href === "/services"),
+    items.find((i) => i.href === "/abandoned-checkouts"),
+  ].filter((i): i is NavItem => Boolean(i));
+  const rest = items.filter((i) => !preferred.includes(i));
+  return preferred.concat(rest).slice(0, 4);
 }

@@ -7,6 +7,8 @@ import { revalidatePath } from "next/cache";
 import slugify from "slugify";
 import type { ActionResult } from "@/types/actions";
 import { emitWebhookEvent } from "@/lib/webhooks/dispatch";
+import { assertStorePermission } from "@/lib/access/assert-store-access";
+import { logStoreActivity } from "@/lib/actions/activity";
 
 import type { Store, Business } from "@prisma/client";
 
@@ -15,25 +17,18 @@ type StoreAccessResult =
   | { success: false; error: string };
 
 /**
- * Confirms the current user owns (or platform-manages) the store with this
- * slug, and returns its id. Every product mutation below calls this first —
- * never trust a storeId/slug passed from the client without this check.
+ * Confirms the current user has "products" access to this store — owner,
+ * platform staff, or an invited MANAGER/STAFF who was granted the
+ * "Products & inventory" checkbox at invite time. Every product mutation
+ * below calls this first — never trust a storeId/slug passed from the
+ * client without this check. (Previously this only allowed the owner or
+ * platform staff, so an invited staff member's "Products & inventory"
+ * permission had no actual effect — see assertStorePermission.)
  */
 async function assertStoreAccess(slug: string): Promise<StoreAccessResult> {
-  const session = await auth();
-  if (!session?.user?.id) return { success: false, error: "You must be signed in." };
-
-  const store = await prisma.store.findUnique({
-    where: { slug },
-    include: { business: true },
-  });
-  if (!store) return { success: false, error: "Store not found." };
-
-  const isOwner = store.business.userId === session.user.id;
-  const isStaff = session.user.role === "PLATFORM_ADMIN" || session.user.role === "SUPPORT_MODERATOR";
-  if (!isOwner && !isStaff) return { success: false, error: "You don't have access to this store." };
-
-  return { success: true, store };
+  const result = await assertStorePermission(slug, "products");
+  if (!result.success) return result;
+  return { success: true, store: result.store };
 }
 
 export async function listProducts(slug: string) {
@@ -115,6 +110,15 @@ export async function createProduct(
     isPublished: product.isPublished,
   });
 
+  const session = await auth();
+  await logStoreActivity({
+    storeId: access.store.id,
+    actor: { id: session?.user?.id, name: session?.user?.name, email: session?.user?.email, role: session?.user?.role ?? "unknown" },
+    action: "product.created",
+    target: product.name,
+    metadata: { productId: product.id },
+  });
+
   revalidatePath(`/store/${slug}/admin/products`);
   return { success: true, data: { productId: product.id } };
 }
@@ -173,6 +177,15 @@ export async function updateProduct(
     isPublished: data.isPublished,
   });
 
+  const session = await auth();
+  await logStoreActivity({
+    storeId: access.store.id,
+    actor: { id: session?.user?.id, name: session?.user?.name, email: session?.user?.email, role: session?.user?.role ?? "unknown" },
+    action: "product.updated",
+    target: data.name,
+    metadata: { productId },
+  });
+
   revalidatePath(`/store/${slug}/admin/products`);
   return { success: true, data: { productId } };
 }
@@ -187,6 +200,15 @@ export async function deleteProduct(slug: string, productId: string): Promise<Ac
   if (!existing) return { success: false, error: "Product not found." };
 
   await prisma.product.delete({ where: { id: productId } });
+
+  const session = await auth();
+  await logStoreActivity({
+    storeId: access.store.id,
+    actor: { id: session?.user?.id, name: session?.user?.name, email: session?.user?.email, role: session?.user?.role ?? "unknown" },
+    action: "product.deleted",
+    target: existing.name,
+    metadata: { productId },
+  });
 
   revalidatePath(`/store/${slug}/admin/products`);
   return { success: true, data: undefined };
