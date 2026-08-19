@@ -1,4 +1,4 @@
-# BizNest
+ # BizNest
 
 A SaaS e-commerce + services marketplace + website builder (Shopify/Fiverr-style), built with Next.js 15, Prisma, PostgreSQL, and Auth.js.
 

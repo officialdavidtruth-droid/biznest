@@ -30,13 +30,16 @@ async function send(params: Parameters<typeof resend.emails.send>[0], context: {
 }
 
 /**
- * Shared wrapper for every transactional email: header, card shell, footer.
- * The header is a plain text wordmark rather than an <img> — the previous
- * logo image (public/email-logo.png fetched over ${APP_URL}) rendered as a
- * broken-image icon in Gmail and others, since most mail clients proxy or
- * block remote images by default and there was no reliable fallback. Text
- * can't fail to load, so this is the safer choice for something every
- * email depends on.
+ * Shared wrapper for every transactional email: branded header, card shell,
+ * message-specific footer note, then a consistent company-info block (logo
+ * wordmark, one-line description, legal links, support address, copyright)
+ * that's identical across every email regardless of which one it is.
+ *
+ * Header uses BOTH an <img> (public/email-logo.png, hosted so it works from
+ * any inbox) and an alt attribute carrying the text wordmark — most clients
+ * that block remote images by default (Outlook for unknown senders, some
+ * corporate filters) still render the alt text on the colored background,
+ * so the header never shows a bare broken-image icon either way.
  */
 function emailShell(opts: { preheader?: string; body: string; footer: string }) {
   return `<!DOCTYPE html>
@@ -48,10 +51,20 @@ function emailShell(opts: { preheader?: string; body: string; footer: string }) 
         <td align="center">
           <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:520px;background-color:#ffffff;border-radius:12px;overflow:hidden;box-shadow:0 1px 3px rgba(0,0,0,0.08);">
             <tr>
-              <td style="background-color:#0b6413;padding:20px 32px;">
-                <span style="font-size:20px;font-weight:700;letter-spacing:-0.01em;color:#ffffff;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;">
-                  BizNest<span style="color:#8fe3a0;">.space</span>
-                </span>
+              <td style="background-color:#0b6413;padding:18px 32px;">
+                <table role="presentation" cellpadding="0" cellspacing="0">
+                  <tr>
+                    <td valign="middle">
+                      <img
+                        src="${APP_URL}/email-logo.png"
+                        alt="BizNest"
+                        width="70"
+                        height="32"
+                        style="display:block;height:32px;width:70px;border:0;outline:none;"
+                      />
+                    </td>
+                  </tr>
+                </table>
               </td>
             </tr>
             <tr>
@@ -62,6 +75,28 @@ function emailShell(opts: { preheader?: string; body: string; footer: string }) 
             <tr>
               <td style="padding:20px 32px;background-color:#f9fafb;border-top:1px solid #f0f0f0;">
                 <p style="margin:0;color:#9ca3af;font-size:12px;line-height:18px;">${opts.footer}</p>
+              </td>
+            </tr>
+            <tr>
+              <td style="padding:20px 32px 24px;background-color:#f9fafb;border-top:1px solid #f0f0f0;">
+                <p style="margin:0 0 6px;color:#374151;font-size:12px;font-weight:600;">
+                  BizNest
+                </p>
+                <p style="margin:0 0 10px;color:#9ca3af;font-size:11px;line-height:16px;">
+                  A verified marketplace for products, services, and bookings.
+                </p>
+                <p style="margin:0 0 10px;font-size:11px;line-height:18px;">
+                  <a href="${APP_URL}" style="color:#0f6410;text-decoration:none;">biznest.space</a>
+                  <span style="color:#d1d5db;"> · </span>
+                  <a href="mailto:support@biznest.space" style="color:#0f6410;text-decoration:none;">support@biznest.space</a>
+                  <span style="color:#d1d5db;"> · </span>
+                  <a href="${APP_URL}/privacy" style="color:#0f6410;text-decoration:none;">Privacy Policy</a>
+                  <span style="color:#d1d5db;"> · </span>
+                  <a href="${APP_URL}/terms" style="color:#0f6410;text-decoration:none;">Terms of Service</a>
+                </p>
+                <p style="margin:0;color:#c4cbd4;font-size:10px;">
+                  © ${new Date().getFullYear()} BizNest. All rights reserved.
+                </p>
               </td>
             </tr>
           </table>
@@ -198,14 +233,46 @@ export async function sendVerificationEmail(email: string, token: string) {
 
 export async function sendPasswordResetEmail(email: string, token: string) {
   const url = `${APP_URL}/reset-password?token=${token}`;
+
+  const html = emailShell({
+    preheader: "Reset your BizNest password",
+    body: `
+      <p style="margin:0 0 16px;color:#111827;font-size:16px;line-height:24px;">Reset your password</p>
+      <p style="margin:0 0 24px;color:#374151;font-size:15px;line-height:24px;">
+        We received a request to reset the password for your BizNest account. Click the button below to
+        choose a new one.
+      </p>
+
+      <table role="presentation" cellpadding="0" cellspacing="0" style="margin:0 auto 24px;">
+        <tr>
+          <td align="center" style="border-radius:8px;background-color:#0f6410;">
+            <a href="${url}" style="display:inline-block;padding:12px 28px;color:#ffffff;font-size:15px;font-weight:600;text-decoration:none;border-radius:8px;">
+              Reset password
+            </a>
+          </td>
+        </tr>
+      </table>
+
+      <p style="margin:0 0 8px;color:#9ca3af;font-size:13px;line-height:20px;">
+        If the button doesn't work, copy and paste this link into your browser:
+      </p>
+      <p style="margin:0 0 24px;word-break:break-all;">
+        <a href="${url}" style="color:#0f6410;font-size:13px;text-decoration:underline;">${url}</a>
+      </p>
+
+      <p style="margin:0;color:#9ca3af;font-size:13px;line-height:20px;">
+        This link expires in 1 hour. If you didn't request a password reset, you can safely ignore this email.
+      </p>
+    `,
+    footer: `This email was sent to ${email} because a password reset was requested for this BizNest account.`,
+  });
+
   return send(
     {
       from: FROM,
       to: email,
       subject: "Reset your BizNest password",
-      html: `<p>We received a request to reset your password.</p>
-           <p><a href="${url}">${url}</a></p>
-           <p>If you didn't request this, you can ignore this email.</p>`,
+      html,
     },
     { kind: "password-reset", to: email }
   );
@@ -216,14 +283,59 @@ export async function sendBusinessStatusEmail(
   status: "APPROVED" | "REJECTED",
   reason?: string
 ) {
-  const subject =
-    status === "APPROVED" ? "Your BizNest business has been verified" : "Update on your BizNest verification";
-  const body =
-    status === "APPROVED"
-      ? "Congratulations — your business has been verified. You can now create your store."
-      : `Your business verification could not be approved.${reason ? ` Reason: ${reason}` : ""} You may correct the details and resubmit.`;
+  const approved = status === "APPROVED";
+  const subject = approved ? "Your BizNest business has been verified" : "Update on your BizNest verification";
 
-  return send({ from: FROM, to: email, subject, html: `<p>${body}</p>` }, { kind: "business-status", to: email });
+  const html = emailShell({
+    preheader: subject,
+    body: approved
+      ? `
+        <p style="margin:0 0 16px;color:#111827;font-size:16px;line-height:24px;">You're verified 🎉</p>
+        <p style="margin:0 0 24px;color:#374151;font-size:15px;line-height:24px;">
+          Congratulations — your business has been reviewed and verified on BizNest. You can now open your
+          store and start selling.
+        </p>
+        <table role="presentation" cellpadding="0" cellspacing="0" style="margin:0 auto 8px;">
+          <tr>
+            <td align="center" style="border-radius:8px;background-color:#0f6410;">
+              <a href="${APP_URL}/onboarding/business-verification" style="display:inline-block;padding:12px 28px;color:#ffffff;font-size:15px;font-weight:600;text-decoration:none;border-radius:8px;">
+                Open your store
+              </a>
+            </td>
+          </tr>
+        </table>
+      `
+      : `
+        <p style="margin:0 0 16px;color:#111827;font-size:16px;line-height:24px;">Verification update</p>
+        <p style="margin:0 0 16px;color:#374151;font-size:15px;line-height:24px;">
+          Your business verification could not be approved as submitted.
+        </p>
+        ${
+          reason
+            ? `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:#fef2f2;border-radius:8px;padding:14px 16px;margin-bottom:20px;">
+                <tr>
+                  <td style="color:#991b1b;font-size:13px;line-height:20px;">${reason}</td>
+                </tr>
+              </table>`
+            : ""
+        }
+        <p style="margin:0 0 24px;color:#374151;font-size:15px;line-height:24px;">
+          You can correct the details above and resubmit for review at any time.
+        </p>
+        <table role="presentation" cellpadding="0" cellspacing="0" style="margin:0 auto 8px;">
+          <tr>
+            <td align="center" style="border-radius:8px;background-color:#0f6410;">
+              <a href="${APP_URL}/onboarding/business-verification" style="display:inline-block;padding:12px 28px;color:#ffffff;font-size:15px;font-weight:600;text-decoration:none;border-radius:8px;">
+                Resubmit for review
+              </a>
+            </td>
+          </tr>
+        </table>
+      `,
+    footer: `This email was sent to ${email} regarding a business verification submitted on BizNest.`,
+  });
+
+  return send({ from: FROM, to: email, subject, html }, { kind: "business-status", to: email });
 }
 
 export async function sendOrderNotificationEmail(
@@ -231,5 +343,14 @@ export async function sendOrderNotificationEmail(
   subject: string,
   message: string
 ) {
-  return send({ from: FROM, to: email, subject, html: `<p>${message}</p>` }, { kind: "order-notification", to: email });
+  const html = emailShell({
+    preheader: subject,
+    body: `
+      <p style="margin:0 0 16px;color:#111827;font-size:16px;line-height:24px;">${subject}</p>
+      <p style="margin:0;color:#374151;font-size:15px;line-height:24px;">${message}</p>
+    `,
+    footer: `This email was sent to ${email} regarding an order on BizNest.`,
+  });
+
+  return send({ from: FROM, to: email, subject, html }, { kind: "order-notification", to: email });
 }
