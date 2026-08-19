@@ -12,21 +12,6 @@ const display = Space_Grotesk({ subsets: ["latin"], variable: "--font-display", 
 const body = Inter({ subsets: ["latin"], variable: "--font-body" });
 const mono = JetBrains_Mono({ subsets: ["latin"], variable: "--font-mono", weight: ["500"] });
 
-const STALLS = [
-  { name: "Stacey's Paradise", cat: "Fashion" },
-  { name: "Lens & Light Studio", cat: "Photography" },
-  { name: "Kaya Kitchen", cat: "Catering" },
-  { name: "Voltage Repairs", cat: "Automotive" },
-  { name: "Bloom & Co.", cat: "Beauty" },
-  { name: "Nairaworks", cat: "Software" },
-  { name: "The Grain House", cat: "Groceries" },
-  { name: "Studio Nine", cat: "Design" },
-  { name: "FitCore", cat: "Fitness" },
-  { name: "Hearth Interiors", cat: "Furniture" },
-  { name: "Loom Tailors", cat: "Tailoring" },
-  { name: "Pulse Events", cat: "Event Planning" },
-];
-
 const STEPS = [
   {
     n: "01",
@@ -49,27 +34,6 @@ const STEPS = [
 // supports, instead of a hand-maintained duplicate that can (and did)
 // silently drift out of sync (see lib/capabilities.ts's doc comment).
 const CATEGORIES = ALL_BUSINESS_TYPE_NAMES;
-
-const TESTIMONIALS = [
-  {
-    quote:
-      "I didn't touch a line of code. I verified my business on Monday, and by Friday customers were paying me directly through my own Paystack account.",
-    name: "A fashion seller",
-    cat: "Fashion & apparel",
-  },
-  {
-    quote:
-      "Bookings used to live in a notebook and three different DM threads. Now clients pick a slot on my storefront and I just show up.",
-    name: "A photography studio owner",
-    cat: "Photography & bookings",
-  },
-  {
-    quote:
-      "The click-to-edit editor meant I could change my homepage during a phone call with a customer, live, and show them right there.",
-    name: "A home goods seller",
-    cat: "Furniture & interiors",
-  },
-];
 
 const TRUST = [
   {
@@ -119,11 +83,26 @@ const FAQS = [
 
 export default async function HomePage() {
   const session = await auth();
-  const [plans, activeStoreCount, listingCount] = await Promise.all([
+  const [plans, activeStoreCount, listingCount, liveStores] = await Promise.all([
     prisma.subscription.findMany({ where: { isActive: true }, orderBy: { price: "asc" } }),
     prisma.store.count({ where: { status: "ACTIVE" } }),
     prisma.product.count({ where: { isPublished: true } }),
+    // Real, currently-open storefronts for the drifting marquee below —
+    // no placeholder/mock store names. Most recently opened first so the
+    // strip stays fresh as new sellers join.
+    prisma.store.findMany({
+      where: { status: "ACTIVE" },
+      orderBy: { createdAt: "desc" },
+      take: 24,
+      select: { name: true, slug: true, business: { select: { category: true } } },
+    }),
   ]);
+
+  const stalls = liveStores.map((s) => ({
+    name: s.name,
+    cat: s.business.category,
+    slug: s.slug,
+  }));
 
   const STATS = [
     { label: "Stores open right now", value: `${activeStoreCount.toLocaleString()}${activeStoreCount >= 50 ? "+" : ""}` },
@@ -254,19 +233,21 @@ export default async function HomePage() {
         </div>
 
         {/* Signature element: two rows of storefront tiles drifting past each other,
-            like walking down a market alley of many different stores. */}
-        <div
-          className="relative z-10 -mx-6 overflow-hidden py-2 sm:-mx-10 lg:mx-0 lg:rounded-2xl"
-          style={{
-            background: "var(--bn-ink-raised)",
-            border: "1px solid var(--bn-ink-line)",
-            maskImage: "linear-gradient(90deg, transparent, black 8%, black 92%, transparent)",
-          }}
-        >
-          <Row stalls={STALLS} direction="left" />
-          <Row stalls={[...STALLS].reverse()} direction="right" />
-          <Row stalls={STALLS.slice().sort(() => 1)} direction="left" />
-        </div>
+            like walking down a market alley of many different stores. Pulled from
+            real, currently-open stores (see `stalls` above) — nothing invented. */}
+        {stalls.length > 0 && (
+          <div
+            className="relative z-10 -mx-6 overflow-hidden py-2 sm:-mx-10 lg:mx-0 lg:rounded-2xl"
+            style={{
+              background: "var(--bn-ink-raised)",
+              border: "1px solid var(--bn-ink-line)",
+              maskImage: "linear-gradient(90deg, transparent, black 8%, black 92%, transparent)",
+            }}
+          >
+            <Row stalls={stalls} direction="left" />
+            {stalls.length > 1 && <Row stalls={[...stalls].reverse()} direction="right" />}
+          </div>
+        )}
       </section>
 
       {/* Ledger strip — real counts from the platform, styled like a receipt
@@ -348,32 +329,6 @@ export default async function HomePage() {
             >
               {c}
             </span>
-          ))}
-        </div>
-      </section>
-
-      {/* Testimonials */}
-      <section className="px-6 py-16 sm:px-10 lg:py-24" style={{ background: "var(--bn-ink-raised)" }}>
-        <h2 className="mb-10 text-2xl sm:text-3xl" style={{ fontFamily: "var(--font-display)", fontWeight: 700 }}>
-          What it sounds like day to day
-        </h2>
-        <div className="grid gap-6 lg:grid-cols-3">
-          {TESTIMONIALS.map((t) => (
-            <figure
-              key={t.name}
-              className="flex flex-col rounded-2xl p-6"
-              style={{ background: "var(--bn-ink)", border: "1px solid var(--bn-ink-line)" }}
-            >
-              <span className="text-3xl leading-none" style={{ color: "var(--bn-marigold)", fontFamily: "var(--font-display)" }}>
-                "
-              </span>
-              <blockquote className="mt-1 flex-1 text-sm leading-relaxed sm:text-base" style={{ fontFamily: "var(--font-display)", fontWeight: 500 }}>
-                {t.quote}
-              </blockquote>
-              <figcaption className="mt-5 text-xs" style={{ color: "var(--bn-mute)" }}>
-                {t.name} · <span style={{ fontFamily: "var(--font-mono)" }}>{t.cat}</span>
-              </figcaption>
-            </figure>
           ))}
         </div>
       </section>
@@ -543,14 +498,19 @@ export default async function HomePage() {
   );
 }
 
-function Row({ stalls, direction }: { stalls: typeof STALLS; direction: "left" | "right" }) {
+type Stall = { name: string; cat: string; slug: string };
+
+function Row({ stalls, direction }: { stalls: Stall[]; direction: "left" | "right" }) {
+  // Loop the real store list so the strip reads as continuous, but each
+  // tile still links to that store's actual live storefront.
   const loop = [...stalls, ...stalls];
   return (
     <div className={`flex w-max gap-3 px-3 py-1.5 ${direction === "left" ? "bn-marquee-left" : "bn-marquee-right"}`}>
       {loop.map((s, i) => (
-        <div
-          key={`${s.name}-${i}`}
-          className="flex w-44 shrink-0 flex-col rounded-xl px-4 py-3"
+        <Link
+          href={`/${s.slug}`}
+          key={`${s.slug}-${i}`}
+          className="flex w-44 shrink-0 flex-col rounded-xl px-4 py-3 transition hover:border-[var(--bn-marigold)]"
           style={{ background: "var(--bn-ink)", border: "1px solid var(--bn-ink-line)" }}
         >
           <span
@@ -558,10 +518,10 @@ function Row({ stalls, direction }: { stalls: typeof STALLS; direction: "left" |
             style={{ background: i % 3 === 0 ? "var(--bn-marigold)" : "var(--bn-jade)" }}
           />
           <span className="mt-2 truncate text-sm font-medium">{s.name}</span>
-          <span className="text-xs" style={{ color: "var(--bn-mute)" }}>
+          <span className="truncate text-xs" style={{ color: "var(--bn-mute)" }}>
             {s.cat}
           </span>
-        </div>
+        </Link>
       ))}
     </div>
   );
