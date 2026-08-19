@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 import { Menu, X, ShieldAlert } from "lucide-react";
 import { SupaAdminSidebarNav } from "@/components/dashboard/supaadmin-sidebar";
 import { SupaAdminLogoutButton } from "@/components/dashboard/supaadmin-logout-button";
+import { ThemeToggle } from "@/components/theme/theme-toggle";
 
 /**
  * Wraps the supaadmin sidebar so it behaves as a fixed column on desktop
@@ -127,6 +128,7 @@ export function SupaAdminMobileShell({
             <span className="h-1.5 w-1.5 rounded-full" style={{ background: "var(--bn-marigold)" }} />
             Live
           </span>
+          <ThemeToggle />
         </header>
         <main className="min-h-0 flex-1 overflow-y-auto overflow-x-hidden p-4 sm:p-6">{children}</main>
       </div>

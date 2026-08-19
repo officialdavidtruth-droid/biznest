@@ -8,6 +8,8 @@ import { NotificationBell } from "@/components/dashboard/notification-bell";
 import { listMyNotifications } from "@/lib/actions/notifications";
 import { getStoreAccessRole, hasStorePermission } from "@/lib/access/store-access";
 import { findNavItemForPath } from "@/lib/constants/dashboard-nav";
+import { ThemeProvider, ThemeFlashGuard } from "@/components/theme/theme-provider";
+import { ThemeToggle } from "@/components/theme/theme-toggle";
 
 export default async function StoreAdminLayout({
   children,
@@ -64,46 +66,54 @@ export default async function StoreAdminLayout({
   }
 
   return (
-    <div className="dark flex h-screen flex-col overflow-hidden bg-background text-foreground lg:flex-row">
-      <DashboardSidebar
-        slug={slug}
-        storeName={store.name}
-        logoUrl={store.logoUrl}
-        sellsProducts={store.business.sellsProducts}
-        offersServices={store.business.offersServices}
-        category={store.business.category}
-        staffRole={role}
-        staffPermissions={staffPermissions}
-      />
+    <>
+      <ThemeFlashGuard scopeId="bn-admin-theme-scope" defaultTheme="dark" />
+      <ThemeProvider scopeId="bn-admin-theme-scope" defaultTheme="dark">
+        <div className="flex h-screen flex-col overflow-hidden bg-background text-foreground lg:flex-row">
+          <DashboardSidebar
+            slug={slug}
+            storeName={store.name}
+            logoUrl={store.logoUrl}
+            sellsProducts={store.business.sellsProducts}
+            offersServices={store.business.offersServices}
+            category={store.business.category}
+            staffRole={role}
+            staffPermissions={staffPermissions}
+          />
 
-      {/* Mobile top bar + fixed bottom tab bar + drawer — see component for
-          why this doesn't wrap {children} itself. */}
-      <MobileDashboardChrome
-        slug={slug}
-        storeName={store.name}
-        logoUrl={store.logoUrl}
-        sellsProducts={store.business.sellsProducts}
-        offersServices={store.business.offersServices}
-        category={store.business.category}
-        notifications={notifications}
-        unreadCount={unreadCount}
-        staffRole={role}
-        staffPermissions={staffPermissions}
-      />
+          {/* Mobile top bar + fixed bottom tab bar + drawer — see component for
+              why this doesn't wrap {children} itself. */}
+          <MobileDashboardChrome
+            slug={slug}
+            storeName={store.name}
+            logoUrl={store.logoUrl}
+            sellsProducts={store.business.sellsProducts}
+            offersServices={store.business.offersServices}
+            category={store.business.category}
+            notifications={notifications}
+            unreadCount={unreadCount}
+            staffRole={role}
+            staffPermissions={staffPermissions}
+          />
 
-      <div className="flex flex-1 flex-col overflow-hidden">
-        {/* Desktop-only top bar — mobile gets its own in MobileDashboardChrome
-            above. Shows the current section so the bar isn't just an empty
-            strip with a bell floating at the far end. */}
-        <div className="hidden shrink-0 items-center justify-between border-b border-border bg-muted/20 px-6 py-3 lg:flex">
-          <p className="text-sm font-medium text-muted-foreground">{store.name} admin</p>
-          <NotificationBell notifications={notifications} unreadCount={unreadCount} />
+          <div className="flex flex-1 flex-col overflow-hidden">
+            {/* Desktop-only top bar — mobile gets its own in MobileDashboardChrome
+                above. Shows the current section so the bar isn't just an empty
+                strip with a bell floating at the far end. */}
+            <div className="hidden shrink-0 items-center justify-between border-b border-border bg-muted/20 px-6 py-3 lg:flex">
+              <p className="text-sm font-medium text-muted-foreground">{store.name} admin</p>
+              <div className="flex items-center gap-1">
+                <ThemeToggle />
+                <NotificationBell notifications={notifications} unreadCount={unreadCount} />
+              </div>
+            </div>
+
+            <main className="flex-1 overflow-y-auto pb-20 lg:pb-0">
+              <div className="mx-auto max-w-6xl px-4 py-4 lg:px-6 lg:py-8">{children}</div>
+            </main>
+          </div>
         </div>
-
-        <main className="flex-1 overflow-y-auto pb-20 lg:pb-0">
-          <div className="mx-auto max-w-6xl px-4 py-4 lg:px-6 lg:py-8">{children}</div>
-        </main>
-      </div>
-    </div>
+      </ThemeProvider>
+    </>
   );
 }
