@@ -45,6 +45,7 @@ export function MobileDashboardChrome({
   unreadCount,
   staffRole,
   staffPermissions,
+  staffPosition,
 }: {
   slug: string;
   storeName: string;
@@ -56,6 +57,10 @@ export function MobileDashboardChrome({
   unreadCount: number;
   staffRole?: StoreAccessRole;
   staffPermissions?: string[] | null;
+  // Only set for staff who signed in with "Position@store" (see
+  // authorize() in lib/auth.ts) — shown next to the store name so it's
+  // clear which title they're signed in under, e.g. "Cashier - Velox Space".
+  staffPosition?: string | null;
 }) {
   const [drawerOpen, setDrawerOpen] = useState(false);
   const pathname = usePathname();
@@ -81,7 +86,9 @@ export function MobileDashboardChrome({
             <Menu className="h-5 w-5" />
           </button>
           <StoreLogo logoUrl={logoUrl} storeName={storeName} size="sm" />
-          <p className="truncate text-sm font-semibold">{storeName}</p>
+          <p className="truncate text-sm font-semibold">
+            {staffPosition ? `${staffPosition} - ${storeName}` : storeName}
+          </p>
         </div>
         <div className="flex items-center gap-1">
           <ThemeToggle />

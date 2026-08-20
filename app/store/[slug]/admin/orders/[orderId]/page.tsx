@@ -23,7 +23,14 @@ export default async function StoreOrderDetailPage({
 
   return (
     <div className="max-w-2xl">
-      <h1 className="mb-1 text-xl font-semibold">Order #{order.id.slice(-8).toUpperCase()}</h1>
+      <h1 className="mb-1 text-xl font-semibold">
+        Order #{order.id.slice(-8).toUpperCase()}
+        {order.channel === "POS" && (
+          <span className="ml-2 rounded-full bg-purple-100 px-2 py-0.5 align-middle text-xs font-medium text-purple-700">
+            POS · {order.posTenderType}
+          </span>
+        )}
+      </h1>
       <p className="mb-6 text-sm text-muted-foreground">
         Placed {new Date(order.createdAt).toLocaleString()}
       </p>
@@ -52,8 +59,17 @@ export default async function StoreOrderDetailPage({
 
       <div className="mb-6 rounded-lg border bg-background p-4">
         <h2 className="mb-3 text-sm font-semibold">Customer</h2>
-        <p className="text-sm">{order.buyer.name ?? "—"}</p>
-        <p className="text-sm text-muted-foreground">{order.buyer.email}</p>
+        {order.channel === "POS" ? (
+          <>
+            <p className="text-sm">{order.posCustomerName ?? "Walk-in customer"}</p>
+            {order.posCustomerPhone && <p className="text-sm text-muted-foreground">{order.posCustomerPhone}</p>}
+          </>
+        ) : (
+          <>
+            <p className="text-sm">{order.buyer.name ?? "—"}</p>
+            <p className="text-sm text-muted-foreground">{order.buyer.email}</p>
+          </>
+        )}
         {address && (
           <div className="mt-3 border-t pt-3 text-sm">
             <p>{address.fullName} · {address.phone}</p>

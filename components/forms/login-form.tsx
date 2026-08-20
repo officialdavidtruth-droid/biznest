@@ -3,7 +3,7 @@
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { loginSchema, type LoginInput } from "@/lib/validations/auth";
-import { signIn } from "next-auth/react";
+import { signIn, getSession } from "next-auth/react";
 import { useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { toast } from "sonner";
@@ -12,7 +12,8 @@ import Link from "next/link";
 
 export function LoginForm() {
   const searchParams = useSearchParams();
-  const callbackUrl = searchParams.get("callbackUrl") ?? "/onboarding/business-verification";
+  const explicitCallbackUrl = searchParams.get("callbackUrl");
+  const callbackUrl = explicitCallbackUrl ?? "/onboarding/business-verification";
   const prefillEmail = searchParams.get("email") ?? undefined;
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -50,11 +51,29 @@ export function LoginForm() {
         toast.error(messages[errorCode] ?? "Invalid email or password.");
         return;
       }
-      // A plain browser navigation, not router.push(): callbackUrl can point
+      // Staff who sign in with "Position@store" have no business of their
+      // own to onboard — the default callbackUrl above
+      // (/onboarding/business-verification) is only correct for an owner
+      // registering a store, and was sending staff there too whenever they
+      // landed on /login without an explicit callbackUrl (e.g. typing the
+      // URL directly rather than being bounced off a protected page).
+      // Route them straight to their store's dashboard instead. A caller
+      // that *did* pass an explicit callbackUrl (e.g. middleware bouncing
+      // an unauthenticated visit to a specific admin page) is left alone,
+      // since that destination is already correct.
+      let target = callbackUrl;
+      if (!explicitCallbackUrl) {
+        const session = await getSession();
+        if (session?.user?.storeSlug) {
+          target = `/${session.user.storeSlug}/admin`;
+        }
+      }
+
+      // A plain browser navigation, not router.push(): target can point
       // anywhere on the site. Next's client-side router only navigates
       // within pages it knows about, so a full navigation is more reliable
       // here regardless of destination.
-      window.location.href = callbackUrl;
+      window.location.href = target;
     } catch {
       // A thrown error here (vs. a normal {error} result) means the
       // sign-in request itself failed at the network/host level — this is
@@ -70,8 +89,14 @@ export function LoginForm() {
     <div className="space-y-4">
       <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
         <div>
-          <label className="mb-1 block text-sm font-medium">Email</label>
-          <input type="email" className="w-full rounded-md border px-3 py-2 text-sm" {...register("email")} />
+          <label className="mb-1 block text-sm font-medium">Email, or Position@store</label>
+          <input
+            type="text"
+            placeholder="you@example.com or Cashier@velox-space"
+            autoCapitalize="none"
+            className="w-full rounded-md border px-3 py-2 text-sm"
+            {...register("email")}
+          />
           {errors.email && <p className="mt-1 text-xs text-destructive">{errors.email.message}</p>}
         </div>
         <div>

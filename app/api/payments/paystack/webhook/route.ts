@@ -2,6 +2,7 @@ import { prisma } from "@/lib/prisma";
 import { verifyPaystackTransaction, verifyPaystackWebhookSignature } from "@/lib/payments/paystack";
 import { settleInvoicePayment } from "@/lib/actions/invoice";
 import { settleQuoteDeposit } from "@/lib/actions/quote";
+import { decrementStockForOrder } from "@/lib/actions/order";
 import { emitWebhookEvent } from "@/lib/webhooks/dispatch";
 import { notifyStoreOwnerOfPaidOrder } from "@/lib/notifications/notify";
 import { NextResponse } from "next/server";
@@ -104,13 +105,23 @@ export async function POST(req: Request) {
   // marked this PAID (whichever path wins the race is fine, both agree),
   // or a store owner may have since moved the order further along the
   // fulfillment pipeline — a late webhook retry must never stomp that.
-  const updated = await prisma.order.updateMany({
-    where: { id: reference, status: "PENDING_PAYMENT" },
-    data: { status: "PAID", paymentReference: reference },
-  });
-  await prisma.payment.updateMany({
-    where: { reference, status: "PENDING" },
-    data: { status: "SUCCESSFUL", rawPayload: verification as object, verifiedAt: new Date() },
+  // Payment confirmation, the order transition, and the stock decrement
+  // all describe one event (this order got paid) — grouped in one
+  // transaction so a crash partway through can't confirm payment without
+  // consuming inventory, or vice versa.
+  const updated = await prisma.$transaction(async (tx) => {
+    const result = await tx.order.updateMany({
+      where: { id: reference, status: "PENDING_PAYMENT" },
+      data: { status: "PAID", paymentReference: reference },
+    });
+    await tx.payment.updateMany({
+      where: { reference, status: "PENDING" },
+      data: { status: "SUCCESSFUL", rawPayload: verification as object, verifiedAt: new Date() },
+    });
+    if (result.count > 0) {
+      await decrementStockForOrder(tx, reference);
+    }
+    return result;
   });
 
   // Only fire on the request that actually made the transition, so a

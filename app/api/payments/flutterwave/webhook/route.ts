@@ -2,6 +2,7 @@ import { prisma } from "@/lib/prisma";
 import { verifyFlutterwaveTransaction, verifyFlutterwaveWebhookSignature } from "@/lib/payments/flutterwave";
 import { settleInvoicePayment } from "@/lib/actions/invoice";
 import { settleQuoteDeposit } from "@/lib/actions/quote";
+import { decrementStockForOrder } from "@/lib/actions/order";
 import { emitWebhookEvent } from "@/lib/webhooks/dispatch";
 import { notifyStoreOwnerOfPaidOrder } from "@/lib/notifications/notify";
 import { NextResponse } from "next/server";
@@ -97,15 +98,24 @@ export async function POST(req: Request) {
   if (order && order.status === "PENDING_PAYMENT") {
     const amountMatches = verification.data && Number(verification.data.amount) >= Number(order.total);
     if (amountMatches) {
-      const result = await prisma.order.updateMany({
-        where: { id: txRef, status: "PENDING_PAYMENT" },
-        data: { status: "PAID", paymentReference: txRef },
-      });
-      if (result.count > 0) {
-        await prisma.payment.updateMany({
+      // Same reasoning as the Paystack webhook: group the order
+      // transition, the payment row update, and the stock decrement so
+      // they can't split across a crash.
+      const result = await prisma.$transaction(async (tx) => {
+        const updateResult = await tx.order.updateMany({
+          where: { id: txRef, status: "PENDING_PAYMENT" },
+          data: { status: "PAID", paymentReference: txRef },
+        });
+        await tx.payment.updateMany({
           where: { reference: txRef, status: "PENDING" },
           data: { status: "SUCCESSFUL", rawPayload: verification as object, verifiedAt: new Date() },
         });
+        if (updateResult.count > 0) {
+          await decrementStockForOrder(tx, txRef);
+        }
+        return updateResult;
+      });
+      if (result.count > 0) {
         await emitWebhookEvent("PAYMENT_SUCCESS", order.storeId, {
           orderId: order.id,
           reference: txRef,

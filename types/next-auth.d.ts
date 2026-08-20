@@ -10,11 +10,20 @@ declare module "next-auth" {
     user: {
       id: string;
       role: UserRole;
+      // Only set when this session came from a "Position@store" staff
+      // sign-in (see authorize() in lib/auth.ts) — undefined for owners
+      // and for staff who signed in with their own email instead.
+      staffPosition?: string;
+      storeSlug?: string;
+      storeName?: string;
     } & DefaultSession["user"];
   }
 
   interface User {
     role: UserRole;
+    staffPosition?: string;
+    storeSlug?: string;
+    storeName?: string;
   }
 }
 
@@ -23,5 +32,8 @@ declare module "next-auth/jwt" {
     id: string;
     role: UserRole;
     banned?: boolean;
+    staffPosition?: string;
+    storeSlug?: string;
+    storeName?: string;
   }
 }

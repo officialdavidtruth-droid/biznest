@@ -94,6 +94,7 @@ export default async function StoreAdminLayout({
             unreadCount={unreadCount}
             staffRole={role}
             staffPermissions={staffPermissions}
+            staffPosition={session.user.staffPosition}
           />
 
           <div className="flex flex-1 flex-col overflow-hidden">
@@ -101,7 +102,16 @@ export default async function StoreAdminLayout({
                 above. Shows the current section so the bar isn't just an empty
                 strip with a bell floating at the far end. */}
             <div className="hidden shrink-0 items-center justify-between border-b border-border bg-muted/20 px-6 py-3 lg:flex">
-              <p className="text-sm font-medium text-muted-foreground">{store.name} admin</p>
+              <p className="text-sm font-medium text-muted-foreground">
+                {/* Staff who signed in as "Position@store" get their title
+                    in the header, matching what the owner named them at
+                    invite time — see StoreStaff.position. Owners (and
+                    staff who signed in with their own email) just get the
+                    plain store name, same as before. */}
+                {session.user.staffPosition
+                  ? `${session.user.staffPosition} - ${store.name}`
+                  : `${store.name} admin`}
+              </p>
               <div className="flex items-center gap-1">
                 <ThemeToggle />
                 <NotificationBell notifications={notifications} unreadCount={unreadCount} />

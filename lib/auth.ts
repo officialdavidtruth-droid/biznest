@@ -77,11 +77,43 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         // lib/actions/auth.ts), but this covers accounts created before
         // that and needs to stay even after every account is normalized,
         // since email is meant to be case-insensitive by convention anyway.
+        // Staff can sign in two ways: with their own email (handled below,
+        // same as everyone else), or with "<Position>@<store-slug>" — the
+        // login the owner gives them, matching whatever title the owner
+        // put on the invite (e.g. "Cashier@velox-space"). Both resolve to
+        // the same underlying User account and passwordHash; this just
+        // finds that account a different way when the identifier isn't a
+        // real email. staffLogin stays null for a normal email sign-in.
+        let staffLogin: { storeSlug: string; storeName: string; position: string } | null = null;
         let user;
         try {
           user = await withTimeout(
             prisma.user.findFirst({ where: { email: { equals: parsed.data.email, mode: "insensitive" } } })
           );
+
+          if (!user) {
+            const atIndex = parsed.data.email.lastIndexOf("@");
+            if (atIndex > 0) {
+              const position = parsed.data.email.slice(0, atIndex);
+              const storeSlug = parsed.data.email.slice(atIndex + 1).toLowerCase();
+
+              const staff = await withTimeout(
+                prisma.storeStaff.findFirst({
+                  where: {
+                    status: "ACTIVE",
+                    position: { equals: position, mode: "insensitive" },
+                    store: { slug: storeSlug },
+                  },
+                  include: { user: true, store: { select: { slug: true, name: true } } },
+                })
+              );
+
+              if (staff?.user) {
+                user = staff.user;
+                staffLogin = { storeSlug: staff.store.slug, storeName: staff.store.name, position: staff.position ?? "Staff" };
+              }
+            }
+          }
         } catch (err) {
           if (err instanceof Error && err.message === "DB_TIMEOUT") {
             // Surfaces as a normal NextAuth error the login form already
@@ -143,6 +175,9 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           email: user.email,
           name: user.name,
           role: user.role,
+          ...(staffLogin
+            ? { staffPosition: staffLogin.position, storeSlug: staffLogin.storeSlug, storeName: staffLogin.storeName }
+            : {}),
         };
       },
     }),
@@ -153,6 +188,17 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       if (user) {
         token.id = user.id;
         token.role = user.role;
+        // Only set on a fresh sign-in via the "Position@store" path (see
+        // authorize() above). Deliberately not re-derived on later
+        // requests below — a staff member's position/store doesn't change
+        // mid-session, and this keeps that branch a plain DB role re-check
+        // instead of an extra join on every request.
+        const staffUser = user as typeof user & { staffPosition?: string; storeSlug?: string; storeName?: string };
+        if (staffUser.staffPosition) {
+          token.staffPosition = staffUser.staffPosition;
+          token.storeSlug = staffUser.storeSlug;
+          token.storeName = staffUser.storeName;
+        }
       } else if (token.id) {
         // Session strategy is JWT, so the token is normally just decoded and
         // reused across requests without touching the DB again. That means
@@ -186,6 +232,11 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       if (session.user) {
         session.user.id = token.id as string;
         session.user.role = token.role as UserRole;
+        if (token.staffPosition) {
+          session.user.staffPosition = token.staffPosition as string;
+          session.user.storeSlug = token.storeSlug as string;
+          session.user.storeName = token.storeName as string;
+        }
       }
       return session;
     },

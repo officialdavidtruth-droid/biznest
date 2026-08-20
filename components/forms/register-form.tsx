@@ -7,6 +7,7 @@ import { registerUser } from "@/lib/actions/auth";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
+import { signIn } from "next-auth/react";
 
 export function RegisterForm({
   defaultEmail,
@@ -48,7 +49,8 @@ export function RegisterForm({
   }
 
   return (
-    <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+    <div className="space-y-4">
+      <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
       <div>
         <label className="mb-1 block text-sm font-medium" htmlFor="name">
           Full name
@@ -105,6 +107,19 @@ export function RegisterForm({
       >
         {isSubmitting ? "Creating account…" : "Create account"}
       </button>
-    </form>
+      </form>
+
+      <div className="relative text-center text-xs text-muted-foreground">
+        <span className="bg-background px-2">or</span>
+      </div>
+
+      <button
+        type="button"
+        onClick={() => signIn("google", { callbackUrl: callbackUrl ?? "/onboarding/business-verification" })}
+        className="w-full rounded-md border py-2 text-sm font-medium"
+      >
+        Continue with Google
+      </button>
+    </div>
   );
 }

@@ -3,6 +3,7 @@ import { verifyFlutterwaveTransaction } from "@/lib/payments/flutterwave";
 import { checkRateLimit, getClientIp } from "@/lib/rate-limit";
 import { settleInvoicePayment } from "@/lib/actions/invoice";
 import { settleQuoteDeposit } from "@/lib/actions/quote";
+import { decrementStockForOrder } from "@/lib/actions/order";
 import { NextResponse } from "next/server";
 
 const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? "https://biznest.vercel.app";
@@ -57,16 +58,16 @@ export async function GET(req: Request) {
   }
 
   if (status === "cancelled") {
-    const result = await prisma.order.updateMany({
-      where: { id: order.id, status: "PENDING_PAYMENT" },
-      data: { status: "CANCELLED" },
-    });
-    if (result.count > 0) {
-      await prisma.payment.updateMany({
+    await prisma.$transaction([
+      prisma.order.updateMany({
+        where: { id: order.id, status: "PENDING_PAYMENT" },
+        data: { status: "CANCELLED" },
+      }),
+      prisma.payment.updateMany({
         where: { reference: txRef, status: "PENDING" },
         data: { status: "FAILED" },
-      });
-    }
+      }),
+    ]);
     return NextResponse.redirect(`${APP_URL}/${order.store.slug}?payment=failed`);
   }
 
@@ -80,28 +81,33 @@ export async function GET(req: Request) {
     // payment, and use the update's own affected-row count — not the
     // read above — to decide whether this request actually won the race
     // against a concurrent webhook delivery for the same reference.
-    const result = await prisma.order.updateMany({
-      where: { id: order.id, status: "PENDING_PAYMENT" },
-      data: { status: "PAID", paymentReference: txRef },
-    });
-    if (result.count > 0) {
-      await prisma.payment.updateMany({
+    // Payment confirmation, the order transition, and the stock decrement
+    // are grouped in one transaction so they can't split across a crash.
+    await prisma.$transaction(async (tx) => {
+      const result = await tx.order.updateMany({
+        where: { id: order.id, status: "PENDING_PAYMENT" },
+        data: { status: "PAID", paymentReference: txRef },
+      });
+      await tx.payment.updateMany({
         where: { reference: txRef, status: "PENDING" },
         data: { status: "SUCCESSFUL", rawPayload: verification as object, verifiedAt: new Date() },
       });
-    }
+      if (result.count > 0) {
+        await decrementStockForOrder(tx, order.id);
+      }
+    });
     return NextResponse.redirect(`${APP_URL}/${order.store.slug}/orders/${order.id}/confirmation`);
   }
 
-  const result = await prisma.order.updateMany({
-    where: { id: order.id, status: "PENDING_PAYMENT" },
-    data: { status: "CANCELLED" },
-  });
-  if (result.count > 0) {
-    await prisma.payment.updateMany({
+  await prisma.$transaction([
+    prisma.order.updateMany({
+      where: { id: order.id, status: "PENDING_PAYMENT" },
+      data: { status: "CANCELLED" },
+    }),
+    prisma.payment.updateMany({
       where: { reference: txRef, status: "PENDING" },
       data: { status: "FAILED", rawPayload: verification as object },
-    });
-  }
+    }),
+  ]);
   return NextResponse.redirect(`${APP_URL}/${order.store.slug}?payment=failed`);
 }

@@ -65,6 +65,72 @@ export async function issueRefund(
     return { success: false, error: "This payment has already been refunded." };
   }
 
+  // Cash/POS sales never touched an online gateway, so there's nothing to
+  // call out to — just record the refund directly. A gateway refund
+  // reference isn't meaningful here, so we use a synthetic one so the
+  // unique refundReference column and the "already refunded" checks above
+  // still work the same way as the online path.
+  if (payment.provider === "CASH") {
+    // Payment flip, order status, status-event log, and the commission
+    // reversal all describe one thing happening (this sale got refunded) —
+    // grouped so a crash partway through can't leave the payment marked
+    // REFUNDED while the order or commission balance falls out of sync.
+    let refunded: boolean;
+    refunded = await prisma.$transaction(async (tx) => {
+      const result = await tx.payment.updateMany({
+        where: { id: payment.id, status: "SUCCESSFUL" },
+        data: {
+          status: "REFUNDED",
+          refundReference: `CASH-${payment.id}`,
+          refundedAmount: payment.amount,
+          refundReason: reason.trim(),
+          refundedByEmail: access.actorEmail,
+          refundedAt: new Date(),
+        },
+      });
+      if (result.count === 0) return false;
+
+      await tx.order.update({ where: { id: order.id }, data: { status: "REFUNDED" } });
+      await tx.orderStatusEvent.create({
+        data: { orderId: order.id, status: "REFUNDED", note: `Cash/POS refund: ${reason.trim()}` },
+      });
+
+      // Reverse the commission accrued on this sale (see
+      // Store.posCommissionOwed) so a refunded POS order doesn't leave
+      // the store owing commission on money it never actually kept.
+      // Floored at zero in case some of it was already settled — the
+      // owner shouldn't end up with a negative balance from a single
+      // refund; that gets reconciled the normal way instead.
+      if (order.channel === "POS" && Number(order.commission) > 0) {
+        const store = await tx.store.findUnique({ where: { id: access.store.id }, select: { posCommissionOwed: true } });
+        const reduceBy = Math.min(Number(order.commission), Number(store?.posCommissionOwed ?? 0));
+        if (reduceBy > 0) {
+          await tx.store.update({ where: { id: access.store.id }, data: { posCommissionOwed: { decrement: reduceBy } } });
+        }
+      }
+
+      return true;
+    });
+
+    if (!refunded) {
+      return { success: false, error: "This payment was already refunded by another request." };
+    }
+
+    await emitWebhookEvent("PAYMENT_REFUNDED", access.store.id, {
+      orderId: order.id,
+      paymentId: payment.id,
+      amount: Number(payment.amount),
+      currency: payment.currency,
+      reason: reason.trim(),
+    });
+
+    revalidatePath(`/store/${slug}/admin/orders/${orderId}`);
+    revalidatePath(`/store/${slug}/admin/orders`);
+    revalidatePath(`/store/${slug}/admin/payments`);
+
+    return { success: true, data: undefined };
+  }
+
   // Flutterwave's refund endpoint takes their own numeric transaction id,
   // not our tx_ref (Payment.reference) — pull it back out of the raw
   // verification payload saved when the charge was confirmed.

@@ -7,7 +7,7 @@ import { chargeCustomer, getActiveGateway } from "@/lib/payments/gateway";
 import { calculateOrderTotals } from "@/lib/utils/pricing";
 import { revalidatePath } from "next/cache";
 import type { ActionResult } from "@/types/actions";
-import type { OrderStatus, Store, Business } from "@prisma/client";
+import type { OrderStatus, Store, Business, Prisma } from "@prisma/client";
 import { awardLoyaltyPointsForOrder } from "@/lib/actions/loyalty";
 import { recomputeAndPersistTrustScore } from "@/lib/actions/trust-score";
 import { emitWebhookEvent } from "@/lib/webhooks/dispatch";
@@ -20,6 +20,78 @@ import { logStoreActivity } from "@/lib/actions/activity";
 import { SELLER_VISIBLE_ORDER_STATUSES } from "@/lib/constants/order";
 
 const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? "https://biznest.vercel.app";
+
+/**
+ * Decrements stock for a paid order's line items — physical products and
+ * variants only (a line with neither, i.e. a service, is skipped, and a
+ * product with no InventoryItem row — e.g. DIGITAL/RENTAL — is a no-op
+ * too). Called from inside the same transaction that just flipped an
+ * order to PAID (see the four payment callback/webhook routes) — never
+ * before, since only a *confirmed* payment should ever consume inventory.
+ *
+ * Unlike the POS register (lib/actions/pos.ts), which can refuse a sale
+ * before any money changes hands, an online order's money has already
+ * moved by the time this runs — there's no way to "fail" a sale that's
+ * already been charged. So this floors at zero and records what happened
+ * (including an "oversold" note on the ledger) rather than rejecting the
+ * transaction the way POS does.
+ */
+export async function decrementStockForOrder(tx: Prisma.TransactionClient, orderId: string) {
+  const order = await tx.order.findUnique({ where: { id: orderId }, include: { items: true } });
+  if (!order) return;
+
+  for (const item of order.items) {
+    if (item.variantId) {
+      const variant = await tx.productVariant.findUnique({ where: { id: item.variantId } });
+      if (!variant) continue;
+      const nextQuantity = Math.max(0, variant.quantity - item.quantity);
+      const oversold = item.quantity > variant.quantity;
+      const justRanOut = variant.quantity > 0 && nextQuantity === 0;
+      await tx.productVariant.update({
+        where: { id: item.variantId },
+        data: { quantity: nextQuantity, autoUnpublished: justRanOut ? true : variant.autoUnpublished },
+      });
+      await tx.stockMovement.create({
+        data: {
+          variantId: item.variantId,
+          storeId: order.storeId,
+          type: "SALE",
+          quantityChange: -(variant.quantity - nextQuantity),
+          quantityAfter: nextQuantity,
+          note: oversold
+            ? `Online sale (order ${order.id}) — oversold, clamped at 0`
+            : `Online sale (order ${order.id})`,
+        },
+      });
+    } else if (item.productId) {
+      const inventory = await tx.inventoryItem.findUnique({ where: { productId: item.productId } });
+      if (!inventory) continue; // stock not tracked for this product
+      const nextQuantity = Math.max(0, inventory.quantity - item.quantity);
+      const oversold = item.quantity > inventory.quantity;
+      const justRanOut = inventory.quantity > 0 && nextQuantity === 0;
+      await tx.inventoryItem.update({
+        where: { id: inventory.id },
+        data: { quantity: nextQuantity, autoUnpublished: justRanOut ? true : inventory.autoUnpublished },
+      });
+      if (justRanOut) {
+        await tx.product.update({ where: { id: item.productId }, data: { isPublished: false } });
+      }
+      await tx.stockMovement.create({
+        data: {
+          inventoryItemId: inventory.id,
+          storeId: order.storeId,
+          type: "SALE",
+          quantityChange: -(inventory.quantity - nextQuantity),
+          quantityAfter: nextQuantity,
+          note: oversold
+            ? `Online sale (order ${order.id}) — oversold, clamped at 0`
+            : `Online sale (order ${order.id})`,
+        },
+      });
+    }
+    // item.serviceId (or neither set): not stock-tracked, nothing to do.
+  }
+}
 
 // --- Checkout (customer-facing) ---------------------------------------
 
@@ -73,6 +145,45 @@ export async function startCheckout(
 
   if (subtotal <= 0) return { success: false, error: "Cart total must be greater than zero." };
 
+  // Idempotency guard: if this buyer already has a very recent
+  // PENDING_PAYMENT order for this store with the exact same cart, hand
+  // back that order's already-initialized gateway payment page instead of
+  // starting a second charge. This is what actually catches a double-
+  // charge in practice — a double-clicked "Pay now" button, a client
+  // retrying after a response that looked like it failed, or a
+  // back-button resubmit — without requiring every storefront checkout
+  // page to generate and thread through a dedicated idempotency key.
+  //
+  // Known gap: two truly simultaneous submissions (millisecond apart, both
+  // reading the DB before either's insert commits) can still both pass
+  // this check and create two orders. Closing that fully needs a unique
+  // constraint on a client-generated idempotency key sent with every
+  // attempt — worth adding if double-submits turn out to be common enough
+  // in practice to matter beyond what this catches.
+  const recentWindow = new Date(Date.now() - 2 * 60 * 1000);
+  const recentCandidates = await prisma.order.findMany({
+    where: {
+      storeId: store.id,
+      buyerId: session.user.id,
+      status: "PENDING_PAYMENT",
+      createdAt: { gte: recentWindow },
+    },
+    include: { items: true },
+    orderBy: { createdAt: "desc" },
+  });
+  const sortedIncomingItems = [...data.items].sort((a, b) => a.productId.localeCompare(b.productId));
+  const duplicate = recentCandidates.find((candidate) => {
+    if (Number(candidate.total) !== total) return false;
+    if (candidate.items.length !== sortedIncomingItems.length) return false;
+    const sortedExistingItems = [...candidate.items].sort((a, b) => (a.productId ?? "").localeCompare(b.productId ?? ""));
+    return sortedExistingItems.every(
+      (item, i) => item.productId === sortedIncomingItems[i].productId && item.quantity === sortedIncomingItems[i].quantity
+    );
+  });
+  if (duplicate?.checkoutUrl) {
+    return { success: true, data: { authorizationUrl: duplicate.checkoutUrl } };
+  }
+
   const order = await prisma.order.create({
     data: {
       storeId: store.id,
@@ -115,24 +226,32 @@ export async function startCheckout(
     return { success: false, error: charge.error };
   }
 
-  await prisma.order.update({ where: { id: order.id }, data: { paymentProvider: charge.gateway } });
-
-  // One Payment row per real charge attempt — this is the row the callback
-  // and webhook routes verify against and update to SUCCESSFUL/FAILED.
-  // Order.paymentProvider/paymentReference above stay as the fast "what
-  // actually paid this" pointer; this table is the full audit trail.
-  await prisma.payment.create({
-    data: {
-      orderId: order.id,
-      storeId: store.id,
-      purpose: "ORDER",
-      provider: charge.gateway,
-      reference: order.id,
-      status: "PENDING",
-      amount: total,
-      currency: products[0]?.currency ?? "NGN",
-    },
-  });
+  // Both writes below record the same event (this charge attempt was
+  // created) — doing them in one transaction means a failure partway
+  // through can never leave an order pointing at a gateway with no
+  // matching Payment row for the callback/webhook routes to verify against.
+  await prisma.$transaction([
+    prisma.order.update({
+      where: { id: order.id },
+      data: { paymentProvider: charge.gateway, checkoutUrl: charge.authorizationUrl },
+    }),
+    // One Payment row per real charge attempt — this is the row the callback
+    // and webhook routes verify against and update to SUCCESSFUL/FAILED.
+    // Order.paymentProvider/paymentReference above stay as the fast "what
+    // actually paid this" pointer; this table is the full audit trail.
+    prisma.payment.create({
+      data: {
+        orderId: order.id,
+        storeId: store.id,
+        purpose: "ORDER",
+        provider: charge.gateway,
+        reference: order.id,
+        status: "PENDING",
+        amount: total,
+        currency: products[0]?.currency ?? "NGN",
+      },
+    }),
+  ]);
 
   await emitWebhookEvent("ORDER_CREATED", store.id, {
     orderId: order.id,

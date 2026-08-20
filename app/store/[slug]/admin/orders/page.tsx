@@ -37,7 +37,12 @@ export default async function StoreOrdersPage({ params }: { params: Promise<{ sl
             {orders.map((order) => (
               <tr key={order.id} className="border-b last:border-0">
                 <td className="px-4 py-3 font-mono text-xs">#{order.id.slice(-8).toUpperCase()}</td>
-                <td className="px-4 py-3">{order.buyer.name ?? order.buyer.email}</td>
+                <td className="px-4 py-3">
+                  {order.channel === "POS" ? (order.posCustomerName ?? "Walk-in customer") : (order.buyer.name ?? order.buyer.email)}
+                  {order.channel === "POS" && (
+                    <span className="ml-1.5 rounded-full bg-purple-100 px-1.5 py-0.5 text-[10px] font-medium text-purple-700">POS</span>
+                  )}
+                </td>
                 <td className="px-4 py-3 text-muted-foreground">{order.items.length}</td>
                 <td className="px-4 py-3">{order.currency} {Number(order.total).toLocaleString()}</td>
                 <td className="px-4 py-3">

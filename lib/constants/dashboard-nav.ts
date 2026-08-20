@@ -2,7 +2,7 @@ import {
   LayoutDashboard, ShoppingCart, Package, Wrench, Users, Boxes, Ticket,
   CreditCard, BarChart3, Star, Megaphone, MessageSquare,
   Settings, BadgeCheck, Wallet, LifeBuoy, Truck, Wand2, MousePointerClick,
-  LayoutTemplate, FileText, FileSignature, MailWarning,
+  LayoutTemplate, FileText, FileSignature, MailWarning, Calculator,
 } from "lucide-react";
 import { getCategoryDashboard } from "@/lib/constants/category-dashboard";
 import type { StaffPermissionId } from "@/lib/access/staff-permissions";
@@ -33,6 +33,7 @@ export function buildNavGroups(business: { sellsProducts: boolean; offersService
   items: NavItem[];
 }> {
   const allSellItems: NavItem[] = [
+    { label: "Point of Sale", href: "/pos", icon: Calculator, permission: "pos" },
     { label: "Orders", href: "/orders", icon: ShoppingCart, permission: "orders" },
     { label: "Products", href: "/products", icon: Package, permission: "products" },
     { label: "Services", href: "/services", icon: Wrench, permission: "products" },
@@ -171,9 +172,9 @@ export function buildBottomTabItems(
   // falling back down the list if a preferred one was filtered out.
   const preferred = [
     items.find((i) => i.href === ""),
+    items.find((i) => i.href === "/pos"),
     items.find((i) => i.href === "/orders"),
     items.find((i) => i.href === "/products" || i.href === "/services"),
-    items.find((i) => i.href === "/abandoned-checkouts"),
   ].filter((i): i is NavItem => Boolean(i));
   const rest = items.filter((i) => !preferred.includes(i));
   return preferred.concat(rest).slice(0, 4);

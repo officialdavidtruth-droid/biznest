@@ -400,6 +400,19 @@ model Store {
   payoutDetails            Json?
   payoutVerifiedAt         DateTime?
 
+  // Running balance of platform commission owed from POS (cash/in-person)
+  // sales. Online orders never touch this -- the gateway subaccount split
+  // deducts commission automatically at charge time (see payments/page.tsx
+  // "Sales automatically split"), but a POS sale is cash straight into the
+  // merchant's hand with nothing for the platform to intercept, so the
+  // commission accrues here instead and is settled out-of-band (bank
+  // transfer, wallet debit, etc). Incremented in lib/actions/pos.ts on
+  // every POS sale; decremented via recordPosCommissionSettlement, which
+  // also writes the PosCommissionSettlement row below as the paper trail
+  // for *why* the balance moved.
+  posCommissionOwed        Decimal     @default(0) @db.Decimal(12, 2)
+  posCommissionSettlements PosCommissionSettlement[]
+
   products      Product[]
   services      Service[]
   orders        Order[]
@@ -825,6 +838,39 @@ enum OrderStatus {
 enum PaymentProvider {
   PAYSTACK
   FLUTTERWAVE
+  // In-person sale settled outside any online gateway (cash, transfer, or a
+  // card terminal the merchant runs themselves) -- see lib/actions/pos.ts.
+  // The actual tender type is free text on Order.posTenderType since it
+  // doesn't need a gateway integration, just a receipt record.
+  CASH
+}
+
+enum OrderChannel {
+  ONLINE
+  // Rung up from the in-app POS (lib/actions/pos.ts) rather than the
+  // storefront checkout -- same Order/OrderItem/Payment shape either way,
+  // this just flags how the sale happened for the orders list and receipts.
+  POS
+}
+
+// One row per time an owner/admin marks POS commission as settled (see
+// Store.posCommissionOwed) -- append-only record of "we cleared ₦X of the
+// balance on this date", same ledger pattern as StockMovement/
+// StoreActivityLog. Doesn't represent a payment transfer itself (there's
+// no gateway involved -- this is typically a bank transfer or cash handed
+// over outside the app); it's just the paper trail for the running balance.
+model PosCommissionSettlement {
+  id          String   @id @default(cuid())
+  storeId     String
+  store       Store    @relation(fields: [storeId], references: [id], onDelete: Cascade)
+
+  amount      Decimal  @db.Decimal(12, 2)
+  note        String?
+  settledByEmail String
+
+  createdAt   DateTime @default(now())
+
+  @@index([storeId, createdAt])
 }
 
 // ----------------------------------------------------------------------------
@@ -975,8 +1021,29 @@ model Order {
   total         Decimal       @db.Decimal(12, 2)
   currency      String        @default("NGN")
 
+  channel       OrderChannel  @default(ONLINE)
+  // Free-text tender description for POS sales only (e.g. "Cash", "Card",
+  // "Transfer") -- paymentProvider stays CASH for all of these since none
+  // of them go through an online gateway; this is just what prints on the
+  // receipt. Null for ONLINE orders.
+  posTenderType String?
+  // Walk-in customer's name/phone, captured optionally at the POS register
+  // when they aren't a registered buyer. buyerId still points at the
+  // store's shared walk-in User (see getOrCreateWalkInCustomer) so Order's
+  // required buyer relation doesn't need to change. Null for ONLINE orders.
+  posCustomerName  String?
+  posCustomerPhone String?
+
   paymentProvider PaymentProvider?
   paymentReference String?
+  // The gateway's own "pay now" page URL from the most recent charge
+  // attempt on this order (Paystack authorization_url / Flutterwave
+  // link). Cached so a duplicate checkout submission for the same cart
+  // (double-click, a client retry after a slow response, browser
+  // back-button resubmit) can be handed the same payment page instead of
+  // starting a second charge against the customer -- see the dedupe
+  // check at the top of startCheckout in lib/actions/order.ts.
+  checkoutUrl      String?
   escrowReleasedAt DateTime?
 
   deliveryZoneId String?
