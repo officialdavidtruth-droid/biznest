@@ -26,7 +26,7 @@ export default async function LoginPage({
         {store ? `Sign in to ${store.name}` : "Sign in to BizNest"}
       </h1>
       <p className="mb-6 text-sm text-muted-foreground">
-        {store ? `Use your BizNest account to shop ${store.name}.` : "Welcome back."}
+        {store ? `Sign in with your ${store.name} account.` : "Welcome back."}
       </p>
       <Suspense fallback={null}>
         <LoginForm isStoreContext={Boolean(store)} storeSlug={storeSlug} />
