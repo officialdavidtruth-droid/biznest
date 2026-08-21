@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { toast } from "sonner";
 import { Wand2 } from "lucide-react";
-import { updateCostPrice, updateSku, generateSku, type InventoryOverviewItem } from "@/lib/actions/inventory";
+import { updateCostPrice, updateSku, generateSku, updateBarcode, generateBarcode, type InventoryOverviewItem } from "@/lib/actions/inventory";
 
 const STATUS_STYLES: Record<InventoryOverviewItem["status"], string> = {
   OUT_OF_STOCK: "bg-destructive/10 text-destructive",
@@ -22,9 +22,12 @@ export function InventoryRow({ storeSlug, item }: { storeSlug: string; item: Inv
   const router = useRouter();
   const [costPrice, setCostPrice] = useState(item.costPrice != null ? String(item.costPrice) : "");
   const [sku, setSku] = useState(item.sku ?? "");
+  const [barcode, setBarcode] = useState(item.barcode ?? "");
   const [savingCost, setSavingCost] = useState(false);
   const [savingSku, setSavingSku] = useState(false);
+  const [savingBarcode, setSavingBarcode] = useState(false);
   const [generating, setGenerating] = useState(false);
+  const [generatingBarcode, setGeneratingBarcode] = useState(false);
 
   async function saveCost() {
     setSavingCost(true);
@@ -54,6 +57,25 @@ export function InventoryRow({ storeSlug, item }: { storeSlug: string; item: Inv
     router.refresh();
   }
 
+  async function saveBarcode() {
+    setSavingBarcode(true);
+    const result = await updateBarcode(storeSlug, item.inventoryItemId, barcode);
+    setSavingBarcode(false);
+    if (!result.success) return toast.error(result.error);
+    toast.success("Barcode updated.");
+    router.refresh();
+  }
+
+  async function handleGenerateBarcode() {
+    setGeneratingBarcode(true);
+    const result = await generateBarcode(storeSlug, item.inventoryItemId);
+    setGeneratingBarcode(false);
+    if (!result.success) return toast.error(result.error);
+    setBarcode(result.data.barcode);
+    toast.success("Barcode generated.");
+    router.refresh();
+  }
+
   return (
     <tr className="border-b last:border-0 align-top">
       <td className="px-4 py-3 font-medium">{item.productName}</td>
@@ -76,6 +98,30 @@ export function InventoryRow({ storeSlug, item }: { storeSlug: string; item: Inv
           </button>
           {sku !== (item.sku ?? "") && (
             <button onClick={saveSku} disabled={savingSku} className="text-xs font-medium text-primary hover:underline disabled:opacity-50">
+              Save
+            </button>
+          )}
+        </div>
+      </td>
+
+      <td className="px-4 py-3">
+        <div className="flex items-center gap-1">
+          <input
+            value={barcode}
+            onChange={(e) => setBarcode(e.target.value)}
+            placeholder="—"
+            className="w-28 rounded-md border px-2 py-1 font-mono text-xs"
+          />
+          <button
+            title="Generate barcode"
+            onClick={handleGenerateBarcode}
+            disabled={generatingBarcode}
+            className="rounded-md p-1 text-muted-foreground hover:bg-muted disabled:opacity-50"
+          >
+            <Wand2 className="h-3.5 w-3.5" />
+          </button>
+          {barcode !== (item.barcode ?? "") && (
+            <button onClick={saveBarcode} disabled={savingBarcode} className="text-xs font-medium text-primary hover:underline disabled:opacity-50">
               Save
             </button>
           )}
