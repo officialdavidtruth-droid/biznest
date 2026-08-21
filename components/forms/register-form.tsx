@@ -8,13 +8,16 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { signIn } from "next-auth/react";
+import Link from "next/link";
 
 export function RegisterForm({
   defaultEmail,
   callbackUrl,
+  storeSlug,
 }: {
   defaultEmail?: string;
   callbackUrl?: string;
+  storeSlug?: string;
 }) {
   const router = useRouter();
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -42,10 +45,10 @@ export function RegisterForm({
     // registration → login, so e.g. someone accepting a staff invite lands
     // back on /staff/accept?token=... automatically instead of having to
     // find the original email again after creating their account.
-    const loginUrl = callbackUrl
-      ? `/login?callbackUrl=${encodeURIComponent(callbackUrl)}&email=${encodeURIComponent(values.email)}`
-      : "/login";
-    router.push(loginUrl);
+    const loginParams = new URLSearchParams({ email: values.email });
+    if (callbackUrl) loginParams.set("callbackUrl", callbackUrl);
+    if (storeSlug) loginParams.set("store", storeSlug);
+    router.push(`/login?${loginParams.toString()}`);
   }
 
   return (
@@ -120,6 +123,16 @@ export function RegisterForm({
       >
         Continue with Google
       </button>
+
+      <p className="text-center text-sm text-muted-foreground">
+        Already have an account?{" "}
+        <Link
+          href={storeSlug ? `/login?store=${encodeURIComponent(storeSlug)}` : "/login"}
+          className="font-medium text-foreground hover:underline"
+        >
+          Sign in
+        </Link>
+      </p>
     </div>
   );
 }

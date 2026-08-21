@@ -10,7 +10,17 @@ import { toast } from "sonner";
 import { PasswordInput } from "@/components/forms/password-input";
 import Link from "next/link";
 
-export function LoginForm() {
+export function LoginForm({
+  isStoreContext = false,
+  storeSlug,
+}: {
+  // Store-branded logins (a customer arriving via a store's link) are
+  // shopper sign-ins, not staff/admin ones — "Position@store" is a
+  // staff-only convention and is meaningless (and confusing) to a
+  // customer, so it's only shown on the generic BizNest login.
+  isStoreContext?: boolean;
+  storeSlug?: string;
+} = {}) {
   const searchParams = useSearchParams();
   const explicitCallbackUrl = searchParams.get("callbackUrl");
   const callbackUrl = explicitCallbackUrl ?? "/onboarding/business-verification";
@@ -89,10 +99,12 @@ export function LoginForm() {
     <div className="space-y-4">
       <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
         <div>
-          <label className="mb-1 block text-sm font-medium">Email, or Position@store</label>
+          <label className="mb-1 block text-sm font-medium">
+            {isStoreContext ? "Email" : "Email, or Position@store"}
+          </label>
           <input
             type="text"
-            placeholder="you@example.com or amaka@yourstorename"
+            placeholder={isStoreContext ? "you@example.com" : "you@example.com or amaka@yourstorename"}
             autoCapitalize="none"
             className="w-full rounded-md border px-3 py-2 text-sm"
             {...register("email")}
@@ -128,6 +140,16 @@ export function LoginForm() {
       >
         Continue with Google
       </button>
+
+      <p className="text-center text-sm text-muted-foreground">
+        Don&apos;t have an account?{" "}
+        <Link
+          href={storeSlug ? `/register?store=${encodeURIComponent(storeSlug)}` : "/register"}
+          className="font-medium text-foreground hover:underline"
+        >
+          Sign up
+        </Link>
+      </p>
     </div>
   );
 }

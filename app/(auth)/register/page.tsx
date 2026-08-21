@@ -29,7 +29,7 @@ export default async function RegisterPage({
           ? "One BizNest account works across every store, including this one."
           : "Start selling products, offering services, or shopping across BizNest stores."}
       </p>
-      <RegisterForm defaultEmail={email} callbackUrl={callbackUrl} />
+      <RegisterForm defaultEmail={email} callbackUrl={callbackUrl} storeSlug={storeSlug} />
     </div>
   );
 }

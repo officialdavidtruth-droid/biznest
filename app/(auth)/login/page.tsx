@@ -26,10 +26,10 @@ export default async function LoginPage({
         {store ? `Sign in to ${store.name}` : "Sign in to BizNest"}
       </h1>
       <p className="mb-6 text-sm text-muted-foreground">
-        {store ? "Sign in with your BizNest account to continue." : "Welcome back."}
+        {store ? `Use your BizNest account to shop ${store.name}.` : "Welcome back."}
       </p>
       <Suspense fallback={null}>
-        <LoginForm />
+        <LoginForm isStoreContext={Boolean(store)} storeSlug={storeSlug} />
       </Suspense>
     </div>
   );
