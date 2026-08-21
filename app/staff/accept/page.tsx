@@ -30,6 +30,12 @@ export default async function AcceptStaffInvitePage({
     );
   }
 
+  // Captured into a local const so TypeScript retains the non-null
+  // narrowing inside the nested server action closure below — accessing
+  // invite.invitedEmail directly there loses the narrowing from the check
+  // above, since TS can't prove the object property wasn't reassigned.
+  const invitedEmail = invite.invitedEmail;
+
   const callbackUrl = `/staff/accept?token=${token}`;
 
   // Whether the invited email already has a BizNest account. Used both when
@@ -38,12 +44,12 @@ export default async function AcceptStaffInvitePage({
   // *create* an account, not just a dead-end "sign in with that email"
   // message with nowhere to go.
   const existingUser = await prisma.user.findFirst({
-    where: { email: { equals: invite.invitedEmail, mode: "insensitive" } },
+    where: { email: { equals: invitedEmail, mode: "insensitive" } },
     select: { id: true },
   });
 
   const session = await auth();
-  const emailMatches = session?.user?.email?.toLowerCase() === invite.invitedEmail.toLowerCase();
+  const emailMatches = session?.user?.email?.toLowerCase() === invitedEmail.toLowerCase();
 
   // No session, or signed in as someone else, and the invited email has no
   // account yet: send straight to signup instead of showing an
@@ -52,11 +58,11 @@ export default async function AcceptStaffInvitePage({
   // whichever email happens to be signed in right now — it just needs to
   // become a create-account prompt.
   if ((!session?.user?.id || !emailMatches) && !existingUser) {
-    redirect(`/register?callbackUrl=${encodeURIComponent(callbackUrl)}&email=${encodeURIComponent(invite.invitedEmail)}`);
+    redirect(`/register?callbackUrl=${encodeURIComponent(callbackUrl)}&email=${encodeURIComponent(invitedEmail)}`);
   }
 
   if (!session?.user?.id) {
-    redirect(`/login?callbackUrl=${encodeURIComponent(callbackUrl)}&email=${encodeURIComponent(invite.invitedEmail)}`);
+    redirect(`/login?callbackUrl=${encodeURIComponent(callbackUrl)}&email=${encodeURIComponent(invitedEmail)}`);
   }
   const roleLabel = invite.role === "MANAGER" ? "Manager" : "Staff member";
 
@@ -87,7 +93,7 @@ export default async function AcceptStaffInvitePage({
         // already redirected to /register above.
         <div className="mt-4 rounded-lg border border-border p-4 text-sm text-muted-foreground">
           <p>
-            This invite was sent to <strong>{invite.invitedEmail}</strong>, but you're signed in with a different
+            This invite was sent to <strong>{invitedEmail}</strong>, but you're signed in with a different
             account.
           </p>
           <form
@@ -99,7 +105,7 @@ export default async function AcceptStaffInvitePage({
               // /login pre-filled with the invited email so they can go
               // straight into that account and come right back here.
               await signOut({
-                redirectTo: `/login?callbackUrl=${encodeURIComponent(callbackUrl)}&email=${encodeURIComponent(invite.invitedEmail)}`,
+                redirectTo: `/login?callbackUrl=${encodeURIComponent(callbackUrl)}&email=${encodeURIComponent(invitedEmail)}`,
               });
             }}
           >
@@ -107,7 +113,7 @@ export default async function AcceptStaffInvitePage({
               type="submit"
               className="inline-block rounded-md bg-primary px-5 py-2 text-sm font-medium text-primary-foreground"
             >
-              Sign out &amp; continue as {invite.invitedEmail}
+              Sign out &amp; continue as {invitedEmail}
             </button>
           </form>
         </div>
