@@ -1,5 +1,6 @@
 import type React from "react";
 import { CartLink } from "@/components/storefront/cart-link";
+import { AccountLink } from "@/components/storefront/account-link";
 import { VIOLET, VIOLET_THEME, type TemplateTheme } from "@/lib/template-themes";
 import { CategoryNav } from "@/components/storefront/category-nav";
 import { subscribeToNewsletter } from "@/lib/actions/newsletter";
@@ -72,6 +73,7 @@ export function VioletHeader({
         </nav>
         <div style={{ display: "flex", gap: 15, alignItems: "center" }}>
           <CartLink storeSlug={slug} accent={theme.accent} ink={theme.ink} />
+          <AccountLink storeSlug={slug} ink={theme.ink} />
         </div>
       </header>
 

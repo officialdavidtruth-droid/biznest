@@ -1,5 +1,6 @@
 import type React from "react";
 import { CartLink } from "@/components/storefront/cart-link";
+import { AccountLink } from "@/components/storefront/account-link";
 import { HOMEVISTA } from "@/lib/template-themes";
 import { CategoryNav } from "@/components/storefront/category-nav";
 import type { CategoryTreeNode } from "@/lib/storefront-categories";
@@ -58,6 +59,7 @@ export function HomeVistaHeader({
         </nav>
         <div style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: 20 }}>
           <CartLink storeSlug={slug} accent={HOMEVISTA.accent} ink={HOMEVISTA.ink} />
+          <AccountLink storeSlug={slug} ink={HOMEVISTA.ink} />
         </div>
       </header>
 

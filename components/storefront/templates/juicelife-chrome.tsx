@@ -1,5 +1,6 @@
 import type React from "react";
 import { CartLink } from "@/components/storefront/cart-link";
+import { AccountLink } from "@/components/storefront/account-link";
 import { JUICELIFE } from "@/lib/template-themes";
 import { CategoryNav } from "@/components/storefront/category-nav";
 import type { CategoryTreeNode } from "@/lib/storefront-categories";
@@ -62,6 +63,7 @@ export function JuiceLifeHeader({
           <a href={`/${slug}/search`} style={{ color: JUICELIFE.ink, textDecoration: "none" }}>Search</a>
         </nav>
         <CartLink storeSlug={slug} accent={JUICELIFE.green} onAccent="#ffffff" ink={JUICELIFE.ink} />
+        <AccountLink storeSlug={slug} ink={JUICELIFE.ink} />
       </header>
 
       <CategoryNav slug={slug} categories={navCategories} accent={JUICELIFE.green} ink={JUICELIFE.ink} bg="#fff" border="#edf1ea" />

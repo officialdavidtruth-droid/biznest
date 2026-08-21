@@ -69,6 +69,33 @@ export async function createProduct(
   }
   const data = parsed.data;
 
+  const trimmedSku = data.sku?.trim() || null;
+  const trimmedBarcode = data.barcode?.trim() || null;
+  if (trimmedBarcode) {
+    const clash = await prisma.inventoryItem.findFirst({
+      where: { storeId: access.store.id, barcode: trimmedBarcode },
+    });
+    if (clash) {
+      return {
+        success: false,
+        error: "That barcode is already in use.",
+        fieldErrors: { barcode: ["Already in use"] },
+      };
+    }
+  }
+  if (trimmedSku) {
+    const clash = await prisma.inventoryItem.findFirst({
+      where: { storeId: access.store.id, sku: trimmedSku },
+    });
+    if (clash) {
+      return {
+        success: false,
+        error: "That SKU is already in use.",
+        fieldErrors: { sku: ["Already in use"] },
+      };
+    }
+  }
+
   const baseSlug = slugify(data.name, { lower: true, strict: true });
   let productSlug = baseSlug;
   let suffix = 1;
@@ -97,7 +124,7 @@ export async function createProduct(
       digitalFileUrl: data.digitalFileUrl || null,
       rentalPeriodUnit: data.rentalPeriodUnit ?? null,
       inventory: {
-        create: { quantity: data.quantity, storeId: access.store.id },
+        create: { quantity: data.quantity, storeId: access.store.id, sku: trimmedSku, barcode: trimmedBarcode },
       },
     },
   });
@@ -146,6 +173,33 @@ export async function updateProduct(
   });
   if (!existing) return { success: false, error: "Product not found." };
 
+  const trimmedSku = data.sku?.trim() || null;
+  const trimmedBarcode = data.barcode?.trim() || null;
+  if (trimmedBarcode) {
+    const clash = await prisma.inventoryItem.findFirst({
+      where: { storeId: access.store.id, barcode: trimmedBarcode, NOT: { productId } },
+    });
+    if (clash) {
+      return {
+        success: false,
+        error: "That barcode is already in use.",
+        fieldErrors: { barcode: ["Already in use"] },
+      };
+    }
+  }
+  if (trimmedSku) {
+    const clash = await prisma.inventoryItem.findFirst({
+      where: { storeId: access.store.id, sku: trimmedSku, NOT: { productId } },
+    });
+    if (clash) {
+      return {
+        success: false,
+        error: "That SKU is already in use.",
+        fieldErrors: { sku: ["Already in use"] },
+      };
+    }
+  }
+
   await prisma.product.update({
     where: { id: productId },
     data: {
@@ -162,8 +216,8 @@ export async function updateProduct(
       rentalPeriodUnit: data.rentalPeriodUnit ?? null,
       inventory: {
         upsert: {
-          create: { quantity: data.quantity, storeId: access.store.id },
-          update: { quantity: data.quantity },
+          create: { quantity: data.quantity, storeId: access.store.id, sku: trimmedSku, barcode: trimmedBarcode },
+          update: { quantity: data.quantity, sku: trimmedSku, barcode: trimmedBarcode },
         },
       },
     },

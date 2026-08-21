@@ -1,4 +1,5 @@
 import { CartLink } from "@/components/storefront/cart-link";
+import { AccountLink } from "@/components/storefront/account-link";
 import { TrustBadge } from "@/components/storefront/trust-badge";
 import { TrustScorePanel } from "@/components/storefront/trust-score-panel";
 import type { TrustScoreChecklist } from "@/lib/actions/trust-score";
@@ -296,6 +297,7 @@ export function HeenzyNav({ store, slug, hasCatalog, theme = HEENZY_THEME }: { s
         </ul>
         <div className="hz-nav-icons">
           <CartLink storeSlug={slug} accent="var(--hz-black)" ink="var(--hz-black)" />
+          <AccountLink storeSlug={slug} ink="var(--hz-black)" />
         </div>
       </div>
     </nav>

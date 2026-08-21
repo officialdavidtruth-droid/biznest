@@ -1,5 +1,6 @@
 import type React from "react";
 import { CartLink } from "@/components/storefront/cart-link";
+import { AccountLink } from "@/components/storefront/account-link";
 import { PREMIUM } from "@/lib/template-themes";
 import { CategoryNav } from "@/components/storefront/category-nav";
 import { subscribeToNewsletter } from "@/lib/actions/newsletter";
@@ -59,6 +60,7 @@ export function PremiumHeader({
         </nav>
         <div style={{ marginLeft: "auto", display: "flex", gap: 15, alignItems: "center" }}>
           <CartLink storeSlug={slug} accent={PREMIUM.accent} ink={PREMIUM.ink} />
+          <AccountLink storeSlug={slug} ink={PREMIUM.ink} />
         </div>
       </header>
 

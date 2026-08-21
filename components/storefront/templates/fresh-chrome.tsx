@@ -1,5 +1,6 @@
 import type React from "react";
 import { CartLink } from "@/components/storefront/cart-link";
+import { AccountLink } from "@/components/storefront/account-link";
 import { CategoryNav } from "@/components/storefront/category-nav";
 import { FRESH } from "@/lib/template-themes";
 import type { CategoryTreeNode } from "@/lib/storefront-categories";
@@ -57,6 +58,7 @@ export function FreshHeader({
           <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
             {hasCatalog && <a href={`/${slug}/search`} style={{ fontSize: 14, fontWeight: 500, color: FRESH.inkSoft, textDecoration: "none" }}>Search</a>}
             <CartLink storeSlug={slug} accent={FRESH.leaf} ink={FRESH.ink} />
+            <AccountLink storeSlug={slug} ink={FRESH.ink} />
             {hasCatalog && <a href={`/${slug}/catalog`} style={btnPrimary}>Get a Quote</a>}
           </div>
         </div>

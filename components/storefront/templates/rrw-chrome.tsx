@@ -1,5 +1,6 @@
 import type React from "react";
 import { CartLink } from "@/components/storefront/cart-link";
+import { AccountLink } from "@/components/storefront/account-link";
 import { RRW } from "@/lib/template-themes";
 import { CategoryNav } from "@/components/storefront/category-nav";
 import type { CategoryTreeNode } from "@/lib/storefront-categories";
@@ -66,6 +67,7 @@ export function RrwHeader({
           </nav>
           <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
             <CartLink storeSlug={slug} accent={RRW.accent} ink={RRW.ink} />
+            <AccountLink storeSlug={slug} ink={RRW.ink} />
           </div>
         </header>
       </div>

@@ -11,6 +11,8 @@ export const productSchema = z.object({
   images: z.array(z.string().url()).max(8, "Up to 8 images"),
   isPublished: z.boolean().default(true),
   quantity: z.coerce.number().int().min(0).default(0),
+  sku: z.string().max(64).optional().or(z.literal("")),
+  barcode: z.string().max(64).optional().or(z.literal("")),
   digitalFileUrl: z.string().url().optional().or(z.literal("")),
   rentalPeriodUnit: z.enum(["day", "week", "month"]).optional(),
 });

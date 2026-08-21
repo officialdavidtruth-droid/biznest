@@ -1,5 +1,6 @@
 import type React from "react";
 import { CartLink } from "@/components/storefront/cart-link";
+import { AccountLink } from "@/components/storefront/account-link";
 import { FABTEX } from "@/lib/template-themes";
 import { CategoryNav } from "@/components/storefront/category-nav";
 import type { CategoryTreeNode } from "@/lib/storefront-categories";
@@ -62,6 +63,7 @@ export function FabtexHeader({
           <a href={`/${slug}/search`} style={{ fontSize: 10, textDecoration: "none", color: "#fff", padding: "10px 11px" }}>Search</a>
         </nav>
         <CartLink storeSlug={slug} accent={FABTEX.orange} onAccent="#ffffff" ink="#ffffff" />
+        <AccountLink storeSlug={slug} ink="#ffffff" />
       </header>
 
       <CategoryNav slug={slug} categories={navCategories} accent={FABTEX.orange} ink="#fff" bg={FABTEX.dark} border="#343131" />

@@ -1,5 +1,6 @@
 import type React from "react";
 import { CartLink } from "@/components/storefront/cart-link";
+import { AccountLink } from "@/components/storefront/account-link";
 import { ARCOVA } from "@/lib/template-themes";
 import { CategoryNav } from "@/components/storefront/category-nav";
 import type { CategoryTreeNode } from "@/lib/storefront-categories";
@@ -51,6 +52,7 @@ export function ArcovaHeader({
               {store.business.description && <a href={`/${slug}#services`} style={{ color: ARCOVA.ink, textDecoration: "none" }}>SERVICES</a>}
               {(store.contactEmail || store.contactPhone) && <a href={`/${slug}#contact`} style={{ color: ARCOVA.ink, textDecoration: "none" }}>CONTACT</a>}
               <CartLink storeSlug={slug} accent={ARCOVA.accent} onAccent="#ffffff" ink={ARCOVA.ink} />
+              <AccountLink storeSlug={slug} ink={ARCOVA.ink} />
             </nav>
           </div>
         </div>

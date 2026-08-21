@@ -1,5 +1,6 @@
 import type React from "react";
 import { CartLink } from "@/components/storefront/cart-link";
+import { AccountLink } from "@/components/storefront/account-link";
 import { NOVA, NOVA_THEME, type TemplateTheme } from "@/lib/template-themes";
 import { CategoryNav } from "@/components/storefront/category-nav";
 import type { CategoryTreeNode } from "@/lib/storefront-categories";
@@ -62,6 +63,7 @@ export function NovaHeader({
           <a href={`/${slug}/catalog`} style={{ ...label, textDecoration: "none" }}>The Collection</a>
           <a href={`/${slug}/search`} style={{ ...label, textDecoration: "none" }}>Search</a>
           <CartLink storeSlug={slug} accent={theme.accent} ink={theme.ink} />
+          <AccountLink storeSlug={slug} ink={theme.ink} />
         </div>
       </div>
 

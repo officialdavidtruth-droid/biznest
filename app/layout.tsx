@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import "./globals.css";
 import { Toaster } from "sonner";
 import { CartProvider } from "@/lib/cart-context";
+import { SessionProvider } from "@/components/providers/session-provider";
 import { auth } from "@/lib/auth";
 import { cookies, headers } from "next/headers";
 import { getMaintenanceSetting, getAnnouncementSetting } from "@/lib/actions/site-settings";
@@ -56,6 +57,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
   return (
     <html lang="en">
       <body className="min-h-screen bg-background font-sans antialiased">
+        <SessionProvider>
         <CartProvider>
           {showMaintenance ? (
             <MaintenanceScreen message={maintenance.message} />
@@ -69,6 +71,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
           )}
           <Toaster richColors position="top-center" />
         </CartProvider>
+        </SessionProvider>
       </body>
     </html>
   );

@@ -3,6 +3,7 @@ import { TrustBadge } from "@/components/storefront/trust-badge";
 import { TrustScorePanel } from "@/components/storefront/trust-score-panel";
 import type { TrustScoreChecklist } from "@/lib/actions/trust-score";
 import { CartLink } from "@/components/storefront/cart-link";
+import { AccountLink } from "@/components/storefront/account-link";
 import { RIVORA } from "@/lib/template-themes";
 import { subscribeToNewsletter } from "@/lib/actions/newsletter";
 import { CategoryNav } from "@/components/storefront/category-nav";
@@ -85,6 +86,7 @@ export function RivoraStorefront({
           <a href="#contact" style={{ color: "#d8e2dc", textDecoration: "none" }}>Contact</a>
         </nav>
         <CartLink storeSlug={slug} accent={RIVORA.lime} onAccent="#153600" ink="#fff" />
+        <AccountLink storeSlug={slug} ink="#fff" />
       </header>
 
       <CategoryNav slug={slug} categories={navCategories} accent={RIVORA.lime} ink="#fff" bg="#052d20" border="#164634" />

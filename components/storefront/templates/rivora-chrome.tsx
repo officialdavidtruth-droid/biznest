@@ -1,5 +1,6 @@
 import type React from "react";
 import { CartLink } from "@/components/storefront/cart-link";
+import { AccountLink } from "@/components/storefront/account-link";
 import { RIVORA } from "@/lib/template-themes";
 import { CategoryNav } from "@/components/storefront/category-nav";
 import type { CategoryTreeNode } from "@/lib/storefront-categories";
@@ -67,6 +68,7 @@ export function RivoraHeader({
           <a href={`/${slug}/search`} style={{ color: "#d8e2dc", textDecoration: "none" }}>Search</a>
         </nav>
         <CartLink storeSlug={slug} accent={RIVORA.lime} onAccent="#153600" ink="#fff" />
+        <AccountLink storeSlug={slug} ink="#fff" />
       </header>
 
       <CategoryNav slug={slug} categories={navCategories} accent={RIVORA.lime} ink="#fff" bg="#052d20" border="#164634" />

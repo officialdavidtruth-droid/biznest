@@ -3,6 +3,7 @@ import { TrustBadge } from "@/components/storefront/trust-badge";
 import { TrustScorePanel } from "@/components/storefront/trust-score-panel";
 import type { TrustScoreChecklist } from "@/lib/actions/trust-score";
 import { CartLink } from "@/components/storefront/cart-link";
+import { AccountLink } from "@/components/storefront/account-link";
 import { FABTEX } from "@/lib/template-themes";
 import { CategoryNav } from "@/components/storefront/category-nav";
 import { Reveal } from "@/components/storefront/reveal";
@@ -76,6 +77,7 @@ export function FabtexStorefront({
           <a href="#contact" style={{ fontSize: 10, textDecoration: "none", color: "#fff", padding: "10px 11px" }}>Contact</a>
         </nav>
         <CartLink storeSlug={slug} accent={FABTEX.orange} onAccent="#ffffff" ink="#ffffff" />
+        <AccountLink storeSlug={slug} ink="#ffffff" />
       </header>
 
       <CategoryNav slug={slug} categories={navCategories} accent={FABTEX.orange} ink="#fff" bg={FABTEX.dark} border="#343131" />

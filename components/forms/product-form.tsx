@@ -29,7 +29,7 @@ export function ProductForm({
     currency: string;
     images: string[];
     isPublished: boolean;
-    inventory: { quantity: number } | null;
+    inventory: { quantity: number; sku: string | null; barcode: string | null } | null;
     digitalFileUrl: string | null;
     rentalPeriodUnit: string | null;
   };
@@ -58,6 +58,8 @@ export function ProductForm({
       images: product?.images ?? [],
       isPublished: product?.isPublished ?? true,
       quantity: product?.inventory?.quantity ?? 0,
+      sku: product?.inventory?.sku ?? "",
+      barcode: product?.inventory?.barcode ?? "",
       digitalFileUrl: product?.digitalFileUrl ?? "",
       rentalPeriodUnit: (product?.rentalPeriodUnit as ProductInput["rentalPeriodUnit"]) ?? undefined,
     },
@@ -152,9 +154,34 @@ export function ProductForm({
       </div>
 
       {productType === "PHYSICAL" && (
-        <div>
-          <label className="mb-1 block text-sm font-medium">Quantity in stock</label>
-          <input type="number" className="input max-w-32" {...register("quantity")} />
+        <div className="grid grid-cols-3 gap-4">
+          <div>
+            <label className="mb-1 block text-sm font-medium">Quantity in stock</label>
+            <input type="number" className="input" {...register("quantity")} />
+          </div>
+          <div>
+            <label className="mb-1 block text-sm font-medium">SKU</label>
+            <input className="input font-mono text-sm" placeholder="Optional" {...register("sku")} />
+            {errors.sku && <p className="mt-1 text-xs text-destructive">{errors.sku.message}</p>}
+          </div>
+          <div>
+            <label className="mb-1 block text-sm font-medium">Barcode</label>
+            <div className="flex gap-1">
+              <input className="input font-mono text-sm" placeholder="Scan or type" {...register("barcode")} />
+              <button
+                type="button"
+                title="Generate a barcode"
+                onClick={() => {
+                  const candidate = Array.from({ length: 12 }, () => Math.floor(Math.random() * 10)).join("");
+                  setValue("barcode", candidate);
+                }}
+                className="shrink-0 rounded-md border px-2 text-xs text-muted-foreground hover:bg-muted"
+              >
+                Generate
+              </button>
+            </div>
+            {errors.barcode && <p className="mt-1 text-xs text-destructive">{errors.barcode.message}</p>}
+          </div>
         </div>
       )}
 
