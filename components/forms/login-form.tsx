@@ -39,7 +39,7 @@ export function LoginForm({
   async function onSubmit(values: LoginInput) {
     setIsSubmitting(true);
     try {
-      const result = await signIn("credentials", { ...values, redirect: false });
+      const result = await signIn("credentials", { ...values, storeSlug, redirect: false });
 
       // NextAuth v5 (beta) has changed which field carries a custom
       // CredentialsSignin `code` across versions — some betas put it on
@@ -57,6 +57,9 @@ export function LoginForm({
           ACCOUNT_LOCKED: "Too many failed attempts. Try again in 15 minutes.",
           ACCOUNT_BANNED: "This account has been suspended. Contact support.",
           DB_UNAVAILABLE: "Couldn't reach the database. Check DATABASE_URL in Vercel's project settings.",
+          STORE_ACCOUNT_NOT_FOUND: isStoreContext
+            ? "We couldn't find an account with this store. Please sign up first."
+            : "Invalid email or password.",
         };
         toast.error(messages[errorCode] ?? "Invalid email or password.");
         return;

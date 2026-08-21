@@ -68,6 +68,7 @@ model User {
 
   // --- Customer account system (additive) ---
   addresses         Address[]
+  storeMemberships  StoreCustomer[]
   wishlistItems     WishlistItem[]
   recentlyViewed    RecentlyViewed[]
   favoriteBusinesses FavoriteBusiness[]
@@ -147,6 +148,25 @@ model SavedCart {
   updatedAt DateTime @updatedAt
 
   @@unique([userId, storeId])
+}
+
+// A customer's account is scoped to the one store they signed up through —
+// signing up with Store A does not grant sign-in access to Store B. This
+// is separate from StoreStaff (which is store-scoped employment) and from
+// User.role (a platform-level role like STORE_OWNER) -- this table is the
+// one source of truth for "is this person actually a customer of this
+// specific store", and lib/auth.ts's Credentials authorize() checks it on
+// every store-context login.
+model StoreCustomer {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  storeId   String
+  store     Store    @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+
+  @@unique([userId, storeId])
+  @@index([storeId])
 }
 
 // Auth.js required models
@@ -432,6 +452,7 @@ model Store {
   payments      Payment[]
   visits        StoreVisit[]
   savedCarts    SavedCart[]
+  customers     StoreCustomer[]
   staffMembers  StoreStaff[]
   activityLogs  StoreActivityLog[]
 

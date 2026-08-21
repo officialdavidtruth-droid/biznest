@@ -28,6 +28,14 @@ class AccountLockedError extends CredentialsSignin {
 class AccountBannedError extends CredentialsSignin {
   code = "ACCOUNT_BANNED";
 }
+// Thrown when a customer who has an account, but never signed up for
+// *this* store, tries to log in on this store's branded login page.
+// Staff logins (staffLogin branch below) and any account with no store
+// context at all are unaffected -- this only gates CUSTOMER logins that
+// are happening with a store slug attached.
+class StoreAccountNotFoundError extends CredentialsSignin {
+  code = "STORE_ACCOUNT_NOT_FOUND";
+}
 
 // If the database call inside authorize() hangs (e.g. DATABASE_URL pointing
 // at an unreachable or misconfigured connection), the whole sign-in request
@@ -165,6 +173,23 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         if (user.isBanned) {
           void logWarn("AUTH", "Login attempt on banned account", { userId: user.id });
           throw new AccountBannedError();
+        }
+
+        // Store-scoped customer check: only applies to a plain customer
+        // login happening in a specific store's context (login-form.tsx
+        // sends storeSlug whenever the page was reached via ?store=...).
+        // Staff (staffLogin already resolved above via their own
+        // store-scoped lookup) and logins with no store context at all
+        // are unaffected.
+        const storeSlug = typeof credentials?.storeSlug === "string" ? credentials.storeSlug : undefined;
+        if (storeSlug && !staffLogin && user.role === "CUSTOMER") {
+          const membership = await prisma.storeCustomer.findFirst({
+            where: { userId: user.id, store: { slug: storeSlug } },
+          });
+          if (!membership) {
+            void logWarn("AUTH", "Customer login attempt outside their store", { userId: user.id, storeSlug });
+            throw new StoreAccountNotFoundError();
+          }
         }
 
         // TEMPORARILY DISABLED: email verification is required in principle,

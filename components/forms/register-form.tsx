@@ -32,7 +32,7 @@ export function RegisterForm({
 
   async function onSubmit(values: RegisterInput) {
     setIsSubmitting(true);
-    const result = await registerUser(values);
+    const result = await registerUser(values, storeSlug);
     setIsSubmitting(false);
 
     if (!result.success) {

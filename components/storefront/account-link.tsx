@@ -31,8 +31,14 @@ export function AccountLink({
 
   if (status === "authenticated" && session?.user) {
     return (
+      // "My orders" is deliberately platform-level (/orders), not
+      // /${storeSlug}/orders — there is no such store-scoped page (only
+      // /store/[slug]/orders/[orderId]/confirmation exists), and a
+      // customer account is a shared BizNest account anyway, so its order
+      // history spans every store, not just this one. Linking into the
+      // store-scoped path was a dead link (404).
       <Link
-        href={`/${storeSlug}/orders`}
+        href="/orders"
         className="flex items-center"
         aria-label="My account"
         title="My orders"

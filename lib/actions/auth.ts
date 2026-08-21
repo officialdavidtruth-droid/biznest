@@ -11,7 +11,8 @@ import { emitPlatformWebhookEvent } from "@/lib/webhooks/dispatch";
 import type { ActionResult } from "@/types/actions";
 
 export async function registerUser(
-  input: RegisterInput
+  input: RegisterInput,
+  storeSlug?: string
 ): Promise<ActionResult<{ userId: string }>> {
   const ip = getClientIp(await headers());
 
@@ -55,6 +56,17 @@ export async function registerUser(
       role: "CUSTOMER", // upgraded to STORE_OWNER once business verification is approved
     },
   });
+
+  // Signing up "through" a store (arrived via that store's AccountLink)
+  // makes this a customer account for that store specifically -- it does
+  // NOT grant sign-in access to any other store. See lib/auth.ts's
+  // authorize(), which checks this table on every store-context login.
+  if (storeSlug) {
+    const store = await prisma.store.findUnique({ where: { slug: storeSlug }, select: { id: true } });
+    if (store) {
+      await prisma.storeCustomer.create({ data: { userId: user.id, storeId: store.id } });
+    }
+  }
 
   const token = nanoid(32);
   await prisma.verificationToken.create({
