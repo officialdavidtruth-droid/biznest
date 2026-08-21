@@ -5,11 +5,14 @@
 -- dedupe guard in startCheckout (lib/actions/order.ts).
 
 -- AlterTable
-ALTER TABLE "Order" ADD COLUMN "idempotencyKey" TEXT;
-ALTER TABLE "Order" ADD COLUMN "checkoutUrl" TEXT;
+-- IF NOT EXISTS: a prior deploy attempt may have partially applied this
+-- migration (added the columns, then failed before recording success),
+-- so re-running must not error on columns/index that already exist.
+ALTER TABLE "Order" ADD COLUMN IF NOT EXISTS "idempotencyKey" TEXT;
+ALTER TABLE "Order" ADD COLUMN IF NOT EXISTS "checkoutUrl" TEXT;
 
 -- CreateIndex
 -- Nullable+unique: Postgres allows multiple NULLs in a unique index, so
 -- every non-storefront-checkout Order (POS sales, etc) simply leaves this
 -- null without conflicting with any other order.
-CREATE UNIQUE INDEX "Order_idempotencyKey_key" ON "Order"("idempotencyKey");
+CREATE UNIQUE INDEX IF NOT EXISTS "Order_idempotencyKey_key" ON "Order"("idempotencyKey");

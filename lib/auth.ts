@@ -78,12 +78,12 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         // that and needs to stay even after every account is normalized,
         // since email is meant to be case-insensitive by convention anyway.
         // Staff can sign in two ways: with their own email (handled below,
-        // same as everyone else), or with "<Position>@<store-slug>" — the
-        // login the owner gives them, matching whatever title the owner
-        // put on the invite (e.g. "Cashier@velox-space"). Both resolve to
-        // the same underlying User account and passwordHash; this just
-        // finds that account a different way when the identifier isn't a
-        // real email. staffLogin stays null for a normal email sign-in.
+        // same as everyone else), or with "<username>@<store-slug>" — the
+        // login handle the owner set when inviting them (e.g.
+        // "amaka@velox-space"). Both resolve to the same underlying User
+        // account and passwordHash; this just finds that account a
+        // different way when the identifier isn't a real email.
+        // staffLogin stays null for a normal email sign-in.
         let staffLogin: { storeSlug: string; storeName: string; position: string } | null = null;
         let user;
         try {
@@ -94,14 +94,20 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           if (!user) {
             const atIndex = parsed.data.email.lastIndexOf("@");
             if (atIndex > 0) {
-              const position = parsed.data.email.slice(0, atIndex);
+              const handle = parsed.data.email.slice(0, atIndex);
               const storeSlug = parsed.data.email.slice(atIndex + 1).toLowerCase();
 
               const staff = await withTimeout(
                 prisma.storeStaff.findFirst({
                   where: {
                     status: "ACTIVE",
-                    position: { equals: position, mode: "insensitive" },
+                    OR: [
+                      { username: { equals: handle, mode: "insensitive" } },
+                      // Older invites (created before admin-set usernames)
+                      // only have a position -- keep matching those too so
+                      // existing staff logins don't break.
+                      { username: null, position: { equals: handle, mode: "insensitive" } },
+                    ],
                     store: { slug: storeSlug },
                   },
                   include: { user: true, store: { select: { slug: true, name: true } } },

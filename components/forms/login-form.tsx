@@ -92,7 +92,7 @@ export function LoginForm() {
           <label className="mb-1 block text-sm font-medium">Email, or Position@store</label>
           <input
             type="text"
-            placeholder="you@example.com or Cashier@velox-space"
+            placeholder="you@example.com or amaka@yourstorename"
             autoCapitalize="none"
             className="w-full rounded-md border px-3 py-2 text-sm"
             {...register("email")}

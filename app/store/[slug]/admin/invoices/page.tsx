@@ -1,6 +1,7 @@
 import { listInvoices } from "@/lib/actions/invoice";
 import { InvoiceForm } from "@/components/dashboard/invoice-form";
 import { InvoiceRowActions } from "@/components/dashboard/invoice-row-actions";
+import { prisma } from "@/lib/prisma";
 
 const STATUS_STYLES: Record<string, string> = {
   DRAFT: "bg-gray-200 text-gray-700",
@@ -12,12 +13,20 @@ const STATUS_STYLES: Record<string, string> = {
 export default async function InvoicesPage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
   const invoices = await listInvoices(slug);
+  // Any product's currency reflects the store's billing currency (they all
+  // share one -- see Product.currency default) -- fall back to NGN for a
+  // brand-new store with no products yet.
+  const sampleProduct = await prisma.product.findFirst({
+    where: { store: { slug } },
+    select: { currency: true },
+  });
+  const currency = sampleProduct?.currency ?? "NGN";
 
   return (
     <div>
       <h1 className="mb-6 text-xl font-semibold">Invoices</h1>
 
-      <InvoiceForm storeSlug={slug} />
+      <InvoiceForm storeSlug={slug} currency={currency} />
 
       <div className="overflow-hidden rounded-lg border bg-background">
         <table className="w-full text-sm">

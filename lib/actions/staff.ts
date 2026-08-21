@@ -3,6 +3,7 @@
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { nanoid } from "nanoid";
+import bcrypt from "bcryptjs";
 import { sendStaffInviteEmail } from "@/lib/email/send";
 import { canManageBillingAndStaff, getStoreAccessRole } from "@/lib/access/store-access";
 import { notifyUser } from "@/lib/notifications/notify";
@@ -22,11 +23,13 @@ async function requireOwner(slug: string, userId: string, userRole: string) {
 
 export async function inviteStaffMember(
   slug: string,
-  email: string,
+  username: string,
+  password: string,
   role: "MANAGER" | "STAFF",
   name: string,
   position: string,
-  permissions: string[]
+  permissions: string[],
+  email?: string
 ): Promise<ActionResult<void>> {
   const session = await auth();
   if (!session?.user?.id) return { success: false, error: "You must be signed in." };
@@ -34,18 +37,32 @@ export async function inviteStaffMember(
   const { store, error } = await requireOwner(slug, session.user.id, session.user.role);
   if (!store) return { success: false, error: error! };
 
-  const normalizedEmail = email.trim().toLowerCase();
-  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalizedEmail)) {
-    return { success: false, error: "Enter a valid email address." };
-  }
-  if (normalizedEmail === session.user.email?.toLowerCase()) {
-    return { success: false, error: "You're already the owner of this store." };
-  }
-
   const trimmedName = name.trim();
   if (!trimmedName) return { success: false, error: "Enter the staff member's name." };
   const trimmedPosition = position.trim();
   if (!trimmedPosition) return { success: false, error: "Enter the staff member's position." };
+
+  // Login handle: letters, numbers, dots, underscores, hyphens only —
+  // it becomes "username@store-slug" at sign-in, so keep it free of
+  // spaces/@ so it can't be confused with a real email address.
+  const normalizedUsername = username.trim().toLowerCase();
+  if (!/^[a-z0-9._-]{3,32}$/.test(normalizedUsername)) {
+    return {
+      success: false,
+      error: "Username must be 3-32 characters: letters, numbers, dots, underscores, or hyphens only.",
+    };
+  }
+  if (password.length < 8) {
+    return { success: false, error: "Password must be at least 8 characters." };
+  }
+
+  const normalizedEmail = email?.trim().toLowerCase() || undefined;
+  if (normalizedEmail && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalizedEmail)) {
+    return { success: false, error: "Enter a valid email address, or leave it blank." };
+  }
+  if (normalizedEmail && normalizedEmail === session.user.email?.toLowerCase()) {
+    return { success: false, error: "You're already the owner of this store." };
+  }
 
   const validPermissions = permissions.filter((p) => STAFF_PERMISSION_IDS.includes(p as (typeof STAFF_PERMISSION_IDS)[number]));
   if (validPermissions.length === 0) {
@@ -59,64 +76,80 @@ export async function inviteStaffMember(
     return { success: false, error: `You've reached the ${MAX_STAFF_PER_STORE}-staff limit for one store.` };
   }
 
-  const existing = await prisma.storeStaff.findUnique({
-    where: { storeId_invitedEmail: { storeId: store.id, invitedEmail: normalizedEmail } },
+  const usernameClash = await prisma.storeStaff.findFirst({
+    where: { storeId: store.id, username: { equals: normalizedUsername, mode: "insensitive" } },
   });
-  if (existing?.status === "ACTIVE") {
-    return { success: false, error: "This person already has access to your store." };
+  if (usernameClash) {
+    return { success: false, error: "That username is already taken at this store — pick another." };
   }
 
+  // The User table requires a real, globally-unique, non-null email.
+  // Staff sign in with username@store-slug regardless (see lib/auth.ts),
+  // so a real email is optional here -- fall back to an internal
+  // placeholder that can never collide with a real address or another
+  // store's staff.
+  const userEmail = normalizedEmail ?? `${normalizedUsername}.${store.slug}.staff@internal.biznest`;
+  const passwordHash = await bcrypt.hash(password, 12);
   const token = nanoid(32);
-  if (existing) {
-    await prisma.storeStaff.update({
-      where: { id: existing.id },
-      data: {
-        role,
-        invitedName: trimmedName,
-        position: trimmedPosition,
-        permissions: validPermissions,
-        status: "PENDING",
-        inviteToken: token,
-        invitedByUserId: session.user.id,
-        invitedAt: new Date(),
-        acceptedAt: null,
-      },
-    });
-  } else {
-    await prisma.storeStaff.create({
-      data: {
-        storeId: store.id,
-        invitedEmail: normalizedEmail,
-        invitedName: trimmedName,
-        position: trimmedPosition,
-        permissions: validPermissions,
-        role,
-        inviteToken: token,
-        invitedByUserId: session.user.id,
-      },
-    });
-  }
 
-  try {
-    await sendStaffInviteEmail(
-      normalizedEmail,
-      token,
-      store.name,
-      session.user.name ?? "The store owner",
+  const staffUser = await prisma.user.create({
+    data: {
+      name: trimmedName,
+      email: userEmail,
+      passwordHash,
+      // Dashboard access for this account comes from the StoreStaff row's
+      // role/permissions (see getStoreAccessRole), not from User.role --
+      // CUSTOMER is just the harmless default for a non-owner account.
+      role: "CUSTOMER",
+    },
+  });
+
+  await prisma.storeStaff.create({
+    data: {
+      storeId: store.id,
+      invitedEmail: normalizedEmail,
+      invitedName: trimmedName,
+      position: trimmedPosition,
+      username: normalizedUsername,
+      permissions: validPermissions,
       role,
-      trimmedName,
-      trimmedPosition,
-      validPermissions
-    );
-  } catch {
-    return { success: false, error: "Invite saved, but the email couldn't be sent. Try resending it." };
+      inviteToken: token,
+      invitedByUserId: session.user.id,
+      userId: staffUser.id,
+      status: "ACTIVE",
+      acceptedAt: new Date(),
+    },
+  });
+
+  if (normalizedEmail) {
+    try {
+      await sendStaffInviteEmail(
+        normalizedEmail,
+        store.name,
+        session.user.name ?? "The store owner",
+        role,
+        trimmedName,
+        trimmedPosition,
+        validPermissions,
+        normalizedUsername,
+        store.slug,
+        password
+      );
+    } catch {
+      // Account still exists and works -- just flag that the email
+      // didn't go out so the admin knows to hand over credentials another way.
+      return {
+        success: true,
+        data: undefined,
+      };
+    }
   }
 
   await logStoreActivity({
     storeId: store.id,
     actor: { id: session.user.id, name: session.user.name, email: session.user.email, role: "OWNER" },
-    action: existing ? "staff.reinvited" : "staff.invited",
-    target: normalizedEmail,
+    action: "staff.invited",
+    target: normalizedUsername,
     metadata: { role, position: trimmedPosition, permissions: validPermissions },
   });
 
@@ -127,7 +160,8 @@ export async function listStaffMembers(slug: string): Promise<
   ActionResult<
     {
       id: string;
-      email: string;
+      email: string | null;
+      username: string | null;
       role: string;
       status: string;
       invitedAt: Date;
@@ -154,6 +188,7 @@ export async function listStaffMembers(slug: string): Promise<
     data: members.map((m) => ({
       id: m.id,
       email: m.invitedEmail,
+      username: m.username,
       role: m.role,
       status: m.status,
       invitedAt: m.invitedAt,
@@ -256,10 +291,18 @@ export async function acceptStaffInvite(token: string): Promise<ActionResult<{ s
   if (invite.status === "REVOKED") return { success: false, error: "This invite has been revoked." };
   if (invite.status === "ACTIVE") return { success: false, error: "This invite has already been accepted." };
 
-  if (invite.invitedEmail.toLowerCase() !== session.user.email?.toLowerCase()) {
+  // Legacy invites only (new invites are created ACTIVE immediately via
+  // inviteStaffMember and never reach this function) -- invitedEmail is
+  // guaranteed non-null on any row that's still PENDING, since the
+  // optional-email path only exists on invites created after this switch,
+  // which are ACTIVE from the start. The null check is just to satisfy
+  // the now-nullable column type.
+  if (!invite.invitedEmail || invite.invitedEmail.toLowerCase() !== session.user.email?.toLowerCase()) {
     return {
       success: false,
-      error: `This invite was sent to ${invite.invitedEmail}. Sign in with that email to accept it.`,
+      error: invite.invitedEmail
+        ? `This invite was sent to ${invite.invitedEmail}. Sign in with that email to accept it.`
+        : "This invite can no longer be accepted this way.",
     };
   }
 

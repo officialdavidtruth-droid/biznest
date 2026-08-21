@@ -21,6 +21,15 @@ export default async function AcceptStaffInvitePage({
     return <InviteMessage title="Already accepted" body="This invite has already been used." />;
   }
 
+  if (!invite.invitedEmail) {
+    return (
+      <InviteMessage
+        title="This invite link is outdated"
+        body="This invite was created before staff accounts got login credentials directly. Ask the store owner to remove and re-invite you."
+      />
+    );
+  }
+
   const callbackUrl = `/staff/accept?token=${token}`;
 
   // Whether the invited email already has a BizNest account. Used both when

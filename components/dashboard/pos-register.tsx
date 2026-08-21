@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { Search, Barcode, Minus, Plus, Trash2, X, ShoppingBag } from "lucide-react";
@@ -31,6 +31,7 @@ export function PosRegister({
   const router = useRouter();
   const [query, setQuery] = useState("");
   const [barcode, setBarcode] = useState("");
+  const barcodeInputRef = useRef<HTMLInputElement>(null);
   const [pickingVariantsFor, setPickingVariantsFor] = useState<string | null>(null);
   const [cart, setCart] = useState<CartLine[]>([]);
   const [tenderType, setTenderType] = useState<(typeof posTenderTypes)[number]>("Cash");
@@ -122,6 +123,24 @@ export function PosRegister({
     setCart((prev) => prev.filter((l) => l.key !== key));
   }
 
+  // A USB/Bluetooth barcode scanner just types digits + Enter into whatever
+  // element currently has focus -- it has no idea a "scan barcode" field
+  // exists. Focus it on load, and refocus it any time the cashier clicks
+  // something else on the register (a product tile, a qty button, etc.)
+  // that isn't itself a text field, so the very next scan always lands
+  // in the right place without the cashier having to click into it first.
+  useEffect(() => {
+    barcodeInputRef.current?.focus();
+  }, []);
+
+  function refocusBarcodeUnlessTyping(e: React.MouseEvent) {
+    const target = e.target as HTMLElement;
+    const isTextField = target.tagName === "INPUT" || target.tagName === "TEXTAREA" || target.isContentEditable;
+    if (!isTextField) {
+      setTimeout(() => barcodeInputRef.current?.focus(), 0);
+    }
+  }
+
   async function handleBarcodeSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!barcode.trim()) return;
@@ -129,6 +148,7 @@ export function PosRegister({
     const result = await lookupPosBarcode(slug, barcode.trim());
     setLookingUpBarcode(false);
     setBarcode("");
+    barcodeInputRef.current?.focus();
     if (!result.success) return toast.error(result.error);
     addLine({
       key: result.variantId ? `variant:${result.variantId}` : `product:${result.productId}`,
@@ -169,7 +189,10 @@ export function PosRegister({
   }
 
   return (
-    <div className="grid flex-1 grid-cols-1 gap-4 overflow-hidden lg:grid-cols-[1fr_360px]">
+    <div
+      className="grid flex-1 grid-cols-1 gap-4 overflow-hidden lg:grid-cols-[1fr_360px]"
+      onClickCapture={refocusBarcodeUnlessTyping}
+    >
       {/* Catalog */}
       <div className="flex flex-col overflow-hidden">
         <div className="mb-3 flex gap-2">
@@ -185,9 +208,11 @@ export function PosRegister({
           <form onSubmit={handleBarcodeSubmit} className="relative w-40 shrink-0">
             <Barcode className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
             <input
+              ref={barcodeInputRef}
               value={barcode}
               onChange={(e) => setBarcode(e.target.value)}
               placeholder="Scan barcode"
+              autoFocus
               disabled={lookingUpBarcode}
               className="w-full rounded-lg border bg-background py-2 pl-9 pr-3 text-sm outline-none focus:ring-2 focus:ring-primary/40"
             />

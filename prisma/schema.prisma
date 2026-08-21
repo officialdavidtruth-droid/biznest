@@ -468,9 +468,14 @@ model StoreStaff {
   storeId       String
   store         Store              @relation(fields: [storeId], references: [id], onDelete: Cascade)
 
-  invitedEmail  String
+  invitedEmail  String?
   invitedName   String?
   position      String?
+  // Login handle the admin sets directly at invite time (paired with
+  // store slug: username@store-slug — see the Credentials authorize()
+  // block in lib/auth.ts). Distinct from `position` so two staff can
+  // share a job title ("Cashier") without colliding on login.
+  username      String?
   permissions   String[]           @default([])
   userId        String?
   user          User?              @relation(fields: [userId], references: [id], onDelete: SetNull)
@@ -484,6 +489,7 @@ model StoreStaff {
   acceptedAt    DateTime?
 
   @@unique([storeId, invitedEmail])
+  @@unique([storeId, username])
   @@index([userId])
   @@index([inviteToken])
 }

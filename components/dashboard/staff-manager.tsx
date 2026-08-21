@@ -7,7 +7,8 @@ import { STAFF_PERMISSIONS, labelForPermission } from "@/lib/access/staff-permis
 
 type Member = {
   id: string;
-  email: string;
+  email: string | null;
+  username: string | null;
   role: string;
   status: string;
   invitedAt: Date;
@@ -20,6 +21,8 @@ export function StaffManager({ slug, initialMembers }: { slug: string; initialMe
   const [members, setMembers] = useState(initialMembers);
   const [name, setName] = useState("");
   const [position, setPosition] = useState("");
+  const [username, setUsername] = useState("");
+  const [password, setPassword] = useState("");
   const [email, setEmail] = useState("");
   const [role, setRole] = useState<"MANAGER" | "STAFF">("STAFF");
   const [permissions, setPermissions] = useState<string[]>([]);
@@ -37,24 +40,35 @@ export function StaffManager({ slug, initialMembers }: { slug: string; initialMe
   }
 
   async function handleInvite() {
-    if (!name.trim() || !position.trim() || !email.trim() || permissions.length === 0) return;
+    if (!name.trim() || !position.trim() || !username.trim() || password.length < 8 || permissions.length === 0) return;
     setInviting(true);
-    const result = await inviteStaffMember(slug, email.trim(), role, name.trim(), position.trim(), permissions);
+    const result = await inviteStaffMember(
+      slug,
+      username.trim(),
+      password,
+      role,
+      name.trim(),
+      position.trim(),
+      permissions,
+      email.trim() || undefined
+    );
     setInviting(false);
     if (!result.success) {
       toast.error(result.error);
       return;
     }
-    toast.success(`Invite sent to ${email.trim()}`);
+    toast.success(`Account created for ${username.trim()}@${slug}.`);
     setName("");
     setPosition("");
+    setUsername("");
+    setPassword("");
     setEmail("");
     setPermissions([]);
     await refresh();
   }
 
-  async function handleRevoke(id: string, memberEmail: string) {
-    if (!confirm(`Remove ${memberEmail}'s access?`)) return;
+  async function handleRevoke(id: string, memberLabel: string) {
+    if (!confirm(`Remove ${memberLabel}'s access?`)) return;
     const result = await revokeStaffMember(slug, id);
     if (!result.success) {
       toast.error(result.error);
@@ -64,11 +78,41 @@ export function StaffManager({ slug, initialMembers }: { slug: string; initialMe
     await refresh();
   }
 
-  const canSubmit = name.trim() && position.trim() && email.trim() && permissions.length > 0 && !inviting;
+  const canSubmit =
+    name.trim() && position.trim() && username.trim() && password.length >= 8 && permissions.length > 0 && !inviting;
 
   return (
     <div className="mt-6 space-y-6">
       <div className="space-y-4 rounded-lg border border-border p-4">
+        <div className="grid gap-3 sm:grid-cols-2">
+          <div>
+            <label className="text-xs font-medium text-muted-foreground">Username</label>
+            <div className="mt-1 flex items-center gap-1">
+              <input
+                value={username}
+                onChange={(e) => setUsername(e.target.value)}
+                placeholder="e.g. amaka"
+                className="w-full rounded border border-border bg-background p-2 text-sm"
+              />
+              <span className="shrink-0 text-xs text-muted-foreground">@{slug}</span>
+            </div>
+            <p className="mt-1 text-[11px] text-muted-foreground">This is what they'll sign in with.</p>
+          </div>
+          <div>
+            <label className="text-xs font-medium text-muted-foreground">Password</label>
+            <input
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              type="text"
+              placeholder="At least 8 characters"
+              className="mt-1 w-full rounded border border-border bg-background p-2 text-sm"
+            />
+            {password.length > 0 && password.length < 8 && (
+              <p className="mt-1 text-[11px] text-destructive">At least 8 characters.</p>
+            )}
+          </div>
+        </div>
+
         <div className="grid gap-3 sm:grid-cols-2">
           <div>
             <label className="text-xs font-medium text-muted-foreground">Staff member's name</label>
@@ -92,11 +136,11 @@ export function StaffManager({ slug, initialMembers }: { slug: string; initialMe
 
         <div className="grid gap-3 sm:grid-cols-[1fr_140px]">
           <div>
-            <label className="text-xs font-medium text-muted-foreground">Email address</label>
+            <label className="text-xs font-medium text-muted-foreground">Email (optional)</label>
             <input
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              placeholder="employee@example.com"
+              placeholder="employee@example.com — for the login email, if they have one"
               className="mt-1 w-full rounded border border-border bg-background p-2 text-sm"
             />
           </div>
@@ -142,7 +186,7 @@ export function StaffManager({ slug, initialMembers }: { slug: string; initialMe
           disabled={!canSubmit}
           className="rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground disabled:opacity-60"
         >
-          {inviting ? "Sending…" : "Send invite"}
+          {inviting ? "Creating account…" : "Create staff account"}
         </button>
       </div>
 
@@ -157,13 +201,13 @@ export function StaffManager({ slug, initialMembers }: { slug: string; initialMe
                 <div className="flex items-center justify-between gap-3">
                   <div className="min-w-0">
                     <p className="truncate font-medium">
-                      {m.name ?? m.email}
+                      {m.name ?? m.username ?? m.email}
                       {m.position ? (
                         <span className="font-normal text-muted-foreground"> · {m.position}</span>
                       ) : null}
                     </p>
                     <p className="truncate text-xs text-muted-foreground">
-                      {m.email} · {m.role === "MANAGER" ? "Manager" : "Staff"} ·{" "}
+                      {m.username ? `${m.username}@${slug}` : m.email} · {m.role === "MANAGER" ? "Manager" : "Staff"} ·{" "}
                       <span
                         className={
                           m.status === "ACTIVE"
@@ -191,7 +235,7 @@ export function StaffManager({ slug, initialMembers }: { slug: string; initialMe
                         {editingId === m.id ? "Cancel" : "Edit access"}
                       </button>
                       <button
-                        onClick={() => handleRevoke(m.id, m.email)}
+                        onClick={() => handleRevoke(m.id, m.username ? `${m.username}@${slug}` : (m.email ?? m.name ?? "this person"))}
                         className="text-xs font-medium text-destructive hover:underline"
                       >
                         Remove

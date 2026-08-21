@@ -6,23 +6,34 @@ import { toast } from "sonner";
 import { Plus, Trash2 } from "lucide-react";
 import { createInvoice, type InvoiceLineInput } from "@/lib/actions/invoice";
 
-const EMPTY_ITEM: InvoiceLineInput = { description: "", quantity: 1, unitPrice: 0 };
+// Line items are edited as strings so the field can sit empty mid-edit
+// (typing over "0", deleting to clear it) without React snapping it back
+// to "0" on every keystroke. Parsed to a number only at submit time.
+type DraftItem = { description: string; quantity: string; unitPrice: string };
+const EMPTY_ITEM: DraftItem = { description: "", quantity: "1", unitPrice: "" };
 
-export function InvoiceForm({ storeSlug }: { storeSlug: string }) {
+// Same empty-field problem applies to Tax/Discount/Delivery fee, so those
+// are strings too; parseMoney below is the single place "" becomes 0.
+function parseMoney(raw: string): number {
+  const n = Number(raw);
+  return Number.isFinite(n) ? n : 0;
+}
+
+export function InvoiceForm({ storeSlug, currency = "NGN" }: { storeSlug: string; currency?: string }) {
   const router = useRouter();
   const [customerName, setCustomerName] = useState("");
   const [customerEmail, setCustomerEmail] = useState("");
   const [customerPhone, setCustomerPhone] = useState("");
-  const [tax, setTax] = useState(0);
-  const [discount, setDiscount] = useState(0);
-  const [deliveryFee, setDeliveryFee] = useState(0);
-  const [items, setItems] = useState<InvoiceLineInput[]>([{ ...EMPTY_ITEM }]);
+  const [tax, setTax] = useState("");
+  const [discount, setDiscount] = useState("");
+  const [deliveryFee, setDeliveryFee] = useState("");
+  const [items, setItems] = useState<DraftItem[]>([{ ...EMPTY_ITEM }]);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const subtotal = items.reduce((sum, i) => sum + i.quantity * i.unitPrice, 0);
-  const total = subtotal + tax - discount + deliveryFee;
+  const subtotal = items.reduce((sum, i) => sum + parseMoney(i.quantity) * parseMoney(i.unitPrice), 0);
+  const total = subtotal + parseMoney(tax) - parseMoney(discount) + parseMoney(deliveryFee);
 
-  function updateItem(index: number, patch: Partial<InvoiceLineInput>) {
+  function updateItem(index: number, patch: Partial<DraftItem>) {
     setItems((prev) => prev.map((item, i) => (i === index ? { ...item, ...patch } : item)));
   }
 
@@ -35,15 +46,25 @@ export function InvoiceForm({ storeSlug }: { storeSlug: string }) {
   }
 
   async function handleSubmit() {
+    const parsedItems: InvoiceLineInput[] = items.map((i) => ({
+      description: i.description,
+      quantity: parseMoney(i.quantity) || 1,
+      unitPrice: parseMoney(i.unitPrice),
+    }));
+    if (parsedItems.some((i) => !i.description.trim())) {
+      toast.error("Every line item needs a description.");
+      return;
+    }
+
     setIsSubmitting(true);
     const result = await createInvoice(storeSlug, {
       customerName: customerName || undefined,
       customerEmail: customerEmail || undefined,
       customerPhone: customerPhone || undefined,
-      items,
-      tax,
-      discount,
-      deliveryFee,
+      items: parsedItems,
+      tax: parseMoney(tax),
+      discount: parseMoney(discount),
+      deliveryFee: parseMoney(deliveryFee),
     });
     setIsSubmitting(false);
 
@@ -55,9 +76,9 @@ export function InvoiceForm({ storeSlug }: { storeSlug: string }) {
     setCustomerName("");
     setCustomerEmail("");
     setCustomerPhone("");
-    setTax(0);
-    setDiscount(0);
-    setDeliveryFee(0);
+    setTax("");
+    setDiscount("");
+    setDeliveryFee("");
     setItems([{ ...EMPTY_ITEM }]);
     router.refresh();
   }
@@ -89,29 +110,41 @@ export function InvoiceForm({ storeSlug }: { storeSlug: string }) {
       </div>
 
       <div className="mb-3 space-y-2">
+        <div className="grid grid-cols-[1fr_80px_110px_28px] gap-2 px-0.5 text-[11px] font-medium text-muted-foreground">
+          <span>Description</span>
+          <span>Qty</span>
+          <span>Unit price ({currency})</span>
+          <span />
+        </div>
         {items.map((item, index) => (
           <div key={index} className="grid grid-cols-[1fr_80px_110px_28px] items-center gap-2">
             <input
               value={item.description}
               onChange={(e) => updateItem(index, { description: e.target.value })}
-              placeholder="Description"
+              placeholder="e.g. Blue T-shirt (Large)"
               className="rounded-md border px-3 py-1.5 text-sm"
             />
             <input
               type="number"
               min="1"
               value={item.quantity}
-              onChange={(e) => updateItem(index, { quantity: Number(e.target.value) })}
+              onChange={(e) => updateItem(index, { quantity: e.target.value })}
+              placeholder="1"
               className="rounded-md border px-3 py-1.5 text-sm"
             />
-            <input
-              type="number"
-              min="0"
-              value={item.unitPrice}
-              onChange={(e) => updateItem(index, { unitPrice: Number(e.target.value) })}
-              placeholder="Unit price"
-              className="rounded-md border px-3 py-1.5 text-sm"
-            />
+            <div className="relative">
+              <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">
+                {currency}
+              </span>
+              <input
+                type="number"
+                min="0"
+                value={item.unitPrice}
+                onChange={(e) => updateItem(index, { unitPrice: e.target.value })}
+                placeholder="0.00"
+                className="w-full rounded-md border py-1.5 pl-11 pr-3 text-sm"
+              />
+            </div>
             <button
               type="button"
               onClick={() => removeItem(index)}
@@ -133,32 +166,35 @@ export function InvoiceForm({ storeSlug }: { storeSlug: string }) {
 
       <div className="mb-4 grid grid-cols-3 gap-3 sm:w-1/2">
         <label className="text-xs text-muted-foreground">
-          Tax
+          Tax ({currency})
           <input
             type="number"
             min="0"
             value={tax}
-            onChange={(e) => setTax(Number(e.target.value))}
+            onChange={(e) => setTax(e.target.value)}
+            placeholder="0"
             className="mt-1 w-full rounded-md border px-3 py-1.5 text-sm"
           />
         </label>
         <label className="text-xs text-muted-foreground">
-          Discount
+          Discount ({currency})
           <input
             type="number"
             min="0"
             value={discount}
-            onChange={(e) => setDiscount(Number(e.target.value))}
+            onChange={(e) => setDiscount(e.target.value)}
+            placeholder="0"
             className="mt-1 w-full rounded-md border px-3 py-1.5 text-sm"
           />
         </label>
         <label className="text-xs text-muted-foreground">
-          Delivery fee
+          Delivery fee ({currency})
           <input
             type="number"
             min="0"
             value={deliveryFee}
-            onChange={(e) => setDeliveryFee(Number(e.target.value))}
+            onChange={(e) => setDeliveryFee(e.target.value)}
+            placeholder="0"
             className="mt-1 w-full rounded-md border px-3 py-1.5 text-sm"
           />
         </label>
@@ -166,7 +202,7 @@ export function InvoiceForm({ storeSlug }: { storeSlug: string }) {
 
       <div className="flex items-center justify-between">
         <p className="text-sm">
-          Total: <strong>{total.toLocaleString()}</strong>
+          Total: <strong>{currency} {total.toLocaleString()}</strong>
         </p>
         <button
           onClick={handleSubmit}

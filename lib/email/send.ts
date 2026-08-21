@@ -109,16 +109,19 @@ function emailShell(opts: { preheader?: string; body: string; footer: string }) 
 
 export async function sendStaffInviteEmail(
   email: string,
-  token: string,
   storeName: string,
   inviterName: string,
   role: "MANAGER" | "STAFF",
   staffName: string,
   position: string,
-  permissions: string[]
+  permissions: string[],
+  username: string,
+  storeSlug: string,
+  password: string
 ) {
   const { labelForPermission } = await import("@/lib/access/staff-permissions");
-  const url = `${APP_URL}/staff/accept?token=${token}`;
+  const loginUrl = `${APP_URL}/login`;
+  const loginHandle = `${username}@${storeSlug}`;
   const roleLabel = role === "MANAGER" ? "Manager" : "Staff member";
   const permissionsList = permissions
     .map(
@@ -131,13 +134,36 @@ export async function sendStaffInviteEmail(
     .join("");
 
   const html = emailShell({
-    preheader: `${inviterName} invited you to join ${storeName} on BizNest`,
+    preheader: `${inviterName} added you to ${storeName} on BizNest`,
     body: `
       <p style="margin:0 0 16px;color:#111827;font-size:16px;line-height:24px;">Hi ${staffName},</p>
       <p style="margin:0 0 24px;color:#374151;font-size:15px;line-height:24px;">
-        <strong>${inviterName}</strong> invited you to join <strong>${storeName}</strong> on BizNest as
-        a <strong>${position}</strong> (${roleLabel}).
+        <strong>${inviterName}</strong> added you to <strong>${storeName}</strong> on BizNest as
+        a <strong>${position}</strong> (${roleLabel}). Your account is ready to use.
       </p>
+
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:#f9fafb;border-radius:8px;padding:16px 20px;margin-bottom:24px;">
+        <tr>
+          <td style="padding-bottom:8px;color:#6b7280;font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:0.05em;">
+            Your login details
+          </td>
+        </tr>
+        <tr>
+          <td style="padding:2px 0;color:#111827;font-size:14px;line-height:22px;">
+            Username: <strong>${loginHandle}</strong>
+          </td>
+        </tr>
+        <tr>
+          <td style="padding:2px 0 8px;color:#111827;font-size:14px;line-height:22px;">
+            Password: <strong>${password}</strong>
+          </td>
+        </tr>
+        <tr>
+          <td style="padding-top:4px;color:#9ca3af;font-size:12px;line-height:18px;">
+            Keep this somewhere private and delete this email once you've signed in.
+          </td>
+        </tr>
+      </table>
 
       <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:#f9fafb;border-radius:8px;padding:16px 20px;margin-bottom:24px;">
         <tr>
@@ -151,25 +177,18 @@ export async function sendStaffInviteEmail(
       <table role="presentation" cellpadding="0" cellspacing="0" style="margin:0 auto 24px;">
         <tr>
           <td align="center" style="border-radius:8px;background-color:#0f6410;">
-            <a href="${url}" style="display:inline-block;padding:12px 28px;color:#ffffff;font-size:15px;font-weight:600;text-decoration:none;border-radius:8px;">
-              Accept invite
+            <a href="${loginUrl}" style="display:inline-block;padding:12px 28px;color:#ffffff;font-size:15px;font-weight:600;text-decoration:none;border-radius:8px;">
+              Sign in
             </a>
           </td>
         </tr>
       </table>
 
-      <p style="margin:0 0 8px;color:#9ca3af;font-size:13px;line-height:20px;">
-        If the button doesn't work, copy and paste this link into your browser:
-      </p>
-      <p style="margin:0 0 24px;word-break:break-all;">
-        <a href="${url}" style="color:#0f6410;font-size:13px;text-decoration:underline;">${url}</a>
-      </p>
-
       <p style="margin:0;color:#9ca3af;font-size:13px;line-height:20px;">
-        Don't have a BizNest account with this email yet? No problem — you'll be prompted to create one first.
+        If the button doesn't work, go to ${loginUrl} and sign in with the username and password above.
       </p>
     `,
-    footer: `This invite was sent because someone added ${email} as a team member on BizNest.
+    footer: `This email was sent because someone added ${email} as a team member on BizNest.
       If you weren't expecting this, you can safely ignore this email.`,
   });
 
@@ -177,7 +196,7 @@ export async function sendStaffInviteEmail(
     {
       from: FROM,
       to: email,
-      subject: `${inviterName} invited you to join ${storeName} on BizNest`,
+      subject: `${inviterName} added you to ${storeName} on BizNest`,
       html,
     },
     { kind: "staff-invite", to: email }
