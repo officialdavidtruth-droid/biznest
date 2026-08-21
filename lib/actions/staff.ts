@@ -89,20 +89,40 @@ export async function inviteStaffMember(
   // placeholder that can never collide with a real address or another
   // store's staff.
   const userEmail = normalizedEmail ?? `${normalizedUsername}.${store.slug}.staff@internal.biznest`;
+
+  const emailClash = await prisma.user.findUnique({ where: { email: userEmail } });
+  if (emailClash) {
+    return {
+      success: false,
+      error: normalizedEmail
+        ? "That email is already associated with another account."
+        : "That username is already taken — pick another.",
+    };
+  }
+
   const passwordHash = await bcrypt.hash(password, 12);
   const token = nanoid(32);
 
-  const staffUser = await prisma.user.create({
-    data: {
-      name: trimmedName,
-      email: userEmail,
-      passwordHash,
-      // Dashboard access for this account comes from the StoreStaff row's
-      // role/permissions (see getStoreAccessRole), not from User.role --
-      // CUSTOMER is just the harmless default for a non-owner account.
-      role: "CUSTOMER",
-    },
-  });
+  let staffUser;
+  try {
+    staffUser = await prisma.user.create({
+      data: {
+        name: trimmedName,
+        email: userEmail,
+        passwordHash,
+        // Dashboard access for this account comes from the StoreStaff row's
+        // role/permissions (see getStoreAccessRole), not from User.role --
+        // CUSTOMER is just the harmless default for a non-owner account.
+        role: "CUSTOMER",
+      },
+    });
+  } catch {
+    // Most likely a last-moment unique-constraint race on the email we just
+    // checked above -- surface it as a normal ActionResult instead of an
+    // unhandled throw, which would otherwise leave the client's "Creating
+    // account..." button stuck forever with no feedback.
+    return { success: false, error: "Couldn't create that account — the email or username may already be in use." };
+  }
 
   await prisma.storeStaff.create({
     data: {

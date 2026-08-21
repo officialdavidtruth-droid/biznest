@@ -42,29 +42,34 @@ export function StaffManager({ slug, initialMembers }: { slug: string; initialMe
   async function handleInvite() {
     if (!name.trim() || !position.trim() || !username.trim() || password.length < 8 || permissions.length === 0) return;
     setInviting(true);
-    const result = await inviteStaffMember(
-      slug,
-      username.trim(),
-      password,
-      role,
-      name.trim(),
-      position.trim(),
-      permissions,
-      email.trim() || undefined
-    );
-    setInviting(false);
-    if (!result.success) {
-      toast.error(result.error);
-      return;
+    try {
+      const result = await inviteStaffMember(
+        slug,
+        username.trim(),
+        password,
+        role,
+        name.trim(),
+        position.trim(),
+        permissions,
+        email.trim() || undefined
+      );
+      if (!result.success) {
+        toast.error(result.error);
+        return;
+      }
+      toast.success(`Account created for ${username.trim()}@${slug}.`);
+      setName("");
+      setPosition("");
+      setUsername("");
+      setPassword("");
+      setEmail("");
+      setPermissions([]);
+      await refresh();
+    } catch {
+      toast.error("Something went wrong creating the account. Please try again.");
+    } finally {
+      setInviting(false);
     }
-    toast.success(`Account created for ${username.trim()}@${slug}.`);
-    setName("");
-    setPosition("");
-    setUsername("");
-    setPassword("");
-    setEmail("");
-    setPermissions([]);
-    await refresh();
   }
 
   async function handleRevoke(id: string, memberLabel: string) {
