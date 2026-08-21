@@ -229,7 +229,7 @@ export async function updateStaffAccess(
     storeId: store.id,
     actor: { id: session.user.id, name: session.user.name, email: session.user.email, role: "OWNER" },
     action: "staff.access_updated",
-    target: member.invitedEmail,
+    target: member.invitedEmail ?? undefined,
     metadata: { role, permissions: validPermissions },
   });
 
@@ -261,7 +261,7 @@ export async function revokeStaffMember(slug: string, staffId: string): Promise<
     storeId: store.id,
     actor: { id: session.user.id, name: session.user.name, email: session.user.email, role: "OWNER" },
     action: "staff.removed",
-    target: member.invitedEmail,
+    target: member.invitedEmail ?? undefined,
   });
 
   if (member.userId) {
@@ -315,7 +315,7 @@ export async function acceptStaffInvite(token: string): Promise<ActionResult<{ s
     storeId: invite.storeId,
     actor: { id: session.user.id, name: session.user.name, email: session.user.email, role: invite.role },
     action: "staff.joined",
-    target: invite.invitedEmail,
+    target: invite.invitedEmail ?? undefined,
   });
 
   return { success: true, data: { storeSlug: invite.store.slug } };
