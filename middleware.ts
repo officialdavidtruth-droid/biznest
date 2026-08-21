@@ -31,6 +31,16 @@ const PLATFORM_ADMIN_PATTERN = /^\/admin/;
 // since this is still just the /supaadmin route tree under the hood,
 // reached via a different host.
 
+// These live at app/(auth)/** and have no store-scoped equivalent (unlike
+// e.g. /orders, which intentionally maps to /store/<slug>/orders on a
+// vendor's custom domain — see the rewrite below). A vendor's custom
+// domain covers every path on that host, so without this list a shopper
+// clicking "Sign in" on mystore.com would get silently rewritten to
+// /store/<slug>/login — a route that doesn't exist — instead of ever
+// reaching the actual login page. Keep in sync with RESERVED_SLUGS' own
+// "app/(auth)" section.
+const AUTH_PATHS = ["/login", "/register", "/forgot-password", "/reset-password"];
+
 const ROOT_DOMAIN = "biznest.space";
 const SUPAADMIN_HOST = `supaadmin.${ROOT_DOMAIN}`;
 
@@ -140,6 +150,12 @@ export default auth(async (req) => {
     if (slug) {
       url.pathname = `/store/${slug}${parsed.rest}`;
     }
+  } else if (AUTH_PATHS.some((p) => rawPathname === p || rawPathname.startsWith(`${p}/`))) {
+    // Sign in/up on a custom domain: leave the path alone so it hits the
+    // real app/(auth) page directly, same as it would on the platform
+    // host. slug stays null (no rewrite) — AccountLink already appends
+    // ?store=<slug> so the auth pages can still show this store's
+    // branding without needing a rewritten path.
   } else {
     // A vendor's own custom domain (e.g. mystore.com) maps entirely onto
     // one store — the whole path belongs to it, unlike the platform host

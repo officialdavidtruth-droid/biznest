@@ -45,9 +45,14 @@ export function AccountLink({
   const callbackUrl =
     typeof window !== "undefined" ? window.location.href : `/${storeSlug}`;
 
+  // storeSlug is passed separately from callbackUrl (rather than parsed
+  // back out of it) so the login/register pages can look up and show this
+  // store's branding without having to re-derive the slug from a URL that
+  // might be a path (biznest.space/<slug>) or a vendor's own custom
+  // domain host.
   return (
     <Link
-      href={`/login?callbackUrl=${encodeURIComponent(callbackUrl)}`}
+      href={`/login?callbackUrl=${encodeURIComponent(callbackUrl)}&store=${encodeURIComponent(storeSlug)}`}
       className="flex items-center"
       aria-label="Sign in"
       title="Sign in"
