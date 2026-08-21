@@ -5,14 +5,24 @@ import { NextResponse } from "next/server";
 import { logInfo, logError, errorMeta } from "@/lib/observability/log";
 
 /**
- * Alerts a merchant the moment one of their buyers' checkouts crosses the
+ * Alerts a merchant once one of their buyers' checkouts crosses the
  * abandonment threshold, so they can act while the customer is still
- * plausibly reachable rather than discovering it whenever they next open
- * the dashboard. Configure as a Vercel Cron job (see vercel.json) with the
- * Authorization header `Bearer ${CRON_SECRET}`, same pattern as
- * app/api/cron/webhooks. Does NOT message the buyer -- that's still a
- * manual merchant action (lib/actions/abandoned-checkout.ts) so a merchant
- * isn't auto-spamming customers on channels they didn't choose.
+ * plausibly reachable. Configured as a Vercel Cron job (see vercel.json,
+ * runs daily at 12:00 UTC) with the Authorization header
+ * `Bearer ${CRON_SECRET}`, same pattern as app/api/cron/webhooks.
+ *
+ * On Vercel's Hobby plan, cron jobs can only run once a day, so "the
+ * moment" here really means "within a day" -- a checkout abandoned at
+ * 12:01 UTC won't be flagged until tomorrow's run. That's a real
+ * degradation from a tighter cadence, but the check itself
+ * (merchantAlertedAt null + past the threshold) is idempotent and doesn't
+ * depend on run frequency, so it's safe either way -- an owner on Vercel
+ * Pro (or any host without the daily-cron cap) can just tighten the
+ * schedule in vercel.json, e.g. every 15 minutes, with no code change.
+ *
+ * Does NOT message the buyer -- that's still a manual merchant action
+ * (lib/actions/abandoned-checkout.ts) so a merchant isn't auto-spamming
+ * customers on channels they didn't choose.
  */
 export async function GET(req: Request) {
   const auth = req.headers.get("authorization");

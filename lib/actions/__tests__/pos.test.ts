@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { prisma } from "@/lib/prisma";
-import { createPosSale, getPosCommissionBalance } from "@/lib/actions/pos";
+import { createPosSale, getPosCommissionBalance, recordPosCommissionSettlement } from "@/lib/actions/pos";
 import { clearSession, setSession } from "@/vitest.setup";
 import {
   cleanupTestStore,
@@ -149,6 +149,113 @@ describe("createPosSale", () => {
       tenderType: "Cash",
     });
 
+    expect(result.success).toBe(false);
+    if (result.success) return;
+    expect(result.error).toMatch(/don't have access/i);
+
+    await cleanupTestStore(otherStore);
+  });
+});
+
+/**
+ * Integration tests against a real database — these exercise the guarded
+ * updateMany in recordPosCommissionSettlement that replaced a read-then-
+ * write race (see the fix's changelog comment in lib/actions/pos.ts).
+ */
+describe("recordPosCommissionSettlement", () => {
+  let fixture: TestStoreFixture;
+
+  beforeEach(async () => {
+    fixture = await createTestStoreWithOwner({ commissionRate: 10 });
+    setSession({ id: fixture.ownerUser.id, email: fixture.ownerUser.email, role: "STORE_OWNER" });
+  });
+
+  afterEach(async () => {
+    clearSession();
+    await cleanupTestStore(fixture);
+  });
+
+  async function accrueCommission(amount: number) {
+    // commissionRate is 10%, so a sale of `amount * 10` accrues exactly `amount`.
+    const product = await createTestProduct(fixture.store.id, { price: amount * 10, quantity: 10 });
+    const sale = await createPosSale(fixture.store.slug, {
+      items: [{ productId: product.id, quantity: 1 }],
+      tenderType: "Cash",
+    });
+    if (!sale.success) throw new Error("fixture sale failed: " + sale.error);
+  }
+
+  it("clears a partial settlement and leaves the remainder owed", async () => {
+    await accrueCommission(300);
+
+    const result = await recordPosCommissionSettlement(fixture.store.slug, 120, "Partial bank transfer");
+    expect(result.success).toBe(true);
+    if (!result.success) return;
+    expect(result.data.remainingOwed).toBe(180);
+
+    const balance = await getPosCommissionBalance(fixture.store.slug);
+    expect(balance.owed).toBe(180);
+    expect(balance.recentSettlements[0]?.amount).toBe(120);
+    expect(balance.recentSettlements[0]?.note).toBe("Partial bank transfer");
+  });
+
+  it("rejects settling more than what's currently owed", async () => {
+    await accrueCommission(100);
+
+    const result = await recordPosCommissionSettlement(fixture.store.slug, 150);
+    expect(result.success).toBe(false);
+    if (result.success) return;
+    expect(result.error).toMatch(/more than the 100 currently owed/i);
+
+    const balance = await getPosCommissionBalance(fixture.store.slug);
+    expect(balance.owed).toBe(100); // untouched — the rejected attempt made no change
+  });
+
+  it("rejects a zero or negative settlement amount", async () => {
+    await accrueCommission(100);
+
+    const zero = await recordPosCommissionSettlement(fixture.store.slug, 0);
+    expect(zero.success).toBe(false);
+
+    const negative = await recordPosCommissionSettlement(fixture.store.slug, -50);
+    expect(negative.success).toBe(false);
+  });
+
+  it("never lets two concurrent settlements together decrement past what was actually owed", async () => {
+    // The bug this guards against: two requests both read "100 owed",
+    // both individually look valid against that stale read (60 <= 100,
+    // 70 <= 100), but 60 + 70 = 130 > 100 — without the fix, both could
+    // succeed and take the balance negative. Fired concurrently via
+    // Promise.all (not sequential awaits) so they actually race inside
+    // the database rather than trivially serializing in JS.
+    await accrueCommission(100);
+
+    const [first, second] = await Promise.all([
+      recordPosCommissionSettlement(fixture.store.slug, 60, "Attempt A"),
+      recordPosCommissionSettlement(fixture.store.slug, 70, "Attempt B"),
+    ]);
+
+    const outcomes = [first, second];
+    const succeeded = outcomes.filter((r) => r.success);
+    const failed = outcomes.filter((r) => !r.success);
+
+    // Exactly one of the two must have gone through — both succeeding
+    // would mean 130 got decremented from a 100 balance.
+    expect(succeeded).toHaveLength(1);
+    expect(failed).toHaveLength(1);
+
+    const winningAmount = first.success ? 60 : 70;
+    const balance = await getPosCommissionBalance(fixture.store.slug);
+    expect(balance.owed).toBe(100 - winningAmount);
+    expect(balance.owed).toBeGreaterThanOrEqual(0); // never negative
+  });
+
+  it("rejects a settlement attempt from someone with no access to the store", async () => {
+    await accrueCommission(100);
+    const otherStore = await createTestStoreWithOwner();
+    setSession({ id: otherStore.ownerUser.id, email: otherStore.ownerUser.email, role: "STORE_OWNER" });
+
+    const result = await recordPosCommissionSettlement(fixture.store.slug, 50);
     expect(result.success).toBe(false);
     if (result.success) return;
     expect(result.error).toMatch(/don't have access/i);

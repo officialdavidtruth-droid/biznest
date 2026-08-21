@@ -5,9 +5,32 @@ import { logError, logInfo, errorMeta } from "@/lib/observability/log";
 
 /**
  * Retries every PENDING webhook delivery whose backoff has elapsed.
- * Configure as a Vercel Cron job (see vercel.json — runs every minute) with
- * the Authorization header `Bearer ${CRON_SECRET}`, which Vercel sends
- * automatically for cron-triggered requests.
+ * Configured as a Vercel Cron job (see vercel.json, runs daily at 18:00
+ * UTC) with the Authorization header `Bearer ${CRON_SECRET}`, which
+ * Vercel sends automatically for cron-triggered requests.
+ *
+ * This is a safety net, not the primary delivery path: emitWebhookEvent
+ * (lib/webhooks/dispatch.ts) always attempts delivery inline the moment
+ * an event fires, so most webhooks are delivered immediately with zero
+ * involvement from this cron job. This sweep only matters for deliveries
+ * that failed and are sitting in exponential backoff (1m up to 6h — see
+ * BACKOFF_SCHEDULE_MINUTES in dispatch.ts).
+ *
+ * Vercel's Hobby plan caps cron jobs at once a day, so this can't actually
+ * run "every minute" the way the backoff schedule assumes -- worst case,
+ * a delivery that keeps failing could sit for up to ~24h between sweeps
+ * instead of being retried within its 6h backoff window. Still strictly
+ * better than not running at all (which is what happens with no
+ * vercel.json entry), and an owner on Vercel Pro can tighten this
+ * schedule to match the backoff cadence with no code change.
+ *
+ * One more Hobby-plan constraint worth knowing: Vercel functions on Hobby
+ * time out at 10s, and this loop can call out to slow/dead subscriber
+ * URLs (up to REQUEST_TIMEOUT_MS = 10s each). A sweep with several slow
+ * endpoints could get cut off mid-batch. That's safe, not corrupting --
+ * each delivery's status is written as it's processed, so anything not
+ * reached just waits for tomorrow's sweep -- but it does mean a big
+ * backlog drains more slowly on Hobby than the batch cap alone suggests.
  */
 export async function GET(req: Request) {
   const auth = req.headers.get("authorization");

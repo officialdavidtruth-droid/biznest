@@ -28,6 +28,10 @@ function shippingAddress() {
   return { fullName: "Ada Lovelace", phone: "+2348000000000", address: "1 Analytical Engine Rd", city: "Lagos", state: "Lagos", country: "Nigeria" };
 }
 
+function newKey() {
+  return `test-key-${Math.random().toString(36).slice(2)}-${Date.now()}`;
+}
+
 describe("startCheckout", () => {
   let fixture: TestStoreFixture;
   let buyerId: string;
@@ -52,6 +56,7 @@ describe("startCheckout", () => {
     const result = await startCheckout(fixture.store.slug, {
       items: [{ productId: product.id, quantity: 2 }],
       shippingAddress: shippingAddress(),
+      idempotencyKey: newKey(),
     });
 
     expect(result.success).toBe(true);
@@ -81,6 +86,7 @@ describe("startCheckout", () => {
     const result = await startCheckout(fixture.store.slug, {
       items: [{ productId: product.id, quantity: 1 }],
       shippingAddress: shippingAddress(),
+      idempotencyKey: newKey(),
     });
 
     expect(result.success).toBe(false);
@@ -98,6 +104,7 @@ describe("startCheckout", () => {
     const result = await startCheckout(fixture.store.slug, {
       items: [{ productId: product.id, quantity: 1 }],
       shippingAddress: shippingAddress(),
+      idempotencyKey: newKey(),
     });
 
     expect(result.success).toBe(false);
@@ -112,45 +119,46 @@ describe("startCheckout", () => {
     const result = await startCheckout(fixture.store.slug, {
       items: [{ productId: product.id, quantity: 1 }],
       shippingAddress: shippingAddress(),
+      idempotencyKey: newKey(),
     });
 
     expect(result.success).toBe(false);
     expect(chargeCustomer).not.toHaveBeenCalled();
   });
 
-  it("hands back the same payment page instead of charging twice for an immediate duplicate submission", async () => {
+  it("hands back the same payment page instead of charging twice for a retried submission with the same key", async () => {
     const product = await createTestProduct(fixture.store.id, { price: 1000, quantity: 5 });
-    const cart = { items: [{ productId: product.id, quantity: 2 }], shippingAddress: shippingAddress() };
+    const key = newKey();
+    const cart = { items: [{ productId: product.id, quantity: 2 }], shippingAddress: shippingAddress(), idempotencyKey: key };
 
     const first = await startCheckout(fixture.store.slug, cart);
     expect(first.success).toBe(true);
 
-    const second = await startCheckout(fixture.store.slug, cart);
+    const second = await startCheckout(fixture.store.slug, cart); // simulates a retry reusing the same client-generated key
     expect(second.success).toBe(true);
     if (!first.success || !second.success) return;
 
-    // Same payment page handed back both times, and the gateway was only
-    // ever actually charged once.
     expect(second.data.authorizationUrl).toBe(first.data.authorizationUrl);
-    expect(chargeCustomer).toHaveBeenCalledTimes(1);
+    expect(chargeCustomer).toHaveBeenCalledTimes(1); // never actually charged twice
 
     const orderCount = await prisma.order.count({ where: { storeId: fixture.store.id } });
     expect(orderCount).toBe(1);
   });
 
-  it("does not dedupe a different cart from the same buyer", async () => {
-    const productA = await createTestProduct(fixture.store.id, { price: 1000, quantity: 5 });
-    const productB = await createTestProduct(fixture.store.id, { price: 1500, quantity: 5 });
+  it("treats two different keys as two separate purchase attempts, even for the identical cart", async () => {
+    const product = await createTestProduct(fixture.store.id, { price: 1000, quantity: 5 });
 
     const first = await startCheckout(fixture.store.slug, {
-      items: [{ productId: productA.id, quantity: 1 }],
+      items: [{ productId: product.id, quantity: 1 }],
       shippingAddress: shippingAddress(),
+      idempotencyKey: newKey(),
     });
     expect(first.success).toBe(true);
 
     const second = await startCheckout(fixture.store.slug, {
-      items: [{ productId: productB.id, quantity: 1 }],
+      items: [{ productId: product.id, quantity: 1 }],
       shippingAddress: shippingAddress(),
+      idempotencyKey: newKey(),
     });
     expect(second.success).toBe(true);
 
@@ -159,17 +167,74 @@ describe("startCheckout", () => {
     expect(orderCount).toBe(2);
   });
 
-  it("does not dedupe against a previously cancelled (failed-charge) attempt — lets the retry through", async () => {
+  it("retries a failed attempt on the same order row (same key) rather than creating a new order", async () => {
     vi.mocked(chargeCustomer).mockResolvedValueOnce({ success: false, error: "Card declined" });
     const product = await createTestProduct(fixture.store.id, { price: 1000, quantity: 5 });
-    const cart = { items: [{ productId: product.id, quantity: 1 }], shippingAddress: shippingAddress() };
+    const key = newKey();
+    const cart = { items: [{ productId: product.id, quantity: 1 }], shippingAddress: shippingAddress(), idempotencyKey: key };
 
     const failed = await startCheckout(fixture.store.slug, cart);
     expect(failed.success).toBe(false);
 
-    const retried = await startCheckout(fixture.store.slug, cart);
+    const retried = await startCheckout(fixture.store.slug, cart); // same key as the failed attempt
     expect(retried.success).toBe(true);
     expect(chargeCustomer).toHaveBeenCalledTimes(2);
+
+    // Still just one order — the retry reused the cancelled row instead of
+    // creating a second one (idempotencyKey is unique, so it couldn't
+    // create a second row with the same key even if it tried).
+    const orderCount = await prisma.order.count({ where: { storeId: fixture.store.id } });
+    expect(orderCount).toBe(1);
+    const order = await prisma.order.findFirst({ where: { storeId: fixture.store.id } });
+    expect(order?.status).toBe("PENDING_PAYMENT");
+  });
+
+  it("sends an already-paid retry straight to the confirmation page without charging again", async () => {
+    const product = await createTestProduct(fixture.store.id, { price: 1000, quantity: 5 });
+    const key = newKey();
+    const cart = { items: [{ productId: product.id, quantity: 1 }], shippingAddress: shippingAddress(), idempotencyKey: key };
+
+    const first = await startCheckout(fixture.store.slug, cart);
+    expect(first.success).toBe(true);
+    if (!first.success) return;
+    const order = await prisma.order.findFirst({ where: { storeId: fixture.store.id } });
+
+    // Simulate the payment webhook having already confirmed this order —
+    // then the client (e.g. a stale tab, or a retry after the redirect
+    // was slow) resubmits with the same key.
+    await prisma.order.update({ where: { id: order!.id }, data: { status: "PAID" } });
+    vi.mocked(chargeCustomer).mockClear();
+
+    const retried = await startCheckout(fixture.store.slug, cart);
+    expect(retried.success).toBe(true);
+    if (!retried.success) return;
+    expect(retried.data.authorizationUrl).toContain(`/orders/${order!.id}/confirmation`);
+    expect(chargeCustomer).not.toHaveBeenCalled();
+  });
+
+  it("fails closed if a key somehow resolves to a different buyer's order", async () => {
+    const product = await createTestProduct(fixture.store.id, { price: 1000, quantity: 5 });
+    const key = newKey();
+    await startCheckout(fixture.store.slug, {
+      items: [{ productId: product.id, quantity: 1 }],
+      shippingAddress: shippingAddress(),
+      idempotencyKey: key,
+    });
+
+    const otherBuyer = await prisma.user.create({ data: { email: `other-buyer-${fixture.suffix}@test.biznest.internal`, role: "CUSTOMER" } });
+    setSession({ id: otherBuyer.id, email: otherBuyer.email, role: "CUSTOMER" });
+
+    const result = await startCheckout(fixture.store.slug, {
+      items: [{ productId: product.id, quantity: 1 }],
+      shippingAddress: shippingAddress(),
+      idempotencyKey: key, // reusing the first buyer's key
+    });
+
+    expect(result.success).toBe(false);
+    if (result.success) return;
+    expect(result.error).toMatch(/invalid/i);
+
+    await prisma.user.deleteMany({ where: { id: otherBuyer.id } });
   });
 });
 

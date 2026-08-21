@@ -539,6 +539,24 @@ Prisma migrations run via `npm run build` (`prisma generate` is wired into the
 build script) — run `npx prisma migrate deploy` against production once before
 first deploy.
 
+**Cron jobs (`vercel.json`):** three background jobs — subscription renewals,
+abandoned-checkout alerts, and the webhook-delivery retry sweep — are
+scheduled via `vercel.json` at the project root. Vercel provisions
+`CRON_SECRET` automatically and sends it as a Bearer token on every
+cron-triggered request; each `app/api/cron/*/route.ts` checks it, so no
+manual setup is needed beyond having `vercel.json` present at deploy time.
+
+If you're on **Vercel's Hobby plan**, cron jobs are capped at once a day
+per job (any more frequent schedule fails at deploy time) — `vercel.json`
+here is already set up within that limit (three jobs, spaced 6h apart:
+06:00/12:00/18:00 UTC). The trade-off: the webhook-retry sweep and the
+abandoned-checkout alert both *want* to run more often than daily to be
+maximally responsive, and each route's doc comment explains exactly what's
+degraded by only running once a day (nothing breaks — deliveries/alerts
+just wait for the next day's run instead of firing sooner). If you're on
+Vercel Pro or another host without that cap, tighten the schedules in
+`vercel.json` — no code changes needed.
+
 ## Try the flow end-to-end
 
 1. `/register` → verify email (check Resend logs/dev inbox)

@@ -16,12 +16,15 @@ type StoreAccessResult =
   | { success: false; error: string };
 
 /**
- * Thrown inside the createPosSale transaction to abort it with a specific,
- * user-facing message (e.g. "not enough stock") -- caught right outside
- * the $transaction call and turned into a normal ActionResult failure.
- * Any other thrown error is left to propagate/rollback as a real 500.
+ * Thrown inside a $transaction in this file to abort it with a specific,
+ * user-facing message (e.g. "not enough stock", "more than what's owed")
+ * -- caught right outside the $transaction call and turned into a normal
+ * ActionResult failure. Any other thrown error is left to propagate/
+ * rollback as a real 500. Shared by createPosSale and
+ * recordPosCommissionSettlement below; not POS-sale-specific despite the
+ * name's history.
  */
-class PosSaleError extends Error {}
+class PosTransactionError extends Error {}
 
 /**
  * "pos" permission — a staff member can be given register access without
@@ -378,7 +381,7 @@ export async function createPosSale(
               data: { quantity: { decrement: line.quantity } },
             });
             if (result.count === 0) {
-              throw new PosSaleError(`Not enough stock for ${variant.product.name} — ${variant.label}.`);
+              throw new PosTransactionError(`Not enough stock for ${variant.product.name} — ${variant.label}.`);
             }
             const fresh = await tx.productVariant.findUniqueOrThrow({ where: { id: line.variantId } });
             if (fresh.quantity === 0 && !fresh.autoUnpublished) {
@@ -402,7 +405,7 @@ export async function createPosSale(
               data: { quantity: { decrement: line.quantity } },
             });
             if (result.count === 0) {
-              throw new PosSaleError(`Not enough stock for ${product.name}.`);
+              throw new PosTransactionError(`Not enough stock for ${product.name}.`);
             }
             const fresh = await tx.inventoryItem.findUniqueOrThrow({ where: { id: product.inventory.id } });
             if (fresh.quantity === 0) {
@@ -429,7 +432,7 @@ export async function createPosSale(
       { timeout: 15000 }
     );
   } catch (err) {
-    if (err instanceof PosSaleError) return { success: false, error: err.message };
+    if (err instanceof PosTransactionError) return { success: false, error: err.message };
     throw err;
   }
 
@@ -553,37 +556,55 @@ export async function recordPosCommissionSettlement(
   const access = await assertCommissionAccess(slug);
   if (!access.success) return { success: false, error: access.error };
 
-  if (!Number.isFinite(amount) || amount <= 0) {
+  const roundedAmount = roundMoney(amount);
+  if (!Number.isFinite(roundedAmount) || roundedAmount <= 0) {
     return { success: false, error: "Enter a settlement amount greater than zero." };
-  }
-
-  const store = await prisma.store.findUnique({ where: { id: access.store.id }, select: { posCommissionOwed: true } });
-  const owed = Number(store?.posCommissionOwed ?? 0);
-  if (amount > owed) {
-    return { success: false, error: `That's more than the ${owed.toLocaleString()} currently owed.` };
   }
 
   const session = await auth();
   const settledByEmail = session?.user?.email ?? "unknown";
 
-  await prisma.$transaction([
-    prisma.store.update({
-      where: { id: access.store.id },
-      data: { posCommissionOwed: { decrement: roundMoney(amount) } },
-    }),
-    prisma.posCommissionSettlement.create({
-      data: { storeId: access.store.id, amount: roundMoney(amount), note: note?.trim() || null, settledByEmail },
-    }),
-  ]);
+  // Guarded updateMany instead of read-then-write: two settlement requests
+  // submitted around the same time (two tabs, a double-click) could both
+  // read the same "owed" balance, both pass the "amount <= owed" check
+  // against that stale read, and between them decrement past zero. The
+  // `gte` condition makes the check and the decrement one atomic
+  // operation — whichever request commits second sees 0 rows affected and
+  // is told the balance it was checking against no longer exists, rather
+  // than silently succeeding on stale data. Same pattern as the POS stock
+  // decrement in createPosSale above.
+  let remainingOwed: number;
+  try {
+    remainingOwed = await prisma.$transaction(async (tx) => {
+      const result = await tx.store.updateMany({
+        where: { id: access.store.id, posCommissionOwed: { gte: roundedAmount } },
+        data: { posCommissionOwed: { decrement: roundedAmount } },
+      });
+      if (result.count === 0) {
+        const current = await tx.store.findUnique({ where: { id: access.store.id }, select: { posCommissionOwed: true } });
+        throw new PosTransactionError(`That's more than the ${Number(current?.posCommissionOwed ?? 0).toLocaleString()} currently owed.`);
+      }
+
+      await tx.posCommissionSettlement.create({
+        data: { storeId: access.store.id, amount: roundedAmount, note: note?.trim() || null, settledByEmail },
+      });
+
+      const updated = await tx.store.findUniqueOrThrow({ where: { id: access.store.id }, select: { posCommissionOwed: true } });
+      return Number(updated.posCommissionOwed);
+    });
+  } catch (err) {
+    if (err instanceof PosTransactionError) return { success: false, error: err.message };
+    throw err;
+  }
 
   await logStoreActivity({
     storeId: access.store.id,
     actor: { id: session?.user?.id, name: session?.user?.name, email: session?.user?.email, role: session?.user?.role ?? "unknown" },
     action: "pos.commission_settled",
-    target: `${roundMoney(amount).toLocaleString()}`,
-    metadata: { amount: roundMoney(amount), note: note?.trim() || undefined },
+    target: `${roundedAmount.toLocaleString()}`,
+    metadata: { amount: roundedAmount, note: note?.trim() || undefined },
   });
 
   revalidatePath(`/store/${slug}/admin/payments`);
-  return { success: true, data: { remainingOwed: roundMoney(owed - amount) } };
+  return { success: true, data: { remainingOwed } };
 }

@@ -13,6 +13,14 @@ export const checkoutSchema = z.object({
     state: z.string().min(1),
     country: z.string().min(1),
   }),
+  // Generated once per checkout page load, client-side (see the
+  // *-checkout-client.tsx components), and reused unchanged across every
+  // submit attempt for that page load — including retries. Lets
+  // startCheckout recognize "this is the same purchase attempt as before"
+  // with certainty, rather than the heuristic same-cart guess it used to
+  // fall back on, closing the window where two truly simultaneous
+  // submissions could both create an order and both get charged.
+  idempotencyKey: z.string().min(10).max(128),
 });
 
 export type CheckoutInput = z.infer<typeof checkoutSchema>;

@@ -1036,11 +1036,18 @@ model Order {
 
   paymentProvider PaymentProvider?
   paymentReference String?
+  // Client-generated (see checkoutSchema/the *-checkout-client.tsx
+  // components), one per checkout page load, reused unchanged across every
+  // submit attempt including retries. Nullable+unique -- Postgres allows
+  // multiple NULLs in a unique index, so every non-storefront-checkout
+  // Order (POS, etc) simply leaves this null. This is the authoritative
+  // dedupe key startCheckout looks up before ever creating a new order or
+  // calling the gateway -- see the idempotency guard there.
+  idempotencyKey   String? @unique
   // The gateway's own "pay now" page URL from the most recent charge
   // attempt on this order (Paystack authorization_url / Flutterwave
-  // link). Cached so a duplicate checkout submission for the same cart
-  // (double-click, a client retry after a slow response, browser
-  // back-button resubmit) can be handed the same payment page instead of
+  // link). Cached so a duplicate checkout submission for the same
+  // idempotencyKey can be handed the same payment page instead of
   // starting a second charge against the customer -- see the dedupe
   // check at the top of startCheckout in lib/actions/order.ts.
   checkoutUrl      String?

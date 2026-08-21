@@ -21,6 +21,16 @@ export function PremiumCheckoutClient({ slug }: { slug: string }) {
   const { items, storeSlug, subtotal } = useCart();
   const cartItems = storeSlug === slug ? items : [];
   const [isSubmitting, setIsSubmitting] = useState(false);
+  // Generated once per page load and reused for every submit attempt
+  // (including retries) — lets startCheckout recognize a duplicate
+  // submission (double-click, retry after a slow response, back-button
+  // resubmit) and hand back the same payment page instead of charging
+  // the customer twice. See lib/actions/order.ts.
+  const [idempotencyKey] = useState(() =>
+    typeof crypto !== "undefined" && "randomUUID" in crypto
+      ? crypto.randomUUID()
+      : `${Date.now()}-${Math.random().toString(36).slice(2)}`
+  );
   const [zones, setZones] = useState<Zone[]>([]);
   const [zoneId, setZoneId] = useState<string>("");
 
@@ -46,6 +56,7 @@ export function PremiumCheckoutClient({ slug }: { slug: string }) {
       items: cartItems.map((i) => ({ productId: i.productId, quantity: i.quantity })),
       deliveryZoneId: zoneId || undefined,
       shippingAddress: form,
+      idempotencyKey,
     });
     setIsSubmitting(false);
 

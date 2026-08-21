@@ -1,0 +1,16 @@
+{
+  "crons": [
+    {
+      "path": "/api/cron/subscription-renewals",
+      "schedule": "0 6 * * *"
+    },
+    {
+      "path": "/api/cron/abandoned-checkout-alerts",
+      "schedule": "0 12 * * *"
+    },
+    {
+      "path": "/api/cron/webhooks",
+      "schedule": "0 18 * * *"
+    }
+  ]
+}

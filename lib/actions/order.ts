@@ -95,6 +95,71 @@ export async function decrementStockForOrder(tx: Prisma.TransactionClient, order
 
 // --- Checkout (customer-facing) ---------------------------------------
 
+/**
+ * Runs (or re-runs) the actual gateway charge for an order and records the
+ * result — shared by both the fresh-checkout path and the retry-after-
+ * cancelled-attempt path in startCheckout, so the charge/Payment-row logic
+ * only exists once. Never creates the Order itself; the caller owns that.
+ */
+async function chargeExistingOrder(
+  order: { id: string; total: unknown; currency: string },
+  store: { id: string; slug: string; paystackSubaccountCode: string | null; flutterwaveSubaccountId: string | null },
+  shippingFullName: string,
+  buyerEmail: string | null | undefined
+): Promise<ActionResult<{ authorizationUrl: string }>> {
+  const totalNaira = Number(order.total);
+
+  const gateway = await getActiveGateway();
+  const callbackUrl =
+    gateway === "FLUTTERWAVE"
+      ? `${APP_URL}/api/payments/flutterwave/callback`
+      : `${APP_URL}/api/payments/paystack/callback`;
+
+  const charge = await chargeCustomer({
+    email: buyerEmail ?? "guest@biznest.space",
+    customerName: shippingFullName,
+    amountNaira: totalNaira,
+    reference: order.id,
+    callbackUrl,
+    paystackSubaccountCode: store.paystackSubaccountCode,
+    flutterwaveSubaccountId: store.flutterwaveSubaccountId,
+  });
+
+  if (!charge.success) {
+    await prisma.order.update({ where: { id: order.id }, data: { status: "CANCELLED" } });
+    return { success: false, error: charge.error };
+  }
+
+  // Both writes below record the same event (this charge attempt was
+  // created) — doing them in one transaction means a failure partway
+  // through can never leave an order pointing at a gateway with no
+  // matching Payment row for the callback/webhook routes to verify against.
+  await prisma.$transaction([
+    prisma.order.update({
+      where: { id: order.id },
+      data: { status: "PENDING_PAYMENT", paymentProvider: charge.gateway, checkoutUrl: charge.authorizationUrl },
+    }),
+    // One Payment row per real charge attempt — this is the row the callback
+    // and webhook routes verify against and update to SUCCESSFUL/FAILED.
+    // Order.paymentProvider/paymentReference above stay as the fast "what
+    // actually paid this" pointer; this table is the full audit trail.
+    prisma.payment.create({
+      data: {
+        orderId: order.id,
+        storeId: store.id,
+        purpose: "ORDER",
+        provider: charge.gateway,
+        reference: order.id,
+        status: "PENDING",
+        amount: totalNaira,
+        currency: order.currency,
+      },
+    }),
+  ]);
+
+  return { success: true, data: { authorizationUrl: charge.authorizationUrl } };
+}
+
 export async function startCheckout(
   storeSlug: string,
   input: CheckoutInput
@@ -145,43 +210,38 @@ export async function startCheckout(
 
   if (subtotal <= 0) return { success: false, error: "Cart total must be greater than zero." };
 
-  // Idempotency guard: if this buyer already has a very recent
-  // PENDING_PAYMENT order for this store with the exact same cart, hand
-  // back that order's already-initialized gateway payment page instead of
-  // starting a second charge. This is what actually catches a double-
-  // charge in practice — a double-clicked "Pay now" button, a client
-  // retrying after a response that looked like it failed, or a
-  // back-button resubmit — without requiring every storefront checkout
-  // page to generate and thread through a dedicated idempotency key.
-  //
-  // Known gap: two truly simultaneous submissions (millisecond apart, both
-  // reading the DB before either's insert commits) can still both pass
-  // this check and create two orders. Closing that fully needs a unique
-  // constraint on a client-generated idempotency key sent with every
-  // attempt — worth adding if double-submits turn out to be common enough
-  // in practice to matter beyond what this catches.
-  const recentWindow = new Date(Date.now() - 2 * 60 * 1000);
-  const recentCandidates = await prisma.order.findMany({
-    where: {
-      storeId: store.id,
-      buyerId: session.user.id,
-      status: "PENDING_PAYMENT",
-      createdAt: { gte: recentWindow },
-    },
-    include: { items: true },
-    orderBy: { createdAt: "desc" },
-  });
-  const sortedIncomingItems = [...data.items].sort((a, b) => a.productId.localeCompare(b.productId));
-  const duplicate = recentCandidates.find((candidate) => {
-    if (Number(candidate.total) !== total) return false;
-    if (candidate.items.length !== sortedIncomingItems.length) return false;
-    const sortedExistingItems = [...candidate.items].sort((a, b) => (a.productId ?? "").localeCompare(b.productId ?? ""));
-    return sortedExistingItems.every(
-      (item, i) => item.productId === sortedIncomingItems[i].productId && item.quantity === sortedIncomingItems[i].quantity
-    );
-  });
-  if (duplicate?.checkoutUrl) {
-    return { success: true, data: { authorizationUrl: duplicate.checkoutUrl } };
+  // Idempotency guard: the client generates one key per checkout page load
+  // and resends it unchanged on every submit attempt for that load
+  // (including retries) — see the *-checkout-client.tsx components and
+  // checkoutSchema. Order.idempotencyKey is uniquely constrained at the DB
+  // level, so this is authoritative, not a heuristic: two submissions with
+  // the same key are always the same purchase attempt, even if they land
+  // milliseconds apart.
+  const existing = await prisma.order.findUnique({ where: { idempotencyKey: data.idempotencyKey } });
+  if (existing) {
+    if (existing.storeId !== store.id || existing.buyerId !== session.user.id) {
+      // A key collision across different stores/buyers should be
+      // impossible (the client generates a fresh UUID per page load) —
+      // this only fires if something is badly wrong, so fail closed
+      // rather than risk acting on someone else's order.
+      return { success: false, error: "This checkout session is invalid — please refresh and try again." };
+    }
+    if (existing.status !== "PENDING_PAYMENT" && existing.status !== "CANCELLED") {
+      // Already paid (or further along the fulfillment pipeline) —
+      // send the customer straight to their confirmation page instead of
+      // anywhere near the gateway again.
+      return { success: true, data: { authorizationUrl: `${APP_URL}/${store.slug}/orders/${existing.id}/confirmation` } };
+    }
+    if (existing.status === "PENDING_PAYMENT" && existing.checkoutUrl) {
+      // A charge is already in flight for this exact attempt — hand back
+      // the same payment page rather than starting a second charge.
+      return { success: true, data: { authorizationUrl: existing.checkoutUrl } };
+    }
+    // status === "CANCELLED": the previous charge attempt for this exact
+    // idempotency key failed (declined card, gateway error, etc). Retry
+    // is safe and expected — but must reuse this same order row rather
+    // than creating a new one, since idempotencyKey can't be reused.
+    return chargeExistingOrder(existing, store, data.shippingAddress.fullName, session.user.email);
   }
 
   const order = await prisma.order.create({
@@ -196,6 +256,7 @@ export async function startCheckout(
       deliveryFee,
       currency: products[0]?.currency ?? "NGN",
       shippingAddress: data.shippingAddress,
+      idempotencyKey: data.idempotencyKey,
       items: {
         create: data.items.map((item) => {
           const product = products.find((p) => p.id === item.productId)!;
@@ -205,53 +266,8 @@ export async function startCheckout(
     },
   });
 
-  const gateway = await getActiveGateway();
-  const callbackUrl =
-    gateway === "FLUTTERWAVE"
-      ? `${APP_URL}/api/payments/flutterwave/callback`
-      : `${APP_URL}/api/payments/paystack/callback`;
-
-  const charge = await chargeCustomer({
-    email: session.user.email ?? "guest@biznest.space",
-    customerName: data.shippingAddress.fullName,
-    amountNaira: total,
-    reference: order.id,
-    callbackUrl,
-    paystackSubaccountCode: store.paystackSubaccountCode,
-    flutterwaveSubaccountId: store.flutterwaveSubaccountId,
-  });
-
-  if (!charge.success) {
-    await prisma.order.update({ where: { id: order.id }, data: { status: "CANCELLED" } });
-    return { success: false, error: charge.error };
-  }
-
-  // Both writes below record the same event (this charge attempt was
-  // created) — doing them in one transaction means a failure partway
-  // through can never leave an order pointing at a gateway with no
-  // matching Payment row for the callback/webhook routes to verify against.
-  await prisma.$transaction([
-    prisma.order.update({
-      where: { id: order.id },
-      data: { paymentProvider: charge.gateway, checkoutUrl: charge.authorizationUrl },
-    }),
-    // One Payment row per real charge attempt — this is the row the callback
-    // and webhook routes verify against and update to SUCCESSFUL/FAILED.
-    // Order.paymentProvider/paymentReference above stay as the fast "what
-    // actually paid this" pointer; this table is the full audit trail.
-    prisma.payment.create({
-      data: {
-        orderId: order.id,
-        storeId: store.id,
-        purpose: "ORDER",
-        provider: charge.gateway,
-        reference: order.id,
-        status: "PENDING",
-        amount: total,
-        currency: products[0]?.currency ?? "NGN",
-      },
-    }),
-  ]);
+  const chargeResult = await chargeExistingOrder(order, store, data.shippingAddress.fullName, session.user.email);
+  if (!chargeResult.success) return chargeResult;
 
   await emitWebhookEvent("ORDER_CREATED", store.id, {
     orderId: order.id,
@@ -262,7 +278,7 @@ export async function startCheckout(
     currency: order.currency,
   });
 
-  return { success: true, data: { authorizationUrl: charge.authorizationUrl } };
+  return { success: true, data: { authorizationUrl: chargeResult.data.authorizationUrl } };
 }
 
 // --- Order management (store owner) ------------------------------------

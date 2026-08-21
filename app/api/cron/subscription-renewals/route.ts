@@ -5,8 +5,8 @@ import { NextResponse } from "next/server";
 import { logInfo, logError, errorMeta } from "@/lib/observability/log";
 
 /**
- * Runs daily (see vercel.json). Handles the full recurring-billing loop for
- * paid Store subscriptions:
+ * Runs daily (see vercel.json, 06:00 UTC). Handles the full
+ * recurring-billing loop for paid Store subscriptions:
  *
  *  1. Reminds owners 3 days before a renewal charge, so an expiring/expired
  *     card can be updated before money is actually due (see
