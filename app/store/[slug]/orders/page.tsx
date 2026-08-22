@@ -4,6 +4,7 @@ import { DISPUTABLE_ORDER_STATUSES } from "@/lib/constants/dispute";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Package, Clock, CheckCircle2, XCircle, RotateCcw, AlertTriangle, ArrowUpRight, ShoppingBag, ShieldAlert, ArrowLeft } from "lucide-react";
+import { StoreFooter } from "@/components/storefront/store-footer";
 
 // Store-scoped order history. A customer account only ever belongs to one
 // store (see StoreCustomer), so this is simply "my orders here" — themed
@@ -156,6 +157,7 @@ export default async function StoreOrdersPage({ params }: { params: Promise<{ sl
           </div>
         )}
       </div>
+      <StoreFooter storeName={store.name} slug={slug} />
     </div>
   );
 }

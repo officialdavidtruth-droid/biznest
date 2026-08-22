@@ -5,6 +5,7 @@ import Link from "next/link";
 import {
   LayoutDashboard, Package, Heart, MapPin, Bell, ArrowLeft,
 } from "lucide-react";
+import { StoreFooter } from "@/components/storefront/store-footer";
 
 // Store-scoped "My Account" shell (Jumia-style sidebar). Customer accounts
 // are now scoped to a single store (see StoreCustomer), so this whole
@@ -71,6 +72,7 @@ export default async function StoreAccountLayout({
           <div className="min-w-0">{children}</div>
         </div>
       </div>
+      <StoreFooter storeName={store.name} slug={slug} />
     </div>
   );
 }
