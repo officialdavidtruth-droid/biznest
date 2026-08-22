@@ -14,6 +14,11 @@ export function UpgradeButton({ storeSlug, planId, label }: { storeSlug: string;
         toast.error(result.error);
         return;
       }
+      if ("trialStarted" in result.data) {
+        toast.success("Your free trial has started!");
+        window.location.reload();
+        return;
+      }
       window.location.href = result.data.authorizationUrl;
     });
   }
