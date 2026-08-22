@@ -3,9 +3,10 @@ import { getStoreBranding } from "@/lib/actions/store-branding";
 import { redirect, notFound } from "next/navigation";
 import Link from "next/link";
 import {
-  LayoutDashboard, Package, Heart, MapPin, Bell, ArrowLeft,
+  LayoutDashboard, Package, Heart, MapPin, Bell, ArrowLeft, LogOut,
 } from "lucide-react";
 import { StoreFooter } from "@/components/storefront/store-footer";
+import { SignOutButton } from "@/components/forms/sign-out-button";
 
 // Store-scoped "My Account" shell (Jumia-style sidebar). Customer accounts
 // are now scoped to a single store (see StoreCustomer), so this whole
@@ -67,8 +68,15 @@ export default async function StoreAccountLayout({
                 {label}
               </Link>
             ))}
+            <div className="my-1 hidden border-t border-slate-100 md:block" />
+            <SignOutButton
+              callbackUrl={`/${slug}`}
+              className="flex shrink-0 items-center gap-2.5 rounded-xl px-3 py-2.5 text-left text-sm font-medium text-red-600 transition hover:bg-red-50"
+            >
+              <LogOut className="h-4 w-4" />
+              Sign out
+            </SignOutButton>
           </nav>
-
           <div className="min-w-0">{children}</div>
         </div>
       </div>
