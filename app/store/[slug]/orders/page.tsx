@@ -157,7 +157,7 @@ export default async function StoreOrdersPage({ params }: { params: Promise<{ sl
           </div>
         )}
       </div>
-      <StoreFooter storeName={store.name} slug={slug} />
+      <StoreFooter store={store} slug={slug} />
     </div>
   );
 }

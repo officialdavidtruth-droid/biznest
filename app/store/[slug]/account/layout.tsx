@@ -72,7 +72,7 @@ export default async function StoreAccountLayout({
           <div className="min-w-0">{children}</div>
         </div>
       </div>
-      <StoreFooter storeName={store.name} slug={slug} />
+      <StoreFooter store={store} slug={slug} />
     </div>
   );
 }
