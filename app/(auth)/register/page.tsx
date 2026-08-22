@@ -26,7 +26,7 @@ export default async function RegisterPage({
       </h1>
       <p className="mb-6 text-sm text-muted-foreground">
         {store
-          ? "One BizNest account works across every store, including this one."
+          ? `This account is just for ${store.name} — it won't work on other BizNest stores.`
           : "Start selling products, offering services, or shopping across BizNest stores."}
       </p>
       <RegisterForm defaultEmail={email} callbackUrl={callbackUrl} storeSlug={storeSlug} />

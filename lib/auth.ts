@@ -176,14 +176,18 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           throw new AccountBannedError();
         }
 
-        // Store-scoped customer check: only applies to a plain customer
-        // login happening in a specific store's context (login-form.tsx
-        // sends storeSlug whenever the page was reached via ?store=...).
-        // Staff (staffLogin already resolved above via their own
-        // store-scoped lookup) and logins with no store context at all
-        // are unaffected.
+        // Customer accounts only exist to sign in to the one store they
+        // signed up through (see StoreCustomer / the migration comment on
+        // it) — they have no business logging in on the generic BizNest
+        // platform login (biznest.space/login, no ?store=), which is for
+        // store owners/admins. Staff already went through their own
+        // store-scoped branch above and are unaffected.
         const storeSlug = typeof credentials?.storeSlug === "string" ? credentials.storeSlug : undefined;
-        if (storeSlug && !staffLogin && user.role === "CUSTOMER") {
+        if (!staffLogin && user.role === "CUSTOMER") {
+          if (!storeSlug) {
+            void logWarn("AUTH", "Customer login attempt with no store context", { userId: user.id });
+            throw new StoreAccountNotFoundError();
+          }
           const membership = await prisma.storeCustomer.findFirst({
             where: { userId: user.id, store: { slug: storeSlug } },
           });
