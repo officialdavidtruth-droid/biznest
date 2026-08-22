@@ -3,7 +3,7 @@ import { getStoreBranding } from "@/lib/actions/store-branding";
 import { redirect, notFound } from "next/navigation";
 import Link from "next/link";
 import {
-  LayoutDashboard, Package, Heart, MapPin, Bell, LogOut,
+  LayoutDashboard, Package, Heart, MapPin, Bell, ArrowLeft,
 } from "lucide-react";
 
 // Store-scoped "My Account" shell (Jumia-style sidebar). Customer accounts
@@ -37,6 +37,13 @@ export default async function StoreAccountLayout({
     <div className="min-h-screen bg-slate-50">
       <div className="mx-auto max-w-6xl px-6 py-10">
         <div className="mb-6 flex items-center gap-3">
+          <Link
+            href={`/${slug}`}
+            aria-label="Back to store"
+            className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-600 transition hover:bg-slate-100 hover:text-slate-900"
+          >
+            <ArrowLeft className="h-4 w-4" />
+          </Link>
           {store.logoUrl && (
             // eslint-disable-next-line @next/next/no-img-element
             <img src={store.logoUrl} alt={store.name} className="h-10 w-10 rounded-lg object-cover ring-1 ring-slate-200" />
@@ -59,14 +66,6 @@ export default async function StoreAccountLayout({
                 {label}
               </Link>
             ))}
-            <div className="my-1 hidden border-t border-slate-100 md:block" />
-            <Link
-              href={`/${slug}`}
-              className="flex shrink-0 items-center gap-2.5 rounded-xl px-3 py-2.5 text-sm font-medium text-red-600 transition hover:bg-red-50"
-            >
-              <LogOut className="h-4 w-4" />
-              Back to store
-            </Link>
           </nav>
 
           <div className="min-w-0">{children}</div>

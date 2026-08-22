@@ -21,6 +21,11 @@ export type ActiveGateway = "PAYSTACK" | "FLUTTERWAVE";
 // pointsPerNaira: how many points a customer earns per ₦1 spent (order total).
 // nairaPerPoint: how many naira one point is worth when cashed out as a coupon.
 export type LoyaltyRates = { pointsPerNaira: number; nairaPerPoint: number };
+// enabled: whether the self-serve trial applies at all. planId: which
+// Subscription gets it (null = not yet configured / disabled). days: trial
+// length. SupaAdmin-controlled so this never needs a code change to tune —
+// see lib/actions/subscription.ts's initiatePlanUpgrade, the only reader.
+export type FreeTrialValue = { enabled: boolean; planId: string | null; days: number };
 
 const DEFAULT_MAINTENANCE: MaintenanceValue = { enabled: false, message: "" };
 const DEFAULT_ANNOUNCEMENT: AnnouncementValue = { enabled: false, message: "", tone: "info" };
@@ -28,6 +33,7 @@ const DEFAULT_ANNOUNCEMENT: AnnouncementValue = { enabled: false, message: "", t
 // Deliberately conservative; platform admin can tune both independently
 // from supaadmin once the loyalty settings UI exists.
 const DEFAULT_LOYALTY_RATES: LoyaltyRates = { pointsPerNaira: 0.01, nairaPerPoint: 1 };
+const DEFAULT_FREE_TRIAL: FreeTrialValue = { enabled: false, planId: null, days: 14 };
 
 async function getSetting<T>(key: string, fallback: T): Promise<T> {
   const row = await prisma.platformSetting.findUnique({ where: { key } });
@@ -94,6 +100,13 @@ export async function getLoyaltyRates(): Promise<LoyaltyRates> {
   return getSetting(SETTING_KEYS.LOYALTY_RATES, DEFAULT_LOYALTY_RATES);
 }
 
+// Read by lib/actions/subscription.ts on every plan-upgrade attempt, so
+// this is NOT wrapped in unstable_cache like maintenance/announcement —
+// billing logic should never act on a stale cached value.
+export async function getFreeTrialSetting(): Promise<FreeTrialValue> {
+  return getSetting(SETTING_KEYS.FREE_TRIAL, DEFAULT_FREE_TRIAL);
+}
+
 // --- Admin writes ---
 
 export async function updateLoyaltyRates(value: LoyaltyRates): Promise<ActionResult> {
@@ -138,6 +151,29 @@ export async function updateAnnouncementSetting(value: AnnouncementValue): Promi
 
   revalidateTag("site-settings");
   revalidatePath("/", "layout");
+  revalidatePath("/supaadmin/settings");
+  return { success: true, data: undefined };
+}
+
+export async function updateFreeTrialSetting(value: FreeTrialValue): Promise<ActionResult> {
+  const access = await assertPlatformAdmin();
+  if (!access.success) return { success: false, error: access.error };
+
+  if (value.enabled) {
+    if (!value.planId) return { success: false, error: "Choose which plan the trial applies to." };
+    if (!Number.isInteger(value.days) || value.days < 1 || value.days > 365) {
+      return { success: false, error: "Trial length must be between 1 and 365 days." };
+    }
+    const plan = await prisma.subscription.findUnique({ where: { id: value.planId } });
+    if (!plan) return { success: false, error: "That plan no longer exists." };
+    if (Number(plan.price) === 0) return { success: false, error: "The free plan doesn't need a trial." };
+  }
+
+  await setSetting(SETTING_KEYS.FREE_TRIAL, value);
+  await prisma.auditLog.create({
+    data: { userId: access.userId, action: "FREE_TRIAL_SETTING_UPDATED", entity: "PlatformSetting", entityId: SETTING_KEYS.FREE_TRIAL, metadata: value },
+  });
+
   revalidatePath("/supaadmin/settings");
   return { success: true, data: undefined };
 }

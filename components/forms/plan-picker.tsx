@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { initiatePlanUpgrade } from "@/lib/actions/subscription";
 
@@ -15,13 +16,29 @@ function fmtNaira(price: unknown) {
   return `₦${Number(price).toLocaleString("en-NG")}`;
 }
 
-export function PlanPicker({ slug, plans }: { slug: string; plans: Plan[] }) {
+export function PlanPicker({
+  slug,
+  plans,
+  trialPlanId,
+  trialDays,
+}: {
+  slug: string;
+  plans: Plan[];
+  trialPlanId: string | null;
+  trialDays: number;
+}) {
+  const router = useRouter();
   const [loadingId, setLoadingId] = useState<string | null>(null);
 
   async function choose(planId: string) {
     setLoadingId(planId);
     const result = await initiatePlanUpgrade(slug, planId);
     if (result.success) {
+      if ("trialStarted" in result.data) {
+        toast.success(`Your ${trialDays}-day free trial has started!`);
+        router.push(`/${slug}/admin`);
+        return;
+      }
       window.location.href = result.data.authorizationUrl;
       return;
     }
@@ -40,6 +57,7 @@ export function PlanPicker({ slug, plans }: { slug: string; plans: Plan[] }) {
         };
         const isAi = !!features.aiStoreBuilder;
         const isMogul = plan.name === "Business Mogul";
+        const isTrialPlan = plan.id === trialPlanId;
         return (
           <div
             key={plan.id}
@@ -52,11 +70,19 @@ export function PlanPicker({ slug, plans }: { slug: string; plans: Plan[] }) {
                 {isMogul ? "Best value at scale" : "Most popular"}
               </span>
             )}
+            {isTrialPlan && (
+              <span className="mb-2 w-fit rounded-full bg-emerald-100 px-2 py-0.5 text-xs font-medium text-emerald-700">
+                {trialDays}-day free trial
+              </span>
+            )}
             <h2 className="text-lg font-semibold">{plan.name}</h2>
             <p className="mt-1 text-2xl font-bold">
               {fmtNaira(plan.price)}
               <span className="text-sm font-normal text-muted-foreground">/month</span>
             </p>
+            {isTrialPlan && (
+              <p className="mt-1 text-xs text-emerald-700">Free for {trialDays} days, then {fmtNaira(plan.price)}/month.</p>
+            )}
             <ul className="mt-4 flex-1 space-y-2 text-sm text-muted-foreground">
               {isMogul ? (
                 <>
@@ -94,7 +120,13 @@ export function PlanPicker({ slug, plans }: { slug: string; plans: Plan[] }) {
               disabled={loadingId !== null}
               className="mt-6 w-full rounded-md bg-primary py-2 text-sm font-medium text-primary-foreground disabled:opacity-60"
             >
-              {loadingId === plan.id ? "Redirecting to payment…" : `Subscribe to ${plan.name}`}
+              {loadingId === plan.id
+                ? isTrialPlan
+                  ? "Starting trial…"
+                  : "Redirecting to payment…"
+                : isTrialPlan
+                  ? `Start ${trialDays}-day free trial`
+                  : `Subscribe to ${plan.name}`}
             </button>
           </div>
         );

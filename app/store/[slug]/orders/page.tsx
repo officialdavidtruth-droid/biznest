@@ -3,7 +3,7 @@ import { getStoreBranding } from "@/lib/actions/store-branding";
 import { DISPUTABLE_ORDER_STATUSES } from "@/lib/constants/dispute";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { Package, Clock, CheckCircle2, XCircle, RotateCcw, AlertTriangle, ArrowUpRight, ShoppingBag, ShieldAlert } from "lucide-react";
+import { Package, Clock, CheckCircle2, XCircle, RotateCcw, AlertTriangle, ArrowUpRight, ShoppingBag, ShieldAlert, ArrowLeft } from "lucide-react";
 
 // Store-scoped order history. A customer account only ever belongs to one
 // store (see StoreCustomer), so this is simply "my orders here" — themed
@@ -40,6 +40,13 @@ export default async function StoreOrdersPage({ params }: { params: Promise<{ sl
       <div className="mx-auto max-w-3xl px-6 py-10">
         {/* ---------- HERO ---------- */}
         <div className="mb-8 flex items-center gap-3">
+          <Link
+            href={`/${slug}/account`}
+            aria-label="Back to account"
+            className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-600 transition hover:bg-slate-100 hover:text-slate-900"
+          >
+            <ArrowLeft className="h-4 w-4" />
+          </Link>
           {store.logoUrl && (
             // eslint-disable-next-line @next/next/no-img-element
             <img src={store.logoUrl} alt={store.name} className="h-11 w-11 rounded-xl object-cover ring-1 ring-slate-200" />

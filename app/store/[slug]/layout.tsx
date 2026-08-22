@@ -1,3 +1,24 @@
+import type { Metadata } from "next";
+import { getStoreBranding } from "@/lib/actions/store-branding";
+
+// Every store page under /store/[slug] falls back to the root layout's
+// static "BizNest — Build, Sell, Grow" <title> unless overridden here --
+// that's why the browser tab kept showing "BizNest" instead of the
+// store's own name on every storefront page (home, orders, account, etc).
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ slug: string }>;
+}): Promise<Metadata> {
+  const { slug } = await params;
+  const store = await getStoreBranding(slug);
+  if (!store) return {};
+  return {
+    title: store.name,
+    icons: store.logoUrl ? { icon: store.logoUrl } : undefined,
+  };
+}
+
 // Lumina design system typefaces — headlines in Plus Jakarta Sans, body/UI
 // in Inter (see lib/template-themes.ts LUMINA.font / LUMINA.headlineFont) —
 // plus the extra body-font options offered in Settings > Typography

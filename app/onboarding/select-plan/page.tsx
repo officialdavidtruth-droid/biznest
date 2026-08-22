@@ -2,6 +2,7 @@ import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { redirect, notFound } from "next/navigation";
 import { PlanPicker } from "@/components/forms/plan-picker";
+import { getFreeTrialSetting } from "@/lib/actions/site-settings";
 
 /**
  * The mandatory checkout step between "store created" and "dashboard
@@ -34,6 +35,7 @@ export default async function SelectPlanPage({
     where: { isActive: true },
     orderBy: { price: "asc" },
   });
+  const trialSetting = await getFreeTrialSetting();
 
   return (
     <div className="mx-auto max-w-4xl px-4 py-12">
@@ -43,7 +45,12 @@ export default async function SelectPlanPage({
           {store.name} is ready — pick a plan to unlock your dashboard. Billed monthly, cancel anytime.
         </p>
       </div>
-      <PlanPicker slug={store.slug} plans={plans} />
+      <PlanPicker
+        slug={store.slug}
+        plans={plans}
+        trialPlanId={trialSetting.enabled ? trialSetting.planId : null}
+        trialDays={trialSetting.days}
+      />
     </div>
   );
 }

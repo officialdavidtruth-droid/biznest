@@ -8,10 +8,12 @@ import {
   updateAnnouncementSetting,
   setActiveGateway,
   updateLoyaltyRates,
+  updateFreeTrialSetting,
   type MaintenanceValue,
   type AnnouncementValue,
   type ActiveGateway,
   type LoyaltyRates,
+  type FreeTrialValue,
 } from "@/lib/actions/site-settings";
 import { updatePlanPricing } from "@/lib/actions/admin";
 
@@ -312,6 +314,87 @@ export function LoyaltyRatesForm({ initial }: { initial: LoyaltyRates }) {
       <p className="mb-3 text-xs text-muted-foreground">
         Example: a ₦{sampleSpend.toLocaleString()} order earns {samplePoints.toLocaleString()} points, worth ₦{sampleValue.toLocaleString()} if cashed out.
       </p>
+
+      <button
+        onClick={handleSave}
+        disabled={saving}
+        className="rounded-md bg-primary px-3 py-1.5 text-sm text-primary-foreground disabled:opacity-50"
+      >
+        {saving ? "Saving…" : "Save"}
+      </button>
+    </div>
+  );
+}
+
+// --- Free trial (billing) ------------------------------------------------
+
+export function FreeTrialForm({
+  initial,
+  paidPlans,
+}: {
+  initial: FreeTrialValue;
+  paidPlans: { id: string; name: string }[];
+}) {
+  const router = useRouter();
+  const [enabled, setEnabled] = useState(initial.enabled);
+  const [planId, setPlanId] = useState(initial.planId ?? paidPlans[0]?.id ?? "");
+  const [days, setDays] = useState(String(initial.days));
+  const [saving, setSaving] = useState(false);
+
+  async function handleSave() {
+    const daysNum = Number(days);
+    setSaving(true);
+    const result = await updateFreeTrialSetting({ enabled, planId: enabled ? planId || null : initial.planId, days: daysNum });
+    setSaving(false);
+    if (!result.success) return toast.error(result.error);
+    toast.success("Free trial settings updated.");
+    router.refresh();
+  }
+
+  return (
+    <div className="rounded-lg border bg-background p-4">
+      <div className="mb-1 flex items-center justify-between">
+        <h3 className="text-sm font-semibold">Free trial</h3>
+        <button
+          onClick={() => setEnabled((v) => !v)}
+          className={`h-5 w-9 rounded-full transition ${enabled ? "bg-primary" : "bg-muted"}`}
+        >
+          <span className={`block h-4 w-4 rounded-full bg-background transition ${enabled ? "translate-x-4" : "translate-x-0.5"}`} />
+        </button>
+      </div>
+      <p className="mb-3 text-xs text-muted-foreground">
+        When on, new stores get a free trial on exactly one paid plan (chosen below) instead of being charged the first time they pick it. Every other plan is unaffected.
+      </p>
+
+      <div className="mb-3 grid grid-cols-2 gap-3">
+        <label className="text-xs text-muted-foreground">
+          Plan
+          <select
+            value={planId}
+            onChange={(e) => setPlanId(e.target.value)}
+            disabled={!enabled}
+            className="mt-1 w-full rounded-md border px-3 py-1.5 text-sm disabled:opacity-50"
+          >
+            {paidPlans.length === 0 && <option value="">No paid plans</option>}
+            {paidPlans.map((p) => (
+              <option key={p.id} value={p.id}>{p.name}</option>
+            ))}
+          </select>
+        </label>
+        <label className="text-xs text-muted-foreground">
+          Trial length (days)
+          <input
+            value={days}
+            onChange={(e) => setDays(e.target.value)}
+            type="number"
+            min="1"
+            max="365"
+            step="1"
+            disabled={!enabled}
+            className="mt-1 w-full rounded-md border px-3 py-1.5 text-sm disabled:opacity-50"
+          />
+        </label>
+      </div>
 
       <button
         onClick={handleSave}

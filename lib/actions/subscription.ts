@@ -3,6 +3,7 @@
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { chargeCustomer, getActiveGateway } from "@/lib/payments/gateway";
+import { getFreeTrialSetting } from "@/lib/actions/site-settings";
 import { nanoid } from "nanoid";
 import type { ActionResult } from "@/types/actions";
 
@@ -21,7 +22,7 @@ function buildReference(storeId: string, subscriptionId: string) {
 export async function initiatePlanUpgrade(
   slug: string,
   subscriptionId: string
-): Promise<ActionResult<{ authorizationUrl: string }>> {
+): Promise<ActionResult<{ authorizationUrl: string } | { trialStarted: true }>> {
   const session = await auth();
   if (!session?.user?.id) return { success: false, error: "You must be signed in." };
 
@@ -39,6 +40,26 @@ export async function initiatePlanUpgrade(
     // Free tier — no charge needed, just switch immediately.
     await prisma.store.update({ where: { id: store.id }, data: { subscriptionId: plan.id } });
     return { success: false, error: "Switched to Free — refresh to see it reflected." };
+  }
+
+  // Self-serve free trial — SupaAdmin controls both whether this is on at
+  // all and which single plan it applies to (billing.free_trial platform
+  // setting, edited at /supaadmin/settings). Only applies the first time a
+  // store picks a plan at all (store.subscriptionId is still null here) --
+  // switching *into* this plan later from another paid plan still goes
+  // through the normal charge below, and a store can only ever get this
+  // trial once (this same check blocks re-triggering it by downgrading
+  // back to this plan after the trial ends).
+  const isFirstPlanChoice = !store.subscriptionId;
+  const trialSetting = await getFreeTrialSetting();
+  const trialApplies = isFirstPlanChoice && trialSetting.enabled && trialSetting.planId === plan.id;
+  if (trialApplies) {
+    const trialEndsAt = new Date(Date.now() + trialSetting.days * 24 * 60 * 60 * 1000);
+    await prisma.store.update({
+      where: { id: store.id },
+      data: { subscriptionId: plan.id, trialEndsAt },
+    });
+    return { success: true, data: { trialStarted: true } };
   }
 
   const reference = buildReference(store.id, plan.id);
