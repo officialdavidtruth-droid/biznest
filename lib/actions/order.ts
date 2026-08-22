@@ -331,6 +331,24 @@ export async function listOrdersForBuyer() {
   });
 }
 
+// Store-scoped order history — a customer account only ever belongs to one
+// store (see StoreCustomer), so a buyer's order list here is naturally
+// just "my orders at this store", not a cross-store feed.
+export async function listOrdersForBuyerAtStore(slug: string) {
+  const session = await auth();
+  if (!session?.user?.id) return [];
+
+  return prisma.order.findMany({
+    where: { buyerId: session.user.id, store: { slug } },
+    include: {
+      items: { include: { product: true, service: true } },
+      store: { select: { name: true, slug: true, logoUrl: true, themeColors: true } },
+      dispute: { select: { id: true, status: true } },
+    },
+    orderBy: { createdAt: "desc" },
+  });
+}
+
 export async function listOrders(slug: string) {
   const access = await assertStoreAccess(slug);
   if (!access.success) return [];

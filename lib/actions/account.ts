@@ -335,3 +335,26 @@ export async function getAccountOverview() {
 
   return { orderCount, bookingCount, wishlistCount, favoriteCount, reviewCount, unreadMessages };
 }
+
+// Store-scoped version, for the account overview a customer sees when
+// they're inside a specific store (app/store/[slug]/account). Order/
+// booking/review counts are filtered to that store; wishlist/favorites/
+// messages stay account-wide since those aren't store-specific concepts.
+export async function getAccountOverviewForStore(storeSlug: string) {
+  const session = await auth();
+  if (!session?.user?.id) return null;
+
+  const userId = session.user.id;
+
+  const [orderCount, bookingCount, wishlistCount, reviewCount, defaultAddress, loyalty] =
+    await Promise.all([
+      prisma.order.count({ where: { buyerId: userId, store: { slug: storeSlug } } }),
+      prisma.booking.count({ where: { buyerId: userId, store: { slug: storeSlug } } }),
+      prisma.wishlistItem.count({ where: { userId } }),
+      prisma.review.count({ where: { authorId: userId, store: { slug: storeSlug } } }),
+      prisma.address.findFirst({ where: { userId, isDefault: true } }),
+      prisma.loyaltyAccount.findUnique({ where: { userId } }),
+    ]);
+
+  return { orderCount, bookingCount, wishlistCount, reviewCount, defaultAddress, pointsBalance: loyalty?.pointsBalance ?? 0 };
+}

@@ -6,15 +6,12 @@ import { User } from "lucide-react";
 
 /**
  * Storefront header "sign in / account" entry point. Sits next to
- * CartLink in every template's chrome. Customer accounts are just regular
- * BizNest User rows (shared across the whole platform — see
- * prisma/migrations/20260810010000_customer_account_system), and the
- * session cookie is domain-scoped to ".biznest.space" (lib/auth.config.ts),
- * so a login on one store subdomain is already valid on any other. What
- * was missing was simply a link to get there from inside a storefront —
- * every template had a CartLink but nothing that pointed at /login or
- * /register, so a shopper had no way to discover or use the account
- * system while browsing a store.
+ * CartLink in every template's chrome. Customer accounts are now
+ * store-scoped (see StoreCustomer / prisma/migrations/20260821120000_
+ * store_scoped_customers) — signing up on Store A does not grant access
+ * to Store B — so "my orders" is naturally this store's own themed
+ * /{storeSlug}/orders page, not a generic cross-store biznest.space/orders
+ * feed.
  *
  * callbackUrl is this store's own host+path, so after signing in (or
  * creating an account) the customer is dropped right back where they were
@@ -31,17 +28,11 @@ export function AccountLink({
 
   if (status === "authenticated" && session?.user) {
     return (
-      // "My orders" is deliberately platform-level (/orders), not
-      // /${storeSlug}/orders — there is no such store-scoped page (only
-      // /store/[slug]/orders/[orderId]/confirmation exists), and a
-      // customer account is a shared BizNest account anyway, so its order
-      // history spans every store, not just this one. Linking into the
-      // store-scoped path was a dead link (404).
       <Link
-        href="/orders"
+        href={`/${storeSlug}/account`}
         className="flex items-center"
         aria-label="My account"
-        title="My orders"
+        title="My account"
       >
         <User className="h-5 w-5 transition-colors" style={{ color: ink, opacity: 0.85 }} />
       </Link>
