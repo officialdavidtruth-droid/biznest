@@ -66,7 +66,7 @@ export default async function DisputeDetailPage({
         {photos.length === 0 ? (
           <p className="text-sm text-muted-foreground">No photos submitted.</p>
         ) : (
-          <div className="grid grid-cols-4 gap-2">
+          <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-4">
             {photos.map((p) => (
               <a key={p.id} href={p.fileUrl!} target="_blank" rel="noreferrer">
                 {/* eslint-disable-next-line @next/next/no-img-element */}

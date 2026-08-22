@@ -2,9 +2,12 @@ import type { Metadata } from "next";
 import { getStoreBranding } from "@/lib/actions/store-branding";
 
 // Every store page under /store/[slug] falls back to the root layout's
-// static "BizNest — Build, Sell, Grow" <title> unless overridden here --
-// that's why the browser tab kept showing "BizNest" instead of the
-// store's own name on every storefront page (home, orders, account, etc).
+// static "BizNest — Build, Sell, Grow" <title> and platform favicon unless
+// overridden here -- that's why the browser tab kept showing "BizNest"
+// (title + icon) instead of the store's own name/logo on every storefront
+// page (home, orders, account, etc). "any" for sizes rather than a fixed
+// number since a vendor-uploaded logo could be any dimension; apple-touch-
+// icon covers "Add to Home Screen" on iOS too, not just the browser tab.
 export async function generateMetadata({
   params,
 }: {
@@ -15,7 +18,13 @@ export async function generateMetadata({
   if (!store) return {};
   return {
     title: store.name,
-    icons: store.logoUrl ? { icon: store.logoUrl } : undefined,
+    icons: store.logoUrl
+      ? {
+          icon: [{ url: store.logoUrl, sizes: "any" }],
+          apple: [{ url: store.logoUrl }],
+          shortcut: [{ url: store.logoUrl }],
+        }
+      : undefined,
   };
 }
 
