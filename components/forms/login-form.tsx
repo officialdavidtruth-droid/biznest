@@ -7,7 +7,10 @@ import { signIn, getSession } from "next-auth/react";
 import { useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { toast } from "sonner";
+import { Mail } from "lucide-react";
 import { PasswordInput } from "@/components/forms/password-input";
+import { AuthInput } from "@/components/forms/auth-input";
+import { AuthSubmitButton, GoogleButton, AuthDivider } from "@/components/forms/auth-buttons";
 import Link from "next/link";
 
 export function LoginForm({
@@ -99,24 +102,24 @@ export function LoginForm({
   }
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-5">
       <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
         <div>
-          <label className="mb-1 block text-sm font-medium">
+          <label className="mb-1.5 block text-sm font-medium text-[var(--bn-ink)]">
             {isStoreContext ? "Email" : "Email, or Position@store"}
           </label>
-          <input
+          <AuthInput
+            icon={Mail}
             type="text"
             placeholder={isStoreContext ? "you@example.com" : "you@example.com or amaka@yourstorename"}
             autoCapitalize="none"
-            className="w-full rounded-md border px-3 py-2 text-sm"
             {...register("email")}
           />
           {errors.email && <p className="mt-1 text-xs text-destructive">{errors.email.message}</p>}
         </div>
         <div>
-          <div className="mb-1 flex items-center justify-between">
-            <label className="block text-sm font-medium">Password</label>
+          <div className="mb-1.5 flex items-center justify-between">
+            <label className="block text-sm font-medium text-[var(--bn-ink)]">Password</label>
             <Link href="/forgot-password" className="text-xs text-muted-foreground hover:underline">
               Forgot password?
             </Link>
@@ -124,31 +127,20 @@ export function LoginForm({
           <PasswordInput {...register("password")} />
           {errors.password && <p className="mt-1 text-xs text-destructive">{errors.password.message}</p>}
         </div>
-        <button
-          type="submit"
-          disabled={isSubmitting}
-          className="w-full rounded-md bg-primary py-2 text-sm font-medium text-primary-foreground disabled:opacity-60"
-        >
+        <AuthSubmitButton disabled={isSubmitting}>
           {isSubmitting ? "Signing in…" : "Sign in"}
-        </button>
+        </AuthSubmitButton>
       </form>
 
-      <div className="relative text-center text-xs text-muted-foreground">
-        <span className="bg-background px-2">or</span>
-      </div>
+      <AuthDivider />
 
-      <button
-        onClick={() => signIn("google", { callbackUrl })}
-        className="w-full rounded-md border py-2 text-sm font-medium"
-      >
-        Continue with Google
-      </button>
+      <GoogleButton onClick={() => signIn("google", { callbackUrl })} />
 
       <p className="text-center text-sm text-muted-foreground">
         Don&apos;t have an account?{" "}
         <Link
           href={storeSlug ? `/register?store=${encodeURIComponent(storeSlug)}` : "/register"}
-          className="font-medium text-foreground hover:underline"
+          className="font-medium text-[var(--bn-ink)] hover:underline"
         >
           Sign up
         </Link>

@@ -8,6 +8,10 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { signIn } from "next-auth/react";
+import { User, Mail } from "lucide-react";
+import { AuthInput } from "@/components/forms/auth-input";
+import { PasswordInput } from "@/components/forms/password-input";
+import { AuthSubmitButton, GoogleButton, AuthDivider } from "@/components/forms/auth-buttons";
 import Link from "next/link";
 
 export function RegisterForm({
@@ -52,83 +56,58 @@ export function RegisterForm({
   }
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-5">
       <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-      <div>
-        <label className="mb-1 block text-sm font-medium" htmlFor="name">
-          Full name
-        </label>
-        <input id="name" className="w-full rounded-md border px-3 py-2 text-sm" {...register("name")} />
-        {errors.name && <p className="mt-1 text-xs text-destructive">{errors.name.message}</p>}
-      </div>
+        <div>
+          <label className="mb-1.5 block text-sm font-medium text-[var(--bn-ink)]" htmlFor="name">
+            Full name
+          </label>
+          <AuthInput icon={User} id="name" placeholder="Amaka Chukwu" {...register("name")} />
+          {errors.name && <p className="mt-1 text-xs text-destructive">{errors.name.message}</p>}
+        </div>
 
-      <div>
-        <label className="mb-1 block text-sm font-medium" htmlFor="email">
-          Email
-        </label>
-        <input
-          id="email"
-          type="email"
-          className="w-full rounded-md border px-3 py-2 text-sm"
-          {...register("email")}
-        />
-        {errors.email && <p className="mt-1 text-xs text-destructive">{errors.email.message}</p>}
-      </div>
+        <div>
+          <label className="mb-1.5 block text-sm font-medium text-[var(--bn-ink)]" htmlFor="email">
+            Email
+          </label>
+          <AuthInput icon={Mail} id="email" type="email" placeholder="you@example.com" {...register("email")} />
+          {errors.email && <p className="mt-1 text-xs text-destructive">{errors.email.message}</p>}
+        </div>
 
-      <div>
-        <label className="mb-1 block text-sm font-medium" htmlFor="password">
-          Password
-        </label>
-        <input
-          id="password"
-          type="password"
-          className="w-full rounded-md border px-3 py-2 text-sm"
-          {...register("password")}
-        />
-        {errors.password && <p className="mt-1 text-xs text-destructive">{errors.password.message}</p>}
-      </div>
+        <div>
+          <label className="mb-1.5 block text-sm font-medium text-[var(--bn-ink)]" htmlFor="password">
+            Password
+          </label>
+          <PasswordInput id="password" placeholder="At least 8 characters" {...register("password")} />
+          {errors.password && <p className="mt-1 text-xs text-destructive">{errors.password.message}</p>}
+        </div>
 
-      <div>
-        <label className="mb-1 block text-sm font-medium" htmlFor="confirmPassword">
-          Confirm password
-        </label>
-        <input
-          id="confirmPassword"
-          type="password"
-          className="w-full rounded-md border px-3 py-2 text-sm"
-          {...register("confirmPassword")}
-        />
-        {errors.confirmPassword && (
-          <p className="mt-1 text-xs text-destructive">{errors.confirmPassword.message}</p>
-        )}
-      </div>
+        <div>
+          <label className="mb-1.5 block text-sm font-medium text-[var(--bn-ink)]" htmlFor="confirmPassword">
+            Confirm password
+          </label>
+          <PasswordInput id="confirmPassword" placeholder="Re-enter your password" {...register("confirmPassword")} />
+          {errors.confirmPassword && (
+            <p className="mt-1 text-xs text-destructive">{errors.confirmPassword.message}</p>
+          )}
+        </div>
 
-      <button
-        type="submit"
-        disabled={isSubmitting}
-        className="w-full rounded-md bg-primary py-2 text-sm font-medium text-primary-foreground disabled:opacity-60"
-      >
-        {isSubmitting ? "Creating account…" : "Create account"}
-      </button>
+        <AuthSubmitButton disabled={isSubmitting}>
+          {isSubmitting ? "Creating account…" : "Create account"}
+        </AuthSubmitButton>
       </form>
 
-      <div className="relative text-center text-xs text-muted-foreground">
-        <span className="bg-background px-2">or</span>
-      </div>
+      <AuthDivider />
 
-      <button
-        type="button"
+      <GoogleButton
         onClick={() => signIn("google", { callbackUrl: callbackUrl ?? "/onboarding/business-verification" })}
-        className="w-full rounded-md border py-2 text-sm font-medium"
-      >
-        Continue with Google
-      </button>
+      />
 
       <p className="text-center text-sm text-muted-foreground">
         Already have an account?{" "}
         <Link
           href={storeSlug ? `/login?store=${encodeURIComponent(storeSlug)}` : "/login"}
-          className="font-medium text-foreground hover:underline"
+          className="font-medium text-[var(--bn-ink)] hover:underline"
         >
           Sign in
         </Link>

@@ -2,6 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { getAvailableSlots, createBooking } from "@/lib/actions/booking";
+import { useShopAuthGate } from "@/lib/hooks/use-shop-auth-gate";
 import { toast } from "sonner";
 
 function nextNDays(n: number): { iso: string; label: string }[] {
@@ -43,6 +44,7 @@ export function BookingWidget({
   const [notes, setNotes] = useState("");
   const [confirmed, setConfirmed] = useState(false);
   const [isPending, startTransition] = useTransition();
+  const { requireSignedIn } = useShopAuthGate(storeSlug);
   const days = nextNDays(10);
 
   function pickDate(iso: string) {
@@ -57,6 +59,7 @@ export function BookingWidget({
 
   function book() {
     if (!date || !selectedTime) return;
+    if (!requireSignedIn("book this service")) return;
     startTransition(async () => {
       const result = await createBooking(storeSlug, serviceId, date, selectedTime, notes);
       if (!result.success) {

@@ -1,6 +1,7 @@
 "use client";
 
 import { useCart } from "@/lib/cart-context";
+import { useShopAuthGate } from "@/lib/hooks/use-shop-auth-gate";
 import { toast } from "sonner";
 
 export function AddToCartButton({
@@ -23,10 +24,12 @@ export function AddToCartButton({
   onAccent?: string;
 }) {
   const { addItem } = useCart();
+  const { requireSignedIn } = useShopAuthGate(storeSlug);
 
   return (
     <button
       onClick={() => {
+        if (!requireSignedIn("add items to your cart")) return;
         addItem(storeSlug, { productId, name, price, currency, image });
         toast.success(`Added ${name} to cart`);
       }}

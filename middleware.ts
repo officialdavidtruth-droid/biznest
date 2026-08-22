@@ -21,6 +21,18 @@ const PROTECTED_PREFIXES = ["/onboarding", "/dashboard", "/admin", "/account", "
 // on every request), but middleware still blocks unauthenticated access.
 const STORE_ADMIN_PATTERN = /^\/store\/[^/]+\/admin/;
 
+// Storefront checkout: /store/[slug]/checkout — customers can browse and
+// build a cart (cart lives in localStorage, no account needed) but must be
+// signed in to actually place an order. This is a UX front door: the real
+// enforcement already lives in createOrder/createBooking (see
+// lib/actions/order.ts, lib/actions/booking.ts), which reject anonymous
+// requests server-side regardless of whether this pattern ever changes.
+// Gating it here too means someone finds out *before* filling out an
+// entire checkout form across any of the 12+ storefront templates, not
+// after submitting it. Deliberately doesn't cover /cart — viewing your own
+// (possibly empty) cart isn't "shopping" and shouldn't force a sign-in.
+const STORE_CHECKOUT_PATTERN = /^\/store\/[^/]+\/checkout/;
+
 // Platform admin routes require PLATFORM_ADMIN or SUPPORT_MODERATOR role.
 const PLATFORM_ADMIN_PATTERN = /^\/admin/;
 
@@ -168,7 +180,9 @@ export default auth(async (req) => {
 
   const { pathname } = url;
   const isProtected =
-    PROTECTED_PREFIXES.some((p) => pathname.startsWith(p)) || STORE_ADMIN_PATTERN.test(pathname);
+    PROTECTED_PREFIXES.some((p) => pathname.startsWith(p)) ||
+    STORE_ADMIN_PATTERN.test(pathname) ||
+    STORE_CHECKOUT_PATTERN.test(pathname);
 
   const rewritten = slug !== null || pathname !== req.nextUrl.pathname;
 
@@ -182,6 +196,14 @@ export default auth(async (req) => {
     // no host in it, so NextAuth's redirect callback would resolve it
     // against AUTH_URL (www.biznest.space) and lose the subdomain entirely.
     loginUrl.searchParams.set("callbackUrl", `${req.nextUrl.origin}${pathname}`);
+    // Bounced off checkout specifically (as opposed to /admin, /account,
+    // etc): carry the store slug through so /login shows this store's own
+    // branding instead of generic BizNest chrome — same as AccountLink's
+    // header sign-in link already does.
+    if (STORE_CHECKOUT_PATTERN.test(pathname)) {
+      const slugMatch = pathname.match(/^\/store\/([^/]+)\//);
+      if (slugMatch) loginUrl.searchParams.set("store", slugMatch[1]);
+    }
     return NextResponse.redirect(loginUrl);
   }
 

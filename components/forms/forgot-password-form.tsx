@@ -7,6 +7,9 @@ import { requestPasswordReset } from "@/lib/actions/auth";
 import { useState } from "react";
 import Link from "next/link";
 import { toast } from "sonner";
+import { Mail, MailCheck } from "lucide-react";
+import { AuthInput } from "@/components/forms/auth-input";
+import { AuthSubmitButton } from "@/components/forms/auth-buttons";
 
 export function ForgotPasswordForm() {
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -38,10 +41,13 @@ export function ForgotPasswordForm() {
 
   if (submitted) {
     return (
-      <div className="space-y-4">
-        <p className="rounded-md border bg-muted/40 p-4 text-sm">
-          If an account exists for that email, we&apos;ve sent a link to reset your password. It expires in 1 hour.
-        </p>
+      <div className="space-y-5">
+        <div className="flex items-start gap-3 rounded-xl border border-border bg-muted/40 p-4">
+          <MailCheck className="mt-0.5 h-5 w-5 shrink-0" style={{ color: "var(--bn-marigold)" }} />
+          <p className="text-sm text-[var(--bn-ink)]">
+            If an account exists for that email, we&apos;ve sent a link to reset your password. It expires in 1 hour.
+          </p>
+        </div>
         <Link href="/login" className="block text-center text-sm text-muted-foreground hover:underline">
           Back to sign in
         </Link>
@@ -52,22 +58,13 @@ export function ForgotPasswordForm() {
   return (
     <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
       <div>
-        <label className="mb-1 block text-sm font-medium">Email</label>
-        <input
-          type="email"
-          autoFocus
-          className="w-full rounded-md border px-3 py-2 text-sm"
-          {...register("email")}
-        />
+        <label className="mb-1.5 block text-sm font-medium text-[var(--bn-ink)]">Email</label>
+        <AuthInput icon={Mail} type="email" autoFocus placeholder="you@example.com" {...register("email")} />
         {errors.email && <p className="mt-1 text-xs text-destructive">{errors.email.message}</p>}
       </div>
-      <button
-        type="submit"
-        disabled={isSubmitting}
-        className="w-full rounded-md bg-primary py-2 text-sm font-medium text-primary-foreground disabled:opacity-60"
-      >
+      <AuthSubmitButton disabled={isSubmitting}>
         {isSubmitting ? "Sending…" : "Send reset link"}
-      </button>
+      </AuthSubmitButton>
       <Link href="/login" className="block text-center text-sm text-muted-foreground hover:underline">
         Back to sign in
       </Link>

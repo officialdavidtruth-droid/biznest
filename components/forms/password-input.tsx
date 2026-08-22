@@ -1,7 +1,7 @@
 "use client";
 
 import { forwardRef, useState } from "react";
-import { Eye, EyeOff } from "lucide-react";
+import { Eye, EyeOff, Lock } from "lucide-react";
 
 // Thin wrapper around a plain <input type="password">, so it still works
 // directly with react-hook-form's {...register(...)} spread (ref included)
@@ -13,10 +13,11 @@ export const PasswordInput = forwardRef<HTMLInputElement, React.InputHTMLAttribu
 
     return (
       <div className="relative">
+        <Lock className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground/60" />
         <input
           ref={ref}
           type={visible ? "text" : "password"}
-          className={`w-full rounded-md border px-3 py-2 pr-10 text-sm ${className}`}
+          className={`w-full rounded-xl border border-border bg-white py-2.5 pl-10 pr-10 text-sm text-[var(--bn-ink)] shadow-sm outline-none transition-shadow placeholder:text-muted-foreground/50 focus:border-transparent focus:ring-2 focus:ring-[var(--bn-marigold)] ${className}`}
           {...props}
         />
         <button

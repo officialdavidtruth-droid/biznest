@@ -3,6 +3,7 @@
 import { useState, type CSSProperties } from "react";
 import Link from "next/link";
 import { useCart } from "@/lib/cart-context";
+import { useShopAuthGate } from "@/lib/hooks/use-shop-auth-gate";
 import { toast } from "sonner";
 
 export function ProductDetail({
@@ -39,6 +40,7 @@ export function ProductDetail({
   radius: string;
 }) {
   const { addItem } = useCart();
+  const { requireSignedIn } = useShopAuthGate(storeSlug);
   const [qty, setQty] = useState(1);
   const [active, setActive] = useState(0);
   const [added, setAdded] = useState(false);
@@ -46,6 +48,7 @@ export function ProductDetail({
   const canBuy = type === "PHYSICAL" || type === "RENTAL" ? inStock : true;
 
   function handleAdd() {
+    if (!requireSignedIn("add items to your cart")) return;
     addItem(storeSlug, { productId, name, price, currency, image: images[0] ?? null }, qty);
     toast.success(`Added ${qty} × ${name} to cart`);
     setAdded(true);

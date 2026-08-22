@@ -9,6 +9,7 @@ import { useSearchParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { toast } from "sonner";
 import { PasswordInput } from "@/components/forms/password-input";
+import { AuthSubmitButton } from "@/components/forms/auth-buttons";
 
 export function ResetPasswordForm() {
   const searchParams = useSearchParams();
@@ -44,10 +45,12 @@ export function ResetPasswordForm() {
 
   if (!token) {
     return (
-      <div className="space-y-4">
-        <p className="rounded-md border bg-muted/40 p-4 text-sm">
-          This reset link is missing its token. Request a new one from the sign-in page.
-        </p>
+      <div className="space-y-5">
+        <div className="rounded-xl border border-border bg-muted/40 p-4">
+          <p className="text-sm text-[var(--bn-ink)]">
+            This reset link is missing its token. Request a new one from the sign-in page.
+          </p>
+        </div>
         <Link href="/forgot-password" className="block text-center text-sm text-muted-foreground hover:underline">
           Request a new link
         </Link>
@@ -59,22 +62,18 @@ export function ResetPasswordForm() {
     <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
       <input type="hidden" {...register("token")} />
       <div>
-        <label className="mb-1 block text-sm font-medium">New password</label>
-        <PasswordInput {...register("password")} />
+        <label className="mb-1.5 block text-sm font-medium text-[var(--bn-ink)]">New password</label>
+        <PasswordInput placeholder="At least 8 characters" {...register("password")} />
         {errors.password && <p className="mt-1 text-xs text-destructive">{errors.password.message}</p>}
       </div>
       <div>
-        <label className="mb-1 block text-sm font-medium">Confirm new password</label>
-        <PasswordInput {...register("confirmPassword")} />
+        <label className="mb-1.5 block text-sm font-medium text-[var(--bn-ink)]">Confirm new password</label>
+        <PasswordInput placeholder="Re-enter your new password" {...register("confirmPassword")} />
         {errors.confirmPassword && <p className="mt-1 text-xs text-destructive">{errors.confirmPassword.message}</p>}
       </div>
-      <button
-        type="submit"
-        disabled={isSubmitting}
-        className="w-full rounded-md bg-primary py-2 text-sm font-medium text-primary-foreground disabled:opacity-60"
-      >
+      <AuthSubmitButton disabled={isSubmitting}>
         {isSubmitting ? "Updating…" : "Update password"}
-      </button>
+      </AuthSubmitButton>
     </form>
   );
 }
