@@ -21,7 +21,7 @@ type BuilderStore = {
 };
 
 export function BuilderStorefront({
-  store, config: initialConfig, catalogItems, reviews, avgRating, completedOrders,
+  store, config, catalogItems, reviews, avgRating, completedOrders,
 }: {
   store: BuilderStore;
   config: BuilderConfig;
@@ -30,15 +30,24 @@ export function BuilderStorefront({
   avgRating: number | null;
   completedOrders: number;
 }) {
-  const [liveConfig, setLiveConfig] = useState<BuilderConfig>(initialConfig);
+  const [liveConfig, setLiveConfig] = useState<BuilderConfig>(config);
 
   useEffect(() => {
-    setLiveConfig(initialConfig);
-  }, [initialConfig]);
+    setLiveConfig(config);
+  }, [config]);
 
   useEffect(() => {
+    // Tell the parent editor exactly when the preview iframe is ready to
+    // receive draft builder state. This prevents the first live update from
+    // being lost during iframe startup/navigation.
+    window.parent?.postMessage(
+      { type: "BIZNEST_CUSTOMIZER_PREVIEW_READY" },
+      window.location.origin,
+    );
+
     function handleMessage(event: MessageEvent) {
       if (event.source !== window.parent) return;
+      if (event.origin !== window.location.origin) return;
       const data = event.data;
       if (!data || data.type !== "BIZNEST_CUSTOMIZER_PREVIEW") return;
       if (!data.config || typeof data.config !== "object") return;
