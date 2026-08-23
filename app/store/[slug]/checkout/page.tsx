@@ -1,4 +1,6 @@
 import { prisma } from "@/lib/prisma";
+import { redirect } from "next/navigation";
+import { auth } from "@/lib/auth";
 import { isHeenzyTemplate, isVioletTemplate, isMarketplaceTemplate, isArcovaTemplate, isNovaTemplate, isPremiumTemplate, isHomeVistaTemplate, isRrwTemplate, isRivoraTemplate, isFabtexTemplate, isJuiceLifeTemplate, VIOLET, MARKETPLACE, ARCOVA, NOVA, PREMIUM, HOMEVISTA, RRW, FABTEX } from "@/lib/template-themes";
 import { CheckoutClient } from "./checkout-client";
 import { HeenzyCheckoutClient } from "./heenzy-checkout-client";
@@ -28,6 +30,17 @@ import { getStoreCategoryTree } from "@/lib/storefront-categories";
 export default async function CheckoutPage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
   const store = await prisma.store.findUnique({ where: { slug }, include: { template: true, business: true } });
+
+  // Browsing and building a cart stay open to everyone — this is the one
+  // gate before an actual order gets placed. Sending both `callbackUrl`
+  // (so login returns straight to this store's checkout) and `store` (so
+  // the login page picks up this store's branding) matches how the rest
+  // of the auth flow already reads those two params — see LoginForm.
+  const session = await auth();
+  if (!session?.user?.id) {
+    const callbackUrl = `/store/${slug}/checkout`;
+    redirect(`/login?callbackUrl=${encodeURIComponent(callbackUrl)}&store=${encodeURIComponent(slug)}`);
+  }
   const heenzy = isHeenzyTemplate(store?.template?.name);
   const rivora = store && isRivoraTemplate(store.template?.name);
   const fabtex = store && isFabtexTemplate(store.template?.name);
