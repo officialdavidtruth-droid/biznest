@@ -31,6 +31,14 @@ export function BuilderStorefront({
   completedOrders: number;
 }) {
   const [liveConfig, setLiveConfig] = useState<BuilderConfig>(initialConfig);
+  // True only when this storefront is rendered inside the customizer's
+  // preview iframe (see components/dashboard/customizer-client.tsx) — never
+  // on the real, live storefront a customer visits at /store/[slug].
+  const [isEditMode, setIsEditMode] = useState(false);
+
+  useEffect(() => {
+    setIsEditMode(window.self !== window.top);
+  }, []);
 
   useEffect(() => {
     setLiveConfig(initialConfig);
@@ -66,9 +74,27 @@ export function BuilderStorefront({
   const featured = catalogItems.slice(0, 8);
   const categories = Array.from(new Set(catalogItems.map((i) => i.categoryName).filter(Boolean))) as string[];
 
+  // Every rendered section carries a plain `id={section.id}` (see
+  // BuilderSectionView below) and nothing else in this component sets an
+  // `id` attribute, so the nearest ancestor with an id is always the
+  // clicked section. Only active in the customizer's preview iframe —
+  // intercepting/preventing normal link navigation on the real storefront
+  // would break the actual customer experience.
+  function handleSectionClick(e: React.MouseEvent) {
+    if (!isEditMode) return;
+    const target = (e.target as HTMLElement).closest("[id]") as HTMLElement | null;
+    if (!target?.id || !config.sections.some((s) => s.id === target.id)) return;
+    e.preventDefault();
+    e.stopPropagation();
+    window.parent?.postMessage(
+      { type: "BIZNEST_CUSTOMIZER_SELECT_SECTION", sectionId: target.id },
+      window.location.origin,
+    );
+  }
+
   return (
-    <main style={{ background: d.background, color: d.text, fontFamily: d.font, minHeight: "100vh" }}>
-      <style>{`a{text-decoration:none;color:inherit}.bn-wrap{width:min(${width}px,calc(100% - 32px));margin:0 auto}.bn-grid{display:grid;gap:20px}@media(max-width:720px){.bn-grid{grid-template-columns:1fr!important}.bn-hero{grid-template-columns:1fr!important}.bn-section{padding-top:56px!important;padding-bottom:56px!important}.bn-nav-links{display:none!important}}`}</style>
+    <main onClickCapture={handleSectionClick} style={{ background: d.background, color: d.text, fontFamily: d.font, minHeight: "100vh" }}>
+      <style>{`a{text-decoration:none;color:inherit}.bn-wrap{width:min(${width}px,calc(100% - 32px));margin:0 auto}.bn-grid{display:grid;gap:20px}@media(max-width:720px){.bn-grid{grid-template-columns:1fr!important}.bn-hero{grid-template-columns:1fr!important}.bn-section{padding-top:56px!important;padding-bottom:56px!important}.bn-nav-links{display:none!important}}${isEditMode ? `.bn-section{cursor:pointer;transition:outline .12s ease}.bn-section:hover{outline:2px dashed ${d.accent};outline-offset:-2px}` : ""}`}</style>
       <nav style={{ borderBottom: `1px solid ${d.text}14`, background: d.background, position: "sticky", top: 0, zIndex: 20, backdropFilter: "blur(14px)" }}>
         <div className="bn-wrap" style={{ height: 70, display: "flex", alignItems: "center", justifyContent: "space-between", gap: 18 }}>
           <Link href={`/${store.slug}`} style={{ display: "flex", alignItems: "center", gap: 10, fontWeight: 800 }}>
