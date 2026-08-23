@@ -7,8 +7,8 @@ import {
   X, Monitor, Tablet, Smartphone, LayoutTemplate, Rows3, ChevronRight,
   ArrowUp, ArrowDown, RotateCw, PenSquare, FileText, Trash2, Eye, EyeOff, Plus, ChevronDown,
 } from "lucide-react";
-import { updateSectionOverrides } from "@/lib/actions/sections";
-import { saveStorePage, toggleStorePagePublished, deleteStorePage, SUGGESTED_PAGE_SLUGS, SUGGESTED_PAGE_TITLES } from "@/lib/actions/pages";
+import { updateSectionOverrides } from "@/lib/actions/sections";import { saveStorePage, toggleStorePagePublished, deleteStorePage } from "@/lib/actions/pages";
+import { SUGGESTED_PAGE_SLUGS, SUGGESTED_PAGE_TITLES } from "@/lib/actions/pages-constants";
 import type { Section, TemplateTheme } from "@/lib/template-themes";
 import type { HeroOverrides, StoryOverrides } from "@/lib/actions/store";
 import { ContentPanel } from "@/components/dashboard/content-panel";
