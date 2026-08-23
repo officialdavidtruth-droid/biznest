@@ -5,6 +5,7 @@ import { Check, Lock, Search, Eye, X, ShoppingBag, CalendarDays } from "lucide-r
 import type { TemplateTheme } from "@/lib/template-themes";
 import { DEMO_STORES } from "@/lib/demo-stores";
 import { TemplateCover } from "@/components/storefront/template-cover";
+import { TemplateStylePreview } from "@/components/storefront/template-style-preview";
 import { getBusinessExperience } from "@/lib/business-experience";
 
 // Real, permanent live-demo stores exist for a subset of templates (see
@@ -51,7 +52,7 @@ export function TemplateGallery({
   const [query, setQuery] = useState("");
   const [activeCategory, setActiveCategory] = useState<string | null>(null);
   const [mode, setMode] = useState<"all" | "commerce" | "service">("all");
-  const [preview, setPreview] = useState<{ name: string; slug: string } | null>(null);
+  const [preview, setPreview] = useState<{ name: string; slug: string } | { name: string; theme: TemplateTheme } | null>(null);
   const experience = getBusinessExperience(businessCategory);
 
   const categories = useMemo(() => {
@@ -207,24 +208,26 @@ export function TemplateGallery({
                   </p>
                 </div>
 
-                {/* Distinct from selecting: opens the real, fully working live
-                    demo store for this template in a new tab so you can click
-                    through it before committing. */}
-                {demoSlug ? (
-                  <a
-                    href={`/${demoSlug}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    onClick={(e) => { e.preventDefault(); e.stopPropagation(); setPreview({ name: t.name, slug: demoSlug }); }}
-                    className="flex shrink-0 items-center gap-1 rounded-full border border-border px-2.5 py-1 text-[11px] font-medium text-foreground transition hover:border-primary/50 hover:text-primary"
-                  >
-                    <Eye className="h-3 w-3" /> Preview
-                  </a>
-                ) : (
-                  <span className="shrink-0 rounded-full border border-dashed border-border px-2.5 py-1 text-[11px] font-medium text-muted-foreground">
-                    Preview soon
-                  </span>
-                )}
+                {/* Distinct from selecting: opens a preview you can click
+                    through before committing. Templates with a seeded live
+                    demo store (see lib/demo-stores.ts) open the real,
+                    running storefront; every other template opens a
+                    full-size style preview built from its own theme tokens,
+                    so every template in the catalog is previewable —
+                    not just the handful with a live demo. */}
+                <a
+                  href={demoSlug ? `/${demoSlug}` : undefined}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    setPreview(demoSlug ? { name: t.name, slug: demoSlug } : { name: t.name, theme });
+                  }}
+                  className="flex shrink-0 items-center gap-1 rounded-full border border-border px-2.5 py-1 text-[11px] font-medium text-foreground transition hover:border-primary/50 hover:text-primary"
+                >
+                  <Eye className="h-3 w-3" /> Preview
+                </a>
               </div>
             </div>
           );
@@ -251,10 +254,23 @@ export function TemplateGallery({
         <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/70 p-4" onClick={() => setPreview(null)}>
           <div className="flex h-[90vh] w-full max-w-6xl flex-col overflow-hidden rounded-2xl bg-background shadow-2xl" onClick={(e) => e.stopPropagation()}>
             <div className="flex items-center justify-between border-b border-border px-4 py-3">
-              <div><p className="text-sm font-semibold">{preview.name}</p><p className="text-[11px] text-muted-foreground">Live storefront preview — click through the customer journey.</p></div>
+              <div>
+                <p className="text-sm font-semibold">{preview.name}</p>
+                <p className="text-[11px] text-muted-foreground">
+                  {"slug" in preview
+                    ? "Live storefront preview — click through the customer journey."
+                    : "Style preview — layout, colors, and type for this template."}
+                </p>
+              </div>
               <button onClick={() => setPreview(null)} className="rounded-md p-2 hover:bg-muted"><X className="h-4 w-4" /></button>
             </div>
-            <iframe title={`${preview.name} live preview`} src={`/${preview.slug}`} className="min-h-0 flex-1 bg-white" />
+            {"slug" in preview ? (
+              <iframe title={`${preview.name} live preview`} src={`/${preview.slug}`} className="min-h-0 flex-1 bg-white" />
+            ) : (
+              <div className="min-h-0 flex-1 overflow-y-auto">
+                <TemplateStylePreview theme={preview.theme} storeName="Your Store Name" />
+              </div>
+            )}
           </div>
         </div>
       )}
