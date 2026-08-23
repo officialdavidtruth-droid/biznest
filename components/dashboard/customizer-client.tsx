@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useRef, useState, type Dispatch, type SetStateAction } from "react";
+import { useEffect, useMemo, useRef, useState, type Dispatch, type SetStateAction } from "react";
 import Link from "next/link";
 import { toast } from "sonner";
 import {
@@ -101,6 +101,17 @@ export function CustomizerClient({
   const iframeRef = useRef<HTMLIFrameElement>(null);
 
   const previewUrl = useMemo(() => `/store/${slug}?preview=1`, [slug]);
+
+  function pushPreview(config: BuilderConfig = builder) {
+    iframeRef.current?.contentWindow?.postMessage(
+      { type: "BIZNEST_CUSTOMIZER_PREVIEW", config },
+      window.location.origin,
+    );
+  }
+
+  useEffect(() => {
+    pushPreview();
+  }, [builder]);
 
   function refreshPreview() {
     setPreviewKey((k) => k + 1);
@@ -407,6 +418,8 @@ export function CustomizerClient({
             key={previewKey}
             ref={iframeRef}
             src={previewUrl}
+            onLoad={() => pushPreview()}
+            title="Live website preview"
             className="h-full min-h-[900px] rounded-lg border border-border bg-white shadow-sm transition-[width] duration-200"
             style={{ width: DEVICE_WIDTH[device] }}
           />
