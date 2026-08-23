@@ -124,9 +124,18 @@ export function CustomizerClient({
     function handlePreviewReady(event: MessageEvent) {
       if (event.origin !== window.location.origin) return;
       if (event.source !== iframeRef.current?.contentWindow) return;
-      if (event.data?.type !== "BIZNEST_CUSTOMIZER_PREVIEW_READY") return;
-      previewReadyRef.current = true;
-      pushPreview(builderRef.current);
+      if (event.data?.type === "BIZNEST_CUSTOMIZER_PREVIEW_READY") {
+        previewReadyRef.current = true;
+        pushPreview(builderRef.current);
+        return;
+      }
+      // Clicking any block in the live preview selects it here, so editing
+      // stays a single click away instead of hunting for it in the section
+      // list.
+      if (event.data?.type === "BIZNEST_CUSTOMIZER_SELECT_SECTION" && typeof event.data.sectionId === "string") {
+        setSelectedSectionId(event.data.sectionId);
+        setPanel("sections");
+      }
     }
     window.addEventListener("message", handlePreviewReady);
     return () => window.removeEventListener("message", handlePreviewReady);
@@ -158,27 +167,37 @@ export function CustomizerClient({
 
   async function saveSections() {
     setIsSaving(true);
-    const formData = new FormData();
-    for (const s of order) formData.append("order", s);
-    for (const s of hidden) formData.append(`hidden-${s}`, "on");
-    const result = await updateSectionOverrides(slug, formData);
-    setIsSaving(false);
-    if (!result.success) {
-      toast.error(result.error);
-      return;
+    try {
+      const formData = new FormData();
+      for (const s of order) formData.append("order", s);
+      for (const s of hidden) formData.append(`hidden-${s}`, "on");
+      const result = await updateSectionOverrides(slug, formData);
+      if (!result.success) {
+        toast.error(result.error);
+        return;
+      }
+      toast.success("Layout published");
+      refreshPreview();
+    } catch {
+      toast.error("Something went wrong publishing the layout. Please try again.");
+    } finally {
+      setIsSaving(false);
     }
-    toast.success("Layout published");
-    refreshPreview();
   }
 
   async function publishBuilder(next = builder) {
     setIsSaving(true);
-    const result = await saveBuilderConfig(slug, next);
-    setIsSaving(false);
-    if (!result.success) { toast.error(result.error); return; }
-    toast.success("Website published");
-    setBuilder(next);
-    refreshPreview();
+    try {
+      const result = await saveBuilderConfig(slug, next);
+      if (!result.success) { toast.error(result.error); return; }
+      toast.success("Website published");
+      setBuilder(next);
+      refreshPreview();
+    } catch {
+      toast.error("Something went wrong publishing your website. Please try again.");
+    } finally {
+      setIsSaving(false);
+    }
   }
 
   function updateBuilderSection(id: string, patch: Partial<BuilderSection>) {
@@ -646,25 +665,30 @@ function PageEditor({
       return;
     }
     setIsSaving(true);
-    const formData = new FormData();
-    formData.set("pageSlug", effectiveSlug);
-    formData.set("title", title);
-    formData.set("body", body);
-    if (isPublished) formData.set("isPublished", "on");
-    const result = await saveStorePage(slug, formData);
-    setIsSaving(false);
-    if (!result.success) {
-      toast.error(result.error);
-      return;
+    try {
+      const formData = new FormData();
+      formData.set("pageSlug", effectiveSlug);
+      formData.set("title", title);
+      formData.set("body", body);
+      if (isPublished) formData.set("isPublished", "on");
+      const result = await saveStorePage(slug, formData);
+      if (!result.success) {
+        toast.error(result.error);
+        return;
+      }
+      toast.success("Page saved");
+      onSaved({
+        id: initial?.id ?? `${effectiveSlug}-${Date.now()}`,
+        slug: effectiveSlug.trim().toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, ""),
+        title,
+        body,
+        isPublished,
+      });
+    } catch {
+      toast.error("Something went wrong saving the page. Please try again.");
+    } finally {
+      setIsSaving(false);
     }
-    toast.success("Page saved");
-    onSaved({
-      id: initial?.id ?? `${effectiveSlug}-${Date.now()}`,
-      slug: effectiveSlug.trim().toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, ""),
-      title,
-      body,
-      isPublished,
-    });
   }
 
   return (
