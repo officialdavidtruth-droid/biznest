@@ -825,7 +825,7 @@ export type SignatureTemplate = TemplateTheme & { signatureMode: string; variati
 export type SignatureTemplateName = SignatureTemplate["variationName"];
 
 // Assign stable names after creation so the config stored in Prisma is self-describing.
-for (const t of SIGNATURE_TEMPLATES as any[]) {
+for (const t of SIGNATURE_TEMPLATES as unknown as any[]) {
   if (!t.variationName) {
     Object.defineProperty(t, "variationName", { enumerable: true, configurable: true, value: ({
       electra: "Electra — Smart Commerce", atelier: "Atelier — Modern Fashion", kinetic: "Kinetic — Sneaker Drop",
