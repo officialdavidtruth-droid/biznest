@@ -49,8 +49,11 @@ export default async function VerifyEmailPage({
     );
   }
 
+  // identifier is the account's own id (see registerUser in
+  // lib/actions/auth.ts) -- not email, since the same email can now
+  // belong to several independent accounts (one per store).
   await prisma.user.update({
-    where: { email: record.identifier },
+    where: { id: record.identifier },
     data: { emailVerified: new Date() },
   });
   await prisma.verificationToken.delete({ where: { token } }).catch(() => {});
