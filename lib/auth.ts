@@ -121,9 +121,29 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         let staffLogin: { storeSlug: string; storeName: string; position: string } | null = null;
         let user;
         try {
-          user = await withTimeout(
-            prisma.user.findFirst({ where: { email: { equals: parsed.data.email, mode: "insensitive" } } })
-          );
+          // The same email can now be several fully independent accounts
+          // (one per store, plus at most one platform-level account -- see
+          // customerScopeStoreId on User). A storeSlug credential means
+          // "this is that store's branded login page", so try that
+          // store's own account for this email first. Fall back to the
+          // platform-scoped account so owners/staff/admins can still sign
+          // in even from a page that happened to pass a storeSlug.
+          const loginStoreSlug = typeof credentials?.storeSlug === "string" && credentials.storeSlug ? credentials.storeSlug : undefined;
+          const loginStore = loginStoreSlug
+            ? await withTimeout(prisma.store.findUnique({ where: { slug: loginStoreSlug }, select: { id: true } }))
+            : null;
+
+          user = loginStore
+            ? await withTimeout(
+                prisma.user.findFirst({ where: { email: { equals: parsed.data.email, mode: "insensitive" }, customerScopeStoreId: loginStore.id } })
+              )
+            : null;
+
+          if (!user) {
+            user = await withTimeout(
+              prisma.user.findFirst({ where: { email: { equals: parsed.data.email, mode: "insensitive" }, customerScopeStoreId: null } })
+            );
+          }
 
           if (!user) {
             const atIndex = parsed.data.email.lastIndexOf("@");
@@ -337,3 +357,4 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
     },
   },
 });
+                                                                   
