@@ -214,7 +214,6 @@ export async function toggleFavoriteBusiness(
 ): Promise<ActionResult<{ favorited: boolean }>> {
   const session = await auth();
   if (!session?.user?.id) return { success: false, error: "You need to sign in first." };
-  if (session.user.role === "CUSTOMER") return { success: false, error: "Customer accounts must use a store-scoped account." };
 
   const existing = await prisma.favoriteBusiness.findUnique({
     where: { userId_businessId: { userId: session.user.id, businessId } },
@@ -245,7 +244,6 @@ export async function saveCart(
 ): Promise<ActionResult> {
   const session = await auth();
   if (!session?.user?.id) return { success: false, error: "You need to sign in first." };
-  if (session.user.role === "CUSTOMER") return { success: false, error: "Customer accounts must use a store-scoped account." };
   if (session.user.role === "CUSTOMER") {
     const membership = await requireStoreCustomerByStoreId(storeId);
     if (!membership) return { success: false, error: "This customer account does not belong to that store." };
