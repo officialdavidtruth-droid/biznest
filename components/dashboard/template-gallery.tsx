@@ -40,6 +40,7 @@ export function TemplateGallery({
   selectedId,
   onSelect,
   planRank,
+  businessCategory,
 }: {
   templates: TemplateOption[];
   selectedId?: string | null;
