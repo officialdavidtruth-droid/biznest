@@ -101,6 +101,7 @@ export async function createStore(
         // placeholder for stores that skipped branding.
         logoUrl: parsed.data.logoUrl || undefined,
         bannerUrl: parsed.data.bannerUrl || bannerPhoto || undefined,
+        onboardingProfile: parsed.data.onboardingProfile ?? undefined,
       },
     });
 

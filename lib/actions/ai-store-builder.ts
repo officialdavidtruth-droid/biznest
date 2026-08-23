@@ -5,6 +5,7 @@ import { prisma } from "@/lib/prisma";
 import { checkRateLimit } from "@/lib/rate-limit";
 import { generateStoreDraft, type StoreDraft } from "@/lib/ai/store-builder";
 import type { ActionResult } from "@/types/actions";
+import { buildIndustryHomepage, getBusinessExperience } from "@/lib/business-experience";
 
 /**
  * Generates a full store draft from a business description. Gated to
@@ -51,7 +52,9 @@ export async function generateAiStoreDraft(
     };
   }
 
-  const result = await generateStoreDraft(businessDescription);
+  const category = store.business.category ?? "Other";
+  const contextDescription = `Business category: ${category}. Suggested journey: ${getBusinessExperience(category).journey.join(" -> ")}.\nBusiness description: ${businessDescription}`;
+  const result = await generateStoreDraft(contextDescription);
   if (!result.success) return { success: false, error: result.error };
 
   return { success: true, data: result.data };
@@ -78,6 +81,24 @@ export async function applyAiStoreDraft(slug: string, draft: StoreDraft): Promis
   }
 
   const parsedFaq = draft.faq.map((f) => ({ question: f.question, answer: f.answer }));
+  const category = store.business.category ?? "Other";
+  const baseBuilder = buildIndustryHomepage(category, store.name, draft.aboutBody);
+  const planned = draft.homepagePlan.map((item, index) => ({
+    id: index === 0 && item.type === "hero" ? "hero" : `${item.type}-${index}`,
+    type: item.type,
+    visible: true,
+    settings: {
+      heading: item.heading,
+      body: item.body,
+      padding: index === 0 ? "spacious" : "normal",
+      columns: item.type === "testimonials" ? 3 : 4,
+      ctaLabel: index === 0 ? (draft.businessMode === "commerce" ? "Shop now" : "Get started") : undefined,
+      ctaHref: "#catalog",
+      image: index === 0 ? (store.bannerUrl || undefined) : undefined,
+    },
+  }));
+  const hasHero = planned.some((s) => s.type === "hero");
+  const builder = { ...baseBuilder, sections: hasHero ? planned : [baseBuilder.sections[0], ...planned] };
 
   await prisma.store.update({
     where: { id: store.id },
@@ -88,7 +109,7 @@ export async function applyAiStoreDraft(slug: string, draft: StoreDraft): Promis
       seoTitle: draft.seoTitle.slice(0, 60),
       seoDescription: draft.seoDescription.slice(0, 160),
       socialLinks: { whatsapp: draft.whatsappCta },
-      sectionOverrides: { faq: parsedFaq, deliveryNote: draft.deliveryNote, socialBio: draft.socialBio },
+      sectionOverrides: { faq: parsedFaq, deliveryNote: draft.deliveryNote, socialBio: draft.socialBio, builderVersion: 1, builder, order: builder.sections.map((s) => s.id), hidden: [] },
     },
   });
 

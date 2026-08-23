@@ -1,5 +1,5 @@
 import { PrismaClient, type Prisma } from "@prisma/client";
-import { generateNicheVariations, TEMPLATE_NAME, generateHeenzyVariations, TEMPLATE_NAME_HEENZY, TEMPLATE_NAME_HEENZY_BOUTIQUE, generateNovaVariations, TEMPLATE_NAME_NOVA, TEMPLATE_NAME_NOVA_IVORY, generateVioletVariations, TEMPLATE_NAME_VIOLET, TEMPLATE_NAME_VIOLET_SUNSET, generatePremiumVariation, TEMPLATE_NAME_PREMIUM, generateHomeVistaVariation, TEMPLATE_NAME_HOMEVISTA, generateRrwVariation, TEMPLATE_NAME_RRW, generateMarketplaceVariation, TEMPLATE_NAME_MARKETPLACE, generateArcovaVariation, TEMPLATE_NAME_ARCOVA, generateRivoraVariation, TEMPLATE_NAME_RIVORA, generateJuiceLifeVariation, TEMPLATE_NAME_JUICELIFE, generateFabtexVariation, TEMPLATE_NAME_FABTEX } from "../lib/template-themes";
+import { generateNicheVariations, TEMPLATE_NAME, generateHeenzyVariations, TEMPLATE_NAME_HEENZY, TEMPLATE_NAME_HEENZY_BOUTIQUE, generateNovaVariations, TEMPLATE_NAME_NOVA, TEMPLATE_NAME_NOVA_IVORY, generateVioletVariations, TEMPLATE_NAME_VIOLET, TEMPLATE_NAME_VIOLET_SUNSET, generatePremiumVariation, TEMPLATE_NAME_PREMIUM, generateHomeVistaVariation, TEMPLATE_NAME_HOMEVISTA, generateRrwVariation, TEMPLATE_NAME_RRW, generateMarketplaceVariation, TEMPLATE_NAME_MARKETPLACE, generateArcovaVariation, TEMPLATE_NAME_ARCOVA, generateRivoraVariation, TEMPLATE_NAME_RIVORA, generateJuiceLifeVariation, TEMPLATE_NAME_JUICELIFE, generateFabtexVariation, TEMPLATE_NAME_FABTEX, SIGNATURE_TEMPLATE_CATALOG } from "../lib/template-themes";
 import { fetchDemoPhoto } from "../lib/demo-images";
 
 const prisma = new PrismaClient();
@@ -156,6 +156,29 @@ async function main() {
     update: { category: TEMPLATE_NAME, isActive: true, tierRank: freshTemplate.tierRank, previewUrl, config: freshTemplate as unknown as Prisma.InputJsonValue },
     create: { name: TEMPLATE_NAME, category: TEMPLATE_NAME, tierRank: freshTemplate.tierRank, previewUrl, config: freshTemplate as unknown as Prisma.InputJsonValue },
   });
+
+  // New Signature Collection: thirteen industry-specific storefronts with
+  // distinct layout modes and visual systems, rendered by the Signature engine.
+  const signaturePreviewUrl = await fetchDemoPhoto("BizNest Signature Collection");
+  for (const signatureTemplate of SIGNATURE_TEMPLATE_CATALOG) {
+    await prisma.storeTemplate.upsert({
+      where: { name: signatureTemplate.variationName },
+      update: {
+        category: signatureTemplate.signatureMode,
+        isActive: true,
+        tierRank: signatureTemplate.signatureMode === "kinetic" || signatureTemplate.signatureMode === "maison" || signatureTemplate.signatureMode === "north" || signatureTemplate.signatureMode === "forge" ? 4 : 3,
+        previewUrl: signaturePreviewUrl,
+        config: signatureTemplate as unknown as Prisma.InputJsonValue,
+      },
+      create: {
+        name: signatureTemplate.variationName,
+        category: signatureTemplate.signatureMode,
+        tierRank: signatureTemplate.signatureMode === "kinetic" || signatureTemplate.signatureMode === "maison" || signatureTemplate.signatureMode === "north" || signatureTemplate.signatureMode === "forge" ? 4 : 3,
+        previewUrl: signaturePreviewUrl,
+        config: signatureTemplate as unknown as Prisma.InputJsonValue,
+      },
+    });
+  }
 
   // Heenzy now ships as multiple variants (same component + stylesheet,
   // different config) — same pattern as Nova Studio below.

@@ -1,5 +1,5 @@
 import { auth } from "@/lib/auth";
-import { getAccountOverviewForStore } from "@/lib/actions/account";
+import { getStoreCustomerOverview } from "@/lib/actions/account";
 import { getStoreBranding } from "@/lib/actions/store-branding";
 import { notFound } from "next/navigation";
 import Link from "next/link";
@@ -11,7 +11,7 @@ export default async function StoreAccountOverviewPage({ params }: { params: Pro
   const store = await getStoreBranding(slug);
   if (!store) notFound();
 
-  const overview = await getAccountOverviewForStore(slug);
+  const overview = await getStoreCustomerOverview(slug);
   if (!overview) {
     return <p className="text-sm text-slate-500">Couldn&apos;t load your account overview.</p>;
   }
@@ -38,7 +38,7 @@ export default async function StoreAccountOverviewPage({ params }: { params: Pro
         <div className="rounded-xl border border-slate-200 bg-white">
           <div className="flex items-center justify-between border-b border-slate-100 px-5 py-3">
             <p className="text-xs font-bold uppercase tracking-wide text-slate-500">Address Book</p>
-            <Link href="/account/addresses" aria-label="Edit address book">
+            <Link href={`/store/${slug}/account/addresses`} aria-label="Edit address book">
               <Pencil className="h-3.5 w-3.5 text-amber-500" />
             </Link>
           </div>
@@ -57,7 +57,7 @@ export default async function StoreAccountOverviewPage({ params }: { params: Pro
             ) : (
               <p className="text-slate-500">
                 No address saved yet.{" "}
-                <Link href="/account/addresses" className="font-medium text-amber-600 hover:underline">
+                <Link href={`/store/${slug}/account/addresses`} className="font-medium text-amber-600 hover:underline">
                   Add one
                 </Link>
               </p>
@@ -71,7 +71,7 @@ export default async function StoreAccountOverviewPage({ params }: { params: Pro
             <p className="text-xs font-bold uppercase tracking-wide text-slate-500">Loyalty Points</p>
           </div>
           <div className="px-5 py-4">
-            <Link href="/account/loyalty" className="flex items-center gap-2 text-sm font-medium text-blue-600 hover:underline">
+            <Link href={`/store/${slug}/account/loyalty`} className="flex items-center gap-2 text-sm font-medium text-blue-600 hover:underline">
               <Gift className="h-4 w-4" />
               Points balance: {overview.pointsBalance}
             </Link>
@@ -84,7 +84,7 @@ export default async function StoreAccountOverviewPage({ params }: { params: Pro
             <p className="text-xs font-bold uppercase tracking-wide text-slate-500">Orders at {store.name}</p>
           </div>
           <div className="px-5 py-4">
-            <Link href={`/${slug}/orders`} className="flex items-center gap-2 text-sm font-medium text-blue-600 hover:underline">
+            <Link href={`/store/${slug}/account/orders`} className="flex items-center gap-2 text-sm font-medium text-blue-600 hover:underline">
               <Package className="h-4 w-4" />
               {overview.orderCount} order{overview.orderCount === 1 ? "" : "s"} placed — view history
             </Link>

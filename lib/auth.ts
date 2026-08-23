@@ -8,6 +8,8 @@ import { prisma } from "@/lib/prisma";
 import { loginSchema } from "@/lib/validations/auth";
 import { authConfig } from "@/lib/auth.config";
 import { logError, logWarn } from "@/lib/observability/log";
+import { checkRateLimit, getClientIp } from "@/lib/rate-limit";
+import { headers } from "next/headers";
 
 // Auth.js v5 quirk that cost real debugging time: a plain `throw new
 // Error("ACCOUNT_LOCKED")` inside authorize() does NOT reach the client as
@@ -35,6 +37,9 @@ class AccountBannedError extends CredentialsSignin {
 // are happening with a store slug attached.
 class StoreAccountNotFoundError extends CredentialsSignin {
   code = "STORE_ACCOUNT_NOT_FOUND";
+}
+class LoginRateLimitedError extends CredentialsSignin {
+  code = "RATE_LIMITED";
 }
 
 // If the database call inside authorize() hangs (e.g. DATABASE_URL pointing
@@ -75,6 +80,26 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       authorize: async (credentials) => {
         const parsed = loginSchema.safeParse(credentials);
         if (!parsed.success) return null;
+
+        // Rate-limit credential attempts before doing bcrypt work. We use
+        // both an IP bucket and an identifier bucket so attackers cannot
+        // bypass protection simply by rotating one dimension. The limits are
+        // intentionally separate from account lockout: this protects the
+        // authentication endpoint itself while the per-user lockout protects
+        // individual accounts.
+        const requestHeaders = await headers();
+        const clientIp = getClientIp(requestHeaders);
+        const ipLimit = await checkRateLimit(`login:ip:${clientIp}`, 20, 15 * 60 * 1000);
+        if (!ipLimit.allowed) {
+          void logWarn("AUTH", "Login rate limit exceeded", { ip: clientIp });
+          throw new LoginRateLimitedError();
+        }
+        const normalizedIdentifier = parsed.data.email.trim().toLowerCase();
+        const identifierLimit = await checkRateLimit(`login:identifier:${normalizedIdentifier}`, 10, 15 * 60 * 1000);
+        if (!identifierLimit.allowed) {
+          void logWarn("AUTH", "Login identifier rate limit exceeded");
+          throw new LoginRateLimitedError();
+        }
 
         // Case-insensitive on purpose: registerUser didn't normalize casing
         // (email is stored exactly as typed at signup), so an existing
@@ -190,6 +215,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           }
           const membership = await prisma.storeCustomer.findFirst({
             where: { userId: user.id, store: { slug: storeSlug } },
+            select: { id: true, storeId: true },
           });
           if (!membership) {
             void logWarn("AUTH", "Customer login attempt outside their store", { userId: user.id, storeSlug });
@@ -211,6 +237,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           email: user.email,
           name: user.name,
           role: user.role,
+          ...(!staffLogin && user.role === "CUSTOMER" ? { customerStoreId: (await prisma.storeCustomer.findFirst({ where: { userId: user.id, store: { slug: storeSlug! } }, select: { storeId: true } }))?.storeId } : {}),
           ...(staffLogin
             ? { staffPosition: staffLogin.position, storeSlug: staffLogin.storeSlug, storeName: staffLogin.storeName }
             : {}),
@@ -220,6 +247,15 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
   ],
   callbacks: {
     ...authConfig.callbacks,
+    async signIn({ user, account }) {
+      // Customer OAuth is intentionally disabled. A store-branded OAuth
+      // callback would need a cryptographically bound store context before
+      // it could safely create a customer session; the current store
+      // customer flow uses credentials so Store A can never silently become
+      // a BizNest-global customer session.
+      if (account?.provider === "google" && user.role === "CUSTOMER") return false;
+      return true;
+    },
     async jwt({ token, user }) {
       if (user) {
         token.id = user.id;
@@ -229,7 +265,8 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         // requests below — a staff member's position/store doesn't change
         // mid-session, and this keeps that branch a plain DB role re-check
         // instead of an extra join on every request.
-        const staffUser = user as typeof user & { staffPosition?: string; storeSlug?: string; storeName?: string };
+        const staffUser = user as typeof user & { staffPosition?: string; storeSlug?: string; storeName?: string; customerStoreId?: string };
+        if (staffUser.customerStoreId) token.customerStoreId = staffUser.customerStoreId;
         if (staffUser.staffPosition) {
           token.staffPosition = staffUser.staffPosition;
           token.storeSlug = staffUser.storeSlug;
@@ -268,6 +305,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       if (session.user) {
         session.user.id = token.id as string;
         session.user.role = token.role as UserRole;
+        if (token.customerStoreId) session.user.customerStoreId = token.customerStoreId as string;
         if (token.staffPosition) {
           session.user.staffPosition = token.staffPosition as string;
           session.user.storeSlug = token.storeSlug as string;

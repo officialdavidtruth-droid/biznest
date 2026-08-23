@@ -1,10 +1,11 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { Check, Lock, Search, Eye } from "lucide-react";
+import { Check, Lock, Search, Eye, X, ShoppingBag, CalendarDays } from "lucide-react";
 import type { TemplateTheme } from "@/lib/template-themes";
 import { DEMO_STORES } from "@/lib/demo-stores";
 import { TemplateCover } from "@/components/storefront/template-cover";
+import { getBusinessExperience } from "@/lib/business-experience";
 
 // Real, permanent live-demo stores exist for a subset of templates (see
 // lib/demo-stores.ts). Map template name -> demo slug so the gallery can
@@ -44,9 +45,13 @@ export function TemplateGallery({
   selectedId?: string | null;
   onSelect: (id: string) => void;
   planRank: number;
+  businessCategory?: string | null;
 }) {
   const [query, setQuery] = useState("");
   const [activeCategory, setActiveCategory] = useState<string | null>(null);
+  const [mode, setMode] = useState<"all" | "commerce" | "service">("all");
+  const [preview, setPreview] = useState<{ name: string; slug: string } | null>(null);
+  const experience = getBusinessExperience(businessCategory);
 
   const categories = useMemo(() => {
     const set = new Set(templates.map((t) => t.category));
@@ -55,9 +60,24 @@ export function TemplateGallery({
 
   const filtered = templates.filter((t) => {
     const q = query.toLowerCase();
-    const matchesQuery = !q || t.name.toLowerCase().includes(q) || t.category.toLowerCase().includes(q);
+    const haystack = `${t.name} ${t.category}`.toLowerCase();
+    const matchesQuery = !q || haystack.includes(q);
     const matchesCategory = !activeCategory || t.category === activeCategory;
-    return matchesQuery && matchesCategory;
+    const serviceLike = /hotel|restaurant|salon|beauty|agency|clean|construction|studio|service|rental|real estate|photography/i.test(haystack);
+    const matchesMode = mode === "all" || (mode === "service" ? serviceLike : !serviceLike);
+    return matchesQuery && matchesCategory && matchesMode;
+  });
+
+  const scored = [...filtered].sort((a, b) => {
+    const score = (t: TemplateOption) => {
+      const text = `${t.name} ${t.category}`.toLowerCase();
+      let n = 0;
+      if (experience.mode === "service" && /studio|service|hotel|restaurant|salon|beauty|agency|rental/i.test(text)) n += 5;
+      if (experience.mode === "commerce" && /market|sneaker|fashion|premium|marketplace|fresh|home|violet|heenzy/i.test(text)) n += 5;
+      if (businessCategory && text.includes(businessCategory.toLowerCase().split(" ")[0])) n += 3;
+      return n + (t.tierRank <= planRank ? 1 : 0);
+    };
+    return score(b) - score(a);
   });
 
   const unlockedCount = templates.filter((t) => t.tierRank <= planRank).length;
@@ -92,6 +112,18 @@ export function TemplateGallery({
         </p>
       </div>
 
+      <div className="mb-4 grid grid-cols-3 gap-2 rounded-lg border border-border bg-muted/30 p-1">
+        {([
+          ["all", "All templates"],
+          ["commerce", "Shopping"],
+          ["service", "Services & booking"],
+        ] as const).map(([value, label]) => (
+          <button key={value} onClick={() => setMode(value)} className={`rounded-md px-3 py-2 text-xs font-semibold transition ${mode === value ? "bg-background shadow-sm" : "text-muted-foreground hover:text-foreground"}`}>
+            {value === "commerce" ? <ShoppingBag className="mr-1 inline h-3.5 w-3.5" /> : value === "service" ? <CalendarDays className="mr-1 inline h-3.5 w-3.5" /> : null}{label}
+          </button>
+        ))}
+      </div>
+
       <div className="mb-6 flex flex-wrap gap-2">
         <button
           onClick={() => setActiveCategory(null)}
@@ -115,7 +147,7 @@ export function TemplateGallery({
       </div>
 
       <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
-        {filtered.map((t) => {
+        {scored.map((t) => {
           const theme = themeFromConfig(t.config);
           if (!theme) return null;
           const isSelected = selectedId === t.id;
@@ -182,7 +214,7 @@ export function TemplateGallery({
                     href={`/${demoSlug}`}
                     target="_blank"
                     rel="noopener noreferrer"
-                    onClick={(e) => e.stopPropagation()}
+                    onClick={(e) => { e.preventDefault(); e.stopPropagation(); setPreview({ name: t.name, slug: demoSlug }); }}
                     className="flex shrink-0 items-center gap-1 rounded-full border border-border px-2.5 py-1 text-[11px] font-medium text-foreground transition hover:border-primary/50 hover:text-primary"
                   >
                     <Eye className="h-3 w-3" /> Preview
@@ -214,6 +246,17 @@ export function TemplateGallery({
           </div>
         )}
       </div>
+      {preview && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/70 p-4" onClick={() => setPreview(null)}>
+          <div className="flex h-[90vh] w-full max-w-6xl flex-col overflow-hidden rounded-2xl bg-background shadow-2xl" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-center justify-between border-b border-border px-4 py-3">
+              <div><p className="text-sm font-semibold">{preview.name}</p><p className="text-[11px] text-muted-foreground">Live storefront preview — click through the customer journey.</p></div>
+              <button onClick={() => setPreview(null)} className="rounded-md p-2 hover:bg-muted"><X className="h-4 w-4" /></button>
+            </div>
+            <iframe title={`${preview.name} live preview`} src={`/${preview.slug}`} className="min-h-0 flex-1 bg-white" />
+          </div>
+        </div>
+      )}
     </div>
   );
 }

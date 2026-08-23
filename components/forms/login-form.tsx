@@ -26,7 +26,7 @@ export function LoginForm({
 } = {}) {
   const searchParams = useSearchParams();
   const explicitCallbackUrl = searchParams.get("callbackUrl");
-  const callbackUrl = explicitCallbackUrl ?? "/onboarding/business-verification";
+  const callbackUrl = explicitCallbackUrl ?? (storeSlug ? `/store/${encodeURIComponent(storeSlug)}/account` : "/onboarding/business-verification");
   const prefillEmail = searchParams.get("email") ?? undefined;
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -59,6 +59,7 @@ export function LoginForm({
           EMAIL_NOT_VERIFIED: "Please verify your email before signing in.",
           ACCOUNT_LOCKED: "Too many failed attempts. Try again in 15 minutes.",
           ACCOUNT_BANNED: "This account has been suspended. Contact support.",
+          RATE_LIMITED: "Too many sign-in attempts. Please wait a few minutes and try again.",
           DB_UNAVAILABLE: "Couldn't reach the database. Check DATABASE_URL in Vercel's project settings.",
           STORE_ACCOUNT_NOT_FOUND: isStoreContext
             ? "We couldn't find an account with this store. Please sign up first."
@@ -120,7 +121,7 @@ export function LoginForm({
         <div>
           <div className="mb-1.5 flex items-center justify-between">
             <label className="block text-sm font-medium text-[var(--bn-ink)]">Password</label>
-            <Link href="/forgot-password" className="text-xs text-muted-foreground hover:underline">
+            <Link href={storeSlug ? `/forgot-password?store=${encodeURIComponent(storeSlug)}` : "/forgot-password"} className="text-xs text-muted-foreground hover:underline">
               Forgot password?
             </Link>
           </div>
@@ -132,9 +133,10 @@ export function LoginForm({
         </AuthSubmitButton>
       </form>
 
-      <AuthDivider />
-
-      <GoogleButton onClick={() => signIn("google", { callbackUrl })} />
+      {!isStoreContext && <>
+        <AuthDivider />
+        <GoogleButton onClick={() => signIn("google", { callbackUrl })} />
+      </>}
 
       <p className="text-center text-sm text-muted-foreground">
         Don&apos;t have an account?{" "}

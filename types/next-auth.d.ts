@@ -16,6 +16,7 @@ declare module "next-auth" {
       staffPosition?: string;
       storeSlug?: string;
       storeName?: string;
+      customerStoreId?: string;
     } & DefaultSession["user"];
   }
 
@@ -24,6 +25,7 @@ declare module "next-auth" {
     staffPosition?: string;
     storeSlug?: string;
     storeName?: string;
+    customerStoreId?: string;
   }
 }
 
@@ -35,5 +37,6 @@ declare module "next-auth/jwt" {
     staffPosition?: string;
     storeSlug?: string;
     storeName?: string;
+    customerStoreId?: string;
   }
 }

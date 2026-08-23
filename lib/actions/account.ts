@@ -4,12 +4,13 @@ import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { revalidatePath } from "next/cache";
 import type { ActionResult } from "@/types/actions";
+import { requireStoreCustomer, requireStoreCustomerByStoreId } from "@/lib/actions/store-customer";
 
 // ============ ADDRESSES ============
 
 export async function listAddresses() {
   const session = await auth();
-  if (!session?.user?.id) return [];
+  if (!session?.user?.id || session.user.role === "CUSTOMER") return [];
 
   return prisma.address.findMany({
     where: { userId: session.user.id },
@@ -30,6 +31,7 @@ export async function addAddress(input: {
 }): Promise<ActionResult<{ id: string }>> {
   const session = await auth();
   if (!session?.user?.id) return { success: false, error: "You need to sign in first." };
+  if (session.user.role === "CUSTOMER") return { success: false, error: "Customer accounts must use a store account." };
 
   if (!input.fullName || !input.phone || !input.line1 || !input.city || !input.state) {
     return { success: false, error: "Please fill in all required fields." };
@@ -53,6 +55,7 @@ export async function addAddress(input: {
 export async function deleteAddress(addressId: string): Promise<ActionResult> {
   const session = await auth();
   if (!session?.user?.id) return { success: false, error: "You need to sign in first." };
+  if (session.user.role === "CUSTOMER") return { success: false, error: "Customer accounts must use a store-scoped account." };
 
   const address = await prisma.address.findUnique({ where: { id: addressId } });
   if (!address || address.userId !== session.user.id) {
@@ -67,6 +70,7 @@ export async function deleteAddress(addressId: string): Promise<ActionResult> {
 export async function setDefaultAddress(addressId: string): Promise<ActionResult> {
   const session = await auth();
   if (!session?.user?.id) return { success: false, error: "You need to sign in first." };
+  if (session.user.role === "CUSTOMER") return { success: false, error: "Customer accounts must use a store-scoped account." };
 
   const address = await prisma.address.findUnique({ where: { id: addressId } });
   if (!address || address.userId !== session.user.id) {
@@ -87,6 +91,7 @@ export async function setDefaultAddress(addressId: string): Promise<ActionResult
 export async function listWishlist() {
   const session = await auth();
   if (!session?.user?.id) return [];
+  if (session.user.role === "CUSTOMER") return [];
 
   return prisma.wishlistItem.findMany({
     where: { userId: session.user.id },
@@ -104,6 +109,7 @@ export async function toggleWishlist(input: {
 }): Promise<ActionResult<{ wishlisted: boolean }>> {
   const session = await auth();
   if (!session?.user?.id) return { success: false, error: "You need to sign in first." };
+  if (session.user.role === "CUSTOMER") return { success: false, error: "Customer accounts must use a store-scoped account." };
   if (!input.productId && !input.serviceId) {
     return { success: false, error: "No item specified." };
   }
@@ -122,12 +128,16 @@ export async function toggleWishlist(input: {
     return { success: true, data: { wishlisted: false } };
   }
 
+  const source = input.productId
+    ? await prisma.product.findUnique({ where: { id: input.productId }, select: { storeId: true } })
+    : await prisma.service.findUnique({ where: { id: input.serviceId! }, select: { storeId: true } });
+  if (!source?.storeId) return { success: false, error: "Item not found." };
+  if (session.user.role === "CUSTOMER") {
+    const membership = await requireStoreCustomerByStoreId(source.storeId);
+    if (!membership) return { success: false, error: "This customer account belongs to another store." };
+  }
   await prisma.wishlistItem.create({
-    data: {
-      userId: session.user.id,
-      productId: input.productId ?? null,
-      serviceId: input.serviceId ?? null,
-    },
+    data: { storeId: source.storeId, userId: session.user.id, productId: input.productId ?? null, serviceId: input.serviceId ?? null },
   });
 
   revalidatePath("/account/wishlist");
@@ -146,17 +156,21 @@ export async function recordRecentlyViewed(input: {
   if (!session?.user?.id) return;
   if (!input.productId && !input.serviceId) return;
 
+  const source = input.productId
+    ? await prisma.product.findUnique({ where: { id: input.productId }, select: { storeId: true } })
+    : await prisma.service.findUnique({ where: { id: input.serviceId! }, select: { storeId: true } });
+  if (!source?.storeId) return;
+  if (session.user.role === "CUSTOMER") {
+    const membership = await requireStoreCustomerByStoreId(source.storeId);
+    if (!membership) return;
+  }
   await prisma.recentlyViewed.create({
-    data: {
-      userId: session.user.id,
-      productId: input.productId ?? null,
-      serviceId: input.serviceId ?? null,
-    },
+    data: { storeId: source.storeId, userId: session.user.id, productId: input.productId ?? null, serviceId: input.serviceId ?? null },
   });
 
   // Keep only the most recent 50 per user so this table doesn't grow unbounded.
   const excess = await prisma.recentlyViewed.findMany({
-    where: { userId: session.user.id },
+    where: { userId: session.user.id, storeId: source.storeId },
     orderBy: { viewedAt: "desc" },
     skip: 50,
     select: { id: true },
@@ -169,6 +183,7 @@ export async function recordRecentlyViewed(input: {
 export async function listRecentlyViewed(limit = 20) {
   const session = await auth();
   if (!session?.user?.id) return [];
+  if (session.user.role === "CUSTOMER") return [];
 
   return prisma.recentlyViewed.findMany({
     where: { userId: session.user.id },
@@ -186,6 +201,7 @@ export async function listRecentlyViewed(limit = 20) {
 export async function listFavoriteBusinesses() {
   const session = await auth();
   if (!session?.user?.id) return [];
+  if (session.user.role === "CUSTOMER") return [];
 
   return prisma.favoriteBusiness.findMany({
     where: { userId: session.user.id },
@@ -199,6 +215,7 @@ export async function toggleFavoriteBusiness(
 ): Promise<ActionResult<{ favorited: boolean }>> {
   const session = await auth();
   if (!session?.user?.id) return { success: false, error: "You need to sign in first." };
+  if (session.user.role === "CUSTOMER") return { success: false, error: "Customer accounts must use a store-scoped account." };
 
   const existing = await prisma.favoriteBusiness.findUnique({
     where: { userId_businessId: { userId: session.user.id, businessId } },
@@ -210,7 +227,13 @@ export async function toggleFavoriteBusiness(
     return { success: true, data: { favorited: false } };
   }
 
-  await prisma.favoriteBusiness.create({ data: { userId: session.user.id, businessId } });
+  const business = await prisma.business.findUnique({ where: { id: businessId }, select: { store: { select: { id: true } } } });
+  if (!business?.store?.id) return { success: false, error: "Business not found." };
+  if (session.user.role === "CUSTOMER") {
+    const membership = await requireStoreCustomerByStoreId(business.store.id);
+    if (!membership) return { success: false, error: "This customer account belongs to another store." };
+  }
+  await prisma.favoriteBusiness.create({ data: { storeId: business.store.id, userId: session.user.id, businessId } });
   revalidatePath("/account/favorites");
   return { success: true, data: { favorited: true } };
 }
@@ -223,6 +246,11 @@ export async function saveCart(
 ): Promise<ActionResult> {
   const session = await auth();
   if (!session?.user?.id) return { success: false, error: "You need to sign in first." };
+  if (session.user.role === "CUSTOMER") return { success: false, error: "Customer accounts must use a store-scoped account." };
+  if (session.user.role === "CUSTOMER") {
+    const membership = await requireStoreCustomerByStoreId(storeId);
+    if (!membership) return { success: false, error: "This customer account does not belong to that store." };
+  }
 
   await prisma.savedCart.upsert({
     where: { userId_storeId: { userId: session.user.id, storeId } },
@@ -236,6 +264,7 @@ export async function saveCart(
 export async function listSavedCarts() {
   const session = await auth();
   if (!session?.user?.id) return [];
+  if (session.user.role === "CUSTOMER") return [];
 
   return prisma.savedCart.findMany({
     where: { userId: session.user.id },
@@ -247,6 +276,7 @@ export async function listSavedCarts() {
 export async function deleteSavedCart(cartId: string): Promise<ActionResult> {
   const session = await auth();
   if (!session?.user?.id) return { success: false, error: "You need to sign in first." };
+  if (session.user.role === "CUSTOMER") return { success: false, error: "Customer accounts must use a store-scoped account." };
 
   const cart = await prisma.savedCart.findUnique({ where: { id: cartId } });
   if (!cart || cart.userId !== session.user.id) {
@@ -266,6 +296,7 @@ export async function deleteSavedCart(cartId: string): Promise<ActionResult> {
 export async function listBookingsForBuyer() {
   const session = await auth();
   if (!session?.user?.id) return [];
+  if (session.user.role === "CUSTOMER") return [];
 
   return prisma.booking.findMany({
     where: { buyerId: session.user.id },
@@ -280,6 +311,7 @@ export async function listBookingsForBuyer() {
 export async function listConversationsForUser() {
   const session = await auth();
   if (!session?.user?.id) return [];
+  if (session.user.role === "CUSTOMER") return [];
 
   return prisma.conversation.findMany({
     where: { participants: { some: { userId: session.user.id } } },
@@ -294,6 +326,7 @@ export async function listConversationsForUser() {
 export async function listReviewsForUser() {
   const session = await auth();
   if (!session?.user?.id) return [];
+  if (session.user.role === "CUSTOMER") return [];
 
   return prisma.review.findMany({
     where: { authorId: session.user.id },
@@ -314,6 +347,7 @@ export async function listReviewsForUser() {
 export async function getAccountOverview() {
   const session = await auth();
   if (!session?.user?.id) return null;
+  if (session.user.role === "CUSTOMER") return null;
 
   const userId = session.user.id;
 
@@ -343,6 +377,7 @@ export async function getAccountOverview() {
 export async function getAccountOverviewForStore(storeSlug: string) {
   const session = await auth();
   if (!session?.user?.id) return null;
+  if (session.user.role === "CUSTOMER") return null;
 
   const userId = session.user.id;
 
@@ -357,4 +392,157 @@ export async function getAccountOverviewForStore(storeSlug: string) {
     ]);
 
   return { orderCount, bookingCount, wishlistCount, reviewCount, defaultAddress, pointsBalance: loyalty?.pointsBalance ?? 0 };
+}
+
+// ============================================================================
+// STORE CUSTOMER EXPERIENCE
+// Everything below requires an explicit store slug. These are the only
+// customer-facing account reads/writes used by /store/[slug]/account/*.
+// A customer can never query another store's account data through these APIs.
+// ============================================================================
+
+async function getStoreCustomerContext(storeSlug: string) {
+  return requireStoreCustomer(storeSlug);
+}
+
+export async function getStoreCustomerOverview(storeSlug: string) {
+  const ctx = await getStoreCustomerContext(storeSlug);
+  if (!ctx) return null;
+  const [orders, bookings, wishlist, reviews, addresses, loyalty, unreadMessages] = await Promise.all([
+    prisma.order.count({ where: { buyerId: ctx.userId, storeId: ctx.storeId } }),
+    prisma.booking.count({ where: { buyerId: ctx.userId, storeId: ctx.storeId } }),
+    prisma.wishlistItem.count({
+      where: {
+        userId: ctx.userId,
+        storeId: ctx.storeId,
+      },
+    }),
+    prisma.review.count({ where: { authorId: ctx.userId, storeId: ctx.storeId } }),
+    prisma.storeCustomerAddress.findFirst({ where: { userId: ctx.userId, storeId: ctx.storeId, isDefault: true } }),
+    prisma.storeLoyaltyAccount.findUnique({ where: { storeId_userId: { storeId: ctx.storeId, userId: ctx.userId } } }),
+    prisma.message.count({
+      where: {
+        conversation: {
+          storeId: ctx.storeId,
+          participants: { some: { userId: ctx.userId } },
+        },
+        senderId: { not: ctx.userId },
+        readAt: null,
+      },
+    }),
+  ]);
+  return { store: ctx.store, orderCount: orders, bookingCount: bookings, wishlistCount: wishlist, reviewCount: reviews, unreadMessages, defaultAddress: addresses, pointsBalance: loyalty?.pointsBalance ?? 0 };
+}
+
+export async function listStoreAddresses(storeSlug: string) {
+  const ctx = await getStoreCustomerContext(storeSlug);
+  if (!ctx) return [];
+  return prisma.storeCustomerAddress.findMany({
+    where: { userId: ctx.userId, storeId: ctx.storeId },
+    orderBy: [{ isDefault: "desc" }, { createdAt: "desc" }],
+  });
+}
+
+export async function addStoreAddress(storeSlug: string, input: {
+  label?: string; fullName: string; phone: string; line1: string; line2?: string;
+  city: string; state: string; country?: string; isDefault?: boolean;
+}): Promise<ActionResult<{ id: string }>> {
+  const ctx = await getStoreCustomerContext(storeSlug);
+  if (!ctx) return { success: false, error: "You don't have a customer account with this store." };
+  if (!input.fullName || !input.phone || !input.line1 || !input.city || !input.state) {
+    return { success: false, error: "Please fill in all required fields." };
+  }
+  if (input.isDefault) {
+    await prisma.storeCustomerAddress.updateMany({ where: { userId: ctx.userId, storeId: ctx.storeId }, data: { isDefault: false } });
+  }
+  const address = await prisma.storeCustomerAddress.create({ data: { ...input, userId: ctx.userId, storeId: ctx.storeId } });
+  revalidatePath(`/store/${storeSlug}/account/addresses`);
+  return { success: true, data: { id: address.id } };
+}
+
+export async function deleteStoreAddress(storeSlug: string, addressId: string): Promise<ActionResult> {
+  const ctx = await getStoreCustomerContext(storeSlug);
+  if (!ctx) return { success: false, error: "You don't have a customer account with this store." };
+  const address = await prisma.storeCustomerAddress.findFirst({ where: { id: addressId, userId: ctx.userId, storeId: ctx.storeId } });
+  if (!address) return { success: false, error: "Address not found." };
+  await prisma.storeCustomerAddress.delete({ where: { id: address.id } });
+  revalidatePath(`/store/${storeSlug}/account/addresses`);
+  return { success: true, data: undefined };
+}
+
+export async function setDefaultStoreAddress(storeSlug: string, addressId: string): Promise<ActionResult> {
+  const ctx = await getStoreCustomerContext(storeSlug);
+  if (!ctx) return { success: false, error: "You don't have a customer account with this store." };
+  const address = await prisma.storeCustomerAddress.findFirst({ where: { id: addressId, userId: ctx.userId, storeId: ctx.storeId } });
+  if (!address) return { success: false, error: "Address not found." };
+  await prisma.$transaction([
+    prisma.storeCustomerAddress.updateMany({ where: { userId: ctx.userId, storeId: ctx.storeId }, data: { isDefault: false } }),
+    prisma.storeCustomerAddress.update({ where: { id: address.id }, data: { isDefault: true } }),
+  ]);
+  revalidatePath(`/store/${storeSlug}/account/addresses`);
+  return { success: true, data: undefined };
+}
+
+export async function listStoreWishlist(storeSlug: string) {
+  const ctx = await getStoreCustomerContext(storeSlug);
+  if (!ctx) return [];
+  return prisma.wishlistItem.findMany({
+    where: { userId: ctx.userId, storeId: ctx.storeId },
+    include: { product: true, service: true },
+    orderBy: { createdAt: "desc" },
+  });
+}
+
+export async function toggleStoreWishlist(storeSlug: string, input: { productId?: string; serviceId?: string }): Promise<ActionResult<{ wishlisted: boolean }>> {
+  const ctx = await getStoreCustomerContext(storeSlug);
+  if (!ctx) return { success: false, error: "You don't have a customer account with this store." };
+  if (!input.productId && !input.serviceId) return { success: false, error: "No item specified." };
+
+  const validProduct = input.productId ? await prisma.product.findFirst({ where: { id: input.productId, storeId: ctx.storeId }, select: { id: true } }) : null;
+  const validService = input.serviceId ? await prisma.service.findFirst({ where: { id: input.serviceId, storeId: ctx.storeId }, select: { id: true } }) : null;
+  if ((input.productId && !validProduct) || (input.serviceId && !validService)) return { success: false, error: "That item doesn't belong to this store." };
+
+  const existing = await prisma.wishlistItem.findFirst({ where: { userId: ctx.userId, storeId: ctx.storeId, productId: input.productId ?? null, serviceId: input.serviceId ?? null } });
+  if (existing) {
+    await prisma.wishlistItem.delete({ where: { id: existing.id } });
+    revalidatePath(`/store/${storeSlug}/account/wishlist`);
+    return { success: true, data: { wishlisted: false } };
+  }
+  await prisma.wishlistItem.create({ data: { storeId: ctx.storeId, userId: ctx.userId, productId: input.productId ?? null, serviceId: input.serviceId ?? null } });
+  revalidatePath(`/store/${storeSlug}/account/wishlist`);
+  return { success: true, data: { wishlisted: true } };
+}
+
+export async function listStoreBookings(storeSlug: string) {
+  const ctx = await getStoreCustomerContext(storeSlug);
+  if (!ctx) return [];
+  return prisma.booking.findMany({ where: { buyerId: ctx.userId, storeId: ctx.storeId }, include: { service: { select: { name: true, images: true } } }, orderBy: { scheduledAt: "desc" } });
+}
+
+export async function listStoreReviews(storeSlug: string) {
+  const ctx = await getStoreCustomerContext(storeSlug);
+  if (!ctx) return [];
+  return prisma.review.findMany({ where: { authorId: ctx.userId, storeId: ctx.storeId }, include: { product: { select: { name: true, images: true } }, service: { select: { name: true, images: true } }, response: true }, orderBy: { createdAt: "desc" } });
+}
+
+export async function listStoreConversations(storeSlug: string) {
+  const ctx = await getStoreCustomerContext(storeSlug);
+  if (!ctx) return [];
+  return prisma.conversation.findMany({
+    where: { storeId: ctx.storeId, participants: { some: { userId: ctx.userId } } },
+    include: { messages: { orderBy: { createdAt: "desc" }, take: 1 }, participants: { select: { userId: true, user: { select: { name: true, image: true } } } } },
+    orderBy: { createdAt: "desc" },
+  });
+}
+
+export async function listStoreRecentlyViewed(storeSlug: string, limit = 20) {
+  const ctx = await getStoreCustomerContext(storeSlug);
+  if (!ctx) return [];
+  return prisma.recentlyViewed.findMany({ where: { userId: ctx.userId, storeId: ctx.storeId }, include: { product: true, service: true }, orderBy: { viewedAt: "desc" }, take: limit });
+}
+
+export async function listStoreSavedCart(storeSlug: string) {
+  const ctx = await getStoreCustomerContext(storeSlug);
+  if (!ctx) return null;
+  return prisma.savedCart.findUnique({ where: { userId_storeId: { userId: ctx.userId, storeId: ctx.storeId } } });
 }

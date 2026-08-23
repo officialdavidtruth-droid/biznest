@@ -2,6 +2,7 @@
 
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { requireStoreCustomerByStoreId } from "@/lib/actions/store-customer";
 import { checkRateLimit } from "@/lib/rate-limit";
 import { emitWebhookEvent } from "@/lib/webhooks/dispatch";
 import { revalidatePath } from "next/cache";
@@ -99,6 +100,11 @@ export async function createBooking(
   const service = await prisma.service.findUnique({ where: { id: serviceId } });
   if (!service || !service.isBookable || !service.durationMins) {
     return { success: false, error: "This service isn't bookable." };
+  }
+
+  if (session.user.role === "CUSTOMER") {
+    const membership = await requireStoreCustomerByStoreId(service.storeId);
+    if (!membership) return { success: false, error: "This customer account belongs to another store. Sign up for this store to continue." };
   }
 
   const available = await getAvailableSlots(serviceId, dateISO);

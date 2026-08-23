@@ -68,10 +68,13 @@ model User {
 
   // --- Customer account system (additive) ---
   addresses         Address[]
+  storeAddresses    StoreCustomerAddress[]
   storeMemberships  StoreCustomer[]
+  customerProfiles  StoreCustomerProfile[]
   wishlistItems     WishlistItem[]
   recentlyViewed    RecentlyViewed[]
   favoriteBusinesses FavoriteBusiness[]
+  storeLoyaltyAccounts StoreLoyaltyAccount[]
   savedCarts        SavedCart[]
 
   // --- Loyalty / invoicing / quotations (additive) ---
@@ -80,6 +83,57 @@ model User {
   quotes            Quote[]
 
   @@index([role])
+}
+
+
+model StoreCustomerAddress {
+  id        String   @id @default(cuid())
+  storeId   String
+  store     Store    @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  label     String?
+  fullName  String
+  phone     String
+  line1     String
+  line2     String?
+  city      String
+  state     String
+  country   String   @default("Nigeria")
+  isDefault Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  @@index([storeId, userId])
+  @@index([storeId, userId, isDefault])
+}
+
+model StoreLoyaltyAccount {
+  id            String         @id @default(cuid())
+  storeId       String
+  store         Store          @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  userId        String
+  user          User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  pointsBalance Int            @default(0)
+  entries       StoreLoyaltyEntry[]
+  updatedAt     DateTime       @updatedAt
+
+  @@unique([storeId, userId])
+  @@index([storeId])
+}
+
+model StoreLoyaltyEntry {
+  id                 String             @id @default(cuid())
+  loyaltyAccountId   String
+  loyaltyAccount     StoreLoyaltyAccount @relation(fields: [loyaltyAccountId], references: [id], onDelete: Cascade)
+  orderId            String?
+  order              Order?             @relation(fields: [orderId], references: [id])
+  type               LoyaltyEntryType
+  points             Int
+  note               String?
+  createdAt          DateTime           @default(now())
+
+  @@index([loyaltyAccountId, createdAt])
+  @@index([orderId, type])
 }
 
 model Address {
@@ -102,6 +156,8 @@ model Address {
 
 model WishlistItem {
   id        String   @id @default(cuid())
+  storeId   String
+  store     Store    @relation(fields: [storeId], references: [id], onDelete: Cascade)
   userId    String
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   productId String?
@@ -116,6 +172,8 @@ model WishlistItem {
 
 model RecentlyViewed {
   id        String   @id @default(cuid())
+  storeId   String
+  store     Store    @relation(fields: [storeId], references: [id], onDelete: Cascade)
   userId    String
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   productId String?
@@ -129,6 +187,8 @@ model RecentlyViewed {
 
 model FavoriteBusiness {
   id         String   @id @default(cuid())
+  storeId    String
+  store     Store    @relation(fields: [storeId], references: [id], onDelete: Cascade)
   userId     String
   user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   businessId String
@@ -157,6 +217,27 @@ model SavedCart {
 // one source of truth for "is this person actually a customer of this
 // specific store", and lib/auth.ts's Credentials authorize() checks it on
 // every store-context login.
+model StoreCustomerProfile {
+  id        String   @id @default(cuid())
+  storeId   String
+  store     Store    @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  userId    String?
+  user      User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+  name      String
+  email     String?
+  phone     String?
+  notes     String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  orders    Order[]
+
+  @@index([storeId, createdAt])
+  @@index([storeId, phone])
+  @@index([storeId, email])
+  @@index([userId])
+}
+
 model StoreCustomer {
   id        String   @id @default(cuid())
   userId    String
@@ -362,6 +443,10 @@ model Store {
   nextPoNo      Int @default(1)
 
   sectionOverrides Json?
+  // Industry-specific answers captured during store onboarding. The object
+  // is intentionally flexible because each business type asks different
+  // setup questions (hotel rooms, salon team size, delivery area, etc.).
+  onboardingProfile Json?
   // Click-to-edit hero block overrides (see components/dashboard/hero-block-editor.tsx).
   // { headline?, subtitle?, ctaLabel? } -- all optional; page.tsx falls back to
   // store.name / business.description / theme.cta when a key is absent, so
@@ -452,7 +537,14 @@ model Store {
   payments      Payment[]
   visits        StoreVisit[]
   savedCarts    SavedCart[]
+  storeWishlistItems WishlistItem[]
+  storeRecentlyViewed RecentlyViewed[]
+  storeFavoriteBusinesses FavoriteBusiness[]
+  storeAddresses StoreCustomerAddress[]
+  storeLoyaltyAccounts StoreLoyaltyAccount[]
+  conversations Conversation[]
   customers     StoreCustomer[]
+  customerProfiles StoreCustomerProfile[]
   staffMembers  StoreStaff[]
   activityLogs  StoreActivityLog[]
 
@@ -1041,6 +1133,8 @@ model Order {
   store         Store         @relation(fields: [storeId], references: [id])
   buyerId       String
   buyer         User          @relation("BuyerOrders", fields: [buyerId], references: [id])
+  customerProfileId String?
+  customerProfile   StoreCustomerProfile? @relation(fields: [customerProfileId], references: [id], onDelete: SetNull)
 
   status        OrderStatus   @default(PENDING_PAYMENT)
   subtotal      Decimal       @db.Decimal(12, 2)
@@ -1091,6 +1185,7 @@ model Order {
 
   // --- Loyalty / invoicing / quotations (additive) ---
   loyaltyEntries LoyaltyEntry[]
+  storeLoyaltyEntries StoreLoyaltyEntry[]
   invoice        Invoice?
   quote          Quote?
 
@@ -1112,6 +1207,7 @@ model Order {
 
   @@index([storeId])
   @@index([buyerId])
+  @@index([customerProfileId])
 }
 
 // Append-only timeline of Order.status transitions -- this is what lets the
@@ -1399,6 +1495,8 @@ model ReviewResponse {
 
 model Conversation {
   id        String   @id @default(cuid())
+  storeId   String?
+  store     Store?   @relation(fields: [storeId], references: [id], onDelete: Cascade)
   orderId   String?  @unique
   order     Order?   @relation(fields: [orderId], references: [id])
 

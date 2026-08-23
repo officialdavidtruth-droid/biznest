@@ -1,6 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import { NextResponse } from "next/server";
-import { generateNicheVariations, TEMPLATE_NAME, generateHeenzyVariations, TEMPLATE_NAME_HEENZY } from "@/lib/template-themes";
+import { generateNicheVariations, TEMPLATE_NAME, generateHeenzyVariations, TEMPLATE_NAME_HEENZY, SIGNATURE_TEMPLATE_CATALOG } from "@/lib/template-themes";
 import { fetchDemoPhoto } from "@/lib/demo-images";
 import type { Prisma } from "@prisma/client";
 
@@ -102,10 +102,16 @@ export async function GET(req: Request) {
     });
   }
 
-  await prisma.storeTemplate.updateMany({
-    where: { name: { notIn: [TEMPLATE_NAME, ...heenzyVariants.map((v) => v.variationName)] } },
-    data: { isActive: false },
-  });
+  // New Signature Collection — keep these templates active in production
+  // bootstrap too, otherwise a deploy using this route would silently hide them.
+  const signaturePreviewUrl = await fetchDemoPhoto("BizNest Signature Collection");
+  for (const signatureTemplate of SIGNATURE_TEMPLATE_CATALOG) {
+    await prisma.storeTemplate.upsert({
+      where: { name: signatureTemplate.variationName },
+      update: { category: signatureTemplate.signatureMode, isActive: true, tierRank: signatureTemplate.signatureMode === "kinetic" || signatureTemplate.signatureMode === "maison" || signatureTemplate.signatureMode === "north" || signatureTemplate.signatureMode === "forge" ? 4 : 3, previewUrl: signaturePreviewUrl, config: signatureTemplate as unknown as Prisma.InputJsonValue },
+      create: { name: signatureTemplate.variationName, category: signatureTemplate.signatureMode, tierRank: signatureTemplate.signatureMode === "kinetic" || signatureTemplate.signatureMode === "maison" || signatureTemplate.signatureMode === "north" || signatureTemplate.signatureMode === "forge" ? 4 : 3, previewUrl: signaturePreviewUrl, config: signatureTemplate as unknown as Prisma.InputJsonValue },
+    });
+  }
 
   for (const sub of SUBSCRIPTIONS) {
     await prisma.subscription.upsert({

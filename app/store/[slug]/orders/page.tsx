@@ -1,5 +1,6 @@
 import { listOrdersForBuyerAtStore } from "@/lib/actions/order";
 import { getStoreBranding } from "@/lib/actions/store-branding";
+import { requireStoreCustomer } from "@/lib/actions/store-customer";
 import { DISPUTABLE_ORDER_STATUSES } from "@/lib/constants/dispute";
 import Link from "next/link";
 import { notFound } from "next/navigation";
@@ -27,6 +28,9 @@ export default async function StoreOrdersPage({ params }: { params: Promise<{ sl
   const store = await getStoreBranding(slug);
   if (!store) notFound();
 
+  const customer = await requireStoreCustomer(slug);
+  if (!customer) notFound();
+
   const orders = await listOrdersForBuyerAtStore(slug);
   const accent = store.themeColors?.primary || "#4f46e5"; // sensible fallback, still per-store when set
 
@@ -42,7 +46,7 @@ export default async function StoreOrdersPage({ params }: { params: Promise<{ sl
         {/* ---------- HERO ---------- */}
         <div className="mb-8 flex items-center gap-3">
           <Link
-            href={`/${slug}/account`}
+            href={`/store/${slug}/account`}
             aria-label="Back to account"
             className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-600 transition hover:bg-slate-100 hover:text-slate-900"
           >
@@ -100,7 +104,7 @@ export default async function StoreOrdersPage({ params }: { params: Promise<{ sl
                   key={order.id}
                   className="group overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-md"
                 >
-                  <Link href={`/${slug}/orders/${order.id}/confirmation`} className="flex items-center gap-4 p-4">
+                  <Link href={`/store/${slug}/orders/${order.id}/confirmation`} className="flex items-center gap-4 p-4">
                     <div className="relative h-16 w-16 flex-shrink-0 overflow-hidden rounded-xl bg-slate-100">
                       {image ? (
                         // eslint-disable-next-line @next/next/no-img-element

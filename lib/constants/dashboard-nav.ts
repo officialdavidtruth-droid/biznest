@@ -1,7 +1,7 @@
 import {
   LayoutDashboard, ShoppingCart, Package, Wrench, Users, Boxes, Ticket,
   CreditCard, BarChart3, Star, Megaphone, MessageSquare,
-  Settings, BadgeCheck, Wallet, LifeBuoy, Truck, Wand2, MousePointerClick,
+  Settings, BadgeCheck, Wallet, LifeBuoy, Truck, Wand2,
   LayoutTemplate, FileText, FileSignature, MailWarning, Calculator,
 } from "lucide-react";
 import { getCategoryDashboard } from "@/lib/constants/category-dashboard";
@@ -60,9 +60,15 @@ export function buildNavGroups(business: { sellsProducts: boolean; offersService
   // (e.g. "Bookings" for a salon, "Delivery zones" for a restaurant) — but
   // only if it isn't already present from sellsProducts/offersServices above.
   const categoryConfig = getCategoryDashboard(business.category);
-  if (categoryConfig.extraNavItem && !sellItems.some((i) => i.href === categoryConfig.extraNavItem!.href)) {
-    sellItems.push({ permission: "products", ...categoryConfig.extraNavItem });
-  }
+  const categoryExtraNavItem =
+    categoryConfig.extraNavItem && !sellItems.some((i) => i.href === categoryConfig.extraNavItem!.href)
+      ? ({ permission: "products", ...categoryConfig.extraNavItem } as NavItem)
+      : null;
+
+  const sellNavItems = sellItems.filter((item) =>
+    ["/products", "/services", "/orders", "/pos"].includes(item.href)
+  );
+  if (categoryExtraNavItem) sellNavItems.push(categoryExtraNavItem);
 
   return [
     {
@@ -71,37 +77,54 @@ export function buildNavGroups(business: { sellsProducts: boolean; offersService
     },
     {
       label: "Sell",
-      items: sellItems,
+      items: sellNavItems,
+    },
+    {
+      label: "Manage",
+      items: [
+        { label: "Inventory", href: "/inventory", icon: Boxes, permission: "products" },
+        { label: "Customers", href: "/customers", icon: Users, permission: "customers" },
+        { label: "Suppliers", href: "/suppliers", icon: Users, permission: "products" },
+        { label: "Purchase orders", href: "/purchase-orders", icon: FileSignature, permission: "products" },
+        { label: "Delivery zones", href: "/delivery", icon: Truck, permission: "settings" },
+        { label: "Staff", href: "/staff", icon: Users, ownerOnly: true },
+      ],
+    },
+    {
+      label: "Money",
+      items: [
+        { label: "Payments", href: "/payments", icon: CreditCard, permission: "payments" },
+        { label: "Invoices", href: "/invoices", icon: FileText, permission: "orders" },
+        { label: "Quotes", href: "/quotes", icon: FileSignature, permission: "orders" },
+        // Profit is surfaced inside Analytics until a dedicated profit/expense
+        // ledger exists, so we don't create a dead navigation destination.
+      ],
     },
     {
       label: "Grow",
       items: [
-        { label: "Customers", href: "/customers", icon: Users, permission: "customers" },
-        { label: "Coupons", href: "/coupons", icon: Ticket, permission: "marketing" },
         { label: "Marketing", href: "/marketing", icon: Megaphone, permission: "marketing" },
+        { label: "Coupons", href: "/coupons", icon: Ticket, permission: "marketing" },
         { label: "Abandoned checkouts", href: "/abandoned-checkouts", icon: MailWarning, permission: "marketing" },
         { label: "Reviews", href: "/reviews", icon: Star, permission: "marketing" },
-        { label: "Analytics", href: "/analytics", icon: BarChart3, permission: "analytics" },
+        { label: "Messages", href: "/messages", icon: MessageSquare, permission: "messages" },
+        { label: "Analytics & Profit", href: "/analytics", icon: BarChart3, permission: "analytics" },
       ],
     },
     {
-      label: "Store",
+      label: "Website",
       items: [
         { label: "Templates", href: "/templates", icon: LayoutTemplate, permission: "settings" },
         { label: "AI Store Builder", href: "/ai-store-builder", icon: Wand2, permission: "settings" },
-        { label: "Customize Website", href: "/customize", icon: Wand2, permission: "settings" },
-        { label: "Website Editor (beta)", href: "/website-editor", icon: MousePointerClick, permission: "settings" },
-        { label: "Messages", href: "/messages", icon: MessageSquare, permission: "messages" },
-        { label: "Payments", href: "/payments", icon: CreditCard, permission: "payments" },
-        { label: "Settings", href: "/settings", icon: Settings, permission: "settings" },
+        { label: "Website Builder", href: "/customize", icon: Wand2, permission: "settings" },
       ],
     },
     {
       label: "Account",
       items: [
+        { label: "Settings", href: "/settings", icon: Settings, permission: "settings" },
         { label: "Verification", href: "/verification", icon: BadgeCheck, permission: "settings" },
         { label: "Subscription", href: "/subscription", icon: Wallet, ownerOnly: true },
-        { label: "Staff", href: "/staff", icon: Users, ownerOnly: true },
         { label: "Activity log", href: "/activity", icon: FileText, ownerOnly: true },
         { label: "Support", href: "/support", icon: LifeBuoy },
       ],

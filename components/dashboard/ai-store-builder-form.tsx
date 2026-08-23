@@ -92,6 +92,22 @@ export function AiStoreBuilderForm({ slug, defaultDescription }: { slug: string;
             value={draft.productCategories.join(", ")}
             onChange={(v) => updateDraft("productCategories", v.split(",").map((s) => s.trim()).filter(Boolean))}
           />
+
+          <div>
+            <span className="text-sm font-medium">Homepage plan</span>
+            <p className="mt-1 text-xs text-muted-foreground">AI chose this section order for your business. Edit the copy before applying.</p>
+            <div className="mt-2 space-y-2">
+              {draft.homepagePlan.map((item, i) => (
+                <div key={i} className="rounded border border-border p-2">
+                  <div className="flex items-center gap-2">
+                    <span className="w-20 shrink-0 rounded bg-muted px-2 py-1 text-[10px] font-semibold uppercase">{item.type}</span>
+                    <input value={item.heading} onChange={(e) => { const next=[...draft.homepagePlan]; next[i]={...next[i],heading:e.target.value}; updateDraft("homepagePlan", next); }} className="min-w-0 flex-1 rounded border bg-background px-2 py-1.5 text-xs" />
+                  </div>
+                  <textarea value={item.body ?? ""} onChange={(e) => { const next=[...draft.homepagePlan]; next[i]={...next[i],body:e.target.value}; updateDraft("homepagePlan", next); }} rows={2} className="mt-2 w-full rounded border bg-background px-2 py-1.5 text-xs" placeholder="Optional section copy" />
+                </div>
+              ))}
+            </div>
+          </div>
           <Field label="SEO title" value={draft.seoTitle} onChange={(v) => updateDraft("seoTitle", v)} />
           <Field label="SEO description" value={draft.seoDescription} onChange={(v) => updateDraft("seoDescription", v)} textarea />
           <Field label="WhatsApp CTA" value={draft.whatsappCta} onChange={(v) => updateDraft("whatsappCta", v)} />

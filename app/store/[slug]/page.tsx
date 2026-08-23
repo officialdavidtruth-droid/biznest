@@ -3,7 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
 import { CartLink } from "@/components/storefront/cart-link";
-import { resolveStoreTheme, FRESH, isHeenzyTemplate, isNovaTemplate, isVioletTemplate, isPremiumTemplate, isHomeVistaTemplate, isRrwTemplate, isMarketplaceTemplate, isArcovaTemplate, isRivoraTemplate, isJuiceLifeTemplate, isFabtexTemplate, type TemplateTheme } from "@/lib/template-themes";
+import { resolveStoreTheme, FRESH, isSignatureTemplate, getSignatureTheme, isHeenzyTemplate, isNovaTemplate, isVioletTemplate, isPremiumTemplate, isHomeVistaTemplate, isRrwTemplate, isMarketplaceTemplate, isArcovaTemplate, isRivoraTemplate, isJuiceLifeTemplate, isFabtexTemplate, type TemplateTheme } from "@/lib/template-themes";
 import { subscribeToNewsletter } from "@/lib/actions/newsletter";
 import { recordStoreVisit } from "@/lib/actions/analytics";
 import { getTrustScoreBreakdown, getTrustScoreChecklist } from "@/lib/actions/trust-score";
@@ -18,9 +18,12 @@ import { ArcovaStorefront } from "@/components/storefront/templates/arcova-home"
 import { RivoraStorefront } from "@/components/storefront/templates/rivora-home";
 import { JuiceLifeStorefront } from "@/components/storefront/templates/juicelife-home";
 import { FabtexStorefront } from "@/components/storefront/templates/fabtex-home";
+import { SignatureStorefront } from "@/components/storefront/templates/signature-home";
 import { CategoryNav } from "@/components/storefront/category-nav";
 import { getStoreCategoryTree } from "@/lib/storefront-categories";
 import { Reveal } from "@/components/storefront/reveal";
+import { BuilderStorefront } from "@/components/storefront/builder-renderer";
+import { readBuilderConfig } from "@/lib/builder-config";
 
 export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }): Promise<Metadata> {
   const { slug } = await params;
@@ -29,13 +32,6 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
   return { title: store.seoTitle ?? store.name, description: store.seoDescription ?? undefined };
 }
 
-// The storefront now has exactly one template — "Fresh & Co." (see
-// lib/template-themes.ts). Every store renders this same design; only
-// real store data (name, logo, banner, catalog, reviews, contact info)
-// changes what's shown. All imagery (logo, banner, product/service
-// photos) comes from the store owner's own uploads via the existing
-// dashboard upload fields (logo-banner-fields.tsx, multi-image-upload.tsx,
-// service-images-field.tsx) — nothing here is hardcoded artwork.
 export default async function StorefrontPage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
   const store = await prisma.store.findUnique({
@@ -101,13 +97,43 @@ export default async function StorefrontPage({ params }: { params: Promise<{ slu
   const heroOverrides = store.heroOverrides as { headline?: string; subtitle?: string; ctaLabel?: string } | null;
   const storyOverrides = store.storyOverrides as { eyebrow?: string; heading?: string; body?: string } | null;
 
-  // Which sections a vendor has turned off in Customize → Sections & Layout.
-  // NOTE: only "hidden" is applied here, not custom "order" — the sections
-  // below are still rendered in a fixed order. Full drag-to-reorder support
-  // would need each section extracted into an array this function maps
-  // over, which is a larger refactor than this pass covers.
+  // Legacy section visibility remains supported for stores that have not activated the visual builder.
   const sectionOverrides = store.sectionOverrides as { hidden?: string[] } | null;
   const hiddenSections = new Set(sectionOverrides?.hidden ?? []);
+
+  // Stores that activate the visual builder render from the saved section graph.
+  // Legacy stores keep their existing template renderer unchanged.
+  const rawSectionOverrides = store.sectionOverrides as { builderVersion?: number; builder?: unknown } | null;
+  const builderConfig = rawSectionOverrides?.builderVersion === 1 ? readBuilderConfig(rawSectionOverrides.builder) : null;
+  if (builderConfig) {
+    return (
+      <BuilderStorefront
+        store={store}
+        config={builderConfig}
+        catalogItems={catalogItems}
+        reviews={store.reviews}
+        avgRating={avgRating}
+        completedOrders={completedOrders}
+      />
+    );
+  }
+
+  // ---------- SIGNATURE COLLECTION: new industry-first designs ----------
+  if (isSignatureTemplate(store.template?.name)) {
+    return (
+      <SignatureStorefront
+        store={store}
+        slug={slug}
+        catalogItems={catalogItems}
+        navCategories={navCategories}
+        goodReviews={goodReviews}
+        avgRating={avgRating}
+        completedOrders={completedOrders}
+        social={social}
+        theme={getSignatureTheme(store.template?.name)}
+      />
+    );
+  }
 
   // ---------- TEMPLATE 2: Heenzy Sneaker Co. ----------
   if (isHeenzyTemplate(store.template?.name)) {

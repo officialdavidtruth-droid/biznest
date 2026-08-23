@@ -69,7 +69,7 @@ export default async function OrderConfirmationPage({
   params: Promise<{ slug: string; orderId: string }>;
 }) {
   const { slug, orderId } = await params;
-  const order = await getOrderForBuyer(orderId);
+  const order = await getOrderForBuyer(orderId, slug);
   if (!order) notFound();
 
   const stepIndex = Math.max(0, STEPS.findIndex((s) => s.key === order.status));
@@ -165,7 +165,7 @@ export default async function OrderConfirmationPage({
           Continue shopping
         </Link>
         <Link
-          href="/orders"
+          href={`/store/${slug}/account/orders`}
           style={{ background: accent, color: "#fff", borderRadius: pillRadius }}
           className="px-5 py-2.5 text-sm font-semibold no-underline transition-transform hover:-translate-y-0.5"
         >

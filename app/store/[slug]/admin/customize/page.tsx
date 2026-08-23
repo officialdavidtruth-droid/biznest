@@ -3,6 +3,7 @@ import { notFound, redirect } from "next/navigation";
 import { CustomizerClient } from "@/components/dashboard/customizer-client";
 import { resolveStoreTheme, type Section } from "@/lib/template-themes";
 import type { HeroOverrides, StoryOverrides } from "@/lib/actions/store";
+import { defaultBuilderConfig, readBuilderConfig, type BuilderConfig } from "@/lib/builder-config";
 
 const TEMPLATE_DEFAULT_SECTIONS: Section[] = ["hero", "catalog", "about", "testimonials", "contact"];
 const OPT_IN_SECTIONS: Section[] = ["stats", "newsletter"];
@@ -35,6 +36,8 @@ export default async function CustomizePage({ params }: { params: Promise<{ slug
   const theme = resolveStoreTheme(store.template?.category, store.name, themeOverrides, store.fontFamily, store.template?.name);
   const heroImage = store.bannerUrl || store.template?.previewUrl || null;
   const storyImage = store.storyImage || store.bannerUrl || store.template?.previewUrl || null;
+  const savedBuilder = readBuilderConfig((overrides as { builder?: unknown } | null)?.builder);
+  const initialBuilder: BuilderConfig = savedBuilder ?? defaultBuilderConfig(store.name, store.business.description, heroImage, store.business.category);
 
   return (
     <CustomizerClient
@@ -49,6 +52,10 @@ export default async function CustomizePage({ params }: { params: Promise<{ slug
       storyImage={storyImage}
       storyOverrides={(store.storyOverrides as StoryOverrides | null) ?? {}}
       storyDescription={store.business.description ?? null}
+      initialBuilder={initialBuilder}
+      businessCategory={store.business.category}
+      seoTitle={store.seoTitle ?? store.name}
+      seoDescription={store.seoDescription ?? ""}
       pages={pages.map((p) => ({
         id: p.id,
         slug: p.slug,

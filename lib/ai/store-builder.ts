@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { BUILDER_SECTION_TYPES } from "@/lib/builder-config";
 
 const ANTHROPIC_API = "https://api.anthropic.com/v1/messages";
 const MODEL = "claude-haiku-4-5-20251001";
@@ -32,11 +33,13 @@ export const storeDraftSchema = z.object({
     .min(3)
     .max(6),
   socialBio: z.string(),
+  businessMode: z.enum(["commerce", "service", "hybrid"]),
+  homepagePlan: z.array(z.object({ type: z.enum(BUILDER_SECTION_TYPES), heading: z.string(), body: z.string().optional() })).min(5).max(10),
 });
 
 export type StoreDraft = z.infer<typeof storeDraftSchema>;
 
-const SYSTEM_PROMPT = `You are BizNest's store-setup assistant. A Nigerian small-business owner describes their business in one or two sentences. You generate a complete starting draft for their online store as strict JSON — nothing else, no markdown fences, no commentary.
+const SYSTEM_PROMPT = `You are BizNest's store-setup assistant. A Nigerian small-business owner describes their business in one or two sentences. Treat the supplied business category as a hard signal for the customer journey. You generate a complete starting draft for their online store as strict JSON — nothing else, no markdown fences, no commentary.
 
 Rules:
 - Output must be valid JSON matching exactly this shape (all fields required):
@@ -54,7 +57,9 @@ Rules:
   "whatsappCta": string (short button label, e.g. "Chat with us on WhatsApp"),
   "deliveryNote": string (one sentence, reasonable default for a Nigerian business),
   "sampleProducts": [{ "name": string, "description": string, "suggestedPriceNaira": number }] (3-6 items, realistic Naira prices),
-  "socialBio": string (under 150 chars, for Instagram/Twitter bio)
+  "socialBio": string (under 150 chars, for Instagram/Twitter bio),
+  "businessMode": "commerce" | "service" | "hybrid",
+  "homepagePlan": [{ "type": one of "hero","catalog","about","stats","features","categories","testimonials","newsletter","contact","gallery","map","faq","text","imageText", "heading": string, "body": string }] (5-10 sections, ordered for the business)
 }
 - Tone: warm, confident, locally relevant to Nigeria. Never generic filler.
 - Prices must be realistic for the Nigerian market for the described product type.

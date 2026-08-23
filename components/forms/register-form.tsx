@@ -97,11 +97,10 @@ export function RegisterForm({
         </AuthSubmitButton>
       </form>
 
-      <AuthDivider />
-
-      <GoogleButton
-        onClick={() => signIn("google", { callbackUrl: callbackUrl ?? "/onboarding/business-verification" })}
-      />
+      {!storeSlug && <>
+        <AuthDivider />
+        <GoogleButton onClick={() => signIn("google", { callbackUrl: callbackUrl ?? "/onboarding/business-verification" })} />
+      </>}
 
       <p className="text-center text-sm text-muted-foreground">
         Already have an account?{" "}

@@ -169,6 +169,77 @@ export async function lookupPosBarcode(slug: string, barcode: string): Promise<P
   return { success: false, error: "No product matches that barcode." };
 }
 
+export type PosCustomerMatch = {
+  id: string;
+  name: string;
+  email: string | null;
+  phone: string | null;
+  orders: number;
+  spent: number;
+};
+
+/** Store-scoped customer lookup for the register. It searches persistent POS
+ * profiles first, then registered buyers who have actually purchased from the
+ * store. It never exposes another store's customer data. */
+export async function searchPosCustomers(slug: string, query: string): Promise<PosCustomerMatch[]> {
+  const access = await assertStoreAccess(slug);
+  if (!access.success) return [];
+  const q = query.trim();
+  if (q.length < 2) return [];
+
+  const [profiles, orders] = await Promise.all([
+    prisma.storeCustomerProfile.findMany({
+      where: {
+        storeId: access.store.id,
+        OR: [
+          { name: { contains: q, mode: "insensitive" } },
+          { email: { contains: q, mode: "insensitive" } },
+          { phone: { contains: q } },
+        ],
+      },
+      select: { id: true, name: true, email: true, phone: true },
+      take: 8,
+      orderBy: { updatedAt: "desc" },
+    }),
+    prisma.order.findMany({
+      where: {
+        storeId: access.store.id,
+        status: { in: ["PAID", "PROCESSING", "SHIPPED", "DELIVERED", "COMPLETED"] },
+        OR: [
+          { buyer: { name: { contains: q, mode: "insensitive" } } },
+          { buyer: { email: { contains: q, mode: "insensitive" } } },
+          { posCustomerName: { contains: q, mode: "insensitive" } },
+          { posCustomerPhone: { contains: q } },
+        ],
+      },
+      select: { buyerId: true, posCustomerName: true, posCustomerPhone: true, total: true, buyer: { select: { name: true, email: true, phone: true } } },
+      take: 40,
+      orderBy: { createdAt: "desc" },
+    }),
+  ]);
+
+  const results = new Map<string, PosCustomerMatch>();
+  for (const p of profiles) results.set(p.id, { ...p, orders: 0, spent: 0 });
+  for (const o of orders) {
+    const key = `user:${o.buyerId}`;
+    const existing = results.get(key);
+    if (existing) {
+      existing.orders += 1;
+      existing.spent += Number(o.total);
+    } else {
+      results.set(key, {
+        id: o.buyerId,
+        name: o.posCustomerName || o.buyer.name || "Customer",
+        email: o.buyer.email ?? null,
+        phone: o.posCustomerPhone || o.buyer.phone || null,
+        orders: 1,
+        spent: Number(o.total),
+      });
+    }
+  }
+  return [...results.values()].sort((a, b) => b.spent - a.spent).slice(0, 12);
+}
+
 // --- Checkout (the register's "Charge" button) ---------------------------
 
 /**
@@ -296,6 +367,49 @@ export async function createPosSale(
 
   const walkIn = await getOrCreateWalkInCustomer(store.id);
 
+  // Persist a store-scoped customer profile for named POS buyers. This makes
+  // offline/POS purchases first-class CRM data without creating fake login
+  // accounts for customers who never registered. An explicitly selected
+  // profile is preferred; otherwise the profile is matched by phone/email.
+  let customerProfileId: string | null = null;
+  const customerName = data.customerName?.trim() || null;
+  const customerPhone = data.customerPhone?.trim() || null;
+  const customerEmail = data.customerEmail?.trim().toLowerCase() || null;
+  if (data.customerProfileId) {
+    const profile = await prisma.storeCustomerProfile.findFirst({
+      where: { id: data.customerProfileId, storeId: store.id },
+      select: { id: true },
+    });
+    if (!profile) return { success: false, error: "The selected customer is no longer available." };
+    customerProfileId = profile.id;
+  } else if (customerName || customerPhone || customerEmail) {
+    const [existing, matchingUser] = await Promise.all([
+      prisma.storeCustomerProfile.findFirst({
+        where: {
+          storeId: store.id,
+          OR: [
+            ...(customerPhone ? [{ phone: customerPhone }] : []),
+            ...(customerEmail ? [{ email: customerEmail }] : []),
+          ],
+        },
+        select: { id: true },
+        orderBy: { updatedAt: "desc" },
+      }),
+      customerEmail ? prisma.user.findUnique({ where: { email: customerEmail }, select: { id: true } }) : Promise.resolve(null),
+    ]);
+    const profile = existing
+      ? await prisma.storeCustomerProfile.update({
+          where: { id: existing.id },
+          data: { name: customerName ?? undefined, phone: customerPhone ?? undefined, email: customerEmail ?? undefined, userId: matchingUser?.id ?? undefined },
+          select: { id: true },
+        })
+      : await prisma.storeCustomerProfile.create({
+          data: { storeId: store.id, userId: matchingUser?.id ?? null, name: customerName || customerPhone || customerEmail || "Customer", phone: customerPhone, email: customerEmail },
+          select: { id: true },
+        });
+    customerProfileId = profile.id;
+  }
+
   // Order + payment + commission accrual + every stock decrement live in
   // one transaction: if any line turns out to be oversold (a concurrent
   // sale beat this one to the last unit) the whole sale rolls back rather
@@ -321,8 +435,9 @@ export async function createPosSale(
             deliveryFee: 0,
             paymentProvider: "CASH",
             posTenderType: data.tenderType,
-            posCustomerName: data.customerName || null,
-            posCustomerPhone: data.customerPhone || null,
+            posCustomerName: customerName,
+            posCustomerPhone: customerPhone,
+            customerProfileId,
             items: {
               create: resolved.map((l) => ({
                 productId: l.productId ?? null,
@@ -466,6 +581,7 @@ export async function createPosSale(
   });
 
   revalidatePath(`/store/${slug}/admin/pos`);
+  revalidatePath(`/store/${slug}/admin/customers`);
   revalidatePath(`/store/${slug}/admin/orders`);
   revalidatePath(`/store/${slug}/admin/inventory`);
   revalidatePath(`/store/${slug}/admin/products`);

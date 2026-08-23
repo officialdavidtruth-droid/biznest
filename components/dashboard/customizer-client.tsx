@@ -12,6 +12,9 @@ import { saveStorePage, toggleStorePagePublished, deleteStorePage, SUGGESTED_PAG
 import type { Section, TemplateTheme } from "@/lib/template-themes";
 import type { HeroOverrides, StoryOverrides } from "@/lib/actions/store";
 import { ContentPanel } from "@/components/dashboard/content-panel";
+import { saveBuilderConfig, updateStoreSeo } from "@/lib/actions/builder";
+import { BUILDER_SECTION_TYPES, type BuilderConfig, type BuilderSection, type BuilderSectionType } from "@/lib/builder-config";
+import { buildIndustryHomepage, getBusinessExperience } from "@/lib/business-experience";
 
 export type StorePageRow = { id: string; slug: string; title: string; body: string; isPublished: boolean };
 
@@ -36,7 +39,7 @@ const SECTION_LABELS: Record<Section, string> = {
   packages: "Packages / pricing",
 };
 
-type Panel = "sections" | "content" | "pages" | null;
+type Panel = "sections" | "content" | "design" | "seo" | "pages" | null;
 
 /**
  * A WordPress-Customizer-style editor for a store's already-chosen template:
@@ -60,6 +63,10 @@ export function CustomizerClient({
   storyOverrides,
   storyDescription,
   pages: initialPages,
+  initialBuilder,
+  businessCategory,
+  seoTitle,
+  seoDescription,
 }: {
   slug: string;
   storeName: string;
@@ -73,6 +80,10 @@ export function CustomizerClient({
   storyOverrides: StoryOverrides;
   storyDescription: string | null;
   pages: StorePageRow[];
+  initialBuilder: BuilderConfig;
+  businessCategory: string | null;
+  seoTitle: string;
+  seoDescription: string;
 }) {
   const [panel, setPanel] = useState<Panel>(null);
   const [device, setDevice] = useState<Device>("desktop");
@@ -81,6 +92,11 @@ export function CustomizerClient({
   const [isSaving, setIsSaving] = useState(false);
   const [previewKey, setPreviewKey] = useState(0);
   const [pages, setPages] = useState<StorePageRow[]>(initialPages);
+  const [builder, setBuilder] = useState<BuilderConfig>(initialBuilder);
+  const [selectedSectionId, setSelectedSectionId] = useState<string | null>(initialBuilder.sections[0]?.id ?? null);
+  const [seoTitleState, setSeoTitleState] = useState(seoTitle);
+  const [seoDescriptionState, setSeoDescriptionState] = useState(seoDescription);
+  const experience = getBusinessExperience(businessCategory);
   const [editingSlug, setEditingSlug] = useState<string | null>(null);
   const iframeRef = useRef<HTMLIFrameElement>(null);
 
@@ -120,6 +136,41 @@ export function CustomizerClient({
     refreshPreview();
   }
 
+  async function publishBuilder(next = builder) {
+    setIsSaving(true);
+    const result = await saveBuilderConfig(slug, next);
+    setIsSaving(false);
+    if (!result.success) { toast.error(result.error); return; }
+    toast.success("Website published");
+    setBuilder(next);
+    refreshPreview();
+  }
+
+  function updateBuilderSection(id: string, patch: Partial<BuilderSection>) {
+    setBuilder((current) => ({ ...current, sections: current.sections.map((s) => s.id === id ? { ...s, ...patch } : s) }));
+  }
+
+  function addBuilderSection(type: BuilderSectionType) {
+    const id = `${type}-${Date.now()}`;
+    const section: BuilderSection = { id, type, visible: true, settings: defaultSectionSettings(type) };
+    setBuilder((current) => ({ ...current, sections: [...current.sections, section] }));
+    setSelectedSectionId(id);
+  }
+
+  function removeBuilderSection(id: string) {
+    if (id === "hero") return;
+    setBuilder((current) => ({ ...current, sections: current.sections.filter((s) => s.id !== id) }));
+    setSelectedSectionId("hero");
+  }
+
+  function moveBuilderSection(index: number, direction: -1 | 1) {
+    const target = index + direction;
+    if (target < 0 || target >= builder.sections.length) return;
+    const next = [...builder.sections];
+    [next[index], next[target]] = [next[target], next[index]];
+    setBuilder((current) => ({ ...current, sections: next }));
+  }
+
   return (
     <div className="fixed inset-0 z-50 flex bg-muted/20">
       {/* Left control panel */}
@@ -154,6 +205,41 @@ export function CustomizerClient({
                 Change
               </Link>
             </div>
+            <div className="mb-2 rounded-md border border-primary/20 bg-primary/5 px-3 py-3">
+              <div className="flex items-start justify-between gap-3">
+                <div>
+                  <p className="text-xs font-semibold">Industry homepage</p>
+                  <p className="mt-1 text-[11px] text-muted-foreground">{experience.description}</p>
+                </div>
+                <span className="shrink-0 rounded-full bg-background px-2 py-1 text-[10px] font-medium">{experience.label}</span>
+              </div>
+              <div className="mt-2 flex flex-wrap gap-1">{experience.journey.map((step) => <span key={step} className="rounded-full border border-border bg-background px-2 py-1 text-[10px] text-muted-foreground">{step}</span>)}</div>
+              <button
+                onClick={() => { const next = buildIndustryHomepage(businessCategory, storeName, storyDescription, heroImage); setBuilder(next); setSelectedSectionId(next.sections[0]?.id ?? null); setPanel("sections"); }}
+                className="mt-3 w-full rounded-md border border-primary/30 bg-background px-3 py-2 text-xs font-semibold hover:bg-muted"
+              >
+                Use recommended homepage
+              </button>
+            </div>
+            <div className="mb-2 rounded-md border border-primary/20 bg-primary/5 px-3 py-3">
+              <p className="text-xs font-semibold">Visual Builder</p>
+              <p className="mt-1 text-[11px] text-muted-foreground">Build the actual published homepage from sections, settings and responsive styles.</p>
+              <button onClick={() => setPanel("sections")} className="mt-2 w-full rounded-md bg-primary px-3 py-2 text-xs font-semibold text-primary-foreground">Open visual builder</button>
+            </div>
+            <button
+              onClick={() => setPanel("design")}
+              className="flex w-full items-center justify-between rounded-md px-3 py-3 text-left text-sm font-medium hover:bg-muted"
+            >
+              <span className="flex items-center gap-2"><LayoutTemplate className="h-4 w-4" /> Design & Theme</span>
+              <ChevronRight className="h-4 w-4 text-muted-foreground" />
+            </button>
+            <button
+              onClick={() => setPanel("seo")}
+              className="flex w-full items-center justify-between rounded-md px-3 py-3 text-left text-sm font-medium hover:bg-muted"
+            >
+              <span className="flex items-center gap-2"><Eye className="h-4 w-4" /> SEO & Social Preview</span>
+              <ChevronRight className="h-4 w-4 text-muted-foreground" />
+            </button>
             <button
               onClick={() => setPanel("content")}
               className="flex w-full items-center justify-between rounded-md px-3 py-3 text-left text-sm font-medium hover:bg-muted"
@@ -192,39 +278,64 @@ export function CustomizerClient({
             </button>
 
             {panel === "sections" && (
-              <div className="flex-1 overflow-y-auto p-4">
-                <p className="mb-3 text-xs text-muted-foreground">
-                  Reorder, hide, or add sections. A section still won't show live if it has nothing
-                  real behind it yet (e.g. Testimonials with zero reviews).
-                </p>
-                <div className="space-y-1.5">
-                  {order.map((s, i) => (
-                    <div key={s} className="flex items-center justify-between rounded-md border px-3 py-2 text-sm">
-                      <span className={hidden.has(s) ? "text-muted-foreground line-through" : ""}>{SECTION_LABELS[s]}</span>
-                      <div className="flex items-center gap-2">
-                        {s !== "hero" && (
-                          <label className="flex items-center gap-1.5 text-xs text-muted-foreground">
-                            <input type="checkbox" checked={hidden.has(s)} onChange={() => toggleHidden(s)} />
-                            Hide
-                          </label>
-                        )}
-                        <button type="button" onClick={() => move(i, -1)} disabled={i <= 1} className="rounded p-1 hover:bg-muted disabled:opacity-30">
-                          <ArrowUp className="h-3.5 w-3.5" />
-                        </button>
-                        <button type="button" onClick={() => move(i, 1)} disabled={i === 0 || i === order.length - 1} className="rounded p-1 hover:bg-muted disabled:opacity-30">
-                          <ArrowDown className="h-3.5 w-3.5" />
-                        </button>
-                      </div>
+              <div className="flex flex-1 flex-col overflow-hidden">
+                <div className="flex-1 overflow-y-auto p-4">
+                  <div className="mb-3 rounded-md border bg-muted/30 p-3">
+                    <p className="text-xs font-semibold">Section library</p>
+                    <p className="mt-1 text-[11px] text-muted-foreground">Add real sections to the published homepage. Every section can be edited below.</p>
+                    <div className="mt-2 grid grid-cols-2 gap-1.5">
+                      {BUILDER_SECTION_TYPES.map((type) => <button key={type} type="button" onClick={() => addBuilderSection(type)} className="rounded border px-2 py-1.5 text-[11px] hover:bg-background">+ {pretty(type)}</button>)}
                     </div>
-                  ))}
+                  </div>
+                  <div className="space-y-1.5">
+                    {builder.sections.map((section, index) => (
+                      <div key={section.id} className={`rounded-md border ${selectedSectionId === section.id ? "border-primary" : "border-border"}`}>
+                        <button type="button" onClick={() => setSelectedSectionId(section.id)} className="flex w-full items-center gap-2 px-3 py-2.5 text-left">
+                          <span className="min-w-0 flex-1 truncate text-sm font-medium">{pretty(section.type)}</span>
+                          {!section.visible && <EyeOff className="h-3.5 w-3.5 text-muted-foreground" />}
+                        </button>
+                        <div className="flex items-center justify-between border-t px-2 py-1.5">
+                          <label className="flex items-center gap-1.5 text-[11px] text-muted-foreground"><input type="checkbox" checked={section.visible} onChange={(e) => updateBuilderSection(section.id, { visible: e.target.checked })} /> Visible</label>
+                          <div className="flex gap-1">
+                            <button type="button" onClick={() => moveBuilderSection(index, -1)} disabled={index === 0} className="rounded p-1 hover:bg-muted disabled:opacity-30"><ArrowUp className="h-3 w-3" /></button>
+                            <button type="button" onClick={() => moveBuilderSection(index, 1)} disabled={index === builder.sections.length - 1} className="rounded p-1 hover:bg-muted disabled:opacity-30"><ArrowDown className="h-3 w-3" /></button>
+                            {section.id !== "hero" && <button type="button" onClick={() => removeBuilderSection(section.id)} className="rounded p-1 text-destructive hover:bg-destructive/10"><Trash2 className="h-3 w-3" /></button>}
+                          </div>
+                        </div>
+                        {selectedSectionId === section.id && <SectionSettingsEditor section={section} onChange={(patch) => updateBuilderSection(section.id, patch)} />}
+                      </div>
+                    ))}
+                  </div>
                 </div>
-                <button
-                  onClick={saveSections}
-                  disabled={isSaving}
-                  className="mt-4 w-full rounded-md bg-primary px-3 py-2 text-xs font-medium text-primary-foreground disabled:opacity-50"
-                >
-                  {isSaving ? "Publishing…" : "Publish layout"}
-                </button>
+                <div className="border-t p-3"><button onClick={() => publishBuilder()} disabled={isSaving} className="w-full rounded-md bg-primary px-3 py-2.5 text-xs font-semibold text-primary-foreground disabled:opacity-50">{isSaving ? "Publishing…" : "Publish visual website"}</button></div>
+              </div>
+            )}
+
+            {panel === "design" && (
+              <div className="flex-1 overflow-y-auto p-4">
+                <p className="mb-3 text-xs text-muted-foreground">These controls change the actual published visual builder. Save them by publishing the website.</p>
+                <div className="space-y-3">
+                  <ColorField label="Primary" value={builder.design.primary} onChange={(v) => setBuilder((b) => ({ ...b, design: { ...b.design, primary: v } }))} />
+                  <ColorField label="Accent" value={builder.design.accent} onChange={(v) => setBuilder((b) => ({ ...b, design: { ...b.design, accent: v } }))} />
+                  <ColorField label="Background" value={builder.design.background} onChange={(v) => setBuilder((b) => ({ ...b, design: { ...b.design, background: v } }))} />
+                  <ColorField label="Surface" value={builder.design.surface} onChange={(v) => setBuilder((b) => ({ ...b, design: { ...b.design, surface: v } }))} />
+                  <ColorField label="Text" value={builder.design.text} onChange={(v) => setBuilder((b) => ({ ...b, design: { ...b.design, text: v } }))} />
+                  <ColorField label="Muted text" value={builder.design.muted} onChange={(v) => setBuilder((b) => ({ ...b, design: { ...b.design, muted: v } }))} />
+                  <SelectField label="Container width" value={builder.design.containerWidth} options={["compact","standard","wide"]} onChange={(v) => setBuilder((b) => ({ ...b, design: { ...b.design, containerWidth: v as BuilderConfig["design"]["containerWidth"] } }))} />
+                  <SelectField label="Button style" value={builder.design.buttonStyle} options={["solid","outline","pill"]} onChange={(v) => setBuilder((b) => ({ ...b, design: { ...b.design, buttonStyle: v as BuilderConfig["design"]["buttonStyle"] } }))} />
+                  <label className="block text-xs"><span className="mb-1 block text-muted-foreground">Corner radius: {builder.design.radius}px</span><input type="range" min="0" max="40" value={builder.design.radius} onChange={(e) => setBuilder((b) => ({ ...b, design: { ...b.design, radius: Number(e.target.value) } }))} className="w-full" /></label>
+                </div>
+                <button onClick={() => publishBuilder()} disabled={isSaving} className="mt-4 w-full rounded-md bg-primary px-3 py-2.5 text-xs font-semibold text-primary-foreground">{isSaving ? "Publishing…" : "Publish design"}</button>
+              </div>
+            )}
+
+            {panel === "seo" && (
+              <div className="flex-1 overflow-y-auto p-4">
+                <p className="mb-3 text-xs text-muted-foreground">Control the search title and description used for your public store. These are saved to the real Store record.</p>
+                <TextField label="SEO title" value={seoTitleState} onChange={setSeoTitleState} />
+                <TextField label="SEO description" value={seoDescriptionState} onChange={setSeoDescriptionState} multiline />
+                <div className="mt-3 rounded-md border bg-muted/30 p-3"><p className="text-[11px] font-semibold">Search preview</p><p className="mt-2 text-sm font-medium text-blue-700">{seoTitleState || storeName}</p><p className="text-xs text-muted-foreground">{seoDescriptionState || "Your store description will appear here."}</p></div>
+                <button onClick={async () => { setIsSaving(true); const result = await updateStoreSeo(slug, seoTitleState, seoDescriptionState); setIsSaving(false); if (!result.success) { toast.error(result.error); return; } toast.success("SEO saved"); refreshPreview(); }} disabled={isSaving} className="mt-4 w-full rounded-md bg-primary px-3 py-2.5 text-xs font-semibold text-primary-foreground">{isSaving ? "Saving…" : "Save SEO"}</button>
               </div>
             )}
 
@@ -312,6 +423,32 @@ export function CustomizerClient({
  * saves content for it, same spirit as Hero/Story in the Content panel — and
  * a vendor can add further custom pages beyond those six.
  */
+function pretty(value: string) { return value.replace(/([A-Z])/g, " $1").replace(/[-_]/g, " ").replace(/^./, (c) => c.toUpperCase()); }
+
+function defaultSectionSettings(type: BuilderSectionType) {
+  const headings: Record<string,string> = { hero: "Welcome", catalog: "Shop our collection", about: "Built around what matters", stats: "At a glance", features: "Why choose us", categories: "Categories", testimonials: "What customers say", newsletter: "Get updates from us", contact: "Let's work together", gallery: "Gallery", map: "Find us", faq: "Frequently asked questions", text: "More about us", imageText: "Our story" };
+  return { eyebrow: type === "hero" ? "Welcome" : undefined, heading: headings[type], body: type === "hero" ? "Tell customers what makes your business special." : undefined, align: type === "hero" ? "left" as const : "left" as const, padding: "spacious" as const, columns: type === "catalog" ? 4 as const : 3 as const, showButton: true };
+}
+
+function SectionSettingsEditor({ section, onChange }: { section: BuilderSection; onChange: (patch: Partial<BuilderSection>) => void }) {
+  const s = section.settings;
+  const update = (patch: Partial<typeof s>) => onChange({ settings: { ...s, ...patch } });
+  return <div className="space-y-2 border-t bg-muted/20 p-3">
+    <TextField label="Eyebrow" value={s.eyebrow || ""} onChange={(v) => update({ eyebrow: v })} />
+    <TextField label="Heading" value={s.heading || ""} onChange={(v) => update({ heading: v })} />
+    <TextField label="Body" value={s.body || ""} multiline onChange={(v) => update({ body: v })} />
+    {!["stats","catalog","categories","testimonials","newsletter","contact","gallery","map","faq"].includes(section.type) && <TextField label="Image URL" value={s.image || ""} onChange={(v) => update({ image: v })} />}
+    <div className="grid grid-cols-2 gap-2"><SelectField label="Alignment" value={s.align || "left"} options={["left","center","right"]} onChange={(v) => update({ align: v as "left"|"center"|"right" })} /><SelectField label="Padding" value={s.padding || "normal"} options={["compact","normal","spacious"]} onChange={(v) => update({ padding: v as "compact"|"normal"|"spacious" })} /></div>
+    <TextField label="Button label" value={s.ctaLabel || ""} onChange={(v) => update({ ctaLabel: v })} />
+    <TextField label="Button link" value={s.ctaHref || ""} onChange={(v) => update({ ctaHref: v })} />
+    <div className="grid grid-cols-2 gap-2"><ColorField label="Section background" value={s.background || "#ffffff"} onChange={(v) => update({ background: v })} /><ColorField label="Section text" value={s.textColor || ""} onChange={(v) => update({ textColor: v })} /></div>
+  </div>;
+}
+
+function TextField({ label, value, onChange, multiline = false }: { label: string; value: string; onChange: (v: string) => void; multiline?: boolean }) { return <label className="block text-[11px]"><span className="mb-1 block text-muted-foreground">{label}</span>{multiline ? <textarea value={value} onChange={(e) => onChange(e.target.value)} rows={3} className="w-full rounded border bg-background px-2 py-1.5 text-xs" /> : <input value={value} onChange={(e) => onChange(e.target.value)} className="w-full rounded border bg-background px-2 py-1.5 text-xs" />}</label>; }
+function ColorField({ label, value, onChange }: { label: string; value: string; onChange: (v: string) => void }) { return <label className="block text-[11px]"><span className="mb-1 block text-muted-foreground">{label}</span><div className="flex gap-1.5"><input type="color" value={/^#[0-9a-f]{6}$/i.test(value) ? value : "#000000"} onChange={(e) => onChange(e.target.value)} className="h-8 w-10 rounded border" /><input value={value} onChange={(e) => onChange(e.target.value)} className="min-w-0 flex-1 rounded border bg-background px-2 py-1.5 text-xs" /></div></label>; }
+function SelectField({ label, value, options, onChange }: { label: string; value: string; options: string[]; onChange: (v: string) => void }) { return <label className="block text-[11px]"><span className="mb-1 block text-muted-foreground">{label}</span><select value={value} onChange={(e) => onChange(e.target.value)} className="w-full rounded border bg-background px-2 py-1.5 text-xs">{options.map((o) => <option key={o}>{o}</option>)}</select></label>; }
+
 function PagesPanel({
   slug,
   pages,

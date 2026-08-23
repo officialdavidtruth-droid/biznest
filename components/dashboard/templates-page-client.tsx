@@ -3,7 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { toast } from "sonner";
-import { ArrowRight, Check } from "lucide-react";
+import { ArrowRight, Check, Sparkles } from "lucide-react";
 import { setStoreTemplate } from "@/lib/actions/template";
 import { TemplateGallery, type TemplateOption } from "@/components/dashboard/template-gallery";
 
@@ -20,6 +20,7 @@ export function TemplatesPageClient({
   currentTemplateId,
   currentTemplateName,
   planRank,
+  businessCategory,
 }: {
   slug: string;
   storeName: string;
@@ -27,6 +28,7 @@ export function TemplatesPageClient({
   currentTemplateId: string | null;
   currentTemplateName: string | null;
   planRank: number;
+  businessCategory: string | null;
 }) {
   const [templateId, setTemplateId] = useState<string | null>(currentTemplateId);
   const [templateName, setTemplateName] = useState<string | null>(currentTemplateName);
@@ -58,6 +60,7 @@ export function TemplatesPageClient({
           </Link>
         )}
       </div>
+      <div className="mb-4 flex items-center gap-2 rounded-lg border border-primary/20 bg-primary/5 px-3 py-2.5 text-xs"><Sparkles className="h-4 w-4 text-primary" /><span><strong>Recommended for {businessCategory || "your business"}.</strong> Templates and homepage structure can be tailored to your business journey.</span></div>
       <p className="mb-2 text-sm text-muted-foreground">
         Pick the template {storeName} runs on. Only the template chosen here shows up in Customize Website —
         change it any time by coming back to this page.
@@ -74,6 +77,7 @@ export function TemplatesPageClient({
         selectedId={templateId}
         onSelect={handleSelect}
         planRank={planRank}
+        businessCategory={businessCategory}
       />
 
       {isSaving && <p className="mt-4 text-xs text-muted-foreground">Applying template…</p>}

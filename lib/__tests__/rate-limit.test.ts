@@ -9,6 +9,15 @@ vi.mock("@/lib/prisma", () => ({
   prisma: {
     rateLimitEntry: {
       findUnique: vi.fn(async ({ where: { key } }: { where: { key: string } }) => store.get(key) ?? null),
+      create: vi.fn(async ({ data }: any) => {
+        if (store.has(data.key)) {
+          const error = Object.assign(new Error("Unique constraint"), { code: "P2002" });
+          throw error;
+        }
+        const entry = { key: data.key, count: data.count, resetAt: data.resetAt };
+        store.set(data.key, entry);
+        return entry;
+      }),
       upsert: vi.fn(async ({ where: { key }, create }: any) => {
         const entry = { key, count: create.count, resetAt: create.resetAt };
         store.set(key, entry);
@@ -18,6 +27,19 @@ vi.mock("@/lib/prisma", () => ({
         const entry = store.get(key)!;
         entry.count += data.count.increment;
         return entry;
+      }),
+      updateMany: vi.fn(async ({ where, data }: any) => {
+        const entry = store.get(where.key);
+        if (!entry) return { count: 0 };
+        if (where.resetAt?.lte && entry.resetAt <= where.resetAt.lte) {
+          entry.count = data.count;
+          entry.resetAt = data.resetAt;
+          return { count: 1 };
+        }
+        if (where.resetAt?.gt && entry.resetAt <= where.resetAt.gt) return { count: 0 };
+        if (where.count?.lt !== undefined && entry.count >= where.count.lt) return { count: 0 };
+        if (data.count?.increment) entry.count += data.count.increment;
+        return { count: 1 };
       }),
     },
   },

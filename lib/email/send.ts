@@ -250,8 +250,8 @@ export async function sendVerificationEmail(email: string, token: string) {
   );
 }
 
-export async function sendPasswordResetEmail(email: string, token: string) {
-  const url = `${APP_URL}/reset-password?token=${token}`;
+export async function sendPasswordResetEmail(email: string, token: string, storeSlug?: string) {
+  const url = `${APP_URL}/reset-password?token=${token}${storeSlug ? `&store=${encodeURIComponent(storeSlug)}` : ""}`;
 
   const html = emailShell({
     preheader: "Reset your BizNest password",

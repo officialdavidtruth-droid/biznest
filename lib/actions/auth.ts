@@ -41,6 +41,12 @@ export async function registerUser(
   // itself also has to tolerate case for accounts created before this.
   const normalizedEmail = parsed.data.email.trim().toLowerCase();
 
+  let storeForCustomer: { id: string } | null = null;
+  if (storeSlug) {
+    storeForCustomer = await prisma.store.findUnique({ where: { slug: storeSlug }, select: { id: true } });
+    if (!storeForCustomer) return { success: false, error: "That store could not be found." };
+  }
+
   const existing = await prisma.user.findFirst({ where: { email: { equals: normalizedEmail, mode: "insensitive" } } });
   if (existing) {
     return { success: false, error: "An account with this email already exists." };
@@ -61,11 +67,9 @@ export async function registerUser(
   // makes this a customer account for that store specifically -- it does
   // NOT grant sign-in access to any other store. See lib/auth.ts's
   // authorize(), which checks this table on every store-context login.
-  if (storeSlug) {
-    const store = await prisma.store.findUnique({ where: { slug: storeSlug }, select: { id: true } });
-    if (store) {
-      await prisma.storeCustomer.create({ data: { userId: user.id, storeId: store.id } });
-    }
+  if (storeForCustomer) {
+    await prisma.storeCustomer.create({ data: { userId: user.id, storeId: storeForCustomer.id } });
+    await prisma.storeCustomerProfile.create({ data: { userId: user.id, storeId: storeForCustomer.id, name: parsed.data.name, email: normalizedEmail } });
   }
 
   const token = nanoid(32);
@@ -120,6 +124,16 @@ export async function requestPasswordReset(input: ForgotPasswordInput): Promise<
 
   const user = await prisma.user.findFirst({ where: { email: { equals: parsed.data.email, mode: "insensitive" } } });
 
+  // Customer recovery is always store-scoped. A generic BizNest reset link
+  // must never be able to reset a store customer's credentials outside the
+  // store environment they belong to.
+  if (user?.role === "CUSTOMER" && !parsed.data.storeSlug) return { success: true, data: undefined };
+
+  if (user && parsed.data.storeSlug) {
+    const membership = await prisma.storeCustomer.findFirst({ where: { userId: user.id, store: { slug: parsed.data.storeSlug } } });
+    if (!membership) return { success: true, data: undefined };
+  }
+
   // Also rate-limit per-email so a leaked/guessed address can't be spammed
   // with reset emails even from rotating IPs.
   if (user) {
@@ -128,14 +142,14 @@ export async function requestPasswordReset(input: ForgotPasswordInput): Promise<
       const token = nanoid(32);
       await prisma.verificationToken.create({
         data: {
-          identifier: user.email,
+          identifier: parsed.data.storeSlug ? `STORE:${parsed.data.storeSlug}:${user.email}` : user.email,
           token,
           type: "PASSWORD_RESET",
           expires: new Date(Date.now() + 1000 * 60 * 60), // 1h — shorter-lived than email verification
         },
       });
       try {
-        await sendPasswordResetEmail(user.email, token);
+        await sendPasswordResetEmail(user.email, token, parsed.data.storeSlug);
       } catch (err) {
         console.error("Failed to send password reset email:", err);
       }
@@ -163,10 +177,25 @@ export async function resetPassword(input: ResetPasswordInput): Promise<ActionRe
     return { success: false, error: "This reset link is invalid or has expired. Request a new one." };
   }
 
+  const tokenParts = record.identifier.split(":");
+  const storeSlug = parsed.data.storeSlug ?? (tokenParts[0] === "STORE" ? tokenParts[1] : undefined);
+  const email = tokenParts[0] === "STORE" ? tokenParts.slice(2).join(":") : record.identifier;
+  if (storeSlug) {
+    const user = await prisma.user.findFirst({ where: { email: { equals: email, mode: "insensitive" } }, select: { id: true, role: true } });
+    if (!user) return { success: false, error: "This reset link is invalid or has expired. Request a new one." };
+    const membership = await prisma.storeCustomer.findFirst({ where: { userId: user.id, store: { slug: storeSlug } }, select: { id: true } });
+    if (!membership) return { success: false, error: "This account does not belong to that store." };
+  }
+
+  if (!storeSlug) {
+    const target = await prisma.user.findFirst({ where: { email: { equals: email, mode: "insensitive" } }, select: { role: true } });
+    if (target?.role === "CUSTOMER") return { success: false, error: "This customer password reset must be opened from the store where the account was created." };
+  }
+
   const passwordHash = await bcrypt.hash(parsed.data.password, 12);
 
   await prisma.user.update({
-    where: { email: record.identifier },
+    where: { email },
     data: {
       passwordHash,
       // Resetting a password is also a reasonable moment to clear any

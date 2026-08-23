@@ -11,7 +11,7 @@ import { Mail, MailCheck } from "lucide-react";
 import { AuthInput } from "@/components/forms/auth-input";
 import { AuthSubmitButton } from "@/components/forms/auth-buttons";
 
-export function ForgotPasswordForm() {
+export function ForgotPasswordForm({ storeSlug }: { storeSlug?: string }) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
 
@@ -24,7 +24,7 @@ export function ForgotPasswordForm() {
   async function onSubmit(values: ForgotPasswordInput) {
     setIsSubmitting(true);
     try {
-      const result = await requestPasswordReset(values);
+      const result = await requestPasswordReset({ ...values, storeSlug });
       if (!result.success) {
         toast.error(result.error);
         return;
@@ -48,7 +48,7 @@ export function ForgotPasswordForm() {
             If an account exists for that email, we&apos;ve sent a link to reset your password. It expires in 1 hour.
           </p>
         </div>
-        <Link href="/login" className="block text-center text-sm text-muted-foreground hover:underline">
+        <Link href={storeSlug ? `/login?store=${encodeURIComponent(storeSlug)}` : "/login"} className="block text-center text-sm text-muted-foreground hover:underline">
           Back to sign in
         </Link>
       </div>
@@ -65,7 +65,7 @@ export function ForgotPasswordForm() {
       <AuthSubmitButton disabled={isSubmitting}>
         {isSubmitting ? "Sending…" : "Send reset link"}
       </AuthSubmitButton>
-      <Link href="/login" className="block text-center text-sm text-muted-foreground hover:underline">
+      <Link href={storeSlug ? `/login?store=${encodeURIComponent(storeSlug)}` : "/login"} className="block text-center text-sm text-muted-foreground hover:underline">
         Back to sign in
       </Link>
     </form>

@@ -11,7 +11,7 @@ export default async function TemplatesPage({ params }: { params: Promise<{ slug
   const { slug } = await params;
   const store = await prisma.store.findUnique({
     where: { slug },
-    include: { subscription: true, template: true },
+    include: { subscription: true, template: true, business: true },
   });
   if (!store) notFound();
 
@@ -32,6 +32,7 @@ export default async function TemplatesPage({ params }: { params: Promise<{ slug
       currentTemplateId={store.templateId}
       currentTemplateName={store.template?.name ?? null}
       planRank={planRank}
+      businessCategory={store.business.category}
     />
   );
 }

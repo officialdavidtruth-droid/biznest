@@ -72,6 +72,12 @@ export const createStoreSchema = z.object({
   // logoUrl/bannerUrl override the auto-fetched demo banner in createStore.
   logoUrl: z.string().url().optional().or(z.literal("")),
   bannerUrl: z.string().url().optional().or(z.literal("")),
+  // Industry-specific setup answers collected before the store is published.
+  // Kept intentionally flexible so new business types can add fields without
+  // another database migration.
+  onboardingProfile: z
+    .record(z.union([z.string(), z.number(), z.boolean(), z.array(z.string())]))
+    .optional(),
 });
 
 export type CreateStoreInput = z.infer<typeof createStoreSchema>;

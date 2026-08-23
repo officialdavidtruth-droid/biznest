@@ -17,6 +17,8 @@ export const posSaleSchema = z.object({
   tenderType: z.enum(posTenderTypes),
   customerName: z.string().trim().max(120).optional(),
   customerPhone: z.string().trim().max(30).optional(),
+  customerEmail: z.string().trim().email().max(180).optional(),
+  customerProfileId: z.string().cuid().optional(),
 });
 
 export type PosSaleInput = z.infer<typeof posSaleSchema>;

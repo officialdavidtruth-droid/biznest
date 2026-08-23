@@ -4,7 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "build": "prisma generate && (prisma migrate resolve --rolled-back 20260820100000_order_checkout_idempotency || true) && prisma migrate deploy && tsx prisma/seed.ts && tsx prisma/seed-demos.ts && next build",
+    "build": "prisma generate && prisma migrate deploy && next build",
     "start": "next start",
     "lint": "eslint .",
     "db:generate": "prisma generate",
@@ -13,6 +13,7 @@
     "db:studio": "prisma studio",
     "db:seed": "tsx prisma/seed.ts",
     "db:seed:demos": "tsx prisma/seed-demos.ts",
+    "db:seed:all": "tsx prisma/seed.ts && tsx prisma/seed-demos.ts",
     "db:migrate:deploy": "prisma migrate deploy",
     "test": "vitest run",
     "test:watch": "vitest"

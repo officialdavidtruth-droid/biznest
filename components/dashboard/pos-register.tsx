@@ -4,7 +4,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { Search, Barcode, Minus, Plus, Trash2, X, ShoppingBag } from "lucide-react";
-import { createPosSale, lookupPosBarcode, type PosCatalogItem } from "@/lib/actions/pos";
+import { createPosSale, lookupPosBarcode, searchPosCustomers, type PosCatalogItem, type PosCustomerMatch } from "@/lib/actions/pos";
 import { posTenderTypes } from "@/lib/validations/pos";
 import { roundMoney } from "@/lib/utils/pricing";
 
@@ -37,10 +37,38 @@ export function PosRegister({
   const [tenderType, setTenderType] = useState<(typeof posTenderTypes)[number]>("Cash");
   const [customerName, setCustomerName] = useState("");
   const [customerPhone, setCustomerPhone] = useState("");
+  const [customerEmail, setCustomerEmail] = useState("");
+  const [customerProfileId, setCustomerProfileId] = useState<string | undefined>();
+  const [customerMatches, setCustomerMatches] = useState<PosCustomerMatch[]>([]);
+  const [searchingCustomers, setSearchingCustomers] = useState(false);
   const [charging, setCharging] = useState(false);
   const [lookingUpBarcode, setLookingUpBarcode] = useState(false);
 
   const currency = catalog[0]?.currency ?? "NGN";
+
+  useEffect(() => {
+    const q = customerPhone.trim() || customerEmail.trim() || customerName.trim();
+    if (q.length < 2 || customerProfileId) {
+      setCustomerMatches([]);
+      return;
+    }
+    let cancelled = false;
+    const timer = setTimeout(async () => {
+      setSearchingCustomers(true);
+      const matches = await searchPosCustomers(slug, q);
+      if (!cancelled) setCustomerMatches(matches);
+      if (!cancelled) setSearchingCustomers(false);
+    }, 250);
+    return () => { cancelled = true; clearTimeout(timer); };
+  }, [slug, customerName, customerPhone, customerEmail, customerProfileId]);
+
+  function chooseCustomer(customer: PosCustomerMatch) {
+    setCustomerProfileId(customer.id.startsWith("user:") ? undefined : customer.id);
+    setCustomerName(customer.name);
+    setCustomerPhone(customer.phone ?? "");
+    setCustomerEmail(customer.email ?? "");
+    setCustomerMatches([]);
+  }
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -178,6 +206,8 @@ export function PosRegister({
       tenderType,
       customerName: customerName.trim() || undefined,
       customerPhone: customerPhone.trim() || undefined,
+      customerEmail: customerEmail.trim() || undefined,
+      customerProfileId,
     });
     setCharging(false);
     if (!result.success) return toast.error(result.error);
@@ -185,6 +215,9 @@ export function PosRegister({
     setCart([]);
     setCustomerName("");
     setCustomerPhone("");
+    setCustomerEmail("");
+    setCustomerProfileId(undefined);
+    setCustomerMatches([]);
     router.refresh();
   }
 
@@ -314,19 +347,39 @@ export function PosRegister({
         </div>
 
         <div className="space-y-3 border-t p-3">
-          <div className="grid grid-cols-2 gap-2">
+          <div className="relative space-y-2">
+            <div className="grid grid-cols-2 gap-2">
+              <input
+                value={customerName}
+                onChange={(e) => { setCustomerName(e.target.value); setCustomerProfileId(undefined); }}
+                placeholder="Customer name"
+                className="rounded-md border bg-background px-2 py-1.5 text-xs outline-none focus:ring-2 focus:ring-primary/40"
+              />
+              <input
+                value={customerPhone}
+                onChange={(e) => { setCustomerPhone(e.target.value); setCustomerProfileId(undefined); }}
+                placeholder="Phone"
+                className="rounded-md border bg-background px-2 py-1.5 text-xs outline-none focus:ring-2 focus:ring-primary/40"
+              />
+            </div>
             <input
-              value={customerName}
-              onChange={(e) => setCustomerName(e.target.value)}
-              placeholder="Customer name (optional)"
-              className="rounded-md border bg-background px-2 py-1.5 text-xs outline-none focus:ring-2 focus:ring-primary/40"
+              value={customerEmail}
+              onChange={(e) => { setCustomerEmail(e.target.value); setCustomerProfileId(undefined); }}
+              placeholder="Email (optional)"
+              className="w-full rounded-md border bg-background px-2 py-1.5 text-xs outline-none focus:ring-2 focus:ring-primary/40"
             />
-            <input
-              value={customerPhone}
-              onChange={(e) => setCustomerPhone(e.target.value)}
-              placeholder="Phone (optional)"
-              className="rounded-md border bg-background px-2 py-1.5 text-xs outline-none focus:ring-2 focus:ring-primary/40"
-            />
+            {(customerMatches.length > 0 || searchingCustomers) && (
+              <div className="absolute bottom-full left-0 right-0 z-30 mb-1 overflow-hidden rounded-md border bg-background shadow-lg">
+                {searchingCustomers && <div className="px-3 py-2 text-xs text-muted-foreground">Searching customers…</div>}
+                {customerMatches.map((customer) => (
+                  <button key={customer.id} type="button" onClick={() => chooseCustomer(customer)} className="flex w-full items-center justify-between border-b px-3 py-2 text-left text-xs last:border-0 hover:bg-muted">
+                    <span><b>{customer.name}</b><span className="ml-2 text-muted-foreground">{customer.phone || customer.email || ""}</span></span>
+                    <span className="text-muted-foreground">{customer.orders} orders · {currency} {customer.spent.toLocaleString()}</span>
+                  </button>
+                ))}
+              </div>
+            )}
+            {customerProfileId && <p className="text-[11px] text-primary">Customer profile linked — this sale will appear in Customer 360.</p>}
           </div>
 
           <div className="flex gap-1.5">

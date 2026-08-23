@@ -2,13 +2,14 @@
 
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { requireStoreCustomer, requireStoreCustomerByStoreId } from "@/lib/actions/store-customer";
 import { checkoutSchema, type CheckoutInput } from "@/lib/validations/order";
 import { chargeCustomer, getActiveGateway } from "@/lib/payments/gateway";
 import { calculateOrderTotals } from "@/lib/utils/pricing";
 import { revalidatePath } from "next/cache";
 import type { ActionResult } from "@/types/actions";
 import type { OrderStatus, Store, Business, Prisma } from "@prisma/client";
-import { awardLoyaltyPointsForOrder } from "@/lib/actions/loyalty";
+import { awardStoreLoyaltyPointsForOrder } from "@/lib/actions/loyalty";
 import { recomputeAndPersistTrustScore } from "@/lib/actions/trust-score";
 import { emitWebhookEvent } from "@/lib/webhooks/dispatch";
 import { assertStorePermission } from "@/lib/access/assert-store-access";
@@ -179,6 +180,14 @@ export async function startCheckout(
   });
   if (!store || store.status !== "ACTIVE") return { success: false, error: "This store isn't available." };
 
+  let customerProfileId: string | null = null;
+  if (session.user.role === "CUSTOMER") {
+    const membership = await requireStoreCustomerByStoreId(store.id);
+    if (!membership) return { success: false, error: "This customer account belongs to another store. Sign up for this store to continue." };
+    const profile = await prisma.storeCustomerProfile.findFirst({ where: { userId: session.user.id, storeId: store.id }, select: { id: true } });
+    customerProfileId = profile?.id ?? null;
+  }
+
   // Re-read prices from the database — never trust amounts from the client.
   const products = await prisma.product.findMany({
     where: { id: { in: data.items.map((i) => i.productId) }, storeId: store.id, isPublished: true },
@@ -248,6 +257,7 @@ export async function startCheckout(
     data: {
       storeId: store.id,
       buyerId: session.user.id,
+      customerProfileId,
       status: "PENDING_PAYMENT",
       subtotal,
       commission,
@@ -297,12 +307,17 @@ export async function assertStoreAccess(slug: string): Promise<StoreAccessResult
   return { success: true, store: result.store };
 }
 
-export async function getOrderForBuyer(orderId: string) {
+export async function getOrderForBuyer(orderId: string, storeSlug?: string) {
   const session = await auth();
   if (!session?.user?.id) return null;
 
+  if (session.user.role === "CUSTOMER" && storeSlug) {
+    const membership = await requireStoreCustomer(storeSlug);
+    if (!membership) return null;
+  }
+
   return prisma.order.findFirst({
-    where: { id: orderId, buyerId: session.user.id },
+    where: { id: orderId, buyerId: session.user.id, ...(storeSlug ? { store: { slug: storeSlug } } : {}) },
     include: {
       items: { include: { product: true, service: true } },
       store: {
@@ -319,9 +334,10 @@ export async function getOrderForBuyer(orderId: string) {
 export async function listOrdersForBuyer() {
   const session = await auth();
   if (!session?.user?.id) return [];
+  if (session.user.role === "CUSTOMER" && !session.user.customerStoreId) return [];
 
   return prisma.order.findMany({
-    where: { buyerId: session.user.id },
+    where: { buyerId: session.user.id, ...(session.user.role === "CUSTOMER" ? { storeId: session.user.customerStoreId } : {}) },
     include: {
       items: { include: { product: true, service: true } },
       store: { select: { name: true, slug: true } },
@@ -337,6 +353,10 @@ export async function listOrdersForBuyer() {
 export async function listOrdersForBuyerAtStore(slug: string) {
   const session = await auth();
   if (!session?.user?.id) return [];
+  if (session.user.role === "CUSTOMER") {
+    const membership = await requireStoreCustomer(slug);
+    if (!membership) return [];
+  }
 
   return prisma.order.findMany({
     where: { buyerId: session.user.id, store: { slug } },
@@ -406,7 +426,7 @@ export async function updateOrderStatus(
   // failure surfaces in logs rather than silently dropping points -- this
   // never blocks the status update itself since it runs after it commits.
   if (status === "COMPLETED" && order.status !== "COMPLETED") {
-    await awardLoyaltyPointsForOrder(orderId);
+    await awardStoreLoyaltyPointsForOrder(orderId);
   }
 
   // Completed/cancelled/refunded all feed Trust Score factors

@@ -1,9 +1,10 @@
 import { auth } from "@/lib/auth";
 import { getStoreBranding } from "@/lib/actions/store-branding";
+import { requireStoreCustomer } from "@/lib/actions/store-customer";
 import { redirect, notFound } from "next/navigation";
 import Link from "next/link";
 import {
-  LayoutDashboard, Package, Heart, MapPin, Bell, ArrowLeft, LogOut,
+  LayoutDashboard, Package, Heart, MapPin, Bell, Calendar, Star, MessageSquare, ArrowLeft, LogOut,
 } from "lucide-react";
 import { StoreFooter } from "@/components/storefront/store-footer";
 import { SignOutButton } from "@/components/forms/sign-out-button";
@@ -22,21 +23,33 @@ export default async function StoreAccountLayout({
 }) {
   const { slug } = await params;
   const session = await auth();
-  if (!session?.user?.id) redirect(`/login?store=${encodeURIComponent(slug)}&callbackUrl=/${slug}/account`);
+  if (!session?.user?.id || session.user.role !== "CUSTOMER") {
+    redirect(`/login?store=${encodeURIComponent(slug)}&callbackUrl=/store/${encodeURIComponent(slug)}/account`);
+  }
 
   const store = await getStoreBranding(slug);
   if (!store) notFound();
+  const membership = await requireStoreCustomer(slug);
+  if (!membership) notFound();
 
   const LINKS = [
-    { href: `/${slug}/account`, label: "Account Overview", icon: LayoutDashboard },
-    { href: `/${slug}/orders`, label: "Orders", icon: Package },
-    { href: `/account/wishlist`, label: "Wishlist", icon: Heart },
-    { href: `/account/addresses`, label: "Address Book", icon: MapPin },
-    { href: `/account/loyalty`, label: "Loyalty Points", icon: Bell },
+    { href: `/store/${slug}/account`, label: "My Account", icon: LayoutDashboard },
+    { href: `/store/${slug}/orders`, label: "My Orders", icon: Package },
+    { href: `/store/${slug}/account/wishlist`, label: "My Wishlist", icon: Heart },
+    { href: `/store/${slug}/account/addresses`, label: "My Addresses", icon: MapPin },
+    { href: `/store/${slug}/account/loyalty`, label: "My Rewards", icon: Bell },
+    { href: `/store/${slug}/account/bookings`, label: "My Appointments", icon: Calendar },
+    { href: `/store/${slug}/account/reviews`, label: "My Reviews", icon: Star },
+    { href: `/store/${slug}/account/messages`, label: "Support", icon: MessageSquare },
   ];
 
+  const colors = (store.themeColors as { primary?: string; secondary?: string; accent?: string; background?: string; text?: string } | null) ?? {};
+  const accent = colors.primary || "#111827";
+  const background = colors.background || "#f8fafc";
+  const ink = colors.text || "#0f172a";
+
   return (
-    <div className="min-h-screen bg-slate-50">
+    <div className="min-h-screen" style={{ ["--store-accent" as string]: accent, ["--store-bg" as string]: background, ["--store-ink" as string]: ink, backgroundColor: background }}>
       <div className="mx-auto max-w-6xl px-6 py-10">
         <div className="mb-6 flex items-center gap-3">
           <Link
@@ -51,7 +64,7 @@ export default async function StoreAccountLayout({
             <img src={store.logoUrl} alt={store.name} className="h-10 w-10 rounded-lg object-cover ring-1 ring-slate-200" />
           )}
           <div>
-            <p className="text-xs font-medium uppercase tracking-wide text-slate-400">My {store.name} Account</p>
+            <p className="text-xs font-medium uppercase tracking-wide" style={{ color: accent }}>My {store.name} Account</p>
             <p className="text-sm text-slate-600">Signed in as {session.user.email ?? session.user.name}</p>
           </div>
         </div>

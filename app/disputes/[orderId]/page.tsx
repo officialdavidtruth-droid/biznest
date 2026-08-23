@@ -16,6 +16,7 @@ export default async function DisputeThreadPage({ params }: { params: Promise<{ 
   if (!thread) notFound();
 
   const { viewer, viewerId, canOpen, order, dispute, statusEvents, payments, messages } = thread;
+  const storeSlug = order.store.slug;
   const otherPartyLabel = viewer === "buyer" ? order.store.name : order.buyer.name ?? order.buyer.email;
   const address = order.shippingAddress as {
     fullName: string; phone: string; address: string; city: string; state: string; country: string;
@@ -28,7 +29,7 @@ export default async function DisputeThreadPage({ params }: { params: Promise<{ 
   return (
     <div className="min-h-screen bg-gradient-to-b from-slate-50 via-white to-white pb-16">
       <div className="mx-auto max-w-3xl px-6 py-10">
-        <Link href="/orders" className="mb-4 inline-flex items-center gap-1 text-sm text-slate-500 hover:text-slate-900">
+        <Link href={`/store/${storeSlug}/account/orders`} className="mb-4 inline-flex items-center gap-1 text-sm text-slate-500 hover:text-slate-900">
           <ArrowLeft className="h-3.5 w-3.5" /> Back to orders
         </Link>
 

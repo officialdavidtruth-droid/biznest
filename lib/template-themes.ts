@@ -786,3 +786,63 @@ export function resolveStoreTheme(
     font: fontFamily || base.font,
   };
 }
+
+// ---------------------------------------------------------------------------
+// BizNest Signature Collection — new, industry-first storefront designs.
+// These are intentionally separate from the legacy templates above. They use
+// one hardened rendering engine with genuinely different layout modes, not
+// merely palette swaps.
+// ---------------------------------------------------------------------------
+
+const SIGNATURE_BASE = {
+  font: "'Inter', sans-serif",
+  headlineFont: "'Space Grotesk', sans-serif",
+  radius: "18px",
+  sections: ["hero", "categories", "catalog", "features", "testimonials", "contact"] as Section[],
+};
+
+function signatureTheme(data: Omit<TemplateTheme, "font" | "headlineFont" | "radius" | "sections"> & { signatureMode: string }): TemplateTheme & { signatureMode: string } {
+  return { ...SIGNATURE_BASE, ...data };
+}
+
+export const SIGNATURE_TEMPLATES = [
+  signatureTheme({ signatureMode: "electra", bg: "#F5F7FA", ink: "#101828", card: "#FFFFFF", accent: "#2563EB", accentSoft: "#93C5FD", muted: "#667085", border: "#E4E7EC", eyebrow: "Technology, refined.", headline: "Smarter gear. Better living.", sub: "A premium electronics storefront built around discovery, comparison and confident checkout.", cta: "Shop the latest", layout: "grid", heroStyle: "split", catalogLabel: "Featured tech", density: "relaxed", surfaceDark: "#0B1220" }),
+  signatureTheme({ signatureMode: "atelier", bg: "#F7F3EE", ink: "#211C1A", card: "#FFFDFC", accent: "#B56B45", accentSoft: "#E8B39A", muted: "#756C67", border: "#E8DED7", eyebrow: "The new season", headline: "Wear less. Choose better.", sub: "An editorial fashion storefront with generous imagery, curated collections and a strong visual rhythm.", cta: "Explore collection", layout: "grid", heroStyle: "fullbleed", catalogLabel: "The edit", density: "relaxed", surfaceDark: "#241E1B" }),
+  signatureTheme({ signatureMode: "kinetic", bg: "#0B0B0D", ink: "#F5F5F5", card: "#141416", accent: "#D7FF3F", accentSoft: "#6F7F19", muted: "#A4A4AA", border: "#2A2A2E", eyebrow: "New drop / limited", headline: "Move different.", sub: "A high-energy sneaker storefront designed for drops, scarcity and fast product discovery.", cta: "Shop the drop", layout: "grid", heroStyle: "fullbleed", catalogLabel: "Latest drop", density: "compact", surfaceDark: "#050506" }),
+  signatureTheme({ signatureMode: "bloom", bg: "#FCF7F5", ink: "#302324", card: "#FFFFFF", accent: "#B86C7C", accentSoft: "#E8B6C0", muted: "#806E72", border: "#EEDFE3", eyebrow: "Rituals for every day", headline: "Beauty, made personal.", sub: "A soft, premium beauty storefront for skincare, makeup, haircare and self-care collections.", cta: "Shop beauty", layout: "grid", heroStyle: "split", catalogLabel: "The ritual edit", density: "relaxed", surfaceDark: "#302124" }),
+  signatureTheme({ signatureMode: "haven", bg: "#F3F0E9", ink: "#25231F", card: "#FBFAF6", accent: "#7A6B50", accentSoft: "#C7B99A", muted: "#777168", border: "#DED8CC", eyebrow: "Objects for better living", headline: "Make room for beautiful.", sub: "A refined furniture and interiors storefront with room-led collections and tactile product presentation.", cta: "Explore the home", layout: "grid", heroStyle: "fullbleed", catalogLabel: "Room edit", density: "relaxed", surfaceDark: "#2B2925" }),
+  signatureTheme({ signatureMode: "harvest", bg: "#F6F8F1", ink: "#17351E", card: "#FFFFFF", accent: "#4E8B43", accentSoft: "#A8CF82", muted: "#667563", border: "#DDE7D7", eyebrow: "Fresh to your door", headline: "Good food, less friction.", sub: "A fast grocery storefront built around categories, weekly picks, deals and repeat shopping.", cta: "Shop groceries", layout: "grid", heroStyle: "split", catalogLabel: "Fresh picks", density: "compact", surfaceDark: "#17351E" }),
+  signatureTheme({ signatureMode: "maison", bg: "#F5F0E8", ink: "#211B18", card: "#FFFDF8", accent: "#B78A52", accentSoft: "#DCC29D", muted: "#766D66", border: "#E4D8C8", eyebrow: "Stay somewhere beautiful", headline: "Your room is part of the journey.", sub: "A hospitality storefront designed for rooms, amenities, availability and direct booking confidence.", cta: "Find your room", layout: "grid", heroStyle: "fullbleed", catalogLabel: "Rooms & stays", density: "relaxed", surfaceDark: "#201A16" }),
+  signatureTheme({ signatureMode: "ember", bg: "#171313", ink: "#FFF7EF", card: "#211B1B", accent: "#F08A3C", accentSoft: "#8C4722", muted: "#B7A8A1", border: "#352A29", eyebrow: "Good food. Good nights.", headline: "Come hungry. Leave happy.", sub: "A restaurant storefront built around signature dishes, menu discovery and reservations or ordering.", cta: "View the menu", layout: "list", heroStyle: "fullbleed", catalogLabel: "Tonight's menu", density: "relaxed", surfaceDark: "#0F0C0C" }),
+  signatureTheme({ signatureMode: "muse", bg: "#F8F5F2", ink: "#292323", card: "#FFFFFF", accent: "#8C5C78", accentSoft: "#D3B0C4", muted: "#786E72", border: "#E7DFDB", eyebrow: "Your time, beautifully spent", headline: "Appointments that feel like a reset.", sub: "A salon experience built around services, specialists, packages and effortless booking.", cta: "Book an appointment", layout: "grid", heroStyle: "split", catalogLabel: "Services & packages", density: "relaxed", surfaceDark: "#292023" }),
+  signatureTheme({ signatureMode: "frame", bg: "#F3F1ED", ink: "#1B1B1B", card: "#FBFAF7", accent: "#1B1B1B", accentSoft: "#8A8A8A", muted: "#777777", border: "#DCDAD5", eyebrow: "Stories worth remembering", headline: "Let the work speak.", sub: "A cinematic photography storefront with portfolio-first storytelling and clear packages.", cta: "View the portfolio", layout: "grid", heroStyle: "fullbleed", catalogLabel: "Selected work", density: "relaxed", surfaceDark: "#111111" }),
+  signatureTheme({ signatureMode: "north", bg: "#EEF2F6", ink: "#0D1B2A", card: "#FFFFFF", accent: "#176B87", accentSoft: "#76B7C7", muted: "#617080", border: "#D9E1E8", eyebrow: "Strategy with substance", headline: "Clarity that compounds.", sub: "A sharp agency storefront focused on capabilities, proof, process and consultation.", cta: "Start a project", layout: "list", heroStyle: "split", catalogLabel: "Capabilities", density: "relaxed", surfaceDark: "#0D1B2A" }),
+  signatureTheme({ signatureMode: "pure", bg: "#F2F7F5", ink: "#17352D", card: "#FFFFFF", accent: "#2B8A70", accentSoft: "#8BC9B6", muted: "#647871", border: "#D9E8E2", eyebrow: "A cleaner space starts here", headline: "Clean you can count on.", sub: "A trustworthy cleaning storefront built around services, packages, coverage areas and booking.", cta: "Book a clean", layout: "grid", heroStyle: "split", catalogLabel: "Cleaning services", density: "relaxed", surfaceDark: "#17352D" }),
+  signatureTheme({ signatureMode: "forge", bg: "#F1F0EC", ink: "#202321", card: "#FFFFFF", accent: "#C86B2A", accentSoft: "#D9A276", muted: "#6D706E", border: "#DCDDD8", eyebrow: "Built for the long run", headline: "Serious work. Properly built.", sub: "A construction storefront designed around projects, services, proof, process and quote requests.", cta: "Request a quote", layout: "grid", heroStyle: "fullbleed", catalogLabel: "Projects & services", density: "relaxed", surfaceDark: "#202321" }),
+] as const;
+
+export type SignatureTemplate = TemplateTheme & { signatureMode: string; variationName: string };
+export type SignatureTemplateName = SignatureTemplate["variationName"];
+
+// Assign stable names after creation so the config stored in Prisma is self-describing.
+for (const t of SIGNATURE_TEMPLATES as any[]) {
+  if (!t.variationName) {
+    Object.defineProperty(t, "variationName", { enumerable: true, configurable: true, value: ({
+      electra: "Electra — Smart Commerce", atelier: "Atelier — Modern Fashion", kinetic: "Kinetic — Sneaker Drop",
+      bloom: "Bloom — Beauty Boutique", haven: "Haven — Home & Furniture", harvest: "Harvest — Grocery Market",
+      maison: "Maison — Hotel & Stay", ember: "Ember — Restaurant", muse: "Muse — Salon & Beauty",
+      frame: "Frame — Photography Studio", north: "North — Creative Agency", pure: "Pure — Cleaning Services", forge: "Forge — Construction",
+    } as Record<string,string>)[t.signatureMode] });
+  }
+}
+
+export const SIGNATURE_TEMPLATE_CATALOG = SIGNATURE_TEMPLATES as unknown as readonly SignatureTemplate[];
+
+export function isSignatureTemplate(name: string | null | undefined): boolean {
+  return !!name && SIGNATURE_TEMPLATE_CATALOG.some((t) => t.variationName === name);
+}
+
+export function getSignatureTheme(name: string | null | undefined): TemplateTheme & { signatureMode: string } {
+  const found = SIGNATURE_TEMPLATE_CATALOG.find((t) => t.variationName === name);
+  return found || SIGNATURE_TEMPLATE_CATALOG[0];
+}

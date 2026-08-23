@@ -36,11 +36,13 @@ export const registerSchema = z
 
 export const forgotPasswordSchema = z.object({
   email: z.string().email(),
+  storeSlug: z.string().min(1).optional(),
 });
 
 export const resetPasswordSchema = z
   .object({
     token: z.string().min(1),
+    storeSlug: z.string().min(1).optional(),
     password: z.string().min(8, "Password must be at least 8 characters"),
     confirmPassword: z.string(),
   })

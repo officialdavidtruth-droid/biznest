@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useCart } from "@/lib/cart-context";
-import { startCheckout } from "@/lib/actions/order";
+import { submitCheckout } from "@/lib/checkout/client";
 import { listActiveDeliveryZones } from "@/lib/actions/delivery-zone";
 import { DeliveryZoneOptions } from "@/components/checkout/delivery-zone-options";
 import { toast } from "sonner";
@@ -43,8 +43,9 @@ export function HeenzyCheckoutClient({ slug }: { slug: string }) {
     if (cartItems.length === 0) return;
 
     setIsSubmitting(true);
-    const result = await startCheckout(slug, {
-      items: cartItems.map((i) => ({ productId: i.productId, quantity: i.quantity })),
+    const result = await submitCheckout({
+      slug,
+      items: cartItems,
       deliveryZoneId: zoneId || undefined,
       shippingAddress: form,
       idempotencyKey,

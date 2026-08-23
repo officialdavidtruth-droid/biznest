@@ -2,6 +2,7 @@
 
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { requireStoreCustomer } from "@/lib/actions/store-customer";
 import { getLoyaltyRates } from "@/lib/actions/site-settings";
 import { roundMoney } from "@/lib/utils/pricing";
 import { revalidatePath } from "next/cache";
@@ -18,7 +19,7 @@ import type { LoyaltyEntry } from "@prisma/client";
  */
 export async function listRedeemableStores(): Promise<{ id: string; name: string }[]> {
   const session = await auth();
-  if (!session?.user?.id) return [];
+  if (!session?.user?.id || session.user.role === "CUSTOMER") return [];
 
   const [orderedStores, favoriteStores] = await Promise.all([
     prisma.store.findMany({
@@ -49,6 +50,7 @@ export async function getLoyaltySummary(): Promise<{
   const session = await auth();
   const rates = await getLoyaltyRates();
   if (!session?.user?.id) return { pointsBalance: 0, entries: [], rates };
+  if (session.user.role === "CUSTOMER") return { pointsBalance: 0, entries: [], rates };
 
   const account = await prisma.loyaltyAccount.findUnique({
     where: { userId: session.user.id },
@@ -127,6 +129,7 @@ export async function cashOutLoyaltyPoints(
 ): Promise<ActionResult<{ couponCode: string; discountValue: number }>> {
   const session = await auth();
   if (!session?.user?.id) return { success: false, error: "Please sign in to cash out points." };
+  if (session.user.role === "CUSTOMER") return { success: false, error: "Customer rewards are store-specific." };
 
   if (!Number.isInteger(pointsToRedeem) || pointsToRedeem <= 0) {
     return { success: false, error: "Enter a whole number of points to cash out." };
@@ -187,5 +190,64 @@ export async function cashOutLoyaltyPoints(
   if (!result) return { success: false, error: "You don't have enough points for that." };
 
   revalidatePath("/account/loyalty");
+  return { success: true, data: { couponCode: result.code, discountValue: Number(result.discountValue) } };
+}
+
+// Store-scoped customer loyalty. The legacy platform-wide loyalty functions
+// above remain available for existing merchant/admin tooling, but the
+// customer experience under /store/[slug]/account only uses these functions.
+export async function getStoreLoyaltySummary(storeSlug: string) {
+  const session = await auth();
+  const rates = await getLoyaltyRates();
+  if (!session?.user?.id) return null;
+  const account = await prisma.storeLoyaltyAccount.findFirst({
+    where: { userId: session.user.id, store: { slug: storeSlug } },
+    include: { entries: { orderBy: { createdAt: "desc" }, take: 50 } },
+  });
+  return { pointsBalance: account?.pointsBalance ?? 0, entries: account?.entries ?? [], rates };
+}
+
+export async function awardStoreLoyaltyPointsForOrder(orderId: string): Promise<void> {
+  const order = await prisma.order.findUnique({ where: { id: orderId } });
+  if (!order) return;
+  const alreadyAwarded = await prisma.storeLoyaltyEntry.findFirst({ where: { orderId, type: "EARN" } });
+  if (alreadyAwarded) return;
+  const rates = await getLoyaltyRates();
+  const points = Math.floor(Number(order.subtotal) * rates.pointsPerNaira);
+  if (points <= 0) return;
+  await prisma.$transaction(async (tx) => {
+    const account = await tx.storeLoyaltyAccount.upsert({
+      where: { storeId_userId: { storeId: order.storeId, userId: order.buyerId } },
+      create: { storeId: order.storeId, userId: order.buyerId, pointsBalance: 0 },
+      update: {},
+    });
+    await tx.storeLoyaltyEntry.create({ data: { loyaltyAccountId: account.id, orderId: order.id, type: "EARN", points } });
+    await tx.storeLoyaltyAccount.update({ where: { id: account.id }, data: { pointsBalance: { increment: points } } });
+  });
+}
+
+export async function cashOutStoreLoyaltyPoints(storeSlug: string, pointsToRedeem: number): Promise<ActionResult<{ couponCode: string; discountValue: number }>> {
+  const session = await auth();
+  if (!session?.user?.id) return { success: false, error: "Please sign in to redeem rewards." };
+  if (!Number.isInteger(pointsToRedeem) || pointsToRedeem <= 0) return { success: false, error: "Enter a whole number of points." };
+  const store = await prisma.store.findUnique({ where: { slug: storeSlug }, select: { id: true, name: true } });
+  if (!store) return { success: false, error: "Store not found." };
+  const membership = await requireStoreCustomer(storeSlug);
+  if (!membership) return { success: false, error: "You don't have a customer account with this store." };
+  const account = await prisma.storeLoyaltyAccount.findUnique({ where: { storeId_userId: { storeId: store.id, userId: session.user.id } } });
+  if (!account || account.pointsBalance < pointsToRedeem) return { success: false, error: "You don't have enough points for that." };
+  const rates = await getLoyaltyRates();
+  const discountValue = roundMoney(pointsToRedeem * rates.nairaPerPoint);
+  if (discountValue <= 0) return { success: false, error: "That's not enough points to redeem yet." };
+  const couponCode = `LOYALTY-${Math.random().toString(36).slice(2, 8).toUpperCase()}`;
+  const result = await prisma.$transaction(async (tx) => {
+    const fresh = await tx.storeLoyaltyAccount.findUnique({ where: { id: account.id } });
+    if (!fresh || fresh.pointsBalance < pointsToRedeem) throw new Error("INSUFFICIENT_POINTS");
+    await tx.storeLoyaltyEntry.create({ data: { loyaltyAccountId: account.id, type: "REDEEM", points: -pointsToRedeem, note: `Redeemed at ${store.name}` } });
+    await tx.storeLoyaltyAccount.update({ where: { id: account.id }, data: { pointsBalance: { decrement: pointsToRedeem } } });
+    return tx.coupon.create({ data: { storeId: store.id, code: couponCode, discountType: "FIXED", discountValue, maxUses: 1 } });
+  }).catch((err) => err instanceof Error && err.message === "INSUFFICIENT_POINTS" ? null : Promise.reject(err));
+  if (!result) return { success: false, error: "You don't have enough points for that." };
+  revalidatePath(`/store/${storeSlug}/account/loyalty`);
   return { success: true, data: { couponCode: result.code, discountValue: Number(result.discountValue) } };
 }

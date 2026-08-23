@@ -2,6 +2,7 @@
 
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { requireStoreCustomerByStoreId } from "@/lib/actions/store-customer";
 import { revalidatePath } from "next/cache";
 import type { ActionResult } from "@/types/actions";
 import { DISPUTABLE_ORDER_STATUSES, type DisputeViewerRole } from "@/lib/constants/dispute";
@@ -17,6 +18,10 @@ async function assertOrderParticipant(orderId: string) {
   if (!order) return { success: false as const, error: "Order not found." };
 
   const isBuyer = order.buyerId === session.user.id;
+  if (isBuyer && session.user.role === "CUSTOMER") {
+    const membership = await requireStoreCustomerByStoreId(order.storeId);
+    if (!membership) return { success: false as const, error: "You don't have access to this store account." };
+  }
   const isSeller = order.store.business.userId === session.user.id;
   const isStaff = session.user.role === "PLATFORM_ADMIN" || session.user.role === "SUPPORT_MODERATOR";
   if (!isBuyer && !isSeller && !isStaff) {
@@ -32,12 +37,13 @@ async function assertOrderParticipant(orderId: string) {
   return { success: true as const, order, userId: session.user.id, viewer, isBuyer, isSeller };
 }
 
-async function getOrCreateConversation(orderId: string, buyerId: string, sellerId: string) {
+async function getOrCreateConversation(orderId: string, storeId: string, buyerId: string, sellerId: string) {
   const existing = await prisma.conversation.findUnique({ where: { orderId } });
   if (existing) return existing;
   return prisma.conversation.create({
     data: {
       orderId,
+      storeId,
       participants: { create: [{ userId: buyerId }, { userId: sellerId }] },
     },
   });
@@ -144,7 +150,7 @@ export async function openDispute(orderId: string, reason: string): Promise<Acti
     prisma.order.update({ where: { id: orderId }, data: { status: "DISPUTED" } }),
     prisma.orderStatusEvent.create({ data: { orderId, status: "DISPUTED", note: "Dispute opened" } }),
   ]);
-  await getOrCreateConversation(orderId, buyerId, sellerId);
+  await getOrCreateConversation(orderId, access.order.store.id, buyerId, sellerId);
 
   await notifyOtherParty(
     orderId,
@@ -220,7 +226,7 @@ export async function sendDisputeMessage(orderId: string, content: string): Prom
     return { success: false, error: "This dispute is closed — no further messages can be sent." };
   }
 
-  const conversation = await getOrCreateConversation(orderId, access.order.buyerId, access.order.store.business.userId);
+  const conversation = await getOrCreateConversation(orderId, access.order.store.id, access.order.buyerId, access.order.store.business.userId);
   await prisma.message.create({
     data: { conversationId: conversation.id, senderId: access.userId, content: content.trim() },
   });

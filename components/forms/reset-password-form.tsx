@@ -15,6 +15,7 @@ export function ResetPasswordForm() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const token = searchParams.get("token") ?? "";
+  const storeSlug = searchParams.get("store") ?? undefined;
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const {
@@ -23,7 +24,7 @@ export function ResetPasswordForm() {
     formState: { errors },
   } = useForm<ResetPasswordInput>({
     resolver: zodResolver(resetPasswordSchema),
-    defaultValues: { token },
+    defaultValues: { token, storeSlug },
   });
 
   async function onSubmit(values: ResetPasswordInput) {
@@ -35,7 +36,7 @@ export function ResetPasswordForm() {
         return;
       }
       toast.success("Password updated. Sign in with your new password.");
-      router.push("/login");
+      router.push(storeSlug ? `/login?store=${encodeURIComponent(storeSlug)}` : "/login");
     } catch {
       toast.error("Couldn't reach the server. Please try again in a moment.");
     } finally {
@@ -51,7 +52,7 @@ export function ResetPasswordForm() {
             This reset link is missing its token. Request a new one from the sign-in page.
           </p>
         </div>
-        <Link href="/forgot-password" className="block text-center text-sm text-muted-foreground hover:underline">
+        <Link href={storeSlug ? `/forgot-password?store=${encodeURIComponent(storeSlug)}` : "/forgot-password"} className="block text-center text-sm text-muted-foreground hover:underline">
           Request a new link
         </Link>
       </div>
