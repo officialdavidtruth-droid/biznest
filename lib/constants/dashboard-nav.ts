@@ -19,56 +19,62 @@ export type NavItem = {
   permission?: StaffPermissionId;
 };
 
-// Items in the "Sell" group that only make sense for one niche. Anything
-// not listed here (Orders) is shared by every business, since orders and
-// bookings both flow through the same order record.
+// Items that only make sense for one niche, checked across every group (not
+// just Sell) so a service-only business never sees Suppliers/Inventory/
+// Purchase-orders/Delivery-zones, and a product-only business never sees
+// Services. Anything not listed here is shared by every business.
 const PRODUCT_ONLY_HREFS = new Set(["/products", "/inventory", "/delivery", "/suppliers", "/purchase-orders"]);
-const SERVICE_ONLY_HREFS = new Set(["/services"]);
+const SERVICE_ONLY_HREFS = new Set(["/services", "/quotes"]);
+
+function relevantToBusiness(href: string, business: { sellsProducts: boolean; offersServices: boolean }) {
+  if (PRODUCT_ONLY_HREFS.has(href)) return business.sellsProducts;
+  if (SERVICE_ONLY_HREFS.has(href)) return business.offersServices;
+  return true;
+}
 
 // Single source of truth for dashboard navigation, shared by the desktop
 // sidebar and the mobile drawer/bottom-bar so the two surfaces never drift
-// out of sync with each other.
+// out of sync with each other. Every group below is filtered through
+// relevantToBusiness() so what a merchant sees is shaped by what they told
+// us at onboarding (sells products / offers services / category) rather
+// than showing every module to every store regardless of niche.
 export function buildNavGroups(business: { sellsProducts: boolean; offersServices: boolean; category?: string | null }): Array<{
   label: string;
   items: NavItem[];
 }> {
-  const allSellItems: NavItem[] = [
+  const sellNavItems: NavItem[] = [
     { label: "Point of Sale", href: "/pos", icon: Calculator, permission: "pos" },
     { label: "Orders", href: "/orders", icon: ShoppingCart, permission: "orders" },
     { label: "Products", href: "/products", icon: Package, permission: "products" },
     { label: "Services", href: "/services", icon: Wrench, permission: "products" },
-    { label: "Inventory", href: "/inventory", icon: Boxes, permission: "products" },
-    { label: "Suppliers", href: "/suppliers", icon: Users, permission: "products" },
-    { label: "Purchase orders", href: "/purchase-orders", icon: FileSignature, permission: "products" },
-    { label: "Delivery zones", href: "/delivery", icon: Truck, permission: "settings" },
-    { label: "Invoices", href: "/invoices", icon: FileText, permission: "orders" },
-    { label: "Quotes", href: "/quotes", icon: FileSignature, permission: "orders" },
-  ];
-  // Split into its own statement (rather than chaining .filter() straight
-  // off the literal) so the `: NavItem[]` annotation above actually
-  // contextually types each object literal's `permission` field as the
-  // StaffPermissionId union — chaining .filter() directly off the array
-  // literal stops that contextual typing from applying, which widened
-  // `permission` to plain `string` and failed to satisfy NavItem[].
-  const sellItems: NavItem[] = allSellItems.filter((item) => {
-    if (PRODUCT_ONLY_HREFS.has(item.href)) return business.sellsProducts;
-    if (SERVICE_ONLY_HREFS.has(item.href)) return business.offersServices;
-    return true;
-  });
+  ].filter((item) => relevantToBusiness(item.href, business));
 
   // The category picked at onboarding can add one more trade-specific tool
   // (e.g. "Bookings" for a salon, "Delivery zones" for a restaurant) — but
-  // only if it isn't already present from sellsProducts/offersServices above.
+  // only if it isn't already present above.
   const categoryConfig = getCategoryDashboard(business.category);
   const categoryExtraNavItem =
-    categoryConfig.extraNavItem && !sellItems.some((i) => i.href === categoryConfig.extraNavItem!.href)
+    categoryConfig.extraNavItem && !sellNavItems.some((i) => i.href === categoryConfig.extraNavItem!.href)
       ? ({ permission: "products", ...categoryConfig.extraNavItem } as NavItem)
       : null;
-
-  const sellNavItems = sellItems.filter((item) =>
-    ["/products", "/services", "/orders", "/pos"].includes(item.href)
-  );
   if (categoryExtraNavItem) sellNavItems.push(categoryExtraNavItem);
+
+  const manageItems: NavItem[] = [
+    { label: "Inventory", href: "/inventory", icon: Boxes, permission: "products" },
+    { label: "Customers", href: "/customers", icon: Users, permission: "customers" },
+    { label: "Suppliers", href: "/suppliers", icon: Users, permission: "products" },
+    { label: "Purchase orders", href: "/purchase-orders", icon: FileSignature, permission: "products" },
+    { label: "Delivery zones", href: "/delivery", icon: Truck, permission: "settings" },
+    { label: "Staff", href: "/staff", icon: Users, ownerOnly: true },
+  ].filter((item) => relevantToBusiness(item.href, business));
+
+  const moneyItems: NavItem[] = [
+    { label: "Payments", href: "/payments", icon: CreditCard, permission: "payments" },
+    { label: "Invoices", href: "/invoices", icon: FileText, permission: "orders" },
+    { label: "Quotes", href: "/quotes", icon: FileSignature, permission: "orders" },
+    // Profit is surfaced inside Analytics until a dedicated profit/expense
+    // ledger exists, so we don't create a dead navigation destination.
+  ].filter((item) => relevantToBusiness(item.href, business));
 
   return [
     {
@@ -81,24 +87,11 @@ export function buildNavGroups(business: { sellsProducts: boolean; offersService
     },
     {
       label: "Manage",
-      items: [
-        { label: "Inventory", href: "/inventory", icon: Boxes, permission: "products" },
-        { label: "Customers", href: "/customers", icon: Users, permission: "customers" },
-        { label: "Suppliers", href: "/suppliers", icon: Users, permission: "products" },
-        { label: "Purchase orders", href: "/purchase-orders", icon: FileSignature, permission: "products" },
-        { label: "Delivery zones", href: "/delivery", icon: Truck, permission: "settings" },
-        { label: "Staff", href: "/staff", icon: Users, ownerOnly: true },
-      ],
+      items: manageItems,
     },
     {
       label: "Money",
-      items: [
-        { label: "Payments", href: "/payments", icon: CreditCard, permission: "payments" },
-        { label: "Invoices", href: "/invoices", icon: FileText, permission: "orders" },
-        { label: "Quotes", href: "/quotes", icon: FileSignature, permission: "orders" },
-        // Profit is surfaced inside Analytics until a dedicated profit/expense
-        // ledger exists, so we don't create a dead navigation destination.
-      ],
+      items: moneyItems,
     },
     {
       label: "Grow",
