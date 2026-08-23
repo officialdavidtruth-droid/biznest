@@ -21,7 +21,7 @@ type BuilderStore = {
 };
 
 export function BuilderStorefront({
-  store, config, catalogItems, reviews, avgRating, completedOrders,
+  store, config: initialConfig, catalogItems, reviews, avgRating, completedOrders,
 }: {
   store: BuilderStore;
   config: BuilderConfig;
@@ -30,11 +30,11 @@ export function BuilderStorefront({
   avgRating: number | null;
   completedOrders: number;
 }) {
-  const [liveConfig, setLiveConfig] = useState<BuilderConfig>(config);
+  const [liveConfig, setLiveConfig] = useState<BuilderConfig>(initialConfig);
 
   useEffect(() => {
-    setLiveConfig(config);
-  }, [config]);
+    setLiveConfig(initialConfig);
+  }, [initialConfig]);
 
   useEffect(() => {
     // Tell the parent editor exactly when the preview iframe is ready to
@@ -59,7 +59,7 @@ export function BuilderStorefront({
   }, []);
 
   const d = liveConfig.design;
-  const config = liveConfig;
+  const config = liveConfig; // used by JSX below (BuilderSectionView expects `config`)
   const experience = getBusinessExperience(store.business.category);
   const width = d.containerWidth === "compact" ? 960 : d.containerWidth === "wide" ? 1320 : 1160;
   const visible = config.sections.filter((s) => s.visible);
