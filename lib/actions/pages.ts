@@ -4,21 +4,7 @@ import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { revalidatePath } from "next/cache";
 import type { ActionResult } from "@/types/actions";
-
-export type PageContent = { body: string };
-
-// The starter set offered in the "Pages" panel — matches the copy that used
-// to sit in the placeholder ("About, Gallery, FAQ, Blog, Contact, Policies").
-// A vendor can also add a custom one with any slug.
-export const SUGGESTED_PAGE_SLUGS = ["about", "gallery", "faq", "blog", "contact", "policies"] as const;
-export const SUGGESTED_PAGE_TITLES: Record<string, string> = {
-  about: "About",
-  gallery: "Gallery",
-  faq: "FAQ",
-  blog: "Blog",
-  contact: "Contact",
-  policies: "Policies",
-};
+import type { PageContent } from "@/lib/actions/pages-constants";
 
 function slugify(input: string) {
   return input
