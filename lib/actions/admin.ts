@@ -247,6 +247,7 @@ export async function listUsers(query?: string) {
       emailVerified: true, createdAt: true,
       business: {
         select: {
+          businessName: true,
           store: {
             select: {
               id: true, subscriptionId: true, trialEndsAt: true,
