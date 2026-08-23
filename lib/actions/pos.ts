@@ -204,7 +204,7 @@ export async function searchPosCustomers(slug: string, query: string): Promise<P
     prisma.order.findMany({
       where: {
         storeId: access.store.id,
-        status: { in: ["PAID", "PROCESSING", "SHIPPED", "DELIVERED", "COMPLETED"] },
+        status: { in: ["PAID", "IN_PROGRESS", "DELIVERED", "COMPLETED"] },
         OR: [
           { buyer: { name: { contains: q, mode: "insensitive" } } },
           { buyer: { email: { contains: q, mode: "insensitive" } } },
