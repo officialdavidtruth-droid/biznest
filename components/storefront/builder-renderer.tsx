@@ -1,4 +1,7 @@
+"use client";
+
 import type React from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { CartLink } from "@/components/storefront/cart-link";
 import { BuilderNewsletterForm } from "@/components/storefront/builder-newsletter-form";
@@ -27,7 +30,27 @@ export function BuilderStorefront({
   avgRating: number | null;
   completedOrders: number;
 }) {
-  const d = config.design;
+  const [liveConfig, setLiveConfig] = useState<BuilderConfig>(config);
+
+  useEffect(() => {
+    setLiveConfig(config);
+  }, [config]);
+
+  useEffect(() => {
+    function handleMessage(event: MessageEvent) {
+      if (event.source !== window.parent) return;
+      const data = event.data;
+      if (!data || data.type !== "BIZNEST_CUSTOMIZER_PREVIEW") return;
+      if (!data.config || typeof data.config !== "object") return;
+      setLiveConfig(data.config as BuilderConfig);
+    }
+
+    window.addEventListener("message", handleMessage);
+    return () => window.removeEventListener("message", handleMessage);
+  }, []);
+
+  const d = liveConfig.design;
+  const config = liveConfig;
   const experience = getBusinessExperience(store.business.category);
   const width = d.containerWidth === "compact" ? 960 : d.containerWidth === "wide" ? 1320 : 1160;
   const visible = config.sections.filter((s) => s.visible);
