@@ -47,9 +47,29 @@ export async function registerUser(
     if (!storeForCustomer) return { success: false, error: "That store could not be found." };
   }
 
-  const existing = await prisma.user.findFirst({ where: { email: { equals: normalizedEmail, mode: "insensitive" } } });
+  // A signup's "scope" determines which other accounts it must stay
+  // unique against. Store-context signups (storeSlug present) are scoped
+  // to that one store only -- the same email can independently register
+  // again at any other store, or here again later after this store's
+  // account is deleted, as a totally separate account with its own
+  // password. Generic/platform signups (pending owners, during onboarding
+  // before business verification upgrades them) stay platform-scoped
+  // (customerScopeStoreId: null) and must remain unique among themselves,
+  // same as before. See the customerScopeStoreId field on User for the
+  // full explanation, and the partial + composite unique indexes added in
+  // prisma/migrations/20260823120000_customer_scoped_email.
+  const scopeStoreId = storeForCustomer?.id ?? null;
+
+  const existing = await prisma.user.findFirst({
+    where: { email: { equals: normalizedEmail, mode: "insensitive" }, customerScopeStoreId: scopeStoreId },
+  });
   if (existing) {
-    return { success: false, error: "An account with this email already exists." };
+    return {
+      success: false,
+      error: scopeStoreId
+        ? "You already have an account with this store. Try signing in instead."
+        : "An account with this email already exists.",
+    };
   }
 
   const passwordHash = await bcrypt.hash(parsed.data.password, 12);
@@ -60,13 +80,16 @@ export async function registerUser(
       email: normalizedEmail,
       passwordHash,
       role: "CUSTOMER", // upgraded to STORE_OWNER once business verification is approved
+      customerScopeStoreId: scopeStoreId,
     },
   });
 
   // Signing up "through" a store (arrived via that store's AccountLink)
   // makes this a customer account for that store specifically -- it does
-  // NOT grant sign-in access to any other store. See lib/auth.ts's
-  // authorize(), which checks this table on every store-context login.
+  // NOT grant sign-in access to any other store, and (as of the
+  // customerScopeStoreId change) isn't even the same underlying account
+  // as any other store's version of this email. See lib/auth.ts's
+  // authorize(), which looks the account up scoped to this same store.
   if (storeForCustomer) {
     await prisma.storeCustomer.create({ data: { userId: user.id, storeId: storeForCustomer.id } });
     await prisma.storeCustomerProfile.create({ data: { userId: user.id, storeId: storeForCustomer.id, name: parsed.data.name, email: normalizedEmail } });
@@ -75,7 +98,11 @@ export async function registerUser(
   const token = nanoid(32);
   await prisma.verificationToken.create({
     data: {
-      identifier: user.email,
+      // The account's id, not its email -- now that the same email can
+      // belong to several independent accounts (one per store), an
+      // email-based identifier would be ambiguous about which one this
+      // token is for. See app/verify-email/page.tsx.
+      identifier: user.id,
       token,
       type: "EMAIL",
       expires: new Date(Date.now() + 1000 * 60 * 60 * 24), // 24h
@@ -122,27 +149,39 @@ export async function requestPasswordReset(input: ForgotPasswordInput): Promise<
     return { success: false, error: "Enter a valid email address." };
   }
 
-  const user = await prisma.user.findFirst({ where: { email: { equals: parsed.data.email, mode: "insensitive" } } });
-
-  // Customer recovery is always store-scoped. A generic BizNest reset link
-  // must never be able to reset a store customer's credentials outside the
-  // store environment they belong to.
-  if (user?.role === "CUSTOMER" && !parsed.data.storeSlug) return { success: true, data: undefined };
-
-  if (user && parsed.data.storeSlug) {
-    const membership = await prisma.storeCustomer.findFirst({ where: { userId: user.id, store: { slug: parsed.data.storeSlug } } });
-    if (!membership) return { success: true, data: undefined };
+  // Resolve the exact scope this request is for -- a storeSlug means
+  // "this store's version of that email", no storeSlug means "the
+  // platform-level account" (owner/staff/admin/pending owner). These are
+  // now fully independent accounts (see customerScopeStoreId on User), so
+  // the lookup must be scoped from the start rather than found generically
+  // and then checked after the fact.
+  let scopeStoreId: string | null = null;
+  if (parsed.data.storeSlug) {
+    const store = await prisma.store.findUnique({ where: { slug: parsed.data.storeSlug }, select: { id: true } });
+    // Unknown store slug -- respond the same as "no matching account" so
+    // this can't be used to probe for valid store slugs either.
+    if (!store) return { success: true, data: undefined };
+    scopeStoreId = store.id;
   }
 
-  // Also rate-limit per-email so a leaked/guessed address can't be spammed
+  const user = await prisma.user.findFirst({
+    where: { email: { equals: parsed.data.email, mode: "insensitive" }, customerScopeStoreId: scopeStoreId },
+  });
+
+  // Also rate-limit per-account so a leaked/guessed address can't be spammed
   // with reset emails even from rotating IPs.
   if (user) {
-    const perEmailLimit = await checkRateLimit(`password-reset-email:${user.email}`, 3, 60 * 60 * 1000);
+    const perEmailLimit = await checkRateLimit(`password-reset-account:${user.id}`, 3, 60 * 60 * 1000);
     if (perEmailLimit.allowed) {
       const token = nanoid(32);
       await prisma.verificationToken.create({
         data: {
-          identifier: parsed.data.storeSlug ? `STORE:${parsed.data.storeSlug}:${user.email}` : user.email,
+          // The account's id, not its email -- the same email can now
+          // belong to several independent accounts (one per store), so an
+          // email-based identifier would be ambiguous about which one
+          // this reset is for. The scope was already resolved above by
+          // storeSlug, so the token itself doesn't need to carry it.
+          identifier: user.id,
           token,
           type: "PASSWORD_RESET",
           expires: new Date(Date.now() + 1000 * 60 * 60), // 1h — shorter-lived than email verification
@@ -177,25 +216,34 @@ export async function resetPassword(input: ResetPasswordInput): Promise<ActionRe
     return { success: false, error: "This reset link is invalid or has expired. Request a new one." };
   }
 
-  const tokenParts = record.identifier.split(":");
-  const storeSlug = parsed.data.storeSlug ?? (tokenParts[0] === "STORE" ? tokenParts[1] : undefined);
-  const email = tokenParts[0] === "STORE" ? tokenParts.slice(2).join(":") : record.identifier;
-  if (storeSlug) {
-    const user = await prisma.user.findFirst({ where: { email: { equals: email, mode: "insensitive" } }, select: { id: true, role: true } });
-    if (!user) return { success: false, error: "This reset link is invalid or has expired. Request a new one." };
-    const membership = await prisma.storeCustomer.findFirst({ where: { userId: user.id, store: { slug: storeSlug } }, select: { id: true } });
-    if (!membership) return { success: false, error: "This account does not belong to that store." };
-  }
+  // The identifier is the account's own id (set in requestPasswordReset
+  // above) -- already unambiguous about exactly which account this is for,
+  // even though the same email may now belong to several independent
+  // accounts across different stores. No more decoding a "STORE:slug:
+  // email" string needed.
+  const user = await prisma.user.findUnique({ where: { id: record.identifier }, select: { id: true, role: true, customerScopeStoreId: true } });
+  if (!user) return { success: false, error: "This reset link is invalid or has expired. Request a new one." };
 
-  if (!storeSlug) {
-    const target = await prisma.user.findFirst({ where: { email: { equals: email, mode: "insensitive" } }, select: { role: true } });
-    if (target?.role === "CUSTOMER") return { success: false, error: "This customer password reset must be opened from the store where the account was created." };
+  // Defense in depth: if the reset form was opened with a store context,
+  // confirm it actually matches the account the token is for. This
+  // shouldn't ever mismatch in normal use (the token was only ever issued
+  // for the store the request came from), but it costs nothing to check.
+  if (parsed.data.storeSlug) {
+    const store = await prisma.store.findUnique({ where: { slug: parsed.data.storeSlug }, select: { id: true } });
+    if (!store || user.customerScopeStoreId !== store.id) {
+      return { success: false, error: "This reset link does not belong to that store." };
+    }
+  } else if (user.customerScopeStoreId) {
+    // A store-scoped account's reset link was opened outside any store
+    // context -- shouldn't happen via the normal email link, but reject
+    // defensively rather than silently reset the wrong-context account.
+    return { success: false, error: "This customer password reset must be opened from the store where the account was created." };
   }
 
   const passwordHash = await bcrypt.hash(parsed.data.password, 12);
 
   await prisma.user.update({
-    where: { email },
+    where: { id: user.id },
     data: {
       passwordHash,
       // Resetting a password is also a reasonable moment to clear any
@@ -213,4 +261,5 @@ export async function resetPassword(input: ResetPasswordInput): Promise<ActionRe
   await prisma.verificationToken.delete({ where: { token: parsed.data.token } });
 
   return { success: true, data: undefined };
-}
+      }
+                     
