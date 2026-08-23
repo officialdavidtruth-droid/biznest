@@ -82,7 +82,9 @@ export async function createStore(
   // Real stock photography (lib/demo-images.ts) — works with zero config
   // (LoremFlickr fallback), upgrades automatically to Unsplash if
   // UNSPLASH_ACCESS_KEY is set.
-  const template = await prisma.storeTemplate.findUnique({ where: { id: parsed.data.templateId } });
+  const template = parsed.data.templateId
+    ? await prisma.storeTemplate.findUnique({ where: { id: parsed.data.templateId } })
+    : null;
   const samples = template ? SAMPLE_LISTINGS[template.category] ?? [] : [];
   const [samplePhotos, bannerPhoto] = await Promise.all([
     fetchDemoPhotos(samples.map((s) => s.name)),
