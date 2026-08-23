@@ -96,7 +96,10 @@ export async function approveBusiness(businessId: string): Promise<ActionResult>
   const access = await assertPlatformStaff();
   if (!access.success) return { success: false, error: access.error };
 
-  const business = await prisma.business.findUnique({ where: { id: businessId } });
+  const business = await prisma.business.findUnique({
+    where: { id: businessId },
+    include: { store: { select: { slug: true } } },
+  });
   if (!business) return { success: false, error: "Business not found." };
 
   await prisma.business.update({
@@ -115,6 +118,23 @@ export async function approveBusiness(businessId: string): Promise<ActionResult>
   });
 
   await recomputeAndPersistTrustScore(businessId);
+
+  // Best-effort: a failed welcome email shouldn't block the approval itself.
+  try {
+    const { sendBusinessStatusEmail } = await import("@/lib/email/send");
+    await sendBusinessStatusEmail(business.email, "APPROVED", undefined, {
+      businessName: business.businessName,
+      category: business.category,
+      storeSlug: business.store?.slug,
+    });
+  } catch (err) {
+    const { logError } = await import("@/lib/observability/log");
+    void logError("EMAIL", "Failed to send business-approved welcome email", {
+      businessId,
+      error: err instanceof Error ? err.message : String(err),
+    });
+  }
+
   revalidatePath("/supaadmin/businesses");
   return { success: true, data: undefined };
 }
