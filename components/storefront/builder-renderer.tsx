@@ -62,7 +62,7 @@ export function BuilderStorefront({
   );
 }
 
-function BuilderSectionView({ section, store, config, catalogItems, categories, reviews, avgRating, completedOrders }: {
+function BuilderSectionView({ section, store, config, catalogItems, categories, experience, reviews, avgRating, completedOrders }: {
   section: BuilderSection; store: BuilderStore; config: BuilderConfig; catalogItems: CatalogItem[]; categories: string[]; experience: ReturnType<typeof getBusinessExperience>; reviews: Review[]; avgRating: number | null; completedOrders: number;
 }) {
   const d = config.design;
