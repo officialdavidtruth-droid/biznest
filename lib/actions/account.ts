@@ -109,7 +109,6 @@ export async function toggleWishlist(input: {
 }): Promise<ActionResult<{ wishlisted: boolean }>> {
   const session = await auth();
   if (!session?.user?.id) return { success: false, error: "You need to sign in first." };
-  if (session.user.role === "CUSTOMER") return { success: false, error: "Customer accounts must use a store-scoped account." };
   if (!input.productId && !input.serviceId) {
     return { success: false, error: "No item specified." };
   }
