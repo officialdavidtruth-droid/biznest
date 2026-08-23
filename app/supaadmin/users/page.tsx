@@ -85,7 +85,7 @@ export default async function UsersPage({
                   {new Date(u.createdAt).toLocaleDateString()}
                 </td>
                 <td className="px-4 py-3">
-                  <UserActionButtons userId={u.id} email={u.email} isBanned={u.isBanned} />
+                  <UserActionButtons userId={u.id} email={u.email} isBanned={u.isBanned} businessName={u.business?.businessName ?? null} />
                 </td>
               </tr>
             ))}
