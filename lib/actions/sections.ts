@@ -41,12 +41,24 @@ export async function updateSectionOverrides(slug: string, formData: FormData): 
   // worth being defensive here rather than trusting the form shape blindly.
   const cleanOrder = ["hero" as Section, ...order.filter((s, i) => s !== "hero" && order.indexOf(s) === i)];
 
+  const currentOverrides = (access.store.sectionOverrides as Record<string, unknown> | null) ?? {};
+
+  // Preserve the visual-builder payload when the legacy section controls save.
+  // Both editors share this JSON field; replacing it wholesale here would
+  // silently delete the published builder config.
   await prisma.store.update({
     where: { id: access.store.id },
-    data: { sectionOverrides: { order: cleanOrder, hidden } as unknown as Prisma.InputJsonValue },
+    data: {
+      sectionOverrides: {
+        ...currentOverrides,
+        order: cleanOrder,
+        hidden,
+      } as unknown as Prisma.InputJsonValue,
+    },
   });
 
   revalidatePath(`/store/${slug}/admin/builder`);
+  revalidatePath(`/store/${slug}/admin/customize`);
   revalidatePath(`/store/${slug}`);
   return { success: true, data: undefined };
 }
