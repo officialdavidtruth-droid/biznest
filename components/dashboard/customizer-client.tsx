@@ -99,19 +99,43 @@ export function CustomizerClient({
   const experience = getBusinessExperience(businessCategory);
   const [editingSlug, setEditingSlug] = useState<string | null>(null);
   const iframeRef = useRef<HTMLIFrameElement>(null);
+  const builderRef = useRef<BuilderConfig>(initialBuilder);
+  const previewReadyRef = useRef(false);
 
   const previewUrl = useMemo(() => `/store/${slug}?preview=1`, [slug]);
 
-  function pushPreview(config: BuilderConfig = builder) {
-    iframeRef.current?.contentWindow?.postMessage(
+  function pushPreview(config: BuilderConfig = builderRef.current) {
+    const target = iframeRef.current?.contentWindow;
+    if (!target) return;
+    target.postMessage(
       { type: "BIZNEST_CUSTOMIZER_PREVIEW", config },
       window.location.origin,
     );
   }
 
   useEffect(() => {
-    pushPreview();
+    builderRef.current = builder;
+    // Keep the preview in sync on every keystroke/change. The ref avoids
+    // losing the newest draft when the iframe is still loading.
+    pushPreview(builder);
   }, [builder]);
+
+  useEffect(() => {
+    function handlePreviewReady(event: MessageEvent) {
+      if (event.origin !== window.location.origin) return;
+      if (event.source !== iframeRef.current?.contentWindow) return;
+      if (event.data?.type !== "BIZNEST_CUSTOMIZER_PREVIEW_READY") return;
+      previewReadyRef.current = true;
+      pushPreview(builderRef.current);
+    }
+    window.addEventListener("message", handlePreviewReady);
+    return () => window.removeEventListener("message", handlePreviewReady);
+  }, []);
+
+  useEffect(() => {
+    previewReadyRef.current = false;
+    builderRef.current = builder;
+  }, [previewKey]);
 
   function refreshPreview() {
     setPreviewKey((k) => k + 1);
@@ -418,7 +442,7 @@ export function CustomizerClient({
             key={previewKey}
             ref={iframeRef}
             src={previewUrl}
-            onLoad={() => pushPreview()}
+            onLoad={() => { previewReadyRef.current = true; pushPreview(builderRef.current); }}
             title="Live website preview"
             className="h-full min-h-[900px] rounded-lg border border-border bg-white shadow-sm transition-[width] duration-200"
             style={{ width: DEVICE_WIDTH[device] }}
