@@ -114,15 +114,19 @@ export function StoreSetupWizard({
 
   async function handlePublish() {
     setIsSubmitting(true);
-    const result = await createStore({ businessId, storeName, templateId, logoUrl, bannerUrl, onboardingProfile: profile });
-    setIsSubmitting(false);
-
-    if (!result.success) {
-      toast.error(result.error);
-      return;
+    try {
+      const result = await createStore({ businessId, storeName, templateId, logoUrl, bannerUrl, onboardingProfile: profile });
+      if (!result.success) {
+        toast.error(result.error);
+        return;
+      }
+      toast.success("Store created! Your industry setup is ready.");
+      router.push(`/onboarding/select-plan?slug=${encodeURIComponent(result.data.slug)}`);
+    } catch {
+      toast.error("Something went wrong creating your store. Please try again.");
+    } finally {
+      setIsSubmitting(false);
     }
-    toast.success("Store created! Your industry setup is ready.");
-    router.push(`/onboarding/select-plan?slug=${encodeURIComponent(result.data.slug)}`);
   }
 
   return (
