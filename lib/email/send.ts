@@ -300,26 +300,64 @@ export async function sendPasswordResetEmail(email: string, token: string, store
 export async function sendBusinessStatusEmail(
   email: string,
   status: "APPROVED" | "REJECTED",
-  reason?: string
+  reason?: string,
+  details?: { businessName?: string; category?: string; storeSlug?: string }
 ) {
   const approved = status === "APPROVED";
-  const subject = approved ? "Your BizNest business has been verified" : "Update on your BizNest verification";
+  const subject = approved ? "You're verified — welcome to BizNest 🎉" : "Update on your BizNest verification";
+
+  const niche = details?.category?.trim();
+  const bizName = details?.businessName?.trim();
+  const storeUrl = details?.storeSlug ? `${APP_URL}/${details.storeSlug}` : `${APP_URL}/onboarding/business-verification`;
+  const loginUrl = `${APP_URL}/login`;
 
   const html = emailShell({
     preheader: subject,
     body: approved
       ? `
-        <p style="margin:0 0 16px;color:#111827;font-size:16px;line-height:24px;">You're verified 🎉</p>
-        <p style="margin:0 0 24px;color:#374151;font-size:15px;line-height:24px;">
-          Congratulations — your business has been reviewed and verified on BizNest. You can now open your
-          store and start selling.
+        <p style="margin:0 0 16px;color:#111827;font-size:16px;line-height:24px;">
+          Welcome to BizNest${bizName ? `, ${bizName}` : ""} 🎉
         </p>
-        <table role="presentation" cellpadding="0" cellspacing="0" style="margin:0 auto 8px;">
+        <p style="margin:0 0 16px;color:#374151;font-size:15px;line-height:24px;">
+          Great news — your business has been reviewed and verified. Your${niche ? ` <strong>${niche}</strong>` : ""}
+          store is officially live on BizNest, and you're ready to start selling.
+        </p>
+        <p style="margin:0 0 24px;color:#374151;font-size:15px;line-height:24px;">
+          BizNest is built to help businesses${niche ? ` like yours in ${niche}` : ""} grow without the overhead of
+          running a storefront from scratch — a verified marketplace presence, secure checkout, built-in
+          fraud protection, and tools for orders, inventory, and staff, all in one place. Our verification
+          process exists so every business on the platform is trustworthy, which means customers shop with
+          more confidence — and that works in your favor.
+        </p>
+
+        <table role="presentation" cellpadding="0" cellspacing="0" style="margin:0 auto 12px;">
           <tr>
             <td align="center" style="border-radius:8px;background-color:#0f6410;">
-              <a href="${APP_URL}/onboarding/business-verification" style="display:inline-block;padding:12px 28px;color:#ffffff;font-size:15px;font-weight:600;text-decoration:none;border-radius:8px;">
+              <a href="${storeUrl}" style="display:inline-block;padding:12px 28px;color:#ffffff;font-size:15px;font-weight:600;text-decoration:none;border-radius:8px;">
                 Open your store
               </a>
+            </td>
+          </tr>
+        </table>
+        <table role="presentation" cellpadding="0" cellspacing="0" style="margin:0 auto 24px;">
+          <tr>
+            <td align="center" style="border-radius:8px;border:1px solid #d1d5db;">
+              <a href="${loginUrl}" style="display:inline-block;padding:11px 28px;color:#111827;font-size:14px;font-weight:600;text-decoration:none;border-radius:8px;">
+                Sign in to your dashboard
+              </a>
+            </td>
+          </tr>
+        </table>
+
+        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:#f9fafb;border-radius:8px;padding:14px 18px;margin-bottom:8px;">
+          <tr>
+            <td style="color:#6b7280;font-size:12px;line-height:20px;">
+              A few things worth a look as you get started:
+              <a href="${APP_URL}/privacy" style="color:#0f6410;text-decoration:none;">Privacy Policy</a>
+              <span style="color:#d1d5db;"> · </span>
+              <a href="${APP_URL}/onboarding/fraud-policy" style="color:#0f6410;text-decoration:none;">Fraud Policy</a>
+              <span style="color:#d1d5db;"> · </span>
+              <a href="${APP_URL}/terms" style="color:#0f6410;text-decoration:none;">Terms &amp; Legal</a>
             </td>
           </tr>
         </table>
