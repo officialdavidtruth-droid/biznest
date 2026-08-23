@@ -207,20 +207,41 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         // platform login (biznest.space/login, no ?store=), which is for
         // store owners/admins. Staff already went through their own
         // store-scoped branch above and are unaffected.
+        //
+        // IMPORTANT: registerUser() gives every new signup role "CUSTOMER"
+        // at creation — including prospective store owners, who only get
+        // upgraded to STORE_OWNER once their business verification is
+        // approved (see lib/actions/auth.ts). Those accounts have no
+        // StoreCustomer row (only signups made *through* a specific
+        // store's link get one). So this must only block someone who is
+        // an actual store customer (has a StoreCustomer row somewhere) —
+        // blocking on role === "CUSTOMER" alone previously locked out
+        // every brand-new owner permanently: they could never log in to
+        // even start business verification, since the account that would
+        // grant them access was the same one being rejected.
         const storeSlug = typeof credentials?.storeSlug === "string" ? credentials.storeSlug : undefined;
         if (!staffLogin && user.role === "CUSTOMER") {
-          if (!storeSlug) {
-            void logWarn("AUTH", "Customer login attempt with no store context", { userId: user.id });
-            throw new StoreAccountNotFoundError();
-          }
-          const membership = await prisma.storeCustomer.findFirst({
-            where: { userId: user.id, store: { slug: storeSlug } },
-            select: { id: true, storeId: true },
+          const anyMembership = await prisma.storeCustomer.findFirst({
+            where: { userId: user.id },
+            select: { id: true },
           });
-          if (!membership) {
-            void logWarn("AUTH", "Customer login attempt outside their store", { userId: user.id, storeSlug });
-            throw new StoreAccountNotFoundError();
+          if (anyMembership) {
+            if (!storeSlug) {
+              void logWarn("AUTH", "Customer login attempt with no store context", { userId: user.id });
+              throw new StoreAccountNotFoundError();
+            }
+            const membership = await prisma.storeCustomer.findFirst({
+              where: { userId: user.id, store: { slug: storeSlug } },
+              select: { id: true, storeId: true },
+            });
+            if (!membership) {
+              void logWarn("AUTH", "Customer login attempt outside their store", { userId: user.id, storeSlug });
+              throw new StoreAccountNotFoundError();
+            }
           }
+          // else: a pending platform signup with no StoreCustomer row yet
+          // (e.g. awaiting business verification) — let them through to
+          // the generic login.
         }
 
         // TEMPORARILY DISABLED: email verification is required in principle,
@@ -237,7 +258,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           email: user.email,
           name: user.name,
           role: user.role,
-          ...(!staffLogin && user.role === "CUSTOMER" ? { customerStoreId: (await prisma.storeCustomer.findFirst({ where: { userId: user.id, store: { slug: storeSlug! } }, select: { storeId: true } }))?.storeId } : {}),
+          ...(!staffLogin && user.role === "CUSTOMER" && storeSlug ? { customerStoreId: (await prisma.storeCustomer.findFirst({ where: { userId: user.id, store: { slug: storeSlug } }, select: { storeId: true } }))?.storeId } : {}),
           ...(staffLogin
             ? { staffPosition: staffLogin.position, storeSlug: staffLogin.storeSlug, storeName: staffLogin.storeName }
             : {}),
