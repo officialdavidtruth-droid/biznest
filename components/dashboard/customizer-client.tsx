@@ -7,7 +7,8 @@ import {
   X, Monitor, Tablet, Smartphone, LayoutTemplate, Rows3, ChevronRight,
   ArrowUp, ArrowDown, RotateCw, PenSquare, FileText, Trash2, Eye, EyeOff, Plus, ChevronDown,
 } from "lucide-react";
-import { updateSectionOverrides } from "@/lib/actions/sections";import { saveStorePage, toggleStorePagePublished, deleteStorePage } from "@/lib/actions/pages";
+import { updateSectionOverrides } from "@/lib/actions/sections";
+import { saveStorePage, toggleStorePagePublished, deleteStorePage } from "@/lib/actions/pages";
 import { SUGGESTED_PAGE_SLUGS, SUGGESTED_PAGE_TITLES } from "@/lib/actions/pages-constants";
 import type { Section, TemplateTheme } from "@/lib/template-themes";
 import type { HeroOverrides, StoryOverrides } from "@/lib/actions/store";
@@ -493,7 +494,7 @@ function SectionSettingsEditor({ section, onChange }: { section: BuilderSection;
     <TextField label="Eyebrow" value={s.eyebrow || ""} onChange={(v) => update({ eyebrow: v })} />
     <TextField label="Heading" value={s.heading || ""} onChange={(v) => update({ heading: v })} />
     <TextField label="Body" value={s.body || ""} multiline onChange={(v) => update({ body: v })} />
-    {!["stats","catalog","categories","testimonials","newsletter","contact","gallery","map","faq"].includes(section.type) && <TextField label="Image URL" value={s.image || ""} onChange={(v) => update({ image: v })} />}
+    {!["stats","catalog","categories","testimonials","newsletter","contact","gallery","map","faq"].includes(section.type) && <ImageField label="Image" value={s.image || ""} onChange={(v) => update({ image: v })} />}
     <div className="grid grid-cols-2 gap-2"><SelectField label="Alignment" value={s.align || "left"} options={["left","center","right"]} onChange={(v) => update({ align: v as "left"|"center"|"right" })} /><SelectField label="Padding" value={s.padding || "normal"} options={["compact","normal","spacious"]} onChange={(v) => update({ padding: v as "compact"|"normal"|"spacious" })} /></div>
     <TextField label="Button label" value={s.ctaLabel || ""} onChange={(v) => update({ ctaLabel: v })} />
     <TextField label="Button link" value={s.ctaHref || ""} onChange={(v) => update({ ctaHref: v })} />
@@ -502,6 +503,66 @@ function SectionSettingsEditor({ section, onChange }: { section: BuilderSection;
 }
 
 function TextField({ label, value, onChange, multiline = false }: { label: string; value: string; onChange: (v: string) => void; multiline?: boolean }) { return <label className="block text-[11px]"><span className="mb-1 block text-muted-foreground">{label}</span>{multiline ? <textarea value={value} onChange={(e) => onChange(e.target.value)} rows={3} className="w-full rounded border bg-background px-2 py-1.5 text-xs" /> : <input value={value} onChange={(e) => onChange(e.target.value)} className="w-full rounded border bg-background px-2 py-1.5 text-xs" />}</label>; }
+
+function ImageField({ label, value, onChange }: { label: string; value: string; onChange: (v: string) => void }) {
+  const [isUploading, setIsUploading] = useState(false);
+  const [uploadError, setUploadError] = useState<string | null>(null);
+
+  async function handleFile(file: File) {
+    setIsUploading(true);
+    setUploadError(null);
+    try {
+      const formData = new FormData();
+      formData.append("file", file);
+      const res = await fetch("/api/upload", { method: "POST", body: formData });
+      const body = await res.json().catch(() => null);
+      if (!res.ok) throw new Error(body?.error ?? `Upload failed (${res.status})`);
+      onChange(body.url);
+    } catch (err) {
+      setUploadError(err instanceof Error ? err.message : "Upload failed");
+    } finally {
+      setIsUploading(false);
+    }
+  }
+
+  return (
+    <label className="block text-[11px]">
+      <span className="mb-1 block text-muted-foreground">{label}</span>
+      {value && (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img src={value} alt="" className="mb-1.5 h-16 w-full rounded border object-cover" />
+      )}
+      <div className="flex gap-1.5">
+        <input
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          placeholder="Paste an image URL…"
+          className="min-w-0 flex-1 rounded border bg-background px-2 py-1.5 text-xs"
+        />
+        <label className="flex shrink-0 cursor-pointer items-center rounded border bg-background px-2 py-1.5 text-xs hover:bg-muted">
+          {isUploading ? "Uploading…" : "Upload"}
+          <input
+            type="file"
+            accept="image/jpeg,image/png,image/webp"
+            className="hidden"
+            disabled={isUploading}
+            onChange={(e) => {
+              const file = e.target.files?.[0];
+              if (file) handleFile(file);
+              e.target.value = "";
+            }}
+          />
+        </label>
+      </div>
+      {value && (
+        <button type="button" onClick={() => onChange("")} className="mt-1 text-[10px] text-muted-foreground underline hover:text-foreground">
+          Remove image
+        </button>
+      )}
+      {uploadError && <p className="mt-1 text-[10px] text-destructive">{uploadError}</p>}
+    </label>
+  );
+}
 function ColorField({ label, value, onChange }: { label: string; value: string; onChange: (v: string) => void }) { return <label className="block text-[11px]"><span className="mb-1 block text-muted-foreground">{label}</span><div className="flex gap-1.5"><input type="color" value={/^#[0-9a-f]{6}$/i.test(value) ? value : "#000000"} onChange={(e) => onChange(e.target.value)} className="h-8 w-10 rounded border" /><input value={value} onChange={(e) => onChange(e.target.value)} className="min-w-0 flex-1 rounded border bg-background px-2 py-1.5 text-xs" /></div></label>; }
 function SelectField({ label, value, options, onChange }: { label: string; value: string; options: string[]; onChange: (v: string) => void }) { return <label className="block text-[11px]"><span className="mb-1 block text-muted-foreground">{label}</span><select value={value} onChange={(e) => onChange(e.target.value)} className="w-full rounded border bg-background px-2 py-1.5 text-xs">{options.map((o) => <option key={o}>{o}</option>)}</select></label>; }
 
