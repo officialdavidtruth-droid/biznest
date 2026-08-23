@@ -42,12 +42,13 @@ export function buildNavGroups(business: { sellsProducts: boolean; offersService
   label: string;
   items: NavItem[];
 }> {
-  const sellNavItems: NavItem[] = [
+  const allSellNavItems: NavItem[] = [
     { label: "Point of Sale", href: "/pos", icon: Calculator, permission: "pos" },
     { label: "Orders", href: "/orders", icon: ShoppingCart, permission: "orders" },
     { label: "Products", href: "/products", icon: Package, permission: "products" },
     { label: "Services", href: "/services", icon: Wrench, permission: "products" },
-  ].filter((item) => relevantToBusiness(item.href, business));
+  ];
+  const sellNavItems: NavItem[] = allSellNavItems.filter((item) => relevantToBusiness(item.href, business));
 
   // The category picked at onboarding can add one more trade-specific tool
   // (e.g. "Bookings" for a salon, "Delivery zones" for a restaurant) — but
@@ -59,22 +60,24 @@ export function buildNavGroups(business: { sellsProducts: boolean; offersService
       : null;
   if (categoryExtraNavItem) sellNavItems.push(categoryExtraNavItem);
 
-  const manageItems: NavItem[] = [
+  const allManageItems: NavItem[] = [
     { label: "Inventory", href: "/inventory", icon: Boxes, permission: "products" },
     { label: "Customers", href: "/customers", icon: Users, permission: "customers" },
     { label: "Suppliers", href: "/suppliers", icon: Users, permission: "products" },
     { label: "Purchase orders", href: "/purchase-orders", icon: FileSignature, permission: "products" },
     { label: "Delivery zones", href: "/delivery", icon: Truck, permission: "settings" },
     { label: "Staff", href: "/staff", icon: Users, ownerOnly: true },
-  ].filter((item) => relevantToBusiness(item.href, business));
+  ];
+  const manageItems: NavItem[] = allManageItems.filter((item) => relevantToBusiness(item.href, business));
 
-  const moneyItems: NavItem[] = [
+  const allMoneyItems: NavItem[] = [
     { label: "Payments", href: "/payments", icon: CreditCard, permission: "payments" },
     { label: "Invoices", href: "/invoices", icon: FileText, permission: "orders" },
     { label: "Quotes", href: "/quotes", icon: FileSignature, permission: "orders" },
     // Profit is surfaced inside Analytics until a dedicated profit/expense
     // ledger exists, so we don't create a dead navigation destination.
-  ].filter((item) => relevantToBusiness(item.href, business));
+  ];
+  const moneyItems: NavItem[] = allMoneyItems.filter((item) => relevantToBusiness(item.href, business));
 
   return [
     {
