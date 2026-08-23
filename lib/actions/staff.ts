@@ -90,7 +90,7 @@ export async function inviteStaffMember(
   // store's staff.
   const userEmail = normalizedEmail ?? `${normalizedUsername}.${store.slug}.staff@internal.biznest`;
 
-  const emailClash = await prisma.user.findUnique({ where: { email: userEmail } });
+  const emailClash = await prisma.user.findFirst({ where: { email: userEmail, customerScopeStoreId: null } });
   if (emailClash) {
     return {
       success: false,
@@ -339,4 +339,5 @@ export async function acceptStaffInvite(token: string): Promise<ActionResult<{ s
   });
 
   return { success: true, data: { storeSlug: invite.store.slug } };
-}
+          }
+            
