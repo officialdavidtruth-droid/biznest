@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { changeUserPlan, grantUserTrial, endUserTrial, forceLogoutUser, deleteUser, banUser, unbanUser } from "@/lib/actions/admin";
+import { changeUserPlan, grantUserTrial, endUserTrial, forceLogoutUser, deleteUser, forceDeleteUserAndBusiness, banUser, unbanUser } from "@/lib/actions/admin";
 import { toast } from "sonner";
 import { Ban, LogOut, Trash2, Clock, RefreshCw } from "lucide-react";
 import type { Subscription } from "@prisma/client";
@@ -129,7 +129,7 @@ export function UserTrialControl({ userId, store, plans }: { userId: string; sto
   );
 }
 
-export function UserActionButtons({ userId, email, isBanned }: { userId: string; email: string; isBanned: boolean }) {
+export function UserActionButtons({ userId, email, isBanned, businessName }: { userId: string; email: string; isBanned: boolean; businessName: string | null }) {
   const router = useRouter();
   const [loadingKey, setLoadingKey] = useState<string | null>(null);
 
@@ -156,6 +156,43 @@ export function UserActionButtons({ userId, email, isBanned }: { userId: string;
     run("ban", () => banUser(userId, reason), "User banned");
   }
 
+  // Users who own a business can't be hard-deleted normally (it would orphan
+  // their orders/payments/invoices). If that's why deleteUser() failed, offer
+  // the explicit force-teardown path instead of just showing the error.
+  async function handleDelete() {
+    if (!confirm(`Permanently delete ${email}? This cannot be undone.`)) return;
+
+    setLoadingKey("delete");
+    const result = await deleteUser(userId);
+    setLoadingKey(null);
+
+    if (result.success) {
+      toast.success("User deleted");
+      router.refresh();
+      return;
+    }
+
+    if (!businessName) {
+      toast.error(result.error);
+      return;
+    }
+
+    const typed = prompt(
+      `${email} owns "${businessName}". Deleting will permanently erase this business, its store, products, orders, payments, and invoices — this cannot be undone.\n\nType the business name exactly to confirm:`
+    );
+    if (typed === null) return; // cancelled
+    if (typed.trim() !== businessName) {
+      toast.error("Business name didn't match. Nothing was deleted.");
+      return;
+    }
+
+    run(
+      "delete",
+      () => forceDeleteUserAndBusiness(userId, typed),
+      "User, business, and all store data permanently deleted"
+    );
+  }
+
   return (
     <div className="flex items-center justify-end gap-1.5">
       <button
@@ -180,10 +217,7 @@ export function UserActionButtons({ userId, email, isBanned }: { userId: string;
         {loadingKey === "logout" ? <RefreshCw size={13} className="animate-spin" /> : <LogOut size={13} />}
       </button>
       <button
-        onClick={() => {
-          if (!confirm(`Permanently delete ${email}? This cannot be undone.`)) return;
-          run("delete", () => deleteUser(userId), "User deleted");
-        }}
+        onClick={handleDelete}
         disabled={loadingKey !== null}
         title="Delete user"
         className="rounded-lg p-1.5 disabled:opacity-50"
