@@ -403,6 +403,93 @@ export async function deleteUser(userId: string): Promise<ActionResult> {
   return { success: true, data: undefined };
 }
 
+/**
+ * Full teardown for a store owner: permanently deletes the user, their
+ * Business, Store, and every record hanging off the store (products,
+ * orders, payments, invoices, quotes, disputes, staff, etc). Irreversible.
+ *
+ * Most storeId/businessId relations cascade at the DB level, but the
+ * financial/legal-record tables (Order, Payment, Invoice, Quote,
+ * PurchaseOrder, Dispute) deliberately do NOT cascade — that's what made
+ * deleteUser() refuse to run. Here we delete those dependents ourselves,
+ * in dependency order, inside a transaction, then let the Business/Store
+ * cascade clean up everything else. Requires the caller to pass back the
+ * business's exact name as confirmation so this can't be fat-fingered.
+ */
+export async function forceDeleteUserAndBusiness(
+  userId: string,
+  confirmBusinessName: string
+): Promise<ActionResult> {
+  const access = await assertPlatformAdmin();
+  if (!access.success) return { success: false, error: access.error };
+  if (access.userId === userId) return { success: false, error: "You can't delete your own account." };
+
+  const target = await prisma.user.findUnique({
+    where: { id: userId },
+    include: { business: { include: { store: true } } },
+  });
+  if (!target) return { success: false, error: "User not found." };
+
+  const business = target.business;
+  const store = business?.store;
+
+  if (business && confirmBusinessName.trim() !== business.businessName) {
+    return { success: false, error: "Confirmation text didn't match the business name. Nothing was deleted." };
+  }
+
+  const summary = { email: target.email, businessName: business?.businessName ?? null, storeSlug: store?.slug ?? null };
+
+  await prisma.$transaction(async (tx) => {
+    if (store) {
+      const orders = await tx.order.findMany({ where: { storeId: store.id }, select: { id: true } });
+      const orderIds = orders.map((o) => o.id);
+
+      if (orderIds.length) {
+        await tx.disputeEvidence.deleteMany({ where: { dispute: { orderId: { in: orderIds } } } });
+        await tx.dispute.deleteMany({ where: { orderId: { in: orderIds } } });
+        await tx.payment.deleteMany({ where: { orderId: { in: orderIds } } });
+      }
+      await tx.payment.deleteMany({ where: { storeId: store.id } }); // subscription/upgrade payments not tied to an order
+
+      await tx.invoiceItem.deleteMany({ where: { invoice: { storeId: store.id } } });
+      await tx.invoice.deleteMany({ where: { storeId: store.id } });
+
+      await tx.quoteItem.deleteMany({ where: { quote: { storeId: store.id } } });
+      await tx.quote.deleteMany({ where: { storeId: store.id } });
+
+      await tx.purchaseOrderItem.deleteMany({ where: { purchaseOrder: { storeId: store.id } } });
+      await tx.purchaseOrder.deleteMany({ where: { storeId: store.id } });
+
+      // OrderItem/OrderStatusEvent cascade off Order, so this clears the rest.
+      await tx.order.deleteMany({ where: { storeId: store.id } });
+    }
+
+    // Deleting the Business cascades to Store (and everything storeId-scoped
+    // that cascades: products, staff, categories, coupons, reviews, etc),
+    // Guarantor, and PosCommissionSettlement. Deleting the User last cascades
+    // Account/Session/StoreCustomer/etc for the user itself.
+    if (business) {
+      await tx.business.delete({ where: { id: business.id } });
+    }
+    await tx.user.delete({ where: { id: userId } });
+  });
+
+  await prisma.auditLog.create({
+    data: {
+      userId: access.userId,
+      action: "USER_FORCE_DELETED",
+      entity: "User",
+      entityId: userId,
+      metadata: summary,
+    },
+  });
+
+  revalidatePath("/supaadmin/users");
+  revalidatePath("/supaadmin/businesses");
+  revalidatePath("/supaadmin/stores");
+  return { success: true, data: undefined };
+}
+
 // --- User plan management (upgrade/downgrade/free trials) ------------------
 // Plans live on Store, not User (a store's plan is what actually gates
 // features/commission), so these look up the user's store under the hood.
