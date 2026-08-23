@@ -29,12 +29,12 @@ export async function GET(req: Request) {
     return NextResponse.json({ success: false, message: "Provide ?email=you@example.com" }, { status: 400 });
   }
 
-  const user = await prisma.user.findUnique({ where: { email } });
+  const user = await prisma.user.findFirst({ where: { email, customerScopeStoreId: null } });
   if (!user) {
     return NextResponse.json({ success: false, message: `No user found with email ${email}. Register first.` }, { status: 404 });
   }
 
-  await prisma.user.update({ where: { email }, data: { role: "PLATFORM_ADMIN" } });
+  await prisma.user.update({ where: { id: user.id }, data: { role: "PLATFORM_ADMIN" } });
 
   return NextResponse.json({
     success: true,
