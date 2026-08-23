@@ -21,7 +21,7 @@ type BuilderStore = {
 };
 
 export function BuilderStorefront({
-  store, config, catalogItems, reviews, avgRating, completedOrders,
+  store, config: initialConfig, catalogItems, reviews, avgRating, completedOrders,
 }: {
   store: BuilderStore;
   config: BuilderConfig;
@@ -30,11 +30,11 @@ export function BuilderStorefront({
   avgRating: number | null;
   completedOrders: number;
 }) {
-  const [liveConfig, setLiveConfig] = useState<BuilderConfig>(config);
+  const [liveConfig, setLiveConfig] = useState<BuilderConfig>(initialConfig);
 
   useEffect(() => {
-    setLiveConfig(config);
-  }, [config]);
+    setLiveConfig(initialConfig);
+  }, [initialConfig]);
 
   useEffect(() => {
     function handleMessage(event: MessageEvent) {
