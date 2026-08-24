@@ -4,7 +4,7 @@ import { settleInvoicePayment } from "@/lib/actions/invoice";
 import { settleQuoteDeposit } from "@/lib/actions/quote";
 import { decrementStockForOrder } from "@/lib/actions/order";
 import { emitWebhookEvent } from "@/lib/webhooks/dispatch";
-import { notifyStoreOwnerOfPaidOrder } from "@/lib/notifications/notify";
+import { notifyStoreOwnerOfPaidOrder, notifyCustomerOfPaidOrder } from "@/lib/notifications/notify";
 import { NextResponse } from "next/server";
 
 /**
@@ -138,6 +138,7 @@ export async function POST(req: Request) {
       });
       await emitWebhookEvent("ORDER_PAID", order.storeId, { orderId: order.id, status: "PAID" });
       void notifyStoreOwnerOfPaidOrder(order.storeId, order.id, Number(order.total), order.currency);
+      void notifyCustomerOfPaidOrder(order.id);
     }
   }
 
