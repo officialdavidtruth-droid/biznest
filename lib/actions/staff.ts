@@ -339,5 +339,4 @@ export async function acceptStaffInvite(token: string): Promise<ActionResult<{ s
   });
 
   return { success: true, data: { storeSlug: invite.store.slug } };
-          }
-            
+}

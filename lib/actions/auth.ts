@@ -261,5 +261,4 @@ export async function resetPassword(input: ResetPasswordInput): Promise<ActionRe
   await prisma.verificationToken.delete({ where: { token: parsed.data.token } });
 
   return { success: true, data: undefined };
-      }
-                     
+}
