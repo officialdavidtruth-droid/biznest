@@ -41,7 +41,17 @@ async function send(params: Parameters<typeof resend.emails.send>[0], context: {
  * corporate filters) still render the alt text on the colored background,
  * so the header never shows a bare broken-image icon either way.
  */
-function emailShell(opts: { preheader?: string; body: string; footer: string }) {
+function emailShell(opts: {
+  preheader?: string;
+  body: string;
+  footer: string;
+  headerLogoUrl?: string;
+  headerLogoAlt?: string;
+  headerColor?: string;
+}) {
+  const headerColor = opts.headerColor ?? "#0b6413";
+  const logoSrc = opts.headerLogoUrl ?? `${APP_URL}/email-logo.png`;
+  const logoAlt = opts.headerLogoAlt ?? "BizNest";
   return `<!DOCTYPE html>
 <html>
   <body style="margin:0;padding:0;background-color:#f3f4f6;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;">
@@ -51,17 +61,26 @@ function emailShell(opts: { preheader?: string; body: string; footer: string }) 
         <td align="center">
           <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:520px;background-color:#ffffff;border-radius:12px;overflow:hidden;box-shadow:0 1px 3px rgba(0,0,0,0.08);">
             <tr>
-              <td style="background-color:#0b6413;padding:18px 32px;">
+              <td style="background-color:${headerColor};padding:18px 32px;">
                 <table role="presentation" cellpadding="0" cellspacing="0">
                   <tr>
                     <td valign="middle">
-                      <img
-                        src="${APP_URL}/email-logo.png"
-                        alt="BizNest"
-                        width="70"
-                        height="32"
-                        style="display:block;height:32px;width:70px;border:0;outline:none;"
-                      />
+                      ${
+                        opts.headerLogoUrl
+                          ? `<img
+                              src="${logoSrc}"
+                              alt="${logoAlt}"
+                              height="32"
+                              style="display:block;height:32px;max-width:160px;width:auto;border:0;outline:none;"
+                            />`
+                          : `<img
+                              src="${logoSrc}"
+                              alt="${logoAlt}"
+                              width="70"
+                              height="32"
+                              style="display:block;height:32px;width:70px;border:0;outline:none;"
+                            />`
+                      }
                     </td>
                   </tr>
                 </table>
@@ -203,20 +222,32 @@ export async function sendStaffInviteEmail(
   );
 }
 
-export async function sendVerificationEmail(email: string, token: string) {
+export async function sendVerificationEmail(
+  email: string,
+  token: string,
+  store?: { storeName: string; logoUrl?: string | null; primaryColor?: string; storeSlug?: string }
+) {
   const url = `${APP_URL}/verify-email?token=${token}`;
+  const brandColor = store?.primaryColor ?? "#0b6413";
+  const buttonColor = store?.primaryColor ?? "#0f6410";
+  const storeName = store?.storeName;
 
   const html = emailShell({
-    preheader: "Confirm your email to get started on BizNest",
+    preheader: storeName ? `Confirm your email to finish signing up with ${storeName}` : "Confirm your email to get started on BizNest",
+    headerLogoUrl: store?.logoUrl ?? undefined,
+    headerLogoAlt: storeName ?? "BizNest",
+    headerColor: brandColor,
     body: `
-      <p style="margin:0 0 16px;color:#111827;font-size:16px;line-height:24px;">Welcome to BizNest 👋</p>
+      <p style="margin:0 0 16px;color:#111827;font-size:16px;line-height:24px;">
+        Welcome${storeName ? ` to ${storeName}` : " to BizNest"} 👋
+      </p>
       <p style="margin:0 0 24px;color:#374151;font-size:15px;line-height:24px;">
-        Confirm your email address to finish setting up your account and get started.
+        Confirm your email address to finish setting up your account${storeName ? ` with ${storeName}` : ""} and get started.
       </p>
 
       <table role="presentation" cellpadding="0" cellspacing="0" style="margin:0 auto 24px;">
         <tr>
-          <td align="center" style="border-radius:8px;background-color:#0f6410;">
+          <td align="center" style="border-radius:8px;background-color:${buttonColor};">
             <a href="${url}" style="display:inline-block;padding:12px 28px;color:#ffffff;font-size:15px;font-weight:600;text-decoration:none;border-radius:8px;">
               Verify email
             </a>
@@ -228,14 +259,17 @@ export async function sendVerificationEmail(email: string, token: string) {
         If the button doesn't work, copy and paste this link into your browser:
       </p>
       <p style="margin:0 0 24px;word-break:break-all;">
-        <a href="${url}" style="color:#0f6410;font-size:13px;text-decoration:underline;">${url}</a>
+        <a href="${url}" style="color:${buttonColor};font-size:13px;text-decoration:underline;">${url}</a>
       </p>
 
       <p style="margin:0;color:#9ca3af;font-size:13px;line-height:20px;">
         This link expires in 24 hours.
       </p>
     `,
-    footer: `This email was sent to ${email} because an account was created with this address on BizNest.
+    footer: storeName
+      ? `This email was sent to ${email} because an account was created with this address on ${storeName}, powered by BizNest.
+      If you didn't do this, you can safely ignore this email.`
+      : `This email was sent to ${email} because an account was created with this address on BizNest.
       If you didn't do this, you can safely ignore this email.`,
   });
 
@@ -243,7 +277,7 @@ export async function sendVerificationEmail(email: string, token: string) {
     {
       from: FROM,
       to: email,
-      subject: "Verify your BizNest email",
+      subject: storeName ? `Verify your email for ${storeName}` : "Verify your BizNest email",
       html,
     },
     { kind: "verification", to: email }
