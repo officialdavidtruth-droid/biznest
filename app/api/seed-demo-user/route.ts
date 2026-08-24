@@ -14,7 +14,12 @@ export async function GET() {
     const passwordHash = await bcrypt.hash(DEMO_PASSWORD, 12);
 
     const user = await prisma.user.upsert({
-      where: { email: DEMO_EMAIL },
+      where: {
+        email_customerScopeStoreId: {
+          email: DEMO_EMAIL,
+          customerScopeStoreId: null,
+        },
+      },
       create: {
         email: DEMO_EMAIL,
         name: "Demo User",
