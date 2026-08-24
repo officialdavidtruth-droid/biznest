@@ -429,19 +429,33 @@ export async function sendBusinessStatusEmail(
   return send({ from: FROM, to: email, subject, html }, { kind: "business-status", to: email });
 }
 
-export async function sendOrderNotificationEmail(
-  email: string,
-  subject: string,
-  message: string
-) {
-  const html = emailShell({
-    preheader: subject,
-    body: `
-      <p style="margin:0 0 16px;color:#111827;font-size:16px;line-height:24px;">${subject}</p>
-      <p style="margin:0;color:#374151;font-size:15px;line-height:24px;">${message}</p>
-    `,
-    footer: `This email was sent to ${email} regarding an order on BizNest.`,
-  });
+export type OrderConfirmationLineItem = {
+  name: string;
+  quantity: number;
+  unitPrice: number;
+  variantLabel?: string | null;
+};
 
-  return send({ from: FROM, to: email, subject, html }, { kind: "order-notification", to: email });
-}
+export async function sendOrderConfirmationEmail(
+  email: string,
+  order: {
+    id: string;
+    storeName: string;
+    storeSlug: string;
+    currency: string;
+    subtotal: number;
+    deliveryFee: number;
+    total: number;
+    createdAt: Date;
+    items: OrderConfirmationLineItem[];
+  }
+) {
+  const fmt = (n: number) => `${order.currency} ${n.toLocaleString()}`;
+  const orderUrl = `${APP_URL}/orders/${order.id}`;
+
+  const itemRows = order.items
+    .map(
+      (item) => `
+        <tr>
+          <td style="padding:10px 0;border-bottom:1px solid #f0f0f0;color:#111827;font-size:14px;line-height:20px;">
+            ${item.name}${item.variantLabel ? `<br/><span style="color:#9ca3af;font-s
