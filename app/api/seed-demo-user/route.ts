@@ -13,25 +13,30 @@ export async function GET() {
   try {
     const passwordHash = await bcrypt.hash(DEMO_PASSWORD, 12);
 
-    const user = await prisma.user.upsert({
-      where: {
-        email_customerScopeStoreId: {
-          email: DEMO_EMAIL,
-          customerScopeStoreId: null,
-        },
-      },
-      create: {
-        email: DEMO_EMAIL,
-        name: "Demo User",
-        passwordHash,
-        emailVerified: new Date(),
-        role: "CUSTOMER",
-      },
-      update: {
-        passwordHash,
-        emailVerified: new Date(),
-      },
+    // Prisma's generated compound-unique input type doesn't accept `null`
+    // for the second field, so upsert() can't target this row directly.
+    // Do a manual find-then-create/update instead.
+    const existing = await prisma.user.findFirst({
+      where: { email: DEMO_EMAIL, customerScopeStoreId: null },
     });
+
+    const user = existing
+      ? await prisma.user.update({
+          where: { id: existing.id },
+          data: {
+            passwordHash,
+            emailVerified: new Date(),
+          },
+        })
+      : await prisma.user.create({
+          data: {
+            email: DEMO_EMAIL,
+            name: "Demo User",
+            passwordHash,
+            emailVerified: new Date(),
+            role: "CUSTOMER",
+          },
+        });
 
     return NextResponse.json({
       success: true,
