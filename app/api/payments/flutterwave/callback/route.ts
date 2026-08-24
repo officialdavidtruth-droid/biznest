@@ -4,6 +4,7 @@ import { checkRateLimit, getClientIp } from "@/lib/rate-limit";
 import { settleInvoicePayment } from "@/lib/actions/invoice";
 import { settleQuoteDeposit } from "@/lib/actions/quote";
 import { decrementStockForOrder } from "@/lib/actions/order";
+import { buildStoreUrl } from "@/lib/store-url";
 import { NextResponse } from "next/server";
 
 const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? "https://biznest.vercel.app";
@@ -53,8 +54,8 @@ export async function GET(req: Request) {
   // cancel an order that's already PAID or further along.
   if (order.status !== "PENDING_PAYMENT") {
     return order.status === "CANCELLED"
-      ? NextResponse.redirect(`${APP_URL}/${order.store.slug}?payment=failed`)
-      : NextResponse.redirect(`${APP_URL}/${order.store.slug}/orders/${order.id}/confirmation`);
+      ? NextResponse.redirect(buildStoreUrl(order.store, "?payment=failed"))
+      : NextResponse.redirect(buildStoreUrl(order.store, `/orders/${order.id}/confirmation`));
   }
 
   if (status === "cancelled") {
@@ -68,7 +69,7 @@ export async function GET(req: Request) {
         data: { status: "FAILED" },
       }),
     ]);
-    return NextResponse.redirect(`${APP_URL}/${order.store.slug}?payment=failed`);
+    return NextResponse.redirect(buildStoreUrl(order.store, "?payment=failed"));
   }
 
   // Always verify server-side against Flutterwave directly, and re-check
@@ -96,7 +97,7 @@ export async function GET(req: Request) {
         await decrementStockForOrder(tx, order.id);
       }
     });
-    return NextResponse.redirect(`${APP_URL}/${order.store.slug}/orders/${order.id}/confirmation`);
+    return NextResponse.redirect(buildStoreUrl(order.store, `/orders/${order.id}/confirmation`));
   }
 
   await prisma.$transaction([
@@ -109,5 +110,5 @@ export async function GET(req: Request) {
       data: { status: "FAILED", rawPayload: verification as object },
     }),
   ]);
-  return NextResponse.redirect(`${APP_URL}/${order.store.slug}?payment=failed`);
-}
+  return NextResponse.redirect(buildStoreUrl(order.store, "?payment=failed"));
+                }
