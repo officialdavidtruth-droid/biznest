@@ -988,24 +988,28 @@ export async function getStoreCustomerOverview(
         storeId: ctx.storeId,
       },
     }),
+
     prisma.booking.count({
       where: {
         buyerId: ctx.userId,
         storeId: ctx.storeId,
       },
     }),
+
     prisma.wishlistItem.count({
       where: {
         userId: ctx.userId,
         storeId: ctx.storeId,
       },
     }),
+
     prisma.review.count({
       where: {
         authorId: ctx.userId,
         storeId: ctx.storeId,
       },
     }),
+
     prisma.storeCustomerAddress.findFirst({
       where: {
         userId: ctx.userId,
@@ -1013,6 +1017,7 @@ export async function getStoreCustomerOverview(
         isDefault: true,
       },
     }),
+
     prisma.storeLoyaltyAccount.findUnique({
       where: {
         storeId_userId: {
@@ -1021,6 +1026,7 @@ export async function getStoreCustomerOverview(
         },
       },
     }),
+
     prisma.message.count({
       where: {
         conversation: {
@@ -1047,4 +1053,6 @@ export async function getStoreCustomerOverview(
     reviewCount: reviews,
     unreadMessages,
     defaultAddress: addresses,
-    pointsBalance: 
+    pointsBalance: loyalty?.pointsBalance ?? 0,
+  };
+    }
