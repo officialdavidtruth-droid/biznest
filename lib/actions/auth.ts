@@ -41,9 +41,12 @@ export async function registerUser(
   // itself also has to tolerate case for accounts created before this.
   const normalizedEmail = parsed.data.email.trim().toLowerCase();
 
-  let storeForCustomer: { id: string } | null = null;
+  let storeForCustomer: { id: string; name: string; logoUrl: string | null; themeColors: unknown } | null = null;
   if (storeSlug) {
-    storeForCustomer = await prisma.store.findUnique({ where: { slug: storeSlug }, select: { id: true } });
+    storeForCustomer = await prisma.store.findUnique({
+      where: { slug: storeSlug },
+      select: { id: true, name: true, logoUrl: true, themeColors: true },
+    });
     if (!storeForCustomer) return { success: false, error: "That store could not be found." };
   }
 
@@ -110,7 +113,13 @@ export async function registerUser(
   });
 
   try {
-    await sendVerificationEmail(user.email, token);
+    const themeColors = storeForCustomer?.themeColors as { primary?: string } | null | undefined;
+    await sendVerificationEmail(user.email, token, storeForCustomer ? {
+      storeName: storeForCustomer.name,
+      logoUrl: storeForCustomer.logoUrl,
+      primaryColor: themeColors?.primary,
+      storeSlug,
+    } : undefined);
   } catch (err) {
     // The account still exists at this point — a broken email provider
     // shouldn't block signup. Log for now; a resend-verification-email
