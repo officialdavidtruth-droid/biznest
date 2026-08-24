@@ -251,10 +251,12 @@ export async function searchPosCustomers(slug: string, query: string): Promise<P
  */
 async function getOrCreateWalkInCustomer(storeId: string) {
   const email = `pos-walkin-${storeId}@biznest.internal`;
-  return prisma.user.upsert({
-    where: { email },
-    update: {},
-    create: { email, name: "Walk-in customer", role: "CUSTOMER" },
+  const existing = await prisma.user.findFirst({
+    where: { email, customerScopeStoreId: null },
+  });
+  if (existing) return existing;
+  return prisma.user.create({
+    data: { email, name: "Walk-in customer", role: "CUSTOMER" },
   });
 }
 

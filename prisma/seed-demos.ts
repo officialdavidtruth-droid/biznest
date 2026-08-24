@@ -36,17 +36,23 @@ async function main() {
     }
 
     const passwordHash = await bcrypt.hash(DEMO_PASSWORD, 12);
-    const user = await prisma.user.upsert({
-      where: { email: seed.ownerEmail },
-      update: { name: seed.ownerName, emailVerified: new Date() },
-      create: {
-        email: seed.ownerEmail,
-        name: seed.ownerName,
-        passwordHash,
-        emailVerified: new Date(),
-        role: "CUSTOMER",
-      },
+    const existingOwner = await prisma.user.findFirst({
+      where: { email: seed.ownerEmail, customerScopeStoreId: null },
     });
+    const user = existingOwner
+      ? await prisma.user.update({
+          where: { id: existingOwner.id },
+          data: { name: seed.ownerName, emailVerified: new Date() },
+        })
+      : await prisma.user.create({
+          data: {
+            email: seed.ownerEmail,
+            name: seed.ownerName,
+            passwordHash,
+            emailVerified: new Date(),
+            role: "CUSTOMER",
+          },
+        });
 
     const business = await prisma.business.upsert({
       where: { userId: user.id },
@@ -150,16 +156,20 @@ async function main() {
 
     for (let i = 0; i < seed.reviews.length; i++) {
       const r = seed.reviews[i];
-      const reviewer = await prisma.user.upsert({
-        where: { email: `${seed.slug}-reviewer-${i}@biznest.example` },
-        update: {},
-        create: {
-          email: `${seed.slug}-reviewer-${i}@biznest.example`,
-          name: r.authorName,
-          role: "CUSTOMER",
-          emailVerified: new Date(),
-        },
+      const reviewerEmail = `${seed.slug}-reviewer-${i}@biznest.example`;
+      const existingReviewer = await prisma.user.findFirst({
+        where: { email: reviewerEmail, customerScopeStoreId: null },
       });
+      const reviewer = existingReviewer
+        ? existingReviewer
+        : await prisma.user.create({
+            data: {
+              email: reviewerEmail,
+              name: r.authorName,
+              role: "CUSTOMER",
+              emailVerified: new Date(),
+            },
+          });
       const product = products[i % products.length];
 
       // Re-running the seed shouldn't pile up duplicate orders/reviews —
