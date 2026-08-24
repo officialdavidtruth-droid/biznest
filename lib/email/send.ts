@@ -519,4 +519,4 @@ export async function sendOrderConfirmationEmail(
   });
 
   return send({ from: FROM, to: email, subject, html }, { kind: "order-confirmation", to: email });
-}
+    }
