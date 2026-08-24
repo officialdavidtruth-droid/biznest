@@ -458,4 +458,65 @@ export async function sendOrderConfirmationEmail(
       (item) => `
         <tr>
           <td style="padding:10px 0;border-bottom:1px solid #f0f0f0;color:#111827;font-size:14px;line-height:20px;">
-            ${item.name}${item.variantLabel ? `<br/><span style="color:#9ca3af;font-s
+            ${item.name}${item.variantLabel ? `<br/><span style="color:#9ca3af;font-size:12px;">${item.variantLabel}</span>` : ""}
+          </td>
+          <td align="center" style="padding:10px 0;border-bottom:1px solid #f0f0f0;color:#6b7280;font-size:14px;line-height:20px;">
+            ${item.quantity}
+          </td>
+          <td align="right" style="padding:10px 0;border-bottom:1px solid #f0f0f0;color:#111827;font-size:14px;line-height:20px;">
+            ${fmt(item.unitPrice * item.quantity)}
+          </td>
+        </tr>
+      `
+    )
+    .join("");
+
+  const subject = `Order confirmed — ${order.storeName}`;
+
+  const html = emailShell({
+    preheader: subject,
+    body: `
+      <p style="margin:0 0 16px;color:#111827;font-size:16px;line-height:24px;">Thanks for your order!</p>
+      <p style="margin:0 0 24px;color:#374151;font-size:15px;line-height:24px;">
+        Your order from <strong>${order.storeName}</strong> has been placed and is being processed.
+      </p>
+
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin-bottom:16px;">
+        <tr>
+          <td style="padding:0 0 8px;border-bottom:2px solid #111827;color:#111827;font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:0.03em;">Item</td>
+          <td align="center" style="padding:0 0 8px;border-bottom:2px solid #111827;color:#111827;font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:0.03em;">Qty</td>
+          <td align="right" style="padding:0 0 8px;border-bottom:2px solid #111827;color:#111827;font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:0.03em;">Amount</td>
+        </tr>
+        ${itemRows}
+      </table>
+
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin-bottom:24px;">
+        <tr>
+          <td style="padding:4px 0;color:#6b7280;font-size:13px;">Subtotal</td>
+          <td align="right" style="padding:4px 0;color:#111827;font-size:13px;">${fmt(order.subtotal)}</td>
+        </tr>
+        <tr>
+          <td style="padding:4px 0;color:#6b7280;font-size:13px;">Delivery</td>
+          <td align="right" style="padding:4px 0;color:#111827;font-size:13px;">${fmt(order.deliveryFee)}</td>
+        </tr>
+        <tr>
+          <td style="padding:8px 0 0;border-top:1px solid #e5e7eb;color:#111827;font-size:15px;font-weight:600;">Total</td>
+          <td align="right" style="padding:8px 0 0;border-top:1px solid #e5e7eb;color:#111827;font-size:15px;font-weight:600;">${fmt(order.total)}</td>
+        </tr>
+      </table>
+
+      <table role="presentation" cellpadding="0" cellspacing="0" style="margin:0 auto;">
+        <tr>
+          <td align="center" style="border-radius:8px;background-color:#0f6410;">
+            <a href="${orderUrl}" style="display:inline-block;padding:12px 28px;color:#ffffff;font-size:15px;font-weight:600;text-decoration:none;border-radius:8px;">
+              View your order
+            </a>
+          </td>
+        </tr>
+      </table>
+    `,
+    footer: `This email was sent to ${email} regarding an order placed on BizNest at ${order.storeName}.`,
+  });
+
+  return send({ from: FROM, to: email, subject, html }, { kind: "order-confirmation", to: email });
+}
