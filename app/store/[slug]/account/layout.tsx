@@ -40,7 +40,7 @@ export default async function StoreAccountLayout({
     { href: `/store/${slug}/account/loyalty`, label: "My Rewards", icon: Bell },
     { href: `/store/${slug}/account/bookings`, label: "My Appointments", icon: Calendar },
     { href: `/store/${slug}/account/reviews`, label: "My Reviews", icon: Star },
-    { href: `/store/${slug}/account/messages`, label: "Support", icon: MessageSquare },
+    { href: `/store/${slug}/account/messages`, label: "Support & Disputes", icon: MessageSquare },
   ];
 
   const colors = (store.themeColors as { primary?: string; secondary?: string; accent?: string; background?: string; text?: string } | null) ?? {};
@@ -96,4 +96,4 @@ export default async function StoreAccountLayout({
       <StoreFooter store={store} slug={slug} />
     </div>
   );
-}
+     }
