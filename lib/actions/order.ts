@@ -167,9 +167,10 @@ export async function startCheckout(
   input: CheckoutInput
 ): Promise<ActionResult<{ authorizationUrl: string }>> {
   const customerSession = await getStoreCustomerSession();
-  const session = customerSession
-    ? { user: { id: customerSession.id, role: "CUSTOMER" as const, customerStoreId: customerSession.storeId } }
-    : await auth();
+
+const session = customerSession
+  ? customerSession
+  : await auth();
   if (!session?.user?.id) return { success: false, error: "Please sign in to check out." };
 
   const parsed = checkoutSchema.safeParse(input);
