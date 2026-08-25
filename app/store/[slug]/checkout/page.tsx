@@ -1,6 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import { redirect } from "next/navigation";
-import { auth } from "@/lib/auth";
+import { getStoreCustomerSessionForStore } from "@/lib/store-customer-auth";
 import { isHeenzyTemplate, isVioletTemplate, isMarketplaceTemplate, isArcovaTemplate, isNovaTemplate, isPremiumTemplate, isHomeVistaTemplate, isRrwTemplate, isRivoraTemplate, isFabtexTemplate, isJuiceLifeTemplate, VIOLET, MARKETPLACE, ARCOVA, NOVA, PREMIUM, HOMEVISTA, RRW, FABTEX } from "@/lib/template-themes";
 import { CheckoutClient } from "./checkout-client";
 import { HeenzyCheckoutClient } from "./heenzy-checkout-client";
@@ -36,7 +36,7 @@ export default async function CheckoutPage({ params }: { params: Promise<{ slug:
   // (so login returns straight to this store's checkout) and `store` (so
   // the login page picks up this store's branding) matches how the rest
   // of the auth flow already reads those two params — see LoginForm.
-  const session = await auth();
+  const session = await getStoreCustomerSessionForStore(slug);
   if (!session?.user?.id) {
     const callbackUrl = `/store/${slug}/checkout`;
     redirect(`/login?callbackUrl=${encodeURIComponent(callbackUrl)}&store=${encodeURIComponent(slug)}`);
