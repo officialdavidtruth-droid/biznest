@@ -69,7 +69,7 @@ export async function requestOrderRecovery(storeSlug: string, email: string): Pr
   if (!ctx.ok) return { success: false, error: ctx.error };
 
   const normalizedEmail = email.trim().toLowerCase();
-  if (!normalizedEmail) return { success: false, error: "Enter the email you used at checkout." };
+  if (!normalizedEmail) return { success: false, error: "Enter the email of the account you were signed into." };
 
   const matchCount = await prisma.order.count({
     where: { storeId: ctx.store.id, buyerId: { not: ctx.userId }, buyer: { email: normalizedEmail } },
