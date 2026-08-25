@@ -1,4 +1,3 @@
-import { auth } from "@/lib/auth";
 import { getStoreBranding } from "@/lib/actions/store-branding";
 import { requireStoreCustomer } from "@/lib/actions/store-customer";
 import { redirect, notFound } from "next/navigation";
@@ -22,15 +21,13 @@ export default async function StoreAccountLayout({
   params: Promise<{ slug: string }>;
 }) {
   const { slug } = await params;
-  const session = await auth();
-  if (!session?.user?.id || session.user.role !== "CUSTOMER") {
+  const membership = await requireStoreCustomer(slug);
+  if (!membership) {
     redirect(`/login?store=${encodeURIComponent(slug)}&callbackUrl=/store/${encodeURIComponent(slug)}/account`);
   }
 
   const store = await getStoreBranding(slug);
   if (!store) notFound();
-  const membership = await requireStoreCustomer(slug);
-  if (!membership) notFound();
 
   const LINKS = [
     { href: `/store/${slug}/account`, label: "My Account", icon: LayoutDashboard },
@@ -65,7 +62,7 @@ export default async function StoreAccountLayout({
           )}
           <div>
             <p className="text-xs font-medium uppercase tracking-wide" style={{ color: accent }}>My {store.name} Account</p>
-            <p className="text-sm text-slate-600">Signed in as {session.user.email ?? session.user.name}</p>
+            <p className="text-sm text-slate-600">Signed in as {membership.user.email ?? membership.user.name}</p>
           </div>
         </div>
 
