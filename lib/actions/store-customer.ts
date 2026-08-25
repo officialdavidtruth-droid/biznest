@@ -36,7 +36,10 @@ export async function requireStoreCustomer(storeSlug: string) {
 
   return prisma.storeCustomer.findFirst({
     where: { userId, storeId: store.id },
-    include: { store: { select: { id: true, slug: true, name: true, logoUrl: true, themeColors: true } } },
+    include: {
+      store: { select: { id: true, slug: true, name: true, logoUrl: true, themeColors: true } },
+      user: { select: { id: true, name: true, email: true } },
+    },
   });
 }
 
