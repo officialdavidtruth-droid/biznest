@@ -195,17 +195,6 @@ export async function listRecentlyViewed(limit = 20) {
   });
 }
 
-  return prisma.recentlyViewed.findMany({
-    where: { userId: session.user.id },
-    include: {
-      product: { include: { store: { select: { slug: true, name: true } } } },
-      service: { include: { store: { select: { slug: true, name: true } } } },
-    },
-    orderBy: { viewedAt: "desc" },
-    take: limit,
-  });
-}
-
 // ============ FAVORITE BUSINESSES ============
 
 export async function listFavoriteBusinesses() {
