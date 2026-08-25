@@ -263,3 +263,64 @@ a[href*="/service/"]:hover img {
     transform: none !important;
   }
 }
+
+/* --- Storefront mobile navigation (checkbox-hack, no client JS needed) ---
+   Every template's header renders its nav links inline with no way to
+   collapse on narrow screens (no template had any responsive breakpoints
+   at all). This adds one shared, CSS-only hamburger pattern that every
+   *-chrome.tsx opts into with three classes:
+     .bn-header-inner  - the flex row holding logo + nav (allows wrap)
+     .bn-nav-toggle     - hidden checkbox, id must be unique per header
+     .bn-hamburger      - <label htmlFor=matching-id>, the ☰ button
+     .bn-nav-links       - the <nav> itself (collapses under 720px) */
+.bn-nav-toggle {
+  position: absolute;
+  opacity: 0;
+  pointer-events: none;
+}
+.bn-hamburger {
+  display: none;
+  cursor: pointer;
+  font-size: 22px;
+  line-height: 1;
+  padding: 4px 6px;
+  user-select: none;
+}
+@media (max-width: 760px) {
+  .bn-header-inner {
+    flex-wrap: wrap;
+  }
+  .bn-hamburger {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .bn-nav-links {
+    display: none !important;
+    flex-basis: 100%;
+    width: 100%;
+    flex-direction: column !important;
+    align-items: flex-start !important;
+    gap: 16px !important;
+    padding: 18px 0 6px;
+  }
+  .bn-nav-toggle:checked ~ .bn-nav-links {
+    display: flex !important;
+  }
+}
+
+/* --- Storefront responsive two-column sections ---
+   Several templates hardcode gridTemplateColumns inline (e.g. hero and
+   contact sections) which inline styles won't let plain CSS override
+   without !important. Any element opting in via className="bn-2col" gets
+   its ratio from the --bn-cols custom property (set inline per template so
+   each keeps its own visual proportions on desktop) and always stacks to a
+   single column under 760px. */
+@media (max-width: 760px) {
+  .bn-2col {
+    grid-template-columns: 1fr !important;
+  }
+  .bn-grid-2 {
+    grid-template-columns: repeat(2, 1fr) !important;
+  }
+}
