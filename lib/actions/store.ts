@@ -532,6 +532,7 @@ export async function connectPayoutAccount(
 
     const subaccount = await createFlutterwaveSubaccount({
       businessName: store.name,
+      businessEmail: store.business.email,
       bankCode: input.bankCode,
       accountNumber: input.accountNumber,
       splitPercentage: commissionRate,
