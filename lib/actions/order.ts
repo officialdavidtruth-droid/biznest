@@ -20,6 +20,8 @@ import {
 } from "@/lib/payments/gateway";
 import { calculateOrderTotals } from "@/lib/utils/pricing";
 import { revalidatePath } from "next/cache";
+import { checkRateLimit } from "@/lib/rate-limit";
+import { notifyCustomerOfPaidOrder } from "@/lib/notifications/notify";
 import type { ActionResult } from "@/types/actions";
 import type {
   OrderStatus,
@@ -1152,4 +1154,35 @@ export async function updateOrderStatus(
     success: true,
     data: undefined,
   };
+}
+/**
+ * Lets a buyer re-trigger their own order-confirmation email — the safety
+ * net for orders placed before the callback-route notification fix (or any
+ * other one-off delivery hiccup, e.g. a bounced/misspelled inbox that's
+ * since been fixed on their end). Reuses getOrderForBuyer's exact auth
+ * check, so a buyer can only resend a receipt for an order that's actually
+ * theirs. Capped at 3/hour per order — generous for a genuine "I lost the
+ * email" case, tight enough that it can't be used to spam an inbox.
+ */
+export async function resendOrderConfirmationEmail(
+  orderId: string,
+  storeSlug?: string
+): Promise<ActionResult> {
+  const order = await getOrderForBuyer(orderId, storeSlug);
+  if (!order) {
+    return { success: false, error: "Order not found." };
+  }
+
+  if (order.status === "PENDING_PAYMENT" || order.status === "CANCELLED") {
+    return { success: false, error: "This order hasn't been paid yet, so there's no confirmation to resend." };
+  }
+
+  const rate = await checkRateLimit(`resend-order-confirmation:${orderId}`, 3, 60 * 60 * 1000);
+  if (!rate.allowed) {
+    return { success: false, error: "You've requested this a few times already — please try again later." };
+  }
+
+  await notifyCustomerOfPaidOrder(orderId);
+
+  return { success: true, data: undefined };
 }
