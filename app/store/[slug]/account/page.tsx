@@ -1,4 +1,4 @@
-import { auth } from "@/lib/auth";
+import { getStoreCustomerSessionForStore } from "@/lib/store-customer-auth";
 import { getStoreCustomerOverview } from "@/lib/actions/account";
 import { getStoreBranding } from "@/lib/actions/store-branding";
 import { notFound } from "next/navigation";
@@ -7,7 +7,7 @@ import { Pencil, Package, Gift } from "lucide-react";
 
 export default async function StoreAccountOverviewPage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
-  const session = await auth();
+  const session = await getStoreCustomerSessionForStore(slug);
   const store = await getStoreBranding(slug);
   if (!store) notFound();
 
