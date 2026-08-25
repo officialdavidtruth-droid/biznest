@@ -96,7 +96,28 @@ export default async function HomePage() {
       take: 24,
       select: { name: true, slug: true, business: { select: { category: true } } },
     }),
+    session?.user?.id
+      ? prisma.store.findFirst({
+          where: { business: { userId: session.user.id } },
+          select: { slug: true },
+        })
+      : Promise.resolve(null),
+    session?.user?.id
+      ? prisma.store.findFirst({
+          where: { staffMembers: { some: { userId: session.user.id, status: "ACTIVE" } } },
+          select: { slug: true },
+        })
+      : Promise.resolve(null),
   ]);
+
+  const dashboardHref =
+    session?.user?.storeSlug
+      ? `/${encodeURIComponent(session.user.storeSlug)}/admin`
+      : ownedStore?.slug
+        ? `/${encodeURIComponent(ownedStore.slug)}/admin`
+        : staffStore?.slug
+          ? `/${encodeURIComponent(staffStore.slug)}/admin`
+          : "/onboarding/business-verification";
 
   const stalls = liveStores.map((s) => ({
     name: s.name,
@@ -136,7 +157,7 @@ export default async function HomePage() {
           </a>
           {session?.user ? (
             <>
-              <Link href="/onboarding/business-verification" className="opacity-80 transition hover:opacity-100">
+              <Link href={dashboardHref} className="opacity-80 transition hover:opacity-100">
                 Dashboard
               </Link>
               <SignOutButton className="rounded-full px-4 py-2 text-sm font-medium transition hover:brightness-110" />
@@ -192,7 +213,7 @@ export default async function HomePage() {
           <div className="mt-8 flex flex-wrap gap-3">
             {session?.user ? (
               <Link
-                href="/onboarding/business-verification"
+                href={dashboardHref}
                 className="rounded-full px-6 py-3 text-sm font-medium transition hover:brightness-110"
                 style={{ background: "var(--bn-accent-gradient)", color: "var(--bn-ink)" }}
               >
@@ -375,7 +396,7 @@ export default async function HomePage() {
                   <li className="font-medium">{features.customDomain ? "✓ Your own domain name" : "Runs on your biznest.space address"}</li>
                 </ul>
                 <Link
-                  href={session?.user ? "/onboarding/business-verification" : "/register"}
+                  href={session?.user ? dashboardHref : "/register"}
                   className="mt-6 block rounded-full py-2.5 text-center text-sm font-medium transition hover:brightness-110"
                   style={{
                     background: featured ? "var(--bn-ink)" : "var(--bn-accent-gradient)",
