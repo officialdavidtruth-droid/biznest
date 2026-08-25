@@ -63,8 +63,8 @@ export function RecoverOrderForm({ storeSlug, storeName }: { storeSlug: string; 
       <p className="font-semibold text-slate-900">Recover a lost order</p>
       <p className="mt-1 text-sm text-slate-500">
         If you placed an order at {storeName} but it isn&apos;t showing up here — for example after getting
-        logged out mid-checkout — enter the email you used and we&apos;ll send a code to move it into this
-        account.
+        logged out mid-checkout — enter the email of the account you were signed into at the time, and
+        we&apos;ll send a code to move it into this account.
       </p>
 
       {step === "email" ? (
@@ -76,7 +76,7 @@ export function RecoverOrderForm({ storeSlug, storeName }: { storeSlug: string; 
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               onKeyDown={(e) => e.key === "Enter" && handleRequestCode()}
-              placeholder="Email used at checkout"
+              placeholder="Email of that account"
               className="flex-1 text-sm outline-none"
             />
           </div>
