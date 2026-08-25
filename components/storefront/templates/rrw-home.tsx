@@ -113,7 +113,7 @@ export function RrwStorefront({
       {navCategories.length > 0 && (
         <section style={wrap}>
           <h2 style={{ fontSize: 30, margin: "0 0 25px", letterSpacing: "-1px" }}>Browse by Category</h2>
-          <div style={{ display: "grid", gridTemplateColumns: `repeat(${Math.min(navCategories.length, 4)}, 1fr)`, gap: 12 }}>
+          <div className="bn-grid-2" style={{ display: "grid", gridTemplateColumns: `repeat(${Math.min(navCategories.length, 4)}, 1fr)`, gap: 12 }}>
             {navCategories.slice(0, 4).map((c, i) => (
               <a
                 key={c.id}
@@ -136,7 +136,7 @@ export function RrwStorefront({
       {trending.length > 0 && (
         <section id="fleet" style={{ background: "#f4f5f6", padding: "35px 6%" }}>
           <h2 style={{ fontSize: 30, margin: "0 0 25px", letterSpacing: "-1px" }}>Trending in the Fleet</h2>
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", border: "1px solid #ddd" }}>
+          <div className="bn-grid-2" style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", border: "1px solid #ddd" }}>
             {trending.map((item, i) => (
               <Reveal key={`${item.kind}-${item.id}`} delayMs={i * 40}>
                 <a href={`/${slug}/${item.kind === "product" ? "product" : "service"}/${item.id}`} style={{ background: "#fff", borderRight: "1px solid #ddd", overflow: "hidden", display: "block", textDecoration: "none", color: RRW.ink }}>
@@ -160,7 +160,7 @@ export function RrwStorefront({
       )}
 
       {/* ---------- BENEFITS ---------- */}
-      <section style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", background: "#080a0d", color: "#fff", padding: "28px 6%", gap: 15 }}>
+      <section className="bn-grid-2" style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", background: "#080a0d", color: "#fff", padding: "28px 6%", gap: 15 }}>
         {[["♧", "Seamless booking"], ["♢", "Premium privileges for regular customers"], ["⚙", "Change or cancel up to 72h"], ["№", "No hidden fees"]].map((x) => (
           <div key={x[1]} style={{ display: "flex", gap: 12, alignItems: "center", borderRight: "1px solid #292b2e", fontSize: 23 }}>
             {x[0]}<span style={{ fontSize: 8, color: "#ddd" }}>{x[1]}</span>
@@ -188,7 +188,7 @@ export function RrwStorefront({
       {goodReviews.length > 0 && (
         <section style={wrap}>
           <h2 style={{ fontSize: 30, margin: "0 0 25px", letterSpacing: "-1px" }}>What Customers Say</h2>
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 12 }}>
+          <div className="bn-grid-2" style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 12 }}>
             {goodReviews.slice(0, 3).map((r) => (
               <div key={r.id} style={{ background: "#f4f5f6", padding: 20 }}>
                 <strong style={{ fontSize: 14, color: "#79a7ff" }}>{"★".repeat(r.rating)}</strong>
@@ -216,7 +216,7 @@ export function RrwStorefront({
       )}
 
       {/* ---------- FOOTER ---------- */}
-      <footer style={{ padding: "32px 6% 10px", display: "grid", gridTemplateColumns: "1.5fr 1fr 1fr 1fr", gap: 30, fontSize: 8, color: "#666" }}>
+      <footer className="bn-grid-2" style={{ padding: "32px 6% 10px", display: "grid", gridTemplateColumns: "1.5fr 1fr 1fr 1fr", gap: 30, fontSize: 8, color: "#666" }}>
         <div>
           <h4 style={{ margin: "0 0 12px", color: "#111" }}>{store.name}</h4>
           <p>{store.business.description || "Premium rental, made simple."}</p>

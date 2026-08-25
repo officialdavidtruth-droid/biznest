@@ -48,7 +48,7 @@ export function FabtexHeader({
       </div>
 
       {/* ---------- HEADER ---------- */}
-      <header style={{ height: 64, background: FABTEX.dark, ...wrap, display: "flex", alignItems: "center", gap: 30, borderBottom: "1px solid #343131", position: "sticky", top: 0, zIndex: 30 }}>
+      <header className="bn-header-inner" style={{ minHeight: 64, background: FABTEX.dark, ...wrap, display: "flex", alignItems: "center", gap: 30, borderBottom: "1px solid #343131", position: "sticky", top: 0, zIndex: 30 }}>
         <a href={`/${slug}`} style={{ fontWeight: 700, fontSize: 22, letterSpacing: 6, textDecoration: "none", color: "#fff", whiteSpace: "nowrap", display: "flex", alignItems: "center", gap: 10 }}>
           {store.logoUrl ? (
             // eslint-disable-next-line @next/next/no-img-element
@@ -57,7 +57,9 @@ export function FabtexHeader({
             store.name.toUpperCase()
           )}
         </a>
-        <nav style={{ display: "flex", gap: 2, flex: 1 }}>
+        <input type="checkbox" id={`bn-nav-${slug}-fabtex`} className="bn-nav-toggle" />
+        <label htmlFor={`bn-nav-${slug}-fabtex`} className="bn-hamburger" style={{ color: "#fff", marginLeft: "auto" }} aria-label="Menu">&#9776;</label>
+        <nav className="bn-nav-links" style={{ display: "flex", gap: 2, flex: 1 }}>
           <a href={`/${slug}`} style={{ fontSize: 10, textDecoration: "none", color: "#fff", padding: "10px 11px" }}>Home</a>
           <a href={`/${slug}/catalog`} style={{ fontSize: 10, textDecoration: "none", color: "#fff", padding: "10px 11px" }}>Catalog</a>
           <a href={`/${slug}/search`} style={{ fontSize: 10, textDecoration: "none", color: "#fff", padding: "10px 11px" }}>Search</a>
@@ -86,7 +88,7 @@ export function FabtexFooter({
 }) {
   return (
     <>
-      <footer style={{ background: FABTEX.black, borderTop: "1px solid #333", padding: "38px 7%", display: "grid", gridTemplateColumns: "1.5fr 1fr 1fr", gap: 30, color: "#fff" }}>
+      <footer className="bn-2col" style={{ background: FABTEX.black, borderTop: "1px solid #333", padding: "38px 7%", display: "grid", gridTemplateColumns: "1.5fr 1fr 1fr", gap: 30, color: "#fff" }}>
         <div>
           <div style={{ fontWeight: 700, fontSize: 16, letterSpacing: 3 }}>{store.name.toUpperCase()}</div>
           <p style={{ fontSize: 9, color: "#777", lineHeight: 1.6, marginTop: 8 }}>

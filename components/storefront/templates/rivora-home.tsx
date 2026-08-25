@@ -92,7 +92,7 @@ export function RivoraStorefront({
       <CategoryNav slug={slug} categories={navCategories} accent={RIVORA.lime} ink="#fff" bg="#052d20" border="#164634" />
 
       {/* ---------- HERO ---------- */}
-      <section id="home" style={{ background: RIVORA.deep, color: "#fff", padding: "55px 5% 60px", display: "grid", gridTemplateColumns: "48% 52%", gap: 30, alignItems: "center" }}>
+      <section id="home" className="bn-2col" style={{ background: RIVORA.deep, color: "#fff", padding: "55px 5% 60px", display: "grid", gridTemplateColumns: "48% 52%", gap: 30, alignItems: "center" }}>
         <div>
           <label style={{ fontSize: 10, letterSpacing: 1.5, color: RIVORA.lime, fontWeight: 700 }}>FRESH &middot; NATURAL &middot; PREMIUM</label>
           <h1 style={{ fontSize: 46, lineHeight: 1.05, margin: "14px 0" }}>
@@ -149,7 +149,7 @@ export function RivoraStorefront({
       {/* ---------- ABOUT / FARM STRIP ---------- */}
       <section id="about" style={{ padding: "0 5% 36px" }}>
         <Reveal>
-          <div style={{ background: "#053623", borderRadius: 15, color: "#fff", padding: "30px 35px", display: "grid", gridTemplateColumns: "1.15fr .85fr", gap: 25, alignItems: "center" }}>
+          <div className="bn-2col" style={{ background: "#053623", borderRadius: 15, color: "#fff", padding: "30px 35px", display: "grid", gridTemplateColumns: "1.15fr .85fr", gap: 25, alignItems: "center", "--bn-cols": "1.15fr .85fr" } as React.CSSProperties}>
             <div>
               <label style={{ fontSize: 10, letterSpacing: 1.5, color: RIVORA.lime, fontWeight: 700 }}>WHY SHOP WITH US</label>
               <h2 style={{ fontSize: 26, lineHeight: 1.1, margin: "8px 0" }}>Fresh, natural,<br />delivered fast.</h2>
@@ -226,7 +226,7 @@ export function RivoraStorefront({
       </section>
 
       {/* ---------- FOOTER ---------- */}
-      <footer id="contact" style={{ background: "#03281c", color: "#9db0a7", marginTop: 32, padding: "32px 5% 18px", display: "grid", gridTemplateColumns: "1.4fr 1fr 1fr", gap: 25, fontSize: 10 }}>
+      <footer id="contact" className="bn-2col" style={{ background: "#03281c", color: "#9db0a7", marginTop: 32, padding: "32px 5% 18px", display: "grid", gridTemplateColumns: "1.4fr 1fr 1fr", gap: 25, fontSize: 10, "--bn-cols": "1.4fr 1fr 1fr" } as React.CSSProperties}>
         <div>
           <div style={{ display: "flex", alignItems: "center", gap: 8, color: "#fff", fontWeight: 800, marginBottom: 8 }}>{store.name}</div>
           <p>{store.business.description || "Fresh choices for a healthier, better life."}</p>

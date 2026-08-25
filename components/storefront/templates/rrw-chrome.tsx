@@ -49,9 +49,10 @@ export function RrwHeader({
       {/* ---------- NAV ---------- */}
       <div style={{ padding: "15px 6%", background: "#0e1115" }}>
         <header
+          className="bn-header-inner"
           style={{
-            height: 45, background: "#fff", borderRadius: 25, display: "flex",
-            alignItems: "center", padding: "0 18px", boxShadow: "0 4px 20px #00000012",
+            minHeight: 45, background: "#fff", borderRadius: 25, display: "flex",
+            alignItems: "center", padding: "8px 18px", boxShadow: "0 4px 20px #00000012",
           }}
         >
           <a href={`/${slug}`} style={{ fontWeight: 900, fontSize: 20, letterSpacing: "-2px", textDecoration: "none", color: RRW.ink, display: "flex", alignItems: "center", gap: 8 }}>
@@ -61,14 +62,16 @@ export function RrwHeader({
             ) : null}
             {store.name}
           </a>
-          <nav style={{ display: "flex", gap: 28, margin: "0 auto", fontSize: 10 }}>
-            <a href={`/${slug}#fleet`} style={{ textDecoration: "none", color: RRW.ink }}>Fleet</a>
-            {navCategories.length > 0 && <a href={`/${slug}/catalog`} style={{ textDecoration: "none", color: RRW.ink }}>Categories</a>}
-          </nav>
-          <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
+          <div style={{ display: "flex", gap: 10, alignItems: "center", marginLeft: "auto" }}>
             <CartLink storeSlug={slug} accent={RRW.accent} ink={RRW.ink} />
             <AccountLink storeSlug={slug} ink={RRW.ink} />
           </div>
+          <input type="checkbox" id={`bn-nav-${slug}-rrw`} className="bn-nav-toggle" />
+          <label htmlFor={`bn-nav-${slug}-rrw`} className="bn-hamburger" style={{ color: RRW.ink }} aria-label="Menu">&#9776;</label>
+          <nav className="bn-nav-links" style={{ display: "flex", gap: 28, margin: "0 auto", fontSize: 10 }}>
+            <a href={`/${slug}#fleet`} style={{ textDecoration: "none", color: RRW.ink }}>Fleet</a>
+            {navCategories.length > 0 && <a href={`/${slug}/catalog`} style={{ textDecoration: "none", color: RRW.ink }}>Categories</a>}
+          </nav>
         </header>
       </div>
 
@@ -98,7 +101,7 @@ export function RrwFooter({
   return (
     <>
       {/* ---------- BENEFITS ---------- */}
-      <section style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", background: "#080a0d", color: "#fff", padding: "28px 6%", gap: 15, marginTop: 30 }}>
+      <section className="bn-grid-2" style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", background: "#080a0d", color: "#fff", padding: "28px 6%", gap: 15, marginTop: 30 }}>
         {[["♧", "Seamless booking"], ["♢", "Premium privileges for regular customers"], ["⚙", "Change or cancel up to 72h"], ["№", "No hidden fees"]].map((x) => (
           <div key={x[1]} style={{ display: "flex", gap: 12, alignItems: "center", borderRight: "1px solid #292b2e", fontSize: 23 }}>
             {x[0]}<span style={{ fontSize: 8, color: "#ddd" }}>{x[1]}</span>
@@ -107,7 +110,7 @@ export function RrwFooter({
       </section>
 
       {/* ---------- FOOTER ---------- */}
-      <footer style={{ padding: "32px 6% 10px", display: "grid", gridTemplateColumns: "1.5fr 1fr 1fr 1fr", gap: 30, fontSize: 8, color: "#666" }}>
+      <footer className="bn-grid-2" style={{ padding: "32px 6% 10px", display: "grid", gridTemplateColumns: "1.5fr 1fr 1fr 1fr", gap: 30, fontSize: 8, color: "#666" }}>
         <div>
           <h4 style={{ margin: "0 0 12px", color: "#111" }}>{store.name}</h4>
           <p>{store.business.description || "Premium rental, made simple."}</p>

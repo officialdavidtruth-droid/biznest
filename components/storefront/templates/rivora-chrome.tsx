@@ -52,7 +52,7 @@ export function RivoraHeader({
       </div>
 
       {/* ---------- NAV ---------- */}
-      <header style={{ height: 78, background: "#052d20", color: "#fff", ...wrap, display: "flex", alignItems: "center", gap: 28, position: "sticky", top: 0, zIndex: 30, borderBottom: "1px solid #164634" }}>
+      <header className="bn-header-inner" style={{ minHeight: 78, background: "#052d20", color: "#fff", ...wrap, display: "flex", alignItems: "center", gap: 28, position: "sticky", top: 0, zIndex: 30, borderBottom: "1px solid #164634" }}>
         <a href={`/${slug}`} style={{ display: "flex", alignItems: "center", gap: 8, color: "#fff", textDecoration: "none", minWidth: 180 }}>
           {store.logoUrl ? (
             // eslint-disable-next-line @next/next/no-img-element
@@ -62,7 +62,9 @@ export function RivoraHeader({
           )}
           <span style={{ fontWeight: 800, fontSize: 14 }}>{store.name}</span>
         </a>
-        <nav style={{ display: "flex", gap: 22, flex: 1, justifyContent: "center", fontSize: 11 }}>
+        <input type="checkbox" id={`bn-nav-${slug}-rivora`} className="bn-nav-toggle" />
+        <label htmlFor={`bn-nav-${slug}-rivora`} className="bn-hamburger" style={{ color: "#fff", marginLeft: "auto" }} aria-label="Menu">&#9776;</label>
+        <nav className="bn-nav-links" style={{ display: "flex", gap: 22, flex: 1, justifyContent: "center", fontSize: 11 }}>
           <a href={`/${slug}`} style={{ color: "#d8e2dc", textDecoration: "none" }}>Home</a>
           <a href={`/${slug}/catalog`} style={{ color: "#d8e2dc", textDecoration: "none" }}>Shop</a>
           <a href={`/${slug}/search`} style={{ color: "#d8e2dc", textDecoration: "none" }}>Search</a>
@@ -90,7 +92,7 @@ export function RivoraFooter({
   social: Record<string, string>;
 }) {
   return (
-    <footer style={{ background: "#03281c", color: "#9db0a7", marginTop: 32, padding: "32px 5% 18px", display: "grid", gridTemplateColumns: "1.4fr 1fr 1fr", gap: 25, fontSize: 10 }}>
+    <footer className="bn-2col" style={{ background: "#03281c", color: "#9db0a7", marginTop: 32, padding: "32px 5% 18px", display: "grid", gridTemplateColumns: "1.4fr 1fr 1fr", gap: 25, fontSize: 10 }}>
       <div>
         <div style={{ display: "flex", alignItems: "center", gap: 8, color: "#fff", fontWeight: 800, marginBottom: 8 }}>{store.name}</div>
         <p>{store.business.description || "Fresh choices for a healthier, better life."}</p>

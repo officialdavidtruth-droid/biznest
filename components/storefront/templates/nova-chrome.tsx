@@ -51,7 +51,7 @@ export function NovaHeader({
   return (
     <>
       {/* ---------- SIDE-RAIL-STYLE STICKY NAV (not a top bar) ---------- */}
-      <div style={{ position: "sticky", top: 0, zIndex: 50, display: "flex", alignItems: "center", justifyContent: "space-between", padding: "26px 60px", borderBottom: `1px solid ${line}`, background: theme.bg, backdropFilter: "blur(10px)" }}>
+      <div className="bn-header-inner" style={{ position: "sticky", top: 0, zIndex: 50, display: "flex", alignItems: "center", justifyContent: "space-between", padding: "26px 60px", borderBottom: `1px solid ${line}`, background: theme.bg, backdropFilter: "blur(10px)" }}>
         <a href={`/${slug}`} style={{ ...serif, fontSize: 22, fontWeight: 700, color: theme.ink, textDecoration: "none", letterSpacing: "0.02em", display: "flex", alignItems: "center" }}>
           {store.logoUrl ? (
             // eslint-disable-next-line @next/next/no-img-element
@@ -59,7 +59,9 @@ export function NovaHeader({
           ) : null}
           {store.name}
         </a>
-        <div style={{ display: "flex", alignItems: "center", gap: 26 }}>
+        <input type="checkbox" id={`bn-nav-${slug}-nova`} className="bn-nav-toggle" />
+        <label htmlFor={`bn-nav-${slug}-nova`} className="bn-hamburger" style={{ color: theme.ink }} aria-label="Menu">&#9776;</label>
+        <div className="bn-nav-links" style={{ display: "flex", alignItems: "center", gap: 26 }}>
           <a href={`/${slug}/catalog`} style={{ ...label, textDecoration: "none" }}>The Collection</a>
           <a href={`/${slug}/search`} style={{ ...label, textDecoration: "none" }}>Search</a>
           <CartLink storeSlug={slug} accent={theme.accent} ink={theme.ink} />

@@ -39,7 +39,7 @@ export function ArcovaHeader({
       {/* ---------- NAV ---------- */}
       <header style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "22px 0", borderBottom: `1px solid ${ARCOVA.border}` }}>
         <div style={wrap}>
-          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+          <div className="bn-header-inner" style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
             <a href={`/${slug}`} style={{ textDecoration: "none", color: ARCOVA.ink, display: "flex", alignItems: "center", gap: 10 }}>
               {store.logoUrl ? (
                 // eslint-disable-next-line @next/next/no-img-element
@@ -47,7 +47,9 @@ export function ArcovaHeader({
               ) : null}
               <span style={{ fontSize: 18, fontWeight: 700, letterSpacing: 1 }}>{store.name.toUpperCase()}</span>
             </a>
-            <nav style={{ display: "flex", alignItems: "center", gap: 26, fontSize: 12, letterSpacing: 1 }}>
+            <input type="checkbox" id={`bn-nav-${slug}-arcova`} className="bn-nav-toggle" />
+            <label htmlFor={`bn-nav-${slug}-arcova`} className="bn-hamburger" style={{ color: ARCOVA.ink }} aria-label="Menu">&#9776;</label>
+            <nav className="bn-nav-links" style={{ display: "flex", alignItems: "center", gap: 26, fontSize: 12, letterSpacing: 1 }}>
               <a href={`/${slug}/catalog`} style={{ color: ARCOVA.ink, textDecoration: "none" }}>PROJECTS</a>
               {store.business.description && <a href={`/${slug}#services`} style={{ color: ARCOVA.ink, textDecoration: "none" }}>SERVICES</a>}
               {(store.contactEmail || store.contactPhone) && <a href={`/${slug}#contact`} style={{ color: ARCOVA.ink, textDecoration: "none" }}>CONTACT</a>}
@@ -80,7 +82,7 @@ export function ArcovaFooter({
     <>
       {/* ---------- CTA / CONTACT ---------- */}
       <section id="contact" style={{ padding: "70px 0", background: ARCOVA.dark, color: "#fff" }}>
-        <div style={{ ...wrap, display: "grid", gridTemplateColumns: "1fr 1fr", gap: 40 }}>
+        <div className="bn-2col" style={{ ...wrap, display: "grid", gridTemplateColumns: "1fr 1fr", gap: 40, "--bn-cols": "1fr 1fr" } as React.CSSProperties}>
           <div>
             <h2 style={{ fontSize: 30, fontWeight: 700, lineHeight: 1.15, margin: "0 0 20px" }}>
               Let&apos;s build something<br />extraordinary

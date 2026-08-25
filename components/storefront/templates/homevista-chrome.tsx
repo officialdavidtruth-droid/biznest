@@ -43,7 +43,7 @@ export function HomeVistaHeader({
       </div>
 
       {/* ---------- NAV ---------- */}
-      <header style={{ height: 70, display: "flex", alignItems: "center", padding: "0 4.5%", gap: 28, borderBottom: "1px solid #edf0ef", background: "#fff" }}>
+      <header className="bn-header-inner" style={{ minHeight: 70, display: "flex", alignItems: "center", padding: "0 4.5%", gap: 28, borderBottom: "1px solid #edf0ef", background: "#fff" }}>
         <a href={`/${slug}`} style={{ fontSize: 19, color: HOMEVISTA.dark, minWidth: 175, textDecoration: "none", display: "flex", alignItems: "center", gap: 8 }}>
           {store.logoUrl ? (
             // eslint-disable-next-line @next/next/no-img-element
@@ -53,14 +53,16 @@ export function HomeVistaHeader({
           )}
           <b>{store.name}</b>
         </a>
-        <nav style={{ display: "flex", gap: 25, fontSize: 11, fontWeight: 700 }}>
-          <a href={`/${slug}#listings`} style={{ textDecoration: "none", color: HOMEVISTA.ink }}>Listings</a>
-          {navCategories.length > 0 && <a href={`/${slug}/catalog`} style={{ textDecoration: "none", color: HOMEVISTA.accent, borderBottom: `2px solid ${HOMEVISTA.accent}`, paddingBottom: 25 }}>Categories</a>}
-        </nav>
         <div style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: 20 }}>
           <CartLink storeSlug={slug} accent={HOMEVISTA.accent} ink={HOMEVISTA.ink} />
           <AccountLink storeSlug={slug} ink={HOMEVISTA.ink} />
         </div>
+        <input type="checkbox" id={`bn-nav-${slug}-homevista`} className="bn-nav-toggle" />
+        <label htmlFor={`bn-nav-${slug}-homevista`} className="bn-hamburger" style={{ color: HOMEVISTA.ink }} aria-label="Menu">&#9776;</label>
+        <nav className="bn-nav-links" style={{ display: "flex", gap: 25, fontSize: 11, fontWeight: 700 }}>
+          <a href={`/${slug}#listings`} style={{ textDecoration: "none", color: HOMEVISTA.ink }}>Listings</a>
+          {navCategories.length > 0 && <a href={`/${slug}/catalog`} style={{ textDecoration: "none", color: HOMEVISTA.accent, borderBottom: `2px solid ${HOMEVISTA.accent}`, paddingBottom: 25 }}>Categories</a>}
+        </nav>
       </header>
 
       <CategoryNav slug={slug} categories={navCategories} accent={HOMEVISTA.accent} ink={HOMEVISTA.ink} bg="#fff" border="#edf0ef" />
@@ -82,7 +84,7 @@ export function HomeVistaFooter({
   social: Record<string, string>;
 }) {
   return (
-    <footer style={{ background: HOMEVISTA.footer, color: "#fff", marginTop: 30, padding: "30px 5%", display: "grid", gridTemplateColumns: "1.5fr repeat(4, 1fr)", gap: 25 }}>
+    <footer className="bn-grid-2" style={{ background: HOMEVISTA.footer, color: "#fff", marginTop: 30, padding: "30px 5%", display: "grid", gridTemplateColumns: "1.5fr repeat(4, 1fr)", gap: 25 }}>
       <div>
         <b style={{ fontSize: 18 }}>⌂ {store.name}</b>
         <p style={{ color: "#b8cbc7", fontSize: 8, margin: "7px 0" }}>{store.business.description || "Your trusted partner in finding the perfect place."}</p>

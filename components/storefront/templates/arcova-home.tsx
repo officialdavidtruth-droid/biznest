@@ -89,7 +89,7 @@ export function ArcovaStorefront({
 
       {/* ---------- HERO ---------- */}
       <section style={{ padding: "70px 0", background: heroImage ? `linear-gradient(180deg, rgba(20,20,20,0.55), rgba(20,20,20,0.55)), url(${heroImage}) center/cover` : ARCOVA.paper, color: heroImage ? "#fff" : ARCOVA.ink }}>
-        <div style={{ ...wrap, display: "grid", gridTemplateColumns: "1.2fr 1fr", gap: 40, alignItems: "end" }}>
+        <div className="bn-2col" style={{ ...wrap, display: "grid", gridTemplateColumns: "1.2fr 1fr", gap: 40, alignItems: "end", "--bn-cols": "1.2fr 1fr" } as React.CSSProperties}>
           <div>
             <div style={{ fontSize: 11, letterSpacing: 2, opacity: 0.7, marginBottom: 14 }}>ARCHITECTURE THAT INSPIRES</div>
             <h1 style={{ fontSize: "clamp(32px, 5vw, 54px)", fontWeight: 700, lineHeight: 1.08, margin: "0 0 18px" }}>
@@ -102,7 +102,7 @@ export function ArcovaStorefront({
               EXPLORE OUR WORK &rarr;
             </a>
           </div>
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 18, fontSize: 12 }}>
+          <div className="bn-2col" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 18, fontSize: 12, "--bn-cols": "1fr 1fr" } as React.CSSProperties}>
             {[["15+", "Years of experience"], [String(catalogItems.length || 0), "Active listings"], [avgRating ? avgRating.toFixed(1) : "New", "Average rating"], [String(completedOrders), "Completed orders"]].map(([n, label]) => (
               <div key={label} style={{ border: `1px solid ${heroImage ? "rgba(255,255,255,0.35)" : ARCOVA.border}`, padding: "16px 14px" }}>
                 <b style={{ fontSize: 22, display: "block" }}>{n}</b>
@@ -213,7 +213,7 @@ export function ArcovaStorefront({
 
       {/* ---------- CTA / CONTACT ---------- */}
       <section id="contact" style={{ padding: "70px 0", background: ARCOVA.dark, color: "#fff" }}>
-        <div style={{ ...wrap, display: "grid", gridTemplateColumns: "1fr 1fr", gap: 40 }}>
+        <div className="bn-2col" style={{ ...wrap, display: "grid", gridTemplateColumns: "1fr 1fr", gap: 40, "--bn-cols": "1fr 1fr" } as React.CSSProperties}>
           <div>
             <h2 style={{ fontSize: 30, fontWeight: 700, lineHeight: 1.15, margin: "0 0 20px" }}>
               Let&apos;s build something<br />extraordinary

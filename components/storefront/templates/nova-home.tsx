@@ -101,7 +101,7 @@ export function NovaStorefront({
       <CategoryNav slug={slug} categories={navCategories} accent={p.gold} ink={p.ink} bg={p.bg} border={p.line} />
 
       {/* ---------- SPLIT HERO ---------- */}
-      <header style={{ display: "grid", gridTemplateColumns: "1.1fr 0.9fr", minHeight: p.heroMinHeight }}>
+      <header className="bn-2col" style={{ display: "grid", gridTemplateColumns: "1.1fr 0.9fr", minHeight: p.heroMinHeight, "--bn-cols": "1.1fr 0.9fr" } as React.CSSProperties}>
         <div style={{ display: "flex", flexDirection: "column", justifyContent: "center", padding: "0 60px" }}>
           <div style={label}>{theme.eyebrow}</div>
           <h1 style={{ ...p.serif, fontSize: "clamp(40px,5.6vw,72px)", lineHeight: 1.04, margin: "22px 0 0", fontWeight: 700 }}>

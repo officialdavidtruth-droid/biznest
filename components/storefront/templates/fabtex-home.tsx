@@ -146,7 +146,7 @@ export function FabtexStorefront({
       </section>
 
       {/* ---------- ABOUT / TESTIMONIALS ---------- */}
-      <section id="about" style={{ display: "grid", gridTemplateColumns: "1.4fr 1fr", gap: 60, padding: "42px 11%" }}>
+      <section id="about" className="bn-2col" style={{ display: "grid", gridTemplateColumns: "1.4fr 1fr", gap: 60, padding: "42px 11%", "--bn-cols": "1.4fr 1fr" } as React.CSSProperties}>
         <Reveal>
           <div>
             <h2 style={{ fontWeight: 400, letterSpacing: 2, fontSize: 22 }}>ABOUT US</h2>
@@ -180,7 +180,7 @@ export function FabtexStorefront({
       </section>
 
       {/* ---------- FOOTER ---------- */}
-      <footer id="contact" style={{ background: FABTEX.black, borderTop: "1px solid #333", padding: "38px 11%", display: "grid", gridTemplateColumns: "1.5fr 1fr 1fr", gap: 30 }}>
+      <footer id="contact" className="bn-2col" style={{ background: FABTEX.black, borderTop: "1px solid #333", padding: "38px 11%", display: "grid", gridTemplateColumns: "1.5fr 1fr 1fr", gap: 30, "--bn-cols": "1.5fr 1fr 1fr" } as React.CSSProperties}>
         <div>
           <div style={{ fontWeight: 700, fontSize: 16, letterSpacing: 3 }}>{store.name.toUpperCase()}</div>
           <p style={{ fontSize: 9, color: "#777", lineHeight: 1.6, marginTop: 8 }}>

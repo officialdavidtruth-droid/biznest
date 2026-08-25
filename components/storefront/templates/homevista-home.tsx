@@ -125,7 +125,7 @@ export function HomeVistaStorefront({
             <h2 style={{ fontSize: 18, margin: 0 }}>Explore Categories</h2>
             <a href={`/${slug}/catalog`} style={{ color: HOMEVISTA.accent, fontSize: 10, fontWeight: 800, textDecoration: "none" }}>View All →</a>
           </div>
-          <div style={{ display: "grid", gridTemplateColumns: `repeat(${Math.min(navCategories.length, 6)}, 1fr)`, gap: 9 }}>
+          <div className="bn-grid-2" style={{ display: "grid", gridTemplateColumns: `repeat(${Math.min(navCategories.length, 6)}, 1fr)`, gap: 9 }}>
             {navCategories.slice(0, 6).map((c) => (
               <a key={c.id} href={`/${slug}/category/${c.id}`} style={{ border: "1px solid #e6ebe9", borderRadius: 8, padding: 11, display: "flex", alignItems: "center", gap: 10, boxShadow: "0 2px 8px #18352d08", textDecoration: "none", color: HOMEVISTA.ink }}>
                 <span style={{ fontSize: 25 }}>⌂</span>
@@ -146,7 +146,7 @@ export function HomeVistaStorefront({
             <h2 style={{ fontSize: 18, margin: 0 }}>Featured Listings</h2>
             <a href={`/${slug}/catalog`} style={{ color: HOMEVISTA.accent, fontSize: 10, fontWeight: 800, textDecoration: "none" }}>View All →</a>
           </div>
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(5, 1fr)", gap: 10 }}>
+          <div className="bn-grid-2" style={{ display: "grid", gridTemplateColumns: "repeat(5, 1fr)", gap: 10 }}>
             {featuredItems.map((item, i) => (
               <Reveal key={`${item.kind}-${item.id}`} delayMs={i * 40}>
                 <a href={`/${slug}/${item.kind === "product" ? "product" : "service"}/${item.id}`} style={{ border: "1px solid #e2e8e6", borderRadius: 8, overflow: "hidden", background: "#fff", display: "block", textDecoration: "none", color: HOMEVISTA.ink }}>
@@ -175,7 +175,7 @@ export function HomeVistaStorefront({
       {store.business.description && (
         <section style={{ ...wrap, margin: "25px auto" }}>
           <h2 style={{ fontSize: 18, marginBottom: 10 }}>Why Choose {store.name}?</h2>
-          <div style={{ background: "#f6faf8", borderRadius: 5, padding: 24, display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 20 }}>
+          <div className="bn-grid-2" style={{ background: "#f6faf8", borderRadius: 5, padding: 24, display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 20 }}>
             {[["⌂", "Verified Listings", "All listings are verified and trusted."], ["$", "Best Price", "We help you find the best price possible."], ["♧", "Expert Support", "Our team is here to guide you."], ["▤", "Easy Process", "Simple and transparent from start to finish."]].map((x) => (
               <div key={x[1]} style={{ display: "flex", gap: 12, borderRight: "1px solid #dfe8e4", paddingRight: 15 }}>
                 <span style={{ fontSize: 30, color: HOMEVISTA.accent }}>{x[0]}</span>
@@ -195,7 +195,7 @@ export function HomeVistaStorefront({
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
             <h2 style={{ fontSize: 18, margin: 0 }}>What Our Clients Say</h2>
           </div>
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 12 }}>
+          <div className="bn-grid-2" style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 12 }}>
             {goodReviews.slice(0, 3).map((r) => (
               <div key={r.id} style={{ border: "1px solid #e2e8e6", borderRadius: 8, padding: 16, minHeight: 125 }}>
                 <em style={{ color: HOMEVISTA.accent, fontSize: 28, fontStyle: "normal" }}>&ldquo;</em>
@@ -239,7 +239,7 @@ export function HomeVistaStorefront({
       </section>
 
       {/* ---------- FOOTER ---------- */}
-      <footer style={{ background: HOMEVISTA.footer, color: "#fff", marginTop: 12, padding: "30px 5%", display: "grid", gridTemplateColumns: "1.5fr repeat(4, 1fr)", gap: 25 }}>
+      <footer className="bn-grid-2" style={{ background: HOMEVISTA.footer, color: "#fff", marginTop: 12, padding: "30px 5%", display: "grid", gridTemplateColumns: "1.5fr repeat(4, 1fr)", gap: 25 }}>
         <div>
           <b style={{ fontSize: 18 }}>⌂ {store.name}</b>
           <p style={{ color: "#b8cbc7", fontSize: 8, margin: "7px 0" }}>{store.business.description || "Your trusted partner in finding the perfect place."}</p>

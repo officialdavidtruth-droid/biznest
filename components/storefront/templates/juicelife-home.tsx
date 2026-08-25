@@ -89,7 +89,7 @@ export function JuiceLifeStorefront({
       <CategoryNav slug={slug} categories={navCategories} accent={JUICELIFE.green} ink={JUICELIFE.ink} bg="#fff" border="#edf1ea" />
 
       {/* ---------- HERO ---------- */}
-      <section id="home" style={{ minHeight: 480, display: "grid", gridTemplateColumns: "48% 52%" }}>
+      <section id="home" className="bn-2col" style={{ minHeight: 480, display: "grid", gridTemplateColumns: "48% 52%" }}>
         <div style={{ padding: "70px 8% 50px 6%" }}>
           <div style={{ fontSize: 11, color: JUICELIFE.green, fontWeight: 700, letterSpacing: 0.6 }}>100% NATURAL &amp; FRESH 🍃</div>
           <h1 style={{ fontSize: 50, lineHeight: 1, margin: "15px 0" }}>
@@ -159,7 +159,7 @@ export function JuiceLifeStorefront({
       {/* ---------- ABOUT ---------- */}
       <section id="about" style={{ padding: "48px 6%" }}>
         <Reveal>
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1.2fr", gap: 45, alignItems: "center" }}>
+          <div className="bn-2col" style={{ display: "grid", gridTemplateColumns: "1fr 1.2fr", gap: 45, alignItems: "center", "--bn-cols": "1fr 1.2fr" } as React.CSSProperties}>
             <div>
               <div style={{ fontSize: 11, color: JUICELIFE.green, fontWeight: 700 }}>ABOUT US 🍃</div>
               <h2 style={{ fontSize: 30, margin: "8px 0" }}>We believe in<br /><em style={{ fontFamily: "cursive", color: JUICELIFE.orange, fontStyle: "normal" }}>nature&apos;s goodness</em></h2>
@@ -235,7 +235,7 @@ export function JuiceLifeStorefront({
       </section>
 
       {/* ---------- FOOTER ---------- */}
-      <footer id="contact" style={{ padding: "38px 7% 20px", display: "grid", gridTemplateColumns: "1.5fr 1fr 1fr", gap: 30, fontSize: 10, color: "#697169" }}>
+      <footer id="contact" className="bn-2col" style={{ padding: "38px 7% 20px", display: "grid", gridTemplateColumns: "1.5fr 1fr 1fr", gap: 30, fontSize: 10, color: "#697169", "--bn-cols": "1.5fr 1fr 1fr" } as React.CSSProperties}>
         <div>
           <div style={{ fontWeight: 800, fontSize: 18, color: JUICELIFE.green, marginBottom: 10 }}>🍃 {store.name}</div>
           <p>{store.business.description || "Fresh. Healthy. Delicious. Every day."}</p>

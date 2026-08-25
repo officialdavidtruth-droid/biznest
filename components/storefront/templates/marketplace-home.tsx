@@ -173,7 +173,7 @@ export function MarketplaceStorefront({
 
       <CategoryNav slug={slug} categories={navCategories} accent={MARKETPLACE.blue} ink={MARKETPLACE.ink} bg="#fff" border={MARKETPLACE.border} />
 
-      <div style={{ ...wrap, display: "grid", gridTemplateColumns: "165px 1fr 190px", gap: 10, paddingTop: 10 }}>
+      <div className="bn-2col" style={{ ...wrap, display: "grid", gridTemplateColumns: "165px 1fr 190px", gap: 10, paddingTop: 10, "--bn-cols": "165px 1fr 190px" } as React.CSSProperties}>
         {/* ---------- SIDEBAR ---------- */}
         <aside style={{ border: `1px solid ${MARKETPLACE.border}`, alignSelf: "start" }}>
           <div style={{ background: MARKETPLACE.orange, color: "#fff", padding: 9, fontWeight: 700, fontSize: 10 }}>ALL CATEGORIES</div>

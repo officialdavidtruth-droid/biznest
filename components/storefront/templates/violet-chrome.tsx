@@ -51,9 +51,10 @@ export function VioletHeader({
 
       {/* ---------- NAV ---------- */}
       <header
+        className="bn-header-inner"
         style={{
-          height: 72, background: theme.card, borderBottom: `1px solid ${border}`, display: "flex",
-          alignItems: "center", gap: 25, padding: "0 5%", position: "sticky", top: 0, zIndex: 20,
+          minHeight: 72, background: theme.card, borderBottom: `1px solid ${border}`, display: "flex",
+          alignItems: "center", gap: 25, padding: "12px 5%", position: "sticky", top: 0, zIndex: 20,
         }}
       >
         <a href={`/${slug}`} style={{ fontSize: 24, fontWeight: 900, textDecoration: "none", color: theme.ink, display: "flex", alignItems: "center", gap: 10 }}>
@@ -63,11 +64,13 @@ export function VioletHeader({
           ) : null}
           {store.name}
         </a>
-        <form action={`/${slug}/search`} style={{ height: 44, borderRadius: 25, background: "#f4f4f7", color: "#888", display: "flex", alignItems: "center", padding: "0 15px", flex: 1, maxWidth: 520 }}>
+        <form action={`/${slug}/search`} style={{ height: 44, borderRadius: 25, background: "#f4f4f7", color: "#888", display: "flex", alignItems: "center", padding: "0 15px", flex: 1, minWidth: 120, maxWidth: 520 }}>
           ⌕
-          <input name="q" placeholder="Search products, brands and categories" style={{ marginLeft: 8, fontSize: 13, border: 0, background: "transparent", outline: "none", flex: 1, color: theme.ink }} />
+          <input name="q" placeholder="Search products, brands and categories" style={{ marginLeft: 8, fontSize: 13, border: 0, background: "transparent", outline: "none", flex: 1, color: theme.ink, minWidth: 0 }} />
         </form>
-        <nav style={{ display: "flex", gap: 18, fontSize: 13, fontWeight: 700 }}>
+        <input type="checkbox" id={`bn-nav-${slug}-violet`} className="bn-nav-toggle" />
+        <label htmlFor={`bn-nav-${slug}-violet`} className="bn-hamburger" style={{ color: theme.ink }} aria-label="Menu">&#9776;</label>
+        <nav className="bn-nav-links" style={{ display: "flex", gap: 18, fontSize: 13, fontWeight: 700 }}>
           <a href={`/${slug}/catalog`} style={{ textDecoration: "none", color: theme.ink }}>Shop</a>
           {navCategories.length > 0 && <a href={`/${slug}/catalog`} style={{ textDecoration: "none", color: theme.ink }}>Categories</a>}
         </nav>
@@ -119,7 +122,7 @@ export function VioletFooter({
       </section>
 
       {/* ---------- FOOTER ---------- */}
-      <footer style={{ background: navy, color: "#fff", padding: "42px 5%", display: "grid", gridTemplateColumns: "2fr 1fr 1fr", gap: 30 }}>
+      <footer className="bn-2col" style={{ background: navy, color: "#fff", padding: "42px 5%", display: "grid", gridTemplateColumns: "2fr 1fr 1fr", gap: 30 }}>
         <div>
           <b style={{ fontSize: 16 }}>{store.name}</b>
           <p style={{ color: "#aaa", fontSize: 12, margin: "9px 0" }}>{store.business.description || "Modern commerce storefront."}</p>

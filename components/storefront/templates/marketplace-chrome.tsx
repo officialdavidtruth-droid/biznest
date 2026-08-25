@@ -45,7 +45,7 @@ export function MarketplaceHeader({
       </div>
 
       {/* ---------- HEADER ---------- */}
-      <header style={{ height: 70, display: "flex", alignItems: "center", padding: "0 6%", gap: 28, borderBottom: "1px solid #ddd" }}>
+      <header className="bn-header-inner" style={{ minHeight: 70, display: "flex", alignItems: "center", padding: "0 6%", gap: 28, borderBottom: "1px solid #ddd" }}>
         <a href={`/${slug}`} style={{ fontSize: 24, fontWeight: 700, letterSpacing: "-1px", color: "#111", textDecoration: "none", display: "flex", alignItems: "center", gap: 8 }}>
           {store.logoUrl ? (
             // eslint-disable-next-line @next/next/no-img-element
@@ -53,15 +53,17 @@ export function MarketplaceHeader({
           ) : null}
           {store.name}
         </a>
-        <nav style={{ display: "flex", gap: 22, fontSize: 10 }}>
-          <a href={`/${slug}/catalog`} style={{ color: "inherit" }}>SHOP</a>
-          {store.business.description && <a href={`/${slug}#about`} style={{ color: "inherit" }}>ABOUT US</a>}
-          {(store.contactEmail || store.contactPhone) && <a href={`/${slug}#contact`} style={{ color: "inherit" }}>CONTACT US</a>}
-        </nav>
         <div style={{ marginLeft: "auto", display: "flex", gap: 16, alignItems: "center", fontSize: 10, color: "#555" }}>
           <CartLink storeSlug={slug} accent={MARKETPLACE.blue} ink={MARKETPLACE.ink} />
           <AccountLink storeSlug={slug} ink={MARKETPLACE.ink} />
         </div>
+        <input type="checkbox" id={`bn-nav-${slug}-marketplace`} className="bn-nav-toggle" />
+        <label htmlFor={`bn-nav-${slug}-marketplace`} className="bn-hamburger" aria-label="Menu">&#9776;</label>
+        <nav className="bn-nav-links" style={{ display: "flex", gap: 22, fontSize: 10 }}>
+          <a href={`/${slug}/catalog`} style={{ color: "inherit" }}>SHOP</a>
+          {store.business.description && <a href={`/${slug}#about`} style={{ color: "inherit" }}>ABOUT US</a>}
+          {(store.contactEmail || store.contactPhone) && <a href={`/${slug}#contact`} style={{ color: "inherit" }}>CONTACT US</a>}
+        </nav>
       </header>
 
       {/* ---------- BLUE SEARCH BAR ---------- */}

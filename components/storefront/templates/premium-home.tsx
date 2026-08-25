@@ -54,7 +54,7 @@ export function PremiumStorefront({
       <PremiumHeader store={store} slug={slug} navCategories={navCategories} />
 
       {/* ---------- HERO SHELL (category sidebar + hero + side promo) ---------- */}
-      <section style={{ padding: "8px 5% 0", display: "grid", gridTemplateColumns: "150px 1fr 150px", gap: 10 }}>
+      <section className="bn-2col" style={{ padding: "8px 5% 0", display: "grid", gridTemplateColumns: "150px 1fr 150px", gap: 10, "--bn-cols": "150px 1fr 150px" } as React.CSSProperties}>
         <aside style={{ background: "#fff", borderRadius: 8, overflow: "hidden", border: "1px solid #e0e5e8" }}>
           <b style={{ display: "block", background: "#1e2429", color: "#fff", padding: 10, fontSize: 11 }}>☰ Category</b>
           {navCategories.slice(0, 10).map((c) => (
@@ -110,7 +110,7 @@ export function PremiumStorefront({
             <h2 style={{ fontSize: 15, margin: 0 }}>Featured Categories</h2>
             <a href={`/${slug}/catalog`} style={{ marginLeft: "auto", color: "#5d6870", fontSize: 10, textDecoration: "none" }}>See all</a>
           </div>
-          <div style={{ display: "grid", gridTemplateColumns: `repeat(${Math.min(catalogCategories.length, 6)}, 1fr)`, gap: 7 }}>
+          <div className="bn-grid-2" style={{ display: "grid", gridTemplateColumns: `repeat(${Math.min(catalogCategories.length, 6)}, 1fr)`, gap: 7 }}>
             {catalogCategories.slice(0, 6).map((cat) => (
               <a key={cat} href={`/${slug}/catalog?category=${encodeURIComponent(cat)}`} style={{ height: 78, borderRadius: 8, position: "relative", overflow: "hidden", background: "#ddd", display: "block", textDecoration: "none" }}>
                 <b style={{ position: "absolute", left: 8, bottom: 7, color: "#fff", textShadow: "0 1px 3px #000", fontSize: 10 }}>{cat}</b>
@@ -127,7 +127,7 @@ export function PremiumStorefront({
             <h2 style={{ fontSize: 15, margin: 0 }}>Featured Products</h2>
             <a href={`/${slug}/catalog`} style={{ marginLeft: "auto", color: "#5d6870", fontSize: 10, textDecoration: "none" }}>See all</a>
           </div>
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(6, 1fr)", gap: 7 }}>
+          <div className="bn-grid-2" style={{ display: "grid", gridTemplateColumns: "repeat(6, 1fr)", gap: 7 }}>
             {flashItems.map((item, i) => (
               <Reveal key={`${item.kind}-${item.id}`} delayMs={i * 30}>
                 <a href={`/${slug}/${item.kind === "product" ? "product" : "service"}/${item.id}`} style={{ background: "#fff", border: "1px solid #e2e7e9", borderRadius: 8, padding: 6, display: "block", textDecoration: "none", color: PREMIUM.ink }}>
@@ -157,7 +157,7 @@ export function PremiumStorefront({
               <h2 style={{ fontSize: 15, margin: 0 }}>{title}</h2>
               <a href={`/${slug}/catalog`} style={{ marginLeft: "auto", color: "#5d6870", fontSize: 10, textDecoration: "none" }}>See all</a>
             </div>
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(6, 1fr)", gap: 7 }}>
+            <div className="bn-grid-2" style={{ display: "grid", gridTemplateColumns: "repeat(6, 1fr)", gap: 7 }}>
               {rail.map((item) => (
                 <a key={`${title}-${item.kind}-${item.id}`} href={`/${slug}/${item.kind === "product" ? "product" : "service"}/${item.id}`} style={{ background: "#fff", border: "1px solid #e2e7e9", borderRadius: 8, padding: 6, display: "block", textDecoration: "none", color: PREMIUM.ink }}>
                   <div style={{ height: 100, background: "#f0f3f4", borderRadius: 5, position: "relative" }}>
@@ -181,7 +181,7 @@ export function PremiumStorefront({
           <div style={{ marginBottom: 8 }}>
             <h2 style={{ fontSize: 15, margin: 0 }}>Social Proof</h2>
           </div>
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 8 }}>
+          <div className="bn-grid-2" style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 8 }}>
             {goodReviews.slice(0, 4).map((r) => (
               <div key={r.id} style={{ background: "#fff", border: "1px solid #e2e7e9", borderRadius: 8, padding: 10, minHeight: 75, fontSize: 9 }}>
                 <b style={{ color: "#d79600" }}>{"★".repeat(r.rating)}</b>

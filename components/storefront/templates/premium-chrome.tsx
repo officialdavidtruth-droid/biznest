@@ -43,7 +43,7 @@ export function PremiumHeader({
       </div>
 
       {/* ---------- NAV ---------- */}
-      <header style={{ height: 68, background: "#fff", borderBottom: "1px solid #e2e7e9", display: "flex", alignItems: "center", gap: 16, padding: "0 4.8%", position: "sticky", top: 0, zIndex: 20 }}>
+      <header className="bn-header-inner" style={{ minHeight: 68, background: "#fff", borderBottom: "1px solid #e2e7e9", display: "flex", alignItems: "center", gap: 16, padding: "12px 4.8%", position: "sticky", top: 0, zIndex: 20 }}>
         <a href={`/${slug}`} style={{ fontSize: 21, fontWeight: 900, minWidth: 175, textDecoration: "none", color: PREMIUM.ink, display: "flex", alignItems: "center", gap: 8 }}>
           {store.logoUrl ? (
             // eslint-disable-next-line @next/next/no-img-element
@@ -51,10 +51,12 @@ export function PremiumHeader({
           ) : null}
           {store.name}
         </a>
-        <div style={{ height: 38, border: "1px solid #dfe4e7", borderRadius: 22, display: "flex", alignItems: "center", padding: "0 8px 0 12px", flex: 1, maxWidth: 430, color: "#8a949a" }}>
-          ⌕<span style={{ marginLeft: 7, fontSize: 12 }}>Search the catalog…</span>
+        <div style={{ height: 38, border: "1px solid #dfe4e7", borderRadius: 22, display: "flex", alignItems: "center", padding: "0 8px 0 12px", flex: 1, minWidth: 0, maxWidth: 430, color: "#8a949a" }}>
+          ⌕<span style={{ marginLeft: 7, fontSize: 12, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>Search the catalog…</span>
         </div>
-        <nav style={{ display: "flex", gap: 15, fontSize: 11, fontWeight: 700 }}>
+        <input type="checkbox" id={`bn-nav-${slug}-premium`} className="bn-nav-toggle" />
+        <label htmlFor={`bn-nav-${slug}-premium`} className="bn-hamburger" style={{ color: PREMIUM.ink }} aria-label="Menu">&#9776;</label>
+        <nav className="bn-nav-links" style={{ display: "flex", gap: 15, fontSize: 11, fontWeight: 700 }}>
           <a href={`/${slug}/catalog`} style={{ textDecoration: "none", color: PREMIUM.ink }}>Shop</a>
           {navCategories.length > 0 && <a href={`/${slug}/catalog`} style={{ textDecoration: "none", color: PREMIUM.ink }}>Categories</a>}
         </nav>
@@ -103,7 +105,7 @@ export function PremiumFooter({
       </section>
 
       {/* ---------- FOOTER ---------- */}
-      <footer style={{ background: "#fff", borderTop: "1px solid #dfe5e8", padding: "30px 5%", display: "grid", gridTemplateColumns: "2fr 1fr 1fr", gap: 20 }}>
+      <footer className="bn-2col" style={{ background: "#fff", borderTop: "1px solid #dfe5e8", padding: "30px 5%", display: "grid", gridTemplateColumns: "2fr 1fr 1fr", gap: 20 }}>
         <div>
           <b style={{ fontSize: 12 }}>{store.name}</b>
           <p style={{ color: "#6e7980", fontSize: 10, margin: "6px 0" }}>{store.business.description || "Enterprise commerce made simple."}</p>

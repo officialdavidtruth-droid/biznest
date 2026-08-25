@@ -150,7 +150,7 @@ export function VioletStorefront({
             <h2 style={{ fontSize: 22, margin: 0 }}>Shop by category</h2>
             <a href={`/${slug}/catalog`} style={{ fontSize: 13, color: p.accent, fontWeight: 800, textDecoration: "none" }}>See all</a>
           </div>
-          <div style={{ display: "grid", gridTemplateColumns: `repeat(${Math.min(catalogCategories.length, 6)}, 1fr)`, gap: 14 }}>
+          <div className="bn-grid-2" style={{ display: "grid", gridTemplateColumns: `repeat(${Math.min(catalogCategories.length, 6)}, 1fr)`, gap: 14 }}>
             {catalogCategories.slice(0, 6).map((cat) => (
               <a key={cat} href={`/${slug}/catalog?category=${encodeURIComponent(cat)}`} style={{ background: p.card, borderRadius: 17, padding: "17px 8px", textAlign: "center", boxShadow: "0 5px 20px #20144b0a", textDecoration: "none", color: p.ink }}>
                 <b style={{ display: "block", fontSize: 13 }}>{cat}</b>
@@ -167,7 +167,7 @@ export function VioletStorefront({
             <h2 style={{ fontSize: 22, margin: 0 }}>Trending now</h2>
             <a href={`/${slug}/catalog`} style={{ fontSize: 13, color: p.accent, fontWeight: 800, textDecoration: "none" }}>View all</a>
           </div>
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 16 }}>
+          <div className="bn-grid-2" style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 16 }}>
             {featuredItems.map((item, i) => (
               <Reveal key={`${item.kind}-${item.id}`} delayMs={i * 40}>
                 <a href={`/${slug}/${item.kind === "product" ? "product" : "service"}/${item.id}`} style={{ background: p.card, borderRadius: p.radius, overflow: "hidden", display: "block", textDecoration: "none", color: p.ink }}>
@@ -229,7 +229,7 @@ export function VioletStorefront({
       </section>
 
       {/* ---------- FOOTER ---------- */}
-      <footer style={{ background: p.navy, color: "#fff", padding: "42px 5%", display: "grid", gridTemplateColumns: "2fr 1fr 1fr", gap: 30 }}>
+      <footer className="bn-2col" style={{ background: p.navy, color: "#fff", padding: "42px 5%", display: "grid", gridTemplateColumns: "2fr 1fr 1fr", gap: 30 }}>
         <div>
           <b style={{ fontSize: 16 }}>{store.name}</b>
           <p style={{ color: "#aaa", fontSize: 12, margin: "9px 0" }}>{store.business.description || "Modern commerce storefront."}</p>

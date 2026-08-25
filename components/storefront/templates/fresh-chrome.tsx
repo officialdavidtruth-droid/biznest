@@ -45,7 +45,7 @@ export function FreshHeader({
   return (
     <>
       <nav style={{ position: "sticky", top: 0, zIndex: 50, background: "rgba(251,249,244,.9)", backdropFilter: "blur(10px)", borderBottom: `1px solid ${line}` }}>
-        <div style={{ ...wrap, display: "flex", alignItems: "center", justifyContent: "space-between", padding: "14px 28px" }}>
+        <div className="bn-header-inner" style={{ ...wrap, display: "flex", alignItems: "center", justifyContent: "space-between", padding: "14px 28px", rowGap: 10 }}>
           <a href={`/${slug}`} style={{ fontFamily: FRESH.headlineFont, fontWeight: 700, fontSize: 21, color: FRESH.forest, display: "flex", alignItems: "center", gap: 8, textDecoration: "none" }}>
             {store.logoUrl ? (
               // eslint-disable-next-line @next/next/no-img-element
@@ -86,7 +86,7 @@ export function FreshFooter({
 }) {
   return (
     <footer style={{ background: FRESH.forestDark, color: "rgba(255,255,255,.6)", padding: "48px 0 0", marginTop: 40 }}>
-      <div style={{ ...wrap, display: "grid", gridTemplateColumns: "1.4fr 1fr 1fr 1.2fr", gap: 36, paddingBottom: 36, borderBottom: "1px solid rgba(255,255,255,.1)" }}>
+      <div className="bn-2col" style={{ ...wrap, display: "grid", gridTemplateColumns: "1.4fr 1fr 1fr 1.2fr", gap: 36, paddingBottom: 36, borderBottom: "1px solid rgba(255,255,255,.1)", "--bn-cols": "1.4fr 1fr 1fr 1.2fr" } as React.CSSProperties}>
         <div>
           <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 12 }}>
             {store.logoUrl ? (

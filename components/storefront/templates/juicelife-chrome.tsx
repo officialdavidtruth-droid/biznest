@@ -48,7 +48,7 @@ export function JuiceLifeHeader({
       </div>
 
       {/* ---------- NAV ---------- */}
-      <header style={{ height: 82, display: "flex", alignItems: "center", ...wrap, gap: 30, background: "#fff", position: "sticky", top: 0, zIndex: 20, borderBottom: "1px solid #edf1ea" }}>
+      <header className="bn-header-inner" style={{ minHeight: 82, display: "flex", alignItems: "center", ...wrap, gap: 30, background: "#fff", position: "sticky", top: 0, zIndex: 20, borderBottom: "1px solid #edf1ea" }}>
         <a href={`/${slug}`} style={{ fontWeight: 800, fontSize: 22, color: JUICELIFE.green, lineHeight: 0.8, textDecoration: "none", display: "flex", alignItems: "center", gap: 8 }}>
           {store.logoUrl ? (
             // eslint-disable-next-line @next/next/no-img-element
@@ -57,7 +57,9 @@ export function JuiceLifeHeader({
             <span>🍃 {store.name}</span>
           )}
         </a>
-        <nav style={{ display: "flex", gap: 24, margin: "0 auto", fontSize: 12 }}>
+        <input type="checkbox" id={`bn-nav-${slug}-juicelife`} className="bn-nav-toggle" />
+        <label htmlFor={`bn-nav-${slug}-juicelife`} className="bn-hamburger" style={{ color: JUICELIFE.ink, marginLeft: "auto" }} aria-label="Menu">&#9776;</label>
+        <nav className="bn-nav-links" style={{ display: "flex", gap: 24, margin: "0 auto", fontSize: 12 }}>
           <a href={`/${slug}`} style={{ color: JUICELIFE.ink, textDecoration: "none" }}>Home</a>
           <a href={`/${slug}/catalog`} style={{ color: JUICELIFE.ink, textDecoration: "none" }}>Shop</a>
           <a href={`/${slug}/search`} style={{ color: JUICELIFE.ink, textDecoration: "none" }}>Search</a>
@@ -85,7 +87,7 @@ export function JuiceLifeFooter({
   social: Record<string, string>;
 }) {
   return (
-    <footer style={{ padding: "38px 7% 20px", display: "grid", gridTemplateColumns: "1.5fr 1fr 1fr", gap: 30, fontSize: 10, color: "#697169", background: "#fff" }}>
+    <footer className="bn-2col" style={{ padding: "38px 7% 20px", display: "grid", gridTemplateColumns: "1.5fr 1fr 1fr", gap: 30, fontSize: 10, color: "#697169", background: "#fff" }}>
       <div>
         <div style={{ fontWeight: 800, fontSize: 18, color: JUICELIFE.green, marginBottom: 10 }}>🍃 {store.name}</div>
         <p>{store.business.description || "Fresh. Healthy. Delicious. Every day."}</p>
