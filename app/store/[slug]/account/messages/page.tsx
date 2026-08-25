@@ -1,6 +1,6 @@
 import { notFound } from "next/navigation";
 import Link from "next/link";
-import { auth } from "@/lib/auth";
+import { getStoreCustomerSessionForStore } from "@/lib/store-customer-auth";
 import { getStoreBranding } from "@/lib/actions/store-branding";
 import { getGeneralStoreConversation, listStoreDisputes } from "@/lib/actions/account";
 import { DISPUTE_STATUS_CONFIG } from "@/lib/constants/dispute";
@@ -17,7 +17,7 @@ import { ShieldAlert } from "lucide-react";
 //    regardless of which of the two started it.
 export default async function Page({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
-  const session = await auth();
+  const session = await getStoreCustomerSessionForStore(slug);
   const store = await getStoreBranding(slug);
   if (!store || !session?.user?.id) notFound();
 
