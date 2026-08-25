@@ -1,6 +1,7 @@
 "use server";
 
 import { auth } from "@/lib/auth";
+import { getStoreCustomerSession } from "@/lib/store-customer-auth";
 import { prisma } from "@/lib/prisma";
 
 /**
@@ -11,26 +12,32 @@ import { prisma } from "@/lib/prisma";
  * read or mutate Store B data.
  */
 export async function requireStoreCustomer(storeSlug: string) {
-  const session = await auth();
-  if (!session?.user?.id || session.user.role !== "CUSTOMER" || !session.user.customerStoreId) return null;
+  const customerSession = await getStoreCustomerSession(storeSlug);
+  const session = customerSession ? null : await auth();
+  const userId = customerSession?.id ?? (session?.user?.role === "CUSTOMER" ? session.user.id : null);
+  const customerStoreId = customerSession?.storeId ?? (session?.user?.role === "CUSTOMER" ? session.user.customerStoreId : null);
+  if (!userId || !customerStoreId) return null;
 
   const store = await prisma.store.findUnique({
     where: { slug: storeSlug },
     select: { id: true, slug: true, name: true, logoUrl: true, themeColors: true },
   });
-  if (!store || store.id !== session.user.customerStoreId) return null;
+  if (!store || store.id !== customerStoreId) return null;
 
   return prisma.storeCustomer.findFirst({
-    where: { userId: session.user.id, storeId: store.id },
+    where: { userId, storeId: store.id },
     include: { store: { select: { id: true, slug: true, name: true, logoUrl: true, themeColors: true } } },
   });
 }
 
 export async function requireStoreCustomerByStoreId(storeId: string) {
-  const session = await auth();
-  if (!session?.user?.id || session.user.role !== "CUSTOMER" || session.user.customerStoreId !== storeId) return null;
+  const customerSession = await getStoreCustomerSession();
+  const session = customerSession ? null : await auth();
+  const userId = customerSession?.id ?? (session?.user?.role === "CUSTOMER" ? session.user.id : null);
+  const customerStoreId = customerSession?.storeId ?? (session?.user?.role === "CUSTOMER" ? session.user.customerStoreId : null);
+  if (!userId || customerStoreId !== storeId) return null;
   return prisma.storeCustomer.findFirst({
-    where: { userId: session.user.id, storeId },
+    where: { userId, storeId },
     include: { store: { select: { id: true, slug: true, name: true, logoUrl: true, themeColors: true } } },
   });
 }
