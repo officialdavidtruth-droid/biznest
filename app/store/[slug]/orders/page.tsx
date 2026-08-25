@@ -86,10 +86,24 @@ export default async function StoreOrdersPage({ params }: { params: Promise<{ sl
               <p className="mx-auto mt-1.5 max-w-xs text-sm text-slate-500">
                 Once you buy something from {store.name}, it&apos;ll show up here with live status updates.
               </p>
+              <Link
+                href={`/store/${slug}/account/recover-order`}
+                className="mt-4 inline-block text-xs font-semibold text-slate-500 underline underline-offset-2 hover:text-slate-800"
+              >
+                Already placed an order but don&apos;t see it? Recover it here
+              </Link>
             </div>
           </div>
         ) : (
           <div className="space-y-3">
+            <div className="flex justify-end">
+              <Link
+                href={`/store/${slug}/account/recover-order`}
+                className="text-xs font-semibold text-slate-500 underline underline-offset-2 hover:text-slate-800"
+              >
+                Missing an order? Recover it here
+              </Link>
+            </div>
             {orders.map((order) => {
               const status = STATUS_CONFIG[order.status] ?? STATUS_CONFIG.PAID;
               const StatusIcon = status.icon;
