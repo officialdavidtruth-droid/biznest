@@ -575,7 +575,7 @@ async function getOrCreateGeneralConversation(storeId: string, buyerId: string, 
   });
 }
 
-export async function startStoreConversation(storeSlug: string, message: string): Promise<ActionResult> {
+export async function startStoreConversation(storeSlug: string, message: string): Promise<ActionResult<{ conversationId: string }>> {
   const ctx = await getStoreCustomerContext(storeSlug);
   if (!ctx) return { success: false, error: "You don't have access to this store account." };
   if (!message.trim()) return { success: false, error: "Message can't be empty." };
