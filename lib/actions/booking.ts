@@ -26,6 +26,13 @@ const DAY_KEYS = [
   "sat",
 ] as const;
 
+/**
+ * Checks whether the currently authenticated user has access
+ * to manage the specified store's bookings.
+ *
+ * Store owners are allowed.
+ * Platform admins and support moderators are allowed.
+ */
 async function assertStoreAccess(slug: string) {
   const session = await auth();
 
@@ -37,8 +44,12 @@ async function assertStoreAccess(slug: string) {
   }
 
   const store = await prisma.store.findUnique({
-    where: { slug },
-    include: { business: true },
+    where: {
+      slug,
+    },
+    include: {
+      business: true,
+    },
   });
 
   if (!store) {
@@ -68,17 +79,21 @@ async function assertStoreAccess(slug: string) {
 }
 
 /**
- * Returns available start times for a service on a given date.
+ * Returns all available booking start times for a service on a
+ * particular date.
  *
- * Existing bookings are removed from the available slots.
- * Slots that have already passed today are also removed.
+ * Availability comes from the service's weekly availability settings.
+ * Existing bookings are removed from the result.
+ * Past times are also removed when the selected date is today.
  */
 export async function getAvailableSlots(
   serviceId: string,
   dateISO: string
 ): Promise<string[]> {
   const service = await prisma.service.findUnique({
-    where: { id: serviceId },
+    where: {
+      id: serviceId,
+    },
   });
 
   if (!service || !service.isBookable || !service.durationMins) {
@@ -108,28 +123,60 @@ export async function getAvailableSlots(
   const duration = service.durationMins;
   const slots: string[] = [];
 
+  /**
+   * Convert every availability window into bookable slots.
+   *
+   * Example:
+   * 09:00 - 12:00
+   * duration = 60
+   *
+   * Results:
+   * 09:00
+   * 10:00
+   * 11:00
+   */
   for (const [start, end] of windows) {
-    let [h, m] = start.split(":").map(Number);
-
+    const [startH, startM] = start.split(":").map(Number);
     const [endH, endM] = end.split(":").map(Number);
+
+    if (
+      Number.isNaN(startH) ||
+      Number.isNaN(startM) ||
+      Number.isNaN(endH) ||
+      Number.isNaN(endM)
+    ) {
+      continue;
+    }
+
+    let currentMinutes = startH * 60 + startM;
     const endMinutes = endH * 60 + endM;
 
-    while (h * 60 + m + duration <= endMinutes) {
+    while (currentMinutes + duration <= endMinutes) {
+      const hours = Math.floor(currentMinutes / 60);
+      const minutes = currentMinutes % 60;
+
       slots.push(
-        `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}`
+        `${String(hours).padStart(2, "0")}:${String(minutes).padStart(
+          2,
+          "0"
+        )}`
       );
 
-      m += duration;
-
-      if (m >= 60) {
-        h += Math.floor(m / 60);
-        m %= 60;
-      }
+      currentMinutes += duration;
     }
   }
 
+  /**
+   * Find existing bookings for this service on this date.
+   *
+   * Cancelled bookings do not block the slot.
+   */
   const dayStart = new Date(`${dateISO}T00:00:00`);
-  const dayEnd = new Date(`${dateISO}T23:59:59`);
+  const dayEnd = new Date(`${dateISO}T23:59:59.999`);
+
+  if (Number.isNaN(dayStart.getTime()) || Number.isNaN(dayEnd.getTime())) {
+    return [];
+  }
 
   const existing = await prisma.booking.findMany({
     where: {
@@ -144,35 +191,86 @@ export async function getAvailableSlots(
     },
     select: {
       scheduledAt: true,
+      durationMins: true,
     },
   });
 
-  const taken = new Set(
-    existing.map((booking) => {
-      const d = booking.scheduledAt;
+  /**
+   * Treat an existing booking as occupying its complete duration.
+   *
+   * This prevents a second customer from booking a slot that overlaps
+   * an existing longer appointment.
+   */
+  const takenIntervals = existing.map((booking) => {
+    const start = booking.scheduledAt.getTime();
 
-      return `${String(d.getHours()).padStart(2, "0")}:${String(
-        d.getMinutes()
-      ).padStart(2, "0")}`;
-    })
-  );
+    const end =
+      start +
+      booking.durationMins * 60 * 1000;
 
-  // Don't offer slots that have already passed today.
-  const now = new Date();
-  const isToday = dayStart.toDateString() === now.toDateString();
+    return {
+      start,
+      end,
+    };
+  });
 
-  return slots.filter((slot) => {
-    if (taken.has(slot)) {
+  /**
+   * Remove slots that overlap an existing booking.
+   */
+  const availableSlots = slots.filter((slot) => {
+    const [hours, minutes] = slot.split(":").map(Number);
+
+    const slotDate = new Date(`${dateISO}T00:00:00`);
+
+    if (Number.isNaN(slotDate.getTime())) {
       return false;
     }
 
-    if (!isToday) {
-      return true;
+    slotDate.setHours(hours, minutes, 0, 0);
+
+    const slotStart = slotDate.getTime();
+
+    const slotEnd =
+      slotStart +
+      duration * 60 * 1000;
+
+    const overlapsExisting = takenIntervals.some(
+      (interval) =>
+        slotStart < interval.end &&
+        slotEnd > interval.start
+    );
+
+    if (overlapsExisting) {
+      return false;
     }
 
-    const [sh, sm] = slot.split(":").map(Number);
-    const slotMinutes = sh * 60 + sm;
-    const currentMinutes = now.getHours() * 60 + now.getMinutes();
+    return true;
+  });
+
+  /**
+   * Don't show times that have already passed today.
+   */
+  const now = new Date();
+
+  const isToday =
+    dayStart.getFullYear() === now.getFullYear() &&
+    dayStart.getMonth() === now.getMonth() &&
+    dayStart.getDate() === now.getDate();
+
+  if (!isToday) {
+    return availableSlots;
+  }
+
+  const currentMinutes =
+    now.getHours() * 60 +
+    now.getMinutes();
+
+  return availableSlots.filter((slot) => {
+    const [hours, minutes] = slot.split(":").map(Number);
+
+    const slotMinutes =
+      hours * 60 +
+      minutes;
 
     return slotMinutes > currentMinutes;
   });
@@ -181,8 +279,13 @@ export async function getAvailableSlots(
 /**
  * Customer creates a booking.
  *
- * Store customers use the isolated store-customer session.
- * Admin/staff users continue using the normal BizNest session.
+ * IMPORTANT:
+ * Store customer authentication is intentionally isolated from
+ * the normal BizNest admin authentication.
+ *
+ * getStoreCustomerSession() currently accepts NO arguments.
+ * Therefore the store is verified separately using the service's
+ * storeId and requireStoreCustomerByStoreId().
  */
 export async function createBooking(
   storeSlug: string,
@@ -191,7 +294,15 @@ export async function createBooking(
   time: string,
   notes: string
 ): Promise<ActionResult<{ bookingId: string }>> {
-  const customerSession = await getStoreCustomerSession(storeSlug);
+  /**
+   * IMPORTANT FIX:
+   *
+   * Do NOT pass storeSlug here.
+   *
+   * The current getStoreCustomerSession() function accepts zero
+   * arguments.
+   */
+  const customerSession = await getStoreCustomerSession();
 
   const session = customerSession
     ? {
@@ -210,6 +321,9 @@ export async function createBooking(
     };
   }
 
+  /**
+   * Rate-limit booking attempts to prevent abuse.
+   */
   const rate = await checkRateLimit(
     `booking:${session.user.id}`,
     10,
@@ -224,6 +338,9 @@ export async function createBooking(
     };
   }
 
+  /**
+   * Find the service.
+   */
   const service = await prisma.service.findUnique({
     where: {
       id: serviceId,
@@ -238,9 +355,53 @@ export async function createBooking(
   }
 
   /**
-   * Important:
-   * A store customer must belong to the same store as the service.
-   * This prevents a customer session from Store A being used against Store B.
+   * Verify that the service actually belongs to the requested store.
+   *
+   * This prevents somebody from sending:
+   *
+   * /store-a
+   *
+   * while supplying a service belonging to:
+   *
+   * store-b
+   */
+  const store = await prisma.store.findUnique({
+    where: {
+      slug: storeSlug,
+    },
+    select: {
+      id: true,
+      slug: true,
+      status: true,
+    },
+  });
+
+  if (!store) {
+    return {
+      success: false,
+      error: "Store not found.",
+    };
+  }
+
+  if (store.status !== "ACTIVE") {
+    return {
+      success: false,
+      error: "This store isn't available.",
+    };
+  }
+
+  if (service.storeId !== store.id) {
+    return {
+      success: false,
+      error: "This service does not belong to this store.",
+    };
+  }
+
+  /**
+   * Store customers must belong to the same store as the service.
+   *
+   * This is the important isolation check that prevents a customer
+   * session from Store A being used to create a booking at Store B.
    */
   if (session.user.role === "CUSTOMER") {
     const membership = await requireStoreCustomerByStoreId(
@@ -256,16 +417,31 @@ export async function createBooking(
     }
   }
 
-  const available = await getAvailableSlots(serviceId, dateISO);
+  /**
+   * Validate the requested date.
+   */
+  const requestedDate = new Date(`${dateISO}T00:00:00`);
 
-  if (!available.includes(time)) {
+  if (Number.isNaN(requestedDate.getTime())) {
     return {
       success: false,
-      error: "That slot was just taken — pick another time.",
+      error: "Invalid booking date.",
     };
   }
 
-  const [h, m] = time.split(":").map(Number);
+  /**
+   * Validate the requested time before using it.
+   */
+  const timeParts = time.split(":");
+
+  if (timeParts.length !== 2) {
+    return {
+      success: false,
+      error: "Invalid booking time.",
+    };
+  }
+
+  const [h, m] = timeParts.map(Number);
 
   if (
     Number.isNaN(h) ||
@@ -281,6 +457,24 @@ export async function createBooking(
     };
   }
 
+  /**
+   * Make sure the selected slot is actually available.
+   */
+  const available = await getAvailableSlots(
+    serviceId,
+    dateISO
+  );
+
+  if (!available.includes(time)) {
+    return {
+      success: false,
+      error: "That slot was just taken — pick another time.",
+    };
+  }
+
+  /**
+   * Build the actual scheduled datetime.
+   */
   const scheduledAt = new Date(`${dateISO}T00:00:00`);
 
   if (Number.isNaN(scheduledAt.getTime())) {
@@ -292,6 +486,76 @@ export async function createBooking(
 
   scheduledAt.setHours(h, m, 0, 0);
 
+  /**
+   * Final race-condition check.
+   *
+   * Another customer could theoretically create the same booking
+   * between getAvailableSlots() and prisma.booking.create().
+   *
+   * Check the database again immediately before creating it.
+   */
+  const bookingEnd = new Date(
+    scheduledAt.getTime() +
+      service.durationMins * 60 * 1000
+  );
+
+  const overlappingBooking =
+    await prisma.booking.findFirst({
+      where: {
+        serviceId,
+        status: {
+          not: "CANCELLED",
+        },
+        scheduledAt: {
+          lt: bookingEnd,
+        },
+        AND: [
+          {
+            scheduledAt: {
+              gte: new Date(
+                scheduledAt.getTime() -
+                  service.durationMins * 60 * 1000
+              ),
+            },
+          },
+        ],
+      },
+      select: {
+        id: true,
+        scheduledAt: true,
+        durationMins: true,
+      },
+    });
+
+  if (overlappingBooking) {
+    const existingStart =
+      overlappingBooking.scheduledAt.getTime();
+
+    const existingEnd =
+      existingStart +
+      overlappingBooking.durationMins * 60 * 1000;
+
+    const requestedStart =
+      scheduledAt.getTime();
+
+    const requestedEnd =
+      bookingEnd.getTime();
+
+    const overlaps =
+      requestedStart < existingEnd &&
+      requestedEnd > existingStart;
+
+    if (overlaps) {
+      return {
+        success: false,
+        error: "That slot was just taken — pick another time.",
+      };
+    }
+  }
+
+  /**
+   * Create the booking.
+   */
   const booking = await prisma.booking.create({
     data: {
       storeId: service.storeId,
@@ -299,18 +563,29 @@ export async function createBooking(
       buyerId: session.user.id,
       scheduledAt,
       durationMins: service.durationMins,
-      notes: notes || null,
+      notes: notes?.trim() || null,
     },
   });
 
-  await emitWebhookEvent("BOOKING_CREATED", service.storeId, {
-    bookingId: booking.id,
-    serviceId,
-    scheduledAt: booking.scheduledAt,
-    durationMins: booking.durationMins,
-  });
+  /**
+   * Notify external integrations.
+   */
+  await emitWebhookEvent(
+    "BOOKING_CREATED",
+    service.storeId,
+    {
+      bookingId: booking.id,
+      serviceId,
+      scheduledAt: booking.scheduledAt,
+      durationMins: booking.durationMins,
+    }
+  );
 
+  /**
+   * Refresh the relevant storefront/admin pages.
+   */
   revalidatePath(`/store/${storeSlug}`);
+  revalidatePath(`/store/${storeSlug}/admin/services`);
 
   return {
     success: true,
@@ -321,7 +596,7 @@ export async function createBooking(
 }
 
 /**
- * Lists bookings for the store owner/staff dashboard.
+ * Lists all bookings for the store owner/staff dashboard.
  */
 export async function listBookings(slug: string) {
   const access = await assertStoreAccess(slug);
@@ -350,14 +625,21 @@ export async function listBookings(slug: string) {
 }
 
 /**
- * Updates booking status.
+ * Updates a booking status.
  *
- * Only the store owner or authorized platform staff can perform this action.
+ * Allowed statuses:
+ *
+ * CONFIRMED
+ * COMPLETED
+ * CANCELLED
  */
 export async function updateBookingStatus(
   slug: string,
   bookingId: string,
-  status: "CONFIRMED" | "COMPLETED" | "CANCELLED"
+  status:
+    | "CONFIRMED"
+    | "COMPLETED"
+    | "CANCELLED"
 ): Promise<ActionResult> {
   const access = await assertStoreAccess(slug);
 
@@ -382,6 +664,16 @@ export async function updateBookingStatus(
     };
   }
 
+  /**
+   * Don't perform unnecessary database writes.
+   */
+  if (booking.status === status) {
+    return {
+      success: true,
+      data: undefined,
+    };
+  }
+
   await prisma.booking.update({
     where: {
       id: bookingId,
@@ -391,22 +683,40 @@ export async function updateBookingStatus(
     },
   });
 
+  /**
+   * Notify connected integrations.
+   */
   if (status === "CONFIRMED") {
-    await emitWebhookEvent("BOOKING_CONFIRMED", access.store.id, {
-      bookingId,
-      status,
-    });
-  } else if (status === "CANCELLED") {
-    await emitWebhookEvent("BOOKING_CANCELLED", access.store.id, {
-      bookingId,
-      status,
-    });
+    await emitWebhookEvent(
+      "BOOKING_CONFIRMED",
+      access.store.id,
+      {
+        bookingId,
+        status,
+      }
+    );
   }
 
-  revalidatePath(`/store/${slug}/admin/services`);
+  if (status === "CANCELLED") {
+    await emitWebhookEvent(
+      "BOOKING_CANCELLED",
+      access.store.id,
+      {
+        bookingId,
+        status,
+      }
+    );
+  }
+
+  /**
+   * Refresh the admin booking/service page.
+   */
+  revalidatePath(
+    `/store/${slug}/admin/services`
+  );
 
   return {
     success: true,
     data: undefined,
   };
-      }
+}
