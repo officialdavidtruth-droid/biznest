@@ -102,7 +102,15 @@ export async function listWishlist() {
     orderBy: { createdAt: "desc" },
   });
 }
-
+export async function listStoreWishlist(storeSlug: string) {
+  const ctx = await getStoreCustomerContext(storeSlug);
+  if (!ctx) return [];
+  return prisma.wishlistItem.findMany({
+    where: { userId: ctx.userId, storeId: ctx.storeId },
+    include: { product: true, service: true },
+    orderBy: { createdAt: "desc" },
+  });
+}
 export async function toggleWishlist(input: {
   productId?: string;
   serviceId?: string;
