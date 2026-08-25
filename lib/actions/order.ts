@@ -1,7 +1,10 @@
 "use server";
 
 import { auth } from "@/lib/auth";
-import { getStoreCustomerSession } from "@/lib/store-customer-auth";
+import {
+  getStoreCustomerSession,
+  getStoreCustomerSessionForStore,
+} from "@/lib/store-customer-auth";
 import { prisma } from "@/lib/prisma";
 import { requireStoreCustomer, requireStoreCustomerByStoreId } from "@/lib/actions/store-customer";
 import { checkoutSchema, type CheckoutInput } from "@/lib/validations/order";
@@ -312,27 +315,67 @@ export async function assertStoreAccess(slug: string): Promise<StoreAccessResult
   return { success: true, store: result.store };
 }
 
-export async function getOrderForBuyer(orderId: string, storeSlug?: string) {
-  const customerSession = storeSlug ? await getStoreCustomerSession(storeSlug) : await getStoreCustomerSession();
+export async function getOrderForBuyer(
+  orderId: string,
+  storeSlug?: string
+) {
+  const customerSession = storeSlug
+    ? await getStoreCustomerSessionForStore(storeSlug)
+    : await getStoreCustomerSession();
+
   const session = customerSession
-    ? { user: { id: customerSession.id, role: "CUSTOMER" as const, customerStoreId: customerSession.storeId } }
+    ? customerSession
     : await auth();
-  if (!session?.user?.id) return null;
+
+  if (!session?.user?.id) {
+    return null;
+  }
 
   if (session.user.role === "CUSTOMER" && storeSlug) {
     const membership = await requireStoreCustomer(storeSlug);
-    if (!membership) return null;
+
+    if (!membership) {
+      return null;
+    }
   }
 
   return prisma.order.findFirst({
-    where: { id: orderId, buyerId: session.user.id, ...(storeSlug ? { store: { slug: storeSlug } } : {}) },
+    where: {
+      id: orderId,
+      buyerId: session.user.id,
+      ...(storeSlug
+        ? {
+            store: {
+              slug: storeSlug,
+            },
+          }
+        : {}),
+    },
     include: {
-      items: { include: { product: true, service: true } },
+      items: {
+        include: {
+          product: true,
+          service: true,
+        },
+      },
       store: {
         select: {
-          name: true, slug: true, logoUrl: true, contactEmail: true, contactPhone: true, socialLinks: true,
-          template: { select: { name: true } },
-          business: { select: { description: true } },
+          name: true,
+          slug: true,
+          logoUrl: true,
+          contactEmail: true,
+          contactPhone: true,
+          socialLinks: true,
+          template: {
+            select: {
+              name: true,
+            },
+          },
+          business: {
+            select: {
+              description: true,
+            },
+          },
         },
       },
     },
