@@ -29,17 +29,21 @@ import { sendOrderNotificationEmail } from "@/lib/email/send";
 
 const CODE_TTL_MS = 15 * 60 * 1000;
 
-async function getStoreAndVerifiedSession(storeSlug: string) {
+type StoreSessionContext =
+  | { ok: true; userId: string; store: { id: string; name: string } }
+  | { ok: false; error: string };
+
+async function getStoreAndVerifiedSession(storeSlug: string): Promise<StoreSessionContext> {
   const session = await auth();
   if (!session?.user?.id || session.user.role !== "CUSTOMER") {
-    return { error: "Sign in to your account first, then recover the order into it." } as const;
+    return { ok: false, error: "Sign in to your account first, then recover the order into it." };
   }
   const store = await prisma.store.findUnique({ where: { slug: storeSlug }, select: { id: true, name: true } });
-  if (!store) return { error: "Store not found." } as const;
+  if (!store) return { ok: false, error: "Store not found." };
   if (session.user.customerStoreId !== store.id) {
-    return { error: "Sign in to your account at this store first." } as const;
+    return { ok: false, error: "Sign in to your account at this store first." };
   }
-  return { userId: session.user.id, store } as const;
+  return { ok: true, userId: session.user.id, store };
 }
 
 async function createRecoveryCode(identifier: string) {
@@ -62,7 +66,7 @@ async function createRecoveryCode(identifier: string) {
 
 export async function requestOrderRecovery(storeSlug: string, email: string): Promise<ActionResult> {
   const ctx = await getStoreAndVerifiedSession(storeSlug);
-  if ("error" in ctx) return { success: false, error: ctx.error };
+  if (!ctx.ok) return { success: false, error: ctx.error };
 
   const normalizedEmail = email.trim().toLowerCase();
   if (!normalizedEmail) return { success: false, error: "Enter the email you used at checkout." };
@@ -90,7 +94,7 @@ export async function requestOrderRecovery(storeSlug: string, email: string): Pr
 
 export async function confirmOrderRecovery(storeSlug: string, email: string, code: string): Promise<ActionResult<{ recoveredCount: number }>> {
   const ctx = await getStoreAndVerifiedSession(storeSlug);
-  if ("error" in ctx) return { success: false, error: ctx.error };
+  if (!ctx.ok) return { success: false, error: ctx.error };
 
   const normalizedEmail = email.trim().toLowerCase();
   const normalizedCode = code.trim();
