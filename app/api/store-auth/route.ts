@@ -45,10 +45,9 @@ export async function POST(request: NextRequest) {
 
     const customer = await prisma.storeCustomer.findFirst({
       where: {
-        id: customerId,
-        storeId,
-        isActive: true,
-      },
+  id: customerId,
+  storeId,
+},
       select: {
         id: true,
         storeId: true,
