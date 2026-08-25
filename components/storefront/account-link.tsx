@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useSession } from "next-auth/react";
+import { useEffect, useState } from "react";
 import { User } from "lucide-react";
 
 /**
@@ -24,9 +24,23 @@ export function AccountLink({
   storeSlug: string;
   ink?: string;
 }) {
-  const { data: session, status } = useSession();
+  const [authenticated, setAuthenticated] = useState<boolean | null>(null);
 
-  if (status === "authenticated" && session?.user) {
+  useEffect(() => {
+    let active = true;
+    fetch("/api/store-auth", { credentials: "include", cache: "no-store" })
+      .then((response) => {
+        if (active) setAuthenticated(response.ok);
+      })
+      .catch(() => {
+        if (active) setAuthenticated(false);
+      });
+    return () => {
+      active = false;
+    };
+  }, [storeSlug]);
+
+  if (authenticated === true) {
     return (
       <Link
         href={`/${storeSlug}/account`}
