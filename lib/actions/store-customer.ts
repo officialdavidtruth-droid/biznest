@@ -1,7 +1,7 @@
 "use server";
 
 import { auth } from "@/lib/auth";
-import { getStoreCustomerSession } from "@/lib/store-customer-auth";
+import { getStoreCustomerSession, getStoreCustomerSessionForStore } from "@/lib/store-customer-auth";
 import { prisma } from "@/lib/prisma";
 
 /**
@@ -12,10 +12,10 @@ import { prisma } from "@/lib/prisma";
  * read or mutate Store B data.
  */
 export async function requireStoreCustomer(storeSlug: string) {
-  const customerSession = await getStoreCustomerSession(storeSlug);
+  const customerSession = await getStoreCustomerSessionForStore(storeSlug);
   const session = customerSession ? null : await auth();
-  const userId = customerSession?.id ?? (session?.user?.role === "CUSTOMER" ? session.user.id : null);
-  const customerStoreId = customerSession?.storeId ?? (session?.user?.role === "CUSTOMER" ? session.user.customerStoreId : null);
+  const userId = customerSession?.user?.id ?? (session?.user?.role === "CUSTOMER" ? session.user.id : null);
+  const customerStoreId = customerSession?.user?.customerStoreId ?? (session?.user?.role === "CUSTOMER" ? session.user.customerStoreId : null);
   if (!userId || !customerStoreId) return null;
 
   const store = await prisma.store.findUnique({
@@ -33,8 +33,8 @@ export async function requireStoreCustomer(storeSlug: string) {
 export async function requireStoreCustomerByStoreId(storeId: string) {
   const customerSession = await getStoreCustomerSession();
   const session = customerSession ? null : await auth();
-  const userId = customerSession?.id ?? (session?.user?.role === "CUSTOMER" ? session.user.id : null);
-  const customerStoreId = customerSession?.storeId ?? (session?.user?.role === "CUSTOMER" ? session.user.customerStoreId : null);
+  const userId = customerSession?.user?.id ?? (session?.user?.role === "CUSTOMER" ? session.user.id : null);
+  const customerStoreId = customerSession?.user?.customerStoreId ?? (session?.user?.role === "CUSTOMER" ? session.user.customerStoreId : null);
   if (!userId || customerStoreId !== storeId) return null;
   return prisma.storeCustomer.findFirst({
     where: { userId, storeId },
