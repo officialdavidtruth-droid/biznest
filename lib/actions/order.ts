@@ -166,7 +166,7 @@ export async function startCheckout(
   storeSlug: string,
   input: CheckoutInput
 ): Promise<ActionResult<{ authorizationUrl: string }>> {
-  const customerSession = await getStoreCustomerSession(storeSlug);
+  const customerSession = await getStoreCustomerSession();
   const session = customerSession
     ? { user: { id: customerSession.id, role: "CUSTOMER" as const, customerStoreId: customerSession.storeId } }
     : await auth();
