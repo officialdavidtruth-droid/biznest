@@ -881,6 +881,14 @@ export async function listOrdersForBuyerAtStore(
       store: {
         slug,
       },
+
+      // Unpaid orders are effectively still "in the cart" — a customer who
+      // never paid shouldn't see them cluttering their order history. Only
+      // orders that were actually paid for (or that reached a terminal
+      // cancelled/refunded state) belong in "My orders".
+      status: {
+        not: "PENDING_PAYMENT",
+      },
     },
 
     include: {
