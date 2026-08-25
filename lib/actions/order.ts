@@ -1,6 +1,7 @@
 "use server";
 
 import { auth } from "@/lib/auth";
+import { getStoreCustomerSession } from "@/lib/store-customer-auth";
 import { prisma } from "@/lib/prisma";
 import { requireStoreCustomer, requireStoreCustomerByStoreId } from "@/lib/actions/store-customer";
 import { checkoutSchema, type CheckoutInput } from "@/lib/validations/order";
@@ -165,7 +166,10 @@ export async function startCheckout(
   storeSlug: string,
   input: CheckoutInput
 ): Promise<ActionResult<{ authorizationUrl: string }>> {
-  const session = await auth();
+  const customerSession = await getStoreCustomerSession(storeSlug);
+  const session = customerSession
+    ? { user: { id: customerSession.id, role: "CUSTOMER" as const, customerStoreId: customerSession.storeId } }
+    : await auth();
   if (!session?.user?.id) return { success: false, error: "Please sign in to check out." };
 
   const parsed = checkoutSchema.safeParse(input);
@@ -308,7 +312,10 @@ export async function assertStoreAccess(slug: string): Promise<StoreAccessResult
 }
 
 export async function getOrderForBuyer(orderId: string, storeSlug?: string) {
-  const session = await auth();
+  const customerSession = storeSlug ? await getStoreCustomerSession(storeSlug) : await getStoreCustomerSession();
+  const session = customerSession
+    ? { user: { id: customerSession.id, role: "CUSTOMER" as const, customerStoreId: customerSession.storeId } }
+    : await auth();
   if (!session?.user?.id) return null;
 
   if (session.user.role === "CUSTOMER" && storeSlug) {
@@ -332,7 +339,10 @@ export async function getOrderForBuyer(orderId: string, storeSlug?: string) {
 }
 
 export async function listOrdersForBuyer() {
-  const session = await auth();
+  const customerSession = await getStoreCustomerSession();
+  const session = customerSession
+    ? { user: { id: customerSession.id, role: "CUSTOMER" as const, customerStoreId: customerSession.storeId } }
+    : await auth();
   if (!session?.user?.id) return [];
   if (session.user.role === "CUSTOMER" && !session.user.customerStoreId) return [];
 
@@ -351,7 +361,10 @@ export async function listOrdersForBuyer() {
 // store (see StoreCustomer), so a buyer's order list here is naturally
 // just "my orders at this store", not a cross-store feed.
 export async function listOrdersForBuyerAtStore(slug: string) {
-  const session = await auth();
+  const customerSession = await getStoreCustomerSession(slug);
+  const session = customerSession
+    ? { user: { id: customerSession.id, role: "CUSTOMER" as const, customerStoreId: customerSession.storeId } }
+    : await auth();
   if (!session?.user?.id) return [];
   if (session.user.role === "CUSTOMER") {
     const membership = await requireStoreCustomer(slug);
