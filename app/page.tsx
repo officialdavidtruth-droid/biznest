@@ -83,7 +83,14 @@ const FAQS = [
 
 export default async function HomePage() {
   const session = await auth();
-  const [plans, activeStoreCount, listingCount, liveStores] = await Promise.all([
+  const [
+  plans,
+  activeStoreCount,
+  listingCount,
+  liveStores,
+  ownedStore,
+  staffStore,
+] = await Promise.all([
     prisma.subscription.findMany({ where: { isActive: true }, orderBy: { price: "asc" } }),
     prisma.store.count({ where: { status: "ACTIVE" } }),
     prisma.product.count({ where: { isPublished: true } }),
