@@ -7,6 +7,28 @@ import {
 
 export const runtime = "nodejs";
 
+// Used by AccountLink (storefront header) to check whether the current
+// visitor has a valid store-customer session, so it knows whether to
+// render "My account" or "Sign in". Read-only — must not mutate the
+// session either way.
+export async function GET() {
+  const session = await getStoreCustomerSession();
+
+  if (!session) {
+    return NextResponse.json({ success: false }, { status: 401 });
+  }
+
+  return NextResponse.json({
+    success: true,
+    customer: {
+      userId: session.user.id,
+      storeId: session.user.customerStoreId,
+      name: session.user.name,
+      email: session.user.email,
+    },
+  });
+}
+
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
