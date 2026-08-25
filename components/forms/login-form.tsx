@@ -11,7 +11,16 @@ import { Mail } from "lucide-react";
 import { PasswordInput } from "@/components/forms/password-input";
 import { AuthInput } from "@/components/forms/auth-input";
 import { AuthSubmitButton, GoogleButton, AuthDivider } from "@/components/forms/auth-buttons";
+import { loginStoreCustomer } from "@/lib/actions/store-customer";
 import Link from "next/link";
+
+const STORE_LOGIN_ERROR_MESSAGES: Record<string, string> = {
+  INVALID_CREDENTIALS: "Invalid email or password.",
+  ACCOUNT_LOCKED: "Too many failed attempts. Try again in 15 minutes.",
+  ACCOUNT_BANNED: "This account has been suspended. Contact support.",
+  RATE_LIMITED: "Too many sign-in attempts. Please wait a few minutes and try again.",
+  STORE_ACCOUNT_NOT_FOUND: "We couldn't find an account with this store. Please sign up first.",
+};
 
 export function LoginForm({
   isStoreContext = false,
@@ -47,15 +56,9 @@ export function LoginForm({
       // customer can be signed into a storefront while the store owner remains
       // signed into the BizNest admin in the same browser.
       if (isStoreContext && storeSlug) {
-        const response = await fetch("/api/store-auth", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          credentials: "include",
-          body: JSON.stringify({ storeSlug, email: values.email, password: values.password }),
-        });
-        const data = (await response.json().catch(() => ({}))) as { error?: string };
-        if (!response.ok) {
-          toast.error(data.error ?? "Invalid email or password.");
+        const result = await loginStoreCustomer(storeSlug, values.email, values.password);
+        if (!result.success) {
+          toast.error(STORE_LOGIN_ERROR_MESSAGES[result.code] ?? "Invalid email or password.");
           return;
         }
 
