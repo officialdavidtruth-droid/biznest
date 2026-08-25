@@ -13,6 +13,7 @@ import { HomeVistaHeader, HomeVistaFooter } from "@/components/storefront/templa
 import { RrwHeader, RrwFooter } from "@/components/storefront/templates/rrw-chrome";
 import { RivoraHeader, RivoraFooter } from "@/components/storefront/templates/rivora-chrome";
 import { getStoreCategoryTree } from "@/lib/storefront-categories";
+import { ResendConfirmationButton } from "@/components/storefront/resend-confirmation-button";
 
 const ACCENT = "#0041C8";
 const INK = "#141D23";
@@ -172,6 +173,12 @@ export default async function OrderConfirmationPage({
           View my orders
         </Link>
       </div>
+
+      {isPaid && (
+        <div className="mt-5">
+          <ResendConfirmationButton orderId={order.id} storeSlug={slug} ink={ink} />
+        </div>
+      )}
     </div>
   );
 
