@@ -42,6 +42,27 @@ export function LoginForm({
   async function onSubmit(values: LoginInput) {
     setIsSubmitting(true);
     try {
+      // Storefront customers use a separate httpOnly cookie/session namespace.
+      // This deliberately never touches the platform NextAuth session, so a
+      // customer can be signed into a storefront while the store owner remains
+      // signed into the BizNest admin in the same browser.
+      if (isStoreContext && storeSlug) {
+        const response = await fetch("/api/store-auth", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          credentials: "include",
+          body: JSON.stringify({ storeSlug, email: values.email, password: values.password }),
+        });
+        const data = (await response.json().catch(() => ({}))) as { error?: string };
+        if (!response.ok) {
+          toast.error(data.error ?? "Invalid email or password.");
+          return;
+        }
+
+        window.location.href = callbackUrl;
+        return;
+      }
+
       const result = await signIn("credentials", { ...values, storeSlug, redirect: false });
 
       // NextAuth v5 (beta) has changed which field carries a custom
