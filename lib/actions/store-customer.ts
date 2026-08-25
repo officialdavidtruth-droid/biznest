@@ -1,8 +1,18 @@
 "use server";
 
 import { auth } from "@/lib/auth";
-import { getStoreCustomerSession, getStoreCustomerSessionForStore } from "@/lib/store-customer-auth";
+import { getStoreCustomerSession, getStoreCustomerSessionForStore, signInStoreCustomer } from "@/lib/store-customer-auth";
 import { prisma } from "@/lib/prisma";
+
+/**
+ * Password-based sign-in for a storefront customer. This is the one place
+ * that should ever call signInStoreCustomer() — /api/store-auth deliberately
+ * refuses to manufacture a session from credentials (see the comment in that
+ * route), so the login form must come through here instead of that route.
+ */
+export async function loginStoreCustomer(storeSlug: string, email: string, password: string) {
+  return signInStoreCustomer(storeSlug, email, password);
+}
 
 /**
  * Authoritative customer boundary. A CUSTOMER session is bound to exactly
