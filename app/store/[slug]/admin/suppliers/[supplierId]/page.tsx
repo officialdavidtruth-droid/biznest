@@ -1,3 +1,4 @@
+// Route: /store/[slug]/admin/suppliers/[supplierId]
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getSupplier } from "@/lib/actions/supplier";
