@@ -182,31 +182,65 @@ export function GatewayToggle({
 
 // --- Plan pricing editor ---------------------------------------------------
 
-type Plan = { id: string; name: string; price: number; commissionRate: number; isActive: boolean; interval: string };
+type Plan = {
+  id: string;
+  name: string;
+  price: number;
+  commissionRate: number;
+  isActive: boolean;
+  interval: string;
+  // -1 = unlimited
+  products: number;
+  services: number;
+};
+
+// -1 (unlimited) shows as an empty limit input — typing a number sets a
+// cap, clearing it back to blank restores unlimited.
+function limitToInput(v: number): string {
+  return v === -1 ? "" : String(v);
+}
+function inputToLimit(v: string): number {
+  const trimmed = v.trim();
+  if (trimmed === "") return -1;
+  const n = Number(trimmed);
+  return Number.isFinite(n) ? Math.max(0, Math.round(n)) : -1;
+}
 
 export function PlanPricingRow({ plan }: { plan: Plan }) {
   const router = useRouter();
+  const [name, setName] = useState(plan.name);
   const [price, setPrice] = useState(String(plan.price));
   const [commission, setCommission] = useState(String(plan.commissionRate));
   const [isActive, setIsActive] = useState(plan.isActive);
+  const [products, setProducts] = useState(limitToInput(plan.products));
+  const [services, setServices] = useState(limitToInput(plan.services));
   const [saving, setSaving] = useState(false);
 
   async function handleSave() {
     setSaving(true);
     const result = await updatePlanPricing(plan.id, {
+      name,
       price: Number(price),
       commissionRate: Number(commission),
       isActive,
+      products: inputToLimit(products),
+      services: inputToLimit(services),
     });
     setSaving(false);
     if (!result.success) return toast.error(result.error);
-    toast.success(`${plan.name} updated — this reflects on the landing page and upgrade screens immediately.`);
+    toast.success(`${name} updated — this reflects on the landing page and upgrade screens immediately.`);
     router.refresh();
   }
 
   return (
     <tr className="border-b last:border-0">
-      <td className="px-4 py-3 font-medium">{plan.name}</td>
+      <td className="px-4 py-3 font-medium">
+        <input
+          value={name}
+          onChange={(e) => setName(e.target.value)}
+          className="w-32 rounded-md border px-2 py-1 text-sm font-medium"
+        />
+      </td>
       <td className="px-4 py-3 text-muted-foreground">{plan.interval}</td>
       <td className="px-4 py-3">
         <div className="flex items-center gap-1">
@@ -232,6 +266,28 @@ export function PlanPricingRow({ plan }: { plan: Plan }) {
           />
           <span className="text-xs text-muted-foreground">%</span>
         </div>
+      </td>
+      <td className="px-4 py-3">
+        <input
+          value={products}
+          onChange={(e) => setProducts(e.target.value)}
+          type="number"
+          min={0}
+          placeholder="∞"
+          title="Blank = unlimited"
+          className="w-16 rounded-md border px-2 py-1 text-sm"
+        />
+      </td>
+      <td className="px-4 py-3">
+        <input
+          value={services}
+          onChange={(e) => setServices(e.target.value)}
+          type="number"
+          min={0}
+          placeholder="∞"
+          title="Blank = unlimited"
+          className="w-16 rounded-md border px-2 py-1 text-sm"
+        />
       </td>
       <td className="px-4 py-3">
         <label className="flex items-center gap-2 text-xs">
