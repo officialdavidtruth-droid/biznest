@@ -543,6 +543,43 @@ export async function getGeneralStoreConversation(storeSlug: string) {
   });
 }
 
+// Unread-message badge for the account sidebar. Counts unread "MESSAGE"
+// notifications rather than Message.readAt directly — replyToStoreConversation
+// already writes one Notification per admin reply (see lib/actions/store-messages.ts),
+// so this reuses that instead of a second unread-tracking mechanism.
+export async function getUnreadStoreMessageCount(storeSlug: string): Promise<number> {
+  const ctx = await getStoreCustomerContext(storeSlug);
+  if (!ctx) return 0;
+  return prisma.notification.count({
+    where: { userId: ctx.userId, type: "MESSAGE", readAt: null },
+  });
+}
+
+// Marks both the notification badge and the underlying messages as read.
+// Called when the customer opens the Support & Disputes page — scoped to
+// this store's general conversation only, so it can't mark another store's
+// message notifications as read.
+export async function markStoreMessagesRead(storeSlug: string): Promise<void> {
+  const ctx = await getStoreCustomerContext(storeSlug);
+  if (!ctx) return;
+
+  await prisma.notification.updateMany({
+    where: { userId: ctx.userId, type: "MESSAGE", readAt: null },
+    data: { readAt: new Date() },
+  });
+
+  const conversation = await prisma.conversation.findFirst({
+    where: { storeId: ctx.storeId, orderId: null, participants: { some: { userId: ctx.userId } } },
+    select: { id: true },
+  });
+  if (!conversation) return;
+
+  await prisma.message.updateMany({
+    where: { conversationId: conversation.id, senderId: { not: ctx.userId }, readAt: null },
+    data: { readAt: new Date() },
+  });
+}
+
 // Every dispute the customer has raised (or that was raised against an
 // order of theirs) at this store, regardless of which order it's attached
 // to. Distinct from listStoreConversations: a dispute is a formal,
