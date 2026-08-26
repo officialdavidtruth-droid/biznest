@@ -1,3 +1,4 @@
+// Route: /store/[slug]/admin/suppliers/new
 import { SupplierForm } from "@/components/dashboard/supplier-form";
 
 export default async function NewSupplierPage({ params }: { params: Promise<{ slug: string }> }) {
