@@ -46,6 +46,12 @@ export async function createService(slug: string, formData: FormData): Promise<A
   const description = String(formData.get("description") ?? "").trim();
   const price = Number(formData.get("price") ?? 0);
   const categoryId = String(formData.get("categoryId") ?? "") || null;
+  if (categoryId) {
+    const category = await prisma.category.findFirst({ where: { id: categoryId, storeId: access.store.id }, select: { id: true } });
+    if (!category) return { success: false, error: "Category does not belong to this store." };
+  }
+
+
   const isBookable = formData.get("isBookable") === "on";
   const durationMins = isBookable ? Number(formData.get("durationMins") ?? 0) || null : null;
   const isPublished = formData.get("isPublished") === "on";
@@ -97,6 +103,12 @@ export async function updateService(slug: string, serviceId: string, formData: F
   const description = String(formData.get("description") ?? "").trim();
   const price = Number(formData.get("price") ?? 0);
   const categoryId = String(formData.get("categoryId") ?? "") || null;
+  if (categoryId) {
+    const category = await prisma.category.findFirst({ where: { id: categoryId, storeId: access.store.id }, select: { id: true } });
+    if (!category) return { success: false, error: "Category does not belong to this store." };
+  }
+
+
   const isBookable = formData.get("isBookable") === "on";
   const durationMins = isBookable ? Number(formData.get("durationMins") ?? 0) || null : null;
   const isPublished = formData.get("isPublished") === "on";

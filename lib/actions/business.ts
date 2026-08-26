@@ -8,6 +8,7 @@ import {
   type BusinessVerificationInput,
 } from "@/lib/validations/business";
 import { revalidatePath } from "next/cache";
+import { BUSINESS_TYPES } from "@/lib/capabilities";
 import type { ActionResult } from "@/types/actions";
 
 /**
@@ -40,6 +41,7 @@ export async function submitBusinessVerification(
   }
 
   const data = parsed.data;
+  if (!BUSINESS_TYPES[data.category]) return { success: false, error: "Please select a supported business type." };
 
   const business = await prisma.business.upsert({
     where: { userId: session.user.id },

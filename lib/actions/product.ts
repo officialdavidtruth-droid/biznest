@@ -78,6 +78,14 @@ export async function createProduct(
   }
   const data = parsed.data;
 
+  if (data.categoryId) {
+    const category = await prisma.category.findFirst({
+      where: { id: data.categoryId, storeId: access.store.id },
+      select: { id: true },
+    });
+    if (!category) return { success: false, error: "Category does not belong to this store." };
+  }
+
   const trimmedSku = data.sku?.trim() || null;
   const trimmedBarcode = data.barcode?.trim() || null;
   if (trimmedBarcode) {
@@ -176,6 +184,14 @@ export async function updateProduct(
     };
   }
   const data = parsed.data;
+
+  if (data.categoryId) {
+    const category = await prisma.category.findFirst({
+      where: { id: data.categoryId, storeId: access.store.id },
+      select: { id: true },
+    });
+    if (!category) return { success: false, error: "Category does not belong to this store." };
+  }
 
   const existing = await prisma.product.findFirst({
     where: { id: productId, storeId: access.store.id },

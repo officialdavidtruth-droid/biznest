@@ -1,5 +1,7 @@
 "use server";
 
+import { getStoreConfiguration } from "@/lib/capabilities";
+
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import type { Prisma } from "@prisma/client";
@@ -98,6 +100,12 @@ export async function createStore(
         name: parsed.data.storeName,
         slug,
         templateId: parsed.data.templateId,
+        businessType: business.category,
+        enabledModules: { capabilities: getStoreConfiguration(business.category).capabilities },
+        storefrontConfig: {
+          navigation: getStoreConfiguration(business.category).navigation,
+          homepageSections: getStoreConfiguration(business.category).homepageSections,
+        },
         // A logo/banner uploaded in the onboarding wizard's branding step
         // wins over the auto-fetched demo banner — that photo is only a
         // placeholder for stores that skipped branding.
@@ -115,6 +123,33 @@ export async function createStore(
         content: { blocks: [] },
       })),
     });
+
+    // Create store-owned category trees from the selected business type.
+    // These are real rows owned by this store, not shared platform categories.
+    const businessConfig = getStoreConfiguration(business.category);
+    const categoryIds = new Map<string, string>();
+    for (const [categoryIndex, category] of businessConfig.defaultCategories.entries()) {
+      const parent = await tx.category.create({
+        data: {
+          storeId: created.id,
+          name: category.name,
+          type: category.type,
+          sortOrder: categoryIndex,
+        },
+      });
+      categoryIds.set(category.name, parent.id);
+      for (const [subcategoryIndex, subcategory] of (category.subcategories ?? []).entries()) {
+        await tx.category.create({
+          data: {
+            storeId: created.id,
+            name: subcategory,
+            type: category.type,
+            parentId: parent.id,
+            sortOrder: subcategoryIndex,
+          },
+        });
+      }
+    }
 
     // Seed 2 starter listings matching the chosen template's niche, so the
     // storefront looks like a real, designed template immediately instead
