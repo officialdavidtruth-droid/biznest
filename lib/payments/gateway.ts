@@ -15,18 +15,30 @@ type ChargeParams = {
   /** Vendor payout split target — pass the field matching whichever gateway ends up active. */
   paystackSubaccountCode?: string | null;
   flutterwaveSubaccountId?: string | null;
+  /**
+   * Force a specific gateway instead of consulting the platform's "active
+   * gateway" toggle. Platform-billing flows (subscription upgrades) pass
+   * this explicitly — that money always goes to Paystack regardless of
+   * which gateway supaadmin has switched on for store checkout — so the
+   * two purposes can never accidentally follow the same switch again.
+   * Store-checkout flows (orders/invoices/quotes) omit this and keep
+   * following the toggle as before.
+   */
+  gateway?: "PAYSTACK" | "FLUTTERWAVE";
 };
 
 type ChargeResult = { success: true; authorizationUrl: string; gateway: "PAYSTACK" | "FLUTTERWAVE" } | { success: false; error: string };
 
 /**
  * Single entry point every checkout/upgrade flow should call instead of
- * importing a specific gateway directly. Whichever provider supaadmin has
- * marked active is the one that actually gets used — flip the switch there
- * and every "Pay now" button on the platform follows without a code change.
+ * importing a specific gateway directly. By default, whichever provider
+ * supaadmin has marked active is the one that actually gets used — flip
+ * the switch there and every store "Pay now" button follows without a
+ * code change. Pass `gateway` to override this for flows that must always
+ * use one specific provider (see ChargeParams.gateway).
  */
 export async function chargeCustomer(params: ChargeParams): Promise<ChargeResult> {
-  const gateway = await getActiveGateway();
+  const gateway = params.gateway ?? (await getActiveGateway());
 
   if (gateway === "FLUTTERWAVE") {
     const init = await initializeFlutterwaveTransaction({
