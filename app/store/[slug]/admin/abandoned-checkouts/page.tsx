@@ -1,3 +1,4 @@
+// Route: /store/[slug]/admin/abandoned-checkouts
 import { listAbandonedCheckouts } from "@/lib/actions/abandoned-checkout";
 import { AbandonedCheckoutActions } from "@/components/dashboard/abandoned-checkout-actions";
 
@@ -67,4 +68,4 @@ export default async function AbandonedCheckoutsPage({ params }: { params: Promi
       </div>
     </div>
   );
-}
+    }
