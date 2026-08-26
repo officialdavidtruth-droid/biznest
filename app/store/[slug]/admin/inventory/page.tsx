@@ -1,3 +1,4 @@
+// Route: /store/[slug]/admin/inventory
 import { getInventoryOverview, getInventoryProfitSummary } from "@/lib/actions/inventory";
 import { InventoryProfitSummary } from "@/components/dashboard/inventory-profit-summary";
 import { InventoryRow } from "@/components/dashboard/inventory-row";
