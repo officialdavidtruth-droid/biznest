@@ -72,6 +72,8 @@ export async function createTestStoreWithOwner(opts?: {
       name: `Test Store ${suffix}`,
       slug: `test-store-${suffix}`,
       status: "ACTIVE",
+      businessType: business.category,
+      enabledModules: { capabilities: [] },
       subscriptionId,
     },
   });
