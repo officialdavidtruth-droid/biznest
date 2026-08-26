@@ -1,3 +1,4 @@
+// Route: /store/[slug]/admin/inventory/[inventoryItemId]
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
