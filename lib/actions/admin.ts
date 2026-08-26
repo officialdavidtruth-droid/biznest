@@ -658,20 +658,55 @@ export async function listPlans() {
 
 export async function updatePlanPricing(
   planId: string,
-  input: { price: number; commissionRate: number; isActive: boolean }
+  input: {
+    price: number;
+    commissionRate: number;
+    isActive: boolean;
+    name?: string;
+    // -1 means unlimited. Omit either to leave that cap untouched (lets
+    // callers that don't render the limit fields, if any remain, keep
+    // working without accidentally wiping the existing cap).
+    products?: number;
+    services?: number;
+  }
 ): Promise<ActionResult> {
   const access = await assertPlatformAdmin();
   if (!access.success) return { success: false, error: access.error };
   if (input.price < 0 || input.commissionRate < 0 || input.commissionRate > 100) {
     return { success: false, error: "Enter a valid price and commission rate (0–100%)." };
   }
+  for (const [label, v] of [["Products", input.products], ["Services", input.services]] as const) {
+    if (v !== undefined && (!Number.isInteger(v) || v < -1)) {
+      return { success: false, error: `${label} limit must be -1 (unlimited) or a whole number ≥ 0.` };
+    }
+  }
 
   const plan = await prisma.subscription.findUnique({ where: { id: planId } });
   if (!plan) return { success: false, error: "Plan not found." };
 
+  const name = input.name?.trim();
+  if (input.name !== undefined) {
+    if (!name) return { success: false, error: "Plan name can't be empty." };
+    const clash = await prisma.subscription.findFirst({ where: { name, id: { not: planId } } });
+    if (clash) return { success: false, error: "Another plan already uses that name." };
+  }
+
+  const existingFeatures = (plan.features as Record<string, unknown>) ?? {};
+  const features = {
+    ...existingFeatures,
+    ...(input.products !== undefined ? { products: input.products } : {}),
+    ...(input.services !== undefined ? { services: input.services } : {}),
+  };
+
   await prisma.subscription.update({
     where: { id: planId },
-    data: { price: input.price, commissionRate: input.commissionRate, isActive: input.isActive },
+    data: {
+      price: input.price,
+      commissionRate: input.commissionRate,
+      isActive: input.isActive,
+      ...(name !== undefined ? { name } : {}),
+      features,
+    },
   });
 
   await prisma.auditLog.create({
@@ -680,7 +715,7 @@ export async function updatePlanPricing(
       action: "PLAN_PRICING_UPDATED",
       entity: "Subscription",
       entityId: planId,
-      metadata: { plan: plan.name, from: { price: plan.price, commissionRate: plan.commissionRate }, to: input },
+      metadata: { plan: plan.name, from: { name: plan.name, price: plan.price, commissionRate: plan.commissionRate, features: plan.features }, to: input },
     },
   });
 

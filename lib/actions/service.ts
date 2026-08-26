@@ -6,6 +6,7 @@ import { revalidatePath } from "next/cache";
 import slugify from "slugify";
 import type { ActionResult } from "@/types/actions";
 import { assertStorePermission } from "@/lib/access/assert-store-access";
+import { assertUnderPlanLimit } from "@/lib/entitlements";
 
 // "products" permission — services live under the same "Products &
 // inventory" checkbox as products. See product.ts's assertStoreAccess for
@@ -37,6 +38,9 @@ export async function getService(slug: string, serviceId: string) {
 export async function createService(slug: string, formData: FormData): Promise<ActionResult<{ id: string }>> {
   const access = await assertStoreAccess(slug);
   if (!access.success) return { success: false, error: access.error };
+
+  const entitlement = await assertUnderPlanLimit(access.store.id, "services");
+  if (!entitlement.allowed) return { success: false, error: entitlement.error };
 
   const name = String(formData.get("name") ?? "").trim();
   const description = String(formData.get("description") ?? "").trim();

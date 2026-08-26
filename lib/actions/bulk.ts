@@ -8,6 +8,7 @@ import { toCsv, csvToRecords } from "@/lib/utils/csv";
 import { roundMoney } from "@/lib/utils/pricing";
 import type { ActionResult } from "@/types/actions";
 import type { Store, Business } from "@prisma/client";
+import { assertUnderPlanLimit } from "@/lib/entitlements";
 
 type StoreAccessResult =
   | { success: true; store: Store & { business: Business } }
@@ -222,7 +223,15 @@ export async function importProductsCsv(slug: string, csvText: string): Promise<
         continue;
       }
 
-      // No productId/variantId -> create a new product.
+      // No productId/variantId -> create a new product. Check the plan cap
+      // per-row (not once up front) since it can be crossed mid-import.
+      const entitlement = await assertUnderPlanLimit(access.store.id, "products");
+      if (!entitlement.allowed) {
+        summary.errors++;
+        summary.rows.push({ row: rowNum, status: "error", message: entitlement.error });
+        continue;
+      }
+
       if (!r.name?.trim()) {
         summary.errors++;
         summary.rows.push({ row: rowNum, status: "error", message: "name is required to create a new product" });

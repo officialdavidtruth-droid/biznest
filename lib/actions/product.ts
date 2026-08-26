@@ -9,6 +9,7 @@ import type { ActionResult } from "@/types/actions";
 import { emitWebhookEvent } from "@/lib/webhooks/dispatch";
 import { assertStorePermission } from "@/lib/access/assert-store-access";
 import { logStoreActivity } from "@/lib/actions/activity";
+import { assertUnderPlanLimit } from "@/lib/entitlements";
 
 import type { Store, Business } from "@prisma/client";
 
@@ -63,6 +64,9 @@ export async function createProduct(
 ): Promise<ActionResult<{ productId: string }>> {
   const access = await assertStoreAccess(slug);
   if (!access.success) return { success: false, error: access.error };
+
+  const entitlement = await assertUnderPlanLimit(access.store.id, "products");
+  if (!entitlement.allowed) return { success: false, error: entitlement.error };
 
   const parsed = productSchema.safeParse(input);
   if (!parsed.success) {
