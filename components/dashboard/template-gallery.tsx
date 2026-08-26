@@ -4,8 +4,6 @@ import { useMemo, useState } from "react";
 import { Check, Lock, Search, Eye, X, ShoppingBag, CalendarDays } from "lucide-react";
 import type { TemplateTheme } from "@/lib/template-themes";
 import { DEMO_STORES } from "@/lib/demo-stores";
-import { TemplateCover } from "@/components/storefront/template-cover";
-import { TemplateStylePreview } from "@/components/storefront/template-style-preview";
 import { getBusinessExperience } from "@/lib/business-experience";
 
 // Real, permanent live-demo stores exist for a subset of templates (see
@@ -52,7 +50,7 @@ export function TemplateGallery({
   const [query, setQuery] = useState("");
   const [activeCategory, setActiveCategory] = useState<string | null>(null);
   const [mode, setMode] = useState<"all" | "commerce" | "service">("all");
-  const [preview, setPreview] = useState<{ name: string; slug: string } | { name: string; theme: TemplateTheme } | null>(null);
+  const [preview, setPreview] = useState<{ name: string; url: string } | null>(null);
   const experience = getBusinessExperience(businessCategory);
 
   const categories = useMemo(() => {
@@ -167,23 +165,26 @@ export function TemplateGallery({
                   : "border-border hover:-translate-y-0.5 hover:border-primary/50 hover:shadow-lg"
               }`}
             >
-              {/* Real cover: a static facsimile of this template's actual
-                  layout, colors, type, and copy — the same approach
-                  WordPress uses for theme thumbnails. Built purely from the
-                  template's own theme tokens, so it always renders correctly
-                  for every template (not just the handful with a seeded demo
-                  store) and never shows a blank/404 iframe. */}
-              <button
-                type="button"
-                onClick={() => !isLocked && onSelect(t.id)}
-                disabled={isLocked}
-                className={`relative block h-40 w-full overflow-hidden bg-muted ${isLocked ? "cursor-not-allowed" : ""}`}
-              >
-                <TemplateCover theme={theme} />
+              <div className="relative h-40 w-full overflow-hidden bg-muted">
+                <iframe
+                  title={`${t.name} live front page preview`}
+                  src={`/template-preview/${encodeURIComponent(t.name)}`}
+                  className="pointer-events-none absolute left-0 top-0 h-[300%] w-[300%] origin-top-left scale-[.333333] border-0 bg-white"
+                  loading="lazy"
+                  tabIndex={-1}
+                />
 
-                <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent" />
+                <button
+                  type="button"
+                  onClick={() => !isLocked && onSelect(t.id)}
+                  disabled={isLocked}
+                  aria-label={isLocked ? `Locked template: ${t.name}` : `Use ${t.name} template`}
+                  className={`absolute inset-0 z-10 ${isLocked ? "cursor-not-allowed" : "cursor-pointer"}`}
+                />
 
-                <div className="absolute right-3 top-3 z-10 flex items-center gap-1">
+                <div className="pointer-events-none absolute inset-0 z-20 bg-gradient-to-t from-black/45 via-transparent to-transparent" />
+
+                <div className="pointer-events-none absolute right-3 top-3 z-30 flex items-center gap-1">
                   {isLocked ? (
                     <span className="flex h-5 w-5 items-center justify-center rounded-full bg-black/60">
                       <Lock className="h-3 w-3 text-white" />
@@ -195,10 +196,10 @@ export function TemplateGallery({
                   ) : null}
                 </div>
 
-                <p className="absolute bottom-2 left-3 right-3 truncate text-left text-xs font-semibold text-white drop-shadow">
+                <p className="pointer-events-none absolute bottom-2 left-3 right-3 z-30 truncate text-left text-xs font-semibold text-white drop-shadow">
                   {t.name}
                 </p>
-              </button>
+              </div>
 
               <div className="flex items-center justify-between gap-2 p-3">
                 <div className="min-w-0">
@@ -208,26 +209,13 @@ export function TemplateGallery({
                   </p>
                 </div>
 
-                {/* Distinct from selecting: opens a preview you can click
-                    through before committing. Templates with a seeded live
-                    demo store (see lib/demo-stores.ts) open the real,
-                    running storefront; every other template opens a
-                    full-size style preview built from its own theme tokens,
-                    so every template in the catalog is previewable —
-                    not just the handful with a live demo. */}
-                <a
-                  href={demoSlug ? `/${demoSlug}` : undefined}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  onClick={(e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    setPreview(demoSlug ? { name: t.name, slug: demoSlug } : { name: t.name, theme });
-                  }}
+                <button
+                  type="button"
+                  onClick={() => setPreview({ name: t.name, url: demoSlug ? `/${demoSlug}` : `/template-preview/${encodeURIComponent(t.name)}` })}
                   className="flex shrink-0 items-center gap-1 rounded-full border border-border px-2.5 py-1 text-[11px] font-medium text-foreground transition hover:border-primary/50 hover:text-primary"
                 >
                   <Eye className="h-3 w-3" /> Preview
-                </a>
+                </button>
               </div>
             </div>
           );
@@ -256,21 +244,15 @@ export function TemplateGallery({
             <div className="flex items-center justify-between border-b border-border px-4 py-3">
               <div>
                 <p className="text-sm font-semibold">{preview.name}</p>
-                <p className="text-[11px] text-muted-foreground">
-                  {"slug" in preview
-                    ? "Live storefront preview — click through the customer journey."
-                    : "Style preview — layout, colors, and type for this template."}
-                </p>
+                <p className="text-[11px] text-muted-foreground">Real template front page preview — rendered from the production storefront component.</p>
               </div>
               <button onClick={() => setPreview(null)} className="rounded-md p-2 hover:bg-muted"><X className="h-4 w-4" /></button>
             </div>
-            {"slug" in preview ? (
-              <iframe title={`${preview.name} live preview`} src={`/${preview.slug}`} className="min-h-0 flex-1 bg-white" />
-            ) : (
-              <div className="min-h-0 flex-1 overflow-y-auto">
-                <TemplateStylePreview theme={preview.theme} storeName="Your Store Name" />
-              </div>
-            )}
+            <iframe
+              title={`${preview.name} live front page preview`}
+              src={preview.url}
+              className="min-h-0 flex-1 border-0 bg-white"
+            />
           </div>
         </div>
       )}
