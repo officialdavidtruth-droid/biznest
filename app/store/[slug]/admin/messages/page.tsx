@@ -1,49 +1,39 @@
-import { notFound } from "next/navigation";
+// Route: /store/[slug]/admin/messages
 import Link from "next/link";
-import { auth } from "@/lib/auth";
-import { getStoreConversation } from "@/lib/actions/store-messages";
-import { AdminMessageThread } from "@/components/dashboard/admin-message-thread";
-import { ChevronLeft } from "lucide-react";
+import { listStoreConversations } from "@/lib/actions/store-messages";
 
-export default async function AdminConversationPage({
-  params,
-}: {
-  params: Promise<{ slug: string; id: string }>;
-}) {
-  const { slug, id } = await params;
-  const session = await auth();
-  const conversation = await getStoreConversation(slug, id);
-  if (!conversation || !session?.user?.id) notFound();
-
-  const customer = conversation.customer;
+export default async function MessagesPage({ params }: { params: Promise<{ slug: string }> }) {
+  const { slug } = await params;
+  const conversations = await listStoreConversations(slug);
 
   return (
     <div>
-      <Link
-        href={`/store/${slug}/admin/messages`}
-        className="mb-4 inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground"
-      >
-        <ChevronLeft className="h-4 w-4" />
-        Messages
-      </Link>
-
-      <div className="mb-4 flex items-center justify-between">
-        <div>
-          <h1 className="text-xl font-semibold">{customer?.name ?? customer?.email ?? "Customer"}</h1>
-          {conversation.order && (
-            <p className="mt-0.5 font-mono text-xs text-muted-foreground">
-              Order #{conversation.order.id.slice(-8).toUpperCase()}
-            </p>
-          )}
-        </div>
+      <h1 className="mb-6 text-xl font-semibold">Messages</h1>
+      <div className="divide-y rounded-lg border bg-background">
+        {conversations.map((c) => {
+          const customer = c.customer;
+          return (
+            <Link
+              key={c.id}
+              href={`/store/${slug}/admin/messages/${c.id}`}
+              className="flex items-center justify-between p-4 transition hover:bg-muted/40"
+            >
+              <div className="min-w-0">
+                <p className="font-medium">{customer?.name ?? customer?.email ?? "Customer"}</p>
+                <p className="mt-0.5 truncate text-sm text-muted-foreground">
+                  {c.messages[0]?.content ?? "No messages yet"}
+                </p>
+              </div>
+              {c.order && <span className="shrink-0 font-mono text-xs text-muted-foreground">#{c.order.id.slice(-8).toUpperCase()}</span>}
+            </Link>
+          );
+        })}
+        {conversations.length === 0 && (
+          <div className="p-10 text-center text-muted-foreground">
+            No conversations yet. Buyer messages will show up here.
+          </div>
+        )}
       </div>
-
-      <AdminMessageThread
-        slug={slug}
-        conversationId={conversation.id}
-        currentUserId={session.user.id}
-        messages={conversation.messages}
-      />
     </div>
   );
 }
