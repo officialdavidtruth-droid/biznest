@@ -1,3 +1,4 @@
+// Route: /store/[slug]/admin/support
 export default function SupportPage() {
   return (
     <div className="max-w-lg">
