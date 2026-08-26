@@ -1,3 +1,4 @@
+// Route: /store/[slug]/admin/services
 import Link from "next/link";
 import { prisma } from "@/lib/prisma";
 import { listBookings } from "@/lib/actions/booking";
@@ -87,4 +88,4 @@ export default async function ServicesPage({ params }: { params: Promise<{ slug:
       </div>
     </div>
   );
-}
+                                                                                              }
