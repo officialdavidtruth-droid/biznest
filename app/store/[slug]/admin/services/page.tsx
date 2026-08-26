@@ -74,7 +74,7 @@ export default async function ServicesPage({ params }: { params: Promise<{ slug:
               <tr key={b.id} className="border-b last:border-0">
                 <td className="px-4 py-3">{new Date(b.scheduledAt).toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" })}</td>
                 <td className="px-4 py-3">{b.service.name}</td>
-                <td className="px-4 py-3 text-muted-foreground">{b.buyer.name ?? b.buyer.email}</td>
+                <td className="px-4 py-3 text-muted-foreground">{b.buyer?.name ?? b.buyer?.email ?? b.guestName ?? "Walk-in guest"}</td>
                 <td className="px-4 py-3">
                   <span className={`rounded-full px-2 py-0.5 text-xs ${BOOKING_STYLES[b.status]}`}>{b.status}</span>
                 </td>
@@ -88,4 +88,4 @@ export default async function ServicesPage({ params }: { params: Promise<{ slug:
       </div>
     </div>
   );
-                                                                                              }
+                                                                                        }
