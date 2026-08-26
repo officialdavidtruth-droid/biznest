@@ -1,3 +1,4 @@
+// Route: /store/[slug]/admin/analytics
 import Link from "next/link";
 import { prisma } from "@/lib/prisma";
 import { getStoreAnalytics, type DailyPoint } from "@/lib/actions/analytics-report";
@@ -242,4 +243,5 @@ export default async function AnalyticsPage({
       </p>
     </div>
   );
-}
+    }
+            
