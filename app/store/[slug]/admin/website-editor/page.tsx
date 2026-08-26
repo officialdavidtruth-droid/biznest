@@ -1,3 +1,4 @@
+// Route: /store/[slug]/admin/website-editor
 import { redirect } from "next/navigation";
 
 // The standalone click-to-edit page has been folded into the unified
