@@ -1,3 +1,4 @@
+// Route: /store/[slug]/admin/layout-editor
 import { redirect } from "next/navigation";
 
 // "Storefront Layout" (section reorder/hide) duplicated what "Customize
