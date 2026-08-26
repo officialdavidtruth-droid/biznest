@@ -1,3 +1,4 @@
+// Route: /store/[slug]/admin/customers
 import { getCustomer360 } from "@/lib/actions/customers";
 import { Customer360View } from "@/components/dashboard/customer-360";
 
