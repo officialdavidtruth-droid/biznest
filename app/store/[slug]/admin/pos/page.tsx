@@ -1,3 +1,4 @@
+// Route: /store/[slug]/admin/pos
 import { getPosCatalog, getPosDailySummary } from "@/lib/actions/pos";
 import { PosRegister } from "@/components/dashboard/pos-register";
 import { prisma } from "@/lib/prisma";
