@@ -1,3 +1,4 @@
+// Route: /store/[slug]/admin/delivery
 import { prisma } from "@/lib/prisma";
 import { DeliveryZoneForm } from "@/components/dashboard/delivery-zone-form";
 import { DeliveryZoneRow } from "@/components/dashboard/delivery-zone-row";
