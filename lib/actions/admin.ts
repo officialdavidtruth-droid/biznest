@@ -653,7 +653,12 @@ export async function listDistinctLogActions() {
 export async function listPlans() {
   const access = await assertPlatformStaff();
   if (!access.success) return [];
-  return prisma.subscription.findMany({ orderBy: { price: "asc" } });
+  // Active only — this feeds the plan-change dropdown on the Users page,
+  // which should only ever offer plans a store could realistically be put
+  // on today. Retired/renamed plans (isActive: false, see seed.ts) still
+  // exist in the table so existing stores keep resolving their
+  // subscriptionId, but they don't belong in this picker.
+  return prisma.subscription.findMany({ where: { isActive: true }, orderBy: { price: "asc" } });
 }
 
 export async function updatePlanPricing(
