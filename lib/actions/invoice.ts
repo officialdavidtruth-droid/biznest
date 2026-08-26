@@ -101,6 +101,9 @@ export async function listInvoices(slug: string) {
     where: { storeId: access.store.id },
     include: { items: true, customer: { select: { name: true, email: true } } },
     orderBy: { createdAt: "desc" },
+    // Same reasoning as listOrders/listProducts: no pagination UI here yet,
+    // so bound it rather than let the page slow down as invoices accumulate.
+    take: 200,
   });
 }
 

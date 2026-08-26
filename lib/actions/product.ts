@@ -39,6 +39,11 @@ export async function listProducts(slug: string) {
     where: { storeId: access.store.id },
     include: { category: true, inventory: true },
     orderBy: { createdAt: "desc" },
+    // No pagination UI on this page yet -- bounded so a growing catalog
+    // doesn't make the admin products list get slower every month. Raise
+    // this (or add real pagination) if a store's active catalog ever
+    // exceeds 300 products.
+    take: 300,
   });
 }
 
