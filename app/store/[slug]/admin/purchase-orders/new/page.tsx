@@ -1,3 +1,4 @@
+// Route: /store/[slug]/admin/purchase-orders/new
 import { prisma } from "@/lib/prisma";
 import { listSuppliers } from "@/lib/actions/supplier";
 import { PurchaseOrderForm, type PoLineOption } from "@/components/dashboard/purchase-order-form";
