@@ -1,5 +1,6 @@
 import { getStoreBranding } from "@/lib/actions/store-branding";
 import { requireStoreCustomer } from "@/lib/actions/store-customer";
+import { getUnreadStoreMessageCount } from "@/lib/actions/account";
 import { redirect, notFound } from "next/navigation";
 import Link from "next/link";
 import {
@@ -29,6 +30,8 @@ export default async function StoreAccountLayout({
   const store = await getStoreBranding(slug);
   if (!store) notFound();
 
+  const unreadMessageCount = await getUnreadStoreMessageCount(slug);
+
   const LINKS = [
     { href: `/store/${slug}/account`, label: "My Account", icon: LayoutDashboard },
     { href: `/store/${slug}/orders`, label: "My Orders", icon: Package },
@@ -37,7 +40,7 @@ export default async function StoreAccountLayout({
     { href: `/store/${slug}/account/loyalty`, label: "My Rewards", icon: Bell },
     { href: `/store/${slug}/account/bookings`, label: "My Appointments", icon: Calendar },
     { href: `/store/${slug}/account/reviews`, label: "My Reviews", icon: Star },
-    { href: `/store/${slug}/account/messages`, label: "Support & Disputes", icon: MessageSquare },
+    { href: `/store/${slug}/account/messages`, label: "Support & Disputes", icon: MessageSquare, badge: unreadMessageCount },
   ];
 
   const colors = (store.themeColors as { primary?: string; secondary?: string; accent?: string; background?: string; text?: string } | null) ?? {};
@@ -68,7 +71,7 @@ export default async function StoreAccountLayout({
 
         <div className="grid grid-cols-1 gap-6 md:grid-cols-[240px_1fr]">
           <nav className="flex gap-2 overflow-x-auto rounded-2xl border border-slate-200 bg-white p-2 md:flex-col md:overflow-visible">
-            {LINKS.map(({ href, label, icon: Icon }) => (
+            {LINKS.map(({ href, label, icon: Icon, badge }) => (
               <Link
                 key={href}
                 href={href}
@@ -76,6 +79,14 @@ export default async function StoreAccountLayout({
               >
                 <Icon className="h-4 w-4" />
                 {label}
+                {!!badge && (
+                  <span
+                    className="ml-auto flex h-5 min-w-5 shrink-0 items-center justify-center rounded-full px-1.5 text-[11px] font-semibold text-white"
+                    style={{ backgroundColor: accent }}
+                  >
+                    {badge > 9 ? "9+" : badge}
+                  </span>
+                )}
               </Link>
             ))}
             <div className="my-1 hidden border-t border-slate-100 md:block" />
@@ -93,4 +104,4 @@ export default async function StoreAccountLayout({
       <StoreFooter store={store} slug={slug} />
     </div>
   );
-     }
+}
