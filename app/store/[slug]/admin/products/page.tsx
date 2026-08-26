@@ -1,46 +1,52 @@
-import Link from "next/link";
 import { prisma } from "@/lib/prisma";
-import { listProducts } from "@/lib/actions/product";
-import { ProductsTable } from "@/components/dashboard/products-table";
-import { BulkCsvPanel } from "@/components/dashboard/bulk-csv-panel";
+import { notFound } from "next/navigation";
+import { TemplatesPageClient } from "@/components/dashboard/templates-page-client";
+import { SIGNATURE_TEMPLATE_CATALOG } from "@/lib/template-themes";
 
-export default async function ProductsListPage({ params }: { params: Promise<{ slug: string }> }) {
+// Dedicated "pick a template" page, separate from Customize Website. Browsing
+// and applying a template lives here now; Customize Website just shows
+// whichever one is already selected and links back here to change it --
+// keeps the two concerns (which template vs. how it's arranged) apart
+// instead of both living inside the Customizer's left panel.
+export default async function TemplatesPage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
-  const [products, categories] = await Promise.all([
-    listProducts(slug),
-    prisma.category.findMany({ where: { type: "PRODUCT" }, orderBy: { name: "asc" } }),
-  ]);
+  const store = await prisma.store.findUnique({
+    where: { slug },
+    include: { subscription: true, template: true, business: true },
+  });
+  if (!store) notFound();
+
+  const dbTemplates = await prisma.storeTemplate.findMany({
+    where: { isActive: true },
+    orderBy: [{ category: "asc" }, { tierRank: "asc" }],
+    select: { id: true, name: true, category: true, tierRank: true, previewUrl: true, config: true },
+  });
+
+  // Keep the Signature Collection visible even when production has not been
+  // seeded. Selecting one creates the real StoreTemplate row on demand.
+  const existingNames = new Set(dbTemplates.map((t) => t.name));
+  const signatureTemplates = SIGNATURE_TEMPLATE_CATALOG.filter((t) => !existingNames.has(t.variationName)).map((t) => ({
+    id: `__signature__:${t.variationName}`,
+    name: t.variationName,
+    category: t.signatureMode,
+    tierRank: ["kinetic", "maison", "north", "forge"].includes(t.signatureMode) ? 4 : 3,
+    previewUrl: null,
+    config: t as unknown as Record<string, unknown>,
+  }));
+  const templates = [...dbTemplates, ...signatureTemplates];
+
+  const features = store.subscription?.features as { templateTier?: number } | null;
+  const planRank = features?.templateTier ?? 1;
 
   return (
-    <div>
-      <div className="mb-6 flex items-center justify-between">
-        <h1 className="text-xl font-semibold">Products</h1>
-        <Link
-          href={`/${slug}/admin/products/new`}
-          className="rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground"
-        >
-          Add product
-        </Link>
-      </div>
-
-      <div className="mb-6">
-        <BulkCsvPanel storeSlug={slug} />
-      </div>
-
-      <ProductsTable
-        storeSlug={slug}
-        products={products.map((p) => ({
-          id: p.id,
-          name: p.name,
-          images: p.images,
-          price: Number(p.price),
-          currency: p.currency,
-          isPublished: p.isPublished,
-          category: p.category ? { id: p.category.id, name: p.category.name } : null,
-          inventory: p.inventory ? { quantity: p.inventory.quantity } : null,
-        }))}
-        categories={categories.map((c) => ({ id: c.id, name: c.name }))}
-      />
-    </div>
+    <TemplatesPageClient
+      slug={slug}
+      storeName={store.name}
+      templates={templates}
+      currentTemplateId={store.templateId}
+      currentTemplateName={store.template?.name ?? null}
+      planRank={planRank}
+      businessCategory={store.businessType}
+    />
   );
 }
