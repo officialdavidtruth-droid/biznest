@@ -529,6 +529,7 @@ model Store {
   template      StoreTemplate? @relation(fields: [templateId], references: [id])
 
   webhookEndpoints WebhookEndpoint[]
+  serviceUnits  ServiceUnit[]
 
   logoUrl       String?
   bannerUrl     String?
@@ -948,6 +949,14 @@ model Service {
   // the booking widget shows a setup prompt to the vendor instead of guessing hours.
   availability Json?
 
+  // Set for unit-based services (e.g. a hotel room category with 12
+  // identical rooms, a rental fleet with 5 identical cars). When set, this
+  // many ServiceUnit rows exist under this service and bookings attach to
+  // a specific unit + date range instead of using weekly availability.
+  // Null means a plain appointment-style service (unchanged behavior).
+  totalUnits   Int?
+
+  units        ServiceUnit[]
   bookings     Booking[]
   orderItems   OrderItem[]
   reviews      Review[]
@@ -959,6 +968,36 @@ model Service {
 
   @@unique([storeId, slug])
   @@index([storeId])
+}
+
+enum ServiceUnitStatus {
+  AVAILABLE
+  OCCUPIED
+  RESERVED
+  DIRTY
+  CLEANING
+  MAINTENANCE
+  OUT_OF_SERVICE
+}
+
+model ServiceUnit {
+  id        String            @id @default(cuid())
+  storeId   String
+  store     Store             @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  serviceId String
+  service   Service           @relation(fields: [serviceId], references: [id], onDelete: Cascade)
+
+  // e.g. "101", "Unit 3" -- shown to housekeeping/staff and on the calendar.
+  label     String
+  status    ServiceUnitStatus @default(AVAILABLE)
+
+  bookings  Booking[]
+
+  createdAt DateTime          @default(now())
+  updatedAt DateTime          @updatedAt
+
+  @@unique([serviceId, label])
+  @@index([storeId, status])
 }
 
 model InventoryItem {
@@ -1043,8 +1082,16 @@ model Booking {
   store       Store         @relation(fields: [storeId], references: [id], onDelete: Cascade)
   serviceId   String
   service     Service       @relation(fields: [serviceId], references: [id], onDelete: Cascade)
-  buyerId     String
-  buyer       User          @relation("BuyerBookings", fields: [buyerId], references: [id])
+  // Nullable: a staff-created walk-in booking (e.g. a hotel guest checked in
+  // at the front desk) has no BizNest customer account to attach. Guest
+  // details are captured directly on the booking instead (below).
+  buyerId     String?
+  buyer       User?         @relation("BuyerBookings", fields: [buyerId], references: [id])
+
+  // Set for unit-based bookings (e.g. a specific hotel room under a room
+  // category). Null for plain appointment-style services.
+  unitId      String?
+  unit        ServiceUnit?  @relation(fields: [unitId], references: [id], onDelete: SetNull)
 
   scheduledAt DateTime
   // Redundant with Service.durationMins at booking time, snapshotted so a
@@ -1054,8 +1101,26 @@ model Booking {
   notes       String?
   createdAt   DateTime      @default(now())
 
+  // Multi-day stay range, used for unit-based bookings (checkIn/checkOut)
+  // instead of a single scheduledAt+durationMins slot. Null for
+  // appointment-style bookings.
+  checkIn     DateTime?
+  checkOut    DateTime?
+
+  // Guest details, captured directly on the booking so front-desk staff can
+  // create a booking without the guest having an account. All optional so
+  // existing appointment-style bookings are unaffected.
+  guestName             String?
+  guestPhone            String?
+  emergencyContactName  String?
+  emergencyContactPhone String?
+  governmentIdType      String?
+  governmentIdNumber    String?
+  governmentIdImageUrl  String?
+
   @@index([serviceId, scheduledAt])
   @@index([storeId])
+  @@index([unitId, checkIn, checkOut])
 }
 
 // ----------------------------------------------------------------------------
