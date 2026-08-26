@@ -1,3 +1,4 @@
+// Route: /store/[slug]/admin/orders/[orderId]
 import { getOrder } from "@/lib/actions/order";
 import { notFound } from "next/navigation";
 import Link from "next/link";
@@ -118,4 +119,4 @@ export default async function StoreOrderDetailPage({
       )}
     </div>
   );
-}
+        }
