@@ -8,11 +8,11 @@ import type { CategoryTreeNode } from "@/lib/storefront-categories";
  * every storefront template's homepage plus the /catalog and /category
  * pages, so the nav bar behaves the same everywhere.
  */
-export async function buildCategoryNav(categoryIdCounts: Map<string, number>): Promise<CategoryTreeNode[]> {
+export async function buildCategoryNav(categoryIdCounts: Map<string, number>, storeId?: string): Promise<CategoryTreeNode[]> {
   if (categoryIdCounts.size === 0) return [];
 
   const rows = await prisma.category.findMany({
-    where: { id: { in: [...categoryIdCounts.keys()] } },
+    where: { id: { in: [...categoryIdCounts.keys()] }, isActive: true, ...(storeId ? { storeId } : {}) },
   });
 
   // A subcategory in use (e.g. "Men's Shoes") should surface its parent
@@ -21,7 +21,7 @@ export async function buildCategoryNav(categoryIdCounts: Map<string, number>): P
   const parentIds = rows.map((r) => r.parentId).filter((id): id is string => !!id);
   const missingParents = parentIds.filter((id) => !rows.some((r) => r.id === id));
   const parentRows = missingParents.length
-    ? await prisma.category.findMany({ where: { id: { in: missingParents } } })
+    ? await prisma.category.findMany({ where: { id: { in: missingParents }, isActive: true, ...(storeId ? { storeId } : {}) } })
     : [];
   const allRows = [...rows, ...parentRows];
 

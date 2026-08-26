@@ -14,6 +14,9 @@ export type CategoryTreeNode = CategoryNode & { children: CategoryNode[] };
  * category/catalog pages to know which chips to render.
  */
 export async function getStoreCategoryTree(storeId: string): Promise<CategoryTreeNode[]> {
+  const activeCategories = await prisma.category.findMany({ where: { storeId, isActive: true }, select: { id: true } });
+  const activeIds = new Set(activeCategories.map(c => c.id));
+
   const [products, services] = await Promise.all([
     prisma.product.findMany({
       where: { storeId, isPublished: true, categoryId: { not: null } },
@@ -25,7 +28,7 @@ export async function getStoreCategoryTree(storeId: string): Promise<CategoryTre
     }),
   ]);
 
-  const items = [...products, ...services].map((i) => i.category).filter((c): c is NonNullable<typeof c> => !!c);
+  const items = [...products, ...services].map((i) => i.category).filter((c): c is NonNullable<typeof c> => !!c && activeIds.has(c.id) && (!c.parentId || activeIds.has(c.parentId)));
 
   const topLevel = new Map<string, CategoryTreeNode>();
 
