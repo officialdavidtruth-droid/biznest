@@ -56,7 +56,7 @@ export default async function StoreAdminLayout({
 
     const subpath = (await headers()).get("x-bn-admin-subpath") ?? "/";
     const navItem = findNavItemForPath(
-      { sellsProducts: store.business.sellsProducts, offersServices: store.business.offersServices, category: store.business.category },
+      { sellsProducts: store.business.sellsProducts, offersServices: store.business.offersServices, category: store.businessType },
       subpath
     );
     const blocked =
@@ -83,7 +83,7 @@ export default async function StoreAdminLayout({
             logoUrl={store.logoUrl}
             sellsProducts={store.business.sellsProducts}
             offersServices={store.business.offersServices}
-            category={store.business.category}
+            category={store.businessType}
             staffRole={role}
             staffPermissions={staffPermissions}
           />
@@ -96,7 +96,7 @@ export default async function StoreAdminLayout({
             logoUrl={store.logoUrl}
             sellsProducts={store.business.sellsProducts}
             offersServices={store.business.offersServices}
-            category={store.business.category}
+            category={store.businessType}
             notifications={notifications}
             unreadCount={unreadCount}
             staffRole={role}
