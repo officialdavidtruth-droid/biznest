@@ -51,7 +51,7 @@ export async function updateCategory(slug: string, id: string, input: { name: st
     let cursor: string | null = input.parentId;
     while (cursor) {
       if (cursor === id) return { success: false, error: "That parent would create a category cycle." };
-      const next = await prisma.category.findFirst({ where: { id: cursor, storeId: a.store.id }, select: { parentId: true } });
+      const next: { parentId: string | null } | null = await prisma.category.findFirst({ where: { id: cursor, storeId: a.store.id }, select: { parentId: true } });
       cursor = next?.parentId ?? null;
     }
   }
@@ -104,4 +104,4 @@ export async function reorderCategory(slug: string, id: string, direction: "up" 
   ]);
   revalidatePath(`/store/${slug}/admin/categories`); revalidatePath(`/store/${slug}`);
   return { success: true, data: undefined };
-}
+        }
