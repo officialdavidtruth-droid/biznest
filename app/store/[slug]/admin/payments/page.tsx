@@ -1,3 +1,4 @@
+// Route: /store/[slug]/admin/payments
 import { prisma } from "@/lib/prisma";
 import { getPayoutStatus } from "@/lib/actions/store";
 import { ConnectPayoutForm } from "@/components/dashboard/connect-payout-form";
