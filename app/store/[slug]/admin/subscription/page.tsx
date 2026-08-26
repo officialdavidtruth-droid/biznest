@@ -1,3 +1,4 @@
+// Route: /store/[slug]/admin/subscription
 import { prisma } from "@/lib/prisma";
 import { auth } from "@/lib/auth";
 import { redirect } from "next/navigation";
@@ -71,4 +72,5 @@ export default async function SubscriptionPage({
       </div>
     </div>
   );
-}
+            }
+                
