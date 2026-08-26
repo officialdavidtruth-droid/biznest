@@ -1,3 +1,4 @@
+// Route: /store/[slug]/admin/verification
 import { prisma } from "@/lib/prisma";
 
 const STATUS_STYLE: Record<string, string> = {
