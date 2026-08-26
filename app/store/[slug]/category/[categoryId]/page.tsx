@@ -20,8 +20,10 @@ import { FabtexHeader, FabtexFooter, wrap as fabtexWrap } from "@/components/sto
 import { JuiceLifeHeader, JuiceLifeFooter, wrap as juicelifeWrap } from "@/components/storefront/templates/juicelife-chrome";
 
 export async function generateMetadata({ params }: { params: Promise<{ slug: string; categoryId: string }> }): Promise<Metadata> {
-  const { categoryId } = await params;
-  const category = await prisma.category.findUnique({ where: { id: categoryId } });
+  const { slug, categoryId } = await params;
+  const store = await prisma.store.findUnique({ where: { slug }, select: { id: true } });
+  if (!store) return { title: "Category" };
+  const category = await prisma.category.findFirst({ where: { id: categoryId, storeId: store.id } });
   return { title: category ? category.name : "Category" };
 }
 
@@ -34,7 +36,7 @@ export default async function CategoryPage({ params }: { params: Promise<{ slug:
   });
   if (!store || store.status !== "ACTIVE") notFound();
 
-  const category = await prisma.category.findUnique({ where: { id: categoryId }, include: { parent: true, children: true } });
+  const category = await prisma.category.findFirst({ where: { id: categoryId, storeId: store.id }, include: { parent: true, children: true } });
   if (!category) notFound();
 
   // If this is a parent category (e.g. "Fashion"), show items from it AND
