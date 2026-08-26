@@ -216,9 +216,7 @@ export const BUSINESS_TYPES: Record<string, BusinessTypeConfig> = {
     defaultCategories: defaultCategoriesFor("Fashion", ["products", "reviews", "coupons", "inventory"]),
     navigation: navigationFor("Fashion", ["products", "reviews", "coupons", "inventory"]),
     homepageSections: homepageFor("Fashion", ["products", "reviews", "coupons", "inventory"]),
-    defaultCategories: defaultCategoriesFor("{TYPE}", {CAP}),
-    navigation: navigationFor("{TYPE}", {CAP}),
-    homepageSections: homepageFor("{TYPE}", {CAP}),    quickActions: [
+    quickActions: [
       { label: "Add a product", href: "/products/new" },
       { label: "Set up size & color variants", href: "/products" },
       { label: "Run a seasonal coupon", href: "/coupons" },
@@ -231,9 +229,7 @@ export const BUSINESS_TYPES: Record<string, BusinessTypeConfig> = {
     defaultCategories: defaultCategoriesFor("Electronics", ["products", "reviews", "inventory"]),
     navigation: navigationFor("Electronics", ["products", "reviews", "inventory"]),
     homepageSections: homepageFor("Electronics", ["products", "reviews", "inventory"]),
-    defaultCategories: defaultCategoriesFor("{TYPE}", {CAP}),
-    navigation: navigationFor("{TYPE}", {CAP}),
-    homepageSections: homepageFor("{TYPE}", {CAP}),    quickActions: [
+    quickActions: [
       { label: "Add a product", href: "/products/new" },
       { label: "Track stock levels", href: "/inventory" },
       { label: "Set warranty terms", href: "/settings" },
@@ -246,9 +242,7 @@ export const BUSINESS_TYPES: Record<string, BusinessTypeConfig> = {
     defaultCategories: defaultCategoriesFor("Food & Groceries", ["products", "delivery", "inventory"]),
     navigation: navigationFor("Food & Groceries", ["products", "delivery", "inventory"]),
     homepageSections: homepageFor("Food & Groceries", ["products", "delivery", "inventory"]),
-    defaultCategories: defaultCategoriesFor("{TYPE}", {CAP}),
-    navigation: navigationFor("{TYPE}", {CAP}),
-    homepageSections: homepageFor("{TYPE}", {CAP}),    quickActions: [
+    quickActions: [
       { label: "Add a product", href: "/products/new" },
       { label: "Set delivery zones", href: "/delivery" },
       { label: "Check today's orders", href: "/orders" },
@@ -262,9 +256,7 @@ export const BUSINESS_TYPES: Record<string, BusinessTypeConfig> = {
     defaultCategories: defaultCategoriesFor("Restaurant", ["products", "menu_categories", "delivery", "pickup", "opening_hours", "reviews"]),
     navigation: navigationFor("Restaurant", ["products", "menu_categories", "delivery", "pickup", "opening_hours", "reviews"]),
     homepageSections: homepageFor("Restaurant", ["products", "menu_categories", "delivery", "pickup", "opening_hours", "reviews"]),
-    defaultCategories: defaultCategoriesFor("{TYPE}", {CAP}),
-    navigation: navigationFor("{TYPE}", {CAP}),
-    homepageSections: homepageFor("{TYPE}", {CAP}),    quickActions: [
+    quickActions: [
       { label: "Add a menu item", href: "/products/new" },
       { label: "Set delivery zones", href: "/delivery" },
       { label: "Set opening hours", href: "/settings" },
@@ -278,9 +270,7 @@ export const BUSINESS_TYPES: Record<string, BusinessTypeConfig> = {
     defaultCategories: defaultCategoriesFor("Hotel & Lodging", ["services", "bookings", "availability_calendar", "gallery", "amenities", "reviews"]),
     navigation: navigationFor("Hotel & Lodging", ["services", "bookings", "availability_calendar", "gallery", "amenities", "reviews"]),
     homepageSections: homepageFor("Hotel & Lodging", ["services", "bookings", "availability_calendar", "gallery", "amenities", "reviews"]),
-    defaultCategories: defaultCategoriesFor("{TYPE}", {CAP}),
-    navigation: navigationFor("{TYPE}", {CAP}),
-    homepageSections: homepageFor("{TYPE}", {CAP}),    quickActions: [
+    quickActions: [
       { label: "Add a room", href: "/services/new" },
       { label: "Manage reservations", href: "/pms" },
       { label: "Update amenities", href: "/settings" },
@@ -294,9 +284,7 @@ export const BUSINESS_TYPES: Record<string, BusinessTypeConfig> = {
     defaultCategories: defaultCategoriesFor("Beauty", ["services", "bookings", "reviews"]),
     navigation: navigationFor("Beauty", ["services", "bookings", "reviews"]),
     homepageSections: homepageFor("Beauty", ["services", "bookings", "reviews"]),
-    defaultCategories: defaultCategoriesFor("{TYPE}", {CAP}),
-    navigation: navigationFor("{TYPE}", {CAP}),
-    homepageSections: homepageFor("{TYPE}", {CAP}),    quickActions: [
+    quickActions: [
       { label: "Add a service", href: "/services/new" },
       { label: "Manage bookings", href: "/orders" },
       { label: "Collect reviews", href: "/reviews" },
@@ -310,9 +298,7 @@ export const BUSINESS_TYPES: Record<string, BusinessTypeConfig> = {
     defaultCategories: defaultCategoriesFor("Home & Furniture", ["products", "delivery", "inventory"]),
     navigation: navigationFor("Home & Furniture", ["products", "delivery", "inventory"]),
     homepageSections: homepageFor("Home & Furniture", ["products", "delivery", "inventory"]),
-    defaultCategories: defaultCategoriesFor("{TYPE}", {CAP}),
-    navigation: navigationFor("{TYPE}", {CAP}),
-    homepageSections: homepageFor("{TYPE}", {CAP}),    quickActions: [
+    quickActions: [
       { label: "Add a product", href: "/products/new" },
       { label: "Set delivery zones", href: "/delivery" },
       { label: "Track stock levels", href: "/inventory" },
@@ -325,9 +311,7 @@ export const BUSINESS_TYPES: Record<string, BusinessTypeConfig> = {
     defaultCategories: defaultCategoriesFor("Health", ["services", "bookings", "reviews"]),
     navigation: navigationFor("Health", ["services", "bookings", "reviews"]),
     homepageSections: homepageFor("Health", ["services", "bookings", "reviews"]),
-    defaultCategories: defaultCategoriesFor("{TYPE}", {CAP}),
-    navigation: navigationFor("{TYPE}", {CAP}),
-    homepageSections: homepageFor("{TYPE}", {CAP}),    quickActions: [
+    quickActions: [
       { label: "Add a service", href: "/services/new" },
       { label: "Manage bookings", href: "/orders" },
       { label: "Update your credentials", href: "/verification" },
@@ -341,9 +325,7 @@ export const BUSINESS_TYPES: Record<string, BusinessTypeConfig> = {
     defaultCategories: defaultCategoriesFor("Health & Fitness", ["services", "bookings", "availability_calendar", "reviews"]),
     navigation: navigationFor("Health & Fitness", ["services", "bookings", "availability_calendar", "reviews"]),
     homepageSections: homepageFor("Health & Fitness", ["services", "bookings", "availability_calendar", "reviews"]),
-    defaultCategories: defaultCategoriesFor("{TYPE}", {CAP}),
-    navigation: navigationFor("{TYPE}", {CAP}),
-    homepageSections: homepageFor("{TYPE}", {CAP}),    quickActions: [
+    quickActions: [
       { label: "Add a class or service", href: "/services/new" },
       { label: "Manage bookings", href: "/orders" },
       { label: "Update your credentials", href: "/verification" },
@@ -357,9 +339,7 @@ export const BUSINESS_TYPES: Record<string, BusinessTypeConfig> = {
     defaultCategories: defaultCategoriesFor("Professional Services", ["services", "bookings"]),
     navigation: navigationFor("Professional Services", ["services", "bookings"]),
     homepageSections: homepageFor("Professional Services", ["services", "bookings"]),
-    defaultCategories: defaultCategoriesFor("{TYPE}", {CAP}),
-    navigation: navigationFor("{TYPE}", {CAP}),
-    homepageSections: homepageFor("{TYPE}", {CAP}),    quickActions: [
+    quickActions: [
       { label: "Add a service", href: "/services/new" },
       { label: "Manage bookings", href: "/orders" },
       { label: "Message a customer", href: "/messages" },
@@ -373,25 +353,21 @@ export const BUSINESS_TYPES: Record<string, BusinessTypeConfig> = {
     defaultCategories: defaultCategoriesFor("Automotive", ["products", "services", "bookings", "inventory"]),
     navigation: navigationFor("Automotive", ["products", "services", "bookings", "inventory"]),
     homepageSections: homepageFor("Automotive", ["products", "services", "bookings", "inventory"]),
-    defaultCategories: defaultCategoriesFor("{TYPE}", {CAP}),
-    navigation: navigationFor("{TYPE}", {CAP}),
-    homepageSections: homepageFor("{TYPE}", {CAP}),    quickActions: [
+    quickActions: [
       { label: "Add a product or service", href: "/products/new" },
       { label: "Manage bookings", href: "/orders" },
       { label: "Track parts inventory", href: "/inventory" },
     ],
     extraNavItems: [{ label: "Bookings", href: "/orders", icon: Wrench }],
   },
-  "Agriculture": {
+    "Agriculture": {
     icon: Tractor,
     tagline: "Agriculture storefront",
     capabilities: ["products", "delivery", "inventory"],
     defaultCategories: defaultCategoriesFor("Agriculture", ["products", "delivery", "inventory"]),
     navigation: navigationFor("Agriculture", ["products", "delivery", "inventory"]),
     homepageSections: homepageFor("Agriculture", ["products", "delivery", "inventory"]),
-    defaultCategories: defaultCategoriesFor("{TYPE}", {CAP}),
-    navigation: navigationFor("{TYPE}", {CAP}),
-    homepageSections: homepageFor("{TYPE}", {CAP}),    quickActions: [
+    quickActions: [
       { label: "Add produce", href: "/products/new" },
       { label: "Set delivery zones", href: "/delivery" },
       { label: "Track stock levels", href: "/inventory" },
@@ -404,9 +380,7 @@ export const BUSINESS_TYPES: Record<string, BusinessTypeConfig> = {
     defaultCategories: defaultCategoriesFor("Real Estate", ["products", "property_details", "map_location", "gallery"]),
     navigation: navigationFor("Real Estate", ["products", "property_details", "map_location", "gallery"]),
     homepageSections: homepageFor("Real Estate", ["products", "property_details", "map_location", "gallery"]),
-    defaultCategories: defaultCategoriesFor("{TYPE}", {CAP}),
-    navigation: navigationFor("{TYPE}", {CAP}),
-    homepageSections: homepageFor("{TYPE}", {CAP}),    quickActions: [
+    quickActions: [
       { label: "Add a listing", href: "/products/new" },
       { label: "Set bedrooms, bathrooms & type", href: "/products" },
       { label: "Set the listing's location", href: "/products" },
@@ -419,9 +393,7 @@ export const BUSINESS_TYPES: Record<string, BusinessTypeConfig> = {
     defaultCategories: defaultCategoriesFor("Photography", ["portfolio", "gallery", "packages", "bookings"]),
     navigation: navigationFor("Photography", ["portfolio", "gallery", "packages", "bookings"]),
     homepageSections: homepageFor("Photography", ["portfolio", "gallery", "packages", "bookings"]),
-    defaultCategories: defaultCategoriesFor("{TYPE}", {CAP}),
-    navigation: navigationFor("{TYPE}", {CAP}),
-    homepageSections: homepageFor("{TYPE}", {CAP}),    quickActions: [
+    quickActions: [
       { label: "Upload to your portfolio", href: "/products/new" },
       { label: "Set up a package", href: "/products/new" },
       { label: "Manage bookings", href: "/orders" },
@@ -435,9 +407,7 @@ export const BUSINESS_TYPES: Record<string, BusinessTypeConfig> = {
     defaultCategories: defaultCategoriesFor("Software Development", ["services", "packages", "bookings"]),
     navigation: navigationFor("Software Development", ["services", "packages", "bookings"]),
     homepageSections: homepageFor("Software Development", ["services", "packages", "bookings"]),
-    defaultCategories: defaultCategoriesFor("{TYPE}", {CAP}),
-    navigation: navigationFor("{TYPE}", {CAP}),
-    homepageSections: homepageFor("{TYPE}", {CAP}),    quickActions: [
+    quickActions: [
       { label: "Add a service or package", href: "/services/new" },
       { label: "Manage bookings", href: "/orders" },
       { label: "Message a client", href: "/messages" },
@@ -451,9 +421,7 @@ export const BUSINESS_TYPES: Record<string, BusinessTypeConfig> = {
     defaultCategories: defaultCategoriesFor("Event Planning", ["services", "packages", "bookings", "gallery"]),
     navigation: navigationFor("Event Planning", ["services", "packages", "bookings", "gallery"]),
     homepageSections: homepageFor("Event Planning", ["services", "packages", "bookings", "gallery"]),
-    defaultCategories: defaultCategoriesFor("{TYPE}", {CAP}),
-    navigation: navigationFor("{TYPE}", {CAP}),
-    homepageSections: homepageFor("{TYPE}", {CAP}),    quickActions: [
+    quickActions: [
       { label: "Add a package", href: "/services/new" },
       { label: "Manage bookings", href: "/orders" },
       { label: "Upload past event photos", href: "/products/new" },
@@ -467,9 +435,7 @@ export const BUSINESS_TYPES: Record<string, BusinessTypeConfig> = {
     defaultCategories: defaultCategoriesFor("Logistics", ["services", "delivery", "bookings"]),
     navigation: navigationFor("Logistics", ["services", "delivery", "bookings"]),
     homepageSections: homepageFor("Logistics", ["services", "delivery", "bookings"]),
-    defaultCategories: defaultCategoriesFor("{TYPE}", {CAP}),
-    navigation: navigationFor("{TYPE}", {CAP}),
-    homepageSections: homepageFor("{TYPE}", {CAP}),    quickActions: [
+    quickActions: [
       { label: "Add a service", href: "/services/new" },
       { label: "Set delivery zones", href: "/delivery" },
       { label: "Manage bookings", href: "/orders" },
@@ -492,9 +458,7 @@ export const BUSINESS_TYPES: Record<string, BusinessTypeConfig> = {
     defaultCategories: defaultCategoriesFor("Other", ["products", "services"]),
     navigation: navigationFor("Other", ["products", "services"]),
     homepageSections: homepageFor("Other", ["products", "services"]),
-    defaultCategories: defaultCategoriesFor("{TYPE}", {CAP}),
-    navigation: navigationFor("{TYPE}", {CAP}),
-    homepageSections: homepageFor("{TYPE}", {CAP}),    quickActions: [
+    quickActions: [
       { label: "Add a listing", href: "/products/new" },
       { label: "Check today's orders", href: "/orders" },
       { label: "Customize your website", href: "/customize" },
