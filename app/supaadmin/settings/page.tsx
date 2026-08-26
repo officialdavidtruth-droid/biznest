@@ -65,19 +65,33 @@ export default async function SupaAdminSettingsPage() {
                 <th className="px-4 py-2">Billing</th>
                 <th className="px-4 py-2">Price</th>
                 <th className="px-4 py-2">Commission</th>
+                <th className="px-4 py-2">Products</th>
+                <th className="px-4 py-2">Services</th>
                 <th className="px-4 py-2">Status</th>
                 <th className="px-4 py-2"></th>
               </tr>
             </thead>
             <tbody>
-              {plans.map((p) => (
-                <PlanPricingRow
-                  key={p.id}
-                  plan={{ id: p.id, name: p.name, price: Number(p.price), commissionRate: Number(p.commissionRate), isActive: p.isActive, interval: p.interval }}
-                />
-              ))}
+              {plans.map((p) => {
+                const features = (p.features as { products?: number; services?: number } | null) ?? {};
+                return (
+                  <PlanPricingRow
+                    key={p.id}
+                    plan={{
+                      id: p.id,
+                      name: p.name,
+                      price: Number(p.price),
+                      commissionRate: Number(p.commissionRate),
+                      isActive: p.isActive,
+                      interval: p.interval,
+                      products: features.products ?? -1,
+                      services: features.services ?? -1,
+                    }}
+                  />
+                );
+              })}
               {plans.length === 0 && (
-                <tr><td colSpan={6} className="px-4 py-10 text-center text-muted-foreground">No plans yet.</td></tr>
+                <tr><td colSpan={8} className="px-4 py-10 text-center text-muted-foreground">No plans yet.</td></tr>
               )}
             </tbody>
           </table>
