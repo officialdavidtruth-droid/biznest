@@ -56,6 +56,15 @@ export async function createService(slug: string, formData: FormData): Promise<A
   const durationMins = isBookable ? Number(formData.get("durationMins") ?? 0) || null : null;
   const isPublished = formData.get("isPublished") === "on";
 
+  // Unit-based service (e.g. a hotel room category with N identical rooms).
+  // When set, this replaces the appointment-style duration/availability
+  // setup: bookings attach to a specific ServiceUnit + date range instead.
+  const totalUnitsRaw = String(formData.get("totalUnits") ?? "").trim();
+  const totalUnits = totalUnitsRaw ? Number(totalUnitsRaw) : null;
+  if (totalUnitsRaw && (!Number.isInteger(totalUnits) || (totalUnits as number) < 1)) {
+    return { success: false, error: "Number of units must be a whole number of at least 1." };
+  }
+
   let images: string[] = [];
   try {
     const parsed = JSON.parse(String(formData.get("images") ?? "[]"));
@@ -66,9 +75,11 @@ export async function createService(slug: string, formData: FormData): Promise<A
 
   if (!name || name.length < 2) return { success: false, error: "Give the service a name." };
   if (!(price >= 0)) return { success: false, error: "Enter a valid price." };
-  if (isBookable && !durationMins) return { success: false, error: "Bookable services need a duration." };
+  if (!totalUnits && isBookable && !durationMins) return { success: false, error: "Bookable services need a duration." };
 
-  const availability = isBookable ? parseAvailability(formData) : undefined;
+  // Unit-based services skip weekly availability entirely -- they're
+  // bookable any time via a date range, gated only by unit availability.
+  const availability = !totalUnits && isBookable ? parseAvailability(formData) : undefined;
 
   const svcSlug = await uniqueServiceSlug(access.store.id, name);
   const service = await prisma.service.create({
@@ -80,12 +91,23 @@ export async function createService(slug: string, formData: FormData): Promise<A
       description,
       price,
       images,
-      isBookable,
+      isBookable: totalUnits ? true : isBookable,
       durationMins,
       availability,
       isPublished,
+      totalUnits,
     },
   });
+
+  if (totalUnits) {
+    await prisma.serviceUnit.createMany({
+      data: Array.from({ length: totalUnits }, (_, i) => ({
+        storeId: access.store.id,
+        serviceId: service.id,
+        label: String(i + 1),
+      })),
+    });
+  }
 
   revalidatePath(`/store/${slug}/admin/services`);
   revalidatePath(`/store/${slug}`);
@@ -113,6 +135,12 @@ export async function updateService(slug: string, serviceId: string, formData: F
   const durationMins = isBookable ? Number(formData.get("durationMins") ?? 0) || null : null;
   const isPublished = formData.get("isPublished") === "on";
 
+  const totalUnitsRaw = String(formData.get("totalUnits") ?? "").trim();
+  const totalUnits = totalUnitsRaw ? Number(totalUnitsRaw) : null;
+  if (totalUnitsRaw && (!Number.isInteger(totalUnits) || (totalUnits as number) < 1)) {
+    return { success: false, error: "Number of units must be a whole number of at least 1." };
+  }
+
   let images: string[] = [];
   try {
     const parsed = JSON.parse(String(formData.get("images") ?? "[]"));
@@ -123,13 +151,48 @@ export async function updateService(slug: string, serviceId: string, formData: F
 
   if (!name || name.length < 2) return { success: false, error: "Give the service a name." };
   if (!(price >= 0)) return { success: false, error: "Enter a valid price." };
-  if (isBookable && !durationMins) return { success: false, error: "Bookable services need a duration." };
+  if (!totalUnits && isBookable && !durationMins) return { success: false, error: "Bookable services need a duration." };
 
-  const availability = isBookable
+  const availability = !totalUnits && isBookable
     ? parseAvailability(formData)
     : existing.availability === null
       ? Prisma.JsonNull
       : (existing.availability as Prisma.InputJsonValue);
+
+  // Reconcile ServiceUnit rows with the new count. Growing is always safe
+  // (just add more units). Shrinking only removes units that have no
+  // bookings attached -- if there aren't enough "free" units to remove,
+  // we refuse rather than silently orphaning a booking.
+  if (totalUnits !== existing.totalUnits) {
+    const currentUnits = await prisma.serviceUnit.findMany({
+      where: { serviceId },
+      orderBy: { label: "desc" },
+      select: { id: true, label: true, _count: { select: { bookings: true } } },
+    });
+
+    const currentCount = currentUnits.length;
+    const targetCount = totalUnits ?? 0;
+
+    if (targetCount > currentCount) {
+      const existingLabels = new Set(currentUnits.map((u) => u.label));
+      let next = currentCount + 1;
+      const toCreate: { storeId: string; serviceId: string; label: string }[] = [];
+      while (toCreate.length < targetCount - currentCount) {
+        const label = String(next);
+        if (!existingLabels.has(label)) toCreate.push({ storeId: access.store.id, serviceId, label });
+        next++;
+      }
+      await prisma.serviceUnit.createMany({ data: toCreate });
+    } else if (targetCount < currentCount) {
+      const removable = currentUnits.filter((u) => u._count.bookings === 0);
+      const removeCount = currentCount - targetCount;
+      if (removable.length < removeCount) {
+        return { success: false, error: `Can't reduce to ${targetCount} units — ${currentCount - removable.length} existing unit(s) have bookings attached.` };
+      }
+      const idsToRemove = removable.slice(0, removeCount).map((u) => u.id);
+      await prisma.serviceUnit.deleteMany({ where: { id: { in: idsToRemove } } });
+    }
+  }
 
   await prisma.service.update({
     where: { id: serviceId },
@@ -139,10 +202,11 @@ export async function updateService(slug: string, serviceId: string, formData: F
       description,
       price,
       images,
-      isBookable,
+      isBookable: totalUnits ? true : isBookable,
       durationMins,
       availability,
       isPublished,
+      totalUnits,
     },
   });
 
@@ -196,4 +260,5 @@ function parseAvailability(formData: FormData) {
     }
   }
   return out;
-}
+                                                            }
+                       
