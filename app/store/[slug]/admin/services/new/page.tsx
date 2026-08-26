@@ -3,11 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { createService } from "@/lib/actions/service";
 import { redirect } from "next/navigation";
 import { ServiceImagesField } from "@/components/forms/service-images-field";
-
-const DAYS: Array<{ key: string; label: string }> = [
-  { key: "mon", label: "Mon" }, { key: "tue", label: "Tue" }, { key: "wed", label: "Wed" },
-  { key: "thu", label: "Thu" }, { key: "fri", label: "Fri" }, { key: "sat", label: "Sat" }, { key: "sun", label: "Sun" },
-];
+import { ServiceBookingModeField } from "@/components/forms/service-booking-mode-field";
 
 export default async function NewServicePage({ params, searchParams }: { params: Promise<{ slug: string }>; searchParams: Promise<{ error?: string }> }) {
   const { slug } = await params;
@@ -57,33 +53,7 @@ export default async function NewServicePage({ params, searchParams }: { params:
           <ServiceImagesField />
         </div>
 
-        <div className="rounded-lg border bg-background p-4">
-          <label className="flex items-center gap-2 text-sm font-medium">
-            <input type="checkbox" name="isBookable" defaultChecked />
-            Customers can book an appointment for this
-          </label>
-          <p className="mb-3 mt-1 text-xs text-muted-foreground">
-            If checked, a booking calendar appears on your storefront for this service.
-          </p>
-
-          <label className="mb-1 block text-xs text-muted-foreground">Appointment length (minutes)</label>
-          <input name="durationMins" type="number" min="5" step="5" defaultValue={30} className="mb-4 w-full rounded-md border px-3 py-1.5 text-sm" />
-
-          <p className="mb-2 text-xs font-medium">Working hours</p>
-          <div className="space-y-2">
-            {DAYS.map((d) => (
-              <div key={d.key} className="flex items-center gap-2">
-                <label className="flex w-16 items-center gap-1.5 text-xs">
-                  <input type="checkbox" name={`${d.key}-enabled`} defaultChecked={!["sat", "sun"].includes(d.key)} />
-                  {d.label}
-                </label>
-                <input type="time" name={`${d.key}-start`} defaultValue="09:00" className="rounded-md border px-2 py-1 text-xs" />
-                <span className="text-xs text-muted-foreground">to</span>
-                <input type="time" name={`${d.key}-end`} defaultValue="17:00" className="rounded-md border px-2 py-1 text-xs" />
-              </div>
-            ))}
-          </div>
-        </div>
+        <ServiceBookingModeField />
 
         <label className="flex items-center gap-2 text-sm">
           <input type="checkbox" name="isPublished" defaultChecked />
@@ -94,4 +64,5 @@ export default async function NewServicePage({ params, searchParams }: { params:
       </form>
     </div>
   );
-      }
+                }
+                
