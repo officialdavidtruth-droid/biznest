@@ -1,3 +1,4 @@
+// Route: /store/[slug]/admin/reviews
 import { prisma } from "@/lib/prisma";
 
 export default async function ReviewsPage({ params }: { params: Promise<{ slug: string }> }) {
