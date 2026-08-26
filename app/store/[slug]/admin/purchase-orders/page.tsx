@@ -1,3 +1,4 @@
+// Route: /store/[slug]/admin/purchase-orders
 import Link from "next/link";
 import { listPurchaseOrders } from "@/lib/actions/purchase-order";
 
