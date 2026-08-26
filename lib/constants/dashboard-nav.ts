@@ -54,15 +54,15 @@ export function buildNavGroups(business: { sellsProducts: boolean; offersService
   // (e.g. "Bookings" for a salon, "Delivery zones" for a restaurant) — but
   // only if it isn't already present above.
   const categoryConfig = getCategoryDashboard(business.category);
-  const categoryExtraNavItem =
-    categoryConfig.extraNavItem && !sellNavItems.some((i) => i.href === categoryConfig.extraNavItem!.href)
-      ? ({ permission: "products", ...categoryConfig.extraNavItem } as NavItem)
-      : null;
-  if (categoryExtraNavItem) sellNavItems.push(categoryExtraNavItem);
+  const categoryExtraNavItems = (categoryConfig.extraNavItems ?? [])
+    .filter((i) => !sellNavItems.some((existing) => existing.href === i.href))
+    .map((i) => ({ permission: "products", ...i } as NavItem));
+  sellNavItems.push(...categoryExtraNavItems);
 
   const allManageItems: NavItem[] = [
     { label: "Inventory", href: "/inventory", icon: Boxes, permission: "products" },
     { label: "Customers", href: "/customers", icon: Users, permission: "customers" },
+    { label: "Categories", href: "/categories", icon: Boxes, permission: "products" },
     { label: "Suppliers", href: "/suppliers", icon: Users, permission: "products" },
     { label: "Purchase orders", href: "/purchase-orders", icon: FileSignature, permission: "products" },
     { label: "Delivery zones", href: "/delivery", icon: Truck, permission: "settings" },

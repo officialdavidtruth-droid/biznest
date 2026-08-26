@@ -23,6 +23,7 @@ export type CategoryDashboardConfig = {
    * backward compatibility even though a business type can define more
    * than one in lib/capabilities.ts. */
   extraNavItem?: { label: string; href: string; icon: LucideIcon };
+  extraNavItems?: { label: string; href: string; icon: LucideIcon }[];
 };
 
 function toDashboardConfig(config: BusinessTypeConfig): CategoryDashboardConfig {
@@ -31,6 +32,7 @@ function toDashboardConfig(config: BusinessTypeConfig): CategoryDashboardConfig 
     tagline: config.tagline,
     quickActions: config.quickActions,
     extraNavItem: config.extraNavItems?.[0],
+    extraNavItems: config.extraNavItems,
   };
 }
 
