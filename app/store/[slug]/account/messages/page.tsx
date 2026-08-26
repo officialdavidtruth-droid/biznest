@@ -2,7 +2,7 @@ import { notFound } from "next/navigation";
 import Link from "next/link";
 import { getStoreCustomerSessionForStore } from "@/lib/store-customer-auth";
 import { getStoreBranding } from "@/lib/actions/store-branding";
-import { getGeneralStoreConversation, listStoreDisputes } from "@/lib/actions/account";
+import { getGeneralStoreConversation, listStoreDisputes, markStoreMessagesRead } from "@/lib/actions/account";
 import { DISPUTE_STATUS_CONFIG } from "@/lib/constants/dispute";
 import { StoreComplaintThread } from "@/components/forms/store-complaint-thread";
 import { ShieldAlert } from "lucide-react";
@@ -25,6 +25,11 @@ export default async function Page({ params }: { params: Promise<{ slug: string 
     getGeneralStoreConversation(slug),
     listStoreDisputes(slug),
   ]);
+
+  // Fire-and-forget: clears the sidebar badge now that the customer is
+  // actually looking at the thread. Not awaited on the critical path so it
+  // doesn't delay the page render.
+  void markStoreMessagesRead(slug);
 
   return (
     <div>
@@ -85,4 +90,4 @@ export default async function Page({ params }: { params: Promise<{ slug: string 
       </div>
     </div>
   );
-    }
+}
