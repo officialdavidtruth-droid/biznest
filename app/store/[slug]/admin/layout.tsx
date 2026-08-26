@@ -69,7 +69,14 @@ export default async function StoreAdminLayout({
     <>
       <ThemeFlashGuard scopeId="bn-admin-theme-scope" defaultTheme="dark" />
       <ThemeProvider scopeId="bn-admin-theme-scope" defaultTheme="dark">
-        <div className="flex h-screen flex-col overflow-hidden bg-background text-foreground lg:flex-row">
+        {/* h-full, not h-screen: the root layout (app/layout.tsx) now wraps
+            <body>'s content in a flex column with the AnnouncementBanner as
+            a normal block above a flex-1 region. h-screen here ignored the
+            banner's height and pushed this whole block -- including the
+            fixed mobile bottom bar -- off-screen, so a live announcement
+            never actually appeared on the store admin dashboard. h-full
+            fills whatever space that flex-1 region has, banner or not. */}
+        <div className="flex h-full flex-col overflow-hidden bg-background text-foreground lg:flex-row">
           <DashboardSidebar
             slug={slug}
             storeName={store.name}
