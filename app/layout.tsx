@@ -56,7 +56,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
 
   return (
     <html lang="en">
-      <body className="min-h-screen bg-background font-sans antialiased">
+      <body className="flex h-screen flex-col bg-background font-sans antialiased">
         <SessionProvider>
         <CartProvider>
           {showMaintenance ? (
@@ -66,7 +66,18 @@ export default async function RootLayout({ children }: { children: React.ReactNo
               {announcement.enabled && announcement.message && (
                 <AnnouncementBanner message={announcement.message} tone={announcement.tone} />
               )}
-              {children}
+              {/* flex-1 + min-h-0: takes whatever height is left after the
+                  banner (or all of it, if there's no banner) instead of
+                  every page having to independently account for the
+                  banner's height. Pages that just want normal document flow
+                  (most of them) still get it -- this div only constrains
+                  height, it doesn't force overflow-hidden -- while pages
+                  with their own fixed-height app-shell (e.g. store admin,
+                  h-full) now measure against this region instead of the
+                  full viewport. min-h-0 is required so the flex item can
+                  actually shrink below its content size instead of
+                  overflowing past the banner like h-screen used to. */}
+              <div className="min-h-0 flex-1">{children}</div>
             </>
           )}
           <Toaster richColors position="top-center" />
