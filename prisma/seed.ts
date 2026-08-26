@@ -129,7 +129,7 @@ async function main() {
   // the parent's real id. skipDuplicates on name (globally unique) makes
   // this safe to re-run.
   for (const [parentName, subNames] of Object.entries(PRODUCT_SUBCATEGORIES)) {
-    const parent = await prisma.category.findUnique({ where: { name: parentName } });
+    const parent = await prisma.category.findFirst({ where: { name: parentName } });
     if (!parent) continue;
     await prisma.category.createMany({
       data: subNames.map((name) => ({ name, type: "PRODUCT" as const, parentId: parent.id })),
@@ -137,7 +137,7 @@ async function main() {
     });
   }
   for (const [parentName, subNames] of Object.entries(SERVICE_SUBCATEGORIES)) {
-    const parent = await prisma.category.findUnique({ where: { name: parentName } });
+    const parent = await prisma.category.findFirst({ where: { name: parentName } });
     if (!parent) continue;
     await prisma.category.createMany({
       data: subNames.map((name) => ({ name, type: "SERVICE" as const, parentId: parent.id })),

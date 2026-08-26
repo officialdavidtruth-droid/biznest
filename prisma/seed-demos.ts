@@ -93,6 +93,8 @@ async function main() {
         name: seed.storeName,
         templateId: template.id,
         status: "ACTIVE",
+        businessType: business.category,
+        enabledModules: { capabilities: [] },
         logoUrl,
         bannerUrl,
         contactEmail: seed.contactEmail,
@@ -104,6 +106,8 @@ async function main() {
         slug: seed.slug,
         templateId: template.id,
         status: "ACTIVE",
+        businessType: business.category,
+        enabledModules: { capabilities: [] },
         logoUrl,
         bannerUrl,
         contactEmail: seed.contactEmail,
@@ -117,7 +121,7 @@ async function main() {
 
     for (let i = 0; i < seed.products.length; i++) {
       const p = seed.products[i];
-      const category = await prisma.category.findUnique({ where: { name: p.category } });
+      const category = await prisma.category.findFirst({ where: { name: p.category, OR: [{ storeId: store.id }, { storeId: null }] } });
       const productSlug = slug(p.name);
       const image = images[i];
 
