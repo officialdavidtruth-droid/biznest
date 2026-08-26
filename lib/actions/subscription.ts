@@ -2,7 +2,7 @@
 
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { chargeCustomer, getActiveGateway } from "@/lib/payments/gateway";
+import { chargeCustomer } from "@/lib/payments/gateway";
 import { getFreeTrialSetting } from "@/lib/actions/site-settings";
 import { nanoid } from "nanoid";
 import type { ActionResult } from "@/types/actions";
@@ -63,11 +63,12 @@ export async function initiatePlanUpgrade(
   }
 
   const reference = buildReference(store.id, plan.id);
-  const gateway = await getActiveGateway();
-  const callbackUrl =
-    gateway === "FLUTTERWAVE"
-      ? `${APP_URL}/api/payments/flutterwave/subscription-callback`
-      : `${APP_URL}/api/payments/paystack/subscription-callback`;
+
+  // Platform-billing (subscription upgrades) always goes through Paystack,
+  // regardless of whichever gateway supaadmin has toggled "active" for
+  // store checkout — see the `gateway` override on chargeCustomer. This is
+  // deliberate: the two purposes must never share the same switch again.
+  const callbackUrl = `${APP_URL}/api/payments/paystack/subscription-callback`;
 
   // No subaccount passed — this charge goes straight to the platform
   // account, unlike order payments which split to the vendor's subaccount.
@@ -76,6 +77,7 @@ export async function initiatePlanUpgrade(
     amountNaira: Number(plan.price),
     reference,
     callbackUrl,
+    gateway: "PAYSTACK",
   });
 
   if (!charge.success) {
