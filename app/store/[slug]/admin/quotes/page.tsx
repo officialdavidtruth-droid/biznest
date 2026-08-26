@@ -1,3 +1,4 @@
+// Route: /store/[slug]/admin/quotes
 import { listQuotes } from "@/lib/actions/quote";
 import { QuoteForm } from "@/components/dashboard/quote-form";
 import { QuoteRowActions } from "@/components/dashboard/quote-row-actions";
