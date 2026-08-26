@@ -1,3 +1,4 @@
+// Route: /store/[slug]/admin/marketing
 import Link from "next/link";
 import { prisma } from "@/lib/prisma";
 
