@@ -1,3 +1,4 @@
+// Route: /store/[slug]/admin/invoices
 import { listInvoices } from "@/lib/actions/invoice";
 import { InvoiceForm } from "@/components/dashboard/invoice-form";
 import { InvoiceRowActions } from "@/components/dashboard/invoice-row-actions";
@@ -73,4 +74,5 @@ export default async function InvoicesPage({ params }: { params: Promise<{ slug:
       </div>
     </div>
   );
-}
+        }
+      
