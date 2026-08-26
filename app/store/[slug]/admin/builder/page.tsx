@@ -1,3 +1,4 @@
+// Route: /store/[slug]/admin/builder
 import { redirect } from "next/navigation";
 
 // "Website builder" (template picker) was a subset of what "Customize
