@@ -1,3 +1,4 @@
+// Route: /store/[slug]/admin/coupons
 import { prisma } from "@/lib/prisma";
 import { createCoupon } from "@/lib/actions/coupon";
 
