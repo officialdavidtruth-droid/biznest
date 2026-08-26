@@ -1,3 +1,4 @@
+// Route: /store/[slug]/admin/settings
 import { prisma } from "@/lib/prisma";
 import { updateStoreSettings } from "@/lib/actions/store";
 import { setCustomDomain, recheckDomainStatus, removeCustomDomain } from "@/lib/actions/domain";
@@ -152,4 +153,5 @@ export default async function SettingsPage({ params }: { params: Promise<{ slug:
       </div>
     </div>
   );
-}
+      }
+          
