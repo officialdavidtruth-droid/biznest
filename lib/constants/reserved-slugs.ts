@@ -30,6 +30,7 @@ export const RESERVED_SLUGS = new Set([
   "disputes",
   "search",
   "templates",
+  "template-preview",
   "seller-agreement",
   "terms",
   "privacy",
