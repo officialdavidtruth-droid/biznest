@@ -1,3 +1,4 @@
+// Route: /store/[slug]/admin/purchase-orders/[poId]
 import { notFound } from "next/navigation";
 import { getPurchaseOrder } from "@/lib/actions/purchase-order";
 import { PurchaseOrderActions } from "@/components/dashboard/purchase-order-actions";
