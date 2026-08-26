@@ -835,6 +835,11 @@ export async function listOrdersForBuyer() {
     orderBy: {
       createdAt: "desc",
     },
+
+    // Same reasoning as listOrders below: a long-time buyer with hundreds of
+    // past orders shouldn't force this query to grow unbounded on every
+    // "My orders" page load.
+    take: 200,
   });
 }
 
@@ -921,6 +926,8 @@ export async function listOrdersForBuyerAtStore(
     orderBy: {
       createdAt: "desc",
     },
+
+    take: 200,
   });
 }
 
@@ -968,6 +975,15 @@ export async function listOrders(
     orderBy: {
       createdAt: "desc",
     },
+
+    // Bounded on purpose: this page has no pagination UI yet, so without a
+    // cap it fetches a store's *entire* order history (with nested item/
+    // product/service includes) on every load. Harmless with a handful of
+    // orders, but linearly slower as a store grows -- exactly the
+    // "increasingly slow" symptom. 200 most-recent orders covers what any
+    // seller actually looks at day-to-day; add real pagination when a store
+    // needs to look further back than that.
+    take: 200,
   });
 }
 
