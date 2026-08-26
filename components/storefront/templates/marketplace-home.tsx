@@ -1,5 +1,4 @@
 import type React from "react";
-import { TrustBadge } from "@/components/storefront/trust-badge";
 import { TrustScorePanel } from "@/components/storefront/trust-score-panel";
 import type { TrustScoreChecklist } from "@/lib/actions/trust-score";
 import { CartLink } from "@/components/storefront/cart-link";
@@ -239,12 +238,19 @@ export function MarketplaceStorefront({
                 <a href={`/${slug}/catalog`} style={seeAll}>View all ›</a>
               </div>
               <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(120px, 1fr))", gap: 7 }}>
-                {catalogCategories.slice(0, 8).map((cat) => (
-                  <a key={cat} href={`/${slug}/catalog?category=${encodeURIComponent(cat)}`} style={{ textAlign: "center", fontSize: 8, border: "1px solid #eee", paddingBottom: 7, textDecoration: "none", color: "inherit", display: "block" }}>
-                    <div style={{ height: 85, background: "#eee" }} />
-                    <span>{cat}</span>
-                  </a>
-                ))}
+                {catalogCategories.slice(0, 8).map((cat) => {
+                  // Same fix as Premium Marketplace: no Category.image field
+                  // exists, so these tiles rendered as flat gray boxes with
+                  // no photo at all. Borrow the first catalog item's image
+                  // in that category as a representative thumbnail instead.
+                  const coverImage = catalogItems.find((i) => i.categoryName === cat)?.image ?? null;
+                  return (
+                    <a key={cat} href={`/${slug}/catalog?category=${encodeURIComponent(cat)}`} style={{ textAlign: "center", fontSize: 8, border: "1px solid #eee", paddingBottom: 7, textDecoration: "none", color: "inherit", display: "block" }}>
+                      <div style={{ height: 85, background: coverImage ? `#eee url(${coverImage}) center/cover` : "#eee" }} />
+                      <span>{cat}</span>
+                    </a>
+                  );
+                })}
               </div>
             </section>
           )}
@@ -273,7 +279,6 @@ export function MarketplaceStorefront({
               {catalogItems.length > 0 && <span style={{ fontSize: 11, color: "#666" }}><b>{catalogItems.length}+</b> in stock</span>}
               {completedOrders > 0 && <span style={{ fontSize: 11, color: "#666" }}><b>{completedOrders}+</b> orders completed</span>}
               {avgRating != null && <span style={{ fontSize: 11, color: "#666" }}><b>{avgRating.toFixed(1)}/5</b> average rating</span>}
-              {trustScore != null && <TrustBadge score={trustScore} size="sm" />}
             </div>
           )}
 

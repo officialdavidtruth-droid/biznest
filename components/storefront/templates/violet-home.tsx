@@ -1,5 +1,4 @@
 import type React from "react";
-import { TrustBadge } from "@/components/storefront/trust-badge";
 import { TrustScorePanel } from "@/components/storefront/trust-score-panel";
 import type { TrustScoreChecklist } from "@/lib/actions/trust-score";
 import { CartLink } from "@/components/storefront/cart-link";
@@ -206,12 +205,13 @@ export function VioletStorefront({
           {catalogItems.length > 0 && <div><b style={{ fontSize: 26, display: "block", color: p.accent }}>{catalogItems.length}+</b><span style={{ fontSize: 12, color: p.muted }}>In the shop</span></div>}
           {completedOrders > 0 && <div><b style={{ fontSize: 26, display: "block", color: p.accent }}>{completedOrders}+</b><span style={{ fontSize: 12, color: p.muted }}>Orders completed</span></div>}
           {avgRating != null && <div><b style={{ fontSize: 26, display: "block", color: p.accent }}>{avgRating.toFixed(1)}/5</b><span style={{ fontSize: 12, color: p.muted }}>Average rating</span></div>}
-          {trustScore != null && <div><TrustBadge score={trustScore} /></div>}
-          {trustChecklist && (
-            <div style={{ marginTop: 8 }}>
-              <TrustScorePanel checklist={trustChecklist} />
-            </div>
-          )}
+        </section>
+      )}
+
+      {/* ---------- TRUST SCORE ---------- */}
+      {trustChecklist && (
+        <section style={{ ...wrap, paddingBottom: 36 }}>
+          <TrustScorePanel checklist={trustChecklist} style={{ maxWidth: 340 }} />
         </section>
       )}
 

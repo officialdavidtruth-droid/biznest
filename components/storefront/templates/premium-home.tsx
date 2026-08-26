@@ -1,5 +1,4 @@
 import type React from "react";
-import { TrustBadge } from "@/components/storefront/trust-badge";
 import { TrustScorePanel } from "@/components/storefront/trust-score-panel";
 import type { TrustScoreChecklist } from "@/lib/actions/trust-score";
 import { PREMIUM, PREMIUM_THEME } from "@/lib/template-themes";
@@ -111,11 +110,30 @@ export function PremiumStorefront({
             <a href={`/${slug}/catalog`} style={{ marginLeft: "auto", color: "#5d6870", fontSize: 10, textDecoration: "none" }}>See all</a>
           </div>
           <div className="bn-grid-2" style={{ display: "grid", gridTemplateColumns: `repeat(${Math.min(catalogCategories.length, 6)}, 1fr)`, gap: 7 }}>
-            {catalogCategories.slice(0, 6).map((cat) => (
-              <a key={cat} href={`/${slug}/catalog?category=${encodeURIComponent(cat)}`} style={{ height: 78, borderRadius: 8, position: "relative", overflow: "hidden", background: "#ddd", display: "block", textDecoration: "none" }}>
-                <b style={{ position: "absolute", left: 8, bottom: 7, color: "#fff", textShadow: "0 1px 3px #000", fontSize: 10 }}>{cat}</b>
-              </a>
-            ))}
+            {catalogCategories.slice(0, 6).map((cat) => {
+              // No Category.image field exists in the schema, so there's
+              // no dedicated category photo to show -- these tiles were
+              // rendering as flat gray boxes with just a text label.
+              // Borrow the first catalog item's photo in that category as
+              // a representative image instead, same idea as any
+              // marketplace category tile.
+              const coverImage = catalogItems.find((i) => i.categoryName === cat)?.image ?? null;
+              return (
+                <a
+                  key={cat}
+                  href={`/${slug}/catalog?category=${encodeURIComponent(cat)}`}
+                  style={{
+                    height: 78, borderRadius: 8, position: "relative", overflow: "hidden", display: "block", textDecoration: "none",
+                    background: coverImage ? `#f0f3f4 url(${coverImage}) center/cover` : "#ddd",
+                  }}
+                >
+                  {coverImage && (
+                    <div style={{ position: "absolute", inset: 0, background: "linear-gradient(0deg, rgba(0,0,0,.55) 0%, rgba(0,0,0,0) 55%)" }} />
+                  )}
+                  <b style={{ position: "absolute", left: 8, bottom: 7, color: "#fff", textShadow: "0 1px 3px #000", fontSize: 10 }}>{cat}</b>
+                </a>
+              );
+            })}
           </div>
         </section>
       )}
@@ -199,12 +217,21 @@ export function PremiumStorefront({
           {catalogItems.length > 0 && <div><b style={{ fontSize: 20, display: "block", color: PREMIUM.accent }}>{catalogItems.length}+</b><span style={{ fontSize: 10, color: "#5d6870" }}>In the shop</span></div>}
           {completedOrders > 0 && <div><b style={{ fontSize: 20, display: "block", color: PREMIUM.accent }}>{completedOrders}+</b><span style={{ fontSize: 10, color: "#5d6870" }}>Orders completed</span></div>}
           {avgRating != null && <div><b style={{ fontSize: 20, display: "block", color: PREMIUM.accent }}>{avgRating.toFixed(1)}/5</b><span style={{ fontSize: 10, color: "#5d6870" }}>Average rating</span></div>}
-          {trustScore != null && <div><TrustBadge score={trustScore} /></div>}
-          {trustChecklist && (
-            <div style={{ marginTop: 8 }}>
-              <TrustScorePanel checklist={trustChecklist} />
-            </div>
-          )}
+        </section>
+      )}
+
+      {/* ---------- TRUST SCORE ----------
+          Kept out of the STATS row above on purpose: that row is small
+          numeric stats side-by-side, and the trust checklist is a wider,
+          taller disclosure panel -- mixing them in one flex-wrap row made
+          the panel sit at a different height/alignment than the numbers
+          next to it. TrustBadge and TrustScorePanel both show the same
+          score too (the badge is just a shorter, no-detail version of the
+          same number), so only the panel -- the more useful one for a
+          buyer deciding whether to trust an unfamiliar seller -- is kept. */}
+      {trustChecklist && (
+        <section style={{ ...wrap, margin: "0 auto 20px" }}>
+          <TrustScorePanel checklist={trustChecklist} style={{ maxWidth: 340 }} />
         </section>
       )}
 

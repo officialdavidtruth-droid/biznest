@@ -1,5 +1,4 @@
 import type React from "react";
-import { TrustBadge } from "@/components/storefront/trust-badge";
 import { TrustScorePanel } from "@/components/storefront/trust-score-panel";
 import type { TrustScoreChecklist } from "@/lib/actions/trust-score";
 import { CartLink } from "@/components/storefront/cart-link";
@@ -169,7 +168,6 @@ export function JuiceLifeStorefront({
               {avgRating && (
                 <p style={{ fontSize: 12, color: JUICELIFE.green, fontWeight: 700 }}>{"★".repeat(Math.round(avgRating))} {avgRating.toFixed(1)} average &middot; {completedOrders} orders completed</p>
               )}
-              {trustScore != null && <TrustBadge score={trustScore} />}
               {trustChecklist && (
                 <div style={{ marginTop: 8 }}>
                   <TrustScorePanel checklist={trustChecklist} />

@@ -1,5 +1,4 @@
 import type React from "react";
-import { TrustBadge } from "@/components/storefront/trust-badge";
 import { TrustScorePanel } from "@/components/storefront/trust-score-panel";
 import type { TrustScoreChecklist } from "@/lib/actions/trust-score";
 import { CartLink } from "@/components/storefront/cart-link";
@@ -214,12 +213,13 @@ export function HomeVistaStorefront({
           {catalogItems.length > 0 && <div><b style={{ fontSize: 22, display: "block", color: HOMEVISTA.accent }}>{catalogItems.length}+</b><span style={{ fontSize: 10, color: "#526164" }}>Listings</span></div>}
           {completedOrders > 0 && <div><b style={{ fontSize: 22, display: "block", color: HOMEVISTA.accent }}>{completedOrders}+</b><span style={{ fontSize: 10, color: "#526164" }}>Deals closed</span></div>}
           {avgRating != null && <div><b style={{ fontSize: 22, display: "block", color: HOMEVISTA.accent }}>{avgRating.toFixed(1)}/5</b><span style={{ fontSize: 10, color: "#526164" }}>Average rating</span></div>}
-          {trustScore != null && <div><TrustBadge score={trustScore} /></div>}
-          {trustChecklist && (
-            <div style={{ marginTop: 8 }}>
-              <TrustScorePanel checklist={trustChecklist} />
-            </div>
-          )}
+        </section>
+      )}
+
+      {/* ---------- TRUST SCORE ---------- */}
+      {trustChecklist && (
+        <section style={{ ...wrap, margin: "0 auto 25px" }}>
+          <TrustScorePanel checklist={trustChecklist} style={{ maxWidth: 340 }} />
         </section>
       )}
 

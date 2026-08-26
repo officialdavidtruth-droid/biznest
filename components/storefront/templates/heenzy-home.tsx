@@ -1,6 +1,5 @@
 import { CartLink } from "@/components/storefront/cart-link";
 import { AccountLink } from "@/components/storefront/account-link";
-import { TrustBadge } from "@/components/storefront/trust-badge";
 import { TrustScorePanel } from "@/components/storefront/trust-score-panel";
 import type { TrustScoreChecklist } from "@/lib/actions/trust-score";
 import { HEENZY, HEENZY_THEME, type TemplateTheme } from "@/lib/template-themes";
@@ -204,18 +203,18 @@ export function HeenzyStorefront({
           {avgRating != null && (
             <div className="hz-stat"><div><div className="hz-stat-num">{avgRating.toFixed(1)}/5</div><div className="hz-stat-label">Satisfaction Rate</div></div></div>
           )}
-          {trustScore != null && (
-            <div className="hz-stat">
-              <TrustBadge score={trustScore} />
-              {trustChecklist && (
-                <div style={{ marginTop: 8 }}>
-                  <TrustScorePanel checklist={trustChecklist} />
-                </div>
-              )}
-            </div>
-          )}
         </div>
       </div>
+
+      {/* ---------- TRUST SCORE ----------
+          Kept out of hz-stats-bar above on purpose: that row is small
+          fixed-width number tiles, and the trust checklist is a wider,
+          taller disclosure panel that didn't sit evenly alongside them. */}
+      {trustChecklist && (
+        <div className="hz-wrap" style={{ marginTop: 14 }}>
+          <TrustScorePanel checklist={trustChecklist} />
+        </div>
+      )}
 
       {/* ---------- BEST SELLERS — a teaser, not the full catalog ---------- */}
       {featuredItems.length > 0 && (

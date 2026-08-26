@@ -110,11 +110,6 @@ export function RivoraStorefront({
               <strong style={{ color: RIVORA.lime, fontSize: 13 }}>{"★".repeat(Math.round(avgRating))}</strong>
               <small style={{ fontSize: 9, color: "#aabcb3" }}>{avgRating.toFixed(1)} average rating &middot; {completedOrders} orders completed</small>
               {trustScore != null && <TrustBadge score={trustScore} size="sm" style={{ marginTop: 4 }} />}
-              {trustChecklist && (
-                <div style={{ marginTop: 8 }}>
-                  <TrustScorePanel checklist={trustChecklist} />
-                </div>
-              )}
             </div>
           )}
         </div>
@@ -209,6 +204,18 @@ export function RivoraStorefront({
               ))}
             </div>
           </Reveal>
+        </section>
+      )}
+
+      {/* ---------- TRUST SCORE ----------
+          Previously crammed as a flex sibling next to the small star-
+          rating badge in the hero (and only shown when avgRating existed,
+          hiding it entirely for new stores with no reviews yet). Given its
+          own section here so the wider checklist panel isn't squeezed
+          against a one-line rating strip. */}
+      {trustChecklist && (
+        <section style={{ padding: "0 5% 36px" }}>
+          <TrustScorePanel checklist={trustChecklist} style={{ maxWidth: 340 }} />
         </section>
       )}
 

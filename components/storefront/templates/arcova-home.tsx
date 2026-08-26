@@ -1,5 +1,4 @@
 import type React from "react";
-import { TrustBadge } from "@/components/storefront/trust-badge";
 import { TrustScorePanel } from "@/components/storefront/trust-score-panel";
 import type { TrustScoreChecklist } from "@/lib/actions/trust-score";
 import { CartLink } from "@/components/storefront/cart-link";
@@ -110,9 +109,8 @@ export function ArcovaStorefront({
               </div>
             ))}
           </div>
-          {trustScore != null && <TrustBadge score={trustScore} style={{ marginTop: 14 }} />}
           {trustChecklist && (
-            <div style={{ marginTop: 8 }}>
+            <div style={{ marginTop: 14 }}>
               <TrustScorePanel checklist={trustChecklist} />
             </div>
           )}
