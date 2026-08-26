@@ -89,16 +89,46 @@ function pathSlug(pathname: string): { slug: string | null; rest: string } {
 }
 
 /**
+ * In-memory cache for custom-domain -> slug lookups, keyed by host. Without
+ * this, every single request to a vendor's custom domain (mystore.com) paid
+ * for a full network round-trip to /api/resolve-domain (which itself hits
+ * Postgres) before the actual page could even start rendering — on top of
+ * whatever the page's own data fetching costs. A custom domain is an
+ * Enterprise/Business Mogul feature, so as more of those stores launch this
+ * gets slower for a growing fraction of traffic, not just occasionally.
+ *
+ * Edge middleware instances on Vercel stay warm across many requests to the
+ * same region, so a plain module-scope Map gives a real, meaningful hit
+ * rate in practice even without a shared cache like Redis. A short TTL
+ * (5 min) keeps custom-domain reassignment/removal from being stuck stale
+ * for long, while still eliminating the round-trip for the overwhelming
+ * majority of requests.
+ */
+const customDomainCache = new Map<string, { slug: string | null; expiresAt: number }>();
+const CUSTOM_DOMAIN_TTL_MS = 5 * 60 * 1000;
+
+/**
  * Resolves a custom domain (e.g. mystore.com, an Enterprise/Business Mogul
  * feature) to its store slug by calling app/api/resolve-domain (Node.js
  * runtime, so it can use Prisma safely — middleware itself cannot).
  */
 async function resolveCustomDomain(host: string, origin: string): Promise<string | null> {
   if (isPlatformHost(host)) return null;
+
+  const cached = customDomainCache.get(host);
+  if (cached && cached.expiresAt > Date.now()) {
+    return cached.slug;
+  }
+
   try {
     const res = await fetch(new URL(`/api/resolve-domain?host=${host}`, origin));
-    if (!res.ok) return null;
+    if (!res.ok) {
+      // Don't cache failures — a transient resolver error shouldn't lock a
+      // legitimate custom domain out for the full TTL.
+      return null;
+    }
     const { slug } = (await res.json()) as { slug: string | null };
+    customDomainCache.set(host, { slug, expiresAt: Date.now() + CUSTOM_DOMAIN_TTL_MS });
     return slug;
   } catch {
     // Resolver unreachable — fail open to "not a known custom domain"
