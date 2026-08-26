@@ -418,6 +418,82 @@ model Guarantor {
   createdAt    DateTime @default(now())
 }
 
+
+enum RoomStatus {
+  AVAILABLE
+  OCCUPIED
+  RESERVED
+  DIRTY
+  CLEANING
+  MAINTENANCE
+  OUT_OF_SERVICE
+}
+
+enum GuestPresence {
+  IN
+  OUT
+}
+
+enum PropertyReservationStatus {
+  PENDING
+  CONFIRMED
+  CHECKED_IN
+  CHECKED_OUT
+  CANCELLED
+  NO_SHOW
+}
+
+model PropertyGuest {
+  id          String   @id @default(cuid())
+  storeId     String
+  store       Store    @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  fullName    String
+  email       String?
+  phone       String?
+  notes       String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  reservations PropertyReservation[]
+  @@index([storeId])
+}
+
+model PropertyRoom {
+  id          String     @id @default(cuid())
+  storeId     String
+  store       Store      @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  name        String
+  roomType    String
+  status      RoomStatus @default(AVAILABLE)
+  notes       String?
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+  reservations PropertyReservation[]
+  @@unique([storeId, name])
+  @@index([storeId, status])
+}
+
+model PropertyReservation {
+  id          String   @id @default(cuid())
+  storeId     String
+  store       Store    @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  guestId     String
+  guest       PropertyGuest @relation(fields: [guestId], references: [id], onDelete: Restrict)
+  roomId      String
+  room        PropertyRoom @relation(fields: [roomId], references: [id], onDelete: Restrict)
+  checkIn     DateTime
+  checkOut    DateTime
+  status      PropertyReservationStatus @default(PENDING)
+  guestPresence GuestPresence @default(OUT)
+  notes       String?
+  checkedInAt DateTime?
+  checkedOutAt DateTime?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  @@index([storeId, checkIn, checkOut])
+  @@index([storeId, status])
+  @@index([roomId, checkIn, checkOut])
+}
+
 // ----------------------------------------------------------------------------
 // STORE
 // ----------------------------------------------------------------------------
@@ -445,6 +521,9 @@ model Store {
   customDomain  String?     @unique
   customDomainStatus DomainStatus @default(NONE)
   status        StoreStatus @default(ACTIVE)
+  businessType  String
+  enabledModules Json?
+  storefrontConfig Json?
 
   templateId    String?
   template      StoreTemplate? @relation(fields: [templateId], references: [id])
@@ -545,6 +624,10 @@ model Store {
 
   products      Product[]
   services      Service[]
+  categories    Category[]
+  propertyGuests PropertyGuest[]
+  propertyRooms PropertyRoom[]
+  propertyReservations PropertyReservation[]
   orders        Order[]
   bookings      Booking[]
   deliveryZones DeliveryZone[]
@@ -698,8 +781,15 @@ enum ProductType {
 
 model Category {
   id       String     @id @default(cuid())
-  name     String     @unique
+  // Null is retained only for legacy platform categories during migration; all store-owned categories are scoped to one store.
+  storeId  String?
+  store    Store?     @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  name     String
   type     CategoryType
+  sortOrder Int      @default(0)
+  isActive  Boolean  @default(true)
+  imageUrl  String?
+  icon      String?
   parentId String?
   parent   Category?  @relation("CategoryTree", fields: [parentId], references: [id])
   children Category[] @relation("CategoryTree")
@@ -712,6 +802,9 @@ model Category {
 
   products Product[]
   services Service[]
+
+  @@index([storeId])
+  @@index([storeId, parentId])
 }
 
 // Logged platform-wide marketplace searches, for ranking and analytics.
