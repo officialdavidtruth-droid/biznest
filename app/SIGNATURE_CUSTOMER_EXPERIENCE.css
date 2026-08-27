@@ -1,0 +1,70 @@
+/* -------------------------------------------------------------------------
+   Signature Collection customer experience
+   The business engine remains shared; this layer keeps checkout/account
+   surfaces visually owned by the active Signature template.
+   ------------------------------------------------------------------------- */
+.signature-checkout,
+.signature-account { background: var(--sig-bg); color: var(--sig-ink); font-family: var(--sig-font, Inter, sans-serif); }
+.signature-checkout-card { background: var(--sig-card); border: 1px solid var(--sig-border); border-radius: 24px; box-shadow: 0 12px 40px color-mix(in srgb, var(--sig-ink) 7%, transparent); }
+.signature-eyebrow { color: var(--sig-accent); font-size: 10px; font-weight: 800; letter-spacing: .16em; text-transform: uppercase; }
+.signature-title { font-family: var(--sig-headline, Inter, sans-serif); font-size: clamp(2.1rem, 5vw, 4rem); font-weight: 800; letter-spacing: -.045em; line-height: .98; }
+.signature-subtitle { max-width: 650px; color: var(--sig-muted); font-size: 1rem; line-height: 1.65; }
+.signature-section-title { font-size: 1rem; font-weight: 800; letter-spacing: -.01em; }
+.signature-helper { color: var(--sig-muted); }
+.signature-checkout-input { border: 1px solid var(--sig-border); border-radius: 14px; background: color-mix(in srgb, var(--sig-card) 92%, var(--sig-bg)); color: var(--sig-ink); padding: 13px 14px; font-size: 14px; outline: none; transition: border-color .18s, box-shadow .18s, transform .18s; }
+.signature-checkout-input:focus { border-color: var(--sig-accent); box-shadow: 0 0 0 4px color-mix(in srgb, var(--sig-accent) 14%, transparent); }
+.signature-primary-button { align-items: center; justify-content: center; border: 0; border-radius: 14px; background: var(--sig-accent); color: var(--sig-bg); min-height: 50px; padding: 0 18px; font-size: 12px; font-weight: 800; letter-spacing: .04em; transition: transform .18s, opacity .18s, box-shadow .18s; }
+.signature-primary-button:hover { transform: translateY(-1px); opacity: .94; box-shadow: 0 10px 24px color-mix(in srgb, var(--sig-accent) 24%, transparent); }
+.signature-primary-button:disabled { opacity: .55; transform: none; }
+.signature-back { display: inline-flex; align-items: center; gap: 7px; color: var(--sig-muted); font-size: 13px; font-weight: 700; }
+.signature-steps { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; color: var(--sig-muted); font-size: 10px; font-weight: 800; text-transform: uppercase; letter-spacing: .08em; }
+.signature-steps span { display: inline-flex; align-items: center; gap: 6px; }
+.signature-steps b { display: grid; place-items: center; width: 22px; height: 22px; border: 1px solid var(--sig-border); border-radius: 50%; font-size: 9px; }
+.signature-steps .is-active { color: var(--sig-ink); }
+.signature-steps .is-active b { border-color: var(--sig-accent); background: var(--sig-accent); color: var(--sig-bg); }
+.signature-steps i { color: var(--sig-border); font-style: normal; margin-left: 3px; }
+.signature-product-image { width: 58px; height: 58px; flex: 0 0 auto; overflow: hidden; border-radius: 13px; background: color-mix(in srgb, var(--sig-bg) 85%, var(--sig-ink)); border: 1px solid var(--sig-border); }
+.signature-product-image img { width: 100%; height: 100%; object-fit: cover; }
+.signature-summary-count { border: 1px solid var(--sig-border); border-radius: 999px; padding: 5px 9px; color: var(--sig-muted); font-size: 10px; font-weight: 800; }
+.signature-total-block { border-color: var(--sig-border); }
+.signature-total { color: var(--sig-accent); font-size: 1.65rem; font-weight: 900; letter-spacing: -.03em; }
+.signature-trust { color: var(--sig-muted); }
+.signature-trust span { display: inline-flex; align-items: center; gap: 6px; }
+.signature-trust svg { width: 14px; height: 14px; }
+.signature-payment-note { color: var(--sig-muted); font-size: 10px; line-height: 1.5; }
+.signature-dark { --sig-bg: #0b0b0d; }
+
+.signature-account-header { border-bottom: 1px solid var(--sig-border); background: color-mix(in srgb, var(--sig-card) 92%, transparent); backdrop-filter: blur(18px); }
+.signature-account-logo, .signature-account-logo-fallback { width: 40px; height: 40px; border-radius: 13px; object-fit: cover; border: 1px solid var(--sig-border); }
+.signature-account-logo-fallback { display: grid; place-items: center; background: var(--sig-accent); color: var(--sig-bg); font-weight: 900; }
+.signature-account-back { display: grid; place-items: center; width: 38px; height: 38px; border: 1px solid var(--sig-border); border-radius: 50%; color: var(--sig-muted); }
+.signature-account-nav { align-self: start; position: sticky; top: 18px; display: flex; flex-direction: column; gap: 4px; padding: 8px; border: 1px solid var(--sig-border); border-radius: 22px; background: var(--sig-card); box-shadow: 0 12px 40px color-mix(in srgb, var(--sig-ink) 6%, transparent); }
+.signature-account-nav-link, .signature-account-signout { display: flex; align-items: center; gap: 10px; border-radius: 14px; padding: 11px 12px; color: var(--sig-muted); font-size: 13px; font-weight: 700; transition: background .18s, color .18s; }
+.signature-account-nav-link:hover { background: color-mix(in srgb, var(--sig-accent) 9%, transparent); color: var(--sig-ink); }
+.signature-account-nav-link b { margin-left: auto; min-width: 20px; padding: 2px 6px; border-radius: 999px; background: var(--sig-accent); color: var(--sig-bg); text-align: center; font-size: 10px; }
+.signature-account-divider { height: 1px; margin: 6px 4px; background: var(--sig-border); }
+.signature-account-signout { color: #b42318; }
+.signature-account-content { min-width: 0; }
+.signature-account-mobile-label { display: none; align-items: center; gap: 6px; color: var(--sig-muted); font-size: 11px; font-weight: 800; text-transform: uppercase; letter-spacing: .1em; }
+
+/* Existing store-scoped account pages use shared utility classes. Scope the
+   common surfaces so they inherit the Signature identity without rewriting
+   every business-data component. */
+.signature-account .bg-slate-50 { background: var(--sig-bg) !important; }
+.signature-account .bg-white { background: var(--sig-card) !important; }
+.signature-account .border-slate-200, .signature-account .border-slate-100, .signature-account .border-slate-300 { border-color: var(--sig-border) !important; }
+.signature-account .text-slate-950, .signature-account .text-slate-900, .signature-account .text-slate-800 { color: var(--sig-ink) !important; }
+.signature-account .text-slate-700, .signature-account .text-slate-600, .signature-account .text-slate-500, .signature-account .text-slate-400 { color: var(--sig-muted) !important; }
+.signature-account .text-blue-600, .signature-account .text-blue-700, .signature-account .text-amber-600, .signature-account .text-amber-500 { color: var(--sig-accent) !important; }
+.signature-account .bg-blue-50, .signature-account .bg-amber-50 { background: color-mix(in srgb, var(--sig-accent) 10%, var(--sig-card)) !important; }
+.signature-account .bg-blue-500, .signature-account .bg-amber-500 { background: var(--sig-accent) !important; }
+.signature-account .shadow-sm, .signature-account .shadow-lg { box-shadow: 0 10px 30px color-mix(in srgb, var(--sig-ink) 7%, transparent) !important; }
+
+@media (max-width: 767px) {
+  .signature-steps { width: 100%; justify-content: space-between; }
+  .signature-account-mobile-label { display: inline-flex; }
+  .signature-account-nav { position: static; flex-direction: row; overflow-x: auto; border-radius: 16px; }
+  .signature-account-nav-link, .signature-account-signout { flex: 0 0 auto; }
+  .signature-account-nav-link span { display: none; }
+  .signature-account-divider { width: 1px; height: 30px; margin: 0 2px; }
+}
