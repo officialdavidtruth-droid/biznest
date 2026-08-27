@@ -74,7 +74,7 @@ export default async function StoreAdminLayout({
             a normal block above a flex-1 region. h-screen here ignored the
             banner's height and pushed this whole block -- including the
             fixed mobile bottom bar -- off-screen, so a live announcement
-            never actually appeared on the store admin dashboard. h-full
+            never actually appeared on the store business dashboard. h-full
             fills whatever space that flex-1 region has, banner or not. */}
         <div className="flex h-full flex-col overflow-hidden bg-background text-foreground lg:flex-row">
           <DashboardSidebar
@@ -117,7 +117,7 @@ export default async function StoreAdminLayout({
                     plain store name, same as before. */}
                 {session.user.staffPosition
                   ? `${session.user.staffPosition} - ${store.name}`
-                  : `${store.name} admin`}
+                  : `${store.name} business`}
               </p>
               <div className="flex items-center gap-1">
                 <ThemeToggle />
