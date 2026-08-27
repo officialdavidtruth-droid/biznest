@@ -65,6 +65,7 @@ export function SignatureCheckoutClient({ slug, templateName }: { slug: string; 
     "--sig-muted": theme.muted,
     "--sig-border": theme.border,
     "--sig-dark": theme.surfaceDark,
+    "--sig-radius": theme.radius,
   } as React.CSSProperties), [theme]);
 
   async function handleSubmit(e: React.FormEvent) {
@@ -143,4 +144,4 @@ export function SignatureCheckoutClient({ slug, templateName }: { slug: string; 
       </form>
     </div>
   </main>;
-}
+    }
