@@ -3,7 +3,6 @@ import { getStoreBranding } from "@/lib/actions/store-branding";
 import { listStoreBookings } from "@/lib/actions/account";
 import { PayBookingWithWalletButton } from "@/components/storefront/pay-booking-wallet-button";
 import { WalletPaymentQrButton } from "@/components/storefront/wallet-payment-qr-button";
-import Link from "next/link";
 
 function formatDate(value: Date | string) {
   return new Date(value).toLocaleDateString(undefined, { weekday: "short", day: "numeric", month: "short", year: "numeric" });
@@ -21,17 +20,14 @@ export default async function Page({ params }: { params: Promise<{ slug: string 
   const past = bookings.filter(b => !upcoming.some(u => u.id === b.id));
 
   return (
-    <div className="min-h-screen bg-slate-50 px-4 py-8 md:px-8">
-      <div className="mx-auto max-w-4xl">
-        <div className="mb-8 flex items-end justify-between gap-4">
-          <div>
-            <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-400">Your bookings</p>
-            <h1 className="mt-2 text-3xl font-bold tracking-tight text-slate-950">Appointments & reservations</h1>
-            <p className="mt-2 text-sm text-slate-500">Manage your bookings with {store.name}.</p>
-          </div>
-          <Link href={`/${slug}`} className="rounded-xl border bg-white px-4 py-2 text-sm font-semibold text-slate-700 shadow-sm">Back to website</Link>
-        </div>
+    <div>
+      <div className="mb-6">
+        <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-400">Your bookings</p>
+        <h1 className="mt-2 text-xl font-bold tracking-tight text-slate-950">Appointments & reservations</h1>
+        <p className="mt-2 text-sm text-slate-500">Manage your bookings with {store.name}.</p>
+      </div>
 
+      <div className="max-w-4xl">
         <section>
           <h2 className="mb-3 text-sm font-bold text-slate-900">Upcoming</h2>
           <div className="space-y-3">
@@ -57,4 +53,4 @@ export default async function Page({ params }: { params: Promise<{ slug: string 
       </div>
     </div>
   );
-      }
+}
