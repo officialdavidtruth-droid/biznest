@@ -19,6 +19,7 @@ import { RivoraStorefront } from "@/components/storefront/templates/rivora-home"
 import { JuiceLifeStorefront } from "@/components/storefront/templates/juicelife-home";
 import { FabtexStorefront } from "@/components/storefront/templates/fabtex-home";
 import { SignatureStorefront } from "@/components/storefront/templates/signature-home";
+import { HotelStorefront } from "@/components/storefront/templates/hotel-home";
 import { CategoryNav } from "@/components/storefront/category-nav";
 import { getStoreCategoryTree } from "@/lib/storefront-categories";
 import { Reveal } from "@/components/storefront/reveal";
@@ -114,6 +115,22 @@ export default async function StorefrontPage({ params }: { params: Promise<{ slu
         reviews={store.reviews}
         avgRating={avgRating}
         completedOrders={completedOrders}
+      />
+    );
+  }
+
+  // ---------- HOTEL: company-first hospitality website ----------
+  const signatureTheme = isSignatureTemplate(store.template?.name) ? getSignatureTheme(store.template?.name) : null;
+  if (signatureTheme?.signatureMode === "hotel") {
+    return (
+      <HotelStorefront
+        store={store}
+        slug={slug}
+        catalogItems={catalogItems}
+        goodReviews={goodReviews}
+        avgRating={avgRating}
+        social={social}
+        theme={signatureTheme}
       />
     );
   }
