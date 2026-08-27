@@ -324,4 +324,4 @@ a[href*="/service/"]:hover img {
   .bn-grid-2 {
     grid-template-columns: repeat(2, 1fr) !important;
   }
-}
+   }
