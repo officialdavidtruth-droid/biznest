@@ -17,7 +17,7 @@ type Review = { id: string; rating: number; comment: string | null; author: { na
 
 type BuilderStore = {
   name: string; slug: string; logoUrl: string | null; contactEmail: string | null; contactPhone: string | null;
-  business: { description: string | null; category?: string | null };
+  business: { description: string | null; category?: string | null; sellsProducts?: boolean; offersServices?: boolean };
 };
 
 export function BuilderStorefront({
@@ -68,7 +68,7 @@ export function BuilderStorefront({
 
   const d = liveConfig.design;
   const config = liveConfig; // used by JSX below (BuilderSectionView expects `config`)
-  const experience = getBusinessExperience(store.business.category);
+  const experience = getBusinessExperience(store.business.category, { sellsProducts: store.business.sellsProducts, offersServices: store.business.offersServices });
   const width = d.containerWidth === "compact" ? 960 : d.containerWidth === "wide" ? 1320 : 1160;
   const visible = config.sections.filter((s) => s.visible);
   const featured = catalogItems.slice(0, 8);
@@ -104,7 +104,7 @@ export function BuilderStorefront({
           <div className="bn-nav-links" style={{ display: "flex", gap: 22, fontSize: 13, color: d.muted }}>
             {visible.filter((s) => ["catalog", "about", "contact"].includes(s.type)).map((s) => <a key={s.id} href={`#${s.id}`}>{s.settings.heading || label(s.type)}</a>)}
           </div>
-          <div style={{ display: "flex", alignItems: "center", gap: 10 }}><span style={{ fontSize: 11, color: d.muted, display: "none" }} className="bn-mode-label">{experience.mode === "commerce" ? "Shopping" : "Booking & enquiries"}</span><CartLink storeSlug={store.slug} accent={d.accent} /></div>
+          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>{experience.mode !== "service" && <CartLink storeSlug={store.slug} accent={d.accent} />}</div>
         </div>
       </nav>
 
@@ -161,7 +161,7 @@ function BuilderSectionView({ section, store, config, catalogItems, categories, 
     </div></section>
   );
 
-  if (section.type === "stats") return <section id={section.id} className="bn-section" style={{ padding: "28px 0", background: bg }}><div className="bn-wrap bn-grid" style={{ gridTemplateColumns: "repeat(3,1fr)", textAlign: "center" }}><Stat value={`${catalogItems.length}+`} label="Published items" d={d} /><Stat value={`${completedOrders}+`} label="Completed orders" d={d} /><Stat value={avgRating ? `${avgRating.toFixed(1)}/5` : "New"} label="Customer rating" d={d} /></div></section>;
+  if (section.type === "stats") return <section id={section.id} className="bn-section" style={{ padding: "28px 0", background: bg }}><div className="bn-wrap bn-grid" style={{ gridTemplateColumns: "repeat(3,1fr)", textAlign: "center" }}><Stat value={`${catalogItems.length}+`} label={experience.mode === "commerce" ? "Published products" : experience.mode === "service" ? "Services" : "Products & services"} d={d} /><Stat value={`${completedOrders}+`} label={experience.mode === "commerce" ? "Completed orders" : "Completed bookings"} d={d} /><Stat value={avgRating ? `${avgRating.toFixed(1)}/5` : "New"} label="Customer rating" d={d} /></div></section>;
 
   if (section.type === "features") return <section id={section.id} className="bn-section" style={{ padding, background: bg }}><div className="bn-wrap"><SectionIntro section={section} config={config} /><div className="bn-grid" style={{ gridTemplateColumns: `repeat(${Math.min(cols,4)},1fr)` }}>{["Quality you can trust", "Simple online ordering", "Responsive customer support", "Built for your business"].map((item, i) => <div key={item} style={{ padding: 24, background: d.surface, borderRadius: s.radius ?? d.radius, border: `1px solid ${d.text}12` }}><div style={{ color: d.accent, fontWeight: 900, fontSize: 12 }}>0{i + 1}</div><h3 style={{ margin: "10px 0 7px", fontFamily: d.headingFont, fontSize: 18 }}>{item}</h3><p style={{ color: d.muted, fontSize: 13, lineHeight: 1.7 }}>Customize this benefit in your visual builder to tell customers why your business is different.</p></div>)}</div></div></section>;
 
@@ -177,7 +177,7 @@ function BuilderSectionView({ section, store, config, catalogItems, categories, 
 
   if (section.type === "map") return <section id={section.id} className="bn-section" style={{ padding, background: bg }}><div className="bn-wrap"><SectionIntro section={section} config={config} /><div style={{ minHeight: 280, borderRadius: s.radius ?? d.radius, background: `linear-gradient(135deg, ${d.primary}16, ${d.accent}18)`, display: "grid", placeItems: "center", color: d.muted }}>Add your location in Store Settings to show your map here.</div></div></section>;
 
-  if (section.type === "faq" || section.type === "text") return <section id={section.id} className="bn-section" style={{ padding, background: bg }}><div className="bn-wrap" style={{ maxWidth: section.type === "faq" ? 850 : 1160 }}>{section.type === "faq" ? <><SectionIntro section={section} config={config} /><details style={{ borderTop: `1px solid ${d.text}14`, padding: "18px 0" }}><summary style={{ cursor: "pointer", fontWeight: 750 }}>How do I place an order?</summary><p style={{ color: d.muted, lineHeight: 1.7 }}>Browse the store, add an item to your cart and complete checkout.</p></details><details style={{ borderTop: `1px solid ${d.text}14`, padding: "18px 0" }}><summary style={{ cursor: "pointer", fontWeight: 750 }}>How can I contact this business?</summary><p style={{ color: d.muted, lineHeight: 1.7 }}>{store.contactEmail || store.contactPhone || "Use the contact section on this store."}</p></details></> : <><SectionIntro section={section} config={config} /><p style={{ color: d.muted, lineHeight: 1.8, whiteSpace: "pre-wrap" }}>{s.body}</p></>}</div></section>;
+  if (section.type === "faq" || section.type === "text") return <section id={section.id} className="bn-section" style={{ padding, background: bg }}><div className="bn-wrap" style={{ maxWidth: section.type === "faq" ? 850 : 1160 }}>{section.type === "faq" ? <><SectionIntro section={section} config={config} /><details style={{ borderTop: `1px solid ${d.text}14`, padding: "18px 0" }}><summary style={{ cursor: "pointer", fontWeight: 750 }}>{experience.mode === "commerce" ? "How do I place an order?" : "How do I book a service?"}</summary><p style={{ color: d.muted, lineHeight: 1.7 }}>Browse the business website, choose what you need, and follow the purchase or booking instructions.</p></details><details style={{ borderTop: `1px solid ${d.text}14`, padding: "18px 0" }}><summary style={{ cursor: "pointer", fontWeight: 750 }}>How can I contact this business?</summary><p style={{ color: d.muted, lineHeight: 1.7 }}>{store.contactEmail || store.contactPhone || "Use the contact section on this store."}</p></details></> : <><SectionIntro section={section} config={config} /><p style={{ color: d.muted, lineHeight: 1.8, whiteSpace: "pre-wrap" }}>{s.body}</p></>}</div></section>;
 
   return null;
 }
