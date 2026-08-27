@@ -29,18 +29,18 @@ export async function setStoreTemplate(slug: string, templateId: string): Promis
     const signature = SIGNATURE_TEMPLATE_CATALOG.find((t) => t.variationName === name);
     if (!signature) return { success: false, error: "Template not found." };
 
-    const tierRank = ["kinetic", "maison", "north", "forge"].includes(signature.signatureMode) ? 4 : 3;
+    const tierRank = ["kinetic", "maison", "hotel", "north", "forge"].includes(signature.signatureMode) ? 4 : 3;
     template = await prisma.storeTemplate.upsert({
       where: { name: signature.variationName },
       update: {
-        category: signature.signatureMode,
+        category: signature.signatureMode === "hotel" ? "Hotel & Lodging" : signature.signatureMode,
         isActive: true,
         tierRank,
         config: signature as unknown as Prisma.InputJsonValue,
       },
       create: {
         name: signature.variationName,
-        category: signature.signatureMode,
+        category: signature.signatureMode === "hotel" ? "Hotel & Lodging" : signature.signatureMode,
         isActive: true,
         tierRank,
         config: signature as unknown as Prisma.InputJsonValue,
