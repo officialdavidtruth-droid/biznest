@@ -2,7 +2,7 @@ import {
   LayoutDashboard, ShoppingCart, Package, Wrench, Users, Boxes, Ticket,
   CreditCard, BarChart3, Star, Megaphone, MessageSquare,
   Settings, BadgeCheck, Wallet, LifeBuoy, Truck, Wand2,
-  LayoutTemplate, FileText, FileSignature, MailWarning, Calculator,
+  LayoutTemplate, FileText, FileSignature, MailWarning, Calculator, CalendarDays,
 } from "lucide-react";
 import { getCategoryDashboard } from "@/lib/constants/category-dashboard";
 import type { StaffPermissionId } from "@/lib/access/staff-permissions";
@@ -24,7 +24,7 @@ export type NavItem = {
 // Purchase-orders/Delivery-zones, and a product-only business never sees
 // Services. Anything not listed here is shared by every business.
 const PRODUCT_ONLY_HREFS = new Set(["/products", "/inventory", "/delivery", "/suppliers", "/purchase-orders"]);
-const SERVICE_ONLY_HREFS = new Set(["/services", "/quotes"]);
+const SERVICE_ONLY_HREFS = new Set(["/services", "/quotes", "/calendar"]);
 
 function relevantToBusiness(href: string, business: { sellsProducts: boolean; offersServices: boolean }) {
   if (PRODUCT_ONLY_HREFS.has(href)) return business.sellsProducts;
@@ -47,6 +47,7 @@ export function buildNavGroups(business: { sellsProducts: boolean; offersService
     { label: "Orders", href: "/orders", icon: ShoppingCart, permission: "orders" },
     { label: "Products", href: "/products", icon: Package, permission: "products" },
     { label: "Services", href: "/services", icon: Wrench, permission: "products" },
+    { label: "Calendar", href: "/calendar", icon: CalendarDays, permission: "products" },
   ];
   const sellNavItems: NavItem[] = allSellNavItems.filter((item) => relevantToBusiness(item.href, business));
 
@@ -197,4 +198,5 @@ export function buildBottomTabItems(
   ].filter((i): i is NavItem => Boolean(i));
   const rest = items.filter((i) => !preferred.includes(i));
   return preferred.concat(rest).slice(0, 4);
-}
+    }
+      
