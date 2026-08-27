@@ -4,7 +4,7 @@ import { getUnreadStoreMessageCount } from "@/lib/actions/account";
 import { redirect, notFound } from "next/navigation";
 import Link from "next/link";
 import {
-  LayoutDashboard, Package, Heart, MapPin, Bell, Calendar, Star, MessageSquare, ArrowLeft, LogOut,
+  LayoutDashboard, Package, Heart, MapPin, Bell, Calendar, Star, MessageSquare, ArrowLeft, LogOut, Wallet,
 } from "lucide-react";
 import { StoreFooter } from "@/components/storefront/store-footer";
 import { SignOutButton } from "@/components/forms/sign-out-button";
@@ -38,6 +38,7 @@ export default async function StoreAccountLayout({
     { href: `/store/${slug}/account/wishlist`, label: "My Wishlist", icon: Heart },
     { href: `/store/${slug}/account/addresses`, label: "My Addresses", icon: MapPin },
     { href: `/store/${slug}/account/loyalty`, label: "My Rewards", icon: Bell },
+    { href: `/store/${slug}/account/wallet`, label: "My Wallet", icon: Wallet },
     { href: `/store/${slug}/account/bookings`, label: "My Appointments", icon: Calendar },
     { href: `/store/${slug}/account/reviews`, label: "My Reviews", icon: Star },
     { href: `/store/${slug}/account/messages`, label: "Support & Disputes", icon: MessageSquare, badge: unreadMessageCount },
