@@ -1,6 +1,8 @@
 "use server";
 
 import { getStoreConfiguration } from "@/lib/capabilities";
+import { getBusinessExperience } from "@/lib/business-experience";
+import { getTemplateBusinessType, isTemplateCompatible } from "@/lib/template-compatibility";
 
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
@@ -14,19 +16,6 @@ import { fetchDemoPhoto, fetchDemoPhotos } from "@/lib/demo-images";
 import type { ActionResult } from "@/types/actions";
 import { resolvePaystackAccount, createPaystackSubaccount } from "@/lib/payments/paystack";
 import { resolveFlutterwaveAccount, createFlutterwaveSubaccount } from "@/lib/payments/flutterwave";
-
-const DEFAULT_PAGES: Array<{ slug: string; title: string }> = [
-  { slug: "home", title: "Home" },
-  { slug: "about", title: "About" },
-  { slug: "products", title: "Products" },
-  { slug: "services", title: "Services" },
-  { slug: "gallery", title: "Gallery" },
-  { slug: "testimonials", title: "Testimonials" },
-  { slug: "faq", title: "FAQ" },
-  { slug: "blog", title: "Blog" },
-  { slug: "contact", title: "Contact" },
-  { slug: "policies", title: "Policies" },
-];
 
 /**
  * Store creation is gated on two things, checked server-side (never trust
@@ -72,6 +61,9 @@ export async function createStore(
   // side lock is a convenience, not enforcement.
   if (parsed.data.templateId) {
     const chosenTemplate = await prisma.storeTemplate.findUnique({ where: { id: parsed.data.templateId } });
+    if (chosenTemplate && !isTemplateCompatible(chosenTemplate, business.category, { sellsProducts: business.sellsProducts, offersServices: business.offersServices })) {
+      return { success: false, error: "That website design is not compatible with this business model. Choose a product, service, or hybrid design that matches what you selected during onboarding." };
+    }
     if (chosenTemplate && chosenTemplate.tierRank > 1) {
       return { success: false, error: "That template requires a paid plan. Pick a Free template for now — you can upgrade and switch after your store is created." };
     }
@@ -87,7 +79,8 @@ export async function createStore(
   const template = parsed.data.templateId
     ? await prisma.storeTemplate.findUnique({ where: { id: parsed.data.templateId } })
     : null;
-  const samples = template ? SAMPLE_LISTINGS[template.category] ?? [] : [];
+  const templateBusinessType = template ? getTemplateBusinessType(template) : null;
+  const samples = templateBusinessType ? SAMPLE_LISTINGS[templateBusinessType] ?? [] : [];
   const [samplePhotos, bannerPhoto] = await Promise.all([
     fetchDemoPhotos(samples.map((s) => s.name)),
     template ? fetchDemoPhoto(template.category) : Promise.resolve(null),
@@ -101,10 +94,11 @@ export async function createStore(
         slug,
         templateId: parsed.data.templateId,
         businessType: business.category,
-        enabledModules: { capabilities: getStoreConfiguration(business.category).capabilities },
+        enabledModules: { capabilities: getStoreConfiguration(business.category, { sellsProducts: business.sellsProducts, offersServices: business.offersServices }).capabilities },
         storefrontConfig: {
-          navigation: getStoreConfiguration(business.category).navigation,
-          homepageSections: getStoreConfiguration(business.category).homepageSections,
+          mode: getBusinessExperience(business.category, { sellsProducts: business.sellsProducts, offersServices: business.offersServices }).mode,
+          navigation: getBusinessExperience(business.category, { sellsProducts: business.sellsProducts, offersServices: business.offersServices }).navigation,
+          homepageSections: getBusinessExperience(business.category, { sellsProducts: business.sellsProducts, offersServices: business.offersServices }).preferredSections,
         },
         // A logo/banner uploaded in the onboarding wizard's branding step
         // wins over the auto-fetched demo banner — that photo is only a
@@ -115,8 +109,9 @@ export async function createStore(
       },
     });
 
+    const websitePages = getBusinessExperience(business.category, { sellsProducts: business.sellsProducts, offersServices: business.offersServices }).pageSlugs;
     await tx.storePage.createMany({
-      data: DEFAULT_PAGES.map((p) => ({
+      data: websitePages.map((p) => ({
         storeId: created.id,
         slug: p.slug,
         title: p.title,
@@ -126,7 +121,7 @@ export async function createStore(
 
     // Create store-owned category trees from the selected business type.
     // These are real rows owned by this store, not shared platform categories.
-    const businessConfig = getStoreConfiguration(business.category);
+    const businessConfig = getStoreConfiguration(business.category, { sellsProducts: business.sellsProducts, offersServices: business.offersServices });
     const categoryIds = new Map<string, string>();
     for (const [categoryIndex, category] of businessConfig.defaultCategories.entries()) {
       const parent = await tx.category.create({
