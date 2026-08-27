@@ -427,7 +427,9 @@ export async function createBooking(
       select: { id: true },
     });
     if (!assignment) return { success: false, error: "That specialist is not available for this service." };
-    let booking: { id: string; scheduledAt: Date; durationMins: number };
+  }
+
+  let booking: { id: string; scheduledAt: Date; durationMins: number };
   try {
     booking = await prisma.$transaction(async (tx) => {
     const existing = await tx.booking.findMany({
@@ -651,4 +653,5 @@ export async function hasBookingConflict(serviceId: string, start: Date, duratio
     select: { scheduledAt: true, durationMins: true },
   });
   return candidates.some(b => b.scheduledAt.getTime() < end.getTime() && b.scheduledAt.getTime() + b.durationMins * 60000 > start.getTime());
-}
+  }
+  
