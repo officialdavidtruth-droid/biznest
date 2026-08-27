@@ -24,7 +24,7 @@ export function SignatureCustomerShell({ children, slug, templateName, storeName
     { href: `/store/${slug}/account/reviews`, label: "Reviews", icon: Star },
     { href: `/store/${slug}/account/messages`, label: "Support", icon: MessageSquare, badge: unreadMessageCount },
   ];
-  const css = { "--sig-bg": theme.bg, "--sig-ink": theme.ink, "--sig-card": theme.card, "--sig-accent": theme.accent, "--sig-muted": theme.muted, "--sig-border": theme.border, "--sig-dark": theme.surfaceDark } as React.CSSProperties;
+  const css = { "--sig-bg": theme.bg, "--sig-ink": theme.ink, "--sig-card": theme.card, "--sig-accent": theme.accent, "--sig-muted": theme.muted, "--sig-border": theme.border, "--sig-dark": theme.surfaceDark, "--sig-radius": theme.radius, "--sig-font": theme.font, "--sig-headline": theme.headlineFont } as React.CSSProperties;
 
   return <div data-signature-mode={mode} style={css} className="signature-account min-h-screen">
     <header className="signature-account-header">
@@ -42,4 +42,5 @@ export function SignatureCustomerShell({ children, slug, templateName, storeName
       <main className="signature-account-content">{children}</main>
     </div>
   </div>;
-}
+        }
+  
