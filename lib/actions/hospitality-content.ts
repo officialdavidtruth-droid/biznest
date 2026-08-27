@@ -4,39 +4,14 @@ import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { revalidatePath } from "next/cache";
 import type { ActionResult } from "@/types/actions";
+import {
+  EMPTY_HOSPITALITY_GALLERY,
+  type GalleryAlbum,
+  type GalleryImage,
+  type HospitalityGalleryContent,
+} from "@/lib/actions/hospitality-content.types";
 
-export type GalleryImage = {
-  id: string;
-  image: string;
-  title: string;
-  caption?: string;
-  description?: string;
-  featured?: boolean;
-};
-
-export type GalleryAlbum = {
-  id: string;
-  title: string;
-  description?: string;
-  coverImage?: string;
-  images: GalleryImage[];
-};
-
-export type HospitalityGalleryContent = {
-  type: "hospitality-gallery";
-  eyebrow: string;
-  title: string;
-  intro: string;
-  albums: GalleryAlbum[];
-};
-
-export const EMPTY_HOSPITALITY_GALLERY: HospitalityGalleryContent = {
-  type: "hospitality-gallery",
-  eyebrow: "Visual narrative",
-  title: "See the place before you arrive.",
-  intro: "Tell the story of your property through photographs, moments and spaces.",
-  albums: [],
-};
+export type { GalleryAlbum, GalleryImage, HospitalityGalleryContent } from "@/lib/actions/hospitality-content.types";
 
 async function access(slug: string) {
   const session = await auth();
@@ -105,4 +80,5 @@ export async function saveHospitalityGallery(slug: string, content: HospitalityG
   revalidatePath(`/${slug}`);
   revalidatePath(`/${slug}/admin/gallery`);
   return { success: true, data: undefined };
-}
+      }
+          
