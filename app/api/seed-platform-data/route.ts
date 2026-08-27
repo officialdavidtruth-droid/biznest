@@ -108,8 +108,8 @@ export async function GET(req: Request) {
   for (const signatureTemplate of SIGNATURE_TEMPLATE_CATALOG) {
     await prisma.storeTemplate.upsert({
       where: { name: signatureTemplate.variationName },
-      update: { category: signatureTemplate.signatureMode, isActive: true, tierRank: signatureTemplate.signatureMode === "kinetic" || signatureTemplate.signatureMode === "maison" || signatureTemplate.signatureMode === "north" || signatureTemplate.signatureMode === "forge" ? 4 : 3, previewUrl: signaturePreviewUrl, config: signatureTemplate as unknown as Prisma.InputJsonValue },
-      create: { name: signatureTemplate.variationName, category: signatureTemplate.signatureMode, tierRank: signatureTemplate.signatureMode === "kinetic" || signatureTemplate.signatureMode === "maison" || signatureTemplate.signatureMode === "north" || signatureTemplate.signatureMode === "forge" ? 4 : 3, previewUrl: signaturePreviewUrl, config: signatureTemplate as unknown as Prisma.InputJsonValue },
+      update: { category: signatureTemplate.signatureMode === "hotel" ? "Hotel & Lodging" : signatureTemplate.signatureMode, isActive: true, tierRank: signatureTemplate.signatureMode === "kinetic" || signatureTemplate.signatureMode === "maison" || signatureTemplate.signatureMode === "hotel" || signatureTemplate.signatureMode === "north" || signatureTemplate.signatureMode === "forge" ? 4 : 3, previewUrl: signaturePreviewUrl, config: signatureTemplate as unknown as Prisma.InputJsonValue },
+      create: { name: signatureTemplate.variationName, category: signatureTemplate.signatureMode === "hotel" ? "Hotel & Lodging" : signatureTemplate.signatureMode, tierRank: signatureTemplate.signatureMode === "kinetic" || signatureTemplate.signatureMode === "maison" || signatureTemplate.signatureMode === "hotel" || signatureTemplate.signatureMode === "north" || signatureTemplate.signatureMode === "forge" ? 4 : 3, previewUrl: signaturePreviewUrl, config: signatureTemplate as unknown as Prisma.InputJsonValue },
     });
   }
 
