@@ -76,7 +76,7 @@ export default async function ServicePage({ params }: { params: Promise<{ slug: 
             )}
 
             {service.isBookable ? (
-              <BookingWidget storeSlug={slug} serviceId={service.id} serviceName={service.name} servicePrice={Number(service.price)} accent={accent} ink={ink} bg={bg} radius={radius} startOpen />
+              <BookingWidget storeSlug={slug} serviceId={service.id} serviceName={service.name} servicePrice={Number(service.price)} currency={service.currency} durationMins={service.durationMins} totalUnits={service.totalUnits} accent={accent} ink={ink} bg={bg} radius={radius} startOpen />
             ) : (
               <p style={{ fontSize: 13.5, opacity: 0.65 }}>Contact {store.name} to arrange this service.</p>
             )}
