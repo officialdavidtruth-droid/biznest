@@ -499,12 +499,40 @@ export function resolveSections(category: string | null | undefined): Section[] 
   return SECTION_ORDER.filter((s) => all.has(s));
 }
 
-export function getStoreConfiguration(category: string | null | undefined) {
+export function getStoreConfiguration(
+  category: string | null | undefined,
+  model?: { sellsProducts?: boolean | null; offersServices?: boolean | null },
+) {
   const config = getBusinessTypeConfig(category);
+  const hasModel = Boolean(model && (model.sellsProducts || model.offersServices));
+  const sellsProducts = hasModel ? Boolean(model?.sellsProducts) : config.capabilities.includes("products");
+  const offersServices = hasModel ? Boolean(model?.offersServices) : config.capabilities.includes("services");
+
+  const capabilitySet = new Set(config.capabilities);
+  if (sellsProducts) capabilitySet.add("products");
+  if (offersServices) {
+    capabilitySet.add("services");
+    capabilitySet.add("bookings");
+    capabilitySet.add("availability_calendar");
+  }
+
+  const capabilities = Array.from(capabilitySet).filter((capability) => {
+    if (!sellsProducts && ["products", "inventory", "delivery", "pickup", "coupons"].includes(capability)) return false;
+    if (!offersServices && ["services", "bookings", "availability_calendar", "packages", "portfolio", "pms", "room_management", "housekeeping", "guest_management", "reservations", "amenities"].includes(capability)) return false;
+    return true;
+  });
+
+  const defaultCategories = config.defaultCategories.filter((categoryConfig) =>
+    (categoryConfig.type === "PRODUCT" && sellsProducts) ||
+    (categoryConfig.type === "SERVICE" && offersServices),
+  );
+  if (sellsProducts && offersServices && !defaultCategories.some((c) => c.type === "PRODUCT")) defaultCategories.push(...GENERIC_PRODUCT_CATEGORIES);
+  if (sellsProducts && offersServices && !defaultCategories.some((c) => c.type === "SERVICE")) defaultCategories.push(...GENERIC_SERVICE_CATEGORIES);
+
   return {
     businessType: category && BUSINESS_TYPES[category] ? category : "Other",
-    capabilities: config.capabilities,
-    defaultCategories: config.defaultCategories,
+    capabilities,
+    defaultCategories: defaultCategories.length ? defaultCategories : (sellsProducts ? GENERIC_PRODUCT_CATEGORIES : GENERIC_SERVICE_CATEGORIES),
     navigation: config.navigation,
     homepageSections: config.homepageSections,
   };
