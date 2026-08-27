@@ -42,14 +42,23 @@ export function buildNavGroups(business: { sellsProducts: boolean; offersService
   label: string;
   items: NavItem[];
 }> {
-  const allSellNavItems: NavItem[] = [
-    { label: "Point of Sale", href: "/pos", icon: Calculator, permission: "pos" },
-    { label: "Orders", href: "/orders", icon: ShoppingCart, permission: "orders" },
-    { label: "Products", href: "/products", icon: Package, permission: "products" },
-    { label: "Services", href: "/services", icon: Wrench, permission: "products" },
-    { label: "Calendar", href: "/calendar", icon: CalendarDays, permission: "products" },
-  ];
-  const sellNavItems: NavItem[] = allSellNavItems.filter((item) => relevantToBusiness(item.href, business));
+  // Products and services are different operating models, not two labels for
+  // the same catalog. A service-only business gets service operations here;
+  // it should never open its dashboard and feel like an online shop.
+  const sellNavItems: NavItem[] = [];
+  if (business.sellsProducts) {
+    sellNavItems.push(
+      { label: "Point of Sale", href: "/pos", icon: Calculator, permission: "pos" },
+      { label: "Orders", href: "/orders", icon: ShoppingCart, permission: "orders" },
+      { label: "Products", href: "/products", icon: Package, permission: "products" },
+    );
+  }
+  if (business.offersServices) {
+    sellNavItems.push(
+      { label: "Services", href: "/services", icon: Wrench, permission: "products" },
+      { label: "Calendar", href: "/calendar", icon: CalendarDays, permission: "products" },
+    );
+  }
 
   // The category picked at onboarding can add one more trade-specific tool
   // (e.g. "Bookings" for a salon, "Delivery zones" for a restaurant) — but
