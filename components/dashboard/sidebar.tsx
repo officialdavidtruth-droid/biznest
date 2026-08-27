@@ -51,7 +51,7 @@ export function DashboardSidebar({
         <Link
           href={`${base}/settings`}
           className="group/logo relative shrink-0 rounded-xl"
-          title="Change store logo"
+          title="Change business logo"
         >
           <StoreLogo logoUrl={logoUrl} storeName={storeName} />
           <span className="absolute inset-0 flex items-center justify-center rounded-xl bg-black/50 opacity-0 transition-opacity group-hover/logo:opacity-100">
@@ -106,7 +106,7 @@ export function DashboardSidebar({
 
       <div className="space-y-2 border-t border-border px-4 py-3">
         <Link href={`/${slug}`} className="block text-xs font-medium text-muted-foreground hover:text-primary">
-          View live store →
+          View live website →
         </Link>
         <SignOutButton className="text-xs font-medium text-muted-foreground hover:text-destructive" />
       </div>
