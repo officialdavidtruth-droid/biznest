@@ -38,7 +38,7 @@ export default async function CustomizePage({ params }: { params: Promise<{ slug
   const heroImage = store.bannerUrl || store.template?.previewUrl || null;
   const storyImage = store.storyImage || store.bannerUrl || store.template?.previewUrl || null;
   const savedBuilder = readBuilderConfig((overrides as { builder?: unknown } | null)?.builder);
-  const initialBuilder: BuilderConfig = savedBuilder ?? defaultBuilderConfig(store.name, store.business.description, heroImage, store.businessType);
+  const initialBuilder: BuilderConfig = savedBuilder ?? defaultBuilderConfig(store.name, store.business.description, heroImage, store.businessType, { sellsProducts: store.business.sellsProducts, offersServices: store.business.offersServices });
 
   return (
     <CustomizerClient
@@ -55,6 +55,8 @@ export default async function CustomizePage({ params }: { params: Promise<{ slug
       storyDescription={store.business.description ?? null}
       initialBuilder={initialBuilder}
       businessCategory={store.businessType}
+      sellsProducts={store.business.sellsProducts}
+      offersServices={store.business.offersServices}
       seoTitle={store.seoTitle ?? store.name}
       seoDescription={store.seoDescription ?? ""}
       pages={pages.map((p) => ({
