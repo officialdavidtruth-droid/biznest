@@ -128,7 +128,7 @@ export function BookingWidget({
         }
         return;
       }
-      setBookingId(result.data?.bookingId ?? result.data?.id ?? null);
+      setBookingId(result.data?.bookingId ?? null);
       setConfirmed(true);
     });
   }
@@ -194,4 +194,5 @@ export function BookingWidget({
       {step > 1 && <button onClick={() => setStep(Math.max(1, step - 1))} style={{ marginTop: 12, border: 0, background: "transparent", color: ink, opacity: .55, fontSize: 11, cursor: "pointer" }}>← Back</button>}
     </div>
   );
-}
+                                                                                                                                                                                                  }
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    
