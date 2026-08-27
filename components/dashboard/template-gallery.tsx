@@ -5,6 +5,7 @@ import { Check, Lock, Search, Eye, X, ShoppingBag, CalendarDays } from "lucide-r
 import type { TemplateTheme } from "@/lib/template-themes";
 import { DEMO_STORES } from "@/lib/demo-stores";
 import { getBusinessExperience } from "@/lib/business-experience";
+import { isTemplateCompatible } from "@/lib/template-compatibility";
 
 // Real, permanent live-demo stores exist for a subset of templates (see
 // lib/demo-stores.ts). Map template name -> demo slug so the gallery can
@@ -40,18 +41,22 @@ export function TemplateGallery({
   onSelect,
   planRank,
   businessCategory,
+  sellsProducts,
+  offersServices,
 }: {
   templates: TemplateOption[];
   selectedId?: string | null;
   onSelect: (id: string) => void;
   planRank: number;
   businessCategory?: string | null;
+  sellsProducts?: boolean;
+  offersServices?: boolean;
 }) {
   const [query, setQuery] = useState("");
   const [activeCategory, setActiveCategory] = useState<string | null>(null);
   const [mode, setMode] = useState<"all" | "commerce" | "service">("all");
   const [preview, setPreview] = useState<{ name: string; url: string } | null>(null);
-  const experience = getBusinessExperience(businessCategory);
+  const experience = getBusinessExperience(businessCategory, { sellsProducts, offersServices });
 
   const categories = useMemo(() => {
     const set = new Set(templates.map((t) => t.category));
@@ -65,7 +70,8 @@ export function TemplateGallery({
     const matchesCategory = !activeCategory || t.category === activeCategory;
     const serviceLike = /hotel|restaurant|salon|beauty|agency|clean|construction|studio|service|rental|real estate|photography/i.test(haystack);
     const matchesMode = mode === "all" || (mode === "service" ? serviceLike : !serviceLike);
-    return matchesQuery && matchesCategory && matchesMode;
+    const onboardingCompatible = isTemplateCompatible(t, businessCategory, { sellsProducts, offersServices });
+    return matchesQuery && matchesCategory && matchesMode && onboardingCompatible;
   });
 
   const scored = [...filtered].sort((a, b) => {
@@ -80,7 +86,8 @@ export function TemplateGallery({
     return score(b) - score(a);
   });
 
-  const unlockedCount = templates.filter((t) => t.tierRank <= planRank).length;
+  const compatibleTemplates = templates.filter((t) => isTemplateCompatible(t, businessCategory, { sellsProducts, offersServices }));
+  const unlockedCount = compatibleTemplates.filter((t) => t.tierRank <= planRank).length;
 
   if (templates.length === 0) {
     return (
