@@ -46,6 +46,7 @@ import { RivoraStorefront } from "@/components/storefront/templates/rivora-home"
 import { JuiceLifeStorefront } from "@/components/storefront/templates/juicelife-home";
 import { FabtexStorefront } from "@/components/storefront/templates/fabtex-home";
 import { SignatureStorefront } from "@/components/storefront/templates/signature-home";
+import { HotelStorefront } from "@/components/storefront/templates/hotel-home";
 import { CartLink } from "@/components/storefront/cart-link";
 import { AccountLink } from "@/components/storefront/account-link";
 import { subscribeToNewsletter } from "@/lib/actions/newsletter";
@@ -192,6 +193,7 @@ const SIGNATURE_PROFILE: Record<string, { name: string; description: string; tag
   haven: { name: "Haven", description: "Refined furniture and interiors presented through room-led collections and tactile product storytelling.", tags: ["Living", "Bedroom", "Dining", "Decor"], itemNames: ["Lounge Chair", "Oak Console", "Linen Sofa", "Ceramic Table Lamp", "Dining Set", "Woven Rug"] },
   harvest: { name: "Harvest", description: "A fast grocery storefront built around categories, weekly picks, deals and repeat shopping.", tags: ["Fresh Picks", "Pantry", "Drinks", "Deals"], itemNames: ["Fresh Fruit Box", "Weekly Pantry", "Farm Eggs", "Breakfast Bundle", "Juice Pack", "Dinner Essentials"] },
   maison: { name: "Maison", description: "A hospitality storefront designed around rooms, amenities, availability and direct booking confidence.", tags: ["Rooms", "Suites", "Amenities", "Experiences"], itemNames: ["Deluxe Room", "Garden Suite", "Executive Suite", "Family Room", "Penthouse Stay", "Weekend Package"] },
+  hotel: { name: "Grand", description: "A company-first hospitality website built around story, rooms, experience, visual narrative and direct guest enquiries.", tags: ["Rooms", "Suites", "Experience", "Gallery"], itemNames: ["Deluxe Room", "Executive Suite", "Premier Suite", "Diplomatic Suite", "Presidential Suite", "Residence"] },
   ember: { name: "Ember", description: "A restaurant storefront built around signature dishes, menu discovery and reservations or ordering.", tags: ["Starters", "Mains", "Drinks", "Desserts"], itemNames: ["Charred Chicken", "Ember Steak", "Truffle Pasta", "Citrus Salad", "House Cocktail", "Chocolate Tart"] },
   muse: { name: "Muse", description: "A salon experience built around services, specialists, packages and effortless booking.", tags: ["Hair", "Nails", "Beauty", "Packages"], itemNames: ["Signature Cut", "Silk Press", "Gel Manicure", "Facial Ritual", "Bridal Package", "Full Glow Session"] },
   frame: { name: "Frame", description: "A cinematic photography storefront with portfolio-first storytelling and clear packages.", tags: ["Weddings", "Portraits", "Commercial", "Editorial"], itemNames: ["Wedding Collection", "Portrait Session", "Product Shoot", "Editorial Day", "Brand Film", "Studio Package"] },
@@ -319,6 +321,10 @@ export default async function TemplatePreviewPage({ params }: { params: Promise<
   const slug = PREVIEW_SLUG;
 
   if (isSignatureTemplate(templateName)) {
+    const signatureTheme = getSignatureTheme(templateName);
+    if (signatureTheme.signatureMode === "hotel") {
+      return <HotelStorefront store={store} slug={slug} catalogItems={items} goodReviews={goodReviews} avgRating={avgRating} social={social} theme={signatureTheme} />;
+    }
     return (
       <SignatureStorefront
         store={store}
@@ -329,7 +335,7 @@ export default async function TemplatePreviewPage({ params }: { params: Promise<
         avgRating={avgRating}
         completedOrders={128}
         social={social}
-        theme={getSignatureTheme(templateName)}
+        theme={signatureTheme}
       />
     );
   }
