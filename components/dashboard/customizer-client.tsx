@@ -83,6 +83,8 @@ export function CustomizerClient({
   pages: StorePageRow[];
   initialBuilder: BuilderConfig;
   businessCategory: string | null;
+  sellsProducts: boolean;
+  offersServices: boolean;
   seoTitle: string;
   seoDescription: string;
 }) {
@@ -97,7 +99,7 @@ export function CustomizerClient({
   const [selectedSectionId, setSelectedSectionId] = useState<string | null>(initialBuilder.sections[0]?.id ?? null);
   const [seoTitleState, setSeoTitleState] = useState(seoTitle);
   const [seoDescriptionState, setSeoDescriptionState] = useState(seoDescription);
-  const experience = getBusinessExperience(businessCategory);
+  const experience = getBusinessExperience(businessCategory, { sellsProducts, offersServices });
   const [editingSlug, setEditingSlug] = useState<string | null>(null);
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const builderRef = useRef<BuilderConfig>(initialBuilder);
