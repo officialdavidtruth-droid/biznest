@@ -387,5 +387,5 @@ function GuestInfoModal({
       </form>
     </div>
   );
-    }
-                        
+  }
+          
