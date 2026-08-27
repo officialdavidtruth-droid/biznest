@@ -26,6 +26,8 @@ import { RivoraHeader, RivoraFooter } from "@/components/storefront/templates/ri
 import { FabtexHeader, FabtexFooter } from "@/components/storefront/templates/fabtex-chrome";
 import { JuiceLifeHeader, JuiceLifeFooter } from "@/components/storefront/templates/juicelife-chrome";
 import { getStoreCategoryTree } from "@/lib/storefront-categories";
+import { isSignatureTemplate, getSignatureTheme } from "@/lib/template-themes";
+import { SignatureCheckoutClient } from "@/components/storefront/signature-checkout-client";
 
 export default async function CheckoutPage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
@@ -52,6 +54,18 @@ export default async function CheckoutPage({ params }: { params: Promise<{ slug:
   const premium = store && isPremiumTemplate(store.template?.name);
   const homevista = store && isHomeVistaTemplate(store.template?.name);
   const rrw = store && isRrwTemplate(store.template?.name);
+
+  // Signature templates own the complete customer checkout surface. The
+  // payment/order engine remains shared by submitCheckout; only presentation
+  // and copy are template-specific.
+  if (store && isSignatureTemplate(store.template?.name)) {
+    const theme = getSignatureTheme(store.template?.name);
+    return (
+      <div style={{ background: theme.bg, color: theme.ink, fontFamily: theme.font, minHeight: "100vh", ["--sig-headline" as string]: theme.headlineFont, ["--sig-font" as string]: theme.font }} className="storefront-root">
+        <SignatureCheckoutClient slug={slug} templateName={store.template?.name ?? ""} />
+      </div>
+    );
+  }
 
   if (violet && store) {
     const navCategories = await getStoreCategoryTree(store.id);
