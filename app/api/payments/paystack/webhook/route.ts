@@ -6,6 +6,7 @@ import { decrementStockForOrder } from "@/lib/actions/order";
 import { emitWebhookEvent } from "@/lib/webhooks/dispatch";
 import { notifyStoreOwnerOfPaidOrder, notifyCustomerOfPaidOrder } from "@/lib/notifications/notify";
 import { NextResponse } from "next/server";
+import { settleWalletFunding, settleServiceBookingPayment } from "@/lib/actions/customer-wallet";
 
 /**
  * Server-to-server payment confirmation from Paystack.
@@ -98,6 +99,16 @@ export async function POST(req: Request) {
     return NextResponse.json({ received: true });
   }
 
+  if (reference.startsWith("WAL-") || reference.startsWith("BK-")) {
+    const amount = verification.data ? Number(verification.data.amount) / 100 : 0;
+    if (reference.startsWith("WAL-")) {
+      await settleWalletFunding(reference, "PAYSTACK", amount, verification as object);
+    } else {
+      await settleServiceBookingPayment(reference, "PAYSTACK", amount, verification as object);
+    }
+    return NextResponse.json({ received: true });
+  }
+
   // Idempotent by design: only transition orders still awaiting payment,
   // via an atomic updateMany rather than read-then-write, so a webhook
   // retry racing the browser callback for the same reference can't both
@@ -143,4 +154,5 @@ export async function POST(req: Request) {
   }
 
   return NextResponse.json({ received: true });
-}
+      }
+        
