@@ -2,7 +2,7 @@ import {
   LayoutDashboard, ShoppingCart, Package, Wrench, Users, Boxes, Ticket,
   CreditCard, BarChart3, Star, Megaphone, MessageSquare,
   Settings, BadgeCheck, Wallet, LifeBuoy, Truck, Wand2,
-  LayoutTemplate, FileText, FileSignature, MailWarning, Calculator, CalendarDays,
+  LayoutTemplate, FileText, FileSignature, MailWarning, Calculator, CalendarDays, Images,
 } from "lucide-react";
 import { getCategoryDashboard } from "@/lib/constants/category-dashboard";
 import type { StaffPermissionId } from "@/lib/access/staff-permissions";
@@ -114,6 +114,7 @@ export function buildNavGroups(business: { sellsProducts: boolean; offersService
         { label: "Templates", href: "/templates", icon: LayoutTemplate, permission: "settings" },
         { label: "AI Store Builder", href: "/ai-store-builder", icon: Wand2, permission: "settings" },
         { label: "Website Builder", href: "/customize", icon: Wand2, permission: "settings" },
+        ...(category === "Hotel & Lodging" ? [{ label: "Gallery & Stories", href: "/gallery", icon: Images, permission: "settings" as StaffPermissionId }] : []),
       ],
     },
     {
