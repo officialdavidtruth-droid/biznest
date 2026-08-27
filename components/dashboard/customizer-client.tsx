@@ -66,6 +66,8 @@ export function CustomizerClient({
   pages: initialPages,
   initialBuilder,
   businessCategory,
+  sellsProducts,
+  offersServices,
   seoTitle,
   seoDescription,
 }: {
