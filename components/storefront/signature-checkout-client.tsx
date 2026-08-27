@@ -12,7 +12,7 @@ import { toast } from "sonner";
 
 type Mode = "electra" | "atelier" | "kinetic" | "bloom" | "haven" | "harvest" | "maison" | "hotel" | "ember" | "muse" | "frame" | "north" | "pure" | "forge";
 
-type Zone = { id: string; name: string; fee: number | string };
+type Zone = { id: string; name: string; fee: number | string | { toString(): string } };
 
 const modeMeta: Record<Mode, { kicker: string; title: string; action: string; summary: string; labels: [string, string, string]; dark?: boolean }> = {
   electra: { kicker: "Secure checkout", title: "Finish your order.", action: "Continue to secure payment", summary: "Your tech, ready for the next step.", labels: ["Cart", "Details", "Payment"] },
@@ -144,4 +144,5 @@ export function SignatureCheckoutClient({ slug, templateName }: { slug: string; 
       </form>
     </div>
   </main>;
-    }
+                                                                       }
+                                                                                                                                              
