@@ -227,6 +227,37 @@ export async function getAvailableSlots(
 }
 
 /**
+ * Staff who can perform a given service and are still active in the
+ * store — used to render the "choose a specialist" step of the
+ * storefront booking widget. Returns [] for services with no staff
+ * assignments, in which case the widget just skips that step.
+ */
+export async function getBookableStaff(serviceId: string) {
+  const service = await prisma.service.findUnique({
+    where: { id: serviceId },
+    select: { storeId: true },
+  });
+  if (!service) return [];
+
+  const rows = await prisma.serviceStaff.findMany({
+    where: { serviceId, staff: { storeId: service.storeId, status: "ACTIVE" } },
+    include: {
+      staff: {
+        select: { id: true, invitedName: true, position: true, user: { select: { name: true } } },
+      },
+    },
+  });
+
+  return rows
+    .filter((r) => r.staff)
+    .map((r) => ({
+      id: r.staff.id,
+      name: r.staff.user?.name || r.staff.invitedName || r.staff.position || "Team member",
+      position: r.staff.position,
+    }));
+}
+
+/**
  * Customer creates a booking.
  *
  * Store customers use the isolated store-customer
@@ -241,7 +272,8 @@ export async function createBooking(
   dateISO: string,
   time: string,
   notes: string,
-  guest?: { name: string; email: string; phone: string }
+  guest?: { name: string; email: string; phone: string },
+  staffId?: string
 ): Promise<
   ActionResult<{ bookingId: string }>
 > {
@@ -374,6 +406,21 @@ export async function createBooking(
   }
 
   /**
+   * If a specific staff member/specialist was requested, confirm
+   * they actually perform this service and are still active before
+   * we go any further.
+   */
+  if (staffId) {
+    const assignment = await prisma.serviceStaff.findFirst({
+      where: { serviceId, staffId, staff: { storeId: service.storeId, status: "ACTIVE" } },
+      select: { id: true },
+    });
+    if (!assignment) {
+      return { success: false, error: "That specialist is not available for this service." };
+    }
+  }
+
+  /**
    * Verify that the supplied date/time is actually
    * available immediately before creating the booking.
    */
@@ -449,6 +496,11 @@ export async function createBooking(
         status: {
           not: "CANCELLED",
         },
+        // When a specific staff member is requested, only a booking
+        // against that same person at that same time is a real
+        // conflict — other specialists (or the unassigned queue)
+        // remain free for this slot.
+        ...(staffId ? { staffId } : {}),
       },
       select: {
         id: true,
@@ -473,6 +525,7 @@ export async function createBooking(
         durationMins:
           service.durationMins,
         notes: notes?.trim() || null,
+        staffId: staffId || null,
         guestName: normalizedGuest?.name ?? null,
         guestEmail: normalizedGuest?.email ?? null,
         guestPhone: normalizedGuest?.phone ?? null,
