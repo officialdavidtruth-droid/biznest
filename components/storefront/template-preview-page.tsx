@@ -81,6 +81,7 @@ type PreviewReview = {
 
 type PreviewStore = {
   name: string;
+  slug: string;
   logoUrl: string | null;
   bannerUrl: string | null;
   contactEmail: string | null;
@@ -269,6 +270,7 @@ function makePreviewData(templateName: string, theme: TemplateTheme) {
   ];
   const store: PreviewStore = {
     name: profile.name,
+    slug: PREVIEW_SLUG,
     logoUrl: logo,
     bannerUrl: banner,
     contactEmail: "hello@preview.biznest.space",
