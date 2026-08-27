@@ -25,6 +25,7 @@ import { getStoreCategoryTree } from "@/lib/storefront-categories";
 import { Reveal } from "@/components/storefront/reveal";
 import { BuilderStorefront } from "@/components/storefront/builder-renderer";
 import { readBuilderConfig } from "@/lib/builder-config";
+import { getHospitalityGallery } from "@/lib/actions/hospitality-content";
 
 export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }): Promise<Metadata> {
   const { slug } = await params;
@@ -121,6 +122,7 @@ export default async function StorefrontPage({ params }: { params: Promise<{ slu
 
   // ---------- HOTEL: company-first hospitality website ----------
   const signatureTheme = isSignatureTemplate(store.template?.name) ? getSignatureTheme(store.template?.name) : null;
+  const hospitalityGallery = signatureTheme?.signatureMode === "hotel" ? await getHospitalityGallery(slug) : null;
   if (signatureTheme?.signatureMode === "hotel") {
     return (
       <HotelStorefront
@@ -131,6 +133,7 @@ export default async function StorefrontPage({ params }: { params: Promise<{ slu
         avgRating={avgRating}
         social={social}
         theme={signatureTheme}
+        galleryContent={hospitalityGallery}
       />
     );
   }
