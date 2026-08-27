@@ -57,8 +57,27 @@
 .signature-account .text-slate-700, .signature-account .text-slate-600, .signature-account .text-slate-500, .signature-account .text-slate-400 { color: var(--sig-muted) !important; }
 .signature-account .text-blue-600, .signature-account .text-blue-700, .signature-account .text-amber-600, .signature-account .text-amber-500 { color: var(--sig-accent) !important; }
 .signature-account .bg-blue-50, .signature-account .bg-amber-50 { background: color-mix(in srgb, var(--sig-accent) 10%, var(--sig-card)) !important; }
-.signature-account .bg-blue-500, .signature-account .bg-amber-500 { background: var(--sig-accent) !important; }
+.signature-account .bg-blue-500, .signature-account .bg-amber-500, .signature-account .bg-indigo-500 { background: var(--sig-accent) !important; }
 .signature-account .shadow-sm, .signature-account .shadow-lg { box-shadow: 0 10px 30px color-mix(in srgb, var(--sig-ink) 7%, transparent) !important; }
+
+/* Neutral/ad-hoc "info" tones (indigo, amber, gray, purple) get pulled onto
+   the store's own accent so status pills read as "this brand", not
+   "generic SaaS dashboard". Semantic success/danger (emerald/red) are left
+   alone on purpose -- "paid" should still read as green and "cancelled" as
+   red no matter which of the 13 templates is active, the same way a bank
+   app's green/red never changes with its rebrand. */
+.signature-account .text-indigo-700, .signature-account .text-amber-700,
+.signature-account .text-gray-600, .signature-account .text-purple-700 { color: var(--sig-accent) !important; }
+.signature-account .bg-indigo-50, .signature-account .bg-purple-50,
+.signature-account .bg-gray-100 { background: color-mix(in srgb, var(--sig-accent) 10%, var(--sig-card)) !important; }
+.signature-account .bg-gray-400 { background: var(--sig-muted) !important; }
+
+/* Every card radius in the account area (rounded-xl/2xl/3xl/lg) follows the
+   template's own radius token instead of Tailwind's fixed pixel scale, so
+   a sharp-cornered template (e.g. Frame) and a soft one (e.g. Bloom) each
+   keep their own geometry here too. */
+.signature-account .rounded-xl, .signature-account .rounded-lg { border-radius: var(--sig-radius, 0.75rem) !important; }
+.signature-account .rounded-2xl, .signature-account .rounded-3xl { border-radius: calc(var(--sig-radius, 0.75rem) + 6px) !important; }
 
 @media (max-width: 767px) {
   .signature-steps { width: 100%; justify-content: space-between; }
