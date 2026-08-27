@@ -26,8 +26,12 @@ const STATUS_CONFIG: Record<string, { label: string; icon: typeof Package; dot: 
   DISPUTED: { label: "Disputed", icon: AlertTriangle, dot: "bg-red-500", bg: "bg-red-50", text: "text-red-700" },
 };
 
-export default async function StoreOrdersPage({ params }: { params: Promise<{ slug: string }> }) {
-  const { slug } = await params;
+// StoreOrdersPage (below) is the standalone, full-chrome route. It is also
+// reachable nested inside the themed account shell at /account/orders (see
+// that route's page.tsx) — that page renders OrdersListContent directly, on
+// purpose, so it doesn't stack its own sticky header/footer on top of the
+// shell's header/sidebar that already surround it.
+export async function OrdersListContent({ slug }: { slug: string }) {
   const store = await getStoreBranding(slug);
   if (!store) notFound();
 
@@ -44,29 +48,7 @@ export default async function StoreOrdersPage({ params }: { params: Promise<{ sl
   const activeCount = orders.filter((o) => ["PAID", "IN_PROGRESS", "DELIVERED"].includes(o.status)).length;
 
   return (
-    <div className="min-h-screen bg-slate-50">
-      {/* ---------- STICKY HEADER ---------- */}
-      <div className="sticky top-0 z-10 border-b border-slate-200 bg-white/90 backdrop-blur">
-        <div className="mx-auto flex max-w-3xl items-center gap-3 px-6 py-4">
-          <Link
-            href={`/store/${slug}/account`}
-            aria-label="Back to account"
-            className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-full text-slate-500 transition hover:bg-slate-100 hover:text-slate-900"
-          >
-            <ArrowLeft className="h-4 w-4" />
-          </Link>
-          {store.logoUrl && (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img src={store.logoUrl} alt={store.name} className="h-9 w-9 rounded-lg object-cover ring-1 ring-slate-200" />
-          )}
-          <div className="min-w-0">
-            <h1 className="truncate text-lg font-bold leading-tight text-slate-900">My orders</h1>
-            <p className="truncate text-xs text-slate-500">{store.name}</p>
-          </div>
-        </div>
-      </div>
-
-      <div className="mx-auto max-w-3xl px-6 py-6">
+    <>
         {orders.length > 0 && (
           <div className="mb-6 grid grid-cols-2 gap-3">
             <div
@@ -197,6 +179,40 @@ export default async function StoreOrdersPage({ params }: { params: Promise<{ sl
             </div>
           </div>
         )}
+    </>
+  );
+}
+
+export default async function StoreOrdersPage({ params }: { params: Promise<{ slug: string }> }) {
+  const { slug } = await params;
+  const store = await getStoreBranding(slug);
+  if (!store) notFound();
+
+  return (
+    <div className="min-h-screen bg-slate-50">
+      {/* ---------- STICKY HEADER ---------- */}
+      <div className="sticky top-0 z-10 border-b border-slate-200 bg-white/90 backdrop-blur">
+        <div className="mx-auto flex max-w-3xl items-center gap-3 px-6 py-4">
+          <Link
+            href={`/store/${slug}/account`}
+            aria-label="Back to account"
+            className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-full text-slate-500 transition hover:bg-slate-100 hover:text-slate-900"
+          >
+            <ArrowLeft className="h-4 w-4" />
+          </Link>
+          {store.logoUrl && (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img src={store.logoUrl} alt={store.name} className="h-9 w-9 rounded-lg object-cover ring-1 ring-slate-200" />
+          )}
+          <div className="min-w-0">
+            <h1 className="truncate text-lg font-bold leading-tight text-slate-900">My orders</h1>
+            <p className="truncate text-xs text-slate-500">{store.name}</p>
+          </div>
+        </div>
+      </div>
+
+      <div className="mx-auto max-w-3xl px-6 py-6">
+        <OrdersListContent slug={slug} />
       </div>
       <StoreFooter store={store} slug={slug} />
     </div>
