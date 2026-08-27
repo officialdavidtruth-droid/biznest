@@ -114,7 +114,7 @@ export function buildNavGroups(business: { sellsProducts: boolean; offersService
         { label: "Templates", href: "/templates", icon: LayoutTemplate, permission: "settings" },
         { label: "AI Store Builder", href: "/ai-store-builder", icon: Wand2, permission: "settings" },
         { label: "Website Builder", href: "/customize", icon: Wand2, permission: "settings" },
-        ...(category === "Hotel & Lodging" ? [{ label: "Gallery & Stories", href: "/gallery", icon: Images, permission: "settings" as StaffPermissionId }] : []),
+        ...(business.category === "Hotel & Lodging" ? [{ label: "Gallery & Stories", href: "/gallery", icon: Images, permission: "settings" as StaffPermissionId }] : []),
       ],
     },
     {
@@ -200,4 +200,5 @@ export function buildBottomTabItems(
   const rest = items.filter((i) => !preferred.includes(i));
   return preferred.concat(rest).slice(0, 4);
     }
-      
+
+         
