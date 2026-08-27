@@ -1502,6 +1502,9 @@ model Payment {
   booking     Booking?        @relation(fields: [bookingId], references: [id])
   walletId    String?
   wallet      StoreWallet?    @relation(fields: [walletId], references: [id])
+  // Back-relation for WalletTransaction.payment (one-to-one via
+  // WalletTransaction.paymentId being @unique).
+  walletTransaction WalletTransaction?
 
   purpose     PaymentPurpose
   provider    PaymentProvider
