@@ -3,6 +3,7 @@ import type React from "react";
 import { ArrowDownRight, ArrowUpRight, CalendarDays, Clock3, Mail, MapPin, Phone, Star } from "lucide-react";
 import { Reveal } from "@/components/storefront/reveal";
 import type { TemplateTheme } from "@/lib/template-themes";
+import type { HospitalityGalleryContent } from "@/lib/actions/hospitality-content";
 
 type CatalogItem = {
   id: string;
@@ -51,6 +52,7 @@ type Props = {
   avgRating: number | null;
   social: Record<string, string>;
   theme: TemplateTheme & { signatureMode?: string };
+  galleryContent?: HospitalityGalleryContent | null;
 };
 
 type HotelProfile = {
@@ -100,14 +102,15 @@ function imageStyle(url: string | null, fallback: string): React.CSSProperties {
     : { background: fallback };
 }
 
-export function HotelStorefront({ store, slug, catalogItems, goodReviews, avgRating, social, theme }: Props) {
+export function HotelStorefront({ store, slug, catalogItems, goodReviews, avgRating, social, theme, galleryContent }: Props) {
   const profile = hotelProfile(store);
   const rooms = catalogItems.filter((item) => ROOM_PATTERN.test(`${item.name} ${item.categoryName ?? ""}`)).slice(0, 6);
   const roomItems = rooms.length ? rooms : catalogItems.slice(0, 6);
   const experiences = catalogItems.filter((item) => item.kind === "service").slice(0, 6);
   const heroImage = store.bannerUrl || store.template?.previewUrl || null;
   const storyImage = store.storyImage || roomItems.find((item) => item.image)?.image || heroImage;
-  const galleryImages = Array.from(new Set([heroImage, ...roomItems.map((item) => item.image)].filter(Boolean) as string[])).slice(0, 8);
+  const managedGalleryImages = galleryContent?.albums.flatMap((album) => album.images.map((image) => image.image)).filter(Boolean) ?? [];
+  const galleryImages = Array.from(new Set([...managedGalleryImages, heroImage, ...roomItems.map((item) => item.image)].filter(Boolean) as string[])).slice(0, 8);
   const location = [store.business.city, store.business.state, store.business.country].filter(Boolean).join(", ");
   const primary = theme.accent;
   const ink = theme.ink;
