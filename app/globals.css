@@ -6,6 +6,7 @@
    never affects Template 1 (Fresh & Co.) or the dashboard. */
 @import "../styles/heenzy-template.css";
 @import "./SIGNATURE_CUSTOMER_EXPERIENCE.css";
+
 @layer base {
   :root {
     --background: 0 0% 100%;         /* white */
