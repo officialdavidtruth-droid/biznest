@@ -323,6 +323,8 @@ export async function createBooking(
     };
   }
 
+  const durationMins = service.durationMins;
+
   /**
    * Store customers are restricted to their own store.
    *
@@ -437,11 +439,11 @@ export async function createBooking(
         serviceId,
         status: { not: "CANCELLED" },
         ...(staffId ? { staffId } : {}),
-        scheduledAt: { lt: new Date(scheduledAt.getTime() + service.durationMins * 60000), gte: new Date(scheduledAt.getTime() - 24 * 60 * 60000) },
+        scheduledAt: { lt: new Date(scheduledAt.getTime() + durationMins * 60000), gte: new Date(scheduledAt.getTime() - 24 * 60 * 60000) },
       },
       select: { scheduledAt: true, durationMins: true },
     });
-    const end = new Date(scheduledAt.getTime() + service.durationMins * 60000);
+    const end = new Date(scheduledAt.getTime() + durationMins * 60000);
     if (existing.some(b => b.scheduledAt < end && new Date(b.scheduledAt.getTime() + b.durationMins * 60000) > scheduledAt)) {
       throw new Error("BOOKING_SLOT_TAKEN");
     }
@@ -451,7 +453,7 @@ export async function createBooking(
         serviceId,
         buyerId: session.user.id,
         scheduledAt,
-        durationMins: service.durationMins,
+        durationMins: durationMins,
         notes: notes?.trim() || null,
         staffId: staffId || null,
       },
@@ -653,5 +655,4 @@ export async function hasBookingConflict(serviceId: string, start: Date, duratio
     select: { scheduledAt: true, durationMins: true },
   });
   return candidates.some(b => b.scheduledAt.getTime() < end.getTime() && b.scheduledAt.getTime() + b.durationMins * 60000 > start.getTime());
-  }
-  
+}
