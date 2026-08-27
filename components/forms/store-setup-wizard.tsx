@@ -9,6 +9,8 @@ import { Check, ChevronLeft, ChevronRight, Loader2, Sparkles } from "lucide-reac
 import { TemplateGallery, type TemplateOption } from "@/components/dashboard/template-gallery";
 import { FileUploadField } from "@/components/forms/file-upload-field";
 import { getBusinessOnboardingPlan, type OnboardingField } from "@/lib/onboarding-business";
+import { getBusinessExperience } from "@/lib/business-experience";
+import { isTemplateCompatible, templateCompatibilityScore } from "@/lib/template-compatibility";
 
 type BusinessSnapshot = {
   businessName: string;
@@ -80,12 +82,18 @@ export function StoreSetupWizard({
     () => getBusinessOnboardingPlan(business.category, business.sellsProducts, business.offersServices),
     [business.category, business.sellsProducts, business.offersServices]
   );
+  const experience = useMemo(
+    () => getBusinessExperience(business.category, { sellsProducts: business.sellsProducts, offersServices: business.offersServices }),
+    [business.category, business.sellsProducts, business.offersServices]
+  );
   const PlanIcon = plan.icon;
 
   const previewSlug = storeName ? slugify(storeName, { lower: true, strict: true }) : "your-store-name";
   const suggestedTemplates = useMemo(
-    () => templates.filter((t) => t.category === business.category),
-    [templates, business.category]
+    () => templates
+      .filter((t) => isTemplateCompatible(t, business.category, { sellsProducts: business.sellsProducts, offersServices: business.offersServices }))
+      .sort((a, b) => templateCompatibilityScore(b, business.category, { sellsProducts: business.sellsProducts, offersServices: business.offersServices }) - templateCompatibilityScore(a, business.category, { sellsProducts: business.sellsProducts, offersServices: business.offersServices })),
+    [templates, business.category, business.sellsProducts, business.offersServices]
   );
   const selectedTemplate = templates.find((t) => t.id === templateId);
 
@@ -101,8 +109,8 @@ export function StoreSetupWizard({
 
   function goNext() {
     if (!canAdvance()) {
-      if (step === "Branding") toast.error("Store name must be at least 3 characters");
-      else toast.error("Complete the setup questions so BizNest can personalise your store.");
+      if (step === "Branding") toast.error("Business name must be at least 3 characters");
+      else toast.error("Complete the setup questions so BizNest can personalise your business website.");
       return;
     }
     setStepIndex((i) => Math.min(i + 1, STEPS.length - 1));
@@ -123,7 +131,7 @@ export function StoreSetupWizard({
       toast.success("Store created! Your industry setup is ready.");
       router.push(`/onboarding/select-plan?slug=${encodeURIComponent(result.data.slug)}`);
     } catch {
-      toast.error("Something went wrong creating your store. Please try again.");
+      toast.error("Something went wrong creating your business website. Please try again.");
     } finally {
       setIsSubmitting(false);
     }
@@ -138,7 +146,7 @@ export function StoreSetupWizard({
               <Sparkles className="h-4 w-4" /> BizNest business setup
             </div>
             <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">Let&apos;s build the right store for your business.</h1>
-            <p className="mt-2 text-sm leading-6 text-white/70">Answer a few industry-specific questions. BizNest will use your answers to prepare the right storefront structure, recommendations and merchant setup.</p>
+            <p className="mt-2 text-sm leading-6 text-white/70">Answer a few industry-specific questions. BizNest will use your answers to prepare the right website structure, recommendations and business setup.</p>
           </div>
           <div className="hidden h-20 w-20 shrink-0 items-center justify-center rounded-2xl bg-white/10 sm:flex">
             <PlanIcon className="h-9 w-9 text-emerald-300" />
@@ -222,13 +230,13 @@ export function StoreSetupWizard({
           <div>
             <p className="text-xs font-semibold uppercase tracking-[0.16em] text-primary">Step 3 · Branding</p>
             <h2 className="mt-1 text-2xl font-bold tracking-tight">Make it yours.</h2>
-            <p className="mt-2 text-sm text-muted-foreground">Your brand name and images will be carried through the storefront and the customer journey.</p>
+            <p className="mt-2 text-sm text-muted-foreground">Your brand name and images will be carried through the website and customer journey.</p>
           </div>
           <div className="rounded-2xl border border-border bg-background p-5 shadow-sm sm:p-6">
             <label className="mb-5 block">
               <span className="mb-1.5 block text-sm font-semibold">Store name</span>
-              <input className="w-full rounded-xl border border-border bg-background px-3.5 py-3 text-sm shadow-sm" value={storeName} onChange={(e) => setStoreName(e.target.value)} placeholder="Stacey&apos;s Paradise" autoFocus />
-              <span className="mt-1.5 block text-xs text-muted-foreground">Your store will be live at biznest.vercel.app/store/{previewSlug}</span>
+              <input className="w-full rounded-xl border border-border bg-background px-3.5 py-3 text-sm shadow-sm" value={storeName} onChange={(e) => setStoreName(e.target.value)} placeholder="Your business name" autoFocus />
+              <span className="mt-1.5 block text-xs text-muted-foreground">Your business website will be live at biznest.space/{previewSlug}</span>
             </label>
             <div className="grid gap-6 sm:grid-cols-2">
               <FileUploadField label="Logo (optional)" value={logoUrl} onChange={setLogoUrl} />
@@ -241,14 +249,14 @@ export function StoreSetupWizard({
       {step === "Template" && (
         <div className="space-y-5">
           <div>
-            <p className="text-xs font-semibold uppercase tracking-[0.16em] text-primary">Step 4 · Design</p>
-            <h2 className="mt-1 text-2xl font-bold tracking-tight">Choose the look that fits your business.</h2>
-            <p className="mt-2 text-sm text-muted-foreground">Templates matching {business.category} appear first. You can change the template later without rebuilding your catalog.</p>
+            <p className="text-xs font-semibold uppercase tracking-[0.16em] text-primary">Step 4 · Website design</p>
+            <h2 className="mt-1 text-2xl font-bold tracking-tight">Choose the website experience that fits your business.</h2>
+            <p className="mt-2 text-sm text-muted-foreground">Designs that match your business model appear first. You can change the design later without rebuilding your business data.</p>
           </div>
-          {suggestedTemplates.length > 0 && <TemplateGallery templates={suggestedTemplates} selectedId={templateId} onSelect={setTemplateId} planRank={planRank} />}
+          {suggestedTemplates.length > 0 && <TemplateGallery templates={suggestedTemplates} selectedId={templateId} onSelect={setTemplateId} planRank={planRank} businessCategory={business.category} sellsProducts={business.sellsProducts} offersServices={business.offersServices} />}
           <details className="rounded-2xl border border-border bg-background">
             <summary className="cursor-pointer px-5 py-3.5 text-sm font-semibold">Browse all templates</summary>
-            <div className="border-t border-border p-5"><TemplateGallery templates={templates} selectedId={templateId} onSelect={setTemplateId} planRank={planRank} /></div>
+            <div className="border-t border-border p-5"><TemplateGallery templates={templates} selectedId={templateId} onSelect={setTemplateId} planRank={planRank} businessCategory={business.category} sellsProducts={business.sellsProducts} offersServices={business.offersServices} /></div>
           </details>
         </div>
       )}
@@ -258,12 +266,12 @@ export function StoreSetupWizard({
           <div>
             <p className="text-xs font-semibold uppercase tracking-[0.16em] text-primary">Step 5 · Review</p>
             <h2 className="mt-1 text-2xl font-bold tracking-tight">Everything is ready.</h2>
-            <p className="mt-2 text-sm text-muted-foreground">Review the setup before BizNest creates your store.</p>
+            <p className="mt-2 text-sm text-muted-foreground">Review the setup before BizNest creates your business website.</p>
           </div>
           <div className="overflow-hidden rounded-2xl border border-border bg-background shadow-sm">
             <div className="flex items-center gap-4 border-b border-border p-5">
               {logoUrl ? <img src={logoUrl} alt="" className="h-14 w-14 rounded-xl object-cover" /> : <div className="flex h-14 w-14 items-center justify-center rounded-xl bg-muted text-xs text-muted-foreground">Logo</div>}
-              <div><p className="font-bold">{storeName}</p><p className="text-xs text-muted-foreground">{business.category} · /store/{previewSlug}</p></div>
+              <div><p className="font-bold">{storeName}</p><p className="text-xs text-muted-foreground">{business.category} · /{previewSlug}</p></div>
             </div>
             <dl className="divide-y divide-border text-sm">
               <ReviewRow label="Business model" value={business.sellsProducts && business.offersServices ? "Products + services" : business.sellsProducts ? "Products" : "Services"} />
@@ -273,7 +281,7 @@ export function StoreSetupWizard({
             </dl>
           </div>
           <div className="rounded-2xl border border-primary/20 bg-primary/5 p-5">
-            <div className="flex gap-3"><Sparkles className="mt-0.5 h-5 w-5 text-primary" /><div><p className="font-semibold">Your store will start with an industry-aware setup.</p><p className="mt-1 text-sm leading-6 text-muted-foreground">BizNest will use these answers in the merchant experience so your dashboard, storefront and next steps make sense for your business type.</p></div></div>
+            <div className="flex gap-3"><Sparkles className="mt-0.5 h-5 w-5 text-primary" /><div><p className="font-semibold">Your business website will start with an industry-aware setup.</p><p className="mt-1 text-sm leading-6 text-muted-foreground">BizNest will use these answers so your dashboard, website and next steps make sense for your business type.</p></div></div>
           </div>
         </div>
       )}
@@ -284,7 +292,7 @@ export function StoreSetupWizard({
           <button type="button" onClick={goNext} className="flex items-center gap-2 rounded-xl bg-primary px-5 py-3 text-sm font-semibold text-primary-foreground shadow-sm transition hover:-translate-y-0.5 hover:shadow-md">Continue <ChevronRight className="h-4 w-4" /></button>
         ) : (
           <button type="button" onClick={handlePublish} disabled={isSubmitting || storeName.trim().length < 3} className="flex items-center gap-2 rounded-xl bg-primary px-5 py-3 text-sm font-semibold text-primary-foreground shadow-sm transition hover:-translate-y-0.5 hover:shadow-md disabled:opacity-50">
-            {isSubmitting && <Loader2 className="h-4 w-4 animate-spin" />}{isSubmitting ? "Creating your store…" : "Create my store"}
+            {isSubmitting && <Loader2 className="h-4 w-4 animate-spin" />}{isSubmitting ? "Creating your business website…" : "Create my business website"}
           </button>
         )}
       </div>
