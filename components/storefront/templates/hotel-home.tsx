@@ -4,6 +4,7 @@ import { ArrowDownRight, ArrowUpRight, CalendarDays, Clock3, Mail, MapPin, Phone
 import { Reveal } from "@/components/storefront/reveal";
 import type { TemplateTheme } from "@/lib/template-themes";
 import type { HospitalityGalleryContent } from "@/lib/actions/hospitality-content";
+import { formatMoney, resolveHeroMedia } from "@/lib/storefront/hero-media";
 
 type CatalogItem = {
   id: string;
@@ -108,6 +109,7 @@ export function HotelStorefront({ store, slug, catalogItems, goodReviews, avgRat
   const roomItems = rooms.length ? rooms : catalogItems.slice(0, 6);
   const experiences = catalogItems.filter((item) => item.kind === "service").slice(0, 6);
   const heroImage = store.bannerUrl || store.template?.previewUrl || null;
+  const heroMedia = resolveHeroMedia(store.bannerUrl || store.template?.previewUrl);
   const storyImage = store.storyImage || roomItems.find((item) => item.image)?.image || heroImage;
   const managedGalleryImages = galleryContent?.albums.flatMap((album) => album.images.map((image) => image.image)).filter(Boolean) ?? [];
   const galleryImages = Array.from(new Set([...managedGalleryImages, heroImage, ...roomItems.map((item) => item.image)].filter(Boolean) as string[])).slice(0, 8);
@@ -154,8 +156,54 @@ export function HotelStorefront({ store, slug, catalogItems, goodReviews, avgRat
       </header>
 
       <main>
-        <section style={{ position: "relative", minHeight: "min(820px, 88vh)", display: "flex", alignItems: "flex-end", color: "#fff", background: heroImage ? `linear-gradient(180deg, rgba(8,7,6,.16) 0%, rgba(8,7,6,.28) 40%, rgba(8,7,6,.84) 100%), url(${heroImage}) center/cover` : `linear-gradient(135deg, ${dark}, ${theme.accent})` }}>
-          <div style={{ width: "100%", maxWidth: 1320, margin: "0 auto", padding: "110px 28px 72px" }}>
+        <section
+          style={{
+            position: "relative",
+            minHeight: "min(820px, 88vh)",
+            display: "flex",
+            alignItems: "flex-end",
+            color: "#fff",
+            overflow: "hidden",
+            background:
+              heroMedia.type === "image"
+                ? `linear-gradient(180deg, rgba(8,7,6,.16) 0%, rgba(8,7,6,.28) 40%, rgba(8,7,6,.84) 100%), url(${heroMedia.url}) center/cover`
+                : `linear-gradient(135deg, ${dark}, ${theme.accent})`,
+          }}
+        >
+          {heroMedia.type === "file-video" && (
+            <video
+              src={heroMedia.url}
+              autoPlay
+              muted
+              loop
+              playsInline
+              style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover", zIndex: 0 }}
+            />
+          )}
+          {(heroMedia.type === "youtube" || heroMedia.type === "vimeo") && (
+            <iframe
+              src={heroMedia.embedUrl}
+              title={`${store.name} hero video`}
+              allow="autoplay; encrypted-media"
+              style={{
+                position: "absolute",
+                top: "50%",
+                left: "50%",
+                width: "177.78vh",
+                minWidth: "100%",
+                height: "56.25vw",
+                minHeight: "100%",
+                transform: "translate(-50%, -50%)",
+                border: 0,
+                zIndex: 0,
+                pointerEvents: "none",
+              }}
+            />
+          )}
+          {(heroMedia.type === "file-video" || heroMedia.type === "youtube" || heroMedia.type === "vimeo") && (
+            <div style={{ position: "absolute", inset: 0, background: "linear-gradient(180deg, rgba(8,7,6,.22) 0%, rgba(8,7,6,.32) 40%, rgba(8,7,6,.86) 100%)", zIndex: 0 }} />
+          )}
+          <div style={{ position: "relative", zIndex: 1, width: "100%", maxWidth: 1320, margin: "0 auto", padding: "110px 28px 72px" }}>
             <Reveal>
               <div style={{ maxWidth: 840 }}>
                 <p style={{ margin: 0, color: theme.accentSoft || primary, fontSize: 11, fontWeight: 800, letterSpacing: ".22em", textTransform: "uppercase" }}>{theme.eyebrow || "Hospitality, thoughtfully considered"}</p>
@@ -168,7 +216,7 @@ export function HotelStorefront({ store, slug, catalogItems, goodReviews, avgRat
               </div>
             </Reveal>
           </div>
-          <div style={{ position: "absolute", right: 28, bottom: 32, display: "flex", alignItems: "center", gap: 9, color: "rgba(255,255,255,.75)", fontSize: 11, letterSpacing: ".12em", textTransform: "uppercase" }}>
+          <div style={{ position: "absolute", zIndex: 1, right: 28, bottom: 32, display: "flex", alignItems: "center", gap: 9, color: "rgba(255,255,255,.75)", fontSize: 11, letterSpacing: ".12em", textTransform: "uppercase" }}>
             <span style={{ width: 34, height: 1, background: "rgba(255,255,255,.5)" }} /> Scroll to explore
           </div>
         </section>
@@ -204,8 +252,11 @@ export function HotelStorefront({ store, slug, catalogItems, goodReviews, avgRat
                       <div style={{ position: "relative", aspectRatio: index === 0 ? "1.15/1" : "1/1.08", overflow: "hidden", ...imageStyle(room.image, `linear-gradient(${135 + index * 7}deg, ${theme.accentSoft || primary}, #25201c)`) }}>
                         <div style={{ position: "absolute", inset: 0, background: "linear-gradient(180deg, transparent 45%, rgba(0,0,0,.76))" }} />
                         <div style={{ position: "absolute", left: 20, right: 20, bottom: 18 }}>
-                          <span style={{ display: "block", color: theme.accentSoft || primary, fontSize: 10, letterSpacing: ".16em", textTransform: "uppercase", marginBottom: 7 }}>{room.categoryName || "Accommodation"}</span>
-                          <h3 style={{ margin: 0, fontFamily: theme.headlineFont, fontSize: 25, letterSpacing: "-.025em" }}>{room.name}</h3>
+                          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end", gap: 12 }}>
+                            <span style={{ color: theme.accentSoft || primary, fontSize: 10, letterSpacing: ".16em", textTransform: "uppercase" }}>{room.categoryName || "Accommodation"}</span>
+                            {room.price > 0 && <span style={{ color: "#fff", fontSize: 12, fontWeight: 800 }}>{formatMoney(room.price, room.currency)}{room.rentalUnit ? `/${room.rentalUnit}` : ""}</span>}
+                          </div>
+                          <h3 style={{ margin: "7px 0 0", fontFamily: theme.headlineFont, fontSize: 25, letterSpacing: "-.025em" }}>{room.name}</h3>
                           {room.description && <p style={{ margin: "7px 0 0", color: "rgba(255,255,255,.68)", fontSize: 12, lineHeight: 1.6 }}>{room.description}</p>}
                         </div>
                       </div>
