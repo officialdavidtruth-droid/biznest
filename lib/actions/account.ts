@@ -511,7 +511,7 @@ export async function toggleStoreWishlist(storeSlug: string, input: { productId?
 export async function listStoreBookings(storeSlug: string) {
   const ctx = await getStoreCustomerContext(storeSlug);
   if (!ctx) return [];
-  return prisma.booking.findMany({ where: { buyerId: ctx.userId, storeId: ctx.storeId }, select: { id: true, scheduledAt: true, status: true, paymentStatus: true, paymentAmount: true, paymentCurrency: true, service: { select: { name: true, images: true, price: true, currency: true } } }, orderBy: { scheduledAt: "desc" } });
+  return prisma.booking.findMany({ where: { buyerId: ctx.userId, storeId: ctx.storeId }, select: { id: true, scheduledAt: true, status: true, paymentStatus: true, paymentAmount: true, paymentCurrency: true, checkIn: true, checkOut: true, notes: true, durationMins: true, service: { select: { name: true, images: true, price: true, currency: true } } }, orderBy: { scheduledAt: "desc" } });
 }
 
 export async function listStoreReviews(storeSlug: string) {
