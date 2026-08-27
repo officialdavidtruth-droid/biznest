@@ -1,6 +1,8 @@
 import { notFound } from "next/navigation";
 import { getStoreBranding } from "@/lib/actions/store-branding";
 import { listStoreBookings } from "@/lib/actions/account";
+import { PayBookingWithWalletButton } from "@/components/storefront/pay-booking-wallet-button";
+import { WalletPaymentQrButton } from "@/components/storefront/wallet-payment-qr-button";
 import Link from "next/link";
 
 function formatDate(value: Date | string) {
@@ -39,6 +41,12 @@ export default async function Page({ params }: { params: Promise<{ slug: string 
                 <span className={`rounded-full px-3 py-1 text-xs font-bold ${b.status === "CONFIRMED" ? "bg-emerald-50 text-emerald-700" : "bg-amber-50 text-amber-700"}`}>{b.status}</span>
               </div>
               {b.notes && <p className="mt-4 rounded-xl bg-slate-50 p-3 text-sm text-slate-600">{b.notes}</p>}
+              {b.paymentStatus !== "PAID" && (
+                <div className="mt-4 flex flex-wrap gap-2 border-t pt-4">
+                  <PayBookingWithWalletButton slug={slug} bookingId={b.id} />
+                  <WalletPaymentQrButton slug={slug} bookingId={b.id} />
+                </div>
+              )}
               <div className="mt-4 flex items-center justify-between border-t pt-4 text-xs text-slate-400"><span>Booking #{b.id.slice(-7).toUpperCase()}</span><span>{b.checkIn && b.checkOut ? "Reservation" : `${b.durationMins} min appointment`}</span></div>
             </article>)}
             {upcoming.length === 0 && <div className="rounded-2xl border border-dashed border-slate-300 bg-white p-10 text-center text-sm text-slate-500">No upcoming bookings. Find a service on the website to make one.</div>}
@@ -49,4 +57,4 @@ export default async function Page({ params }: { params: Promise<{ slug: string 
       </div>
     </div>
   );
-}
+      }
