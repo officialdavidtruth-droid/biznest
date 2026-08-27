@@ -6,6 +6,7 @@ import { settleQuoteDeposit } from "@/lib/actions/quote";
 import { decrementStockForOrder } from "@/lib/actions/order";
 import { buildStoreUrl } from "@/lib/store-url";
 import { NextResponse } from "next/server";
+import { settleWalletFunding, settleServiceBookingPayment } from "@/lib/actions/customer-wallet";
 
 const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? "https://biznest.vercel.app";
 
@@ -40,6 +41,21 @@ export async function GET(req: Request) {
       return NextResponse.redirect(isInvoice ? `${APP_URL}/invoices/${id}` : `${APP_URL}/quotes/${id}`);
     }
     return NextResponse.redirect(`${APP_URL}/${isInvoice ? "invoices" : "quotes"}/${id}?payment=failed`);
+  }
+
+  if (reference.startsWith("WAL-") || reference.startsWith("BK-")) {
+    const verification = await verifyPaystackTransaction(reference);
+    const amount = verification.data ? Number(verification.data.amount) / 100 : 0;
+    if (verification.status && verification.data?.status === "success") {
+      if (reference.startsWith("WAL-")) {
+        const result = await settleWalletFunding(reference, "PAYSTACK", amount, verification as object);
+        if (result.success) return NextResponse.redirect(`${APP_URL}/store/${result.data.storeSlug}/account/wallet?funding=success`);
+      } else {
+        const result = await settleServiceBookingPayment(reference, "PAYSTACK", amount, verification as object);
+        if (result.success) return NextResponse.redirect(`${APP_URL}/store/${result.data.storeSlug}?booking=${result.data.bookingId}&payment=success`);
+      }
+    }
+    return NextResponse.redirect(`${APP_URL}/?payment=failed`);
   }
 
   const order = await prisma.order.findUnique({ where: { id: reference }, include: { store: true } });
@@ -101,4 +117,5 @@ export async function GET(req: Request) {
     }),
   ]);
   return NextResponse.redirect(buildStoreUrl(order.store, "?payment=failed"));
-        }
+      }
+        
