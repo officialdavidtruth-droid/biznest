@@ -703,6 +703,9 @@ model StoreStaff {
   userId        String?
   user          User?              @relation(fields: [userId], references: [id], onDelete: SetNull)
 
+  bookings      Booking[]
+  serviceLinks  ServiceStaff[]
+
   role          StaffRole          @default(STAFF)
   status        StaffInviteStatus  @default(PENDING)
 
@@ -958,6 +961,7 @@ model Service {
 
   units        ServiceUnit[]
   bookings     Booking[]
+  staffLinks   ServiceStaff[]
   orderItems   OrderItem[]
   reviews      Review[]
   wishlistedBy WishlistItem[]
@@ -998,6 +1002,19 @@ model ServiceUnit {
 
   @@unique([serviceId, label])
   @@index([storeId, status])
+}
+
+model ServiceStaff {
+  id        String      @id @default(cuid())
+  serviceId String
+  service   Service     @relation(fields: [serviceId], references: [id], onDelete: Cascade)
+  staffId   String
+  staff     StoreStaff  @relation(fields: [staffId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime     @default(now())
+
+  @@unique([serviceId, staffId])
+  @@index([staffId])
 }
 
 model InventoryItem {
@@ -1093,6 +1110,9 @@ model Booking {
   unitId      String?
   unit        ServiceUnit?  @relation(fields: [unitId], references: [id], onDelete: SetNull)
 
+  staffId     String?
+  staff       StoreStaff?  @relation(fields: [staffId], references: [id], onDelete: SetNull)
+
   scheduledAt DateTime
   // Redundant with Service.durationMins at booking time, snapshotted so a
   // later change to the service's duration doesn't reshape past bookings.
@@ -1121,6 +1141,7 @@ model Booking {
   @@index([serviceId, scheduledAt])
   @@index([storeId])
   @@index([unitId, checkIn, checkOut])
+  @@index([staffId, scheduledAt])
 }
 
 // ----------------------------------------------------------------------------
