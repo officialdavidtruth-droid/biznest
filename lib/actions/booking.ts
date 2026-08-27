@@ -241,7 +241,7 @@ export async function createBooking(
   dateISO: string,
   time: string,
   notes: string,
-  staffId?: string
+  guest?: { name: string; email: string; phone: string }
 ): Promise<
   ActionResult<{ bookingId: string }>
 > {
@@ -284,15 +284,25 @@ export async function createBooking(
       }
     : await auth();
 
-  if (!session?.user?.id) {
-    return {
-      success: false,
-      error: "Please sign in to book.",
-    };
+  if (!session?.user?.id && !guest) {
+    return { success: false, error: "Enter your name, email and phone to book as a guest." };
   }
 
+  const normalizedGuest = guest
+    ? {
+        name: guest.name.trim(),
+        email: guest.email.trim().toLowerCase(),
+        phone: guest.phone.trim(),
+      }
+    : null;
+
+  if (!session?.user?.id && (!normalizedGuest?.name || !normalizedGuest.email || !normalizedGuest.phone || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalizedGuest.email))) {
+    return { success: false, error: "Please provide a valid name, email and phone number." };
+  }
+
+  const rateKey = session?.user?.id ? `booking:${session.user.id}` : `booking-guest:${normalizedGuest!.email}:${serviceId}`;
   const rate = await checkRateLimit(
-    `booking:${session.user.id}`,
+    rateKey,
     10,
     5 * 60 * 1000
   );
@@ -330,7 +340,7 @@ export async function createBooking(
    * from creating a booking against Store B.
    */
   if (
-    session.user.role === "CUSTOMER"
+    session?.user?.role === "CUSTOMER"
   ) {
     const membership =
       await requireStoreCustomerByStoreId(
@@ -421,44 +431,53 @@ export async function createBooking(
     0
   );
 
-  if (staffId) {
-    const assignment = await prisma.serviceStaff.findFirst({
-      where: { serviceId, staffId, staff: { storeId: service.storeId, status: "ACTIVE" } },
-      select: { id: true },
-    });
-    if (!assignment) return { success: false, error: "That specialist is not available for this service." };
-    let booking: { id: string; scheduledAt: Date; durationMins: number };
-  try {
-    booking = await prisma.$transaction(async (tx) => {
-    const existing = await tx.booking.findMany({
+  /**
+   * Final race-condition protection.
+   *
+   * Availability was checked above, but another
+   * customer could theoretically book the same slot
+   * between that check and this create().
+   *
+   * We therefore check once more immediately before
+   * creating the booking.
+   */
+  const conflictingBooking =
+    await prisma.booking.findFirst({
       where: {
         serviceId,
-        status: { not: "CANCELLED" },
-        ...(staffId ? { staffId } : {}),
-        scheduledAt: { lt: new Date(scheduledAt.getTime() + service.durationMins * 60000), gte: new Date(scheduledAt.getTime() - 24 * 60 * 60000) },
+        scheduledAt,
+        status: {
+          not: "CANCELLED",
+        },
       },
-      select: { scheduledAt: true, durationMins: true },
+      select: {
+        id: true,
+      },
     });
-    const end = new Date(scheduledAt.getTime() + service.durationMins * 60000);
-    if (existing.some(b => b.scheduledAt < end && new Date(b.scheduledAt.getTime() + b.durationMins * 60000) > scheduledAt)) {
-      throw new Error("BOOKING_SLOT_TAKEN");
-    }
-    return tx.booking.create({
+
+  if (conflictingBooking) {
+    return {
+      success: false,
+      error:
+        "That slot was just taken — pick another time.",
+    };
+  }
+
+  const booking =
+    await prisma.booking.create({
       data: {
         storeId: service.storeId,
         serviceId,
-        buyerId: session.user.id,
+        buyerId: session?.user?.id ?? null,
         scheduledAt,
-        durationMins: service.durationMins,
+        durationMins:
+          service.durationMins,
         notes: notes?.trim() || null,
-        staffId: staffId || null,
+        guestName: normalizedGuest?.name ?? null,
+        guestEmail: normalizedGuest?.email ?? null,
+        guestPhone: normalizedGuest?.phone ?? null,
       },
     });
-    }, { isolationLevel: "Serializable" });
-  } catch (error) {
-    if (error instanceof Error && error.message === "BOOKING_SLOT_TAKEN") return { success: false, error: "That slot was just taken — pick another time." };
-    throw error;
-  }
 
   await emitWebhookEvent(
     "BOOKING_CREATED",
@@ -483,6 +502,170 @@ export async function createBooking(
       bookingId: booking.id,
     },
   };
+}
+
+/**
+ * Public storefront equivalent of getCalendarData's overlap check, scoped to
+ * a single unit-based service. Returns how many of its units are free for
+ * the given [checkIn, checkOut) range so the stay-booking widget can tell
+ * the shopper up front whether the dates work at all.
+ */
+export async function getAvailableUnitCount(
+  serviceId: string,
+  checkInISO: string,
+  checkOutISO: string
+): Promise<number> {
+  const service = await prisma.service.findUnique({ where: { id: serviceId } });
+  if (!service || !service.isBookable || !service.totalUnits) return 0;
+
+  const checkIn = new Date(`${checkInISO}T00:00:00`);
+  const checkOut = new Date(`${checkOutISO}T00:00:00`);
+  if (Number.isNaN(checkIn.getTime()) || Number.isNaN(checkOut.getTime()) || checkOut <= checkIn) return 0;
+
+  const totalUnits = await prisma.serviceUnit.count({ where: { serviceId, status: { not: "OUT_OF_SERVICE" } } });
+  if (totalUnits === 0) return 0;
+
+  const bookedUnitIds = await prisma.booking.findMany({
+    where: {
+      serviceId,
+      status: { not: "CANCELLED" },
+      checkIn: { lt: checkOut },
+      checkOut: { gt: checkIn },
+    },
+    select: { unitId: true },
+    distinct: ["unitId"],
+  });
+
+  return Math.max(0, totalUnits - bookedUnitIds.length);
+}
+
+/**
+ * Public storefront counterpart to createUnitBooking (front-desk version in
+ * lib/actions/service-unit.ts). Picks the first free unit for the requested
+ * range itself, rather than asking the shopper to choose a specific room.
+ */
+export async function createStayBooking(
+  storeSlug: string,
+  serviceId: string,
+  checkInISO: string,
+  checkOutISO: string,
+  notes: string,
+  guest?: { name: string; email: string; phone: string }
+): Promise<ActionResult<{ bookingId: string }>> {
+  const customerSession = await getStoreCustomerSession();
+  const session = customerSession
+    ? {
+        user: {
+          id: customerSession.user.id,
+          role: "CUSTOMER" as const,
+          customerStoreId: customerSession.user.customerStoreId,
+          email: customerSession.user.email,
+          name: customerSession.user.name,
+        },
+      }
+    : await auth();
+
+  if (!session?.user?.id && !guest) {
+    return { success: false, error: "Enter your name, email and phone to book as a guest." };
+  }
+
+  const normalizedGuest = guest
+    ? { name: guest.name.trim(), email: guest.email.trim().toLowerCase(), phone: guest.phone.trim() }
+    : null;
+
+  if (!session?.user?.id && (!normalizedGuest?.name || !normalizedGuest.email || !normalizedGuest.phone || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalizedGuest.email))) {
+    return { success: false, error: "Please provide a valid name, email and phone number." };
+  }
+
+  const rateKey = session?.user?.id ? `booking:${session.user.id}` : `booking-guest:${normalizedGuest!.email}:${serviceId}`;
+  const rate = await checkRateLimit(rateKey, 10, 5 * 60 * 1000);
+  if (!rate.allowed) {
+    return { success: false, error: "Too many booking attempts — please wait a few minutes and try again." };
+  }
+
+  const service = await prisma.service.findUnique({ where: { id: serviceId } });
+  if (!service || !service.isBookable || !service.totalUnits) {
+    return { success: false, error: "This service isn't bookable." };
+  }
+
+  if (session?.user?.role === "CUSTOMER") {
+    const membership = await requireStoreCustomerByStoreId(service.storeId);
+    if (!membership) {
+      return { success: false, error: "This customer account belongs to another store. Sign up for this store to continue." };
+    }
+    if (session.user.customerStoreId !== service.storeId) {
+      return { success: false, error: "This customer account belongs to another store. Sign up for this store to continue." };
+    }
+  }
+
+  const checkIn = new Date(`${checkInISO}T00:00:00`);
+  const checkOut = new Date(`${checkOutISO}T00:00:00`);
+  if (Number.isNaN(checkIn.getTime()) || Number.isNaN(checkOut.getTime()) || checkOut <= checkIn) {
+    return { success: false, error: "Invalid dates." };
+  }
+  if (checkIn < new Date(new Date().toDateString())) {
+    return { success: false, error: "Check-in date is in the past." };
+  }
+
+  const nights = Math.max(1, Math.round((checkOut.getTime() - checkIn.getTime()) / (1000 * 60 * 60 * 24)));
+
+  // Race-condition-safe: pick a free unit and create the booking inside one
+  // transaction so two shoppers can't both land on the same last-free unit.
+  try {
+    const booking = await prisma.$transaction(async (tx) => {
+      const units = await tx.serviceUnit.findMany({
+        where: { serviceId, status: { not: "OUT_OF_SERVICE" } },
+        select: { id: true },
+      });
+      if (units.length === 0) throw new Error("NO_UNITS");
+
+      const overlapping = await tx.booking.findMany({
+        where: {
+          serviceId,
+          status: { not: "CANCELLED" },
+          checkIn: { lt: checkOut },
+          checkOut: { gt: checkIn },
+        },
+        select: { unitId: true },
+      });
+      const takenIds = new Set(overlapping.map((b) => b.unitId));
+      const freeUnit = units.find((u) => !takenIds.has(u.id));
+      if (!freeUnit) throw new Error("NO_AVAILABILITY");
+
+      return tx.booking.create({
+        data: {
+          storeId: service.storeId,
+          serviceId,
+          unitId: freeUnit.id,
+          buyerId: session?.user?.id ?? null,
+          scheduledAt: checkIn,
+          checkIn,
+          checkOut,
+          durationMins: nights * 24 * 60,
+          notes: notes?.trim() || null,
+          guestName: normalizedGuest?.name ?? null,
+          guestEmail: normalizedGuest?.email ?? null,
+          guestPhone: normalizedGuest?.phone ?? null,
+        },
+      });
+    }, { isolationLevel: "Serializable" });
+
+    await emitWebhookEvent("BOOKING_CREATED", service.storeId, {
+      bookingId: booking.id,
+      serviceId,
+      scheduledAt: booking.scheduledAt,
+      durationMins: booking.durationMins,
+    });
+
+    revalidatePath(`/store/${storeSlug}`);
+    return { success: true, data: { bookingId: booking.id } };
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "";
+    if (message === "NO_UNITS" || message === "NO_AVAILABILITY") {
+      return { success: false, error: "No rooms available for those dates — try a different range." };
+    }
+    throw error;
+  }
 }
 
 /**
@@ -595,60 +778,4 @@ export async function updateBookingStatus(
     success: true,
     data: undefined,
   };
-}
-/** Staff who can perform a service and are active in the store. */
-export async function getBookableStaff(serviceId: string, dateISO?: string) {
-  const service = await prisma.service.findUnique({ where: { id: serviceId }, select: { storeId: true } });
-  if (!service) return [];
-  const rows = await prisma.serviceStaff.findMany({
-    where: { serviceId, staff: { storeId: service.storeId, status: "ACTIVE" } },
-    include: { staff: { select: { id: true, invitedName: true, position: true, user: { select: { name: true } } } } },
-  });
-  return rows.filter(r => r.staff).map(r => ({ id: r.staff.id, name: r.staff.user?.name || r.staff.invitedName || r.staff.position || "Team member", position: r.staff.position }));
-}
-
-/** Returns the number of free units for a requested stay. */
-export async function getAvailableUnitCount(serviceId: string, checkInISO: string, checkOutISO: string) {
-  const checkIn = new Date(`${checkInISO}T00:00:00`);
-  const checkOut = new Date(`${checkOutISO}T00:00:00`);
-  if (!Number.isFinite(checkIn.getTime()) || !Number.isFinite(checkOut.getTime()) || checkOut <= checkIn) return 0;
-  const units = await prisma.serviceUnit.findMany({ where: { serviceId, status: { notIn: ["OUT_OF_SERVICE", "MAINTENANCE"] } }, select: { id: true } });
-  if (!units.length) return 0;
-  const booked = await prisma.booking.count({ where: { serviceId, unitId: { in: units.map(u => u.id) }, status: { not: "CANCELLED" }, checkIn: { lt: checkOut }, checkOut: { gt: checkIn } } });
-  return Math.max(0, units.length - booked);
-}
-
-/** Customer-facing booking for a unit/date-range service such as a hotel room. */
-export async function createCustomerUnitBooking(storeSlug: string, serviceId: string, checkInISO: string, checkOutISO: string, notes: string): Promise<ActionResult<{ bookingId: string }>> {
-  const customerSession = await getStoreCustomerSession();
-  if (!customerSession?.user?.id) return { success: false, error: "Please sign in to book." };
-  const service = await prisma.service.findUnique({ where: { id: serviceId }, select: { id: true, storeId: true, price: true, totalUnits: true, isBookable: true } });
-  if (!service?.isBookable || !service.totalUnits) return { success: false, error: "This service is not configured for date-range booking." };
-  const membership = await requireStoreCustomerByStoreId(service.storeId);
-  if (!membership || customerSession.user.customerStoreId !== service.storeId) return { success: false, error: "This customer account belongs to another business." };
-  const checkIn = new Date(`${checkInISO}T00:00:00`), checkOut = new Date(`${checkOutISO}T00:00:00`);
-  if (!Number.isFinite(checkIn.getTime()) || !Number.isFinite(checkOut.getTime()) || checkOut <= checkIn) return { success: false, error: "Choose a valid check-in and check-out date." };
-  const unit = await prisma.serviceUnit.findFirst({ where: { serviceId, status: { notIn: ["OUT_OF_SERVICE", "MAINTENANCE"] }, bookings: { none: { status: { not: "CANCELLED" }, checkIn: { lt: checkOut }, checkOut: { gt: checkIn } } } }, orderBy: { label: "asc" } });
-  if (!unit) return { success: false, error: "Those dates are no longer available. Please choose different dates." };
-  const nights = Math.max(1, Math.round((checkOut.getTime() - checkIn.getTime()) / 86400000));
-  const booking = await prisma.booking.create({ data: { storeId: service.storeId, serviceId, unitId: unit.id, buyerId: customerSession.user.id, scheduledAt: checkIn, checkIn, checkOut, durationMins: nights * 1440, status: "PENDING", notes: notes?.trim() || null } });
-  await emitWebhookEvent("BOOKING_CREATED", service.storeId, { bookingId: booking.id, serviceId, scheduledAt: booking.scheduledAt, checkIn, checkOut });
-  revalidatePath(`/store/${storeSlug}`);
-  revalidatePath(`/store/${storeSlug}/account/bookings`);
-  return { success: true, data: { bookingId: booking.id } };
-}
-
-/** Prevent overlapping appointment bookings, including different durations. */
-export async function hasBookingConflict(serviceId: string, start: Date, durationMins: number, staffId?: string) {
-  const end = new Date(start.getTime() + durationMins * 60000);
-  const candidates = await prisma.booking.findMany({
-    where: {
-      serviceId,
-      status: { not: "CANCELLED" },
-      ...(staffId ? { staffId } : {}),
-      scheduledAt: { lt: end, gte: new Date(start.getTime() - 24 * 60 * 60000) },
-    },
-    select: { scheduledAt: true, durationMins: true },
-  });
-  return candidates.some(b => b.scheduledAt.getTime() < end.getTime() && b.scheduledAt.getTime() + b.durationMins * 60000 > start.getTime());
 }
