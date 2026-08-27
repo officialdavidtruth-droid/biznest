@@ -324,7 +324,7 @@ export async function redeemWalletPaymentRequest(storeSlug: string, token: strin
   const access = await (await import("@/lib/access/assert-store-access")).assertStorePermission(storeSlug, "orders");
   if (!access.success) return { success: false, error: access.error };
   const tokenHash = crypto.createHash("sha256").update(token).digest("hex");
-  const request = await prisma.walletPaymentRequest.findUnique({ where: { tokenHash }, include: { booking: { include: { service: true, store: true } }, wallet: true } });
+  const request = await prisma.walletPaymentRequest.findUnique({ where: { tokenHash }, include: { booking: { include: { service: true, store: true } }, wallet: { include: { user: { select: { name: true, email: true } } } } } });
   if (!request || request.storeId !== access.store.id) return { success: false, error: "Payment request not found." };
   if (request.status !== "PENDING") return { success: false, error: "This payment QR has already been used or cancelled." };
   if (request.expiresAt <= new Date()) {
