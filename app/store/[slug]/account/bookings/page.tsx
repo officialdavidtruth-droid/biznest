@@ -37,7 +37,7 @@ export default async function Page({ params }: { params: Promise<{ slug: string 
           <div className="space-y-3">
             {upcoming.map(b => <article key={b.id} className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
               <div className="flex flex-wrap items-start justify-between gap-4">
-                <div><p className="font-bold text-slate-950">{b.service.name}</p><p className="mt-1 text-sm text-slate-500">{b.checkIn && b.checkOut ? `${formatDate(b.checkIn)} → ${formatDate(b.checkOut)}` : `${formatDate(b.scheduledAt)} at ${formatTime(b.scheduledAt)}`}</p></div>
+                <div><p className="font-bold text-slate-950">{b.service.name}</p><p className="mt-1 text-sm text-slate-500">{b.checkIn && b.checkOut ? `${formatDate(b.checkIn)} → ${formatDate(b.checkOut)}` : `${formatDate(b.scheduledAt)} at ${formatTime(b.scheduledAt)}`}</p>{b.staff && <p className="mt-1 text-xs text-slate-400">With {b.staff.user?.name || b.staff.invitedName || b.staff.position || "your specialist"}</p>}</div>
                 <span className={`rounded-full px-3 py-1 text-xs font-bold ${b.status === "CONFIRMED" ? "bg-emerald-50 text-emerald-700" : "bg-amber-50 text-amber-700"}`}>{b.status}</span>
               </div>
               {b.notes && <p className="mt-4 rounded-xl bg-slate-50 p-3 text-sm text-slate-600">{b.notes}</p>}
