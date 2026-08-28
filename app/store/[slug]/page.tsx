@@ -24,7 +24,7 @@ import { CategoryNav } from "@/components/storefront/category-nav";
 import { getStoreCategoryTree } from "@/lib/storefront-categories";
 import { Reveal } from "@/components/storefront/reveal";
 import { BuilderStorefront } from "@/components/storefront/builder-renderer";
-import { readBuilderConfig } from "@/lib/builder-config";
+import { readBuilderConfig, themeBuilderConfig } from "@/lib/builder-config";
 import { getHospitalityGallery } from "@/lib/actions/hospitality-content";
 
 export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }): Promise<Metadata> {
@@ -103,10 +103,23 @@ export default async function StorefrontPage({ params }: { params: Promise<{ slu
   const sectionOverrides = store.sectionOverrides as { hidden?: string[] } | null;
   const hiddenSections = new Set(sectionOverrides?.hidden ?? []);
 
-  // Stores that activate the visual builder render from the saved section graph.
-  // Legacy stores keep their existing template renderer unchanged.
+  // Stores that saved a builder config render from that saved section graph.
   const rawSectionOverrides = store.sectionOverrides as { builderVersion?: number; builder?: unknown } | null;
-  const builderConfig = rawSectionOverrides?.builderVersion === 1 ? readBuilderConfig(rawSectionOverrides.builder) : null;
+  let builderConfig = rawSectionOverrides?.builderVersion === 1 ? readBuilderConfig(rawSectionOverrides.builder) : null;
+
+  // EVERY store with a template — legacy, Signature (incl. Hotel mode), or
+  // any template added in the future — falls back to a builder config
+  // generated from its resolved theme when nothing has been saved yet.
+  // This is what gives every template the click-to-edit inspector +
+  // content panel from the moment a template is picked, with zero
+  // per-template wiring required when a new template is added: as long as
+  // it's registered in resolveStoreTheme() (lib/template-themes.ts), it
+  // gets this for free.
+  const signatureTheme = isSignatureTemplate(store.template?.name) ? getSignatureTheme(store.template?.name) : null;
+  if (!builderConfig && store.template) {
+    builderConfig = themeBuilderConfig(theme, store.name, store.business?.description, heroImage);
+  }
+
   if (builderConfig) {
     return (
       <BuilderStorefront
@@ -121,7 +134,6 @@ export default async function StorefrontPage({ params }: { params: Promise<{ slu
   }
 
   // ---------- HOTEL: company-first hospitality website ----------
-  const signatureTheme = isSignatureTemplate(store.template?.name) ? getSignatureTheme(store.template?.name) : null;
   const hospitalityGallery = signatureTheme?.signatureMode === "hotel" ? await getHospitalityGallery(slug) : null;
   if (signatureTheme?.signatureMode === "hotel") {
     return (
