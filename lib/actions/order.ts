@@ -270,6 +270,7 @@ async function chargeExistingOrder(
         status: "PENDING",
         amount: totalNaira,
         currency: order.currency,
+        splitSubaccountCode: charge.splitSubaccountCode,
       },
     }),
   ]);

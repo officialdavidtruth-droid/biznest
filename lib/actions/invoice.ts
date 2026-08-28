@@ -228,6 +228,7 @@ export async function payInvoice(invoiceId: string): Promise<ActionResult<{ auth
       status: "PENDING",
       amount: Number(invoice.total),
       currency: invoice.currency,
+      splitSubaccountCode: charge.splitSubaccountCode,
     },
   });
 

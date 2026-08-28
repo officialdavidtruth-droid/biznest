@@ -622,20 +622,35 @@ export async function refreshPayoutVerification(slug: string): Promise<ActionRes
     return { success: true, data: { verified: true } };
   }
 
-  const result = await checkPaystackSubaccountVerification(store.paystackSubaccountCode);
+  const result = await syncPaystackPayoutVerification(store.id, store.paystackSubaccountCode);
   if (!result.status) {
     return { success: false, error: result.message || "Couldn't reach Paystack to check verification status." };
   }
 
-  if (result.isVerified) {
-    await prisma.store.update({
-      where: { id: store.id },
-      data: { payoutVerifiedAt: new Date() },
-    });
-  }
-
   revalidatePath(`/store/${slug}/admin/payments`);
-  return { success: true, data: { verified: Boolean(result.isVerified) } };
+  return { success: true, data: { verified: result.isVerified } };
+}
+
+/**
+ * Shared core of the verification check, used both by the owner-facing
+ * "Refresh status" button above and by the periodic sweep in
+ * app/api/cron/payout-verification -- kept in one place so the two
+ * callers can't drift on what "verified" means or how it's stamped.
+ * Callers are responsible for skipping stores that already have
+ * payoutVerifiedAt set (cheap short-circuit, avoids a wasted API call).
+ */
+export async function syncPaystackPayoutVerification(
+  storeId: string,
+  subaccountCode: string
+): Promise<{ status: boolean; message?: string; isVerified: boolean }> {
+  const result = await checkPaystackSubaccountVerification(subaccountCode);
+  if (!result.status) {
+    return { status: false, message: result.message, isVerified: false };
+  }
+  if (result.isVerified) {
+    await prisma.store.update({ where: { id: storeId }, data: { payoutVerifiedAt: new Date() } });
+  }
+  return { status: true, isVerified: Boolean(result.isVerified) };
 }
 
 export async function disconnectPayoutAccount(slug: string, provider: "PAYSTACK" | "FLUTTERWAVE"): Promise<ActionResult> {

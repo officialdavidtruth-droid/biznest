@@ -41,30 +41,27 @@ async function assertStoreAccess(slug: string) {
 }
 
 /**
- * Records a clawback if this refund's payment was very likely split to the
+ * Records a clawback if this refund's payment was actually split to the
  * merchant's subaccount and had already settled to their bank account by
  * the time the refund was issued. Doesn't move any money itself -- same
  * "record what already happened" shape as issueRefund's Payment update.
  *
- * Whether a *specific* payment was actually split isn't stored on the
- * Payment row today (order.ts/quote.ts/invoice.ts all split using
- * whatever the store's *current* subaccount code is at charge time, but
- * that isn't persisted per-payment). As an approximation, we treat a
- * payment as split if the store has a subaccount connected now AND that
- * connection predates the payment's own verification -- true for the
- * overwhelming majority of real orders. If precision matters more than
- * that later (e.g. once a store has disconnected/reconnected payouts),
- * store the subaccount code actually used directly on Payment at charge
- * time instead of inferring it here.
+ * Whether a *specific* payment was split is read directly off
+ * Payment.splitSubaccountCode, stamped at charge time by chargeCustomer's
+ * result (see order.ts/invoice.ts/quote.ts) -- not inferred from the
+ * store's *current* payout connection, which can drift if a store
+ * disconnects/reconnects payouts between the charge and the refund.
+ * Older payments created before this field existed will have it null and
+ * are treated as unsplit here (pre-existing behavior for that backlog).
  */
 async function recordRefundClawbackIfSettled(
   tx: Prisma.TransactionClient,
-  store: { id: string; paystackSubaccountCode: string | null; payoutConnectedAt: Date | null; subscription: { commissionRate: unknown } | null },
-  payment: { id: string; amount: unknown; verifiedAt: Date | null; provider: string }
+  store: { id: string; subscription: { commissionRate: unknown } | null },
+  payment: { id: string; amount: unknown; verifiedAt: Date | null; provider: string; splitSubaccountCode: string | null }
 ) {
   if (payment.provider !== "PAYSTACK") return; // Flutterwave split-reversal behavior isn't confirmed the same way yet.
-  if (!store.paystackSubaccountCode || !store.payoutConnectedAt) return; // never split, or not split via a still-known subaccount
-  if (!payment.verifiedAt || store.payoutConnectedAt > payment.verifiedAt) return; // connected after this charge — wasn't split
+  if (!payment.splitSubaccountCode) return; // this charge wasn't split to a subaccount
+  if (!payment.verifiedAt) return;
 
   const ageMs = Date.now() - payment.verifiedAt.getTime();
   const likelySettled = ageMs > SETTLEMENT_LIKELY_DAYS * 24 * 60 * 60 * 1000;
@@ -107,7 +104,7 @@ export async function issueRefund(
 
   const order = await prisma.order.findFirst({
     where: { id: orderId, storeId: access.store.id },
-    include: { payments: true },
+    include: { payments: true }, // Payment.splitSubaccountCode is a plain column, included by default
   });
   if (!order) return { success: false, error: "Order not found." };
 

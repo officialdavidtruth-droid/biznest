@@ -208,6 +208,7 @@ export async function acceptQuote(quoteId: string): Promise<ActionResult<{ autho
       status: "PENDING",
       amount: Number(quote.depositRequired),
       currency: quote.currency,
+      splitSubaccountCode: charge.splitSubaccountCode,
     },
   });
 
