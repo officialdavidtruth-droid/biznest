@@ -3,15 +3,19 @@ import Link from "next/link";
 import { LayoutDashboard, Package, Heart, MapPin, Bell, Calendar, Star, MessageSquare, ArrowLeft, LogOut, Wallet, Menu } from "lucide-react";
 import { SignOutButton } from "@/components/forms/sign-out-button";
 
-export function StoreAccountLegacyShell({ children, slug, store, membership, unreadMessageCount }: any) {
+export function StoreAccountLegacyShell({ children, slug, store, membership, unreadMessageCount, nav }: any) {
+  // Same reasoning as SignatureCustomerShell: only show Orders/Addresses
+  // for stores that sell products, and Bookings for stores that offer
+  // services, so a pure-service or pure-product store's sidebar doesn't
+  // show links to a feature it has no data for.
   const LINKS = [
     { href: `/store/${slug}/account`, label: "My Account", icon: LayoutDashboard },
-    { href: `/store/${slug}/orders`, label: "My Orders", icon: Package },
+    ...(nav.sellsProducts ? [{ href: `/store/${slug}/orders`, label: "My Orders", icon: Package }] : []),
     { href: `/store/${slug}/account/wishlist`, label: "My Wishlist", icon: Heart },
-    { href: `/store/${slug}/account/addresses`, label: "My Addresses", icon: MapPin },
+    ...(nav.sellsProducts ? [{ href: `/store/${slug}/account/addresses`, label: "My Addresses", icon: MapPin }] : []),
     { href: `/store/${slug}/account/loyalty`, label: "My Rewards", icon: Bell },
     { href: `/store/${slug}/account/wallet`, label: "My Wallet", icon: Wallet },
-    { href: `/store/${slug}/account/bookings`, label: "My Appointments", icon: Calendar },
+    ...(nav.offersServices ? [{ href: `/store/${slug}/account/bookings`, label: "My Appointments", icon: Calendar }] : []),
     { href: `/store/${slug}/account/reviews`, label: "My Reviews", icon: Star },
     { href: `/store/${slug}/account/messages`, label: "Support & Disputes", icon: MessageSquare, badge: unreadMessageCount },
   ];
