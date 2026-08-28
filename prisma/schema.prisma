@@ -1596,6 +1596,17 @@ model Payment {
   // succeeds -- null while still PENDING.
   verifiedAt  DateTime?
 
+  // The subaccount code/id this charge was actually split to at
+  // initialize-time (store.paystackSubaccountCode or
+  // flutterwaveSubaccountId, whichever provider was used) -- null if this
+  // charge wasn't split (no payout account connected yet, or a purpose
+  // that never splits, e.g. subscription billing). Recorded per-payment
+  // rather than inferred from the store's *current* subaccount, since a
+  // store can disconnect/reconnect payouts and the store's live value at
+  // refund time may not match what a much older charge actually used.
+  // See recordRefundClawbackIfSettled in lib/actions/refund.ts.
+  splitSubaccountCode String?
+
   // Refund tracking, set when a support/admin agent issues a refund
   // against this charge (see lib/actions/refund.ts). refundReference is
   // the gateway's own refund id -- unique so the same charge can't somehow
