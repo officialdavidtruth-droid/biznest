@@ -637,6 +637,18 @@ model Store {
   posCommissionOwed        Decimal     @default(0) @db.Decimal(12, 2)
   posCommissionSettlements PosCommissionSettlement[]
 
+  // Running balance of merchant share the platform has fronted on refunds
+  // where the split had already settled to the merchant's bank account
+  // before the refund was issued (T+1 settlement means this is common).
+  // Paystack confirmed (support, Aug 2026) they do NOT auto-reclaim a
+  // settled merchant share on refund -- recovery is on us. Mirrors
+  // posCommissionOwed/PosCommissionSettlement above: this is a ledger
+  // balance, not money movement in itself. See lib/actions/refund.ts
+  // recordRefundClawback and lib/actions/store.ts recordRefundClawbackSettlement.
+  refundClawbackOwed        Decimal     @default(0) @db.Decimal(12, 2)
+  refundClawbacks           StoreRefundClawback[]
+  refundClawbackSettlements RefundClawbackSettlement[]
+
   products      Product[]
   services      Service[]
   categories    Category[]
@@ -1237,6 +1249,51 @@ model PosCommissionSettlement {
   @@index([storeId, createdAt])
 }
 
+// One row per refund that added to Store.refundClawbackOwed -- i.e. a
+// refund where the merchant's split share had (or likely had, per the
+// T+1-plus-buffer heuristic in lib/actions/refund.ts) already settled to
+// their bank account, so the platform fronted that portion of the refund
+// out of its own balance and now needs to recover it from the merchant.
+// Distinct from PosCommissionSettlement: that ledger is money the merchant
+// owes the platform as ordinary commission; this one is money the platform
+// is owed back because it covered a merchant's refund obligation.
+model StoreRefundClawback {
+  id          String   @id @default(cuid())
+  storeId     String
+  store       Store    @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  paymentId   String
+  payment     Payment  @relation(fields: [paymentId], references: [id])
+
+  // The merchant's share of the refunded amount that the platform fronted
+  // -- not the full refund (the platform's own commission share was never
+  // the merchant's money to begin with, so only the merchant's cut needs
+  // to be clawed back from them).
+  amount      Decimal  @db.Decimal(12, 2)
+  reason      String
+
+  createdAt   DateTime @default(now())
+
+  @@index([storeId, createdAt])
+  @@index([paymentId])
+}
+
+// One row per time an owner/admin (or an automated deduction from a future
+// payout, once that exists) clears some/all of Store.refundClawbackOwed --
+// same append-only ledger shape as PosCommissionSettlement.
+model RefundClawbackSettlement {
+  id          String   @id @default(cuid())
+  storeId     String
+  store       Store    @relation(fields: [storeId], references: [id], onDelete: Cascade)
+
+  amount      Decimal  @db.Decimal(12, 2)
+  note        String?
+  settledByEmail String
+
+  createdAt   DateTime @default(now())
+
+  @@index([storeId, createdAt])
+}
+
 // ----------------------------------------------------------------------------
 // ABANDONED CHECKOUT RECOVERY -- deliberately not a separate "cart snapshot"
 // table. startCheckout() already creates an Order row at PENDING_PAYMENT the
@@ -1556,6 +1613,10 @@ model Payment {
   // --- Invoicing / quotations (additive) ---
   invoice     Invoice?
   quoteDepositFor Quote?
+
+  // Set if this refund triggered a merchant-share clawback (see
+  // StoreRefundClawback) because the split had already settled.
+  refundClawback StoreRefundClawback?
 
   @@index([orderId])
   @@index([storeId])
