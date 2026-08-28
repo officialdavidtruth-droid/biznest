@@ -121,6 +121,56 @@ export function defaultBuilderConfig(storeName: string, description?: string | n
   };
 }
 
+/**
+ * Builds a BuilderConfig from any resolved TemplateTheme (legacy template,
+ * Signature Collection mode, Hotel mode, or a future template that hasn't
+ * been written yet). This is the universal fallback that lets EVERY store
+ * render through BuilderStorefront — and therefore get the click-to-edit
+ * inspector + content panel — the moment a template is picked, even before
+ * the owner has ever opened the customizer.
+ *
+ * Because this reads its copy/colors purely from `resolveStoreTheme()`
+ * (see lib/template-themes.ts), a brand new template automatically gets
+ * this for free as soon as it's added to that theme resolver — no changes
+ * needed here or in the storefront router.
+ */
+export function themeBuilderConfig(
+  theme: {
+    accent: string; bg: string; ink: string; card: string; muted?: string;
+    headlineFont: string; font: string; eyebrow: string; headline: string;
+    sub: string; cta: string; catalogLabel: string;
+  },
+  storeName: string,
+  description?: string | null,
+  heroImage?: string | null,
+): BuilderConfig {
+  return {
+    version: 1,
+    design: {
+      primary: theme.accent,
+      accent: theme.accent,
+      background: theme.bg,
+      surface: theme.card,
+      text: theme.ink,
+      muted: theme.muted || `${theme.ink}99`,
+      font: theme.font,
+      headingFont: theme.headlineFont,
+      radius: 18,
+      containerWidth: "wide",
+      buttonStyle: "solid",
+    },
+    sections: [
+      { id: "hero", type: "hero", visible: true, settings: { eyebrow: theme.eyebrow, heading: theme.headline, body: description || theme.sub, ctaLabel: theme.cta, ctaHref: "#catalog", image: heroImage || undefined, align: "left", padding: "spacious" } },
+      { id: "stats", type: "stats", visible: true, settings: { padding: "normal" } },
+      { id: "about", type: "about", visible: true, settings: { eyebrow: "Designed around your business", heading: "Everything you need, beautifully presented.", body: description || theme.sub, padding: "spacious" } },
+      { id: "catalog", type: "catalog", visible: true, settings: { eyebrow: theme.catalogLabel, heading: theme.catalogLabel, columns: 4, padding: "spacious" } },
+      { id: "testimonials", type: "testimonials", visible: true, settings: { eyebrow: "Customer love", heading: "What customers say", padding: "spacious" } },
+      { id: "contact", type: "contact", visible: true, settings: { eyebrow: "Contact", heading: "Get in touch", padding: "spacious" } },
+      { id: "newsletter", type: "newsletter", visible: true, settings: { eyebrow: "Stay in the loop", heading: "Get updates from us", padding: "normal" } },
+    ],
+  };
+}
+
 export function readBuilderConfig(value: unknown): BuilderConfig | null {
   const result = builderConfigSchema.safeParse(value);
   return result.success ? result.data : null;
