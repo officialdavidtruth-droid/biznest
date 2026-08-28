@@ -14,7 +14,7 @@ export default async function WalletPage({ params }: { params: Promise<{ slug: s
         <h1 className="mt-1 text-2xl font-bold text-slate-950">Wallet</h1>
         <p className="mt-2 text-sm text-slate-500">Keep money here and use it to pay for eligible bookings without stopping at the front desk.</p>
       </div>
-      <section className="rounded-3xl bg-slate-950 p-6 text-white shadow-lg">
+      <section className="rounded-3xl p-6 text-white shadow-lg" style={{ background: "var(--sig-accent, #0f172a)" }}>
         <p className="text-sm text-white/60">Available balance</p>
         <p className="mt-2 text-4xl font-bold">₦{Number(wallet.balance).toLocaleString()}</p>
         <p className="mt-3 text-xs text-white/50">{wallet.currency} · Wallet funds are store-scoped.</p>
