@@ -33,6 +33,11 @@ export default async function ServicePage({ params }: { params: Promise<{ slug: 
   const theme: TemplateTheme = resolveStoreTheme(store.template?.category, store.name, themeOverrides, store.fontFamily, store.template?.name);
   const { accent, ink, bg, radius } = theme;
   const images = service.images.length ? service.images : [];
+  // Booking-only businesses (hotels, salons, studios, etc.) don't sell
+  // cart-able products, so the cart icon should never show on their
+  // service pages -- it was previously rendered unconditionally here,
+  // which is why a pure-booking store still showed a shopping bag.
+  const showCart = store.business?.sellsProducts ?? true;
 
   return (
     <div style={{ fontFamily: theme.font, color: ink, background: bg, minHeight: "100vh" }} className="storefront-root sp-root">
@@ -82,7 +87,7 @@ export default async function ServicePage({ params }: { params: Promise<{ slug: 
             )}
             <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{store.name}</span>
           </Link>
-          <CartLink storeSlug={slug} accent={accent} ink={ink} />
+          {showCart && <CartLink storeSlug={slug} accent={accent} ink={ink} />}
         </div>
       </nav>
 
