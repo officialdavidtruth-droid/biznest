@@ -2,20 +2,26 @@ import type React from "react";
 import Link from "next/link";
 import { LayoutDashboard, Package, Heart, MapPin, Bell, Calendar, Star, MessageSquare, ArrowLeft, LogOut, Wallet, Menu } from "lucide-react";
 import { SignOutButton } from "@/components/forms/sign-out-button";
+import { getAccountCopy } from "@/lib/account-copy";
 
 export function StoreAccountLegacyShell({ children, slug, store, membership, unreadMessageCount, nav }: any) {
   // Same reasoning as SignatureCustomerShell: only show Orders/Addresses
   // for stores that sell products, and Bookings for stores that offer
   // services, so a pure-service or pure-product store's sidebar doesn't
-  // show links to a feature it has no data for.
+  // show links to a feature it has no data for. Wording (Orders vs
+  // Invoices vs Purchases, Bookings vs Reservations vs Projects) comes
+  // from the store's business category via getAccountCopy, the same
+  // source of truth the Signature templates use, so a legacy-template
+  // hotel says "Reservations" instead of the generic "My Appointments".
+  const copy = getAccountCopy(null, store.businessCategory);
   const LINKS = [
-    { href: `/store/${slug}/account`, label: "My Account", icon: LayoutDashboard },
-    ...(nav.sellsProducts ? [{ href: `/store/${slug}/orders`, label: "My Orders", icon: Package }] : []),
-    { href: `/store/${slug}/account/wishlist`, label: "My Wishlist", icon: Heart },
-    ...(nav.sellsProducts ? [{ href: `/store/${slug}/account/addresses`, label: "My Addresses", icon: MapPin }] : []),
-    { href: `/store/${slug}/account/loyalty`, label: "My Rewards", icon: Bell },
-    { href: `/store/${slug}/account/wallet`, label: "My Wallet", icon: Wallet },
-    ...(nav.offersServices ? [{ href: `/store/${slug}/account/bookings`, label: "My Appointments", icon: Calendar }] : []),
+    { href: `/store/${slug}/account`, label: copy.account, icon: LayoutDashboard },
+    ...(nav.sellsProducts ? [{ href: `/store/${slug}/orders`, label: copy.orders, icon: Package }] : []),
+    { href: `/store/${slug}/account/wishlist`, label: copy.wishlist, icon: Heart },
+    ...(nav.sellsProducts ? [{ href: `/store/${slug}/account/addresses`, label: "Addresses", icon: MapPin }] : []),
+    { href: `/store/${slug}/account/loyalty`, label: "Rewards", icon: Bell },
+    { href: `/store/${slug}/account/wallet`, label: "Wallet", icon: Wallet },
+    ...(nav.offersServices ? [{ href: `/store/${slug}/account/bookings`, label: copy.bookings, icon: Calendar }] : []),
     { href: `/store/${slug}/account/reviews`, label: "My Reviews", icon: Star },
     { href: `/store/${slug}/account/messages`, label: "Support & Disputes", icon: MessageSquare, badge: unreadMessageCount },
   ];
