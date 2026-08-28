@@ -1,5 +1,6 @@
+import type React from "react";
 import Link from "next/link";
-import { LayoutDashboard, Package, Heart, MapPin, Bell, Calendar, Star, MessageSquare, ArrowLeft, LogOut, Wallet } from "lucide-react";
+import { LayoutDashboard, Package, Heart, MapPin, Bell, Calendar, Star, MessageSquare, ArrowLeft, LogOut, Wallet, Menu } from "lucide-react";
 import { SignOutButton } from "@/components/forms/sign-out-button";
 
 export function StoreAccountLegacyShell({ children, slug, store, membership, unreadMessageCount }: any) {
@@ -15,6 +16,51 @@ export function StoreAccountLegacyShell({ children, slug, store, membership, unr
     { href: `/store/${slug}/account/messages`, label: "Support & Disputes", icon: MessageSquare, badge: unreadMessageCount },
   ];
   const colors = (store.themeColors as any) ?? {};
-  const accent = colors.primary || "#111827", background = colors.background || "#f8fafc", ink = colors.text || "#0f172a";
-  return <div className="min-h-screen" style={{ ["--store-accent" as string]: accent, backgroundColor: background, color: ink }}><div className="mx-auto max-w-6xl px-6 py-10"><div className="mb-6 flex items-center gap-3"><Link href={`/store/${slug}`} className="flex h-9 w-9 items-center justify-center rounded-full border bg-white"><ArrowLeft className="h-4 w-4" /></Link>{store.logoUrl && <img src={store.logoUrl} alt={store.name} className="h-10 w-10 rounded-lg object-cover" />}<div><p className="text-xs font-medium uppercase tracking-wide" style={{ color: accent }}>My {store.name} Account</p><p className="text-sm opacity-60">Signed in as {membership.user.email ?? membership.user.name}</p></div></div><div className="grid grid-cols-1 gap-6 md:grid-cols-[240px_1fr]"><nav className="flex gap-2 overflow-x-auto rounded-2xl border bg-white p-2 md:flex-col">{LINKS.map(({ href, label, icon: Icon, badge }: any) => <Link key={href} href={href} className="flex shrink-0 items-center gap-2.5 rounded-xl px-3 py-2.5 text-sm font-medium opacity-70 hover:opacity-100"><Icon className="h-4 w-4" />{label}{!!badge && <span className="ml-auto">{badge > 9 ? "9+" : badge}</span>}</Link>)}<SignOutButton callbackUrl={`/store/${slug}`} className="flex shrink-0 items-center gap-2.5 rounded-xl px-3 py-2.5 text-left text-sm font-medium text-red-600"><LogOut className="h-4 w-4" />Sign out</SignOutButton></nav><div className="min-w-0">{children}</div></div></div></div>;
+  // Legacy (non-Signature) stores only ever stored primary/background/text --
+  // there's no card/muted/border/radius/font set here the way the 13
+  // Signature templates have, so we derive sensible ones from what exists
+  // rather than leaving them hardcoded black-and-white like before. This
+  // reuses the exact same --sig-* variables and .signature-account* classes
+  // the Signature shell uses (see signature-customer-shell.tsx and
+  // SIGNATURE_CUSTOMER_EXPERIENCE.css) so every store gets real themed
+  // chrome here, not just the 13 Signature templates.
+  const accent = colors.primary || "#111827";
+  const bg = colors.background || "#f8fafc";
+  const ink = colors.text || "#0f172a";
+  const css = {
+    "--sig-bg": bg,
+    "--sig-ink": ink,
+    "--sig-card": "#ffffff",
+    "--sig-accent": accent,
+    "--sig-muted": `${ink}99`,
+    "--sig-border": `${ink}1a`,
+    "--sig-radius": "16px",
+    "--sig-font": store.fontFamily || undefined,
+    "--sig-headline": store.fontFamily || undefined,
+  } as React.CSSProperties;
+
+  return (
+    <div className="signature-account min-h-screen" style={css}>
+      <header className="signature-account-header">
+        <div className="mx-auto flex max-w-7xl items-center justify-between gap-4 px-5 py-5 md:px-8">
+          <div className="flex min-w-0 items-center gap-3">
+            <Link href={`/store/${slug}`} className="signature-account-back" aria-label="Back to store"><ArrowLeft className="h-4 w-4" /></Link>
+            {store.logoUrl ? <img src={store.logoUrl} alt={store.name} className="signature-account-logo" /> : <div className="signature-account-logo-fallback">{store.name.charAt(0).toUpperCase()}</div>}
+            <div className="min-w-0"><p className="signature-eyebrow truncate">My {store.name} Account</p><p className="truncate text-sm opacity-60">Signed in as {membership.user.email ?? membership.user.name}</p></div>
+          </div>
+          <span className="signature-account-mobile-label"><Menu className="h-4 w-4" /> Account</span>
+        </div>
+      </header>
+      <div className="mx-auto grid max-w-7xl gap-7 px-5 py-6 md:px-8 md:py-10 lg:grid-cols-[250px_minmax(0,1fr)]">
+        <nav className="signature-account-nav">
+          {LINKS.map(({ href, label, icon: Icon, badge }: any) => (
+            <Link key={href} href={href} className="signature-account-nav-link"><Icon className="h-4 w-4" /><span>{label}</span>{!!badge && <b>{badge > 9 ? "9+" : badge}</b>}</Link>
+          ))}
+          <div className="signature-account-divider" />
+          <SignOutButton callbackUrl={`/store/${slug}`} className="signature-account-signout"><LogOut className="h-4 w-4" /> Sign out</SignOutButton>
+        </nav>
+        <div className="signature-account-content min-w-0">{children}</div>
+      </div>
+    </div>
+  );
 }
