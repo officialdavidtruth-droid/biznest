@@ -45,6 +45,8 @@ export function BookingWidget({
   ink,
   bg,
   radius,
+  card,
+  headlineFont,
   startOpen = false,
 }: {
   storeSlug: string;
@@ -58,6 +60,15 @@ export function BookingWidget({
   ink: string;
   bg: string;
   radius: string;
+  /** Card surface color -- distinct from `bg` on templates with a tinted page
+   * background (e.g. Maison, Ember), so the widget reads as a raised card
+   * instead of blending into the page. Falls back to `bg` when omitted. */
+  card?: string;
+  /** Template's display/headline font, applied to the booking name and
+   * section titles so the widget matches the rest of that template's
+   * typographic identity instead of inheriting the page's body font
+   * everywhere. Falls back to the ambient font when omitted. */
+  headlineFont?: string;
   startOpen?: boolean;
 }) {
   const [open, setOpen] = useState(startOpen);
@@ -79,6 +90,8 @@ export function BookingWidget({
   const [guestEmail, setGuestEmail] = useState("");
   const [guestPhone, setGuestPhone] = useState("");
 
+  const surface = card || bg;
+  const titleFont = headlineFont || undefined;
   const unitBased = Boolean(totalUnits);
   const dates = useMemo(() => Array.from({ length: 14 }, (_, i) => addDays(localISODate(new Date()), i)), []);
   const nights = checkOut && date ? Math.max(1, Math.round((new Date(`${checkOut}T12:00:00`).getTime() - new Date(`${date}T12:00:00`).getTime()) / 86400000)) : 0;
@@ -177,9 +190,9 @@ export function BookingWidget({
 
   if (confirmed) {
     return (
-      <div style={{ marginTop: 12, border: `1px solid ${ink}18`, borderRadius: radius, padding: 18, color: ink, background: `${ink}06` }}>
+      <div style={{ marginTop: 12, border: `1px solid ${ink}18`, borderRadius: radius, padding: 18, color: ink, background: surface }}>
         <div style={{ fontSize: 22, marginBottom: 8 }}>✓</div>
-        <strong style={{ fontSize: 16 }}>Booking request received</strong>
+        <strong style={{ fontSize: 16, fontFamily: titleFont }}>Booking request received</strong>
         <p style={{ marginTop: 7, fontSize: 13, opacity: .7, lineHeight: 1.6 }}>
           Your {serviceName} booking has been created{bookingId ? ` (#${bookingId.slice(-6).toUpperCase()})` : ""}. You can view its status — and pay if needed — from your account.
         </p>
@@ -196,11 +209,11 @@ export function BookingWidget({
   const canSubmit = reviewReady && (isSignedIn || guestFieldsValid());
 
   return (
-    <div style={{ marginTop: 12, border: `1px solid ${ink}16`, borderRadius: radius, padding: 16, color: ink, background: bg, boxShadow: `0 12px 40px ${ink}0b` }}>
+    <div style={{ marginTop: 12, border: `1px solid ${ink}16`, borderRadius: radius, padding: 16, color: ink, background: surface, boxShadow: `0 12px 40px ${ink}0b` }}>
       <div style={{ display: "flex", justifyContent: "space-between", gap: 12, alignItems: "start" }}>
         <div>
           <div style={{ fontSize: 11, textTransform: "uppercase", letterSpacing: ".08em", opacity: .55 }}>Booking</div>
-          <div style={{ fontWeight: 800, marginTop: 3 }}>{serviceName}</div>
+          <div style={{ fontWeight: 800, marginTop: 3, fontFamily: titleFont }}>{serviceName}</div>
         </div>
         <div style={{ textAlign: "right" }}>
           <div style={{ fontWeight: 800 }}>{currency} {total.toLocaleString()}</div>
@@ -287,7 +300,7 @@ export function BookingWidget({
 
       {((step === 3 && unitBased) || step === 4) && (
         <>
-          <div style={{ fontWeight: 750, fontSize: 13, marginBottom: 10 }}>Review your booking</div>
+          <div style={{ fontWeight: 750, fontSize: 13, marginBottom: 10, fontFamily: titleFont }}>Review your booking</div>
           <div style={{ borderRadius: 11, background: `${ink}06`, padding: 12, fontSize: 12, lineHeight: 1.8 }}>
             <div><b>{serviceName}</b></div>
             <div>{unitBased ? `${dateLabel(date)} → ${dateLabel(checkOut)} · ${nights} night${nights === 1 ? "" : "s"}` : `${dateLabel(date)} · ${selectedTime}`}</div>
@@ -319,4 +332,5 @@ export function BookingWidget({
       )}
     </div>
   );
-}
+                      }
+                      
