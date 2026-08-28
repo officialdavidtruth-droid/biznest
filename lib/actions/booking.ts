@@ -303,7 +303,7 @@ export async function createBooking(
   const customerSession =
     await getStoreCustomerSession();
 
-  const session = customerSession
+  const initialSession = customerSession
     ? {
         user: {
           id: customerSession.user.id,
@@ -316,7 +316,7 @@ export async function createBooking(
       }
     : await auth();
 
-  if (!session?.user?.id && !guest) {
+  if (!initialSession?.user?.id && !guest) {
     return { success: false, error: "Enter your name, email and phone to book as a guest." };
   }
 
@@ -328,11 +328,11 @@ export async function createBooking(
       }
     : null;
 
-  if (!session?.user?.id && (!normalizedGuest?.name || !normalizedGuest.email || !normalizedGuest.phone || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalizedGuest.email))) {
+  if (!initialSession?.user?.id && (!normalizedGuest?.name || !normalizedGuest.email || !normalizedGuest.phone || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalizedGuest.email))) {
     return { success: false, error: "Please provide a valid name, email and phone number." };
   }
 
-  const rateKey = session?.user?.id ? `booking:${session.user.id}` : `booking-guest:${normalizedGuest!.email}:${serviceId}`;
+  const rateKey = initialSession?.user?.id ? `booking:${initialSession.user.id}` : `booking-guest:${normalizedGuest!.email}:${serviceId}`;
   const rate = await checkRateLimit(
     rateKey,
     10,
@@ -370,7 +370,17 @@ export async function createBooking(
    *
    * This prevents a customer logged into Store A
    * from creating a booking against Store B.
+   *
+   * IMPORTANT: if the person is signed in as a customer of a *different*
+   * store, we don't hard-block them here -- the booking widget already
+   * collects guest name/email/phone as a fallback, and there is no way
+   * for a mobile visitor to "sign up for this store" mid-booking without
+   * losing their place. So: if valid guest details were submitted
+   * alongside a mismatched/foreign session, we book as a guest instead
+   * of rejecting the booking outright. The hard block remains for the
+   * case with no usable guest details to fall back to.
    */
+  let session = initialSession;
   if (
     session?.user?.role === "CUSTOMER"
   ) {
@@ -379,29 +389,22 @@ export async function createBooking(
         service.storeId
       );
 
-    if (!membership) {
-      return {
-        success: false,
-        error:
-          "This customer account belongs to another store. Sign up for this store to continue.",
-      };
-    }
+    const sessionBelongsToThisStore =
+      Boolean(membership) &&
+      session.user.customerStoreId === service.storeId;
 
-    /**
-     * Extra protection:
-     *
-     * The authenticated customer session itself
-     * must belong to the same store as the service.
-     */
-    if (
-      session.user.customerStoreId !==
-      service.storeId
-    ) {
-      return {
-        success: false,
-        error:
-          "This customer account belongs to another store. Sign up for this store to continue.",
-      };
+    if (!sessionBelongsToThisStore) {
+      if (normalizedGuest?.name && normalizedGuest.email && normalizedGuest.phone) {
+        // Fall back to a guest booking under the details actually typed
+        // into the form, rather than the foreign-store session.
+        session = null;
+      } else {
+        return {
+          success: false,
+          error:
+            "This customer account belongs to another store. Enter your name, email and phone below to continue as a guest, or sign up for this store to save it to your account.",
+        };
+      }
     }
   }
 
