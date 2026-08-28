@@ -814,6 +814,7 @@ export async function listBookings(
         select: {
           name: true,
           email: true,
+          phone: true,
         },
       },
     },
@@ -833,6 +834,7 @@ export async function updateBookingStatus(
   slug: string,
   bookingId: string,
   status:
+    | "PENDING"
     | "CONFIRMED"
     | "COMPLETED"
     | "CANCELLED"
@@ -895,6 +897,9 @@ export async function updateBookingStatus(
 
   revalidatePath(
     `/store/${slug}/admin/services`
+  );
+  revalidatePath(
+    `/store/${slug}/admin/bookings`
   );
 
   return {
