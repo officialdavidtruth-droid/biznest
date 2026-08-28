@@ -521,6 +521,136 @@ export async function sendOrderConfirmationEmail(
   return send({ from: FROM, to: email, subject, html }, { kind: "order-confirmation", to: email });
 }
 
+function escapeHtml(value: string) {
+  return value.replace(/[&<>'"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", "'": "&#39;", '"': "&quot;" }[c]!));
+}
+
+export type BookingConfirmationDetails = {
+  bookingId: string;
+  status: "PENDING" | "CONFIRMED";
+  serviceName: string;
+  price: number;
+  currency: string;
+  // Appointment-style bookings: pass date + time. Stay-style bookings
+  // (checkIn/checkOut range): pass checkIn/checkOut instead and omit date/time.
+  date?: string; // pre-formatted, e.g. "Fri, Aug 28, 2026"
+  time?: string; // pre-formatted, e.g. "2:00 PM"
+  checkIn?: string;
+  checkOut?: string;
+  staffName?: string | null;
+  notes?: string | null;
+  location?: string | null; // store address/city, e.g. "Lagos, Nigeria"
+  paymentReference?: string | null;
+  recipientName?: string | null;
+};
+
+export type BookingStoreBranding = {
+  name: string;
+  slug: string;
+  logoUrl?: string | null;
+  primaryColor?: string | null; // from store.themeColors.primary
+  contactEmail?: string | null;
+  contactPhone?: string | null;
+};
+
+/**
+ * Sends a fully-branded booking confirmation email.
+ *
+ * Unlike the generic sendOrderNotificationEmail (a single short sentence),
+ * this renders a proper receipt-style layout: service, date/time or stay
+ * range, assigned staff, price, location, payment reference, and a
+ * "manage booking" link — all inside a shell that uses the STORE's own
+ * branding (logo, name, color) rather than the hardcoded BizNest identity,
+ * so the email reads as coming from the business the customer booked with.
+ */
+export async function sendBookingConfirmationEmail(
+  email: string,
+  store: BookingStoreBranding,
+  booking: BookingConfirmationDetails
+) {
+  const manageUrl = `${APP_URL}/store/${store.slug}/account/bookings`;
+  const isStay = Boolean(booking.checkIn && booking.checkOut);
+  const statusLabel = booking.status === "CONFIRMED" ? "Confirmed" : "Pending";
+  const statusColor = booking.status === "CONFIRMED" ? "#0f6410" : "#b45309";
+  const statusBg = booking.status === "CONFIRMED" ? "#ecfdf3" : "#fffbeb";
+  const subject = `Booking ${statusLabel.toLowerCase()} — ${store.name}`;
+  const fmtPrice = `${booking.currency} ${booking.price.toLocaleString()}`;
+  const greetingName = booking.recipientName ? escapeHtml(booking.recipientName) : "there";
+
+  const detailRow = (label: string, value: string) => `
+    <tr>
+      <td style="padding:8px 0;border-bottom:1px solid #f0f0f0;color:#6b7280;font-size:13px;width:38%;">${label}</td>
+      <td style="padding:8px 0;border-bottom:1px solid #f0f0f0;color:#111827;font-size:13px;font-weight:600;text-align:right;">${value}</td>
+    </tr>`;
+
+  const rows = [
+    detailRow("Service", escapeHtml(booking.serviceName)),
+    isStay
+      ? detailRow("Check-in", escapeHtml(booking.checkIn!))
+      : detailRow("Date", escapeHtml(booking.date ?? "")),
+    isStay
+      ? detailRow("Check-out", escapeHtml(booking.checkOut!))
+      : detailRow("Time", escapeHtml(booking.time ?? "")),
+    booking.staffName ? detailRow("Specialist", escapeHtml(booking.staffName)) : "",
+    detailRow("Price", fmtPrice),
+    booking.location ? detailRow("Location", escapeHtml(booking.location)) : "",
+    detailRow("Booking reference", escapeHtml(booking.bookingId)),
+    booking.paymentReference ? detailRow("Payment reference", escapeHtml(booking.paymentReference)) : "",
+  ]
+    .filter(Boolean)
+    .join("");
+
+  const html = emailShell({
+    preheader: subject,
+    headerLogoUrl: store.logoUrl ?? undefined,
+    headerLogoAlt: store.name,
+    headerColor: store.primaryColor ?? undefined,
+    body: `
+      <p style="margin:0 0 6px;color:#111827;font-size:16px;line-height:24px;">Hi ${greetingName},</p>
+      <p style="margin:0 0 20px;color:#374151;font-size:15px;line-height:24px;">
+        Your booking with <strong>${escapeHtml(store.name)}</strong> is
+        <span style="display:inline-block;padding:2px 8px;border-radius:999px;background-color:${statusBg};color:${statusColor};font-size:12px;font-weight:700;">${statusLabel}</span>.
+      </p>
+
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin-bottom:24px;">
+        ${rows}
+      </table>
+
+      ${
+        booking.notes
+          ? `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:#f9fafb;border-radius:8px;padding:12px 16px;margin-bottom:24px;">
+              <tr><td style="color:#6b7280;font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:0.04em;padding-bottom:4px;">Notes</td></tr>
+              <tr><td style="color:#374151;font-size:13px;line-height:20px;">${escapeHtml(booking.notes)}</td></tr>
+            </table>`
+          : ""
+      }
+
+      <table role="presentation" cellpadding="0" cellspacing="0" style="margin:0 auto;">
+        <tr>
+          <td align="center" style="border-radius:8px;background-color:${store.primaryColor ?? "#0f6410"};">
+            <a href="${manageUrl}" style="display:inline-block;padding:12px 28px;color:#ffffff;font-size:15px;font-weight:600;text-decoration:none;border-radius:8px;">
+              Manage your booking
+            </a>
+          </td>
+        </tr>
+      </table>
+
+      ${
+        store.contactEmail || store.contactPhone
+          ? `<p style="margin:20px 0 0;color:#9ca3af;font-size:12px;line-height:18px;text-align:center;">
+              Questions? Contact ${escapeHtml(store.name)}
+              ${store.contactEmail ? `at <a href="mailto:${store.contactEmail}" style="color:#0f6410;text-decoration:none;">${escapeHtml(store.contactEmail)}</a>` : ""}
+              ${store.contactPhone ? ` or ${escapeHtml(store.contactPhone)}` : ""}
+            </p>`
+          : ""
+      }
+    `,
+    footer: `This email was sent to ${email} regarding a booking made with ${escapeHtml(store.name)} on BizNest.`,
+  });
+
+  return send({ from: FROM, to: email, subject, html }, { kind: "booking-confirmation", to: email });
+}
+
 /**
  * Generic transactional notification email — used for quotes, invoices,
  * abandoned-checkout nudges, low-stock alerts, and anything else that just
