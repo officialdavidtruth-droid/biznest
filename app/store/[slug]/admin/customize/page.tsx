@@ -4,7 +4,7 @@ import { notFound, redirect } from "next/navigation";
 import { CustomizerClient } from "@/components/dashboard/customizer-client";
 import { resolveStoreTheme, type Section } from "@/lib/template-themes";
 import type { HeroOverrides, StoryOverrides } from "@/lib/actions/store";
-import { themeBuilderConfig, readBuilderConfig, type BuilderConfig } from "@/lib/builder-config";
+import { defaultBuilderConfig, readBuilderConfig, type BuilderConfig } from "@/lib/builder-config";
 
 const TEMPLATE_DEFAULT_SECTIONS: Section[] = ["hero", "catalog", "about", "testimonials", "contact"];
 const OPT_IN_SECTIONS: Section[] = ["stats", "newsletter"];
@@ -38,12 +38,7 @@ export default async function CustomizePage({ params }: { params: Promise<{ slug
   const heroImage = store.bannerUrl || store.template?.previewUrl || null;
   const storyImage = store.storyImage || store.bannerUrl || store.template?.previewUrl || null;
   const savedBuilder = readBuilderConfig((overrides as { builder?: unknown } | null)?.builder);
-  // Every template — legacy, Signature (incl. Hotel), or a future one —
-  // gets a builder config seeded from its resolved theme so the
-  // customizer's live preview + click-to-edit works before the first
-  // manual save, matching what the live storefront now falls back to.
-  const initialBuilder: BuilderConfig = savedBuilder
-    ?? themeBuilderConfig(theme, store.name, store.business.description, heroImage);
+  const initialBuilder: BuilderConfig = savedBuilder ?? defaultBuilderConfig(store.name, store.business.description, heroImage, store.businessType, { sellsProducts: store.business.sellsProducts, offersServices: store.business.offersServices });
 
   return (
     <CustomizerClient
@@ -74,4 +69,4 @@ export default async function CustomizePage({ params }: { params: Promise<{ slug
     />
   );
     }
-        
+
