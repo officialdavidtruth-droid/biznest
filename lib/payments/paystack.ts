@@ -8,6 +8,16 @@ type InitializeParams = {
   reference: string;
   callbackUrl: string;
   subaccountCode?: string | null;
+  /**
+   * Who eats Paystack's transaction fee when this charge is split to a
+   * subaccount. "account" = platform's main balance (we absorb it — what
+   * happens by default if this is omitted); "subaccount" = the merchant's
+   * share is debited for it. Confirmed with Paystack support (Aug 2026)
+   * that this must be passed explicitly via `bearer_subaccount` or the
+   * fee-bearer falls back to whatever the dashboard default is, which
+   * isn't something we want to leave implicit for a marketplace split.
+   */
+  feeBearer?: "account" | "subaccount";
 };
 
 type InitializeResponse = {
@@ -45,7 +55,16 @@ export async function initializePaystackTransaction(params: InitializeParams): P
       amount: params.amountKobo,
       reference: params.reference,
       callback_url: params.callbackUrl,
-      ...(params.subaccountCode ? { subaccount: params.subaccountCode } : {}),
+      ...(params.subaccountCode
+        ? {
+            subaccount: params.subaccountCode,
+            // Paystack's docs use "bearer" (string "account" | "subaccount"),
+            // not "bearer_subaccount" as support's email said -- verified
+            // against https://paystack.com/docs/api/transaction/. Defaults
+            // to "account" (platform absorbs the fee) if omitted.
+            bearer: params.feeBearer ?? "account",
+          }
+        : {}),
     }),
   });
 
@@ -160,6 +179,30 @@ export async function createPaystackSubaccount(params: {
     }),
   });
   return res.json() as Promise<{ status: boolean; message: string; data?: { subaccount_code: string } }>;
+}
+
+/**
+ * Checks whether Paystack has actually verified a subaccount's KYC, since
+ * this can't be done at creation time -- Paystack confirmed (support, Aug
+ * 2026) that subaccount verification is a manual dashboard review, not
+ * something the API can trigger or predict. Call this on demand (e.g. a
+ * "Refresh status" button on the payouts page) or from a periodic job to
+ * catch verification as it completes, and only then stamp
+ * Store.payoutVerifiedAt -- see refreshPayoutVerification in
+ * lib/actions/store.ts. Until is_verified is true, Paystack still holds
+ * the subaccount's first payout even though checkout itself works fine.
+ */
+export async function checkPaystackSubaccountVerification(
+  subaccountCode: string
+): Promise<{ status: boolean; message: string; isVerified?: boolean }> {
+  const secretKey = process.env.PAYSTACK_SECRET_KEY;
+  if (!secretKey) return { status: false, message: "Paystack isn't configured on this platform yet." };
+
+  const res = await fetch(`${PAYSTACK_BASE}/subaccount/${encodeURIComponent(subaccountCode)}`, {
+    headers: { Authorization: `Bearer ${secretKey}` },
+  });
+  const json = (await res.json()) as { status: boolean; message: string; data?: { is_verified?: boolean } };
+  return { status: json.status, message: json.message, isVerified: json.data?.is_verified };
 }
 
 type ChargeAuthResponse = {

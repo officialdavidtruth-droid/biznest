@@ -16,6 +16,13 @@ type ChargeParams = {
   paystackSubaccountCode?: string | null;
   flutterwaveSubaccountId?: string | null;
   /**
+   * Who bears Paystack's transaction fee on a split charge. Defaults to
+   * "account" (platform absorbs it) if omitted, matching Paystack's own
+   * default — set explicitly per call site rather than relying on that
+   * default staying true forever. Only applies to the Paystack path.
+   */
+  feeBearer?: "account" | "subaccount";
+  /**
    * Force a specific gateway instead of consulting the platform's "active
    * gateway" toggle. Platform-billing flows (subscription upgrades) pass
    * this explicitly — that money always goes to Paystack regardless of
@@ -62,6 +69,7 @@ export async function chargeCustomer(params: ChargeParams): Promise<ChargeResult
     reference: params.reference,
     callbackUrl: params.callbackUrl,
     subaccountCode: params.paystackSubaccountCode,
+    feeBearer: params.feeBearer,
   });
   if (!init.status || !init.data) {
     void logError("PAYMENTS", "Paystack charge init failed", { reference: params.reference, message: init.message });
