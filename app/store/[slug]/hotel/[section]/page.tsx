@@ -7,6 +7,7 @@ import { prisma } from "@/lib/prisma";
 import { resolveStoreTheme, getSignatureTheme, isSignatureTemplate, type TemplateTheme } from "@/lib/template-themes";
 import { getHospitalityGallery } from "@/lib/actions/hospitality-content";
 import { formatMoney } from "@/lib/storefront/hero-media";
+import { AccountLink } from "@/components/storefront/account-link";
 
 const ROOM_PATTERN = /room|suite|studio|apartment|villa|penthouse|chalet|cottage|lodge|duplex/i;
 const SECTIONS = ["story", "rooms", "experience", "gallery", "contact"] as const;
@@ -83,6 +84,7 @@ function HotelHeader({ store, slug, theme, active }: { store: any; slug: string;
         <label htmlFor={`bn-nav-${slug}-hotel-page`} className="bn-hamburger" style={{ color: theme.ink, marginLeft: "auto" }} aria-label="Menu">☰</label>
         <nav className="bn-nav-links" style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: 25, fontSize: 12, fontWeight: 650 }}>
           {nav.map(([key, label]) => <Link key={key} href={`/${slug}/hotel/${key}`} aria-current={active === key ? "page" : undefined} style={{ color: theme.ink, textDecoration: "none", opacity: active === key ? 1 : .68, borderBottom: active === key ? `1px solid ${theme.accent}` : "1px solid transparent", paddingBottom: 4 }}>{label}</Link>)}
+          <AccountLink storeSlug={slug} ink={theme.ink} />
           <Link href={`/${slug}/hotel/rooms`} style={{ display: "inline-flex", alignItems: "center", gap: 7, padding: "11px 16px", background: theme.ink, color: theme.bg, textDecoration: "none", borderRadius: theme.radius, fontWeight: 800 }}>Reserve <ArrowUpRight size={14} /></Link>
         </nav>
       </div>
@@ -172,4 +174,5 @@ export default async function HotelSectionPage({ params }: { params: Promise<{ s
     {pageHero(theme, dark, heroImage, "Reservations & concierge", "Let's plan your stay.", "For reservations, questions or special requests, contact the hotel directly.")}
     <section style={{ padding: "70px 28px 70px" }}><div style={{ maxWidth: 1240, margin: "0 auto" }}><div className="bn-2col" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 70, marginTop: 65 } as React.CSSProperties}><div style={{ background: dark, color: "#fff", padding: 40 }}><h2 style={{ fontFamily: theme.headlineFont, fontSize: 34, margin: 0 }}>Your stay starts here.</h2><p style={{ color: "rgba(255,255,255,.65)", lineHeight: 1.8, fontSize: 14 }}>Explore our rooms or reach the concierge team directly.</p><Link href={`/${slug}/hotel/rooms`} style={{ display: "inline-flex", alignItems: "center", gap: 7, background: "#fff", color: "#111", padding: "13px 17px", textDecoration: "none", borderRadius: theme.radius, fontWeight: 800, fontSize: 12 }}>Explore rooms <ArrowUpRight size={14} /></Link></div><div style={{ display: "grid", gap: 22, alignContent: "center" }}>{location && <div style={{ display: "flex", gap: 12, alignItems: "flex-start", fontSize: 14 }}><MapPin size={18} color={theme.accent} />{location}</div>}{store.contactPhone && <a href={`tel:${store.contactPhone}`} style={{ display: "flex", gap: 12, color: theme.ink, textDecoration: "none", fontSize: 14 }}><Phone size={18} color={theme.accent} />{store.contactPhone}</a>}{store.contactEmail && <a href={`mailto:${store.contactEmail}`} style={{ display: "flex", gap: 12, color: theme.ink, textDecoration: "none", fontSize: 14 }}><Mail size={18} color={theme.accent} />{store.contactEmail}</a>}{avgRating != null && <div style={{ display: "flex", alignItems: "center", gap: 7, fontSize: 13 }}>{Array.from({length:5}).map((_,i)=><Star key={i} size={14} color={theme.accent} fill={i < Math.round(avgRating) ? "currentColor" : "none"}/>)} {avgRating.toFixed(1)} guest rating</div>}</div></div></div></section>
   </>);
-}
+                                       }
+                                   
