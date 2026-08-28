@@ -4,6 +4,42 @@ import { useMemo, useState } from "react";
 import { Mail, MessageCircle, Phone, Search, ShoppingBag, UserRound } from "lucide-react";
 import type { Customer360 } from "@/lib/actions/customers";
 
+// Set when arriving here from a link elsewhere in the dashboard (e.g.
+// clicking a customer's name on the Bookings page) that wants a specific
+// person opened rather than whoever happens to be first in the list.
+type OpenHint = { userId?: string; email?: string; phone?: string; name?: string };
+
+function phoneDigits(value: string | null | undefined) {
+  return value?.replace(/\D/g, "") ?? "";
+}
+
+// Finds the customer a link was pointing at: match on account first
+// (most reliable), then email, then phone, then exact name as a last
+// resort for guest bookings with no other contact info on file.
+function resolveHint(customers: Customer360[], hint?: OpenHint) {
+  if (!hint) return undefined;
+  const { userId, email, phone, name } = hint;
+  if (userId) {
+    const match = customers.find((c) => c.userId === userId);
+    if (match) return match;
+  }
+  if (email) {
+    const target = email.trim().toLowerCase();
+    const match = customers.find((c) => c.email?.toLowerCase() === target);
+    if (match) return match;
+  }
+  if (phone) {
+    const target = phoneDigits(phone);
+    const match = customers.find((c) => phoneDigits(c.phone) === target);
+    if (match) return match;
+  }
+  if (name) {
+    const match = customers.find((c) => c.name.toLowerCase() === name.trim().toLowerCase());
+    if (match) return match;
+  }
+  return undefined;
+}
+
 function money(value: number) {
   return `₦${value.toLocaleString("en-NG", { maximumFractionDigits: 2 })}`;
 }
@@ -17,9 +53,10 @@ function formatDate(value: string | null) {
   return new Intl.DateTimeFormat("en-NG", { day: "numeric", month: "short", year: "numeric" }).format(new Date(value));
 }
 
-export function Customer360View({ customers }: { customers: Customer360[] }) {
+export function Customer360View({ customers, openHint }: { customers: Customer360[]; openHint?: OpenHint }) {
+  const hinted = useMemo(() => resolveHint(customers, openHint), [customers, openHint]);
   const [query, setQuery] = useState("");
-  const [selectedId, setSelectedId] = useState(customers[0]?.id ?? null);
+  const [selectedId, setSelectedId] = useState(hinted?.id ?? customers[0]?.id ?? null);
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();

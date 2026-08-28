@@ -11,11 +11,17 @@ const STATUS_STYLES: Record<string, string> = {
   CANCELLED: "bg-muted text-muted-foreground",
 };
 
-// Targets an owner can move a booking to from here. PENDING is deliberately
-// excluded — updateBookingStatus() only accepts these three, and a booking
-// arrives at PENDING on its own; this control moves it forward or cancels
-// it, it doesn't reset it back.
-const SELECTABLE_STATUSES = ["CONFIRMED", "COMPLETED", "CANCELLED"] as const;
+const STATUS_LABELS: Record<string, string> = {
+  PENDING: "Pending",
+  CONFIRMED: "Confirmed",
+  CANCELLED: "Cancelled",
+};
+
+// The three states an admin can move a booking between from here. PENDING
+// is included as a real, selectable option (not just a disabled
+// placeholder) so a booking can be reopened back to pending after being
+// confirmed or cancelled, not just moved forward.
+const SELECTABLE_STATUSES = ["PENDING", "CONFIRMED", "CANCELLED"] as const;
 
 export function BookingStatusSelect({
   slug,
@@ -30,10 +36,11 @@ export function BookingStatusSelect({
   const [isPending, startTransition] = useTransition();
 
   function handleChange(next: string) {
+    if (next === current) return;
     const previous = current;
     setCurrent(next); // optimistic
     startTransition(async () => {
-      const result = await updateBookingStatus(slug, bookingId, next as "CONFIRMED" | "COMPLETED" | "CANCELLED");
+      const result = await updateBookingStatus(slug, bookingId, next as "PENDING" | "CONFIRMED" | "CANCELLED");
       if (!result.success) {
         setCurrent(previous);
         toast.error(result.error || "Couldn't update booking status.");
@@ -47,23 +54,24 @@ export function BookingStatusSelect({
     <select
       value={current}
       disabled={isPending}
+      onClick={(e) => e.stopPropagation()}
       onChange={(e) => handleChange(e.target.value)}
       className={`rounded-full border-0 px-2 py-0.5 text-xs font-medium disabled:opacity-60 ${STATUS_STYLES[current] ?? "bg-muted text-muted-foreground"}`}
     >
-      {/* Booking is still PENDING and hasn't been acted on yet — show it as
-          the current selection, but it isn't a valid target so it's disabled;
-          picking one of the real options below replaces it. */}
-      {current === "PENDING" && (
-        <option value="PENDING" disabled>
-          Pending
+      {/* A booking that's already COMPLETED isn't one of the three
+          selectable targets here — show it as-is, disabled, rather than
+          silently offering to move a completed booking back to
+          pending/confirmed. */}
+      {current === "COMPLETED" && (
+        <option value="COMPLETED" disabled>
+          Completed
         </option>
       )}
       {SELECTABLE_STATUSES.map((s) => (
         <option key={s} value={s}>
-          {s.charAt(0) + s.slice(1).toLowerCase()}
+          {STATUS_LABELS[s]}
         </option>
       ))}
     </select>
   );
-          }
-
+}
