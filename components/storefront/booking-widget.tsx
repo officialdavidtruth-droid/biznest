@@ -1,12 +1,14 @@
 "use client";
 
-import { useMemo, useState, useTransition } from "react";
+import { useState, useTransition } from "react";
+import Link from "next/link";
 import {
   createBooking,
   createStayBooking,
   getAvailableSlots,
   getAvailableUnitCount,
   getBookableStaff,
+  getNextAvailableStay,
 } from "@/lib/actions/booking";
 import { startBookingPayment } from "@/lib/actions/customer-wallet";
 import { useShopAuthGate } from "@/lib/hooks/use-shop-auth-gate";
@@ -33,6 +35,93 @@ function dateLabel(iso: string) {
   });
 }
 
+function monthKey(iso: string) {
+  return iso.slice(0, 7); // YYYY-MM
+}
+
+/**
+ * A real month calendar (not just a horizontal scroll of the next 14 days),
+ * so a shopper can pick any check-in date directly -- including dates
+ * further out than two weeks -- the way they would on any hotel or
+ * appointment site.
+ */
+function MiniCalendar({
+  selected,
+  minDate,
+  accent,
+  ink,
+  onSelect,
+}: {
+  selected: string | null;
+  minDate: string;
+  accent: string;
+  ink: string;
+  onSelect: (iso: string) => void;
+}) {
+  const [viewMonth, setViewMonth] = useState(() => monthKey(selected || minDate));
+
+  const [y, m] = viewMonth.split("-").map(Number);
+  const first = new Date(y, m - 1, 1);
+  const startWeekday = first.getDay();
+  const daysInMonth = new Date(y, m, 0).getDate();
+  const cells: (string | null)[] = [
+    ...Array.from({ length: startWeekday }, () => null),
+    ...Array.from({ length: daysInMonth }, (_, i) => {
+      const day = String(i + 1).padStart(2, "0");
+      const mo = String(m).padStart(2, "0");
+      return `${y}-${mo}-${day}`;
+    }),
+  ];
+  const monthLabel = first.toLocaleDateString(undefined, { month: "long", year: "numeric" });
+
+  function shiftMonth(delta: number) {
+    const d = new Date(y, m - 1 + delta, 1);
+    setViewMonth(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`);
+  }
+
+  return (
+    <div>
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
+        <button type="button" onClick={() => shiftMonth(-1)} style={{ border: 0, background: "transparent", color: ink, opacity: .6, cursor: "pointer", fontSize: 14, padding: 4 }} aria-label="Previous month">‹</button>
+        <div style={{ fontSize: 12, fontWeight: 750 }}>{monthLabel}</div>
+        <button type="button" onClick={() => shiftMonth(1)} style={{ border: 0, background: "transparent", color: ink, opacity: .6, cursor: "pointer", fontSize: 14, padding: 4 }} aria-label="Next month">›</button>
+      </div>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(7, minmax(0,1fr))", gap: 3, marginBottom: 4 }}>
+        {["S", "M", "T", "W", "T", "F", "S"].map((d, i) => (
+          <div key={i} style={{ textAlign: "center", fontSize: 9.5, opacity: .45, fontWeight: 700 }}>{d}</div>
+        ))}
+      </div>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(7, minmax(0,1fr))", gap: 3 }}>
+        {cells.map((iso, i) => {
+          if (!iso) return <div key={i} />;
+          const disabled = iso < minDate;
+          const isSelected = iso === selected;
+          return (
+            <button
+              key={iso}
+              type="button"
+              disabled={disabled}
+              onClick={() => onSelect(iso)}
+              style={{
+                aspectRatio: "1",
+                borderRadius: 8,
+                border: `1px solid ${isSelected ? accent : "transparent"}`,
+                background: isSelected ? accent : "transparent",
+                color: disabled ? `${ink}33` : isSelected ? "#fff" : ink,
+                fontSize: 11.5,
+                fontWeight: isSelected ? 800 : 500,
+                cursor: disabled ? "not-allowed" : "pointer",
+              }}
+            >
+              {Number(iso.slice(-2))}
+            </button>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
 export function BookingWidget({
   storeSlug,
   serviceId,
@@ -48,6 +137,8 @@ export function BookingWidget({
   card,
   headlineFont,
   startOpen = false,
+  unitLabel = "unit",
+  otherOptionsHref,
 }: {
   storeSlug: string;
   serviceId: string;
@@ -70,16 +161,26 @@ export function BookingWidget({
    * everywhere. Falls back to the ambient font when omitted. */
   headlineFont?: string;
   startOpen?: boolean;
+  /** Noun used for a single bookable unit -- "room" for hotel stays,
+   * "table" for a restaurant, "bay" for a wash bay, etc. Falls back to the
+   * generic "unit" for any other unit-based service. */
+  unitLabel?: string;
+  /** Where the shopper can browse other bookable options for this business
+   * (e.g. the rooms grid, or a services listing) when their preferred dates
+   * are tight or fully booked. */
+  otherOptionsHref?: string;
 }) {
   const [open, setOpen] = useState(startOpen);
   const [step, setStep] = useState(1);
   const [date, setDate] = useState<string>(localISODate(new Date()));
   const [checkOut, setCheckOut] = useState("");
+  const [checkInTime, setCheckInTime] = useState("");
   const [slots, setSlots] = useState<string[] | null>(null);
   const [selectedTime, setSelectedTime] = useState<string | null>(null);
   const [staff, setStaff] = useState<Array<{ id: string; name: string; position: string | null }>>([]);
   const [selectedStaff, setSelectedStaff] = useState<string | null>(null);
   const [availableUnits, setAvailableUnits] = useState<number | null>(null);
+  const [nextAvailable, setNextAvailable] = useState<{ checkIn: string; checkOut: string } | null | undefined>(undefined);
   const [notes, setNotes] = useState("");
   const [confirmed, setConfirmed] = useState(false);
   const [bookingId, setBookingId] = useState<string | null>(null);
@@ -93,7 +194,6 @@ export function BookingWidget({
   const surface = card || bg;
   const titleFont = headlineFont || undefined;
   const unitBased = Boolean(totalUnits);
-  const dates = useMemo(() => Array.from({ length: 14 }, (_, i) => addDays(localISODate(new Date()), i)), []);
   const nights = checkOut && date ? Math.max(1, Math.round((new Date(`${checkOut}T12:00:00`).getTime() - new Date(`${date}T12:00:00`).getTime()) / 86400000)) : 0;
   const total = unitBased ? servicePrice * Math.max(1, nights) : servicePrice;
 
@@ -102,6 +202,7 @@ export function BookingWidget({
     setSelectedTime(null);
     setSlots(null);
     setAvailableUnits(null);
+    setNextAvailable(undefined);
     setStep(2);
     startTransition(async () => {
       if (unitBased) {
@@ -109,7 +210,11 @@ export function BookingWidget({
         // Preview tonight's availability immediately, before the shopper
         // has picked a check-out date, so they see how many rooms/units
         // are left right away instead of several taps later.
-        setAvailableUnits(await getAvailableUnitCount(serviceId, iso, addDays(iso, 1)));
+        const count = await getAvailableUnitCount(serviceId, iso, addDays(iso, 1));
+        setAvailableUnits(count);
+        if (count === 0) {
+          setNextAvailable(await getNextAvailableStay(serviceId, iso, addDays(iso, 1)));
+        }
         return;
       }
       const [available, people] = await Promise.all([
@@ -124,10 +229,29 @@ export function BookingWidget({
   function selectCheckout(iso: string) {
     if (iso <= date) return;
     setCheckOut(iso);
+    setNextAvailable(undefined);
     startTransition(async () => {
-      setAvailableUnits(await getAvailableUnitCount(serviceId, date, iso));
+      const count = await getAvailableUnitCount(serviceId, date, iso);
+      setAvailableUnits(count);
+      if (count === 0) {
+        setNextAvailable(await getNextAvailableStay(serviceId, date, iso));
+      }
     });
     setStep(3);
+  }
+
+  function useSuggestedDates() {
+    if (!nextAvailable) return;
+    setDate(nextAvailable.checkIn);
+    setCheckOut("");
+    setNextAvailable(undefined);
+    setAvailableUnits(null);
+    startTransition(async () => {
+      const count = await getAvailableUnitCount(serviceId, nextAvailable.checkIn, nextAvailable.checkOut);
+      setAvailableUnits(count);
+      setCheckOut(nextAvailable.checkOut);
+      setStep(3);
+    });
   }
 
   function selectTime(time: string) {
@@ -145,10 +269,13 @@ export function BookingWidget({
       return;
     }
     const guest = isSignedIn ? undefined : { name: guestName, email: guestEmail, phone: guestPhone };
+    const finalNotes = unitBased && checkInTime
+      ? `Preferred check-in time: ${checkInTime}${notes ? `\n${notes}` : ""}`
+      : notes;
 
     startTransition(async () => {
       const result = unitBased
-        ? await createStayBooking(storeSlug, serviceId, date, checkOut, notes, guest)
+        ? await createStayBooking(storeSlug, serviceId, date, checkOut, finalNotes, guest)
         : await createBooking(storeSlug, serviceId, date, selectedTime || "", notes, guest, selectedStaff || undefined);
 
       if (!result.success) {
@@ -237,30 +364,25 @@ export function BookingWidget({
       {step === 1 && (
         <>
           <div style={{ fontWeight: 750, fontSize: 13, marginBottom: 9 }}>{unitBased ? "Check-in" : "Choose a date"}</div>
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(4, minmax(0,1fr))", gap: 7 }}>
-            {dates.map((d) => (
-              <button key={d} onClick={() => selectDate(d)} style={{ padding: "9px 5px", borderRadius: 10, border: `1px solid ${date === d ? accent : ink + "1f"}`, background: date === d ? `${accent}16` : "transparent", color: ink, cursor: "pointer" }}>
-                <div style={{ fontSize: 10, opacity: .55 }}>{new Date(`${d}T12:00:00`).toLocaleDateString(undefined, { weekday: "short" })}</div>
-                <div style={{ fontWeight: 800, marginTop: 2 }}>{new Date(`${d}T12:00:00`).getDate()}</div>
-                <div style={{ fontSize: 9.5, opacity: .55 }}>{new Date(`${d}T12:00:00`).toLocaleDateString(undefined, { month: "short" })}</div>
-              </button>
-            ))}
-          </div>
+          <MiniCalendar selected={date || null} minDate={localISODate(new Date())} accent={accent} ink={ink} onSelect={selectDate} />
+          {unitBased && (
+            <div style={{ marginTop: 14 }}>
+              <div style={{ fontWeight: 750, fontSize: 12.5, marginBottom: 6 }}>Preferred arrival time <span style={{ opacity: .5, fontWeight: 500 }}>(optional)</span></div>
+              <input
+                type="time"
+                value={checkInTime}
+                onChange={(e) => setCheckInTime(e.target.value)}
+                style={{ width: "100%", fontSize: 13, padding: "9px 10px", borderRadius: 8, border: `1px solid ${ink}2a`, background: "transparent", color: ink }}
+              />
+            </div>
+          )}
         </>
       )}
 
       {step === 2 && unitBased && (
         <>
           <div style={{ fontWeight: 750, fontSize: 13, marginBottom: 9 }}>Check-out</div>
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(4, minmax(0,1fr))", gap: 7 }}>
-            {dates.filter((d) => d > date).map((d) => (
-              <button key={d} onClick={() => selectCheckout(d)} style={{ padding: "9px 5px", borderRadius: 10, border: `1px solid ${checkOut === d ? accent : ink + "1f"}`, background: checkOut === d ? `${accent}16` : "transparent", color: ink, cursor: "pointer" }}>
-                <div style={{ fontSize: 10, opacity: .55 }}>{new Date(`${d}T12:00:00`).toLocaleDateString(undefined, { weekday: "short" })}</div>
-                <div style={{ fontWeight: 800, marginTop: 2 }}>{new Date(`${d}T12:00:00`).getDate()}</div>
-                <div style={{ fontSize: 9.5, opacity: .55 }}>{new Date(`${d}T12:00:00`).toLocaleDateString(undefined, { month: "short" })}</div>
-              </button>
-            ))}
-          </div>
+          <MiniCalendar selected={checkOut || null} minDate={addDays(date, 1)} accent={accent} ink={ink} onSelect={selectCheckout} />
           {availableUnits !== null && (
             <div
               style={{
@@ -268,14 +390,52 @@ export function BookingWidget({
                 fontSize: 12,
                 fontWeight: availableUnits > 0 && availableUnits <= 3 ? 750 : 500,
                 color: availableUnits === 0 ? undefined : availableUnits <= 3 ? accent : undefined,
-                opacity: availableUnits === 0 ? 0.7 : 1,
+                opacity: availableUnits === 0 ? 0.75 : 1,
               }}
             >
               {availableUnits === 0
-                ? "No availability for these dates."
+                ? `Every ${unitLabel} is booked for these dates.`
                 : checkOut
-                  ? `${availableUnits} unit${availableUnits === 1 ? "" : "s"} available for these dates.`
-                  : `${availableUnits} unit${availableUnits === 1 ? "" : "s"} available for check-in ${dateLabel(date)} — pick a check-out to confirm.`}
+                  ? `${availableUnits} ${unitLabel}${availableUnits === 1 ? "" : "s"} available for these dates.`
+                  : `${availableUnits} ${unitLabel}${availableUnits === 1 ? "" : "s"} available for check-in ${dateLabel(date)} — pick a check-out to confirm.`}
+              {availableUnits > 0 && availableUnits <= 8 && otherOptionsHref && (
+                <>
+                  {" "}
+                  <Link href={otherOptionsHref} style={{ color: accent, fontWeight: 700, textDecoration: "underline" }}>
+                    Would you like to see other {unitLabel} options?
+                  </Link>
+                </>
+              )}
+            </div>
+          )}
+
+          {availableUnits === 0 && (
+            <div style={{ marginTop: 10, padding: 12, borderRadius: 10, border: `1px dashed ${ink}22`, fontSize: 12, lineHeight: 1.7 }}>
+              {nextAvailable === undefined ? (
+                <span style={{ opacity: 0.6 }}>Checking the next open dates…</span>
+              ) : nextAvailable ? (
+                <>
+                  <div style={{ opacity: 0.7 }}>Next open dates for this {unitLabel}:</div>
+                  <div style={{ fontWeight: 800, marginTop: 3 }}>
+                    {dateLabel(nextAvailable.checkIn)} → {dateLabel(nextAvailable.checkOut)}
+                  </div>
+                  <button
+                    onClick={useSuggestedDates}
+                    style={{ marginTop: 8, border: 0, borderRadius: 8, padding: "8px 12px", background: accent, color: bg, fontWeight: 800, fontSize: 11.5, cursor: "pointer" }}
+                  >
+                    Use these dates
+                  </button>
+                </>
+              ) : (
+                <span style={{ opacity: 0.7 }}>No open dates in the next couple of months.</span>
+              )}
+              {otherOptionsHref && (
+                <div style={{ marginTop: 8 }}>
+                  <Link href={otherOptionsHref} style={{ color: accent, fontWeight: 700, textDecoration: "underline" }}>
+                    See other {unitLabel} options →
+                  </Link>
+                </div>
+              )}
             </div>
           )}
         </>
