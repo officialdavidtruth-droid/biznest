@@ -40,7 +40,7 @@ export default async function ServicePage({ params }: { params: Promise<{ slug: 
   // which is why a pure-booking store still showed a shopping bag.
   const showCart = store.business?.sellsProducts ?? true;
   const ROOM_PATTERN = /room|suite|studio|apartment|villa|penthouse|chalet|cottage|lodge|duplex/i;
-  const isHotelBusiness = store.business?.businessType === "Hotel & Lodging";
+  const isHotelBusiness = store.businessType === "Hotel & Lodging";
   const isRoomLike = isHotelBusiness && ROOM_PATTERN.test(`${service.name} ${service.category?.name ?? ""}`);
   const unitLabel = isRoomLike ? "room" : "spot";
   // Other bookable options for this business so a shopper who hits low or
