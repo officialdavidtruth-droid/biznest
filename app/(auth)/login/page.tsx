@@ -19,6 +19,12 @@ export default async function LoginPage({
       storeName={store?.name}
       storeLogoUrl={store?.logoUrl}
       accent={store?.themeColors?.primary}
+      businessType={store?.businessType}
+      heroSubtitle={store?.heroSubtitle}
+      businessCategory={store?.businessCategory}
+      businessDescription={store?.businessDescription}
+      sellsProducts={store?.sellsProducts}
+      offersServices={store?.offersServices}
     >
       <Suspense fallback={null}>
         <LoginForm isStoreContext={Boolean(store)} storeSlug={storeSlug} />
