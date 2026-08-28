@@ -597,7 +597,7 @@ export async function connectPayoutAccount(
     data: { userId: access.store.business.userId, action: "PAYOUT_ACCOUNT_CONNECTED", entity: "Store", entityId: store.id, metadata: { provider: input.provider } },
   });
 
-  revalidatePath(`/store/${slug}/admin/payouts`);
+  revalidatePath(`/store/${slug}/admin/payments`);
   return { success: true, data: undefined };
 }
 
@@ -634,7 +634,7 @@ export async function refreshPayoutVerification(slug: string): Promise<ActionRes
     });
   }
 
-  revalidatePath(`/store/${slug}/admin/payouts`);
+  revalidatePath(`/store/${slug}/admin/payments`);
   return { success: true, data: { verified: Boolean(result.isVerified) } };
 }
 
@@ -654,6 +654,6 @@ export async function disconnectPayoutAccount(slug: string, provider: "PAYSTACK"
     data: { userId: access.store.business.userId, action: "PAYOUT_ACCOUNT_DISCONNECTED", entity: "Store", entityId: access.store.id, metadata: { provider } },
   });
 
-  revalidatePath(`/store/${slug}/admin/payouts`);
+  revalidatePath(`/store/${slug}/admin/payments`);
   return { success: true, data: undefined };
 }

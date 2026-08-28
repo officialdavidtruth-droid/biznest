@@ -6,6 +6,8 @@ import { refundPayment } from "@/lib/payments/gateway";
 import { emitWebhookEvent } from "@/lib/webhooks/dispatch";
 import { revalidatePath } from "next/cache";
 import type { ActionResult } from "@/types/actions";
+import type { Prisma } from "@prisma/client";
+import { roundMoney } from "@/lib/utils/pricing";
 
 // Order statuses a refund can be issued from. PENDING_PAYMENT/CANCELLED
 // never had money move; REFUNDED is already done; DISPUTED is left out
@@ -13,11 +15,22 @@ import type { ActionResult } from "@/types/actions";
 // first so there's a record of why, rather than refunded out from under it.
 const REFUNDABLE_ORDER_STATUSES = ["PAID", "IN_PROGRESS", "DELIVERED", "COMPLETED"] as const;
 
+// Paystack settles subaccount splits T+1, excluding weekends/holidays
+// (confirmed via support, Aug 2026). There's no per-transaction "has this
+// settled yet" API, so this is a deliberately conservative calendar-day
+// buffer -- long enough to cover a weekend sitting inside the T+1 window.
+// Below this age we assume the split may still be inside Paystack's
+// balance and let their own "attempt to reverse splits" behavior (per the
+// same support reply) handle it with no ledger entry from us. Above it, we
+// assume the merchant's share already hit their bank account and record a
+// clawback instead of guessing wrong in the platform's favor.
+const SETTLEMENT_LIKELY_DAYS = 3;
+
 async function assertStoreAccess(slug: string) {
   const session = await auth();
   if (!session?.user?.id) return { success: false as const, error: "You must be signed in." };
 
-  const store = await prisma.store.findUnique({ where: { slug }, include: { business: true } });
+  const store = await prisma.store.findUnique({ where: { slug }, include: { business: true, subscription: true } });
   if (!store) return { success: false as const, error: "Store not found." };
 
   const isOwner = store.business.userId === session.user.id;
@@ -25,6 +38,51 @@ async function assertStoreAccess(slug: string) {
   if (!isOwner && !isStaff) return { success: false as const, error: "You don't have access to this store." };
 
   return { success: true as const, store, actorEmail: session.user.email ?? "unknown" };
+}
+
+/**
+ * Records a clawback if this refund's payment was very likely split to the
+ * merchant's subaccount and had already settled to their bank account by
+ * the time the refund was issued. Doesn't move any money itself -- same
+ * "record what already happened" shape as issueRefund's Payment update.
+ *
+ * Whether a *specific* payment was actually split isn't stored on the
+ * Payment row today (order.ts/quote.ts/invoice.ts all split using
+ * whatever the store's *current* subaccount code is at charge time, but
+ * that isn't persisted per-payment). As an approximation, we treat a
+ * payment as split if the store has a subaccount connected now AND that
+ * connection predates the payment's own verification -- true for the
+ * overwhelming majority of real orders. If precision matters more than
+ * that later (e.g. once a store has disconnected/reconnected payouts),
+ * store the subaccount code actually used directly on Payment at charge
+ * time instead of inferring it here.
+ */
+async function recordRefundClawbackIfSettled(
+  tx: Prisma.TransactionClient,
+  store: { id: string; paystackSubaccountCode: string | null; payoutConnectedAt: Date | null; subscription: { commissionRate: unknown } | null },
+  payment: { id: string; amount: unknown; verifiedAt: Date | null; provider: string }
+) {
+  if (payment.provider !== "PAYSTACK") return; // Flutterwave split-reversal behavior isn't confirmed the same way yet.
+  if (!store.paystackSubaccountCode || !store.payoutConnectedAt) return; // never split, or not split via a still-known subaccount
+  if (!payment.verifiedAt || store.payoutConnectedAt > payment.verifiedAt) return; // connected after this charge — wasn't split
+
+  const ageMs = Date.now() - payment.verifiedAt.getTime();
+  const likelySettled = ageMs > SETTLEMENT_LIKELY_DAYS * 24 * 60 * 60 * 1000;
+  if (!likelySettled) return;
+
+  const commissionRate = Number(store.subscription?.commissionRate ?? 8);
+  const merchantShare = roundMoney(Number(payment.amount) * (100 - commissionRate) / 100);
+  if (merchantShare <= 0) return;
+
+  await tx.storeRefundClawback.create({
+    data: {
+      storeId: store.id,
+      paymentId: payment.id,
+      amount: merchantShare,
+      reason: `Merchant share already settled (payment verified ${payment.verifiedAt.toISOString()}) — platform fronted this refund.`,
+    },
+  });
+  await tx.store.update({ where: { id: store.id }, data: { refundClawbackOwed: { increment: merchantShare } } });
 }
 
 /**
@@ -158,23 +216,37 @@ export async function issueRefund(
   // record two refunds (and can't call the gateway twice either, since
   // the earlier findFirst/refundedAt check above already screens most of
   // that — this is the last-line atomic guard on the DB write itself).
-  const result = await prisma.payment.updateMany({
-    where: { id: payment.id, status: "SUCCESSFUL" },
-    data: {
-      status: "REFUNDED",
-      refundReference: refund.refundReference,
-      refundedAmount: payment.amount,
-      refundReason: reason.trim(),
-      refundedByEmail: access.actorEmail,
-      refundedAt: new Date(),
-    },
-  });
+  // Grouped with the clawback check in one transaction so a crash partway
+  // through can't leave the payment marked REFUNDED while the clawback
+  // ledger falls out of sync (same reasoning as the cash/POS branch above).
+  let result: { count: number };
+  try {
+    result = await prisma.$transaction(async (tx) => {
+      const updateResult = await tx.payment.updateMany({
+        where: { id: payment.id, status: "SUCCESSFUL" },
+        data: {
+          status: "REFUNDED",
+          refundReference: refund.refundReference,
+          refundedAmount: payment.amount,
+          refundReason: reason.trim(),
+          refundedByEmail: access.actorEmail,
+          refundedAt: new Date(),
+        },
+      });
+      if (updateResult.count === 0) return updateResult;
+
+      await tx.order.update({ where: { id: order.id }, data: { status: "REFUNDED" } });
+      await tx.orderStatusEvent.create({ data: { orderId: order.id, status: "REFUNDED", note: reason.trim() } });
+      await recordRefundClawbackIfSettled(tx, access.store, payment);
+
+      return updateResult;
+    });
+  } catch {
+    return { success: false, error: "The refund went through at the gateway, but recording it failed — check this order and contact support before retrying." };
+  }
   if (result.count === 0) {
     return { success: false, error: "This payment was already refunded by another request." };
   }
-
-  await prisma.order.update({ where: { id: order.id }, data: { status: "REFUNDED" } });
-  await prisma.orderStatusEvent.create({ data: { orderId: order.id, status: "REFUNDED", note: reason.trim() } });
 
   await emitWebhookEvent("PAYMENT_REFUNDED", access.store.id, {
     orderId: order.id,
@@ -189,4 +261,92 @@ export async function issueRefund(
   revalidatePath(`/store/${slug}/admin/payments`);
 
   return { success: true, data: undefined };
+}
+
+// --- Refund clawback ledger (see StoreRefundClawback / migration
+// 20260828140000) -- what the platform is owed back because it fronted a
+// merchant's already-settled share on a refund. Deliberately staff-only:
+// this reflects money support/admin will need to actually go recover from
+// the merchant (deduct from a future payout, bank transfer, etc), not
+// something the merchant self-manages.
+
+async function assertStaffAccess() {
+  const session = await auth();
+  if (!session?.user?.id) return { success: false as const, error: "You must be signed in." };
+  if (session.user.role !== "PLATFORM_ADMIN" && session.user.role !== "SUPPORT_MODERATOR") {
+    return { success: false as const, error: "Only platform staff can view or settle refund clawbacks." };
+  }
+  return { success: true as const, actorEmail: session.user.email ?? "unknown" };
+}
+
+export async function getRefundClawbackBalance(slug: string) {
+  const staff = await assertStaffAccess();
+  if (!staff.success) return null;
+
+  const store = await prisma.store.findUnique({ where: { slug }, select: { id: true, refundClawbackOwed: true } });
+  if (!store) return null;
+
+  const [clawbacks, settlements] = await Promise.all([
+    prisma.storeRefundClawback.findMany({ where: { storeId: store.id }, orderBy: { createdAt: "desc" }, take: 10 }),
+    prisma.refundClawbackSettlement.findMany({ where: { storeId: store.id }, orderBy: { createdAt: "desc" }, take: 10 }),
+  ]);
+
+  return {
+    owed: roundMoney(Number(store.refundClawbackOwed)),
+    currency: "NGN",
+    recentClawbacks: clawbacks.map((c) => ({ id: c.id, amount: Number(c.amount), reason: c.reason, createdAt: c.createdAt })),
+    recentSettlements: settlements.map((s) => ({ id: s.id, amount: Number(s.amount), note: s.note, settledByEmail: s.settledByEmail, createdAt: s.createdAt })),
+  };
+}
+
+/**
+ * Records that some (or all) of the accrued refund-clawback balance has
+ * been recovered from the merchant outside the app (deducted from a bank
+ * transfer settlement, held back from a manual payout, etc) and clears it
+ * from Store.refundClawbackOwed. Same "record what already happened"
+ * shape, atomic guard, and reasoning as recordPosCommissionSettlement in
+ * lib/actions/pos.ts — mirrored deliberately rather than sharing code,
+ * since the two ledgers track opposite directions of obligation.
+ */
+export async function recordRefundClawbackSettlement(
+  slug: string,
+  amount: number,
+  note?: string
+): Promise<ActionResult<{ remainingOwed: number }>> {
+  const staff = await assertStaffAccess();
+  if (!staff.success) return { success: false, error: staff.error };
+
+  const roundedAmount = roundMoney(amount);
+  if (!Number.isFinite(roundedAmount) || roundedAmount <= 0) {
+    return { success: false, error: "Enter a settlement amount greater than zero." };
+  }
+
+  const store = await prisma.store.findUnique({ where: { slug }, select: { id: true } });
+  if (!store) return { success: false, error: "Store not found." };
+
+  let remainingOwed: number;
+  try {
+    remainingOwed = await prisma.$transaction(async (tx) => {
+      const result = await tx.store.updateMany({
+        where: { id: store.id, refundClawbackOwed: { gte: roundedAmount } },
+        data: { refundClawbackOwed: { decrement: roundedAmount } },
+      });
+      if (result.count === 0) {
+        const current = await tx.store.findUnique({ where: { id: store.id }, select: { refundClawbackOwed: true } });
+        throw new Error(`That's more than the ${Number(current?.refundClawbackOwed ?? 0).toLocaleString()} currently owed.`);
+      }
+
+      await tx.refundClawbackSettlement.create({
+        data: { storeId: store.id, amount: roundedAmount, note: note?.trim() || null, settledByEmail: staff.actorEmail },
+      });
+
+      const updated = await tx.store.findUniqueOrThrow({ where: { id: store.id }, select: { refundClawbackOwed: true } });
+      return Number(updated.refundClawbackOwed);
+    });
+  } catch (err) {
+    return { success: false, error: err instanceof Error ? err.message : "Couldn't record this settlement." };
+  }
+
+  revalidatePath(`/store/${slug}/admin/payments`);
+  return { success: true, data: { remainingOwed } };
 }
