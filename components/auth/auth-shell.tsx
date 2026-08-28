@@ -15,6 +15,16 @@ import { ShieldCheck, Sparkles, Zap } from "lucide-react";
  * actually feels like it belongs to that store, not a generic platform
  * screen bolted on the side.
  */
+// Trims a business's onboarding description down to a single tagline-length
+// line for the auth-shell subhead — first sentence, capped so it never
+// wraps past 2 lines next to the store name in the headline.
+function toTagline(description: string | null | undefined): string | null {
+  if (!description) return null;
+  const firstSentence = description.split(/(?<=[.!?])\s/)[0]?.trim() ?? description.trim();
+  if (firstSentence.length <= 90) return firstSentence.replace(/[.!?]+$/, "");
+  return firstSentence.slice(0, 87).trim() + "...";
+}
+
 export function AuthShell({
   eyebrow,
   title,
@@ -22,6 +32,12 @@ export function AuthShell({
   storeName,
   storeLogoUrl,
   accent,
+  businessType,
+  heroSubtitle,
+  businessCategory,
+  businessDescription,
+  sellsProducts = true,
+  offersServices = false,
   children,
 }: {
   eyebrow: string;
@@ -30,10 +46,39 @@ export function AuthShell({
   storeName?: string | null;
   storeLogoUrl?: string | null;
   accent?: string | null;
+  // Onboarding-sourced content (see lib/actions/store-branding.ts) that lets
+  // the copy below reflect what this specific business actually does,
+  // instead of one generic sentence for every store on the platform.
+  businessType?: string | null;
+  heroSubtitle?: string | null;
+  businessCategory?: string | null;
+  businessDescription?: string | null;
+  sellsProducts?: boolean;
+  offersServices?: boolean;
   children: React.ReactNode;
 }) {
   const isStoreContext = Boolean(storeName);
   const accentColor = accent || "#34d399";
+
+  // Vendor's own click-to-edit hero subtitle wins; otherwise fall back to a
+  // trimmed version of their onboarding business description; otherwise the
+  // generic line. Same fallback order the storefront hero itself uses.
+  const tagline = heroSubtitle || toTagline(businessDescription);
+
+  const modeLabel =
+    sellsProducts && offersServices ? "products and services" : offersServices ? "services" : "products";
+
+  const storeBenefits = [
+    { icon: Zap, text: "Checkout in seconds, no re-typing your details" },
+    {
+      icon: ShieldCheck,
+      text:
+        businessCategory
+          ? `Your ${businessCategory.toLowerCase()} orders and history, saved to your account`
+          : "Your orders and history, saved to your account",
+    },
+    { icon: Sparkles, text: "This account only works on this store, by design" },
+  ];
 
   return (
     <div className="flex min-h-screen bg-white">
@@ -100,18 +145,14 @@ export function AuthShell({
           </h1>
           <p className="mt-4 text-sm leading-relaxed text-[var(--bn-mute)]">
             {isStoreContext
-              ? "Track orders, save your details for faster checkout, and pick up right where you left off."
+              ? tagline || `Track orders, save your details for faster checkout on ${modeLabel}, and pick up right where you left off.`
               : "Storefronts, staff, and payments, in one place built for how Nigerian businesses actually sell."}
           </p>
         </div>
 
         <div className="relative z-10 space-y-3">
           {(isStoreContext
-            ? [
-                { icon: Zap, text: "Checkout in seconds, no re-typing your details" },
-                { icon: ShieldCheck, text: "Your orders and history, saved to your account" },
-                { icon: Sparkles, text: "This account only works on this store, by design" },
-              ]
+            ? storeBenefits
             : [
                 { icon: Zap, text: "Live in minutes with a store, staff, and payments" },
                 { icon: ShieldCheck, text: "Real-time inventory, invoices, and Paystack billing" },
