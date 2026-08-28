@@ -125,8 +125,14 @@ export default async function StoreAdminLayout({
               </div>
             </div>
 
-            <main className="flex-1 overflow-y-auto pb-20 lg:pb-0">
-              <div className="mx-auto max-w-6xl px-4 py-4 lg:px-6 lg:py-8">{children}</div>
+            <main className="flex-1 overflow-y-auto bg-background pb-20 lg:pb-0">
+              {/* min-h-full: on pages with little content (e.g. a Services
+                  page with one row), this div would otherwise only be as
+                  tall as {children}, letting the page's plain white
+                  background show through below it, above the fixed mobile
+                  bottom bar. min-h-full makes it always fill at least the
+                  visible scroll area with the themed background. */}
+              <div className="mx-auto min-h-full max-w-6xl px-4 py-4 lg:px-6 lg:py-8">{children}</div>
             </main>
           </div>
         </div>
