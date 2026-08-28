@@ -383,39 +383,39 @@ export function BookingWidget({
         <>
           <div style={{ fontWeight: 750, fontSize: 13, marginBottom: 9 }}>Check-out</div>
           <MiniCalendar selected={checkOut || null} minDate={addDays(date, 1)} accent={accent} ink={ink} onSelect={selectCheckout} />
-          {availableUnits !== null && (
+
+          {availableUnits !== null && availableUnits > 0 && (
             <div
               style={{
-                marginTop: 10,
+                marginTop: 14,
+                padding: "11px 13px",
+                borderRadius: 10,
+                background: availableUnits <= 3 ? `${accent}12` : `${ink}06`,
                 fontSize: 12,
-                fontWeight: availableUnits > 0 && availableUnits <= 3 ? 750 : 500,
-                color: availableUnits === 0 ? undefined : availableUnits <= 3 ? accent : undefined,
-                opacity: availableUnits === 0 ? 0.75 : 1,
+                lineHeight: 1.6,
               }}
             >
-              {availableUnits === 0
-                ? `Every ${unitLabel} is booked for these dates.`
-                : checkOut
-                  ? `${availableUnits} ${unitLabel}${availableUnits === 1 ? "" : "s"} available for these dates.`
-                  : `${availableUnits} ${unitLabel}${availableUnits === 1 ? "" : "s"} available for check-in ${dateLabel(date)} — pick a check-out to confirm.`}
-              {availableUnits > 0 && availableUnits <= 8 && otherOptionsHref && (
-                <>
-                  {" "}
+              <span style={{ fontWeight: availableUnits <= 3 ? 750 : 500, color: availableUnits <= 3 ? accent : ink }}>
+                {availableUnits} {unitLabel.charAt(0).toUpperCase() + unitLabel.slice(1)}{availableUnits === 1 ? "" : "s"} Left for {serviceName}
+              </span>
+              {checkOut && availableUnits <= 8 && otherOptionsHref && (
+                <div style={{ marginTop: 5 }}>
                   <Link href={otherOptionsHref} style={{ color: accent, fontWeight: 700, textDecoration: "underline" }}>
                     Would you like to see other {unitLabel} options?
                   </Link>
-                </>
+                </div>
               )}
             </div>
           )}
 
           {availableUnits === 0 && (
-            <div style={{ marginTop: 10, padding: 12, borderRadius: 10, border: `1px dashed ${ink}22`, fontSize: 12, lineHeight: 1.7 }}>
+            <div style={{ marginTop: 14, padding: "14px 16px", borderRadius: 10, background: `${ink}06`, fontSize: 12, lineHeight: 1.7 }}>
+              <div style={{ fontWeight: 750, opacity: 0.85 }}>No {unitLabel}s left for {serviceName} on these dates.</div>
               {nextAvailable === undefined ? (
                 <span style={{ opacity: 0.6 }}>Checking the next open dates…</span>
               ) : nextAvailable ? (
                 <>
-                  <div style={{ opacity: 0.7 }}>Next open dates for this {unitLabel}:</div>
+                  <div style={{ opacity: 0.7, marginTop: 8 }}>Next open dates:</div>
                   <div style={{ fontWeight: 800, marginTop: 3 }}>
                     {dateLabel(nextAvailable.checkIn)} → {dateLabel(nextAvailable.checkOut)}
                   </div>
