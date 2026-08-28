@@ -691,7 +691,7 @@ export async function getNextAvailableStay(
     const candidateOut = new Date(candidateIn.getTime() + stayMs);
     const overlapping = new Set(
       bookings
-        .filter((b) => b.checkIn < candidateOut && b.checkOut > candidateIn)
+        .filter((b) => b.checkIn && b.checkOut && b.checkIn < candidateOut && b.checkOut > candidateIn)
         .map((b) => b.unitId)
     );
     if (overlapping.size < totalUnits) {
