@@ -44,9 +44,20 @@ function phoneNorm(value: string | null | undefined) {
   return value?.replace(/[^\d+]/g, "") || null;
 }
 
-export async function getCustomer360(slug: string): Promise<Customer360[]> {
+export type Customer360Result = {
+  customers: Customer360[];
+  // What this business actually does, set once at onboarding — drives
+  // whether the UI calls this page "Customer 360" or "Client 360" and
+  // whether it shows POS/online-channel breakdowns. Hybrid stores (both
+  // true) keep the full customer-style view since they do run POS sales.
+  sellsProducts: boolean;
+  offersServices: boolean;
+};
+
+export async function getCustomer360(slug: string): Promise<Customer360Result> {
   const access = await assertStorePermission(slug, "customers");
-  if (!access.success) return [];
+  if (!access.success) return { customers: [], sellsProducts: true, offersServices: false };
+  const { sellsProducts, offersServices } = access.store.business;
 
   const [profiles, orders] = await Promise.all([
     prisma.storeCustomerProfile.findMany({
@@ -131,11 +142,13 @@ export async function getCustomer360(slug: string): Promise<Customer360[]> {
       orders: 0, spent: 0, onlineOrders: 0, posOrders: 0, lastPurchase: null, firstPurchase: null, ordersList: [], products: new Map() });
   }
 
-  return [...buckets.values()]
+  const customers = [...buckets.values()]
     .map((b) => ({ id: b.id, name: b.name, email: b.email, phone: b.phone, profileId: b.profileId, userId: b.userId,
       orders: b.orders, spent: Math.round(b.spent * 100) / 100, averageOrder: b.orders ? Math.round((b.spent / b.orders) * 100) / 100 : 0,
       lastPurchase: b.lastPurchase?.toISOString() ?? null, firstPurchase: b.firstPurchase?.toISOString() ?? null,
       onlineOrders: b.onlineOrders, posOrders: b.posOrders, notes: b.notes,
       ordersList: b.ordersList.slice(0, 20), topProducts: [...b.products.values()].sort((a,b) => b.revenue-a.revenue).slice(0,5).map((p) => ({ ...p, revenue: Math.round(p.revenue*100)/100 })) }))
     .sort((a,b) => b.spent-a.spent || a.name.localeCompare(b.name));
+
+  return { customers, sellsProducts, offersServices };
 }
