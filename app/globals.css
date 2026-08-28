@@ -325,3 +325,23 @@ a[href*="/service/"]:hover img {
     grid-template-columns: repeat(2, 1fr) !important;
   }
    }
+
+/* --- Room / gallery cards: image beside the text, not underneath it ---
+   Row layout on desktop and tablet; stacks to image-on-top only once the
+   viewport is too narrow for a side-by-side card to read comfortably. */
+.bn-room-card {
+  border-radius: 14px;
+  transition: box-shadow .2s ease, transform .2s ease;
+}
+.bn-room-card:hover {
+  box-shadow: 0 18px 44px rgba(0, 0, 0, 0.12);
+  transform: translateY(-2px);
+}
+@media (max-width: 560px) {
+  .bn-room-card {
+    flex-direction: column !important;
+  }
+  .bn-room-card-img {
+    width: 100% !important;
+  }
+}
