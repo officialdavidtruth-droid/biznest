@@ -22,6 +22,12 @@ export default async function RegisterPage({
       storeName={store?.name}
       storeLogoUrl={store?.logoUrl}
       accent={store?.themeColors?.primary}
+      businessType={store?.businessType}
+      heroSubtitle={store?.heroSubtitle}
+      businessCategory={store?.businessCategory}
+      businessDescription={store?.businessDescription}
+      sellsProducts={store?.sellsProducts}
+      offersServices={store?.offersServices}
     >
       <RegisterForm defaultEmail={email} callbackUrl={callbackUrl} storeSlug={storeSlug} />
     </AuthShell>
