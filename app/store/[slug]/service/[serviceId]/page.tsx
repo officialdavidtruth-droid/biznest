@@ -222,3 +222,4 @@ export default async function ServicePage({ params }: { params: Promise<{ slug: 
     </div>
   );
     }
+
