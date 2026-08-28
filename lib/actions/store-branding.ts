@@ -3,7 +3,8 @@ import { prisma } from "@/lib/prisma";
 export type StoreBranding = {
   name: string;
   logoUrl: string | null;
-  themeColors: { primary?: string } | null;
+  themeColors: { primary?: string; background?: string; text?: string; accent?: string; secondary?: string } | null;
+  fontFamily: string | null;
   contactEmail: string | null;
   contactPhone: string | null;
   socialLinks: { instagram?: string; facebook?: string; twitter?: string; tiktok?: string; whatsapp?: string } | null;
@@ -21,7 +22,7 @@ export async function getStoreBranding(slug: string | undefined): Promise<StoreB
   if (!slug) return null;
   const store = await prisma.store.findUnique({
     where: { slug },
-    select: { name: true, logoUrl: true, themeColors: true, contactEmail: true, contactPhone: true, socialLinks: true },
+    select: { name: true, logoUrl: true, themeColors: true, fontFamily: true, contactEmail: true, contactPhone: true, socialLinks: true },
   });
   return store as StoreBranding;
 }
