@@ -756,7 +756,9 @@ export function resolveStoreTheme(
   fontFamily: string | null | undefined,
   templateName?: string | null
 ): TemplateTheme {
-  const base = isHeenzyTemplate(templateName)
+  const base = isSignatureTemplate(templateName)
+    ? getSignatureTheme(templateName)
+    : isHeenzyTemplate(templateName)
     ? resolveHeenzyTheme(templateName)
     : isNovaTemplate(templateName)
     ? resolveNovaTheme(templateName)
