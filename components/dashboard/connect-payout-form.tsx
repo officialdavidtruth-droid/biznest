@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { connectPayoutAccount, disconnectPayoutAccount } from "@/lib/actions/store";
+import { connectPayoutAccount, disconnectPayoutAccount, refreshPayoutVerification } from "@/lib/actions/store";
 
 // A short, common Nigerian bank list keeps this usable without needing a
 // live "list banks" API call for every provider on every page load. Codes
@@ -33,17 +33,22 @@ export function ConnectPayoutForm({
   connected,
   details,
   commissionRate,
+  verifiedAt,
+  connectedAt,
 }: {
   slug: string;
   provider: Provider;
   connected: boolean;
   details: { bankName?: string; accountName?: string; maskedAccountNumber?: string } | null;
   commissionRate: number;
+  verifiedAt?: Date | null;
+  connectedAt?: Date | null;
 }) {
   const router = useRouter();
   const [bankCode, setBankCode] = useState("");
   const [accountNumber, setAccountNumber] = useState("");
   const [saving, setSaving] = useState(false);
+  const [checking, setChecking] = useState(false);
 
   const label = provider === "PAYSTACK" ? "Paystack" : "Flutterwave";
 
@@ -71,12 +76,32 @@ export function ConnectPayoutForm({
     router.refresh();
   }
 
+  async function handleCheckVerification() {
+    setChecking(true);
+    const result = await refreshPayoutVerification(slug);
+    setChecking(false);
+    if (!result.success) return toast.error(result.error);
+    if (result.data.verified) {
+      toast.success("Verified! Your payouts are no longer held.");
+    } else {
+      toast("Still pending — Paystack hasn't finished reviewing this account yet.");
+    }
+    router.refresh();
+  }
+
   if (connected) {
+    const isVerified = Boolean(verifiedAt);
     return (
       <div className="rounded-lg border bg-background p-4">
         <div className="mb-2 flex items-center justify-between">
           <p className="font-medium">{label}</p>
-          <span className="rounded-full bg-green-100 px-2 py-0.5 text-xs text-green-700">Connected</span>
+          <span
+            className={`rounded-full px-2 py-0.5 text-xs ${
+              isVerified ? "bg-green-100 text-green-700" : "bg-amber-100 text-amber-700"
+            }`}
+          >
+            {isVerified ? "Connected · Verified" : "Connected · Pending verification"}
+          </span>
         </div>
         <p className="text-sm text-muted-foreground">
           {details?.accountName} · {details?.bankName} · {details?.maskedAccountNumber}
@@ -84,13 +109,30 @@ export function ConnectPayoutForm({
         <p className="mt-1 text-xs text-muted-foreground">
           You keep {(100 - commissionRate).toFixed(1)}% of each sale — it settles to this account automatically.
         </p>
-        <button
-          onClick={handleDisconnect}
-          disabled={saving}
-          className="mt-3 text-xs font-medium text-destructive hover:underline disabled:opacity-50"
-        >
-          Disconnect
-        </button>
+        {!isVerified && provider === "PAYSTACK" && (
+          <p className="mt-2 rounded-md bg-amber-50 p-2 text-xs text-amber-800">
+            Paystack manually reviews new payout accounts. Your first payout will be held until verification
+            completes — this usually doesn't affect checkout, just when the money actually lands.
+          </p>
+        )}
+        <div className="mt-3 flex items-center gap-3">
+          {!isVerified && provider === "PAYSTACK" && (
+            <button
+              onClick={handleCheckVerification}
+              disabled={checking}
+              className="text-xs font-medium text-primary hover:underline disabled:opacity-50"
+            >
+              {checking ? "Checking…" : "Check verification status"}
+            </button>
+          )}
+          <button
+            onClick={handleDisconnect}
+            disabled={saving}
+            className="text-xs font-medium text-destructive hover:underline disabled:opacity-50"
+          >
+            Disconnect
+          </button>
+        </div>
       </div>
     );
   }
