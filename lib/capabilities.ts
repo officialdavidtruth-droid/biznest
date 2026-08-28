@@ -275,7 +275,7 @@ export const BUSINESS_TYPES: Record<string, BusinessTypeConfig> = {
       { label: "Manage reservations", href: "/pms" },
       { label: "Update amenities", href: "/settings" },
     ],
-    extraNavItems: [{ label: "Bookings", href: "/orders", icon: CalendarClock }, { label: "PMS", href: "/pms", icon: Hotel }],
+    extraNavItems: [{ label: "Bookings", href: "/calendar", icon: CalendarClock }, { label: "PMS", href: "/pms", icon: Hotel }],
   },
   "Beauty": {
     icon: Sparkles,
@@ -289,7 +289,7 @@ export const BUSINESS_TYPES: Record<string, BusinessTypeConfig> = {
       { label: "Manage bookings", href: "/orders" },
       { label: "Collect reviews", href: "/reviews" },
     ],
-    extraNavItems: [{ label: "Bookings", href: "/orders", icon: CalendarClock }],
+    extraNavItems: [{ label: "Bookings", href: "/calendar", icon: CalendarClock }],
   },
   "Home & Furniture": {
     icon: Sofa,
@@ -316,7 +316,7 @@ export const BUSINESS_TYPES: Record<string, BusinessTypeConfig> = {
       { label: "Manage bookings", href: "/orders" },
       { label: "Update your credentials", href: "/verification" },
     ],
-    extraNavItems: [{ label: "Bookings", href: "/orders", icon: CalendarClock }],
+    extraNavItems: [{ label: "Bookings", href: "/calendar", icon: CalendarClock }],
   },
   "Health & Fitness": {
     icon: HeartPulse,
@@ -330,7 +330,7 @@ export const BUSINESS_TYPES: Record<string, BusinessTypeConfig> = {
       { label: "Manage bookings", href: "/orders" },
       { label: "Update your credentials", href: "/verification" },
     ],
-    extraNavItems: [{ label: "Bookings", href: "/orders", icon: CalendarClock }],
+    extraNavItems: [{ label: "Bookings", href: "/calendar", icon: CalendarClock }],
   },
   "Professional Services": {
     icon: Briefcase,
@@ -344,7 +344,7 @@ export const BUSINESS_TYPES: Record<string, BusinessTypeConfig> = {
       { label: "Manage bookings", href: "/orders" },
       { label: "Message a customer", href: "/messages" },
     ],
-    extraNavItems: [{ label: "Bookings", href: "/orders", icon: CalendarClock }],
+    extraNavItems: [{ label: "Bookings", href: "/calendar", icon: CalendarClock }],
   },
   "Automotive": {
     icon: Car,
@@ -358,7 +358,7 @@ export const BUSINESS_TYPES: Record<string, BusinessTypeConfig> = {
       { label: "Manage bookings", href: "/orders" },
       { label: "Track parts inventory", href: "/inventory" },
     ],
-    extraNavItems: [{ label: "Bookings", href: "/orders", icon: Wrench }],
+    extraNavItems: [{ label: "Bookings", href: "/calendar", icon: Wrench }],
   },
     "Agriculture": {
     icon: Tractor,
@@ -398,7 +398,7 @@ export const BUSINESS_TYPES: Record<string, BusinessTypeConfig> = {
       { label: "Set up a package", href: "/products/new" },
       { label: "Manage bookings", href: "/orders" },
     ],
-    extraNavItems: [{ label: "Bookings", href: "/orders", icon: CalendarClock }],
+    extraNavItems: [{ label: "Bookings", href: "/calendar", icon: CalendarClock }],
   },
   "Software Development": {
     icon: Code,
@@ -412,7 +412,7 @@ export const BUSINESS_TYPES: Record<string, BusinessTypeConfig> = {
       { label: "Manage bookings", href: "/orders" },
       { label: "Message a client", href: "/messages" },
     ],
-    extraNavItems: [{ label: "Bookings", href: "/orders", icon: CalendarClock }],
+    extraNavItems: [{ label: "Bookings", href: "/calendar", icon: CalendarClock }],
   },
   "Event Planning": {
     icon: PartyPopper,
@@ -426,7 +426,7 @@ export const BUSINESS_TYPES: Record<string, BusinessTypeConfig> = {
       { label: "Manage bookings", href: "/orders" },
       { label: "Upload past event photos", href: "/products/new" },
     ],
-    extraNavItems: [{ label: "Bookings", href: "/orders", icon: CalendarClock }],
+    extraNavItems: [{ label: "Bookings", href: "/calendar", icon: CalendarClock }],
   },
   "Logistics": {
     icon: Package,
