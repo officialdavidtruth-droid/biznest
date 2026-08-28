@@ -5,6 +5,7 @@ import type { Metadata } from "next";
 import { resolveStoreTheme, type TemplateTheme } from "@/lib/template-themes";
 import { BookingWidget } from "@/components/storefront/booking-widget";
 import { CartLink } from "@/components/storefront/cart-link";
+import { AccountLink } from "@/components/storefront/account-link";
 
 export async function generateMetadata({ params }: { params: Promise<{ slug: string; serviceId: string }> }): Promise<Metadata> {
   const { slug, serviceId } = await params;
@@ -87,7 +88,10 @@ export default async function ServicePage({ params }: { params: Promise<{ slug: 
             )}
             <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{store.name}</span>
           </Link>
-          {showCart && <CartLink storeSlug={slug} accent={accent} ink={ink} />}
+          <div style={{ display: "flex", alignItems: "center", gap: 18 }}>
+            {showCart && <CartLink storeSlug={slug} accent={accent} ink={ink} />}
+            <AccountLink storeSlug={slug} ink={ink} />
+          </div>
         </div>
       </nav>
 
@@ -203,3 +207,4 @@ export default async function ServicePage({ params }: { params: Promise<{ slug: 
     </div>
   );
 }
+
