@@ -1,11 +1,24 @@
 // Route: /store/[slug]/admin/bookings
 import Link from "next/link";
 import { listBookings } from "@/lib/actions/booking";
-import { BookingStatusSelect } from "@/components/dashboard/booking-status-select";
+import { BookingStatusBadge } from "@/components/dashboard/booking-status-badge";
+import { BookingStatusFilter } from "@/components/dashboard/booking-status-filter";
 
-export default async function BookingsPage({ params }: { params: Promise<{ slug: string }> }) {
+export default async function BookingsPage({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ slug: string }>;
+  searchParams: Promise<{ status?: string }>;
+}) {
   const { slug } = await params;
-  const bookings = await listBookings(slug);
+  const { status } = await searchParams;
+  const allBookings = await listBookings(slug);
+
+  const bookings =
+    status && status !== "ALL"
+      ? allBookings.filter((b) => b.status === status)
+      : allBookings;
 
   return (
     <div>
@@ -23,7 +36,9 @@ export default async function BookingsPage({ params }: { params: Promise<{ slug:
               <th className="px-4 py-2">When</th>
               <th className="px-4 py-2">Service</th>
               <th className="px-4 py-2">Customer</th>
-              <th className="px-4 py-2">Status</th>
+              <th className="px-4 py-2">
+                <BookingStatusFilter />
+              </th>
             </tr>
           </thead>
           <tbody>
@@ -50,13 +65,13 @@ export default async function BookingsPage({ params }: { params: Promise<{ slug:
                     </Link>
                   </td>
                   <td className="px-4 py-3">
-                    <BookingStatusSelect slug={slug} bookingId={b.id} status={b.status} />
+                    <BookingStatusBadge status={b.status} />
                   </td>
                 </tr>
               );
             })}
             {bookings.length === 0 && (
-              <tr><td colSpan={4} className="px-4 py-10 text-center text-muted-foreground">No bookings yet.</td></tr>
+              <tr><td colSpan={4} className="px-4 py-10 text-center text-muted-foreground">No bookings match this filter.</td></tr>
             )}
           </tbody>
         </table>
