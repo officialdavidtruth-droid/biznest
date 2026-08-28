@@ -2,13 +2,7 @@
 import Link from "next/link";
 import { prisma } from "@/lib/prisma";
 import { listBookings } from "@/lib/actions/booking";
-
-const BOOKING_STYLES: Record<string, string> = {
-  PENDING: "bg-yellow-100 text-yellow-700",
-  CONFIRMED: "bg-blue-100 text-blue-700",
-  COMPLETED: "bg-green-100 text-green-700",
-  CANCELLED: "bg-muted text-muted-foreground",
-};
+import { BookingStatusSelect } from "@/components/dashboard/booking-status-select";
 
 export default async function ServicesPage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
@@ -76,7 +70,7 @@ export default async function ServicesPage({ params }: { params: Promise<{ slug:
                 <td className="px-4 py-3">{b.service.name}</td>
                 <td className="px-4 py-3 text-muted-foreground">{b.buyer?.name ?? b.buyer?.email ?? b.guestName ?? "Walk-in guest"}</td>
                 <td className="px-4 py-3">
-                  <span className={`rounded-full px-2 py-0.5 text-xs ${BOOKING_STYLES[b.status]}`}>{b.status}</span>
+                  <BookingStatusSelect slug={slug} bookingId={b.id} status={b.status} />
                 </td>
               </tr>
             ))}
@@ -88,4 +82,4 @@ export default async function ServicesPage({ params }: { params: Promise<{ slug:
       </div>
     </div>
   );
-                                                                                        }
+}
