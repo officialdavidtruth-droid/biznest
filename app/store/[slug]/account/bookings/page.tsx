@@ -3,6 +3,8 @@ import { getStoreBranding } from "@/lib/actions/store-branding";
 import { listStoreBookings } from "@/lib/actions/account";
 import { PayBookingWithWalletButton } from "@/components/storefront/pay-booking-wallet-button";
 import { WalletPaymentQrButton } from "@/components/storefront/wallet-payment-qr-button";
+import { getAccountCopy } from "@/lib/account-copy";
+import { prisma } from "@/lib/prisma";
 
 function formatDate(value: Date | string) {
   return new Date(value).toLocaleDateString(undefined, { weekday: "short", day: "numeric", month: "short", year: "numeric" });
@@ -16,15 +18,17 @@ export default async function Page({ params }: { params: Promise<{ slug: string 
   const store = await getStoreBranding(slug);
   if (!store) notFound();
   const bookings = await listStoreBookings(slug);
+  const record = await prisma.store.findUnique({ where: { slug }, select: { template: { select: { name: true } } } });
+  const copy = getAccountCopy(record?.template?.name, store.businessCategory);
   const upcoming = bookings.filter(b => b.status !== "CANCELLED" && new Date(b.checkOut ?? b.scheduledAt) >= new Date());
   const past = bookings.filter(b => !upcoming.some(u => u.id === b.id));
 
   return (
     <div>
       <div className="mb-6">
-        <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-400">Your bookings</p>
-        <h1 className="mt-2 text-xl font-bold tracking-tight text-slate-950">Appointments & reservations</h1>
-        <p className="mt-2 text-sm text-slate-500">Manage your bookings with {store.name}.</p>
+        <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-400">Your {copy.bookings.toLowerCase()}</p>
+        <h1 className="mt-2 text-xl font-bold tracking-tight text-slate-950">{copy.bookings}</h1>
+        <p className="mt-2 text-sm text-slate-500">Manage your {copy.bookings.toLowerCase()} with {store.name}.</p>
       </div>
 
       <div className="max-w-4xl">
