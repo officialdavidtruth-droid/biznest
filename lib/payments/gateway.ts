@@ -34,7 +34,18 @@ type ChargeParams = {
   gateway?: "PAYSTACK" | "FLUTTERWAVE";
 };
 
-type ChargeResult = { success: true; authorizationUrl: string; gateway: "PAYSTACK" | "FLUTTERWAVE" } | { success: false; error: string };
+type ChargeResult =
+  | {
+      success: true;
+      authorizationUrl: string;
+      gateway: "PAYSTACK" | "FLUTTERWAVE";
+      /** Whichever subaccount code/id this charge was actually split to
+       *  (matching `gateway`), or null if it wasn't split -- callers
+       *  should persist this on the Payment row rather than re-deriving
+       *  it later from the store's possibly-since-changed connection. */
+      splitSubaccountCode: string | null;
+    }
+  | { success: false; error: string };
 
 /**
  * Single entry point every checkout/upgrade flow should call instead of
@@ -60,7 +71,12 @@ export async function chargeCustomer(params: ChargeParams): Promise<ChargeResult
       void logError("PAYMENTS", "Flutterwave charge init failed", { reference: params.reference, message: init.message });
       return { success: false, error: init.message || "Couldn't start the Flutterwave payment." };
     }
-    return { success: true, authorizationUrl: init.data.link, gateway: "FLUTTERWAVE" };
+    return {
+      success: true,
+      authorizationUrl: init.data.link,
+      gateway: "FLUTTERWAVE",
+      splitSubaccountCode: params.flutterwaveSubaccountId ?? null,
+    };
   }
 
   const init = await initializePaystackTransaction({
@@ -75,7 +91,12 @@ export async function chargeCustomer(params: ChargeParams): Promise<ChargeResult
     void logError("PAYMENTS", "Paystack charge init failed", { reference: params.reference, message: init.message });
     return { success: false, error: init.message || "Couldn't start the Paystack payment." };
   }
-  return { success: true, authorizationUrl: init.data.authorization_url, gateway: "PAYSTACK" };
+  return {
+    success: true,
+    authorizationUrl: init.data.authorization_url,
+    gateway: "PAYSTACK",
+    splitSubaccountCode: params.paystackSubaccountCode ?? null,
+  };
 }
 
 type RefundParams = {
