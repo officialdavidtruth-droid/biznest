@@ -648,6 +648,61 @@ export async function getAvailableUnitCount(
 }
 
 /**
+ * When every unit is booked for the shopper's requested dates, instead of
+ * telling them "no availability" and leaving them stuck, walk forward
+ * day-by-day (keeping the same length of stay) and return the next window
+ * where at least one unit is actually free -- sourced from real Booking
+ * rows, so it stays in lockstep with whatever the admin/front-desk side has
+ * booked. Works for any unit-based service (rooms, tables, bays, kit
+ * rentals, etc.), not just hotel rooms.
+ */
+export async function getNextAvailableStay(
+  serviceId: string,
+  checkInISO: string,
+  checkOutISO: string,
+  horizonDays = 60
+): Promise<{ checkIn: string; checkOut: string } | null> {
+  const service = await prisma.service.findUnique({ where: { id: serviceId } });
+  if (!service || !service.isBookable || !service.totalUnits) return null;
+
+  const totalUnits = await prisma.serviceUnit.count({ where: { serviceId, status: { not: "OUT_OF_SERVICE" } } });
+  if (totalUnits === 0) return null;
+
+  const startIn = new Date(`${checkInISO}T00:00:00`);
+  const startOut = new Date(`${checkOutISO}T00:00:00`);
+  if (Number.isNaN(startIn.getTime()) || Number.isNaN(startOut.getTime()) || startOut <= startIn) return null;
+  const stayMs = startOut.getTime() - startIn.getTime();
+
+  // Pull every relevant booking once, then scan candidate windows against it
+  // in memory rather than round-tripping to the DB for each day.
+  const horizonEnd = new Date(startIn.getTime() + horizonDays * 86400000 + stayMs);
+  const bookings = await prisma.booking.findMany({
+    where: {
+      serviceId,
+      status: { not: "CANCELLED" },
+      checkIn: { lt: horizonEnd },
+      checkOut: { gt: startIn },
+    },
+    select: { unitId: true, checkIn: true, checkOut: true },
+  });
+
+  for (let offset = 1; offset <= horizonDays; offset++) {
+    const candidateIn = new Date(startIn.getTime() + offset * 86400000);
+    const candidateOut = new Date(candidateIn.getTime() + stayMs);
+    const overlapping = new Set(
+      bookings
+        .filter((b) => b.checkIn < candidateOut && b.checkOut > candidateIn)
+        .map((b) => b.unitId)
+    );
+    if (overlapping.size < totalUnits) {
+      const iso = (d: Date) => d.toISOString().slice(0, 10);
+      return { checkIn: iso(candidateIn), checkOut: iso(candidateOut) };
+    }
+  }
+  return null;
+}
+
+/**
  * Public storefront counterpart to createUnitBooking (front-desk version in
  * lib/actions/service-unit.ts). Picks the first free unit for the requested
  * range itself, rather than asking the shopper to choose a specific room.
