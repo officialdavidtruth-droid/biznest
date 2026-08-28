@@ -7,7 +7,14 @@ import { requireStoreCustomerByStoreId } from "@/lib/actions/store-customer";
 import { checkRateLimit } from "@/lib/rate-limit";
 import { emitWebhookEvent } from "@/lib/webhooks/dispatch";
 import { revalidatePath } from "next/cache";
+import { Prisma } from "@prisma/client";
 import type { ActionResult } from "@/types/actions";
+
+// Shared by createBooking/createStayBooking: what to tell the shopper when
+// the database rejects the write because someone else just took the slot.
+// This is the message that matters -- see the P2002 catch below for why the
+// earlier findFirst check alone can't be trusted to catch this.
+const SLOT_TAKEN_MESSAGE = "That slot was just taken — pick another time.";
 
 type WeeklyAvailability = Partial<
   Record<
@@ -513,8 +520,7 @@ export async function createBooking(
   if (conflictingBooking) {
     return {
       success: false,
-      error:
-        "That slot was just taken — pick another time.",
+      error: SLOT_TAKEN_MESSAGE,
     };
   }
 
@@ -547,8 +553,19 @@ export async function createBooking(
     };
   }
 
-  const booking =
-    await prisma.booking.create({
+  /**
+   * The findFirst conflict check above is a fast, friendly early check --
+   * it's *not* what actually prevents double-booking, since two requests
+   * can both pass it before either finishes creating. The real guarantee
+   * is the partial unique index on (serviceId, staffId, scheduledAt) added
+   * in prisma/migrations/20260828170000_booking_slot_unique_constraint,
+   * which the database enforces atomically. If a second request loses that
+   * race, Prisma throws P2002 here and we turn it into the same friendly
+   * error instead of a 500.
+   */
+  let booking;
+  try {
+    booking = await prisma.booking.create({
       data: {
         storeId: service.storeId,
         serviceId,
@@ -563,6 +580,12 @@ export async function createBooking(
         guestPhone: normalizedGuest?.phone ?? null,
       },
     });
+  } catch (error) {
+    if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002") {
+      return { success: false, error: SLOT_TAKEN_MESSAGE };
+    }
+    throw error;
+  }
 
   await emitWebhookEvent(
     "BOOKING_CREATED",
@@ -733,62 +756,81 @@ export async function createStayBooking(
   }
 
   // Race-condition-safe: pick a free unit and create the booking inside one
-  // transaction so two shoppers can't both land on the same last-free unit.
-  try {
-    const booking = await prisma.$transaction(async (tx) => {
-      const units = await tx.serviceUnit.findMany({
-        where: { serviceId, status: { not: "OUT_OF_SERVICE" } },
-        select: { id: true },
+  // Serializable transaction so two shoppers can't both land on the same
+  // last-free unit. Postgres itself detects the conflict here (rather than
+  // relying on a unique index the way createBooking now does above) because
+  // "free unit" is a range-overlap check, not an exact-match lookup a
+  // simple unique constraint could express.
+  //
+  // Serializable transactions that lose a genuine race don't corrupt data,
+  // but Postgres aborts the loser with a serialization-failure error (code
+  // 40001) rather than silently retrying it. Left uncaught, the loser would
+  // surface to the shopper as a raw 500 even though the fix is just "try
+  // again" -- so we retry a couple of times before giving up.
+  const MAX_ATTEMPTS = 3;
+  for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
+    try {
+      const booking = await prisma.$transaction(async (tx) => {
+        const units = await tx.serviceUnit.findMany({
+          where: { serviceId, status: { not: "OUT_OF_SERVICE" } },
+          select: { id: true },
+        });
+        if (units.length === 0) throw new Error("NO_UNITS");
+
+        const overlapping = await tx.booking.findMany({
+          where: {
+            serviceId,
+            status: { not: "CANCELLED" },
+            checkIn: { lt: checkOut },
+            checkOut: { gt: checkIn },
+          },
+          select: { unitId: true },
+        });
+        const takenIds = new Set(overlapping.map((b) => b.unitId));
+        const freeUnit = units.find((u) => !takenIds.has(u.id));
+        if (!freeUnit) throw new Error("NO_AVAILABILITY");
+
+        return tx.booking.create({
+          data: {
+            storeId: service.storeId,
+            serviceId,
+            unitId: freeUnit.id,
+            buyerId: session?.user?.id ?? null,
+            scheduledAt: checkIn,
+            checkIn,
+            checkOut,
+            durationMins: nights * 24 * 60,
+            notes: notes?.trim() || null,
+            guestName: normalizedGuest?.name ?? null,
+            guestEmail: normalizedGuest?.email ?? null,
+            guestPhone: normalizedGuest?.phone ?? null,
+          },
+        });
+      }, { isolationLevel: "Serializable" });
+
+      await emitWebhookEvent("BOOKING_CREATED", service.storeId, {
+        bookingId: booking.id,
+        serviceId,
+        scheduledAt: booking.scheduledAt,
+        durationMins: booking.durationMins,
       });
-      if (units.length === 0) throw new Error("NO_UNITS");
 
-      const overlapping = await tx.booking.findMany({
-        where: {
-          serviceId,
-          status: { not: "CANCELLED" },
-          checkIn: { lt: checkOut },
-          checkOut: { gt: checkIn },
-        },
-        select: { unitId: true },
-      });
-      const takenIds = new Set(overlapping.map((b) => b.unitId));
-      const freeUnit = units.find((u) => !takenIds.has(u.id));
-      if (!freeUnit) throw new Error("NO_AVAILABILITY");
-
-      return tx.booking.create({
-        data: {
-          storeId: service.storeId,
-          serviceId,
-          unitId: freeUnit.id,
-          buyerId: session?.user?.id ?? null,
-          scheduledAt: checkIn,
-          checkIn,
-          checkOut,
-          durationMins: nights * 24 * 60,
-          notes: notes?.trim() || null,
-          guestName: normalizedGuest?.name ?? null,
-          guestEmail: normalizedGuest?.email ?? null,
-          guestPhone: normalizedGuest?.phone ?? null,
-        },
-      });
-    }, { isolationLevel: "Serializable" });
-
-    await emitWebhookEvent("BOOKING_CREATED", service.storeId, {
-      bookingId: booking.id,
-      serviceId,
-      scheduledAt: booking.scheduledAt,
-      durationMins: booking.durationMins,
-    });
-
-    revalidatePath(`/store/${storeSlug}`);
-    return { success: true, data: { bookingId: booking.id } };
-  } catch (error) {
-    const message = error instanceof Error ? error.message : "";
-    if (message === "NO_UNITS" || message === "NO_AVAILABILITY") {
-      return { success: false, error: "No rooms available for those dates — try a different range." };
+      revalidatePath(`/store/${storeSlug}`);
+      return { success: true, data: { bookingId: booking.id } };
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "";
+      if (message === "NO_UNITS" || message === "NO_AVAILABILITY") {
+        return { success: false, error: "No rooms available for those dates — try a different range." };
+      }
+      const isSerializationFailure =
+        error instanceof Prisma.PrismaClientKnownRequestError &&
+        (error.code === "P2034" || error.meta?.code === "40001");
+      if (isSerializationFailure && attempt < MAX_ATTEMPTS) continue;
+      if (isSerializationFailure) return { success: false, error: SLOT_TAKEN_MESSAGE };
+      throw error;
     }
-    throw error;
   }
+  return { success: false, error: SLOT_TAKEN_MESSAGE };
 }
 
 /**
