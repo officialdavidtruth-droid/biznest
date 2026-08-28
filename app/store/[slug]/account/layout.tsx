@@ -17,12 +17,22 @@ export default async function StoreAccountLayout({ children, params }: { childre
   const record = await prisma.store.findUnique({ where: { slug }, select: { template: { select: { name: true } } } });
   const templateName = record?.template?.name ?? "";
 
+  // Which nav links are even meaningful for this store depends on what it
+  // actually sells -- a pure service business has no "Orders"/"Addresses"
+  // (nothing physical ships to anyone), and a pure product business has no
+  // "Bookings" (nothing is scheduled). Hybrid stores (e.g. a hotel with a
+  // restaurant that also sells retail items) get both. Sourced from the
+  // same sellsProducts/offersServices flags the admin dashboard's
+  // capability system (lib/capabilities.ts) already uses, so the customer
+  // account nav can't drift out of sync with what the business actually is.
+  const nav = { sellsProducts: store.sellsProducts, offersServices: store.offersServices };
+
   if (isSignatureTemplate(templateName)) {
     const theme = getSignatureTheme(templateName);
-    return <SignatureCustomerShell slug={slug} templateName={templateName} storeName={store.name} logoUrl={store.logoUrl} email={membership.user.email} unreadMessageCount={unreadMessageCount}>
+    return <SignatureCustomerShell slug={slug} templateName={templateName} storeName={store.name} logoUrl={store.logoUrl} email={membership.user.email} unreadMessageCount={unreadMessageCount} nav={nav}>
       <div style={{ ["--sig-headline" as string]: theme.headlineFont, ["--sig-font" as string]: theme.font }}>{children}</div>
     </SignatureCustomerShell>;
   }
 
-  return <StoreAccountLegacyShell slug={slug} store={store} membership={membership} unreadMessageCount={unreadMessageCount}>{children}</StoreAccountLegacyShell>;
+  return <StoreAccountLegacyShell slug={slug} store={store} membership={membership} unreadMessageCount={unreadMessageCount} nav={nav}>{children}</StoreAccountLegacyShell>;
 }
