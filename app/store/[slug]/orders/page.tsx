@@ -2,6 +2,8 @@ import { listOrdersForBuyerAtStore } from "@/lib/actions/order";
 import { getStoreBranding } from "@/lib/actions/store-branding";
 import { requireStoreCustomer } from "@/lib/actions/store-customer";
 import { DISPUTABLE_ORDER_STATUSES } from "@/lib/constants/dispute";
+import { getAccountCopy } from "@/lib/account-copy";
+import { prisma } from "@/lib/prisma";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Package, CheckCircle2, XCircle, RotateCcw, AlertTriangle, ArrowUpRight, ShoppingBag, ShieldAlert, ArrowLeft, Wallet, Layers } from "lucide-react";
@@ -40,6 +42,9 @@ export async function OrdersListContent({ slug }: { slug: string }) {
 
   const orders = await listOrdersForBuyerAtStore(slug);
   const accent = store.themeColors?.primary || "#4f46e5"; // sensible fallback, still per-store when set
+  const record = await prisma.store.findUnique({ where: { slug }, select: { template: { select: { name: true } } } });
+  const copy = getAccountCopy(record?.template?.name, store.businessCategory);
+  const orderWord = copy.orders.toLowerCase();
 
   const totalSpent = orders
     .filter((o) => !["CANCELLED", "REFUNDED"].includes(o.status))
@@ -82,7 +87,7 @@ export async function OrdersListContent({ slug }: { slug: string }) {
               <div className="mx-auto mb-5 flex h-16 w-16 items-center justify-center rounded-2xl shadow-lg" style={{ background: accent }}>
                 <ShoppingBag className="h-7 w-7 text-white" />
               </div>
-              <h2 className="text-lg font-bold text-slate-900">No orders yet</h2>
+              <h2 className="text-lg font-bold text-slate-900">No {orderWord} yet</h2>
               <p className="mx-auto mt-1.5 max-w-xs text-sm text-slate-500">
                 Once you pay for something from {store.name}, it&apos;ll show up here with live status updates.
               </p>
@@ -98,7 +103,7 @@ export async function OrdersListContent({ slug }: { slug: string }) {
           <div>
             <div className="mb-3 flex items-center justify-between">
               <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">
-                {orders.length} order{orders.length === 1 ? "" : "s"}
+                {orders.length} {orderWord.replace(/s$/, "")}{orders.length === 1 ? "" : "s"}
               </p>
               <Link
                 href={`/store/${slug}/account/recover-order`}
@@ -187,6 +192,8 @@ export default async function StoreOrdersPage({ params }: { params: Promise<{ sl
   const { slug } = await params;
   const store = await getStoreBranding(slug);
   if (!store) notFound();
+  const record = await prisma.store.findUnique({ where: { slug }, select: { template: { select: { name: true } } } });
+  const copy = getAccountCopy(record?.template?.name, store.businessCategory);
 
   return (
     <div className="min-h-screen bg-slate-50">
@@ -205,7 +212,7 @@ export default async function StoreOrdersPage({ params }: { params: Promise<{ sl
             <img src={store.logoUrl} alt={store.name} className="h-9 w-9 rounded-lg object-cover ring-1 ring-slate-200" />
           )}
           <div className="min-w-0">
-            <h1 className="truncate text-lg font-bold leading-tight text-slate-900">My orders</h1>
+            <h1 className="truncate text-lg font-bold leading-tight text-slate-900">My {copy.orders.toLowerCase()}</h1>
             <p className="truncate text-xs text-slate-500">{store.name}</p>
           </div>
         </div>
