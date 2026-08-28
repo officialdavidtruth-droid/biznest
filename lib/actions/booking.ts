@@ -518,6 +518,35 @@ export async function createBooking(
     };
   }
 
+  /**
+   * Duplicate-booking guard.
+   *
+   * Blocks a new booking if the same customer (by account id, or by
+   * guest email when booking without an account) already has a PENDING
+   * booking for this exact service + scheduled time. This catches
+   * accidental double-submits (double-tap, back-button retry, refresh)
+   * without blocking legitimate repeat bookings for a different date/time.
+   */
+  const duplicateBooking = await prisma.booking.findFirst({
+    where: {
+      serviceId,
+      scheduledAt,
+      status: "PENDING",
+      ...(session?.user?.id
+        ? { buyerId: session.user.id }
+        : { guestEmail: normalizedGuest!.email }),
+    },
+    select: { id: true },
+  });
+
+  if (duplicateBooking) {
+    return {
+      success: false,
+      error:
+        "You already have a pending booking for this service at this date and time.",
+    };
+  }
+
   const booking =
     await prisma.booking.create({
       data: {
@@ -674,6 +703,34 @@ export async function createStayBooking(
   }
 
   const nights = Math.max(1, Math.round((checkOut.getTime() - checkIn.getTime()) / (1000 * 60 * 60 * 24)));
+
+  /**
+   * Duplicate-booking guard (stay bookings).
+   *
+   * Blocks a new booking if the same customer already has an identical
+   * PENDING booking for this service with the exact same check-in/check-out
+   * dates — same idea as the appointment guard above, adapted for stays.
+   */
+  const duplicateStayBooking = await prisma.booking.findFirst({
+    where: {
+      serviceId,
+      checkIn,
+      checkOut,
+      status: "PENDING",
+      ...(session?.user?.id
+        ? { buyerId: session.user.id }
+        : { guestEmail: normalizedGuest!.email }),
+    },
+    select: { id: true },
+  });
+
+  if (duplicateStayBooking) {
+    return {
+      success: false,
+      error:
+        "You already have a pending booking for this service with these dates.",
+    };
+  }
 
   // Race-condition-safe: pick a free unit and create the booking inside one
   // transaction so two shoppers can't both land on the same last-free unit.
