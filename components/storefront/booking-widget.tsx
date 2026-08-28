@@ -106,6 +106,10 @@ export function BookingWidget({
     startTransition(async () => {
       if (unitBased) {
         setCheckOut("");
+        // Preview tonight's availability immediately, before the shopper
+        // has picked a check-out date, so they see how many rooms/units
+        // are left right away instead of several taps later.
+        setAvailableUnits(await getAvailableUnitCount(serviceId, iso, addDays(iso, 1)));
         return;
       }
       const [available, people] = await Promise.all([
@@ -258,8 +262,20 @@ export function BookingWidget({
             ))}
           </div>
           {availableUnits !== null && (
-            <div style={{ marginTop: 10, fontSize: 12, opacity: .7 }}>
-              {availableUnits ? `${availableUnits} unit${availableUnits === 1 ? "" : "s"} available` : "No availability for these dates."}
+            <div
+              style={{
+                marginTop: 10,
+                fontSize: 12,
+                fontWeight: availableUnits > 0 && availableUnits <= 3 ? 750 : 500,
+                color: availableUnits === 0 ? undefined : availableUnits <= 3 ? accent : undefined,
+                opacity: availableUnits === 0 ? 0.7 : 1,
+              }}
+            >
+              {availableUnits === 0
+                ? "No availability for these dates."
+                : checkOut
+                  ? `${availableUnits} unit${availableUnits === 1 ? "" : "s"} available for these dates.`
+                  : `${availableUnits} unit${availableUnits === 1 ? "" : "s"} available for check-in ${dateLabel(date)} — pick a check-out to confirm.`}
             </div>
           )}
         </>
@@ -267,7 +283,12 @@ export function BookingWidget({
 
       {step === 2 && !unitBased && (
         <>
-          <div style={{ fontWeight: 750, fontSize: 13, marginBottom: 9 }}>Available times · {dateLabel(date)}</div>
+          <div style={{ fontWeight: 750, fontSize: 13, marginBottom: 3 }}>Available times · {dateLabel(date)}</div>
+          {slots !== null && slots.length > 0 && (
+            <div style={{ fontSize: 11.5, marginBottom: 9, fontWeight: slots.length <= 3 ? 750 : 500, color: slots.length <= 3 ? accent : undefined, opacity: slots.length <= 3 ? 1 : .6 }}>
+              {slots.length} slot{slots.length === 1 ? "" : "s"} left on this date
+            </div>
+          )}
           {slots === null ? (
             <div style={{ padding: 14, opacity: .55, fontSize: 12 }}>Checking availability…</div>
           ) : slots.length === 0 ? (
