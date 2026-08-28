@@ -53,7 +53,25 @@ function formatDate(value: string | null) {
   return new Intl.DateTimeFormat("en-NG", { day: "numeric", month: "short", year: "numeric" }).format(new Date(value));
 }
 
-export function Customer360View({ customers, openHint }: { customers: Customer360[]; openHint?: OpenHint }) {
+export function Customer360View({
+  customers,
+  openHint,
+  sellsProducts = true,
+  offersServices = false,
+}: {
+  customers: Customer360[];
+  openHint?: OpenHint;
+  // Set once at onboarding (see lib/actions/customers.ts). A pure-service
+  // business (offersServices only) gets "Client 360" with no POS/online
+  // channel breakdown, since it has no POS. A pure-product business keeps
+  // "Customer 360". Hybrids (both true) keep the full customer-style view
+  // since they do run POS sales alongside services.
+  sellsProducts?: boolean;
+  offersServices?: boolean;
+}) {
+  const isServiceOnly = offersServices && !sellsProducts;
+  const personLabel = isServiceOnly ? "Client" : "Customer";
+  const peopleLabel = isServiceOnly ? "Clients" : "Customers";
   const hinted = useMemo(() => resolveHint(customers, openHint), [customers, openHint]);
   const [query, setQuery] = useState("");
   const [selectedId, setSelectedId] = useState(hinted?.id ?? customers[0]?.id ?? null);
@@ -69,8 +87,13 @@ export function Customer360View({ customers, openHint }: { customers: Customer36
   return (
     <div className="space-y-5">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <div><h1 className="text-xl font-semibold">Customer 360</h1><p className="text-sm text-muted-foreground">Online, POS and repeat-customer activity in one profile.</p></div>
-        <div className="text-xs text-muted-foreground">{customers.length} customer{customers.length === 1 ? "" : "s"}</div>
+        <div>
+          <h1 className="text-xl font-semibold">{personLabel} 360</h1>
+          <p className="text-sm text-muted-foreground">
+            {isServiceOnly ? "Every client's booking and purchase history in one profile." : "Online, POS and repeat-customer activity in one profile."}
+          </p>
+        </div>
+        <div className="text-xs text-muted-foreground">{customers.length} {customers.length === 1 ? personLabel.toLowerCase() : peopleLabel.toLowerCase()}</div>
       </div>
 
       <div className="grid gap-4 lg:grid-cols-[280px_1fr]">
@@ -109,25 +132,25 @@ export function Customer360View({ customers, openHint }: { customers: Customer36
             </div>
           </div>
 
-          <div className="grid gap-4 md:grid-cols-3">
-            <div className="rounded-xl border bg-background p-4"><p className="text-xs text-muted-foreground">Online sales</p><p className="mt-1 text-xl font-semibold">{selected.onlineOrders}</p></div>
-            <div className="rounded-xl border bg-background p-4"><p className="text-xs text-muted-foreground">POS sales</p><p className="mt-1 text-xl font-semibold">{selected.posOrders}</p></div>
-            <div className="rounded-xl border bg-background p-4"><p className="text-xs text-muted-foreground">Customer since</p><p className="mt-1 text-sm font-semibold">{formatDate(selected.firstPurchase)}</p></div>
+          <div className={`grid gap-4 ${sellsProducts ? "md:grid-cols-3" : "md:grid-cols-1"}`}>
+            {sellsProducts && <div className="rounded-xl border bg-background p-4"><p className="text-xs text-muted-foreground">Online sales</p><p className="mt-1 text-xl font-semibold">{selected.onlineOrders}</p></div>}
+            {sellsProducts && <div className="rounded-xl border bg-background p-4"><p className="text-xs text-muted-foreground">POS sales</p><p className="mt-1 text-xl font-semibold">{selected.posOrders}</p></div>}
+            <div className="rounded-xl border bg-background p-4"><p className="text-xs text-muted-foreground">{personLabel} since</p><p className="mt-1 text-sm font-semibold">{formatDate(selected.firstPurchase)}</p></div>
           </div>
 
           <div className="grid gap-4 xl:grid-cols-[1fr_320px]">
             <div className="rounded-xl border bg-background p-4">
-              <div className="mb-3 flex items-center gap-2"><ShoppingBag className="h-4 w-4 text-muted-foreground" /><h3 className="text-sm font-semibold">Recent orders</h3></div>
-              <div className="overflow-x-auto"><table className="w-full text-sm"><thead className="border-b text-left text-[11px] uppercase text-muted-foreground"><tr><th className="px-2 py-2">Order</th><th className="px-2 py-2">Channel</th><th className="px-2 py-2">Items</th><th className="px-2 py-2 text-right">Amount</th><th className="px-2 py-2">Date</th></tr></thead><tbody>{selected.ordersList.map((o) => <tr key={o.id} className="border-b last:border-0"><td className="px-2 py-3 font-medium">{o.number}</td><td className="px-2 py-3"><span className="rounded-full bg-muted px-2 py-1 text-[10px]">{o.channel}</span></td><td className="max-w-[260px] px-2 py-3 text-xs text-muted-foreground">{o.items.join(", ") || "—"}</td><td className="px-2 py-3 text-right font-medium">{money(o.total)}</td><td className="px-2 py-3 text-xs text-muted-foreground">{formatDate(o.createdAt)}</td></tr>)}{selected.ordersList.length === 0 && <tr><td colSpan={5} className="px-2 py-10 text-center text-xs text-muted-foreground">No completed purchases yet.</td></tr>}</tbody></table></div>
+              <div className="mb-3 flex items-center gap-2"><ShoppingBag className="h-4 w-4 text-muted-foreground" /><h3 className="text-sm font-semibold">{isServiceOnly ? "Recent bookings" : "Recent orders"}</h3></div>
+              <div className="overflow-x-auto"><table className="w-full text-sm"><thead className="border-b text-left text-[11px] uppercase text-muted-foreground"><tr><th className="px-2 py-2">{isServiceOnly ? "Booking" : "Order"}</th>{sellsProducts && <th className="px-2 py-2">Channel</th>}<th className="px-2 py-2">Items</th><th className="px-2 py-2 text-right">Amount</th><th className="px-2 py-2">Date</th></tr></thead><tbody>{selected.ordersList.map((o) => <tr key={o.id} className="border-b last:border-0"><td className="px-2 py-3 font-medium">{o.number}</td>{sellsProducts && <td className="px-2 py-3"><span className="rounded-full bg-muted px-2 py-1 text-[10px]">{o.channel}</span></td>}<td className="max-w-[260px] px-2 py-3 text-xs text-muted-foreground">{o.items.join(", ") || "—"}</td><td className="px-2 py-3 text-right font-medium">{money(o.total)}</td><td className="px-2 py-3 text-xs text-muted-foreground">{formatDate(o.createdAt)}</td></tr>)}{selected.ordersList.length === 0 && <tr><td colSpan={sellsProducts ? 5 : 4} className="px-2 py-10 text-center text-xs text-muted-foreground">{isServiceOnly ? "No completed bookings yet." : "No completed purchases yet."}</td></tr>}</tbody></table></div>
             </div>
             <div className="rounded-xl border bg-background p-4">
-              <h3 className="text-sm font-semibold">Top products</h3><p className="mb-3 mt-1 text-xs text-muted-foreground">Based on purchase history</p>
+              <h3 className="text-sm font-semibold">{isServiceOnly ? "Top services" : "Top products"}</h3><p className="mb-3 mt-1 text-xs text-muted-foreground">Based on purchase history</p>
               <div className="space-y-3">{selected.topProducts.map((p) => <div key={p.name} className="flex items-center justify-between gap-3"><div className="min-w-0"><p className="truncate text-xs font-medium">{p.name}</p><p className="text-[11px] text-muted-foreground">{p.quantity} item{p.quantity === 1 ? "" : "s"}</p></div><p className="text-xs font-semibold">{money(p.revenue)}</p></div>)}{selected.topProducts.length === 0 && <p className="py-8 text-center text-xs text-muted-foreground">No product history yet.</p>}</div>
             </div>
           </div>
 
-          {selected.notes && <div className="rounded-xl border bg-primary/5 p-4 text-sm"><p className="font-medium">Customer notes</p><p className="mt-1 text-sm text-muted-foreground">{selected.notes}</p></div>}
-        </section> : <section className="grid min-h-[420px] place-items-center rounded-xl border bg-background"><div className="text-center"><UserRound className="mx-auto h-8 w-8 text-muted-foreground/50" /><p className="mt-3 text-sm font-medium">Select a customer</p><p className="mt-1 text-xs text-muted-foreground">Their complete sales history will appear here.</p></div></section>}
+          {selected.notes && <div className="rounded-xl border bg-primary/5 p-4 text-sm"><p className="font-medium">{personLabel} notes</p><p className="mt-1 text-sm text-muted-foreground">{selected.notes}</p></div>}
+        </section> : <section className="grid min-h-[420px] place-items-center rounded-xl border bg-background"><div className="text-center"><UserRound className="mx-auto h-8 w-8 text-muted-foreground/50" /><p className="mt-3 text-sm font-medium">Select a {personLabel.toLowerCase()}</p><p className="mt-1 text-xs text-muted-foreground">Their complete {isServiceOnly ? "booking" : "sales"} history will appear here.</p></div></section>}
       </div>
     </div>
   );
