@@ -74,8 +74,12 @@ export async function getTrustScoreChecklist(businessId: string): Promise<TrustS
     },
     {
       key: "payment",
-      // Backed by Store.payoutVerifiedAt, set when a real Paystack/Flutterwave
-      // subaccount is connected (see connectPayoutAccount in lib/actions/store.ts).
+      // Backed by Store.payoutVerifiedAt, which is only set once Paystack
+      // confirms real KYC verification on the subaccount (not merely
+      // "connected" -- see refreshPayoutVerification in lib/actions/store.ts).
+      // Was previously stamped at connection time, which meant this checklist
+      // item claimed "verified" for stores that had only linked a bank
+      // account and hadn't actually passed Paystack's review yet.
       met: Boolean(business.store?.payoutVerifiedAt),
       label: "Payment verified",
     },

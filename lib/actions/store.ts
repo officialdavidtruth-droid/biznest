@@ -14,7 +14,7 @@ import slugify from "slugify";
 import { SAMPLE_LISTINGS } from "@/lib/sample-listings";
 import { fetchDemoPhoto, fetchDemoPhotos } from "@/lib/demo-images";
 import type { ActionResult } from "@/types/actions";
-import { resolvePaystackAccount, createPaystackSubaccount } from "@/lib/payments/paystack";
+import { resolvePaystackAccount, createPaystackSubaccount, checkPaystackSubaccountVerification } from "@/lib/payments/paystack";
 import { resolveFlutterwaveAccount, createFlutterwaveSubaccount } from "@/lib/payments/flutterwave";
 
 /**
@@ -504,6 +504,10 @@ export async function getPayoutStatus(slug: string) {
     paystackConnected: Boolean(store.paystackSubaccountCode),
     flutterwaveConnected: Boolean(store.flutterwaveSubaccountId),
     payoutDetails: store.payoutDetails as { bankName?: string; accountName?: string; maskedAccountNumber?: string; provider?: "PAYSTACK" | "FLUTTERWAVE" } | null,
+    connectedAt: store.payoutConnectedAt,
+    // Whether the gateway has actually confirmed KYC, not just that an
+    // account is linked -- see checkPaystackSubaccountVerification. Until
+    // this is set, warn the owner their first payout will be held.
     verifiedAt: store.payoutVerifiedAt,
     commissionRate: Number(store.subscription?.commissionRate ?? 8),
   };
@@ -550,7 +554,11 @@ export async function connectPayoutAccount(
       where: { id: store.id },
       data: {
         paystackSubaccountCode: subaccount.data.subaccount_code,
-        payoutVerifiedAt: new Date(),
+        // Connected, not verified -- Paystack still has to manually
+        // review KYC before this subaccount's first payout releases.
+        // payoutVerifiedAt stays null until refreshPayoutVerification
+        // confirms is_verified against the real API.
+        payoutConnectedAt: new Date(),
         payoutDetails: { provider: "PAYSTACK", bankName: input.bankName, accountName: resolved.data.account_name, maskedAccountNumber: masked },
       },
     });
@@ -575,7 +583,11 @@ export async function connectPayoutAccount(
       where: { id: store.id },
       data: {
         flutterwaveSubaccountId: subaccount.data.subaccount_id ?? String(subaccount.data.id),
-        payoutVerifiedAt: new Date(),
+        // Same connected-vs-verified split as the Paystack branch above,
+        // for consistency in the shared Store fields. Flutterwave's own
+        // verification model isn't confirmed yet -- treat as connected
+        // only until that's checked the same way.
+        payoutConnectedAt: new Date(),
         payoutDetails: { provider: "FLUTTERWAVE", bankName: input.bankName, accountName: resolved.data.account_name, maskedAccountNumber: masked },
       },
     });
@@ -587,6 +599,43 @@ export async function connectPayoutAccount(
 
   revalidatePath(`/store/${slug}/admin/payouts`);
   return { success: true, data: undefined };
+}
+
+/**
+ * Re-checks Paystack's actual verification status for this store's
+ * subaccount and stamps payoutVerifiedAt the first time it comes back
+ * true. Paystack has no webhook for this (confirmed via support, Aug
+ * 2026 -- verification is a manual dashboard review), so this only
+ * updates on demand: call it from a "Refresh status" button on the
+ * payouts page, or wire it into a periodic job later if polling on a
+ * schedule turns out to matter more than on-demand checks.
+ */
+export async function refreshPayoutVerification(slug: string): Promise<ActionResult<{ verified: boolean }>> {
+  const access = await assertStoreOwner(slug);
+  if (!access.success) return { success: false, error: access.error };
+  const { store } = access;
+
+  if (!store.paystackSubaccountCode) {
+    return { success: false, error: "No Paystack payout account connected yet." };
+  }
+  if (store.payoutVerifiedAt) {
+    return { success: true, data: { verified: true } };
+  }
+
+  const result = await checkPaystackSubaccountVerification(store.paystackSubaccountCode);
+  if (!result.status) {
+    return { success: false, error: result.message || "Couldn't reach Paystack to check verification status." };
+  }
+
+  if (result.isVerified) {
+    await prisma.store.update({
+      where: { id: store.id },
+      data: { payoutVerifiedAt: new Date() },
+    });
+  }
+
+  revalidatePath(`/store/${slug}/admin/payouts`);
+  return { success: true, data: { verified: Boolean(result.isVerified) } };
 }
 
 export async function disconnectPayoutAccount(slug: string, provider: "PAYSTACK" | "FLUTTERWAVE"): Promise<ActionResult> {
