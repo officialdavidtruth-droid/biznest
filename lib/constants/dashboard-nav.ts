@@ -73,7 +73,7 @@ export function buildNavGroups(business: { sellsProducts: boolean; offersService
 
   const allManageItems: NavItem[] = [
     { label: "Inventory", href: "/inventory", icon: Boxes, permission: "products" },
-    { label: "Customers", href: "/customers", icon: Users, permission: "customers" },
+    { label: business.offersServices && !business.sellsProducts ? "Clients" : "Customers", href: "/customers", icon: Users, permission: "customers" },
     { label: "Categories", href: "/categories", icon: Boxes, permission: "products" },
     { label: "Suppliers", href: "/suppliers", icon: Users, permission: "products" },
     { label: "Purchase orders", href: "/purchase-orders", icon: FileSignature, permission: "products" },
