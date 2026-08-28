@@ -1616,7 +1616,7 @@ model Payment {
 
   // Set if this refund triggered a merchant-share clawback (see
   // StoreRefundClawback) because the split had already settled.
-  refundClawback StoreRefundClawback?
+  refundClawbacks StoreRefundClawback[]
 
   @@index([orderId])
   @@index([storeId])
