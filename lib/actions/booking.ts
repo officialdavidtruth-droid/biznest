@@ -609,7 +609,7 @@ export async function createStayBooking(
   guest?: { name: string; email: string; phone: string }
 ): Promise<ActionResult<{ bookingId: string }>> {
   const customerSession = await getStoreCustomerSession();
-  const session = customerSession
+  const initialSession = customerSession
     ? {
         user: {
           id: customerSession.user.id,
@@ -621,7 +621,7 @@ export async function createStayBooking(
       }
     : await auth();
 
-  if (!session?.user?.id && !guest) {
+  if (!initialSession?.user?.id && !guest) {
     return { success: false, error: "Enter your name, email and phone to book as a guest." };
   }
 
@@ -629,11 +629,11 @@ export async function createStayBooking(
     ? { name: guest.name.trim(), email: guest.email.trim().toLowerCase(), phone: guest.phone.trim() }
     : null;
 
-  if (!session?.user?.id && (!normalizedGuest?.name || !normalizedGuest.email || !normalizedGuest.phone || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalizedGuest.email))) {
+  if (!initialSession?.user?.id && (!normalizedGuest?.name || !normalizedGuest.email || !normalizedGuest.phone || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalizedGuest.email))) {
     return { success: false, error: "Please provide a valid name, email and phone number." };
   }
 
-  const rateKey = session?.user?.id ? `booking:${session.user.id}` : `booking-guest:${normalizedGuest!.email}:${serviceId}`;
+  const rateKey = initialSession?.user?.id ? `booking:${initialSession.user.id}` : `booking-guest:${normalizedGuest!.email}:${serviceId}`;
   const rate = await checkRateLimit(rateKey, 10, 5 * 60 * 1000);
   if (!rate.allowed) {
     return { success: false, error: "Too many booking attempts — please wait a few minutes and try again." };
@@ -644,13 +644,23 @@ export async function createStayBooking(
     return { success: false, error: "This service isn't bookable." };
   }
 
+  // Same fallback as createBooking above: a session tied to a different
+  // store doesn't hard-block the stay booking if usable guest details were
+  // submitted alongside it -- it books as a guest instead.
+  let session = initialSession;
   if (session?.user?.role === "CUSTOMER") {
     const membership = await requireStoreCustomerByStoreId(service.storeId);
-    if (!membership) {
-      return { success: false, error: "This customer account belongs to another store. Sign up for this store to continue." };
-    }
-    if (session.user.customerStoreId !== service.storeId) {
-      return { success: false, error: "This customer account belongs to another store. Sign up for this store to continue." };
+    const sessionBelongsToThisStore = Boolean(membership) && session.user.customerStoreId === service.storeId;
+    if (!sessionBelongsToThisStore) {
+      if (normalizedGuest?.name && normalizedGuest.email && normalizedGuest.phone) {
+        session = null;
+      } else {
+        return {
+          success: false,
+          error:
+            "This customer account belongs to another store. Enter your name, email and phone below to continue as a guest, or sign up for this store to save it to your account.",
+        };
+      }
     }
   }
 
