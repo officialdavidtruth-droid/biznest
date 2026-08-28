@@ -12,7 +12,7 @@ import { toast } from "sonner";
 
 type Mode = "electra" | "atelier" | "kinetic" | "bloom" | "haven" | "harvest" | "maison" | "hotel" | "ember" | "muse" | "frame" | "north" | "pure" | "forge";
 
-type Zone = { id: string; name: string; fee: number };
+type Zone = { id: string; name: string; city: string | null; fee: number; estimatedMinutes: number | null };
 
 const modeMeta: Record<Mode, { kicker: string; title: string; action: string; summary: string; labels: [string, string, string]; dark?: boolean }> = {
   electra: { kicker: "Secure checkout", title: "Finish your order.", action: "Continue to secure payment", summary: "Your tech, ready for the next step.", labels: ["Cart", "Details", "Payment"] },
@@ -52,7 +52,7 @@ export function SignatureCheckoutClient({ slug, templateName }: { slug: string; 
 
   useEffect(() => {
     listActiveDeliveryZones(slug)
-      .then((zs) => setZones(zs.map((z) => ({ id: z.id, name: z.name, fee: Number(z.fee) }))))
+      .then((zs) => setZones(zs.map((z) => ({ id: z.id, name: z.name, city: z.city, estimatedMinutes: z.estimatedMinutes, fee: Number(z.fee) }))))
       .catch(() => setZones([]));
   }, [slug]);
 
@@ -148,5 +148,5 @@ export function SignatureCheckoutClient({ slug, templateName }: { slug: string; 
       </form>
     </div>
   </main>;
-                                                                                                                                                        }
-    
+}
+  
