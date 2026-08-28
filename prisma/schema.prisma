@@ -609,6 +609,19 @@ model Store {
   // account name, masked number) -- the actual subaccount codes above are
   // what payments are actually split to; this is just what we show them.
   payoutDetails            Json?
+  // Set the moment the owner links a bank account and we successfully
+  // create the gateway subaccount -- this is NOT verification, just
+  // "connected." Paystack/Flutterwave still have to manually verify the
+  // subaccount (KYC) before its first payout releases; see payoutVerifiedAt.
+  payoutConnectedAt        DateTime?
+  // Set only once the gateway confirms the subaccount actually passed KYC
+  // verification (Paystack: GET /subaccount/:code -> is_verified; see
+  // checkPaystackSubaccountVerification + refreshPayoutVerification).
+  // Until this is set, the store's first real payout is held by the
+  // gateway even though checkout itself works fine. Do not set this at
+  // connection time -- see incident where it was previously stamped
+  // immediately on subaccount creation, which made trust-score.ts report
+  // "payout verified" for stores that were merely connected, not verified.
   payoutVerifiedAt         DateTime?
 
   // Running balance of platform commission owed from POS (cash/in-person)
