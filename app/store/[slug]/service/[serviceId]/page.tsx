@@ -39,6 +39,17 @@ export default async function ServicePage({ params }: { params: Promise<{ slug: 
   // service pages -- it was previously rendered unconditionally here,
   // which is why a pure-booking store still showed a shopping bag.
   const showCart = store.business?.sellsProducts ?? true;
+  const ROOM_PATTERN = /room|suite|studio|apartment|villa|penthouse|chalet|cottage|lodge|duplex/i;
+  const isHotelBusiness = store.business?.businessType === "Hotel & Lodging";
+  const isRoomLike = isHotelBusiness && ROOM_PATTERN.test(`${service.name} ${service.category?.name ?? ""}`);
+  const unitLabel = isRoomLike ? "room" : "spot";
+  // Other bookable options for this business so a shopper who hits low or
+  // zero availability has somewhere useful to go instead of a dead end.
+  const otherOptionsHref = service.totalUnits
+    ? isRoomLike
+      ? `/${slug}/hotel/rooms`
+      : `/${slug}`
+    : undefined;
 
   return (
     <div style={{ fontFamily: theme.font, color: ink, background: bg, minHeight: "100vh" }} className="storefront-root sp-root">
@@ -192,6 +203,8 @@ export default async function ServicePage({ params }: { params: Promise<{ slug: 
                 radius={radius}
                 card={theme.card}
                 headlineFont={theme.headlineFont}
+                unitLabel={unitLabel}
+                otherOptionsHref={otherOptionsHref}
                 startOpen
               />
             ) : (
