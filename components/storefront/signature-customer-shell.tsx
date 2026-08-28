@@ -3,24 +3,29 @@ import { ArrowLeft, LayoutDashboard, Package, Heart, MapPin, Bell, Calendar, Sta
 import { getSignatureTheme } from "@/lib/template-themes";
 import { SignOutButton } from "@/components/forms/sign-out-button";
 
-type Props = { children: React.ReactNode; slug: string; templateName: string; storeName: string; logoUrl: string | null; email?: string | null; unreadMessageCount: number };
+type Props = { children: React.ReactNode; slug: string; templateName: string; storeName: string; logoUrl: string | null; email?: string | null; unreadMessageCount: number; nav: { sellsProducts: boolean; offersServices: boolean } };
 
 const labels: Record<string, { orders: string; bookings: string; wishlist: string; account: string }> = {
   electra: { orders: "Orders", bookings: "Bookings", wishlist: "Wishlist", account: "My account" }, atelier: { orders: "Purchases", bookings: "Appointments", wishlist: "Saved pieces", account: "My atelier" }, kinetic: { orders: "Orders", bookings: "Bookings", wishlist: "Saved kicks", account: "My account" }, bloom: { orders: "Orders", bookings: "Appointments", wishlist: "Saved beauty", account: "My account" }, haven: { orders: "Orders", bookings: "Deliveries", wishlist: "Saved home", account: "My home" }, harvest: { orders: "Orders", bookings: "Deliveries", wishlist: "Saved groceries", account: "My account" }, maison: { orders: "Purchases", bookings: "My stays", wishlist: "Saved stays", account: "Guest account" }, hotel: { orders: "Purchases", bookings: "Reservations", wishlist: "Saved stays", account: "Guest account" }, ember: { orders: "Orders", bookings: "Reservations", wishlist: "Saved", account: "My account" }, muse: { orders: "Orders", bookings: "Appointments", wishlist: "Saved services", account: "Client account" }, frame: { orders: "Orders", bookings: "My sessions", wishlist: "Saved", account: "Client portal" }, north: { orders: "Invoices", bookings: "Projects", wishlist: "Saved", account: "Client portal" }, pure: { orders: "Orders", bookings: "My cleans", wishlist: "Saved", account: "My account" }, forge: { orders: "Orders", bookings: "Projects", wishlist: "Saved", account: "Project portal" },
 };
 
-export function SignatureCustomerShell({ children, slug, templateName, storeName, logoUrl, email, unreadMessageCount }: Props) {
+export function SignatureCustomerShell({ children, slug, templateName, storeName, logoUrl, email, unreadMessageCount, nav }: Props) {
   const theme = getSignatureTheme(templateName);
   const mode = theme.signatureMode;
   const copy = labels[mode] ?? labels.electra;
+  // Orders and Bookings are only meaningful if the store actually sells
+  // that kind of thing -- a pure service business never has "Orders" (see
+  // account/layout.tsx for why), a pure product business never has
+  // "Bookings", and a hybrid store (e.g. hotel + restaurant) gets both.
+  // Addresses only matters when something physical could ship.
   const links = [
     { href: `/store/${slug}/account`, label: copy.account, icon: LayoutDashboard },
-    { href: `/store/${slug}/orders`, label: copy.orders, icon: Package },
+    ...(nav.sellsProducts ? [{ href: `/store/${slug}/orders`, label: copy.orders, icon: Package }] : []),
     { href: `/store/${slug}/account/wishlist`, label: copy.wishlist, icon: Heart },
-    { href: `/store/${slug}/account/addresses`, label: "Addresses", icon: MapPin },
+    ...(nav.sellsProducts ? [{ href: `/store/${slug}/account/addresses`, label: "Addresses", icon: MapPin }] : []),
     { href: `/store/${slug}/account/loyalty`, label: "Rewards", icon: Bell },
     { href: `/store/${slug}/account/wallet`, label: "Wallet", icon: Wallet },
-    { href: `/store/${slug}/account/bookings`, label: copy.bookings, icon: Calendar },
+    ...(nav.offersServices ? [{ href: `/store/${slug}/account/bookings`, label: copy.bookings, icon: Calendar }] : []),
     { href: `/store/${slug}/account/reviews`, label: "Reviews", icon: Star },
     { href: `/store/${slug}/account/messages`, label: "Support", icon: MessageSquare, badge: unreadMessageCount },
   ];
