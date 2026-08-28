@@ -332,5 +332,5 @@ export function BookingWidget({
       )}
     </div>
   );
-                      }
-                      
+  }
+  
