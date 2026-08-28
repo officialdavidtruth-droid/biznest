@@ -1,9 +1,12 @@
 // Route: /store/[slug]/admin/payments
+import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { getPayoutStatus } from "@/lib/actions/store";
 import { ConnectPayoutForm } from "@/components/dashboard/connect-payout-form";
 import { getPosCommissionBalance } from "@/lib/actions/pos";
 import { PosCommissionCard } from "@/components/dashboard/pos-commission-card";
+import { getRefundClawbackBalance } from "@/lib/actions/refund";
+import { RefundClawbackCard } from "@/components/dashboard/refund-clawback-card";
 
 export default async function PaymentsPage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
@@ -13,13 +16,20 @@ export default async function PaymentsPage({ params }: { params: Promise<{ slug:
   const payout = await getPayoutStatus(slug);
   if (!payout) return null;
 
-  const [paidCount, paidTotal, posCommission] = await Promise.all([
+  const session = await auth();
+  const isStaff = session?.user?.role === "PLATFORM_ADMIN" || session?.user?.role === "SUPPORT_MODERATOR";
+
+  const [paidCount, paidTotal, posCommission, refundClawback] = await Promise.all([
     prisma.order.count({ where: { storeId: store.id, status: { in: ["PAID", "IN_PROGRESS", "DELIVERED", "COMPLETED"] } } }),
     prisma.order.aggregate({
       where: { storeId: store.id, status: { in: ["PAID", "IN_PROGRESS", "DELIVERED", "COMPLETED"] } },
       _sum: { total: true, commission: true },
     }),
     getPosCommissionBalance(slug),
+    // Staff-only ledger — see assertStaffAccess in lib/actions/refund.ts.
+    // Returns null for a store owner, which RefundClawbackCard treats the
+    // same as "nothing owed" and renders nothing.
+    isStaff ? getRefundClawbackBalance(slug) : Promise.resolve(null),
   ]);
 
   const gross = Number(paidTotal._sum.total ?? 0);
@@ -57,6 +67,8 @@ export default async function PaymentsPage({ params }: { params: Promise<{ slug:
           connected={payout.paystackConnected}
           details={payout.payoutDetails?.provider === "PAYSTACK" ? payout.payoutDetails : null}
           commissionRate={payout.commissionRate}
+          verifiedAt={payout.verifiedAt}
+          connectedAt={payout.connectedAt}
         />
         <ConnectPayoutForm
           slug={slug}
@@ -66,6 +78,12 @@ export default async function PaymentsPage({ params }: { params: Promise<{ slug:
           commissionRate={payout.commissionRate}
         />
       </div>
+
+      {refundClawback && (
+        <div className="mt-6">
+          <RefundClawbackCard slug={slug} balance={refundClawback} />
+        </div>
+      )}
     </div>
   );
 }
