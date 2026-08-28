@@ -1121,6 +1121,13 @@ enum BookingStatus {
   CANCELLED
 }
 
+// NOTE: a partial unique index — ("serviceId","staffId","scheduledAt") WHERE
+// status <> 'CANCELLED' AND "staffId" IS NOT NULL — exists on this table via
+// prisma/migrations/20260828170000_booking_slot_unique_constraint. Prisma's
+// schema syntax can't express a partial index, so it isn't declared with
+// @@unique here, but it's live in the database and is what actually
+// prevents two customers from double-booking the same staff member's slot
+// (see the P2002 catch in createBooking, lib/actions/booking.ts).
 model Booking {
   id          String        @id @default(cuid())
   storeId     String
