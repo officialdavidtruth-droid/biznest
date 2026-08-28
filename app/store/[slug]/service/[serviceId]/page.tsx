@@ -190,6 +190,8 @@ export default async function ServicePage({ params }: { params: Promise<{ slug: 
                 ink={ink}
                 bg={bg}
                 radius={radius}
+                card={theme.card}
+                headlineFont={theme.headlineFont}
                 startOpen
               />
             ) : (
@@ -206,5 +208,4 @@ export default async function ServicePage({ params }: { params: Promise<{ slug: 
       </div>
     </div>
   );
-}
-
+    }
