@@ -18,6 +18,8 @@ import { HeenzyHeader, HeenzyFooter, wrap as heenzyWrap } from "@/components/sto
 import { RivoraHeader, RivoraFooter, wrap as rivoraWrap } from "@/components/storefront/templates/rivora-chrome";
 import { FabtexHeader, FabtexFooter, wrap as fabtexWrap } from "@/components/storefront/templates/fabtex-chrome";
 import { JuiceLifeHeader, JuiceLifeFooter, wrap as juicelifeWrap } from "@/components/storefront/templates/juicelife-chrome";
+import { isSignatureTemplate, getSignatureTheme } from "@/lib/template-themes";
+import { SignatureJourney } from "@/components/storefront/signature-journey";
 
 export async function generateMetadata({ params }: { params: Promise<{ slug: string; categoryId: string }> }): Promise<Metadata> {
   const { slug, categoryId } = await params;
@@ -65,6 +67,17 @@ export default async function CategoryPage({ params }: { params: Promise<{ slug:
   // store's actual chosen template.
   const theme: TemplateTheme = resolveStoreTheme(store.template?.category, store.name, themeOverrides, store.fontFamily, store.template?.name);
   const { accent, ink, bg, radius } = theme;
+
+  if (isSignatureTemplate(store.template?.name)) {
+    const t = getSignatureTheme(store.template?.name);
+    return <SignatureJourney store={store} slug={slug} templateName={store.template?.name ?? ""} title={category.name}>
+      <section className="signature-category-journey">
+        <div className="signature-journey-heading"><div><small>{category.parent?.name || "COLLECTION"}</small><h1>{category.name}</h1></div><span>{items.length} {items.length === 1 ? "item" : "items"}</span></div>
+        {category.children.length>0&&<div className="signature-category-chips">{category.children.map(c=><Link key={c.id} href={`/store/${slug}/category/${c.id}`}>{c.name}</Link>)}</div>}
+        {items.length===0?<div className="signature-empty">Nothing published in {category.name} yet — check back soon.</div>:<CatalogGrid items={items} slug={`store/${slug}`} accent={accent} ink={ink} radius={radius}/>}
+      </section>
+    </SignatureJourney>;
+  }
 
   const crumbs = (
     <>
