@@ -669,3 +669,55 @@ export async function sendOrderNotificationEmail(email: string, subject: string,
 
   return send({ from: FROM, to: email, subject, html }, { kind: "order-notification", to: email });
 }
+
+/**
+ * Merchant marketing email. Unlike platform transactional mail, this renderer
+ * is built from the store's own visual identity and includes a per-recipient
+ * unsubscribe link. The campaign action only supplies addresses that have
+ * explicitly opted into the store newsletter.
+ */
+export async function sendMarketingEmail(params: {
+  slug: string;
+  email: string;
+  subject: string;
+  input: import("@/lib/actions/marketing").MarketingSendInput;
+  brand: import("@/lib/email/marketing-templates").MarketingBrand;
+}) {
+  const { renderMarketingEmail } = await import("@/lib/email/marketing-templates");
+  const { createUnsubscribeToken } = await import("@/lib/email/unsubscribe-token");
+
+  const token = createUnsubscribeToken(params.brand.storeId, params.email);
+  const unsubscribeUrl = `${APP_URL}/unsubscribe?token=${encodeURIComponent(token)}`;
+  // One-click endpoint for mailbox providers' built-in unsubscribe button
+  // (RFC 8058) — separate from the human-facing confirm page above, since
+  // this one must act immediately on a bare POST with no confirmation.
+  const oneClickUrl = `${APP_URL}/api/unsubscribe?token=${encodeURIComponent(token)}`;
+  const html = renderMarketingEmail(params.input.template, params.brand, {
+    eyebrow: params.input.eyebrow,
+    headline: params.input.headline,
+    body: params.input.body,
+    ctaLabel: params.input.ctaLabel,
+    ctaUrl: params.input.ctaUrl,
+    imageUrl: params.input.imageUrl,
+    items: params.input.items ?? [],
+    previewText: params.input.previewText,
+  }, { unsubscribeUrl });
+
+  const result = await send(
+    {
+      from: FROM,
+      to: params.email,
+      replyTo: params.brand.contactEmail ?? undefined,
+      subject: params.subject,
+      html,
+      headers: {
+        "List-Unsubscribe": `<${oneClickUrl}>`,
+        "List-Unsubscribe-Post": "List-Unsubscribe=One-Click",
+      },
+    },
+    { kind: "marketing-campaign", to: params.email }
+  );
+
+  if (result.error) return { success: false, error: result.error.message };
+  return { success: true };
+}
