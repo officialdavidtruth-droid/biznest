@@ -33,6 +33,7 @@ export default async function CreateStorePage() {
         business={{
           businessName: business.businessName,
           category: business.category,
+          businessSubcategory: business.businessSubcategory,
           sellsProducts: business.sellsProducts,
           offersServices: business.offersServices,
         }}
