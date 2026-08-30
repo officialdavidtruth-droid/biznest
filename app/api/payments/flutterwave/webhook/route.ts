@@ -6,6 +6,8 @@ import { decrementStockForOrder } from "@/lib/actions/order";
 import { emitWebhookEvent } from "@/lib/webhooks/dispatch";
 import { notifyStoreOwnerOfPaidOrder, notifyCustomerOfPaidOrder } from "@/lib/notifications/notify";
 import { NextResponse } from "next/server";
+import { settleWalletFunding, settleServiceBookingPayment } from "@/lib/actions/customer-wallet";
+import { settleReservationPayment } from "@/lib/actions/pms";
 
 /**
  * Server-to-server payment confirmation from Flutterwave.
@@ -69,7 +71,13 @@ export async function POST(req: Request) {
   if (txRef.startsWith("SUBUP-")) {
     const [, storeId, subscriptionId] = txRef.split("-");
     const store = await prisma.store.findUnique({ where: { id: storeId } });
-    if (store && store.subscriptionId !== subscriptionId) {
+    // txRef and transactionId both come from this same signed webhook
+    // payload, so they're already bound to one real event — this amount
+    // check is defense in depth, matching the browser callback, in case a
+    // reference is ever replayed against a different plan.
+    const plan = subscriptionId ? await prisma.subscription.findUnique({ where: { id: subscriptionId } }) : null;
+    const amountMatches = plan && verification.data && Number(verification.data.amount) >= Number(plan.price);
+    if (store && plan && amountMatches && store.subscriptionId !== subscriptionId) {
       await prisma.store.update({ where: { id: store.id }, data: { subscriptionId } });
     }
     await prisma.payment.updateMany({
@@ -87,6 +95,27 @@ export async function POST(req: Request) {
   }
   if (txRef.startsWith("QDEP-")) {
     await settleQuoteDeposit(txRef, verification as object);
+    return NextResponse.json({ received: true });
+  }
+
+  // Wallet funding ("WAL-{walletId}-{random}") and service-booking payments
+  // ("BK-{bookingId}-{random}") settle via their own action file — see the
+  // matching branch in the Paystack webhook. Flutterwave already reports
+  // amounts in the major currency unit (naira), unlike Paystack's kobo, so
+  // no /100 conversion here.
+  if (txRef.startsWith("WAL-") || txRef.startsWith("BK-")) {
+    const amount = verification.data ? Number(verification.data.amount) : 0;
+    if (txRef.startsWith("WAL-")) {
+      await settleWalletFunding(txRef, "FLUTTERWAVE", amount, verification as object);
+    } else {
+      await settleServiceBookingPayment(txRef, "FLUTTERWAVE", amount, verification as object);
+    }
+    return NextResponse.json({ received: true });
+  }
+
+  if (txRef.startsWith("RES-")) {
+    const amount = verification.data ? Number(verification.data.amount) : 0;
+    await settleReservationPayment(txRef, "FLUTTERWAVE", amount, verification as object);
     return NextResponse.json({ received: true });
   }
 
