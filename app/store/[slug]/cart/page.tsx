@@ -24,6 +24,9 @@ import { RivoraHeader, RivoraFooter } from "@/components/storefront/templates/ri
 import { FabtexHeader, FabtexFooter } from "@/components/storefront/templates/fabtex-chrome";
 import { JuiceLifeHeader, JuiceLifeFooter } from "@/components/storefront/templates/juicelife-chrome";
 import { getStoreCategoryTree } from "@/lib/storefront-categories";
+import { isSignatureTemplate } from "@/lib/template-themes";
+import { SignatureCartClient } from "@/components/storefront/signature-cart-client";
+import { SignatureJourney } from "@/components/storefront/signature-journey";
 
 export default async function CartPage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
@@ -39,6 +42,14 @@ export default async function CartPage({ params }: { params: Promise<{ slug: str
   const premium = store && isPremiumTemplate(store.template?.name);
   const homevista = store && isHomeVistaTemplate(store.template?.name);
   const rrw = store && isRrwTemplate(store.template?.name);
+
+  if (store && isSignatureTemplate(store.template?.name)) {
+    return (
+      <SignatureJourney store={store} slug={slug} templateName={store.template?.name ?? ""} title="Your selection">
+        <SignatureCartClient slug={slug} templateName={store.template?.name ?? ""} />
+      </SignatureJourney>
+    );
+  }
 
   if (violet && store) {
     const navCategories = await getStoreCategoryTree(store.id);
