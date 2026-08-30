@@ -1,5 +1,5 @@
 import { PrismaClient, type Prisma } from "@prisma/client";
-import { generateNicheVariations, TEMPLATE_NAME, generateHeenzyVariations, TEMPLATE_NAME_HEENZY, TEMPLATE_NAME_HEENZY_BOUTIQUE, generateNovaVariations, TEMPLATE_NAME_NOVA, TEMPLATE_NAME_NOVA_IVORY, generateVioletVariations, TEMPLATE_NAME_VIOLET, TEMPLATE_NAME_VIOLET_SUNSET, generatePremiumVariation, TEMPLATE_NAME_PREMIUM, generateHomeVistaVariation, TEMPLATE_NAME_HOMEVISTA, generateRrwVariation, TEMPLATE_NAME_RRW, generateMarketplaceVariation, TEMPLATE_NAME_MARKETPLACE, generateArcovaVariation, TEMPLATE_NAME_ARCOVA, generateRivoraVariation, TEMPLATE_NAME_RIVORA, generateJuiceLifeVariation, TEMPLATE_NAME_JUICELIFE, generateFabtexVariation, TEMPLATE_NAME_FABTEX, SIGNATURE_TEMPLATE_CATALOG } from "../lib/template-themes";
+import { generateNicheVariations, TEMPLATE_NAME, generateHeenzyVariations, TEMPLATE_NAME_HEENZY, TEMPLATE_NAME_HEENZY_BOUTIQUE, generateNovaVariations, TEMPLATE_NAME_NOVA, TEMPLATE_NAME_NOVA_IVORY, generateVioletVariations, TEMPLATE_NAME_VIOLET, TEMPLATE_NAME_VIOLET_SUNSET, generatePremiumVariation, TEMPLATE_NAME_PREMIUM, generateHomeVistaVariation, TEMPLATE_NAME_HOMEVISTA, generateRrwVariation, TEMPLATE_NAME_RRW, generateMarketplaceVariation, TEMPLATE_NAME_MARKETPLACE, generateArcovaVariation, TEMPLATE_NAME_ARCOVA, generateRivoraVariation, TEMPLATE_NAME_RIVORA, generateJuiceLifeVariation, TEMPLATE_NAME_JUICELIFE, generateFabtexVariation, TEMPLATE_NAME_FABTEX, SIGNATURE_TEMPLATE_CATALOG, PROFESSIONAL_SERVICE_TEMPLATE_CATALOG } from "../lib/template-themes";
 import { fetchDemoPhoto } from "../lib/demo-images";
 
 const prisma = new PrismaClient();
@@ -177,6 +177,15 @@ async function main() {
         previewUrl: signaturePreviewUrl,
         config: signatureTemplate as unknown as Prisma.InputJsonValue,
       },
+    });
+  }
+
+  // Professional Services: dedicated premium storefronts for every sub-niche.
+  for (const professionalTemplate of PROFESSIONAL_SERVICE_TEMPLATE_CATALOG) {
+    await prisma.storeTemplate.upsert({
+      where: { name: professionalTemplate.variationName },
+      update: { category: professionalTemplate.category, isActive: true, tierRank: professionalTemplate.tierRank, previewUrl: signaturePreviewUrl, config: professionalTemplate as unknown as Prisma.InputJsonValue },
+      create: { name: professionalTemplate.variationName, category: professionalTemplate.category, tierRank: professionalTemplate.tierRank, previewUrl: signaturePreviewUrl, config: professionalTemplate as unknown as Prisma.InputJsonValue },
     });
   }
 

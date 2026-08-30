@@ -108,6 +108,8 @@ model User {
   // could otherwise share an email. That's covered separately by a
   // partial unique index added via raw SQL in this same migration.
   @@unique([email, customerScopeStoreId])
+  creativeProjects CreativeProject[]
+
 }
 
 
@@ -342,6 +344,7 @@ model Business {
 
   businessName          String
   category              String
+  businessSubcategory   String?
   description           String                    @db.Text
 
   // What this business actually sells -- set once at onboarding and driving
@@ -444,6 +447,12 @@ enum PropertyReservationStatus {
   NO_SHOW
 }
 
+enum PropertyPaymentStatus {
+  UNPAID
+  PENDING
+  PAID
+}
+
 model PropertyGuest {
   id          String   @id @default(cuid())
   storeId     String
@@ -488,6 +497,21 @@ model PropertyReservation {
   notes       String?
   checkedInAt DateTime?
   checkedOutAt DateTime?
+  cancelledAt DateTime?
+
+  // Deposit / stay-charge tracking. Nothing here forces a hotel to collect
+  // payment through BizNest -- depositAmount stays null and paymentStatus
+  // stays UNPAID unless a deposit is actually requested via
+  // chargeReservationDeposit (see lib/actions/pms.ts) -- but if they do,
+  // it settles through the same Paystack/Flutterwave webhook + callback
+  // routes every other payment type in this app uses, rather than being
+  // tracked ad hoc.
+  depositAmount   Decimal? @db.Decimal(12, 2)
+  paymentCurrency String?
+  paymentStatus   PropertyPaymentStatus @default(UNPAID)
+  paymentReference String? @unique
+  payments        Payment[]
+
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
   @@index([storeId, checkIn, checkOut])
@@ -547,6 +571,8 @@ model Store {
   nextInvoiceNo Int @default(1)
   nextQuoteNo   Int @default(1)
   nextPoNo      Int @default(1)
+
+  creativeProjects CreativeProject[]
 
   sectionOverrides Json?
   // Industry-specific answers captured during store onboarding. The object
@@ -659,6 +685,7 @@ model Store {
   bookings      Booking[]
   deliveryZones DeliveryZone[]
   newsletterSubscribers NewsletterSubscriber[]
+  emailCampaigns EmailCampaign[]
   coupons       Coupon[]
   invoices      Invoice[]
   quotes        Quote[]
@@ -1583,6 +1610,12 @@ model Payment {
   // WalletTransaction.paymentId being @unique).
   walletTransaction WalletTransaction?
 
+  // A PMS reservation deposit/stay charge (see lib/actions/pms.ts) --
+  // same pattern as bookingId above, just for PropertyReservation instead
+  // of the service-booking Booking model.
+  reservationId String?
+  reservation   PropertyReservation? @relation(fields: [reservationId], references: [id])
+
   purpose     PaymentPurpose
   provider    PaymentProvider
   // The value passed to the gateway as reference/tx_ref, and the value both
@@ -1641,6 +1674,7 @@ model Payment {
   @@index([status])
   @@index([bookingId])
   @@index([walletId])
+  @@index([reservationId])
 }
 
 enum PaymentPurpose {
@@ -1651,6 +1685,7 @@ enum PaymentPurpose {
   QUOTE_DEPOSIT
   SERVICE_BOOKING
   WALLET_FUNDING
+  PMS_RESERVATION
 }
 
 enum PaymentStatus {
@@ -1872,9 +1907,38 @@ model NewsletterSubscriber {
   store     Store    @relation(fields: [storeId], references: [id], onDelete: Cascade)
   email     String
   createdAt DateTime @default(now())
+  unsubscribedAt DateTime?
 
   @@unique([storeId, email])
   @@index([storeId])
+}
+
+enum EmailCampaignStatus {
+  DRAFT
+  SENDING
+  SENT
+  PARTIAL
+  FAILED
+}
+
+model EmailCampaign {
+  id             String             @id @default(cuid())
+  storeId        String
+  store         Store              @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  subject        String
+  template       String
+  previewText    String?
+  content        Json
+  status         EmailCampaignStatus @default(DRAFT)
+  recipientCount Int                @default(0)
+  sentCount      Int                @default(0)
+  failedCount    Int                @default(0)
+  sentAt         DateTime?
+  createdAt      DateTime           @default(now())
+  updatedAt      DateTime           @updatedAt
+
+  @@index([storeId, createdAt])
+  @@index([storeId, status])
 }
 
 model Coupon {
@@ -2259,6 +2323,8 @@ model Quote {
   expiresAt     DateTime?
 
   // Set once accepted + deposit paid -- see module doc above.
+  creativeProject CreativeProject?
+
   orderId       String?      @unique
   order         Order?       @relation(fields: [orderId], references: [id])
 
@@ -2284,6 +2350,67 @@ enum QuoteStatus {
   ACCEPTED
   DECLINED
   EXPIRED
+}
+
+
+
+enum CreativeProjectStatus {
+  NEW
+  BRIEFING
+  QUOTED
+  DESIGN
+  AWAITING_APPROVAL
+  APPROVED
+  IN_PRODUCTION
+  QUALITY_CHECK
+  READY
+  DELIVERED
+  COMPLETED
+  ON_HOLD
+  CANCELLED
+}
+
+model CreativeProject {
+  id              String                @id @default(cuid())
+  projectNo       String                @unique
+  publicAccessToken String               @unique @default(cuid())
+  storeId         String
+  store           Store                 @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  customerId      String?
+  customer        User?                 @relation(fields: [customerId], references: [id])
+  customerName    String
+  customerEmail   String?
+  customerPhone   String?
+  serviceType     String
+  brief           String                @db.Text
+  budget          Decimal?              @db.Decimal(12,2)
+  deadline        DateTime?
+  referenceFiles  Json?
+  status          CreativeProjectStatus @default(NEW)
+  currentVersion  Int                   @default(0)
+  approvalNote    String?               @db.Text
+  quoteId         String?               @unique
+  quote           Quote?                @relation(fields: [quoteId], references: [id])
+  revisions       CreativeProjectRevision[]
+  createdAt       DateTime              @default(now())
+  updatedAt       DateTime              @updatedAt
+
+  @@index([storeId, status])
+  @@index([customerId])
+}
+
+model CreativeProjectRevision {
+  id          String          @id @default(cuid())
+  projectId   String
+  project     CreativeProject @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  version     Int
+  previewUrl  String
+  note        String?         @db.Text
+  status      String          @default("PENDING")
+  createdAt   DateTime        @default(now())
+
+  @@unique([projectId, version])
+  @@index([projectId])
 }
 
 // ----------------------------------------------------------------------------
