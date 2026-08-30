@@ -20,11 +20,14 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
 export default async function ServicePage({ params }: { params: Promise<{ slug: string; serviceId: string }> }) {
   const { slug, serviceId } = await params;
 
-  const store = await prisma.store.findUnique({
+  const rawStore = await prisma.store.findUnique({
     where: { slug },
     include: { template: true, business: true },
   });
-  if (!store || store.status !== "ACTIVE") notFound();
+  if (!rawStore || rawStore.status !== "ACTIVE") notFound();
+  // Flatten Business.sellsProducts onto the store object once, since the
+  // chrome/home components read `store.sellsProducts` directly.
+  const store = { ...rawStore, sellsProducts: rawStore.business?.sellsProducts ?? true };
 
   const service = await prisma.service.findFirst({
     where: { id: serviceId, storeId: store.id, isPublished: true },
