@@ -6,6 +6,9 @@ import { resolveStoreTheme, type TemplateTheme } from "@/lib/template-themes";
 import { BookingWidget } from "@/components/storefront/booking-widget";
 import { CartLink } from "@/components/storefront/cart-link";
 import { AccountLink } from "@/components/storefront/account-link";
+import { isSignatureTemplate, getSignatureTheme } from "@/lib/template-themes";
+import { SignatureJourney } from "@/components/storefront/signature-journey";
+import { SignatureServiceDetail } from "@/components/storefront/signature-service-detail";
 
 export async function generateMetadata({ params }: { params: Promise<{ slug: string; serviceId: string }> }): Promise<Metadata> {
   const { slug, serviceId } = await params;
@@ -34,6 +37,12 @@ export default async function ServicePage({ params }: { params: Promise<{ slug: 
   const theme: TemplateTheme = resolveStoreTheme(store.template?.category, store.name, themeOverrides, store.fontFamily, store.template?.name);
   const { accent, ink, bg, radius } = theme;
   const images = service.images.length ? service.images : [];
+  if (isSignatureTemplate(store.template?.name)) {
+    const t = getSignatureTheme(store.template?.name);
+    return <SignatureJourney store={store} slug={slug} templateName={store.template?.name ?? ""} title={service.name}>
+      <SignatureServiceDetail store={store} slug={slug} service={service} accent={t.accent} />
+    </SignatureJourney>;
+  }
   // Booking-only businesses (hotels, salons, studios, etc.) don't sell
   // cart-able products, so the cart icon should never show on their
   // service pages -- it was previously rendered unconditionally here,
