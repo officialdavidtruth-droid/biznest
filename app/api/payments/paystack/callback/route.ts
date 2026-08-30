@@ -7,6 +7,9 @@ import { decrementStockForOrder } from "@/lib/actions/order";
 import { buildStoreUrl } from "@/lib/store-url";
 import { NextResponse } from "next/server";
 import { settleWalletFunding, settleServiceBookingPayment } from "@/lib/actions/customer-wallet";
+import { settleReservationPayment } from "@/lib/actions/pms";
+import { emitWebhookEvent } from "@/lib/webhooks/dispatch";
+import { notifyStoreOwnerOfPaidOrder, notifyCustomerOfPaidOrder } from "@/lib/notifications/notify";
 
 const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? "https://biznest.vercel.app";
 
@@ -58,6 +61,16 @@ export async function GET(req: Request) {
     return NextResponse.redirect(`${APP_URL}/?payment=failed`);
   }
 
+  if (reference.startsWith("RES-")) {
+    const verification = await verifyPaystackTransaction(reference);
+    const amount = verification.data ? Number(verification.data.amount) / 100 : 0;
+    if (verification.status && verification.data?.status === "success") {
+      const result = await settleReservationPayment(reference, "PAYSTACK", amount, verification as object);
+      if (result.success) return NextResponse.redirect(`${APP_URL}/store/${result.data.storeSlug}/admin/pms?payment=success`);
+    }
+    return NextResponse.redirect(`${APP_URL}/?payment=failed`);
+  }
+
   const order = await prisma.order.findUnique({ where: { id: reference }, include: { store: true } });
   if (!order) {
     return NextResponse.redirect(`${APP_URL}/?payment=order_not_found`);
@@ -79,15 +92,21 @@ export async function GET(req: Request) {
   // itself is not proof of payment, since it's just a browser navigation.
   const verification = await verifyPaystackTransaction(reference);
 
-  if (verification.status && verification.data?.status === "success") {
+  // Never trust that a successful charge paid the right amount — an
+  // order's total can change between checkout-init and payment (discount
+  // race, admin edit, etc.). Paystack reports amount in kobo; order.total
+  // is in naira. Mirrors the equivalent check in the Flutterwave callback.
+  const amountMatches = verification.data && Number(verification.data.amount) / 100 >= Number(order.total);
+
+  if (verification.status && verification.data?.status === "success" && amountMatches) {
     // Idempotent by design: only transition an order still awaiting
     // payment, and use the update's own affected-row count — not the
     // read above — to decide whether this request actually won the race
     // against a concurrent webhook delivery for the same reference.
     // Payment confirmation, the order transition, and the stock decrement
     // are grouped in one transaction so they can't split across a crash.
-    await prisma.$transaction(async (tx) => {
-      const result = await tx.order.updateMany({
+    const result = await prisma.$transaction(async (tx) => {
+      const updateResult = await tx.order.updateMany({
         where: { id: order.id, status: "PENDING_PAYMENT" },
         data: { status: "PAID", paymentReference: reference },
       });
@@ -95,10 +114,29 @@ export async function GET(req: Request) {
         where: { reference, status: "PENDING" },
         data: { status: "SUCCESSFUL", rawPayload: verification as object, verifiedAt: new Date() },
       });
-      if (result.count > 0) {
+      if (updateResult.count > 0) {
         await decrementStockForOrder(tx, order.id);
       }
+      return updateResult;
     });
+
+    // Only this request "won" the transition (guards against a duplicate
+    // callback, or the webhook having already handled it first) — fire the
+    // same notifications the webhook fires, so the customer/owner get
+    // emailed regardless of which path resolves the order first. Mirrors
+    // the equivalent block in the Flutterwave callback.
+    if (result.count > 0) {
+      await emitWebhookEvent("PAYMENT_SUCCESS", order.storeId, {
+        orderId: order.id,
+        reference,
+        provider: "PAYSTACK",
+        amount: Number(order.total),
+        currency: order.currency,
+      });
+      await emitWebhookEvent("ORDER_PAID", order.storeId, { orderId: order.id, status: "PAID" });
+      void notifyStoreOwnerOfPaidOrder(order.storeId, order.id, Number(order.total), order.currency);
+      void notifyCustomerOfPaidOrder(order.id);
+    }
     return NextResponse.redirect(buildStoreUrl(order.store, `/orders/${order.id}/confirmation`));
   }
 
