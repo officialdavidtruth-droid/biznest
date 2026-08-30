@@ -41,7 +41,7 @@ export type MarketingContent = {
   body: string;
   ctaLabel: string;
   ctaUrl: string;
-  imageUrl?: string;
+  imageUrl?: string | null;
   items: MarketingItem[];
   previewText?: string;
 };
