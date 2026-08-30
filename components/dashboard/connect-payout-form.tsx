@@ -111,8 +111,8 @@ export function ConnectPayoutForm({
         </p>
         {!isVerified && provider === "PAYSTACK" && (
           <p className="mt-2 rounded-md bg-amber-50 p-2 text-xs text-amber-800">
-            Paystack manually reviews new payout accounts. Your first payout will be held until verification
-            completes — this usually doesn't affect checkout, just when the money actually lands.
+            Paystack requires the first payout to a new or updated subaccount to be verified from the
+            Paystack Dashboard. BizNest will keep checking the real provider status automatically.
           </p>
         )}
         <div className="mt-3 flex items-center gap-3">
