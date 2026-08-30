@@ -3,7 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
 import { CartLink } from "@/components/storefront/cart-link";
-import { resolveStoreTheme, FRESH, isSignatureTemplate, getSignatureTheme, isHeenzyTemplate, isNovaTemplate, isVioletTemplate, isPremiumTemplate, isHomeVistaTemplate, isRrwTemplate, isMarketplaceTemplate, isArcovaTemplate, isRivoraTemplate, isJuiceLifeTemplate, isFabtexTemplate, type TemplateTheme } from "@/lib/template-themes";
+import { resolveStoreTheme, FRESH, isSignatureTemplate, getSignatureTheme, isHeenzyTemplate, isNovaTemplate, isVioletTemplate, isPremiumTemplate, isHomeVistaTemplate, isRrwTemplate, isMarketplaceTemplate, isArcovaTemplate, isRivoraTemplate, isJuiceLifeTemplate, isFabtexTemplate, isProfessionalServicesTemplate, getProfessionalServicesTheme, type TemplateTheme } from "@/lib/template-themes";
 import { subscribeToNewsletter } from "@/lib/actions/newsletter";
 import { recordStoreVisit } from "@/lib/actions/analytics";
 import { getTrustScoreBreakdown, getTrustScoreChecklist } from "@/lib/actions/trust-score";
@@ -19,7 +19,10 @@ import { RivoraStorefront } from "@/components/storefront/templates/rivora-home"
 import { JuiceLifeStorefront } from "@/components/storefront/templates/juicelife-home";
 import { FabtexStorefront } from "@/components/storefront/templates/fabtex-home";
 import { SignatureStorefront } from "@/components/storefront/templates/signature-home";
+import { SignatureScreenshotHome } from "@/components/storefront/signature-screenshot-home";
+
 import { HotelStorefront } from "@/components/storefront/templates/hotel-home";
+import { ProfessionalServicesStorefront } from "@/components/storefront/templates/professional-services-home";
 import { CategoryNav } from "@/components/storefront/category-nav";
 import { getStoreCategoryTree } from "@/lib/storefront-categories";
 import { Reveal } from "@/components/storefront/reveal";
@@ -120,6 +123,22 @@ export default async function StorefrontPage({ params }: { params: Promise<{ slu
     );
   }
 
+  // ---------- PROFESSIONAL SERVICES: dedicated sub-niche storefronts ----------
+  if (isProfessionalServicesTemplate(store.template?.name)) {
+    return (
+      <ProfessionalServicesStorefront
+        store={store}
+        slug={slug}
+        catalogItems={catalogItems}
+        goodReviews={goodReviews}
+        avgRating={avgRating}
+        completedOrders={completedOrders}
+        social={social}
+        theme={{ ...getProfessionalServicesTheme(store.template?.name), ...themeOverrides, font: store.fontFamily || getProfessionalServicesTheme(store.template?.name).font }}
+      />
+    );
+  }
+
   // ---------- HOTEL: company-first hospitality website ----------
   const signatureTheme = isSignatureTemplate(store.template?.name) ? getSignatureTheme(store.template?.name) : null;
   const hospitalityGallery = signatureTheme?.signatureMode === "hotel" ? await getHospitalityGallery(slug) : null;
@@ -140,6 +159,11 @@ export default async function StorefrontPage({ params }: { params: Promise<{ slu
 
   // ---------- SIGNATURE COLLECTION: new industry-first designs ----------
   if (isSignatureTemplate(store.template?.name)) {
+    const screenshotModes = new Set(["great-treasure", "grand-vere", "belora", "tastehouse", "flavora-kitchen", "flavora-restaurant"]);
+    const signature = getSignatureTheme(store.template?.name);
+    if (screenshotModes.has(signature.signatureMode)) {
+      return <SignatureScreenshotHome store={store} slug={slug} items={catalogItems} reviews={store.reviews} avgRating={avgRating} completedOrders={completedOrders} social={social} mode={signature.signatureMode} accent={signature.accent} bg={signature.bg} ink={signature.ink} card={signature.card} muted={signature.muted || `${signature.ink}99`} border={signature.border || `${signature.ink}18`} accentSoft={signature.accentSoft || signature.accent} headlineFont={signature.headlineFont} font={signature.font} />;
+    }
     return (
       <SignatureStorefront
         store={store}
