@@ -789,6 +789,7 @@ export async function getOrderForBuyer(
           business: {
             select: {
               description: true,
+              sellsProducts: true,
             },
           },
         },
