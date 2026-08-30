@@ -17,7 +17,7 @@ type Review = { id: string; rating: number; comment: string | null; author: { na
 
 type BuilderStore = {
   name: string; slug: string; logoUrl: string | null; contactEmail: string | null; contactPhone: string | null;
-  business: { description: string | null; category?: string | null; sellsProducts?: boolean; offersServices?: boolean };
+  business: { description: string | null; category?: string | null; businessSubcategory?: string | null; sellsProducts?: boolean; offersServices?: boolean };
 };
 
 export function BuilderStorefront({
