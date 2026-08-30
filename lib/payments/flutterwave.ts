@@ -162,7 +162,6 @@ export async function createFlutterwaveSubaccount(params: {
       business_name: params.businessName,
       business_email: params.businessEmail,
       business_mobile: params.businessPhone,
-      business_email: params.businessEmail,
       business_contact: params.businessContact,
       business_contact_mobile: params.businessContactPhone ?? params.businessPhone,
       country: "NG",
