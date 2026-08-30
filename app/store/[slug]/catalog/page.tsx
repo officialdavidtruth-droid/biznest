@@ -18,6 +18,8 @@ import { HeenzyHeader, HeenzyFooter, wrap as heenzyWrap } from "@/components/sto
 import { RivoraHeader, RivoraFooter, wrap as rivoraWrap } from "@/components/storefront/templates/rivora-chrome";
 import { FabtexHeader, FabtexFooter, wrap as fabtexWrap } from "@/components/storefront/templates/fabtex-chrome";
 import { JuiceLifeHeader, JuiceLifeFooter, wrap as juicelifeWrap } from "@/components/storefront/templates/juicelife-chrome";
+import { isSignatureTemplate, getSignatureTheme } from "@/lib/template-themes";
+import { SignatureJourney } from "@/components/storefront/signature-journey";
 
 export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }): Promise<Metadata> {
   const { slug } = await params;
@@ -53,6 +55,16 @@ export default async function CatalogPage({ params }: { params: Promise<{ slug: 
   // of which template the store actually uses.
   const theme: TemplateTheme = resolveStoreTheme(store.template?.category, store.name, themeOverrides, store.fontFamily, store.template?.name);
   const { accent, ink, bg, radius } = theme;
+
+  if (isSignatureTemplate(store.template?.name)) {
+    const t = getSignatureTheme(store.template?.name);
+    return <SignatureJourney store={store} slug={slug} templateName={store.template?.name ?? ""} title={t.catalogLabel}>
+      <section className="signature-catalog-journey">
+        <div className="signature-journey-heading"><div><small>{t.catalogLabel}</small><h1>{store.name}</h1></div><span>{items.length} {items.length === 1 ? "item" : "items"}</span></div>
+        {items.length === 0 ? <div className="signature-empty">Nothing published here yet — check back soon.</div> : <CatalogGrid items={items.map(i => ({...i, categoryName: undefined}))} slug={`store/${slug}`} accent={accent} ink={ink} radius={radius} />}
+      </section>
+    </SignatureJourney>;
+  }
 
   const crumbs = (
     <>
