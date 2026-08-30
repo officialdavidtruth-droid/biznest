@@ -887,7 +887,24 @@ const PROFESSIONAL_SERVICE_THEMES = [
 ] as const;
 
 export type ProfessionalServiceTemplate = TemplateTheme & { professionalMode: string; variationName: string; category: string };
-export const PROFESSIONAL_SERVICE_TEMPLATE_CATALOG = PROFESSIONAL_SERVICE_THEMES.map((t) => ({ ...t, variationName: t.name, tierRank: 3 as const })) as readonly (ProfessionalServiceTemplate & { tierRank: 3 })[];
+export const PROFESSIONAL_SERVICE_TEMPLATE_CATALOG = PROFESSIONAL_SERVICE_THEMES.map((t) => ({
+  ...t,
+  variationName: t.name,
+  tierRank: 3 as const,
+  // Raw entries above only define the fields that actually vary per
+  // sub-niche (palette, headline/sub copy, mode). These fill in the rest
+  // of TemplateTheme with sensible, consistent defaults for the whole
+  // professional-services collection.
+  font: "'Inter', system-ui, sans-serif",
+  headlineFont: "'Fraunces', Georgia, serif",
+  radius: "4px",
+  eyebrow: "PROFESSIONAL SERVICES",
+  cta: "Get in touch",
+  layout: "grid" as const,
+  heroStyle: "split" as const,
+  catalogLabel: "Services",
+  sections: ["hero", "about", "features", "testimonials", "contact"] as const,
+})) as readonly (ProfessionalServiceTemplate & { tierRank: 3 })[];
 export const PROFESSIONAL_SERVICE_TEMPLATE_NAMES = new Set(PROFESSIONAL_SERVICE_TEMPLATE_CATALOG.map((t) => t.variationName));
 export function isProfessionalServicesTemplate(name: string | null | undefined): boolean { return !!name && PROFESSIONAL_SERVICE_TEMPLATE_NAMES.has(name); }
 export function getProfessionalServicesTheme(name: string | null | undefined): ProfessionalServiceTemplate {
