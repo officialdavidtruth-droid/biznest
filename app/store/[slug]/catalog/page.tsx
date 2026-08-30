@@ -30,8 +30,11 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
 export default async function CatalogPage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
 
-  const store = await prisma.store.findUnique({ where: { slug }, include: { template: true, business: true } });
-  if (!store || store.status !== "ACTIVE") notFound();
+  const rawStore = await prisma.store.findUnique({ where: { slug }, include: { template: true, business: true } });
+  if (!rawStore || rawStore.status !== "ACTIVE") notFound();
+  // Flatten Business.sellsProducts onto the store object once, since the
+  // chrome/home components read `store.sellsProducts` directly.
+  const store = { ...rawStore, sellsProducts: rawStore.business?.sellsProducts ?? true };
 
   const [products, services] = await Promise.all([
     prisma.product.findMany({ where: { storeId: store.id, isPublished: true }, include: { category: true } }),
