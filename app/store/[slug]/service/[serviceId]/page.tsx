@@ -43,7 +43,7 @@ export default async function ServicePage({ params }: { params: Promise<{ slug: 
   if (isSignatureTemplate(store.template?.name)) {
     const t = getSignatureTheme(store.template?.name);
     return <SignatureJourney store={store} slug={slug} templateName={store.template?.name ?? ""} title={service.name}>
-      <SignatureServiceDetail store={store} slug={slug} service={service} accent={t.accent} />
+      <SignatureServiceDetail store={store} slug={slug} service={service} accent={t.accent} ink={t.ink} bg={t.bg} radius={t.radius} card={t.card} headlineFont={t.headlineFont} />
     </SignatureJourney>;
   }
   // Booking-only businesses (hotels, salons, studios, etc.) don't sell
