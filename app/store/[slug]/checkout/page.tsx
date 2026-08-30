@@ -32,7 +32,10 @@ import { SignatureJourney } from "@/components/storefront/signature-journey";
 
 export default async function CheckoutPage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
-  const store = await prisma.store.findUnique({ where: { slug }, include: { template: true, business: true } });
+  const rawStore = await prisma.store.findUnique({ where: { slug }, include: { template: true, business: true } });
+  // Flatten Business.sellsProducts onto the store object once, since the
+  // chrome/home components read `store.sellsProducts` directly.
+  const store = rawStore ? { ...rawStore, sellsProducts: rawStore.business?.sellsProducts ?? true } : null;
 
   // Browsing and building a cart stay open to everyone — this is the one
   // gate before an actual order gets placed. Sending both `callbackUrl`
