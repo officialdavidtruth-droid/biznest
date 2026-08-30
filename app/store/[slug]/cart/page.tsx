@@ -30,7 +30,11 @@ import { SignatureJourney } from "@/components/storefront/signature-journey";
 
 export default async function CartPage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
-  const store = await prisma.store.findUnique({ where: { slug }, include: { template: true, business: true } });
+  const rawStore = await prisma.store.findUnique({ where: { slug }, include: { template: true, business: true } });
+  // Chrome/home components read `store.sellsProducts` directly (to hide the
+  // cart link for service-only stores), but that flag lives on Business,
+  // not Store — flatten it once here rather than at every call site below.
+  const store = rawStore ? { ...rawStore, sellsProducts: rawStore.business?.sellsProducts ?? true } : null;
   const heenzy = isHeenzyTemplate(store?.template?.name);
   const rivora = store && isRivoraTemplate(store.template?.name);
   const fabtex = store && isFabtexTemplate(store.template?.name);
