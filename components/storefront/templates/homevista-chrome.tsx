@@ -19,6 +19,7 @@ type ChromeStore = {
   logoUrl: string | null;
   contactEmail: string | null;
   contactPhone: string | null;
+  sellsProducts: boolean;
   business: { description: string | null };
 };
 
@@ -54,7 +55,9 @@ export function HomeVistaHeader({
           <b>{store.name}</b>
         </a>
         <div style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: 20 }}>
-          <CartLink storeSlug={slug} accent={HOMEVISTA.accent} ink={HOMEVISTA.ink} />
+          {store.sellsProducts && (
+            <CartLink storeSlug={slug} accent={HOMEVISTA.accent} ink={HOMEVISTA.ink} />
+          )}
           <AccountLink storeSlug={slug} ink={HOMEVISTA.ink} />
         </div>
         <input type="checkbox" id={`bn-nav-${slug}-homevista`} className="bn-nav-toggle" />

@@ -34,7 +34,7 @@ export function JuiceLifeStorefront({
 }: {
   store: {
     name: string; logoUrl: string | null; bannerUrl: string | null;
-    contactEmail: string | null; contactPhone: string | null;
+    contactEmail: string | null; contactPhone: string | null; sellsProducts: boolean;
     business: { description: string | null };
   };
   slug: string;
@@ -81,7 +81,9 @@ export function JuiceLifeStorefront({
           <a href="#benefits" style={{ color: JUICELIFE.ink, textDecoration: "none" }}>Benefits</a>
           <a href="#contact" style={{ color: JUICELIFE.ink, textDecoration: "none" }}>Contact</a>
         </nav>
-        <CartLink storeSlug={slug} accent={JUICELIFE.green} onAccent="#ffffff" ink={JUICELIFE.ink} />
+        {store.sellsProducts && (
+          <CartLink storeSlug={slug} accent={JUICELIFE.green} onAccent="#ffffff" ink={JUICELIFE.ink} />
+        )}
         <AccountLink storeSlug={slug} ink={JUICELIFE.ink} />
       </header>
 

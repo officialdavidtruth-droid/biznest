@@ -25,6 +25,7 @@ type ChromeStore = {
   logoUrl: string | null;
   contactEmail: string | null;
   contactPhone: string | null;
+  sellsProducts: boolean;
   business: { description: string | null } | null;
 };
 
@@ -57,7 +58,9 @@ export function FreshHeader({
           </a>
           <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
             {hasCatalog && <a href={`/${slug}/search`} style={{ fontSize: 14, fontWeight: 500, color: FRESH.inkSoft, textDecoration: "none" }}>Search</a>}
-            <CartLink storeSlug={slug} accent={FRESH.leaf} ink={FRESH.ink} />
+            {store.sellsProducts && (
+              <CartLink storeSlug={slug} accent={FRESH.leaf} ink={FRESH.ink} />
+            )}
             <AccountLink storeSlug={slug} ink={FRESH.ink} />
             {hasCatalog && <a href={`/${slug}/catalog`} style={btnPrimary}>Get a Quote</a>}
           </div>

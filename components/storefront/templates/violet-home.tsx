@@ -55,7 +55,7 @@ export function VioletStorefront({
 }: {
   store: {
     name: string; logoUrl: string | null; bannerUrl: string | null;
-    contactEmail: string | null; contactPhone: string | null;
+    contactEmail: string | null; contactPhone: string | null; sellsProducts: boolean;
     business: { description: string | null };
   };
   slug: string;
@@ -110,7 +110,9 @@ export function VioletStorefront({
           {navCategories.length > 0 && <a href={`/${slug}/catalog`} style={{ textDecoration: "none", color: p.ink }}>Categories</a>}
         </nav>
         <div style={{ display: "flex", gap: 15, alignItems: "center" }}>
-          <CartLink storeSlug={slug} accent={p.accent} ink={p.ink} />
+          {store.sellsProducts && (
+            <CartLink storeSlug={slug} accent={p.accent} ink={p.ink} />
+          )}
           <AccountLink storeSlug={slug} ink={p.ink} />
         </div>
       </header>

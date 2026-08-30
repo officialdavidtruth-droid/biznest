@@ -39,7 +39,7 @@ export function RrwStorefront({
 }: {
   store: {
     name: string; logoUrl: string | null; bannerUrl: string | null;
-    contactEmail: string | null; contactPhone: string | null;
+    contactEmail: string | null; contactPhone: string | null; sellsProducts: boolean;
     business: { description: string | null };
   };
   slug: string;
@@ -89,7 +89,9 @@ export function RrwStorefront({
             {navCategories.length > 0 && <a href={`/${slug}/catalog`} style={{ textDecoration: "none", color: RRW.ink }}>Categories</a>}
           </nav>
           <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
-            <CartLink storeSlug={slug} accent={RRW.accent} ink={RRW.ink} />
+            {store.sellsProducts && (
+              <CartLink storeSlug={slug} accent={RRW.accent} ink={RRW.ink} />
+            )}
             <AccountLink storeSlug={slug} ink={RRW.ink} />
           </div>
         </header>

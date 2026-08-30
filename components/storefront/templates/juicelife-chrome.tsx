@@ -24,6 +24,7 @@ type ChromeStore = {
   logoUrl: string | null;
   contactEmail: string | null;
   contactPhone: string | null;
+  sellsProducts: boolean;
   business: { description: string | null };
 };
 
@@ -64,7 +65,9 @@ export function JuiceLifeHeader({
           <a href={`/${slug}/catalog`} style={{ color: JUICELIFE.ink, textDecoration: "none" }}>Shop</a>
           <a href={`/${slug}/search`} style={{ color: JUICELIFE.ink, textDecoration: "none" }}>Search</a>
         </nav>
-        <CartLink storeSlug={slug} accent={JUICELIFE.green} onAccent="#ffffff" ink={JUICELIFE.ink} />
+        {store.sellsProducts && (
+          <CartLink storeSlug={slug} accent={JUICELIFE.green} onAccent="#ffffff" ink={JUICELIFE.ink} />
+        )}
         <AccountLink storeSlug={slug} ink={JUICELIFE.ink} />
       </header>
 

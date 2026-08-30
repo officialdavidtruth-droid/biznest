@@ -50,7 +50,7 @@ export function HeenzyStorefront({
 }: {
   store: {
     name: string; logoUrl: string | null; bannerUrl: string | null;
-    contactEmail: string | null; contactPhone: string | null;
+    contactEmail: string | null; contactPhone: string | null; sellsProducts: boolean;
     business: { description: string | null };
   };
   slug: string;
@@ -281,7 +281,7 @@ export function HeenzyStorefront({
   );
 }
 
-export function HeenzyNav({ store, slug, hasCatalog, theme = HEENZY_THEME }: { store: { name: string; logoUrl: string | null }; slug: string; hasCatalog: boolean; theme?: TemplateTheme }) {
+export function HeenzyNav({ store, slug, hasCatalog, theme = HEENZY_THEME }: { store: { name: string; logoUrl: string | null; sellsProducts: boolean }; slug: string; hasCatalog: boolean; theme?: TemplateTheme }) {
   return (
     <nav className="hz-root" style={{ ...heenzyCssVars(theme), position: "sticky", top: 0, zIndex: 50, background: "rgba(255,255,255,.92)", backdropFilter: "blur(10px)", borderBottom: "1px solid #e7e7e7" }}>
       <div className="hz-wrap hz-nav bn-header-inner">
@@ -297,7 +297,9 @@ export function HeenzyNav({ store, slug, hasCatalog, theme = HEENZY_THEME }: { s
           {hasCatalog && <li><a href={`/${slug}/search`}>Search</a></li>}
         </ul>
         <div className="hz-nav-icons">
-          <CartLink storeSlug={slug} accent="var(--hz-black)" ink="var(--hz-black)" />
+          {store.sellsProducts && (
+            <CartLink storeSlug={slug} accent="var(--hz-black)" ink="var(--hz-black)" />
+          )}
           <AccountLink storeSlug={slug} ink="var(--hz-black)" />
         </div>
       </div>

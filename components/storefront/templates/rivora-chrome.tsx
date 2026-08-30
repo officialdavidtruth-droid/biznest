@@ -28,6 +28,7 @@ type ChromeStore = {
   logoUrl: string | null;
   contactEmail: string | null;
   contactPhone: string | null;
+  sellsProducts: boolean;
   business: { description: string | null };
 };
 
@@ -69,7 +70,9 @@ export function RivoraHeader({
           <a href={`/${slug}/catalog`} style={{ color: "#d8e2dc", textDecoration: "none" }}>Shop</a>
           <a href={`/${slug}/search`} style={{ color: "#d8e2dc", textDecoration: "none" }}>Search</a>
         </nav>
-        <CartLink storeSlug={slug} accent={RIVORA.lime} onAccent="#153600" ink="#fff" />
+        {store.sellsProducts && (
+          <CartLink storeSlug={slug} accent={RIVORA.lime} onAccent="#153600" ink="#fff" />
+        )}
         <AccountLink storeSlug={slug} ink="#fff" />
       </header>
 

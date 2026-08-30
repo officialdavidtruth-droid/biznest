@@ -20,6 +20,7 @@ type ChromeStore = {
   logoUrl: string | null;
   contactEmail: string | null;
   contactPhone: string | null;
+  sellsProducts: boolean;
   business: { description: string | null };
 };
 
@@ -54,7 +55,9 @@ export function MarketplaceHeader({
           {store.name}
         </a>
         <div style={{ marginLeft: "auto", display: "flex", gap: 16, alignItems: "center", fontSize: 10, color: "#555" }}>
-          <CartLink storeSlug={slug} accent={MARKETPLACE.blue} ink={MARKETPLACE.ink} />
+          {store.sellsProducts && (
+            <CartLink storeSlug={slug} accent={MARKETPLACE.blue} ink={MARKETPLACE.ink} />
+          )}
           <AccountLink storeSlug={slug} ink={MARKETPLACE.ink} />
         </div>
         <input type="checkbox" id={`bn-nav-${slug}-marketplace`} className="bn-nav-toggle" />

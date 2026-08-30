@@ -56,7 +56,7 @@ export function NovaStorefront({
 }: {
   store: {
     name: string; logoUrl: string | null; bannerUrl: string | null;
-    contactEmail: string | null; contactPhone: string | null;
+    contactEmail: string | null; contactPhone: string | null; sellsProducts: boolean;
     business: { description: string | null };
   };
   slug: string;
@@ -93,7 +93,9 @@ export function NovaStorefront({
         <div style={{ display: "flex", alignItems: "center", gap: 26 }}>
           {catalogItems.length > 0 && <a href="#collection" style={{ ...label, textDecoration: "none" }}>The Collection</a>}
           {catalogItems.length > 0 && <a href={`/${slug}/search`} style={{ ...label, textDecoration: "none" }}>Search</a>}
-          <CartLink storeSlug={slug} accent={p.gold} ink={p.ink} />
+          {store.sellsProducts && (
+            <CartLink storeSlug={slug} accent={p.gold} ink={p.ink} />
+          )}
           <AccountLink storeSlug={slug} ink={p.ink} />
         </div>
       </div>

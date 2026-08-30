@@ -19,6 +19,7 @@ type ChromeStore = {
   logoUrl: string | null;
   contactEmail: string | null;
   contactPhone: string | null;
+  sellsProducts: boolean;
   business: { description: string | null };
 };
 
@@ -61,7 +62,9 @@ export function PremiumHeader({
           {navCategories.length > 0 && <a href={`/${slug}/catalog`} style={{ textDecoration: "none", color: PREMIUM.ink }}>Categories</a>}
         </nav>
         <div style={{ marginLeft: "auto", display: "flex", gap: 15, alignItems: "center" }}>
-          <CartLink storeSlug={slug} accent={PREMIUM.accent} ink={PREMIUM.ink} />
+          {store.sellsProducts && (
+            <CartLink storeSlug={slug} accent={PREMIUM.accent} ink={PREMIUM.ink} />
+          )}
           <AccountLink storeSlug={slug} ink={PREMIUM.ink} />
         </div>
       </header>

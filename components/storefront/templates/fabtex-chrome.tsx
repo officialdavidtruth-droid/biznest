@@ -24,6 +24,7 @@ type ChromeStore = {
   logoUrl: string | null;
   contactEmail: string | null;
   contactPhone: string | null;
+  sellsProducts: boolean;
   business: { description: string | null };
 };
 
@@ -64,7 +65,9 @@ export function FabtexHeader({
           <a href={`/${slug}/catalog`} style={{ fontSize: 10, textDecoration: "none", color: "#fff", padding: "10px 11px" }}>Catalog</a>
           <a href={`/${slug}/search`} style={{ fontSize: 10, textDecoration: "none", color: "#fff", padding: "10px 11px" }}>Search</a>
         </nav>
-        <CartLink storeSlug={slug} accent={FABTEX.orange} onAccent="#ffffff" ink="#ffffff" />
+        {store.sellsProducts && (
+          <CartLink storeSlug={slug} accent={FABTEX.orange} onAccent="#ffffff" ink="#ffffff" />
+        )}
         <AccountLink storeSlug={slug} ink="#ffffff" />
       </header>
 

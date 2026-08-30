@@ -37,7 +37,7 @@ export function FabtexStorefront({
 }: {
   store: {
     name: string; logoUrl: string | null; bannerUrl: string | null;
-    contactEmail: string | null; contactPhone: string | null;
+    contactEmail: string | null; contactPhone: string | null; sellsProducts: boolean;
     business: { description: string | null };
   };
   slug: string;
@@ -76,7 +76,9 @@ export function FabtexStorefront({
           <a href="#about" style={{ fontSize: 10, textDecoration: "none", color: "#fff", padding: "10px 11px" }}>About</a>
           <a href="#contact" style={{ fontSize: 10, textDecoration: "none", color: "#fff", padding: "10px 11px" }}>Contact</a>
         </nav>
-        <CartLink storeSlug={slug} accent={FABTEX.orange} onAccent="#ffffff" ink="#ffffff" />
+        {store.sellsProducts && (
+          <CartLink storeSlug={slug} accent={FABTEX.orange} onAccent="#ffffff" ink="#ffffff" />
+        )}
         <AccountLink storeSlug={slug} ink="#ffffff" />
       </header>
 

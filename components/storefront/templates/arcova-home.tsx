@@ -43,7 +43,7 @@ export function ArcovaStorefront({
 }: {
   store: {
     name: string; logoUrl: string | null; bannerUrl: string | null;
-    contactEmail: string | null; contactPhone: string | null;
+    contactEmail: string | null; contactPhone: string | null; sellsProducts: boolean;
     business: { description: string | null };
   };
   slug: string;
@@ -77,7 +77,9 @@ export function ArcovaStorefront({
               <a href="#projects" style={{ color: ARCOVA.ink, textDecoration: "none" }}>PROJECTS</a>
               <a href="#services" style={{ color: ARCOVA.ink, textDecoration: "none" }}>SERVICES</a>
               <a href="#contact" style={{ color: ARCOVA.ink, textDecoration: "none" }}>CONTACT</a>
-              <CartLink storeSlug={slug} accent={ARCOVA.accent} onAccent="#ffffff" ink={ARCOVA.ink} />
+              {store.sellsProducts && (
+                <CartLink storeSlug={slug} accent={ARCOVA.accent} onAccent="#ffffff" ink={ARCOVA.ink} />
+              )}
               <AccountLink storeSlug={slug} ink={ARCOVA.ink} />
             </nav>
           </div>

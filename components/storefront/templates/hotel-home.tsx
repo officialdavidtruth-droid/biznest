@@ -36,6 +36,7 @@ type StoreLike = {
   template?: { previewUrl: string | null } | null;
   contactEmail: string | null;
   contactPhone: string | null;
+  sellsProducts: boolean;
   business: {
     description: string | null;
     city?: string | null;

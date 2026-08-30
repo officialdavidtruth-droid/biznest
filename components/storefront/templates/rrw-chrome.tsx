@@ -29,6 +29,7 @@ type ChromeStore = {
   logoUrl: string | null;
   contactEmail: string | null;
   contactPhone: string | null;
+  sellsProducts: boolean;
   business: { description: string | null };
 };
 
@@ -63,7 +64,9 @@ export function RrwHeader({
             {store.name}
           </a>
           <div style={{ display: "flex", gap: 10, alignItems: "center", marginLeft: "auto" }}>
-            <CartLink storeSlug={slug} accent={RRW.accent} ink={RRW.ink} />
+            {store.sellsProducts && (
+              <CartLink storeSlug={slug} accent={RRW.accent} ink={RRW.ink} />
+            )}
             <AccountLink storeSlug={slug} ink={RRW.ink} />
           </div>
           <input type="checkbox" id={`bn-nav-${slug}-rrw`} className="bn-nav-toggle" />

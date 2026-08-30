@@ -39,7 +39,7 @@ export function RivoraStorefront({
 }: {
   store: {
     name: string; logoUrl: string | null; bannerUrl: string | null;
-    contactEmail: string | null; contactPhone: string | null;
+    contactEmail: string | null; contactPhone: string | null; sellsProducts: boolean;
     business: { description: string | null };
   };
   slug: string;
@@ -85,7 +85,9 @@ export function RivoraStorefront({
           <a href="#about" style={{ color: "#d8e2dc", textDecoration: "none" }}>About</a>
           <a href="#contact" style={{ color: "#d8e2dc", textDecoration: "none" }}>Contact</a>
         </nav>
-        <CartLink storeSlug={slug} accent={RIVORA.lime} onAccent="#153600" ink="#fff" />
+        {store.sellsProducts && (
+          <CartLink storeSlug={slug} accent={RIVORA.lime} onAccent="#153600" ink="#fff" />
+        )}
         <AccountLink storeSlug={slug} ink="#fff" />
       </header>
 

@@ -27,6 +27,7 @@ type ChromeStore = {
   logoUrl: string | null;
   contactEmail: string | null;
   contactPhone: string | null;
+  sellsProducts: boolean;
   business: { description: string | null };
 };
 
@@ -64,7 +65,9 @@ export function NovaHeader({
         <div className="bn-nav-links" style={{ display: "flex", alignItems: "center", gap: 26 }}>
           <a href={`/${slug}/catalog`} style={{ ...label, textDecoration: "none" }}>The Collection</a>
           <a href={`/${slug}/search`} style={{ ...label, textDecoration: "none" }}>Search</a>
-          <CartLink storeSlug={slug} accent={theme.accent} ink={theme.ink} />
+          {store.sellsProducts && (
+            <CartLink storeSlug={slug} accent={theme.accent} ink={theme.ink} />
+          )}
           <AccountLink storeSlug={slug} ink={theme.ink} />
         </div>
       </div>

@@ -34,7 +34,7 @@ export function HomeVistaStorefront({
 }: {
   store: {
     name: string; logoUrl: string | null; bannerUrl: string | null;
-    contactEmail: string | null; contactPhone: string | null;
+    contactEmail: string | null; contactPhone: string | null; sellsProducts: boolean;
     business: { description: string | null };
   };
   slug: string;
@@ -79,7 +79,9 @@ export function HomeVistaStorefront({
           {navCategories.length > 0 && <a href={`/${slug}/catalog`} style={{ textDecoration: "none", color: HOMEVISTA.ink }}>Categories</a>}
         </nav>
         <div style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: 20 }}>
-          <CartLink storeSlug={slug} accent={HOMEVISTA.accent} ink={HOMEVISTA.ink} />
+          {store.sellsProducts && (
+            <CartLink storeSlug={slug} accent={HOMEVISTA.accent} ink={HOMEVISTA.ink} />
+          )}
           <AccountLink storeSlug={slug} ink={HOMEVISTA.ink} />
         </div>
       </header>

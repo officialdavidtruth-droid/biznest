@@ -23,6 +23,7 @@ type ChromeStore = {
   logoUrl: string | null;
   contactEmail: string | null;
   contactPhone: string | null;
+  sellsProducts: boolean;
   business: { description: string | null };
 };
 
@@ -75,7 +76,9 @@ export function VioletHeader({
           {navCategories.length > 0 && <a href={`/${slug}/catalog`} style={{ textDecoration: "none", color: theme.ink }}>Categories</a>}
         </nav>
         <div style={{ display: "flex", gap: 15, alignItems: "center" }}>
-          <CartLink storeSlug={slug} accent={theme.accent} ink={theme.ink} />
+          {store.sellsProducts && (
+            <CartLink storeSlug={slug} accent={theme.accent} ink={theme.ink} />
+          )}
           <AccountLink storeSlug={slug} ink={theme.ink} />
         </div>
       </header>

@@ -85,7 +85,7 @@ export function MarketplaceStorefront({
 }: {
   store: {
     name: string; logoUrl: string | null; bannerUrl: string | null;
-    contactEmail: string | null; contactPhone: string | null;
+    contactEmail: string | null; contactPhone: string | null; sellsProducts: boolean;
     business: { description: string | null };
   };
   slug: string;
@@ -149,7 +149,9 @@ export function MarketplaceStorefront({
           {(store.contactEmail || store.contactPhone) && <a href="#contact" style={{ color: "inherit" }}>CONTACT US</a>}
         </nav>
         <div style={{ marginLeft: "auto", display: "flex", gap: 16, alignItems: "center", fontSize: 10, color: "#555" }}>
-          <CartLink storeSlug={slug} accent={MARKETPLACE.blue} ink={MARKETPLACE.ink} />
+          {store.sellsProducts && (
+            <CartLink storeSlug={slug} accent={MARKETPLACE.blue} ink={MARKETPLACE.ink} />
+          )}
           <AccountLink storeSlug={slug} ink={MARKETPLACE.ink} />
         </div>
       </header>
