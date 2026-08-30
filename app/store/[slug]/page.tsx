@@ -39,7 +39,7 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
 
 export default async function StorefrontPage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
-  const store = await prisma.store.findUnique({
+  const rawStore = await prisma.store.findUnique({
     where: { slug },
     include: {
       template: true,
@@ -50,7 +50,10 @@ export default async function StorefrontPage({ params }: { params: Promise<{ slu
     },
   });
 
-  if (!store || store.status !== "ACTIVE") notFound();
+  if (!rawStore || rawStore.status !== "ACTIVE") notFound();
+  // Flatten Business.sellsProducts onto the store object once, since the
+  // chrome/home components read `store.sellsProducts` directly.
+  const store = { ...rawStore, sellsProducts: rawStore.business?.sellsProducts ?? true };
 
   // Fire-and-forget: never await-block a buyer's page render on analytics.
   void recordStoreVisit(store.id, `/${slug}`);
