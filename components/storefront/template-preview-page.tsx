@@ -91,6 +91,7 @@ type PreviewStore = {
   bannerUrl: string | null;
   contactEmail: string | null;
   contactPhone: string | null;
+  sellsProducts: boolean;
   business: { description: string | null; verificationBadge?: boolean };
   reviews: PreviewReview[];
   template?: { previewUrl: string | null } | null;
@@ -303,6 +304,7 @@ function makePreviewData(templateName: string, theme: TemplateTheme) {
     bannerUrl: banner,
     contactEmail: "hello@preview.biznest.space",
     contactPhone: "+234 800 000 0000",
+    sellsProducts: true,
     business: { description: profile.description, verificationBadge: true },
     reviews,
     template: { previewUrl: banner },
