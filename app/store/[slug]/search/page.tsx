@@ -34,8 +34,11 @@ export default async function SearchPage({
   const { q } = await searchParams;
   const query = (q ?? "").trim();
 
-  const store = await prisma.store.findUnique({ where: { slug }, include: { template: true, business: true } });
-  if (!store || store.status !== "ACTIVE") notFound();
+  const rawStore = await prisma.store.findUnique({ where: { slug }, include: { template: true, business: true } });
+  if (!rawStore || rawStore.status !== "ACTIVE") notFound();
+  // Flatten Business.sellsProducts onto the store object once, since the
+  // chrome/home components read `store.sellsProducts` directly.
+  const store = { ...rawStore, sellsProducts: rawStore.business?.sellsProducts ?? true };
 
   const [products, services, categories] = await Promise.all([
     query
