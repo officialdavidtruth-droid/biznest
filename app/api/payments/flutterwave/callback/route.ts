@@ -8,6 +8,8 @@ import { buildStoreUrl } from "@/lib/store-url";
 import { notifyStoreOwnerOfPaidOrder, notifyCustomerOfPaidOrder } from "@/lib/notifications/notify";
 import { emitWebhookEvent } from "@/lib/webhooks/dispatch";
 import { NextResponse } from "next/server";
+import { settleWalletFunding, settleServiceBookingPayment } from "@/lib/actions/customer-wallet";
+import { settleReservationPayment } from "@/lib/actions/pms";
 
 const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? "https://biznest.vercel.app";
 
@@ -42,6 +44,36 @@ export async function GET(req: Request) {
       return NextResponse.redirect(isInvoice ? `${APP_URL}/invoices/${id}` : `${APP_URL}/quotes/${id}`);
     }
     return NextResponse.redirect(`${APP_URL}/${isInvoice ? "invoices" : "quotes"}/${id}?payment=failed`);
+  }
+
+  // Wallet funding ("WAL-{walletId}-{random}") and service-booking payments
+  // ("BK-{bookingId}-{random}") settle via their own action file — see the
+  // matching branch in the Paystack callback route. Flutterwave already
+  // reports amounts in the major currency unit (naira), unlike Paystack's
+  // kobo, so no /100 conversion here.
+  if (txRef.startsWith("WAL-") || txRef.startsWith("BK-")) {
+    const verification = await verifyFlutterwaveTransaction(transactionId);
+    const amount = verification.data ? Number(verification.data.amount) : 0;
+    if (verification.status === "success" && verification.data?.status === "successful") {
+      if (txRef.startsWith("WAL-")) {
+        const result = await settleWalletFunding(txRef, "FLUTTERWAVE", amount, verification as object);
+        if (result.success) return NextResponse.redirect(`${APP_URL}/store/${result.data.storeSlug}/account/wallet?funding=success`);
+      } else {
+        const result = await settleServiceBookingPayment(txRef, "FLUTTERWAVE", amount, verification as object);
+        if (result.success) return NextResponse.redirect(`${APP_URL}/store/${result.data.storeSlug}?booking=${result.data.bookingId}&payment=success`);
+      }
+    }
+    return NextResponse.redirect(`${APP_URL}/?payment=failed`);
+  }
+
+  if (txRef.startsWith("RES-")) {
+    const verification = await verifyFlutterwaveTransaction(transactionId);
+    const amount = verification.data ? Number(verification.data.amount) : 0;
+    if (verification.status === "success" && verification.data?.status === "successful") {
+      const result = await settleReservationPayment(txRef, "FLUTTERWAVE", amount, verification as object);
+      if (result.success) return NextResponse.redirect(`${APP_URL}/store/${result.data.storeSlug}/admin/pms?payment=success`);
+    }
+    return NextResponse.redirect(`${APP_URL}/?payment=failed`);
   }
 
   const order = await prisma.order.findUnique({ where: { id: txRef }, include: { store: true } });
