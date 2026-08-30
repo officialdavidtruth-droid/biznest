@@ -1,45 +1,64 @@
-import { auth } from "@/lib/auth";
-import { prisma } from "@/lib/prisma";
 import { redirect } from "next/navigation";
-import { StoreSetupWizard } from "@/components/forms/store-setup-wizard";
+import { performUnsubscribe } from "@/lib/email/perform-unsubscribe";
 
-export default async function CreateStorePage() {
-  const session = await auth();
-  if (!session?.user?.id) redirect("/login?callbackUrl=/onboarding/create-store");
+export default async function UnsubscribePage({ searchParams }: { searchParams: Promise<{ token?: string; done?: string }> }) {
+  const { token, done } = await searchParams;
 
-  const business = await prisma.business.findUnique({
-    where: { userId: session.user.id },
-    include: { store: true },
-  });
+  // Unsubscribing is a state change, so it must never happen as a side
+  // effect of a GET request — link scanners, email-security prefetchers
+  // and chat/browser link previews all fetch URLs like this one without
+  // the recipient ever clicking, which would otherwise silently
+  // unsubscribe people who never asked to be. The page only *shows* a
+  // confirmation; `confirmUnsubscribe` (a POST-only server action, wired
+  // to the button below) is what actually performs the mutation.
+  if (done === "1") {
+    return (
+      <main className="flex min-h-screen items-center justify-center bg-muted/30 px-4">
+        <div className="w-full max-w-md rounded-2xl border bg-background p-8 text-center shadow-sm">
+          <div className="mx-auto mb-5 flex h-12 w-12 items-center justify-center rounded-full bg-primary/10 text-primary">✓</div>
+          <h1 className="text-xl font-semibold">You’re unsubscribed</h1>
+          <p className="mt-2 text-sm leading-6 text-muted-foreground">You will no longer receive marketing emails from this business. You can subscribe again from the business website at any time.</p>
+          <p className="mt-6 text-xs text-muted-foreground">Powered by BizNest</p>
+        </div>
+      </main>
+    );
+  }
 
-  if (!business) redirect("/onboarding/business-verification");
-  if (business.verificationStatus !== "APPROVED") redirect("/onboarding/business-verification");
-  if (!business.fraudPolicyAcceptedAt) redirect("/onboarding/fraud-policy");
-  if (business.store) redirect(`/${business.store.slug}/admin`);
-
-  const templates = await prisma.storeTemplate.findMany({
-    where: { isActive: true },
-    orderBy: { name: "asc" },
-  });
-  // A store doesn't exist yet at this point, so there's no subscription to
-  // check — every new store starts on Free (rank 1). Premium templates
-  // still show here, locked, as an upgrade nudge, rather than being hidden
-  // entirely — same gallery behavior as the post-creation builder page.
+  if (!token) {
+    return (
+      <main className="flex min-h-screen items-center justify-center bg-muted/30 px-4">
+        <div className="w-full max-w-md rounded-2xl border bg-background p-8 text-center shadow-sm">
+          <div className="mx-auto mb-5 flex h-12 w-12 items-center justify-center rounded-full bg-destructive/10 text-destructive">!</div>
+          <h1 className="text-xl font-semibold">That link is not valid</h1>
+          <p className="mt-2 text-sm leading-6 text-muted-foreground">This unsubscribe link may have expired or is incomplete.</p>
+          <p className="mt-6 text-xs text-muted-foreground">Powered by BizNest</p>
+        </div>
+      </main>
+    );
+  }
 
   return (
-    <div className="mx-auto max-w-4xl px-6 py-12">
-      <StoreSetupWizard
-        businessId={business.id}
-        business={{
-          businessName: business.businessName,
-          category: business.category,
-          businessSubcategory: business.businessSubcategory,
-          sellsProducts: business.sellsProducts,
-          offersServices: business.offersServices,
-        }}
-        templates={templates}
-        planRank={1}
-      />
-    </div>
+    <main className="flex min-h-screen items-center justify-center bg-muted/30 px-4">
+      <div className="w-full max-w-md rounded-2xl border bg-background p-8 text-center shadow-sm">
+        <div className="mx-auto mb-5 flex h-12 w-12 items-center justify-center rounded-full bg-primary/10 text-primary">✉</div>
+        <h1 className="text-xl font-semibold">Unsubscribe from marketing emails?</h1>
+        <p className="mt-2 text-sm leading-6 text-muted-foreground">You’ll stop receiving marketing emails from this business. You can subscribe again any time from their website.</p>
+        <form
+          action={async (formData: FormData) => {
+            "use server";
+            const t = String(formData.get("token") ?? "");
+            await performUnsubscribe(t);
+            redirect(`/unsubscribe?done=1`);
+          }}
+          className="mt-6"
+        >
+          <input type="hidden" name="token" value={token} />
+          <button type="submit" className="w-full rounded-xl bg-primary px-5 py-2.5 text-sm font-semibold text-primary-foreground">
+            Confirm unsubscribe
+          </button>
+        </form>
+        <p className="mt-6 text-xs text-muted-foreground">Powered by BizNest</p>
+      </div>
+    </main>
   );
 }
