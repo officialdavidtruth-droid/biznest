@@ -1,6 +1,7 @@
 import bcrypt from "bcryptjs";
-import { cookies } from "next/headers";
+import { cookies, headers } from "next/headers";
 import { prisma } from "@/lib/prisma";
+import { checkRateLimit, getClientIp } from "@/lib/rate-limit";
 
 export const STORE_CUSTOMER_COOKIE = "bn-store-customer";
 const TOKEN_TTL_MS = 30 * 24 * 60 * 60 * 1000;
@@ -291,6 +292,28 @@ export async function signInStoreCustomer(
         | "STORE_ACCOUNT_NOT_FOUND";
     }
 > {
+  // Rate-limit credential attempts before doing any DB/bcrypt work, mirroring
+  // the platform Credentials provider in lib/auth.ts. Separate IP and
+  // identifier buckets so an attacker can't dodge protection by rotating
+  // just one dimension (e.g. hammering many customer accounts from one IP,
+  // or one account from many IPs). Scoped per-store since the same email
+  // can be an independent account on multiple stores.
+  const requestHeaders = await headers();
+  const clientIp = getClientIp(requestHeaders);
+  const ipLimit = await checkRateLimit(`store-login:ip:${clientIp}`, 20, 15 * 60 * 1000);
+  if (!ipLimit.allowed) {
+    return { success: false, code: "RATE_LIMITED" };
+  }
+  const normalizedIdentifier = email.trim().toLowerCase();
+  const identifierLimit = await checkRateLimit(
+    `store-login:identifier:${storeSlug}:${normalizedIdentifier}`,
+    10,
+    15 * 60 * 1000
+  );
+  if (!identifierLimit.allowed) {
+    return { success: false, code: "RATE_LIMITED" };
+  }
+
   const store = await prisma.store.findUnique({
     where: {
       slug: storeSlug,

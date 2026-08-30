@@ -94,6 +94,8 @@ export type TemplateTheme = {
   surfaceDark?: string;
   /** Softer/lighter tint of `accent`, used in gradients and subtle fills. Falls back to `accent` when unset. */
   accentSoft?: string;
+  /** Dedicated Professional Services visual system mode. */
+  professionalMode?: string;
 };
 
 export type GeneratedTemplate = TemplateTheme & {
@@ -756,7 +758,9 @@ export function resolveStoreTheme(
   fontFamily: string | null | undefined,
   templateName?: string | null
 ): TemplateTheme {
-  const base = isSignatureTemplate(templateName)
+  const base = isProfessionalServicesTemplate(templateName)
+    ? getProfessionalServicesTheme(templateName)
+    : isSignatureTemplate(templateName)
     ? getSignatureTheme(templateName)
     : isHeenzyTemplate(templateName)
     ? resolveHeenzyTheme(templateName)
@@ -807,6 +811,15 @@ function signatureTheme(data: Omit<TemplateTheme, "font" | "headlineFont" | "rad
   return { ...SIGNATURE_BASE, ...data };
 }
 
+export const SCREENSHOT_SIGNATURE_TEMPLATES = [
+  signatureTheme({ signatureMode: "great-treasure", bg: "#07100D", ink: "#F7F3EA", card: "#111A16", accent: "#E4A93A", accentSoft: "#8B6A2E", muted: "#B8B1A4", border: "#3B4039", eyebrow: "Luxury, Comfort & Great Taste", headline: "Great hospitality, all in one place.", sub: "A hospitality experience centered on rooms, food, comfort and direct booking.", cta: "Book a Room", layout: "grid", heroStyle: "fullbleed", catalogLabel: "Our Rooms & Suites", density: "relaxed", surfaceDark: "#050907" }),
+  signatureTheme({ signatureMode: "grand-vere", bg: "#FFFFFF", ink: "#17352A", card: "#FBFAF6", accent: "#0E5B45", accentSoft: "#B9A06A", muted: "#74736D", border: "#E7E3D9", eyebrow: "LUXURY REDEFINED", headline: "Experience Timeless Elegance", sub: "World-class comfort, exceptional service and unforgettable moments.", cta: "Discover More", layout: "grid", heroStyle: "fullbleed", catalogLabel: "Rooms & Suites", density: "relaxed", surfaceDark: "#063522" }),
+  signatureTheme({ signatureMode: "belora", bg: "#FCFAFD", ink: "#2A2430", card: "#FFFFFF", accent: "#7B4BC0", accentSoft: "#D9C5F2", muted: "#746D7A", border: "#E8E0EF", eyebrow: "NATURAL BEAUTY, RADIANT YOU", headline: "Pure Ingredients, Powerful Results", sub: "Clean, effective beauty designed for every skin type.", cta: "Shop Now", layout: "grid", heroStyle: "split", catalogLabel: "Best Sellers", density: "relaxed", surfaceDark: "#402365" }),
+  signatureTheme({ signatureMode: "tastehouse", bg: "#FFFCF7", ink: "#161616", card: "#FFFFFF", accent: "#F26B21", accentSoft: "#FFE1BF", muted: "#747474", border: "#EEE7DE", eyebrow: "GOOD FOOD, GOOD MOOD", headline: "Delicious Food Delivered Fast.", sub: "Discover dishes, cuisines and offers from your kitchen's favorite menu.", cta: "Order Now", layout: "grid", heroStyle: "split", catalogLabel: "Popular Dishes", density: "compact", surfaceDark: "#171717" }),
+  signatureTheme({ signatureMode: "flavora-kitchen", bg: "#FFFFFF", ink: "#111111", card: "#FFFFFF", accent: "#D9281C", accentSoft: "#FFB39E", muted: "#6C6C6C", border: "#E7E7E7", eyebrow: "FRESH • FLAVORFUL • FAST", headline: "Experience Taste Like Never Before", sub: "Bold dishes, fresh ingredients and a simple online ordering experience.", cta: "Order Online", layout: "grid", heroStyle: "fullbleed", catalogLabel: "Popular Dishes", density: "relaxed", surfaceDark: "#141414" }),
+  signatureTheme({ signatureMode: "flavora-restaurant", bg: "#F7F0E7", ink: "#201710", card: "#FFFDF9", accent: "#F39A0B", accentSoft: "#6B3212", muted: "#756B61", border: "#E7D9C8", eyebrow: "GOOD FOOD, GOOD MOOD", headline: "Delicious Food Made with Love", sub: "The perfect blend of taste, quality and happiness in every bite.", cta: "Explore Menu", layout: "list", heroStyle: "fullbleed", catalogLabel: "Popular Dishes", density: "relaxed", surfaceDark: "#100A06" }),
+] as const;
+
 export const SIGNATURE_TEMPLATES = [
   signatureTheme({ signatureMode: "electra", bg: "#F5F7FA", ink: "#101828", card: "#FFFFFF", accent: "#2563EB", accentSoft: "#93C5FD", muted: "#667085", border: "#E4E7EC", eyebrow: "Technology, refined.", headline: "Smarter gear. Better living.", sub: "A premium electronics storefront built around discovery, comparison and confident checkout.", cta: "Shop the latest", layout: "grid", heroStyle: "split", catalogLabel: "Featured tech", density: "relaxed", surfaceDark: "#0B1220" }),
   signatureTheme({ signatureMode: "atelier", bg: "#F7F3EE", ink: "#211C1A", card: "#FFFDFC", accent: "#B56B45", accentSoft: "#E8B39A", muted: "#756C67", border: "#E8DED7", eyebrow: "The new season", headline: "Wear less. Choose better.", sub: "An editorial fashion storefront with generous imagery, curated collections and a strong visual rhythm.", cta: "Explore collection", layout: "grid", heroStyle: "fullbleed", catalogLabel: "The edit", density: "relaxed", surfaceDark: "#241E1B" }),
@@ -824,6 +837,15 @@ export const SIGNATURE_TEMPLATES = [
   signatureTheme({ signatureMode: "forge", bg: "#F1F0EC", ink: "#202321", card: "#FFFFFF", accent: "#C86B2A", accentSoft: "#D9A276", muted: "#6D706E", border: "#DCDDD8", eyebrow: "Built for the long run", headline: "Serious work. Properly built.", sub: "A construction storefront designed around projects, services, proof, process and quote requests.", cta: "Request a quote", layout: "grid", heroStyle: "fullbleed", catalogLabel: "Projects & services", density: "relaxed", surfaceDark: "#202321" }),
 ] as const;
 
+for (const t of SCREENSHOT_SIGNATURE_TEMPLATES as unknown as any[]) {
+  if (!t.variationName) {
+    Object.defineProperty(t, "variationName", { enumerable: true, configurable: true, value: ({
+      "great-treasure": "Great Treasure — Hotel & Suites", "grand-vere": "Grand Vere — Hotel & Resort", belora: "Belora — Skincare Boutique",
+      tastehouse: "TasteHouse — Food Delivery", "flavora-kitchen": "Flavora Kitchen — Restaurant", "flavora-restaurant": "Flavora — Restaurant",
+    } as Record<string,string>)[t.signatureMode] });
+  }
+}
+
 export type SignatureTemplate = TemplateTheme & { signatureMode: string; variationName: string };
 export type SignatureTemplateName = SignatureTemplate["variationName"];
 
@@ -839,7 +861,38 @@ for (const t of SIGNATURE_TEMPLATES as unknown as any[]) {
   }
 }
 
-export const SIGNATURE_TEMPLATE_CATALOG = SIGNATURE_TEMPLATES as unknown as readonly SignatureTemplate[];
+export const SIGNATURE_TEMPLATE_CATALOG = [...SIGNATURE_TEMPLATES, ...SCREENSHOT_SIGNATURE_TEMPLATES] as unknown as readonly SignatureTemplate[];
+
+
+
+/** ---------- Professional Services Collection ----------
+ * Each sub-niche has its own visual language and information architecture.
+ * These are not palette swaps: the storefront renderer changes structure,
+ * density, typography, navigation emphasis and CTA model per mode.
+ */
+const PROFESSIONAL_SERVICE_THEMES = [
+  { id:"graphic-design", name:"Obsidian Atelier — Graphic Design & Print", category:"Professional Services · Creative & Print", bg:"#F5F0E8", ink:"#171717", card:"#FFFFFF", accent:"#D7A54A", accentSoft:"#6D4D19", muted:"#77716A", border:"#DED5C8", headline:"Ideas, made tangible.", sub:"Premium creative, branding and print production.", professionalMode:"graphic-design" },
+  { id:"branding-agency", name:"Noir Identity — Brand Strategy", category:"Professional Services · Branding", bg:"#F7F6F2", ink:"#111111", card:"#FFFFFF", accent:"#A51D2D", accentSoft:"#4A0D14", muted:"#6F6F6B", border:"#DFDED8", headline:"Make your brand unmistakable.", sub:"Strategy, identity and art direction for brands with ambition.", professionalMode:"branding-agency" },
+  { id:"marketing-agency", name:"Cobalt Bureau — Marketing & Digital", category:"Professional Services · Marketing", bg:"#EEF4FF", ink:"#10234B", card:"#FFFFFF", accent:"#173BFF", accentSoft:"#8AA0FF", muted:"#667085", border:"#D6E0FF", headline:"Marketing with a point of view.", sub:"Campaigns and growth systems built for measurable momentum.", professionalMode:"marketing-agency" },
+  { id:"photography-studio", name:"Nocturne Studio — Photography", category:"Professional Services · Photography", bg:"#0B0B0B", ink:"#FFFFFF", card:"#141414", accent:"#C9A36A", accentSoft:"#6B5332", muted:"#999999", border:"#FFFFFF20", headline:"Light, captured with intention.", sub:"Cinematic photography for people, products and brands.", professionalMode:"photography-studio" },
+  { id:"consulting", name:"Meridian Advisory — Consulting", category:"Professional Services · Consulting", bg:"#F3F1EB", ink:"#15202B", card:"#FFFFFF", accent:"#A88345", accentSoft:"#5D4A2B", muted:"#6C7378", border:"#D9D5CA", headline:"Clarity for consequential decisions.", sub:"Independent strategy and executive advisory.", professionalMode:"consulting" },
+  { id:"accounting", name:"Ledger House — Accounting & Finance", category:"Professional Services · Finance", bg:"#F4F7F2", ink:"#163B2C", card:"#FFFFFF", accent:"#26805A", accentSoft:"#8FCEA9", muted:"#667A70", border:"#D7E5DC", headline:"Numbers you can trust.", sub:"Modern accounting, tax and financial advisory.", professionalMode:"accounting" },
+  { id:"legal", name:"Crown & Chambers — Legal", category:"Professional Services · Legal", bg:"#F4EFE7", ink:"#241719", card:"#FFFFFF", accent:"#B38A4B", accentSoft:"#684C2B", muted:"#756D66", border:"#DED4C7", headline:"Counsel when it matters.", sub:"Discreet commercial counsel and representation.", professionalMode:"legal" },
+  { id:"hr-recruitment", name:"Bluebird People — HR & Recruitment", category:"Professional Services · People", bg:"#EEF5FF", ink:"#10233F", card:"#FFFFFF", accent:"#0D5CFF", accentSoft:"#87A8FF", muted:"#667085", border:"#D6E2F7", headline:"The right people change everything.", sub:"Executive search, recruitment and people strategy.", professionalMode:"hr-recruitment" },
+  { id:"web-development", name:"Signal Labs — Web & Software", category:"Professional Services · Digital Products", bg:"#07090D", ink:"#F2F6FF", card:"#10141C", accent:"#7CFF67", accentSoft:"#3C7F34", muted:"#8C95A4", border:"#FFFFFF14", headline:"Digital products that move businesses forward.", sub:"Strategy, design and engineering for high-performance digital products.", professionalMode:"web-development" },
+  { id:"it-services", name:"Northstar Systems — IT & Technology", category:"Professional Services · IT", bg:"#07111F", ink:"#F3F8FF", card:"#0D1D33", accent:"#4CC9F0", accentSoft:"#276A82", muted:"#9AABBD", border:"#FFFFFF16", headline:"Technology, without the noise.", sub:"Infrastructure, cybersecurity and managed support.", professionalMode:"it-services" },
+  { id:"architecture", name:"Forma House — Architecture & Interiors", category:"Professional Services · Architecture", bg:"#E9E4DA", ink:"#252522", card:"#F5F2EB", accent:"#9A7952", accentSoft:"#5B4834", muted:"#716F69", border:"#D1CABD", headline:"Spaces with a sense of permanence.", sub:"Architecture and interiors shaped by proportion, material and light.", professionalMode:"architecture" },
+  { id:"engineering", name:"Axis Engineering — Engineering", category:"Professional Services · Engineering", bg:"#EDF0F1", ink:"#182329", card:"#FFFFFF", accent:"#D28A32", accentSoft:"#79501F", muted:"#69767C", border:"#D3DADC", headline:"Precision behind the build.", sub:"Engineering confidence from concept through delivery.", professionalMode:"engineering" },
+  { id:"construction-company", name:"Foundry Build — Construction", category:"Professional Services · Construction", bg:"#DEDDD8", ink:"#1D1E1B", card:"#FFFFFF", accent:"#F28B30", accentSoft:"#8A4C1D", muted:"#6D6D68", border:"#C9C9C2", headline:"Built properly. Built to last.", sub:"Construction, renovation and project delivery.", professionalMode:"construction-company" },
+] as const;
+
+export type ProfessionalServiceTemplate = TemplateTheme & { professionalMode: string; variationName: string; category: string };
+export const PROFESSIONAL_SERVICE_TEMPLATE_CATALOG = PROFESSIONAL_SERVICE_THEMES.map((t) => ({ ...t, variationName: t.name, tierRank: 3 as const })) as readonly (ProfessionalServiceTemplate & { tierRank: 3 })[];
+export const PROFESSIONAL_SERVICE_TEMPLATE_NAMES = new Set(PROFESSIONAL_SERVICE_TEMPLATE_CATALOG.map((t) => t.variationName));
+export function isProfessionalServicesTemplate(name: string | null | undefined): boolean { return !!name && PROFESSIONAL_SERVICE_TEMPLATE_NAMES.has(name); }
+export function getProfessionalServicesTheme(name: string | null | undefined): ProfessionalServiceTemplate {
+  return (PROFESSIONAL_SERVICE_TEMPLATE_CATALOG.find((t) => t.variationName === name) || PROFESSIONAL_SERVICE_TEMPLATE_CATALOG[0]) as ProfessionalServiceTemplate;
+}
 
 export function isSignatureTemplate(name: string | null | undefined): boolean {
   return !!name && SIGNATURE_TEMPLATE_CATALOG.some((t) => t.variationName === name);

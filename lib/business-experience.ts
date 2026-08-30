@@ -32,13 +32,16 @@ export function resolveBusinessMode(category?: string | null, model?: BusinessMo
   return "hybrid";
 }
 
-export function getBusinessExperience(category?: string | null, model?: BusinessModelInput): BusinessExperience {
+export function getBusinessExperience(category?: string | null, model?: BusinessModelInput, subcategory?: string | null): BusinessExperience {
   const c = category ?? "Other";
   const mode = resolveBusinessMode(c, model);
   const hotel = c === "Hotel & Lodging";
   const restaurant = c === "Restaurant";
   const salon = c === "Salon" || c === "Beauty";
   const portfolio = ["Photography", "Event Planning", "Professional Services", "Software Development", "Agency", "Construction"].includes(c);
+  const professional = c === "Professional Services";
+  const creativePrint = professional && (subcategory ?? "").toLowerCase().includes("graphic design");
+  const specializedPortfolio = professional && Boolean(subcategory);
 
   if (mode === "service") {
     const navigation = hotel
@@ -51,18 +54,23 @@ export function getBusinessExperience(category?: string | null, model?: Business
             ? [{ label: "Home", href: "/" }, { label: "Services", href: "/services" }, { label: "Portfolio", href: "/#portfolio" }, { label: "About", href: "/about" }, { label: "Testimonials", href: "/#testimonials" }, { label: "Contact", href: "/contact" }]
             : [{ label: "Home", href: "/" }, { label: "Services", href: "/services" }, { label: "About", href: "/about" }, { label: "Gallery", href: "/#gallery" }, { label: "Testimonials", href: "/#testimonials" }, { label: "Contact", href: "/contact" }];
 
+    const finalNavigation = creativePrint
+      ? [...navigation.filter((item) => item.label !== "Testimonials"), { label: "Start a Project", href: "/start-project" }]
+      : navigation;
+
     return {
       mode,
       label: "Service business",
-      description: hotel ? "A premium business website built around hospitality, availability and direct booking." : salon ? "A sophisticated service website built around specialists, services, packages and effortless booking." : restaurant ? "A business website built around your menu, reservations, pickup or delivery." : "A professional business website built around your services, expertise, proof and customer enquiries.",
-      primaryAction: hotel ? "Book a stay" : restaurant ? "View the menu" : salon ? "Book an appointment" : "Book / enquire",
-      journey: hotel ? ["Discover", "Explore rooms", "Check availability", "Book", "Confirmation"] : salon ? ["Discover", "Explore services", "Choose a specialist", "Book", "Confirmation"] : ["Discover", "Explore services", "Choose package", "Book / enquire", "Confirmation"],
-      preferredSections: hotel ? ["hero", "gallery", "catalog", "about", "testimonials", "map", "contact"] : salon ? ["hero", "catalog", "gallery", "features", "about", "testimonials", "contact"] : portfolio ? ["hero", "gallery", "catalog", "about", "testimonials", "contact"] : ["hero", "catalog", "about", "gallery", "features", "testimonials", "contact"],
-      navigation,
+      description: hotel ? "A premium business website built around hospitality, availability and direct booking." : salon ? "A sophisticated service website built around specialists, services, packages and effortless booking." : restaurant ? "A business website built around your menu, reservations, pickup or delivery." : creativePrint ? "A creative studio website built around services, portfolio work, project briefs, quotes and production." : specializedPortfolio ? `A specialized ${subcategory} website built around expertise, proof, projects and client enquiries.` : "A professional business website built around your services, expertise, proof and customer enquiries.",
+      primaryAction: hotel ? "Book a stay" : restaurant ? "View the menu" : salon ? "Book an appointment" : creativePrint ? "Start a project" : "Book / enquire",
+      journey: hotel ? ["Discover", "Explore rooms", "Check availability", "Book", "Confirmation"] : salon ? ["Discover", "Explore services", "Choose a specialist", "Book", "Confirmation"] : creativePrint ? ["Discover", "Choose service", "Request quote", "Approve design", "Production", "Delivery"] : ["Discover", "Explore services", "Choose package", "Book / enquire", "Confirmation"],
+      preferredSections: hotel ? ["hero", "gallery", "catalog", "about", "testimonials", "map", "contact"] : salon ? ["hero", "catalog", "gallery", "features", "about", "testimonials", "contact"] : creativePrint ? ["hero", "gallery", "catalog", "about", "testimonials", "contact"] : portfolio ? ["hero", "gallery", "catalog", "about", "testimonials", "contact"] : ["hero", "catalog", "about", "gallery", "features", "testimonials", "contact"],
+      navigation: finalNavigation,
       pageSlugs: [
         { slug: "home", title: "Home" },
         { slug: "about", title: "About" },
         { slug: "services", title: "Services" },
+        ...(professional ? [{ slug: "portfolio", title: creativePrint ? "Portfolio" : "Case Studies" }, { slug: "start-project", title: creativePrint ? "Start a Project" : "Start a Project" }] : []),
         { slug: "gallery", title: hotel ? "Gallery" : "Portfolio / Gallery" },
         { slug: "testimonials", title: "Testimonials" },
         { slug: "faq", title: "FAQ" },
@@ -116,15 +124,15 @@ export function getBusinessExperience(category?: string | null, model?: Business
   };
 }
 
-export function buildIndustryHomepage(category: string | null | undefined, storeName: string, description?: string | null, heroImage?: string | null, model?: BusinessModelInput): BuilderConfig {
-  const experience = getBusinessExperience(category, model);
+export function buildIndustryHomepage(category: string | null | undefined, storeName: string, description?: string | null, heroImage?: string | null, model?: BusinessModelInput, subcategory?: string | null): BuilderConfig {
+  const experience = getBusinessExperience(category, model, subcategory);
   const section = (id: string, type: BuilderSectionType, settings: BuilderSection["settings"] = {}): BuilderSection => ({ id, type, visible: true, settings });
   const common = {
     eyebrow: experience.label,
     heading: storeName,
     body: description || experience.description,
     ctaLabel: experience.primaryAction,
-    ctaHref: experience.mode === "commerce" ? "#catalog" : experience.mode === "service" ? "#catalog" : "#catalog",
+    ctaHref: category === "Professional Services" && (subcategory ?? "").toLowerCase().includes("graphic design") ? "/start-project" : "#catalog",
     image: heroImage || undefined,
     padding: "spacious" as const,
   };

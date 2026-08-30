@@ -59,9 +59,9 @@ export async function getStoreCategoryTree(storeId: string): Promise<CategoryTre
 }
 
 /** Flattens the tree back into a simple id->{name,parentName} lookup for breadcrumbs. */
-export async function getCategoryWithParent(categoryId: string) {
-  return prisma.category.findUnique({
-    where: { id: categoryId },
+export async function getCategoryWithParent(storeId: string, categoryId: string) {
+  return prisma.category.findFirst({
+    where: { id: categoryId, storeId },
     include: { parent: true, children: true },
   });
 }

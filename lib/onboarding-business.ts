@@ -15,6 +15,7 @@ import {
   Briefcase,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
+import { getProfessionalServiceSubNicheByName } from "@/lib/professional-services";
 
 export type OnboardingField = {
   key: string;
@@ -231,15 +232,16 @@ const PLANS: Record<string, Partial<BusinessOnboardingPlan>> = {
   },
 };
 
-export function getBusinessOnboardingPlan(category: string, sellsProducts: boolean, offersServices: boolean): BusinessOnboardingPlan {
+export function getBusinessOnboardingPlan(category: string, sellsProducts: boolean, offersServices: boolean, subcategory?: string | null): BusinessOnboardingPlan {
   const base = sellsProducts && offersServices ? PRODUCT_PLAN : sellsProducts ? PRODUCT_PLAN : SERVICE_PLAN;
   const override = PLANS[category];
+  const niche = category === "Professional Services" ? getProfessionalServiceSubNicheByName(subcategory) : null;
   return {
     ...base,
     ...override,
     icon: override?.icon ?? base.icon,
-    fields: override?.fields ?? base.fields,
-    checklist: override?.checklist ?? base.checklist,
-    recommendations: override?.recommendations ?? base.recommendations,
+    fields: niche?.onboarding.fields ?? override?.fields ?? base.fields,
+    checklist: niche ? ["Specialized service catalog", "Project / enquiry flow", "Branded client experience"] : override?.checklist ?? base.checklist,
+    recommendations: niche?.onboarding.recommendations ?? override?.recommendations ?? base.recommendations,
   };
 }
