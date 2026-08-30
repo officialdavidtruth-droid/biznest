@@ -28,6 +28,7 @@ import { JuiceLifeHeader, JuiceLifeFooter } from "@/components/storefront/templa
 import { getStoreCategoryTree } from "@/lib/storefront-categories";
 import { isSignatureTemplate, getSignatureTheme } from "@/lib/template-themes";
 import { SignatureCheckoutClient } from "@/components/storefront/signature-checkout-client";
+import { SignatureJourney } from "@/components/storefront/signature-journey";
 
 export default async function CheckoutPage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
@@ -61,9 +62,9 @@ export default async function CheckoutPage({ params }: { params: Promise<{ slug:
   if (store && isSignatureTemplate(store.template?.name)) {
     const theme = getSignatureTheme(store.template?.name);
     return (
-      <div style={{ background: theme.bg, color: theme.ink, fontFamily: theme.font, minHeight: "100vh", ["--sig-headline" as string]: theme.headlineFont, ["--sig-font" as string]: theme.font }} className="storefront-root">
+      <SignatureJourney store={store} slug={slug} templateName={store.template?.name ?? ""} title="Checkout">
         <SignatureCheckoutClient slug={slug} templateName={store.template?.name ?? ""} />
-      </div>
+      </SignatureJourney>
     );
   }
 
