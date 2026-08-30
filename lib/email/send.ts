@@ -707,7 +707,7 @@ export async function sendMarketingEmail(params: {
     {
       from: FROM,
       to: params.email,
-      replyTo: params.brand.contactEmail ?? undefined,
+      reply_to: params.brand.contactEmail ?? undefined,
       subject: params.subject,
       html,
       headers: {
