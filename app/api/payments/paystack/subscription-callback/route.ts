@@ -29,6 +29,22 @@ export async function GET(req: Request) {
   const verification = await verifyPaystackTransaction(reference);
 
   if (verification.status && verification.data?.status === "success") {
+    // Defense in depth: verifyPaystackTransaction is keyed by `reference`
+    // itself, so an attacker can't get Paystack to report success for a
+    // reference they didn't actually pay — but confirm the paid amount
+    // (kobo) actually covers this plan's price (naira) before granting it,
+    // in case a reference is ever reused/replayed against a different plan.
+    const plan = await prisma.subscription.findUnique({ where: { id: subscriptionId } });
+    const amountMatches = plan && Number(verification.data.amount) >= Math.round(Number(plan.price) * 100);
+
+    if (!plan || !amountMatches) {
+      await prisma.payment.updateMany({
+        where: { reference, status: "PENDING" },
+        data: { status: "FAILED", rawPayload: verification as object },
+      });
+      return NextResponse.redirect(`${APP_URL}/${store.slug}/admin/subscription?payment=failed`);
+    }
+
     // Save the reusable authorization so the renewal cron can charge next
     // month with no card re-entry, and set the next renewal date to exactly
     // one calendar month out from this successful payment.
