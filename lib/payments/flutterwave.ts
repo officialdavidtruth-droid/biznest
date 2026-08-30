@@ -140,6 +140,9 @@ export async function resolveFlutterwaveAccount(accountNumber: string, bankCode:
 export async function createFlutterwaveSubaccount(params: {
   businessName: string;
   businessEmail: string;
+  businessPhone: string;
+  businessContact: string;
+  businessContactPhone?: string;
   bankCode: string;
   accountNumber: string;
   splitPercentage: number; // what the platform keeps, e.g. 8 for 8%
@@ -158,6 +161,11 @@ export async function createFlutterwaveSubaccount(params: {
       account_number: params.accountNumber,
       business_name: params.businessName,
       business_email: params.businessEmail,
+      business_mobile: params.businessPhone,
+      business_email: params.businessEmail,
+      business_contact: params.businessContact,
+      business_contact_mobile: params.businessContactPhone ?? params.businessPhone,
+      country: "NG",
       split_type: "percentage",
       split_value: params.splitPercentage / 100,
     }),

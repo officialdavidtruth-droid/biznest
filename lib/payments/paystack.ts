@@ -161,6 +161,10 @@ export async function createPaystackSubaccount(params: {
   bankCode: string;
   accountNumber: string;
   commissionPercentage: number; // what the platform keeps, e.g. 8 for 8%
+  primaryContactName?: string;
+  primaryContactEmail?: string;
+  primaryContactPhone?: string;
+  description?: string;
 }) {
   const secretKey = process.env.PAYSTACK_SECRET_KEY;
   if (!secretKey) return { status: false as const, message: "Paystack isn't configured on this platform yet." };
@@ -176,9 +180,17 @@ export async function createPaystackSubaccount(params: {
       bank_code: params.bankCode,
       account_number: params.accountNumber,
       percentage_charge: params.commissionPercentage,
+      ...(params.primaryContactName ? { primary_contact_name: params.primaryContactName } : {}),
+      ...(params.primaryContactEmail ? { primary_contact_email: params.primaryContactEmail } : {}),
+      ...(params.primaryContactPhone ? { primary_contact_phone: params.primaryContactPhone } : {}),
+      ...(params.description ? { description: params.description } : {}),
     }),
   });
-  return res.json() as Promise<{ status: boolean; message: string; data?: { subaccount_code: string } }>;
+  return res.json() as Promise<{
+    status: boolean;
+    message: string;
+    data?: { subaccount_code: string; is_verified?: boolean; active?: boolean };
+  }>;
 }
 
 /**
