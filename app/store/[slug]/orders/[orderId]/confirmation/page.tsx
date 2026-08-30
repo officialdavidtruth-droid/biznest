@@ -14,6 +14,9 @@ import { RrwHeader, RrwFooter } from "@/components/storefront/templates/rrw-chro
 import { RivoraHeader, RivoraFooter } from "@/components/storefront/templates/rivora-chrome";
 import { getStoreCategoryTree } from "@/lib/storefront-categories";
 import { ResendConfirmationButton } from "@/components/storefront/resend-confirmation-button";
+import { isSignatureTemplate } from "@/lib/template-themes";
+import { SignatureJourney } from "@/components/storefront/signature-journey";
+import { SignatureOrderConfirmation } from "@/components/storefront/signature-order-confirmation";
 
 const ACCENT = "#0041C8";
 const INK = "#141D23";
@@ -72,6 +75,10 @@ export default async function OrderConfirmationPage({
   const { slug, orderId } = await params;
   const order = await getOrderForBuyer(orderId, slug);
   if (!order) notFound();
+
+  if (isSignatureTemplate(order.store.template?.name)) {
+    return <SignatureJourney store={order.store} slug={slug} templateName={order.store.template?.name ?? ""} title="Order confirmation"><SignatureOrderConfirmation order={order} slug={slug} templateName={order.store.template?.name ?? ""} /></SignatureJourney>;
+  }
 
   const stepIndex = Math.max(0, STEPS.findIndex((s) => s.key === order.status));
   // Only these statuses represent a successfully paid order progressing
