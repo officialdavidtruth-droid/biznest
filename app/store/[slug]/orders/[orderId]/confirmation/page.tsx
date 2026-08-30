@@ -73,8 +73,11 @@ export default async function OrderConfirmationPage({
   params: Promise<{ slug: string; orderId: string }>;
 }) {
   const { slug, orderId } = await params;
-  const order = await getOrderForBuyer(orderId, slug);
-  if (!order) notFound();
+  const rawOrder = await getOrderForBuyer(orderId, slug);
+  if (!rawOrder) notFound();
+  // Chrome/home components read `store.sellsProducts` directly, but that
+  // flag lives on Business, not Store — flatten it once here.
+  const order = { ...rawOrder, store: { ...rawOrder.store, sellsProducts: rawOrder.store.business?.sellsProducts ?? true } };
 
   if (isSignatureTemplate(order.store.template?.name)) {
     return <SignatureJourney store={order.store} slug={slug} templateName={order.store.template?.name ?? ""} title="Order confirmation"><SignatureOrderConfirmation order={order} slug={slug} templateName={order.store.template?.name ?? ""} /></SignatureJourney>;
