@@ -8,21 +8,13 @@ import { sendOrderNotificationEmail } from "@/lib/email/send";
 import { revalidatePath } from "next/cache";
 import type { ActionResult } from "@/types/actions";
 import type { Quote, QuoteItem } from "@prisma/client";
+import { assertStorePermission } from "@/lib/access/assert-store-access";
 
 const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? "https://biznest.vercel.app";
 
+// Quotes live under the "orders" permission in the nav (dashboard-nav.ts).
 async function assertStoreAccess(slug: string) {
-  const session = await auth();
-  if (!session?.user?.id) return { success: false as const, error: "You must be signed in." };
-
-  const store = await prisma.store.findUnique({ where: { slug }, include: { business: true } });
-  if (!store) return { success: false as const, error: "Store not found." };
-
-  const isOwner = store.business.userId === session.user.id;
-  const isStaff = session.user.role === "PLATFORM_ADMIN" || session.user.role === "SUPPORT_MODERATOR";
-  if (!isOwner && !isStaff) return { success: false as const, error: "You don't have access to this store." };
-
-  return { success: true as const, store };
+  return assertStorePermission(slug, "orders");
 }
 
 export type QuoteLineInput = { description: string; quantity: number; unitPrice: number };
@@ -178,6 +170,10 @@ export async function acceptQuote(quoteId: string): Promise<ActionResult<{ autho
   if (quote.expiresAt && quote.expiresAt < new Date()) {
     await prisma.quote.update({ where: { id: quoteId }, data: { status: "EXPIRED" } });
     return { success: false, error: "This quote has expired." };
+  }
+
+  if (!quote.store.payoutVerifiedAt) {
+    return { success: false, error: "This store's payout account is still pending provider verification. The deposit cannot be accepted yet." };
   }
 
   if (!quote.depositRequired || Number(quote.depositRequired) <= 0) {

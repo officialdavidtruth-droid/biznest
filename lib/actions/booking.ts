@@ -9,6 +9,7 @@ import { emitWebhookEvent } from "@/lib/webhooks/dispatch";
 import { revalidatePath } from "next/cache";
 import { Prisma } from "@prisma/client";
 import type { ActionResult } from "@/types/actions";
+import { assertStorePermission } from "@/lib/access/assert-store-access";
 
 // Shared by createBooking/createStayBooking: what to tell the shopper when
 // the database rejects the write because someone else just took the slot.
@@ -40,50 +41,11 @@ const DAY_KEYS = [
  * Store customers do NOT pass through this function.
  * They use the separate store-customer authentication system.
  */
+// Bookings/Calendar live under "Products & inventory" in the nav
+// (dashboard-nav.ts), so a MANAGER/STAFF granted "products" should be
+// able to actually manage bookings here, not just view the page.
 async function assertStoreAccess(slug: string) {
-  const session = await auth();
-
-  if (!session?.user?.id) {
-    return {
-      success: false as const,
-      error: "You must be signed in.",
-    };
-  }
-
-  const store = await prisma.store.findUnique({
-    where: {
-      slug,
-    },
-    include: {
-      business: true,
-    },
-  });
-
-  if (!store) {
-    return {
-      success: false as const,
-      error: "Store not found.",
-    };
-  }
-
-  const isOwner =
-    store.business.userId === session.user.id;
-
-  const isStaff =
-    session.user.role === "PLATFORM_ADMIN" ||
-    session.user.role === "SUPPORT_MODERATOR";
-
-  if (!isOwner && !isStaff) {
-    return {
-      success: false as const,
-      error: "You don't have access to this store.",
-    };
-  }
-
-  return {
-    success: true as const,
-    store,
-  };
+  return assertStorePermission(slug, "products");
 }
 
 /**

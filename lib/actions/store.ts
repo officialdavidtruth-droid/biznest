@@ -7,6 +7,7 @@ import { getTemplateBusinessType, isTemplateCompatible } from "@/lib/template-co
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import type { Prisma } from "@prisma/client";
+import { assertStorePermission } from "@/lib/access/assert-store-access";
 import { createStoreSchema, type CreateStoreInput } from "@/lib/validations/business";
 import { generateUniqueStoreSlug, storeAdminUrl, storePublicUrl } from "@/lib/utils/slug";
 import { revalidatePath } from "next/cache";
@@ -96,9 +97,9 @@ export async function createStore(
         businessType: business.category,
         enabledModules: { capabilities: getStoreConfiguration(business.category, { sellsProducts: business.sellsProducts, offersServices: business.offersServices }).capabilities },
         storefrontConfig: {
-          mode: getBusinessExperience(business.category, { sellsProducts: business.sellsProducts, offersServices: business.offersServices }).mode,
-          navigation: getBusinessExperience(business.category, { sellsProducts: business.sellsProducts, offersServices: business.offersServices }).navigation,
-          homepageSections: getBusinessExperience(business.category, { sellsProducts: business.sellsProducts, offersServices: business.offersServices }).preferredSections,
+          mode: getBusinessExperience(business.category, { sellsProducts: business.sellsProducts, offersServices: business.offersServices }, business.businessSubcategory).mode,
+          navigation: getBusinessExperience(business.category, { sellsProducts: business.sellsProducts, offersServices: business.offersServices }, business.businessSubcategory).navigation,
+          homepageSections: getBusinessExperience(business.category, { sellsProducts: business.sellsProducts, offersServices: business.offersServices }, business.businessSubcategory).preferredSections,
         },
         // A logo/banner uploaded in the onboarding wizard's branding step
         // wins over the auto-fetched demo banner — that photo is only a
@@ -109,7 +110,7 @@ export async function createStore(
       },
     });
 
-    const websitePages = getBusinessExperience(business.category, { sellsProducts: business.sellsProducts, offersServices: business.offersServices }).pageSlugs;
+    const websitePages = getBusinessExperience(business.category, { sellsProducts: business.sellsProducts, offersServices: business.offersServices }, business.businessSubcategory).pageSlugs;
     await tx.storePage.createMany({
       data: websitePages.map((p) => ({
         storeId: created.id,
@@ -320,18 +321,11 @@ export async function seedSampleListings(slug: string): Promise<ActionResult> {
   return { success: true, data: undefined };
 }
 
+// Storefront settings/branding/hero/story overrides live under "settings"
+// in the nav (dashboard-nav.ts) — separate from assertStoreOwner below,
+// which gates payouts/billing and stays owner-only.
 async function assertStoreAccess(slug: string) {
-  const session = await auth();
-  if (!session?.user?.id) return { success: false as const, error: "You must be signed in." };
-
-  const store = await prisma.store.findUnique({ where: { slug }, include: { business: true } });
-  if (!store) return { success: false as const, error: "Store not found." };
-
-  const isOwner = store.business.userId === session.user.id;
-  const isStaff = session.user.role === "PLATFORM_ADMIN" || session.user.role === "SUPPORT_MODERATOR";
-  if (!isOwner && !isStaff) return { success: false as const, error: "You don't have access to this store." };
-
-  return { success: true as const, store };
+  return assertStorePermission(slug, "settings");
 }
 
 /** Storefront settings: branding, theme colors, contact info, social links. */
@@ -545,6 +539,10 @@ export async function connectPayoutAccount(
       bankCode: input.bankCode,
       accountNumber: input.accountNumber,
       commissionPercentage: commissionRate,
+      primaryContactName: store.business.businessName,
+      primaryContactEmail: store.business.email,
+      primaryContactPhone: store.business.phone,
+      description: `BizNest merchant payout account for ${store.name}`,
     });
     if (!subaccount.status || !subaccount.data) {
       return { success: false, error: subaccount.message || "Couldn't connect this account to Paystack." };
@@ -554,6 +552,9 @@ export async function connectPayoutAccount(
       where: { id: store.id },
       data: {
         paystackSubaccountCode: subaccount.data.subaccount_code,
+        // Verification belongs to this exact provider account. Never inherit
+        // an older verification timestamp when a new subaccount is created.
+        payoutVerifiedAt: subaccount.data.is_verified ? new Date() : null,
         // Connected, not verified -- Paystack still has to manually
         // review KYC before this subaccount's first payout releases.
         // payoutVerifiedAt stays null until refreshPayoutVerification
@@ -571,6 +572,9 @@ export async function connectPayoutAccount(
     const subaccount = await createFlutterwaveSubaccount({
       businessName: store.name,
       businessEmail: store.business.email,
+      businessPhone: store.business.phone,
+      businessContact: store.business.businessName,
+      businessContactPhone: store.business.phone,
       bankCode: input.bankCode,
       accountNumber: input.accountNumber,
       splitPercentage: commissionRate,
@@ -661,8 +665,8 @@ export async function disconnectPayoutAccount(slug: string, provider: "PAYSTACK"
     where: { id: access.store.id },
     data:
       provider === "PAYSTACK"
-        ? { paystackSubaccountCode: null }
-        : { flutterwaveSubaccountId: null },
+        ? { paystackSubaccountCode: null, payoutVerifiedAt: null, payoutConnectedAt: null }
+        : { flutterwaveSubaccountId: null, payoutVerifiedAt: null, payoutConnectedAt: null },
   });
 
   await prisma.auditLog.create({

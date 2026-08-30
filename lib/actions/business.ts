@@ -49,6 +49,7 @@ export async function submitBusinessVerification(
       userId: session.user.id,
       businessName: data.businessName,
       category: data.category,
+      businessSubcategory: data.businessSubcategory ?? null,
       description: data.description,
       phone: data.phone,
       email: data.email,
@@ -69,6 +70,7 @@ export async function submitBusinessVerification(
     update: {
       businessName: data.businessName,
       category: data.category,
+      businessSubcategory: data.businessSubcategory ?? null,
       description: data.description,
       phone: data.phone,
       email: data.email,

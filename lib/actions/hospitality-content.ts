@@ -1,6 +1,5 @@
 "use server";
 
-import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { revalidatePath } from "next/cache";
 import type { ActionResult } from "@/types/actions";
@@ -10,17 +9,14 @@ import {
   type GalleryImage,
   type HospitalityGalleryContent,
 } from "@/lib/actions/hospitality-content.types";
+import { assertStorePermission } from "@/lib/access/assert-store-access";
 
 export type { GalleryAlbum, GalleryImage, HospitalityGalleryContent } from "@/lib/actions/hospitality-content.types";
 
+// Gallery & Stories lives under the website builder area ("settings"
+// permission in dashboard-nav.ts).
 async function access(slug: string) {
-  const session = await auth();
-  if (!session?.user?.id) return { success: false as const, error: "You must be signed in." };
-  const store = await prisma.store.findUnique({ where: { slug }, include: { business: true } });
-  if (!store) return { success: false as const, error: "Store not found." };
-  const allowed = store.business.userId === session.user.id || session.user.role === "PLATFORM_ADMIN" || session.user.role === "SUPPORT_MODERATOR";
-  if (!allowed) return { success: false as const, error: "You don't have access to this store." };
-  return { success: true as const, store };
+  return assertStorePermission(slug, "settings");
 }
 
 function cleanString(value: unknown, max = 10000) {

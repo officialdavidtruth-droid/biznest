@@ -14,7 +14,7 @@ export async function subscribeToNewsletter(storeSlug: string, formData: FormDat
 
   await prisma.newsletterSubscriber.upsert({
     where: { storeId_email: { storeId: store.id, email } },
-    update: {},
+    update: { unsubscribedAt: null },
     create: { storeId: store.id, email },
   });
 

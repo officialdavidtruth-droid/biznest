@@ -1,31 +1,17 @@
 "use server";
 
-import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { revalidatePath } from "next/cache";
 import slugify from "slugify";
 import { toCsv, csvToRecords } from "@/lib/utils/csv";
 import { roundMoney } from "@/lib/utils/pricing";
 import type { ActionResult } from "@/types/actions";
-import type { Store, Business } from "@prisma/client";
 import { assertUnderPlanLimit } from "@/lib/entitlements";
+import { assertStorePermission } from "@/lib/access/assert-store-access";
 
-type StoreAccessResult =
-  | { success: true; store: Store & { business: Business } }
-  | { success: false; error: string };
-
-async function assertStoreAccess(slug: string): Promise<StoreAccessResult> {
-  const session = await auth();
-  if (!session?.user?.id) return { success: false, error: "You must be signed in." };
-
-  const store = await prisma.store.findUnique({ where: { slug }, include: { business: true } });
-  if (!store) return { success: false, error: "Store not found." };
-
-  const isOwner = store.business.userId === session.user.id;
-  const isStaff = session.user.role === "PLATFORM_ADMIN" || session.user.role === "SUPPORT_MODERATOR";
-  if (!isOwner && !isStaff) return { success: false, error: "You don't have access to this store." };
-
-  return { success: true, store };
+// Bulk import/export is used from the Products page ("products" permission in dashboard-nav.ts).
+async function assertStoreAccess(slug: string) {
+  return assertStorePermission(slug, "products");
 }
 
 const CSV_HEADERS = [

@@ -4,7 +4,7 @@ import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { revalidatePath } from "next/cache";
 import { seedSampleListings } from "@/lib/actions/store";
-import { SIGNATURE_TEMPLATE_CATALOG } from "@/lib/template-themes";
+import { SIGNATURE_TEMPLATE_CATALOG, PROFESSIONAL_SERVICE_TEMPLATE_CATALOG } from "@/lib/template-themes";
 import type { Prisma } from "@prisma/client";
 import type { ActionResult } from "@/types/actions";
 
@@ -24,6 +24,16 @@ export async function setStoreTemplate(slug: string, templateId: string): Promis
   // it. The gallery uses this stable virtual id for rows that are not in the
   // database yet.
   let template = await prisma.storeTemplate.findUnique({ where: { id: templateId } });
+  if (!template && templateId.startsWith("__professional__:")) {
+    const name = templateId.slice("__professional__:".length);
+    const professional = PROFESSIONAL_SERVICE_TEMPLATE_CATALOG.find((t) => t.variationName === name);
+    if (!professional) return { success: false, error: "Template not found." };
+    template = await prisma.storeTemplate.upsert({
+      where: { name: professional.variationName },
+      update: { category: professional.category, isActive: true, tierRank: professional.tierRank, config: professional as unknown as Prisma.InputJsonValue },
+      create: { name: professional.variationName, category: professional.category, isActive: true, tierRank: professional.tierRank, config: professional as unknown as Prisma.InputJsonValue },
+    });
+  }
   if (!template && templateId.startsWith("__signature__:")) {
     const name = templateId.slice("__signature__:".length);
     const signature = SIGNATURE_TEMPLATE_CATALOG.find((t) => t.variationName === name);

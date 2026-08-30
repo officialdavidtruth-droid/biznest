@@ -1,6 +1,5 @@
 "use server";
 
-import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { refundPayment } from "@/lib/payments/gateway";
 import { emitWebhookEvent } from "@/lib/webhooks/dispatch";
@@ -8,6 +7,8 @@ import { revalidatePath } from "next/cache";
 import type { ActionResult } from "@/types/actions";
 import type { Prisma } from "@prisma/client";
 import { roundMoney } from "@/lib/utils/pricing";
+import { assertStorePermission } from "@/lib/access/assert-store-access";
+import { auth } from "@/lib/auth";
 
 // Order statuses a refund can be issued from. PENDING_PAYMENT/CANCELLED
 // never had money move; REFUNDED is already done; DISPUTED is left out
@@ -26,18 +27,25 @@ const REFUNDABLE_ORDER_STATUSES = ["PAID", "IN_PROGRESS", "DELIVERED", "COMPLETE
 // clawback instead of guessing wrong in the platform's favor.
 const SETTLEMENT_LIKELY_DAYS = 3;
 
+// Manual refunds are reached from the order detail page ("orders"
+// permission in dashboard-nav.ts), so a MANAGER/STAFF granted "orders"
+// access can issue them too — not just the owner. Clawback settlement
+// below (assertStaffAccess) stays platform-staff-only regardless, per its
+// own comment.
 async function assertStoreAccess(slug: string) {
+  const access = await assertStorePermission(slug, "orders");
+  if (!access.success) return access;
+
   const session = await auth();
-  if (!session?.user?.id) return { success: false as const, error: "You must be signed in." };
-
-  const store = await prisma.store.findUnique({ where: { slug }, include: { business: true, subscription: true } });
-  if (!store) return { success: false as const, error: "Store not found." };
-
-  const isOwner = store.business.userId === session.user.id;
-  const isStaff = session.user.role === "PLATFORM_ADMIN" || session.user.role === "SUPPORT_MODERATOR";
-  if (!isOwner && !isStaff) return { success: false as const, error: "You don't have access to this store." };
-
-  return { success: true as const, store, actorEmail: session.user.email ?? "unknown" };
+  const withSubscription = await prisma.store.findUnique({
+    where: { id: access.store.id },
+    include: { subscription: true },
+  });
+  return {
+    success: true as const,
+    store: { ...access.store, subscription: withSubscription?.subscription ?? null },
+    actorEmail: session?.user?.email ?? "unknown",
+  };
 }
 
 /**

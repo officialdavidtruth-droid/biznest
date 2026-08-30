@@ -197,6 +197,7 @@ async function chargeExistingOrder(
     slug: string;
     paystackSubaccountCode: string | null;
     flutterwaveSubaccountId: string | null;
+    payoutVerifiedAt: Date | null;
   },
   shippingFullName: string,
   buyerEmail: string | null | undefined
@@ -359,6 +360,34 @@ export async function startCheckout(
       success: false,
       error:
         "This store isn't available.",
+    };
+  }
+
+  // Never accept a marketplace payment when BizNest has a payout target
+  // that the provider has not verified. Otherwise the customer can pay
+  // successfully while the merchant share is held at the gateway.
+  const activeGateway = await getActiveGateway();
+  const hasPayoutTarget = activeGateway === "PAYSTACK"
+    ? Boolean(store.paystackSubaccountCode)
+    : Boolean(store.flutterwaveSubaccountId);
+
+  if (!hasPayoutTarget) {
+    return {
+      success: false,
+      error: "This store has not connected a payout account yet. Online checkout is temporarily unavailable.",
+    };
+  }
+
+  // Paystack exposes an explicit subaccount is_verified flag. Do not accept a
+  // new marketplace payment while that provider-side verification is pending.
+  // Flutterwave's v3 collection-subaccount API does not expose an equivalent
+  // is_verified field, so do not invent one in BizNest or block every
+  // successfully-created Flutterwave subaccount forever. Flutterwave remains
+  // authoritative for any compliance/settlement hold on its side.
+  if (activeGateway === "PAYSTACK" && !store.payoutVerifiedAt) {
+    return {
+      success: false,
+      error: "This store's Paystack payout account is still pending provider verification. Please try again after Paystack verifies the subaccount.",
     };
   }
 

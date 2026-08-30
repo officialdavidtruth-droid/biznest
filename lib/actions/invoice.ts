@@ -8,21 +8,13 @@ import { sendOrderNotificationEmail } from "@/lib/email/send";
 import { revalidatePath } from "next/cache";
 import type { ActionResult } from "@/types/actions";
 import type { Invoice, InvoiceItem } from "@prisma/client";
+import { assertStorePermission } from "@/lib/access/assert-store-access";
 
 const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? "https://biznest.vercel.app";
 
+// Invoices live under the "orders" permission in the nav (dashboard-nav.ts).
 async function assertStoreAccess(slug: string) {
-  const session = await auth();
-  if (!session?.user?.id) return { success: false as const, error: "You must be signed in." };
-
-  const store = await prisma.store.findUnique({ where: { slug }, include: { business: true } });
-  if (!store) return { success: false as const, error: "Store not found." };
-
-  const isOwner = store.business.userId === session.user.id;
-  const isStaff = session.user.role === "PLATFORM_ADMIN" || session.user.role === "SUPPORT_MODERATOR";
-  if (!isOwner && !isStaff) return { success: false as const, error: "You don't have access to this store." };
-
-  return { success: true as const, store };
+  return assertStorePermission(slug, "orders");
 }
 
 export type InvoiceLineInput = { description: string; quantity: number; unitPrice: number };
@@ -203,6 +195,10 @@ export async function payInvoice(invoiceId: string): Promise<ActionResult<{ auth
   if (!invoice) return { success: false, error: "Invoice not found." };
   if (invoice.status === "PAID") return { success: false, error: "This invoice has already been paid." };
   if (invoice.status === "CANCELLED") return { success: false, error: "This invoice was cancelled." };
+
+  if (!invoice.store.payoutVerifiedAt) {
+    return { success: false, error: "This store's payout account is still pending provider verification. The invoice cannot be paid yet." };
+  }
 
   // Reference prefix "INV-" tells the shared payment webhook/callback
   // routes to settle this as an invoice rather than an order — see

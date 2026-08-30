@@ -1,26 +1,24 @@
 "use server";
 
-import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { revalidatePath } from "next/cache";
 import { addDomainToVercel, checkDomainStatus, removeDomainFromVercel } from "@/lib/vercel-domains";
 import type { ActionResult } from "@/types/actions";
+import { assertStorePermission } from "@/lib/access/assert-store-access";
 
+// Custom domain lives under store Settings ("settings" permission in
+// dashboard-nav.ts). assertStorePermission's store doesn't include
+// `subscription` (needed here for plan-gating custom domains), so fetch it
+// alongside the permission check.
 async function assertStoreAccess(slug: string) {
-  const session = await auth();
-  if (!session?.user?.id) return { success: false as const, error: "You must be signed in." };
+  const access = await assertStorePermission(slug, "settings");
+  if (!access.success) return access;
 
-  const store = await prisma.store.findUnique({
-    where: { slug },
-    include: { business: true, subscription: true },
+  const withSubscription = await prisma.store.findUnique({
+    where: { id: access.store.id },
+    include: { subscription: true },
   });
-  if (!store) return { success: false as const, error: "Store not found." };
-
-  const isOwner = store.business.userId === session.user.id;
-  const isStaff = session.user.role === "PLATFORM_ADMIN" || session.user.role === "SUPPORT_MODERATOR";
-  if (!isOwner && !isStaff) return { success: false as const, error: "You don't have access to this store." };
-
-  return { success: true as const, store };
+  return { success: true as const, store: { ...access.store, subscription: withSubscription?.subscription ?? null } };
 }
 
 const DOMAIN_RE = /^(?!-)[a-z0-9-]{1,63}(?<!-)(\.[a-z0-9-]{1,63})+$/i;

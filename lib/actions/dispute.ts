@@ -6,6 +6,7 @@ import { requireStoreCustomerByStoreId } from "@/lib/actions/store-customer";
 import { revalidatePath } from "next/cache";
 import type { ActionResult } from "@/types/actions";
 import { DISPUTABLE_ORDER_STATUSES, type DisputeViewerRole } from "@/lib/constants/dispute";
+import { getStoreAccessRole, hasStorePermission } from "@/lib/access/store-access";
 
 async function assertOrderParticipant(orderId: string) {
   const session = await auth();
@@ -22,8 +23,23 @@ async function assertOrderParticipant(orderId: string) {
     const membership = await requireStoreCustomerByStoreId(order.storeId);
     if (!membership) return { success: false as const, error: "You don't have access to this store account." };
   }
-  const isSeller = order.store.business.userId === session.user.id;
+  // "Seller side" also covers a MANAGER/STAFF granted "orders" access —
+  // disputes are reachable from the Orders page (see dashboard-nav.ts),
+  // so a staff member with that permission should be able to act on them,
+  // not just the store owner.
+  const isOwner = order.store.business.userId === session.user.id;
   const isStaff = session.user.role === "PLATFORM_ADMIN" || session.user.role === "SUPPORT_MODERATOR";
+  let isSeller = isOwner || isStaff;
+  if (!isSeller) {
+    const role = await getStoreAccessRole(session.user.id, session.user.role, order.store);
+    if (role === "MANAGER" || role === "STAFF") {
+      const staffMembership = await prisma.storeStaff.findFirst({
+        where: { storeId: order.storeId, userId: session.user.id, status: "ACTIVE" },
+        select: { permissions: true },
+      });
+      isSeller = hasStorePermission(role, staffMembership?.permissions, "orders");
+    }
+  }
   if (!isBuyer && !isSeller && !isStaff) {
     return { success: false as const, error: "You don't have access to this order." };
   }
