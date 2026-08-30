@@ -2,7 +2,7 @@
 import { prisma } from "@/lib/prisma";
 import { notFound } from "next/navigation";
 import { TemplatesPageClient } from "@/components/dashboard/templates-page-client";
-import { SIGNATURE_TEMPLATE_CATALOG } from "@/lib/template-themes";
+import { SIGNATURE_TEMPLATE_CATALOG, PROFESSIONAL_SERVICE_TEMPLATE_CATALOG } from "@/lib/template-themes";
 
 // Dedicated "pick a template" page, separate from Customize Website. Browsing
 // and applying a template lives here now; Customize Website just shows
@@ -34,7 +34,15 @@ export default async function TemplatesPage({ params }: { params: Promise<{ slug
     previewUrl: null,
     config: t as unknown as Record<string, unknown>,
   }));
-  const templates = [...dbTemplates, ...signatureTemplates];
+  const professionalTemplates = PROFESSIONAL_SERVICE_TEMPLATE_CATALOG.filter((t) => !existingNames.has(t.variationName)).map((t) => ({
+    id: `__professional__:${t.variationName}`,
+    name: t.variationName,
+    category: t.category,
+    tierRank: t.tierRank,
+    previewUrl: null,
+    config: t as unknown as Record<string, unknown>,
+  }));
+  const templates = [...dbTemplates, ...signatureTemplates, ...professionalTemplates];
 
   const features = store.subscription?.features as { templateTier?: number } | null;
   const planRank = features?.templateTier ?? 1;
