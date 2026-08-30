@@ -10,7 +10,7 @@ import { DeliveryZoneOptions } from "@/components/checkout/delivery-zone-options
 import { getSignatureTheme } from "@/lib/template-themes";
 import { toast } from "sonner";
 
-type Mode = "electra" | "atelier" | "kinetic" | "bloom" | "haven" | "harvest" | "maison" | "hotel" | "ember" | "muse" | "frame" | "north" | "pure" | "forge";
+type Mode = "electra" | "atelier" | "kinetic" | "bloom" | "haven" | "harvest" | "maison" | "hotel" | "ember" | "muse" | "frame" | "north" | "pure" | "forge" | "great-treasure" | "grand-vere" | "belora" | "tastehouse" | "flavora-kitchen" | "flavora-restaurant";
 
 type Zone = { id: string; name: string; city: string | null; fee: number; estimatedMinutes: number | null };
 
@@ -29,6 +29,12 @@ const modeMeta: Record<Mode, { kicker: string; title: string; action: string; su
   north: { kicker: "Start a project", title: "Let's make it happen.", action: "Continue to secure payment", summary: "Your project details are ready for the next step.", labels: ["Scope", "Details", "Payment"] },
   pure: { kicker: "Book with confidence", title: "Complete your booking.", action: "Continue to payment", summary: "A cleaner space starts with these details.", labels: ["Service", "Address", "Payment"] },
   forge: { kicker: "Project checkout", title: "Ready to build.", action: "Continue to secure payment", summary: "Confirm the details for your project.", labels: ["Project", "Details", "Payment"] },
+  "great-treasure": { kicker: "Book your stay", title: "Complete your reservation.", action: "Continue to payment", summary: "Your room is almost ready to be confirmed.", labels: ["Stay", "Guest", "Payment"] },
+  "grand-vere": { kicker: "Direct booking", title: "Complete your stay.", action: "Continue to payment", summary: "A few details before we welcome you.", labels: ["Room", "Guest", "Payment"] },
+  belora: { kicker: "Your beauty edit", title: "Complete your order.", action: "Continue to payment", summary: "Your carefully selected beauty essentials are ready.", labels: ["Bag", "Details", "Payment"] },
+  tastehouse: { kicker: "Fast & fresh", title: "Complete your order.", action: "Continue to payment", summary: "Your meal is only a few details away.", labels: ["Menu", "Delivery", "Payment"] },
+  "flavora-kitchen": { kicker: "Order online", title: "Complete your order.", action: "Continue to payment", summary: "Fresh flavor is almost on its way.", labels: ["Menu", "Details", "Payment"] },
+  "flavora-restaurant": { kicker: "Reserve your table", title: "Complete your booking.", action: "Continue to payment", summary: "Good food is better when shared.", labels: ["Table", "Details", "Payment"] },
 };
 
 function Field({ label, value, onChange, placeholder, required = true }: { label: string; value: string; onChange: (v: string) => void; placeholder: string; required?: boolean }) {

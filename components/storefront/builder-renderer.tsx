@@ -68,7 +68,7 @@ export function BuilderStorefront({
 
   const d = liveConfig.design;
   const config = liveConfig; // used by JSX below (BuilderSectionView expects `config`)
-  const experience = getBusinessExperience(store.business.category, { sellsProducts: store.business.sellsProducts, offersServices: store.business.offersServices });
+  const experience = getBusinessExperience(store.business.category, { sellsProducts: store.business.sellsProducts, offersServices: store.business.offersServices }, store.business.businessSubcategory);
   const width = d.containerWidth === "compact" ? 960 : d.containerWidth === "wide" ? 1320 : 1160;
   const visible = config.sections.filter((s) => s.visible);
   const featured = catalogItems.slice(0, 8);

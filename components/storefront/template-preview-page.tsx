@@ -32,6 +32,9 @@ import {
   TEMPLATE_NAME_VIOLET,
   TEMPLATE_NAME_VIOLET_SUNSET,
   isSignatureTemplate,
+  isProfessionalServicesTemplate,
+  getProfessionalServicesTheme,
+  PROFESSIONAL_SERVICE_TEMPLATE_CATALOG,
   type TemplateTheme,
 } from "@/lib/template-themes";
 import { HeenzyStorefront } from "@/components/storefront/templates/heenzy-home";
@@ -46,7 +49,9 @@ import { RivoraStorefront } from "@/components/storefront/templates/rivora-home"
 import { JuiceLifeStorefront } from "@/components/storefront/templates/juicelife-home";
 import { FabtexStorefront } from "@/components/storefront/templates/fabtex-home";
 import { SignatureStorefront } from "@/components/storefront/templates/signature-home";
+import { SignatureScreenshotHome } from "@/components/storefront/signature-screenshot-home";
 import { HotelStorefront } from "@/components/storefront/templates/hotel-home";
+import { ProfessionalServicesStorefront } from "@/components/storefront/templates/professional-services-home";
 import { CartLink } from "@/components/storefront/cart-link";
 import { AccountLink } from "@/components/storefront/account-link";
 import { subscribeToNewsletter } from "@/lib/actions/newsletter";
@@ -201,6 +206,28 @@ const SIGNATURE_PROFILE: Record<string, { name: string; description: string; tag
   north: { name: "North", description: "A sharp agency storefront focused on capabilities, proof, process and confident project starts.", tags: ["Strategy", "Branding", "Digital", "Campaigns"], itemNames: ["Brand Strategy", "Identity System", "Website Sprint", "Campaign Direction", "Content Retainer", "Growth Workshop"] },
   pure: { name: "Pure", description: "A trustworthy cleaning storefront built around services, packages, coverage areas and booking.", tags: ["Home", "Office", "Deep Clean", "Packages"], itemNames: ["Home Clean", "Office Clean", "Deep Clean", "Move-Out Clean", "Monthly Package", "Post-Construction"] },
   forge: { name: "Forge", description: "A construction storefront designed around projects, services, proof, process and quote requests.", tags: ["Build", "Renovation", "Interiors", "Consulting"], itemNames: ["Home Renovation", "Office Build", "Kitchen Remodel", "Interior Fit-Out", "Project Survey", "Build Consultation"] },
+  "great-treasure": { name: "Great Treasure", description: "Luxury hotel and suites with rooms, food, amenities and direct booking.", tags: ["Rooms", "Suites", "Food", "Amenities"], itemNames: ["Standard Room", "Deluxe Room", "Executive Suite", "Presidential Suite", "Restaurant Menu", "Event Hall"] },
+  "grand-vere": { name: "Grand Vere", description: "Timeless hotel and resort hospitality with elegant rooms, dining, gallery and guest experiences.", tags: ["Rooms", "Suites", "Amenities", "Dining"], itemNames: ["Deluxe Room", "Ocean View Suite", "Executive Suite", "Private Villa", "Spa Experience", "Dinner Reservation"] },
+  belora: { name: "Belora", description: "Clean beauty, conscious choices and premium skincare for every skin type.", tags: ["Skin Care", "Makeup", "Hair Care", "Gift Sets"], itemNames: ["Glow Face Serum", "Hydrating Moisturizer", "Radiance Face Wash", "Matte Lipstick", "Rose Water Toner", "Self Care Set"] },
+  tastehouse: { name: "TasteHouse", description: "Food delivery built around cuisines, popular dishes, offers and fast checkout.", tags: ["Italian", "Chinese", "Indian", "Mexican"], itemNames: ["Grilled Chicken", "Margherita Pizza", "Paneer Butter Masala", "Sushi Platter", "Chocolate Lava Cake", "Family Combo"] },
+  "flavora-kitchen": { name: "Flavora Kitchen", description: "Bold, fresh food with an easy online ordering experience.", tags: ["Starters", "Main Course", "Desserts", "Drinks"], itemNames: ["Chicken Tikka", "Signature Burger", "Spaghetti Carbonara", "Lamb Rogan Josh", "Margherita Pizza", "Seafood Paella"] },
+  "flavora-restaurant": { name: "Flavora", description: "A warm restaurant experience centered on delicious food, ambience and reservations.", tags: ["Starters", "Mains", "Desserts", "Drinks"], itemNames: ["Creamy Alfredo Pasta", "Grilled Chicken Steak", "Margherita Pizza", "Chocolate Lava Cake", "Seafood Paella", "Chef's Special"] },
+};
+
+const PROFESSIONAL_PROFILES: Record<string, { name:string; description:string; tags:string[]; itemNames:string[] }> = {
+  "Obsidian Atelier — Graphic Design & Print": { name:"Obsidian Atelier", description:"Premium graphic design, branding and print production for brands that care about every detail.", tags:["Branding","Print","Packaging","Campaigns"], itemNames:["Brand Identity","Campaign Art Direction","Premium Business Cards","Luxury Packaging","Campaign Poster","Large Format Print"] },
+  "Noir Identity — Brand Strategy": { name:"Noir Identity", description:"Strategic brand identity and art direction for distinctive businesses.", tags:["Strategy","Identity","Art Direction","Guidelines"], itemNames:["Brand Strategy","Visual Identity","Art Direction","Brand Guidelines","Naming Workshop","Launch System"] },
+  "Cobalt Bureau — Marketing & Digital": { name:"Cobalt Bureau", description:"Campaigns, digital experiences and growth systems built for measurable momentum.", tags:["Campaigns","Growth","Content","Performance"], itemNames:["Campaign Strategy","Performance Marketing","Content System","Growth Workshop","Launch Campaign","Digital Retainer"] },
+  "Nocturne Studio — Photography": { name:"Nocturne Studio", description:"Cinematic photography for portraits, products, editorial and commercial brands.", tags:["Portraits","Commercial","Editorial","Products"], itemNames:["Portrait Session","Brand Campaign","Product Studio","Editorial Day","Executive Portraits","Campaign Library"] },
+  "Meridian Advisory — Consulting": { name:"Meridian Advisory", description:"Independent strategy and executive advisory for consequential decisions.", tags:["Strategy","Transformation","Research","Workshops"], itemNames:["Strategy Advisory","Market Intelligence","Transformation Sprint","Executive Workshop","Growth Review","Board Advisory"] },
+  "Ledger House — Accounting & Finance": { name:"Ledger House", description:"Modern accounting, tax and financial advisory for growing businesses.", tags:["Accounting","Tax","Reporting","Advisory"], itemNames:["Monthly Accounting","Tax Advisory","Financial Reporting","CFO Advisory","Bookkeeping Review","Business Forecast"] },
+  "Crown & Chambers — Legal": { name:"Crown & Chambers", description:"Discreet commercial counsel, contracts and representation.", tags:["Corporate","Contracts","IP","Disputes"], itemNames:["Corporate Counsel","Contract Review","IP Advisory","Dispute Consultation","Company Formation","Legal Retainer"] },
+  "Bluebird People — HR & Recruitment": { name:"Bluebird People", description:"Executive search, recruitment and people strategy for ambitious teams.", tags:["Executive Search","Recruitment","People","Culture"], itemNames:["Executive Search","Talent Acquisition","People Strategy","Employer Brand","Leadership Search","Hiring Sprint"] },
+  "Signal Labs — Web & Software": { name:"Signal Labs", description:"High-performance websites and software designed around business outcomes.", tags:["Web","Product","Engineering","Growth"], itemNames:["Website Platform","Product Design Sprint","Software Build","API Integration","Growth System","Maintenance Retainer"] },
+  "Northstar Systems — IT & Technology": { name:"Northstar Systems", description:"Managed IT, cybersecurity and cloud infrastructure for modern teams.", tags:["Managed IT","Security","Cloud","Support"], itemNames:["Managed IT","Cybersecurity Audit","Cloud Migration","Support Retainer","Network Review","Backup & Recovery"] },
+  "Forma House — Architecture & Interiors": { name:"Forma House", description:"Architecture and interiors shaped by proportion, material and light.", tags:["Architecture","Interiors","Residential","Commercial"], itemNames:["Residential Concept","Interior Scheme","Hospitality Project","Office Interior","Spatial Strategy","Project Delivery"] },
+  "Axis Engineering — Engineering": { name:"Axis Engineering", description:"Engineering confidence from concept through delivery.", tags:["Structural","Civil","MEP","Technical"], itemNames:["Structural Review","Civil Design","MEP Systems","Technical Survey","Engineering Report","Project Supervision"] },
+  "Foundry Build — Construction": { name:"Foundry Build", description:"Construction, renovation and project delivery with a clear process.", tags:["New Build","Renovation","Fit-out","Project Management"], itemNames:["New Build","Home Renovation","Commercial Fit-out","Project Management","Site Survey","Construction Estimate"] },
 };
 
 const SIGNATURE_NAMES = new Set(SIGNATURE_TEMPLATE_CATALOG.map((t) => t.variationName));
@@ -223,7 +250,7 @@ export function generateStaticParams() {
     TEMPLATE_NAME_JUICELIFE,
     TEMPLATE_NAME_FABTEX,
   ];
-  return [...legacyNames, ...SIGNATURE_NAMES].map((name) => ({ name }));
+  return [...legacyNames, ...SIGNATURE_NAMES, ...PROFESSIONAL_SERVICE_TEMPLATE_CATALOG.map((t) => t.variationName)].map((name) => ({ name }));
 }
 
 function svgDataUri(label: string, bg: string, accent: string): string {
@@ -233,6 +260,7 @@ function svgDataUri(label: string, bg: string, accent: string): string {
 }
 
 function profileFor(templateName: string, theme: TemplateTheme) {
+  if (PROFESSIONAL_PROFILES[templateName]) return PROFESSIONAL_PROFILES[templateName];
   if (SIGNATURE_NAMES.has(templateName)) {
     const signature = getSignatureTheme(templateName);
     return SIGNATURE_PROFILE[signature.signatureMode] ?? SIGNATURE_PROFILE.electra;
@@ -287,7 +315,9 @@ export default async function TemplatePreviewPage({ params }: { params: Promise<
   const templateName = decodeURIComponent(rawName);
 
   let theme: TemplateTheme;
-  if (isSignatureTemplate(templateName)) {
+  if (isProfessionalServicesTemplate(templateName)) {
+    theme = getProfessionalServicesTheme(templateName);
+  } else if (isSignatureTemplate(templateName)) {
     theme = getSignatureTheme(templateName);
   } else {
     theme = resolveStoreTheme(undefined, "Preview", null, null, templateName);
@@ -306,7 +336,8 @@ export default async function TemplatePreviewPage({ params }: { params: Promise<
     isRivoraTemplate(templateName) ||
     isJuiceLifeTemplate(templateName) ||
     isFabtexTemplate(templateName) ||
-    isSignatureTemplate(templateName);
+    isSignatureTemplate(templateName) ||
+    isProfessionalServicesTemplate(templateName);
 
   if (!isKnown) notFound();
 
@@ -322,10 +353,18 @@ export default async function TemplatePreviewPage({ params }: { params: Promise<
   // at a real merchant.
   const slug = PREVIEW_SLUG;
 
+  if (isProfessionalServicesTemplate(templateName)) {
+    const professionalTheme = getProfessionalServicesTheme(templateName);
+    return <ProfessionalServicesStorefront store={store} slug={slug} catalogItems={items} goodReviews={goodReviews} avgRating={avgRating} completedOrders={128} social={social} theme={professionalTheme} />;
+  }
+
   if (isSignatureTemplate(templateName)) {
     const signatureTheme = getSignatureTheme(templateName);
     if (signatureTheme.signatureMode === "hotel") {
       return <HotelStorefront store={store} slug={slug} catalogItems={items} goodReviews={goodReviews} avgRating={avgRating} social={social} theme={signatureTheme} />;
+    }
+    if (["great-treasure", "grand-vere", "belora", "tastehouse", "flavora-kitchen", "flavora-restaurant"].includes(signatureTheme.signatureMode)) {
+      return <SignatureScreenshotHome store={store} slug={slug} items={items} reviews={reviews} avgRating={avgRating} completedOrders={128} social={social} mode={signatureTheme.signatureMode} accent={signatureTheme.accent} bg={signatureTheme.bg} ink={signatureTheme.ink} card={signatureTheme.card} muted={signatureTheme.muted || `${signatureTheme.ink}99`} border={signatureTheme.border || `${signatureTheme.ink}18`} accentSoft={signatureTheme.accentSoft || signatureTheme.accent} headlineFont={signatureTheme.headlineFont} font={signatureTheme.font} />;
     }
     return (
       <SignatureStorefront
