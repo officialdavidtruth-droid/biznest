@@ -16,6 +16,7 @@ export const guarantorSchema = z.object({
 const businessBaseSchema = z.object({
   businessName: z.string().min(2, "Business name is required"),
   category: z.string().min(1, "Select a category"),
+  businessSubcategory: z.string().max(120).optional(),
   description: z.string().min(20, "Please provide a fuller description (20+ characters)"),
   phone: z.string().min(7, "Enter a valid phone number"),
   email: z.string().email(),
