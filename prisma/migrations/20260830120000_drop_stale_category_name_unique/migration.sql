@@ -1,1 +1,26 @@
+-- Drops a stale global-unique index on Category.name if it exists.
+--
+-- The loose baseline prisma/migrations/migration.sql file used to contain
+-- `CREATE UNIQUE INDEX IF NOT EXISTS "Category_name_key" ON "Category"("name")`.
+-- That reproduced an old, pre-storeId-scoping version of the schema (back
+-- when Category.name was globally @unique) and was never updated when
+-- Category became storeId-scoped. Since that file's own history shows
+-- this exact class of index was pushed straight to the live Supabase DB
+-- once already (outside migration history), it's plausible this
+-- constraint actually exists in production today.
+--
+-- Category names are legitimately reused across stores by design --
+-- every store using the generic default-category preset gets categories
+-- literally named "Featured" or "Services" (see GENERIC_PRODUCT_CATEGORIES
+-- / GENERIC_SERVICE_CATEGORIES in lib/capabilities.ts) -- so a global
+-- unique constraint on name would silently break store creation/category
+-- creation for any store whose category name collides with another
+-- store's. Application-level duplicate checks in lib/actions/category.ts
+-- already correctly scope uniqueness to (storeId, name, parentId); this
+-- migration just makes sure the database doesn't also enforce a much
+-- stricter, wrong constraint underneath that.
+--
+-- Safe / idempotent: DROP ... IF EXISTS is a no-op if the index was never
+-- actually created.
 
+DROP INDEX IF EXISTS "Category_name_key";
