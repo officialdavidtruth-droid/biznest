@@ -66,7 +66,14 @@ CREATE INDEX IF NOT EXISTS "StoreStaff_inviteToken_idx" ON "StoreStaff"("inviteT
 CREATE INDEX IF NOT EXISTS "StoreActivityLog_storeId_createdAt_idx" ON "StoreActivityLog"("storeId", "createdAt");
 CREATE UNIQUE INDEX IF NOT EXISTS "StoreTemplate_name_key" ON "StoreTemplate"("name");
 CREATE UNIQUE INDEX IF NOT EXISTS "StorePage_storeId_slug_key" ON "StorePage"("storeId", "slug");
-CREATE UNIQUE INDEX IF NOT EXISTS "Category_name_key" ON "Category"("name");
+-- NOTE: the original "Category_name_key" unique index line that used to
+-- live here has been removed. It reproduced a bare global-unique
+-- constraint on Category.name that matched an *old* version of the
+-- schema (before Category became storeId-scoped). Category names are
+-- legitimately reused across stores (shared default presets like
+-- "Featured" / "Services"), so that constraint must never be recreated --
+-- see the drop migration in 20260830120000_drop_stale_category_name_unique
+-- for the corresponding cleanup if it was ever actually applied.
 CREATE INDEX IF NOT EXISTS "SearchQuery_category_city_idx" ON "SearchQuery"("category", "city");
 CREATE INDEX IF NOT EXISTS "SearchQuery_createdAt_idx" ON "SearchQuery"("createdAt");
 CREATE UNIQUE INDEX IF NOT EXISTS "Product_storeId_slug_key" ON "Product"("storeId", "slug");
