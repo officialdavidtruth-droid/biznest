@@ -15,6 +15,7 @@ import { isTemplateCompatible, templateCompatibilityScore } from "@/lib/template
 type BusinessSnapshot = {
   businessName: string;
   category: string;
+  businessSubcategory?: string | null;
   sellsProducts: boolean;
   offersServices: boolean;
 };
@@ -79,11 +80,11 @@ export function StoreSetupWizard({
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const plan = useMemo(
-    () => getBusinessOnboardingPlan(business.category, business.sellsProducts, business.offersServices),
+    () => getBusinessOnboardingPlan(business.category, business.sellsProducts, business.offersServices, business.businessSubcategory),
     [business.category, business.sellsProducts, business.offersServices]
   );
   const experience = useMemo(
-    () => getBusinessExperience(business.category, { sellsProducts: business.sellsProducts, offersServices: business.offersServices }),
+    () => getBusinessExperience(business.category, { sellsProducts: business.sellsProducts, offersServices: business.offersServices }, business.businessSubcategory),
     [business.category, business.sellsProducts, business.offersServices]
   );
   const PlanIcon = plan.icon;
@@ -271,7 +272,7 @@ export function StoreSetupWizard({
           <div className="overflow-hidden rounded-2xl border border-border bg-background shadow-sm">
             <div className="flex items-center gap-4 border-b border-border p-5">
               {logoUrl ? <img src={logoUrl} alt="" className="h-14 w-14 rounded-xl object-cover" /> : <div className="flex h-14 w-14 items-center justify-center rounded-xl bg-muted text-xs text-muted-foreground">Logo</div>}
-              <div><p className="font-bold">{storeName}</p><p className="text-xs text-muted-foreground">{business.category} · /{previewSlug}</p></div>
+              <div><p className="font-bold">{storeName}</p><p className="text-xs text-muted-foreground">{business.category}{business.businessSubcategory ? ` · ${business.businessSubcategory}` : ""} · /{previewSlug}</p></div>
             </div>
             <dl className="divide-y divide-border text-sm">
               <ReviewRow label="Business model" value={business.sellsProducts && business.offersServices ? "Products + services" : business.sellsProducts ? "Products" : "Services"} />

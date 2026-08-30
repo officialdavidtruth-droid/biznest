@@ -8,7 +8,8 @@ import { FileUploadField } from "@/components/forms/file-upload-field";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { ALL_BUSINESS_TYPE_NAMES } from "@/lib/capabilities";
+import { ALL_BUSINESS_TYPE_NAMES, getBusinessTypeConfig } from "@/lib/capabilities";
+import { PROFESSIONAL_SERVICE_SUBNICHES } from "@/lib/professional-services";
 
 // Sourced from lib/capabilities.ts — this used to be a separate
 // hand-maintained list that only covered 10 of the categories the
@@ -25,6 +26,7 @@ export function BusinessVerificationForm({
   const router = useRouter();
   const [registrationType, setRegistrationType] = useState<"REGISTERED" | "UNREGISTERED">("REGISTERED");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [category, setCategory] = useState("");
 
   const {
     register,
@@ -73,13 +75,23 @@ export function BusinessVerificationForm({
         </Field>
 
         <Field label="Category" error={errors.category?.message}>
-          <select className="input" {...register("category")}>
+          <select className="input" {...register("category")} onChange={(e) => { setCategory(e.target.value); register("category").onChange(e); }}>
             <option value="">Select a category</option>
             {CATEGORIES.map((c) => (
               <option key={c} value={c}>{c}</option>
             ))}
           </select>
         </Field>
+
+        {category === "Professional Services" && (
+          <Field label="Professional services specialty" error={errors.businessSubcategory?.message}>
+            <select className="input" {...register("businessSubcategory")}>
+              <option value="">Choose your specialty</option>
+              {PROFESSIONAL_SERVICE_SUBNICHES.map((n) => <option key={n.id} value={n.name}>{n.name}</option>)}
+            </select>
+            <p className="mt-1 text-xs text-muted-foreground">This controls the storefront, dashboard workflow and recommended tools BizNest gives you.</p>
+          </Field>
+        )}
 
         <Field label="Description" error={errors.description?.message}>
           <textarea className="input min-h-24" {...register("description")} />
