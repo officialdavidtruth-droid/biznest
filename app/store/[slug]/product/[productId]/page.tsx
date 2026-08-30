@@ -16,6 +16,8 @@ import { HeenzyHeader, HeenzyFooter, wrap as heenzyWrap } from "@/components/sto
 import { RivoraHeader, RivoraFooter, wrap as rivoraWrap } from "@/components/storefront/templates/rivora-chrome";
 import { FabtexHeader, FabtexFooter, wrap as fabtexWrap } from "@/components/storefront/templates/fabtex-chrome";
 import { JuiceLifeHeader, JuiceLifeFooter, wrap as juicelifeWrap } from "@/components/storefront/templates/juicelife-chrome";
+import { isSignatureTemplate, getSignatureTheme } from "@/lib/template-themes";
+import { SignatureJourney } from "@/components/storefront/signature-journey";
 import { FreshHeader, FreshFooter, wrap as freshWrap } from "@/components/storefront/templates/fresh-chrome";
 import { getStoreCategoryTree } from "@/lib/storefront-categories";
 
@@ -72,6 +74,13 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
       radius={radius}
     />
   );
+
+  if (isSignatureTemplate(store.template?.name)) {
+    const t = getSignatureTheme(store.template?.name);
+    return <SignatureJourney store={store} slug={slug} templateName={store.template?.name ?? ""} title={product.name}>
+      <section className="signature-detail-journey">{productDetail}</section>
+    </SignatureJourney>;
+  }
 
   const crumbs = (
     <>
