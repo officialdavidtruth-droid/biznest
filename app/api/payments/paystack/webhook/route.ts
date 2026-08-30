@@ -7,6 +7,7 @@ import { emitWebhookEvent } from "@/lib/webhooks/dispatch";
 import { notifyStoreOwnerOfPaidOrder, notifyCustomerOfPaidOrder } from "@/lib/notifications/notify";
 import { NextResponse } from "next/server";
 import { settleWalletFunding, settleServiceBookingPayment } from "@/lib/actions/customer-wallet";
+import { settleReservationPayment } from "@/lib/actions/pms";
 
 /**
  * Server-to-server payment confirmation from Paystack.
@@ -109,6 +110,12 @@ export async function POST(req: Request) {
     return NextResponse.json({ received: true });
   }
 
+  if (reference.startsWith("RES-")) {
+    const amount = verification.data ? Number(verification.data.amount) / 100 : 0;
+    await settleReservationPayment(reference, "PAYSTACK", amount, verification as object);
+    return NextResponse.json({ received: true });
+  }
+
   // Idempotent by design: only transition orders still awaiting payment,
   // via an atomic updateMany rather than read-then-write, so a webhook
   // retry racing the browser callback for the same reference can't both
@@ -120,6 +127,18 @@ export async function POST(req: Request) {
   // all describe one event (this order got paid) — grouped in one
   // transaction so a crash partway through can't confirm payment without
   // consuming inventory, or vice versa.
+  //
+  // Never trust that a successful charge paid the right amount — an
+  // order's total can change between checkout-init and payment (discount
+  // race, admin edit, etc.), so require the amount actually paid to cover
+  // it. Paystack reports amount in kobo; order.total is in naira. Mirrors
+  // the equivalent check in the Flutterwave webhook.
+  const order = await prisma.order.findUnique({ where: { id: reference } });
+  const amountMatches = order && verification.data && Number(verification.data.amount) / 100 >= Number(order.total);
+  if (!order || !amountMatches) {
+    return NextResponse.json({ received: true });
+  }
+
   const updated = await prisma.$transaction(async (tx) => {
     const result = await tx.order.updateMany({
       where: { id: reference, status: "PENDING_PAYMENT" },
