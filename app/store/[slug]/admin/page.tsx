@@ -8,11 +8,14 @@ import { getAdaptiveDashboardConfig } from "@/lib/adaptive-dashboard";
 import { getDashboardInsights } from "@/lib/actions/analytics";
 import { getTrustScoreBreakdown } from "@/lib/actions/trust-score";
 import { TrustScoreCard } from "@/components/dashboard/trust-score-card";
+import { getBusinessTerminology } from "@/lib/business-terminology";
 
 export default async function StoreDashboardHome({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
   const store = await prisma.store.findUnique({ where: { slug }, include: { business: true } });
   if (!store) notFound();
+
+  const terminology = getBusinessTerminology(store.business.category);
 
   const adaptive = getAdaptiveDashboardConfig(
     store.business.category,
@@ -129,7 +132,7 @@ export default async function StoreDashboardHome({ params }: { params: Promise<{
         </form>
       )}
 
-      <p className="mb-3 text-sm font-medium">Your business today</p>
+      <p className="mb-3 text-sm font-medium">{store.business.category === "Restaurant" ? "Your restaurant today" : `Your ${terminology.catalog.toLowerCase()} & ${terminology.transaction.toLowerCase()} activity`}</p>
       <div className="mb-8 grid grid-cols-2 gap-4 md:grid-cols-3">
         {stats.map((s) => (
           <div key={s.label} className="rounded-lg border bg-background p-4">
