@@ -3,7 +3,7 @@
 import type React from "react";
 import { useState } from "react";
 import Link from "next/link";
-import { MapPin, Star, Share2, Wifi, Tv, LockKeyhole, Volume2, Mirror, Bath, Armchair, AlarmClock, BedDouble } from "lucide-react";
+import { MapPin, Star, Share2, Wifi, Tv, LockKeyhole, Volume2, Sparkles, Bath, Armchair, AlarmClock, BedDouble } from "lucide-react";
 import { HotelReservationForm } from "@/components/storefront/hotel-reservation-form";
 
 type Props = {
@@ -25,7 +25,7 @@ function roomImages(service: any, store: any) {
 
 const AMENITIES = [
   [Wifi, "Air Conditioning"], [Tv, "Flat-Screen TV"], [Wifi, "High-Speed Wi-Fi"],
-  [LockKeyhole, "Electronic Safe"], [Volume2, "Sound System"], [Mirror, "Vanity mirror"],
+  [LockKeyhole, "Electronic Safe"], [Volume2, "Sound System"], [Sparkles, "Vanity mirror"],
   [Bath, "Bathrobes"], [Armchair, "Seating area"], [AlarmClock, "Alarm clock"],
 ];
 
