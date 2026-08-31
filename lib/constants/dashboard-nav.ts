@@ -3,7 +3,7 @@ import {
   CreditCard, BarChart3, Star, Megaphone, MessageSquare,
   Settings, BadgeCheck, Wallet, LifeBuoy, Truck, Wand2,
   LayoutTemplate, FileText, FileSignature, MailWarning, Calculator, CalendarDays, Images,
-  ClipboardList,
+  ClipboardList, Hotel,
 } from "lucide-react";
 import { getCategoryDashboard } from "@/lib/constants/category-dashboard";
 import type { StaffPermissionId } from "@/lib/access/staff-permissions";
