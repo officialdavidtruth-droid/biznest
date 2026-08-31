@@ -5,6 +5,7 @@ import {
   Activity,
   BedDouble,
   Bell,
+  Building2,
   CalendarDays,
   CheckCircle2,
   ChevronLeft,
@@ -52,7 +53,7 @@ type PmsWorkspaceProps = {
   reservations: any[];
 };
 
-type Tab = "dashboard" | "reservations" | "calendar" | "frontdesk" | "rooms" | "housekeeping" | "guests" | "billing";
+type Tab = "dashboard" | "reservations" | "calendar" | "frontdesk" | "rooms" | "housekeeping" | "guests" | "billing" | "reports" | "maintenance" | "settings";
 
 const nav: Array<{ id: Tab; label: string; icon: any }> = [
   { id: "dashboard", label: "Dashboard", icon: LayoutDashboard },
@@ -109,6 +110,11 @@ export function PmsWorkspace({ slug, storeName, rooms: initialRooms, guests: ini
   const [roomId, setRoomId] = useState("");
   const [checkIn, setCheckIn] = useState("");
   const [checkOut, setCheckOut] = useState("");
+  const [maintenanceNotes, setMaintenanceNotes] = useState<Record<string, { note: string; severity: "LOW" | "MEDIUM" | "HIGH"; reportedAt: string }>>({});
+  const [showMaintenanceForm, setShowMaintenanceForm] = useState(false);
+  const [maintenanceRoomId, setMaintenanceRoomId] = useState("");
+  const [maintenanceNote, setMaintenanceNote] = useState("");
+  const [maintenanceSeverity, setMaintenanceSeverity] = useState<"LOW" | "MEDIUM" | "HIGH">("MEDIUM");
 
   const stats = useMemo(() => {
     const activeReservations = reservations.filter((r) => ["PENDING", "CONFIRMED", "CHECKED_IN"].includes(r.status));
@@ -119,6 +125,46 @@ export function PmsWorkspace({ slug, storeName, rooms: initialRooms, guests: ini
     const departures = reservations.filter((r) => r.status === "CHECKED_IN" && new Date(r.checkOut).toDateString() === new Date().toDateString()).length;
     return { activeReservations, occupied, sellable, occupancy, arrivals, departures };
   }, [rooms, reservations]);
+
+  const reportData = useMemo(() => {
+    const notCancelled = reservations.filter((r) => !["CANCELLED", "NO_SHOW"].includes(r.status));
+    const totalRevenue = reservations.reduce((sum, r) => sum + (r.paymentStatus === "PAID" ? Number(r.depositAmount || 0) : 0), 0);
+    const collected = reservations.filter((r) => r.paymentStatus === "PAID").length;
+    const outstanding = reservations.filter((r) => r.paymentStatus !== "PAID" && !["CANCELLED", "NO_SHOW"].includes(r.status)).length;
+    const cancelled = reservations.filter((r) => r.status === "CANCELLED").length;
+    const noShow = reservations.filter((r) => r.status === "NO_SHOW").length;
+    const avgStayNights = notCancelled.length ? notCancelled.reduce((sum, r) => sum + Math.max(1, Math.round((new Date(r.checkOut).getTime() - new Date(r.checkIn).getTime()) / 86400000)), 0) / notCancelled.length : 0;
+
+    const roomTypeMap = new Map<string, { type: string; bookings: number; nights: number }>();
+    for (const r of notCancelled) {
+      const type = r.room?.roomType || "Unspecified";
+      const nights = Math.max(1, Math.round((new Date(r.checkOut).getTime() - new Date(r.checkIn).getTime()) / 86400000));
+      const entry = roomTypeMap.get(type) || { type, bookings: 0, nights: 0 };
+      entry.bookings += 1;
+      entry.nights += nights;
+      roomTypeMap.set(type, entry);
+    }
+    const byRoomType = Array.from(roomTypeMap.values()).sort((a, b) => b.bookings - a.bookings);
+
+    const statusCounts: Record<string, number> = {};
+    for (const r of reservations) statusCounts[r.status] = (statusCounts[r.status] || 0) + 1;
+
+    const dayBuckets = Array.from({ length: 14 }, (_, i) => {
+      const d = new Date();
+      d.setDate(d.getDate() - (13 - i));
+      d.setHours(0, 0, 0, 0);
+      return d;
+    });
+    const arrivalsByDay = dayBuckets.map((d) => ({
+      label: d.toLocaleDateString(undefined, { day: "2-digit", month: "short" }),
+      count: reservations.filter((r) => new Date(r.checkIn).toDateString() === d.toDateString()).length,
+    }));
+    const maxArrivals = Math.max(1, ...arrivalsByDay.map((d) => d.count));
+
+    const repeatGuests = guests.filter((g) => reservations.filter((r) => r.guestId === g.id).length > 1).length;
+
+    return { totalRevenue, collected, outstanding, cancelled, noShow, avgStayNights, byRoomType, statusCounts, arrivalsByDay, maxArrivals, repeatGuests, totalGuests: guests.length, totalReservations: reservations.length };
+  }, [reservations, guests]);
 
   const filteredReservations = useMemo(() => {
     const q = search.trim().toLowerCase();
@@ -161,6 +207,29 @@ export function PmsWorkspace({ slug, storeName, rooms: initialRooms, guests: ini
     if (result?.success) setRooms((items) => items.map((r) => r.id === room.id ? { ...r, status } : r));
   }
 
+  async function reportMaintenanceIssue(e: React.FormEvent) {
+    e.preventDefault();
+    if (!maintenanceRoomId) { toast.error("Select a room."); return; }
+    const room = rooms.find((r: any) => r.id === maintenanceRoomId);
+    if (!room) return;
+    const result = await run(() => updateRoomStatus(slug, room.id, "MAINTENANCE"), "Issue logged");
+    if (result?.success) {
+      setRooms((items) => items.map((r) => r.id === room.id ? { ...r, status: "MAINTENANCE" } : r));
+      setMaintenanceNotes((items) => ({ ...items, [room.id]: { note: maintenanceNote || "No details provided", severity: maintenanceSeverity, reportedAt: new Date().toISOString() } }));
+      setMaintenanceRoomId(""); setMaintenanceNote(""); setMaintenanceSeverity("MEDIUM"); setShowMaintenanceForm(false);
+    }
+  }
+
+  async function resolveMaintenanceIssue(room: any, nextStatus: "AVAILABLE" | "DIRTY") {
+    const result = await run(() => updateRoomStatus(slug, room.id, nextStatus), "Marked resolved");
+    if (result?.success) {
+      setRooms((items) => items.map((r) => r.id === room.id ? { ...r, status: nextStatus } : r));
+      setMaintenanceNotes((items) => { const next = { ...items }; delete next[room.id]; return next; });
+    }
+  }
+
+  const maintenanceRooms = useMemo(() => rooms.filter((r: any) => ["MAINTENANCE", "OUT_OF_SERVICE"].includes(r.status)), [rooms]);
+
   async function requestPayment(reservation: any) {
     const amountStr = window.prompt("Deposit amount to request (NGN):", reservation.depositAmount ? String(Number(reservation.depositAmount)) : "");
     if (!amountStr) return;
@@ -200,9 +269,9 @@ export function PmsWorkspace({ slug, storeName, rooms: initialRooms, guests: ini
         <nav className="flex-1 space-y-1 overflow-y-auto px-3 py-5">
           {nav.map((item) => { const Icon = item.icon; return <button key={item.id} onClick={() => { setTab(item.id); setMobileOpen(false); }} className={`flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm transition ${tab === item.id ? "bg-emerald-400/10 text-emerald-300" : "text-white/60 hover:bg-white/[0.04] hover:text-white"}`}><Icon className="h-4 w-4" /><span>{item.label}</span></button>; })}
           <div className="my-4 border-t border-white/10" />
-          <button className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm text-white/60 hover:bg-white/[0.04] hover:text-white"><Wrench className="h-4 w-4" />Maintenance</button>
-          <button className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm text-white/60 hover:bg-white/[0.04] hover:text-white"><Activity className="h-4 w-4" />Reports & Analytics</button>
-          <button className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm text-white/60 hover:bg-white/[0.04] hover:text-white"><Settings className="h-4 w-4" />PMS Settings</button>
+          <button onClick={() => { setTab("maintenance"); setMobileOpen(false); }} className={`flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm transition ${tab === "maintenance" ? "bg-emerald-400/10 text-emerald-300" : "text-white/60 hover:bg-white/[0.04] hover:text-white"}`}><Wrench className="h-4 w-4" />Maintenance{maintenanceRooms.length > 0 && <span className="ml-auto rounded-full bg-rose-400/15 px-2 py-0.5 text-[10px] text-rose-300">{maintenanceRooms.length}</span>}</button>
+          <button onClick={() => { setTab("reports"); setMobileOpen(false); }} className={`flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm transition ${tab === "reports" ? "bg-emerald-400/10 text-emerald-300" : "text-white/60 hover:bg-white/[0.04] hover:text-white"}`}><Activity className="h-4 w-4" />Reports & Analytics</button>
+          <button onClick={() => { setTab("settings"); setMobileOpen(false); }} className={`flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm transition ${tab === "settings" ? "bg-emerald-400/10 text-emerald-300" : "text-white/60 hover:bg-white/[0.04] hover:text-white"}`}><Settings className="h-4 w-4" />PMS Settings</button>
         </nav>
         <div className="border-t border-white/10 p-4"><a href={`/${slug}/admin`} className="flex items-center gap-2 rounded-xl px-3 py-2 text-xs text-white/50 hover:bg-white/[0.04] hover:text-white"><ChevronLeft className="h-4 w-4" />Back to BizNest Admin</a></div>
       </aside>
@@ -212,7 +281,7 @@ export function PmsWorkspace({ slug, storeName, rooms: initialRooms, guests: ini
       <section className="min-w-0 flex-1">
         <header className="sticky top-0 z-30 flex h-20 items-center gap-3 border-b border-white/10 bg-[#07130e]/95 px-4 backdrop-blur md:px-7">
           <button className="rounded-lg p-2 hover:bg-white/5 lg:hidden" onClick={() => setMobileOpen(true)}><Menu className="h-5 w-5" /></button>
-          <div className="min-w-0 flex-1"><p className="text-xs text-white/40">{storeName}</p><h1 className="truncate text-lg font-semibold">{nav.find((n) => n.id === tab)?.label}</h1></div>
+          <div className="min-w-0 flex-1"><p className="text-xs text-white/40">{storeName}</p><h1 className="truncate text-lg font-semibold">{tab === "reports" ? "Reports & Analytics" : tab === "maintenance" ? "Maintenance" : tab === "settings" ? "PMS Settings" : nav.find((n) => n.id === tab)?.label}</h1></div>
           <div className="hidden items-center gap-2 rounded-xl border border-white/10 bg-white/[0.03] px-3 py-2 md:flex"><Search className="h-4 w-4 text-white/35" /><input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search reservations, guests…" className="w-52 border-0 bg-transparent p-0 text-sm text-white placeholder:text-white/30 focus:ring-0" /></div>
           <button className="rounded-xl border border-white/10 p-2.5 text-white/60 hover:bg-white/5"><Bell className="h-4 w-4" /></button>
           <div className="hidden items-center gap-2 border-l border-white/10 pl-3 sm:flex"><div className="flex h-8 w-8 items-center justify-center rounded-full bg-emerald-400/15 text-emerald-300"><UserRound className="h-4 w-4" /></div><div><p className="text-xs font-medium">Hotel Admin</p><p className="text-[10px] text-white/40">Business Mogul</p></div></div>
@@ -227,12 +296,16 @@ export function PmsWorkspace({ slug, storeName, rooms: initialRooms, guests: ini
           {tab === "housekeeping" && <Housekeeping rooms={rooms} onStatus={roomStatus} />}
           {tab === "guests" && <Guests guests={guests} reservations={reservations} onAdd={() => setShowGuestForm(true)} />}
           {tab === "billing" && <Billing slug={slug} reservations={reservations} onAction={reservationAction} />}
+          {tab === "reports" && <Reports data={reportData} />}
+          {tab === "maintenance" && <Maintenance rooms={rooms} maintenanceRooms={maintenanceRooms} notes={maintenanceNotes} onReport={() => setShowMaintenanceForm(true)} onResolve={resolveMaintenanceIssue} />}
+          {tab === "settings" && <PmsSettings slug={slug} storeName={storeName} rooms={rooms} onAddRoom={() => setShowRoomForm(true)} setTab={setTab} />}
         </main>
       </section>
 
       {showRoomForm && <Modal title="Add room" onClose={() => setShowRoomForm(false)}><form onSubmit={addRoom} className="space-y-4"><Field label="Room name" value={roomName} onChange={setRoomName} placeholder="Room 101" /><Field label="Room type" value={roomType} onChange={setRoomType} placeholder="Deluxe King" /><button disabled={busy} className="w-full rounded-xl bg-emerald-400 px-4 py-3 text-sm font-semibold text-[#06110c]">{busy ? "Saving…" : "Add room"}</button></form></Modal>}
       {showGuestForm && <Modal title="Create guest" onClose={() => setShowGuestForm(false)}><form onSubmit={addGuest} className="space-y-4"><Field label="Full name" value={guestName} onChange={setGuestName} placeholder="John Doe" /><Field label="Email" value={guestEmail} onChange={setGuestEmail} placeholder="guest@example.com" /><Field label="Phone" value={guestPhone} onChange={setGuestPhone} placeholder="080…" /><button disabled={busy} className="w-full rounded-xl bg-emerald-400 px-4 py-3 text-sm font-semibold text-[#06110c]">{busy ? "Saving…" : "Create guest"}</button></form></Modal>}
       {showReservationForm && <Modal title="New reservation" onClose={() => setShowReservationForm(false)}><form onSubmit={addReservation} className="space-y-4"><SelectField label="Guest" value={guestId} onChange={setGuestId} options={guests.map((g) => [g.id, g.fullName])} /><SelectField label="Room" value={roomId} onChange={setRoomId} options={rooms.filter((r) => !["OUT_OF_SERVICE", "MAINTENANCE"].includes(r.status)).map((r) => [r.id, `${r.name} — ${r.roomType}`])} /><Field label="Check-in" type="datetime-local" value={checkIn} onChange={setCheckIn} /><Field label="Check-out" type="datetime-local" value={checkOut} onChange={setCheckOut} /><button disabled={busy} className="w-full rounded-xl bg-emerald-400 px-4 py-3 text-sm font-semibold text-[#06110c]">{busy ? "Saving…" : "Confirm reservation"}</button></form></Modal>}
+      {showMaintenanceForm && <Modal title="Report maintenance issue" onClose={() => setShowMaintenanceForm(false)}><form onSubmit={reportMaintenanceIssue} className="space-y-4"><SelectField label="Room" value={maintenanceRoomId} onChange={setMaintenanceRoomId} options={rooms.filter((r: any) => !["MAINTENANCE", "OUT_OF_SERVICE"].includes(r.status)).map((r: any) => [r.id, `${r.name} — ${r.roomType}`])} /><label className="block"><span className="mb-1.5 block text-xs text-white/50">Severity</span><select value={maintenanceSeverity} onChange={(e) => setMaintenanceSeverity(e.target.value as any)} className="w-full rounded-xl border border-white/10 bg-black/20 px-3 py-3 text-sm text-white"><option className="bg-[#0b1b14]" value="LOW">Low</option><option className="bg-[#0b1b14]" value="MEDIUM">Medium</option><option className="bg-[#0b1b14]" value="HIGH">High</option></select></label><label className="block"><span className="mb-1.5 block text-xs text-white/50">Issue details</span><textarea value={maintenanceNote} onChange={(e) => setMaintenanceNote(e.target.value)} placeholder="e.g. AC unit not cooling, leaking faucet…" rows={3} className="w-full rounded-xl border border-white/10 bg-black/20 px-3 py-3 text-sm text-white placeholder:text-white/25" /></label><button disabled={busy} className="w-full rounded-xl bg-emerald-400 px-4 py-3 text-sm font-semibold text-[#06110c]">{busy ? "Saving…" : "Log issue & take room offline"}</button></form></Modal>}
     </div>
   );
 }
@@ -277,6 +350,137 @@ function Housekeeping({ rooms, onStatus }: any) { const items = rooms.filter((r:
 function Guests({ guests, reservations, onAdd }: any) { return <div className="space-y-5"><Toolbar title="Guests" subtitle="Central guest profiles and stay history." action="Add guest" onAction={onAdd} /><div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">{guests.map((g: any) => { const stays = reservations.filter((r: any) => r.guestId === g.id); return <div key={g.id} className="rounded-2xl border border-white/10 bg-white/[0.025] p-5"><div className="flex items-center gap-3"><div className="flex h-11 w-11 items-center justify-center rounded-full bg-white/5 text-white/60"><UserRound className="h-5 w-5" /></div><div className="min-w-0"><p className="truncate font-semibold">{g.fullName}</p><p className="truncate text-xs text-white/35">{g.email || g.phone || "No contact"}</p></div></div><div className="mt-5 grid grid-cols-2 gap-3"><div className="rounded-xl bg-black/15 p-3"><p className="text-[10px] text-white/35">Stays</p><p className="mt-1 text-lg font-semibold">{stays.length}</p></div><div className="rounded-xl bg-black/15 p-3"><p className="text-[10px] text-white/35">Current</p><p className="mt-1 text-lg font-semibold">{stays.filter((s: any) => s.status === "CHECKED_IN").length ? "In-house" : "—"}</p></div></div></div>; })}{guests.length === 0 && <Empty text="No guests yet" />}</div></div>; }
 
 function Billing({ slug, reservations, onAction }: any) { const unpaid = reservations.filter((r: any) => r.paymentStatus !== "PAID" && !["CANCELLED", "NO_SHOW"].includes(r.status)); const paid = reservations.filter((r: any) => r.paymentStatus === "PAID"); return <div className="space-y-5"><div><h2 className="text-2xl font-semibold">Billing & Payments</h2><p className="mt-1 text-sm text-white/40">Monitor reservation payment state and collect deposits through BizNest payments.</p></div><div className="grid gap-4 md:grid-cols-3"><Metric label="Unpaid stays" value={unpaid.length} icon={CreditCard} /><Metric label="Paid stays" value={paid.length} icon={CheckCircle2} /><Metric label="Payment coverage" value={`${reservations.length ? Math.round((paid.length / reservations.length) * 100) : 0}%`} icon={WalletCards} /></div><div className="overflow-hidden rounded-2xl border border-white/10 bg-white/[0.025]"><div className="overflow-x-auto"><table className="w-full min-w-[800px] text-left text-sm"><thead className="border-b border-white/10 text-xs text-white/35"><tr><th className="px-5 py-4">Guest</th><th className="px-5 py-4">Reservation</th><th className="px-5 py-4">Payment</th><th className="px-5 py-4">Deposit</th><th className="px-5 py-4">Action</th></tr></thead><tbody>{reservations.map((r: any) => <tr key={r.id} className="border-b border-white/5 last:border-0"><td className="px-5 py-4 font-medium">{r.guest?.fullName}</td><td className="px-5 py-4 text-white/55">{r.room?.name} · {date(r.checkIn)}</td><td className="px-5 py-4"><span className={`rounded-full border px-2 py-1 text-[10px] ${statusClass(r.paymentStatus || "UNPAID")}`}>{statusLabel(r.paymentStatus || "UNPAID")}</span></td><td className="px-5 py-4 text-white/60">{r.depositAmount ? money(Number(r.depositAmount)) : "—"}</td><td className="px-5 py-4">{r.paymentStatus !== "PAID" && !["CANCELLED", "NO_SHOW", "CHECKED_OUT"].includes(r.status) ? <button onClick={() => { const amount = window.prompt("Deposit amount to request (NGN):", r.depositAmount ? String(Number(r.depositAmount)) : ""); if (!amount) return; const n = Number(amount); if (!Number.isFinite(n) || n <= 0) { toast.error("Enter a valid amount."); return; } chargeReservationDeposit(slug, r.id, n, r.guest?.email).then((result) => { if (!result.success) toast.error(result.error); else { navigator.clipboard?.writeText(result.data.authorizationUrl).catch(() => {}); window.open(result.data.authorizationUrl, "_blank"); toast.success("Payment link created"); } }); }} className="rounded-lg bg-emerald-400/10 px-2.5 py-1.5 text-[11px] text-emerald-300">Request payment</button> : <span className="text-xs text-white/30">No action</span>}</td></tr>)}</tbody></table></div></div></div>; }
+
+function Maintenance({ rooms, maintenanceRooms, notes, onReport, onResolve }: any) {
+  const operational = rooms.filter((r: any) => !["MAINTENANCE", "OUT_OF_SERVICE"].includes(r.status));
+  const highSeverity = maintenanceRooms.filter((r: any) => notes[r.id]?.severity === "HIGH").length;
+  const severityClass = (s: string) => s === "HIGH" ? "bg-rose-500/10 text-rose-300 border-rose-500/20" : s === "MEDIUM" ? "bg-amber-500/10 text-amber-300 border-amber-500/20" : "bg-sky-500/10 text-sky-300 border-sky-500/20";
+  return <div className="space-y-6">
+    <Toolbar title="Maintenance" subtitle="Track rooms out of service and resolve issues." action="Report issue" onAction={onReport} />
+
+    <div className="grid gap-4 md:grid-cols-3">
+      <Metric label="Rooms affected" value={maintenanceRooms.length} icon={Wrench} />
+      <Metric label="High severity" value={highSeverity} icon={Activity} />
+      <Metric label="Operational rooms" value={operational.length} icon={CheckCircle2} />
+    </div>
+
+    <div className="rounded-2xl border border-white/10 bg-white/[0.025] p-5">
+      <h3 className="font-semibold">Open issues</h3>
+      <div className="mt-4 grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+        {maintenanceRooms.map((r: any) => { const info = notes[r.id]; return <div key={r.id} className="rounded-2xl border border-white/10 bg-black/10 p-5">
+          <div className="flex items-start justify-between"><div className="flex h-11 w-11 items-center justify-center rounded-xl bg-rose-400/10 text-rose-300"><Wrench className="h-5 w-5" /></div><span className={`rounded-full border px-2 py-1 text-[10px] ${statusClass(r.status)}`}>{statusLabel(r.status)}</span></div>
+          <h4 className="mt-4 font-semibold">{r.name}</h4>
+          <p className="mt-1 text-xs text-white/35">{r.roomType}</p>
+          {info ? <>
+            <span className={`mt-3 inline-flex rounded-full border px-2 py-1 text-[10px] ${severityClass(info.severity)}`}>{info.severity} severity</span>
+            <p className="mt-3 text-xs text-white/55">{info.note}</p>
+            <p className="mt-2 text-[10px] text-white/30">Reported {dateTime(info.reportedAt)}</p>
+          </> : <p className="mt-3 text-xs text-white/35">No details on file for this room.</p>}
+          <div className="mt-5 grid grid-cols-2 gap-2">
+            <button onClick={() => onResolve(r, "DIRTY")} className="rounded-xl bg-emerald-400 px-3 py-2 text-xs font-semibold text-[#06110c]">Resolve → Clean</button>
+            <button onClick={() => onResolve(r, "AVAILABLE")} className="rounded-xl border border-white/10 px-3 py-2 text-xs text-white/60">Resolve → Ready</button>
+          </div>
+        </div>; })}
+      </div>
+      {maintenanceRooms.length === 0 && <Empty text="No open maintenance issues" />}
+    </div>
+  </div>;
+}
+
+function PmsSettings({ slug, storeName, rooms, onAddRoom, setTab }: any) {
+  const roomTypeMap = new Map<string, number>();
+  for (const r of rooms) roomTypeMap.set(r.roomType, (roomTypeMap.get(r.roomType) || 0) + 1);
+  const roomTypes = Array.from(roomTypeMap.entries()).sort((a, b) => b[1] - a[1]);
+  const statusInfo: Array<[string, string]> = [
+    ["AVAILABLE", "Ready to sell and check guests in"],
+    ["OCCUPIED", "Guest currently checked in"],
+    ["RESERVED", "Held against a confirmed reservation"],
+    ["DIRTY", "Needs housekeeping before it can be sold"],
+    ["CLEANING", "Housekeeping in progress"],
+    ["MAINTENANCE", "Out of service for a reported issue"],
+    ["OUT_OF_SERVICE", "Not sellable until reinstated"],
+  ];
+  return <div className="space-y-6">
+    <div><h2 className="text-2xl font-semibold">PMS Settings</h2><p className="mt-1 text-sm text-white/40">Property configuration and room inventory for this PMS module.</p></div>
+
+    <div className="rounded-2xl border border-white/10 bg-white/[0.025] p-5">
+      <div className="flex items-center gap-3"><span className="rounded-xl bg-emerald-400/10 p-2.5 text-emerald-300"><Building2 className="h-5 w-5" /></span><div><h3 className="font-semibold">Property</h3><p className="text-xs text-white/35">Basic details for this PMS instance</p></div></div>
+      <div className="mt-5 grid gap-4 sm:grid-cols-3">
+        <div className="rounded-xl bg-black/15 p-4"><p className="text-[10px] text-white/35">Property name</p><p className="mt-1 truncate text-sm font-semibold">{storeName}</p></div>
+        <div className="rounded-xl bg-black/15 p-4"><p className="text-[10px] text-white/35">Store slug</p><p className="mt-1 truncate text-sm font-semibold">{slug}</p></div>
+        <div className="rounded-xl bg-black/15 p-4"><p className="text-[10px] text-white/35">Module status</p><p className="mt-1 text-sm font-semibold text-emerald-300">PMS Active</p></div>
+      </div>
+    </div>
+
+    <div className="rounded-2xl border border-white/10 bg-white/[0.025] p-5">
+      <div className="flex items-center justify-between"><div className="flex items-center gap-3"><span className="rounded-xl bg-emerald-400/10 p-2.5 text-emerald-300"><BedDouble className="h-5 w-5" /></span><div><h3 className="font-semibold">Room types</h3><p className="text-xs text-white/35">{roomTypes.length} type{roomTypes.length === 1 ? "" : "s"} across {rooms.length} room{rooms.length === 1 ? "" : "s"}</p></div></div><button onClick={onAddRoom} className="inline-flex items-center gap-2 rounded-xl bg-emerald-400 px-3.5 py-2 text-xs font-semibold text-[#06110c]"><Plus className="h-3.5 w-3.5" />Add room</button></div>
+      <div className="mt-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+        {roomTypes.map(([type, count]) => <div key={type} className="rounded-xl border border-white/5 bg-black/10 p-4"><p className="text-sm font-medium">{type}</p><p className="mt-1 text-xs text-white/35">{count} room{count === 1 ? "" : "s"}</p></div>)}
+        {roomTypes.length === 0 && <Empty text="No room types configured yet" />}
+      </div>
+      <button onClick={() => setTab("rooms")} className="mt-4 text-xs text-emerald-300">Manage individual rooms →</button>
+    </div>
+
+    <div className="rounded-2xl border border-white/10 bg-white/[0.025] p-5">
+      <div className="flex items-center gap-3"><span className="rounded-xl bg-emerald-400/10 p-2.5 text-emerald-300"><Settings className="h-5 w-5" /></span><div><h3 className="font-semibold">Room status reference</h3><p className="text-xs text-white/35">What each status means across the PMS</p></div></div>
+      <div className="mt-5 grid gap-3 sm:grid-cols-2">
+        {statusInfo.map(([status, desc]) => <div key={status} className="flex items-center justify-between gap-3 rounded-xl border border-white/5 bg-black/10 px-3 py-2.5"><span className={`shrink-0 rounded-full border px-2 py-1 text-[10px] ${statusClass(status)}`}>{statusLabel(status)}</span><span className="text-right text-xs text-white/40">{desc}</span></div>)}
+      </div>
+    </div>
+  </div>;
+}
+
+function Reports({ data }: any) {
+  const paymentRate = data.totalReservations ? Math.round((data.collected / data.totalReservations) * 100) : 0;
+  return <div className="space-y-6">
+    <div><h2 className="text-2xl font-semibold">Reports & Analytics</h2><p className="mt-1 text-sm text-white/40">Performance trends across reservations, revenue and guests.</p></div>
+
+    <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+      <Metric label="Revenue collected" value={money(data.totalRevenue)} icon={WalletCards} />
+      <Metric label="Payment rate" value={`${paymentRate}%`} icon={CreditCard} />
+      <Metric label="Avg. stay length" value={`${data.avgStayNights.toFixed(1)} nights`} icon={Clock3} />
+      <Metric label="Repeat guests" value={`${data.repeatGuests}/${data.totalGuests}`} icon={Users} />
+    </div>
+
+    <div className="grid gap-5 xl:grid-cols-[1.6fr_1fr]">
+      <div className="rounded-2xl border border-white/10 bg-white/[0.025] p-5">
+        <div className="flex items-center justify-between"><h3 className="font-semibold">Check-ins by day (last 14 days)</h3><CalendarDays className="h-4 w-4 text-white/30" /></div>
+        <div className="mt-6 flex items-end gap-1.5" style={{ height: 140 }}>
+          {data.arrivalsByDay.map((d: any) => <div key={d.label} className="flex flex-1 flex-col items-center gap-2">
+            <div className="w-full rounded-t-md bg-emerald-400/70" style={{ height: `${Math.max(4, (d.count / data.maxArrivals) * 110)}px` }} title={`${d.count} check-ins on ${d.label}`} />
+            <span className="rotate-[-40deg] whitespace-nowrap text-[9px] text-white/30">{d.label}</span>
+          </div>)}
+        </div>
+      </div>
+      <div className="rounded-2xl border border-white/10 bg-white/[0.025] p-5">
+        <div className="flex items-center justify-between"><h3 className="font-semibold">Reservation outcomes</h3><ClipboardCheck className="h-4 w-4 text-white/30" /></div>
+        <div className="mt-4 space-y-2.5">
+          {Object.entries(data.statusCounts).length === 0 && <Empty text="No reservation data yet" />}
+          {Object.entries(data.statusCounts).map(([status, count]: any) => <div key={status} className="flex items-center justify-between rounded-xl border border-white/5 bg-black/10 px-3 py-2.5"><span className={`rounded-full border px-2 py-1 text-[10px] ${statusClass(status)}`}>{statusLabel(status)}</span><span className="text-sm font-semibold">{count}</span></div>)}
+        </div>
+      </div>
+    </div>
+
+    <div className="grid gap-5 xl:grid-cols-2">
+      <div className="rounded-2xl border border-white/10 bg-white/[0.025] p-5">
+        <div className="flex items-center justify-between"><h3 className="font-semibold">Demand by room type</h3><BedDouble className="h-4 w-4 text-white/30" /></div>
+        <div className="mt-4 space-y-3">
+          {data.byRoomType.length === 0 && <Empty text="No bookings yet" />}
+          {data.byRoomType.map((rt: any) => { const max = data.byRoomType[0]?.bookings || 1; return <div key={rt.type}><div className="flex items-center justify-between text-xs text-white/50"><span>{rt.type}</span><span>{rt.bookings} bookings · {rt.nights} nights</span></div><div className="mt-1.5 h-2 w-full rounded-full bg-white/5"><div className="h-2 rounded-full bg-emerald-400" style={{ width: `${Math.max(4, (rt.bookings / max) * 100)}%` }} /></div></div>; })}
+        </div>
+      </div>
+      <div className="rounded-2xl border border-white/10 bg-white/[0.025] p-5">
+        <div className="flex items-center justify-between"><h3 className="font-semibold">Cancellations & no-shows</h3><Activity className="h-4 w-4 text-white/30" /></div>
+        <div className="mt-4 grid grid-cols-2 gap-3">
+          <div className="rounded-xl bg-black/15 p-4"><p className="text-[10px] text-white/35">Cancelled</p><p className="mt-1 text-2xl font-semibold">{data.cancelled}</p></div>
+          <div className="rounded-xl bg-black/15 p-4"><p className="text-[10px] text-white/35">No-shows</p><p className="mt-1 text-2xl font-semibold">{data.noShow}</p></div>
+          <div className="rounded-xl bg-black/15 p-4"><p className="text-[10px] text-white/35">Outstanding payments</p><p className="mt-1 text-2xl font-semibold">{data.outstanding}</p></div>
+          <div className="rounded-xl bg-black/15 p-4"><p className="text-[10px] text-white/35">Total reservations</p><p className="mt-1 text-2xl font-semibold">{data.totalReservations}</p></div>
+        </div>
+      </div>
+    </div>
+  </div>;
+}
 
 function Toolbar({ title, subtitle, action, onAction, search, setSearch }: any) { return <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between"><div><h2 className="text-2xl font-semibold">{title}</h2><p className="mt-1 text-sm text-white/40">{subtitle}</p></div><div className="flex flex-col gap-2 sm:flex-row">{setSearch && <div className="flex items-center gap-2 rounded-xl border border-white/10 bg-white/[0.03] px-3 py-2.5"><Search className="h-4 w-4 text-white/35" /><input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search…" className="w-full bg-transparent text-sm placeholder:text-white/30 focus:ring-0 sm:w-52" /></div>}{action && <button onClick={onAction} className="inline-flex items-center justify-center gap-2 rounded-xl bg-emerald-400 px-4 py-2.5 text-sm font-semibold text-[#06110c]"><Plus className="h-4 w-4" />{action}</button>}</div></div>; }
 function DeskList({ title, icon: Icon, items, action, onAction, secondaryAction, onSecondaryAction }: any) { return <div className="rounded-2xl border border-white/10 bg-white/[0.025] p-5"><div className="flex items-center gap-3"><span className="rounded-xl bg-emerald-400/10 p-2.5 text-emerald-300"><Icon className="h-5 w-5" /></span><div><h3 className="font-semibold">{title}</h3><p className="text-xs text-white/35">{items.length} guest{items.length === 1 ? "" : "s"}</p></div></div><div className="mt-4 space-y-2">{items.map((r: any) => <div key={r.id} className="flex items-center justify-between rounded-xl border border-white/5 bg-black/10 p-3"><div><p className="text-sm font-medium">{r.guest?.fullName}</p><p className="mt-1 text-[11px] text-white/35">{r.room?.name} · {date(r.checkIn)} → {date(r.checkOut)}{secondaryAction ? ` · Guest ${r.guestPresence}` : ""}</p></div><div className="flex shrink-0 gap-2">{secondaryAction && <button onClick={() => onSecondaryAction(r)} className="rounded-lg border border-white/10 px-3 py-2 text-[11px] text-white/60">{secondaryAction(r)}</button>}<button onClick={() => onAction(r)} className="rounded-lg bg-emerald-400 px-3 py-2 text-[11px] font-semibold text-[#06110c]">{action}</button></div></div>)}{items.length === 0 && <Empty text="Nothing here right now" />}</div></div>; }
