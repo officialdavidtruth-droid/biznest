@@ -24,13 +24,15 @@ export default async function StoreAdminLayout({
   if (!session?.user?.id) redirect(`/login?callbackUrl=/${slug}/admin`);
 
   const [store, { notifications, unreadCount }] = await Promise.all([
-    prisma.store.findUnique({ where: { slug }, include: { business: true } }),
+    prisma.store.findUnique({ where: { slug }, include: { business: true, subscription: true } }),
     listMyNotifications(),
   ]);
 
   if (!store) notFound();
 
   const role = await getStoreAccessRole(session.user.id, session.user.role, store);
+  const adminSubpath = (await headers()).get("x-bn-admin-subpath") ?? "/";
+  const isPmsRoute = adminSubpath === "/pms" || adminSubpath.startsWith("/pms/");
   if (role === null) redirect("/");
 
   // No free tier — a store isn't usable until it's on a paid plan. Staff
@@ -39,6 +41,10 @@ export default async function StoreAdminLayout({
   // invited staff the same way — see /onboarding/select-plan.
   if (!store.subscriptionId && role !== "PLATFORM_STAFF") {
     redirect(`/onboarding/select-plan?slug=${slug}`);
+  }
+
+  if (isPmsRoute && role !== "PLATFORM_STAFF" && store.subscription?.name !== "Business Mogul") {
+    redirect(`/${slug}/admin/subscription?pms=upgrade`);
   }
 
   // MANAGER/STAFF only get the specific areas they were granted at invite
@@ -54,15 +60,26 @@ export default async function StoreAdminLayout({
     });
     staffPermissions = membership?.permissions ?? [];
 
-    const subpath = (await headers()).get("x-bn-admin-subpath") ?? "/";
+    const subpath = adminSubpath;
     const navItem = findNavItemForPath(
-      { sellsProducts: store.business.sellsProducts, offersServices: store.business.offersServices, category: store.businessType },
+      { sellsProducts: store.business.sellsProducts, offersServices: store.business.offersServices, category: store.businessType, subscriptionName: store.subscription?.name },
       subpath
     );
     const blocked =
       navItem?.ownerOnly ||
       (navItem?.permission && !hasStorePermission(role, staffPermissions, navItem.permission));
     if (blocked) redirect(`/${slug}/admin`);
+  }
+
+  if (isPmsRoute) {
+    return (
+      <>
+        <ThemeFlashGuard scopeId="bn-pms-theme-scope" defaultTheme="dark" />
+        <ThemeProvider scopeId="bn-pms-theme-scope" defaultTheme="dark">
+          <div className="min-h-full bg-background text-foreground">{children}</div>
+        </ThemeProvider>
+      </>
+    );
   }
 
   return (
@@ -86,6 +103,7 @@ export default async function StoreAdminLayout({
             category={store.businessType}
             staffRole={role}
             staffPermissions={staffPermissions}
+            subscriptionName={store.subscription?.name}
           />
 
           {/* Mobile top bar + fixed bottom tab bar + drawer — see component for
@@ -102,6 +120,7 @@ export default async function StoreAdminLayout({
             staffRole={role}
             staffPermissions={staffPermissions}
             staffPosition={session.user.staffPosition}
+            subscriptionName={store.subscription?.name}
           />
 
           <div className="flex flex-1 flex-col overflow-hidden">

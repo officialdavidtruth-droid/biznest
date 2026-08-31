@@ -17,6 +17,7 @@ export function DashboardSidebar({
   category,
   staffRole,
   staffPermissions,
+  subscriptionName,
 }: {
   slug: string;
   storeName: string;
@@ -32,11 +33,12 @@ export function DashboardSidebar({
   // via staffPermissions, anything they weren't individually granted.
   staffRole?: StoreAccessRole;
   staffPermissions?: string[] | null;
+  subscriptionName?: string | null;
 }) {
   const pathname = usePathname();
   const base = `/${slug}/admin`;
   const canManageOwnerOnly = staffRole === undefined || staffRole === "OWNER" || staffRole === "PLATFORM_STAFF";
-  const NAV_GROUPS = filterNavGroupsForRole(buildNavGroups({ sellsProducts, offersServices, category }), {
+  const NAV_GROUPS = filterNavGroupsForRole(buildNavGroups({ sellsProducts, offersServices, category, subscriptionName }), {
     canManageOwnerOnly,
     permissions: staffPermissions,
   });

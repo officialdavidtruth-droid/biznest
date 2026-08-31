@@ -11,19 +11,38 @@ import crypto from "crypto";
 const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? "https://biznest.vercel.app";
 
 async function access(slug: string) {
-  // Gated on "products" (not "orders") to match the PMS nav item's
-  // permission — see lib/constants/dashboard-nav.ts, where every
-  // category extraNavItem (PMS included) is tagged permission: "products".
-  // These two used to disagree: a staff member granted only "products"
-  // could open /pms via the nav/layout guard, but every PMS server
-  // action then rejected them for lacking "orders", and getPmsData
-  // returning null sent them straight to a 404.
+  // PMS is a premium vertical app. It is deliberately enforced on the
+  // server so hiding the navigation item can never be mistaken for access
+  // control. The Business Mogul plan is the only plan that can use it.
   const a = await assertStorePermission(slug, "products");
   if (!a.success) return a;
-  // Capability-driven rather than a hardcoded category name, so this stays
-  // correct if another business type is ever granted the "pms" capability.
-  if (!hasCapability(a.store.business.category, "pms")) return { success: false as const, error: "PMS is only available to property businesses." };
+  if (!hasCapability(a.store.business.category, "pms")) {
+    return { success: false as const, error: "PMS is only available to hotel and property businesses." };
+  }
+  const subscription = await prisma.subscription.findUnique({
+    where: { id: a.store.subscriptionId ?? "" },
+    select: { name: true },
+  });
+  if (subscription?.name !== "Business Mogul") {
+    return { success: false as const, error: "BizNest PMS is available exclusively on the Business Mogul plan." };
+  }
   return a;
+}
+
+export async function getPmsAccessStatus(slug: string) {
+  const a = await assertStorePermission(slug, "products");
+  if (!a.success) return { allowed: false as const, error: a.error };
+  if (!hasCapability(a.store.business.category, "pms")) {
+    return { allowed: false as const, error: "PMS is only available to hotel and property businesses." };
+  }
+  const subscription = await prisma.subscription.findUnique({
+    where: { id: a.store.subscriptionId ?? "" },
+    select: { name: true },
+  });
+  if (subscription?.name !== "Business Mogul") {
+    return { allowed: false as const, error: "BizNest PMS is available exclusively on the Business Mogul plan." };
+  }
+  return { allowed: true as const };
 }
 
 export async function getPmsData(slug: string) {

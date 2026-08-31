@@ -39,7 +39,7 @@ function relevantToBusiness(href: string, business: { sellsProducts: boolean; of
 // relevantToBusiness() so what a merchant sees is shaped by what they told
 // us at onboarding (sells products / offers services / category) rather
 // than showing every module to every store regardless of niche.
-export function buildNavGroups(business: { sellsProducts: boolean; offersServices: boolean; category?: string | null }): Array<{
+export function buildNavGroups(business: { sellsProducts: boolean; offersServices: boolean; category?: string | null; subscriptionName?: string | null }): Array<{
   label: string;
   items: NavItem[];
 }> {
@@ -67,9 +67,15 @@ export function buildNavGroups(business: { sellsProducts: boolean; offersService
   // only if it isn't already present above.
   const categoryConfig = getCategoryDashboard(business.category);
   const categoryExtraNavItems = (categoryConfig.extraNavItems ?? [])
+    .filter((i) => i.href !== "/pms")
     .filter((i) => !sellNavItems.some((existing) => existing.href === i.href))
     .map((i) => ({ permission: "products", ...i } as NavItem));
   sellNavItems.push(...categoryExtraNavItems);
+
+  const pmsAppItems: NavItem[] =
+    business.category === "Hotel & Lodging" && business.subscriptionName === "Business Mogul"
+      ? [{ label: "BizNest PMS", href: "/pms", icon: Hotel, permission: "products" }]
+      : [];
 
   const allManageItems: NavItem[] = [
     { label: "Inventory", href: "/inventory", icon: Boxes, permission: "products" },
@@ -96,6 +102,7 @@ export function buildNavGroups(business: { sellsProducts: boolean; offersService
       label: "Overview",
       items: [{ label: "Dashboard", href: "", icon: LayoutDashboard }],
     },
+    ...(pmsAppItems.length ? [{ label: "Apps", items: pmsAppItems }] : []),
     {
       label: "Sell",
       items: sellNavItems,
@@ -178,6 +185,7 @@ export function findNavItemForPath(business: {
   sellsProducts: boolean;
   offersServices: boolean;
   category?: string | null;
+  subscriptionName?: string | null;
 }, subpath: string): NavItem | undefined {
   const items = buildNavGroups(business).flatMap((g) => g.items);
   const normalized = subpath === "" ? "/" : subpath;
@@ -193,7 +201,7 @@ export function findNavItemForPath(business: {
 // away, not two taps deep in a drawer. The 5th slot is always "Menu" (opens
 // the full drawer with everything else), not a nav item itself.
 export function buildBottomTabItems(
-  business: { sellsProducts: boolean; offersServices: boolean; category?: string | null },
+  business: { sellsProducts: boolean; offersServices: boolean; category?: string | null; subscriptionName?: string | null },
   opts?: { canManageOwnerOnly: boolean; permissions?: string[] | null }
 ): NavItem[] {
   const groups = buildNavGroups(business);

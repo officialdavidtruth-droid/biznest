@@ -10,10 +10,10 @@ export default async function SubscriptionPage({
   searchParams,
 }: {
   params: Promise<{ slug: string }>;
-  searchParams: Promise<{ upgraded?: string; payment?: string }>;
+  searchParams: Promise<{ upgraded?: string; payment?: string; pms?: string }>;
 }) {
   const { slug } = await params;
-  const { upgraded, payment } = await searchParams;
+  const { upgraded, payment, pms } = await searchParams;
   const store = await prisma.store.findUnique({ where: { slug }, include: { subscription: true, business: true } });
   if (!store) return null;
 
@@ -30,6 +30,12 @@ export default async function SubscriptionPage({
       <p className="mb-4 text-sm text-muted-foreground">
         Current plan: <strong>{store.subscription?.name ?? "Free"}</strong> · {Number(store.subscription?.commissionRate ?? 8)}% commission per sale
       </p>
+
+      {pms === "upgrade" && (
+        <div className="mb-4 rounded-xl border border-emerald-500/30 bg-emerald-500/5 px-4 py-3 text-sm">
+          <strong>BizNest PMS is a Business Mogul feature.</strong> Upgrade this hotel to Business Mogul to unlock the dedicated property management workspace.
+        </div>
+      )}
 
       {upgraded && (
         <div className="mb-4 rounded-md border border-green-500/30 bg-green-500/5 px-3 py-2 text-sm text-green-700">

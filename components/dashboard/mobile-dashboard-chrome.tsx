@@ -46,6 +46,7 @@ export function MobileDashboardChrome({
   staffRole,
   staffPermissions,
   staffPosition,
+  subscriptionName,
 }: {
   slug: string;
   storeName: string;
@@ -57,6 +58,7 @@ export function MobileDashboardChrome({
   unreadCount: number;
   staffRole?: StoreAccessRole;
   staffPermissions?: string[] | null;
+  subscriptionName?: string | null;
   // Only set for staff who signed in with "Position@store" (see
   // authorize() in lib/auth.ts) — shown next to the store name so it's
   // clear which title they're signed in under, e.g. "Cashier - Velox Space".
@@ -65,7 +67,7 @@ export function MobileDashboardChrome({
   const [drawerOpen, setDrawerOpen] = useState(false);
   const pathname = usePathname();
   const base = `/${slug}/admin`;
-  const business = { sellsProducts, offersServices, category };
+  const business = { sellsProducts, offersServices, category, subscriptionName };
   const canManageOwnerOnly = staffRole === undefined || staffRole === "OWNER" || staffRole === "PLATFORM_STAFF";
   const navGroups = filterNavGroupsForRole(buildNavGroups(business), {
     canManageOwnerOnly,
