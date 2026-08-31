@@ -35,7 +35,7 @@ export type AdaptiveDashboardConfig = {
   label: string;
   tagline: string;
   primaryEntity: string;
-  terminology: { customer: string; transaction: string; catalog: string; catalogSingular?: string };
+  terminology: { customer: string; transaction: string; catalog: string; catalogSingular: string };
   kpis: DashboardKpi[];
   quickActions: DashboardModule[];
   modules: DashboardModule[];
@@ -82,7 +82,9 @@ function clean(items: DashboardModule[]) {
   return items.filter((item, index, arr) => arr.findIndex((x) => x.id === item.id) === index);
 }
 
-const CATEGORY_OVERRIDES: Record<string, Partial<AdaptiveDashboardConfig>> = {
+type TerminologyOverride = { customer: string; transaction: string; catalog: string; catalogSingular?: string };
+
+const CATEGORY_OVERRIDES: Record<string, Omit<Partial<AdaptiveDashboardConfig>, "terminology"> & { terminology?: TerminologyOverride }> = {
   Restaurant: { label: "Restaurant Operations", primaryEntity: "Order", terminology: { customer: "Guest", transaction: "Order", catalog: "Menu" }, kpis: [{ id: "revenue", label: "Today’s sales", source: "revenue", format: "money" }, { id: "orders", label: "Orders", source: "orders", format: "number" }, { id: "visitors", label: "Visitors", source: "visitors", format: "number" }, { id: "conversion", label: "Conversion", source: "conversion", format: "percent" }], quickActions: [core.products, core.orders, core.delivery, core.analytics], widgets: [{ id: "menu", title: "Menu operations", description: "Manage menu items, categories and availability from one place.", href: "/products", type: "operations" }] },
   "Hotel & Lodging": { label: "Hotel Operations", primaryEntity: "Reservation", terminology: { customer: "Guest", transaction: "Reservation", catalog: "Rooms" }, quickActions: [core.pms, core.bookings, core.calendar, core.clients], widgets: [{ id: "pms", title: "Property operations", description: "Reservations, rooms, front desk, housekeeping and guest operations live in your PMS.", href: "/pms", type: "operations" }] },
   Photography: { label: "Photography Studio", primaryEntity: "Booking", terminology: { customer: "Client", transaction: "Booking", catalog: "Packages" }, quickActions: [core.bookings, core.calendar, core.services, core.gallery], widgets: [{ id: "shoots", title: "Shoot pipeline", description: "Keep upcoming shoots, client work and galleries moving from booking to delivery.", href: "/calendar", type: "operations" }] },
@@ -103,7 +105,7 @@ const CATEGORY_OVERRIDES: Record<string, Partial<AdaptiveDashboardConfig>> = {
   Fashion: { label: "Fashion Operations", primaryEntity: "Order", terminology: { customer: "Customer", transaction: "Order", catalog: "Collections" }, quickActions: [core.products, core.orders, core.inventory, core.marketing] },
 };
 
-function subcategoryProfile(category: string, subcategory?: string | null): Partial<AdaptiveDashboardConfig> {
+function subcategoryProfile(category: string, subcategory?: string | null): Omit<Partial<AdaptiveDashboardConfig>, "terminology"> & { terminology?: TerminologyOverride } {
   const s = (subcategory ?? "").toLowerCase();
   if (category === "Professional Services") {
     if (/graphic|logo|branding|design/.test(s)) return { label: subcategory || "Creative Services", primaryEntity: "Project", terminology: { customer: "Client", transaction: "Project", catalog: "Services" }, quickActions: [core.projects, core.quotes, core.services, core.gallery], widgets: [{ id: "project-pipeline", title: "Project pipeline", description: "Track active creative work, approvals and upcoming deadlines.", href: "/projects", type: "operations" }] };
@@ -177,5 +179,5 @@ function singularize(catalog: string): string {
   if (catalog.endsWith("ies")) return `${catalog.slice(0, -3)}y`;
   if (catalog.endsWith("s")) return catalog.slice(0, -1);
   return catalog;
-  }
-             
+    }
+            
