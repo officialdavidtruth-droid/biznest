@@ -21,7 +21,8 @@ export type OnboardingField = {
   key: string;
   label: string;
   placeholder: string;
-  type?: "text" | "number" | "textarea";
+  type?: "text" | "number" | "textarea" | "select" | "days";
+  options?: { label: string; value: string }[];
   helper?: string;
 };
 
@@ -98,10 +99,21 @@ const PLANS: Record<string, Partial<BusinessOnboardingPlan>> = {
     title: "Set up your restaurant experience",
     fields: [
       { key: "cuisine", label: "Cuisine / food style", placeholder: "e.g. Nigerian, continental, pizza" },
-      { key: "orderingModes", label: "How can customers order?", placeholder: "e.g. Delivery, pickup, dine-in" },
-      { key: "openingHours", label: "Opening hours", placeholder: "e.g. Mon–Sun, 10:00am–10:00pm" },
+      { key: "menuFocus", label: "What do you serve?", placeholder: "e.g. pizza, burgers, rice dishes, pastries, drinks" },
+      { key: "orderingModes", label: "How do customers order?", placeholder: "Choose the ways you serve customers", type: "select", options: [
+        { label: "Dine-in, pickup & delivery", value: "dine-in,pickup,delivery" },
+        { label: "Dine-in & pickup", value: "dine-in,pickup" },
+        { label: "Pickup & delivery", value: "pickup,delivery" },
+        { label: "Dine-in only", value: "dine-in" },
+      ] },
+      { key: "serviceDays", label: "Days you are open", placeholder: "Select your opening days", type: "days", options: [
+        { label: "Monday", value: "Monday" }, { label: "Tuesday", value: "Tuesday" }, { label: "Wednesday", value: "Wednesday" },
+        { label: "Thursday", value: "Thursday" }, { label: "Friday", value: "Friday" }, { label: "Saturday", value: "Saturday" }, { label: "Sunday", value: "Sunday" },
+      ] },
+      { key: "openingHours", label: "Opening hours", placeholder: "e.g. 10:00 AM – 10:00 PM" },
+      { key: "deliveryArea", label: "Delivery area", placeholder: "e.g. Wuse, Garki, Maitama and nearby areas" },
     ],
-    recommendations: ["Organise the menu into categories", "Add signature dishes", "Show opening hours prominently"],
+    recommendations: ["Build your menu around food categories", "Add signature dishes and best sellers", "Set your opening days and hours", "Configure delivery or pickup"],
   },
   "Hotel & Lodging": {
     icon: Hotel,
