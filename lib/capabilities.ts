@@ -252,7 +252,7 @@ export const BUSINESS_TYPES: Record<string, BusinessTypeConfig> = {
   "Restaurant": {
     icon: Utensils,
     tagline: "Restaurant storefront",
-    capabilities: ["products", "menu_categories", "delivery", "pickup", "opening_hours", "reviews"],
+    capabilities: ["products", "menu_categories", "delivery", "pickup", "opening_hours", "bookings", "reviews"],
     defaultCategories: defaultCategoriesFor("Restaurant", ["products", "menu_categories", "delivery", "pickup", "opening_hours", "reviews"]),
     navigation: navigationFor("Restaurant", ["products", "menu_categories", "delivery", "pickup", "opening_hours", "reviews"]),
     homepageSections: homepageFor("Restaurant", ["products", "menu_categories", "delivery", "pickup", "opening_hours", "reviews"]),
