@@ -4,24 +4,26 @@ import { prisma } from "@/lib/prisma";
 import { listProducts } from "@/lib/actions/product";
 import { ProductsTable } from "@/components/dashboard/products-table";
 import { BulkCsvPanel } from "@/components/dashboard/bulk-csv-panel";
+import { getBusinessTerminology } from "@/lib/business-terminology";
 
 export default async function ProductsListPage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
   const [products, store] = await Promise.all([
     listProducts(slug),
-    prisma.store.findUnique({ where: { slug }, select: { id: true } }),
+    prisma.store.findUnique({ where: { slug }, select: { id: true, business: { select: { category: true } } } }),
   ]);
+  const terminology = getBusinessTerminology(store?.business.category);
   const categories = store ? await prisma.category.findMany({ where: { storeId: store.id, type: "PRODUCT" }, orderBy: { name: "asc" } }) : [];
 
   return (
     <div>
       <div className="mb-6 flex items-center justify-between">
-        <h1 className="text-xl font-semibold">Products</h1>
+        <div><h1 className="text-xl font-semibold">{terminology.catalog}</h1><p className="mt-1 text-xs text-muted-foreground">{terminology.catalogDescription}</p></div>
         <Link
           href={`/${slug}/admin/products/new`}
           className="rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground"
         >
-          Add product
+          {terminology.addCatalog}
         </Link>
       </div>
 
@@ -42,6 +44,7 @@ export default async function ProductsListPage({ params }: { params: Promise<{ s
           inventory: p.inventory ? { quantity: p.inventory.quantity } : null,
         }))}
         categories={categories.map((c) => ({ id: c.id, name: c.name }))}
+        terminology={terminology}
       />
     </div>
   );
