@@ -78,7 +78,7 @@ export function MobileDashboardChrome({
   return (
     <div className="lg:hidden">
       {/* Top bar */}
-      <header className="sticky top-0 z-30 flex items-center justify-between border-b border-border bg-background px-3 py-2.5">
+      <header className="sticky top-0 z-30 flex items-center justify-between border-b border-slate-200 bg-white px-3 py-2.5">
         <div className="flex min-w-0 items-center gap-2">
           <button
             onClick={() => setDrawerOpen(true)}
@@ -102,7 +102,7 @@ export function MobileDashboardChrome({
 
       {/* Bottom tab bar — fixed, so it stays put while page content scrolls */}
       <nav
-        className="fixed inset-x-0 bottom-0 z-30 grid border-t border-border bg-background pb-[env(safe-area-inset-bottom)]"
+        className="bn-admin-mobile-bottom fixed inset-x-0 bottom-0 z-30 grid border-t pb-[env(safe-area-inset-bottom)]"
         style={{ gridTemplateColumns: `repeat(${bottomItems.length + 1}, minmax(0, 1fr))` }}
       >
         {bottomItems.map((item) => {
@@ -135,28 +135,28 @@ export function MobileDashboardChrome({
       {drawerOpen && (
         <div className="fixed inset-0 z-40">
           <div className="absolute inset-0 bg-black/50" onClick={() => setDrawerOpen(false)} />
-          <div className="absolute inset-y-0 left-0 flex w-[82%] max-w-xs flex-col overflow-y-auto bg-background pb-[env(safe-area-inset-bottom)]">
-            <div className="flex items-center gap-3 border-b border-border px-4 py-4">
+          <div className="bn-admin-mobile-drawer absolute inset-y-0 left-0 flex w-[82%] max-w-xs flex-col overflow-y-auto pb-[env(safe-area-inset-bottom)] shadow-2xl">
+            <div className="flex items-center gap-3 border-b border-slate-800 px-4 py-4">
               <StoreLogo logoUrl={logoUrl} storeName={storeName} />
               <div className="min-w-0 flex-1">
-                <p className="truncate text-sm font-semibold leading-tight">{storeName}</p>
+                <p className="truncate text-sm font-semibold leading-tight text-white">{storeName}</p>
                 <Link
                   href={`/${slug}`}
-                  className="mt-0.5 flex items-center gap-1 truncate text-xs text-muted-foreground"
+                  className="bn-admin-mobile-muted mt-0.5 flex items-center gap-1 truncate text-xs"
                   onClick={() => setDrawerOpen(false)}
                 >
                   <span className="truncate">biznest.space/{slug}</span>
                   <ExternalLink className="h-3 w-3 shrink-0" />
                 </Link>
               </div>
-              <button onClick={() => setDrawerOpen(false)} aria-label="Close menu" className="shrink-0 p-1">
+              <button onClick={() => setDrawerOpen(false)} aria-label="Close menu" className="shrink-0 p-1 text-slate-300">
                 <X className="h-5 w-5" />
               </button>
             </div>
             <div className="flex-1 space-y-5 px-3 py-4">
               {navGroups.map((group) => (
                 <div key={group.label}>
-                  <p className="mb-1.5 px-2 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground/70">
+                  <p className="bn-admin-mobile-muted mb-1.5 px-2 text-[10px] font-semibold uppercase tracking-wider">
                     {group.label}
                   </p>
                   <div className="space-y-0.5">
@@ -169,8 +169,8 @@ export function MobileDashboardChrome({
                           key={item.label}
                           href={href}
                           onClick={() => setDrawerOpen(false)}
-                          className={`flex items-center gap-2.5 rounded-lg px-2.5 py-2.5 text-sm ${
-                            isActive ? "bg-primary/15 font-medium text-primary" : "text-muted-foreground"
+                          className={`bn-admin-mobile-link flex items-center gap-2.5 rounded-lg px-2.5 py-2.5 text-sm ${
+                            isActive ? "active font-medium" : ""
                           }`}
                         >
                           <Icon className="h-4 w-4 shrink-0" />
@@ -182,11 +182,11 @@ export function MobileDashboardChrome({
                 </div>
               ))}
             </div>
-            <div className="space-y-2 border-t border-border px-4 py-3">
-              <Link href={`/${slug}`} className="block text-xs font-medium text-muted-foreground">
+            <div className="space-y-2 border-t border-slate-800 px-4 py-3">
+              <Link href={`/${slug}`} className="bn-admin-mobile-muted block text-xs font-medium">
                 View live store →
               </Link>
-              <SignOutButton className="text-xs font-medium text-muted-foreground" />
+              <SignOutButton className="text-xs font-medium text-slate-400" />
             </div>
           </div>
         </div>
