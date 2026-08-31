@@ -11,7 +11,14 @@ import crypto from "crypto";
 const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? "https://biznest.vercel.app";
 
 async function access(slug: string) {
-  const a = await assertStorePermission(slug, "orders");
+  // Gated on "products" (not "orders") to match the PMS nav item's
+  // permission — see lib/constants/dashboard-nav.ts, where every
+  // category extraNavItem (PMS included) is tagged permission: "products".
+  // These two used to disagree: a staff member granted only "products"
+  // could open /pms via the nav/layout guard, but every PMS server
+  // action then rejected them for lacking "orders", and getPmsData
+  // returning null sent them straight to a 404.
+  const a = await assertStorePermission(slug, "products");
   if (!a.success) return a;
   // Capability-driven rather than a hardcoded category name, so this stays
   // correct if another business type is ever granted the "pms" capability.
@@ -287,4 +294,5 @@ export async function settleReservationPayment(
 
  revalidatePath(`/store/${payment.reservation.store.slug}/admin/pms`);
  return{success:true,data:{storeSlug:payment.reservation.store.slug,reservationId:payment.reservation.id}};
-}
+    }
+   
