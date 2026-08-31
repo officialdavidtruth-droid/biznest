@@ -34,6 +34,46 @@ function FieldControl({ field, value, onChange }: { field: OnboardingField; valu
   const stringValue = typeof value === "number" ? String(value) : typeof value === "string" ? value : "";
   const className = "w-full rounded-xl border border-border bg-background px-3.5 py-3 text-sm shadow-sm transition placeholder:text-muted-foreground focus:border-primary focus:ring-2 focus:ring-primary/15";
 
+  if (field.type === "days") {
+    const selected = Array.isArray(value) ? value.map(String) : [];
+    return (
+      <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+        {(field.options ?? []).map((option) => {
+          const checked = selected.includes(option.value);
+          return (
+            <label key={option.value} className={`flex cursor-pointer items-center gap-2 rounded-xl border px-3 py-2.5 text-sm transition ${checked ? "border-primary bg-primary/5" : "border-border hover:bg-muted/50"}`}>
+              <input
+                type="checkbox"
+                checked={checked}
+                onChange={() => {
+                  const next = checked ? selected.filter((day) => day !== option.value) : [...selected, option.value];
+                  onChange(next);
+                }}
+                className="h-4 w-4"
+              />
+              <span>{option.label}</span>
+            </label>
+          );
+        })}
+      </div>
+    );
+  }
+
+  if (field.type === "select") {
+    return (
+      <select
+        className={className}
+        value={stringValue}
+        onChange={(e) => onChange(e.target.value)}
+      >
+        <option value="">{field.placeholder}</option>
+        {(field.options ?? []).map((option) => (
+          <option key={option.value} value={option.value}>{option.label}</option>
+        ))}
+      </select>
+    );
+  }
+
   if (field.type === "textarea") {
     return (
       <textarea
@@ -81,7 +121,7 @@ export function StoreSetupWizard({
 
   const plan = useMemo(
     () => getBusinessOnboardingPlan(business.category, business.sellsProducts, business.offersServices, business.businessSubcategory),
-    [business.category, business.sellsProducts, business.offersServices]
+    [business.category, business.sellsProducts, business.offersServices, business.businessSubcategory]
   );
   const experience = useMemo(
     () => getBusinessExperience(business.category, { sellsProducts: business.sellsProducts, offersServices: business.offersServices }, business.businessSubcategory),
@@ -199,6 +239,7 @@ export function StoreSetupWizard({
             <p className="text-xs font-semibold uppercase tracking-[0.16em] text-primary">Step 2 · Industry setup</p>
             <h2 className="mt-1 text-2xl font-bold tracking-tight">{plan.title}</h2>
             <p className="mt-2 max-w-2xl text-sm leading-6 text-muted-foreground">{plan.description}</p>
+            {business.category === "Restaurant" && <p className="mt-3 text-xs font-medium text-primary">We&apos;ll use this information to shape your menu, ordering flow, opening hours and delivery setup.</p>}
           </div>
 
           <div className="grid gap-6 lg:grid-cols-[1fr_300px]">
