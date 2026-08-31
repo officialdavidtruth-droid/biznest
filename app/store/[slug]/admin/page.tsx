@@ -4,7 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { notFound } from "next/navigation";
 import { AlertTriangle, Info } from "lucide-react";
 import { seedSampleListings, backfillListingImages } from "@/lib/actions/store";
-import { getCategoryDashboard } from "@/lib/constants/category-dashboard";
+import { getAdaptiveDashboardConfig } from "@/lib/adaptive-dashboard";
 import { getDashboardInsights } from "@/lib/actions/analytics";
 import { getTrustScoreBreakdown } from "@/lib/actions/trust-score";
 import { TrustScoreCard } from "@/components/dashboard/trust-score-card";
@@ -14,14 +14,16 @@ export default async function StoreDashboardHome({ params }: { params: Promise<{
   const store = await prisma.store.findUnique({ where: { slug }, include: { business: true } });
   if (!store) notFound();
 
-  // The category chosen at onboarding drives this page — every category
-  // gets its own tagline and set of quick actions, not one generic view.
-  const categoryDashboard = getCategoryDashboard(store.businessType);
-  const CategoryIcon = categoryDashboard.icon;
+  const adaptive = getAdaptiveDashboardConfig(
+    store.business.category,
+    store.business.businessSubcategory,
+    { sellsProducts: store.business.sellsProducts, offersServices: store.business.offersServices },
+  );
 
-  const [productCount, serviceCount, productsWithoutPhotos, servicesWithoutPhotos, insights, trustScore] = await Promise.all([
+  const [productCount, serviceCount, bookingCount, productsWithoutPhotos, servicesWithoutPhotos, insights, trustScore] = await Promise.all([
     prisma.product.count({ where: { storeId: store.id } }),
     prisma.service.count({ where: { storeId: store.id } }),
+    prisma.booking.count({ where: { storeId: store.id } }),
     prisma.product.count({ where: { storeId: store.id, images: { isEmpty: true } } }),
     prisma.service.count({ where: { storeId: store.id, images: { isEmpty: true } } }),
     getDashboardInsights(store.id, slug),
@@ -43,27 +45,33 @@ export default async function StoreDashboardHome({ params }: { params: Promise<{
     await backfillListingImages(slug);
   }
 
-  const stats: { label: string; value: string }[] = [
-    { label: "Revenue", value: `₦${insights.revenueToday.toLocaleString()}` },
-    { label: "Orders", value: insights.ordersToday.toLocaleString() },
-    { label: "Visitors", value: insights.visitorsToday.toLocaleString() },
-    { label: "Conversion", value: insights.conversionRate !== null ? `${insights.conversionRate}%` : "—" },
-    { label: "Best product", value: insights.bestProduct?.name ?? "—" },
-    { label: "Returning customers", value: insights.returningCustomerRate !== null ? `${insights.returningCustomerRate}%` : "—" },
-  ];
+  const statValues: Record<string, string> = {
+    revenue: `₦${insights.revenueToday.toLocaleString()}`,
+    orders: insights.ordersToday.toLocaleString(),
+    visitors: insights.visitorsToday.toLocaleString(),
+    conversion: insights.conversionRate !== null ? `${insights.conversionRate}%` : "—",
+    bestProduct: insights.bestProduct?.name ?? "—",
+    returning: insights.returningCustomerRate !== null ? `${insights.returningCustomerRate}%` : "—",
+    products: productCount.toLocaleString(),
+    services: serviceCount.toLocaleString(),
+    bookings: bookingCount.toLocaleString(),
+    customers: "—",
+  };
+
+  const stats = adaptive.kpis.map((kpi) => ({ label: kpi.label, value: statValues[kpi.source] ?? "—" }));
 
   return (
     <div>
       <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h1 className="text-xl font-semibold">Overview</h1>
+          <h1 className="text-xl font-semibold">{adaptive.label}</h1>
           <p className="mt-0.5 flex items-center gap-1.5 text-xs text-muted-foreground">
-            <CategoryIcon className="h-3.5 w-3.5" />
-            {categoryDashboard.tagline}
+            <span>{adaptive.primaryEntity}</span>
+            <span className="text-muted-foreground/50">·</span> {adaptive.tagline}
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
-          {categoryDashboard.quickActions.map((qa) => (
+          {adaptive.quickActions.map((qa) => (
             <Link
               key={qa.href}
               href={`/${slug}/admin${qa.href}`}
@@ -129,6 +137,21 @@ export default async function StoreDashboardHome({ params }: { params: Promise<{
             <p className="mt-1 truncate text-2xl font-semibold" title={s.value}>{s.value}</p>
           </div>
         ))}
+      </div>
+
+      <div className="mb-8">
+        <div className="mb-3">
+          <p className="text-sm font-medium">Your adaptive workspace</p>
+          <p className="mt-0.5 text-xs text-muted-foreground">BizNest automatically arranged the tools for {adaptive.businessType}{adaptive.subcategory ? ` · ${adaptive.subcategory}` : ""}.</p>
+        </div>
+        <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-3">
+          {adaptive.widgets.slice(0, 6).map((widget) => (
+            <Link key={widget.id} href={widget.href ? `/${slug}/admin${widget.href}` : `/${slug}/admin`} className="rounded-lg border bg-background p-4 transition hover:border-primary/50">
+              <p className="text-sm font-medium">{widget.title}</p>
+              <p className="mt-1 text-xs leading-5 text-muted-foreground">{widget.description}</p>
+            </Link>
+          ))}
+        </div>
       </div>
 
       {trustScore && (
