@@ -35,7 +35,7 @@ export type AdaptiveDashboardConfig = {
   label: string;
   tagline: string;
   primaryEntity: string;
-  terminology: { customer: string; transaction: string; catalog: string };
+  terminology: { customer: string; transaction: string; catalog: string; catalogSingular?: string };
   kpis: DashboardKpi[];
   quickActions: DashboardModule[];
   modules: DashboardModule[];
@@ -147,15 +147,35 @@ export function getAdaptiveDashboardConfig(category?: string | null, subcategory
   if (caps.has("bookings")) widgets.push({ id: "schedule", title: "Upcoming schedule", description: "Bookings and appointments are the operational heartbeat of this business.", href: "/calendar", type: "operations" });
   if (caps.has("pms")) widgets.push({ id: "pms", title: "Hotel operations", description: "Open the dedicated PMS for reservations, rooms, front desk and housekeeping.", href: "/pms", type: "operations" });
   if (caps.has("delivery")) widgets.push({ id: "delivery", title: "Delivery operations", description: "Manage delivery areas and fulfillment without cluttering the main dashboard.", href: "/delivery", type: "operations" });
+  const terminology = profile.terminology ?? { customer: service && !product ? "Client" : "Customer", transaction: product ? "Order" : "Booking", catalog: product ? "Products" : "Services" };
   return {
     businessType: configLabel(category), subcategory, label: profile.label ?? config.tagline,
     tagline: config.tagline, primaryEntity: profile.primaryEntity ?? (product ? "Order" : "Booking"),
-    terminology: profile.terminology ?? { customer: service && !product ? "Client" : "Customer", transaction: product ? "Order" : "Booking", catalog: product ? "Products" : "Services" },
+    terminology: { ...terminology, catalogSingular: terminology.catalogSingular ?? singularize(terminology.catalog) },
     kpis: profile.kpis ?? baseKpis, quickActions: clean(profile.quickActions ?? defaultActions), modules: clean(modules), widgets: profile.widgets ? [...widgets, ...profile.widgets] : widgets,
   };
 }
 
 function configLabel(category?: string | null) {
   return category || "Other";
-    }
-  
+}
+
+const SINGULAR_OVERRIDES: Record<string, string> = {
+  Menu: "Menu Item",
+  Rooms: "Room",
+  Packages: "Package",
+  Services: "Service",
+  Properties: "Property",
+  "Parts & Services": "Part or Service",
+  "Programs & Services": "Program or Service",
+  Products: "Product",
+  Collections: "Collection",
+};
+
+function singularize(catalog: string): string {
+  if (SINGULAR_OVERRIDES[catalog]) return SINGULAR_OVERRIDES[catalog];
+  if (catalog.endsWith("ies")) return `${catalog.slice(0, -3)}y`;
+  if (catalog.endsWith("s")) return catalog.slice(0, -1);
+  return catalog;
+  }
+             
