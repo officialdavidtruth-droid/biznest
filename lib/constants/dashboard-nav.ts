@@ -5,7 +5,7 @@ import {
   LayoutTemplate, FileText, FileSignature, MailWarning, Calculator, CalendarDays, Images,
   ClipboardList, Hotel,
 } from "lucide-react";
-import { getCategoryDashboard } from "@/lib/constants/category-dashboard";
+import { getAdaptiveDashboardConfig } from "@/lib/adaptive-dashboard";
 import type { StaffPermissionId } from "@/lib/access/staff-permissions";
 
 export type NavItem = {
@@ -65,9 +65,10 @@ export function buildNavGroups(business: { sellsProducts: boolean; offersService
   // The category picked at onboarding can add one more trade-specific tool
   // (e.g. "Bookings" for a salon, "Delivery zones" for a restaurant) — but
   // only if it isn't already present above.
-  const categoryConfig = getCategoryDashboard(business.category);
-  const categoryExtraNavItems = (categoryConfig.extraNavItems ?? [])
+  const adaptiveConfig = getAdaptiveDashboardConfig(business.category, undefined, business);
+  const categoryExtraNavItems = (adaptiveConfig.modules ?? [])
     .filter((i) => i.href !== "/pms")
+    .filter((i) => !["", "/products", "/services", "/orders", "/bookings", "/calendar", "/customers", "/payments", "/invoices", "/analytics", "/settings", "/inventory", "/delivery", "/gallery", "/reviews"].includes(i.href))
     .filter((i) => !sellNavItems.some((existing) => existing.href === i.href))
     .map((i) => ({ permission: "products", ...i } as NavItem));
   sellNavItems.push(...categoryExtraNavItems);
