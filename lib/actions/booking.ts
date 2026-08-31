@@ -817,6 +817,11 @@ export async function createStayBooking(
             checkIn,
             checkOut,
             durationMins: nights * 24 * 60,
+            // Stay pricing is nightly, so snapshot the full stay amount on
+            // the booking. Payment creation reads this field instead of
+            // charging only the room's one-night list price.
+            paymentAmount: Number(service.price) * nights,
+            paymentCurrency: service.currency,
             notes: notes?.trim() || null,
             guestName: normalizedGuest?.name ?? null,
             guestEmail: normalizedGuest?.email ?? null,
