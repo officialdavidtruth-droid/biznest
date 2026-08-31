@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { DeleteProductButton } from "@/components/dashboard/delete-product-button";
 import { bulkUpdateProducts } from "@/lib/actions/bulk";
+import type { BusinessTerminology } from "@/lib/business-terminology";
 
 type Category = { id: string; name: string };
 
@@ -24,10 +25,12 @@ export function ProductsTable({
   storeSlug,
   products,
   categories,
+  terminology,
 }: {
   storeSlug: string;
   products: ProductRow[];
   categories: Category[];
+  terminology: BusinessTerminology;
 }) {
   const router = useRouter();
   const [selected, setSelected] = useState<Set<string>>(new Set());
@@ -78,7 +81,7 @@ export function ProductsTable({
       toast.error(result.error);
       return;
     }
-    toast.success(`Updated ${result.data.updated} product${result.data.updated === 1 ? "" : "s"}`);
+    toast.success(`Updated ${result.data.updated} ${terminology.catalogSingular.toLowerCase()}${result.data.updated === 1 ? "" : "s"}`);
     setSelected(new Set());
     setPriceInput("");
     setQuantityInput("");
@@ -169,7 +172,7 @@ export function ProductsTable({
               <th className="w-10 px-4 py-2">
                 <input type="checkbox" checked={allSelected} onChange={toggleAll} />
               </th>
-              <th className="px-4 py-2">Product</th>
+              <th className="px-4 py-2">{terminology.catalogSingular}</th>
               <th className="px-4 py-2">Category</th>
               <th className="px-4 py-2">Price</th>
               <th className="px-4 py-2">Stock</th>
