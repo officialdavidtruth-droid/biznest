@@ -10,6 +10,7 @@ import { isSignatureTemplate, getSignatureTheme } from "@/lib/template-themes";
 import { SignatureJourney } from "@/components/storefront/signature-journey";
 import { SignatureServiceDetail } from "@/components/storefront/signature-service-detail";
 import { HotelRoomDetail } from "@/components/storefront/hotel-room-detail";
+import { PhotographyBookingClient } from "@/components/storefront/photography-booking-client";
 
 export async function generateMetadata({ params }: { params: Promise<{ slug: string; serviceId: string }> }): Promise<Metadata> {
   const { slug, serviceId } = await params;
@@ -45,6 +46,14 @@ export default async function ServicePage({ params }: { params: Promise<{ slug: 
   const isHotelBusiness = store.businessType === "Hotel & Lodging" || Boolean(signatureTheme && ["hotel", "maison", "great-treasure", "grand-vere"].includes(signatureTheme.signatureMode));
   const ROOM_PATTERN = /room|suite|studio|apartment|villa|penthouse|chalet|cottage|lodge|duplex/i;
   const isRoomLike = isHotelBusiness && ROOM_PATTERN.test(`${service.name} ${service.category?.name ?? ""}`);
+
+  const isPhotographyBusiness = store.businessType === "Photography" || /photography|photographer/i.test(`${store.business?.businessSubcategory ?? ""} ${store.template?.name ?? ""}`);
+
+  // Photography templates use the dedicated Vere Studio-style booking journey.
+  // This branch is intentionally scoped to photography businesses only.
+  if (isPhotographyBusiness) {
+    return <PhotographyBookingClient store={store} slug={slug} service={service} theme={theme} />;
+  }
 
   // Hotel room pages intentionally use a dedicated reservation/detail system
   // based on the hotel reference design. This branch is scoped to hotel
