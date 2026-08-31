@@ -27,10 +27,12 @@ import { getStoreCategoryTree } from "@/lib/storefront-categories";
 import { isSignatureTemplate } from "@/lib/template-themes";
 import { SignatureCartClient } from "@/components/storefront/signature-cart-client";
 import { SignatureJourney } from "@/components/storefront/signature-journey";
+import { RestaurantReferenceShell, RestaurantReferenceFooter } from "@/components/storefront/restaurant-reference-shell";
+import { RestaurantOrderClient } from "@/components/storefront/restaurant-order-client";
 
 export default async function CartPage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
-  const rawStore = await prisma.store.findUnique({ where: { slug }, include: { template: true, business: true } });
+  const rawStore = await prisma.store.findUnique({ where: { slug }, include: { template: true, business: true, products: { where: { isPublished: true }, take: 24, include: { category: true } }, services: { where: { isPublished: true }, take: 24, include: { category: true } } } });
   // Chrome/home components read `store.sellsProducts` directly (to hide the
   // cart link for service-only stores), but that flag lives on Business,
   // not Store — flatten it once here rather than at every call site below.
@@ -48,6 +50,15 @@ export default async function CartPage({ params }: { params: Promise<{ slug: str
   const rrw = store && isRrwTemplate(store.template?.name);
 
   if (store && isSignatureTemplate(store.template?.name)) {
+    const signatureMode = (await import("@/lib/template-themes")).getSignatureTheme(store.template?.name ?? "").signatureMode;
+    const restaurantModes = new Set(["belora", "tastehouse", "flavora-kitchen", "flavora-restaurant"]);
+    if (restaurantModes.has(signatureMode)) {
+      const restaurantItems = [
+        ...store.products.map((p: any) => ({ id: p.id, kind: "product" as const, name: p.name, description: null as string | null, price: Number(p.price), currency: p.currency, image: p.images[0] ?? null, categoryName: p.category?.name ?? null, isBookable: false })),
+        ...store.services.map((x: any) => ({ id: x.id, kind: "service" as const, name: x.name, description: x.description, price: Number(x.price), currency: x.currency, image: x.images[0] ?? null, categoryName: x.category?.name ?? null, isBookable: x.isBookable })),
+      ];
+      return <RestaurantReferenceShell store={store} slug={slug} tone="order"><RestaurantOrderClient slug={slug} items={restaurantItems} heroImage={store.bannerUrl || restaurantItems[0]?.image || null}/><RestaurantReferenceFooter store={store} slug={slug}/></RestaurantReferenceShell>;
+    }
     return (
       <SignatureJourney store={store} slug={slug} templateName={store.template?.name ?? ""} title="Your selection">
         <SignatureCartClient slug={slug} templateName={store.template?.name ?? ""} />
