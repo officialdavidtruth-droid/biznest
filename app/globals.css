@@ -345,3 +345,80 @@ a[href*="/service/"]:hover img {
     width: 100% !important;
   }
 }
+
+
+/* --------------------------------------------------------------------------
+   BizNest merchant admin system — one visual language for every niche.
+   The business profile/adaptive engine controls CONTENT; these rules control
+   the INTERFACE. This means Restaurant, Hotel, Photography, Printing,
+   Professional Services, etc. all get the same premium operating-system
+   shell without needing a separate UI build for every niche.
+   -------------------------------------------------------------------------- */
+.bn-admin-app {
+  --bn-admin-bg: #f8fafc;
+  --bn-admin-panel: #ffffff;
+  --bn-admin-line: #e5e7eb;
+  --bn-admin-text: #111827;
+  --bn-admin-muted: #6b7280;
+  --bn-admin-accent: #f1b95a;
+  background: var(--bn-admin-bg);
+  color: var(--bn-admin-text);
+}
+.bn-admin-app .bn-admin-main { background: var(--bn-admin-bg); }
+.bn-admin-app .bn-admin-content > div { max-width: 100%; }
+.bn-admin-app h1 {
+  color: #111827;
+  letter-spacing: -0.025em;
+}
+.bn-admin-app h2, .bn-admin-app h3 { color: #1f2937; }
+.bn-admin-app p.text-muted-foreground,
+.bn-admin-app span.text-muted-foreground,
+.bn-admin-app .text-muted-foreground { color: #6b7280; }
+.bn-admin-app button:not(:disabled),
+.bn-admin-app a[class*="bg-primary"] {
+  transition: transform .16s ease, box-shadow .16s ease, background-color .16s ease;
+}
+.bn-admin-app button:not(:disabled):hover,
+.bn-admin-app a[class*="bg-primary"]:hover { box-shadow: 0 7px 18px rgba(15,23,42,.10); }
+.bn-admin-app input,
+.bn-admin-app select,
+.bn-admin-app textarea {
+  border-color: #dfe3e8;
+  background: #fff;
+  color: #111827;
+  border-radius: .55rem;
+  min-height: 40px;
+}
+.bn-admin-app input::placeholder,
+.bn-admin-app textarea::placeholder { color: #9ca3af; }
+.bn-admin-app table { border-collapse: separate; border-spacing: 0; }
+.bn-admin-app table thead { background: #f8fafc; }
+.bn-admin-app table th {
+  color: #6b7280;
+  font-weight: 600;
+  letter-spacing: .02em;
+}
+.bn-admin-app table tbody tr { background: #fff; }
+.bn-admin-app table tbody tr:hover { background: #fffaf1; }
+.bn-admin-app table td, .bn-admin-app table th { border-color: #edf0f2; }
+.bn-admin-app [class~="rounded-lg"][class*="border"],
+.bn-admin-app [class~="rounded-xl"][class*="border"] {
+  border-color: #e4e7eb;
+  box-shadow: 0 1px 2px rgba(15,23,42,.035);
+}
+.bn-admin-app .bg-muted\/40,
+.bn-admin-app .bg-muted\/30,
+.bn-admin-app .bg-muted\/20 { background: #f8fafc; }
+.bn-admin-app .bg-primary { background: #e8a93e; }
+.bn-admin-app .text-primary { color: #a96f10; }
+.bn-admin-app .border-primary\/30 { border-color: #edc878; }
+.bn-admin-app .bg-primary\/5 { background: #fff9ed; }
+.bn-admin-app .bg-primary\/15 { background: #fff3d7; }
+.bn-admin-app .bn-admin-page-title {
+  font-size: 1.55rem;
+  font-weight: 700;
+}
+
+@media (max-width: 1023px) {
+  .bn-admin-app .bn-admin-content { padding-top: 1rem; }
+}
