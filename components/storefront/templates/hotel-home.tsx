@@ -95,7 +95,7 @@ function initials(name: string) {
 }
 
 function itemHref(slug: string, item: CatalogItem) {
-  return `/${slug}/${item.kind}/${item.id}`;
+  return item.kind === "service" && ROOM_PATTERN.test(`${item.name} ${item.categoryName ?? ""}`) ? `/${slug}/room/${item.id}` : `/${slug}/${item.kind}/${item.id}`;
 }
 
 function imageStyle(url: string | null, fallback: string): React.CSSProperties {
