@@ -9,6 +9,7 @@ import { AccountLink } from "@/components/storefront/account-link";
 import { isSignatureTemplate, getSignatureTheme } from "@/lib/template-themes";
 import { SignatureJourney } from "@/components/storefront/signature-journey";
 import { SignatureServiceDetail } from "@/components/storefront/signature-service-detail";
+import { HotelRoomDetail } from "@/components/storefront/hotel-room-detail";
 
 export async function generateMetadata({ params }: { params: Promise<{ slug: string; serviceId: string }> }): Promise<Metadata> {
   const { slug, serviceId } = await params;
@@ -31,7 +32,7 @@ export default async function ServicePage({ params }: { params: Promise<{ slug: 
 
   const service = await prisma.service.findFirst({
     where: { id: serviceId, storeId: store.id, isPublished: true },
-    include: { category: true },
+    include: { category: true, reviews: { orderBy: { createdAt: "desc" }, take: 20 } },
   });
   if (!service) notFound();
 
@@ -40,6 +41,19 @@ export default async function ServicePage({ params }: { params: Promise<{ slug: 
   const theme: TemplateTheme = resolveStoreTheme(store.template?.category, store.name, themeOverrides, store.fontFamily, store.template?.name);
   const { accent, ink, bg, radius } = theme;
   const images = service.images.length ? service.images : [];
+  const signatureTheme = isSignatureTemplate(store.template?.name) ? getSignatureTheme(store.template?.name) : null;
+  const isHotelBusiness = store.businessType === "Hotel & Lodging" || Boolean(signatureTheme && ["hotel", "maison", "great-treasure", "grand-vere"].includes(signatureTheme.signatureMode));
+  const ROOM_PATTERN = /room|suite|studio|apartment|villa|penthouse|chalet|cottage|lodge|duplex/i;
+  const isRoomLike = isHotelBusiness && ROOM_PATTERN.test(`${service.name} ${service.category?.name ?? ""}`);
+
+  // Hotel room pages intentionally use a dedicated reservation/detail system
+  // based on the hotel reference design. This branch is scoped to hotel
+  // templates only; every other service keeps its existing presentation.
+  if (isRoomLike) {
+    const hotelTheme = signatureTheme || theme;
+    return <HotelRoomDetail store={store} slug={slug} service={service} theme={hotelTheme} hotelMode={signatureTheme?.signatureMode} />;
+  }
+
   if (isSignatureTemplate(store.template?.name)) {
     const t = getSignatureTheme(store.template?.name);
     return <SignatureJourney store={store} slug={slug} templateName={store.template?.name ?? ""} title={service.name}>
@@ -51,9 +65,6 @@ export default async function ServicePage({ params }: { params: Promise<{ slug: 
   // service pages -- it was previously rendered unconditionally here,
   // which is why a pure-booking store still showed a shopping bag.
   const showCart = store.business?.sellsProducts ?? true;
-  const ROOM_PATTERN = /room|suite|studio|apartment|villa|penthouse|chalet|cottage|lodge|duplex/i;
-  const isHotelBusiness = store.businessType === "Hotel & Lodging";
-  const isRoomLike = isHotelBusiness && ROOM_PATTERN.test(`${service.name} ${service.category?.name ?? ""}`);
   const unitLabel = isRoomLike ? "room" : "spot";
   // Other bookable options for this business so a shopper who hits low or
   // zero availability has somewhere useful to go instead of a dead end.
