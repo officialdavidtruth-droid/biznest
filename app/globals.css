@@ -422,3 +422,66 @@ a[href*="/service/"]:hover img {
 @media (max-width: 1023px) {
   .bn-admin-app .bn-admin-content { padding-top: 1rem; }
 }
+
+/* ================================================================
+   BizNest Admin Experience — shared visual language
+   One fixed interface system; adaptive data/navigation supplies the niche.
+   ================================================================ */
+.bn-admin-app {
+  --bn-surface: #ffffff;
+  --bn-page: #f8f9fb;
+  --bn-line: #e5e8ed;
+  --bn-line-soft: #edf0f3;
+  --bn-ink: #111827;
+  --bn-muted: #6b7280;
+  --bn-gold: #f1b95a;
+  --bn-gold-dark: #9a691d;
+  background: var(--bn-page) !important;
+  color: var(--bn-ink) !important;
+}
+.bn-admin-app main { background: var(--bn-page) !important; }
+.bn-admin-app .bn-admin-sidebar { background: #071525 !important; border-color: #17243a !important; }
+.bn-admin-app .bn-admin-page-title { letter-spacing: -.025em; }
+.bn-admin-app h1 { color: #111827; font-weight: 700; letter-spacing: -.025em; }
+.bn-admin-app h2, .bn-admin-app h3 { color: #111827; letter-spacing: -.015em; }
+.bn-admin-app input, .bn-admin-app select, .bn-admin-app textarea {
+  background: #fff !important; border-color: var(--bn-line) !important; color: #111827 !important;
+  border-radius: 8px !important; box-shadow: none !important;
+}
+.bn-admin-app input:focus, .bn-admin-app select:focus, .bn-admin-app textarea:focus {
+  border-color: #e6bd72 !important; outline: 2px solid #f8e9c9 !important;
+}
+.bn-admin-app button, .bn-admin-app a { transition: background-color .15s ease, border-color .15s ease, box-shadow .15s ease, transform .15s ease; }
+.bn-admin-app button.bg-primary, .bn-admin-app a.bg-primary,
+.bn-admin-app button[class*="bg-primary"], .bn-admin-app a[class*="bg-primary"] {
+  background: var(--bn-gold) !important; color: #111827 !important; border-color: var(--bn-gold) !important;
+}
+.bn-admin-app .rounded-lg.border, .bn-admin-app .rounded-xl.border, .bn-admin-app .rounded-2xl.border {
+  border-color: var(--bn-line) !important; box-shadow: 0 1px 2px rgba(15,23,42,.035) !important;
+}
+.bn-admin-app table thead { background: #fbfcfd !important; }
+.bn-admin-app table th { color: #64748b !important; font-size: 11px !important; text-transform: none !important; letter-spacing: 0 !important; }
+.bn-admin-app table td { color: #334155; border-color: var(--bn-line-soft) !important; }
+.bn-admin-app table tbody tr:hover { background: #fffaf1 !important; }
+.bn-admin-app .text-muted-foreground { color: #64748b !important; }
+.bn-admin-app .bg-muted\/40, .bn-admin-app .bg-muted\/30, .bn-admin-app .bg-muted\/20 { background: #f8fafc !important; }
+.bn-admin-app .bg-card, .bn-admin-app .bg-background { background: #fff !important; }
+.bn-admin-app .border-border { border-color: var(--bn-line) !important; }
+.bn-admin-app .text-primary { color: var(--bn-gold-dark) !important; }
+.bn-admin-app .bg-primary\/15 { background: #fff3d7 !important; }
+.bn-admin-app .bg-primary\/5 { background: #fff9ed !important; }
+
+@media (min-width: 1024px) {
+  .bn-admin-app > .flex-1 > main > .mx-auto { max-width: none !important; padding-left: 28px !important; padding-right: 28px !important; }
+}
+
+.bn-admin-mobile-drawer { background: #071525 !important; color: #fff !important; }
+.bn-admin-mobile-drawer .bn-admin-mobile-link { color: #cbd5e1 !important; }
+.bn-admin-mobile-drawer .bn-admin-mobile-link.active { background: #f1b95a !important; color: #071525 !important; }
+.bn-admin-mobile-drawer .bn-admin-mobile-muted { color: #94a3b8 !important; }
+.bn-admin-mobile-bottom { background: #fff !important; border-color: var(--bn-line) !important; }
+.bn-admin-app .bn-admin-action:hover { box-shadow: 0 5px 14px rgba(15,23,42,.08); transform: translateY(-1px); }
+.bn-admin-app .bn-admin-page > .grid > section,
+.bn-admin-app .bn-admin-page section { border-radius: 12px; }
+.bn-admin-app .bn-admin-page table thead th { padding-top: 11px; padding-bottom: 11px; }
+.bn-admin-app .bn-admin-page table tbody td { padding-top: 13px; padding-bottom: 13px; }
