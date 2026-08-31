@@ -6,6 +6,7 @@ import {
   ClipboardList, Hotel,
 } from "lucide-react";
 import { getAdaptiveDashboardConfig } from "@/lib/adaptive-dashboard";
+import { getBusinessTerminology } from "@/lib/business-terminology";
 import type { StaffPermissionId } from "@/lib/access/staff-permissions";
 
 export type NavItem = {
@@ -46,17 +47,18 @@ export function buildNavGroups(business: { sellsProducts: boolean; offersService
   // Products and services are different operating models, not two labels for
   // the same catalog. A service-only business gets service operations here;
   // it should never open its dashboard and feel like an online shop.
+  const terminology = getBusinessTerminology(business.category);
   const sellNavItems: NavItem[] = [];
   if (business.sellsProducts) {
     sellNavItems.push(
       { label: "Point of Sale", href: "/pos", icon: Calculator, permission: "pos" },
       { label: "Orders", href: "/orders", icon: ShoppingCart, permission: "orders" },
-      { label: "Products", href: "/products", icon: Package, permission: "products" },
+      { label: terminology.catalog, href: "/products", icon: Package, permission: "products" },
     );
   }
   if (business.offersServices) {
     sellNavItems.push(
-      { label: "Services", href: "/services", icon: Wrench, permission: "products" },
+      { label: terminology.catalog === "Services" ? "Services" : "Services", href: "/services", icon: Wrench, permission: "products" },
       { label: "Bookings", href: "/bookings", icon: ClipboardList, permission: "products" },
       { label: "Calendar", href: "/calendar", icon: CalendarDays, permission: "products" },
     );
@@ -80,8 +82,8 @@ export function buildNavGroups(business: { sellsProducts: boolean; offersService
 
   const allManageItems: NavItem[] = [
     { label: "Inventory", href: "/inventory", icon: Boxes, permission: "products" },
-    { label: business.offersServices && !business.sellsProducts ? "Clients" : "Customers", href: "/customers", icon: Users, permission: "customers" },
-    { label: "Categories", href: "/categories", icon: Boxes, permission: "products" },
+    { label: terminology.customer === "Client" ? "Clients" : terminology.customer + "s", href: "/customers", icon: Users, permission: "customers" },
+    { label: business.category === "Restaurant" ? "Menu Categories" : terminology.category + "s", href: "/categories", icon: Boxes, permission: "products" },
     { label: "Suppliers", href: "/suppliers", icon: Users, permission: "products" },
     { label: "Purchase orders", href: "/purchase-orders", icon: FileSignature, permission: "products" },
     { label: "Delivery zones", href: "/delivery", icon: Truck, permission: "settings" },
