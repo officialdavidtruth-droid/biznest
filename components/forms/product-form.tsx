@@ -15,9 +15,13 @@ export function ProductForm({
   storeSlug,
   categories,
   product,
+  entityLabel = "Product",
+  categoryLabel = "Category",
 }: {
   storeSlug: string;
   categories: Category[];
+  entityLabel?: string;
+  categoryLabel?: string;
   product?: {
     id: string;
     name: string;
@@ -36,6 +40,7 @@ export function ProductForm({
 }) {
   const router = useRouter();
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const isMenuItem = entityLabel === "Menu item";
   const [productType, setProductType] = useState<ProductInput["type"]>(product?.type ?? "PHYSICAL");
 
   const {
@@ -94,14 +99,14 @@ export function ProductForm({
   return (
     <form onSubmit={handleSubmit(onSubmit)} className="max-w-2xl space-y-6">
       <div>
-        <label className="mb-1 block text-sm font-medium">Product name</label>
+        <label className="mb-1 block text-sm font-medium">{entityLabel} name</label>
         <input className="input" {...register("name")} />
         {errors.name && <p className="mt-1 text-xs text-destructive">{errors.name.message}</p>}
       </div>
 
       <div className="grid grid-cols-2 gap-4">
         <div>
-          <label className="mb-1 block text-sm font-medium">Type</label>
+          <label className="mb-1 block text-sm font-medium">{isMenuItem ? "Menu item type" : "Type"}</label>
           <select
             className="input"
             {...register("type")}
@@ -116,7 +121,7 @@ export function ProductForm({
           </select>
         </div>
         <div>
-          <label className="mb-1 block text-sm font-medium">Category</label>
+          <label className="mb-1 block text-sm font-medium">{categoryLabel}</label>
           <select className="input" {...register("categoryId")}>
             <option value="">Uncategorized</option>
             {topLevelCategories.map((c) => (
@@ -132,7 +137,7 @@ export function ProductForm({
       </div>
 
       <div>
-        <label className="mb-1 block text-sm font-medium">Description</label>
+        <label className="mb-1 block text-sm font-medium">{isMenuItem ? "Menu description" : "Description"}</label>
         <textarea className="input min-h-28" {...register("description")} />
         {errors.description && <p className="mt-1 text-xs text-destructive">{errors.description.message}</p>}
       </div>
@@ -144,7 +149,7 @@ export function ProductForm({
           {errors.price && <p className="mt-1 text-xs text-destructive">{errors.price.message}</p>}
         </div>
         <div>
-          <label className="mb-1 block text-sm font-medium">Compare-at price</label>
+          <label className="mb-1 block text-sm font-medium">{isMenuItem ? "Previous price (optional)" : "Compare-at price"}</label>
           <input type="number" step="0.01" className="input" {...register("compareAtPrice")} />
         </div>
         <div>
@@ -156,7 +161,7 @@ export function ProductForm({
       {productType === "PHYSICAL" && (
         <div className="grid grid-cols-3 gap-4">
           <div>
-            <label className="mb-1 block text-sm font-medium">Quantity in stock</label>
+            <label className="mb-1 block text-sm font-medium">{isMenuItem ? "Available quantity" : "Quantity in stock"}</label>
             <input type="number" className="input" {...register("quantity")} />
           </div>
           <div>
