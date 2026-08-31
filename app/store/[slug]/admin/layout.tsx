@@ -84,8 +84,8 @@ export default async function StoreAdminLayout({
 
   return (
     <>
-      <ThemeFlashGuard scopeId="bn-admin-theme-scope" defaultTheme="dark" />
-      <ThemeProvider scopeId="bn-admin-theme-scope" defaultTheme="dark">
+      <ThemeFlashGuard scopeId="bn-admin-theme-scope" defaultTheme="light" />
+      <ThemeProvider scopeId="bn-admin-theme-scope" defaultTheme="light">
         {/* h-full, not h-screen: the root layout (app/layout.tsx) now wraps
             <body>'s content in a flex column with the AnnouncementBanner as
             a normal block above a flex-1 region. h-screen here ignored the
@@ -151,7 +151,7 @@ export default async function StoreAdminLayout({
                   background show through below it, above the fixed mobile
                   bottom bar. min-h-full makes it always fill at least the
                   visible scroll area with the themed background. */}
-              <div className="mx-auto min-h-full max-w-6xl px-4 py-4 lg:px-6 lg:py-8">{children}</div>
+              <div className="mx-auto min-h-full max-w-none px-4 py-4 lg:px-7 lg:py-7">{children}</div>
             </main>
           </div>
         </div>
