@@ -132,7 +132,7 @@ export function getAdaptiveDashboardConfig(category?: string | null, subcategory
   if (caps.has("packages")) modules.push(core.services);
   if (caps.has("pms")) modules.push(core.pms);
   const profile = { ...(CATEGORY_OVERRIDES[configLabel(category)] ?? {}), ...subcategoryProfile(configLabel(category), subcategory) };
-  const baseKpis = configLabel(category) === "Hotel & Lodging" ? [
+  const baseKpis: DashboardKpi[] = configLabel(category) === "Hotel & Lodging" ? [
     { id: "revenue", label: "Revenue", source: "revenue", format: "money" },
     { id: "bookings", label: "Reservations", source: "bookings", format: "number" },
     { id: "clients", label: "Guests", source: "customers", format: "number" },
@@ -157,4 +157,5 @@ export function getAdaptiveDashboardConfig(category?: string | null, subcategory
 
 function configLabel(category?: string | null) {
   return category || "Other";
-}
+    }
+  
