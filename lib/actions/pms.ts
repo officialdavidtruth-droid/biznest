@@ -54,7 +54,7 @@ export async function getPmsData(slug: string) {
   ]);
   // depositAmount is a Prisma Decimal (a decimal.js class instance), not a
   // plain JS value — React Server Components can't serialize it across the
-  // server -> client boundary, so passing it straight into <PmsControls>
+  // server -> client boundary, so passing it straight into <PmsWorkspace>
   // (a "use client" component) throws and lands on the admin error
   // boundary. Converting to a plain number here is the same fix already
   // used for Decimal fields elsewhere (e.g. Number(order.total) in

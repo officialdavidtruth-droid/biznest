@@ -12,7 +12,7 @@ It intentionally replaces the normal BizNest dashboard chrome on the PMS route, 
 - Subscription: `Business Mogul`
 - Server-side entitlement enforcement lives in `lib/actions/pms.ts`.
 - The normal BizNest navigation exposes the PMS under `Apps` only when both conditions are met.
-- Non-Mogul hotel owners are redirected to Subscription with an upgrade message.
+- Hotel & Lodging owners not on Business Mogul who hit `/pms` (e.g. via the "Manage reservations" quick action) are redirected to `/store/[slug]/admin/subscription?pms=upgrade`, which shows an upgrade banner. Any other access failure (wrong business type, no store access) 404s instead.
 
 ## Current operational modules
 
