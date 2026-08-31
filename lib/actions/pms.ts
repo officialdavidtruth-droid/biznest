@@ -33,7 +33,18 @@ export async function getPmsData(slug: string) {
     prisma.propertyGuest.findMany({ where: { storeId: a.store.id }, orderBy: { updatedAt: "desc" }, take: 100 }),
     prisma.propertyReservation.findMany({ where: { storeId: a.store.id }, include: { guest: true, room: true }, orderBy: { checkIn: "asc" }, take: 100 }),
   ]);
-  return { rooms, guests, reservations };
+  // depositAmount is a Prisma Decimal (a decimal.js class instance), not a
+  // plain JS value — React Server Components can't serialize it across the
+  // server -> client boundary, so passing it straight into <PmsControls>
+  // (a "use client" component) throws and lands on the admin error
+  // boundary. Converting to a plain number here is the same fix already
+  // used for Decimal fields elsewhere (e.g. Number(order.total) in
+  // lib/actions/order.ts).
+  const plainReservations = reservations.map((r) => ({
+    ...r,
+    depositAmount: r.depositAmount === null ? null : Number(r.depositAmount),
+  }));
+  return { rooms, guests, reservations: plainReservations };
 }
 
 export async function createRoom(slug: string, input: { name: string; roomType: string }): Promise<ActionResult<{id:string}>> {
@@ -294,5 +305,5 @@ export async function settleReservationPayment(
 
  revalidatePath(`/store/${payment.reservation.store.slug}/admin/pms`);
  return{success:true,data:{storeSlug:payment.reservation.store.slug,reservationId:payment.reservation.id}};
-    }
+                                                           }
    
