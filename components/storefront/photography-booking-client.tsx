@@ -148,7 +148,7 @@ export function PhotographyBookingClient({
             <Link href={`/${slug}/catalog`} style={{ color: ink, textDecoration: "none", borderBottom: `2px solid ${accent}`, paddingBottom: 7 }}>Services</Link>
             <Link href={`/${slug}/catalog`} style={{ color: ink, textDecoration: "none" }}>Portfolio</Link>
             <Link href={`/${slug}/catalog`} style={{ color: ink, textDecoration: "none" }}>Packages</Link>
-            <Link href={`/${slug}` style={{ color: ink, textDecoration: "none" }}>Blog</Link>
+            <Link href={`/${slug}`} style={{ color: ink, textDecoration: "none" }}>Blog</Link>
             <Link href={`/${slug}/start-project`} style={{ color: ink, textDecoration: "none" }}>Contact Us</Link>
             <a href="#book" style={{ background: "#080808", color: "#fff", padding: "13px 19px", borderRadius: 24, textDecoration: "none" }}>▣ &nbsp; Book Now</a>
           </nav>
@@ -223,4 +223,5 @@ export function PhotographyBookingClient({
       <footer style={{background:'#090909',color:'#fff',padding:'45px 5vw 18px'}}><div style={{maxWidth:1180,margin:'auto',display:'grid',gridTemplateColumns:'1.3fr 1fr 1fr 1.2fr',gap:35}}><div><h3 style={{fontFamily:theme.headlineFont||'Georgia, serif',margin:'0 0 3px',fontSize:20}}>{store.name || 'VERE STUDIO'}</h3><small style={{letterSpacing:'.25em'}}>PHOTOGRAPHY</small><p style={{fontSize:11,lineHeight:1.7,color:'#bbb'}}>We capture moments that tell your story. Professional photography services for every occasion.</p><div>◯　◎　◉　♪　▶</div></div><div><b>Quick Links</b><div style={{fontSize:11,lineHeight:2,marginTop:10}}>Home<br/>About Us<br/>Services<br/>Portfolio<br/>Packages<br/>Blog<br/>Contact Us</div></div><div><b>Services</b><div style={{fontSize:11,lineHeight:2,marginTop:10}}>Portrait Photography<br/>Wedding Photography<br/>Event Photography<br/>Commercial Photography<br/>Family Photography<br/>Product Photography</div></div><div><b>Contact Us</b><div style={{fontSize:11,lineHeight:2,marginTop:10}}>⌖ {store.address || '2464 Royal Ln. Mesa, New Jersey 45463'}<br/>☎ {store.phone || '(000) 123-0000'}<br/>✉ {store.email || 'hello@verestudio.com'}</div><input className="photo-field" style={{marginTop:12}} placeholder="Enter your email" /></div></div><div style={{maxWidth:1180,margin:'30px auto 0',paddingTop:15,borderTop:'1px solid #333',fontSize:10,color:'#aaa'}}>© 2024 {store.name || 'Vere Studio Photography'}. All Rights Reserved.</div></footer>
     </div>
   );
-}
+            }
+                                                                                                                     
