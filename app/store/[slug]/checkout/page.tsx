@@ -29,6 +29,8 @@ import { getStoreCategoryTree } from "@/lib/storefront-categories";
 import { isSignatureTemplate, getSignatureTheme } from "@/lib/template-themes";
 import { SignatureCheckoutClient } from "@/components/storefront/signature-checkout-client";
 import { SignatureJourney } from "@/components/storefront/signature-journey";
+import { RestaurantReferenceShell, RestaurantReferenceFooter } from "@/components/storefront/restaurant-reference-shell";
+import { RestaurantCheckoutClient } from "@/components/storefront/restaurant-checkout-client";
 
 export default async function CheckoutPage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
@@ -64,6 +66,10 @@ export default async function CheckoutPage({ params }: { params: Promise<{ slug:
   // and copy are template-specific.
   if (store && isSignatureTemplate(store.template?.name)) {
     const theme = getSignatureTheme(store.template?.name);
+    const restaurantModes = new Set(["belora", "tastehouse", "flavora-kitchen", "flavora-restaurant"]);
+    if (restaurantModes.has(theme.signatureMode)) {
+      return <RestaurantReferenceShell store={store} slug={slug} tone="checkout"><RestaurantCheckoutClient slug={slug}/><RestaurantReferenceFooter store={store} slug={slug}/></RestaurantReferenceShell>;
+    }
     return (
       <SignatureJourney store={store} slug={slug} templateName={store.template?.name ?? ""} title="Checkout">
         <SignatureCheckoutClient slug={slug} templateName={store.template?.name ?? ""} />
