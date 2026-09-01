@@ -46,7 +46,7 @@ export function ProductForm({
     inventory: { quantity: number; sku: string | null; barcode: string | null } | null;
     digitalFileUrl: string | null;
     rentalPeriodUnit: string | null;
-    attributes?: Record<string, unknown> | null;
+    attributes?: unknown;
     createdAt?: unknown;
     updatedAt?: unknown;
   };
@@ -56,7 +56,8 @@ export function ProductForm({
   const isMenuItem = entityLabel.toLowerCase().includes("menu");
   const [productType, setProductType] = useState<ProductInput["type"]>(product?.type ?? "PHYSICAL");
 
-  const attrs = (product?.attributes ?? {}) as Record<string, unknown>;
+  const rawAttrs = product?.attributes;
+  const attrs = (rawAttrs && typeof rawAttrs === "object" && !Array.isArray(rawAttrs) ? rawAttrs : {}) as Record<string, unknown>;
   const [tags, setTags] = useState<string[]>(Array.isArray(attrs.tags) ? (attrs.tags as string[]) : []);
   const [tagDraft, setTagDraft] = useState("");
   const [featured, setFeatured] = useState<boolean>(Boolean(attrs.featured));

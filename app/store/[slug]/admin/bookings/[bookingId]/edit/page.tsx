@@ -41,7 +41,7 @@ export default async function EditReservationPage({
           notes: booking.notes,
           source: booking.source,
           reservationType: booking.reservationType,
-          addons: (booking.addons as { label: string; price: number }[] | null) ?? [],
+          addons: (booking.addons as unknown as { label: string; price: number }[] | null) ?? [],
           reminderOffsetMinutes: booking.reminderOffsetMinutes,
           sendConfirmation: booking.sendConfirmation,
           guestName: booking.buyer?.name ?? booking.guestName ?? "Walk-in guest",
