@@ -125,7 +125,7 @@ export function ProductForm({
 
   async function onSubmit(values: ProductInput) {
     setIsSubmitting(true);
-    const attributes: Record<string, unknown> = {
+    const attributes: Record<string, string | number | boolean | string[]> = {
       tags,
       featured,
       allowSpecialRequests,
