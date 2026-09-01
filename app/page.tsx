@@ -209,7 +209,7 @@ export default async function HomePage() {
             className="text-4xl leading-[1.05] tracking-tight sm:text-5xl lg:text-6xl"
             style={{ fontFamily: "var(--font-display)", fontWeight: 700 }}
           >
-            Your store belongs
+            Your BUSINESS belongs
             <br />
             in the <span style={{ color: "var(--bn-marigold)" }}>nest</span>.
           </h1>
