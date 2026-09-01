@@ -47,6 +47,18 @@ export type DashboardInsights = {
   bestProduct: { id: string; name: string; unitsSold: number } | null;
   returningCustomerRate: number | null;
   recommendations: Recommendation[];
+  /** Same rolling-24h window, shifted back one day, so the dashboard can
+   * show real "vs yesterday" deltas instead of a static "Today" label. */
+  revenueYesterday: number;
+  ordersYesterday: number;
+  newCustomersToday: number;
+  newCustomersYesterday: number;
+  avgOrderValueToday: number;
+  avgOrderValueYesterday: number;
+  /** 24 hourly revenue buckets covering the rolling "today" window, oldest
+   * first, for the revenue-overview chart — real paid-order totals per
+   * hour rather than a decorative fixed shape. */
+  hourlyRevenue: number[];
 };
 
 const PAID_STATUSES = SELLER_VISIBLE_ORDER_STATUSES;
@@ -60,6 +72,7 @@ const PAID_STATUSES = SELLER_VISIBLE_ORDER_STATUSES;
  */
 export async function getDashboardInsights(storeId: string, slug: string): Promise<DashboardInsights> {
   const since24h = new Date(Date.now() - 24 * 60 * 60 * 1000);
+  const since48h = new Date(Date.now() - 48 * 60 * 60 * 1000);
   const since7d = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
 
   const [
@@ -72,6 +85,11 @@ export async function getDashboardInsights(storeId: string, slug: string): Promi
     lowStockProducts,
     productsMissingReviews,
     recentCoupon,
+    ordersYesterday,
+    revenueYesterdayAgg,
+    newCustomersToday,
+    newCustomersYesterday,
+    hourlyOrders,
   ] = await Promise.all([
     prisma.order.count({ where: { storeId, status: { in: PAID_STATUSES }, createdAt: { gte: since24h } } }),
     // Distinct paths aren't deduped by visitor here — see StoreVisit's doc
@@ -108,9 +126,32 @@ export async function getDashboardInsights(storeId: string, slug: string): Promi
     // Coupon has no createdAt field, so we can't check "created in the last
     // 7 days" — fall back to whether an active coupon exists at all.
     prisma.coupon.findFirst({ where: { storeId, isActive: true }, select: { id: true } }),
+    prisma.order.count({ where: { storeId, status: { in: PAID_STATUSES }, createdAt: { gte: since48h, lt: since24h } } }),
+    prisma.order.aggregate({
+      where: { storeId, status: { in: PAID_STATUSES }, createdAt: { gte: since48h, lt: since24h } },
+      _sum: { total: true },
+    }),
+    prisma.storeCustomer.count({ where: { storeId, createdAt: { gte: since24h } } }),
+    prisma.storeCustomer.count({ where: { storeId, createdAt: { gte: since48h, lt: since24h } } }),
+    prisma.order.findMany({
+      where: { storeId, status: { in: PAID_STATUSES }, createdAt: { gte: since24h } },
+      select: { total: true, createdAt: true },
+    }),
   ]);
 
   const revenueToday = Number(revenueAgg._sum.total ?? 0);
+  const revenueYesterday = Number(revenueYesterdayAgg._sum.total ?? 0);
+  const avgOrderValueToday = ordersToday > 0 ? revenueToday / ordersToday : 0;
+  const avgOrderValueYesterday = ordersYesterday > 0 ? revenueYesterday / ordersYesterday : 0;
+
+  // 24 hourly buckets covering the rolling "today" window, oldest first —
+  // real order totals per hour-of-window, not a decorative fixed shape.
+  const hourlyRevenue = new Array(24).fill(0) as number[];
+  for (const order of hourlyOrders) {
+    const hoursAgo = Math.floor((Date.now() - order.createdAt.getTime()) / (60 * 60 * 1000));
+    const bucket = 23 - Math.min(23, Math.max(0, hoursAgo));
+    hourlyRevenue[bucket] += Number(order.total);
+  }
 
   let bestProduct: DashboardInsights["bestProduct"] = null;
   if (itemsSold.length > 0 && itemsSold[0].productId) {
@@ -195,5 +236,13 @@ export async function getDashboardInsights(storeId: string, slug: string): Promi
     bestProduct,
     returningCustomerRate,
     recommendations,
+    revenueYesterday,
+    ordersYesterday,
+    newCustomersToday,
+    newCustomersYesterday,
+    avgOrderValueToday,
+    avgOrderValueYesterday,
+    hourlyRevenue,
   };
 }
+

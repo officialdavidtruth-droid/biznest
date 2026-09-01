@@ -17,7 +17,7 @@ export type DashboardModule = {
 export type DashboardKpi = {
   id: string;
   label: string;
-  source: "revenue" | "orders" | "visitors" | "conversion" | "bestProduct" | "returning" | "products" | "services" | "bookings" | "rooms" | "customers";
+  source: "revenue" | "orders" | "visitors" | "conversion" | "bestProduct" | "returning" | "products" | "services" | "bookings" | "rooms" | "customers" | "avgOrderValue";
   format?: "money" | "number" | "percent" | "text";
 };
 
@@ -49,6 +49,7 @@ const core = {
   products: { id: "products", label: "Products", href: "/products", icon: Package },
   services: { id: "services", label: "Services", href: "/services", icon: Wrench },
   orders: { id: "orders", label: "Orders", href: "/orders", icon: ShoppingBag },
+  pos: { id: "pos", label: "Point of Sale", href: "/pos", icon: Receipt },
   bookings: { id: "bookings", label: "Bookings", href: "/bookings", icon: ClipboardList },
   calendar: { id: "calendar", label: "Calendar", href: "/calendar", icon: CalendarDays },
   inventory: { id: "inventory", label: "Inventory", href: "/inventory", icon: Boxes },
@@ -85,7 +86,7 @@ function clean(items: DashboardModule[]) {
 type TerminologyOverride = { customer: string; transaction: string; catalog: string; catalogSingular?: string };
 
 const CATEGORY_OVERRIDES: Record<string, Omit<Partial<AdaptiveDashboardConfig>, "terminology"> & { terminology?: TerminologyOverride }> = {
-  Restaurant: { label: "Restaurant Operations", primaryEntity: "Order", terminology: { customer: "Guest", transaction: "Order", catalog: "Menu" }, kpis: [{ id: "revenue", label: "Today’s sales", source: "revenue", format: "money" }, { id: "orders", label: "Orders", source: "orders", format: "number" }, { id: "visitors", label: "Visitors", source: "visitors", format: "number" }, { id: "conversion", label: "Conversion", source: "conversion", format: "percent" }], quickActions: [core.products, core.orders, core.delivery, core.analytics], widgets: [{ id: "menu", title: "Menu operations", description: "Manage menu items, categories and availability from one place.", href: "/products", type: "operations" }] },
+  Restaurant: { label: "Restaurant Operations", primaryEntity: "Order", terminology: { customer: "Guest", transaction: "Order", catalog: "Menu" }, kpis: [{ id: "bookings", label: "Total Reservations", source: "bookings", format: "number" }, { id: "orders", label: "Total Orders", source: "orders", format: "number" }, { id: "revenue", label: "Total Revenue", source: "revenue", format: "money" }, { id: "customers", label: "New Customers", source: "customers", format: "number" }, { id: "avgOrderValue", label: "Average Order Value", source: "avgOrderValue", format: "money" }], quickActions: [core.bookings, core.pos, core.products, core.inventory, core.marketing, core.analytics], widgets: [{ id: "menu", title: "Menu operations", description: "Manage menu items, categories and availability from one place.", href: "/products", type: "operations" }] },
   "Hotel & Lodging": { label: "Hotel Operations", primaryEntity: "Reservation", terminology: { customer: "Guest", transaction: "Reservation", catalog: "Rooms" }, quickActions: [core.pms, core.bookings, core.calendar, core.clients], widgets: [{ id: "pms", title: "Property operations", description: "Reservations, rooms, front desk, housekeeping and guest operations live in your PMS.", href: "/pms", type: "operations" }] },
   Photography: { label: "Photography Studio", primaryEntity: "Booking", terminology: { customer: "Client", transaction: "Booking", catalog: "Packages" }, quickActions: [core.bookings, core.calendar, core.services, core.gallery], widgets: [{ id: "shoots", title: "Shoot pipeline", description: "Keep upcoming shoots, client work and galleries moving from booking to delivery.", href: "/calendar", type: "operations" }] },
   Beauty: { label: "Beauty Studio", primaryEntity: "Booking", terminology: { customer: "Client", transaction: "Appointment", catalog: "Services" }, quickActions: [core.bookings, core.calendar, core.services, core.clients] },
