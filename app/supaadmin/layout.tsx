@@ -12,7 +12,15 @@ export default async function SupaAdminLayout({ children }: { children: React.Re
     <>
       <ThemeFlashGuard scopeId="bn-supaadmin-theme-scope" defaultTheme="dark" />
       <ThemeProvider scopeId="bn-supaadmin-theme-scope" defaultTheme="dark">
-        <div className="flex min-h-screen" style={{ background: "hsl(var(--background))" }}>
+        {/* h-full (not min-h-screen): min-h-screen is a floor, not a cap, so
+            this row grew to fit whatever content was tallest and the sidebar
+            + main below never had a bounded height to scroll within -- the
+            whole page scrolled instead. h-full resolves against the root
+            layout's h-screen body chain (now that ThemeProvider passes height
+            through, see theme-provider.tsx) so this row is capped at the
+            viewport and its overflow-y-auto children can actually scroll on
+            their own. */}
+        <div className="flex h-full overflow-hidden" style={{ background: "hsl(var(--background))" }}>
           {/* Ambient forest glow behind the whole shell, matching the marketing
               surfaces' .bn-gradient-dark treatment so the back office reads as
               the same product, not a bolted-on admin template. */}

@@ -79,7 +79,7 @@ export function SupaAdminMobileShell({
     <>
       {/* Desktop: permanent sidebar column */}
       <aside
-        className="relative z-10 hidden w-64 shrink-0 flex-col border-r lg:flex"
+        className="relative z-10 hidden h-full w-64 shrink-0 flex-col overflow-y-auto border-r lg:flex"
         style={{ borderColor: "hsl(var(--border))", background: "hsl(var(--muted) / 0.6)" }}
       >
         {sidebarInner}
@@ -94,7 +94,7 @@ export function SupaAdminMobileShell({
         />
       )}
       <aside
-        className={`fixed inset-y-0 left-0 z-40 flex w-72 max-w-[85vw] flex-col border-r transition-transform duration-200 lg:hidden ${
+        className={`fixed inset-y-0 left-0 z-40 flex w-72 max-w-[85vw] flex-col overflow-y-auto border-r transition-transform duration-200 lg:hidden ${
           open ? "translate-x-0" : "-translate-x-full"
         }`}
         style={{ borderColor: "hsl(var(--border))", background: "hsl(var(--background))" }}
