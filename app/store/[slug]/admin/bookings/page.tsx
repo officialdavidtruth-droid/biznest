@@ -2,8 +2,7 @@
 import { listBookings, listReservationUnits } from "@/lib/actions/booking";
 import { BookingsTable } from "@/components/dashboard/bookings-table";
 import { ReservationsWorkspace } from "@/components/dashboard/reservations-workspace";
-import { StatCard } from "@/components/dashboard/list-toolbar";
-import { CalendarDays, Clock3, CheckCircle2, XCircle } from "lucide-react";
+import { BookingStatCards } from "@/components/dashboard/booking-stat-cards";
 import { prisma } from "@/lib/prisma";
 import { getBusinessTerminology } from "@/lib/business-terminology";
 
@@ -55,12 +54,7 @@ export default async function BookingsPage({ params }: { params: Promise<{ slug:
         <p className="mt-1 text-sm text-muted-foreground">Manage appointments and reservations</p>
       </div>
 
-      <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
-        <StatCard icon={CalendarDays} tone="purple" label="Total Bookings" value={bookings.length} note="All time" />
-        <StatCard icon={Clock3} tone="orange" label="Pending" value={pendingCount} note="Awaiting confirmation" />
-        <StatCard icon={CheckCircle2} tone="green" label="Confirmed" value={confirmedCount} note="Upcoming" />
-        <StatCard icon={XCircle} tone="blue" label="Completed" value={completedCount} note="Finished bookings" />
-      </div>
+      <BookingStatCards total={bookings.length} pending={pendingCount} confirmed={confirmedCount} completed={completedCount} />
 
       <section className="rounded-xl border bg-white p-5 shadow-sm">
         <div className="mb-4"><h2 className="text-base font-bold">Bookings</h2><p className="mt-1 text-xs text-muted-foreground">Search, filter and manage every booking</p></div>
