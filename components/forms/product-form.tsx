@@ -638,7 +638,7 @@ export function ProductForm({
                 return (
                   <div key={key} className="flex items-center justify-between gap-3">
                     <div className="flex items-center gap-2.5">
-                      <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-amber-50 text-amber-500">
+                      <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-emerald-50 text-emerald-600">
                         <Icon className="h-4 w-4" />
                       </span>
                       <div>
@@ -690,13 +690,13 @@ export function ProductForm({
             </section>
           )}
 
-          <section className="rounded-xl border border-amber-200 bg-amber-50 p-5">
-            <h2 className="mb-3 flex items-center gap-1.5 text-sm font-bold text-amber-900">
+          <section className="rounded-xl border border-emerald-200 bg-emerald-50 p-5">
+            <h2 className="mb-3 flex items-center gap-1.5 text-sm font-bold text-emerald-900">
               <Lightbulb className="h-4 w-4" /> Tips for a Great {entityLabel}
             </h2>
             <ul className="space-y-2">
               {preset.tips.map((tip) => (
-                <li key={tip} className="flex items-start gap-2 text-xs text-amber-900/90">
+                <li key={tip} className="flex items-start gap-2 text-xs text-emerald-900/90">
                   <CheckCircle2 className="mt-0.5 h-3.5 w-3.5 shrink-0 text-emerald-600" />
                   <span>{tip}</span>
                 </li>

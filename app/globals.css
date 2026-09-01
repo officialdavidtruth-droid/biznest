@@ -360,7 +360,7 @@ a[href*="/service/"]:hover img {
   --bn-admin-line: #e5e7eb;
   --bn-admin-text: #111827;
   --bn-admin-muted: #6b7280;
-  --bn-admin-accent: #f1b95a;
+  --bn-admin-accent: #10967a;
   background: var(--bn-admin-bg);
   color: var(--bn-admin-text);
 }
@@ -399,7 +399,7 @@ a[href*="/service/"]:hover img {
   letter-spacing: .02em;
 }
 .bn-admin-app table tbody tr { background: #fff; }
-.bn-admin-app table tbody tr:hover { background: #fffaf1; }
+.bn-admin-app table tbody tr:hover { background: #f4faf7; }
 .bn-admin-app table td, .bn-admin-app table th { border-color: #edf0f2; }
 .bn-admin-app [class~="rounded-lg"][class*="border"],
 .bn-admin-app [class~="rounded-xl"][class*="border"] {
@@ -409,11 +409,11 @@ a[href*="/service/"]:hover img {
 .bn-admin-app .bg-muted\/40,
 .bn-admin-app .bg-muted\/30,
 .bn-admin-app .bg-muted\/20 { background: #f8fafc; }
-.bn-admin-app .bg-primary { background: #e8a93e; }
-.bn-admin-app .text-primary { color: #a96f10; }
-.bn-admin-app .border-primary\/30 { border-color: #edc878; }
-.bn-admin-app .bg-primary\/5 { background: #fff9ed; }
-.bn-admin-app .bg-primary\/15 { background: #fff3d7; }
+.bn-admin-app .bg-primary { background: #10967a; }
+.bn-admin-app .text-primary { color: #0d7a63; }
+.bn-admin-app .border-primary\/30 { border-color: #8cd9b5; }
+.bn-admin-app .bg-primary\/5 { background: #f0f9f5; }
+.bn-admin-app .bg-primary\/15 { background: #daf1e6; }
 .bn-admin-app .bn-admin-page-title {
   font-size: 1.55rem;
   font-weight: 700;
@@ -434,8 +434,8 @@ a[href*="/service/"]:hover img {
   --bn-line-soft: #edf0f3;
   --bn-ink: #111827;
   --bn-muted: #6b7280;
-  --bn-gold: #f1b95a;
-  --bn-gold-dark: #9a691d;
+  --bn-gold: #10967a;
+  --bn-gold-dark: #0d7a63;
   background: var(--bn-page) !important;
   color: var(--bn-ink) !important;
 }
@@ -449,7 +449,7 @@ a[href*="/service/"]:hover img {
   border-radius: 8px !important; box-shadow: none !important;
 }
 .bn-admin-app input:focus, .bn-admin-app select:focus, .bn-admin-app textarea:focus {
-  border-color: #e6bd72 !important; outline: 2px solid #f8e9c9 !important;
+  border-color: #6ec9ac !important; outline: 2px solid #d3f0e4 !important;
 }
 .bn-admin-app button, .bn-admin-app a { transition: background-color .15s ease, border-color .15s ease, box-shadow .15s ease, transform .15s ease; }
 .bn-admin-app button.bg-primary, .bn-admin-app a.bg-primary,
@@ -462,14 +462,14 @@ a[href*="/service/"]:hover img {
 .bn-admin-app table thead { background: #fbfcfd !important; }
 .bn-admin-app table th { color: #64748b !important; font-size: 11px !important; text-transform: none !important; letter-spacing: 0 !important; }
 .bn-admin-app table td { color: #334155; border-color: var(--bn-line-soft) !important; }
-.bn-admin-app table tbody tr:hover { background: #fffaf1 !important; }
+.bn-admin-app table tbody tr:hover { background: #f4faf7 !important; }
 .bn-admin-app .text-muted-foreground { color: #64748b !important; }
 .bn-admin-app .bg-muted\/40, .bn-admin-app .bg-muted\/30, .bn-admin-app .bg-muted\/20 { background: #f8fafc !important; }
 .bn-admin-app .bg-card, .bn-admin-app .bg-background { background: #fff !important; }
 .bn-admin-app .border-border { border-color: var(--bn-line) !important; }
 .bn-admin-app .text-primary { color: var(--bn-gold-dark) !important; }
-.bn-admin-app .bg-primary\/15 { background: #fff3d7 !important; }
-.bn-admin-app .bg-primary\/5 { background: #fff9ed !important; }
+.bn-admin-app .bg-primary\/15 { background: #daf1e6 !important; }
+.bn-admin-app .bg-primary\/5 { background: #f0f9f5 !important; }
 
 @media (min-width: 1024px) {
   .bn-admin-app > .flex-1 > main > .mx-auto { max-width: none !important; padding-left: 28px !important; padding-right: 28px !important; }
@@ -477,7 +477,7 @@ a[href*="/service/"]:hover img {
 
 .bn-admin-mobile-drawer { background: #071525 !important; color: #fff !important; }
 .bn-admin-mobile-drawer .bn-admin-mobile-link { color: #cbd5e1 !important; }
-.bn-admin-mobile-drawer .bn-admin-mobile-link.active { background: #f1b95a !important; color: #071525 !important; }
+.bn-admin-mobile-drawer .bn-admin-mobile-link.active { background: #10967a !important; color: #ffffff !important; }
 .bn-admin-mobile-drawer .bn-admin-mobile-muted { color: #94a3b8 !important; }
 .bn-admin-mobile-bottom { background: #fff !important; border-color: var(--bn-line) !important; }
 .bn-admin-app .bn-admin-action:hover { box-shadow: 0 5px 14px rgba(15,23,42,.08); transform: translateY(-1px); }

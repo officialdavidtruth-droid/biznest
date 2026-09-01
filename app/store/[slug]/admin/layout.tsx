@@ -123,7 +123,7 @@ export default async function StoreAdminLayout({
             subscriptionName={store.subscription?.name}
           />
 
-          <div className="flex flex-1 flex-col overflow-hidden">
+          <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
             {/* Desktop-only top bar — mobile gets its own in MobileDashboardChrome
                 above. Shows the current section so the bar isn't just an empty
                 strip with a bell floating at the far end. */}
@@ -144,7 +144,7 @@ export default async function StoreAdminLayout({
               </div>
             </div>
 
-            <main className="flex-1 overflow-y-auto bg-background pb-20 lg:pb-0">
+            <main className="min-h-0 flex-1 overflow-y-auto bg-background pb-20 lg:pb-0">
               {/* min-h-full: on pages with little content (e.g. a Services
                   page with one row), this div would otherwise only be as
                   tall as {children}, letting the page's plain white

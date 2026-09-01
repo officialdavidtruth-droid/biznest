@@ -52,7 +52,7 @@ export function DashboardSidebar({
     <aside className="bn-admin-sidebar hidden h-full w-[250px] shrink-0 flex-col border-r border-slate-800 bg-[#071525] text-white lg:flex">
       <div className="border-b border-slate-800 px-4 py-4">
         <div className="mb-4 flex items-center gap-2.5">
-          <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-[#f1b95a] text-sm font-black text-[#071525] shadow-sm">▰</div>
+          <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-[#10967a] text-sm font-black text-white shadow-sm">▰</div>
           <div>
             <p className="text-[19px] font-bold leading-none tracking-tight text-white">BizNest</p>
             <p className="mt-1 text-[9px] font-medium tracking-wide text-slate-400">Your Business, Elevated</p>
@@ -80,7 +80,7 @@ export function DashboardSidebar({
         </div>
       </div>
 
-      <nav className="flex-1 space-y-5 overflow-y-auto px-3 py-4">
+      <nav className="min-h-0 flex-1 space-y-5 overflow-y-auto px-3 py-4">
         {NAV_GROUPS.map((group) => (
           <div key={group.label}>
             <p className="mb-1.5 px-2 text-[10px] font-semibold uppercase tracking-wider text-slate-500">
@@ -97,10 +97,10 @@ export function DashboardSidebar({
 
       <div className="border-t border-slate-800 px-3 py-3">
         <div className="mb-3 rounded-xl border border-slate-700 bg-slate-900/80 p-3">
-          <div className="flex items-center gap-2 text-[11px] font-semibold text-white"><Crown className="h-4 w-4 text-[#f1b95a]" /> BizNest Pro Plan</div>
+          <div className="flex items-center gap-2 text-[11px] font-semibold text-white"><Crown className="h-4 w-4 text-[#10967a]" /> BizNest Pro Plan</div>
           <p className="mt-1 text-[10px] text-slate-400">Your workspace is powered by BizNest.</p>
-          <div className="my-2 h-1.5 overflow-hidden rounded-full bg-slate-700"><div className="h-full w-[76%] rounded-full bg-[#f1b95a]" /></div>
-          <Link href={`/${slug}/admin/subscription`} className="block rounded-md bg-[#f1b95a] px-2 py-1.5 text-center text-[10px] font-bold text-[#071525]">Manage Plan</Link>
+          <div className="my-2 h-1.5 overflow-hidden rounded-full bg-slate-700"><div className="h-full w-[76%] rounded-full bg-[#10967a]" /></div>
+          <Link href={`/${slug}/admin/subscription`} className="block rounded-md bg-[#10967a] px-2 py-1.5 text-center text-[10px] font-bold text-white">Manage Plan</Link>
         </div>
         <div className="flex items-center gap-2 px-1">
           <StoreLogo logoUrl={logoUrl} storeName={storeName} size="sm" />
@@ -124,7 +124,7 @@ function NavLink({ base, item, pathname }: { base: string; item: NavItem; pathna
       <Link
         href={href}
         className={`group relative flex items-center gap-2.5 rounded-lg px-2.5 py-2 text-sm transition-colors ${
-          isActive ? "bg-[#f1b95a] font-medium text-[#071525] shadow-sm" : "text-slate-300 hover:bg-white/8 hover:text-white"
+          isActive ? "bg-[#10967a] font-medium text-white shadow-sm" : "text-slate-300 hover:bg-white/8 hover:text-white"
         }`}
       >
         {isActive && <span className="absolute -left-3 top-1/2 h-4 w-0.5 -translate-y-1/2 rounded-full bg-primary" />}
@@ -138,7 +138,7 @@ function NavLink({ base, item, pathname }: { base: string; item: NavItem; pathna
     <div>
       <div
         className={`group relative flex items-center gap-2.5 rounded-lg pr-1.5 text-sm transition-colors ${
-          isActive ? "bg-[#f1b95a] font-medium text-[#071525] shadow-sm" : "text-slate-300 hover:bg-white/8 hover:text-white"
+          isActive ? "bg-[#10967a] font-medium text-white shadow-sm" : "text-slate-300 hover:bg-white/8 hover:text-white"
         }`}
       >
         {isActive && <span className="absolute -left-3 top-1/2 h-4 w-0.5 -translate-y-1/2 rounded-full bg-primary" />}
@@ -166,7 +166,7 @@ function NavLink({ base, item, pathname }: { base: string; item: NavItem; pathna
                 key={child.label}
                 href={childHref}
                 className={`flex items-center gap-2 rounded-lg px-2.5 py-1.5 text-xs transition-colors ${
-                  childIsActive ? "bg-[#f1b95a]/90 font-medium text-[#071525]" : "text-slate-400 hover:bg-white/8 hover:text-white"
+                  childIsActive ? "bg-[#10967a]/90 font-medium text-white" : "text-slate-400 hover:bg-white/8 hover:text-white"
                 }`}
               >
                 <ChildIcon className="h-3.5 w-3.5 shrink-0 opacity-70" />
