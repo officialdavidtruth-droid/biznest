@@ -23,16 +23,13 @@ export default async function EditProductPage({
 
   return (
     <div className="bn-admin-page">
-      <div className="mb-6">
-        <h1 className="text-xl font-semibold">Edit {terminology.catalogSingular}</h1>
-        <p className="mt-1 text-xs text-muted-foreground">{terminology.catalogDescription}</p>
-      </div>
       <ProductForm
         storeSlug={slug}
         categories={categories}
         product={product}
         entityLabel={terminology.catalogSingular}
         categoryLabel={terminology.category}
+        businessCategory={store?.business?.category}
       />
     </div>
   );
