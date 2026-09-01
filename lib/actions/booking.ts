@@ -874,6 +874,7 @@ export async function listBookings(
     },
     include: {
       service: true,
+      unit: true,
       buyer: {
         select: {
           name: true,
@@ -889,19 +890,271 @@ export async function listBookings(
 }
 
 /**
+ * Every unit-based reservation (a restaurant table, a hotel room, a salon
+ * chair) needs a parent Service to hang off of. Rather than making the
+ * merchant manually create one before they can take their first
+ * reservation, this finds (or silently creates) a dedicated
+ * "Reservations" service the first time it's needed, scoped by the store's
+ * own unit terminology so it reads naturally in any niche.
+ */
+async function getOrCreateReservationService(storeId: string, unitLabel: string) {
+  const existing = await prisma.service.findFirst({ where: { storeId, name: `${unitLabel} Reservations` } });
+  if (existing) return existing;
+  return prisma.service.create({
+    data: {
+      storeId,
+      name: `${unitLabel} Reservations`,
+      slug: `${unitLabel.toLowerCase()}-reservations`,
+      description: `Seating/unit reservations (auto-created).`,
+      price: 0,
+      isBookable: true,
+      isPublished: false,
+    },
+  });
+}
+
+/** All reservation units (tables/rooms/etc.) for this store, across every
+ * unit-based service, for the assignment dropdown on the Reservations page. */
+export async function listReservationUnits(slug: string) {
+  const access = await assertStoreAccess(slug);
+  if (!access.success) return [];
+  return prisma.serviceUnit.findMany({
+    where: { storeId: access.store.id },
+    orderBy: [{ location: "asc" }, { label: "asc" }],
+  });
+}
+
+/** Adds a new reservation unit (table/room/etc.) under the store's shared
+ * reservations service, auto-creating that service on first use. */
+export async function createReservationUnit(
+  slug: string,
+  input: { label: string; location?: string | null; capacity?: number | null }
+): Promise<ActionResult<{ id: string }>> {
+  const access = await assertStoreAccess(slug);
+  if (!access.success) return { success: false, error: access.error };
+  if (!input.label.trim()) return { success: false, error: "Give this unit a name, e.g. \"Table 5\"." };
+
+  const terminology = (await import("@/lib/business-terminology")).getBusinessTerminology((await prisma.store.findUnique({ where: { id: access.store.id }, select: { business: { select: { category: true } } } }))?.business.category);
+  const service = await getOrCreateReservationService(access.store.id, terminology.unitLabel);
+
+  const unit = await prisma.serviceUnit.create({
+    data: { storeId: access.store.id, serviceId: service.id, label: input.label.trim(), location: input.location?.trim() || null, capacity: input.capacity ?? null },
+  });
+  revalidatePath(`/store/${slug}/admin/bookings`);
+  return { success: true, data: { id: unit.id } };
+}
+
+/**
+ * Creates a walk-in / phone-in reservation for a single time slot (as
+ * opposed to createUnitBooking's date-range stays) -- the shape a
+ * restaurant table or a salon chair booking needs. Assigning a unit is
+ * optional; an unassigned reservation can be seated later via
+ * updateReservationDetails.
+ */
+export async function createReservation(
+  slug: string,
+  input: {
+    scheduledAt: string;
+    durationMins?: number;
+    partySize?: number;
+    guestName: string;
+    guestPhone?: string;
+    specialRequests?: string[];
+    unitId?: string | null;
+  }
+): Promise<ActionResult<{ id: string }>> {
+  const access = await assertStoreAccess(slug);
+  if (!access.success) return { success: false, error: access.error };
+  if (!input.guestName.trim()) return { success: false, error: "Guest name is required." };
+
+  const scheduledAt = new Date(input.scheduledAt);
+  if (Number.isNaN(scheduledAt.getTime())) return { success: false, error: "Invalid date/time." };
+
+  const terminologyMod = await import("@/lib/business-terminology");
+  const store = await prisma.store.findUnique({ where: { id: access.store.id }, select: { business: { select: { category: true } } } });
+  const terminology = terminologyMod.getBusinessTerminology(store?.business.category);
+  const service = await getOrCreateReservationService(access.store.id, terminology.unitLabel);
+
+  const booking = await prisma.booking.create({
+    data: {
+      storeId: access.store.id,
+      serviceId: service.id,
+      unitId: input.unitId || null,
+      scheduledAt,
+      durationMins: input.durationMins ?? 90,
+      partySize: input.partySize ?? null,
+      specialRequests: input.specialRequests ?? [],
+      guestName: input.guestName.trim(),
+      guestPhone: input.guestPhone?.trim() || null,
+      status: "CONFIRMED",
+    },
+  });
+
+  revalidatePath(`/store/${slug}/admin/bookings`);
+  return { success: true, data: { id: booking.id } };
+}
+
+/**
+ * Updates the reservation-specific details on a booking -- party size,
+ * special requests, and which unit (table/room) it's assigned to. Separate
+ * from updateBookingStatus since these are edited independently from the
+ * status pipeline. Generic across any unit-based niche.
+ */
+export async function updateReservationDetails(
+  slug: string,
+  bookingId: string,
+  input: { partySize?: number | null; specialRequests?: string[]; unitId?: string | null }
+): Promise<ActionResult> {
+  const access = await assertStoreAccess(slug);
+  if (!access.success) return { success: false, error: access.error };
+
+  const booking = await prisma.booking.findFirst({ where: { id: bookingId, storeId: access.store.id } });
+  if (!booking) return { success: false, error: "Reservation not found." };
+
+  if (input.unitId) {
+    const unit = await prisma.serviceUnit.findFirst({ where: { id: input.unitId, storeId: access.store.id } });
+    if (!unit) return { success: false, error: "That unit doesn't belong to this store." };
+  }
+
+  await prisma.booking.update({
+    where: { id: bookingId },
+    data: {
+      ...(input.partySize !== undefined ? { partySize: input.partySize } : {}),
+      ...(input.specialRequests !== undefined ? { specialRequests: input.specialRequests } : {}),
+      ...(input.unitId !== undefined ? { unitId: input.unitId } : {}),
+    },
+  });
+
+  revalidatePath(`/store/${slug}/admin/bookings`);
+  return { success: true, data: undefined };
+}
+
+/**
  * Updates booking status.
  *
  * Only the store owner or authorized platform
  * staff can perform this action.
  */
+/** Full detail for a single reservation, for the dedicated Edit Reservation
+ * screen -- includes the service, assigned unit, buyer account (if any),
+ * and the staff member who created it. */
+export async function getReservation(slug: string, bookingId: string) {
+  const access = await assertStoreAccess(slug);
+  if (!access.success) return null;
+
+  const booking = await prisma.booking.findFirst({
+    where: { id: bookingId, storeId: access.store.id },
+    include: {
+      service: true,
+      unit: true,
+      staff: { select: { id: true, invitedName: true, position: true } },
+      buyer: { select: { id: true, name: true, email: true, phone: true, createdAt: true } },
+    },
+  });
+  if (!booking) return null;
+
+  // "Total reservations" + "member since" for the guest info card -- keyed
+  // on the buyer account when there is one, otherwise on matching guest
+  // contact details, so walk-in guests without an account still get a
+  // meaningful count.
+  const guestFilter = booking.buyerId
+    ? { buyerId: booking.buyerId }
+    : {
+        storeId: access.store.id,
+        OR: [
+          booking.guestPhone ? { guestPhone: booking.guestPhone } : undefined,
+          booking.guestEmail ? { guestEmail: booking.guestEmail } : undefined,
+        ].filter(Boolean) as any[],
+      };
+  const totalReservations = guestFilter.OR?.length === 0 ? 1 : await prisma.booking.count({ where: guestFilter as any });
+
+  return { booking, totalReservations: totalReservations || 1 };
+}
+
+/**
+ * Full update for the dedicated Edit Reservation screen -- everything a
+ * staff member can change about a reservation in one save, beyond the
+ * lighter-weight updateReservationDetails used inline from the list.
+ */
+export async function updateReservation(
+  slug: string,
+  bookingId: string,
+  input: {
+    guestName?: string;
+    guestPhone?: string | null;
+    guestEmail?: string | null;
+    scheduledAt?: string;
+    durationMins?: number;
+    unitId?: string | null;
+    partySize?: number | null;
+    status?: BookingStatusValue;
+    source?: string | null;
+    reservationType?: string | null;
+    specialRequests?: string[];
+    notes?: string | null;
+    addons?: { label: string; price: number }[];
+    reminderOffsetMinutes?: number | null;
+    sendConfirmation?: boolean;
+  }
+): Promise<ActionResult> {
+  const access = await assertStoreAccess(slug);
+  if (!access.success) return { success: false, error: access.error };
+
+  const booking = await prisma.booking.findFirst({ where: { id: bookingId, storeId: access.store.id } });
+  if (!booking) return { success: false, error: "Reservation not found." };
+
+  if (input.guestName !== undefined && !input.guestName.trim()) {
+    return { success: false, error: "Guest name is required." };
+  }
+  if (input.unitId) {
+    const unit = await prisma.serviceUnit.findFirst({ where: { id: input.unitId, storeId: access.store.id } });
+    if (!unit) return { success: false, error: "That unit doesn't belong to this store." };
+  }
+  let scheduledAt: Date | undefined;
+  if (input.scheduledAt !== undefined) {
+    scheduledAt = new Date(input.scheduledAt);
+    if (Number.isNaN(scheduledAt.getTime())) return { success: false, error: "Invalid date/time." };
+  }
+
+  await prisma.booking.update({
+    where: { id: bookingId },
+    data: {
+      ...(input.guestName !== undefined ? { guestName: input.guestName.trim() } : {}),
+      ...(input.guestPhone !== undefined ? { guestPhone: input.guestPhone?.trim() || null } : {}),
+      ...(input.guestEmail !== undefined ? { guestEmail: input.guestEmail?.trim() || null } : {}),
+      ...(scheduledAt ? { scheduledAt } : {}),
+      ...(input.durationMins !== undefined ? { durationMins: input.durationMins } : {}),
+      ...(input.unitId !== undefined ? { unitId: input.unitId } : {}),
+      ...(input.partySize !== undefined ? { partySize: input.partySize } : {}),
+      ...(input.status !== undefined ? { status: input.status } : {}),
+      ...(input.source !== undefined ? { source: input.source?.trim() || null } : {}),
+      ...(input.reservationType !== undefined ? { reservationType: input.reservationType?.trim() || null } : {}),
+      ...(input.specialRequests !== undefined ? { specialRequests: input.specialRequests } : {}),
+      ...(input.notes !== undefined ? { notes: input.notes?.trim() || null } : {}),
+      ...(input.addons !== undefined ? { addons: input.addons } : {}),
+      ...(input.reminderOffsetMinutes !== undefined ? { reminderOffsetMinutes: input.reminderOffsetMinutes } : {}),
+      ...(input.sendConfirmation !== undefined ? { sendConfirmation: input.sendConfirmation } : {}),
+    },
+  });
+
+  revalidatePath(`/store/${slug}/admin/bookings`);
+  revalidatePath(`/store/${slug}/admin/bookings/${bookingId}/edit`);
+  return { success: true, data: undefined };
+}
+
+export type BookingStatusValue =
+  | "PENDING"
+  | "CONFIRMED"
+  | "COMPLETED"
+  | "CANCELLED"
+  | "CHECKED_IN"
+  | "SEATED"
+  | "NO_SHOW";
+
 export async function updateBookingStatus(
   slug: string,
   bookingId: string,
-  status:
-    | "PENDING"
-    | "CONFIRMED"
-    | "COMPLETED"
-    | "CANCELLED"
+  status: BookingStatusValue
 ): Promise<ActionResult> {
   const access =
     await assertStoreAccess(slug);

@@ -140,6 +140,7 @@ export async function createProduct(
       isPublished: data.isPublished,
       digitalFileUrl: data.digitalFileUrl || null,
       rentalPeriodUnit: data.rentalPeriodUnit ?? null,
+      attributes: data.attributes ?? undefined,
       inventory: {
         create: { quantity: data.quantity, storeId: access.store.id, sku: trimmedSku, barcode: trimmedBarcode },
       },
@@ -239,6 +240,7 @@ export async function updateProduct(
       isPublished: data.isPublished,
       digitalFileUrl: data.digitalFileUrl || null,
       rentalPeriodUnit: data.rentalPeriodUnit ?? null,
+      attributes: data.attributes ?? undefined,
       inventory: {
         upsert: {
           create: { quantity: data.quantity, storeId: access.store.id, sku: trimmedSku, barcode: trimmedBarcode },

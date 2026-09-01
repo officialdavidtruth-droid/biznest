@@ -8,11 +8,22 @@ export type BusinessTerminology = {
   catalogDescription: string;
   addCatalog: string;
   emptyCatalog: string;
+  // Sidebar/page-title label for the catalog management area, e.g. "Menu
+  // Management" for a restaurant, "Products Management" for a generic
+  // retailer -- one consistent pattern across every niche.
+  catalogPageTitle: string;
+  // What a unit-based booking (Booking + ServiceUnit) is called when it has
+  // a table/room/unit attached -- "Reservations" for a restaurant or hotel,
+  // falls back to "Bookings" for appointment-style niches with no unit.
+  reservationLabel: string;
+  // The generic term for one seat/table/room slot this niche's reservations
+  // attach to, e.g. "Table" for a restaurant, "Room" for a hotel.
+  unitLabel: string;
 };
 
-const CATALOG_TERMS: Record<string, { customer: string; transaction: string; catalog: string }> = {
-  Restaurant: { customer: "Guest", transaction: "Order", catalog: "Menu" },
-  "Hotel & Lodging": { customer: "Guest", transaction: "Reservation", catalog: "Rooms" },
+const CATALOG_TERMS: Record<string, { customer: string; transaction: string; catalog: string; reservationLabel?: string; unitLabel?: string }> = {
+  Restaurant: { customer: "Guest", transaction: "Order", catalog: "Menu", reservationLabel: "Reservations", unitLabel: "Table" },
+  "Hotel & Lodging": { customer: "Guest", transaction: "Reservation", catalog: "Rooms", reservationLabel: "Reservations", unitLabel: "Room" },
   Photography: { customer: "Client", transaction: "Booking", catalog: "Packages" },
   Beauty: { customer: "Client", transaction: "Appointment", catalog: "Services" },
   Salon: { customer: "Client", transaction: "Appointment", catalog: "Services" },
@@ -62,5 +73,8 @@ export function getBusinessTerminology(category?: string | null): BusinessTermin
     catalogDescription: `Manage the ${base.catalog.toLowerCase()} customers see on your store.`,
     addCatalog: `Add ${catalogSingular}`,
     emptyCatalog: `No ${base.catalog.toLowerCase()} yet.`,
+    catalogPageTitle: `${base.catalog} Management`,
+    reservationLabel: base.reservationLabel ?? "Bookings",
+    unitLabel: base.unitLabel ?? "Unit",
   };
 }

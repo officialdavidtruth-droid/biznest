@@ -3,7 +3,7 @@ import {
   CreditCard, BarChart3, Star, Megaphone, MessageSquare,
   Settings, BadgeCheck, Wallet, LifeBuoy, Truck, Wand2,
   LayoutTemplate, FileText, FileSignature, MailWarning, Calculator, CalendarDays, Images,
-  ClipboardList, Hotel,
+  ClipboardList, Hotel, PlusCircle, Layers, Rows3, ChefHat,
 } from "lucide-react";
 import { getAdaptiveDashboardConfig } from "@/lib/adaptive-dashboard";
 import { getBusinessTerminology } from "@/lib/business-terminology";
@@ -56,19 +56,37 @@ export function buildNavGroups(business: { sellsProducts: boolean; offersService
   const sellNavItems: NavItem[] = [];
   const categoriesLabel = business.category === "Restaurant" ? "Menu Categories" : terminology.category + "s";
   const categoriesChild: NavItem = { label: categoriesLabel, href: "/categories", icon: Boxes, permission: "products" };
+  // Every catalog-management area (menu, products, packages...) gets the
+  // same four sub-destinations -- categories, add-ons/extras, variants, and
+  // display sections -- regardless of niche. A niche that hasn't used a
+  // feature yet (e.g. no add-ons configured) still sees the link; it just
+  // shows an empty state.
+  const catalogChildren: NavItem[] = [
+    categoriesChild,
+    { label: "Add-ons & Extras", href: "/addons", icon: PlusCircle, permission: "products" },
+    { label: `${terminology.catalogSingular} Variants`, href: "/variants", icon: Layers, permission: "products" },
+    { label: `${terminology.catalogSingular} Sections`, href: "/menu-sections", icon: Rows3, permission: "products" },
+  ];
   if (business.sellsProducts) {
     sellNavItems.push(
       { label: "Point of Sale", href: "/pos", icon: Calculator, permission: "pos" },
       { label: "Orders", href: "/orders", icon: ShoppingCart, permission: "orders" },
-      { label: terminology.catalog, href: "/products", icon: Package, permission: "products", children: [categoriesChild] },
+      { label: terminology.catalogPageTitle, href: "/products", icon: Package, permission: "products", children: catalogChildren },
     );
   }
   if (business.offersServices) {
     sellNavItems.push(
       { label: "Services", href: "/services", icon: Wrench, permission: "products", ...(business.sellsProducts ? {} : { children: [categoriesChild] }) },
-      { label: "Bookings", href: "/bookings", icon: ClipboardList, permission: "products" },
+      { label: terminology.reservationLabel, href: "/bookings", icon: ClipboardList, permission: "products" },
       { label: "Calendar", href: "/calendar", icon: CalendarDays, permission: "products" },
     );
+  }
+  // Table reservations are core to running a restaurant regardless of
+  // whether the merchant separately flagged "offers services" at
+  // onboarding, so this niche always gets Reservations + Kitchen Ops.
+  if (business.category === "Restaurant") {
+    if (!business.offersServices) sellNavItems.push({ label: terminology.reservationLabel, href: "/bookings", icon: ClipboardList, permission: "products" });
+    sellNavItems.push({ label: "Kitchen Operations", href: "/kitchen", icon: ChefHat, permission: "orders" });
   }
 
   // The category picked at onboarding can add one more trade-specific tool
@@ -93,7 +111,7 @@ export function buildNavGroups(business: { sellsProducts: boolean; offersService
     { label: "Suppliers", href: "/suppliers", icon: Users, permission: "products" },
     { label: "Purchase orders", href: "/purchase-orders", icon: FileSignature, permission: "products" },
     { label: "Delivery zones", href: "/delivery", icon: Truck, permission: "settings" },
-    { label: "Staff", href: "/staff", icon: Users, ownerOnly: true },
+    { label: "Staff Management", href: "/staff", icon: Users, ownerOnly: true },
   ];
   const manageItems: NavItem[] = allManageItems.filter((item) => relevantToBusiness(item.href, business));
 
@@ -132,7 +150,7 @@ export function buildNavGroups(business: { sellsProducts: boolean; offersService
         { label: "Abandoned checkouts", href: "/abandoned-checkouts", icon: MailWarning, permission: "marketing" },
         { label: "Reviews", href: "/reviews", icon: Star, permission: "marketing" },
         { label: "Messages", href: "/messages", icon: MessageSquare, permission: "messages" },
-        { label: "Analytics & Profit", href: "/analytics", icon: BarChart3, permission: "analytics" },
+        { label: "Analytics & Reports", href: "/analytics", icon: BarChart3, permission: "analytics" },
       ],
     },
     {

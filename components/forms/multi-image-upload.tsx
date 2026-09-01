@@ -39,12 +39,15 @@ export function MultiImageUpload({
 
   return (
     <div>
-      <label className="mb-1 block text-sm font-medium">{label}</label>
+      {label && <label className="mb-1 block text-sm font-medium">{label}</label>}
       <div className="flex flex-wrap gap-3">
         {value.map((url, i) => (
           <div key={url + i} className="group relative h-20 w-20 overflow-hidden rounded-md border">
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img src={url} alt="" className="h-full w-full object-cover" />
+            {i === 0 && (
+              <span className="absolute bottom-0 left-0 right-0 bg-black/60 py-0.5 text-center text-[9px] font-medium text-white">Main Image</span>
+            )}
             <button
               type="button"
               onClick={() => removeAt(i)}

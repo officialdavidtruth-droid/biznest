@@ -693,6 +693,8 @@ model Store {
   pages         StorePage[]
   inventory     InventoryItem[]
   variants      ProductVariant[]
+  addonGroups   ProductAddonGroup[]
+  addons        ProductAddon[]
   stockMovements StockMovement[]
   suppliers     Supplier[]
   purchaseOrders PurchaseOrder[]
@@ -844,6 +846,7 @@ model Category {
   storeId  String?
   store    Store?     @relation(fields: [storeId], references: [id], onDelete: Cascade)
   name     String
+  description String?
   type     CategoryType
   sortOrder Int      @default(0)
   isActive  Boolean  @default(true)
@@ -858,6 +861,9 @@ model Category {
   // by the marketplace filter panel -- never enforced at the DB level, same
   // pattern as Product.attributes itself. Null = no filter panel yet.
   filterSchema Json?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   products Product[]
   services Service[]
@@ -925,6 +931,7 @@ model Product {
 
   inventory    InventoryItem?
   variants     ProductVariant[]
+  addonGroups  ProductAddonGroup[]
   orderItems   OrderItem[]
   reviews      Review[]
   wishlistedBy WishlistItem[]
@@ -982,6 +989,54 @@ model ProductVariant {
   @@unique([storeId, sku])
   @@unique([storeId, barcode])
   @@index([productId])
+  @@index([storeId])
+}
+
+// A configurable group of extras attached to one product, e.g. "Choose your
+// side" or "Extra toppings" for a menu item, or "Gift wrap" for a retail
+// product -- generic across any product-selling niche, not restaurant-only.
+model ProductAddonGroup {
+  id        String        @id @default(cuid())
+  productId String
+  product   Product       @relation(fields: [productId], references: [id], onDelete: Cascade)
+  storeId   String
+  store     Store         @relation(fields: [storeId], references: [id], onDelete: Cascade)
+
+  name      String
+  // How many options a buyer must/can pick from this group. minSelect = 0
+  // means optional; maxSelect = null means unlimited.
+  minSelect Int           @default(0)
+  maxSelect Int?
+  sortOrder Int           @default(0)
+  isActive  Boolean       @default(true)
+
+  addons    ProductAddon[]
+
+  createdAt DateTime      @default(now())
+  updatedAt DateTime      @updatedAt
+
+  @@index([productId])
+  @@index([storeId])
+}
+
+model ProductAddon {
+  id       String            @id @default(cuid())
+  groupId  String
+  group    ProductAddonGroup @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  storeId  String
+  store    Store             @relation(fields: [storeId], references: [id], onDelete: Cascade)
+
+  name     String
+  // Extra charge for this option, e.g. ₦500 for extra cheese. 0 for a free
+  // choice that doesn't change price (e.g. a spice-level pick).
+  price    Decimal           @default(0) @db.Decimal(12, 2)
+  isActive Boolean           @default(true)
+  sortOrder Int              @default(0)
+
+  createdAt DateTime         @default(now())
+  updatedAt DateTime         @updatedAt
+
+  @@index([groupId])
   @@index([storeId])
 }
 
@@ -1049,6 +1104,13 @@ model ServiceUnit {
   // e.g. "101", "Unit 3" -- shown to housekeeping/staff and on the calendar.
   label     String
   status    ServiceUnitStatus @default(AVAILABLE)
+  // Free-text zone, e.g. "Indoor"/"Outdoor" for a restaurant table,
+  // "Floor 2" for a hotel room. Purely descriptive, shown next to the
+  // label wherever units are listed.
+  location  String?
+  // Max occupancy for this unit (table seats, room max guests). Optional --
+  // niches that don't track capacity per unit just leave it unset.
+  capacity  Int?
 
   bookings  Booking[]
 
@@ -1146,6 +1208,13 @@ enum BookingStatus {
   CONFIRMED
   COMPLETED
   CANCELLED
+  // Front-of-house pipeline states used by unit-based reservations (a
+  // restaurant table, a hotel room) between "confirmed" and "completed" --
+  // optional for niches that don't need them (appointment-style bookings
+  // just skip straight from CONFIRMED to COMPLETED).
+  CHECKED_IN
+  SEATED
+  NO_SHOW
 }
 
 // NOTE: a partial unique index — ("serviceId","staffId","scheduledAt") WHERE
@@ -1196,9 +1265,30 @@ model Booking {
   guestPhone            String?
   emergencyContactName  String?
   emergencyContactPhone String?
+
+  // Generic party-size + free-text requests, usable by any unit-based
+  // reservation niche (a restaurant table for 4, a hotel room for a family
+  // of 3, a salon chair for a group booking) -- not restaurant-specific.
+  partySize             Int?
+  specialRequests       String[]        @default([])
   governmentIdType      String?
   governmentIdNumber    String?
   governmentIdImageUrl  String?
+
+  // How this reservation came in (e.g. "Walk-in", "Online", "Phone") and
+  // any niche-specific reservation tier (e.g. "Standard", "VIP"). Free text
+  // rather than an enum so it stays meaningful across niches.
+  source          String?
+  reservationType String?
+  // Selected paid extras for this reservation, e.g.
+  // [{ "label": "Birthday Celebration", "price": 15000 }]. Priced generically
+  // like Product.attributes -- a small, per-booking list rather than a full
+  // catalog relation, since these are usually one-off add-ons.
+  addons          Json?
+  // Reminder lead time in minutes before scheduledAt (null = no reminder),
+  // and whether a booking-confirmation message goes out to the guest.
+  reminderOffsetMinutes Int?
+  sendConfirmation      Boolean         @default(true)
 
   // Guest contact used for payment-confirmation emails when there's no
   // BizNest customer account attached (see guestName/guestPhone above).

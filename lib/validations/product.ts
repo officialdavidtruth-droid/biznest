@@ -15,6 +15,12 @@ export const productSchema = z.object({
   barcode: z.string().max(64).optional().or(z.literal("")),
   digitalFileUrl: z.string().url().optional().or(z.literal("")),
   rentalPeriodUnit: z.enum(["day", "week", "month"]).optional(),
+  // Free-form, niche-specific fields (tags, featured/taxable/special-request
+  // toggles, and any custom key/value pairs the merchant adds) stored on
+  // Product.attributes. Kept as a loose record here rather than named
+  // columns so this form -- and this schema -- stay usable for every niche
+  // without a migration per vertical.
+  attributes: z.record(z.union([z.string(), z.number(), z.boolean(), z.array(z.string())])).optional(),
 });
 
 export type ProductInput = z.infer<typeof productSchema>;

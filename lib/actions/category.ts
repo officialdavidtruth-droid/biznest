@@ -15,11 +15,26 @@ export async function getStoreCategories(slug: string) {
   return prisma.category.findMany({
     where: { storeId: a.store.id },
     orderBy: [{ parentId: "asc" }, { name: "asc" }],
-    select: { id: true, storeId: true, name: true, type: true, parentId: true, sortOrder: true, isActive: true, imageUrl: true, icon: true },
+    select: { id: true, storeId: true, name: true, description: true, type: true, parentId: true, sortOrder: true, isActive: true, imageUrl: true, icon: true, createdAt: true, updatedAt: true },
   });
 }
 
-export async function createCategory(slug: string, input: { name: string; type: "PRODUCT" | "SERVICE"; parentId?: string | null; imageUrl?: string | null; icon?: string | null }): Promise<ActionResult<{ id: string }>> {
+export async function getCategoryItemCounts(slug: string): Promise<Record<string, number>> {
+  const a = await access(slug);
+  if (!a.success) return {};
+  const [products, services] = await Promise.all([
+    prisma.product.groupBy({ by: ["categoryId"], where: { storeId: a.store.id, categoryId: { not: null } }, _count: { _all: true } }),
+    prisma.service.groupBy({ by: ["categoryId"], where: { storeId: a.store.id, categoryId: { not: null } }, _count: { _all: true } }),
+  ]);
+  const counts: Record<string, number> = {};
+  for (const row of [...products, ...services]) {
+    if (!row.categoryId) continue;
+    counts[row.categoryId] = (counts[row.categoryId] ?? 0) + row._count._all;
+  }
+  return counts;
+}
+
+export async function createCategory(slug: string, input: { name: string; type: "PRODUCT" | "SERVICE"; parentId?: string | null; imageUrl?: string | null; icon?: string | null; description?: string | null }): Promise<ActionResult<{ id: string }>> {
   const a = await access(slug);
   if (!a.success) return { success: false, error: a.error };
   const name = input.name.trim();
@@ -31,13 +46,13 @@ export async function createCategory(slug: string, input: { name: string; type: 
   }
   const duplicate = await prisma.category.findFirst({ where: { storeId: a.store.id, name, parentId: input.parentId ?? null } });
   if (duplicate) return { success: false, error: "A category with this name already exists here." };
-  const row = await prisma.category.create({ data: { storeId: a.store.id, name, type: input.type, parentId: input.parentId ?? null, imageUrl: input.imageUrl?.trim() || null, icon: input.icon?.trim() || null } });
+  const row = await prisma.category.create({ data: { storeId: a.store.id, name, type: input.type, parentId: input.parentId ?? null, imageUrl: input.imageUrl?.trim() || null, icon: input.icon?.trim() || null, description: input.description?.trim() || null } });
   revalidatePath(`/store/${slug}/admin/categories`);
   revalidatePath(`/store/${slug}`);
   return { success: true, data: { id: row.id } };
 }
 
-export async function updateCategory(slug: string, id: string, input: { name: string; parentId?: string | null; imageUrl?: string | null; icon?: string | null; isActive?: boolean }): Promise<ActionResult> {
+export async function updateCategory(slug: string, id: string, input: { name: string; parentId?: string | null; imageUrl?: string | null; icon?: string | null; isActive?: boolean; description?: string | null }): Promise<ActionResult> {
   const a = await access(slug);
   if (!a.success) return { success: false, error: a.error };
   const row = await prisma.category.findFirst({ where: { id, storeId: a.store.id } });
@@ -57,7 +72,7 @@ export async function updateCategory(slug: string, id: string, input: { name: st
   }
   const duplicate = await prisma.category.findFirst({ where: { storeId: a.store.id, name, parentId: input.parentId ?? null, NOT: { id } } });
   if (duplicate) return { success: false, error: "A category with this name already exists here." };
-  await prisma.category.update({ where: { id }, data: { name, parentId: input.parentId ?? null, imageUrl: input.imageUrl?.trim() || null, icon: input.icon?.trim() || null, ...(input.isActive === undefined ? {} : { isActive: input.isActive }) } });
+  await prisma.category.update({ where: { id }, data: { name, parentId: input.parentId ?? null, imageUrl: input.imageUrl?.trim() || null, icon: input.icon?.trim() || null, ...(input.description === undefined ? {} : { description: input.description?.trim() || null }), ...(input.isActive === undefined ? {} : { isActive: input.isActive }) } });
   revalidatePath(`/store/${slug}/admin/categories`);
   revalidatePath(`/store/${slug}`);
   return { success: true, data: undefined };

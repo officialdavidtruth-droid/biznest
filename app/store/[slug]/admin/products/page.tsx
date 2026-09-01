@@ -25,7 +25,7 @@ export default async function ProductsListPage({ params }: { params: Promise<{ s
     <div className="bn-admin-page space-y-5">
       <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
         <div>
-          <h1 className="text-2xl font-bold">{terminology.catalog}</h1>
+          <h1 className="text-2xl font-bold">{terminology.catalogPageTitle}</h1>
           <p className="mt-1 text-sm text-muted-foreground">Manage your {terminology.catalog.toLowerCase()}, categories and pricing</p>
         </div>
         <div className="flex flex-wrap gap-2">
