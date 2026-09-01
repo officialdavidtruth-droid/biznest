@@ -135,14 +135,12 @@ export function ListPagination({
   );
 }
 
-export function StatCard({ icon: Icon, tone, label, value, note }: { icon: any; tone: "purple" | "orange" | "green" | "red" | "blue"; label: string; value: string | number; note: string }) {
-  const toneClass = tone === "purple" ? "bg-violet-50 text-violet-600" : tone === "orange" ? "bg-orange-50 text-orange-500" : tone === "green" ? "bg-emerald-50 text-emerald-600" : tone === "blue" ? "bg-blue-50 text-blue-600" : "bg-rose-50 text-rose-500";
-  return (
-    <div className="rounded-xl border bg-white p-5 shadow-sm">
-      <div className={`mb-3 flex h-10 w-10 items-center justify-center rounded-xl ${toneClass}`}><Icon className="h-5 w-5" /></div>
-      <p className="text-xs text-muted-foreground">{label}</p>
-      <p className="mt-1 text-2xl font-bold">{value}</p>
-      <p className="mt-1 text-[11px] text-muted-foreground">{note}</p>
-    </div>
-  );
-}
+// StatCard moved to ./stat-card.tsx — it's pure presentation (no state,
+// no handlers), so it doesn't belong in this "use client" file. Keeping it
+// here broke server pages (app/store/[slug]/admin/{services,orders,inventory}
+// /page.tsx) that pass a lucide-react icon *component* into it: Next.js
+// can't serialize an unrendered component reference across the server/client
+// boundary ("Functions cannot be passed directly to Client Components").
+// Re-exported here so existing "use client" importers (booking-stat-cards,
+// category-manager, customer-360) don't need to change their import path.
+export { StatCard } from "./stat-card";

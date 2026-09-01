@@ -2,7 +2,7 @@
 import { listOrders } from "@/lib/actions/order";
 import { OrdersTable } from "@/components/dashboard/orders-table";
 import { ShoppingBag, Clock3, CheckCircle2, Banknote } from "lucide-react";
-import { StatCard } from "@/components/dashboard/list-toolbar";
+import { StatCard } from "@/components/dashboard/stat-card";
 
 export default async function StoreOrdersPage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;

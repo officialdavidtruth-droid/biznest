@@ -2,7 +2,7 @@
 import { getInventoryOverview, getInventoryProfitSummary } from "@/lib/actions/inventory";
 import { InventoryProfitSummary } from "@/components/dashboard/inventory-profit-summary";
 import { InventoryTable } from "@/components/dashboard/inventory-table";
-import { StatCard } from "@/components/dashboard/list-toolbar";
+import { StatCard } from "@/components/dashboard/stat-card";
 import { Boxes, CircleAlert, XCircle } from "lucide-react";
 
 export default async function InventoryPage({ params }: { params: Promise<{ slug: string }> }) {

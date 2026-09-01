@@ -3,7 +3,7 @@ import Link from "next/link";
 import { prisma } from "@/lib/prisma";
 import { getBusinessTerminology } from "@/lib/business-terminology";
 import { ServicesTable } from "@/components/dashboard/services-table";
-import { StatCard } from "@/components/dashboard/list-toolbar";
+import { StatCard } from "@/components/dashboard/stat-card";
 import { Wrench, CheckCircle2, CalendarClock, Plus } from "lucide-react";
 
 export default async function ServicesPage({ params }: { params: Promise<{ slug: string }> }) {
