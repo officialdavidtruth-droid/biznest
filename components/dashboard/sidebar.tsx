@@ -1,9 +1,10 @@
 "use client";
 
 import Link from "next/link";
+import { useState } from "react";
 import { usePathname } from "next/navigation";
 import { ExternalLink, Pencil, Crown, ChevronDown } from "lucide-react";
-import { buildNavGroups, filterNavGroupsForRole } from "@/lib/constants/dashboard-nav";
+import { buildNavGroups, filterNavGroupsForRole, type NavItem } from "@/lib/constants/dashboard-nav";
 import type { StoreAccessRole } from "@/lib/access/store-access";
 import { SignOutButton } from "@/components/forms/sign-out-button";
 import { StoreLogo } from "@/components/dashboard/store-logo";
@@ -86,28 +87,9 @@ export function DashboardSidebar({
               {group.label}
             </p>
             <div className="space-y-0.5">
-              {group.items.map((item) => {
-                const href = `${base}${item.href}`;
-                const isActive = pathname === href;
-                const Icon = item.icon;
-                return (
-                  <Link
-                    key={item.label}
-                    href={href}
-                    className={`group relative flex items-center gap-2.5 rounded-lg px-2.5 py-2 text-sm transition-colors ${
-                      isActive
-                        ? "bg-[#f1b95a] font-medium text-[#071525] shadow-sm"
-                        : "text-slate-300 hover:bg-white/8 hover:text-white"
-                    }`}
-                  >
-                    {isActive && (
-                      <span className="absolute -left-3 top-1/2 h-4 w-0.5 -translate-y-1/2 rounded-full bg-primary" />
-                    )}
-                    <Icon className={`h-4 w-4 shrink-0 ${isActive ? "" : "opacity-70 group-hover:opacity-100"}`} />
-                    <span className="truncate">{item.label}</span>
-                  </Link>
-                );
-              })}
+              {group.items.map((item) => (
+                <NavLink key={item.label} base={base} item={item} pathname={pathname} />
+              ))}
             </div>
           </div>
         ))}
@@ -127,5 +109,73 @@ export function DashboardSidebar({
         </div>
       </div>
     </aside>
+  );
+}
+
+function NavLink({ base, item, pathname }: { base: string; item: NavItem; pathname: string | null }) {
+  const href = `${base}${item.href}`;
+  const isActive = pathname === href;
+  const childActive = item.children?.some((c) => pathname === `${base}${c.href}`) ?? false;
+  const [open, setOpen] = useState(childActive);
+  const Icon = item.icon;
+
+  if (!item.children || item.children.length === 0) {
+    return (
+      <Link
+        href={href}
+        className={`group relative flex items-center gap-2.5 rounded-lg px-2.5 py-2 text-sm transition-colors ${
+          isActive ? "bg-[#f1b95a] font-medium text-[#071525] shadow-sm" : "text-slate-300 hover:bg-white/8 hover:text-white"
+        }`}
+      >
+        {isActive && <span className="absolute -left-3 top-1/2 h-4 w-0.5 -translate-y-1/2 rounded-full bg-primary" />}
+        <Icon className={`h-4 w-4 shrink-0 ${isActive ? "" : "opacity-70 group-hover:opacity-100"}`} />
+        <span className="truncate">{item.label}</span>
+      </Link>
+    );
+  }
+
+  return (
+    <div>
+      <div
+        className={`group relative flex items-center gap-2.5 rounded-lg pr-1.5 text-sm transition-colors ${
+          isActive ? "bg-[#f1b95a] font-medium text-[#071525] shadow-sm" : "text-slate-300 hover:bg-white/8 hover:text-white"
+        }`}
+      >
+        {isActive && <span className="absolute -left-3 top-1/2 h-4 w-0.5 -translate-y-1/2 rounded-full bg-primary" />}
+        <Link href={href} className="flex flex-1 items-center gap-2.5 px-2.5 py-2">
+          <Icon className={`h-4 w-4 shrink-0 ${isActive ? "" : "opacity-70 group-hover:opacity-100"}`} />
+          <span className="truncate">{item.label}</span>
+        </Link>
+        <button
+          type="button"
+          onClick={() => setOpen((v) => !v)}
+          className="grid h-6 w-6 shrink-0 place-items-center rounded-md hover:bg-black/10"
+          aria-label={open ? "Collapse" : "Expand"}
+        >
+          <ChevronDown className={`h-3.5 w-3.5 transition-transform ${open ? "rotate-180" : ""}`} />
+        </button>
+      </div>
+      {open && (
+        <div className="ml-4 mt-0.5 space-y-0.5 border-l border-slate-700 pl-3">
+          {item.children.map((child) => {
+            const childHref = `${base}${child.href}`;
+            const childIsActive = pathname === childHref;
+            const ChildIcon = child.icon;
+            return (
+              <Link
+                key={child.label}
+                href={childHref}
+                className={`flex items-center gap-2 rounded-lg px-2.5 py-1.5 text-xs transition-colors ${
+                  childIsActive ? "bg-[#f1b95a]/90 font-medium text-[#071525]" : "text-slate-400 hover:bg-white/8 hover:text-white"
+                }`}
+              >
+                <ChildIcon className="h-3.5 w-3.5 shrink-0 opacity-70" />
+                <span className="truncate">{child.label}</span>
+              </Link>
+            );
+          })}
+        </div>
+      )}
+    </div>
   );
 }

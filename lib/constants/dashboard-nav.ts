@@ -19,6 +19,11 @@ export type NavItem = {
   // permission needed, just active staff/owner status (e.g. Dashboard,
   // Support). OWNER/PLATFORM_STAFF always bypass this.
   permission?: StaffPermissionId;
+  // Optional sub-destinations rendered as an expandable group under this
+  // item (e.g. Categories nested under the catalog item). Only real,
+  // already-existing routes belong here — this is a display grouping,
+  // not a way to imply pages that don't exist.
+  children?: NavItem[];
 };
 
 // Items that only make sense for one niche, checked across every group (not
@@ -49,16 +54,18 @@ export function buildNavGroups(business: { sellsProducts: boolean; offersService
   // it should never open its dashboard and feel like an online shop.
   const terminology = getBusinessTerminology(business.category);
   const sellNavItems: NavItem[] = [];
+  const categoriesLabel = business.category === "Restaurant" ? "Menu Categories" : terminology.category + "s";
+  const categoriesChild: NavItem = { label: categoriesLabel, href: "/categories", icon: Boxes, permission: "products" };
   if (business.sellsProducts) {
     sellNavItems.push(
       { label: "Point of Sale", href: "/pos", icon: Calculator, permission: "pos" },
       { label: "Orders", href: "/orders", icon: ShoppingCart, permission: "orders" },
-      { label: terminology.catalog, href: "/products", icon: Package, permission: "products" },
+      { label: terminology.catalog, href: "/products", icon: Package, permission: "products", children: [categoriesChild] },
     );
   }
   if (business.offersServices) {
     sellNavItems.push(
-      { label: terminology.catalog === "Services" ? "Services" : "Services", href: "/services", icon: Wrench, permission: "products" },
+      { label: "Services", href: "/services", icon: Wrench, permission: "products", ...(business.sellsProducts ? {} : { children: [categoriesChild] }) },
       { label: "Bookings", href: "/bookings", icon: ClipboardList, permission: "products" },
       { label: "Calendar", href: "/calendar", icon: CalendarDays, permission: "products" },
     );
@@ -83,7 +90,6 @@ export function buildNavGroups(business: { sellsProducts: boolean; offersService
   const allManageItems: NavItem[] = [
     { label: "Inventory", href: "/inventory", icon: Boxes, permission: "products" },
     { label: terminology.customer === "Client" ? "Clients" : terminology.customer + "s", href: "/customers", icon: Users, permission: "customers" },
-    { label: business.category === "Restaurant" ? "Menu Categories" : terminology.category + "s", href: "/categories", icon: Boxes, permission: "products" },
     { label: "Suppliers", href: "/suppliers", icon: Users, permission: "products" },
     { label: "Purchase orders", href: "/purchase-orders", icon: FileSignature, permission: "products" },
     { label: "Delivery zones", href: "/delivery", icon: Truck, permission: "settings" },
@@ -168,10 +174,13 @@ export function filterNavGroupsForRole<T extends { items: NavItem[] }>(
 ): T[] {
   if (opts.canManageOwnerOnly) return groups;
   const granted = new Set(opts.permissions ?? []);
+  const allowed = (i: NavItem) => !i.ownerOnly && (!i.permission || granted.has(i.permission));
   return groups
     .map((g) => ({
       ...g,
-      items: g.items.filter((i) => !i.ownerOnly && (!i.permission || granted.has(i.permission))),
+      items: g.items
+        .filter(allowed)
+        .map((i) => (i.children ? { ...i, children: i.children.filter(allowed) } : i)),
     }))
     .filter((g) => g.items.length > 0) as T[];
 }
@@ -190,7 +199,7 @@ export function findNavItemForPath(business: {
   category?: string | null;
   subscriptionName?: string | null;
 }, subpath: string): NavItem | undefined {
-  const items = buildNavGroups(business).flatMap((g) => g.items);
+  const items = buildNavGroups(business).flatMap((g) => g.items.flatMap((i) => [i, ...(i.children ?? [])]));
   const normalized = subpath === "" ? "/" : subpath;
   const exact = items.find((i) => (i.href || "/") === normalized);
   if (exact) return exact;
@@ -209,7 +218,7 @@ export function buildBottomTabItems(
 ): NavItem[] {
   const groups = buildNavGroups(business);
   const filtered = opts ? filterNavGroupsForRole(groups, opts) : groups;
-  const items = filtered.flatMap((g) => g.items);
+  const items = filtered.flatMap((g) => g.items.flatMap((i) => [i, ...(i.children ?? [])]));
   // Dashboard is never permission-gated, so it's always present. The rest
   // are the next-highest-priority items still available to this account,
   // falling back down the list if a preferred one was filtered out.

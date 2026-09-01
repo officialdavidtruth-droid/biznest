@@ -160,11 +160,11 @@ export function MobileDashboardChrome({
                     {group.label}
                   </p>
                   <div className="space-y-0.5">
-                    {group.items.map((item) => {
+                    {group.items.flatMap((item) => {
                       const href = `${base}${item.href}`;
                       const isActive = pathname === href;
                       const Icon = item.icon;
-                      return (
+                      const rows = [
                         <Link
                           key={item.label}
                           href={href}
@@ -175,8 +175,27 @@ export function MobileDashboardChrome({
                         >
                           <Icon className="h-4 w-4 shrink-0" />
                           <span className="truncate">{item.label}</span>
-                        </Link>
-                      );
+                        </Link>,
+                      ];
+                      (item.children ?? []).forEach((child) => {
+                        const childHref = `${base}${child.href}`;
+                        const childIsActive = pathname === childHref;
+                        const ChildIcon = child.icon;
+                        rows.push(
+                          <Link
+                            key={child.label}
+                            href={childHref}
+                            onClick={() => setDrawerOpen(false)}
+                            className={`bn-admin-mobile-link ml-4 flex items-center gap-2 rounded-lg px-2.5 py-2 text-xs ${
+                              childIsActive ? "active font-medium" : ""
+                            }`}
+                          >
+                            <ChildIcon className="h-3.5 w-3.5 shrink-0" />
+                            <span className="truncate">{child.label}</span>
+                          </Link>
+                        );
+                      });
+                      return rows;
                     })}
                   </div>
                 </div>

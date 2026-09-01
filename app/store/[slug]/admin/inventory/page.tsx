@@ -1,52 +1,37 @@
 // Route: /store/[slug]/admin/inventory
 import { getInventoryOverview, getInventoryProfitSummary } from "@/lib/actions/inventory";
 import { InventoryProfitSummary } from "@/components/dashboard/inventory-profit-summary";
-import { InventoryRow } from "@/components/dashboard/inventory-row";
+import { InventoryTable } from "@/components/dashboard/inventory-table";
+import { StatCard } from "@/components/dashboard/list-toolbar";
+import { Boxes, CircleAlert, XCircle } from "lucide-react";
 
 export default async function InventoryPage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
   const [items, summary] = await Promise.all([getInventoryOverview(slug), getInventoryProfitSummary(slug)]);
   const currency = items[0]?.currency ?? "NGN";
 
+  const lowStockCount = items.filter((i) => i.status === "LOW_STOCK").length;
+  const outOfStockCount = items.filter((i) => i.status === "OUT_OF_STOCK").length;
+
   return (
-    <div>
-      <div className="mb-6 flex items-center justify-between">
-        <h1 className="text-xl font-semibold">Inventory</h1>
-        <span className="text-xs text-muted-foreground">{items.length} tracked items</span>
+    <div className="bn-admin-page space-y-5">
+      <div>
+        <h1 className="text-2xl font-bold">Inventory</h1>
+        <p className="mt-1 text-sm text-muted-foreground">Track stock levels, cost and profit across your catalog</p>
+      </div>
+
+      <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+        <StatCard icon={Boxes} tone="purple" label="Tracked Items" value={items.length} note="Products with inventory tracking" />
+        <StatCard icon={CircleAlert} tone="orange" label="Low Stock" value={lowStockCount} note="Below threshold" />
+        <StatCard icon={XCircle} tone="red" label="Out of Stock" value={outOfStockCount} note="Currently unavailable" />
       </div>
 
       {items.length > 0 && <InventoryProfitSummary summary={summary} currency={currency} />}
 
-      <div className="overflow-x-auto rounded-lg border bg-background">
-        <table className="w-full text-sm">
-          <thead className="border-b bg-muted/40 text-left text-xs uppercase text-muted-foreground">
-            <tr>
-              <th className="px-4 py-2">Product</th>
-              <th className="px-4 py-2">SKU</th>
-              <th className="px-4 py-2">Barcode</th>
-              <th className="px-4 py-2">Cost</th>
-              <th className="px-4 py-2">Sell</th>
-              <th className="px-4 py-2">Profit / unit</th>
-              <th className="px-4 py-2">Margin</th>
-              <th className="px-4 py-2">In stock</th>
-              <th className="px-4 py-2">Status</th>
-              <th className="px-4 py-2"></th>
-            </tr>
-          </thead>
-          <tbody>
-            {items.map((item) => (
-              <InventoryRow key={item.inventoryItemId} storeSlug={slug} item={item} />
-            ))}
-            {items.length === 0 && (
-              <tr>
-                <td colSpan={10} className="px-4 py-10 text-center text-muted-foreground">
-                  Nothing tracked yet. Physical products get an inventory row automatically once added.
-                </td>
-              </tr>
-            )}
-          </tbody>
-        </table>
-      </div>
+      <section className="rounded-xl border bg-white p-5 shadow-sm">
+        <div className="mb-4"><h2 className="text-base font-bold">Inventory</h2><p className="mt-1 text-xs text-muted-foreground">Search, filter and manage stock</p></div>
+        <InventoryTable storeSlug={slug} items={items} />
+      </section>
     </div>
   );
 }

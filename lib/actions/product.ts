@@ -38,7 +38,7 @@ export async function listProducts(slug: string) {
 
   return prisma.product.findMany({
     where: { storeId: access.store.id },
-    include: { category: true, inventory: true },
+    include: { category: true, inventory: true, _count: { select: { orderItems: true } } },
     orderBy: { createdAt: "desc" },
     // No pagination UI on this page yet -- bounded so a growing catalog
     // doesn't make the admin products list get slower every month. Raise

@@ -1,8 +1,9 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { Mail, MessageCircle, Phone, Search, ShoppingBag, UserRound } from "lucide-react";
+import { Mail, MessageCircle, Phone, Search, ShoppingBag, UserRound, Users, Wallet, Repeat } from "lucide-react";
 import type { Customer360 } from "@/lib/actions/customers";
+import { ListPagination, StatCard } from "@/components/dashboard/list-toolbar";
 
 // Set when arriving here from a link elsewhere in the dashboard (e.g.
 // clicking a customer's name on the Bookings page) that wants a specific
@@ -75,6 +76,8 @@ export function Customer360View({
   const hinted = useMemo(() => resolveHint(customers, openHint), [customers, openHint]);
   const [query, setQuery] = useState("");
   const [selectedId, setSelectedId] = useState(hinted?.id ?? customers[0]?.id ?? null);
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(8);
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -82,42 +85,64 @@ export function Customer360View({
     return customers.filter((c) => [c.name, c.email, c.phone].filter(Boolean).some((v) => v!.toLowerCase().includes(q)));
   }, [customers, query]);
 
-  const selected = customers.find((c) => c.id === selectedId) ?? filtered[0] ?? null;
+  const totalPages = Math.max(1, Math.ceil(filtered.length / pageSize));
+  const currentPage = Math.min(page, totalPages);
+  const paged = filtered.slice((currentPage - 1) * pageSize, currentPage * pageSize);
+
+  const selected = customers.find((c) => c.id === selectedId) ?? paged[0] ?? filtered[0] ?? null;
+
+  const totalLifetimeValue = customers.reduce((sum, c) => sum + c.spent, 0);
+  const repeatCount = customers.filter((c) => c.orders > 1).length;
+  const avgOrderValue = customers.length > 0 ? customers.reduce((sum, c) => sum + c.averageOrder, 0) / customers.length : 0;
 
   return (
-    <div className="space-y-5">
+    <div className="bn-admin-page space-y-5">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-xl font-semibold">{personLabel} 360</h1>
-          <p className="text-sm text-muted-foreground">
+          <h1 className="text-2xl font-bold">{personLabel} 360</h1>
+          <p className="mt-1 text-sm text-muted-foreground">
             {isServiceOnly ? "Every client's booking and purchase history in one profile." : "Online, POS and repeat-customer activity in one profile."}
           </p>
         </div>
-        <div className="text-xs text-muted-foreground">{customers.length} {customers.length === 1 ? personLabel.toLowerCase() : peopleLabel.toLowerCase()}</div>
+      </div>
+
+      <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+        <StatCard icon={Users} tone="purple" label={`Total ${peopleLabel}`} value={customers.length} note="All time" />
+        <StatCard icon={Wallet} tone="green" label="Lifetime Value" value={money(totalLifetimeValue)} note="Combined spend" />
+        <StatCard icon={ShoppingBag} tone="orange" label="Average Order" value={money(avgOrderValue)} note="Per customer" />
+        <StatCard icon={Repeat} tone="blue" label="Repeat" value={repeatCount} note={`${peopleLabel} with 2+ orders`} />
       </div>
 
       <div className="grid gap-4 lg:grid-cols-[280px_1fr]">
-        <section className="overflow-hidden rounded-xl border bg-background">
+        <section className="overflow-hidden rounded-xl border bg-white shadow-sm">
           <div className="border-b p-3">
             <div className="relative">
               <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-              <input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Search name, phone or email" className="w-full rounded-lg border bg-background py-2 pl-9 pr-3 text-sm outline-none focus:ring-2 focus:ring-primary/30" />
+              <input value={query} onChange={(e) => { setQuery(e.target.value); setPage(1); }} placeholder="Search name, phone or email" className="w-full rounded-lg border bg-background py-2 pl-9 pr-3 text-sm outline-none focus:ring-2 focus:ring-primary/30" />
             </div>
           </div>
-          <div className="max-h-[650px] overflow-y-auto p-2">
-            {filtered.map((customer) => (
+          <div className="max-h-[560px] overflow-y-auto p-2">
+            {paged.map((customer) => (
               <button key={customer.id} onClick={() => setSelectedId(customer.id)} className={`mb-1 flex w-full items-center gap-3 rounded-lg p-3 text-left transition-colors ${selected?.id === customer.id ? "bg-primary/10" : "hover:bg-muted"}`}>
                 <div className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-primary/10 text-xs font-semibold text-primary">{initials(customer.name)}</div>
                 <div className="min-w-0 flex-1"><p className="truncate text-sm font-medium">{customer.name}</p><p className="truncate text-xs text-muted-foreground">{customer.phone || customer.email || "No contact"}</p></div>
                 <div className="text-right"><p className="text-xs font-semibold">{money(customer.spent)}</p><p className="text-[10px] text-muted-foreground">{customer.orders} order{customer.orders === 1 ? "" : "s"}</p></div>
               </button>
             ))}
-            {filtered.length === 0 && <p className="px-3 py-10 text-center text-xs text-muted-foreground">No customers match that search.</p>}
+            {paged.length === 0 && <p className="px-3 py-10 text-center text-xs text-muted-foreground">No customers match that search.</p>}
           </div>
+          <ListPagination
+            page={currentPage}
+            totalPages={totalPages}
+            pageSize={pageSize}
+            totalItems={filtered.length}
+            onPageChange={setPage}
+            onPageSizeChange={(size) => { setPageSize(size); setPage(1); }}
+          />
         </section>
 
         {selected ? <section className="space-y-4">
-          <div className="rounded-xl border bg-background p-5">
+          <div className="rounded-xl border bg-white p-5 shadow-sm">
             <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
               <div className="flex items-center gap-3"><div className="grid h-12 w-12 place-items-center rounded-full bg-primary/10 font-semibold text-primary">{initials(selected.name)}</div><div><h2 className="text-lg font-semibold">{selected.name}</h2><div className="mt-1 flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted-foreground"><span>{selected.email || "No email"}</span><span>{selected.phone || "No phone"}</span></div></div></div>
               <div className="flex gap-2">
@@ -133,17 +158,17 @@ export function Customer360View({
           </div>
 
           <div className={`grid gap-4 ${sellsProducts ? "md:grid-cols-3" : "md:grid-cols-1"}`}>
-            {sellsProducts && <div className="rounded-xl border bg-background p-4"><p className="text-xs text-muted-foreground">Online sales</p><p className="mt-1 text-xl font-semibold">{selected.onlineOrders}</p></div>}
-            {sellsProducts && <div className="rounded-xl border bg-background p-4"><p className="text-xs text-muted-foreground">POS sales</p><p className="mt-1 text-xl font-semibold">{selected.posOrders}</p></div>}
-            <div className="rounded-xl border bg-background p-4"><p className="text-xs text-muted-foreground">{personLabel} since</p><p className="mt-1 text-sm font-semibold">{formatDate(selected.firstPurchase)}</p></div>
+            {sellsProducts && <div className="rounded-xl border bg-white p-4 shadow-sm"><p className="text-xs text-muted-foreground">Online sales</p><p className="mt-1 text-xl font-semibold">{selected.onlineOrders}</p></div>}
+            {sellsProducts && <div className="rounded-xl border bg-white p-4 shadow-sm"><p className="text-xs text-muted-foreground">POS sales</p><p className="mt-1 text-xl font-semibold">{selected.posOrders}</p></div>}
+            <div className="rounded-xl border bg-white p-4 shadow-sm"><p className="text-xs text-muted-foreground">{personLabel} since</p><p className="mt-1 text-sm font-semibold">{formatDate(selected.firstPurchase)}</p></div>
           </div>
 
           <div className="grid gap-4 xl:grid-cols-[1fr_320px]">
-            <div className="rounded-xl border bg-background p-4">
+            <div className="rounded-xl border bg-white p-4 shadow-sm">
               <div className="mb-3 flex items-center gap-2"><ShoppingBag className="h-4 w-4 text-muted-foreground" /><h3 className="text-sm font-semibold">{isServiceOnly ? "Recent bookings" : "Recent orders"}</h3></div>
               <div className="overflow-x-auto"><table className="w-full text-sm"><thead className="border-b text-left text-[11px] uppercase text-muted-foreground"><tr><th className="px-2 py-2">{isServiceOnly ? "Booking" : "Order"}</th>{sellsProducts && <th className="px-2 py-2">Channel</th>}<th className="px-2 py-2">Items</th><th className="px-2 py-2 text-right">Amount</th><th className="px-2 py-2">Date</th></tr></thead><tbody>{selected.ordersList.map((o) => <tr key={o.id} className="border-b last:border-0"><td className="px-2 py-3 font-medium">{o.number}</td>{sellsProducts && <td className="px-2 py-3"><span className="rounded-full bg-muted px-2 py-1 text-[10px]">{o.channel}</span></td>}<td className="max-w-[260px] px-2 py-3 text-xs text-muted-foreground">{o.items.join(", ") || "—"}</td><td className="px-2 py-3 text-right font-medium">{money(o.total)}</td><td className="px-2 py-3 text-xs text-muted-foreground">{formatDate(o.createdAt)}</td></tr>)}{selected.ordersList.length === 0 && <tr><td colSpan={sellsProducts ? 5 : 4} className="px-2 py-10 text-center text-xs text-muted-foreground">{isServiceOnly ? "No completed bookings yet." : "No completed purchases yet."}</td></tr>}</tbody></table></div>
             </div>
-            <div className="rounded-xl border bg-background p-4">
+            <div className="rounded-xl border bg-white p-4 shadow-sm">
               <h3 className="text-sm font-semibold">{isServiceOnly ? "Top services" : "Top products"}</h3><p className="mb-3 mt-1 text-xs text-muted-foreground">Based on purchase history</p>
               <div className="space-y-3">{selected.topProducts.map((p) => <div key={p.name} className="flex items-center justify-between gap-3"><div className="min-w-0"><p className="truncate text-xs font-medium">{p.name}</p><p className="text-[11px] text-muted-foreground">{p.quantity} item{p.quantity === 1 ? "" : "s"}</p></div><p className="text-xs font-semibold">{money(p.revenue)}</p></div>)}{selected.topProducts.length === 0 && <p className="py-8 text-center text-xs text-muted-foreground">No product history yet.</p>}</div>
             </div>

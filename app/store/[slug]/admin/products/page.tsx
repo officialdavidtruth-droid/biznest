@@ -57,6 +57,7 @@ export default async function ProductsListPage({ params }: { params: Promise<{ s
                 isPublished: p.isPublished,
                 category: p.category ? { id: p.category.id, name: p.category.name } : null,
                 inventory: p.inventory ? { quantity: p.inventory.quantity } : null,
+                orders: p._count.orderItems,
               }))}
               categories={categories.map((c) => ({ id: c.id, name: c.name }))}
               terminology={terminology}
