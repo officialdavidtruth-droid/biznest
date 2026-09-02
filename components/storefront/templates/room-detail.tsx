@@ -6,13 +6,13 @@ import Link from "next/link";
 import {
   Wifi, Wind, Tv, Wine, ConciergeBell, Building2, Bed, Briefcase, Maximize2, Lock,
   Bath, Sparkles, Home as HomeIcon, Clock3, Ban, Star, Heart, Calendar, Users,
-  ChevronLeft, ChevronRight, Search, Facebook, Instagram, Twitter, Youtube, Linkedin,
-  MapPin, Phone, Mail, ShieldCheck, BadgeCheck, Headphones, ArrowRight, Crown,
+  ChevronLeft, ChevronRight, Search, MapPin, ShieldCheck, BadgeCheck, Headphones, ArrowRight, Crown,
 } from "lucide-react";
 import { formatMoney } from "@/lib/storefront/hero-media";
 import { toggleStoreWishlist } from "@/lib/actions/account";
 import { useShopAuthGate } from "@/lib/hooks/use-shop-auth-gate";
 import type { Guarantee } from "@/lib/storefront/unit-booking-niche";
+import { HotelHeader, HotelFooter } from "@/components/storefront/templates/hotel-chrome";
 import { toast } from "sonner";
 
 type Theme = {
@@ -142,24 +142,7 @@ export function RoomDetail(props: Props) {
   return (
     <div style={{ fontFamily: theme.font, color: ink, background: theme.bg, minHeight: "100vh" }}>
       {/* Header */}
-      <header style={{ position: "sticky", top: 0, zIndex: 50, background: `${theme.bg}F5`, backdropFilter: "blur(18px)", borderBottom: `1px solid ${border}` }}>
-        <div style={{ maxWidth: 1320, margin: "0 auto", minHeight: 72, padding: "0 28px", display: "flex", alignItems: "center", gap: 28 }}>
-          <Link href={`/store/${slug}`} style={{ color: ink, textDecoration: "none", display: "flex", alignItems: "center", gap: 12, minWidth: 0 }}>
-            {store.logoUrl ? <img src={store.logoUrl} alt={store.name} style={{ width: 38, height: 38, objectFit: "contain" }} /> : <span style={{ width: 38, height: 38, display: "grid", placeItems: "center", background: ink, color: theme.bg, fontSize: 12, fontWeight: 800, borderRadius: 8 }}>{initials(store.name)}</span>}
-            <span style={{ fontFamily: theme.headlineFont, fontSize: 16, fontWeight: 700, whiteSpace: "nowrap" }}>{store.name}</span>
-          </Link>
-          <nav style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: 24, fontSize: 12.5, fontWeight: 650 }}>
-            <Link href={`/store/${slug}`} style={{ color: ink, textDecoration: "none", opacity: 0.75 }}>Home</Link>
-            <Link href={`/store/${slug}/hotel/rooms`} style={{ color: accent, textDecoration: "none", borderBottom: `1px solid ${accent}`, paddingBottom: 4 }}>{itemLabelPlural}</Link>
-            <Link href={`/store/${slug}/hotel/experience`} style={{ color: ink, textDecoration: "none", opacity: 0.75 }}>Amenities</Link>
-            <Link href={`/store/${slug}/hotel/gallery`} style={{ color: ink, textDecoration: "none", opacity: 0.75 }}>Gallery</Link>
-            <Link href={`/store/${slug}/hotel/story`} style={{ color: ink, textDecoration: "none", opacity: 0.75 }}>About</Link>
-            <Link href={`/store/${slug}/hotel/contact`} style={{ color: ink, textDecoration: "none", opacity: 0.75 }}>Contact</Link>
-            <Link href={`/store/${slug}/search`} aria-label="Search" style={{ color: ink, display: "flex" }}><Search size={16} /></Link>
-            <Link href={`/store/${slug}/hotel/rooms`} style={{ padding: "10px 18px", background: accent, color: "#fff", textDecoration: "none", borderRadius: theme.radius, fontWeight: 800, fontSize: 12 }}>Book Now</Link>
-          </nav>
-        </div>
-      </header>
+      <HotelHeader slug={slug} theme={theme} store={store} active="rooms" itemLabelPlural={itemLabelPlural} />
 
       {/* Breadcrumb hero */}
       <section style={{ position: "relative", minHeight: 210, display: "flex", alignItems: "flex-end", color: "#fff", padding: "36px 28px 26px", background: gallery[0] ? `linear-gradient(180deg, rgba(8,7,6,.35) 0%, rgba(8,7,6,.5) 55%, rgba(8,7,6,.92) 100%), url(${gallery[0]}) center/cover` : `linear-gradient(135deg, ${dark}, ${accent})` }}>
@@ -408,7 +391,7 @@ export function RoomDetail(props: Props) {
         </aside>
       </div>
 
-      <Footer slug={slug} store={store} theme={theme} itemLabelPlural={itemLabelPlural} />
+      <HotelFooter slug={slug} theme={theme} store={store} itemLabelPlural={itemLabelPlural} />
     </div>
   );
 }
@@ -460,55 +443,5 @@ function ReviewsPanel({ reviews, avgRating, reviewCount, theme, compact }: { rev
         ))}
       </div>
     </div>
-  );
-}
-
-function Footer({ slug, store, theme, itemLabelPlural }: { slug: string; store: Props["store"]; theme: Theme; itemLabelPlural: string }) {
-  const ink = theme.ink;
-  return (
-    <footer style={{ padding: "48px 28px 24px", background: theme.surfaceDark || "#171411", color: "rgba(255,255,255,.7)" }}>
-      <div style={{ maxWidth: 1320, margin: "0 auto", display: "grid", gridTemplateColumns: "1.4fr 1fr 1fr 1.2fr 1.2fr", gap: 30, fontSize: 12.5 }}>
-        <div>
-          <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 10 }}>
-            {store.logoUrl ? <img src={store.logoUrl} alt={store.name} style={{ width: 30, height: 30, objectFit: "contain" }} /> : <span style={{ width: 30, height: 30, borderRadius: 6, background: "#fff2", display: "grid", placeItems: "center", fontSize: 11, fontWeight: 800 }}>{initials(store.name)}</span>}
-            <strong style={{ color: "#fff", fontFamily: theme.headlineFont, fontSize: 14 }}>{store.name}</strong>
-          </div>
-          <p style={{ margin: 0, lineHeight: 1.7 }}>Luxury stays. Lasting memories.</p>
-        </div>
-        <div style={{ display: "grid", gap: 8, alignContent: "start" }}>
-          <strong style={{ color: "#fff", fontSize: 12.5 }}>Quick Links</strong>
-          <Link href={`/store/${slug}`} style={{ color: "inherit", textDecoration: "none" }}>Home</Link>
-          <Link href={`/store/${slug}/hotel/rooms`} style={{ color: "inherit", textDecoration: "none" }}>{itemLabelPlural}</Link>
-          <Link href={`/store/${slug}/hotel/experience`} style={{ color: "inherit", textDecoration: "none" }}>Amenities</Link>
-        </div>
-        <div style={{ display: "grid", gap: 8, alignContent: "start" }}>
-          <strong style={{ color: "#fff", fontSize: 12.5 }}>Support</strong>
-          <Link href={`/store/${slug}/hotel/contact`} style={{ color: "inherit", textDecoration: "none" }}>Contact Us</Link>
-          <Link href={`/store/${slug}/account`} style={{ color: "inherit", textDecoration: "none" }}>Booking Policy</Link>
-          <Link href={`/store/${slug}/hotel/story`} style={{ color: "inherit", textDecoration: "none" }}>About Us</Link>
-        </div>
-        <div style={{ display: "grid", gap: 8, alignContent: "start" }}>
-          <strong style={{ color: "#fff", fontSize: 12.5 }}>Connect With Us</strong>
-          <div style={{ display: "flex", gap: 10 }}>
-            <Facebook size={15} /><Instagram size={15} /><Twitter size={15} /><Youtube size={15} /><Linkedin size={15} />
-          </div>
-          {store.address && <span style={{ display: "flex", gap: 8 }}><MapPin size={13} style={{ flexShrink: 0, marginTop: 2 }} />{store.address}</span>}
-          {store.contactPhone && <span style={{ display: "flex", gap: 8 }}><Phone size={13} />{store.contactPhone}</span>}
-          {store.contactEmail && <span style={{ display: "flex", gap: 8 }}><Mail size={13} />{store.contactEmail}</span>}
-        </div>
-        <div style={{ display: "grid", gap: 10, alignContent: "start" }}>
-          <strong style={{ color: "#fff", fontSize: 12.5 }}>Join Our Newsletter</strong>
-          <span>Get exclusive offers and updates.</span>
-          <form onSubmit={(e) => e.preventDefault()} style={{ display: "flex", gap: 8 }}>
-            <input placeholder="Your email address" style={{ flex: 1, minWidth: 0, border: "1px solid rgba(255,255,255,.2)", background: "transparent", borderRadius: 8, padding: "8px 10px", color: "#fff", fontSize: 12 }} />
-            <button type="submit" style={{ border: 0, borderRadius: 8, width: 34, background: "#fff2", color: "#fff", cursor: "pointer" }}><ArrowRight size={14} /></button>
-          </form>
-        </div>
-      </div>
-      <div style={{ maxWidth: 1320, margin: "36px auto 0", paddingTop: 18, borderTop: "1px solid rgba(255,255,255,.12)", display: "flex", justifyContent: "space-between", fontSize: 11, color: "rgba(255,255,255,.5)" }}>
-        <span>© {new Date().getFullYear()} {store.name}. All rights reserved.</span>
-        <span>Powered by BizNest</span>
-      </div>
-    </footer>
   );
 }
