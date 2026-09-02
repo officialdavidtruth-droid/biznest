@@ -9,7 +9,8 @@ import { prisma } from "@/lib/prisma";
 import type { Prisma } from "@prisma/client";
 import { assertStorePermission } from "@/lib/access/assert-store-access";
 import { createStoreSchema, type CreateStoreInput } from "@/lib/validations/business";
-import { generateUniqueStoreSlug, storeAdminUrl, storePublicUrl } from "@/lib/utils/slug";
+import { generateUniqueStoreSlug, storeAdminUrl, storePublicUrl, SLUG_FORMAT_RE, SLUG_MIN_LENGTH, SLUG_MAX_LENGTH } from "@/lib/utils/slug";
+import { RESERVED_SLUGS } from "@/lib/constants/reserved-slugs";
 import { revalidatePath } from "next/cache";
 import slugify from "slugify";
 import { SAMPLE_LISTINGS } from "@/lib/sample-listings";
@@ -377,6 +378,101 @@ export async function updateStoreSettings(slug: string, formData: FormData) {
 
   revalidatePath(`/store/${slug}/admin/settings`);
   revalidatePath(`/store/${slug}`);
+}
+
+/**
+ * Validates a candidate slug against every rule that would cause
+ * updateStoreSlug to reject it, without writing anything — used for the
+ * live "already exists" feedback in the settings UI as the owner types.
+ * Deliberately treats the store's own current slug as "available" so the
+ * UI doesn't flag an unchanged value as taken.
+ */
+export async function checkSlugAvailability(
+  currentSlug: string,
+  candidate: string
+): Promise<{ available: boolean; reason?: string }> {
+  const raw = candidate.trim().toLowerCase();
+  if (raw === currentSlug) return { available: true };
+  if (!raw) return { available: false, reason: "Enter a URL." };
+  if (raw.length < SLUG_MIN_LENGTH || raw.length > SLUG_MAX_LENGTH) {
+    return { available: false, reason: `Must be ${SLUG_MIN_LENGTH}–${SLUG_MAX_LENGTH} characters.` };
+  }
+  if (!SLUG_FORMAT_RE.test(raw)) {
+    return { available: false, reason: "Only lowercase letters, numbers, and hyphens." };
+  }
+  if (RESERVED_SLUGS.has(raw)) {
+    return { available: false, reason: "That URL is reserved." };
+  }
+
+  const [slugTaken, historyTaken] = await Promise.all([
+    prisma.store.findUnique({ where: { slug: raw }, select: { id: true } }),
+    prisma.storeSlugHistory.findUnique({ where: { oldSlug: raw }, select: { id: true } }),
+  ]);
+  if (slugTaken || historyTaken) return { available: false, reason: "Already taken." };
+
+  return { available: true };
+}
+
+/**
+ * Lets an owner shorten/rename their store's URL (e.g. "truth-empire-
+ * logistics" -> "tel"), any time, as long as the new slug is free.
+ *
+ * The old slug is never deleted — it's archived to StoreSlugHistory so
+ * anyone who already bookmarked/shared biznest.space/<old-slug> lands on
+ * the store's new URL instead of a dead link (see the redirect in
+ * app/store/[slug]/layout.tsx). Staff whose login handle is
+ * "<username>@<old-slug>" also keep working, via the same history lookup
+ * in lib/auth.ts — but they should still be told about the new handle,
+ * since biznest.space links they share elsewhere still show the old slug
+ * until they update those links.
+ */
+export async function updateStoreSlug(
+  currentSlug: string,
+  formData: FormData
+): Promise<ActionResult<{ slug: string; publicUrl: string }>> {
+  const access = await assertStoreAccess(currentSlug);
+  if (!access.success) return { success: false, error: access.error };
+
+  const raw = String(formData.get("slug") ?? "").trim().toLowerCase();
+
+  if (raw === currentSlug) {
+    return { success: true, data: { slug: currentSlug, publicUrl: storePublicUrl(currentSlug) } };
+  }
+  if (raw.length < SLUG_MIN_LENGTH || raw.length > SLUG_MAX_LENGTH) {
+    return { success: false, error: `Your store URL must be ${SLUG_MIN_LENGTH}–${SLUG_MAX_LENGTH} characters.` };
+  }
+  if (!SLUG_FORMAT_RE.test(raw)) {
+    return { success: false, error: "Use only lowercase letters, numbers, and hyphens — no spaces, symbols, or leading/trailing hyphens." };
+  }
+  if (RESERVED_SLUGS.has(raw)) {
+    return { success: false, error: "That URL is reserved. Try something else." };
+  }
+
+  // Re-check right before writing (not just relying on the live UI check),
+  // since another store could have claimed it in between.
+  const [slugTaken, historyTaken] = await Promise.all([
+    prisma.store.findUnique({ where: { slug: raw }, select: { id: true } }),
+    prisma.storeSlugHistory.findUnique({ where: { oldSlug: raw }, select: { id: true } }),
+  ]);
+  if (slugTaken || historyTaken) {
+    return { success: false, error: "That URL is already taken. Try another." };
+  }
+
+  await prisma.$transaction([
+    prisma.storeSlugHistory.create({ data: { storeId: access.store.id, oldSlug: currentSlug } }),
+    prisma.store.update({ where: { id: access.store.id }, data: { slug: raw } }),
+  ]);
+
+  await prisma.auditLog.create({
+    data: { userId: access.store.business.userId, action: "STORE_SLUG_CHANGED", entity: "Store", entityId: access.store.id, metadata: { from: currentSlug, to: raw } },
+  });
+
+  revalidatePath(`/store/${currentSlug}/admin/settings`);
+  revalidatePath(`/store/${raw}/admin/settings`);
+  revalidatePath(`/${currentSlug}`);
+  revalidatePath(`/${raw}`);
+
+  return { success: true, data: { slug: raw, publicUrl: storePublicUrl(raw) } };
 }
 
 export type HeroOverrides = { headline?: string; subtitle?: string; ctaLabel?: string };
