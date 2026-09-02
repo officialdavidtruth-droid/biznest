@@ -1,10 +1,12 @@
 import Link from "next/link";
 import type React from "react";
-import { ArrowDownRight, ArrowUpRight, CalendarDays, Clock3, Mail, MapPin, Phone, Star } from "lucide-react";
+import { ArrowDownRight, ArrowUpRight, Clock3, Mail, MapPin, Phone, Star } from "lucide-react";
 import { Reveal } from "@/components/storefront/reveal";
 import type { TemplateTheme } from "@/lib/template-themes";
 import type { HospitalityGalleryContent } from "@/lib/actions/hospitality-content";
 import { formatMoney, resolveHeroMedia } from "@/lib/storefront/hero-media";
+import { HotelHeader, HotelFooter } from "@/components/storefront/templates/hotel-chrome";
+import { getUnitBookingNiche } from "@/lib/storefront/unit-booking-niche";
 
 type CatalogItem = {
   id: string;
@@ -37,6 +39,8 @@ type StoreLike = {
   contactEmail: string | null;
   contactPhone: string | null;
   sellsProducts: boolean;
+  businessType?: string | null;
+  storefrontConfig?: unknown;
   business: {
     description: string | null;
     city?: string | null;
@@ -84,18 +88,8 @@ function hotelProfile(store: StoreLike): HotelProfile {
   };
 }
 
-function initials(name: string) {
-  return name
-    .split(/\s+/)
-    .filter(Boolean)
-    .slice(0, 2)
-    .map((part) => part[0])
-    .join("")
-    .toUpperCase();
-}
-
 function itemHref(slug: string, item: CatalogItem) {
-  return item.kind === "service" && ROOM_PATTERN.test(`${item.name} ${item.categoryName ?? ""}`) ? `/${slug}/room/${item.id}` : `/${slug}/${item.kind}/${item.id}`;
+  return item.kind === "service" && ROOM_PATTERN.test(`${item.name} ${item.categoryName ?? ""}`) ? `/store/${slug}/room/${item.id}` : `/store/${slug}/${item.kind}/${item.id}`;
 }
 
 function imageStyle(url: string | null, fallback: string): React.CSSProperties {
@@ -119,6 +113,9 @@ export function HotelStorefront({ store, slug, catalogItems, goodReviews, avgRat
   const ink = theme.ink;
   const muted = theme.muted || `${ink}99`;
   const dark = theme.surfaceDark || "#171411";
+  // Drives {itemLabelPlural} and every other niche-specific label in the
+  // shared header/footer — see lib/storefront/unit-booking-niche.ts.
+  const niche = getUnitBookingNiche(store.businessType, store.storefrontConfig);
 
   const sectionTitle = (eyebrow: string, title: string, body?: string) => (
     <div style={{ maxWidth: 760 }}>
@@ -130,31 +127,7 @@ export function HotelStorefront({ store, slug, catalogItems, goodReviews, avgRat
 
   return (
     <div style={{ background: theme.bg, color: ink, fontFamily: theme.font, overflow: "hidden" }}>
-      <header style={{ position: "sticky", top: 0, zIndex: 50, background: `${theme.bg}F2`, backdropFilter: "blur(18px)", borderBottom: `1px solid ${theme.border || `${ink}18`}` }}>
-        <div className="bn-header-inner" style={{ maxWidth: 1320, margin: "0 auto", minHeight: 76, padding: "0 28px", display: "flex", alignItems: "center", gap: 28 }}>
-          <Link href={`/${slug}`} style={{ color: ink, textDecoration: "none", display: "flex", alignItems: "center", gap: 12, minWidth: 0 }}>
-            {store.logoUrl ? (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img src={store.logoUrl} alt={store.name} style={{ width: 40, height: 40, objectFit: "contain" }} />
-            ) : (
-              <span style={{ width: 40, height: 40, display: "grid", placeItems: "center", background: ink, color: theme.bg, fontSize: 12, fontWeight: 800, letterSpacing: ".08em" }}>{initials(store.name)}</span>
-            )}
-            <span style={{ fontFamily: theme.headlineFont, fontSize: 17, fontWeight: 700, letterSpacing: "-.02em", whiteSpace: "nowrap" }}>{store.name}</span>
-          </Link>
-
-          <input type="checkbox" id={`bn-nav-${slug}-hotel`} className="bn-nav-toggle" />
-          <label htmlFor={`bn-nav-${slug}-hotel`} className="bn-hamburger" style={{ color: ink, marginLeft: "auto" }} aria-label="Menu">☰</label>
-
-          <nav className="bn-nav-links" style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: 25, fontSize: 12, fontWeight: 650 }}>
-            <a href={`/${slug}/hotel/story`} style={{ color: ink, textDecoration: "none" }}>The Hotel</a>
-            <a href={`/${slug}/hotel/rooms`} style={{ color: ink, textDecoration: "none" }}>Rooms</a>
-            {experiences.length > 0 && <a href={`/${slug}/hotel/experience`} style={{ color: ink, textDecoration: "none" }}>Experience</a>}
-            {galleryImages.length > 1 && <a href={`/${slug}/hotel/gallery`} style={{ color: ink, textDecoration: "none" }}>Gallery</a>}
-            <a href={`/${slug}/hotel/contact`} style={{ color: ink, textDecoration: "none" }}>Contact</a>
-            <a href={`/${slug}/hotel/rooms`} style={{ display: "inline-flex", alignItems: "center", gap: 7, padding: "11px 16px", background: ink, color: theme.bg, textDecoration: "none", borderRadius: theme.radius, fontWeight: 800 }}>Reserve <ArrowUpRight size={14} /></a>
-          </nav>
-        </div>
-      </header>
+      <HotelHeader slug={slug} theme={theme} store={store} active="home" itemLabelPlural={niche.itemLabelPlural} />
 
       <main>
         <section
@@ -211,8 +184,8 @@ export function HotelStorefront({ store, slug, catalogItems, goodReviews, avgRat
                 <h1 style={{ fontFamily: theme.headlineFont, fontSize: "clamp(52px, 9vw, 116px)", lineHeight: .88, letterSpacing: "-0.065em", fontWeight: 650, margin: "18px 0 24px", maxWidth: 900 }}>{store.name}</h1>
                 <p style={{ maxWidth: 650, margin: 0, color: "rgba(255,255,255,.78)", fontSize: 17, lineHeight: 1.8 }}>{store.business.description || theme.sub}</p>
                 <div style={{ display: "flex", flexWrap: "wrap", gap: 12, marginTop: 32 }}>
-                  <a href={`/${slug}/hotel/rooms`} style={{ display: "inline-flex", alignItems: "center", gap: 8, padding: "14px 19px", background: "#fff", color: "#111", textDecoration: "none", borderRadius: theme.radius, fontSize: 13, fontWeight: 800 }}>Discover the stay <ArrowDownRight size={15} /></a>
-                  <a href={`/${slug}/hotel/contact`} style={{ display: "inline-flex", alignItems: "center", gap: 8, padding: "14px 19px", border: "1px solid rgba(255,255,255,.38)", color: "#fff", textDecoration: "none", borderRadius: theme.radius, fontSize: 13, fontWeight: 750 }}>Contact concierge</a>
+                  <a href={`/store/${slug}/hotel/rooms`} style={{ display: "inline-flex", alignItems: "center", gap: 8, padding: "14px 19px", background: "#fff", color: "#111", textDecoration: "none", borderRadius: theme.radius, fontSize: 13, fontWeight: 800 }}>Discover the stay <ArrowDownRight size={15} /></a>
+                  <a href={`/store/${slug}/hotel/contact`} style={{ display: "inline-flex", alignItems: "center", gap: 8, padding: "14px 19px", border: "1px solid rgba(255,255,255,.38)", color: "#fff", textDecoration: "none", borderRadius: theme.radius, fontSize: 13, fontWeight: 750 }}>Contact concierge</a>
                 </div>
               </div>
             </Reveal>
@@ -241,7 +214,7 @@ export function HotelStorefront({ store, slug, catalogItems, goodReviews, avgRat
             <Reveal>
               <div style={{ display: "flex", justifyContent: "space-between", gap: 24, alignItems: "end", flexWrap: "wrap", marginBottom: 42 }}>
                 {sectionTitle("Accommodations", "Spaces made for staying.", "Explore the rooms and suites available at this property. Each accommodation is presented as part of the hotel's story — not as a product listing.")}
-                <a href={`/${slug}/hotel/rooms`} style={{ color: "#fff", textDecoration: "none", fontSize: 12, fontWeight: 800, borderBottom: `1px solid ${theme.accent}`, paddingBottom: 6 }}>View all rooms <ArrowUpRight size={14} style={{ verticalAlign: "middle", marginLeft: 5 }} /></a>
+                <a href={`/store/${slug}/hotel/rooms`} style={{ color: "#fff", textDecoration: "none", fontSize: 12, fontWeight: 800, borderBottom: `1px solid ${theme.accent}`, paddingBottom: 6 }}>View all rooms <ArrowUpRight size={14} style={{ verticalAlign: "middle", marginLeft: 5 }} /></a>
               </div>
             </Reveal>
 
@@ -353,7 +326,7 @@ export function HotelStorefront({ store, slug, catalogItems, goodReviews, avgRat
             <Reveal>
               <div style={{ color: theme.accentSoft || primary, fontSize: 11, fontWeight: 800, letterSpacing: ".18em", textTransform: "uppercase" }}>Reservations & concierge</div>
               <h2 style={{ fontFamily: theme.headlineFont, fontSize: "clamp(40px, 6vw, 72px)", lineHeight: .96, letterSpacing: "-.05em", margin: "15px 0 24px" }}>Make your next stay part of the story.</h2>
-              <a href={`/${slug}/hotel/rooms`} style={{ display: "inline-flex", alignItems: "center", gap: 8, padding: "14px 19px", background: "#fff", color: "#111", borderRadius: theme.radius, textDecoration: "none", fontWeight: 800, fontSize: 13 }}>Explore rooms <ArrowUpRight size={15} /></a>
+              <a href={`/store/${slug}/hotel/rooms`} style={{ display: "inline-flex", alignItems: "center", gap: 8, padding: "14px 19px", background: "#fff", color: "#111", borderRadius: theme.radius, textDecoration: "none", fontWeight: 800, fontSize: 13 }}>Explore rooms <ArrowUpRight size={15} /></a>
             </Reveal>
             <Reveal>
               <div style={{ display: "grid", gap: 18, paddingTop: 5 }}>
@@ -367,12 +340,7 @@ export function HotelStorefront({ store, slug, catalogItems, goodReviews, avgRat
         </section>
       </main>
 
-      <footer style={{ padding: "26px 28px", background: dark, color: "rgba(255,255,255,.58)", borderTop: "1px solid rgba(255,255,255,.1)" }}>
-        <div className="bn-2col" style={{ maxWidth: 1240, margin: "0 auto", display: "grid", gridTemplateColumns: "1fr auto", gap: 30, "--bn-cols": "1fr auto" } as React.CSSProperties}>
-          <div style={{ display: "flex", gap: 8, alignItems: "center", fontSize: 12 }}><CalendarDays size={14} /> {profile.checkInOut[0] || "Reservations available"}</div>
-          <div style={{ fontSize: 11 }}>© {new Date().getFullYear()} {store.name}</div>
-        </div>
-      </footer>
+      <HotelFooter slug={slug} theme={theme} store={store} itemLabelPlural={niche.itemLabelPlural} />
     </div>
   );
 }
