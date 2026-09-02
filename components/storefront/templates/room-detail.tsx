@@ -111,6 +111,7 @@ export function RoomDetail(props: Props) {
 
   const gallery = images.length ? images : [null];
   const thumbs = gallery.slice(1, 5);
+  const hasThumbs = thumbs.some(Boolean);
   const extraCount = Math.max(0, gallery.length - 5);
 
   function bookHref() {
@@ -180,8 +181,12 @@ export function RoomDetail(props: Props) {
       <div style={{ maxWidth: 1320, margin: "0 auto", padding: "28px 28px 90px", display: "grid", gridTemplateColumns: "1fr 340px", gap: 28, alignItems: "start" }}>
         {/* Main column */}
         <div style={{ display: "grid", gap: 26 }}>
-          {/* Gallery */}
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 150px", gap: 12 }}>
+          {/* Gallery — the 4-slot thumbnail sidebar only renders when there
+              are actual extra photos to show. Previously it always
+              reserved 4 slots even with zero real thumbnails, which
+              rendered as a wall of empty boxes that read as a stuck
+              loading state rather than "no more photos". */}
+          <div style={{ display: "grid", gridTemplateColumns: hasThumbs ? "1fr 150px" : "1fr", gap: 12 }}>
             <div style={{ position: "relative", borderRadius: theme.radius, overflow: "hidden", aspectRatio: "4/3", background: gallery[activeImage] ? `url(${gallery[activeImage]}) center/cover` : `linear-gradient(135deg, ${accent}, ${ink})` }}>
               {badge && (
                 <span style={{ position: "absolute", top: 14, left: 14, display: "flex", alignItems: "center", gap: 5, padding: "6px 12px", borderRadius: 20, background: "rgba(20,16,12,.82)", color: "#fff", fontSize: 11, fontWeight: 800 }}>
@@ -196,24 +201,26 @@ export function RoomDetail(props: Props) {
                 </>
               )}
             </div>
-            <div style={{ display: "grid", gridTemplateRows: "repeat(4, 1fr)", gap: 12 }}>
-              {[0, 1, 2, 3].map((i) => {
-                const src = thumbs[i];
-                const isLast = i === 3 && extraCount > 0;
-                return (
-                  <button
-                    type="button"
-                    key={i}
-                    onClick={() => src && setActiveImage(images.indexOf(src))}
-                    style={{ position: "relative", border: 0, padding: 0, borderRadius: 10, overflow: "hidden", cursor: src ? "pointer" : "default", background: src ? `url(${src}) center/cover` : `${ink}0d` }}
-                  >
-                    {isLast && (
-                      <span style={{ position: "absolute", inset: 0, background: "rgba(20,16,12,.6)", color: "#fff", display: "grid", placeItems: "center", fontSize: 12.5, fontWeight: 800 }}>+{extraCount} Photos</span>
-                    )}
-                  </button>
-                );
-              })}
-            </div>
+            {hasThumbs && (
+              <div style={{ display: "grid", gridTemplateRows: "repeat(4, 1fr)", gap: 12 }}>
+                {[0, 1, 2, 3].map((i) => {
+                  const src = thumbs[i];
+                  const isLast = i === 3 && extraCount > 0;
+                  return (
+                    <button
+                      type="button"
+                      key={i}
+                      onClick={() => src && setActiveImage(images.indexOf(src))}
+                      style={{ position: "relative", border: 0, padding: 0, borderRadius: 10, overflow: "hidden", cursor: src ? "pointer" : "default", background: src ? `url(${src}) center/cover` : `${ink}0d` }}
+                    >
+                      {isLast && (
+                        <span style={{ position: "absolute", inset: 0, background: "rgba(20,16,12,.6)", color: "#fff", display: "grid", placeItems: "center", fontSize: 12.5, fontWeight: 800 }}>+{extraCount} Photos</span>
+                      )}
+                    </button>
+                  );
+                })}
+              </div>
+            )}
           </div>
 
           {/* Amenity strip */}
