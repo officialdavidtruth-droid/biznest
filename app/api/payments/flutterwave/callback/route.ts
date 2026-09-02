@@ -11,7 +11,7 @@ import { NextResponse } from "next/server";
 import { settleWalletFunding, settleServiceBookingPayment } from "@/lib/actions/customer-wallet";
 import { settleReservationPayment } from "@/lib/actions/pms";
 
-const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? "https://biznest.vercel.app";
+import { APP_URL } from "@/lib/constants/app-url";
 
 export async function GET(req: Request) {
   const { searchParams } = new URL(req.url);
