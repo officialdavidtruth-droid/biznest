@@ -3,7 +3,7 @@ import { verifyPaystackTransaction } from "@/lib/payments/paystack";
 import { checkRateLimit, getClientIp } from "@/lib/rate-limit";
 import { NextResponse } from "next/server";
 
-const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? "https://www.biznest.space";
+import { APP_URL } from "@/lib/constants/app-url";
 
 export async function GET(req: Request) {
   const { searchParams } = new URL(req.url);
