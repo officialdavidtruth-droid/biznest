@@ -8,6 +8,7 @@ import { resolveStoreTheme, getSignatureTheme, isSignatureTemplate, type Templat
 import { getHospitalityGallery } from "@/lib/actions/hospitality-content";
 import { formatMoney } from "@/lib/storefront/hero-media";
 import { AccountLink } from "@/components/storefront/account-link";
+import { RoomsSuitesListing, type ListingItem } from "@/components/storefront/templates/rooms-suites-listing";
 
 const ROOM_PATTERN = /room|suite|studio|apartment|villa|penthouse|chalet|cottage|lodge|duplex/i;
 const SECTIONS = ["story", "rooms", "experience", "gallery", "contact"] as const;
@@ -23,6 +24,7 @@ type Item = {
   image: string | null;
   categoryName: string | null;
   isBookable: boolean;
+  attributes?: Record<string, unknown> | null;
 };
 
 function listValue(value: unknown): string[] {
@@ -134,7 +136,7 @@ export default async function HotelSectionPage({ params }: { params: Promise<{ s
   const checkInOut = listValue(profileRaw.checkInOut);
   const items: Item[] = [
     ...store.products.map((p) => ({ id: p.id, kind: "product" as const, name: p.name, description: null, price: Number(p.price), currency: p.currency, image: p.images[0] ?? null, categoryName: p.category?.name ?? null, isBookable: false })),
-    ...store.services.map((s) => ({ id: s.id, kind: "service" as const, name: s.name, description: s.description, price: Number(s.price), currency: s.currency, image: s.images[0] ?? null, categoryName: s.category?.name ?? null, isBookable: s.isBookable })),
+    ...store.services.map((s) => ({ id: s.id, kind: "service" as const, name: s.name, description: s.description, price: Number(s.price), currency: s.currency, image: s.images[0] ?? null, categoryName: s.category?.name ?? null, isBookable: s.isBookable, attributes: (s.attributes && typeof s.attributes === "object" ? s.attributes : null) as Record<string, unknown> | null })),
   ];
   const rooms = items.filter((i) => ROOM_PATTERN.test(`${i.name} ${i.categoryName ?? ""}`));
   const roomItems = rooms.length ? rooms : items.filter((i) => i.kind === "product");
@@ -155,10 +157,35 @@ export default async function HotelSectionPage({ params }: { params: Promise<{ s
     {(amenities.length || checkInOut.length) ? <section style={{ padding: "100px 28px", background: theme.card }}><div style={{ maxWidth: 1240, margin: "0 auto" }}><h2 style={{ fontFamily: theme.headlineFont, fontSize: 48, margin: 0 }}>The essentials.</h2><div className="bn-grid-2" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 60, marginTop: 40 }}><div>{amenities.map(a => <div key={a} style={{ padding: "16px 0", borderBottom: `1px solid ${theme.border || `${theme.ink}18`}`, fontSize: 13, fontWeight: 700 }}>{a}</div>)}</div><div>{checkInOut.map(a => <div key={a} style={{ display: "flex", gap: 12, marginBottom: 18, fontSize: 13 }}><Clock3 size={17} color={theme.accent} />{a}</div>)}</div></div></div></section> : null}
   </>);
 
-  if (section === "rooms") return shell(<>
-    {pageHero(theme, dark, heroImage, "Rooms & suites", "Spaces made for staying well.", "Explore the accommodation collection and choose the room that fits your stay.")}
-    <section style={{ padding: "70px 28px 130px" }}><div style={{ maxWidth: 1240, margin: "0 auto" }}><div style={{ display: "grid", gridTemplateColumns: "1fr", gap: 28 }}>{roomItems.length ? roomItems.map((room) => <Link key={room.id} href={`/store/${slug}/room/${room.id}`} className="bn-room-card" style={{ color: theme.ink, textDecoration: "none", display: "flex", border: `1px solid ${theme.border || `${theme.ink}18`}`, background: theme.card, overflow: "hidden" }}><div className="bn-room-card-img" style={{ width: "42%", flexShrink: 0, aspectRatio: "4/3", background: room.image ? `url(${room.image}) center/cover` : `linear-gradient(135deg, ${theme.accent}, ${dark})` }} /><div style={{ flex: 1, padding: "30px 34px", display: "flex", flexDirection: "column", justifyContent: "center", gap: 12, minWidth: 0 }}><div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12 }}><span style={{ color: theme.accent, fontSize: 10, fontWeight: 800, letterSpacing: ".16em", textTransform: "uppercase" }}>{room.categoryName || "Accommodation"}</span>{room.price > 0 && <span style={{ fontSize: 13, fontWeight: 800, color: theme.accent, whiteSpace: "nowrap" }}>{formatMoney(room.price, room.currency)} <span style={{ opacity: .6, fontWeight: 600 }}>/ night</span></span>}</div><h2 style={{ fontFamily: theme.headlineFont, fontSize: 30, margin: 0, letterSpacing: "-.02em" }}>{room.name}</h2><p style={{ margin: 0, color: muted, lineHeight: 1.75, fontSize: 13.5, maxWidth: 480 }}>{room.description || "Discover this accommodation."}</p><div style={{ height: 1, background: theme.border || `${theme.ink}14`, margin: "6px 0 2px", maxWidth: 480 }} /><span style={{ display: "inline-flex", alignItems: "center", gap: 7, fontSize: 12, fontWeight: 800, color: theme.ink }}>View room <ArrowUpRight size={13} /></span></div></Link>) : <p style={{ color: muted }}>Published rooms will appear here once they are added.</p>}</div></div></section>
-  </>);
+  if (section === "rooms") {
+    const listingItems: ListingItem[] = roomItems.map((room) => ({
+      id: room.id,
+      name: room.name,
+      description: room.description,
+      price: room.price,
+      currency: room.currency,
+      image: room.image,
+      categoryName: room.categoryName,
+      attributes: room.attributes ?? null,
+    }));
+    return shell(<>
+      {pageHero(theme, dark, heroImage, "Rooms & suites", "Spaces made for staying well.", "Explore the accommodation collection and choose the room that fits your stay.")}
+      {roomItems.length ? (
+        <RoomsSuitesListing
+          slug={slug}
+          theme={theme}
+          items={listingItems}
+          itemLabelPlural="Rooms & Suites"
+          itemLabelSingular="Room"
+          rateUnit="night"
+          detailBasePath={`/store/${slug}/room`}
+          bookBasePath={`/store/${slug}/room`}
+        />
+      ) : (
+        <section style={{ padding: "70px 28px 130px" }}><div style={{ maxWidth: 1240, margin: "0 auto" }}><p style={{ color: muted }}>Published rooms will appear here once they are added.</p></div></section>
+      )}
+    </>);
+  }
 
   if (section === "experience") return shell(<>
     {pageHero(theme, dark, heroImage, "The experience", "More than a room.", "Discover the services, experiences and moments that shape the stay.")}
