@@ -6,6 +6,35 @@ import { RESERVED_SLUGS } from "@/lib/constants/reserved-slugs";
 // biznest.space/<slug> now resolves to a store, so a slug can never be
 // allowed to collide with a real route like /account or /supaadmin.
 
+// Shared by generateUniqueStoreSlug below and updateStoreSlug (the owner-
+// facing "shorten your store URL" action in lib/actions/store.ts) so both
+// paths agree on what a legal slug looks like: lowercase letters, digits,
+// and single hyphens, never leading/trailing/doubled.
+export const SLUG_FORMAT_RE = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
+export const SLUG_MIN_LENGTH = 2;
+export const SLUG_MAX_LENGTH = 63;
+
+/**
+ * Resolves a slug to whatever the store's *current* slug is right now —
+ * either because it still matches directly, or because it's a retired slug
+ * recorded in StoreSlugHistory after an owner renamed their store (see
+ * updateStoreSlug). Returns null if the slug never belonged to any store.
+ *
+ * Used wherever a stale/bookmarked slug needs to keep working transparently:
+ * app/store/[slug]/layout.tsx (storefront redirect) and the staff
+ * "<username>@<store-slug>" login lookup in lib/auth.ts.
+ */
+export async function resolveCurrentSlug(slug: string): Promise<string | null> {
+  const direct = await prisma.store.findUnique({ where: { slug }, select: { slug: true } });
+  if (direct) return direct.slug;
+
+  const retired = await prisma.storeSlugHistory.findUnique({
+    where: { oldSlug: slug },
+    select: { store: { select: { slug: true } } },
+  });
+  return retired?.store.slug ?? null;
+}
+
 /**
  * Generates a unique, URL-safe slug for a store, e.g.
  * "Stacey's Paradise" -> "staceys-paradise", and, on collision,
@@ -37,7 +66,11 @@ export async function generateUniqueStoreSlug(
 }
 
 export function storePublicUrl(slug: string): string {
-  const base = process.env.NEXT_PUBLIC_APP_URL ?? "https://biznest.vercel.app";
+  // Same fallback as lib/constants/app-url.ts — kept as a literal here
+  // rather than importing it, since that constant already reads
+  // NEXT_PUBLIC_APP_URL itself and this function needs the raw env value
+  // to fall back independently.
+  const base = process.env.NEXT_PUBLIC_APP_URL ?? "https://www.biznest.space";
   const { protocol, host } = new URL(base);
   const root = host.replace(/^www\./, "");
 
