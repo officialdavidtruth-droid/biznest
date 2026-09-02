@@ -120,6 +120,29 @@ function NavLink({ base, item, pathname }: { base: string; item: NavItem; pathna
   const Icon = item.icon;
 
   if (!item.children || item.children.length === 0) {
+    // The PMS app switches to an entirely different persistent shell (no
+    // sidebar, its own dark theme) via a conditional branch inside the
+    // shared admin layout.tsx. Next.js App Router layouts persist across
+    // client-side navigations to sibling routes by design (they don't
+    // re-run just because the destination page differs), so a soft <Link>
+    // nav here can leave the old sidebar-shell mounted with the PMS page's
+    // own content rendered inside it — the double-sidebar bug. A plain
+    // <a> forces a full document load, which always re-evaluates the
+    // layout fresh. See app/store/[slug]/admin/layout.tsx's isPmsRoute.
+    if (item.href === "/pms") {
+      return (
+        <a
+          href={href}
+          className={`group relative flex items-center gap-2.5 rounded-lg px-2.5 py-2 text-sm transition-colors ${
+            isActive ? "bg-[#10967a] font-medium text-white shadow-sm" : "text-slate-300 hover:bg-white/8 hover:text-white"
+          }`}
+        >
+          {isActive && <span className="absolute -left-3 top-1/2 h-4 w-0.5 -translate-y-1/2 rounded-full bg-primary" />}
+          <Icon className={`h-4 w-4 shrink-0 ${isActive ? "" : "opacity-70 group-hover:opacity-100"}`} />
+          <span className="truncate">{item.label}</span>
+        </a>
+      );
+    }
     return (
       <Link
         href={href}
