@@ -1,4 +1,6 @@
 import type { Metadata } from "next";
+import { redirect } from "next/navigation";
+import { prisma } from "@/lib/prisma";
 import { getStoreBranding } from "@/lib/actions/store-branding";
 
 // Every store page under /store/[slug] falls back to the root layout's
@@ -36,7 +38,32 @@ export async function generateMetadata({
 // covers every storefront page under /store/[slug] (home, cart, checkout)
 // without each page re-declaring it. Georgia/Courier New are system fonts
 // and need no webfont link.
-export default function StoreLayout({ children }: { children: React.ReactNode }) {
+export default async function StoreLayout({
+  children,
+  params,
+}: {
+  children: React.ReactNode;
+  params: Promise<{ slug: string }>;
+}) {
+  const { slug } = await params;
+
+  // If this slug doesn't match any store directly, it might be one an
+  // owner retired by shortening/renaming their store URL (see
+  // updateStoreSlug in lib/actions/store.ts). Only one extra query, and
+  // only in that (rare) case — the common case of a live slug costs
+  // nothing extra here since every route under this layout already does
+  // its own store lookup and 404s on a genuine miss.
+  const exists = await prisma.store.findUnique({ where: { slug }, select: { id: true } });
+  if (!exists) {
+    const retired = await prisma.storeSlugHistory.findUnique({
+      where: { oldSlug: slug },
+      select: { store: { select: { slug: true } } },
+    });
+    if (retired) {
+      redirect(`/${retired.store.slug}`);
+    }
+  }
+
   return (
     <>
       <link rel="preconnect" href="https://fonts.googleapis.com" />
