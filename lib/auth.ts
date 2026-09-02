@@ -10,6 +10,7 @@ import { authConfig } from "@/lib/auth.config";
 import { logError, logWarn } from "@/lib/observability/log";
 import { checkRateLimit, getClientIp } from "@/lib/rate-limit";
 import { headers } from "next/headers";
+import { resolveCurrentSlug } from "@/lib/utils/slug";
 
 // Auth.js v5 quirk that cost real debugging time: a plain `throw new
 // Error("ACCOUNT_LOCKED")` inside authorize() does NOT reach the client as
@@ -129,9 +130,20 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           // platform-scoped account so owners/staff/admins can still sign
           // in even from a page that happened to pass a storeSlug.
           const loginStoreSlug = typeof credentials?.storeSlug === "string" && credentials.storeSlug ? credentials.storeSlug : undefined;
-          const loginStore = loginStoreSlug
+          // Falls back to StoreSlugHistory if the owner has since
+          // shortened/renamed the store's URL (see updateStoreSlug in
+          // lib/actions/store.ts) — a customer's branded login page
+          // (?store=<slug> in the URL, possibly bookmarked) shouldn't
+          // break just because the slug it was built with is retired.
+          let loginStore = loginStoreSlug
             ? await withTimeout(prisma.store.findUnique({ where: { slug: loginStoreSlug }, select: { id: true } }))
             : null;
+          if (!loginStore && loginStoreSlug) {
+            const currentSlug = await resolveCurrentSlug(loginStoreSlug);
+            loginStore = currentSlug
+              ? await withTimeout(prisma.store.findUnique({ where: { slug: currentSlug }, select: { id: true } }))
+              : null;
+          }
 
           user = loginStore
             ? await withTimeout(
@@ -149,7 +161,15 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
             const atIndex = parsed.data.email.lastIndexOf("@");
             if (atIndex > 0) {
               const handle = parsed.data.email.slice(0, atIndex);
-              const storeSlug = parsed.data.email.slice(atIndex + 1).toLowerCase();
+              // Resolves through StoreSlugHistory too, so a staff member's
+              // login handle (e.g. "amaka@velox-space") keeps working even
+              // after the owner shortens/renames the store's URL — see
+              // resolveCurrentSlug and updateStoreSlug in lib/actions/store.ts.
+              // Falls back to the raw entered value so an unrecognized slug
+              // still reaches the query below and fails the normal way
+              // (staff === null) rather than throwing.
+              const enteredSlug = parsed.data.email.slice(atIndex + 1).toLowerCase();
+              const storeSlug = (await resolveCurrentSlug(enteredSlug)) ?? enteredSlug;
 
               const staff = await withTimeout(
                 prisma.storeStaff.findFirst({
