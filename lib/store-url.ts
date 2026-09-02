@@ -1,4 +1,4 @@
-const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? "https://biznest.vercel.app";
+import { APP_URL } from "@/lib/constants/app-url";
 
 type StoreForUrl = {
   slug: string;
