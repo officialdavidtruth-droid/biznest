@@ -7,8 +7,8 @@ import { prisma } from "@/lib/prisma";
 import { resolveStoreTheme, getSignatureTheme, isSignatureTemplate, type TemplateTheme } from "@/lib/template-themes";
 import { getHospitalityGallery } from "@/lib/actions/hospitality-content";
 import { formatMoney } from "@/lib/storefront/hero-media";
-import { AccountLink } from "@/components/storefront/account-link";
 import { RoomsSuitesListing, type ListingItem } from "@/components/storefront/templates/rooms-suites-listing";
+import { HotelHeader, HotelFooter } from "@/components/storefront/templates/hotel-chrome";
 import { getUnitBookingNiche } from "@/lib/storefront/unit-booking-niche";
 
 const ROOM_PATTERN = /room|suite|studio|apartment|villa|penthouse|chalet|cottage|lodge|duplex/i;
@@ -58,10 +58,6 @@ function pageHero(theme: TemplateTheme, dark: string, heroImage: string | null, 
   );
 }
 
-function initials(name: string) {
-  return name.split(/\s+/).filter(Boolean).slice(0, 2).map((p) => p[0]).join("").toUpperCase();
-}
-
 function sectionTitle(theme: TemplateTheme, eyebrow: string, title: string, body?: string) {
   return (
     <div style={{ maxWidth: 820 }}>
@@ -69,44 +65,6 @@ function sectionTitle(theme: TemplateTheme, eyebrow: string, title: string, body
       <h1 style={{ fontFamily: theme.headlineFont, fontSize: "clamp(44px, 7vw, 86px)", lineHeight: .94, letterSpacing: "-.055em", margin: "14px 0 0", fontWeight: 650 }}>{title}</h1>
       {body && <p style={{ color: theme.muted || `${theme.ink}99`, fontSize: 16, lineHeight: 1.85, maxWidth: 700, margin: "22px 0 0" }}>{body}</p>}
     </div>
-  );
-}
-
-function HotelHeader({ store, slug, theme, active, roomsNavLabel, reserveCta }: { store: any; slug: string; theme: TemplateTheme; active: Section; roomsNavLabel: string; reserveCta: string }) {
-  const nav = [
-    ["story", "The Hotel"], ["rooms", roomsNavLabel], ["experience", "Experience"], ["gallery", "Gallery"], ["contact", "Contact"],
-  ] as const;
-  return (
-    <header style={{ position: "sticky", top: 0, zIndex: 50, background: `${theme.bg}F2`, backdropFilter: "blur(18px)", borderBottom: `1px solid ${theme.border || `${theme.ink}18`}` }}>
-      <div className="bn-header-inner" style={{ maxWidth: 1320, margin: "0 auto", minHeight: 76, padding: "0 28px", display: "flex", alignItems: "center", gap: 28 }}>
-        <Link href={`/store/${slug}`} style={{ color: theme.ink, textDecoration: "none", display: "flex", alignItems: "center", gap: 12, minWidth: 0 }}>
-          {store.logoUrl ? <img src={store.logoUrl} alt={store.name} style={{ width: 40, height: 40, objectFit: "contain" }} /> : <span style={{ width: 40, height: 40, display: "grid", placeItems: "center", background: theme.ink, color: theme.bg, fontSize: 12, fontWeight: 800 }}>{initials(store.name)}</span>}
-          <span style={{ fontFamily: theme.headlineFont, fontSize: 17, fontWeight: 700, whiteSpace: "nowrap" }}>{store.name}</span>
-        </Link>
-        <input type="checkbox" id={`bn-nav-${slug}-hotel-page`} className="bn-nav-toggle" />
-        <label htmlFor={`bn-nav-${slug}-hotel-page`} className="bn-hamburger" style={{ color: theme.ink, marginLeft: "auto" }} aria-label="Menu">☰</label>
-        <nav className="bn-nav-links" style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: 25, fontSize: 12, fontWeight: 650 }}>
-          {nav.map(([key, label]) => <Link key={key} href={`/store/${slug}/hotel/${key}`} aria-current={active === key ? "page" : undefined} style={{ color: theme.ink, textDecoration: "none", opacity: active === key ? 1 : .68, borderBottom: active === key ? `1px solid ${theme.accent}` : "1px solid transparent", paddingBottom: 4 }}>{label}</Link>)}
-          <AccountLink storeSlug={slug} ink={theme.ink} />
-          <Link href={`/store/${slug}/hotel/rooms`} style={{ display: "inline-flex", alignItems: "center", gap: 7, padding: "11px 16px", background: theme.ink, color: theme.bg, textDecoration: "none", borderRadius: theme.radius, fontWeight: 800 }}>{reserveCta} <ArrowUpRight size={14} /></Link>
-        </nav>
-      </div>
-    </header>
-  );
-}
-
-function HotelFooter({ store, slug, theme }: { store: any; slug: string; theme: TemplateTheme }) {
-  return (
-    <footer style={{ padding: "30px 28px", background: theme.surfaceDark || "#171411", color: "rgba(255,255,255,.62)" }}>
-      <div style={{ maxWidth: 1240, margin: "0 auto", display: "flex", justifyContent: "space-between", gap: 20, flexWrap: "wrap", fontSize: 11 }}>
-        <Link href={`/store/${slug}`} style={{ color: "rgba(255,255,255,.75)", textDecoration: "none" }}>© {new Date().getFullYear()} {store.name}</Link>
-        <div style={{ display: "flex", gap: 18, flexWrap: "wrap" }}>
-          <Link href={`/store/${slug}/hotel/story`} style={{ color: "inherit", textDecoration: "none" }}>The Hotel</Link>
-          <Link href={`/store/${slug}/hotel/rooms`} style={{ color: "inherit", textDecoration: "none" }}>Rooms</Link>
-          <Link href={`/store/${slug}/hotel/contact`} style={{ color: "inherit", textDecoration: "none" }}>Contact</Link>
-        </div>
-      </div>
-    </footer>
   );
 }
 
@@ -155,7 +113,7 @@ export default async function HotelSectionPage({ params }: { params: Promise<{ s
   // it per-store via storefrontConfig.unitBooking.
   const niche = getUnitBookingNiche(store.businessType, store.storefrontConfig);
 
-  const shell = (content: React.ReactNode) => <div style={{ background: theme.bg, color: theme.ink, fontFamily: theme.font, minHeight: "100vh" }}><HotelHeader store={store} slug={slug} theme={theme} active={section as Section} roomsNavLabel={niche.navLabel} reserveCta={niche.reserveCta} /><main>{content}</main><HotelFooter store={store} slug={slug} theme={theme} /></div>;
+  const shell = (content: React.ReactNode) => <div style={{ background: theme.bg, color: theme.ink, fontFamily: theme.font, minHeight: "100vh" }}><HotelHeader slug={slug} theme={theme} store={store} active={section as Section} itemLabelPlural={niche.itemLabelPlural} /><main>{content}</main><HotelFooter slug={slug} theme={theme} store={store} itemLabelPlural={niche.itemLabelPlural} /></div>;
 
   if (section === "story") return shell(<>
     {pageHero(theme, dark, heroImage, "The property", "A place with a point of view.", store.business.description || theme.sub)}
