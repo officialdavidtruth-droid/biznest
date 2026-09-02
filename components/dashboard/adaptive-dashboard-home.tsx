@@ -256,7 +256,16 @@ export function AdaptiveDashboardHome({
             {quickActions.map((action) => {
               const label = quickActionLabel(config, action, isRestaurant);
               const Icon = quickIcon(label);
-              return <Link key={action.id} href={`${base}${action.href}`} className="group rounded-xl border border-[#e7eaf0] bg-[#fcfcfd] p-4 transition hover:-translate-y-0.5 hover:border-[#e9b45a] hover:shadow-sm"><Icon className="mb-3 h-5 w-5 text-[#d89c3c]" /><p className="text-sm font-semibold text-[#1e293b]">{label}</p><p className="mt-1 text-[11px] text-[#94a3b8]">Open workspace</p></Link>;
+              const href = `${base}${action.href}`;
+              const className = "group rounded-xl border border-[#e7eaf0] bg-[#fcfcfd] p-4 transition hover:-translate-y-0.5 hover:border-[#e9b45a] hover:shadow-sm";
+              const content = <><Icon className="mb-3 h-5 w-5 text-[#d89c3c]" /><p className="text-sm font-semibold text-[#1e293b]">{label}</p><p className="mt-1 text-[11px] text-[#94a3b8]">Open workspace</p></>;
+              // PMS renders behind a different persistent shell via a
+              // conditional branch in the shared admin layout — see
+              // sidebar.tsx's NavLink for the full explanation. A plain <a>
+              // forces a full reload so that branch re-evaluates correctly.
+              return action.href === "/pms"
+                ? <a key={action.id} href={href} className={className}>{content}</a>
+                : <Link key={action.id} href={href} className={className}>{content}</Link>;
             })}
           </div>
         </section>
