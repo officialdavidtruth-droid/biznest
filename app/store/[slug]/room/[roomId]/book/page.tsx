@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { resolveStoreTheme, getSignatureTheme, isSignatureTemplate, type TemplateTheme } from "@/lib/template-themes";
 import { BookingFlowWizard } from "@/components/storefront/templates/booking-flow-wizard";
+import { getUnitBookingNiche } from "@/lib/storefront/unit-booking-niche";
 
 export async function generateMetadata({ params }: { params: Promise<{ slug: string; roomId: string }> }): Promise<Metadata> {
   const { slug, roomId } = await params;
@@ -33,14 +34,16 @@ export default async function BookRoomPage({
   const theme: TemplateTheme = signatureTheme || resolveStoreTheme(rawStore.template?.category, rawStore.name, rawStore.themeColors as any, rawStore.fontFamily, rawStore.template?.name);
 
   const attributes = (service.attributes && typeof service.attributes === "object" ? service.attributes : {}) as Record<string, unknown>;
-  const amenities = ["wifi", "view", "breakfast"]
-    .map((key) => (attributes[key] ? String(attributes[key]) : null))
-    .filter(Boolean) as string[];
 
-  // Niche label: "Room" for hotels, generic "Unit" fallback for other
-  // unit-based businesses (short-let apartments, rental fleets, venues…)
-  // reusing this same booking flow.
-  const itemLabelSingular = rawStore.businessType === "Hotel & Lodging" ? "Room" : "Unit";
+  // Niche config drives every label/copy/add-on choice below, so this same
+  // wizard works for a hotel room, a short-let unit, an event space or a
+  // rental vehicle without any hardcoded "Room"/"night" strings here — see
+  // lib/storefront/unit-booking-niche.ts. Per-store overrides come from
+  // Store.storefrontConfig.unitBooking (e.g. a custom add-on list).
+  const niche = getUnitBookingNiche(rawStore.businessType, rawStore.storefrontConfig);
+  const amenities = niche.amenityFacets
+    .map((facet) => (attributes[facet.key] ? facet.label : null))
+    .filter(Boolean) as string[];
 
   return (
     <div style={{ background: theme.bg, minHeight: "100vh" }}>
@@ -56,12 +59,22 @@ export default async function BookRoomPage({
         guestCapacity={attributes.maxGuests ? String(attributes.maxGuests) : undefined}
         bedType={attributes.bedType ? String(attributes.bedType) : undefined}
         roomSize={attributes.roomSize ? String(attributes.roomSize) : undefined}
-        itemLabelSingular={itemLabelSingular}
+        rateUnit={niche.rateUnit}
+        itemLabelSingular={niche.itemLabelSingular}
         amenities={amenities}
+        addons={niche.addons}
+        guarantees={niche.guarantees}
         defaultCheckIn={query.checkIn || ""}
         defaultCheckOut={query.checkOut || ""}
         defaultGuests={query.guests ? Number(query.guests) : 2}
         changeRoomHref={`/store/${slug}/hotel/rooms`}
+        hero={{
+          eyebrow: "Secure your booking",
+          title: niche.heroTitle,
+          subtitle: niche.heroSubtitle,
+          quote: niche.heroQuote,
+          image: rawStore.bannerUrl,
+        }}
       />
     </div>
   );
