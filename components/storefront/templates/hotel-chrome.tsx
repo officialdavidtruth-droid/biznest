@@ -11,6 +11,12 @@ export type HotelStoreLike = { name: string; logoUrl?: string | null; contactPho
 
 export type HotelSection = "story" | "rooms" | "experience" | "gallery" | "contact";
 
+/**
+ * "home" is a valid active value too (the homepage itself isn't one of the
+ * five hotel sub-pages) — it just means nothing in the nav gets highlighted.
+ */
+export type HotelActiveSection = HotelSection | "home";
+
 function initials(name: string) {
   return name.split(/\s+/).filter(Boolean).slice(0, 2).map((p) => p[0]).join("").toUpperCase();
 }
@@ -23,7 +29,7 @@ function initials(name: string) {
  * between two different-looking headers depending on which page they were
  * on. This is the single source of truth for that nav.
  */
-export function HotelHeader({ slug, theme, store, active, itemLabelPlural }: { slug: string; theme: Theme; store: HotelStoreLike; active: HotelSection; itemLabelPlural: string }) {
+export function HotelHeader({ slug, theme, store, active, itemLabelPlural }: { slug: string; theme: Theme; store: HotelStoreLike; active: HotelActiveSection; itemLabelPlural: string }) {
   const ink = theme.ink;
   const accent = theme.accent;
   const border = theme.border || `${ink}1c`;
@@ -44,7 +50,7 @@ export function HotelHeader({ slug, theme, store, active, itemLabelPlural }: { s
           <span style={{ fontFamily: theme.headlineFont, fontSize: 16, fontWeight: 700, whiteSpace: "nowrap" }}>{store.name}</span>
         </Link>
         <nav style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: 24, fontSize: 12.5, fontWeight: 650 }}>
-          <Link href={`/store/${slug}`} style={{ color: ink, textDecoration: "none", opacity: 0.75 }}>Home</Link>
+          <Link href={`/store/${slug}`} style={{ color: active === "home" ? accent : ink, textDecoration: "none", opacity: active === "home" ? 1 : 0.75, borderBottom: active === "home" ? `1px solid ${accent}` : "1px solid transparent", paddingBottom: 4 }}>Home</Link>
           {nav.map((item) => (
             <Link key={item.key} href={item.href} aria-current={active === item.key ? "page" : undefined} style={{ color: active === item.key ? accent : ink, textDecoration: "none", opacity: active === item.key ? 1 : 0.75, borderBottom: active === item.key ? `1px solid ${accent}` : "1px solid transparent", paddingBottom: 4 }}>{item.label}</Link>
           ))}
