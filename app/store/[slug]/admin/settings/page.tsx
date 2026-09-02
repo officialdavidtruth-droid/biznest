@@ -3,8 +3,10 @@ import { prisma } from "@/lib/prisma";
 import { updateStoreSettings } from "@/lib/actions/store";
 import { setCustomDomain, recheckDomainStatus, removeCustomDomain } from "@/lib/actions/domain";
 import { LogoBannerFields } from "@/components/forms/logo-banner-fields";
+import { StoreSlugEditor } from "@/components/dashboard/store-slug-editor";
 import { WebhooksPanel } from "@/components/dashboard/webhooks-panel";
 import { listWebhookEndpoints, availableWebhookEvents } from "@/lib/actions/webhook";
+import { APP_URL } from "@/lib/constants/app-url";
 
 export default async function SettingsPage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
@@ -106,6 +108,10 @@ export default async function SettingsPage({ params }: { params: Promise<{ slug:
 
         <button className="rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground">Save changes</button>
       </form>
+
+      <div className="mt-6">
+        <StoreSlugEditor slug={slug} domainRoot={new URL(APP_URL).host.replace(/^www\./, "")} />
+      </div>
 
       <div className="mt-6 rounded-lg border bg-background p-4">
         <p className="mb-1 text-sm font-medium">Custom domain</p>
