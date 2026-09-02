@@ -22,6 +22,10 @@ export function StoreSlugEditor({ slug, domainRoot }: { slug: string; domainRoot
   const [availability, setAvailability] = useState<{ available: boolean; reason?: string } | null>(null);
   const [saving, setSaving] = useState(false);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // Guards against a slow response landing after a newer keystroke's
+  // response already resolved — without this, typing quickly could leave
+  // the UI showing a stale result for an earlier candidate.
+  const requestIdRef = useRef(0);
 
   useEffect(() => {
     const candidate = value.trim().toLowerCase();
@@ -39,10 +43,18 @@ export function StoreSlugEditor({ slug, domainRoot }: { slug: string; domainRoot
     }
 
     setChecking(true);
+    const thisRequestId = ++requestIdRef.current;
     debounceRef.current = setTimeout(async () => {
-      const result = await checkSlugAvailability(slug, candidate);
-      setAvailability(result);
-      setChecking(false);
+      try {
+        const result = await checkSlugAvailability(slug, candidate);
+        if (requestIdRef.current !== thisRequestId) return; // a newer keystroke already superseded this
+        setAvailability(result);
+      } catch {
+        if (requestIdRef.current !== thisRequestId) return;
+        setAvailability({ available: false, reason: "Couldn't check right now — try again." });
+      } finally {
+        if (requestIdRef.current === thisRequestId) setChecking(false);
+      }
     }, 400);
 
     return () => {
@@ -57,22 +69,27 @@ export function StoreSlugEditor({ slug, domainRoot }: { slug: string; domainRoot
   async function handleSave() {
     if (!canSave) return;
     setSaving(true);
-    const formData = new FormData();
-    formData.set("slug", candidate);
-    const result = await updateStoreSlug(slug, formData);
-    setSaving(false);
+    try {
+      const formData = new FormData();
+      formData.set("slug", candidate);
+      const result = await updateStoreSlug(slug, formData);
 
-    if (!result.success) {
-      toast.error(result.error);
-      return;
+      if (!result.success) {
+        toast.error(result.error);
+        return;
+      }
+
+      toast.success(`Your store's URL is now ${domainRoot}/${result.data.slug}`);
+      // Old links (biznest.space/<old-slug>) keep redirecting here — see
+      // app/store/[slug]/layout.tsx — but this admin session is on the old
+      // slug's URL right now, so move it forward to the new one.
+      router.push(`/${result.data.slug}/admin/settings`);
+      router.refresh();
+    } catch {
+      toast.error("Something went wrong saving your store URL. Try again.");
+    } finally {
+      setSaving(false);
     }
-
-    toast.success(`Your store's URL is now ${domainRoot}/${result.data.slug}`);
-    // Old links (biznest.space/<old-slug>) keep redirecting here — see
-    // app/store/[slug]/layout.tsx — but this admin session is on the old
-    // slug's URL right now, so move it forward to the new one.
-    router.push(`/${result.data.slug}/admin/settings`);
-    router.refresh();
   }
 
   return (
