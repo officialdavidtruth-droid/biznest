@@ -9,6 +9,7 @@ import { getHospitalityGallery } from "@/lib/actions/hospitality-content";
 import { formatMoney } from "@/lib/storefront/hero-media";
 import { AccountLink } from "@/components/storefront/account-link";
 import { RoomsSuitesListing, type ListingItem } from "@/components/storefront/templates/rooms-suites-listing";
+import { getUnitBookingNiche } from "@/lib/storefront/unit-booking-niche";
 
 const ROOM_PATTERN = /room|suite|studio|apartment|villa|penthouse|chalet|cottage|lodge|duplex/i;
 const SECTIONS = ["story", "rooms", "experience", "gallery", "contact"] as const;
@@ -71,9 +72,9 @@ function sectionTitle(theme: TemplateTheme, eyebrow: string, title: string, body
   );
 }
 
-function HotelHeader({ store, slug, theme, active }: { store: any; slug: string; theme: TemplateTheme; active: Section }) {
+function HotelHeader({ store, slug, theme, active, roomsNavLabel, reserveCta }: { store: any; slug: string; theme: TemplateTheme; active: Section; roomsNavLabel: string; reserveCta: string }) {
   const nav = [
-    ["story", "The Hotel"], ["rooms", "Rooms"], ["experience", "Experience"], ["gallery", "Gallery"], ["contact", "Contact"],
+    ["story", "The Hotel"], ["rooms", roomsNavLabel], ["experience", "Experience"], ["gallery", "Gallery"], ["contact", "Contact"],
   ] as const;
   return (
     <header style={{ position: "sticky", top: 0, zIndex: 50, background: `${theme.bg}F2`, backdropFilter: "blur(18px)", borderBottom: `1px solid ${theme.border || `${theme.ink}18`}` }}>
@@ -87,7 +88,7 @@ function HotelHeader({ store, slug, theme, active }: { store: any; slug: string;
         <nav className="bn-nav-links" style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: 25, fontSize: 12, fontWeight: 650 }}>
           {nav.map(([key, label]) => <Link key={key} href={`/store/${slug}/hotel/${key}`} aria-current={active === key ? "page" : undefined} style={{ color: theme.ink, textDecoration: "none", opacity: active === key ? 1 : .68, borderBottom: active === key ? `1px solid ${theme.accent}` : "1px solid transparent", paddingBottom: 4 }}>{label}</Link>)}
           <AccountLink storeSlug={slug} ink={theme.ink} />
-          <Link href={`/store/${slug}/hotel/rooms`} style={{ display: "inline-flex", alignItems: "center", gap: 7, padding: "11px 16px", background: theme.ink, color: theme.bg, textDecoration: "none", borderRadius: theme.radius, fontWeight: 800 }}>Reserve <ArrowUpRight size={14} /></Link>
+          <Link href={`/store/${slug}/hotel/rooms`} style={{ display: "inline-flex", alignItems: "center", gap: 7, padding: "11px 16px", background: theme.ink, color: theme.bg, textDecoration: "none", borderRadius: theme.radius, fontWeight: 800 }}>{reserveCta} <ArrowUpRight size={14} /></Link>
         </nav>
       </div>
     </header>
@@ -148,8 +149,13 @@ export default async function HotelSectionPage({ params }: { params: Promise<{ s
   const muted = theme.muted || `${theme.ink}99`;
   const dark = theme.surfaceDark || "#171411";
   const heroImage = store.bannerUrl || store.storyImage || roomItems.find((i) => i.image)?.image || gallery[0] || null;
+  // Drives labels/copy/amenities/add-ons for this same rooms/booking UI
+  // across niches (hotel, short-let, event venue, vehicle rental…) — see
+  // lib/storefront/unit-booking-niche.ts. Store owners can override any of
+  // it per-store via storefrontConfig.unitBooking.
+  const niche = getUnitBookingNiche(store.businessType, store.storefrontConfig);
 
-  const shell = (content: React.ReactNode) => <div style={{ background: theme.bg, color: theme.ink, fontFamily: theme.font, minHeight: "100vh" }}><HotelHeader store={store} slug={slug} theme={theme} active={section as Section} /><main>{content}</main><HotelFooter store={store} slug={slug} theme={theme} /></div>;
+  const shell = (content: React.ReactNode) => <div style={{ background: theme.bg, color: theme.ink, fontFamily: theme.font, minHeight: "100vh" }}><HotelHeader store={store} slug={slug} theme={theme} active={section as Section} roomsNavLabel={niche.navLabel} reserveCta={niche.reserveCta} /><main>{content}</main><HotelFooter store={store} slug={slug} theme={theme} /></div>;
 
   if (section === "story") return shell(<>
     {pageHero(theme, dark, heroImage, "The property", "A place with a point of view.", store.business.description || theme.sub)}
@@ -158,6 +164,8 @@ export default async function HotelSectionPage({ params }: { params: Promise<{ s
   </>);
 
   if (section === "rooms") {
+    const maxPrice = Math.max(0, ...roomItems.map((r) => r.price));
+    const minPrice = roomItems.length ? Math.min(...roomItems.map((r) => r.price)) : 0;
     const listingItems: ListingItem[] = roomItems.map((room) => ({
       id: room.id,
       name: room.name,
@@ -167,22 +175,32 @@ export default async function HotelSectionPage({ params }: { params: Promise<{ s
       image: room.image,
       categoryName: room.categoryName,
       attributes: room.attributes ?? null,
+      badge: room.price === maxPrice && maxPrice > minPrice ? "Premium" : room.price === minPrice && roomItems.length > 2 ? "Most Popular" : null,
     }));
     return shell(<>
-      {pageHero(theme, dark, heroImage, "Rooms & suites", "Spaces made for staying well.", "Explore the accommodation collection and choose the room that fits your stay.")}
+      {pageHero(theme, dark, heroImage, niche.sectionEyebrow, "Spaces made for staying well.", `Explore the collection and choose the ${niche.itemLabelSingular.toLowerCase()} that fits your ${niche.rateUnit === "night" ? "stay" : "booking"}.`)}
       {roomItems.length ? (
         <RoomsSuitesListing
           slug={slug}
           theme={theme}
           items={listingItems}
-          itemLabelPlural="Rooms & Suites"
-          itemLabelSingular="Room"
-          rateUnit="night"
+          itemLabelPlural={niche.itemLabelPlural}
+          itemLabelSingular={niche.itemLabelSingular}
+          rateUnit={niche.rateUnit}
           detailBasePath={`/store/${slug}/room`}
           bookBasePath={`/store/${slug}/room`}
+          amenityFacets={niche.amenityFacets}
+          supportPhone={store.contactPhone}
+          featureStrip={{
+            title: `A ${niche.rateUnit === "night" ? "Stay" : "Booking"} Tailored to You`,
+            body: `Every ${niche.itemLabelSingular.toLowerCase()} is designed to give you the perfect blend of comfort and functionality.`,
+            ctaLabel: `Explore ${niche.itemLabelPlural}`,
+            ctaHref: `/store/${slug}/hotel/rooms`,
+            features: niche.guarantees.map((g) => ({ icon: g.icon === "calendar" ? "clock" : "shield", label: g.label, sublabel: g.sublabel })),
+          }}
         />
       ) : (
-        <section style={{ padding: "70px 28px 130px" }}><div style={{ maxWidth: 1240, margin: "0 auto" }}><p style={{ color: muted }}>Published rooms will appear here once they are added.</p></div></section>
+        <section style={{ padding: "70px 28px 130px" }}><div style={{ maxWidth: 1240, margin: "0 auto" }}><p style={{ color: muted }}>Published {niche.itemLabelPlural.toLowerCase()} will appear here once they are added.</p></div></section>
       )}
     </>);
   }
