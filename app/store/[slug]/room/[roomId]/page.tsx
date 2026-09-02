@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { resolveStoreTheme, getSignatureTheme, isSignatureTemplate, type TemplateTheme } from "@/lib/template-themes";
-import { HotelRoomDetail } from "@/components/storefront/hotel-room-detail";
+import { CatalogItemDetail } from "@/components/storefront/catalog-item-detail";
 
 export async function generateMetadata({ params }: { params: Promise<{ slug: string; roomId: string }> }): Promise<Metadata> {
   const { slug, roomId } = await params;
@@ -28,5 +28,5 @@ export default async function HotelRoomPage({ params }: { params: Promise<{ slug
   if (!isHotel || !isRoom) notFound();
 
   const store = { ...rawStore, sellsProducts: rawStore.business?.sellsProducts ?? true };
-  return <HotelRoomDetail store={store} slug={slug} service={room} theme={theme} hotelMode={signatureTheme?.signatureMode} />;
+  return <CatalogItemDetail store={store} slug={slug} service={room} theme={theme} businessCategory={rawStore.businessType} hotelMode={signatureTheme?.signatureMode} />;
 }
