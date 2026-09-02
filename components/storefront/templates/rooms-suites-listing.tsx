@@ -2,8 +2,9 @@
 
 import { useMemo, useState } from "react";
 import Link from "next/link";
-import { Calendar, Users, Search, Heart, Maximize2, BedDouble } from "lucide-react";
+import { Calendar, Users, Search, Heart, Maximize2, BedDouble, LayoutGrid, List as ListIcon, Phone, ShieldCheck, Clock3 } from "lucide-react";
 import { formatMoney } from "@/lib/storefront/hero-media";
+import type { AmenityFacet } from "@/lib/storefront/unit-booking-niche";
 
 export type ListingItem = {
   id: string;
@@ -15,6 +16,8 @@ export type ListingItem = {
   categoryName: string | null;
   /** Free-form facets pulled from Service.attributes, e.g. { maxGuests, roomSize, bedType, wifi, view, breakfast } */
   attributes: Record<string, unknown> | null;
+  /** Optional ribbon, e.g. "Most Popular" or "Premium". */
+  badge?: string | null;
 };
 
 type Theme = {
@@ -29,6 +32,8 @@ type Theme = {
   headlineFont: string;
 };
 
+type FeatureItem = { icon?: string; label: string; sublabel?: string };
+
 type Props = {
   slug: string;
   theme: Theme;
@@ -42,6 +47,12 @@ type Props = {
   detailBasePath: string;
   /** Base path for the booking flow, e.g. `/store/${slug}/room`. `/:id/book` is appended. */
   bookBasePath: string;
+  /** Facet checkboxes to offer, and what to call each one. Only shown when at least one item has that attribute set. */
+  amenityFacets?: AmenityFacet[];
+  /** Phone number for the "Need Help?" sidebar card. Card is omitted if not provided. */
+  supportPhone?: string | null;
+  /** Tagline + feature strip shown under the listing, mirroring a hotel "amenities" band. Omitted if not provided. */
+  featureStrip?: { title: string; body: string; ctaLabel: string; ctaHref: string; features: FeatureItem[] } | null;
 };
 
 function attr(item: ListingItem, key: string): string {
@@ -49,31 +60,50 @@ function attr(item: ListingItem, key: string): string {
   return v === undefined || v === null || v === "" ? "" : String(v);
 }
 
-export function RoomsSuitesListing({ slug, theme, items, itemLabelPlural = "Rooms & Suites", itemLabelSingular = "Room", rateUnit = "night", detailBasePath, bookBasePath }: Props) {
+const DEFAULT_AMENITY_FACETS: AmenityFacet[] = [
+  { key: "wifi", label: "Free WiFi" },
+  { key: "breakfast", label: "Breakfast Included" },
+  { key: "view", label: "City View" },
+  { key: "pool", label: "Pool Access" },
+  { key: "bathtub", label: "Bathtub" },
+  { key: "workDesk", label: "Work Desk" },
+  { key: "kitchenette", label: "Kitchenette" },
+  { key: "smoking", label: "Smoking Allowed" },
+];
+
+export function RoomsSuitesListing({
+  slug, theme, items, itemLabelPlural = "Rooms & Suites", itemLabelSingular = "Room", rateUnit = "night",
+  detailBasePath, bookBasePath, amenityFacets = DEFAULT_AMENITY_FACETS, supportPhone, featureStrip,
+}: Props) {
   const [checkIn, setCheckIn] = useState("");
   const [checkOut, setCheckOut] = useState("");
   const [guests, setGuests] = useState(2);
   const [typeFilter, setTypeFilter] = useState<string[]>([]);
+  const [bedFilter, setBedFilter] = useState("");
   const [amenityFilter, setAmenityFilter] = useState<string[]>([]);
   const [maxPrice, setMaxPrice] = useState<number | null>(null);
   const [sort, setSort] = useState<"popular" | "price-asc" | "price-desc">("popular");
+  const [view, setView] = useState<"grid" | "list">("grid");
 
   const ink = theme.ink;
   const accent = theme.accent;
   const border = theme.border || `${ink}1c`;
   const muted = theme.muted || `${ink}8f`;
+  const currency = items[0]?.currency || "NGN";
 
   const types = useMemo(() => Array.from(new Set(items.map((i) => i.categoryName || itemLabelSingular).filter(Boolean))), [items, itemLabelSingular]);
-  const amenityKeys = ["wifi", "view", "breakfast"] as const;
+  const bedTypes = useMemo(() => Array.from(new Set(items.map((i) => attr(i, "bedType")).filter(Boolean))), [items]);
   const availableAmenities = useMemo(
-    () => amenityKeys.filter((k) => items.some((i) => attr(i, k))),
-    [items]
+    () => amenityFacets.filter((f) => items.some((i) => attr(i, f.key))),
+    [items, amenityFacets]
   );
+  const priceFloor = useMemo(() => Math.min(...items.map((i) => Number(i.price) || 0), 0), [items]);
   const priceCeiling = useMemo(() => Math.max(1, ...items.map((i) => Number(i.price) || 0)), [items]);
 
   const filtered = useMemo(() => {
     let list = items.filter((i) => {
       if (typeFilter.length && !typeFilter.includes(i.categoryName || itemLabelSingular)) return false;
+      if (bedFilter && attr(i, "bedType") !== bedFilter) return false;
       if (maxPrice != null && Number(i.price) > maxPrice) return false;
       if (amenityFilter.length && !amenityFilter.every((k) => attr(i, k))) return false;
       const cap = Number(attr(i, "maxGuests") || 0);
@@ -83,7 +113,7 @@ export function RoomsSuitesListing({ slug, theme, items, itemLabelPlural = "Room
     if (sort === "price-asc") list = [...list].sort((a, b) => Number(a.price) - Number(b.price));
     if (sort === "price-desc") list = [...list].sort((a, b) => Number(b.price) - Number(a.price));
     return list;
-  }, [items, typeFilter, maxPrice, amenityFilter, guests, sort, itemLabelSingular]);
+  }, [items, typeFilter, bedFilter, maxPrice, amenityFilter, guests, sort, itemLabelSingular]);
 
   function toggle(list: string[], value: string, set: (v: string[]) => void) {
     set(list.includes(value) ? list.filter((v) => v !== value) : [...list, value]);
@@ -91,6 +121,7 @@ export function RoomsSuitesListing({ slug, theme, items, itemLabelPlural = "Room
 
   function clearAll() {
     setTypeFilter([]);
+    setBedFilter("");
     setAmenityFilter([]);
     setMaxPrice(null);
   }
@@ -159,19 +190,40 @@ export function RoomsSuitesListing({ slug, theme, items, itemLabelPlural = "Room
           <div>
             <div style={{ fontSize: 12, fontWeight: 800, marginBottom: 10 }}>Price Range {rateUnit ? `(per ${rateUnit})` : ""}</div>
             <input type="range" min={0} max={priceCeiling} step={Math.max(1, Math.round(priceCeiling / 100))} value={maxPrice ?? priceCeiling} onChange={(e) => setMaxPrice(Number(e.target.value))} style={{ width: "100%", accentColor: accent }} />
-            <div style={{ fontSize: 12, color: muted, marginTop: 4 }}>Up to {formatMoney(maxPrice ?? priceCeiling, items[0]?.currency || "NGN")}</div>
+            <div style={{ fontSize: 12, color: muted, marginTop: 4 }}>{formatMoney(priceFloor, currency)} – {formatMoney(maxPrice ?? priceCeiling, currency)}</div>
           </div>
+
+          {bedTypes.length > 0 && (
+            <div>
+              <div style={{ fontSize: 12, fontWeight: 800, marginBottom: 10 }}>Bed Type</div>
+              <select value={bedFilter} onChange={(e) => setBedFilter(e.target.value)} style={{ ...inputStyle, padding: "9px 10px" }}>
+                <option value="">All Types</option>
+                {bedTypes.map((b) => <option key={b} value={b}>{b}</option>)}
+              </select>
+            </div>
+          )}
 
           {availableAmenities.length > 0 && (
             <div>
               <div style={{ fontSize: 12, fontWeight: 800, marginBottom: 10 }}>Amenities</div>
               <div style={{ display: "grid", gap: 8 }}>
-                {availableAmenities.map((k) => (
-                  <label key={k} style={{ display: "flex", alignItems: "center", fontSize: 13, cursor: "pointer", textTransform: "capitalize" }}>
-                    <input type="checkbox" checked={amenityFilter.includes(k)} onChange={() => toggle(amenityFilter, k, setAmenityFilter)} style={{ marginRight: 8 }} />{k === "wifi" ? "Free WiFi" : k}
+                {availableAmenities.map((f) => (
+                  <label key={f.key} style={{ display: "flex", alignItems: "center", fontSize: 13, cursor: "pointer" }}>
+                    <input type="checkbox" checked={amenityFilter.includes(f.key)} onChange={() => toggle(amenityFilter, f.key, setAmenityFilter)} style={{ marginRight: 8 }} />{f.label}
                   </label>
                 ))}
               </div>
+            </div>
+          )}
+
+          {supportPhone && (
+            <div style={{ background: `${accent}10`, border: `1px solid ${border}`, borderRadius: theme.radius, padding: 16 }}>
+              <strong style={{ display: "block", fontSize: 13, marginBottom: 4 }}>Need Help?</strong>
+              <p style={{ margin: "0 0 12px", fontSize: 12, color: muted, lineHeight: 1.6 }}>Our team is here to assist you with your booking.</p>
+              <a href={`tel:${supportPhone}`} style={{ display: "block", fontSize: 12.5, fontWeight: 700, color: ink, textDecoration: "none", marginBottom: 10 }}>
+                <Phone size={13} style={{ verticalAlign: -2, marginRight: 6 }} />{supportPhone}
+              </a>
+              <a href={`tel:${supportPhone}`} style={{ display: "block", textAlign: "center", padding: "9px 0", borderRadius: 8, background: accent, color: "#fff", textDecoration: "none", fontSize: 12, fontWeight: 800 }}>Contact Us</a>
             </div>
           )}
         </aside>
@@ -180,11 +232,17 @@ export function RoomsSuitesListing({ slug, theme, items, itemLabelPlural = "Room
         <div id="bn-listing-grid">
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 22, flexWrap: "wrap", gap: 12 }}>
             <strong style={{ fontFamily: theme.headlineFont, fontSize: 20 }}>{filtered.length} {itemLabelPlural}</strong>
-            <select value={sort} onChange={(e) => setSort(e.target.value as typeof sort)} style={{ border: `1px solid ${border}`, borderRadius: 8, padding: "8px 10px", fontSize: 12.5, background: theme.card, color: ink }}>
-              <option value="popular">Most Popular</option>
-              <option value="price-asc">Price: Low to High</option>
-              <option value="price-desc">Price: High to Low</option>
-            </select>
+            <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+              <select value={sort} onChange={(e) => setSort(e.target.value as typeof sort)} style={{ border: `1px solid ${border}`, borderRadius: 8, padding: "8px 10px", fontSize: 12.5, background: theme.card, color: ink }}>
+                <option value="popular">Most Popular</option>
+                <option value="price-asc">Price: Low to High</option>
+                <option value="price-desc">Price: High to Low</option>
+              </select>
+              <div style={{ display: "flex", border: `1px solid ${border}`, borderRadius: 8, overflow: "hidden" }}>
+                <button type="button" aria-label="Grid view" onClick={() => setView("grid")} style={{ border: 0, padding: "8px 10px", background: view === "grid" ? accent : theme.card, color: view === "grid" ? "#fff" : ink, cursor: "pointer", display: "flex" }}><LayoutGrid size={15} /></button>
+                <button type="button" aria-label="List view" onClick={() => setView("list")} style={{ border: 0, padding: "8px 10px", background: view === "list" ? accent : theme.card, color: view === "list" ? "#fff" : ink, cursor: "pointer", display: "flex" }}><ListIcon size={15} /></button>
+              </div>
+            </div>
           </div>
 
           {filtered.length === 0 ? (
@@ -192,15 +250,18 @@ export function RoomsSuitesListing({ slug, theme, items, itemLabelPlural = "Room
               No {itemLabelPlural.toLowerCase()} match those filters right now.
             </div>
           ) : (
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))", gap: 24 }}>
+            <div style={{ display: "grid", gridTemplateColumns: view === "grid" ? "repeat(auto-fill, minmax(280px, 1fr))" : "1fr", gap: 24 }}>
               {filtered.map((item) => {
                 const guestsCap = attr(item, "maxGuests");
                 const bed = attr(item, "bedType");
                 const size = attr(item, "roomSize");
                 return (
-                  <div key={item.id} style={{ background: theme.card, border: `1px solid ${border}`, borderRadius: theme.radius, overflow: "hidden", display: "flex", flexDirection: "column" }}>
-                    <div style={{ position: "relative" }}>
-                      <div style={{ aspectRatio: "4/3", background: item.image ? `url(${item.image}) center/cover` : `linear-gradient(135deg, ${accent}, ${ink})` }} />
+                  <div key={item.id} style={{ background: theme.card, border: `1px solid ${border}`, borderRadius: theme.radius, overflow: "hidden", display: "flex", flexDirection: view === "list" ? "row" : "column" }}>
+                    <div style={{ position: "relative", flexShrink: 0, width: view === "list" ? 220 : "auto" }}>
+                      <div style={{ aspectRatio: "4/3", height: view === "list" ? "100%" : undefined, background: item.image ? `url(${item.image}) center/cover` : `linear-gradient(135deg, ${accent}, ${ink})` }} />
+                      {item.badge && (
+                        <span style={{ position: "absolute", top: 12, left: 12, padding: "5px 10px", borderRadius: 20, background: accent, color: "#fff", fontSize: 10.5, fontWeight: 800 }}>{item.badge}</span>
+                      )}
                       <button type="button" aria-label="Save" style={{ position: "absolute", top: 12, right: 12, width: 32, height: 32, borderRadius: "50%", border: 0, background: "rgba(255,255,255,.92)", display: "grid", placeItems: "center", cursor: "pointer" }}>
                         <Heart size={15} color={ink} />
                       </button>
@@ -213,9 +274,11 @@ export function RoomsSuitesListing({ slug, theme, items, itemLabelPlural = "Room
                         {bed && <span style={{ display: "flex", alignItems: "center", gap: 5 }}><BedDouble size={13} />{bed}</span>}
                         {size && <span style={{ display: "flex", alignItems: "center", gap: 5 }}><Maximize2 size={13} />{size} m²</span>}
                       </div>
-                      <div style={{ marginTop: "auto", paddingTop: 10 }}>
-                        <div style={{ fontSize: 18, fontWeight: 800 }}>{formatMoney(Number(item.price), item.currency)} <span style={{ fontSize: 11.5, fontWeight: 600, color: muted }}>/ {rateUnit}</span></div>
-                        <div style={{ display: "flex", gap: 8, marginTop: 10 }}>
+                      <div style={{ marginTop: "auto", paddingTop: 10, display: view === "list" ? "flex" : "block", alignItems: "center", justifyContent: "space-between", gap: 16 }}>
+                        <div>
+                          <div style={{ fontSize: 18, fontWeight: 800 }}>{formatMoney(Number(item.price), item.currency)} <span style={{ fontSize: 11.5, fontWeight: 600, color: muted }}>/ {rateUnit}</span></div>
+                        </div>
+                        <div style={{ display: "flex", gap: 8, marginTop: view === "list" ? 0 : 10, minWidth: view === "list" ? 220 : undefined }}>
                           <Link href={`${detailBasePath}/${item.id}`} style={{ flex: 1, textAlign: "center", padding: "10px 0", borderRadius: 8, border: `1px solid ${border}`, color: ink, textDecoration: "none", fontSize: 12.5, fontWeight: 700 }}>Details</Link>
                           <Link href={bookHref(item)} style={{ flex: 1, textAlign: "center", padding: "10px 0", borderRadius: 8, border: 0, background: accent, color: "#fff", textDecoration: "none", fontSize: 12.5, fontWeight: 800 }}>Book Now</Link>
                         </div>
@@ -228,6 +291,30 @@ export function RoomsSuitesListing({ slug, theme, items, itemLabelPlural = "Room
           )}
         </div>
       </div>
+
+      {/* Feature strip */}
+      {featureStrip && (
+        <div style={{ background: theme.bg, borderTop: `1px solid ${border}`, padding: "50px 20px" }}>
+          <div style={{ maxWidth: 1240, margin: "0 auto", display: "grid", gridTemplateColumns: "1fr 1.4fr", gap: 40, alignItems: "center" }}>
+            <div>
+              <h3 style={{ fontFamily: theme.headlineFont, fontSize: 26, margin: "0 0 10px" }}>{featureStrip.title}</h3>
+              <p style={{ color: muted, fontSize: 13.5, lineHeight: 1.7, margin: "0 0 18px" }}>{featureStrip.body}</p>
+              <Link href={featureStrip.ctaHref} style={{ display: "inline-flex", alignItems: "center", gap: 7, padding: "12px 18px", background: accent, color: "#fff", borderRadius: 8, textDecoration: "none", fontWeight: 800, fontSize: 12.5 }}>{featureStrip.ctaLabel}</Link>
+            </div>
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 24 }}>
+              {featureStrip.features.map((f) => (
+                <div key={f.label} style={{ display: "flex", gap: 10, alignItems: "flex-start" }}>
+                  {f.icon === "clock" ? <Clock3 size={18} color={accent} style={{ flexShrink: 0 }} /> : <ShieldCheck size={18} color={accent} style={{ flexShrink: 0 }} />}
+                  <div>
+                    <strong style={{ display: "block", fontSize: 13 }}>{f.label}</strong>
+                    {f.sublabel && <span style={{ fontSize: 12, color: muted }}>{f.sublabel}</span>}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
