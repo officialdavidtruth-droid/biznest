@@ -1057,6 +1057,13 @@ model Service {
 
   isBookable   Boolean   @default(false) // enables appointments/bookings
   durationMins Int?
+  // Flexible niche-specific fields (tags, featured/taxable/special-request
+  // toggles, quick specs, spec panel, custom key/value pairs), mirroring
+  // Product.attributes. Lets ServiceForm reuse the same niche-preset system
+  // as ProductForm (lib/catalog-item-presets.ts) without a migration per
+  // vertical -- a hotel room, a salon appointment, and a consultation all
+  // read/write this the same way.
+  attributes   Json?
   // Weekly availability, e.g. { "mon": [["09:00","17:00"]], "tue": [["09:00","13:00"],["14:00","17:00"]] }.
   // Days omitted are treated as closed. Null means "not configured yet" --
   // the booking widget shows a setup prompt to the vendor instead of guessing hours.
