@@ -555,6 +555,7 @@ model Store {
 
   webhookEndpoints WebhookEndpoint[]
   serviceUnits  ServiceUnit[]
+  slugHistory   StoreSlugHistory[]
 
   logoUrl       String?
   bannerUrl     String?
@@ -719,6 +720,23 @@ model Store {
   updatedAt     DateTime    @updatedAt
 
   @@index([status])
+}
+
+// Records every slug a store used to have, so a shopper or bookmarked link
+// (biznest.space/<old-slug>) keeps working after the owner shortens/renames
+// their storefront URL. See updateStoreSlug in lib/actions/store.ts (writes
+// a row here on every change) and app/store/[slug]/layout.tsx (reads it to
+// redirect old links to the store's current slug). oldSlug is unique so a
+// retired slug can never be handed to a *different* store while it's still
+// acting as a redirect target for this one.
+model StoreSlugHistory {
+  id        String   @id @default(cuid())
+  storeId   String
+  store     Store    @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  oldSlug   String   @unique
+  createdAt DateTime @default(now())
+
+  @@index([storeId])
 }
 
 enum StaffRole {
