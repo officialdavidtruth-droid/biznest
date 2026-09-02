@@ -164,7 +164,24 @@ export function MobileDashboardChrome({
                       const href = `${base}${item.href}`;
                       const isActive = pathname === href;
                       const Icon = item.icon;
-                      const rows = [
+                      // PMS uses a different persistent shell entirely (see
+                      // sidebar.tsx's NavLink for the full explanation) — a
+                      // plain <a> forces a full reload so the layout branch
+                      // re-evaluates correctly instead of leaving the old
+                      // drawer/shell mounted around the new page.
+                      const rows = item.href === "/pms" ? [
+                        <a
+                          key={item.label}
+                          href={href}
+                          onClick={() => setDrawerOpen(false)}
+                          className={`bn-admin-mobile-link flex items-center gap-2.5 rounded-lg px-2.5 py-2.5 text-sm ${
+                            isActive ? "active font-medium" : ""
+                          }`}
+                        >
+                          <Icon className="h-4 w-4 shrink-0" />
+                          <span className="truncate">{item.label}</span>
+                        </a>,
+                      ] : [
                         <Link
                           key={item.label}
                           href={href}
