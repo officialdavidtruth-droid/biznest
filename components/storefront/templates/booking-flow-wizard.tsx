@@ -69,8 +69,6 @@ const DEFAULT_GUARANTEES: Guarantee[] = [
   { icon: "support", label: "24/7 Support", sublabel: "We're always here to help" },
 ];
 
-const STEPS = ["Room & Details", "Guest Information", "Add-ons (Optional)", "Review & Pay", "Confirmation"] as const;
-
 function nightsBetween(checkIn: string, checkOut: string) {
   if (!checkIn || !checkOut) return 0;
   const a = new Date(`${checkIn}T12:00:00`).getTime();
@@ -93,7 +91,6 @@ export function BookingFlowWizard({
   guarantees = DEFAULT_GUARANTEES, hero = null, showPromoCode = true,
 }: Props) {
   const { isSignedIn } = useShopAuthGate(slug);
-  const [step, setStep] = useState(0);
   const [checkIn, setCheckIn] = useState(defaultCheckIn);
   const [checkOut, setCheckOut] = useState(defaultCheckOut);
   const [guests, setGuests] = useState(defaultGuests);
@@ -166,12 +163,10 @@ export function BookingFlowWizard({
   function submit() {
     if (!datesValid) {
       toast.error("Choose valid check-in and check-out dates.");
-      setStep(0);
       return;
     }
     if (!isSignedIn && !guestFieldsValid()) {
       toast.error("Enter your name, valid email and phone number.");
-      setStep(1);
       return;
     }
     const addonNote = selectedAddons.length
@@ -195,7 +190,6 @@ export function BookingFlowWizard({
 
       if (roomSubtotal <= 0) {
         setConfirmed(true);
-        setStep(4);
         return;
       }
 
@@ -203,7 +197,6 @@ export function BookingFlowWizard({
       if (!payment.success) {
         toast.error(payment.error);
         setConfirmed(true);
-        setStep(4);
         return;
       }
       window.location.assign(payment.data.authorizationUrl);
@@ -257,19 +250,6 @@ export function BookingFlowWizard({
           </div>
         </section>
       )}
-
-      {/* Stepper */}
-      <div style={{ maxWidth: 1240, margin: "0 auto", padding: "26px 20px 0", display: "flex", flexWrap: "wrap", gap: 10, alignItems: "center" }}>
-        {STEPS.map((label, i) => (
-          <div key={label} style={{ display: "flex", alignItems: "center", gap: 10 }}>
-            <span style={{ display: "flex", alignItems: "center", gap: 8, opacity: i > step ? 0.45 : 1 }}>
-              <span style={{ width: 22, height: 22, borderRadius: "50%", background: i <= step ? accent : `${ink}22`, color: i <= step ? "#fff" : ink, fontSize: 11, fontWeight: 800, display: "grid", placeItems: "center" }}>{i + 1}</span>
-              <span style={{ fontSize: 12.5, fontWeight: i === step ? 800 : 600 }}>{label}</span>
-            </span>
-            {i < STEPS.length - 1 && <span style={{ width: 24, height: 1, background: `${ink}22` }} />}
-          </div>
-        ))}
-      </div>
 
       <div style={{ maxWidth: 1240, margin: "0 auto", padding: "30px 20px 100px", display: "grid", gridTemplateColumns: "1fr 380px", gap: 32, alignItems: "start" }}>
         <div style={{ display: "grid", gap: 30 }}>
