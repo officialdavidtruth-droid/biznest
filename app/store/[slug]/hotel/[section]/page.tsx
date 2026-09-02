@@ -1,14 +1,19 @@
 import type { Metadata } from "next";
 import type React from "react";
 import Link from "next/link";
-import { ArrowLeft, ArrowUpRight, Clock3, Mail, MapPin, Phone, Star } from "lucide-react";
+import {
+  ArrowUpRight, Clock3, Mail, MapPin, Phone, Star, Heart, Gem, UserCheck, Building2,
+  ShieldCheck, Leaf, Eye, Play, Headphones, Camera, Users, Sparkles,
+} from "lucide-react";
 import { notFound } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { resolveStoreTheme, getSignatureTheme, isSignatureTemplate, type TemplateTheme } from "@/lib/template-themes";
 import { getHospitalityGallery } from "@/lib/actions/hospitality-content";
-import { formatMoney } from "@/lib/storefront/hero-media";
+import { resolveHeroMedia } from "@/lib/storefront/hero-media";
 import { RoomsSuitesListing, type ListingItem } from "@/components/storefront/templates/rooms-suites-listing";
 import { HotelHeader, HotelFooter } from "@/components/storefront/templates/hotel-chrome";
+import { HotelGalleryBrowser } from "@/components/storefront/templates/hotel-gallery-browser";
+import { HotelExperienceGrid } from "@/components/storefront/templates/hotel-experience-grid";
 import { getUnitBookingNiche } from "@/lib/storefront/unit-booking-niche";
 
 const ROOM_PATTERN = /room|suite|studio|apartment|villa|penthouse|chalet|cottage|lodge|duplex/i;
@@ -34,7 +39,7 @@ function listValue(value: unknown): string[] {
   return value.split(/[\n,•|]+/).map((v) => v.trim()).filter(Boolean);
 }
 
-function pageHero(theme: TemplateTheme, dark: string, heroImage: string | null, eyebrow: string, title: string, body?: string) {
+function pageHero(theme: TemplateTheme, dark: string, heroImage: string | null, eyebrow: string, title: string, body?: string, quote?: string) {
   return (
     <section
       style={{
@@ -49,10 +54,41 @@ function pageHero(theme: TemplateTheme, dark: string, heroImage: string | null, 
           : `linear-gradient(135deg, ${dark}, ${theme.accent})`,
       }}
     >
-      <div style={{ maxWidth: 1240, margin: "0 auto", width: "100%" }}>
-        <div style={{ color: theme.accentSoft || theme.accent, fontSize: 11, fontWeight: 800, letterSpacing: ".18em", textTransform: "uppercase" }}>{eyebrow}</div>
-        <h1 style={{ fontFamily: theme.headlineFont, fontSize: "clamp(40px, 6vw, 76px)", lineHeight: .96, letterSpacing: "-.05em", margin: "14px 0 0", fontWeight: 650 }}>{title}</h1>
-        {body && <p style={{ color: "rgba(255,255,255,.78)", fontSize: 15, lineHeight: 1.8, maxWidth: 620, margin: "18px 0 0" }}>{body}</p>}
+      <div style={{ maxWidth: 1240, margin: "0 auto", width: "100%", display: "flex", justifyContent: "space-between", alignItems: "flex-end", gap: 24, flexWrap: "wrap" }}>
+        <div style={{ maxWidth: 640 }}>
+          <div style={{ color: theme.accentSoft || theme.accent, fontSize: 11, fontWeight: 800, letterSpacing: ".18em", textTransform: "uppercase" }}>{eyebrow}</div>
+          <h1 style={{ fontFamily: theme.headlineFont, fontSize: "clamp(40px, 6vw, 76px)", lineHeight: .96, letterSpacing: "-.05em", margin: "14px 0 0", fontWeight: 650 }}>{title}</h1>
+          {body && <p style={{ color: "rgba(255,255,255,.78)", fontSize: 15, lineHeight: 1.8, maxWidth: 620, margin: "18px 0 0" }}>{body}</p>}
+        </div>
+        {quote && (
+          <div style={{ maxWidth: 240, textAlign: "right", borderRight: `2px solid ${theme.accent}`, paddingRight: 18 }}>
+            <span style={{ fontFamily: theme.headlineFont, fontStyle: "italic", fontSize: 16, lineHeight: 1.4, color: "rgba(255,255,255,.9)" }}>&ldquo;{quote}&rdquo;</span>
+          </div>
+        )}
+      </div>
+    </section>
+  );
+}
+
+function ctaBanner(theme: TemplateTheme, dark: string, image: string | null, eyebrow: string, title: string, body: string, ctaLabel: string, ctaHref: string, items: { icon: React.ElementType; label: string; sublabel?: string }[]) {
+  return (
+    <section style={{ position: "relative", padding: "70px 28px", color: "#fff", background: image ? `linear-gradient(90deg, rgba(10,8,6,.88) 0%, rgba(10,8,6,.55) 60%, rgba(10,8,6,.75) 100%), url(${image}) center/cover` : dark }}>
+      <div style={{ maxWidth: 1240, margin: "0 auto", display: "flex", justifyContent: "space-between", alignItems: "center", gap: 40, flexWrap: "wrap" }}>
+        <div style={{ maxWidth: 480 }}>
+          <div style={{ color: theme.accentSoft || theme.accent, fontSize: 11, fontWeight: 800, letterSpacing: ".18em", textTransform: "uppercase" }}>{eyebrow}</div>
+          <h2 style={{ fontFamily: theme.headlineFont, fontSize: "clamp(28px, 4vw, 40px)", margin: "12px 0 10px", lineHeight: 1.08 }}>{title}</h2>
+          <p style={{ color: "rgba(255,255,255,.78)", fontSize: 14, margin: "0 0 22px" }}>{body}</p>
+          <Link href={ctaHref} style={{ display: "inline-flex", alignItems: "center", gap: 8, padding: "13px 20px", background: theme.accent, color: "#fff", textDecoration: "none", borderRadius: theme.radius, fontWeight: 800, fontSize: 12.5 }}>{ctaLabel} <ArrowUpRight size={14} /></Link>
+        </div>
+        <div style={{ display: "flex", gap: 32, flexWrap: "wrap" }}>
+          {items.map((it) => (
+            <div key={it.label} style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 8, textAlign: "center", minWidth: 90 }}>
+              <it.icon size={22} color={theme.accentSoft || theme.accent} />
+              <strong style={{ fontSize: 12.5 }}>{it.label}</strong>
+              {it.sublabel && <span style={{ fontSize: 11, color: "rgba(255,255,255,.65)" }}>{it.sublabel}</span>}
+            </div>
+          ))}
+        </div>
       </div>
     </section>
   );
@@ -99,7 +135,7 @@ export default async function HotelSectionPage({ params }: { params: Promise<{ s
   ];
   const rooms = items.filter((i) => ROOM_PATTERN.test(`${i.name} ${i.categoryName ?? ""}`));
   const roomItems = rooms.length ? rooms : items.filter((i) => i.kind === "product");
-  const experiences = items.filter((i) => i.kind === "service");
+  const experiences = items.filter((i) => i.kind === "service" && !ROOM_PATTERN.test(`${i.name} ${i.categoryName ?? ""}`));
   const galleryContent = section === "gallery" ? await getHospitalityGallery(slug) : null;
   const gallery = galleryContent?.albums.flatMap((album) => album.images.map((image) => image.image)).filter(Boolean) ?? Array.from(new Set([store.bannerUrl, store.storyImage, ...items.map((i) => i.image)].filter(Boolean) as string[])).slice(0, 12);
   const location = [store.business.city, store.business.state, store.business.country].filter(Boolean).join(", ");
@@ -107,6 +143,8 @@ export default async function HotelSectionPage({ params }: { params: Promise<{ s
   const muted = theme.muted || `${theme.ink}99`;
   const dark = theme.surfaceDark || "#171411";
   const heroImage = store.bannerUrl || store.storyImage || roomItems.find((i) => i.image)?.image || gallery[0] || null;
+  const heroMedia = resolveHeroMedia(store.bannerUrl);
+  const yearsActive = Math.max(0, Math.floor((Date.now() - store.createdAt.getTime()) / (365 * 24 * 60 * 60 * 1000)));
   // Drives labels/copy/amenities/add-ons for this same rooms/booking UI
   // across niches (hotel, short-let, event venue, vehicle rental…) — see
   // lib/storefront/unit-booking-niche.ts. Store owners can override any of
@@ -116,10 +154,111 @@ export default async function HotelSectionPage({ params }: { params: Promise<{ s
   const shell = (content: React.ReactNode) => <div style={{ background: theme.bg, color: theme.ink, fontFamily: theme.font, minHeight: "100vh" }}><HotelHeader slug={slug} theme={theme} store={store} active={section as Section} itemLabelPlural={niche.itemLabelPlural} /><main>{content}</main><HotelFooter slug={slug} theme={theme} store={store} itemLabelPlural={niche.itemLabelPlural} /></div>;
 
   if (section === "story") return shell(<>
-    {pageHero(theme, dark, heroImage, "The property", "A place with a point of view.", store.business.description || theme.sub)}
-    <section style={{ padding: "0 28px 120px" }}><div className="bn-2col" style={{ maxWidth: 1240, margin: "0 auto", display: "grid", gridTemplateColumns: "1fr 1fr", gap: 70, alignItems: "center" } as React.CSSProperties}><div style={{ aspectRatio: "4/3", background: store.storyImage || store.bannerUrl ? `url(${store.storyImage || store.bannerUrl}) center/cover` : `linear-gradient(135deg, ${dark}, ${theme.accent})` }} /><div><div style={{ color: theme.accent, fontSize: 11, fontWeight: 800, letterSpacing: ".18em", textTransform: "uppercase" }}>Hospitality, thoughtfully considered</div><h2 style={{ fontFamily: theme.headlineFont, fontSize: "clamp(34px, 5vw, 62px)", lineHeight: 1, letterSpacing: "-.045em", margin: "14px 0 22px" }}>Designed for the way you want to stay.</h2><p style={{ color: muted, lineHeight: 1.9, fontSize: 15 }}>{store.business.description || "A considered stay shaped by comfort, service and a sense of place."}</p>{location && <div style={{ display: "flex", gap: 10, marginTop: 28, fontSize: 13 }}><MapPin size={17} color={theme.accent} />{location}</div>}</div></div></section>
-    {(amenities.length || checkInOut.length) ? <section style={{ padding: "100px 28px", background: theme.card }}><div style={{ maxWidth: 1240, margin: "0 auto" }}><h2 style={{ fontFamily: theme.headlineFont, fontSize: 48, margin: 0 }}>The essentials.</h2><div className="bn-grid-2" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 60, marginTop: 40 }}><div>{amenities.map(a => <div key={a} style={{ padding: "16px 0", borderBottom: `1px solid ${theme.border || `${theme.ink}18`}`, fontSize: 13, fontWeight: 700 }}>{a}</div>)}</div><div>{checkInOut.map(a => <div key={a} style={{ display: "flex", gap: 12, marginBottom: 18, fontSize: 13 }}><Clock3 size={17} color={theme.accent} />{a}</div>)}</div></div></div></section> : null}
+    {pageHero(theme, dark, heroImage, "Our story", `More Than a ${niche.rateUnit === "night" ? "Stay" : "Visit"}, A Story of Excellence`, `At ${store.name}, we believe hospitality is more than a service — it's a cherished experience.`, "People. Hospitality. A Better Tomorrow.")}
+
+    <div style={{ maxWidth: 1240, margin: "0 auto", padding: "0 28px" }}>
+      <nav style={{ display: "flex", gap: 28, flexWrap: "wrap", borderBottom: `1px solid ${theme.border || `${theme.ink}18`}`, padding: "22px 0", fontSize: 13, fontWeight: 700 }}>
+        <a href="#our-story" style={{ color: theme.accent, textDecoration: "none", borderBottom: `2px solid ${theme.accent}`, paddingBottom: 6 }}>Our Story</a>
+        <a href="#our-mission" style={{ color: theme.ink, opacity: 0.7, textDecoration: "none" }}>Our Mission</a>
+        <a href="#why-choose-us" style={{ color: theme.ink, opacity: 0.7, textDecoration: "none" }}>Why Guests Choose Us</a>
+      </nav>
+    </div>
+
+    <section id="our-story" style={{ padding: "60px 28px" }}>
+      <div style={{ maxWidth: 1240, margin: "0 auto", display: "grid", gridTemplateColumns: "1fr 1fr", gap: 60, alignItems: "center" }}>
+        <div>
+          <div style={{ color: theme.accent, fontSize: 11, fontWeight: 800, letterSpacing: ".18em", textTransform: "uppercase" }}>About {store.name}</div>
+          <h2 style={{ fontFamily: theme.headlineFont, fontSize: "clamp(30px, 4vw, 42px)", lineHeight: 1.06, margin: "14px 0 18px" }}>A Legacy of Exceptional Hospitality</h2>
+          <p style={{ color: muted, lineHeight: 1.85, fontSize: 14.5 }}>{store.business.description || `${store.name} is dedicated to providing world-class accommodation, attentive service and personalized experiences that create unforgettable stays for every guest.`}</p>
+          <p style={{ color: muted, lineHeight: 1.85, fontSize: 14.5, marginTop: 14 }}>Founded on the principles of excellence, comfort and genuine care, we blend modern elegance with authentic hospitality — whether you're here for business, leisure, or a special celebration.</p>
+          <Link href={`/store/${slug}/hotel/contact`} style={{ display: "inline-flex", alignItems: "center", gap: 8, marginTop: 24, padding: "13px 20px", background: theme.accent, color: "#fff", textDecoration: "none", borderRadius: theme.radius, fontWeight: 800, fontSize: 12.5 }}>Get in Touch <ArrowUpRight size={14} /></Link>
+        </div>
+        <div style={{ position: "relative", aspectRatio: "4/3", borderRadius: theme.radius, overflow: "hidden", background: store.storyImage || store.bannerUrl ? `url(${store.storyImage || store.bannerUrl}) center/cover` : `linear-gradient(135deg, ${dark}, ${theme.accent})` }}>
+          {heroMedia.type !== "none" && heroMedia.type !== "image" && (
+            <div style={{ position: "absolute", right: 16, bottom: 16, display: "flex", alignItems: "center", gap: 8, padding: "10px 14px", borderRadius: 30, background: "rgba(10,8,6,.7)", color: "#fff", fontSize: 12, fontWeight: 700 }}>
+              <Play size={13} fill="#fff" /> Watch Our Story
+            </div>
+          )}
+        </div>
+      </div>
+    </section>
+
+    <section style={{ padding: "0 28px 60px" }}>
+      <div style={{ maxWidth: 1240, margin: "0 auto", border: `1px solid ${theme.border || `${theme.ink}18`}`, borderRadius: theme.radius, padding: "30px 20px", display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 20, textAlign: "center", background: theme.card }}>
+        <div><div style={{ fontFamily: theme.headlineFont, fontSize: 30, fontWeight: 700 }}>{roomItems.length}+</div><div style={{ fontSize: 12, color: muted, marginTop: 4 }}>{niche.itemLabelPlural}</div></div>
+        <div><div style={{ fontFamily: theme.headlineFont, fontSize: 30, fontWeight: 700 }}>{avgRating != null ? avgRating.toFixed(1) : "—"}</div><div style={{ fontSize: 12, color: muted, marginTop: 4 }}>Average Guest Rating</div></div>
+        <div><div style={{ fontFamily: theme.headlineFont, fontSize: 30, fontWeight: 700 }}>{store.reviews.length}+</div><div style={{ fontSize: 12, color: muted, marginTop: 4 }}>Guest Reviews</div></div>
+        <div><div style={{ fontFamily: theme.headlineFont, fontSize: 30, fontWeight: 700 }}>{yearsActive > 0 ? `${yearsActive}+` : "New"}</div><div style={{ fontSize: 12, color: muted, marginTop: 4 }}>{yearsActive > 0 ? "Years of Service" : "Recently Opened"}</div></div>
+      </div>
+    </section>
+
+    <section id="our-mission" style={{ padding: "20px 28px 80px" }}>
+      <div style={{ maxWidth: 1240, margin: "0 auto", display: "grid", gridTemplateColumns: "1fr 1fr", gap: 60, alignItems: "center" }}>
+        <div style={{ position: "relative", aspectRatio: "4/3", borderRadius: theme.radius, overflow: "hidden", background: roomItems[0]?.image ? `url(${roomItems[0].image}) center/cover` : `linear-gradient(135deg, ${dark}, ${theme.accent})`, display: "flex", alignItems: "flex-end", padding: 24 }}>
+          <span style={{ color: "#fff", fontFamily: theme.headlineFont, fontStyle: "italic", fontSize: 17, lineHeight: 1.4, textShadow: "0 2px 12px rgba(0,0,0,.5)" }}>&ldquo;Hospitality is not just what we do, it's who we are.&rdquo;</span>
+        </div>
+        <div>
+          <div style={{ color: theme.accent, fontSize: 11, fontWeight: 800, letterSpacing: ".18em", textTransform: "uppercase" }}>Our Mission</div>
+          <h2 style={{ fontFamily: theme.headlineFont, fontSize: "clamp(28px, 4vw, 38px)", margin: "14px 0 16px" }}>To Create Meaningful Experiences</h2>
+          <p style={{ color: muted, lineHeight: 1.85, fontSize: 14.5, marginBottom: 20 }}>We are committed to delivering exceptional hospitality through outstanding service, elegant spaces and a people-first approach that exceeds expectations.</p>
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
+            <div style={{ border: `1px solid ${theme.border || `${theme.ink}18`}`, borderRadius: theme.radius, padding: 16 }}>
+              <Eye size={18} color={theme.accent} />
+              <strong style={{ display: "block", fontSize: 13.5, margin: "10px 0 6px" }}>Our Vision</strong>
+              <span style={{ fontSize: 12, color: muted, lineHeight: 1.6 }}>To be a trusted, preferred name in hospitality, known for excellence and genuine care.</span>
+            </div>
+            <div style={{ border: `1px solid ${theme.border || `${theme.ink}18`}`, borderRadius: theme.radius, padding: 16 }}>
+              <Heart size={18} color={theme.accent} />
+              <strong style={{ display: "block", fontSize: 13.5, margin: "10px 0 6px" }}>Our Values</strong>
+              <span style={{ fontSize: 12, color: muted, lineHeight: 1.6 }}>Excellence, integrity, hospitality, and community, in everything we do.</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section id="why-choose-us" style={{ padding: "70px 28px", background: theme.card }}>
+      <div style={{ maxWidth: 1240, margin: "0 auto" }}>
+        <div style={{ color: theme.accent, fontSize: 11, fontWeight: 800, letterSpacing: ".18em", textTransform: "uppercase" }}>The difference</div>
+        <h2 style={{ fontFamily: theme.headlineFont, fontSize: "clamp(28px, 4vw, 38px)", margin: "12px 0 40px" }}>Why Guests Choose Us</h2>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(5, 1fr)", gap: 24 }}>
+          {[
+            { icon: Gem, label: "Prime Location", sub: location || "Easy to find, easy to reach" },
+            { icon: UserCheck, label: "Personalized Service", sub: "Tailored to your needs" },
+            { icon: Building2, label: `World-Class ${niche.itemLabelPlural}`, sub: "Designed for your comfort" },
+            { icon: ShieldCheck, label: "Safe & Secure", sub: "Your safety is our priority" },
+            { icon: Leaf, label: "Sustainable Practices", sub: "A greener tomorrow" },
+          ].map((f) => (
+            <div key={f.label} style={{ textAlign: "center" }}>
+              <f.icon size={26} color={theme.accent} style={{ marginBottom: 12 }} />
+              <div style={{ fontWeight: 700, fontSize: 13.5 }}>{f.label}</div>
+              <div style={{ fontSize: 11.5, color: muted, marginTop: 4 }}>{f.sub}</div>
+            </div>
+          ))}
+        </div>
+      </div>
+    </section>
+
+    {(amenities.length || checkInOut.length) ? (
+      <section style={{ padding: "20px 28px 80px" }}>
+        <div style={{ maxWidth: 1240, margin: "0 auto", border: `1px solid ${theme.border || `${theme.ink}18`}`, borderRadius: theme.radius, padding: "40px 32px", display: "grid", gridTemplateColumns: "1fr 1fr", gap: 50 }}>
+          <div>
+            <h3 style={{ fontFamily: theme.headlineFont, fontSize: 22, margin: "0 0 16px" }}>Property Essentials</h3>
+            {amenities.map((a) => <div key={a} style={{ padding: "12px 0", borderBottom: `1px solid ${theme.border || `${theme.ink}18`}`, fontSize: 13, fontWeight: 700 }}>{a}</div>)}
+          </div>
+          {checkInOut.length > 0 && (
+            <div>
+              <h3 style={{ fontFamily: theme.headlineFont, fontSize: 22, margin: "0 0 16px" }}>Check-in & Check-out</h3>
+              {checkInOut.map((a) => <div key={a} style={{ display: "flex", gap: 12, marginBottom: 14, fontSize: 13, color: muted }}><Clock3 size={16} color={theme.accent} style={{ flexShrink: 0 }} />{a}</div>)}
+            </div>
+          )}
+        </div>
+      </section>
+    ) : null}
+
+    {ctaBanner(theme, dark, heroImage, "Be a part of our story", "We Look Forward to Welcoming You", `Experience the perfect blend of comfort, service and genuine ${niche.rateUnit === "night" ? "hospitality" : "care"}.`, "Book Your Stay", `/store/${slug}/hotel/rooms`, [])}
   </>);
+
 
   if (section === "rooms") {
     const maxPrice = Math.max(0, ...roomItems.map((r) => r.price));
@@ -164,13 +303,53 @@ export default async function HotelSectionPage({ params }: { params: Promise<{ s
   }
 
   if (section === "experience") return shell(<>
-    {pageHero(theme, dark, heroImage, "The experience", "More than a room.", "Discover the services, experiences and moments that shape the stay.")}
-    <section style={{ padding: "70px 28px 130px" }}><div style={{ maxWidth: 1240, margin: "0 auto" }}><div className="bn-grid-2" style={{ display: "grid", gridTemplateColumns: "repeat(3, minmax(0, 1fr))", gap: 20 }}>{experiences.length ? experiences.map((service, i) => <Link key={service.id} href={`/store/${slug}/service/${service.id}`} style={{ color: theme.ink, textDecoration: "none", borderTop: `1px solid ${theme.border || `${theme.ink}18`}`, paddingTop: 20 }}><div style={{ aspectRatio: "16/10", background: service.image ? `url(${service.image}) center/cover` : `${theme.accent}18`, marginBottom: 20 }} /><span style={{ color: theme.accent, fontSize: 10, fontWeight: 800, letterSpacing: ".16em" }}>0{i + 1}</span><h2 style={{ fontFamily: theme.headlineFont, fontSize: 25, margin: "10px 0 8px" }}>{service.name}</h2><p style={{ color: muted, lineHeight: 1.75, fontSize: 13 }}>{service.description || "Discover more about this experience."}</p></Link>) : <p style={{ color: muted }}>Published experiences will appear here once they are added.</p>}</div></div></section>
+    {pageHero(theme, dark, heroImage, "More than a stay", "Unforgettable Experiences", `Curated experiences designed to inspire, relax and create lasting memories at ${store.name}.`, "Stay. Experience. Belong.")}
+    <section style={{ padding: "60px 28px 100px" }}>
+      <div style={{ maxWidth: 1240, margin: "0 auto" }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end", gap: 20, flexWrap: "wrap", marginBottom: 36 }}>
+          <div>
+            <div style={{ color: theme.accent, fontSize: 11, fontWeight: 800, letterSpacing: ".18em", textTransform: "uppercase" }}>Our experiences</div>
+            <h2 style={{ fontFamily: theme.headlineFont, fontSize: "clamp(28px, 4vw, 38px)", margin: "12px 0 10px" }}>Discover More at {store.name}</h2>
+            <p style={{ color: muted, fontSize: 14, maxWidth: 560, margin: 0 }}>From world-class amenities to curated local experiences, discover what makes a stay here truly memorable.</p>
+          </div>
+          <Link href={`/store/${slug}/hotel/contact`} style={{ display: "inline-flex", alignItems: "center", gap: 8, padding: "12px 18px", border: `1px solid ${theme.accent}`, color: theme.accent, textDecoration: "none", borderRadius: theme.radius, fontWeight: 800, fontSize: 12.5, whiteSpace: "nowrap" }}>Inquire About an Experience <ArrowUpRight size={14} /></Link>
+        </div>
+        <HotelExperienceGrid
+          slug={slug}
+          theme={theme}
+          items={experiences.map((e) => ({ id: e.id, name: e.name, description: e.description, image: e.image, categoryName: e.categoryName }))}
+          detailBasePath={`/store/${slug}/service`}
+        />
+      </div>
+    </section>
+    {ctaBanner(theme, dark, heroImage, "Experience it yourself", "Make Your Stay Extraordinary", "Let us help you curate the perfect experience.", "Contact Our Concierge", `/store/${slug}/hotel/contact`, [
+      { icon: UserCheck, label: "Personalized Service" },
+      { icon: Headphones, label: "24/7 Support" },
+      { icon: Sparkles, label: "Memorable Experiences" },
+    ])}
   </>);
 
   if (section === "gallery") return shell(<>
-    {pageHero(theme, dark, heroImage, galleryContent?.eyebrow || "Visual narrative", galleryContent?.title || "See the place before you arrive.", galleryContent?.intro)}
-    <section style={{ padding: "70px 28px 130px" }}><div style={{ maxWidth: 1240, margin: "0 auto" }}>{galleryContent?.albums.length ? <div style={{ display: "grid", gap: 90, marginTop: 58 }}>{galleryContent.albums.map((album) => <section key={album.id}><div style={{ maxWidth: 760, marginBottom: 28 }}><h2 style={{ fontFamily: theme.headlineFont, fontSize: 36, margin: 0 }}>{album.title}</h2>{album.description && <p style={{ color: muted, lineHeight: 1.8, fontSize: 14, marginTop: 10 }}>{album.description}</p>}</div><div style={{ display: "grid", gridTemplateColumns: "repeat(2, minmax(0,1fr))", gap: 16 }}>{album.images.map((image, i) => <article key={image.id} className="bn-room-card" style={{ gridColumn: i === 0 ? "1 / -1" : undefined, display: "flex", border: `1px solid ${theme.border || `${theme.ink}18`}`, background: theme.card, overflow: "hidden" }}><div className="bn-room-card-img" style={{ width: "42%", flexShrink: 0, aspectRatio: "4/3", overflow: "hidden" }}><img src={image.image} alt={image.title} style={{ width: "100%", height: "100%", objectFit: "cover" }} /></div>{(image.title || image.caption) && <div style={{ flex: 1, padding: "24px 26px", display: "flex", flexDirection: "column", justifyContent: "center", gap: 6, minWidth: 0 }}><strong style={{ fontFamily: theme.headlineFont, fontSize: 19, color: theme.ink }}>{image.title}</strong>{image.caption && <div style={{ fontSize: 12, color: muted, lineHeight: 1.6 }}>{image.caption}</div>}</div>}</article>)}</div></section>)}</div> : <div style={{ display: "grid", gridTemplateColumns: "1.4fr .8fr .8fr", gridAutoRows: 260, gap: 12, marginTop: 55 }}>{gallery.length ? gallery.map((image, i) => <div key={image} style={{ gridRow: i === 0 ? "span 2" : undefined, background: `url(${image}) center/cover` }} />) : <p style={{ color: muted }}>Gallery images will appear here once they are added.</p>}</div>}</div></section>
+    {pageHero(theme, dark, heroImage, "Gallery", "Moments That Tell Our Story", `Explore the beauty, elegance and unique experiences that make ${store.name} a truly exceptional destination.`, "A Visual Journey Through Luxury.")}
+    <section style={{ padding: "60px 28px 100px" }}>
+      <div style={{ maxWidth: 1240, margin: "0 auto" }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end", gap: 20, flexWrap: "wrap", marginBottom: 36 }}>
+          <div>
+            <div style={{ color: theme.accent, fontSize: 11, fontWeight: 800, letterSpacing: ".18em", textTransform: "uppercase" }}>Our gallery</div>
+            <h2 style={{ fontFamily: theme.headlineFont, fontSize: "clamp(28px, 4vw, 38px)", margin: "12px 0 10px" }}>Explore Our World</h2>
+            <p style={{ color: muted, fontSize: 14, maxWidth: 560, margin: 0 }}>From spaces and service to the details in between, our gallery gives you a glimpse of what awaits at {store.name}.</p>
+          </div>
+          <Link href={`/store/${slug}/hotel/contact`} style={{ display: "inline-flex", alignItems: "center", gap: 8, padding: "12px 18px", border: `1px solid ${theme.accent}`, color: theme.accent, textDecoration: "none", borderRadius: theme.radius, fontWeight: 800, fontSize: 12.5, whiteSpace: "nowrap" }}>Plan a Visit <ArrowUpRight size={14} /></Link>
+        </div>
+        <HotelGalleryBrowser slug={slug} theme={theme} albums={galleryContent?.albums ?? []} fallbackImages={gallery} />
+      </div>
+    </section>
+    {ctaBanner(theme, dark, heroImage, "Experience it yourself", "Create Your Own Memories", "Plan your stay and be part of our story.", "Book Your Stay", `/store/${slug}/hotel/rooms`, [
+      { icon: Gem, label: `Luxury ${niche.rateUnit === "night" ? "Stay" : "Booking"}` },
+      { icon: Heart, label: "Unforgettable Moments" },
+      { icon: Camera, label: "Picture Perfect" },
+      { icon: Users, label: "A Place for Everyone" },
+    ])}
   </>);
 
   return shell(<>
