@@ -74,8 +74,8 @@ export default async function StoreAdminLayout({
   if (isPmsRoute) {
     return (
       <>
-        <ThemeFlashGuard scopeId="bn-pms-theme-scope" defaultTheme="light" />
-        <ThemeProvider scopeId="bn-pms-theme-scope" defaultTheme="light">
+        <ThemeFlashGuard scopeId="bn-pms-theme-scope" />
+        <ThemeProvider scopeId="bn-pms-theme-scope">
           <div className="min-h-full bg-background text-foreground">{children}</div>
         </ThemeProvider>
       </>
@@ -84,8 +84,8 @@ export default async function StoreAdminLayout({
 
   return (
     <>
-      <ThemeFlashGuard scopeId="bn-admin-theme-scope" defaultTheme="light" />
-      <ThemeProvider scopeId="bn-admin-theme-scope" defaultTheme="light">
+      <ThemeFlashGuard scopeId="bn-admin-theme-scope" />
+      <ThemeProvider scopeId="bn-admin-theme-scope">
         {/* h-full, not h-screen: the root layout (app/layout.tsx) now wraps
             <body>'s content in a flex column with the AnnouncementBanner as
             a normal block above a flex-1 region. h-screen here ignored the
