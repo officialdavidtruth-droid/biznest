@@ -57,7 +57,7 @@ export function SignatureJourney({ store, slug, templateName, children, crumbs, 
 
           <nav aria-label="Store navigation">
             <Link href={`/store/${slug}`}>Home</Link>
-            <Link href={`/store/${slug}/catalog`}>{hotel ? "Rooms & Suites" : food ? "Menu" : beauty ? "Beauty" : "Shop"}</Link>
+            <Link href={hotel ? `/store/${slug}/hotel/rooms` : `/store/${slug}/catalog`}>{hotel ? "Rooms & Suites" : food ? "Menu" : beauty ? "Beauty" : "Shop"}</Link>
             {hotel && (
               <>
                 <Link href={`/store/${slug}/hotel/experience`}>Amenities</Link>
@@ -91,7 +91,7 @@ export function SignatureJourney({ store, slug, templateName, children, crumbs, 
           <div className="sj-brand"><span>{store.name?.[0]}</span><strong>{store.name}</strong></div>
           <p>{store.business?.description || "Quality, service and experiences designed around you."}</p>
         </div>
-        <div><b>Explore</b><Link href={`/store/${slug}`}>Home</Link><Link href={`/store/${slug}/catalog`}>{hotel ? "Rooms & Suites" : food ? "Menu" : "Catalog"}</Link>{hotel && <Link href={`/store/${slug}/hotel/gallery`}>Gallery</Link>}<Link href={`/store/${slug}/account`}>Account</Link></div>
+        <div><b>Explore</b><Link href={`/store/${slug}`}>Home</Link><Link href={hotel ? `/store/${slug}/hotel/rooms` : `/store/${slug}/catalog`}>{hotel ? "Rooms & Suites" : food ? "Menu" : "Catalog"}</Link>{hotel && <Link href={`/store/${slug}/hotel/gallery`}>Gallery</Link>}<Link href={`/store/${slug}/account`}>Account</Link></div>
         <div><b>Contact</b><span>{store.phone || "Contact available in store settings"}</span><span>{store.email || "Email available in store settings"}</span></div>
         <div><b>Stay in the loop</b><span>New offers, updates and announcements.</span></div>
       </footer>
