@@ -39,11 +39,12 @@ export default async function BusinessVerificationPage() {
 
   return (
     <div className="min-h-screen bg-[#faf7f0] px-4 py-8 sm:px-6 sm:py-14">
-      <div className="mx-auto flex max-w-5xl overflow-hidden rounded-2xl border border-[#e3ddce] bg-white shadow-[0_1px_2px_rgba(20,37,28,.04),0_24px_60px_-24px_rgba(20,37,28,.25)] max-lg:flex-col">
-        {/* Left rail — the one bold element on the page. Everything else
-            (the form itself) stays disciplined and matches BizNest's normal
-            admin styling, so filling this out still feels native. */}
-        <aside className="relative flex w-full shrink-0 flex-col justify-between overflow-hidden bg-[#14251c] px-8 py-10 text-[#f4efe3] sm:px-10 sm:py-12 lg:w-[340px] lg:px-9">
+      <div className="mx-auto flex max-w-5xl rounded-2xl border border-[#e3ddce] bg-white shadow-[0_1px_2px_rgba(20,37,28,.04),0_24px_60px_-24px_rgba(20,37,28,.25)] max-lg:flex-col">
+        {/* Left rail — the one bold element on the page. Sticky + self-start
+            so it stays in view as the (much taller) form scrolls, instead
+            of stretching to match the form's full height and leaving a
+            wall of empty dark space in the middle on a tall viewport. */}
+        <aside className="relative flex w-full shrink-0 flex-col justify-between overflow-hidden rounded-t-2xl bg-[#14251c] px-8 py-10 text-[#f4efe3] sm:px-10 sm:py-12 lg:sticky lg:top-8 lg:w-[340px] lg:self-start lg:rounded-l-2xl lg:rounded-tr-none lg:px-9 lg:py-12">
           <div
             aria-hidden
             className="pointer-events-none absolute -right-24 -top-24 h-64 w-64 rounded-full opacity-[0.14]"
@@ -83,7 +84,7 @@ export default async function BusinessVerificationPage() {
         {/* Right — the actual form, styled to match the rest of BizNest's
             admin surfaces (white bg, standard tokens) rather than the rail's
             palette, so it reads as a normal part of the product. */}
-        <div className="min-w-0 flex-1 px-5 py-8 sm:px-10 sm:py-12">
+        <div className="min-w-0 flex-1 rounded-b-2xl bg-white px-5 py-8 sm:px-10 sm:py-12 lg:rounded-bl-none lg:rounded-r-2xl">
           <BusinessVerificationForm
             existingRejection={existing?.verificationStatus === "REJECTED" ? existing.rejectionReason : null}
           />
