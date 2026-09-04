@@ -10,7 +10,7 @@ import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { ALL_BUSINESS_TYPE_NAMES, getBusinessTypeConfig } from "@/lib/capabilities";
 import { PROFESSIONAL_SERVICE_SUBNICHES } from "@/lib/professional-services";
-import { AlertTriangle, Check, Package, CalendarClock, FileText } from "lucide-react";
+import { AlertTriangle, Check, Package, CalendarClock, FileText, type LucideIcon } from "lucide-react";
 
 // Sourced from lib/capabilities.ts — this used to be a separate
 // hand-maintained list that only covered 10 of the categories the
@@ -338,7 +338,7 @@ function OptionCard({
   description,
   inputProps,
 }: {
-  icon: React.ComponentType<{ className?: string; strokeWidth?: number }>;
+  icon: LucideIcon;
   title: string;
   description: string;
   inputProps: UseFormRegisterReturn;
