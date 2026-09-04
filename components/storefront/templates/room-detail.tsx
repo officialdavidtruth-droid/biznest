@@ -178,7 +178,7 @@ export function RoomDetail(props: Props) {
         </div>
       </section>
 
-      <div style={{ maxWidth: 1320, margin: "0 auto", padding: "28px 28px 90px", display: "grid", gridTemplateColumns: "1fr 340px", gap: 28, alignItems: "start" }}>
+      <div className="bn-2col" style={{ maxWidth: 1320, margin: "0 auto", padding: "28px 28px 90px", display: "grid", gridTemplateColumns: "1fr 340px", gap: 28, alignItems: "start" }}>
         {/* Main column */}
         <div style={{ display: "grid", gap: 26 }}>
           {/* Gallery — the 4-slot thumbnail sidebar only renders when there
@@ -186,7 +186,7 @@ export function RoomDetail(props: Props) {
               reserved 4 slots even with zero real thumbnails, which
               rendered as a wall of empty boxes that read as a stuck
               loading state rather than "no more photos". */}
-          <div style={{ display: "grid", gridTemplateColumns: hasThumbs ? "1fr 150px" : "1fr", gap: 12 }}>
+          <div className="bn-2col" style={{ display: "grid", gridTemplateColumns: hasThumbs ? "1fr 150px" : "1fr", gap: 12 }}>
             <div style={{ position: "relative", borderRadius: theme.radius, overflow: "hidden", aspectRatio: "4/3", background: gallery[activeImage] ? `url(${gallery[activeImage]}) center/cover` : `linear-gradient(135deg, ${accent}, ${ink})` }}>
               {badge && (
                 <span style={{ position: "absolute", top: 14, left: 14, display: "flex", alignItems: "center", gap: 5, padding: "6px 12px", borderRadius: 20, background: "rgba(20,16,12,.82)", color: "#fff", fontSize: 11, fontWeight: 800 }}>
@@ -253,7 +253,7 @@ export function RoomDetail(props: Props) {
                   {featureGrid.length > 0 && (
                     <div>
                       <h3 style={{ fontFamily: theme.headlineFont, fontSize: 18, margin: "8px 0 16px" }}>{itemLabelSingular} Features</h3>
-                      <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", rowGap: 14, columnGap: 20 }}>
+                      <div className="bn-grid-2" style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", rowGap: 14, columnGap: 20 }}>
                         {featureGrid.map((f) => (
                           <span key={f.label} style={{ display: "flex", alignItems: "center", gap: 10, fontSize: 13 }}>
                             <FeatureIcon label={f.label} size={16} color={accent} />
@@ -267,7 +267,7 @@ export function RoomDetail(props: Props) {
               )}
 
               {tab === "Amenities" && (
-                <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", rowGap: 14, columnGap: 20 }}>
+                <div className="bn-grid-2" style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", rowGap: 14, columnGap: 20 }}>
                   {featureGrid.map((f) => (
                     <span key={f.label} style={{ display: "flex", alignItems: "center", gap: 10, fontSize: 13 }}>
                       <FeatureIcon label={f.label} size={16} color={accent} />
@@ -278,7 +278,7 @@ export function RoomDetail(props: Props) {
               )}
 
               {tab === "Room Policies" && (
-                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 40 }}>
+                <div className="bn-2col" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 40 }}>
                   <div>
                     <h3 style={{ fontSize: 14, margin: "0 0 10px" }}>Check In</h3>
                     {(policies?.checkIn || ["Check-in from 2:00 PM", "Valid photo ID required", "Early arrival subject to availability"]).map((l) => <p key={l} style={{ margin: "0 0 8px", fontSize: 13, color: muted }}>● {l}</p>)}
@@ -314,7 +314,7 @@ export function RoomDetail(props: Props) {
               </div>
               <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
                 <button type="button" aria-label="Scroll gallery left" disabled={galleryStart === 0} onClick={() => setGalleryStart((s) => Math.max(0, s - galleryVisible))} style={{ width: 30, height: 30, borderRadius: "50%", border: `1px solid ${border}`, background: theme.card, display: "grid", placeItems: "center", cursor: galleryStart === 0 ? "default" : "pointer", opacity: galleryStart === 0 ? 0.4 : 1, flexShrink: 0 }}><ChevronLeft size={14} /></button>
-                <div style={{ display: "grid", gridTemplateColumns: `repeat(${galleryPage.length}, 1fr)`, gap: 12, flex: 1 }}>
+                <div className="bn-grid-2" style={{ display: "grid", gridTemplateColumns: `repeat(${galleryPage.length}, 1fr)`, gap: 12, flex: 1 }}>
                   {galleryPage.map((src, i) => <div key={galleryStart + i} style={{ aspectRatio: "4/3", borderRadius: 10, background: `url(${src}) center/cover` }} />)}
                 </div>
                 <button type="button" aria-label="Scroll gallery right" disabled={galleryStart + galleryVisible >= galleryPhotos.length} onClick={() => setGalleryStart((s) => Math.min(galleryPhotos.length - galleryVisible, s + galleryVisible))} style={{ width: 30, height: 30, borderRadius: "50%", border: `1px solid ${border}`, background: theme.card, display: "grid", placeItems: "center", cursor: galleryStart + galleryVisible >= galleryPhotos.length ? "default" : "pointer", opacity: galleryStart + galleryVisible >= galleryPhotos.length ? 0.4 : 1, flexShrink: 0 }}><ChevronRight size={14} /></button>
@@ -422,7 +422,7 @@ function ReviewsPanel({ reviews, avgRating, reviewCount, theme, compact }: { rev
   const shown = compact ? reviews.slice(0, 3) : reviews;
 
   return (
-    <div style={{ display: "grid", gridTemplateColumns: avgRating != null ? "180px 1fr" : "1fr", gap: 20 }}>
+    <div className="bn-2col" style={{ display: "grid", gridTemplateColumns: avgRating != null ? "180px 1fr" : "1fr", gap: 20 }}>
       {avgRating != null && (
         <div style={{ border: `1px solid ${border}`, borderRadius: theme.radius, padding: 20, background: `${accent}0d`, textAlign: "center", display: "grid", gap: 6, alignContent: "center" }}>
           <div style={{ fontSize: 34, fontWeight: 800 }}>{avgRating.toFixed(1)}</div>

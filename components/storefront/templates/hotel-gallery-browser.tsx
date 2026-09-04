@@ -31,7 +31,7 @@ export function HotelGalleryBrowser({ slug, theme, albums, fallbackImages }: { s
 
   if (albums.length === 0) {
     return (
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 16 }}>
+      <div className="bn-grid-2" style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 16 }}>
         {fallbackImages.length ? fallbackImages.map((src, i) => (
           <div key={src + i} style={{ aspectRatio: i === 0 ? "16/10" : "4/3", gridColumn: i === 0 ? "1 / -1" : undefined, borderRadius: theme.radius, background: `url(${src}) center/cover` }} />
         )) : (
@@ -77,7 +77,7 @@ export function HotelGalleryBrowser({ slug, theme, albums, fallbackImages }: { s
           {active.images.length === 0 ? (
             <p style={{ color: muted }}>No photos in this category yet.</p>
           ) : (
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 16 }}>
+            <div className="bn-grid-2" style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 16 }}>
               {active.images.map((img) => (
                 <div key={img.id} style={{ position: "relative", aspectRatio: "4/3", borderRadius: theme.radius, overflow: "hidden" }}>
                   <img src={img.image} alt={img.title || active.title} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
@@ -90,7 +90,7 @@ export function HotelGalleryBrowser({ slug, theme, albums, fallbackImages }: { s
           )}
         </div>
       ) : (
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 16 }}>
+        <div className="bn-grid-2" style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 16 }}>
           {albums.map((a) => {
             const Icon = categoryIcon(a.title);
             const cover = a.coverImage || a.images[0]?.image || null;

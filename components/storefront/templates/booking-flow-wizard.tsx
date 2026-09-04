@@ -251,7 +251,7 @@ export function BookingFlowWizard({
         </section>
       )}
 
-      <div style={{ maxWidth: 1240, margin: "0 auto", padding: "30px 20px 100px", display: "grid", gridTemplateColumns: "1fr 380px", gap: 32, alignItems: "start" }}>
+      <div className="bn-2col" style={{ maxWidth: 1240, margin: "0 auto", padding: "30px 20px 100px", display: "grid", gridTemplateColumns: "1fr 380px", gap: 32, alignItems: "start" }}>
         <div style={{ display: "grid", gap: 30 }}>
           {/* Step 1: Room & details (always visible as a summary, like the reference) */}
           <section>
@@ -274,7 +274,7 @@ export function BookingFlowWizard({
               </div>
             </div>
 
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 12, marginTop: 16 }}>
+            <div className="bn-2col" style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 12, marginTop: 16 }}>
               <div>
                 <span style={labelStyle}><Calendar size={11} style={{ verticalAlign: -1, marginRight: 5 }} />Check-in Date</span>
                 <input type="date" value={checkIn} onChange={(e) => setCheckIn(e.target.value)} style={inputStyle} />
@@ -303,7 +303,7 @@ export function BookingFlowWizard({
             <section>
               <h3 style={{ fontFamily: theme.headlineFont, fontSize: 19, margin: "0 0 14px" }}>2. Guest Information</h3>
               <p style={{ color: muted, fontSize: 12.5, margin: "0 0 14px" }}>Enter your details to complete the booking.</p>
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
+              <div className="bn-2col" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
                 <div>
                   <span style={labelStyle}>Full Name *</span>
                   <input value={name} onChange={(e) => setName(e.target.value)} placeholder="e.g. John Doe" style={inputStyle} />

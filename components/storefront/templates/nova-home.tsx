@@ -163,6 +163,7 @@ export function NovaStorefront({
               <Reveal key={`${item.kind}-${item.id}`} delayMs={i * 40} as="section">
                 <a
                   href={`/${slug}/${item.kind === "product" ? "product" : "service"}/${item.id}`}
+                  className="bn-2col"
                   style={{ display: "grid", gridTemplateColumns: "80px 140px 1fr auto", alignItems: "center", gap: 30, padding: "30px 0", borderTop: `1px solid ${p.line}`, textDecoration: "none", color: "inherit" }}
                 >
                   <span style={{ ...p.serif, fontSize: 15, color: p.gray }}>{String(i + 1).padStart(2, "0")}</span>

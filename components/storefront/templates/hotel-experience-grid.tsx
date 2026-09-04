@@ -52,7 +52,7 @@ export function HotelExperienceGrid({ slug, theme, items, detailBasePath }: { sl
         })}
       </div>
 
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 20 }}>
+      <div className="bn-grid-2" style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 20 }}>
         {filtered.map((item, i) => {
           const Icon = categoryIcon(item.categoryName || "");
           return (

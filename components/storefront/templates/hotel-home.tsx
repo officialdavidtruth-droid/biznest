@@ -295,7 +295,7 @@ export function HotelStorefront({ store, slug, catalogItems, goodReviews, avgRat
           <section id="gallery" style={{ padding: "105px 28px", background: theme.card }}>
             <div style={{ maxWidth: 1240, margin: "0 auto" }}>
               <Reveal>{sectionTitle("Visual narrative", "See the place before you arrive.")}</Reveal>
-              <div style={{ display: "grid", gridTemplateColumns: "1.45fr .8fr .8fr", gridAutoRows: 240, gap: 12, marginTop: 42 }}>
+              <div className="bn-2col" style={{ display: "grid", gridTemplateColumns: "1.45fr .8fr .8fr", gridAutoRows: 240, gap: 12, marginTop: 42 }}>
                 {galleryImages.map((image, index) => <Reveal key={image}><div style={{ height: "100%", gridRow: index === 0 ? "span 2" : undefined, ...imageStyle(image, `${primary}16`) }} /></Reveal>)}
               </div>
             </div>

@@ -324,6 +324,23 @@ a[href*="/service/"]:hover img {
   .bn-grid-2 {
     grid-template-columns: repeat(2, 1fr) !important;
   }
+  /* .bn-hero and .bn-grid are the AI Store Builder's section renderer
+     (components/storefront/builder-renderer.tsx) — every section type it
+     outputs (hero, features, categories, testimonials, contact, gallery,
+     stats) already carries one of these two classNames, so adding the
+     rules here is enough to make every AI-built storefront responsive
+     with no changes to that file. */
+  .bn-hero {
+    grid-template-columns: 1fr !important;
+  }
+  .bn-grid {
+    grid-template-columns: repeat(2, 1fr) !important;
+  }
+  /* Product detail page (components/storefront/product-detail.tsx) —
+     image beside details on desktop, stacked on mobile. */
+  .pd-grid {
+    grid-template-columns: 1fr !important;
+  }
    }
 
 /* --- Room / gallery cards: image beside the text, not underneath it ---

@@ -142,7 +142,7 @@ export function RoomsSuitesListing({
     <div style={{ fontFamily: theme.font, color: ink, background: theme.bg }}>
       {/* Search bar */}
       <div style={{ maxWidth: 1240, margin: "-46px auto 0", padding: "0 20px", position: "relative", zIndex: 5 }}>
-        <div style={{ background: theme.card, border: `1px solid ${border}`, borderRadius: theme.radius, padding: 18, display: "grid", gridTemplateColumns: "1fr 1fr 1fr auto", gap: 14, alignItems: "end", boxShadow: "0 20px 44px rgba(0,0,0,.10)" }}>
+        <div className="bn-2col" style={{ background: theme.card, border: `1px solid ${border}`, borderRadius: theme.radius, padding: 18, display: "grid", gridTemplateColumns: "1fr 1fr 1fr auto", gap: 14, alignItems: "end", boxShadow: "0 20px 44px rgba(0,0,0,.10)" }}>
           <div>
             <span style={labelStyle}><Calendar size={11} style={{ verticalAlign: -1, marginRight: 5 }} />Check In</span>
             <input type="date" value={checkIn} onChange={(e) => setCheckIn(e.target.value)} style={inputStyle} />
@@ -161,7 +161,7 @@ export function RoomsSuitesListing({
         </div>
       </div>
 
-      <div style={{ maxWidth: 1240, margin: "0 auto", padding: "50px 20px 100px", display: "grid", gridTemplateColumns: "260px 1fr", gap: 32, alignItems: "start" }}>
+      <div className="bn-2col" style={{ maxWidth: 1240, margin: "0 auto", padding: "50px 20px 100px", display: "grid", gridTemplateColumns: "260px 1fr", gap: 32, alignItems: "start" }}>
         {/* Filters sidebar */}
         <aside style={{ position: "sticky", top: 24, display: "grid", gap: 22 }}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
@@ -295,13 +295,13 @@ export function RoomsSuitesListing({
       {/* Feature strip */}
       {featureStrip && (
         <div style={{ background: theme.bg, borderTop: `1px solid ${border}`, padding: "50px 20px" }}>
-          <div style={{ maxWidth: 1240, margin: "0 auto", display: "grid", gridTemplateColumns: "1fr 1.4fr", gap: 40, alignItems: "center" }}>
+          <div className="bn-2col" style={{ maxWidth: 1240, margin: "0 auto", display: "grid", gridTemplateColumns: "1fr 1.4fr", gap: 40, alignItems: "center" }}>
             <div>
               <h3 style={{ fontFamily: theme.headlineFont, fontSize: 26, margin: "0 0 10px" }}>{featureStrip.title}</h3>
               <p style={{ color: muted, fontSize: 13.5, lineHeight: 1.7, margin: "0 0 18px" }}>{featureStrip.body}</p>
               <Link href={featureStrip.ctaHref} style={{ display: "inline-flex", alignItems: "center", gap: 7, padding: "12px 18px", background: accent, color: "#fff", borderRadius: 8, textDecoration: "none", fontWeight: 800, fontSize: 12.5 }}>{featureStrip.ctaLabel}</Link>
             </div>
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 24 }}>
+            <div className="bn-grid-2" style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 24 }}>
               {featureStrip.features.map((f) => (
                 <div key={f.label} style={{ display: "flex", gap: 10, alignItems: "flex-start" }}>
                   {f.icon === "clock" ? <Clock3 size={18} color={accent} style={{ flexShrink: 0 }} /> : <ShieldCheck size={18} color={accent} style={{ flexShrink: 0 }} />}
