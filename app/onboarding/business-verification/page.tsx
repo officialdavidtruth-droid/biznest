@@ -38,7 +38,7 @@ export default async function BusinessVerificationPage() {
   }
 
   return (
-    <div className="min-h-screen bg-[#faf7f0] px-4 py-8 sm:px-6 sm:py-14">
+    <div className="bg-[#faf7f0] px-4 py-8 sm:px-6 sm:py-14">
       <div className="mx-auto flex max-w-5xl rounded-2xl border border-[#e3ddce] bg-white shadow-[0_1px_2px_rgba(20,37,28,.04),0_24px_60px_-24px_rgba(20,37,28,.25)] max-lg:flex-col">
         {/* Left rail — the one bold element on the page. Sticky + self-start
             so it stays in view as the (much taller) form scrolls, instead
