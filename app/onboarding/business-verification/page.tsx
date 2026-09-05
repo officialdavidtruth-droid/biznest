@@ -18,7 +18,7 @@ export default async function BusinessVerificationPage() {
 
   if (existing?.verificationStatus === "PENDING") {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-[#faf7f0] px-6 py-16">
+      <div className="flex min-h-full items-center justify-center bg-[#faf7f0] px-6 py-16">
         <div className="w-full max-w-md rounded-2xl border border-[#e3ddce] bg-white p-10 text-center shadow-[0_1px_2px_rgba(20,37,28,.04),0_12px_32px_-16px_rgba(20,37,28,.18)]">
           <div className="mx-auto mb-5 flex h-12 w-12 items-center justify-center rounded-full bg-[#154a32]/10">
             <Clock3 className="h-5 w-5 text-[#154a32]" strokeWidth={2} />
@@ -38,7 +38,7 @@ export default async function BusinessVerificationPage() {
   }
 
   return (
-    <div className="bg-[#faf7f0] px-4 py-8 sm:px-6 sm:py-14">
+    <div className="min-h-full bg-[#faf7f0] px-4 py-8 sm:px-6 sm:py-14">
       <div className="mx-auto flex max-w-5xl rounded-2xl border border-[#e3ddce] bg-white shadow-[0_1px_2px_rgba(20,37,28,.04),0_24px_60px_-24px_rgba(20,37,28,.25)] max-lg:flex-col">
         {/* Left rail — the one bold element on the page. Sticky + self-start
             so it stays in view as the (much taller) form scrolls, instead
