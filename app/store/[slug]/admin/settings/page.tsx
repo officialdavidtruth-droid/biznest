@@ -174,5 +174,4 @@ export default async function SettingsPage({ params }: { params: Promise<{ slug:
       </div>
     </div>
   );
-      }
-          
+}

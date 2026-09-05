@@ -21,6 +21,14 @@ export const RESERVED_SLUGS = new Set([
   "favicon.ico",
   "robots.txt",
   "sitemap.xml",
+  // PWA manifest + the icon files it references (public/manifest.json) --
+  // missing here meant middleware treated "manifest.json" itself as a
+  // candidate store slug, found no matching store, and served a 404 HTML
+  // page in place of the real file -- which is why the browser's console
+  // reported a JSON parse error on it (a 404 page isn't valid JSON).
+  "manifest.json",
+  "icon-192.png",
+  "icon-512.png",
   // top-level app/ routes
   "store",
   "account",

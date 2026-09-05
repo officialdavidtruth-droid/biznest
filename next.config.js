@@ -26,9 +26,9 @@ const nextConfig = {
             value: [
               "default-src 'self'",
               "script-src 'self' 'unsafe-inline' 'unsafe-eval'",
-              "style-src 'self' 'unsafe-inline'",
+              "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
               "img-src 'self' data: https://res.cloudinary.com https://lh3.googleusercontent.com",
-              "font-src 'self' data:",
+              "font-src 'self' data: https://fonts.gstatic.com",
               "connect-src 'self' https://api.cloudinary.com https://accounts.google.com https://*.paystack.co https://*.flutterwave.com",
               "frame-ancestors 'self'",
               "object-src 'none'",
