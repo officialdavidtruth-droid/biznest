@@ -77,6 +77,12 @@ export default async function RootLayout({ children }: { children: React.ReactNo
                   full viewport. min-h-0 is required so the flex item can
                   actually shrink below its content size instead of
                   overflowing past the banner like h-screen used to. */}
+              {/* flex-1 + min-h-0: takes whatever height is left after the
+                  banner (or all of it, if there's no banner). Store
+                  admin/supaadmin measure their own shell against this
+                  region (see theme-provider.tsx); ordinary pages (like
+                  onboarding) ignore it entirely and just render at their
+                  own natural content height. */}
               <div className="flex min-h-0 flex-1 flex-col">{children}</div>
             </>
           )}

@@ -97,7 +97,19 @@ export default async function StoreAdminLayout({
             so it doesn't depend on every ancestor between here and <body>
             correctly resolving a percentage height (see the comment on
             this same div in theme-provider.tsx for why that matters). */}
-        <div className="bn-admin-app flex min-h-0 flex-1 flex-col overflow-hidden bg-background text-foreground lg:flex-row">
+        {/* Plain flex row, sized to its own content — no forced height,
+            no overflow-hidden, no independent overflow-y-auto scroll
+            region on <main>. The sidebar goes sticky instead (see
+            DashboardSidebar), which keeps it in view during scroll
+            without needing every ancestor to correctly compute an exact
+            "fill the rest of the viewport" height. That fixed-height +
+            overflow-y-auto combination was the actual fragile part —
+            it depended on this row, the column below, and <main> all
+            landing on the exact same height, and any mismatch meant
+            either the sidebar or the page's own background showed up
+            as dead space. One normal, whole-document scroll can't
+            produce that failure mode. */}
+        <div className="bn-admin-app flex flex-col bg-background text-foreground lg:flex-row">
           <DashboardSidebar
             slug={slug}
             storeName={store.name}
@@ -127,11 +139,11 @@ export default async function StoreAdminLayout({
             subscriptionName={store.subscription?.name}
           />
 
-          <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
+          <div className="flex min-w-0 flex-1 flex-col">
             {/* Desktop-only top bar — mobile gets its own in MobileDashboardChrome
                 above. Shows the current section so the bar isn't just an empty
                 strip with a bell floating at the far end. */}
-            <div className="hidden shrink-0 items-center justify-between border-b border-border bg-muted/20 px-6 py-3 lg:flex">
+            <div className="hidden shrink-0 items-center justify-between border-b border-border bg-muted/20 px-6 py-3 lg:sticky lg:top-0 lg:z-10 lg:flex">
               <p className="text-sm font-medium text-muted-foreground">
                 {/* Staff who signed in as "Position@store" get their title
                     in the header, matching what the owner named them at
@@ -148,14 +160,8 @@ export default async function StoreAdminLayout({
               </div>
             </div>
 
-            <main className="min-h-0 flex-1 overflow-y-auto bg-background pb-20 lg:pb-0">
-              {/* min-h-full: on pages with little content (e.g. a Services
-                  page with one row), this div would otherwise only be as
-                  tall as {children}, letting the page's plain white
-                  background show through below it, above the fixed mobile
-                  bottom bar. min-h-full makes it always fill at least the
-                  visible scroll area with the themed background. */}
-              <div className="mx-auto min-h-full max-w-none px-4 py-4 lg:px-7 lg:py-7">{children}</div>
+            <main className="bg-background pb-20 lg:pb-0">
+              <div className="mx-auto max-w-none px-4 py-4 lg:px-7 lg:py-7">{children}</div>
             </main>
           </div>
         </div>

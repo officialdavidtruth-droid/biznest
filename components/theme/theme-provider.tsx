@@ -81,15 +81,18 @@ export function ThemeProvider({
           over for the rest of the session (toggling, system-theme
           changes) without touching the DOM class directly again except
           through this same className render. */}
-      {/* h-full is load-bearing, not cosmetic: every admin/supaadmin surface
-          wrapped in this provider builds a fixed-height app-shell (sidebar +
-          main each with their own overflow-y-auto) that relies on a percentage
-          height (h-full) chain all the way up. Without h-full here, this div's
-          height collapses to auto (fits its content), which breaks that chain
-          at this exact link -- every descendant h-full silently stops meaning
-          anything, the "constrained" panels grow to fit their content instead
-          of scrolling internally, and the whole document scrolls instead. */}
-      <div id={scopeId} className={`h-full ${resolvedTheme}`} suppressHydrationWarning>
+      {/* Flex-based (flex-1 within the root layout's flex wrapper), not
+          percentage-based (h-full): supaadmin's own shell (the only other
+          consumer of this provider) still relies on this div being a flex
+          container with flex-1, to correctly fill the viewport. Store
+          admin, below, deliberately does NOT consume that flex-1 anymore
+          — its own outermost div just sizes to content instead of
+          stretching, which is what lets a short admin page (like
+          Settings) render without leaving dead space where a forced
+          full-height stretch used to be. Both can coexist because a
+          flex item without its own flex-grow simply doesn't stretch,
+          even inside a flex-1 parent. */}
+      <div id={scopeId} className={`flex min-h-0 flex-1 flex-col ${resolvedTheme}`} suppressHydrationWarning>
         {children}
       </div>
     </ThemeContext.Provider>
