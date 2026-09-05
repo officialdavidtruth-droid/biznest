@@ -46,7 +46,18 @@ export function PushSubscribePrompt() {
         setVisible(false);
         return;
       }
-      const registration = await navigator.serviceWorker.ready;
+      // navigator.serviceWorker.ready never resolves if the worker failed
+      // to register (e.g. the earlier register() call in the effect above
+      // hit a network error, or a stale worker got stuck) -- it just waits
+      // forever for a worker that will never activate. That's exactly what
+      // left this button stuck on "Enabling..." permanently. A timeout
+      // can't make the subscription succeed, but it guarantees the button
+      // always recovers instead of hanging, so retrying is at least
+      // possible instead of the prompt being silently dead until reload.
+      const registration = await Promise.race([
+        navigator.serviceWorker.ready,
+        new Promise<never>((_, reject) => setTimeout(() => reject(new Error("Service worker didn't become ready in time")), 8000)),
+      ]);
       const subscription = await registration.pushManager.subscribe({
         userVisibleOnly: true,
         applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY),
@@ -55,6 +66,10 @@ export function PushSubscribePrompt() {
       if (json.keys) {
         await subscribeToPush({ endpoint: json.endpoint, keys: json.keys, userAgent: navigator.userAgent });
       }
+    } catch {
+      // Swallow and just let finally reset the button -- there's no
+      // separate error UI here yet, but "stuck forever" is worse than
+      // "silently didn't enable"; the person can just press Enable again.
     } finally {
       setBusy(false);
       setVisible(false);

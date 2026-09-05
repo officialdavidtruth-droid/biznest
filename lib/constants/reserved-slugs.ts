@@ -29,6 +29,16 @@ export const RESERVED_SLUGS = new Set([
   "manifest.json",
   "icon-192.png",
   "icon-512.png",
+  "icon-32.png",
+  // Service worker script (public/sw.js) -- same failure mode as the
+  // manifest above: missing here meant middleware served a 404 page in
+  // place of the real script, so navigator.serviceWorker.register("/sw.js")
+  // silently failed (caught by an empty .catch() in push-subscribe-
+  // prompt.tsx), and the later `await navigator.serviceWorker.ready` in
+  // that same file then hung forever waiting for a worker that could
+  // never activate -- which is why the "Enable notifications" button
+  // got stuck on "Enabling..." permanently.
+  "sw.js",
   // top-level app/ routes
   "store",
   "account",
