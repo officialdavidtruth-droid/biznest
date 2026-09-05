@@ -44,7 +44,7 @@ export default async function BusinessVerificationPage() {
             a floating card with margins on all sides. Sticky + self-start
             so it stays in view as the (much taller) form scrolls, instead
             of stretching to match the form's full height. */}
-        <aside className="relative flex w-full shrink-0 flex-col justify-between overflow-hidden bg-[#14251c] px-8 py-12 text-[#f4efe3] sm:px-10 sm:py-16 lg:sticky lg:top-0 lg:h-screen lg:w-[380px] lg:self-start lg:px-12">
+        <aside className="relative flex w-full shrink-0 flex-col justify-between overflow-hidden bg-[#14251c] px-8 py-12 text-[#f4efe3] sm:px-10 sm:py-16 lg:sticky lg:top-0 lg:w-[380px] lg:self-start lg:px-12">
           <div
             aria-hidden
             className="pointer-events-none absolute -right-24 -top-24 h-64 w-64 rounded-full opacity-[0.14]"
