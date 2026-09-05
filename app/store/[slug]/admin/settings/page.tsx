@@ -1,9 +1,11 @@
 // Route: /store/[slug]/admin/settings
+import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { updateStoreSettings } from "@/lib/actions/store";
 import { setCustomDomain, recheckDomainStatus, removeCustomDomain } from "@/lib/actions/domain";
 import { LogoBannerFields } from "@/components/forms/logo-banner-fields";
 import { StoreSlugEditor } from "@/components/dashboard/store-slug-editor";
+import { BusinessCapabilitiesEditor } from "@/components/dashboard/business-capabilities-editor";
 import { WebhooksPanel } from "@/components/dashboard/webhooks-panel";
 import { listWebhookEndpoints, availableWebhookEvents } from "@/lib/actions/webhook";
 import { APP_URL } from "@/lib/constants/app-url";
@@ -12,6 +14,9 @@ export default async function SettingsPage({ params }: { params: Promise<{ slug:
   const { slug } = await params;
   const store = await prisma.store.findUnique({ where: { slug }, include: { subscription: true, business: true } });
   if (!store) return null;
+
+  const session = await auth();
+  const isOwner = session?.user?.id === store.business.userId;
 
   const theme = (store.themeColors as Record<string, string> | null) ?? {};
   const social = (store.socialLinks as Record<string, string> | null) ?? {};
@@ -112,6 +117,16 @@ export default async function SettingsPage({ params }: { params: Promise<{ slug:
       <div className="mt-6">
         <StoreSlugEditor slug={slug} domainRoot={new URL(APP_URL).host.replace(/^www\./, "")} />
       </div>
+
+      {isOwner && (
+        <div className="mt-6">
+          <BusinessCapabilitiesEditor
+            slug={slug}
+            initialSellsProducts={store.business.sellsProducts}
+            initialOffersServices={store.business.offersServices}
+          />
+        </div>
+      )}
 
       <div className="mt-6 rounded-lg border bg-background p-4">
         <p className="mb-1 text-sm font-medium">Custom domain</p>

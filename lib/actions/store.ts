@@ -475,6 +475,52 @@ export async function updateStoreSlug(
   return { success: true, data: { slug: raw, publicUrl: storePublicUrl(raw) } };
 }
 
+/**
+ * Lets the business owner change what their business sells after the fact
+ * — e.g. a store that verified as "products only" later starts offering
+ * bookings too, or drops one side entirely. Deliberately owner-only (not
+ * available to staff with the general "settings" permission): flipping
+ * this reshapes the whole dashboard nav and storefront layout for
+ * everyone who works in the store, not just a routine settings tweak.
+ *
+ * Nothing downstream needs to be told about the change separately —
+ * dashboard-nav.ts, business-experience.ts and the storefront's own
+ * builder-renderer all read Business.sellsProducts/offersServices fresh
+ * from the database on every request, so the very next page load already
+ * reflects the new capabilities.
+ */
+export async function updateBusinessCapabilities(
+  slug: string,
+  input: { sellsProducts: boolean; offersServices: boolean }
+): Promise<ActionResult<{ sellsProducts: boolean; offersServices: boolean }>> {
+  const access = await assertStoreOwner(slug);
+  if (!access.success) return { success: false, error: access.error };
+
+  if (!input.sellsProducts && !input.offersServices) {
+    return { success: false, error: "Select at least one: you sell products, offer services, or both." };
+  }
+
+  await prisma.business.update({
+    where: { id: access.store.business.id },
+    data: { sellsProducts: input.sellsProducts, offersServices: input.offersServices },
+  });
+
+  await prisma.auditLog.create({
+    data: {
+      userId: access.store.business.userId,
+      action: "BUSINESS_CAPABILITIES_CHANGED",
+      entity: "Business",
+      entityId: access.store.business.id,
+      metadata: { sellsProducts: input.sellsProducts, offersServices: input.offersServices },
+    },
+  });
+
+  revalidatePath(`/store/${slug}/admin`, "layout");
+  revalidatePath(`/${slug}`);
+
+  return { success: true, data: input };
+}
+
 export type HeroOverrides = { headline?: string; subtitle?: string; ctaLabel?: string };
 
 /**
