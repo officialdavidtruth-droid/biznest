@@ -18,7 +18,7 @@ export default async function BusinessVerificationPage() {
 
   if (existing?.verificationStatus === "PENDING") {
     return (
-      <div className="flex min-h-full items-center justify-center bg-[#faf7f0] px-6 py-16">
+      <div className="bg-[#faf7f0] px-6 py-24 text-center">
         <div className="w-full max-w-md rounded-2xl border border-[#e3ddce] bg-white p-10 text-center shadow-[0_1px_2px_rgba(20,37,28,.04),0_12px_32px_-16px_rgba(20,37,28,.18)]">
           <div className="mx-auto mb-5 flex h-12 w-12 items-center justify-center rounded-full bg-[#154a32]/10">
             <Clock3 className="h-5 w-5 text-[#154a32]" strokeWidth={2} />
@@ -38,13 +38,19 @@ export default async function BusinessVerificationPage() {
   }
 
   return (
-    <div className="min-h-full bg-white">
+    <div className="bg-white">
       <div className="flex max-lg:flex-col">
-        {/* Left rail — full-bleed, touching the viewport edges, rather than
-            a floating card with margins on all sides. Sticky + self-start
-            so it stays in view as the (much taller) form scrolls, instead
-            of stretching to match the form's full height. */}
-        <aside className="relative flex w-full shrink-0 flex-col justify-between overflow-hidden bg-[#14251c] px-8 py-12 text-[#f4efe3] sm:px-10 sm:py-16 lg:sticky lg:top-0 lg:w-[380px] lg:self-start lg:px-12">
+        {/* Left rail — plain flex item, no sticky/h-screen/min-h-full.
+            It stretches to match the form's height (flexbox's normal
+            default) rather than staying pinned via position:sticky —
+            that's a deliberate trade for robustness: sticky + a fixed
+            viewport height was fragile (it silently assumed there was
+            never an announcement banner eating into the available
+            space, and broke in a few other ways besides). Content flows
+            from the top with normal spacing instead of being split
+            top/bottom, so any extra stretched height below it just
+            reads as breathing room, not an abandoned gap. */}
+        <aside className="relative flex w-full shrink-0 flex-col overflow-hidden bg-[#14251c] px-8 py-12 text-[#f4efe3] sm:px-10 sm:py-16 lg:w-[380px] lg:px-12">
           <div
             aria-hidden
             className="pointer-events-none absolute -right-24 -top-24 h-64 w-64 rounded-full opacity-[0.14]"
@@ -74,11 +80,11 @@ export default async function BusinessVerificationPage() {
                 </li>
               ))}
             </ul>
-          </div>
 
-          <p className="relative mt-10 hidden text-xs leading-relaxed text-[#8f8a76] lg:block">
-            Rejected once? You can review the note and resubmit as many times as you need.
-          </p>
+            <p className="relative mt-10 hidden text-xs leading-relaxed text-[#8f8a76] lg:block">
+              Rejected once? You can review the note and resubmit as many times as you need.
+            </p>
+          </div>
         </aside>
 
         {/* Right — the actual form. Also full-bleed against the viewport;
