@@ -1,4 +1,5 @@
 import type React from "react";
+import { cache } from "react";
 import { prisma } from "@/lib/prisma";
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
@@ -32,14 +33,18 @@ import { getHospitalityGallery } from "@/lib/actions/hospitality-content";
 
 export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }): Promise<Metadata> {
   const { slug } = await params;
-  const store = await prisma.store.findUnique({ where: { slug } });
+  const store = await getStoreForSlug(slug);
   if (!store) return {};
   return { title: store.seoTitle ?? store.name, description: store.seoDescription ?? undefined };
 }
 
-export default async function StorefrontPage({ params }: { params: Promise<{ slug: string }> }) {
-  const { slug } = await params;
-  const rawStore = await prisma.store.findUnique({
+// generateMetadata and the page component both need the store record, but
+// Next.js calls them as two independent functions — without this, every
+// storefront page view paid for the same `Store.findUnique` twice, back to
+// back, before any HTML could render. React's cache() dedupes calls with
+// the same arguments within a single request, so this now runs once.
+const getStoreForSlug = cache((slug: string) =>
+  prisma.store.findUnique({
     where: { slug },
     include: {
       template: true,
@@ -48,7 +53,12 @@ export default async function StorefrontPage({ params }: { params: Promise<{ slu
       services: { where: { isPublished: true }, take: 24, include: { category: true } },
       reviews: { include: { author: true }, orderBy: { createdAt: "desc" }, take: 6 },
     },
-  });
+  })
+);
+
+export default async function StorefrontPage({ params }: { params: Promise<{ slug: string }> }) {
+  const { slug } = await params;
+  const rawStore = await getStoreForSlug(slug);
 
   if (!rawStore || rawStore.status !== "ACTIVE") notFound();
   // Flatten Business.sellsProducts onto the store object once, since the
@@ -81,7 +91,17 @@ export default async function StorefrontPage({ params }: { params: Promise<{ slu
   // Full category tree (with subcategories + counts) for the category nav
   // bar — a separate query from catalogItems above, since that one is
   // capped at 24 items per kind and shouldn't silently under-count.
-  const navCategories = await getStoreCategoryTree(store.id);
+  //
+  // These four calls are each their own DB round-trip and don't depend on
+  // one another, so they're fired together instead of one-at-a-time —
+  // sequential awaits here were adding up to 3 extra round-trips' worth of
+  // latency to every single storefront page view for no reason.
+  const [navCategories, completedOrders, trustScore, trustChecklist] = await Promise.all([
+    getStoreCategoryTree(store.id),
+    prisma.order.count({ where: { storeId: store.id, status: { in: ["DELIVERED", "COMPLETED"] } } }),
+    store.business ? getTrustScoreBreakdown(store.business.id).then((b) => b?.score ?? null) : Promise.resolve(null),
+    store.business ? getTrustScoreChecklist(store.business.id) : Promise.resolve(null),
+  ]);
 
   // Homepage only teases a handful of items — the full catalog lives on its
   // own page (/catalog) and each category has its own dedicated listing
@@ -92,13 +112,6 @@ export default async function StorefrontPage({ params }: { params: Promise<{ slu
   const avgRating = store.reviews.length
     ? store.reviews.reduce((sum, r) => sum + r.rating, 0) / store.reviews.length
     : null;
-  const completedOrders = await prisma.order.count({ where: { storeId: store.id, status: { in: ["DELIVERED", "COMPLETED"] } } });
-
-  // Trust Score is compute-on-read (see lib/actions/trust-score.ts) — cheap
-  // enough for a single storefront page view. `business` can be null this
-  // early in onboarding, in which case there's nothing to score yet.
-  const trustScore = store.business ? (await getTrustScoreBreakdown(store.business.id))?.score ?? null : null;
-  const trustChecklist = store.business ? await getTrustScoreChecklist(store.business.id) : null;
 
   const heroImage = store.bannerUrl || store.template?.previewUrl || null;
   const storyImage = store.storyImage || store.bannerUrl || store.template?.previewUrl || null;
