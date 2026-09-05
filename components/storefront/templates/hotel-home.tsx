@@ -126,7 +126,7 @@ export function HotelStorefront({ store, slug, catalogItems, goodReviews, avgRat
   );
 
   return (
-    <div style={{ background: theme.bg, color: ink, fontFamily: theme.font, overflow: "hidden" }}>
+    <div style={{ background: theme.bg, color: ink, fontFamily: theme.font, minHeight: "100vh" }} className="storefront-root">
       <HotelHeader slug={slug} theme={theme} store={store} active="home" itemLabelPlural={niche.itemLabelPlural} />
 
       <main>
