@@ -331,13 +331,18 @@ export async function createBooking(
   if (
     !service ||
     !service.isBookable ||
-    !service.durationMins
+    service.durationMins == null ||
+    service.durationMins <= 0
   ) {
     return {
       success: false,
       error: "This service isn't bookable.",
     };
   }
+
+  // Keep the narrowed value outside the transaction callback so TypeScript
+  // can safely treat it as a number inside the async closure.
+  const durationMins = service.durationMins;
 
   /**
    * Store customers are restricted to their own store.
@@ -503,7 +508,7 @@ export async function createBooking(
             serviceId,
             buyerId: session?.user?.id ?? null,
             scheduledAt,
-            durationMins: service.durationMins,
+            durationMins,
             notes: notes?.trim() || null,
             source: "Online",
             staffId: staffId || null,
