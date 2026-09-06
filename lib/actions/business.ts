@@ -43,49 +43,64 @@ export async function submitBusinessVerification(
   const data = parsed.data;
   if (!BUSINESS_TYPES[data.category]) return { success: false, error: "Please select a supported business type." };
 
-  const business = await prisma.business.upsert({
-    where: { userId: session.user.id },
-    create: {
-      userId: session.user.id,
-      businessName: data.businessName,
-      category: data.category,
-      businessSubcategory: data.businessSubcategory ?? null,
-      description: data.description,
-      phone: data.phone,
-      email: data.email,
-      country: data.country,
-      state: data.state,
-      city: data.city,
-      sellsProducts: data.sellsProducts,
-      offersServices: data.offersServices,
-      registrationType: data.registrationType,
-      registrationCertUrl: data.registrationType === "REGISTERED" ? data.registrationCertUrl : null,
-      governmentIdUrl: data.registrationType === "UNREGISTERED" ? data.governmentIdUrl : null,
-      selfieUrl: data.registrationType === "UNREGISTERED" ? data.selfieUrl : null,
-      verificationStatus: "PENDING",
-      ...(data.registrationType === "UNREGISTERED"
-        ? { guarantors: { create: data.guarantors } }
-        : {}),
-    },
-    update: {
-      businessName: data.businessName,
-      category: data.category,
-      businessSubcategory: data.businessSubcategory ?? null,
-      description: data.description,
-      phone: data.phone,
-      email: data.email,
-      country: data.country,
-      state: data.state,
-      city: data.city,
-      sellsProducts: data.sellsProducts,
-      offersServices: data.offersServices,
-      registrationType: data.registrationType,
-      registrationCertUrl: data.registrationType === "REGISTERED" ? data.registrationCertUrl : null,
-      governmentIdUrl: data.registrationType === "UNREGISTERED" ? data.governmentIdUrl : null,
-      selfieUrl: data.registrationType === "UNREGISTERED" ? data.selfieUrl : null,
-      verificationStatus: "PENDING",
-      rejectionReason: null,
-    },
+  // A rejected verification is a new KYC submission. Clear the previous
+  // fraud-policy acceptance and replace the previous guarantor records so
+  // stale/rejected identity data cannot silently carry into the new review.
+  const isResubmission = Boolean(existing && existing.verificationStatus === "REJECTED");
+
+  const business = await prisma.$transaction(async (tx) => {
+    if (isResubmission && existing) {
+      await tx.guarantor.deleteMany({ where: { businessId: existing.id } });
+    }
+
+    return tx.business.upsert({
+      where: { userId: session.user.id },
+      create: {
+        userId: session.user.id,
+        businessName: data.businessName,
+        category: data.category,
+        businessSubcategory: data.businessSubcategory ?? null,
+        description: data.description,
+        phone: data.phone,
+        email: data.email,
+        country: data.country,
+        state: data.state,
+        city: data.city,
+        sellsProducts: data.sellsProducts,
+        offersServices: data.offersServices,
+        registrationType: data.registrationType,
+        registrationCertUrl: data.registrationType === "REGISTERED" ? data.registrationCertUrl : null,
+        governmentIdUrl: data.registrationType === "UNREGISTERED" ? data.governmentIdUrl : null,
+        selfieUrl: data.registrationType === "UNREGISTERED" ? data.selfieUrl : null,
+        verificationStatus: "PENDING",
+        ...(data.registrationType === "UNREGISTERED"
+          ? { guarantors: { create: data.guarantors } }
+          : {}),
+      },
+      update: {
+        businessName: data.businessName,
+        category: data.category,
+        businessSubcategory: data.businessSubcategory ?? null,
+        description: data.description,
+        phone: data.phone,
+        email: data.email,
+        country: data.country,
+        state: data.state,
+        city: data.city,
+        sellsProducts: data.sellsProducts,
+        offersServices: data.offersServices,
+        registrationType: data.registrationType,
+        registrationCertUrl: data.registrationType === "REGISTERED" ? data.registrationCertUrl : null,
+        governmentIdUrl: data.registrationType === "UNREGISTERED" ? data.governmentIdUrl : null,
+        selfieUrl: data.registrationType === "UNREGISTERED" ? data.selfieUrl : null,
+        verificationStatus: "PENDING",
+        rejectionReason: null,
+        fraudPolicyAcceptedAt: isResubmission ? null : undefined,
+        ...(data.registrationType === "UNREGISTERED"
+          ? { guarantors: { create: data.guarantors } }
+          : {}),
+      },
+    });
   });
 
   await prisma.auditLog.create({

@@ -32,7 +32,7 @@ export function CartClient({ slug }: { slug: string }) {
         {cartItems.length === 0 ? (
           <div style={{ background: CARD, borderRadius: "1rem", boxShadow: "0 1px 3px rgba(18,18,18,0.06)" }} className="p-12 text-center">
             <p style={{ opacity: 0.75 }} className="text-sm">Your cart is empty.</p>
-            <Link href={`/${slug}`} style={{ color: ACCENT }} className="mt-3 inline-block text-sm font-semibold no-underline hover:opacity-80">
+            <Link href={`/store/${slug}`} style={{ color: ACCENT }} className="mt-3 inline-block text-sm font-semibold no-underline hover:opacity-80">
               Continue shopping →
             </Link>
           </div>
@@ -118,7 +118,7 @@ export function CartClient({ slug }: { slug: string }) {
                   <span className="text-2xl font-extrabold leading-none">{cartItems[0]?.currency} {subtotal.toLocaleString()}</span>
                 </div>
                 <Link
-                  href={`/${slug}/checkout`}
+                  href={`/store/${slug}/checkout`}
                   style={{ background: ACCENT, color: "#fff", boxShadow: `0 8px 20px ${ACCENT}4d` }}
                   className="mt-1 flex items-center justify-center gap-2 rounded-xl py-3.5 text-sm font-semibold no-underline transition-transform hover:-translate-y-0.5"
                 >

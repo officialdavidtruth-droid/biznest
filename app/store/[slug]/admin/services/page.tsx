@@ -24,8 +24,8 @@ export default async function ServicesPage({ params }: { params: Promise<{ slug:
           <p className="mt-1 text-sm text-muted-foreground">{terminology.catalogDescription}</p>
         </div>
         <div className="flex flex-wrap gap-2">
-          <Link href={`/${slug}`} target="_blank" className="bn-admin-action rounded-lg border bg-white px-4 py-2.5 text-sm font-semibold">View Store ↗</Link>
-          <Link href={`/${slug}/admin/services/new`} className="bn-admin-action rounded-lg bg-primary px-4 py-2.5 text-sm font-bold text-primary-foreground"><Plus className="mr-2 inline h-4 w-4" />Add {terminology.catalogSingular}</Link>
+          <Link href={`/store/${slug}`} target="_blank" className="bn-admin-action rounded-lg border bg-white px-4 py-2.5 text-sm font-semibold">View Store ↗</Link>
+          <Link href={`/store/${slug}/admin/services/new`} className="bn-admin-action rounded-lg bg-primary px-4 py-2.5 text-sm font-bold text-primary-foreground"><Plus className="mr-2 inline h-4 w-4" />Add {terminology.catalogSingular}</Link>
         </div>
       </div>
 

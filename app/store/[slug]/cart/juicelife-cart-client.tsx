@@ -25,7 +25,7 @@ export function JuiceLifeCartClient({ slug }: { slug: string }) {
       {cartItems.length === 0 ? (
         <div style={{ background: "#fff", borderRadius: JUICELIFE.radius, border: "1px solid #edf1eb" }} className="p-12 text-center">
           <p style={{ color: JUICELIFE.muted, fontSize: 13 }}>Your cart is empty.</p>
-          <Link href={`/${slug}`} style={{ color: JUICELIFE.green }} className="mt-3 inline-block text-xs font-bold no-underline hover:opacity-70">
+          <Link href={`/store/${slug}`} style={{ color: JUICELIFE.green }} className="mt-3 inline-block text-xs font-bold no-underline hover:opacity-70">
             Continue shopping →
           </Link>
         </div>
@@ -98,7 +98,7 @@ export function JuiceLifeCartClient({ slug }: { slug: string }) {
                 <span style={{ fontSize: 22, fontWeight: 900, color: JUICELIFE.orange }} className="leading-none">{cartItems[0]?.currency} {subtotal.toLocaleString()}</span>
               </div>
               <Link
-                href={`/${slug}/checkout`}
+                href={`/store/${slug}/checkout`}
                 style={{ background: JUICELIFE.orange, color: "#fff", borderRadius: 22 }}
                 className="mt-1 flex items-center justify-center gap-2 py-3.5 text-xs font-extrabold no-underline transition hover:opacity-90"
               >

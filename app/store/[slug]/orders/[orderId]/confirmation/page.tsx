@@ -169,7 +169,7 @@ export default async function OrderConfirmationPage({
 
       <div className="flex justify-center gap-3">
         <Link
-          href={`/${slug}`}
+          href={`/store/${slug}`}
           style={{ border: `1px solid ${ink}22`, color: ink, borderRadius: pillRadius }}
           className="px-5 py-2.5 text-sm font-semibold no-underline transition hover:bg-black/5"
         >

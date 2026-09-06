@@ -25,7 +25,7 @@ export function FabtexCartClient({ slug }: { slug: string }) {
       {cartItems.length === 0 ? (
         <div style={{ background: FABTEX.panel, border: "1px solid #393535" }} className="p-12 text-center">
           <p style={{ color: FABTEX.muted, fontSize: 12 }}>Your cart is empty.</p>
-          <Link href={`/${slug}`} style={{ color: FABTEX.orange }} className="mt-3 inline-block text-[11px] font-bold uppercase tracking-wide no-underline hover:opacity-70">
+          <Link href={`/store/${slug}`} style={{ color: FABTEX.orange }} className="mt-3 inline-block text-[11px] font-bold uppercase tracking-wide no-underline hover:opacity-70">
             Continue shopping →
           </Link>
         </div>
@@ -98,7 +98,7 @@ export function FabtexCartClient({ slug }: { slug: string }) {
                 <span style={{ fontSize: 20, fontWeight: 700, color: FABTEX.orange }} className="leading-none">{cartItems[0]?.currency} {subtotal.toLocaleString()}</span>
               </div>
               <Link
-                href={`/${slug}/checkout`}
+                href={`/store/${slug}/checkout`}
                 style={{ background: FABTEX.orange, color: "#fff" }}
                 className="mt-1 flex items-center justify-center gap-2 py-3.5 text-[11px] font-bold uppercase tracking-wide no-underline transition hover:opacity-90"
               >

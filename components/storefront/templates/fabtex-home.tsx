@@ -63,7 +63,7 @@ export function FabtexStorefront({
 
       {/* ---------- HEADER ---------- */}
       <header style={{ height: 64, background: FABTEX.dark, ...wrap, display: "flex", alignItems: "center", gap: 30, borderBottom: "1px solid #343131" }}>
-        <a href={`/${slug}`} style={{ fontWeight: 700, fontSize: 22, letterSpacing: 6, textDecoration: "none", color: "#fff", whiteSpace: "nowrap", display: "flex", alignItems: "center", gap: 10 }}>
+        <a href={`/store/${slug}`} style={{ fontWeight: 700, fontSize: 22, letterSpacing: 6, textDecoration: "none", color: "#fff", whiteSpace: "nowrap", display: "flex", alignItems: "center", gap: 10 }}>
           {store.logoUrl ? (
             // eslint-disable-next-line @next/next/no-img-element
             <img src={store.logoUrl} alt={store.name} style={{ height: 30, width: "auto" }} />
@@ -108,12 +108,12 @@ export function FabtexStorefront({
           <Reveal>
             <div style={{ display: "flex", gap: 10, justifyContent: "center", flexWrap: "wrap" }}>
               {navCategories.slice(0, 4).map((c) => (
-                <a key={c.id} href={`/${slug}/category/${c.id}`} style={{ fontSize: 11, textDecoration: "none", color: "#fff", background: "rgba(255,255,255,0.06)", padding: "14px 30px" }}>
+                <a key={c.id} href={`/store/${slug}/category/${c.id}`} style={{ fontSize: 11, textDecoration: "none", color: "#fff", background: "rgba(255,255,255,0.06)", padding: "14px 30px" }}>
                   {c.name.toUpperCase()}
                 </a>
               ))}
             </div>
-            <a href={`/${slug}/catalog`} style={{ display: "inline-block", marginTop: 20, background: "transparent", border: "1px solid #777", color: "#fff", fontWeight: 700, fontSize: 10, padding: "11px 18px", textDecoration: "none" }}>
+            <a href={`/store/${slug}/catalog`} style={{ display: "inline-block", marginTop: 20, background: "transparent", border: "1px solid #777", color: "#fff", fontWeight: 700, fontSize: 10, padding: "11px 18px", textDecoration: "none" }}>
               VIEW ALL PRODUCTS
             </a>
           </Reveal>
@@ -135,7 +135,7 @@ export function FabtexStorefront({
           ) : (
             <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(220px, 1fr))", gap: 18 }}>
               {featured.map((p) => (
-                <a key={p.id} href={`/${slug}/${p.kind}/${p.id}`} style={{ background: FABTEX.panel, border: "1px solid #393535", padding: 13, textDecoration: "none", color: "#fff", display: "block" }}>
+                <a key={p.id} href={`/store/${slug}/${p.kind}/${p.id}`} style={{ background: FABTEX.panel, border: "1px solid #393535", padding: 13, textDecoration: "none", color: "#fff", display: "block" }}>
                   <div style={{ height: 170, background: p.image ? `url(${p.image}) center/cover` : "linear-gradient(135deg,#76695e,#292321)" }} />
                   <h3 style={{ fontWeight: 400, fontSize: 14, margin: "10px 0 4px" }}>{p.name}</h3>
                   <p style={{ fontSize: 9, color: "#aaa", minHeight: 30 }}>{p.description || p.categoryName}</p>

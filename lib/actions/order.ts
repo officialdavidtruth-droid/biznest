@@ -73,6 +73,17 @@ export async function decrementStockForOrder(
 
   if (!order) return;
 
+  // Payment callbacks/webhooks are intentionally replay-safe, but keep this
+  // helper safe on its own as well. If this order already has an automatic
+  // SALE movement, stock has already been consumed and must not be consumed
+  // again. The check is inside the caller's transaction, so the enclosing
+  // payment-state transition remains the primary race guard.
+  const alreadyDecremented = await tx.stockMovement.findFirst({
+    where: { orderId: order.id, type: "SALE" },
+    select: { id: true },
+  });
+  if (alreadyDecremented) return;
+
   for (const item of order.items) {
     if (item.variantId) {
       const variant =
@@ -112,6 +123,7 @@ export async function decrementStockForOrder(
         data: {
           variantId: item.variantId,
           storeId: order.storeId,
+          orderId: order.id,
           type: "SALE",
           quantityChange:
             -(variant.quantity - nextQuantity),
@@ -170,6 +182,7 @@ export async function decrementStockForOrder(
         data: {
           inventoryItemId: inventory.id,
           storeId: order.storeId,
+          orderId: order.id,
           type: "SALE",
           quantityChange:
             -(inventory.quantity - nextQuantity),

@@ -75,9 +75,17 @@ export async function POST(req: Request) {
     // payload, so they're already bound to one real event — this amount
     // check is defense in depth, matching the browser callback, in case a
     // reference is ever replayed against a different plan.
-    const plan = subscriptionId ? await prisma.subscription.findUnique({ where: { id: subscriptionId } }) : null;
-    const amountMatches = plan && verification.data && Number(verification.data.amount) >= Number(plan.price);
-    if (store && plan && amountMatches && store.subscriptionId !== subscriptionId) {
+    const [plan, payment] = await Promise.all([
+      subscriptionId ? prisma.subscription.findUnique({ where: { id: subscriptionId } }) : null,
+      prisma.payment.findUnique({ where: { reference: txRef } }),
+    ]);
+    const amountNaira = Number(verification.data?.amount ?? 0);
+    const amountMatches = Boolean(plan && amountNaira >= Number(plan.price));
+    const paymentMatches = Boolean(payment && Math.abs(Number(payment.amount) - amountNaira) <= 0.01);
+    if (!store || !plan || !payment || !amountMatches || !paymentMatches) {
+      return NextResponse.json({ received: true });
+    }
+    if (store.subscriptionId !== subscriptionId) {
       await prisma.store.update({ where: { id: store.id }, data: { subscriptionId } });
     }
     await prisma.payment.updateMany({
@@ -90,11 +98,11 @@ export async function POST(req: Request) {
   // See the matching comment in the Paystack webhook — invoice/quote-deposit
   // settlement lives in their own action files.
   if (txRef.startsWith("INV-")) {
-    await settleInvoicePayment(txRef, verification as object);
+    await settleInvoicePayment(txRef, Number(verification.data?.amount ?? 0), verification as object);
     return NextResponse.json({ received: true });
   }
   if (txRef.startsWith("QDEP-")) {
-    await settleQuoteDeposit(txRef, verification as object);
+    await settleQuoteDeposit(txRef, Number(verification.data?.amount ?? 0), verification as object);
     return NextResponse.json({ received: true });
   }
 

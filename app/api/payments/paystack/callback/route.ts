@@ -39,8 +39,8 @@ export async function GET(req: Request) {
     const verification = await verifyPaystackTransaction(reference);
 
     if (verification.status && verification.data?.status === "success") {
-      if (isInvoice) await settleInvoicePayment(reference, verification as object);
-      else await settleQuoteDeposit(reference, verification as object);
+      if (isInvoice) await settleInvoicePayment(reference, Number(verification.data?.amount ?? 0) / 100, verification as object);
+      else await settleQuoteDeposit(reference, Number(verification.data?.amount ?? 0) / 100, verification as object);
       return NextResponse.redirect(isInvoice ? `${APP_URL}/invoices/${id}` : `${APP_URL}/quotes/${id}`);
     }
     return NextResponse.redirect(`${APP_URL}/${isInvoice ? "invoices" : "quotes"}/${id}?payment=failed`);
@@ -55,7 +55,18 @@ export async function GET(req: Request) {
         if (result.success) return NextResponse.redirect(`${APP_URL}/store/${result.data.storeSlug}/account/wallet?funding=success`);
       } else {
         const result = await settleServiceBookingPayment(reference, "PAYSTACK", amount, verification as object);
-        if (result.success) return NextResponse.redirect(`${APP_URL}/store/${result.data.storeSlug}?booking=${result.data.bookingId}&payment=success`);
+        if (result.success) return NextResponse.redirect(`${APP_URL}/store/${result.data.storeSlug}/booking/${result.data.bookingId}/confirmation?payment=success`);
+      }
+    }
+    const bookingId = reference.startsWith("BK-") ? reference.split("-")[1] : null;
+    if (bookingId) {
+      const booking = await prisma.booking.findFirst({ where: { id: bookingId }, include: { store: true } });
+      if (booking) {
+        await prisma.$transaction([
+          prisma.payment.updateMany({ where: { reference: reference, status: "PENDING" }, data: { status: "FAILED", rawPayload: verification as object } }),
+          prisma.booking.updateMany({ where: { id: booking.id, paymentStatus: "PENDING" }, data: { paymentStatus: "UNPAID" } }),
+        ]);
+        return NextResponse.redirect(`${APP_URL}/store/${booking.store.slug}/booking/${booking.id}/confirmation?payment=failed`);
       }
     }
     return NextResponse.redirect(`${APP_URL}/?payment=failed`);

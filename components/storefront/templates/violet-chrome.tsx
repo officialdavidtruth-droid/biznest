@@ -58,7 +58,7 @@ export function VioletHeader({
           alignItems: "center", gap: 25, padding: "12px 5%", position: "sticky", top: 0, zIndex: 20,
         }}
       >
-        <a href={`/${slug}`} style={{ fontSize: 24, fontWeight: 900, textDecoration: "none", color: theme.ink, display: "flex", alignItems: "center", gap: 10 }}>
+        <a href={`/store/${slug}`} style={{ fontSize: 24, fontWeight: 900, textDecoration: "none", color: theme.ink, display: "flex", alignItems: "center", gap: 10 }}>
           {store.logoUrl ? (
             // eslint-disable-next-line @next/next/no-img-element
             <img src={store.logoUrl} alt={store.name} style={{ height: 34, width: 34, borderRadius: "50%", objectFit: "cover" }} />
@@ -72,8 +72,8 @@ export function VioletHeader({
         <input type="checkbox" id={`bn-nav-${slug}-violet`} className="bn-nav-toggle" />
         <label htmlFor={`bn-nav-${slug}-violet`} className="bn-hamburger" style={{ color: theme.ink }} aria-label="Menu">&#9776;</label>
         <nav className="bn-nav-links" style={{ display: "flex", gap: 18, fontSize: 13, fontWeight: 700 }}>
-          <a href={`/${slug}/catalog`} style={{ textDecoration: "none", color: theme.ink }}>Shop</a>
-          {navCategories.length > 0 && <a href={`/${slug}/catalog`} style={{ textDecoration: "none", color: theme.ink }}>Categories</a>}
+          <a href={`/store/${slug}/catalog`} style={{ textDecoration: "none", color: theme.ink }}>Shop</a>
+          {navCategories.length > 0 && <a href={`/store/${slug}/catalog`} style={{ textDecoration: "none", color: theme.ink }}>Categories</a>}
         </nav>
         <div style={{ display: "flex", gap: 15, alignItems: "center" }}>
           {store.sellsProducts && (
@@ -134,11 +134,11 @@ export function VioletFooter({
         </div>
         <div>
           <b style={{ fontSize: 16 }}>Shop</b>
-          <a href={`/${slug}/catalog`} style={{ display: "block", color: "#aaa", fontSize: 12, margin: "9px 0", textDecoration: "none" }}>Catalog</a>
+          <a href={`/store/${slug}/catalog`} style={{ display: "block", color: "#aaa", fontSize: 12, margin: "9px 0", textDecoration: "none" }}>Catalog</a>
         </div>
         <div>
           <b style={{ fontSize: 16 }}>Support</b>
-          <a href={`/${slug}/cart`} style={{ display: "block", color: "#aaa", fontSize: 12, margin: "9px 0", textDecoration: "none" }}>Cart</a>
+          <a href={`/store/${slug}/cart`} style={{ display: "block", color: "#aaa", fontSize: 12, margin: "9px 0", textDecoration: "none" }}>Cart</a>
           {Object.entries(social).map(([k, v]) => (
             <a key={k} href={v} style={{ display: "block", color: "#aaa", fontSize: 12, margin: "9px 0", textDecoration: "none" }}>{k}</a>
           ))}

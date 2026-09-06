@@ -104,8 +104,8 @@ export function PhotographyBookingClient({
       const payment = await startBookingPayment(slug, result.data.bookingId, isSignedIn ? undefined : email.trim());
       if (!payment.success) {
         setPaymentStarted(false);
-        setConfirmed(true);
         toast.error(payment.error || "Booking created, but payment could not be opened.");
+        window.location.assign(`/store/${slug}/booking/${result.data.bookingId}/confirmation?payment=failed`);
         return;
       }
       window.location.assign(payment.data.authorizationUrl);
@@ -138,18 +138,18 @@ export function PhotographyBookingClient({
       </div>
       <header style={{ borderBottom: "1px solid #eee", background: "#fff" }}>
         <div style={{ maxWidth: 1180, margin: "auto", padding: "15px 5vw", display: "flex", alignItems: "center", gap: 28 }}>
-          <Link href={`/${slug}`} style={{ display: "flex", alignItems: "center", gap: 11, color: ink, textDecoration: "none", minWidth: 190 }}>
+          <Link href={`/store/${slug}`} style={{ display: "flex", alignItems: "center", gap: 11, color: ink, textDecoration: "none", minWidth: 190 }}>
             <span style={{ width: 38, height: 38, border: `1px solid ${accent}`, borderRadius: 6, display: "grid", placeItems: "center", fontSize: 20 }}>▣</span>
             <span><strong style={{ display: "block", fontFamily: theme.headlineFont || "Georgia, serif", fontSize: 20, letterSpacing: ".08em" }}>{store.name || "VERE STUDIO"}</strong><small style={{ letterSpacing: ".25em", fontSize: 8 }}>PHOTOGRAPHY</small></span>
           </Link>
           <nav style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: 30, fontSize: 12, fontWeight: 700 }}>
-            <Link href={`/${slug}`} style={{ color: ink, textDecoration: "none" }}>Home</Link>
-            <Link href={`/${slug}`} style={{ color: ink, textDecoration: "none" }}>About Us</Link>
-            <Link href={`/${slug}/catalog`} style={{ color: ink, textDecoration: "none", borderBottom: `2px solid ${accent}`, paddingBottom: 7 }}>Services</Link>
-            <Link href={`/${slug}/catalog`} style={{ color: ink, textDecoration: "none" }}>Portfolio</Link>
-            <Link href={`/${slug}/catalog`} style={{ color: ink, textDecoration: "none" }}>Packages</Link>
-            <Link href={`/${slug}`} style={{ color: ink, textDecoration: "none" }}>Blog</Link>
-            <Link href={`/${slug}/start-project`} style={{ color: ink, textDecoration: "none" }}>Contact Us</Link>
+            <Link href={`/store/${slug}`} style={{ color: ink, textDecoration: "none" }}>Home</Link>
+            <Link href={`/store/${slug}/about`} style={{ color: ink, textDecoration: "none" }}>About Us</Link>
+            <Link href={`/store/${slug}/catalog`} style={{ color: ink, textDecoration: "none", borderBottom: `2px solid ${accent}`, paddingBottom: 7 }}>Services</Link>
+            <Link href={`/store/${slug}/portfolio`} style={{ color: ink, textDecoration: "none" }}>Portfolio</Link>
+            <Link href={`/store/${slug}/pricing`} style={{ color: ink, textDecoration: "none" }}>Packages</Link>
+            <Link href={`/store/${slug}/faq`} style={{ color: ink, textDecoration: "none" }}>FAQ</Link>
+            <Link href={`/store/${slug}/contact`} style={{ color: ink, textDecoration: "none" }}>Contact Us</Link>
             <a href="#book" style={{ background: "#080808", color: "#fff", padding: "13px 19px", borderRadius: 24, textDecoration: "none" }}>▣ &nbsp; Book Now</a>
           </nav>
         </div>

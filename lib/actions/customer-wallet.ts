@@ -57,6 +57,9 @@ async function confirmPaidBooking(
     },
   });
   if (!booking) return;
+  // A delayed gateway callback can arrive after staff cancellation. Never
+  // turn that cancelled reservation into a customer-facing confirmation.
+  if (booking.status === "CANCELLED") return;
 
   // Sync status -> CONFIRMED automatically now that payment is PAID, unless
   // the booking was already moved past PENDING (e.g. cancelled) by staff.
@@ -242,7 +245,18 @@ export async function startBookingPayment(
     include: { service: true, store: true },
   });
   if (!booking) return { success: false, error: "Booking not found." };
+  if (booking.status === "CANCELLED") return { success: false, error: "This booking has been cancelled." };
   if (booking.paymentStatus === "PAID") return { success: false, error: "This booking is already paid." };
+  // Storefront bookings are intentionally held for 30 minutes while the
+  // customer completes checkout. Expired online holds must not be revived by
+  // a late retry link; admin/front-desk bookings are unaffected.
+  if (
+    booking.source === "Online" &&
+    booking.status === "PENDING" &&
+    booking.createdAt < new Date(Date.now() - 30 * 60 * 1000)
+  ) {
+    return { success: false, error: "This booking hold has expired. Please make a new booking." };
+  }
 
   const authenticatedOwner = session?.user?.id && booking.buyerId === session.user.id;
   const guestOwner = !booking.buyerId && booking.guestEmail && guestEmail && booking.guestEmail.toLowerCase() === guestEmail.trim().toLowerCase();
@@ -293,7 +307,19 @@ export async function settleServiceBookingPayment(
   await prisma.$transaction(async (tx) => {
     const result = await tx.payment.updateMany({ where: { id: payment.id, status: "PENDING" }, data: { status: "SUCCESSFUL", rawPayload, verifiedAt: new Date() } });
     if (result.count === 0) return;
-    await tx.booking.updateMany({ where: { id: payment.booking!.id, paymentStatus: { not: "PAID" } }, data: { paymentStatus: "PAID", paymentReference: reference, paymentAmount: payment.amount, paymentCurrency: payment.currency } });
+    await tx.booking.updateMany({
+      where: {
+        id: payment.booking!.id,
+        paymentStatus: { not: "PAID" },
+        status: { not: "CANCELLED" },
+      },
+      data: {
+        paymentStatus: "PAID",
+        paymentReference: reference,
+        paymentAmount: payment.amount,
+        paymentCurrency: payment.currency,
+      },
+    });
   }, { isolationLevel: "Serializable" });
 
   void confirmPaidBooking(payment.booking.id, reference, Number(payment.amount));
@@ -315,6 +341,7 @@ export async function payBookingWithWallet(
     include: { service: true, store: true },
   });
   if (!booking) return { success: false, error: "Booking not found." };
+  if (booking.status === "CANCELLED") return { success: false, error: "This booking has been cancelled." };
   if (booking.paymentStatus === "PAID") return { success: true, data: { bookingId } };
 
   const amount = Number(booking.paymentAmount ?? booking.service.price);

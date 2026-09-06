@@ -36,6 +36,7 @@ export default async function EditReservationPage({
           scheduledAt: booking.scheduledAt.toISOString(),
           durationMins: booking.durationMins,
           status: booking.status,
+          paymentStatus: booking.paymentStatus,
           partySize: booking.partySize,
           specialRequests: booking.specialRequests,
           notes: booking.notes,

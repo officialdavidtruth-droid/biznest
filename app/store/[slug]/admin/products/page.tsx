@@ -16,7 +16,11 @@ export default async function ProductsListPage({ params }: { params: Promise<{ s
   const terminology = getBusinessTerminology(store?.business.category);
   const categories = store ? await prisma.category.findMany({ where: { storeId: store.id, type: "PRODUCT" }, orderBy: { name: "asc" } }) : [];
   const activeCount = products.filter((p) => p.isPublished).length;
-  const outOfStock = products.filter((p) => (p.inventory?.quantity ?? 0) <= 0).length;
+  const outOfStock = products.filter((p) =>
+    p.hasVariants
+      ? !p.variants.some((variant) => variant.isActive && variant.quantity > 0)
+      : (p.inventory?.quantity ?? 0) <= 0
+  ).length;
 
   const categoryCounts = categories.map((c) => ({ ...c, count: products.filter((p) => p.category?.id === c.id).length }));
   const genericCategory = terminology.category;
@@ -29,9 +33,9 @@ export default async function ProductsListPage({ params }: { params: Promise<{ s
           <p className="mt-1 text-sm text-muted-foreground">Manage your {terminology.catalog.toLowerCase()}, categories and pricing</p>
         </div>
         <div className="flex flex-wrap gap-2">
-          <Link href={`/${slug}`} target="_blank" className="bn-admin-action rounded-lg border bg-white px-4 py-2.5 text-sm font-semibold">View Store ↗</Link>
-          <Link href={`/${slug}/admin/products?import=1`} className="bn-admin-action rounded-lg border bg-white px-4 py-2.5 text-sm font-semibold"><Upload className="mr-2 inline h-4 w-4" />Import {terminology.catalog}</Link>
-          <Link href={`/${slug}/admin/products/new`} className="bn-admin-action rounded-lg bg-primary px-4 py-2.5 text-sm font-bold text-primary-foreground"><Plus className="mr-2 inline h-4 w-4" />Add {terminology.catalogSingular}</Link>
+          <Link href={`/store/${slug}`} target="_blank" className="bn-admin-action rounded-lg border bg-white px-4 py-2.5 text-sm font-semibold">View Store ↗</Link>
+          <Link href={`/store/${slug}/admin/products?import=1`} className="bn-admin-action rounded-lg border bg-white px-4 py-2.5 text-sm font-semibold"><Upload className="mr-2 inline h-4 w-4" />Import {terminology.catalog}</Link>
+          <Link href={`/store/${slug}/admin/products/new`} className="bn-admin-action rounded-lg bg-primary px-4 py-2.5 text-sm font-bold text-primary-foreground"><Plus className="mr-2 inline h-4 w-4" />Add {terminology.catalogSingular}</Link>
         </div>
       </div>
 
@@ -56,7 +60,9 @@ export default async function ProductsListPage({ params }: { params: Promise<{ s
                 id: p.id, name: p.name, images: p.images, price: Number(p.price), currency: p.currency,
                 isPublished: p.isPublished,
                 category: p.category ? { id: p.category.id, name: p.category.name } : null,
-                inventory: p.inventory ? { quantity: p.inventory.quantity } : null,
+                inventory: p.hasVariants
+                  ? { quantity: p.variants.reduce((sum, variant) => sum + (variant.isActive ? variant.quantity : 0), 0) }
+                  : p.inventory ? { quantity: p.inventory.quantity } : null,
                 orders: p._count.orderItems,
               }))}
               categories={categories.map((c) => ({ id: c.id, name: c.name }))}
@@ -72,15 +78,15 @@ export default async function ProductsListPage({ params }: { params: Promise<{ s
               <CategoryRow name={`All ${terminology.catalog}`} count={products.length} />
               {categoryCounts.slice(0, 8).map((c) => <CategoryRow key={c.id} name={c.name} count={c.count} />)}
             </div>
-            <Link href={`/${slug}/admin/categories`} className="mt-4 block rounded-lg border px-3 py-2.5 text-center text-xs font-semibold hover:bg-slate-50">＋ Add {genericCategory}</Link>
+            <Link href={`/store/${slug}/admin/categories`} className="mt-4 block rounded-lg border px-3 py-2.5 text-center text-xs font-semibold hover:bg-slate-50">＋ Add {genericCategory}</Link>
           </section>
           <section className="rounded-xl border bg-white p-5 shadow-sm">
             <h2 className="text-base font-bold">Quick Actions</h2>
             <div className="mt-3 space-y-1">
-              <Quick href={`/${slug}/admin/products/new`} icon={Plus} title={`Add New ${terminology.catalogSingular}`} note={`Create a new ${terminology.catalogSingular.toLowerCase()}`} />
-              <Quick href={`/${slug}/admin/products?import=1`} icon={Upload} title={`Bulk Upload ${terminology.catalog}`} note="Import multiple items at once" />
-              <Quick href={`/${slug}/admin/categories`} icon={Layers3} title={`Manage ${genericCategory}s`} note={`Organize your ${terminology.catalog.toLowerCase()}`} />
-              <Quick href={`/${slug}/admin/inventory`} icon={Package} title="Manage Inventory" note="Stock levels and availability" />
+              <Quick href={`/store/${slug}/admin/products/new`} icon={Plus} title={`Add New ${terminology.catalogSingular}`} note={`Create a new ${terminology.catalogSingular.toLowerCase()}`} />
+              <Quick href={`/store/${slug}/admin/products?import=1`} icon={Upload} title={`Bulk Upload ${terminology.catalog}`} note="Import multiple items at once" />
+              <Quick href={`/store/${slug}/admin/categories`} icon={Layers3} title={`Manage ${genericCategory}s`} note={`Organize your ${terminology.catalog.toLowerCase()}`} />
+              <Quick href={`/store/${slug}/admin/inventory`} icon={Package} title="Manage Inventory" note="Stock levels and availability" />
             </div>
           </section>
         </aside>

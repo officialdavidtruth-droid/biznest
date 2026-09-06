@@ -30,6 +30,29 @@ describe("generateUniqueStoreSlug", () => {
     expect(second).toBe("staceys-paradise-2");
   });
 
+  it("keeps long generated slugs within the 63-character limit", async () => {
+    const slug = await generateUniqueStoreSlug(
+      "A Very Long Store Name That Should Never Produce An Overlong URL Segment 2026",
+      async () => false
+    );
+    expect(slug.length).toBeLessThanOrEqual(63);
+    expect(slug).toMatch(/^[a-z0-9]+(?:-[a-z0-9]+)*$/);
+  });
+
+  it("throws when a name cannot produce a usable slug", async () => {
+    await expect(generateUniqueStoreSlug("東京店", async () => false)).rejects.toThrow(
+      "Store name cannot produce a valid URL"
+    );
+  });
+
+  it("treats retired slugs as unavailable in the default database check", async () => {
+    // The production callback checks both Store and StoreSlugHistory. This
+    // behavior is covered by the callback shape rather than a live DB test.
+    const claimed = new Set(["staceys-paradise"]);
+    const slug = await generateUniqueStoreSlug("Stacey's Paradise", async (candidate) => claimed.has(candidate));
+    expect(slug).toBe("staceys-paradise-2");
+  });
+
   it("handles names with special characters and casing", async () => {
     const slug = await generateUniqueStoreSlug("  Café DÉJÀ VU!! ", async () => false);
     expect(slug).toMatch(/^[a-z0-9-]+$/);

@@ -117,7 +117,7 @@ export function HeenzyStorefront({
                 {navCategories.slice(0, 4).map((cat) => {
                   const sample = catalogItems.find((i) => i.categoryName === cat.name && i.image);
                   return (
-                    <a key={cat.id} href={`/${slug}/category/${cat.id}`} className="hz-cat-card" style={{ textDecoration: "none", color: "inherit" }}>
+                    <a key={cat.id} href={`/store/${slug}/category/${cat.id}`} className="hz-cat-card" style={{ textDecoration: "none", color: "inherit" }}>
                       <div className="hz-cat-thumb">
                         {sample?.image ? <img src={sample.image} alt={cat.name} /> : null}
                       </div>
@@ -222,7 +222,7 @@ export function HeenzyStorefront({
           <Reveal>
             <div className="hz-section-head" style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
               <h2>Best Sellers</h2>
-              <a href={`/${slug}/catalog`} style={{ fontSize: 13, fontWeight: 700, color: "var(--hz-black)", textDecoration: "underline" }}>View all →</a>
+              <a href={`/store/${slug}/catalog`} style={{ fontSize: 13, fontWeight: 700, color: "var(--hz-black)", textDecoration: "underline" }}>View all →</a>
             </div>
           </Reveal>
           <div className="hz-catalog-grid">
@@ -252,12 +252,12 @@ export function HeenzyStorefront({
             <div>
               <h4>Shop</h4>
               <ul>
-                {navCategories.slice(0, 4).map((c) => <li key={c.id}><a href={`/${slug}/category/${c.id}`}>{c.name}</a></li>)}
+                {navCategories.slice(0, 4).map((c) => <li key={c.id}><a href={`/store/${slug}/category/${c.id}`}>{c.name}</a></li>)}
               </ul>
             </div>
             <div>
               <h4>Help</h4>
-              <ul><li><a href={`/${slug}/cart`}>Cart</a></li><li><a href="#catalog">Shop</a></li></ul>
+              <ul><li><a href={`/store/${slug}/cart`}>Cart</a></li><li><a href="#catalog">Shop</a></li></ul>
             </div>
             <div>
               <h4>Company</h4>
@@ -285,16 +285,16 @@ export function HeenzyNav({ store, slug, hasCatalog, theme = HEENZY_THEME }: { s
   return (
     <nav className="hz-root" style={{ ...heenzyCssVars(theme), position: "sticky", top: 0, zIndex: 50, background: "rgba(255,255,255,.92)", backdropFilter: "blur(10px)", borderBottom: "1px solid #e7e7e7" }}>
       <div className="hz-wrap hz-nav bn-header-inner">
-        <a href={`/${slug}`} className="hz-logo" style={{ display: "flex", alignItems: "center", gap: 8, textDecoration: "none", color: "var(--hz-black)" }}>
+        <a href={`/store/${slug}`} className="hz-logo" style={{ display: "flex", alignItems: "center", gap: 8, textDecoration: "none", color: "var(--hz-black)" }}>
           {store.logoUrl ? <img src={store.logoUrl} alt={store.name} /> : null}
           {store.name}
         </a>
         <input type="checkbox" id={`bn-nav-${slug}-heenzy`} className="bn-nav-toggle" />
         <label htmlFor={`bn-nav-${slug}-heenzy`} className="bn-hamburger" style={{ color: "var(--hz-black)" }} aria-label="Menu">&#9776;</label>
         <ul className="hz-nav-links bn-nav-links">
-          <li><a href={`/${slug}`}>Home</a></li>
-          {hasCatalog && <li><a href={`/${slug}/catalog`}>Shop</a></li>}
-          {hasCatalog && <li><a href={`/${slug}/search`}>Search</a></li>}
+          <li><a href={`/store/${slug}`}>Home</a></li>
+          {hasCatalog && <li><a href={`/store/${slug}/catalog`}>Shop</a></li>}
+          {hasCatalog && <li><a href={`/store/${slug}/search`}>Search</a></li>}
         </ul>
         <div className="hz-nav-icons">
           {store.sellsProducts && (

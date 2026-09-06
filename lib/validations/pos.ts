@@ -19,6 +19,9 @@ export const posSaleSchema = z.object({
   customerPhone: z.string().trim().max(30).optional(),
   customerEmail: z.string().trim().email().max(180).optional(),
   customerProfileId: z.string().cuid().optional(),
+  // Stable per-register-charge key. The register reuses this across retries
+  // so a lost response cannot create a second CASH/POS order.
+  idempotencyKey: z.string().uuid().optional(),
 });
 
 export type PosSaleInput = z.infer<typeof posSaleSchema>;

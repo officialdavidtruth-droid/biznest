@@ -84,16 +84,16 @@ export default async function CategoryPage({ params }: { params: Promise<{ slug:
 
   const crumbs = (
     <>
-      <Link href={`/${slug}`} style={{ color: ink, textDecoration: "none" }}>Home</Link>
+      <Link href={`/store/${slug}`} style={{ color: ink, textDecoration: "none" }}>Home</Link>
       {" / "}
       {category.parent ? (
         <>
-          <Link href={`/${slug}/category/${category.parent.id}`} style={{ color: ink, textDecoration: "none" }}>{category.parent.name}</Link>
+          <Link href={`/store/${slug}/category/${category.parent.id}`} style={{ color: ink, textDecoration: "none" }}>{category.parent.name}</Link>
           {" / "}
         </>
       ) : (
         <>
-          <Link href={`/${slug}/catalog`} style={{ color: ink, textDecoration: "none" }}>All</Link>
+          <Link href={`/store/${slug}/catalog`} style={{ color: ink, textDecoration: "none" }}>All</Link>
           {" / "}
         </>
       )}
@@ -112,7 +112,7 @@ export default async function CategoryPage({ params }: { params: Promise<{ slug:
           {category.children.map((child) => (
             <Link
               key={child.id}
-              href={`/${slug}/category/${child.id}`}
+              href={`/store/${slug}/category/${child.id}`}
               style={{ padding: "7px 14px", borderRadius: 100, fontSize: 12.5, fontWeight: 600, border: `1px solid ${ink}1f`, color: ink, textDecoration: "none" }}
             >
               {child.name}
@@ -255,7 +255,7 @@ export default async function CategoryPage({ params }: { params: Promise<{ slug:
     <div style={{ fontFamily: theme.font, color: ink, background: bg, minHeight: "100vh" }} className="storefront-root">
       <nav style={{ position: "sticky", top: 0, zIndex: 50, background: `${bg}f2`, backdropFilter: "blur(10px)", borderBottom: `1px solid ${ink}14` }}>
         <div style={{ maxWidth: 1180, margin: "0 auto", padding: "16px 28px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-          <Link href={`/${slug}`} style={{ fontWeight: 800, fontSize: 18, color: ink, textDecoration: "none" }}>{store.name}</Link>
+          <Link href={`/store/${slug}`} style={{ fontWeight: 800, fontSize: 18, color: ink, textDecoration: "none" }}>{store.name}</Link>
           <CartLink storeSlug={slug} accent={accent} ink={ink} />
         </div>
       </nav>

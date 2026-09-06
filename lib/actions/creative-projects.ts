@@ -24,6 +24,13 @@ function isAllowedPreviewUrl(url: string) {
   }
 }
 
+export type ReferenceFile = {
+  url: string;
+  name: string;
+  type: string;
+  size: number;
+};
+
 export type CreateCreativeProjectInput = {
   customerName: string;
   customerEmail?: string;
@@ -32,13 +39,13 @@ export type CreateCreativeProjectInput = {
   brief: string;
   budget?: number;
   deadline?: string;
-  referenceFiles?: string[];
+  referenceFiles?: ReferenceFile[];
 };
 
 export async function createCreativeProject(
   slug: string,
   input: CreateCreativeProjectInput
-): Promise<ActionResult<{ projectId: string; projectNo: string; accessToken: string }>> {
+): Promise<ActionResult<{ projectId: string; projectNo: string; quoteId: string; quoteNo: string }>> {
   const storeAccess = await prisma.store.findUnique({
     where: { slug },
     select: {
@@ -50,29 +57,64 @@ export async function createCreativeProject(
     },
   });
   if (!storeAccess || storeAccess.status !== "ACTIVE") {
-    return { success: false, error: "This business is not currently accepting project requests." };
+    return { success: false, error: "This business is not currently accepting quote requests." };
   }
 
-  // Public, unauthenticated intake form — cap submissions per store to stop
-  // it being used to spam the merchant's inbox (every submission emails
-  // their contactEmail) or flood the table. Also cap per-IP across stores
-  // so one source can't work through many businesses.
+  // Public intake form — cap submissions per store and per IP so the quote
+  // workflow cannot be abused to flood the merchant's workspace/inbox.
   const [perStore, perIp] = await Promise.all([
     checkRateLimit(`project-intake:store:${storeAccess.id}`, 20, 60 * 60 * 1000),
     checkRateLimit(`project-intake:ip:${await clientIpKey()}`, 10, 60 * 60 * 1000),
   ]);
   if (!perStore.allowed || !perIp.allowed) {
-    return { success: false, error: "Too many project requests right now — please try again a bit later." };
+    return { success: false, error: "Too many quote requests right now — please try again a bit later." };
   }
 
   if (!input.customerName.trim() || !input.serviceType.trim() || input.brief.trim().length < 10) {
     return { success: false, error: "Please provide your name, service and a useful project brief." };
   }
 
-  const project = await prisma.$transaction(async (tx) => {
-    const store = await tx.store.update({ where: { id: storeAccess.id }, data: { nextQuoteNo: { increment: 1 } } });
-    const projectNo = `${store.slug.slice(0, 12).toUpperCase()}-P-${store.nextQuoteNo - 1}`;
-    return tx.creativeProject.create({
+  const budget = input.budget && input.budget > 0 ? input.budget : null;
+  const referenceFiles = input.referenceFiles?.length ? input.referenceFiles : undefined;
+
+  const created = await prisma.$transaction(async (tx) => {
+    const store = await tx.store.update({
+      where: { id: storeAccess.id },
+      data: { nextQuoteNo: { increment: 1 } },
+    });
+    const number = store.nextQuoteNo - 1;
+    const quoteNo = `${store.slug.slice(0, 12).toUpperCase()}-Q-${number}`;
+    const projectNo = `${store.slug.slice(0, 12).toUpperCase()}-P-${number}`;
+
+    // A storefront quote request is a real Quote record first. The CreativeProject
+    // is linked to it so the existing design/production workflow remains available
+    // without making the project table the only place the request can be found.
+    const quote = await tx.quote.create({
+      data: {
+        quoteNo,
+        storeId: storeAccess.id,
+        customerName: input.customerName.trim(),
+        customerEmail: input.customerEmail?.trim() || null,
+        customerPhone: input.customerPhone?.trim() || null,
+        serviceType: input.serviceType.trim(),
+        brief: input.brief.trim(),
+        budget,
+        deadline: input.deadline ? new Date(input.deadline) : null,
+        referenceFiles,
+        subtotal: budget ?? 0,
+        total: budget ?? 0,
+        status: "DRAFT",
+        items: {
+          create: {
+            description: input.serviceType.trim(),
+            quantity: 1,
+            unitPrice: budget ?? 0,
+          },
+        },
+      },
+    });
+
+    const project = await tx.creativeProject.create({
       data: {
         projectNo,
         storeId: storeAccess.id,
@@ -81,63 +123,75 @@ export async function createCreativeProject(
         customerPhone: input.customerPhone?.trim() || null,
         serviceType: input.serviceType.trim(),
         brief: input.brief.trim(),
-        budget: input.budget && input.budget > 0 ? input.budget : null,
+        budget,
         deadline: input.deadline ? new Date(input.deadline) : null,
-        referenceFiles: input.referenceFiles?.length ? input.referenceFiles : undefined,
+        referenceFiles,
+        quoteId: quote.id,
       },
     });
+
+    return { quote, project };
   });
 
-  // Always create an in-app notification for the store owner. This is the
-  // source of truth for the dashboard bell and does not depend on email,
-  // Resend, or push notifications being configured correctly.
+  // The notification is only the alert. The Quote record above is the source
+  // of truth and the notification opens that dedicated quote detail screen.
   try {
     await notifyUser({
-    userId: storeAccess.business.userId,
-    type: "PROJECT_REQUEST",
-    title: `New quote request · ${project.projectNo}`,
-    body: `${project.customerName} requested ${project.serviceType}.`,
-    url: `/store/${slug}/admin/projects/${project.id}`,
+      userId: storeAccess.business.userId,
+      type: "PROJECT_REQUEST",
+      title: `New quote request · ${created.quote.quoteNo}`,
+      body: `${created.quote.customerName} requested ${created.quote.serviceType}.`,
+      url: `/store/${slug}/admin/quotes/${created.quote.id}`,
     });
   } catch (err) {
     await logError("API", "Project request notification failed", {
-      projectId: project.id,
+      projectId: created.project.id,
+      quoteId: created.quote.id,
       storeId: storeAccess.id,
       error: err instanceof Error ? err.message : String(err),
     });
   }
 
-  // Email is best-effort. Prefer the store's configured contact email, but
-  // fall back to the business owner's onboarding email so a blank/old store
-  // contactEmail cannot make a valid request disappear from the merchant's
-  // inbox. An email provider failure must never turn a successful submission
-  // into an error for the customer.
+  // Email is best-effort. It now points the merchant to the authenticated
+  // Quotes workspace rather than the customer token page.
   const merchantEmail = storeAccess.contactEmail?.trim() || storeAccess.business.email?.trim();
   if (merchantEmail) {
     try {
       const result = await sendOrderNotificationEmail(
         merchantEmail,
-        `New quote request ${project.projectNo}`,
-        `<p><strong>${project.customerName}</strong> requested <strong>${project.serviceType}</strong>.</p><p>${project.brief}</p><p><a href="${APP_URL}/store/projects/${project.id}?token=${encodeURIComponent(project.publicAccessToken)}">Open project in BizNest</a></p>`
+        `New quote request ${created.quote.quoteNo}`,
+        `<p><strong>${created.quote.customerName}</strong> requested <strong>${created.quote.serviceType}</strong>.</p><p>${created.quote.brief}</p><p><a href="${APP_URL}/store/${slug}/admin/quotes/${created.quote.id}">Open quote in BizNest</a></p>`
       );
       if (result?.error) {
         void logError("EMAIL", "Project request email failed", {
-          projectId: project.id,
+          projectId: created.project.id,
+          quoteId: created.quote.id,
           to: merchantEmail,
           message: result.error.message,
         });
       }
     } catch (err) {
       void logError("EMAIL", "Project request email threw", {
-        projectId: project.id,
+        projectId: created.project.id,
+        quoteId: created.quote.id,
         to: merchantEmail,
         error: err instanceof Error ? err.message : String(err),
       });
     }
   }
 
+  revalidatePath(`/${slug}/admin/quotes`);
   revalidatePath(`/${slug}/admin/projects`);
-  return { success: true, data: { projectId: project.id, projectNo: project.projectNo, accessToken: project.publicAccessToken } };
+
+  return {
+    success: true,
+    data: {
+      projectId: created.project.id,
+      projectNo: created.project.projectNo,
+      quoteId: created.quote.id,
+      quoteNo: created.quote.quoteNo,
+    },
+  };
 }
 
 export async function listCreativeProjects(slug: string) {

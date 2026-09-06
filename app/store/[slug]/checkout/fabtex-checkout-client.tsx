@@ -71,7 +71,7 @@ export function FabtexCheckoutClient({ slug }: { slug: string }) {
     return (
       <div style={{ background: FABTEX.panel, border: "1px solid #393535", color: "#fff" }} className="mx-auto mt-24 max-w-md px-8 py-14 text-center">
         <p style={{ color: FABTEX.muted, fontSize: 12 }}>Your cart is empty.</p>
-        <Link href={`/${slug}`} style={{ color: FABTEX.orange }} className="mt-3 inline-block text-[11px] font-bold uppercase tracking-wide no-underline hover:opacity-70">
+        <Link href={`/store/${slug}`} style={{ color: FABTEX.orange }} className="mt-3 inline-block text-[11px] font-bold uppercase tracking-wide no-underline hover:opacity-70">
           Continue shopping →
         </Link>
       </div>
@@ -81,7 +81,7 @@ export function FabtexCheckoutClient({ slug }: { slug: string }) {
   return (
     <div style={{ maxWidth: 1180, margin: "0 auto", fontFamily: FABTEX.font, color: "#fff", background: FABTEX.dark }} className="px-[7%] py-10">
       <div className="mb-7">
-        <Link href={`/${slug}/cart`} style={{ color: FABTEX.muted }} className="mb-3 inline-flex items-center gap-1 text-[11px] font-bold uppercase tracking-wide no-underline hover:opacity-100">
+        <Link href={`/store/${slug}/cart`} style={{ color: FABTEX.muted }} className="mb-3 inline-flex items-center gap-1 text-[11px] font-bold uppercase tracking-wide no-underline hover:opacity-100">
           <ChevronLeft className="h-3.5 w-3.5" /> Back to cart
         </Link>
         <div style={{ borderBottom: "1px solid #343131" }} className="flex items-baseline justify-between pb-4">

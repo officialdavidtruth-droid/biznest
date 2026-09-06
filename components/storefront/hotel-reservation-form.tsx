@@ -22,7 +22,7 @@ export function HotelReservationForm({storeSlug,service,accent,card,ink,bg,radiu
   const n=nights(checkIn,checkOut); const total=Number(service.price)*(n||1);
   function submit(e:React.FormEvent){ e.preventDefault(); if(checkOut<=checkIn){toast.error("Check-out must be after check-in.");return;} if(rooms!=="1 Room"){toast.error("Please make a separate reservation for each room.");return;} if(!isSignedIn && (!name.trim()||!phone.trim()||!email.trim())){toast.error("Please enter your name, phone and email.");return;}
     const guest=isSignedIn?undefined:{name,email,phone}; const notes=`Adults: ${adults}\nChildren: ${children}\nRooms: ${rooms}`;
-    startTransition(async()=>{const result=await createStayBooking(storeSlug,service.id,checkIn,checkOut,notes,guest); if(!result.success){toast.error(result.error);return;} const pay=await startBookingPayment(storeSlug,result.data.bookingId,isSignedIn?undefined:email); if(!pay.success){toast.error(pay.error);return;} window.location.assign(pay.data.authorizationUrl);});
+    startTransition(async()=>{const result=await createStayBooking(storeSlug,service.id,checkIn,checkOut,notes,guest); if(!result.success){toast.error(result.error);return;} const pay=await startBookingPayment(storeSlug,result.data.bookingId,isSignedIn?undefined:email); if(!pay.success){toast.error(pay.error);window.location.assign(`/store/${storeSlug}/booking/${result.data.bookingId}/confirmation?payment=failed`);return;} window.location.assign(pay.data.authorizationUrl);});
   }
   return <form className="hr-book-card" onSubmit={submit}>
     <h3>Book Room</h3>

@@ -75,8 +75,18 @@ export async function POST(req: Request) {
   // which are just the order's cuid.
   if (reference.startsWith("SUBUP-")) {
     const [, storeId, subscriptionId] = reference.split("-");
-    const store = await prisma.store.findUnique({ where: { id: storeId } });
-    if (store && store.subscriptionId !== subscriptionId) {
+    const [store, plan, payment] = await Promise.all([
+      prisma.store.findUnique({ where: { id: storeId } }),
+      subscriptionId ? prisma.subscription.findUnique({ where: { id: subscriptionId } }) : null,
+      prisma.payment.findUnique({ where: { reference } }),
+    ]);
+    const amountNaira = Number(verification.data?.amount ?? 0) / 100;
+    const amountMatches = Boolean(plan && amountNaira >= Number(plan.price));
+    const paymentMatches = Boolean(payment && Math.abs(Number(payment.amount) - amountNaira) <= 0.01);
+    if (!store || !plan || !payment || !amountMatches || !paymentMatches) {
+      return NextResponse.json({ received: true });
+    }
+    if (store.subscriptionId !== subscriptionId) {
       await prisma.store.update({ where: { id: store.id }, data: { subscriptionId } });
     }
     await prisma.payment.updateMany({
@@ -92,11 +102,11 @@ export async function POST(req: Request) {
   // side-effects (marking an Invoice PAID, or converting a Quote into a
   // real Order) beyond just flipping the Payment row.
   if (reference.startsWith("INV-")) {
-    await settleInvoicePayment(reference, verification as object);
+    await settleInvoicePayment(reference, Number(verification.data?.amount ?? 0) / 100, verification as object);
     return NextResponse.json({ received: true });
   }
   if (reference.startsWith("QDEP-")) {
-    await settleQuoteDeposit(reference, verification as object);
+    await settleQuoteDeposit(reference, Number(verification.data?.amount ?? 0) / 100, verification as object);
     return NextResponse.json({ received: true });
   }
 

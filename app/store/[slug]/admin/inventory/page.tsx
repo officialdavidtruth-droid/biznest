@@ -1,13 +1,14 @@
 // Route: /store/[slug]/admin/inventory
-import { getInventoryOverview, getInventoryProfitSummary } from "@/lib/actions/inventory";
+import { getInventoryOverview, getInventoryProfitSummary, getInventoryReconciliation } from "@/lib/actions/inventory";
 import { InventoryProfitSummary } from "@/components/dashboard/inventory-profit-summary";
 import { InventoryTable } from "@/components/dashboard/inventory-table";
 import { StatCard } from "@/components/dashboard/stat-card";
 import { Boxes, CircleAlert, XCircle } from "lucide-react";
+import { InventoryReconciliationCard } from "@/components/dashboard/inventory-reconciliation-card";
 
 export default async function InventoryPage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
-  const [items, summary] = await Promise.all([getInventoryOverview(slug), getInventoryProfitSummary(slug)]);
+  const [items, summary, reconciliation] = await Promise.all([getInventoryOverview(slug), getInventoryProfitSummary(slug), getInventoryReconciliation(slug)]);
   const currency = items[0]?.currency ?? "NGN";
 
   const lowStockCount = items.filter((i) => i.status === "LOW_STOCK").length;
@@ -27,6 +28,8 @@ export default async function InventoryPage({ params }: { params: Promise<{ slug
       </div>
 
       {items.length > 0 && <InventoryProfitSummary summary={summary} currency={currency} />}
+
+      <InventoryReconciliationCard slug={slug} rows={reconciliation} />
 
       <section className="rounded-xl border bg-white p-5 shadow-sm">
         <div className="mb-4"><h2 className="text-base font-bold">Inventory</h2><p className="mt-1 text-xs text-muted-foreground">Search, filter and manage stock</p></div>

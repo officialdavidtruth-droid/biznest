@@ -71,7 +71,7 @@ export function JuiceLifeCheckoutClient({ slug }: { slug: string }) {
     return (
       <div style={{ background: "#fff", borderRadius: JUICELIFE.radius, border: "1px solid #edf1eb", color: JUICELIFE.ink }} className="mx-auto mt-24 max-w-md px-8 py-14 text-center">
         <p style={{ color: JUICELIFE.muted, fontSize: 13 }}>Your cart is empty.</p>
-        <Link href={`/${slug}`} style={{ color: JUICELIFE.green }} className="mt-3 inline-block text-xs font-bold no-underline hover:opacity-70">
+        <Link href={`/store/${slug}`} style={{ color: JUICELIFE.green }} className="mt-3 inline-block text-xs font-bold no-underline hover:opacity-70">
           Continue shopping →
         </Link>
       </div>
@@ -81,7 +81,7 @@ export function JuiceLifeCheckoutClient({ slug }: { slug: string }) {
   return (
     <div style={{ maxWidth: 1180, margin: "0 auto", fontFamily: JUICELIFE.font, color: JUICELIFE.ink, background: JUICELIFE.soft }} className="px-[6%] py-10">
       <div className="mb-7">
-        <Link href={`/${slug}/cart`} style={{ color: JUICELIFE.muted }} className="mb-3 inline-flex items-center gap-1 text-xs font-bold no-underline hover:opacity-100">
+        <Link href={`/store/${slug}/cart`} style={{ color: JUICELIFE.muted }} className="mb-3 inline-flex items-center gap-1 text-xs font-bold no-underline hover:opacity-100">
           <ChevronLeft className="h-3.5 w-3.5" /> Back to cart
         </Link>
         <div style={{ borderBottom: "1px solid #e5e9e2" }} className="flex items-baseline justify-between pb-4">

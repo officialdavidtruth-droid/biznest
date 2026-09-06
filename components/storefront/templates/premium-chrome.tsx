@@ -45,7 +45,7 @@ export function PremiumHeader({
 
       {/* ---------- NAV ---------- */}
       <header className="bn-header-inner" style={{ minHeight: 68, background: "#fff", borderBottom: "1px solid #e2e7e9", display: "flex", alignItems: "center", gap: 16, padding: "12px 4.8%", position: "sticky", top: 0, zIndex: 20 }}>
-        <a href={`/${slug}`} style={{ fontSize: 21, fontWeight: 900, minWidth: 175, textDecoration: "none", color: PREMIUM.ink, display: "flex", alignItems: "center", gap: 8 }}>
+        <a href={`/store/${slug}`} style={{ fontSize: 21, fontWeight: 900, minWidth: 175, textDecoration: "none", color: PREMIUM.ink, display: "flex", alignItems: "center", gap: 8 }}>
           {store.logoUrl ? (
             // eslint-disable-next-line @next/next/no-img-element
             <img src={store.logoUrl} alt={store.name} style={{ height: 32, width: 32, borderRadius: "50%", objectFit: "cover" }} />
@@ -58,8 +58,8 @@ export function PremiumHeader({
         <input type="checkbox" id={`bn-nav-${slug}-premium`} className="bn-nav-toggle" />
         <label htmlFor={`bn-nav-${slug}-premium`} className="bn-hamburger" style={{ color: PREMIUM.ink }} aria-label="Menu">&#9776;</label>
         <nav className="bn-nav-links" style={{ display: "flex", gap: 15, fontSize: 11, fontWeight: 700 }}>
-          <a href={`/${slug}/catalog`} style={{ textDecoration: "none", color: PREMIUM.ink }}>Shop</a>
-          {navCategories.length > 0 && <a href={`/${slug}/catalog`} style={{ textDecoration: "none", color: PREMIUM.ink }}>Categories</a>}
+          <a href={`/store/${slug}/catalog`} style={{ textDecoration: "none", color: PREMIUM.ink }}>Shop</a>
+          {navCategories.length > 0 && <a href={`/store/${slug}/catalog`} style={{ textDecoration: "none", color: PREMIUM.ink }}>Categories</a>}
         </nav>
         <div style={{ marginLeft: "auto", display: "flex", gap: 15, alignItems: "center" }}>
           {store.sellsProducts && (
@@ -117,11 +117,11 @@ export function PremiumFooter({
         </div>
         <div>
           <b style={{ fontSize: 12 }}>Shop</b>
-          <a href={`/${slug}/catalog`} style={{ display: "block", color: "#6e7980", fontSize: 10, margin: "6px 0", textDecoration: "none" }}>Catalog</a>
+          <a href={`/store/${slug}/catalog`} style={{ display: "block", color: "#6e7980", fontSize: 10, margin: "6px 0", textDecoration: "none" }}>Catalog</a>
         </div>
         <div>
           <b style={{ fontSize: 12 }}>Support</b>
-          <a href={`/${slug}/cart`} style={{ display: "block", color: "#6e7980", fontSize: 10, margin: "6px 0", textDecoration: "none" }}>Cart</a>
+          <a href={`/store/${slug}/cart`} style={{ display: "block", color: "#6e7980", fontSize: 10, margin: "6px 0", textDecoration: "none" }}>Cart</a>
           {Object.entries(social).map(([k, v]) => (
             <a key={k} href={v} style={{ display: "block", color: "#6e7980", fontSize: 10, margin: "6px 0", textDecoration: "none" }}>{k}</a>
           ))}

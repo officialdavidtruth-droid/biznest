@@ -10,10 +10,12 @@ export function QuoteRowActions({
   storeSlug,
   quoteId,
   status,
+  incomingRequest = false,
 }: {
   storeSlug: string;
   quoteId: string;
   status: QuoteStatus;
+  incomingRequest?: boolean;
 }) {
   const router = useRouter();
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -35,6 +37,10 @@ export function QuoteRowActions({
     const url = `${window.location.origin}/quotes/${quoteId}`;
     navigator.clipboard.writeText(url);
     toast.success("Link copied.");
+  }
+
+  if (incomingRequest) {
+    return <span className="text-xs font-medium text-muted-foreground">Review request</span>;
   }
 
   return (

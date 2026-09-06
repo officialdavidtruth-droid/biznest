@@ -5,7 +5,8 @@ import { getPayoutStatus } from "@/lib/actions/store";
 import { ConnectPayoutForm } from "@/components/dashboard/connect-payout-form";
 import { getPosCommissionBalance } from "@/lib/actions/pos";
 import { PosCommissionCard } from "@/components/dashboard/pos-commission-card";
-import { getRefundClawbackBalance } from "@/lib/actions/refund";
+import { getRefundClawbackBalance, getRefundPendingPayments } from "@/lib/actions/refund";
+import { RefundPendingCard } from "@/components/dashboard/refund-pending-card";
 import { RefundClawbackCard } from "@/components/dashboard/refund-clawback-card";
 
 export default async function PaymentsPage({ params }: { params: Promise<{ slug: string }> }) {
@@ -19,7 +20,7 @@ export default async function PaymentsPage({ params }: { params: Promise<{ slug:
   const session = await auth();
   const isStaff = session?.user?.role === "PLATFORM_ADMIN" || session?.user?.role === "SUPPORT_MODERATOR";
 
-  const [paidCount, paidTotal, posCommission, refundClawback] = await Promise.all([
+  const [paidCount, paidTotal, posCommission, refundClawback, refundPending] = await Promise.all([
     prisma.order.count({ where: { storeId: store.id, status: { in: ["PAID", "IN_PROGRESS", "DELIVERED", "COMPLETED"] } } }),
     prisma.order.aggregate({
       where: { storeId: store.id, status: { in: ["PAID", "IN_PROGRESS", "DELIVERED", "COMPLETED"] } },
@@ -30,6 +31,7 @@ export default async function PaymentsPage({ params }: { params: Promise<{ slug:
     // Returns null for a store owner, which RefundClawbackCard treats the
     // same as "nothing owed" and renders nothing.
     isStaff ? getRefundClawbackBalance(slug) : Promise.resolve(null),
+    isStaff ? getRefundPendingPayments(slug) : Promise.resolve(null),
   ]);
 
   const gross = Number(paidTotal._sum.total ?? 0);
@@ -78,6 +80,10 @@ export default async function PaymentsPage({ params }: { params: Promise<{ slug:
           commissionRate={payout.commissionRate}
         />
       </div>
+
+      {refundPending && <div className="mt-6"><RefundPendingCard slug={slug} payments={refundPending} /></div>}
+
+      {refundPending && <div className="mt-6"><RefundPendingCard slug={slug} payments={refundPending} /></div>}
 
       {refundClawback && (
         <div className="mt-6">

@@ -20,7 +20,7 @@ export function HeenzyCartClient({ slug }: { slug: string }) {
         {cartItems.length === 0 ? (
           <div style={{ background: "#f7f7f7", borderRadius: 14, padding: 48, textAlign: "center" }}>
             <p style={{ color: "#6b6b6b", fontSize: 14 }}>Your cart is empty.</p>
-            <Link href={`/${slug}`} className="hz-btn hz-btn-dark" style={{ marginTop: 14 }}>Continue shopping</Link>
+            <Link href={`/store/${slug}`} className="hz-btn hz-btn-dark" style={{ marginTop: 14 }}>Continue shopping</Link>
           </div>
         ) : (
           <div style={{ display: "grid", gap: 32, gridTemplateColumns: "1.6fr 1fr" }}>
@@ -54,7 +54,7 @@ export function HeenzyCartClient({ slug }: { slug: string }) {
                 <div className="hz-summary-line"><span>Subtotal</span><span style={{ fontWeight: 700, opacity: 1 }}>{cartItems[0]?.currency} {subtotal.toLocaleString()}</span></div>
                 <div className="hz-summary-line"><span>Shipping</span><span>Calculated next step</span></div>
                 <div className="hz-summary-total"><span>Total</span><span>{cartItems[0]?.currency} {subtotal.toLocaleString()}</span></div>
-                <Link href={`/${slug}/checkout`} className="hz-btn hz-btn-yellow" style={{ width: "100%", justifyContent: "center", marginTop: 18 }}>
+                <Link href={`/store/${slug}/checkout`} className="hz-btn hz-btn-yellow" style={{ width: "100%", justifyContent: "center", marginTop: 18 }}>
                   Proceed to Checkout <ArrowRight className="h-4 w-4" style={{ marginLeft: 6 }} />
                 </Link>
               </div>

@@ -234,43 +234,43 @@ export async function adjustVariantStock(
 ): Promise<ActionResult<{ quantity: number }>> {
   const access = await assertStoreAccess(slug);
   if (!access.success) return { success: false, error: access.error };
+  if (!Number.isInteger(delta) || delta === 0) return { success: false, error: "Stock change must be a non-zero whole number." };
 
-  const variant = await prisma.productVariant.findFirst({
-    where: { id: variantId, storeId: access.store.id },
-    include: { product: true },
-  });
-  if (!variant) return { success: false, error: "Variant not found." };
+  let quantity: number | null = null;
+  for (let attempt = 0; attempt < 3; attempt++) {
+    try {
+      quantity = await prisma.$transaction(async (tx) => {
+        const variant = await tx.productVariant.findFirst({ where: { id: variantId, storeId: access.store.id }, include: { product: true } });
+        if (!variant) throw new Error("Variant not found.");
+        const nextQuantity = variant.quantity + delta;
+        if (nextQuantity < 0) throw new Error("That would take stock below zero.");
+        const justRanOut = variant.quantity > 0 && nextQuantity === 0;
+        const justRestocked = variant.quantity === 0 && nextQuantity > 0;
 
-  const nextQuantity = variant.quantity + delta;
-  if (nextQuantity < 0) return { success: false, error: "That would take stock below zero." };
-
-  const justRanOut = variant.quantity > 0 && nextQuantity === 0;
-  const justRestocked = variant.quantity === 0 && nextQuantity > 0;
-
-  await prisma.$transaction(async (tx) => {
-    await tx.productVariant.update({
-      where: { id: variantId },
-      data: {
-        quantity: nextQuantity,
-        autoUnpublished: justRanOut ? true : justRestocked ? false : variant.autoUnpublished,
-        isActive: justRanOut ? variant.isActive : justRestocked ? true : variant.isActive,
-      },
-    });
-    await tx.stockMovement.create({
-      data: {
-        variantId,
-        storeId: access.store.id,
-        type,
-        quantityChange: delta,
-        quantityAfter: nextQuantity,
-        note: note || null,
-      },
-    });
-  });
-
+        await tx.productVariant.update({
+          where: { id: variantId },
+          data: {
+            quantity: nextQuantity,
+            autoUnpublished: justRanOut ? true : justRestocked ? false : variant.autoUnpublished,
+            isActive: justRanOut ? variant.isActive : justRestocked ? true : variant.isActive,
+          },
+        });
+        await tx.stockMovement.create({
+          data: { variantId, storeId: access.store.id, type, quantityChange: delta, quantityAfter: nextQuantity, note: note || null },
+        });
+        return nextQuantity;
+      }, { isolationLevel: "Serializable", timeout: 15000 });
+      break;
+    } catch (err: any) {
+      if (err?.message === "Variant not found." || err?.message === "That would take stock below zero.") return { success: false, error: err.message };
+      if (err?.code === "P2034" && attempt < 2) continue;
+      return { success: false, error: "Couldn't update variant stock safely. Please try again." };
+    }
+  }
+  if (quantity == null) return { success: false, error: "Couldn't update variant stock safely. Please try again." };
   revalidatePath(`/store/${slug}/admin/inventory`);
   revalidatePath(`/store/${slug}/admin/products`);
-  return { success: true, data: { quantity: nextQuantity } };
+  return { success: true, data: { quantity } };
 }
 
 /** Same readable-scheme SKU generator as generateSku, scoped to a variant. */

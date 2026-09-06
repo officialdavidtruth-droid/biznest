@@ -17,6 +17,11 @@ import { assertStorePermission } from "@/lib/access/assert-store-access";
 // earlier findFirst check alone can't be trusted to catch this.
 const SLOT_TAKEN_MESSAGE = "That slot was just taken — pick another time.";
 
+// Unpaid online bookings reserve a slot/unit for a short checkout window.
+// After the hold expires, availability is released without needing a cron job.
+export const ONLINE_BOOKING_HOLD_MINUTES = 30;
+const getOnlineBookingHoldCutoff = () => new Date(Date.now() - ONLINE_BOOKING_HOLD_MINUTES * 60 * 1000);
+
 type WeeklyAvailability = Partial<
   Record<
     "mon" | "tue" | "wed" | "thu" | "fri" | "sat" | "sun",
@@ -453,101 +458,81 @@ export async function createBooking(
   /**
    * Final race-condition protection.
    *
-   * Availability was checked above, but another
-   * customer could theoretically book the same slot
-   * between that check and this create().
-   *
-   * We therefore check once more immediately before
-   * creating the booking.
+   * Availability is checked above for a fast shopper-facing response, then
+   * checked again inside a SERIALIZABLE transaction immediately before the
+   * insert. The transaction is the real guarantee for unassigned bookings,
+   * where a NULL staffId cannot be protected by the partial unique index.
    */
-  const conflictingBooking =
-    await prisma.booking.findFirst({
-      where: {
-        serviceId,
-        scheduledAt,
-        status: {
-          not: "CANCELLED",
-        },
-        // When a specific staff member is requested, only a booking
-        // against that same person at that same time is a real
-        // conflict — other specialists (or the unassigned queue)
-        // remain free for this slot.
-        ...(staffId ? { staffId } : {}),
-      },
-      select: {
-        id: true,
-      },
-    });
-
-  if (conflictingBooking) {
-    return {
-      success: false,
-      error: SLOT_TAKEN_MESSAGE,
-    };
-  }
-
-  /**
-   * Duplicate-booking guard.
-   *
-   * Blocks a new booking if the same customer (by account id, or by
-   * guest email when booking without an account) already has a PENDING
-   * booking for this exact service + scheduled time. This catches
-   * accidental double-submits (double-tap, back-button retry, refresh)
-   * without blocking legitimate repeat bookings for a different date/time.
-   */
-  const duplicateBooking = await prisma.booking.findFirst({
-    where: {
-      serviceId,
-      scheduledAt,
-      status: "PENDING",
-      ...(session?.user?.id
-        ? { buyerId: session.user.id }
-        : { guestEmail: normalizedGuest!.email }),
-    },
-    select: { id: true },
-  });
-
-  if (duplicateBooking) {
-    return {
-      success: false,
-      error:
-        "You already have a pending booking for this service at this date and time.",
-    };
-  }
-
-  /**
-   * The findFirst conflict check above is a fast, friendly early check --
-   * it's *not* what actually prevents double-booking, since two requests
-   * can both pass it before either finishes creating. The real guarantee
-   * is the partial unique index on (serviceId, staffId, scheduledAt) added
-   * in prisma/migrations/20260828170000_booking_slot_unique_constraint,
-   * which the database enforces atomically. If a second request loses that
-   * race, Prisma throws P2002 here and we turn it into the same friendly
-   * error instead of a 500.
-   */
+  const MAX_ATTEMPTS = 3;
   let booking;
-  try {
-    booking = await prisma.booking.create({
-      data: {
-        storeId: service.storeId,
-        serviceId,
-        buyerId: session?.user?.id ?? null,
-        scheduledAt,
-        durationMins:
-          service.durationMins,
-        notes: notes?.trim() || null,
-        staffId: staffId || null,
-        guestName: normalizedGuest?.name ?? null,
-        guestEmail: normalizedGuest?.email ?? null,
-        guestPhone: normalizedGuest?.phone ?? null,
-      },
-    });
-  } catch (error) {
-    if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002") {
-      return { success: false, error: SLOT_TAKEN_MESSAGE };
+  for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
+    try {
+      booking = await prisma.$transaction(async (tx) => {
+        const conflictingBooking = await tx.booking.findFirst({
+          where: {
+            serviceId,
+            scheduledAt,
+            AND: [
+              { status: { not: "CANCELLED" } },
+              { OR: [{ status: { not: "PENDING" } }, { createdAt: { gte: getOnlineBookingHoldCutoff() } }] },
+            ],
+          },
+          select: { id: true },
+        });
+
+        if (conflictingBooking) throw new Error("SLOT_TAKEN");
+
+        const duplicateBooking = await tx.booking.findFirst({
+          where: {
+            serviceId,
+            scheduledAt,
+            status: "PENDING",
+            createdAt: { gte: getOnlineBookingHoldCutoff() },
+            ...(session?.user?.id
+              ? { buyerId: session.user.id }
+              : { guestEmail: normalizedGuest!.email }),
+          },
+          select: { id: true },
+        });
+
+        if (duplicateBooking) throw new Error("DUPLICATE_BOOKING");
+
+        return tx.booking.create({
+          data: {
+            storeId: service.storeId,
+            serviceId,
+            buyerId: session?.user?.id ?? null,
+            scheduledAt,
+            durationMins: service.durationMins,
+            notes: notes?.trim() || null,
+            source: "Online",
+            staffId: staffId || null,
+            guestName: normalizedGuest?.name ?? null,
+            guestEmail: normalizedGuest?.email ?? null,
+            guestPhone: normalizedGuest?.phone ?? null,
+          },
+        });
+      }, { isolationLevel: "Serializable" });
+      break;
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "";
+      if (message === "SLOT_TAKEN") return { success: false, error: SLOT_TAKEN_MESSAGE };
+      if (message === "DUPLICATE_BOOKING") {
+        return { success: false, error: "You already have a pending booking for this service at this date and time." };
+      }
+      const isSerializationFailure =
+        error instanceof Prisma.PrismaClientKnownRequestError &&
+        (error.code === "P2034" || error.meta?.code === "40001");
+      if (isSerializationFailure && attempt < MAX_ATTEMPTS) continue;
+      if (isSerializationFailure) return { success: false, error: SLOT_TAKEN_MESSAGE };
+      if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002") {
+        return { success: false, error: SLOT_TAKEN_MESSAGE };
+      }
+      throw error;
     }
-    throw error;
   }
+
+  if (!booking) return { success: false, error: SLOT_TAKEN_MESSAGE };
 
   await emitWebhookEvent(
     "BOOKING_CREATED",
@@ -598,7 +583,10 @@ export async function getAvailableUnitCount(
   const bookedUnitIds = await prisma.booking.findMany({
     where: {
       serviceId,
-      status: { not: "CANCELLED" },
+      AND: [
+              { status: { not: "CANCELLED" } },
+              { OR: [{ status: { not: "PENDING" } }, { createdAt: { gte: getOnlineBookingHoldCutoff() } }] },
+            ],
       checkIn: { lt: checkOut },
       checkOut: { gt: checkIn },
     },
@@ -641,7 +629,10 @@ export async function getNextAvailableStay(
   const bookings = await prisma.booking.findMany({
     where: {
       serviceId,
-      status: { not: "CANCELLED" },
+      AND: [
+              { status: { not: "CANCELLED" } },
+              { OR: [{ status: { not: "PENDING" } }, { createdAt: { gte: getOnlineBookingHoldCutoff() } }] },
+            ],
       checkIn: { lt: horizonEnd },
       checkOut: { gt: startIn },
     },
@@ -757,6 +748,7 @@ export async function createStayBooking(
       checkIn,
       checkOut,
       status: "PENDING",
+      createdAt: { gte: getOnlineBookingHoldCutoff() },
       ...(session?.user?.id
         ? { buyerId: session.user.id }
         : { guestEmail: normalizedGuest!.email }),
@@ -797,7 +789,10 @@ export async function createStayBooking(
         const overlapping = await tx.booking.findMany({
           where: {
             serviceId,
-            status: { not: "CANCELLED" },
+            AND: [
+              { status: { not: "CANCELLED" } },
+              { OR: [{ status: { not: "PENDING" } }, { createdAt: { gte: getOnlineBookingHoldCutoff() } }] },
+            ],
             checkIn: { lt: checkOut },
             checkOut: { gt: checkIn },
           },
@@ -823,6 +818,7 @@ export async function createStayBooking(
             paymentAmount: Number(service.price) * nights,
             paymentCurrency: service.currency,
             notes: notes?.trim() || null,
+            source: "Online",
             guestName: normalizedGuest?.name ?? null,
             guestEmail: normalizedGuest?.email ?? null,
             guestPhone: normalizedGuest?.phone ?? null,
@@ -1178,6 +1174,17 @@ export async function updateBookingStatus(
     return {
       success: false,
       error: "Booking not found.",
+    };
+  }
+
+  // Never let staff cancellation race an in-flight gateway payment. A
+  // payment callback can arrive milliseconds after the customer is charged;
+  // keeping the reservation non-cancellable while paymentStatus=PENDING
+  // means the callback cannot create a paid-but-cancelled booking.
+  if (status === "CANCELLED" && booking.paymentStatus === "PENDING") {
+    return {
+      success: false,
+      error: "This booking has a payment in progress. Wait for the payment result before cancelling it.",
     };
   }
 

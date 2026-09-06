@@ -47,19 +47,30 @@ export async function resolveCurrentSlug(slug: string): Promise<string | null> {
  */
 export async function generateUniqueStoreSlug(
   storeName: string,
-  slugExists: (slug: string) => Promise<boolean> = async (slug) =>
-    (await prisma.store.findUnique({ where: { slug } })) !== null
+  slugExists: (slug: string) => Promise<boolean> = async (slug) => {
+    const [store, history] = await Promise.all([
+      prisma.store.findUnique({ where: { slug }, select: { id: true } }),
+      prisma.storeSlugHistory.findUnique({ where: { oldSlug: slug }, select: { id: true } }),
+    ]);
+    return Boolean(store || history);
+  }
 ): Promise<string> {
-  const base = slugify(storeName, { lower: true, strict: true });
+  const base = slugify(storeName, { lower: true, strict: true })
+    .slice(0, SLUG_MAX_LENGTH)
+    .replace(/-+$/g, "");
+
+  if (!base || base.length < SLUG_MIN_LENGTH) {
+    throw new Error("Store name cannot produce a valid URL. Use at least two letters or numbers.");
+  }
+
   let candidate = base;
   let suffix = 1;
 
-  // Loop rather than a single query so we always land on the first free slug,
-  // even under concurrent store creation. Reserved slugs are treated as
-  // permanently "taken" so they fall straight into the -2, -3, ... suffix path.
   while (RESERVED_SLUGS.has(candidate) || (await slugExists(candidate))) {
     suffix += 1;
-    candidate = `${base}-${suffix}`;
+    const suffixText = `-${suffix}`;
+    const baseLength = Math.max(SLUG_MIN_LENGTH, SLUG_MAX_LENGTH - suffixText.length);
+    candidate = `${base.slice(0, baseLength).replace(/-+$/g, "")}${suffixText}`;
   }
 
   return candidate;

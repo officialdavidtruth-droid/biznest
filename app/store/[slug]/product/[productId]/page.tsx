@@ -42,7 +42,7 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
 
   const product = await prisma.product.findFirst({
     where: { id: productId, storeId: store.id, isPublished: true },
-    include: { category: true, inventory: true },
+    include: { category: true, inventory: true, variants: { where: { isActive: true }, select: { quantity: true } } },
   });
   if (!product) notFound();
 
@@ -56,7 +56,12 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
   const theme: TemplateTheme = resolveStoreTheme(store.template?.category, store.name, themeOverrides, store.fontFamily, store.template?.name);
   const { accent, ink, bg, radius } = theme;
 
-  const inStock = product.type !== "PHYSICAL" || !product.inventory || product.inventory.quantity > 0;
+  // Variant-enabled products use variant quantities as the sellable source of
+  // truth. The parent InventoryItem is intentionally ignored for storefront
+  // availability once variants exist.
+  const inStock = product.type !== "PHYSICAL" || (product.hasVariants
+    ? product.variants.some((variant) => variant.quantity > 0)
+    : !product.inventory || product.inventory.quantity > 0);
 
   const productDetail = (
     <ProductDetail
@@ -87,7 +92,7 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
 
   const crumbs = (
     <>
-      <Link href={`/${slug}`} style={{ color: ink, textDecoration: "none" }}>Home</Link>
+      <Link href={`/store/${slug}`} style={{ color: ink, textDecoration: "none" }}>Home</Link>
       {" / "}
       {product.category?.name ? <>{product.category.name}{" / "}</> : null}
       <span>{product.name}</span>

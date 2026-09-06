@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { ArrowLeft, Bell, Calendar, Mail, Phone, Plus, Send, Trash2, User, X } from "lucide-react";
 import { updateReservation, updateBookingStatus, type BookingStatusValue } from "@/lib/actions/booking";
+import { issueBookingRefund } from "@/lib/actions/refund";
 import { BookingStatusBadge } from "@/components/dashboard/booking-status-badge";
 
 type Unit = { id: string; label: string; location: string | null; capacity: number | null };
@@ -15,6 +16,7 @@ type Reservation = {
   scheduledAt: string;
   durationMins: number;
   status: string;
+  paymentStatus?: "UNPAID" | "PENDING" | "PAID" | "REFUNDED";
   partySize: number | null;
   specialRequests: string[];
   notes: string | null;
@@ -299,6 +301,16 @@ export function ReservationEditForm({
             <button onClick={cancel} disabled={saving || status === "CANCELLED"} className="rounded-lg border border-rose-300 px-4 py-2 text-sm font-semibold text-rose-600 hover:bg-rose-50 disabled:opacity-50">
               Cancel Reservation
             </button>
+            {status === "CANCELLED" && reservation.paymentStatus === "PAID" && <button type="button" onClick={async () => {
+              if (!confirm("Issue a full refund for this cancelled booking?")) return;
+              setSaving(true);
+              const result = await issueBookingRefund(slug, reservation.id, "Merchant cancelled booking");
+              setSaving(false);
+              if (!result.success) toast.error(result.error || "Couldn't issue refund.");
+              else { toast.success("Refund issued successfully."); router.refresh(); }
+            }} disabled={saving} className="rounded-lg border border-amber-300 px-4 py-2 text-sm font-semibold text-amber-700 disabled:opacity-50">
+              Issue Refund
+            </button>}
             <button onClick={() => router.back()} className="rounded-lg border px-4 py-2 text-sm font-medium hover:bg-muted">Cancel</button>
             <button onClick={save} disabled={saving} className="ml-auto rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground disabled:opacity-60">
               {saving ? "Saving…" : "Save Changes"}

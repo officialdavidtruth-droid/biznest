@@ -1,6 +1,7 @@
 "use server";
 
 import { auth } from "@/lib/auth";
+import crypto from "crypto";
 import { prisma } from "@/lib/prisma";
 import { revalidatePath } from "next/cache";
 import { calculateOrderTotals, roundMoney } from "@/lib/utils/pricing";
@@ -9,7 +10,7 @@ import { emitWebhookEvent } from "@/lib/webhooks/dispatch";
 import { assertStorePermission } from "@/lib/access/assert-store-access";
 import { logStoreActivity } from "@/lib/actions/activity";
 import type { ActionResult } from "@/types/actions";
-import type { Store, Business } from "@prisma/client";
+import { Prisma, type Store, type Business } from "@prisma/client";
 
 type StoreAccessResult =
   | { success: true; store: Store & { business: Business } }
@@ -272,6 +273,10 @@ export async function createPosSale(
     return { success: false, error: parsed.error.errors[0]?.message ?? "Invalid sale." };
   }
   const data = parsed.data;
+  // The browser normally supplies this key and reuses it for retries. Keep a
+  // server fallback so older callers remain valid; the Order unique index is
+  // the final database-level authority for deduplication.
+  const idempotencyKey = data.idempotencyKey ?? crypto.randomUUID();
 
   for (const line of data.items) {
     const targets = [line.productId, line.variantId, line.serviceId].filter(Boolean);
@@ -421,9 +426,19 @@ export async function createPosSale(
   // simultaneous POS sales for the same item can't both succeed off a
   // stale read.
   let orderId: string;
+  let created = true;
   try {
-    orderId = await prisma.$transaction(
+    const result = await prisma.$transaction(
       async (tx) => {
+        // Fast path for a retry after the first request committed but the
+        // client lost its response. This check also prevents duplicate
+        // webhook/audit side effects below.
+        const existing = await tx.order.findUnique({
+          where: { idempotencyKey },
+          select: { id: true },
+        });
+        if (existing) return { orderId: existing.id, created: false as const };
+
         const order = await tx.order.create({
           data: {
             storeId: store.id,
@@ -440,6 +455,7 @@ export async function createPosSale(
             posCustomerName: customerName,
             posCustomerPhone: customerPhone,
             customerProfileId,
+            idempotencyKey,
             items: {
               create: resolved.map((l) => ({
                 productId: l.productId ?? null,
@@ -544,13 +560,38 @@ export async function createPosSale(
           }
         }
 
-        return order.id;
+        return { orderId: order.id, created: true as const };
       },
       { timeout: 15000 }
     );
+    orderId = result.orderId;
+    created = result.created;
   } catch (err) {
     if (err instanceof PosTransactionError) return { success: false, error: err.message };
-    throw err;
+    // Two register requests can legitimately race before either sees the
+    // other's row. The unique Order.idempotencyKey constraint resolves that
+    // race; return the already-created sale rather than charging twice.
+    if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === "P2002") {
+      const existing = await prisma.order.findUnique({
+        where: { idempotencyKey },
+        select: { id: true, total: true },
+      });
+      if (existing) {
+        orderId = existing.id;
+        created = false;
+      } else {
+        throw err;
+      }
+    } else {
+      throw err;
+    }
+  }
+
+  // A replay returns the original sale but must not emit duplicate webhook
+  // events or duplicate audit entries.
+  if (!created) {
+    const existing = await prisma.order.findUnique({ where: { id: orderId }, select: { total: true } });
+    return { success: true, data: { orderId, total: Number(existing?.total ?? total) } };
   }
 
   // Side effects that aren't part of the store's own data consistency --

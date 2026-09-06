@@ -38,7 +38,7 @@ export async function listProducts(slug: string) {
 
   return prisma.product.findMany({
     where: { storeId: access.store.id },
-    include: { category: true, inventory: true, _count: { select: { orderItems: true } } },
+    include: { category: true, inventory: true, variants: { select: { quantity: true, isActive: true } }, _count: { select: { orderItems: true } } },
     orderBy: { createdAt: "desc" },
     // No pagination UI on this page yet -- bounded so a growing catalog
     // doesn't make the admin products list get slower every month. Raise
@@ -226,29 +226,101 @@ export async function updateProduct(
     }
   }
 
-  await prisma.product.update({
-    where: { id: productId },
-    data: {
-      categoryId: data.categoryId || null,
-      type: data.type,
-      name: data.name,
-      description: data.description,
-      price: data.price,
-      compareAtPrice: data.compareAtPrice || null,
-      currency: data.currency,
-      images: data.images,
-      isPublished: data.isPublished,
-      digitalFileUrl: data.digitalFileUrl || null,
-      rentalPeriodUnit: data.rentalPeriodUnit ?? null,
-      attributes: data.attributes ?? undefined,
-      inventory: {
-        upsert: {
-          create: { quantity: data.quantity, storeId: access.store.id, sku: trimmedSku, barcode: trimmedBarcode },
-          update: { quantity: data.quantity, sku: trimmedSku, barcode: trimmedBarcode },
-        },
-      },
-    },
-  });
+  // Variant-enabled products have per-variant stock as their sole sellable
+  // inventory source. The legacy parent InventoryItem may still exist for
+  // historical compatibility, but must never be recreated or overwritten by
+  // the generic product editor.
+  //
+  // Product edits that change on-hand quantity must use the same ledgered,
+  // serializable inventory path as the inventory screen. Never silently
+  // overwrite a concurrently changed quantity or leave the stock history
+  // without a corresponding movement.
+  let quantityChanged = false;
+  let quantityDelta = 0;
+  let resultingQuantity = data.quantity;
+
+  for (let attempt = 0; attempt < 3; attempt++) {
+    try {
+      const result = await prisma.$transaction(async (tx) => {
+        const current = await tx.product.findFirst({
+          where: { id: productId, storeId: access.store.id },
+          include: { inventory: true },
+        });
+        if (!current) throw new Error("Product not found.");
+
+        let inventoryData: { quantity: number; sku: string | null; barcode: string | null } | null = null;
+        if (current.hasVariants) {
+          // Parent quantity/SKU/barcode are not authoritative once variants
+          // exist. Preserve any legacy InventoryItem unchanged.
+          inventoryData = current.inventory
+            ? { quantity: current.inventory.quantity, sku: current.inventory.sku, barcode: current.inventory.barcode }
+            : null;
+        } else if (current.inventory) {
+          const nextQuantity = Math.max(0, Math.round(data.quantity));
+          const delta = nextQuantity - current.inventory.quantity;
+          if (delta !== 0) {
+            const updated = await tx.inventoryItem.updateMany({
+              where: { id: current.inventory.id, storeId: access.store.id, quantity: current.inventory.quantity },
+              data: { quantity: nextQuantity },
+            });
+            if (updated.count !== 1) throw new Error("INVENTORY_CONFLICT");
+            await tx.stockMovement.create({
+              data: {
+                inventoryItemId: current.inventory.id,
+                storeId: access.store.id,
+                type: "CORRECTION",
+                quantityChange: delta,
+                quantityAfter: nextQuantity,
+                note: "Product edit",
+              },
+            });
+            quantityChanged = true;
+            quantityDelta = delta;
+            resultingQuantity = nextQuantity;
+          }
+          inventoryData = { quantity: nextQuantity, sku: trimmedSku, barcode: trimmedBarcode };
+        } else {
+          inventoryData = { quantity: Math.max(0, Math.round(data.quantity)), sku: trimmedSku, barcode: trimmedBarcode };
+        }
+
+        await tx.product.update({
+          where: { id: productId },
+          data: {
+            categoryId: data.categoryId || null,
+            type: data.type,
+            name: data.name,
+            description: data.description,
+            price: data.price,
+            compareAtPrice: data.compareAtPrice || null,
+            currency: data.currency,
+            images: data.images,
+            isPublished: data.isPublished,
+            digitalFileUrl: data.digitalFileUrl || null,
+            rentalPeriodUnit: data.rentalPeriodUnit ?? null,
+            attributes: data.attributes ?? undefined,
+            inventory: {
+              upsert: {
+                create: inventoryData,
+                update: { sku: trimmedSku, barcode: trimmedBarcode },
+              },
+            },
+          },
+        });
+
+        return { quantityChanged: delta !== 0, quantityDelta: delta, resultingQuantity: nextQuantity };
+      }, { isolationLevel: "Serializable", timeout: 15000 });
+
+      quantityChanged = result.quantityChanged;
+      quantityDelta = result.quantityDelta;
+      resultingQuantity = result.resultingQuantity;
+      break;
+    } catch (err: any) {
+      if (err?.message === "Product not found.") return { success: false, error: err.message };
+      if (err?.message === "INVENTORY_CONFLICT" && attempt < 2) continue;
+      if (err?.code === "P2034" && attempt < 2) continue;
+      return { success: false, error: "Couldn't update the product safely. Please try again." };
+    }
+  }
 
   await emitWebhookEvent("PRODUCT_UPDATED", access.store.id, {
     productId,

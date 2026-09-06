@@ -7,6 +7,7 @@ import { roundMoney } from "@/lib/utils/pricing";
 import type { ActionResult } from "@/types/actions";
 import type { Store, Business, StockMovementType } from "@prisma/client";
 import { assertStorePermission } from "@/lib/access/assert-store-access";
+import { reconcileStockLedger, type StockLedgerReconciliation } from "@/lib/inventory-reconciliation";
 
 type StoreAccessResult =
   | { success: true; store: Store & { business: Business } }
@@ -155,56 +156,71 @@ export async function adjustStock(
 ): Promise<ActionResult<{ quantity: number }>> {
   const access = await assertStoreAccess(slug);
   if (!access.success) return { success: false, error: access.error };
+  if (!Number.isInteger(delta) || delta === 0) return { success: false, error: "Stock change must be a non-zero whole number." };
 
-  const item = await prisma.inventoryItem.findFirst({
-    where: { id: inventoryItemId, storeId: access.store.id },
-    include: { product: true },
-  });
-  if (!item) return { success: false, error: "Inventory item not found." };
+  let result: { quantity: number; crossedIntoLowStock: boolean; justRanOut: boolean } | null = null;
 
-  const nextQuantity = item.quantity + delta;
-  if (nextQuantity < 0) return { success: false, error: "That would take stock below zero." };
+  for (let attempt = 0; attempt < 3; attempt++) {
+    try {
+      result = await prisma.$transaction(async (tx) => {
+        const item = await tx.inventoryItem.findFirst({
+          where: { id: inventoryItemId, storeId: access.store.id },
+          include: { product: true },
+        });
+        if (!item) throw new Error("Inventory item not found.");
 
-  const wasAboveThreshold = item.quantity > item.lowStockThreshold;
-  const crossedIntoLowStock = wasAboveThreshold && nextQuantity <= item.lowStockThreshold && nextQuantity > 0;
-  const justRanOut = item.quantity > 0 && nextQuantity === 0;
-  const justRestocked = item.quantity === 0 && nextQuantity > 0;
+        const nextQuantity = item.quantity + delta;
+        if (nextQuantity < 0) throw new Error("That would take stock below zero.");
 
-  await prisma.$transaction(async (tx) => {
-    await tx.inventoryItem.update({
-      where: { id: inventoryItemId },
-      data: {
-        quantity: nextQuantity,
-        // Auto-unpublish on hitting zero; auto-republish on restock only if
-        // it was this automation (not the merchant) that took it down --
-        // see the schema comment on autoUnpublished.
-        autoUnpublished: justRanOut ? true : justRestocked ? false : item.autoUnpublished,
-      },
-    });
-    await tx.stockMovement.create({
-      data: {
-        inventoryItemId,
-        storeId: access.store.id,
-        type,
-        quantityChange: delta,
-        quantityAfter: nextQuantity,
-        note: note || null,
-      },
-    });
-    if (justRanOut) {
-      await tx.product.update({ where: { id: item.productId }, data: { isPublished: false } });
-    } else if (justRestocked && item.autoUnpublished) {
-      await tx.product.update({ where: { id: item.productId }, data: { isPublished: true } });
+        const wasAboveThreshold = item.quantity > item.lowStockThreshold;
+        const crossedIntoLowStock = wasAboveThreshold && nextQuantity <= item.lowStockThreshold && nextQuantity > 0;
+        const justRanOut = item.quantity > 0 && nextQuantity === 0;
+        const justRestocked = item.quantity === 0 && nextQuantity > 0;
+
+        await tx.inventoryItem.update({
+          where: { id: inventoryItemId },
+          data: {
+            quantity: nextQuantity,
+            autoUnpublished: justRanOut ? true : justRestocked ? false : item.autoUnpublished,
+          },
+        });
+        await tx.stockMovement.create({
+          data: {
+            inventoryItemId,
+            storeId: access.store.id,
+            type,
+            quantityChange: delta,
+            quantityAfter: nextQuantity,
+            note: note || null,
+          },
+        });
+        if (justRanOut) {
+          await tx.product.update({ where: { id: item.productId }, data: { isPublished: false } });
+        } else if (justRestocked && item.autoUnpublished) {
+          await tx.product.update({ where: { id: item.productId }, data: { isPublished: true } });
+        }
+
+        return { quantity: nextQuantity, crossedIntoLowStock, justRanOut };
+      }, { isolationLevel: "Serializable", timeout: 15000 });
+      break;
+    } catch (err: any) {
+      if (err?.message === "Inventory item not found." || err?.message === "That would take stock below zero.") {
+        return { success: false, error: err.message };
+      }
+      if (err?.code === "P2034" && attempt < 2) continue;
+      return { success: false, error: "Couldn't update stock safely. Please try again." };
     }
-  });
+  }
 
-  if (crossedIntoLowStock || justRanOut) {
-    await notifyLowStock(access.store, item.product.name, nextQuantity);
+  if (!result) return { success: false, error: "Couldn't update stock safely. Please try again." };
+  if (result.crossedIntoLowStock || result.justRanOut) {
+    const item = await prisma.inventoryItem.findFirst({ where: { id: inventoryItemId, storeId: access.store.id }, include: { product: true } });
+    if (item) await notifyLowStock(access.store, item.product.name, result.quantity);
   }
 
   revalidatePath(`/store/${slug}/admin/inventory`);
   revalidatePath(`/store/${slug}/admin/products`);
-  return { success: true, data: { quantity: nextQuantity } };
+  return { success: true, data: { quantity: result.quantity } };
 }
 
 export async function updateCostPrice(slug: string, inventoryItemId: string, costPrice: number | null): Promise<ActionResult> {
@@ -339,4 +355,71 @@ export async function generateSku(slug: string, inventoryItemId: string): Promis
 
   revalidatePath(`/store/${slug}/admin/inventory`);
   return { success: true, data: { sku } };
+}
+
+// --- Ledger reconciliation ----------------------------------------------
+
+
+export type InventoryReconciliationRow = StockLedgerReconciliation & {
+  stockType: "PRODUCT" | "VARIANT";
+  stockId: string;
+  productId: string;
+  productName: string;
+  variantLabel: string | null;
+  sku: string | null;
+};
+
+/**
+ * Read-only audit of the stock ledger. It deliberately never repairs a
+ * quantity automatically: a discrepancy needs a merchant/staff decision and
+ * should be resolved with an explicit correction movement.
+ */
+export async function getInventoryReconciliation(slug: string): Promise<InventoryReconciliationRow[]> {
+  const access = await assertStoreAccess(slug);
+  if (!access.success) return [];
+
+  const [items, variants] = await Promise.all([
+    prisma.inventoryItem.findMany({
+      where: { storeId: access.store.id, product: { hasVariants: false } },
+      select: {
+        id: true, productId: true, quantity: true, sku: true,
+        product: { select: { name: true } },
+        movements: { select: { id: true, quantityChange: true, quantityAfter: true }, orderBy: [{ createdAt: "asc" }, { id: "asc" }] },
+      },
+      orderBy: { updatedAt: "desc" },
+      take: 500,
+    }),
+    prisma.productVariant.findMany({
+      where: { storeId: access.store.id, isActive: true },
+      select: {
+        id: true, productId: true, quantity: true, sku: true, label: true,
+        product: { select: { name: true } },
+        movements: { select: { id: true, quantityChange: true, quantityAfter: true }, orderBy: [{ createdAt: "asc" }, { id: "asc" }] },
+      },
+      orderBy: { updatedAt: "desc" },
+      take: 500,
+    }),
+  ]);
+
+  const productRows = items.map((item) => ({
+    ...reconcileStockLedger(item.quantity, item.movements),
+    stockType: "PRODUCT" as const,
+    stockId: item.id,
+    productId: item.productId,
+    productName: item.product.name,
+    variantLabel: null,
+    sku: item.sku,
+  }));
+
+  const variantRows = variants.map((variant) => ({
+    ...reconcileStockLedger(variant.quantity, variant.movements),
+    stockType: "VARIANT" as const,
+    stockId: variant.id,
+    productId: variant.productId,
+    productName: variant.product.name,
+    variantLabel: variant.label,
+    sku: variant.sku,
+  }));
+
+  return [...productRows, ...variantRows];
 }

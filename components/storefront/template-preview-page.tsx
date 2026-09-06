@@ -448,7 +448,7 @@ function FreshPreviewRenderer({
     <div className="storefront-root" style={{ minHeight: "100vh", background: theme.bg, color: ink, fontFamily: theme.font }}>
       <nav style={{ position: "sticky", top: 0, zIndex: 20, background: `${theme.bg}ee`, backdropFilter: "blur(12px)", borderBottom: `1px solid ${theme.border || `${ink}18`}` }}>
         <div style={{ ...wrap, minHeight: 72, display: "flex", alignItems: "center", justifyContent: "space-between", gap: 20 }}>
-          <a href={`/${slug}`} style={{ color: ink, textDecoration: "none", fontWeight: 800, fontSize: 20, display: "flex", alignItems: "center", gap: 9 }}>
+          <a href={`/store/${slug}`} style={{ color: ink, textDecoration: "none", fontWeight: 800, fontSize: 20, display: "flex", alignItems: "center", gap: 9 }}>
             <img src={store.logoUrl!} alt="" width={34} height={34} style={{ borderRadius: 9, objectFit: "cover" }} />
             {store.name}
           </a>
@@ -490,7 +490,7 @@ function FreshPreviewRenderer({
           <div style={{ marginBottom: 28 }}><div style={{ color: primary, fontSize: 11, letterSpacing: 2, textTransform: "uppercase", fontWeight: 800 }}>Our {theme.catalogLabel}</div><h2 style={{ fontFamily: theme.headlineFont, fontSize: 38, margin: "8px 0" }}>Featured work &amp; services</h2></div>
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(220px,1fr))", gap: 18 }}>
             {catalogItems.map((item) => (
-              <a key={item.id} href={`/${slug}/${item.kind}/${item.id}`} style={{ color: ink, textDecoration: "none", background: theme.bg, border: `1px solid ${theme.border || `${ink}18`}`, borderRadius: 16, overflow: "hidden" }}>
+              <a key={item.id} href={`/store/${slug}/${item.kind}/${item.id}`} style={{ color: ink, textDecoration: "none", background: theme.bg, border: `1px solid ${theme.border || `${ink}18`}`, borderRadius: 16, overflow: "hidden" }}>
                 <div style={{ height: 170, background: `url(${item.image}) center/cover` }} />
                 <div style={{ padding: 18 }}><div style={{ fontSize: 10, color: primary, textTransform: "uppercase", letterSpacing: 1 }}>{item.categoryName}</div><h3 style={{ margin: "8px 0", fontSize: 16 }}>{item.name}</h3><p style={{ fontSize: 12, opacity: .65, lineHeight: 1.5 }}>{item.description}</p><strong style={{ display: "block", marginTop: 14 }}>₦{item.price.toLocaleString()}</strong></div>
               </a>

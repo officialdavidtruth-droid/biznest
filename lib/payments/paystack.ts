@@ -255,3 +255,13 @@ export async function chargePaystackAuthorization(params: {
   });
   return res.json();
 }
+
+/** Fetches the refund records associated with a Paystack transaction. */
+export async function listPaystackRefundsForTransaction(reference: string) {
+  const secretKey = process.env.PAYSTACK_SECRET_KEY;
+  if (!secretKey) return { status: false as const, message: "Payments aren't configured yet (missing PAYSTACK_SECRET_KEY).", data: [] as any[] };
+  const url = `${PAYSTACK_BASE}/refund?transaction=${encodeURIComponent(reference)}&perPage=50&page=1`;
+  const res = await fetch(url, { headers: { Authorization: `Bearer ${secretKey}` } });
+  const json = (await res.json()) as { status: boolean; message: string; data?: any[] };
+  return { status: json.status, message: json.message, data: json.data ?? [] };
+}

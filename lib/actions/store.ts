@@ -13,7 +13,7 @@ import { generateUniqueStoreSlug, storeAdminUrl, storePublicUrl, SLUG_FORMAT_RE,
 import { RESERVED_SLUGS } from "@/lib/constants/reserved-slugs";
 import { revalidatePath } from "next/cache";
 import slugify from "slugify";
-import { SAMPLE_LISTINGS } from "@/lib/sample-listings";
+import { getSampleListingsForBusinessType } from "@/lib/sample-listings";
 import { fetchDemoPhoto, fetchDemoPhotos } from "@/lib/demo-images";
 import type { ActionResult } from "@/types/actions";
 import { resolvePaystackAccount, createPaystackSubaccount, checkPaystackSubaccountVerification } from "@/lib/payments/paystack";
@@ -63,10 +63,13 @@ export async function createStore(
   // side lock is a convenience, not enforcement.
   if (parsed.data.templateId) {
     const chosenTemplate = await prisma.storeTemplate.findUnique({ where: { id: parsed.data.templateId } });
-    if (chosenTemplate && !isTemplateCompatible(chosenTemplate, business.category, { sellsProducts: business.sellsProducts, offersServices: business.offersServices })) {
+    if (!chosenTemplate) {
+      return { success: false, error: "That website design is no longer available. Choose another template." };
+    }
+    if (!isTemplateCompatible(chosenTemplate, business.category, { sellsProducts: business.sellsProducts, offersServices: business.offersServices })) {
       return { success: false, error: "That website design is not compatible with this business model. Choose a product, service, or hybrid design that matches what you selected during onboarding." };
     }
-    if (chosenTemplate && chosenTemplate.tierRank > 1) {
+    if (chosenTemplate.tierRank > 1) {
       return { success: false, error: "That template requires a paid plan. Pick a Free template for now — you can upgrade and switch after your store is created." };
     }
   }
@@ -82,7 +85,7 @@ export async function createStore(
     ? await prisma.storeTemplate.findUnique({ where: { id: parsed.data.templateId } })
     : null;
   const templateBusinessType = template ? getTemplateBusinessType(template) : null;
-  const samples = templateBusinessType ? SAMPLE_LISTINGS[templateBusinessType] ?? [] : [];
+  const samples = getSampleListingsForBusinessType(templateBusinessType);
   const [samplePhotos, bannerPhoto] = await Promise.all([
     fetchDemoPhotos(samples.map((s) => s.name)),
     template ? fetchDemoPhoto(template.category) : Promise.resolve(null),
@@ -267,7 +270,7 @@ export async function seedSampleListings(slug: string): Promise<ActionResult> {
   }
 
   const store = await prisma.store.findUnique({ where: { id: access.store.id }, include: { template: true } });
-  const samples = store?.template ? SAMPLE_LISTINGS[store.template.category] ?? [] : [];
+  const samples = store?.template ? getSampleListingsForBusinessType(getTemplateBusinessType(store.template)) : [];
   if (samples.length === 0) {
     return { success: false, error: "No starter listings are defined for this store's template yet." };
   }

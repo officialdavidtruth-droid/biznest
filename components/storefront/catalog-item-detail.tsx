@@ -66,7 +66,7 @@ export function CatalogItemDetail({ store, slug, service, theme, businessCategor
   const priceSuffix = isUnitBased ? "/ night" : service.durationMins ? `/ ${service.durationMins} min` : "";
   const dark = hotelMode === "great-treasure" ? "#050907" : "#063522";
   const accent = theme.accent || "#0E5B45";
-  const catalogHref = `/${slug}`;
+  const catalogHref = `/store/${slug}/catalog`;
 
   return (
     <div className="hotel-room-reference" style={{ "--hr-bg": theme.bg, "--hr-ink": theme.ink, "--hr-card": theme.card, "--hr-accent": accent, "--hr-dark": dark, "--hr-border": theme.border || "#E7E3D9", "--hr-muted": theme.muted || "#74736D", "--hr-head": theme.headlineFont, "--hr-font": theme.font } as React.CSSProperties}>

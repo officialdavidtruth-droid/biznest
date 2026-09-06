@@ -51,7 +51,7 @@ export default async function MarketingPage({ params }: { params: Promise<{ slug
           <h1 className="text-2xl font-semibold tracking-tight">Marketing Studio</h1>
           <p className="mt-1 max-w-2xl text-sm text-muted-foreground">Create beautiful, industry-specific emails that automatically look like your business — not a generic BizNest email.</p>
         </div>
-        <div className="flex gap-2"><Link href={`/${slug}/admin/customize`} className="rounded-lg border px-3 py-2 text-xs font-medium hover:border-primary">Edit brand</Link><Link href={`/${slug}`} target="_blank" className="rounded-lg border px-3 py-2 text-xs font-medium hover:border-primary">View website ↗</Link></div>
+        <div className="flex gap-2"><Link href={`/store/${slug}/admin/customize`} className="rounded-lg border px-3 py-2 text-xs font-medium hover:border-primary">Edit brand</Link><Link href={`/store/${slug}`} target="_blank" className="rounded-lg border px-3 py-2 text-xs font-medium hover:border-primary">View website ↗</Link></div>
       </div>
 
       <div className="mb-6 grid gap-3 sm:grid-cols-3">

@@ -426,7 +426,17 @@ export function ProductForm({
               <div className="grid gap-4 sm:grid-cols-3">
                 <div>
                   <label className="mb-1 block text-sm font-medium">{isMenuItem ? "Available quantity" : "Quantity in stock"}</label>
-                  <input type="number" className="input" {...register("quantity")} />
+                  <input
+                    type="number"
+                    className="input disabled:cursor-not-allowed disabled:bg-muted"
+                    disabled={Boolean(product?.hasVariants)}
+                    {...register("quantity")}
+                  />
+                  {product?.hasVariants && (
+                    <p className="mt-1 text-[11px] text-muted-foreground">
+                      This product uses variant stock. Manage quantities from the Variants page.
+                    </p>
+                  )}
                 </div>
                 <div>
                   <label className="mb-1 block text-sm font-medium">SKU</label>

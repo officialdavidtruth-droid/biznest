@@ -47,7 +47,7 @@ export function MarketplaceHeader({
 
       {/* ---------- HEADER ---------- */}
       <header className="bn-header-inner" style={{ minHeight: 70, display: "flex", alignItems: "center", padding: "0 6%", gap: 28, borderBottom: "1px solid #ddd" }}>
-        <a href={`/${slug}`} style={{ fontSize: 24, fontWeight: 700, letterSpacing: "-1px", color: "#111", textDecoration: "none", display: "flex", alignItems: "center", gap: 8 }}>
+        <a href={`/store/${slug}`} style={{ fontSize: 24, fontWeight: 700, letterSpacing: "-1px", color: "#111", textDecoration: "none", display: "flex", alignItems: "center", gap: 8 }}>
           {store.logoUrl ? (
             // eslint-disable-next-line @next/next/no-img-element
             <img src={store.logoUrl} alt={store.name} style={{ height: 32, width: 32, borderRadius: "50%", objectFit: "cover" }} />
@@ -63,15 +63,15 @@ export function MarketplaceHeader({
         <input type="checkbox" id={`bn-nav-${slug}-marketplace`} className="bn-nav-toggle" />
         <label htmlFor={`bn-nav-${slug}-marketplace`} className="bn-hamburger" aria-label="Menu">&#9776;</label>
         <nav className="bn-nav-links" style={{ display: "flex", gap: 22, fontSize: 10 }}>
-          <a href={`/${slug}/catalog`} style={{ color: "inherit" }}>SHOP</a>
-          {store.business.description && <a href={`/${slug}#about`} style={{ color: "inherit" }}>ABOUT US</a>}
-          {(store.contactEmail || store.contactPhone) && <a href={`/${slug}#contact`} style={{ color: "inherit" }}>CONTACT US</a>}
+          <a href={`/store/${slug}/catalog`} style={{ color: "inherit" }}>SHOP</a>
+          {store.business.description && <a href={`/store/${slug}#about`} style={{ color: "inherit" }}>ABOUT US</a>}
+          {(store.contactEmail || store.contactPhone) && <a href={`/store/${slug}#contact`} style={{ color: "inherit" }}>CONTACT US</a>}
         </nav>
       </header>
 
       {/* ---------- BLUE SEARCH BAR ---------- */}
       <div style={{ height: 34, background: MARKETPLACE.blue, display: "flex", padding: "0 6%", alignItems: "center", color: "#fff" }}>
-        <a href={`/${slug}/catalog`} style={{ background: MARKETPLACE.orange, minWidth: 165, height: 34, display: "flex", alignItems: "center", padding: "0 14px", fontWeight: 700, fontSize: 10, color: "#fff", textDecoration: "none" }}>
+        <a href={`/store/${slug}/catalog`} style={{ background: MARKETPLACE.orange, minWidth: 165, height: 34, display: "flex", alignItems: "center", padding: "0 14px", fontWeight: 700, fontSize: 10, color: "#fff", textDecoration: "none" }}>
           ☰&nbsp;&nbsp;ALL CATEGORIES
         </a>
         <form action={`/${slug}/search`} style={{ display: "flex", flex: 1, marginLeft: 10, maxWidth: 520 }}>
@@ -80,7 +80,7 @@ export function MarketplaceHeader({
         </form>
         <div style={{ display: "flex", gap: 22, marginLeft: 15, fontSize: 9 }}>
           {catalogCategories.slice(0, 4).map((c) => (
-            <a key={c} href={`/${slug}/catalog?category=${encodeURIComponent(c)}`} style={{ color: "#fff" }}>{c}</a>
+            <a key={c} href={`/store/${slug}/catalog?category=${encodeURIComponent(c)}`} style={{ color: "#fff" }}>{c}</a>
           ))}
         </div>
       </div>
@@ -117,8 +117,8 @@ export function MarketplaceFooter({
         </div>
         <div>
           <h4 style={{ fontSize: 10, color: "#fff", margin: "0 0 10px" }}>Shop</h4>
-          <a href={`/${slug}/catalog`} style={{ display: "block", fontSize: 8, margin: "6px 0", color: "inherit" }}>Full catalog</a>
-          <a href={`/${slug}/cart`} style={{ display: "block", fontSize: 8, margin: "6px 0", color: "inherit" }}>Cart</a>
+          <a href={`/store/${slug}/catalog`} style={{ display: "block", fontSize: 8, margin: "6px 0", color: "inherit" }}>Full catalog</a>
+          <a href={`/store/${slug}/cart`} style={{ display: "block", fontSize: 8, margin: "6px 0", color: "inherit" }}>Cart</a>
         </div>
         <div>
           <h4 style={{ fontSize: 10, color: "#fff", margin: "0 0 10px" }}>Contact</h4>

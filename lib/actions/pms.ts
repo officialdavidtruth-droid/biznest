@@ -197,6 +197,7 @@ export async function cancelReservation(slug:string,id:string,reason?:string):Pr
  const r=await prisma.propertyReservation.findFirst({where:{id,storeId:a.store.id}});
  if(!r)return{success:false,error:"Reservation not found."};
  if(!["PENDING","CONFIRMED"].includes(r.status))return{success:false,error:"Only pending or confirmed reservations can be cancelled."};
+ if(r.paymentStatus==="PENDING")return{success:false,error:"This reservation has a payment in progress. Wait for the payment result before cancelling it."};
  const trimmedReason=reason?.trim();
  await prisma.$transaction([
   prisma.propertyReservation.update({where:{id},data:{
@@ -218,6 +219,7 @@ export async function markReservationNoShow(slug:string,id:string):Promise<Actio
  const r=await prisma.propertyReservation.findFirst({where:{id,storeId:a.store.id}});
  if(!r)return{success:false,error:"Reservation not found."};
  if(!["PENDING","CONFIRMED"].includes(r.status))return{success:false,error:"Only pending or confirmed reservations can be marked as a no-show."};
+ if(r.paymentStatus==="PENDING")return{success:false,error:"This reservation has a payment in progress. Wait for the payment result before marking it as a no-show."};
  await prisma.$transaction([
   prisma.propertyReservation.update({where:{id},data:{status:"NO_SHOW",cancelledAt:new Date()}}),
   prisma.propertyRoom.updateMany({where:{id:r.roomId,status:"RESERVED"},data:{status:"AVAILABLE"}}),
@@ -256,6 +258,7 @@ export async function chargeReservationDeposit(
  const reservation=await prisma.propertyReservation.findFirst({where:{id:reservationId,storeId:a.store.id},include:{guest:true}});
  if(!reservation)return{success:false,error:"Reservation not found."};
  if(reservation.paymentStatus==="PAID")return{success:false,error:"This reservation is already paid."};
+ if(reservation.paymentStatus==="PENDING")return{success:false,error:"A payment is already in progress for this reservation."};
  if(!["PENDING","CONFIRMED","CHECKED_IN"].includes(reservation.status))return{success:false,error:"Cannot charge a cancelled, no-show, or checked-out reservation."};
 
  const gateway=await getActiveGateway();
@@ -319,7 +322,7 @@ export async function settleReservationPayment(
  await prisma.$transaction(async(tx)=>{
   const result=await tx.payment.updateMany({where:{id:payment.id,status:"PENDING"},data:{status:"SUCCESSFUL",rawPayload,verifiedAt:new Date()}});
   if(result.count===0)return;
-  await tx.propertyReservation.updateMany({where:{id:payment.reservation!.id,paymentStatus:{not:"PAID"}},data:{paymentStatus:"PAID",paymentReference:reference}});
+  await tx.propertyReservation.updateMany({where:{id:payment.reservation!.id,status:{not:"CANCELLED"},paymentStatus:{not:"PAID"}},data:{paymentStatus:"PAID",paymentReference:reference}});
  });
 
  revalidatePath(`/store/${payment.reservation.store.slug}/admin/pms`);

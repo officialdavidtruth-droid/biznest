@@ -73,7 +73,7 @@ export function ArcovaCheckoutClient({ slug }: { slug: string }) {
     return (
       <div style={{ border: `1px solid ${ARCOVA.border}` }} className="mx-auto mt-24 max-w-md px-8 py-14 text-center">
         <p style={{ opacity: 0.65, fontSize: 13 }}>Your cart is empty.</p>
-        <Link href={`/${slug}`} style={{ color: ARCOVA.ink, borderBottom: `1px solid ${ARCOVA.ink}` }} className="mt-3 inline-block pb-0.5 text-xs font-semibold uppercase tracking-wide no-underline hover:opacity-70">
+        <Link href={`/store/${slug}`} style={{ color: ARCOVA.ink, borderBottom: `1px solid ${ARCOVA.ink}` }} className="mt-3 inline-block pb-0.5 text-xs font-semibold uppercase tracking-wide no-underline hover:opacity-70">
           Continue shopping &rarr;
         </Link>
       </div>
@@ -83,7 +83,7 @@ export function ArcovaCheckoutClient({ slug }: { slug: string }) {
   return (
     <div style={{ maxWidth: 1180, margin: "0 auto", fontFamily: ARCOVA.font, color: ARCOVA.ink }} className="px-6 py-10">
       <div className="mb-8">
-        <Link href={`/${slug}/cart`} style={{ color: ARCOVA.ink, opacity: 0.6 }} className="mb-4 inline-flex items-center gap-1 text-xs font-semibold uppercase tracking-wide no-underline hover:opacity-100">
+        <Link href={`/store/${slug}/cart`} style={{ color: ARCOVA.ink, opacity: 0.6 }} className="mb-4 inline-flex items-center gap-1 text-xs font-semibold uppercase tracking-wide no-underline hover:opacity-100">
           <ChevronLeft className="h-3.5 w-3.5" /> Back to cart
         </Link>
         <div style={{ borderBottom: `1px solid ${ARCOVA.border}` }} className="flex items-baseline justify-between pb-4">

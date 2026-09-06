@@ -196,7 +196,7 @@ export function BookingFlowWizard({
       const payment = await startBookingPayment(slug, result.data.bookingId, isSignedIn ? undefined : email);
       if (!payment.success) {
         toast.error(payment.error);
-        setConfirmed(true);
+        window.location.assign(`/store/${slug}/booking/${result.data.bookingId}/confirmation?payment=failed`);
         return;
       }
       window.location.assign(payment.data.authorizationUrl);
@@ -210,9 +210,9 @@ export function BookingFlowWizard({
     return (
       <div style={{ fontFamily: theme.font, color: ink, background: theme.bg, maxWidth: 640, margin: "60px auto", padding: "0 20px", textAlign: "center" }}>
         <div style={{ width: 56, height: 56, borderRadius: "50%", background: `${accent}20`, color: accent, display: "grid", placeItems: "center", margin: "0 auto 18px", fontSize: 26 }}>✓</div>
-        <h2 style={{ fontFamily: theme.headlineFont, fontSize: 30, margin: "0 0 10px" }}>Booking request received</h2>
+        <h2 style={{ fontFamily: theme.headlineFont, fontSize: 30, margin: "0 0 10px" }}>Booking request saved</h2>
         <p style={{ color: muted, fontSize: 14, lineHeight: 1.7 }}>
-          Your {serviceName} reservation{bookingId ? ` (#${bookingId.slice(-6).toUpperCase()})` : ""} has been created. You can review its status and complete payment any time from your account.
+          Your {serviceName} reservation{bookingId ? ` (#${bookingId.slice(-6).toUpperCase()})` : ""} has been saved. Payment was not completed yet; you can return to the store to continue.
         </p>
         <Link href={`/store/${slug}`} style={{ display: "inline-block", marginTop: 20, padding: "12px 22px", background: accent, color: "#fff", borderRadius: 8, textDecoration: "none", fontWeight: 800, fontSize: 13 }}>Back to home</Link>
       </div>

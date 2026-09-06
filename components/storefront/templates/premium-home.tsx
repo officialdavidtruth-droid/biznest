@@ -57,7 +57,7 @@ export function PremiumStorefront({
         <aside style={{ background: "#fff", borderRadius: 8, overflow: "hidden", border: "1px solid #e0e5e8" }}>
           <b style={{ display: "block", background: "#1e2429", color: "#fff", padding: 10, fontSize: 11 }}>☰ Category</b>
           {navCategories.slice(0, 10).map((c) => (
-            <a key={c.id} href={`/${slug}/category/${c.id}`} style={{ display: "flex", justifyContent: "space-between", padding: "6px 10px", fontSize: 10, textDecoration: "none", color: PREMIUM.ink }}>
+            <a key={c.id} href={`/store/${slug}/category/${c.id}`} style={{ display: "flex", justifyContent: "space-between", padding: "6px 10px", fontSize: 10, textDecoration: "none", color: PREMIUM.ink }}>
               {c.name}<span>›</span>
             </a>
           ))}
@@ -107,7 +107,7 @@ export function PremiumStorefront({
         <section style={{ ...wrap, margin: "12px auto 20px" }}>
           <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 8 }}>
             <h2 style={{ fontSize: 15, margin: 0 }}>Featured Categories</h2>
-            <a href={`/${slug}/catalog`} style={{ marginLeft: "auto", color: "#5d6870", fontSize: 10, textDecoration: "none" }}>See all</a>
+            <a href={`/store/${slug}/catalog`} style={{ marginLeft: "auto", color: "#5d6870", fontSize: 10, textDecoration: "none" }}>See all</a>
           </div>
           <div className="bn-grid-2" style={{ display: "grid", gridTemplateColumns: `repeat(${Math.min(catalogCategories.length, 6)}, 1fr)`, gap: 7 }}>
             {catalogCategories.slice(0, 6).map((cat) => {
@@ -121,7 +121,7 @@ export function PremiumStorefront({
               return (
                 <a
                   key={cat}
-                  href={`/${slug}/catalog?category=${encodeURIComponent(cat)}`}
+                  href={`/store/${slug}/catalog?category=${encodeURIComponent(cat)}`}
                   style={{
                     height: 78, borderRadius: 8, position: "relative", overflow: "hidden", display: "block", textDecoration: "none",
                     background: coverImage ? `#f0f3f4 url(${coverImage}) center/cover` : "#ddd",
@@ -143,12 +143,12 @@ export function PremiumStorefront({
         <section id="flash" style={{ ...wrap, margin: "12px auto 20px" }}>
           <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 8 }}>
             <h2 style={{ fontSize: 15, margin: 0 }}>Featured Products</h2>
-            <a href={`/${slug}/catalog`} style={{ marginLeft: "auto", color: "#5d6870", fontSize: 10, textDecoration: "none" }}>See all</a>
+            <a href={`/store/${slug}/catalog`} style={{ marginLeft: "auto", color: "#5d6870", fontSize: 10, textDecoration: "none" }}>See all</a>
           </div>
           <div className="bn-grid-2" style={{ display: "grid", gridTemplateColumns: "repeat(6, 1fr)", gap: 7 }}>
             {flashItems.map((item, i) => (
               <Reveal key={`${item.kind}-${item.id}`} delayMs={i * 30}>
-                <a href={`/${slug}/${item.kind === "product" ? "product" : "service"}/${item.id}`} style={{ background: "#fff", border: "1px solid #e2e7e9", borderRadius: 8, padding: 6, display: "block", textDecoration: "none", color: PREMIUM.ink }}>
+                <a href={`/store/${slug}/${item.kind === "product" ? "product" : "service"}/${item.id}`} style={{ background: "#fff", border: "1px solid #e2e7e9", borderRadius: 8, padding: 6, display: "block", textDecoration: "none", color: PREMIUM.ink }}>
                   <div style={{ height: 100, background: "#f0f3f4", borderRadius: 5, position: "relative" }}>
                     {item.image ? (
                       // eslint-disable-next-line @next/next/no-img-element
@@ -173,11 +173,11 @@ export function PremiumStorefront({
           <section key={title} style={{ ...wrap, margin: "12px auto 20px" }}>
             <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 8 }}>
               <h2 style={{ fontSize: 15, margin: 0 }}>{title}</h2>
-              <a href={`/${slug}/catalog`} style={{ marginLeft: "auto", color: "#5d6870", fontSize: 10, textDecoration: "none" }}>See all</a>
+              <a href={`/store/${slug}/catalog`} style={{ marginLeft: "auto", color: "#5d6870", fontSize: 10, textDecoration: "none" }}>See all</a>
             </div>
             <div className="bn-grid-2" style={{ display: "grid", gridTemplateColumns: "repeat(6, 1fr)", gap: 7 }}>
               {rail.map((item) => (
-                <a key={`${title}-${item.kind}-${item.id}`} href={`/${slug}/${item.kind === "product" ? "product" : "service"}/${item.id}`} style={{ background: "#fff", border: "1px solid #e2e7e9", borderRadius: 8, padding: 6, display: "block", textDecoration: "none", color: PREMIUM.ink }}>
+                <a key={`${title}-${item.kind}-${item.id}`} href={`/store/${slug}/${item.kind === "product" ? "product" : "service"}/${item.id}`} style={{ background: "#fff", border: "1px solid #e2e7e9", borderRadius: 8, padding: 6, display: "block", textDecoration: "none", color: PREMIUM.ink }}>
                   <div style={{ height: 100, background: "#f0f3f4", borderRadius: 5, position: "relative" }}>
                     {item.image ? (
                       // eslint-disable-next-line @next/next/no-img-element

@@ -56,7 +56,7 @@ export function RrwHeader({
             alignItems: "center", padding: "8px 18px", boxShadow: "0 4px 20px #00000012",
           }}
         >
-          <a href={`/${slug}`} style={{ fontWeight: 900, fontSize: 20, letterSpacing: "-2px", textDecoration: "none", color: RRW.ink, display: "flex", alignItems: "center", gap: 8 }}>
+          <a href={`/store/${slug}`} style={{ fontWeight: 900, fontSize: 20, letterSpacing: "-2px", textDecoration: "none", color: RRW.ink, display: "flex", alignItems: "center", gap: 8 }}>
             {store.logoUrl ? (
               // eslint-disable-next-line @next/next/no-img-element
               <img src={store.logoUrl} alt={store.name} style={{ height: 26, width: 26, borderRadius: "50%", objectFit: "cover" }} />
@@ -72,8 +72,8 @@ export function RrwHeader({
           <input type="checkbox" id={`bn-nav-${slug}-rrw`} className="bn-nav-toggle" />
           <label htmlFor={`bn-nav-${slug}-rrw`} className="bn-hamburger" style={{ color: RRW.ink }} aria-label="Menu">&#9776;</label>
           <nav className="bn-nav-links" style={{ display: "flex", gap: 28, margin: "0 auto", fontSize: 10 }}>
-            <a href={`/${slug}#fleet`} style={{ textDecoration: "none", color: RRW.ink }}>Fleet</a>
-            {navCategories.length > 0 && <a href={`/${slug}/catalog`} style={{ textDecoration: "none", color: RRW.ink }}>Categories</a>}
+            <a href={`/store/${slug}#fleet`} style={{ textDecoration: "none", color: RRW.ink }}>Fleet</a>
+            {navCategories.length > 0 && <a href={`/store/${slug}/catalog`} style={{ textDecoration: "none", color: RRW.ink }}>Categories</a>}
           </nav>
         </header>
       </div>
@@ -125,8 +125,8 @@ export function RrwFooter({
         </div>
         <div>
           <h4 style={{ margin: "0 0 12px", color: "#111" }}>Links</h4>
-          <a href={`/${slug}/catalog`} style={{ display: "block", margin: "8px 0" }}>Fleet</a>
-          <a href={`/${slug}/cart`} style={{ display: "block", margin: "8px 0" }}>Cart</a>
+          <a href={`/store/${slug}/catalog`} style={{ display: "block", margin: "8px 0" }}>Fleet</a>
+          <a href={`/store/${slug}/cart`} style={{ display: "block", margin: "8px 0" }}>Cart</a>
         </div>
         <div>
           <h4 style={{ margin: "0 0 12px", color: "#111" }}>Contact</h4>

@@ -117,8 +117,21 @@ export async function getDashboardInsights(storeId: string, slug: string): Promi
       where: { storeId, status: "PENDING_PAYMENT", createdAt: { lte: new Date(Date.now() - 60 * 60 * 1000), gte: since7d } },
     }),
     prisma.product.findMany({
-      where: { storeId, isPublished: true, inventory: { quantity: { gt: 0 } } },
-      select: { id: true, name: true, inventory: { select: { quantity: true, lowStockThreshold: true } } },
+      where: {
+        storeId,
+        isPublished: true,
+        OR: [
+          { hasVariants: false, inventory: { quantity: { gt: 0 } } },
+          { hasVariants: true, variants: { some: { isActive: true, quantity: { gt: 0 } } } },
+        ],
+      },
+      select: {
+        id: true,
+        name: true,
+        hasVariants: true,
+        inventory: { select: { quantity: true, lowStockThreshold: true } },
+        variants: { where: { isActive: true }, select: { quantity: true, lowStockThreshold: true } },
+      },
     }),
     prisma.product.count({
       where: { storeId, isPublished: true, reviews: { none: {} } },
@@ -186,7 +199,12 @@ export async function getDashboardInsights(storeId: string, slug: string): Promi
   }
 
   const lowStockBest = bestProduct
-    ? lowStockProducts.find((p) => p.id === bestProduct!.id && p.inventory && p.inventory.quantity <= p.inventory.lowStockThreshold)
+    ? lowStockProducts.find((p) =>
+        p.id === bestProduct!.id &&
+        (p.hasVariants
+          ? p.variants.some((variant) => variant.quantity <= variant.lowStockThreshold)
+          : Boolean(p.inventory && p.inventory.quantity <= p.inventory.lowStockThreshold))
+      )
     : null;
   if (lowStockBest) {
     recommendations.push({

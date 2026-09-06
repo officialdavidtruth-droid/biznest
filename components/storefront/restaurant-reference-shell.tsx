@@ -34,11 +34,11 @@ export function RestaurantReferenceShell({
         <nav>
           <Link href={`/store/${slug}`}>Home</Link>
           <Link className={tone === "order" ? "is-active" : ""} href={`/store/${slug}/catalog`}>Menu</Link>
-          <Link href={`/store/${slug}/hotel/story`}>About Us</Link>
-          <Link href={`/store/${slug}/search`}>Reservations</Link>
-          <Link href={`/store/${slug}/search`}>Catering</Link>
-          <Link href={`/store/${slug}/search`}>Blog</Link>
-          <Link href={`/store/${slug}/search`}>Contact Us</Link>
+          <Link href={`/store/${slug}/about`}>About Us</Link>
+          <Link href={`/store/${slug}/services`}>Reservations</Link>
+          <Link href={`/store/${slug}/services`}>Catering</Link>
+          <Link href={`/store/${slug}/faq`}>FAQ</Link>
+          <Link href={`/store/${slug}/contact`}>Contact Us</Link>
         </nav>
         <div className="rr-actions">
           <AccountLink storeSlug={slug} ink={checkout ? "#064936" : "#201710"} />
@@ -59,8 +59,8 @@ export function RestaurantReferenceFooter({ store, slug }: { store: any; slug: s
           <p>Good food, great mood. Experience the best dining with exceptional taste and quality.</p>
           <div className="rr-footer-social">●　◎　◉　♪　◍</div>
         </div>
-        <div><h4>Quick Links</h4><Link href={`/store/${slug}`}>Home</Link><Link href={`/store/${slug}/catalog`}>Menu</Link><Link href={`/store/${slug}/hotel/story`}>About Us</Link><Link href={`/store/${slug}/search`}>Reservations</Link><Link href={`/store/${slug}/search`}>Catering</Link><Link href={`/store/${slug}/search`}>Blog</Link><Link href={`/store/${slug}/search`}>Contact Us</Link></div>
-        <div><h4>Information</h4><Link href={`/store/${slug}/search`}>Delivery Information</Link><Link href={`/store/${slug}/search`}>Terms & Conditions</Link><Link href={`/store/${slug}/search`}>Privacy Policy</Link><Link href={`/store/${slug}/search`}>Refund Policy</Link><Link href={`/store/${slug}/search`}>FAQs</Link></div>
+        <div><h4>Quick Links</h4><Link href={`/store/${slug}`}>Home</Link><Link href={`/store/${slug}/catalog`}>Menu</Link><Link href={`/store/${slug}/about`}>About Us</Link><Link href={`/store/${slug}/services`}>Reservations</Link><Link href={`/store/${slug}/services`}>Catering</Link><Link href={`/store/${slug}/faq`}>FAQ</Link><Link href={`/store/${slug}/contact`}>Contact Us</Link></div>
+        <div><h4>Information</h4><Link href={`/store/${slug}/policies`}>Delivery Information</Link><Link href={`/store/${slug}/policies`}>Terms & Conditions</Link><Link href={`/store/${slug}/policies`}>Privacy Policy</Link><Link href={`/store/${slug}/policies`}>Refund Policy</Link><Link href={`/store/${slug}/faq`}>FAQs</Link></div>
         <div><h4>Contact Us</h4><span>⌖　{store.address || "2464 Royal Ln. Mesa, New Jersey 45463"}</span><span>☎　{store.phone || "(000) 1230-0000"}</span><span>✉　{store.email || "hello@restaurant.com"}</span><span>◷　Mon - Sun: 10AM - 11PM</span></div>
         <div><h4>Subscribe Newsletter</h4><p>Subscribe to get special offers, free giveaways, and updates.</p><input placeholder="Your email address"/><button>Subscribe</button></div>
       </div>

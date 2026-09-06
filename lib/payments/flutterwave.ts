@@ -171,3 +171,13 @@ export async function createFlutterwaveSubaccount(params: {
   });
   return res.json() as Promise<{ status: "success" | "error"; message: string; data?: { id: number; subaccount_id: string } }>;
 }
+
+/** Fetches Flutterwave v3 refund records for a transaction id. */
+export async function listFlutterwaveRefundsForTransaction(transactionId: string) {
+  const secretKey = process.env.FLUTTERWAVE_SECRET_KEY;
+  if (!secretKey) return { status: "error" as const, message: "Payments aren't configured yet (missing FLUTTERWAVE_SECRET_KEY).", data: [] as any[] };
+  const url = `${FLW_BASE}/refunds?id=${encodeURIComponent(transactionId)}`;
+  const res = await fetch(url, { headers: { Authorization: `Bearer ${secretKey}` } });
+  const json = (await res.json()) as { status: "success" | "error"; message: string; data?: any[] };
+  return { status: json.status, message: json.message, data: json.data ?? [] };
+}

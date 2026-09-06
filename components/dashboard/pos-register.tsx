@@ -42,6 +42,9 @@ export function PosRegister({
   const [customerMatches, setCustomerMatches] = useState<PosCustomerMatch[]>([]);
   const [searchingCustomers, setSearchingCustomers] = useState(false);
   const [charging, setCharging] = useState(false);
+  // One key per completed register charge. Keep it stable across network/UI
+  // retries so a lost response cannot create a second POS order.
+  const chargeIdempotencyKeyRef = useRef<string>(crypto.randomUUID());
   const [lookingUpBarcode, setLookingUpBarcode] = useState(false);
 
   const currency = catalog[0]?.currency ?? "NGN";
@@ -208,6 +211,7 @@ export function PosRegister({
       customerPhone: customerPhone.trim() || undefined,
       customerEmail: customerEmail.trim() || undefined,
       customerProfileId,
+      idempotencyKey: chargeIdempotencyKeyRef.current,
     });
     setCharging(false);
     if (!result.success) return toast.error(result.error);
@@ -218,6 +222,7 @@ export function PosRegister({
     setCustomerEmail("");
     setCustomerProfileId(undefined);
     setCustomerMatches([]);
+    chargeIdempotencyKeyRef.current = crypto.randomUUID();
     router.refresh();
   }
 

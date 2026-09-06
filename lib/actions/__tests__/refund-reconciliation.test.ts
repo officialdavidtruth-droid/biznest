@@ -1,0 +1,4 @@
+import { describe, expect, it } from "vitest";
+import { readFileSync } from "fs";
+import { resolve } from "path";
+describe("refund reconciliation",()=>{it("reads gateway status without issuing another refund",()=>{const s=readFileSync(resolve(process.cwd(),"lib/actions/refund.ts"),"utf8");const a=s.indexOf("export async function reconcileRefundPendingPayment");const b=s.indexOf("export async function getRefundPendingPayments",a);const body=s.slice(a,b);expect(body).toContain("listPaystackRefundsForTransaction");expect(body).toContain("listFlutterwaveRefundsForTransaction");expect(body).not.toContain("refundPayment({");});it("requires an auditable refund reference",()=>{const s=readFileSync(resolve(process.cwd(),"lib/actions/refund.ts"),"utf8");expect(s).toContain("Gateway reports a completed refund but did not return a refund reference");});});

@@ -7,7 +7,6 @@ import { roundMoney } from "@/lib/utils/pricing";
 import { sendOrderNotificationEmail } from "@/lib/email/send";
 import { revalidatePath } from "next/cache";
 import type { ActionResult } from "@/types/actions";
-import type { Quote, QuoteItem } from "@prisma/client";
 import { assertStorePermission } from "@/lib/access/assert-store-access";
 
 const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? "https://biznest.vercel.app";
@@ -84,7 +83,11 @@ export async function listQuotes(slug: string) {
 
   return prisma.quote.findMany({
     where: { storeId: access.store.id },
-    include: { items: true, customer: { select: { name: true, email: true } } },
+    include: {
+      items: true,
+      customer: { select: { name: true, email: true } },
+      creativeProject: { select: { id: true, projectNo: true, status: true } },
+    },
     orderBy: { createdAt: "desc" },
     // Same reasoning as listOrders/listProducts: no pagination UI here yet,
     // so bound it rather than let the page slow down as quotes accumulate.
@@ -92,11 +95,29 @@ export async function listQuotes(slug: string) {
   });
 }
 
-export async function getQuote(slug: string, quoteId: string): Promise<(Quote & { items: QuoteItem[] }) | null> {
+export async function getQuote(slug: string, quoteId: string) {
   const access = await assertStoreAccess(slug);
   if (!access.success) return null;
 
-  return prisma.quote.findFirst({ where: { id: quoteId, storeId: access.store.id }, include: { items: true } });
+  return prisma.quote.findFirst({
+    where: { id: quoteId, storeId: access.store.id },
+    include: {
+      items: true,
+      creativeProject: {
+        select: {
+          id: true,
+          projectNo: true,
+          serviceType: true,
+          brief: true,
+          budget: true,
+          deadline: true,
+          referenceFiles: true,
+          status: true,
+          createdAt: true,
+        },
+      },
+    },
+  });
 }
 
 /** Customer-facing read, e.g. a link sent via email/WhatsApp. */
@@ -270,21 +291,41 @@ async function convertQuoteToOrder(quoteId: string, buyerId: string) {
  * callback), matching the settlement pattern used for Orders and Invoices
  * in the same routes.
  */
-export async function settleQuoteDeposit(reference: string, rawPayload: object): Promise<void> {
+export async function settleQuoteDeposit(reference: string, verifiedAmountNaira: number, rawPayload: object): Promise<void> {
   const payment = await prisma.payment.findUnique({ where: { reference } });
   if (!payment || payment.purpose !== "QUOTE_DEPOSIT" || !reference.startsWith("QDEP-")) return;
+  if (Math.abs(Number(payment.amount) - Number(verifiedAmountNaira)) > 0.01) return;
 
   const quoteId = reference.split("-")[1];
   const quote = await prisma.quote.findUnique({ where: { id: quoteId } });
   if (!quote || quote.status === "ACCEPTED") return;
 
-  const paymentResult = await prisma.payment.updateMany({
-    where: { reference, status: "PENDING" },
-    data: { status: "SUCCESSFUL", rawPayload, verifiedAt: new Date() },
-  });
-  if (paymentResult.count === 0) return;
+  await prisma.$transaction(async (tx) => {
+    const paymentResult = await tx.payment.updateMany({
+      where: { reference, status: "PENDING" },
+      data: { status: "SUCCESSFUL", rawPayload, verifiedAt: new Date() },
+    });
+    if (paymentResult.count === 0) return;
 
-  const order = await convertQuoteToOrder(quoteId, quote.customerId!);
-  await prisma.quote.update({ where: { id: quoteId }, data: { depositPaymentId: payment.id } });
-  await prisma.order.update({ where: { id: order.id }, data: { paymentProvider: payment.provider } });
+    const freshQuote = await tx.quote.findUniqueOrThrow({ where: { id: quoteId }, include: { items: true } });
+    if (freshQuote.status === "ACCEPTED" || !freshQuote.customerId) throw new Error("QUOTE_ALREADY_ACCEPTED_OR_CUSTOMER_MISSING");
+
+    const order = await tx.order.create({
+      data: {
+        storeId: freshQuote.storeId,
+        buyerId: freshQuote.customerId,
+        status: "PENDING_PAYMENT",
+        subtotal: freshQuote.subtotal,
+        total: freshQuote.total,
+        currency: freshQuote.currency,
+        paymentProvider: payment.provider,
+        items: { create: freshQuote.items.map((i) => ({ quantity: i.quantity, unitPrice: i.unitPrice })) },
+      },
+    });
+
+    await tx.quote.update({
+      where: { id: quoteId },
+      data: { status: "ACCEPTED", respondedAt: new Date(), orderId: order.id, depositPaymentId: payment.id },
+    });
+  }, { isolationLevel: "Serializable" });
 }

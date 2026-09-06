@@ -83,7 +83,7 @@ export function NovaStorefront({
     <div style={{ background: p.bg, color: p.ink, fontFamily: p.font, minHeight: "100vh" }} className="storefront-root">
       {/* ---------- SIDE RAIL NAV (sticky, not a top bar) ---------- */}
       <div style={{ position: "sticky", top: 0, zIndex: 50, display: "flex", alignItems: "center", justifyContent: "space-between", padding: p.navPad, borderBottom: `1px solid ${p.line}`, background: p.bg, backdropFilter: "blur(10px)" }}>
-        <a href={`/${slug}`} style={{ ...p.serif, fontSize: 22, fontWeight: 700, color: p.ink, textDecoration: "none", letterSpacing: "0.02em" }}>
+        <a href={`/store/${slug}`} style={{ ...p.serif, fontSize: 22, fontWeight: 700, color: p.ink, textDecoration: "none", letterSpacing: "0.02em" }}>
           {store.logoUrl ? (
             // eslint-disable-next-line @next/next/no-img-element
             <img src={store.logoUrl} alt={store.name} style={{ height: 30, width: 30, borderRadius: "50%", objectFit: "cover", marginRight: 10, verticalAlign: "middle" }} />
@@ -92,7 +92,7 @@ export function NovaStorefront({
         </a>
         <div style={{ display: "flex", alignItems: "center", gap: 26 }}>
           {catalogItems.length > 0 && <a href="#collection" style={{ ...label, textDecoration: "none" }}>The Collection</a>}
-          {catalogItems.length > 0 && <a href={`/${slug}/search`} style={{ ...label, textDecoration: "none" }}>Search</a>}
+          {catalogItems.length > 0 && <a href={`/store/${slug}/search`} style={{ ...label, textDecoration: "none" }}>Search</a>}
           {store.sellsProducts && (
             <CartLink storeSlug={slug} accent={p.gold} ink={p.ink} />
           )}
@@ -156,13 +156,13 @@ export function NovaStorefront({
                   <div style={label}>{theme.catalogLabel}</div>
                   <h2 style={{ ...p.serif, fontSize: "clamp(30px,3.6vw,44px)", marginTop: 14 }}>Every piece, chosen with care.</h2>
                 </div>
-                <a href={`/${slug}/catalog`} style={{ ...label, textDecoration: "underline" }}>View full collection →</a>
+                <a href={`/store/${slug}/catalog`} style={{ ...label, textDecoration: "underline" }}>View full collection →</a>
               </div>
             </Reveal>
             {featuredItems.map((item, i) => (
               <Reveal key={`${item.kind}-${item.id}`} delayMs={i * 40} as="section">
                 <a
-                  href={`/${slug}/${item.kind === "product" ? "product" : "service"}/${item.id}`}
+                  href={`/store/${slug}/${item.kind === "product" ? "product" : "service"}/${item.id}`}
                   className="bn-2col"
                   style={{ display: "grid", gridTemplateColumns: "80px 140px 1fr auto", alignItems: "center", gap: 30, padding: "30px 0", borderTop: `1px solid ${p.line}`, textDecoration: "none", color: "inherit" }}
                 >

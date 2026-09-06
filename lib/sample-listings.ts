@@ -126,4 +126,88 @@ export const SAMPLE_LISTINGS: Record<string, SampleListing[]> = {
     { kind: "service", name: "Project-Based Work", description: "Custom scope, quoted per project.", price: 100000 },
     { kind: "service", name: "Monthly Retainer", description: "Ongoing work, fixed monthly hours.", price: 250000 },
   ],
+  "Graphic Design & Printing": [
+    { kind: "service", name: "Brand & Print Design Package", description: "Creative design for digital and print campaigns, quoted to scope.", price: 75000 },
+    { kind: "service", name: "Print Production", description: "Professional flyers, brochures and business materials.", price: 25000 },
+  ],
+  "Branding & Brand Identity": [
+    { kind: "service", name: "Brand Identity System", description: "Logo, colors, typography and practical brand guidelines.", price: 180000 },
+    { kind: "service", name: "Brand Strategy Session", description: "Focused workshop to define positioning and brand direction.", price: 50000, isBookable: true, durationMins: 90 },
+  ],
+  "Marketing & Digital Agency": [
+    { kind: "service", name: "Digital Growth Strategy", description: "Channel strategy, campaign plan and measurable growth roadmap.", price: 120000 },
+    { kind: "service", name: "Social Media Management", description: "Monthly content planning, publishing and reporting.", price: 90000 },
+  ],
+  "Photography & Visual Production": [
+    { kind: "service", name: "Commercial Photo Session", description: "Professional visual production for brands and campaigns.", price: 75000, isBookable: true, durationMins: 120 },
+    { kind: "service", name: "Product Content Package", description: "E-commerce-ready photography and short-form visuals.", price: 60000 },
+  ],
+  "Consulting & Advisory": [
+    { kind: "service", name: "Advisory Consultation", description: "Focused expert session around a defined business challenge.", price: 50000, isBookable: true, durationMins: 60 },
+    { kind: "service", name: "Strategy Engagement", description: "Structured advisory project with recommendations and action plan.", price: 180000 },
+  ],
+  "Accounting & Finance": [
+    { kind: "service", name: "Accounting Consultation", description: "Review your records, reporting needs and financial workflow.", price: 30000, isBookable: true, durationMins: 60 },
+    { kind: "service", name: "Monthly Bookkeeping", description: "Ongoing bookkeeping and management reporting.", price: 75000 },
+  ],
+  "HR & Recruitment": [
+    { kind: "service", name: "Recruitment Campaign", description: "Role sourcing, screening and shortlist delivery.", price: 100000 },
+    { kind: "service", name: "HR Advisory Session", description: "Practical guidance on people operations and HR process.", price: 40000, isBookable: true, durationMins: 60 },
+  ],
+  "Web & Software Development": [
+    { kind: "service", name: "Website Development", description: "Responsive business website scoped to your requirements.", price: 250000 },
+    { kind: "service", name: "Technical Consultation", description: "Architecture, product and implementation guidance.", price: 50000, isBookable: true, durationMins: 60 },
+  ],
+  "IT & Technology Services": [
+    { kind: "service", name: "IT Support Plan", description: "Ongoing technical support for your business systems.", price: 100000 },
+    { kind: "service", name: "Technology Audit", description: "Review of infrastructure, security and operational tooling.", price: 75000 },
+  ],
+  "Architecture & Interior Design": [
+    { kind: "service", name: "Interior Design Consultation", description: "Space planning, style direction and project recommendations.", price: 50000, isBookable: true, durationMins: 90 },
+    { kind: "service", name: "Full Design Package", description: "Concept, drawings, specifications and visual presentation.", price: 350000 },
+  ],
+  "Engineering Services": [
+    { kind: "service", name: "Engineering Consultation", description: "Technical review and professional engineering guidance.", price: 50000, isBookable: true, durationMins: 60 },
+    { kind: "service", name: "Engineering Assessment", description: "Site or system assessment with a professional report.", price: 150000 },
+  ],
+
 };
+
+/** Resolve starter content for the normalized template/business type used by
+ * the template compatibility layer. Template categories and onboarding
+ * categories intentionally use different human-facing labels, so never look
+ * up SAMPLE_LISTINGS with a raw StoreTemplate.category.
+ */
+export function getSampleListingsForBusinessType(businessType?: string | null): SampleListing[] {
+  if (!businessType) return [];
+
+  const aliases: Record<string, string> = {
+    "Restaurant": "Restaurant & Food Delivery",
+    "Hotel & Lodging": "Hotel & Short-let",
+    "Fashion": "Fashion & Apparel",
+    "Beauty": "Beauty & Cosmetics",
+    "Salon": "Hair & Beauty Salon",
+    "Electronics": "Electronics & Gadgets",
+    "Food & Groceries": "Grocery & Supermarket",
+    "Home & Furniture": "Furniture & Home Decor",
+    "Photography": "Photography Studio",
+    "Agency": "Creative Agency",
+    "Construction": "Construction & Contracting",
+    "Professional Services": "Freelancer & Portfolio",
+    "Graphic Design & Printing": "Graphic Design & Printing",
+    "Branding & Brand Identity": "Branding & Brand Identity",
+    "Marketing & Digital Agency": "Marketing & Digital Agency",
+    "Photography & Visual Production": "Photography & Visual Production",
+    "Consulting & Advisory": "Consulting & Advisory",
+    "Accounting & Finance": "Accounting & Finance",
+    "Legal Services": "Law Firm & Legal Services",
+    "HR & Recruitment": "HR & Recruitment",
+    "Web & Software Development": "Web & Software Development",
+    "IT & Technology Services": "IT & Technology Services",
+    "Architecture & Interior Design": "Architecture & Design Studio",
+    "Engineering Services": "Engineering Services",
+    "Construction & Building": "Construction & Contracting",
+  };
+
+  return SAMPLE_LISTINGS[aliases[businessType] ?? businessType] ?? [];
+}

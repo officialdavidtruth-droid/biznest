@@ -47,7 +47,7 @@ export function FreshHeader({
     <>
       <nav style={{ position: "sticky", top: 0, zIndex: 50, background: "rgba(251,249,244,.9)", backdropFilter: "blur(10px)", borderBottom: `1px solid ${line}` }}>
         <div className="bn-header-inner" style={{ ...wrap, display: "flex", alignItems: "center", justifyContent: "space-between", padding: "14px 28px", rowGap: 10 }}>
-          <a href={`/${slug}`} style={{ fontFamily: FRESH.headlineFont, fontWeight: 700, fontSize: 21, color: FRESH.forest, display: "flex", alignItems: "center", gap: 8, textDecoration: "none" }}>
+          <a href={`/store/${slug}`} style={{ fontFamily: FRESH.headlineFont, fontWeight: 700, fontSize: 21, color: FRESH.forest, display: "flex", alignItems: "center", gap: 8, textDecoration: "none" }}>
             {store.logoUrl ? (
               // eslint-disable-next-line @next/next/no-img-element
               <img src={store.logoUrl} alt={store.name} style={{ height: 30, width: 30, borderRadius: 8, objectFit: "cover" }} />
@@ -57,12 +57,12 @@ export function FreshHeader({
             {store.name}
           </a>
           <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
-            {hasCatalog && <a href={`/${slug}/search`} style={{ fontSize: 14, fontWeight: 500, color: FRESH.inkSoft, textDecoration: "none" }}>Search</a>}
+            {hasCatalog && <a href={`/store/${slug}/search`} style={{ fontSize: 14, fontWeight: 500, color: FRESH.inkSoft, textDecoration: "none" }}>Search</a>}
             {store.sellsProducts && (
               <CartLink storeSlug={slug} accent={FRESH.leaf} ink={FRESH.ink} />
             )}
             <AccountLink storeSlug={slug} ink={FRESH.ink} />
-            {hasCatalog && <a href={`/${slug}/catalog`} style={btnPrimary}>Get a Quote</a>}
+            {hasCatalog && <a href={`/store/${slug}/catalog`} style={btnPrimary}>Get a Quote</a>}
           </div>
         </div>
       </nav>
@@ -112,8 +112,8 @@ export function FreshFooter({
         </div>
         <div>
           <h5 style={footHead}>Pages</h5>
-          <div style={footLink}><a href={`/${slug}`} style={{ color: "inherit", textDecoration: "none" }}>Home</a></div>
-          {hasCatalog && <div style={footLink}><a href={`/${slug}/catalog`} style={{ color: "inherit", textDecoration: "none" }}>{catalogLabel}</a></div>}
+          <div style={footLink}><a href={`/store/${slug}`} style={{ color: "inherit", textDecoration: "none" }}>Home</a></div>
+          {hasCatalog && <div style={footLink}><a href={`/store/${slug}/catalog`} style={{ color: "inherit", textDecoration: "none" }}>{catalogLabel}</a></div>}
           <div style={footLink}>Contact</div>
         </div>
         <div>

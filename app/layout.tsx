@@ -56,9 +56,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
 
   return (
     <html lang="en">
-      <body className="flex min-h-screen flex-col bg-background font-sans antialiased">
-        {/* Critical storefront fallback for public pages if the generated CSS chunk is temporarily unavailable. */}
-        <style dangerouslySetInnerHTML={{__html: `html,body{margin:0;padding:0}*,*::before,*::after{box-sizing:border-box}a{text-decoration:none;color:inherit}button,input,select,textarea{font:inherit}img{max-width:100%;display:block}`}} />
+      <body className="flex h-screen flex-col bg-background font-sans antialiased">
         <SessionProvider>
         <CartProvider>
           {showMaintenance ? (
@@ -85,7 +83,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
                   region (see theme-provider.tsx); ordinary pages (like
                   onboarding) ignore it entirely and just render at their
                   own natural content height. */}
-              <div className="flex min-h-screen flex-1 flex-col">{children}</div>
+              <div className="flex min-h-0 flex-1 flex-col">{children}</div>
             </>
           )}
           <Toaster richColors position="top-center" />

@@ -29,6 +29,7 @@ const CSV_HEADERS = [
   "costPrice",
   "lowStockThreshold",
   "isPublished",
+  "inventoryUpdatedAt",
 ] as const;
 
 /**
@@ -68,6 +69,7 @@ export async function exportProductsCsv(slug: string): Promise<ActionResult<{ cs
           v.costPrice != null ? Number(v.costPrice) : "",
           v.lowStockThreshold,
           v.isActive,
+          v.updatedAt.toISOString(),
         ]);
       }
     } else {
@@ -86,6 +88,7 @@ export async function exportProductsCsv(slug: string): Promise<ActionResult<{ cs
         p.inventory?.costPrice != null ? Number(p.inventory.costPrice) : "",
         p.inventory?.lowStockThreshold ?? 5,
         p.isPublished,
+        p.inventory?.updatedAt?.toISOString() ?? "",
       ]);
     }
   }
@@ -132,92 +135,164 @@ export async function importProductsCsv(slug: string, csvText: string): Promise<
 
   for (let idx = 0; idx < records.length; idx++) {
     const r = records[idx];
-    const rowNum = idx + 2; // +1 header, +1 for 1-indexing
+    const rowNum = idx + 2;
     try {
       if (r.variantId) {
-        const variant = await prisma.productVariant.findFirst({ where: { id: r.variantId, storeId: access.store.id } });
-        if (!variant) {
-          summary.errors++;
-          summary.rows.push({ row: rowNum, status: "error", message: "variantId not found in this store" });
-          continue;
-        }
-        const price = parseNum(r.price ?? "");
-        const costPrice = parseNum(r.costPrice ?? "");
-        const quantity = parseNum(r.quantity ?? "");
-        await prisma.productVariant.update({
-          where: { id: variant.id },
-          data: {
-            sku: r.sku?.trim() || variant.sku,
-            barcode: r.barcode?.trim() || variant.barcode,
-            price: r.price?.trim() === "" ? variant.price : price != null ? roundMoney(price) : variant.price,
-            costPrice: r.costPrice?.trim() === "" ? variant.costPrice : costPrice != null ? roundMoney(costPrice) : variant.costPrice,
-            quantity: quantity != null ? Math.max(0, Math.round(quantity)) : variant.quantity,
-            lowStockThreshold: parseNum(r.lowStockThreshold ?? "") ?? variant.lowStockThreshold,
-            isActive: parseBool(r.isPublished ?? "", variant.isActive),
-          },
-        });
+        const result = await prisma.$transaction(async (tx) => {
+          const variant = await tx.productVariant.findFirst({
+            where: { id: r.variantId, storeId: access.store.id },
+            select: { id: true, quantity: true, autoUnpublished: true, lowStockThreshold: true, sku: true, barcode: true, price: true, costPrice: true, isActive: true, updatedAt: true },
+          });
+          if (!variant) throw new Error("variantId not found in this store");
+
+          const quantity = parseNum(r.quantity ?? "");
+          const nextQuantity = quantity != null ? Math.max(0, Math.round(quantity)) : variant.quantity;
+          const expectedUpdatedAt = r.inventoryUpdatedAt?.trim();
+          if (expectedUpdatedAt) {
+            const expected = new Date(expectedUpdatedAt);
+            if (Number.isNaN(expected.getTime()) || expected.getTime() !== variant.updatedAt.getTime()) {
+              throw new Error("INVENTORY_CONFLICT");
+            }
+          }
+
+          const delta = nextQuantity - variant.quantity;
+          const justRestocked = variant.quantity === 0 && nextQuantity > 0;
+          const updated = await tx.productVariant.updateMany({
+            where: { id: variant.id, storeId: access.store.id, updatedAt: variant.updatedAt },
+            data: {
+              sku: r.sku?.trim() || variant.sku,
+              barcode: r.barcode?.trim() || variant.barcode,
+              price: r.price?.trim() === "" ? variant.price : (parseNum(r.price ?? "") != null ? roundMoney(parseNum(r.price)!) : variant.price),
+              costPrice: r.costPrice?.trim() === "" ? variant.costPrice : (parseNum(r.costPrice ?? "") != null ? roundMoney(parseNum(r.costPrice)!) : variant.costPrice),
+              quantity: nextQuantity,
+              lowStockThreshold: parseNum(r.lowStockThreshold ?? "") ?? variant.lowStockThreshold,
+              isActive: parseBool(r.isPublished ?? "", variant.isActive),
+              autoUnpublished: justRestocked ? false : variant.autoUnpublished,
+            },
+          });
+          if (updated.count !== 1) throw new Error("INVENTORY_CONFLICT");
+
+          if (delta !== 0) {
+            await tx.stockMovement.create({
+              data: {
+                variantId: variant.id,
+                storeId: access.store.id,
+                type: "CORRECTION",
+                quantityChange: delta,
+                quantityAfter: nextQuantity,
+                note: "CSV import",
+              },
+            });
+          }
+          return variant.id;
+        }, { isolationLevel: "Serializable", timeout: 15000 });
+
         summary.updated++;
-        summary.rows.push({ row: rowNum, variantId: variant.id, status: "updated" });
+        summary.rows.push({ row: rowNum, variantId: result, status: "updated" });
         continue;
       }
 
       let categoryId: string | null | undefined = undefined;
       if (r.category?.trim()) {
-        const cat = await prisma.category.findFirst({ where: { name: r.category.trim() } });
+        const cat = await prisma.category.findFirst({ where: { name: r.category.trim(), storeId: access.store.id } });
         categoryId = cat?.id ?? null;
       }
 
       if (r.productId) {
-        const product = await prisma.product.findFirst({ where: { id: r.productId, storeId: access.store.id }, include: { inventory: true } });
-        if (!product) {
-          summary.errors++;
-          summary.rows.push({ row: rowNum, status: "error", message: "productId not found in this store" });
-          continue;
-        }
-        const price = parseNum(r.price ?? "");
-        const quantity = parseNum(r.quantity ?? "");
-        const costPrice = parseNum(r.costPrice ?? "");
-        await prisma.product.update({
-          where: { id: product.id },
-          data: {
-            ...(categoryId !== undefined ? { categoryId } : {}),
-            price: price != null ? roundMoney(price) : product.price,
-            isPublished: parseBool(r.isPublished ?? "", product.isPublished),
-            inventory: {
-              upsert: {
-                create: {
-                  storeId: access.store.id,
-                  sku: r.sku?.trim() || null,
-                  barcode: r.barcode?.trim() || null,
-                  quantity: quantity != null ? Math.max(0, Math.round(quantity)) : 0,
-                  costPrice: costPrice != null ? roundMoney(costPrice) : null,
-                  lowStockThreshold: parseNum(r.lowStockThreshold ?? "") ?? 5,
-                },
-                update: {
-                  sku: r.sku?.trim() || product.inventory?.sku,
-                  barcode: r.barcode?.trim() || product.inventory?.barcode,
-                  quantity: quantity != null ? Math.max(0, Math.round(quantity)) : product.inventory?.quantity,
-                  costPrice: r.costPrice?.trim() === "" ? product.inventory?.costPrice : costPrice != null ? roundMoney(costPrice) : product.inventory?.costPrice,
-                  lowStockThreshold: parseNum(r.lowStockThreshold ?? "") ?? product.inventory?.lowStockThreshold,
-                },
+        const result = await prisma.$transaction(async (tx) => {
+          const product = await tx.product.findFirst({
+            where: { id: r.productId, storeId: access.store.id },
+            include: { inventory: true },
+          });
+          if (!product) throw new Error("productId not found in this store");
+
+          const quantity = parseNum(r.quantity ?? "");
+          const nextQuantity = quantity != null ? Math.max(0, Math.round(quantity)) : product.inventory?.quantity ?? 0;
+          const expectedUpdatedAt = r.inventoryUpdatedAt?.trim();
+          if (expectedUpdatedAt && product.inventory) {
+            const expected = new Date(expectedUpdatedAt);
+            if (Number.isNaN(expected.getTime()) || expected.getTime() !== product.inventory.updatedAt.getTime()) {
+              throw new Error("INVENTORY_CONFLICT");
+            }
+          }
+
+          const inventoryData = {
+            sku: r.sku?.trim() || product.inventory?.sku || null,
+            barcode: r.barcode?.trim() || product.inventory?.barcode || null,
+            quantity: nextQuantity,
+            costPrice: r.costPrice?.trim() === "" ? product.inventory?.costPrice ?? null : (parseNum(r.costPrice ?? "") != null ? roundMoney(parseNum(r.costPrice)!) : product.inventory?.costPrice ?? null),
+            lowStockThreshold: parseNum(r.lowStockThreshold ?? "") ?? product.inventory?.lowStockThreshold ?? 5,
+          };
+
+          let delta = 0;
+          if (product.inventory) {
+            delta = nextQuantity - product.inventory.quantity;
+            const justRestocked = product.inventory.quantity === 0 && nextQuantity > 0;
+            const updated = await tx.inventoryItem.updateMany({
+              where: { id: product.inventory.id, storeId: access.store.id, updatedAt: product.inventory.updatedAt },
+              data: {
+                ...inventoryData,
+                autoUnpublished: justRestocked ? false : product.inventory.autoUnpublished,
               },
+            });
+            if (updated.count !== 1) throw new Error("INVENTORY_CONFLICT");
+
+            if (delta !== 0) {
+              await tx.stockMovement.create({
+                data: {
+                  inventoryItemId: product.inventory.id,
+                  storeId: access.store.id,
+                  type: "CORRECTION",
+                  quantityChange: delta,
+                  quantityAfter: nextQuantity,
+                  note: "CSV import",
+                },
+              });
+            }
+            if (product.inventory.quantity > 0 && nextQuantity === 0) {
+              await tx.product.update({ where: { id: product.id }, data: { isPublished: false } });
+            } else if (product.inventory.quantity === 0 && nextQuantity > 0 && product.inventory.autoUnpublished) {
+              await tx.product.update({ where: { id: product.id }, data: { isPublished: true } });
+            }
+          } else {
+            await tx.inventoryItem.create({ data: { productId: product.id, storeId: access.store.id, ...inventoryData } });
+            delta = nextQuantity;
+            if (nextQuantity > 0) {
+              await tx.stockMovement.create({
+                data: {
+                  inventoryItemId: (await tx.inventoryItem.findUnique({ where: { productId: product.id }, select: { id: true } }))!.id,
+                  storeId: access.store.id,
+                  type: "RESTOCK",
+                  quantityChange: nextQuantity,
+                  quantityAfter: nextQuantity,
+                  note: "CSV import initial stock",
+                },
+              });
+            }
+          }
+
+          await tx.product.update({
+            where: { id: product.id },
+            data: {
+              ...(categoryId !== undefined ? { categoryId } : {}),
+              price: parseNum(r.price ?? "") != null ? roundMoney(parseNum(r.price)!) : product.price,
+              isPublished: parseBool(r.isPublished ?? "", product.isPublished),
             },
-          },
-        });
+          });
+          return product.id;
+        }, { isolationLevel: "Serializable", timeout: 15000 });
+
         summary.updated++;
-        summary.rows.push({ row: rowNum, productId: product.id, status: "updated" });
+        summary.rows.push({ row: rowNum, productId: result, status: "updated" });
         continue;
       }
 
-      // No productId/variantId -> create a new product. Check the plan cap
-      // per-row (not once up front) since it can be crossed mid-import.
       const entitlement = await assertUnderPlanLimit(access.store.id, "products");
       if (!entitlement.allowed) {
         summary.errors++;
         summary.rows.push({ row: rowNum, status: "error", message: entitlement.error });
         continue;
       }
-
       if (!r.name?.trim()) {
         summary.errors++;
         summary.rows.push({ row: rowNum, status: "error", message: "name is required to create a new product" });
@@ -230,6 +305,8 @@ export async function importProductsCsv(slug: string, csvText: string): Promise<
         continue;
       }
 
+      const quantity = parseNum(r.quantity ?? "") ?? 0;
+      const costPrice = parseNum(r.costPrice ?? "");
       const baseSlug = slugify(r.name, { lower: true, strict: true });
       let productSlug = baseSlug;
       let suffix = 1;
@@ -238,112 +315,61 @@ export async function importProductsCsv(slug: string, csvText: string): Promise<
         productSlug = `${baseSlug}-${suffix}`;
       }
 
-      const quantity = parseNum(r.quantity ?? "") ?? 0;
-      const costPrice = parseNum(r.costPrice ?? "");
-
-      const created = await prisma.product.create({
-        data: {
-          storeId: access.store.id,
-          categoryId: categoryId || null,
-          type: "PHYSICAL",
-          name: r.name.trim(),
-          slug: productSlug,
-          description: r.name.trim(),
-          price: roundMoney(price),
-          currency: r.currency?.trim() || "NGN",
-          images: [],
-          isPublished: parseBool(r.isPublished ?? "", true),
-          inventory: {
-            create: {
-              storeId: access.store.id,
-              sku: r.sku?.trim() || null,
-              barcode: r.barcode?.trim() || null,
-              quantity: Math.max(0, Math.round(quantity)),
-              costPrice: costPrice != null ? roundMoney(costPrice) : null,
-              lowStockThreshold: parseNum(r.lowStockThreshold ?? "") ?? 5,
+      const created = await prisma.$transaction(async (tx) => {
+        const product = await tx.product.create({
+          data: {
+            storeId: access.store.id,
+            categoryId: categoryId || null,
+            type: "PHYSICAL",
+            name: r.name.trim(),
+            slug: productSlug,
+            description: r.name.trim(),
+            price: roundMoney(price),
+            currency: r.currency?.trim() || "NGN",
+            images: [],
+            isPublished: parseBool(r.isPublished ?? "", true),
+            inventory: {
+              create: {
+                storeId: access.store.id,
+                sku: r.sku?.trim() || null,
+                barcode: r.barcode?.trim() || null,
+                quantity: Math.max(0, Math.round(quantity)),
+                costPrice: costPrice != null ? roundMoney(costPrice) : null,
+                lowStockThreshold: parseNum(r.lowStockThreshold ?? "") ?? 5,
+              },
             },
           },
-        },
-      });
+          include: { inventory: true },
+        });
+        if (quantity > 0 && product.inventory) {
+          await tx.stockMovement.create({
+            data: {
+              inventoryItemId: product.inventory.id,
+              storeId: access.store.id,
+              type: "RESTOCK",
+              quantityChange: Math.max(0, Math.round(quantity)),
+              quantityAfter: Math.max(0, Math.round(quantity)),
+              note: "CSV import initial stock",
+            },
+          });
+        }
+        return product.id;
+      }, { isolationLevel: "Serializable", timeout: 15000 });
+
       summary.created++;
-      summary.rows.push({ row: rowNum, productId: created.id, status: "created" });
+      summary.rows.push({ row: rowNum, productId: created, status: "created" });
     } catch (err) {
       summary.errors++;
-      summary.rows.push({ row: rowNum, status: "error", message: err instanceof Error ? err.message : "Unknown error" });
+      const message = err instanceof Error ? err.message : "Unknown error";
+      summary.rows.push({
+        row: rowNum,
+        status: "error",
+        message: message === "INVENTORY_CONFLICT" ? "Inventory changed since this CSV was exported. Re-export the products and try again." : message,
+      });
     }
   }
 
   revalidatePath(`/store/${slug}/admin/products`);
   revalidatePath(`/store/${slug}/admin/inventory`);
   return { success: true, data: summary };
-}
-
-// --- Bulk editing (dashboard multi-select, not file-based) -----------------
-
-export type BulkEditPatch = {
-  productId: string;
-  price?: number;
-  quantity?: number;
-  categoryId?: string | null;
-  isPublished?: boolean;
-};
-
-/**
- * Applies price/stock/category/publish changes to many products in one
- * pass, for the "select rows -> bulk edit" flow on the products page.
- * Stock changes go through prisma directly (not adjustStock's ledger)
- * with a single synthetic StockMovement per item, so a 50-row bulk edit
- * doesn't fire 50 separate transactions/emails -- it's one CORRECTION
- * entry per changed item, same as any other stock correction.
- */
-export async function bulkUpdateProducts(slug: string, patches: BulkEditPatch[]): Promise<ActionResult<{ updated: number }>> {
-  const access = await assertStoreAccess(slug);
-  if (!access.success) return { success: false, error: access.error };
-  if (patches.length === 0) return { success: false, error: "Nothing selected." };
-  if (patches.length > 500) return { success: false, error: "Bulk edit is limited to 500 products at a time." };
-
-  const ids = patches.map((p) => p.productId);
-  const products = await prisma.product.findMany({
-    where: { id: { in: ids }, storeId: access.store.id },
-    include: { inventory: true },
-  });
-  const byId = new Map(products.map((p) => [p.id, p]));
-
-  let updated = 0;
-  await prisma.$transaction(async (tx) => {
-    for (const patch of patches) {
-      const product = byId.get(patch.productId);
-      if (!product) continue;
-
-      const productData: Record<string, unknown> = {};
-      if (patch.price != null && patch.price > 0) productData.price = roundMoney(patch.price);
-      if (patch.categoryId !== undefined) productData.categoryId = patch.categoryId;
-      if (patch.isPublished !== undefined) productData.isPublished = patch.isPublished;
-      if (Object.keys(productData).length > 0) {
-        await tx.product.update({ where: { id: product.id }, data: productData });
-      }
-
-      if (patch.quantity != null && product.inventory) {
-        const nextQuantity = Math.max(0, Math.round(patch.quantity));
-        if (nextQuantity !== product.inventory.quantity) {
-          await tx.inventoryItem.update({ where: { id: product.inventory.id }, data: { quantity: nextQuantity } });
-          await tx.stockMovement.create({
-            data: {
-              inventoryItemId: product.inventory.id,
-              storeId: access.store.id,
-              type: "CORRECTION",
-              quantityChange: nextQuantity - product.inventory.quantity,
-              quantityAfter: nextQuantity,
-              note: "Bulk edit",
-            },
-          });
-        }
-      }
-      updated++;
-    }
-  });
-
-  revalidatePath(`/store/${slug}/admin/products`);
-  revalidatePath(`/store/${slug}/admin/inventory`);
-  return { success: true, data: { updated } };
 }

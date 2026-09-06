@@ -51,7 +51,7 @@ export default async function SupplierDetailPage({
         <div className="mb-3 flex items-center justify-between">
           <h2 className="text-lg font-semibold">Purchase orders</h2>
           <Link
-            href={`/${slug}/admin/purchase-orders/new?supplierId=${supplier.id}`}
+            href={`/store/${slug}/admin/purchase-orders/new?supplierId=${supplier.id}`}
             className="rounded-md bg-primary px-3 py-1.5 text-sm font-medium text-primary-foreground"
           >
             New purchase order
@@ -74,7 +74,7 @@ export default async function SupplierDetailPage({
                   <td className="px-4 py-3">{po.status.replace("_", " ")}</td>
                   <td className="px-4 py-3">{po.currency} {Number(po.subtotal).toLocaleString()}</td>
                   <td className="px-4 py-3 text-right">
-                    <Link href={`/${slug}/admin/purchase-orders/${po.id}`} className="text-xs font-medium text-primary hover:underline">
+                    <Link href={`/store/${slug}/admin/purchase-orders/${po.id}`} className="text-xs font-medium text-primary hover:underline">
                       View
                     </Link>
                   </td>

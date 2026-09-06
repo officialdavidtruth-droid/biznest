@@ -65,18 +65,38 @@ export function getTemplateMode(template: TemplateCandidate): BusinessMode | "un
 export function isTemplateCompatible(template: TemplateCandidate, category?: string | null, model?: BusinessModelInput): boolean {
   const experience = getBusinessExperience(category, model);
   const templateMode = getTemplateMode(template);
+  const mode = signatureMode(template);
+  const niche = (category ?? "").toLowerCase();
+
+  // Signature templates are deliberately niche-specific. Do not let a generic
+  // same-mode check make a hotel, restaurant, salon, etc. appear compatible
+  // with every other service business. This is especially important for
+  // commerce/service variants such as Beauty, where the same category can
+  // legitimately sell products, offer services, or do both.
+  if (mode) {
+    const signatureBusinessType = SIGNATURE_BUSINESS_TYPE[mode];
+    const professionalNiche = PROFESSIONAL_MODE_TO_NICHE[mode];
+
+    if (signatureBusinessType) {
+      const signatureCategory = signatureBusinessType.toLowerCase();
+      if (niche !== signatureCategory) return false;
+      return experience.mode === "hybrid" || templateMode === experience.mode;
+    }
+
+    if (professionalNiche) {
+      const matchesProfessional = niche === "professional services" || niche === professionalNiche.toLowerCase();
+      if (!matchesProfessional) return false;
+      return experience.mode === "hybrid" || templateMode === experience.mode;
+    }
+  }
 
   if (experience.mode === "hybrid") return templateMode !== "unknown";
   if (templateMode === experience.mode) return true;
 
-  // A niche template is allowed when it belongs to the selected business type,
-  // even if its metadata predates the business-mode system.
+  // Generic templates may still be selected when their metadata explicitly
+  // names the business category.
   const text = `${template.name} ${template.category}`.toLowerCase();
-  const niche = (category ?? "").toLowerCase();
   if (niche && text.includes(niche)) return true;
-  const mode = signatureMode(template);
-  const professional = mode ? PROFESSIONAL_MODE_TO_NICHE[mode] : null;
-  if (professional && niche && (niche === "professional services" || niche === professional.toLowerCase())) return true;
   return false;
 }
 

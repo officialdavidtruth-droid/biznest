@@ -25,7 +25,7 @@ export function PremiumCartClient({ slug }: { slug: string }) {
       {cartItems.length === 0 ? (
         <div style={{ background: "#fff", border: "1px solid #e2e7e9", borderRadius: PREMIUM.radius }} className="p-10 text-center">
           <p style={{ opacity: 0.7, fontSize: 13 }}>Your cart is empty.</p>
-          <Link href={`/${slug}`} style={{ color: PREMIUM.accent, fontSize: 13 }} className="mt-3 inline-block font-semibold no-underline hover:opacity-80">
+          <Link href={`/store/${slug}`} style={{ color: PREMIUM.accent, fontSize: 13 }} className="mt-3 inline-block font-semibold no-underline hover:opacity-80">
             Continue shopping →
           </Link>
         </div>
@@ -98,7 +98,7 @@ export function PremiumCartClient({ slug }: { slug: string }) {
                 <span style={{ fontSize: 19 }} className="font-extrabold leading-none">{cartItems[0]?.currency} {subtotal.toLocaleString()}</span>
               </div>
               <Link
-                href={`/${slug}/checkout`}
+                href={`/store/${slug}/checkout`}
                 style={{ background: PREMIUM.accent, color: "#fff", borderRadius: 20 }}
                 className="mt-1 flex items-center justify-center gap-2 py-3 text-xs font-bold uppercase tracking-wide no-underline transition hover:opacity-90"
               >

@@ -299,9 +299,9 @@ export function BookingWidget({
       setPaymentStarted(true);
       const payment = await startBookingPayment(storeSlug, newBookingId, isSignedIn ? undefined : guestEmail);
       if (!payment.success) {
-        toast.error(payment.error);
         setPaymentStarted(false);
-        setConfirmed(true);
+        toast.error(payment.error);
+        window.location.assign(`/store/${storeSlug}/booking/${newBookingId}/confirmation?payment=failed`);
         return;
       }
       window.location.assign(payment.data.authorizationUrl);

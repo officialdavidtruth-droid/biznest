@@ -65,7 +65,7 @@ export function HomeVistaStorefront({
 
       {/* ---------- NAV ---------- */}
       <header style={{ height: 70, display: "flex", alignItems: "center", padding: "0 4.5%", gap: 28, borderBottom: "1px solid #edf0ef", background: "#fff" }}>
-        <a href={`/${slug}`} style={{ fontSize: 19, color: HOMEVISTA.dark, minWidth: 175, textDecoration: "none", display: "flex", alignItems: "center", gap: 8 }}>
+        <a href={`/store/${slug}`} style={{ fontSize: 19, color: HOMEVISTA.dark, minWidth: 175, textDecoration: "none", display: "flex", alignItems: "center", gap: 8 }}>
           {store.logoUrl ? (
             // eslint-disable-next-line @next/next/no-img-element
             <img src={store.logoUrl} alt={store.name} style={{ height: 32, width: 32, borderRadius: "50%", objectFit: "cover" }} />
@@ -76,7 +76,7 @@ export function HomeVistaStorefront({
         </a>
         <nav style={{ display: "flex", gap: 25, fontSize: 11, fontWeight: 700 }}>
           {catalogItems.length > 0 && <a href="#listings" style={{ color: HOMEVISTA.accent, borderBottom: `2px solid ${HOMEVISTA.accent}`, paddingBottom: 25, textDecoration: "none" }}>Listings</a>}
-          {navCategories.length > 0 && <a href={`/${slug}/catalog`} style={{ textDecoration: "none", color: HOMEVISTA.ink }}>Categories</a>}
+          {navCategories.length > 0 && <a href={`/store/${slug}/catalog`} style={{ textDecoration: "none", color: HOMEVISTA.ink }}>Categories</a>}
         </nav>
         <div style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: 20 }}>
           {store.sellsProducts && (
@@ -124,11 +124,11 @@ export function HomeVistaStorefront({
         <section style={{ ...wrap, margin: "25px auto" }}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
             <h2 style={{ fontSize: 18, margin: 0 }}>Explore Categories</h2>
-            <a href={`/${slug}/catalog`} style={{ color: HOMEVISTA.accent, fontSize: 10, fontWeight: 800, textDecoration: "none" }}>View All →</a>
+            <a href={`/store/${slug}/catalog`} style={{ color: HOMEVISTA.accent, fontSize: 10, fontWeight: 800, textDecoration: "none" }}>View All →</a>
           </div>
           <div className="bn-grid-2" style={{ display: "grid", gridTemplateColumns: `repeat(${Math.min(navCategories.length, 6)}, 1fr)`, gap: 9 }}>
             {navCategories.slice(0, 6).map((c) => (
-              <a key={c.id} href={`/${slug}/category/${c.id}`} style={{ border: "1px solid #e6ebe9", borderRadius: 8, padding: 11, display: "flex", alignItems: "center", gap: 10, boxShadow: "0 2px 8px #18352d08", textDecoration: "none", color: HOMEVISTA.ink }}>
+              <a key={c.id} href={`/store/${slug}/category/${c.id}`} style={{ border: "1px solid #e6ebe9", borderRadius: 8, padding: 11, display: "flex", alignItems: "center", gap: 10, boxShadow: "0 2px 8px #18352d08", textDecoration: "none", color: HOMEVISTA.ink }}>
                 <span style={{ fontSize: 25 }}>⌂</span>
                 <div>
                   <b style={{ fontSize: 10 }}>{c.name}</b>
@@ -145,12 +145,12 @@ export function HomeVistaStorefront({
         <section id="listings" style={{ ...wrap, margin: "25px auto" }}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
             <h2 style={{ fontSize: 18, margin: 0 }}>Featured Listings</h2>
-            <a href={`/${slug}/catalog`} style={{ color: HOMEVISTA.accent, fontSize: 10, fontWeight: 800, textDecoration: "none" }}>View All →</a>
+            <a href={`/store/${slug}/catalog`} style={{ color: HOMEVISTA.accent, fontSize: 10, fontWeight: 800, textDecoration: "none" }}>View All →</a>
           </div>
           <div className="bn-grid-2" style={{ display: "grid", gridTemplateColumns: "repeat(5, 1fr)", gap: 10 }}>
             {featuredItems.map((item, i) => (
               <Reveal key={`${item.kind}-${item.id}`} delayMs={i * 40}>
-                <a href={`/${slug}/${item.kind === "product" ? "product" : "service"}/${item.id}`} style={{ border: "1px solid #e2e8e6", borderRadius: 8, overflow: "hidden", background: "#fff", display: "block", textDecoration: "none", color: HOMEVISTA.ink }}>
+                <a href={`/store/${slug}/${item.kind === "product" ? "product" : "service"}/${item.id}`} style={{ border: "1px solid #e2e8e6", borderRadius: 8, overflow: "hidden", background: "#fff", display: "block", textDecoration: "none", color: HOMEVISTA.ink }}>
                   <div style={{ height: 125, background: "#d8e0de", position: "relative" }}>
                     {item.image ? (
                       // eslint-disable-next-line @next/next/no-img-element
@@ -248,8 +248,8 @@ export function HomeVistaStorefront({
         </div>
         <div>
           <b style={{ fontSize: 11 }}>Quick Links</b>
-          <a href={`/${slug}/catalog`} style={{ display: "block", color: "#b8cbc7", fontSize: 8, margin: "7px 0", textDecoration: "none" }}>Listings</a>
-          <a href={`/${slug}/cart`} style={{ display: "block", color: "#b8cbc7", fontSize: 8, margin: "7px 0", textDecoration: "none" }}>Cart</a>
+          <a href={`/store/${slug}/catalog`} style={{ display: "block", color: "#b8cbc7", fontSize: 8, margin: "7px 0", textDecoration: "none" }}>Listings</a>
+          <a href={`/store/${slug}/cart`} style={{ display: "block", color: "#b8cbc7", fontSize: 8, margin: "7px 0", textDecoration: "none" }}>Cart</a>
         </div>
         <div>
           <b style={{ fontSize: 11 }}>Contact</b>

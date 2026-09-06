@@ -28,7 +28,7 @@ export function NovaCartClient({ slug }: { slug: string }) {
       {cartItems.length === 0 ? (
         <div style={{ border: `1px solid ${NOVA.line}` }} className="p-14 text-center">
           <p style={{ color: NOVA.gray, fontSize: 13 }}>Your cart is empty.</p>
-          <Link href={`/${slug}`} style={{ ...label, color: NOVA.cream, borderBottom: `1px solid ${NOVA.line}` }} className="mt-4 inline-block pb-1 no-underline hover:opacity-70">
+          <Link href={`/store/${slug}`} style={{ ...label, color: NOVA.cream, borderBottom: `1px solid ${NOVA.line}` }} className="mt-4 inline-block pb-1 no-underline hover:opacity-70">
             Continue shopping →
           </Link>
         </div>
@@ -101,7 +101,7 @@ export function NovaCartClient({ slug }: { slug: string }) {
                 <span style={{ ...serif, color: NOVA.gold }} className="text-2xl font-bold leading-none">{cartItems[0]?.currency} {subtotal.toLocaleString()}</span>
               </div>
               <Link
-                href={`/${slug}/checkout`}
+                href={`/store/${slug}/checkout`}
                 style={{ background: NOVA.gold, color: NOVA.black }}
                 className="mt-1 flex items-center justify-center gap-2 py-3.5 text-xs font-bold uppercase tracking-widest no-underline transition hover:opacity-90"
               >

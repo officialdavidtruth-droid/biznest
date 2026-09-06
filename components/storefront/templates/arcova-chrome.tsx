@@ -41,7 +41,7 @@ export function ArcovaHeader({
       <header style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "22px 0", borderBottom: `1px solid ${ARCOVA.border}` }}>
         <div style={wrap}>
           <div className="bn-header-inner" style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-            <a href={`/${slug}`} style={{ textDecoration: "none", color: ARCOVA.ink, display: "flex", alignItems: "center", gap: 10 }}>
+            <a href={`/store/${slug}`} style={{ textDecoration: "none", color: ARCOVA.ink, display: "flex", alignItems: "center", gap: 10 }}>
               {store.logoUrl ? (
                 // eslint-disable-next-line @next/next/no-img-element
                 <img src={store.logoUrl} alt={store.name} style={{ height: 32, width: "auto" }} />
@@ -51,9 +51,9 @@ export function ArcovaHeader({
             <input type="checkbox" id={`bn-nav-${slug}-arcova`} className="bn-nav-toggle" />
             <label htmlFor={`bn-nav-${slug}-arcova`} className="bn-hamburger" style={{ color: ARCOVA.ink }} aria-label="Menu">&#9776;</label>
             <nav className="bn-nav-links" style={{ display: "flex", alignItems: "center", gap: 26, fontSize: 12, letterSpacing: 1 }}>
-              <a href={`/${slug}/catalog`} style={{ color: ARCOVA.ink, textDecoration: "none" }}>PROJECTS</a>
-              {store.business.description && <a href={`/${slug}#services`} style={{ color: ARCOVA.ink, textDecoration: "none" }}>SERVICES</a>}
-              {(store.contactEmail || store.contactPhone) && <a href={`/${slug}#contact`} style={{ color: ARCOVA.ink, textDecoration: "none" }}>CONTACT</a>}
+              <a href={`/store/${slug}/catalog`} style={{ color: ARCOVA.ink, textDecoration: "none" }}>PROJECTS</a>
+              {store.business.description && <a href={`/store/${slug}#services`} style={{ color: ARCOVA.ink, textDecoration: "none" }}>SERVICES</a>}
+              {(store.contactEmail || store.contactPhone) && <a href={`/store/${slug}#contact`} style={{ color: ARCOVA.ink, textDecoration: "none" }}>CONTACT</a>}
               {store.sellsProducts && (
                 <CartLink storeSlug={slug} accent={ARCOVA.accent} onAccent="#ffffff" ink={ARCOVA.ink} />
               )}

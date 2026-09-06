@@ -25,7 +25,7 @@ export function RrwCartClient({ slug }: { slug: string }) {
       {cartItems.length === 0 ? (
         <div style={{ border: "1px solid #ddd" }} className="p-12 text-center">
           <p style={{ opacity: 0.6, fontSize: 11 }}>Your cart is empty.</p>
-          <Link href={`/${slug}`} style={{ color: RRW.ink, fontWeight: 700, borderBottom: `1px solid ${RRW.ink}` }} className="mt-3 inline-block pb-0.5 text-xs no-underline hover:opacity-70">
+          <Link href={`/store/${slug}`} style={{ color: RRW.ink, fontWeight: 700, borderBottom: `1px solid ${RRW.ink}` }} className="mt-3 inline-block pb-0.5 text-xs no-underline hover:opacity-70">
             Continue browsing &rarr;
           </Link>
         </div>
@@ -97,7 +97,7 @@ export function RrwCartClient({ slug }: { slug: string }) {
                 <span style={{ color: RRW.accent }} className="text-2xl font-bold leading-none">{cartItems[0]?.currency} {subtotal.toLocaleString()}</span>
               </div>
               <Link
-                href={`/${slug}/checkout`}
+                href={`/store/${slug}/checkout`}
                 style={{ background: RRW.accent, color: "#fff", borderRadius: 20 }}
                 className="mt-1 flex items-center justify-center gap-2 py-3 text-xs font-bold no-underline transition hover:opacity-90"
               >

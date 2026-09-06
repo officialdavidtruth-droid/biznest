@@ -2,6 +2,8 @@
 
 import { prisma } from "@/lib/prisma";
 import { refundPayment } from "@/lib/payments/gateway";
+import { listPaystackRefundsForTransaction } from "@/lib/payments/paystack";
+import { listFlutterwaveRefundsForTransaction } from "@/lib/payments/flutterwave";
 import { emitWebhookEvent } from "@/lib/webhooks/dispatch";
 import { revalidatePath } from "next/cache";
 import type { ActionResult } from "@/types/actions";
@@ -91,6 +93,98 @@ async function recordRefundClawbackIfSettled(
 }
 
 /**
+ * Restores inventory for a fully refunded order exactly once.
+ *
+ * The RETURN movements are linked back to the order. That link is the
+ * idempotency boundary: a replay of the refund (or a webhook/reconciliation
+ * retry) sees the existing RETURN movement and does not add stock again.
+ * This runs inside the same transaction as the payment/order refund state.
+ */
+async function restoreInventoryForRefund(
+  tx: Prisma.TransactionClient,
+  orderId: string,
+  storeId: string,
+) {
+  const existingReturn = await tx.stockMovement.findFirst({
+    where: { orderId, storeId, type: "RETURN" },
+    select: { id: true },
+  });
+  if (existingReturn) return false;
+
+  const order = await tx.order.findUnique({
+    where: { id: orderId },
+    include: { items: true },
+  });
+  if (!order) throw new Error("ORDER_NOT_FOUND");
+
+  for (const item of order.items) {
+    if (item.variantId) {
+      const variant = await tx.productVariant.findUnique({
+        where: { id: item.variantId },
+      });
+      if (!variant) continue;
+
+      const nextQuantity = variant.quantity + item.quantity;
+      await tx.productVariant.update({
+        where: { id: variant.id },
+        data: {
+          quantity: nextQuantity,
+          autoUnpublished: false,
+        },
+      });
+      await tx.stockMovement.create({
+        data: {
+          variantId: variant.id,
+          storeId,
+          orderId,
+          type: "RETURN",
+          quantityChange: item.quantity,
+          quantityAfter: nextQuantity,
+          note: `Refund return (order ${orderId})`,
+        },
+      });
+    } else if (item.productId) {
+      const inventory = await tx.inventoryItem.findUnique({
+        where: { productId: item.productId },
+      });
+      if (!inventory) continue;
+
+      const wasAutoUnpublished = inventory.autoUnpublished;
+      const nextQuantity = inventory.quantity + item.quantity;
+      await tx.inventoryItem.update({
+        where: { id: inventory.id },
+        data: {
+          quantity: nextQuantity,
+          autoUnpublished: wasAutoUnpublished ? false : inventory.autoUnpublished,
+        },
+      });
+      await tx.stockMovement.create({
+        data: {
+          inventoryItemId: inventory.id,
+          storeId,
+          orderId,
+          type: "RETURN",
+          quantityChange: item.quantity,
+          quantityAfter: nextQuantity,
+          note: `Refund return (order ${orderId})`,
+        },
+      });
+      // A refund restores stock, but do not silently override a merchant's
+      // publication decision. Only republish when the product was actually
+      // unpublished because this inventory item hit zero.
+      if (!inventory.quantity && wasAutoUnpublished) {
+        await tx.product.update({
+          where: { id: item.productId },
+          data: { isPublished: true },
+        });
+      }
+    }
+  }
+
+  return true;
+}
+
+/**
  * Manual "issue refund" action for support/admin use. Issues a full refund
  * against the order's successful Payment record through whichever gateway
  * actually processed the charge, then marks both the Payment and the Order
@@ -158,6 +252,8 @@ export async function issueRefund(
         data: { orderId: order.id, status: "REFUNDED", note: `Cash/POS refund: ${reason.trim()}` },
       });
 
+      await restoreInventoryForRefund(tx, order.id, access.store.id);
+
       // Reverse the commission accrued on this sale (see
       // Store.posCommissionOwed) so a refunded POS order doesn't leave
       // the store owing commission on money it never actually kept.
@@ -206,53 +302,36 @@ export async function issueRefund(
     gatewayTransactionRef = String(rawId);
   }
 
-  const refund = await refundPayment({
-    provider: payment.provider,
-    gatewayTransactionRef,
-    amountNaira: Number(payment.amount),
+  // Claim BEFORE calling the gateway. This is the idempotency boundary: a
+  // concurrent request cannot reach Paystack/Flutterwave once another request
+  // has claimed this payment.
+  const claimed = await prisma.payment.updateMany({
+    where: { id: payment.id, status: "SUCCESSFUL" },
+    data: { status: "REFUND_PENDING", refundReason: reason.trim(), refundedByEmail: access.actorEmail },
   });
+  if (!claimed.count) return { success: false, error: "This payment is already being refunded or was refunded by another request." };
+
+  const refund = await refundPayment({ provider: payment.provider, gatewayTransactionRef, amountNaira: Number(payment.amount) });
   if (!refund.success) {
+    await prisma.payment.updateMany({ where: { id: payment.id, status: "REFUND_PENDING" }, data: { status: "SUCCESSFUL", refundReason: null, refundedByEmail: null } });
     return { success: false, error: refund.error };
   }
 
-  // Idempotency guard mirrors the webhook/callback pattern elsewhere:
-  // only transition a payment that's still SUCCESSFUL, via updateMany's
-  // affected-row count, so a double-click or concurrent request can't
-  // record two refunds (and can't call the gateway twice either, since
-  // the earlier findFirst/refundedAt check above already screens most of
-  // that — this is the last-line atomic guard on the DB write itself).
-  // Grouped with the clawback check in one transaction so a crash partway
-  // through can't leave the payment marked REFUNDED while the clawback
-  // ledger falls out of sync (same reasoning as the cash/POS branch above).
-  let result: { count: number };
   try {
-    result = await prisma.$transaction(async (tx) => {
-      const updateResult = await tx.payment.updateMany({
-        where: { id: payment.id, status: "SUCCESSFUL" },
-        data: {
-          status: "REFUNDED",
-          refundReference: refund.refundReference,
-          refundedAmount: payment.amount,
-          refundReason: reason.trim(),
-          refundedByEmail: access.actorEmail,
-          refundedAt: new Date(),
-        },
+    await prisma.$transaction(async (tx) => {
+      const result = await tx.payment.updateMany({
+        where: { id: payment.id, status: "REFUND_PENDING" },
+        data: { status: "REFUNDED", refundReference: refund.refundReference, refundedAmount: payment.amount, refundedAt: new Date() },
       });
-      if (updateResult.count === 0) return updateResult;
-
+      if (!result.count) throw new Error("REFUND_CLAIM_LOST");
       await tx.order.update({ where: { id: order.id }, data: { status: "REFUNDED" } });
       await tx.orderStatusEvent.create({ data: { orderId: order.id, status: "REFUNDED", note: reason.trim() } });
+      await restoreInventoryForRefund(tx, order.id, access.store.id);
       await recordRefundClawbackIfSettled(tx, access.store, payment);
-
-      return updateResult;
     });
   } catch {
-    return { success: false, error: "The refund went through at the gateway, but recording it failed — check this order and contact support before retrying." };
+    return { success: false, error: "The gateway refund was accepted, but BizNest could not finish recording it. The payment is locked as refund-pending to prevent a duplicate refund; reconcile this payment before retrying." };
   }
-  if (result.count === 0) {
-    return { success: false, error: "This payment was already refunded by another request." };
-  }
-
   await emitWebhookEvent("PAYMENT_REFUNDED", access.store.id, {
     orderId: order.id,
     paymentId: payment.id,
@@ -354,4 +433,213 @@ export async function recordRefundClawbackSettlement(
 
   revalidatePath(`/store/${slug}/admin/payments`);
   return { success: true, data: { remainingOwed } };
+}
+
+/** Reconciles a REFUND_PENDING payment by reading the gateway only. */
+export async function reconcileRefundPendingPayment(slug: string, paymentId: string): Promise<ActionResult<{ status: "REFUNDED" | "FAILED" | "STILL_PENDING" }>> {
+  const staff = await assertStaffAccess();
+  if (!staff.success) return { success: false, error: staff.error };
+  const store = await prisma.store.findUnique({ where: { slug }, include: { subscription: true } });
+  if (!store) return { success: false, error: "Store not found." };
+  const payment = await prisma.payment.findFirst({ where: { id: paymentId, storeId: store.id, status: "REFUND_PENDING" }, include: { order: true, booking: true, reservation: true } });
+  if (!payment) return { success: false, error: "Refund-pending payment not found." };
+
+  let gatewayStatus: "REFUNDED" | "FAILED" | "STILL_PENDING" = "STILL_PENDING";
+  let refundReference: string | null = null;
+  if (payment.provider === "PAYSTACK") {
+    const result = await listPaystackRefundsForTransaction(payment.reference);
+    if (!result.status) return { success: false, error: result.message || "Couldn't query Paystack refund status." };
+    const refund = result.data.filter((r: any) => Number(r.amount ?? 0) === Math.round(Number(payment.amount) * 100)).sort((a: any, b: any) => new Date(b.createdAt ?? 0).getTime() - new Date(a.createdAt ?? 0).getTime())[0];
+    if (refund) { refundReference = refund.id != null ? String(refund.id) : null; if (refund.status === "processed") gatewayStatus = "REFUNDED"; else if (refund.status === "failed") gatewayStatus = "FAILED"; }
+  } else if (payment.provider === "FLUTTERWAVE") {
+    const rawId = (payment.rawPayload as { data?: { id?: number } } | null)?.data?.id;
+    if (!rawId) return { success: false, error: "Missing Flutterwave transaction id; cannot reconcile this refund safely." };
+    const result = await listFlutterwaveRefundsForTransaction(String(rawId));
+    if (result.status !== "success") return { success: false, error: result.message || "Couldn't query Flutterwave refund status." };
+    const refund = result.data.filter((r: any) => Number(r.amount_refunded ?? r.amount ?? 0) === Number(payment.amount)).sort((a: any, b: any) => new Date(b.updatedAt ?? b.createdAt ?? 0).getTime() - new Date(a.updatedAt ?? a.createdAt ?? 0).getTime())[0];
+    if (refund) { refundReference = refund.id != null ? String(refund.id) : null; const status = String(refund.status ?? "").toLowerCase(); if (status.startsWith("completed")) gatewayStatus = "REFUNDED"; else if (status === "failed") gatewayStatus = "FAILED"; }
+  } else return { success: false, error: "This payment provider does not support gateway refund reconciliation." };
+
+  if (gatewayStatus === "STILL_PENDING") return { success: true, data: { status: "STILL_PENDING" } };
+  if (gatewayStatus === "FAILED") {
+    const result = await prisma.payment.updateMany({ where: { id: payment.id, status: "REFUND_PENDING" }, data: { status: "SUCCESSFUL", refundReason: null, refundedByEmail: null } });
+    if (!result.count) return { success: false, error: "Payment changed while reconciliation was running." };
+    return { success: true, data: { status: "FAILED" } };
+  }
+  if (!refundReference) return { success: false, error: "Gateway reports a completed refund but did not return a refund reference; refusing to finalize without an auditable reference." };
+
+  try {
+    await prisma.$transaction(async (tx) => {
+      const result = await tx.payment.updateMany({ where: { id: payment.id, status: "REFUND_PENDING" }, data: { status: "REFUNDED", refundReference, refundedAmount: payment.amount, refundedAt: new Date() } });
+      if (!result.count) throw new Error("PAYMENT_CHANGED");
+      if (payment.order) { await tx.order.update({ where: { id: payment.order.id }, data: { status: "REFUNDED" } }); await tx.orderStatusEvent.create({ data: { orderId: payment.order.id, status: "REFUNDED", note: payment.refundReason ?? "Refund reconciled from gateway" } }); await restoreInventoryForRefund(tx, payment.order.id, store.id); await recordRefundClawbackIfSettled(tx, store, payment); }
+      if (payment.booking) await tx.booking.update({ where: { id: payment.booking.id }, data: { paymentStatus: "REFUNDED" } });
+      if (payment.reservation) await tx.propertyReservation.update({ where: { id: payment.reservation.id }, data: { paymentStatus: "REFUNDED" } });
+    });
+  } catch { return { success: false, error: "The gateway confirms the refund, but BizNest could not finalize the local record. It remains refund-pending and is safe to reconcile again." }; }
+  await emitWebhookEvent("PAYMENT_REFUNDED", store.id, { paymentId: payment.id, amount: Number(payment.amount), currency: payment.currency, reason: payment.refundReason ?? "Refund reconciled from gateway" });
+  revalidatePath(`/store/${slug}/admin/payments`); revalidatePath(`/store/${slug}/admin/orders`); revalidatePath(`/store/${slug}/admin/bookings`); revalidatePath(`/store/${slug}/admin/pms`);
+  return { success: true, data: { status: "REFUNDED" } };
+}
+
+export async function getRefundPendingPayments(slug: string) {
+  const staff = await assertStaffAccess();
+  if (!staff.success) return null;
+  const store = await prisma.store.findUnique({ where: { slug }, select: { id: true } });
+  if (!store) return null;
+  const payments = await prisma.payment.findMany({ where: { storeId: store.id, status: "REFUND_PENDING" }, orderBy: { updatedAt: "asc" }, take: 50, select: { id: true, reference: true, provider: true, amount: true, currency: true, refundReason: true, updatedAt: true, orderId: true, bookingId: true, reservationId: true } });
+  return payments.map((p) => ({ ...p, amount: Number(p.amount) }));
+}
+
+/**
+ * Refunds a successful service Booking after the merchant has cancelled it.
+ * Gateway refunds go back to the original payment method; wallet payments
+ * are returned to the customer's store wallet. The Payment row is the
+ * idempotency boundary, so a second request cannot record another refund.
+ */
+export async function issueBookingRefund(
+  slug: string,
+  bookingId: string,
+  reason: string,
+): Promise<ActionResult> {
+  const access = await assertStoreAccess(slug);
+  if (!access.success) return { success: false, error: access.error };
+  const trimmedReason = reason.trim();
+  if (!trimmedReason) return { success: false, error: "A reason is required for the refund record." };
+
+  const booking = await prisma.booking.findFirst({
+    where: { id: bookingId, storeId: access.store.id },
+    include: { service: true, payments: true },
+  });
+  if (!booking) return { success: false, error: "Booking not found." };
+  if (booking.status !== "CANCELLED") return { success: false, error: "Cancel the booking before issuing its refund." };
+  if (booking.paymentStatus === "REFUNDED") return { success: false, error: "This booking has already been refunded." };
+  if (booking.paymentStatus !== "PAID") return { success: false, error: "This booking has no successful payment to refund." };
+
+  const payment = booking.payments.find((p) => p.purpose === "SERVICE_BOOKING" && p.status === "SUCCESSFUL");
+  if (!payment) return { success: false, error: "No successful payment found for this booking." };
+
+  if (payment.provider === "WALLET") {
+    if (!payment.walletId) return { success: false, error: "This wallet payment has no wallet attached." };
+    try {
+      await prisma.$transaction(async (tx) => {
+        const claimed = await tx.payment.updateMany({
+          where: { id: payment.id, status: "SUCCESSFUL" },
+          data: {
+            status: "REFUNDED",
+            refundReference: `WALLET-REFUND-${payment.id}`,
+            refundedAmount: payment.amount,
+            refundReason: trimmedReason,
+            refundedByEmail: access.actorEmail,
+            refundedAt: new Date(),
+          },
+        });
+        if (!claimed.count) throw new Error("ALREADY_REFUNDED");
+        const wallet = await tx.storeWallet.findUnique({ where: { id: payment.walletId } });
+        if (!wallet) throw new Error("WALLET_NOT_FOUND");
+        const updatedWallet = await tx.storeWallet.update({ where: { id: wallet.id }, data: { balance: { increment: payment.amount } } });
+        await tx.walletTransaction.create({
+          data: {
+            walletId: wallet.id,
+            type: "REFUND",
+            amount: payment.amount,
+            balanceAfter: updatedWallet.balance,
+            reference: `REFUND-${payment.reference}`,
+            paymentId: payment.id,
+            bookingId: booking.id,
+            note: `Refund for cancelled booking: ${trimmedReason}`,
+          },
+        });
+        await tx.booking.update({ where: { id: booking.id }, data: { paymentStatus: "REFUNDED" } });
+      }, { isolationLevel: "Serializable" });
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "";
+      if (message === "ALREADY_REFUNDED") return { success: false, error: "This payment was already refunded by another request." };
+      return { success: false, error: "Couldn't return the wallet payment." };
+    }
+    await emitWebhookEvent("PAYMENT_REFUNDED", access.store.id, { bookingId: booking.id, paymentId: payment.id, amount: Number(payment.amount), currency: payment.currency, reason: trimmedReason });
+    revalidatePath(`/store/${slug}/admin/bookings`);
+    revalidatePath(`/store/${slug}/account/bookings`);
+    return { success: true, data: undefined };
+  }
+
+  let gatewayTransactionRef = payment.reference;
+  if (payment.provider === "FLUTTERWAVE") {
+    const rawId = (payment.rawPayload as { data?: { id?: number } } | null)?.data?.id;
+    if (!rawId) return { success: false, error: "Missing Flutterwave transaction id on this payment — can't issue a gateway refund." };
+    gatewayTransactionRef = String(rawId);
+  }
+  const claimed = await prisma.payment.updateMany({ where: { id: payment.id, status: "SUCCESSFUL" }, data: { status: "REFUND_PENDING", refundReason: trimmedReason, refundedByEmail: access.actorEmail } });
+  if (!claimed.count) return { success: false, error: "This payment is already being refunded or was refunded by another request." };
+
+  const refund = await refundPayment({ provider: payment.provider, gatewayTransactionRef, amountNaira: Number(payment.amount) });
+  if (!refund.success) {
+    await prisma.payment.updateMany({ where: { id: payment.id, status: "REFUND_PENDING" }, data: { status: "SUCCESSFUL", refundReason: null, refundedByEmail: null } });
+    return { success: false, error: refund.error };
+  }
+  try {
+    await prisma.$transaction(async (tx) => {
+      const result = await tx.payment.updateMany({ where: { id: payment.id, status: "REFUND_PENDING" }, data: { status: "REFUNDED", refundReference: refund.refundReference, refundedAmount: payment.amount, refundedAt: new Date() } });
+      if (!result.count) throw new Error("REFUND_CLAIM_LOST");
+      await tx.booking.update({ where: { id: booking.id }, data: { paymentStatus: "REFUNDED" } });
+    });
+  } catch {
+    return { success: false, error: "The gateway refund was accepted, but BizNest could not finish recording it. The payment is locked as refund-pending to prevent a duplicate refund; reconcile this payment before retrying." };
+  }
+  await emitWebhookEvent("PAYMENT_REFUNDED", access.store.id, { bookingId: booking.id, paymentId: payment.id, amount: Number(payment.amount), currency: payment.currency, reason: trimmedReason });
+  revalidatePath(`/store/${slug}/admin/bookings`);
+  revalidatePath(`/store/${slug}/account/bookings`);
+  return { success: true, data: undefined };
+}
+
+/** Refunds a paid PMS reservation after cancellation. */
+export async function issueReservationRefund(
+  slug: string,
+  reservationId: string,
+  reason: string,
+): Promise<ActionResult> {
+  const access = await assertStoreAccess(slug);
+  if (!access.success) return { success: false, error: access.error };
+  const trimmedReason = reason.trim();
+  if (!trimmedReason) return { success: false, error: "A reason is required for the refund record." };
+
+  const reservation = await prisma.propertyReservation.findFirst({
+    where: { id: reservationId, storeId: access.store.id },
+    include: { payments: true },
+  });
+  if (!reservation) return { success: false, error: "Reservation not found." };
+  if (reservation.status !== "CANCELLED") return { success: false, error: "Cancel the reservation before issuing its refund." };
+  if (reservation.paymentStatus === "REFUNDED") return { success: false, error: "This reservation has already been refunded." };
+  if (reservation.paymentStatus !== "PAID") return { success: false, error: "This reservation has no successful payment to refund." };
+
+  const payment = reservation.payments.find((p) => p.purpose === "PMS_RESERVATION" && p.status === "SUCCESSFUL");
+  if (!payment) return { success: false, error: "No successful payment found for this reservation." };
+  if (payment.provider !== "PAYSTACK" && payment.provider !== "FLUTTERWAVE") return { success: false, error: "This reservation payment cannot be refunded through the gateway." };
+
+  let gatewayTransactionRef = payment.reference;
+  if (payment.provider === "FLUTTERWAVE") {
+    const rawId = (payment.rawPayload as { data?: { id?: number } } | null)?.data?.id;
+    if (!rawId) return { success: false, error: "Missing Flutterwave transaction id on this payment — can't issue a gateway refund." };
+    gatewayTransactionRef = String(rawId);
+  }
+  const claimed = await prisma.payment.updateMany({ where: { id: payment.id, status: "SUCCESSFUL" }, data: { status: "REFUND_PENDING", refundReason: trimmedReason, refundedByEmail: access.actorEmail } });
+  if (!claimed.count) return { success: false, error: "This payment is already being refunded or was refunded by another request." };
+
+  const refund = await refundPayment({ provider: payment.provider, gatewayTransactionRef, amountNaira: Number(payment.amount) });
+  if (!refund.success) {
+    await prisma.payment.updateMany({ where: { id: payment.id, status: "REFUND_PENDING" }, data: { status: "SUCCESSFUL", refundReason: null, refundedByEmail: null } });
+    return { success: false, error: refund.error };
+  }
+  try {
+    await prisma.$transaction(async (tx) => {
+      const result = await tx.payment.updateMany({ where: { id: payment.id, status: "REFUND_PENDING" }, data: { status: "REFUNDED", refundReference: refund.refundReference, refundedAmount: payment.amount, refundedAt: new Date() } });
+      if (!result.count) throw new Error("REFUND_CLAIM_LOST");
+      await tx.propertyReservation.update({ where: { id: reservation.id }, data: { paymentStatus: "REFUNDED" } });
+    });
+  } catch {
+    return { success: false, error: "The gateway refund was accepted, but BizNest could not finish recording it. The payment is locked as refund-pending to prevent a duplicate refund; reconcile this payment before retrying." };
+  }
+  await emitWebhookEvent("PAYMENT_REFUNDED", access.store.id, { reservationId: reservation.id, paymentId: payment.id, amount: Number(payment.amount), currency: payment.currency, reason: trimmedReason });
+  revalidatePath(`/store/${slug}/admin/pms`);
+  return { success: true, data: undefined };
 }

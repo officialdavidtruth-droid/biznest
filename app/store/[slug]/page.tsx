@@ -490,7 +490,7 @@ export default async function StorefrontPage({ params }: { params: Promise<{ slu
                   <div style={eyebrow}>Our {theme.catalogLabel.toLowerCase()}</div>
                   <h2 style={h2}>Our company provides the <span style={accentText}>best service</span></h2>
                 </div>
-                <a href={`/${slug}/catalog`} style={btnGhost}>View all {theme.catalogLabel.toLowerCase()} →</a>
+                <a href={`/store/${slug}/catalog`} style={btnGhost}>View all {theme.catalogLabel.toLowerCase()} →</a>
               </div>
             </Reveal>
             <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(240px, 1fr))", gap: 20 }}>
@@ -763,7 +763,7 @@ function SiteNav({ store, slug, hasCatalog }: { store: { name: string; logoUrl: 
   return (
     <nav style={{ position: "sticky", top: 0, zIndex: 50, background: "rgba(251,249,244,.9)", backdropFilter: "blur(10px)", borderBottom: `1px solid ${line}` }}>
       <div style={{ ...wrap, display: "flex", alignItems: "center", justifyContent: "space-between", padding: "16px 28px" }}>
-        <a href={`/${slug}`} style={{ fontFamily: FRESH.headlineFont, fontWeight: 700, fontSize: 23, color: FRESH.forest, display: "flex", alignItems: "center", gap: 8, textDecoration: "none" }}>
+        <a href={`/store/${slug}`} style={{ fontFamily: FRESH.headlineFont, fontWeight: 700, fontSize: 23, color: FRESH.forest, display: "flex", alignItems: "center", gap: 8, textDecoration: "none" }}>
           {store.logoUrl ? (
             // eslint-disable-next-line @next/next/no-img-element
             <img src={store.logoUrl} alt={store.name} style={{ height: 32, width: 32, borderRadius: 8, objectFit: "cover" }} />
@@ -773,7 +773,7 @@ function SiteNav({ store, slug, hasCatalog }: { store: { name: string; logoUrl: 
           {store.name}
         </a>
         <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
-          {hasCatalog && <a href={`/${slug}/search`} style={{ fontSize: 14.5, fontWeight: 500, color: FRESH.inkSoft, textDecoration: "none" }}>Search</a>}
+          {hasCatalog && <a href={`/store/${slug}/search`} style={{ fontSize: 14.5, fontWeight: 500, color: FRESH.inkSoft, textDecoration: "none" }}>Search</a>}
           {hasCatalog && <a href="#catalog" style={{ fontSize: 14.5, fontWeight: 500, color: FRESH.inkSoft, textDecoration: "none" }}>Services</a>}
           <CartLink storeSlug={slug} accent={FRESH.leaf} ink={FRESH.ink} />
           {hasCatalog && <a href="#catalog" style={{ ...btnPrimary, padding: "11px 20px", fontSize: 13.5 }}>Get a Quote</a>}

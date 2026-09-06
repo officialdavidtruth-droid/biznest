@@ -72,7 +72,7 @@ export function PremiumCheckoutClient({ slug }: { slug: string }) {
     return (
       <div style={{ background: "#fff", border: "1px solid #e2e7e9", borderRadius: PREMIUM.radius }} className="mx-auto mt-20 max-w-md px-8 py-12 text-center">
         <p style={{ opacity: 0.7, fontSize: 13 }}>Your cart is empty.</p>
-        <Link href={`/${slug}`} style={{ color: PREMIUM.accent, fontSize: 13 }} className="mt-3 inline-block font-semibold no-underline hover:opacity-80">
+        <Link href={`/store/${slug}`} style={{ color: PREMIUM.accent, fontSize: 13 }} className="mt-3 inline-block font-semibold no-underline hover:opacity-80">
           Continue shopping →
         </Link>
       </div>
@@ -82,7 +82,7 @@ export function PremiumCheckoutClient({ slug }: { slug: string }) {
   return (
     <div style={{ width: "90%", maxWidth: 1200, margin: "0 auto", fontFamily: PREMIUM.font, color: PREMIUM.ink, fontSize: 13 }} className="px-2 py-8">
       <div className="mb-6">
-        <Link href={`/${slug}/cart`} style={{ color: PREMIUM.ink, opacity: 0.6 }} className="mb-3 inline-flex items-center gap-1 text-xs font-semibold no-underline hover:opacity-100">
+        <Link href={`/store/${slug}/cart`} style={{ color: PREMIUM.ink, opacity: 0.6 }} className="mb-3 inline-flex items-center gap-1 text-xs font-semibold no-underline hover:opacity-100">
           <ChevronLeft className="h-3.5 w-3.5" /> Back to cart
         </Link>
         <div style={{ borderBottom: "1px solid #e2e7e9" }} className="flex items-baseline justify-between pb-3">
