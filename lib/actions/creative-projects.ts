@@ -84,7 +84,7 @@ export async function createCreativeProject(
     await sendOrderNotificationEmail(
       storeAccess.contactEmail,
       `New project request ${project.projectNo}`,
-      `<p><strong>${project.customerName}</strong> requested <strong>${project.serviceType}</strong>.</p><p>${project.brief}</p><p><a href="${APP_URL}/${slug}/admin/projects/${project.id}">Open project in BizNest</a></p>`
+      `<p><strong>${project.customerName}</strong> requested <strong>${project.serviceType}</strong>.</p><p>${project.brief}</p><p><a href="${APP_URL}/store/projects/${project.id}?token=${project.publicAccessToken}">Open project in BizNest</a></p>`
     );
   }
   revalidatePath(`/${slug}/admin/projects`);
@@ -129,7 +129,7 @@ export async function updateCreativeProjectStatus(slug: string, id: string, stat
   await prisma.creativeProject.update({ where: { id }, data: { status } });
   revalidatePath(`/${slug}/admin/projects`);
   revalidatePath(`/${slug}/admin/projects/${id}`);
-  revalidatePath(`/projects/${id}`);
+  revalidatePath(`/store/projects/${id}`);
   return { success: true, data: undefined };
 }
 
@@ -148,11 +148,11 @@ export async function addCreativeRevision(slug: string, id: string, previewUrl: 
     await sendOrderNotificationEmail(
       p.customerEmail,
       `Design v${version} is ready for ${p.projectNo}`,
-      `<p>Your latest design is ready for review.</p><p><a href="${APP_URL}/projects/${p.id}?token=${p.publicAccessToken}">Review and approve the design</a></p>`
+      `<p>Your latest design is ready for review.</p><p><a href="${APP_URL}/store/projects/${p.id}?token=${p.publicAccessToken}">Review and approve the design</a></p>`
     );
   }
   revalidatePath(`/${slug}/admin/projects/${id}`);
-  revalidatePath(`/projects/${id}`);
+  revalidatePath(`/store/projects/${id}`);
   return { success: true, data: { version } };
 }
 
@@ -167,7 +167,7 @@ export async function approveCreativeProject(id: string, token: string, note?: s
     return { success: false, error: "This project isn't currently awaiting your approval." };
   }
   await prisma.creativeProject.update({ where: { id }, data: { status: "APPROVED", approvalNote: note?.trim() || null } });
-  revalidatePath(`/projects/${id}`);
+  revalidatePath(`/store/projects/${id}`);
   return { success: true, data: undefined };
 }
 
@@ -183,7 +183,7 @@ export async function requestCreativeChanges(id: string, token: string, note: st
   if (store?.contactEmail) {
     await sendOrderNotificationEmail(store.contactEmail, `Changes requested for ${p.projectNo}`, `<p>${note.trim()}</p>`);
   }
-  revalidatePath(`/projects/${id}`);
+  revalidatePath(`/store/projects/${id}`);
   if (store) revalidatePath(`/${store.slug}/admin/projects/${id}`);
   return { success: true, data: undefined };
 }
