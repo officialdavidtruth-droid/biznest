@@ -62,7 +62,7 @@ function text(store:any, mode:"creative"|"business"){
   };
 }
 
-function Header({store,slug,active,accent}:{store:any;slug:string;active:string;accent:string}){
+export function Header({store,slug,active,accent}:{store:any;slug:string;active:string;accent:string}){
  const cta=primaryCta(store,slug,{accent} as TemplateTheme);
  const links=[['Home',''],['Services','services'],['About','about'],['Portfolio','portfolio'],['Pricing','pricing'],['Contact','contact']];
  return <header className="bn-universal-header"><div className="bn-universal-nav">
