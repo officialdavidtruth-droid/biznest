@@ -11,7 +11,7 @@ type Props = { store:any; slug:string; pageSlug:string; items:Item[]; reviews:an
 const RESERVED = new Set(["services","about","pricing","portfolio","contact"]);
 
 const UNIVERSAL_PAGE_CSS = String.raw`/* Universal company section-page system — shared by printing, creative, agency and other professional templates. */
-.bn-universal-header{position:sticky;top:0;z-index:80;background:rgba(255,255,255,.94);backdrop-filter:blur(18px);border-bottom:1px solid #0b17240f;color:#111}
+.bn-universal-page{flex:0 0 auto;min-height:100vh;overflow:visible}.bn-universal-header{position:sticky;top:0;z-index:80;background:rgba(255,255,255,.94);backdrop-filter:blur(18px);border-bottom:1px solid #0b17240f;color:#111}
 .bn-universal-nav{max-width:1440px;margin:auto;min-height:68px;padding:0 42px;display:flex;align-items:center;gap:28px}
 .bn-universal-brand{display:flex;align-items:center;gap:10px;color:#111;text-decoration:none;font-weight:900;letter-spacing:-.035em;font-size:20px;white-space:nowrap}
 .bn-universal-logo{width:42px;height:42px;display:grid;place-items:center;overflow:hidden;border-radius:9px;background:#eef3f8;font-size:18px}.bn-universal-logo img{width:100%;height:100%;object-fit:contain}
@@ -77,7 +77,7 @@ function Footer({store,slug,accent}:{store:any;slug:string;accent:string}){
 }
 
 function Hero({store,slug,active,copy,accent,hero,children}:{store:any;slug:string;active:string;copy:any;accent:string;hero:string|null;children:React.ReactNode}){
- return <section className="bn-universal-hero" style={{backgroundImage:hero?`linear-gradient(90deg,rgba(4,13,23,.92) 0%,rgba(4,13,23,.72) 46%,rgba(4,13,23,.16) 100%),url(${hero})`:undefined}}><div className="bn-universal-hero-inner"><div className="bn-universal-eyebrow">{copy.eyebrow}</div><h1>{children}</h1><p>{copy.description}</p><div className="bn-universal-hero-actions"><Link href={`/store/${slug}/start-project`} className="bn-primary" style={{background:accent}}>Get a Quote <ArrowRight size={16}/></Link><Link href={`/store/${slug}/catalog`} className="bn-secondary">Explore Services <ArrowRight size={16}/></Link></div><div className="bn-hero-trust"><span><ShieldCheck size={20}/>Quality Service</span><span><Clock3 size={20}/>Fast Response</span><span><Sparkles size={20}/>Professional Results</span></div></div></section>
+ return <section className="bn-universal-hero" style={{backgroundImage:hero?`linear-gradient(90deg,rgba(4,13,23,.92) 0%,rgba(4,13,23,.72) 46%,rgba(4,13,23,.16) 100%),url(${hero})`:undefined}}><div className="bn-universal-hero-inner"><div className="bn-universal-eyebrow">{copy.eyebrow}</div><h1>{children}</h1><p>{copy.description}</p><div className="bn-universal-hero-actions"><Link href={`/store/${slug}/start-project`} className="bn-primary" style={{background:accent}}>Get a Quote <ArrowRight size={16}/></Link><Link href={`/store/${slug}/services`} className="bn-secondary">Explore Services <ArrowRight size={16}/></Link></div><div className="bn-hero-trust"><span><ShieldCheck size={20}/>Quality Service</span><span><Clock3 size={20}/>Fast Response</span><span><Sparkles size={20}/>Professional Results</span></div></div></section>
 }
 
 function SectionTitle({eyebrow,title,sub}:{eyebrow:string;title:string;sub?:string}){return <div className="bn-universal-section-title"><small>{eyebrow}</small><h2>{title}</h2>{sub&&<p>{sub}</p>}</div>}
@@ -106,8 +106,8 @@ export function UniversalSectionPage(p:Props){
      default:return null;
    }
  })();
- return <>
+ return <div className="bn-universal-page">
    <style dangerouslySetInnerHTML={{__html: UNIVERSAL_PAGE_CSS}} />
    {page}
- </>;
+ </div>;
 }
