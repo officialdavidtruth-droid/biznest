@@ -12,7 +12,7 @@ type Props = { store:any; slug:string; pageSlug:string; items:Item[]; reviews:an
 const RESERVED = new Set(["services","about","pricing","portfolio","contact"]);
 export function isUniversalSectionPage(slug:string){ return RESERVED.has(slug.toLowerCase()); }
 
-export function primaryCta(store:any, slug:string, theme:TemplateTheme){
+export function primaryCta(store:any, slug:string, _theme?:TemplateTheme){
   const category = String(store.business?.category || "").toLowerCase();
   const mode = resolveBusinessMode(store.business?.category, {
     sellsProducts: store.sellsProducts,
