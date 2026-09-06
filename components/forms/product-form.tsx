@@ -99,6 +99,7 @@ export function ProductForm({
     currency: string;
     images: string[];
     isPublished: boolean;
+    hasVariants: boolean;
     inventory: { quantity: number; sku: string | null; barcode: string | null } | null;
     digitalFileUrl: string | null;
     rentalPeriodUnit: string | null;
