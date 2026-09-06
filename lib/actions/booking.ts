@@ -19,7 +19,7 @@ const SLOT_TAKEN_MESSAGE = "That slot was just taken — pick another time.";
 
 // Unpaid online bookings reserve a slot/unit for a short checkout window.
 // After the hold expires, availability is released without needing a cron job.
-export const ONLINE_BOOKING_HOLD_MINUTES = 30;
+const ONLINE_BOOKING_HOLD_MINUTES = 30;
 const getOnlineBookingHoldCutoff = () => new Date(Date.now() - ONLINE_BOOKING_HOLD_MINUTES * 60 * 1000);
 
 type WeeklyAvailability = Partial<
