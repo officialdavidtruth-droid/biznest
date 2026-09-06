@@ -1,11 +1,11 @@
+/* CSS imports must come before all other rules so the stylesheet remains valid
+   across Next.js/PostCSS production builds. */
+@import "../styles/heenzy-template.css";
+@import "./SIGNATURE_CUSTOMER_EXPERIENCE.css";
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
-
-/* Template 2 — "Heenzy" storefront design. Scoped under .hz-root so it
-   never affects Template 1 (Fresh & Co.) or the dashboard. */
-@import "../styles/heenzy-template.css";
-@import "./SIGNATURE_CUSTOMER_EXPERIENCE.css";
 
 @layer base {
   :root {
