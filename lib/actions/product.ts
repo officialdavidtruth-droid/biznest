@@ -248,13 +248,12 @@ export async function updateProduct(
         });
         if (!current) throw new Error("Product not found.");
 
-        let inventoryData: { quantity: number; sku: string | null; barcode: string | null } | null = null;
+        let inventoryData: { quantity: number; sku: string | null; barcode: string | null } | undefined;
         if (current.hasVariants) {
           // Parent quantity/SKU/barcode are not authoritative once variants
-          // exist. Preserve any legacy InventoryItem unchanged.
-          inventoryData = current.inventory
-            ? { quantity: current.inventory.quantity, sku: current.inventory.sku, barcode: current.inventory.barcode }
-            : null;
+          // exist. Do not include the relation write at all: an upsert requires
+          // a non-null create payload when no legacy parent inventory exists.
+          inventoryData = undefined;
         } else if (current.inventory) {
           const nextQuantity = Math.max(0, Math.round(data.quantity));
           const delta = nextQuantity - current.inventory.quantity;
@@ -298,12 +297,16 @@ export async function updateProduct(
             digitalFileUrl: data.digitalFileUrl || null,
             rentalPeriodUnit: data.rentalPeriodUnit ?? null,
             attributes: data.attributes ?? undefined,
-            inventory: {
-              upsert: {
-                create: inventoryData,
-                update: { sku: trimmedSku, barcode: trimmedBarcode },
-              },
-            },
+            ...(inventoryData
+              ? {
+                  inventory: {
+                    upsert: {
+                      create: inventoryData,
+                      update: { sku: trimmedSku, barcode: trimmedBarcode },
+                    },
+                  },
+                }
+              : {}),
           },
         });
 
