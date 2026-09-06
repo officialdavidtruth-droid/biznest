@@ -521,6 +521,7 @@ export async function issueBookingRefund(
 
   if (payment.provider === "WALLET") {
     if (!payment.walletId) return { success: false, error: "This wallet payment has no wallet attached." };
+    const walletId = payment.walletId;
     try {
       await prisma.$transaction(async (tx) => {
         const claimed = await tx.payment.updateMany({
@@ -535,7 +536,7 @@ export async function issueBookingRefund(
           },
         });
         if (!claimed.count) throw new Error("ALREADY_REFUNDED");
-        const wallet = await tx.storeWallet.findUnique({ where: { id: payment.walletId } });
+        const wallet = await tx.storeWallet.findUnique({ where: { id: walletId } });
         if (!wallet) throw new Error("WALLET_NOT_FOUND");
         const updatedWallet = await tx.storeWallet.update({ where: { id: wallet.id }, data: { balance: { increment: payment.amount } } });
         await tx.walletTransaction.create({
