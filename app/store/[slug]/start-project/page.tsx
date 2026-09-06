@@ -1,1 +1,62 @@
-import{notFound}from"next/navigation";import{prisma}from"@/lib/prisma";import{getProfessionalServiceSubNicheByName}from"@/lib/professional-services";import{StartProjectForm}from"@/components/projects/start-project-form";export default async function StartProjectPage({params}:{params:Promise<{slug:string}>}){const{slug}=await params;const store=await prisma.store.findUnique({where:{slug},include:{business:true}});if(!store)notFound();const niche=getProfessionalServiceSubNicheByName(store.business?.businessSubcategory);const services=niche?.services??["Consultation","Custom Service","Project Work","Other"];const isPrint=(store.business?.businessSubcategory||"").toLowerCase().match(/print|graphic design/);return <div className={isPrint?"bn-print-site":"min-h-screen"} style={isPrint?{background:"#fff",color:"#111827"}:{}}>{isPrint&&<header className="bn-print-header"><div className="bn-print-header-inner"><a href={`/store/${slug}`} className="bn-print-brand"><span className="bn-print-logo-fallback">{store.name?.[0]||"B"}</span><span>{store.name}</span></a><nav className="bn-print-nav"><a href={`/store/${slug}`}>Home</a><a href={`/store/${slug}/catalog`}>Services</a><a href={`/store/${slug}/[pageSlug]`}>About</a><a href={`/store/${slug}/catalog`}>Portfolio</a><a href={`/store/${slug}/catalog`}>Pricing</a><a href={`/store/${slug}/[pageSlug]`}>Contact</a></nav><div className="bn-print-header-actions"><a className="bn-print-search" href={`/store/${slug}/search`}>⌕</a><a className="bn-print-quote" href={`/store/${slug}/start-project`}>Get a Quote <span>→</span></a></div></div></header>}<section className={isPrint?"bn-print-quote-hero":"mx-auto max-w-4xl px-4 py-10"}><div className={isPrint?"bn-print-quote-hero-inner":""}><small>{isPrint?"GET A QUOTE":(store.business?.businessSubcategory??store.businessType)}</small><h1>{isPrint?<>Let&apos;s Bring Your Ideas <span>to Print</span></>:"Let’s build something together."}</h1><p>{isPrint?"Quick, easy, and no obligation. Tell us what you need and we&apos;ll get back to you with the best price and delivery time.":"Tell us what you need. We&apos;ll turn your brief into a project, quote and approval workflow."}</p>{isPrint&&<div className="bn-print-quote-trust"><span>⚡ <b>Fast Response</b><small>Within 1 hour</small></span><span>◇ <b>Transparent Pricing</b><small>No hidden charges</small></span><span>♧ <b>High-Quality Prints</b><small>Guaranteed</small></span></div>}</div></section>{isPrint?<main className="bn-print-quote-layout"><div><div className="bn-print-steps"><b>1 <span>Product Details</span><small>Tell us what you need</small></b><i>→</i><b>2 <span>Specifications</span><small>Choose your options</small></b><i>→</i><b>3 <span>Your Details</span><small>Send &amp; receive quote</small></b></div><StartProjectForm slug={slug} services={services} businessName={store.name}/></div><aside><div><h2>Need Help?</h2><p>Our team is ready to assist you with the best printing solutions for your needs.</p><p>📞 <b>Call Us</b><br/>{store.contactPhone||""}</p><p>💬 <b>Chat on WhatsApp</b><br/>{store.contactPhone||""}</p><p>✉️ <b>Email Us</b><br/>{store.contactEmail||""}</p></div><div><h2>Why Choose {store.name}?</h2>{["High-quality printing materials","Competitive and transparent pricing","Fast turnaround time","Professional design support","Nationwide delivery","Trusted by businesses and individuals"].map(x=><p key={x}>✓　{x}</p>)}</div><a href={`/store/${slug}/catalog`} className="bn-print-quote-promo"><small>BULK ORDERS?</small><strong>Get Special<br/>Discounts</strong><span>Contact Sales →</span></a></aside></main>:<div className="mx-auto max-w-4xl px-4 pb-10"><StartProjectForm slug={slug} services={services} businessName={store.name}/></div>}</div>}
+import Link from "next/link";
+import { ArrowLeft } from "lucide-react";
+import { notFound } from "next/navigation";
+import { prisma } from "@/lib/prisma";
+import { getProfessionalServiceSubNicheByName } from "@/lib/professional-services";
+import { resolveStoreTheme } from "@/lib/template-themes";
+import { StartProjectForm } from "@/components/projects/start-project-form";
+
+export default async function StartProjectPage({ params }: { params: Promise<{ slug: string }> }) {
+  const { slug } = await params;
+  const store = await prisma.store.findUnique({ where: { slug }, include: { business: true, template: true } });
+  if (!store) notFound();
+
+  const themeOverrides = store.themeColors as { primary?: string; secondary?: string; accent?: string } | null;
+  const theme = resolveStoreTheme(store.template?.category, store.name, themeOverrides, store.fontFamily, store.template?.name);
+  const niche = getProfessionalServiceSubNicheByName(store.business.businessSubcategory);
+  const services = niche?.services ?? ["Consultation", "Custom Service", "Project Work", "Other"];
+  const accent = theme.accent || "#1473ea";
+  const description = store.business.description || "Tell us what you need and we’ll prepare the right solution for you.";
+
+  return (
+    <div style={{ minHeight: "100vh", background: "#f7f9fc", color: theme.ink, fontFamily: theme.font }}>
+      <header style={{ position: "sticky", top: 0, zIndex: 20, background: "rgba(255,255,255,.94)", backdropFilter: "blur(16px)", borderBottom: "1px solid #0b17250f" }}>
+        <div style={{ maxWidth: 1320, margin: "0 auto", padding: "16px 28px", display: "flex", alignItems: "center", gap: 24 }}>
+          <Link href={`/store/${slug}`} style={{ display: "flex", alignItems: "center", gap: 10, color: "#111827", textDecoration: "none", fontWeight: 800 }}>
+            <span style={{ width: 42, height: 42, borderRadius: 12, display: "grid", placeItems: "center", background: "#111", color: "#fff", fontWeight: 900 }}>{store.name?.[0] || "B"}</span>
+            <span>{store.name}</span>
+          </Link>
+          <nav style={{ marginLeft: "auto", display: "flex", gap: 22, alignItems: "center", fontSize: 13, fontWeight: 700 }}>
+            {[["Home", ""], ["Services", "services"], ["About", "about"], ["Portfolio", "portfolio"], ["Pricing", "pricing"], ["Contact", "contact"]].map(([label, path]) => (
+              <Link key={label} href={`/store/${slug}${path ? `/${path}` : ""}`} style={{ color: "#111827", textDecoration: "none" }}>{label}</Link>
+            ))}
+          </nav>
+        </div>
+      </header>
+
+      <main>
+        <section style={{ background: "linear-gradient(115deg,#061525,#122b46)", color: "#fff", padding: "90px 24px 100px" }}>
+          <div style={{ maxWidth: 1120, margin: "0 auto" }}>
+            <Link href={`/store/${slug}`} style={{ color: "#ffffffb8", textDecoration: "none", display: "inline-flex", alignItems: "center", gap: 7, fontSize: 13, marginBottom: 35 }}><ArrowLeft size={15} /> Back to {store.name}</Link>
+            <small style={{ display: "block", color: accent, fontWeight: 900, letterSpacing: ".2em", fontSize: 11 }}>START A PROJECT</small>
+            <h1 style={{ fontSize: "clamp(48px,7vw,92px)", lineHeight: .94, letterSpacing: "-.055em", margin: "16px 0 22px", maxWidth: 900 }}>Let’s bring your ideas to life.</h1>
+            <p style={{ maxWidth: 650, color: "#ffffffb8", lineHeight: 1.8, fontSize: 16 }}>{description}</p>
+          </div>
+        </section>
+
+        <section style={{ maxWidth: 1120, margin: "-45px auto 80px", padding: "0 24px", position: "relative" }}>
+          <div style={{ background: "#fff", borderRadius: 24, boxShadow: "0 24px 70px #06152518", padding: "clamp(22px,4vw,44px)" }}>
+            <StartProjectForm slug={slug} services={services} businessName={store.name} />
+          </div>
+        </section>
+      </main>
+
+      <footer style={{ background: "#061525", color: "#fff", padding: "32px 24px" }}>
+        <div style={{ maxWidth: 1120, margin: "0 auto", display: "flex", justifyContent: "space-between", gap: 20, flexWrap: "wrap", fontSize: 12, color: "#ffffff99" }}>
+          <span>© {new Date().getFullYear()} {store.name}. All rights reserved.</span>
+          <Link href={`/store/${slug}`} style={{ color: "#fff", textDecoration: "none" }}>Back to homepage</Link>
+        </div>
+      </footer>
+    </div>
+  );
+}
