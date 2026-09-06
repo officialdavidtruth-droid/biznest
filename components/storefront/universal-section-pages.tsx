@@ -1,74 +1,79 @@
-import { cache } from "react";
-import { notFound } from "next/navigation";
-import { prisma } from "@/lib/prisma";
-import { resolveStoreTheme, type TemplateTheme } from "@/lib/template-themes";
-import { UniversalSectionPage } from "@/components/storefront/universal-section-pages";
+import React from "react";
+import Link from "next/link";
+import { ArrowRight, Check, Clock3, Mail, MapPin, Phone, Search, ShieldCheck, Sparkles } from "lucide-react";
+import { CartLink } from "@/components/storefront/cart-link";
+import { AccountLink } from "@/components/storefront/account-link";
+import type { TemplateTheme } from "@/lib/template-themes";
 
-// Shared by /about, /services, /portfolio, /pricing and /contact — each of
-// those route files just calls this with its own pageSlug. Mirrors the
-// data-fetching shape of the main storefront page.tsx, but only pulls the
-// fields UniversalSectionPage actually needs.
-const getStoreForSection = cache((slug: string) =>
-  prisma.store.findUnique({
-    where: { slug },
-    include: {
-      template: true,
-      business: true,
-      products: { where: { isPublished: true }, take: 24, include: { category: true } },
-      services: { where: { isPublished: true }, take: 24, include: { category: true } },
-      reviews: { include: { author: true }, orderBy: { createdAt: "desc" }, take: 6 },
-    },
-  })
-);
+type Item = { id:string; kind:"product"|"service"; name:string; description:string|null; price:number; currency:string; image:string|null; categoryName:string|null; type:string; rentalUnit:string|null; isBookable:boolean };
+type Props = { store:any; slug:string; pageSlug:string; items:Item[]; reviews:any[]; theme:TemplateTheme; social:Record<string,string> };
 
-export async function renderUniversalSectionPage(slug: string, pageSlug: string) {
-  const rawStore = await getStoreForSection(slug);
-  if (!rawStore || rawStore.status !== "ACTIVE") notFound();
+const RESERVED = new Set(["services","about","pricing","portfolio","contact"]);
+export function isUniversalSectionPage(slug:string){ return RESERVED.has(slug.toLowerCase()); }
 
-  const store = { ...rawStore, sellsProducts: rawStore.business?.sellsProducts ?? true };
+function modeFor(store:any, theme:TemplateTheme){
+  const raw = `${theme.professionalMode || ""} ${store.business?.category || ""} ${store.business?.businessSubcategory || ""}`.toLowerCase();
+  return raw.includes("print") || raw.includes("graphic") || raw.includes("brand") || raw.includes("marketing") || raw.includes("creative") || raw.includes("photograph")
+    ? "creative" : "business";
+}
+function text(store:any, mode:"creative"|"business"){
+  const category = store.business?.businessSubcategory || store.business?.category || "business";
+  const description = store.business?.description || `Professional ${category.toLowerCase()} services designed around quality, reliability and a great customer experience.`;
+  if(mode === "creative") return {
+    eyebrow:"YOUR IDEAS. OUR EXPERTISE. BIGGER IMPRESSION.",
+    about:"More Than a Service, We Build Possibilities",
+    services:"Everything You Need in One Place",
+    portfolio:"Real Projects. Real Results.",
+    pricing:"Quality Solutions for Every Budget.",
+    contact:"We’re Here to Help.",
+    description,
+  };
+  return {
+    eyebrow:`${String(category).toUpperCase()} / PROFESSIONAL / TRUSTED`,
+    about:`Built Around What ${store.name} Does Best`,
+    services:"Services Built Around Your Needs",
+    portfolio:"Work We’re Proud Of.",
+    pricing:"Clear Options. Flexible Solutions.",
+    contact:"Let’s Talk About Your Needs.",
+    description,
+  };
+}
 
-  const themeOverrides = store.themeColors as { primary?: string; secondary?: string; accent?: string } | null;
-  const theme: TemplateTheme = resolveStoreTheme(store.template?.category, store.name, themeOverrides, store.fontFamily, store.template?.name);
-  const social = (store.socialLinks as Record<string, string> | null) ?? {};
+function Header({store,slug,active,accent}:{store:any;slug:string;active:string;accent:string}){
+ const links=[['Home',''],['Services','services'],['About','about'],['Portfolio','portfolio'],['Pricing','pricing'],['Contact','contact']];
+ return <header className="bn-universal-header"><div className="bn-universal-nav">
+   <Link href={`/store/${slug}`} className="bn-universal-brand"><span className="bn-universal-logo">{store.logoUrl?<img src={store.logoUrl} alt=""/>:<span>{store.name?.[0] || "B"}</span>}</span><span>{store.name}</span></Link>
+   <nav>{links.map(([label,path])=><Link key={label} href={path?`/store/${slug}/${path}`:`/store/${slug}`} className={active===path?"active":""} style={active===path?{"--u-accent":accent} as React.CSSProperties:undefined}>{label}</Link>)}</nav>
+   <div className="bn-universal-actions"><Link href={`/store/${slug}/search`} aria-label="Search"><Search size={20}/></Link><CartLink storeSlug={slug} accent={accent} onAccent="#fff" ink="#111"/><AccountLink storeSlug={slug} ink="#111"/><Link href={`/store/${slug}/start-project`} className="bn-universal-quote" style={{background:accent}}>Get a Quote <ArrowRight size={15}/></Link></div>
+ </div></header>
+}
 
-  const items = [
-    ...store.products.map((p) => ({
-      id: p.id,
-      kind: "product" as const,
-      name: p.name,
-      description: null as string | null,
-      price: Number(p.price),
-      currency: p.currency,
-      image: p.images[0] ?? null,
-      categoryName: p.category?.name ?? null,
-      type: p.type,
-      rentalUnit: p.rentalPeriodUnit,
-      isBookable: false,
-    })),
-    ...store.services.map((s) => ({
-      id: s.id,
-      kind: "service" as const,
-      name: s.name,
-      description: s.description,
-      price: Number(s.price),
-      currency: s.currency,
-      image: s.images[0] ?? null,
-      categoryName: s.category?.name ?? null,
-      type: "SERVICE",
-      rentalUnit: null,
-      isBookable: s.isBookable,
-    })),
-  ];
+function Footer({store,slug,accent}:{store:any;slug:string;accent:string}){
+ return <footer className="bn-universal-footer"><div className="bn-universal-footer-grid"><div><div className="bn-universal-footer-brand"><span className="bn-universal-logo">{store.logoUrl?<img src={store.logoUrl} alt=""/>:<span>{store.name?.[0] || "B"}</span>}</span><strong>{store.name}</strong></div><p>{store.business?.description || "Professional solutions for people and businesses."}</p><div className="bn-footer-social">{Object.entries((store.socialLinks||{}) as Record<string,string>).slice(0,5).map(([k,v])=>v?<a key={k} href={String(v)} target="_blank" rel="noreferrer">{k.slice(0,2).toUpperCase()}</a>:null)}</div></div>
+ <div><h4>Quick Links</h4>{[['Home',''],['Services','services'],['About','about'],['Portfolio','portfolio'],['Pricing','pricing'],['Contact','contact']].map(([l,p])=><Link key={l} href={`/store/${slug}${p?`/${p}`:''}`}>{l}</Link>)}</div>
+ <div><h4>Contact Us</h4>{store.contactPhone&&<a href={`tel:${store.contactPhone}`}><Phone size={14}/>{store.contactPhone}</a>}{store.contactEmail&&<a href={`mailto:${store.contactEmail}`}><Mail size={14}/>{store.contactEmail}</a>}<span><MapPin size={14}/>{[store.business?.city,store.business?.state,store.business?.country].filter(Boolean).join(", ") || "Online business"}</span></div>
+ <div><h4>Stay Updated</h4><p>Get the latest updates, offers and useful information.</p><div className="bn-newsletter"><input placeholder="Your email address"/><button style={{background:accent}}><ArrowRight size={16}/></button></div></div></div><div className="bn-universal-copyright"><span>© {new Date().getFullYear()} {store.name}. All rights reserved.</span><span>Privacy Policy &nbsp; Terms of Service</span></div></footer>
+}
 
-  return (
-    <UniversalSectionPage
-      store={store}
-      slug={slug}
-      pageSlug={pageSlug}
-      items={items}
-      reviews={store.reviews}
-      theme={theme}
-      social={social}
-    />
-  );
+function Hero({store,slug,active,copy,accent,hero,children}:{store:any;slug:string;active:string;copy:any;accent:string;hero:string|null;children:React.ReactNode}){
+ return <section className="bn-universal-hero" style={hero?{backgroundImage:`linear-gradient(90deg,rgba(4,13,23,.94) 0%,rgba(4,13,23,.76) 46%,rgba(4,13,23,.22) 100%),url(${hero})`}:{backgroundImage:"radial-gradient(circle at 78% 42%,rgba(20,115,234,.34),transparent 28%),linear-gradient(135deg,#061525 0%,#071522 52%,#102b46 100%)"}}><div className="bn-universal-hero-inner"><div className="bn-universal-eyebrow">{copy.eyebrow}</div><h1>{children}</h1><p>{copy.description}</p><div className="bn-universal-hero-actions"><Link href={`/store/${slug}/start-project`} className="bn-primary" style={{background:accent}}>Get a Quote <ArrowRight size={16}/></Link><Link href={`/store/${slug}/services`} className="bn-secondary">Explore Services <ArrowRight size={16}/></Link></div><div className="bn-hero-trust"><span><ShieldCheck size={20}/>Quality Service</span><span><Clock3 size={20}/>Fast Response</span><span><Sparkles size={20}/>Professional Results</span></div></div></section>
+}
+
+function SectionTitle({eyebrow,title,sub}:{eyebrow:string;title:string;sub?:string}){return <div className="bn-universal-section-title"><small>{eyebrow}</small><h2>{title}</h2>{sub&&<p>{sub}</p>}</div>}
+function imageStyle(url:string|null,fallback:string):React.CSSProperties{return url?{backgroundImage:`url(${url})`,backgroundSize:"cover",backgroundPosition:"center"}:{background:fallback}}
+
+function Services({p}:{p:Props}){const {store,slug,items,theme}=p;const accent=theme.accent;const services=items.filter(x=>x.kind==="service");const list=(services.length?services:items).slice(0,8);return <><Header store={store} slug={slug} active="services" accent={accent}/><Hero store={store} slug={slug} active="services" copy={text(store,modeFor(store,theme))} accent={accent} hero={store.bannerUrl||store.storyImage||items.find(x=>x.image)?.image||null}><>Services<br/><span style={{color:accent}}>Made to Matter.</span></></Hero><main className="bn-universal-main"><section className="bn-universal-section"><SectionTitle eyebrow="OUR SERVICES" title={text(store,modeFor(store,theme)).services} sub="Choose the solution that fits your needs. Every offering is presented with the same clear, premium experience."/><div className="bn-service-grid">{list.map((x,i)=><Link href={`/store/${slug}/${x.kind}/${x.id}`} key={x.id} className="bn-service-card"><div className="bn-service-image" style={imageStyle(x.image,`${accent}${i%2?"16":"28"}`)}></div><div className="bn-service-body"><small>{x.categoryName||x.kind}</small><h3>{x.name}</h3><p>{x.description||"Professional service tailored to your requirements."}</p><span>Learn More <ArrowRight size={15}/></span></div></Link>)}</div></section><section className="bn-band" style={{background:`linear-gradient(100deg,#061525,${accent})`}}><div><small>NEED SOMETHING CUSTOM?</small><h2>Tell us what you need.</h2><p>We can shape the right solution around your project, budget and timeline.</p></div><Link href={`/store/${slug}/start-project`}>Start a Project <ArrowRight size={17}/></Link></section></main><Footer store={store} slug={slug} accent={accent}/></>}
+
+function About({p}:{p:Props}){const {store,slug,items,theme}=p;const copy=text(store,modeFor(store,theme));const accent=theme.accent;const image=store.storyImage||store.bannerUrl||items.find(x=>x.image)?.image||null;return <><Header store={store} slug={slug} active="about" accent={accent}/><Hero store={store} slug={slug} active="about" copy={copy} accent={accent} hero={image}><>More Than a Business,<br/><span style={{color:accent}}>We Build Possibilities.</span></></Hero><main className="bn-universal-main"><section className="bn-about-intro bn-universal-section"><div><small>WHO WE ARE</small><h2>{copy.about}</h2><p>{copy.description}</p><p>We combine expertise, technology and attention to detail to deliver work that makes a lasting impression.</p><Link href={`/store/${slug}/services`} className="bn-primary" style={{background:accent}}>Explore Our Services <ArrowRight size={16}/></Link></div><div className="bn-about-image" style={imageStyle(image,"linear-gradient(135deg,#dfe8f2,#8ea6bb)")}></div></section><section className="bn-values"><SectionTitle eyebrow="OUR MISSION, VISION & VALUES" title="What Drives Us"/><div className="bn-values-grid">{[["Our Mission","Deliver dependable, high-quality solutions that help customers move forward."],["Our Vision","Become the trusted choice in our field through quality, creativity and consistency."],["Our Values","Quality in everything we do, customer satisfaction, integrity and continuous improvement."]].map(([t,b])=><article key={t}><div className="bn-value-icon" style={{color:accent}}><Sparkles size={22}/></div><h3>{t}</h3><p>{b}</p><div className="bn-check"><Check size={15}/> Customer focused</div><div className="bn-check"><Check size={15}/> Professional delivery</div></article>)}</div></section><section className="bn-band" style={{background:`linear-gradient(100deg,#061525,${accent})`}}><div><small>READY TO WORK TOGETHER?</small><h2>Let’s bring your ideas to life.</h2><p>Tell us what you’re building and our team will help with the next step.</p></div><Link href={`/store/${slug}/start-project`}>Get a Quote <ArrowRight size={17}/></Link></section></main><Footer store={store} slug={slug} accent={accent}/></>}
+
+function Portfolio({p}:{p:Props}){const {store,slug,items,theme}=p;const copy=text(store,modeFor(store,theme));const accent=theme.accent;const work=items.filter(x=>x.image).slice(0,15);return <><Header store={store} slug={slug} active="portfolio" accent={accent}/><Hero store={store} slug={slug} active="portfolio" copy={copy} accent={accent} hero={store.bannerUrl||work[0]?.image||null}><>Real Projects.<br/><span style={{color:accent}}>Real Results.</span></></Hero><main className="bn-universal-main"><section className="bn-universal-section"><SectionTitle eyebrow="OUR WORK" title="Featured Projects" sub="Explore examples of the products, services and projects this business delivers."/><div className="bn-portfolio-grid">{work.length?work.map((x,i)=><Link key={x.id} href={`/store/${slug}/${x.kind}/${x.id}`} className="bn-portfolio-card"><div className="bn-portfolio-image" style={imageStyle(x.image,"#e7edf4")}></div><h3>{x.name}</h3><p>{x.categoryName||x.kind}</p></Link>):<div className="bn-empty">Add published products or services with images to populate this portfolio.</div>}</div></section><section className="bn-band light"><div><small>HAVE A PROJECT IN MIND?</small><h2>Let’s bring it to life.</h2><p>Whether it’s a small request or a larger project, we’re ready to help.</p></div><Link href={`/store/${slug}/start-project`} style={{background:accent,color:"#fff"}}>Get a Quote <ArrowRight size={17}/></Link></section></main><Footer store={store} slug={slug} accent={accent}/></>}
+
+function Pricing({p}:{p:Props}){const {store,slug,items,theme}=p;const accent=theme.accent;const copy=text(store,modeFor(store,theme));const list=items.filter(x=>x.price>0).slice(0,8);return <><Header store={store} slug={slug} active="pricing" accent={accent}/><Hero store={store} slug={slug} active="pricing" copy={copy} accent={accent} hero={store.bannerUrl||items.find(x=>x.image)?.image||null}><>Our Pricing<br/><span style={{color:accent}}>Quality for Every Budget.</span></></Hero><main className="bn-universal-main"><section className="bn-universal-section"><SectionTitle eyebrow="OUR PRICING" title="Simple, transparent options" sub="Starting prices are shown where available. For custom requirements, request a quote and we’ll recommend the best option."/><div className="bn-price-grid">{(list.length?list:[{id:"empty",kind:"service",name:"Custom Project",description:"Tell us what you need and we’ll prepare a tailored quote.",price:0,currency:"",image:null,categoryName:null,type:"SERVICE",rentalUnit:null,isBookable:false} as Item]).map((x,i)=><article className={`bn-price-card ${i===1?"featured":""}`} key={x.id}>{i===1&&<span className="bn-popular" style={{background:accent}}>Popular</span>}<div className="bn-price-image" style={imageStyle(x.image,`${accent}${i%2?"22":"12"}`)}></div><div className="bn-price-body"><small>{x.categoryName||"Solution"}</small><h3>{x.name}</h3><p>{x.description||"Professional quality, delivered to your requirements."}</p><div className="bn-price">{x.price?`${x.currency} ${x.price.toLocaleString()}`:"Custom Quote"}</div>{x.price>0&&<small>Starting price</small>}<Link href={`/store/${slug}/start-project`} style={{borderColor:accent,color:accent}}>Get a Quote <ArrowRight size={15}/></Link></div></article>)}</div></section><section className="bn-pricing-strip"><div><small>NEED A HIGHER VOLUME?</small><h2>Bulk Orders & Custom Pricing</h2><p>Large, recurring or corporate projects can receive a tailored package.</p></div><Link href={`/store/${slug}/start-project`} style={{background:accent}}>Request a Quote <ArrowRight size={16}/></Link></section><section className="bn-faq bn-universal-section"><SectionTitle eyebrow="FREQUENTLY ASKED QUESTIONS" title="Quick Answers"/><div className="bn-faq-grid">{["Are prices fixed?","Can I request a custom quote?","How long does delivery take?","Do you offer bulk discounts?"].map(q=><details key={q}><summary>{q}<ArrowRight size={15}/></summary><p>Contact {store.name} with your requirements and the team will confirm the most suitable option, timing and final price.</p></details>)}</div></section></main><Footer store={store} slug={slug} accent={accent}/></>}
+
+function Contact({p}:{p:Props}){const {store,slug,theme}=p;const accent=theme.accent;const copy=text(store,modeFor(store,theme));const city=[store.business?.city,store.business?.state,store.business?.country].filter(Boolean).join(", ");return <><Header store={store} slug={slug} active="contact" accent={accent}/><Hero store={store} slug={slug} active="contact" copy={copy} accent={accent} hero={store.bannerUrl||null}><>We’re Here<br/><span style={{color:accent}}>to Help.</span></></Hero><main className="bn-universal-main"><section className="bn-contact-grid bn-universal-section"><div className="bn-contact-form"><small>SEND US A MESSAGE</small><h2>Let’s Talk About Your Project</h2><p>Fill out the form below and we’ll get back to you as soon as possible.</p><div className="bn-form-grid"><label>Full Name<input placeholder="e.g. John Doe"/></label><label>Email Address<input placeholder="e.g. john@example.com"/></label><label>Phone Number<input placeholder={store.contactPhone||"Your phone number"}/></label><label>Subject<select defaultValue=""><option value="" disabled>Select a subject</option><option>General enquiry</option><option>Request a quote</option><option>Services</option></select></label></div><label>Your Message<textarea placeholder="Tell us about your project, requirements, or any questions..."></textarea></label><div className="bn-form-bottom"><label className="bn-consent"><input type="checkbox"/> I agree to be contacted about my inquiry.</label><Link href={`/store/${slug}/start-project`} className="bn-primary" style={{background:accent}}>Send Message <ArrowRight size={16}/></Link></div></div><aside className="bn-contact-side"><div><h3>Contact Information</h3><p>Reach us through any of the channels below. We’d love to hear from you.</p>{store.contactPhone&&<a href={`tel:${store.contactPhone}`}><span style={{background:accent}}><Phone size={19}/></span><div><b>Call Us</b><small>{store.contactPhone}</small></div></a>}{store.contactEmail&&<a href={`mailto:${store.contactEmail}`}><span style={{background:accent}}><Mail size={19}/></span><div><b>Email Us</b><small>{store.contactEmail}</small></div></a>}<div><span style={{background:accent}}><MapPin size={19}/></span><div><b>Visit / Location</b><small>{city||"Contact us for location details."}</small></div></div></div><div className="bn-hours"><h3>Business Information</h3><div><span>Availability</span><b>Open for enquiries</b></div><div><span>Response time</span><b>Usually within 1 business day</b></div></div></aside></section><section className="bn-location" style={{backgroundImage:`linear-gradient(120deg,${accent}12,#eaf1f8)`}}><MapPin size={28} style={{color:accent}}/><div><small>OUR LOCATION</small><h2>{city||"Serving customers wherever they are"}</h2><p>{store.contactPhone||store.contactEmail||"Contact us to arrange a visit or consultation."}</p></div></section><section className="bn-band" style={{background:`linear-gradient(100deg,#061525,${accent})`}}><div><small>HAVE A LARGE PROJECT?</small><h2>Let’s discuss it.</h2><p>Special arrangements are available for larger, recurring or corporate work.</p></div><Link href={`/store/${slug}/start-project`}>Request a Quote <ArrowRight size={17}/></Link></section></main><Footer store={store} slug={slug} accent={accent}/></>}
+
+export function UniversalSectionPage(p:Props){
+ const m=modeFor(p.store,p.theme); const accent=m==="creative"?"#1473ea":p.theme.accent;
+ const normalized={...p,theme:{...p.theme,accent}};
+ switch(p.pageSlug.toLowerCase()){case"services":return <Services p={normalized}/>;case"about":return <About p={normalized}/>;case"portfolio":return <Portfolio p={normalized}/>;case"pricing":return <Pricing p={normalized}/>;case"contact":return <Contact p={normalized}/>;default:return null;}
 }
