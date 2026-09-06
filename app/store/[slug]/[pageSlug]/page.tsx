@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
 import { resolveStoreTheme } from "@/lib/template-themes";
+import { UniversalSectionPage, isUniversalSectionPage } from "@/components/storefront/universal-section-pages";
 
 /**
  * Renders one of a store's extra pages (About, Gallery, FAQ, Blog, Contact,
@@ -22,17 +23,37 @@ export default async function StorePagePage({
 
   const store = await prisma.store.findUnique({
     where: { slug },
-    include: { template: true },
+    include: {
+      template: true,
+      business: true,
+      products: { where: { isPublished: true }, take: 30, include: { category: true } },
+      services: { where: { isPublished: true }, take: 30, include: { category: true } },
+      reviews: { include: { author: true }, orderBy: { createdAt: "desc" }, take: 12 },
+    },
   });
   if (!store) notFound();
 
   const page = await prisma.storePage.findUnique({
     where: { storeId_slug: { storeId: store.id, slug: pageSlug } },
   });
-  if (!page || !page.isPublished) notFound();
 
   const themeOverrides = store.themeColors as { primary?: string; secondary?: string; accent?: string } | null;
   const theme = resolveStoreTheme(store.template?.category, store.name, themeOverrides, store.fontFamily, store.template?.name);
+
+  // Services/About/Portfolio/Pricing/Contact are platform-level storefront
+  // sections, so they must work even when a merchant has not manually created
+  // StorePage records for them. Custom pages below still require publication.
+  if (isUniversalSectionPage(pageSlug)) {
+    const items = [
+      ...store.products.map((x: any) => ({ id:x.id, kind:"product" as const, name:x.name, description:null, price:Number(x.price), currency:x.currency, image:x.images?.[0] ?? null, categoryName:x.category?.name ?? null, type:x.type, rentalUnit:x.rentalPeriodUnit ?? null, isBookable:false })),
+      ...store.services.map((x: any) => ({ id:x.id, kind:"service" as const, name:x.name, description:x.description, price:Number(x.price), currency:x.currency, image:x.images?.[0] ?? null, categoryName:x.category?.name ?? null, type:"SERVICE", rentalUnit:null, isBookable:x.isBookable })),
+    ];
+    const social = (store.socialLinks as Record<string,string> | null) ?? {};
+    return <UniversalSectionPage store={store} slug={slug} pageSlug={pageSlug} items={items} reviews={store.reviews} theme={theme} social={social} />;
+  }
+
+  if (!page || !page.isPublished) notFound();
+
   const body = (page.content as { body?: string } | null)?.body ?? "";
 
   return (
