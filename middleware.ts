@@ -216,8 +216,29 @@ export default auth(async (req) => {
 
   const rewritten = slug !== null || pathname !== req.nextUrl.pathname;
 
+  // Whatever comes after /store/<slug> (e.g. "/admin/settings", "/checkout",
+  // "/"), forwarded so app/store/[slug]/layout.tsx can preserve it when
+  // redirecting a retired slug to its new one. Without this, that redirect
+  // could only ever send someone to the new slug's bare storefront root —
+  // fine for a stale customer bookmark, but it meant renaming a store's URL
+  // and then visiting an old admin link (still very much in daily use)
+  // silently bounced the owner out of the dashboard entirely, onto their
+  // own public storefront homepage instead of wherever in /admin they were
+  // trying to reach. Pure string slicing, no DB lookup, so this is safe to
+  // compute unconditionally here on the Edge runtime.
+  const storeSubpathMatch = pathname.match(/^\/store\/[^/]+(\/.*)?$/);
+  const storeSubpath = storeSubpathMatch ? storeSubpathMatch[1] ?? "/" : null;
+  function withStoreSubpath(headers: Headers) {
+    if (storeSubpath !== null) headers.set("x-bn-store-subpath", storeSubpath);
+    return headers;
+  }
+
   if (!isProtected) {
-    return rewritten ? NextResponse.rewrite(url) : NextResponse.next();
+    if (!rewritten) {
+      if (storeSubpath === null) return NextResponse.next();
+      return NextResponse.next({ request: { headers: withStoreSubpath(new Headers(req.headers)) } });
+    }
+    return NextResponse.rewrite(url, { request: { headers: withStoreSubpath(new Headers(req.headers)) } });
   }
 
   if (!req.auth?.user) {
@@ -256,8 +277,15 @@ export default auth(async (req) => {
   if (storeAdminMatch) {
     const adminIndex = pathname.indexOf("/admin");
     const subpath = pathname.slice(adminIndex + "/admin".length) || "/";
-    const headers = new Headers(req.headers);
+    const headers = withStoreSubpath(new Headers(req.headers));
     headers.set("x-bn-admin-subpath", subpath);
+    return rewritten
+      ? NextResponse.rewrite(url, { request: { headers } })
+      : NextResponse.next({ request: { headers } });
+  }
+
+  if (storeSubpath !== null) {
+    const headers = withStoreSubpath(new Headers(req.headers));
     return rewritten
       ? NextResponse.rewrite(url, { request: { headers } })
       : NextResponse.next({ request: { headers } });

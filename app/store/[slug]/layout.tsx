@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
+import { headers } from "next/headers";
 import { prisma } from "@/lib/prisma";
 import { getStoreBranding } from "@/lib/actions/store-branding";
 
@@ -60,7 +61,14 @@ export default async function StoreLayout({
       select: { store: { select: { slug: true } } },
     });
     if (retired) {
-      redirect(`/${retired.store.slug}`);
+      // Preserve whatever came after the slug (e.g. "/admin/settings",
+      // "/checkout") using the header middleware forwards for exactly
+      // this — without it, this redirect could only ever land on the new
+      // slug's bare storefront root, which silently bounced an owner out
+      // of a still-bookmarked /admin link onto their own public
+      // storefront homepage instead of back into the dashboard.
+      const subpath = (await headers()).get("x-bn-store-subpath") ?? "/";
+      redirect(`/${retired.store.slug}${subpath === "/" ? "" : subpath}`);
     }
   }
 
