@@ -130,8 +130,8 @@ export function RrwFooter({
         </div>
         <div>
           <h4 style={{ margin: "0 0 12px", color: "#111" }}>Contact</h4>
-          {store.contactEmail && <a style={{ display: "block", margin: "8px 0" }}>{store.contactEmail}</a>}
-          {store.contactPhone && <a style={{ display: "block", margin: "8px 0" }}>{store.contactPhone}</a>}
+          {store.contactEmail && <a href={`mailto:${store.contactEmail}`} style={{ display: "block", margin: "8px 0" }}>{store.contactEmail}</a>}
+          {store.contactPhone && <a href={`tel:${store.contactPhone}`} style={{ display: "block", margin: "8px 0" }}>{store.contactPhone}</a>}
         </div>
         <div>
           <h4 style={{ margin: "0 0 12px", color: "#111" }}>Follow</h4>

@@ -161,7 +161,7 @@ export function MarketplaceStorefront({
         <a href={`/store/${slug}/catalog`} style={{ background: MARKETPLACE.orange, minWidth: 165, height: 34, display: "flex", alignItems: "center", padding: "0 14px", fontWeight: 700, fontSize: 10, color: "#fff", textDecoration: "none" }}>
           ☰&nbsp;&nbsp;ALL CATEGORIES
         </a>
-        <form action={`/${slug}/search`} style={{ display: "flex", flex: 1, marginLeft: 10, maxWidth: 520 }}>
+        <form action={`/store/${slug}/search`} style={{ display: "flex", flex: 1, marginLeft: 10, maxWidth: 520 }}>
           <input name="q" style={{ height: 24, flex: 1, border: 0, padding: "0 10px", fontSize: 9 }} placeholder="Search products and categories" />
           <button type="submit" style={{ height: 24, width: 35, background: MARKETPLACE.orangeDark, border: 0, color: "#fff" }}>⌕</button>
         </form>

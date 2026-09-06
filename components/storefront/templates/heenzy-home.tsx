@@ -308,7 +308,7 @@ export function HeenzyNav({ store, slug, hasCatalog, theme = HEENZY_THEME }: { s
 }
 
 function HeenzyProductCard({ item, slug, storeName }: { item: CatalogItem; slug: string; storeName: string }) {
-  const href = `/${slug}/${item.kind === "product" ? "product" : "service"}/${item.id}`;
+  const href = `/store/${slug}/${item.kind === "product" ? "product" : "service"}/${item.id}`;
   return (
     <a href={href} className="hz-product-card" style={{ display: "block", textDecoration: "none", color: "inherit" }}>
       <div className="hz-product-img-wrap">

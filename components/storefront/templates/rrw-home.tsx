@@ -1,3 +1,4 @@
+
 import type React from "react";
 import { TrustBadge } from "@/components/storefront/trust-badge";
 import { TrustScorePanel } from "@/components/storefront/trust-score-panel";

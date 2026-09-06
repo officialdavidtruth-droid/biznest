@@ -62,7 +62,7 @@ export function FreshHeader({
               <CartLink storeSlug={slug} accent={FRESH.leaf} ink={FRESH.ink} />
             )}
             <AccountLink storeSlug={slug} ink={FRESH.ink} />
-            {hasCatalog && <a href={`/store/${slug}/catalog`} style={btnPrimary}>Get a Quote</a>}
+            {hasCatalog && <a href={`/store/${slug}/catalog`} style={btnPrimary}>View Catalog</a>}
           </div>
         </div>
       </nav>

@@ -65,7 +65,7 @@ export function VioletHeader({
           ) : null}
           {store.name}
         </a>
-        <form action={`/${slug}/search`} style={{ height: 44, borderRadius: 25, background: "#f4f4f7", color: "#888", display: "flex", alignItems: "center", padding: "0 15px", flex: 1, minWidth: 120, maxWidth: 520 }}>
+        <form action={`/store/${slug}/search`} style={{ height: 44, borderRadius: 25, background: "#f4f4f7", color: "#888", display: "flex", alignItems: "center", padding: "0 15px", flex: 1, minWidth: 120, maxWidth: 520 }}>
           ⌕
           <input name="q" placeholder="Search products, brands and categories" style={{ marginLeft: 8, fontSize: 13, border: 0, background: "transparent", outline: "none", flex: 1, color: theme.ink, minWidth: 0 }} />
         </form>
