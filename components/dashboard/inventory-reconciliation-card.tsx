@@ -45,7 +45,7 @@ export function InventoryReconciliationCard({ slug, rows }: { slug: string; rows
         </div>
       )}
 
-      {noLedger > 0 && (
+      {noLedger.length > 0 && (
         <div className="mt-3 flex items-start gap-2 text-xs text-muted-foreground">
           <Info className="mt-0.5 h-4 w-4 shrink-0" />
           {noLedger.length} stock item{noLedger.length === 1 ? " has" : "s have"} no movement history. Its opening balance cannot be independently verified until a ledger entry exists.
