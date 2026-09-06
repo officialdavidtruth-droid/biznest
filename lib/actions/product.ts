@@ -248,7 +248,7 @@ export async function updateProduct(
         });
         if (!current) throw new Error("Product not found.");
 
-        let inventoryData: { quantity: number; sku: string | null; barcode: string | null } | undefined;
+        let inventoryData: { quantity: number; sku: string | null; barcode: string | null; storeId: string } | undefined;
         if (current.hasVariants) {
           // Parent quantity/SKU/barcode are not authoritative once variants
           // exist. Do not include the relation write at all: an upsert requires
@@ -277,9 +277,9 @@ export async function updateProduct(
             quantityDelta = delta;
             resultingQuantity = nextQuantity;
           }
-          inventoryData = { quantity: nextQuantity, sku: trimmedSku, barcode: trimmedBarcode };
+          inventoryData = { quantity: nextQuantity, sku: trimmedSku, barcode: trimmedBarcode, storeId: access.store.id };
         } else {
-          inventoryData = { quantity: Math.max(0, Math.round(data.quantity)), sku: trimmedSku, barcode: trimmedBarcode };
+          inventoryData = { quantity: Math.max(0, Math.round(data.quantity)), sku: trimmedSku, barcode: trimmedBarcode, storeId: access.store.id };
         }
 
         await tx.product.update({
