@@ -49,7 +49,7 @@ export function DashboardSidebar({
     // drawer + bottom tab bar) is the primary nav. This isn't the same
     // component squeezed into a hamburger; mobile gets its own layout
     // tuned for one-thumb use, not a shrunk desktop sidebar.
-    <aside className="bn-admin-sidebar hidden w-[250px] shrink-0 flex-col border-r border-[color:var(--bn-ink-line)] bg-[color:var(--bn-ink)] text-white lg:sticky lg:top-0 lg:flex lg:self-start">
+    <aside className="bn-admin-sidebar hidden w-[250px] shrink-0 flex-col overflow-y-auto overscroll-contain border-r border-[color:var(--bn-ink-line)] bg-[color:var(--bn-ink)] text-white lg:sticky lg:top-0 lg:flex lg:h-full lg:max-h-full lg:self-start">
       <div className="border-b border-slate-800 px-4 py-4">
         <div className="mb-4 flex items-center gap-2.5">
           <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-[#10967a] text-sm font-black text-white shadow-sm">▰</div>
