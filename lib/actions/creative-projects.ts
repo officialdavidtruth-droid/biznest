@@ -91,19 +91,21 @@ export async function createCreativeProject(
   // Always create an in-app notification for the store owner. This is the
   // source of truth for the dashboard bell and does not depend on email,
   // Resend, or push notifications being configured correctly.
-  void notifyUser({
+  try {
+    await notifyUser({
     userId: storeAccess.business.userId,
     type: "PROJECT_REQUEST",
     title: `New quote request · ${project.projectNo}`,
     body: `${project.customerName} requested ${project.serviceType}.`,
     url: `/${slug}/admin/projects/${project.id}`,
-  }).catch((err) => {
-    void logError("API", "Project request notification failed", {
+    });
+  } catch (err) {
+    await logError("API", "Project request notification failed", {
       projectId: project.id,
       storeId: storeAccess.id,
       error: err instanceof Error ? err.message : String(err),
     });
-  });
+  }
 
   // Email is best-effort. Prefer the store's configured contact email, but
   // fall back to the business owner's onboarding email so a blank/old store
