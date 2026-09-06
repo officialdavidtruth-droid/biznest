@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState, type Dispatch, type SetStateAction } from "react";
-import Link from "next/link";
 import { toast } from "sonner";
 import {
   X, Monitor, Tablet, Smartphone, LayoutTemplate, Rows3, ChevronRight,
@@ -236,12 +235,21 @@ export function CustomizerClient({
       <div className="flex h-full w-[380px] shrink-0 flex-col border-r border-border bg-background">
         {/* Top bar */}
         <div className="flex items-center gap-2 border-b border-border px-4 py-3">
-          <Link
+          {/* Plain <a>, not <Link>: this whole page is a full-screen preview
+              of the actual storefront template, rendered directly rather
+              than in an isolated iframe. Client-side navigation back to
+              /admin can leave that rendered preview content behind instead
+              of properly swapping in the dashboard -- same class of bug as
+              the "BizNest PMS" link fix in sidebar.tsx (shared layouts
+              persisting across client-side navigation between sibling
+              routes; see that file's comment for the full explanation). A
+              full page load always renders the destination cleanly. */}
+          <a
             href={`/${slug}/admin`}
             className="flex h-8 w-8 items-center justify-center rounded-md text-muted-foreground hover:bg-muted"
           >
             <X className="h-4 w-4" />
-          </Link>
+          </a>
           <div className="min-w-0">
             <p className="truncate text-sm font-semibold leading-tight">Customize</p>
             <p className="truncate text-xs text-muted-foreground">{storeName}</p>
@@ -257,12 +265,14 @@ export function CustomizerClient({
                 </p>
                 <p className="mt-1 truncate text-sm font-medium">{currentTemplateName ?? "None selected"}</p>
               </div>
-              <Link
+              {/* Plain <a>, same reasoning as the close button above --
+                  leaving this live-preview page needs a full reload. */}
+              <a
                 href={`/${slug}/admin/templates`}
                 className="shrink-0 rounded-md border border-border px-2.5 py-1.5 text-xs font-medium hover:bg-muted"
               >
                 Change
-              </Link>
+              </a>
             </div>
             <div className="mb-2 rounded-md border border-primary/20 bg-primary/5 px-3 py-3">
               <div className="flex items-start justify-between gap-3">
