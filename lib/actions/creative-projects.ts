@@ -98,7 +98,7 @@ export async function createCreativeProject(
     body: `${project.customerName} requested ${project.serviceType}.`,
     url: `/${slug}/admin/projects/${project.id}`,
   }).catch((err) => {
-    void logError("NOTIFICATION", "Project request notification failed", {
+    void logError("API", "Project request notification failed", {
       projectId: project.id,
       storeId: storeAccess.id,
       error: err instanceof Error ? err.message : String(err),
