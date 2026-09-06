@@ -249,14 +249,15 @@ export async function updateProduct(
         if (!current) throw new Error("Product not found.");
 
         let inventoryData: { quantity: number; sku: string | null; barcode: string | null; storeId: string } | undefined;
+        let delta = 0;
+        let nextQuantity = Math.max(0, Math.round(data.quantity));
         if (current.hasVariants) {
           // Parent quantity/SKU/barcode are not authoritative once variants
           // exist. Do not include the relation write at all: an upsert requires
           // a non-null create payload when no legacy parent inventory exists.
           inventoryData = undefined;
         } else if (current.inventory) {
-          const nextQuantity = Math.max(0, Math.round(data.quantity));
-          const delta = nextQuantity - current.inventory.quantity;
+          delta = nextQuantity - current.inventory.quantity;
           if (delta !== 0) {
             const updated = await tx.inventoryItem.updateMany({
               where: { id: current.inventory.id, storeId: access.store.id, quantity: current.inventory.quantity },
@@ -279,7 +280,7 @@ export async function updateProduct(
           }
           inventoryData = { quantity: nextQuantity, sku: trimmedSku, barcode: trimmedBarcode, storeId: access.store.id };
         } else {
-          inventoryData = { quantity: Math.max(0, Math.round(data.quantity)), sku: trimmedSku, barcode: trimmedBarcode, storeId: access.store.id };
+          inventoryData = { quantity: nextQuantity, sku: trimmedSku, barcode: trimmedBarcode, storeId: access.store.id };
         }
 
         await tx.product.update({
