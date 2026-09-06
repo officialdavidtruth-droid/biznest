@@ -97,7 +97,7 @@ export async function createCreativeProject(
     type: "PROJECT_REQUEST",
     title: `New quote request · ${project.projectNo}`,
     body: `${project.customerName} requested ${project.serviceType}.`,
-    url: `/${slug}/admin/projects/${project.id}`,
+    url: `/store/${slug}/admin/projects/${project.id}`,
     });
   } catch (err) {
     await logError("API", "Project request notification failed", {
