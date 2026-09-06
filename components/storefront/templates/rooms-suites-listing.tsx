@@ -1,6 +1,9 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { toggleStoreWishlist } from "@/lib/actions/account";
+import { useShopAuthGate } from "@/lib/hooks/use-shop-auth-gate";
+import { toast } from "sonner";
 import Link from "next/link";
 import { Calendar, Users, Search, Heart, Maximize2, BedDouble, LayoutGrid, List as ListIcon, Phone, ShieldCheck, Clock3 } from "lucide-react";
 import { formatMoney } from "@/lib/storefront/hero-media";
@@ -76,6 +79,8 @@ export function RoomsSuitesListing({
   detailBasePath, bookBasePath, amenityFacets = DEFAULT_AMENITY_FACETS, supportPhone, featureStrip,
 }: Props) {
   const [checkIn, setCheckIn] = useState("");
+  const [wishlisted, setWishlisted] = useState<Record<string, boolean>>({});
+  const { requireSignedIn } = useShopAuthGate();
   const [checkOut, setCheckOut] = useState("");
   const [guests, setGuests] = useState(2);
   const [typeFilter, setTypeFilter] = useState<string[]>([]);
@@ -262,8 +267,19 @@ export function RoomsSuitesListing({
                       {item.badge && (
                         <span style={{ position: "absolute", top: 12, left: 12, padding: "5px 10px", borderRadius: 20, background: accent, color: "#fff", fontSize: 10.5, fontWeight: 800 }}>{item.badge}</span>
                       )}
-                      <button type="button" aria-label="Save" style={{ position: "absolute", top: 12, right: 12, width: 32, height: 32, borderRadius: "50%", border: 0, background: "rgba(255,255,255,.92)", display: "grid", placeItems: "center", cursor: "pointer" }}>
-                        <Heart size={15} color={ink} />
+                      <button type="button" aria-label={wishlisted[item.id] ? "Remove from saved" : "Save"} aria-pressed={!!wishlisted[item.id]} onClick={() => {
+                        if (!requireSignedIn("save this listing")) return;
+                        setWishlisted((prev) => ({ ...prev, [item.id]: !prev[item.id] }));
+                        toggleStoreWishlist(slug, { serviceId: item.id }).then((result) => {
+                          if (!result.success) {
+                            setWishlisted((prev) => ({ ...prev, [item.id]: !prev[item.id] }));
+                            toast.error(result.error);
+                            return;
+                          }
+                          setWishlisted((prev) => ({ ...prev, [item.id]: result.data.wishlisted }));
+                        });
+                      }} style={{ position: "absolute", top: 12, right: 12, width: 32, height: 32, borderRadius: "50%", border: 0, background: "rgba(255,255,255,.92)", display: "grid", placeItems: "center", cursor: "pointer" }}>
+                        <Heart size={15} color={wishlisted[item.id] ? accent : ink} fill={wishlisted[item.id] ? accent : "none"} />
                       </button>
                     </div>
                     <div style={{ padding: 18, display: "flex", flexDirection: "column", gap: 8, flex: 1 }}>

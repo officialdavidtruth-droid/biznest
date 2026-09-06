@@ -84,10 +84,10 @@ export function HeenzyStorefront({
               {store.name} <span className="hz-accent">Reimagined</span>
             </h1>
             <p className="hz-hero-sub">{store.business.description || theme.sub}</p>
-            <div className="hz-pill-row">
-              <button className="hz-pill active">Style</button>
-              <button className="hz-pill">Comfort</button>
-              <button className="hz-pill">Trendy</button>
+            <div className="hz-pill-row" aria-label="Store themes">
+              <span className="hz-pill active">Style</span>
+              <span className="hz-pill">Comfort</span>
+              <span className="hz-pill">Trendy</span>
             </div>
             {catalogItems.length > 0 && <a href="#catalog" className="hz-btn hz-btn-yellow">{theme.cta}</a>}
           </div>
