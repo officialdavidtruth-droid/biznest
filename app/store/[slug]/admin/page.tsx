@@ -183,7 +183,7 @@ export default async function StoreAdminOverviewPage({
     if (item.serviceId) serviceRevenue.set(item.serviceId, (serviceRevenue.get(item.serviceId) ?? 0) + Number(item.unitPrice) * item.quantity);
   }
 
-  const topCatalog: DashboardProduct[] = [
+  const topCatalog = [
     ...topProductGroups.map((group) => {
       const item = group.productId ? productMap.get(group.productId) : null;
       return item
