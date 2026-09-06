@@ -114,10 +114,6 @@ export const SAMPLE_LISTINGS: Record<string, SampleListing[]> = {
     { kind: "service", name: "Concept Design Package", description: "Initial concept drawings and 3D renders.", price: 350000 },
     { kind: "service", name: "Site Consultation", description: "On-site assessment and feasibility review.", price: 30000, isBookable: true, durationMins: 90 },
   ],
-  "Engineering Services": [
-    { kind: "service", name: "Structural Assessment", description: "Full structural review and report.", price: 150000 },
-    { kind: "service", name: "Consultation (hourly)", description: "Technical consultation, billed per hour.", price: 25000, isBookable: true, durationMins: 60 },
-  ],
   "Real Estate & Property": [
     { kind: "product", name: "3-Bedroom Duplex — Lekki", description: "Modern duplex, gated estate, 24/7 power.", price: 85000000, attributes: { bedrooms: 3, bathrooms: 3, areaSqm: 220, address: "Lekki Phase 1, Lagos", lat: 6.4432, lng: 3.4726, listingType: "sale" } },
     { kind: "product", name: "2-Bedroom Flat — Wuse II", description: "Furnished, serviced apartment, short-let ready.", price: 4500000, attributes: { bedrooms: 2, bathrooms: 2, areaSqm: 110, address: "Wuse II, Abuja", lat: 9.0833, lng: 7.4833, listingType: "rent" } },
