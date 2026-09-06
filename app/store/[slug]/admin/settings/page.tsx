@@ -48,7 +48,7 @@ export default async function SettingsPage({ params }: { params: Promise<{ slug:
   }
 
   return (
-    <div className="min-h-full max-w-xl pb-6">
+    <div className="max-w-xl">
       <h1 className="mb-6 text-xl font-semibold">Settings</h1>
       <form action={save} className="space-y-6">
         <LogoBannerFields initialLogo={store.logoUrl ?? ""} initialBanner={store.bannerUrl ?? ""} />

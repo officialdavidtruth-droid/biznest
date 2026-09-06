@@ -109,7 +109,7 @@ export default async function StoreAdminLayout({
             either the sidebar or the page's own background showed up
             as dead space. One normal, whole-document scroll can't
             produce that failure mode. */}
-        <div className="bn-admin-app flex min-h-0 flex-1 flex-col bg-background text-foreground lg:h-full lg:flex-row">
+        <div className="bn-admin-app flex flex-col bg-background text-foreground lg:flex-row">
           <DashboardSidebar
             slug={slug}
             storeName={store.name}
@@ -139,7 +139,7 @@ export default async function StoreAdminLayout({
             subscriptionName={store.subscription?.name}
           />
 
-          <div className="flex min-h-0 min-w-0 flex-1 flex-col">
+          <div className="flex min-w-0 flex-1 flex-col">
             {/* Desktop-only top bar — mobile gets its own in MobileDashboardChrome
                 above. Shows the current section so the bar isn't just an empty
                 strip with a bell floating at the far end. */}
@@ -160,8 +160,8 @@ export default async function StoreAdminLayout({
               </div>
             </div>
 
-            <main className="min-h-0 flex-1 overflow-y-auto bg-background pb-20 overscroll-contain lg:pb-0">
-              <div className="mx-auto min-h-full max-w-none px-4 py-4 pb-10 lg:px-7 lg:py-7 lg:pb-10">{children}</div>
+            <main className="bg-background pb-20 lg:pb-0">
+              <div className="mx-auto max-w-none px-4 py-4 lg:px-7 lg:py-7">{children}</div>
             </main>
           </div>
         </div>

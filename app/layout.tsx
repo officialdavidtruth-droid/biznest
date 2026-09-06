@@ -57,6 +57,8 @@ export default async function RootLayout({ children }: { children: React.ReactNo
   return (
     <html lang="en">
       <body className="flex h-screen flex-col bg-background font-sans antialiased">
+        {/* Critical storefront fallback for public pages if the generated CSS chunk is temporarily unavailable. */}
+        <style dangerouslySetInnerHTML={{__html: `html,body{margin:0;padding:0}*,*::before,*::after{box-sizing:border-box}a{text-decoration:none;color:inherit}button,input,select,textarea{font:inherit}img{max-width:100%;display:block}`}} />
         <SessionProvider>
         <CartProvider>
           {showMaintenance ? (
