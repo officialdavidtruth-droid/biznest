@@ -12,7 +12,8 @@ export default async function StoreProjectPage({
 }) {
   const { id } = await params;
   const { token = "" } = await searchParams;
-  const project = await getCreativeProjectPublic(id, token);
+  const accessToken = token.trim();
+  const project = await getCreativeProjectPublic(id, accessToken);
   if (!project) notFound();
 
   const latest = project.revisions[0];
@@ -87,7 +88,7 @@ export default async function StoreProjectPage({
             <div className="rounded-3xl bg-white p-6 shadow-sm ring-1 ring-slate-200 sm:p-7">
               <p className="text-sm font-bold">Need to make a change?</p>
               <p className="mt-2 text-sm leading-6 text-slate-500">Use the project page when a design is sent for approval. You can approve it or request changes without losing this project link.</p>
-              <ProjectReviewActions projectId={project.id} token={token} status={project.status} />
+              <ProjectReviewActions projectId={project.id} token={accessToken} status={project.status} />
             </div>
           </aside>
         </section>

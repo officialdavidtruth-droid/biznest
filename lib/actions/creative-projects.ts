@@ -3,11 +3,13 @@ import { prisma } from "@/lib/prisma";
 import { assertStorePermission } from "@/lib/access/assert-store-access";
 import { sendOrderNotificationEmail } from "@/lib/email/send";
 import { checkRateLimit } from "@/lib/rate-limit";
+import { notifyUser } from "@/lib/notifications/notify";
+import { logError } from "@/lib/observability/log";
 import { revalidatePath } from "next/cache";
 import type { ActionResult } from "@/types/actions";
 import type { CreativeProjectStatus } from "@prisma/client";
 
-const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? "https://biznest.vercel.app";
+const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? "https://biznest.space";
 
 // Design previews must come from our own upload pipeline (Cloudinary via
 // /api/upload), not an arbitrary attacker-supplied URL rendered back as
@@ -39,7 +41,13 @@ export async function createCreativeProject(
 ): Promise<ActionResult<{ projectId: string; projectNo: string; accessToken: string }>> {
   const storeAccess = await prisma.store.findUnique({
     where: { slug },
-    select: { id: true, name: true, contactEmail: true, status: true },
+    select: {
+      id: true,
+      name: true,
+      contactEmail: true,
+      status: true,
+      business: { select: { userId: true, email: true } },
+    },
   });
   if (!storeAccess || storeAccess.status !== "ACTIVE") {
     return { success: false, error: "This business is not currently accepting project requests." };
@@ -80,13 +88,52 @@ export async function createCreativeProject(
     });
   });
 
-  if (storeAccess.contactEmail) {
-    await sendOrderNotificationEmail(
-      storeAccess.contactEmail,
-      `New project request ${project.projectNo}`,
-      `<p><strong>${project.customerName}</strong> requested <strong>${project.serviceType}</strong>.</p><p>${project.brief}</p><p><a href="${APP_URL}/store/projects/${project.id}?token=${project.publicAccessToken}">Open project in BizNest</a></p>`
-    );
+  // Always create an in-app notification for the store owner. This is the
+  // source of truth for the dashboard bell and does not depend on email,
+  // Resend, or push notifications being configured correctly.
+  void notifyUser({
+    userId: storeAccess.business.userId,
+    type: "PROJECT_REQUEST",
+    title: `New quote request · ${project.projectNo}`,
+    body: `${project.customerName} requested ${project.serviceType}.`,
+    url: `/${slug}/admin/projects/${project.id}`,
+  }).catch((err) => {
+    void logError("NOTIFICATION", "Project request notification failed", {
+      projectId: project.id,
+      storeId: storeAccess.id,
+      error: err instanceof Error ? err.message : String(err),
+    });
+  });
+
+  // Email is best-effort. Prefer the store's configured contact email, but
+  // fall back to the business owner's onboarding email so a blank/old store
+  // contactEmail cannot make a valid request disappear from the merchant's
+  // inbox. An email provider failure must never turn a successful submission
+  // into an error for the customer.
+  const merchantEmail = storeAccess.contactEmail?.trim() || storeAccess.business.email?.trim();
+  if (merchantEmail) {
+    try {
+      const result = await sendOrderNotificationEmail(
+        merchantEmail,
+        `New quote request ${project.projectNo}`,
+        `<p><strong>${project.customerName}</strong> requested <strong>${project.serviceType}</strong>.</p><p>${project.brief}</p><p><a href="${APP_URL}/store/projects/${project.id}?token=${encodeURIComponent(project.publicAccessToken)}">Open project in BizNest</a></p>`
+      );
+      if (result?.error) {
+        void logError("EMAIL", "Project request email failed", {
+          projectId: project.id,
+          to: merchantEmail,
+          message: result.error.message,
+        });
+      }
+    } catch (err) {
+      void logError("EMAIL", "Project request email threw", {
+        projectId: project.id,
+        to: merchantEmail,
+        error: err instanceof Error ? err.message : String(err),
+      });
+    }
   }
+
   revalidatePath(`/${slug}/admin/projects`);
   return { success: true, data: { projectId: project.id, projectNo: project.projectNo, accessToken: project.publicAccessToken } };
 }
