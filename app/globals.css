@@ -429,6 +429,11 @@ a[href*="/service/"]:hover img {
 
 /* Universal company section-page system — shared by printing, creative, agency and other professional templates. */
 .bn-universal-header{position:sticky;top:0;z-index:80;background:rgba(255,255,255,.94);backdrop-filter:blur(18px);border-bottom:1px solid #0b17240f;color:#111}
+.bn-universal-header.dark{background:rgba(10,10,10,.86);border-bottom:1px solid #ffffff1f;color:#fff}
+.bn-universal-header.dark .bn-universal-brand{color:#fff}
+.bn-universal-header.dark .bn-universal-logo{background:#ffffff1a}
+.bn-universal-header.dark .bn-universal-nav nav a{color:#fff}
+.bn-universal-header.dark .bn-universal-actions>a{color:#fff}
 .bn-universal-nav{max-width:1440px;margin:auto;min-height:68px;padding:0 42px;display:flex;align-items:center;gap:28px}
 .bn-universal-brand{display:flex;align-items:center;gap:10px;color:#111;text-decoration:none;font-weight:900;letter-spacing:-.035em;font-size:20px;white-space:nowrap}
 .bn-universal-logo{width:42px;height:42px;display:grid;place-items:center;overflow:hidden;border-radius:9px;background:#eef3f8;font-size:18px}.bn-universal-logo img{width:100%;height:100%;object-fit:contain}
