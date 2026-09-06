@@ -184,7 +184,7 @@ export default async function StoreAdminOverviewPage({
   }
 
   const topCatalog = [
-    ...topProductGroups.map((group) => {
+    ...topProductGroups.map((group): DashboardProduct | null => {
       const item = group.productId ? productMap.get(group.productId) : null;
       return item
         ? {
@@ -196,7 +196,7 @@ export default async function StoreAdminOverviewPage({
           }
         : null;
     }),
-    ...topServiceGroups.map((group) => {
+    ...topServiceGroups.map((group): DashboardProduct | null => {
       const item = group.serviceId ? serviceMap.get(group.serviceId) : null;
       return item
         ? {
