@@ -57,7 +57,7 @@ export default async function BookingConfirmationPage({
         {!paid && failed && (
           <BookingPaymentRetry storeSlug={slug} bookingId={booking.id} requiresGuestEmail={requiresGuestEmail}  />
         )}
-        <Link href={buildStoreUrl(booking.store)} style={{ display: "inline-block", marginTop: 24, padding: "13px 22px", borderRadius: 9, background: "#171411", color: "#fff", textDecoration: "none", fontWeight: 800, fontSize: 13 }}>Back to {booking.store.name}</Link>
+        <Link href={buildStoreUrl(booking.store, "")} style={{ display: "inline-block", marginTop: 24, padding: "13px 22px", borderRadius: 9, background: "#171411", color: "#fff", textDecoration: "none", fontWeight: 800, fontSize: 13 }}>Back to {booking.store.name}</Link>
       </section>
     </main>
   );

@@ -373,3 +373,107 @@ export async function importProductsCsv(slug: string, csvText: string): Promise<
   revalidatePath(`/store/${slug}/admin/inventory`);
   return { success: true, data: summary };
 }
+
+// --- Bulk editing (dashboard multi-select, not file-based) -----------------
+
+export type BulkEditPatch = {
+  productId: string;
+  price?: number;
+  quantity?: number;
+  categoryId?: string | null;
+  isPublished?: boolean;
+};
+
+/**
+ * Applies price/stock/category/publish changes to many products in one
+ * pass, for the "select rows -> bulk edit" flow on the products page.
+ * Stock changes go through prisma directly (not adjustStock's ledger)
+ * with a single synthetic StockMovement per item, so a 50-row bulk edit
+ * doesn't fire 50 separate transactions/emails -- it's one CORRECTION
+ * entry per changed item, same as any other stock correction.
+ */
+export async function bulkUpdateProducts(slug: string, patches: BulkEditPatch[]): Promise<ActionResult<{ updated: number }>> {
+  const access = await assertStoreAccess(slug);
+  if (!access.success) return { success: false, error: access.error };
+  if (patches.length === 0) return { success: false, error: "Nothing selected." };
+  if (patches.length > 500) return { success: false, error: "Bulk edit is limited to 500 products at a time." };
+
+  const ids = patches.map((p) => p.productId);
+  const products = await prisma.product.findMany({
+    where: { id: { in: ids }, storeId: access.store.id },
+    include: { inventory: true },
+  });
+  const byId = new Map(products.map((p) => [p.id, p]));
+
+  let updated = 0;
+  try {
+    await prisma.$transaction(async (tx) => {
+    for (const patch of patches) {
+      const product = byId.get(patch.productId);
+      if (!product) continue;
+
+      const productData: Record<string, unknown> = {};
+      if (patch.price != null && patch.price > 0) productData.price = roundMoney(patch.price);
+      if (patch.categoryId !== undefined) productData.categoryId = patch.categoryId;
+      if (patch.isPublished !== undefined) productData.isPublished = patch.isPublished;
+      if (Object.keys(productData).length > 0) {
+        await tx.product.update({ where: { id: product.id }, data: productData });
+      }
+
+      if (patch.quantity != null && product.inventory) {
+        const nextQuantity = Math.max(0, Math.round(patch.quantity));
+
+        // Bulk quantity edits are absolute values, so silently applying a
+        // stale value would overwrite stock changed by another staff member
+        // (sale, restock, refund, or another bulk edit). The initial query is
+        // the user's edit snapshot; re-read inside the transaction and abort
+        // the whole batch if that inventory row has changed since the snapshot.
+        const currentInventory = await tx.inventoryItem.findFirst({
+          where: { id: product.inventory.id, storeId: access.store.id },
+          select: { id: true, quantity: true },
+        });
+        if (!currentInventory) throw new Error("Inventory item not found.");
+        if (currentInventory.quantity !== product.inventory.quantity) {
+          throw new Error(`INVENTORY_CONFLICT:${product.id}`);
+        }
+
+        if (nextQuantity !== currentInventory.quantity) {
+          const updated = await tx.inventoryItem.updateMany({
+            where: {
+              id: currentInventory.id,
+              storeId: access.store.id,
+              quantity: currentInventory.quantity,
+            },
+            data: { quantity: nextQuantity },
+          });
+          if (updated.count !== 1) throw new Error(`INVENTORY_CONFLICT:${product.id}`);
+
+          await tx.stockMovement.create({
+            data: {
+              inventoryItemId: currentInventory.id,
+              storeId: access.store.id,
+              type: "CORRECTION",
+              quantityChange: nextQuantity - currentInventory.quantity,
+              quantityAfter: nextQuantity,
+              note: "Bulk edit",
+            },
+          });
+        }
+      }
+      updated++;
+      }
+    }, { isolationLevel: "Serializable", timeout: 15000 });
+  } catch (err: any) {
+    if (err?.message?.startsWith("INVENTORY_CONFLICT:")) {
+      return { success: false, error: "One or more inventory quantities changed while you were editing. Refresh the products page and apply the bulk edit again." };
+    }
+    if (err?.code === "P2034") {
+      return { success: false, error: "Inventory changed concurrently. Refresh the products page and try the bulk edit again." };
+    }
+    return { success: false, error: err instanceof Error ? err.message : "Couldn't update products safely." };
+  }
+
+  revalidatePath(`/store/${slug}/admin/products`);
+  revalidatePath(`/store/${slug}/admin/inventory`);
+  return { success: true, data: { updated } };
+}
