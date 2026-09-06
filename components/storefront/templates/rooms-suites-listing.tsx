@@ -80,7 +80,7 @@ export function RoomsSuitesListing({
 }: Props) {
   const [checkIn, setCheckIn] = useState("");
   const [wishlisted, setWishlisted] = useState<Record<string, boolean>>({});
-  const { requireSignedIn } = useShopAuthGate();
+  const { requireSignedIn } = useShopAuthGate(slug);
   const [checkOut, setCheckOut] = useState("");
   const [guests, setGuests] = useState(2);
   const [typeFilter, setTypeFilter] = useState<string[]>([]);
