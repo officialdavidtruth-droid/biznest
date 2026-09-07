@@ -109,7 +109,23 @@ export function MarketingEmailComposer({
       </section>
 
       <aside className="xl:sticky xl:top-4 xl:self-start">
-        <div className="mb-3 flex items-center justify-between"><div><p className="text-sm font-semibold">Live email preview</p><p className="text-xs text-muted-foreground">This is the actual responsive HTML style subscribers will receive.</p></div><span className="rounded-full bg-muted px-2 py-1 text-[10px] font-semibold">MOBILE + DESKTOP</span></div>
+        <div className="mb-3 flex items-center justify-between"><div><p className="text-sm font-semibold">Live email preview</p><p className="text-xs text-muted-foreground">Changes appear here instantly. The preview text is shown as it would appear beside the subject in an inbox.</p></div><span className="rounded-full bg-muted px-2 py-1 text-[10px] font-semibold">MOBILE + DESKTOP</span></div>
+        <div className="mb-3 overflow-hidden rounded-2xl border bg-background shadow-sm">
+          <div className="border-b bg-muted/40 px-4 py-3">
+            <p className="mb-2 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Inbox preview</p>
+            <div className="flex gap-3">
+              <div className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary/10 text-xs font-bold text-primary">{brand.name.slice(0, 1).toUpperCase()}</div>
+              <div className="min-w-0 flex-1">
+                <div className="flex items-baseline gap-2">
+                  <p className="truncate text-sm font-semibold">{brand.name}</p>
+                  <p className="ml-auto shrink-0 text-[10px] text-muted-foreground">Now</p>
+                </div>
+                <p className="truncate text-sm font-medium">{subject || "Your subject line"}</p>
+                <p className="truncate text-xs text-muted-foreground">{previewText || "The small line shown beside the subject"}</p>
+              </div>
+            </div>
+          </div>
+        </div>
         <div className="overflow-hidden rounded-2xl border bg-[#e5e7eb] p-3 shadow-sm"><iframe key={previewHtml} title="Email preview" srcDoc={previewHtml} className="h-[760px] w-full rounded-xl bg-white" /></div>
       </aside>
     </div>
