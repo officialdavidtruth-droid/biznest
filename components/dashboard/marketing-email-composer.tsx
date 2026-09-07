@@ -118,14 +118,14 @@ export function MarketingEmailComposer({
             <div className="grid gap-4 sm:grid-cols-2"><Field label="Eyebrow" value={eyebrow} onChange={setEyebrow} /><Field label="Button label" value={ctaLabel} onChange={setCtaLabel} /></div>
             <Field label="Headline" value={headline} onChange={setHeadline} />
             <label className="grid gap-1.5"><span className="text-xs font-medium">Message</span><textarea value={body} onChange={(e) => setBody(e.target.value)} rows={5} className="rounded-lg border bg-background px-3 py-2 text-sm outline-none focus:border-primary" /></label>
-            <div className="grid gap-4 sm:grid-cols-2">
+            <div className="grid gap-4">
               <Field label="Button URL" value={ctaUrl} onChange={setCtaUrl} />
-              <div className="grid gap-1.5">
+              <div className="grid gap-1.5 min-w-0">
                 <span className="text-xs font-medium">Header / cover image</span>
-                <div className="flex gap-2">
-                  <input value={imageUrl} onChange={(e) => setImageUrl(e.target.value)} placeholder="Paste image URL or upload" className="min-w-0 flex-1 rounded-lg border bg-background px-3 py-2 text-sm outline-none focus:border-primary" />
+                <div className="flex min-w-0 flex-col gap-2 sm:flex-row">
+                  <input value={imageUrl} onChange={(e) => setImageUrl(e.target.value)} placeholder="Paste image URL or upload" className="min-w-0 w-full flex-1 rounded-lg border bg-background px-3 py-2 text-sm outline-none focus:border-primary" />
                   <input ref={imageInputRef} type="file" accept="image/jpeg,image/png,image/webp" className="hidden" onChange={(e) => { const file = e.target.files?.[0]; if (file) void uploadHeaderImage(file); }} />
-                  <button type="button" onClick={() => imageInputRef.current?.click()} disabled={uploadingImage} className="shrink-0 rounded-lg border px-3 py-2 text-xs font-semibold hover:border-primary disabled:opacity-50">{uploadingImage ? "Uploading…" : "Upload"}</button>
+                  <button type="button" onClick={() => imageInputRef.current?.click()} disabled={uploadingImage} className="inline-flex w-full shrink-0 items-center justify-center rounded-lg border px-4 py-2 text-xs font-semibold hover:border-primary disabled:opacity-50 sm:w-auto">{uploadingImage ? "Uploading…" : "Upload image"}</button>
                 </div>
                 <p className="text-[11px] text-muted-foreground">This image becomes the campaign header/hero cover and updates the preview immediately.</p>
                 {uploadMessage && <p className="text-[11px] font-medium">{uploadMessage}</p>}
