@@ -43,8 +43,8 @@ export default async function MarketingPage({ params }: { params: Promise<{ slug
   };
 
   const items: MarketingItem[] = [
-    ...products.map((p) => ({ name: p.name, description: p.description, price: `${p.currency} ${Number(p.price).toLocaleString()}`, imageUrl: p.images[0] ?? null, href: `/store/${slug}/product/${p.id}` })),
-    ...services.map((s) => ({ name: s.name, description: s.description, price: `${s.currency} ${Number(s.price).toLocaleString()}`, imageUrl: s.images[0] ?? null, href: `/store/${slug}/service/${s.id}` })),
+    ...products.map((p) => ({ kind: "product" as const, name: p.name, description: p.description, price: `${p.currency} ${Number(p.price).toLocaleString()}`, imageUrl: p.images[0] ?? null, href: `/store/${slug}/product/${p.id}` })),
+    ...services.map((s) => ({ kind: "service" as const, name: s.name, description: s.description, price: `${s.currency} ${Number(s.price).toLocaleString()}`, imageUrl: s.images[0] ?? null, href: `/store/${slug}/service/${s.id}` })),
   ].slice(0, 12);
 
   return (

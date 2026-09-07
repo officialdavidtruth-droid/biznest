@@ -7,6 +7,7 @@ export type MarketingTemplateId =
   | "hospitality";
 
 export type MarketingItem = {
+  kind?: "product" | "service";
   name: string;
   description?: string | null;
   price?: string | null;
