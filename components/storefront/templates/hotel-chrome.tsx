@@ -2,6 +2,7 @@ import Link from "next/link";
 import { Search } from "lucide-react";
 import { AccountLink } from "@/components/storefront/account-link";
 
+import { StorefrontNewsletter } from "@/components/storefront/storefront-newsletter";
 type Theme = {
   bg: string; ink: string; card: string; accent: string;
   border?: string; muted?: string; radius: string; font: string; headlineFont: string; surfaceDark?: string;
@@ -65,6 +66,8 @@ export function HotelHeader({ slug, theme, store, active, itemLabelPlural }: { s
 
 export function HotelFooter({ slug, theme, store, itemLabelPlural }: { slug: string; theme: Theme; store: HotelStoreLike; itemLabelPlural: string }) {
   return (
+    <>
+    <StorefrontNewsletter slug={slug} storeName={store.name} accent={theme.accent} background={theme.surfaceDark || "#171411"} color="#fff" muted="#ffffff99" border="#ffffff24" />
     <footer style={{ padding: "30px 28px", background: theme.surfaceDark || "#171411", color: "rgba(255,255,255,.62)" }}>
       <div style={{ maxWidth: 1240, margin: "0 auto", display: "flex", justifyContent: "space-between", gap: 20, flexWrap: "wrap", fontSize: 11 }}>
         <Link href={`/store/${slug}`} style={{ color: "rgba(255,255,255,.75)", textDecoration: "none" }}>© {new Date().getFullYear()} {store.name}</Link>
@@ -75,5 +78,6 @@ export function HotelFooter({ slug, theme, store, itemLabelPlural }: { slug: str
         </div>
       </div>
     </footer>
+    </>
   );
 }

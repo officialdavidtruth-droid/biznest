@@ -8,6 +8,7 @@ import { CategoryNav } from "@/components/storefront/category-nav";
 import { Reveal } from "@/components/storefront/reveal";
 import type { CategoryTreeNode } from "@/lib/storefront-categories";
 
+import { StorefrontNewsletter } from "@/components/storefront/storefront-newsletter";
 // Ported from the Arcova architecture/agency template
 // (arcova-react-nestjs.zip). The source project was a standalone Vite +
 // React Router frontend backed by its own NestJS API with hardcoded
@@ -235,6 +236,8 @@ export function ArcovaStorefront({
       </section>
 
       {/* ---------- FOOTER ---------- */}
+      <StorefrontNewsletter slug={slug} storeName={store.name} accent={ARCOVA.accent} background={ARCOVA.dark} color="#fff" muted="#ffffff99" border="#ffffff24" />
+
       <footer style={{ padding: "28px 0", borderTop: `1px solid ${ARCOVA.border}`, fontSize: 12, opacity: 0.7 }}>
         <div style={{ ...wrap, display: "flex", justifyContent: "space-between", flexWrap: "wrap", gap: 10 }}>
           <span>{store.name}</span>

@@ -5,6 +5,7 @@ import { CategoryNav } from "@/components/storefront/category-nav";
 import { FRESH } from "@/lib/template-themes";
 import type { CategoryTreeNode } from "@/lib/storefront-categories";
 
+import { StorefrontNewsletter } from "@/components/storefront/storefront-newsletter";
 // Shared header + footer for the "Fresh & Co." template, extracted from
 // app/store/[slug]/page.tsx so every other page of a Fresh-templated store
 // (product, category, catalog, search, cart, checkout) shares the exact
@@ -88,6 +89,8 @@ export function FreshFooter({
   hasCatalog?: boolean;
 }) {
   return (
+    <>
+    <StorefrontNewsletter slug={slug} storeName={store.name} accent={FRESH.leaf} background={FRESH.forestDark} color="#fff" muted="#ffffff99" border="#ffffff24" />
     <footer style={{ background: FRESH.forestDark, color: "rgba(255,255,255,.6)", padding: "48px 0 0", marginTop: 40 }}>
       <div className="bn-2col" style={{ ...wrap, display: "grid", gridTemplateColumns: "1.4fr 1fr 1fr 1.2fr", gap: 36, paddingBottom: 36, borderBottom: "1px solid rgba(255,255,255,.1)", "--bn-cols": "1.4fr 1fr 1fr 1.2fr" } as React.CSSProperties}>
         <div>
@@ -127,5 +130,6 @@ export function FreshFooter({
         <span>Powered by BizNest</span>
       </div>
     </footer>
+    </>
   );
 }

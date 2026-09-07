@@ -9,6 +9,7 @@ import { CategoryNav } from "@/components/storefront/category-nav";
 import { Reveal } from "@/components/storefront/reveal";
 import type { CategoryTreeNode } from "@/lib/storefront-categories";
 
+import { StorefrontNewsletter } from "@/components/storefront/storefront-newsletter";
 // Ported from the Fabtex fabric/textile B2B storefront template
 // (fabtex-react-nestjs-storefront.zip): dark industrial palette, wide
 // utility topbar, letter-spaced logo/nav, full-bleed hero, "welcome
@@ -182,6 +183,8 @@ export function FabtexStorefront({
       </section>
 
       {/* ---------- FOOTER ---------- */}
+      <StorefrontNewsletter slug={slug} storeName={store.name} accent={FABTEX.orange} background={FABTEX.dark} color="#fff" muted="#ffffff99" border="#ffffff24" />
+
       <footer id="contact" className="bn-2col" style={{ background: FABTEX.black, borderTop: "1px solid #333", padding: "38px 11%", display: "grid", gridTemplateColumns: "1.5fr 1fr 1fr", gap: 30, "--bn-cols": "1.5fr 1fr 1fr" } as React.CSSProperties}>
         <div>
           <div style={{ fontWeight: 700, fontSize: 16, letterSpacing: 3 }}>{store.name.toUpperCase()}</div>

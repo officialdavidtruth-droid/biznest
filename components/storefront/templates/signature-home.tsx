@@ -5,6 +5,7 @@ import { CategoryNav } from "@/components/storefront/category-nav";
 import { Reveal } from "@/components/storefront/reveal";
 import type { TemplateTheme } from "@/lib/template-themes";
 
+import { StorefrontNewsletter } from "@/components/storefront/storefront-newsletter";
 type CatalogItem = {
   id: string; kind: "product" | "service"; name: string; description: string | null;
   price: number; currency: string; image: string | null; categoryName: string | null;
@@ -162,6 +163,7 @@ export function SignatureStorefront(props: Props) {
   return (
     <div className={`signature-root signature-${mode}`} style={{ "--sig-bg": bg, "--sig-ink": ink, "--sig-accent": primary, "--sig-accent-soft": theme.accentSoft || primary, "--sig-muted": muted, "--sig-border": theme.border || `${ink}18`, "--sig-radius": theme.radius || "16px", "--sig-font": theme.font, "--sig-headline": theme.headlineFont } as React.CSSProperties}>
       {nav}<main><Hero /><Intro />{["atelier", "frame", "north", "forge", "maison"].includes(mode) && <Editorial />}<Catalog />{!["electra", "harvest"].includes(mode) && Reviews}<section className={`sig-final sig-final-${mode}`}><div><div className="sig-eyebrow">Ready when you are</div><h2>{copy.ready}</h2><a className="sig-primary-btn" href={`/store/${slug}/catalog`}>{meta.cta} <span>↗</span></a></div></section></main>
+      <StorefrontNewsletter slug={slug} storeName={store.name} accent={primary} background={theme.bg} color={theme.ink} muted={theme.muted} border={theme.border} />
       <footer className={`sig-footer sig-footer-${mode}`}><span>{store.name}</span><span>{store.contactPhone || store.contactEmail || ""}</span><span>Powered by BizNest</span></footer>
       <style>{`
         .signature-root{background:var(--sig-bg);color:var(--sig-ink);font-family:var(--sig-font);min-height:100vh;overflow:hidden}
