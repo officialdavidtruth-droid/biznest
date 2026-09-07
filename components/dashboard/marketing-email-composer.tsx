@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState, useTransition } from "react";
-import { Check, Image as ImageIcon, Mail, Send, Sparkles, X } from "lucide-react";
+import { Check, Image as ImageIcon, Mail, Send, Sparkles } from "lucide-react";
 import {
   MARKETING_TEMPLATES,
   defaultMarketingContent,
@@ -110,7 +110,7 @@ export function MarketingEmailComposer({
 
       <aside className="xl:sticky xl:top-4 xl:self-start">
         <div className="mb-3 flex items-center justify-between"><div><p className="text-sm font-semibold">Live email preview</p><p className="text-xs text-muted-foreground">This is the actual responsive HTML style subscribers will receive.</p></div><span className="rounded-full bg-muted px-2 py-1 text-[10px] font-semibold">MOBILE + DESKTOP</span></div>
-        <div className="overflow-hidden rounded-2xl border bg-[#e5e7eb] p-3 shadow-sm"><iframe title="Email preview" srcDoc={previewHtml} className="h-[760px] w-full rounded-xl bg-white" /></div>
+        <div className="overflow-hidden rounded-2xl border bg-[#e5e7eb] p-3 shadow-sm"><iframe key={previewHtml} title="Email preview" srcDoc={previewHtml} className="h-[760px] w-full rounded-xl bg-white" /></div>
       </aside>
     </div>
   );

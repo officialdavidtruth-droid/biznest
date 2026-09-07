@@ -2,15 +2,18 @@
 import Link from "next/link";
 import { prisma } from "@/lib/prisma";
 import { MarketingEmailComposer } from "@/components/dashboard/marketing-email-composer";
+import { assertStorePermission } from "@/lib/access/assert-store-access";
 import type { MarketingBrand, MarketingItem } from "@/lib/email/marketing-templates";
 
 export default async function MarketingPage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
-  const store = await prisma.store.findUnique({ where: { slug }, include: { business: true } });
-  if (!store) return null;
+  const access = await assertStorePermission(slug, "marketing");
+  if (!access.success) return null;
+  const store = access.store;
 
-  const [activeSubscribers, subscribers, campaigns, products, services] = await Promise.all([
+  const [activeSubscribers, unsubscribedCount, subscribers, campaigns, products, services] = await Promise.all([
     prisma.newsletterSubscriber.count({ where: { storeId: store.id, unsubscribedAt: null } }),
+    prisma.newsletterSubscriber.count({ where: { storeId: store.id, unsubscribedAt: { not: null } } }),
     prisma.newsletterSubscriber.findMany({ where: { storeId: store.id }, select: { id: true, email: true, createdAt: true, unsubscribedAt: true }, orderBy: { createdAt: "desc" }, take: 100 }),
     prisma.emailCampaign.findMany({ where: { storeId: store.id }, select: { id: true, subject: true, template: true, status: true, recipientCount: true, sentCount: true, failedCount: true, createdAt: true, sentAt: true }, orderBy: { createdAt: "desc" }, take: 8 }),
     prisma.product.findMany({ where: { storeId: store.id, isPublished: true }, select: { id: true, name: true, description: true, price: true, currency: true, images: true }, orderBy: { createdAt: "desc" }, take: 8 }),
@@ -40,8 +43,8 @@ export default async function MarketingPage({ params }: { params: Promise<{ slug
   };
 
   const items: MarketingItem[] = [
-    ...products.map((p) => ({ name: p.name, description: p.description, price: `${p.currency} ${Number(p.price).toLocaleString()}`, imageUrl: p.images[0] ?? null, href: `/${slug}/product/${p.id}` })),
-    ...services.map((s) => ({ name: s.name, description: s.description, price: `${s.currency} ${Number(s.price).toLocaleString()}`, imageUrl: s.images[0] ?? null, href: `/${slug}/service/${s.id}` })),
+    ...products.map((p) => ({ name: p.name, description: p.description, price: `${p.currency} ${Number(p.price).toLocaleString()}`, imageUrl: p.images[0] ?? null, href: `/store/${slug}/product/${p.id}` })),
+    ...services.map((s) => ({ name: s.name, description: s.description, price: `${s.currency} ${Number(s.price).toLocaleString()}`, imageUrl: s.images[0] ?? null, href: `/store/${slug}/service/${s.id}` })),
   ].slice(0, 12);
 
   return (
@@ -56,7 +59,7 @@ export default async function MarketingPage({ params }: { params: Promise<{ slug
 
       <div className="mb-6 grid gap-3 sm:grid-cols-3">
         <Stat label="Active subscribers" value={activeSubscribers.toLocaleString()} />
-        <Stat label="Unsubscribed" value={subscribers.filter((s) => s.unsubscribedAt).length.toLocaleString()} />
+        <Stat label="Unsubscribed" value={unsubscribedCount.toLocaleString()} />
         <Stat label="Campaigns sent" value={campaigns.filter((c) => c.status === "SENT" || c.status === "PARTIAL").length.toLocaleString()} />
       </div>
 
