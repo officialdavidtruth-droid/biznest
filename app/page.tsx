@@ -142,7 +142,7 @@ export default async function HomePage() {
   return (
     <div
       className={`${display.variable} ${body.variable} ${mono.variable} min-h-screen overflow-x-clip`}
-      style={{ background: "var(--bn-hero-gradient)", color: "var(--bn-ivory)", fontFamily: "var(--font-body)" }}
+      style={{ backgroundColor: "var(--bn-ink)", backgroundImage: "var(--bn-hero-gradient)", color: "var(--bn-ivory)", fontFamily: "var(--font-body)" }}
     >
       {/* Nav */}
       <header
@@ -280,7 +280,7 @@ export default async function HomePage() {
 
       {/* Ledger strip — real counts from the platform, styled like a receipt
           rather than invented traction numbers, so it never overclaims. */}
-      <section className="px-6 py-10 sm:px-10" style={{ borderTop: "1px solid var(--bn-ink-line)", borderBottom: "1px solid var(--bn-ink-line)" }}>
+      <section className="px-6 py-10 sm:px-10" style={{ backgroundColor: "var(--bn-ink)", borderTop: "1px solid var(--bn-ink-line)", borderBottom: "1px solid var(--bn-ink-line)" }}>
         <div className="mx-auto grid max-w-5xl gap-x-10 gap-y-4 sm:grid-cols-2 lg:grid-cols-4">
           {STATS.map((s) => (
             <div key={s.label} className="bn-receipt-row" style={{ fontFamily: "var(--font-mono)" }}>
@@ -292,7 +292,7 @@ export default async function HomePage() {
       </section>
 
       {/* How it works — a real 3-step sequence, so numbering earns its place */}
-      <section className="px-6 py-16 sm:px-10 lg:py-24">
+      <section className="px-6 py-16 sm:px-10 lg:py-24" style={{ backgroundColor: "var(--bn-ink)" }}>
         <h2 className="mb-10 text-2xl sm:text-3xl" style={{ fontFamily: "var(--font-display)", fontWeight: 700 }}>
           From idea to open for business
         </h2>
@@ -344,7 +344,7 @@ export default async function HomePage() {
       </section>
 
       {/* Categories */}
-      <section id="categories" className="px-6 py-16 sm:px-10 lg:py-20">
+      <section id="categories" className="px-6 py-16 sm:px-10 lg:py-20" style={{ backgroundColor: "var(--bn-ink)" }}>
         <h2 className="mb-8 text-2xl sm:text-3xl" style={{ fontFamily: "var(--font-display)", fontWeight: 700 }}>
           Whatever you sell, there's a stall for it
         </h2>
@@ -363,7 +363,7 @@ export default async function HomePage() {
 
       {/* Pricing — pulled live from the Subscription table, not hardcoded copy,
           so this page can never drift out of sync with what a store actually gets. */}
-      <section id="pricing" className="px-6 py-16 sm:px-10 lg:py-24">
+      <section id="pricing" className="px-6 py-16 sm:px-10 lg:py-24" style={{ backgroundColor: "var(--bn-ink)" }}>
         <h2 className="mb-3 text-2xl sm:text-3xl" style={{ fontFamily: "var(--font-display)", fontWeight: 700 }}>
           Simple pricing, real ownership
         </h2>
@@ -435,7 +435,7 @@ export default async function HomePage() {
       </section>
 
       {/* FAQ */}
-      <section className="px-6 py-16 sm:px-10 lg:py-24">
+      <section className="px-6 py-16 sm:px-10 lg:py-24" style={{ backgroundColor: "var(--bn-ink)" }}>
         <div className="mx-auto max-w-3xl">
           <h2 className="mb-10 text-2xl sm:text-3xl" style={{ fontFamily: "var(--font-display)", fontWeight: 700 }}>
             Questions people actually ask
@@ -445,7 +445,7 @@ export default async function HomePage() {
       </section>
 
       {/* Final CTA */}
-      <section className="relative overflow-hidden px-6 py-20 text-center sm:px-10 lg:py-28">
+      <section className="relative overflow-hidden px-6 py-20 text-center sm:px-10 lg:py-28" style={{ backgroundColor: "var(--bn-ink)" }}>
         <div className="bn-glow-orb h-80 w-80" style={{ background: "rgba(52,211,153,0.18)", bottom: "-8rem", left: "50%", transform: "translateX(-50%)" }} />
         <div className="relative z-10">
           <h2
@@ -476,10 +476,7 @@ export default async function HomePage() {
         </div>
       </section>
 
-      <footer
-        className="bg-[var(--bn-ink)]"
-        style={{ background: "var(--bn-ink)", color: "var(--bn-ivory)", borderTop: "1px solid var(--bn-ink-line)" }}
-      >
+      <footer style={{ backgroundColor: "var(--bn-ink)", borderTop: "1px solid var(--bn-ink-line)" }}>
         <div className="mx-auto grid max-w-6xl gap-10 px-6 py-14 sm:grid-cols-2 sm:px-10 lg:grid-cols-4">
           <div>
             <span className="text-lg tracking-tight" style={{ fontFamily: "var(--font-display)", fontWeight: 700 }}>
