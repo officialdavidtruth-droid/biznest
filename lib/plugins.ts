@@ -164,19 +164,21 @@ export const PLUGIN_CATALOG: PluginSeed[] = [
 ];
 
 export async function ensureSystemPlugins() {
-  for (const seed of PLUGIN_CATALOG) {
-    const plugin = await prisma.plugin.upsert({
-      where: { key: seed.key },
-      // Existing rows are platform configuration, so do not overwrite
-      // SupaAdmin's price, plan access, eligibility, status or publication
-      // decisions on every page render.
-      update: {
-        name: seed.name,
-        description: seed.description,
-        icon: seed.icon,
-        sortOrder: seed.sortOrder,
-      },
-      create: {
+  // This function runs on app/plugin page loads, so it must stay cheap.
+  // The old implementation performed a sequential upsert for every plugin
+  // plus a plan lookup/upsert for every supported plan. That created dozens
+  // of database round trips before the page could render.
+  const keys = PLUGIN_CATALOG.map((seed) => seed.key);
+  const existing = await prisma.plugin.findMany({
+    where: { key: { in: keys } },
+    select: { id: true, key: true },
+  });
+  const existingKeys = new Set(existing.map((plugin) => plugin.key));
+  const missing = PLUGIN_CATALOG.filter((seed) => !existingKeys.has(seed.key));
+
+  if (missing.length) {
+    await prisma.plugin.createMany({
+      data: missing.map((seed) => ({
         id: nanoid(24),
         key: seed.key,
         name: seed.name,
@@ -187,21 +189,57 @@ export async function ensureSystemPlugins() {
         billingInterval: seed.billingInterval ?? "MONTHLY",
         isFree: seed.isFree ?? false,
         isComingSoon: seed.isComingSoon ?? false,
-        status: "ACTIVE",
+        status: "ACTIVE" as const,
         eligibleBusinessTypes: seed.eligibleBusinessTypes ?? ["*"],
         sortOrder: seed.sortOrder,
-      },
+      })),
+      skipDuplicates: true,
     });
+  }
 
+  // Re-read IDs once so we can create only genuinely missing plan-access
+  // rows. Existing rows are never overwritten; SupaAdmin remains authoritative
+  // for pricing, eligibility, status and plan decisions.
+  const plugins = await prisma.plugin.findMany({
+    where: { key: { in: keys } },
+    select: { id: true, key: true },
+  });
+  const pluginIds = plugins.map((plugin) => plugin.id);
+  const planNames = [...new Set(PLUGIN_CATALOG.flatMap((seed) => seed.plans))];
+
+  if (!pluginIds.length || !planNames.length) return;
+
+  const [plans, existingAccess] = await Promise.all([
+    prisma.subscription.findMany({
+      where: { name: { in: planNames } },
+      select: { id: true, name: true },
+    }),
+    prisma.pluginPlanAccess.findMany({
+      where: { pluginId: { in: pluginIds } },
+      select: { pluginId: true, subscriptionId: true },
+    }),
+  ]);
+
+  const pluginByKey = new Map(plugins.map((plugin) => [plugin.key, plugin.id]));
+  const planByName = new Map(plans.map((plan) => [plan.name, plan.id]));
+  const existingAccessKeys = new Set(existingAccess.map((row) => `${row.pluginId}:${row.subscriptionId}`));
+  const accessRows: Array<{ pluginId: string; subscriptionId: string; enabled: boolean }> = [];
+
+  for (const seed of PLUGIN_CATALOG) {
+    const pluginId = pluginByKey.get(seed.key);
+    if (!pluginId) continue;
     for (const planName of seed.plans) {
-      const plan = await prisma.subscription.findUnique({ where: { name: planName }, select: { id: true } });
-      if (!plan) continue;
-      await prisma.pluginPlanAccess.upsert({
-        where: { pluginId_subscriptionId: { pluginId: plugin.id, subscriptionId: plan.id } },
-        update: {},
-        create: { pluginId: plugin.id, subscriptionId: plan.id, enabled: true },
-      });
+      const subscriptionId = planByName.get(planName);
+      if (!subscriptionId) continue;
+      const key = `${pluginId}:${subscriptionId}`;
+      if (!existingAccessKeys.has(key)) {
+        accessRows.push({ pluginId, subscriptionId, enabled: true });
+      }
     }
+  }
+
+  if (accessRows.length) {
+    await prisma.pluginPlanAccess.createMany({ data: accessRows, skipDuplicates: true });
   }
 }
 
