@@ -604,6 +604,18 @@ model Store {
   contactEmail  String?
   contactPhone  String?
 
+  // Installed marketplace applications. App access is enforced by the plugin entitlement layer,
+  // not by hard-coded plan names in individual pages.
+  installedPlugins StorePlugin[]
+  financialAccounts FinancialAccount[]
+  financialPeriods FinancialPeriod[]
+  financialJournalEntries FinancialJournalEntry[]
+  financialExpenses FinancialExpense[]
+  financialBankAccounts FinancialBankAccount[]
+  financialBankTransactions FinancialBankTransaction[]
+  financialBudgets FinancialBudget[]
+  financialAssets FinancialAsset[]
+
   subscriptionId String?
   subscription   Subscription? @relation(fields: [subscriptionId], references: [id])
   // Set by a platform admin granting a free trial of a paid plan (see
@@ -1809,6 +1821,7 @@ enum PaymentPurpose {
   SERVICE_BOOKING
   WALLET_FUNDING
   PMS_RESERVATION
+  PLUGIN_PURCHASE
 }
 
 enum PaymentStatus {
@@ -2208,6 +2221,329 @@ model Subscription {
   isActive  Boolean  @default(true) // retired plans are hidden from pricing/upgrade UI, not deleted -- a store may still reference one
 
   stores    Store[]
+  pluginAccess PluginPlanAccess[]
+}
+
+// ----------------------------------------------------------------------------
+// APP MARKETPLACE / PLUGINS
+//
+// Plugins are platform-managed applications. SupaAdmin controls pricing,
+// activation and which subscription plans may use each app. Store access is
+// recorded separately so an app can be installed/disabled without changing
+// the store's core subscription.
+// ----------------------------------------------------------------------------
+
+enum PluginStatus {
+  ACTIVE
+  DISABLED
+}
+
+enum PluginBillingInterval {
+  MONTHLY
+  YEARLY
+  ONE_TIME
+}
+
+enum StorePluginStatus {
+  ACTIVE
+  SUSPENDED
+}
+
+model Plugin {
+  id                  String               @id @default(cuid())
+  key                 String               @unique
+  name                String
+  description         String               @db.Text
+  category            String
+  icon                String?
+  price               Decimal              @db.Decimal(12, 2) @default(0)
+  currency            String               @default("NGN")
+  billingInterval     PluginBillingInterval @default(MONTHLY)
+  isFree              Boolean              @default(false)
+  isComingSoon        Boolean              @default(false)
+  status              PluginStatus         @default(ACTIVE)
+  eligibleBusinessTypes Json?
+  sortOrder           Int                  @default(0)
+  createdAt           DateTime             @default(now())
+  updatedAt           DateTime             @updatedAt
+
+  planAccess          PluginPlanAccess[]
+  stores              StorePlugin[]
+
+  @@index([status, sortOrder])
+  @@index([category])
+}
+
+model PluginPlanAccess {
+  id             String       @id @default(cuid())
+  pluginId       String
+  plugin         Plugin       @relation(fields: [pluginId], references: [id], onDelete: Cascade)
+  subscriptionId String
+  subscription   Subscription @relation(fields: [subscriptionId], references: [id], onDelete: Cascade)
+  enabled        Boolean      @default(true)
+  createdAt      DateTime     @default(now())
+
+  @@unique([pluginId, subscriptionId])
+  @@index([subscriptionId])
+}
+
+model StorePlugin {
+  id          String           @id @default(cuid())
+  storeId     String
+  store       Store            @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  pluginId    String
+  plugin      Plugin           @relation(fields: [pluginId], references: [id], onDelete: Cascade)
+  status      StorePluginStatus @default(ACTIVE)
+  installedAt DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
+  renewsAt    DateTime?
+  pastDueSince DateTime?
+  lastPaymentAt DateTime?
+
+  @@unique([storeId, pluginId])
+  @@index([storeId, status])
+}
+
+// ----------------------------------------------------------------------------
+// FINANCIAL CONTROL
+// ----------------------------------------------------------------------------
+
+enum FinancialAccountType {
+  ASSET
+  LIABILITY
+  EQUITY
+  REVENUE
+  EXPENSE
+}
+
+enum FinancialEntryStatus {
+  DRAFT
+  POSTED
+  VOIDED
+}
+
+enum FinancialPeriodStatus {
+  OPEN
+  CLOSED
+}
+
+enum FinancialExpenseStatus {
+  DRAFT
+  APPROVED
+  POSTED
+  REJECTED
+}
+
+model FinancialAccount {
+  id        String               @id @default(cuid())
+  storeId   String
+  store     Store                @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  code      String
+  name      String
+  type      FinancialAccountType
+  parentId  String?
+  parent    FinancialAccount?    @relation("FinancialAccountTree", fields: [parentId], references: [id], onDelete: SetNull)
+  children  FinancialAccount[]   @relation("FinancialAccountTree")
+  isSystem  Boolean              @default(false)
+  isActive  Boolean              @default(true)
+  createdAt DateTime             @default(now())
+  updatedAt DateTime             @updatedAt
+
+  journalLines FinancialJournalLine[]
+  expenses    FinancialExpense[] @relation("ExpenseCategoryAccount")
+  paymentExpenses FinancialExpense[] @relation("ExpensePaymentAccount")
+  bankAccounts FinancialBankAccount[]
+  budgetLines FinancialBudgetLine[]
+
+  @@unique([storeId, code])
+  @@index([storeId, type, isActive])
+}
+
+model FinancialPeriod {
+  id        String                 @id @default(cuid())
+  storeId   String
+  store     Store                  @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  name      String
+  startsAt  DateTime
+  endsAt    DateTime
+  status    FinancialPeriodStatus   @default(OPEN)
+  closedAt  DateTime?
+  closedBy  String?
+  createdAt DateTime               @default(now())
+  updatedAt DateTime               @updatedAt
+
+  entries FinancialJournalEntry[]
+
+  @@unique([storeId, startsAt, endsAt])
+  @@index([storeId, status])
+}
+
+model FinancialJournalEntry {
+  id          String               @id @default(cuid())
+  storeId     String
+  store       Store                @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  periodId    String?
+  period      FinancialPeriod?     @relation(fields: [periodId], references: [id], onDelete: SetNull)
+  reference   String
+  description String               @db.Text
+  entryDate   DateTime
+  status      FinancialEntryStatus @default(DRAFT)
+  postedAt    DateTime?
+  postedBy    String?
+  createdBy   String?
+  createdAt   DateTime             @default(now())
+  updatedAt   DateTime             @updatedAt
+
+  lines       FinancialJournalLine[]
+  expense     FinancialExpense?
+
+  @@unique([storeId, reference])
+  @@index([storeId, entryDate])
+  @@index([storeId, status])
+}
+
+model FinancialJournalLine {
+  id              String               @id @default(cuid())
+  journalEntryId  String
+  journalEntry    FinancialJournalEntry @relation(fields: [journalEntryId], references: [id], onDelete: Cascade)
+  accountId       String
+  account         FinancialAccount     @relation(fields: [accountId], references: [id])
+  description     String?
+  debit           Decimal              @db.Decimal(12, 2) @default(0)
+  credit          Decimal              @db.Decimal(12, 2) @default(0)
+
+  @@index([journalEntryId])
+  @@index([accountId])
+}
+
+model FinancialBankAccount {
+  id            String   @id @default(cuid())
+  storeId       String
+  store         Store    @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  financialAccountId String
+  financialAccount FinancialAccount @relation(fields: [financialAccountId], references: [id])
+  name          String
+  bankName      String?
+  accountName   String?
+  maskedNumber  String?
+  openingBalance Decimal @db.Decimal(12, 2) @default(0)
+  isActive      Boolean  @default(true)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  transactions  FinancialBankTransaction[]
+
+  @@unique([storeId, name])
+  @@index([storeId, isActive])
+}
+
+enum FinancialBankTransactionStatus {
+  UNMATCHED
+  MATCHED
+  IGNORED
+}
+
+model FinancialBankTransaction {
+  id            String   @id @default(cuid())
+  storeId       String
+  store         Store    @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  bankAccountId String
+  bankAccount   FinancialBankAccount @relation(fields: [bankAccountId], references: [id], onDelete: Cascade)
+  transactionDate DateTime
+  description   String   @db.Text
+  reference     String?
+  amount        Decimal  @db.Decimal(12, 2)
+  status        FinancialBankTransactionStatus @default(UNMATCHED)
+  matchedJournalEntryId String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@index([storeId, transactionDate])
+  @@index([bankAccountId, status])
+}
+
+enum FinancialBudgetStatus {
+  DRAFT
+  ACTIVE
+  CLOSED
+}
+
+model FinancialBudget {
+  id        String   @id @default(cuid())
+  storeId   String
+  store     Store    @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  name      String
+  startsAt  DateTime
+  endsAt    DateTime
+  status    FinancialBudgetStatus @default(DRAFT)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  lines     FinancialBudgetLine[]
+
+  @@unique([storeId, name])
+  @@index([storeId, status])
+}
+
+model FinancialBudgetLine {
+  id        String   @id @default(cuid())
+  budgetId  String
+  budget    FinancialBudget @relation(fields: [budgetId], references: [id], onDelete: Cascade)
+  accountId String
+  account   FinancialAccount @relation(fields: [accountId], references: [id])
+  amount    Decimal  @db.Decimal(12, 2)
+
+  @@unique([budgetId, accountId])
+  @@index([accountId])
+}
+
+model FinancialAsset {
+  id                String   @id @default(cuid())
+  storeId           String
+  store             Store    @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  assetNo           String
+  name              String
+  category          String
+  purchaseDate      DateTime
+  purchaseCost      Decimal  @db.Decimal(12, 2)
+  usefulLifeMonths  Int
+  residualValue     Decimal  @db.Decimal(12, 2) @default(0)
+  depreciationMethod String  @default("STRAIGHT_LINE")
+  accumulatedDepreciation Decimal @db.Decimal(12, 2) @default(0)
+  status            String   @default("ACTIVE")
+  notes             String?  @db.Text
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  @@unique([storeId, assetNo])
+  @@index([storeId, status])
+}
+
+model FinancialExpense {
+  id              String                  @id @default(cuid())
+  storeId         String
+  store           Store                   @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  expenseNo       String
+  description     String                  @db.Text
+  vendorName      String?
+  amount          Decimal                 @db.Decimal(12, 2)
+  currency        String                  @default("NGN")
+  expenseDate     DateTime
+  expenseAccountId String
+  expenseAccount  FinancialAccount       @relation("ExpenseCategoryAccount", fields: [expenseAccountId], references: [id])
+  paymentAccountId String
+  paymentAccount  FinancialAccount       @relation("ExpensePaymentAccount", fields: [paymentAccountId], references: [id])
+  status          FinancialExpenseStatus  @default(DRAFT)
+  notes           String?                 @db.Text
+  journalEntryId  String?                 @unique
+  journalEntry    FinancialJournalEntry?  @relation(fields: [journalEntryId], references: [id], onDelete: SetNull)
+  createdBy       String?
+  approvedBy      String?
+  approvedAt      DateTime?
+  createdAt       DateTime                @default(now())
+  updatedAt       DateTime                @updatedAt
+
+  @@unique([storeId, expenseNo])
+  @@index([storeId, expenseDate])
+  @@index([storeId, status])
 }
 
 model AuditLog {

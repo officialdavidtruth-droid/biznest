@@ -41,6 +41,8 @@ export async function GET(req: Request) {
   let charged = 0;
   let failed = 0;
   let downgraded = 0;
+  let pluginsCharged = 0;
+  let pluginsSuspended = 0;
 
   // --- 1. Upcoming-renewal reminders (3-day heads up, not yet due) ---
   const upcoming = await prisma.store.findMany({
@@ -150,8 +152,51 @@ export async function GET(req: Request) {
     }
   }
 
-  void logInfo("JOBS", "Subscription renewal sweep complete", { reminded, charged, failed, downgraded });
-  return NextResponse.json({ reminded, charged, failed, downgraded });
+  // --- 4. Marketplace app renewals ---
+  // Paid marketplace apps are independent subscriptions. They use the same
+  // reusable Paystack authorization as the store plan, but a failed app
+  // renewal suspends only that app — the entire store must not be paused
+  // because one optional plugin was not renewed.
+  const duePlugins = await prisma.storePlugin.findMany({
+    where: { status: "ACTIVE", renewsAt: { lte: now }, plugin: { isFree: false, billingInterval: { in: ["MONTHLY", "YEARLY"] }, status: "ACTIVE" }, store: { paystackAuthorizationCode: { not: null }, subscriptionId: { not: null } } },
+    include: { plugin: true, store: { include: { business: { include: { user: true } } } } },
+    take: 500,
+  });
+
+  for (const installed of duePlugins) {
+    if (!installed.store.paystackAuthorizationCode) continue;
+    const reference = `PLUGREN-${installed.storeId}-${installed.pluginId}-${Date.now()}`;
+    try {
+      const result = await chargePaystackAuthorization({
+        email: installed.store.business.user.email ?? `${installed.store.slug}@biznest.space`,
+        amountKobo: Math.round(Number(installed.plugin.price) * 100),
+        authorizationCode: installed.store.paystackAuthorizationCode,
+        reference,
+      });
+      if (result.status && result.data?.status === "success") {
+        const nextRenewal = new Date(installed.renewsAt ?? now);
+        if (installed.plugin.billingInterval === "YEARLY") nextRenewal.setFullYear(nextRenewal.getFullYear() + 1);
+        else nextRenewal.setMonth(nextRenewal.getMonth() + 1);
+        const safeNext = nextRenewal > now ? nextRenewal : new Date(now.getTime() + (installed.plugin.billingInterval === "YEARLY" ? 365 : 30) * 24 * 60 * 60 * 1000);
+        await prisma.$transaction([
+          prisma.storePlugin.update({ where: { id: installed.id }, data: { renewsAt: safeNext, pastDueSince: null, lastPaymentAt: new Date(), status: "ACTIVE" } }),
+          prisma.payment.create({ data: { reference, status: "SUCCESSFUL", amount: installed.plugin.price, currency: installed.plugin.currency, provider: "PAYSTACK", purpose: "PLUGIN_PURCHASE", storeId: installed.storeId, verifiedAt: new Date() } }),
+        ]);
+        pluginsCharged++;
+      } else {
+        const pastDueSince = installed.pastDueSince ?? new Date();
+        const suspend = pastDueSince.getTime() <= now.getTime() - 5 * 24 * 60 * 60 * 1000;
+        await prisma.storePlugin.update({ where: { id: installed.id }, data: { pastDueSince, ...(suspend ? { status: "SUSPENDED" as const } : {}) } });
+        if (suspend) pluginsSuspended++;
+        await notifyUser({ userId: installed.store.business.userId, type: "SUBSCRIPTION_PAYMENT_FAILED", title: `${installed.plugin.name} renewal failed`, body: `We couldn't renew ${installed.plugin.name}. The app will be suspended after the grace period.`, url: `/store/${installed.store.slug}/admin/apps` });
+      }
+    } catch (err) {
+      void logError("JOBS", "Plugin renewal failed", errorMeta(err, { storeId: installed.storeId, pluginId: installed.pluginId }));
+    }
+  }
+
+  void logInfo("JOBS", "Subscription renewal sweep complete", { reminded, charged, failed, downgraded, pluginsCharged, pluginsSuspended });
+  return NextResponse.json({ reminded, charged, failed, downgraded, pluginsCharged, pluginsSuspended });
 }
 
 async function handleRenewalFailure(

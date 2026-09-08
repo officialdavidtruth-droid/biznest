@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { revalidatePath } from "next/cache";
 import { assertStorePermission } from "@/lib/access/assert-store-access";
 import { hasCapability } from "@/lib/capabilities";
+import { getPluginEntitlement } from "@/lib/plugins";
 import { chargeCustomer, getActiveGateway } from "@/lib/payments/gateway";
 import type { ActionResult } from "@/types/actions";
 import crypto from "crypto";
@@ -19,13 +20,9 @@ async function access(slug: string) {
   if (!hasCapability(a.store.business.category, "pms")) {
     return { success: false as const, error: "PMS is only available to hotel and property businesses." };
   }
-  const subscription = await prisma.subscription.findUnique({
-    where: { id: a.store.subscriptionId ?? "" },
-    select: { name: true },
-  });
-  if (subscription?.name !== "Business Mogul") {
-    return { success: false as const, error: "BizNest PMS is available exclusively on the Business Mogul plan." };
-  }
+  const entitlement = await getPluginEntitlement(a.store.id, "pms");
+  if (!entitlement.allowed) return { success: false as const, error: entitlement.reason };
+  if (!entitlement.installed) return { success: false as const, error: "Install BizNest PMS from Apps before opening the PMS workspace." };
   return a;
 }
 
@@ -35,14 +32,9 @@ export async function getPmsAccessStatus(slug: string) {
   if (!hasCapability(a.store.business.category, "pms")) {
     return { allowed: false as const, error: "PMS is only available to hotel and property businesses." };
   }
-  const subscription = await prisma.subscription.findUnique({
-    where: { id: a.store.subscriptionId ?? "" },
-    select: { name: true },
-  });
-  if (subscription?.name !== "Business Mogul") {
-    return { allowed: false as const, error: "BizNest PMS is available exclusively on the Business Mogul plan." };
-  }
-  return { allowed: true as const };
+  const entitlement = await getPluginEntitlement(a.store.id, "pms");
+  if (!entitlement.allowed) return { allowed: false as const, error: entitlement.reason };
+  return { allowed: entitlement.installed ? true as const : false as const, error: entitlement.installed ? undefined : "Install BizNest PMS from Apps before opening the PMS workspace." };
 }
 
 export async function getPmsData(slug: string) {

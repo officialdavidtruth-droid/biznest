@@ -8,6 +8,7 @@ import { buildStoreUrl } from "@/lib/store-url";
 import { NextResponse } from "next/server";
 import { settleWalletFunding, settleServiceBookingPayment } from "@/lib/actions/customer-wallet";
 import { settleReservationPayment } from "@/lib/actions/pms";
+import { settlePluginPurchase } from "@/lib/actions/plugins";
 import { emitWebhookEvent } from "@/lib/webhooks/dispatch";
 import { notifyStoreOwnerOfPaidOrder, notifyCustomerOfPaidOrder } from "@/lib/notifications/notify";
 
@@ -28,6 +29,18 @@ export async function GET(req: Request) {
   const rate = await checkRateLimit(`payment-callback:${ip}`, 30, 60 * 1000);
   if (!rate.allowed) {
     return NextResponse.redirect(`${APP_URL}/?payment=rate_limited`);
+  }
+
+  if (reference.startsWith("PLUG-")) {
+    const verification = await verifyPaystackTransaction(reference);
+    if (verification.status && verification.data?.status === "success") {
+      const amountNaira = Number(verification.data?.amount ?? 0) / 100;
+      const result = await settlePluginPurchase(reference, amountNaira, verification as object);
+      if (result.success) return NextResponse.redirect(`${APP_URL}/store/${result.data.slug}/admin/apps/${result.data.pluginKey}?payment=success`);
+    }
+    const storeId = reference.split("-")[1];
+    const store = await prisma.store.findUnique({ where: { id: storeId }, select: { slug: true } });
+    return NextResponse.redirect(store ? `${APP_URL}/store/${store.slug}/admin/apps?payment=failed` : `${APP_URL}/?payment=failed`);
   }
 
   // Invoice payments and quote deposits use their own reference prefixes

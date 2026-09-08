@@ -10,6 +10,7 @@ import { getStoreAccessRole, hasStorePermission } from "@/lib/access/store-acces
 import { findNavItemForPath } from "@/lib/constants/dashboard-nav";
 import { ThemeProvider, ThemeFlashGuard } from "@/components/theme/theme-provider";
 import { ThemeToggle } from "@/components/theme/theme-toggle";
+import { getPluginEntitlement } from "@/lib/plugins";
 
 export default async function StoreAdminLayout({
   children,
@@ -43,8 +44,9 @@ export default async function StoreAdminLayout({
     redirect(`/onboarding/select-plan?slug=${slug}`);
   }
 
-  if (isPmsRoute && role !== "PLATFORM_STAFF" && store.subscription?.name !== "Business Mogul") {
-    redirect(`/${slug}/admin/subscription?pms=upgrade`);
+  if (isPmsRoute && role !== "PLATFORM_STAFF") {
+    const pms = await getPluginEntitlement(store.id, "pms");
+    if (!pms.allowed) redirect(`/${slug}/admin/subscription?pms=upgrade`);
   }
 
   // MANAGER/STAFF only get the specific areas they were granted at invite

@@ -10,10 +10,10 @@ export default async function SubscriptionPage({
   searchParams,
 }: {
   params: Promise<{ slug: string }>;
-  searchParams: Promise<{ upgraded?: string; payment?: string; pms?: string }>;
+  searchParams: Promise<{ upgraded?: string; payment?: string; pms?: string; apps?: string }>;
 }) {
   const { slug } = await params;
-  const { upgraded, payment, pms } = await searchParams;
+  const { upgraded, payment, pms, apps } = await searchParams;
   const store = await prisma.store.findUnique({ where: { slug }, include: { subscription: true, business: true } });
   if (!store) return null;
 
@@ -34,6 +34,12 @@ export default async function SubscriptionPage({
       {pms === "upgrade" && (
         <div className="mb-4 rounded-xl border border-emerald-500/30 bg-emerald-500/5 px-4 py-3 text-sm">
           <strong>BizNest PMS is a Business Mogul feature.</strong> Upgrade this hotel to Business Mogul to unlock the dedicated property management workspace.
+        </div>
+      )}
+
+      {apps && apps !== "pms" && (
+        <div className="mb-4 rounded-xl border border-primary/30 bg-primary/5 px-4 py-3 text-sm">
+          <strong>Upgrade required.</strong> The selected app is not available on your current plan. Choose a supported plan below, then return to Apps to install it.
         </div>
       )}
 

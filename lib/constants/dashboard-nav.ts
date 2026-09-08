@@ -3,7 +3,7 @@ import {
   CreditCard, BarChart3, Star, Megaphone, MessageSquare,
   Settings, BadgeCheck, Wallet, LifeBuoy, Truck, Wand2,
   LayoutTemplate, FileText, FileSignature, MailWarning, Calculator, CalendarDays, Images,
-  ClipboardList, Hotel, PlusCircle, Layers, Rows3, ChefHat,
+  ClipboardList, PlusCircle, Layers, Rows3, ChefHat,
 } from "lucide-react";
 import { getAdaptiveDashboardConfig } from "@/lib/adaptive-dashboard";
 import { getBusinessTerminology } from "@/lib/business-terminology";
@@ -100,11 +100,6 @@ export function buildNavGroups(business: { sellsProducts: boolean; offersService
     .map((i) => ({ permission: "products", ...i } as NavItem));
   sellNavItems.push(...categoryExtraNavItems);
 
-  const pmsAppItems: NavItem[] =
-    business.category === "Hotel & Lodging" && business.subscriptionName === "Business Mogul"
-      ? [{ label: "BizNest PMS", href: "/pms", icon: Hotel, permission: "products" }]
-      : [];
-
   const allManageItems: NavItem[] = [
     { label: "Inventory", href: "/inventory", icon: Boxes, permission: "products" },
     { label: terminology.customer === "Client" ? "Clients" : terminology.customer + "s", href: "/customers", icon: Users, permission: "customers" },
@@ -129,7 +124,7 @@ export function buildNavGroups(business: { sellsProducts: boolean; offersService
       label: "Overview",
       items: [{ label: "Dashboard", href: "", icon: LayoutDashboard }],
     },
-    ...(pmsAppItems.length ? [{ label: "Apps", items: pmsAppItems }] : []),
+    { label: "Apps", items: [{ label: "App Marketplace", href: "/apps", icon: PlusCircle, ownerOnly: true }] },
     {
       label: "Sell",
       items: sellNavItems,

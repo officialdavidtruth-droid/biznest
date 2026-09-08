@@ -8,6 +8,7 @@ import { notifyStoreOwnerOfPaidOrder, notifyCustomerOfPaidOrder } from "@/lib/no
 import { NextResponse } from "next/server";
 import { settleWalletFunding, settleServiceBookingPayment } from "@/lib/actions/customer-wallet";
 import { settleReservationPayment } from "@/lib/actions/pms";
+import { settlePluginPurchase } from "@/lib/actions/plugins";
 
 /**
  * Server-to-server payment confirmation from Paystack.
@@ -93,6 +94,12 @@ export async function POST(req: Request) {
       where: { reference, status: "PENDING" },
       data: { status: "SUCCESSFUL", rawPayload: verification as object, verifiedAt: new Date() },
     });
+    return NextResponse.json({ received: true });
+  }
+
+  if (reference.startsWith("PLUG-")) {
+    const amountNaira = Number(verification.data?.amount ?? 0) / 100;
+    await settlePluginPurchase(reference, amountNaira, verification as object);
     return NextResponse.json({ received: true });
   }
 
