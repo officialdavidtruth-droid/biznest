@@ -142,7 +142,7 @@ export default async function HomePage() {
   return (
     <div
       className={`${display.variable} ${body.variable} ${mono.variable} min-h-screen overflow-x-clip`}
-      style={{ backgroundColor: "var(--bn-ink)", backgroundImage: "var(--bn-hero-gradient)", color: "var(--bn-ivory)", fontFamily: "var(--font-body)" }}
+      style={{ background: "var(--bn-hero-gradient)", color: "var(--bn-ivory)", fontFamily: "var(--font-body)" }}
     >
       {/* Nav */}
       <header
@@ -187,7 +187,8 @@ export default async function HomePage() {
       </header>
 
       {/* Hero */}
-      <section className="relative grid gap-10 overflow-hidden px-6 pb-16 pt-8 sm:px-10 lg:grid-cols-2 lg:items-center lg:gap-6 lg:pt-16">
+      <section className="relative grid gap-10 overflow-hidden px-6 pb-16 pt-8 sm:px-10 lg:grid-cols-2 lg:items-center lg:gap-6 lg:pt-16"
+        style={{ background: "var(--bn-hero-gradient)" }}>
         <div className="bn-glow-orb h-72 w-72" style={{ background: "rgba(52,211,153,0.22)", top: "-6rem", left: "-6rem" }} />
         <div className="bn-glow-orb h-64 w-64" style={{ background: "rgba(16,150,122,0.2)", top: "8rem", right: "-4rem" }} />
 
@@ -280,7 +281,7 @@ export default async function HomePage() {
 
       {/* Ledger strip — real counts from the platform, styled like a receipt
           rather than invented traction numbers, so it never overclaims. */}
-      <section className="px-6 py-10 sm:px-10" style={{ backgroundColor: "var(--bn-ink)", borderTop: "1px solid var(--bn-ink-line)", borderBottom: "1px solid var(--bn-ink-line)" }}>
+      <section className="px-6 py-10 sm:px-10" style={{ background: "var(--bn-ink)", borderTop: "1px solid var(--bn-ink-line)", borderBottom: "1px solid var(--bn-ink-line)" }}>
         <div className="mx-auto grid max-w-5xl gap-x-10 gap-y-4 sm:grid-cols-2 lg:grid-cols-4">
           {STATS.map((s) => (
             <div key={s.label} className="bn-receipt-row" style={{ fontFamily: "var(--font-mono)" }}>
@@ -292,7 +293,7 @@ export default async function HomePage() {
       </section>
 
       {/* How it works — a real 3-step sequence, so numbering earns its place */}
-      <section className="px-6 py-16 sm:px-10 lg:py-24" style={{ backgroundColor: "var(--bn-ink)" }}>
+      <section className="px-6 py-16 sm:px-10 lg:py-24" style={{ background: "var(--bn-ink)" }}>
         <h2 className="mb-10 text-2xl sm:text-3xl" style={{ fontFamily: "var(--font-display)", fontWeight: 700 }}>
           From idea to open for business
         </h2>
@@ -344,7 +345,7 @@ export default async function HomePage() {
       </section>
 
       {/* Categories */}
-      <section id="categories" className="px-6 py-16 sm:px-10 lg:py-20" style={{ backgroundColor: "var(--bn-ink)" }}>
+      <section id="categories" className="px-6 py-16 sm:px-10 lg:py-20" style={{ background: "var(--bn-ink)" }}>
         <h2 className="mb-8 text-2xl sm:text-3xl" style={{ fontFamily: "var(--font-display)", fontWeight: 700 }}>
           Whatever you sell, there's a stall for it
         </h2>
@@ -363,7 +364,7 @@ export default async function HomePage() {
 
       {/* Pricing — pulled live from the Subscription table, not hardcoded copy,
           so this page can never drift out of sync with what a store actually gets. */}
-      <section id="pricing" className="px-6 py-16 sm:px-10 lg:py-24" style={{ backgroundColor: "var(--bn-ink)" }}>
+      <section id="pricing" className="px-6 py-16 sm:px-10 lg:py-24" style={{ background: "var(--bn-ink)" }}>
         <h2 className="mb-3 text-2xl sm:text-3xl" style={{ fontFamily: "var(--font-display)", fontWeight: 700 }}>
           Simple pricing, real ownership
         </h2>
@@ -435,7 +436,7 @@ export default async function HomePage() {
       </section>
 
       {/* FAQ */}
-      <section className="px-6 py-16 sm:px-10 lg:py-24" style={{ backgroundColor: "var(--bn-ink)" }}>
+      <section className="px-6 py-16 sm:px-10 lg:py-24" style={{ background: "var(--bn-ink)" }}>
         <div className="mx-auto max-w-3xl">
           <h2 className="mb-10 text-2xl sm:text-3xl" style={{ fontFamily: "var(--font-display)", fontWeight: 700 }}>
             Questions people actually ask
@@ -445,7 +446,7 @@ export default async function HomePage() {
       </section>
 
       {/* Final CTA */}
-      <section className="relative overflow-hidden px-6 py-20 text-center sm:px-10 lg:py-28" style={{ backgroundColor: "var(--bn-ink)" }}>
+      <section className="relative overflow-hidden px-6 py-20 text-center sm:px-10 lg:py-28" style={{ background: "var(--bn-hero-gradient)" }}>
         <div className="bn-glow-orb h-80 w-80" style={{ background: "rgba(52,211,153,0.18)", bottom: "-8rem", left: "50%", transform: "translateX(-50%)" }} />
         <div className="relative z-10">
           <h2
@@ -476,7 +477,7 @@ export default async function HomePage() {
         </div>
       </section>
 
-      <footer style={{ backgroundColor: "var(--bn-ink)", borderTop: "1px solid var(--bn-ink-line)" }}>
+      <footer style={{ background: "var(--bn-ink)", borderTop: "1px solid var(--bn-ink-line)" }}>
         <div className="mx-auto grid max-w-6xl gap-10 px-6 py-14 sm:grid-cols-2 sm:px-10 lg:grid-cols-4">
           <div>
             <span className="text-lg tracking-tight" style={{ fontFamily: "var(--font-display)", fontWeight: 700 }}>
