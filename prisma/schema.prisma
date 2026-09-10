@@ -3295,7 +3295,6 @@ model PurchaseOrder {
   cancelledAt  DateTime?
 
   items        PurchaseOrderItem[]
-  inventoryBatches InventoryBatch[]
 
   createdAt    DateTime            @default(now())
   updatedAt    DateTime            @updatedAt
