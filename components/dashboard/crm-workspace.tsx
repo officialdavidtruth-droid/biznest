@@ -1,8 +1,8 @@
 "use client";
 
 import { useState, useTransition, type ReactNode } from "react";
-import { Activity, ArrowRight, Building2, CalendarClock, CheckCircle2, ChevronDown, Mail, Phone, Plus, Search, Target, Users, XCircle } from "lucide-react";
-import { addCrmActivity, createCrmLead, updateCrmLeadStatus } from "@/lib/actions/seo-crm";
+import { ArrowRight, Building2, CalendarClock, CheckCircle2, Mail, Phone, Plus, Search, Target, Users, XCircle } from "lucide-react";
+import { createCrmLead, updateCrmLeadStatus } from "@/lib/actions/seo-crm";
 
 type Lead = { id:string; name:string; email:string|null; phone:string|null; company:string|null; source:string; status:string; value:any; currency:string; notes:string|null; nextFollowUpAt:Date|null; activities:{id:string;type:string;title:string;body:string|null;createdAt:Date}[] };
 const stages=[["NEW","New"],["CONTACTED","Contacted"],["QUALIFIED","Qualified"],["PROPOSAL","Proposal"],["WON","Won"],["LOST","Lost"]] as const;

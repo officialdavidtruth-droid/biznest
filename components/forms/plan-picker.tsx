@@ -95,16 +95,6 @@ export function PlanPicker({
                   <li>✓ Lower commission rate (3%)</li>
                   <li>✓ Up to 3,000 products / 1,500 services</li>
                 </>
-              ) : (
-                <>
-                  <li>✓ Choose from our library of ready-made templates</li>
-                  <li>✓ WhatsApp order button built in</li>
-                  <li>✓ Delivery zones &amp; coupon codes</li>
-                  <li>✓ Order &amp; inventory management</li>
-                  <li>✓ Storefront analytics</li>
-                  <li>✓ Up to 300 products / 150 services</li>
-                  <li>— Custom domain (upgrade to unlock)</li>
-                </>
               )}
             </ul>
             <button
