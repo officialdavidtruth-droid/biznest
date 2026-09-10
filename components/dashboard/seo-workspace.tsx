@@ -6,7 +6,7 @@ import { saveStoreSeo } from "@/lib/actions/seo-crm";
 
 export function SeoWorkspace({slug,initial}:{slug:string;initial:{name:string;seoTitle:string;seoDescription:string;seoKeywords:string;seoCanonicalUrl:string;seoOgImage:string;seoNoIndex:boolean;seoGoogleVerification:string}}){
  const [v,setV]=useState(initial); const [pending,start]=useTransition(); const [msg,setMsg]=useState("");
- const save=()=>start(async()=>{const r=await saveStoreSeo(slug,v);setMsg(r.success?"SEO settings saved successfully.":r.error||"Could not save SEO settings.")});
+ const save=()=>start(async()=>{const r=await saveStoreSeo(slug,{title:v.seoTitle,description:v.seoDescription,keywords:v.seoKeywords,canonicalUrl:v.seoCanonicalUrl,ogImage:v.seoOgImage,noIndex:v.seoNoIndex,googleVerification:v.seoGoogleVerification});setMsg(r.success?"SEO settings saved successfully.":r.error||"Could not save SEO settings.")});
  const origin=typeof window!=="undefined"?window.location.origin:"https://biznest.space";
  const url=v.seoCanonicalUrl||`${origin}/${slug}`;
  return <div className="space-y-6">
