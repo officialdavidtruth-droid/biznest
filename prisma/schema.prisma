@@ -600,6 +600,11 @@ model Store {
 
   seoTitle      String?
   seoDescription String?
+  seoKeywords   String?
+  seoCanonicalUrl String?
+  seoOgImage    String?
+  seoNoIndex    Boolean @default(false)
+  seoGoogleVerification String?
 
   socialLinks   Json? // { instagram, facebook, twitter, tiktok, whatsapp }
   contactEmail  String?
