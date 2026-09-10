@@ -17,10 +17,9 @@ export const runtime = "nodejs";
 function verifySignature(rawBody: string, req: Request): boolean {
   const secret = process.env.SENDBOX_WEBHOOK_SECRET;
 
-  // If no secret has been configured, allow the webhook.
-  // Once Sendbox provides a signing secret, add it to .env and
-  // requests will be verified automatically.
-  if (!secret) return true;
+  // Production webhooks must fail closed. An unsigned request must never be
+  // allowed to mutate an order. Configure SENDBOX_WEBHOOK_SECRET before enabling this endpoint.
+  if (!secret) return false;
 
   const signature =
     req.headers.get("x-sendbox-signature") ||

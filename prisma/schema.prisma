@@ -728,6 +728,15 @@ model Store {
   customerProfiles StoreCustomerProfile[]
   staffMembers  StoreStaff[]
   activityLogs  StoreActivityLog[]
+  automations Automation[]
+  automationRuns AutomationRun[]
+  businessDocuments BusinessDocument[]
+  approvalRequests ApprovalRequest[]
+  reportDefinitions ReportDefinition[]
+  realEstateProperties RealEstateProperty[]
+  autoVehicles AutoVehicle[]
+  photoShoots PhotoShoot[]
+  tailoringJobs TailoringJob[]
 
   createdAt     DateTime    @default(now())
   updatedAt     DateTime    @updatedAt
@@ -2558,6 +2567,206 @@ model AuditLog {
   createdAt DateTime @default(now())
 
   @@index([entity, entityId])
+}
+
+
+// ----------------------------------------------------------------------------
+// BIZNEST AUTOMATIONS
+// Generic, store-scoped trigger/condition/action workflows. JSON keeps the
+// engine extensible while the action executor validates every operation.
+// ----------------------------------------------------------------------------
+enum AutomationStatus {
+  ACTIVE
+  PAUSED
+}
+
+model Automation {
+  id          String           @id @default(cuid())
+  storeId     String
+  store       Store            @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  name        String
+  description String?
+  trigger     String
+  conditions  Json?
+  actions     Json
+  status      AutomationStatus @default(ACTIVE)
+  createdById String?
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
+  runs        AutomationRun[]
+  @@index([storeId, status])
+  @@index([storeId, trigger])
+}
+
+model AutomationRun {
+  id           String     @id @default(cuid())
+  storeId      String
+  store        Store      @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  automationId String
+  automation   Automation @relation(fields: [automationId], references: [id], onDelete: Cascade)
+  status       String
+  event        Json?
+  result       Json?
+  error        String?
+  startedAt    DateTime   @default(now())
+  finishedAt   DateTime?
+  @@index([storeId, startedAt])
+  @@index([automationId, startedAt])
+}
+
+// ----------------------------------------------------------------------------
+// DOCUMENTS / APPROVALS / REPORT BUILDER
+// ----------------------------------------------------------------------------
+model BusinessDocument {
+  id          String   @id @default(cuid())
+  storeId     String
+  store       Store    @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  title       String
+  documentType String
+  fileUrl     String
+  entityType  String?
+  entityId    String?
+  expiresAt   DateTime?
+  metadata    Json?
+  createdById String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  @@index([storeId, documentType])
+  @@index([storeId, entityType, entityId])
+  @@index([storeId, expiresAt])
+}
+
+enum ApprovalStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  CANCELLED
+}
+
+model ApprovalRequest {
+  id           String         @id @default(cuid())
+  storeId      String
+  store        Store          @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  title        String
+  requestType  String
+  entityType   String?
+  entityId     String?
+  requestedById String?
+  approverId   String?
+  status       ApprovalStatus @default(PENDING)
+  note         String?
+  metadata     Json?
+  createdAt    DateTime       @default(now())
+  decidedAt    DateTime?
+  @@index([storeId, status, createdAt])
+  @@index([storeId, entityType, entityId])
+}
+
+model ReportDefinition {
+  id          String   @id @default(cuid())
+  storeId     String
+  store       Store    @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  name        String
+  description String?
+  source      String
+  fields      Json
+  filters     Json?
+  groupBy     Json?
+  schedule    String?
+  recipients  Json?
+  createdById String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  @@unique([storeId, name])
+  @@index([storeId, source])
+}
+
+// ----------------------------------------------------------------------------
+// VERTICAL WORKFLOW RECORDS. These complement core Products/Customers/
+// Orders/Invoices/Bookings instead of duplicating them.
+// ----------------------------------------------------------------------------
+model RealEstateProperty {
+  id          String   @id @default(cuid())
+  storeId     String
+  store       Store    @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  name        String
+  propertyType String
+  address     String?
+  status      String   @default("AVAILABLE")
+  metadata    Json?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  units       RealEstateUnit[]
+  @@index([storeId, status])
+}
+model RealEstateUnit {
+  id          String   @id @default(cuid())
+  propertyId  String
+  property    RealEstateProperty @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+  unitNo      String
+  status      String   @default("VACANT")
+  rentAmount  Decimal? @db.Decimal(12,2)
+  tenantName  String?
+  leaseStart  DateTime?
+  leaseEnd    DateTime?
+  metadata    Json?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  @@unique([propertyId, unitNo])
+  @@index([propertyId, status])
+}
+
+model AutoVehicle {
+  id          String   @id @default(cuid())
+  storeId     String
+  store       Store    @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  registration String
+  make        String?
+  model       String?
+  year        Int?
+  customerName String?
+  customerPhone String?
+  mileage     Int?
+  metadata    Json?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  @@unique([storeId, registration])
+  @@index([storeId, customerPhone])
+}
+
+model PhotoShoot {
+  id          String   @id @default(cuid())
+  storeId     String
+  store       Store    @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  title       String
+  shootDate   DateTime?
+  status      String   @default("PLANNED")
+  clientName  String?
+  clientEmail String?
+  proofUrl    String?
+  finalUrl    String?
+  metadata    Json?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  @@index([storeId, status, shootDate])
+}
+
+model TailoringJob {
+  id          String   @id @default(cuid())
+  storeId     String
+  store       Store    @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  jobNo       String
+  customerName String
+  garmentType String
+  stage       String   @default("MEASUREMENTS")
+  dueDate     DateTime?
+  measurements Json?
+  fabric       Json?
+  notes       String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  @@unique([storeId, jobNo])
+  @@index([storeId, stage, dueDate])
 }
 
 // ----------------------------------------------------------------------------

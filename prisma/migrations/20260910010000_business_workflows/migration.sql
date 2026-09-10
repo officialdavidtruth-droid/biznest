@@ -1,0 +1,45 @@
+CREATE TYPE "AutomationStatus" AS ENUM ('ACTIVE','PAUSED');
+CREATE TYPE "ApprovalStatus" AS ENUM ('PENDING','APPROVED','REJECTED','CANCELLED');
+
+CREATE TABLE "Automation" ("id" TEXT NOT NULL,"storeId" TEXT NOT NULL,"name" TEXT NOT NULL,"description" TEXT,"trigger" TEXT NOT NULL,"conditions" JSONB,"actions" JSONB NOT NULL,"status" "AutomationStatus" NOT NULL DEFAULT 'ACTIVE',"createdById" TEXT,"createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,"updatedAt" TIMESTAMP(3) NOT NULL,CONSTRAINT "Automation_pkey" PRIMARY KEY ("id"));
+CREATE TABLE "AutomationRun" ("id" TEXT NOT NULL,"storeId" TEXT NOT NULL,"automationId" TEXT NOT NULL,"status" TEXT NOT NULL,"event" JSONB,"result" JSONB,"error" TEXT,"startedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,"finishedAt" TIMESTAMP(3),CONSTRAINT "AutomationRun_pkey" PRIMARY KEY ("id"));
+CREATE TABLE "BusinessDocument" ("id" TEXT NOT NULL,"storeId" TEXT NOT NULL,"title" TEXT NOT NULL,"documentType" TEXT NOT NULL,"fileUrl" TEXT NOT NULL,"entityType" TEXT,"entityId" TEXT,"expiresAt" TIMESTAMP(3),"metadata" JSONB,"createdById" TEXT,"createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,"updatedAt" TIMESTAMP(3) NOT NULL,CONSTRAINT "BusinessDocument_pkey" PRIMARY KEY ("id"));
+CREATE TABLE "ApprovalRequest" ("id" TEXT NOT NULL,"storeId" TEXT NOT NULL,"title" TEXT NOT NULL,"requestType" TEXT NOT NULL,"entityType" TEXT,"entityId" TEXT,"requestedById" TEXT,"approverId" TEXT,"status" "ApprovalStatus" NOT NULL DEFAULT 'PENDING',"note" TEXT,"metadata" JSONB,"createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,"decidedAt" TIMESTAMP(3),CONSTRAINT "ApprovalRequest_pkey" PRIMARY KEY ("id"));
+CREATE TABLE "ReportDefinition" ("id" TEXT NOT NULL,"storeId" TEXT NOT NULL,"name" TEXT NOT NULL,"description" TEXT,"source" TEXT NOT NULL,"fields" JSONB NOT NULL,"filters" JSONB,"groupBy" JSONB,"schedule" TEXT,"recipients" JSONB,"createdById" TEXT,"createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,"updatedAt" TIMESTAMP(3) NOT NULL,CONSTRAINT "ReportDefinition_pkey" PRIMARY KEY ("id"));
+CREATE TABLE "RealEstateProperty" ("id" TEXT NOT NULL,"storeId" TEXT NOT NULL,"name" TEXT NOT NULL,"propertyType" TEXT NOT NULL,"address" TEXT,"status" TEXT NOT NULL DEFAULT 'AVAILABLE',"metadata" JSONB,"createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,"updatedAt" TIMESTAMP(3) NOT NULL,CONSTRAINT "RealEstateProperty_pkey" PRIMARY KEY ("id"));
+CREATE TABLE "RealEstateUnit" ("id" TEXT NOT NULL,"propertyId" TEXT NOT NULL,"unitNo" TEXT NOT NULL,"status" TEXT NOT NULL DEFAULT 'VACANT',"rentAmount" DECIMAL(12,2),"tenantName" TEXT,"leaseStart" TIMESTAMP(3),"leaseEnd" TIMESTAMP(3),"metadata" JSONB,"createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,"updatedAt" TIMESTAMP(3) NOT NULL,CONSTRAINT "RealEstateUnit_pkey" PRIMARY KEY ("id"));
+CREATE TABLE "AutoVehicle" ("id" TEXT NOT NULL,"storeId" TEXT NOT NULL,"registration" TEXT NOT NULL,"make" TEXT,"model" TEXT,"year" INTEGER,"customerName" TEXT,"customerPhone" TEXT,"mileage" INTEGER,"metadata" JSONB,"createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,"updatedAt" TIMESTAMP(3) NOT NULL,CONSTRAINT "AutoVehicle_pkey" PRIMARY KEY ("id"));
+CREATE TABLE "PhotoShoot" ("id" TEXT NOT NULL,"storeId" TEXT NOT NULL,"title" TEXT NOT NULL,"shootDate" TIMESTAMP(3),"status" TEXT NOT NULL DEFAULT 'PLANNED',"clientName" TEXT,"clientEmail" TEXT,"proofUrl" TEXT,"finalUrl" TEXT,"metadata" JSONB,"createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,"updatedAt" TIMESTAMP(3) NOT NULL,CONSTRAINT "PhotoShoot_pkey" PRIMARY KEY ("id"));
+CREATE TABLE "TailoringJob" ("id" TEXT NOT NULL,"storeId" TEXT NOT NULL,"jobNo" TEXT NOT NULL,"customerName" TEXT NOT NULL,"garmentType" TEXT NOT NULL,"stage" TEXT NOT NULL DEFAULT 'MEASUREMENTS',"dueDate" TIMESTAMP(3),"measurements" JSONB,"fabric" JSONB,"notes" TEXT,"createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,"updatedAt" TIMESTAMP(3) NOT NULL,CONSTRAINT "TailoringJob_pkey" PRIMARY KEY ("id"));
+
+CREATE UNIQUE INDEX "ReportDefinition_storeId_name_key" ON "ReportDefinition"("storeId","name");
+CREATE UNIQUE INDEX "RealEstateUnit_propertyId_unitNo_key" ON "RealEstateUnit"("propertyId","unitNo");
+CREATE UNIQUE INDEX "AutoVehicle_storeId_registration_key" ON "AutoVehicle"("storeId","registration");
+CREATE UNIQUE INDEX "TailoringJob_storeId_jobNo_key" ON "TailoringJob"("storeId","jobNo");
+CREATE INDEX "Automation_storeId_status_idx" ON "Automation"("storeId","status");
+CREATE INDEX "Automation_storeId_trigger_idx" ON "Automation"("storeId","trigger");
+CREATE INDEX "AutomationRun_storeId_startedAt_idx" ON "AutomationRun"("storeId","startedAt");
+CREATE INDEX "AutomationRun_automationId_startedAt_idx" ON "AutomationRun"("automationId","startedAt");
+CREATE INDEX "BusinessDocument_storeId_documentType_idx" ON "BusinessDocument"("storeId","documentType");
+CREATE INDEX "BusinessDocument_storeId_entityType_entityId_idx" ON "BusinessDocument"("storeId","entityType","entityId");
+CREATE INDEX "BusinessDocument_storeId_expiresAt_idx" ON "BusinessDocument"("storeId","expiresAt");
+CREATE INDEX "ApprovalRequest_storeId_status_createdAt_idx" ON "ApprovalRequest"("storeId","status","createdAt");
+CREATE INDEX "ApprovalRequest_storeId_entityType_entityId_idx" ON "ApprovalRequest"("storeId","entityType","entityId");
+CREATE INDEX "ReportDefinition_storeId_source_idx" ON "ReportDefinition"("storeId","source");
+CREATE INDEX "RealEstateProperty_storeId_status_idx" ON "RealEstateProperty"("storeId","status");
+CREATE INDEX "RealEstateUnit_propertyId_status_idx" ON "RealEstateUnit"("propertyId","status");
+CREATE INDEX "AutoVehicle_storeId_customerPhone_idx" ON "AutoVehicle"("storeId","customerPhone");
+CREATE INDEX "PhotoShoot_storeId_status_shootDate_idx" ON "PhotoShoot"("storeId","status","shootDate");
+CREATE INDEX "TailoringJob_storeId_stage_dueDate_idx" ON "TailoringJob"("storeId","stage","dueDate");
+
+ALTER TABLE "Automation" ADD CONSTRAINT "Automation_storeId_fkey" FOREIGN KEY ("storeId") REFERENCES "Store"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+ALTER TABLE "AutomationRun" ADD CONSTRAINT "AutomationRun_storeId_fkey" FOREIGN KEY ("storeId") REFERENCES "Store"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+ALTER TABLE "AutomationRun" ADD CONSTRAINT "AutomationRun_automationId_fkey" FOREIGN KEY ("automationId") REFERENCES "Automation"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+ALTER TABLE "BusinessDocument" ADD CONSTRAINT "BusinessDocument_storeId_fkey" FOREIGN KEY ("storeId") REFERENCES "Store"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+ALTER TABLE "ApprovalRequest" ADD CONSTRAINT "ApprovalRequest_storeId_fkey" FOREIGN KEY ("storeId") REFERENCES "Store"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+ALTER TABLE "ReportDefinition" ADD CONSTRAINT "ReportDefinition_storeId_fkey" FOREIGN KEY ("storeId") REFERENCES "Store"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+ALTER TABLE "RealEstateProperty" ADD CONSTRAINT "RealEstateProperty_storeId_fkey" FOREIGN KEY ("storeId") REFERENCES "Store"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+ALTER TABLE "RealEstateUnit" ADD CONSTRAINT "RealEstateUnit_propertyId_fkey" FOREIGN KEY ("propertyId") REFERENCES "RealEstateProperty"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+ALTER TABLE "AutoVehicle" ADD CONSTRAINT "AutoVehicle_storeId_fkey" FOREIGN KEY ("storeId") REFERENCES "Store"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+ALTER TABLE "PhotoShoot" ADD CONSTRAINT "PhotoShoot_storeId_fkey" FOREIGN KEY ("storeId") REFERENCES "Store"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+ALTER TABLE "TailoringJob" ADD CONSTRAINT "TailoringJob_storeId_fkey" FOREIGN KEY ("storeId") REFERENCES "Store"("id") ON DELETE CASCADE ON UPDATE CASCADE;

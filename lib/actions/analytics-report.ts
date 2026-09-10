@@ -1,6 +1,7 @@
 "use server";
 
 import { prisma } from "@/lib/prisma";
+import { assertStorePermission } from "@/lib/access/assert-store-access";
 
 // --- Deep store analytics ----------------------------------------------------
 // Everything on the /admin/analytics dashboard, computed for an arbitrary
@@ -86,6 +87,15 @@ function bucketReferrer(referrer: string | null, storeHost: string | null): Traf
 }
 
 export async function getStoreAnalytics(storeId: string, rangeDays = 30): Promise<StoreAnalytics> {
+  // Never trust a client-supplied storeId for a private analytics report.
+  // Resolve the store from the authenticated dashboard context and require
+  // the analytics permission before touching any order/customer data.
+  const requestedStore = await prisma.store.findUnique({ where: { id: storeId }, select: { slug: true } });
+  if (!requestedStore) throw new Error("Store not found.");
+  const access = await assertStorePermission(requestedStore.slug, "analytics");
+  if (!access.success) throw new Error(access.error);
+  if (access.store.id !== storeId) throw new Error("Store access mismatch.");
+
   const since = new Date();
   since.setDate(since.getDate() - (rangeDays - 1));
   since.setHours(0, 0, 0, 0);

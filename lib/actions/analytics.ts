@@ -2,7 +2,9 @@
 
 import { headers } from "next/headers";
 import { prisma } from "@/lib/prisma";
+import { assertStorePermission } from "@/lib/access/assert-store-access";
 import { SELLER_VISIBLE_ORDER_STATUSES } from "@/lib/constants/order";
+import { checkRateLimit, getClientIp } from "@/lib/rate-limit";
 
 /**
  * Records one storefront page view. Fire-and-forget, best-effort: analytics
@@ -21,8 +23,14 @@ import { SELLER_VISIBLE_ORDER_STATUSES } from "@/lib/constants/order";
 export async function recordStoreVisit(storeId: string, path: string): Promise<void> {
   try {
     const h = await headers();
-    const referrer = h.get("referer") || null;
-    await prisma.storeVisit.create({ data: { storeId, path, referrer } });
+    const store = await prisma.store.findFirst({ where: { id: storeId, status: "ACTIVE" }, select: { id: true } });
+    if (!store) return;
+    const ip = getClientIp(h);
+    const rate = await checkRateLimit(`store-visit:${storeId}:${ip}`, 120, 60 * 60 * 1000);
+    if (!rate.allowed) return;
+    const safePath = String(path ?? "").slice(0, 500);
+    const referrer = (h.get("referer") || null)?.slice(0, 1000) ?? null;
+    await prisma.storeVisit.create({ data: { storeId: store.id, path: safePath, referrer } });
   } catch {
     // Never let analytics logging take down a storefront page.
   }
@@ -71,6 +79,10 @@ const PAID_STATUSES = SELLER_VISIBLE_ORDER_STATUSES;
  * whoever checks first thing in the morning.
  */
 export async function getDashboardInsights(storeId: string, slug: string): Promise<DashboardInsights> {
+  const access = await assertStorePermission(slug, "analytics");
+  if (!access.success || access.store.id !== storeId) {
+    throw new Error(access.success ? "Store access mismatch." : access.error);
+  }
   const since24h = new Date(Date.now() - 24 * 60 * 60 * 1000);
   const since48h = new Date(Date.now() - 48 * 60 * 60 * 1000);
   const since7d = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);

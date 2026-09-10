@@ -1,6 +1,8 @@
 import { prisma } from "@/lib/prisma";
 import { PDFDocument, StandardFonts, rgb } from "pdf-lib";
 import { NextResponse } from "next/server";
+import { auth } from "@/lib/auth";
+import { getStoreAccessRole } from "@/lib/access/store-access";
 
 /**
  * Renders a simple, clean PDF for an invoice on the fly. Deliberately not
@@ -12,9 +14,21 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
   const { id } = await params;
   const invoice = await prisma.invoice.findUnique({
     where: { id },
-    include: { items: true, store: true, customer: true },
+    include: { items: true, store: { include: { business: true } }, customer: true },
   });
   if (!invoice) return NextResponse.json({ error: "Invoice not found" }, { status: 404 });
+  if (invoice.status === "DRAFT") return NextResponse.json({ error: "Invoice not available" }, { status: 404 });
+
+  const session = await auth();
+  let allowed = false;
+  if (session?.user?.id) {
+    if (invoice.customerId === session.user.id) allowed = true;
+    if (!allowed) {
+      const role = await getStoreAccessRole(session.user.id, session.user.role, invoice.store);
+      allowed = role !== null;
+    }
+  }
+  if (!allowed) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const doc = await PDFDocument.create();
   const page = doc.addPage([595.28, 841.89]); // A4

@@ -746,7 +746,17 @@ export function generateFabtexVariation(): GeneratedTemplate {
   return { ...FABTEX_THEME, variationName: TEMPLATE_NAME_FABTEX, tierRank: 3 };
 }
 
-export function getTemplateTheme(_category: string | undefined, _storeName: string): TemplateTheme {
+export function getTemplateTheme(category: string | undefined, storeName: string): TemplateTheme {
+  const c = `${category || ""} ${storeName || ""}`.toLowerCase();
+  if (c.includes("professional") || c.includes("consult") || c.includes("legal") || c.includes("account") || c.includes("agency")) return PROFESSIONAL_SERVICE_TEMPLATE_CATALOG[0] as TemplateTheme;
+  if (c.includes("hotel") || c.includes("lodging")) return getSignatureTheme("Grand — Hotel & Hospitality");
+  if (c.includes("restaurant") || c.includes("food")) return getSignatureTheme("Ember — Restaurant");
+  if (c.includes("salon") || c.includes("beauty")) return getSignatureTheme("Muse — Salon & Beauty");
+  if (c.includes("photograph")) return getSignatureTheme("Frame — Photography Studio");
+  if (c.includes("construction")) return getSignatureTheme("Forge — Construction");
+  if (c.includes("fashion") || c.includes("tailor")) return getSignatureTheme("Atelier — Modern Fashion");
+  if (c.includes("grocery") || c.includes("supermarket")) return getSignatureTheme("Harvest — Grocery Market");
+  if (c.includes("real estate")) return HOMEVISTA_THEME;
   return FRESH_THEME;
 }
 

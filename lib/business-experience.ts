@@ -47,7 +47,7 @@ export function getBusinessExperience(category?: string | null, model?: Business
     const navigation = hotel
       ? [{ label: "Home", href: "/" }, { label: "Rooms", href: "/services" }, { label: "Amenities", href: "/#amenities" }, { label: "Gallery", href: "/#gallery" }, { label: "About", href: "/about" }, { label: "Contact", href: "/contact" }]
       : restaurant
-        ? [{ label: "Home", href: "/" }, { label: "Menu", href: "/services" }, { label: "About", href: "/about" }, { label: "Gallery", href: "/#gallery" }, { label: "Reservations", href: "/services" }, { label: "Contact", href: "/contact" }]
+        ? [{ label: "Home", href: "/" }, { label: "Menu", href: "/services" }, { label: "About", href: "/about" }, { label: "Gallery", href: "/#gallery" }, { label: "Reservations", href: "/contact" }, { label: "Contact", href: "/contact" }]
         : salon
           ? [{ label: "Home", href: "/" }, { label: "Services", href: "/services" }, { label: "Stylists", href: "/#team" }, { label: "Gallery", href: "/#gallery" }, { label: "About", href: "/about" }, { label: "Contact", href: "/contact" }]
           : portfolio
