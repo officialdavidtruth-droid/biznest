@@ -99,7 +99,6 @@ function LoginInner() {
         </button>
 
         <p className="text-center text-[10px]" style={{ color: "hsl(var(--muted-foreground))" }}>
-          PIN is set via <code>ADMIN_PIN</code> in your environment variables.
         </p>
       </div>
     </div>
