@@ -1,0 +1,14 @@
+{
+  "release": "production-hardened",
+  "changes": [
+    "Sanitized .env.example"
+  ],
+  "remaining_required_runtime_validation": [
+    "npm ci",
+    "npm test",
+    "npm run lint",
+    "npm run build",
+    "two-account/two-store authorization penetration test"
+  ],
+  "important": "Rotate any credential previously exposed in source or environment examples."
+}
