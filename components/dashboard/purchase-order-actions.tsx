@@ -21,6 +21,8 @@ export function PurchaseOrderActions({
   const router = useRouter();
   const [isBusy, setIsBusy] = useState(false);
   const [receiveQty, setReceiveQty] = useState<Record<string, string>>({});
+  const [batchNumber, setBatchNumber] = useState<Record<string, string>>({});
+  const [expiryDate, setExpiryDate] = useState<Record<string, string>>({});
 
   async function handleSend() {
     setIsBusy(true);
@@ -52,7 +54,7 @@ export function PurchaseOrderActions({
 
   async function handleReceive() {
     const lines = Object.entries(receiveQty)
-      .map(([itemId, v]) => ({ itemId, quantity: Number(v) }))
+      .map(([itemId, v]) => ({ itemId, quantity: Number(v), batchNumber: batchNumber[itemId] || undefined, expiryDate: expiryDate[itemId] || undefined }))
       .filter((l) => l.quantity > 0);
     if (lines.length === 0) {
       toast.error("Enter a received quantity for at least one line.");
@@ -85,7 +87,7 @@ export function PurchaseOrderActions({
       {(status === "SENT" || status === "PARTIALLY_RECEIVED") && (
         <div className="rounded-lg border p-4">
           <div className="mb-3 flex items-center justify-between">
-            <h3 className="text-sm font-semibold">Receive stock</h3>
+            <div><h3 className="text-sm font-semibold">Receive stock</h3><p className="mt-1 text-[11px] text-muted-foreground">FIFO uses the oldest received batch first. Add lot and expiry details for food/perishables.</p></div>
             <button onClick={fillRemaining} className="text-xs font-medium text-primary hover:underline">
               Fill all remaining
             </button>
@@ -102,10 +104,23 @@ export function PurchaseOrderActions({
                     min="0"
                     max={remaining}
                     disabled={remaining === 0}
-                    placeholder="0"
+                    placeholder="Qty"
                     value={receiveQty[item.id] ?? ""}
                     onChange={(e) => setReceiveQty((prev) => ({ ...prev, [item.id]: e.target.value }))}
-                    className="w-24 rounded-md border px-2 py-1.5 text-sm disabled:opacity-50"
+                    className="w-20 rounded-md border px-2 py-1.5 text-sm disabled:opacity-50"
+                  />
+                  <input
+                    type="text"
+                    placeholder="Batch / lot"
+                    value={batchNumber[item.id] ?? ""}
+                    onChange={(e) => setBatchNumber((prev) => ({ ...prev, [item.id]: e.target.value }))}
+                    className="w-28 rounded-md border px-2 py-1.5 text-sm"
+                  />
+                  <input
+                    type="date"
+                    value={expiryDate[item.id] ?? ""}
+                    onChange={(e) => setExpiryDate((prev) => ({ ...prev, [item.id]: e.target.value }))}
+                    className="w-32 rounded-md border px-2 py-1.5 text-sm"
                   />
                 </div>
               );

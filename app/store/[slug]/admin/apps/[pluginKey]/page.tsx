@@ -1,24 +1,19 @@
 import { notFound, redirect } from "next/navigation";
 import { getPluginEntitlement } from "@/lib/plugins";
 import { prisma } from "@/lib/prisma";
-import { assertStorePermission } from "@/lib/access/assert-store-access";
-import CRMPage from "../crm/page";
-import SEOPage from "../seo/page";
 import FinancialControlPage from "../financial-control/page";
+import RequisitionPage from "../requisition/page";
+import FnbOperationsPage from "../fnb-operations/page";
 
 export default async function PluginPage({ params }: { params: Promise<{ slug: string; pluginKey: string }> }) {
   const { slug, pluginKey } = await params;
-  if (pluginKey === "financial-control") return <FinancialControlPage params={Promise.resolve({ slug })} />;
-  if (pluginKey === "crm") return <CRMPage params={Promise.resolve({ slug })} />;
-  if (pluginKey === "seo") return <SEOPage params={Promise.resolve({ slug })} />;
-
-  const access = await assertStorePermission(slug, "settings");
-  if (!access.success) return null;
   const store = await prisma.store.findUnique({ where: { slug }, select: { id: true } });
   if (!store) notFound();
   const entitlement = await getPluginEntitlement(store.id, pluginKey);
-  if (!entitlement.allowed) redirect(`/store/${slug}/admin/apps`);
-  if (!entitlement.installed) redirect(`/store/${slug}/admin/apps`);
+  if (!entitlement.allowed || !entitlement.installed) redirect(`/store/${slug}/admin/apps`);
+  if (pluginKey === "financial-control") return <FinancialControlPage params={Promise.resolve({ slug })} />;
+  if (pluginKey === "requisition") return <RequisitionPage params={Promise.resolve({ slug })} />;
+  if (pluginKey === "fnb-operations") return <FnbOperationsPage params={Promise.resolve({ slug })} />;
 
   return (
     <div className="rounded-2xl border bg-background p-8">

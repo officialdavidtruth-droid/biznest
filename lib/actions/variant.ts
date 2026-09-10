@@ -1,6 +1,7 @@
 "use server";
 
 import { prisma } from "@/lib/prisma";
+import { consumeFifoStockTx, createFifoBatchTx } from "@/lib/inventory-fifo";
 import { revalidatePath } from "next/cache";
 import { roundMoney } from "@/lib/utils/pricing";
 import { variantOptionSchema, variantSchema, type VariantOption, type VariantInput } from "@/lib/validations/variant";
@@ -255,9 +256,14 @@ export async function adjustVariantStock(
             isActive: justRanOut ? variant.isActive : justRestocked ? true : variant.isActive,
           },
         });
-        await tx.stockMovement.create({
+        const movement = await tx.stockMovement.create({
           data: { variantId, storeId: access.store.id, type, quantityChange: delta, quantityAfter: nextQuantity, note: note || null },
         });
+        if (delta > 0) {
+          await createFifoBatchTx(tx, { variantId, storeId: access.store.id, quantity: delta, unitCost: variant.costPrice == null ? null : Number(variant.costPrice), sourceNote: note || type });
+        } else {
+          await consumeFifoStockTx(tx, { variantId, storeId: access.store.id, quantity: Math.abs(delta), stockMovementId: movement.id });
+        }
         return nextQuantity;
       }, { isolationLevel: "Serializable", timeout: 15000 });
       break;

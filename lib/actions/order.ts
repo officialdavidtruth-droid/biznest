@@ -6,6 +6,7 @@ import {
   getStoreCustomerSessionForStore,
 } from "@/lib/store-customer-auth";
 import { prisma } from "@/lib/prisma";
+import { consumeFifoStockTx } from "@/lib/inventory-fifo";
 import {
   requireStoreCustomer,
   requireStoreCustomerByStoreId,
@@ -86,112 +87,28 @@ export async function decrementStockForOrder(
 
   for (const item of order.items) {
     if (item.variantId) {
-      const variant =
-        await tx.productVariant.findUnique({
-          where: {
-            id: item.variantId,
-          },
-        });
-
+      const variant = await tx.productVariant.findFirst({ where: { id: item.variantId, storeId: order.storeId } });
       if (!variant) continue;
-
-      const nextQuantity = Math.max(
-        0,
-        variant.quantity - item.quantity
-      );
-
-      const oversold =
-        item.quantity > variant.quantity;
-
-      const justRanOut =
-        variant.quantity > 0 &&
-        nextQuantity === 0;
-
-      await tx.productVariant.update({
-        where: {
-          id: item.variantId,
-        },
-        data: {
-          quantity: nextQuantity,
-          autoUnpublished: justRanOut
-            ? true
-            : variant.autoUnpublished,
-        },
+      if (item.quantity > variant.quantity) throw new Error(`Not enough stock for ${variant.label}.`);
+      const nextQuantity = variant.quantity - item.quantity;
+      const justRanOut = variant.quantity > 0 && nextQuantity === 0;
+      await tx.productVariant.update({ where: { id: variant.id }, data: { quantity: nextQuantity, autoUnpublished: justRanOut ? true : variant.autoUnpublished } });
+      const movement = await tx.stockMovement.create({
+        data: { variantId: variant.id, storeId: order.storeId, orderId: order.id, type: "SALE", quantityChange: -item.quantity, quantityAfter: nextQuantity, note: `Online sale (order ${order.id})` },
       });
-
-      await tx.stockMovement.create({
-        data: {
-          variantId: item.variantId,
-          storeId: order.storeId,
-          orderId: order.id,
-          type: "SALE",
-          quantityChange:
-            -(variant.quantity - nextQuantity),
-          quantityAfter: nextQuantity,
-          note: oversold
-            ? `Online sale (order ${order.id}) — oversold, clamped at 0`
-            : `Online sale (order ${order.id})`,
-        },
-      });
+      await consumeFifoStockTx(tx, { variantId: variant.id, storeId: order.storeId, quantity: item.quantity, stockMovementId: movement.id });
     } else if (item.productId) {
-      const inventory =
-        await tx.inventoryItem.findUnique({
-          where: {
-            productId: item.productId,
-          },
-        });
-
+      const inventory = await tx.inventoryItem.findFirst({ where: { productId: item.productId, storeId: order.storeId } });
       if (!inventory) continue;
-
-      const nextQuantity = Math.max(
-        0,
-        inventory.quantity - item.quantity
-      );
-
-      const oversold =
-        item.quantity > inventory.quantity;
-
-      const justRanOut =
-        inventory.quantity > 0 &&
-        nextQuantity === 0;
-
-      await tx.inventoryItem.update({
-        where: {
-          id: inventory.id,
-        },
-        data: {
-          quantity: nextQuantity,
-          autoUnpublished: justRanOut
-            ? true
-            : inventory.autoUnpublished,
-        },
+      if (item.quantity > inventory.quantity) throw new Error(`Not enough stock for ${item.productId}.`);
+      const nextQuantity = inventory.quantity - item.quantity;
+      const justRanOut = inventory.quantity > 0 && nextQuantity === 0;
+      await tx.inventoryItem.update({ where: { id: inventory.id }, data: { quantity: nextQuantity, autoUnpublished: justRanOut ? true : inventory.autoUnpublished } });
+      if (justRanOut) await tx.product.update({ where: { id: item.productId }, data: { isPublished: false } });
+      const movement = await tx.stockMovement.create({
+        data: { inventoryItemId: inventory.id, storeId: order.storeId, orderId: order.id, type: "SALE", quantityChange: -item.quantity, quantityAfter: nextQuantity, note: `Online sale (order ${order.id})` },
       });
-
-      if (justRanOut) {
-        await tx.product.update({
-          where: {
-            id: item.productId,
-          },
-          data: {
-            isPublished: false,
-          },
-        });
-      }
-
-      await tx.stockMovement.create({
-        data: {
-          inventoryItemId: inventory.id,
-          storeId: order.storeId,
-          orderId: order.id,
-          type: "SALE",
-          quantityChange:
-            -(inventory.quantity - nextQuantity),
-          quantityAfter: nextQuantity,
-          note: oversold
-            ? `Online sale (order ${order.id}) — oversold, clamped at 0`
-            : `Online sale (order ${order.id})`,
-        },
-      });
+      await consumeFifoStockTx(tx, { inventoryItemId: inventory.id, storeId: order.storeId, quantity: item.quantity, stockMovementId: movement.id });
     }
   }
 }

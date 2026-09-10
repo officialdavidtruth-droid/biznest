@@ -1,9 +1,9 @@
 import Link from "next/link";
-import { Calculator, Hotel, Users, BriefcaseBusiness, ClipboardList, BarChart3, ChefHat, LifeBuoy, Boxes, Scale, Truck, Gift, Search, LockKeyhole, Puzzle } from "lucide-react";
+import { Calculator, Hotel, Users, BriefcaseBusiness, ClipboardList, ClipboardCheck, BarChart3, ChefHat, LifeBuoy, Boxes, Scale, Truck, Gift, LockKeyhole, Puzzle } from "lucide-react";
 import { getStoreApps } from "@/lib/actions/plugins";
 import { PluginUseButton } from "@/components/dashboard/plugin-use-button";
 
-const ICONS: Record<string, typeof Puzzle> = { Calculator, Hotel, Users, BriefcaseBusiness, ClipboardList, BarChart3, ChefHat, LifeBuoy, Boxes, Scale, Truck, Gift, Search };
+const ICONS: Record<string, typeof Puzzle> = { Calculator, Hotel, Users, BriefcaseBusiness, ClipboardList, ClipboardCheck, BarChart3, ChefHat, LifeBuoy, Boxes, Scale, Truck, Gift };
 
 export default async function AppsPage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;

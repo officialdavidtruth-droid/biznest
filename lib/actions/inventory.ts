@@ -8,6 +8,7 @@ import type { ActionResult } from "@/types/actions";
 import type { Store, Business, StockMovementType } from "@prisma/client";
 import { assertStorePermission } from "@/lib/access/assert-store-access";
 import { reconcileStockLedger, type StockLedgerReconciliation } from "@/lib/inventory-reconciliation";
+import { consumeFifoStockTx, createFifoBatchTx } from "@/lib/inventory-fifo";
 
 type StoreAccessResult =
   | { success: true; store: Store & { business: Business } }
@@ -184,7 +185,7 @@ export async function adjustStock(
             autoUnpublished: justRanOut ? true : justRestocked ? false : item.autoUnpublished,
           },
         });
-        await tx.stockMovement.create({
+        const movement = await tx.stockMovement.create({
           data: {
             inventoryItemId,
             storeId: access.store.id,
@@ -194,6 +195,22 @@ export async function adjustStock(
             note: note || null,
           },
         });
+        if (delta > 0) {
+          await createFifoBatchTx(tx, {
+            inventoryItemId,
+            storeId: access.store.id,
+            quantity: delta,
+            unitCost: item.costPrice == null ? null : Number(item.costPrice),
+            sourceNote: note || type,
+          });
+        } else {
+          await consumeFifoStockTx(tx, {
+            inventoryItemId,
+            storeId: access.store.id,
+            quantity: Math.abs(delta),
+            stockMovementId: movement.id,
+          });
+        }
         if (justRanOut) {
           await tx.product.update({ where: { id: item.productId }, data: { isPublished: false } });
         } else if (justRestocked && item.autoUnpublished) {
@@ -422,4 +439,50 @@ export async function getInventoryReconciliation(slug: string): Promise<Inventor
   }));
 
   return [...productRows, ...variantRows];
+}
+
+/** Reorder queue derived from real on-hand quantities; never mutates stock. */
+export async function getInventoryReorderSuggestions(slug: string) {
+  const access = await assertStoreAccess(slug);
+  if (!access.success) return [];
+  const items = await prisma.inventoryItem.findMany({
+    where: { storeId: access.store.id },
+    include: { product: true },
+    orderBy: { quantity: "asc" },
+    take: 100,
+  });
+  return items.filter((i) => i.quantity <= i.lowStockThreshold).map((i) => ({
+    inventoryItemId: i.id,
+    productId: i.productId,
+    productName: i.product.name,
+    quantity: i.quantity,
+    threshold: i.lowStockThreshold,
+    suggestedQuantity: Math.max(i.lowStockThreshold * 2 - i.quantity, 1),
+    costPrice: i.costPrice == null ? null : Number(i.costPrice),
+    estimatedSpend: i.costPrice == null ? null : Number(i.costPrice) * Math.max(i.lowStockThreshold * 2 - i.quantity, 1),
+  }));
+}
+
+
+export async function getFifoBatches(slug: string) {
+  const access = await assertStoreAccess(slug);
+  if (!access.success) return [];
+  const now = new Date();
+  const rows = await prisma.inventoryBatch.findMany({
+    where: { storeId: access.store.id, quantityRemaining: { gt: 0 } },
+    orderBy: [{ receivedAt: "asc" }, { id: "asc" }],
+    take: 500,
+    select: {
+      id: true, batchNumber: true, quantityReceived: true, quantityRemaining: true, unitCost: true, receivedAt: true, expiryDate: true, sourceNote: true,
+      inventoryItem: { select: { product: { select: { id: true, name: true } } } },
+      variant: { select: { id: true, label: true, product: { select: { id: true, name: true } } } },
+    },
+  });
+  return rows.map((row) => ({
+    ...row,
+    unitCost: row.unitCost == null ? null : Number(row.unitCost),
+    value: row.unitCost == null ? null : roundMoney(Number(row.unitCost) * row.quantityRemaining),
+    isExpired: row.expiryDate ? row.expiryDate < now : false,
+    expiresSoon: row.expiryDate ? row.expiryDate >= now && row.expiryDate <= new Date(now.getTime() + 7 * 86400000) : false,
+  }));
 }

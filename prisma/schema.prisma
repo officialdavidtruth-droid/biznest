@@ -258,7 +258,6 @@ model StoreCustomerProfile {
   updatedAt DateTime @updatedAt
 
   orders    Order[]
-  crmLeads  CrmLead[]
 
   @@index([storeId, createdAt])
   @@index([storeId, phone])
@@ -574,6 +573,7 @@ model Store {
   nextInvoiceNo Int @default(1)
   nextQuoteNo   Int @default(1)
   nextPoNo      Int @default(1)
+  nextRequisitionNo Int @default(1)
 
   creativeProjects CreativeProject[]
 
@@ -598,13 +598,8 @@ model Store {
   // bannerUrl, then the template's previewUrl, when unset.
   storyImage    String?
 
-  seoTitle        String?
-  seoDescription  String?
-  seoKeywords     String?
-  seoCanonicalUrl String?
-  seoOgImage      String?
-  seoNoIndex      Boolean @default(false)
-  seoGoogleVerification String?
+  seoTitle      String?
+  seoDescription String?
 
   socialLinks   Json? // { instagram, facebook, twitter, tiktok, whatsapp }
   contactEmail  String?
@@ -620,6 +615,7 @@ model Store {
   financialBankAccounts FinancialBankAccount[]
   financialBankTransactions FinancialBankTransaction[]
   financialBudgets FinancialBudget[]
+  requisitions Requisition[]
   financialAssets FinancialAsset[]
 
   subscriptionId String?
@@ -716,6 +712,7 @@ model Store {
   addonGroups   ProductAddonGroup[]
   addons        ProductAddon[]
   stockMovements StockMovement[]
+  inventoryBatches InventoryBatch[]
   suppliers     Supplier[]
   purchaseOrders PurchaseOrder[]
   payments      Payment[]
@@ -732,7 +729,6 @@ model Store {
   customers     StoreCustomer[]
   scopedCustomerAccounts User[] @relation("UserCustomerScope")
   customerProfiles StoreCustomerProfile[]
-  crmLeads      CrmLead[]
   staffMembers  StoreStaff[]
   activityLogs  StoreActivityLog[]
   automations Automation[]
@@ -985,6 +981,7 @@ model Product {
   viewedBy     RecentlyViewed[]
   supplierLinks    SupplierProduct[]
   purchaseOrderItems PurchaseOrderItem[]
+  requisitionItems RequisitionItem[]
 
   createdAt    DateTime    @default(now())
   updatedAt    DateTime    @updatedAt
@@ -1027,8 +1024,10 @@ model ProductVariant {
   autoUnpublished Boolean @default(false)
 
   movements    StockMovement[]
+  batches      InventoryBatch[]
   orderItems   OrderItem[]
   purchaseOrderItems PurchaseOrderItem[]
+  requisitionItems RequisitionItem[]
 
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
@@ -1211,6 +1210,7 @@ model InventoryItem {
   autoUnpublished Boolean @default(false)
 
   movements  StockMovement[]
+  batches    InventoryBatch[]
 
   updatedAt  DateTime @updatedAt
 
@@ -1240,6 +1240,7 @@ model StockMovement {
   order           Order? @relation(fields: [orderId], references: [id], onDelete: Cascade)
 
   type            StockMovementType
+  batchConsumptions InventoryBatchConsumption[]
   // Signed delta applied by this movement (+10 restock, -1 sale, etc).
   quantityChange  Int
   // Resulting on-hand quantity right after this movement, so history reads
@@ -1253,6 +1254,57 @@ model StockMovement {
   @@index([variantId, createdAt])
   @@index([storeId])
   @@index([orderId])
+}
+
+
+// FIFO inventory lots/batches. Every positive stock receipt creates a batch
+// carrying its own cost and optional expiry date. Sales and other negative
+// stock movements consume the oldest remaining batches first. This gives FnB
+// operators traceability for perishables and an auditable cost basis.
+model InventoryBatch {
+  id               String          @id @default(cuid())
+  storeId          String
+  store            Store           @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  inventoryItemId  String?
+  inventoryItem    InventoryItem?  @relation(fields: [inventoryItemId], references: [id], onDelete: Cascade)
+  variantId        String?
+  variant          ProductVariant? @relation(fields: [variantId], references: [id], onDelete: Cascade)
+  purchaseOrderItemId String?
+  purchaseOrderItem PurchaseOrderItem? @relation(fields: [purchaseOrderItemId], references: [id], onDelete: SetNull)
+
+  batchNumber      String?
+  quantityReceived Int
+  quantityRemaining Int
+  unitCost         Decimal?        @db.Decimal(12, 2)
+  receivedAt       DateTime        @default(now())
+  expiryDate       DateTime?
+  sourceNote       String?
+
+  consumptions     InventoryBatchConsumption[]
+  createdAt        DateTime        @default(now())
+  updatedAt        DateTime        @updatedAt
+
+  @@index([storeId, inventoryItemId, receivedAt, id])
+  @@index([storeId, variantId, receivedAt, id])
+  @@index([expiryDate])
+  @@index([purchaseOrderItemId])
+}
+
+// Immutable allocation ledger: exactly how much of each FIFO batch was
+// consumed by a stock movement. This is the basis for batch traceability and
+// FIFO COGS reporting.
+model InventoryBatchConsumption {
+  id               String         @id @default(cuid())
+  inventoryBatchId String
+  inventoryBatch   InventoryBatch @relation(fields: [inventoryBatchId], references: [id], onDelete: Cascade)
+  stockMovementId  String
+  stockMovement    StockMovement  @relation(fields: [stockMovementId], references: [id], onDelete: Cascade)
+  quantity         Int
+  unitCost         Decimal?       @db.Decimal(12, 2)
+  createdAt        DateTime       @default(now())
+
+  @@index([inventoryBatchId, createdAt])
+  @@index([stockMovementId])
 }
 
 enum StockMovementType {
@@ -2054,70 +2106,6 @@ model DeliveryZone {
 // Newsletter signups collected from a store's storefront (opt-in "Newsletter"
 // section -- see lib/template-themes.ts Section type). Real capture, not
 // decorative -- a vendor can export/see these, distinct from platform users.
-enum CrmLeadStatus {
-  NEW
-  CONTACTED
-  QUALIFIED
-  PROPOSAL
-  WON
-  LOST
-}
-
-enum CrmLeadSource {
-  WEBSITE
-  FORM
-  WHATSAPP
-  EMAIL
-  PHONE
-  BOOKING
-  ORDER
-  REFERRAL
-  SOCIAL
-  MANUAL
-  OTHER
-}
-
-model CrmLead {
-  id          String        @id @default(cuid())
-  storeId     String
-  store       Store         @relation(fields: [storeId], references: [id], onDelete: Cascade)
-  customerId  String?
-  customer    StoreCustomerProfile? @relation(fields: [customerId], references: [id], onDelete: SetNull)
-  name        String
-  email       String?
-  phone       String?
-  company     String?
-  source      CrmLeadSource @default(MANUAL)
-  status      CrmLeadStatus @default(NEW)
-  value       Decimal?      @db.Decimal(12, 2)
-  currency    String        @default("NGN")
-  notes       String?       @db.Text
-  lastContactedAt DateTime?
-  nextFollowUpAt DateTime?
-  createdAt   DateTime      @default(now())
-  updatedAt   DateTime      @updatedAt
-  activities  CrmActivity[]
-
-  @@index([storeId, status])
-  @@index([storeId, source])
-  @@index([storeId, nextFollowUpAt])
-  @@index([storeId, createdAt])
-  @@index([storeId, email])
-  @@index([storeId, phone])
-}
-
-model CrmActivity {
-  id        String   @id @default(cuid())
-  leadId    String
-  lead      CrmLead  @relation(fields: [leadId], references: [id], onDelete: Cascade)
-  type      String
-  title     String
-  body      String?  @db.Text
-  createdAt DateTime @default(now())
-
-  @@index([leadId, createdAt])
-}
-
 model NewsletterSubscriber {
   id        String   @id @default(cuid())
   storeId   String
@@ -2382,6 +2370,76 @@ model StorePlugin {
 
   @@unique([storeId, pluginId])
   @@index([storeId, status])
+}
+
+
+// ----------------------------------------------------------------------------
+// REQUISITIONS
+// Internal requests for stock, supplies, equipment or services. Requisitions
+// are intentionally separate from purchase orders: a team can request first,
+// receive approval, and only then convert the approved request into purchasing.
+// ----------------------------------------------------------------------------
+enum RequisitionStatus {
+  DRAFT
+  SUBMITTED
+  APPROVED
+  REJECTED
+  CONVERTED
+  CANCELLED
+}
+
+enum RequisitionPriority {
+  LOW
+  NORMAL
+  HIGH
+  URGENT
+}
+
+model Requisition {
+  id             String              @id @default(cuid())
+  number         String              @unique
+  storeId        String
+  store          Store               @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  title          String
+  department     String?
+  requesterName  String?
+  priority       RequisitionPriority @default(NORMAL)
+  status         RequisitionStatus   @default(DRAFT)
+  neededBy      DateTime?
+  notes          String?             @db.Text
+  decisionNote   String?             @db.Text
+  submittedAt    DateTime?
+  decidedAt      DateTime?
+  convertedAt    DateTime?
+  items          RequisitionItem[]
+  createdAt      DateTime            @default(now())
+  updatedAt      DateTime            @updatedAt
+
+  @@index([storeId, status])
+  @@index([storeId, priority])
+  @@index([storeId, neededBy])
+  @@index([storeId, createdAt])
+}
+
+model RequisitionItem {
+  id                 String        @id @default(cuid())
+  requisitionId      String
+  requisition        Requisition   @relation(fields: [requisitionId], references: [id], onDelete: Cascade)
+  productId          String?
+  product            Product?      @relation(fields: [productId], references: [id], onDelete: SetNull)
+  variantId          String?
+  variant            ProductVariant? @relation(fields: [variantId], references: [id], onDelete: SetNull)
+  description        String
+  quantity           Int
+  unit               String?
+  estimatedUnitCost  Decimal?      @db.Decimal(12, 2)
+  note               String?
+  createdAt          DateTime      @default(now())
+  updatedAt          DateTime      @updatedAt
+
+  @@index([requisitionId])
+  @@index([productId])
+  @@index([variantId])
 }
 
 // ----------------------------------------------------------------------------
@@ -3237,6 +3295,7 @@ model PurchaseOrder {
   cancelledAt  DateTime?
 
   items        PurchaseOrderItem[]
+  inventoryBatches InventoryBatch[]
 
   createdAt    DateTime            @default(now())
   updatedAt    DateTime            @updatedAt
@@ -3261,6 +3320,7 @@ model PurchaseOrderItem {
   quantityOrdered  Int
   quantityReceived Int           @default(0)
   unitCost         Decimal       @db.Decimal(12, 2)
+  inventoryBatches InventoryBatch[]
 
   @@index([purchaseOrderId])
   @@index([productId])

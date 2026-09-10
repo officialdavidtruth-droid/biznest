@@ -5,6 +5,7 @@ import { revalidatePath } from "next/cache";
 import { roundMoney } from "@/lib/utils/pricing";
 import type { ActionResult } from "@/types/actions";
 import { assertStorePermission } from "@/lib/access/assert-store-access";
+import { createFifoBatchTx } from "@/lib/inventory-fifo";
 
 // Purchase orders live under "Products & inventory" in the nav (dashboard-nav.ts).
 async function assertStoreAccess(slug: string) {
@@ -187,7 +188,7 @@ export async function cancelPurchaseOrder(slug: string, poId: string): Promise<A
 
 // --- Receiving -------------------------------------------------------------
 
-export type ReceiveLineInput = { itemId: string; quantity: number };
+export type ReceiveLineInput = { itemId: string; quantity: number; batchNumber?: string; expiryDate?: string };
 
 /**
  * Records goods received against a sent (or partially received) PO. Each
@@ -231,6 +232,11 @@ export async function receivePurchaseOrder(
           if (line.quantity > remaining) {
             throw new Error(`Can't receive more than the ${remaining} still outstanding for "${item.description}".`);
           }
+          if (line.expiryDate) {
+            const expiry = new Date(line.expiryDate);
+            if (Number.isNaN(expiry.getTime())) throw new Error(`Invalid expiry date for "${item.description}".`);
+            if (expiry <= new Date()) throw new Error(`Expiry date must be in the future for "${item.description}".`);
+          }
         }
 
         for (const line of activeLines) {
@@ -256,6 +262,7 @@ export async function receivePurchaseOrder(
             await tx.stockMovement.create({
               data: { variantId: item.variantId, storeId: access.store.id, type: "RESTOCK", quantityChange: qty, quantityAfter: nextQuantity, note },
             });
+            await createFifoBatchTx(tx, { variantId: item.variantId, storeId: access.store.id, quantity: qty, unitCost: Number(item.unitCost), expiryDate: line.expiryDate ? new Date(line.expiryDate) : null, batchNumber: line.batchNumber, purchaseOrderItemId: item.id, sourceNote: note });
           } else if (item.productId) {
             const inventoryItem = await tx.inventoryItem.findUnique({ where: { productId: item.productId } });
             if (!inventoryItem) throw new Error(`Inventory for "${item.description}" no longer exists.`);
@@ -271,6 +278,7 @@ export async function receivePurchaseOrder(
             await tx.stockMovement.create({
               data: { inventoryItemId: inventoryItem.id, storeId: access.store.id, type: "RESTOCK", quantityChange: qty, quantityAfter: nextQuantity, note },
             });
+            await createFifoBatchTx(tx, { inventoryItemId: inventoryItem.id, storeId: access.store.id, quantity: qty, unitCost: Number(item.unitCost), expiryDate: line.expiryDate ? new Date(line.expiryDate) : null, batchNumber: line.batchNumber, purchaseOrderItemId: item.id, sourceNote: note });
           }
         }
 

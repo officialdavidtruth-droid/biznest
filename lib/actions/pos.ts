@@ -3,6 +3,7 @@
 import { auth } from "@/lib/auth";
 import crypto from "crypto";
 import { prisma } from "@/lib/prisma";
+import { consumeFifoStockTx } from "@/lib/inventory-fifo";
 import { revalidatePath } from "next/cache";
 import { calculateOrderTotals, roundMoney } from "@/lib/utils/pricing";
 import { posSaleSchema, type PosSaleInput } from "@/lib/validations/pos";
@@ -520,7 +521,7 @@ export async function createPosSale(
             if (fresh.quantity === 0 && !fresh.autoUnpublished) {
               await tx.productVariant.update({ where: { id: line.variantId }, data: { autoUnpublished: true } });
             }
-            await tx.stockMovement.create({
+            const movement = await tx.stockMovement.create({
               data: {
                 variantId: line.variantId,
                 storeId: store.id,
@@ -530,6 +531,7 @@ export async function createPosSale(
                 note: `POS sale (order ${order.id})`,
               },
             });
+            await consumeFifoStockTx(tx, { variantId: line.variantId, storeId: store.id, quantity: line.quantity, stockMovementId: movement.id });
           } else if (line.productId) {
             const product = products.find((p) => p.id === line.productId);
             if (!product?.inventory) continue; // stock not tracked for this product
@@ -547,7 +549,7 @@ export async function createPosSale(
               }
               await tx.product.update({ where: { id: product.id }, data: { isPublished: false } });
             }
-            await tx.stockMovement.create({
+            const movement = await tx.stockMovement.create({
               data: {
                 inventoryItemId: product.inventory.id,
                 storeId: store.id,
@@ -557,6 +559,7 @@ export async function createPosSale(
                 note: `POS sale (order ${order.id})`,
               },
             });
+            await consumeFifoStockTx(tx, { inventoryItemId: product.inventory.id, storeId: store.id, quantity: line.quantity, stockMovementId: movement.id });
           }
         }
 

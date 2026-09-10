@@ -1,6 +1,7 @@
 "use server";
 
 import { prisma } from "@/lib/prisma";
+import { createFifoBatchTx } from "@/lib/inventory-fifo";
 import { refundPayment } from "@/lib/payments/gateway";
 import { listPaystackRefundsForTransaction } from "@/lib/payments/paystack";
 import { listFlutterwaveRefundsForTransaction } from "@/lib/payments/flutterwave";
@@ -143,6 +144,7 @@ async function restoreInventoryForRefund(
           note: `Refund return (order ${orderId})`,
         },
       });
+      await createFifoBatchTx(tx, { variantId: variant.id, storeId, quantity: item.quantity, unitCost: variant.costPrice == null ? null : Number(variant.costPrice), sourceNote: `Refund return (order ${orderId})` });
     } else if (item.productId) {
       const inventory = await tx.inventoryItem.findUnique({
         where: { productId: item.productId },
@@ -169,6 +171,7 @@ async function restoreInventoryForRefund(
           note: `Refund return (order ${orderId})`,
         },
       });
+      await createFifoBatchTx(tx, { inventoryItemId: inventory.id, storeId, quantity: item.quantity, unitCost: inventory.costPrice == null ? null : Number(inventory.costPrice), sourceNote: `Refund return (order ${orderId})` });
       // A refund restores stock, but do not silently override a merchant's
       // publication decision. Only republish when the product was actually
       // unpublished because this inventory item hit zero.
