@@ -258,11 +258,77 @@ model StoreCustomerProfile {
   updatedAt DateTime @updatedAt
 
   orders    Order[]
+  crmLeads  CrmLead[]
 
   @@index([storeId, createdAt])
   @@index([storeId, phone])
   @@index([storeId, email])
   @@index([userId])
+}
+
+enum CrmLeadStatus {
+  NEW
+  CONTACTED
+  QUALIFIED
+  PROPOSAL
+  WON
+  LOST
+}
+
+enum CrmLeadSource {
+  WEBSITE
+  FORM
+  WHATSAPP
+  EMAIL
+  PHONE
+  BOOKING
+  ORDER
+  REFERRAL
+  SOCIAL
+  MANUAL
+  OTHER
+}
+
+model CrmLead {
+  id              String        @id @default(cuid())
+  storeId         String
+  store           Store         @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  customerId      String?
+  customer        StoreCustomerProfile? @relation(fields: [customerId], references: [id], onDelete: SetNull)
+  name            String
+  email           String?
+  phone           String?
+  company         String?
+  source          CrmLeadSource @default(MANUAL)
+  status          CrmLeadStatus @default(NEW)
+  value           Decimal?      @db.Decimal(12, 2)
+  currency        String        @default("NGN")
+  notes           String?
+  lastContactedAt DateTime?
+  nextFollowUpAt  DateTime?
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+
+  activities      CrmActivity[]
+
+  @@index([storeId, status])
+  @@index([storeId, source])
+  @@index([storeId, nextFollowUpAt])
+  @@index([storeId, createdAt])
+  @@index([storeId, email])
+  @@index([storeId, phone])
+}
+
+model CrmActivity {
+  id        String   @id @default(cuid())
+  leadId    String
+  lead      CrmLead  @relation(fields: [leadId], references: [id], onDelete: Cascade)
+  type      String
+  title     String
+  body      String?
+  createdAt DateTime @default(now())
+
+  @@index([leadId, createdAt])
 }
 
 model StoreCustomer {
@@ -622,6 +688,7 @@ model Store {
   financialBudgets FinancialBudget[]
   requisitions Requisition[]
   financialAssets FinancialAsset[]
+  crmLeads      CrmLead[]
 
   subscriptionId String?
   subscription   Subscription? @relation(fields: [subscriptionId], references: [id])
