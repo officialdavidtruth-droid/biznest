@@ -375,7 +375,7 @@ export default async function HomePage() {
         <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
           {plans.map((p) => {
             const features = p.features as { products?: number; services?: number; customDomain?: boolean; aiStoreBuilder?: boolean };
-            const featured = p.name === "Custom AI-Built Store";
+            const featured = p.name === "Growth Store";
             return (
               <div
                 key={p.id}
@@ -400,7 +400,7 @@ export default async function HomePage() {
                   <li>{Number(p.commissionRate)}% commission per sale</li>
                   <li>{features.products === -1 ? "Unlimited products" : `Up to ${features.products ?? 0} products`}</li>
                   <li>{features.services === -1 ? "Unlimited services" : `Up to ${features.services ?? 0} services`}</li>
-                  {features.aiStoreBuilder && <li>✓ AI Store Builder</li>}
+                  
                   <li className="font-medium">{features.customDomain ? "✓ Your own domain name" : "Runs on your biznest.space address"}</li>
                 </ul>
                 <Link

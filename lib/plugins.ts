@@ -39,7 +39,7 @@ export const PLUGIN_CATALOG: PluginSeed[] = [
     billingInterval: "MONTHLY",
     eligibleBusinessTypes: ["*"],
     sortOrder: 20,
-    plans: ["Custom AI-Built Store", "Business Mogul"],
+    plans: ["Growth Store", "Business Mogul"],
   },
   {
     key: "crm",
@@ -51,10 +51,22 @@ export const PLUGIN_CATALOG: PluginSeed[] = [
     billingInterval: "MONTHLY",
     eligibleBusinessTypes: ["*"],
     sortOrder: 30,
-    plans: ["Custom AI-Built Store", "Business Mogul"],
+    plans: ["Growth Store", "Business Mogul"],
   },
   {
-    key: "hr-payroll",
+    key: "seo",
+    name: "SEO & Search",
+    description: "Manage search visibility, metadata, structured data, indexing and local SEO from one workspace.",
+    category: "Marketing",
+    icon: "Search",
+    price: 8000,
+    billingInterval: "MONTHLY",
+    eligibleBusinessTypes: ["*"],
+    sortOrder: 31,
+    plans: ["Growth Store", "Business Mogul"],
+  },
+  {
+  key: "hr-payroll",
     name: "HR & Payroll",
     description: "Employee records, attendance, leave, payroll and workforce reporting.",
     category: "Operations",
@@ -87,7 +99,7 @@ export const PLUGIN_CATALOG: PluginSeed[] = [
     billingInterval: "MONTHLY",
     eligibleBusinessTypes: ["*"],
     sortOrder: 60,
-    plans: ["Custom AI-Built Store", "Business Mogul"],
+    plans: ["Growth Store", "Business Mogul"],
   },
   {
     key: "restaurant-operations",
@@ -159,7 +171,7 @@ export const PLUGIN_CATALOG: PluginSeed[] = [
     billingInterval: "MONTHLY",
     eligibleBusinessTypes: ["*"],
     sortOrder: 120,
-    plans: ["Custom AI-Built Store", "Business Mogul"],
+    plans: ["Growth Store", "Business Mogul"],
   },
 ];
 

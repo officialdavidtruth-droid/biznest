@@ -324,7 +324,7 @@ a[href*="/service/"]:hover img {
   .bn-grid-2 {
     grid-template-columns: repeat(2, 1fr) !important;
   }
-  /* .bn-hero and .bn-grid are the AI Store Builder's section renderer
+  /* .bn-hero and .bn-grid are the storefront section renderer
      (components/storefront/builder-renderer.tsx) — every section type it
      outputs (hero, features, categories, testimonials, contact, gallery,
      stats) already carries one of these two classNames, so adding the

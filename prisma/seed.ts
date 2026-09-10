@@ -96,21 +96,21 @@ const SUBSCRIPTIONS = [
     price: 15000,
     interval: "MONTHLY",
     commissionRate: 5,
-    features: { products: 300, services: 150, customDomain: false, templateTier: 2, aiStoreBuilder: false },
+    features: { products: 300, services: 150, customDomain: false, templateTier: 2 },
   },
   {
-    name: "Custom AI-Built Store",
+    name: "Growth Store",
     price: 45000,
     interval: "MONTHLY",
     commissionRate: 3,
-    features: { products: 3000, services: 1500, customDomain: true, templateTier: 3, aiStoreBuilder: true },
+    features: { products: 3000, services: 1500, customDomain: true, templateTier: 3 },
   },
   {
     name: "Business Mogul",
     price: 139000,
     interval: "MONTHLY",
     commissionRate: 1,
-    features: { products: -1, services: -1, customDomain: true, templateTier: 4, aiStoreBuilder: true },
+    features: { products: -1, services: -1, customDomain: true, templateTier: 4 },
   },
 ];
 const ACTIVE_SUBSCRIPTION_NAMES = SUBSCRIPTIONS.map((s) => s.name);

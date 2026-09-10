@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { MarketingEmailComposer } from "@/components/dashboard/marketing-email-composer";
 import { assertStorePermission } from "@/lib/access/assert-store-access";
 import type { MarketingBrand, MarketingItem } from "@/lib/email/marketing-templates";
+import { MarketingAutomationPanel } from "@/components/dashboard/marketing-automation-panel";
 
 export default async function MarketingPage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
@@ -11,13 +12,14 @@ export default async function MarketingPage({ params }: { params: Promise<{ slug
   if (!access.success) return null;
   const store = access.store;
 
-  const [activeSubscribers, unsubscribedCount, subscribers, campaigns, products, services] = await Promise.all([
+  const [activeSubscribers, unsubscribedCount, subscribers, campaigns, products, services, automations] = await Promise.all([
     prisma.newsletterSubscriber.count({ where: { storeId: store.id, unsubscribedAt: null } }),
     prisma.newsletterSubscriber.count({ where: { storeId: store.id, unsubscribedAt: { not: null } } }),
     prisma.newsletterSubscriber.findMany({ where: { storeId: store.id }, select: { id: true, email: true, createdAt: true, unsubscribedAt: true }, orderBy: { createdAt: "desc" }, take: 100 }),
     prisma.emailCampaign.findMany({ where: { storeId: store.id }, select: { id: true, subject: true, template: true, status: true, recipientCount: true, sentCount: true, failedCount: true, createdAt: true, sentAt: true }, orderBy: { createdAt: "desc" }, take: 8 }),
     prisma.product.findMany({ where: { storeId: store.id, isPublished: true }, select: { id: true, name: true, description: true, price: true, currency: true, images: true }, orderBy: { createdAt: "desc" }, take: 8 }),
     prisma.service.findMany({ where: { storeId: store.id, isPublished: true }, select: { id: true, name: true, description: true, price: true, currency: true, images: true }, orderBy: { createdAt: "desc" }, take: 8 }),
+    prisma.automation.count({ where: { storeId: store.id, status: "ACTIVE" } }),
   ]);
 
   const colors = (store.themeColors as Record<string, string> | null) ?? {};
@@ -57,13 +59,17 @@ export default async function MarketingPage({ params }: { params: Promise<{ slug
         <div className="flex gap-2"><Link href={`/store/${slug}/admin/customize`} className="rounded-lg border px-3 py-2 text-xs font-medium hover:border-primary">Edit brand</Link><Link href={`/store/${slug}`} target="_blank" className="rounded-lg border px-3 py-2 text-xs font-medium hover:border-primary">View website ↗</Link></div>
       </div>
 
-      <div className="mb-6 grid gap-3 sm:grid-cols-3">
+      <div className="mb-6 grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
         <Stat label="Active subscribers" value={activeSubscribers.toLocaleString()} />
         <Stat label="Unsubscribed" value={unsubscribedCount.toLocaleString()} />
         <Stat label="Campaigns sent" value={campaigns.filter((c) => c.status === "SENT" || c.status === "PARTIAL").length.toLocaleString()} />
+        <Stat label="Emails delivered" value={campaigns.reduce((n, c) => n + c.sentCount, 0).toLocaleString()} />
+        <Stat label="Active automations" value={automations.toLocaleString()} />
       </div>
 
       <MarketingEmailComposer slug={slug} brand={brand} items={items} activeSubscribers={activeSubscribers} />
+
+      <div className="mt-8"><MarketingAutomationPanel slug={slug} activeCount={automations} /></div>
 
       <div className="mt-8 grid gap-6 lg:grid-cols-[1fr_1fr]">
         <section className="rounded-2xl border bg-background p-5">

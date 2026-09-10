@@ -49,25 +49,18 @@ export function PlanPicker({
   return (
     <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
       {plans.map((plan) => {
-        const features = (plan.features ?? {}) as {
-          products?: number;
-          services?: number;
-          customDomain?: boolean;
-          aiStoreBuilder?: boolean;
-        };
-        const isAi = !!features.aiStoreBuilder;
         const isMogul = plan.name === "Business Mogul";
         const isTrialPlan = plan.id === trialPlanId;
         return (
           <div
             key={plan.id}
             className={`flex flex-col rounded-xl border p-6 ${
-              isAi ? "border-primary shadow-sm" : "border-border"
+              isMogul ? "border-primary shadow-sm" : "border-border"
             }`}
           >
-            {isAi && (
+            {isMogul && (
               <span className="mb-2 w-fit rounded-full bg-primary/10 px-2 py-0.5 text-xs font-medium text-primary">
-                {isMogul ? "Best value at scale" : "Most popular"}
+                Best value at scale
               </span>
             )}
             {isTrialPlan && (
@@ -86,20 +79,19 @@ export function PlanPicker({
             <ul className="mt-4 flex-1 space-y-2 text-sm text-muted-foreground">
               {isMogul ? (
                 <>
-                  <li>✓ Everything in Custom AI-Built Store, plus:</li>
+                  <li>✓ Everything in Growth Store, plus:</li>
                   <li>✓ Unlimited products &amp; services</li>
                   <li>✓ Lowest commission rate on every sale (1%)</li>
                   <li>✓ Full access to every template tier, including exclusive premium designs</li>
                   <li>✓ Custom domain (yourbrand.com)</li>
                   <li>✓ Priority support</li>
                 </>
-              ) : isAi ? (
+              ) : (
                 <>
-                  <li>✓ AI Store Builder — describe your business, get a full store instantly</li>
-                  <li>✓ Custom homepage, hero copy, about section &amp; FAQ generated for you</li>
-                  <li>✓ SEO title &amp; description generated and editable</li>
+                  <li>✓ Ready-made premium templates</li>
                   <li>✓ Custom domain (yourbrand.com)</li>
-                  <li>✓ Access to mid + premium template tiers</li>
+                  <li>✓ Higher product &amp; service limits</li>
+                  <li>✓ Advanced business tools</li>
                   <li>✓ Lower commission rate (3%)</li>
                   <li>✓ Up to 3,000 products / 1,500 services</li>
                 </>
