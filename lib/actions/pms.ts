@@ -39,10 +39,11 @@ export async function getPmsAccessStatus(slug: string) {
 
 export async function getPmsData(slug: string) {
   const a = await access(slug); if (!a.success) return null;
-  const [rooms, guests, reservations] = await Promise.all([
+  const [rooms, guests, reservations, cards] = await Promise.all([
     prisma.propertyRoom.findMany({ where: { storeId: a.store.id }, orderBy: { name: "asc" } }),
     prisma.propertyGuest.findMany({ where: { storeId: a.store.id }, orderBy: { updatedAt: "desc" }, take: 100 }),
     prisma.propertyReservation.findMany({ where: { storeId: a.store.id }, include: { guest: true, room: true }, orderBy: { checkIn: "asc" }, take: 100 }),
+    prisma.roomAccessCard.findMany({ where: { storeId: a.store.id }, include: { room: true, guest: true, reservation: true }, orderBy: { createdAt: "desc" }, take: 500 }),
   ]);
   // depositAmount is a Prisma Decimal (a decimal.js class instance), not a
   // plain JS value — React Server Components can't serialize it across the
@@ -55,7 +56,106 @@ export async function getPmsData(slug: string) {
     ...r,
     depositAmount: r.depositAmount === null ? null : Number(r.depositAmount),
   }));
-  return { rooms, guests, reservations: plainReservations };
+  const plainCards = cards.map((card) => ({
+    ...card,
+    expiresAt: card.expiresAt?.toISOString() ?? null,
+    activatedAt: card.activatedAt.toISOString(),
+    revokedAt: card.revokedAt?.toISOString() ?? null,
+  }));
+  return { rooms, guests, reservations: plainReservations, cards: plainCards };
+}
+
+export async function activateRoomCard(
+  slug: string,
+  input: { roomId: string; cardUid: string; reservationId?: string; guestId?: string; label?: string; expiresAt?: string }
+): Promise<ActionResult<{ id: string }>> {
+  const a = await access(slug);
+  if (!a.success) return { success: false, error: a.error };
+
+  const cardUid = input.cardUid.trim();
+  if (!cardUid) return { success: false, error: "Card UID / card number is required." };
+  if (cardUid.length > 120) return { success: false, error: "Card UID is too long." };
+
+  const room = await prisma.propertyRoom.findFirst({ where: { id: input.roomId, storeId: a.store.id } });
+  if (!room) return { success: false, error: "Room not found." };
+  if (["OUT_OF_SERVICE", "MAINTENANCE"].includes(room.status)) return { success: false, error: "Cards cannot be activated for a room that is out of service or under maintenance." };
+
+  const existing = await prisma.roomAccessCard.findUnique({ where: { storeId_cardUid: { storeId: a.store.id, cardUid } } });
+  if (existing?.status === "ACTIVE") return { success: false, error: "This card is already active. Deactivate it before reusing it." };
+
+  let reservation: any = null;
+  if (input.reservationId) {
+    reservation = await prisma.propertyReservation.findFirst({ where: { id: input.reservationId, storeId: a.store.id }, include: { guest: true, room: true } });
+    if (!reservation) return { success: false, error: "Reservation not found." };
+    if (reservation.roomId !== room.id) return { success: false, error: "The reservation does not belong to this room." };
+    if (!["CONFIRMED", "CHECKED_IN"].includes(reservation.status)) return { success: false, error: "Only confirmed or checked-in reservations can receive room cards." };
+    if (reservation.checkOut <= new Date()) return { success: false, error: "This reservation has already ended." };
+    if (input.guestId && input.guestId !== reservation.guestId) return { success: false, error: "The selected guest does not belong to this reservation." };
+  }
+
+  let guestId = input.guestId || reservation?.guestId || undefined;
+  if (guestId) {
+    const guest = await prisma.propertyGuest.findFirst({ where: { id: guestId, storeId: a.store.id } });
+    if (!guest) return { success: false, error: "Guest not found." };
+  }
+
+  let expiresAt: Date | null = reservation?.checkOut ?? null;
+  if (input.expiresAt) {
+    const parsed = new Date(input.expiresAt);
+    if (Number.isNaN(parsed.getTime())) return { success: false, error: "Enter a valid card expiry date." };
+    if (parsed <= new Date()) return { success: false, error: "Card expiry must be in the future." };
+    if (reservation && parsed > reservation.checkOut) return { success: false, error: "A guest card cannot outlive the reservation checkout time." };
+    expiresAt = parsed;
+  }
+
+  const card = existing
+    ? await prisma.roomAccessCard.update({
+        where: { id: existing.id },
+        data: { roomId: room.id, cardUid, label: input.label?.trim() || null, reservationId: reservation?.id || null, guestId: guestId || null, status: "ACTIVE", activatedAt: new Date(), expiresAt, revokedAt: null, revokedReason: null },
+        select: { id: true },
+      })
+    : await prisma.roomAccessCard.create({
+        data: { storeId: a.store.id, roomId: room.id, cardUid, label: input.label?.trim() || null, reservationId: reservation?.id || null, guestId: guestId || null, expiresAt },
+        select: { id: true },
+      });
+  revalidatePath(`/store/${slug}/admin/pms`);
+  return { success: true, data: { id: card.id } };
+}
+
+export async function revokeRoomCard(slug: string, cardId: string, reason?: string): Promise<ActionResult> {
+  const a = await access(slug);
+  if (!a.success) return { success: false, error: a.error };
+  const card = await prisma.roomAccessCard.findFirst({ where: { id: cardId, storeId: a.store.id } });
+  if (!card) return { success: false, error: "Room card not found." };
+  if (card.status === "REVOKED") return { success: true, data: undefined };
+  await prisma.roomAccessCard.update({ where: { id: card.id }, data: { status: "REVOKED", revokedAt: new Date(), revokedReason: reason?.trim() || "Deactivated by hotel staff" } });
+  revalidatePath(`/store/${slug}/admin/pms`);
+  return { success: true, data: undefined };
+}
+
+export async function validateRoomCard(slug: string, cardUid: string): Promise<ActionResult<{ valid: boolean; roomId?: string; roomName?: string; guestName?: string }>> {
+  const a = await access(slug);
+  if (!a.success) return { success: false, error: a.error };
+  const uid = cardUid.trim();
+  if (!uid) return { success: false, error: "Card UID is required." };
+  const card = await prisma.roomAccessCard.findFirst({ where: { storeId: a.store.id, cardUid: uid, status: "ACTIVE" }, include: { room: true, guest: true } });
+  if (!card) return { success: true, data: { valid: false } };
+  if (card.expiresAt && card.expiresAt <= new Date()) {
+    await prisma.roomAccessCard.update({ where: { id: card.id }, data: { status: "REVOKED", revokedAt: new Date(), revokedReason: "Card expired" } });
+    revalidatePath(`/store/${slug}/admin/pms`);
+    return { success: true, data: { valid: false } };
+  }
+  return { success: true, data: { valid: true, roomId: card.roomId, roomName: card.room.name, guestName: card.guest?.fullName } };
+}
+
+export async function revokeReservationCards(slug: string, reservationId: string, reason = "Reservation ended"): Promise<ActionResult<{ count: number }>> {
+  const a = await access(slug);
+  if (!a.success) return { success: false, error: a.error };
+  const reservation = await prisma.propertyReservation.findFirst({ where: { id: reservationId, storeId: a.store.id }, select: { id: true } });
+  if (!reservation) return { success: false, error: "Reservation not found." };
+  const result = await prisma.roomAccessCard.updateMany({ where: { storeId: a.store.id, reservationId, status: "ACTIVE" }, data: { status: "REVOKED", revokedAt: new Date(), revokedReason: reason } });
+  revalidatePath(`/store/${slug}/admin/pms`);
+  return { success: true, data: { count: result.count } };
 }
 
 export async function createRoom(slug: string, input: { name: string; roomType: string }): Promise<ActionResult<{id:string}>> {
@@ -172,7 +272,8 @@ export async function checkOutReservation(slug:string,id:string):Promise<ActionR
  if(r.status!=="CHECKED_IN")return{success:false,error:"Only checked-in guests can check out."};
  await prisma.$transaction([
   prisma.propertyReservation.update({where:{id},data:{status:"CHECKED_OUT",checkedOutAt:new Date(),guestPresence:"OUT"}}),
-  prisma.propertyRoom.update({where:{id:r.roomId},data:{status:"DIRTY"}})
+  prisma.propertyRoom.update({where:{id:r.roomId},data:{status:"DIRTY"}}),
+  prisma.roomAccessCard.updateMany({where:{storeId:a.store.id,reservationId:id,status:"ACTIVE"},data:{status:"REVOKED",revokedAt:new Date(),revokedReason:"Reservation checked out"}}),
  ]);
  revalidatePath(`/store/${slug}/admin/pms`);return{success:true,data:undefined};
 }
@@ -198,6 +299,7 @@ export async function cancelReservation(slug:string,id:string,reason?:string):Pr
    notes:trimmedReason?`${r.notes?`${r.notes}\n`:""}Cancelled: ${trimmedReason}`:r.notes,
   }}),
   prisma.propertyRoom.updateMany({where:{id:r.roomId,status:"RESERVED"},data:{status:"AVAILABLE"}}),
+  prisma.roomAccessCard.updateMany({where:{storeId:a.store.id,reservationId:id,status:"ACTIVE"},data:{status:"REVOKED",revokedAt:new Date(),revokedReason:"Reservation cancelled"}}),
  ]);
  revalidatePath(`/store/${slug}/admin/pms`);return{success:true,data:undefined};
 }
@@ -215,6 +317,7 @@ export async function markReservationNoShow(slug:string,id:string):Promise<Actio
  await prisma.$transaction([
   prisma.propertyReservation.update({where:{id},data:{status:"NO_SHOW",cancelledAt:new Date()}}),
   prisma.propertyRoom.updateMany({where:{id:r.roomId,status:"RESERVED"},data:{status:"AVAILABLE"}}),
+  prisma.roomAccessCard.updateMany({where:{storeId:a.store.id,reservationId:id,status:"ACTIVE"},data:{status:"REVOKED",revokedAt:new Date(),revokedReason:"Reservation marked no-show"}}),
  ]);
  revalidatePath(`/store/${slug}/admin/pms`);return{success:true,data:undefined};
 }

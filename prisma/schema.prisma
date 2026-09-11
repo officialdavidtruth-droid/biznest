@@ -520,6 +520,11 @@ enum PropertyPaymentStatus {
   REFUNDED
 }
 
+enum RoomCardStatus {
+  ACTIVE
+  REVOKED
+}
+
 model PropertyGuest {
   id          String   @id @default(cuid())
   storeId     String
@@ -531,6 +536,7 @@ model PropertyGuest {
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
   reservations PropertyReservation[]
+  accessCards RoomAccessCard[]
   @@index([storeId])
 }
 
@@ -545,8 +551,37 @@ model PropertyRoom {
   createdAt   DateTime   @default(now())
   updatedAt   DateTime   @updatedAt
   reservations PropertyReservation[]
+  accessCards RoomAccessCard[]
   @@unique([storeId, name])
   @@index([storeId, status])
+}
+
+model RoomAccessCard {
+  id             String          @id @default(cuid())
+  storeId        String
+  store          Store           @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  roomId         String
+  room           PropertyRoom    @relation(fields: [roomId], references: [id], onDelete: Cascade)
+  reservationId  String?
+  reservation    PropertyReservation? @relation(fields: [reservationId], references: [id], onDelete: SetNull)
+  guestId        String?
+  guest          PropertyGuest?  @relation(fields: [guestId], references: [id], onDelete: SetNull)
+
+  cardUid        String
+  label          String?
+  status         RoomCardStatus  @default(ACTIVE)
+  activatedAt    DateTime        @default(now())
+  expiresAt      DateTime?
+  revokedAt      DateTime?
+  revokedReason  String?
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
+
+  @@unique([storeId, cardUid])
+  @@index([storeId, roomId, status])
+  @@index([reservationId, status])
+  @@index([guestId, status])
+  @@index([expiresAt, status])
 }
 
 model PropertyReservation {
@@ -578,6 +613,7 @@ model PropertyReservation {
   paymentStatus   PropertyPaymentStatus @default(UNPAID)
   paymentReference String? @unique
   payments        Payment[]
+  accessCards     RoomAccessCard[]
 
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
@@ -679,6 +715,7 @@ model Store {
   // Installed marketplace applications. App access is enforced by the plugin entitlement layer,
   // not by hard-coded plan names in individual pages.
   installedPlugins StorePlugin[]
+  roomAccessCards RoomAccessCard[]
   financialAccounts FinancialAccount[]
   financialPeriods FinancialPeriod[]
   financialJournalEntries FinancialJournalEntry[]

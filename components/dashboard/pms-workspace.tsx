@@ -15,6 +15,7 @@ import {
   DoorOpen,
   Download,
   Hotel,
+  KeyRound,
   LayoutDashboard,
   LogOut,
   Menu,
@@ -39,6 +40,8 @@ import {
   createRoom,
   chargeReservationDeposit,
   markReservationNoShow,
+  activateRoomCard,
+  revokeRoomCard,
   setGuestPresence,
   updateRoomStatus,
 } from "@/lib/actions/pms";
@@ -52,9 +55,10 @@ type PmsWorkspaceProps = {
   rooms: any[];
   guests: any[];
   reservations: any[];
+  cards: any[];
 };
 
-type Tab = "dashboard" | "reservations" | "calendar" | "frontdesk" | "rooms" | "housekeeping" | "guests" | "billing" | "reports" | "maintenance" | "settings";
+type Tab = "dashboard" | "reservations" | "calendar" | "frontdesk" | "rooms" | "housekeeping" | "guests" | "billing" | "cards" | "reports" | "maintenance" | "settings";
 
 const nav: Array<{ id: Tab; label: string; icon: any }> = [
   { id: "dashboard", label: "Dashboard", icon: LayoutDashboard },
@@ -65,6 +69,7 @@ const nav: Array<{ id: Tab; label: string; icon: any }> = [
   { id: "housekeeping", label: "Housekeeping", icon: Sparkles },
   { id: "guests", label: "Guests", icon: Users },
   { id: "billing", label: "Billing & Payments", icon: CreditCard },
+  { id: "cards", label: "Room Key Cards", icon: KeyRound },
 ];
 
 function money(value: number) {
@@ -91,11 +96,12 @@ function statusClass(value: string) {
   return "bg-white/5 text-white/70 border-white/10";
 }
 
-export function PmsWorkspace({ slug, storeName, rooms: initialRooms, guests: initialGuests, reservations: initialReservations }: PmsWorkspaceProps) {
+export function PmsWorkspace({ slug, storeName, rooms: initialRooms, guests: initialGuests, reservations: initialReservations, cards: initialCards }: PmsWorkspaceProps) {
   const [tab, setTab] = useState<Tab>("dashboard");
   const [rooms, setRooms] = useState(initialRooms);
   const [guests, setGuests] = useState(initialGuests);
   const [reservations, setReservations] = useState(initialReservations);
+  const [cards, setCards] = useState(initialCards || []);
   const [mobileOpen, setMobileOpen] = useState(false);
   const [search, setSearch] = useState("");
   const [busy, setBusy] = useState(false);
@@ -116,6 +122,12 @@ export function PmsWorkspace({ slug, storeName, rooms: initialRooms, guests: ini
   const [maintenanceRoomId, setMaintenanceRoomId] = useState("");
   const [maintenanceNote, setMaintenanceNote] = useState("");
   const [maintenanceSeverity, setMaintenanceSeverity] = useState<"LOW" | "MEDIUM" | "HIGH">("MEDIUM");
+  const [showCardForm, setShowCardForm] = useState(false);
+  const [cardRoomId, setCardRoomId] = useState("");
+  const [cardReservationId, setCardReservationId] = useState("");
+  const [cardUid, setCardUid] = useState("");
+  const [cardLabel, setCardLabel] = useState("");
+  const [cardExpiry, setCardExpiry] = useState("");
 
   const stats = useMemo(() => {
     const activeReservations = reservations.filter((r) => ["PENDING", "CONFIRMED", "CHECKED_IN"].includes(r.status));
@@ -195,6 +207,27 @@ export function PmsWorkspace({ slug, storeName, rooms: initialRooms, guests: ini
     e.preventDefault();
     const result = await run(() => createGuest(slug, { fullName: guestName, email: guestEmail, phone: guestPhone }), "Guest created");
     if (result?.success) { setGuestName(""); setGuestEmail(""); setGuestPhone(""); setShowGuestForm(false); window.location.reload(); }
+  }
+
+  async function activateCard(e: React.FormEvent) {
+    e.preventDefault();
+    if (!cardRoomId) { toast.error("Select a room."); return; }
+    if (!cardUid.trim()) { toast.error("Enter the card UID or card number."); return; }
+    const result = await run(() => activateRoomCard(slug, {
+      roomId: cardRoomId,
+      cardUid,
+      label: cardLabel,
+      reservationId: cardReservationId || undefined,
+      expiresAt: cardExpiry ? new Date(cardExpiry).toISOString() : undefined,
+    }), "Room card activated");
+    if (result?.success) {
+      setShowCardForm(false); setCardUid(""); setCardLabel(""); setCardReservationId(""); setCardExpiry(""); window.location.reload();
+    }
+  }
+
+  async function deactivateCard(card: any) {
+    const result = await run(() => revokeRoomCard(slug, card.id), "Room card deactivated");
+    if (result?.success) setCards((items: any[]) => items.map((item) => item.id === card.id ? { ...item, status: "REVOKED", revokedAt: new Date().toISOString() } : item));
   }
 
   async function addReservation(e: React.FormEvent) {
@@ -297,6 +330,7 @@ export function PmsWorkspace({ slug, storeName, rooms: initialRooms, guests: ini
           {tab === "housekeeping" && <Housekeeping rooms={rooms} onStatus={roomStatus} />}
           {tab === "guests" && <Guests guests={guests} reservations={reservations} onAdd={() => setShowGuestForm(true)} />}
           {tab === "billing" && <Billing slug={slug} reservations={reservations} onAction={reservationAction} />}
+          {tab === "cards" && <RoomCards rooms={rooms} guests={guests} reservations={reservations} cards={cards} onAdd={() => setShowCardForm(true)} onDeactivate={deactivateCard} />}
           {tab === "reports" && <Reports data={reportData} />}
           {tab === "maintenance" && <Maintenance rooms={rooms} maintenanceRooms={maintenanceRooms} notes={maintenanceNotes} onReport={() => setShowMaintenanceForm(true)} onResolve={resolveMaintenanceIssue} />}
           {tab === "settings" && <PmsSettings slug={slug} storeName={storeName} rooms={rooms} onAddRoom={() => setShowRoomForm(true)} setTab={setTab} />}
@@ -306,6 +340,7 @@ export function PmsWorkspace({ slug, storeName, rooms: initialRooms, guests: ini
       {showRoomForm && <Modal title="Add room" onClose={() => setShowRoomForm(false)}><form onSubmit={addRoom} className="space-y-4"><Field label="Room name" value={roomName} onChange={setRoomName} placeholder="Room 101" /><Field label="Room type" value={roomType} onChange={setRoomType} placeholder="Deluxe King" /><button disabled={busy} className="w-full rounded-xl bg-emerald-400 px-4 py-3 text-sm font-semibold text-[#06110c]">{busy ? "Saving…" : "Add room"}</button></form></Modal>}
       {showGuestForm && <Modal title="Create guest" onClose={() => setShowGuestForm(false)}><form onSubmit={addGuest} className="space-y-4"><Field label="Full name" value={guestName} onChange={setGuestName} placeholder="John Doe" /><Field label="Email" value={guestEmail} onChange={setGuestEmail} placeholder="guest@example.com" /><Field label="Phone" value={guestPhone} onChange={setGuestPhone} placeholder="080…" /><button disabled={busy} className="w-full rounded-xl bg-emerald-400 px-4 py-3 text-sm font-semibold text-[#06110c]">{busy ? "Saving…" : "Create guest"}</button></form></Modal>}
       {showReservationForm && <Modal title="New reservation" onClose={() => setShowReservationForm(false)}><form onSubmit={addReservation} className="space-y-4"><SelectField label="Guest" value={guestId} onChange={setGuestId} options={guests.map((g) => [g.id, g.fullName])} /><SelectField label="Room" value={roomId} onChange={setRoomId} options={rooms.filter((r) => !["OUT_OF_SERVICE", "MAINTENANCE"].includes(r.status)).map((r) => [r.id, `${r.name} — ${r.roomType}`])} /><Field label="Check-in" type="datetime-local" value={checkIn} onChange={setCheckIn} /><Field label="Check-out" type="datetime-local" value={checkOut} onChange={setCheckOut} /><button disabled={busy} className="w-full rounded-xl bg-emerald-400 px-4 py-3 text-sm font-semibold text-[#06110c]">{busy ? "Saving…" : "Confirm reservation"}</button></form></Modal>}
+      {showCardForm && <Modal title="Activate room key card" onClose={() => setShowCardForm(false)}><form onSubmit={activateCard} className="space-y-4"><div><p className="text-sm font-medium">Issue a physical access card</p><p className="mt-1 text-xs text-white/40">You can activate multiple cards for the same room. Each card must have its own UID or number.</p></div><SelectField label="Room" value={cardRoomId} onChange={(value) => { setCardRoomId(value); setCardReservationId(""); }} options={rooms.filter((r: any) => !["OUT_OF_SERVICE", "MAINTENANCE"].includes(r.status)).map((r: any) => [r.id, `${r.name} — ${r.roomType}`])} /><SelectField label="Guest reservation (optional)" value={cardReservationId} onChange={setCardReservationId} options={reservations.filter((r: any) => ["CONFIRMED", "CHECKED_IN"].includes(r.status) && (!cardRoomId || r.roomId === cardRoomId)).map((r: any) => [r.id, `${r.guest?.fullName || "Guest"} · ${r.room?.name || "Room"}`])} /><Field label="Card UID / number" value={cardUid} onChange={setCardUid} placeholder="RFID-001928" /><Field label="Card label (optional)" value={cardLabel} onChange={setCardLabel} placeholder="Guest 1 / Spare / Master" /><Field label="Expiry (optional)" type="datetime-local" value={cardExpiry} onChange={setCardExpiry} /><button disabled={busy} className="w-full rounded-xl bg-emerald-400 px-4 py-3 text-sm font-semibold text-[#06110c]">{busy ? "Activating…" : "Activate card"}</button></form></Modal>}
       {showMaintenanceForm && <Modal title="Report maintenance issue" onClose={() => setShowMaintenanceForm(false)}><form onSubmit={reportMaintenanceIssue} className="space-y-4"><SelectField label="Room" value={maintenanceRoomId} onChange={setMaintenanceRoomId} options={rooms.filter((r: any) => !["MAINTENANCE", "OUT_OF_SERVICE"].includes(r.status)).map((r: any) => [r.id, `${r.name} — ${r.roomType}`])} /><label className="block"><span className="mb-1.5 block text-xs text-white/50">Severity</span><select value={maintenanceSeverity} onChange={(e) => setMaintenanceSeverity(e.target.value as any)} className="w-full rounded-xl border border-white/10 bg-black/20 px-3 py-3 text-sm text-white"><option className="bg-[#0b1b14]" value="LOW">Low</option><option className="bg-[#0b1b14]" value="MEDIUM">Medium</option><option className="bg-[#0b1b14]" value="HIGH">High</option></select></label><label className="block"><span className="mb-1.5 block text-xs text-white/50">Issue details</span><textarea value={maintenanceNote} onChange={(e) => setMaintenanceNote(e.target.value)} placeholder="e.g. AC unit not cooling, leaking faucet…" rows={3} className="w-full rounded-xl border border-white/10 bg-black/20 px-3 py-3 text-sm text-white placeholder:text-white/25" /></label><button disabled={busy} className="w-full rounded-xl bg-emerald-400 px-4 py-3 text-sm font-semibold text-[#06110c]">{busy ? "Saving…" : "Log issue & take room offline"}</button></form></Modal>}
     </div>
   );
@@ -349,6 +384,15 @@ function Rooms({ rooms, onAdd, onStatus }: any) { return <div className="space-y
 function Housekeeping({ rooms, onStatus }: any) { const items = rooms.filter((r: any) => ["DIRTY", "CLEANING", "MAINTENANCE", "AVAILABLE"].includes(r.status)); return <div className="space-y-5"><div><h2 className="text-2xl font-semibold">Housekeeping</h2><p className="mt-1 text-sm text-white/40">Keep room readiness visible to the whole team.</p></div><div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">{items.map((r: any) => <div key={r.id} className="rounded-2xl border border-white/10 bg-white/[0.025] p-5"><div className="flex items-center justify-between"><div><p className="font-semibold">{r.name}</p><p className="mt-1 text-xs text-white/35">{r.roomType}</p></div><Sparkles className="h-5 w-5 text-amber-300" /></div><span className={`mt-4 inline-flex rounded-full border px-2 py-1 text-[10px] ${statusClass(r.status)}`}>{statusLabel(r.status)}</span><div className="mt-5 grid grid-cols-2 gap-2">{r.status !== "CLEANING" && <button onClick={() => onStatus(r, "CLEANING")} className="rounded-xl bg-emerald-400 px-3 py-2 text-xs font-semibold text-[#06110c]">Start cleaning</button>}<button onClick={() => onStatus(r, "AVAILABLE")} className="rounded-xl border border-white/10 px-3 py-2 text-xs text-white/60">Mark ready</button></div></div>)}</div></div>; }
 
 function Guests({ guests, reservations, onAdd }: any) { return <div className="space-y-5"><Toolbar title="Guests" subtitle="Central guest profiles and stay history." action="Add guest" onAction={onAdd} /><div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">{guests.map((g: any) => { const stays = reservations.filter((r: any) => r.guestId === g.id); return <div key={g.id} className="rounded-2xl border border-white/10 bg-white/[0.025] p-5"><div className="flex items-center gap-3"><div className="flex h-11 w-11 items-center justify-center rounded-full bg-white/5 text-white/60"><UserRound className="h-5 w-5" /></div><div className="min-w-0"><p className="truncate font-semibold">{g.fullName}</p><p className="truncate text-xs text-white/35">{g.email || g.phone || "No contact"}</p></div></div><div className="mt-5 grid grid-cols-2 gap-3"><div className="rounded-xl bg-black/15 p-3"><p className="text-[10px] text-white/35">Stays</p><p className="mt-1 text-lg font-semibold">{stays.length}</p></div><div className="rounded-xl bg-black/15 p-3"><p className="text-[10px] text-white/35">Current</p><p className="mt-1 text-lg font-semibold">{stays.filter((s: any) => s.status === "CHECKED_IN").length ? "In-house" : "—"}</p></div></div></div>; })}{guests.length === 0 && <Empty text="No guests yet" />}</div></div>; }
+
+function RoomCards({ rooms, reservations, cards, onAdd, onDeactivate }: any) {
+  const active = cards.filter((c: any) => c.status === "ACTIVE");
+  const expired = active.filter((c: any) => c.expiresAt && new Date(c.expiresAt) <= new Date());
+  const byRoom = new Map<string, any[]>();
+  for (const card of active) {
+    const list = byRoom.get(card.roomId) || []; list.push(card); byRoom.set(card.roomId, list);
+  }
+  return <div className="space-y-5"><div className="flex flex-col gap-3 md:flex-row md:items-end md:justify-between"><div><h2 className="text-2xl font-semibold">Room Key Cards</h2><p className="mt-1 text-sm text-white/40">Activate and revoke physical room access cards. A room can have multiple active cards at the same time.</p></div><button onClick={onAdd} className="inline-flex items-center justify-center gap-2 rounded-xl bg-emerald-400 px-4 py-2.5 text-sm font-semibold text-[#06110c]"><KeyRound className="h-4 w-4"/>Activate card</button></div><div className="grid gap-4 sm:grid-cols-3"><Metric label="Active cards" value={active.length} icon={KeyRound}/><Metric label="Rooms with cards" value={byRoom.size} icon={BedDouble}/><Metric label="Expired" value={expired.length} icon={Clock3}/></div><div className="grid gap-4 lg:grid-cols-2">{rooms.map((room: any) => { const roomCards = byRoom.get(room.id) || []; return <div key={room.id} className="rounded-2xl border border-white/10 bg-white/[0.025] p-5"><div className="flex items-center justify-between"><div><h3 className="font-semibold">{room.name}</h3><p className="text-xs text-white/35">{room.roomType}</p></div><span className="rounded-full border border-white/10 px-2 py-1 text-[10px] text-white/45">{roomCards.length} active</span></div><div className="mt-4 space-y-2">{roomCards.map((card: any) => { const isExpired = card.expiresAt && new Date(card.expiresAt) <= new Date(); return <div key={card.id} className="flex items-center justify-between gap-3 rounded-xl border border-white/10 bg-black/10 p-3"><div className="min-w-0"><p className="truncate text-sm font-medium">{card.label || "Room card"} · <span className="font-mono text-xs text-white/55">{card.cardUid}</span></p><p className="mt-1 text-[11px] text-white/35">{card.guest?.fullName ? `${card.guest.fullName} · ` : ""}{card.expiresAt ? `Expires ${dateTime(card.expiresAt)}` : "No expiry"}</p></div><button onClick={() => onDeactivate(card)} className="shrink-0 rounded-lg border border-rose-400/20 px-2.5 py-1.5 text-[11px] font-semibold text-rose-300">{isExpired ? "Revoke" : "Deactivate"}</button></div>})}{roomCards.length === 0 && <p className="py-5 text-center text-xs text-white/30">No active cards for this room.</p>}</div></div>})}</div></div>; }
 
 function Billing({ slug, reservations, onAction }: any) { const unpaid = reservations.filter((r: any) => r.paymentStatus !== "PAID" && !["CANCELLED", "NO_SHOW"].includes(r.status)); const paid = reservations.filter((r: any) => r.paymentStatus === "PAID"); return <div className="space-y-5"><div><h2 className="text-2xl font-semibold">Billing & Payments</h2><p className="mt-1 text-sm text-white/40">Monitor reservation payment state and collect deposits through BizNest payments.</p></div><div className="grid gap-4 md:grid-cols-3"><Metric label="Unpaid stays" value={unpaid.length} icon={CreditCard} /><Metric label="Paid stays" value={paid.length} icon={CheckCircle2} /><Metric label="Payment coverage" value={`${reservations.length ? Math.round((paid.length / reservations.length) * 100) : 0}%`} icon={WalletCards} /></div><div className="overflow-hidden rounded-2xl border border-white/10 bg-white/[0.025]"><div className="overflow-x-auto"><table className="w-full min-w-[800px] text-left text-sm"><thead className="border-b border-white/10 text-xs text-white/35"><tr><th className="px-5 py-4">Guest</th><th className="px-5 py-4">Reservation</th><th className="px-5 py-4">Payment</th><th className="px-5 py-4">Deposit</th><th className="px-5 py-4">Action</th></tr></thead><tbody>{reservations.map((r: any) => <tr key={r.id} className="border-b border-white/5 last:border-0"><td className="px-5 py-4 font-medium">{r.guest?.fullName}</td><td className="px-5 py-4 text-white/55">{r.room?.name} · {date(r.checkIn)}</td><td className="px-5 py-4"><span className={`rounded-full border px-2 py-1 text-[10px] ${statusClass(r.paymentStatus || "UNPAID")}`}>{statusLabel(r.paymentStatus || "UNPAID")}</span></td><td className="px-5 py-4 text-white/60">{r.depositAmount ? money(Number(r.depositAmount)) : "—"}</td><td className="px-5 py-4">{r.paymentStatus !== "PAID" && !["CANCELLED", "NO_SHOW", "CHECKED_OUT"].includes(r.status) ? <button onClick={() => { const amount = window.prompt("Deposit amount to request (NGN):", r.depositAmount ? String(Number(r.depositAmount)) : ""); if (!amount) return; const n = Number(amount); if (!Number.isFinite(n) || n <= 0) { toast.error("Enter a valid amount."); return; } chargeReservationDeposit(slug, r.id, n, r.guest?.email).then((result) => { if (!result.success) toast.error(result.error); else { navigator.clipboard?.writeText(result.data.authorizationUrl).catch(() => {}); window.open(result.data.authorizationUrl, "_blank"); toast.success("Payment link created"); } }); }} className="rounded-lg bg-emerald-400/10 px-2.5 py-1.5 text-[11px] text-emerald-300">Request payment</button> : <span className="text-xs text-white/30">No action</span>}</td></tr>)}</tbody></table></div></div></div>; }
 

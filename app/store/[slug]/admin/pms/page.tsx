@@ -31,5 +31,5 @@ export default async function PmsPage({ params }: { params: Promise<{ slug: stri
     prisma.store.findUnique({ where: { slug }, select: { name: true } }),
   ]);
   if (!data || !store) notFound();
-  return <PmsWorkspace slug={slug} storeName={store.name} rooms={data.rooms} guests={data.guests} reservations={data.reservations} />;
+  return <PmsWorkspace slug={slug} storeName={store.name} rooms={data.rooms} guests={data.guests} reservations={data.reservations} cards={data.cards} />;
 }
