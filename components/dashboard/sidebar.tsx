@@ -19,6 +19,7 @@ export function DashboardSidebar({
   staffRole,
   staffPermissions,
   subscriptionName,
+  installedApps,
 }: {
   slug: string;
   storeName: string;
