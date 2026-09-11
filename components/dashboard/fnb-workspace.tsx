@@ -61,7 +61,7 @@ export function FnbWorkspace({
     unitId: string | null;
     unitLabel: string | null;
   }>;
-  units?: Array<{ id: string; label: string; location: string | null; capacity: number }>;
+  units?: Array<{ id: string; label: string; location: string | null; capacity: number | null }>;
 }) {
   const [tab, setTab] = useState<Tab>("dashboard");
   const [mobileOpen, setMobileOpen] = useState(false);
