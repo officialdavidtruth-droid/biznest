@@ -953,6 +953,7 @@ model StoreStaff {
 
   bookings      Booking[]
   serviceLinks  ServiceStaff[]
+  hrEmployee    HrEmployee?
 
   role          StaffRole          @default(STAFF)
   status        StaffInviteStatus  @default(PENDING)
