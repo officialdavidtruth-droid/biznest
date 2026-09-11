@@ -16,8 +16,8 @@ type ThemeContextValue = {
 const ThemeContext = createContext<ThemeContextValue | null>(null);
 
 function getSystemTheme(): ResolvedTheme {
-  if (typeof window === "undefined") return "dark";
-  return window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+  if (typeof window === "undefined") return "light";
+  return window.matchMedia("(prefers-color-scheme: dark)").matches ? "light" : "light";
 }
 
 /**
@@ -29,39 +29,32 @@ function getSystemTheme(): ResolvedTheme {
  * provider and toggle via useTheme()/<ThemeToggle />.
  *
  * Persists to localStorage so a merchant's choice survives across visits.
- * `defaultTheme` lets each surface pick its own fallback before the user
- * has ever chosen (both dashboards default to "dark" to match today's
- * look, so this ships with zero visual change until someone toggles it).
+ * BizNest business surfaces default to the white/green brand theme. The
+ * compatibility `dark` class remains available, but shared business tokens
+ * intentionally keep the interface light.
  */
 export function ThemeProvider({
   children,
-  defaultTheme = "dark",
+  defaultTheme = "light",
   scopeId,
 }: {
   children: React.ReactNode;
   defaultTheme?: Theme;
   scopeId: string;
 }) {
-  const biznestLightSurface = scopeId.startsWith("bn-");
-  const [theme, setThemeState] = useState<Theme>(biznestLightSurface ? "light" : defaultTheme);
-  const [resolvedTheme, setResolvedTheme] = useState<ResolvedTheme>("light");
+  const [theme, setThemeState] = useState<Theme>(defaultTheme);
+  const [resolvedTheme, setResolvedTheme] = useState<ResolvedTheme>(
+    defaultTheme === "system" ? "light" : (defaultTheme as ResolvedTheme)
+  );
 
   useEffect(() => {
-    if (biznestLightSurface) {
-      setThemeState("light");
-      return;
-    }
     const stored = localStorage.getItem(STORAGE_KEY) as Theme | null;
     if (stored === "light" || stored === "dark" || stored === "system") {
       setThemeState(stored);
     }
-  }, [biznestLightSurface]);
+  }, []);
 
   useEffect(() => {
-    if (biznestLightSurface) {
-      setResolvedTheme("light");
-      return;
-    }
     const resolved = theme === "system" ? getSystemTheme() : theme;
     setResolvedTheme(resolved);
 
@@ -70,7 +63,7 @@ export function ThemeProvider({
     const onChange = () => setResolvedTheme(getSystemTheme());
     mql.addEventListener("change", onChange);
     return () => mql.removeEventListener("change", onChange);
-  }, [theme, biznestLightSurface]);
+  }, [theme]);
 
   const setTheme = useCallback((next: Theme) => {
     setThemeState(next);
@@ -119,8 +112,8 @@ export function useTheme() {
  * Safe to inline: reads only localStorage, touches only this one element's
  * classList, and matches the client media query ThemeProvider itself uses.
  */
-export function ThemeFlashGuard({ scopeId, defaultTheme = "dark" }: { scopeId: string; defaultTheme?: Theme }) {
-  const script = `(function(){try{var forcedLight=${scopeId.startsWith("bn-") ? "true" : "false"};var t=localStorage.getItem("${STORAGE_KEY}");var resolved=forcedLight?"light":((t==="light"||t==="dark")?t:((t===null||t==="system")?(window.matchMedia("(prefers-color-scheme: dark)").matches?"dark":"light"):"${defaultTheme}"));var el=document.getElementById("${scopeId}");if(el){el.classList.remove("light","dark");el.classList.add(resolved);}}catch(e){}})();`;
+export function ThemeFlashGuard({ scopeId, defaultTheme = "light" }: { scopeId: string; defaultTheme?: Theme }) {
+  const script = `(function(){try{var t=localStorage.getItem("${STORAGE_KEY}");var resolved=(t==="light"||t==="dark")?t:((t===null||t==="system")?(window.matchMedia("(prefers-color-scheme: dark)").matches?"light":"light"):"${defaultTheme}");var el=document.getElementById("${scopeId}");if(el){el.classList.remove("light","dark");el.classList.add(resolved);}}catch(e){}})();`;
   // eslint-disable-next-line react/no-danger
   return <script dangerouslySetInnerHTML={{ __html: script }} />;
 }

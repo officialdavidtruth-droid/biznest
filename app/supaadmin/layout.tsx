@@ -10,8 +10,8 @@ export default async function SupaAdminLayout({ children }: { children: React.Re
 
   return (
     <>
-      <ThemeFlashGuard scopeId="bn-supaadmin-theme-scope" defaultTheme="dark" />
-      <ThemeProvider scopeId="bn-supaadmin-theme-scope" defaultTheme="dark">
+      <ThemeFlashGuard scopeId="bn-supaadmin-theme-scope" defaultTheme="light" />
+      <ThemeProvider scopeId="bn-supaadmin-theme-scope" defaultTheme="light">
         {/* flex-1 (not min-h-screen or h-full): min-h-screen is a floor, not
             a cap, so this row grew to fit whatever content was tallest and
             the sidebar + main below never had a bounded height to scroll
