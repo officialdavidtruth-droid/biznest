@@ -758,6 +758,10 @@ model Store {
   financialBankTransactions FinancialBankTransaction[]
   financialBudgets FinancialBudget[]
   requisitions Requisition[]
+  hrEmployees HrEmployee[]
+  hrAttendance HrAttendance[]
+  hrLeaveRequests HrLeaveRequest[]
+  hrPayrollRuns HrPayrollRun[]
   financialAssets FinancialAsset[]
   crmLeads      CrmLead[]
 
@@ -843,6 +847,7 @@ model Store {
   propertyFolioCharges PropertyFolioCharge[]
   orders        Order[]
   bookings      Booking[]
+  hrEmployee    HrEmployee?
   deliveryZones DeliveryZone[]
   newsletterSubscribers NewsletterSubscriber[]
   emailCampaigns EmailCampaign[]
@@ -3476,4 +3481,148 @@ enum PurchaseOrderStatus {
   PARTIALLY_RECEIVED
   RECEIVED
   CANCELLED
+}
+
+enum HrEmployeeStatus {
+  ACTIVE
+  ON_LEAVE
+  SUSPENDED
+  EXITED
+}
+
+enum HrEmploymentType {
+  FULL_TIME
+  PART_TIME
+  CONTRACT
+  INTERN
+  TEMPORARY
+}
+
+enum HrAttendanceStatus {
+  PRESENT
+  ABSENT
+  LATE
+  HALF_DAY
+  ON_LEAVE
+}
+
+enum HrLeaveStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  CANCELLED
+}
+
+enum HrPayrollStatus {
+  DRAFT
+  APPROVED
+  PAID
+  VOID
+}
+
+model HrEmployee {
+  id              String             @id @default(cuid())
+  storeId         String
+  store           Store              @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  staffId         String?            @unique
+  staff            StoreStaff?       @relation(fields: [staffId], references: [id], onDelete: SetNull)
+  employeeNo      String
+  firstName       String
+  lastName        String
+  email           String?
+  phone           String?
+  department      String?
+  position        String?
+  employmentType  HrEmploymentType   @default(FULL_TIME)
+  status          HrEmployeeStatus   @default(ACTIVE)
+  hireDate        DateTime?
+  exitDate        DateTime?
+  basicSalary     Decimal            @db.Decimal(14,2) @default(0)
+  housingAllowance Decimal            @db.Decimal(14,2) @default(0)
+  transportAllowance Decimal          @db.Decimal(14,2) @default(0)
+  otherAllowance  Decimal            @db.Decimal(14,2) @default(0)
+  bankName        String?
+  accountName     String?
+  accountNumber   String?
+  notes           String?
+  attendance      HrAttendance[]
+  leaveRequests   HrLeaveRequest[]
+  payrollItems    HrPayrollItem[]
+  createdAt       DateTime           @default(now())
+  updatedAt       DateTime           @updatedAt
+  @@unique([storeId, employeeNo])
+  @@index([storeId, status])
+  @@index([storeId, department])
+}
+
+model HrAttendance {
+  id          String             @id @default(cuid())
+  storeId     String
+  store       Store              @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  employeeId  String
+  employee    HrEmployee         @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  workDate    DateTime           @db.Date
+  status      HrAttendanceStatus @default(PRESENT)
+  checkIn    DateTime?
+  checkOut   DateTime?
+  note       String?
+  createdAt  DateTime            @default(now())
+  updatedAt  DateTime            @updatedAt
+  @@unique([employeeId, workDate])
+  @@index([storeId, workDate])
+  @@index([employeeId, workDate])
+}
+
+model HrLeaveRequest {
+  id          String          @id @default(cuid())
+  storeId     String
+  store       Store           @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  employeeId  String
+  employee    HrEmployee      @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  leaveType   String
+  startDate   DateTime        @db.Date
+  endDate     DateTime        @db.Date
+  reason      String?
+  status      HrLeaveStatus   @default(PENDING)
+  decisionNote String?
+  decidedAt   DateTime?
+  createdAt   DateTime        @default(now())
+  updatedAt   DateTime        @updatedAt
+  @@index([storeId, status, startDate])
+  @@index([employeeId, startDate, endDate])
+}
+
+model HrPayrollRun {
+  id            String          @id @default(cuid())
+  storeId       String
+  store         Store           @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  periodStart   DateTime        @db.Date
+  periodEnd     DateTime        @db.Date
+  payDate       DateTime?       @db.Date
+  status        HrPayrollStatus @default(DRAFT)
+  totalGross    Decimal         @db.Decimal(14,2) @default(0)
+  totalDeductions Decimal       @db.Decimal(14,2) @default(0)
+  totalNet      Decimal         @db.Decimal(14,2) @default(0)
+  notes         String?
+  items         HrPayrollItem[]
+  createdAt     DateTime        @default(now())
+  updatedAt     DateTime        @updatedAt
+  @@index([storeId, periodStart, periodEnd])
+  @@index([storeId, status])
+}
+
+model HrPayrollItem {
+  id              String        @id @default(cuid())
+  payrollRunId    String
+  payrollRun      HrPayrollRun  @relation(fields: [payrollRunId], references: [id], onDelete: Cascade)
+  employeeId      String
+  employee        HrEmployee    @relation(fields: [employeeId], references: [id], onDelete: Restrict)
+  basic           Decimal       @db.Decimal(14,2) @default(0)
+  allowances      Decimal       @db.Decimal(14,2) @default(0)
+  deductions      Decimal       @db.Decimal(14,2) @default(0)
+  gross           Decimal       @db.Decimal(14,2) @default(0)
+  net             Decimal       @db.Decimal(14,2) @default(0)
+  note            String?
+  @@unique([payrollRunId, employeeId])
+  @@index([employeeId])
 }

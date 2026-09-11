@@ -18,6 +18,7 @@ export const STAFF_PERMISSIONS = [
   { id: "analytics", label: "Analytics & reports" },
   { id: "payments", label: "Payments & payouts" },
   { id: "finance", label: "Financial control & accounting" },
+  { id: "hr", label: "HR & payroll" },
   { id: "settings", label: "Store settings" },
 ] as const;
 
