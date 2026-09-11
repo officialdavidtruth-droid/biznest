@@ -32,7 +32,7 @@ export default function StorefrontLoading() {
           left: 0;
           right: 0;
           height: 3px;
-          background: linear-gradient(90deg, transparent, var(--bn-jade, #10967a), transparent);
+          background: linear-gradient(90deg, transparent, var(--bn-jade, #6f4e37), transparent);
           background-size: 200% 100%;
           animation: bn-store-progress-sweep 1.1s ease-in-out infinite;
           z-index: 9999;

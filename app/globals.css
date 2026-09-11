@@ -459,3 +459,124 @@ a[href*="/service/"]:hover img {
 .bn-empty{grid-column:1/-1;padding:70px;text-align:center;border:1px dashed #9eacb9;color:#6a7786;border-radius:8px}
 @media(max-width:1000px){.bn-universal-nav{padding:0 20px}.bn-universal-nav nav{gap:14px}.bn-universal-actions .bn-universal-quote{display:none}.bn-service-grid{grid-template-columns:repeat(2,1fr)}.bn-service-grid.technical{grid-template-columns:repeat(2,1fr)}.bn-price-grid{grid-template-columns:repeat(2,1fr)}.bn-price-grid.technical{grid-template-columns:repeat(2,1fr)}.bn-portfolio-grid{grid-template-columns:repeat(3,1fr)}.bn-universal-footer-grid{grid-template-columns:1fr 1fr}.bn-contact-grid{grid-template-columns:1fr}.bn-about-intro{grid-template-columns:1fr}}
 @media(max-width:680px){.bn-universal-nav{min-height:62px}.bn-universal-brand{font-size:17px}.bn-universal-logo{width:34px;height:34px}.bn-universal-nav nav{display:none}.bn-universal-actions{margin-left:auto}.bn-universal-hero{min-height:520px}.bn-universal-hero-inner{padding:55px 22px}.bn-universal-hero h1{font-size:48px}.bn-hero-trust{gap:15px;flex-wrap:wrap}.bn-universal-section{padding:50px 20px}.bn-service-grid,.bn-price-grid,.bn-values-grid,.bn-faq-grid{grid-template-columns:1fr}.bn-portfolio-grid{grid-template-columns:repeat(2,1fr)}.bn-band,.bn-pricing-strip{display:block;padding:30px 22px}.bn-band>a,.bn-pricing-strip>a{margin-top:18px;display:inline-flex}.bn-about-image{min-height:320px}.bn-form-grid{grid-template-columns:1fr}.bn-form-bottom{display:block}.bn-form-bottom .bn-primary{margin-top:14px}.bn-location{margin:0 20px 45px;padding:25px}.bn-universal-footer-grid{grid-template-columns:1fr;gap:28px}.bn-universal-copyright{display:block;line-height:2}.bn-universal-copyright span{margin:0}}
+
+/* -------------------------------------------------------------------------
+   BizNest admin/plugin theme — COFFEE BROWN + WHITE
+   Scoped exclusively to merchant/platform admin surfaces. Storefront
+   templates are intentionally NOT affected.
+   ------------------------------------------------------------------------- */
+#bn-admin-theme-scope,
+#bn-pms-theme-scope,
+#bn-fnb-theme-scope {
+  --background: 0 0% 100%;
+  --foreground: 24 28% 12%;
+  --primary: 25 33% 31%;
+  --primary-foreground: 0 0% 100%;
+  --muted: 30 24% 96%;
+  --muted-foreground: 25 14% 42%;
+  --border: 28 20% 87%;
+  --bn-ink: #3b2418;
+  --bn-ink-raised: #4f3021;
+  --bn-ink-line: #6f4e37;
+  --bn-marigold: #6f4e37;
+  --bn-jade: #8b6b52;
+  --bn-ivory: #ffffff;
+  --bn-mute: #c8b7a6;
+}
+
+#bn-admin-theme-scope.dark,
+#bn-pms-theme-scope.dark,
+#bn-fnb-theme-scope.dark {
+  --background: 25 28% 10%;
+  --foreground: 0 0% 100%;
+  --primary: 28 35% 56%;
+  --primary-foreground: 0 0% 100%;
+  --muted: 25 22% 16%;
+  --muted-foreground: 30 14% 68%;
+  --border: 25 22% 24%;
+}
+
+/* Brand-green utility classes inside admin/plugin surfaces are remapped to
+   BizNest coffee. Semantic red/amber status colors remain untouched. */
+#bn-admin-theme-scope .text-emerald-400,
+#bn-admin-theme-scope .text-emerald-500,
+#bn-admin-theme-scope .text-emerald-600,
+#bn-admin-theme-scope .text-emerald-700,
+#bn-admin-theme-scope .text-green-400,
+#bn-admin-theme-scope .text-green-500,
+#bn-admin-theme-scope .text-green-600,
+#bn-admin-theme-scope .text-green-700,
+#bn-pms-theme-scope .text-emerald-400,
+#bn-pms-theme-scope .text-emerald-500,
+#bn-pms-theme-scope .text-emerald-600,
+#bn-pms-theme-scope .text-emerald-700,
+#bn-fnb-theme-scope .text-emerald-400,
+#bn-fnb-theme-scope .text-emerald-500,
+#bn-fnb-theme-scope .text-emerald-600,
+#bn-fnb-theme-scope .text-emerald-700 {
+  color: #6f4e37 !important;
+}
+
+#bn-admin-theme-scope .bg-emerald-400,
+#bn-admin-theme-scope .bg-emerald-500,
+#bn-admin-theme-scope .bg-emerald-600,
+#bn-admin-theme-scope .bg-green-400,
+#bn-admin-theme-scope .bg-green-500,
+#bn-admin-theme-scope .bg-green-600,
+#bn-pms-theme-scope .bg-emerald-400,
+#bn-pms-theme-scope .bg-emerald-500,
+#bn-pms-theme-scope .bg-emerald-600,
+#bn-fnb-theme-scope .bg-emerald-400,
+#bn-fnb-theme-scope .bg-emerald-500,
+#bn-fnb-theme-scope .bg-emerald-600 {
+  background-color: #6f4e37 !important;
+}
+
+#bn-admin-theme-scope .border-emerald-500,
+#bn-admin-theme-scope .border-emerald-600,
+#bn-admin-theme-scope .border-green-500,
+#bn-admin-theme-scope .border-green-600,
+#bn-pms-theme-scope .border-emerald-500,
+#bn-pms-theme-scope .border-emerald-600,
+#bn-fnb-theme-scope .border-emerald-500,
+#bn-fnb-theme-scope .border-emerald-600 {
+  border-color: #6f4e37 !important;
+}
+
+/* Keep translucent brand utilities brown as well. */
+#bn-admin-theme-scope [class*="bg-emerald-"][class*="/"],
+#bn-admin-theme-scope [class*="bg-green-"][class*="/"],
+#bn-pms-theme-scope [class*="bg-emerald-"][class*="/"],
+#bn-fnb-theme-scope [class*="bg-emerald-"][class*="/"] {
+  background-color: rgb(111 78 55 / 0.10) !important;
+}
+
+
+#bn-admin-theme-scope .bn-gradient,
+#bn-pms-theme-scope .bn-gradient,
+#bn-fnb-theme-scope .bn-gradient {
+  background: linear-gradient(135deg, #4f3021 0%, #6f4e37 55%, #ffffff 100%) !important;
+}
+
+#bn-admin-theme-scope .bn-gradient-text,
+#bn-pms-theme-scope .bn-gradient-text,
+#bn-fnb-theme-scope .bn-gradient-text {
+  background: linear-gradient(135deg, #4f3021, #8b6b52);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+#bn-admin-theme-scope .bn-gradient-dark,
+#bn-pms-theme-scope .bn-gradient-dark,
+#bn-fnb-theme-scope .bn-gradient-dark {
+  background:
+    radial-gradient(120% 90% at 12% -10%, rgba(139, 107, 82, 0.18) 0%, transparent 55%),
+    linear-gradient(165deg, #4f3021 0%, #3b2418 45%, #24150f 100%) !important;
+}
+
+#bn-admin-theme-scope .bn-gradient-accent,
+#bn-pms-theme-scope .bn-gradient-accent,
+#bn-fnb-theme-scope .bn-gradient-accent {
+  background: linear-gradient(135deg, #8b6b52 0%, #6f4e37 100%) !important;
+}

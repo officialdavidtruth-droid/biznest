@@ -92,7 +92,7 @@ export function ThemeProvider({
           full-height stretch used to be. Both can coexist because a
           flex item without its own flex-grow simply doesn't stretch,
           even inside a flex-1 parent. */}
-      <div id={scopeId} className={`flex min-h-0 flex-1 flex-col ${resolvedTheme}`} suppressHydrationWarning>
+      <div id={scopeId} className={`bn-biznest-admin-theme flex min-h-0 flex-1 flex-col ${resolvedTheme}`} suppressHydrationWarning>
         {children}
       </div>
     </ThemeContext.Provider>
