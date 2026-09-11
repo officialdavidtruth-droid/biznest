@@ -8,7 +8,7 @@ import { chargeCustomer } from "@/lib/payments/gateway";
 import { revalidatePath } from "next/cache";
 import { nanoid } from "nanoid";
 import type { ActionResult } from "@/types/actions";
-import { ensureSystemPlugins, getPluginEntitlement } from "@/lib/plugins";
+import { PLUGIN_CATALOG, ensureSystemPlugins, getPluginEntitlement } from "@/lib/plugins";
 import { APP_URL } from "@/lib/constants/app-url";
 
 export async function getStoreApps(slug: string) {
@@ -18,11 +18,7 @@ export async function getStoreApps(slug: string) {
 
   const [plugins, plans] = await Promise.all([
     prisma.plugin.findMany({
-      // Marketplace shows only the capabilities intentionally curated in
-      // PLUGIN_CATALOG. Core dashboard functions must never reappear here
-      // as duplicate "apps". Legacy database rows remain untouched for
-      // backwards compatibility, but they are not discoverable/installable.
-      where: { status: "ACTIVE", key: { in: PLUGIN_CATALOG.map((plugin) => plugin.key) } },
+      where: { status: "ACTIVE" },
       include: {
         planAccess: { where: { enabled: true }, include: { subscription: { select: { name: true, price: true } } } },
         stores: { where: { storeId: access.store.id }, select: { status: true } },
