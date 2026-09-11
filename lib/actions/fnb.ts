@@ -120,7 +120,9 @@ export async function recordFnbWaste(slug: string, inventoryItemId: string, quan
       const next = item.quantity - quantity;
       const movement = await tx.stockMovement.create({ data: { inventoryItemId: item.id, storeId: a.store.id, type: "MANUAL_ADJUSTMENT", quantityChange: -quantity, quantityAfter: next, note: `FNB WASTE: ${cleanReason}` } });
       await tx.inventoryItem.update({ where: { id: item.id }, data: { quantity: next, autoUnpublished: next === 0 ? true : item.autoUnpublished } });
-      await consumeFifoStockTx(tx, { inventoryItemId: item.id, storeId: a.store.id, quantity, stockMovementId: movement.id });
+      const mode = getFnbRotationMode(a.store.enabledModules);
+      const consume = mode === "FEFO" ? consumeFefoStockTx : consumeFifoStockTx;
+      await consume(tx, { inventoryItemId: item.id, storeId: a.store.id, quantity, stockMovementId: movement.id });
       if (next === 0) await tx.product.update({ where: { id: item.productId }, data: { isPublished: false } });
       return next;
     }, { isolationLevel: "Serializable", timeout: 15000 });

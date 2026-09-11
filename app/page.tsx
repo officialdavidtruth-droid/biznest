@@ -141,13 +141,13 @@ export default async function HomePage() {
 
   return (
     <div
-      className={`${display.variable} ${body.variable} ${mono.variable} min-h-screen overflow-x-clip`}
-      style={{ background: "var(--bn-hero-gradient)", color: "var(--bn-ivory)", fontFamily: "var(--font-body)" }}
+      className={`bn-homepage ${display.variable} ${body.variable} ${mono.variable} min-h-screen overflow-x-clip`}
+      style={{ background: "linear-gradient(135deg, #ffffff 0%, #fbf8f5 58%, #f1e7de 100%)", color: "#2f241e", fontFamily: "var(--font-body)" }}
     >
       {/* Nav */}
       <header
         className="sticky top-0 z-30 flex items-center justify-between px-6 py-4 backdrop-blur-md sm:px-10"
-        style={{ background: "rgba(10, 28, 18, 0.72)", borderBottom: "1px solid var(--bn-ink-line)" }}
+        style={{ background: "rgba(255,255,255,0.94)", borderBottom: "1px solid #e5d9cf", color: "#2f241e" }}
       >
         <span className="text-lg tracking-tight" style={{ fontFamily: "var(--font-display)", fontWeight: 700 }}>
           BizNest
@@ -176,8 +176,8 @@ export default async function HomePage() {
               </Link>
               <Link
                 href="/register"
-                className="rounded-full px-4 py-2 text-sm font-medium shadow-[0_4px_20px_-6px_rgba(52,211,153,0.6)] transition hover:brightness-110"
-                style={{ background: "var(--bn-accent-gradient)", color: "var(--bn-ink)" }}
+                className="rounded-full px-4 py-2 text-sm font-medium shadow-[0_4px_20px_-6px_rgba(111,78,55,0.28)] transition hover:brightness-110"
+                style={{ background: "linear-gradient(135deg, #6f4e37 0%, #8b6b52 100%)", color: "#ffffff" }}
               >
                 Open your store
               </Link>
@@ -188,21 +188,21 @@ export default async function HomePage() {
 
       {/* Hero */}
       <section className="relative grid gap-10 overflow-hidden px-6 pb-16 pt-8 sm:px-10 lg:grid-cols-2 lg:items-center lg:gap-6 lg:pt-16"
-        style={{ background: "var(--bn-hero-gradient)" }}>
-        <div className="bn-glow-orb h-72 w-72" style={{ background: "rgba(52,211,153,0.22)", top: "-6rem", left: "-6rem" }} />
-        <div className="bn-glow-orb h-64 w-64" style={{ background: "rgba(16,150,122,0.2)", top: "8rem", right: "-4rem" }} />
+        style={{ background: "linear-gradient(135deg, #ffffff 0%, #fbf8f5 58%, #f1e7de 100%)" }}>
+        <div className="bn-glow-orb h-72 w-72" style={{ background: "rgba(139,107,82,0.12)", top: "-6rem", left: "-6rem" }} />
+        <div className="bn-glow-orb h-64 w-64" style={{ background: "rgba(111,78,55,0.10)", top: "8rem", right: "-4rem" }} />
 
         <div className="bn-fade-up relative z-10">
           <div
             className="mb-5 inline-flex items-center gap-2 rounded-full px-3 py-1.5 text-xs"
-            style={{ border: "1px solid var(--bn-ink-line)", background: "rgba(18, 48, 36, 0.6)", color: "var(--bn-mute)" }}
+            style={{ border: "1px solid #e5d9cf", background: "#fbf8f5", color: "#7c6b5d" }}
           >
-            <span className="bn-pulse-dot h-1.5 w-1.5 rounded-full" style={{ background: "var(--bn-marigold)" }} />
+            <span className="bn-pulse-dot h-1.5 w-1.5 rounded-full" style={{ background: "#6f4e37" }} />
             <span style={{ fontFamily: "var(--font-mono)" }}>{activeStoreCount.toLocaleString()} stores open right now</span>
           </div>
           <p
             className="mb-4 text-xs uppercase tracking-[0.2em]"
-            style={{ color: "var(--bn-marigold)", fontFamily: "var(--font-mono)" }}
+            style={{ color: "#6f4e37", fontFamily: "var(--font-mono)" }}
           >
             One marketplace, every kind of business
           </p>
@@ -212,9 +212,9 @@ export default async function HomePage() {
           >
             Your BUSINESS belongs
             <br />
-            in the <span style={{ color: "var(--bn-marigold)" }}>nest</span>.
+            in the <span style={{ color: "#6f4e37" }}>nest</span>.
           </h1>
-          <p className="mt-5 max-w-md text-base leading-relaxed" style={{ color: "var(--bn-mute)" }}>
+          <p className="mt-5 max-w-md text-base leading-relaxed" style={{ color: "#7c6b5d" }}>
             BizNest is where sellers of products, services, and bookings get a real storefront,
             a real dashboard, and real payments — verified, protected, and built to grow with you.
           </p>
@@ -223,7 +223,7 @@ export default async function HomePage() {
               <Link
                 href={dashboardHref}
                 className="rounded-full px-6 py-3 text-sm font-medium transition hover:brightness-110"
-                style={{ background: "var(--bn-accent-gradient)", color: "var(--bn-ink)" }}
+                style={{ background: "linear-gradient(135deg, #6f4e37 0%, #8b6b52 100%)", color: "#ffffff" }}
               >
                 Go to your dashboard
               </Link>
@@ -232,14 +232,14 @@ export default async function HomePage() {
                 <Link
                   href="/register"
                   className="rounded-full px-6 py-3 text-sm font-medium transition hover:brightness-110"
-                  style={{ background: "var(--bn-accent-gradient)", color: "var(--bn-ink)" }}
+                  style={{ background: "linear-gradient(135deg, #6f4e37 0%, #8b6b52 100%)", color: "#ffffff" }}
                 >
                   Start selling — it's free
                 </Link>
                 <Link
                   href="/login"
                   className="rounded-full px-6 py-3 text-sm font-medium transition"
-                  style={{ border: "1px solid var(--bn-ink-line)", color: "var(--bn-ivory)" }}
+                  style={{ border: "1px solid #e5d9cf", color: "#2f241e" }}
                 >
                   I already have a store
                 </Link>
@@ -248,14 +248,14 @@ export default async function HomePage() {
           </div>
           <div
             className="mt-10 flex gap-8 text-sm"
-            style={{ fontFamily: "var(--font-mono)", color: "var(--bn-mute)" }}
+            style={{ fontFamily: "var(--font-mono)", color: "#7c6b5d" }}
           >
             <div>
-              <span className="block text-xl" style={{ color: "var(--bn-ivory)" }}>{CATEGORIES.length}+</span>
+              <span className="block text-xl" style={{ color: "#2f241e" }}>{CATEGORIES.length}+</span>
               product & service categories
             </div>
             <div>
-              <span className="block text-xl" style={{ color: "var(--bn-ivory)" }}>2</span>
+              <span className="block text-xl" style={{ color: "#2f241e" }}>2</span>
               payment providers, your account
             </div>
           </div>
@@ -268,8 +268,8 @@ export default async function HomePage() {
           <div
             className="relative z-10 -mx-6 overflow-hidden py-2 sm:-mx-10 lg:mx-0 lg:rounded-2xl"
             style={{
-              background: "var(--bn-ink-raised)",
-              border: "1px solid var(--bn-ink-line)",
+              background: "#fbf8f5",
+              border: "1px solid #e5d9cf",
               maskImage: "linear-gradient(90deg, transparent, black 8%, black 92%, transparent)",
             }}
           >
@@ -281,19 +281,19 @@ export default async function HomePage() {
 
       {/* Ledger strip — real counts from the platform, styled like a receipt
           rather than invented traction numbers, so it never overclaims. */}
-      <section className="px-6 py-10 sm:px-10" style={{ background: "var(--bn-ink)", borderTop: "1px solid var(--bn-ink-line)", borderBottom: "1px solid var(--bn-ink-line)" }}>
+      <section className="px-6 py-10 sm:px-10" style={{ background: "#ffffff", borderTop: "1px solid #e5d9cf", borderBottom: "1px solid #e5d9cf" }}>
         <div className="mx-auto grid max-w-5xl gap-x-10 gap-y-4 sm:grid-cols-2 lg:grid-cols-4">
           {STATS.map((s) => (
             <div key={s.label} className="bn-receipt-row" style={{ fontFamily: "var(--font-mono)" }}>
-              <span className="text-xs" style={{ color: "var(--bn-mute)" }}>{s.label}</span>
-              <span className="text-sm font-semibold" style={{ color: "var(--bn-marigold)" }}>{s.value}</span>
+              <span className="text-xs" style={{ color: "#7c6b5d" }}>{s.label}</span>
+              <span className="text-sm font-semibold" style={{ color: "#6f4e37" }}>{s.value}</span>
             </div>
           ))}
         </div>
       </section>
 
       {/* How it works — a real 3-step sequence, so numbering earns its place */}
-      <section className="px-6 py-16 sm:px-10 lg:py-24" style={{ background: "var(--bn-ink)" }}>
+      <section className="px-6 py-16 sm:px-10 lg:py-24" style={{ background: "#ffffff" }}>
         <h2 className="mb-10 text-2xl sm:text-3xl" style={{ fontFamily: "var(--font-display)", fontWeight: 700 }}>
           From idea to open for business
         </h2>
@@ -302,12 +302,12 @@ export default async function HomePage() {
             <div key={s.n}>
               <span
                 className="text-sm"
-                style={{ fontFamily: "var(--font-mono)", color: "var(--bn-marigold)" }}
+                style={{ fontFamily: "var(--font-mono)", color: "#6f4e37" }}
               >
                 {s.n}
               </span>
               <h3 className="mt-2 text-lg font-semibold">{s.title}</h3>
-              <p className="mt-2 text-sm leading-relaxed" style={{ color: "var(--bn-mute)" }}>
+              <p className="mt-2 text-sm leading-relaxed" style={{ color: "#7c6b5d" }}>
                 {s.body}
               </p>
             </div>
@@ -317,17 +317,17 @@ export default async function HomePage() {
 
       {/* See it live — a static, license-free mock of a generated storefront,
           so the product's actual output is visible before signing up. */}
-      <section className="relative overflow-hidden px-6 py-16 sm:px-10 lg:py-24" style={{ background: "var(--bn-ink-raised)" }}>
+      <section className="relative overflow-hidden px-6 py-16 sm:px-10 lg:py-24" style={{ background: "#fbf8f5" }}>
         <div className="bn-dot-grid absolute inset-0 opacity-60" />
         <div className="relative mx-auto grid max-w-5xl gap-12 lg:grid-cols-2 lg:items-center">
           <div>
-            <p className="mb-3 text-xs uppercase tracking-[0.2em]" style={{ color: "var(--bn-marigold)", fontFamily: "var(--font-mono)" }}>
+            <p className="mb-3 text-xs uppercase tracking-[0.2em]" style={{ color: "#6f4e37", fontFamily: "var(--font-mono)" }}>
               What you actually get
             </p>
             <h2 className="text-2xl sm:text-3xl" style={{ fontFamily: "var(--font-display)", fontWeight: 700 }}>
               A real storefront, live in minutes
             </h2>
-            <p className="mt-4 max-w-md text-sm leading-relaxed sm:text-base" style={{ color: "var(--bn-mute)" }}>
+            <p className="mt-4 max-w-md text-sm leading-relaxed sm:text-base" style={{ color: "#7c6b5d" }}>
               Every store gets a nav, a hero, a product grid, and a cart on day one — pulled
               from a template, filled with your own products and photos. Then the click-to-edit
               editor lets you rewrite any headline or swap any image, right on the page.
@@ -335,7 +335,7 @@ export default async function HomePage() {
             <Link
               href="/templates"
               className="mt-6 inline-flex items-center gap-1.5 text-sm font-medium transition hover:gap-2.5"
-              style={{ color: "var(--bn-marigold)" }}
+              style={{ color: "#6f4e37" }}
             >
               Browse storefront templates <ArrowRight className="h-4 w-4" />
             </Link>
@@ -345,7 +345,7 @@ export default async function HomePage() {
       </section>
 
       {/* Categories */}
-      <section id="categories" className="px-6 py-16 sm:px-10 lg:py-20" style={{ background: "var(--bn-ink)" }}>
+      <section id="categories" className="px-6 py-16 sm:px-10 lg:py-20" style={{ background: "#ffffff" }}>
         <h2 className="mb-8 text-2xl sm:text-3xl" style={{ fontFamily: "var(--font-display)", fontWeight: 700 }}>
           Whatever you sell, there's a stall for it
         </h2>
@@ -353,8 +353,8 @@ export default async function HomePage() {
           {CATEGORIES.map((c) => (
             <span
               key={c}
-              className="rounded-full px-4 py-2 text-sm transition hover:border-[var(--bn-marigold)] hover:text-[var(--bn-ivory)]"
-              style={{ border: "1px solid var(--bn-ink-line)", color: "var(--bn-mute)" }}
+              className="rounded-full px-4 py-2 text-sm transition hover:border-[#6f4e37] hover:text-[#2f241e]"
+              style={{ border: "1px solid #e5d9cf", color: "#7c6b5d" }}
             >
               {c}
             </span>
@@ -364,11 +364,11 @@ export default async function HomePage() {
 
       {/* Pricing — pulled live from the Subscription table, not hardcoded copy,
           so this page can never drift out of sync with what a store actually gets. */}
-      <section id="pricing" className="px-6 py-16 sm:px-10 lg:py-24" style={{ background: "var(--bn-ink)" }}>
+      <section id="pricing" className="px-6 py-16 sm:px-10 lg:py-24" style={{ background: "#ffffff" }}>
         <h2 className="mb-3 text-2xl sm:text-3xl" style={{ fontFamily: "var(--font-display)", fontWeight: 700 }}>
           Simple pricing, real ownership
         </h2>
-        <p className="mb-10 max-w-lg text-sm" style={{ color: "var(--bn-mute)" }}>
+        <p className="mb-10 max-w-lg text-sm" style={{ color: "#7c6b5d" }}>
           Every plan is paid monthly — no free tier. Higher tiers unlock the AI Store
           Builder, a lower commission, and your own domain name.
         </p>
@@ -381,9 +381,9 @@ export default async function HomePage() {
                 key={p.id}
                 className="relative rounded-2xl p-6 transition hover:-translate-y-1"
                 style={{
-                  background: featured ? "var(--bn-accent-gradient)" : "var(--bn-ink-raised)",
-                  color: featured ? "var(--bn-ink)" : "var(--bn-ivory)",
-                  border: featured ? "none" : "1px solid var(--bn-ink-line)",
+                  background: featured ? "linear-gradient(135deg, #6f4e37 0%, #8b6b52 100%)" : "#ffffff",
+                  color: "#2f241e",
+                  border: featured ? "none" : "1px solid #e5d9cf",
                 }}
               >
                 {featured && (
@@ -407,8 +407,8 @@ export default async function HomePage() {
                   href={session?.user ? dashboardHref : "/register"}
                   className="mt-6 block rounded-full py-2.5 text-center text-sm font-medium transition hover:brightness-110"
                   style={{
-                    background: featured ? "var(--bn-ink)" : "var(--bn-accent-gradient)",
-                    color: featured ? "var(--bn-ivory)" : "var(--bn-ink)",
+                    background: featured ? "#4b3324" : "linear-gradient(135deg, #6f4e37 0%, #8b6b52 100%)",
+                    color: "#ffffff",
                   }}
                 >
                   {Number(p.price) === 0 ? "Start free" : "Get started"}
@@ -420,23 +420,23 @@ export default async function HomePage() {
       </section>
 
       {/* Trust & security — states what's actually built, not generic marketing claims */}
-      <section className="px-6 py-16 sm:px-10 lg:py-24" style={{ background: "var(--bn-ink-raised)" }}>
+      <section className="px-6 py-16 sm:px-10 lg:py-24" style={{ background: "#fbf8f5" }}>
         <h2 className="mb-10 text-2xl sm:text-3xl" style={{ fontFamily: "var(--font-display)", fontWeight: 700 }}>
           Built for trust, not just transactions
         </h2>
         <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
           {TRUST.map((f) => (
-            <div key={f.title} className="rounded-2xl p-6" style={{ background: "var(--bn-ink)", border: "1px solid var(--bn-ink-line)" }}>
-              <f.icon className="h-6 w-6" style={{ color: "var(--bn-marigold)" }} strokeWidth={1.75} />
+            <div key={f.title} className="rounded-2xl p-6" style={{ background: "#ffffff", border: "1px solid #e5d9cf" }}>
+              <f.icon className="h-6 w-6" style={{ color: "#6f4e37" }} strokeWidth={1.75} />
               <h3 className="mt-3 text-base font-semibold">{f.title}</h3>
-              <p className="mt-2 text-sm leading-relaxed" style={{ color: "var(--bn-mute)" }}>{f.body}</p>
+              <p className="mt-2 text-sm leading-relaxed" style={{ color: "#7c6b5d" }}>{f.body}</p>
             </div>
           ))}
         </div>
       </section>
 
       {/* FAQ */}
-      <section className="px-6 py-16 sm:px-10 lg:py-24" style={{ background: "var(--bn-ink)" }}>
+      <section className="px-6 py-16 sm:px-10 lg:py-24" style={{ background: "#ffffff" }}>
         <div className="mx-auto max-w-3xl">
           <h2 className="mb-10 text-2xl sm:text-3xl" style={{ fontFamily: "var(--font-display)", fontWeight: 700 }}>
             Questions people actually ask
@@ -446,8 +446,8 @@ export default async function HomePage() {
       </section>
 
       {/* Final CTA */}
-      <section className="relative overflow-hidden px-6 py-20 text-center sm:px-10 lg:py-28" style={{ background: "var(--bn-hero-gradient)" }}>
-        <div className="bn-glow-orb h-80 w-80" style={{ background: "rgba(52,211,153,0.18)", bottom: "-8rem", left: "50%", transform: "translateX(-50%)" }} />
+      <section className="relative overflow-hidden px-6 py-20 text-center sm:px-10 lg:py-28" style={{ background: "linear-gradient(135deg, #ffffff 0%, #fbf8f5 58%, #f1e7de 100%)" }}>
+        <div className="bn-glow-orb h-80 w-80" style={{ background: "rgba(111,78,55,0.10)", bottom: "-8rem", left: "50%", transform: "translateX(-50%)" }} />
         <div className="relative z-10">
           <h2
             className="mx-auto max-w-xl text-3xl sm:text-4xl"
@@ -455,21 +455,21 @@ export default async function HomePage() {
           >
             Your stall is waiting.
           </h2>
-          <p className="mx-auto mt-3 max-w-sm text-sm" style={{ color: "var(--bn-mute)" }}>
+          <p className="mx-auto mt-3 max-w-sm text-sm" style={{ color: "#7c6b5d" }}>
             Open in minutes. Pick your plan, verified in as little as a day.
           </p>
           <div className="mt-8 flex flex-wrap items-center justify-center gap-3">
             <Link
               href="/register"
               className="inline-block rounded-full px-8 py-3.5 text-sm font-medium transition hover:brightness-110"
-              style={{ background: "var(--bn-accent-gradient)", color: "var(--bn-ink)" }}
+              style={{ background: "linear-gradient(135deg, #6f4e37 0%, #8b6b52 100%)", color: "#ffffff" }}
             >
               Open your store
             </Link>
             <Link
               href="/search"
               className="inline-block rounded-full px-8 py-3.5 text-sm font-medium transition"
-              style={{ border: "1px solid var(--bn-ink-line)", color: "var(--bn-ivory)" }}
+              style={{ border: "1px solid #e5d9cf", color: "#2f241e" }}
             >
               Browse stores first
             </Link>
@@ -477,21 +477,21 @@ export default async function HomePage() {
         </div>
       </section>
 
-      <footer style={{ background: "var(--bn-ink)", borderTop: "1px solid var(--bn-ink-line)" }}>
+      <footer style={{ background: "#ffffff", borderTop: "1px solid #e5d9cf" }}>
         <div className="mx-auto grid max-w-6xl gap-10 px-6 py-14 sm:grid-cols-2 sm:px-10 lg:grid-cols-4">
           <div>
             <span className="text-lg tracking-tight" style={{ fontFamily: "var(--font-display)", fontWeight: 700 }}>
               BizNest
             </span>
-            <p className="mt-3 max-w-xs text-sm leading-relaxed" style={{ color: "var(--bn-mute)" }}>
+            <p className="mt-3 max-w-xs text-sm leading-relaxed" style={{ color: "#7c6b5d" }}>
               A verified marketplace for products, services, and bookings — your store,
               your payments, your own domain on ours.
             </p>
           </div>
 
           <div>
-            <p className="mb-3 text-xs font-semibold uppercase tracking-wider" style={{ color: "var(--bn-ivory)" }}>Platform</p>
-            <ul className="space-y-2 text-sm" style={{ color: "var(--bn-mute)" }}>
+            <p className="mb-3 text-xs font-semibold uppercase tracking-wider" style={{ color: "#2f241e" }}>Platform</p>
+            <ul className="space-y-2 text-sm" style={{ color: "#7c6b5d" }}>
               <li><Link href="/register" className="hover:opacity-80">Open a store</Link></li>
               <li><Link href="/login" className="hover:opacity-80">Sign in</Link></li>
               <li><a href="#pricing" className="hover:opacity-80">Pricing</a></li>
@@ -500,8 +500,8 @@ export default async function HomePage() {
           </div>
 
           <div>
-            <p className="mb-3 text-xs font-semibold uppercase tracking-wider" style={{ color: "var(--bn-ivory)" }}>Legal</p>
-            <ul className="space-y-2 text-sm" style={{ color: "var(--bn-mute)" }}>
+            <p className="mb-3 text-xs font-semibold uppercase tracking-wider" style={{ color: "#2f241e" }}>Legal</p>
+            <ul className="space-y-2 text-sm" style={{ color: "#7c6b5d" }}>
               <li><Link href="/privacy" className="hover:opacity-80">Privacy Policy</Link></li>
               <li><Link href="/terms" className="hover:opacity-80">Terms of Service</Link></li>
               <li><Link href="/seller-agreement" className="hover:opacity-80">Seller Agreement</Link></li>
@@ -509,15 +509,15 @@ export default async function HomePage() {
           </div>
 
           <div>
-            <p className="mb-3 text-xs font-semibold uppercase tracking-wider" style={{ color: "var(--bn-ivory)" }}>Support</p>
-            <ul className="space-y-2 text-sm" style={{ color: "var(--bn-mute)" }}>
+            <p className="mb-3 text-xs font-semibold uppercase tracking-wider" style={{ color: "#2f241e" }}>Support</p>
+            <ul className="space-y-2 text-sm" style={{ color: "#7c6b5d" }}>
               <li><a href="mailto:support@biznest.space" className="hover:opacity-80">support@biznest.space</a></li>
             </ul>
           </div>
         </div>
         <div
           className="flex flex-col items-center gap-2 px-6 py-6 text-center text-xs sm:flex-row sm:justify-between sm:px-10"
-          style={{ borderTop: "1px solid var(--bn-ink-line)", color: "var(--bn-mute)" }}
+          style={{ borderTop: "1px solid #e5d9cf", color: "#7c6b5d" }}
         >
           <span>© {new Date().getFullYear()} BizNest. All rights reserved.</span>
           <span>Payments by Paystack & Flutterwave · SSL encrypted</span>
@@ -539,15 +539,15 @@ function Row({ stalls, direction }: { stalls: Stall[]; direction: "left" | "righ
         <Link
           href={`/${s.slug}`}
           key={`${s.slug}-${i}`}
-          className="flex w-44 shrink-0 flex-col rounded-xl px-4 py-3 transition hover:border-[var(--bn-marigold)]"
-          style={{ background: "var(--bn-ink)", border: "1px solid var(--bn-ink-line)" }}
+          className="flex w-44 shrink-0 flex-col rounded-xl px-4 py-3 transition hover:border-[#6f4e37]"
+          style={{ background: "#ffffff", border: "1px solid #e5d9cf" }}
         >
           <span
             className="h-1.5 w-6 rounded-full"
-            style={{ background: i % 3 === 0 ? "var(--bn-marigold)" : "var(--bn-jade)" }}
+            style={{ background: i % 3 === 0 ? "#6f4e37" : "#8b6b52" }}
           />
           <span className="mt-2 truncate text-sm font-medium">{s.name}</span>
-          <span className="truncate text-xs" style={{ color: "var(--bn-mute)" }}>
+          <span className="truncate text-xs" style={{ color: "#7c6b5d" }}>
             {s.cat}
           </span>
         </Link>

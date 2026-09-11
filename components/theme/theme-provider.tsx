@@ -42,19 +42,26 @@ export function ThemeProvider({
   defaultTheme?: Theme;
   scopeId: string;
 }) {
-  const [theme, setThemeState] = useState<Theme>(defaultTheme);
-  const [resolvedTheme, setResolvedTheme] = useState<ResolvedTheme>(
-    defaultTheme === "system" ? "dark" : (defaultTheme as ResolvedTheme)
-  );
+  const biznestLightSurface = scopeId.startsWith("bn-");
+  const [theme, setThemeState] = useState<Theme>(biznestLightSurface ? "light" : defaultTheme);
+  const [resolvedTheme, setResolvedTheme] = useState<ResolvedTheme>("light");
 
   useEffect(() => {
+    if (biznestLightSurface) {
+      setThemeState("light");
+      return;
+    }
     const stored = localStorage.getItem(STORAGE_KEY) as Theme | null;
     if (stored === "light" || stored === "dark" || stored === "system") {
       setThemeState(stored);
     }
-  }, []);
+  }, [biznestLightSurface]);
 
   useEffect(() => {
+    if (biznestLightSurface) {
+      setResolvedTheme("light");
+      return;
+    }
     const resolved = theme === "system" ? getSystemTheme() : theme;
     setResolvedTheme(resolved);
 
@@ -63,7 +70,7 @@ export function ThemeProvider({
     const onChange = () => setResolvedTheme(getSystemTheme());
     mql.addEventListener("change", onChange);
     return () => mql.removeEventListener("change", onChange);
-  }, [theme]);
+  }, [theme, biznestLightSurface]);
 
   const setTheme = useCallback((next: Theme) => {
     setThemeState(next);
@@ -92,7 +99,7 @@ export function ThemeProvider({
           full-height stretch used to be. Both can coexist because a
           flex item without its own flex-grow simply doesn't stretch,
           even inside a flex-1 parent. */}
-      <div id={scopeId} className={`bn-biznest-admin-theme flex min-h-0 flex-1 flex-col ${resolvedTheme}`} suppressHydrationWarning>
+      <div id={scopeId} className={`flex min-h-0 flex-1 flex-col ${resolvedTheme}`} suppressHydrationWarning>
         {children}
       </div>
     </ThemeContext.Provider>
@@ -113,7 +120,7 @@ export function useTheme() {
  * classList, and matches the client media query ThemeProvider itself uses.
  */
 export function ThemeFlashGuard({ scopeId, defaultTheme = "dark" }: { scopeId: string; defaultTheme?: Theme }) {
-  const script = `(function(){try{var t=localStorage.getItem("${STORAGE_KEY}");var resolved=(t==="light"||t==="dark")?t:((t===null||t==="system")?(window.matchMedia("(prefers-color-scheme: dark)").matches?"dark":"light"):"${defaultTheme}");var el=document.getElementById("${scopeId}");if(el){el.classList.remove("light","dark");el.classList.add(resolved);}}catch(e){}})();`;
+  const script = `(function(){try{var forcedLight=${scopeId.startsWith("bn-") ? "true" : "false"};var t=localStorage.getItem("${STORAGE_KEY}");var resolved=forcedLight?"light":((t==="light"||t==="dark")?t:((t===null||t==="system")?(window.matchMedia("(prefers-color-scheme: dark)").matches?"dark":"light"):"${defaultTheme}"));var el=document.getElementById("${scopeId}");if(el){el.classList.remove("light","dark");el.classList.add(resolved);}}catch(e){}})();`;
   // eslint-disable-next-line react/no-danger
   return <script dangerouslySetInnerHTML={{ __html: script }} />;
 }

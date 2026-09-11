@@ -14,6 +14,8 @@ export default async function PluginPage({ params }: { params: Promise<{ slug: s
   if (!store) notFound();
   const entitlement = await getPluginEntitlement(store.id, pluginKey);
   if (!entitlement.allowed || !entitlement.installed) redirect(`/store/${slug}/admin/apps`);
+  if (pluginKey === "procurement") redirect(`/store/${slug}/admin/purchase-orders`);
+  if (pluginKey === "restaurant-operations") redirect(`/store/${slug}/admin/fnb`);
   if (pluginKey === "financial-control") return <FinancialControlPage params={Promise.resolve({ slug })} />;
   if (pluginKey === "requisition") return <RequisitionPage params={Promise.resolve({ slug })} />;
   if (pluginKey === "fnb-operations") redirect(`/store/${slug}/admin/fnb`);

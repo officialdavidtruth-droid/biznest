@@ -9,33 +9,28 @@
 
 @layer base {
   :root {
-    --background: 0 0% 100%;         /* white */
-    --foreground: 152 45% 8%;        /* near-black forest, for text */
-    --primary: 152 62% 20%;          /* deep lush forest green */
-    --primary-foreground: 0 0% 100%; /* white, for text on green */
-    --muted: 150 35% 96%;            /* pale sage */
-    --muted-foreground: 155 18% 36%; /* muted green-gray */
-    --border: 150 25% 88%;           /* soft sage border */
-    --destructive: 0 84% 65%;
-    --radius: 0.5rem;
+    --background: 0 0% 100%;
+    --foreground: 24 24% 13%;
+    --primary: 27 33% 32%;
+    --primary-foreground: 0 0% 100%;
+    --muted: 30 30% 96%;
+    --muted-foreground: 25 14% 42%;
+    --border: 30 22% 88%;
+    --destructive: 0 72% 51%;
+    --radius: 0.65rem;
   }
 
-  /* Dark variant of the same token set, using the exact brand colors the
-     marketing homepage already reads directly (--bn-ink, --bn-marigold,
-     etc — see "BizNest brand tokens" below). Applied via a `.dark` class
-     on a surface's root (see app/store/[slug]/admin/layout.tsx and
-     app/supaadmin/layout.tsx) so admin/back-office surfaces match the
-     homepage's dark forest look while storefront/checkout/auth pages,
-     which aren't wrapped in `.dark`, stay on the light token set above. */
   .dark {
-    --background: 147 47% 7%;         /* == --bn-ink #0a1c12 */
-    --foreground: 0 0% 100%;          /* == --bn-ivory */
-    --primary: 158 64% 52%;           /* == --bn-marigold #34d399 */
-    --primary-foreground: 152 45% 8%; /* dark ink, for text on the emerald accent */
-    --muted: 151 45% 13%;             /* == --bn-ink-raised #123024 */
-    --muted-foreground: 150 19% 63%;  /* == --bn-mute #8fb3a1 */
-    --border: 151 41% 21%;            /* == --bn-ink-line #1f4a35 */
-    --destructive: 0 70% 58%;
+    /* Retained only for legacy consumers. BizNest admin/plugin scopes are
+       intentionally light-first and ThemeProvider forces them to light. */
+    --background: 30 20% 97%;
+    --foreground: 24 24% 13%;
+    --primary: 27 33% 32%;
+    --primary-foreground: 0 0% 100%;
+    --muted: 30 30% 94%;
+    --muted-foreground: 25 14% 42%;
+    --border: 30 22% 84%;
+    --destructive: 0 72% 51%;
   }
 }
 
@@ -80,7 +75,7 @@
   border-radius: 0.75rem;
   border: 1px solid hsl(var(--border));
   background: hsl(var(--background));
-  box-shadow: 0 1px 2px rgba(6, 40, 26, 0.08);
+  box-shadow: 0 1px 2px rgba(75, 51, 36, 0.08);
 }
 
 /* Reusable forest→emerald→white gradient for heroes, buttons, and accent
@@ -111,30 +106,53 @@
 }
 
 /* --- BizNest brand tokens ---
-   Dark lush forest + white, with the accent doing double duty as the
-   "lush" gradient pop (see .bn-gradient-accent above). Variable names
-   kept stable so every file already referencing them (app/page.tsx,
-   order confirmation, error/loading screens, etc.) picks this up with
-   no further edits needed. */
+   Light-first white workspace with warm coffee-brown accents. These tokens
+   are intentionally used by the marketing homepage and BizNest chrome only;
+   storefront templates keep their own visual systems. */
 :root {
-  --bn-ink: #0a1c12;       /* deep, near-black forest — the dark ground for
-                               marketing/hero surfaces */
-  --bn-ink-raised: #123024; /* one step up — cards/panels sitting on --bn-ink */
-  --bn-ink-line: #1f4a35;   /* subtle green-tinted border on dark surfaces */
-  --bn-marigold: #34d399;  /* bright emerald accent — the "pop" against the
-                               dark forest ground (name kept for compat) */
-  --bn-jade: #10967a;      /* deeper jade, for secondary accents/hover */
-  --bn-ivory: #ffffff;     /* white, for text on dark surfaces */
-  --bn-mute: #8fb3a1;      /* muted sage, for secondary text on dark */
+  --bn-ink: #2f241e;
+  --bn-ink-raised: #f7f3ee;
+  --bn-ink-line: #e5d9cf;
+  --bn-marigold: #6f4e37;
+  --bn-jade: #8b6b52;
+  --bn-ivory: #ffffff;
+  --bn-mute: #7c6b5d;
+  --bn-coffee-dark: #4b3324;
+  --bn-cream: #fbf8f5;
 
-  /* Gradient variants of the above, for spots that want the "lush" gradient
-     pop directly in an inline style rather than a class (e.g. a background
-     that's conditionally either this or a flat color). Same visual recipe
-     as .bn-gradient-dark / .bn-gradient-accent above. */
-  --bn-hero-gradient:
-    radial-gradient(120% 90% at 12% -10%, rgba(52, 211, 153, 0.16) 0%, transparent 55%),
-    linear-gradient(165deg, #0e2b1c 0%, #0a1c12 45%, #05100a 100%);
-  --bn-accent-gradient: linear-gradient(135deg, #34d399 0%, #10967a 100%);
+  --bn-hero-gradient: radial-gradient(120% 90% at 12% -10%, rgba(52, 211, 153, 0.16) 0%, transparent 55%), linear-gradient(165deg, #0e2b1c 0%, #0a1c12 45%, #05100a 100%);
+  --bn-accent-gradient: linear-gradient(135deg, #6f4e37 0%, #8b6b52 100%);
+}
+
+.bn-gradient {
+  background: linear-gradient(135deg, #ffffff 0%, #fbf8f5 55%, #f2e9e1 100%);
+}
+.bn-gradient-text {
+  background: linear-gradient(135deg, #4b3324, #8b6b52);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+.bn-gradient-dark {
+  background: linear-gradient(135deg, #ffffff 0%, #f7f3ee 55%, #eee3d9 100%);
+}
+.bn-gradient-accent {
+  background: linear-gradient(135deg, #6f4e37 0%, #8b6b52 100%);
+}
+
+.bn-admin-app,
+.bn-fnb-workspace,
+.bn-pms-workspace,
+#bn-admin-theme-scope,
+#bn-fnb-theme-scope,
+#bn-pms-theme-scope {
+  --background: 0 0% 100%;
+  --foreground: 24 24% 13%;
+  --primary: 27 33% 32%;
+  --primary-foreground: 0 0% 100%;
+  --muted: 30 30% 96%;
+  --muted-foreground: 25 14% 42%;
+  --border: 30 22% 88%;
 }
 
 @keyframes bn-marquee-left {
@@ -365,63 +383,63 @@ a[href*="/service/"]:hover img {
 
 
 /* ================================================================
-   BizNest Admin Experience — shared visual language
-   One fixed interface system; adaptive data/navigation supplies the niche.
+   BizNest Admin Experience — light-first white + coffee brown
+   Core dashboard and all plugin workspaces share this chrome. Storefront
+   templates are deliberately excluded.
    ================================================================ */
 .bn-admin-app {
   --bn-surface: #ffffff;
-  --bn-page: #f8f9fb;
-  --bn-line: #e5e8ed;
-  --bn-line-soft: #edf0f3;
-  --bn-ink: #111827;
-  --bn-muted: #6b7280;
-  --bn-gold: #10967a;
-  --bn-gold-dark: #0d7a63;
+  --bn-page: #fbf9f7;
+  --bn-line: #e5d9cf;
+  --bn-line-soft: #f0e8e1;
+  --bn-ink: #2f241e;
+  --bn-muted: #7c6b5d;
+  --bn-gold: #6f4e37;
+  --bn-gold-dark: #4b3324;
   background: var(--bn-page) !important;
   color: var(--bn-ink) !important;
 }
 .bn-admin-app main { background: var(--bn-page) !important; }
-.bn-admin-app .bn-admin-sidebar { background: var(--bn-ink) !important; border-color: var(--bn-ink-line) !important; }
+.bn-admin-app .bn-admin-sidebar { background: #ffffff !important; border-color: var(--bn-line) !important; color: var(--bn-ink) !important; }
+.bn-admin-app .bn-admin-sidebar .text-white { color: var(--bn-ink) !important; }
 .bn-admin-app .bn-admin-page-title { letter-spacing: -.025em; }
-.bn-admin-app h1 { color: #111827; font-weight: 700; letter-spacing: -.025em; }
-.bn-admin-app h2, .bn-admin-app h3 { color: #111827; letter-spacing: -.015em; }
+.bn-admin-app h1, .bn-admin-app h2, .bn-admin-app h3 { color: #2f241e; }
 .bn-admin-app input, .bn-admin-app select, .bn-admin-app textarea {
-  background: #fff !important; border-color: var(--bn-line) !important; color: #111827 !important;
-  border-radius: 8px !important; box-shadow: none !important;
+  background: #fff !important; border-color: var(--bn-line) !important; color: #2f241e !important;
+  border-radius: 9px !important; box-shadow: none !important;
 }
 .bn-admin-app input:focus, .bn-admin-app select:focus, .bn-admin-app textarea:focus {
-  border-color: #6ec9ac !important; outline: 2px solid #d3f0e4 !important;
+  border-color: #8b6b52 !important; outline: 2px solid #eee4dc !important;
 }
-.bn-admin-app button, .bn-admin-app a { transition: background-color .15s ease, border-color .15s ease, box-shadow .15s ease, transform .15s ease; }
 .bn-admin-app button.bg-primary, .bn-admin-app a.bg-primary,
 .bn-admin-app button[class*="bg-primary"], .bn-admin-app a[class*="bg-primary"] {
-  background: var(--bn-gold) !important; color: #111827 !important; border-color: var(--bn-gold) !important;
+  background: var(--bn-gold) !important; color: #fff !important; border-color: var(--bn-gold) !important;
 }
 .bn-admin-app .rounded-lg.border, .bn-admin-app .rounded-xl.border, .bn-admin-app .rounded-2xl.border {
-  border-color: var(--bn-line) !important; box-shadow: 0 1px 2px rgba(15,23,42,.035) !important;
+  border-color: var(--bn-line) !important; box-shadow: 0 1px 2px rgba(75,51,36,.035) !important;
 }
-.bn-admin-app table thead { background: #fbfcfd !important; }
-.bn-admin-app table th { color: #64748b !important; font-size: 11px !important; text-transform: none !important; letter-spacing: 0 !important; }
-.bn-admin-app table td { color: #334155; border-color: var(--bn-line-soft) !important; }
-.bn-admin-app table tbody tr:hover { background: #f4faf7 !important; }
-.bn-admin-app .text-muted-foreground { color: #64748b !important; }
-.bn-admin-app .bg-muted\/40, .bn-admin-app .bg-muted\/30, .bn-admin-app .bg-muted\/20 { background: #f8fafc !important; }
+.bn-admin-app table thead { background: #fbf8f5 !important; }
+.bn-admin-app table th { color: #7c6b5d !important; font-size: 11px !important; text-transform: none !important; letter-spacing: 0 !important; }
+.bn-admin-app table td { color: #4b3a2e; border-color: var(--bn-line-soft) !important; }
+.bn-admin-app table tbody tr:hover { background: #fbf8f5 !important; }
+.bn-admin-app .text-muted-foreground { color: #7c6b5d !important; }
+.bn-admin-app .bg-muted\/40, .bn-admin-app .bg-muted\/30, .bn-admin-app .bg-muted\/20 { background: #fbf8f5 !important; }
 .bn-admin-app .bg-card, .bn-admin-app .bg-background { background: #fff !important; }
 .bn-admin-app .border-border { border-color: var(--bn-line) !important; }
 .bn-admin-app .text-primary { color: var(--bn-gold-dark) !important; }
-.bn-admin-app .bg-primary\/15 { background: #daf1e6 !important; }
-.bn-admin-app .bg-primary\/5 { background: #f0f9f5 !important; }
+.bn-admin-app .bg-primary\/15 { background: #eee4dc !important; }
+.bn-admin-app .bg-primary\/5 { background: #f8f3ee !important; }
 
 @media (min-width: 1024px) {
   .bn-admin-app > .flex-1 > main > .mx-auto { max-width: none !important; padding-left: 28px !important; padding-right: 28px !important; }
 }
 
-.bn-admin-mobile-drawer { background: var(--bn-ink) !important; color: #fff !important; }
-.bn-admin-mobile-drawer .bn-admin-mobile-link { color: #cbd5e1 !important; }
-.bn-admin-mobile-drawer .bn-admin-mobile-link.active { background: #10967a !important; color: #ffffff !important; }
-.bn-admin-mobile-drawer .bn-admin-mobile-muted { color: #94a3b8 !important; }
+.bn-admin-mobile-drawer { background: #ffffff !important; color: #2f241e !important; }
+.bn-admin-mobile-drawer .bn-admin-mobile-link { color: #7c6b5d !important; }
+.bn-admin-mobile-drawer .bn-admin-mobile-link.active { background: #6f4e37 !important; color: #ffffff !important; }
+.bn-admin-mobile-drawer .bn-admin-mobile-muted { color: #9a8778 !important; }
 .bn-admin-mobile-bottom { background: #fff !important; border-color: var(--bn-line) !important; }
-.bn-admin-app .bn-admin-action:hover { box-shadow: 0 5px 14px rgba(15,23,42,.08); transform: translateY(-1px); }
+.bn-admin-app .bn-admin-action:hover { box-shadow: 0 5px 14px rgba(75,51,36,.08); transform: translateY(-1px); }
 .bn-admin-app .bn-admin-page > .grid > section,
 .bn-admin-app .bn-admin-page section { border-radius: 12px; }
 .bn-admin-app .bn-admin-page table thead th { padding-top: 11px; padding-bottom: 11px; }
@@ -459,124 +477,7 @@ a[href*="/service/"]:hover img {
 .bn-empty{grid-column:1/-1;padding:70px;text-align:center;border:1px dashed #9eacb9;color:#6a7786;border-radius:8px}
 @media(max-width:1000px){.bn-universal-nav{padding:0 20px}.bn-universal-nav nav{gap:14px}.bn-universal-actions .bn-universal-quote{display:none}.bn-service-grid{grid-template-columns:repeat(2,1fr)}.bn-service-grid.technical{grid-template-columns:repeat(2,1fr)}.bn-price-grid{grid-template-columns:repeat(2,1fr)}.bn-price-grid.technical{grid-template-columns:repeat(2,1fr)}.bn-portfolio-grid{grid-template-columns:repeat(3,1fr)}.bn-universal-footer-grid{grid-template-columns:1fr 1fr}.bn-contact-grid{grid-template-columns:1fr}.bn-about-intro{grid-template-columns:1fr}}
 @media(max-width:680px){.bn-universal-nav{min-height:62px}.bn-universal-brand{font-size:17px}.bn-universal-logo{width:34px;height:34px}.bn-universal-nav nav{display:none}.bn-universal-actions{margin-left:auto}.bn-universal-hero{min-height:520px}.bn-universal-hero-inner{padding:55px 22px}.bn-universal-hero h1{font-size:48px}.bn-hero-trust{gap:15px;flex-wrap:wrap}.bn-universal-section{padding:50px 20px}.bn-service-grid,.bn-price-grid,.bn-values-grid,.bn-faq-grid{grid-template-columns:1fr}.bn-portfolio-grid{grid-template-columns:repeat(2,1fr)}.bn-band,.bn-pricing-strip{display:block;padding:30px 22px}.bn-band>a,.bn-pricing-strip>a{margin-top:18px;display:inline-flex}.bn-about-image{min-height:320px}.bn-form-grid{grid-template-columns:1fr}.bn-form-bottom{display:block}.bn-form-bottom .bn-primary{margin-top:14px}.bn-location{margin:0 20px 45px;padding:25px}.bn-universal-footer-grid{grid-template-columns:1fr;gap:28px}.bn-universal-copyright{display:block;line-height:2}.bn-universal-copyright span{margin:0}}
-
-/* -------------------------------------------------------------------------
-   BizNest admin/plugin theme — COFFEE BROWN + WHITE
-   Scoped exclusively to merchant/platform admin surfaces. Storefront
-   templates are intentionally NOT affected.
-   ------------------------------------------------------------------------- */
-#bn-admin-theme-scope,
-#bn-pms-theme-scope,
-#bn-fnb-theme-scope {
-  --background: 0 0% 100%;
-  --foreground: 24 28% 12%;
-  --primary: 25 33% 31%;
-  --primary-foreground: 0 0% 100%;
-  --muted: 30 24% 96%;
-  --muted-foreground: 25 14% 42%;
-  --border: 28 20% 87%;
-  --bn-ink: #3b2418;
-  --bn-ink-raised: #4f3021;
-  --bn-ink-line: #6f4e37;
-  --bn-marigold: #6f4e37;
-  --bn-jade: #8b6b52;
-  --bn-ivory: #ffffff;
-  --bn-mute: #c8b7a6;
-}
-
-#bn-admin-theme-scope.dark,
-#bn-pms-theme-scope.dark,
-#bn-fnb-theme-scope.dark {
-  --background: 25 28% 10%;
-  --foreground: 0 0% 100%;
-  --primary: 28 35% 56%;
-  --primary-foreground: 0 0% 100%;
-  --muted: 25 22% 16%;
-  --muted-foreground: 30 14% 68%;
-  --border: 25 22% 24%;
-}
-
-/* Brand-green utility classes inside admin/plugin surfaces are remapped to
-   BizNest coffee. Semantic red/amber status colors remain untouched. */
-#bn-admin-theme-scope .text-emerald-400,
-#bn-admin-theme-scope .text-emerald-500,
-#bn-admin-theme-scope .text-emerald-600,
-#bn-admin-theme-scope .text-emerald-700,
-#bn-admin-theme-scope .text-green-400,
-#bn-admin-theme-scope .text-green-500,
-#bn-admin-theme-scope .text-green-600,
-#bn-admin-theme-scope .text-green-700,
-#bn-pms-theme-scope .text-emerald-400,
-#bn-pms-theme-scope .text-emerald-500,
-#bn-pms-theme-scope .text-emerald-600,
-#bn-pms-theme-scope .text-emerald-700,
-#bn-fnb-theme-scope .text-emerald-400,
-#bn-fnb-theme-scope .text-emerald-500,
-#bn-fnb-theme-scope .text-emerald-600,
-#bn-fnb-theme-scope .text-emerald-700 {
-  color: #6f4e37 !important;
-}
-
-#bn-admin-theme-scope .bg-emerald-400,
-#bn-admin-theme-scope .bg-emerald-500,
-#bn-admin-theme-scope .bg-emerald-600,
-#bn-admin-theme-scope .bg-green-400,
-#bn-admin-theme-scope .bg-green-500,
-#bn-admin-theme-scope .bg-green-600,
-#bn-pms-theme-scope .bg-emerald-400,
-#bn-pms-theme-scope .bg-emerald-500,
-#bn-pms-theme-scope .bg-emerald-600,
-#bn-fnb-theme-scope .bg-emerald-400,
-#bn-fnb-theme-scope .bg-emerald-500,
-#bn-fnb-theme-scope .bg-emerald-600 {
-  background-color: #6f4e37 !important;
-}
-
-#bn-admin-theme-scope .border-emerald-500,
-#bn-admin-theme-scope .border-emerald-600,
-#bn-admin-theme-scope .border-green-500,
-#bn-admin-theme-scope .border-green-600,
-#bn-pms-theme-scope .border-emerald-500,
-#bn-pms-theme-scope .border-emerald-600,
-#bn-fnb-theme-scope .border-emerald-500,
-#bn-fnb-theme-scope .border-emerald-600 {
-  border-color: #6f4e37 !important;
-}
-
-/* Keep translucent brand utilities brown as well. */
-#bn-admin-theme-scope [class*="bg-emerald-"][class*="/"],
-#bn-admin-theme-scope [class*="bg-green-"][class*="/"],
-#bn-pms-theme-scope [class*="bg-emerald-"][class*="/"],
-#bn-fnb-theme-scope [class*="bg-emerald-"][class*="/"] {
-  background-color: rgb(111 78 55 / 0.10) !important;
-}
-
-
-#bn-admin-theme-scope .bn-gradient,
-#bn-pms-theme-scope .bn-gradient,
-#bn-fnb-theme-scope .bn-gradient {
-  background: linear-gradient(135deg, #4f3021 0%, #6f4e37 55%, #ffffff 100%) !important;
-}
-
-#bn-admin-theme-scope .bn-gradient-text,
-#bn-pms-theme-scope .bn-gradient-text,
-#bn-fnb-theme-scope .bn-gradient-text {
-  background: linear-gradient(135deg, #4f3021, #8b6b52);
-  -webkit-background-clip: text;
-  background-clip: text;
-  color: transparent;
-}
-
-#bn-admin-theme-scope .bn-gradient-dark,
-#bn-pms-theme-scope .bn-gradient-dark,
-#bn-fnb-theme-scope .bn-gradient-dark {
-  background:
-    radial-gradient(120% 90% at 12% -10%, rgba(139, 107, 82, 0.18) 0%, transparent 55%),
-    linear-gradient(165deg, #4f3021 0%, #3b2418 45%, #24150f 100%) !important;
-}
-
-#bn-admin-theme-scope .bn-gradient-accent,
-#bn-pms-theme-scope .bn-gradient-accent,
-#bn-fnb-theme-scope .bn-gradient-accent {
-  background: linear-gradient(135deg, #8b6b52 0%, #6f4e37 100%) !important;
+/* Homepage-only decorative grid. Storefront templates and other surfaces keep their own decoration. */
+.bn-homepage .bn-dot-grid {
+  background-image: radial-gradient(rgba(111, 78, 55, 0.12) 1px, transparent 1px);
 }

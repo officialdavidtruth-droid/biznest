@@ -1,9 +1,9 @@
 import Link from "next/link";
-import { Calculator, Hotel, Users, BriefcaseBusiness, ClipboardList, BarChart3, ChefHat, LifeBuoy, Boxes, Scale, Truck, Gift, LockKeyhole, Puzzle } from "lucide-react";
+import { Calculator, Hotel, Users, BriefcaseBusiness, ClipboardList, BarChart3, ChefHat, LifeBuoy, Boxes, Scale, Truck, Gift, LockKeyhole, Puzzle, Search } from "lucide-react";
 import { getStoreApps } from "@/lib/actions/plugins";
 import { PluginUseButton } from "@/components/dashboard/plugin-use-button";
 
-const ICONS: Record<string, typeof Puzzle> = { Calculator, Hotel, Users, BriefcaseBusiness, ClipboardList, BarChart3, ChefHat, LifeBuoy, Boxes, Scale, Truck, Gift };
+const ICONS: Record<string, typeof Puzzle> = { Calculator, Hotel, Users, BriefcaseBusiness, ClipboardList, BarChart3, ChefHat, LifeBuoy, Boxes, Scale, Truck, Gift, Search };
 
 export default async function AppsPage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
@@ -15,7 +15,7 @@ export default async function AppsPage({ params }: { params: Promise<{ slug: str
       <div>
         <p className="text-xs font-semibold uppercase tracking-wider text-primary">BizNest Marketplace</p>
         <h1 className="mt-1 text-2xl font-bold">Apps</h1>
-        <p className="mt-1 max-w-2xl text-sm text-muted-foreground">Extend your business workspace with purpose-built apps. Your current plan and business type determine which apps you can use.</p>
+        <p className="mt-1 max-w-2xl text-sm text-muted-foreground">Add capabilities that are not already part of your core BizNest dashboard. Core tools such as POS, orders, inventory, purchasing, customers, payments, bookings and analytics stay in the main workspace.</p>
       </div>
 
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">

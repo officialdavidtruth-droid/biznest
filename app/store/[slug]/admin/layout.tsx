@@ -10,7 +10,7 @@ import { getStoreAccessRole, hasStorePermission } from "@/lib/access/store-acces
 import { findNavItemForPath } from "@/lib/constants/dashboard-nav";
 import { ThemeProvider, ThemeFlashGuard } from "@/components/theme/theme-provider";
 import { ThemeToggle } from "@/components/theme/theme-toggle";
-import { getPluginEntitlement } from "@/lib/plugins";
+import { getPluginEntitlement, PLUGIN_CATALOG } from "@/lib/plugins";
 
 export default async function StoreAdminLayout({
   children,
@@ -32,7 +32,7 @@ export default async function StoreAdminLayout({
   if (!store) notFound();
 
   const role = await getStoreAccessRole(session.user.id, session.user.role, store);
-  const installedApps = await prisma.storePlugin.findMany({ where: { storeId: store.id, status: "ACTIVE", plugin: { status: "ACTIVE" } }, select: { plugin: { select: { key: true, name: true, icon: true } } }, orderBy: { plugin: { sortOrder: "asc" } } });
+  const installedApps = await prisma.storePlugin.findMany({ where: { storeId: store.id, status: "ACTIVE", plugin: { status: "ACTIVE", key: { in: PLUGIN_CATALOG.map((plugin) => plugin.key) } } }, select: { plugin: { select: { key: true, name: true, icon: true } } }, orderBy: { plugin: { sortOrder: "asc" } } });
   const installedAppNav = installedApps.map((x: { plugin: { key: string; name: string; icon: string | null } }) => x.plugin);
   const adminSubpath = (await headers()).get("x-bn-admin-subpath") ?? "/";
   const isPmsRoute = adminSubpath === "/pms" || adminSubpath.startsWith("/pms/");
@@ -87,7 +87,7 @@ export default async function StoreAdminLayout({
     return (
       <>
         <ThemeFlashGuard scopeId={scopeId} />
-        <ThemeProvider scopeId={scopeId}>
+        <ThemeProvider scopeId={scopeId} defaultTheme="light">
           <div className="min-h-full bg-background text-foreground">{children}</div>
         </ThemeProvider>
       </>
@@ -96,8 +96,8 @@ export default async function StoreAdminLayout({
 
   return (
     <>
-      <ThemeFlashGuard scopeId="bn-admin-theme-scope" />
-      <ThemeProvider scopeId="bn-admin-theme-scope">
+      <ThemeFlashGuard scopeId="bn-admin-theme-scope" defaultTheme="light" />
+      <ThemeProvider scopeId="bn-admin-theme-scope" defaultTheme="light">
         {/* flex-1, not h-screen: the root layout (app/layout.tsx) now wraps
             <body>'s content in a flex column with the AnnouncementBanner as
             a normal block above a flex-1 region. h-screen here ignored the
