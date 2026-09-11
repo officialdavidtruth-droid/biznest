@@ -42,7 +42,7 @@ export async function createHrEmployee(slug: string, form: FormData): Promise<Ac
   if([basic,housing,transport,other].some(x=>!Number.isFinite(x)||x<0)) return {success:false,error:"Salary values must be valid non-negative amounts."};
   try {
     const employee=await prisma.hrEmployee.create({data:{storeId:a.store.id,employeeNo,firstName,lastName,email:String(form.get("email")||"").trim()||null,phone:String(form.get("phone")||"").trim()||null,department:String(form.get("department")||"").trim()||null,position:String(form.get("position")||"").trim()||null,employmentType:(String(form.get("employmentType")||"FULL_TIME") as any),hireDate:form.get("hireDate")?new Date(String(form.get("hireDate"))):null,basicSalary:basic,housingAllowance:housing,transportAllowance:transport,otherAllowance:other,bankName:String(form.get("bankName")||"").trim()||null,accountName:String(form.get("accountName")||"").trim()||null,accountNumber:String(form.get("accountNumber")||"").trim()||null}});
-    const s=await auth(); await logStoreActivity({storeId:a.store.id,actor:{id:s?.user?.id,name:s?.user?.name,email:s?.user?.email,role:s?.user?.role},action:"hr.employee_created",target:employee.employeeNo});
+    const s=await auth(); await logStoreActivity({storeId:a.store.id,actor:{id:s?.user?.id,name:s?.user?.name,email:s?.user?.email,role:s?.user?.role ?? "OWNER"},action:"hr.employee_created",target:employee.employeeNo});
     return {success:true,data:{id:employee.id}};
   } catch { return {success:false,error:"Employee number already exists or the employee could not be created."}; }
 }
