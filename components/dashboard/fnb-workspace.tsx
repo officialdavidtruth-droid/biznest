@@ -54,8 +54,8 @@ export function FnbWorkspace({
     id: string;
     scheduledAt: string;
     status: string;
-    partySize: number;
-    specialRequests: string | null;
+    partySize: number | null;
+    specialRequests: string[] | string | null;
     guestName: string;
     guestPhone: string;
     unitId: string | null;
