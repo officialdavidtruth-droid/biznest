@@ -9,7 +9,7 @@ import type { ActionResult } from "@/types/actions";
 async function access(slug: string) {
   const a = await assertStorePermission(slug, "hr");
   if (!a.success) return { ok: false as const, error: a.error };
-  const e = await prisma.storePlugin.findFirst({ where: { storeId: a.store.id, pluginKey: "hr-payroll", status: "ACTIVE" } });
+  const e = await prisma.storePlugin.findFirst({ where: { storeId: a.store.id, plugin: { key: "hr-payroll" }, status: "ACTIVE" } });
   if (!e) return { ok: false as const, error: "Install HR & Payroll to use this workspace." };
   return { ok: true as const, store: a.store };
 }
