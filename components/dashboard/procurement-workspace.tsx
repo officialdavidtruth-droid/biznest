@@ -45,12 +45,12 @@ export function ProcurementWorkspace({ slug, data }: { slug: string; data: Procu
       </header>
 
       <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-        {[
+        {([
           ["Spend · 30 days", money(data.summary.spend30), Wallet],
           ["Open purchase orders", data.summary.openPOs, ReceiptText],
           ["Awaiting financial approval", data.summary.pendingFinancialApprovals, ClipboardCheck],
           ["Awaiting receiving", data.summary.awaitingReceiving, Truck],
-        ].map(([label, value, Icon]) => <div key={String(label)} className="rounded-xl border bg-background p-4 shadow-sm"><div className="flex items-center justify-between"><span className="text-[11px] text-muted-foreground">{label}</span><Icon className="h-4 w-4 text-primary" /></div><p className="mt-2 text-xl font-bold">{value}</p></div>)}
+        ] as [string, string | number, typeof Wallet][]).map(([label, value, Icon]) => <div key={String(label)} className="rounded-xl border bg-background p-4 shadow-sm"><div className="flex items-center justify-between"><span className="text-[11px] text-muted-foreground">{label}</span><Icon className="h-4 w-4 text-primary" /></div><p className="mt-2 text-xl font-bold">{value}</p></div>)}
       </div>
 
       <section className="rounded-xl border bg-background p-4 shadow-sm">
