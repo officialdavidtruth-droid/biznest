@@ -27,7 +27,7 @@ export async function getHrDashboard(slug: string) {
     prisma.hrAttendance.count({ where: { storeId, workDate: { gte: today, lt: tomorrow }, status: { in: ["PRESENT", "LATE", "HALF_DAY"] } } }),
     prisma.hrLeaveRequest.count({ where: { storeId, status: "PENDING" } }),
     prisma.hrPayrollRun.findFirst({ where: { storeId }, orderBy: { periodEnd: "desc" }, select: { id:true, periodStart:true, periodEnd:true, status:true, totalGross:true, totalDeductions:true, totalNet:true } }),
-    prisma.hrAttendance.findMany({ where: { storeId, workDate: { gte: today, lt: tomorrow } }, include: { employee: { select: { firstName:true,lastName:true,employeeNo:true,department:true } } }, orderBy: { employee: { firstName: "asc" } }, take: 50 }),
+    prisma.hrAttendance.findMany({ where: { storeId, workDate: { gte: today, lt: tomorrow } }, include: { employee: { select: { id:true,firstName:true,lastName:true,employeeNo:true,department:true } } }, orderBy: { employee: { firstName: "asc" } }, take: 50 }),
     prisma.hrEmployee.findMany({ where: { storeId, status: { in: ["ACTIVE","ON_LEAVE"] } }, select: { department:true }, distinct:["department"] }),
   ]);
   return { employees, present, pendingLeave, latestRun: latestRun ? {...latestRun, totalGross:money(latestRun.totalGross), totalDeductions:money(latestRun.totalDeductions), totalNet:money(latestRun.totalNet)} : null, attendance, departments: departments.map(x=>x.department).filter(Boolean) };
