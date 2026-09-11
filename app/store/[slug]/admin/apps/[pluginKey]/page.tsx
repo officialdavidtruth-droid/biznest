@@ -22,7 +22,7 @@ export default async function PluginPage({ params }: { params: Promise<{ slug: s
   if (pluginKey === "procurement") {
     const data = await getPluginWorkspace(slug, pluginKey);
     if ("error" in data) redirect(`/store/${slug}/admin/apps`);
-    return <ProcurementWorkspace slug={slug} data={data.special as ProcurementData} />;
+    return <ProcurementWorkspace slug={slug} data={{ ...(data.special as Omit<ProcurementData, "plugin">), plugin: data.plugin }} />;
   }
   const data = await getPluginWorkspace(slug, pluginKey);
   if ("error" in data) redirect(`/store/${slug}/admin/apps`);
