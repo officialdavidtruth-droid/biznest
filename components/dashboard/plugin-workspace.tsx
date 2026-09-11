@@ -1,7 +1,8 @@
 import Link from "next/link";
 import { ArrowRight, BarChart3, Boxes, ClipboardCheck, FileText, ShoppingCart, Users } from "lucide-react";
+import type { getPluginWorkspace } from "@/lib/actions/plugin-workspaces";
 
-export function PluginWorkspace({ slug, data }: { slug: string; data: Awaited<ReturnType<import("@/lib/actions/plugin-workspaces").getPluginWorkspace>> & { error?: string } }) {
+export function PluginWorkspace({ slug, data }: { slug: string; data: Awaited<ReturnType<typeof getPluginWorkspace>> & { error?: string } }) {
   if ("error" in data || !data.plugin) return null;
   const m = data.metrics;
   const cards = [
