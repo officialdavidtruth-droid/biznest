@@ -537,6 +537,7 @@ model PropertyGuest {
   updatedAt   DateTime @updatedAt
   reservations PropertyReservation[]
   accessCards RoomAccessCard[]
+  folioCharges PropertyFolioCharge[]
   @@index([storeId])
 }
 
@@ -614,12 +615,45 @@ model PropertyReservation {
   paymentReference String? @unique
   payments        Payment[]
   accessCards     RoomAccessCard[]
+  folioCharges    PropertyFolioCharge[]
 
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
   @@index([storeId, checkIn, checkOut])
   @@index([storeId, status])
   @@index([roomId, checkIn, checkOut])
+}
+
+enum PropertyFolioChargeStatus {
+  OPEN
+  PAID
+  VOID
+}
+
+model PropertyFolioCharge {
+  id            String   @id @default(cuid())
+  storeId       String
+  store         Store    @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  reservationId String
+  reservation   PropertyReservation @relation(fields: [reservationId], references: [id], onDelete: Cascade)
+  guestId       String
+  guest         PropertyGuest @relation(fields: [guestId], references: [id], onDelete: Cascade)
+
+  description   String
+  category      String?
+  quantity      Int      @default(1)
+  unitAmount    Decimal  @db.Decimal(12, 2)
+  amount        Decimal  @db.Decimal(12, 2)
+  currency      String   @default("NGN")
+  status        PropertyFolioChargeStatus @default(OPEN)
+  postedAt      DateTime @default(now())
+  paidAt        DateTime?
+  voidedAt      DateTime?
+  notes         String?
+
+  @@index([storeId, postedAt])
+  @@index([storeId, reservationId, status])
+  @@index([storeId, guestId, postedAt])
 }
 
 // ----------------------------------------------------------------------------
@@ -806,6 +840,7 @@ model Store {
   propertyGuests PropertyGuest[]
   propertyRooms PropertyRoom[]
   propertyReservations PropertyReservation[]
+  propertyFolioCharges PropertyFolioCharge[]
   orders        Order[]
   bookings      Booking[]
   deliveryZones DeliveryZone[]
