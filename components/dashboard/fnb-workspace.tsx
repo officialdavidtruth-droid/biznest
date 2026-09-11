@@ -11,6 +11,7 @@ import {
 import { toast } from "sonner";
 import { saveFnbRecipe, recordFnbWaste, setFnbRotationMode, updateFnbKitchenOrderStatus } from "@/lib/actions/fnb";
 import { extractFnbRecipe } from "@/lib/fnb-utils";
+import { ReservationsWorkspace } from "@/components/dashboard/reservations-workspace";
 import type { FnbRotationMode } from "@/lib/fnb-settings";
 
 function money(n: number) { return `₦${Number(n || 0).toLocaleString()}`; }
@@ -18,10 +19,10 @@ function date(v: string | Date) { return new Date(v).toLocaleDateString(undefine
 function time(v: string | Date) { return new Date(v).toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" }); }
 function label(v: string) { return v.replaceAll("_", " ").toLowerCase().replace(/(^| )\w/g, (m) => m.toUpperCase()); }
 function badge(v: string) {
-  if (["PAID", "COMPLETED", "DELIVERED", "AVAILABLE", "IN_STOCK", "RECEIVED"].includes(v)) return "bg-emerald-500/10 text-emerald-700 border-emerald-500/20";
-  if (["IN_PROGRESS", "CONFIRMED", "SENT", "PARTIALLY_RECEIVED"].includes(v)) return "bg-sky-500/10 text-sky-700 border-sky-500/20";
-  if (["CANCELLED", "REFUNDED", "OUT_OF_STOCK"].includes(v)) return "bg-rose-500/10 text-rose-700 border-rose-500/20";
-  return "bg-amber-500/10 text-amber-700 border-amber-500/20";
+  if (["PAID", "COMPLETED", "DELIVERED", "AVAILABLE", "IN_STOCK", "RECEIVED"].includes(v)) return "bg-[#f3ebe5] text-[#5a3825] border-[#d9c2b1]";
+  if (["IN_PROGRESS", "CONFIRMED", "SENT", "PARTIALLY_RECEIVED"].includes(v)) return "bg-[#f7f1ec] text-[#6b4630] border-[#dfcdbf]";
+  if (["CANCELLED", "REFUNDED", "OUT_OF_STOCK"].includes(v)) return "bg-[#f8efeb] text-[#70422c] border-[#e4c9bb]";
+  return "bg-[#f5eee8] text-[#704b35] border-[#decbbb]";
 }
 
 type Tab = "dashboard" | "pos" | "kitchen" | "menu" | "recipes" | "tables" | "inventory" | "procurement" | "suppliers" | "customers" | "wastage" | "reports" | "settings";
@@ -42,37 +43,40 @@ const tabs: Array<{ id: Tab; label: string; icon: any }> = [
   { id: "settings", label: "Settings", icon: Settings2 },
 ];
 
-export function FnbWorkspace({ slug, data }: { slug: string; data: any }) {
+export function FnbWorkspace({ slug, data, reservations = [], units = [] }: { slug: string; data: any; reservations?: any[]; units?: any[] }) {
   const [tab, setTab] = useState<Tab>("dashboard");
   const [mobileOpen, setMobileOpen] = useState(false);
   const m = data.metrics;
   const navigate = (next: Tab) => { setTab(next); setMobileOpen(false); };
 
-  return <div className="min-h-screen bg-background text-foreground">
-    <header className="sticky top-0 z-30 border-b bg-background/95 backdrop-blur">
-      <div className="flex items-center gap-3 px-4 py-3 lg:px-7">
-        <button className="lg:hidden rounded-lg border p-2" onClick={() => setMobileOpen(!mobileOpen)} aria-label="Open FnB menu"><LayoutDashboard className="h-4 w-4" /></button>
-        <Link href={`/store/${slug}/admin/apps`} className="hidden items-center gap-2 text-xs font-semibold text-muted-foreground hover:text-foreground lg:flex"><ArrowLeft className="h-4 w-4" /> Apps</Link>
-        <div className="h-5 w-px bg-border hidden lg:block" />
-        <div className="min-w-0 flex-1"><p className="text-[10px] font-bold uppercase tracking-[0.18em] text-primary">BizNest FnB</p><p className="truncate text-sm font-bold">{data.storeName} · Restaurant Operations</p></div>
-        <Link href={`/store/${slug}/admin/pos`} className="hidden rounded-xl bg-primary px-4 py-2 text-xs font-bold text-primary-foreground sm:inline-flex">Open POS</Link>
+  return <div className="bn-fnb min-h-screen bg-[#fbfaf8] text-[#2b211b]" style={{ ["--background" as any]: "0 0% 100%", ["--foreground" as any]: "25 25% 14%", ["--primary" as any]: "24 43% 25%", ["--primary-foreground" as any]: "0 0% 100%", ["--muted" as any]: "28 24% 96%", ["--muted-foreground" as any]: "24 14% 42%", ["--border" as any]: "28 23% 87%" }}>
+    <header className="sticky top-0 z-50 border-b border-[#e5d9cf] bg-[#5a3825] text-white shadow-[0_4px_18px_rgba(58,35,23,0.12)]">
+      <div className="flex min-h-[68px] items-center gap-3 px-4 lg:px-7">
+        <button className="rounded-xl border border-white/20 bg-white/10 p-2.5 text-white transition hover:bg-white/15 lg:hidden" onClick={() => setMobileOpen(!mobileOpen)} aria-label="Open FnB menu"><LayoutDashboard className="h-4 w-4" /></button>
+        <Link href={`/store/${slug}/admin/apps`} className="hidden items-center gap-2 rounded-xl border border-white/15 bg-white/10 px-3 py-2 text-xs font-semibold text-white/90 transition hover:bg-white/15 lg:inline-flex"><ArrowLeft className="h-4 w-4" /> Back to Apps</Link>
+        <div className="hidden h-7 w-px bg-white/15 lg:block" />
+        <div className="flex min-w-0 flex-1 items-center gap-3">
+          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-white text-[#5a3825] shadow-sm"><UtensilsCrossed className="h-5 w-5" /></div>
+          <div className="min-w-0"><p className="text-[10px] font-bold uppercase tracking-[0.2em] text-[#ead7c8]">BIZNEST FnB</p><p className="truncate text-sm font-bold text-white">{data.storeName} <span className="font-normal text-white/60">·</span> Restaurant Operations</p></div>
+        </div>
+        <Link href={`/store/${slug}/admin/pos`} className="hidden items-center gap-2 rounded-xl bg-white px-4 py-2.5 text-xs font-bold text-[#5a3825] shadow-sm transition hover:bg-[#f7f1ec] sm:inline-flex"><ShoppingBag className="h-4 w-4" /> Open POS</Link>
       </div>
     </header>
     <div className="flex">
       {mobileOpen && <button className="fixed inset-0 z-30 bg-black/20 lg:hidden" onClick={() => setMobileOpen(false)} aria-label="Close menu" />}
-      <aside className={`${mobileOpen ? "translate-x-0" : "-translate-x-full"} fixed inset-y-0 left-0 z-40 w-72 border-r bg-background pt-16 transition-transform lg:sticky lg:top-[57px] lg:h-[calc(100vh-57px)] lg:w-64 lg:translate-x-0 lg:self-start lg:pt-0`}>
+      <aside className={`${mobileOpen ? "translate-x-0" : "-translate-x-full"} fixed inset-y-0 left-0 z-40 w-72 border-r border-[#e5d9cf] bg-white pt-16 transition-transform lg:sticky lg:top-[57px] lg:h-[calc(100vh-57px)] lg:w-64 lg:translate-x-0 lg:self-start lg:pt-0`}>
         <nav className="h-full overflow-y-auto p-3">
-          {tabs.map(({ id, label: text, icon: Icon }) => <button key={id} onClick={() => navigate(id)} className={`mb-1 flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-xs font-semibold ${tab === id ? "bg-primary/10 text-primary" : "text-muted-foreground hover:bg-muted hover:text-foreground"}`}><Icon className="h-4 w-4" />{text}</button>)}
+          {tabs.map(({ id, label: text, icon: Icon }) => <button key={id} onClick={() => navigate(id)} className={`mb-1 flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-xs font-semibold transition ${tab === id ? "bg-[#f1e7df] text-[#5a3825]" : "text-[#76665b] hover:bg-[#f8f4f0] hover:text-[#3f2b20]"}`}><Icon className="h-4 w-4" />{text}</button>)}
           <div className="mt-4 border-t pt-4 text-[10px] text-muted-foreground"><p className="px-3 font-semibold uppercase tracking-wider">Core BizNest</p><Link href={`/store/${slug}/admin/inventory`} className="mt-2 flex items-center gap-2 px-3 py-2 hover:text-foreground"><Boxes className="h-3.5 w-3.5" /> Inventory</Link><Link href={`/store/${slug}/admin/purchase-orders`} className="flex items-center gap-2 px-3 py-2 hover:text-foreground"><FileSignature className="h-3.5 w-3.5" /> Purchase orders</Link></div>
         </nav>
       </aside>
-      <main className="min-w-0 flex-1 px-4 py-5 lg:px-7 lg:py-7">
+      <main className="min-w-0 flex-1 bg-[#fbfaf8] px-4 py-5 lg:px-7 lg:py-7">
         {tab === "dashboard" && <Dashboard data={data} navigate={navigate} />}
         {tab === "pos" && <LinkPanel title="POS & Sales" description="Run walk-in and in-person sales through the existing hardened BizNest register." href={`/store/${slug}/admin/pos`} label="Open POS Register" icon={ShoppingBag} />}
         {tab === "kitchen" && <Kitchen slug={slug} orders={data.orders} />}
         {tab === "menu" && <MenuPanel slug={slug} products={data.products} />}
         {tab === "recipes" && <Recipes slug={slug} products={data.products} inventory={data.inventory} />}
-        {tab === "tables" && <LinkPanel title="Tables & Reservations" description="Use BizNest bookings for reservations and the restaurant table workflow. This keeps reservation records in the same core booking system." href={`/store/${slug}/admin/bookings`} label="Open Reservations" icon={CalendarDays} />}
+        {tab === "tables" && <ReservationsWorkspace slug={slug} unitLabel="Table" initialUnits={units} initialReservations={reservations} />}
         {tab === "inventory" && <InventoryPanel slug={slug} data={data} />}
         {tab === "procurement" && <ProcurementPanel slug={slug} purchaseOrders={data.purchaseOrders} />}
         {tab === "suppliers" && <SupplierPanel slug={slug} suppliers={data.suppliers} />}
@@ -100,7 +104,7 @@ function Dashboard({ data, navigate }: { data: any; navigate: (t: Tab) => void }
       <Metric icon={ClipboardCheck} label="Recipes" value={m.recipeCount} sub="Menu items with recipes" />
       <Metric icon={Trash2} label="Waste units" value={m.wasteUnits} sub="Recent recorded waste" />
     </div>
-    {alerts > 0 && <div className="flex flex-col gap-3 rounded-2xl border border-amber-200 bg-amber-50 p-4 text-amber-900 sm:flex-row sm:items-center"><AlertTriangle className="h-5 w-5" /><div className="flex-1"><p className="text-sm font-bold">Operations need attention</p><p className="mt-1 text-xs">{m.lowStock} low-stock, {m.outOfStock} out-of-stock, {m.expiringSoon} expiring and {m.expired} expired batches are currently visible.</p></div><button onClick={() => navigate("inventory")} className="text-xs font-bold underline">Review inventory</button></div>}
+    {alerts > 0 && <div className="flex flex-col gap-3 rounded-2xl border border-[#e1cdbd] bg-[#f8f1eb] p-4 text-[#5a3825] sm:flex-row sm:items-center"><AlertTriangle className="h-5 w-5" /><div className="flex-1"><p className="text-sm font-bold">Operations need attention</p><p className="mt-1 text-xs">{m.lowStock} low-stock, {m.outOfStock} out-of-stock, {m.expiringSoon} expiring and {m.expired} expired batches are currently visible.</p></div><button onClick={() => navigate("inventory")} className="text-xs font-bold underline">Review inventory</button></div>}
     <div className="grid gap-4 xl:grid-cols-3">
       <QuickCard title="Service" icon={ChefHat} items={["POS & Sales", "Kitchen", "Tables & Reservations"]} onClick={(i) => navigate(i === 0 ? "pos" : i === 1 ? "kitchen" : "tables")} />
       <QuickCard title="Stock & Purchasing" icon={Boxes} items={["Inventory", "Recipes & Food Cost", "Procurement"]} onClick={(i) => navigate(i === 0 ? "inventory" : i === 1 ? "recipes" : "procurement")} />
@@ -143,7 +147,7 @@ function SupplierPanel({ slug, suppliers }: { slug: string; suppliers: any[] }) 
 
 function CustomerPanel({ slug, customers }: { slug: string; customers: any[] }) { return <div className="space-y-5"><SectionTitle title="Customers" description="Keep guest and buyer information connected to order history and CRM." action={<Link href={`/store/${slug}/admin/customers`} className="rounded-xl border px-3 py-2 text-xs font-bold">Open customer list</Link>} /><div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">{customers.map((c) => <div key={c.id} className="rounded-2xl border p-4"><p className="text-sm font-bold">{c.name}</p><p className="mt-1 text-xs text-muted-foreground">{c.phone || c.email || "No contact"}</p><p className="mt-3 text-[10px] text-muted-foreground">Updated {date(c.updatedAt)}</p></div>)}{customers.length === 0 && <Empty text="No customer profiles yet." />}</div></div>; }
 
-function WastagePanel({ slug, data }: { slug: string; data: any }) { const [item, setItem] = useState(data.inventory[0]?.id || ""); const [qty, setQty] = useState(1); const [reason, setReason] = useState(""); const [busy, start] = useTransition(); const submit = () => start(async () => { const r = await recordFnbWaste(slug, item, Number(qty), reason); if (!r.success) toast.error(r.error); else { toast.success("Waste recorded and stock reconciled"); setReason(""); setQty(1); } }); return <div className="space-y-5"><SectionTitle title="Wastage Control" description="Record spoilage, expired stock, damaged food and overproduction with an auditable stock movement." /><div className="grid gap-5 xl:grid-cols-[420px_1fr]"><div className="rounded-2xl border p-5"><label className="text-xs font-bold">Stock item</label><select value={item} onChange={(e) => setItem(e.target.value)} className="mt-2 w-full rounded-xl border bg-background px-3 py-2.5 text-sm">{data.inventory.map((i: any) => <option key={i.id} value={i.id}>{i.product.name} · {i.quantity} available</option>)}</select><label className="mt-4 block text-xs font-bold">Quantity wasted</label><input type="number" min="1" value={qty} onChange={(e) => setQty(Number(e.target.value))} className="mt-2 w-full rounded-xl border bg-background px-3 py-2.5 text-sm" /><label className="mt-4 block text-xs font-bold">Reason</label><textarea value={reason} onChange={(e) => setReason(e.target.value)} placeholder="Expired, spoiled, burnt, damaged, overproduction..." className="mt-2 min-h-24 w-full rounded-xl border bg-background px-3 py-2.5 text-sm" /><button disabled={busy} onClick={submit} className="mt-4 w-full rounded-xl bg-primary px-4 py-2.5 text-xs font-bold text-primary-foreground disabled:opacity-50">Record waste</button></div><div className="rounded-2xl border p-5"><h2 className="text-sm font-bold">Recent waste</h2><div className="mt-4 divide-y">{data.wasteMovements.map((w: any) => <div key={w.id} className="flex items-center gap-3 py-3"><Trash2 className="h-4 w-4 text-rose-600" /><div className="min-w-0 flex-1"><p className="text-xs font-semibold">{w.inventoryItem?.product?.name || "Stock item"}</p><p className="mt-0.5 text-[10px] text-muted-foreground">{String(w.note || "").replace("FNB WASTE: ", "")} · {date(w.createdAt)}</p></div><span className="text-xs font-bold">{Math.abs(w.quantityChange)}</span></div>)}{data.wasteMovements.length === 0 && <Empty text="No waste records yet." />}</div></div></div></div>; }
+function WastagePanel({ slug, data }: { slug: string; data: any }) { const [item, setItem] = useState(data.inventory[0]?.id || ""); const [qty, setQty] = useState(1); const [reason, setReason] = useState(""); const [busy, start] = useTransition(); const submit = () => start(async () => { const r = await recordFnbWaste(slug, item, Number(qty), reason); if (!r.success) toast.error(r.error); else { toast.success("Waste recorded and stock reconciled"); setReason(""); setQty(1); } }); return <div className="space-y-5"><SectionTitle title="Wastage Control" description="Record spoilage, expired stock, damaged food and overproduction with an auditable stock movement." /><div className="grid gap-5 xl:grid-cols-[420px_1fr]"><div className="rounded-2xl border p-5"><label className="text-xs font-bold">Stock item</label><select value={item} onChange={(e) => setItem(e.target.value)} className="mt-2 w-full rounded-xl border bg-background px-3 py-2.5 text-sm">{data.inventory.map((i: any) => <option key={i.id} value={i.id}>{i.product.name} · {i.quantity} available</option>)}</select><label className="mt-4 block text-xs font-bold">Quantity wasted</label><input type="number" min="1" value={qty} onChange={(e) => setQty(Number(e.target.value))} className="mt-2 w-full rounded-xl border bg-background px-3 py-2.5 text-sm" /><label className="mt-4 block text-xs font-bold">Reason</label><textarea value={reason} onChange={(e) => setReason(e.target.value)} placeholder="Expired, spoiled, burnt, damaged, overproduction..." className="mt-2 min-h-24 w-full rounded-xl border bg-background px-3 py-2.5 text-sm" /><button disabled={busy} onClick={submit} className="mt-4 w-full rounded-xl bg-primary px-4 py-2.5 text-xs font-bold text-primary-foreground disabled:opacity-50">Record waste</button></div><div className="rounded-2xl border p-5"><h2 className="text-sm font-bold">Recent waste</h2><div className="mt-4 divide-y">{data.wasteMovements.map((w: any) => <div key={w.id} className="flex items-center gap-3 py-3"><Trash2 className="h-4 w-4 text-[#8a5137]" /><div className="min-w-0 flex-1"><p className="text-xs font-semibold">{w.inventoryItem?.product?.name || "Stock item"}</p><p className="mt-0.5 text-[10px] text-muted-foreground">{String(w.note || "").replace("FNB WASTE: ", "")} · {date(w.createdAt)}</p></div><span className="text-xs font-bold">{Math.abs(w.quantityChange)}</span></div>)}{data.wasteMovements.length === 0 && <Empty text="No waste records yet." />}</div></div></div></div>; }
 
 function Reports({ data }: { data: any }) { const m = data.metrics; const foodCostProxy = data.products.reduce((sum: number, p: any) => { const r = extractFnbRecipe(p.attributes); if (!r) return sum; return sum + r.ingredients.reduce((s: number, i: any) => { const stock = data.inventory.find((x: any) => x.id === i.inventoryItemId); return s + (stock?.costPrice || 0) * i.quantity; }, 0); }, 0); return <div className="space-y-5"><SectionTitle title="F&B Reports" description="Operational KPIs from the live BizNest order, inventory, batch and procurement records." /><div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4"><Metric icon={DollarSign} label="Today's sales" value={money(m.revenue)} sub="Orders today" /><Metric icon={Boxes} label="Inventory value" value={money(m.stockValue)} sub="Known cost basis" /><Metric icon={Zap} label="Recipe ingredient cost" value={money(foodCostProxy)} sub="Configured recipe inputs" /><Metric icon={Trash2} label="Waste units" value={m.wasteUnits} sub="Recent recorded waste" /></div><div className="grid gap-4 lg:grid-cols-2"><section className="rounded-2xl border p-5"><h2 className="text-sm font-bold">Top operational risks</h2><div className="mt-4 space-y-3"><ReportRow label="Out of stock" value={m.outOfStock} /><ReportRow label="Low stock" value={m.lowStock} /><ReportRow label="Expiring within 7 days" value={m.expiringSoon} /><ReportRow label="Expired batches" value={m.expired} /></div></section><section className="rounded-2xl border p-5"><h2 className="text-sm font-bold">Business flow</h2><div className="mt-4 space-y-3"><ReportRow label="Orders today" value={data.orders.length} /><ReportRow label="Active kitchen orders" value={m.activeOrders} /><ReportRow label="Reservations today" value={data.reservations} /><ReportRow label="Menu recipes configured" value={m.recipeCount} /></div></section></div></div>; }
 
