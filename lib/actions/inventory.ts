@@ -9,6 +9,7 @@ import type { Store, Business, StockMovementType } from "@prisma/client";
 import { assertStorePermission } from "@/lib/access/assert-store-access";
 import { reconcileStockLedger, type StockLedgerReconciliation } from "@/lib/inventory-reconciliation";
 import { consumeFifoStockTx, consumeFefoStockTx, createFifoBatchTx } from "@/lib/inventory-fifo";
+import { getFnbRotationMode } from "@/lib/fnb-settings";
 
 type StoreAccessResult =
   | { success: true; store: Store & { business: Business } }
@@ -205,7 +206,7 @@ export async function adjustStock(
           });
         } else {
           const isFoodBusiness = access.store.businessType === "Restaurant" || access.store.businessType === "Food & Groceries";
-          const consume = isFoodBusiness ? consumeFefoStockTx : consumeFifoStockTx;
+          const consume = isFoodBusiness && getFnbRotationMode(access.store.enabledModules) === "FEFO" ? consumeFefoStockTx : consumeFifoStockTx;
           await consume(tx, {
             inventoryItemId,
             storeId: access.store.id,

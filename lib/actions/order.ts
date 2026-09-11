@@ -6,7 +6,8 @@ import {
   getStoreCustomerSessionForStore,
 } from "@/lib/store-customer-auth";
 import { prisma } from "@/lib/prisma";
-import { consumeFifoStockTx } from "@/lib/inventory-fifo";
+import { consumeFifoStockTx, consumeFefoStockTx } from "@/lib/inventory-fifo";
+import { getFnbRotationMode } from "@/lib/fnb-settings";
 import {
   requireStoreCustomer,
   requireStoreCustomerByStoreId,
@@ -69,10 +70,12 @@ export async function decrementStockForOrder(
     },
     include: {
       items: true,
+      store: { select: { businessType: true, enabledModules: true } },
     },
   });
 
   if (!order) return;
+  const consumeStock = ["Restaurant", "Food & Groceries"].includes(order.store.businessType) && getFnbRotationMode(order.store.enabledModules) === "FEFO" ? consumeFefoStockTx : consumeFifoStockTx;
 
   // Payment callbacks/webhooks are intentionally replay-safe, but keep this
   // helper safe on its own as well. If this order already has an automatic
@@ -96,7 +99,7 @@ export async function decrementStockForOrder(
       const movement = await tx.stockMovement.create({
         data: { variantId: variant.id, storeId: order.storeId, orderId: order.id, type: "SALE", quantityChange: -item.quantity, quantityAfter: nextQuantity, note: `Online sale (order ${order.id})` },
       });
-      await consumeFifoStockTx(tx, { variantId: variant.id, storeId: order.storeId, quantity: item.quantity, stockMovementId: movement.id });
+      await consumeStock(tx, { variantId: variant.id, storeId: order.storeId, quantity: item.quantity, stockMovementId: movement.id });
     } else if (item.productId) {
       const inventory = await tx.inventoryItem.findFirst({ where: { productId: item.productId, storeId: order.storeId } });
       if (!inventory) continue;
@@ -108,7 +111,7 @@ export async function decrementStockForOrder(
       const movement = await tx.stockMovement.create({
         data: { inventoryItemId: inventory.id, storeId: order.storeId, orderId: order.id, type: "SALE", quantityChange: -item.quantity, quantityAfter: nextQuantity, note: `Online sale (order ${order.id})` },
       });
-      await consumeFifoStockTx(tx, { inventoryItemId: inventory.id, storeId: order.storeId, quantity: item.quantity, stockMovementId: movement.id });
+      await consumeStock(tx, { inventoryItemId: inventory.id, storeId: order.storeId, quantity: item.quantity, stockMovementId: movement.id });
     }
   }
 }

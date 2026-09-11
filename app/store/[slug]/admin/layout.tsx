@@ -36,6 +36,7 @@ export default async function StoreAdminLayout({
   const installedAppNav = installedApps.map((x: { plugin: { key: string; name: string; icon: string | null } }) => x.plugin);
   const adminSubpath = (await headers()).get("x-bn-admin-subpath") ?? "/";
   const isPmsRoute = adminSubpath === "/pms" || adminSubpath.startsWith("/pms/");
+  const isFnbRoute = adminSubpath === "/fnb" || adminSubpath.startsWith("/fnb/");
   if (role === null) redirect("/");
 
   // No free tier — a store isn't usable until it's on a paid plan. Staff
@@ -66,7 +67,7 @@ export default async function StoreAdminLayout({
 
     const subpath = adminSubpath;
     const pluginMatch = subpath.match(/^\/apps\/([^/]+)/);
-    const pluginKey = pluginMatch?.[1] ?? (isPmsRoute ? "pms" : null);
+    const pluginKey = pluginMatch?.[1] ?? (isPmsRoute ? "pms" : isFnbRoute ? "fnb-operations" : null);
     if (pluginKey) {
       const installed = installedAppNav.some((app) => app.key === pluginKey);
       if (!installed || !hasStorePermission(role, staffPermissions, `plugin:${pluginKey}`)) redirect(`/${slug}/admin`);
@@ -81,11 +82,12 @@ export default async function StoreAdminLayout({
     if (blocked) redirect(`/${slug}/admin`);
   }
 
-  if (isPmsRoute) {
+  if (isPmsRoute || isFnbRoute) {
+    const scopeId = isPmsRoute ? "bn-pms-theme-scope" : "bn-fnb-theme-scope";
     return (
       <>
-        <ThemeFlashGuard scopeId="bn-pms-theme-scope" />
-        <ThemeProvider scopeId="bn-pms-theme-scope">
+        <ThemeFlashGuard scopeId={scopeId} />
+        <ThemeProvider scopeId={scopeId}>
           <div className="min-h-full bg-background text-foreground">{children}</div>
         </ThemeProvider>
       </>

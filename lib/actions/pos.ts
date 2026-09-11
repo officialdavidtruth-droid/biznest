@@ -3,7 +3,8 @@
 import { auth } from "@/lib/auth";
 import crypto from "crypto";
 import { prisma } from "@/lib/prisma";
-import { consumeFifoStockTx } from "@/lib/inventory-fifo";
+import { consumeFifoStockTx, consumeFefoStockTx } from "@/lib/inventory-fifo";
+import { getFnbRotationMode } from "@/lib/fnb-settings";
 import { revalidatePath } from "next/cache";
 import { calculateOrderTotals, roundMoney } from "@/lib/utils/pricing";
 import { posSaleSchema, type PosSaleInput } from "@/lib/validations/pos";
@@ -366,6 +367,8 @@ export async function createPosSale(
   // way it would online (this is what the platform bills the merchant for
   // later) — POS just never deducts it from the cash in hand.
   const commissionRate = store.subscription ? Number(store.subscription.commissionRate) : 8;
+  const fnbMode = ["Restaurant", "Food & Groceries"].includes(store.businessType) ? getFnbRotationMode(store.enabledModules) : "FIFO";
+  const consumeStock = fnbMode === "FEFO" ? consumeFefoStockTx : consumeFifoStockTx;
   const { subtotal, commission, total } = calculateOrderTotals(
     resolved.map((l) => ({ unitPrice: l.unitPrice, quantity: l.quantity })),
     0,
@@ -531,7 +534,7 @@ export async function createPosSale(
                 note: `POS sale (order ${order.id})`,
               },
             });
-            await consumeFifoStockTx(tx, { variantId: line.variantId, storeId: store.id, quantity: line.quantity, stockMovementId: movement.id });
+            await consumeStock(tx, { variantId: line.variantId, storeId: store.id, quantity: line.quantity, stockMovementId: movement.id });
           } else if (line.productId) {
             const product = products.find((p) => p.id === line.productId);
             if (!product?.inventory) continue; // stock not tracked for this product
@@ -559,7 +562,7 @@ export async function createPosSale(
                 note: `POS sale (order ${order.id})`,
               },
             });
-            await consumeFifoStockTx(tx, { inventoryItemId: product.inventory.id, storeId: store.id, quantity: line.quantity, stockMovementId: movement.id });
+            await consumeStock(tx, { inventoryItemId: product.inventory.id, storeId: store.id, quantity: line.quantity, stockMovementId: movement.id });
           }
         }
 
