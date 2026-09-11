@@ -107,7 +107,7 @@ export async function getPluginWorkspace(slug: string, pluginKey: string) {
     const [activeStaff, pendingInvites, admins, recent] = await Promise.all([
       prisma.storeStaff.count({ where: { storeId, status: "ACTIVE" } }),
       prisma.storeStaff.count({ where: { storeId, status: "PENDING" } }),
-      prisma.storeStaff.count({ where: { storeId, role: { in: ["OWNER", "MANAGER"] } } }),
+      prisma.storeStaff.count({ where: { storeId, role: "MANAGER" } }),
       prisma.storeStaff.findMany({ where: { storeId }, orderBy: { invitedAt: "desc" }, take: 8, select: { id: true, invitedName: true, invitedEmail: true, position: true, role: true, status: true } }),
     ]);
     return { plugin: { key: pluginKey, name: entitlement.plugin.name, category: entitlement.plugin.category, description: "Run workforce administration with staff records, access control, onboarding and payroll-ready employee data." },
