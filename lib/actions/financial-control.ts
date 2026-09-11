@@ -103,7 +103,7 @@ export async function getFinancialControlData(slug: string) {
   for (const entry of entries) for (const line of entry.lines) {
     if (line.account.type === "EXPENSE") expenseAccountActuals.set(line.accountId, (expenseAccountActuals.get(line.accountId) ?? 0) + Number(line.debit) - Number(line.credit));
   }
-  const budgetVariance = budgets.flatMap(b => b.lines.map(l => ({ budgetId: b.id, budget: b.name, account: l.account, budgeted: Number(l.amount), actual: expenseAccountActuals.get(l.accountId) ?? 0, variance: Number(l.amount) - (expenseAccountActuals.get(l.accountId) ?? 0) })));
+  const budgetVariance = budgets.flatMap(b => b.lines.map(l => ({ budgetId: b.id, budget: b.name, account: l.account.name, budgeted: Number(l.amount), actual: expenseAccountActuals.get(l.accountId) ?? 0, variance: Number(l.amount) - (expenseAccountActuals.get(l.accountId) ?? 0) })));
 
   return {
     store: { name: a.store.name, slug, businessType: a.store.businessType },
