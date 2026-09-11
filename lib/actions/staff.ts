@@ -13,6 +13,15 @@ import type { ActionResult } from "@/types/actions";
 
 const MAX_STAFF_PER_STORE = 20;
 
+async function validatePermissionsForInstalledPlugins(storeId: string, permissions: string[]) {
+  const installed = await prisma.storePlugin.findMany({
+    where: { storeId, status: "ACTIVE", plugin: { status: "ACTIVE" } },
+    select: { plugin: { select: { key: true } } },
+  });
+  const installedIds = new Set(installed.map((x) => `plugin:${x.plugin.key}`));
+  return permissions.filter((p) => STAFF_PERMISSION_IDS.includes(p as (typeof STAFF_PERMISSION_IDS)[number]) || installedIds.has(p));
+}
+
 async function requireOwner(slug: string, userId: string, userRole: string) {
   const store = await prisma.store.findUnique({ where: { slug }, include: { business: true } });
   if (!store) return { store: null, error: "Store not found." };
@@ -64,7 +73,7 @@ export async function inviteStaffMember(
     return { success: false, error: "You're already the owner of this store." };
   }
 
-  const validPermissions = permissions.filter((p) => STAFF_PERMISSION_IDS.includes(p as (typeof STAFF_PERMISSION_IDS)[number]));
+  const validPermissions = await validatePermissionsForInstalledPlugins(store.id, permissions);
   if (validPermissions.length === 0) {
     return { success: false, error: "Select at least one area they should have access to." };
   }
@@ -231,7 +240,7 @@ export async function updateStaffAccess(
   const { store, error } = await requireOwner(slug, session.user.id, session.user.role);
   if (!store) return { success: false, error: error! };
 
-  const validPermissions = permissions.filter((p) => STAFF_PERMISSION_IDS.includes(p as (typeof STAFF_PERMISSION_IDS)[number]));
+  const validPermissions = await validatePermissionsForInstalledPlugins(store.id, permissions);
   if (validPermissions.length === 0) {
     return { success: false, error: "Select at least one area they should have access to." };
   }

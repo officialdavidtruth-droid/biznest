@@ -19,6 +19,18 @@ export default async function StaffPage({ params }: { params: Promise<{ slug: st
 
   const result = await listStaffMembers(slug);
   const members = result.success ? result.data : [];
+  const installedPlugins = await prisma.storePlugin.findMany({
+    where: { storeId: store.id, status: "ACTIVE", plugin: { status: "ACTIVE" } },
+    select: { plugin: { select: { key: true, name: true, category: true } } },
+    orderBy: { plugin: { sortOrder: "asc" } },
+  });
+  const pluginPermissions = installedPlugins.map((x) => ({
+    id: `plugin:${x.plugin.key}` as `plugin:${string}`,
+    key: x.plugin.key,
+    name: x.plugin.name,
+    category: x.plugin.category,
+    label: x.plugin.name,
+  }));
 
   return (
     <div className="mx-auto max-w-2xl">
@@ -28,7 +40,7 @@ export default async function StaffPage({ params }: { params: Promise<{ slug: st
         everything except billing and staff management; <strong>Staff</strong> get products, services, orders,
         and messages only.
       </p>
-      <StaffManager slug={slug} initialMembers={members} />
+      <StaffManager slug={slug} initialMembers={members} installedPluginPermissions={pluginPermissions} />
     </div>
   );
 }

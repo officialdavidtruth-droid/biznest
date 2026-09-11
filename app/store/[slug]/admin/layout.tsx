@@ -65,6 +65,12 @@ export default async function StoreAdminLayout({
     staffPermissions = membership?.permissions ?? [];
 
     const subpath = adminSubpath;
+    const pluginMatch = subpath.match(/^\/apps\/([^/]+)/);
+    const pluginKey = pluginMatch?.[1] ?? (isPmsRoute ? "pms" : null);
+    if (pluginKey) {
+      const installed = installedAppNav.some((app) => app.key === pluginKey);
+      if (!installed || !hasStorePermission(role, staffPermissions, `plugin:${pluginKey}`)) redirect(`/${slug}/admin`);
+    }
     const navItem = findNavItemForPath(
       { sellsProducts: store.business.sellsProducts, offersServices: store.business.offersServices, category: store.businessType, subscriptionName: store.subscription?.name, installedApps: installedAppNav },
       subpath

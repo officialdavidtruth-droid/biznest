@@ -22,10 +22,21 @@ export const STAFF_PERMISSIONS = [
   { id: "settings", label: "Store settings" },
 ] as const;
 
-export type StaffPermissionId = (typeof STAFF_PERMISSIONS)[number]["id"];
+export type StaffPermissionId = (typeof STAFF_PERMISSIONS)[number]["id"] | `plugin:${string}`;
+
+export type AvailablePluginPermission = { id: `plugin:${string}`; label: string; key: string; name: string; category: string };
+
+export function pluginPermissionId(pluginKey: string): `plugin:${string}` {
+  return `plugin:${pluginKey}`;
+}
 
 export const STAFF_PERMISSION_IDS = STAFF_PERMISSIONS.map((p) => p.id) as StaffPermissionId[];
 
 export function labelForPermission(id: string): string {
-  return STAFF_PERMISSIONS.find((p) => p.id === id)?.label ?? id;
+  const core = STAFF_PERMISSIONS.find((p) => p.id === id)?.label;
+  if (core) return core;
+  if (id.startsWith("plugin:")) {
+    return id.slice("plugin:".length).split("-").map((x) => x ? x[0].toUpperCase() + x.slice(1) : x).join(" ");
+  }
+  return id;
 }

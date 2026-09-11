@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { toast } from "sonner";
 import { inviteStaffMember, revokeStaffMember, updateStaffAccess } from "@/lib/actions/staff";
-import { STAFF_PERMISSIONS, labelForPermission } from "@/lib/access/staff-permissions";
+import { STAFF_PERMISSIONS, labelForPermission, type AvailablePluginPermission } from "@/lib/access/staff-permissions";
 
 type Member = {
   id: string;
@@ -17,7 +17,7 @@ type Member = {
   permissions: string[];
 };
 
-export function StaffManager({ slug, initialMembers }: { slug: string; initialMembers: Member[] }) {
+export function StaffManager({ slug, initialMembers, installedPluginPermissions }: { slug: string; initialMembers: Member[]; installedPluginPermissions: AvailablePluginPermission[] }) {
   const [members, setMembers] = useState(initialMembers);
   const [name, setName] = useState("");
   const [position, setPosition] = useState("");
@@ -184,6 +184,19 @@ export function StaffManager({ slug, initialMembers }: { slug: string; initialMe
               </label>
             ))}
           </div>
+          {installedPluginPermissions.length > 0 && (
+            <div className="mt-4">
+              <p className="text-xs font-semibold text-muted-foreground">Installed apps</p>
+              <div className="mt-2 grid grid-cols-2 gap-2 sm:grid-cols-3">
+                {installedPluginPermissions.map((perm) => (
+                  <label key={perm.id} className="flex cursor-pointer items-center gap-2 rounded border border-primary/20 bg-primary/[0.03] p-2 text-xs">
+                    <input type="checkbox" checked={permissions.includes(perm.id)} onChange={() => togglePermission(perm.id)} className="h-3.5 w-3.5" />
+                    <span><span className="font-medium">{perm.name}</span><span className="block text-[10px] text-muted-foreground">{perm.category}</span></span>
+                  </label>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
 
         <button
@@ -252,6 +265,7 @@ export function StaffManager({ slug, initialMembers }: { slug: string; initialMe
                   <EditAccessForm
                     slug={slug}
                     member={m}
+                    installedPluginPermissions={installedPluginPermissions}
                     onDone={async () => {
                       setEditingId(null);
                       await refresh();
@@ -274,6 +288,7 @@ function EditAccessForm({
 }: {
   slug: string;
   member: Member;
+  installedPluginPermissions: AvailablePluginPermission[];
   onDone: () => void;
 }) {
   const [role, setRole] = useState<"MANAGER" | "STAFF">(member.role === "MANAGER" ? "MANAGER" : "STAFF");

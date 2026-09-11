@@ -15,7 +15,7 @@ async function access(slug: string) {
   // PMS is a premium vertical app. It is deliberately enforced on the
   // server so hiding the navigation item can never be mistaken for access
   // control. The Business Mogul plan is the only plan that can use it.
-  const a = await assertStorePermission(slug, "products");
+  const a = await assertStorePermission(slug, "plugin:pms");
   if (!a.success) return a;
   if (!hasCapability(a.store.business.category, "pms")) {
     return { success: false as const, error: "PMS is only available to hotel and property businesses." };
@@ -27,7 +27,7 @@ async function access(slug: string) {
 }
 
 export async function getPmsAccessStatus(slug: string) {
-  const a = await assertStorePermission(slug, "products");
+  const a = await assertStorePermission(slug, "plugin:pms");
   if (!a.success) return { allowed: false as const, error: a.error };
   if (!hasCapability(a.store.business.category, "pms")) {
     return { allowed: false as const, error: "PMS is only available to hotel and property businesses." };

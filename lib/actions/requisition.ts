@@ -1,10 +1,10 @@
 "use server";
 
 import { prisma } from "@/lib/prisma";
+import { auth } from "@/lib/auth";
 import { revalidatePath } from "next/cache";
 import { assertStorePermission } from "@/lib/access/assert-store-access";
 import type { ActionResult } from "@/types/actions";
-import { nanoid } from "nanoid";
 
 const STATUSES = ["DRAFT", "SUBMITTED", "APPROVED", "REJECTED", "CONVERTED", "CANCELLED"] as const;
 const PRIORITIES = ["LOW", "NORMAL", "HIGH", "URGENT"] as const;
@@ -23,7 +23,7 @@ export type RequisitionLineInput = {
 };
 
 async function accessStore(slug: string) {
-  return assertStorePermission(slug, "products");
+  return assertStorePermission(slug, "plugin:requisition");
 }
 
 function validPriority(value?: string): RequisitionPriority {
@@ -106,23 +106,20 @@ export async function submitRequisition(slug: string, requisitionId: string): Pr
   const req = await prisma.requisition.findFirst({ where: { id: requisitionId, storeId: access.store.id } });
   if (!req) return { success: false, error: "Requisition not found." };
   if (req.status !== "DRAFT") return { success: false, error: "Only draft requisitions can be submitted." };
-  await prisma.requisition.update({ where: { id: req.id }, data: { status: "SUBMITTED", submittedAt: new Date() } });
+  const financial = await prisma.storePlugin.findFirst({ where: { storeId: access.store.id, status: "ACTIVE", plugin: { key: "financial-control", status: "ACTIVE" } }, select: { id: true } });
+  if (!financial) return { success: false, error: "Financial Control must be installed before a requisition can be submitted for approval." };
+  const session = await auth();
+  await prisma.$transaction(async (tx) => {
+    await tx.requisition.update({ where: { id: req.id }, data: { status: "SUBMITTED", submittedAt: new Date() } });
+    await tx.approvalRequest.create({ data: { storeId: access.store.id, title: `Requisition ${req.number}: ${req.title}`, requestType: "REQUISITION", entityType: "Requisition", entityId: req.id, requestedById: session?.user?.id ?? null, status: "PENDING", metadata: { approvalPluginKey: "financial-control" } } });
+  });
   revalidatePath(`/store/${slug}/admin/apps/requisition`);
+  revalidatePath(`/store/${slug}/admin/apps/financial-control`);
   return { success: true, data: undefined };
 }
 
 export async function decideRequisition(slug: string, requisitionId: string, decision: "APPROVED" | "REJECTED", note?: string): Promise<ActionResult> {
-  const access = await accessStore(slug);
-  if (!access.success) return { success: false, error: access.error };
-  const req = await prisma.requisition.findFirst({ where: { id: requisitionId, storeId: access.store.id } });
-  if (!req) return { success: false, error: "Requisition not found." };
-  if (req.status !== "SUBMITTED") return { success: false, error: "Only submitted requisitions can be approved or rejected." };
-  await prisma.$transaction(async (tx) => {
-    await tx.requisition.update({ where: { id: req.id }, data: { status: decision, decisionNote: note?.trim() || null, decidedAt: new Date() } });
-    await tx.approvalRequest.create({ data: { storeId: access.store.id, title: req.title, requestType: "REQUISITION", entityType: "Requisition", entityId: req.id, status: decision === "APPROVED" ? "APPROVED" : "REJECTED", note: note?.trim() || null, decidedAt: new Date() } });
-  });
-  revalidatePath(`/store/${slug}/admin/apps/requisition`);
-  return { success: true, data: undefined };
+  return { success: false, error: "Requisitions are approved or rejected by the Financial Control app." };
 }
 
 export async function cancelRequisition(slug: string, requisitionId: string): Promise<ActionResult> {

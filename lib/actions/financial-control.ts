@@ -1,6 +1,7 @@
 "use server";
 
 import { prisma } from "@/lib/prisma";
+import { auth } from "@/lib/auth";
 import { assertStorePermission } from "@/lib/access/assert-store-access";
 import { getPluginEntitlement } from "@/lib/plugins";
 import { nanoid } from "nanoid";
@@ -8,7 +9,7 @@ import { revalidatePath } from "next/cache";
 import type { ActionResult } from "@/types/actions";
 
 async function access(slug: string) {
-  const a = await assertStorePermission(slug, "finance");
+  const a = await assertStorePermission(slug, "plugin:financial-control");
   if (!a.success) return a;
   const entitlement = await getPluginEntitlement(a.store.id, "financial-control");
   if (!entitlement.allowed) return { success: false as const, error: entitlement.reason };
@@ -69,6 +70,16 @@ export async function getFinancialControlData(slug: string) {
     prisma.purchaseOrder.findMany({ where: { storeId: a.store.id, status: { in: ["SENT", "PARTIALLY_RECEIVED", "RECEIVED"] } }, orderBy: { createdAt: "desc" }, take: 100, select: { id: true, poNumber: true, subtotal: true, currency: true, status: true, supplier: { select: { name: true } } } }),
   ]);
 
+  const pendingRequisitionApprovals = await prisma.approvalRequest.findMany({
+    where: { storeId: a.store.id, status: "PENDING", requestType: "REQUISITION", entityType: "Requisition" },
+    orderBy: { createdAt: "asc" },
+    take: 50,
+    select: { id: true, entityId: true, title: true, requestedById: true, createdAt: true, note: true },
+  });
+  const pendingReqIds = pendingRequisitionApprovals.map((x) => x.entityId).filter(Boolean) as string[];
+  const pendingReqs = pendingReqIds.length ? await prisma.requisition.findMany({ where: { storeId: a.store.id, id: { in: pendingReqIds } }, include: { items: true }, orderBy: { createdAt: "asc" } }) : [];
+  const pendingReqMap = new Map(pendingReqs.map((r) => [r.id, r]));
+
   const balances = new Map<string, number>();
   for (const entry of entries) {
     for (const line of entry.lines) {
@@ -119,7 +130,7 @@ export async function getFinancialControlData(slug: string) {
     receivables: invoices.map(x => ({ id: x.id, invoiceNo: x.invoiceNo, customerName: x.customerName, total: Number(x.total), currency: x.currency, status: x.status, createdAt: x.createdAt.toISOString(), paidAt: x.paidAt?.toISOString() ?? null })),
     payables: purchaseOrders.map(x => ({ id: x.id, poNumber: x.poNumber, supplierName: x.supplier.name, amount: Number(x.subtotal), currency: x.currency, status: x.status })),
     metrics: { revenue, expenses: expensesTotal, netProfit: revenue - expensesTotal, cash, receivables: invoices.filter(x => x.status !== "PAID").reduce((s,x)=>s+Number(x.total),0), payables: purchaseOrders.filter(x => x.status !== "RECEIVED").reduce((s,x)=>s+Number(x.subtotal),0) },
-    management: { arAging, cashMovement30d, unmatchedBankItems, budgetVariance },
+    management: { arAging, cashMovement30d, unmatchedBankItems, budgetVariance, pendingRequisitions: pendingRequisitionApprovals.map((a) => { const r = a.entityId ? pendingReqMap.get(a.entityId) : null; return r ? { approvalId: a.id, id: r.id, number: r.number, title: r.title, department: r.department, requesterName: r.requesterName, priority: r.priority, neededBy: r.neededBy?.toISOString() ?? null, notes: r.notes, totalEstimate: r.items.reduce((sum, i) => sum + Number(i.estimatedUnitCost ?? 0) * i.quantity, 0), createdAt: r.createdAt.toISOString() } : null; }).filter(Boolean) },
   };
 }
 
@@ -332,4 +343,23 @@ export async function recordAssetDepreciation(slug: string, assetId: string, mon
   await prisma.auditLog.create({ data: { action: "FINANCIAL_ASSET_DEPRECIATED", entity: "FinancialAsset", entityId: asset.id, metadata: { storeId: a.store.id, amount, months } } });
   revalidatePath(`/store/${slug}/admin/apps/financial-control`);
   return { success: true, data: { amount } };
+}
+
+export async function decideFinancialRequisition(slug: string, requisitionId: string, decision: "APPROVED" | "REJECTED", note?: string): Promise<ActionResult> {
+  const a = await access(slug);
+  if (!a.success) return a;
+  const session = await auth();
+  const approval = await prisma.approvalRequest.findFirst({ where: { storeId: a.store.id, requestType: "REQUISITION", entityType: "Requisition", entityId: requisitionId, status: "PENDING" } });
+  if (!approval) return { success: false, error: "This requisition is no longer awaiting financial approval." };
+  const req = await prisma.requisition.findFirst({ where: { id: requisitionId, storeId: a.store.id } });
+  if (!req) return { success: false, error: "Requisition not found." };
+  if (req.status !== "SUBMITTED") return { success: false, error: "Only submitted requisitions can be decided." };
+  await prisma.$transaction(async (tx) => {
+    await tx.requisition.update({ where: { id: req.id }, data: { status: decision, decisionNote: note?.trim() || null, decidedAt: new Date() } });
+    await tx.approvalRequest.update({ where: { id: approval.id }, data: { status: decision, approverId: session?.user?.id ?? null, note: note?.trim() || null, decidedAt: new Date() } });
+    await tx.auditLog.create({ data: { action: decision === "APPROVED" ? "REQUISITION_FINANCIAL_APPROVED" : "REQUISITION_FINANCIAL_REJECTED", entity: "Requisition", entityId: req.id, metadata: { storeId: a.store.id, approvalId: approval.id, approverId: session?.user?.id ?? null } } });
+  });
+  revalidatePath(`/store/${slug}/admin/apps/financial-control`);
+  revalidatePath(`/store/${slug}/admin/apps/requisition`);
+  return { success: true, data: undefined };
 }

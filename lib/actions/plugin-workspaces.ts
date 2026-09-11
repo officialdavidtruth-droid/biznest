@@ -7,7 +7,7 @@ import { getPluginEntitlement } from "@/lib/plugins";
 const PAID = { in: ["PAID", "IN_PROGRESS", "DELIVERED", "COMPLETED"] as any };
 
 export async function getPluginWorkspace(slug: string, pluginKey: string) {
-  const access = await assertStorePermission(slug, "products");
+  const access = await assertStorePermission(slug, `plugin:${pluginKey}`);
   if (!access.success) return { error: access.error };
   const entitlement = await getPluginEntitlement(access.store.id, pluginKey);
   if (!entitlement.allowed || !entitlement.installed) return { error: entitlement.reason ?? "Install this app first." };

@@ -4,7 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { assertStorePermission } from "@/lib/access/assert-store-access";
 
 export async function getFnbDashboard(slug: string) {
-  const access = await assertStorePermission(slug, "products");
+  const access = await assertStorePermission(slug, "plugin:fnb-operations");
   if (!access.success) return null;
   const storeId = access.store.id;
   const start = new Date(); start.setHours(0,0,0,0);
