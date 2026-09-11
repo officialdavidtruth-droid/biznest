@@ -847,7 +847,6 @@ model Store {
   propertyFolioCharges PropertyFolioCharge[]
   orders        Order[]
   bookings      Booking[]
-  hrEmployee    HrEmployee?
   deliveryZones DeliveryZone[]
   newsletterSubscribers NewsletterSubscriber[]
   emailCampaigns EmailCampaign[]
