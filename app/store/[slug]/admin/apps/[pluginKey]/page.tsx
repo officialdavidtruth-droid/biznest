@@ -1,6 +1,8 @@
 import { notFound, redirect } from "next/navigation";
 import { getPluginEntitlement } from "@/lib/plugins";
 import { prisma } from "@/lib/prisma";
+import { getPluginWorkspace } from "@/lib/actions/plugin-workspaces";
+import { PluginWorkspace } from "@/components/dashboard/plugin-workspace";
 import FinancialControlPage from "../financial-control/page";
 import RequisitionPage from "../requisition/page";
 import FnbOperationsPage from "../fnb-operations/page";
@@ -14,11 +16,7 @@ export default async function PluginPage({ params }: { params: Promise<{ slug: s
   if (pluginKey === "financial-control") return <FinancialControlPage params={Promise.resolve({ slug })} />;
   if (pluginKey === "requisition") return <RequisitionPage params={Promise.resolve({ slug })} />;
   if (pluginKey === "fnb-operations") return <FnbOperationsPage params={Promise.resolve({ slug })} />;
-
-  return (
-    <div className="rounded-2xl border bg-background p-8">
-      <h1 className="text-xl font-bold">{entitlement.plugin.name}</h1>
-      <p className="mt-2 text-sm text-muted-foreground">This app is installed and entitled for this business. Its dedicated workspace is ready for the next implementation phase.</p>
-    </div>
-  );
+  const data = await getPluginWorkspace(slug, pluginKey);
+  if ("error" in data) redirect(`/store/${slug}/admin/apps`);
+  return <PluginWorkspace slug={slug} data={data} />;
 }

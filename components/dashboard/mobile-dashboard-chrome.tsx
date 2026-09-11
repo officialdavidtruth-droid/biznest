@@ -4,7 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Menu, X, ExternalLink } from "lucide-react";
-import { buildNavGroups, buildBottomTabItems, filterNavGroupsForRole } from "@/lib/constants/dashboard-nav";
+import { buildNavGroups, buildBottomTabItems, filterNavGroupsForRole, type InstalledAppNav } from "@/lib/constants/dashboard-nav";
 import type { StoreAccessRole } from "@/lib/access/store-access";
 import { NotificationBell } from "@/components/dashboard/notification-bell";
 import { PushSubscribePrompt } from "@/components/dashboard/push-subscribe-prompt";
@@ -47,6 +47,7 @@ export function MobileDashboardChrome({
   staffPermissions,
   staffPosition,
   subscriptionName,
+  installedApps = [],
 }: {
   slug: string;
   storeName: string;
@@ -59,6 +60,7 @@ export function MobileDashboardChrome({
   staffRole?: StoreAccessRole;
   staffPermissions?: string[] | null;
   subscriptionName?: string | null;
+  installedApps?: InstalledAppNav[];
   // Only set for staff who signed in with "Position@store" (see
   // authorize() in lib/auth.ts) — shown next to the store name so it's
   // clear which title they're signed in under, e.g. "Cashier - Velox Space".
@@ -67,7 +69,7 @@ export function MobileDashboardChrome({
   const [drawerOpen, setDrawerOpen] = useState(false);
   const pathname = usePathname();
   const base = `/${slug}/admin`;
-  const business = { sellsProducts, offersServices, category, subscriptionName };
+  const business = { sellsProducts, offersServices, category, subscriptionName, installedApps };
   const canManageOwnerOnly = staffRole === undefined || staffRole === "OWNER" || staffRole === "PLATFORM_STAFF";
   const navGroups = filterNavGroupsForRole(buildNavGroups(business), {
     canManageOwnerOnly,

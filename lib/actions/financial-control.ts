@@ -36,13 +36,10 @@ const DEFAULT_ACCOUNTS = [
 ] as const;
 
 export async function ensureFinancialFoundation(storeId: string) {
-  for (const [code, name, type] of DEFAULT_ACCOUNTS) {
-    await prisma.financialAccount.upsert({
-      where: { storeId_code: { storeId, code } },
-      update: {},
-      create: { storeId, code, name, type, isSystem: true },
-    });
-  }
+  await prisma.financialAccount.createMany({
+    data: DEFAULT_ACCOUNTS.map(([code, name, type]) => ({ storeId, code, name, type, isSystem: true })),
+    skipDuplicates: true,
+  });
   const now = new Date();
   const startsAt = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1));
   const endsAt = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + 1, 0, 23, 59, 59, 999));
@@ -89,6 +86,25 @@ export async function getFinancialControlData(slug: string) {
     if (account.code === "1000" || account.code === "1010") cash += signed;
   }
 
+  const now = new Date();
+  const arAging = { current: 0, days31to60: 0, days61to90: 0, over90: 0 };
+  for (const invoice of invoices) {
+    if (invoice.status === "PAID") continue;
+    const days = Math.max(0, Math.floor((now.getTime() - invoice.createdAt.getTime()) / 86400000));
+    const amount = Number(invoice.total);
+    if (days <= 30) arAging.current += amount;
+    else if (days <= 60) arAging.days31to60 += amount;
+    else if (days <= 90) arAging.days61to90 += amount;
+    else arAging.over90 += amount;
+  }
+  const cashMovement30d = bankTransactions.filter(x => x.transactionDate >= new Date(now.getTime() - 30 * 86400000)).reduce((sum, x) => sum + Number(x.amount), 0);
+  const unmatchedBankItems = bankTransactions.filter(x => x.status === "UNMATCHED").length;
+  const expenseAccountActuals = new Map<string, number>();
+  for (const entry of entries) for (const line of entry.lines) {
+    if (line.account.type === "EXPENSE") expenseAccountActuals.set(line.accountId, (expenseAccountActuals.get(line.accountId) ?? 0) + Number(line.debit) - Number(line.credit));
+  }
+  const budgetVariance = budgets.flatMap(b => b.lines.map(l => ({ budgetId: b.id, budget: b.name, account: l.account, budgeted: Number(l.amount), actual: expenseAccountActuals.get(l.accountId) ?? 0, variance: Number(l.amount) - (expenseAccountActuals.get(l.accountId) ?? 0) })));
+
   return {
     store: { name: a.store.name, slug, businessType: a.store.businessType },
     accounts: accounts.map((x) => ({ id: x.id, code: x.code, name: x.name, type: x.type, balance: balances.get(x.id) ?? 0 })),
@@ -103,6 +119,7 @@ export async function getFinancialControlData(slug: string) {
     receivables: invoices.map(x => ({ id: x.id, invoiceNo: x.invoiceNo, customerName: x.customerName, total: Number(x.total), currency: x.currency, status: x.status, createdAt: x.createdAt.toISOString(), paidAt: x.paidAt?.toISOString() ?? null })),
     payables: purchaseOrders.map(x => ({ id: x.id, poNumber: x.poNumber, supplierName: x.supplier.name, amount: Number(x.subtotal), currency: x.currency, status: x.status })),
     metrics: { revenue, expenses: expensesTotal, netProfit: revenue - expensesTotal, cash, receivables: invoices.filter(x => x.status !== "PAID").reduce((s,x)=>s+Number(x.total),0), payables: purchaseOrders.filter(x => x.status !== "RECEIVED").reduce((s,x)=>s+Number(x.subtotal),0) },
+    management: { arAging, cashMovement30d, unmatchedBankItems, budgetVariance },
   };
 }
 

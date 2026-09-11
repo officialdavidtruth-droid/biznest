@@ -32,6 +32,8 @@ export default async function StoreAdminLayout({
   if (!store) notFound();
 
   const role = await getStoreAccessRole(session.user.id, session.user.role, store);
+  const installedApps = await prisma.storePlugin.findMany({ where: { storeId: store.id, status: "ACTIVE", plugin: { status: "ACTIVE" } }, select: { plugin: { select: { key: true, name: true, icon: true } } }, orderBy: { plugin: { sortOrder: "asc" } } });
+  const installedAppNav = installedApps.map((x: { plugin: { key: string; name: string; icon: string | null } }) => x.plugin);
   const adminSubpath = (await headers()).get("x-bn-admin-subpath") ?? "/";
   const isPmsRoute = adminSubpath === "/pms" || adminSubpath.startsWith("/pms/");
   if (role === null) redirect("/");
@@ -64,7 +66,7 @@ export default async function StoreAdminLayout({
 
     const subpath = adminSubpath;
     const navItem = findNavItemForPath(
-      { sellsProducts: store.business.sellsProducts, offersServices: store.business.offersServices, category: store.businessType, subscriptionName: store.subscription?.name },
+      { sellsProducts: store.business.sellsProducts, offersServices: store.business.offersServices, category: store.businessType, subscriptionName: store.subscription?.name, installedApps: installedAppNav },
       subpath
     );
     const blocked =
@@ -122,6 +124,7 @@ export default async function StoreAdminLayout({
             staffRole={role}
             staffPermissions={staffPermissions}
             subscriptionName={store.subscription?.name}
+            installedApps={installedAppNav}
           />
 
           {/* Mobile top bar + fixed bottom tab bar + drawer — see component for
@@ -139,6 +142,7 @@ export default async function StoreAdminLayout({
             staffPermissions={staffPermissions}
             staffPosition={session.user.staffPosition}
             subscriptionName={store.subscription?.name}
+            installedApps={installedAppNav}
           />
 
           <div className="flex min-w-0 flex-1 flex-col">

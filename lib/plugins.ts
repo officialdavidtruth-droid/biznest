@@ -39,7 +39,7 @@ export const PLUGIN_CATALOG: PluginSeed[] = [
     billingInterval: "MONTHLY",
     eligibleBusinessTypes: ["*"],
     sortOrder: 20,
-    plans: ["Custom AI-Built Store", "Business Mogul"],
+    plans: ["Growth Store", "Business Mogul"],
   },
   {
     key: "crm",
@@ -51,7 +51,7 @@ export const PLUGIN_CATALOG: PluginSeed[] = [
     billingInterval: "MONTHLY",
     eligibleBusinessTypes: ["*"],
     sortOrder: 30,
-    plans: ["Custom AI-Built Store", "Business Mogul"],
+    plans: ["Growth Store", "Business Mogul"],
   },
   {
     key: "hr-payroll",
@@ -99,7 +99,7 @@ export const PLUGIN_CATALOG: PluginSeed[] = [
     billingInterval: "MONTHLY",
     eligibleBusinessTypes: ["*"],
     sortOrder: 60,
-    plans: ["Custom AI-Built Store", "Business Mogul"],
+    plans: ["Growth Store", "Business Mogul"],
   },
   {
     key: "fnb-operations",
@@ -183,7 +183,7 @@ export const PLUGIN_CATALOG: PluginSeed[] = [
     billingInterval: "MONTHLY",
     eligibleBusinessTypes: ["*"],
     sortOrder: 120,
-    plans: ["Custom AI-Built Store", "Business Mogul"],
+    plans: ["Growth Store", "Business Mogul"],
   },
 ];
 

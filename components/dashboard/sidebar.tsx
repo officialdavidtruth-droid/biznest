@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useState } from "react";
 import { usePathname } from "next/navigation";
 import { ExternalLink, Pencil, Crown, ChevronDown } from "lucide-react";
-import { buildNavGroups, filterNavGroupsForRole, type NavItem } from "@/lib/constants/dashboard-nav";
+import { buildNavGroups, filterNavGroupsForRole, type NavItem, type InstalledAppNav } from "@/lib/constants/dashboard-nav";
 import type { StoreAccessRole } from "@/lib/access/store-access";
 import { SignOutButton } from "@/components/forms/sign-out-button";
 import { StoreLogo } from "@/components/dashboard/store-logo";
@@ -35,11 +35,12 @@ export function DashboardSidebar({
   staffRole?: StoreAccessRole;
   staffPermissions?: string[] | null;
   subscriptionName?: string | null;
+  installedApps?: InstalledAppNav[];
 }) {
   const pathname = usePathname();
   const base = `/${slug}/admin`;
   const canManageOwnerOnly = staffRole === undefined || staffRole === "OWNER" || staffRole === "PLATFORM_STAFF";
-  const NAV_GROUPS = filterNavGroupsForRole(buildNavGroups({ sellsProducts, offersServices, category, subscriptionName }), {
+  const NAV_GROUPS = filterNavGroupsForRole(buildNavGroups({ sellsProducts, offersServices, category, subscriptionName, installedApps }), {
     canManageOwnerOnly,
     permissions: staffPermissions,
   });

@@ -3,7 +3,7 @@ import {
   CreditCard, BarChart3, Star, Megaphone, MessageSquare,
   Settings, BadgeCheck, Wallet, LifeBuoy, Truck, Wand2,
   LayoutTemplate, FileText, FileSignature, MailWarning, Calculator, CalendarDays, Images,
-  ClipboardList, PlusCircle, Layers, Rows3, ChefHat,
+  ClipboardList, PlusCircle, Layers, Rows3, ChefHat, Puzzle,
 } from "lucide-react";
 import { getAdaptiveDashboardConfig } from "@/lib/adaptive-dashboard";
 import { getBusinessTerminology } from "@/lib/business-terminology";
@@ -45,7 +45,9 @@ function relevantToBusiness(href: string, business: { sellsProducts: boolean; of
 // relevantToBusiness() so what a merchant sees is shaped by what they told
 // us at onboarding (sells products / offers services / category) rather
 // than showing every module to every store regardless of niche.
-export function buildNavGroups(business: { sellsProducts: boolean; offersServices: boolean; category?: string | null; subscriptionName?: string | null }): Array<{
+export type InstalledAppNav = { key: string; name: string; icon?: string | null };
+
+export function buildNavGroups(business: { sellsProducts: boolean; offersServices: boolean; category?: string | null; subscriptionName?: string | null; installedApps?: InstalledAppNav[] }): Array<{
   label: string;
   items: NavItem[];
 }> {
@@ -119,12 +121,16 @@ export function buildNavGroups(business: { sellsProducts: boolean; offersService
   ];
   const moneyItems: NavItem[] = allMoneyItems.filter((item) => relevantToBusiness(item.href, business));
 
+  const installedAppItems: NavItem[] = (business.installedApps ?? [])
+    .filter((app) => app.key !== "pms")
+    .map((app) => ({ label: app.name, href: `/apps/${app.key}`, icon: Puzzle }));
+
   return [
     {
       label: "Overview",
       items: [{ label: "Dashboard", href: "", icon: LayoutDashboard }],
     },
-    { label: "Apps", items: [{ label: "App Marketplace", href: "/apps", icon: PlusCircle, ownerOnly: true }] },
+    { label: "Apps", items: [{ label: "App Marketplace", href: "/apps", icon: PlusCircle, ownerOnly: true }, ...(installedAppItems.length ? [{ label: "Installed Apps", href: "/apps", icon: Puzzle, children: installedAppItems }] : [])] },
     {
       label: "Sell",
       items: sellNavItems,
@@ -210,6 +216,7 @@ export function findNavItemForPath(business: {
   offersServices: boolean;
   category?: string | null;
   subscriptionName?: string | null;
+  installedApps?: InstalledAppNav[];
 }, subpath: string): NavItem | undefined {
   const items = buildNavGroups(business).flatMap((g) => g.items.flatMap((i) => [i, ...(i.children ?? [])]));
   const normalized = subpath === "" ? "/" : subpath;

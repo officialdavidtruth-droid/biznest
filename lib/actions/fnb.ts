@@ -22,14 +22,14 @@ export async function getFnbDashboard(slug: string) {
   const lowStock = inventory.filter(i=>i.quantity > 0 && i.quantity <= i.lowStockThreshold).length;
   const now = new Date();
   const inSevenDays = new Date(now); inSevenDays.setDate(inSevenDays.getDate()+7);
-  const fifoBatches = await prisma.inventoryBatch.findMany({
+  const fefoBatches = await prisma.inventoryBatch.findMany({
     where: { storeId, quantityRemaining: { gt: 0 } },
-    orderBy: [{ receivedAt: "asc" }, { id: "asc" }],
+    orderBy: [{ expiryDate: "asc" }, { receivedAt: "asc" }, { id: "asc" }],
     take: 100,
     select: { id:true, batchNumber:true, quantityRemaining:true, unitCost:true, receivedAt:true, expiryDate:true, inventoryItem:{select:{product:{select:{name:true}}}}, variant:{select:{label:true,product:{select:{name:true}}}} },
   });
-  const expiringSoon = fifoBatches.filter(b=>b.expiryDate && b.expiryDate >= now && b.expiryDate <= inSevenDays).length;
-  const expired = fifoBatches.filter(b=>b.expiryDate && b.expiryDate < now).length;
-  const fifoValue = fifoBatches.reduce((sum,b)=>sum+(b.unitCost==null?0:Number(b.unitCost)*b.quantityRemaining),0);
-  return { storeName: access.store.name, orders, reservations, menuItems, revenue, stockValue, lowStock, outOfStock, fifo: { batchCount: fifoBatches.length, expiringSoon, expired, value: fifoValue, oldest: fifoBatches.slice(0,5) } };
+  const expiringSoon = fefoBatches.filter(b=>b.expiryDate && b.expiryDate >= now && b.expiryDate <= inSevenDays).length;
+  const expired = fefoBatches.filter(b=>b.expiryDate && b.expiryDate < now).length;
+  const fefoValue = fefoBatches.reduce((sum,b)=>sum+(b.unitCost==null?0:Number(b.unitCost)*b.quantityRemaining),0);
+  return { storeName: access.store.name, orders, reservations, menuItems, revenue, stockValue, lowStock, outOfStock, fefo: { batchCount: fefoBatches.length, expiringSoon, expired, value: fefoValue, oldest: fefoBatches.slice(0,5) } };
 }
