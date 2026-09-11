@@ -5,7 +5,6 @@ import { getPluginWorkspace } from "@/lib/actions/plugin-workspaces";
 import { PluginWorkspace } from "@/components/dashboard/plugin-workspace";
 import FinancialControlPage from "../financial-control/page";
 import RequisitionPage from "../requisition/page";
-import FnbOperationsPage from "../fnb-operations/page";
 import HrPayrollPage from "../hr-payroll/page";
 import { ProcurementWorkspace, type ProcurementData } from "@/components/dashboard/procurement-workspace";
 
@@ -17,7 +16,7 @@ export default async function PluginPage({ params }: { params: Promise<{ slug: s
   if (!entitlement.allowed || !entitlement.installed) redirect(`/store/${slug}/admin/apps`);
   if (pluginKey === "financial-control") return <FinancialControlPage params={Promise.resolve({ slug })} />;
   if (pluginKey === "requisition") return <RequisitionPage params={Promise.resolve({ slug })} />;
-  if (pluginKey === "fnb-operations") return <FnbOperationsPage params={Promise.resolve({ slug })} />;
+  if (pluginKey === "fnb-operations") redirect(`/store/${slug}/admin/fnb`);
   if (pluginKey === "hr-payroll") return <HrPayrollPage params={Promise.resolve({ slug })} />;
   if (pluginKey === "procurement") {
     const data = await getPluginWorkspace(slug, pluginKey);
