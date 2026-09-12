@@ -65,11 +65,10 @@ export const PLUGIN_CATALOG: PluginSeed[] = [
     sortOrder: 40,
     plans: ["Business Mogul"],
   },
-
   {
     key: "requisition",
     name: "Requisitions",
-    description: "Controlled internal requests for stock, supplies, equipment and services, with priorities, approvals and an audit trail before purchasing.",
+    description: "Controlled internal requests for stock, supplies, equipment and services, with priorities, approvals and purchasing handoff.",
     category: "Operations",
     icon: "ClipboardCheck",
     price: 10000,
@@ -78,18 +77,17 @@ export const PLUGIN_CATALOG: PluginSeed[] = [
     sortOrder: 45,
     plans: ["Business Mogul"],
   },
-
   {
-    key: "seo",
-    name: "SEO & Search",
-    description: "Technical SEO, search metadata, canonical URLs, indexing controls and search visibility tools for your BizNest website.",
-    category: "Growth",
-    icon: "Search",
-    price: 8000,
+    key: "procurement",
+    name: "Procurement & Vendors",
+    description: "Purchase requests, approvals, vendor management, purchase orders and supplier performance.",
+    category: "Operations",
+    icon: "ClipboardList",
+    price: 15000,
     billingInterval: "MONTHLY",
     eligibleBusinessTypes: ["*"],
-    sortOrder: 55,
-    plans: ["Growth Store", "Business Mogul"],
+    sortOrder: 50,
+    plans: ["Business Mogul"],
   },
   {
     key: "advanced-analytics",
@@ -106,7 +104,7 @@ export const PLUGIN_CATALOG: PluginSeed[] = [
   {
     key: "fnb-operations",
     name: "BizNest FnB",
-    description: "Specialized restaurant operations that extend BizNest: kitchen display, recipe and food-cost control, food wastage tracking, and FIFO/FEFO stock rotation.",
+    description: "An operating workspace for restaurants and food businesses: menu, orders, reservations, inventory, purchasing and daily service control.",
     category: "Industry",
     icon: "ChefHat",
     price: 20000,
@@ -115,7 +113,18 @@ export const PLUGIN_CATALOG: PluginSeed[] = [
     sortOrder: 65,
     plans: ["Business Mogul"],
   },
-
+  {
+    key: "restaurant-operations",
+    name: "Restaurant Operations",
+    description: "Tables, kitchen operations, recipes, food cost and restaurant-specific workflows.",
+    category: "Industry",
+    icon: "ChefHat",
+    price: 20000,
+    billingInterval: "MONTHLY",
+    eligibleBusinessTypes: ["Restaurant"],
+    sortOrder: 70,
+    plans: ["Business Mogul"],
+  },
   {
     key: "helpdesk",
     name: "Customer Support",

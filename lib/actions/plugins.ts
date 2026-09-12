@@ -8,7 +8,7 @@ import { chargeCustomer } from "@/lib/payments/gateway";
 import { revalidatePath } from "next/cache";
 import { nanoid } from "nanoid";
 import type { ActionResult } from "@/types/actions";
-import { PLUGIN_CATALOG, ensureSystemPlugins, getPluginEntitlement } from "@/lib/plugins";
+import { ensureSystemPlugins, getPluginEntitlement } from "@/lib/plugins";
 import { APP_URL } from "@/lib/constants/app-url";
 
 export async function getStoreApps(slug: string) {

@@ -42,31 +42,10 @@ const tabs: Array<{ id: Tab; label: string; icon: any }> = [
   { id: "settings", label: "Settings", icon: Settings2 },
 ];
 
-export function FnbWorkspace({
-  slug,
-  data,
-  reservations = [],
-  units = [],
-}: {
-  slug: string;
-  data: any;
-  reservations?: Array<{
-    id: string;
-    scheduledAt: string;
-    status: string;
-    partySize: number | null;
-    specialRequests: string[] | string | null;
-    guestName: string;
-    guestPhone: string;
-    unitId: string | null;
-    unitLabel: string | null;
-  }>;
-  units?: Array<{ id: string; label: string; location: string | null; capacity: number | null }>;
-}) {
+export function FnbWorkspace({ slug, data }: { slug: string; data: any }) {
   const [tab, setTab] = useState<Tab>("dashboard");
   const [mobileOpen, setMobileOpen] = useState(false);
   const m = data.metrics;
-  const reservationCount = reservations.length || Number(data.reservations || 0);
   const navigate = (next: Tab) => { setTab(next); setMobileOpen(false); };
 
   return <div className="min-h-screen bg-background text-foreground">
@@ -88,7 +67,7 @@ export function FnbWorkspace({
         </nav>
       </aside>
       <main className="min-w-0 flex-1 px-4 py-5 lg:px-7 lg:py-7">
-        {tab === "dashboard" && <Dashboard data={{ ...data, reservations: reservationCount, reservationRows: reservations, reservationUnits: units }} navigate={navigate} />}
+        {tab === "dashboard" && <Dashboard data={data} navigate={navigate} />}
         {tab === "pos" && <LinkPanel title="POS & Sales" description="Run walk-in and in-person sales through the existing hardened BizNest register." href={`/store/${slug}/admin/pos`} label="Open POS Register" icon={ShoppingBag} />}
         {tab === "kitchen" && <Kitchen slug={slug} orders={data.orders} />}
         {tab === "menu" && <MenuPanel slug={slug} products={data.products} />}

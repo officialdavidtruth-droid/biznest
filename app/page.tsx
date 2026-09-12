@@ -142,12 +142,12 @@ export default async function HomePage() {
   return (
     <div
       className={`${display.variable} ${body.variable} ${mono.variable} min-h-screen overflow-x-clip`}
-      style={{ background: "var(--bn-hero-gradient)", color: "var(--bn-ink)", fontFamily: "var(--font-body)" }}
+      style={{ background: "var(--bn-hero-gradient)", color: "var(--bn-ivory)", fontFamily: "var(--font-body)" }}
     >
       {/* Nav */}
       <header
         className="sticky top-0 z-30 flex items-center justify-between px-6 py-4 backdrop-blur-md sm:px-10"
-        style={{ background: "rgba(255, 255, 255, 0.88)", borderBottom: "1px solid var(--bn-ink-line)" }}
+        style={{ background: "rgba(10, 28, 18, 0.72)", borderBottom: "1px solid var(--bn-ink-line)" }}
       >
         <span className="text-lg tracking-tight" style={{ fontFamily: "var(--font-display)", fontWeight: 700 }}>
           BizNest
@@ -195,14 +195,14 @@ export default async function HomePage() {
         <div className="bn-fade-up relative z-10">
           <div
             className="mb-5 inline-flex items-center gap-2 rounded-full px-3 py-1.5 text-xs"
-            style={{ border: "1px solid var(--bn-ink-line)", background: "rgba(240, 253, 244, 0.88)", color: "var(--bn-mute)" }}
+            style={{ border: "1px solid var(--bn-ink-line)", background: "rgba(18, 48, 36, 0.6)", color: "var(--bn-mute)" }}
           >
             <span className="bn-pulse-dot h-1.5 w-1.5 rounded-full" style={{ background: "var(--bn-marigold)" }} />
             <span style={{ fontFamily: "var(--font-mono)" }}>{activeStoreCount.toLocaleString()} stores open right now</span>
           </div>
           <p
             className="mb-4 text-xs uppercase tracking-[0.2em]"
-            style={{ color: "var(--bn-jade)", fontFamily: "var(--font-mono)" }}
+            style={{ color: "var(--bn-marigold)", fontFamily: "var(--font-mono)" }}
           >
             One marketplace, every kind of business
           </p>
@@ -212,7 +212,7 @@ export default async function HomePage() {
           >
             Your BUSINESS belongs
             <br />
-            in the <span style={{ color: "var(--bn-jade)" }}>nest</span>.
+            in the <span style={{ color: "var(--bn-marigold)" }}>nest</span>.
           </h1>
           <p className="mt-5 max-w-md text-base leading-relaxed" style={{ color: "var(--bn-mute)" }}>
             BizNest is where sellers of products, services, and bookings get a real storefront,
@@ -239,7 +239,7 @@ export default async function HomePage() {
                 <Link
                   href="/login"
                   className="rounded-full px-6 py-3 text-sm font-medium transition"
-                  style={{ border: "1px solid var(--bn-ink-line)", color: "var(--bn-ink)" }}
+                  style={{ border: "1px solid var(--bn-ink-line)", color: "var(--bn-ivory)" }}
                 >
                   I already have a store
                 </Link>
@@ -251,11 +251,11 @@ export default async function HomePage() {
             style={{ fontFamily: "var(--font-mono)", color: "var(--bn-mute)" }}
           >
             <div>
-              <span className="block text-xl" style={{ color: "var(--bn-ink)" }}>{CATEGORIES.length}+</span>
+              <span className="block text-xl" style={{ color: "var(--bn-ivory)" }}>{CATEGORIES.length}+</span>
               product & service categories
             </div>
             <div>
-              <span className="block text-xl" style={{ color: "var(--bn-ink)" }}>2</span>
+              <span className="block text-xl" style={{ color: "var(--bn-ivory)" }}>2</span>
               payment providers, your account
             </div>
           </div>
@@ -268,7 +268,7 @@ export default async function HomePage() {
           <div
             className="relative z-10 -mx-6 overflow-hidden py-2 sm:-mx-10 lg:mx-0 lg:rounded-2xl"
             style={{
-              background: "#f3f8f4",
+              background: "var(--bn-ink-raised)",
               border: "1px solid var(--bn-ink-line)",
               maskImage: "linear-gradient(90deg, transparent, black 8%, black 92%, transparent)",
             }}
@@ -281,19 +281,19 @@ export default async function HomePage() {
 
       {/* Ledger strip — real counts from the platform, styled like a receipt
           rather than invented traction numbers, so it never overclaims. */}
-      <section className="px-6 py-10 sm:px-10" style={{ background: "#ffffff", borderTop: "1px solid var(--bn-ink-line)", borderBottom: "1px solid var(--bn-ink-line)" }}>
+      <section className="px-6 py-10 sm:px-10" style={{ background: "var(--bn-ink)", borderTop: "1px solid var(--bn-ink-line)", borderBottom: "1px solid var(--bn-ink-line)" }}>
         <div className="mx-auto grid max-w-5xl gap-x-10 gap-y-4 sm:grid-cols-2 lg:grid-cols-4">
           {STATS.map((s) => (
             <div key={s.label} className="bn-receipt-row" style={{ fontFamily: "var(--font-mono)" }}>
               <span className="text-xs" style={{ color: "var(--bn-mute)" }}>{s.label}</span>
-              <span className="text-sm font-semibold" style={{ color: "var(--bn-jade)" }}>{s.value}</span>
+              <span className="text-sm font-semibold" style={{ color: "var(--bn-marigold)" }}>{s.value}</span>
             </div>
           ))}
         </div>
       </section>
 
       {/* How it works — a real 3-step sequence, so numbering earns its place */}
-      <section className="px-6 py-16 sm:px-10 lg:py-24" style={{ background: "#ffffff" }}>
+      <section className="px-6 py-16 sm:px-10 lg:py-24" style={{ background: "var(--bn-ink)" }}>
         <h2 className="mb-10 text-2xl sm:text-3xl" style={{ fontFamily: "var(--font-display)", fontWeight: 700 }}>
           From idea to open for business
         </h2>
@@ -302,7 +302,7 @@ export default async function HomePage() {
             <div key={s.n}>
               <span
                 className="text-sm"
-                style={{ fontFamily: "var(--font-mono)", color: "var(--bn-jade)" }}
+                style={{ fontFamily: "var(--font-mono)", color: "var(--bn-marigold)" }}
               >
                 {s.n}
               </span>
@@ -317,11 +317,11 @@ export default async function HomePage() {
 
       {/* See it live — a static, license-free mock of a generated storefront,
           so the product's actual output is visible before signing up. */}
-      <section className="relative overflow-hidden px-6 py-16 sm:px-10 lg:py-24" style={{ background: "#f3f8f4" }}>
+      <section className="relative overflow-hidden px-6 py-16 sm:px-10 lg:py-24" style={{ background: "var(--bn-ink-raised)" }}>
         <div className="bn-dot-grid absolute inset-0 opacity-60" />
         <div className="relative mx-auto grid max-w-5xl gap-12 lg:grid-cols-2 lg:items-center">
           <div>
-            <p className="mb-3 text-xs uppercase tracking-[0.2em]" style={{ color: "var(--bn-jade)", fontFamily: "var(--font-mono)" }}>
+            <p className="mb-3 text-xs uppercase tracking-[0.2em]" style={{ color: "var(--bn-marigold)", fontFamily: "var(--font-mono)" }}>
               What you actually get
             </p>
             <h2 className="text-2xl sm:text-3xl" style={{ fontFamily: "var(--font-display)", fontWeight: 700 }}>
@@ -335,7 +335,7 @@ export default async function HomePage() {
             <Link
               href="/templates"
               className="mt-6 inline-flex items-center gap-1.5 text-sm font-medium transition hover:gap-2.5"
-              style={{ color: "var(--bn-jade)" }}
+              style={{ color: "var(--bn-marigold)" }}
             >
               Browse storefront templates <ArrowRight className="h-4 w-4" />
             </Link>
@@ -345,7 +345,7 @@ export default async function HomePage() {
       </section>
 
       {/* Categories */}
-      <section id="categories" className="px-6 py-16 sm:px-10 lg:py-20" style={{ background: "#ffffff" }}>
+      <section id="categories" className="px-6 py-16 sm:px-10 lg:py-20" style={{ background: "var(--bn-ink)" }}>
         <h2 className="mb-8 text-2xl sm:text-3xl" style={{ fontFamily: "var(--font-display)", fontWeight: 700 }}>
           Whatever you sell, there's a stall for it
         </h2>
@@ -353,7 +353,7 @@ export default async function HomePage() {
           {CATEGORIES.map((c) => (
             <span
               key={c}
-              className="rounded-full px-4 py-2 text-sm transition hover:border-[var(--bn-marigold)] hover:text-[var(--bn-jade)]"
+              className="rounded-full px-4 py-2 text-sm transition hover:border-[var(--bn-marigold)] hover:text-[var(--bn-ivory)]"
               style={{ border: "1px solid var(--bn-ink-line)", color: "var(--bn-mute)" }}
             >
               {c}
@@ -364,7 +364,7 @@ export default async function HomePage() {
 
       {/* Pricing — pulled live from the Subscription table, not hardcoded copy,
           so this page can never drift out of sync with what a store actually gets. */}
-      <section id="pricing" className="px-6 py-16 sm:px-10 lg:py-24" style={{ background: "#ffffff" }}>
+      <section id="pricing" className="px-6 py-16 sm:px-10 lg:py-24" style={{ background: "var(--bn-ink)" }}>
         <h2 className="mb-3 text-2xl sm:text-3xl" style={{ fontFamily: "var(--font-display)", fontWeight: 700 }}>
           Simple pricing, real ownership
         </h2>
@@ -382,7 +382,7 @@ export default async function HomePage() {
                 className="relative rounded-2xl p-6 transition hover:-translate-y-1"
                 style={{
                   background: featured ? "var(--bn-accent-gradient)" : "var(--bn-ink-raised)",
-                  color: featured ? "#ffffff" : "var(--bn-ink)",
+                  color: featured ? "var(--bn-ink)" : "var(--bn-ivory)",
                   border: featured ? "none" : "1px solid var(--bn-ink-line)",
                 }}
               >
@@ -420,14 +420,14 @@ export default async function HomePage() {
       </section>
 
       {/* Trust & security — states what's actually built, not generic marketing claims */}
-      <section className="px-6 py-16 sm:px-10 lg:py-24" style={{ background: "#f3f8f4" }}>
+      <section className="px-6 py-16 sm:px-10 lg:py-24" style={{ background: "var(--bn-ink-raised)" }}>
         <h2 className="mb-10 text-2xl sm:text-3xl" style={{ fontFamily: "var(--font-display)", fontWeight: 700 }}>
           Built for trust, not just transactions
         </h2>
         <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
           {TRUST.map((f) => (
-            <div key={f.title} className="rounded-2xl p-6" style={{ background: "#ffffff", border: "1px solid var(--bn-ink-line)" }}>
-              <f.icon className="h-6 w-6" style={{ color: "var(--bn-jade)" }} strokeWidth={1.75} />
+            <div key={f.title} className="rounded-2xl p-6" style={{ background: "var(--bn-ink)", border: "1px solid var(--bn-ink-line)" }}>
+              <f.icon className="h-6 w-6" style={{ color: "var(--bn-marigold)" }} strokeWidth={1.75} />
               <h3 className="mt-3 text-base font-semibold">{f.title}</h3>
               <p className="mt-2 text-sm leading-relaxed" style={{ color: "var(--bn-mute)" }}>{f.body}</p>
             </div>
@@ -436,7 +436,7 @@ export default async function HomePage() {
       </section>
 
       {/* FAQ */}
-      <section className="px-6 py-16 sm:px-10 lg:py-24" style={{ background: "#ffffff" }}>
+      <section className="px-6 py-16 sm:px-10 lg:py-24" style={{ background: "var(--bn-ink)" }}>
         <div className="mx-auto max-w-3xl">
           <h2 className="mb-10 text-2xl sm:text-3xl" style={{ fontFamily: "var(--font-display)", fontWeight: 700 }}>
             Questions people actually ask
@@ -469,7 +469,7 @@ export default async function HomePage() {
             <Link
               href="/search"
               className="inline-block rounded-full px-8 py-3.5 text-sm font-medium transition"
-              style={{ border: "1px solid var(--bn-ink-line)", color: "var(--bn-ink)" }}
+              style={{ border: "1px solid var(--bn-ink-line)", color: "var(--bn-ivory)" }}
             >
               Browse stores first
             </Link>
@@ -477,7 +477,7 @@ export default async function HomePage() {
         </div>
       </section>
 
-      <footer style={{ background: "#ffffff", borderTop: "1px solid var(--bn-ink-line)" }}>
+      <footer style={{ background: "var(--bn-ink)", borderTop: "1px solid var(--bn-ink-line)" }}>
         <div className="mx-auto grid max-w-6xl gap-10 px-6 py-14 sm:grid-cols-2 sm:px-10 lg:grid-cols-4">
           <div>
             <span className="text-lg tracking-tight" style={{ fontFamily: "var(--font-display)", fontWeight: 700 }}>
@@ -490,7 +490,7 @@ export default async function HomePage() {
           </div>
 
           <div>
-            <p className="mb-3 text-xs font-semibold uppercase tracking-wider" style={{ color: "var(--bn-ink)" }}>Platform</p>
+            <p className="mb-3 text-xs font-semibold uppercase tracking-wider" style={{ color: "var(--bn-ivory)" }}>Platform</p>
             <ul className="space-y-2 text-sm" style={{ color: "var(--bn-mute)" }}>
               <li><Link href="/register" className="hover:opacity-80">Open a store</Link></li>
               <li><Link href="/login" className="hover:opacity-80">Sign in</Link></li>
@@ -500,7 +500,7 @@ export default async function HomePage() {
           </div>
 
           <div>
-            <p className="mb-3 text-xs font-semibold uppercase tracking-wider" style={{ color: "var(--bn-ink)" }}>Legal</p>
+            <p className="mb-3 text-xs font-semibold uppercase tracking-wider" style={{ color: "var(--bn-ivory)" }}>Legal</p>
             <ul className="space-y-2 text-sm" style={{ color: "var(--bn-mute)" }}>
               <li><Link href="/privacy" className="hover:opacity-80">Privacy Policy</Link></li>
               <li><Link href="/terms" className="hover:opacity-80">Terms of Service</Link></li>
@@ -509,7 +509,7 @@ export default async function HomePage() {
           </div>
 
           <div>
-            <p className="mb-3 text-xs font-semibold uppercase tracking-wider" style={{ color: "var(--bn-ink)" }}>Support</p>
+            <p className="mb-3 text-xs font-semibold uppercase tracking-wider" style={{ color: "var(--bn-ivory)" }}>Support</p>
             <ul className="space-y-2 text-sm" style={{ color: "var(--bn-mute)" }}>
               <li><a href="mailto:support@biznest.space" className="hover:opacity-80">support@biznest.space</a></li>
             </ul>
@@ -540,7 +540,7 @@ function Row({ stalls, direction }: { stalls: Stall[]; direction: "left" | "righ
           href={`/${s.slug}`}
           key={`${s.slug}-${i}`}
           className="flex w-44 shrink-0 flex-col rounded-xl px-4 py-3 transition hover:border-[var(--bn-marigold)]"
-          style={{ background: "#ffffff", border: "1px solid var(--bn-ink-line)" }}
+          style={{ background: "var(--bn-ink)", border: "1px solid var(--bn-ink-line)" }}
         >
           <span
             className="h-1.5 w-6 rounded-full"

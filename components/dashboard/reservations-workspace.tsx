@@ -184,7 +184,7 @@ export function ReservationsWorkspace({
   }
 
   return (
-    <div className="bn-fnb-reservations space-y-5">
+    <div className="space-y-5">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <h1 className="text-2xl font-bold">Reservations</h1>
@@ -199,7 +199,7 @@ export function ReservationsWorkspace({
           </button>
           <button
             onClick={() => setShowNewForm(true)}
-            className="flex items-center gap-1 rounded-lg bg-[#5a3825] px-3 py-2 text-sm font-semibold text-white hover:bg-[#43281b]"
+            className="flex items-center gap-1 rounded-lg bg-orange-500 px-3 py-2 text-sm font-semibold text-white hover:bg-orange-600"
           >
             <Plus className="h-4 w-4" /> New Reservation
           </button>
@@ -208,11 +208,11 @@ export function ReservationsWorkspace({
 
       <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-5">
         {[
-          { label: "Total Reservations", value: stats.total, tone: "bg-[#f1e7df] text-[#5a3825]" },
-          { label: "Upcoming", value: stats.upcoming, tone: "bg-[#f5eee8] text-[#6b4630]" },
-          { label: "Checked In", value: stats.checkedIn, tone: "bg-[#f3ebe5] text-[#5a3825]" },
-          { label: "Cancelled", value: stats.cancelled, tone: "bg-[#f8efeb] text-[#70422c]" },
-          { label: "Total Guests", value: stats.totalGuests, tone: "bg-[#f5eee8] text-[#704b35]" },
+          { label: "Total Reservations", value: stats.total, tone: "bg-violet-50 text-violet-700" },
+          { label: "Upcoming", value: stats.upcoming, tone: "bg-sky-50 text-sky-700" },
+          { label: "Checked In", value: stats.checkedIn, tone: "bg-emerald-50 text-emerald-700" },
+          { label: "Cancelled", value: stats.cancelled, tone: "bg-rose-50 text-rose-700" },
+          { label: "Total Guests", value: stats.totalGuests, tone: "bg-amber-50 text-amber-700" },
         ].map((s) => (
           <div key={s.label} className="rounded-xl border bg-white p-4 shadow-sm">
             <p className="text-xs font-medium text-muted-foreground">{s.label}</p>
@@ -229,7 +229,7 @@ export function ReservationsWorkspace({
                 key={t.id}
                 onClick={() => setTab(t.id)}
                 className={`rounded-full px-3 py-1.5 text-xs font-medium transition ${
-                  tab === t.id ? "bg-[#5a3825] text-white" : "bg-muted text-muted-foreground hover:bg-muted/70"
+                  tab === t.id ? "bg-orange-500 text-white" : "bg-muted text-muted-foreground hover:bg-muted/70"
                 }`}
               >
                 {t.label}
@@ -269,7 +269,7 @@ export function ReservationsWorkspace({
                     <tr
                       key={r.id}
                       onClick={() => setSelectedId(r.id)}
-                      className={`cursor-pointer border-b last:border-0 hover:bg-muted/30 ${selectedId === r.id ? "bg-[#f8f1eb]" : ""}`}
+                      className={`cursor-pointer border-b last:border-0 hover:bg-muted/30 ${selectedId === r.id ? "bg-orange-50" : ""}`}
                     >
                       <td className="px-4 py-3">
                         <div className="font-medium">{time}</div>
@@ -368,7 +368,7 @@ export function ReservationsWorkspace({
                     <button
                       disabled={busy}
                       onClick={() => setStatus(selected.id, "SEATED", "Marked seated")}
-                      className="rounded-lg bg-[#5a3825] px-3 py-1.5 text-xs font-semibold text-white hover:bg-[#43281b]"
+                      className="rounded-lg bg-purple-500 px-3 py-1.5 text-xs font-semibold text-white hover:bg-purple-600"
                     >
                       Seat Guest
                     </button>
@@ -377,7 +377,7 @@ export function ReservationsWorkspace({
                     <button
                       disabled={busy}
                       onClick={() => setStatus(selected.id, "COMPLETED", "Marked completed")}
-                      className="rounded-lg bg-[#6f4a34] px-3 py-1.5 text-xs font-semibold text-white hover:bg-[#5a3825]"
+                      className="rounded-lg bg-green-500 px-3 py-1.5 text-xs font-semibold text-white hover:bg-green-600"
                     >
                       Complete
                     </button>
@@ -395,7 +395,7 @@ export function ReservationsWorkspace({
                     <button
                       disabled={busy}
                       onClick={() => setStatus(selected.id, "CANCELLED", "Reservation cancelled")}
-                      className="flex items-center gap-1 rounded-lg border border-rose-300 px-3 py-1.5 text-xs font-semibold text-rose-600 hover:bg-[#f8efeb]"
+                      className="flex items-center gap-1 rounded-lg border border-rose-300 px-3 py-1.5 text-xs font-semibold text-rose-600 hover:bg-rose-50"
                     >
                       <X className="h-3.5 w-3.5" /> Cancel
                     </button>
@@ -447,7 +447,7 @@ export function ReservationsWorkspace({
               </select>
               <textarea value={fNotes} onChange={(e) => setFNotes(e.target.value)} placeholder="Special requests" className="w-full rounded-lg border px-3 py-2 text-sm" rows={2} />
             </div>
-            <button disabled={busy} type="submit" className="mt-4 w-full rounded-lg bg-[#5a3825] py-2 text-sm font-semibold text-white hover:bg-[#43281b]">
+            <button disabled={busy} type="submit" className="mt-4 w-full rounded-lg bg-orange-500 py-2 text-sm font-semibold text-white hover:bg-orange-600">
               Create Reservation
             </button>
           </form>
@@ -468,7 +468,7 @@ export function ReservationsWorkspace({
               <input value={uLocation} onChange={(e) => setULocation(e.target.value)} placeholder="Location, e.g. Indoor / Outdoor" className="w-full rounded-lg border px-3 py-2 text-sm" />
               <input type="number" min={1} value={uCapacity} onChange={(e) => setUCapacity(e.target.value)} placeholder="Seats" className="w-full rounded-lg border px-3 py-2 text-sm" />
             </div>
-            <button disabled={busy} type="submit" className="mt-4 w-full rounded-lg bg-[#5a3825] py-2 text-sm font-semibold text-white hover:bg-[#43281b]">
+            <button disabled={busy} type="submit" className="mt-4 w-full rounded-lg bg-orange-500 py-2 text-sm font-semibold text-white hover:bg-orange-600">
               Add {unitLabel}
             </button>
           </form>

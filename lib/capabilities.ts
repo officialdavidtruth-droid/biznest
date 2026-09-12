@@ -194,7 +194,7 @@ function defaultCategoriesFor(type: string, capabilities: Capability[]): Default
 function navigationFor(type: string, capabilities: Capability[]): Array<{ label: string; href: string }> {
   const common = DEFAULT_NAVIGATION;
   if (type === "Hotel & Lodging") return [{label:"Home",href:"/"},{label:"Rooms",href:"/catalog"},{label:"Amenities",href:"/#amenities"},{label:"Dining",href:"/#dining"},{label:"Gallery",href:"/#gallery"},{label:"Contact",href:"/contact"}];
-  if (type === "Restaurant") return [{label:"Home",href:"/"},{label:"Menu",href:"/catalog"},{label:"Reservations",href:"/reservations"},{label:"About",href:"/about"},{label:"Gallery",href:"/gallery"},{label:"Events",href:"/events"},{label:"Contact",href:"/contact"}];
+  if (type === "Restaurant") return [{label:"Home",href:"/"},{label:"Menu",href:"/catalog"},{label:"About",href:"/about"},{label:"Gallery",href:"/#gallery"},{label:"Reservations",href:"/contact"},{label:"Contact",href:"/contact"}];
   if (type === "Salon" || type === "Beauty") return [{label:"Home",href:"/"},{label:"Services",href:"/catalog"},{label:"Stylists",href:"/#team"},{label:"Pricing",href:"/catalog"},{label:"Gallery",href:"/#gallery"},{label:"Contact",href:"/contact"}];
   if (type === "Church") return [{label:"Home",href:"/"},{label:"About",href:"/about"},{label:"Events",href:"/#events"},{label:"Sermons",href:"/#sermons"},{label:"Giving",href:"/#giving"},{label:"Contact",href:"/contact"}];
   return common;

@@ -17,7 +17,7 @@ export function FaqAccordion({ items }: { items: { q: string; a: string }[] }) {
               aria-expanded={open}
               className="flex w-full items-center justify-between gap-6 py-5 text-left"
             >
-              <span className="text-base font-medium sm:text-lg" style={{ color: "#2f241e" }}>
+              <span className="text-base font-medium sm:text-lg" style={{ color: "var(--bn-ivory)" }}>
                 {item.q}
               </span>
               <span

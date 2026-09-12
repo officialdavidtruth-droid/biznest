@@ -51,33 +51,33 @@ export function DashboardSidebar({
     // drawer + bottom tab bar) is the primary nav. This isn't the same
     // component squeezed into a hamburger; mobile gets its own layout
     // tuned for one-thumb use, not a shrunk desktop sidebar.
-    <aside className="bn-admin-sidebar hidden h-screen max-h-screen w-[250px] shrink-0 flex-col overflow-y-auto overscroll-contain border-r border-[color:var(--bn-ink-line)] bg-white text-foreground shadow-[0_8px_30px_rgba(20,83,45,0.06)] lg:sticky lg:top-0 lg:flex lg:self-start">
-      <div className="border-b border-[color:var(--bn-ink-line)] px-4 py-4">
+    <aside className="bn-admin-sidebar hidden h-screen max-h-screen w-[250px] shrink-0 flex-col overflow-y-auto overscroll-contain border-r border-[color:var(--bn-ink-line)] bg-[color:var(--bn-ink)] text-white lg:sticky lg:top-0 lg:flex lg:self-start">
+      <div className="border-b border-slate-800 px-4 py-4">
         <div className="mb-4 flex items-center gap-2.5">
-          <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-[color:var(--bn-jade)] text-sm font-black text-[color:var(--bn-ink)] shadow-sm">▰</div>
+          <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-[#10967a] text-sm font-black text-white shadow-sm">▰</div>
           <div>
-            <p className="text-[19px] font-bold leading-none tracking-tight text-[color:var(--bn-ink)]">BizNest</p>
-            <p className="mt-1 text-[9px] font-medium tracking-wide text-[color:var(--bn-mute)]">Your Business, Elevated</p>
+            <p className="text-[19px] font-bold leading-none tracking-tight text-white">BizNest</p>
+            <p className="mt-1 text-[9px] font-medium tracking-wide text-slate-400">Your Business, Elevated</p>
           </div>
         </div>
-        <div className="rounded-xl border border-[color:var(--bn-ink-line)] bg-[color:#f3f8f4] p-3">
+        <div className="rounded-xl border border-slate-700 bg-slate-900/80 p-3">
           <div className="flex items-center gap-2.5">
             <Link href={`${base}/settings`} className="group/logo relative shrink-0 rounded-lg" title="Change business logo">
               <StoreLogo logoUrl={logoUrl} storeName={storeName} size="sm" />
               <span className="absolute inset-0 flex items-center justify-center rounded-lg bg-black/50 opacity-0 transition-opacity group-hover/logo:opacity-100">
-                <Pencil className="h-3.5 w-3.5 text-[color:var(--bn-ink)]" />
+                <Pencil className="h-3.5 w-3.5 text-white" />
               </span>
             </Link>
             <div className="min-w-0 flex-1">
               <div className="flex items-center gap-1.5">
-                <p className="truncate text-xs font-semibold text-[color:var(--bn-ink)]">{storeName}</p>
+                <p className="truncate text-xs font-semibold text-white">{storeName}</p>
                 <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-emerald-400" />
               </div>
-              <Link href={`/${slug}`} target="_blank" className="mt-1 flex items-center gap-1 text-[10px] text-[color:var(--bn-mute)] hover:text-[color:var(--bn-ink)]">
+              <Link href={`/${slug}`} target="_blank" className="mt-1 flex items-center gap-1 text-[10px] text-slate-400 hover:text-white">
                 <span>View Store</span><ExternalLink className="h-2.5 w-2.5" />
               </Link>
             </div>
-            <ChevronDown className="h-4 w-4 text-[color:var(--bn-mute)]" />
+            <ChevronDown className="h-4 w-4 text-slate-500" />
           </div>
         </div>
       </div>
@@ -85,7 +85,7 @@ export function DashboardSidebar({
       <nav className="space-y-5 px-3 py-4">
         {NAV_GROUPS.map((group) => (
           <div key={group.label}>
-            <p className="mb-1.5 px-2 text-[10px] font-semibold uppercase tracking-wider text-[color:var(--bn-mute)]">
+            <p className="mb-1.5 px-2 text-[10px] font-semibold uppercase tracking-wider text-slate-500">
               {group.label}
             </p>
             <div className="space-y-0.5">
@@ -97,17 +97,17 @@ export function DashboardSidebar({
         ))}
       </nav>
 
-      <div className="border-t border-[color:var(--bn-ink-line)] px-3 py-3">
-        <div className="mb-3 rounded-xl border border-[color:var(--bn-ink-line)] bg-[color:#f3f8f4] p-3">
-          <div className="flex items-center gap-2 text-[11px] font-semibold text-[color:var(--bn-ink)]"><Crown className="h-4 w-4 text-[#10967a]" /> BizNest Pro Plan</div>
-          <p className="mt-1 text-[10px] text-[color:var(--bn-mute)]">Your workspace is powered by BizNest.</p>
-          <div className="my-2 h-1.5 overflow-hidden rounded-full bg-[color:#d9e9dd]"><div className="h-full w-[76%] rounded-full bg-[color:var(--bn-jade)]" /></div>
-          <Link href={`/${slug}/admin/subscription`} className="block rounded-md bg-[color:var(--bn-jade)] px-2 py-1.5 text-center text-[10px] font-bold text-[color:var(--bn-ink)]">Manage Plan</Link>
+      <div className="border-t border-slate-800 px-3 py-3">
+        <div className="mb-3 rounded-xl border border-slate-700 bg-slate-900/80 p-3">
+          <div className="flex items-center gap-2 text-[11px] font-semibold text-white"><Crown className="h-4 w-4 text-[#10967a]" /> BizNest Pro Plan</div>
+          <p className="mt-1 text-[10px] text-slate-400">Your workspace is powered by BizNest.</p>
+          <div className="my-2 h-1.5 overflow-hidden rounded-full bg-slate-700"><div className="h-full w-[76%] rounded-full bg-[#10967a]" /></div>
+          <Link href={`/${slug}/admin/subscription`} className="block rounded-md bg-[#10967a] px-2 py-1.5 text-center text-[10px] font-bold text-white">Manage Plan</Link>
         </div>
         <div className="flex items-center gap-2 px-1">
           <StoreLogo logoUrl={logoUrl} storeName={storeName} size="sm" />
-          <div className="min-w-0 flex-1"><p className="truncate text-[11px] font-semibold text-[color:var(--bn-ink)]">Business Admin</p><p className="text-[10px] text-[color:var(--bn-mute)]">{staffRole ?? "OWNER"}</p></div>
-          <SignOutButton className="text-[10px] text-[color:var(--bn-mute)] hover:text-red-600" />
+          <div className="min-w-0 flex-1"><p className="truncate text-[11px] font-semibold text-white">Business Admin</p><p className="text-[10px] text-slate-500">{staffRole ?? "OWNER"}</p></div>
+          <SignOutButton className="text-[10px] text-slate-400 hover:text-red-300" />
         </div>
       </div>
     </aside>
@@ -136,7 +136,7 @@ function NavLink({ base, item, pathname }: { base: string; item: NavItem; pathna
         <a
           href={href}
           className={`group relative flex items-center gap-2.5 rounded-lg px-2.5 py-2 text-sm transition-colors ${
-            isActive ? "bg-[color:var(--bn-jade)] font-medium text-[color:var(--bn-ink)] shadow-sm" : "text-[color:var(--bn-ink)] hover:bg-white/8 hover:text-[color:var(--bn-ink)]"
+            isActive ? "bg-[#10967a] font-medium text-white shadow-sm" : "text-slate-300 hover:bg-white/8 hover:text-white"
           }`}
         >
           {isActive && <span className="absolute -left-3 top-1/2 h-4 w-0.5 -translate-y-1/2 rounded-full bg-primary" />}
@@ -149,7 +149,7 @@ function NavLink({ base, item, pathname }: { base: string; item: NavItem; pathna
       <Link
         href={href}
         className={`group relative flex items-center gap-2.5 rounded-lg px-2.5 py-2 text-sm transition-colors ${
-          isActive ? "bg-[color:var(--bn-jade)] font-medium text-[color:var(--bn-ink)] shadow-sm" : "text-[color:var(--bn-ink)] hover:bg-white/8 hover:text-[color:var(--bn-ink)]"
+          isActive ? "bg-[#10967a] font-medium text-white shadow-sm" : "text-slate-300 hover:bg-white/8 hover:text-white"
         }`}
       >
         {isActive && <span className="absolute -left-3 top-1/2 h-4 w-0.5 -translate-y-1/2 rounded-full bg-primary" />}
@@ -163,7 +163,7 @@ function NavLink({ base, item, pathname }: { base: string; item: NavItem; pathna
     <div>
       <div
         className={`group relative flex items-center gap-2.5 rounded-lg pr-1.5 text-sm transition-colors ${
-          isActive ? "bg-[color:var(--bn-jade)] font-medium text-[color:var(--bn-ink)] shadow-sm" : "text-[color:var(--bn-ink)] hover:bg-white/8 hover:text-[color:var(--bn-ink)]"
+          isActive ? "bg-[#10967a] font-medium text-white shadow-sm" : "text-slate-300 hover:bg-white/8 hover:text-white"
         }`}
       >
         {isActive && <span className="absolute -left-3 top-1/2 h-4 w-0.5 -translate-y-1/2 rounded-full bg-primary" />}
@@ -174,14 +174,14 @@ function NavLink({ base, item, pathname }: { base: string; item: NavItem; pathna
         <button
           type="button"
           onClick={() => setOpen((v) => !v)}
-          className="grid h-6 w-6 shrink-0 place-items-center rounded-md hover:bg-[color:#e8f5eb]"
+          className="grid h-6 w-6 shrink-0 place-items-center rounded-md hover:bg-black/10"
           aria-label={open ? "Collapse" : "Expand"}
         >
           <ChevronDown className={`h-3.5 w-3.5 transition-transform ${open ? "rotate-180" : ""}`} />
         </button>
       </div>
       {open && (
-        <div className="ml-4 mt-0.5 space-y-0.5 border-l border-[color:var(--bn-ink-line)] pl-3">
+        <div className="ml-4 mt-0.5 space-y-0.5 border-l border-slate-700 pl-3">
           {item.children.map((child) => {
             const childHref = `${base}${child.href}`;
             const childIsActive = pathname === childHref;
@@ -191,7 +191,7 @@ function NavLink({ base, item, pathname }: { base: string; item: NavItem; pathna
                 key={child.label}
                 href={childHref}
                 className={`flex items-center gap-2 rounded-lg px-2.5 py-1.5 text-xs transition-colors ${
-                  childIsActive ? "bg-[color:var(--bn-jade)]/90 font-medium text-[color:var(--bn-ink)]" : "text-[color:var(--bn-mute)] hover:bg-white/8 hover:text-[color:var(--bn-ink)]"
+                  childIsActive ? "bg-[#10967a]/90 font-medium text-white" : "text-slate-400 hover:bg-white/8 hover:text-white"
                 }`}
               >
                 <ChildIcon className="h-3.5 w-3.5 shrink-0 opacity-70" />

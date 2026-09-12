@@ -2,7 +2,6 @@ import Link from "next/link";
 import type { Metadata } from "next";
 import { Space_Grotesk, Inter } from "next/font/google";
 import { prisma } from "@/lib/prisma";
-import { DEMO_STORES } from "@/lib/demo-stores";
 import type { TemplateTheme } from "@/lib/template-themes";
 import { TemplateCover } from "@/components/storefront/template-cover";
 
@@ -22,11 +21,10 @@ function themeFromConfig(config: unknown): TemplateTheme | null {
 
 export default async function TemplatesPage() {
   const templates = await prisma.storeTemplate.findMany({
-    where: { isActive: true },
+    where: { isActive: true, name: "Grandeur — Fine Dining Restaurant" },
     orderBy: { tierRank: "asc" },
   });
 
-  const demoBySlugTemplate = new Map(DEMO_STORES.map((d) => [d.templateName, d.slug]));
 
   return (
     <div
@@ -64,7 +62,6 @@ export default async function TemplatesPage() {
       <section className="mx-auto grid max-w-6xl gap-6 px-6 pb-24 sm:px-10 lg:grid-cols-3">
         {templates.map((t) => {
           const theme = themeFromConfig(t.config);
-          const demoSlug = demoBySlugTemplate.get(t.name);
           if (!theme) return null;
 
           return (
@@ -93,20 +90,14 @@ export default async function TemplatesPage() {
                 <p className="mt-1 text-xs opacity-60">Layout: {theme.heroStyle}</p>
 
                 <div className="mt-5 flex items-center gap-3">
-                  {demoSlug ? (
-                    <Link
-                      href={`/${demoSlug}`}
-                      target="_blank"
-                      className="flex-1 rounded-full px-4 py-2.5 text-center text-sm font-semibold transition hover:brightness-110"
-                      style={{ background: "var(--bn-accent-gradient)", color: "var(--bn-ink)" }}
-                    >
-                      View live demo →
-                    </Link>
-                  ) : (
-                    <span className="flex-1 rounded-full px-4 py-2.5 text-center text-sm font-medium opacity-50">
-                      Demo coming soon
-                    </span>
-                  )}
+                  <Link
+                    href={`/template-preview/${encodeURIComponent(t.name)}`}
+                    target="_blank"
+                    className="flex-1 rounded-full px-4 py-2.5 text-center text-sm font-semibold transition hover:brightness-110"
+                    style={{ background: "var(--bn-accent-gradient)", color: "var(--bn-ink)" }}
+                  >
+                    View live demo →
+                  </Link>
                   <Link
                     href="/register"
                     className="rounded-full border px-4 py-2.5 text-center text-sm font-medium transition hover:opacity-80"
@@ -122,7 +113,7 @@ export default async function TemplatesPage() {
 
         {templates.length === 0 && (
           <div className="col-span-full rounded-2xl border border-dashed p-12 text-center text-sm opacity-70" style={{ borderColor: "var(--bn-ink-line)" }}>
-            No templates are set up yet — run <code>npm run db:seed</code> then <code>npm run db:seed:demos</code> against your database.
+            No templates are set up yet — run <code>npm run db:seed</code> against your database.
           </div>
         )}
       </section>

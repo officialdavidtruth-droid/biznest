@@ -1,0 +1,44 @@
+Legacy storefront/template files removed by the template reset.
+
+- components/storefront/templates/* (entire legacy template component directory)
+- styles/heenzy-template.css
+- components/storefront/signature-cart-client.tsx
+- components/storefront/signature-checkout-client.tsx
+- components/storefront/signature-customer-shell.tsx
+- components/storefront/signature-journey.tsx
+- components/storefront/signature-order-confirmation.tsx
+- components/storefront/signature-service-detail.tsx
+- components/storefront/signature-screenshot-home.tsx
+- components/storefront/restaurant-reference-shell.tsx
+- components/storefront/restaurant-order-client.tsx
+- app/store/[slug]/hotel/*
+- app/store/[slug]/room/*
+- app/store/[slug]/cart/cart-page.tsx
+- app/store/[slug]/cart/arcova-cart-client.tsx
+- app/store/[slug]/cart/fabtex-cart-client.tsx
+- app/store/[slug]/cart/homevista-cart-client.tsx
+- app/store/[slug]/cart/juicelife-cart-client.tsx
+- app/store/[slug]/cart/marketplace-cart-client.tsx
+- app/store/[slug]/cart/nova-cart-client.tsx
+- app/store/[slug]/cart/premium-cart-client.tsx
+- app/store/[slug]/cart/rivora-cart-client.tsx
+- app/store/[slug]/cart/rrw-cart-client.tsx
+- app/store/[slug]/cart/violet-cart-client.tsx
+- app/store/[slug]/cart/heenzy-cart-client.tsx
+- app/store/[slug]/checkout/arcova-checkout-client.tsx
+- app/store/[slug]/checkout/fabtex-checkout-client.tsx
+- app/store/[slug]/checkout/homevista-checkout-client.tsx
+- app/store/[slug]/checkout/juicelife-checkout-client.tsx
+- app/store/[slug]/checkout/marketplace-checkout-client.tsx
+- app/store/[slug]/checkout/nova-checkout-client.tsx
+- app/store/[slug]/checkout/premium-checkout-client.tsx
+- app/store/[slug]/checkout/rivora-checkout-client.tsx
+- app/store/[slug]/checkout/rrw-checkout-client.tsx
+- app/store/[slug]/checkout/violet-checkout-client.tsx
+- app/store/[slug]/checkout/heenzy-checkout-client.tsx
+- lib/demo-stores.ts
+- prisma/seed-demos.ts
+- lib/__tests__/booking-concurrency-and-retry.test.ts
+- IMPLEMENTATION_NOTES_SIGNATURE_TEMPLATES.md
+- SIGNATURE_TEMPLATE_REBUILD.md
+- TEMPLATE_PRODUCTION_AUDIT.md

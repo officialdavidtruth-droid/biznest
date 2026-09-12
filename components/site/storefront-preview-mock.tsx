@@ -11,7 +11,7 @@ export function StorefrontPreviewMock() {
   return (
     <div
       className="mx-auto w-full max-w-xl overflow-hidden rounded-2xl shadow-[0_30px_80px_-20px_rgba(0,0,0,0.55)]"
-      style={{ border: "1px solid var(--bn-ink-line)", background: "#fbf8f5" }}
+      style={{ border: "1px solid var(--bn-ink-line)", background: "var(--bn-ink-raised)" }}
     >
       {/* browser chrome */}
       <div
@@ -25,7 +25,7 @@ export function StorefrontPreviewMock() {
         </div>
         <div
           className="flex-1 truncate rounded-full px-3 py-1 text-center text-[11px]"
-          style={{ background: "#f1e7de", color: "#7c6b5d", fontFamily: "var(--font-mono)" }}
+          style={{ background: "var(--bn-ink)", color: "var(--bn-mute)", fontFamily: "var(--font-mono)" }}
         >
           biznest.space/stacey
         </div>
@@ -34,7 +34,7 @@ export function StorefrontPreviewMock() {
       {/* mock storefront */}
       <div className="p-4 sm:p-5">
         <div className="mb-4 flex items-center justify-between">
-          <span className="text-sm font-semibold" style={{ color: "#2f241e", fontFamily: "var(--font-display)" }}>
+          <span className="text-sm font-semibold" style={{ color: "var(--bn-ivory)", fontFamily: "var(--font-display)" }}>
             Stacey&apos;s Paradise
           </span>
           <div className="flex gap-2">
@@ -45,7 +45,7 @@ export function StorefrontPreviewMock() {
             ))}
             <span
               className="rounded-full px-2.5 py-1 text-[10px] font-medium"
-              style={{ background: "linear-gradient(135deg, #6f4e37 0%, #8b6b52 100%)", color: "#ffffff" }}
+              style={{ background: "var(--bn-accent-gradient)", color: "var(--bn-ink)" }}
             >
               Cart · 2
             </span>
@@ -56,13 +56,13 @@ export function StorefrontPreviewMock() {
           className="mb-4 flex h-28 flex-col justify-center rounded-xl px-5 sm:h-32"
           style={{
             background:
-              "radial-gradient(120% 140% at 15% 20%, rgba(139,107,82,0.18) 0%, transparent 60%), linear-gradient(135deg, #6f4e37 0%, #4b3324 100%)",
+              "radial-gradient(120% 140% at 15% 20%, rgba(52,211,153,0.35) 0%, transparent 60%), linear-gradient(135deg, #123024 0%, #0a1c12 100%)",
           }}
         >
           <p className="text-[10px] uppercase tracking-[0.15em]" style={{ color: "var(--bn-marigold)", fontFamily: "var(--font-mono)" }}>
             New season
           </p>
-          <p className="mt-1 text-lg font-semibold sm:text-xl" style={{ color: "#2f241e", fontFamily: "var(--font-display)" }}>
+          <p className="mt-1 text-lg font-semibold sm:text-xl" style={{ color: "var(--bn-ivory)", fontFamily: "var(--font-display)" }}>
             Fabric that tells a story
           </p>
         </div>
@@ -73,11 +73,11 @@ export function StorefrontPreviewMock() {
               <div
                 className="aspect-square rounded-lg"
                 style={{
-                  background: `linear-gradient(${135 + i * 40}deg, rgba(139,107,82,0.18), rgba(111,78,55,0.10))`,
+                  background: `linear-gradient(${135 + i * 40}deg, rgba(52,211,153,0.28), rgba(16,150,122,0.18))`,
                   border: "1px solid var(--bn-ink-line)",
                 }}
               />
-              <p className="mt-1.5 truncate text-[11px] font-medium" style={{ color: "#2f241e" }}>
+              <p className="mt-1.5 truncate text-[11px] font-medium" style={{ color: "var(--bn-ivory)" }}>
                 {p.name}
               </p>
               <p className="text-[10px]" style={{ color: "var(--bn-mute)", fontFamily: "var(--font-mono)" }}>

@@ -2,7 +2,6 @@ import Link from "next/link";
 import type { Metadata } from "next";
 import { Space_Grotesk, Inter } from "next/font/google";
 import { prisma } from "@/lib/prisma";
-import { DEMO_STORES } from "@/lib/demo-stores";
 import type { TemplateTheme } from "@/lib/template-themes";
 
 const display = Space_Grotesk({ subsets: ["latin"], variable: "--font-display", weight: ["500", "700"] });
@@ -21,11 +20,10 @@ function themeFromConfig(config: unknown): TemplateTheme | null {
 
 export default async function TemplatesPage() {
   const templates = await prisma.storeTemplate.findMany({
-    where: { isActive: true },
+    where: { isActive: true, name: "Grandeur — Fine Dining Restaurant" },
     orderBy: { tierRank: "asc" },
   });
 
-  const demoBySlugTemplate = new Map(DEMO_STORES.map((d) => [d.templateName, d.slug]));
 
   return (
     <div
@@ -63,7 +61,6 @@ export default async function TemplatesPage() {
       <section className="mx-auto grid max-w-6xl gap-6 px-6 pb-24 sm:px-10 lg:grid-cols-3">
         {templates.map((t) => {
           const theme = themeFromConfig(t.config);
-          const demoSlug = demoBySlugTemplate.get(t.name);
           if (!theme) return null;
 
           return (
@@ -98,12 +95,12 @@ export default async function TemplatesPage() {
 
                 <div className="mt-5 flex items-center gap-3">
                   <Link
-                    href={demoSlug ? `/${demoSlug}` : `/template-preview/${encodeURIComponent(t.name)}`}
+                    href={`/template-preview/${encodeURIComponent(t.name)}`}
                     target="_blank"
                     className="flex-1 rounded-full px-4 py-2.5 text-center text-sm font-semibold transition hover:brightness-110"
                     style={{ background: "var(--bn-accent-gradient)", color: "var(--bn-ink)" }}
                   >
-                    {demoSlug ? "View live demo →" : "Open full preview →"}
+                    Open full preview →
                   </Link>
                   <Link
                     href="/register"
