@@ -3,14 +3,9 @@
 import { useMemo, useState } from "react";
 import { Check, Lock, Search, Eye, X, ShoppingBag, CalendarDays } from "lucide-react";
 import type { TemplateTheme } from "@/lib/template-themes";
-import { DEMO_STORES } from "@/lib/demo-stores";
 import { getBusinessExperience } from "@/lib/business-experience";
 import { isTemplateCompatible } from "@/lib/template-compatibility";
 
-// Real, permanent live-demo stores exist for a subset of templates (see
-// lib/demo-stores.ts). Map template name -> demo slug so the gallery can
-// link straight to the actual running storefront instead of a mockup.
-const DEMO_SLUG_BY_TEMPLATE = new Map(DEMO_STORES.map((d) => [d.templateName, d.slug]));
 
 export type TemplateOption = {
   id: string;
@@ -159,7 +154,6 @@ export function TemplateGallery({
           if (!theme) return null;
           const isSelected = selectedId === t.id;
           const isLocked = t.tierRank > planRank;
-          const demoSlug = DEMO_SLUG_BY_TEMPLATE.get(t.name);
 
           return (
             <div
@@ -218,7 +212,7 @@ export function TemplateGallery({
 
                 <button
                   type="button"
-                  onClick={() => setPreview({ name: t.name, url: demoSlug ? `/${demoSlug}` : `/template-preview/${encodeURIComponent(t.name)}` })}
+                  onClick={() => setPreview({ name: t.name, url: `/template-preview/${encodeURIComponent(t.name)}` })}
                   className="flex shrink-0 items-center gap-1 rounded-full border border-border px-2.5 py-1 text-[11px] font-medium text-foreground transition hover:border-primary/50 hover:text-primary"
                 >
                   <Eye className="h-3 w-3" /> Preview

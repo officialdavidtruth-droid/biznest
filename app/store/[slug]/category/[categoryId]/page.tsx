@@ -1,271 +1,32 @@
 import { prisma } from "@/lib/prisma";
 import { notFound } from "next/navigation";
-import Link from "next/link";
 import type { Metadata } from "next";
-import { resolveStoreTheme, isVioletTemplate, isMarketplaceTemplate, isArcovaTemplate, isNovaTemplate, isPremiumTemplate, isHomeVistaTemplate, isRrwTemplate, isHeenzyTemplate, isRivoraTemplate, isFabtexTemplate, isJuiceLifeTemplate, type TemplateTheme } from "@/lib/template-themes";
-import { CartLink } from "@/components/storefront/cart-link";
-import { CategoryNav } from "@/components/storefront/category-nav";
-import { getStoreCategoryTree } from "@/lib/storefront-categories";
 import { CatalogGrid } from "@/components/storefront/catalog-grid";
-import { VioletHeader, VioletFooter, wrap as violetWrap } from "@/components/storefront/templates/violet-chrome";
-import { MarketplaceHeader, MarketplaceFooter, wrap as marketplaceWrap } from "@/components/storefront/templates/marketplace-chrome";
-import { ArcovaHeader, ArcovaFooter, wrap as arcovaWrap } from "@/components/storefront/templates/arcova-chrome";
-import { NovaHeader, NovaFooter, wrap as novaWrap } from "@/components/storefront/templates/nova-chrome";
-import { PremiumHeader, PremiumFooter, wrap as premiumWrap } from "@/components/storefront/templates/premium-chrome";
-import { HomeVistaHeader, HomeVistaFooter, wrap as homevistaWrap } from "@/components/storefront/templates/homevista-chrome";
-import { RrwHeader, RrwFooter, wrap as rrwWrap } from "@/components/storefront/templates/rrw-chrome";
-import { HeenzyHeader, HeenzyFooter, wrap as heenzyWrap } from "@/components/storefront/templates/heenzy-chrome";
-import { RivoraHeader, RivoraFooter, wrap as rivoraWrap } from "@/components/storefront/templates/rivora-chrome";
-import { FabtexHeader, FabtexFooter, wrap as fabtexWrap } from "@/components/storefront/templates/fabtex-chrome";
-import { JuiceLifeHeader, JuiceLifeFooter, wrap as juicelifeWrap } from "@/components/storefront/templates/juicelife-chrome";
-import { isSignatureTemplate, getSignatureTheme } from "@/lib/template-themes";
-import { SignatureJourney } from "@/components/storefront/signature-journey";
+import { resolveStoreTheme } from "@/lib/template-themes";
 
 export async function generateMetadata({ params }: { params: Promise<{ slug: string; categoryId: string }> }): Promise<Metadata> {
   const { slug, categoryId } = await params;
   const store = await prisma.store.findUnique({ where: { slug }, select: { id: true } });
-  if (!store) return { title: "Category" };
-  const category = await prisma.category.findFirst({ where: { id: categoryId, storeId: store.id } });
-  return { title: category ? category.name : "Category" };
+  const category = store ? await prisma.category.findFirst({ where: { id: categoryId, storeId: store.id } }) : null;
+  return { title: category?.name ?? "Category" };
 }
 
 export default async function CategoryPage({ params }: { params: Promise<{ slug: string; categoryId: string }> }) {
   const { slug, categoryId } = await params;
-
-  const rawStore = await prisma.store.findUnique({
-    where: { slug },
-    include: { template: true, business: true },
-  });
-  if (!rawStore || rawStore.status !== "ACTIVE") notFound();
-  // Flatten Business.sellsProducts onto the store object once, since the
-  // chrome/home components read `store.sellsProducts` directly.
-  const store = { ...rawStore, sellsProducts: rawStore.business?.sellsProducts ?? true };
-
-  const category = await prisma.category.findFirst({ where: { id: categoryId, storeId: store.id }, include: { parent: true, children: true } });
+  const store = await prisma.store.findUnique({ where: { slug }, include: { template: true, business: true } });
+  if (!store || store.status !== "ACTIVE") notFound();
+  const category = await prisma.category.findFirst({ where: { id: categoryId, storeId: store.id }, include: { children: true } });
   if (!category) notFound();
-
-  // If this is a parent category (e.g. "Fashion"), show items from it AND
-  // every subcategory beneath it (Men's Clothing, Women's Shoes, Jewelry...).
-  // If it's a subcategory itself, just show its own items.
-  const categoryIds = category.children.length > 0 ? [category.id, ...category.children.map((c) => c.id)] : [category.id];
-
+  const ids = category.children.length ? [category.id, ...category.children.map(c=>c.id)] : [category.id];
   const [products, services] = await Promise.all([
-    prisma.product.findMany({ where: { storeId: store.id, categoryId: { in: categoryIds }, isPublished: true }, include: { category: true } }),
-    prisma.service.findMany({ where: { storeId: store.id, categoryId: { in: categoryIds }, isPublished: true }, include: { category: true } }),
+    prisma.product.findMany({where:{storeId:store.id,categoryId:{in:ids},isPublished:true},include:{category:true}}),
+    prisma.service.findMany({where:{storeId:store.id,categoryId:{in:ids},isPublished:true},include:{category:true}}),
   ]);
-
-  const items = [
-    ...products.map((p) => ({ id: p.id, kind: "product" as const, name: p.name, price: Number(p.price), currency: p.currency, image: p.images[0] ?? null, categoryId: p.categoryId, categoryName: p.category?.name })),
-    ...services.map((s) => ({ id: s.id, kind: "service" as const, name: s.name, price: Number(s.price), currency: s.currency, image: s.images[0] ?? null, categoryId: s.categoryId, categoryName: s.category?.name })),
-  ];
-  // An empty category is a real state (e.g. a subcategory with nothing
-  // published in it yet) — show a friendly message rather than a 404.
-
-  const categories = await getStoreCategoryTree(store.id);
-
-  const themeOverrides = store.themeColors as { primary?: string; secondary?: string; accent?: string } | null;
-  // Use this template's own real palette/radius — see catalog/page.tsx for
-  // why the old Heenzy/Nova-only fallback made every other template's
-  // category pages look identical (Fresh & Co.'s look) regardless of the
-  // store's actual chosen template.
-  const theme: TemplateTheme = resolveStoreTheme(store.template?.category, store.name, themeOverrides, store.fontFamily, store.template?.name);
-  const { accent, ink, bg, radius } = theme;
-
-  if (isSignatureTemplate(store.template?.name)) {
-    const t = getSignatureTheme(store.template?.name);
-    return <SignatureJourney store={store} slug={slug} templateName={store.template?.name ?? ""} title={category.name}>
-      <section className="signature-category-journey">
-        <div className="signature-journey-heading"><div><small>{category.parent?.name || "COLLECTION"}</small><h1>{category.name}</h1></div><span>{items.length} {items.length === 1 ? "item" : "items"}</span></div>
-        {category.children.length>0&&<div className="signature-category-chips">{category.children.map(c=><Link key={c.id} href={`/store/${slug}/category/${c.id}`}>{c.name}</Link>)}</div>}
-        {items.length===0?<div className="signature-empty">Nothing published in {category.name} yet — check back soon.</div>:<CatalogGrid items={items} slug={`store/${slug}`} accent={accent} ink={ink} radius={radius}/>}
-      </section>
-    </SignatureJourney>;
+  const items = [...products.map(p=>({id:p.id,kind:"product" as const,name:p.name,price:Number(p.price),currency:p.currency,image:p.images[0]??null,categoryName:p.category?.name})), ...services.map(s=>({id:s.id,kind:"service" as const,name:s.name,price:Number(s.price),currency:s.currency,image:s.images[0]??null,categoryName:s.category?.name}))];
+  if (String(store.business?.category||"").toLowerCase()==="restaurant") {
+    const { GrandeurMenu } = await import("@/components/storefront/grandeur-restaurant");
+    return <GrandeurMenu store={{...store,sellsProducts:store.business?.sellsProducts??true} as any} slug={slug} items={items.map(i=>({...i,description:null,type:i.kind,rentalUnit:null,isBookable:false})) as any}/>;
   }
-
-  const crumbs = (
-    <>
-      <Link href={`/store/${slug}`} style={{ color: ink, textDecoration: "none" }}>Home</Link>
-      {" / "}
-      {category.parent ? (
-        <>
-          <Link href={`/store/${slug}/category/${category.parent.id}`} style={{ color: ink, textDecoration: "none" }}>{category.parent.name}</Link>
-          {" / "}
-        </>
-      ) : (
-        <>
-          <Link href={`/store/${slug}/catalog`} style={{ color: ink, textDecoration: "none" }}>All</Link>
-          {" / "}
-        </>
-      )}
-      <span>{category.name}</span>
-    </>
-  );
-
-  const body = (
-    <>
-      <h1 style={{ fontSize: "clamp(24px,3.4vw,34px)", fontWeight: 800, marginBottom: 8 }}>{category.name}</h1>
-      <p style={{ fontSize: 13.5, opacity: 0.65, marginBottom: category.children.length > 0 ? 18 : 32 }}>{items.length} {items.length === 1 ? "item" : "items"}</p>
-
-      {/* Subcategory filter chips, e.g. under "Fashion": Men's Clothing, Women's Shoes, Jewelry... */}
-      {category.children.length > 0 && (
-        <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 30 }}>
-          {category.children.map((child) => (
-            <Link
-              key={child.id}
-              href={`/store/${slug}/category/${child.id}`}
-              style={{ padding: "7px 14px", borderRadius: 100, fontSize: 12.5, fontWeight: 600, border: `1px solid ${ink}1f`, color: ink, textDecoration: "none" }}
-            >
-              {child.name}
-            </Link>
-          ))}
-        </div>
-      )}
-
-      {items.length === 0 ? (
-        <div style={{ border: `1px dashed ${ink}22`, borderRadius: 16, padding: 60, textAlign: "center", opacity: 0.7 }}>
-          <p style={{ fontSize: 14 }}>Nothing published in {category.name} yet — check back soon.</p>
-        </div>
-      ) : (
-        <CatalogGrid items={items} slug={slug} accent={accent} ink={ink} radius={radius} />
-      )}
-    </>
-  );
-
-  if (isVioletTemplate(store.template?.name)) {
-    const social = (store.socialLinks as Record<string, string> | null) ?? {};
-    return (
-      <div style={{ background: theme.bg, color: ink, fontFamily: theme.font, minHeight: "100vh" }} className="storefront-root">
-        <VioletHeader store={store} slug={slug} navCategories={categories} crumbs={crumbs} />
-        <div style={{ ...violetWrap, padding: "22px 0 80px" }}>{body}</div>
-        <VioletFooter store={store} slug={slug} social={social} />
-      </div>
-    );
-  }
-
-  if (isMarketplaceTemplate(store.template?.name)) {
-    const social = (store.socialLinks as Record<string, string> | null) ?? {};
-    return (
-      <div style={{ fontFamily: theme.font, color: ink, background: "#fff", fontSize: 12, minHeight: "100vh" }} className="storefront-root">
-        <MarketplaceHeader store={store} slug={slug} navCategories={categories} crumbs={crumbs} />
-        <div style={{ ...marketplaceWrap, padding: "18px 0 60px" }}>{body}</div>
-        <MarketplaceFooter store={store} slug={slug} social={social} />
-      </div>
-    );
-  }
-
-  if (isArcovaTemplate(store.template?.name)) {
-    const social = (store.socialLinks as Record<string, string> | null) ?? {};
-    return (
-      <div style={{ background: theme.bg, color: ink, fontFamily: theme.font, minHeight: "100vh" }} className="storefront-root">
-        <ArcovaHeader store={store} slug={slug} navCategories={categories} crumbs={crumbs} />
-        <div style={{ ...arcovaWrap, padding: "30px 0 70px" }}>{body}</div>
-        <ArcovaFooter store={store} slug={slug} social={social} />
-      </div>
-    );
-  }
-
-  if (isNovaTemplate(store.template?.name)) {
-    const social = (store.socialLinks as Record<string, string> | null) ?? {};
-    return (
-      <div style={{ background: theme.bg, color: ink, fontFamily: theme.font, minHeight: "100vh" }} className="storefront-root">
-        <NovaHeader store={store} slug={slug} navCategories={categories} crumbs={crumbs} />
-        <div style={{ ...novaWrap, padding: "40px 0 80px" }}>{body}</div>
-        <NovaFooter store={store} slug={slug} social={social} />
-      </div>
-    );
-  }
-
-  if (isPremiumTemplate(store.template?.name)) {
-    const social = (store.socialLinks as Record<string, string> | null) ?? {};
-    return (
-      <div style={{ background: theme.bg, color: ink, fontFamily: theme.font, fontSize: 13, minHeight: "100vh" }} className="storefront-root">
-        <PremiumHeader store={store} slug={slug} navCategories={categories} crumbs={crumbs} />
-        <div style={{ ...premiumWrap, padding: "22px 0 60px" }}>{body}</div>
-        <PremiumFooter store={store} slug={slug} social={social} />
-      </div>
-    );
-  }
-
-  if (isHomeVistaTemplate(store.template?.name)) {
-    const social = (store.socialLinks as Record<string, string> | null) ?? {};
-    return (
-      <div style={{ background: "#fff", color: ink, fontFamily: theme.font, fontSize: 13, minHeight: "100vh" }} className="storefront-root">
-        <HomeVistaHeader store={store} slug={slug} navCategories={categories} crumbs={crumbs} />
-        <div style={{ ...homevistaWrap, padding: "22px 0 60px" }}>{body}</div>
-        <HomeVistaFooter store={store} slug={slug} social={social} />
-      </div>
-    );
-  }
-
-  if (isRrwTemplate(store.template?.name)) {
-    const social = (store.socialLinks as Record<string, string> | null) ?? {};
-    return (
-      <div style={{ background: "#fff", color: ink, fontFamily: theme.font, minHeight: "100vh" }} className="storefront-root">
-        <RrwHeader store={store} slug={slug} navCategories={categories} crumbs={crumbs} />
-        <div style={{ ...rrwWrap, padding: "22px 6% 40px" }}>{body}</div>
-        <RrwFooter store={store} slug={slug} social={social} />
-      </div>
-    );
-  }
-
-  if (isHeenzyTemplate(store.template?.name)) {
-    return (
-      <>
-        <HeenzyHeader store={store} slug={slug} navCategories={categories} crumbs={crumbs} />
-        <div style={{ ...heenzyWrap, padding: "26px 24px 60px" }}>{body}</div>
-        <HeenzyFooter store={store} slug={slug} navCategories={categories} />
-      </>
-    );
-  }
-
-  if (isRivoraTemplate(store.template?.name)) {
-    const social = (store.socialLinks as Record<string, string> | null) ?? {};
-    return (
-      <div style={{ background: "#f7f9f6", color: ink, fontFamily: theme.font, minHeight: "100vh" }} className="storefront-root">
-        <RivoraHeader store={store} slug={slug} navCategories={categories} crumbs={crumbs} />
-        <div style={{ ...rivoraWrap, padding: "26px 0 60px" }}>{body}</div>
-        <RivoraFooter store={store} slug={slug} social={social} />
-      </div>
-    );
-  }
-
-  if (isFabtexTemplate(store.template?.name)) {
-    const social = (store.socialLinks as Record<string, string> | null) ?? {};
-    return (
-      <div style={{ background: theme.bg, color: ink, fontFamily: theme.font, minHeight: "100vh" }} className="storefront-root">
-        <FabtexHeader store={store} slug={slug} navCategories={categories} crumbs={crumbs} />
-        <div style={{ ...fabtexWrap, padding: "26px 0 60px" }}>{body}</div>
-        <FabtexFooter store={store} slug={slug} social={social} />
-      </div>
-    );
-  }
-
-  if (isJuiceLifeTemplate(store.template?.name)) {
-    const social = (store.socialLinks as Record<string, string> | null) ?? {};
-    return (
-      <div style={{ background: "#ffffff", color: ink, fontFamily: theme.font, minHeight: "100vh" }} className="storefront-root">
-        <JuiceLifeHeader store={store} slug={slug} navCategories={categories} crumbs={crumbs} />
-        <div style={{ ...juicelifeWrap, padding: "26px 0 60px" }}>{body}</div>
-        <JuiceLifeFooter store={store} slug={slug} social={social} />
-      </div>
-    );
-  }
-
-  return (
-    <div style={{ fontFamily: theme.font, color: ink, background: bg, minHeight: "100vh" }} className="storefront-root">
-      <nav style={{ position: "sticky", top: 0, zIndex: 50, background: `${bg}f2`, backdropFilter: "blur(10px)", borderBottom: `1px solid ${ink}14` }}>
-        <div style={{ maxWidth: 1180, margin: "0 auto", padding: "16px 28px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-          <Link href={`/store/${slug}`} style={{ fontWeight: 800, fontSize: 18, color: ink, textDecoration: "none" }}>{store.name}</Link>
-          <CartLink storeSlug={slug} accent={accent} ink={ink} />
-        </div>
-      </nav>
-
-      <CategoryNav slug={slug} categories={categories} accent={accent} ink={ink} bg={bg} border={`${ink}14`} />
-
-      <div style={{ maxWidth: 1180, margin: "0 auto", padding: "36px 28px 80px" }}>
-        <div style={{ fontSize: 12.5, marginBottom: 22, opacity: 0.65 }}>{crumbs}</div>
-        {body}
-      </div>
-    </div>
-  );
+  const theme=resolveStoreTheme(store.template?.category,store.name,store.themeColors as any,store.fontFamily,store.template?.name);
+  return <main style={{minHeight:"100vh",background:theme.bg,color:theme.ink,fontFamily:theme.font,padding:"6rem 2rem"}}><div style={{maxWidth:1200,margin:"0 auto"}}><p style={{color:theme.accent,fontWeight:700,textTransform:"uppercase"}}>Category</p><h1 style={{fontFamily:theme.headlineFont,marginBottom:32}}>{category.name}</h1><CatalogGrid items={items} slug={slug} accent={theme.accent} ink={theme.ink} radius={theme.radius}/></div></main>;
 }

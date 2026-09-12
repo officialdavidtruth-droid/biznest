@@ -1,5 +1,5 @@
 import { PrismaClient, type Prisma } from "@prisma/client";
-import { generateNicheVariations, TEMPLATE_NAME, generateHeenzyVariations, TEMPLATE_NAME_HEENZY, TEMPLATE_NAME_HEENZY_BOUTIQUE, generateNovaVariations, TEMPLATE_NAME_NOVA, TEMPLATE_NAME_NOVA_IVORY, generateVioletVariations, TEMPLATE_NAME_VIOLET, TEMPLATE_NAME_VIOLET_SUNSET, generatePremiumVariation, TEMPLATE_NAME_PREMIUM, generateHomeVistaVariation, TEMPLATE_NAME_HOMEVISTA, generateRrwVariation, TEMPLATE_NAME_RRW, generateMarketplaceVariation, TEMPLATE_NAME_MARKETPLACE, generateArcovaVariation, TEMPLATE_NAME_ARCOVA, generateRivoraVariation, TEMPLATE_NAME_RIVORA, generateJuiceLifeVariation, TEMPLATE_NAME_JUICELIFE, generateFabtexVariation, TEMPLATE_NAME_FABTEX, SIGNATURE_TEMPLATE_CATALOG, PROFESSIONAL_SERVICE_TEMPLATE_CATALOG } from "../lib/template-themes";
+import { TEMPLATE_NAME, GRANDEUR_THEME } from "../lib/template-themes";
 import { fetchDemoPhoto } from "../lib/demo-images";
 
 const prisma = new PrismaClient();
@@ -145,153 +145,36 @@ async function main() {
     });
   }
 
-  // The platform ships eight storefront templates — "Fresh & Co.",
-  // "Heenzy Sneaker Co.", "Nova Studio", "Violet", "Premium Marketplace",
-  // "HomeVista", "rRW Premium Rental", and "Marketplace Hub" (see lib/template-themes.ts).
-  // Every store picks one of these designs from the Template Gallery.
-  const [freshTemplate] = generateNicheVariations("Fresh & Co.");
-  const previewUrl = await fetchDemoPhoto("Fresh & Co.");
-  await prisma.storeTemplate.upsert({
+  // Template reset: the legacy collection is retired. Only the new
+  // Grandeur Restaurant template is seeded from this point forward.
+  const grandeur = await prisma.storeTemplate.upsert({
     where: { name: TEMPLATE_NAME },
-    update: { category: TEMPLATE_NAME, isActive: true, tierRank: freshTemplate.tierRank, previewUrl, config: freshTemplate as unknown as Prisma.InputJsonValue },
-    create: { name: TEMPLATE_NAME, category: TEMPLATE_NAME, tierRank: freshTemplate.tierRank, previewUrl, config: freshTemplate as unknown as Prisma.InputJsonValue },
+    update: {
+      category: "Restaurant",
+      isActive: true,
+      tierRank: 3,
+      previewUrl: await fetchDemoPhoto(TEMPLATE_NAME),
+      config: GRANDEUR_THEME as unknown as Prisma.InputJsonValue,
+    },
+    create: {
+      name: TEMPLATE_NAME,
+      category: "Restaurant",
+      isActive: true,
+      tierRank: 3,
+      previewUrl: await fetchDemoPhoto(TEMPLATE_NAME),
+      config: GRANDEUR_THEME as unknown as Prisma.InputJsonValue,
+    },
   });
 
-  // New Signature Collection: thirteen industry-specific storefronts with
-  // distinct layout modes and visual systems, rendered by the Signature engine.
-  const signaturePreviewUrl = await fetchDemoPhoto("BizNest Signature Collection");
-  for (const signatureTemplate of SIGNATURE_TEMPLATE_CATALOG) {
-    await prisma.storeTemplate.upsert({
-      where: { name: signatureTemplate.variationName },
-      update: {
-        category: signatureTemplate.signatureMode === "hotel" ? "Hotel & Lodging" : signatureTemplate.signatureMode,
-        isActive: true,
-        tierRank: signatureTemplate.signatureMode === "kinetic" || signatureTemplate.signatureMode === "maison" || signatureTemplate.signatureMode === "hotel" || signatureTemplate.signatureMode === "north" || signatureTemplate.signatureMode === "forge" ? 4 : 3,
-        previewUrl: signaturePreviewUrl,
-        config: signatureTemplate as unknown as Prisma.InputJsonValue,
-      },
-      create: {
-        name: signatureTemplate.variationName,
-        category: signatureTemplate.signatureMode === "hotel" ? "Hotel & Lodging" : signatureTemplate.signatureMode,
-        tierRank: signatureTemplate.signatureMode === "kinetic" || signatureTemplate.signatureMode === "maison" || signatureTemplate.signatureMode === "hotel" || signatureTemplate.signatureMode === "north" || signatureTemplate.signatureMode === "forge" ? 4 : 3,
-        previewUrl: signaturePreviewUrl,
-        config: signatureTemplate as unknown as Prisma.InputJsonValue,
-      },
-    });
-  }
-
-  // Professional Services: dedicated premium storefronts for every sub-niche.
-  for (const professionalTemplate of PROFESSIONAL_SERVICE_TEMPLATE_CATALOG) {
-    await prisma.storeTemplate.upsert({
-      where: { name: professionalTemplate.variationName },
-      update: { category: professionalTemplate.category, isActive: true, tierRank: professionalTemplate.tierRank, previewUrl: signaturePreviewUrl, config: professionalTemplate as unknown as Prisma.InputJsonValue },
-      create: { name: professionalTemplate.variationName, category: professionalTemplate.category, tierRank: professionalTemplate.tierRank, previewUrl: signaturePreviewUrl, config: professionalTemplate as unknown as Prisma.InputJsonValue },
-    });
-  }
-
-  // Heenzy now ships as multiple variants (same component + stylesheet,
-  // different config) — same pattern as Nova Studio below.
-  const heenzyPreviewUrl = await fetchDemoPhoto(TEMPLATE_NAME_HEENZY);
-  for (const heenzyTemplate of generateHeenzyVariations()) {
-    await prisma.storeTemplate.upsert({
-      where: { name: heenzyTemplate.variationName },
-      update: { category: TEMPLATE_NAME_HEENZY, isActive: true, tierRank: heenzyTemplate.tierRank, previewUrl: heenzyPreviewUrl, config: heenzyTemplate as unknown as Prisma.InputJsonValue },
-      create: { name: heenzyTemplate.variationName, category: TEMPLATE_NAME_HEENZY, tierRank: heenzyTemplate.tierRank, previewUrl: heenzyPreviewUrl, config: heenzyTemplate as unknown as Prisma.InputJsonValue },
-    });
-  }
-
-  // Nova Studio now ships as multiple variants (same component, different
-  // config — see generateNovaVariations) rather than one template per row.
-  // This loop is the pattern the rest of the templates migrate to.
-  const novaPreviewUrl = await fetchDemoPhoto(TEMPLATE_NAME_NOVA);
-  for (const novaTemplate of generateNovaVariations()) {
-    await prisma.storeTemplate.upsert({
-      where: { name: novaTemplate.variationName },
-      update: { category: TEMPLATE_NAME_NOVA, isActive: true, tierRank: novaTemplate.tierRank, previewUrl: novaPreviewUrl, config: novaTemplate as unknown as Prisma.InputJsonValue },
-      create: { name: novaTemplate.variationName, category: TEMPLATE_NAME_NOVA, tierRank: novaTemplate.tierRank, previewUrl: novaPreviewUrl, config: novaTemplate as unknown as Prisma.InputJsonValue },
-    });
-  }
-
-  const violetPreviewUrl = await fetchDemoPhoto(TEMPLATE_NAME_VIOLET);
-  for (const violetTemplate of generateVioletVariations()) {
-    await prisma.storeTemplate.upsert({
-      where: { name: violetTemplate.variationName },
-      update: { category: TEMPLATE_NAME_VIOLET, isActive: true, tierRank: violetTemplate.tierRank, previewUrl: violetPreviewUrl, config: violetTemplate as unknown as Prisma.InputJsonValue },
-      create: { name: violetTemplate.variationName, category: TEMPLATE_NAME_VIOLET, tierRank: violetTemplate.tierRank, previewUrl: violetPreviewUrl, config: violetTemplate as unknown as Prisma.InputJsonValue },
-    });
-  }
-
-  const premiumTemplate = generatePremiumVariation();
-  const premiumPreviewUrl = await fetchDemoPhoto(TEMPLATE_NAME_PREMIUM);
-  await prisma.storeTemplate.upsert({
-    where: { name: TEMPLATE_NAME_PREMIUM },
-    update: { category: TEMPLATE_NAME_PREMIUM, isActive: true, tierRank: premiumTemplate.tierRank, previewUrl: premiumPreviewUrl, config: premiumTemplate as unknown as Prisma.InputJsonValue },
-    create: { name: TEMPLATE_NAME_PREMIUM, category: TEMPLATE_NAME_PREMIUM, tierRank: premiumTemplate.tierRank, previewUrl: premiumPreviewUrl, config: premiumTemplate as unknown as Prisma.InputJsonValue },
+  // Hard reset the template registry. Store.templateId is nullable, so old
+  // assignments are cleared before the retired rows are removed. No legacy
+  // template can leak back into the gallery or renderer after this seed.
+  await prisma.store.updateMany({
+    where: { templateId: { not: grandeur.id } },
+    data: { templateId: null },
   });
-
-  const homevistaTemplate = generateHomeVistaVariation();
-  const homevistaPreviewUrl = await fetchDemoPhoto(TEMPLATE_NAME_HOMEVISTA);
-  await prisma.storeTemplate.upsert({
-    where: { name: TEMPLATE_NAME_HOMEVISTA },
-    update: { category: TEMPLATE_NAME_HOMEVISTA, isActive: true, tierRank: homevistaTemplate.tierRank, previewUrl: homevistaPreviewUrl, config: homevistaTemplate as unknown as Prisma.InputJsonValue },
-    create: { name: TEMPLATE_NAME_HOMEVISTA, category: TEMPLATE_NAME_HOMEVISTA, tierRank: homevistaTemplate.tierRank, previewUrl: homevistaPreviewUrl, config: homevistaTemplate as unknown as Prisma.InputJsonValue },
-  });
-
-  const rrwTemplate = generateRrwVariation();
-  const rrwPreviewUrl = await fetchDemoPhoto(TEMPLATE_NAME_RRW);
-  await prisma.storeTemplate.upsert({
-    where: { name: TEMPLATE_NAME_RRW },
-    update: { category: TEMPLATE_NAME_RRW, isActive: true, tierRank: rrwTemplate.tierRank, previewUrl: rrwPreviewUrl, config: rrwTemplate as unknown as Prisma.InputJsonValue },
-    create: { name: TEMPLATE_NAME_RRW, category: TEMPLATE_NAME_RRW, tierRank: rrwTemplate.tierRank, previewUrl: rrwPreviewUrl, config: rrwTemplate as unknown as Prisma.InputJsonValue },
-  });
-
-  const marketplaceTemplate = generateMarketplaceVariation();
-  const marketplacePreviewUrl = await fetchDemoPhoto(TEMPLATE_NAME_MARKETPLACE);
-  await prisma.storeTemplate.upsert({
-    where: { name: TEMPLATE_NAME_MARKETPLACE },
-    update: { category: TEMPLATE_NAME_MARKETPLACE, isActive: true, tierRank: marketplaceTemplate.tierRank, previewUrl: marketplacePreviewUrl, config: marketplaceTemplate as unknown as Prisma.InputJsonValue },
-    create: { name: TEMPLATE_NAME_MARKETPLACE, category: TEMPLATE_NAME_MARKETPLACE, tierRank: marketplaceTemplate.tierRank, previewUrl: marketplacePreviewUrl, config: marketplaceTemplate as unknown as Prisma.InputJsonValue },
-  });
-
-  const arcovaTemplate = generateArcovaVariation();
-  const arcovaPreviewUrl = await fetchDemoPhoto(TEMPLATE_NAME_ARCOVA);
-  await prisma.storeTemplate.upsert({
-    where: { name: TEMPLATE_NAME_ARCOVA },
-    update: { category: TEMPLATE_NAME_ARCOVA, isActive: true, tierRank: arcovaTemplate.tierRank, previewUrl: arcovaPreviewUrl, config: arcovaTemplate as unknown as Prisma.InputJsonValue },
-    create: { name: TEMPLATE_NAME_ARCOVA, category: TEMPLATE_NAME_ARCOVA, tierRank: arcovaTemplate.tierRank, previewUrl: arcovaPreviewUrl, config: arcovaTemplate as unknown as Prisma.InputJsonValue },
-  });
-
-  const rivoraTemplate = generateRivoraVariation();
-  const rivoraPreviewUrl = await fetchDemoPhoto(TEMPLATE_NAME_RIVORA);
-  await prisma.storeTemplate.upsert({
-    where: { name: TEMPLATE_NAME_RIVORA },
-    update: { category: TEMPLATE_NAME_RIVORA, isActive: true, tierRank: rivoraTemplate.tierRank, previewUrl: rivoraPreviewUrl, config: rivoraTemplate as unknown as Prisma.InputJsonValue },
-    create: { name: TEMPLATE_NAME_RIVORA, category: TEMPLATE_NAME_RIVORA, tierRank: rivoraTemplate.tierRank, previewUrl: rivoraPreviewUrl, config: rivoraTemplate as unknown as Prisma.InputJsonValue },
-  });
-
-  const juicelifeTemplate = generateJuiceLifeVariation();
-  const juicelifePreviewUrl = await fetchDemoPhoto(TEMPLATE_NAME_JUICELIFE);
-  await prisma.storeTemplate.upsert({
-    where: { name: TEMPLATE_NAME_JUICELIFE },
-    update: { category: TEMPLATE_NAME_JUICELIFE, isActive: true, tierRank: juicelifeTemplate.tierRank, previewUrl: juicelifePreviewUrl, config: juicelifeTemplate as unknown as Prisma.InputJsonValue },
-    create: { name: TEMPLATE_NAME_JUICELIFE, category: TEMPLATE_NAME_JUICELIFE, tierRank: juicelifeTemplate.tierRank, previewUrl: juicelifePreviewUrl, config: juicelifeTemplate as unknown as Prisma.InputJsonValue },
-  });
-
-  const fabtexTemplate = generateFabtexVariation();
-  const fabtexPreviewUrl = await fetchDemoPhoto(TEMPLATE_NAME_FABTEX);
-  await prisma.storeTemplate.upsert({
-    where: { name: TEMPLATE_NAME_FABTEX },
-    update: { category: TEMPLATE_NAME_FABTEX, isActive: true, tierRank: fabtexTemplate.tierRank, previewUrl: fabtexPreviewUrl, config: fabtexTemplate as unknown as Prisma.InputJsonValue },
-    create: { name: TEMPLATE_NAME_FABTEX, category: TEMPLATE_NAME_FABTEX, tierRank: fabtexTemplate.tierRank, previewUrl: fabtexPreviewUrl, config: fabtexTemplate as unknown as Prisma.InputJsonValue },
-  });
-
-  // Retire every other template row (the old niche-generated set, or any
-  // prior naming scheme) — deactivate rather than delete, since a store
-  // might still reference one (Store.templateId). Deactivated templates
-  // stop showing in the gallery but existing stores using them keep working.
-  await prisma.storeTemplate.updateMany({
-    where: { name: { notIn: [TEMPLATE_NAME, TEMPLATE_NAME_HEENZY, TEMPLATE_NAME_HEENZY_BOUTIQUE, TEMPLATE_NAME_NOVA, TEMPLATE_NAME_NOVA_IVORY, TEMPLATE_NAME_VIOLET, TEMPLATE_NAME_VIOLET_SUNSET, TEMPLATE_NAME_PREMIUM, TEMPLATE_NAME_HOMEVISTA, TEMPLATE_NAME_RRW, TEMPLATE_NAME_MARKETPLACE, TEMPLATE_NAME_ARCOVA, TEMPLATE_NAME_RIVORA, TEMPLATE_NAME_JUICELIFE, TEMPLATE_NAME_FABTEX] } },
-    data: { isActive: false },
+  await prisma.storeTemplate.deleteMany({
+    where: { id: { not: grandeur.id } },
   });
 
   for (const sub of SUBSCRIPTIONS) {
