@@ -21,9 +21,9 @@ export async function getGrandeurRestaurantData(slug: string) {
     bannerUrl: rawStore.bannerUrl,
     storyImage: rawStore.storyImage,
     storyOverrides: rawStore.storyOverrides,
-    address: rawStore.address,
-    phone: rawStore.phone,
-    email: rawStore.email,
+    address: [rawStore.business?.city, rawStore.business?.state].filter(Boolean).join(", ") || null,
+    phone: rawStore.contactPhone ?? rawStore.business?.phone ?? null,
+    email: rawStore.contactEmail ?? rawStore.business?.email ?? null,
     business: rawStore.business
       ? { category: rawStore.business.category, description: rawStore.business.description, sellsProducts: rawStore.business.sellsProducts }
       : null,
