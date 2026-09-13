@@ -19,6 +19,9 @@ export type StoreBranding = {
   heroSubtitle: string | null;
   businessCategory: string | null;
   businessDescription: string | null;
+  city: string | null;
+  state: string | null;
+  country: string | null;
   sellsProducts: boolean;
   offersServices: boolean;
 } | null;
@@ -46,7 +49,7 @@ export async function getStoreBranding(slug: string | undefined): Promise<StoreB
       businessType: true,
       heroOverrides: true,
       business: {
-        select: { category: true, description: true, sellsProducts: true, offersServices: true },
+        select: { category: true, description: true, sellsProducts: true, offersServices: true, city: true, state: true, country: true },
       },
     },
   });
@@ -66,6 +69,9 @@ export async function getStoreBranding(slug: string | undefined): Promise<StoreB
     heroSubtitle: heroOverrides?.subtitle ?? null,
     businessCategory: store.business?.category ?? null,
     businessDescription: store.business?.description ?? null,
+    city: store.business?.city ?? null,
+    state: store.business?.state ?? null,
+    country: store.business?.country ?? null,
     sellsProducts: store.business?.sellsProducts ?? true,
     offersServices: store.business?.offersServices ?? false,
   };
