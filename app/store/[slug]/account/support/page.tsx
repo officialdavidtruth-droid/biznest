@@ -1,31 +1,9 @@
 import { notFound } from "next/navigation";
-import { prisma } from "@/lib/prisma";
+import Link from "next/link";
+import { MessageCircle, Phone, Mail, FileText, Headphones, ChevronRight } from "lucide-react";
 import { getStoreBranding } from "@/lib/actions/store-branding";
-import { requireStoreCustomer } from "@/lib/actions/store-customer";
 import { getGeneralStoreConversation, listStoreDisputes } from "@/lib/actions/account";
 import { getHotelContent } from "@/lib/hotel-content";
-import { VelouraSupportPage } from "@/components/storefront/veloura-support-page";
-import { HOTEL_TEMPLATE_NAME } from "@/lib/hotel-content";
-
-export default async function Page({ params }: { params: Promise<{ slug: string }> }) {
-  const { slug } = await params;
-  const membership = await requireStoreCustomer(slug);
-  const store = await getStoreBranding(slug);
-  if (!membership || !store) notFound();
-
-  const template = await prisma.store.findUnique({ where: { slug }, select: { template: { select: { name: true } } } });
-  if (template?.template?.name !== HOTEL_TEMPLATE_NAME) notFound();
-
-  const [conversation, disputes, hotelContent, user] = await Promise.all([
-    getGeneralStoreConversation(slug),
-    listStoreDisputes(slug),
-    getHotelContent(slug),
-    prisma.user.findUnique({ where: { id: membership.userId }, select: { id: true, name: true, email: true, phone: true, image: true, createdAt: true } }),
-  ]);
-
-  const faqPage = await prisma.storePage.findUnique({ where: { storeId_slug: { storeId: membership.storeId, slug: "faq" } }, select: { content: true, isPublished: true } });
-  const faqBody = faqPage?.isPublished ? ((faqPage.content as { body?: string } | null)?.body ?? null) : null;
-  const heroImage = hotelContent.rooms.find((room) => room.featured)?.image || hotelContent.rooms[0]?.image || null;
-
-  return <VelouraSupportPage slug={slug} store={store} user={user} heroImage={heroImage} conversation={conversation} disputes={disputes} faqBody={faqBody} />;
-}
+import { VelouraAccountHero } from "@/components/storefront/veloura-account-shell";
+import { DISPUTE_STATUS_CONFIG } from "@/lib/constants/dispute";
+export default async function Page({params}:{params:Promise<{slug:string}>}){const{slug}=await params;const[store,conversation,disputes,hotel]=await Promise.all([getStoreBranding(slug),getGeneralStoreConversation(slug),listStoreDisputes(slug),getHotelContent(slug)]);if(!store)notFound();const hero=hotel.rooms[0]?.image||null;const faqs=["How do I modify or cancel my booking?","Is airport pickup available?","What time is check-in and check-out?","Do you offer early check-in or late check-out?","How can I earn and use reward points?","What payment methods are accepted?"];return <div className="veloura-account-content"><VelouraAccountHero title="Support" subtitle="We’re here to help. Get the support you need for a seamless and memorable stay." image={hero}/><div className="veloura-support-cards"><div className="veloura-support-card"><MessageCircle/><h3>Live Chat</h3><p>Chat with the hotel team through your account.</p><Link className="primary" href={`/store/${slug}/account/messages`}>Start Chat</Link></div><div className="veloura-support-card"><Phone/><h3>Call Us</h3><p>{store.contactPhone||"Contact number not set"}</p>{store.contactPhone?<a href={`tel:${store.contactPhone}`}>Call Now</a>:<a href={`/store/${slug}/account/messages`}>Message Us</a>}</div><div className="veloura-support-card"><Mail/><h3>Email Us</h3><p>{store.contactEmail||"Email not set"}</p>{store.contactEmail?<a href={`mailto:${store.contactEmail}`}>Send Email</a>:<a href={`/store/${slug}/account/messages`}>Message Us</a>}</div><div className="veloura-support-card"><FileText/><h3>Help Center</h3><p>Browse available hotel help and support information.</p><Link href={`/store/${slug}/support`}>View Help Center</Link></div></div><div className="veloura-support-lower"><section className="veloura-panel"><div className="veloura-panel-head"><div><h2>Your Support Cases</h2><p style={{fontSize:11,color:"#68736f"}}>Formal disputes and customer conversations connected to your store account.</p></div><Link className="veloura-gold-btn" href={`/store/${slug}/account/messages`}>New Message</Link></div>{disputes.length?disputes.map((d:any)=>{const cfg=DISPUTE_STATUS_CONFIG[d.status];return <Link key={d.id} href={`/disputes/${d.order.id}`} className="veloura-thread-item" style={{textDecoration:"none",color:"inherit"}}><div><strong>Order #{d.order.id.slice(-8).toUpperCase()}</strong><p>{d.reason}</p></div><span className="veloura-badge">{cfg.label}</span><ChevronRight size={15}/></Link>}):<div className="veloura-empty">No support cases yet.</div>}</section><section className="veloura-panel"><div className="veloura-panel-head"><h2>Frequently Asked Questions</h2></div>{faqs.map(q=><div key={q} style={{padding:"12px 0",borderBottom:"1px solid #eef0ed",fontSize:12,display:"flex",justifyContent:"space-between"}}>{q}<ChevronRight size={15}/></div>)}<div className="veloura-security" style={{marginTop:14}}><Headphones/> Our support team is available to assist you.</div></section></div></div>}

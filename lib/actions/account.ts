@@ -439,6 +439,28 @@ export async function getStoreCustomerOverview(storeSlug: string) {
   return { store: ctx.store, orderCount: orders, bookingCount: bookings, wishlistCount: wishlist, reviewCount: reviews, unreadMessages, defaultAddress: addresses, pointsBalance: loyalty?.pointsBalance ?? 0 };
 }
 
+export async function getStoreCustomerPreferences(storeSlug: string) {
+  const ctx = await getStoreCustomerContext(storeSlug);
+  if (!ctx) return null;
+  const profile = await prisma.storeCustomerProfile.findFirst({ where: { storeId: ctx.storeId, userId: ctx.userId }, select: { preferences: true } });
+  return (profile?.preferences as Record<string, unknown> | null) ?? {};
+}
+
+export async function updateStoreCustomerPreferences(storeSlug: string, preferences: Record<string, unknown>): Promise<ActionResult> {
+  const ctx = await getStoreCustomerContext(storeSlug);
+  if (!ctx) return { success: false, error: "You don't have a customer account with this store." };
+  const user = await prisma.user.findUnique({ where: { id: ctx.userId }, select: { name: true, email: true, phone: true } });
+  const existing = await prisma.storeCustomerProfile.findFirst({ where: { storeId: ctx.storeId, userId: ctx.userId }, select: { id: true } });
+  if (existing) {
+    await prisma.storeCustomerProfile.update({ where: { id: existing.id }, data: { preferences } });
+  } else {
+    await prisma.storeCustomerProfile.create({ data: { storeId: ctx.storeId, userId: ctx.userId, name: user?.name || user?.email || "Customer", email: user?.email, phone: user?.phone, preferences } });
+  }
+  revalidatePath(`/store/${storeSlug}/account/preferences`);
+  revalidatePath(`/store/${storeSlug}/account`);
+  return { success: true, data: undefined };
+}
+
 export async function listStoreAddresses(storeSlug: string) {
   const ctx = await getStoreCustomerContext(storeSlug);
   if (!ctx) return [];

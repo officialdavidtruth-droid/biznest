@@ -1,60 +1,10 @@
 import { notFound } from "next/navigation";
+import Link from "next/link";
+import { CalendarDays, Moon, Users, BedDouble, Search } from "lucide-react";
 import { getStoreBranding } from "@/lib/actions/store-branding";
 import { listStoreBookings } from "@/lib/actions/account";
-import { PayBookingWithWalletButton } from "@/components/storefront/pay-booking-wallet-button";
-import { WalletPaymentQrButton } from "@/components/storefront/wallet-payment-qr-button";
-import { getAccountCopy } from "@/lib/account-copy";
-import { prisma } from "@/lib/prisma";
-
-function formatDate(value: Date | string) {
-  return new Date(value).toLocaleDateString(undefined, { weekday: "short", day: "numeric", month: "short", year: "numeric" });
-}
-function formatTime(value: Date | string) {
-  return new Date(value).toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" });
-}
-
-export default async function Page({ params }: { params: Promise<{ slug: string }> }) {
-  const { slug } = await params;
-  const store = await getStoreBranding(slug);
-  if (!store) notFound();
-  const bookings = await listStoreBookings(slug);
-  const record = await prisma.store.findUnique({ where: { slug }, select: { template: { select: { name: true } } } });
-  const copy = getAccountCopy(record?.template?.name, store.businessCategory);
-  const upcoming = bookings.filter(b => b.status !== "CANCELLED" && new Date(b.checkOut ?? b.scheduledAt) >= new Date());
-  const past = bookings.filter(b => !upcoming.some(u => u.id === b.id));
-
-  return (
-    <div>
-      <div className="mb-6">
-        <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-400">Your {copy.bookings.toLowerCase()}</p>
-        <h1 className="mt-2 text-xl font-bold tracking-tight text-slate-950">{copy.bookings}</h1>
-        <p className="mt-2 text-sm text-slate-500">Manage your {copy.bookings.toLowerCase()} with {store.name}.</p>
-      </div>
-
-      <div className="max-w-4xl">
-        <section>
-          <h2 className="mb-3 text-sm font-bold text-slate-900">Upcoming</h2>
-          <div className="space-y-3">
-            {upcoming.map(b => <article key={b.id} className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-              <div className="flex flex-wrap items-start justify-between gap-4">
-                <div><p className="font-bold text-slate-950">{b.service.name}</p><p className="mt-1 text-sm text-slate-500">{b.checkIn && b.checkOut ? `${formatDate(b.checkIn)} → ${formatDate(b.checkOut)}` : `${formatDate(b.scheduledAt)} at ${formatTime(b.scheduledAt)}`}</p>{b.staff && <p className="mt-1 text-xs text-slate-400">With {b.staff.user?.name || b.staff.invitedName || b.staff.position || "your specialist"}</p>}</div>
-                <span className={`rounded-full px-3 py-1 text-xs font-bold ${b.status === "CONFIRMED" ? "bg-emerald-50 text-emerald-700" : "bg-amber-50 text-amber-700"}`}>{b.status}</span>
-              </div>
-              {b.notes && <p className="mt-4 rounded-xl bg-slate-50 p-3 text-sm text-slate-600">{b.notes}</p>}
-              {b.paymentStatus !== "PAID" && (
-                <div className="mt-4 flex flex-wrap gap-2 border-t pt-4">
-                  <PayBookingWithWalletButton slug={slug} bookingId={b.id} />
-                  <WalletPaymentQrButton slug={slug} bookingId={b.id} />
-                </div>
-              )}
-              <div className="mt-4 flex items-center justify-between border-t pt-4 text-xs text-slate-400"><span>Booking #{b.id.slice(-7).toUpperCase()}</span><span>{b.checkIn && b.checkOut ? "Reservation" : `${b.durationMins} min appointment`}</span></div>
-            </article>)}
-            {upcoming.length === 0 && <div className="rounded-2xl border border-dashed border-slate-300 bg-white p-10 text-center text-sm text-slate-500">No upcoming bookings. Find a service on the website to make one.</div>}
-          </div>
-        </section>
-
-        {past.length > 0 && <section className="mt-10"><h2 className="mb-3 text-sm font-bold text-slate-900">Booking history</h2><div className="space-y-2">{past.map(b => <div key={b.id} className="flex items-center justify-between gap-4 rounded-xl border border-slate-200 bg-white p-4"><div><p className="text-sm font-semibold text-slate-800">{b.service.name}</p><p className="mt-1 text-xs text-slate-400">{formatDate(b.scheduledAt)}</p></div><span className="text-xs font-semibold text-slate-500">{b.status}</span></div>)}</div></section>}
-      </div>
-    </div>
-  );
-}
+import { getHotelContent } from "@/lib/hotel-content";
+import { VelouraAccountHero } from "@/components/storefront/veloura-account-shell";
+const date=(v:Date|string)=>new Date(v).toLocaleDateString(undefined,{day:"2-digit",month:"short",year:"numeric"});
+const money=(v:any,c="NGN")=>`${c==="NGN"?"₦":c+" "}${Number(v||0).toLocaleString()}`;
+export default async function Page({params}:{params:Promise<{slug:string}>}){const{slug}=await params;const[store,bookings,hotel]=await Promise.all([getStoreBranding(slug),listStoreBookings(slug),getHotelContent(slug)]);if(!store)notFound();const hero=hotel.rooms.find((r:any)=>r.featured)?.image||hotel.rooms[0]?.image||null;const upcoming=bookings.filter((b:any)=>b.status!=="CANCELLED"&&new Date(b.checkOut??b.scheduledAt)>=new Date());const completed=bookings.filter((b:any)=>!upcoming.some((u:any)=>u.id===b.id)&&b.status!=="CANCELLED");const cancelled=bookings.filter((b:any)=>b.status==="CANCELLED");return <div className="veloura-account-content"><VelouraAccountHero title="My Bookings" subtitle="View and manage all your bookings in one place." image={hero}/><div className="veloura-page-tools"><div className="veloura-tabs"><span className="active">All Bookings ({bookings.length})</span><span>Upcoming ({upcoming.length})</span><span>Completed ({completed.length})</span><span>Cancelled ({cancelled.length})</span></div><Link className="veloura-gold-btn" href={`/store/${slug}/booking`}>Book a New Stay →</Link></div><div className="veloura-page-tools"><div/><div className="veloura-search"><Search size={16}/><input placeholder="Search your bookings..."/></div></div>{bookings.length?bookings.map((b:any)=><article className="veloura-list-card" key={b.id}><img src={b.service.images?.[0]||hero||""} alt=""/><div><h2>{b.service.name}<span className="veloura-badge" style={{marginLeft:10}}>{b.status}</span></h2><p>Reservation ID: {b.id}</p><div className="veloura-icon-row"><span><CalendarDays/> {b.checkIn&&b.checkOut?`${date(b.checkIn)} – ${date(b.checkOut)}`:date(b.scheduledAt)}</span><span><Moon/> {b.checkIn&&b.checkOut?`${Math.max(1,Math.ceil((new Date(b.checkOut).getTime()-new Date(b.checkIn).getTime())/86400000))} Nights`:`${b.durationMins} min`}</span><span><Users/> {b.partySize||"—"} Guests</span><span><BedDouble/> {(b.service as any).attributes?.bedType||"—"}</span></div></div><div className="veloura-card-actions"><strong style={{fontSize:20,textAlign:"right"}}>{money(b.paymentAmount||b.service.price,b.paymentCurrency||b.service.currency)}</strong><small style={{color:"#22833d",textAlign:"right"}}>{b.paymentStatus}</small><Link href={`/store/${slug}/account/bookings`}>View Details</Link>{b.status!=="CANCELLED"&&<Link href={`/store/${slug}/booking`}>{upcoming.some((u:any)=>u.id===b.id)?"Request Changes":"Book Again"}</Link>}</div></article>):<div className="veloura-empty">No bookings yet. <Link href={`/store/${slug}/booking`}>Book your first stay →</Link></div>}</div>}

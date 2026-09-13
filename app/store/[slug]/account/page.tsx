@@ -1,140 +1,51 @@
-import { getStoreCustomerSessionForStore } from "@/lib/store-customer-auth";
-import { getStoreCustomerOverview } from "@/lib/actions/account";
-import { getStoreBranding } from "@/lib/actions/store-branding";
-import { getAccountCopy } from "@/lib/account-copy";
-import { prisma } from "@/lib/prisma";
 import { notFound } from "next/navigation";
-import { ExampleProfileContent } from "@/components/storefront/example-profile-content";
-import { VelouraAccountProfile } from "@/components/storefront/veloura-account-profile";
-import { listStoreBookings, listStoreWishlist } from "@/lib/actions/account";
-import { getWallet } from "@/lib/actions/customer-wallet";
+import Link from "next/link";
+import { CalendarDays, Heart, Star, Gift, Pencil, ArrowRight, Headphones } from "lucide-react";
+import { getStoreBranding } from "@/lib/actions/store-branding";
+import { getStoreCustomerOverview, listStoreBookings, listStoreWishlist } from "@/lib/actions/account";
 import { getStoreLoyaltySummary } from "@/lib/actions/loyalty";
 import { getHotelContent } from "@/lib/hotel-content";
-import { HOTEL_TEMPLATE_NAME } from "@/lib/hotel-content";
-import { EXAMPLE_TEMPLATE_NAME } from "@/lib/example-content";
-import Link from "next/link";
-import { Pencil, Package, Gift, Calendar } from "lucide-react";
+import { VelouraAccountHero } from "@/components/storefront/veloura-account-shell";
+import { getStoreCustomerSessionForStore } from "@/lib/store-customer-auth";
+
+const money = (value: unknown, currency = "NGN") => `${currency === "NGN" ? "₦" : currency + " "}${Number(value || 0).toLocaleString()}`;
+const date = (v: Date | string) => new Date(v).toLocaleDateString(undefined, { day: "2-digit", month: "short", year: "numeric" });
 
 export default async function StoreAccountOverviewPage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
-  const session = await getStoreCustomerSessionForStore(slug);
-  const store = await getStoreBranding(slug);
-  if (!store) notFound();
+  const [store, session, overview, bookings, wishlist, loyalty, hotel] = await Promise.all([
+    getStoreBranding(slug), getStoreCustomerSessionForStore(slug), getStoreCustomerOverview(slug), listStoreBookings(slug), listStoreWishlist(slug), getStoreLoyaltySummary(slug), getHotelContent(slug),
+  ]);
+  if (!store || !session?.user || !overview) notFound();
+  const user = session.user;
+  const hero = hotel.rooms.find((r: any) => r.featured)?.image || hotel.rooms[0]?.image || store.bannerUrl;
+  const upcoming = bookings.filter((b: any) => b.status !== "CANCELLED" && new Date(b.checkOut ?? b.scheduledAt) >= new Date()).slice(0, 3);
+  const savedRooms = wishlist.filter((x: any) => x.service).slice(0, 2);
+  const points = loyalty?.pointsBalance ?? overview.pointsBalance;
+  const tier = points >= 2000 ? "Platinum" : points >= 1000 ? "Gold" : points >= 500 ? "Silver" : "Member";
+  const next = points >= 2000 ? points : 2000;
+  const defaultAddress = overview.defaultAddress;
+  const location = [defaultAddress?.city, defaultAddress?.state, defaultAddress?.country].filter(Boolean).join(", ");
 
-  const overview = await getStoreCustomerOverview(slug);
-  if (!overview) {
-    return <p className="text-sm text-slate-500">Couldn&apos;t load your account overview.</p>;
-  }
-
-  const record = await prisma.store.findUnique({ where: { slug }, select: { template: { select: { name: true } } } });
-  if (record?.template?.name === EXAMPLE_TEMPLATE_NAME) return <ExampleProfileContent slug={slug} session={session} overview={overview} />;
-  if (record?.template?.name === HOTEL_TEMPLATE_NAME) {
-    const [bookings, savedRooms, wallet, loyalty, hotelContent, user] = await Promise.all([
-      listStoreBookings(slug),
-      listStoreWishlist(slug),
-      getWallet(slug),
-      getStoreLoyaltySummary(slug),
-      getHotelContent(slug),
-      prisma.user.findUnique({ where: { id: session?.user?.id ?? "" }, select: { id: true, name: true, email: true, phone: true, image: true, createdAt: true } }),
-    ]);
-    const heroImage = hotelContent.rooms.find((room) => room.featured)?.image || hotelContent.rooms[0]?.image || null;
-    return <VelouraAccountProfile slug={slug} store={store} user={user ?? session?.user} overview={overview} bookings={bookings} savedRooms={savedRooms} wallet={wallet} loyalty={loyalty} heroImage={heroImage} />;
-  }
-  const copy = getAccountCopy(record?.template?.name, store.businessCategory);
-  const addr = overview.defaultAddress;
-
-  return (
-    <div>
-      <h1 className="mb-5 text-xl font-bold text-slate-900">Account Overview</h1>
-
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-        {/* Account details */}
-        <div className="rounded-xl border border-slate-200 bg-white">
-          <div className="border-b border-slate-100 px-5 py-3">
-            <p className="text-xs font-bold uppercase tracking-wide text-slate-500">Account Details</p>
-          </div>
-          <div className="px-5 py-4">
-            <p className="font-semibold text-slate-900">{session?.user?.name ?? "—"}</p>
-            <p className="text-sm text-slate-500">{session?.user?.email}</p>
-          </div>
-        </div>
-
-        {/* Address book -- only relevant when something physical could ship */}
-        {store.sellsProducts && (
-          <div className="rounded-xl border border-slate-200 bg-white">
-            <div className="flex items-center justify-between border-b border-slate-100 px-5 py-3">
-              <p className="text-xs font-bold uppercase tracking-wide text-slate-500">Address Book</p>
-              <Link href={`/store/${slug}/account/addresses`} aria-label="Edit address book">
-                <Pencil className="h-3.5 w-3.5 text-amber-500" />
-              </Link>
-            </div>
-            <div className="px-5 py-4 text-sm">
-              {addr ? (
-                <>
-                  <p className="mb-1 text-slate-600">Your default shipping address:</p>
-                  <p className="font-semibold text-slate-900">{addr.fullName}</p>
-                  <p className="text-slate-500">
-                    {addr.line1}
-                    {addr.line2 ? `, ${addr.line2}` : ""}
-                  </p>
-                  <p className="text-slate-500">{addr.city}, {addr.state}</p>
-                  <p className="text-slate-500">{addr.phone}</p>
-                </>
-              ) : (
-                <p className="text-slate-500">
-                  No address saved yet.{" "}
-                  <Link href={`/store/${slug}/account/addresses`} className="font-medium text-amber-600 hover:underline">
-                    Add one
-                  </Link>
-                </p>
-              )}
-            </div>
-          </div>
-        )}
-
-        {/* Loyalty points (this store's "store credit" equivalent) */}
-        <div className="rounded-xl border border-slate-200 bg-white">
-          <div className="border-b border-slate-100 px-5 py-3">
-            <p className="text-xs font-bold uppercase tracking-wide text-slate-500">Loyalty Points</p>
-          </div>
-          <div className="px-5 py-4">
-            <Link href={`/store/${slug}/account/loyalty`} className="flex items-center gap-2 text-sm font-medium text-blue-600 hover:underline">
-              <Gift className="h-4 w-4" />
-              Points balance: {overview.pointsBalance}
-            </Link>
-          </div>
-        </div>
-
-        {/* Orders at this store -- only if the store actually sells products */}
-        {store.sellsProducts && (
-          <div className="rounded-xl border border-slate-200 bg-white">
-            <div className="border-b border-slate-100 px-5 py-3">
-              <p className="text-xs font-bold uppercase tracking-wide text-slate-500">{copy.orders} at {store.name}</p>
-            </div>
-            <div className="px-5 py-4">
-              <Link href={`/store/${slug}/account/orders`} className="flex items-center gap-2 text-sm font-medium text-blue-600 hover:underline">
-                <Package className="h-4 w-4" />
-                {overview.orderCount} {copy.orders.toLowerCase().replace(/s$/, "")}{overview.orderCount === 1 ? "" : "s"} placed — view history
-              </Link>
-            </div>
-          </div>
-        )}
-
-        {/* Bookings at this store -- only if the store actually offers services */}
-        {store.offersServices && (
-          <div className="rounded-xl border border-slate-200 bg-white">
-            <div className="border-b border-slate-100 px-5 py-3">
-              <p className="text-xs font-bold uppercase tracking-wide text-slate-500">{copy.bookings} at {store.name}</p>
-            </div>
-            <div className="px-5 py-4">
-              <Link href={`/store/${slug}/account/bookings`} className="flex items-center gap-2 text-sm font-medium text-blue-600 hover:underline">
-                <Calendar className="h-4 w-4" />
-                {overview.bookingCount} {copy.bookings.toLowerCase().replace(/s$/, "")}{overview.bookingCount === 1 ? "" : "s"} — view history
-              </Link>
-            </div>
-          </div>
-        )}
-      </div>
+  return <div className="veloura-account-content">
+    <VelouraAccountHero title={`Welcome Back, ${user.name || user.email}`} subtitle="Manage your bookings, preferences and exclusive member benefits — all in one place." image={hero} />
+    <div className="veloura-stat-grid">
+      <div className="veloura-stat"><div className="veloura-stat-icon"><CalendarDays /></div><div><h3>{overview.bookingCount}</h3><p>Total Bookings</p></div></div>
+      <div className="veloura-stat"><div className="veloura-stat-icon"><Heart /></div><div><h3>{overview.wishlistCount}</h3><p>Saved Rooms</p></div></div>
+      <div className="veloura-stat"><div className="veloura-stat-icon"><Star /></div><div><h3>{tier}</h3><p>Membership Tier</p></div></div>
+      <div className="veloura-stat"><div className="veloura-stat-icon"><Gift /></div><div><h3>{points.toLocaleString()}</h3><p>Loyalty Points</p></div></div>
     </div>
-  );
+
+    <div className="veloura-panel-grid">
+      <section className="veloura-panel"><div className="veloura-panel-head"><h2>Personal Information</h2><Link href={`/store/${slug}/account/addresses`}><Pencil size={14}/> Edit</Link></div><dl className="veloura-detail-list"><div><dt>Full Name</dt><dd>{user.name || "Not set"}</dd></div><div><dt>Email Address</dt><dd>{user.email}</dd></div><div><dt>Phone Number</dt><dd>{(user as any).phone || "Not set"}</dd></div><div><dt>Member Since</dt><dd>{date((user as any).createdAt || new Date())}</dd></div><div><dt>Location</dt><dd>{location || "Not set"}</dd></div></dl></section>
+      <section className="veloura-panel"><div className="veloura-panel-head"><h2>Loyalty & Rewards</h2><Link href={`/store/${slug}/account/loyalty`}>View Details</Link></div><div style={{display:"flex",gap:15,alignItems:"center"}}><div className="veloura-crown">♛</div><div style={{flex:1}}><h3 style={{margin:0}}>{tier} Member</h3><p style={{fontSize:11,color:"#68736f"}}>Earn and redeem rewards from {store.name}.</p><div className="veloura-progress"><span style={{width:`${Math.min(100, (points/next)*100)}%`}}/></div><p style={{fontSize:11}}>{points.toLocaleString()} / {next.toLocaleString()} points</p></div></div><ul style={{paddingLeft:18,fontSize:11,lineHeight:1.9}}><li>Member rewards and offers</li><li>Booking-related points</li><li>Store-specific reward balance</li></ul></section>
+      <section className="veloura-panel"><div className="veloura-panel-head"><h2>Preferences</h2><Link href={`/store/${slug}/account/preferences`}><Pencil size={14}/> Edit</Link></div><dl className="veloura-detail-list"><div><dt>Room Type</dt><dd>{"Not set"}</dd></div><div><dt>Bed Type</dt><dd>{"Not set"}</dd></div><div><dt>Smoking</dt><dd>{"Not set"}</dd></div><div><dt>Special Requests</dt><dd>{"Not set"}</dd></div><div><dt>Communication</dt><dd>{"Not set"}</dd></div></dl></section>
+    </div>
+
+    <div className="veloura-panel-grid" style={{marginTop:12}}>
+      <section className="veloura-panel"><div className="veloura-panel-head"><h2>Recent Bookings</h2><Link href={`/store/${slug}/account/bookings`}>View All</Link></div>{upcoming.length ? upcoming.map((b:any)=><Link key={b.id} href={`/store/${slug}/account/bookings`} className="veloura-booking-row" style={{textDecoration:"none",color:"inherit"}}><img src={b.service.images?.[0] || hero || ""} alt=""/><div><strong>{b.service.name}</strong><small>{b.checkIn && b.checkOut ? `${date(b.checkIn)} – ${date(b.checkOut)}` : date(b.scheduledAt)}</small></div><span className="veloura-badge">{b.status}</span><ArrowRight size={15}/></Link>) : <div className="veloura-empty">No bookings yet.</div>}</section>
+      <section className="veloura-panel"><div className="veloura-panel-head"><h2>Saved Rooms</h2><Link href={`/store/${slug}/account/wishlist`}>View All</Link></div>{savedRooms.length ? <div className="veloura-room-grid">{savedRooms.map((x:any)=>{const r=x.service; return <div className="veloura-room-card" key={x.id}><img src={r.images?.[0] || hero || ""} alt=""/><div><h3>{r.name}</h3><p>From <strong>{money(r.price,r.currency)}</strong> / night</p><div className="veloura-room-actions"><Link href={`/store/${slug}/rooms/${r.slug}`}>View Details</Link><Link href={`/store/${slug}/booking`}>Book Now</Link></div></div></div>})}</div> : <div className="veloura-empty">No saved rooms yet.</div>}</section>
+      <section className="veloura-panel"><img src={hero || ""} alt="" style={{width:"100%",height:125,objectFit:"cover",borderRadius:5}}/><h2 style={{marginTop:12,marginBottom:4}}>Need Help?</h2><p style={{fontSize:12,color:"#68736f"}}>Our team is available to assist you.</p><Link className="veloura-gold-btn" href={`/store/${slug}/account/support`}><Headphones size={15} style={{verticalAlign:"middle",marginRight:6}}/>Contact Support</Link></section>
+    </div>
+  </div>;
 }

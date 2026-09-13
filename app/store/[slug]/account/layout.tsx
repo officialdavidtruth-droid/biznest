@@ -18,7 +18,7 @@ export default async function StoreAccountLayout({ children, params }: { childre
   const unreadMessageCount = await getUnreadStoreMessageCount(slug);
   const template = await prisma.store.findUnique({ where: { slug }, select: { template: { select: { name: true } } } });
   if (template?.template?.name === EXAMPLE_TEMPLATE_NAME) return <ExampleAccountShell slug={slug} store={store} membership={membership}>{children}</ExampleAccountShell>;
-  if (template?.template?.name === HOTEL_TEMPLATE_NAME) return <VelouraAccountShell slug={slug} store={store} membership={membership} unreadMessageCount={unreadMessageCount}>{children}</VelouraAccountShell>;
+  if (template?.template?.name === HOTEL_TEMPLATE_NAME) return <VelouraAccountShell slug={slug} store={store} membership={membership}>{children}</VelouraAccountShell>;
   const nav = { sellsProducts: store.sellsProducts, offersServices: store.offersServices };
   return <StoreAccountLegacyShell slug={slug} store={store} membership={membership} unreadMessageCount={unreadMessageCount} nav={nav}>{children}</StoreAccountLegacyShell>;
 }
