@@ -56,7 +56,7 @@ export async function VelouraAccountShell({ children, slug, active, store: passe
         <span>{store.name}</span>
       </Link>
       <nav>{[["Home", `/store/${slug}`],["Rooms", `/store/${slug}/rooms`],["Dining", `/store/${slug}/dining`],["Amenities", `/store/${slug}/amenities`],["Events", `/store/${slug}/events`],["Gallery", `/store/${slug}/gallery`],["Offers", `/store/${slug}/offers`],["Contact", `/store/${slug}/contact`]].map(([label,href]) => <Link key={label} href={href}>{label}</Link>)}</nav>
-      <div className="veloura-nav-actions"><Search /><Link href={`/store/${slug}/account`} className="veloura-user"><UserRound /><span>{user.name || user.email}<small>My Account⌄</small></span></Link><Link href={`/store/${slug}/booking`} className="veloura-book">Book Now <span>→</span></Link></div>
+      <div className="veloura-nav-actions"><Search /><Link href={`/store/${slug}/account`} className="veloura-user"><UserRound /><span>{user.name || user.email}<small>My Account⌄</small></span></Link><Link href={`/store/${slug}/book`} className="veloura-book">Book Now <span>→</span></Link></div>
     </header>
 
     <div className="veloura-account-body">
