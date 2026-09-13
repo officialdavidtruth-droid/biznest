@@ -14,8 +14,8 @@ export const DEFAULT_TASTEHOUSE_CONTENT:TasteHouseContent={
  supportEmail:"support@tastehouse.com", supportPhone:"+234 803 123 4567"
 };
 export async function getTasteHouseContent(slug:string){
- const store=await prisma.store.findUnique({where:{slug},select:{id:true,email:true,phone:true,bannerUrl:true}}); if(!store)return DEFAULT_TASTEHOUSE_CONTENT;
+ const store=await prisma.store.findUnique({where:{slug},select:{id:true,contactEmail:true,contactPhone:true,bannerUrl:true}}); if(!store)return DEFAULT_TASTEHOUSE_CONTENT;
  const page=await prisma.storePage.findUnique({where:{storeId_slug:{storeId:store.id,slug:"tastehouse-home"}}});
  const v=(page?.content&&typeof page.content==="object"&&!Array.isArray(page.content)?page.content:{}) as Partial<TasteHouseContent>;
- return {...DEFAULT_TASTEHOUSE_CONTENT,...v,heroImage:v.heroImage||store.bannerUrl||DEFAULT_TASTEHOUSE_CONTENT.heroImage,supportEmail:v.supportEmail||store.email||DEFAULT_TASTEHOUSE_CONTENT.supportEmail,supportPhone:v.supportPhone||store.phone||DEFAULT_TASTEHOUSE_CONTENT.supportPhone};
+ return {...DEFAULT_TASTEHOUSE_CONTENT,...v,heroImage:v.heroImage||store.bannerUrl||DEFAULT_TASTEHOUSE_CONTENT.heroImage,supportEmail:v.supportEmail||store.contactEmail||DEFAULT_TASTEHOUSE_CONTENT.supportEmail,supportPhone:v.supportPhone||store.contactPhone||DEFAULT_TASTEHOUSE_CONTENT.supportPhone};
 }
