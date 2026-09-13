@@ -18,7 +18,7 @@ export default async function StoreAccountOverviewPage({ params }: { params: Pro
   ]);
   if (!store || !session?.user || !overview) notFound();
   const user = session.user;
-  const hero = hotel.rooms.find((r: any) => r.featured)?.image || hotel.rooms[0]?.image || store.bannerUrl;
+  const hero = hotel.rooms.find((r: any) => r.featured)?.image || hotel.rooms[0]?.image || store.logoUrl;
   const upcoming = bookings.filter((b: any) => b.status !== "CANCELLED" && new Date(b.checkOut ?? b.scheduledAt) >= new Date()).slice(0, 3);
   const savedRooms = wishlist.filter((x: any) => x.service).slice(0, 2);
   const points = loyalty?.pointsBalance ?? overview.pointsBalance;
