@@ -6,10 +6,11 @@ import { prisma } from "@/lib/prisma";
 import { notFound } from "next/navigation";
 import { ExampleProfileContent } from "@/components/storefront/example-profile-content";
 import { VelouraAccountProfile } from "@/components/storefront/veloura-account-profile";
-import { HOTEL_TEMPLATE_NAME, getHotelContent } from "@/lib/hotel-content";
 import { listStoreBookings, listStoreWishlist } from "@/lib/actions/account";
 import { getWallet } from "@/lib/actions/customer-wallet";
 import { getStoreLoyaltySummary } from "@/lib/actions/loyalty";
+import { getHotelContent } from "@/lib/hotel-content";
+import { HOTEL_TEMPLATE_NAME } from "@/lib/hotel-content";
 import { EXAMPLE_TEMPLATE_NAME } from "@/lib/example-content";
 import Link from "next/link";
 import { Pencil, Package, Gift, Calendar } from "lucide-react";
@@ -28,16 +29,16 @@ export default async function StoreAccountOverviewPage({ params }: { params: Pro
   const record = await prisma.store.findUnique({ where: { slug }, select: { template: { select: { name: true } } } });
   if (record?.template?.name === EXAMPLE_TEMPLATE_NAME) return <ExampleProfileContent slug={slug} session={session} overview={overview} />;
   if (record?.template?.name === HOTEL_TEMPLATE_NAME) {
-    const [user, bookings, savedRooms, wallet, loyalty, hotelContent] = await Promise.all([
-      prisma.user.findUnique({ where: { id: session?.user?.id }, select: { id: true, name: true, email: true, phone: true, image: true, createdAt: true } }),
+    const [bookings, savedRooms, wallet, loyalty, hotelContent, user] = await Promise.all([
       listStoreBookings(slug),
       listStoreWishlist(slug),
       getWallet(slug),
       getStoreLoyaltySummary(slug),
       getHotelContent(slug),
+      prisma.user.findUnique({ where: { id: session?.user?.id ?? "" }, select: { id: true, name: true, email: true, phone: true, image: true, createdAt: true } }),
     ]);
-    const heroImage = hotelContent.rooms.find((room) => room.featured)?.image || hotelContent.rooms[0]?.image || store.logoUrl || null;
-    return <VelouraAccountProfile slug={slug} store={store} user={user} overview={overview} bookings={bookings} savedRooms={savedRooms} wallet={wallet} loyalty={loyalty} heroImage={heroImage} />;
+    const heroImage = hotelContent.rooms.find((room) => room.featured)?.image || hotelContent.rooms[0]?.image || null;
+    return <VelouraAccountProfile slug={slug} store={store} user={user ?? session?.user} overview={overview} bookings={bookings} savedRooms={savedRooms} wallet={wallet} loyalty={loyalty} heroImage={heroImage} />;
   }
   const copy = getAccountCopy(record?.template?.name, store.businessCategory);
   const addr = overview.defaultAddress;

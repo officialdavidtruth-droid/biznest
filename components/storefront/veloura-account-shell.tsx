@@ -1,8 +1,9 @@
 import type React from "react";
 import Link from "next/link";
-import { CalendarDays, Heart, Headphones, Home, LogOut, MessageCircle, Star, WalletCards, Menu, Search, UserRound } from "lucide-react";
+import { CalendarDays, Heart, Headphones, LogOut, MessageCircle, Star, WalletCards, Search, UserRound } from "lucide-react";
 import { SignOutButton } from "@/components/forms/sign-out-button";
 import { getHotelContent } from "@/lib/hotel-content";
+import { prisma } from "@/lib/prisma";
 
 export async function VelouraAccountShell({
   children,
@@ -25,13 +26,17 @@ export async function VelouraAccountShell({
     { href: `/store/${slug}/account/wallet`, label: "Payments", icon: WalletCards },
     { href: `/store/${slug}/account/loyalty`, label: "Rewards", icon: Star },
     { href: `/store/${slug}/account/messages`, label: "Messages", icon: MessageCircle, badge: unreadMessageCount },
-    { href: `/store/${slug}/account/messages`, label: "Support", icon: Headphones },
+    { href: `/store/${slug}/account/support`, label: "Support", icon: Headphones },
   ];
   const colors = (store.themeColors ?? {}) as Record<string, string>;
   const accent = colors.accent || colors.primary || "#c9953e";
   const location = [store.city, store.state, store.country].filter(Boolean).join(", ") || "";
-  const hotelContent = await getHotelContent(slug);
+  const [hotelContent, accountUser] = await Promise.all([
+    getHotelContent(slug),
+    prisma.user.findUnique({ where: { id: membership.userId }, select: { name: true, email: true, image: true } }),
+  ]);
   const heroImage = hotelContent.rooms.find((room) => room.featured)?.image || hotelContent.rooms[0]?.image || null;
+  const accountName = accountUser?.name || accountUser?.email || name;
 
   return (
     <div className="veloura-account" style={{ "--veloura-accent": accent } as React.CSSProperties}>
@@ -62,7 +67,7 @@ export async function VelouraAccountShell({
           <Search size={19} />
           <Link href={`/store/${slug}/account`} className="veloura-account-user-chip">
             <UserRound size={16} />
-            <span><b>{name}</b><small>My Account⌄</small></span>
+            <span><b>{accountName}</b><small>My Account⌄</small></span>
           </Link>
           <Link href={`/store/${slug}/rooms`} className="veloura-account-book-now">Book Now <span>→</span></Link>
         </div>
@@ -70,8 +75,8 @@ export async function VelouraAccountShell({
       <div className="veloura-account-body">
         <aside className="veloura-account-sidebar">
           <div className="veloura-account-sidebar-profile">
-            <div className="veloura-account-sidebar-avatar"><UserRound size={48} /></div>
-            <strong>{name}</strong>
+            <div className="veloura-account-sidebar-avatar">{accountUser?.image ? <img src={accountUser.image} alt="" /> : <UserRound size={48} />}</div>
+            <strong>{accountName}</strong>
             <span>Guest</span>
             <small>✦ Guest Account</small>
           </div>
@@ -99,7 +104,7 @@ export async function VelouraAccountShell({
           <div>◎　f　𝕏　in　▶</div>
         </div>
         <div><h4>Quick Links</h4><Link href={`/store/${slug}`}>Home</Link><Link href={`/store/${slug}/rooms`}>Rooms</Link><Link href={`/store/${slug}/dining`}>Dining</Link><Link href={`/store/${slug}/amenities`}>Amenities</Link><Link href={`/store/${slug}/events`}>Events</Link><Link href={`/store/${slug}/offers`}>Offers</Link><Link href={`/store/${slug}/contact`}>Contact</Link></div>
-        <div><h4>Guest Services</h4><Link href={`/store/${slug}/account/bookings`}>My Bookings</Link><Link href={`/store/${slug}/account/messages`}>Special Requests</Link><Link href={`/store/${slug}/contact`}>Airport Transfers</Link><Link href={`/store/${slug}/contact`}>Concierge</Link><Link href={`/store/${slug}/contact`}>FAQ</Link><span>Terms & Conditions</span><span>Privacy Policy</span></div>
+        <div><h4>Guest Services</h4><Link href={`/store/${slug}/account/bookings`}>My Bookings</Link><Link href={`/store/${slug}/account/support`}>Special Requests</Link><Link href={`/store/${slug}/contact`}>Airport Transfers</Link><Link href={`/store/${slug}/contact`}>Concierge</Link><Link href={`/store/${slug}/contact`}>FAQ</Link><span>Terms & Conditions</span><span>Privacy Policy</span></div>
         <div><h4>Contact Information</h4><span>⌖ {location || "—"}</span><span>⌕ {store.contactPhone || "—"}</span><span>✉ {store.contactEmail || "—"}</span><span>◷ 24/7 Front Desk</span></div>
         <div><h4>Join Our Newsletter</h4><span>Get exclusive offers and updates.</span><div className="veloura-newsletter"><input placeholder="Your email address" /><button>→</button></div></div>
         <div className="veloura-footer-bottom">© 2026 {store.name}. All rights reserved.<span>A Higher Standard of Hospitality.</span></div>
