@@ -30,7 +30,7 @@ export async function VelouraAccountShell({
   const colors = (store.themeColors ?? {}) as Record<string, string>;
   const accent = colors.accent || colors.primary || "#c9953e";
   const location = [store.city, store.state, store.country].filter(Boolean).join(", ") || "";
-  const hotelContent = await heroPromise;
+  const hotelContent = await getHotelContent(slug);
   const heroImage = hotelContent.rooms.find((room) => room.featured)?.image || hotelContent.rooms[0]?.image || null;
 
   return (
