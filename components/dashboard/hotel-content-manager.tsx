@@ -35,7 +35,7 @@ export function HotelContentManager({ slug, initial }: { slug: string; initial: 
   function save() {
     start(async () => {
       setMsg("");
-      const payload: Record<Tab, unknown> =
+      const content: unknown =
         tab === "gallery"
           ? { items: gallery }
           : tab === "amenities"
@@ -44,7 +44,7 @@ export function HotelContentManager({ slug, initial }: { slug: string; initial: 
           ? { events }
           : { offers };
       const section = `hotel-${tab}` as const;
-      const r = await saveHotelSection(slug, section, payload[tab]);
+      const r = await saveHotelSection(slug, section, content);
       setMsg(r.success ? "Published successfully." : r.error || "Could not save.");
     });
   }
