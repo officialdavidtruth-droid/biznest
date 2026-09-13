@@ -1,9 +1,10 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
-import { GRANDEUR_TEMPLATE_NAME, GRANDEUR_THEME } from "@/lib/template-themes";
+import { GRANDEUR_TEMPLATE_NAME, GRANDEUR_THEME, TASTEHOUSE_TEMPLATE_NAME } from "@/lib/template-themes";
+import { TasteHouseHome } from "@/components/storefront/tastehouse";
+import { DEFAULT_TASTEHOUSE_CONTENT } from "@/lib/tastehouse-content";
 import { GrandeurHome } from "@/components/storefront/grandeur-restaurant";
 
-export const revalidate = 3600;
 export const metadata: Metadata = { title: "BizNest Template Preview", robots: { index: false, follow: false } };
 
 const PREVIEW_SLUG = "__biznest-template-preview";
@@ -50,10 +51,11 @@ const STORE = {
   business: { description: "Fine dining. Greater moments.", verificationBadge: true },
 };
 
-export function generateStaticParams() { return [{ name: GRANDEUR_TEMPLATE_NAME }]; }
+export function generateStaticParams() { return [{ name: GRANDEUR_TEMPLATE_NAME }, { name: TASTEHOUSE_TEMPLATE_NAME }]; }
 
 export default async function TemplatePreviewPage({ params }: { params: Promise<{ name: string }> }) {
   const { name } = await params;
+  if (name === TASTEHOUSE_TEMPLATE_NAME) return <TasteHouseHome store={{...STORE,name:"TasteHouse"}} slug={PREVIEW_SLUG} items={ITEMS as any} content={DEFAULT_TASTEHOUSE_CONTENT}/>;
   if (name !== GRANDEUR_TEMPLATE_NAME) notFound();
   return <GrandeurHome store={STORE as any} slug={PREVIEW_SLUG} items={ITEMS} reviews={[]} />;
 }
