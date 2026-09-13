@@ -1,82 +1,35 @@
 import { prisma } from "@/lib/prisma";
 
-/**
- * Vendor-editable content for the Grandeur restaurant template's Events and
- * Gallery pages (see components/dashboard/grandeur-content-manager.tsx for
- * the admin editor, and lib/actions/grandeur-content.ts for the save
- * actions). Persisted as a namespaced bucket inside Store.storefrontConfig
- * -- the same free-form JSON field lib/storefront/unit-booking-niche.ts
- * already uses for per-template config -- so no schema migration is needed
- * to add this.
- */
+export const EVENT_CATEGORIES = ["Wine Dinners","Live Music","Themed Nights","Private Events","Corporate Events","Seasonal Events"] as const;
+export const GALLERY_CATEGORIES = ["Restaurant Interior","Food & Drinks","Private Dining","Events","Outdoor Terrace","Our People"] as const;
 
 export type GrandeurEvent = {
-  id: string;
-  slug: string;
-  title: string;
-  category: string;
-  date: string; // YYYY-MM-DD
-  time: string;
-  venue: string;
-  description: string;
-  details: string;
-  image: string;
-  featured: boolean;
+  id:string; slug:string; title:string; category:string; date:string; time:string; venue:string; description:string; details:string; image:string; featured?:boolean;
 };
+export type GrandeurGalleryItem = { id:string; title:string; category:string; image:string; description?:string };
+export type GrandeurVideo = { id:string; title:string; category?:string; videoUrl:string; thumbnail:string; description?:string };
+export type GrandeurEventsContent = { type:"grandeur-events"; events:GrandeurEvent[] };
+export type GrandeurGalleryContent = { type:"grandeur-gallery"; items:GrandeurGalleryItem[]; videos:GrandeurVideo[] };
 
-export type GrandeurGalleryItem = {
-  id: string;
-  title: string;
-  category: string;
-  image: string;
-  description?: string;
-};
+const clean=(v:unknown,max=4000)=>typeof v==="string"?v.trim().slice(0,max):"";
+const validImage=(v:unknown)=>{const s=clean(v,2000); if(!s||s.includes("[slug]")||s.includes("[pageSlug]")||s.includes("/account")||s.includes("store/[")) return ""; return s;};
+const slugify=(s:string)=>clean(s,120).toLowerCase().replace(/[^a-z0-9]+/g,"-").replace(/^-|-$/g,"") || crypto.randomUUID().slice(0,8);
 
-export type GrandeurVideo = {
-  id: string;
-  title: string;
-  category?: string;
-  videoUrl: string;
-  thumbnail: string;
-  description?: string;
-};
+export const DEFAULT_EVENTS:GrandeurEvent[]=[
+ {id:"wine-dine",slug:"wine-dine-experience",title:"Wine & Dine Experience",category:"Wine Dinners",date:"2026-10-18",time:"7:00 PM – 10:00 PM",venue:"The Grandeur Restaurant",description:"A curated five-course menu paired with premium wines from around the world.",details:"Join us for an intimate five-course dining experience, guided by a selection of exceptional wines and thoughtful pairings. Seats are limited and advance booking is recommended.",image:"",featured:true},
+ {id:"live-jazz",slug:"live-jazz-night",title:"Live Jazz Night",category:"Live Music",date:"2026-10-19",time:"8:00 PM – 10:00 PM",venue:"The Grandeur Restaurant",description:"Good food, great company, and an unforgettable atmosphere with special guests.",details:"Settle in for an evening of live jazz, signature dishes and handcrafted drinks. Our dining room becomes a relaxed stage for an unforgettable night.",image:"",featured:true},
+ {id:"sunday-brunch",slug:"sunday-brunch",title:"Sunday Brunch",category:"Seasonal Events",date:"2026-10-20",time:"9:00 AM – 1:00 PM",venue:"The Grandeur Restaurant",description:"A generous Sunday spread designed for slow mornings and good company.",details:"Enjoy a leisurely brunch featuring restaurant favourites, seasonal plates, fresh pastries and drinks in the Grandeur dining room.",image:""},
+ {id:"masquerade",slug:"masquerade-dinner",title:"Masquerade Dinner",category:"Themed Nights",date:"2026-10-23",time:"7:30 PM – 11:00 PM",venue:"The Grandeur Restaurant",description:"An elegant themed dinner with a dramatic evening programme.",details:"Dress for the occasion and join us for a theatrical dining experience with a curated menu, music and surprises throughout the evening.",image:""},
+ {id:"private-celebrations",slug:"private-celebrations",title:"Private Celebrations",category:"Private Events",date:"2026-10-24",time:"6:00 PM – 11:00 PM",venue:"The Grandeur Restaurant",description:"A private setting for birthdays, anniversaries and milestone celebrations.",details:"Our events team will help you create a private celebration around your guests, menu preferences and desired atmosphere.",image:""},
+ {id:"corporate-events",slug:"corporate-events",title:"Corporate Events",category:"Corporate Events",date:"2026-10-30",time:"6:00 PM – 10:00 PM",venue:"The Grandeur Restaurant",description:"Polished dining and hospitality for corporate gatherings and client occasions.",details:"From executive dinners to team celebrations, we provide a refined setting and coordinated service for corporate occasions.",image:""},
+];
+export const DEFAULT_GALLERY:GrandeurGalleryContent={type:"grandeur-gallery",items:[
+ {id:"main-dining",title:"Main Dining Hall",category:"Restaurant Interior",image:""},{id:"signature-dish",title:"Signature Dish",category:"Food & Drinks",image:""},{id:"cocktails",title:"Crafted Cocktails",category:"Food & Drinks",image:""},{id:"private-dining",title:"Private Dining",category:"Private Dining",image:""},{id:"terrace",title:"Outdoor Terrace",category:"Outdoor Terrace",image:""},{id:"desserts",title:"Exquisite Desserts",category:"Food & Drinks",image:""},{id:"chefs",title:"Our Chefs",category:"Our People",image:""},{id:"wine",title:"Fine Wine Selection",category:"Food & Drinks",image:""},{id:"events",title:"Special Events",category:"Events",image:""},{id:"seafood",title:"Seafood Delights",category:"Food & Drinks",image:""},{id:"entrance",title:"Our Entrance",category:"Restaurant Interior",image:""},{id:"guests",title:"Happy Guests",category:"Our People",image:""},
+],videos:[]};
 
-export const EVENT_CATEGORIES = [
-  "Wine Dinners",
-  "Live Music",
-  "Themed Nights",
-  "Private Events",
-  "Corporate Events",
-  "Seasonal Events",
-] as const;
+function normalizeEvents(value:unknown):GrandeurEventsContent{const raw=value&&typeof value==="object"?value as any:{}; const arr=Array.isArray(raw.events)?raw.events:[]; return {type:"grandeur-events",events:arr.map((x:any)=>({id:clean(x?.id,80)||crypto.randomUUID(),slug:slugify(clean(x?.slug)||clean(x?.title)),title:clean(x?.title,180)||"Untitled Event",category:EVENT_CATEGORIES.includes(x?.category)?x.category:"Seasonal Events",date:clean(x?.date,30)||"2026-10-18",time:clean(x?.time,100)||"7:00 PM – 10:00 PM",venue:clean(x?.venue,180)||"The Grandeur Restaurant",description:clean(x?.description,600),details:clean(x?.details,3000),image:validImage(x?.image),featured:Boolean(x?.featured)})).filter((x:GrandeurEvent)=>x.title)};}
+function normalizeGallery(value:unknown):GrandeurGalleryContent{const raw=value&&typeof value==="object"?value as any:{}; const items=Array.isArray(raw.items)?raw.items:[]; const videos=Array.isArray(raw.videos)?raw.videos:[]; return {type:"grandeur-gallery",items:items.map((x:any)=>({id:clean(x?.id,80)||crypto.randomUUID(),title:clean(x?.title,180)||"Untitled image",category:GALLERY_CATEGORIES.includes(x?.category)?x.category:"Restaurant Interior",image:validImage(x?.image),description:clean(x?.description,800)})).filter((x:GrandeurGalleryItem)=>x.image||x.title),videos:videos.map((x:any)=>({id:clean(x?.id,80)||crypto.randomUUID(),title:clean(x?.title,180)||"Untitled video",category:clean(x?.category,120),videoUrl:clean(x?.videoUrl,2000),thumbnail:validImage(x?.thumbnail),description:clean(x?.description,800)})).filter((x:GrandeurVideo)=>x.videoUrl)};}
 
-export const GALLERY_CATEGORIES = [
-  "Restaurant Interior",
-  "Food & Drinks",
-  "Private Dining",
-  "Events",
-  "Outdoor Terrace",
-  "Our People",
-] as const;
-
-type GrandeurStorefrontConfig = {
-  grandeurEvents?: { events: GrandeurEvent[] };
-  grandeurGallery?: { items: GrandeurGalleryItem[]; videos: GrandeurVideo[] };
-};
-
-async function loadStorefrontConfig(slug: string): Promise<GrandeurStorefrontConfig> {
-  const store = await prisma.store.findUnique({ where: { slug }, select: { storefrontConfig: true } });
-  return (store?.storefrontConfig as GrandeurStorefrontConfig | null) ?? {};
-}
-
-/** Public read used by the Events list page and the Event detail page. */
-export async function getGrandeurEvents(slug: string): Promise<{ events: GrandeurEvent[] }> {
-  const config = await loadStorefrontConfig(slug);
-  return config.grandeurEvents ?? { events: [] };
-}
-
-/** Public read used by the Gallery page. */
-export async function getGrandeurGallery(slug: string): Promise<{ items: GrandeurGalleryItem[]; videos: GrandeurVideo[] }> {
-  const config = await loadStorefrontConfig(slug);
-  return config.grandeurGallery ?? { items: [], videos: [] };
-  }
+export async function getGrandeurEvents(slug:string){const store=await prisma.store.findUnique({where:{slug},select:{id:true}}); if(!store)return {type:"grandeur-events" as const,events:DEFAULT_EVENTS}; const page=await prisma.storePage.findUnique({where:{storeId_slug:{storeId:store.id,slug:"events"}}}); const data=normalizeEvents(page?.content); return data.events.length?data:{type:"grandeur-events" as const,events:DEFAULT_EVENTS};}
+export async function getGrandeurGallery(slug:string){const store=await prisma.store.findUnique({where:{slug},select:{id:true}}); if(!store)return DEFAULT_GALLERY; const page=await prisma.storePage.findUnique({where:{storeId_slug:{storeId:store.id,slug:"gallery"}}}); const data=normalizeGallery(page?.content); return data.items.length||data.videos.length?data:DEFAULT_GALLERY;}
+export function resolveImage(url:string|undefined,fallback:string|null|undefined){return validImage(url)||validImage(fallback)||"";}

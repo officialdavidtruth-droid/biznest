@@ -32,6 +32,8 @@ type ChargeParams = {
    * following the toggle as before.
    */
   gateway?: "PAYSTACK" | "FLUTTERWAVE";
+  /** Storefront checkout can use the provider's hosted inline modal instead of navigating away. */
+  inline?: boolean;
 };
 
 type ChargeResult =
@@ -44,6 +46,15 @@ type ChargeResult =
        *  should persist this on the Payment row rather than re-deriving
        *  it later from the store's possibly-since-changed connection. */
       splitSubaccountCode: string | null;
+      inline?: {
+        provider: "PAYSTACK" | "FLUTTERWAVE";
+        publicKey: string;
+        email: string;
+        accessCode?: string;
+        reference: string;
+        subaccountCode?: string | null;
+        subaccountId?: string | null;
+      };
     }
   | { success: false; error: string };
 
@@ -59,6 +70,22 @@ export async function chargeCustomer(params: ChargeParams): Promise<ChargeResult
   const gateway = params.gateway ?? (await getActiveGateway());
 
   if (gateway === "FLUTTERWAVE") {
+    const publicKey = process.env.NEXT_PUBLIC_FLUTTERWAVE_PUBLIC_KEY || process.env.FLUTTERWAVE_PUBLIC_KEY;
+    if (params.inline && publicKey) {
+      return {
+        success: true,
+        authorizationUrl: params.callbackUrl,
+        gateway: "FLUTTERWAVE",
+        splitSubaccountCode: params.flutterwaveSubaccountId ?? null,
+        inline: {
+          provider: "FLUTTERWAVE",
+          publicKey,
+          email: params.email,
+          reference: params.reference,
+          subaccountId: params.flutterwaveSubaccountId ?? null,
+        },
+      };
+    }
     const init = await initializeFlutterwaveTransaction({
       email: params.email,
       amountNaira: params.amountNaira,
@@ -91,11 +118,24 @@ export async function chargeCustomer(params: ChargeParams): Promise<ChargeResult
     void logError("PAYMENTS", "Paystack charge init failed", { reference: params.reference, message: init.message });
     return { success: false, error: init.message || "Couldn't start the Paystack payment." };
   }
+  const publicKey = process.env.NEXT_PUBLIC_PAYSTACK_PUBLIC_KEY || process.env.PAYSTACK_PUBLIC_KEY;
   return {
     success: true,
     authorizationUrl: init.data.authorization_url,
     gateway: "PAYSTACK",
     splitSubaccountCode: params.paystackSubaccountCode ?? null,
+    ...(params.inline && publicKey
+      ? {
+          inline: {
+            provider: "PAYSTACK" as const,
+            publicKey,
+            email: params.email,
+            accessCode: init.data.access_code,
+            reference: init.data.reference || params.reference,
+            subaccountCode: params.paystackSubaccountCode ?? null,
+          },
+        }
+      : {}),
   };
 }
 

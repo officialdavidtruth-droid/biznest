@@ -1,30 +1,7 @@
-import { getBusinessExperience, type BusinessModelInput, type BusinessMode } from "@/lib/business-experience";
-import { TEMPLATE_NAME } from "@/lib/template-themes";
-
-export type TemplateCandidate = { name: string; category: string; config?: unknown };
-
-/**
- * The template registry is intentionally a single-template foundation while
- * the new storefront collection is rebuilt. Only Grandeur is selectable.
- */
-export function getTemplateBusinessType(template: TemplateCandidate): string | null {
-  if (template.name === TEMPLATE_NAME) return "Restaurant";
-  return null;
-}
-
-export function getTemplateMode(template: TemplateCandidate): BusinessMode | "unknown" {
-  if (template.name === TEMPLATE_NAME || /restaurant|food/i.test(`${template.name} ${template.category}`)) return "service";
-  return "unknown";
-}
-
-export function isTemplateCompatible(template: TemplateCandidate, category?: string | null, model?: BusinessModelInput): boolean {
-  if (template.name !== TEMPLATE_NAME) return false;
-  const experience = getBusinessExperience(category, model);
-  return !category || category.toLowerCase() === "restaurant" || experience.mode === "hybrid";
-}
-
-export function templateCompatibilityScore(template: TemplateCandidate, category?: string | null, model?: BusinessModelInput): number {
-  if (!isTemplateCompatible(template, category, model)) return -100;
-  const experience = getBusinessExperience(category, model);
-  return getTemplateMode(template) === experience.mode ? 50 : 10;
-}
+import { TEMPLATE_NAME, HOTEL_TEMPLATE_NAME, TASTEHOUSE_TEMPLATE_NAME, EXAMPLE_TEMPLATE_NAME } from "./template-themes";
+import type { BusinessModelInput, BusinessMode } from "./business-experience";
+import { getBusinessExperience } from "./business-experience";
+export type TemplateCandidate={name:string;category?:string|null};
+export function getTemplateBusinessType(template:TemplateCandidate):string|null{if(template.name===TEMPLATE_NAME)return "Restaurant";if(template.name===TASTEHOUSE_TEMPLATE_NAME)return "Restaurant";if(template.name===EXAMPLE_TEMPLATE_NAME)return "Retail";if(template.name===HOTEL_TEMPLATE_NAME)return "Hotel";return null;}
+export function getTemplateMode(template:TemplateCandidate):BusinessMode|"unknown"{if(template.name===HOTEL_TEMPLATE_NAME||/hotel|lodging/i.test(`${template.name} ${template.category}`))return "service";if(template.name===TEMPLATE_NAME||template.name===TASTEHOUSE_TEMPLATE_NAME||/restaurant|food/i.test(`${template.name} ${template.category}`))return "service";if(template.name===EXAMPLE_TEMPLATE_NAME)return "commerce";return "unknown";}
+export function isTemplateCompatible(template:TemplateCandidate,category?:string|null,model?:BusinessModelInput):boolean{if(![TEMPLATE_NAME,HOTEL_TEMPLATE_NAME,TASTEHOUSE_TEMPLATE_NAME,EXAMPLE_TEMPLATE_NAME].includes(template.name))return false;if(!category)return true;const c=category.toLowerCase();if(template.name===HOTEL_TEMPLATE_NAME)return c.includes("hotel")||c.includes("lodging");if(template.name===EXAMPLE_TEMPLATE_NAME)return c.includes("retail")||c.includes("electronics")||c.includes("ecommerce")||c.includes("commerce")||c.includes("shop");return c.includes("restaurant")||c.includes("food");}

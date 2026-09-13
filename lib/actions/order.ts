@@ -137,6 +137,15 @@ async function chargeExistingOrder(
 ): Promise<
   ActionResult<{
     authorizationUrl: string;
+    inline?: {
+      provider: "PAYSTACK" | "FLUTTERWAVE";
+      publicKey: string;
+      email: string;
+      accessCode?: string;
+      reference: string;
+      subaccountCode?: string | null;
+      subaccountId?: string | null;
+    };
   }>
 > {
   const totalNaira = Number(order.total);
@@ -162,6 +171,7 @@ async function chargeExistingOrder(
         store.paystackSubaccountCode,
       flutterwaveSubaccountId:
         store.flutterwaveSubaccountId,
+      inline: true,
     });
 
   if (!charge.success) {
@@ -212,8 +222,8 @@ async function chargeExistingOrder(
   return {
     success: true,
     data: {
-      authorizationUrl:
-        charge.authorizationUrl,
+      authorizationUrl: charge.authorizationUrl,
+      ...(charge.inline ? { inline: charge.inline } : {}),
     },
   };
 }
@@ -228,6 +238,15 @@ export async function startCheckout(
 ): Promise<
   ActionResult<{
     authorizationUrl: string;
+    inline?: {
+      provider: "PAYSTACK" | "FLUTTERWAVE";
+      publicKey: string;
+      email: string;
+      accessCode?: string;
+      reference: string;
+      subaccountCode?: string | null;
+      subaccountId?: string | null;
+    };
   }>
 > {
   const customerSession =
@@ -604,6 +623,7 @@ export async function startCheckout(
       authorizationUrl:
         chargeResult.data
           .authorizationUrl,
+      ...(chargeResult.data.inline ? { inline: chargeResult.data.inline } : {}),
     },
   };
 }

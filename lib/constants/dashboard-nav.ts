@@ -159,7 +159,13 @@ export function buildNavGroups(business: { sellsProducts: boolean; offersService
       items: [
         { label: "Templates", href: "/templates", icon: LayoutTemplate, permission: "settings" },
         { label: "Website Builder", href: "/customize", icon: Wand2, permission: "settings" },
-        ...(business.category === "Hotel & Lodging" ? [{ label: "Gallery & Stories", href: "/gallery", icon: Images, permission: "settings" as StaffPermissionId }] : []),
+        ...(String(business.category||"").toLowerCase().includes("hotel") ? [{ label: "Hotel Website", href: "/hotel", icon: Images, permission: "settings" as StaffPermissionId }] : []),
+        ...(String(business.category||"").toLowerCase().includes("retail") || String(business.category||"").toLowerCase().includes("electronics") ? [{ label: "Example Website", href: "/example", icon: Wand2, permission: "settings" as StaffPermissionId }] : []),
+        ...(business.category === "Restaurant" ? [
+          { label: "Events", href: "/events", icon: CalendarDays, permission: "settings" as StaffPermissionId },
+          { label: "Gallery & Videos", href: "/gallery", icon: Images, permission: "settings" as StaffPermissionId },
+          { label: "TasteHouse Website", href: "/tastehouse", icon: Wand2, permission: "settings" as StaffPermissionId },
+        ] : []),
       ],
     },
     {
