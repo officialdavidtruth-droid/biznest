@@ -7,7 +7,34 @@ import { submitCheckout } from "@/lib/checkout/client";
 import { listActiveDeliveryZones } from "@/lib/actions/delivery-zone";
 import { DeliveryZoneOptions } from "@/components/checkout/delivery-zone-options";
 import { toast } from "sonner";
-import { ShieldCheck, Lock, Truck, ChevronLeft } from "lucide-react";
+import { ShieldCheck, Lock, Truck, ChevronLeft, CreditCard } from "lucide-react";
+
+declare global {
+  interface Window {
+    Paystack?: new () => { resumeTransaction: (accessCode: string) => void };
+    FlutterwaveCheckout?: (config: Record<string, unknown>) => void;
+  }
+}
+
+async function loadExternalScript(src: string) {
+  const existing = document.querySelector<HTMLScriptElement>(`script[src="${src}"]`);
+  if (existing) {
+    if (existing.dataset.loaded === "true") return;
+    await new Promise<void>((resolve, reject) => {
+      existing.addEventListener("load", () => resolve(), { once: true });
+      existing.addEventListener("error", () => reject(new Error("Payment provider could not be loaded.")), { once: true });
+    });
+    return;
+  }
+  await new Promise<void>((resolve, reject) => {
+    const script = document.createElement("script");
+    script.src = src;
+    script.async = true;
+    script.onload = () => { script.dataset.loaded = "true"; resolve(); };
+    script.onerror = () => reject(new Error("Payment provider could not be loaded."));
+    document.body.appendChild(script);
+  });
+}
 
 type Zone = { id: string; name: string; city: string | null; fee: unknown; estimatedMinutes: number | null };
 
@@ -70,6 +97,47 @@ export function CheckoutClient({ slug }: { slug: string }) {
       toast.error(result.error);
       return;
     }
+    if (result.data.inline) {
+      try {
+        const inline = result.data.inline;
+        if (inline.provider === "PAYSTACK" && inline.accessCode) {
+          await loadExternalScript("https://js.paystack.co/v2/inline.js");
+          if (!window.Paystack) throw new Error("Paystack checkout is unavailable. Please try again.");
+          const popup = new window.Paystack();
+          popup.resumeTransaction(inline.accessCode);
+          return;
+        }
+
+        if (inline.provider === "FLUTTERWAVE") {
+          await loadExternalScript("https://checkout.flutterwave.com/v3.js");
+          if (!window.FlutterwaveCheckout) throw new Error("Flutterwave checkout is unavailable. Please try again.");
+          window.FlutterwaveCheckout({
+            public_key: inline.publicKey,
+            tx_ref: inline.reference,
+            amount: total,
+            currency: currency || "NGN",
+            payment_options: "card",
+            customer: { email: inline.email, name: form.fullName, phone_number: form.phone },
+            subaccounts: inline.subaccountId ? [{ id: inline.subaccountId }] : undefined,
+            callback: (response: { transaction_id?: number | string; tx_ref?: string }) => {
+              const txRef = encodeURIComponent(response.tx_ref || inline.reference);
+              const txId = encodeURIComponent(String(response.transaction_id || ""));
+              window.location.assign(`/api/payments/flutterwave/callback?tx_ref=${txRef}&transaction_id=${txId}&status=successful`);
+            },
+            onclose: () => {
+              setIsSubmitting(false);
+            },
+            customizations: { title: "BizNest", description: "Secure card payment", logo: "" },
+          });
+          return;
+        }
+      } catch (error) {
+        toast.error(error instanceof Error ? error.message : "Unable to open secure card checkout.");
+        setIsSubmitting(false);
+        return;
+      }
+    }
+
     window.location.href = result.data.authorizationUrl;
   }
 
@@ -220,9 +288,9 @@ export function CheckoutClient({ slug }: { slug: string }) {
                 style={{ background: ACCENT, color: "#fff", boxShadow: `0 8px 20px ${ACCENT}4d` }}
                 className="mt-1 flex items-center justify-center gap-2 rounded-xl py-3.5 text-sm font-semibold transition-transform hover:-translate-y-0.5 disabled:opacity-50 disabled:hover:translate-y-0"
               >
-                {isSubmitting ? "Redirecting to payment…" : `Pay ${currency} ${total.toLocaleString()}`}
+                {isSubmitting ? "Opening secure card checkout…" : `Pay ${currency} ${total.toLocaleString()}`}
               </button>
-              <p style={{ opacity: 0.5 }} className="text-center text-[11px] uppercase tracking-widest">Secure payment · Powered by BizNest</p>
+              <p className="flex items-center justify-center gap-2 text-center text-[11px] uppercase tracking-widest" style={{ opacity: 0.55 }}><CreditCard className="h-3.5 w-3.5" /> Visa · Mastercard · Verve · Secure card checkout</p>
             </div>
           </div>
         </div>

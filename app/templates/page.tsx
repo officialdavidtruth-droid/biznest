@@ -21,7 +21,7 @@ function themeFromConfig(config: unknown): TemplateTheme | null {
 
 export default async function TemplatesPage() {
   const templates = await prisma.storeTemplate.findMany({
-    where: { isActive: true, name: "Grandeur — Fine Dining Restaurant" },
+    where: { isActive: true, name: { in: ["Grandeur — Fine Dining Restaurant", "Veloura — Superior Luxury Hotel", "TasteHouse — Food Delivery", "Example — Modern Electronics Store"] } },
     orderBy: { tierRank: "asc" },
   });
 

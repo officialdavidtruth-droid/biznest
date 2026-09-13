@@ -1,21 +1,16 @@
-import { getStoreBranding } from "@/lib/actions/store-branding";
-import { requireStoreCustomer } from "@/lib/actions/store-customer";
-import { getUnreadStoreMessageCount } from "@/lib/actions/account";
-import { redirect, notFound } from "next/navigation";
-import { StoreAccountLegacyShell } from "@/components/storefront/store-account-legacy-shell";
-import { ExampleAccountShell } from "@/components/storefront/example-account-shell";
-import { EXAMPLE_TEMPLATE_NAME } from "@/lib/example-content";
+import { auth } from "@/lib/auth";
+import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 
-export default async function StoreAccountLayout({ children, params }: { children: React.ReactNode; params: Promise<{ slug: string }> }) {
-  const { slug } = await params;
-  const membership = await requireStoreCustomer(slug);
-  if (!membership) redirect(`/login?store=${encodeURIComponent(slug)}&callbackUrl=/store/${encodeURIComponent(slug)}/account`);
-  const store = await getStoreBranding(slug);
-  if (!store) notFound();
-  const unreadMessageCount = await getUnreadStoreMessageCount(slug);
-  const template = await prisma.store.findUnique({ where: { slug }, select: { template: { select: { name: true } } } });
-  if (template?.template?.name === EXAMPLE_TEMPLATE_NAME) return <ExampleAccountShell slug={slug} store={store} membership={membership}>{children}</ExampleAccountShell>;
-  const nav = { sellsProducts: store.sellsProducts, offersServices: store.offersServices };
-  return <StoreAccountLegacyShell slug={slug} store={store} membership={membership} unreadMessageCount={unreadMessageCount} nav={nav}>{children}</StoreAccountLegacyShell>;
+// Customer accounts are no longer platform-global. This legacy route exists
+// only as a compatibility boundary for old bookmarks; it never renders a
+// cross-store dashboard.
+export default async function LegacyAccountBoundary({ children }: { children: React.ReactNode }) {
+  const session = await auth();
+  if (!session?.user?.id) redirect("/login");
+  const memberships = await prisma.storeCustomer.findMany({ where: { userId: session.user.id }, select: { store: { select: { slug: true } } }, take: 2 });
+  if (memberships.length === 1) redirect(`/store/${memberships[0].store.slug}/account`);
+  // A customer with more than one membership must never see a combined
+  // account. The legacy shell is intentionally inert.
+  return <div className="mx-auto max-w-xl px-6 py-20 text-center"><h1 className="text-xl font-bold">Store account required</h1><p className="mt-2 text-sm text-slate-500">Customer accounts are private to each store. Open your account from the store you signed up with.</p>{children}</div>;
 }

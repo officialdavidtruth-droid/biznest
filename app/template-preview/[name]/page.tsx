@@ -1,68 +1,15 @@
-import type { Metadata } from "next";
-import { notFound } from "next/navigation";
-import { GRANDEUR_TEMPLATE_NAME } from "@/lib/template-themes";
-import { GrandeurHome } from "@/components/storefront/grandeur-restaurant";
-
-export const revalidate = 3600;
-export const metadata: Metadata = {
-  title: "BizNest Template Preview",
-  robots: { index: false, follow: false },
-};
-
-const PREVIEW_SLUG = "__biznest-template-preview";
-
-const ITEMS = [
-  ["breakfast", "Classic Pancakes", 6000, "Breakfast"],
-  ["appetizer", "Spring Rolls", 5000, "Appetizers"],
-  ["main", "Grilled Lagos Pepper Chicken", 12000, "Main Course"],
-  ["seafood", "Grilled Prawns", 15000, "Seafood"],
-  ["grill", "Grilled Ribeye Steak", 18000, "Grills"],
-  ["pasta", "Truffle Pasta", 12000, "Pasta"],
-  ["salad", "Caesar Salad", 8500, "Salads"],
-  ["dessert", "Chocolate Lava Cake", 7500, "Desserts"],
-  ["drink", "Signature Mocktail", 4500, "Drinks"],
-].map(([id, name, price, category], index) => ({
-  id: `${id}-${index}`,
-  kind: "product" as const,
-  name: String(name),
-  description: "Signature dish prepared with premium ingredients.",
-  price: Number(price),
-  currency: "NGN",
-  image: null,
-  categoryName: String(category),
-  type: "PRODUCT",
-  rentalUnit: null,
-  isBookable: false,
-}));
-
-const STORE = {
-  name: "The Grandeur Restaurant",
-  slug: PREVIEW_SLUG,
-  logoUrl: null,
-  bannerUrl: null,
-  contactEmail: "hello@thegrandeurrestaurant.com",
-  contactPhone: "+234 803 123 4567",
-  email: "hello@thegrandeurrestaurant.com",
-  phone: "+234 803 123 4567",
-  address: "123 Luxury Avenue, Abuja, Nigeria",
-  sellsProducts: true,
-  storyImage: null,
-  heroOverrides: null,
-  storyOverrides: null,
-  socialLinks: {},
-  business: { description: "Fine dining. Greater moments.", verificationBadge: true },
-};
-
-export function generateStaticParams() {
-  return [{ name: GRANDEUR_TEMPLATE_NAME }];
-}
-
-export default async function TemplatePreviewPage({
-  params,
-}: {
-  params: Promise<{ name: string }>;
-}) {
-  const { name } = await params;
-  if (name !== GRANDEUR_TEMPLATE_NAME) notFound();
-  return <GrandeurHome store={STORE as any} slug={PREVIEW_SLUG} items={ITEMS} reviews={[]} />;
-}
+import {notFound} from "next/navigation";
+import {GRANDEUR_TEMPLATE_NAME,HOTEL_TEMPLATE_NAME} from "@/lib/template-themes";
+import {GrandeurHome} from "@/components/storefront/grandeur-restaurant";
+import {ThelusoHotel} from "@/components/storefront/theluso-hotel";
+import {DEFAULT_HOTEL_CONTENT} from "@/lib/hotel-content";
+import {EXAMPLE_TEMPLATE_NAME} from "@/lib/example-content";
+import {ExampleStorefront} from "@/components/storefront/example-store";
+const slug="__biznest-template-preview";
+const restaurant={name:"The Grandeur Restaurant",slug,logoUrl:null,bannerUrl:null,storyImage:null,address:"123 Luxury Avenue, Abuja, Nigeria",phone:"+234 803 123 4567",email:"hello@thegrandeurrestaurant.com",business:{description:"Fine dining. Greater moments."}};
+const items=["Classic Pancakes","Spring Rolls","Grilled Lagos Pepper Chicken","Grilled Prawns","Grilled Ribeye Steak","Truffle Pasta"].map((name,i)=>({id:`demo-${i}`,kind:"product" as const,name,description:"Signature dish prepared with premium ingredients.",price:6000+i*2000,currency:"NGN",image:null,categoryName:"Signature",type:"PRODUCT",rentalUnit:null,isBookable:false}));
+const example={name:"Example",slug,logoUrl:null,bannerUrl:null,business:{description:"Modern technology for everyday life."}};
+const exampleItems=["iPhone 16 Pro Max","MacBook Air M3","Sony WH-1000XM5 Headphones","Samsung Galaxy Watch 7","Bose SoundLink Revolve+","Canon EOS R50","AirPods Pro (2nd Gen)","iPad Air (5th Gen)","DJI Mini 3 Drone","PlayStation 5 Console","Nike Air Max 270","Dyson V15 Detect"].map((name,i)=>({id:`example-${i}`,kind:"product" as const,name,description:"Latest technology product.",price:249+i*50,currency:"USD",image:null,categoryName:"Electronics",type:"PHYSICAL",rentalUnit:null,isBookable:false}));
+const hotel={name:"THELUSO Hotel & Suites",slug,logoUrl:null,bannerUrl:DEFAULT_HOTEL_CONTENT.rooms[0].image,storyImage:DEFAULT_HOTEL_CONTENT.rooms[2].image,address:"Plot 123, Diplomatic Drive, Central Business District, Abuja, Nigeria",phone:"+234 803 123 4567",email:"info@theluso.com"};
+export function generateStaticParams(){return [{name:GRANDEUR_TEMPLATE_NAME},{name:HOTEL_TEMPLATE_NAME},{name:EXAMPLE_TEMPLATE_NAME}]}
+export default async function TemplatePreviewPage({params}:{params:Promise<{name:string}>}){const {name}=await params;if(name===GRANDEUR_TEMPLATE_NAME)return <GrandeurHome store={restaurant as any} slug={slug} items={items} reviews={[]}/>;if(name===HOTEL_TEMPLATE_NAME)return <ThelusoHotel store={hotel} slug={slug} content={DEFAULT_HOTEL_CONTENT}/>;if(name===EXAMPLE_TEMPLATE_NAME)return <ExampleStorefront store={example} slug={slug} items={exampleItems} mode="home"/>;notFound();}

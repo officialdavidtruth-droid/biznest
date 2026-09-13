@@ -8,6 +8,8 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Package, CheckCircle2, XCircle, RotateCcw, AlertTriangle, ArrowUpRight, ShoppingBag, ShieldAlert, ArrowLeft, Wallet, Layers } from "lucide-react";
 import { StoreFooter } from "@/components/storefront/store-footer";
+import { TasteHouseOrders } from "@/components/storefront/tastehouse";
+import { TASTEHOUSE_TEMPLATE_NAME } from "@/lib/template-themes";
 
 // Store-scoped order history. A customer account only ever belongs to one
 // store (see StoreCustomer), so this is simply "my orders here" — themed
@@ -195,6 +197,11 @@ export default async function StoreOrdersPage({ params }: { params: Promise<{ sl
   const record = await prisma.store.findUnique({ where: { slug }, select: { template: { select: { name: true } } } });
   const copy = getAccountCopy(record?.template?.name, store.businessCategory);
 
+  const templateRecord = await prisma.store.findUnique({ where: { slug }, select: { template: { select: { name: true } }, business: { select: { sellsProducts: true } }, reviews: { select: { id: true } } } });
+  if (templateRecord?.template?.name === TASTEHOUSE_TEMPLATE_NAME) {
+    const themedOrders = await listOrdersForBuyerAtStore(slug);
+    return <TasteHouseOrders store={{...store,sellsProducts:templateRecord.business?.sellsProducts??true}} slug={slug} orders={themedOrders}/>;
+  }
   return (
     <div className="min-h-screen bg-slate-50">
       {/* ---------- STICKY HEADER ---------- */}
