@@ -49,10 +49,33 @@ const defaults: HotelContent = {
 
 export async function getHotelContent(slug:string):Promise<HotelContent>{
  const store=await prisma.store.findUnique({where:{slug},select:{id:true}}); if(!store)return defaults;
- const [pages,services]=await Promise.all([prisma.storePage.findMany({where:{storeId:store.id,slug:{in:["hotel-home","hotel-rooms","hotel-offers","hotel-gallery","hotel-events","hotel-amenities","hotel-contact"]}}}),prisma.service.findMany({where:{storeId:store.id,isPublished:true},select:{id:true,name:true,images:true,price:true,attributes:true}})]);
+ const [pages,services]=await Promise.all([prisma.storePage.findMany({where:{storeId:store.id,slug:{in:["hotel-home","hotel-rooms","hotel-offers","hotel-gallery","hotel-events","hotel-amenities","hotel-contact"]}}}),prisma.service.findMany({where:{storeId:store.id,isPublished:true},orderBy:{createdAt:"asc"},select:{id:true,slug:true,name:true,description:true,images:true,price:true,attributes:true}})]);
  const map=new Map(pages.map(p=>[p.slug,p.content as any]));
+ // Real rooms a vendor creates via Admin -> Services are the source of truth.
+ // The "hotel-rooms" StorePage JSON blob and the THELUSO sample `defaults.rooms`
+ // are both fallbacks for a store that hasn't listed any real rooms yet -- once
+ // real Service rows exist, they take over so the storefront actually reflects
+ // what the vendor entered instead of forever showing sample content.
+ const realRooms:HotelRoom[]=services.map(s=>{
+  const a=(s.attributes as any)||{};
+  return {
+   id:s.id,
+   slug:s.slug,
+   name:s.name,
+   description:s.description,
+   price:Number(s.price),
+   image:s.images[0]||"",
+   badge:a.featured?"Featured":undefined,
+   bed:a.bedType||"—",
+   guests:Number(a.maxGuests)||2,
+   area:a.roomSize?`${a.roomSize} m²`:"—",
+   view:a.view||"—",
+   amenities:[a.wifi&&`Wi-Fi: ${a.wifi}`,a.breakfast&&`Breakfast: ${a.breakfast}`,a.floor&&`Floor: ${a.floor}`].filter(Boolean) as string[],
+   featured:Boolean(a.featured),
+  };
+ });
  return {
-  rooms: map.get("hotel-rooms")?.rooms ?? defaults.rooms,
+  rooms: realRooms.length ? realRooms : (map.get("hotel-rooms")?.rooms ?? defaults.rooms),
   offers: map.get("hotel-offers")?.offers ?? defaults.offers,
   gallery: map.get("hotel-gallery")?.items ?? defaults.gallery,
   events: map.get("hotel-events")?.events ?? defaults.events,
