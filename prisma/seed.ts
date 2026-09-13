@@ -1,5 +1,5 @@
 import { PrismaClient, type Prisma } from "@prisma/client";
-import { TEMPLATE_NAME, GRANDEUR_THEME } from "../lib/template-themes";
+import { TEMPLATE_NAME, GRANDEUR_THEME, HOTEL_TEMPLATE_NAME, HOTEL_THEME, TASTEHOUSE_TEMPLATE_NAME, TASTEHOUSE_THEME } from "../lib/template-themes";
 import { fetchDemoPhoto } from "../lib/demo-images";
 
 const prisma = new PrismaClient();
@@ -145,38 +145,22 @@ async function main() {
     });
   }
 
-  // Template reset: the legacy collection is retired. Only the new
-  // Grandeur Restaurant template is seeded from this point forward.
-  const grandeur = await prisma.storeTemplate.upsert({
-    where: { name: TEMPLATE_NAME },
-    update: {
-      category: "Restaurant",
-      isActive: true,
-      tierRank: 3,
-      previewUrl: await fetchDemoPhoto(TEMPLATE_NAME),
-      config: GRANDEUR_THEME as unknown as Prisma.InputJsonValue,
-    },
-    create: {
-      name: TEMPLATE_NAME,
-      category: "Restaurant",
-      isActive: true,
-      tierRank: 3,
-      previewUrl: await fetchDemoPhoto(TEMPLATE_NAME),
-      config: GRANDEUR_THEME as unknown as Prisma.InputJsonValue,
-    },
-  });
-
-  // Hard reset the template registry. Store.templateId is nullable, so old
-  // assignments are cleared before the retired rows are removed. No legacy
-  // template can leak back into the gallery or renderer after this seed.
-  await prisma.store.updateMany({
-    where: { templateId: { not: grandeur.id } },
-    data: { templateId: null },
-  });
-  await prisma.storeTemplate.deleteMany({
-    where: { id: { not: grandeur.id } },
-  });
-
+  // Current storefront catalog: Grandeur Restaurant + THELUSO Hotel.
+  const templateDefs = [
+    { name: TEMPLATE_NAME, category: "Restaurant", theme: GRANDEUR_THEME },
+    { name: HOTEL_TEMPLATE_NAME, category: "Hotel", theme: HOTEL_THEME },
+    { name: TASTEHOUSE_TEMPLATE_NAME, category: "Restaurant", theme: TASTEHOUSE_THEME },
+  ];
+  const templates:any[] = [];
+  for (const t of templateDefs) {
+    templates.push(await prisma.storeTemplate.upsert({
+      where: { name: t.name }, update: { category: t.category, isActive: true, tierRank: t.theme.tierRank, config: t.theme as unknown as Prisma.InputJsonValue },
+      create: { name: t.name, category: t.category, isActive: true, tierRank: t.theme.tierRank, config: t.theme as unknown as Prisma.InputJsonValue },
+    }));
+  }
+  const keepIds = templates.map(t=>t.id);
+  await prisma.store.updateMany({ where: { templateId: { notIn: keepIds } }, data: { templateId: null } });
+  await prisma.storeTemplate.deleteMany({ where: { id: { notIn: keepIds } } });
   for (const sub of SUBSCRIPTIONS) {
     await prisma.subscription.upsert({
       where: { name: sub.name },
