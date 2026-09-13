@@ -5,6 +5,7 @@ import { prisma } from "@/lib/prisma";
 import { revalidatePath } from "next/cache";
 import type { ActionResult } from "@/types/actions";
 import { requireStoreCustomer, requireStoreCustomerByStoreId } from "@/lib/actions/store-customer";
+import type { Prisma } from "@prisma/client";
 
 // ============ ADDRESSES ============
 
@@ -451,10 +452,11 @@ export async function updateStoreCustomerPreferences(storeSlug: string, preferen
   if (!ctx) return { success: false, error: "You don't have a customer account with this store." };
   const user = await prisma.user.findUnique({ where: { id: ctx.userId }, select: { name: true, email: true, phone: true } });
   const existing = await prisma.storeCustomerProfile.findFirst({ where: { storeId: ctx.storeId, userId: ctx.userId }, select: { id: true } });
+  const jsonPreferences = preferences as Prisma.InputJsonValue;
   if (existing) {
-    await prisma.storeCustomerProfile.update({ where: { id: existing.id }, data: { preferences } });
+    await prisma.storeCustomerProfile.update({ where: { id: existing.id }, data: { preferences: jsonPreferences } });
   } else {
-    await prisma.storeCustomerProfile.create({ data: { storeId: ctx.storeId, userId: ctx.userId, name: user?.name || user?.email || "Customer", email: user?.email, phone: user?.phone, preferences } });
+    await prisma.storeCustomerProfile.create({ data: { storeId: ctx.storeId, userId: ctx.userId, name: user?.name || user?.email || "Customer", email: user?.email, phone: user?.phone, preferences: jsonPreferences } });
   }
   revalidatePath(`/store/${storeSlug}/account/preferences`);
   revalidatePath(`/store/${storeSlug}/account`);
