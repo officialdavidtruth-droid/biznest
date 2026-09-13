@@ -4,6 +4,8 @@ import { getStoreBranding } from "@/lib/actions/store-branding";
 import { getAccountCopy } from "@/lib/account-copy";
 import { prisma } from "@/lib/prisma";
 import { notFound } from "next/navigation";
+import { ExampleProfileContent } from "@/components/storefront/example-profile-content";
+import { EXAMPLE_TEMPLATE_NAME } from "@/lib/example-content";
 import Link from "next/link";
 import { Pencil, Package, Gift, Calendar } from "lucide-react";
 
@@ -19,6 +21,7 @@ export default async function StoreAccountOverviewPage({ params }: { params: Pro
   }
 
   const record = await prisma.store.findUnique({ where: { slug }, select: { template: { select: { name: true } } } });
+  if (record?.template?.name === EXAMPLE_TEMPLATE_NAME) return <ExampleProfileContent slug={slug} session={session} overview={overview} />;
   const copy = getAccountCopy(record?.template?.name, store.businessCategory);
   const addr = overview.defaultAddress;
 
