@@ -1,5 +1,8 @@
 import { notFound } from "next/navigation";
-import { getGrandeurAdminContent } from "@/lib/actions/grandeur-content";
-import { GrandeurContentManager } from "@/components/dashboard/grandeur-content-manager";
 import { prisma } from "@/lib/prisma";
-export default async function GrandeurEventsAdmin({params}:{params:Promise<{slug:string}>}){const {slug}=await params;const store=await prisma.store.findUnique({where:{slug},select:{businessType:true}});if(!store||store.businessType!=="Restaurant")notFound();const initial=await getGrandeurAdminContent(slug);return <GrandeurContentManager slug={slug} initial={initial}/>;}
+import { ThelusoHotel } from "@/components/storefront/theluso-hotel";
+import { getHotelContent } from "@/lib/hotel-content";
+import { GrandeurEvents } from "@/components/storefront/grandeur-restaurant";
+import { getGrandeurRestaurantData } from "@/lib/grandeur-restaurant";
+import { getGrandeurEvents } from "@/lib/grandeur-content";
+export default async function EventsPage({params}:{params:Promise<{slug:string}>}){const {slug}=await params;const s=await prisma.store.findUnique({where:{slug},select:{businessType:true,template:{select:{name:true}}}});if(String(s?.businessType||'').toLowerCase().includes('hotel')||String(s?.template?.name||'').includes('THELUSO')){const raw=await prisma.store.findUniqueOrThrow({where:{slug},select:{id:true,name:true,logoUrl:true,bannerUrl:true,storyImage:true,contactPhone:true,contactEmail:true,business:{select:{city:true,state:true,phone:true,email:true}}}});const hotelStore={...raw,address:[raw.business?.city,raw.business?.state].filter(Boolean).join(", ")||null,phone:raw.contactPhone??raw.business?.phone??null,email:raw.contactEmail??raw.business?.email??null};return <ThelusoHotel store={hotelStore} slug={slug} content={await getHotelContent(slug)}/>;}const [data,events]=await Promise.all([getGrandeurRestaurantData(slug),getGrandeurEvents(slug)]);if(!data)notFound();return <GrandeurEvents store={data.store} slug={slug} items={data.items} content={events}/>;}
