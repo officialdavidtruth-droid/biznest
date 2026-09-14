@@ -3,7 +3,6 @@ import { notFound } from "next/navigation";
 import { TemplatesPageClient } from "@/components/dashboard/templates-page-client";
 import { GRANDEUR_TEMPLATE_NAME, GRANDEUR_THEME, HOTEL_TEMPLATE_NAME, HOTEL_THEME, TASTEHOUSE_TEMPLATE_NAME, TASTEHOUSE_THEME, EXAMPLE_TEMPLATE_NAME, EXAMPLE_THEME } from "@/lib/template-themes";
 import { TEMPLATE_DEFINITIONS } from "@/lib/template-definitions";
-import { TEMPLATE_VARIANTS } from "@/lib/template-variants";
 
 export default async function TemplatesPage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
@@ -21,11 +20,10 @@ export default async function TemplatesPage({ params }: { params: Promise<{ slug
   const templates = TEMPLATE_DEFINITIONS.map((definition) => {
     const existing = byName.get(definition.name);
     if (existing) return existing;
-    const tierRank = TEMPLATE_VARIANTS.find((v) => v.name === definition.name)?.tierRank
-      ?? (definition.name === EXAMPLE_TEMPLATE_NAME ? EXAMPLE_THEME.tierRank
+    const tierRank = definition.name === EXAMPLE_TEMPLATE_NAME ? EXAMPLE_THEME.tierRank
       : definition.name === TASTEHOUSE_TEMPLATE_NAME ? TASTEHOUSE_THEME.tierRank
       : definition.name === HOTEL_TEMPLATE_NAME ? HOTEL_THEME.tierRank
-      : GRANDEUR_THEME.tierRank);
+      : GRANDEUR_THEME.tierRank;
     return {
       id: `__variant__:${definition.name}`,
       name: definition.name,
