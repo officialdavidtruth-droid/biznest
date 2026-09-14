@@ -2,6 +2,7 @@ import { prisma } from "@/lib/prisma";
 import { notFound } from "next/navigation";
 import { TemplatesPageClient } from "@/components/dashboard/templates-page-client";
 import { TEMPLATE_DEFINITIONS } from "@/lib/template-definitions";
+import { GRANDEUR_TEMPLATE_NAME, HOTEL_TEMPLATE_NAME, TASTEHOUSE_TEMPLATE_NAME, EXAMPLE_TEMPLATE_NAME } from "@/lib/template-themes";
 
 export default async function TemplatesPage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
@@ -21,7 +22,7 @@ export default async function TemplatesPage({ params }: { params: Promise<{ slug
     const existing = byName.get(definition.name);
     if (existing) return existing;
     return {
-      id: `__variant__:${definition.name}`,
+      id: definition.name === GRANDEUR_TEMPLATE_NAME ? `__grandeur__:${definition.name}` : definition.name === HOTEL_TEMPLATE_NAME ? `__theluso__:${definition.name}` : definition.name === TASTEHOUSE_TEMPLATE_NAME ? `__tastehouse__:${definition.name}` : `__example__:${definition.name}`,
       name: definition.name,
       category: definition.category,
       tierRank: (definition.theme as any).tierRank ?? 1,
