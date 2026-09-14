@@ -33,10 +33,3 @@ export async function setStoreTemplate(slug:string,templateId:string):Promise<Ac
  if(template.name===GRANDEUR_TEMPLATE_NAME)await seedSampleListings(slug);
  revalidatePath(`/store/${slug}`);revalidatePath(`/store/${slug}/admin/templates`);revalidatePath(`/store/${slug}/admin/customize`);return {success:true,data:undefined};
 }
-export const TEMPLATE_DEFINITIONS=[
- {name:GRANDEUR_TEMPLATE_NAME,category:"Restaurant",theme:GRANDEUR_THEME},
- {name:HOTEL_TEMPLATE_NAME,category:"Hotel",theme:HOTEL_THEME},
- {name:TASTEHOUSE_TEMPLATE_NAME,category:"Restaurant",theme:TASTEHOUSE_THEME},
- {name:EXAMPLE_TEMPLATE_NAME,category:"Electronics & Retail",theme:EXAMPLE_THEME},
- ...TEMPLATE_VARIANTS.filter(v=>![GRANDEUR_TEMPLATE_NAME,HOTEL_TEMPLATE_NAME,TASTEHOUSE_TEMPLATE_NAME,EXAMPLE_TEMPLATE_NAME].includes(v.name)).map(v=>({name:v.name,category:v.category,theme: v.family==="hotel"?HOTEL_THEME:v.family==="retail"?EXAMPLE_THEME:v.family==="food"?TASTEHOUSE_THEME:GRANDEUR_THEME})),
-];
