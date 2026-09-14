@@ -2,7 +2,6 @@
 
 import { useMemo, useState } from "react";
 import { Check, Lock, Search, Eye, X, ShoppingBag, CalendarDays } from "lucide-react";
-import { GRANDEUR_THEME, HOTEL_THEME, TASTEHOUSE_THEME, EXAMPLE_THEME } from "@/lib/template-themes";
 import type { TemplateTheme } from "@/lib/template-themes";
 import { getBusinessExperience } from "@/lib/business-experience";
 import { isTemplateCompatible } from "@/lib/template-compatibility";
@@ -24,15 +23,10 @@ const TIER_LABEL: Record<number, string> = {
   4: "Business Mogul",
 };
 
-function themeFromConfig(config: unknown, name: string): TemplateTheme | null {
+function themeFromConfig(config: unknown): TemplateTheme | null {
   const c = config as Partial<TemplateTheme> | null;
-  if (c && typeof c === "object" && c.bg) return c as TemplateTheme;
-  const n = name.toLowerCase();
-  if (n.startsWith("veloura")) return HOTEL_THEME;
-  if (n.startsWith("grandeur")) return GRANDEUR_THEME;
-  if (n.startsWith("tastehouse")) return TASTEHOUSE_THEME;
-  if (n.startsWith("example")) return EXAMPLE_THEME;
-  return null;
+  if (!c || typeof c !== "object" || !c.bg) return null;
+  return c as TemplateTheme;
 }
 
 
@@ -71,10 +65,8 @@ export function TemplateGallery({
     const matchesCategory = !activeCategory || t.category === activeCategory;
     const serviceLike = /hotel|restaurant|salon|beauty|agency|clean|construction|studio|service|rental|real estate|photography/i.test(haystack);
     const matchesMode = mode === "all" || (mode === "service" ? serviceLike : !serviceLike);
-    // Category/search/mode filters control what is displayed. Business compatibility
-    // must not hide templates from the catalog; incompatible templates are shown
-    // as unavailable instead so users can still browse the complete catalog.
-    return matchesQuery && matchesCategory && matchesMode;
+    const onboardingCompatible = isTemplateCompatible(t, businessCategory, { sellsProducts, offersServices });
+    return matchesQuery && matchesCategory && matchesMode && onboardingCompatible;
   });
 
   const scored = [...filtered].sort((a, b) => {
@@ -158,14 +150,10 @@ export function TemplateGallery({
 
       <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
         {scored.map((t) => {
-          const theme = themeFromConfig(t.config, t.name);
+          const theme = themeFromConfig(t.config);
           if (!theme) return null;
           const isSelected = selectedId === t.id;
-          const businessCompatible = isTemplateCompatible(t, businessCategory, { sellsProducts, offersServices });
-          const isLocked = t.tierRank > planRank || !businessCompatible;
-          const lockReason = t.tierRank > planRank
-            ? `Requires ${TIER_LABEL[t.tierRank] ?? "a higher plan"}`
-            : "Not currently matched to this business type";
+          const isLocked = t.tierRank > planRank;
 
           return (
             <div
@@ -191,7 +179,7 @@ export function TemplateGallery({
                   type="button"
                   onClick={() => !isLocked && onSelect(t.id)}
                   disabled={isLocked}
-                  aria-label={isLocked ? `Unavailable template: ${t.name}` : `Use ${t.name} template`}
+                  aria-label={isLocked ? `Locked template: ${t.name}` : `Use ${t.name} template`}
                   className={`absolute inset-0 z-10 ${isLocked ? "cursor-not-allowed" : "cursor-pointer"}`}
                 />
 
@@ -218,7 +206,7 @@ export function TemplateGallery({
                 <div className="min-w-0">
                   <p className="truncate text-sm font-medium">{t.category}</p>
                   <p className="truncate text-xs text-muted-foreground">
-                    {isLocked ? lockReason : isSelected ? "In use" : theme.heroStyle}
+                    {isLocked ? `Requires ${TIER_LABEL[t.tierRank] ?? "a higher plan"}` : isSelected ? "In use" : theme.heroStyle}
                   </p>
                 </div>
 
