@@ -23,7 +23,6 @@ import { HOTEL_TEMPLATE_NAME } from "./hotel-content";
 import { THELUSO_THEME } from "./hotel-theme";
 import { TASTEHOUSE_TEMPLATE_NAME } from "./tastehouse-content";
 import { EXAMPLE_TEMPLATE_NAME } from "./example-content";
-import { TEMPLATE_VARIANTS } from "./template-variants";
 export const HOTEL_THEME = THELUSO_THEME as unknown as GeneratedTemplate;
 export const EXAMPLE_THEME: GeneratedTemplate = { variationName: EXAMPLE_TEMPLATE_NAME, tierRank:2, bg:"#ffffff", ink:"#11131a", card:"#ffffff", accent:"#4b19ff", accentSoft:"#eeeaff", muted:"#697084", border:"#e8e7ef", font:"Inter, sans-serif", headlineFont:"Inter, sans-serif", radius:"12px", eyebrow:"NEW LAUNCH", headline:"Future Technology Today.", sub:"Explore the latest smart devices and innovations.", cta:"Shop Now", layout:"grid", heroStyle:"fullbleed", catalogLabel:"Featured Products", density:"relaxed", surfaceDark:"#05050a", sections:["hero","categories","deal","catalog","features","newsletter"] };
 export const TASTEHOUSE_THEME: GeneratedTemplate = {
@@ -43,7 +42,6 @@ export const HOTEL_TEMPLATE_CATALOG = [HOTEL_THEME] as const;
 export const TASTEHOUSE_TEMPLATE_CATALOG = [TASTEHOUSE_THEME] as const;
 export const EXAMPLE_TEMPLATE_CATALOG = [EXAMPLE_THEME] as const;
 export const ALL_TEMPLATE_CATALOG = [GRANDEUR_THEME, HOTEL_THEME, TASTEHOUSE_THEME, EXAMPLE_THEME] as const;
-export const ALL_TEMPLATE_VARIANTS = TEMPLATE_VARIANTS;
 export const PROFESSIONAL_SERVICE_TEMPLATE_CATALOG: readonly GeneratedTemplate[] = [];
 export const PROFESSIONAL_SERVICE_TEMPLATE_NAMES = new Set<string>();
 export function isSignatureTemplate(name:string|null|undefined){return name===TEMPLATE_NAME;}
@@ -52,6 +50,7 @@ export function isProfessionalServicesTemplate(_name:string|null|undefined){retu
 export function getProfessionalServicesTheme(_name:string|null|undefined){return GRANDEUR_THEME;}
 export function getTemplateTheme(category:string|undefined,storeName:string){const c=String(category||"").toLowerCase(); if(c.includes("hotel")||storeName.toLowerCase().includes("hotel"))return HOTEL_THEME; if(c.includes("restaurant")||c.includes("food"))return GRANDEUR_THEME; return GRANDEUR_THEME;}
 export function resolveStoreTheme(templateCategory:string|undefined,storeName:string,overrides:{primary?:string;secondary?:string;accent?:string}|null|undefined,fontFamily:string|null|undefined,templateName?:string|null):TemplateTheme{
-  const variant = TEMPLATE_VARIANTS.find(v=>v.name===templateName); const base = variant?.family==="hotel" || templateName===HOTEL_TEMPLATE_NAME || String(templateCategory||"").toLowerCase().includes("hotel") ? HOTEL_THEME : variant?.family==="food" || variant?.family==="restaurant" || templateName===TASTEHOUSE_TEMPLATE_NAME || templateName===GRANDEUR_TEMPLATE_NAME ? (templateName===TASTEHOUSE_TEMPLATE_NAME ? TASTEHOUSE_THEME : GRANDEUR_THEME) : variant?.family==="retail" || templateName===EXAMPLE_TEMPLATE_NAME ? EXAMPLE_THEME : GRANDEUR_THEME;
+  const category = String(templateCategory || "").toLowerCase();
+  const base = templateName===HOTEL_TEMPLATE_NAME || category.includes("hotel") ? HOTEL_THEME : templateName===TASTEHOUSE_TEMPLATE_NAME ? TASTEHOUSE_THEME : templateName===EXAMPLE_TEMPLATE_NAME ? EXAMPLE_THEME : GRANDEUR_THEME;
   return {...base,bg:overrides?.secondary||base.bg,accent:overrides?.primary||overrides?.accent||base.accent,font:fontFamily||base.font};
 }
