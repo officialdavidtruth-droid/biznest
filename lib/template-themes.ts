@@ -50,7 +50,6 @@ export function isProfessionalServicesTemplate(_name:string|null|undefined){retu
 export function getProfessionalServicesTheme(_name:string|null|undefined){return GRANDEUR_THEME;}
 export function getTemplateTheme(category:string|undefined,storeName:string){const c=String(category||"").toLowerCase(); if(c.includes("hotel")||storeName.toLowerCase().includes("hotel"))return HOTEL_THEME; if(c.includes("restaurant")||c.includes("food"))return GRANDEUR_THEME; return GRANDEUR_THEME;}
 export function resolveStoreTheme(templateCategory:string|undefined,storeName:string,overrides:{primary?:string;secondary?:string;accent?:string}|null|undefined,fontFamily:string|null|undefined,templateName?:string|null):TemplateTheme{
-  const category = String(templateCategory || "").toLowerCase();
-  const base = templateName===HOTEL_TEMPLATE_NAME || category.includes("hotel") ? HOTEL_THEME : templateName===TASTEHOUSE_TEMPLATE_NAME ? TASTEHOUSE_THEME : templateName===EXAMPLE_TEMPLATE_NAME ? EXAMPLE_THEME : GRANDEUR_THEME;
+  const category = String(templateCategory || "").toLowerCase(); const base = templateName===HOTEL_TEMPLATE_NAME || category.includes("hotel") ? HOTEL_THEME : templateName===TASTEHOUSE_TEMPLATE_NAME ? TASTEHOUSE_THEME : templateName===EXAMPLE_TEMPLATE_NAME ? EXAMPLE_THEME : GRANDEUR_THEME;
   return {...base,bg:overrides?.secondary||base.bg,accent:overrides?.primary||overrides?.accent||base.accent,font:fontFamily||base.font};
 }

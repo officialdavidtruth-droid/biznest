@@ -20,7 +20,7 @@ export async function setStoreTemplate(slug:string,templateId:string):Promise<Ac
  const allowed=template.name===GRANDEUR_TEMPLATE_NAME||template.name===HOTEL_TEMPLATE_NAME||template.name===TASTEHOUSE_TEMPLATE_NAME||template.name===EXAMPLE_TEMPLATE_NAME;
  if(!allowed)return {success:false,error:"That template has been retired."};
  const category=String(store.businessType||store.business.category||"").toLowerCase();
- const compatible=template.name===HOTEL_TEMPLATE_NAME ? (category.includes("hotel")||category.includes("lodging")) : template.name===EXAMPLE_TEMPLATE_NAME ? (category.includes("retail")||category.includes("electronics")||category.includes("commerce")||category.includes("shop")) : (category.includes("restaurant")||category.includes("food"));
+ const compatible=template.name===HOTEL_TEMPLATE_NAME ? category.includes("hotel") : template.name===EXAMPLE_TEMPLATE_NAME ? (category.includes("retail")||category.includes("electronics")||category.includes("commerce")||category.includes("shop")) : template.name===TASTEHOUSE_TEMPLATE_NAME ? (category.includes("restaurant")||category.includes("food")) : category.includes("restaurant");
  if(!compatible)return {success:false,error:`${template.name} is not compatible with this business.`};
  const features=store.subscription?.features as {templateTier?:number}|null; const planRank=features?.templateTier??1;
  if(template.tierRank>planRank)return {success:false,error:"This template requires a higher plan."};
