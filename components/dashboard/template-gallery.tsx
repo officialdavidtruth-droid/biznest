@@ -5,6 +5,7 @@ import { Check, Lock, Search, Eye, X, ShoppingBag, CalendarDays } from "lucide-r
 import type { TemplateTheme } from "@/lib/template-themes";
 import { getBusinessExperience } from "@/lib/business-experience";
 import { isTemplateCompatible } from "@/lib/template-compatibility";
+import { TEMPLATE_DEFINITIONS } from "@/lib/template-definitions";
 
 
 export type TemplateOption = {
@@ -23,10 +24,14 @@ const TIER_LABEL: Record<number, string> = {
   4: "Business Mogul",
 };
 
-function themeFromConfig(config: unknown): TemplateTheme | null {
+function themeFromConfig(config: unknown, templateName?: string): TemplateTheme | null {
   const c = config as Partial<TemplateTheme> | null;
-  if (!c || typeof c !== "object" || !c.bg) return null;
-  return c as TemplateTheme;
+  if (c && typeof c === "object" && c.bg) return c as TemplateTheme;
+  if (templateName) {
+    const definition = TEMPLATE_DEFINITIONS.find((t) => t.name === templateName);
+    if (definition?.theme) return definition.theme as TemplateTheme;
+  }
+  return null;
 }
 
 
@@ -150,7 +155,7 @@ export function TemplateGallery({
 
       <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
         {scored.map((t) => {
-          const theme = themeFromConfig(t.config);
+          const theme = themeFromConfig(t.config, t.name);
           if (!theme) return null;
           const isSelected = selectedId === t.id;
           const isLocked = t.tierRank > planRank;
