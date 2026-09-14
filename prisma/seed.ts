@@ -1,5 +1,6 @@
 import { PrismaClient, type Prisma } from "@prisma/client";
-import { TEMPLATE_NAME, GRANDEUR_THEME, HOTEL_TEMPLATE_NAME, HOTEL_THEME, TASTEHOUSE_TEMPLATE_NAME, TASTEHOUSE_THEME } from "../lib/template-themes";
+import { TEMPLATE_NAME, GRANDEUR_THEME, HOTEL_TEMPLATE_NAME, HOTEL_THEME, TASTEHOUSE_TEMPLATE_NAME, TASTEHOUSE_THEME, EXAMPLE_TEMPLATE_NAME, EXAMPLE_THEME } from "../lib/template-themes";
+import { TEMPLATE_VARIANTS } from "../lib/template-variants";
 import { fetchDemoPhoto } from "../lib/demo-images";
 
 const prisma = new PrismaClient();
@@ -145,22 +146,34 @@ async function main() {
     });
   }
 
-  // Current storefront catalog: Grandeur Restaurant + THELUSO Hotel.
-  const templateDefs = [
+  // Current storefront catalog: 20 production template variants (4 families × 5).
+  // Keep every catalog entry on seed so rerunning the seed never deletes unlocked
+  // or previously selected variants.
+  const baseTemplateDefs = [
     { name: TEMPLATE_NAME, category: "Restaurant", theme: GRANDEUR_THEME },
     { name: HOTEL_TEMPLATE_NAME, category: "Hotel", theme: HOTEL_THEME },
     { name: TASTEHOUSE_TEMPLATE_NAME, category: "Restaurant", theme: TASTEHOUSE_THEME },
+    { name: EXAMPLE_TEMPLATE_NAME, category: "Electronics & Retail", theme: EXAMPLE_THEME },
+  ];
+  const templateDefs = [
+    ...baseTemplateDefs,
+    ...TEMPLATE_VARIANTS.filter((v) => !baseTemplateDefs.some((b) => b.name === v.name)).map((v) => ({
+      name: v.name,
+      category: v.category,
+      tierRank: v.tierRank,
+      theme: v.family === "hotel" ? HOTEL_THEME : v.family === "retail" ? EXAMPLE_THEME : v.family === "food" ? TASTEHOUSE_THEME : GRANDEUR_THEME,
+      variantConfig: v,
+    })),
   ];
   const templates:any[] = [];
   for (const t of templateDefs) {
+    const config = ("variantConfig" in t) ? { ...(t.theme as object), variationName: t.name, templateVariant: t.variantConfig } : t.theme;
     templates.push(await prisma.storeTemplate.upsert({
-      where: { name: t.name }, update: { category: t.category, isActive: true, tierRank: t.theme.tierRank, config: t.theme as unknown as Prisma.InputJsonValue },
-      create: { name: t.name, category: t.category, isActive: true, tierRank: t.theme.tierRank, config: t.theme as unknown as Prisma.InputJsonValue },
+      where: { name: t.name },
+      update: { category: t.category, isActive: true, tierRank: (t as any).tierRank ?? t.theme.tierRank, config: config as Prisma.InputJsonValue },
+      create: { name: t.name, category: t.category, isActive: true, tierRank: (t as any).tierRank ?? t.theme.tierRank, config: config as Prisma.InputJsonValue },
     }));
   }
-  const keepIds = templates.map(t=>t.id);
-  await prisma.store.updateMany({ where: { templateId: { notIn: keepIds } }, data: { templateId: null } });
-  await prisma.storeTemplate.deleteMany({ where: { id: { notIn: keepIds } } });
   for (const sub of SUBSCRIPTIONS) {
     await prisma.subscription.upsert({
       where: { name: sub.name },
