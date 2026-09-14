@@ -2,10 +2,10 @@
 
 import { useMemo, useState } from "react";
 import { Check, Lock, Search, Eye, X, ShoppingBag, CalendarDays } from "lucide-react";
+import { GRANDEUR_THEME, HOTEL_THEME, TASTEHOUSE_THEME, EXAMPLE_THEME } from "@/lib/template-themes";
 import type { TemplateTheme } from "@/lib/template-themes";
 import { getBusinessExperience } from "@/lib/business-experience";
 import { isTemplateCompatible } from "@/lib/template-compatibility";
-import { TEMPLATE_DEFINITIONS } from "@/lib/template-definitions";
 
 
 export type TemplateOption = {
@@ -24,13 +24,14 @@ const TIER_LABEL: Record<number, string> = {
   4: "Business Mogul",
 };
 
-function themeFromConfig(config: unknown, templateName?: string): TemplateTheme | null {
+function themeFromConfig(config: unknown, name: string): TemplateTheme | null {
   const c = config as Partial<TemplateTheme> | null;
   if (c && typeof c === "object" && c.bg) return c as TemplateTheme;
-  if (templateName) {
-    const definition = TEMPLATE_DEFINITIONS.find((t) => t.name === templateName);
-    if (definition?.theme) return definition.theme as TemplateTheme;
-  }
+  const n = name.toLowerCase();
+  if (n.startsWith("veloura")) return HOTEL_THEME;
+  if (n.startsWith("grandeur")) return GRANDEUR_THEME;
+  if (n.startsWith("tastehouse")) return TASTEHOUSE_THEME;
+  if (n.startsWith("example")) return EXAMPLE_THEME;
   return null;
 }
 

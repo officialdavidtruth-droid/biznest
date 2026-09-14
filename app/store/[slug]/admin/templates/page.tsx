@@ -11,31 +11,20 @@ export default async function TemplatesPage({ params }: { params: Promise<{ slug
   });
   if (!store) notFound();
 
+  const templateNames = TEMPLATE_DEFINITIONS.map((definition) => definition.name);
   const dbTemplates = await prisma.storeTemplate.findMany({
-    where: { isActive: true, name: { in: TEMPLATE_DEFINITIONS.map((t) => t.name) } },
+    where: { name: { in: templateNames } },
     select: { id: true, name: true, category: true, tierRank: true, previewUrl: true, config: true },
-    orderBy: [{ tierRank: "asc" }, { name: "asc" }],
   });
-
-  // The database is allowed to lag behind the template registry (for example
-  // before a migration/seed has been run). Build the complete 20-template
-  // catalog from the registry and overlay real DB records when they exist.
   const byName = new Map(dbTemplates.map((t) => [t.name, t]));
   const templates = TEMPLATE_DEFINITIONS.map((definition) => {
-    const db = byName.get(definition.name);
-    return db ?? {
-      id: definition.name === "Grandeur — Fine Dining Restaurant"
-        ? `__grandeur__:${definition.name}`
-        : definition.name === "Veloura — Superior Luxury Hotel"
-        ? `__theluso__:${definition.name}`
-        : definition.name === "TasteHouse — Food Delivery"
-        ? `__tastehouse__:${definition.name}`
-        : definition.name === "Example — Modern Electronics Store"
-        ? `__example__:${definition.name}`
-        : `__variant__:${definition.name}`,
+    const existing = byName.get(definition.name);
+    if (existing) return existing;
+    return {
+      id: `__variant__:${definition.name}`,
       name: definition.name,
       category: definition.category,
-      tierRank: definition.theme.tierRank,
+      tierRank: (definition.theme as any).tierRank ?? 1,
       previewUrl: null,
       config: definition.theme,
     };
