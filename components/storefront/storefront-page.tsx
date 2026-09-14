@@ -61,7 +61,7 @@ export default async function StorefrontPage({ params }: { params: Promise<{ slu
   if (store.template?.name === EXAMPLE_TEMPLATE_NAME || templateVariant?.family === "retail") {
     return <TemplateVariantFrame name={store.template?.name}><ExampleStorefront store={store} slug={slug} items={catalogItems} mode="home" content={await getExampleContent(slug) as any} /></TemplateVariantFrame>;
   }
-  if (String(store.business?.category || "").toLowerCase() === "restaurant" && templateVariant?.family !== "food") {
+  if (String(store.business?.category || "").toLowerCase() === "restaurant") {
     return <TemplateVariantFrame name={store.template?.name}><GrandeurHome store={store} slug={slug} items={catalogItems} reviews={store.reviews} /></TemplateVariantFrame>;
   }
   if (String(store.business?.category || "").toLowerCase().includes("hotel") || String(store.template?.name || "").includes("THELUSO") || templateVariant?.family === "hotel") {
