@@ -71,8 +71,10 @@ export function TemplateGallery({
     const matchesCategory = !activeCategory || t.category === activeCategory;
     const serviceLike = /hotel|restaurant|salon|beauty|agency|clean|construction|studio|service|rental|real estate|photography/i.test(haystack);
     const matchesMode = mode === "all" || (mode === "service" ? serviceLike : !serviceLike);
-    const onboardingCompatible = isTemplateCompatible(t, businessCategory, { sellsProducts, offersServices });
-    return matchesQuery && matchesCategory && matchesMode && onboardingCompatible;
+    // Category/search/mode filters control what is displayed. Business compatibility
+    // must not hide templates from the catalog; incompatible templates are shown
+    // as unavailable instead so users can still browse the complete catalog.
+    return matchesQuery && matchesCategory && matchesMode;
   });
 
   const scored = [...filtered].sort((a, b) => {
@@ -159,7 +161,11 @@ export function TemplateGallery({
           const theme = themeFromConfig(t.config, t.name);
           if (!theme) return null;
           const isSelected = selectedId === t.id;
-          const isLocked = t.tierRank > planRank;
+          const businessCompatible = isTemplateCompatible(t, businessCategory, { sellsProducts, offersServices });
+          const isLocked = t.tierRank > planRank || !businessCompatible;
+          const lockReason = t.tierRank > planRank
+            ? `Requires ${TIER_LABEL[t.tierRank] ?? "a higher plan"}`
+            : "Not currently matched to this business type";
 
           return (
             <div
@@ -185,7 +191,7 @@ export function TemplateGallery({
                   type="button"
                   onClick={() => !isLocked && onSelect(t.id)}
                   disabled={isLocked}
-                  aria-label={isLocked ? `Locked template: ${t.name}` : `Use ${t.name} template`}
+                  aria-label={isLocked ? `Unavailable template: ${t.name}` : `Use ${t.name} template`}
                   className={`absolute inset-0 z-10 ${isLocked ? "cursor-not-allowed" : "cursor-pointer"}`}
                 />
 
@@ -212,7 +218,7 @@ export function TemplateGallery({
                 <div className="min-w-0">
                   <p className="truncate text-sm font-medium">{t.category}</p>
                   <p className="truncate text-xs text-muted-foreground">
-                    {isLocked ? `Requires ${TIER_LABEL[t.tierRank] ?? "a higher plan"}` : isSelected ? "In use" : theme.heroStyle}
+                    {isLocked ? lockReason : isSelected ? "In use" : theme.heroStyle}
                   </p>
                 </div>
 
