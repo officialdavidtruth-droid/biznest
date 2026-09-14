@@ -8,14 +8,12 @@ import { BuilderStorefront } from "@/components/storefront/builder-renderer";
 import { GrandeurHome } from "@/components/storefront/grandeur-restaurant";
 import { ThelusoHotel } from "@/components/storefront/theluso-hotel";
 import { TasteHouseHome } from "@/components/storefront/tastehouse";
-import { TASTEHOUSE_TEMPLATE_NAME, EXAMPLE_TEMPLATE_NAME } from "@/lib/template-themes";
+import { GRANDEUR_TEMPLATE_NAME, TASTEHOUSE_TEMPLATE_NAME, EXAMPLE_TEMPLATE_NAME } from "@/lib/template-themes";
 import { getTasteHouseContent } from "@/lib/tastehouse-content";
 import { getExampleContent } from "@/lib/example-content";
 import { ExampleStorefront } from "@/components/storefront/example-store";
 import { getHotelContent } from "@/lib/hotel-content";
 import { resolveStoreTheme, type TemplateTheme } from "@/lib/template-themes";
-import { getTemplateVariant } from "@/lib/template-variants";
-import { TemplateVariantFrame } from "@/components/storefront/template-variant-frame";
 
 type CatalogItem = {
   id: string; kind: "product" | "service"; name: string; description: string | null;
@@ -54,20 +52,18 @@ export default async function StorefrontPage({ params }: { params: Promise<{ slu
     ...store.services.map((s) => ({ id: s.id, kind: "service" as const, name: s.name, description: s.description, price: Number(s.price), currency: s.currency, image: s.images[0] ?? null, categoryName: s.category?.name ?? null, type: "SERVICE", rentalUnit: null, isBookable: s.isBookable })),
   ];
 
-  const templateName = store.template?.name ?? null;
-  const variant = getTemplateVariant(templateName);
-  if (templateName === TASTEHOUSE_TEMPLATE_NAME || variant?.family === "food") {
-    return <TemplateVariantFrame name={templateName}><TasteHouseHome store={store} slug={slug} items={catalogItems} content={await getTasteHouseContent(slug)} /></TemplateVariantFrame>;
+  if (store.template?.name === TASTEHOUSE_TEMPLATE_NAME) {
+    return <TasteHouseHome store={store} slug={slug} items={catalogItems} content={await getTasteHouseContent(slug)} />;
   }
-  if (templateName === EXAMPLE_TEMPLATE_NAME || variant?.family === "retail") {
-    return <TemplateVariantFrame name={templateName}><ExampleStorefront store={store} slug={slug} items={catalogItems} mode="home" content={await getExampleContent(slug) as any} /></TemplateVariantFrame>;
+  if (store.template?.name === EXAMPLE_TEMPLATE_NAME) {
+    return <ExampleStorefront store={store} slug={slug} items={catalogItems} mode="home" content={await getExampleContent(slug) as any} />;
   }
-  if (templateName === GRANDEUR_TEMPLATE_NAME || variant?.family === "restaurant" || String(store.business?.category || "").toLowerCase() === "restaurant") {
-    return <TemplateVariantFrame name={templateName}><GrandeurHome store={store} slug={slug} items={catalogItems} reviews={store.reviews} /></TemplateVariantFrame>;
+  if (String(store.business?.category || "").toLowerCase() === "restaurant") {
+    return <GrandeurHome store={store} slug={slug} items={catalogItems} reviews={store.reviews} />;
   }
-  if (variant?.family === "hotel" || String(store.business?.category || "").toLowerCase().includes("hotel") || String(templateName || "").includes("THELUSO")) {
+  if (String(store.business?.category || "").toLowerCase().includes("hotel") || String(store.template?.name || "").includes("THELUSO")) {
     const hotelContent = await getHotelContent(slug);
-    return <TemplateVariantFrame name={templateName}><ThelusoHotel store={store} slug={slug} content={hotelContent} /></TemplateVariantFrame>;
+    return <ThelusoHotel store={store} slug={slug} content={hotelContent} />;
   }
 
   const rawSectionOverrides = store.sectionOverrides as { builderVersion?: number; builder?: unknown } | null;
