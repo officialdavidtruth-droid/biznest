@@ -7,6 +7,7 @@ import { GRANDEUR_TEMPLATE_NAME, GRANDEUR_THEME } from "@/lib/template-themes";
 import { HOTEL_TEMPLATE_NAME, HOTEL_THEME, TASTEHOUSE_TEMPLATE_NAME, TASTEHOUSE_THEME, EXAMPLE_TEMPLATE_NAME, EXAMPLE_THEME } from "@/lib/template-themes";
 import type { Prisma } from "@prisma/client";
 import type { ActionResult } from "@/types/actions";
+import { TEMPLATE_VARIANTS } from "@/lib/template-variants";
 export async function setStoreTemplate(slug:string,templateId:string):Promise<ActionResult>{
  const session=await auth(); if(!session?.user?.id)return {success:false,error:"You must be signed in."};
  const store=await prisma.store.findUnique({where:{slug},include:{business:true,subscription:true}}); if(!store)return {success:false,error:"Store not found."};
@@ -16,11 +17,15 @@ export async function setStoreTemplate(slug:string,templateId:string):Promise<Ac
  if(!template && templateId===`__theluso__:${HOTEL_TEMPLATE_NAME}`) template=await prisma.storeTemplate.upsert({where:{name:HOTEL_TEMPLATE_NAME},update:{isActive:true,category:"Hotel",tierRank:HOTEL_THEME.tierRank,config:HOTEL_THEME as unknown as Prisma.InputJsonValue},create:{name:HOTEL_TEMPLATE_NAME,category:"Hotel",tierRank:HOTEL_THEME.tierRank,isActive:true,config:HOTEL_THEME as unknown as Prisma.InputJsonValue}});
  if(!template && templateId===`__example__:${EXAMPLE_TEMPLATE_NAME}`) template=await prisma.storeTemplate.upsert({where:{name:EXAMPLE_TEMPLATE_NAME},update:{isActive:true,category:"Electronics & Retail",tierRank:EXAMPLE_THEME.tierRank,config:EXAMPLE_THEME as unknown as Prisma.InputJsonValue},create:{name:EXAMPLE_TEMPLATE_NAME,category:"Electronics & Retail",tierRank:EXAMPLE_THEME.tierRank,isActive:true,config:EXAMPLE_THEME as unknown as Prisma.InputJsonValue}});
  if(!template && templateId===`__tastehouse__:${TASTEHOUSE_TEMPLATE_NAME}`) template=await prisma.storeTemplate.upsert({where:{name:TASTEHOUSE_TEMPLATE_NAME},update:{isActive:true,category:"Restaurant",tierRank:TASTEHOUSE_THEME.tierRank,config:TASTEHOUSE_THEME as unknown as Prisma.InputJsonValue},create:{name:TASTEHOUSE_TEMPLATE_NAME,category:"Restaurant",tierRank:TASTEHOUSE_THEME.tierRank,isActive:true,config:TASTEHOUSE_THEME as unknown as Prisma.InputJsonValue}});
+ if(!template){
+  const variant=TEMPLATE_VARIANTS.find(v=>templateId===`__variant__:${v.name}`);
+  if(variant){ template=await prisma.storeTemplate.upsert({where:{name:variant.name},update:{isActive:true,category:variant.category,tierRank:variant.tierRank,config:variant as unknown as Prisma.InputJsonValue},create:{name:variant.name,category:variant.category,tierRank:variant.tierRank,isActive:true,config:variant as unknown as Prisma.InputJsonValue}}); }
+ }
  if(!template)return {success:false,error:"Template not found."};
- const allowed=template.name===GRANDEUR_TEMPLATE_NAME||template.name===HOTEL_TEMPLATE_NAME||template.name===TASTEHOUSE_TEMPLATE_NAME||template.name===EXAMPLE_TEMPLATE_NAME;
+ const allowed=template.name===GRANDEUR_TEMPLATE_NAME||template.name===HOTEL_TEMPLATE_NAME||template.name===TASTEHOUSE_TEMPLATE_NAME||template.name===EXAMPLE_TEMPLATE_NAME||TEMPLATE_VARIANTS.some(v=>v.name===template!.name);
  if(!allowed)return {success:false,error:"That template has been retired."};
  const category=String(store.businessType||store.business.category||"").toLowerCase();
- const compatible=(template.name===HOTEL_TEMPLATE_NAME)?category.includes("hotel"):template.name===EXAMPLE_TEMPLATE_NAME?(category.includes("retail")||category.includes("electronics")||category.includes("commerce")||category.includes("shop")):(category.includes("restaurant")||category.includes("food"));
+ const variant=TEMPLATE_VARIANTS.find(v=>v.name===template!.name); const compatible=(variant?.family==="hotel"||template.name===HOTEL_TEMPLATE_NAME)?category.includes("hotel"):((variant?.family==="retail")||template.name===EXAMPLE_TEMPLATE_NAME)?(category.includes("retail")||category.includes("electronics")||category.includes("commerce")||category.includes("shop")):(category.includes("restaurant")||category.includes("food"));
  if(!compatible)return {success:false,error:`${template.name} is not compatible with this business.`};
  const features=store.subscription?.features as {templateTier?:number}|null; const planRank=features?.templateTier??1;
  if(template.tierRank>planRank)return {success:false,error:"This template requires a higher plan."};
@@ -33,4 +38,5 @@ export const TEMPLATE_DEFINITIONS=[
  {name:HOTEL_TEMPLATE_NAME,category:"Hotel",theme:HOTEL_THEME},
  {name:TASTEHOUSE_TEMPLATE_NAME,category:"Restaurant",theme:TASTEHOUSE_THEME},
  {name:EXAMPLE_TEMPLATE_NAME,category:"Electronics & Retail",theme:EXAMPLE_THEME},
+ ...TEMPLATE_VARIANTS.filter(v=>![GRANDEUR_TEMPLATE_NAME,HOTEL_TEMPLATE_NAME,TASTEHOUSE_TEMPLATE_NAME,EXAMPLE_TEMPLATE_NAME].includes(v.name)).map(v=>({name:v.name,category:v.category,theme: v.family==="hotel"?HOTEL_THEME:v.family==="retail"?EXAMPLE_THEME:v.family==="food"?TASTEHOUSE_THEME:GRANDEUR_THEME})),
 ];
