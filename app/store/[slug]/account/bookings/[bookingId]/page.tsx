@@ -59,7 +59,7 @@ export default async function BookingDetailsPage({ params }: { params: Promise<{
             <div><Clock3 /><span>Duration</span><strong>{nights ? `${nights} night${nights === 1 ? "" : "s"}` : `${booking.durationMins} minutes`}</strong></div>
             <div><Users /><span>Guests</span><strong>{booking.partySize || "—"}</strong></div>
           </div>
-          {booking.unit?.name && <div className="veloura-detail-note"><strong>Room</strong><span>{booking.unit.name}</span></div>}
+          {booking.unit?.label && <div className="veloura-detail-note"><strong>Room</strong><span>{booking.unit.label}</span></div>}
           {staff && <div className="veloura-detail-note"><strong>Assigned to</strong><span>{staff}{booking.staff?.position ? ` · ${booking.staff.position}` : ""}</span></div>}
         </section>
 

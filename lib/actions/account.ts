@@ -725,7 +725,7 @@ export async function getStoreBookingDetails(storeSlug: string, bookingId: strin
       createdAt: true,
       service: { select: { name: true, description: true, images: true, price: true, currency: true } },
       staff: { select: { invitedName: true, position: true, user: { select: { name: true } } } },
-      unit: { select: { name: true, status: true } },
+      unit: { select: { label: true, status: true } },
     },
   });
 }
