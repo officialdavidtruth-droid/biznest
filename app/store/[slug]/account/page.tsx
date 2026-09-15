@@ -20,6 +20,6 @@ export default async function StoreAccountOverviewPage({ params }: { params: Pro
     getHotelContent(slug),
   ]);
   if (!store || !session?.user || !overview) notFound();
-  const heroImage = hotel.rooms.find((r) => r.featured)?.image || hotel.rooms[0]?.image || store.bannerUrl || null;
+  const heroImage = hotel.rooms.find((r) => r.featured)?.image || hotel.rooms[0]?.image || store.logoUrl || null;
   return <VelouraAccountProfile slug={slug} store={store} user={session.user} overview={overview} bookings={bookings} savedRooms={wishlist.filter((x:any)=>x.service)} wallet={wallet} loyalty={loyalty} heroImage={heroImage} />;
 }
