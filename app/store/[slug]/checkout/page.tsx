@@ -16,7 +16,7 @@ export default async function CheckoutPage({ params }: { params: Promise<{ slug:
   const rawStore = await prisma.store.findUnique({ where: { slug }, include: { template: true, business: true } });
   if (!rawStore || rawStore.status !== "ACTIVE") notFound();
   const isHotel = String(rawStore.business?.category || "").toLowerCase().includes("hotel") || rawStore.template?.name === HOTEL_TEMPLATE_NAME || String(rawStore.template?.name || "").includes("THELUSO");
-  if (isHotel) return <HotelCheckout store={{...rawStore,sellsProducts:rawStore.business?.sellsProducts??true}} slug={slug} content={await getHotelContent(slug)} />;
+  if (isHotel) return <HotelCheckout store={rawStore} slug={slug} content={await getHotelContent(slug)} />;
   const session = await getStoreCustomerSessionForStore(slug);
   if (!session?.user?.id) redirect(`/login?callbackUrl=${encodeURIComponent(`/store/${slug}/checkout`)}&store=${encodeURIComponent(slug)}`);
   if (rawStore.template?.name === EXAMPLE_TEMPLATE_NAME) { return <ExampleStorefront store={{...rawStore,sellsProducts:rawStore.business?.sellsProducts??true}} slug={slug} items={[]} mode="checkout"/>; }
