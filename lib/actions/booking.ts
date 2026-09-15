@@ -740,6 +740,33 @@ export async function createStayBooking(
 
   const nights = Math.max(1, Math.round((checkOut.getTime() - checkIn.getTime()) / (1000 * 60 * 60 * 24)));
 
+  // Hotel storefront add-ons are carried in the booking notes as a small
+  // JSON payload. Recalculate their prices on the server so the customer
+  // cannot alter the amount charged by editing browser storage.
+  const HOTEL_EXTRAS: Record<string, number> = {
+    "Airport Transfer": 25000,
+    "Breakfast Package": 15000,
+    "Champagne on Arrival": 50000,
+    "Late Check-out": 30000,
+    "Spa Session": 40000,
+    "Romantic Setup": 60000,
+  };
+  let addons: Array<{ label: string; price: number }> = [];
+  try {
+    const parsed = notes ? JSON.parse(notes) : null;
+    const requested = Array.isArray(parsed?.extras) ? parsed.extras : [];
+    addons = requested.map((value: unknown) => String(value)).map((raw) => {
+      const label = raw.split("|")[0].trim();
+      const price = HOTEL_EXTRAS[label];
+      return price ? { label, price } : null;
+    }).filter(Boolean) as Array<{ label: string; price: number }>;
+  } catch {
+    addons = [];
+  }
+  const addonsTotal = addons.reduce((sum, item) => sum + item.price, 0);
+  const staySubtotal = Number(service.price) * nights + addonsTotal;
+  const paymentTotal = Math.round(staySubtotal * 1.175);
+
   /**
    * Duplicate-booking guard (stay bookings).
    *
@@ -820,8 +847,9 @@ export async function createStayBooking(
             // Stay pricing is nightly, so snapshot the full stay amount on
             // the booking. Payment creation reads this field instead of
             // charging only the room's one-night list price.
-            paymentAmount: Number(service.price) * nights,
+            paymentAmount: paymentTotal,
             paymentCurrency: service.currency,
+            addons: addons.length ? addons : undefined,
             notes: notes?.trim() || null,
             source: "Online",
             guestName: normalizedGuest?.name ?? null,
