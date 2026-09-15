@@ -45,14 +45,14 @@ export function VelouraAccountProfile({
 
       <div className="veloura-profile-grid">
         <section className="veloura-card">
-          <div className="veloura-card-title"><h2>Personal Information</h2><Link href={`/store/${slug}/account`}><Edit3 size={15}/> Edit</Link></div>
+          <div className="veloura-card-title"><h2>Personal Information</h2><Link href={`/store/${slug}/account/preferences`}><Edit3 size={15}/> Edit</Link></div>
           <div className="veloura-person"><div className="veloura-avatar">{user?.image ? <img src={user.image} alt="" /> : <span>{name.slice(0,1).toUpperCase()}</span>}<button aria-label="Profile photo"><Camera size={14}/></button></div><div><strong>{name}</strong><p>{user?.email || "—"}</p><p>{user?.phone || "Phone number not set"}</p></div></div>
           <dl className="veloura-details"><div><dt>Full Name</dt><dd>{name}</dd></div><div><dt>Email Address</dt><dd>{user?.email || "—"}</dd></div><div><dt>Phone Number</dt><dd>{user?.phone || "Not set"}</dd></div><div><dt>Member Since</dt><dd>{date(user?.createdAt)}</dd></div><div><dt>Location</dt><dd>{location || "Not set"}</dd></div></dl>
         </section>
 
         <section className="veloura-card">
           <div className="veloura-card-title"><h2>Loyalty & Rewards</h2><Link href={`/store/${slug}/account/loyalty`}>View Details</Link></div>
-          <div className="veloura-loyalty-head"><div className="veloura-crown">♛</div><div><strong>Lusso {tier}</strong><p>Enjoy exclusive benefits and special offers.</p></div></div>
+          <div className="veloura-loyalty-head"><div className="veloura-crown">♛</div><div><strong>{store?.name || "Hotel"} {tier}</strong><p>Enjoy exclusive benefits and special offers.</p></div></div>
           <div className="veloura-progress"><span style={{ width: `${progress}%` }}/></div><div className="veloura-progress-label"><span>{points.toLocaleString()} points</span><span>{Math.max(0, loyaltyTarget - points).toLocaleString()} to next tier</span></div>
           <ul className="veloura-benefits"><li><Check/> Member-only rates</li><li><Check/> Priority booking support</li><li><Check/> Exclusive offers & invitations</li><li><Check/> Special stay benefits</li></ul>
         </section>

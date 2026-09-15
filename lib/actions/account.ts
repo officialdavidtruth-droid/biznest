@@ -701,3 +701,31 @@ export async function listStoreSavedCart(storeSlug: string) {
   if (!ctx) return null;
   return prisma.savedCart.findUnique({ where: { userId_storeId: { userId: ctx.userId, storeId: ctx.storeId } } });
 }
+export async function getStoreBookingDetails(storeSlug: string, bookingId: string) {
+  const ctx = await getStoreCustomerContext(storeSlug);
+  if (!ctx) return null;
+  return prisma.booking.findFirst({
+    where: { id: bookingId, storeId: ctx.storeId, buyerId: ctx.userId },
+    select: {
+      id: true,
+      scheduledAt: true,
+      status: true,
+      paymentStatus: true,
+      paymentAmount: true,
+      paymentCurrency: true,
+      checkIn: true,
+      checkOut: true,
+      durationMins: true,
+      notes: true,
+      partySize: true,
+      specialRequests: true,
+      guestName: true,
+      guestEmail: true,
+      guestPhone: true,
+      createdAt: true,
+      service: { select: { name: true, description: true, images: true, price: true, currency: true } },
+      staff: { select: { invitedName: true, position: true, user: { select: { name: true } } } },
+      unit: { select: { name: true, status: true } },
+    },
+  });
+}
