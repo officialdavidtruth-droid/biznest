@@ -3,144 +3,106 @@
 import Link from "next/link";
 import { useState, useTransition } from "react";
 import {
-  ArrowLeft, BarChart3, CalendarDays, ChefHat, ShoppingBag, UtensilsCrossed, Users,
+  ArrowLeft, ArrowRight, BarChart3, Boxes, CalendarDays, CheckCircle2, ChefHat, ClipboardCheck,
+  Clock3, DollarSign, FileSignature, PackageCheck, Plus, Search, ShoppingBag,
+  Trash2, Truck, Users, UtensilsCrossed, XCircle,
 } from "lucide-react";
 import { toast } from "sonner";
-import { advanceKitchenOrderStatus } from "@/lib/actions/kitchen-ops";
+import { advanceKitchenOrderStatus, endKitchenShift, recordKitchenWaste, saveKitchenRecipe, startKitchenShift } from "@/lib/actions/kitchen-ops";
+import { getPosCatalog, getPosDailySummary } from "@/lib/actions/pos";
+import { PosRegister } from "@/components/dashboard/pos-register";
+import { extractFnbRecipe } from "@/lib/fnb-utils";
+import type { FnbRotationMode } from "@/lib/fnb-settings";
 
 function money(n: number) { return `₦${Number(n || 0).toLocaleString()}`; }
 function time(v: string | Date) { return new Date(v).toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" }); }
+function date(v: string | Date) { return new Date(v).toLocaleDateString(undefined, { day: "2-digit", month: "short", year: "numeric" }); }
 function label(v: string) { return v.replaceAll("_", " ").toLowerCase().replace(/(^| )\w/g, (m) => m.toUpperCase()); }
-function badge(v: string) {
-  if (["PAID", "COMPLETED", "DELIVERED", "CONFIRMED"].includes(v)) return "bg-emerald-500/10 text-emerald-700 border-emerald-500/20";
-  if (["IN_PROGRESS", "PENDING"].includes(v)) return "bg-sky-500/10 text-sky-700 border-sky-500/20";
-  if (["CANCELLED", "REFUNDED"].includes(v)) return "bg-rose-500/10 text-rose-700 border-rose-500/20";
-  return "bg-amber-500/10 text-amber-700 border-amber-500/20";
-}
+function statusClass(v: string) { if (["PAID", "COMPLETED", "DELIVERED", "AVAILABLE", "IN_STOCK", "RECEIVED"].includes(v)) return "border-emerald-500/20 bg-emerald-500/10 text-emerald-300"; if (["IN_PROGRESS", "CONFIRMED", "SENT", "PARTIALLY_RECEIVED"].includes(v)) return "border-blue-500/20 bg-blue-500/10 text-blue-300"; if (["CANCELLED", "REFUNDED", "OUT_OF_STOCK"].includes(v)) return "border-rose-500/20 bg-rose-500/10 text-rose-300"; return "border-amber-500/20 bg-amber-500/10 text-amber-300"; }
 
-type Tab = "pos" | "orders" | "tables" | "menu" | "customers" | "reports";
-
+type Tab = "kitchen" | "orders" | "pos" | "tables" | "menu" | "recipes" | "inventory" | "procurement" | "suppliers" | "customers" | "wastage" | "reports";
 const tabs: Array<{ id: Tab; label: string; icon: any }> = [
+  { id: "kitchen", label: "Kitchen", icon: ChefHat },
+  { id: "orders", label: "Orders", icon: ClipboardCheck },
   { id: "pos", label: "POS", icon: ShoppingBag },
-  { id: "orders", label: "Orders", icon: ChefHat },
   { id: "tables", label: "Tables & Reservations", icon: CalendarDays },
   { id: "menu", label: "Menu", icon: UtensilsCrossed },
+  { id: "recipes", label: "Recipes & Food Cost", icon: ClipboardCheck },
+  { id: "inventory", label: "Inventory", icon: Boxes },
+  { id: "procurement", label: "Procurement", icon: FileSignature },
+  { id: "suppliers", label: "Suppliers", icon: Truck },
   { id: "customers", label: "Customers", icon: Users },
+  { id: "wastage", label: "Wastage", icon: Trash2 },
   { id: "reports", label: "Reports", icon: BarChart3 },
 ];
 
 export function KitchenOpsWorkspace({ slug, data }: { slug: string; data: any }) {
-  const [tab, setTab] = useState<Tab>("orders");
+  const [tab, setTab] = useState<Tab>("kitchen");
   const [mobileOpen, setMobileOpen] = useState(false);
-  const navigate = (next: Tab) => { setTab(next); setMobileOpen(false); };
-
-  return <div className="min-h-screen bg-background text-foreground">
-    <header className="sticky top-0 z-30 border-b bg-background/95 backdrop-blur">
-      <div className="flex items-center gap-3 px-4 py-3 lg:px-7">
-        <button className="lg:hidden rounded-lg border p-2" onClick={() => setMobileOpen(!mobileOpen)} aria-label="Open menu"><ChefHat className="h-4 w-4" /></button>
-        <Link href={`/store/${slug}/admin/apps`} className="hidden items-center gap-2 text-xs font-semibold text-muted-foreground hover:text-foreground lg:flex"><ArrowLeft className="h-4 w-4" /> Apps</Link>
-        <div className="h-5 w-px bg-border hidden lg:block" />
-        <div className="min-w-0 flex-1"><p className="text-[10px] font-bold uppercase tracking-[0.18em] text-primary">Kitchen Operations</p><p className="truncate text-sm font-bold">{data.storeName} · Service Workspace</p></div>
-        <Link href={`/store/${slug}/admin/pos`} className="hidden rounded-xl bg-primary px-4 py-2 text-xs font-bold text-primary-foreground sm:inline-flex">Open POS</Link>
-      </div>
-    </header>
-    <div className="flex">
-      {mobileOpen && <button className="fixed inset-0 z-30 bg-black/20 lg:hidden" onClick={() => setMobileOpen(false)} aria-label="Close menu" />}
-      <aside className={`${mobileOpen ? "translate-x-0" : "-translate-x-full"} fixed inset-y-0 left-0 z-40 w-72 border-r bg-background pt-16 transition-transform lg:sticky lg:top-[57px] lg:h-[calc(100vh-57px)] lg:w-64 lg:translate-x-0 lg:self-start lg:pt-0`}>
-        <nav className="h-full overflow-y-auto p-3">
-          {tabs.map(({ id, label: text, icon: Icon }) => <button key={id} onClick={() => navigate(id)} className={`mb-1 flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-xs font-semibold ${tab === id ? "bg-primary/10 text-primary" : "text-muted-foreground hover:bg-muted hover:text-foreground"}`}><Icon className="h-4 w-4" />{text}</button>)}
-          {data.role !== "STAFF" && <div className="mt-4 border-t pt-4 text-[10px] text-muted-foreground"><p className="px-3 font-semibold uppercase tracking-wider">Full workspace</p><Link href={`/store/${slug}/admin/fnb`} className="mt-2 flex items-center gap-2 px-3 py-2 hover:text-foreground"><ChefHat className="h-3.5 w-3.5" /> Open BizNest FnB</Link></div>}
-        </nav>
-      </aside>
+  const [pos, setPos] = useState<any>(null);
+  const navigate = async (next: Tab) => {
+    setTab(next); setMobileOpen(false);
+    if (next === "pos" && !pos) {
+      const [catalog, summary] = await Promise.all([getPosCatalog(slug), getPosDailySummary(slug)]);
+      setPos({ catalog, summary, commissionRatePercent: data.posCommissionRatePercent ?? 8 });
+    }
+  };
+  return <div className="min-h-screen bg-slate-950 text-slate-100">
+    <header className="sticky top-0 z-30 border-b border-slate-800 bg-slate-950/95 backdrop-blur"><div className="flex items-center gap-3 px-4 py-3 lg:px-7"><button className="rounded-lg border border-slate-700 p-2 lg:hidden" onClick={() => setMobileOpen(!mobileOpen)}><ChefHat className="h-4 w-4" /></button><Link href={`/store/${slug}/admin/apps`} className="hidden items-center gap-2 text-xs font-semibold text-slate-400 hover:text-white lg:flex"><ArrowLeft className="h-4 w-4" /> Apps</Link><div className="hidden h-5 w-px bg-slate-800 lg:block" /><div className="min-w-0 flex-1"><p className="text-[10px] font-bold uppercase tracking-[0.18em] text-orange-400">Kitchen Operations</p><p className="truncate text-sm font-bold">{data.storeName} · Back of House</p></div><span className="hidden rounded-xl border border-blue-500/20 bg-blue-500/10 px-3 py-2 text-[10px] font-bold text-blue-300 sm:inline-flex">Kitchen & Stock Control</span></div></header>
+    <div className="flex">{mobileOpen && <button className="fixed inset-0 z-30 bg-black/50 lg:hidden" onClick={() => setMobileOpen(false)} />}
+      <aside className={`${mobileOpen ? "translate-x-0" : "-translate-x-full"} fixed inset-y-0 left-0 z-40 w-72 border-r border-slate-800 bg-slate-950 pt-16 transition-transform lg:sticky lg:top-[57px] lg:h-[calc(100vh-57px)] lg:w-64 lg:translate-x-0 lg:self-start lg:pt-0`}><nav className="h-full overflow-y-auto p-3">{tabs.map(({ id, label: text, icon: Icon }) => <button key={id} onClick={() => navigate(id)} className={`mb-1 flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-xs font-semibold ${tab === id ? "bg-orange-500 text-white" : "text-slate-400 hover:bg-slate-900 hover:text-white"}`}><Icon className="h-4 w-4" />{text}</button>)}</nav></aside>
       <main className="min-w-0 flex-1 px-4 py-5 lg:px-7 lg:py-7">
-        {tab === "pos" && <LinkPanel title="POS" description="Run walk-in and in-person sales through the existing hardened BizNest register." href={`/store/${slug}/admin/pos`} label="Open POS Register" icon={ShoppingBag} />}
+        {tab === "kitchen" && <KitchenPanel slug={slug} orders={data.orders} />}
         {tab === "orders" && <OrdersPanel slug={slug} orders={data.orders} />}
+        {tab === "pos" && (pos ? <PosPanel slug={slug} pos={pos} currentShift={data.currentShift} recentShifts={data.recentShifts} /> : <LoadingPanel title="Loading POS" />)}
         {tab === "tables" && <TablesPanel reservations={data.reservations} />}
         {tab === "menu" && <MenuPanel products={data.products} />}
-        {tab === "customers" && <CustomersPanel customers={data.customers} />}
-        {tab === "reports" && <ReportsPanel metrics={data.metrics} />}
+        {tab === "recipes" && <RecipesPanel slug={slug} products={data.products} inventory={data.inventory} role={data.role} />}
+        {tab === "inventory" && <InventoryPanel slug={slug} data={data} />}
+        {tab === "procurement" && <ProcurementPanel slug={slug} purchaseOrders={data.purchaseOrders} />}
+        {tab === "suppliers" && <SupplierPanel slug={slug} suppliers={data.suppliers} />}
+        {tab === "customers" && <CustomerPanel customers={data.customers} />}
+        {tab === "wastage" && <WastagePanel slug={slug} data={data} />}
+        {tab === "reports" && <ReportsPanel data={data} />}
       </main>
     </div>
   </div>;
 }
 
-function OrdersPanel({ slug, orders }: { slug: string; orders: any[] }) {
+function PosPanel({ slug, pos, currentShift, recentShifts }: { slug: string; pos: any; currentShift: any; recentShifts: any[] }) {
+  return <div className="space-y-5"><SectionTitle title="POS" description="Run in-person sales with every sale linked to the signed-in operator's shift." /><ShiftControl slug={slug} currentShift={currentShift} recentShifts={recentShifts} />{currentShift ? <PosRegister slug={slug} catalog={pos.catalog} commissionRatePercent={pos.commissionRatePercent} /> : <div className="rounded-2xl border border-orange-500/30 bg-orange-500/5 p-8 text-center"><Clock3 className="mx-auto h-8 w-8 text-orange-400" /><h2 className="mt-3 text-lg font-bold">Start your shift before selling</h2><p className="mt-1 text-sm text-slate-400">The register stays locked until the signed-in operator has an active shift.</p></div>}</div>;
+}
+
+function ShiftControl({ slug, currentShift, recentShifts }: { slug: string; currentShift: any; recentShifts: any[] }) {
   const [busy, start] = useTransition();
-  const active = orders.filter((o) => ["PAID", "IN_PROGRESS", "DELIVERED"].includes(o.status));
-  const advance = (o: any) => {
-    const next = o.status === "PAID" ? "IN_PROGRESS" : o.status === "IN_PROGRESS" ? "DELIVERED" : "COMPLETED";
-    start(async () => { const r = await advanceKitchenOrderStatus(slug, o.id, next as any); if (!r.success) toast.error(r.error); else toast.success(`Order moved to ${label(next)}`); });
-  };
-  return <div className="space-y-5">
-    <SectionTitle title="Live Orders" description="Today's orders — the same records used by POS and online checkout." />
-    <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-      {active.map((o) => <div key={o.id} className="rounded-2xl border bg-background p-4 shadow-sm">
-        <div className="flex items-start justify-between gap-3"><div><p className="text-sm font-bold">#{o.id.slice(-6).toUpperCase()}</p><p className="mt-1 text-[10px] text-muted-foreground">{o.channel} · {time(o.createdAt)}</p></div><span className={`rounded-full border px-2 py-1 text-[10px] font-bold ${badge(o.status)}`}>{label(o.status)}</span></div>
-        <div className="mt-4 space-y-2">{o.items.map((i: any, idx: number) => <div key={idx} className="flex justify-between rounded-lg bg-muted/40 px-3 py-2 text-xs"><span>{i.quantity} × {i.variant?.product?.name ? `${i.variant.product.name} — ${i.variant.label}` : i.product?.name || "Menu item"}</span></div>)}</div>
-        <button disabled={busy} onClick={() => advance(o)} className="mt-4 w-full rounded-xl bg-primary px-3 py-2.5 text-xs font-bold text-primary-foreground disabled:opacity-50">{o.status === "PAID" ? "Start preparing" : o.status === "IN_PROGRESS" ? "Mark ready" : "Complete order"}</button>
-      </div>)}
-      {active.length === 0 && <Empty text="No active orders right now." />}
-    </div>
-  </div>;
+  const run = () => start(async () => { const r = currentShift ? await endKitchenShift(slug) : await startKitchenShift(slug); if (!r.success) toast.error(r.error); else { toast.success(currentShift ? `Shift ended — ${r.data.salesCount} sales, ${money(r.data.salesTotal)}.` : "Shift started."); window.location.reload(); } });
+  return <section className="rounded-2xl border border-slate-800 bg-slate-900/70 p-4"><div className="flex flex-col gap-4 xl:flex-row xl:items-center"><div className="min-w-0 flex-1"><p className="text-xs font-bold">{currentShift ? "Shift is open" : "No active shift"}</p><p className="mt-1 text-[11px] text-slate-400">{currentShift ? `Started ${date(currentShift.startedAt)} at ${time(currentShift.startedAt)} · ${currentShift.salesCount} sales · ${money(currentShift.salesTotal)}` : "Start a shift before accepting POS orders."}</p></div><button disabled={busy} onClick={run} className={`inline-flex items-center justify-center gap-2 rounded-xl px-5 py-2.5 text-xs font-bold text-white disabled:opacity-50 ${currentShift ? "bg-blue-600" : "bg-orange-500"}`}>{currentShift ? "End Shift" : "Start Shift"}</button></div>{recentShifts.length > 0 && <div className="mt-4 border-t border-slate-800 pt-3"><p className="text-[10px] font-bold uppercase tracking-wider text-slate-500">Recent staff shifts</p><div className="mt-2 grid gap-2 md:grid-cols-2 xl:grid-cols-4">{recentShifts.slice(0, 4).map((s: any) => <div key={s.id} className="rounded-xl border border-slate-800 bg-slate-950 px-3 py-2"><p className="truncate text-[11px] font-semibold">{s.staffUser?.name || s.staffUser?.email || "Operator"}</p><p className="mt-1 text-[10px] text-slate-500">{date(s.startedAt)} · {s.status === "OPEN" ? "Open" : `Ended ${s.endedAt ? time(s.endedAt) : ""}`}</p><p className="mt-1 text-[10px] text-slate-400">{s.salesCount} sales · {money(s.salesTotal)}</p></div>)}</div></div>}</section>;
 }
 
-function TablesPanel({ reservations }: { reservations: any[] }) {
-  return <div className="space-y-5">
-    <SectionTitle title="Tables & Reservations" description="Today's reservations, from the same booking records as the rest of BizNest." />
-    <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
-      {reservations.map((r) => <div key={r.id} className="rounded-2xl border p-4">
-        <div className="flex items-start justify-between gap-3"><p className="text-sm font-bold">{r.guestName || "Guest"}</p><span className={`rounded-full border px-2 py-1 text-[10px] font-bold ${badge(r.status)}`}>{label(r.status)}</span></div>
-        <p className="mt-1 text-xs text-muted-foreground">{time(r.scheduledAt)}{r.partySize ? ` · Party of ${r.partySize}` : ""}</p>
-      </div>)}
-      {reservations.length === 0 && <Empty text="No reservations booked for today." />}
-    </div>
-  </div>;
-}
+function KitchenPanel({ slug, orders }: { slug: string; orders: any[] }) { const active = orders.filter((o) => ["PAID", "IN_PROGRESS", "DELIVERED"].includes(o.status)); return <div className="space-y-5"><SectionTitle title="Kitchen" description="Live production queue for restaurant orders. Move each ticket through preparation and completion." /><div className="grid gap-3 sm:grid-cols-3"><Metric icon={ChefHat} label="Active tickets" value={active.length} sub="Requires kitchen action" /><Metric icon={Clock3} label="Preparing" value={orders.filter((o) => o.status === "IN_PROGRESS").length} sub="Currently in production" /><Metric icon={CheckCircle2} label="Ready / delivered" value={orders.filter((o) => o.status === "DELIVERED").length} sub="Awaiting completion" /></div><OrdersPanel slug={slug} orders={orders} /></div>; }
 
-function MenuPanel({ products }: { products: any[] }) {
-  return <div className="space-y-5">
-    <SectionTitle title="Menu" description="Read-only view of what's currently sellable. Menu, pricing and catalog changes are made by owners or managers." />
-    <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
-      {products.slice(0, 60).map((p) => <div key={p.id} className="rounded-2xl border p-4">
-        <p className="text-sm font-bold">{p.name}</p>
-        <p className="mt-1 text-xs text-muted-foreground">{money(p.price)} · {p.inventory ? `${p.inventory.quantity} in stock` : "No stock tracking"}</p>
-      </div>)}
-      {products.length === 0 && <Empty text="No menu items published yet." />}
-    </div>
-  </div>;
-}
+function OrdersPanel({ slug, orders }: { slug: string; orders: any[] }) { const [busy, start] = useTransition(); const active = orders.filter((o) => ["PAID", "IN_PROGRESS", "DELIVERED"].includes(o.status)); const advance = (o: any) => { const next = o.status === "PAID" ? "IN_PROGRESS" : o.status === "IN_PROGRESS" ? "DELIVERED" : "COMPLETED"; start(async () => { const r = await advanceKitchenOrderStatus(slug, o.id, next as any); if (!r.success) toast.error(r.error); else { toast.success(`Order moved to ${label(next)}`); window.location.reload(); } }); }; return <div className="space-y-4"><div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">{active.map((o) => <div key={o.id} className="rounded-2xl border border-slate-800 bg-slate-900/60 p-4"><div className="flex items-start justify-between gap-3"><div><p className="text-sm font-bold">#{o.id.slice(-6).toUpperCase()}</p><p className="mt-1 text-[10px] text-slate-500">{o.channel} · {time(o.createdAt)}</p></div><span className={`rounded-full border px-2 py-1 text-[10px] font-bold ${statusClass(o.status)}`}>{label(o.status)}</span></div><div className="mt-4 space-y-2">{o.items.map((i: any, idx: number) => <div key={idx} className="rounded-lg bg-slate-950 px-3 py-2 text-xs">{i.quantity} × {i.variant?.product?.name ? `${i.variant.product.name} — ${i.variant.label}` : i.product?.name || "Menu item"}</div>)}</div><button disabled={busy} onClick={() => advance(o)} className="mt-4 w-full rounded-xl bg-orange-500 px-3 py-2.5 text-xs font-bold text-white disabled:opacity-50">{o.status === "PAID" ? "Start Preparing" : o.status === "IN_PROGRESS" ? "Mark Ready" : "Complete Order"}</button></div>)}{active.length === 0 && <Empty text="No active kitchen tickets right now." />}</div></div>; }
 
-function CustomersPanel({ customers }: { customers: any[] }) {
-  return <div className="space-y-5">
-    <SectionTitle title="Customers" description="Guest and buyer information connected to order history." />
-    <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
-      {customers.map((c) => <div key={c.id} className="rounded-2xl border p-4"><p className="text-sm font-bold">{c.name}</p><p className="mt-1 text-xs text-muted-foreground">{c.phone || c.email || "No contact"}</p></div>)}
-      {customers.length === 0 && <Empty text="No customer profiles yet." />}
-    </div>
-  </div>;
-}
+function TablesPanel({ reservations }: { reservations: any[] }) { return <div className="space-y-5"><SectionTitle title="Tables & Reservations" description="Today's live reservation schedule from the BizNest booking system." /><div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">{reservations.map((r: any) => <div key={r.id} className="rounded-2xl border border-slate-800 bg-slate-900/60 p-4"><div className="flex items-start justify-between gap-3"><p className="text-sm font-bold">{r.guestName || "Guest"}</p><span className={`rounded-full border px-2 py-1 text-[10px] font-bold ${statusClass(r.status)}`}>{label(r.status)}</span></div><p className="mt-2 text-xs text-slate-400">{time(r.scheduledAt)} · Party of {r.partySize || 1}</p></div>)}{reservations.length === 0 && <Empty text="No reservations booked for today." />}</div></div>; }
 
-function ReportsPanel({ metrics: m }: { metrics: any }) {
-  return <div className="space-y-5">
-    <SectionTitle title="Today's Reports" description="A quick read on today's service so far." />
-    <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-      <Metric label="Today's sales" value={money(m.revenue)} />
-      <Metric label="Orders today" value={m.ordersToday} />
-      <Metric label="Active orders" value={m.activeOrders} />
-      <Metric label="Reservations today" value={m.reservationsToday} />
-    </div>
-  </div>;
-}
+function MenuPanel({ products }: { products: any[] }) { return <div className="space-y-5"><SectionTitle title="Menu" description="Read-only operational view of the live BizNest catalog. Menu and pricing changes stay with the merchant catalog controls." /><div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">{products.map((p: any) => <div key={p.id} className="rounded-2xl border border-slate-800 bg-slate-900/60 p-4"><div className="flex justify-between gap-3"><div><p className="text-sm font-bold">{p.name}</p><p className="mt-1 text-xs text-slate-400">{money(p.price)}</p></div><span className={`rounded-full border px-2 py-1 text-[10px] font-bold ${p.isPublished ? "border-blue-500/20 bg-blue-500/10 text-blue-300" : "border-slate-700 bg-slate-800 text-slate-400"}`}>{p.isPublished ? "Published" : "Hidden"}</span></div></div>)}{products.length === 0 && <Empty text="No menu items found." />}</div></div>; }
 
-function LinkPanel({ title, description, href, label: actionLabel, icon: Icon }: any) {
-  return <div className="mx-auto flex min-h-[55vh] max-w-3xl items-center"><section className="w-full rounded-3xl border bg-background p-7 text-center shadow-sm"><span className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-primary/10 text-primary"><Icon className="h-7 w-7" /></span><h1 className="mt-5 text-xl font-bold">{title}</h1><p className="mx-auto mt-2 max-w-xl text-sm leading-6 text-muted-foreground">{description}</p><Link href={href} className="mt-6 inline-flex items-center gap-2 rounded-xl bg-primary px-5 py-3 text-xs font-bold text-primary-foreground">{actionLabel}</Link></section></div>;
-}
-function SectionTitle({ title, description }: { title: string; description: string }) {
-  return <div><h1 className="text-xl font-bold">{title}</h1><p className="mt-1 max-w-3xl text-sm text-muted-foreground">{description}</p></div>;
-}
-function Metric({ label: text, value }: { label: string; value: any }) {
-  return <div className="rounded-2xl border bg-background p-4 shadow-sm"><span className="text-[11px] font-medium text-muted-foreground">{text}</span><p className="mt-2 text-xl font-bold tracking-tight">{value}</p></div>;
-}
-function Empty({ text }: { text: string }) {
-  return <div className="col-span-full py-10 text-center text-xs text-muted-foreground">{text}</div>;
-}
+function RecipesPanel({ slug, products, inventory, role }: { slug: string; products: any[]; inventory: any[]; role: string }) { const canEdit = role !== "STAFF"; const [productId, setProductId] = useState(products[0]?.id || ""); const product = products.find((p) => p.id === productId) || products[0]; const existing = product ? extractFnbRecipe(product.attributes) : null; const [ingredients, setIngredients] = useState<any[]>(existing?.ingredients || []); const [yieldQty, setYieldQty] = useState(existing?.yieldQty || 1); const [busy, start] = useTransition(); const selectProduct = (id: string) => { const p = products.find((x) => x.id === id); setProductId(id); const r = p ? extractFnbRecipe(p.attributes) : null; setIngredients(r?.ingredients || []); setYieldQty(r?.yieldQty || 1); }; const addIngredient = () => { const first = inventory.find((i: any) => !ingredients.some((x) => x.inventoryItemId === i.id)); if (!first) return; setIngredients([...ingredients, { inventoryItemId: first.id, quantity: 1, unit: "unit", name: first.product.name }]); }; const save = () => { if (!product || !canEdit) return; start(async () => { const r = await saveKitchenRecipe(slug, product.id, { yieldQty: Number(yieldQty), ingredients: ingredients.map((i) => ({ inventoryItemId: i.inventoryItemId, quantity: Number(i.quantity), unit: i.unit })) }); if (!r.success) toast.error(r.error); else toast.success("Recipe saved"); }); }; return <div className="space-y-5"><SectionTitle title="Recipes & Food Cost" description="Build ingredient-level recipes from real inventory cost data." action={canEdit ? <button onClick={addIngredient} className="rounded-xl bg-orange-500 px-4 py-2.5 text-xs font-bold text-white"><Plus className="mr-1 inline h-3.5 w-3.5" /> Ingredient</button> : <span className="rounded-xl border border-slate-700 px-4 py-2.5 text-xs font-semibold text-slate-500">Staff: View Only</span>} /><div className="grid gap-5 xl:grid-cols-[320px_1fr]"><section className="rounded-2xl border border-slate-800 bg-slate-900/60 p-4"><label className="text-xs font-bold">Menu item</label><select value={product?.id || ""} onChange={(e) => selectProduct(e.target.value)} className="mt-2 w-full rounded-xl border border-slate-700 bg-slate-950 px-3 py-2 text-sm">{products.map((p: any) => <option key={p.id} value={p.id}>{p.name}</option>)}</select><label className="mt-4 block text-xs font-bold">Yield / portions</label><input disabled={!canEdit} type="number" min="1" value={yieldQty} onChange={(e) => setYieldQty(Number(e.target.value))} className="mt-2 w-full rounded-xl border border-slate-700 bg-slate-950 px-3 py-2 text-sm" /><div className="mt-5 rounded-xl border border-blue-500/20 bg-blue-500/5 p-3 text-xs text-slate-400">Recipes connect menu sales to ingredient cost and production planning.</div></section><section className="rounded-2xl border border-slate-800 bg-slate-900/60 p-4"><div className="grid grid-cols-[1fr_100px_100px_32px] gap-2 text-[10px] font-bold uppercase tracking-wide text-slate-500"><span>Ingredient</span><span>Qty</span><span>Unit</span><span /></div>{ingredients.map((i, idx) => <div key={`${i.inventoryItemId}-${idx}`} className="mb-2 mt-2 grid grid-cols-[1fr_100px_100px_32px] gap-2"><select disabled={!canEdit} value={i.inventoryItemId} onChange={(e) => setIngredients(ingredients.map((x, n) => n === idx ? { ...x, inventoryItemId: e.target.value } : x))} className="rounded-lg border border-slate-700 bg-slate-950 px-2 py-2 text-xs">{inventory.map((v: any) => <option key={v.id} value={v.id}>{v.product.name}</option>)}</select><input disabled={!canEdit} type="number" min="0.001" step="0.001" value={i.quantity} onChange={(e) => setIngredients(ingredients.map((x, n) => n === idx ? { ...x, quantity: Number(e.target.value) } : x))} className="rounded-lg border border-slate-700 bg-slate-950 px-2 py-2 text-xs" /><input disabled={!canEdit} value={i.unit} onChange={(e) => setIngredients(ingredients.map((x, n) => n === idx ? { ...x, unit: e.target.value } : x))} className="rounded-lg border border-slate-700 bg-slate-950 px-2 py-2 text-xs" /><button disabled={!canEdit} onClick={() => setIngredients(ingredients.filter((_, n) => n !== idx))} className="rounded-lg border border-slate-700 text-slate-400">×</button></div>)}{ingredients.length === 0 && <Empty text="No ingredients configured." />}{canEdit && <button disabled={busy || !product} onClick={save} className="mt-4 rounded-xl bg-blue-600 px-4 py-2.5 text-xs font-bold text-white disabled:opacity-50">Save Recipe</button>}</section></div></div>; }
+
+function InventoryPanel({ slug, data }: { slug: string; data: any }) { const [q, setQ] = useState(""); const rows = data.inventory.filter((i: any) => i.product.name.toLowerCase().includes(q.toLowerCase())); const canManage = data.role !== "STAFF"; return <div className="space-y-5"><SectionTitle title="Inventory" description="Stock levels, batches, expiry dates and cost basis for kitchen operations." action={<Link href={`/store/${slug}/admin/inventory`} className="rounded-xl border border-slate-700 px-4 py-2.5 text-xs font-bold">Open Inventory</Link>} /><div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4"><Metric icon={Boxes} label="Tracked items" value={data.inventory.length} sub="Inventory records" /><Metric icon={Clock3} label="Low stock" value={data.metrics.lowStock} sub="At/below threshold" /><Metric icon={XCircle} label="Out of stock" value={data.metrics.outOfStock} sub="Unavailable" /><Metric icon={DollarSign} label="Stock value" value={money(data.metrics.stockValue)} sub="Known cost basis" /></div><div className="rounded-2xl border border-slate-800 bg-slate-900/60 p-4"><div className="relative mb-3 max-w-md"><Search className="absolute left-3 top-2.5 h-4 w-4 text-slate-500" /><input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search stock..." className="w-full rounded-xl border border-slate-700 bg-slate-950 py-2 pl-9 pr-3 text-xs" /></div><div className="overflow-x-auto"><table className="w-full min-w-[700px] text-left text-xs"><thead className="border-b border-slate-800 text-[10px] uppercase tracking-wide text-slate-500"><tr><th className="pb-2">Item</th><th>On hand</th><th>Cost</th><th>Status</th><th>Lots</th></tr></thead><tbody>{rows.map((i: any) => { const lots = data.batches.filter((b: any) => b.inventoryItem?.id === i.id); const st = i.quantity === 0 ? "OUT_OF_STOCK" : i.quantity <= i.lowStockThreshold ? "LOW_STOCK" : "IN_STOCK"; return <tr key={i.id} className="border-b border-slate-800 last:border-0"><td className="py-3 font-semibold">{i.product.name}</td><td>{i.quantity}</td><td>{i.costPrice == null ? "—" : money(i.costPrice)}</td><td><span className={`rounded-full border px-2 py-1 text-[10px] font-bold ${statusClass(st)}`}>{label(st)}</span></td><td>{lots.length}</td></tr>; })}</tbody></table></div></div><p className="text-[10px] text-slate-500">{canManage ? "Owners/managers can use the linked BizNest inventory controls for stock adjustments." : "Staff can view operational stock here; stock editing stays under administrator controls."}</p></div>; }
+
+function ProcurementPanel({ slug, purchaseOrders }: { slug: string; purchaseOrders: any[] }) { return <div className="space-y-5"><SectionTitle title="Procurement" description="Purchase orders and receiving status for kitchen supply operations." action={<Link href={`/store/${slug}/admin/purchase-orders`} className="rounded-xl bg-orange-500 px-4 py-2.5 text-xs font-bold text-white">Open Procurement</Link>} /><div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4"><Metric icon={FileSignature} label="Recent POs" value={purchaseOrders.length} sub="Latest records" /><Metric icon={Clock3} label="Awaiting receipt" value={purchaseOrders.filter((p: any) => ["SENT", "PARTIALLY_RECEIVED"].includes(p.status)).length} sub="Open procurement" /><Metric icon={Truck} label="Suppliers used" value={new Set(purchaseOrders.map((p: any) => p.supplier.name)).size} sub="Recent POs" /><Metric icon={DollarSign} label="PO value" value={money(purchaseOrders.reduce((s: number, p: any) => s + Number(p.subtotal), 0))} sub="Recent subtotal" /></div><div className="overflow-hidden rounded-2xl border border-slate-800 bg-slate-900/60"><table className="w-full text-left text-xs"><thead className="border-b border-slate-800 text-[10px] uppercase tracking-wide text-slate-500"><tr><th className="px-4 py-3">PO</th><th>Supplier</th><th>Status</th><th>Value</th></tr></thead><tbody>{purchaseOrders.map((p: any) => <tr key={p.id} className="border-b border-slate-800 last:border-0"><td className="px-4 py-3 font-semibold">{p.poNumber}</td><td>{p.supplier.name}</td><td><span className={`rounded-full border px-2 py-1 text-[10px] font-bold ${statusClass(p.status)}`}>{label(p.status)}</span></td><td>{p.currency} {Number(p.subtotal).toLocaleString()}</td></tr>)}</tbody></table>{purchaseOrders.length === 0 && <Empty text="No purchase orders yet." />}</div></div>; }
+
+function SupplierPanel({ slug, suppliers }: { slug: string; suppliers: any[] }) { return <div className="space-y-5"><SectionTitle title="Suppliers" description="Supplier directory for kitchen purchasing and receiving." action={<Link href={`/store/${slug}/admin/suppliers`} className="rounded-xl border border-slate-700 px-4 py-2.5 text-xs font-bold">Manage Suppliers</Link>} /><div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">{suppliers.map((s: any) => <div key={s.id} className="rounded-2xl border border-slate-800 bg-slate-900/60 p-4"><p className="text-sm font-bold">{s.name}</p><p className="mt-1 text-xs text-slate-400">{s.contactName || "No contact name"}</p><p className="mt-3 text-xs">{s.phone || s.email || "No contact details"}</p></div>)}{suppliers.length === 0 && <Empty text="No suppliers yet." />}</div></div>; }
+
+function CustomerPanel({ customers }: { customers: any[] }) { return <div className="space-y-5"><SectionTitle title="Customers" description="Customer records connected to restaurant orders." /><div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">{customers.map((c: any) => <div key={c.id} className="rounded-2xl border border-slate-800 bg-slate-900/60 p-4"><p className="text-sm font-bold">{c.name}</p><p className="mt-1 text-xs text-slate-400">{c.phone || c.email || "No contact"}</p></div>)}{customers.length === 0 && <Empty text="No customer profiles yet." />}</div></div>; }
+
+function WastagePanel({ slug, data }: { slug: string; data: any }) { const [item, setItem] = useState(data.inventory[0]?.id || ""); const [qty, setQty] = useState(1); const [reason, setReason] = useState(""); const [busy, start] = useTransition(); const submit = () => start(async () => { const r = await recordKitchenWaste(slug, item, Number(qty), reason); if (!r.success) toast.error(r.error); else { toast.success("Waste recorded and stock reconciled"); setReason(""); setQty(1); } }); return <div className="space-y-5"><SectionTitle title="Wastage" description="Record spoilage, expired stock, damage and overproduction with an auditable stock movement." /><div className="grid gap-5 xl:grid-cols-[420px_1fr]"><section className="rounded-2xl border border-slate-800 bg-slate-900/60 p-5"><label className="text-xs font-bold">Stock item</label><select value={item} onChange={(e) => setItem(e.target.value)} className="mt-2 w-full rounded-xl border border-slate-700 bg-slate-950 px-3 py-2.5 text-sm">{data.inventory.map((i: any) => <option key={i.id} value={i.id}>{i.product.name} · {i.quantity} available</option>)}</select><label className="mt-4 block text-xs font-bold">Quantity wasted</label><input type="number" min="1" value={qty} onChange={(e) => setQty(Number(e.target.value))} className="mt-2 w-full rounded-xl border border-slate-700 bg-slate-950 px-3 py-2.5 text-sm" /><label className="mt-4 block text-xs font-bold">Reason</label><textarea value={reason} onChange={(e) => setReason(e.target.value)} placeholder="Expired, spoiled, burnt, damaged, overproduction..." className="mt-2 min-h-24 w-full rounded-xl border border-slate-700 bg-slate-950 px-3 py-2.5 text-sm" /><button disabled={busy} onClick={submit} className="mt-4 w-full rounded-xl bg-orange-500 px-4 py-2.5 text-xs font-bold text-white disabled:opacity-50">Record Waste</button></section><section className="rounded-2xl border border-slate-800 bg-slate-900/60 p-5"><h2 className="text-sm font-bold">Recent waste</h2><div className="mt-4 divide-y divide-slate-800">{data.wasteMovements.map((w: any) => <div key={w.id} className="flex items-center gap-3 py-3"><Trash2 className="h-4 w-4 text-orange-400" /><div className="min-w-0 flex-1"><p className="text-xs font-semibold">{w.inventoryItem?.product?.name || "Stock item"}</p><p className="mt-0.5 text-[10px] text-slate-500">{String(w.note || "").replace("FNB WASTE: ", "")} · {date(w.createdAt)}</p></div><span className="text-xs font-bold">{Math.abs(w.quantityChange)}</span></div>)}{data.wasteMovements.length === 0 && <Empty text="No waste records yet." />}</div></section></div></div>; }
+
+function ReportsPanel({ data }: { data: any }) { const m = data.metrics; const foodCostProxy = data.products.reduce((sum: number, p: any) => { const r = extractFnbRecipe(p.attributes); if (!r) return sum; return sum + r.ingredients.reduce((s: number, i: any) => { const stock = data.inventory.find((x: any) => x.id === i.inventoryItemId); return s + (stock?.costPrice || 0) * i.quantity; }, 0); }, 0); return <div className="space-y-5"><SectionTitle title="Kitchen Reports" description="Live kitchen, inventory, procurement, food-cost and waste indicators." /><div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4"><Metric icon={DollarSign} label="Today's sales" value={money(m.revenue)} sub="Orders today" /><Metric icon={Boxes} label="Inventory value" value={money(m.stockValue)} sub="Known cost basis" /><Metric icon={PackageCheck} label="Recipe cost" value={money(foodCostProxy)} sub="Configured ingredients" /><Metric icon={Trash2} label="Waste units" value={m.wasteUnits} sub="Recorded waste" /></div><div className="grid gap-4 lg:grid-cols-2"><section className="rounded-2xl border border-slate-800 bg-slate-900/60 p-5"><h2 className="text-sm font-bold">Stock risks</h2><div className="mt-4 space-y-2"><ReportRow label="Out of stock" value={`${m.outOfStock}`} /><ReportRow label="Low stock" value={`${m.lowStock}`} /><ReportRow label="Expiring soon" value={`${m.expiringSoon}`} /><ReportRow label="Expired batches" value={`${m.expired}`} /></div></section><section className="rounded-2xl border border-slate-800 bg-slate-900/60 p-5"><h2 className="text-sm font-bold">Kitchen flow</h2><div className="mt-4 space-y-2"><ReportRow label="Orders today" value={`${m.ordersToday}`} /><ReportRow label="Active orders" value={`${m.activeOrders}`} /><ReportRow label="Reservations today" value={`${m.reservationsToday}`} /><ReportRow label="Recipes configured" value={`${m.recipeCount}`} /></div></section></div></div>; }
+
+function SectionTitle({ title, description, action }: any) { return <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between"><div><h1 className="text-2xl font-bold">{title}</h1><p className="mt-1 max-w-3xl text-sm text-slate-400">{description}</p></div>{action}</div>; }
+function Metric({ icon: Icon, label, value, sub }: any) { return <div className="rounded-2xl border border-slate-800 bg-slate-900/60 p-4"><div className="flex items-center justify-between"><span className="text-[11px] font-medium text-slate-400">{label}</span><Icon className="h-4 w-4 text-orange-400" /></div><p className="mt-2 text-xl font-bold">{value}</p><p className="mt-1 text-[10px] text-slate-500">{sub}</p></div>; }
+function ReportRow({ label, value }: { label: string; value: string }) { return <div className="flex items-center justify-between rounded-xl bg-slate-950 px-3 py-2.5 text-xs"><span className="text-slate-400">{label}</span><span className="font-bold">{value}</span></div>; }
+function Empty({ text }: { text: string }) { return <div className="col-span-full rounded-2xl border border-slate-800 bg-slate-900/50 p-8 text-center text-xs text-slate-500">{text}</div>; }
+function LoadingPanel({ title }: { title: string }) { return <div className="flex min-h-[55vh] items-center justify-center text-sm text-slate-400">{title}…</div>; }

@@ -80,6 +80,7 @@ model User {
   notifications     Notification[]
   pushSubscriptions PushSubscription[]
   staffMemberships  StoreStaff[]
+  fnbShifts         FnbShift[]       @relation("FnbShiftStaff")
   auditLogs         AuditLog[]
   disputesRaised    Dispute[]       @relation("DisputeRaisedBy")
   disputeEvidence   DisputeEvidence[]
@@ -847,6 +848,7 @@ model Store {
   propertyReservations PropertyReservation[]
   propertyFolioCharges PropertyFolioCharge[]
   orders        Order[]
+  fnbShifts     FnbShift[]
   bookings      Booking[]
   deliveryZones DeliveryZone[]
   newsletterSubscribers NewsletterSubscriber[]
@@ -1815,6 +1817,34 @@ model WebhookDelivery {
   @@index([status, nextAttemptAt])
 }
 
+
+enum FnbShiftStatus {
+  OPEN
+  CLOSED
+}
+
+// One accountable register shift per FnB operator. Every POS sale is linked
+// to the operator's open shift so sales can be reconciled by staff and by
+// start/end time without changing the core Order model semantics.
+model FnbShift {
+  id          String         @id @default(cuid())
+  storeId     String
+  store       Store          @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  staffUserId String
+  staffUser   User           @relation("FnbShiftStaff", fields: [staffUserId], references: [id], onDelete: Cascade)
+  status      FnbShiftStatus @default(OPEN)
+  startedAt   DateTime       @default(now())
+  endedAt     DateTime?
+  salesCount  Int            @default(0)
+  salesTotal  Decimal        @db.Decimal(12, 2) @default(0)
+  orders      Order[]
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
+
+  @@index([storeId, staffUserId, startedAt])
+  @@index([storeId, status])
+}
+
 model Order {
   id            String        @id @default(cuid())
   storeId       String
@@ -1882,6 +1912,8 @@ model Order {
 
   statusEvents  OrderStatusEvent[]
   stockMovements StockMovement[]
+  fnbShift       FnbShift?       @relation(fields: [fnbShiftId], references: [id], onDelete: SetNull)
+  fnbShiftId     String?
 
   // Recovery nudges sent while this order was stuck at PENDING_PAYMENT --
   // see AbandonedCheckoutNotification above.

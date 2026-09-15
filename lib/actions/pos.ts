@@ -443,6 +443,15 @@ export async function createPosSale(
         });
         if (existing) return { orderId: existing.id, created: false as const };
 
+        const session = await auth();
+        const staffUserId = session?.user?.id;
+        if (!staffUserId) throw new PosTransactionError("You must be signed in to use the restaurant POS.");
+        const shift = await tx.fnbShift.findFirst({
+          where: { storeId: store.id, staffUserId, status: "OPEN" },
+          select: { id: true },
+        });
+        if (!shift) throw new PosTransactionError("Start your staff shift before recording a POS sale.");
+
         const order = await tx.order.create({
           data: {
             storeId: store.id,
@@ -460,6 +469,7 @@ export async function createPosSale(
             posCustomerPhone: customerPhone,
             customerProfileId,
             idempotencyKey,
+            fnbShiftId: shift.id,
             items: {
               create: resolved.map((l) => ({
                 productId: l.productId ?? null,
@@ -566,6 +576,12 @@ export async function createPosSale(
           }
         }
 
+        const shiftUpdate = await tx.fnbShift.updateMany({
+          where: { id: shift.id, storeId: store.id, staffUserId, status: "OPEN" },
+          data: { salesCount: { increment: 1 }, salesTotal: { increment: total } },
+        });
+        if (shiftUpdate.count === 0) throw new PosTransactionError("Your shift is no longer open. The sale was not recorded.");
+
         return { orderId: order.id, created: true as const };
       },
       { timeout: 15000 }
@@ -630,6 +646,7 @@ export async function createPosSale(
   });
 
   revalidatePath(`/store/${slug}/admin/pos`);
+  revalidatePath(`/store/${slug}/admin/fnb`);
   revalidatePath(`/store/${slug}/admin/customers`);
   revalidatePath(`/store/${slug}/admin/orders`);
   revalidatePath(`/store/${slug}/admin/inventory`);
