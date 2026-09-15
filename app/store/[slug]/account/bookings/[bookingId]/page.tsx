@@ -19,11 +19,12 @@ function date(value: Date | string | null | undefined, withTime = false) {
 
 export default async function BookingDetailsPage({ params }: { params: Promise<{ slug: string; bookingId: string }> }) {
   const { slug, bookingId } = await params;
-  const [store, booking, hotel] = await Promise.all([
+  const [store, bookingResult, hotel] = await Promise.all([
     getStoreBranding(slug),
     getStoreBookingDetails(slug, bookingId),
     getHotelContent(slug),
   ]);
+  const booking: any = bookingResult;
   if (!store || !booking) notFound();
   const hero = hotel.rooms.find((r: any) => r.featured)?.image || hotel.rooms[0]?.image || null;
   const nights = booking.checkIn && booking.checkOut
