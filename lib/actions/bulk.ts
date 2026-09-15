@@ -14,6 +14,13 @@ async function assertStoreAccess(slug: string) {
   return assertStorePermission(slug, "products");
 }
 
+async function assertMenuEditor(slug: string) {
+  const a = await assertStorePermission(slug, "products");
+  if (!a.success) return a;
+  if (a.role === "STAFF") return { success: false as const, error: "Staff can view the menu but cannot edit menu items, categories, variants or add-ons." };
+  return a;
+}
+
 const CSV_HEADERS = [
   "productId",
   "variantId",
@@ -124,7 +131,7 @@ function parseNum(v: string): number | null {
  * so one bad row doesn't roll back the rest of the file.
  */
 export async function importProductsCsv(slug: string, csvText: string): Promise<ActionResult<ImportSummary>> {
-  const access = await assertStoreAccess(slug);
+  const access = await assertMenuEditor(slug);
   if (!access.success) return { success: false, error: access.error };
 
   const records = csvToRecords(csvText);
@@ -393,7 +400,7 @@ export type BulkEditPatch = {
  * entry per changed item, same as any other stock correction.
  */
 export async function bulkUpdateProducts(slug: string, patches: BulkEditPatch[]): Promise<ActionResult<{ updated: number }>> {
-  const access = await assertStoreAccess(slug);
+  const access = await assertMenuEditor(slug);
   if (!access.success) return { success: false, error: access.error };
   if (patches.length === 0) return { success: false, error: "Nothing selected." };
   if (patches.length > 500) return { success: false, error: "Bulk edit is limited to 500 products at a time." };

@@ -9,6 +9,13 @@ async function access(slug: string) {
   return assertStorePermission(slug, "products");
 }
 
+async function assertMenuEditor(slug: string) {
+  const a = await assertStorePermission(slug, "products");
+  if (!a.success) return a;
+  if (a.role === "STAFF") return { success: false as const, error: "Staff can view the menu but cannot edit menu items, categories, variants or add-ons." };
+  return a;
+}
+
 export async function getStoreCategories(slug: string) {
   const a = await access(slug);
   if (!a.success) return [];
@@ -35,7 +42,7 @@ export async function getCategoryItemCounts(slug: string): Promise<Record<string
 }
 
 export async function createCategory(slug: string, input: { name: string; type: "PRODUCT" | "SERVICE"; parentId?: string | null; imageUrl?: string | null; icon?: string | null; description?: string | null }): Promise<ActionResult<{ id: string }>> {
-  const a = await access(slug);
+  const a = await assertMenuEditor(slug);
   if (!a.success) return { success: false, error: a.error };
   const name = input.name.trim();
   if (name.length < 2 || name.length > 80) return { success: false, error: "Category name must be 2–80 characters." };
@@ -53,7 +60,7 @@ export async function createCategory(slug: string, input: { name: string; type: 
 }
 
 export async function updateCategory(slug: string, id: string, input: { name: string; parentId?: string | null; imageUrl?: string | null; icon?: string | null; isActive?: boolean; description?: string | null }): Promise<ActionResult> {
-  const a = await access(slug);
+  const a = await assertMenuEditor(slug);
   if (!a.success) return { success: false, error: a.error };
   const row = await prisma.category.findFirst({ where: { id, storeId: a.store.id } });
   if (!row) return { success: false, error: "Category not found." };
@@ -79,7 +86,7 @@ export async function updateCategory(slug: string, id: string, input: { name: st
 }
 
 export async function deleteCategory(slug: string, id: string): Promise<ActionResult> {
-  const a = await access(slug);
+  const a = await assertMenuEditor(slug);
   if (!a.success) return { success: false, error: a.error };
   const row = await prisma.category.findFirst({ where: { id, storeId: a.store.id }, include: { children: true } });
   if (!row) return { success: false, error: "Category not found." };
@@ -96,7 +103,7 @@ export async function deleteCategory(slug: string, id: string): Promise<ActionRe
 }
 
 export async function setCategoryActive(slug: string, id: string, isActive: boolean): Promise<ActionResult> {
-  const a = await access(slug); if (!a.success) return { success: false, error: a.error };
+  const a = await assertMenuEditor(slug); if (!a.success) return { success: false, error: a.error };
   const row = await prisma.category.findFirst({ where: { id, storeId: a.store.id } });
   if (!row) return { success: false, error: "Category not found." };
   await prisma.category.update({ where: { id }, data: { isActive } });
@@ -105,7 +112,7 @@ export async function setCategoryActive(slug: string, id: string, isActive: bool
 }
 
 export async function reorderCategory(slug: string, id: string, direction: "up" | "down"): Promise<ActionResult> {
-  const a = await access(slug); if (!a.success) return { success: false, error: a.error };
+  const a = await assertMenuEditor(slug); if (!a.success) return { success: false, error: a.error };
   const row = await prisma.category.findFirst({ where: { id, storeId: a.store.id } });
   if (!row) return { success: false, error: "Category not found." };
   const siblings = await prisma.category.findMany({ where: { storeId: a.store.id, parentId: row.parentId }, orderBy: [{ sortOrder: "asc" }, { name: "asc" }] });

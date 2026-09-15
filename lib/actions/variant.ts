@@ -15,6 +15,13 @@ async function assertStoreAccess(slug: string) {
   return assertStorePermission(slug, "products");
 }
 
+async function assertMenuEditor(slug: string) {
+  const a = await assertStorePermission(slug, "products");
+  if (!a.success) return a;
+  if (a.role === "STAFF") return { success: false as const, error: "Staff can view the menu but cannot edit menu items, categories, variants or add-ons." };
+  return a;
+}
+
 function comboLabel(combo: Record<string, string>): string {
   return Object.values(combo).join(" / ");
 }
@@ -115,7 +122,7 @@ export async function setVariantOptions(
   productId: string,
   options: VariantOption[]
 ): Promise<ActionResult<{ variantCount: number }>> {
-  const access = await assertStoreAccess(slug);
+  const access = await assertMenuEditor(slug);
   if (!access.success) return { success: false, error: access.error };
 
   const parsed = z.array(variantOptionSchema).min(1, "Add at least one option").safeParse(options);
@@ -165,7 +172,7 @@ export async function setVariantOptions(
 // --- Per-variant writes ------------------------------------------------------
 
 export async function updateVariant(slug: string, variantId: string, input: VariantInput): Promise<ActionResult> {
-  const access = await assertStoreAccess(slug);
+  const access = await assertMenuEditor(slug);
   if (!access.success) return { success: false, error: access.error };
 
   const parsed = variantSchema.safeParse(input);
@@ -207,7 +214,7 @@ export async function updateVariant(slug: string, variantId: string, input: Vari
 }
 
 export async function deleteVariant(slug: string, variantId: string): Promise<ActionResult> {
-  const access = await assertStoreAccess(slug);
+  const access = await assertMenuEditor(slug);
   if (!access.success) return { success: false, error: access.error };
 
   const variant = await prisma.productVariant.findFirst({ where: { id: variantId, storeId: access.store.id } });
@@ -233,7 +240,7 @@ export async function adjustVariantStock(
   type: StockMovementType,
   note?: string
 ): Promise<ActionResult<{ quantity: number }>> {
-  const access = await assertStoreAccess(slug);
+  const access = await assertMenuEditor(slug);
   if (!access.success) return { success: false, error: access.error };
   if (!Number.isInteger(delta) || delta === 0) return { success: false, error: "Stock change must be a non-zero whole number." };
 
@@ -281,7 +288,7 @@ export async function adjustVariantStock(
 
 /** Same readable-scheme SKU generator as generateSku, scoped to a variant. */
 export async function generateVariantSku(slug: string, variantId: string): Promise<ActionResult<{ sku: string }>> {
-  const access = await assertStoreAccess(slug);
+  const access = await assertMenuEditor(slug);
   if (!access.success) return { success: false, error: access.error };
 
   const variant = await prisma.productVariant.findFirst({
@@ -321,7 +328,7 @@ export async function generateVariantSku(slug: string, variantId: string): Promi
  * code, not a registered GS1 barcode for retail resale).
  */
 export async function generateVariantBarcode(slug: string, variantId: string): Promise<ActionResult<{ barcode: string }>> {
-  const access = await assertStoreAccess(slug);
+  const access = await assertMenuEditor(slug);
   if (!access.success) return { success: false, error: access.error };
 
   const variant = await prisma.productVariant.findFirst({ where: { id: variantId, storeId: access.store.id } });

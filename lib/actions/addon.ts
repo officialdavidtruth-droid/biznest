@@ -11,6 +11,13 @@ async function access(slug: string) {
   return assertStorePermission(slug, "products");
 }
 
+async function assertMenuEditor(slug: string) {
+  const a = await assertStorePermission(slug, "products");
+  if (!a.success) return a;
+  if (a.role === "STAFF") return { success: false as const, error: "Staff can view the menu but cannot edit menu items, categories, variants or add-ons." };
+  return a;
+}
+
 export async function listAddonGroupsForProduct(slug: string, productId: string) {
   const a = await access(slug);
   if (!a.success) return [];
@@ -26,7 +33,7 @@ export async function createAddonGroup(
   productId: string,
   input: { name: string; minSelect?: number; maxSelect?: number | null }
 ): Promise<ActionResult<{ id: string }>> {
-  const a = await access(slug);
+  const a = await assertMenuEditor(slug);
   if (!a.success) return { success: false, error: a.error };
   const name = input.name.trim();
   if (name.length < 2 || name.length > 60) return { success: false, error: "Group name must be 2–60 characters." };
@@ -49,7 +56,7 @@ export async function updateAddonGroup(
   groupId: string,
   input: { name?: string; minSelect?: number; maxSelect?: number | null; isActive?: boolean }
 ): Promise<ActionResult> {
-  const a = await access(slug);
+  const a = await assertMenuEditor(slug);
   if (!a.success) return { success: false, error: a.error };
   const group = await prisma.productAddonGroup.findFirst({ where: { id: groupId, storeId: a.store.id } });
   if (!group) return { success: false, error: "Add-on group not found." };
@@ -70,7 +77,7 @@ export async function updateAddonGroup(
 }
 
 export async function deleteAddonGroup(slug: string, groupId: string): Promise<ActionResult> {
-  const a = await access(slug);
+  const a = await assertMenuEditor(slug);
   if (!a.success) return { success: false, error: a.error };
   const group = await prisma.productAddonGroup.findFirst({ where: { id: groupId, storeId: a.store.id } });
   if (!group) return { success: false, error: "Add-on group not found." };
@@ -84,7 +91,7 @@ export async function createAddon(
   groupId: string,
   input: { name: string; price?: number }
 ): Promise<ActionResult<{ id: string }>> {
-  const a = await access(slug);
+  const a = await assertMenuEditor(slug);
   if (!a.success) return { success: false, error: a.error };
   const group = await prisma.productAddonGroup.findFirst({ where: { id: groupId, storeId: a.store.id } });
   if (!group) return { success: false, error: "Add-on group not found." };
@@ -105,7 +112,7 @@ export async function updateAddon(
   addonId: string,
   input: { name?: string; price?: number; isActive?: boolean }
 ): Promise<ActionResult> {
-  const a = await access(slug);
+  const a = await assertMenuEditor(slug);
   if (!a.success) return { success: false, error: a.error };
   const addon = await prisma.productAddon.findFirst({ where: { id: addonId, storeId: a.store.id } });
   if (!addon) return { success: false, error: "Add-on not found." };
@@ -125,7 +132,7 @@ export async function updateAddon(
 }
 
 export async function deleteAddon(slug: string, addonId: string): Promise<ActionResult> {
-  const a = await access(slug);
+  const a = await assertMenuEditor(slug);
   if (!a.success) return { success: false, error: a.error };
   const addon = await prisma.productAddon.findFirst({ where: { id: addonId, storeId: a.store.id } });
   if (!addon) return { success: false, error: "Add-on not found." };

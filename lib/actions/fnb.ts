@@ -57,7 +57,7 @@ export async function getFnbDashboard(slug: string) {
   const plainPurchaseOrders = purchaseOrders.map((po) => ({ ...po, subtotal: Number(po.subtotal) }));
 
   return {
-    storeName: a.store.name, mode, orders: plainOrders, reservations, inventory: plainInventory, products: plainProducts, batches: plainBatches, purchaseOrders: plainPurchaseOrders, suppliers, customers, wasteMovements,
+    storeName: a.store.name, role: a.role, mode, orders: plainOrders, reservations, inventory: plainInventory, products: plainProducts, batches: plainBatches, purchaseOrders: plainPurchaseOrders, suppliers, customers, wasteMovements,
     metrics: { revenue, stockValue, lowStock, outOfStock, expiringSoon, expired, batchValue, activeOrders, recipeCount, wasteUnits },
   };
 }

@@ -32,6 +32,14 @@ async function assertStoreAccess(slug: string): Promise<StoreAccessResult> {
   return { success: true, store: result.store };
 }
 
+async function assertMenuEditor(slug: string) {
+  const a = await assertStorePermission(slug, "products");
+  if (!a.success) return a;
+  if (a.role === "STAFF") return { success: false as const, error: "Staff can view the menu but cannot edit menu items, categories, variants or add-ons." };
+  return a;
+}
+
+
 export async function listProducts(slug: string) {
   const access = await assertStoreAccess(slug);
   if (!access.success) return [];
@@ -62,7 +70,7 @@ export async function createProduct(
   slug: string,
   input: ProductInput
 ): Promise<ActionResult<{ productId: string }>> {
-  const access = await assertStoreAccess(slug);
+  const access = await assertMenuEditor(slug);
   if (!access.success) return { success: false, error: access.error };
 
   const entitlement = await assertUnderPlanLimit(access.store.id, "products");
@@ -173,7 +181,7 @@ export async function updateProduct(
   productId: string,
   input: ProductInput
 ): Promise<ActionResult<{ productId: string }>> {
-  const access = await assertStoreAccess(slug);
+  const access = await assertMenuEditor(slug);
   if (!access.success) return { success: false, error: access.error };
 
   const parsed = productSchema.safeParse(input);
@@ -348,7 +356,7 @@ export async function updateProduct(
 }
 
 export async function deleteProduct(slug: string, productId: string): Promise<ActionResult> {
-  const access = await assertStoreAccess(slug);
+  const access = await assertMenuEditor(slug);
   if (!access.success) return { success: false, error: access.error };
 
   const existing = await prisma.product.findFirst({

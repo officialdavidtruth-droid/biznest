@@ -17,6 +17,7 @@ export default async function PluginPage({ params }: { params: Promise<{ slug: s
   if (pluginKey === "financial-control") return <FinancialControlPage params={Promise.resolve({ slug })} />;
   if (pluginKey === "requisition") return <RequisitionPage params={Promise.resolve({ slug })} />;
   if (pluginKey === "fnb-operations") redirect(`/store/${slug}/admin/fnb`);
+  if (pluginKey === "restaurant-operations") redirect(`/store/${slug}/admin/kitchen-ops`);
   if (pluginKey === "hr-payroll") return <HrPayrollPage params={Promise.resolve({ slug })} />;
   if (pluginKey === "procurement") {
     const data = await getPluginWorkspace(slug, pluginKey);
