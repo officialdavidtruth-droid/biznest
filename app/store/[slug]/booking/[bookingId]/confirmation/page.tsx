@@ -18,7 +18,7 @@ export default async function BookingConfirmationPage({ params, searchParams }: 
   const booking = await prisma.booking.findFirst({ where: { id: bookingId, store: { slug } }, include: { service: true, store: { include: { template: true, business: true } }, buyer: { select: { name: true, email: true } } } });
   if (!booking || booking.store.status !== "ACTIVE") notFound();
   const isHotel = String(booking.store.business?.category || "").toLowerCase().includes("hotel") || booking.store.template?.name === HOTEL_TEMPLATE_NAME || String(booking.store.template?.name || "").includes("THELUSO");
-  if (isHotel) return <HotelConfirmation store={{...booking.store,sellsProducts:booking.store.business?.sellsProducts??true}} slug={slug} booking={booking} />;
+  if (isHotel) return <HotelConfirmation store={booking.store} slug={slug} booking={booking} />;
   const paid = booking.paymentStatus === "PAID";
   return <main style={{ minHeight:"100vh",display:"grid",placeItems:"center",padding:24,background:"#faf9f7" }}><section style={{maxWidth:620,width:"100%",background:"#fff",padding:40,border:"1px solid #e8e4de",borderRadius:18}}><h1>{paid?"Booking confirmed":payment==="failed"?"Payment not completed":"Booking received"}</h1><p>{booking.service.name}</p>{!paid&&payment==="failed"&&<BookingPaymentRetry storeSlug={slug} bookingId={booking.id} requiresGuestEmail={!booking.buyerId} defaultEmail={booking.guestEmail||""}/>}<Link href={`/store/${slug}`}>Back to store</Link></section></main>;
 }
