@@ -16,11 +16,11 @@ export default async function CustomerQuotePage({
   searchParams,
 }: {
   params: Promise<{ id: string }>;
-  searchParams: Promise<{ payment?: string }>;
+  searchParams: Promise<{ payment?: string; token?: string }>;
 }) {
   const { id } = await params;
-  const { payment } = await searchParams;
-  const quote = await getQuoteForCustomer(id);
+  const { payment, token } = await searchParams;
+  const quote = await getQuoteForCustomer(id, token);
   if (!quote) notFound();
 
   const isRespondable = quote.status === "SENT";

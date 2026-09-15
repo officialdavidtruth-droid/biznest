@@ -117,10 +117,12 @@ export async function GET(req: Request) {
     return NextResponse.redirect(buildStoreUrl(order.store, "?payment=failed"));
   }
 
+  if (order.paymentProvider !== "FLUTTERWAVE") return NextResponse.redirect(buildStoreUrl(order.store, "?payment=invalid_provider"));
+
   // Always verify server-side against Flutterwave directly, and re-check
   // the amount — never trust the redirect alone.
   const verification = await verifyFlutterwaveTransaction(transactionId);
-  const amountMatches = verification.data && Number(verification.data.amount) >= Number(order.total);
+  const amountMatches = Boolean(verification.data && Math.abs(Number(verification.data.amount) - Number(order.total)) < 0.01);
 
   if (verification.status === "success" && verification.data?.status === "successful" && amountMatches) {
     // Idempotent by design: only transition an order still awaiting

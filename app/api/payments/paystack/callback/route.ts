@@ -112,6 +112,8 @@ export async function GET(req: Request) {
       : NextResponse.redirect(buildStoreUrl(order.store, `/orders/${order.id}/confirmation`));
   }
 
+  if (order.paymentProvider !== "PAYSTACK") return NextResponse.redirect(buildStoreUrl(order.store, "?payment=invalid_provider"));
+
   // Always verify server-side against Paystack directly — the redirect
   // itself is not proof of payment, since it's just a browser navigation.
   const verification = await verifyPaystackTransaction(reference);
@@ -120,7 +122,8 @@ export async function GET(req: Request) {
   // order's total can change between checkout-init and payment (discount
   // race, admin edit, etc.). Paystack reports amount in kobo; order.total
   // is in naira. Mirrors the equivalent check in the Flutterwave callback.
-  const amountMatches = verification.data && Number(verification.data.amount) / 100 >= Number(order.total);
+  if (order.paymentProvider !== "PAYSTACK") return NextResponse.redirect(buildStoreUrl(order.store, "?payment=invalid_provider"));
+  const amountMatches = Boolean(verification.data && Math.abs(Number(verification.data.amount) / 100 - Number(order.total)) < 0.01);
 
   if (verification.status && verification.data?.status === "success" && amountMatches) {
     // Idempotent by design: only transition an order still awaiting

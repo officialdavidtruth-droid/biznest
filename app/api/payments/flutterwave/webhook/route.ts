@@ -132,8 +132,8 @@ export async function POST(req: Request) {
   // transition happens via an atomic updateMany so a webhook retry racing
   // the browser callback for the same tx_ref can't both "win".
   const order = await prisma.order.findUnique({ where: { id: txRef } });
-  if (order && order.status === "PENDING_PAYMENT") {
-    const amountMatches = verification.data && Number(verification.data.amount) >= Number(order.total);
+  if (order && order.paymentProvider === "FLUTTERWAVE" && order.status === "PENDING_PAYMENT") {
+    const amountMatches = Boolean(verification.data && Math.abs(Number(verification.data.amount) - Number(order.total)) < 0.01);
     if (amountMatches) {
       // Same reasoning as the Paystack webhook: group the order
       // transition, the payment row update, and the stock decrement so

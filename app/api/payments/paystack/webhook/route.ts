@@ -151,7 +151,10 @@ export async function POST(req: Request) {
   // it. Paystack reports amount in kobo; order.total is in naira. Mirrors
   // the equivalent check in the Flutterwave webhook.
   const order = await prisma.order.findUnique({ where: { id: reference } });
-  const amountMatches = order && verification.data && Number(verification.data.amount) / 100 >= Number(order.total);
+  if (order && order.paymentProvider !== "PAYSTACK") {
+    return NextResponse.json({ received: true });
+  }
+  const amountMatches = Boolean(order && verification.data && Math.abs(Number(verification.data.amount) / 100 - Number(order.total)) < 0.01);
   if (!order || !amountMatches) {
     return NextResponse.json({ received: true });
   }
