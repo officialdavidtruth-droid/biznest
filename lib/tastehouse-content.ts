@@ -8,10 +8,10 @@ export type TasteHouseContent = {
   supportEmail:string; supportPhone:string;
 };
 export const DEFAULT_TASTEHOUSE_CONTENT:TasteHouseContent={
- heroTitle:"Delicious Food", heroAccent:"Delivered Fast.", heroSubtitle:"Discover the best restaurants, cuisines and exclusive offers near you.",
- heroImage:"/tastehouse/burger2.jpg", firstOfferTitle:"Flat 30% OFF", firstOfferText:"On Your First Order!", firstOfferImage:"/tastehouse/chicken.jpg",
- secondOfferTitle:"Family Combo Meals", secondOfferText:"Feed your family with our special combo deals.", secondOfferImage:"/tastehouse/combo.jpg",
- supportEmail:"support@tastehouse.com", supportPhone:"+234 803 123 4567"
+ heroTitle:"Delicious Food", heroAccent:"Made For You.", heroSubtitle:"Explore this business's menu, services and current offers.",
+ heroImage:"/tastehouse/burger2.jpg", firstOfferTitle:"Featured Offer", firstOfferText:"Add your promotion here.", firstOfferImage:"/tastehouse/chicken.jpg",
+ secondOfferTitle:"Special Selection", secondOfferText:"Showcase your latest menu or promotion here.", secondOfferImage:"/tastehouse/combo.jpg",
+ supportEmail:"", supportPhone:""
 };
 export async function getTasteHouseContent(slug:string){
  const store=await prisma.store.findUnique({where:{slug},select:{id:true,contactEmail:true,contactPhone:true,bannerUrl:true}}); if(!store)return DEFAULT_TASTEHOUSE_CONTENT;

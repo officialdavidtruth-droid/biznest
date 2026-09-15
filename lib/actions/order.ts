@@ -382,47 +382,45 @@ export async function startCheckout(
       profile?.id ?? null;
   }
 
-  const products =
-    await prisma.product.findMany({
-      where: {
-        id: {
-          in: data.items.map(
-            (item) =>
-              item.productId
-          ),
-        },
-        storeId: store.id,
-        isPublished: true,
-      },
-    });
+  const productIds = [...new Set(data.items.map((item) => item.productId))];
+  const variantIds = [...new Set(data.items.flatMap((item) => item.variantId ? [item.variantId] : []))];
+  const [products, variants] = await Promise.all([
+    prisma.product.findMany({
+      where: { id: { in: productIds }, storeId: store.id, isPublished: true },
+    }),
+    variantIds.length
+      ? prisma.productVariant.findMany({
+          where: { id: { in: variantIds }, storeId: store.id, isActive: true },
+        })
+      : Promise.resolve([]),
+  ]);
 
-  if (
-    products.length !==
-    data.items.length
-  ) {
-    return {
-      success: false,
-      error:
-        "One or more items in your cart are no longer available.",
-    };
+  if (products.length !== productIds.length) {
+    return { success: false, error: "One or more items in your cart are no longer available." };
   }
 
-  const lines =
-    data.items.map((item) => {
-      const product =
-        products.find(
-          (p) =>
-            p.id ===
-            item.productId
-        )!;
-
-      return {
-        unitPrice:
-          Number(product.price),
-        quantity:
-          item.quantity,
-      };
-    });
+  const lines: { unitPrice: number; quantity: number }[] = [];
+  for (const item of data.items) {
+    const product = products.find((p) => p.id === item.productId);
+    if (!product) return { success: false, error: "One or more products are no longer available." };
+    if (product.hasVariants && !item.variantId) {
+      return { success: false, error: `Please choose an option for ${product.name}.` };
+    }
+    const variant = item.variantId ? variants.find((v) => v.id === item.variantId) : null;
+    if (item.variantId && (!variant || variant.productId !== product.id)) {
+      return { success: false, error: `The selected option for ${product.name} is no longer available.` };
+    }
+    if (variant && variant.quantity < item.quantity) {
+      return { success: false, error: `Only ${variant.quantity} of ${variant.label} is available.` };
+    }
+    if (!variant && product.type === "PHYSICAL") {
+      const inventory = await prisma.inventoryItem.findFirst({ where: { productId: product.id, storeId: store.id }, select: { quantity: true } });
+      if (inventory && inventory.quantity < item.quantity) {
+        return { success: false, error: `Only ${inventory.quantity} of ${product.name} is available.` };
+      }
+    }
+    lines.push({ unitPrice: variant?.price == null ? Number(product.price) : Number(variant.price), quantity: item.quantity });
+  }
 
   let deliveryFeeInput = 0;
 
@@ -459,17 +457,13 @@ export async function startCheckout(
         )
       : 8;
 
-  const {
-    subtotal,
-    deliveryFee,
-    commission,
-    total,
-  } =
-    calculateOrderTotals(
-      lines,
-      deliveryFeeInput,
-      commissionRate
-    );
+  let totals: ReturnType<typeof calculateOrderTotals>;
+  try {
+    totals = calculateOrderTotals(lines, deliveryFeeInput, commissionRate);
+  } catch (error) {
+    return { success: false, error: error instanceof Error ? error.message : "Unable to calculate checkout total." };
+  }
+  const { subtotal, deliveryFee, commission, total } = totals;
 
   if (subtotal <= 0) {
     return {
@@ -539,8 +533,9 @@ export async function startCheckout(
     );
   }
 
-  const order =
-    await prisma.order.create({
+  let order: Awaited<ReturnType<typeof prisma.order.create>>;
+  try {
+    order = await prisma.order.create({
       data: {
         storeId: store.id,
         buyerId:
@@ -575,18 +570,29 @@ export async function startCheckout(
                   )!;
 
                 return {
-                  productId:
-                    product.id,
-                  quantity:
-                    item.quantity,
-                  unitPrice:
-                    product.price,
+                  productId: product.id,
+                  variantId: item.variantId ?? null,
+                  quantity: item.quantity,
+                  unitPrice: item.variantId
+                    ? (variants.find((v) => v.id === item.variantId)?.price ?? product.price)
+                    : product.price,
                 };
               }
             ),
         },
       },
     });
+  } catch (error: any) {
+    if (error?.code === "P2002") {
+      const raced = await prisma.order.findUnique({ where: { idempotencyKey: data.idempotencyKey } });
+      if (raced && raced.storeId === store.id && raced.buyerId === session.user.id) {
+        if (raced.status === "PENDING_PAYMENT" && raced.checkoutUrl) return { success: true, data: { authorizationUrl: raced.checkoutUrl } };
+        if (raced.status !== "PENDING_PAYMENT" && raced.status !== "CANCELLED") return { success: true, data: { authorizationUrl: `${APP_URL}/store/${store.slug}/orders/${raced.id}/confirmation` } };
+        return chargeExistingOrder(raced, store, data.shippingAddress.fullName, session.user.email);
+      }
+    }
+    return { success: false, error: "We couldn't create your order safely. Please try again." };
+  }
 
   const chargeResult =
     await chargeExistingOrder(

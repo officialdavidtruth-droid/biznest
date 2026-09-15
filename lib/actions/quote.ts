@@ -11,6 +11,27 @@ import { assertStorePermission } from "@/lib/access/assert-store-access";
 
 const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? "https://biznest.vercel.app";
 
+function quoteSecret() {
+  const secret = process.env.AUTH_SECRET;
+  if (!secret) throw new Error("AUTH_SECRET is not configured.");
+  return secret;
+}
+
+async function quoteToken(quoteId: string) {
+  const key = await crypto.subtle.importKey("raw", new TextEncoder().encode(quoteSecret()), { name: "HMAC", hash: "SHA-256" }, false, ["sign", "verify"]);
+  const sig = await crypto.subtle.sign("HMAC", key, new TextEncoder().encode(`quote:${quoteId}`));
+  return Buffer.from(sig).toString("base64url");
+}
+
+async function verifyQuoteToken(quoteId: string, token: string) {
+  if (!token) return false;
+  const expected = await quoteToken(quoteId);
+  if (expected.length !== token.length) return false;
+  let diff = 0;
+  for (let i = 0; i < expected.length; i++) diff |= expected.charCodeAt(i) ^ token.charCodeAt(i);
+  return diff === 0;
+}
+
 // Quotes live under the "orders" permission in the nav (dashboard-nav.ts).
 async function assertStoreAccess(slug: string) {
   return assertStorePermission(slug, "orders");
@@ -121,11 +142,17 @@ export async function getQuote(slug: string, quoteId: string) {
 }
 
 /** Customer-facing read, e.g. a link sent via email/WhatsApp. */
-export async function getQuoteForCustomer(quoteId: string) {
-  return prisma.quote.findFirst({
+export async function getQuoteForCustomer(quoteId: string, token?: string) {
+  const quote = await prisma.quote.findFirst({
     where: { id: quoteId, status: { not: "DRAFT" } },
     include: { items: true, store: { select: { name: true, slug: true, logoUrl: true } } },
   });
+  if (!quote) return null;
+  if (token && await verifyQuoteToken(quoteId, token)) return quote;
+  const session = await auth();
+  if (session?.user?.email && quote.customerEmail && session.user.email.toLowerCase() === quote.customerEmail.toLowerCase()) return quote;
+  if (session?.user?.id && quote.customerId === session.user.id) return quote;
+  return null;
 }
 
 // --- Send ------------------------------------------------------------------
@@ -143,7 +170,7 @@ export async function sendQuote(
 
   const email = quote.customerEmail ?? quote.customer?.email;
   const phone = quote.customerPhone ?? quote.customer?.phone;
-  const viewUrl = `${APP_URL}/quotes/${quote.id}`;
+  const viewUrl = `${APP_URL}/quotes/${quote.id}?token=${encodeURIComponent(await quoteToken(quote.id))}`;
 
   if ((via === "email" || via === "both") && email) {
     await sendOrderNotificationEmail(
@@ -186,6 +213,8 @@ export async function acceptQuote(quoteId: string): Promise<ActionResult<{ autho
 
   const quote = await prisma.quote.findUnique({ where: { id: quoteId }, include: { store: true, items: true } });
   if (!quote) return { success: false, error: "Quote not found." };
+  if (quote.customerId && quote.customerId !== session.user.id) return { success: false, error: "This quote is assigned to another customer." };
+  if (!quote.customerId && quote.customerEmail && session.user.email && quote.customerEmail.toLowerCase() !== session.user.email.toLowerCase()) return { success: false, error: "This quote was sent to a different email address." };
   if (quote.status === "ACCEPTED") return { success: false, error: "This quote has already been accepted." };
   if (quote.status === "DECLINED" || quote.status === "EXPIRED") return { success: false, error: "This quote is no longer available." };
   if (quote.expiresAt && quote.expiresAt < new Date()) {
@@ -244,6 +273,8 @@ export async function declineQuote(quoteId: string): Promise<ActionResult> {
 
   const quote = await prisma.quote.findUnique({ where: { id: quoteId } });
   if (!quote) return { success: false, error: "Quote not found." };
+  if (quote.customerId && quote.customerId !== session.user.id) return { success: false, error: "This quote is assigned to another customer." };
+  if (!quote.customerId && quote.customerEmail && session.user.email && quote.customerEmail.toLowerCase() !== session.user.email.toLowerCase()) return { success: false, error: "This quote was sent to a different email address." };
 
   await prisma.quote.update({ where: { id: quoteId }, data: { status: "DECLINED", respondedAt: new Date() } });
   return { success: true, data: undefined };

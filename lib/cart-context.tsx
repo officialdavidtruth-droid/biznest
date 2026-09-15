@@ -4,6 +4,9 @@ import { createContext, useContext, useEffect, useState, useCallback } from "rea
 
 export type CartItem = {
   productId: string;
+  variantId?: string | null;
+  variantLabel?: string | null;
+  optionValues?: Record<string, string> | null;
   name: string;
   price: number;
   currency: string;
@@ -20,8 +23,8 @@ type CartContextValue = {
   storeSlug: string | null;
   items: CartItem[];
   addItem: (storeSlug: string, item: Omit<CartItem, "quantity">, quantity?: number) => void;
-  removeItem: (productId: string) => void;
-  setQuantity: (productId: string, quantity: number) => void;
+  removeItem: (productId: string, variantId?: string | null) => void;
+  setQuantity: (productId: string, quantity: number, variantId?: string | null) => void;
   clear: () => void;
   subtotal: number;
 };
@@ -54,10 +57,12 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
         // Adding from a different store starts a fresh cart — checkout is
         // per-seller, so mixing stores in one cart doesn't make sense yet.
         const base = prev.storeSlug && prev.storeSlug !== storeSlug ? { storeSlug, items: [] } : prev;
-        const existing = base.items.find((i) => i.productId === item.productId);
+        const existing = base.items.find((i) => i.productId === item.productId && (i.variantId ?? null) === (item.variantId ?? null));
         const items = existing
           ? base.items.map((i) =>
-              i.productId === item.productId ? { ...i, quantity: i.quantity + quantity } : i
+              i.productId === item.productId && (i.variantId ?? null) === (item.variantId ?? null)
+                ? { ...i, quantity: i.quantity + quantity }
+                : i
             )
           : [...base.items, { ...item, quantity }];
         return { storeSlug, items };
@@ -66,17 +71,24 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     []
   );
 
-  const removeItem = useCallback((productId: string) => {
-    setState((prev) => ({ ...prev, items: prev.items.filter((i) => i.productId !== productId) }));
+  const removeItem = useCallback((productId: string, variantId?: string | null) => {
+    setState((prev) => ({
+      ...prev,
+      items: prev.items.filter((i) => !(i.productId === productId && (i.variantId ?? null) === (variantId ?? null))),
+    }));
   }, []);
 
-  const setQuantity = useCallback((productId: string, quantity: number) => {
+  const setQuantity = useCallback((productId: string, quantity: number, variantId?: string | null) => {
     setState((prev) => ({
       ...prev,
       items:
         quantity <= 0
-          ? prev.items.filter((i) => i.productId !== productId)
-          : prev.items.map((i) => (i.productId === productId ? { ...i, quantity } : i)),
+          ? prev.items.filter((i) => !(i.productId === productId && (i.variantId ?? null) === (variantId ?? null)))
+          : prev.items.map((i) =>
+              i.productId === productId && (i.variantId ?? null) === (variantId ?? null)
+                ? { ...i, quantity: Math.min(999, Math.max(1, Math.floor(quantity))) }
+                : i
+            ),
     }));
   }, []);
 

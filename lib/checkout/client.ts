@@ -19,13 +19,13 @@ export type CheckoutAddress = {
  */
 export async function submitCheckout(input: {
   slug: string;
-  items: Pick<CartItem, "productId" | "quantity">[];
+  items: Pick<CartItem, "productId" | "variantId" | "quantity">[];
   deliveryZoneId?: string;
   shippingAddress: CheckoutAddress;
   idempotencyKey: string;
 }) {
   return startCheckout(input.slug, {
-    items: input.items.map((item) => ({ productId: item.productId, quantity: item.quantity })),
+    items: input.items.map((item) => ({ productId: item.productId, variantId: item.variantId ?? undefined, quantity: item.quantity })),
     deliveryZoneId: input.deliveryZoneId,
     shippingAddress: input.shippingAddress,
     idempotencyKey: input.idempotencyKey,
