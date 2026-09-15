@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, type CSSProperties } from "react";
+import { useMemo, useState, type CSSProperties } from "react";
 import Link from "next/link";
 import { useCart } from "@/lib/cart-context";
 import { useShopAuthGate } from "@/lib/hooks/use-shop-auth-gate";
@@ -19,6 +19,7 @@ export function ProductDetail({
   type,
   rentalUnit,
   inStock,
+  variants = [],
   accent,
   ink,
   radius,
@@ -35,6 +36,7 @@ export function ProductDetail({
   type: string;
   rentalUnit: string | null;
   inStock: boolean;
+  variants?: { id: string; label: string; optionValues: Record<string, string>; price: number | null; quantity: number; images: string[] }[];
   accent: string;
   ink: string;
   radius: string;
@@ -44,12 +46,28 @@ export function ProductDetail({
   const [qty, setQty] = useState(1);
   const [active, setActive] = useState(0);
   const [added, setAdded] = useState(false);
+  const [selectedVariantId, setSelectedVariantId] = useState<string | null>(null);
 
-  const canBuy = type === "PHYSICAL" || type === "RENTAL" ? inStock : true;
+  const selectedVariant = variants.find((v) => v.id === selectedVariantId) ?? null;
+  const effectivePrice = selectedVariant?.price ?? price;
+  const galleryImages = selectedVariant?.images?.length ? selectedVariant.images : images;
+  const effectiveImage = galleryImages[0] ?? null;
+  const optionGroups = useMemo(() => {
+    const groups = new Map<string, string[]>();
+    for (const v of variants) for (const [key, value] of Object.entries(v.optionValues)) {
+      const values = groups.get(key) ?? [];
+      if (!values.includes(value)) values.push(value);
+      groups.set(key, values);
+    }
+    return [...groups.entries()];
+  }, [variants]);
+
+  const canBuy = variants.length > 0 ? Boolean(selectedVariant && selectedVariant.quantity > 0) : (type === "PHYSICAL" || type === "RENTAL" ? inStock : true);
 
   function handleAdd() {
     if (!requireSignedIn("add items to your cart")) return;
-    addItem(storeSlug, { productId, name, price, currency, image: images[0] ?? null }, qty);
+    if (variants.length > 0 && !selectedVariant) { toast.error("Choose your options first."); return; }
+    addItem(storeSlug, { productId, variantId: selectedVariant?.id ?? null, variantLabel: selectedVariant?.label ?? null, optionValues: selectedVariant?.optionValues ?? null, name, price: effectivePrice, currency, image: effectiveImage }, qty);
     toast.success(`Added ${qty} × ${name} to cart`);
     setAdded(true);
   }
@@ -63,16 +81,16 @@ export function ProductDetail({
             1/1 aspect-ratio box below would otherwise scale up with the
             viewport and produce an oversized square product photo. */}
         <div style={{ aspectRatio: "1/1", maxWidth: 400, maxHeight: 400, margin: "0 auto", borderRadius: radius, overflow: "hidden", background: `${ink}0d`, display: "flex", alignItems: "center", justifyContent: "center" }}>
-          {images[active] ? (
+          {galleryImages[active] ? (
             // eslint-disable-next-line @next/next/no-img-element
-            <img src={images[active]} alt={name} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+            <img src={galleryImages[active]} alt={name} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
           ) : (
             <span style={{ fontSize: 40, opacity: 0.3 }}>{name.charAt(0)}</span>
           )}
         </div>
-        {images.length > 1 && (
+        {galleryImages.length > 1 && (
           <div style={{ display: "flex", gap: 8, marginTop: 10, flexWrap: "wrap" }}>
-            {images.map((img, i) => (
+            {galleryImages.map((img, i) => (
               <button
                 key={img + i}
                 onClick={() => setActive(i)}
@@ -97,7 +115,7 @@ export function ProductDetail({
         )}
         <h1 style={{ fontSize: "clamp(22px,3vw,30px)", fontWeight: 800, marginBottom: 12, color: ink }}>{name}</h1>
         <div style={{ display: "flex", alignItems: "baseline", gap: 10, marginBottom: 18 }}>
-          <span style={{ fontSize: 24, fontWeight: 800, color: ink }}>{currency} {price.toLocaleString()}</span>
+          <span style={{ fontSize: 24, fontWeight: 800, color: ink }}>{currency} {effectivePrice.toLocaleString()}</span>
           {compareAtPrice && compareAtPrice > price && (
             <span style={{ fontSize: 15, color: `${ink}66`, textDecoration: "line-through" }}>{currency} {compareAtPrice.toLocaleString()}</span>
           )}
@@ -106,6 +124,24 @@ export function ProductDetail({
 
         {description && (
           <p style={{ fontSize: 14.5, lineHeight: 1.7, color: `${ink}bb`, marginBottom: 24, whiteSpace: "pre-wrap" }}>{description}</p>
+        )}
+
+        {variants.length > 0 && (
+          <div style={{ display: "grid", gap: 16, marginBottom: 22 }}>
+            {optionGroups.map(([group, values]) => (
+              <div key={group}>
+                <div style={{ fontSize: 12.5, fontWeight: 700, marginBottom: 8, color: ink }}>{group}</div>
+                <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+                  {values.map((value) => {
+                    const candidate = variants.find((v) => v.optionValues[group] === value && (!selectedVariant || Object.entries(selectedVariant.optionValues).every(([k, val]) => k === group || !v.optionValues[k] || v.optionValues[k] === val)));
+                    const active = selectedVariant?.optionValues[group] === value;
+                    return <button type="button" key={value} onClick={() => { if (!candidate) return; setSelectedVariantId(candidate.id); setActive(0); }} disabled={!candidate} style={{ padding: "9px 13px", borderRadius: 8, border: active ? `2px solid ${accent}` : `1px solid ${ink}22`, background: active ? `${accent}12` : "transparent", color: ink, opacity: candidate ? 1 : .45, cursor: candidate ? "pointer" : "not-allowed" }}>{value}</button>;
+                  })}
+                </div>
+              </div>
+            ))}
+            {selectedVariant && <div style={{ fontSize: 13, color: `${ink}99` }}>{selectedVariant.label} · {selectedVariant.quantity} available</div>}
+          </div>
         )}
 
         {!inStock && (type === "PHYSICAL" || type === "RENTAL") ? (
@@ -131,7 +167,7 @@ export function ProductDetail({
                 fontWeight: 700, fontSize: 14.5, cursor: canBuy ? "pointer" : "not-allowed", opacity: canBuy ? 1 : 0.5,
               }}
             >
-              Add to cart — {currency} {(price * qty).toLocaleString()}
+              Add to cart — {currency} {(effectivePrice * qty).toLocaleString()}
             </button>
 
             {added && (
