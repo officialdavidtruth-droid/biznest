@@ -1,8 +1,8 @@
 import type React from "react";
 import Link from "next/link";
-import { LayoutDashboard, Package, Heart, MapPin, Bell, Calendar, Star, MessageSquare, ArrowLeft, LogOut, Wallet, Menu } from "lucide-react";
-import { SignOutButton } from "@/components/forms/sign-out-button";
+import { ArrowLeft, Menu } from "lucide-react";
 import { getAccountCopy } from "@/lib/account-copy";
+import { VelouraAccountNav } from "@/components/storefront/veloura-account-nav";
 
 export function StoreAccountLegacyShell({ children, slug, store, membership, unreadMessageCount, nav }: any) {
   // Same reasoning as SignatureCustomerShell: only show Orders/Addresses
@@ -15,16 +15,17 @@ export function StoreAccountLegacyShell({ children, slug, store, membership, unr
   // hotel says "Reservations" instead of the generic "My Appointments".
   const copy = getAccountCopy(null, store.businessCategory);
   const LINKS = [
-    { href: `/store/${slug}/account`, label: copy.account, icon: LayoutDashboard },
-    ...(nav.sellsProducts ? [{ href: `/store/${slug}/orders`, label: copy.orders, icon: Package }] : []),
-    { href: `/store/${slug}/account/wishlist`, label: copy.wishlist, icon: Heart },
-    ...(nav.sellsProducts ? [{ href: `/store/${slug}/account/addresses`, label: "Addresses", icon: MapPin }] : []),
-    { href: `/store/${slug}/account/loyalty`, label: "Rewards", icon: Bell },
-    { href: `/store/${slug}/account/wallet`, label: "Wallet", icon: Wallet },
-    ...(nav.offersServices ? [{ href: `/store/${slug}/account/bookings`, label: copy.bookings, icon: Calendar }] : []),
-    { href: `/store/${slug}/account/reviews`, label: "My Reviews", icon: Star },
-    { href: `/store/${slug}/account/messages`, label: "Support & Disputes", icon: MessageSquare, badge: unreadMessageCount },
+    { key: "account", href: `/store/${slug}/account`, label: copy.account, iconKey: "LayoutDashboard" },
+    ...(nav.sellsProducts ? [{ key: "orders", href: `/store/${slug}/orders`, label: copy.orders, iconKey: "Package" }] : []),
+    { key: "wishlist", href: `/store/${slug}/account/wishlist`, label: copy.wishlist, iconKey: "Heart" },
+    ...(nav.sellsProducts ? [{ key: "addresses", href: `/store/${slug}/account/addresses`, label: "Addresses", iconKey: "MapPin" }] : []),
+    { key: "rewards", href: `/store/${slug}/account/loyalty`, label: "Rewards", iconKey: "Bell" },
+    { key: "payments", href: `/store/${slug}/account/wallet`, label: "Wallet", iconKey: "Wallet" },
+    ...(nav.offersServices ? [{ key: "bookings", href: `/store/${slug}/account/bookings`, label: copy.bookings, iconKey: "CalendarDays" }] : []),
+    { key: "reviews", href: `/store/${slug}/account/reviews`, label: "My Reviews", iconKey: "Star" },
+    { key: "messages", href: `/store/${slug}/account/messages`, label: "Support & Disputes", iconKey: "MessageCircle", badge: unreadMessageCount },
   ];
+
   const colors = (store.themeColors as any) ?? {};
   // Legacy (non-Signature) stores only ever stored primary/background/text --
   // there's no card/muted/border/radius/font set here the way the 13
@@ -62,13 +63,7 @@ export function StoreAccountLegacyShell({ children, slug, store, membership, unr
         </div>
       </header>
       <div className="mx-auto grid max-w-7xl gap-7 px-5 py-6 md:px-8 md:py-10 lg:grid-cols-[250px_minmax(0,1fr)]">
-        <nav className="signature-account-nav">
-          {LINKS.map(({ href, label, icon: Icon, badge }: any) => (
-            <Link key={href} href={href} className="signature-account-nav-link"><Icon className="h-4 w-4" /><span>{label}</span>{!!badge && <b>{badge > 9 ? "9+" : badge}</b>}</Link>
-          ))}
-          <div className="signature-account-divider" />
-          <SignOutButton callbackUrl={`/store/${slug}`} className="signature-account-signout"><LogOut className="h-4 w-4" /> Sign out</SignOutButton>
-        </nav>
+        <VelouraAccountNav slug={slug} unread={unreadMessageCount} links={LINKS as any} />
         <div className="signature-account-content min-w-0">{children}</div>
       </div>
     </div>
