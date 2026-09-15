@@ -755,7 +755,7 @@ export async function createStayBooking(
   try {
     const parsed = notes ? JSON.parse(notes) : null;
     const requested = Array.isArray(parsed?.extras) ? parsed.extras : [];
-    addons = requested.map((value: unknown) => String(value)).map((raw) => {
+    addons = requested.map((value: unknown) => String(value)).map((raw: string) => {
       const label = raw.split("|")[0].trim();
       const price = HOTEL_EXTRAS[label];
       return price ? { label, price } : null;
