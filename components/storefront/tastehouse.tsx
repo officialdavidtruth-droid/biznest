@@ -7,7 +7,7 @@ import {CartLink} from "@/components/storefront/cart-link";
 import {submitCheckout} from "@/lib/checkout/client";
 import {listActiveDeliveryZones} from "@/lib/actions/delivery-zone";
 import {createBooking} from "@/lib/actions/booking";
-import {Search,Heart,ShoppingCart,UserRound,Home,Menu as MenuIcon,Grid2X2,Tag,CalendarDays,ClipboardList,MessageSquare,HelpCircle,Truck,RefreshCw,ShieldCheck,Headphones,ArrowRight,Plus,Minus,Trash2,CheckCircle2,Clock3,MapPin,Mail,Phone,ChevronDown,ChevronLeft,ChevronRight,Star,Copy,MessageCircle,LocateFixed,Lock,RotateCcw,X} from "lucide-react";
+import {Search,Heart,ShoppingCart,UserRound,Home,Menu as MenuIcon,Grid2X2,Tag,CalendarDays,ClipboardList,MessageSquare,HelpCircle,Truck,RefreshCw,ShieldCheck,Headphones,ArrowRight,Plus,Minus,Trash2,CheckCircle2,Clock3,MapPin,Mail,Phone,ChevronDown,ChevronLeft,ChevronRight,Star,Copy,MessageCircle,LocateFixed,Lock,RotateCcw,X,Package} from "lucide-react";
 
 export type THItem={id:string;kind:"product"|"service";name:string;description:string|null;price:number;currency:string;image:string|null;categoryName:string|null;isBookable?:boolean;hasVariants?:boolean};
 const A="#F4511E",SOFT="#FFF4EA",BG="#FFFCF7",INK="#11151C";
