@@ -15,7 +15,8 @@
     "db:seed:all": "tsx prisma/seed.ts",
     "db:migrate:deploy": "prisma migrate deploy",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "typecheck": "tsc --noEmit"
   },
   "dependencies": {
     "next": "^15.5.24",
