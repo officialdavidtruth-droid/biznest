@@ -79,9 +79,17 @@ function ShiftControl({ slug, currentShift, recentShifts }: { slug: string; curr
   const [busy, start] = useTransition();
   const run = (action: "start" | "end") => start(async () => {
     const result = action === "start" ? await startFnbShift(slug) : await endFnbShift(slug);
-    if (!result.success) toast.error(result.error);
-    else { toast.success(action === "start" ? "Shift started." : `Shift ended — ${result.data.salesCount} sales, ${money(result.data.salesTotal)}.`); window.location.reload(); }
-  });
+    if (!result.success) {
+  toast.error(result.error);
+} else if (action === "start") {
+  toast.success("Shift started.");
+  window.location.reload();
+} else {
+  toast.success(
+    `Shift ended — ${result.data.salesCount} sales, ${money(result.data.salesTotal)}.`
+  );
+  window.location.reload();
+}
   return <section className="rounded-2xl border border-slate-800 bg-slate-900/70 p-4 shadow-sm">
     <div className="flex flex-col gap-4 xl:flex-row xl:items-center">
       <div className="flex min-w-0 flex-1 items-center gap-3">
