@@ -57,7 +57,7 @@ export function FnbWorkspace({ slug, data }: { slug: string; data: any }) {
         {tab === "tables" && <LinkPanel title="Tables & Reservations" description="Open the restaurant reservation and table workflow while keeping bookings in the core BizNest system." href={`/store/${slug}/admin/bookings`} label="Open Tables & Reservations" icon={CalendarDays} />}
         {tab === "customers" && <CustomerPanel slug={slug} customers={data.customers} />}
         {tab === "reports" && <Reports data={data} />}
-        {tab === "settings" && <SettingsPanel slug={slug} mode={data.mode} role={data.role} />}
+        {tab === "settings" && <SettingsPanel slug={slug} role={data.role} />}
       </main>
     </div>
   </div>;
