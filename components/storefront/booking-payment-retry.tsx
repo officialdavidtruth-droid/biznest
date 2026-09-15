@@ -4,51 +4,11 @@ import { useState, useTransition } from "react";
 import { startBookingPayment } from "@/lib/actions/customer-wallet";
 import { toast } from "sonner";
 
-export function BookingPaymentRetry({
-  storeSlug,
-  bookingId,
-  requiresGuestEmail,
-  defaultEmail = "",
-}: {
-  storeSlug: string;
-  bookingId: string;
-  requiresGuestEmail?: boolean;
-  defaultEmail?: string;
-}) {
-  const [email, setEmail] = useState(defaultEmail);
-  const [pending, startTransition] = useTransition();
+declare global { interface Window { Paystack?: new () => { resumeTransaction: (accessCode:string) => void }; FlutterwaveCheckout?: (config:Record<string,unknown>) => void; } }
+async function loadScript(src:string){const existing=document.querySelector<HTMLScriptElement>(`script[src="${src}"]`);if(existing){if(existing.dataset.loaded==="true")return;await new Promise<void>((resolve,reject)=>{existing.addEventListener("load",()=>resolve(),{once:true});existing.addEventListener("error",()=>reject(new Error("Payment provider could not be loaded.")),{once:true})});return}await new Promise<void>((resolve,reject)=>{const script=document.createElement("script");script.src=src;script.async=true;script.onload=()=>{script.dataset.loaded="true";resolve()};script.onerror=()=>reject(new Error("Payment provider could not be loaded."));document.body.appendChild(script)})}
 
-  function retry() {
-    startTransition(async () => {
-      const result = await startBookingPayment(storeSlug, bookingId, requiresGuestEmail ? email.trim() : undefined);
-      if (!result.success) {
-        toast.error(result.error);
-        return;
-      }
-      window.location.assign(result.data.authorizationUrl);
-    });
-  }
-
-  return (
-    <div style={{ marginTop: 20 }}>
-      {requiresGuestEmail && (
-        <input
-          type="email"
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-          placeholder="Email used for the booking"
-          autoComplete="email"
-          style={{ width: "100%", padding: "12px 14px", border: "1px solid #ddd8d0", borderRadius: 9, marginBottom: 10, fontSize: 13, boxSizing: "border-box" }}
-        />
-      )}
-      <button
-        type="button"
-        onClick={retry}
-        disabled={pending || (requiresGuestEmail && !email.trim())}
-        style={{ width: "100%", padding: "13px 18px", border: 0, borderRadius: 9, background: "#171411", color: "#fff", fontWeight: 800, fontSize: 13, cursor: pending ? "wait" : "pointer", opacity: pending || (requiresGuestEmail && !email.trim()) ? .55 : 1 }}
-      >
-        {pending ? "Opening payment…" : "Try payment again"}
-      </button>
-    </div>
-  );
+export function BookingPaymentRetry({storeSlug,bookingId,requiresGuestEmail,defaultEmail=""}:{storeSlug:string;bookingId:string;requiresGuestEmail?:boolean;defaultEmail?:string}){
+ const [email,setEmail]=useState(defaultEmail);const [pending,startTransition]=useTransition();
+ function retry(){startTransition(async()=>{const result=await startBookingPayment(storeSlug,bookingId,requiresGuestEmail?email.trim():undefined);if(!result.success){toast.error(result.error);return}try{const inline=result.data?.inline;if(inline?.provider==="PAYSTACK"&&inline.accessCode){await loadScript("https://js.paystack.co/v2/inline.js");if(!window.Paystack)throw new Error("Paystack checkout is unavailable.");new window.Paystack().resumeTransaction(inline.accessCode);return}if(inline?.provider==="FLUTTERWAVE"){await loadScript("https://checkout.flutterwave.com/v3.js");if(!window.FlutterwaveCheckout)throw new Error("Flutterwave checkout is unavailable.");window.FlutterwaveCheckout({public_key:inline.publicKey,tx_ref:inline.reference,amount:result.data.amount,currency:"NGN",payment_options:"card",customer:{email:email.trim()},subaccounts:inline.subaccountId?[{id:inline.subaccountId}]:undefined,callback:(response:{transaction_id?:number|string;tx_ref?:string})=>{const txRef=encodeURIComponent(response.tx_ref||inline.reference);const txId=encodeURIComponent(String(response.transaction_id||""));window.location.assign(`/api/payments/flutterwave/callback?tx_ref=${txRef}&transaction_id=${txId}&status=successful`)},customizations:{title:"Hotel Booking",description:"Secure booking payment"}});return}window.location.assign(result.data.authorizationUrl)}catch(e){toast.error(e instanceof Error?e.message:"Unable to open secure payment.")}})}
+ return <div style={{marginTop:20}}>{requiresGuestEmail&&<input type="email" value={email} onChange={e=>setEmail(e.target.value)} placeholder="Email used for the booking" autoComplete="email" style={{width:"100%",padding:"12px 14px",border:"1px solid #ddd8d0",borderRadius:9,marginBottom:10,fontSize:13,boxSizing:"border-box"}}/>}<button type="button" onClick={retry} disabled={pending||(requiresGuestEmail&&!email.trim())} style={{width:"100%",padding:"13px 18px",border:0,borderRadius:9,background:"#052a23",color:"#fff",fontWeight:800,fontSize:13,cursor:pending?"wait":"pointer",opacity:(pending||(requiresGuestEmail&&!email.trim()))?.55:1}}>{pending?"Opening payment…":"Try payment again"}</button></div>
 }

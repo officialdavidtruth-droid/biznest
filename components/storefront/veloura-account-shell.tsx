@@ -55,7 +55,7 @@ export async function VelouraAccountShell({ children, slug, active, store: passe
         {store.logoUrl ? <img src={store.logoUrl} alt={store.name} /> : <span className="veloura-brand-mark">✧</span>}
         <span>{store.name}</span>
       </Link>
-      <nav>{[["Home", `/store/${slug}`],["Rooms", `/store/${slug}/rooms`],["Dining", `/store/${slug}/dining`],["Amenities", `/store/${slug}/amenities`],["Events", `/store/${slug}/events`],["Gallery", `/store/${slug}/gallery`],["Offers", `/store/${slug}/offers`],["Contact", `/store/${slug}/contact`]].map(([label,href]) => <Link key={label} href={href}>{label}</Link>)}</nav>
+      <nav>{[["Home", `/store/${slug}`],["Rooms", `/store/${slug}/rooms`],["Dining", `/store/${slug}/dining`],["Facilities", `/store/${slug}/facilities`],["Experiences", `/store/${slug}/experiences`],["About", `/store/${slug}/about`],["Contact", `/store/${slug}/contact`]].map(([label,href]) => <Link key={label} href={href}>{label}</Link>)}</nav>
       <div className="veloura-nav-actions"><Search /><Link href={`/store/${slug}/account`} className="veloura-user"><UserRound /><span>{user.name || user.email}<small>My Account⌄</small></span></Link><Link href={`/store/${slug}/book`} className="veloura-book">Book Now <span>→</span></Link></div>
     </header>
 
@@ -74,7 +74,7 @@ export async function VelouraAccountShell({ children, slug, active, store: passe
     <footer className="veloura-footer">
       <div className="veloura-footer-grid">
         <div><div className="veloura-footer-brand">{store.logoUrl ? <img src={store.logoUrl} alt={store.name} /> : <span>✧</span>}<strong>{store.name}</strong></div><p>{store.businessDescription || "Luxury redefined. Moments that matter."}</p><div className="veloura-social">◎　f　𝕏　in　▶</div></div>
-        <div><h4>Quick Links</h4>{["Home","Rooms","Dining","Amenities","Events","Gallery","Offers","Contact"].map(x=><Link key={x} href={`/store/${slug}/${x === "Home" ? "" : x.toLowerCase()}`}>{x}</Link>)}</div>
+        <div><h4>Quick Links</h4>{["Home","Rooms","Dining","Facilities","Experiences","About","Contact"].map(x=><Link key={x} href={`/store/${slug}/${x === "Home" ? "" : x.toLowerCase()}`}>{x}</Link>)}</div>
         <div><h4>Guest Services</h4>{[["My Bookings",`/store/${slug}/account/bookings`],["Special Requests",`/store/${slug}/account/messages`],["Airport Transfers",`/store/${slug}/account/messages`],["Concierge",`/store/${slug}/account/support`],["FAQ",`/store/${slug}/support`],["Terms & Conditions",`/store/${slug}/terms`],["Privacy Policy",`/store/${slug}/privacy`]].map(([x,h])=><Link key={x} href={h}>{x}</Link>)}</div>
         <div><h4>Contact Information</h4>{hotelAddress && <p><MapPin /> {hotelAddress}</p>}{store.contactPhone && <p><Phone /> {store.contactPhone}</p>}{store.contactEmail && <p><Mail /> {store.contactEmail}</p>}<p><Clock3 /> 24/7 Front Desk</p></div>
         <div><h4>Join Our Newsletter</h4><p>Get exclusive offers and updates.</p><div className="veloura-newsletter"><input placeholder="Your email address" /><button>→</button></div></div>
