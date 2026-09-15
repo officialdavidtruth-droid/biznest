@@ -238,7 +238,7 @@ export async function startBookingPayment(
   storeSlug: string,
   bookingId: string,
   guestEmail?: string
-): Promise<ActionResult<{ authorizationUrl: string; inline?: { provider: "PAYSTACK" | "FLUTTERWAVE"; publicKey: string; email: string; accessCode?: string; reference: string; subaccountCode?: string | null; subaccountId?: string | null } }>> {
+): Promise<ActionResult<{ authorizationUrl: string; amount: number; inline?: { provider: "PAYSTACK" | "FLUTTERWAVE"; publicKey: string; email: string; accessCode?: string; reference: string; subaccountCode?: string | null; subaccountId?: string | null } }>> {
   const customerSession = await getStoreCustomerSessionForStore(storeSlug);
   const session = customerSession ?? await auth();
   const booking = await prisma.booking.findFirst({
@@ -290,7 +290,7 @@ export async function startBookingPayment(
     return charge;
   }
 
-  return { success: true, data: { authorizationUrl: charge.authorizationUrl, inline: charge.inline } };
+  return { success: true, data: { authorizationUrl: charge.authorizationUrl, amount, inline: charge.inline } };
 }
 
 export async function settleServiceBookingPayment(
