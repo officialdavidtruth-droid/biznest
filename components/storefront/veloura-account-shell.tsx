@@ -14,17 +14,18 @@ export type VelouraAccountPage = "account" | "bookings" | "wishlist" | "rewards"
 
 export function VelouraAccountHero({ title, subtitle, image }: { title: string; subtitle: string; image?: string | null }) {
   return (
-    <div
-      className="veloura-account-hero"
-      style={image ? { backgroundImage: `url(${image})` } : undefined}
-    >
-      <div>
-        <p>My Account</p>
+    <section className="bn-account-hero" style={image ? { backgroundImage: `linear-gradient(105deg, rgba(4,31,25,.94) 0%, rgba(4,31,25,.78) 48%, rgba(4,31,25,.30) 100%), url(${image})` } : undefined}>
+      <div className="bn-account-hero-copy">
+        <span className="bn-account-eyebrow">MY ACCOUNT</span>
         <h1>{title}</h1>
-        <div className="veloura-account-hero-subtitle">{subtitle}</div>
+        <p>{subtitle}</p>
       </div>
-      <span>Luxury<br />Redefined.<br /><em>Moments That Matter.</em></span>
-    </div>
+      <div className="bn-account-hero-mark" aria-hidden="true">
+        <span>Luxury</span>
+        <strong>Redefined.</strong>
+        <em>Moments That Matter.</em>
+      </div>
+    </section>
   );
 }
 
@@ -55,77 +56,78 @@ export async function VelouraAccountShell({ children, slug, store: passedStore, 
   const hotelContact = hotel.contact as any;
   const hotelAddress = [hotelContact?.address, hotelContact?.city, hotelContact?.state, hotelContact?.country].filter(Boolean).join(", ") || location;
   const css = {
-    "--veloura-accent": accent,
-    "--veloura-bg": colors.background || "#f6f8f6",
-    "--veloura-forest": colors.primary || "#073b2e",
+    "--account-accent": accent,
+    "--account-forest": colors.primary || "#073b2e",
+    "--account-page": colors.background || "#f4f6f4",
   } as React.CSSProperties;
 
   return (
-    <div className="veloura-account" style={css}>
-      <header className="veloura-account-header">
-        <div className="veloura-account-header-inner">
-          <Link href={`/store/${slug}`} className="veloura-account-back" aria-label="Back to hotel website">
-            <ArrowLeft size={18} />
+    <div className="bn-account-shell" style={css}>
+      <header className="bn-account-header">
+        <div className="bn-account-header-inner">
+          <Link href={`/store/${slug}`} className="bn-account-back" aria-label={`Back to ${store.name}`}>
+            <ArrowLeft size={19} />
           </Link>
-          <Link href={`/store/${slug}`} className="veloura-account-identity">
-            <span className="veloura-account-logo">
-              {store.logoUrl ? <img src={store.logoUrl} alt="" /> : <UserRound size={18} />}
+          <Link href={`/store/${slug}`} className="bn-account-brand">
+            <span className="bn-account-brand-mark">
+              {store.logoUrl ? <img src={store.logoUrl} alt="" /> : <span>{store.name?.slice(0, 1).toUpperCase() || <UserRound size={18} />}</span>}
             </span>
-            <span>
-              <strong>MY {store.name.toUpperCase()} ACCOUNT</strong>
-              <small>Signed in as {user.email}</small>
+            <span className="bn-account-brand-copy">
+              <strong>{store.name}</strong>
+              <small>Guest account</small>
             </span>
           </Link>
-          <div className="veloura-account-header-actions">
-            <Link href={`/store/${slug}`}><ExternalLink size={16} /> <span>View website</span></Link>
+          <div className="bn-account-header-actions">
+            <span className="bn-account-signed-in">Signed in as <strong>{user.email}</strong></span>
+            <Link href={`/store/${slug}`}><ExternalLink size={16} /> View website</Link>
           </div>
         </div>
       </header>
 
-      <div className="veloura-account-body">
-        <aside className="veloura-sidebar">
-          <div className="veloura-profile-mini">
-            <div className="veloura-avatar">
+      <div className="bn-account-layout">
+        <aside className="bn-account-sidebar">
+          <div className="bn-account-user-card">
+            <div className="bn-account-user-avatar">
               {user.image ? <img src={user.image} alt="" /> : <span>{(user.name || user.email || "G").slice(0, 1).toUpperCase()}</span>}
             </div>
-            <div>
-              <h2>{user.name || "Guest"}</h2>
-              <p>{user.email}</p>
-              <strong>Guest account</strong>
+            <div className="bn-account-user-copy">
+              <strong>{user.name || "Guest"}</strong>
+              <span>{user.email}</span>
             </div>
           </div>
           <VelouraAccountNav slug={slug} unread={unread} />
+          <div className="bn-account-sidebar-note">
+            <span>Need help?</span>
+            <strong>Our team is here for you.</strong>
+            <Link href={`/store/${slug}/account/support`}>Contact support <span>→</span></Link>
+          </div>
         </aside>
 
-        <main className="veloura-account-main">{children}</main>
+        <main className="bn-account-main">{children}</main>
       </div>
 
-      <footer className="veloura-footer">
-        <div className="veloura-footer-grid">
-          <div>
-            <div className="veloura-footer-brand">
-              {store.logoUrl ? <img src={store.logoUrl} alt={store.name} /> : <span>✦</span>}
-              <strong>{store.name}</strong>
-            </div>
+      <footer className="bn-account-footer">
+        <div className="bn-account-footer-inner">
+          <div className="bn-account-footer-brand">
+            <span>{store.name}</span>
             <p>{store.businessDescription || "A thoughtful stay, from booking to checkout."}</p>
           </div>
-          <div>
-            <h4>Guest Services</h4>
-            <Link href={`/store/${slug}/account/bookings`}>My Bookings</Link>
+          <div className="bn-account-footer-links">
+            <Link href={`/store/${slug}/account/bookings`}>Bookings</Link>
             <Link href={`/store/${slug}/account/messages`}>Messages</Link>
             <Link href={`/store/${slug}/account/support`}>Support</Link>
+            <Link href={`/store/${slug}`}>Website</Link>
           </div>
-          <div>
-            <h4>Contact</h4>
-            {hotelAddress && <p><MapPin /> {hotelAddress}</p>}
-            {store.contactPhone && <p><Phone /> {store.contactPhone}</p>}
-            {store.contactEmail && <p><Mail /> {store.contactEmail}</p>}
-            <p><Clock3 /> 24/7 Front Desk</p>
+          <div className="bn-account-footer-contact">
+            {hotelAddress && <span><MapPin size={14}/>{hotelAddress}</span>}
+            {store.contactPhone && <span><Phone size={14}/>{store.contactPhone}</span>}
+            {store.contactEmail && <span><Mail size={14}/>{store.contactEmail}</span>}
+            <span><Clock3 size={14}/>Front desk available 24/7</span>
           </div>
         </div>
-        <div className="veloura-footer-bottom">
+        <div className="bn-account-footer-bottom">
           <span>© {new Date().getFullYear()} {store.name}. All rights reserved.</span>
-          <span>Your account is protected by BizNest.</span>
+          <span>Powered by BizNest</span>
         </div>
       </footer>
     </div>
