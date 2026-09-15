@@ -240,7 +240,7 @@ export function PosRegister({
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               placeholder="Search products or services…"
-              className="w-full rounded-lg border bg-background py-2 pl-9 pr-3 text-sm outline-none focus:ring-2 focus:ring-primary/40"
+              className="w-full rounded-lg border bg-white py-2 pl-9 pr-3 text-sm outline-none focus:ring-2 focus:ring-orange-500/40"
             />
           </div>
           <form onSubmit={handleBarcodeSubmit} className="relative w-40 shrink-0">
@@ -252,7 +252,7 @@ export function PosRegister({
               placeholder="Scan barcode"
               autoFocus
               disabled={lookingUpBarcode}
-              className="w-full rounded-lg border bg-background py-2 pl-9 pr-3 text-sm outline-none focus:ring-2 focus:ring-primary/40"
+              className="w-full rounded-lg border bg-white py-2 pl-9 pr-3 text-sm outline-none focus:ring-2 focus:ring-orange-500/40"
             />
           </form>
         </div>
@@ -266,7 +266,7 @@ export function PosRegister({
                   type="button"
                   disabled={outOfStock}
                   onClick={() => addProduct(item)}
-                  className="flex w-full flex-col items-start gap-1 rounded-lg border bg-background p-3 text-left text-sm transition-colors hover:border-primary/50 hover:bg-muted/40 disabled:cursor-not-allowed disabled:opacity-50"
+                  className="flex w-full flex-col items-start gap-1 rounded-lg border bg-white p-3 text-left text-sm transition-colors hover:border-orange-500/50 hover:bg-muted/40 disabled:cursor-not-allowed disabled:opacity-50"
                 >
                   {item.image ? (
                     // eslint-disable-next-line @next/next/no-img-element
@@ -285,7 +285,7 @@ export function PosRegister({
                 </button>
 
                 {pickingVariantsFor === item.id && (
-                  <div className="absolute inset-x-0 top-full z-10 mt-1 rounded-lg border bg-background p-2 shadow-lg">
+                  <div className="absolute inset-x-0 top-full z-10 mt-1 rounded-lg border bg-white p-2 shadow-lg">
                     <div className="mb-1 flex items-center justify-between">
                       <p className="px-1 text-xs font-medium text-muted-foreground">Choose an option</p>
                       <button onClick={() => setPickingVariantsFor(null)} className="p-1 text-muted-foreground hover:text-foreground">
@@ -319,7 +319,7 @@ export function PosRegister({
       </div>
 
       {/* Cart */}
-      <div className="flex flex-col overflow-hidden rounded-lg border bg-background">
+      <div className="flex flex-col overflow-hidden rounded-lg border bg-white">
         <div className="flex-1 overflow-y-auto p-3">
           {cart.length === 0 ? (
             <p className="py-10 text-center text-sm text-muted-foreground">Cart is empty — tap an item to add it.</p>
@@ -358,23 +358,23 @@ export function PosRegister({
                 value={customerName}
                 onChange={(e) => { setCustomerName(e.target.value); setCustomerProfileId(undefined); }}
                 placeholder="Customer name"
-                className="rounded-md border bg-background px-2 py-1.5 text-xs outline-none focus:ring-2 focus:ring-primary/40"
+                className="rounded-md border bg-white px-2 py-1.5 text-xs outline-none focus:ring-2 focus:ring-orange-500/40"
               />
               <input
                 value={customerPhone}
                 onChange={(e) => { setCustomerPhone(e.target.value); setCustomerProfileId(undefined); }}
                 placeholder="Phone"
-                className="rounded-md border bg-background px-2 py-1.5 text-xs outline-none focus:ring-2 focus:ring-primary/40"
+                className="rounded-md border bg-white px-2 py-1.5 text-xs outline-none focus:ring-2 focus:ring-orange-500/40"
               />
             </div>
             <input
               value={customerEmail}
               onChange={(e) => { setCustomerEmail(e.target.value); setCustomerProfileId(undefined); }}
               placeholder="Email (optional)"
-              className="w-full rounded-md border bg-background px-2 py-1.5 text-xs outline-none focus:ring-2 focus:ring-primary/40"
+              className="w-full rounded-md border bg-white px-2 py-1.5 text-xs outline-none focus:ring-2 focus:ring-orange-500/40"
             />
             {(customerMatches.length > 0 || searchingCustomers) && (
-              <div className="absolute bottom-full left-0 right-0 z-30 mb-1 overflow-hidden rounded-md border bg-background shadow-lg">
+              <div className="absolute bottom-full left-0 right-0 z-30 mb-1 overflow-hidden rounded-md border bg-white shadow-lg">
                 {searchingCustomers && <div className="px-3 py-2 text-xs text-muted-foreground">Searching customers…</div>}
                 {customerMatches.map((customer) => (
                   <button key={customer.id} type="button" onClick={() => chooseCustomer(customer)} className="flex w-full items-center justify-between border-b px-3 py-2 text-left text-xs last:border-0 hover:bg-muted">
@@ -384,7 +384,7 @@ export function PosRegister({
                 ))}
               </div>
             )}
-            {customerProfileId && <p className="text-[11px] text-primary">Customer profile linked — this sale will appear in Customer 360.</p>}
+            {customerProfileId && <p className="text-[11px] text-orange-600">Customer profile linked — this sale will appear in Customer 360.</p>}
           </div>
 
           <div className="flex gap-1.5">
@@ -393,7 +393,7 @@ export function PosRegister({
                 key={t}
                 onClick={() => setTenderType(t)}
                 className={`flex-1 rounded-md border py-1.5 text-xs font-medium transition-colors ${
-                  tenderType === t ? "border-primary bg-primary/10 text-primary" : "text-muted-foreground hover:bg-muted"
+                  tenderType === t ? "border-orange-500 bg-orange-500/10 text-orange-600" : "text-muted-foreground hover:bg-muted"
                 }`}
               >
                 {t}
@@ -428,7 +428,7 @@ export function PosRegister({
           <button
             onClick={handleCharge}
             disabled={cart.length === 0 || charging}
-            className="w-full rounded-lg bg-primary py-2.5 text-sm font-medium text-primary-foreground transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
+            className="w-full rounded-lg bg-orange-500 py-2.5 text-sm font-medium text-orange-600-foreground transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
           >
             {charging ? "Charging…" : `Charge ${currency} ${subtotal.toLocaleString()}`}
           </button>

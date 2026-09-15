@@ -117,8 +117,6 @@ function quickIcon(label: string) {
 // sensible wording without a bespoke label table.
 function quickActionLabel(config: AdaptiveDashboardConfig, action: AdaptiveDashboardConfig["quickActions"][number], isRestaurant: boolean): string {
   switch (action.href) {
-    case "/pos":
-      return "POS / New Order";
     case "/bookings":
       return isRestaurant ? "New Reservation" : `New ${config.terminology.transaction}`;
     case "/products":
