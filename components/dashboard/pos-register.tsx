@@ -35,6 +35,8 @@ export function PosRegister({
   const [pickingVariantsFor, setPickingVariantsFor] = useState<string | null>(null);
   const [cart, setCart] = useState<CartLine[]>([]);
   const [tenderType, setTenderType] = useState<(typeof posTenderTypes)[number]>("Cash");
+  const [orderType, setOrderType] = useState<"DINE_IN" | "TAKEAWAY" | "DELIVERY">("DINE_IN");
+  const [tableLabel, setTableLabel] = useState("");
   const [customerName, setCustomerName] = useState("");
   const [customerPhone, setCustomerPhone] = useState("");
   const [customerEmail, setCustomerEmail] = useState("");
@@ -207,6 +209,8 @@ export function PosRegister({
         quantity: l.quantity,
       })),
       tenderType,
+      orderType,
+      tableLabel: tableLabel.trim() || undefined,
       customerName: customerName.trim() || undefined,
       customerPhone: customerPhone.trim() || undefined,
       customerEmail: customerEmail.trim() || undefined,
@@ -219,6 +223,8 @@ export function PosRegister({
     setCart([]);
     setCustomerName("");
     setCustomerPhone("");
+    setOrderType("DINE_IN");
+    setTableLabel("");
     setCustomerEmail("");
     setCustomerProfileId(undefined);
     setCustomerMatches([]);
@@ -385,6 +391,11 @@ export function PosRegister({
               </div>
             )}
             {customerProfileId && <p className="text-[11px] text-orange-600">Customer profile linked — this sale will appear in Customer 360.</p>}
+          </div>
+
+          <div className="grid grid-cols-2 gap-2">
+            <label className="text-[11px] font-semibold text-muted-foreground">Order type<select value={orderType} onChange={(e) => setOrderType(e.target.value as typeof orderType)} className="mt-1 w-full rounded-md border bg-white px-2 py-1.5 text-xs"><option value="DINE_IN">Dine in</option><option value="TAKEAWAY">Takeaway</option><option value="DELIVERY">Delivery</option></select></label>
+            <label className="text-[11px] font-semibold text-muted-foreground">Table / reference<input value={tableLabel} onChange={(e) => setTableLabel(e.target.value)} placeholder={orderType === "DINE_IN" ? "Table 12" : "Optional"} className="mt-1 w-full rounded-md border bg-white px-2 py-1.5 text-xs" /></label>
           </div>
 
           <div className="flex gap-1.5">
