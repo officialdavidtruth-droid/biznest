@@ -99,6 +99,7 @@ export async function createStore(
         slug,
         templateId: parsed.data.templateId,
         businessType: business.category,
+        timezone: "Africa/Lagos",
         enabledModules: { capabilities: getStoreConfiguration(business.category, { sellsProducts: business.sellsProducts, offersServices: business.offersServices }).capabilities },
         storefrontConfig: {
           mode: getBusinessExperience(business.category, { sellsProducts: business.sellsProducts, offersServices: business.offersServices }, business.businessSubcategory).mode,

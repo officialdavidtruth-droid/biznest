@@ -6,6 +6,7 @@ import { assertStorePermission } from "@/lib/access/assert-store-access";
 import { hasCapability } from "@/lib/capabilities";
 import { getPluginEntitlement } from "@/lib/plugins";
 import { chargeCustomer, getActiveGateway } from "@/lib/payments/gateway";
+import { createPendingPayment, markPaymentFailed } from "@/lib/payments/pending";
 import type { ActionResult } from "@/types/actions";
 import crypto from "crypto";
 
@@ -364,6 +365,11 @@ export async function chargeReservationDeposit(
  const callbackUrl=gateway==="FLUTTERWAVE"?`${APP_URL}/api/payments/flutterwave/callback`:`${APP_URL}/api/payments/paystack/callback`;
  const currency="NGN";
 
+ await createPendingPayment({
+  storeId:a.store.id, reservationId:reservation.id, purpose:"PMS_RESERVATION",
+  provider:gateway, reference, amount:amountNaira, currency,
+ });
+
  const charge=await chargeCustomer({
   email:guestEmail?.trim()||reservation.guest.email||"guest@biznest.space",
   customerName:reservation.guest.fullName,
@@ -374,21 +380,11 @@ export async function chargeReservationDeposit(
   flutterwaveSubaccountId:a.store.flutterwaveSubaccountId,
  });
 
- if(!charge.success)return{success:false,error:charge.error};
+ if(!charge.success){ await markPaymentFailed(reference); return{success:false,error:charge.error}; }
 
  await prisma.$transaction([
   prisma.propertyReservation.update({where:{id:reservation.id},data:{paymentStatus:"PENDING",depositAmount:amountNaira,paymentCurrency:currency}}),
-  prisma.payment.create({data:{
-   storeId:a.store.id,
-   reservationId:reservation.id,
-   purpose:"PMS_RESERVATION",
-   provider:charge.gateway,
-   reference,
-   status:"PENDING",
-   amount:amountNaira,
-   currency,
-   splitSubaccountCode:charge.splitSubaccountCode,
-  }}),
+  prisma.payment.update({where:{reference},data:{provider:charge.gateway,splitSubaccountCode:charge.splitSubaccountCode}}),
  ]);
 
  revalidatePath(`/store/${slug}/admin/pms`);

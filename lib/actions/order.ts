@@ -158,6 +158,17 @@ async function chargeExistingOrder(
       ? `${APP_URL}/api/payments/flutterwave/callback`
       : `${APP_URL}/api/payments/paystack/callback`;
 
+  const pendingPayment = await prisma.payment.findUnique({ where: { reference: order.id }, select: { id: true, status: true } });
+  if (pendingPayment?.status === "SUCCESSFUL") return { success: true, data: { authorizationUrl: `${APP_URL}/store/${store.slug}/orders/${order.id}/confirmation` } };
+  if (pendingPayment?.status === "PENDING" && order.checkoutUrl) {
+    return { success: true, data: { authorizationUrl: order.checkoutUrl } };
+  }
+  if (!pendingPayment) {
+    await createPendingPayment({ storeId: store.id, orderId: order.id, purpose: "ORDER", provider: gateway, reference: order.id, amount: totalNaira, currency: order.currency });
+  } else if (pendingPayment.status === "FAILED") {
+    await prisma.payment.update({ where: { id: pendingPayment.id }, data: { status: "PENDING", provider: gateway, amount: totalNaira, currency: order.currency } });
+  }
+
   const charge =
     await chargeCustomer({
       email:
@@ -175,6 +186,7 @@ async function chargeExistingOrder(
     });
 
   if (!charge.success) {
+    await markPaymentFailed(order.id);
     await prisma.order.update({
       where: {
         id: order.id,
@@ -204,18 +216,9 @@ async function chargeExistingOrder(
       },
     }),
 
-    prisma.payment.create({
-      data: {
-        orderId: order.id,
-        storeId: store.id,
-        purpose: "ORDER",
-        provider: charge.gateway,
-        reference: order.id,
-        status: "PENDING",
-        amount: totalNaira,
-        currency: order.currency,
-        splitSubaccountCode: charge.splitSubaccountCode,
-      },
+    prisma.payment.update({
+      where: { reference: order.id },
+      data: { provider: charge.gateway, status: "PENDING", splitSubaccountCode: charge.splitSubaccountCode },
     }),
   ]);
 

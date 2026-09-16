@@ -32,6 +32,8 @@
 
 import type { LucideIcon } from "lucide-react";
 import type { Section } from "@/lib/template-themes";
+import { canonicalizeBusinessType } from "@/lib/business-identity";
+
 import {
   Shirt, Cpu, Utensils, Sparkles, Sofa, HeartPulse, Briefcase, Car, Tractor,
   Store as StoreIcon, Truck, CalendarClock, Wrench, Building2, Camera, Hotel,
@@ -475,8 +477,8 @@ export const DEFAULT_BUSINESS_TYPE = BUSINESS_TYPES["Other"];
 export const ALL_BUSINESS_TYPE_NAMES = Object.keys(BUSINESS_TYPES).filter((n) => n !== "Other");
 
 export function getBusinessTypeConfig(category: string | null | undefined): BusinessTypeConfig {
-  if (!category) return DEFAULT_BUSINESS_TYPE;
-  return BUSINESS_TYPES[category] ?? DEFAULT_BUSINESS_TYPE;
+  const canonical = canonicalizeBusinessType(category);
+  return BUSINESS_TYPES[canonical] ?? DEFAULT_BUSINESS_TYPE;
 }
 
 export function hasCapability(category: string | null | undefined, capability: Capability): boolean {

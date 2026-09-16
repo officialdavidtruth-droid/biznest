@@ -6,6 +6,7 @@ import { chargeCustomer } from "@/lib/payments/gateway";
 import { getFreeTrialSetting } from "@/lib/actions/site-settings";
 import { nanoid } from "nanoid";
 import type { ActionResult } from "@/types/actions";
+import { createPendingPayment, markPaymentFailed } from "@/lib/payments/pending";
 
 const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? "https://www.biznest.space";
 
@@ -63,6 +64,7 @@ export async function initiatePlanUpgrade(
   }
 
   const reference = buildReference(store.id, plan.id);
+  await createPendingPayment({ storeId: store.id, purpose: "SUBSCRIPTION_UPGRADE", provider: "PAYSTACK", reference, amount: Number(plan.price), currency: "NGN" });
 
   // Platform-billing (subscription upgrades) always goes through Paystack,
   // regardless of whichever gateway supaadmin has toggled "active" for
@@ -81,22 +83,13 @@ export async function initiatePlanUpgrade(
   });
 
   if (!charge.success) {
+    await markPaymentFailed(reference);
     return { success: false, error: charge.error };
   }
 
   // Same audit-trail row as order checkout — see the matching comment in
   // lib/actions/order.ts.
-  await prisma.payment.create({
-    data: {
-      storeId: store.id,
-      purpose: "SUBSCRIPTION_UPGRADE",
-      provider: charge.gateway,
-      reference,
-      status: "PENDING",
-      amount: plan.price,
-      currency: "NGN",
-    },
-  });
+  await prisma.payment.update({ where: { reference }, data: { provider: charge.gateway } });
 
   return { success: true, data: { authorizationUrl: charge.authorizationUrl } };
 }

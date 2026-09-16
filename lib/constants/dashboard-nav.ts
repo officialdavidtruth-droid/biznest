@@ -7,6 +7,7 @@ import {
 } from "lucide-react";
 import { getAdaptiveDashboardConfig } from "@/lib/adaptive-dashboard";
 import { getBusinessTerminology } from "@/lib/business-terminology";
+import { canonicalizeBusinessType, isRestaurantBusiness, isHotelBusiness } from "@/lib/business-identity";
 import type { StaffPermissionId } from "@/lib/access/staff-permissions";
 
 export type NavItem = {
@@ -54,9 +55,10 @@ export function buildNavGroups(business: { sellsProducts: boolean; offersService
   // Products and services are different operating models, not two labels for
   // the same catalog. A service-only business gets service operations here;
   // it should never open its dashboard and feel like an online shop.
-  const terminology = getBusinessTerminology(business.category);
+  const canonicalType = canonicalizeBusinessType(business.category);
+  const terminology = getBusinessTerminology(canonicalType);
   const sellNavItems: NavItem[] = [];
-  const categoriesLabel = business.category === "Restaurant" ? "Menu Categories" : terminology.category + "s";
+  const categoriesLabel = isRestaurantBusiness(canonicalType) ? "Menu Categories" : terminology.category + "s";
   const categoriesChild: NavItem = { label: categoriesLabel, href: "/categories", icon: Boxes, permission: "products" };
   // Every catalog-management area (menu, products, packages...) gets the
   // same four sub-destinations -- categories, add-ons/extras, variants, and
@@ -69,7 +71,7 @@ export function buildNavGroups(business: { sellsProducts: boolean; offersService
     { label: `${terminology.catalogSingular} Variants`, href: "/variants", icon: Layers, permission: "products" },
     { label: `${terminology.catalogSingular} Sections`, href: "/menu-sections", icon: Rows3, permission: "products" },
   ];
-  const fnbInstalled = ["Restaurant", "Food & Groceries"].includes(business.category ?? "") && !!business.installedApps?.some((app) => app.key === "fnb-operations");
+  const fnbInstalled = ["Restaurant", "Food & Groceries"].includes(canonicalType) && !!business.installedApps?.some((app) => app.key === "fnb-operations");
   if (business.sellsProducts) {
     sellNavItems.push(
       ...(fnbInstalled ? [] : [{ label: "Point of Sale", href: "/pos", icon: Calculator, permission: "pos" as const }]),
@@ -87,7 +89,7 @@ export function buildNavGroups(business: { sellsProducts: boolean; offersService
   // FnB is the single restaurant/food-business operating app. Keep the
   // core booking link for restaurants, but only surface the vertical app
   // when the canonical fnb-operations entitlement is actually installed.
-  if (business.category === "Restaurant") {
+  if (isRestaurantBusiness(canonicalType)) {
     if (!business.offersServices) sellNavItems.push({ label: terminology.reservationLabel, href: "/bookings", icon: ClipboardList, permission: "products" });
   }
   // The category picked at onboarding can add one more trade-specific tool
@@ -158,9 +160,9 @@ export function buildNavGroups(business: { sellsProducts: boolean; offersService
       items: [
         { label: "Templates", href: "/templates", icon: LayoutTemplate, permission: "settings" },
         { label: "Website Builder", href: "/customize", icon: Wand2, permission: "settings" },
-        ...(String(business.category||"").toLowerCase().includes("hotel") ? [{ label: "Hotel Website", href: "/hotel", icon: Images, permission: "settings" as StaffPermissionId }] : []),
+        ...(isHotelBusiness(canonicalType) ? [{ label: "Hotel Website", href: "/hotel", icon: Images, permission: "settings" as StaffPermissionId }] : []),
         ...(String(business.category||"").toLowerCase().includes("retail") || String(business.category||"").toLowerCase().includes("electronics") ? [{ label: "Example Website", href: "/example", icon: Wand2, permission: "settings" as StaffPermissionId }] : []),
-        ...(business.category === "Restaurant" ? [
+        ...(isRestaurantBusiness(canonicalType) ? [
           { label: "Events", href: "/events", icon: CalendarDays, permission: "settings" as StaffPermissionId },
           { label: "Gallery & Videos", href: "/gallery", icon: Images, permission: "settings" as StaffPermissionId },
           { label: "TasteHouse Website", href: "/tastehouse", icon: Wand2, permission: "settings" as StaffPermissionId },

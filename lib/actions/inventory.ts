@@ -1,5 +1,6 @@
 "use server";
 
+import { canonicalizeBusinessType } from "@/lib/business-identity";
 import { prisma } from "@/lib/prisma";
 import { revalidatePath } from "next/cache";
 import { sendOrderNotificationEmail } from "@/lib/email/send";
@@ -205,7 +206,8 @@ export async function adjustStock(
             sourceNote: note || type,
           });
         } else {
-          const isFoodBusiness = access.store.businessType === "Restaurant" || access.store.businessType === "Food & Groceries";
+          const canonicalType = canonicalizeBusinessType(access.store.businessType);
+          const isFoodBusiness = canonicalType === "Restaurant" || canonicalType === "Food & Groceries";
           const consume = isFoodBusiness && getFnbRotationMode(access.store.enabledModules) === "FEFO" ? consumeFefoStockTx : consumeFifoStockTx;
           await consume(tx, {
             inventoryItemId,

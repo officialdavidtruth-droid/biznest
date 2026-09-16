@@ -2,11 +2,12 @@
 
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { chargeCustomer } from "@/lib/payments/gateway";
+import { chargeCustomer, getActiveGateway } from "@/lib/payments/gateway";
 import { roundMoney } from "@/lib/utils/pricing";
 import { sendOrderNotificationEmail } from "@/lib/email/send";
 import { revalidatePath } from "next/cache";
 import type { ActionResult } from "@/types/actions";
+import { createPendingPayment, markPaymentFailed } from "@/lib/payments/pending";
 import type { Invoice, InvoiceItem } from "@prisma/client";
 import { assertStorePermission } from "@/lib/access/assert-store-access";
 
@@ -204,6 +205,8 @@ export async function payInvoice(invoiceId: string): Promise<ActionResult<{ auth
   // routes to settle this as an invoice rather than an order — see
   // settleInvoicePayment below and lib/payments/settle.ts.
   const reference = `INV-${invoice.id}-${Math.random().toString(36).slice(2, 8)}`;
+  const gateway = await getActiveGateway();
+  await createPendingPayment({ storeId: invoice.storeId, purpose: "INVOICE", provider: gateway, reference, amount: Number(invoice.total), currency: invoice.currency });
 
   const charge = await chargeCustomer({
     email: session.user.email ?? "guest@biznest.space",
@@ -213,20 +216,9 @@ export async function payInvoice(invoiceId: string): Promise<ActionResult<{ auth
     paystackSubaccountCode: invoice.store.paystackSubaccountCode,
     flutterwaveSubaccountId: invoice.store.flutterwaveSubaccountId,
   });
-  if (!charge.success) return { success: false, error: charge.error };
+  if (!charge.success) { await markPaymentFailed(reference); return { success: false, error: charge.error }; }
 
-  await prisma.payment.create({
-    data: {
-      storeId: invoice.storeId,
-      purpose: "INVOICE",
-      provider: charge.gateway,
-      reference,
-      status: "PENDING",
-      amount: Number(invoice.total),
-      currency: invoice.currency,
-      splitSubaccountCode: charge.splitSubaccountCode,
-    },
-  });
+  await prisma.payment.update({ where: { reference }, data: { provider: charge.gateway, splitSubaccountCode: charge.splitSubaccountCode } });
 
   return { success: true, data: { authorizationUrl: charge.authorizationUrl } };
 }

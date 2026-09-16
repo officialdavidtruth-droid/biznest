@@ -1,5 +1,6 @@
 "use server";
 
+import { zonedTimeToUtc, localDateStartUtc, localDateEndUtc, getLocalDateKey, getLocalMinutes, getLocalWeekday, addLocalDays } from "@/lib/timezone";
 import { auth } from "@/lib/auth";
 import { getStoreCustomerSession } from "@/lib/store-customer-auth";
 import { prisma } from "@/lib/prisma";
@@ -64,9 +65,8 @@ export async function getAvailableSlots(
   dateISO: string
 ): Promise<string[]> {
   const service = await prisma.service.findUnique({
-    where: {
-      id: serviceId,
-    },
+    where: { id: serviceId },
+    include: { store: { select: { timezone: true } } },
   });
 
   if (
@@ -85,15 +85,9 @@ export async function getAvailableSlots(
     return [];
   }
 
-  const date = new Date(
-    `${dateISO}T00:00:00`
-  );
-
-  if (Number.isNaN(date.getTime())) {
-    return [];
-  }
-
-  const dayKey = DAY_KEYS[date.getDay()];
+  const timezone = service.store.timezone || "Africa/Lagos";
+  try { localDateStartUtc(dateISO, timezone); } catch { return []; }
+  const dayKey = getLocalWeekday(dateISO, timezone) as typeof DAY_KEYS[number];
   const windows = availability[dayKey];
 
   if (!windows || windows.length === 0) {
@@ -132,13 +126,8 @@ export async function getAvailableSlots(
     }
   }
 
-  const dayStart = new Date(
-    `${dateISO}T00:00:00`
-  );
-
-  const dayEnd = new Date(
-    `${dateISO}T23:59:59`
-  );
+  const dayStart = localDateStartUtc(dateISO, timezone);
+  const dayEnd = localDateEndUtc(dateISO, timezone);
 
   const existing =
     await prisma.booking.findMany({
@@ -146,7 +135,7 @@ export async function getAvailableSlots(
         serviceId,
         scheduledAt: {
           gte: dayStart,
-          lte: dayEnd,
+          lt: dayEnd,
         },
         status: {
           not: "CANCELLED",
@@ -160,21 +149,14 @@ export async function getAvailableSlots(
   const taken = new Set(
     existing.map((booking) => {
       const d = booking.scheduledAt;
-
-      return `${String(
-        d.getHours()
-      ).padStart(2, "0")}:${String(
-        d.getMinutes()
-      ).padStart(2, "0")}`;
+      return `${String(Math.floor(getLocalMinutes(d, timezone) / 60)).padStart(2, "0")}:${String(getLocalMinutes(d, timezone) % 60).padStart(2, "0")}`;
     })
   );
 
   // Don't offer slots that have already passed today.
   const now = new Date();
 
-  const isToday =
-    dayStart.toDateString() ===
-    now.toDateString();
+  const isToday = getLocalDateKey(now, timezone) === dateISO;
 
   return slots.filter((slot) => {
     if (taken.has(slot)) {
@@ -192,9 +174,7 @@ export async function getAvailableSlots(
     const slotMinutes =
       sh * 60 + sm;
 
-    const currentMinutes =
-      now.getHours() * 60 +
-      now.getMinutes();
+    const currentMinutes = getLocalMinutes(now, timezone);
 
     return slotMinutes > currentMinutes;
   });
@@ -323,9 +303,8 @@ export async function createBooking(
 
   const service =
     await prisma.service.findUnique({
-      where: {
-        id: serviceId,
-      },
+      where: { id: serviceId },
+      include: { store: { select: { timezone: true } } },
     });
 
   if (
@@ -438,27 +417,12 @@ export async function createBooking(
     };
   }
 
-  const scheduledAt = new Date(
-    `${dateISO}T00:00:00`
-  );
-
-  if (
-    Number.isNaN(
-      scheduledAt.getTime()
-    )
-  ) {
-    return {
-      success: false,
-      error: "Invalid booking date.",
-    };
+  let scheduledAt: Date;
+  try {
+    scheduledAt = zonedTimeToUtc(dateISO, time, service.store.timezone || "Africa/Lagos");
+  } catch {
+    return { success: false, error: "Invalid booking date/time." };
   }
-
-  scheduledAt.setHours(
-    h,
-    m,
-    0,
-    0
-  );
 
   /**
    * Final race-condition protection.
@@ -575,11 +539,12 @@ export async function getAvailableUnitCount(
   checkInISO: string,
   checkOutISO: string
 ): Promise<number> {
-  const service = await prisma.service.findUnique({ where: { id: serviceId } });
+  const service = await prisma.service.findUnique({ where: { id: serviceId }, include: { store: { select: { timezone: true } } } });
   if (!service || !service.isBookable || !service.totalUnits) return 0;
 
-  const checkIn = new Date(`${checkInISO}T00:00:00`);
-  const checkOut = new Date(`${checkOutISO}T00:00:00`);
+  const timezone = service.store.timezone || "Africa/Lagos";
+  const checkIn = localDateStartUtc(checkInISO, timezone);
+  const checkOut = localDateStartUtc(checkOutISO, timezone);
   if (Number.isNaN(checkIn.getTime()) || Number.isNaN(checkOut.getTime()) || checkOut <= checkIn) return 0;
 
   const totalUnits = await prisma.serviceUnit.count({ where: { serviceId, status: { not: "OUT_OF_SERVICE" } } });
@@ -617,20 +582,22 @@ export async function getNextAvailableStay(
   checkOutISO: string,
   horizonDays = 60
 ): Promise<{ checkIn: string; checkOut: string } | null> {
-  const service = await prisma.service.findUnique({ where: { id: serviceId } });
+  const service = await prisma.service.findUnique({ where: { id: serviceId }, include: { store: { select: { timezone: true } } } });
   if (!service || !service.isBookable || !service.totalUnits) return null;
 
   const totalUnits = await prisma.serviceUnit.count({ where: { serviceId, status: { not: "OUT_OF_SERVICE" } } });
   if (totalUnits === 0) return null;
 
-  const startIn = new Date(`${checkInISO}T00:00:00`);
-  const startOut = new Date(`${checkOutISO}T00:00:00`);
+  const timezone = service.store.timezone || "Africa/Lagos";
+  const startIn = localDateStartUtc(checkInISO, timezone);
+  const startOut = localDateStartUtc(checkOutISO, timezone);
   if (Number.isNaN(startIn.getTime()) || Number.isNaN(startOut.getTime()) || startOut <= startIn) return null;
   const stayMs = startOut.getTime() - startIn.getTime();
 
   // Pull every relevant booking once, then scan candidate windows against it
   // in memory rather than round-tripping to the DB for each day.
-  const horizonEnd = new Date(startIn.getTime() + horizonDays * 86400000 + stayMs);
+  const horizonEndISO = addLocalDays(checkOutISO, horizonDays);
+  const horizonEnd = localDateStartUtc(horizonEndISO, timezone);
   const bookings = await prisma.booking.findMany({
     where: {
       serviceId,
@@ -645,16 +612,17 @@ export async function getNextAvailableStay(
   });
 
   for (let offset = 1; offset <= horizonDays; offset++) {
-    const candidateIn = new Date(startIn.getTime() + offset * 86400000);
-    const candidateOut = new Date(candidateIn.getTime() + stayMs);
+    const candidateInISO = addLocalDays(checkInISO, offset);
+    const candidateOutISO = addLocalDays(checkOutISO, offset);
+    const candidateIn = localDateStartUtc(candidateInISO, timezone);
+    const candidateOut = localDateStartUtc(candidateOutISO, timezone);
     const overlapping = new Set(
       bookings
         .filter((b) => b.checkIn && b.checkOut && b.checkIn < candidateOut && b.checkOut > candidateIn)
         .map((b) => b.unitId)
     );
     if (overlapping.size < totalUnits) {
-      const iso = (d: Date) => d.toISOString().slice(0, 10);
-      return { checkIn: iso(candidateIn), checkOut: iso(candidateOut) };
+      return { checkIn: candidateInISO, checkOut: candidateOutISO };
     }
   }
   return null;
@@ -704,7 +672,7 @@ export async function createStayBooking(
     return { success: false, error: "Too many booking attempts — please wait a few minutes and try again." };
   }
 
-  const service = await prisma.service.findUnique({ where: { id: serviceId } });
+  const service = await prisma.service.findUnique({ where: { id: serviceId }, include: { store: { select: { timezone: true } } } });
   if (!service || !service.isBookable || !service.totalUnits) {
     return { success: false, error: "This service isn't bookable." };
   }
@@ -729,12 +697,13 @@ export async function createStayBooking(
     }
   }
 
-  const checkIn = new Date(`${checkInISO}T00:00:00`);
-  const checkOut = new Date(`${checkOutISO}T00:00:00`);
+  const timezone = service.store.timezone || "Africa/Lagos";
+  const checkIn = localDateStartUtc(checkInISO, timezone);
+  const checkOut = localDateStartUtc(checkOutISO, timezone);
   if (Number.isNaN(checkIn.getTime()) || Number.isNaN(checkOut.getTime()) || checkOut <= checkIn) {
     return { success: false, error: "Invalid dates." };
   }
-  if (checkIn < new Date(new Date().toDateString())) {
+  if (checkInISO < getLocalDateKey(new Date(), timezone)) {
     return { success: false, error: "Check-in date is in the past." };
   }
 

@@ -2,11 +2,12 @@
 
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { chargeCustomer } from "@/lib/payments/gateway";
+import { chargeCustomer, getActiveGateway } from "@/lib/payments/gateway";
 import { roundMoney } from "@/lib/utils/pricing";
 import { sendOrderNotificationEmail } from "@/lib/email/send";
 import { revalidatePath } from "next/cache";
 import type { ActionResult } from "@/types/actions";
+import { createPendingPayment, markPaymentFailed } from "@/lib/payments/pending";
 import { assertStorePermission } from "@/lib/access/assert-store-access";
 
 const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? "https://biznest.vercel.app";
@@ -234,6 +235,8 @@ export async function acceptQuote(quoteId: string): Promise<ActionResult<{ autho
   // Reference prefix "QDEP-" tells the shared payment webhook/callback
   // routes to settle this as a quote deposit — see settleQuoteDeposit below.
   const reference = `QDEP-${quote.id}-${Math.random().toString(36).slice(2, 8)}`;
+  const gateway = await getActiveGateway();
+  await createPendingPayment({ storeId: quote.storeId, purpose: "QUOTE_DEPOSIT", provider: gateway, reference, amount: Number(quote.depositRequired), currency: quote.currency });
 
   const charge = await chargeCustomer({
     email: session.user.email ?? quote.customerEmail ?? "guest@biznest.space",
@@ -243,20 +246,9 @@ export async function acceptQuote(quoteId: string): Promise<ActionResult<{ autho
     paystackSubaccountCode: quote.store.paystackSubaccountCode,
     flutterwaveSubaccountId: quote.store.flutterwaveSubaccountId,
   });
-  if (!charge.success) return { success: false, error: charge.error };
+  if (!charge.success) { await markPaymentFailed(reference); return { success: false, error: charge.error }; }
 
-  await prisma.payment.create({
-    data: {
-      storeId: quote.storeId,
-      purpose: "QUOTE_DEPOSIT",
-      provider: charge.gateway,
-      reference,
-      status: "PENDING",
-      amount: Number(quote.depositRequired),
-      currency: quote.currency,
-      splitSubaccountCode: charge.splitSubaccountCode,
-    },
-  });
+  await prisma.payment.update({ where: { reference }, data: { provider: charge.gateway, splitSubaccountCode: charge.splitSubaccountCode } });
 
   // Remember which signed-in customer is accepting, in case the quote was
   // only addressed by name/email so far.

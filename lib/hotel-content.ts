@@ -64,7 +64,7 @@ function autoPopulateEvents(){
 }
 
 export async function getHotelContent(slug:string):Promise<HotelContent>{
-  const store=await prisma.store.findUnique({where:{slug},select:{id:true}}); if(!store)return defaults;
+  const store=await prisma.store.findUnique({where:{slug},select:{id:true,name:true}}); if(!store)return defaults;
   const [pages,services]=await Promise.all([
     prisma.storePage.findMany({where:{storeId:store.id,slug:{in:["hotel-home","hotel-rooms","hotel-offers","hotel-gallery","hotel-events","hotel-amenities","hotel-contact","hotel-dining","hotel-experiences","hotel-about"]}}}),
     prisma.service.findMany({where:{storeId:store.id,isPublished:true},orderBy:{createdAt:"asc"},select:{id:true,slug:true,name:true,description:true,images:true,price:true,attributes:true,isBookable:true,totalUnits:true,currency:true}})
@@ -74,17 +74,25 @@ export async function getHotelContent(slug:string):Promise<HotelContent>{
     const a=(s.attributes as any)||{};
     return {id:s.id,slug:s.slug,name:s.name,description:s.description,price:Number(s.price),image:s.images[0]||"",badge:a.featured?"Featured":undefined,bed:a.bedType||"King Bed",guests:Number(a.maxGuests)||2,area:a.roomSize?`${a.roomSize} m²`:"—",view:a.view||"City View",amenities:["High-speed Wi-Fi",a.breakfast&&`Breakfast: ${a.breakfast}`,a.floor&&`Floor: ${a.floor}`].filter(Boolean) as string[],featured:Boolean(a.featured)};
   });
+  const storeName = store.name ?? "This Hotel";
+  const safePage = (fallbackTitle: string, fallbackSubtitle: string, key: string): HotelPageContent => ({
+    eyebrow: storeName.toUpperCase(),
+    title: fallbackTitle,
+    subtitle: fallbackSubtitle,
+    image: services[0]?.images?.[0] || "",
+    ...(map.get(key)?.page || map.get(key)?.home || {}),
+  });
   return {
-    rooms:realRooms.length?realRooms:(map.get("hotel-rooms")?.rooms??defaults.rooms),
-    offers:map.get("hotel-offers")?.offers??defaults.offers,
-    gallery:map.get("hotel-gallery")?.items??defaults.gallery,
-    events:map.get("hotel-events")?.events??defaults.events,
-    amenities:map.get("hotel-amenities")?.amenities??defaults.amenities,
-    home:map.get("hotel-home")?.page??map.get("hotel-home")?.home??defaults.home,
-    dining:map.get("hotel-dining")?.page??defaults.dining,
-    experiences:map.get("hotel-experiences")?.page??defaults.experiences,
-    about:map.get("hotel-about")?.page??defaults.about,
-    contact:map.get("hotel-contact")?.page??defaults.contact,
+    rooms: realRooms.length ? realRooms : (map.get("hotel-rooms")?.rooms ?? []),
+    offers: map.get("hotel-offers")?.offers ?? [],
+    gallery: map.get("hotel-gallery")?.items ?? [],
+    events: map.get("hotel-events")?.events ?? [],
+    amenities: map.get("hotel-amenities")?.amenities ?? [],
+    home: map.get("hotel-home")?.page ?? map.get("hotel-home")?.home ?? safePage("Welcome to our hotel", "Comfortable stays, thoughtful service and a location that works for you.", "hotel-home"),
+    dining: map.get("hotel-dining")?.page ?? safePage("Dining at our hotel", "Discover the food and beverage experiences currently offered by this property.", "hotel-dining"),
+    experiences: map.get("hotel-experiences")?.page ?? safePage("Experiences", "Explore the experiences and activities available at this property.", "hotel-experiences"),
+    about: map.get("hotel-about")?.page ?? safePage("About us", "Learn more about this property and the people behind it.", "hotel-about"),
+    contact: map.get("hotel-contact")?.page ?? safePage("Contact us", "Get in touch with the property for reservations, questions and assistance.", "hotel-contact"),
     _serviceMap:Object.fromEntries(services.flatMap(s=>[[s.id,s.id],[s.slug,s.id],[s.name.toLowerCase().replace(/[^a-z0-9]+/g,"-"),s.id]])),
   };
 }

@@ -8,6 +8,7 @@ import { chargeCustomer } from "@/lib/payments/gateway";
 import { revalidatePath } from "next/cache";
 import { nanoid } from "nanoid";
 import type { ActionResult } from "@/types/actions";
+import { createPendingPayment, markPaymentFailed } from "@/lib/payments/pending";
 import { ensureSystemPlugins, getPluginEntitlement } from "@/lib/plugins";
 import { APP_URL } from "@/lib/constants/app-url";
 
@@ -103,6 +104,7 @@ export async function startPluginPurchase(slug: string, pluginKey: string): Prom
   });
 
   const reference = `PLUG-${access.store.id}-${entitlement.plugin.id}-${nanoid(8)}`;
+  await createPendingPayment({ storeId: access.store.id, purpose: "PLUGIN_PURCHASE", provider: "PAYSTACK", reference, amount: entitlement.plugin.price, currency: entitlement.plugin.currency });
   const session = await auth();
   const charge = await chargeCustomer({
     email: session?.user?.email ?? `${access.store.slug}@biznest.space`,
@@ -112,21 +114,12 @@ export async function startPluginPurchase(slug: string, pluginKey: string): Prom
     gateway: "PAYSTACK",
   });
   if (!charge.success) {
+    await markPaymentFailed(reference);
     await prisma.storePlugin.update({ where: { id: pending.id }, data: { status: "SUSPENDED" } });
     return { success: false, error: charge.error };
   }
 
-  await prisma.payment.create({
-    data: {
-      storeId: access.store.id,
-      purpose: "PLUGIN_PURCHASE",
-      provider: "PAYSTACK",
-      reference,
-      status: "PENDING",
-      amount: entitlement.plugin.price,
-      currency: entitlement.plugin.currency,
-    },
-  });
+  await prisma.payment.update({ where: { reference }, data: { provider: charge.gateway } });
 
   return { success: true, data: { authorizationUrl: charge.authorizationUrl } };
 }
