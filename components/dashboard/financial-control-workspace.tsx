@@ -78,5 +78,23 @@ export function FinancialControlWorkspace({ data }: { data: Data }) {
   </div>;
 }
 
-function Table({ headers, rows }: { headers: string[]; rows: React.ReactNode[][] }) { return <div className="overflow-x-auto rounded-2xl border border-slate-200/90 bg-white shadow-[0_2px_8px_rgba(15,23,42,0.025)]"><table className="w-full min-w-[720px] text-sm text-slate-700"><thead className="border-b border-slate-200 bg-slate-50/90 text-left text-[10px] font-extrabold uppercase tracking-[0.12em] text-slate-500"><tr>{headers.map(h=><th key={h} className="whitespace-nowrap px-4 py-3.5">{h}</th>)}</tr></thead><tbody>{rows.map((row,i)=><tr key={i} className="border-b border-slate-100 transition-colors hover:bg-slate-50/70 last:border-0">{row.map((cell,j)=><td key={j} className="px-4 py-3.5">{cell}</td>)}</tr>)}{rows.length===0&&<tr><td colSpan={headers.length} className="p-8 text-center text-sm text-muted-foreground">No records yet.</td></tr>}</tbody></table></div>; }
+function nodeText(node: React.ReactNode): string {
+  if (node == null || typeof node === "boolean") return "";
+  if (typeof node === "string" || typeof node === "number") return String(node);
+  if (Array.isArray(node)) return node.map(nodeText).join(" ");
+  if (typeof node === "object" && "props" in node) return nodeText((node as React.ReactElement<{ children?: React.ReactNode }>).props.children);
+  return "";
+}
+
+function Table({ headers, rows }: { headers: string[]; rows: React.ReactNode[][] }) {
+  const [query, setQuery] = useState("");
+  const filtered = rows.filter(row => row.map(nodeText).join(" ").toLowerCase().includes(query.trim().toLowerCase()));
+  return <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+    <div className="flex flex-col gap-3 border-b border-slate-100 bg-white p-4 sm:flex-row sm:items-center sm:justify-between">
+      <div><p className="text-sm font-bold text-slate-800">Records</p><p className="mt-0.5 text-xs text-slate-500">{filtered.length} of {rows.length} entries</p></div>
+      <label className="relative block w-full sm:max-w-xs"><span className="sr-only">Search records</span><span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400">⌕</span><input value={query} onChange={e=>setQuery(e.target.value)} placeholder="Search records…" className="w-full rounded-xl border border-slate-200 bg-slate-50 py-2.5 pl-9 pr-3 text-sm outline-none transition focus:border-emerald-500 focus:bg-white focus:ring-4 focus:ring-emerald-500/10" /></label>
+    </div>
+    <div className="overflow-x-auto"><table className="w-full min-w-[720px] text-sm text-slate-700"><thead className="border-b border-slate-200 bg-slate-50 text-left text-[10px] font-extrabold uppercase tracking-[0.12em] text-slate-500"><tr>{headers.map(h=><th key={h} className="whitespace-nowrap px-4 py-3.5">{h}</th>)}</tr></thead><tbody>{filtered.map((row,i)=><tr key={i} className="border-b border-slate-100 transition-colors hover:bg-emerald-50/40 last:border-0">{row.map((cell,j)=><td key={j} className="px-4 py-3.5">{cell}</td>)}</tr>)}{filtered.length===0&&<tr><td colSpan={headers.length} className="p-10 text-center"><p className="text-sm font-semibold text-slate-700">{rows.length ? "No matching records" : "No records yet"}</p><p className="mt-1 text-xs text-slate-500">{rows.length ? "Try another search term." : "New entries will appear here once recorded."}</p></td></tr>}</tbody></table></div>
+  </div>;
+}
 function Report({ title, rows }: { title: string; rows: [string,string][] }) { return <section className="rounded-2xl border border-slate-200/90 bg-white p-5 shadow-[0_2px_8px_rgba(15,23,42,0.025)]"><h2 className="font-bold">{title}</h2><div className="mt-4 divide-y">{rows.map(([l,v])=><div key={l} className="flex justify-between py-3 text-sm"><span>{l}</span><b>{v}</b></div>)}</div></section>; }
