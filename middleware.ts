@@ -279,6 +279,8 @@ export default auth(async (req) => {
     const subpath = pathname.slice(adminIndex + "/admin".length) || "/";
     const headers = withStoreSubpath(new Headers(req.headers));
     headers.set("x-bn-admin-subpath", subpath);
+    // Explicit layout signal for the standalone FnB app shell.
+    headers.set("x-bn-fnb-workspace", subpath === "/fnb" || subpath.startsWith("/fnb/") ? "1" : "0");
     return rewritten
       ? NextResponse.rewrite(url, { request: { headers } })
       : NextResponse.next({ request: { headers } });

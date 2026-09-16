@@ -36,7 +36,8 @@ export default async function StoreAdminLayout({
   const installedAppNav = installedApps.map((x: { plugin: { key: string; name: string; icon: string | null } }) => x.plugin);
   const adminSubpath = (await headers()).get("x-bn-admin-subpath") ?? "/";
   const isPmsRoute = adminSubpath === "/pms" || adminSubpath.startsWith("/pms/");
-  const isFnbRoute = adminSubpath === "/fnb" || adminSubpath.startsWith("/fnb/");
+  const requestHeaders = await headers();
+  const isFnbRoute = requestHeaders.get("x-bn-fnb-workspace") === "1" || adminSubpath === "/fnb" || adminSubpath.startsWith("/fnb/");
   if (role === null) redirect("/");
 
   // No free tier — a store isn't usable until it's on a paid plan. Staff
