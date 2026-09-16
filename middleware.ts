@@ -279,11 +279,12 @@ export default auth(async (req) => {
     const subpath = pathname.slice(adminIndex + "/admin".length) || "/";
     const headers = withStoreSubpath(new Headers(req.headers));
     headers.set("x-bn-admin-subpath", subpath);
-    // Explicit marker for the standalone FnB app shell. This is set after
-    // platform/custom-domain routing has resolved to /store/<slug>/admin/...
-    // so the admin layout does not have to infer it from a possibly stale path.
-    if (subpath === "/fnb" || subpath.startsWith("/fnb/")) {
-      headers.set("x-bn-fnb-standalone", "1");
+    // App workspaces render outside the global admin chrome. Keep the marker
+    // explicit so app routes do not depend on subpath parsing in layouts.
+    if (/^\/(?:apps\/[^/]+|fnb(?:\/.*)?|pms(?:\/.*)?)$/.test(subpath)) {
+      headers.set("x-bn-standalone-app", "1");
+    } else {
+      headers.delete("x-bn-standalone-app");
     }
     return rewritten
       ? NextResponse.rewrite(url, { request: { headers } })
