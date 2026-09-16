@@ -34,10 +34,16 @@ export default async function StoreAdminLayout({
   const role = await getStoreAccessRole(session.user.id, session.user.role, store);
   const installedApps = await prisma.storePlugin.findMany({ where: { storeId: store.id, status: "ACTIVE", plugin: { status: "ACTIVE" } }, select: { plugin: { select: { key: true, name: true, icon: true } } }, orderBy: { plugin: { sortOrder: "asc" } } });
   const installedAppNav = installedApps.map((x: { plugin: { key: string; name: string; icon: string | null } }) => x.plugin);
-  const adminSubpath = (await headers()).get("x-bn-admin-subpath") ?? "/";
-  const isPmsRoute = adminSubpath === "/pms" || adminSubpath.startsWith("/pms/");
   const requestHeaders = await headers();
-  const isFnbRoute = requestHeaders.get("x-bn-fnb-workspace") === "1" || adminSubpath === "/fnb" || adminSubpath.startsWith("/fnb/");
+  const adminSubpath = requestHeaders.get("x-bn-admin-subpath") ?? "/";
+  const storeSubpath = requestHeaders.get("x-bn-store-subpath") ?? "/";
+  // Prefer the explicit middleware marker, then use both forwarded path
+  // forms as a fallback (platform slug rewrite and custom domains differ).
+  const isFnbRoute =
+    requestHeaders.get("x-bn-fnb-standalone") === "1" ||
+    adminSubpath === "/fnb" || adminSubpath.startsWith("/fnb/") ||
+    storeSubpath.endsWith("/admin/fnb") || storeSubpath.includes("/admin/fnb/");
+  const isPmsRoute = adminSubpath === "/pms" || adminSubpath.startsWith("/pms/") || storeSubpath.endsWith("/admin/pms") || storeSubpath.includes("/admin/pms/");
   if (role === null) redirect("/");
 
   // No free tier — a store isn't usable until it's on a paid plan. Staff
