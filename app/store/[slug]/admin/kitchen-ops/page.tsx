@@ -1,17 +1,7 @@
-import { notFound, redirect } from "next/navigation";
-import { prisma } from "@/lib/prisma";
-import { getPluginEntitlement } from "@/lib/plugins";
-import { getKitchenOpsDashboard } from "@/lib/actions/kitchen-ops";
-import { KitchenOpsWorkspace } from "@/components/dashboard/kitchen-ops-workspace";
+import { redirect } from "next/navigation";
 
-export default async function KitchenOpsPage({ params }: { params: Promise<{ slug: string }> }) {
+/** Legacy compatibility route. Kitchen Operations is now a module inside BizNest FnB. */
+export default async function LegacyKitchenOpsPage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
-  const store = await prisma.store.findUnique({ where: { slug }, select: { id: true, businessType: true, subscription: { select: { commissionRate: true } } } });
-  if (!store) notFound();
-  const entitlement = await getPluginEntitlement(store.id, "restaurant-operations");
-  if (!entitlement.allowed || !entitlement.installed) redirect(`/store/${slug}/admin/apps`);
-  if (!["Restaurant", "Food & Groceries"].includes(store.businessType)) notFound();
-  const data = await getKitchenOpsDashboard(slug);
-  if (!data) notFound();
-  return <KitchenOpsWorkspace slug={slug} data={{ ...data, posCommissionRatePercent: store.subscription ? Number(store.subscription.commissionRate) : 8 }} />;
+  redirect(`/store/${slug}/admin/fnb`);
 }

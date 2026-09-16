@@ -1,6 +1,5 @@
 import { notFound } from "next/navigation";
 import Link from "next/link";
-import { ArrowRight, PackageOpen, ShoppingBag, Sparkles } from "lucide-react";
 import { getStoreBranding } from "@/lib/actions/store-branding";
 import { getAccountCopy } from "@/lib/account-copy";
 import { prisma } from "@/lib/prisma";
@@ -19,41 +18,14 @@ export default async function AccountOrdersPage({ params }: { params: Promise<{ 
   const copy = getAccountCopy(record?.template?.name, store.businessCategory);
   const hero = hotel.rooms.find((r: any) => r.featured)?.image || hotel.rooms[0]?.image || null;
 
-  const primary = (store.themeColors as any)?.primary || "#0b4f3c";
-  const secondary = (store.themeColors as any)?.secondary || "#c99845";
-
   return (
-    <div className="veloura-account-content bn-orders-page" style={{ ["--bn-orders-primary" as any]: primary, ["--bn-orders-secondary" as any]: secondary }}>
-      <section className="bn-orders-hero">
-        <div className="bn-orders-hero-copy">
-          <div className="bn-orders-eyebrow"><ShoppingBag size={15} /> ORDER HISTORY</div>
-          <h1>My {copy.orders.toLowerCase()}</h1>
-          <p>Everything you’ve purchased from <strong>{store.name}</strong>, in one place.</p>
-        </div>
-        {store.logoUrl ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img className="bn-orders-store-logo" src={store.logoUrl} alt={store.name} />
-        ) : (
-          <div className="bn-orders-store-logo bn-orders-store-logo-fallback">{store.name.charAt(0).toUpperCase()}</div>
-        )}
-      </section>
-
-      <div className="bn-orders-toolbar">
-        <div>
-          <span className="bn-orders-toolbar-label">YOUR PURCHASES</span>
-          <h2>Order history</h2>
-        </div>
-        <Link className="bn-orders-shop-link" href={`/store/${slug}`}>
-          Continue shopping <ArrowRight size={16} />
-        </Link>
+    <div className="veloura-account-content">
+      <VelouraAccountHero title={`My ${copy.orders}`} subtitle="Keep track of purchases, payments and order status from this store." image={hero} />
+      <div className="bn-account-subpage-heading">
+        <div><span>ORDER HISTORY</span><h2>Your {copy.orders.toLowerCase()}</h2></div>
+        <Link href={`/store/${slug}`}>Continue shopping →</Link>
       </div>
-
       <OrdersListContent slug={slug} />
-
-      <div className="bn-orders-trust">
-        <Sparkles size={17} />
-        <span>Orders from {store.name} stay connected to your account so you can return to them whenever you need.</span>
-      </div>
     </div>
   );
 }
