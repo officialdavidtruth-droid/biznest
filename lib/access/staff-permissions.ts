@@ -20,6 +20,17 @@ export const STAFF_PERMISSIONS = [
   { id: "finance", label: "Financial control & accounting" },
   { id: "hr", label: "HR & payroll" },
   { id: "settings", label: "Store settings" },
+  { id: "fnb:pos", label: "FnB · POS" },
+  { id: "fnb:orders", label: "FnB · Orders" },
+  { id: "fnb:kitchen", label: "FnB · Kitchen" },
+  { id: "fnb:menu", label: "FnB · Menu" },
+  { id: "fnb:inventory", label: "FnB · Inventory" },
+  { id: "fnb:recipes", label: "FnB · Recipes & food cost" },
+  { id: "fnb:procurement", label: "FnB · Procurement" },
+  { id: "fnb:suppliers", label: "FnB · Suppliers" },
+  { id: "fnb:customers", label: "FnB · Customers" },
+  { id: "fnb:reports", label: "FnB · Reports" },
+  { id: "fnb:settings", label: "FnB · Settings" },
 ] as const;
 
 export type StaffPermissionId = (typeof STAFF_PERMISSIONS)[number]["id"] | `plugin:${string}`;

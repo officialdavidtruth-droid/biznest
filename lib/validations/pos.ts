@@ -15,6 +15,8 @@ export const posTenderTypes = ["Cash", "Card", "Transfer"] as const;
 export const posSaleSchema = z.object({
   items: z.array(posSaleItemSchema).min(1, "Add at least one item to the sale."),
   tenderType: z.enum(posTenderTypes),
+  orderType: z.enum(["DINE_IN", "TAKEAWAY", "DELIVERY"]).default("DINE_IN"),
+  tableLabel: z.string().trim().max(40).optional(),
   customerName: z.string().trim().max(120).optional(),
   customerPhone: z.string().trim().max(30).optional(),
   customerEmail: z.string().trim().email().max(180).optional(),

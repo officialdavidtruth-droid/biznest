@@ -69,10 +69,11 @@ export function buildNavGroups(business: { sellsProducts: boolean; offersService
     { label: `${terminology.catalogSingular} Variants`, href: "/variants", icon: Layers, permission: "products" },
     { label: `${terminology.catalogSingular} Sections`, href: "/menu-sections", icon: Rows3, permission: "products" },
   ];
+  const fnbInstalled = ["Restaurant", "Food & Groceries"].includes(business.category ?? "") && !!business.installedApps?.some((app) => app.key === "fnb-operations");
   if (business.sellsProducts) {
     sellNavItems.push(
-      { label: "Point of Sale", href: "/pos", icon: Calculator, permission: "pos" },
-      { label: "Orders", href: "/orders", icon: ShoppingCart, permission: "orders" },
+      ...(fnbInstalled ? [] : [{ label: "Point of Sale", href: "/pos", icon: Calculator, permission: "pos" as const }]),
+      ...(fnbInstalled ? [] : [{ label: "Orders", href: "/orders", icon: ShoppingCart, permission: "orders" as const }]),
       { label: terminology.catalogPageTitle, href: "/products", icon: Package, permission: "products", children: catalogChildren },
     );
   }
@@ -83,12 +84,14 @@ export function buildNavGroups(business: { sellsProducts: boolean; offersService
       { label: "Calendar", href: "/calendar", icon: CalendarDays, permission: "products" },
     );
   }
-  // Table reservations are core to running a restaurant regardless of
-  // whether the merchant separately flagged "offers services" at
-  // onboarding, so this niche always gets Reservations + Kitchen Ops.
+  // FnB is the single restaurant/food-business operating app. Keep the
+  // core booking link for restaurants, but only surface the vertical app
+  // when the canonical fnb-operations entitlement is actually installed.
   if (business.category === "Restaurant") {
     if (!business.offersServices) sellNavItems.push({ label: terminology.reservationLabel, href: "/bookings", icon: ClipboardList, permission: "products" });
-    sellNavItems.push({ label: "Kitchen Operations", href: "/kitchen", icon: ChefHat, permission: "orders" });
+  }
+  if (fnbInstalled) {
+    sellNavItems.push({ label: "BizNest FnB", href: "/fnb", icon: ChefHat, permission: "plugin:fnb-operations" });
   }
 
   // The category picked at onboarding can add one more trade-specific tool

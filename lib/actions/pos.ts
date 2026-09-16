@@ -316,6 +316,7 @@ export async function createPosSale(
     quantity: number;
     unitPrice: number;
     name: string;
+    fnbStation: string;
   };
   const resolved: ResolvedLine[] = [];
   let currency = "NGN";
@@ -334,6 +335,7 @@ export async function createPosSale(
         quantity: line.quantity,
         unitPrice: variant.price !== null ? Number(variant.price) : Number(variant.product.price),
         name: `${variant.product.name} — ${variant.label}`,
+        fnbStation: (() => { const attrs = variant.product.attributes; return attrs && typeof attrs === "object" && !Array.isArray(attrs) && typeof (attrs as Record<string, unknown>).fnbStation === "string" ? String((attrs as Record<string, unknown>).fnbStation) : "Hot Kitchen"; })(),
       });
     } else if (line.productId) {
       const product = products.find((p) => p.id === line.productId);
@@ -347,6 +349,7 @@ export async function createPosSale(
         quantity: line.quantity,
         unitPrice: Number(product.price),
         name: product.name,
+        fnbStation: (() => { const attrs = product.attributes; return attrs && typeof attrs === "object" && !Array.isArray(attrs) && typeof (attrs as Record<string, unknown>).fnbStation === "string" ? String((attrs as Record<string, unknown>).fnbStation) : "Hot Kitchen"; })(),
       });
     } else if (line.serviceId) {
       const service = services.find((s) => s.id === line.serviceId);
@@ -357,6 +360,7 @@ export async function createPosSale(
         quantity: line.quantity,
         unitPrice: Number(service.price),
         name: service.name,
+        fnbStation: "Hot Kitchen",
       });
     }
   }
@@ -457,7 +461,11 @@ export async function createPosSale(
             storeId: store.id,
             buyerId: walkIn.id,
             status: "PAID",
+            fulfillmentStatus: "NEW",
+            kitchenStatus: "QUEUED",
             channel: "POS",
+            fnbOrderType: data.orderType,
+            fnbTableLabel: data.tableLabel || null,
             subtotal,
             commission,
             total,
@@ -477,6 +485,7 @@ export async function createPosSale(
                 serviceId: l.serviceId ?? null,
                 quantity: l.quantity,
                 unitPrice: l.unitPrice,
+                fnbStation: l.fnbStation,
               })),
             },
           },

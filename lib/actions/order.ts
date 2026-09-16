@@ -1058,7 +1058,11 @@ export async function updateOrderStatus(
 
     data: {
       status,
-
+      ...(status === "PAID" ? { fulfillmentStatus: "NEW", kitchenStatus: "QUEUED" } : {}),
+      ...(status === "IN_PROGRESS" ? { fulfillmentStatus: "PREPARING", kitchenStatus: "STARTED" } : {}),
+      ...(status === "DELIVERED" ? { fulfillmentStatus: "READY", kitchenStatus: "READY" } : {}),
+      ...(status === "COMPLETED" ? { fulfillmentStatus: "FULFILLED", kitchenStatus: "SERVED" } : {}),
+      ...(status === "CANCELLED" || status === "REFUNDED" ? { fulfillmentStatus: "CANCELLED", kitchenStatus: "VOIDED" } : {}),
       escrowReleasedAt:
         status === "COMPLETED"
           ? new Date()
