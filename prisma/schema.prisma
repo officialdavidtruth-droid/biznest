@@ -676,6 +676,7 @@ enum DomainStatus {
 }
 
 model Store {
+  timezone      String      @default("Africa/Lagos")
   id            String      @id @default(cuid())
   businessId    String      @unique
   business      Business    @relation(fields: [businessId], references: [id], onDelete: Cascade)
