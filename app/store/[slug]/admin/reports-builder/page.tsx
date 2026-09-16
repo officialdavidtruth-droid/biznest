@@ -2,9 +2,11 @@ import { prisma } from "@/lib/prisma";
 import { auth } from "@/lib/auth";
 import { notFound, redirect } from "next/navigation";
 import { WorkflowCenter } from "@/components/dashboard/workflow-center";
+import { assertStorePermission } from "@/lib/access/assert-store-access";
 
 export default async function Page({ params }: { params: Promise<{ slug: string }> }) {
  const { slug } = await params; const session = await auth();
+ const access = await assertStorePermission(slug, "analytics"); if (!access.success) redirect(`/store/${slug}/admin`);
  if (!session?.user?.id) redirect(`/login?callbackUrl=/${slug}/admin/reports-builder`);
  const store = await prisma.store.findUnique({ where: { slug }, select: { id: true, name: true } });
  if (!store) notFound();

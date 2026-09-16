@@ -1,4 +1,4 @@
-import { prisma } from "@/lib/prisma";
+import { isHotelStore } from "@/lib/storefront-routing"; import { prisma } from "@/lib/prisma";
 import { redirect, notFound } from "next/navigation";
 import { getStoreCustomerSessionForStore } from "@/lib/store-customer-auth";
 import { CheckoutClient } from "./checkout-client";
@@ -15,7 +15,7 @@ export default async function CheckoutPage({ params }: { params: Promise<{ slug:
   const { slug } = await params;
   const rawStore = await prisma.store.findUnique({ where: { slug }, include: { template: true, business: true } });
   if (!rawStore || rawStore.status !== "ACTIVE") notFound();
-  const isHotel = String(rawStore.business?.category || "").toLowerCase().includes("hotel") || rawStore.template?.name === HOTEL_TEMPLATE_NAME || String(rawStore.template?.name || "").includes("THELUSO");
+  const isHotel = isHotelStore({ businessCategory: rawStore.business?.category, storeBusinessType: rawStore.businessType, templateName: rawStore.template?.name });
   if (isHotel) return <HotelCheckout store={rawStore} slug={slug} content={await getHotelContent(slug)} />;
   const session = await getStoreCustomerSessionForStore(slug);
   if (!session?.user?.id) redirect(`/login?callbackUrl=${encodeURIComponent(`/store/${slug}/checkout`)}&store=${encodeURIComponent(slug)}`);

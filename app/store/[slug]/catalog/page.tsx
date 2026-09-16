@@ -7,6 +7,7 @@ import { EXAMPLE_TEMPLATE_NAME } from "@/lib/example-content";
 import { ExampleStorefront } from "@/components/storefront/example-store";
 import { CatalogGrid } from "@/components/storefront/catalog-grid";
 import { resolveStoreTheme } from "@/lib/template-themes";
+import { isRestaurantBusiness } from "@/lib/business-identity";
 
 export default async function CatalogPage({ params, searchParams }: { params: Promise<{ slug: string }>; searchParams?: Promise<{ category?: string }> }) {
   const { slug } = await params;
@@ -20,7 +21,7 @@ export default async function CatalogPage({ params, searchParams }: { params: Pr
   ];
   if (store.template?.name === EXAMPLE_TEMPLATE_NAME) return <ExampleStorefront store={store} slug={slug} items={items.map(i=>({...i,description:null,type:i.kind,rentalUnit:null,isBookable:false})) as any} mode="catalog" />;
   if (store.template?.name === TASTEHOUSE_TEMPLATE_NAME) return <TasteHouseMenu store={store} slug={slug} initialCategory={query?.category} items={items.map(i=>({...i,description:null,type:i.kind,isBookable:false})) as any} />;
-  if (String(store.business?.category || "").toLowerCase() === "restaurant") return <GrandeurMenu store={store} slug={slug} items={items.map(i=>({...i,description:null,type:i.kind,isBookable:false})) as any} />;
+  if (isRestaurantBusiness(store.business?.category)) return <GrandeurMenu store={store} slug={slug} items={items.map(i=>({...i,description:null,type:i.kind,isBookable:false})) as any} />;
   const theme = resolveStoreTheme(store.template?.category, store.name, store.themeColors as any, store.fontFamily, store.template?.name);
   return <main style={{minHeight:"100vh",background:theme.bg,color:theme.ink,fontFamily:theme.font,padding:"6rem 2rem"}}><div style={{maxWidth:1200,margin:"0 auto"}}><h1 style={{fontFamily:theme.headlineFont}}>Catalog</h1><CatalogGrid items={items} slug={slug} accent={theme.accent} ink={theme.ink} radius={theme.radius}/></div></main>;
 }
