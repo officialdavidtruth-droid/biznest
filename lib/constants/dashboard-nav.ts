@@ -3,7 +3,7 @@ import {
   CreditCard, BarChart3, Star, Megaphone, MessageSquare,
   Settings, BadgeCheck, Wallet, LifeBuoy, Truck, Wand2,
   LayoutTemplate, FileText, FileSignature, MailWarning, Calculator, CalendarDays, Images,
-  ClipboardList, PlusCircle, Layers, Rows3, ChefHat, Puzzle,
+  ClipboardList, PlusCircle, Layers, Rows3, Puzzle,
 } from "lucide-react";
 import { getAdaptiveDashboardConfig } from "@/lib/adaptive-dashboard";
 import { getBusinessTerminology } from "@/lib/business-terminology";
@@ -90,10 +90,6 @@ export function buildNavGroups(business: { sellsProducts: boolean; offersService
   if (business.category === "Restaurant") {
     if (!business.offersServices) sellNavItems.push({ label: terminology.reservationLabel, href: "/bookings", icon: ClipboardList, permission: "products" });
   }
-  if (fnbInstalled) {
-    sellNavItems.push({ label: "BizNest FnB", href: "/fnb", icon: ChefHat, permission: "plugin:fnb-operations" });
-  }
-
   // The category picked at onboarding can add one more trade-specific tool
   // (e.g. "Bookings" for a salon, "Delivery zones" for a restaurant) — but
   // only if it isn't already present above.
