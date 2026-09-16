@@ -5,6 +5,7 @@ import { CartLink } from "@/components/storefront/cart-link";
 import { AccountLink } from "@/components/storefront/account-link";
 import type { TemplateTheme } from "@/lib/template-themes";
 import { resolveBusinessMode } from "@/lib/business-experience";
+import { isHotelBusiness } from "@/lib/business-identity";
 
 type Item = { id:string; kind:"product"|"service"; name:string; description:string|null; price:number; currency:string; image:string|null; categoryName:string|null; type:string; rentalUnit:string|null; isBookable:boolean };
 type Props = { store:any; slug:string; pageSlug:string; items:Item[]; reviews:any[]; theme:TemplateTheme; social:Record<string,string> };
@@ -18,7 +19,7 @@ export function primaryCta(store:any, slug:string, _theme?:TemplateTheme){
     sellsProducts: store.sellsProducts,
     offersServices: store.offersServices,
   });
-  if (category.includes("hotel") || category.includes("lodging")) return { label: "Book a Stay", href: `/store/${slug}/hotel/rooms` };
+  if (isHotelBusiness(store.business?.category)) return { label: "Book a Stay", href: `/store/${slug}/hotel/rooms` };
   if (category === "restaurant") return { label: "View Menu", href: `/store/${slug}/catalog` };
   if (category === "beauty" || category === "salon" || category === "health" || category.includes("fitness")) return { label: "Book / Enquire", href: `/store/${slug}/services` };
   if (mode === "commerce") return { label: "Shop Now", href: `/store/${slug}/catalog` };
@@ -28,7 +29,7 @@ export function primaryCta(store:any, slug:string, _theme?:TemplateTheme){
 
 function secondaryCta(store:any, slug:string){
   const category = String(store.business?.category || "").toLowerCase();
-  if (category.includes("hotel") || category.includes("lodging")) return { label: "Explore Rooms", href: `/store/${slug}/hotel/rooms` };
+  if (isHotelBusiness(store.business?.category)) return { label: "Explore Rooms", href: `/store/${slug}/hotel/rooms` };
   if (category === "restaurant") return { label: "View Menu", href: `/store/${slug}/catalog` };
   if (["fashion", "electronics", "food & groceries", "home & furniture", "agriculture", "real estate"].includes(category)) return { label: "Browse Catalog", href: `/store/${slug}/catalog` };
   return { label: "Explore Services", href: `/store/${slug}/services` };
@@ -99,10 +100,10 @@ function Footer({store,slug,accent}:{store:any;slug:string;accent:string}){
 function Hero({store,slug,active,copy,accent,hero,archetype="editorial",children}:{store:any;slug:string;active:string;copy:any;accent:string;hero:string|null;archetype?:Archetype;children:React.ReactNode}){
  const primary=primaryCta(store,slug); const secondary=secondaryCta(store,slug);
  if(archetype==="corporate"){
-  return <section className="bn-universal-hero corporate"><div className="bn-universal-hero-inner corporate"><div className="bn-universal-eyebrow center"><ShieldCheck size={13}/> {copy.eyebrow}</div><h1>{children}</h1><p>{copy.description}</p><div className="bn-universal-hero-actions center"><Link href={primary.href} className="bn-primary" style={{background:accent}}>{primary.label} <ArrowRight size={16}/></Link><Link href={secondary.href} className="bn-secondary corporate">{secondary.label} <ArrowRight size={16}/></Link></div><div className="bn-hero-trust corporate"><span><ShieldCheck size={18}/>Licensed &amp; Insured</span><span><Check size={18}/>Client-First Approach</span><span><Clock3 size={18}/>Responsive Support</span></div></div></section>
+  return <section className="bn-universal-hero corporate"><div className="bn-universal-hero-inner corporate"><div className="bn-universal-eyebrow center"><ShieldCheck size={13}/> {copy.eyebrow}</div><h1>{children}</h1><p>{copy.description}</p><div className="bn-universal-hero-actions center"><Link href={primary.href} className="bn-primary" style={{background:accent}}>{primary.label} <ArrowRight size={16}/></Link><Link href={secondary.href} className="bn-secondary corporate">{secondary.label} <ArrowRight size={16}/></Link></div><div className="bn-hero-trust corporate"><span><ShieldCheck size={18}/>Business information</span><span><Check size={18}/>Published policies</span><span><Clock3 size={18}/>Contact the business</span></div></div></section>
  }
  if(archetype==="technical"){
-  return <section className="bn-universal-hero technical"><div className="bn-universal-hero-inner"><div className="bn-universal-eyebrow mono">&gt; {copy.eyebrow}</div><h1>{children}</h1><p>{copy.description}</p><div className="bn-universal-hero-actions"><Link href={primary.href} className="bn-primary square" style={{background:accent}}>{primary.label} <ArrowRight size={16}/></Link><Link href={secondary.href} className="bn-secondary square">{secondary.label} <ArrowRight size={16}/></Link></div><div className="bn-hero-trust mono"><span>// 99.9% Uptime</span><span>// 24/7 Support</span><span>// Secure by Design</span></div></div></section>
+  return <section className="bn-universal-hero technical"><div className="bn-universal-hero-inner"><div className="bn-universal-eyebrow mono">&gt; {copy.eyebrow}</div><h1>{children}</h1><p>{copy.description}</p><div className="bn-universal-hero-actions"><Link href={primary.href} className="bn-primary square" style={{background:accent}}>{primary.label} <ArrowRight size={16}/></Link><Link href={secondary.href} className="bn-secondary square">{secondary.label} <ArrowRight size={16}/></Link></div><div className="bn-hero-trust mono"><span>// Store information</span><span>// Business policies</span><span>// Secure checkout via configured gateway</span></div></div></section>
  }
  return <section className="bn-universal-hero" style={hero?{backgroundImage:`linear-gradient(90deg,rgba(4,13,23,.94) 0%,rgba(4,13,23,.76) 46%,rgba(4,13,23,.22) 100%),url(${hero})`}:{backgroundImage:"radial-gradient(circle at 78% 42%,rgba(20,115,234,.34),transparent 28%),linear-gradient(135deg,#061525 0%,#071522 52%,#102b46 100%)"}}><div className={`bn-universal-hero-inner${archetype==="built"?" built":""}`}><div className="bn-universal-eyebrow">{copy.eyebrow}</div><h1>{children}</h1><p>{copy.description}</p><div className="bn-universal-hero-actions"><Link href={primary.href} className="bn-primary" style={{background:accent}}>{primary.label} <ArrowRight size={16}/></Link><Link href={secondary.href} className="bn-secondary">{secondary.label} <ArrowRight size={16}/></Link></div><div className="bn-hero-trust">{archetype==="built"?<><span><ShieldCheck size={20}/>Licensed Crews</span><span><Clock3 size={20}/>On-Schedule Delivery</span><span><Sparkles size={20}/>Built to Spec</span></>:<><span><ShieldCheck size={20}/>Quality Service</span><span><Clock3 size={20}/>Fast Response</span><span><Sparkles size={20}/>Professional Results</span></>}</div></div></section>
 }

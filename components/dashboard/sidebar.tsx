@@ -99,9 +99,9 @@ export function DashboardSidebar({
 
       <div className="border-t border-slate-800 px-3 py-3">
         <div className="mb-3 rounded-xl border border-slate-700 bg-slate-900/80 p-3">
-          <div className="flex items-center gap-2 text-[11px] font-semibold text-white"><Crown className="h-4 w-4 text-[#10967a]" /> BizNest Pro Plan</div>
+          <div className="flex items-center gap-2 text-[11px] font-semibold text-white"><Crown className="h-4 w-4 text-[#10967a]" /> {subscriptionName ?? "No active plan"}</div>
           <p className="mt-1 text-[10px] text-slate-400">Your workspace is powered by BizNest.</p>
-          <div className="my-2 h-1.5 overflow-hidden rounded-full bg-slate-700"><div className="h-full w-[76%] rounded-full bg-[#10967a]" /></div>
+          <p className="mt-2 text-[10px] text-slate-500">Plan access is managed from your subscription settings.</p>
           <Link href={`/${slug}/admin/subscription`} className="block rounded-md bg-[#10967a] px-2 py-1.5 text-center text-[10px] font-bold text-white">Manage Plan</Link>
         </div>
         <div className="flex items-center gap-2 px-1">
