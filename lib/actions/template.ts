@@ -10,7 +10,7 @@ import type { Prisma } from "@prisma/client";
 
 export async function setStoreTemplate(slug:string,templateId:string):Promise<ActionResult>{
  const access=await assertStorePermission(slug,"settings");if(!access.success)return access;
- const store=await prisma.store.findUnique({where:{id:access.store.id},include:{business:true}});if(!store)return {success:false,error:"Store not found."};
+ const store=await prisma.store.findUnique({where:{id:access.store.id},include:{business:true,subscription:true}});if(!store)return {success:false,error:"Store not found."};
  const templateDef=getTemplateDefinition(templateId);if(!templateDef)return {success:false,error:"Template not found."};
  let template=await prisma.storeTemplate.findUnique({where:{name:templateDef.name}});
  if(!template){template=await prisma.storeTemplate.create({data:{name:templateDef.name,category:templateDef.category,tierRank:templateDef.theme.tierRank,isActive:true,config:templateDef.theme as unknown as Prisma.InputJsonValue}});}
