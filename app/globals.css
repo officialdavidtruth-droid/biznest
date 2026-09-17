@@ -9,11 +9,11 @@
 @layer base {
   :root {
     --background: 0 0% 100%;         /* white */
-    --foreground: 152 45% 8%;        /* near-black forest, for text */
-    --primary: 152 62% 20%;          /* deep lush forest green */
+    --foreground: 222 55% 12%;       /* deep navy text */
+    --primary: 24 100% 50%;           /* BizNest orange */
     --primary-foreground: 0 0% 100%; /* white, for text on green */
-    --muted: 150 35% 96%;            /* pale sage */
-    --muted-foreground: 155 18% 36%; /* muted green-gray */
+    --muted: 215 35% 96%;             /* pale blue-gray */
+    --muted-foreground: 220 16% 42%;  /* muted slate */
     --border: 150 25% 88%;           /* soft sage border */
     --destructive: 0 84% 65%;
     --radius: 0.5rem;
@@ -27,13 +27,13 @@
      homepage's dark forest look while storefront/checkout/auth pages,
      which aren't wrapped in `.dark`, stay on the light token set above. */
   .dark {
-    --background: 147 47% 7%;         /* == --bn-ink #0a1c12 */
+    --background: 222 55% 9%;          /* deep BizNest navy */
     --foreground: 0 0% 100%;          /* == --bn-ivory */
-    --primary: 158 64% 52%;           /* == --bn-marigold #34d399 */
-    --primary-foreground: 152 45% 8%; /* dark ink, for text on the emerald accent */
-    --muted: 151 45% 13%;             /* == --bn-ink-raised #123024 */
-    --muted-foreground: 150 19% 63%;  /* == --bn-mute #8fb3a1 */
-    --border: 151 41% 21%;            /* == --bn-ink-line #1f4a35 */
+    --primary: 24 100% 50%;            /* BizNest orange */
+    --primary-foreground: 222 55% 9%;  /* navy text on orange */
+    --muted: 222 40% 15%;              /* raised navy */
+    --muted-foreground: 215 18% 70%;   /* muted blue-gray */
+    --border: 220 35% 25%;             /* navy border */
     --destructive: 0 70% 58%;
   }
 }
@@ -79,16 +79,16 @@
   border-radius: 0.75rem;
   border: 1px solid hsl(var(--border));
   background: hsl(var(--background));
-  box-shadow: 0 1px 2px rgba(6, 40, 26, 0.08);
+  box-shadow: 0 1px 2px rgba(10, 24, 55, 0.08);
 }
 
 /* Reusable forest→emerald→white gradient for heroes, buttons, and accent
    surfaces on LIGHT backgrounds (dashboard CTAs, upgrade banners, etc). */
 .bn-gradient {
-  background: linear-gradient(135deg, hsl(152 62% 16%) 0%, hsl(152 58% 34%) 55%, hsl(0 0% 100%) 100%);
+  background: linear-gradient(135deg, #0b1b3a 0%, #173b73 58%, #ff7900 100%);
 }
 .bn-gradient-text {
-  background: linear-gradient(135deg, hsl(152 65% 22%), hsl(150 70% 42%));
+  background: linear-gradient(135deg, #0b1b3a, #ff7900);
   -webkit-background-clip: text;
   background-clip: text;
   color: transparent;
@@ -100,40 +100,37 @@
    top-left keeps a large solid dark area from feeling flat/dead. */
 .bn-gradient-dark {
   background:
-    radial-gradient(120% 90% at 12% -10%, rgba(52, 211, 153, 0.16) 0%, transparent 55%),
-    linear-gradient(165deg, #0e2b1c 0%, #0a1c12 45%, #05100a 100%);
+    radial-gradient(120% 90% at 12% -10%, rgba(255, 121, 0, 0.18) 0%, transparent 55%),
+    linear-gradient(165deg, #173b73 0%, #0b1b3a 48%, #060f22 100%);
 }
 /* Emerald→jade gradient for primary CTAs/pills on dark surfaces — used
    instead of a flat accent fill so buttons read as "lush", not flat. */
 .bn-gradient-accent {
-  background: linear-gradient(135deg, #34d399 0%, #10967a 100%);
+  background: linear-gradient(135deg, #ff7900 0%, #e86600 100%);
 }
 
 /* --- BizNest brand tokens ---
-   Dark lush forest + white, with the accent doing double duty as the
-   "lush" gradient pop (see .bn-gradient-accent above). Variable names
+   Deep navy + orange, with the accent providing a bright, high-contrast pop (see .bn-gradient-accent above). Variable names
    kept stable so every file already referencing them (app/page.tsx,
    order confirmation, error/loading screens, etc.) picks this up with
    no further edits needed. */
 :root {
-  --bn-ink: #0a1c12;       /* deep, near-black forest — the dark ground for
-                               marketing/hero surfaces */
-  --bn-ink-raised: #123024; /* one step up — cards/panels sitting on --bn-ink */
-  --bn-ink-line: #1f4a35;   /* subtle green-tinted border on dark surfaces */
-  --bn-marigold: #34d399;  /* bright emerald accent — the "pop" against the
-                               dark forest ground (name kept for compat) */
-  --bn-jade: #10967a;      /* deeper jade, for secondary accents/hover */
+  --bn-ink: #0b1b3a;       /* deep navy — dark brand ground */
+  --bn-ink-raised: #142b50; /* raised navy for cards and panels */
+  --bn-ink-line: #29466f;   /* subtle navy border */
+  --bn-marigold: #ff7900;  /* orange accent (legacy variable name retained) */
+  --bn-jade: #e86600;      /* deeper orange for hover states */
   --bn-ivory: #ffffff;     /* white, for text on dark surfaces */
-  --bn-mute: #8fb3a1;      /* muted sage, for secondary text on dark */
+  --bn-mute: #aab8cf;      /* muted blue-gray for secondary text */
 
   /* Gradient variants of the above, for spots that want the "lush" gradient
      pop directly in an inline style rather than a class (e.g. a background
      that's conditionally either this or a flat color). Same visual recipe
      as .bn-gradient-dark / .bn-gradient-accent above. */
   --bn-hero-gradient:
-    radial-gradient(120% 90% at 12% -10%, rgba(52, 211, 153, 0.16) 0%, transparent 55%),
-    linear-gradient(165deg, #0e2b1c 0%, #0a1c12 45%, #05100a 100%);
-  --bn-accent-gradient: linear-gradient(135deg, #34d399 0%, #10967a 100%);
+    radial-gradient(120% 90% at 12% -10%, rgba(255, 121, 0, 0.18) 0%, transparent 55%),
+    linear-gradient(165deg, #173b73 0%, #0b1b3a 48%, #060f22 100%);
+  --bn-accent-gradient: linear-gradient(135deg, #ff7900 0%, #e86600 100%);
 }
 
 @keyframes bn-marquee-left {
