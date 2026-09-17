@@ -124,6 +124,7 @@ async function chargeExistingOrder(
     id: string;
     total: unknown;
     currency: string;
+    checkoutUrl?: string | null;
   },
   store: {
     id: string;
