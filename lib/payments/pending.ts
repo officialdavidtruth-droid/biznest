@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/prisma";
-import type { PaymentProvider, Prisma } from "@prisma/client";
+import { Prisma } from "@prisma/client";
+import type { PaymentProvider } from "@prisma/client";
 
 export async function createPendingPayment(input: {
   storeId: string;
