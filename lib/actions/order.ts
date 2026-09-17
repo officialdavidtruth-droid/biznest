@@ -6,7 +6,6 @@ import {
   getStoreCustomerSessionForStore,
 } from "@/lib/store-customer-auth";
 import { prisma } from "@/lib/prisma";
-import { createPendingPayment, markPaymentFailed } from "@/lib/payments/pending";
 import { consumeFifoStockTx, consumeFefoStockTx } from "@/lib/inventory-fifo";
 import { getFnbRotationMode } from "@/lib/fnb-settings";
 import {
@@ -125,7 +124,6 @@ async function chargeExistingOrder(
     id: string;
     total: unknown;
     currency: string;
-    checkoutUrl: string | null;
   },
   store: {
     id: string;
