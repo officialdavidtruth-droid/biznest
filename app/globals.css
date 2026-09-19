@@ -371,8 +371,8 @@ a[href*="/service/"]:hover img {
   --bn-line-soft: #edf0f3;
   --bn-ink: #111827;
   --bn-muted: #6b7280;
-  --bn-gold: #10967a;
-  --bn-gold-dark: #0d7a63;
+  --bn-gold: #ff7900;
+  --bn-gold-dark: #e86600;
   background: var(--bn-page) !important;
   color: var(--bn-ink) !important;
 }
@@ -386,7 +386,7 @@ a[href*="/service/"]:hover img {
   border-radius: 8px !important; box-shadow: none !important;
 }
 .bn-admin-app input:focus, .bn-admin-app select:focus, .bn-admin-app textarea:focus {
-  border-color: #6ec9ac !important; outline: 2px solid #d3f0e4 !important;
+  border-color: #ff7900 !important; outline: 2px solid rgba(255,121,0,.22) !important;
 }
 .bn-admin-app button, .bn-admin-app a { transition: background-color .15s ease, border-color .15s ease, box-shadow .15s ease, transform .15s ease; }
 .bn-admin-app button.bg-primary, .bn-admin-app a.bg-primary,
@@ -399,14 +399,14 @@ a[href*="/service/"]:hover img {
 .bn-admin-app table thead { background: #fbfcfd !important; }
 .bn-admin-app table th { color: #64748b !important; font-size: 11px !important; text-transform: none !important; letter-spacing: 0 !important; }
 .bn-admin-app table td { color: #334155; border-color: var(--bn-line-soft) !important; }
-.bn-admin-app table tbody tr:hover { background: #f4faf7 !important; }
+.bn-admin-app table tbody tr:hover { background: #fff7ef !important; }
 .bn-admin-app .text-muted-foreground { color: #64748b !important; }
 .bn-admin-app .bg-muted\/40, .bn-admin-app .bg-muted\/30, .bn-admin-app .bg-muted\/20 { background: #f8fafc !important; }
 .bn-admin-app .bg-card, .bn-admin-app .bg-background { background: #fff !important; }
 .bn-admin-app .border-border { border-color: var(--bn-line) !important; }
 .bn-admin-app .text-primary { color: var(--bn-gold-dark) !important; }
-.bn-admin-app .bg-primary\/15 { background: #daf1e6 !important; }
-.bn-admin-app .bg-primary\/5 { background: #f0f9f5 !important; }
+.bn-admin-app .bg-primary\/15 { background: rgba(255,121,0,.15) !important; }
+.bn-admin-app .bg-primary\/5 { background: rgba(255,121,0,.06) !important; }
 
 @media (min-width: 1024px) {
   .bn-admin-app > .flex-1 > main > .mx-auto { max-width: none !important; padding-left: 28px !important; padding-right: 28px !important; }
@@ -414,7 +414,7 @@ a[href*="/service/"]:hover img {
 
 .bn-admin-mobile-drawer { background: var(--bn-ink) !important; color: #fff !important; }
 .bn-admin-mobile-drawer .bn-admin-mobile-link { color: #cbd5e1 !important; }
-.bn-admin-mobile-drawer .bn-admin-mobile-link.active { background: #10967a !important; color: #ffffff !important; }
+.bn-admin-mobile-drawer .bn-admin-mobile-link.active { background: #ff7900 !important; color: #071a33 !important; }
 .bn-admin-mobile-drawer .bn-admin-mobile-muted { color: #94a3b8 !important; }
 .bn-admin-mobile-bottom { background: #fff !important; border-color: var(--bn-line) !important; }
 .bn-admin-app .bn-admin-action:hover { box-shadow: 0 5px 14px rgba(15,23,42,.08); transform: translateY(-1px); }
@@ -944,43 +944,48 @@ a[href*="/service/"]:hover img {
 .bn-account-main .veloura-account-content .mb-6{margin-bottom:15px!important}.bn-account-main .veloura-account-content .rounded-2xl{border-radius:14px!important}.bn-account-main .veloura-account-content .text-slate-900{color:var(--bn-ink)!important}.bn-account-main .veloura-account-content .text-slate-500{color:#77837d!important}.bn-account-main .veloura-account-content .border-slate-200{border-color:var(--bn-line)!important}.bn-account-main .veloura-account-content .bg-slate-50{background:#f7f9f7!important}.bn-account-main .veloura-account-content .shadow-sm{box-shadow:0 3px 15px rgba(18,36,28,.025)!important}
 @media(max-width:820px){.bn-account-address-grid{grid-template-columns:1fr}.bn-account-form-grid{grid-template-columns:1fr}.bn-account-input-wide{grid-column:auto}.bn-account-subpage-heading{align-items:flex-start;flex-direction:column}}
 
-/* Theme mode corrections: scoped to back-office roots only; storefronts stay independent. */
-#bn-admin-theme-scope.light, #bn-supaadmin-theme-scope.light,
-#bn-admin-theme-scope.light .bn-admin-app, #bn-supaadmin-theme-scope.light .bn-admin-app {
-  --background: 0 0% 100%; --foreground: 222 47% 11%;
-  --primary: 24 100% 50%; --primary-foreground: 222 47% 11%;
-  --muted: 210 40% 96%; --muted-foreground: 215 16% 40%;
-  --border: 214 32% 88%; --destructive: 0 72% 51%;
-  --bn-surface: #ffffff; --bn-page: #f5f7fb; --bn-line: #dce3ed;
-  --bn-line-soft: #e9eef5; --bn-ink: #0b1f3a; --bn-muted: #52647a;
-  --bn-gold: #f28c28; --bn-gold-dark: #c96508; --bn-ink-line: #203b5c;
-  background: var(--bn-page) !important; color: #172b45 !important;
+/* BizNest admin theme enforcement — shared by the merchant dashboard and plugins.
+   Storefront templates are deliberately excluded. */
+.bn-admin-app .bg-primary,
+.bn-admin-app a.bg-primary,
+.bn-admin-app button.bg-primary,
+.bn-admin-app [class~="bg-emerald-600"],
+.bn-admin-app [class~="bg-emerald-700"],
+.bn-admin-app [class~="bg-green-600"],
+.bn-admin-app [class~="bg-teal-600"] {
+  background-color: #ff7900 !important;
+  color: #071a33 !important;
+  border-color: #ff7900 !important;
 }
-#bn-admin-theme-scope.light .bn-admin-app main,
-#bn-supaadmin-theme-scope.light .bn-admin-app main { background: #f5f7fb !important; color: #172b45 !important; }
-#bn-admin-theme-scope.light .bn-admin-app h1,
-#bn-admin-theme-scope.light .bn-admin-app h2,
-#bn-admin-theme-scope.light .bn-admin-app h3,
-#bn-supaadmin-theme-scope.light .bn-admin-app h1,
-#bn-supaadmin-theme-scope.light .bn-admin-app h2,
-#bn-supaadmin-theme-scope.light .bn-admin-app h3 { color: #102744 !important; }
-#bn-admin-theme-scope.light .bn-admin-app input,
-#bn-admin-theme-scope.light .bn-admin-app select,
-#bn-admin-theme-scope.light .bn-admin-app textarea,
-#bn-supaadmin-theme-scope.light .bn-admin-app input,
-#bn-supaadmin-theme-scope.light .bn-admin-app select,
-#bn-supaadmin-theme-scope.light .bn-admin-app textarea { background: #fff !important; color: #172b45 !important; border-color: #dce3ed !important; }
-#bn-admin-theme-scope.light .bn-admin-app table thead,
-#bn-supaadmin-theme-scope.light .bn-admin-app table thead { background: #edf2f8 !important; }
-#bn-admin-theme-scope.light .bn-admin-app table td,
-#bn-supaadmin-theme-scope.light .bn-admin-app table td { color: #334a63 !important; }
-#bn-admin-theme-scope.light .bn-admin-app .text-muted-foreground,
-#bn-supaadmin-theme-scope.light .bn-admin-app .text-muted-foreground { color: #64748b !important; }
-#bn-admin-theme-scope.light .bn-admin-app .bg-card,
-#bn-admin-theme-scope.light .bn-admin-app .bg-background,
-#bn-supaadmin-theme-scope.light .bn-admin-app .bg-card,
-#bn-supaadmin-theme-scope.light .bn-admin-app .bg-background { background: #fff !important; }
-#bn-admin-theme-scope.light .bn-admin-app .bg-primary\/15,
-#bn-supaadmin-theme-scope.light .bn-admin-app .bg-primary\/15 { background: #fff0df !important; }
-#bn-admin-theme-scope.light .bn-admin-mobile-bottom { background: #fff !important; }
-#bn-admin-theme-scope.light .bn-admin-mobile-drawer .bn-admin-mobile-link.active { background: #f28c28 !important; color: #102744 !important; }
+.bn-admin-app .bg-primary:hover,
+.bn-admin-app a.bg-primary:hover,
+.bn-admin-app button.bg-primary:hover {
+  background-color: #e86600 !important;
+  border-color: #e86600 !important;
+}
+.bn-admin-app .text-primary { color: #f07800 !important; }
+.bn-admin-app .border-primary { border-color: #ff7900 !important; }
+.bn-admin-app.light {
+  --background: 210 40% 98%;
+  --foreground: 222 55% 12%;
+  --primary: 29 100% 50%;
+  --primary-foreground: 222 55% 12%;
+  --muted: 210 30% 95%;
+  --muted-foreground: 220 16% 42%;
+  --border: 214 25% 88%;
+  background: #f5f7fa !important;
+  color: #10213b;
+  color-scheme: light;
+}
+.bn-admin-app.dark {
+  --background: 222 55% 9%;
+  --foreground: 0 0% 100%;
+  --primary: 29 100% 50%;
+  --primary-foreground: 222 55% 12%;
+  --muted: 222 40% 15%;
+  --muted-foreground: 215 18% 70%;
+  --border: 220 35% 25%;
+  color-scheme: dark;
+}
+.bn-admin-app .bn-admin-action[class*="bg-"] { background-color: #ff7900 !important; }
+.bn-admin-app .bn-admin-action[class*="bg-"]:hover { background-color: #e86600 !important; }
