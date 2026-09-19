@@ -1361,3 +1361,34 @@ a[href*="/service/"]:hover img {
 .dark :is(.bg-orange-500, .bg-orange-600, .bg-primary) {
   color: #071a33;
 }
+
+
+
+/* Admin topbar: the theme class is on #bn-admin-theme-scope, not <html>.
+   Explicitly style the scoped desktop header so its surface and controls
+   follow the selected theme regardless of utility-token compilation. */
+#bn-admin-theme-scope.dark .bn-admin-topbar {
+  background-color: #0b1b3a !important;
+  color: #f8fafc !important;
+  border-bottom-color: #29466f !important;
+}
+#bn-admin-theme-scope.dark .bn-admin-topbar p {
+  color: #dbeafe !important;
+}
+#bn-admin-theme-scope.dark .bn-admin-topbar button,
+#bn-admin-theme-scope.dark .bn-admin-topbar a,
+#bn-admin-theme-scope.dark .bn-admin-topbar [role="button"] {
+  color: #f8fafc !important;
+}
+#bn-admin-theme-scope.dark .bn-admin-topbar svg {
+  color: #ff9a1f !important;
+  stroke: currentColor;
+}
+#bn-admin-theme-scope.light .bn-admin-topbar {
+  background-color: #f8fafc;
+  color: #0f172a;
+  border-bottom-color: #e2e8f0;
+}
+#bn-admin-theme-scope.light .bn-admin-topbar p {
+  color: #475569;
+}

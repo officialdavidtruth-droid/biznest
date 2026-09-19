@@ -159,7 +159,7 @@ export default async function StoreAdminLayout({
             {/* Desktop-only top bar — mobile gets its own in MobileDashboardChrome
                 above. Shows the current section so the bar isn't just an empty
                 strip with a bell floating at the far end. */}
-            <div className="hidden shrink-0 items-center justify-between border-b border-border bg-muted/20 px-6 py-3 lg:sticky lg:top-0 lg:z-10 lg:flex">
+            <div className="bn-admin-topbar hidden shrink-0 items-center justify-between border-b border-border bg-muted/20 px-6 py-3 lg:sticky lg:top-0 lg:z-10 lg:flex">
               <p className="text-sm font-medium text-muted-foreground">
                 {/* Staff who signed in as "Position@store" get their title
                     in the header, matching what the owner named them at
