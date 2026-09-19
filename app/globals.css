@@ -1305,3 +1305,59 @@ a[href*="/service/"]:hover img {
 .dark .bn-fnb-workspace textarea::placeholder {
   color: #a9bdd8 !important;
 }
+
+
+
+/* Cross-plugin dark mode normalization.
+   The .dark class is mounted on admin/back-office layouts only; storefront
+   templates remain outside this scope. Covers common hardcoded Tailwind colors
+   used by plugin workspaces, not just the FnB module. */
+.dark :is(
+  .bg-white, .bg-slate-50, .bg-slate-100, .bg-gray-50, .bg-gray-100,
+  .bg-zinc-50, .bg-neutral-50, .bg-\[\#f5f7fa\], .bg-\[\#f8f9fb\],
+  .bg-\[\#fcfcfd\], .bg-\[\#fff\], .bg-\[\#ffffff\]
+) {
+  background-color: #102544 !important;
+}
+.dark :is(
+  .text-black, .text-slate-900, .text-slate-800, .text-slate-700,
+  .text-gray-900, .text-gray-800, .text-gray-700,
+  .text-zinc-900, .text-neutral-900,
+  .text-\[\#111827\], .text-\[\#0f172a\], .text-\[\#1e293b\],
+  .text-\[\#334155\], .text-\[\#374151\]
+) {
+  color: #f1f5f9 !important;
+}
+.dark :is(
+  .text-slate-600, .text-slate-500, .text-gray-600, .text-gray-500,
+  .text-zinc-600, .text-neutral-600, .text-muted-foreground
+) {
+  color: #b8c8df !important;
+}
+.dark :is(
+  .border-slate-100, .border-slate-200, .border-slate-300,
+  .border-gray-100, .border-gray-200, .border-gray-300,
+  .border-zinc-100, .border-zinc-200
+) {
+  border-color: #29466f !important;
+}
+.dark :is(input, textarea, select) {
+  background-color: #0b1b3a !important;
+  color: #f8fafc !important;
+  border-color: #31517c !important;
+}
+.dark :is(input, textarea)::placeholder { color: #a9bdd8 !important; }
+.dark :is(button, a, [role="button"]) svg {
+  flex-shrink: 0;
+}
+.dark svg.text-slate-400, .dark svg.text-gray-400,
+.dark svg.text-slate-500, .dark svg.text-gray-500 {
+  color: #b8c8df !important;
+}
+.dark :is(.bg-primary\/5, .bg-primary\/10) {
+  color: #f1f5f9 !important;
+}
+/* Keep semantic orange actions visibly orange in every plugin. */
+.dark :is(.bg-orange-500, .bg-orange-600, .bg-primary) {
+  color: #071a33;
+}
