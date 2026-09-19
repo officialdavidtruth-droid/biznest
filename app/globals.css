@@ -1044,3 +1044,66 @@ a[href*="/service/"]:hover img {
     border-color: #29466f !important;
   }
 }
+
+
+
+/* Admin dark-mode surface + contrast correction.
+   Scoped to the merchant/platform admin theme roots only; storefronts are untouched. */
+@layer utilities {
+  #bn-admin-theme-scope.dark,
+  #bn-supaadmin-theme-scope.dark {
+    color-scheme: dark;
+    --background: 222 55% 9%;
+    --foreground: 210 40% 98%;
+    --muted: 222 40% 15%;
+    --muted-foreground: 215 18% 72%;
+    --border: 220 35% 25%;
+    background-color: #0b1b3a;
+    color: #f8fafc;
+  }
+
+  #bn-admin-theme-scope.dark .bn-admin-app,
+  #bn-admin-theme-scope.dark main,
+  #bn-supaadmin-theme-scope.dark main {
+    background-color: #0b1b3a !important;
+    color: #f8fafc;
+  }
+
+  /* Light utility surfaces frequently used by dashboard cards and quick actions. */
+  #bn-admin-theme-scope.dark :is(
+    .bg-white, .bg-gray-50, .bg-gray-100, .bg-slate-50, .bg-slate-100,
+    .bg-neutral-50, .bg-neutral-100, .bg-zinc-50, .bg-zinc-100,
+    .bg-stone-50, .bg-stone-100, .bg-muted
+  ),
+  #bn-supaadmin-theme-scope.dark :is(
+    .bg-white, .bg-gray-50, .bg-gray-100, .bg-slate-50, .bg-slate-100,
+    .bg-neutral-50, .bg-neutral-100, .bg-zinc-50, .bg-zinc-100,
+    .bg-stone-50, .bg-stone-100, .bg-muted
+  ) {
+    background-color: #142b50 !important;
+    color: #f8fafc !important;
+  }
+
+  #bn-admin-theme-scope.dark :is(.text-black, .text-gray-900, .text-gray-800,
+    .text-slate-900, .text-slate-800, .text-neutral-900, .text-zinc-900),
+  #bn-supaadmin-theme-scope.dark :is(.text-black, .text-gray-900, .text-gray-800,
+    .text-slate-900, .text-slate-800, .text-neutral-900, .text-zinc-900) {
+    color: #f8fafc !important;
+  }
+
+  #bn-admin-theme-scope.dark :is(.border-gray-100, .border-gray-200,
+    .border-slate-100, .border-slate-200, .border-neutral-200),
+  #bn-supaadmin-theme-scope.dark :is(.border-gray-100, .border-gray-200,
+    .border-slate-100, .border-slate-200, .border-neutral-200) {
+    border-color: #29466f !important;
+  }
+
+  /* Keep action tiles readable while using the navy surface. */
+  #bn-admin-theme-scope.dark :is(button, a)[class*="bg-white"],
+  #bn-admin-theme-scope.dark :is(button, a)[class*="bg-gray-50"],
+  #bn-admin-theme-scope.dark :is(button, a)[class*="bg-slate-50"] {
+    background-color: #142b50 !important;
+    color: #f8fafc !important;
+    border-color: #29466f !important;
+  }
+}
