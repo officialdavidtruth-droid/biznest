@@ -1249,3 +1249,59 @@ a[href*="/service/"]:hover img {
 .dark .bn-adaptive-dashboard [class*="border-[#f"] {
   border-color: #29466f !important;
 }
+
+
+
+/* FnB workspace contrast repair: prevent global heading/text defaults from
+   rendering dark text on navy panels. Scoped only to the FnB workspace. */
+.dark .bn-fnb-workspace {
+  color: #f1f5f9 !important;
+}
+.dark .bn-fnb-workspace h1,
+.dark .bn-fnb-workspace h2,
+.dark .bn-fnb-workspace h3,
+.dark .bn-fnb-workspace h4,
+.dark .bn-fnb-workspace h5,
+.dark .bn-fnb-workspace h6,
+.dark .bn-fnb-workspace strong,
+.dark .bn-fnb-workspace b,
+.dark .bn-fnb-workspace p,
+.dark .bn-fnb-workspace label,
+.dark .bn-fnb-workspace th,
+.dark .bn-fnb-workspace td,
+.dark .bn-fnb-workspace span {
+  color: inherit;
+}
+.dark .bn-fnb-workspace h1,
+.dark .bn-fnb-workspace h2,
+.dark .bn-fnb-workspace h3,
+.dark .bn-fnb-workspace h4,
+.dark .bn-fnb-workspace h5,
+.dark .bn-fnb-workspace h6 {
+  color: #f8fafc !important;
+}
+.dark .bn-fnb-workspace .text-blue-200,
+.dark .bn-fnb-workspace .text-blue-300,
+.dark .bn-fnb-workspace .text-blue-400 {
+  color: #bfdbfe !important;
+}
+.dark .bn-fnb-workspace .text-slate-900,
+.dark .bn-fnb-workspace .text-gray-900,
+.dark .bn-fnb-workspace .text-black {
+  color: #f8fafc !important;
+}
+.dark .bn-fnb-workspace svg {
+  color: #ff9a1f;
+  stroke: currentColor;
+}
+.dark .bn-fnb-workspace input,
+.dark .bn-fnb-workspace select,
+.dark .bn-fnb-workspace textarea {
+  background-color: #102544 !important;
+  color: #f8fafc !important;
+  border-color: #31517c !important;
+}
+.dark .bn-fnb-workspace input::placeholder,
+.dark .bn-fnb-workspace textarea::placeholder {
+  color: #a9bdd8 !important;
+}
