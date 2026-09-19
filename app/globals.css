@@ -1395,33 +1395,34 @@ a[href*="/service/"]:hover img {
 
 
 
-/* Dark-mode table legibility repair across dashboard and plugin workspaces.
-   Keep table body copy readable even where individual pages hard-code
-   dark text colors; scope is to a themed admin .dark subtree. */
-.dark table tbody,
-.dark table tbody tr,
-.dark table tbody td {
-  color: #eaf1fb !important;
+/* Status-pill contrast fix for dark-mode admin tables.
+   Preserve the pale semantic badge backgrounds while forcing readable
+   foreground colors (e.g. "Completed" on a pale green pill). */
+.dark table :is(
+  [class*="bg-emerald-"], [class*="bg-green-"], [class*="bg-teal-"],
+  [class*="bg-lime-"]
+) {
+  color: #14532d !important;
 }
-.dark table tbody td,
-.dark table tbody th {
-  background-color: #142b50;
-  border-color: #29466f !important;
-}
-.dark table tbody td :is(span, p, strong, b, a, small, div) {
+.dark table :is(
+  [class*="bg-emerald-"], [class*="bg-green-"], [class*="bg-teal-"],
+  [class*="bg-lime-"]
+) :is(span, p, strong, b) {
   color: inherit !important;
 }
-.dark table tbody td [class*="text-slate-"],
-.dark table tbody td [class*="text-gray-"],
-.dark table tbody td [class*="text-zinc-"],
-.dark table tbody td [style*="color"] {
-  color: #eaf1fb !important;
+.dark table :is(
+  [class*="bg-rose-"], [class*="bg-red-"], [class*="bg-pink-"]
+) {
+  color: #881337 !important;
 }
-.dark table thead th,
-.dark table thead td {
-  color: #f8fafc !important;
-  background-color: #102544 !important;
+.dark table :is(
+  [class*="bg-amber-"], [class*="bg-yellow-"], [class*="bg-orange-"]
+) {
+  color: #78350f !important;
 }
-.dark table tbody tr:hover td {
-  background-color: #1a365f !important;
+.dark table :is(
+  [class*="bg-sky-"], [class*="bg-blue-"], [class*="bg-cyan-"],
+  [class*="bg-indigo-"], [class*="bg-violet-"], [class*="bg-purple-"]
+) {
+  color: #1e3a8a !important;
 }
