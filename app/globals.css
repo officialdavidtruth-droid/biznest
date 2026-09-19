@@ -989,3 +989,58 @@ a[href*="/service/"]:hover img {
 }
 .bn-admin-app .bn-admin-action[class*="bg-"] { background-color: #ff7900 !important; }
 .bn-admin-app .bn-admin-action[class*="bg-"]:hover { background-color: #e86600 !important; }
+
+
+
+/* BizNest admin dark-mode surface normalization.
+   Scoped only to dashboard/plugin theme roots; storefront templates are excluded.
+   Neutralizes common light utility classes that otherwise stay white in dark mode. */
+@layer utilities {
+  :is(#bn-admin-theme-scope, #bn-plugin-theme-scope, #bn-fnb-theme-scope,
+      #bn-pms-theme-scope, #bn-supaadmin-theme-scope).dark {
+    color-scheme: dark;
+    background-color: #0b1b3a;
+    color: #f8fafc;
+  }
+
+  :is(#bn-admin-theme-scope, #bn-plugin-theme-scope, #bn-fnb-theme-scope,
+      #bn-pms-theme-scope, #bn-supaadmin-theme-scope).dark [class~="bg-white"],
+  :is(#bn-admin-theme-scope, #bn-plugin-theme-scope, #bn-fnb-theme-scope,
+      #bn-pms-theme-scope, #bn-supaadmin-theme-scope).dark [class~="bg-gray-50"],
+  :is(#bn-admin-theme-scope, #bn-plugin-theme-scope, #bn-fnb-theme-scope,
+      #bn-pms-theme-scope, #bn-supaadmin-theme-scope).dark [class~="bg-slate-50"],
+  :is(#bn-admin-theme-scope, #bn-plugin-theme-scope, #bn-fnb-theme-scope,
+      #bn-pms-theme-scope, #bn-supaadmin-theme-scope).dark [class~="bg-neutral-50"] {
+    background-color: #0b1b3a !important;
+    color: #f8fafc;
+  }
+
+  :is(#bn-admin-theme-scope, #bn-plugin-theme-scope, #bn-fnb-theme-scope,
+      #bn-pms-theme-scope, #bn-supaadmin-theme-scope).dark [class~="bg-gray-100"],
+  :is(#bn-admin-theme-scope, #bn-plugin-theme-scope, #bn-fnb-theme-scope,
+      #bn-pms-theme-scope, #bn-supaadmin-theme-scope).dark [class~="bg-slate-100"],
+  :is(#bn-admin-theme-scope, #bn-plugin-theme-scope, #bn-fnb-theme-scope,
+      #bn-pms-theme-scope, #bn-supaadmin-theme-scope).dark [class~="bg-muted"] {
+    background-color: #142b50 !important;
+  }
+
+  :is(#bn-admin-theme-scope, #bn-plugin-theme-scope, #bn-fnb-theme-scope,
+      #bn-pms-theme-scope, #bn-supaadmin-theme-scope).dark [class~="text-black"],
+  :is(#bn-admin-theme-scope, #bn-plugin-theme-scope, #bn-fnb-theme-scope,
+      #bn-pms-theme-scope, #bn-supaadmin-theme-scope).dark [class~="text-gray-900"],
+  :is(#bn-admin-theme-scope, #bn-plugin-theme-scope, #bn-fnb-theme-scope,
+      #bn-pms-theme-scope, #bn-supaadmin-theme-scope).dark [class~="text-slate-900"],
+  :is(#bn-admin-theme-scope, #bn-plugin-theme-scope, #bn-fnb-theme-scope,
+      #bn-pms-theme-scope, #bn-supaadmin-theme-scope).dark [class~="text-gray-800"],
+  :is(#bn-admin-theme-scope, #bn-plugin-theme-scope, #bn-fnb-theme-scope,
+      #bn-pms-theme-scope, #bn-supaadmin-theme-scope).dark [class~="text-slate-800"] {
+    color: #f8fafc !important;
+  }
+
+  :is(#bn-admin-theme-scope, #bn-plugin-theme-scope, #bn-fnb-theme-scope,
+      #bn-pms-theme-scope, #bn-supaadmin-theme-scope).dark [class~="border-gray-200"],
+  :is(#bn-admin-theme-scope, #bn-plugin-theme-scope, #bn-fnb-theme-scope,
+      #bn-pms-theme-scope, #bn-supaadmin-theme-scope).dark [class~="border-slate-200"] {
+    border-color: #29466f !important;
+  }
+}
