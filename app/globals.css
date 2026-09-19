@@ -1187,49 +1187,65 @@ a[href*="/service/"]:hover img {
 
 
 
-/* Dashboard dark mode: target the adaptive dashboard root itself and every
-   hardcoded light surface inside it. This avoids relying on admin wrapper IDs. */
-.dark .bn-adaptive-dashboard {
-  background: #0b1b3a !important;
+/* Final dashboard-specific dark theme: surfaces, contrast, and icon legibility */
+.dark .bn-adaptive-dashboard,
+.dark .bn-adaptive-dashboard > div,
+.dark .bn-adaptive-dashboard section,
+.dark .bn-adaptive-dashboard article {
+  background-color: #0b1b3a !important;
   color: #f8fafc !important;
 }
 .dark .bn-adaptive-dashboard [class*="bg-white"],
 .dark .bn-adaptive-dashboard [class*="bg-[#f8f9fb]"],
-.dark .bn-adaptive-dashboard [class*="bg-[#fcfcfd]"] {
-  background-color: #142b50 !important;
-}
-.dark .bn-adaptive-dashboard [class*="bg-white"],
-.dark .bn-adaptive-dashboard [class*="bg-[#f8f9fb]"],
 .dark .bn-adaptive-dashboard [class*="bg-[#fcfcfd]"],
+.dark .bn-adaptive-dashboard [class*="bg-[#f"] {
+  background-color: #142b50 !important;
+  color: #f8fafc !important;
+}
 .dark .bn-adaptive-dashboard [class*="text-[#111827]"],
 .dark .bn-adaptive-dashboard [class*="text-[#1e293b]"],
-.dark .bn-adaptive-dashboard [class*="text-[#334155]"] {
+.dark .bn-adaptive-dashboard [class*="text-[#334155]"],
+.dark .bn-adaptive-dashboard [class*="text-[#0f172a]"] {
   color: #f8fafc !important;
 }
 .dark .bn-adaptive-dashboard [class*="text-[#64748b]"],
 .dark .bn-adaptive-dashboard [class*="text-[#94a3b8]"],
 .dark .bn-adaptive-dashboard [class*="text-[#475569]"] {
-  color: #aabbd3 !important;
+  color: #b8c8df !important;
 }
-.dark .bn-adaptive-dashboard [class*="border-[#e"],
-.dark .bn-adaptive-dashboard [class*="border-[#f"] {
-  border-color: #29466f !important;
+/* Lucide SVG icons use stroke, not text color alone; force readable stroke. */
+.dark .bn-adaptive-dashboard svg {
+  stroke: #ff9a1f;
 }
-.dark .bn-adaptive-dashboard select,
+.dark .bn-adaptive-dashboard svg [fill="currentColor"] {
+  fill: #ff9a1f !important;
+}
+.dark .bn-adaptive-dashboard [class*="bg-purple-"] svg,
+.dark .bn-adaptive-dashboard [class*="bg-violet-"] svg,
+.dark .bn-adaptive-dashboard [class*="bg-emerald-"] svg,
+.dark .bn-adaptive-dashboard [class*="bg-green-"] svg,
+.dark .bn-adaptive-dashboard [class*="bg-blue-"] svg,
+.dark .bn-adaptive-dashboard [class*="bg-indigo-"] svg {
+  stroke: #ff9a1f !important;
+}
+.dark .bn-adaptive-dashboard table thead,
+.dark .bn-adaptive-dashboard thead tr,
+.dark .bn-adaptive-dashboard thead th {
+  background-color: #102544 !important;
+  color: #eaf1fb !important;
+}
 .dark .bn-adaptive-dashboard input,
+.dark .bn-adaptive-dashboard select,
 .dark .bn-adaptive-dashboard textarea {
   background-color: #102544 !important;
   color: #f8fafc !important;
   border-color: #29466f !important;
 }
-.dark .bn-adaptive-dashboard select option {
-  background: #102544;
-  color: #f8fafc;
+.dark .bn-adaptive-dashboard input::placeholder,
+.dark .bn-adaptive-dashboard textarea::placeholder {
+  color: #aabbd3 !important;
 }
-/* White action links/cards inherit readable foregrounds in dark mode. */
-.dark .bn-adaptive-dashboard a[class*="bg-white"],
-.dark .bn-adaptive-dashboard a[class*="bg-[#fcfcfd]"] {
-  background-color: #142b50 !important;
-  color: #f8fafc !important;
+.dark .bn-adaptive-dashboard [class*="border-[#e"],
+.dark .bn-adaptive-dashboard [class*="border-[#f"] {
   border-color: #29466f !important;
 }

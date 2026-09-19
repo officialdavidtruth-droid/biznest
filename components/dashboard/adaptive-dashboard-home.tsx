@@ -59,7 +59,7 @@ export type DashboardHomeData = {
 };
 
 function money(value: number) {
-  return `₦${value.toLocaleString("en-NG", { maximumFractionDigits: 0 })}`;
+  return new Intl.NumberFormat("en-NG", { style: "currency", currency: "NGN", maximumFractionDigits: 0 }).format(value);
 }
 
 type KpiSub = { text: string; direction?: "up" | "down" };
