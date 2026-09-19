@@ -1392,3 +1392,36 @@ a[href*="/service/"]:hover img {
 #bn-admin-theme-scope.light .bn-admin-topbar p {
   color: #475569;
 }
+
+
+
+/* Dark-mode table legibility repair across dashboard and plugin workspaces.
+   Keep table body copy readable even where individual pages hard-code
+   dark text colors; scope is to a themed admin .dark subtree. */
+.dark table tbody,
+.dark table tbody tr,
+.dark table tbody td {
+  color: #eaf1fb !important;
+}
+.dark table tbody td,
+.dark table tbody th {
+  background-color: #142b50;
+  border-color: #29466f !important;
+}
+.dark table tbody td :is(span, p, strong, b, a, small, div) {
+  color: inherit !important;
+}
+.dark table tbody td [class*="text-slate-"],
+.dark table tbody td [class*="text-gray-"],
+.dark table tbody td [class*="text-zinc-"],
+.dark table tbody td [style*="color"] {
+  color: #eaf1fb !important;
+}
+.dark table thead th,
+.dark table thead td {
+  color: #f8fafc !important;
+  background-color: #102544 !important;
+}
+.dark table tbody tr:hover td {
+  background-color: #1a365f !important;
+}
