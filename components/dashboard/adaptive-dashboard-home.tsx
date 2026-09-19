@@ -196,7 +196,7 @@ export function AdaptiveDashboardHome({
   const bookings = data.bookings.slice(0, 5);
 
   return (
-    <div className="min-h-full bg-[#f8f9fb] text-[#111827]">
+    <div className="bn-adaptive-dashboard min-h-full bg-[#f8f9fb] text-[#111827]">
       <div className="sticky top-0 z-20 flex items-center justify-between border-b border-[#e6e8ec] bg-white/95 px-5 py-3 backdrop-blur lg:hidden">
         <div className="flex min-w-0 items-center gap-3">
           <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-[#0b1220] text-white"><span className="text-sm font-black">B</span></div>

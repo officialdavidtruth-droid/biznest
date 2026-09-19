@@ -1126,3 +1126,61 @@ a[href*="/service/"]:hover img {
   color: #071a33 !important;
   border-color: #ff7900 !important;
 }
+
+
+
+/* Adaptive merchant dashboard: complete dark-mode surface and contrast override.
+   Scoped to this dashboard component so storefront templates are unaffected. */
+.dark .bn-adaptive-dashboard {
+  background-color: #0b1b3a !important;
+  color: #f8fafc !important;
+}
+.dark .bn-adaptive-dashboard > .sticky {
+  background-color: rgba(11, 27, 58, .96) !important;
+  border-color: #29466f !important;
+  color: #f8fafc !important;
+}
+.dark .bn-adaptive-dashboard h1,
+.dark .bn-adaptive-dashboard h2,
+.dark .bn-adaptive-dashboard h3,
+.dark .bn-adaptive-dashboard p,
+.dark .bn-adaptive-dashboard span,
+.dark .bn-adaptive-dashboard label {
+  color: inherit;
+}
+.dark .bn-adaptive-dashboard [class*="bg-white"],
+.dark .bn-adaptive-dashboard [class*="bg-[#fcfcfd]"],
+.dark .bn-adaptive-dashboard [class*="bg-[#f8f9fb]"] {
+  background-color: #142b50 !important;
+  color: #f8fafc !important;
+}
+.dark .bn-adaptive-dashboard [class*="border-[#e"],
+.dark .bn-adaptive-dashboard [class*="border-[#f"] {
+  border-color: #29466f !important;
+}
+.dark .bn-adaptive-dashboard [class*="text-[#111827]"],
+.dark .bn-adaptive-dashboard [class*="text-[#1e293b]"],
+.dark .bn-adaptive-dashboard [class*="text-[#334155]"] {
+  color: #f8fafc !important;
+}
+.dark .bn-adaptive-dashboard [class*="text-[#64748b]"],
+.dark .bn-adaptive-dashboard [class*="text-[#94a3b8]"],
+.dark .bn-adaptive-dashboard [class*="text-[#475569]"] {
+  color: #aabbd3 !important;
+}
+.dark .bn-adaptive-dashboard a[class*="bg-[#e9b45a]"] {
+  background-color: #ff7900 !important;
+  color: #071a33 !important;
+}
+.dark .bn-adaptive-dashboard a[class*="bg-white"] {
+  background-color: #142b50 !important;
+  color: #f8fafc !important;
+  border-color: #29466f !important;
+}
+.dark .bn-adaptive-dashboard input,
+.dark .bn-adaptive-dashboard select,
+.dark .bn-adaptive-dashboard textarea {
+  background-color: #102544 !important;
+  color: #f8fafc !important;
+  border-color: #29466f !important;
+}
