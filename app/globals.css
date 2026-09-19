@@ -1047,63 +1047,82 @@ a[href*="/service/"]:hover img {
 
 
 
-/* Admin dark-mode surface + contrast correction.
-   Scoped to the merchant/platform admin theme roots only; storefronts are untouched. */
-@layer utilities {
-  #bn-admin-theme-scope.dark,
-  #bn-supaadmin-theme-scope.dark {
-    color-scheme: dark;
-    --background: 222 55% 9%;
-    --foreground: 210 40% 98%;
-    --muted: 222 40% 15%;
-    --muted-foreground: 215 18% 72%;
-    --border: 220 35% 25%;
-    background-color: #0b1b3a;
-    color: #f8fafc;
-  }
+/* === Admin theme correction: dark mode must style nested dashboard surfaces too ===
+   Intentionally scoped to admin theme roots; storefront template palettes are excluded. */
+#bn-admin-theme-scope.dark,
+#bn-plugin-theme-scope.dark,
+#bn-fnb-theme-scope.dark,
+#bn-pms-theme-scope.dark,
+#bn-supaadmin-theme-scope.dark {
+  color-scheme: dark;
+  --background: 222 55% 9%;
+  --foreground: 210 40% 98%;
+  --card: 222 55% 12%;
+  --card-foreground: 210 40% 98%;
+  --popover: 222 55% 12%;
+  --popover-foreground: 210 40% 98%;
+  --muted: 220 40% 17%;
+  --muted-foreground: 215 20% 70%;
+  --border: 220 35% 27%;
+  --input: 220 35% 27%;
+  --primary: 25 100% 50%;
+  --primary-foreground: 222 55% 9%;
+  background: #0b1b3a !important;
+  color: #f8fafc;
+}
 
-  #bn-admin-theme-scope.dark .bn-admin-app,
-  #bn-admin-theme-scope.dark main,
-  #bn-supaadmin-theme-scope.dark main {
-    background-color: #0b1b3a !important;
-    color: #f8fafc;
-  }
+/* Dashboard page canvases and common light utility backgrounds */
+:is(#bn-admin-theme-scope, #bn-plugin-theme-scope, #bn-fnb-theme-scope, #bn-pms-theme-scope, #bn-supaadmin-theme-scope).dark
+:is(main, .bn-admin-app, [class~="bg-background"], [class~="bg-white"], [class~="bg-gray-50"], [class~="bg-gray-100"], [class~="bg-slate-50"], [class~="bg-slate-100"], [class~="bg-zinc-50"], [class~="bg-neutral-50"], [class~="bg-muted"]) {
+  background-color: #0b1b3a !important;
+  color: #f8fafc;
+}
 
-  /* Light utility surfaces frequently used by dashboard cards and quick actions. */
-  #bn-admin-theme-scope.dark :is(
-    .bg-white, .bg-gray-50, .bg-gray-100, .bg-slate-50, .bg-slate-100,
-    .bg-neutral-50, .bg-neutral-100, .bg-zinc-50, .bg-zinc-100,
-    .bg-stone-50, .bg-stone-100, .bg-muted
-  ),
-  #bn-supaadmin-theme-scope.dark :is(
-    .bg-white, .bg-gray-50, .bg-gray-100, .bg-slate-50, .bg-slate-100,
-    .bg-neutral-50, .bg-neutral-100, .bg-zinc-50, .bg-zinc-100,
-    .bg-stone-50, .bg-stone-100, .bg-muted
-  ) {
-    background-color: #142b50 !important;
-    color: #f8fafc !important;
-  }
+/* Cards, quick-action tiles, and nested panels: navy rather than white */
+:is(#bn-admin-theme-scope, #bn-plugin-theme-scope, #bn-fnb-theme-scope, #bn-pms-theme-scope, #bn-supaadmin-theme-scope).dark
+:is([class~="bg-card"], [class~="bg-white"], [class~="bg-gray-50"], [class~="bg-gray-100"], [class~="bg-slate-50"], [class~="bg-slate-100"], [class~="bg-zinc-50"], [class~="bg-neutral-50"], [class~="bg-neutral-100"], [class~="bg-muted"]) {
+  background-color: #142b50 !important;
+  color: #f8fafc !important;
+}
 
-  #bn-admin-theme-scope.dark :is(.text-black, .text-gray-900, .text-gray-800,
-    .text-slate-900, .text-slate-800, .text-neutral-900, .text-zinc-900),
-  #bn-supaadmin-theme-scope.dark :is(.text-black, .text-gray-900, .text-gray-800,
-    .text-slate-900, .text-slate-800, .text-neutral-900, .text-zinc-900) {
-    color: #f8fafc !important;
-  }
+/* Fix black/dark foreground utilities that become unreadable on navy surfaces */
+:is(#bn-admin-theme-scope, #bn-plugin-theme-scope, #bn-fnb-theme-scope, #bn-pms-theme-scope, #bn-supaadmin-theme-scope).dark
+:is([class~="text-black"], [class~="text-gray-950"], [class~="text-gray-900"], [class~="text-gray-800"], [class~="text-slate-950"], [class~="text-slate-900"], [class~="text-slate-800"], [class~="text-zinc-900"], [class~="text-neutral-900"]) {
+  color: #f8fafc !important;
+}
 
-  #bn-admin-theme-scope.dark :is(.border-gray-100, .border-gray-200,
-    .border-slate-100, .border-slate-200, .border-neutral-200),
-  #bn-supaadmin-theme-scope.dark :is(.border-gray-100, .border-gray-200,
-    .border-slate-100, .border-slate-200, .border-neutral-200) {
-    border-color: #29466f !important;
-  }
+/* Muted copy and borders */
+:is(#bn-admin-theme-scope, #bn-plugin-theme-scope, #bn-fnb-theme-scope, #bn-pms-theme-scope, #bn-supaadmin-theme-scope).dark
+:is([class~="text-gray-500"], [class~="text-gray-600"], [class~="text-slate-500"], [class~="text-slate-600"], [class~="text-muted-foreground"]) {
+  color: #aabbd3 !important;
+}
+:is(#bn-admin-theme-scope, #bn-plugin-theme-scope, #bn-fnb-theme-scope, #bn-pms-theme-scope, #bn-supaadmin-theme-scope).dark
+:is([class~="border-gray-100"], [class~="border-gray-200"], [class~="border-slate-100"], [class~="border-slate-200"], [class~="border-neutral-200"]) {
+  border-color: #29466f !important;
+}
 
-  /* Keep action tiles readable while using the navy surface. */
-  #bn-admin-theme-scope.dark :is(button, a)[class*="bg-white"],
-  #bn-admin-theme-scope.dark :is(button, a)[class*="bg-gray-50"],
-  #bn-admin-theme-scope.dark :is(button, a)[class*="bg-slate-50"] {
-    background-color: #142b50 !important;
-    color: #f8fafc !important;
-    border-color: #29466f !important;
-  }
+/* Inputs remain legible in dark mode */
+:is(#bn-admin-theme-scope, #bn-plugin-theme-scope, #bn-fnb-theme-scope, #bn-pms-theme-scope, #bn-supaadmin-theme-scope).dark
+:is(input, select, textarea) {
+  background-color: #102544 !important;
+  color: #f8fafc !important;
+  border-color: #29466f !important;
+}
+:is(#bn-admin-theme-scope, #bn-plugin-theme-scope, #bn-fnb-theme-scope, #bn-pms-theme-scope, #bn-supaadmin-theme-scope).dark
+:is(input, select, textarea)::placeholder {
+  color: #aabbd3 !important;
+}
+
+/* Orange brand actions; replace common legacy green primary button utilities */
+:is(#bn-admin-theme-scope, #bn-plugin-theme-scope, #bn-fnb-theme-scope, #bn-pms-theme-scope, #bn-supaadmin-theme-scope).dark
+:is(button, a)[class~="bg-primary"],
+:is(#bn-admin-theme-scope, #bn-plugin-theme-scope, #bn-fnb-theme-scope, #bn-pms-theme-scope, #bn-supaadmin-theme-scope).dark
+:is(button, a)[class~="bg-emerald-600"],
+:is(#bn-admin-theme-scope, #bn-plugin-theme-scope, #bn-fnb-theme-scope, #bn-pms-theme-scope, #bn-supaadmin-theme-scope).dark
+:is(button, a)[class~="bg-green-600"],
+:is(#bn-admin-theme-scope, #bn-plugin-theme-scope, #bn-fnb-theme-scope, #bn-pms-theme-scope, #bn-supaadmin-theme-scope).dark
+:is(button, a)[class~="bg-teal-600"] {
+  background-color: #ff7900 !important;
+  color: #071a33 !important;
+  border-color: #ff7900 !important;
 }
