@@ -54,7 +54,7 @@ export function DashboardSidebar({
     <aside className="bn-admin-sidebar hidden h-screen max-h-screen w-[250px] shrink-0 flex-col overflow-y-auto overscroll-contain border-r border-[color:var(--bn-ink-line)] bg-[color:var(--bn-ink)] text-white lg:sticky lg:top-0 lg:flex lg:self-start">
       <div className="border-b border-slate-800 px-4 py-4">
         <div className="mb-4 flex items-center gap-2.5">
-          <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-[#10967a] text-sm font-black text-white shadow-sm">▰</div>
+          <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-[#ff7900] text-[#071a33] text-sm font-black text-white shadow-sm">▰</div>
           <div>
             <p className="text-[19px] font-bold leading-none tracking-tight text-white">BizNest</p>
             <p className="mt-1 text-[9px] font-medium tracking-wide text-slate-400">Your Business, Elevated</p>
@@ -102,7 +102,7 @@ export function DashboardSidebar({
           <div className="flex items-center gap-2 text-[11px] font-semibold text-white"><Crown className="h-4 w-4 text-[#10967a]" /> {subscriptionName ?? "No active plan"}</div>
           <p className="mt-1 text-[10px] text-slate-400">Your workspace is powered by BizNest.</p>
           <p className="mt-2 text-[10px] text-slate-500">Plan access is managed from your subscription settings.</p>
-          <Link href={`/${slug}/admin/subscription`} className="block rounded-md bg-[#10967a] px-2 py-1.5 text-center text-[10px] font-bold text-white">Manage Plan</Link>
+          <Link href={`/${slug}/admin/subscription`} className="block rounded-md bg-[#ff7900] text-[#071a33] px-2 py-1.5 text-center text-[10px] font-bold text-white">Manage Plan</Link>
         </div>
         <div className="flex items-center gap-2 px-1">
           <StoreLogo logoUrl={logoUrl} storeName={storeName} size="sm" />
@@ -136,7 +136,7 @@ function NavLink({ base, item, pathname }: { base: string; item: NavItem; pathna
         <a
           href={href}
           className={`group relative flex items-center gap-2.5 rounded-lg px-2.5 py-2 text-sm transition-colors ${
-            isActive ? "bg-[#10967a] font-medium text-white shadow-sm" : "text-slate-300 hover:bg-white/8 hover:text-white"
+            isActive ? "bg-[#ff7900] text-[#071a33] font-medium text-white shadow-sm" : "text-slate-300 hover:bg-white/8 hover:text-white"
           }`}
         >
           {isActive && <span className="absolute -left-3 top-1/2 h-4 w-0.5 -translate-y-1/2 rounded-full bg-primary" />}
@@ -149,7 +149,7 @@ function NavLink({ base, item, pathname }: { base: string; item: NavItem; pathna
       <Link
         href={href}
         className={`group relative flex items-center gap-2.5 rounded-lg px-2.5 py-2 text-sm transition-colors ${
-          isActive ? "bg-[#10967a] font-medium text-white shadow-sm" : "text-slate-300 hover:bg-white/8 hover:text-white"
+          isActive ? "bg-[#ff7900] text-[#071a33] font-medium text-white shadow-sm" : "text-slate-300 hover:bg-white/8 hover:text-white"
         }`}
       >
         {isActive && <span className="absolute -left-3 top-1/2 h-4 w-0.5 -translate-y-1/2 rounded-full bg-primary" />}
@@ -163,7 +163,7 @@ function NavLink({ base, item, pathname }: { base: string; item: NavItem; pathna
     <div>
       <div
         className={`group relative flex items-center gap-2.5 rounded-lg pr-1.5 text-sm transition-colors ${
-          isActive ? "bg-[#10967a] font-medium text-white shadow-sm" : "text-slate-300 hover:bg-white/8 hover:text-white"
+          isActive ? "bg-[#ff7900] text-[#071a33] font-medium text-white shadow-sm" : "text-slate-300 hover:bg-white/8 hover:text-white"
         }`}
       >
         {isActive && <span className="absolute -left-3 top-1/2 h-4 w-0.5 -translate-y-1/2 rounded-full bg-primary" />}
@@ -191,7 +191,7 @@ function NavLink({ base, item, pathname }: { base: string; item: NavItem; pathna
                 key={child.label}
                 href={childHref}
                 className={`flex items-center gap-2 rounded-lg px-2.5 py-1.5 text-xs transition-colors ${
-                  childIsActive ? "bg-[#10967a]/90 font-medium text-white" : "text-slate-400 hover:bg-white/8 hover:text-white"
+                  childIsActive ? "bg-[#ff7900] text-[#071a33]/90 font-medium text-white" : "text-slate-400 hover:bg-white/8 hover:text-white"
                 }`}
               >
                 <ChildIcon className="h-3.5 w-3.5 shrink-0 opacity-70" />
