@@ -1426,3 +1426,26 @@ a[href*="/service/"]:hover img {
   color: #ff9a1f !important;
   stroke: currentColor;
 }
+
+
+
+/* Email composer: the inbox-preview card simulates an email client and is
+   intentionally white in both admin themes. The global dark-mode text
+   overrides must not wash its light text out. */
+.bn-email-inbox-preview {
+  background: #ffffff !important;
+  color: #0f172a !important;
+}
+.bn-email-inbox-preview .text-muted-foreground {
+  color: #64748b !important;
+}
+.bn-email-inbox-preview .text-primary {
+  color: #e86600 !important;
+}
+.bn-email-inbox-preview p,
+.bn-email-inbox-preview span {
+  color: #0f172a;
+}
+.bn-email-inbox-preview .text-muted-foreground {
+  color: #64748b !important;
+}

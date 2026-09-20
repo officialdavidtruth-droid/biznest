@@ -163,7 +163,7 @@ export function MarketingEmailComposer({
 
       <aside className="xl:sticky xl:top-4 xl:self-start">
         <div className="mb-3 flex items-center justify-between"><div><p className="text-sm font-semibold">Live email preview</p><p className="text-xs text-muted-foreground">Changes appear here instantly. The preview text is shown as it would appear beside the subject in an inbox.</p></div><span className="rounded-full bg-muted px-2 py-1 text-[10px] font-semibold">MOBILE + DESKTOP</span></div>
-        <div className="mb-3 overflow-hidden rounded-2xl border bg-background shadow-sm">
+        <div className="bn-email-inbox-preview mb-3 overflow-hidden rounded-2xl border bg-background shadow-sm">
           <div className="border-b bg-muted/40 px-4 py-3">
             <p className="mb-2 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Inbox preview</p>
             <div className="flex gap-3">
