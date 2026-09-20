@@ -5,6 +5,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { MapPin, Star, Share2, Wifi, Tv, LockKeyhole, Volume2, Sparkles, Bath, Armchair, AlarmClock, BedDouble } from "lucide-react";
 import { HotelReservationForm } from "@/components/storefront/hotel-reservation-form";
+import { NewsletterInlineForm } from "@/components/storefront/newsletter-inline-form";
 
 type Props = {
   store: any;
@@ -137,7 +138,7 @@ export function HotelRoomDetail({ store, slug, service, theme, hotelMode }: Prop
         <div><div className="hr-footer-brand"><span>{store.name?.[0] || "H"}</span><b>{store.name}</b></div><p>Luxury, comfort and exceptional service designed around you.</p></div>
         <div><b>Quick Links</b><Link href={`/store/${slug}`}>Home</Link><Link href={`/store/${slug}/hotel/rooms`}>Rooms &amp; Suites</Link><Link href={`/store/${slug}/account`}>Account</Link></div>
         <div><b>Contact</b><span>{store.contactPhone || "Contact available"}</span><span>{store.contactEmail || "Email available"}</span></div>
-        <div><b>Newsletter</b><span>Get updates, offers and new arrivals.</span><form onSubmit={(e) => e.preventDefault()}><input placeholder="Your email" type="email" /><button>Subscribe</button></form></div>
+        <div><b>Newsletter</b><span>Get updates, offers and new arrivals.</span><NewsletterInlineForm slug={slug} inputPlaceholder="Your email">Subscribe</NewsletterInlineForm></div>
       </footer>
     </div>
   );

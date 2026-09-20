@@ -6,6 +6,7 @@ import { AccountLink } from "@/components/storefront/account-link";
 import type { TemplateTheme } from "@/lib/template-themes";
 import { resolveBusinessMode } from "@/lib/business-experience";
 import { isHotelBusiness } from "@/lib/business-identity";
+import { NewsletterInlineForm } from "@/components/storefront/newsletter-inline-form";
 
 type Item = { id:string; kind:"product"|"service"; name:string; description:string|null; price:number; currency:string; image:string|null; categoryName:string|null; type:string; rentalUnit:string|null; isBookable:boolean };
 type Props = { store:any; slug:string; pageSlug:string; items:Item[]; reviews:any[]; theme:TemplateTheme; social:Record<string,string> };
@@ -94,7 +95,7 @@ function Footer({store,slug,accent}:{store:any;slug:string;accent:string}){
  return <footer className="bn-universal-footer"><div className="bn-universal-footer-grid"><div><div className="bn-universal-footer-brand"><span className="bn-universal-logo">{store.logoUrl?<img src={store.logoUrl} alt=""/>:<span>{store.name?.[0] || "B"}</span>}</span><strong>{store.name}</strong></div><p>{store.business?.description || "Professional solutions for people and businesses."}</p><div className="bn-footer-social">{Object.entries((store.socialLinks||{}) as Record<string,string>).slice(0,5).map(([k,v])=>v?<a key={k} href={String(v)} target="_blank" rel="noreferrer">{k.slice(0,2).toUpperCase()}</a>:null)}</div></div>
  <div><h4>Quick Links</h4>{[['Home',''],['Services','services'],['About','about'],['Portfolio','portfolio'],['Pricing','pricing'],['Contact','contact']].map(([l,p])=><Link key={l} href={`/store/${slug}${p?`/${p}`:''}`}>{l}</Link>)}</div>
  <div><h4>Contact Us</h4>{store.contactPhone&&<a href={`tel:${store.contactPhone}`}><Phone size={14}/>{store.contactPhone}</a>}{store.contactEmail&&<a href={`mailto:${store.contactEmail}`}><Mail size={14}/>{store.contactEmail}</a>}<span><MapPin size={14}/>{[store.business?.city,store.business?.state,store.business?.country].filter(Boolean).join(", ") || "Online business"}</span></div>
- <div><h4>Stay Updated</h4><p>Get the latest updates, offers and useful information.</p><div className="bn-newsletter"><input placeholder="Your email address"/><button style={{background:accent}}><ArrowRight size={16}/></button></div></div></div><div className="bn-universal-copyright"><span>© {new Date().getFullYear()} {store.name}. All rights reserved.</span><span>Privacy Policy &nbsp; Terms of Service</span></div></footer>
+ <div><h4>Stay Updated</h4><p>Get the latest updates, offers and useful information.</p><NewsletterInlineForm slug={slug} className="bn-newsletter" buttonStyle={{background:accent}}><ArrowRight size={16}/></NewsletterInlineForm></div></div><div className="bn-universal-copyright"><span>© {new Date().getFullYear()} {store.name}. All rights reserved.</span><span>Privacy Policy &nbsp; Terms of Service</span></div></footer>
 }
 
 function Hero({store,slug,active,copy,accent,hero,archetype="editorial",children}:{store:any;slug:string;active:string;copy:any;accent:string;hero:string|null;archetype?:Archetype;children:React.ReactNode}){

@@ -7,6 +7,7 @@ import { MapPin, Star, Share2 } from "lucide-react";
 import { BookingWidget } from "@/components/storefront/booking-widget";
 import { getCatalogItemPreset } from "@/lib/catalog-item-presets";
 import { getBusinessTerminology } from "@/lib/business-terminology";
+import { NewsletterInlineForm } from "@/components/storefront/newsletter-inline-form";
 
 type Props = {
   store: any;
@@ -188,7 +189,7 @@ export function CatalogItemDetail({ store, slug, service, theme, businessCategor
         <div><div className="hr-footer-brand"><span>{store.name?.[0] || "S"}</span><b>{store.name}</b></div><p>Quality, care and exceptional service designed around you.</p></div>
         <div><b>Quick Links</b><Link href={`/store/${slug}`}>Home</Link><Link href={catalogHref}>{terminology.catalog}</Link><Link href={`/store/${slug}/account`}>Account</Link></div>
         <div><b>Contact</b><span>{store.contactPhone || "Contact available"}</span><span>{store.contactEmail || "Email available"}</span></div>
-        <div><b>Newsletter</b><span>Get updates, offers and new arrivals.</span><form onSubmit={(e) => e.preventDefault()}><input placeholder="Your email" type="email" /><button>Subscribe</button></form></div>
+        <div><b>Newsletter</b><span>Get updates, offers and new arrivals.</span><NewsletterInlineForm slug={slug} inputPlaceholder="Your email">Subscribe</NewsletterInlineForm></div>
       </footer>
     </div>
   );
