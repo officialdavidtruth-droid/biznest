@@ -13,6 +13,23 @@ import {
 import { sendMarketingCampaign, type MarketingSendInput } from "@/lib/actions/marketing";
 import { useTheme } from "@/components/theme/theme-provider";
 
+/**
+ * The actual email is always rendered light (email clients render it as
+ * authored), so this only reshapes the *preview* iframe when the dashboard
+ * itself is in dark mode — it never touches what gets sent. Uses the
+ * standard invert+hue-rotate trick to flip the light email to dark while
+ * re-inverting images/media so photos don't come out looking like negatives.
+ */
+function darkenEmailPreview(html: string): string {
+  const darkModeStyle = `
+    <style>
+      html, body { filter: invert(1) hue-rotate(180deg); background: #fff !important; }
+      img, svg, video, picture, [style*="background-image"] { filter: invert(1) hue-rotate(180deg); }
+    </style>
+  `;
+  return html.includes("</head>") ? html.replace("</head>", `${darkModeStyle}</head>`) : `${darkModeStyle}${html}`;
+}
+
 export function MarketingEmailComposer({
   slug,
   brand,
