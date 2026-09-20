@@ -1363,66 +1363,235 @@ a[href*="/service/"]:hover img {
 }
 
 
+/* ========================================================================
+   BIZNEST ADMIN + PLUGIN DARK MODE — FINAL HIGH-SPECIFICITY OVERRIDES
+   These selectors intentionally target only theme roots used by admin and
+   plugins. Storefront template palettes are outside these roots.
+   ======================================================================== */
 
-/* Admin topbar: the theme class is on #bn-admin-theme-scope, not <html>.
-   Explicitly style the scoped desktop header so its surface and controls
-   follow the selected theme regardless of utility-token compilation. */
-#bn-admin-theme-scope.dark .bn-admin-topbar {
-  background-color: #0b1b3a !important;
-  color: #f8fafc !important;
-  border-bottom-color: #29466f !important;
-}
-#bn-admin-theme-scope.dark .bn-admin-topbar p {
-  color: #dbeafe !important;
-}
-#bn-admin-theme-scope.dark .bn-admin-topbar button,
-#bn-admin-theme-scope.dark .bn-admin-topbar a,
-#bn-admin-theme-scope.dark .bn-admin-topbar [role="button"] {
+/* Core merchant admin */
+#bn-admin-theme-scope.dark .bn-admin-app {
+  --bn-surface: #142b50 !important;
+  --bn-page: #0b1b3a !important;
+  --bn-line: #29466f !important;
+  --bn-line-soft: #203e66 !important;
+  --bn-ink: #f8fafc !important;
+  --bn-muted: #b8c8df !important;
+  --bn-gold: #ff7900 !important;
+  --bn-gold-dark: #e86600 !important;
+  background: #0b1b3a !important;
   color: #f8fafc !important;
 }
-#bn-admin-theme-scope.dark .bn-admin-topbar svg {
+
+#bn-admin-theme-scope.dark .bn-admin-app main,
+#bn-admin-theme-scope.dark .bn-admin-app .bn-admin-page {
+  background: #0b1b3a !important;
+  color: #f8fafc !important;
+}
+
+#bn-admin-theme-scope.dark .bn-admin-app :is(h1,h2,h3,h4,h5,h6,
+  strong,b,label,th,td) {
+  color: #f8fafc !important;
+}
+
+#bn-admin-theme-scope.dark .bn-admin-app :is(p,span,small) {
+  color: inherit;
+}
+
+#bn-admin-theme-scope.dark .bn-admin-app .text-muted-foreground,
+#bn-admin-theme-scope.dark .bn-admin-app :is(.text-gray-500,.text-gray-600,
+  .text-slate-500,.text-slate-600,.text-zinc-500,.text-neutral-500) {
+  color: #b8c8df !important;
+}
+
+#bn-admin-theme-scope.dark .bn-admin-app :is(
+  .bg-white,.bg-gray-50,.bg-gray-100,.bg-slate-50,.bg-slate-100,
+  .bg-zinc-50,.bg-zinc-100,.bg-neutral-50,.bg-neutral-100,
+  .bg-background,.bg-card,.bg-muted
+) {
+  background-color: #142b50 !important;
+  color: #f8fafc !important;
+}
+
+#bn-admin-theme-scope.dark .bn-admin-app :is(
+  [class*="bg-[#fff"],[class*="bg-[#ffffff"],[class*="bg-[#f5"],
+  [class*="bg-[#f8"],[class*="bg-[#fcfc"],[class*="bg-[white"]
+) {
+  background-color: #142b50 !important;
+  color: #f8fafc !important;
+}
+
+#bn-admin-theme-scope.dark .bn-admin-app :is(
+  .text-black,.text-gray-900,.text-gray-800,.text-gray-700,
+  .text-slate-900,.text-slate-800,.text-slate-700,
+  .text-zinc-900,.text-neutral-900,
+  .text-\[\#111827\],.text-\[\#0f172a\],.text-\[\#1e293b\],
+  .text-\[\#334155\]
+) {
+  color: #f8fafc !important;
+}
+
+#bn-admin-theme-scope.dark .bn-admin-app :is(
+  input,select,textarea
+) {
+  background-color: #102544 !important;
+  color: #f8fafc !important;
+  border-color: #29466f !important;
+}
+#bn-admin-theme-scope.dark .bn-admin-app :is(input,textarea)::placeholder {
+  color: #aabbd3 !important;
+}
+
+#bn-admin-theme-scope.dark .bn-admin-app table {
+  color: #eaf1fb !important;
+}
+#bn-admin-theme-scope.dark .bn-admin-app table thead,
+#bn-admin-theme-scope.dark .bn-admin-app table thead tr,
+#bn-admin-theme-scope.dark .bn-admin-app table thead th {
+  background: #102544 !important;
+  color: #f8fafc !important;
+}
+#bn-admin-theme-scope.dark .bn-admin-app table tbody tr,
+#bn-admin-theme-scope.dark .bn-admin-app table tbody td {
+  background: #142b50 !important;
+  color: #eaf1fb !important;
+  border-color: #29466f !important;
+}
+#bn-admin-theme-scope.dark .bn-admin-app table tbody tr:hover,
+#bn-admin-theme-scope.dark .bn-admin-app table tbody tr:hover td {
+  background: #1a365f !important;
+}
+
+#bn-admin-theme-scope.dark .bn-admin-app :is(
+  .bg-primary,.bg-orange-500,.bg-orange-600,.bg-amber-500
+) {
+  background-color: #ff7900 !important;
+  color: #071a33 !important;
+  border-color: #ff7900 !important;
+}
+#bn-admin-theme-scope.dark .bn-admin-app :is(.text-primary,.text-orange-500,.text-orange-600) {
   color: #ff9a1f !important;
-  stroke: currentColor;
-}
-#bn-admin-theme-scope.light .bn-admin-topbar {
-  background-color: #f8fafc;
-  color: #0f172a;
-  border-bottom-color: #e2e8f0;
-}
-#bn-admin-theme-scope.light .bn-admin-topbar p {
-  color: #475569;
 }
 
+/* Standalone plugin roots: PMS, FnB, Financial Control, CRM, HR, Procurement,
+   Requisition, SEO, Reservations, and other installed plugin workspaces. */
+#bn-plugin-theme-scope.dark,
+#bn-fnb-theme-scope.dark,
+#bn-pms-theme-scope.dark {
+  background: #0b1b3a !important;
+  color: #f8fafc !important;
+  color-scheme: dark;
+}
 
+#bn-plugin-theme-scope.dark :is(h1,h2,h3,h4,h5,h6,strong,b,label,th,td),
+#bn-fnb-theme-scope.dark :is(h1,h2,h3,h4,h5,h6,strong,b,label,th,td),
+#bn-pms-theme-scope.dark :is(h1,h2,h3,h4,h5,h6,strong,b,label,th,td) {
+  color: #f8fafc !important;
+}
 
-/* Status-pill contrast fix for dark-mode admin tables.
-   Preserve the pale semantic badge backgrounds while forcing readable
-   foreground colors (e.g. "Completed" on a pale green pill). */
-.dark table :is(
-  [class*="bg-emerald-"], [class*="bg-green-"], [class*="bg-teal-"],
-  [class*="bg-lime-"]
+#bn-plugin-theme-scope.dark :is(
+  .bg-white,.bg-gray-50,.bg-gray-100,.bg-slate-50,.bg-slate-100,
+  .bg-zinc-50,.bg-zinc-100,.bg-neutral-50,.bg-neutral-100,
+  .bg-background,.bg-card,.bg-muted
+),
+#bn-fnb-theme-scope.dark :is(
+  .bg-white,.bg-gray-50,.bg-gray-100,.bg-slate-50,.bg-slate-100,
+  .bg-zinc-50,.bg-zinc-100,.bg-neutral-50,.bg-neutral-100,
+  .bg-background,.bg-card,.bg-muted
+),
+#bn-pms-theme-scope.dark :is(
+  .bg-white,.bg-gray-50,.bg-gray-100,.bg-slate-50,.bg-slate-100,
+  .bg-zinc-50,.bg-zinc-100,.bg-neutral-50,.bg-neutral-100,
+  .bg-background,.bg-card,.bg-muted
 ) {
-  color: #14532d !important;
+  background-color: #142b50 !important;
+  color: #f8fafc !important;
 }
-.dark table :is(
-  [class*="bg-emerald-"], [class*="bg-green-"], [class*="bg-teal-"],
-  [class*="bg-lime-"]
-) :is(span, p, strong, b) {
-  color: inherit !important;
-}
-.dark table :is(
-  [class*="bg-rose-"], [class*="bg-red-"], [class*="bg-pink-"]
+
+#bn-plugin-theme-scope.dark :is(
+  [class*="bg-[#fff"],[class*="bg-[#ffffff"],[class*="bg-[#f5"],
+  [class*="bg-[#f8"],[class*="bg-[#fcfc"],[class*="bg-[white"]
+),
+#bn-fnb-theme-scope.dark :is(
+  [class*="bg-[#fff"],[class*="bg-[#ffffff"],[class*="bg-[#f5"],
+  [class*="bg-[#f8"],[class*="bg-[#fcfc"],[class*="bg-[white"]
+),
+#bn-pms-theme-scope.dark :is(
+  [class*="bg-[#fff"],[class*="bg-[#ffffff"],[class*="bg-[#f5"],
+  [class*="bg-[#f8"],[class*="bg-[#fcfc"],[class*="bg-[white"]
 ) {
-  color: #881337 !important;
+  background-color: #142b50 !important;
+  color: #f8fafc !important;
 }
-.dark table :is(
-  [class*="bg-amber-"], [class*="bg-yellow-"], [class*="bg-orange-"]
+
+#bn-plugin-theme-scope.dark :is(
+  .text-black,.text-gray-900,.text-gray-800,.text-gray-700,
+  .text-slate-900,.text-slate-800,.text-slate-700,
+  .text-zinc-900,.text-neutral-900,
+  .text-\[\#111827\],.text-\[\#0f172a\],.text-\[\#1e293b\],
+  .text-\[\#334155\]
+),
+#bn-fnb-theme-scope.dark :is(
+  .text-black,.text-gray-900,.text-gray-800,.text-gray-700,
+  .text-slate-900,.text-slate-800,.text-slate-700,
+  .text-zinc-900,.text-neutral-900,
+  .text-\[\#111827\],.text-\[\#0f172a\],.text-\[\#1e293b\],
+  .text-\[\#334155\]
+),
+#bn-pms-theme-scope.dark :is(
+  .text-black,.text-gray-900,.text-gray-800,.text-gray-700,
+  .text-slate-900,.text-slate-800,.text-slate-700,
+  .text-zinc-900,.text-neutral-900,
+  .text-\[\#111827\],.text-\[\#0f172a\],.text-\[\#1e293b\],
+  .text-\[\#334155\]
 ) {
-  color: #78350f !important;
+  color: #f8fafc !important;
 }
-.dark table :is(
-  [class*="bg-sky-"], [class*="bg-blue-"], [class*="bg-cyan-"],
-  [class*="bg-indigo-"], [class*="bg-violet-"], [class*="bg-purple-"]
-) {
-  color: #1e3a8a !important;
+
+#bn-plugin-theme-scope.dark :is(.text-muted-foreground,.text-gray-500,.text-gray-600,.text-slate-500,.text-slate-600),
+#bn-fnb-theme-scope.dark :is(.text-muted-foreground,.text-gray-500,.text-gray-600,.text-slate-500,.text-slate-600),
+#bn-pms-theme-scope.dark :is(.text-muted-foreground,.text-gray-500,.text-gray-600,.text-slate-500,.text-slate-600) {
+  color: #b8c8df !important;
+}
+
+#bn-plugin-theme-scope.dark :is(input,select,textarea),
+#bn-fnb-theme-scope.dark :is(input,select,textarea),
+#bn-pms-theme-scope.dark :is(input,select,textarea) {
+  background: #102544 !important;
+  color: #f8fafc !important;
+  border-color: #29466f !important;
+}
+
+#bn-plugin-theme-scope.dark table thead th,
+#bn-fnb-theme-scope.dark table thead th,
+#bn-pms-theme-scope.dark table thead th {
+  background: #102544 !important;
+  color: #f8fafc !important;
+}
+#bn-plugin-theme-scope.dark table tbody td,
+#bn-fnb-theme-scope.dark table tbody td,
+#bn-pms-theme-scope.dark table tbody td {
+  background: #142b50 !important;
+  color: #eaf1fb !important;
+  border-color: #29466f !important;
+}
+
+/* Make plugin brand actions orange, while avoiding a blanket rewrite of
+   semantic red warning/danger colors. */
+#bn-plugin-theme-scope.dark :is(.bg-primary,.bg-orange-500,.bg-orange-600),
+#bn-fnb-theme-scope.dark :is(.bg-primary,.bg-orange-500,.bg-orange-600),
+#bn-pms-theme-scope.dark :is(.bg-primary,.bg-orange-500,.bg-orange-600) {
+  background-color: #ff7900 !important;
+  color: #071a33 !important;
+  border-color: #ff7900 !important;
+}
+
+/* Common pale status pills keep their meaning but get readable foregrounds. */
+:is(#bn-admin-theme-scope,#bn-plugin-theme-scope,#bn-fnb-theme-scope,#bn-pms-theme-scope).dark
+:is(.bg-emerald-50,.bg-green-50,.bg-teal-50) {
+  color: #166534 !important;
+}
+:is(#bn-admin-theme-scope,#bn-plugin-theme-scope,#bn-fnb-theme-scope,#bn-pms-theme-scope).dark
+:is(.bg-rose-50,.bg-red-50,.bg-pink-50) {
+  color: #9f1239 !important;
 }
