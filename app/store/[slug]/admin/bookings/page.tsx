@@ -56,7 +56,7 @@ export default async function BookingsPage({ params }: { params: Promise<{ slug:
 
       <BookingStatCards total={bookings.length} pending={pendingCount} confirmed={confirmedCount} completed={completedCount} />
 
-      <section className="rounded-xl border bg-white p-5 shadow-sm">
+      <section className="rounded-xl border bg-[var(--bn-admin-surface)] p-5 shadow-sm">
         <div className="mb-4"><h2 className="text-base font-bold">Bookings</h2><p className="mt-1 text-xs text-muted-foreground">Search, filter and manage every booking</p></div>
         <BookingsTable
           storeSlug={slug}

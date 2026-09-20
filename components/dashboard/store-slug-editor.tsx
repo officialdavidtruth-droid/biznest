@@ -121,7 +121,7 @@ export function StoreSlugEditor({ slug, domainRoot }: { slug: string; domainRoot
       {!isUnchanged && (
         <p className={`mt-2 text-xs ${
           checking ? "text-muted-foreground"
-          : availability?.available ? "text-green-700"
+          : availability?.available ? "text-[var(--bn-admin-orange)]"
           : "text-destructive"
         }`}>
           {checking

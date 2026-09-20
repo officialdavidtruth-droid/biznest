@@ -44,13 +44,13 @@ export default async function InventoryItemPage({
         </div>
         <div className="rounded-lg border bg-background p-4">
           <p className="text-xs text-muted-foreground">Profit</p>
-          <p className="mt-1 text-lg font-semibold text-green-700">
+          <p className="mt-1 text-lg font-semibold text-[var(--bn-admin-orange)]">
             {item.profitPerUnit != null ? `${item.currency} ${item.profitPerUnit.toLocaleString()}` : "—"}
           </p>
         </div>
         <div className="rounded-lg border bg-background p-4">
           <p className="text-xs text-muted-foreground">Margin</p>
-          <p className="mt-1 text-lg font-semibold text-green-700">{item.marginPercent != null ? `${item.marginPercent}%` : "—"}</p>
+          <p className="mt-1 text-lg font-semibold text-[var(--bn-admin-orange)]">{item.marginPercent != null ? `${item.marginPercent}%` : "—"}</p>
         </div>
       </div>
 
@@ -58,7 +58,7 @@ export default async function InventoryItemPage({
         <p className="text-sm">
           Currently <strong>{item.quantity}</strong> in stock
           {item.status !== "IN_STOCK" && (
-            <span className={`ml-2 rounded-full px-2 py-0.5 text-xs ${item.status === "OUT_OF_STOCK" ? "bg-destructive/10 text-destructive" : "bg-amber-100 text-amber-700"}`}>
+            <span className={`ml-2 rounded-full px-2 py-0.5 text-xs ${item.status === "OUT_OF_STOCK" ? "bg-destructive/10 text-destructive" : "bg-[var(--bn-admin-orange-soft)] text-[var(--bn-admin-orange)]"}`}>
               {item.status === "OUT_OF_STOCK" ? "Out of stock" : "Low stock"}
             </span>
           )}
@@ -91,7 +91,7 @@ export default async function InventoryItemPage({
               <tr key={h.id} className="border-b last:border-0">
                 <td className="px-4 py-3 text-muted-foreground">{new Date(h.createdAt).toLocaleString()}</td>
                 <td className="px-4 py-3">{MOVEMENT_LABELS[h.type] ?? h.type}</td>
-                <td className={`px-4 py-3 font-medium ${h.quantityChange >= 0 ? "text-green-700" : "text-destructive"}`}>
+                <td className={`px-4 py-3 font-medium ${h.quantityChange >= 0 ? "text-[var(--bn-admin-orange)]" : "text-destructive"}`}>
                   {h.quantityChange >= 0 ? "+" : ""}
                   {h.quantityChange}
                 </td>

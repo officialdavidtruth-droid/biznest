@@ -163,7 +163,7 @@ export function GatewayToggle({
               </p>
             </div>
             {active === g.id ? (
-              <span className="rounded-full bg-green-100 px-2.5 py-1 text-xs font-medium text-green-700">Active</span>
+              <span className="rounded-full bg-[var(--bn-admin-surface-2)] px-2.5 py-1 text-xs font-medium text-[var(--bn-admin-orange)]">Active</span>
             ) : (
               <button
                 onClick={() => activate(g.id)}

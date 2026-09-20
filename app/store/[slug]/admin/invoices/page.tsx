@@ -5,9 +5,9 @@ import { InvoiceRowActions } from "@/components/dashboard/invoice-row-actions";
 import { prisma } from "@/lib/prisma";
 
 const STATUS_STYLES: Record<string, string> = {
-  DRAFT: "bg-gray-200 text-gray-700",
-  SENT: "bg-yellow-100 text-yellow-700",
-  PAID: "bg-green-100 text-green-700",
+  DRAFT: "bg-[var(--bn-admin-surface)] text-[var(--bn-admin-text)]",
+  SENT: "bg-[var(--bn-admin-orange-soft)] text-[var(--bn-admin-orange)]",
+  PAID: "bg-[var(--bn-admin-surface-2)] text-[var(--bn-admin-orange)]",
   CANCELLED: "bg-destructive/10 text-destructive",
 };
 

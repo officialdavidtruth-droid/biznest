@@ -5,13 +5,13 @@ import { useMemo, useState } from "react";
 import { ListToolbar, ListPagination } from "@/components/dashboard/list-toolbar";
 
 const STATUS_STYLES: Record<string, string> = {
-  PENDING_PAYMENT: "bg-yellow-100 text-yellow-700",
-  PAID: "bg-blue-100 text-blue-700",
-  IN_PROGRESS: "bg-blue-100 text-blue-700",
-  DELIVERED: "bg-green-100 text-green-700",
-  COMPLETED: "bg-green-100 text-green-700",
-  CANCELLED: "bg-gray-200 text-gray-700",
-  REFUNDED: "bg-gray-200 text-gray-700",
+  PENDING_PAYMENT: "bg-[var(--bn-admin-orange-soft)] text-[var(--bn-admin-orange)]",
+  PAID: "bg-[var(--bn-admin-surface-2)] text-[var(--bn-admin-orange)]",
+  IN_PROGRESS: "bg-[var(--bn-admin-surface-2)] text-[var(--bn-admin-orange)]",
+  DELIVERED: "bg-[var(--bn-admin-surface-2)] text-[var(--bn-admin-orange)]",
+  COMPLETED: "bg-[var(--bn-admin-surface-2)] text-[var(--bn-admin-orange)]",
+  CANCELLED: "bg-[var(--bn-admin-surface)] text-[var(--bn-admin-text)]",
+  REFUNDED: "bg-[var(--bn-admin-surface)] text-[var(--bn-admin-text)]",
   DISPUTED: "bg-destructive/10 text-destructive",
 };
 
@@ -85,7 +85,7 @@ export function OrdersTable({ storeSlug, orders }: { storeSlug: string; orders: 
                 <td className="px-4 py-3">
                   {order.customerName}
                   {order.channel === "POS" && (
-                    <span className="ml-1.5 rounded-full bg-purple-100 px-1.5 py-0.5 text-[10px] font-medium text-purple-700">POS</span>
+                    <span className="ml-1.5 rounded-full bg-[var(--bn-admin-surface-2)] px-1.5 py-0.5 text-[10px] font-medium text-[var(--bn-admin-orange)]">POS</span>
                   )}
                 </td>
                 <td className="px-4 py-3 text-muted-foreground">{order.itemCount}</td>

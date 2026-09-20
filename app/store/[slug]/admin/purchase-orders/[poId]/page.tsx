@@ -5,10 +5,10 @@ import { PurchaseOrderActions } from "@/components/dashboard/purchase-order-acti
 
 const STATUS_STYLES: Record<string, string> = {
   DRAFT: "bg-muted text-muted-foreground",
-  SENT: "bg-blue-100 text-blue-700",
-  PARTIALLY_RECEIVED: "bg-amber-100 text-amber-700",
-  RECEIVED: "bg-green-100 text-green-700",
-  CANCELLED: "bg-red-100 text-red-700",
+  SENT: "bg-[var(--bn-admin-surface-2)] text-[var(--bn-admin-orange)]",
+  PARTIALLY_RECEIVED: "bg-[var(--bn-admin-orange-soft)] text-[var(--bn-admin-orange)]",
+  RECEIVED: "bg-[var(--bn-admin-surface-2)] text-[var(--bn-admin-orange)]",
+  CANCELLED: "bg-[var(--bn-admin-danger-soft)] text-[var(--bn-admin-danger)]",
 };
 
 export default async function PurchaseOrderDetailPage({

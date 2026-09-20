@@ -229,9 +229,9 @@ export function StaffManager({ slug, initialMembers, installedPluginPermissions 
                       <span
                         className={
                           m.status === "ACTIVE"
-                            ? "text-emerald-500"
+                            ? "text-[var(--bn-admin-orange)]"
                             : m.status === "PENDING"
-                              ? "text-amber-500"
+                              ? "text-[var(--bn-admin-orange)]"
                               : "text-muted-foreground"
                         }
                       >

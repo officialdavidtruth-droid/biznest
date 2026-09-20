@@ -34,13 +34,13 @@ type ServiceWithUnits = {
 };
 
 const STATUS_COLORS: Record<string, string> = {
-  AVAILABLE: "bg-emerald-50 text-emerald-700 border-emerald-200",
-  OCCUPIED: "bg-blue-50 text-blue-700 border-blue-200",
-  RESERVED: "bg-amber-50 text-amber-700 border-amber-200",
-  DIRTY: "bg-rose-50 text-rose-700 border-rose-200",
-  CLEANING: "bg-purple-50 text-purple-700 border-purple-200",
-  MAINTENANCE: "bg-slate-100 text-slate-600 border-slate-200",
-  OUT_OF_SERVICE: "bg-slate-200 text-slate-500 border-slate-300",
+  AVAILABLE: "bg-[var(--bn-admin-surface-2)] text-[var(--bn-admin-orange)] border-[var(--bn-admin-border)]",
+  OCCUPIED: "bg-[var(--bn-admin-surface-2)] text-[var(--bn-admin-orange)] border-[var(--bn-admin-border)]",
+  RESERVED: "bg-[var(--bn-admin-orange-soft)] text-[var(--bn-admin-orange)] border-[var(--bn-admin-border)]",
+  DIRTY: "bg-[var(--bn-admin-danger-soft)] text-[var(--bn-admin-danger)] border-[var(--bn-admin-danger-line)]",
+  CLEANING: "bg-[var(--bn-admin-surface-2)] text-[var(--bn-admin-orange)] border-[var(--bn-admin-border)]",
+  MAINTENANCE: "bg-[var(--bn-admin-surface)] text-[var(--bn-admin-muted)] border-[var(--bn-admin-border)]",
+  OUT_OF_SERVICE: "bg-[var(--bn-admin-surface)] text-[var(--bn-admin-muted)] border-[var(--bn-admin-border)]",
 };
 
 function toISODate(d: Date) {
@@ -257,7 +257,7 @@ function CreateBookingModal({
   }, [initialDate]);
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" onClick={onClose}>
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-[color-mix(in_srgb,var(--bn-admin-page)_40%,transparent)] p-4" onClick={onClose}>
       <form
         onClick={(e) => e.stopPropagation()}
         onSubmit={(e) => {
@@ -315,7 +315,7 @@ function GuestInfoModal({
   const [idImageUrl, setIdImageUrl] = useState(booking.governmentIdImageUrl ?? "");
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" onClick={onClose}>
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-[color-mix(in_srgb,var(--bn-admin-page)_40%,transparent)] p-4" onClick={onClose}>
       <form
         onClick={(e) => e.stopPropagation()}
         onSubmit={(e) => {

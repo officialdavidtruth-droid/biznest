@@ -93,10 +93,10 @@ export default async function BusinessesReviewPage({
 
 function StatusBadge({ status }: { status: VerificationStatus }) {
   const styles: Record<VerificationStatus, string> = {
-    PENDING: "bg-yellow-100 text-yellow-700",
-    APPROVED: "bg-green-100 text-green-700",
-    REJECTED: "bg-red-100 text-red-700",
-    SUSPENDED: "bg-gray-200 text-gray-700",
+    PENDING: "bg-[var(--bn-admin-orange-soft)] text-[var(--bn-admin-orange)]",
+    APPROVED: "bg-[var(--bn-admin-surface-2)] text-[var(--bn-admin-orange)]",
+    REJECTED: "bg-[var(--bn-admin-danger-soft)] text-[var(--bn-admin-danger)]",
+    SUSPENDED: "bg-[var(--bn-admin-surface)] text-[var(--bn-admin-text)]",
   };
   return <span className={`rounded-full px-2 py-0.5 text-xs ${styles[status]}`}>{status}</span>;
 }

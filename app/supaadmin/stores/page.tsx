@@ -33,7 +33,7 @@ export default async function StoresPage() {
                   <span
                     className={`rounded-full px-2 py-0.5 text-xs ${
                       s.status === "ACTIVE"
-                        ? "bg-green-100 text-green-700"
+                        ? "bg-[var(--bn-admin-surface-2)] text-[var(--bn-admin-orange)]"
                         : "bg-destructive/10 text-destructive"
                     }`}
                   >

@@ -27,7 +27,7 @@ export default async function StoreOrderDetailPage({
       <h1 className="mb-1 text-xl font-semibold">
         Order #{order.id.slice(-8).toUpperCase()}
         {order.channel === "POS" && (
-          <span className="ml-2 rounded-full bg-purple-100 px-2 py-0.5 align-middle text-xs font-medium text-purple-700">
+          <span className="ml-2 rounded-full bg-[var(--bn-admin-surface-2)] px-2 py-0.5 align-middle text-xs font-medium text-[var(--bn-admin-orange)]">
             POS · {order.posTenderType}
           </span>
         )}
@@ -87,9 +87,9 @@ export default async function StoreOrderDetailPage({
       </div>
 
       {order.dispute && (
-        <div className="mb-6 rounded-lg border border-red-200 bg-red-50 p-4">
+        <div className="mb-6 rounded-lg border border-[var(--bn-admin-danger-line)] bg-[var(--bn-admin-danger-soft)] p-4">
           <div className="flex items-center justify-between gap-3">
-            <h2 className="flex items-center gap-1.5 text-sm font-semibold text-red-900">
+            <h2 className="flex items-center gap-1.5 text-sm font-semibold text-[var(--bn-admin-danger)]">
               <ShieldAlert className="h-4 w-4" />
               Dispute
             </h2>
@@ -99,12 +99,12 @@ export default async function StoreOrderDetailPage({
               {DISPUTE_STATUS_CONFIG[order.dispute.status].label}
             </span>
           </div>
-          <p className="mt-1.5 text-sm text-red-800">
+          <p className="mt-1.5 text-sm text-[var(--bn-admin-danger)]">
             The buyer has opened a dispute on this order. Head to the Resolution Center to review evidence and respond.
           </p>
           <Link
             href={`/disputes/${order.id}`}
-            className="mt-3 inline-flex items-center gap-1 text-sm font-semibold text-red-700 hover:text-red-900"
+            className="mt-3 inline-flex items-center gap-1 text-sm font-semibold text-[var(--bn-admin-danger)] hover:text-[var(--bn-admin-danger)]"
           >
             Open dispute thread →
           </Link>

@@ -99,7 +99,7 @@ export function DeliveryZoneRow({ storeSlug, currency, zone }: { storeSlug: stri
           <button
             onClick={handleToggle}
             disabled={isSubmitting}
-            className={`rounded-full px-2 py-0.5 text-xs ${zone.isActive ? "bg-green-100 text-green-700" : "bg-muted text-muted-foreground"}`}
+            className={`rounded-full px-2 py-0.5 text-xs ${zone.isActive ? "bg-[var(--bn-admin-surface-2)] text-[var(--bn-admin-orange)]" : "bg-muted text-muted-foreground"}`}
           >
             {zone.isActive ? "Active" : "Inactive"}
           </button>

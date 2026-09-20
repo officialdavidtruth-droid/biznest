@@ -2,10 +2,10 @@
 import { prisma } from "@/lib/prisma";
 
 const STATUS_STYLE: Record<string, string> = {
-  APPROVED: "bg-green-100 text-green-700",
-  PENDING: "bg-yellow-100 text-yellow-700",
+  APPROVED: "bg-[var(--bn-admin-surface-2)] text-[var(--bn-admin-orange)]",
+  PENDING: "bg-[var(--bn-admin-orange-soft)] text-[var(--bn-admin-orange)]",
   REJECTED: "bg-destructive/10 text-destructive",
-  UNDER_REVIEW: "bg-blue-100 text-blue-700",
+  UNDER_REVIEW: "bg-[var(--bn-admin-surface-2)] text-[var(--bn-admin-orange)]",
 };
 
 export default async function VerificationPage({ params }: { params: Promise<{ slug: string }> }) {

@@ -167,7 +167,7 @@ export function ReservationEditForm({
 
       <div className="grid gap-5 lg:grid-cols-[1fr_320px]">
         <div className="space-y-5">
-          <section className="rounded-xl border bg-white p-5 shadow-sm">
+          <section className="rounded-xl border bg-[var(--bn-admin-surface)] p-5 shadow-sm">
             <h2 className="mb-4 text-sm font-semibold">Reservation Information</h2>
             <div className="grid gap-4 sm:grid-cols-3">
               <div className="sm:col-span-2">
@@ -233,19 +233,19 @@ export function ReservationEditForm({
             </div>
           </section>
 
-          <section className="rounded-xl border bg-white p-5 shadow-sm">
+          <section className="rounded-xl border bg-[var(--bn-admin-surface)] p-5 shadow-sm">
             <label className="mb-1 block text-sm font-semibold">Special Requests</label>
             <p className="mb-2 text-xs text-muted-foreground">Visible to the guest on their confirmation. One per line.</p>
             <textarea value={specialRequests} onChange={(e) => setSpecialRequests(e.target.value)} rows={3} className="input" placeholder="Birthday celebration&#10;Window seat preferred" />
           </section>
 
-          <section className="rounded-xl border bg-white p-5 shadow-sm">
+          <section className="rounded-xl border bg-[var(--bn-admin-surface)] p-5 shadow-sm">
             <label className="mb-1 block text-sm font-semibold">Notes (Internal)</label>
             <p className="mb-2 text-xs text-muted-foreground">Only visible to your team.</p>
             <textarea value={notes} onChange={(e) => setNotes(e.target.value)} rows={3} className="input" placeholder="Anything staff should know before the guest arrives" />
           </section>
 
-          <section className="rounded-xl border bg-white p-5 shadow-sm">
+          <section className="rounded-xl border bg-[var(--bn-admin-surface)] p-5 shadow-sm">
             <div className="mb-1 flex items-center justify-between">
               <h2 className="text-sm font-semibold">Add-ons & Extras</h2>
               <button type="button" onClick={addAddon} className="flex items-center gap-1 text-xs font-medium text-primary hover:underline">
@@ -273,7 +273,7 @@ export function ReservationEditForm({
             )}
           </section>
 
-          <section className="rounded-xl border bg-white p-5 shadow-sm">
+          <section className="rounded-xl border bg-[var(--bn-admin-surface)] p-5 shadow-sm">
             <div className="grid gap-4 sm:grid-cols-2">
               <div>
                 <label className="mb-1 block text-sm font-medium">Reminder</label>
@@ -289,16 +289,16 @@ export function ReservationEditForm({
                 <button
                   type="button"
                   onClick={() => setSendConfirmation((v) => !v)}
-                  className={`relative h-6 w-11 shrink-0 rounded-full transition ${sendConfirmation ? "bg-emerald-500" : "bg-muted"}`}
+                  className={`relative h-6 w-11 shrink-0 rounded-full transition ${sendConfirmation ? "bg-[var(--bn-admin-surface-2)]" : "bg-muted"}`}
                 >
-                  <span className={`absolute top-0.5 h-5 w-5 rounded-full bg-white transition ${sendConfirmation ? "left-5" : "left-0.5"}`} />
+                  <span className={`absolute top-0.5 h-5 w-5 rounded-full bg-[var(--bn-admin-surface)] transition ${sendConfirmation ? "left-5" : "left-0.5"}`} />
                 </button>
               </div>
             </div>
           </section>
 
           <div className="flex flex-wrap items-center gap-2">
-            <button onClick={cancel} disabled={saving || status === "CANCELLED"} className="rounded-lg border border-rose-300 px-4 py-2 text-sm font-semibold text-rose-600 hover:bg-rose-50 disabled:opacity-50">
+            <button onClick={cancel} disabled={saving || status === "CANCELLED"} className="rounded-lg border border-[var(--bn-admin-danger-line)] px-4 py-2 text-sm font-semibold text-[var(--bn-admin-danger)] hover:bg-[var(--bn-admin-danger-soft)] disabled:opacity-50">
               Cancel Reservation
             </button>
             {status === "CANCELLED" && reservation.paymentStatus === "PAID" && <button type="button" onClick={async () => {
@@ -308,7 +308,7 @@ export function ReservationEditForm({
               setSaving(false);
               if (!result.success) toast.error(result.error || "Couldn't issue refund.");
               else { toast.success("Refund issued successfully."); router.refresh(); }
-            }} disabled={saving} className="rounded-lg border border-amber-300 px-4 py-2 text-sm font-semibold text-amber-700 disabled:opacity-50">
+            }} disabled={saving} className="rounded-lg border border-[var(--bn-admin-border)] px-4 py-2 text-sm font-semibold text-[var(--bn-admin-orange)] disabled:opacity-50">
               Issue Refund
             </button>}
             <button onClick={() => router.back()} className="rounded-lg border px-4 py-2 text-sm font-medium hover:bg-muted">Cancel</button>
@@ -319,7 +319,7 @@ export function ReservationEditForm({
         </div>
 
         <aside className="space-y-4">
-          <div className="rounded-xl border bg-white p-5 shadow-sm">
+          <div className="rounded-xl border bg-[var(--bn-admin-surface)] p-5 shadow-sm">
             <h2 className="mb-3 text-sm font-semibold">Reservation Summary</h2>
             <dl className="space-y-2.5 text-xs">
               <div className="flex items-center justify-between"><dt className="text-muted-foreground">Reservation ID</dt><dd className="font-medium">#{reservation.id.slice(-6).toUpperCase()}</dd></div>
@@ -334,7 +334,7 @@ export function ReservationEditForm({
             </dl>
           </div>
 
-          <div className="rounded-xl border bg-white p-5 shadow-sm">
+          <div className="rounded-xl border bg-[var(--bn-admin-surface)] p-5 shadow-sm">
             <div className="mb-3 flex items-center justify-between">
               <h2 className="text-sm font-semibold">Guest Information</h2>
             </div>
@@ -347,7 +347,7 @@ export function ReservationEditForm({
             </dl>
           </div>
 
-          <div className="rounded-xl border bg-white p-5 shadow-sm">
+          <div className="rounded-xl border bg-[var(--bn-admin-surface)] p-5 shadow-sm">
             <h2 className="mb-3 text-sm font-semibold">Quick Actions</h2>
             <div className="space-y-2">
               <button type="button" onClick={() => toast.info("Reminder queued.")} className="flex w-full items-center gap-2 rounded-lg border px-3 py-2 text-sm font-medium hover:bg-muted">
@@ -356,7 +356,7 @@ export function ReservationEditForm({
               <button type="button" onClick={() => toast.info("Jot it in the Notes (Internal) field and save.")} className="flex w-full items-center gap-2 rounded-lg border px-3 py-2 text-sm font-medium hover:bg-muted">
                 <Bell className="h-4 w-4" /> Add Note
               </button>
-              <button type="button" onClick={cancel} disabled={saving || status === "CANCELLED"} className="flex w-full items-center gap-2 rounded-lg border border-rose-300 px-3 py-2 text-sm font-medium text-rose-600 hover:bg-rose-50 disabled:opacity-50">
+              <button type="button" onClick={cancel} disabled={saving || status === "CANCELLED"} className="flex w-full items-center gap-2 rounded-lg border border-[var(--bn-admin-danger-line)] px-3 py-2 text-sm font-medium text-[var(--bn-admin-danger)] hover:bg-[var(--bn-admin-danger-soft)] disabled:opacity-50">
                 <X className="h-4 w-4" /> Cancel Reservation
               </button>
             </div>

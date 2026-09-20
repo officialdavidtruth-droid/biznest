@@ -201,7 +201,7 @@ export function MarketingEmailComposer({
             </div>
           </div>
         </div>
-        <div className="bn-email-preview-frame overflow-hidden rounded-2xl border bg-[#e5e7eb] p-3 shadow-sm"><iframe key={previewHtml} title="Email preview" srcDoc={previewHtml} className="h-[760px] w-full rounded-xl bg-white" /></div>
+        <div className="bn-email-preview-frame overflow-hidden rounded-2xl border bg-[var(--bn-admin-surface-2)] p-3 shadow-sm"><iframe key={previewHtml} title="Email preview" srcDoc={previewHtml} className="h-[760px] w-full rounded-xl bg-[var(--bn-admin-surface)]" /></div>
       </aside>
     </div>
   );

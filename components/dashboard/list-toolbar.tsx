@@ -57,7 +57,7 @@ export function ListToolbar({
       <button
         type="button"
         onClick={onReset}
-        className="flex items-center gap-2 rounded-lg border bg-background px-3 py-2.5 text-sm font-medium text-muted-foreground hover:bg-slate-50"
+        className="flex items-center gap-2 rounded-lg border bg-background px-3 py-2.5 text-sm font-medium text-muted-foreground hover:bg-[var(--bn-admin-surface)]"
       >
         <SlidersHorizontal className="h-4 w-4" /> Filter
       </button>

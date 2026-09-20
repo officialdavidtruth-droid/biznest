@@ -37,7 +37,7 @@ export default async function CouponsPage({ params }: { params: Promise<{ slug: 
                 <td className="px-4 py-3">{c.discountType === "PERCENT" ? `${c.discountValue}%` : `₦${Number(c.discountValue).toLocaleString()}`}</td>
                 <td className="px-4 py-3">{c.usedCount}{c.maxUses ? ` / ${c.maxUses}` : ""}</td>
                 <td className="px-4 py-3">
-                  <span className={`rounded-full px-2 py-0.5 text-xs ${c.isActive ? "bg-green-100 text-green-700" : "bg-muted text-muted-foreground"}`}>
+                  <span className={`rounded-full px-2 py-0.5 text-xs ${c.isActive ? "bg-[var(--bn-admin-surface-2)] text-[var(--bn-admin-orange)]" : "bg-muted text-muted-foreground"}`}>
                     {c.isActive ? "Active" : "Inactive"}
                   </span>
                 </td>

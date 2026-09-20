@@ -185,7 +185,7 @@ export function ProductsTable({
         <button
           type="button"
           onClick={() => { setSearch(""); setCategoryFilter(""); setStatusFilter(""); setAvailabilityFilter(""); setPage(1); }}
-          className="flex items-center gap-2 rounded-lg border bg-background px-3 py-2.5 text-sm font-medium text-muted-foreground hover:bg-slate-50"
+          className="flex items-center gap-2 rounded-lg border bg-background px-3 py-2.5 text-sm font-medium text-muted-foreground hover:bg-[var(--bn-admin-surface)]"
         >
           <SlidersHorizontal className="h-4 w-4" /> Filter
         </button>
@@ -300,7 +300,7 @@ export function ProductsTable({
                   <td className="px-4 py-3">
                     <span
                       className={`rounded-full px-2 py-0.5 text-xs ${
-                        p.isPublished ? "bg-green-100 text-green-700" : "bg-muted text-muted-foreground"
+                        p.isPublished ? "bg-[var(--bn-admin-surface-2)] text-[var(--bn-admin-orange)]" : "bg-muted text-muted-foreground"
                       }`}
                     >
                       {p.isPublished ? "Active" : "Inactive"}
@@ -310,10 +310,10 @@ export function ProductsTable({
                     <span
                       className={`rounded-full px-2 py-0.5 text-xs ${
                         availability === "out"
-                          ? "bg-red-100 text-red-700"
+                          ? "bg-[var(--bn-admin-danger-soft)] text-[var(--bn-admin-danger)]"
                           : availability === "low"
-                            ? "bg-amber-100 text-amber-700"
-                            : "bg-green-100 text-green-700"
+                            ? "bg-[var(--bn-admin-orange-soft)] text-[var(--bn-admin-orange)]"
+                            : "bg-[var(--bn-admin-surface-2)] text-[var(--bn-admin-orange)]"
                       }`}
                     >
                       {availability === "out" ? "Out of Stock" : availability === "low" ? "Low Stock" : "Available"}

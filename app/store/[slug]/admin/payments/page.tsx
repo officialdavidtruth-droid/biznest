@@ -62,7 +62,7 @@ export default async function PaymentsPage({ params }: { params: Promise<{ slug:
         Connect at least one to get paid. Sales automatically split — your {(100 - payout.commissionRate).toFixed(1)}% goes straight to
         your bank, ours to the platform. No manual transfers.
       </p>
-      <div className="mb-4 rounded-lg border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-900">
+      <div className="mb-4 rounded-lg border border-[var(--bn-admin-border)] bg-[var(--bn-admin-surface-2)] p-4 text-sm text-[var(--bn-admin-orange)]">
         <p className="font-semibold">Inline card checkout enabled</p>
         <p className="mt-1 text-xs leading-5">Customers can pay by Visa, Mastercard or Verve inside the storefront checkout when the active payment provider has its public key configured. Your connected payout account remains the settlement destination.</p>
       </div>

@@ -9,8 +9,8 @@ import { updateCostPrice, updateSku, generateSku, updateBarcode, generateBarcode
 
 const STATUS_STYLES: Record<InventoryOverviewItem["status"], string> = {
   OUT_OF_STOCK: "bg-destructive/10 text-destructive",
-  LOW_STOCK: "bg-amber-100 text-amber-700",
-  IN_STOCK: "bg-green-100 text-green-700",
+  LOW_STOCK: "bg-[var(--bn-admin-orange-soft)] text-[var(--bn-admin-orange)]",
+  IN_STOCK: "bg-[var(--bn-admin-surface-2)] text-[var(--bn-admin-orange)]",
 };
 const STATUS_LABELS: Record<InventoryOverviewItem["status"], string> = {
   OUT_OF_STOCK: "Out of stock",
@@ -151,7 +151,7 @@ export function InventoryRow({ storeSlug, item }: { storeSlug: string; item: Inv
 
       <td className="px-4 py-3">
         {item.profitPerUnit != null ? (
-          <span className={item.profitPerUnit >= 0 ? "text-green-700" : "text-destructive"}>
+          <span className={item.profitPerUnit >= 0 ? "text-[var(--bn-admin-orange)]" : "text-destructive"}>
             {item.currency} {item.profitPerUnit.toLocaleString()}
           </span>
         ) : (
@@ -161,7 +161,7 @@ export function InventoryRow({ storeSlug, item }: { storeSlug: string; item: Inv
 
       <td className="px-4 py-3">
         {item.marginPercent != null ? (
-          <span className={item.marginPercent >= 0 ? "text-green-700" : "text-destructive"}>{item.marginPercent}%</span>
+          <span className={item.marginPercent >= 0 ? "text-[var(--bn-admin-orange)]" : "text-destructive"}>{item.marginPercent}%</span>
         ) : (
           <span className="text-muted-foreground">—</span>
         )}

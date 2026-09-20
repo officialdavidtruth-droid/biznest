@@ -48,7 +48,7 @@ export function BusinessReviewActions({
           <button
             disabled={isSubmitting}
             onClick={() => run(() => approveBusiness(businessId))}
-            className="rounded-md bg-green-600 px-4 py-2 text-sm font-medium text-white disabled:opacity-50"
+            className="rounded-md bg-[var(--bn-admin-surface-2)] px-4 py-2 text-sm font-medium text-white disabled:opacity-50"
           >
             Approve
           </button>

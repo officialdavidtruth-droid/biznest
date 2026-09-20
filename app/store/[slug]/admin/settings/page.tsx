@@ -141,9 +141,9 @@ export default async function SettingsPage({ params }: { params: Promise<{ slug:
             <p className="flex items-center gap-2">
               <span className="font-mono">{store.customDomain}</span>
               <span className={`rounded-full px-2 py-0.5 text-xs ${
-                store.customDomainStatus === "VERIFIED" ? "bg-green-100 text-green-700"
+                store.customDomainStatus === "VERIFIED" ? "bg-[var(--bn-admin-surface-2)] text-[var(--bn-admin-orange)]"
                 : store.customDomainStatus === "FAILED" ? "bg-destructive/10 text-destructive"
-                : "bg-yellow-100 text-yellow-700"
+                : "bg-[var(--bn-admin-orange-soft)] text-[var(--bn-admin-orange)]"
               }`}>
                 {store.customDomainStatus}
               </span>

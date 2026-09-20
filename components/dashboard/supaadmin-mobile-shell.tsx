@@ -88,7 +88,7 @@ export function SupaAdminMobileShell({
       {/* Mobile/tablet: off-canvas drawer + backdrop */}
       {open && (
         <div
-          className="fixed inset-0 z-30 bg-black/50 lg:hidden"
+          className="fixed inset-0 z-30 bg-[color-mix(in_srgb,var(--bn-admin-page)_50%,transparent)] lg:hidden"
           onClick={() => setOpen(false)}
           aria-hidden="true"
         />

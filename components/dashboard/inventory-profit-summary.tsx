@@ -12,7 +12,7 @@ export function InventoryProfitSummary({
     <div className="mb-6 grid grid-cols-2 gap-3 sm:grid-cols-4">
       <div className="rounded-lg border bg-background p-4">
         <p className="text-xs text-muted-foreground">Potential profit</p>
-        <p className="mt-1 text-lg font-semibold text-green-700">
+        <p className="mt-1 text-lg font-semibold text-[var(--bn-admin-orange)]">
           {currency} {summary.totalPotentialProfit.toLocaleString()}
         </p>
         <p className="mt-0.5 text-xs text-muted-foreground">
@@ -22,7 +22,7 @@ export function InventoryProfitSummary({
       <div className="rounded-lg border bg-background p-4">
         <p className="text-xs text-muted-foreground">Blended margin</p>
         <p className="mt-1 flex items-center gap-1 text-lg font-semibold">
-          <TrendingUp className="h-4 w-4 text-green-600" />
+          <TrendingUp className="h-4 w-4 text-[var(--bn-admin-orange)]" />
           {summary.blendedMargin != null ? `${summary.blendedMargin}%` : "—"}
         </p>
       </div>
@@ -35,7 +35,7 @@ export function InventoryProfitSummary({
       <div className="rounded-lg border bg-background p-4">
         <p className="text-xs text-muted-foreground">Needs attention</p>
         <p className="mt-1 flex items-center gap-3 text-lg font-semibold">
-          <span className="flex items-center gap-1 text-amber-700">
+          <span className="flex items-center gap-1 text-[var(--bn-admin-orange)]">
             <AlertTriangle className="h-4 w-4" />
             {summary.lowStockCount}
           </span>

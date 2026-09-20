@@ -177,7 +177,7 @@ export function CategoryManager({
                     <tr
                       key={c.id}
                       onClick={() => setSelectedId(c.id)}
-                      className={`cursor-pointer border-b last:border-0 hover:bg-slate-50 ${selectedId === c.id ? "bg-primary/5" : ""}`}
+                      className={`cursor-pointer border-b last:border-0 hover:bg-[var(--bn-admin-surface)] ${selectedId === c.id ? "bg-primary/5" : ""}`}
                     >
                       <td className="py-3 pr-3">
                         <div className="flex items-center gap-3">
@@ -192,7 +192,7 @@ export function CategoryManager({
                       <td className="py-3 pr-3">
                         <span
                           className={`rounded-full px-2.5 py-0.5 text-xs font-medium ${
-                            c.isActive ? "bg-emerald-50 text-emerald-600" : "bg-rose-50 text-rose-500"
+                            c.isActive ? "bg-[var(--bn-admin-surface-2)] text-[var(--bn-admin-orange)]" : "bg-[var(--bn-admin-danger-soft)] text-[var(--bn-admin-danger)]"
                           }`}
                         >
                           {c.isActive ? "Active" : "Inactive"}
@@ -243,7 +243,7 @@ export function CategoryManager({
                   </div>
                   <div>
                     <p className="font-semibold">{selected.name}</p>
-                    <span className={`rounded-full px-2 py-0.5 text-[11px] font-medium ${selected.isActive ? "bg-emerald-50 text-emerald-600" : "bg-rose-50 text-rose-500"}`}>
+                    <span className={`rounded-full px-2 py-0.5 text-[11px] font-medium ${selected.isActive ? "bg-[var(--bn-admin-surface-2)] text-[var(--bn-admin-orange)]" : "bg-[var(--bn-admin-danger-soft)] text-[var(--bn-admin-danger)]"}`}>
                       {selected.isActive ? "Active" : "Inactive"}
                     </span>
                   </div>
@@ -286,7 +286,7 @@ export function CategoryManager({
             </div>
           </div>
 
-          <div className="flex items-start gap-2 rounded-xl border border-amber-100 bg-amber-50 p-4 text-xs text-amber-900">
+          <div className="flex items-start gap-2 rounded-xl border border-[var(--bn-admin-border)] bg-[var(--bn-admin-orange-soft)] p-4 text-xs text-[var(--bn-admin-orange)]">
             <Lightbulb className="mt-0.5 h-4 w-4 shrink-0" />
             <p>{terminology.category}s help organize your {terminology.catalog.toLowerCase()} and make it easier for {terminology.customer.toLowerCase()}s to find what they're looking for.</p>
           </div>
@@ -375,7 +375,7 @@ function CategoryFormModal({
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" onClick={onClose}>
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-[color-mix(in_srgb,var(--bn-admin-page)_40%,transparent)] p-4" onClick={onClose}>
       <div className="w-full max-w-md rounded-xl bg-background p-5 shadow-lg" onClick={(e) => e.stopPropagation()}>
         <div className="mb-4 flex items-center justify-between">
           <h2 className="text-base font-semibold">{category ? `Edit ${terminology.category}` : `Add ${terminology.category}`}</h2>

@@ -8,9 +8,9 @@ export default async function SupaAdminAppsPage() {
   return (
     <div className="space-y-5 text-white">
       <div>
-        <p className="text-xs font-semibold uppercase tracking-wider text-emerald-300">Marketplace control</p>
+        <p className="text-xs font-semibold uppercase tracking-wider text-[var(--bn-admin-orange)]">Marketplace control</p>
         <h1 className="mt-1 text-xl font-bold text-white">Apps &amp; Plugins</h1>
-        <p className="mt-1 max-w-3xl text-xs leading-5 text-slate-300">
+        <p className="mt-1 max-w-3xl text-xs leading-5 text-[var(--bn-admin-muted)]">
           Control plugin pricing, free/included status, supported subscription plans, business eligibility and publication state.
         </p>
       </div>

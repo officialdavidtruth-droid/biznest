@@ -94,14 +94,14 @@ export function VariantManager({
 
   return (
     <div className="grid gap-5 lg:grid-cols-[260px_1fr]">
-      <aside className="rounded-xl border bg-white p-4 shadow-sm">
+      <aside className="rounded-xl border bg-[var(--bn-admin-surface)] p-4 shadow-sm">
         <h3 className="mb-3 text-sm font-bold">Menu Items</h3>
         <ul className="space-y-1">
           {products.map((p) => (
             <li key={p.id}>
               <button
                 onClick={() => switchProduct(p.id)}
-                className={`w-full rounded-lg px-3 py-2 text-left text-sm ${productId === p.id ? "bg-orange-500 text-white" : "hover:bg-muted"}`}
+                className={`w-full rounded-lg px-3 py-2 text-left text-sm ${productId === p.id ? "bg-[var(--bn-admin-orange-soft)] text-white" : "hover:bg-muted"}`}
               >
                 {p.name}
               </button>
@@ -111,7 +111,7 @@ export function VariantManager({
       </aside>
 
       <section className="space-y-4">
-        <div className="rounded-xl border bg-white p-5 shadow-sm">
+        <div className="rounded-xl border bg-[var(--bn-admin-surface)] p-5 shadow-sm">
           <h3 className="mb-3 flex items-center gap-2 text-sm font-bold">
             <Layers3 className="h-4 w-4" /> Variant Options
           </h3>
@@ -142,14 +142,14 @@ export function VariantManager({
               <button type="button" onClick={() => setOptions((prev) => [...prev, { name: "", values: "" }])} className="flex items-center gap-1 rounded-lg border px-3 py-1.5 text-xs font-medium hover:bg-muted">
                 <Plus className="h-3.5 w-3.5" /> Add option
               </button>
-              <button disabled={busy || !productId} type="submit" className="rounded-lg bg-orange-500 px-3 py-1.5 text-xs font-semibold text-white hover:bg-orange-600">
+              <button disabled={busy || !productId} type="submit" className="rounded-lg bg-[var(--bn-admin-orange-soft)] px-3 py-1.5 text-xs font-semibold text-white hover:bg-[var(--bn-admin-orange-soft)]">
                 Save & Generate Variants
               </button>
             </div>
           </form>
         </div>
 
-        <div className="rounded-xl border bg-white p-5 shadow-sm">
+        <div className="rounded-xl border bg-[var(--bn-admin-surface)] p-5 shadow-sm">
           <h3 className="mb-3 text-sm font-bold">Variants</h3>
           {variants.length === 0 ? (
             <p className="text-sm text-muted-foreground">No variants yet — set up options above.</p>
@@ -190,7 +190,7 @@ export function VariantManager({
                         <input type="checkbox" checked={v.isActive} onChange={(e) => saveVariant(v, { isActive: e.target.checked })} />
                       </td>
                       <td className="px-3 py-2">
-                        <button onClick={() => removeVariant(v.id)} className="text-rose-500 hover:text-rose-600">
+                        <button onClick={() => removeVariant(v.id)} className="text-[var(--bn-admin-danger)] hover:text-[var(--bn-admin-danger)]">
                           <Trash2 className="h-4 w-4" />
                         </button>
                       </td>

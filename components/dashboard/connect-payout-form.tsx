@@ -97,7 +97,7 @@ export function ConnectPayoutForm({
           <p className="font-medium">{label}</p>
           <span
             className={`rounded-full px-2 py-0.5 text-xs ${
-              isVerified ? "bg-green-100 text-green-700" : "bg-amber-100 text-amber-700"
+              isVerified ? "bg-[var(--bn-admin-surface-2)] text-[var(--bn-admin-orange)]" : "bg-[var(--bn-admin-orange-soft)] text-[var(--bn-admin-orange)]"
             }`}
           >
             {isVerified ? "Connected · Verified" : "Connected · Pending verification"}
@@ -110,7 +110,7 @@ export function ConnectPayoutForm({
           You keep {(100 - commissionRate).toFixed(1)}% of each sale — it settles to this account automatically.
         </p>
         {!isVerified && provider === "PAYSTACK" && (
-          <p className="mt-2 rounded-md bg-amber-50 p-2 text-xs text-amber-800">
+          <p className="mt-2 rounded-md bg-[var(--bn-admin-orange-soft)] p-2 text-xs text-[var(--bn-admin-orange)]">
             Paystack requires the first payout to a new or updated subaccount to be verified from the
             Paystack Dashboard. BizNest will keep checking the real provider status automatically.
           </p>

@@ -4,11 +4,11 @@ import { QuoteForm } from "@/components/dashboard/quote-form";
 import { QuoteRowActions } from "@/components/dashboard/quote-row-actions";
 
 const STATUS_STYLES: Record<string, string> = {
-  DRAFT: "bg-blue-50 text-blue-700",
-  SENT: "bg-yellow-100 text-yellow-700",
-  ACCEPTED: "bg-green-100 text-green-700",
+  DRAFT: "bg-[var(--bn-admin-surface-2)] text-[var(--bn-admin-orange)]",
+  SENT: "bg-[var(--bn-admin-orange-soft)] text-[var(--bn-admin-orange)]",
+  ACCEPTED: "bg-[var(--bn-admin-surface-2)] text-[var(--bn-admin-orange)]",
   DECLINED: "bg-destructive/10 text-destructive",
-  EXPIRED: "bg-gray-200 text-gray-700",
+  EXPIRED: "bg-[var(--bn-admin-surface)] text-[var(--bn-admin-text)]",
 };
 
 export default async function QuotesPage({ params }: { params: Promise<{ slug: string }> }) {

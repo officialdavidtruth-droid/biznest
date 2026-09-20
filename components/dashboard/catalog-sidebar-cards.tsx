@@ -16,7 +16,7 @@ export function CategoriesSidebarCard({
   totalCount: number;
 }) {
   return (
-    <div className="rounded-xl border bg-white p-5 shadow-sm">
+    <div className="rounded-xl border bg-[var(--bn-admin-surface)] p-5 shadow-sm">
       <h2 className="text-base font-bold">{title}</h2>
       <p className="mt-1 text-xs text-muted-foreground">{description}</p>
 
@@ -50,7 +50,7 @@ export type QuickAction = { icon: LucideIcon; label: string; note: string; href:
 
 export function QuickActionsCard({ actions }: { actions: QuickAction[] }) {
   return (
-    <div className="rounded-xl border bg-white p-5 shadow-sm">
+    <div className="rounded-xl border bg-[var(--bn-admin-surface)] p-5 shadow-sm">
       <h2 className="text-base font-bold">Quick Actions</h2>
       <div className="mt-4 space-y-1">
         {actions.map((a) => (

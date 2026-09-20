@@ -49,12 +49,12 @@ const stages = [
 ] as const;
 
 const stageTone: Record<string, string> = {
-  NEW: "bg-slate-100 text-slate-700",
-  CONTACTED: "bg-blue-100 text-blue-700",
-  QUALIFIED: "bg-violet-100 text-violet-700",
-  PROPOSAL: "bg-amber-100 text-amber-700",
-  WON: "bg-emerald-100 text-emerald-700",
-  LOST: "bg-rose-100 text-rose-700",
+  NEW: "bg-[var(--bn-admin-surface)] text-[var(--bn-admin-text)]",
+  CONTACTED: "bg-[var(--bn-admin-surface-2)] text-[var(--bn-admin-orange)]",
+  QUALIFIED: "bg-[var(--bn-admin-surface-2)] text-[var(--bn-admin-orange)]",
+  PROPOSAL: "bg-[var(--bn-admin-orange-soft)] text-[var(--bn-admin-orange)]",
+  WON: "bg-[var(--bn-admin-surface-2)] text-[var(--bn-admin-orange)]",
+  LOST: "bg-[var(--bn-admin-danger-soft)] text-[var(--bn-admin-danger)]",
 };
 
 export function CrmWorkspace({
@@ -198,9 +198,9 @@ export function CrmWorkspace({
                   <span
                     className={`h-2 w-2 rounded-full ${
                       key === "WON"
-                        ? "bg-emerald-500"
+                        ? "bg-[var(--bn-admin-surface-2)]"
                         : key === "LOST"
-                          ? "bg-rose-500"
+                          ? "bg-[var(--bn-admin-danger-soft)]"
                           : "bg-primary"
                     }`}
                   />
@@ -265,7 +265,7 @@ export function CrmWorkspace({
       </div>
 
       {msg && (
-        <div className="rounded-xl border border-rose-200 bg-rose-50 p-3 text-sm text-rose-700">
+        <div className="rounded-xl border border-[var(--bn-admin-danger-line)] bg-[var(--bn-admin-danger-soft)] p-3 text-sm text-[var(--bn-admin-danger)]">
           {msg}
         </div>
       )}
@@ -456,7 +456,7 @@ function Modal({
   children: ReactNode;
 }) {
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-[color-mix(in_srgb,var(--bn-admin-page)_40%,transparent)] p-4">
       <div className="max-h-[90vh] w-full max-w-lg overflow-auto rounded-3xl border bg-background p-6 shadow-2xl">
         <div className="mb-5 flex items-center justify-between">
           <h2 className="text-lg font-bold">{title}</h2>

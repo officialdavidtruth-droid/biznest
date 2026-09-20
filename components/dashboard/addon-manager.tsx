@@ -126,7 +126,7 @@ export function AddonManager({
             <li key={p.id}>
               <button
                 onClick={() => setProductId(p.id)}
-                className={`w-full rounded-lg px-3 py-2 text-left text-sm ${productId === p.id ? "bg-orange-500 text-white" : "hover:bg-muted"}`}
+                className={`w-full rounded-lg px-3 py-2 text-left text-sm ${productId === p.id ? "bg-[var(--bn-admin-orange-soft)] text-white" : "hover:bg-muted"}`}
               >
                 {p.name}
               </button>
@@ -144,7 +144,7 @@ export function AddonManager({
             <input value={groupName} onChange={(e) => setGroupName(e.target.value)} placeholder='e.g. "Choose your side"' className="min-w-[200px] flex-1 rounded-lg border px-3 py-2 text-sm" />
             <input type="number" min={0} value={groupMin} onChange={(e) => setGroupMin(e.target.value)} placeholder="Min select" className="w-28 rounded-lg border px-3 py-2 text-sm" />
             <input type="number" min={0} value={groupMax} onChange={(e) => setGroupMax(e.target.value)} placeholder="Max select" className="w-28 rounded-lg border px-3 py-2 text-sm" />
-            <button disabled={busy} type="submit" className="flex items-center gap-1 rounded-lg bg-orange-500 px-3 py-2 text-sm font-semibold text-white hover:bg-orange-600">
+            <button disabled={busy} type="submit" className="flex items-center gap-1 rounded-lg bg-[var(--bn-admin-orange-soft)] px-3 py-2 text-sm font-semibold text-white hover:bg-[var(--bn-admin-orange-soft)]">
               <Plus className="h-4 w-4" /> Add Group
             </button>
           </form>
@@ -168,7 +168,7 @@ export function AddonManager({
                   <label className="flex items-center gap-1 text-xs text-muted-foreground">
                     <input type="checkbox" checked={group.isActive} onChange={() => toggleGroupActive(group)} /> Active
                   </label>
-                  <button onClick={() => removeGroup(group.id)} className="text-rose-500 hover:text-rose-600">
+                  <button onClick={() => removeGroup(group.id)} className="text-[var(--bn-admin-danger)] hover:text-[var(--bn-admin-danger)]">
                     <Trash2 className="h-4 w-4" />
                   </button>
                 </div>
@@ -180,7 +180,7 @@ export function AddonManager({
                     <span>{addon.name}</span>
                     <div className="flex items-center gap-3">
                       <span className="text-muted-foreground">{Number(addon.price) > 0 ? `+${money(addon.price)}` : "Free"}</span>
-                      <button onClick={() => removeAddon(group.id, addon.id)} className="text-rose-500 hover:text-rose-600">
+                      <button onClick={() => removeAddon(group.id, addon.id)} className="text-[var(--bn-admin-danger)] hover:text-[var(--bn-admin-danger)]">
                         <Trash2 className="h-3.5 w-3.5" />
                       </button>
                     </div>

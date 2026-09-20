@@ -6,11 +6,11 @@ import { QuoteRowActions } from "@/components/dashboard/quote-row-actions";
 import type { Prisma } from "@prisma/client";
 
 const STATUS_STYLES: Record<string, string> = {
-  DRAFT: "bg-blue-50 text-blue-700 ring-blue-200",
-  SENT: "bg-yellow-50 text-yellow-700 ring-yellow-200",
-  ACCEPTED: "bg-green-50 text-green-700 ring-green-200",
-  DECLINED: "bg-red-50 text-red-700 ring-red-200",
-  EXPIRED: "bg-gray-100 text-gray-600 ring-gray-200",
+  DRAFT: "bg-[var(--bn-admin-surface-2)] text-[var(--bn-admin-orange)] ring-[var(--bn-admin-orange)]",
+  SENT: "bg-[var(--bn-admin-orange-soft)] text-[var(--bn-admin-orange)] ring-[var(--bn-admin-orange)]",
+  ACCEPTED: "bg-[var(--bn-admin-surface-2)] text-[var(--bn-admin-orange)] ring-[var(--bn-admin-orange)]",
+  DECLINED: "bg-[var(--bn-admin-danger-soft)] text-[var(--bn-admin-danger)] ring-[var(--bn-admin-danger)]",
+  EXPIRED: "bg-[var(--bn-admin-surface)] text-[var(--bn-admin-muted)] ring-[var(--bn-admin-orange)]",
 };
 
 type ReferenceFile = { url: string; name?: string; type?: string; size?: number };
@@ -73,7 +73,7 @@ export default async function QuoteDetailPage({ params }: { params: Promise<{ sl
 
           <section className="rounded-2xl border bg-background p-6">
             <div className="mb-5 flex items-center gap-3"><div className="rounded-xl bg-primary/10 p-2 text-primary"><Paperclip className="h-5 w-5" /></div><div><h2 className="font-semibold">Reference files</h2><p className="text-xs text-muted-foreground">Files the customer uploaded to show what they want to achieve.</p></div></div>
-            {references.length === 0 ? <div className="rounded-xl border border-dashed p-8 text-center text-sm text-muted-foreground">No reference files were uploaded.</div> : <div className="grid gap-3 sm:grid-cols-2">{references.map((file) => { const isPdf = file.type === "application/pdf" || file.url.toLowerCase().includes(".pdf"); return <a key={file.url} href={file.url} target="_blank" rel="noreferrer" className="group flex items-center gap-3 rounded-xl border p-3 transition hover:border-primary/40 hover:bg-muted/30"><div className="rounded-lg bg-muted p-2">{isPdf ? <FileText className="h-5 w-5 text-red-500" /> : <FileImage className="h-5 w-5 text-primary" />}</div><div className="min-w-0 flex-1"><p className="truncate text-sm font-medium">{file.name ?? "Reference file"}</p>{file.size ? <p className="text-xs text-muted-foreground">{formatBytes(file.size)}</p> : null}</div><ExternalLink className="h-4 w-4 shrink-0 text-muted-foreground group-hover:text-primary" /></a>; })}</div>}
+            {references.length === 0 ? <div className="rounded-xl border border-dashed p-8 text-center text-sm text-muted-foreground">No reference files were uploaded.</div> : <div className="grid gap-3 sm:grid-cols-2">{references.map((file) => { const isPdf = file.type === "application/pdf" || file.url.toLowerCase().includes(".pdf"); return <a key={file.url} href={file.url} target="_blank" rel="noreferrer" className="group flex items-center gap-3 rounded-xl border p-3 transition hover:border-primary/40 hover:bg-muted/30"><div className="rounded-lg bg-muted p-2">{isPdf ? <FileText className="h-5 w-5 text-[var(--bn-admin-danger)]" /> : <FileImage className="h-5 w-5 text-primary" />}</div><div className="min-w-0 flex-1"><p className="truncate text-sm font-medium">{file.name ?? "Reference file"}</p>{file.size ? <p className="text-xs text-muted-foreground">{formatBytes(file.size)}</p> : null}</div><ExternalLink className="h-4 w-4 shrink-0 text-muted-foreground group-hover:text-primary" /></a>; })}</div>}
           </section>
 
           {project && <section className="rounded-2xl border bg-background p-6"><div className="flex flex-wrap items-center justify-between gap-4"><div><p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Project workflow</p><h2 className="mt-1 font-semibold">{project.projectNo}</h2><p className="mt-1 text-sm text-muted-foreground">Design and production workflow is linked to this quote.</p></div><Link href={`/store/${slug}/admin/projects/${project.id}`} className="rounded-lg border px-3 py-2 text-xs font-semibold hover:bg-muted">Open project</Link></div></section>}

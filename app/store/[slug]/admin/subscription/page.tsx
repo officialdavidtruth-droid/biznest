@@ -32,7 +32,7 @@ export default async function SubscriptionPage({
       </p>
 
       {pms === "upgrade" && (
-        <div className="mb-4 rounded-xl border border-emerald-500/30 bg-emerald-500/5 px-4 py-3 text-sm">
+        <div className="mb-4 rounded-xl border border-[color-mix(in_srgb,var(--bn-admin-border)_30%,transparent)] bg-[color-mix(in_srgb,var(--bn-admin-surface-2)_5%,transparent)] px-4 py-3 text-sm">
           <strong>BizNest PMS is a Business Mogul feature.</strong> Upgrade this hotel to Business Mogul to unlock the dedicated property management workspace.
         </div>
       )}
@@ -44,7 +44,7 @@ export default async function SubscriptionPage({
       )}
 
       {upgraded && (
-        <div className="mb-4 rounded-md border border-green-500/30 bg-green-500/5 px-3 py-2 text-sm text-green-700">
+        <div className="mb-4 rounded-md border border-[color-mix(in_srgb,var(--bn-admin-border)_30%,transparent)] bg-[color-mix(in_srgb,var(--bn-admin-surface-2)_5%,transparent)] px-3 py-2 text-sm text-[var(--bn-admin-orange)]">
           Plan upgraded successfully.
         </div>
       )}

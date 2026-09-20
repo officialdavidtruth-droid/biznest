@@ -1,10 +1,10 @@
 import type { TrustScoreBreakdown } from "@/lib/actions/trust-score";
 
 function scoreColor(score: number) {
-  if (score >= 80) return { text: "text-emerald-700", ring: "stroke-emerald-500", bg: "bg-emerald-50" };
-  if (score >= 60) return { text: "text-blue-700", ring: "stroke-blue-500", bg: "bg-blue-50" };
-  if (score >= 40) return { text: "text-amber-700", ring: "stroke-amber-500", bg: "bg-amber-50" };
-  return { text: "text-red-700", ring: "stroke-red-500", bg: "bg-red-50" };
+  if (score >= 80) return { text: "text-[var(--bn-admin-orange)]", ring: "stroke-[var(--bn-admin-orange)]", bg: "bg-[var(--bn-admin-surface-2)]" };
+  if (score >= 60) return { text: "text-[var(--bn-admin-orange)]", ring: "stroke-[var(--bn-admin-orange)]", bg: "bg-[var(--bn-admin-surface-2)]" };
+  if (score >= 40) return { text: "text-[var(--bn-admin-orange)]", ring: "stroke-[var(--bn-admin-orange)]", bg: "bg-[var(--bn-admin-orange-soft)]" };
+  return { text: "text-[var(--bn-admin-danger)]", ring: "stroke-[var(--bn-admin-danger)]", bg: "bg-[var(--bn-admin-danger-soft)]" };
 }
 
 export function TrustScoreCard({ breakdown, compact = false }: { breakdown: TrustScoreBreakdown; compact?: boolean }) {

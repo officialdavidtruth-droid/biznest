@@ -98,7 +98,7 @@ export function WebhooksPanel({
       </p>
 
       {newSecret && (
-        <div className="mb-3 rounded-md border border-amber-400 bg-amber-50 p-3 text-xs">
+        <div className="mb-3 rounded-md border border-[var(--bn-admin-border)] bg-[var(--bn-admin-orange-soft)] p-3 text-xs">
           <p className="mb-1 font-semibold">Signing secret (shown once — copy it now)</p>
           <code className="break-all">{newSecret}</code>
           <button className="ml-2 underline" onClick={() => setNewSecret(null)}>
@@ -149,7 +149,7 @@ export function WebhooksPanel({
                 </p>
               </div>
               <div className="flex shrink-0 items-center gap-2 text-xs">
-                <span className={endpoint.isActive ? "text-green-600" : "text-muted-foreground"}>
+                <span className={endpoint.isActive ? "text-[var(--bn-admin-orange)]" : "text-muted-foreground"}>
                   {endpoint.isActive ? "Active" : "Paused"}
                 </span>
                 <button className="underline" onClick={() => handleToggleActive(endpoint)}>
@@ -161,7 +161,7 @@ export function WebhooksPanel({
                 <button className="underline" onClick={() => loadDeliveries(endpoint.id)}>
                   {expanded === endpoint.id ? "Hide log" : "Delivery log"}
                 </button>
-                <button className="text-red-600 underline" onClick={() => handleDelete(endpoint.id)}>
+                <button className="text-[var(--bn-admin-danger)] underline" onClick={() => handleDelete(endpoint.id)}>
                   Delete
                 </button>
               </div>

@@ -199,7 +199,7 @@ export function ReservationsWorkspace({
           </button>
           <button
             onClick={() => setShowNewForm(true)}
-            className="flex items-center gap-1 rounded-lg bg-orange-500 px-3 py-2 text-sm font-semibold text-white hover:bg-orange-600"
+            className="flex items-center gap-1 rounded-lg bg-[var(--bn-admin-orange-soft)] px-3 py-2 text-sm font-semibold text-white hover:bg-[var(--bn-admin-orange-soft)]"
           >
             <Plus className="h-4 w-4" /> New Reservation
           </button>
@@ -208,13 +208,13 @@ export function ReservationsWorkspace({
 
       <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-5">
         {[
-          { label: "Total Reservations", value: stats.total, tone: "bg-violet-50 text-violet-700" },
-          { label: "Upcoming", value: stats.upcoming, tone: "bg-sky-50 text-sky-700" },
-          { label: "Checked In", value: stats.checkedIn, tone: "bg-emerald-50 text-emerald-700" },
-          { label: "Cancelled", value: stats.cancelled, tone: "bg-rose-50 text-rose-700" },
-          { label: "Total Guests", value: stats.totalGuests, tone: "bg-amber-50 text-amber-700" },
+          { label: "Total Reservations", value: stats.total, tone: "bg-[var(--bn-admin-surface-2)] text-[var(--bn-admin-orange)]" },
+          { label: "Upcoming", value: stats.upcoming, tone: "bg-[var(--bn-admin-surface-2)] text-[var(--bn-admin-orange)]" },
+          { label: "Checked In", value: stats.checkedIn, tone: "bg-[var(--bn-admin-surface-2)] text-[var(--bn-admin-orange)]" },
+          { label: "Cancelled", value: stats.cancelled, tone: "bg-[var(--bn-admin-danger-soft)] text-[var(--bn-admin-danger)]" },
+          { label: "Total Guests", value: stats.totalGuests, tone: "bg-[var(--bn-admin-orange-soft)] text-[var(--bn-admin-orange)]" },
         ].map((s) => (
-          <div key={s.label} className="rounded-xl border bg-white p-4 shadow-sm">
+          <div key={s.label} className="rounded-xl border bg-[var(--bn-admin-surface)] p-4 shadow-sm">
             <p className="text-xs font-medium text-muted-foreground">{s.label}</p>
             <p className={`mt-2 inline-block rounded-md px-2 py-0.5 text-2xl font-bold ${s.tone}`}>{s.value}</p>
           </div>
@@ -222,14 +222,14 @@ export function ReservationsWorkspace({
       </div>
 
       <div className="grid gap-5 lg:grid-cols-[1fr_320px]">
-        <section className="rounded-xl border bg-white p-5 shadow-sm">
+        <section className="rounded-xl border bg-[var(--bn-admin-surface)] p-5 shadow-sm">
           <div className="mb-4 flex flex-wrap items-center gap-2 border-b pb-3">
             {TABS.map((t) => (
               <button
                 key={t.id}
                 onClick={() => setTab(t.id)}
                 className={`rounded-full px-3 py-1.5 text-xs font-medium transition ${
-                  tab === t.id ? "bg-orange-500 text-white" : "bg-muted text-muted-foreground hover:bg-muted/70"
+                  tab === t.id ? "bg-[var(--bn-admin-orange-soft)] text-white" : "bg-muted text-muted-foreground hover:bg-muted/70"
                 }`}
               >
                 {t.label}
@@ -269,7 +269,7 @@ export function ReservationsWorkspace({
                     <tr
                       key={r.id}
                       onClick={() => setSelectedId(r.id)}
-                      className={`cursor-pointer border-b last:border-0 hover:bg-muted/30 ${selectedId === r.id ? "bg-orange-50" : ""}`}
+                      className={`cursor-pointer border-b last:border-0 hover:bg-muted/30 ${selectedId === r.id ? "bg-[var(--bn-admin-orange-soft)]" : ""}`}
                     >
                       <td className="px-4 py-3">
                         <div className="font-medium">{time}</div>
@@ -293,7 +293,7 @@ export function ReservationsWorkspace({
         </section>
 
         <aside className="space-y-4">
-          <div className="rounded-xl border bg-white p-5 shadow-sm">
+          <div className="rounded-xl border bg-[var(--bn-admin-surface)] p-5 shadow-sm">
             <div className="mb-3 flex items-center justify-between">
               <h3 className="text-sm font-bold">Reservation Details</h3>
               {selected && (
@@ -359,7 +359,7 @@ export function ReservationsWorkspace({
                     <button
                       disabled={busy}
                       onClick={() => setStatus(selected.id, "CHECKED_IN", "Checked in")}
-                      className="flex items-center gap-1 rounded-lg bg-teal-500 px-3 py-1.5 text-xs font-semibold text-white hover:bg-teal-600"
+                      className="flex items-center gap-1 rounded-lg bg-[var(--bn-admin-surface-2)] px-3 py-1.5 text-xs font-semibold text-white hover:bg-[var(--bn-admin-surface-2)]"
                     >
                       <Check className="h-3.5 w-3.5" /> Check In
                     </button>
@@ -368,7 +368,7 @@ export function ReservationsWorkspace({
                     <button
                       disabled={busy}
                       onClick={() => setStatus(selected.id, "SEATED", "Marked seated")}
-                      className="rounded-lg bg-purple-500 px-3 py-1.5 text-xs font-semibold text-white hover:bg-purple-600"
+                      className="rounded-lg bg-[var(--bn-admin-surface-2)] px-3 py-1.5 text-xs font-semibold text-white hover:bg-[var(--bn-admin-surface-2)]"
                     >
                       Seat Guest
                     </button>
@@ -377,7 +377,7 @@ export function ReservationsWorkspace({
                     <button
                       disabled={busy}
                       onClick={() => setStatus(selected.id, "COMPLETED", "Marked completed")}
-                      className="rounded-lg bg-green-500 px-3 py-1.5 text-xs font-semibold text-white hover:bg-green-600"
+                      className="rounded-lg bg-[var(--bn-admin-surface-2)] px-3 py-1.5 text-xs font-semibold text-white hover:bg-[var(--bn-admin-surface-2)]"
                     >
                       Complete
                     </button>
@@ -395,7 +395,7 @@ export function ReservationsWorkspace({
                     <button
                       disabled={busy}
                       onClick={() => setStatus(selected.id, "CANCELLED", "Reservation cancelled")}
-                      className="flex items-center gap-1 rounded-lg border border-rose-300 px-3 py-1.5 text-xs font-semibold text-rose-600 hover:bg-rose-50"
+                      className="flex items-center gap-1 rounded-lg border border-[var(--bn-admin-danger-line)] px-3 py-1.5 text-xs font-semibold text-[var(--bn-admin-danger)] hover:bg-[var(--bn-admin-danger-soft)]"
                     >
                       <X className="h-3.5 w-3.5" /> Cancel
                     </button>
@@ -405,7 +405,7 @@ export function ReservationsWorkspace({
             )}
           </div>
 
-          <div className="rounded-xl border bg-white p-5 shadow-sm">
+          <div className="rounded-xl border bg-[var(--bn-admin-surface)] p-5 shadow-sm">
             <h3 className="mb-3 text-sm font-bold">{unitLabel}s</h3>
             {units.length === 0 ? (
               <p className="text-sm text-muted-foreground">No {unitLabel.toLowerCase()}s added yet.</p>
@@ -426,8 +426,8 @@ export function ReservationsWorkspace({
       </div>
 
       {showNewForm && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
-          <form onSubmit={submitNewReservation} className="w-full max-w-md rounded-xl bg-white p-5 shadow-xl">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-[color-mix(in_srgb,var(--bn-admin-page)_40%,transparent)] p-4">
+          <form onSubmit={submitNewReservation} className="w-full max-w-md rounded-xl bg-[var(--bn-admin-surface)] p-5 shadow-xl">
             <div className="mb-4 flex items-center justify-between">
               <h3 className="text-base font-bold">New Reservation</h3>
               <button type="button" onClick={() => setShowNewForm(false)}>
@@ -447,7 +447,7 @@ export function ReservationsWorkspace({
               </select>
               <textarea value={fNotes} onChange={(e) => setFNotes(e.target.value)} placeholder="Special requests" className="w-full rounded-lg border px-3 py-2 text-sm" rows={2} />
             </div>
-            <button disabled={busy} type="submit" className="mt-4 w-full rounded-lg bg-orange-500 py-2 text-sm font-semibold text-white hover:bg-orange-600">
+            <button disabled={busy} type="submit" className="mt-4 w-full rounded-lg bg-[var(--bn-admin-orange-soft)] py-2 text-sm font-semibold text-white hover:bg-[var(--bn-admin-orange-soft)]">
               Create Reservation
             </button>
           </form>
@@ -455,8 +455,8 @@ export function ReservationsWorkspace({
       )}
 
       {showUnitForm && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
-          <form onSubmit={submitNewUnit} className="w-full max-w-sm rounded-xl bg-white p-5 shadow-xl">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-[color-mix(in_srgb,var(--bn-admin-page)_40%,transparent)] p-4">
+          <form onSubmit={submitNewUnit} className="w-full max-w-sm rounded-xl bg-[var(--bn-admin-surface)] p-5 shadow-xl">
             <div className="mb-4 flex items-center justify-between">
               <h3 className="text-base font-bold">Add {unitLabel}</h3>
               <button type="button" onClick={() => setShowUnitForm(false)}>
@@ -468,7 +468,7 @@ export function ReservationsWorkspace({
               <input value={uLocation} onChange={(e) => setULocation(e.target.value)} placeholder="Location, e.g. Indoor / Outdoor" className="w-full rounded-lg border px-3 py-2 text-sm" />
               <input type="number" min={1} value={uCapacity} onChange={(e) => setUCapacity(e.target.value)} placeholder="Seats" className="w-full rounded-lg border px-3 py-2 text-sm" />
             </div>
-            <button disabled={busy} type="submit" className="mt-4 w-full rounded-lg bg-orange-500 py-2 text-sm font-semibold text-white hover:bg-orange-600">
+            <button disabled={busy} type="submit" className="mt-4 w-full rounded-lg bg-[var(--bn-admin-orange-soft)] py-2 text-sm font-semibold text-white hover:bg-[var(--bn-admin-orange-soft)]">
               Add {unitLabel}
             </button>
           </form>

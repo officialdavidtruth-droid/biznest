@@ -27,7 +27,7 @@ export default async function StoreOrdersPage({ params }: { params: Promise<{ sl
         <StatCard icon={Banknote} tone="blue" label="Revenue" value={`${currency} ${totalRevenue.toLocaleString()}`} note="From all orders" />
       </div>
 
-      <section className="rounded-xl border bg-white p-5 shadow-sm">
+      <section className="rounded-xl border bg-[var(--bn-admin-surface)] p-5 shadow-sm">
         <div className="mb-4"><h2 className="text-base font-bold">Orders</h2><p className="mt-1 text-xs text-muted-foreground">Search, filter and manage every order</p></div>
         <OrdersTable
           storeSlug={slug}

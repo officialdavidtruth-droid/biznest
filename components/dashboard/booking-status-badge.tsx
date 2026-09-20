@@ -1,11 +1,11 @@
 const STATUS_STYLES: Record<string, string> = {
-  PENDING: "bg-yellow-100 text-yellow-700 dark:bg-yellow-950 dark:text-yellow-200",
-  CONFIRMED: "bg-blue-100 text-blue-700 dark:bg-blue-950 dark:text-blue-200",
-  CHECKED_IN: "bg-teal-100 text-teal-700 dark:bg-teal-950 dark:text-teal-200",
-  SEATED: "bg-purple-100 text-purple-700 dark:bg-purple-950 dark:text-purple-200",
-  COMPLETED: "bg-green-100 text-green-700 dark:bg-green-950 dark:text-green-200",
-  CANCELLED: "bg-muted text-muted-foreground dark:bg-[#102544] dark:text-[#b8c8df]",
-  NO_SHOW: "bg-rose-100 text-rose-700 dark:bg-rose-950 dark:text-rose-200",
+  PENDING: "bg-[var(--bn-admin-orange-soft)] text-[var(--bn-admin-orange)] dark:bg-[var(--bn-admin-orange-soft)] dark:text-[var(--bn-admin-orange)]",
+  CONFIRMED: "bg-[var(--bn-admin-surface-2)] text-[var(--bn-admin-orange)] dark:bg-[var(--bn-admin-surface-2)] dark:text-[var(--bn-admin-orange)]",
+  CHECKED_IN: "bg-[var(--bn-admin-surface-2)] text-[var(--bn-admin-orange)] dark:bg-[var(--bn-admin-surface-2)] dark:text-[var(--bn-admin-orange)]",
+  SEATED: "bg-[var(--bn-admin-surface-2)] text-[var(--bn-admin-orange)] dark:bg-[var(--bn-admin-surface-2)] dark:text-[var(--bn-admin-orange)]",
+  COMPLETED: "bg-[var(--bn-admin-surface-2)] text-[var(--bn-admin-orange)] dark:bg-[var(--bn-admin-surface-2)] dark:text-[var(--bn-admin-orange)]",
+  CANCELLED: "bg-muted text-muted-foreground dark:bg-[var(--bn-admin-page)] dark:text-[var(--bn-admin-muted)]",
+  NO_SHOW: "bg-[var(--bn-admin-danger-soft)] text-[var(--bn-admin-danger)] dark:bg-[var(--bn-admin-danger-soft)] dark:text-[var(--bn-admin-danger)]",
 };
 
 const STATUS_LABELS: Record<string, string> = {

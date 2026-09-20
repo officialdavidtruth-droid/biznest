@@ -2,8 +2,8 @@ import { prisma } from "@/lib/prisma";
 import { markDomainVerifiedManually } from "@/lib/actions/admin";
 
 const STATUS_STYLE: Record<string, string> = {
-  VERIFIED: "bg-green-100 text-green-700",
-  PENDING: "bg-yellow-100 text-yellow-700",
+  VERIFIED: "bg-[var(--bn-admin-surface-2)] text-[var(--bn-admin-orange)]",
+  PENDING: "bg-[var(--bn-admin-orange-soft)] text-[var(--bn-admin-orange)]",
   FAILED: "bg-destructive/10 text-destructive",
   NONE: "bg-muted text-muted-foreground",
 };

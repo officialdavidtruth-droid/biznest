@@ -21,11 +21,11 @@ export type ProcurementData = {
 const money = (n: number, currency = "NGN") => `${currency === "NGN" ? "₦" : currency + " "}${n.toLocaleString("en-NG", { maximumFractionDigits: 2 })}`;
 const statusClass: Record<string, string> = {
   DRAFT: "bg-muted text-muted-foreground",
-  SENT: "bg-blue-500/10 text-blue-700",
-  PARTIALLY_RECEIVED: "bg-amber-500/10 text-amber-700",
-  RECEIVED: "bg-emerald-500/10 text-emerald-700",
-  SUBMITTED: "bg-amber-500/10 text-amber-700",
-  APPROVED: "bg-emerald-500/10 text-emerald-700",
+  SENT: "bg-[color-mix(in_srgb,var(--bn-admin-surface-2)_10%,transparent)] text-[var(--bn-admin-orange)]",
+  PARTIALLY_RECEIVED: "bg-[color-mix(in_srgb,var(--bn-admin-orange-soft)_10%,transparent)] text-[var(--bn-admin-orange)]",
+  RECEIVED: "bg-[color-mix(in_srgb,var(--bn-admin-surface-2)_10%,transparent)] text-[var(--bn-admin-orange)]",
+  SUBMITTED: "bg-[color-mix(in_srgb,var(--bn-admin-orange-soft)_10%,transparent)] text-[var(--bn-admin-orange)]",
+  APPROVED: "bg-[color-mix(in_srgb,var(--bn-admin-surface-2)_10%,transparent)] text-[var(--bn-admin-orange)]",
 };
 
 export function ProcurementWorkspace({ slug, data }: { slug: string; data: ProcurementData }) {
