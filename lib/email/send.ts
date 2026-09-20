@@ -3,6 +3,7 @@ import { logError } from "@/lib/observability/log";
 
 const resend = new Resend(process.env.RESEND_API_KEY);
 const FROM = process.env.EMAIL_FROM ?? "BizNest <no-reply@biznest.space>";
+const FROM_ADDRESS = FROM.match(/<(.+)>/)?.[1] ?? FROM;
 const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? "https://biznest.vercel.app";
 
 /**
@@ -705,7 +706,7 @@ export async function sendMarketingEmail(params: {
 
   const result = await send(
     {
-      from: FROM,
+      from: `${params.brand.name} <${FROM_ADDRESS}>`,
       to: params.email,
       reply_to: params.brand.contactEmail ?? undefined,
       subject: params.subject,

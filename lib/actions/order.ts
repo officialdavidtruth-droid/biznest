@@ -25,6 +25,7 @@ import { calculateOrderTotals } from "@/lib/utils/pricing";
 import { revalidatePath } from "next/cache";
 import { checkRateLimit } from "@/lib/rate-limit";
 import { notifyCustomerOfPaidOrder } from "@/lib/notifications/notify";
+import { runAutomationsForEvent } from "@/lib/automations/engine";
 import type { ActionResult } from "@/types/actions";
 import type {
   OrderStatus,
@@ -1047,6 +1048,13 @@ export async function updateOrderStatus(
         storeId:
           access.store.id,
       },
+      include: {
+        buyer: {
+          select: {
+            email: true,
+          },
+        },
+      },
     });
 
   if (!order) {
@@ -1089,6 +1097,13 @@ export async function updateOrderStatus(
     await awardStoreLoyaltyPointsForOrder(
       orderId
     );
+    if (order.buyer?.email) {
+      await runAutomationsForEvent({
+        type: "ORDER_COMPLETED",
+        storeId: access.store.id,
+        data: { orderId, email: order.buyer.email },
+      });
+    }
   }
 
   if (

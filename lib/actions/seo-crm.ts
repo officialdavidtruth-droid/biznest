@@ -3,6 +3,7 @@
 import { prisma } from "@/lib/prisma";
 import { assertStorePermission } from "@/lib/access/assert-store-access";
 import { revalidatePath } from "next/cache";
+import { runAutomationsForEvent } from "@/lib/automations/engine";
 
 const clean = (v: string | undefined | null) => v?.trim() || null;
 
@@ -30,6 +31,7 @@ export async function createCrmLead(slug:string, input:{name:string;email?:strin
   const allowed=["WEBSITE","FORM","WHATSAPP","EMAIL","PHONE","BOOKING","ORDER","REFERRAL","SOCIAL","MANUAL","OTHER"];
   const source=(input.source && allowed.includes(input.source)?input.source:"MANUAL") as any;
   const lead=await prisma.crmLead.create({data:{storeId:access.store.id,name:input.name.trim(),email:clean(input.email),phone:clean(input.phone),company:clean(input.company),source,value:typeof input.value==="number"&&input.value>=0?input.value:undefined,notes:clean(input.notes),nextFollowUpAt:input.nextFollowUpAt?new Date(input.nextFollowUpAt):undefined}});
+  await runAutomationsForEvent({ type: "CRM_LEAD_CREATED", storeId: access.store.id, data: { leadId: lead.id, name: lead.name, email: lead.email ?? undefined } });
   revalidatePath(`/store/${slug}/admin/apps/crm`);
   return {success:true,data:lead};
 }

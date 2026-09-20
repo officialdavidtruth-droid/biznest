@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import { notifyUser } from "@/lib/notifications/notify";
+import { runAutomationsForEvent } from "@/lib/automations/engine";
 import { ABANDONED_CHECKOUT_THRESHOLD_MINUTES } from "@/lib/constants/order";
 import { NextResponse } from "next/server";
 import { logInfo, logError, errorMeta } from "@/lib/observability/log";
@@ -35,7 +36,7 @@ export async function GET(req: Request) {
 
   const newlyAbandoned = await prisma.order.findMany({
     where: { status: "PENDING_PAYMENT", createdAt: { lt: cutoff }, merchantAlertedAt: null },
-    include: { store: { include: { business: true } }, items: { include: { product: true, service: true } } },
+    include: { store: { include: { business: true } }, items: { include: { product: true, service: true } }, buyer: { select: { email: true } } },
     take: 200, // batch cap so one sweep can't run indefinitely
   });
 
@@ -51,6 +52,9 @@ export async function GET(req: Request) {
         url: `/${order.store.slug}/admin/abandoned-checkouts`,
       });
       await prisma.order.update({ where: { id: order.id }, data: { merchantAlertedAt: new Date() } });
+      if (order.buyer?.email) {
+        await runAutomationsForEvent({ type: "CHECKOUT_ABANDONED", storeId: order.storeId, data: { orderId: order.id, email: order.buyer.email } });
+      }
     } catch (err) {
       failures++;
       void logError("JOBS", "abandoned-checkout-alerts: notify failed", errorMeta(err, { orderId: order.id }));
