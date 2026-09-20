@@ -10,10 +10,10 @@ export function InventoryReconciliationCard({ slug, rows }: { slug: string; rows
   const attention = discrepancies.length + corrupt.length;
 
   return (
-    <section className="rounded-xl border bg-white p-5 shadow-sm">
+    <section className="rounded-xl border bg-white p-5 shadow-sm dark:border-[#29466f] dark:bg-[#142b50] dark:text-[#f8fafc]">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div className="flex gap-3">
-          <div className="rounded-lg bg-slate-100 p-2"><ClipboardCheck className="h-5 w-5" /></div>
+          <div className="rounded-lg bg-slate-100 p-2 dark:bg-[#102544] dark:text-[#ff9a1f]"><ClipboardCheck className="h-5 w-5" /></div>
           <div>
             <h2 className="text-base font-bold">Inventory ledger audit</h2>
             <p className="mt-1 text-xs text-muted-foreground">Compares stored stock with the append-only movement ledger. Nothing is changed automatically.</p>
@@ -40,7 +40,7 @@ export function InventoryReconciliationCard({ slug, rows }: { slug: string; rows
           {attention > 8 && <p className="text-xs text-muted-foreground">Showing the first 8 items requiring review.</p>}
         </div>
       ) : (
-        <div className="mt-4 flex items-center gap-2 rounded-lg border border-green-200 bg-green-50 p-3 text-sm">
+        <div className="mt-4 flex items-center gap-2 rounded-lg border border-green-200 bg-green-50 p-3 text-sm dark:border-emerald-800 dark:bg-emerald-950/70 dark:text-emerald-100">
           <CheckCircle2 className="h-4 w-4" /> All recorded ledgers reconcile with their current stock quantities.
         </div>
       )}

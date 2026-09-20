@@ -1363,136 +1363,66 @@ a[href*="/service/"]:hover img {
 }
 
 
-/* ========================================================================
-   ADMIN DARK MODE ROOT FIX
-   The theme provider puts .dark on #bn-admin-theme-scope (and plugin roots),
-   while .bn-admin-app itself defines light custom properties. Those child
-   declarations were shadowing the dark tokens and forcing white surfaces,
-   dark text, and light sidebars. Rebind the tokens at the actual themed
-   subtree so ALL shared admin components inherit the correct values.
-   ======================================================================== */
-
+/* FINAL THEME TOKEN CORRECTION
+   --bn-ink is a surface/background token in the admin shell. Earlier
+   overrides incorrectly changed it to a light text value, which turned
+   the sidebar white. Keep surfaces dark and control foreground separately. */
 #bn-admin-theme-scope.dark .bn-admin-app {
-  --bn-surface: #142b50 !important;
   --bn-page: #0b1b3a !important;
+  --bn-surface: #142b50 !important;
+  --bn-ink: #0b1b3a !important;
+  --bn-ink-line: #29466f !important;
   --bn-line: #29466f !important;
   --bn-line-soft: #203e66 !important;
-  --bn-ink: #f8fafc !important;
   --bn-muted: #b8c8df !important;
-  --bn-ink-line: #29466f !important;
   --bn-gold: #ff7900 !important;
   --bn-gold-dark: #e86600 !important;
   background: #0b1b3a !important;
   color: #f8fafc !important;
 }
 
-#bn-admin-theme-scope.dark .bn-admin-app main,
-#bn-admin-theme-scope.dark .bn-admin-app main > *,
-#bn-admin-theme-scope.dark .bn-admin-app .bn-admin-page {
-  background-color: #0b1b3a !important;
-  color: #f8fafc !important;
-}
-
 #bn-admin-theme-scope.dark .bn-admin-app .bn-admin-sidebar {
-  background-color: #0b1b3a !important;
-  color: #f8fafc !important;
-  border-color: #29466f !important;
-}
-
-#bn-admin-theme-scope.dark .bn-admin-app :is(h1,h2,h3,h4,h5,h6) {
+  background: #0b1b3a !important;
   color: #f8fafc !important;
 }
 
-#bn-admin-theme-scope.dark .bn-admin-app :is(
-  p,span,small,label,strong,b,th,td
-) {
-  color: #eaf1fb !important;
+#bn-admin-theme-scope.dark .bn-admin-app h1,
+#bn-admin-theme-scope.dark .bn-admin-app h2,
+#bn-admin-theme-scope.dark .bn-admin-app h3,
+#bn-admin-theme-scope.dark .bn-admin-app h4,
+#bn-admin-theme-scope.dark .bn-admin-app h5,
+#bn-admin-theme-scope.dark .bn-admin-app h6 {
+  color: #f8fafc !important;
+}
+
+#bn-admin-theme-scope.dark .bn-admin-app :is(p,span,label,small) {
+  color: inherit;
 }
 
 #bn-admin-theme-scope.dark .bn-admin-app .text-muted-foreground,
 #bn-admin-theme-scope.dark .bn-admin-app :is(
-  .text-gray-400,.text-gray-500,.text-gray-600,
-  .text-slate-400,.text-slate-500,.text-slate-600,
-  .text-zinc-400,.text-zinc-500,.text-neutral-500
+  .text-gray-500,.text-gray-600,.text-slate-500,.text-slate-600,
+  .text-zinc-500,.text-neutral-500
 ) {
   color: #b8c8df !important;
 }
 
-#bn-admin-theme-scope.dark .bn-admin-app :is(
-  .bg-card,.bg-background,.bg-white,.bg-gray-50,.bg-gray-100,
-  .bg-slate-50,.bg-slate-100,.bg-zinc-50,.bg-zinc-100,
-  .bg-neutral-50,.bg-neutral-100
-) {
+/* Neutral shared panels */
+#bn-admin-theme-scope.dark .bn-admin-app :is(.bg-white,.bg-card,.bg-background) {
   background-color: #142b50 !important;
   color: #f8fafc !important;
 }
 
-#bn-admin-theme-scope.dark .bn-admin-app :is(
-  .bg-muted\/20,.bg-muted\/30,.bg-muted\/40
-) {
-  background-color: #102544 !important;
+/* The desktop top bar must never use the light muted surface in dark mode. */
+#bn-admin-theme-scope.dark .bn-admin-topbar {
+  background-color: #0b1b3a !important;
   color: #f8fafc !important;
+  border-bottom-color: #29466f !important;
 }
-
-#bn-admin-theme-scope.dark .bn-admin-app :is(
-  .border,.border-border,.border-slate-200,.border-gray-200,
-  .border-gray-100,.border-slate-100
-) {
-  border-color: #29466f !important;
+#bn-admin-theme-scope.dark .bn-admin-topbar p {
+  color: #dbeafe !important;
 }
-
-#bn-admin-theme-scope.dark .bn-admin-app table thead,
-#bn-admin-theme-scope.dark .bn-admin-app table thead tr,
-#bn-admin-theme-scope.dark .bn-admin-app table thead th {
-  background-color: #102544 !important;
-  color: #f8fafc !important;
-}
-
-#bn-admin-theme-scope.dark .bn-admin-app table tbody,
-#bn-admin-theme-scope.dark .bn-admin-app table tbody tr,
-#bn-admin-theme-scope.dark .bn-admin-app table tbody td {
-  background-color: #142b50 !important;
-  color: #eaf1fb !important;
-  border-color: #29466f !important;
-}
-
-#bn-admin-theme-scope.dark .bn-admin-app :is(input,select,textarea) {
-  background-color: #102544 !important;
-  color: #f8fafc !important;
-  border-color: #31517c !important;
-}
-
-#bn-admin-theme-scope.dark .bn-admin-app :is(input,textarea)::placeholder {
-  color: #aabbd3 !important;
-}
-
-#bn-admin-theme-scope.dark .bn-admin-app :is(
-  .bg-primary,.bg-orange-500,.bg-orange-600
-) {
-  background-color: #ff7900 !important;
-  color: #071a33 !important;
-  border-color: #ff7900 !important;
-}
-
-#bn-admin-theme-scope.dark .bn-admin-app :is(.text-primary,.text-orange-500,.text-orange-600) {
+#bn-admin-theme-scope.dark .bn-admin-topbar svg {
   color: #ff9a1f !important;
-}
-
-/* Plugin roots use their own scoped IDs. Rebind their core tokens so
-   workspace components inherit dark surfaces and readable foregrounds. */
-#bn-plugin-theme-scope.dark,
-#bn-fnb-theme-scope.dark,
-#bn-pms-theme-scope.dark {
-  --background: 222 55% 9% !important;
-  --foreground: 0 0% 100% !important;
-  --card: 222 55% 12% !important;
-  --card-foreground: 0 0% 100% !important;
-  --muted: 220 40% 17% !important;
-  --muted-foreground: 215 20% 70% !important;
-  --border: 220 35% 27% !important;
-  --input: 220 35% 27% !important;
-  --primary: 25 100% 50% !important;
-  --primary-foreground: 222 55% 9% !important;
-  background: #0b1b3a !important;
-  color: #f8fafc !important;
+  stroke: currentColor;
 }
