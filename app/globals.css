@@ -1458,3 +1458,349 @@ a[href*="/service/"]:hover img {
 #bn-admin-theme-scope.dark .bn-email-preview-frame iframe {
   background: #142b50 !important;
 }
+
+
+
+/* ==========================================================================
+   BIZNEST ADMIN / PLUGIN DARK MODE — AUTHORITATIVE FINAL LAYER
+
+   Root cause traced:
+   1. ThemeProvider puts .dark on #bn-admin-theme-scope / plugin scopes.
+   2. .bn-admin-app defines its own LIGHT --bn-* variables, so inherited
+      dark values are shadowed.
+   3. Shared admin CSS then hard-codes white cards, white tables, light
+      inputs and #111827/#334155 text.
+   4. Earlier overrides also incorrectly rebound --bn-ink to a LIGHT text
+      value, even though --bn-ink is the admin dark-surface token.
+   This layer binds the correct tokens to the real themed subtree and
+   neutralizes those shared light-mode declarations across ALL admin pages
+   and installed-plugin workspaces. Storefront template roots are not
+   targeted.
+   ========================================================================== */
+
+#bn-admin-theme-scope.dark,
+#bn-plugin-theme-scope.dark,
+#bn-fnb-theme-scope.dark,
+#bn-pms-theme-scope.dark {
+  --background: 222 55% 9% !important;
+  --foreground: 210 40% 98% !important;
+  --card: 222 55% 12% !important;
+  --card-foreground: 210 40% 98% !important;
+  --popover: 222 55% 12% !important;
+  --popover-foreground: 210 40% 98% !important;
+  --muted: 220 40% 17% !important;
+  --muted-foreground: 215 20% 70% !important;
+  --border: 220 35% 27% !important;
+  --input: 220 35% 27% !important;
+  --primary: 25 100% 50% !important;
+  --primary-foreground: 222 55% 9% !important;
+  background: #0b1b3a !important;
+  color: #f8fafc !important;
+  color-scheme: dark !important;
+}
+
+/* CRITICAL: --bn-ink is a DARK SURFACE token, not a text token. */
+#bn-admin-theme-scope.dark .bn-admin-app {
+  --bn-page: #0b1b3a !important;
+  --bn-surface: #142b50 !important;
+  --bn-line: #29466f !important;
+  --bn-line-soft: #203e66 !important;
+  --bn-ink: #0b1b3a !important;
+  --bn-ink-line: #29466f !important;
+  --bn-muted: #b8c8df !important;
+  --bn-gold: #ff7900 !important;
+  --bn-gold-dark: #e86600 !important;
+  background: #0b1b3a !important;
+  color: #f8fafc !important;
+}
+
+#bn-admin-theme-scope.dark .bn-admin-app,
+#bn-admin-theme-scope.dark .bn-admin-app main,
+#bn-admin-theme-scope.dark .bn-admin-app > .flex-1,
+#bn-admin-theme-scope.dark .bn-admin-app .bn-admin-page {
+  background-color: #0b1b3a !important;
+  color: #f8fafc !important;
+}
+
+#bn-admin-theme-scope.dark .bn-admin-app .bn-admin-sidebar {
+  background-color: #0b1b3a !important;
+  color: #f8fafc !important;
+  border-color: #29466f !important;
+}
+
+/* Shared admin top/header surfaces */
+#bn-admin-theme-scope.dark .bn-admin-topbar,
+#bn-admin-theme-scope.dark .bn-admin-app header {
+  background-color: #0b1b3a !important;
+  color: #f8fafc !important;
+  border-color: #29466f !important;
+}
+#bn-admin-theme-scope.dark .bn-admin-topbar p {
+  color: #dbeafe !important;
+}
+#bn-admin-theme-scope.dark .bn-admin-topbar svg {
+  color: #ff9a1f !important;
+  stroke: currentColor;
+}
+
+/* ALL neutral/light admin panels and cards */
+:is(
+  #bn-admin-theme-scope.dark .bn-admin-app,
+  #bn-plugin-theme-scope.dark,
+  #bn-fnb-theme-scope.dark,
+  #bn-pms-theme-scope.dark
+)
+:is(
+  [class~="bg-white"],
+  [class~="bg-gray-50"], [class~="bg-gray-100"],
+  [class~="bg-slate-50"], [class~="bg-slate-100"],
+  [class~="bg-zinc-50"], [class~="bg-zinc-100"],
+  [class~="bg-neutral-50"], [class~="bg-neutral-100"],
+  [class~="bg-muted"],
+  [class~="bg-card"], [class~="bg-background"],
+  [class*="bg-[#fff"], [class*="bg-[#ffffff"],
+  [class*="bg-[#f5"], [class*="bg-[#f6"],
+  [class*="bg-[#f7"], [class*="bg-[#f8"],
+  [class*="bg-[#f9"], [class*="bg-[#fa"],
+  [class*="bg-[#fb"], [class*="bg-[#fc"]
+) {
+  background-color: #142b50 !important;
+  color: #f8fafc !important;
+}
+
+/* Muted strips become a darker raised-blue instead of pale gray. */
+:is(
+  #bn-admin-theme-scope.dark .bn-admin-app,
+  #bn-plugin-theme-scope.dark,
+  #bn-fnb-theme-scope.dark,
+  #bn-pms-theme-scope.dark
+)
+:is([class~="bg-muted\/20"], [class~="bg-muted\/30"], [class~="bg-muted\/40"]) {
+  background-color: #102544 !important;
+  color: #eaf1fb !important;
+}
+
+/* ALL common dark-on-light text utilities -> readable light text */
+:is(
+  #bn-admin-theme-scope.dark .bn-admin-app,
+  #bn-plugin-theme-scope.dark,
+  #bn-fnb-theme-scope.dark,
+  #bn-pms-theme-scope.dark
+)
+:is(
+  .text-black,
+  .text-gray-950,.text-gray-900,.text-gray-800,.text-gray-700,
+  .text-slate-950,.text-slate-900,.text-slate-800,.text-slate-700,
+  .text-zinc-950,.text-zinc-900,.text-zinc-800,.text-zinc-700,
+  .text-neutral-950,.text-neutral-900,.text-neutral-800,.text-neutral-700,
+  [class*="text-[#111827]"],
+  [class*="text-[#0f172a]"],
+  [class*="text-[#1e293b]"],
+  [class*="text-[#334155]"],
+  [class*="text-[#374151]"]
+) {
+  color: #f8fafc !important;
+}
+
+:is(
+  #bn-admin-theme-scope.dark .bn-admin-app,
+  #bn-plugin-theme-scope.dark,
+  #bn-fnb-theme-scope.dark,
+  #bn-pms-theme-scope.dark
+)
+:is(
+  .text-muted-foreground,
+  .text-gray-600,.text-gray-500,.text-gray-400,
+  .text-slate-600,.text-slate-500,.text-slate-400,
+  .text-zinc-600,.text-zinc-500,.text-zinc-400,
+  .text-neutral-600,.text-neutral-500,.text-neutral-400,
+  [class*="text-[#475569]"],
+  [class*="text-[#64748b]"],
+  [class*="text-[#94a3b8]"]
+) {
+  color: #b8c8df !important;
+}
+
+:is(
+  #bn-admin-theme-scope.dark .bn-admin-app,
+  #bn-plugin-theme-scope.dark,
+  #bn-fnb-theme-scope.dark,
+  #bn-pms-theme-scope.dark
+) :is(h1,h2,h3,h4,h5,h6) {
+  color: #f8fafc !important;
+}
+
+/* Inputs / selects / textareas across every admin + plugin workspace */
+:is(
+  #bn-admin-theme-scope.dark .bn-admin-app,
+  #bn-plugin-theme-scope.dark,
+  #bn-fnb-theme-scope.dark,
+  #bn-pms-theme-scope.dark
+) :is(input,select,textarea) {
+  background-color: #102544 !important;
+  color: #f8fafc !important;
+  border-color: #31517c !important;
+}
+:is(
+  #bn-admin-theme-scope.dark .bn-admin-app,
+  #bn-plugin-theme-scope.dark,
+  #bn-fnb-theme-scope.dark,
+  #bn-pms-theme-scope.dark
+) :is(input,textarea)::placeholder {
+  color: #aabbd3 !important;
+}
+
+/* Borders / dividers */
+:is(
+  #bn-admin-theme-scope.dark .bn-admin-app,
+  #bn-plugin-theme-scope.dark,
+  #bn-fnb-theme-scope.dark,
+  #bn-pms-theme-scope.dark
+)
+:is(
+  .border,.border-border,
+  .border-gray-100,.border-gray-200,.border-gray-300,
+  .border-slate-100,.border-slate-200,.border-slate-300,
+  .border-zinc-100,.border-zinc-200,
+  .border-neutral-100,.border-neutral-200
+) {
+  border-color: #29466f !important;
+}
+
+/* Tables: dark header + dark body + readable cells */
+:is(
+  #bn-admin-theme-scope.dark .bn-admin-app,
+  #bn-plugin-theme-scope.dark,
+  #bn-fnb-theme-scope.dark,
+  #bn-pms-theme-scope.dark
+) table {
+  color: #eaf1fb !important;
+}
+:is(
+  #bn-admin-theme-scope.dark .bn-admin-app,
+  #bn-plugin-theme-scope.dark,
+  #bn-fnb-theme-scope.dark,
+  #bn-pms-theme-scope.dark
+) table thead,
+:is(
+  #bn-admin-theme-scope.dark .bn-admin-app,
+  #bn-plugin-theme-scope.dark,
+  #bn-fnb-theme-scope.dark,
+  #bn-pms-theme-scope.dark
+) table thead tr,
+:is(
+  #bn-admin-theme-scope.dark .bn-admin-app,
+  #bn-plugin-theme-scope.dark,
+  #bn-fnb-theme-scope.dark,
+  #bn-pms-theme-scope.dark
+) table thead th {
+  background: #102544 !important;
+  color: #f8fafc !important;
+  border-color: #29466f !important;
+}
+:is(
+  #bn-admin-theme-scope.dark .bn-admin-app,
+  #bn-plugin-theme-scope.dark,
+  #bn-fnb-theme-scope.dark,
+  #bn-pms-theme-scope.dark
+) table tbody tr,
+:is(
+  #bn-admin-theme-scope.dark .bn-admin-app,
+  #bn-plugin-theme-scope.dark,
+  #bn-fnb-theme-scope.dark,
+  #bn-pms-theme-scope.dark
+) table tbody td {
+  background: #142b50 !important;
+  color: #eaf1fb !important;
+  border-color: #29466f !important;
+}
+:is(
+  #bn-admin-theme-scope.dark .bn-admin-app,
+  #bn-plugin-theme-scope.dark,
+  #bn-fnb-theme-scope.dark,
+  #bn-pms-theme-scope.dark
+) table tbody tr:hover,
+:is(
+  #bn-admin-theme-scope.dark .bn-admin-app,
+  #bn-plugin-theme-scope.dark,
+  #bn-fnb-theme-scope.dark,
+  #bn-pms-theme-scope.dark
+) table tbody tr:hover td {
+  background: #1a365f !important;
+}
+
+/* Re-apply semantic status-pills AFTER table text rules. */
+:is(
+  #bn-admin-theme-scope.dark .bn-admin-app,
+  #bn-plugin-theme-scope.dark,
+  #bn-fnb-theme-scope.dark,
+  #bn-pms-theme-scope.dark
+) table :is(
+  .bg-green-100,.bg-emerald-100,.bg-teal-100,
+  .bg-blue-100,.bg-indigo-100,.bg-purple-100,
+  .bg-yellow-100,.bg-amber-100,.bg-orange-100,
+  .bg-red-100,.bg-rose-100
+) {
+  background-color: #18365a !important;
+  color: #f8fafc !important;
+  border: 1px solid #31517c !important;
+}
+:is(
+  #bn-admin-theme-scope.dark .bn-admin-app,
+  #bn-plugin-theme-scope.dark,
+  #bn-fnb-theme-scope.dark,
+  #bn-pms-theme-scope.dark
+) table :is(
+  .bg-green-100,.bg-emerald-100,.bg-teal-100,
+  .bg-blue-100,.bg-indigo-100,.bg-purple-100,
+  .bg-yellow-100,.bg-amber-100,.bg-orange-100,
+  .bg-red-100,.bg-rose-100
+) :is(span,p,strong,b) {
+  color: #f8fafc !important;
+}
+
+/* Orange as the single brand action color. */
+:is(
+  #bn-admin-theme-scope.dark .bn-admin-app,
+  #bn-plugin-theme-scope.dark,
+  #bn-fnb-theme-scope.dark,
+  #bn-pms-theme-scope.dark
+) :is(
+  .bg-primary,.bg-orange-500,.bg-orange-600
+) {
+  background-color: #ff7900 !important;
+  color: #071a33 !important;
+  border-color: #ff7900 !important;
+}
+:is(
+  #bn-admin-theme-scope.dark .bn-admin-app,
+  #bn-plugin-theme-scope.dark,
+  #bn-fnb-theme-scope.dark,
+  #bn-pms-theme-scope.dark
+) :is(.text-primary,.text-orange-500,.text-orange-600) {
+  color: #ff9a1f !important;
+}
+
+/* Icon legibility: don't turn every SVG orange; muted icons stay light,
+   branded/action icons use orange. */
+:is(
+  #bn-admin-theme-scope.dark .bn-admin-app,
+  #bn-plugin-theme-scope.dark,
+  #bn-fnb-theme-scope.dark,
+  #bn-pms-theme-scope.dark
+) svg.text-muted-foreground,
+:is(
+  #bn-admin-theme-scope.dark .bn-admin-app,
+  #bn-plugin-theme-scope.dark,
+  #bn-fnb-theme-scope.dark,
+  #bn-pms-theme-scope.dark
+) svg[class*="text-gray-400"],
+:is(
+  #bn-admin-theme-scope.dark .bn-admin-app,
+  #bn-plugin-theme-scope.dark,
+  #bn-fnb-theme-scope.dark,
+  #bn-pms-theme-scope.dark
+) svg[class*="text-slate-400"] {
+  color: #b8c8df !important;
+  stroke: currentColor !important;
+}
