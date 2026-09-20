@@ -150,13 +150,13 @@ export function ProductsTable({
             placeholder={`Search ${terminology.catalog.toLowerCase()}...`}
             value={search}
             onChange={(e) => resetToFirstPage(setSearch)(e.target.value)}
-            className="w-full rounded-lg border bg-white py-2.5 pl-9 pr-3 text-sm"
+            className="w-full rounded-lg border bg-background py-2.5 pl-9 pr-3 text-sm"
           />
         </div>
         <select
           value={categoryFilter}
           onChange={(e) => resetToFirstPage(setCategoryFilter)(e.target.value)}
-          className="rounded-lg border bg-white px-3 py-2.5 text-sm"
+          className="rounded-lg border bg-background px-3 py-2.5 text-sm"
         >
           <option value="">All Categories</option>
           {categories.map((c) => (
@@ -166,7 +166,7 @@ export function ProductsTable({
         <select
           value={statusFilter}
           onChange={(e) => resetToFirstPage(setStatusFilter)(e.target.value as typeof statusFilter)}
-          className="rounded-lg border bg-white px-3 py-2.5 text-sm"
+          className="rounded-lg border bg-background px-3 py-2.5 text-sm"
         >
           <option value="">All Status</option>
           <option value="published">Active</option>
@@ -175,7 +175,7 @@ export function ProductsTable({
         <select
           value={availabilityFilter}
           onChange={(e) => resetToFirstPage(setAvailabilityFilter)(e.target.value as typeof availabilityFilter)}
-          className="rounded-lg border bg-white px-3 py-2.5 text-sm"
+          className="rounded-lg border bg-background px-3 py-2.5 text-sm"
         >
           <option value="">All Availability</option>
           <option value="available">Available</option>
@@ -185,7 +185,7 @@ export function ProductsTable({
         <button
           type="button"
           onClick={() => { setSearch(""); setCategoryFilter(""); setStatusFilter(""); setAvailabilityFilter(""); setPage(1); }}
-          className="flex items-center gap-2 rounded-lg border bg-white px-3 py-2.5 text-sm font-medium text-muted-foreground hover:bg-slate-50"
+          className="flex items-center gap-2 rounded-lg border bg-background px-3 py-2.5 text-sm font-medium text-muted-foreground hover:bg-slate-50"
         >
           <SlidersHorizontal className="h-4 w-4" /> Filter
         </button>
@@ -339,7 +339,7 @@ export function ProductsTable({
         </table>
 
         {filtered.length > 0 && (
-          <div className="flex flex-wrap items-center justify-between gap-3 border-t bg-white px-4 py-3 text-xs text-muted-foreground">
+          <div className="flex flex-wrap items-center justify-between gap-3 border-t bg-background px-4 py-3 text-xs text-muted-foreground">
             <span>Showing {rangeStart} to {rangeEnd} of {filtered.length} items</span>
             <div className="flex items-center gap-3">
               <div className="flex items-center gap-1">

@@ -118,7 +118,7 @@ export function AddonManager({
 
   return (
     <div className="grid gap-5 lg:grid-cols-[260px_1fr]">
-      <aside className="rounded-xl border bg-white p-4 shadow-sm">
+      <aside className="rounded-xl border bg-background p-4 shadow-sm">
         <h3 className="mb-3 text-sm font-bold">Menu Items</h3>
         {products.length === 0 && <p className="text-sm text-muted-foreground">Add menu items first.</p>}
         <ul className="space-y-1">
@@ -136,7 +136,7 @@ export function AddonManager({
       </aside>
 
       <section className="space-y-4">
-        <div className="rounded-xl border bg-white p-5 shadow-sm">
+        <div className="rounded-xl border bg-background p-5 shadow-sm">
           <h3 className="mb-3 flex items-center gap-2 text-sm font-bold">
             <Layers className="h-4 w-4" /> New Add-on Group
           </h3>
@@ -151,12 +151,12 @@ export function AddonManager({
         </div>
 
         {groups.length === 0 ? (
-          <div className="rounded-xl border bg-white p-8 text-center text-sm text-muted-foreground shadow-sm">
+          <div className="rounded-xl border bg-background p-8 text-center text-sm text-muted-foreground shadow-sm">
             No add-on groups for this item yet — create one above (e.g. "Extra toppings", "Choose your spice level").
           </div>
         ) : (
           groups.map((group) => (
-            <div key={group.id} className="rounded-xl border bg-white p-5 shadow-sm">
+            <div key={group.id} className="rounded-xl border bg-background p-5 shadow-sm">
               <div className="mb-3 flex items-center justify-between">
                 <div>
                   <p className="text-sm font-bold">{group.name}</p>

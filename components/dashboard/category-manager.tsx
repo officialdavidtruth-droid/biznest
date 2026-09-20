@@ -133,7 +133,7 @@ export function CategoryManager({
       </div>
 
       <div className="grid gap-5 lg:grid-cols-[1fr_320px]">
-        <section className="rounded-xl border bg-white shadow-sm">
+        <section className="rounded-xl border bg-background shadow-sm">
           <div className="flex flex-wrap items-center gap-1 border-b px-4 pt-3">
             {(["all", "active", "inactive"] as StatusFilter[]).map((t) => (
               <button
@@ -231,7 +231,7 @@ export function CategoryManager({
         </section>
 
         <aside className="space-y-4">
-          <div className="rounded-xl border bg-white p-4 shadow-sm">
+          <div className="rounded-xl border bg-background p-4 shadow-sm">
             <div className="mb-3 flex items-center justify-between">
               <h2 className="text-sm font-semibold">{terminology.category} Details</h2>
             </div>
@@ -270,7 +270,7 @@ export function CategoryManager({
             )}
           </div>
 
-          <div className="rounded-xl border bg-white p-4 shadow-sm">
+          <div className="rounded-xl border bg-background p-4 shadow-sm">
             <h2 className="mb-3 text-sm font-semibold">Quick Actions</h2>
             <div className="grid grid-cols-2 gap-2">
               <button onClick={() => setFormOpen("new")} className="flex flex-col items-center gap-1.5 rounded-lg border p-3 text-xs font-medium hover:bg-muted">
@@ -376,7 +376,7 @@ function CategoryFormModal({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" onClick={onClose}>
-      <div className="w-full max-w-md rounded-xl bg-white p-5 shadow-lg" onClick={(e) => e.stopPropagation()}>
+      <div className="w-full max-w-md rounded-xl bg-background p-5 shadow-lg" onClick={(e) => e.stopPropagation()}>
         <div className="mb-4 flex items-center justify-between">
           <h2 className="text-base font-semibold">{category ? `Edit ${terminology.category}` : `Add ${terminology.category}`}</h2>
           <button onClick={onClose} className="rounded-lg p-1 hover:bg-muted"><X className="h-4 w-4" /></button>

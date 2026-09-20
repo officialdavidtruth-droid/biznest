@@ -33,8 +33,8 @@ export default async function ProductsListPage({ params }: { params: Promise<{ s
           <p className="mt-1 text-sm text-muted-foreground">Manage your {terminology.catalog.toLowerCase()}, categories and pricing</p>
         </div>
         <div className="flex flex-wrap gap-2">
-          <Link href={`/store/${slug}`} target="_blank" className="bn-admin-action rounded-lg border bg-white px-4 py-2.5 text-sm font-semibold">View Store ↗</Link>
-          <Link href={`/store/${slug}/admin/products?import=1`} className="bn-admin-action rounded-lg border bg-white px-4 py-2.5 text-sm font-semibold"><Upload className="mr-2 inline h-4 w-4" />Import {terminology.catalog}</Link>
+          <Link href={`/store/${slug}`} target="_blank" className="bn-admin-action rounded-lg border bg-background px-4 py-2.5 text-sm font-semibold">View Store ↗</Link>
+          <Link href={`/store/${slug}/admin/products?import=1`} className="bn-admin-action rounded-lg border bg-background px-4 py-2.5 text-sm font-semibold"><Upload className="mr-2 inline h-4 w-4" />Import {terminology.catalog}</Link>
           <Link href={`/store/${slug}/admin/products/new`} className="bn-admin-action rounded-lg bg-primary px-4 py-2.5 text-sm font-bold text-primary-foreground"><Plus className="mr-2 inline h-4 w-4" />Add {terminology.catalogSingular}</Link>
         </div>
       </div>
@@ -48,10 +48,10 @@ export default async function ProductsListPage({ params }: { params: Promise<{ s
 
       <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_310px]">
         <div className="min-w-0">
-          <section className="rounded-xl border bg-white p-5 shadow-sm">
+          <section className="rounded-xl border bg-background p-5 shadow-sm">
             <div className="mb-4 flex items-center justify-between gap-3">
               <div><h2 className="text-base font-bold">{terminology.catalog}</h2><p className="mt-1 text-xs text-muted-foreground">Manage your {terminology.catalog.toLowerCase()} and their availability</p></div>
-              <button className="rounded-lg border bg-white p-2.5 text-muted-foreground"><SlidersHorizontal className="h-4 w-4" /></button>
+              <button className="rounded-lg border bg-background p-2.5 text-muted-foreground"><SlidersHorizontal className="h-4 w-4" /></button>
             </div>
             <div className="mb-4"><BulkCsvPanel storeSlug={slug} /></div>
             <ProductsTable
@@ -72,7 +72,7 @@ export default async function ProductsListPage({ params }: { params: Promise<{ s
         </div>
 
         <aside className="space-y-5">
-          <section className="rounded-xl border bg-white p-5 shadow-sm">
+          <section className="rounded-xl border bg-background p-5 shadow-sm">
             <div className="mb-3"><h2 className="text-base font-bold">{terminology.catalog} Categories</h2><p className="mt-1 text-xs text-muted-foreground">Manage your {genericCategory.toLowerCase()}s</p></div>
             <div className="divide-y divide-[#eef0f3]">
               <CategoryRow name={`All ${terminology.catalog}`} count={products.length} />
@@ -80,7 +80,7 @@ export default async function ProductsListPage({ params }: { params: Promise<{ s
             </div>
             <Link href={`/store/${slug}/admin/categories`} className="mt-4 block rounded-lg border px-3 py-2.5 text-center text-xs font-semibold hover:bg-slate-50">＋ Add {genericCategory}</Link>
           </section>
-          <section className="rounded-xl border bg-white p-5 shadow-sm">
+          <section className="rounded-xl border bg-background p-5 shadow-sm">
             <h2 className="text-base font-bold">Quick Actions</h2>
             <div className="mt-3 space-y-1">
               <Quick href={`/store/${slug}/admin/products/new`} icon={Plus} title={`Add New ${terminology.catalogSingular}`} note={`Create a new ${terminology.catalogSingular.toLowerCase()}`} />
@@ -96,7 +96,7 @@ export default async function ProductsListPage({ params }: { params: Promise<{ s
 }
 
 function Stat({ icon: Icon, tone, label, value, note }: { icon: typeof Package; tone: string; label: string; value: number; note: string }) {
-  return <div className="rounded-xl border bg-white p-5 shadow-sm"><div className={`mb-3 flex h-10 w-10 items-center justify-center rounded-xl ${tone === "purple" ? "bg-violet-50 text-violet-600" : tone === "orange" ? "bg-orange-50 text-orange-500" : tone === "green" ? "bg-emerald-50 text-emerald-600" : "bg-rose-50 text-rose-500"}`}><Icon className="h-5 w-5" /></div><p className="text-xs text-muted-foreground">{label}</p><p className="mt-1 text-2xl font-bold">{value}</p><p className="mt-1 text-[11px] text-muted-foreground">{note}</p></div>;
+  return <div className="rounded-xl border bg-background p-5 shadow-sm"><div className={`mb-3 flex h-10 w-10 items-center justify-center rounded-xl ${tone === "purple" ? "bg-violet-50 text-violet-600" : tone === "orange" ? "bg-orange-50 text-orange-500" : tone === "green" ? "bg-emerald-50 text-emerald-600" : "bg-rose-50 text-rose-500"}`}><Icon className="h-5 w-5" /></div><p className="text-xs text-muted-foreground">{label}</p><p className="mt-1 text-2xl font-bold">{value}</p><p className="mt-1 text-[11px] text-muted-foreground">{note}</p></div>;
 }
 function CategoryRow({ name, count }: { name: string; count: number }) { return <div className="flex items-center justify-between py-3 text-xs"><span className="font-medium">{name}</span><span className="rounded-md border px-2 py-0.5 text-[10px] text-muted-foreground">{count}</span></div>; }
 function Quick({ href, icon: Icon, title, note }: { href: string; icon: typeof Plus; title: string; note: string }) { return <Link href={href} className="flex items-center gap-3 rounded-lg p-2.5 hover:bg-slate-50"><span className="flex h-9 w-9 items-center justify-center rounded-lg bg-[#fff3df] text-[#b57719]"><Icon className="h-4 w-4" /></span><span className="min-w-0"><b className="block text-xs">{title}</b><small className="text-[10px] text-muted-foreground">{note}</small></span></Link>; }

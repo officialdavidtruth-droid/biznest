@@ -478,7 +478,7 @@ export function CustomizerClient({
             src={previewUrl}
             onLoad={() => { previewReadyRef.current = true; pushPreview(builderRef.current); }}
             title="Live website preview"
-            className="h-full min-h-[900px] rounded-lg border border-border bg-white shadow-sm transition-[width] duration-200"
+            className="h-full min-h-[900px] rounded-lg border border-border bg-background shadow-sm transition-[width] duration-200"
             style={{ width: DEVICE_WIDTH[device] }}
           />
         </div>

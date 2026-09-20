@@ -10,7 +10,7 @@ export function InventoryReconciliationCard({ slug, rows }: { slug: string; rows
   const attention = discrepancies.length + corrupt.length;
 
   return (
-    <section className="rounded-xl border bg-white p-5 shadow-sm dark:border-[#29466f] dark:bg-[#142b50] dark:text-[#f8fafc]">
+    <section className="rounded-xl border bg-background p-5 shadow-sm dark:border-[#29466f] dark:bg-[#142b50] dark:text-[#f8fafc]">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div className="flex gap-3">
           <div className="rounded-lg bg-slate-100 p-2 dark:bg-[#102544] dark:text-[#ff9a1f]"><ClipboardCheck className="h-5 w-5" /></div>

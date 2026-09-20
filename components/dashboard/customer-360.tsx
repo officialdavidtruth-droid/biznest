@@ -114,7 +114,7 @@ export function Customer360View({
       </div>
 
       <div className="grid gap-4 lg:grid-cols-[280px_1fr]">
-        <section className="overflow-hidden rounded-xl border bg-white shadow-sm">
+        <section className="overflow-hidden rounded-xl border bg-background shadow-sm">
           <div className="border-b p-3">
             <div className="relative">
               <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
@@ -142,7 +142,7 @@ export function Customer360View({
         </section>
 
         {selected ? <section className="space-y-4">
-          <div className="rounded-xl border bg-white p-5 shadow-sm">
+          <div className="rounded-xl border bg-background p-5 shadow-sm">
             <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
               <div className="flex items-center gap-3"><div className="grid h-12 w-12 place-items-center rounded-full bg-primary/10 font-semibold text-primary">{initials(selected.name)}</div><div><h2 className="text-lg font-semibold">{selected.name}</h2><div className="mt-1 flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted-foreground"><span>{selected.email || "No email"}</span><span>{selected.phone || "No phone"}</span></div></div></div>
               <div className="flex gap-2">
@@ -158,23 +158,23 @@ export function Customer360View({
           </div>
 
           <div className={`grid gap-4 ${sellsProducts ? "md:grid-cols-3" : "md:grid-cols-1"}`}>
-            {sellsProducts && <div className="rounded-xl border bg-white p-4 shadow-sm"><p className="text-xs text-muted-foreground">Online sales</p><p className="mt-1 text-xl font-semibold">{selected.onlineOrders}</p></div>}
-            {sellsProducts && <div className="rounded-xl border bg-white p-4 shadow-sm"><p className="text-xs text-muted-foreground">POS sales</p><p className="mt-1 text-xl font-semibold">{selected.posOrders}</p></div>}
-            <div className="rounded-xl border bg-white p-4 shadow-sm"><p className="text-xs text-muted-foreground">{personLabel} since</p><p className="mt-1 text-sm font-semibold">{formatDate(selected.firstPurchase)}</p></div>
+            {sellsProducts && <div className="rounded-xl border bg-background p-4 shadow-sm"><p className="text-xs text-muted-foreground">Online sales</p><p className="mt-1 text-xl font-semibold">{selected.onlineOrders}</p></div>}
+            {sellsProducts && <div className="rounded-xl border bg-background p-4 shadow-sm"><p className="text-xs text-muted-foreground">POS sales</p><p className="mt-1 text-xl font-semibold">{selected.posOrders}</p></div>}
+            <div className="rounded-xl border bg-background p-4 shadow-sm"><p className="text-xs text-muted-foreground">{personLabel} since</p><p className="mt-1 text-sm font-semibold">{formatDate(selected.firstPurchase)}</p></div>
           </div>
 
           <div className="grid gap-4 xl:grid-cols-[1fr_320px]">
-            <div className="rounded-xl border bg-white p-4 shadow-sm">
+            <div className="rounded-xl border bg-background p-4 shadow-sm">
               <div className="mb-3 flex items-center gap-2"><ShoppingBag className="h-4 w-4 text-muted-foreground" /><h3 className="text-sm font-semibold">{isServiceOnly ? "Recent bookings" : "Recent orders"}</h3></div>
               <div className="overflow-x-auto"><table className="w-full text-sm"><thead className="border-b text-left text-[11px] uppercase text-muted-foreground"><tr><th className="px-2 py-2">{isServiceOnly ? "Booking" : "Order"}</th>{sellsProducts && <th className="px-2 py-2">Channel</th>}<th className="px-2 py-2">Items</th><th className="px-2 py-2 text-right">Amount</th><th className="px-2 py-2">Date</th></tr></thead><tbody>{selected.ordersList.map((o) => <tr key={o.id} className="border-b last:border-0"><td className="px-2 py-3 font-medium">{o.number}</td>{sellsProducts && <td className="px-2 py-3"><span className="rounded-full bg-muted px-2 py-1 text-[10px]">{o.channel}</span></td>}<td className="max-w-[260px] px-2 py-3 text-xs text-muted-foreground">{o.items.join(", ") || "—"}</td><td className="px-2 py-3 text-right font-medium">{money(o.total)}</td><td className="px-2 py-3 text-xs text-muted-foreground">{formatDate(o.createdAt)}</td></tr>)}{selected.ordersList.length === 0 && <tr><td colSpan={sellsProducts ? 5 : 4} className="px-2 py-10 text-center text-xs text-muted-foreground">{isServiceOnly ? "No completed bookings yet." : "No completed purchases yet."}</td></tr>}</tbody></table></div>
             </div>
-            <div className="rounded-xl border bg-white p-4 shadow-sm">
+            <div className="rounded-xl border bg-background p-4 shadow-sm">
               <h3 className="text-sm font-semibold">{isServiceOnly ? "Top services" : "Top products"}</h3><p className="mb-3 mt-1 text-xs text-muted-foreground">Based on purchase history</p>
               <div className="space-y-3">{selected.topProducts.map((p) => <div key={p.name} className="flex items-center justify-between gap-3"><div className="min-w-0"><p className="truncate text-xs font-medium">{p.name}</p><p className="text-[11px] text-muted-foreground">{p.quantity} item{p.quantity === 1 ? "" : "s"}</p></div><p className="text-xs font-semibold">{money(p.revenue)}</p></div>)}{selected.topProducts.length === 0 && <p className="py-8 text-center text-xs text-muted-foreground">No product history yet.</p>}</div>
             </div>
           </div>
 
-          {selected.bills?.length > 0 && <div className="rounded-xl border bg-white p-4 shadow-sm"><div className="mb-3 flex items-center justify-between"><div><h3 className="text-sm font-semibold">Hotel bills & room charges</h3><p className="mt-1 text-xs text-muted-foreground">Charges posted to this guest's room folio from PMS.</p></div><Wallet className="h-4 w-4 text-muted-foreground" /></div><div className="overflow-x-auto"><table className="w-full text-sm"><thead className="border-b text-left text-[11px] uppercase text-muted-foreground"><tr><th className="px-2 py-2">Charge</th><th className="px-2 py-2">Room</th><th className="px-2 py-2">Status</th><th className="px-2 py-2 text-right">Amount</th><th className="px-2 py-2">Date</th></tr></thead><tbody>{selected.bills.map((b) => <tr key={b.id} className="border-b last:border-0"><td className="px-2 py-3"><p className="font-medium">{b.description}</p><p className="text-[11px] text-muted-foreground">{b.category || "General"}</p></td><td className="px-2 py-3 text-xs text-muted-foreground">{b.room || "—"}</td><td className="px-2 py-3"><span className="rounded-full bg-muted px-2 py-1 text-[10px]">{b.status}</span></td><td className="px-2 py-3 text-right font-medium">{money(b.amount)}</td><td className="px-2 py-3 text-xs text-muted-foreground">{formatDate(b.postedAt)}</td></tr>)}</tbody></table></div></div>}
+          {selected.bills?.length > 0 && <div className="rounded-xl border bg-background p-4 shadow-sm"><div className="mb-3 flex items-center justify-between"><div><h3 className="text-sm font-semibold">Hotel bills & room charges</h3><p className="mt-1 text-xs text-muted-foreground">Charges posted to this guest's room folio from PMS.</p></div><Wallet className="h-4 w-4 text-muted-foreground" /></div><div className="overflow-x-auto"><table className="w-full text-sm"><thead className="border-b text-left text-[11px] uppercase text-muted-foreground"><tr><th className="px-2 py-2">Charge</th><th className="px-2 py-2">Room</th><th className="px-2 py-2">Status</th><th className="px-2 py-2 text-right">Amount</th><th className="px-2 py-2">Date</th></tr></thead><tbody>{selected.bills.map((b) => <tr key={b.id} className="border-b last:border-0"><td className="px-2 py-3"><p className="font-medium">{b.description}</p><p className="text-[11px] text-muted-foreground">{b.category || "General"}</p></td><td className="px-2 py-3 text-xs text-muted-foreground">{b.room || "—"}</td><td className="px-2 py-3"><span className="rounded-full bg-muted px-2 py-1 text-[10px]">{b.status}</span></td><td className="px-2 py-3 text-right font-medium">{money(b.amount)}</td><td className="px-2 py-3 text-xs text-muted-foreground">{formatDate(b.postedAt)}</td></tr>)}</tbody></table></div></div>}
 
           {selected.notes && <div className="rounded-xl border bg-primary/5 p-4 text-sm"><p className="font-medium">{personLabel} notes</p><p className="mt-1 text-sm text-muted-foreground">{selected.notes}</p></div>}
         </section> : <section className="grid min-h-[420px] place-items-center rounded-xl border bg-background"><div className="text-center"><UserRound className="mx-auto h-8 w-8 text-muted-foreground/50" /><p className="mt-3 text-sm font-medium">Select a {personLabel.toLowerCase()}</p><p className="mt-1 text-xs text-muted-foreground">Their complete {isServiceOnly ? "booking" : "sales"} history will appear here.</p></div></section>}

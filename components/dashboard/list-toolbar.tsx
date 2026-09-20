@@ -38,7 +38,7 @@ export function ListToolbar({
           placeholder={searchPlaceholder}
           value={search}
           onChange={(e) => onSearchChange(e.target.value)}
-          className="w-full rounded-lg border bg-white py-2.5 pl-9 pr-3 text-sm"
+          className="w-full rounded-lg border bg-background py-2.5 pl-9 pr-3 text-sm"
         />
       </div>
       {filters.map((f) => (
@@ -46,7 +46,7 @@ export function ListToolbar({
           key={f.id}
           value={f.value}
           onChange={(e) => f.onChange(e.target.value)}
-          className="rounded-lg border bg-white px-3 py-2.5 text-sm"
+          className="rounded-lg border bg-background px-3 py-2.5 text-sm"
         >
           <option value="">{f.placeholder}</option>
           {f.options.map((o) => (
@@ -57,7 +57,7 @@ export function ListToolbar({
       <button
         type="button"
         onClick={onReset}
-        className="flex items-center gap-2 rounded-lg border bg-white px-3 py-2.5 text-sm font-medium text-muted-foreground hover:bg-slate-50"
+        className="flex items-center gap-2 rounded-lg border bg-background px-3 py-2.5 text-sm font-medium text-muted-foreground hover:bg-slate-50"
       >
         <SlidersHorizontal className="h-4 w-4" /> Filter
       </button>
@@ -100,7 +100,7 @@ export function ListPagination({
     }, []);
 
   return (
-    <div className="flex flex-wrap items-center justify-between gap-3 border-t bg-white px-4 py-3 text-xs text-muted-foreground">
+    <div className="flex flex-wrap items-center justify-between gap-3 border-t bg-background px-4 py-3 text-xs text-muted-foreground">
       <span>Showing {rangeStart} to {rangeEnd} of {totalItems} items</span>
       <div className="flex items-center gap-3">
         <div className="flex items-center gap-1">

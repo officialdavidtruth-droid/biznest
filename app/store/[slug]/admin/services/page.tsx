@@ -24,7 +24,7 @@ export default async function ServicesPage({ params }: { params: Promise<{ slug:
           <p className="mt-1 text-sm text-muted-foreground">{terminology.catalogDescription}</p>
         </div>
         <div className="flex flex-wrap gap-2">
-          <Link href={`/store/${slug}`} target="_blank" className="bn-admin-action rounded-lg border bg-white px-4 py-2.5 text-sm font-semibold">View Store ↗</Link>
+          <Link href={`/store/${slug}`} target="_blank" className="bn-admin-action rounded-lg border bg-background px-4 py-2.5 text-sm font-semibold">View Store ↗</Link>
           <Link href={`/store/${slug}/admin/services/new`} className="bn-admin-action rounded-lg bg-primary px-4 py-2.5 text-sm font-bold text-primary-foreground"><Plus className="mr-2 inline h-4 w-4" />Add {terminology.catalogSingular}</Link>
         </div>
       </div>
@@ -35,7 +35,7 @@ export default async function ServicesPage({ params }: { params: Promise<{ slug:
         <StatCard icon={CalendarClock} tone="orange" label="Bookable" value={bookableCount} note="Accepting bookings" />
       </div>
 
-      <section className="rounded-xl border bg-white p-5 shadow-sm">
+      <section className="rounded-xl border bg-background p-5 shadow-sm">
         <div className="mb-4"><h2 className="text-base font-bold">{terminology.catalog}</h2><p className="mt-1 text-xs text-muted-foreground">Manage your {terminology.catalog.toLowerCase()} and their availability</p></div>
         <ServicesTable
           storeSlug={slug}
