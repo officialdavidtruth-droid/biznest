@@ -11,6 +11,7 @@ import {
   type MarketingTemplateId,
 } from "@/lib/email/marketing-templates";
 import { sendMarketingCampaign, type MarketingSendInput } from "@/lib/actions/marketing";
+import { useTheme } from "@/components/theme/theme-provider";
 
 export function MarketingEmailComposer({
   slug,
@@ -39,6 +40,7 @@ export function MarketingEmailComposer({
   const [uploadingImage, setUploadingImage] = useState(false);
   const [uploadMessage, setUploadMessage] = useState<string | null>(null);
   const imageInputRef = useRef<HTMLInputElement>(null);
+  const { resolvedTheme } = useTheme();
 
   function changeTemplate(next: MarketingTemplateId) {
     setTemplate(next);
@@ -49,7 +51,10 @@ export function MarketingEmailComposer({
 
   const selected = selectedItems.map((i) => items[Number(i)]).filter(Boolean);
   const content = { eyebrow, headline, body, ctaLabel, ctaUrl, imageUrl: imageUrl || undefined, items: selected, previewText };
-  const previewHtml = renderMarketingEmail(template, brand, content, { unsubscribeUrl: "#" });
+  const previewHtml = useMemo(() => {
+    const html = renderMarketingEmail(template, brand, content, { unsubscribeUrl: "#" });
+    return resolvedTheme === "dark" ? darkenEmailPreview(html) : html;
+  }, [template, brand, content, resolvedTheme]);
 
   async function uploadHeaderImage(file: File) {
     if (!file.type.startsWith("image/")) {
@@ -179,7 +184,7 @@ export function MarketingEmailComposer({
             </div>
           </div>
         </div>
-        <div className="overflow-hidden rounded-2xl border bg-[#e5e7eb] p-3 shadow-sm"><iframe key={previewHtml} title="Email preview" srcDoc={previewHtml} className="h-[760px] w-full rounded-xl bg-white" /></div>
+        <div className="bn-email-preview-frame overflow-hidden rounded-2xl border bg-[#e5e7eb] p-3 shadow-sm"><iframe key={previewHtml} title="Email preview" srcDoc={previewHtml} className="h-[760px] w-full rounded-xl bg-white" /></div>
       </aside>
     </div>
   );

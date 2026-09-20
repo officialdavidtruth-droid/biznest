@@ -1429,23 +1429,32 @@ a[href*="/service/"]:hover img {
 
 
 
-/* Email composer: the inbox-preview card simulates an email client and is
-   intentionally white in both admin themes. The global dark-mode text
-   overrides must not wash its light text out. */
-.bn-email-inbox-preview {
-  background: #ffffff !important;
-  color: #0f172a !important;
+/* Dark-mode email composer chrome. The actual outgoing email HTML is left
+   untouched; only the admin preview is themed here. */
+#bn-admin-theme-scope.dark .bn-email-inbox-preview,
+#bn-plugin-theme-scope.dark .bn-email-inbox-preview {
+  background: #142b50 !important;
+  color: #f8fafc !important;
+  border-color: #29466f !important;
 }
-.bn-email-inbox-preview .text-muted-foreground {
-  color: #64748b !important;
+#bn-admin-theme-scope.dark .bn-email-inbox-preview > div,
+#bn-plugin-theme-scope.dark .bn-email-inbox-preview > div {
+  background: #102544 !important;
+  border-color: #29466f !important;
 }
-.bn-email-inbox-preview .text-primary {
-  color: #e86600 !important;
+#bn-admin-theme-scope.dark .bn-email-inbox-preview :is(p,span,div) {
+  color: #eaf1fb !important;
 }
-.bn-email-inbox-preview p,
-.bn-email-inbox-preview span {
-  color: #0f172a;
+#bn-admin-theme-scope.dark .bn-email-inbox-preview .text-muted-foreground {
+  color: #b8c8df !important;
 }
-.bn-email-inbox-preview .text-muted-foreground {
-  color: #64748b !important;
+#bn-admin-theme-scope.dark .bn-email-inbox-preview .text-primary {
+  color: #ff9a1f !important;
+}
+#bn-admin-theme-scope.dark .bn-email-preview-frame {
+  background: #0b1b3a !important;
+  border-color: #29466f !important;
+}
+#bn-admin-theme-scope.dark .bn-email-preview-frame iframe {
+  background: #142b50 !important;
 }
