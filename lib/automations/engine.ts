@@ -58,7 +58,7 @@ export async function runAutomationsForEvent(event: Event) {
           if (recipient) {
             const template = action.template ? EMAIL_TEMPLATES[action.template] : undefined;
             if (template) {
-              await sendOrderNotificationEmail(recipient, template.subject, template.body(store.name));
+              await sendOrderNotificationEmail(recipient, template.subject, template.body(store.name), store.name);
               result.push("EMAIL");
             } else {
               result.push("EMAIL_SKIPPED_UNKNOWN_TEMPLATE");

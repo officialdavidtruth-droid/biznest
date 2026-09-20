@@ -656,8 +656,14 @@ export async function sendBookingConfirmationEmail(
  * Generic transactional notification email — used for quotes, invoices,
  * abandoned-checkout nudges, low-stock alerts, and anything else that just
  * needs a subject line and an HTML message body inside the standard shell.
+ *
+ * Pass `fromName` when the recipient is the store's own customer/subscriber
+ * (automation emails, etc.) so the message shows as coming from that store's
+ * brand rather than the platform. Leave it unset for platform-to-merchant
+ * notifications (quotes, invoices, low-stock alerts), which should still
+ * read as coming from BizNest.
  */
-export async function sendOrderNotificationEmail(email: string, subject: string, messageHtml: string) {
+export async function sendOrderNotificationEmail(email: string, subject: string, messageHtml: string, fromName?: string) {
   const html = emailShell({
     preheader: subject,
     body: `
@@ -665,10 +671,10 @@ export async function sendOrderNotificationEmail(email: string, subject: string,
         ${messageHtml}
       </p>
     `,
-    footer: `This email was sent to ${email} by BizNest.`,
+    footer: fromName ? `This email was sent to ${email} by ${fromName}.` : `This email was sent to ${email} by BizNest.`,
   });
 
-  return send({ from: FROM, to: email, subject, html }, { kind: "order-notification", to: email });
+  return send({ from: fromName ? `${fromName} <${FROM_ADDRESS}>` : FROM, to: email, subject, html }, { kind: "order-notification", to: email });
 }
 
 /**
