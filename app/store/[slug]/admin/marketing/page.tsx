@@ -3,7 +3,8 @@ import Link from "next/link";
 import { prisma } from "@/lib/prisma";
 import { MarketingEmailComposer } from "@/components/dashboard/marketing-email-composer";
 import { assertStorePermission } from "@/lib/access/assert-store-access";
-import type { MarketingBrand, MarketingItem } from "@/lib/email/marketing-templates";
+import { marketingTemplateName } from "@/lib/email/marketing-templates";
+import { buildMarketingBrand, loadMarketingItems } from "@/lib/email/marketing-brand";
 import { MarketingAutomationPanel } from "@/components/dashboard/marketing-automation-panel";
 
 export default async function MarketingPage({ params }: { params: Promise<{ slug: string }> }) {
@@ -12,49 +13,23 @@ export default async function MarketingPage({ params }: { params: Promise<{ slug
   if (!access.success) return null;
   const store = access.store;
 
-  const [activeSubscribers, unsubscribedCount, subscribers, campaigns, products, services, automations] = await Promise.all([
+  const [activeSubscribers, unsubscribedCount, subscribers, campaigns, items, automations] = await Promise.all([
     prisma.newsletterSubscriber.count({ where: { storeId: store.id, unsubscribedAt: null } }),
     prisma.newsletterSubscriber.count({ where: { storeId: store.id, unsubscribedAt: { not: null } } }),
     prisma.newsletterSubscriber.findMany({ where: { storeId: store.id }, select: { id: true, email: true, createdAt: true, unsubscribedAt: true }, orderBy: { createdAt: "desc" }, take: 100 }),
     prisma.emailCampaign.findMany({ where: { storeId: store.id }, select: { id: true, subject: true, template: true, status: true, recipientCount: true, sentCount: true, failedCount: true, createdAt: true, sentAt: true }, orderBy: { createdAt: "desc" }, take: 8 }),
-    prisma.product.findMany({ where: { storeId: store.id, isPublished: true }, select: { id: true, name: true, description: true, price: true, currency: true, images: true }, orderBy: { createdAt: "desc" }, take: 8 }),
-    prisma.service.findMany({ where: { storeId: store.id, isPublished: true }, select: { id: true, name: true, description: true, price: true, currency: true, images: true }, orderBy: { createdAt: "desc" }, take: 8 }),
+    loadMarketingItems(store.id, slug),
     prisma.automation.count({ where: { storeId: store.id, status: "ACTIVE" } }),
   ]);
 
-  const colors = (store.themeColors as Record<string, string> | null) ?? {};
-  const brand: MarketingBrand = {
-    name: store.name,
-    storeId: store.id,
-    slug,
-    logoUrl: store.logoUrl,
-    bannerUrl: store.bannerUrl,
-    primary: colors.primary ?? colors.accent ?? "#111827",
-    secondary: colors.secondary ?? "#111827",
-    accent: colors.accent ?? colors.primary ?? "#2563eb",
-    background: colors.background ?? "#f3f4f6",
-    text: colors.text ?? "#111827",
-    fontFamily: store.fontFamily ?? "Arial",
-    contactEmail: store.contactEmail ?? store.business.email,
-    contactPhone: store.contactPhone ?? store.business.phone,
-    socialLinks: (store.socialLinks as Record<string, string> | null) ?? null,
-    businessType: store.businessType,
-    businessDescription: store.business.description,
-    sellsProducts: store.business.sellsProducts,
-    offersServices: store.business.offersServices,
-  };
-
-  const items: MarketingItem[] = [
-    ...products.map((p) => ({ kind: "product" as const, name: p.name, description: p.description, price: `${p.currency} ${Number(p.price).toLocaleString()}`, imageUrl: p.images[0] ?? null, href: `/store/${slug}/product/${p.id}` })),
-    ...services.map((s) => ({ kind: "service" as const, name: s.name, description: s.description, price: `${s.currency} ${Number(s.price).toLocaleString()}`, imageUrl: s.images[0] ?? null, href: `/store/${slug}/service/${s.id}` })),
-  ].slice(0, 12);
+  const brand = buildMarketingBrand(store);
 
   return (
     <div>
       <div className="mb-7 flex flex-wrap items-start justify-between gap-4">
         <div>
           <h1 className="text-2xl font-semibold tracking-tight">Marketing Studio</h1>
-          <p className="mt-1 max-w-2xl text-sm text-muted-foreground">Create beautiful, industry-specific emails that automatically look like your business — not a generic BizNest email.</p>
+          <p className="mt-1 max-w-2xl text-sm text-muted-foreground">Pick from 17 email designs, then edit every word, colour and picture so each email looks like your business — not a generic BizNest email.</p>
         </div>
         <div className="flex gap-2"><Link href={`/store/${slug}/admin/customize`} className="rounded-lg border px-3 py-2 text-xs font-medium hover:border-primary">Edit brand</Link><Link href={`/store/${slug}`} target="_blank" className="rounded-lg border px-3 py-2 text-xs font-medium hover:border-primary">View website ↗</Link></div>
       </div>
@@ -79,7 +54,7 @@ export default async function MarketingPage({ params }: { params: Promise<{ slug
 
         <section className="rounded-2xl border bg-background p-5">
           <div className="mb-4"><h2 className="text-sm font-semibold">Campaign history</h2><p className="mt-1 text-xs text-muted-foreground">Every send is recorded here.</p></div>
-          <div className="space-y-2">{campaigns.map((c) => <div key={c.id} className="flex items-center justify-between gap-3 rounded-xl border p-3"><div className="min-w-0"><p className="truncate text-sm font-medium">{c.subject}</p><p className="mt-1 text-[11px] text-muted-foreground">{c.template} · {new Date(c.createdAt).toLocaleDateString("en-NG")}</p></div><div className="shrink-0 text-right"><p className="text-xs font-semibold">{c.sentCount}/{c.recipientCount}</p><p className={`mt-1 text-[10px] font-semibold ${c.status === "SENT" ? "text-[var(--bn-admin-orange)]" : c.status === "FAILED" ? "text-[var(--bn-admin-danger)]" : "text-[var(--bn-admin-orange)]"}`}>{c.status}</p></div></div>)}{!campaigns.length && <div className="rounded-xl border border-dashed p-8 text-center text-xs text-muted-foreground">Your first campaign will appear here.</div>}</div>
+          <div className="space-y-2">{campaigns.map((c) => <div key={c.id} className="flex items-center justify-between gap-3 rounded-xl border p-3"><div className="min-w-0"><p className="truncate text-sm font-medium">{c.subject}</p><p className="mt-1 text-[11px] text-muted-foreground">{marketingTemplateName(c.template)} · {new Date(c.createdAt).toLocaleDateString("en-NG")}</p></div><div className="shrink-0 text-right"><p className="text-xs font-semibold">{c.sentCount}/{c.recipientCount}</p><p className={`mt-1 text-[10px] font-semibold ${c.status === "SENT" ? "text-[var(--bn-admin-orange)]" : c.status === "FAILED" ? "text-[var(--bn-admin-danger)]" : "text-[var(--bn-admin-orange)]"}`}>{c.status}</p></div></div>)}{!campaigns.length && <div className="rounded-xl border border-dashed p-8 text-center text-xs text-muted-foreground">Your first campaign will appear here.</div>}</div>
         </section>
       </div>
     </div>

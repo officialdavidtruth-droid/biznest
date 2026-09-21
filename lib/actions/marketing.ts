@@ -6,34 +6,12 @@ import { assertStorePermission } from "@/lib/access/assert-store-access";
 import { revalidatePath } from "next/cache";
 import { sendMarketingEmail } from "@/lib/email/send";
 import { checkRateLimit } from "@/lib/rate-limit";
-import type { MarketingTemplateId } from "@/lib/email/marketing-templates";
+import { getMarketingTemplate, marketingOverLimit, normalizeMarketingContent, type MarketingCampaignInput } from "@/lib/email/marketing-templates";
 import type { ActionResult } from "@/types/actions";
-
-const MAX_LENGTHS = {
-  subject: 180,
-  previewText: 180,
-  eyebrow: 60,
-  headline: 150,
-  body: 2000,
-  ctaLabel: 40,
-  ctaUrl: 2000,
-  imageUrl: 2000,
-} as const;
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
-export type MarketingSendInput = {
-  template: MarketingTemplateId;
-  subject: string;
-  previewText?: string;
-  eyebrow: string;
-  headline: string;
-  body: string;
-  ctaLabel: string;
-  ctaUrl: string;
-  imageUrl?: string;
-  items?: Array<{ name: string; description?: string | null; price?: string | null; imageUrl?: string | null; href?: string | null }>;
-};
+export type MarketingSendInput = MarketingCampaignInput;
 
 export async function getMarketingAudience(slug: string) {
   const access = await assertStorePermission(slug, "marketing");
@@ -75,28 +53,20 @@ export async function sendMarketingCampaign(slug: string, input: MarketingSendIn
     return { success: false, error: `You've reached the hourly limit for marketing campaigns. Try again in about ${minutes} minute${minutes === 1 ? "" : "s"}.` };
   }
 
-  const subject = input.subject.trim();
-  const previewText = input.previewText?.trim();
-  const eyebrow = input.eyebrow.trim();
-  const headline = input.headline.trim();
-  const body = input.body.trim();
-  const ctaLabel = input.ctaLabel.trim();
-  const ctaUrl = input.ctaUrl.trim();
-  const imageUrl = input.imageUrl?.trim();
-  if (!subject || !headline || !body || !ctaLabel || !ctaUrl) {
-    return { success: false, error: "Subject, headline, message, button label and button URL are required." };
-  }
-  const tooLong =
-    (subject.length > MAX_LENGTHS.subject && "Subject") ||
-    (previewText && previewText.length > MAX_LENGTHS.previewText && "Preview text") ||
-    (eyebrow.length > MAX_LENGTHS.eyebrow && "Eyebrow") ||
-    (headline.length > MAX_LENGTHS.headline && "Headline") ||
-    (body.length > MAX_LENGTHS.body && "Message") ||
-    (ctaLabel.length > MAX_LENGTHS.ctaLabel && "Button label") ||
-    (ctaUrl.length > MAX_LENGTHS.ctaUrl && "Button URL") ||
-    (imageUrl && imageUrl.length > MAX_LENGTHS.imageUrl && "Hero image URL");
+  const subject = String(input.subject ?? "").trim();
+  const tooLong = marketingOverLimit(input);
   if (tooLong) return { success: false, error: `${tooLong} is too long.` };
-  input = { ...input, subject, previewText, eyebrow, headline, body, ctaLabel, ctaUrl, imageUrl };
+
+  // Re-normalise on the server: clamps every field, drops invalid colours/fonts and
+  // caps list sizes, so what is stored and sent never depends on client-side checks.
+  const content = normalizeMarketingContent(input);
+  const template = getMarketingTemplate(String(input.template)).id;
+  // The personal-note design has no headline; every design needs a subject and a message.
+  if (!subject || !content.body || (template !== "letter" && !content.headline)) {
+    return { success: false, error: template === "letter" ? "Subject and message are required." : "Subject, headline and message are required." };
+  }
+  const previewText = content.previewText;
+  input = { ...content, template, subject };
 
   const subscribers = await prisma.newsletterSubscriber.findMany({
     where: { storeId: access.store.id, unsubscribedAt: null },
@@ -132,7 +102,7 @@ export async function sendMarketingCampaign(slug: string, input: MarketingSendIn
       subject,
       template: input.template,
       previewText: previewText || null,
-      content: input,
+      content: JSON.parse(JSON.stringify(input)),
       status: "SENDING",
       recipientCount: recipients.length,
     },

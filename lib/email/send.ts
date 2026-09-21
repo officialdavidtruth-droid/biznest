@@ -699,16 +699,10 @@ export async function sendMarketingEmail(params: {
   // (RFC 8058) — separate from the human-facing confirm page above, since
   // this one must act immediately on a bare POST with no confirmation.
   const oneClickUrl = `${APP_URL}/api/unsubscribe?token=${encodeURIComponent(token)}`;
-  const html = renderMarketingEmail(params.input.template, params.brand, {
-    eyebrow: params.input.eyebrow,
-    headline: params.input.headline,
-    body: params.input.body,
-    ctaLabel: params.input.ctaLabel,
-    ctaUrl: params.input.ctaUrl,
-    imageUrl: params.input.imageUrl,
-    items: params.input.items ?? [],
-    previewText: params.input.previewText,
-  }, { unsubscribeUrl });
+  // The stored campaign input carries every editable field (highlights, offer/event
+  // details, style overrides…), so hand the whole thing to the renderer, which
+  // normalises it, rather than picking fields one by one.
+  const html = renderMarketingEmail(params.input.template, params.brand, params.input, { unsubscribeUrl });
 
   const result = await send(
     {
