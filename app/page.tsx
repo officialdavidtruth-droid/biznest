@@ -162,6 +162,9 @@ export default async function HomePage() {
           <a href="#pricing" className="hidden opacity-80 transition hover:opacity-100 sm:inline">
             Pricing
           </a>
+          <Link href="/marketing" className="opacity-80 transition hover:opacity-100">
+            Marketing
+          </Link>
           {session?.user ? (
             <>
               <Link href={dashboardHref} className="opacity-80 transition hover:opacity-100">
