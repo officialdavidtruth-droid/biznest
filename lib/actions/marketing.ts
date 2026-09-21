@@ -20,6 +20,8 @@ const MAX_LENGTHS = {
   imageUrl: 2000,
 } as const;
 
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
 export type MarketingSendInput = {
   template: MarketingTemplateId;
   subject: string;
@@ -53,7 +55,7 @@ export async function getMarketingAudience(slug: string) {
   return { subscribers, campaigns, error: null };
 }
 
-export async function sendMarketingCampaign(slug: string, input: MarketingSendInput): Promise<ActionResult<{ sent: number; failed: number }>> {
+export async function sendMarketingCampaign(slug: string, input: MarketingSendInput, manualRecipients?: string[]): Promise<ActionResult<{ sent: number; failed: number; invalid: number }>> {
   const session = await auth();
   if (!session?.user?.id) return { success: false, error: "Please sign in." };
 
@@ -101,7 +103,28 @@ export async function sendMarketingCampaign(slug: string, input: MarketingSendIn
     select: { email: true },
     orderBy: { createdAt: "asc" },
   });
-  if (!subscribers.length) return { success: false, error: "There are no active newsletter subscribers yet." };
+
+  // Manual recipients let a merchant reach people who haven't (yet)
+  // subscribed via the storefront newsletter form — e.g. a list of past
+  // customers or leads pasted in from elsewhere. Validate and dedupe
+  // server-side rather than trusting whatever the client sent.
+  const seen = new Set(subscribers.map((s) => s.email.toLowerCase()));
+  const manualValid: string[] = [];
+  let manualInvalidCount = 0;
+  for (const raw of manualRecipients ?? []) {
+    const email = raw.trim().toLowerCase();
+    if (!email) continue;
+    if (!EMAIL_RE.test(email)) {
+      manualInvalidCount += 1;
+      continue;
+    }
+    if (seen.has(email)) continue;
+    seen.add(email);
+    manualValid.push(email);
+  }
+
+  const recipients = [...subscribers.map((s) => s.email), ...manualValid];
+  if (!recipients.length) return { success: false, error: "There are no active newsletter subscribers yet — add at least one manual recipient." };
 
   const campaign = await prisma.emailCampaign.create({
     data: {
@@ -111,7 +134,7 @@ export async function sendMarketingCampaign(slug: string, input: MarketingSendIn
       previewText: previewText || null,
       content: input,
       status: "SENDING",
-      recipientCount: subscribers.length,
+      recipientCount: recipients.length,
     },
   });
 
@@ -131,10 +154,10 @@ export async function sendMarketingCampaign(slug: string, input: MarketingSendIn
   try {
     // Keep concurrency modest so a large list does not overwhelm the mail
     // provider or a serverless function's outbound connections.
-    for (let i = 0; i < subscribers.length; i += 10) {
-      const chunk = subscribers.slice(i, i + 10);
+    for (let i = 0; i < recipients.length; i += 10) {
+      const chunk = recipients.slice(i, i + 10);
       const results = await Promise.allSettled(
-        chunk.map(({ email }) => sendMarketingEmail({ slug, email, subject, input, brand }))
+        chunk.map((email) => sendMarketingEmail({ slug, email, subject, input, brand }))
       );
       for (const result of results) {
         if (result.status === "fulfilled" && result.value.success) sent += 1;
@@ -154,6 +177,6 @@ export async function sendMarketingCampaign(slug: string, input: MarketingSendIn
     revalidatePath(`/store/${slug}/admin/marketing`);
   }
 
-  if (sent === 0) return { success: false, error: "The campaign could not be delivered to any subscriber." };
-  return { success: true, data: { sent, failed } };
+  if (sent === 0) return { success: false, error: manualInvalidCount ? `The campaign could not be delivered, and ${manualInvalidCount} entered email${manualInvalidCount === 1 ? " wasn't" : "s weren't"} valid.` : "The campaign could not be delivered to any recipient." };
+  return { success: true, data: { sent, failed, invalid: manualInvalidCount } };
 }
