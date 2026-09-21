@@ -244,7 +244,7 @@ export async function getDashboardInsights(storeId: string, slug: string): Promi
       severity: "info",
       message: "You don't have an active promotion right now. A short-term coupon is one of the fastest ways to bring visitors back.",
       actionLabel: "Create a coupon",
-      actionHref: `/${slug}/admin/marketing`,
+      actionHref: `/${slug}/admin/coupons`,
     });
   }
 

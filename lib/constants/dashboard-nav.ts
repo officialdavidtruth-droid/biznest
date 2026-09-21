@@ -1,6 +1,6 @@
 import {
   LayoutDashboard, ShoppingCart, Package, Wrench, Users, Boxes, Ticket,
-  CreditCard, BarChart3, Star, Megaphone, MessageSquare,
+  CreditCard, BarChart3, Star, MessageSquare,
   Settings, BadgeCheck, Wallet, LifeBuoy, Truck, Wand2,
   LayoutTemplate, FileText, FileSignature, MailWarning, Calculator, CalendarDays, Images,
   ClipboardList, PlusCircle, Layers, Rows3, Puzzle,
@@ -147,7 +147,6 @@ export function buildNavGroups(business: { sellsProducts: boolean; offersService
     {
       label: "Grow",
       items: [
-        { label: "Marketing", href: "/marketing", icon: Megaphone, permission: "marketing" },
         { label: "Coupons", href: "/coupons", icon: Ticket, permission: "marketing" },
         { label: "Abandoned checkouts", href: "/abandoned-checkouts", icon: MailWarning, permission: "marketing" },
         { label: "Reviews", href: "/reviews", icon: Star, permission: "marketing" },

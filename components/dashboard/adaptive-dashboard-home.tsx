@@ -124,7 +124,7 @@ function quickActionLabel(config: AdaptiveDashboardConfig, action: AdaptiveDashb
       return `Add ${config.terminology.catalogSingular}`;
     case "/inventory":
       return "Manage Inventory";
-    case "/marketing":
+    case "/apps/crm/marketing":
       return "Promotions";
     case "/analytics":
       return "View Reports";

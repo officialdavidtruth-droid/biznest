@@ -7,10 +7,24 @@ import { auth } from "@/lib/auth";
 import { getMarketingToolAccess } from "@/lib/access/marketing-tool";
 import { MarketingToolClient } from "@/components/marketing/marketing-tool-client";
 import { MarketingToolLocked } from "@/components/marketing/marketing-tool-locked";
+import { MarketingTemplatesSection } from "@/components/marketing/marketing-templates-section";
+import { assertStorePermission } from "@/lib/access/assert-store-access";
+import { buildMarketingBrand, loadMarketingItems } from "@/lib/email/marketing-brand";
+
+async function loadTemplateData(slug: string) {
+  const perm = await assertStorePermission(slug, "marketing");
+  if (!perm.success) return null;
+  return { slug, brand: buildMarketingBrand(perm.store), items: await loadMarketingItems(perm.store.id, slug) };
+}
 
 export default async function MarketingStandalonePage() {
   const session = await auth();
   const access = await getMarketingToolAccess(session?.user?.id);
+
+  // Email templates are styled with the Mogul store's own brand. Staff without the
+  // "marketing" permission on that store simply don't get the template studio.
+  let templates: Awaited<ReturnType<typeof loadTemplateData>> = null;
+  if (access.status === "mogul") templates = await loadTemplateData(access.storeSlug);
 
   return (
     <main className="min-h-screen bg-slate-950 text-white">
@@ -44,7 +58,10 @@ export default async function MarketingStandalonePage() {
             <p className="mt-6 max-w-xl text-lg leading-8 text-slate-200">Organize contacts, prepare campaigns, and review results &mdash; included free with the Business Mogul plan.</p>
             <div className="mt-8 flex flex-wrap gap-3">
               {access.status === "mogul" ? (
-                <a href="#contacts" className="rounded-full bg-orange-500 px-7 py-3.5 font-bold text-slate-950 hover:bg-orange-400">Import contacts</a>
+                <>
+                  <a href="#contacts" className="rounded-full bg-orange-500 px-7 py-3.5 font-bold text-slate-950 hover:bg-orange-400">Import contacts</a>
+                  {templates && <a href="#templates" className="rounded-full border border-slate-500 px-7 py-3.5 font-semibold text-white hover:bg-white/10">Browse email templates</a>}
+                </>
               ) : access.status === "signed-out" ? (
                 <>
                   <Link href={`/register?callbackUrl=${encodeURIComponent("/marketing")}`} className="rounded-full bg-orange-500 px-7 py-3.5 font-bold text-slate-950 hover:bg-orange-400">Sign up</Link>
@@ -70,6 +87,7 @@ export default async function MarketingStandalonePage() {
       </section>
 
       {access.status === "mogul" ? <MarketingToolClient /> : <MarketingToolLocked access={access} />}
+      {templates && <MarketingTemplatesSection slug={templates.slug} brand={templates.brand} items={templates.items} />}
     </main>
   );
 }

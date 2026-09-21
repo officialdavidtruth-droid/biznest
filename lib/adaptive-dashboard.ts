@@ -56,7 +56,7 @@ const core = {
   invoices: { id: "invoices", label: "Invoices", href: "/invoices", icon: Receipt },
   quotes: { id: "quotes", label: "Quotes", href: "/quotes", icon: FileSignature },
   payments: { id: "payments", label: "Payments", href: "/payments", icon: CreditCard },
-  marketing: { id: "marketing", label: "Marketing", href: "/marketing", icon: Megaphone },
+  marketing: { id: "marketing", label: "Marketing", href: "/apps/crm/marketing", icon: Megaphone },
   reviews: { id: "reviews", label: "Reviews", href: "/reviews", icon: Star },
   analytics: { id: "analytics", label: "Analytics", href: "/analytics", icon: BarChart3 },
   projects: { id: "projects", label: "Projects", href: "/projects", icon: BriefcaseBusiness },

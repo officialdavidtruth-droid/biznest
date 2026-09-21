@@ -345,7 +345,7 @@ export const BUSINESS_TYPES: Record<string, BusinessTypeConfig> = {
       { label: "Add a service", href: "/services/new" },
       { label: "Start / manage a project", href: "/projects" },
       { label: "Create a quote", href: "/quotes" },
-      { label: "Open marketing studio", href: "/marketing" },
+      { label: "Open marketing studio", href: "/apps/crm/marketing" },
     ],
     extraNavItems: [{ label: "Projects", href: "/projects", icon: Briefcase }, { label: "Bookings", href: "/calendar", icon: CalendarClock }],
   },

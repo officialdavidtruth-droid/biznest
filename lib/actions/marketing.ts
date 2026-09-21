@@ -6,6 +6,7 @@ import { assertStorePermission } from "@/lib/access/assert-store-access";
 import { revalidatePath } from "next/cache";
 import { sendMarketingEmail } from "@/lib/email/send";
 import { checkRateLimit } from "@/lib/rate-limit";
+import { getPluginEntitlement } from "@/lib/plugins";
 import { getMarketingTemplate, marketingOverLimit, normalizeMarketingContent, type MarketingCampaignInput } from "@/lib/email/marketing-templates";
 import type { ActionResult } from "@/types/actions";
 
@@ -13,9 +14,17 @@ const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 export type MarketingSendInput = MarketingCampaignInput;
 
+// Email marketing is part of the CRM & Sales app, so it needs the app installed and on the store's plan.
+const CRM_REQUIRED = "Email marketing is part of the CRM & Sales app. Install it from Apps to send campaigns.";
+async function crmInstalled(storeId: string) {
+  const entitlement = await getPluginEntitlement(storeId, "crm");
+  return Boolean(entitlement.allowed && entitlement.installed);
+}
+
 export async function getMarketingAudience(slug: string) {
   const access = await assertStorePermission(slug, "marketing");
   if (!access.success) return { subscribers: [], campaigns: [], error: access.error };
+  if (!(await crmInstalled(access.store.id))) return { subscribers: [], campaigns: [], error: CRM_REQUIRED };
 
   const [subscribers, campaigns] = await Promise.all([
     prisma.newsletterSubscriber.findMany({
@@ -39,6 +48,7 @@ export async function sendMarketingCampaign(slug: string, input: MarketingSendIn
 
   const access = await assertStorePermission(slug, "marketing");
   if (!access.success) return { success: false, error: access.error };
+  if (!(await crmInstalled(access.store.id))) return { success: false, error: CRM_REQUIRED };
 
   // Cap campaign volume per store: at most 5 sends per hour, and never two
   // in the same 60 seconds (guards against double-submit / retried clicks
@@ -144,7 +154,7 @@ export async function sendMarketingCampaign(slug: string, input: MarketingSendIn
       where: { id: campaign.id },
       data: { sentCount: sent, failedCount: failed, status, sentAt: new Date() },
     });
-    revalidatePath(`/store/${slug}/admin/marketing`);
+    revalidatePath(`/store/${slug}/admin/apps/crm/marketing`);
   }
 
   if (sent === 0) return { success: false, error: manualInvalidCount ? `The campaign could not be delivered, and ${manualInvalidCount} entered email${manualInvalidCount === 1 ? " wasn't" : "s weren't"} valid.` : "The campaign could not be delivered to any recipient." };

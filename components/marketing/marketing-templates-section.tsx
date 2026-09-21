@@ -17,7 +17,7 @@ export function MarketingTemplatesSection({ slug, brand, items }: { slug: string
             Start from any of 17 designs, already styled with your logo, colours and products. Change the wording, offer, pictures, colours, font and layout until it fits, then copy or download the HTML.
           </p>
         </div>
-        <Link href={`/store/${slug}/admin/marketing`} className="rounded-full bg-orange-500 px-5 py-2.5 text-sm font-bold text-slate-950 hover:bg-orange-400">Send from Marketing Studio</Link>
+        <Link href={`/store/${slug}/admin/apps/crm/marketing`} className="rounded-full bg-orange-500 px-5 py-2.5 text-sm font-bold text-slate-950 hover:bg-orange-400">Send from Marketing Studio</Link>
       </div>
       <EmailDesigner design={design} variant="dark" />
     </section>
