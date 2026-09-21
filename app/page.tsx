@@ -435,6 +435,20 @@ export default async function HomePage() {
         </div>
       </section>
 
+      {/* Standalone Marketing Tool */}
+      <section className="px-6 py-14 sm:px-10" style={{ background: "var(--bn-ink)" }}>
+        <div className="mx-auto flex max-w-6xl flex-col items-start justify-between gap-5 rounded-3xl p-8 sm:flex-row sm:items-center"
+          style={{ border: "1px solid var(--bn-ink-line)", background: "var(--bn-hero-gradient)" }}>
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-widest" style={{ color: "var(--bn-marigold)" }}>BizNest Marketing</p>
+            <h2 className="mt-2 text-2xl font-bold">Marketing tools — no store required</h2>
+            <p className="mt-2 max-w-xl text-sm" style={{ color: "var(--bn-mute)" }}>Manage campaigns and email contacts with a standalone monthly subscription.</p>
+          </div>
+          <Link href="/marketing" className="rounded-full px-6 py-3 text-sm font-semibold"
+            style={{ background: "var(--bn-accent-gradient)", color: "var(--bn-ink)" }}>Explore Marketing Tool →</Link>
+        </div>
+      </section>
+
       {/* FAQ */}
       <section className="px-6 py-16 sm:px-10 lg:py-24" style={{ background: "var(--bn-ink)" }}>
         <div className="mx-auto max-w-3xl">
