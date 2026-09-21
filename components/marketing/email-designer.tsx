@@ -9,6 +9,7 @@ import {
   MARKETING_TEMPLATES,
   defaultMarketingContent,
   getMarketingTemplate,
+  normalizeMarketingContent,
   renderMarketingEmail,
   type MarketingBrand,
   type MarketingCampaignInput,
@@ -122,6 +123,23 @@ export function useEmailDesign(brand: MarketingBrand, storeItems: MarketingItem[
         return next as MarketingStyle;
       }),
     reset: () => { setOverrides({}); setStyle({}); },
+    /** Load a previously sent campaign back into the editor (as the starting point for a new one). */
+    loadFrom: (raw: unknown) => {
+      const r = raw && typeof raw === "object" ? (raw as Record<string, unknown>) : {};
+      const c = normalizeMarketingContent(r);
+      const next: Overrides = { subject: typeof r.subject === "string" ? r.subject : "" };
+      for (const k of TEXT_KEYS) {
+        if (k === "subject") continue;
+        const v = k === "imageUrl" ? c.imageUrl ?? "" : (c as unknown as Record<string, unknown>)[k];
+        next[k] = typeof v === "string" ? v : "";
+      }
+      next.highlights = c.highlights ?? [];
+      const stamp = Date.now();
+      next.items = c.items.map((item, i) => ({ ...item, uid: `re-${stamp}-${i}` }));
+      setTemplate(getMarketingTemplate(String(r.template)).id);
+      setOverrides(next);
+      setStyle(c.style ?? {});
+    },
     isEdited: Object.keys(overrides).length > 0 || Object.keys(style).length > 0,
     render,
   };
@@ -142,9 +160,9 @@ const UI = {
     input: "w-full min-w-0 rounded-lg border bg-background px-3 py-2 text-sm outline-none focus:border-primary",
     btn: "inline-flex items-center justify-center gap-1.5 rounded-lg border px-3 py-1.5 text-xs font-semibold hover:border-primary disabled:opacity-50",
     tile: "rounded-xl border p-2 text-left transition hover:border-primary/50",
-    tileOn: "rounded-xl border border-primary bg-primary/10 p-2 text-left transition",
+    tileOn: "rounded-xl border border-primary bg-[hsl(var(--primary)/0.1)] p-2 text-left transition",
     chip: "rounded-full border px-3 py-1 text-xs font-medium hover:border-primary/50",
-    chipOn: "rounded-full border border-primary bg-primary/10 px-3 py-1 text-xs font-semibold text-primary",
+    chipOn: "rounded-full border border-primary bg-[hsl(var(--primary)/0.1)] px-3 py-1 text-xs font-semibold text-primary",
     accent: "text-primary",
     nested: "rounded-xl border p-3",
     seg: "inline-flex overflow-hidden rounded-lg border text-xs font-semibold",
@@ -155,6 +173,12 @@ const UI = {
     frameBg: "bg-[var(--bn-admin-surface)]",
     thumbBg: "bg-white",
     warn: "border-amber-500/40 bg-amber-500/10",
+    primary: "inline-flex items-center justify-center gap-1.5 rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground disabled:opacity-50",
+    step: "flex items-center gap-2 rounded-xl border px-3 py-2 text-left text-sm font-medium transition hover:border-primary/50",
+    stepOn: "flex items-center gap-2 rounded-xl border border-primary bg-[hsl(var(--primary)/0.1)] px-3 py-2 text-left text-sm font-semibold text-primary",
+    num: "flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-muted text-[11px] font-bold",
+    numOn: "flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-primary text-[11px] font-bold text-primary-foreground",
+    divider: "border-t",
   },
   dark: {
     card: "rounded-2xl border border-slate-700 bg-slate-900 p-6",
@@ -177,6 +201,12 @@ const UI = {
     frameBg: "bg-white",
     thumbBg: "bg-white",
     warn: "border-amber-400/40 bg-amber-500/10",
+    primary: "inline-flex items-center justify-center gap-1.5 rounded-lg bg-orange-500 px-4 py-2 text-sm font-bold text-slate-950 hover:bg-orange-400 disabled:opacity-50",
+    step: "flex items-center gap-2 rounded-xl border border-slate-700 px-3 py-2 text-left text-sm font-medium text-slate-200 transition hover:border-orange-400/60",
+    stepOn: "flex items-center gap-2 rounded-xl border border-orange-400 bg-orange-500/10 px-3 py-2 text-left text-sm font-semibold text-orange-300",
+    num: "flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-slate-700 text-[11px] font-bold text-slate-200",
+    numOn: "flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-orange-500 text-[11px] font-bold text-slate-950",
+    divider: "border-t border-slate-700",
   },
 } as const;
 type Tokens = (typeof UI)[DesignerVariant];
@@ -298,26 +328,33 @@ function ImagePicker({ ui, label, value, onChange, hint }: { ui: Tokens; label: 
 /*  Designer                                                                   */
 /* -------------------------------------------------------------------------- */
 
+export type SendStep = { label: string; node: ReactNode };
+
+type StepId = "design" | "content" | "items" | "style" | "send";
+
 export function EmailDesigner({
   design,
   variant = "admin",
   darkPreview = false,
-  children,
+  sendStep,
   previewFooter,
 }: {
   design: EmailDesign;
   variant?: DesignerVariant;
   /** Admin dashboards in dark mode: tint the preview to match (never affects the sent email). */
   darkPreview?: boolean;
-  /** Extra sections (recipients, send button…) rendered under the editor. */
-  children?: ReactNode;
+  /** The final step. The dashboard passes recipients + send; the standalone tool falls back to Export. */
+  sendStep?: SendStep;
   previewFooter?: ReactNode;
 }) {
   const ui = UI[variant];
   const { brand, meta, content, style, storeItems } = design;
   const [category, setCategory] = useState<MarketingTemplateCategory | "all">("all");
   const [device, setDevice] = useState<"desktop" | "mobile">("desktop");
+  const [pane, setPane] = useState<"edit" | "preview">("edit");
   const [copied, setCopied] = useState(false);
+  const [stepId, setStepId] = useState<StepId>("design");
+  const topRef = useRef<HTMLDivElement>(null);
 
   const thumbs = useMemo(
     () => MARKETING_TEMPLATES.map((t) => ({ t, html: renderMarketingEmail(t.id, brand, defaultMarketingContent(t.id, brand, storeItems), { unsubscribeUrl: "#" }) })),
@@ -354,7 +391,7 @@ export function EmailDesigner({
   const featuredIds = new Set(design.featured.map((f) => f.uid));
   const available = storeItems.map((item, i) => ({ item, uid: `src-${i}` })).filter(({ uid }) => !featuredIds.has(uid));
   const maxItems = MARKETING_LIMITS.items;
-  let customCount = 0;
+  const white = variant === "dark" ? "text-white" : "";
 
   function updateItem(uid: string, patch: Partial<MarketingItem>) {
     design.setFeatured(design.featured.map((f) => (f.uid === uid ? { ...f, ...patch } : f)));
@@ -368,233 +405,309 @@ export function EmailDesigner({
   }
   function addBlank() {
     if (design.featured.length >= maxItems) return;
-    design.setFeatured([...design.featured, { uid: `new-${Date.now()}-${customCount++}`, name: "New item", description: "", price: "", imageUrl: "", href: "" }]);
+    design.setFeatured([...design.featured, { uid: `new-${Date.now()}`, name: "New item", description: "", price: "", imageUrl: "", href: "" }]);
   }
 
-  return (
-    <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_minmax(420px,560px)]">
-      <section className="min-w-0 space-y-5">
-        {/* 1. Choose a design */}
-        <div className={ui.card}>
-          <div className="mb-4 flex items-start justify-between gap-3">
-            <div>
-              <p className={ui.title}>Choose an email design</p>
-              <p className={`mt-1 ${ui.sub}`}>Every design is shown in your own logo, colours and imagery. Your edits carry over when you switch designs.</p>
-            </div>
-            <Sparkles className={`h-5 w-5 shrink-0 ${ui.accent}`} />
-          </div>
-          <div className="mb-4 flex flex-wrap gap-2" role="tablist" aria-label="Design categories">
-            {MARKETING_CATEGORIES.map((c) => (
-              <button key={c.id} type="button" role="tab" aria-selected={category === c.id} onClick={() => setCategory(c.id)} className={category === c.id ? ui.chipOn : ui.chip}>{c.label}</button>
-            ))}
-          </div>
-          <div className="grid gap-3 [grid-template-columns:repeat(auto-fill,minmax(12rem,1fr))]">
-            {visible.map(({ t, html }) => {
-              const on = design.template === t.id;
-              return (
-                <button key={t.id} type="button" aria-pressed={on} onClick={() => design.setTemplate(t.id)} className={on ? ui.tileOn : ui.tile}>
-                  <div className={`relative mx-auto h-44 w-[176px] overflow-hidden rounded-lg border border-black/5 ${ui.thumbBg}`}>
-                    <iframe title={`${t.name} preview`} srcDoc={html} sandbox="" loading="lazy" tabIndex={-1} aria-hidden="true" className="pointer-events-none absolute left-0 top-0 border-0" style={{ width: 640, height: 900, transform: "scale(0.275)", transformOrigin: "top left" }} />
-                    {on && <span className="absolute right-1.5 top-1.5 flex h-5 w-5 items-center justify-center rounded-full bg-black/70 text-white"><Check className="h-3 w-3" /></span>}
-                  </div>
-                  <p className={`mt-2 text-sm font-semibold ${variant === "dark" ? "text-white" : ""}`}>{t.name}</p>
-                  <p className={`mt-0.5 text-[11px] leading-4 ${ui.sub}`}>{t.description}</p>
-                </button>
-              );
-            })}
-          </div>
-        </div>
+  /* ---- steps ---- */
+  const steps: Array<{ id: StepId; label: string; warn?: boolean; count?: number }> = [
+    { id: "design", label: "Design" },
+    { id: "content", label: "Write", warn: design.sampleWarnings.length > 0 },
+    ...(design.usesItems ? [{ id: "items" as const, label: "Products", count: design.featured.length }] : []),
+    { id: "style", label: "Style" },
+    { id: "send", label: sendStep?.label ?? "Export" },
+  ];
+  const index = Math.max(0, steps.findIndex((s) => s.id === stepId));
+  const current = steps[index];
+  function go(i: number) {
+    setStepId(steps[Math.max(0, Math.min(steps.length - 1, i))].id);
+    const top = topRef.current?.getBoundingClientRect().top ?? 0;
+    if (top < 0) topRef.current?.scrollIntoView({ block: "start", behavior: "smooth" });
+  }
 
-        {/* 2. Text & buttons */}
-        <div className={ui.card}>
-          <div className="mb-5 flex items-center justify-between gap-3">
-            <div className="flex items-center gap-2"><Type className={`h-4 w-4 ${ui.accent}`} /><h2 className={ui.title}>Edit &ldquo;{meta.name}&rdquo;</h2></div>
-            {design.isEdited && (
-              <button type="button" onClick={design.reset} className={ui.btn}><RotateCcw className="h-3.5 w-3.5" />Reset to design defaults</button>
-            )}
-          </div>
-          <div className="grid gap-4">
+  const StepHeader = ({ title, sub }: { title: string; sub: string }) => (
+    <div className="mb-4"><h2 className={ui.title}>{title}</h2><p className={`mt-1 ${ui.sub}`}>{sub}</p></div>
+  );
+
+  const designStep = (
+    <div className={ui.card}>
+      <div className="mb-4 flex items-start justify-between gap-3">
+        <div>
+          <h2 className={ui.title}>Choose a design</h2>
+          <p className={`mt-1 ${ui.sub}`}>Each one is shown with your logo, colours and products. Your edits carry over if you switch later.</p>
+        </div>
+        <Sparkles className={`h-5 w-5 shrink-0 ${ui.accent}`} />
+      </div>
+      <div className="mb-4 flex flex-wrap gap-2" role="tablist" aria-label="Design categories">
+        {MARKETING_CATEGORIES.map((c) => (
+          <button key={c.id} type="button" role="tab" aria-selected={category === c.id} onClick={() => setCategory(c.id)} className={category === c.id ? ui.chipOn : ui.chip}>{c.label}</button>
+        ))}
+      </div>
+      <div className="grid gap-3 [grid-template-columns:repeat(auto-fill,minmax(12rem,1fr))]">
+        {visible.map(({ t, html }) => {
+          const on = design.template === t.id;
+          return (
+            <button key={t.id} type="button" aria-pressed={on} onClick={() => design.setTemplate(t.id)} className={on ? ui.tileOn : ui.tile}>
+              <div className={`relative mx-auto h-44 w-[176px] overflow-hidden rounded-lg border border-black/5 ${ui.thumbBg}`}>
+                <iframe title={`${t.name} preview`} srcDoc={html} sandbox="" loading="lazy" tabIndex={-1} aria-hidden="true" className="pointer-events-none absolute left-0 top-0 border-0" style={{ width: 640, height: 900, transform: "scale(0.275)", transformOrigin: "top left" }} />
+                {on && <span className="absolute right-1.5 top-1.5 flex h-5 w-5 items-center justify-center rounded-full bg-black/70 text-white"><Check className="h-3 w-3" /></span>}
+              </div>
+              <p className={`mt-2 text-sm font-semibold ${white}`}>{t.name}</p>
+              <p className={`mt-0.5 text-[11px] leading-4 ${ui.sub}`}>{t.description}</p>
+            </button>
+          );
+        })}
+      </div>
+    </div>
+  );
+
+  const contentStep = (
+    <div className="space-y-5">
+      {design.sampleWarnings.length > 0 && (
+        <div role="status" className={`rounded-xl border p-3 text-xs ${ui.warn} ${white}`}>
+          <p className="font-semibold">Replace the sample {design.sampleWarnings.join(", ")} below before you send.</p>
+        </div>
+      )}
+      <div className={ui.card}>
+        <div className="mb-4 flex items-center justify-between gap-3">
+          <div className="flex items-center gap-2"><Type className={`h-4 w-4 ${ui.accent}`} /><h2 className={ui.title}>Write your email</h2></div>
+          {design.isEdited && <button type="button" onClick={design.reset} className={ui.btn}><RotateCcw className="h-3.5 w-3.5" />Reset to defaults</button>}
+        </div>
+        <div className="grid gap-4">
+          <div className="grid gap-4 sm:grid-cols-2">
             <Field ui={ui} label="Email subject" value={design.subject} onChange={(v) => design.setText("subject", v)} placeholder="Your subject line" max={MARKETING_LIMITS.subject} />
-            <Field ui={ui} label="Preview text" value={design.text("previewText")} onChange={(v) => design.setText("previewText", v)} placeholder="The small line shown beside the subject" max={MARKETING_LIMITS.previewText} />
-            <Field ui={ui} label={meta.labels?.eyebrow ?? "Small label above the headline"} value={design.text("eyebrow")} onChange={(v) => design.setText("eyebrow", v)} max={MARKETING_LIMITS.eyebrow} />
-            <Field ui={ui} label="Headline" value={design.text("headline")} onChange={(v) => design.setText("headline", v)} max={MARKETING_LIMITS.headline} />
-            <Area ui={ui} label="Message" value={design.text("body")} onChange={(v) => design.setText("body", v)} rows={6} max={MARKETING_LIMITS.body} hint="Leave a blank line to start a new paragraph." />
+            <Field ui={ui} label="Preview text" value={design.text("previewText")} onChange={(v) => design.setText("previewText", v)} placeholder="Shown beside the subject" max={MARKETING_LIMITS.previewText} />
+          </div>
+          <div className={`${ui.divider}`} />
+          <Field ui={ui} label={meta.labels?.eyebrow ?? "Small label above the headline"} value={design.text("eyebrow")} onChange={(v) => design.setText("eyebrow", v)} max={MARKETING_LIMITS.eyebrow} />
+          <Field ui={ui} label="Headline" value={design.text("headline")} onChange={(v) => design.setText("headline", v)} max={MARKETING_LIMITS.headline} />
+          <Area ui={ui} label="Message" value={design.text("body")} onChange={(v) => design.setText("body", v)} rows={6} max={MARKETING_LIMITS.body} hint="Leave a blank line to start a new paragraph." />
+          <div className="grid gap-4 sm:grid-cols-2">
+            <Field ui={ui} label="Button label" value={design.text("ctaLabel")} onChange={(v) => design.setText("ctaLabel", v)} max={MARKETING_LIMITS.ctaLabel} />
+            <Field ui={ui} label="Button link" value={design.text("ctaUrl")} onChange={(v) => design.setText("ctaUrl", v)} placeholder="https://" max={MARKETING_LIMITS.ctaUrl} />
+          </div>
+          {has("secondaryCta") && (
             <div className="grid gap-4 sm:grid-cols-2">
-              <Field ui={ui} label="Button label" value={design.text("ctaLabel")} onChange={(v) => design.setText("ctaLabel", v)} max={MARKETING_LIMITS.ctaLabel} />
-              <Field ui={ui} label="Button link" value={design.text("ctaUrl")} onChange={(v) => design.setText("ctaUrl", v)} placeholder="https://" max={MARKETING_LIMITS.ctaUrl} />
+              <Field ui={ui} label="Second link label (optional)" value={design.text("secondaryCtaLabel")} onChange={(v) => design.setText("secondaryCtaLabel", v)} max={MARKETING_LIMITS.secondaryCtaLabel} />
+              <Field ui={ui} label="Second link URL" value={design.text("secondaryCtaUrl")} onChange={(v) => design.setText("secondaryCtaUrl", v)} placeholder="https://" max={MARKETING_LIMITS.secondaryCtaUrl} />
             </div>
-            {has("secondaryCta") && (
-              <div className="grid gap-4 sm:grid-cols-2">
-                <Field ui={ui} label="Second link label (optional)" value={design.text("secondaryCtaLabel")} onChange={(v) => design.setText("secondaryCtaLabel", v)} max={MARKETING_LIMITS.secondaryCtaLabel} />
-                <Field ui={ui} label="Second link URL" value={design.text("secondaryCtaUrl")} onChange={(v) => design.setText("secondaryCtaUrl", v)} placeholder="https://" max={MARKETING_LIMITS.secondaryCtaUrl} />
-              </div>
-            )}
-            <ImagePicker ui={ui} label={meta.labels?.image ?? "Header / cover image"} value={design.text("imageUrl")} onChange={(v) => design.setText("imageUrl", v)} hint="Shown where this design places its main picture. Leave empty for none." />
-            <div className="grid gap-4 sm:grid-cols-2">
-              <Area ui={ui} label="Sign-off (optional)" value={design.text("signature")} onChange={(v) => design.setText("signature", v)} rows={2} max={MARKETING_LIMITS.signature} placeholder={"Warmly,\nThe team"} />
-              <Area ui={ui} label="P.S. note (optional)" value={design.text("closingNote")} onChange={(v) => design.setText("closingNote", v)} rows={2} max={MARKETING_LIMITS.closingNote} placeholder="A last reminder or small print" />
-            </div>
+          )}
+          <div className={`${ui.divider}`} />
+          <ImagePicker ui={ui} label={meta.labels?.image ?? "Header / cover image"} value={design.text("imageUrl")} onChange={(v) => design.setText("imageUrl", v)} hint="Shown where this design places its main picture. Leave empty for none." />
+          <div className="grid gap-4 sm:grid-cols-2">
+            <Area ui={ui} label="Sign-off (optional)" value={design.text("signature")} onChange={(v) => design.setText("signature", v)} rows={2} max={MARKETING_LIMITS.signature} placeholder={"Warmly,\nThe team"} />
+            <Area ui={ui} label="P.S. note (optional)" value={design.text("closingNote")} onChange={(v) => design.setText("closingNote", v)} rows={2} max={MARKETING_LIMITS.closingNote} placeholder="A last reminder or small print" />
           </div>
         </div>
+      </div>
 
-        {/* 3. Offer / event / highlights */}
-        {has("offer") && (
-          <div className={ui.card}>
-            <h2 className={`mb-1 ${ui.title}`}>Offer &amp; discount code</h2>
-            <p className={`mb-4 ${ui.sub}`}>Leave a field empty to hide it in the email. Replace the sample offer with your real one before sending.</p>
-            <div className="grid gap-4 sm:grid-cols-2">
-              <Field ui={ui} label={meta.labels?.offerLabel ?? "Offer (e.g. 20% off)"} value={design.text("offerLabel")} onChange={(v) => design.setText("offerLabel", v)} max={MARKETING_LIMITS.offerLabel} />
-              <Field ui={ui} label={meta.labels?.couponCode ?? "Discount code"} value={design.text("couponCode")} onChange={(v) => design.setText("couponCode", v.toUpperCase().replace(/\s+/g, ""))} max={MARKETING_LIMITS.couponCode} placeholder="e.g. WELCOME10" />
-              <div className="sm:col-span-2"><Field ui={ui} label={meta.labels?.offerNote ?? "Terms or deadline"} value={design.text("offerNote")} onChange={(v) => design.setText("offerNote", v)} max={MARKETING_LIMITS.offerNote} placeholder="e.g. Ends Sunday. One use per customer." /></div>
-            </div>
-          </div>
-        )}
-        {has("event") && (
-          <div className={ui.card}>
-            <h2 className={`mb-1 ${ui.title}`}>Event details</h2>
-            <p className={`mb-4 ${ui.sub}`}>Replace the sample date and time with your real event details.</p>
-            <div className="grid gap-4 sm:grid-cols-2">
-              <Field ui={ui} label="Date" value={design.text("eventDate")} onChange={(v) => design.setText("eventDate", v)} max={MARKETING_LIMITS.eventDate} />
-              <Field ui={ui} label="Time" value={design.text("eventTime")} onChange={(v) => design.setText("eventTime", v)} max={MARKETING_LIMITS.eventTime} />
-              <div className="sm:col-span-2"><Field ui={ui} label="Location" value={design.text("eventLocation")} onChange={(v) => design.setText("eventLocation", v)} max={MARKETING_LIMITS.eventLocation} /></div>
-            </div>
-          </div>
-        )}
-        {has("highlights") && (
-          <div className={ui.card}>
-            <div className="mb-3 flex items-center justify-between gap-3">
-              <div><h2 className={ui.title}>{meta.labels?.highlights ?? "Highlights"}</h2><p className={`mt-1 ${ui.sub}`}>Short lines shown as a list in the email. Up to {MARKETING_LIMITS.highlights}.</p></div>
-              <button type="button" disabled={design.highlights.length >= MARKETING_LIMITS.highlights} onClick={() => design.setHighlights([...design.highlights, ""])} className={ui.btn}><Plus className="h-3.5 w-3.5" />Add line</button>
-            </div>
-            <div className="space-y-2">
-              {design.highlights.map((h, i) => (
-                <div key={i} className="flex items-center gap-2">
-                  <input aria-label={`Highlight ${i + 1}`} value={h} maxLength={MARKETING_LIMITS.highlight} onChange={(e) => design.setHighlights(design.highlights.map((x, j) => (j === i ? e.target.value : x)))} className={ui.input} />
-                  <button type="button" aria-label="Remove line" onClick={() => design.setHighlights(design.highlights.filter((_, j) => j !== i))} className={ui.btn}><Trash2 className="h-3.5 w-3.5" /></button>
-                </div>
-              ))}
-              {!design.highlights.length && <p className={`rounded-lg border border-dashed p-4 text-center ${ui.sub}`}>No lines yet. Add one to show a list.</p>}
-            </div>
-          </div>
-        )}
-
-        {/* 4. Featured items */}
-        {design.usesItems && (
-          <div className={ui.card}>
-            <div className="mb-4 flex items-start justify-between gap-3">
-              <div><h2 className={ui.title}>Featured products &amp; services</h2><p className={`mt-1 ${ui.sub}`}>Pull items from your storefront or write your own. Edit names, prices, pictures and links. Up to {maxItems}.</p></div>
-              <ImageIcon className={`h-4 w-4 shrink-0 ${ui.accent}`} />
-            </div>
-            <div className="space-y-3">
-              {design.featured.map((f, i) => (
-                <details key={f.uid} className={ui.nested} open={f.uid.startsWith("new-")}>
-                  <summary className="flex cursor-pointer list-none items-center gap-3">
-                    <span className="h-10 w-10 shrink-0 overflow-hidden rounded-lg bg-black/10">{f.imageUrl ? <img src={f.imageUrl} alt="" className="h-full w-full object-cover" /> : null}</span>
-                    <span className="min-w-0 flex-1"><span className={`block truncate text-sm font-semibold ${variant === "dark" ? "text-white" : ""}`}>{f.name || "Untitled item"}</span><span className={`block truncate ${ui.sub}`}>{f.price || "No price"}</span></span>
-                    <span className="flex shrink-0 gap-1" onClick={(e) => e.preventDefault()}>
-                      <button type="button" aria-label="Move up" disabled={i === 0} onClick={() => moveItem(i, -1)} className={ui.btn}><ArrowUp className="h-3.5 w-3.5" /></button>
-                      <button type="button" aria-label="Move down" disabled={i === design.featured.length - 1} onClick={() => moveItem(i, 1)} className={ui.btn}><ArrowDown className="h-3.5 w-3.5" /></button>
-                      <button type="button" aria-label="Remove item" onClick={() => design.setFeatured(design.featured.filter((x) => x.uid !== f.uid))} className={ui.btn}><Trash2 className="h-3.5 w-3.5" /></button>
-                    </span>
-                  </summary>
-                  <div className="mt-4 grid gap-3">
-                    <div className="grid gap-3 sm:grid-cols-[1fr_9rem]">
-                      <Field ui={ui} label="Name" value={f.name} max={MARKETING_LIMITS.itemName} onChange={(v) => updateItem(f.uid, { name: v })} />
-                      <Field ui={ui} label="Price" value={f.price ?? ""} max={MARKETING_LIMITS.itemPrice} onChange={(v) => updateItem(f.uid, { price: v })} placeholder="NGN 5,000" />
-                    </div>
-                    <Area ui={ui} label="Description" value={f.description ?? ""} rows={2} max={MARKETING_LIMITS.itemDescription} onChange={(v) => updateItem(f.uid, { description: v })} />
-                    <ImagePicker ui={ui} label="Picture" value={f.imageUrl ?? ""} onChange={(v) => updateItem(f.uid, { imageUrl: v })} />
-                    <Field ui={ui} label="Link (optional)" value={f.href ?? ""} max={MARKETING_LIMITS.itemUrl} onChange={(v) => updateItem(f.uid, { href: v })} placeholder="Opens your storefront if left empty" />
-                  </div>
-                </details>
-              ))}
-              {!design.featured.length && <p className={`rounded-lg border border-dashed p-5 text-center ${ui.sub}`}>No items selected. Add some below or leave this design without a product section.</p>}
-            </div>
-            <div className="mt-4 flex flex-wrap items-center gap-2">
-              <button type="button" onClick={addBlank} disabled={design.featured.length >= maxItems} className={ui.btn}><Plus className="h-3.5 w-3.5" />Add custom item</button>
-              {available.length > 0 && <span className={ui.sub}>or add from your storefront:</span>}
-            </div>
-            {available.length > 0 && (
-              <div className="mt-3 grid gap-2 sm:grid-cols-2">
-                {available.map(({ item, uid }) => (
-                  <button key={uid} type="button" disabled={design.featured.length >= maxItems} onClick={() => design.setFeatured([...design.featured, { ...item, uid }])} className={`flex items-center gap-3 ${ui.nested} text-left hover:border-primary/40 disabled:opacity-50`}>
-                    <span className="h-10 w-10 shrink-0 overflow-hidden rounded-lg bg-black/10">{item.imageUrl ? <img src={item.imageUrl} alt="" className="h-full w-full object-cover" /> : null}</span>
-                    <span className="min-w-0"><span className={`block truncate text-sm font-semibold ${variant === "dark" ? "text-white" : ""}`}>{item.name}</span><span className={`block truncate ${ui.sub}`}>{item.kind === "service" ? "Service" : "Product"}{item.price ? ` · ${item.price}` : ""}</span></span>
-                    <Plus className={`ml-auto h-4 w-4 shrink-0 ${ui.accent}`} />
-                  </button>
-                ))}
-              </div>
-            )}
-          </div>
-        )}
-
-        {/* 5. Look & feel */}
+      {has("offer") && (
         <div className={ui.card}>
-          <div className="mb-1 flex items-center gap-2"><Palette className={`h-4 w-4 ${ui.accent}`} /><h2 className={ui.title}>Look &amp; feel</h2></div>
-          <p className={`mb-4 ${ui.sub}`}>Starts with your brand. Change anything for this email only.</p>
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-            <ColorField ui={ui} label="Brand colour" value={hex6(style.primary ?? brand.primary, "#111827")} custom={!!style.primary} onChange={(v) => design.patchStyle({ primary: v })} onReset={() => design.patchStyle({ primary: undefined })} />
-            <ColorField ui={ui} label="Button colour" value={hex6(style.button ?? style.primary ?? brand.primary, "#111827")} custom={!!style.button} onChange={(v) => design.patchStyle({ button: v })} onReset={() => design.patchStyle({ button: undefined })} />
-            <ColorField ui={ui} label="Page background" value={hex6(style.background ?? brand.background, "#f3f4f6")} custom={!!style.background} onChange={(v) => design.patchStyle({ background: v })} onReset={() => design.patchStyle({ background: undefined })} />
-            <ColorField ui={ui} label="Text colour" value={hex6(style.text ?? brand.text, "#111827")} custom={!!style.text} onChange={(v) => design.patchStyle({ text: v })} onReset={() => design.patchStyle({ text: undefined })} />
+          <StepHeader title="Offer & discount code" sub="Leave a field empty to hide it in the email." />
+          <div className="grid gap-4 sm:grid-cols-2">
+            <Field ui={ui} label={meta.labels?.offerLabel ?? "Offer (e.g. 20% off)"} value={design.text("offerLabel")} onChange={(v) => design.setText("offerLabel", v)} max={MARKETING_LIMITS.offerLabel} />
+            <Field ui={ui} label={meta.labels?.couponCode ?? "Discount code"} value={design.text("couponCode")} onChange={(v) => design.setText("couponCode", v.toUpperCase().replace(/\s+/g, ""))} max={MARKETING_LIMITS.couponCode} placeholder="e.g. WELCOME10" />
+            <div className="sm:col-span-2"><Field ui={ui} label={meta.labels?.offerNote ?? "Terms or deadline"} value={design.text("offerNote")} onChange={(v) => design.setText("offerNote", v)} max={MARKETING_LIMITS.offerNote} placeholder="e.g. Ends Sunday. One use per customer." /></div>
           </div>
-          <div className="mt-5 grid gap-4 sm:grid-cols-2">
-            <label className="grid gap-1.5">
-              <span className={ui.label}>Font</span>
-              <select value={style.font ?? ""} onChange={(e) => design.patchStyle({ font: (e.target.value || undefined) as MarketingStyle["font"] })} className={ui.input}>
-                <option value="">Design default</option>
-                {MARKETING_FONT_OPTIONS.map((f) => <option key={f.id} value={f.id}>{f.label}</option>)}
-              </select>
-            </label>
-            <Segmented ui={ui} label="Button shape" value={style.buttonShape ?? "rounded"} onChange={(v) => design.patchStyle({ buttonShape: v })} options={[{ id: "rounded", label: "Rounded" }, { id: "pill", label: "Pill" }, { id: "square", label: "Square" }]} />
-            <Segmented ui={ui} label="Text alignment" value={style.align ?? meta.align} onChange={(v) => design.patchStyle({ align: v })} options={[{ id: "left", label: "Left" }, { id: "center", label: "Centred" }]} />
-          </div>
-          <div className="mt-5 grid gap-2 sm:grid-cols-2">
-            <Toggle ui={ui} label="Show logo header" checked={style.showLogo !== false && design.template !== "newsletter"} disabled={design.template === "newsletter"} onChange={(v) => design.patchStyle({ showLogo: v })} />
-            <Toggle ui={ui} label="Show main image" checked={style.showImage !== false} onChange={(v) => design.patchStyle({ showImage: v })} />
-            {design.usesItems && <Toggle ui={ui} label="Show featured items" checked={style.showItems !== false} onChange={(v) => design.patchStyle({ showItems: v })} />}
-            <Toggle ui={ui} label="Show contact & social links in footer" checked={style.showFooterDetails !== false} onChange={(v) => design.patchStyle({ showFooterDetails: v })} />
-          </div>
-          <p className={`mt-4 ${ui.sub}`}>The unsubscribe link is always included.</p>
         </div>
+      )}
+      {has("event") && (
+        <div className={ui.card}>
+          <StepHeader title="Event details" sub="Shown as a date, time and place block." />
+          <div className="grid gap-4 sm:grid-cols-2">
+            <Field ui={ui} label="Date" value={design.text("eventDate")} onChange={(v) => design.setText("eventDate", v)} max={MARKETING_LIMITS.eventDate} />
+            <Field ui={ui} label="Time" value={design.text("eventTime")} onChange={(v) => design.setText("eventTime", v)} max={MARKETING_LIMITS.eventTime} />
+            <div className="sm:col-span-2"><Field ui={ui} label="Location" value={design.text("eventLocation")} onChange={(v) => design.setText("eventLocation", v)} max={MARKETING_LIMITS.eventLocation} /></div>
+          </div>
+        </div>
+      )}
+      {has("highlights") && (
+        <div className={ui.card}>
+          <div className="mb-3 flex items-center justify-between gap-3">
+            <div><h2 className={ui.title}>{meta.labels?.highlights ?? "Highlights"}</h2><p className={`mt-1 ${ui.sub}`}>Short lines shown as a list. Up to {MARKETING_LIMITS.highlights}.</p></div>
+            <button type="button" disabled={design.highlights.length >= MARKETING_LIMITS.highlights} onClick={() => design.setHighlights([...design.highlights, ""])} className={ui.btn}><Plus className="h-3.5 w-3.5" />Add line</button>
+          </div>
+          <div className="space-y-2">
+            {design.highlights.map((h, i) => (
+              <div key={i} className="flex items-center gap-2">
+                <input aria-label={`Highlight ${i + 1}`} value={h} maxLength={MARKETING_LIMITS.highlight} onChange={(e) => design.setHighlights(design.highlights.map((x, j) => (j === i ? e.target.value : x)))} className={ui.input} />
+                <button type="button" aria-label="Remove line" onClick={() => design.setHighlights(design.highlights.filter((_, j) => j !== i))} className={ui.btn}><Trash2 className="h-3.5 w-3.5" /></button>
+              </div>
+            ))}
+            {!design.highlights.length && <p className={`rounded-lg border border-dashed p-4 text-center ${ui.sub}`}>No lines yet. Add one to show a list.</p>}
+          </div>
+        </div>
+      )}
+    </div>
+  );
 
-        {children}
-      </section>
+  const itemsStep = (
+    <div className={ui.card}>
+      <div className="mb-4 flex items-start justify-between gap-3">
+        <div><h2 className={ui.title}>Featured products &amp; services</h2><p className={`mt-1 ${ui.sub}`}>Pull items from your storefront or write your own. Up to {maxItems}.</p></div>
+        <ImageIcon className={`h-4 w-4 shrink-0 ${ui.accent}`} />
+      </div>
+      <div className="space-y-3">
+        {design.featured.map((f, i) => (
+          <details key={f.uid} className={ui.nested} open={f.uid.startsWith("new-")}>
+            <summary className="flex cursor-pointer list-none items-center gap-3">
+              <span className="h-10 w-10 shrink-0 overflow-hidden rounded-lg bg-black/10">{f.imageUrl ? <img src={f.imageUrl} alt="" className="h-full w-full object-cover" /> : null}</span>
+              <span className="min-w-0 flex-1"><span className={`block truncate text-sm font-semibold ${white}`}>{f.name || "Untitled item"}</span><span className={`block truncate ${ui.sub}`}>{f.price || "No price"}</span></span>
+              <span className="flex shrink-0 gap-1" onClick={(e) => e.preventDefault()}>
+                <button type="button" aria-label="Move up" disabled={i === 0} onClick={() => moveItem(i, -1)} className={ui.btn}><ArrowUp className="h-3.5 w-3.5" /></button>
+                <button type="button" aria-label="Move down" disabled={i === design.featured.length - 1} onClick={() => moveItem(i, 1)} className={ui.btn}><ArrowDown className="h-3.5 w-3.5" /></button>
+                <button type="button" aria-label="Remove item" onClick={() => design.setFeatured(design.featured.filter((x) => x.uid !== f.uid))} className={ui.btn}><Trash2 className="h-3.5 w-3.5" /></button>
+              </span>
+            </summary>
+            <div className="mt-4 grid gap-3">
+              <div className="grid gap-3 sm:grid-cols-[1fr_9rem]">
+                <Field ui={ui} label="Name" value={f.name} max={MARKETING_LIMITS.itemName} onChange={(v) => updateItem(f.uid, { name: v })} />
+                <Field ui={ui} label="Price" value={f.price ?? ""} max={MARKETING_LIMITS.itemPrice} onChange={(v) => updateItem(f.uid, { price: v })} placeholder="NGN 5,000" />
+              </div>
+              <Area ui={ui} label="Description" value={f.description ?? ""} rows={2} max={MARKETING_LIMITS.itemDescription} onChange={(v) => updateItem(f.uid, { description: v })} />
+              <ImagePicker ui={ui} label="Picture" value={f.imageUrl ?? ""} onChange={(v) => updateItem(f.uid, { imageUrl: v })} />
+              <Field ui={ui} label="Link (optional)" value={f.href ?? ""} max={MARKETING_LIMITS.itemUrl} onChange={(v) => updateItem(f.uid, { href: v })} placeholder="Opens your storefront if left empty" />
+            </div>
+          </details>
+        ))}
+        {!design.featured.length && <p className={`rounded-lg border border-dashed p-5 text-center ${ui.sub}`}>No items selected. Add some below, or turn off &ldquo;Show featured items&rdquo; in Style.</p>}
+      </div>
+      <div className="mt-4 flex flex-wrap items-center gap-2">
+        <button type="button" onClick={addBlank} disabled={design.featured.length >= maxItems} className={ui.btn}><Plus className="h-3.5 w-3.5" />Add custom item</button>
+        {available.length > 0 && <span className={ui.sub}>or add from your storefront:</span>}
+      </div>
+      {available.length > 0 && (
+        <div className="mt-3 grid gap-2 sm:grid-cols-2">
+          {available.map(({ item, uid }) => (
+            <button key={uid} type="button" disabled={design.featured.length >= maxItems} onClick={() => design.setFeatured([...design.featured, { ...item, uid }])} className={`flex items-center gap-3 ${ui.nested} text-left hover:border-primary/40 disabled:opacity-50`}>
+              <span className="h-10 w-10 shrink-0 overflow-hidden rounded-lg bg-black/10">{item.imageUrl ? <img src={item.imageUrl} alt="" className="h-full w-full object-cover" /> : null}</span>
+              <span className="min-w-0"><span className={`block truncate text-sm font-semibold ${white}`}>{item.name}</span><span className={`block truncate ${ui.sub}`}>{item.kind === "service" ? "Service" : "Product"}{item.price ? ` · ${item.price}` : ""}</span></span>
+              <Plus className={`ml-auto h-4 w-4 shrink-0 ${ui.accent}`} />
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
 
-      {/* Preview */}
-      <aside className="min-w-0 xl:sticky xl:top-4 xl:self-start">
-        <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
-          <div><p className={ui.title}>Live email preview</p><p className={ui.sub}>Updates as you type.</p></div>
-          <div className="flex items-center gap-2">
+  const styleStep = (
+    <div className={ui.card}>
+      <div className="mb-1 flex items-center gap-2"><Palette className={`h-4 w-4 ${ui.accent}`} /><h2 className={ui.title}>Look &amp; feel</h2></div>
+      <p className={`mb-4 ${ui.sub}`}>Starts with your brand. Changes here apply to this email only.</p>
+      <p className={`mb-2 text-xs font-semibold ${white}`}>Colours</p>
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <ColorField ui={ui} label="Brand colour" value={hex6(style.primary ?? brand.primary, "#111827")} custom={!!style.primary} onChange={(v) => design.patchStyle({ primary: v })} onReset={() => design.patchStyle({ primary: undefined })} />
+        <ColorField ui={ui} label="Button colour" value={hex6(style.button ?? style.primary ?? brand.primary, "#111827")} custom={!!style.button} onChange={(v) => design.patchStyle({ button: v })} onReset={() => design.patchStyle({ button: undefined })} />
+        <ColorField ui={ui} label="Page background" value={hex6(style.background ?? brand.background, "#f3f4f6")} custom={!!style.background} onChange={(v) => design.patchStyle({ background: v })} onReset={() => design.patchStyle({ background: undefined })} />
+        <ColorField ui={ui} label="Text colour" value={hex6(style.text ?? brand.text, "#111827")} custom={!!style.text} onChange={(v) => design.patchStyle({ text: v })} onReset={() => design.patchStyle({ text: undefined })} />
+      </div>
+      <div className={`my-5 ${ui.divider}`} />
+      <p className={`mb-2 text-xs font-semibold ${white}`}>Type &amp; layout</p>
+      <div className="grid gap-4 sm:grid-cols-2">
+        <label className="grid gap-1.5">
+          <span className={ui.label}>Font</span>
+          <select value={style.font ?? ""} onChange={(e) => design.patchStyle({ font: (e.target.value || undefined) as MarketingStyle["font"] })} className={ui.input}>
+            <option value="">Design default</option>
+            {MARKETING_FONT_OPTIONS.map((f) => <option key={f.id} value={f.id}>{f.label}</option>)}
+          </select>
+        </label>
+        <Segmented ui={ui} label="Text alignment" value={style.align ?? meta.align} onChange={(v) => design.patchStyle({ align: v })} options={[{ id: "left", label: "Left" }, { id: "center", label: "Centred" }]} />
+        <Segmented ui={ui} label="Button shape" value={style.buttonShape ?? "rounded"} onChange={(v) => design.patchStyle({ buttonShape: v })} options={[{ id: "rounded", label: "Rounded" }, { id: "pill", label: "Pill" }, { id: "square", label: "Square" }]} />
+      </div>
+      <div className={`my-5 ${ui.divider}`} />
+      <p className={`mb-2 text-xs font-semibold ${white}`}>Show or hide</p>
+      <div className="grid gap-2 sm:grid-cols-2">
+        <Toggle ui={ui} label="Logo header" checked={style.showLogo !== false && design.template !== "newsletter"} disabled={design.template === "newsletter"} onChange={(v) => design.patchStyle({ showLogo: v })} />
+        <Toggle ui={ui} label="Main image" checked={style.showImage !== false} onChange={(v) => design.patchStyle({ showImage: v })} />
+        {design.usesItems && <Toggle ui={ui} label="Featured items" checked={style.showItems !== false} onChange={(v) => design.patchStyle({ showItems: v })} />}
+        <Toggle ui={ui} label="Contact & social links in footer" checked={style.showFooterDetails !== false} onChange={(v) => design.patchStyle({ showFooterDetails: v })} />
+      </div>
+      <p className={`mt-4 ${ui.sub}`}>The unsubscribe link is always included.</p>
+    </div>
+  );
+
+  const exportStep = (
+    <div className={ui.card}>
+      <StepHeader title="Export your email" sub="Copy or download the finished HTML to use in your own sending tool." />
+      <div className="flex flex-wrap gap-2">
+        <button type="button" onClick={copyHtml} className={ui.primary}><Copy className="h-4 w-4" />{copied ? "Copied" : "Copy HTML"}</button>
+        <button type="button" onClick={downloadHtml} className={ui.btn}><Download className="h-3.5 w-3.5" />Download .html</button>
+      </div>
+      <p className={`mt-3 ${ui.sub}`}>The export keeps a {"{{unsubscribe_url}}"} placeholder for your sending tool to fill in.</p>
+    </div>
+  );
+
+  const stepBody: Record<StepId, ReactNode> = { design: designStep, content: contentStep, items: itemsStep, style: styleStep, send: sendStep?.node ?? exportStep };
+
+  return (
+    <div className="min-w-0">
+      {/* Small screens: switch between editing and previewing */}
+      <div className={`mb-4 xl:hidden ${ui.seg}`} role="group" aria-label="Editor or preview">
+        <button type="button" aria-pressed={pane === "edit"} onClick={() => setPane("edit")} className={`flex-1 px-4 py-2 ${pane === "edit" ? ui.segOn : ui.segOff}`}>Edit</button>
+        <button type="button" aria-pressed={pane === "preview"} onClick={() => setPane("preview")} className={`flex-1 px-4 py-2 ${pane === "preview" ? ui.segOn : ui.segOff}`}>Preview</button>
+      </div>
+
+      <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_minmax(400px,520px)]">
+        <section ref={topRef} className={`min-w-0 space-y-5 ${pane === "preview" ? "hidden xl:block" : ""}`}>
+          <nav aria-label="Email steps">
+            <ol className="flex flex-wrap gap-2">
+              {steps.map((s, i) => {
+                const on = s.id === current.id;
+                return (
+                  <li key={s.id}>
+                    <button type="button" aria-current={on ? "step" : undefined} onClick={() => go(i)} className={on ? ui.stepOn : ui.step}>
+                      <span className={on ? ui.numOn : ui.num}>{i < index ? <Check className="h-3 w-3" /> : i + 1}</span>
+                      {s.label}
+                      {s.count !== undefined && <span className={`text-[11px] font-normal ${ui.sub}`}>{s.count}</span>}
+                      {s.warn && <span className="h-2 w-2 rounded-full bg-amber-500" aria-label="Needs attention" />}
+                    </button>
+                  </li>
+                );
+              })}
+            </ol>
+          </nav>
+
+          {stepBody[current.id]}
+
+          <div className="flex items-center justify-between gap-3">
+            <button type="button" disabled={index === 0} onClick={() => go(index - 1)} className={ui.btn}>Back</button>
+            {index < steps.length - 1 && <button type="button" onClick={() => go(index + 1)} className={ui.primary}>Next: {steps[index + 1].label}</button>}
+          </div>
+        </section>
+
+        {/* Preview */}
+        <aside className={`min-w-0 xl:sticky xl:top-4 xl:self-start ${pane === "edit" ? "hidden xl:block" : ""}`}>
+          <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+            <div><p className={ui.title}>Live preview</p><p className={ui.sub}>Updates as you type.</p></div>
             <div className={ui.seg} role="group" aria-label="Preview size">
               <button type="button" aria-pressed={device === "desktop"} onClick={() => setDevice("desktop")} className={`inline-flex items-center gap-1 px-2.5 py-1.5 ${device === "desktop" ? ui.segOn : ui.segOff}`}><Monitor className="h-3.5 w-3.5" />Desktop</button>
               <button type="button" aria-pressed={device === "mobile"} onClick={() => setDevice("mobile")} className={`inline-flex items-center gap-1 px-2.5 py-1.5 ${device === "mobile" ? ui.segOn : ui.segOff}`}><Smartphone className="h-3.5 w-3.5" />Mobile</button>
             </div>
           </div>
-        </div>
-        <div className={`mb-3 overflow-hidden rounded-2xl border ${variant === "dark" ? "border-slate-700 bg-slate-900" : "bg-background"} shadow-sm`}>
-          <div className={`px-4 py-3 ${variant === "dark" ? "bg-slate-800/60" : "bg-muted/40"}`}>
-            <p className={`mb-2 text-[10px] font-semibold uppercase tracking-wide ${ui.sub}`}>Inbox preview</p>
-            <div className="flex gap-3">
-              <div className={`mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-xs font-bold ${variant === "dark" ? "bg-orange-500/15 text-orange-300" : "bg-primary/10 text-primary"}`}>{brand.name.slice(0, 1).toUpperCase()}</div>
-              <div className="min-w-0 flex-1">
-                <div className="flex items-baseline gap-2"><p className={`truncate text-sm font-semibold ${variant === "dark" ? "text-white" : ""}`}>{brand.name}</p><p className={`ml-auto shrink-0 text-[10px] ${ui.sub}`}>Now</p></div>
-                <p className={`truncate text-sm font-medium ${variant === "dark" ? "text-slate-100" : ""}`}>{design.subject || "Your subject line"}</p>
-                <p className={`truncate ${ui.sub}`}>{design.text("previewText") || "The small line shown beside the subject"}</p>
+          <div className={`mb-3 overflow-hidden rounded-2xl border ${variant === "dark" ? "border-slate-700 bg-slate-900" : "bg-background"} shadow-sm`}>
+            <div className={`px-4 py-3 ${variant === "dark" ? "bg-slate-800/60" : "bg-muted/40"}`}>
+              <p className={`mb-2 text-[10px] font-semibold uppercase tracking-wide ${ui.sub}`}>Inbox preview</p>
+              <div className="flex gap-3">
+                <div className={`mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-xs font-bold ${variant === "dark" ? "bg-orange-500/15 text-orange-300" : "bg-[hsl(var(--primary)/0.1)] text-primary"}`}>{brand.name.slice(0, 1).toUpperCase()}</div>
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-baseline gap-2"><p className={`truncate text-sm font-semibold ${white}`}>{brand.name}</p><p className={`ml-auto shrink-0 text-[10px] ${ui.sub}`}>Now</p></div>
+                  <p className={`truncate text-sm font-medium ${variant === "dark" ? "text-slate-100" : ""}`}>{design.subject || "Your subject line"}</p>
+                  <p className={`truncate ${ui.sub}`}>{design.text("previewText") || "The small line shown beside the subject"}</p>
+                </div>
               </div>
             </div>
           </div>
-        </div>
-        <div className={ui.frameWrap}>
-          <iframe title="Email preview" srcDoc={previewHtml} sandbox="" className={`mx-auto h-[760px] rounded-xl ${ui.frameBg} ${device === "mobile" ? "w-[390px] max-w-full" : "w-full"}`} />
-        </div>
-        <div className="mt-3 flex flex-wrap gap-2">
-          <button type="button" onClick={copyHtml} className={ui.btn}><Copy className="h-3.5 w-3.5" />{copied ? "Copied" : "Copy HTML"}</button>
-          <button type="button" onClick={downloadHtml} className={ui.btn}><Download className="h-3.5 w-3.5" />Download .html</button>
-        </div>
-        <p className={`mt-2 ${ui.sub}`}>Exported HTML keeps a {"{{unsubscribe_url}}"} placeholder for your sending tool to fill in.</p>
-        {previewFooter}
-      </aside>
+          <div className={ui.frameWrap}>
+            <iframe title="Email preview" srcDoc={previewHtml} sandbox="" className={`mx-auto h-[720px] rounded-xl ${ui.frameBg} ${device === "mobile" ? "w-[390px] max-w-full" : "w-full"}`} />
+          </div>
+          {sendStep && (
+            <div className="mt-3 flex flex-wrap gap-2">
+              <button type="button" onClick={copyHtml} className={ui.btn}><Copy className="h-3.5 w-3.5" />{copied ? "Copied" : "Copy HTML"}</button>
+              <button type="button" onClick={downloadHtml} className={ui.btn}><Download className="h-3.5 w-3.5" />Download .html</button>
+            </div>
+          )}
+          {previewFooter}
+        </aside>
+      </div>
     </div>
   );
 }

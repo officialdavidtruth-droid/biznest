@@ -33,7 +33,7 @@ export async function createCrmLead(slug:string, input:{name:string;email?:strin
   const lead=await prisma.crmLead.create({data:{storeId:access.store.id,name:input.name.trim(),email:clean(input.email),phone:clean(input.phone),company:clean(input.company),source,value:typeof input.value==="number"&&input.value>=0?input.value:undefined,notes:clean(input.notes),nextFollowUpAt:input.nextFollowUpAt?new Date(input.nextFollowUpAt):undefined}});
   await runAutomationsForEvent({ type: "CRM_LEAD_CREATED", storeId: access.store.id, data: { leadId: lead.id, name: lead.name, email: lead.email ?? undefined } });
   revalidatePath(`/store/${slug}/admin/apps/crm`);
-  return {success:true,data:lead};
+  return {success:true,data:{id:lead.id}};
 }
 
 export async function updateCrmLeadStatus(slug:string,id:string,status:string){
@@ -41,6 +41,29 @@ export async function updateCrmLeadStatus(slug:string,id:string,status:string){
   const allowed=["NEW","CONTACTED","QUALIFIED","PROPOSAL","WON","LOST"];
   if(!allowed.includes(status)) return {success:false,error:"Invalid lead status."};
   const result=await prisma.crmLead.updateMany({where:{id,storeId:access.store.id},data:{status:status as any}});
+  if(!result.count) return {success:false,error:"Lead not found."};
+  revalidatePath(`/store/${slug}/admin/apps/crm`);
+  return {success:true};
+}
+
+export async function updateCrmLeadDetails(slug:string,id:string,input:{value?:number|null;nextFollowUpAt?:string|null;notes?:string|null}){
+  const access=await assertStorePermission(slug,"customers"); if(!access.success) return access;
+  const data:{value?:number|null;nextFollowUpAt?:Date|null;notes?:string|null}={};
+  if("value" in input){
+    const v=input.value;
+    if(v!==null && v!==undefined && (typeof v!=="number" || !Number.isFinite(v) || v<0 || v>1e10)) return {success:false,error:"Enter a valid value."};
+    data.value=v ?? null;
+  }
+  if("nextFollowUpAt" in input){
+    if(input.nextFollowUpAt){
+      const d=new Date(input.nextFollowUpAt);
+      if(Number.isNaN(d.getTime())) return {success:false,error:"Enter a valid follow-up date."};
+      data.nextFollowUpAt=d;
+    } else data.nextFollowUpAt=null;
+  }
+  if("notes" in input) data.notes=clean(input.notes)?.slice(0,2000) ?? null;
+  if(!Object.keys(data).length) return {success:true};
+  const result=await prisma.crmLead.updateMany({where:{id,storeId:access.store.id},data});
   if(!result.count) return {success:false,error:"Lead not found."};
   revalidatePath(`/store/${slug}/admin/apps/crm`);
   return {success:true};
