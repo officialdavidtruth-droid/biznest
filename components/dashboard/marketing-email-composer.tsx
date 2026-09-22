@@ -3,7 +3,6 @@
 import { useMemo, useState, useTransition } from "react";
 import { AlertCircle, CheckCircle2, Mail, Send, Users } from "lucide-react";
 import { sendMarketingCampaign } from "@/lib/actions/marketing";
-import { useTheme } from "@/components/theme/theme-provider";
 import { EmailDesigner, type EmailDesign } from "@/components/marketing/email-designer";
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -22,7 +21,6 @@ export function MarketingEmailComposer({
   activeSubscribers: number;
   onSent?: () => void;
 }) {
-  const { resolvedTheme } = useTheme();
   const [isPending, startTransition] = useTransition();
   const [result, setResult] = useState<{ ok: boolean; text: string } | null>(null);
   const [manualEmailsText, setManualEmailsText] = useState("");
@@ -117,5 +115,6 @@ export function MarketingEmailComposer({
     </div>
   );
 
-  return <EmailDesigner design={design} variant="admin" darkPreview={resolvedTheme === "dark"} sendStep={{ label: "Send", node: sendNode }} />;
+  // BizNest no longer has a dark mode — the composer preview always renders light.
+  return <EmailDesigner design={design} variant="admin" darkPreview={false} sendStep={{ label: "Send", node: sendNode }} />;
 }
