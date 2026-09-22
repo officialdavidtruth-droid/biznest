@@ -62,7 +62,7 @@ export default async function MarketingStandalonePage() {
                 Go to dashboard
               </Link>
             ) : access.status === "signed-out" ? (
-              <Link href={`/register?callbackUrl=${encodeURIComponent("/marketing")}`} className="rounded-full bg-orange-500 px-5 py-2.5 font-bold text-slate-950 hover:bg-orange-400">
+              <Link href="/marketing/signup" className="rounded-full bg-orange-500 px-5 py-2.5 font-bold text-slate-950 hover:bg-orange-400">
                 Sign up
               </Link>
             ) : (
@@ -89,7 +89,7 @@ export default async function MarketingStandalonePage() {
                 </>
               ) : access.status === "signed-out" ? (
                 <>
-                  <Link href={`/register?callbackUrl=${encodeURIComponent("/marketing")}`} className="rounded-full bg-orange-500 px-7 py-3.5 font-bold text-slate-950 hover:bg-orange-400">Sign up</Link>
+                  <Link href="/marketing/signup" className="rounded-full bg-orange-500 px-7 py-3.5 font-bold text-slate-950 hover:bg-orange-400">Sign up</Link>
                   <Link href={`/login?callbackUrl=${encodeURIComponent("/marketing")}`} className="rounded-full border border-slate-500 px-7 py-3.5 font-semibold text-white hover:bg-white/10">Sign in</Link>
                 </>
               ) : (

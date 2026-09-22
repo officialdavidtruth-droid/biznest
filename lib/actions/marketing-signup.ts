@@ -1,0 +1,104 @@
+"use server";
+
+import bcrypt from "bcryptjs";
+import { headers } from "next/headers";
+import { prisma } from "@/lib/prisma";
+import { z } from "zod";
+import { checkRateLimit, getClientIp } from "@/lib/rate-limit";
+import { generateUniqueStoreSlug } from "@/lib/utils/slug";
+import { canonicalizeBusinessType, CANONICAL_BUSINESS_TYPES } from "@/lib/business-identity";
+import type { ActionResult } from "@/types/actions";
+
+/**
+ * The lightweight path into BizNest Marketing: no business verification
+ * (government ID / registration cert / fraud policy), no template or plan
+ * choice, no product/service setup -- just enough to know who the business
+ * is and which niche's email templates to default to (see
+ * lib/email/marketing-templates.ts, which already keys off businessType).
+ *
+ * Creates User + Business + Store in one transaction. The resulting store
+ * is marked marketingOnly: true, which keeps it out of the full admin
+ * dashboard entirely (see app/store/[slug]/admin/layout.tsx) and grants
+ * standalone Marketing-tool access without a Business Mogul subscription
+ * (see lib/access/marketing-tool.ts). Unlike registerUser (lib/actions/auth.ts),
+ * this never routes through /onboarding/business-verification.
+ */
+export const marketingSignupSchema = z.object({
+  name: z.string().min(2, "Name must be at least 2 characters"),
+  email: z.string().email(),
+  password: z.string().min(8, "Password must be at least 8 characters"),
+  businessName: z.string().min(2, "Business name must be at least 2 characters"),
+  niche: z.string().min(1, "Choose a niche"),
+  phone: z.string().min(4, "Enter a phone number"),
+});
+export type MarketingSignupInput = z.infer<typeof marketingSignupSchema>;
+
+export async function signUpForMarketing(
+  input: MarketingSignupInput
+): Promise<ActionResult<{ storeSlug: string }>> {
+  const ip = getClientIp(await headers());
+  const rateLimit = await checkRateLimit(`marketing-signup:${ip}`, 5, 60 * 60 * 1000); // 5/hour/IP
+  if (!rateLimit.allowed) {
+    return {
+      success: false,
+      error: `Too many signups from this connection. Try again in ${Math.ceil((rateLimit.retryAfterSeconds ?? 3600) / 60)} minutes.`,
+    };
+  }
+
+  const parsed = marketingSignupSchema.safeParse(input);
+  if (!parsed.success) {
+    return { success: false, error: "Invalid input", fieldErrors: parsed.error.flatten().fieldErrors };
+  }
+
+  const normalizedEmail = parsed.data.email.trim().toLowerCase();
+  const existing = await prisma.user.findFirst({
+    where: { email: { equals: normalizedEmail, mode: "insensitive" }, customerScopeStoreId: null },
+  });
+  if (existing) return { success: false, error: "An account with this email already exists. Try signing in instead." };
+
+  const niche = canonicalizeBusinessType(parsed.data.niche);
+  const passwordHash = await bcrypt.hash(parsed.data.password, 12);
+  const slug = await generateUniqueStoreSlug(parsed.data.businessName);
+
+  const store = await prisma.$transaction(async (tx) => {
+    const user = await tx.user.create({
+      data: { name: parsed.data.name, email: normalizedEmail, passwordHash, role: "STORE_OWNER" },
+    });
+    const business = await tx.business.create({
+      data: {
+        userId: user.id,
+        businessName: parsed.data.businessName,
+        category: niche,
+        // No storefront claims are ever made from a marketing-only
+        // business, so the sellsProducts/offersServices split (which
+        // drives storefront layout, not marketing) doesn't matter here.
+        sellsProducts: true,
+        offersServices: false,
+        description: `${parsed.data.businessName} — signed up for BizNest Marketing.`,
+        phone: parsed.data.phone,
+        email: normalizedEmail,
+        country: "", state: "", city: "",
+        registrationType: "UNREGISTERED",
+        // Marketing-only businesses never sell or take payment through the
+        // platform, so the identity/fraud review that gates real stores
+        // (see createStore in lib/actions/store.ts) doesn't apply -- there's
+        // nothing here for it to protect against.
+        verificationStatus: "APPROVED",
+        fraudPolicyAcceptedAt: new Date(),
+      },
+    });
+    return tx.store.create({
+      data: {
+        businessId: business.id,
+        name: parsed.data.businessName,
+        slug,
+        businessType: niche,
+        marketingOnly: true,
+        contactEmail: normalizedEmail,
+        contactPhone: parsed.data.phone,
+      },
+    });
+  });
+
+  return { success: true, data: { storeSlug: store.slug } };
+}

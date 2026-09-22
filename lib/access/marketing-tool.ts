@@ -26,11 +26,16 @@ export async function getMarketingToolAccess(userId: string | undefined): Promis
         { staffMembers: { some: { userId, status: "ACTIVE" } } },
       ],
     },
-    select: { slug: true, subscription: { select: { name: true } } },
+    select: { slug: true, marketingOnly: true, subscription: { select: { name: true } } },
     orderBy: { name: "asc" },
   });
 
-  const mogulStore = stores.find((s) => s.subscription?.name === "Business Mogul");
+  // Two independent ways in: a full store on the Business Mogul plan (gets
+  // marketing bundled with everything else), or a store created through
+  // the lightweight /marketing/signup flow (marketing is *all* it has --
+  // see signUpForMarketing in lib/actions/marketing-signup.ts). Either one
+  // is enough; a marketing-only store never has a subscription.
+  const mogulStore = stores.find((s) => s.subscription?.name === "Business Mogul" || s.marketingOnly);
   if (mogulStore) return { status: "mogul", storeSlug: mogulStore.slug };
 
   return { status: "needs-upgrade", storeSlug: stores[0]?.slug ?? null };

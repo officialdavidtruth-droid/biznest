@@ -687,6 +687,13 @@ model Store {
   customDomainStatus DomainStatus @default(NONE)
   status        StoreStatus @default(ACTIVE)
   businessType  String
+  // A store created through the lightweight /marketing/signup flow: no
+  // storefront, no product/service catalog, no template or plan choice at
+  // signup, and no admin dashboard access -- see marketingOnly checks in
+  // app/store/[slug]/admin/layout.tsx and lib/access/marketing-tool.ts.
+  // Distinct from the Business Mogul plan's marketing tool, which is the
+  // full-dashboard path into the same /store/marketing page.
+  marketingOnly Boolean     @default(false)
   enabledModules Json?
   storefrontConfig Json?
 
