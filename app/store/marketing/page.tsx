@@ -122,7 +122,7 @@ export default async function MarketingStandalonePage() {
               Track every lead from first contact to closed deal &mdash; the same pipeline as the CRM &amp; Sales app in your dashboard.
             </p>
           </div>
-          <div className="rounded-2xl border border-slate-700 bg-white p-4">
+          <div className="bn-admin-app light rounded-2xl border border-slate-700 p-4 text-slate-950">
             <CrmWorkspace slug={access.storeSlug} initial={pipeline} />
           </div>
         </section>
