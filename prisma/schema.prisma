@@ -2527,6 +2527,16 @@ model Subscription {
   features  Json     // { products, services, customDomain } -- -1 means unlimited
   commissionRate Decimal @db.Decimal(5, 2) @default(0) // percentage
   isActive  Boolean  @default(true) // retired plans are hidden from pricing/upgrade UI, not deleted -- a store may still reference one
+  // BizNest Marketing (see lib/access/marketing-tool.ts) is a fully separate
+  // product from the main storefront platform with its own two-tier pricing
+  // (Starter/Pro, seeded in prisma/migrations/20260921100000_marketing_plans).
+  // This flag keeps those two plans out of every main-platform plan list
+  // (landing page pricing, onboarding/select-plan, a store's own subscription
+  // page) and out of the marketing plan picker's opposite number -- both
+  // sides filter on it. It does NOT gate the free-trial setting: that stays
+  // one platform-wide planId (any plan, either product) picked by SupaAdmin
+  // at /supaadmin/settings, same mechanism either way.
+  isMarketingPlan Boolean @default(false)
 
   stores    Store[]
   pluginAccess PluginPlanAccess[]

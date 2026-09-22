@@ -52,7 +52,10 @@ export function MarketingSignupForm() {
       return;
     }
     toast.success(`You're in. Templates are set up for ${result.data.storeSlug ? "your niche" : "you"}.`);
-    router.push("/store/marketing");
+    // One more step before the workspace unlocks: BizNest Marketing is on
+    // its own paid plan (Starter/Pro) now, not automatically granted on
+    // signup -- see getMarketingToolAccess in lib/access/marketing-tool.ts.
+    router.push(`/marketing/select-plan?slug=${encodeURIComponent(result.data.storeSlug)}`);
   }
 
   return (

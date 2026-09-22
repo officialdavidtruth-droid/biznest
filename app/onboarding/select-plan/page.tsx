@@ -31,8 +31,10 @@ export default async function SelectPlanPage({
   // Already paid — nothing to do here.
   if (store.subscriptionId) redirect(`/${store.slug}/admin`);
 
+  // isMarketingPlan: false -- the two BizNest Marketing tiers (Starter/Pro)
+  // belong to /marketing/select-plan instead, never a full-store signup.
   const plans = await prisma.subscription.findMany({
-    where: { isActive: true },
+    where: { isActive: true, isMarketingPlan: false },
     orderBy: { price: "asc" },
   });
   const trialSetting = await getFreeTrialSetting();

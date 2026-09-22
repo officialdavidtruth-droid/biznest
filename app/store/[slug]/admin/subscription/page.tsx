@@ -22,7 +22,10 @@ export default async function SubscriptionPage({
   const role = await getStoreAccessRole(session.user.id, session.user.role, store);
   if (!canManageBillingAndStaff(role)) redirect(`/${slug}/admin`);
 
-  const plans = await prisma.subscription.findMany({ where: { isActive: true }, orderBy: { price: "asc" } });
+  // isMarketingPlan: false -- this store already isn't marketingOnly (see
+  // the layout redirect above), so the two BizNest Marketing tiers have no
+  // business appearing on its upgrade screen.
+  const plans = await prisma.subscription.findMany({ where: { isActive: true, isMarketingPlan: false }, orderBy: { price: "asc" } });
 
   return (
     <div>

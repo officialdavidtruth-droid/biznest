@@ -91,7 +91,9 @@ export default async function HomePage() {
   ownedStore,
   staffStore,
 ] = await Promise.all([
-    prisma.subscription.findMany({ where: { isActive: true }, orderBy: { price: "asc" } }),
+    // isMarketingPlan: false -- the two BizNest Marketing tiers (Starter/Pro)
+    // are a separate product's pricing and belong on /marketing instead.
+    prisma.subscription.findMany({ where: { isActive: true, isMarketingPlan: false }, orderBy: { price: "asc" } }),
     prisma.store.count({ where: { status: "ACTIVE" } }),
     prisma.product.count({ where: { isPublished: true } }),
     // Real, currently-open storefronts for the drifting marquee below —

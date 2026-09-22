@@ -23,17 +23,24 @@ export function MarketingToolLocked({ access }: { access: MarketingToolAccess })
     );
   }
 
-  // access.status === "needs-upgrade" — signed in, but no BizNest Marketing
-  // subscription yet. This is never a full store's subscription page: BizNest
-  // Marketing has its own signup and billing, separate from the main platform.
+  // access.status === "needs-upgrade" — signed in. Two different reasons
+  // land here: no Marketing account at all yet (storeSlug null -> signup),
+  // or a Marketing account that just hasn't picked a plan yet (storeSlug
+  // set -> straight to the plan picker, not signup again). This is never a
+  // full store's subscription page: BizNest Marketing has its own signup
+  // and billing, separate from the main platform.
+  const hasAccountAwaitingPlan = access.status === "needs-upgrade" && !!access.storeSlug;
   return (
     <section id="contacts" className="mx-auto max-w-6xl px-5 py-14">
       <LockedShell
         title="Subscribe to BizNest Marketing"
-        body="The Marketing workspace — contact import, campaigns and insights — is a standalone BizNest Marketing subscription, separate from your BizNest store. Sign up to unlock it."
+        body="The Marketing workspace — contact import, campaigns and insights — is a standalone BizNest Marketing subscription, separate from your BizNest store. Pick a plan to unlock it."
       >
-        <Link href="/marketing/signup" className="rounded-full bg-orange-500 px-6 py-3 font-bold text-slate-950 hover:bg-orange-400">
-          Subscribe to Marketing
+        <Link
+          href={hasAccountAwaitingPlan ? `/marketing/select-plan?slug=${encodeURIComponent(access.storeSlug!)}` : "/marketing/signup"}
+          className="rounded-full bg-orange-500 px-6 py-3 font-bold text-slate-950 hover:bg-orange-400"
+        >
+          {hasAccountAwaitingPlan ? "Choose a plan" : "Subscribe to Marketing"}
         </Link>
       </LockedShell>
     </section>
