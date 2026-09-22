@@ -1,3 +1,8 @@
+-- The isMarketingPlan column added to the Subscription model in
+-- schema.prisma alongside this migration -- must actually be created here
+-- before the seed insert below can reference it.
+ALTER TABLE "Subscription" ADD COLUMN IF NOT EXISTS "isMarketingPlan" BOOLEAN NOT NULL DEFAULT false;
+
 -- Seeds the two BizNest Marketing pricing tiers (Starter + Pro) requested
 -- by the business owner. Per their instruction, SupaAdmin owns both the
 -- actual prices and which tier (if any) gets the free trial -- neither is
