@@ -8,7 +8,6 @@ import { buildNavGroups, buildBottomTabItems, filterNavGroupsForRole, type Insta
 import type { StoreAccessRole } from "@/lib/access/store-access";
 import { NotificationBell } from "@/components/dashboard/notification-bell";
 import { PushSubscribePrompt } from "@/components/dashboard/push-subscribe-prompt";
-import { ThemeToggle } from "@/components/theme/theme-toggle";
 import { SignOutButton } from "@/components/forms/sign-out-button";
 import { StoreLogo } from "@/components/dashboard/store-logo";
 
@@ -95,7 +94,6 @@ export function MobileDashboardChrome({
           </p>
         </div>
         <div className="flex items-center gap-1">
-          <ThemeToggle />
           <NotificationBell notifications={notifications} unreadCount={unreadCount} />
         </div>
       </header>

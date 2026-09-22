@@ -9,7 +9,6 @@ import { listMyNotifications } from "@/lib/actions/notifications";
 import { getStoreAccessRole, hasStorePermission } from "@/lib/access/store-access";
 import { findNavItemForPath } from "@/lib/constants/dashboard-nav";
 import { ThemeProvider, ThemeFlashGuard } from "@/components/theme/theme-provider";
-import { ThemeToggle } from "@/components/theme/theme-toggle";
 import { getPluginEntitlement } from "@/lib/plugins";
 
 export default async function StoreAdminLayout({
@@ -182,7 +181,6 @@ export default async function StoreAdminLayout({
                   : `${store.name} business`}
               </p>
               <div className="flex items-center gap-1">
-                <ThemeToggle />
                 <NotificationBell notifications={notifications} unreadCount={unreadCount} />
               </div>
             </div>

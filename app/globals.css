@@ -9,32 +9,14 @@
 @layer base {
   :root {
     --background: 0 0% 100%;         /* white */
-    --foreground: 222 55% 12%;       /* deep navy text */
+    --foreground: 121 45% 9%;        /* deep green text */
     --primary: 121 74% 23%;          /* BizNest green (from logo) */
     --primary-foreground: 0 0% 100%; /* white, for text on green */
-    --muted: 215 35% 96%;             /* pale blue-gray */
-    --muted-foreground: 220 16% 42%;  /* muted slate */
-    --border: 150 25% 88%;           /* soft sage border */
+    --muted: 121 20% 95%;             /* pale green-white */
+    --muted-foreground: 121 15% 38%;  /* muted green-gray */
+    --border: 121 25% 88%;           /* soft sage border */
     --destructive: 0 84% 65%;
     --radius: 0.5rem;
-  }
-
-  /* Dark variant of the same token set, using the exact brand colors the
-     marketing homepage already reads directly (--bn-ink, --bn-marigold,
-     etc — see "BizNest brand tokens" below). Applied via a `.dark` class
-     on a surface's root (see app/store/[slug]/admin/layout.tsx and
-     app/supaadmin/layout.tsx) so admin/back-office surfaces match the
-     homepage's dark forest look while storefront/checkout/auth pages,
-     which aren't wrapped in `.dark`, stay on the light token set above. */
-  .dark {
-    --background: 222 55% 9%;          /* deep BizNest navy */
-    --foreground: 0 0% 100%;          /* == --bn-ivory */
-    --primary: 121 74% 23%;           /* BizNest green (from logo) */
-    --primary-foreground: 222 55% 9%;  /* navy text on orange */
-    --muted: 222 40% 15%;              /* raised navy */
-    --muted-foreground: 215 18% 70%;   /* muted blue-gray */
-    --border: 220 35% 25%;             /* navy border */
-    --destructive: 0 70% 58%;
   }
 }
 
@@ -82,13 +64,13 @@
   box-shadow: 0 1px 2px rgba(10, 24, 55, 0.08);
 }
 
-/* Reusable forest→emerald→white gradient for heroes, buttons, and accent
+/* Reusable dark-green→green→white gradient for heroes, buttons, and accent
    surfaces on LIGHT backgrounds (dashboard CTAs, upgrade banners, etc). */
 .bn-gradient {
-  background: linear-gradient(135deg, #0b1b3a 0%, #173b73 58%, #0f6410 100%);
+  background: linear-gradient(135deg, #0a240b 0%, #0f6410 58%, #ffffff 100%);
 }
 .bn-gradient-text {
-  background: linear-gradient(135deg, #0b1b3a, #0f6410);
+  background: linear-gradient(135deg, #0a240b, #0f6410);
   -webkit-background-clip: text;
   background-clip: text;
   color: transparent;
@@ -100,8 +82,8 @@
    top-left keeps a large solid dark area from feeling flat/dead. */
 .bn-gradient-dark {
   background:
-    radial-gradient(120% 90% at 12% -10%, rgba(15, 100, 16, 0.22) 0%, transparent 55%),
-    linear-gradient(165deg, #173b73 0%, #0b1b3a 48%, #060f22 100%);
+    radial-gradient(120% 90% at 12% -10%, rgba(15, 100, 16, 0.30) 0%, transparent 55%),
+    linear-gradient(165deg, #153716 0%, #0a240b 48%, #030d04 100%);
 }
 /* Emerald→jade gradient for primary CTAs/pills on dark surfaces — used
    instead of a flat accent fill so buttons read as "lush", not flat. */
@@ -110,26 +92,26 @@
 }
 
 /* --- BizNest brand tokens ---
-   Deep navy + green, with the accent providing a bright, high-contrast pop (see .bn-gradient-accent above). Variable names
+   Green + white, with the accent providing a bright, high-contrast pop (see .bn-gradient-accent above). Variable names
    kept stable so every file already referencing them (app/page.tsx,
    order confirmation, error/loading screens, etc.) picks this up with
    no further edits needed. */
 :root {
-  --bn-ink: #0b1b3a;       /* deep navy — dark brand ground */
-  --bn-ink-raised: #142b50; /* raised navy for cards and panels */
-  --bn-ink-line: #29466f;   /* subtle navy border */
+  --bn-ink: #0a240b;       /* deep green — dark brand ground */
+  --bn-ink-raised: #153716; /* raised green for cards and panels */
+  --bn-ink-line: #2e562f;   /* subtle green border */
   --bn-marigold: #0f6410;  /* green accent, from logo (legacy variable name retained) */
   --bn-jade: #0b4d0c;      /* deeper green for hover states */
   --bn-ivory: #ffffff;     /* white, for text on dark surfaces */
-  --bn-mute: #aab8cf;      /* muted blue-gray for secondary text */
+  --bn-mute: #adc2ad;      /* muted sage for secondary text */
 
   /* Gradient variants of the above, for spots that want the "lush" gradient
      pop directly in an inline style rather than a class (e.g. a background
      that's conditionally either this or a flat color). Same visual recipe
      as .bn-gradient-dark / .bn-gradient-accent above. */
   --bn-hero-gradient:
-    radial-gradient(120% 90% at 12% -10%, rgba(15, 100, 16, 0.22) 0%, transparent 55%),
-    linear-gradient(165deg, #173b73 0%, #0b1b3a 48%, #060f22 100%);
+    radial-gradient(120% 90% at 12% -10%, rgba(15, 100, 16, 0.30) 0%, transparent 55%),
+    linear-gradient(165deg, #153716 0%, #0a240b 48%, #030d04 100%);
   --bn-accent-gradient: linear-gradient(135deg, #0f6410 0%, #0b4d0c 100%);
 }
 
@@ -977,334 +959,46 @@ a[href*="/service/"]:hover img {
   color: #10213b;
   color-scheme: light;
 }
-.bn-admin-app.dark {
-  --background: 222 55% 9%;
-  --foreground: 0 0% 100%;
-  --primary: 121 60% 32%;
-  --primary-foreground: 0 0% 100%;
-  --muted: 222 40% 15%;
-  --muted-foreground: 215 18% 70%;
-  --border: 220 35% 25%;
-  color-scheme: dark;
-}
 .bn-admin-app .bn-admin-action[class*="bg-"] { background-color: #0f6410 !important; }
 .bn-admin-app .bn-admin-action[class*="bg-"]:hover { background-color: #0b4d0c !important; }
 
 
 
-/* BizNest admin dark-mode surface normalization.
-   Scoped only to dashboard/plugin theme roots; storefront templates are excluded.
-   Neutralizes common light utility classes that otherwise stay white in dark mode. */
-@layer utilities {
-  :is(#bn-admin-theme-scope, #bn-plugin-theme-scope, #bn-fnb-theme-scope,
-      #bn-pms-theme-scope, #bn-supaadmin-theme-scope).dark {
-    color-scheme: dark;
-    background-color: #0b1b3a;
-    color: #f8fafc;
-  }
-
-  :is(#bn-admin-theme-scope, #bn-plugin-theme-scope, #bn-fnb-theme-scope,
-      #bn-pms-theme-scope, #bn-supaadmin-theme-scope).dark [class~="bg-white"],
-  :is(#bn-admin-theme-scope, #bn-plugin-theme-scope, #bn-fnb-theme-scope,
-      #bn-pms-theme-scope, #bn-supaadmin-theme-scope).dark [class~="bg-gray-50"],
-  :is(#bn-admin-theme-scope, #bn-plugin-theme-scope, #bn-fnb-theme-scope,
-      #bn-pms-theme-scope, #bn-supaadmin-theme-scope).dark [class~="bg-slate-50"],
-  :is(#bn-admin-theme-scope, #bn-plugin-theme-scope, #bn-fnb-theme-scope,
-      #bn-pms-theme-scope, #bn-supaadmin-theme-scope).dark [class~="bg-neutral-50"] {
-    background-color: #0b1b3a !important;
-    color: #f8fafc;
-  }
-
-  :is(#bn-admin-theme-scope, #bn-plugin-theme-scope, #bn-fnb-theme-scope,
-      #bn-pms-theme-scope, #bn-supaadmin-theme-scope).dark [class~="bg-gray-100"],
-  :is(#bn-admin-theme-scope, #bn-plugin-theme-scope, #bn-fnb-theme-scope,
-      #bn-pms-theme-scope, #bn-supaadmin-theme-scope).dark [class~="bg-slate-100"],
-  :is(#bn-admin-theme-scope, #bn-plugin-theme-scope, #bn-fnb-theme-scope,
-      #bn-pms-theme-scope, #bn-supaadmin-theme-scope).dark [class~="bg-muted"] {
-    background-color: #142b50 !important;
-  }
-
-  :is(#bn-admin-theme-scope, #bn-plugin-theme-scope, #bn-fnb-theme-scope,
-      #bn-pms-theme-scope, #bn-supaadmin-theme-scope).dark [class~="text-black"],
-  :is(#bn-admin-theme-scope, #bn-plugin-theme-scope, #bn-fnb-theme-scope,
-      #bn-pms-theme-scope, #bn-supaadmin-theme-scope).dark [class~="text-gray-900"],
-  :is(#bn-admin-theme-scope, #bn-plugin-theme-scope, #bn-fnb-theme-scope,
-      #bn-pms-theme-scope, #bn-supaadmin-theme-scope).dark [class~="text-slate-900"],
-  :is(#bn-admin-theme-scope, #bn-plugin-theme-scope, #bn-fnb-theme-scope,
-      #bn-pms-theme-scope, #bn-supaadmin-theme-scope).dark [class~="text-gray-800"],
-  :is(#bn-admin-theme-scope, #bn-plugin-theme-scope, #bn-fnb-theme-scope,
-      #bn-pms-theme-scope, #bn-supaadmin-theme-scope).dark [class~="text-slate-800"] {
-    color: #f8fafc !important;
-  }
-
-  :is(#bn-admin-theme-scope, #bn-plugin-theme-scope, #bn-fnb-theme-scope,
-      #bn-pms-theme-scope, #bn-supaadmin-theme-scope).dark [class~="border-gray-200"],
-  :is(#bn-admin-theme-scope, #bn-plugin-theme-scope, #bn-fnb-theme-scope,
-      #bn-pms-theme-scope, #bn-supaadmin-theme-scope).dark [class~="border-slate-200"] {
-    border-color: #29466f !important;
-  }
-}
+/* BizNest admin dark-mode surface normalization — removed along with dark
+   mode; the admin/plugin theme scopes now render on the single light,
+   green + white token set defined above. */
 
 
 
 /* === Admin theme correction: dark mode must style nested dashboard surfaces too ===
    Intentionally scoped to admin theme roots; storefront template palettes are excluded. */
-#bn-admin-theme-scope.dark,
-#bn-plugin-theme-scope.dark,
-#bn-fnb-theme-scope.dark,
-#bn-pms-theme-scope.dark,
-#bn-supaadmin-theme-scope.dark {
-  color-scheme: dark;
-  --background: 222 55% 9%;
-  --foreground: 210 40% 98%;
-  --card: 222 55% 12%;
-  --card-foreground: 210 40% 98%;
-  --popover: 222 55% 12%;
-  --popover-foreground: 210 40% 98%;
-  --muted: 220 40% 17%;
-  --muted-foreground: 215 20% 70%;
-  --border: 220 35% 27%;
-  --input: 220 35% 27%;
-  --primary: 25 100% 50%;
-  --primary-foreground: 222 55% 9%;
-  background: #0b1b3a !important;
-  color: #f8fafc;
-}
 
 /* Dashboard page canvases and common light utility backgrounds */
-:is(#bn-admin-theme-scope, #bn-plugin-theme-scope, #bn-fnb-theme-scope, #bn-pms-theme-scope, #bn-supaadmin-theme-scope).dark
-:is(main, .bn-admin-app, [class~="bg-background"], [class~="bg-white"], [class~="bg-gray-50"], [class~="bg-gray-100"], [class~="bg-slate-50"], [class~="bg-slate-100"], [class~="bg-zinc-50"], [class~="bg-neutral-50"], [class~="bg-muted"]) {
-  background-color: #0b1b3a !important;
-  color: #f8fafc;
-}
 
 /* Cards, quick-action tiles, and nested panels: navy rather than white */
-:is(#bn-admin-theme-scope, #bn-plugin-theme-scope, #bn-fnb-theme-scope, #bn-pms-theme-scope, #bn-supaadmin-theme-scope).dark
-:is([class~="bg-card"], [class~="bg-white"], [class~="bg-gray-50"], [class~="bg-gray-100"], [class~="bg-slate-50"], [class~="bg-slate-100"], [class~="bg-zinc-50"], [class~="bg-neutral-50"], [class~="bg-neutral-100"], [class~="bg-muted"]) {
-  background-color: #142b50 !important;
-  color: #f8fafc !important;
-}
 
 /* Fix black/dark foreground utilities that become unreadable on navy surfaces */
-:is(#bn-admin-theme-scope, #bn-plugin-theme-scope, #bn-fnb-theme-scope, #bn-pms-theme-scope, #bn-supaadmin-theme-scope).dark
-:is([class~="text-black"], [class~="text-gray-950"], [class~="text-gray-900"], [class~="text-gray-800"], [class~="text-slate-950"], [class~="text-slate-900"], [class~="text-slate-800"], [class~="text-zinc-900"], [class~="text-neutral-900"]) {
-  color: #f8fafc !important;
-}
 
 /* Muted copy and borders */
-:is(#bn-admin-theme-scope, #bn-plugin-theme-scope, #bn-fnb-theme-scope, #bn-pms-theme-scope, #bn-supaadmin-theme-scope).dark
-:is([class~="text-gray-500"], [class~="text-gray-600"], [class~="text-slate-500"], [class~="text-slate-600"], [class~="text-muted-foreground"]) {
-  color: #aabbd3 !important;
-}
-:is(#bn-admin-theme-scope, #bn-plugin-theme-scope, #bn-fnb-theme-scope, #bn-pms-theme-scope, #bn-supaadmin-theme-scope).dark
-:is([class~="border-gray-100"], [class~="border-gray-200"], [class~="border-slate-100"], [class~="border-slate-200"], [class~="border-neutral-200"]) {
-  border-color: #29466f !important;
-}
 
 /* Inputs remain legible in dark mode */
-:is(#bn-admin-theme-scope, #bn-plugin-theme-scope, #bn-fnb-theme-scope, #bn-pms-theme-scope, #bn-supaadmin-theme-scope).dark
-:is(input, select, textarea) {
-  background-color: #102544 !important;
-  color: #f8fafc !important;
-  border-color: #29466f !important;
-}
-:is(#bn-admin-theme-scope, #bn-plugin-theme-scope, #bn-fnb-theme-scope, #bn-pms-theme-scope, #bn-supaadmin-theme-scope).dark
-:is(input, select, textarea)::placeholder {
-  color: #aabbd3 !important;
-}
 
 /* Brand actions; normalize legacy utility classes to the brand accent */
-:is(#bn-admin-theme-scope, #bn-plugin-theme-scope, #bn-fnb-theme-scope, #bn-pms-theme-scope, #bn-supaadmin-theme-scope).dark
-:is(button, a)[class~="bg-primary"],
-:is(#bn-admin-theme-scope, #bn-plugin-theme-scope, #bn-fnb-theme-scope, #bn-pms-theme-scope, #bn-supaadmin-theme-scope).dark
-:is(button, a)[class~="bg-emerald-600"],
-:is(#bn-admin-theme-scope, #bn-plugin-theme-scope, #bn-fnb-theme-scope, #bn-pms-theme-scope, #bn-supaadmin-theme-scope).dark
-:is(button, a)[class~="bg-green-600"],
-:is(#bn-admin-theme-scope, #bn-plugin-theme-scope, #bn-fnb-theme-scope, #bn-pms-theme-scope, #bn-supaadmin-theme-scope).dark
-:is(button, a)[class~="bg-teal-600"] {
-  background-color: #0f6410 !important;
-  color: #ffffff !important;
-  border-color: #0f6410 !important;
-}
 
 
 
 /* Adaptive merchant dashboard: complete dark-mode surface and contrast override.
    Scoped to this dashboard component so storefront templates are unaffected. */
-.dark .bn-adaptive-dashboard {
-  background-color: #0b1b3a !important;
-  color: #f8fafc !important;
-}
-.dark .bn-adaptive-dashboard > .sticky {
-  background-color: rgba(11, 27, 58, .96) !important;
-  border-color: #29466f !important;
-  color: #f8fafc !important;
-}
-.dark .bn-adaptive-dashboard h1,
-.dark .bn-adaptive-dashboard h2,
-.dark .bn-adaptive-dashboard h3,
-.dark .bn-adaptive-dashboard p,
-.dark .bn-adaptive-dashboard span,
-.dark .bn-adaptive-dashboard label {
-  color: inherit;
-}
-.dark .bn-adaptive-dashboard [class*="bg-white"],
-.dark .bn-adaptive-dashboard [class*="bg-[#fcfcfd]"],
-.dark .bn-adaptive-dashboard [class*="bg-[#f8f9fb]"] {
-  background-color: #142b50 !important;
-  color: #f8fafc !important;
-}
-.dark .bn-adaptive-dashboard [class*="border-[#e"],
-.dark .bn-adaptive-dashboard [class*="border-[#f"] {
-  border-color: #29466f !important;
-}
-.dark .bn-adaptive-dashboard [class*="text-[#111827]"],
-.dark .bn-adaptive-dashboard [class*="text-[#1e293b]"],
-.dark .bn-adaptive-dashboard [class*="text-[#334155]"] {
-  color: #f8fafc !important;
-}
-.dark .bn-adaptive-dashboard [class*="text-[#64748b]"],
-.dark .bn-adaptive-dashboard [class*="text-[#94a3b8]"],
-.dark .bn-adaptive-dashboard [class*="text-[#475569]"] {
-  color: #aabbd3 !important;
-}
-.dark .bn-adaptive-dashboard a[class*="bg-[#e9b45a]"] {
-  background-color: #0f6410 !important;
-  color: #ffffff !important;
-}
-.dark .bn-adaptive-dashboard a[class*="bg-white"] {
-  background-color: #142b50 !important;
-  color: #f8fafc !important;
-  border-color: #29466f !important;
-}
-.dark .bn-adaptive-dashboard input,
-.dark .bn-adaptive-dashboard select,
-.dark .bn-adaptive-dashboard textarea {
-  background-color: #102544 !important;
-  color: #f8fafc !important;
-  border-color: #29466f !important;
-}
 
 
 
 /* Final dashboard-specific dark theme: surfaces, contrast, and icon legibility */
-.dark .bn-adaptive-dashboard,
-.dark .bn-adaptive-dashboard > div,
-.dark .bn-adaptive-dashboard section,
-.dark .bn-adaptive-dashboard article {
-  background-color: #0b1b3a !important;
-  color: #f8fafc !important;
-}
-.dark .bn-adaptive-dashboard [class*="bg-white"],
-.dark .bn-adaptive-dashboard [class*="bg-[#f8f9fb]"],
-.dark .bn-adaptive-dashboard [class*="bg-[#fcfcfd]"],
-.dark .bn-adaptive-dashboard [class*="bg-[#f"] {
-  background-color: #142b50 !important;
-  color: #f8fafc !important;
-}
-.dark .bn-adaptive-dashboard [class*="text-[#111827]"],
-.dark .bn-adaptive-dashboard [class*="text-[#1e293b]"],
-.dark .bn-adaptive-dashboard [class*="text-[#334155]"],
-.dark .bn-adaptive-dashboard [class*="text-[#0f172a]"] {
-  color: #f8fafc !important;
-}
-.dark .bn-adaptive-dashboard [class*="text-[#64748b]"],
-.dark .bn-adaptive-dashboard [class*="text-[#94a3b8]"],
-.dark .bn-adaptive-dashboard [class*="text-[#475569]"] {
-  color: #b8c8df !important;
-}
 /* Lucide SVG icons use stroke, not text color alone; force readable stroke. */
-.dark .bn-adaptive-dashboard svg {
-  stroke: #2fbf4f;
-}
-.dark .bn-adaptive-dashboard svg [fill="currentColor"] {
-  fill: #2fbf4f !important;
-}
-.dark .bn-adaptive-dashboard [class*="bg-purple-"] svg,
-.dark .bn-adaptive-dashboard [class*="bg-violet-"] svg,
-.dark .bn-adaptive-dashboard [class*="bg-emerald-"] svg,
-.dark .bn-adaptive-dashboard [class*="bg-green-"] svg,
-.dark .bn-adaptive-dashboard [class*="bg-blue-"] svg,
-.dark .bn-adaptive-dashboard [class*="bg-indigo-"] svg {
-  stroke: #2fbf4f !important;
-}
-.dark .bn-adaptive-dashboard table thead,
-.dark .bn-adaptive-dashboard thead tr,
-.dark .bn-adaptive-dashboard thead th {
-  background-color: #102544 !important;
-  color: #eaf1fb !important;
-}
-.dark .bn-adaptive-dashboard input,
-.dark .bn-adaptive-dashboard select,
-.dark .bn-adaptive-dashboard textarea {
-  background-color: #102544 !important;
-  color: #f8fafc !important;
-  border-color: #29466f !important;
-}
-.dark .bn-adaptive-dashboard input::placeholder,
-.dark .bn-adaptive-dashboard textarea::placeholder {
-  color: #aabbd3 !important;
-}
-.dark .bn-adaptive-dashboard [class*="border-[#e"],
-.dark .bn-adaptive-dashboard [class*="border-[#f"] {
-  border-color: #29466f !important;
-}
 
 
 
 /* FnB workspace contrast repair: prevent global heading/text defaults from
    rendering dark text on navy panels. Scoped only to the FnB workspace. */
-.dark .bn-fnb-workspace {
-  color: #f1f5f9 !important;
-}
-.dark .bn-fnb-workspace h1,
-.dark .bn-fnb-workspace h2,
-.dark .bn-fnb-workspace h3,
-.dark .bn-fnb-workspace h4,
-.dark .bn-fnb-workspace h5,
-.dark .bn-fnb-workspace h6,
-.dark .bn-fnb-workspace strong,
-.dark .bn-fnb-workspace b,
-.dark .bn-fnb-workspace p,
-.dark .bn-fnb-workspace label,
-.dark .bn-fnb-workspace th,
-.dark .bn-fnb-workspace td,
-.dark .bn-fnb-workspace span {
-  color: inherit;
-}
-.dark .bn-fnb-workspace h1,
-.dark .bn-fnb-workspace h2,
-.dark .bn-fnb-workspace h3,
-.dark .bn-fnb-workspace h4,
-.dark .bn-fnb-workspace h5,
-.dark .bn-fnb-workspace h6 {
-  color: #f8fafc !important;
-}
-.dark .bn-fnb-workspace .text-blue-200,
-.dark .bn-fnb-workspace .text-blue-300,
-.dark .bn-fnb-workspace .text-blue-400 {
-  color: #bfdbfe !important;
-}
-.dark .bn-fnb-workspace .text-slate-900,
-.dark .bn-fnb-workspace .text-gray-900,
-.dark .bn-fnb-workspace .text-black {
-  color: #f8fafc !important;
-}
-.dark .bn-fnb-workspace svg {
-  color: #2fbf4f;
-  stroke: currentColor;
-}
-.dark .bn-fnb-workspace input,
-.dark .bn-fnb-workspace select,
-.dark .bn-fnb-workspace textarea {
-  background-color: #102544 !important;
-  color: #f8fafc !important;
-  border-color: #31517c !important;
-}
-.dark .bn-fnb-workspace input::placeholder,
-.dark .bn-fnb-workspace textarea::placeholder {
-  color: #a9bdd8 !important;
-}
 
 
 
@@ -1312,152 +1006,22 @@ a[href*="/service/"]:hover img {
    The .dark class is mounted on admin/back-office layouts only; storefront
    templates remain outside this scope. Covers common hardcoded Tailwind colors
    used by plugin workspaces, not just the FnB module. */
-.dark :is(
-  .bg-white, .bg-slate-50, .bg-slate-100, .bg-gray-50, .bg-gray-100,
-  .bg-zinc-50, .bg-neutral-50, .bg-\[\#f5f7fa\], .bg-\[\#f8f9fb\],
-  .bg-\[\#fcfcfd\], .bg-\[\#fff\], .bg-\[\#ffffff\]
-) {
-  background-color: #102544 !important;
-}
-.dark :is(
-  .text-black, .text-slate-900, .text-slate-800, .text-slate-700,
-  .text-gray-900, .text-gray-800, .text-gray-700,
-  .text-zinc-900, .text-neutral-900,
-  .text-\[\#111827\], .text-\[\#0f172a\], .text-\[\#1e293b\],
-  .text-\[\#334155\], .text-\[\#374151\]
-) {
-  color: #f1f5f9 !important;
-}
-.dark :is(
-  .text-slate-600, .text-slate-500, .text-gray-600, .text-gray-500,
-  .text-zinc-600, .text-neutral-600, .text-muted-foreground
-) {
-  color: #b8c8df !important;
-}
-.dark :is(
-  .border-slate-100, .border-slate-200, .border-slate-300,
-  .border-gray-100, .border-gray-200, .border-gray-300,
-  .border-zinc-100, .border-zinc-200
-) {
-  border-color: #29466f !important;
-}
-.dark :is(input, textarea, select) {
-  background-color: #0b1b3a !important;
-  color: #f8fafc !important;
-  border-color: #31517c !important;
-}
-.dark :is(input, textarea)::placeholder { color: #a9bdd8 !important; }
-.dark :is(button, a, [role="button"]) svg {
-  flex-shrink: 0;
-}
-.dark svg.text-slate-400, .dark svg.text-gray-400,
-.dark svg.text-slate-500, .dark svg.text-gray-500 {
-  color: #b8c8df !important;
-}
-.dark :is(.bg-primary\/5, .bg-primary\/10) {
-  color: #f1f5f9 !important;
-}
 /* Keep semantic brand actions visibly on-brand in every plugin. */
-.dark :is(.bg-orange-500, .bg-orange-600, .bg-primary) {
-  color: #ffffff;
-}
 
 
 /* FINAL THEME TOKEN CORRECTION
    --bn-ink is a surface/background token in the admin shell. Earlier
    overrides incorrectly changed it to a light text value, which turned
    the sidebar white. Keep surfaces dark and control foreground separately. */
-#bn-admin-theme-scope.dark .bn-admin-app {
-  --bn-page: #0b1b3a !important;
-  --bn-surface: #142b50 !important;
-  --bn-ink: #0b1b3a !important;
-  --bn-ink-line: #29466f !important;
-  --bn-line: #29466f !important;
-  --bn-line-soft: #203e66 !important;
-  --bn-muted: #b8c8df !important;
-  --bn-gold: #0f6410 !important;
-  --bn-gold-dark: #0b4d0c !important;
-  background: #0b1b3a !important;
-  color: #f8fafc !important;
-}
-
-#bn-admin-theme-scope.dark .bn-admin-app .bn-admin-sidebar {
-  background: #0b1b3a !important;
-  color: #f8fafc !important;
-}
-
-#bn-admin-theme-scope.dark .bn-admin-app h1,
-#bn-admin-theme-scope.dark .bn-admin-app h2,
-#bn-admin-theme-scope.dark .bn-admin-app h3,
-#bn-admin-theme-scope.dark .bn-admin-app h4,
-#bn-admin-theme-scope.dark .bn-admin-app h5,
-#bn-admin-theme-scope.dark .bn-admin-app h6 {
-  color: #f8fafc !important;
-}
-
-#bn-admin-theme-scope.dark .bn-admin-app :is(p,span,label,small) {
-  color: inherit;
-}
-
-#bn-admin-theme-scope.dark .bn-admin-app .text-muted-foreground,
-#bn-admin-theme-scope.dark .bn-admin-app :is(
-  .text-gray-500,.text-gray-600,.text-slate-500,.text-slate-600,
-  .text-zinc-500,.text-neutral-500
-) {
-  color: #b8c8df !important;
-}
 
 /* Neutral shared panels */
-#bn-admin-theme-scope.dark .bn-admin-app :is(.bg-white,.bg-card,.bg-background) {
-  background-color: #142b50 !important;
-  color: #f8fafc !important;
-}
 
 /* The desktop top bar must never use the light muted surface in dark mode. */
-#bn-admin-theme-scope.dark .bn-admin-topbar {
-  background-color: #0b1b3a !important;
-  color: #f8fafc !important;
-  border-bottom-color: #29466f !important;
-}
-#bn-admin-theme-scope.dark .bn-admin-topbar p {
-  color: #dbeafe !important;
-}
-#bn-admin-theme-scope.dark .bn-admin-topbar svg {
-  color: #2fbf4f !important;
-  stroke: currentColor;
-}
 
 
 
 /* Dark-mode email composer chrome. The actual outgoing email HTML is left
    untouched; only the admin preview is themed here. */
-#bn-admin-theme-scope.dark .bn-email-inbox-preview,
-#bn-plugin-theme-scope.dark .bn-email-inbox-preview {
-  background: #142b50 !important;
-  color: #f8fafc !important;
-  border-color: #29466f !important;
-}
-#bn-admin-theme-scope.dark .bn-email-inbox-preview > div,
-#bn-plugin-theme-scope.dark .bn-email-inbox-preview > div {
-  background: #102544 !important;
-  border-color: #29466f !important;
-}
-#bn-admin-theme-scope.dark .bn-email-inbox-preview :is(p,span,div) {
-  color: #eaf1fb !important;
-}
-#bn-admin-theme-scope.dark .bn-email-inbox-preview .text-muted-foreground {
-  color: #b8c8df !important;
-}
-#bn-admin-theme-scope.dark .bn-email-inbox-preview .text-primary {
-  color: #2fbf4f !important;
-}
-#bn-admin-theme-scope.dark .bn-email-preview-frame {
-  background: #0b1b3a !important;
-  border-color: #29466f !important;
-}
-#bn-admin-theme-scope.dark .bn-email-preview-frame iframe {
-  background: #142b50 !important;
-}
 
 
 /* BizNest admin/plugin semantic color system.
@@ -1478,25 +1042,5 @@ a[href*="/service/"]:hover img {
   --bn-admin-danger: #dc2626;
   --bn-admin-danger-soft: #fef2f2;
   --bn-admin-danger-line: #fecaca;
-}
-#bn-admin-theme-scope.dark,
-#bn-plugin-theme-scope.dark,
-#bn-fnb-theme-scope.dark,
-#bn-pms-theme-scope.dark {
-  --bn-admin-page: #0b1b3a;
-  --bn-admin-surface: #142b50;
-  --bn-admin-surface-2: #102544;
-  --bn-admin-text: #f8fafc;
-  --bn-admin-text-strong: #ffffff;
-  --bn-admin-muted: #b8c8df;
-  --bn-admin-border: #29466f;
-  --bn-admin-border-soft: #203e66;
-  --bn-admin-orange: #0f6410;
-  --bn-admin-orange-dark: #0b4d0c;
-  --bn-admin-orange-soft: #10291a;
-  --bn-admin-on-orange: #ffffff;
-  --bn-admin-danger: #f87171;
-  --bn-admin-danger-soft: #3a1518;
-  --bn-admin-danger-line: #71343a;
 }
 

@@ -1,119 +1,49 @@
 "use client";
 
-import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
-
-type Theme = "light" | "dark" | "system";
-type ResolvedTheme = "light" | "dark";
-
-const STORAGE_KEY = "bn-theme";
-
-type ThemeContextValue = {
-  theme: Theme;
-  resolvedTheme: ResolvedTheme;
-  setTheme: (theme: Theme) => void;
-};
-
-const ThemeContext = createContext<ThemeContextValue | null>(null);
-
-function getSystemTheme(): ResolvedTheme {
-  if (typeof window === "undefined") return "dark";
-  return window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
-}
-
 /**
- * Scoped theme provider for the merchant/platform dashboards — NOT the
- * marketing site or storefronts, which intentionally stay on their own
- * fixed palettes (marketing = dark forest brand look, storefront = each
- * vendor's own template). Wrap a surface's root element (see
- * app/store/[slug]/admin/layout.tsx, app/supaadmin/layout.tsx) with this
- * provider and toggle via useTheme()/<ThemeToggle />.
+ * BizNest no longer ships a light/dark toggle — the entire product runs on
+ * a single green + white brand palette. This file is kept as a thin,
+ * inert wrapper (rather than deleted outright) so every existing call
+ * site — app/store/[slug]/admin/layout.tsx, app/supaadmin/layout.tsx —
+ * keeps compiling without touching their flex-layout structure.
  *
- * Persists to localStorage so a merchant's choice survives across visits.
- * `defaultTheme` lets each surface pick its own fallback before the user
- * has ever chosen (both dashboards default to "dark" to match today's
- * look, so this ships with zero visual change until someone toggles it).
+ * `scopeId` still gets applied to the wrapping div because a couple of
+ * layouts depend on it being a flex container, but there is no more
+ * "dark" class, no localStorage read/write, and no system-theme listener.
  */
 export function ThemeProvider({
   children,
-  defaultTheme = "dark",
   scopeId,
 }: {
   children: React.ReactNode;
-  defaultTheme?: Theme;
+  /** @deprecated no longer used — BizNest has one fixed theme now. */
+  defaultTheme?: "light" | "dark" | "system";
   scopeId: string;
 }) {
-  const [theme, setThemeState] = useState<Theme>(defaultTheme);
-  const [resolvedTheme, setResolvedTheme] = useState<ResolvedTheme>(
-    defaultTheme === "system" ? "dark" : (defaultTheme as ResolvedTheme)
-  );
-
-  useEffect(() => {
-    const stored = localStorage.getItem(STORAGE_KEY) as Theme | null;
-    if (stored === "light" || stored === "dark" || stored === "system") {
-      setThemeState(stored);
-    }
-  }, []);
-
-  useEffect(() => {
-    const resolved = theme === "system" ? getSystemTheme() : theme;
-    setResolvedTheme(resolved);
-
-    if (theme !== "system") return;
-    const mql = window.matchMedia("(prefers-color-scheme: dark)");
-    const onChange = () => setResolvedTheme(getSystemTheme());
-    mql.addEventListener("change", onChange);
-    return () => mql.removeEventListener("change", onChange);
-  }, [theme]);
-
-  const setTheme = useCallback((next: Theme) => {
-    setThemeState(next);
-    localStorage.setItem(STORAGE_KEY, next);
-  }, []);
-
-  const value = useMemo(() => ({ theme, resolvedTheme, setTheme }), [theme, resolvedTheme, setTheme]);
-
   return (
-    <ThemeContext.Provider value={value}>
-      {/* suppressHydrationWarning: server always renders defaultTheme;
-          the inline script below (rendered by the layout, before this
-          component's HTML) overwrites the class pre-paint so there's no
-          visible flash, then this component's own state/effects take
-          over for the rest of the session (toggling, system-theme
-          changes) without touching the DOM class directly again except
-          through this same className render. */}
-      {/* Flex-based (flex-1 within the root layout's flex wrapper), not
-          percentage-based (h-full): supaadmin's own shell (the only other
-          consumer of this provider) still relies on this div being a flex
-          container with flex-1, to correctly fill the viewport. Store
-          admin, below, deliberately does NOT consume that flex-1 anymore
-          — its own outermost div just sizes to content instead of
-          stretching, which is what lets a short admin page (like
-          Settings) render without leaving dead space where a forced
-          full-height stretch used to be. Both can coexist because a
-          flex item without its own flex-grow simply doesn't stretch,
-          even inside a flex-1 parent. */}
-      <div id={scopeId} className={`flex min-h-0 flex-1 flex-col ${resolvedTheme}`} suppressHydrationWarning>
-        {children}
-      </div>
-    </ThemeContext.Provider>
+    <div id={scopeId} className="flex min-h-0 flex-1 flex-col">
+      {children}
+    </div>
   );
-}
-
-export function useTheme() {
-  const ctx = useContext(ThemeContext);
-  if (!ctx) throw new Error("useTheme must be used within a ThemeProvider");
-  return ctx;
 }
 
 /**
- * Inline, blocking script — render this as a sibling BEFORE <ThemeProvider>
- * in the layout (same scopeId) so the correct class lands on the DOM before
- * first paint, avoiding a light->dark (or dark->light) flash on reload.
- * Safe to inline: reads only localStorage, touches only this one element's
- * classList, and matches the client media query ThemeProvider itself uses.
+ * @deprecated Theme switching was removed. Kept only so any lingering
+ * import doesn't crash the build; always resolves to the single light
+ * theme and setTheme is a no-op.
  */
-export function ThemeFlashGuard({ scopeId, defaultTheme = "dark" }: { scopeId: string; defaultTheme?: Theme }) {
-  const script = `(function(){try{var t=localStorage.getItem("${STORAGE_KEY}");var resolved=(t==="light"||t==="dark")?t:((t===null||t==="system")?(window.matchMedia("(prefers-color-scheme: dark)").matches?"dark":"light"):"${defaultTheme}");var el=document.getElementById("${scopeId}");if(el){el.classList.remove("light","dark");el.classList.add(resolved);}}catch(e){}})();`;
-  // eslint-disable-next-line react/no-danger
-  return <script dangerouslySetInnerHTML={{ __html: script }} />;
+export function useTheme() {
+  return {
+    theme: "light" as const,
+    resolvedTheme: "light" as const,
+    setTheme: (_next: "light" | "dark" | "system") => {},
+  };
+}
+
+/**
+ * @deprecated No-op. There is nothing to flash-guard against anymore
+ * since the app never switches themes.
+ */
+export function ThemeFlashGuard(_props: { scopeId: string; defaultTheme?: "light" | "dark" | "system" }) {
+  return null;
 }
