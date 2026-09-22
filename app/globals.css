@@ -10,7 +10,7 @@
   :root {
     --background: 0 0% 100%;         /* white */
     --foreground: 222 55% 12%;       /* deep navy text */
-    --primary: 24 100% 50%;           /* BizNest orange */
+    --primary: 121 74% 23%;          /* BizNest green (from logo) */
     --primary-foreground: 0 0% 100%; /* white, for text on green */
     --muted: 215 35% 96%;             /* pale blue-gray */
     --muted-foreground: 220 16% 42%;  /* muted slate */
@@ -29,7 +29,7 @@
   .dark {
     --background: 222 55% 9%;          /* deep BizNest navy */
     --foreground: 0 0% 100%;          /* == --bn-ivory */
-    --primary: 24 100% 50%;            /* BizNest orange */
+    --primary: 121 74% 23%;           /* BizNest green (from logo) */
     --primary-foreground: 222 55% 9%;  /* navy text on orange */
     --muted: 222 40% 15%;              /* raised navy */
     --muted-foreground: 215 18% 70%;   /* muted blue-gray */
@@ -85,10 +85,10 @@
 /* Reusable forest→emerald→white gradient for heroes, buttons, and accent
    surfaces on LIGHT backgrounds (dashboard CTAs, upgrade banners, etc). */
 .bn-gradient {
-  background: linear-gradient(135deg, #0b1b3a 0%, #173b73 58%, #ff7900 100%);
+  background: linear-gradient(135deg, #0b1b3a 0%, #173b73 58%, #0f6410 100%);
 }
 .bn-gradient-text {
-  background: linear-gradient(135deg, #0b1b3a, #ff7900);
+  background: linear-gradient(135deg, #0b1b3a, #0f6410);
   -webkit-background-clip: text;
   background-clip: text;
   color: transparent;
@@ -100,17 +100,17 @@
    top-left keeps a large solid dark area from feeling flat/dead. */
 .bn-gradient-dark {
   background:
-    radial-gradient(120% 90% at 12% -10%, rgba(255, 121, 0, 0.18) 0%, transparent 55%),
+    radial-gradient(120% 90% at 12% -10%, rgba(15, 100, 16, 0.22) 0%, transparent 55%),
     linear-gradient(165deg, #173b73 0%, #0b1b3a 48%, #060f22 100%);
 }
 /* Emerald→jade gradient for primary CTAs/pills on dark surfaces — used
    instead of a flat accent fill so buttons read as "lush", not flat. */
 .bn-gradient-accent {
-  background: linear-gradient(135deg, #ff7900 0%, #e86600 100%);
+  background: linear-gradient(135deg, #0f6410 0%, #0b4d0c 100%);
 }
 
 /* --- BizNest brand tokens ---
-   Deep navy + orange, with the accent providing a bright, high-contrast pop (see .bn-gradient-accent above). Variable names
+   Deep navy + green, with the accent providing a bright, high-contrast pop (see .bn-gradient-accent above). Variable names
    kept stable so every file already referencing them (app/page.tsx,
    order confirmation, error/loading screens, etc.) picks this up with
    no further edits needed. */
@@ -118,8 +118,8 @@
   --bn-ink: #0b1b3a;       /* deep navy — dark brand ground */
   --bn-ink-raised: #142b50; /* raised navy for cards and panels */
   --bn-ink-line: #29466f;   /* subtle navy border */
-  --bn-marigold: #ff7900;  /* orange accent (legacy variable name retained) */
-  --bn-jade: #e86600;      /* deeper orange for hover states */
+  --bn-marigold: #0f6410;  /* green accent, from logo (legacy variable name retained) */
+  --bn-jade: #0b4d0c;      /* deeper green for hover states */
   --bn-ivory: #ffffff;     /* white, for text on dark surfaces */
   --bn-mute: #aab8cf;      /* muted blue-gray for secondary text */
 
@@ -128,9 +128,9 @@
      that's conditionally either this or a flat color). Same visual recipe
      as .bn-gradient-dark / .bn-gradient-accent above. */
   --bn-hero-gradient:
-    radial-gradient(120% 90% at 12% -10%, rgba(255, 121, 0, 0.18) 0%, transparent 55%),
+    radial-gradient(120% 90% at 12% -10%, rgba(15, 100, 16, 0.22) 0%, transparent 55%),
     linear-gradient(165deg, #173b73 0%, #0b1b3a 48%, #060f22 100%);
-  --bn-accent-gradient: linear-gradient(135deg, #ff7900 0%, #e86600 100%);
+  --bn-accent-gradient: linear-gradient(135deg, #0f6410 0%, #0b4d0c 100%);
 }
 
 @keyframes bn-marquee-left {
@@ -371,8 +371,8 @@ a[href*="/service/"]:hover img {
   --bn-line-soft: #edf0f3;
   --bn-ink: #111827;
   --bn-muted: #6b7280;
-  --bn-gold: #ff7900;
-  --bn-gold-dark: #e86600;
+  --bn-gold: #0f6410;
+  --bn-gold-dark: #0b4d0c;
   background: var(--bn-page) !important;
   color: var(--bn-ink) !important;
 }
@@ -386,12 +386,12 @@ a[href*="/service/"]:hover img {
   border-radius: 8px !important; box-shadow: none !important;
 }
 .bn-admin-app input:focus, .bn-admin-app select:focus, .bn-admin-app textarea:focus {
-  border-color: #ff7900 !important; outline: 2px solid rgba(255,121,0,.22) !important;
+  border-color: #0f6410 !important; outline: 2px solid rgba(15,100,16,.22) !important;
 }
 .bn-admin-app button, .bn-admin-app a { transition: background-color .15s ease, border-color .15s ease, box-shadow .15s ease, transform .15s ease; }
 .bn-admin-app button.bg-primary, .bn-admin-app a.bg-primary,
 .bn-admin-app button[class*="bg-primary"], .bn-admin-app a[class*="bg-primary"] {
-  background: var(--bn-gold) !important; color: #111827 !important; border-color: var(--bn-gold) !important;
+  background: var(--bn-gold) !important; color: #ffffff !important; border-color: var(--bn-gold) !important;
 }
 .bn-admin-app .rounded-lg.border, .bn-admin-app .rounded-xl.border, .bn-admin-app .rounded-2xl.border {
   border-color: var(--bn-line) !important; box-shadow: 0 1px 2px rgba(15,23,42,.035) !important;
@@ -405,8 +405,8 @@ a[href*="/service/"]:hover img {
 .bn-admin-app .bg-card, .bn-admin-app .bg-background { background: #fff !important; }
 .bn-admin-app .border-border { border-color: var(--bn-line) !important; }
 .bn-admin-app .text-primary { color: var(--bn-gold-dark) !important; }
-.bn-admin-app .bg-primary\/15 { background: rgba(255,121,0,.15) !important; }
-.bn-admin-app .bg-primary\/5 { background: rgba(255,121,0,.06) !important; }
+.bn-admin-app .bg-primary\/15 { background: rgba(15,100,16,.15) !important; }
+.bn-admin-app .bg-primary\/5 { background: rgba(15,100,16,.06) !important; }
 
 @media (min-width: 1024px) {
   .bn-admin-app > .flex-1 > main > .mx-auto { max-width: none !important; padding-left: 28px !important; padding-right: 28px !important; }
@@ -414,7 +414,7 @@ a[href*="/service/"]:hover img {
 
 .bn-admin-mobile-drawer { background: var(--bn-ink) !important; color: #fff !important; }
 .bn-admin-mobile-drawer .bn-admin-mobile-link { color: #cbd5e1 !important; }
-.bn-admin-mobile-drawer .bn-admin-mobile-link.active { background: #ff7900 !important; color: #071a33 !important; }
+.bn-admin-mobile-drawer .bn-admin-mobile-link.active { background: #0f6410 !important; color: #ffffff !important; }
 .bn-admin-mobile-drawer .bn-admin-mobile-muted { color: #94a3b8 !important; }
 .bn-admin-mobile-bottom { background: #fff !important; border-color: var(--bn-line) !important; }
 .bn-admin-app .bn-admin-action:hover { box-shadow: 0 5px 14px rgba(15,23,42,.08); transform: translateY(-1px); }
@@ -953,23 +953,23 @@ a[href*="/service/"]:hover img {
 .bn-admin-app [class~="bg-emerald-700"],
 .bn-admin-app [class~="bg-green-600"],
 .bn-admin-app [class~="bg-teal-600"] {
-  background-color: #ff7900 !important;
-  color: #071a33 !important;
-  border-color: #ff7900 !important;
+  background-color: #0f6410 !important;
+  color: #ffffff !important;
+  border-color: #0f6410 !important;
 }
 .bn-admin-app .bg-primary:hover,
 .bn-admin-app a.bg-primary:hover,
 .bn-admin-app button.bg-primary:hover {
-  background-color: #e86600 !important;
-  border-color: #e86600 !important;
+  background-color: #0b4d0c !important;
+  border-color: #0b4d0c !important;
 }
-.bn-admin-app .text-primary { color: #f07800 !important; }
-.bn-admin-app .border-primary { border-color: #ff7900 !important; }
+.bn-admin-app .text-primary { color: #0d5a0e !important; }
+.bn-admin-app .border-primary { border-color: #0f6410 !important; }
 .bn-admin-app.light {
   --background: 210 40% 98%;
   --foreground: 222 55% 12%;
-  --primary: 29 100% 50%;
-  --primary-foreground: 222 55% 12%;
+  --primary: 121 74% 23%;
+  --primary-foreground: 0 0% 100%;
   --muted: 210 30% 95%;
   --muted-foreground: 220 16% 42%;
   --border: 214 25% 88%;
@@ -980,15 +980,15 @@ a[href*="/service/"]:hover img {
 .bn-admin-app.dark {
   --background: 222 55% 9%;
   --foreground: 0 0% 100%;
-  --primary: 29 100% 50%;
-  --primary-foreground: 222 55% 12%;
+  --primary: 121 60% 32%;
+  --primary-foreground: 0 0% 100%;
   --muted: 222 40% 15%;
   --muted-foreground: 215 18% 70%;
   --border: 220 35% 25%;
   color-scheme: dark;
 }
-.bn-admin-app .bn-admin-action[class*="bg-"] { background-color: #ff7900 !important; }
-.bn-admin-app .bn-admin-action[class*="bg-"]:hover { background-color: #e86600 !important; }
+.bn-admin-app .bn-admin-action[class*="bg-"] { background-color: #0f6410 !important; }
+.bn-admin-app .bn-admin-action[class*="bg-"]:hover { background-color: #0b4d0c !important; }
 
 
 
@@ -1113,7 +1113,7 @@ a[href*="/service/"]:hover img {
   color: #aabbd3 !important;
 }
 
-/* Orange brand actions; replace common legacy green primary button utilities */
+/* Brand actions; normalize legacy utility classes to the brand accent */
 :is(#bn-admin-theme-scope, #bn-plugin-theme-scope, #bn-fnb-theme-scope, #bn-pms-theme-scope, #bn-supaadmin-theme-scope).dark
 :is(button, a)[class~="bg-primary"],
 :is(#bn-admin-theme-scope, #bn-plugin-theme-scope, #bn-fnb-theme-scope, #bn-pms-theme-scope, #bn-supaadmin-theme-scope).dark
@@ -1122,9 +1122,9 @@ a[href*="/service/"]:hover img {
 :is(button, a)[class~="bg-green-600"],
 :is(#bn-admin-theme-scope, #bn-plugin-theme-scope, #bn-fnb-theme-scope, #bn-pms-theme-scope, #bn-supaadmin-theme-scope).dark
 :is(button, a)[class~="bg-teal-600"] {
-  background-color: #ff7900 !important;
-  color: #071a33 !important;
-  border-color: #ff7900 !important;
+  background-color: #0f6410 !important;
+  color: #ffffff !important;
+  border-color: #0f6410 !important;
 }
 
 
@@ -1169,8 +1169,8 @@ a[href*="/service/"]:hover img {
   color: #aabbd3 !important;
 }
 .dark .bn-adaptive-dashboard a[class*="bg-[#e9b45a]"] {
-  background-color: #ff7900 !important;
-  color: #071a33 !important;
+  background-color: #0f6410 !important;
+  color: #ffffff !important;
 }
 .dark .bn-adaptive-dashboard a[class*="bg-white"] {
   background-color: #142b50 !important;
@@ -1215,10 +1215,10 @@ a[href*="/service/"]:hover img {
 }
 /* Lucide SVG icons use stroke, not text color alone; force readable stroke. */
 .dark .bn-adaptive-dashboard svg {
-  stroke: #ff9a1f;
+  stroke: #2fbf4f;
 }
 .dark .bn-adaptive-dashboard svg [fill="currentColor"] {
-  fill: #ff9a1f !important;
+  fill: #2fbf4f !important;
 }
 .dark .bn-adaptive-dashboard [class*="bg-purple-"] svg,
 .dark .bn-adaptive-dashboard [class*="bg-violet-"] svg,
@@ -1226,7 +1226,7 @@ a[href*="/service/"]:hover img {
 .dark .bn-adaptive-dashboard [class*="bg-green-"] svg,
 .dark .bn-adaptive-dashboard [class*="bg-blue-"] svg,
 .dark .bn-adaptive-dashboard [class*="bg-indigo-"] svg {
-  stroke: #ff9a1f !important;
+  stroke: #2fbf4f !important;
 }
 .dark .bn-adaptive-dashboard table thead,
 .dark .bn-adaptive-dashboard thead tr,
@@ -1291,7 +1291,7 @@ a[href*="/service/"]:hover img {
   color: #f8fafc !important;
 }
 .dark .bn-fnb-workspace svg {
-  color: #ff9a1f;
+  color: #2fbf4f;
   stroke: currentColor;
 }
 .dark .bn-fnb-workspace input,
@@ -1357,9 +1357,9 @@ a[href*="/service/"]:hover img {
 .dark :is(.bg-primary\/5, .bg-primary\/10) {
   color: #f1f5f9 !important;
 }
-/* Keep semantic orange actions visibly orange in every plugin. */
+/* Keep semantic brand actions visibly on-brand in every plugin. */
 .dark :is(.bg-orange-500, .bg-orange-600, .bg-primary) {
-  color: #071a33;
+  color: #ffffff;
 }
 
 
@@ -1375,8 +1375,8 @@ a[href*="/service/"]:hover img {
   --bn-line: #29466f !important;
   --bn-line-soft: #203e66 !important;
   --bn-muted: #b8c8df !important;
-  --bn-gold: #ff7900 !important;
-  --bn-gold-dark: #e86600 !important;
+  --bn-gold: #0f6410 !important;
+  --bn-gold-dark: #0b4d0c !important;
   background: #0b1b3a !important;
   color: #f8fafc !important;
 }
@@ -1423,7 +1423,7 @@ a[href*="/service/"]:hover img {
   color: #dbeafe !important;
 }
 #bn-admin-theme-scope.dark .bn-admin-topbar svg {
-  color: #ff9a1f !important;
+  color: #2fbf4f !important;
   stroke: currentColor;
 }
 
@@ -1449,7 +1449,7 @@ a[href*="/service/"]:hover img {
   color: #b8c8df !important;
 }
 #bn-admin-theme-scope.dark .bn-email-inbox-preview .text-primary {
-  color: #ff9a1f !important;
+  color: #2fbf4f !important;
 }
 #bn-admin-theme-scope.dark .bn-email-preview-frame {
   background: #0b1b3a !important;
@@ -1471,10 +1471,10 @@ a[href*="/service/"]:hover img {
   --bn-admin-muted: #64748b;
   --bn-admin-border: #e2e8f0;
   --bn-admin-border-soft: #eef2f7;
-  --bn-admin-orange: #ff7900;
-  --bn-admin-orange-dark: #e86600;
-  --bn-admin-orange-soft: #fff3e6;
-  --bn-admin-on-orange: #071a33;
+  --bn-admin-orange: #0f6410;
+  --bn-admin-orange-dark: #0b4d0c;
+  --bn-admin-orange-soft: #e8f5ea;
+  --bn-admin-on-orange: #ffffff;
   --bn-admin-danger: #dc2626;
   --bn-admin-danger-soft: #fef2f2;
   --bn-admin-danger-line: #fecaca;
@@ -1491,10 +1491,10 @@ a[href*="/service/"]:hover img {
   --bn-admin-muted: #b8c8df;
   --bn-admin-border: #29466f;
   --bn-admin-border-soft: #203e66;
-  --bn-admin-orange: #ff7900;
-  --bn-admin-orange-dark: #e86600;
-  --bn-admin-orange-soft: #2a1a0d;
-  --bn-admin-on-orange: #071a33;
+  --bn-admin-orange: #0f6410;
+  --bn-admin-orange-dark: #0b4d0c;
+  --bn-admin-orange-soft: #10291a;
+  --bn-admin-on-orange: #ffffff;
   --bn-admin-danger: #f87171;
   --bn-admin-danger-soft: #3a1518;
   --bn-admin-danger-line: #71343a;
