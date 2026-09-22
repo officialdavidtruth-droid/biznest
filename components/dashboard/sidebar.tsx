@@ -73,9 +73,11 @@ export function DashboardSidebar({
         "--bn-admin-muted": "rgba(255,255,255,0.66)",
       } as CSSProperties}
     >
-      <div className="border-b border-[var(--bn-admin-border)] px-4 py-4">
+      <div className="border-b border-white/15 px-4 py-4">
         <div className="mb-4 flex items-center gap-2.5">
-          <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-[var(--bn-admin-orange-soft)] text-[var(--bn-admin-text)] text-sm font-black text-white shadow-sm">▰</div>
+          <div className="flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-xl bg-white shadow-sm">
+            <img src="/icon-192.png" alt="BizNest" className="h-full w-full object-cover" />
+          </div>
           <div>
             <p className="text-[19px] font-bold leading-none tracking-tight text-white">BizNest</p>
             <p className="mt-1 text-[9px] font-medium tracking-wide text-[var(--bn-admin-muted)]">Your Business, Elevated</p>
@@ -118,17 +120,17 @@ export function DashboardSidebar({
         ))}
       </nav>
 
-      <div className="border-t border-[var(--bn-admin-border)] px-3 py-3">
-        <div className="mb-3 rounded-xl border border-[var(--bn-admin-border)] bg-[color-mix(in_srgb,var(--bn-admin-surface-2)_80%,transparent)] p-3">
-          <div className="flex items-center gap-2 text-[11px] font-semibold text-white"><Crown className="h-4 w-4 text-[var(--bn-admin-muted)]" /> {subscriptionName ?? "No active plan"}</div>
-          <p className="mt-1 text-[10px] text-[var(--bn-admin-muted)]">Your workspace is powered by BizNest.</p>
-          <p className="mt-2 text-[10px] text-[var(--bn-admin-muted)]">Plan access is managed from your subscription settings.</p>
-          <Link href={`/${slug}/admin/subscription`} className="block rounded-md bg-[var(--bn-admin-orange-soft)] text-[var(--bn-admin-text)] px-2 py-1.5 text-center text-[10px] font-bold text-white">Manage Plan</Link>
+      <div className="border-t border-white/15 px-3 py-3">
+        <div className="mb-3 rounded-xl border border-white/15 bg-white/10 p-3">
+          <div className="flex items-center gap-2 text-[11px] font-semibold text-white"><Crown className="h-4 w-4 text-white/80" /> {subscriptionName ?? "No active plan"}</div>
+          <p className="mt-1 text-[10px] text-white/70">Your workspace is powered by BizNest.</p>
+          <p className="mt-2 text-[10px] text-white/70">Plan access is managed from your subscription settings.</p>
+          <Link href={`/${slug}/admin/subscription`} className="block rounded-md bg-white/90 px-2 py-1.5 text-center text-[10px] font-bold text-[var(--bn-admin-text)] hover:bg-white">Manage Plan</Link>
         </div>
         <div className="flex items-center gap-2 px-1">
           <StoreLogo logoUrl={logoUrl} storeName={storeName} size="sm" />
-          <div className="min-w-0 flex-1"><p className="truncate text-[11px] font-semibold text-white">Business Admin</p><p className="text-[10px] text-[var(--bn-admin-muted)]">{staffRole ?? "OWNER"}</p></div>
-          <SignOutButton className="text-[10px] text-[var(--bn-admin-muted)] hover:text-[var(--bn-admin-danger)]" />
+          <div className="min-w-0 flex-1"><p className="truncate text-[11px] font-semibold text-white">Business Admin</p><p className="text-[10px] text-white/70">{staffRole ?? "OWNER"}</p></div>
+          <SignOutButton className="text-[10px] text-white/70 hover:text-red-300" />
         </div>
       </div>
     </aside>
@@ -202,7 +204,7 @@ function NavLink({ base, item, pathname }: { base: string; item: NavItem; pathna
         </button>
       </div>
       {open && (
-        <div className="ml-4 mt-0.5 space-y-0.5 border-l border-[var(--bn-admin-border)] pl-3">
+        <div className="ml-4 mt-0.5 space-y-0.5 border-l border-white/15 pl-3">
           {item.children.map((child) => {
             const childHref = `${base}${child.href}`;
             const childIsActive = pathname === childHref;
