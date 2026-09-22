@@ -71,8 +71,19 @@ export default async function StoreAdminLayout({
     const pluginMatch = subpath.match(/^\/apps\/([^/]+)/);
     const pluginKey = pluginMatch?.[1] ?? (isPmsRoute ? "pms" : isFnbRoute ? "fnb-operations" : null);
     if (pluginKey) {
-      const installed = installedAppNav.some((app) => app.key === pluginKey);
-      if (!installed || !hasStorePermission(role, staffPermissions, `plugin:${pluginKey}`)) redirect(`/${slug}/admin`);
+      // A staff member without the plugin permission never sees this area at all,
+      // installed or not -- that's real access control, not the "redirect away"
+      // behavior being scoped down below, so it stays for every plugin.
+      if (!hasStorePermission(role, staffPermissions, `plugin:${pluginKey}`)) redirect(`/${slug}/admin`);
+      // PMS and FNB are full dedicated workspaces reached via this same layout
+      // (isPmsRoute/isFnbRoute), so an uninstalled visit still bounces out here.
+      // Every other plugin now renders its own inline "install this app" message
+      // instead (see PluginInstallGate), so don't redirect those away.
+      const isDedicatedPluginRoute = pluginKey === "pms" || pluginKey === "fnb-operations";
+      if (isDedicatedPluginRoute) {
+        const installed = installedAppNav.some((app) => app.key === pluginKey);
+        if (!installed) redirect(`/${slug}/admin`);
+      }
     }
     const navItem = findNavItemForPath(
       { sellsProducts: store.business.sellsProducts, offersServices: store.business.offersServices, category: store.businessType, subscriptionName: store.subscription?.name, installedApps: installedAppNav },
