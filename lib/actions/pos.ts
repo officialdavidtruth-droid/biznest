@@ -255,11 +255,11 @@ export async function searchPosCustomers(slug: string, query: string): Promise<P
 async function getOrCreateWalkInCustomer(storeId: string) {
   const email = `pos-walkin-${storeId}@biznest.internal`;
   const existing = await prisma.user.findFirst({
-    where: { email, customerScopeStoreId: null },
+    where: { email, customerScopeStoreId: null, isMarketingOnly: false },
   });
   if (existing) return existing;
   return prisma.user.create({
-    data: { email, name: "Walk-in customer", role: "CUSTOMER" },
+    data: { email, name: "Walk-in customer", role: "CUSTOMER", isMarketingOnly: false },
   });
 }
 

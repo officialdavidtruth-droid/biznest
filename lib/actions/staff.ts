@@ -99,7 +99,7 @@ export async function inviteStaffMember(
   // store's staff.
   const userEmail = normalizedEmail ?? `${normalizedUsername}.${store.slug}.staff@internal.biznest`;
 
-  const emailClash = await prisma.user.findFirst({ where: { email: userEmail, customerScopeStoreId: null } });
+  const emailClash = await prisma.user.findFirst({ where: { email: userEmail, customerScopeStoreId: null, isMarketingOnly: false } });
   if (emailClash) {
     return {
       success: false,

@@ -48,6 +48,21 @@ model User {
   // any account of the same email at any other store.
   customerScopeStoreId String?
   customerScopeStore   Store?  @relation("UserCustomerScope", fields: [customerScopeStoreId], references: [id], onDelete: Cascade)
+  // Splits the scope-null (platform) identity space in two: false = a main
+  // BizNest account (store owner, staff, platform admin, or a pending
+  // signup awaiting business verification -- see registerUser in
+  // lib/actions/auth.ts); true = a BizNest Marketing account (see
+  // signUpForMarketing in lib/actions/marketing-signup.ts). BizNest
+  // Marketing is a fully separate product with its own accounts -- an
+  // email already registered on the main platform must not block (or be
+  // confused with) a Marketing signup of the same email, and vice versa.
+  // Only meaningful when customerScopeStoreId is null; a store-scoped
+  // customer row is already isolated by that store's id and this flag is
+  // irrelevant to it. Enforced by the two partial unique indexes added in
+  // prisma/migrations/20260921090000_split_marketing_identity_scope
+  // (replacing the single scope-null partial index from
+  // 20260823120000_customer_scoped_email).
+  isMarketingOnly   Boolean   @default(false)
   emailVerified     DateTime?
   passwordHash      String? // null for OAuth-only accounts
   image             String?

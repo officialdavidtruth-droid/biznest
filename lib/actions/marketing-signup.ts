@@ -46,8 +46,14 @@ export async function signUpForMarketing(
   }
 
   const normalizedEmail = parsed.data.email.trim().toLowerCase();
+  // Scoped to isMarketingOnly: true -- BizNest Marketing is a fully
+  // separate product with its own accounts (see lib/access/marketing-tool.ts),
+  // so an email already used for a main-platform account (isMarketingOnly:
+  // false) must NOT block this signup. See the isMarketingOnly field on
+  // User and the partial unique indexes in
+  // prisma/migrations/20260921090000_split_marketing_identity_scope.
   const existing = await prisma.user.findFirst({
-    where: { email: { equals: normalizedEmail, mode: "insensitive" }, customerScopeStoreId: null },
+    where: { email: { equals: normalizedEmail, mode: "insensitive" }, customerScopeStoreId: null, isMarketingOnly: true },
   });
   if (existing) return { success: false, error: "An account with this email already exists. Try signing in instead." };
 
@@ -57,7 +63,7 @@ export async function signUpForMarketing(
 
   const store = await prisma.$transaction(async (tx) => {
     const user = await tx.user.create({
-      data: { name: parsed.data.name, email: normalizedEmail, passwordHash, role: "STORE_OWNER" },
+      data: { name: parsed.data.name, email: normalizedEmail, passwordHash, role: "STORE_OWNER", isMarketingOnly: true },
     });
     const business = await tx.business.create({
       data: {

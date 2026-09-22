@@ -63,8 +63,14 @@ export async function registerUser(
   // prisma/migrations/20260823120000_customer_scoped_email.
   const scopeStoreId = storeForCustomer?.id ?? null;
 
+  // isMarketingOnly: false pins the platform-scope check to main-platform
+  // accounts specifically, so an email already used for a BizNest
+  // Marketing signup (see signUpForMarketing in lib/actions/marketing-signup.ts)
+  // never blocks a main-platform registration. Irrelevant when scopeStoreId
+  // is set (a store-scoped customer row is already isolated by that store's
+  // id), but harmless to include either way.
   const existing = await prisma.user.findFirst({
-    where: { email: { equals: normalizedEmail, mode: "insensitive" }, customerScopeStoreId: scopeStoreId },
+    where: { email: { equals: normalizedEmail, mode: "insensitive" }, customerScopeStoreId: scopeStoreId, isMarketingOnly: false },
   });
   if (existing) {
     return {
@@ -173,9 +179,19 @@ export async function requestPasswordReset(input: ForgotPasswordInput): Promise<
     scopeStoreId = store.id;
   }
 
-  const user = await prisma.user.findFirst({
-    where: { email: { equals: parsed.data.email, mode: "insensitive" }, customerScopeStoreId: scopeStoreId },
-  });
+  // Scope-null now covers two independent products (see isMarketingOnly on
+  // User) -- try the main-platform account first, then fall back to a
+  // Marketing-only account. Irrelevant when scopeStoreId is set, since a
+  // store-scoped row is already isolated by that store's id.
+  const user =
+    (await prisma.user.findFirst({
+      where: { email: { equals: parsed.data.email, mode: "insensitive" }, customerScopeStoreId: scopeStoreId, isMarketingOnly: false },
+    })) ??
+    (scopeStoreId
+      ? null
+      : await prisma.user.findFirst({
+          where: { email: { equals: parsed.data.email, mode: "insensitive" }, customerScopeStoreId: null, isMarketingOnly: true },
+        }));
 
   // Also rate-limit per-account so a leaked/guessed address can't be spammed
   // with reset emails even from rotating IPs.

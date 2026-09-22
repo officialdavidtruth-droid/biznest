@@ -152,8 +152,22 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
             : null;
 
           if (!user) {
+            // Scope-null now covers two independent products (see
+            // isMarketingOnly on User) -- try the main-platform account
+            // first, since that's what this shared /login page is for,
+            // then fall back to a Marketing-only account so someone who
+            // only ever signed up for BizNest Marketing can still sign in
+            // here (there's no separate Marketing login page). If the same
+            // email happens to have accounts in both products, the
+            // main-platform one wins.
             user = await withTimeout(
-              prisma.user.findFirst({ where: { email: { equals: parsed.data.email, mode: "insensitive" }, customerScopeStoreId: null } })
+              prisma.user.findFirst({ where: { email: { equals: parsed.data.email, mode: "insensitive" }, customerScopeStoreId: null, isMarketingOnly: false } })
+            );
+          }
+
+          if (!user) {
+            user = await withTimeout(
+              prisma.user.findFirst({ where: { email: { equals: parsed.data.email, mode: "insensitive" }, customerScopeStoreId: null, isMarketingOnly: true } })
             );
           }
 
