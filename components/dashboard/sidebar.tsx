@@ -81,20 +81,20 @@ export function DashboardSidebar({
             <p className="mt-1 text-[9px] font-medium tracking-wide text-[var(--bn-admin-muted)]">Your Business, Elevated</p>
           </div>
         </div>
-        <div className="rounded-xl border border-[var(--bn-admin-border)] bg-[color-mix(in_srgb,var(--bn-admin-surface-2)_80%,transparent)] p-3">
+        <div className="rounded-xl border border-white/15 bg-white/10 p-3">
           <div className="flex items-center gap-2.5">
             <Link href={`${base}/settings`} className="group/logo relative shrink-0 rounded-lg" title="Change business logo">
               <StoreLogo logoUrl={logoUrl} storeName={storeName} size="sm" />
-              <span className="absolute inset-0 flex items-center justify-center rounded-lg bg-[color-mix(in_srgb,var(--bn-admin-page)_50%,transparent)] opacity-0 transition-opacity group-hover/logo:opacity-100">
+              <span className="absolute inset-0 flex items-center justify-center rounded-lg bg-black/45 opacity-0 transition-opacity group-hover/logo:opacity-100">
                 <Pencil className="h-3.5 w-3.5 text-white" />
               </span>
             </Link>
             <div className="min-w-0 flex-1">
               <div className="flex items-center gap-1.5">
                 <p className="truncate text-xs font-semibold text-white">{storeName}</p>
-                <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-[var(--bn-admin-surface-2)]" />
+                <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-emerald-400" />
               </div>
-              <Link href={`/${slug}`} target="_blank" className="mt-1 flex items-center gap-1 text-[10px] text-[var(--bn-admin-muted)] hover:text-white">
+              <Link href={`/${slug}`} target="_blank" className="mt-1 flex items-center gap-1 text-[10px] text-white/70 hover:text-white">
                 <span>View Store</span><ExternalLink className="h-2.5 w-2.5" />
               </Link>
             </div>
