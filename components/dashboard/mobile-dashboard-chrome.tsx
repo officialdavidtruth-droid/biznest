@@ -141,7 +141,12 @@ export function MobileDashboardChrome({
           <div className="absolute inset-0 bg-[color-mix(in_srgb,var(--bn-admin-page)_50%,transparent)]" onClick={() => setDrawerOpen(false)} />
           <div
             className="bn-admin-mobile-drawer absolute inset-y-0 left-0 flex w-[82%] max-w-xs flex-col overflow-y-auto pb-[env(safe-area-inset-bottom)] shadow-2xl"
-            style={themeColor ? ({ "--bn-ink": themeColor } as CSSProperties) : undefined}
+            style={{
+              ...(themeColor
+                ? { "--bn-ink": `color-mix(in srgb, ${themeColor} 55%, #04140b 45%)` }
+                : {}),
+              "--bn-admin-muted": "rgba(255,255,255,0.66)",
+            } as CSSProperties}
           >
             <div className="flex items-center gap-3 border-b border-[var(--bn-admin-border)] px-4 py-4">
               <StoreLogo logoUrl={logoUrl} storeName={storeName} />

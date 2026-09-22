@@ -60,7 +60,18 @@ export function DashboardSidebar({
     // tuned for one-thumb use, not a shrunk desktop sidebar.
     <aside
       className="bn-admin-sidebar hidden h-screen max-h-screen w-[250px] shrink-0 flex-col overflow-y-auto overscroll-contain border-r border-[color:var(--bn-ink-line)] bg-[color:var(--bn-ink)] text-white lg:sticky lg:top-0 lg:flex lg:self-start"
-      style={themeColor ? ({ "--bn-ink": themeColor } as CSSProperties) : undefined}
+      style={{
+        // Sidebar is always a dark surface — --bn-admin-muted (#64748b) was
+        // tuned for the light admin body text and reads as near-invisible
+        // slate-on-dark here, so give the sidebar its own lighter muted
+        // tone regardless of accent. When a store has a brand color, blend
+        // it down with black rather than using it raw: an un-darkened
+        // brand color (light/saturated) fails contrast against white text.
+        ...(themeColor
+          ? { "--bn-ink": `color-mix(in srgb, ${themeColor} 55%, #04140b 45%)` }
+          : {}),
+        "--bn-admin-muted": "rgba(255,255,255,0.66)",
+      } as CSSProperties}
     >
       <div className="border-b border-[var(--bn-admin-border)] px-4 py-4">
         <div className="mb-4 flex items-center gap-2.5">
