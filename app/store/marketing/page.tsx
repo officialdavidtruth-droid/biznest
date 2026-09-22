@@ -1,7 +1,9 @@
-// Route: /marketing
-// The Marketing tool (contact import + dedupe) is gated: signed-out visitors
-// must sign up, existing users must sign in, and only stores on the
-// Business Mogul plan get to actually use it -- no payment redirect for them.
+// Route: /store/marketing (the workspace marketing-only stores land on)
+// BizNest Marketing is its own product, on its own subscription, separate
+// from the main BizNest storefront platform (see lib/access/marketing-tool.ts).
+// The tool (contact import + dedupe, plus the CRM pipeline) is gated: signed-out
+// visitors must sign up for Marketing specifically, and signed-in users need an
+// active marketing-only store -- a Business Mogul store's plan grants nothing here.
 import Link from "next/link";
 import { auth } from "@/lib/auth";
 import { getMarketingToolAccess } from "@/lib/access/marketing-tool";
@@ -24,8 +26,8 @@ async function loadTemplateData(slug: string) {
 // The CRM pipeline (leads, deals, customer 360) ships in the same "CRM &
 // Sales" app as email marketing -- see app/store/[slug]/admin/apps/crm/*.
 // Mirrors that page's own entitlement check (plugin install, not the plan
-// gate above) so a Mogul store that hasn't installed CRM doesn't see a
-// pipeline it can't actually use in the dashboard.
+// gate above) so a Marketing account that hasn't installed CRM doesn't see
+// a pipeline it can't actually use in the dashboard.
 async function loadPipelineData(slug: string) {
   const perm = await assertStorePermission(slug, "customers");
   if (!perm.success) return null;
@@ -41,11 +43,11 @@ export default async function MarketingStandalonePage() {
   const session = await auth();
   const access = await getMarketingToolAccess(session?.user?.id);
 
-  // Email templates are styled with the Mogul store's own brand. Staff without the
-  // "marketing" permission on that store simply don't get the template studio.
+  // Email templates are styled with the marketing store's own brand. Staff without
+  // the "marketing" permission on that store simply don't get the template studio.
   let templates: Awaited<ReturnType<typeof loadTemplateData>> = null;
   let pipeline: Awaited<ReturnType<typeof loadPipelineData>> = null;
-  if (access.status === "mogul") {
+  if (access.status === "active") {
     templates = await loadTemplateData(access.storeSlug);
     pipeline = await loadPipelineData(access.storeSlug);
   }
@@ -57,17 +59,15 @@ export default async function MarketingStandalonePage() {
           <Link href="/" className="text-xl font-extrabold text-white">BizNest <span className="text-orange-400">Marketing</span></Link>
           <nav className="flex items-center gap-5 text-sm font-medium">
             <Link className="text-slate-200 hover:text-white" href="/">Home</Link>
-            {access.status === "mogul" ? (
-              <Link href={`/store/${access.storeSlug}/admin`} className="rounded-full bg-orange-500 px-5 py-2.5 font-bold text-slate-950 hover:bg-orange-400">
-                Go to dashboard
-              </Link>
+            {access.status === "active" ? (
+              <span className="rounded-full bg-orange-500/15 px-5 py-2.5 font-bold text-orange-300">Marketing active</span>
             ) : access.status === "signed-out" ? (
               <Link href="/marketing/signup" className="rounded-full bg-orange-500 px-5 py-2.5 font-bold text-slate-950 hover:bg-orange-400">
                 Sign up
               </Link>
             ) : (
-              <Link href={access.storeSlug ? `/store/${access.storeSlug}/admin/subscription` : "/templates"} className="rounded-full bg-orange-500 px-5 py-2.5 font-bold text-slate-950 hover:bg-orange-400">
-                Upgrade
+              <Link href="/marketing/signup" className="rounded-full bg-orange-500 px-5 py-2.5 font-bold text-slate-950 hover:bg-orange-400">
+                Subscribe
               </Link>
             )}
           </nav>
@@ -77,11 +77,11 @@ export default async function MarketingStandalonePage() {
       <section className="bg-gradient-to-br from-slate-900 via-blue-950 to-slate-950">
         <div className="mx-auto grid max-w-6xl gap-10 px-5 py-16 md:grid-cols-2 md:items-center md:py-24">
           <div>
-            <p className="text-xs font-bold uppercase tracking-[.22em] text-orange-400">BizNest CRM &amp; Sales &middot; Business Mogul workspace</p>
+            <p className="text-xs font-bold uppercase tracking-[.22em] text-orange-400">BizNest CRM &amp; Sales &middot; BizNest Marketing</p>
             <h1 className="mt-5 text-4xl font-extrabold leading-tight text-white sm:text-6xl">Win the deal.<br /><span className="text-orange-400">Then keep them coming back.</span></h1>
-            <p className="mt-6 max-w-xl text-lg leading-8 text-slate-200">A full lead pipeline, customer profiles and email marketing in one workspace &mdash; included free with the Business Mogul plan.</p>
+            <p className="mt-6 max-w-xl text-lg leading-8 text-slate-200">A full lead pipeline, customer profiles and email marketing in one workspace &mdash; on its own standalone Marketing subscription.</p>
             <div className="mt-8 flex flex-wrap gap-3">
-              {access.status === "mogul" ? (
+              {access.status === "active" ? (
                 <>
                   <a href="#pipeline" className="rounded-full bg-orange-500 px-7 py-3.5 font-bold text-slate-950 hover:bg-orange-400">Open pipeline</a>
                   <a href="#contacts" className="rounded-full border border-slate-500 px-7 py-3.5 font-semibold text-white hover:bg-white/10">Import contacts</a>
@@ -93,15 +93,15 @@ export default async function MarketingStandalonePage() {
                   <Link href={`/login?callbackUrl=${encodeURIComponent("/marketing")}`} className="rounded-full border border-slate-500 px-7 py-3.5 font-semibold text-white hover:bg-white/10">Sign in</Link>
                 </>
               ) : (
-                <Link href={access.storeSlug ? `/store/${access.storeSlug}/admin/subscription` : "/templates"} className="rounded-full bg-orange-500 px-7 py-3.5 font-bold text-slate-950 hover:bg-orange-400">
-                  {access.storeSlug ? "Upgrade to Business Mogul" : "Choose a plan"}
+                <Link href="/marketing/signup" className="rounded-full bg-orange-500 px-7 py-3.5 font-bold text-slate-950 hover:bg-orange-400">
+                  Subscribe to Marketing
                 </Link>
               )}
             </div>
-            <p className="mt-4 text-sm text-slate-300">Bundled with Business Mogul &middot; Pricing configured by BizNest Superadmin</p>
+            <p className="mt-4 text-sm text-slate-300">A separate BizNest Marketing account &middot; Pricing configured by BizNest Superadmin</p>
           </div>
           <div className="rounded-3xl border border-blue-800 bg-slate-900/80 p-6 shadow-2xl">
-            <div className="mb-5 flex items-center justify-between"><span className="font-bold text-white">CRM &amp; Sales workspace</span><span className="rounded-full bg-orange-500/15 px-3 py-1 text-xs font-semibold text-orange-300">{access.status === "mogul" ? "Active" : "Preview"}</span></div>
+            <div className="mb-5 flex items-center justify-between"><span className="font-bold text-white">CRM &amp; Sales workspace</span><span className="rounded-full bg-orange-500/15 px-3 py-1 text-xs font-semibold text-orange-300">{access.status === "active" ? "Active" : "Preview"}</span></div>
             <div className="grid gap-3 sm:grid-cols-2">
               <div className="rounded-2xl border border-slate-700 bg-slate-800 p-5"><p className="text-sm text-slate-300">Pipeline</p><p className="mt-2 text-2xl font-bold text-white">Leads &amp; deals</p><p className="mt-1 text-sm text-slate-400">New &rarr; Contacted &rarr; Qualified &rarr; Proposal &rarr; Won/Lost</p></div>
               <div className="rounded-2xl border border-slate-700 bg-slate-800 p-5"><p className="text-sm text-slate-300">Relationships</p><p className="mt-2 text-2xl font-bold text-white">Customer 360</p><p className="mt-1 text-sm text-slate-400">One profile per customer, calls and notes included</p></div>
@@ -113,7 +113,7 @@ export default async function MarketingStandalonePage() {
         </div>
       </section>
 
-      {access.status === "mogul" && pipeline && (
+      {access.status === "active" && pipeline && (
         <section id="pipeline" className="mx-auto max-w-6xl px-5 py-14">
           <div className="mb-8">
             <p className="text-sm font-bold uppercase tracking-widest text-orange-400">CRM &amp; Sales</p>
@@ -128,7 +128,7 @@ export default async function MarketingStandalonePage() {
         </section>
       )}
 
-      {access.status === "mogul" ? <MarketingToolClient /> : <MarketingToolLocked access={access} />}
+      {access.status === "active" ? <MarketingToolClient /> : <MarketingToolLocked access={access} />}
       {templates && <MarketingTemplatesSection slug={templates.slug} brand={templates.brand} items={templates.items} />}
     </main>
   );

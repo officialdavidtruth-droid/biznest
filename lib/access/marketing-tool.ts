@@ -2,19 +2,25 @@ import { prisma } from "@/lib/prisma";
 
 export type MarketingToolAccess =
   | { status: "signed-out" }
-  | { status: "mogul"; storeSlug: string }
+  | { status: "active"; storeSlug: string }
   | { status: "needs-upgrade"; storeSlug: string | null };
 
 /**
- * The standalone Marketing tool (app/marketing) is bundled free with the
- * Business Mogul plan. Everyone else has to sign in and subscribe before
- * they can use it. "Has Business Mogul" is derived from the user's stores
- * (owner or active staff membership) since subscriptions live on Store,
- * not User -- there's no separate account-level plan.
+ * BizNest Marketing is its own product with its own operational system --
+ * separate account, separate subscription, separate everything -- from the
+ * main BizNest storefront platform. It is no longer bundled with the
+ * Business Mogul plan: running a full store on Business Mogul does not by
+ * itself grant Marketing access, and a Marketing subscription does not
+ * grant anything on the storefront side.
+ *
+ * The only way in is a store created through the lightweight
+ * /marketing/signup flow (see signUpForMarketing in
+ * lib/actions/marketing-signup.ts), which is marked marketingOnly and kept
+ * out of the full admin dashboard (see app/store/[slug]/admin/layout.tsx).
  *
  * storeSlug (when present) is the store we'd send the user to in order to
- * resolve their access: their existing store's subscription page if they
- * already run one, or null if they have no store at all yet.
+ * resolve their access: their existing marketing-only store's subscription
+ * page if they already have one, or null if they have no store at all yet.
  */
 export async function getMarketingToolAccess(userId: string | undefined): Promise<MarketingToolAccess> {
   if (!userId) return { status: "signed-out" };
@@ -26,17 +32,16 @@ export async function getMarketingToolAccess(userId: string | undefined): Promis
         { staffMembers: { some: { userId, status: "ACTIVE" } } },
       ],
     },
-    select: { slug: true, marketingOnly: true, subscription: { select: { name: true } } },
+    select: { slug: true, marketingOnly: true },
     orderBy: { name: "asc" },
   });
 
-  // Two independent ways in: a full store on the Business Mogul plan (gets
-  // marketing bundled with everything else), or a store created through
-  // the lightweight /marketing/signup flow (marketing is *all* it has --
-  // see signUpForMarketing in lib/actions/marketing-signup.ts). Either one
-  // is enough; a marketing-only store never has a subscription.
-  const mogulStore = stores.find((s) => s.subscription?.name === "Business Mogul" || s.marketingOnly);
-  if (mogulStore) return { status: "mogul", storeSlug: mogulStore.slug };
+  // A marketing-only store is the sole way into BizNest Marketing. A full
+  // store's subscription tier (Business Mogul included) is irrelevant here.
+  const marketingStore = stores.find((s) => s.marketingOnly);
+  if (marketingStore) return { status: "active", storeSlug: marketingStore.slug };
 
-  return { status: "needs-upgrade", storeSlug: stores[0]?.slug ?? null };
+  // No marketing-only store yet. Never point this at a full (non-marketing)
+  // store -- that store's own subscription has nothing to do with Marketing.
+  return { status: "needs-upgrade", storeSlug: null };
 }

@@ -23,17 +23,17 @@ export function MarketingToolLocked({ access }: { access: MarketingToolAccess })
     );
   }
 
-  // access.status === "needs-upgrade" — signed in, but no store on Business Mogul yet.
-  const upgradeHref = access.storeSlug ? `/store/${access.storeSlug}/admin/subscription` : "/templates";
-
+  // access.status === "needs-upgrade" — signed in, but no BizNest Marketing
+  // subscription yet. This is never a full store's subscription page: BizNest
+  // Marketing has its own signup and billing, separate from the main platform.
   return (
     <section id="contacts" className="mx-auto max-w-6xl px-5 py-14">
       <LockedShell
-        title="Marketing is a Business Mogul feature"
-        body="The Marketing workspace — contact import, campaigns and insights — is included free with the Business Mogul plan. Upgrade to unlock it, no separate checkout needed."
+        title="Subscribe to BizNest Marketing"
+        body="The Marketing workspace — contact import, campaigns and insights — is a standalone BizNest Marketing subscription, separate from your BizNest store. Sign up to unlock it."
       >
-        <Link href={upgradeHref} className="rounded-full bg-orange-500 px-6 py-3 font-bold text-slate-950 hover:bg-orange-400">
-          {access.storeSlug ? "Upgrade to Business Mogul" : "Choose a plan"}
+        <Link href="/marketing/signup" className="rounded-full bg-orange-500 px-6 py-3 font-bold text-slate-950 hover:bg-orange-400">
+          Subscribe to Marketing
         </Link>
       </LockedShell>
     </section>
