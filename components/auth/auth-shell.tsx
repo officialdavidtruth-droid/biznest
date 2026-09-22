@@ -58,7 +58,7 @@ export function AuthShell({
   children: React.ReactNode;
 }) {
   const isStoreContext = Boolean(storeName);
-  const accentColor = accent || "#34d399";
+  const accentColor = accent || "#0f6410"; // BizNest logo green, when a store has no accent of its own
 
   // Vendor's own click-to-edit hero subtitle wins; otherwise fall back to a
   // trimmed version of their onboarding business description; otherwise the

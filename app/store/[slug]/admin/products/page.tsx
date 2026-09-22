@@ -74,7 +74,7 @@ export default async function ProductsListPage({ params }: { params: Promise<{ s
         <aside className="space-y-5">
           <section className="rounded-xl border bg-background p-5 shadow-sm">
             <div className="mb-3"><h2 className="text-base font-bold">{terminology.catalog} Categories</h2><p className="mt-1 text-xs text-muted-foreground">Manage your {genericCategory.toLowerCase()}s</p></div>
-            <div className="divide-y divide-[#eef0f3]">
+            <div className="divide-y divide-border">
               <CategoryRow name={`All ${terminology.catalog}`} count={products.length} />
               {categoryCounts.slice(0, 8).map((c) => <CategoryRow key={c.id} name={c.name} count={c.count} />)}
             </div>

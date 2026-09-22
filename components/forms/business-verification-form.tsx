@@ -63,17 +63,17 @@ export function BusinessVerificationForm({
   return (
     <form onSubmit={handleSubmit(onSubmit)} className="bv-form">
       {existingRejection && (
-        <div className="mb-8 flex gap-3 rounded-xl border border-[#f0c7a8] bg-[#fdf3ea] p-4 text-sm text-[#8a4b1f]">
+        <div className="mb-8 flex gap-3 rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800">
           <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" strokeWidth={2} />
           <p className="leading-relaxed">
             <span className="font-semibold">Your previous submission was rejected: </span>
             {existingRejection}
-            <span className="block text-[#a56a3a]">Review the details below and resubmit when you're ready.</span>
+            <span className="block text-amber-700">Review the details below and resubmit when you're ready.</span>
           </p>
         </div>
       )}
 
-      <div className="divide-y divide-[#e9e5d8]">
+      <div className="divide-y divide-border">
         <Section n={1} title="Business details" description="The basics buyers and BizNest need to know about your business.">
           <Field label="Business name" error={errors.businessName?.message}>
             <input className="bv-input" {...register("businessName")} />
@@ -98,7 +98,7 @@ export function BusinessVerificationForm({
                 <option value="">Choose your specialty</option>
                 {PROFESSIONAL_SERVICE_SUBNICHES.map((n) => <option key={n.id} value={n.name}>{n.name}</option>)}
               </select>
-              <p className="mt-1.5 text-xs text-[#8a8371]">This controls the storefront, dashboard workflow and recommended tools BizNest gives you.</p>
+              <p className="mt-1.5 text-xs text-muted-foreground">This controls the storefront, dashboard workflow and recommended tools BizNest gives you.</p>
             </Field>
           )}
 
@@ -144,21 +144,21 @@ export function BusinessVerificationForm({
             />
           </div>
           {(errors as Record<string, { message?: string }>).sellsProducts?.message && (
-            <p className="mt-3 text-xs text-[#c0433a]">
+            <p className="mt-3 text-xs text-destructive">
               {(errors as Record<string, { message?: string }>).sellsProducts?.message}
             </p>
           )}
         </Section>
 
         <Section n={3} title="Verification path" description="Choose whichever matches your situation — both are fully valid ways to verify.">
-          <div className="mb-5 inline-flex rounded-full border border-[#e3ddce] bg-[#faf7f0] p-1 text-sm">
+          <div className="mb-5 inline-flex rounded-full border border-border bg-muted p-1 text-sm">
             {(["REGISTERED", "UNREGISTERED"] as const).map((type) => {
               const active = registrationType === type;
               return (
                 <label
                   key={type}
                   className={`cursor-pointer rounded-full px-4 py-1.5 font-medium transition-colors ${
-                    active ? "bg-[#154a32] text-white" : "text-[#6b6355] hover:text-[#14251c]"
+                    active ? "bg-primary text-white" : "text-muted-foreground hover:text-foreground"
                   }`}
                 >
                   <input
@@ -222,11 +222,11 @@ export function BusinessVerificationForm({
               </UploadFrame>
 
               <div className="pt-2">
-                <p className="mb-3 text-sm font-medium text-[#14251c]">Guarantors <span className="font-normal text-[#8a8371]">(2 required)</span></p>
+                <p className="mb-3 text-sm font-medium text-foreground">Guarantors <span className="font-normal text-muted-foreground">(2 required)</span></p>
                 <div className="space-y-3">
                   {[0, 1].map((i) => (
-                    <div key={i} className="rounded-xl border border-[#e3ddce] bg-[#faf7f0]/50 p-4">
-                      <div className="mb-3 flex h-5 w-5 items-center justify-center rounded-full bg-[#154a32] text-[10px] font-bold text-white">
+                    <div key={i} className="rounded-xl border border-border bg-muted/50 p-4">
+                      <div className="mb-3 flex h-5 w-5 items-center justify-center rounded-full bg-primary text-[10px] font-bold text-white">
                         {i + 1}
                       </div>
                       <div className="grid gap-3 sm:grid-cols-2">
@@ -258,7 +258,7 @@ export function BusinessVerificationForm({
       <button
         type="submit"
         disabled={isSubmitting}
-        className="mt-8 w-full rounded-xl bg-[#154a32] py-3 text-sm font-semibold text-white transition-colors hover:bg-[#123e2a] disabled:opacity-60"
+        className="mt-8 w-full rounded-xl bg-primary py-3 text-sm font-semibold text-white transition-colors hover:bg-primary/90 disabled:opacity-60"
       >
         {isSubmitting ? "Submitting…" : "Submit for review"}
       </button>
@@ -267,20 +267,20 @@ export function BusinessVerificationForm({
         .bv-input {
           width: 100%;
           border-radius: 0.625rem;
-          border: 1px solid #e3ddce;
-          background: #fff;
+          border: 1px solid hsl(var(--border));
+          background: hsl(var(--background));
           padding: 0.6rem 0.8rem;
           font-size: 0.875rem;
-          color: #14251c;
+          color: hsl(var(--foreground));
           transition: border-color 0.15s ease, box-shadow 0.15s ease;
         }
         .bv-input:focus {
           outline: none;
-          border-color: #154a32;
-          box-shadow: 0 0 0 3px rgba(21, 74, 50, 0.12);
+          border-color: hsl(var(--primary));
+          box-shadow: 0 0 0 3px hsl(var(--primary) / 0.12);
         }
         .bv-input::placeholder {
-          color: #a39c88;
+          color: hsl(var(--muted-foreground));
         }
       `}</style>
     </form>
@@ -301,12 +301,12 @@ function Section({
   return (
     <section className="py-7 first:pt-0 last:pb-0">
       <div className="mb-5 flex items-start gap-3">
-        <span className="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full border border-[#154a32]/25 text-[11px] font-bold text-[#154a32]">
+        <span className="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full border border-primary/25 text-[11px] font-bold text-primary">
           {n}
         </span>
         <div>
-          <h2 className="text-[15px] font-semibold text-[#14251c]">{title}</h2>
-          {description && <p className="mt-0.5 text-[13px] leading-relaxed text-[#8a8371]">{description}</p>}
+          <h2 className="text-[15px] font-semibold text-foreground">{title}</h2>
+          {description && <p className="mt-0.5 text-[13px] leading-relaxed text-muted-foreground">{description}</p>}
         </div>
       </div>
       <div className="space-y-4 pl-9">{children}</div>
@@ -325,9 +325,9 @@ function Field({
 }) {
   return (
     <div>
-      <label className="mb-1.5 block text-sm font-medium text-[#14251c]">{label}</label>
+      <label className="mb-1.5 block text-sm font-medium text-foreground">{label}</label>
       {children}
-      {error && <p className="mt-1.5 text-xs text-[#c0433a]">{error}</p>}
+      {error && <p className="mt-1.5 text-xs text-destructive">{error}</p>}
     </div>
   );
 }
@@ -344,24 +344,24 @@ function OptionCard({
   inputProps: UseFormRegisterReturn;
 }) {
   return (
-    <label className="group relative flex cursor-pointer gap-3 rounded-xl border border-[#e3ddce] p-4 text-sm transition-colors has-[:checked]:border-[#154a32] has-[:checked]:bg-[#154a32]/[0.04]">
+    <label className="group relative flex cursor-pointer gap-3 rounded-xl border border-border p-4 text-sm transition-colors has-[:checked]:border-primary has-[:checked]:bg-primary/[0.04]">
       <input type="checkbox" className="peer sr-only" {...inputProps} />
-      <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-[#faf7f0] text-[#8a8371] peer-checked:bg-[#154a32] peer-checked:text-white">
+      <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-muted text-muted-foreground peer-checked:bg-primary peer-checked:text-primary-foreground">
         <Icon className="h-4 w-4" strokeWidth={2} />
       </span>
       <span>
-        <span className="mb-0.5 block font-medium text-[#14251c]">{title}</span>
-        <span className="block text-xs leading-relaxed text-[#8a8371]">{description}</span>
+        <span className="mb-0.5 block font-medium text-foreground">{title}</span>
+        <span className="block text-xs leading-relaxed text-muted-foreground">{description}</span>
       </span>
-      <Check className="absolute right-3 top-3 hidden h-4 w-4 text-[#154a32] peer-checked:block" strokeWidth={3} />
+      <Check className="absolute right-3 top-3 hidden h-4 w-4 text-primary peer-checked:block" strokeWidth={3} />
     </label>
   );
 }
 
 function UploadFrame({ children }: { children: React.ReactNode }) {
   return (
-    <div className="flex items-start gap-3 rounded-xl border border-dashed border-[#d8d2c0] bg-[#faf7f0]/60 p-4">
-      <FileText className="mt-1 h-4 w-4 shrink-0 text-[#8a8371]" strokeWidth={2} />
+    <div className="flex items-start gap-3 rounded-xl border border-dashed border-border bg-muted/60 p-4">
+      <FileText className="mt-1 h-4 w-4 shrink-0 text-muted-foreground" strokeWidth={2} />
       <div className="min-w-0 flex-1">{children}</div>
     </div>
   );
