@@ -41,6 +41,12 @@ export const RESERVED_SLUGS = new Set([
   "sw.js",
   // top-level app/ routes
   "store",
+  // BizNest Marketing (app/marketing/**) is its own standalone product with
+  // its own routes -- without this, middleware treated "marketing" as an
+  // ordinary store slug and silently rewrote every /marketing/* request to
+  // /store/marketing/*, so the real app/marketing pages were never reached
+  // and a stray redirect back toward /marketing/* would loop forever.
+  "marketing",
   "account",
   "orders",
   "invoices",
