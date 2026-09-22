@@ -21,6 +21,38 @@ export async function toggleAutomation(slug: string, id: string, active: boolean
   return a.count ? { success: true } : { success: false, error: "Automation not found." };
 }
 
+export async function listAutomationsByTrigger(slug: string, triggers: string[]) {
+  const access = await assertStorePermission(slug, "settings");
+  if (!access.success) return access;
+  const rows = await prisma.automation.findMany({ where: { storeId: access.store.id, trigger: { in: triggers } }, orderBy: { createdAt: "asc" } });
+  return { success: true, data: rows };
+}
+
+/**
+ * Turns a built-in preset card on. Reuses the store's existing automation for
+ * that trigger if one already exists (from an earlier click, or from
+ * editing its email) instead of creating a duplicate — so clicking twice
+ * never sends a customer two copies of the same email.
+ */
+export async function activatePresetAutomation(slug: string, input: { name: string; description?: string; trigger: string; actions: unknown }) {
+  const access = await assertStorePermission(slug, "settings");
+  if (!access.success) return access;
+  const existing = await prisma.automation.findFirst({ where: { storeId: access.store.id, trigger: input.trigger.trim() } });
+  const a = existing
+    ? await prisma.automation.update({ where: { id: existing.id }, data: { status: "ACTIVE" } })
+    : await prisma.automation.create({ data: { storeId: access.store.id, name: input.name.trim(), description: input.description?.trim() || null, trigger: input.trigger.trim(), actions: json(input.actions), createdById: access.store.business.userId } });
+  await logStoreActivity({ storeId: access.store.id, actor: { id: access.store.business.userId, role: access.role ?? "OWNER" }, action: existing ? "automation.activated" : "automation.created", target: a.id, metadata: { name: a.name, trigger: a.trigger } });
+  return { success: true, data: a };
+}
+
+/** Merchant edits to a preset's subject/copy/follow-up delay, without touching its trigger or dedupe identity. */
+export async function updatePresetAutomation(slug: string, id: string, actions: unknown) {
+  const access = await assertStorePermission(slug, "settings");
+  if (!access.success) return access;
+  const r = await prisma.automation.updateMany({ where: { id, storeId: access.store.id }, data: { actions: json(actions) } });
+  return r.count ? { success: true } : { success: false, error: "Automation not found." };
+}
+
 export async function createApprovalRequest(slug: string, input: { title: string; requestType: string; entityType?: string; entityId?: string; note?: string; metadata?: unknown }) {
   const access = await assertStorePermission(slug, "settings");
   if (!access.success) return access;

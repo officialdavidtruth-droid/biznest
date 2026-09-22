@@ -882,7 +882,7 @@ export function renderMarketingEmail(
   template: MarketingTemplateId,
   brand: MarketingBrand,
   content: MarketingContent,
-  opts?: { unsubscribeUrl?: string; recipientFirstName?: string }
+  opts?: { unsubscribeUrl?: string; recipientFirstName?: string; footerNote?: string; showUnsubscribe?: boolean }
 ) {
   const c = normalizeMarketingContent(content);
   const x = buildCtx(template, brand, c, opts?.recipientFirstName);
@@ -906,7 +906,9 @@ export function renderMarketingEmail(
   const social = showDetails && links.length ? `<div style="margin-top:14px;">${links.map(([n, u]) => `<a href="${safeUrl(u)}" style="display:inline-block;margin-right:12px;color:${onSec};font-size:12px;text-decoration:underline;">${esc(n)}</a>`).join("")}</div>` : "";
   const contact = showDetails && brand.contactEmail ? `<div style="margin-top:5px;font-size:11px;opacity:.75;">${esc(brand.contactEmail)}${brand.contactPhone ? ` &middot; ${esc(brand.contactPhone)}` : ""}</div>` : "";
 
-  const footer = `<tr><td class="pad" style="padding:22px 30px 26px;background:${x.sec};color:${onSec};text-align:left;"><div style="font-size:13px;font-weight:800;">${esc(brand.name)}</div>${contact}${social}<div style="margin-top:16px;font-size:10px;line-height:16px;opacity:.7;">You are receiving this email because you subscribed to updates from ${esc(brand.name)}. <a href="${unsub}" style="color:inherit;text-decoration:underline;">Unsubscribe</a>.</div><div style="margin-top:7px;font-size:10px;opacity:.55;">Powered by BizNest</div></td></tr>`;
+  const showUnsub = opts?.showUnsubscribe !== false;
+  const audienceLine = opts?.footerNote ?? `You are receiving this email because you subscribed to updates from ${esc(brand.name)}.`;
+  const footer = `<tr><td class="pad" style="padding:22px 30px 26px;background:${x.sec};color:${onSec};text-align:left;"><div style="font-size:13px;font-weight:800;">${esc(brand.name)}</div>${contact}${social}<div style="margin-top:16px;font-size:10px;line-height:16px;opacity:.7;">${audienceLine}${showUnsub ? ` <a href="${unsub}" style="color:inherit;text-decoration:underline;">Unsubscribe</a>.` : ""}</div><div style="margin-top:7px;font-size:10px;opacity:.55;">Powered by BizNest</div></td></tr>`;
 
   return `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="x-apple-disable-message-reformatting"><title>${esc(c.headline || brand.name)}</title><style>@media only screen and (max-width:480px){.pad{padding-left:20px !important;padding-right:20px !important}.h1{font-size:28px !important}.col{display:block !important;width:100% !important;padding:0 0 20px !important}}</style></head><body style="margin:0;padding:0;background:${bg};font-family:${x.font};color:${x.tx};"><div style="display:none;max-height:0;overflow:hidden;opacity:0;">${esc(c.previewText || c.headline)}</div><table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="background:${bg};padding:28px 12px;"><tr><td align="center"><table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="max-width:640px;background:#ffffff;border-radius:18px;overflow:hidden;">${header}<tr><td style="font-family:${x.font};">${main}</td></tr>${footer}</table></td></tr></table></body></html>`;
 }

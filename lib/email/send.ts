@@ -663,6 +663,19 @@ export async function sendBookingConfirmationEmail(
  * notifications (quotes, invoices, low-stock alerts), which should still
  * read as coming from BizNest.
  */
+/**
+ * Sends a fully-rendered HTML email (already built by renderMarketingEmail,
+ * e.g. by the automation engine) as-is, under the store's own name — unlike
+ * sendOrderNotificationEmail, which wraps a short message in the generic
+ * BizNest shell.
+ */
+export async function sendBrandedHtmlEmail(email: string, subject: string, html: string, fromName: string) {
+  return send(
+    { from: `${fromName} <${FROM_ADDRESS}>`, to: email, subject, html },
+    { kind: "branded-html", to: email }
+  );
+}
+
 export async function sendOrderNotificationEmail(email: string, subject: string, messageHtml: string, fromName?: string) {
   const html = emailShell({
     preheader: subject,

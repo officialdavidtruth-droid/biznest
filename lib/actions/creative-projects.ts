@@ -5,6 +5,7 @@ import { sendOrderNotificationEmail } from "@/lib/email/send";
 import { checkRateLimit } from "@/lib/rate-limit";
 import { notifyUser } from "@/lib/notifications/notify";
 import { logError } from "@/lib/observability/log";
+import { runAutomationsForEvent } from "@/lib/automations/engine";
 import { revalidatePath } from "next/cache";
 import type { ActionResult } from "@/types/actions";
 import type { CreativeProjectStatus } from "@prisma/client";
@@ -132,6 +133,35 @@ export async function createCreativeProject(
 
     return { quote, project };
   });
+
+  // A public quote request is also a sales opportunity, so it lands in the CRM
+  // pipeline automatically — the merchant doesn't have to copy it over by hand.
+  // Re-submitting the same email while an earlier request is still open reuses
+  // that lead instead of creating a duplicate one.
+  try {
+    const email = input.customerEmail?.trim() || null;
+    const existingLead = email
+      ? await prisma.crmLead.findFirst({ where: { storeId: storeAccess.id, email, status: { notIn: ["WON", "LOST"] } } })
+      : null;
+    const lead = existingLead
+      ? existingLead
+      : await prisma.crmLead.create({
+          data: {
+            storeId: storeAccess.id,
+            name: created.quote.customerName ?? "Website enquiry",
+            email,
+            phone: input.customerPhone?.trim() || null,
+            source: "FORM",
+            notes: `Requested ${created.quote.serviceType} via the website quote form.`,
+            value: budget ?? undefined,
+          },
+        });
+    if (!existingLead) {
+      await runAutomationsForEvent({ type: "CRM_LEAD_CREATED", storeId: storeAccess.id, data: { leadId: lead.id, name: lead.name, email: lead.email ?? undefined } });
+    }
+  } catch (err) {
+    await logError("API", "Quote-request lead creation failed", { quoteId: created.quote.id, storeId: storeAccess.id, error: err instanceof Error ? err.message : String(err) });
+  }
 
   // The notification is only the alert. The Quote record above is the source
   // of truth and the notification opens that dedicated quote detail screen.
