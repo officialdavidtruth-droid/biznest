@@ -3,10 +3,10 @@
 import bcrypt from "bcryptjs";
 import { headers } from "next/headers";
 import { prisma } from "@/lib/prisma";
-import { z } from "zod";
 import { checkRateLimit, getClientIp } from "@/lib/rate-limit";
 import { generateUniqueStoreSlug } from "@/lib/utils/slug";
 import { canonicalizeBusinessType, CANONICAL_BUSINESS_TYPES } from "@/lib/business-identity";
+import { marketingSignupSchema, type MarketingSignupInput } from "@/lib/schemas/marketing-signup";
 import type { ActionResult } from "@/types/actions";
 
 /**
@@ -22,17 +22,12 @@ import type { ActionResult } from "@/types/actions";
  * standalone Marketing-tool access without a Business Mogul subscription
  * (see lib/access/marketing-tool.ts). Unlike registerUser (lib/actions/auth.ts),
  * this never routes through /onboarding/business-verification.
+ *
+ * The validation schema itself lives in lib/schemas/marketing-signup.ts,
+ * not here -- this file's "use server" directive means only async function
+ * exports are allowed, so a schema object defined here would be silently
+ * dropped from any Client Component that imports it.
  */
-export const marketingSignupSchema = z.object({
-  name: z.string().min(2, "Name must be at least 2 characters"),
-  email: z.string().email(),
-  password: z.string().min(8, "Password must be at least 8 characters"),
-  businessName: z.string().min(2, "Business name must be at least 2 characters"),
-  niche: z.string().min(1, "Choose a niche"),
-  phone: z.string().min(4, "Enter a phone number"),
-});
-export type MarketingSignupInput = z.infer<typeof marketingSignupSchema>;
-
 export async function signUpForMarketing(
   input: MarketingSignupInput
 ): Promise<ActionResult<{ storeSlug: string }>> {

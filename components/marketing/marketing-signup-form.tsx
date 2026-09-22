@@ -4,7 +4,8 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { signIn } from "next-auth/react";
 import { toast } from "sonner";
-import { marketingSignupSchema, signUpForMarketing, type MarketingSignupInput } from "@/lib/actions/marketing-signup";
+import { signUpForMarketing } from "@/lib/actions/marketing-signup";
+import { marketingSignupSchema, type MarketingSignupInput } from "@/lib/schemas/marketing-signup";
 import { CANONICAL_BUSINESS_TYPES } from "@/lib/business-identity";
 
 const field =
