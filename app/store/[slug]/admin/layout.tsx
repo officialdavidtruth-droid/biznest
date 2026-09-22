@@ -145,6 +145,7 @@ export default async function StoreAdminLayout({
             staffPermissions={staffPermissions}
             subscriptionName={store.subscription?.name}
             installedApps={installedAppNav}
+            themeColor={(store.themeColors as { primary?: string } | null)?.primary}
           />
 
           {/* Mobile top bar + fixed bottom tab bar + drawer — see component for
@@ -158,6 +159,7 @@ export default async function StoreAdminLayout({
             category={store.businessType}
             notifications={notifications}
             unreadCount={unreadCount}
+            themeColor={(store.themeColors as { primary?: string } | null)?.primary}
             staffRole={role}
             staffPermissions={staffPermissions}
             staffPosition={session.user.staffPosition}

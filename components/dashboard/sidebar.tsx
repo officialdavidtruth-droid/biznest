@@ -1,5 +1,6 @@
 "use client";
 
+import type { CSSProperties } from "react";
 import Link from "next/link";
 import { useState } from "react";
 import { usePathname } from "next/navigation";
@@ -20,6 +21,7 @@ export function DashboardSidebar({
   staffPermissions,
   subscriptionName,
   installedApps,
+  themeColor,
 }: {
   slug: string;
   storeName: string;
@@ -37,6 +39,11 @@ export function DashboardSidebar({
   staffPermissions?: string[] | null;
   subscriptionName?: string | null;
   installedApps?: InstalledAppNav[];
+  // The store's own brand color (store.themeColors.primary). Overrides
+  // --bn-ink for just this subtree so the sidebar reflects the store's
+  // theme instead of the fixed admin navy (#111827 from .bn-admin-app).
+  // Falls through to that default when a store hasn't set one.
+  themeColor?: string | null;
 }) {
   const pathname = usePathname();
   const base = `/${slug}/admin`;
@@ -51,7 +58,10 @@ export function DashboardSidebar({
     // drawer + bottom tab bar) is the primary nav. This isn't the same
     // component squeezed into a hamburger; mobile gets its own layout
     // tuned for one-thumb use, not a shrunk desktop sidebar.
-    <aside className="bn-admin-sidebar hidden h-screen max-h-screen w-[250px] shrink-0 flex-col overflow-y-auto overscroll-contain border-r border-[color:var(--bn-ink-line)] bg-[color:var(--bn-ink)] text-white lg:sticky lg:top-0 lg:flex lg:self-start">
+    <aside
+      className="bn-admin-sidebar hidden h-screen max-h-screen w-[250px] shrink-0 flex-col overflow-y-auto overscroll-contain border-r border-[color:var(--bn-ink-line)] bg-[color:var(--bn-ink)] text-white lg:sticky lg:top-0 lg:flex lg:self-start"
+      style={themeColor ? ({ "--bn-ink": themeColor } as CSSProperties) : undefined}
+    >
       <div className="border-b border-[var(--bn-admin-border)] px-4 py-4">
         <div className="mb-4 flex items-center gap-2.5">
           <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-[var(--bn-admin-orange-soft)] text-[var(--bn-admin-text)] text-sm font-black text-white shadow-sm">▰</div>
