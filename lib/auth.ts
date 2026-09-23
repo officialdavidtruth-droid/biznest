@@ -141,7 +141,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           if (!loginStore && loginStoreSlug) {
             const currentSlug = await resolveCurrentSlug(loginStoreSlug);
             loginStore = currentSlug
-              ? await withTimeout(prisma.store.findUnique({ where: { slug: currentSlug }, select: { id: true } }))
+              ? await withTimeout(prisma.store.findUnique({ where: { slug: currentSlug }, select: { id: true, marketingOnly: true } }))
               : null;
           }
 
