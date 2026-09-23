@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import type { Prisma } from '@prisma/client';
 import { auth } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
 import { getMarketingToolAccess } from '@/lib/access/marketing-tool';
@@ -18,7 +19,7 @@ export async function POST(req: Request) {
     await prisma.$transaction(async tx => {
       await tx.marketingWebsiteConnection.upsert({ where:{storeId:store.id}, create:{storeId:store.id, websiteUrl:result.websiteUrl, businessName:result.businessName, businessType:result.businessType, logoUrl:result.logoUrl, primaryColor:result.primaryColor, secondaryColor:result.secondaryColor, description:result.description, contactEmail:result.contactEmail, contactPhone:result.contactPhone, socialLinks:result.socialLinks, pages:result.pages, lastScannedAt:new Date()}, update:{websiteUrl:result.websiteUrl,status:'CONNECTED',businessName:result.businessName,businessType:result.businessType,logoUrl:result.logoUrl,primaryColor:result.primaryColor,secondaryColor:result.secondaryColor,description:result.description,contactEmail:result.contactEmail,contactPhone:result.contactPhone,socialLinks:result.socialLinks,pages:result.pages,lastScannedAt:new Date()} });
       const seen = new Set<string>();
-      for (const item of result.items) { seen.add(item.externalKey); await tx.marketingCatalogItem.upsert({where:{storeId_externalKey:{storeId:store.id,externalKey:item.externalKey}},create:{storeId:store.id,...item},update:{...item,isActive:true,lastSeenAt:new Date()}}); }
+      for (const item of result.items) { seen.add(item.externalKey); const { metadata, ...rest } = item; const data = { ...rest, metadata: (metadata ?? undefined) as Prisma.InputJsonValue | undefined }; await tx.marketingCatalogItem.upsert({where:{storeId_externalKey:{storeId:store.id,externalKey:item.externalKey}},create:{storeId:store.id,...data},update:{...data,isActive:true,lastSeenAt:new Date()}}); }
       if (seen.size) await tx.marketingCatalogItem.updateMany({where:{storeId:store.id,externalKey:{notIn:[...seen]}},data:{isActive:false}});
     });
     return NextResponse.json({ success:true, data:result });
