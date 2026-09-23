@@ -23,6 +23,7 @@ export function MarketingSignupForm() {
     description: "", country: "Nigeria", state: "", city: "", website: "", address: "",
   });
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const [submitError, setSubmitError] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   function set<K extends keyof MarketingSignupInput>(key: K, value: string) {
@@ -31,36 +32,62 @@ export function MarketingSignupForm() {
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
+    if (isSubmitting) return;
+
+    setSubmitError("");
     const parsed = marketingSignupSchema.safeParse(values);
     if (!parsed.success) {
       const flat = parsed.error.flatten().fieldErrors;
-      setErrors(Object.fromEntries(Object.entries(flat).map(([k, v]) => [k, v?.[0] ?? ""])));
+      const nextErrors = Object.fromEntries(Object.entries(flat).map(([k, v]) => [k, v?.[0] ?? ""]));
+      setErrors(nextErrors);
+      setSubmitError("Please complete the highlighted fields before continuing.");
       return;
     }
+
     setErrors({});
     setIsSubmitting(true);
-    const result = await signUpForMarketing(values);
-    if (!result.success) {
+
+    try {
+      const result = await signUpForMarketing(parsed.data);
+      if (!result.success) {
+        setSubmitError(result.error);
+        toast.error(result.error);
+        return;
+      }
+
+      const signInResult = await signIn("credentials", {
+        email: parsed.data.email,
+        password: parsed.data.password,
+        storeSlug: result.data.storeSlug,
+        redirect: false,
+      });
+
+      if (signInResult?.error) {
+        const message = "Account created successfully. Sign in to continue.";
+        toast.success(message);
+        router.push(`/login?callbackUrl=${encodeURIComponent("/marketing/select-plan?slug=" + result.data.storeSlug)}&email=${encodeURIComponent(parsed.data.email)}&marketingStore=${encodeURIComponent(result.data.storeSlug)}`);
+        return;
+      }
+
+      toast.success("Your Marketing workspace is ready. Choose your plan to continue.");
+      router.replace(`/marketing/select-plan?slug=${encodeURIComponent(result.data.storeSlug)}`);
+      router.refresh();
+    } catch (error) {
+      const message = error instanceof Error && error.message ? error.message : "We could not create your Marketing workspace. Please try again.";
+      setSubmitError(message);
+      toast.error(message);
+    } finally {
       setIsSubmitting(false);
-      toast.error(result.error);
-      return;
     }
-    const signInResult = await signIn("credentials", { email: values.email, password: values.password, storeSlug: result.data.storeSlug, redirect: false });
-    setIsSubmitting(false);
-    if (signInResult?.error) {
-      toast.success("Account created — sign in to continue.");
-      router.push(`/login?callbackUrl=${encodeURIComponent("/store/marketing")}&email=${encodeURIComponent(values.email)}&marketingStore=${encodeURIComponent(result.data.storeSlug)}`);
-      return;
-    }
-    toast.success(`You're in. Templates are set up for ${result.data.storeSlug ? "your niche" : "you"}.`);
-    // One more step before the workspace unlocks: BizNest Marketing is on
-    // its own paid plan (Starter/Pro) now, not automatically granted on
-    // signup -- see getMarketingToolAccess in lib/access/marketing-tool.ts.
-    router.push(`/marketing/select-plan?slug=${encodeURIComponent(result.data.storeSlug)}`);
   }
 
   return (
-    <form onSubmit={onSubmit} className="grid gap-5 sm:grid-cols-2">
+    <form onSubmit={onSubmit} noValidate className="grid gap-5 sm:grid-cols-2">
+      {submitError && (
+        <div role="alert" className="sm:col-span-2 rounded-2xl border border-red-300/30 bg-red-950/40 px-4 py-3 text-sm font-medium text-red-100">
+          {submitError}
+        </div>
+      )}
       {[
         ["name","Your name","Amaka Chukwu","text"],
         ["email","Email","you@example.com","email"],
@@ -75,13 +102,13 @@ export function MarketingSignupForm() {
       ].map(([key,label,placeholder,type]) => (
         <div key={key}>
           <label className="text-sm font-medium text-slate-200" htmlFor={key}>{label}</label>
-          <input id={key} type={type} className={field} placeholder={placeholder} value={String(values[key as keyof MarketingSignupInput] ?? "")} onChange={(e) => set(key as keyof MarketingSignupInput, e.target.value)} />
+          <input id={key} name={key} type={type} required={key !== "website" && key !== "address"} autoComplete={key === "password" ? "new-password" : key === "email" ? "email" : undefined} className={field} placeholder={placeholder} value={String(values[key as keyof MarketingSignupInput] ?? "")} onChange={(e) => set(key as keyof MarketingSignupInput, e.target.value)} />
           {errors[key] && <p className="mt-1 text-xs text-red-300">{errors[key]}</p>}
         </div>
       ))}
       <div>
         <label className="text-sm font-medium text-slate-200" htmlFor="niche">Business niche</label>
-        <select id="niche" className={field} value={values.niche} onChange={(e) => set("niche", e.target.value)}>
+        <select id="niche" name="niche" required className={field} value={values.niche} onChange={(e) => set("niche", e.target.value)}>
           <option value="" disabled>Choose your niche</option>
           {CANONICAL_BUSINESS_TYPES.map((t) => <option key={t} value={t}>{t}</option>)}
         </select>
@@ -89,10 +116,10 @@ export function MarketingSignupForm() {
       </div>
       <div className="sm:col-span-2">
         <label className="text-sm font-medium text-slate-200" htmlFor="description">What does your business do?</label>
-        <textarea id="description" rows={4} className={field + " resize-y"} placeholder="Tell us what you sell or the services you provide, who you serve, and what you want to promote." value={values.description} onChange={(e) => set("description", e.target.value)} />
+        <textarea id="description" name="description" required rows={4} className={field + " resize-y"} placeholder="Tell us what you sell or the services you provide, who you serve, and what you want to promote." value={values.description} onChange={(e) => set("description", e.target.value)} />
         {errors.description && <p className="mt-1 text-xs text-red-300">{errors.description}</p>}
       </div>
-      <button type="submit" disabled={isSubmitting} className="sm:col-span-2 rounded-2xl bg-gradient-to-r from-emerald-600 via-green-600 to-lime-500 px-7 py-4 font-bold text-white shadow-lg shadow-emerald-900/20 hover:brightness-105 disabled:opacity-60">
+      <button type="submit" disabled={isSubmitting} className="sm:col-span-2 cursor-pointer rounded-2xl bg-gradient-to-r from-emerald-600 via-green-600 to-lime-500 px-7 py-4 font-bold text-white shadow-lg shadow-emerald-900/20 transition hover:brightness-105 disabled:cursor-wait disabled:opacity-60">
         {isSubmitting ? "Setting up your workspace…" : "Create my Marketing workspace"}
       </button>
       <p className="sm:col-span-2 text-center text-xs text-slate-400">
