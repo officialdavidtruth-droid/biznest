@@ -183,24 +183,6 @@ export async function updateFreeTrialSetting(value: FreeTrialValue): Promise<Act
   return { success: true, data: undefined };
 }
 
-export async function setActiveGateway(gateway: ActiveGateway): Promise<ActionResult> {
-  const access = await assertPlatformAdmin();
-  if (!access.success) return { success: false, error: access.error };
-
-  const availability = await getGatewayAvailability();
-  const configured = gateway === "PAYSTACK" ? availability.paystackConfigured : availability.flutterwaveConfigured;
-  if (!configured) {
-    return { success: false, error: `Add ${gateway === "PAYSTACK" ? "PAYSTACK_SECRET_KEY" : "FLUTTERWAVE_SECRET_KEY"} to your environment variables before activating it.` };
-  }
-
-  await setSetting(SETTING_KEYS.ACTIVE_GATEWAY, gateway);
-  await prisma.auditLog.create({
-    data: { userId: access.userId, action: "PAYMENT_GATEWAY_CHANGED", entity: "PlatformSetting", entityId: SETTING_KEYS.ACTIVE_GATEWAY, metadata: { gateway } },
-  });
-
-  revalidatePath("/supaadmin/settings");
-  return { success: true, data: undefined };
-}
 export async function updateMarketingFreeTrialSetting(value: FreeTrialValue): Promise<ActionResult> {
   const access = await assertPlatformAdmin();
   if (!access.success) return { success: false, error: access.error };
