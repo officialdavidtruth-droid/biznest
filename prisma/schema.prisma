@@ -914,6 +914,8 @@ model Store {
   autoVehicles AutoVehicle[]
   photoShoots PhotoShoot[]
   tailoringJobs TailoringJob[]
+  websiteConnections MarketingWebsiteConnection[]
+  marketingCatalogItems MarketingCatalogItem[]
 
   createdAt     DateTime    @default(now())
   updatedAt     DateTime    @updatedAt
@@ -3726,4 +3728,57 @@ model HrPayrollItem {
   note            String?
   @@unique([payrollRunId, employeeId])
   @@index([employeeId])
+}
+
+
+// Standalone BizNest Marketing website intelligence. This is additive to the
+// existing store CRM/catalog and is only used by the Marketing workspace.
+model MarketingWebsiteConnection {
+  id              String   @id @default(cuid())
+  storeId         String   @unique
+  store           Store    @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  websiteUrl      String
+  status          String   @default("CONNECTED")
+  businessName    String?
+  businessType    String?
+  logoUrl         String?
+  primaryColor    String?
+  secondaryColor  String?
+  description     String?  @db.Text
+  contactEmail    String?
+  contactPhone    String?
+  socialLinks     Json?
+  pages           Json?
+  lastScannedAt   DateTime?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([status])
+}
+
+model MarketingCatalogItem {
+  id              String   @id @default(cuid())
+  storeId         String
+  store           Store    @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  externalKey     String
+  type            String   @default("PRODUCT")
+  name            String
+  description     String?  @db.Text
+  imageUrl        String?
+  url             String?
+  price           String?
+  salePrice       String?
+  currency        String?
+  category        String?
+  availability    String?
+  metadata        Json?
+  sourceUrl       String?
+  isActive        Boolean  @default(true)
+  lastSeenAt      DateTime @default(now())
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@unique([storeId, externalKey])
+  @@index([storeId, type])
+  @@index([storeId, isActive])
 }

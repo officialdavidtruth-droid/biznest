@@ -28,7 +28,13 @@ export type MarketingTemplateId =
   | "service"
   | "hospitality"
   | "restaurant"
-  | "letter";
+  | "letter"
+  | "luxury"
+  | "editorial"
+  | "product_grid"
+  | "premium_offer"
+  | "hotel_signature"
+  | "minimal_pro";
 
 export type MarketingTemplateCategory = "news" | "sales" | "customers" | "events" | "industry";
 
@@ -144,6 +150,12 @@ export const MARKETING_CATEGORIES: Array<{ id: MarketingTemplateCategory | "all"
 ];
 
 export const MARKETING_TEMPLATES: MarketingTemplateMeta[] = [
+  { id: "luxury", name: "Luxury Signature", description: "Premium editorial layout with refined typography and curated content.", icon: "◇", category: "industry", extras: ["items", "highlights", "secondaryCta"], align: "left", font: "elegant" },
+  { id: "editorial", name: "Editorial Story", description: "Magazine-inspired storytelling layout for sophisticated campaigns.", icon: "▤", category: "news", extras: ["items", "highlights", "secondaryCta"], align: "left", font: "serif" },
+  { id: "product_grid", name: "Curated Collection", description: "Premium product or service showcase with clean pricing.", icon: "▦", category: "sales", extras: ["items", "secondaryCta"], align: "center", font: "modern" },
+  { id: "premium_offer", name: "Premium Offer", description: "High-end promotional layout for discounts and limited campaigns.", icon: "◆", category: "sales", extras: ["offer", "items", "secondaryCta"], align: "center", font: "elegant" },
+  { id: "hotel_signature", name: "Hotel Signature", description: "Luxury hospitality campaign for rooms, rates and reservations.", icon: "⌂", category: "industry", extras: ["items", "highlights", "offer", "secondaryCta"], align: "left", font: "elegant" },
+  { id: "minimal_pro", name: "Minimal Professional", description: "Clean executive layout for agencies, consultants and B2B brands.", icon: "—", category: "industry", extras: ["items", "highlights", "secondaryCta"], align: "left", font: "modern" },
   { id: "announcement", name: "Big announcement", description: "Full-width hero, story and button for launches and news.", icon: "✦", category: "news", extras: ["highlights", "items", "secondaryCta"], align: "left", font: "brand", labels: { highlights: "Key points" } },
   { id: "launch", name: "Product launch", description: "Dark, bold reveal with feature rows for something new.", icon: "★", category: "news", extras: ["highlights", "items", "secondaryCta"], align: "left", font: "brand", labels: { eyebrow: "Badge (e.g. New)", highlights: "Key features" } },
   { id: "showcase", name: "Product showcase", description: "Image-led grid for collections and best sellers.", icon: "▦", category: "news", extras: ["items", "secondaryCta"], align: "left", font: "brand" },
@@ -776,6 +788,18 @@ const RENDERERS: Record<MarketingTemplateId, (x: Ctx) => string> = {
     );
   },
 
+  luxury(x) { const { c } = x; return `${x.image ? `<div style="padding:28px 34px 0;background:${x.soft};">${img(x,c.imageUrl||x.image,c.headline,572)}</div>` : ""}${pad(`${caps(x,c.eyebrow,x.pt)}${h1(x,c.headline,{size:38,ls:"-0.8px",mb:16})}${para(x,c.body,{size:16,lh:27,mb:24})}${c.highlights?.length ? featureRows(x,c.highlights,{color:x.pt}) : ""}${itemsBlock(x,grid(x,c.items,c.items.length>=3?3:2),24)}<div style="margin-top:24px;">${ctas(x)}</div>${sign(x)}`,{top:34,bottom:34,align:"left"})}`; },
+
+  editorial(x) { const { c } = x; return pad(`${plainEyebrow(x,c.eyebrow,x.pt,"left")}${h1(x,c.headline,{size:40,align:"left",ls:"-1px",mb:16})}${x.image ? `<div style="margin:0 0 26px;">${img(x,x.image,c.headline,572)}</div>` : ""}${para(x,c.body,{size:16,lh:28,align:"left",mb:20})}${c.highlights?.length ? softCards(x,c.highlights) : ""}${x.items.length ? `<div style="border-top:1px solid ${x.line};margin-top:24px;padding-top:20px;">${thumbRows(x,x.items)}</div>` : ""}<div style="margin-top:20px;">${ctas(x,{align:"left"})}</div>${sign(x,{align:"left"})}`,{top:38,align:"left"}); },
+
+  product_grid(x) { const { c } = x; return pad(`${plainEyebrow(x,c.eyebrow,x.pt)}${h1(x,c.headline,{size:34,mb:12})}${para(x,c.body,{mb:22})}${grid(x,c.items,2)}<div style="margin-top:24px;">${ctas(x)}</div>${sign(x)}`,{top:34,align:"center"}); },
+
+  premium_offer(x) { const { c } = x; return `${pad(`${c.eyebrow ? `<div style="font-size:12px;letter-spacing:3px;text-transform:uppercase;font-weight:800;color:${x.pt};margin-bottom:14px;">${esc(c.eyebrow)}</div>` : ""}${c.offerLabel ? `<div style="font-size:64px;line-height:66px;font-weight:900;letter-spacing:-2px;color:${x.pt};margin-bottom:12px;">${esc(c.offerLabel)}</div>` : ""}${h1(x,c.headline,{size:30,mb:14})}${para(x,c.body,{size:16,lh:26,mb:22})}${c.couponCode ? codeBox(x) : ""}${c.offerNote ? `<div style="margin:12px 0 20px;font-size:13px;color:${x.muted};">${esc(c.offerNote)}</div>` : ""}${ctas(x)}${sign(x)}`,{top:44,bottom:40,bg:x.soft,align:"center"})}${x.items.length ? pad(grid(x,x.items,2),{top:26,bottom:24}) : ""}`; },
+
+  hotel_signature(x) { const { c } = x; return `${fullBleed(x,x.brand.name)}${pad(`${caps(x,c.eyebrow,x.pt)}${h1(x,c.headline,{size:36,mb:14})}${para(x,c.body,{size:16,lh:27,mb:22})}${c.offerLabel ? `<table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="margin-bottom:22px;border-top:1px solid ${x.line};border-bottom:1px solid ${x.line};"><tr><td style="padding:16px 0;text-align:left;"><div style="font-size:11px;letter-spacing:2px;text-transform:uppercase;color:${x.muted};">Special rate</div><div style="font-size:25px;line-height:30px;font-weight:800;color:${x.pt};">${esc(c.offerLabel)}</div>${c.offerNote ? `<div style="font-size:13px;color:${x.muted};">${esc(c.offerNote)}</div>` : ""}</td></tr></table>` : ""}${c.highlights?.length ? checkList(x,c.highlights) : ""}${x.items.length ? itemsBlock(x,grid(x,x.items,1),18) : ""}<div style="margin-top:22px;">${ctas(x,{align:"left"})}</div>${sign(x,{align:"left"})}`,{align:"left"})}`; },
+
+  minimal_pro(x) { const { c } = x; return pad(`${plainEyebrow(x,c.eyebrow,x.pt,"left")}${h1(x,c.headline,{size:32,align:"left",mb:12})}${para(x,c.body,{size:15,lh:25,align:"left",mb:20})}${c.highlights?.length ? featureRows(x,c.highlights,{color:x.pt}) : ""}${x.items.length ? `<div style="margin-top:20px;">${thumbRows(x,x.items)}</div>` : ""}<div style="margin-top:22px;">${ctas(x,{align:"left"})}</div>${sign(x,{align:"left"})}`,{top:34,align:"left"}); },
+
   hospitality(x) {
     const { c } = x;
     return `${fullBleed(x, x.brand.name)}${pad(
@@ -869,6 +893,12 @@ export function defaultMarketingContent(template: MarketingTemplateId, brand: Ma
       return { ...base, subject: "Plan your stay with " + name, previewText: "Rooms, amenities and easy online booking.", eyebrow: "Welcome to " + name, headline: "Your stay, beautifully considered.", body: "See our rooms, amenities and availability, then reserve your preferred stay in a few clicks.", offerLabel: "", offerNote: "", ctaLabel: "View rooms and book", items: items.slice(0, 3), highlights: ["Easy online booking", "Friendly, attentive service"], imageUrl: hero };
     case "restaurant":
       return { ...base, subject: "This week on the menu at " + name, previewText: "Fresh dishes, ready when you are.", eyebrow: "Chef's selection", headline: "On the menu this week", body: "A few favourites we're especially proud of right now. Come hungry.", ctaLabel: ind.food ? "Order or reserve" : "Order now", items: prefer(items, "product", 6), highlights: ["Open daily", "Delivery available"], imageUrl: null };
+    case "luxury": return { ...base, subject: "A private update from " + name, previewText: "A refined selection, curated for you.", eyebrow: "A considered selection", headline: "Something worth discovering.", body: brand.businessDescription ?? "Explore our latest offering, thoughtfully selected for our customers.", ctaLabel: buy, items: items.slice(0,4), highlights: ["Thoughtfully selected", "Personal service", "Designed around you"], imageUrl: hero };
+    case "editorial": return { ...base, subject: "The latest from " + name, previewText: "A story, a few highlights and what's next.", eyebrow: "The journal", headline: "What we're excited about right now.", body: brand.businessDescription ?? "A closer look at what is new, useful and worth knowing from our team.", ctaLabel: "Read more", items: items.slice(0,3), highlights: ["What's new", "Behind the scenes", "Coming next"], imageUrl: hero };
+    case "product_grid": return { ...base, subject: "Curated picks from " + name, previewText: "Explore our latest collection.", eyebrow: "Featured collection", headline: "Selected for you.", body: "Explore a curated selection of products and services from our latest collection.", ctaLabel: buy, items: items.slice(0,6), imageUrl: itemHero };
+    case "premium_offer": return { ...base, subject: "A special offer from " + name, previewText: "An exclusive offer for a limited time.", eyebrow: "Exclusive access", offerLabel: "20% OFF", couponCode: "", offerNote: "Limited availability. Terms apply.", headline: "A little something extra.", body: "Enjoy a special offer from our team while it is available.", ctaLabel: buy, items: items.slice(0,3), imageUrl: hero };
+    case "hotel_signature": return { ...base, subject: "Your next stay at " + name, previewText: "Rooms, rates and experiences curated for your stay.", eyebrow: "Signature stay", headline: "Stay somewhere worth remembering.", body: "Discover our rooms, amenities and special offers, then reserve your preferred stay.", ctaLabel: "Explore rooms", offerLabel: "Special rate available", offerNote: "Subject to availability.", items: items.slice(0,4), highlights: ["Elegant rooms", "Attentive service", "Easy reservations"], imageUrl: hero };
+    case "minimal_pro": return { ...base, subject: "An update from " + name, previewText: "A concise update from our team.", eyebrow: "Business update", headline: "A clearer way forward.", body: brand.businessDescription ?? "Here is a concise update from our team, with the information you need.", ctaLabel: "Learn more", items: items.slice(0,3), highlights: ["Clear information", "Professional service", "Direct support"], imageUrl: null };
     default:
       return { ...base, subject: "Big news from " + name, previewText: "We have something new for you.", eyebrow: "A note from " + name, headline: "We have something new for you.", body: brand.businessDescription ?? "Stay close to what's new, what's useful and what's worth your attention.", ctaLabel: "Explore now", items: items.slice(0, 3), imageUrl: hero, secondaryCtaLabel: "" };
   }

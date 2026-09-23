@@ -10,6 +10,7 @@ import { MarketingWorkspace, type MarketingTab } from "@/components/dashboard/ma
 import { MarketingContactImporter } from "@/components/marketing/marketing-contact-importer";
 import { CrmWorkspace } from "@/components/dashboard/crm-workspace";
 import { getCrmDashboard } from "@/lib/actions/seo-crm";
+import { WebsiteConnector } from "@/components/marketing/website-connector";
 
 export default async function StandaloneMarketingDashboard({
   searchParams,
@@ -22,7 +23,7 @@ export default async function StandaloneMarketingDashboard({
   const perm = await assertStorePermission(access.storeSlug, "customers");
   if (!perm.success) redirect("/marketing");
   const store = perm.store;
-  const [{ tab }, crm, activeSubscribers, unsubscribedCount, subscribers, campaigns, items, automations] = await Promise.all([
+  const [{ tab }, crm, activeSubscribers, unsubscribedCount, subscribers, campaigns, items, automations, websiteConnection, websiteItems] = await Promise.all([
     searchParams,
     getCrmDashboard(access.storeSlug),
     prisma.newsletterSubscriber.count({ where: { storeId: store.id, unsubscribedAt: null } }),
@@ -31,6 +32,8 @@ export default async function StandaloneMarketingDashboard({
     prisma.emailCampaign.findMany({ where: { storeId: store.id }, select: { id: true, subject: true, template: true, status: true, recipientCount: true, sentCount: true, failedCount: true, createdAt: true, content: true }, orderBy: { createdAt: "desc" }, take: 30 }),
     loadMarketingItems(store.id, access.storeSlug),
     prisma.automation.count({ where: { storeId: store.id, status: "ACTIVE" } }),
+    prisma.marketingWebsiteConnection.findUnique({ where: { storeId: store.id }, select: { websiteUrl: true, businessName: true, businessType: true, logoUrl: true, primaryColor: true, secondaryColor: true, lastScannedAt: true } }),
+    prisma.marketingCatalogItem.findMany({ where: { storeId: store.id, isActive: true }, select: { id: true, type: true, name: true, imageUrl: true, price: true, salePrice: true, currency: true, url: true, isActive: true }, orderBy: { updatedAt: "desc" }, take: 200 }),
   ]);
 
   const initialTab: MarketingTab = (["compose", "audience", "campaigns", "automations"] as const).find((t) => t === tab) ?? "compose";
@@ -54,6 +57,8 @@ export default async function StandaloneMarketingDashboard({
             </div>
           </div>
         </section>
+
+        <WebsiteConnector initial={websiteConnection ? { ...websiteConnection, lastScannedAt: websiteConnection.lastScannedAt?.toISOString() ?? null } : null} items={websiteItems} />
 
         <MarketingContactImporter slug={access.storeSlug} />
 
