@@ -103,6 +103,11 @@ export async function getLoyaltyRates(): Promise<LoyaltyRates> {
 // Read by lib/actions/subscription.ts on every plan-upgrade attempt, so
 // this is NOT wrapped in unstable_cache like maintenance/announcement —
 // billing logic should never act on a stale cached value.
+
+export async function getMarketingFreeTrialSetting(): Promise<FreeTrialValue> {
+  return getSetting(SETTING_KEYS.MARKETING_FREE_TRIAL, DEFAULT_FREE_TRIAL);
+}
+
 export async function getFreeTrialSetting(): Promise<FreeTrialValue> {
   return getSetting(SETTING_KEYS.FREE_TRIAL, DEFAULT_FREE_TRIAL);
 }
@@ -175,6 +180,50 @@ export async function updateFreeTrialSetting(value: FreeTrialValue): Promise<Act
   });
 
   revalidatePath("/supaadmin/settings");
+  return { success: true, data: undefined };
+}
+
+export async function setActiveGateway(gateway: ActiveGateway): Promise<ActionResult> {
+  const access = await assertPlatformAdmin();
+  if (!access.success) return { success: false, error: access.error };
+
+  const availability = await getGatewayAvailability();
+  const configured = gateway === "PAYSTACK" ? availability.paystackConfigured : availability.flutterwaveConfigured;
+  if (!configured) {
+    return { success: false, error: `Add ${gateway === "PAYSTACK" ? "PAYSTACK_SECRET_KEY" : "FLUTTERWAVE_SECRET_KEY"} to your environment variables before activating it.` };
+  }
+
+  await setSetting(SETTING_KEYS.ACTIVE_GATEWAY, gateway);
+  await prisma.auditLog.create({
+    data: { userId: access.userId, action: "PAYMENT_GATEWAY_CHANGED", entity: "PlatformSetting", entityId: SETTING_KEYS.ACTIVE_GATEWAY, metadata: { gateway } },
+  });
+
+  revalidatePath("/supaadmin/settings");
+  return { success: true, data: undefined };
+}
+export async function updateMarketingFreeTrialSetting(value: FreeTrialValue): Promise<ActionResult> {
+  const access = await assertPlatformAdmin();
+  if (!access.success) return { success: false, error: access.error };
+
+  if (value.enabled) {
+    if (!value.planId) return { success: false, error: "Choose which plan the trial applies to." };
+    if (!Number.isInteger(value.days) || value.days < 1 || value.days > 365) {
+      return { success: false, error: "Trial length must be between 1 and 365 days." };
+    }
+    const plan = await prisma.subscription.findUnique({ where: { id: value.planId } });
+    if (!plan) return { success: false, error: "That plan no longer exists." };
+    if (!plan.isMarketingPlan) return { success: false, error: "Choose a BizNest Marketing plan." };
+    if (Number(plan.price) === 0) return { success: false, error: "The free plan doesn't need a trial." };
+  }
+
+  await setSetting(SETTING_KEYS.MARKETING_FREE_TRIAL, value);
+  await prisma.auditLog.create({
+    data: { userId: access.userId, action: "MARKETING_FREE_TRIAL_SETTING_UPDATED", entity: "PlatformSetting", entityId: SETTING_KEYS.MARKETING_FREE_TRIAL, metadata: value },
+  });
+
+  revalidatePath("/supaadmin/settings");
+  revalidatePath("/marketing");
+  revalidatePath("/marketing/select-plan");
   return { success: true, data: undefined };
 }
 

@@ -70,15 +70,14 @@ export async function signUpForMarketing(
         userId: user.id,
         businessName: parsed.data.businessName,
         category: niche,
-        // No storefront claims are ever made from a marketing-only
-        // business, so the sellsProducts/offersServices split (which
-        // drives storefront layout, not marketing) doesn't matter here.
         sellsProducts: true,
-        offersServices: false,
-        description: `${parsed.data.businessName} — signed up for BizNest Marketing.`,
+        offersServices: true,
+        description: parsed.data.description,
         phone: parsed.data.phone,
         email: normalizedEmail,
-        country: "", state: "", city: "",
+        country: parsed.data.country,
+        state: parsed.data.state,
+        city: parsed.data.city,
         registrationType: "UNREGISTERED",
         // Marketing-only businesses never sell or take payment through the
         // platform, so the identity/fraud review that gates real stores
@@ -97,6 +96,24 @@ export async function signUpForMarketing(
         marketingOnly: true,
         contactEmail: normalizedEmail,
         contactPhone: parsed.data.phone,
+        onboardingProfile: {
+          marketingOnly: true,
+          website: parsed.data.website || null,
+          address: parsed.data.address || null,
+          country: parsed.data.country,
+          state: parsed.data.state,
+          city: parsed.data.city,
+          description: parsed.data.description,
+          niche,
+        },
+        themeColors: {
+          primary: "#0b6b3a",
+          secondary: "#064e2b",
+          accent: "#22c55e",
+          background: "#f0fdf4",
+          text: "#102a1c",
+        },
+        fontFamily: "Inter",
       },
     });
   });

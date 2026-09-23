@@ -8,4 +8,5 @@ export const SETTING_KEYS = {
   ACTIVE_GATEWAY: "payments.active_gateway",
   LOYALTY_RATES: "loyalty.rates",
   FREE_TRIAL: "billing.free_trial",
+  MARKETING_FREE_TRIAL: "billing.marketing_free_trial",
 } as const;

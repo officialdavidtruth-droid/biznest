@@ -17,6 +17,8 @@ export type MarketingSendInput = MarketingCampaignInput;
 // Email marketing is part of the CRM & Sales app, so it needs the app installed and on the store's plan.
 const CRM_REQUIRED = "Email marketing is part of the CRM & Sales app. Install it from Apps to send campaigns.";
 async function crmInstalled(storeId: string) {
+  const store = await prisma.store.findUnique({ where: { id: storeId }, select: { marketingOnly: true } });
+  if (store?.marketingOnly) return true;
   const entitlement = await getPluginEntitlement(storeId, "crm");
   return Boolean(entitlement.allowed && entitlement.installed);
 }

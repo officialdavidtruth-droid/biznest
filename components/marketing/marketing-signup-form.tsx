@@ -20,6 +20,7 @@ export function MarketingSignupForm() {
   const router = useRouter();
   const [values, setValues] = useState<MarketingSignupInput>({
     name: "", email: "", password: "", businessName: "", niche: "", phone: "",
+    description: "", country: "Nigeria", state: "", city: "", website: "", address: "",
   });
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -44,11 +45,11 @@ export function MarketingSignupForm() {
       toast.error(result.error);
       return;
     }
-    const signInResult = await signIn("credentials", { email: values.email, password: values.password, redirect: false });
+    const signInResult = await signIn("credentials", { email: values.email, password: values.password, storeSlug: result.data.storeSlug, redirect: false });
     setIsSubmitting(false);
     if (signInResult?.error) {
       toast.success("Account created — sign in to continue.");
-      router.push(`/login?callbackUrl=${encodeURIComponent("/store/marketing")}&email=${encodeURIComponent(values.email)}`);
+      router.push(`/login?callbackUrl=${encodeURIComponent("/store/marketing")}&email=${encodeURIComponent(values.email)}&marketingStore=${encodeURIComponent(result.data.storeSlug)}`);
       return;
     }
     toast.success(`You're in. Templates are set up for ${result.data.storeSlug ? "your niche" : "you"}.`);
@@ -59,50 +60,45 @@ export function MarketingSignupForm() {
   }
 
   return (
-    <form onSubmit={onSubmit} className="grid gap-4 sm:grid-cols-2">
+    <form onSubmit={onSubmit} className="grid gap-5 sm:grid-cols-2">
+      {[
+        ["name","Your name","Amaka Chukwu","text"],
+        ["email","Email","you@example.com","email"],
+        ["password","Password","At least 8 characters","password"],
+        ["phone","Phone","0803 000 0000","text"],
+        ["businessName","Business name","Truth Hotel","text"],
+        ["website","Website (optional)","https://yourbusiness.com","url"],
+        ["country","Country","Nigeria","text"],
+        ["state","State","FCT","text"],
+        ["city","City","Abuja","text"],
+        ["address","Business address (optional)","33 Business Street","text"],
+      ].map(([key,label,placeholder,type]) => (
+        <div key={key}>
+          <label className="text-sm font-medium text-slate-200" htmlFor={key}>{label}</label>
+          <input id={key} type={type} className={field} placeholder={placeholder} value={String(values[key as keyof MarketingSignupInput] ?? "")} onChange={(e) => set(key as keyof MarketingSignupInput, e.target.value)} />
+          {errors[key] && <p className="mt-1 text-xs text-red-300">{errors[key]}</p>}
+        </div>
+      ))}
       <div>
-        <label className="text-sm font-medium text-slate-200" htmlFor="name">Your name</label>
-        <input id="name" className={field} placeholder="Amaka Chukwu" value={values.name} onChange={(e) => set("name", e.target.value)} />
-        {errors.name && <p className="mt-1 text-xs text-orange-300">{errors.name}</p>}
-      </div>
-      <div>
-        <label className="text-sm font-medium text-slate-200" htmlFor="email">Email</label>
-        <input id="email" type="email" className={field} placeholder="you@example.com" value={values.email} onChange={(e) => set("email", e.target.value)} />
-        {errors.email && <p className="mt-1 text-xs text-orange-300">{errors.email}</p>}
-      </div>
-      <div>
-        <label className="text-sm font-medium text-slate-200" htmlFor="password">Password</label>
-        <input id="password" type="password" className={field} placeholder="At least 8 characters" value={values.password} onChange={(e) => set("password", e.target.value)} />
-        {errors.password && <p className="mt-1 text-xs text-orange-300">{errors.password}</p>}
-      </div>
-      <div>
-        <label className="text-sm font-medium text-slate-200" htmlFor="phone">Phone</label>
-        <input id="phone" className={field} placeholder="0803 000 0000" value={values.phone} onChange={(e) => set("phone", e.target.value)} />
-        {errors.phone && <p className="mt-1 text-xs text-orange-300">{errors.phone}</p>}
-      </div>
-      <div>
-        <label className="text-sm font-medium text-slate-200" htmlFor="businessName">Business name</label>
-        <input id="businessName" className={field} placeholder="Truth Hotel" value={values.businessName} onChange={(e) => set("businessName", e.target.value)} />
-        {errors.businessName && <p className="mt-1 text-xs text-orange-300">{errors.businessName}</p>}
-      </div>
-      <div>
-        <label className="text-sm font-medium text-slate-200" htmlFor="niche">Niche</label>
+        <label className="text-sm font-medium text-slate-200" htmlFor="niche">Business niche</label>
         <select id="niche" className={field} value={values.niche} onChange={(e) => set("niche", e.target.value)}>
           <option value="" disabled>Choose your niche</option>
           {CANONICAL_BUSINESS_TYPES.map((t) => <option key={t} value={t}>{t}</option>)}
         </select>
-        {errors.niche && <p className="mt-1 text-xs text-orange-300">{errors.niche}</p>}
+        {errors.niche && <p className="mt-1 text-xs text-red-300">{errors.niche}</p>}
       </div>
-      <button
-        type="submit"
-        disabled={isSubmitting}
-        className="sm:col-span-2 rounded-full bg-orange-500 px-7 py-3.5 font-bold text-slate-950 hover:bg-orange-400 disabled:opacity-60"
-      >
-        {isSubmitting ? "Setting up your workspace…" : "Start marketing — no setup"}
+      <div className="sm:col-span-2">
+        <label className="text-sm font-medium text-slate-200" htmlFor="description">What does your business do?</label>
+        <textarea id="description" rows={4} className={field + " resize-y"} placeholder="Tell us what you sell or the services you provide, who you serve, and what you want to promote." value={values.description} onChange={(e) => set("description", e.target.value)} />
+        {errors.description && <p className="mt-1 text-xs text-red-300">{errors.description}</p>}
+      </div>
+      <button type="submit" disabled={isSubmitting} className="sm:col-span-2 rounded-2xl bg-gradient-to-r from-emerald-600 via-green-600 to-lime-500 px-7 py-4 font-bold text-white shadow-lg shadow-emerald-900/20 hover:brightness-105 disabled:opacity-60">
+        {isSubmitting ? "Setting up your workspace…" : "Create my Marketing workspace"}
       </button>
       <p className="sm:col-span-2 text-center text-xs text-slate-400">
-        We pick your email templates from your niche automatically. No storefront, no ID verification, no plan to choose.
+        No storefront, government ID, or product catalog is required. Your niche and business information personalize your CRM, Customer 360 and email templates.
       </p>
     </form>
   );
+
 }

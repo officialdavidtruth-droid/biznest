@@ -1,17 +1,19 @@
-import { getMaintenanceSetting, getAnnouncementSetting, getGatewayAvailability, getLoyaltyRates, getFreeTrialSetting } from "@/lib/actions/site-settings";
+import { getMaintenanceSetting, getAnnouncementSetting, getGatewayAvailability, getLoyaltyRates, getFreeTrialSetting, getMarketingFreeTrialSetting } from "@/lib/actions/site-settings";
 import { listPlans } from "@/lib/actions/admin";
 import { MaintenanceForm, AnnouncementForm, GatewayToggle, PlanPricingRow, LoyaltyRatesForm, FreeTrialForm } from "@/components/dashboard/settings-forms";
 
 export default async function SupaAdminSettingsPage() {
-  const [maintenance, announcement, gatewayAvailability, plans, loyaltyRates, freeTrial] = await Promise.all([
+  const [maintenance, announcement, gatewayAvailability, plans, loyaltyRates, freeTrial, marketingFreeTrial] = await Promise.all([
     getMaintenanceSetting(),
     getAnnouncementSetting(),
     getGatewayAvailability(),
     listPlans(),
     getLoyaltyRates(),
     getFreeTrialSetting(),
+    getMarketingFreeTrialSetting(),
   ]);
-  const paidPlans = plans.filter((p) => p.isActive && Number(p.price) > 0).map((p) => ({ id: p.id, name: p.name }));
+  const paidPlans = plans.filter((p) => p.isActive && !p.isMarketingPlan && Number(p.price) > 0).map((p) => ({ id: p.id, name: p.name }));
+  const marketingPaidPlans = plans.filter((p) => p.isActive && p.isMarketingPlan && Number(p.price) > 0).map((p) => ({ id: p.id, name: p.name }));
 
   return (
     <div className="space-y-10">
@@ -48,6 +50,14 @@ export default async function SupaAdminSettingsPage() {
         <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-muted-foreground">Billing — free trial</h2>
         <div className="grid gap-4 md:grid-cols-2">
           <FreeTrialForm initial={freeTrial} paidPlans={paidPlans} />
+        </div>
+      </section>
+
+      <section>
+        <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-muted-foreground">Billing — BizNest Marketing free trial</h2>
+        <p className="mb-3 text-xs text-muted-foreground">Controls the separate trial shown only to standalone BizNest Marketing accounts.</p>
+        <div className="grid gap-4 md:grid-cols-2">
+          <FreeTrialForm initial={marketingFreeTrial} paidPlans={marketingPaidPlans} />
         </div>
       </section>
 

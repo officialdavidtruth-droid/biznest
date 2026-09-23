@@ -136,7 +136,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           // (?store=<slug> in the URL, possibly bookmarked) shouldn't
           // break just because the slug it was built with is retired.
           let loginStore = loginStoreSlug
-            ? await withTimeout(prisma.store.findUnique({ where: { slug: loginStoreSlug }, select: { id: true } }))
+            ? await withTimeout(prisma.store.findUnique({ where: { slug: loginStoreSlug }, select: { id: true, marketingOnly: true } }))
             : null;
           if (!loginStore && loginStoreSlug) {
             const currentSlug = await resolveCurrentSlug(loginStoreSlug);
@@ -147,7 +147,9 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
 
           user = loginStore
             ? await withTimeout(
-                prisma.user.findFirst({ where: { email: { equals: parsed.data.email, mode: "insensitive" }, customerScopeStoreId: loginStore.id } })
+                loginStore.marketingOnly
+                  ? prisma.user.findFirst({ where: { email: { equals: parsed.data.email, mode: "insensitive" }, customerScopeStoreId: null, isMarketingOnly: true } })
+                  : prisma.user.findFirst({ where: { email: { equals: parsed.data.email, mode: "insensitive" }, customerScopeStoreId: loginStore.id } })
               )
             : null;
 

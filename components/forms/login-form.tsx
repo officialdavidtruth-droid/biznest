@@ -37,6 +37,7 @@ export function LoginForm({
   const explicitCallbackUrl = searchParams.get("callbackUrl");
   const callbackUrl = explicitCallbackUrl ?? (storeSlug ? `/store/${encodeURIComponent(storeSlug)}/account` : "/onboarding/business-verification");
   const prefillEmail = searchParams.get("email") ?? undefined;
+  const marketingStoreSlug = searchParams.get("marketingStore") ?? undefined;
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const {
@@ -66,7 +67,7 @@ export function LoginForm({
         return;
       }
 
-      const result = await signIn("credentials", { ...values, storeSlug, redirect: false });
+      const result = await signIn("credentials", { ...values, storeSlug: storeSlug ?? marketingStoreSlug, redirect: false });
 
       // NextAuth v5 (beta) has changed which field carries a custom
       // CredentialsSignin `code` across versions — some betas put it on

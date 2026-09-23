@@ -18,7 +18,7 @@ import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { redirect, notFound } from "next/navigation";
 import { PlanPicker } from "@/components/forms/plan-picker";
-import { getFreeTrialSetting } from "@/lib/actions/site-settings";
+import { getMarketingFreeTrialSetting } from "@/lib/actions/site-settings";
 
 export default async function MarketingSelectPlanPage({
   searchParams,
@@ -44,14 +44,14 @@ export default async function MarketingSelectPlanPage({
     where: { isActive: true, isMarketingPlan: true },
     orderBy: { price: "asc" },
   });
-  const trialSetting = await getFreeTrialSetting();
+  const trialSetting = await getMarketingFreeTrialSetting();
 
   return (
-    <div className="min-h-screen bg-slate-950 text-white">
+    <div className="min-h-screen bg-[#f7fbf8] text-[#102a1c]">
       <div className="mx-auto max-w-4xl px-4 py-12">
         <div className="mb-8 text-center">
           <h1 className="text-2xl font-semibold tracking-tight">Choose your BizNest Marketing plan</h1>
-          <p className="mt-2 text-sm text-slate-300">
+          <p className="mt-2 text-sm text-slate-600">
             {store.name} is ready — pick a plan to unlock your workspace. Billed monthly, cancel anytime.
           </p>
         </div>

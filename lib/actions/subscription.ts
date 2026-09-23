@@ -3,7 +3,7 @@
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { chargeCustomer } from "@/lib/payments/gateway";
-import { getFreeTrialSetting } from "@/lib/actions/site-settings";
+import { getFreeTrialSetting, getMarketingFreeTrialSetting } from "@/lib/actions/site-settings";
 import { nanoid } from "nanoid";
 import type { ActionResult } from "@/types/actions";
 import { createPendingPayment, markPaymentFailed } from "@/lib/payments/pending";
@@ -52,7 +52,7 @@ export async function initiatePlanUpgrade(
   // trial once (this same check blocks re-triggering it by downgrading
   // back to this plan after the trial ends).
   const isFirstPlanChoice = !store.subscriptionId;
-  const trialSetting = await getFreeTrialSetting();
+  const trialSetting = store.marketingOnly ? await getMarketingFreeTrialSetting() : await getFreeTrialSetting();
   const trialApplies = isFirstPlanChoice && trialSetting.enabled && trialSetting.planId === plan.id;
   if (trialApplies) {
     const trialEndsAt = new Date(Date.now() + trialSetting.days * 24 * 60 * 60 * 1000);

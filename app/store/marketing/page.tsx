@@ -1,135 +1,79 @@
-// Route: /store/marketing (the workspace marketing-only stores land on)
-// BizNest Marketing is its own product, on its own subscription, separate
-// from the main BizNest storefront platform (see lib/access/marketing-tool.ts).
-// The tool (contact import + dedupe, plus the CRM pipeline) is gated: signed-out
-// visitors must sign up for Marketing specifically, and signed-in users need an
-// active marketing-only store -- a Business Mogul store's plan grants nothing here.
 import Link from "next/link";
+import { redirect } from "next/navigation";
+import type { CSSProperties } from "react";
+import { prisma } from "@/lib/prisma";
 import { auth } from "@/lib/auth";
 import { getMarketingToolAccess } from "@/lib/access/marketing-tool";
-import { MarketingToolClient } from "@/components/marketing/marketing-tool-client";
-import { MarketingToolLocked } from "@/components/marketing/marketing-tool-locked";
-import { MarketingTemplatesSection } from "@/components/marketing/marketing-templates-section";
 import { assertStorePermission } from "@/lib/access/assert-store-access";
 import { buildMarketingBrand, loadMarketingItems } from "@/lib/email/marketing-brand";
+import { MarketingWorkspace, type MarketingTab } from "@/components/dashboard/marketing-workspace";
+import { MarketingContactImporter } from "@/components/marketing/marketing-contact-importer";
 import { CrmWorkspace } from "@/components/dashboard/crm-workspace";
-import type { Lead } from "@/components/dashboard/crm-types";
 import { getCrmDashboard } from "@/lib/actions/seo-crm";
-import { getPluginEntitlement } from "@/lib/plugins";
 
-async function loadTemplateData(slug: string) {
-  const perm = await assertStorePermission(slug, "marketing");
-  if (!perm.success) return null;
-  return { slug, brand: buildMarketingBrand(perm.store), items: await loadMarketingItems(perm.store.id, slug) };
-}
-
-// The CRM pipeline (leads, deals, customer 360) ships in the same "CRM &
-// Sales" app as email marketing -- see app/store/[slug]/admin/apps/crm/*.
-// Mirrors that page's own entitlement check (plugin install, not the plan
-// gate above) so a Marketing account that hasn't installed CRM doesn't see
-// a pipeline it can't actually use in the dashboard.
-async function loadPipelineData(slug: string) {
-  const perm = await assertStorePermission(slug, "customers");
-  if (!perm.success) return null;
-  const entitlement = await getPluginEntitlement(perm.store.id, "crm");
-  if (!entitlement.allowed || !entitlement.installed) return null;
-  const result = await getCrmDashboard(slug);
-  if (!result.success) return null;
-  const d = result.data;
-  return { leads: d.leads as unknown as Lead[], customerCount: d.customerCount, wonCount: d.wonCount, wonValue: d.wonValue };
-}
-
-export default async function MarketingStandalonePage() {
+export default async function StandaloneMarketingDashboard({
+  searchParams,
+}: { searchParams: Promise<{ tab?: string }> }) {
   const session = await auth();
   const access = await getMarketingToolAccess(session?.user?.id);
+  if (access.status === "signed-out") redirect("/login?callbackUrl=%2Fstore%2Fmarketing");
+  if (access.status !== "active") redirect(access.storeSlug ? `/marketing/select-plan?slug=${encodeURIComponent(access.storeSlug)}` : "/marketing/signup");
 
-  // Email templates are styled with the marketing store's own brand. Staff without
-  // the "marketing" permission on that store simply don't get the template studio.
-  let templates: Awaited<ReturnType<typeof loadTemplateData>> = null;
-  let pipeline: Awaited<ReturnType<typeof loadPipelineData>> = null;
-  if (access.status === "active") {
-    templates = await loadTemplateData(access.storeSlug);
-    pipeline = await loadPipelineData(access.storeSlug);
-  }
+  const perm = await assertStorePermission(access.storeSlug, "customers");
+  if (!perm.success) redirect("/marketing");
+  const store = perm.store;
+  const [{ tab }, crm, activeSubscribers, unsubscribedCount, subscribers, campaigns, items, automations] = await Promise.all([
+    searchParams,
+    getCrmDashboard(access.storeSlug),
+    prisma.newsletterSubscriber.count({ where: { storeId: store.id, unsubscribedAt: null } }),
+    prisma.newsletterSubscriber.count({ where: { storeId: store.id, unsubscribedAt: { not: null } } }),
+    prisma.newsletterSubscriber.findMany({ where: { storeId: store.id }, select: { id: true, email: true, createdAt: true, unsubscribedAt: true }, orderBy: { createdAt: "desc" }, take: 500 }),
+    prisma.emailCampaign.findMany({ where: { storeId: store.id }, select: { id: true, subject: true, template: true, status: true, recipientCount: true, sentCount: true, failedCount: true, createdAt: true, content: true }, orderBy: { createdAt: "desc" }, take: 30 }),
+    loadMarketingItems(store.id, access.storeSlug),
+    prisma.automation.count({ where: { storeId: store.id, status: "ACTIVE" } }),
+  ]);
+
+  const initialTab: MarketingTab = (["compose", "audience", "campaigns", "automations"] as const).find((t) => t === tab) ?? "compose";
+  const pipeline = crm?.success ? crm.data : { leads: [], customerCount: 0, wonCount: 0, wonValue: 0, pipeline: [] };
 
   return (
-    <main className="min-h-screen bg-slate-950 text-white">
-      <header className="border-b border-slate-700 bg-slate-900">
-        <div className="mx-auto flex max-w-6xl items-center justify-between px-5 py-5">
-          <Link href="/" className="text-xl font-extrabold text-white">BizNest <span className="text-orange-400">Marketing</span></Link>
-          <nav className="flex items-center gap-5 text-sm font-medium">
-            <Link className="text-slate-200 hover:text-white" href="/">Home</Link>
-            {access.status === "active" ? (
-              <span className="rounded-full bg-orange-500/15 px-5 py-2.5 font-bold text-orange-300">Marketing active</span>
-            ) : access.status === "signed-out" ? (
-              <Link href="/marketing/signup" className="rounded-full bg-orange-500 px-5 py-2.5 font-bold text-slate-950 hover:bg-orange-400">
-                Sign up
-              </Link>
-            ) : (
-              <Link href="/marketing/signup" className="rounded-full bg-orange-500 px-5 py-2.5 font-bold text-slate-950 hover:bg-orange-400">
-                Subscribe
-              </Link>
-            )}
-          </nav>
+    <main className="min-h-screen bg-[#f7fbf8] text-[#102a1c]" style={{ "--primary": "142 70% 35%", "--primary-foreground": "0 0% 100%" } as CSSProperties}>
+      <header className="sticky top-0 z-30 border-b border-emerald-100 bg-white/95 backdrop-blur">
+        <div className="mx-auto flex max-w-[1500px] items-center justify-between px-5 py-4">
+          <div><Link href="/marketing" className="text-xl font-black">BizNest <span className="text-emerald-600">Marketing</span></Link><p className="mt-0.5 text-xs text-slate-500">{store.name} · {store.businessType}</p></div>
+          <div className="flex items-center gap-2"><Link href="/marketing" className="rounded-xl border px-3 py-2 text-sm font-semibold">Marketing home</Link><Link href="/login" className="rounded-xl bg-emerald-700 px-4 py-2 text-sm font-bold text-white">Account</Link></div>
         </div>
       </header>
 
-      <section className="bg-gradient-to-br from-slate-900 via-blue-950 to-slate-950">
-        <div className="mx-auto grid max-w-6xl gap-10 px-5 py-16 md:grid-cols-2 md:items-center md:py-24">
-          <div>
-            <p className="text-xs font-bold uppercase tracking-[.22em] text-orange-400">BizNest CRM &amp; Sales &middot; BizNest Marketing</p>
-            <h1 className="mt-5 text-4xl font-extrabold leading-tight text-white sm:text-6xl">Win the deal.<br /><span className="text-orange-400">Then keep them coming back.</span></h1>
-            <p className="mt-6 max-w-xl text-lg leading-8 text-slate-200">A full lead pipeline, customer profiles and email marketing in one workspace &mdash; on its own standalone Marketing subscription.</p>
-            <div className="mt-8 flex flex-wrap gap-3">
-              {access.status === "active" ? (
-                <>
-                  <a href="#pipeline" className="rounded-full bg-orange-500 px-7 py-3.5 font-bold text-slate-950 hover:bg-orange-400">Open pipeline</a>
-                  <a href="#contacts" className="rounded-full border border-slate-500 px-7 py-3.5 font-semibold text-white hover:bg-white/10">Import contacts</a>
-                  {templates && <a href="#templates" className="rounded-full border border-slate-500 px-7 py-3.5 font-semibold text-white hover:bg-white/10">Browse email templates</a>}
-                </>
-              ) : access.status === "signed-out" ? (
-                <>
-                  <Link href="/marketing/signup" className="rounded-full bg-orange-500 px-7 py-3.5 font-bold text-slate-950 hover:bg-orange-400">Sign up</Link>
-                  <Link href={`/login?callbackUrl=${encodeURIComponent("/marketing")}`} className="rounded-full border border-slate-500 px-7 py-3.5 font-semibold text-white hover:bg-white/10">Sign in</Link>
-                </>
-              ) : (
-                <Link href="/marketing/signup" className="rounded-full bg-orange-500 px-7 py-3.5 font-bold text-slate-950 hover:bg-orange-400">
-                  Subscribe to Marketing
-                </Link>
-              )}
+      <div className="mx-auto max-w-[1500px] space-y-7 px-5 py-7">
+        <section className="rounded-[2rem] bg-gradient-to-br from-[#063b25] via-[#0a6b3a] to-[#23a455] p-7 text-white shadow-xl">
+          <div className="flex flex-col gap-7 lg:flex-row lg:items-end lg:justify-between">
+            <div><p className="text-xs font-black uppercase tracking-[.22em] text-emerald-100">Business growth workspace</p><h1 className="mt-2 text-4xl font-black">Good to see you, {store.business.businessName}.</h1><p className="mt-2 max-w-2xl text-sm leading-6 text-emerald-50">Your CRM, Customer 360, email marketing and automated follow-ups live together here. Your storefront is not required.</p></div>
+            <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+              {[["Leads",pipeline.leads.length],["Customers",pipeline.customerCount],["Won deals",pipeline.wonCount],["Won value",`₦${Number(pipeline.wonValue).toLocaleString()}`]].map(([label,value])=><div key={String(label)} className="rounded-2xl border border-white/15 bg-white/10 px-4 py-3 backdrop-blur"><p className="text-[11px] text-emerald-100">{label}</p><p className="mt-1 text-xl font-black">{value}</p></div>)}
             </div>
-            <p className="mt-4 text-sm text-slate-300">A separate BizNest Marketing account &middot; Pricing configured by BizNest Superadmin</p>
-          </div>
-          <div className="rounded-3xl border border-blue-800 bg-slate-900/80 p-6 shadow-2xl">
-            <div className="mb-5 flex items-center justify-between"><span className="font-bold text-white">CRM &amp; Sales workspace</span><span className="rounded-full bg-orange-500/15 px-3 py-1 text-xs font-semibold text-orange-300">{access.status === "active" ? "Active" : "Preview"}</span></div>
-            <div className="grid gap-3 sm:grid-cols-2">
-              <div className="rounded-2xl border border-slate-700 bg-slate-800 p-5"><p className="text-sm text-slate-300">Pipeline</p><p className="mt-2 text-2xl font-bold text-white">Leads &amp; deals</p><p className="mt-1 text-sm text-slate-400">New &rarr; Contacted &rarr; Qualified &rarr; Proposal &rarr; Won/Lost</p></div>
-              <div className="rounded-2xl border border-slate-700 bg-slate-800 p-5"><p className="text-sm text-slate-300">Relationships</p><p className="mt-2 text-2xl font-bold text-white">Customer 360</p><p className="mt-1 text-sm text-slate-400">One profile per customer, calls and notes included</p></div>
-              <div className="rounded-2xl border border-slate-700 bg-slate-800 p-5"><p className="text-sm text-slate-300">Audience</p><p className="mt-2 text-2xl font-bold text-white">Contacts</p><p className="mt-1 text-sm text-slate-400">Import or paste email lists</p></div>
-              <div className="rounded-2xl border border-slate-700 bg-slate-800 p-5"><p className="text-sm text-slate-300">Campaigns</p><p className="mt-2 text-2xl font-bold text-white">Plan &amp; send</p><p className="mt-1 text-sm text-slate-400">Manage outreach in one place</p></div>
-              <div className="rounded-2xl border border-slate-700 bg-slate-800 p-5 sm:col-span-2"><p className="text-sm text-slate-300">Automations</p><p className="mt-2 text-xl font-bold text-white">Follow up automatically</p><p className="mt-1 text-sm text-slate-400">Trigger emails off lead and customer activity &mdash; no manual chasing.</p></div>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {access.status === "active" && pipeline && (
-        <section id="pipeline" className="mx-auto max-w-6xl px-5 py-14">
-          <div className="mb-8">
-            <p className="text-sm font-bold uppercase tracking-widest text-orange-400">CRM &amp; Sales</p>
-            <h2 className="mt-2 text-3xl font-extrabold text-white">Sales pipeline</h2>
-            <p className="mt-3 max-w-3xl text-base leading-7 text-slate-300">
-              Track every lead from first contact to closed deal &mdash; the same pipeline as the CRM &amp; Sales app in your dashboard.
-            </p>
-          </div>
-          <div className="bn-admin-app light rounded-2xl border border-slate-700 p-4 text-slate-950">
-            <CrmWorkspace slug={access.storeSlug} initial={pipeline} />
           </div>
         </section>
-      )}
 
-      {access.status === "active" ? <MarketingToolClient /> : <MarketingToolLocked access={access} />}
-      {templates && <MarketingTemplatesSection slug={templates.slug} brand={templates.brand} items={templates.items} />}
+        <MarketingContactImporter slug={access.storeSlug} />
+
+        <section className="rounded-3xl border border-emerald-100 bg-white p-5 shadow-sm">
+          <div className="mb-5 flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between"><div><p className="text-xs font-black uppercase tracking-widest text-emerald-700">CRM & sales</p><h2 className="mt-1 text-2xl font-black">Customer and deal pipeline</h2><p className="mt-1 text-sm text-slate-500">The standalone CRM uses the same proven pipeline engine while remaining isolated from every store's CRM data.</p></div><span className="rounded-full bg-emerald-50 px-3 py-1.5 text-xs font-bold text-emerald-700">{store.businessType}</span></div>
+          <div className="bn-admin-app light overflow-hidden rounded-2xl border border-slate-200 p-2"><CrmWorkspace slug={access.storeSlug} initial={pipeline} /></div>
+        </section>
+
+        <section className="rounded-3xl border border-emerald-100 bg-white p-6 shadow-sm">
+          <MarketingWorkspace
+            slug={access.storeSlug}
+            brand={buildMarketingBrand(store)}
+            items={items}
+            initialTab={initialTab}
+            stats={{ active: activeSubscribers, unsubscribed: unsubscribedCount, sentCampaigns: campaigns.filter(c => c.status === "SENT" || c.status === "PARTIAL").length, delivered: campaigns.reduce((n,c)=>n+c.sentCount,0), automations }}
+            subscribers={subscribers.map(s => ({ id:s.id, email:s.email, createdAt:s.createdAt.toISOString(), unsubscribedAt:s.unsubscribedAt?.toISOString() ?? null }))}
+            campaigns={campaigns.map(c => ({ ...c, createdAt:c.createdAt.toISOString(), content:c.content as unknown }))}
+          />
+        </section>
+      </div>
     </main>
   );
 }

@@ -20,5 +20,11 @@ export const marketingSignupSchema = z.object({
   businessName: z.string().min(2, "Business name must be at least 2 characters"),
   niche: z.string().min(1, "Choose a niche"),
   phone: z.string().min(4, "Enter a phone number"),
+  description: z.string().min(10, "Tell us briefly what the business does").max(1000),
+  country: z.string().min(2, "Enter your country"),
+  state: z.string().min(2, "Enter your state"),
+  city: z.string().min(2, "Enter your city"),
+  website: z.string().url("Enter a valid website URL").or(z.literal("")).optional(),
+  address: z.string().max(250).optional(),
 });
 export type MarketingSignupInput = z.infer<typeof marketingSignupSchema>;
