@@ -2,7 +2,7 @@
 import { useState } from 'react';
 import { Globe2, RefreshCw, CheckCircle2, Package, Palette, ExternalLink } from 'lucide-react';
 
-type Item={id:string;type:string;name:string;imageUrl?:string|null;price?:string|null;salePrice?:string|null;currency?:string|null;url?:string|null;isActive:boolean};
+type Item={id:string;type:string;name:string;category?:string|null;imageUrl?:string|null;price?:string|null;salePrice?:string|null;currency?:string|null;url?:string|null;isActive:boolean};
 type Connection={websiteUrl:string;businessName?:string|null;businessType?:string|null;logoUrl?:string|null;primaryColor?:string|null;secondaryColor?:string|null;lastScannedAt?:string|null};
 export function WebsiteConnector({initial,items:initialItems}:{initial:Connection|null;items:Item[]}){
  const [url,setUrl]=useState(initial?.websiteUrl||''); const [connection,setConnection]=useState(initial); const [items,setItems]=useState(initialItems); const [loading,setLoading]=useState(false); const [message,setMessage]=useState('');

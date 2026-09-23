@@ -33,7 +33,7 @@ export default async function StandaloneMarketingDashboard({
     loadMarketingItems(store.id, access.storeSlug),
     prisma.automation.count({ where: { storeId: store.id, status: "ACTIVE" } }),
     prisma.marketingWebsiteConnection.findUnique({ where: { storeId: store.id }, select: { websiteUrl: true, businessName: true, businessType: true, logoUrl: true, primaryColor: true, secondaryColor: true, lastScannedAt: true } }),
-    prisma.marketingCatalogItem.findMany({ where: { storeId: store.id, isActive: true }, select: { id: true, type: true, name: true, imageUrl: true, price: true, salePrice: true, currency: true, url: true, isActive: true }, orderBy: { updatedAt: "desc" }, take: 200 }),
+    prisma.marketingCatalogItem.findMany({ where: { storeId: store.id, isActive: true }, select: { id: true, type: true, name: true, category: true, imageUrl: true, price: true, salePrice: true, currency: true, url: true, isActive: true }, orderBy: { updatedAt: "desc" }, take: 200 }),
   ]);
 
   const initialTab: MarketingTab = (["compose", "audience", "campaigns", "automations"] as const).find((t) => t === tab) ?? "compose";
