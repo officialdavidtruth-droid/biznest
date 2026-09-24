@@ -236,7 +236,7 @@ function curationIndustry(brand: MarketingBrand, items: MarketingItem[]) {
 export function curateMarketingTemplates(brand: MarketingBrand, items: MarketingItem[]): CuratedTemplateRecommendation[] {
   const ind = curationIndustry(brand, items);
   const score: Record<MarketingTemplateId, number> = Object.fromEntries(CURATED_TEMPLATE_IDS.map(id => [id, 0])) as Record<MarketingTemplateId, number>;
-  const reason: Record<MarketingTemplateId, string> = {};
+  const reason: Partial<Record<MarketingTemplateId, string>> = {};
 
   const add = (id: MarketingTemplateId, points: number, why: string) => {
     score[id] += points;
