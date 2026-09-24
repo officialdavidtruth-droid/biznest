@@ -50,6 +50,81 @@ export async function verifyWebsiteOwnership(input: string, token: string): Prom
   return false;
 }
 
+const FETCH_HEADERS = { 'user-agent': 'BizNest-Marketing-Crawler/1.0 (+https://biznest.space)' };
+
+/** Pull Product/Service/Offer nodes out of a page's JSON-LD (used for the homepage and for subpages). */
+function extractLdItems(html: string, pageUrl: URL): ScannedCatalogItem[] {
+  const items: ScannedCatalogItem[] = [];
+  for (const m of html.matchAll(/<script[^>]+type=["']application\/ld\+json["'][^>]*>([\s\S]*?)<\/script>/gi)) {
+    try {
+      const raw = JSON.parse(m[1]); const nodes = Array.isArray(raw) ? raw : raw['@graph'] || [raw];
+      for (const n of nodes) {
+        if (!n || typeof n !== 'object') continue;
+        const type = Array.isArray(n['@type']) ? n['@type'].join(',') : String(n['@type']||'');
+        if (/Product|HotelRoom|Room|Service|Offer|MenuItem/i.test(type) && n.name) {
+          const offers = Array.isArray(n.offers) ? n.offers[0] : n.offers;
+          items.push({ externalKey: String(n.url || n['@id'] || `${type}:${n.name}`), type: /HotelRoom|Room/i.test(type) ? 'ROOM' : /Service/i.test(type) ? 'SERVICE' : 'PRODUCT', name: String(n.name), description: n.description ? String(n.description) : undefined, imageUrl: abs(pageUrl, Array.isArray(n.image) ? n.image[0] : (typeof n.image === 'object' ? n.image?.url : n.image)), url: abs(pageUrl, n.url), price: offers?.price != null ? String(offers.price) : undefined, currency: offers?.priceCurrency ? String(offers.priceCurrency) : undefined, salePrice: offers?.price != null && offers?.priceSpecification?.price ? String(offers.priceSpecification.price) : undefined, availability: offers?.availability ? String(offers.availability).split('/').pop() : undefined, category: n.category ? String(n.category) : undefined, metadata: { schemaType: type }, sourceUrl: pageUrl.toString() });
+        }
+      }
+    } catch { /* ignore malformed JSON-LD */ }
+  }
+  return items;
+}
+
+// Most real-world sites (Wix, Squarespace, hand-built HTML) list their menu/products as
+// plain markup, not schema.org JSON-LD -- so JSON-LD alone finds items on almost none of
+// them in practice. This is a best-effort fallback: a "catalog card" reliably pairs a
+// picture with a price nearby, so anchor on that pairing rather than trying to guess a
+// repeating container structure without a real HTML parser.
+const PRICE_RE = /(?:₦|\$|£|€|GH₵|KES|USD|NGN|GHS)\s?\d[\d,]*(?:\.\d{1,2})?|\b\d[\d,]{1,9}(?:\.\d{1,2})?\s?(?:NGN|USD|GHS|KES|naira)\b/i;
+const SKIP_IMAGE = /logo|icon|avatar|sprite|placeholder|spinner|loading|badge|banner-bg|favicon/i;
+
+function extractGenericItems(html: string, pageUrl: URL): ScannedCatalogItem[] {
+  const items: ScannedCatalogItem[] = [];
+  const seen = new Set<string>();
+  const IMG_RE = /<img\b[^>]*>/gi;
+  const WINDOW = 700;
+  let match: RegExpExecArray | null;
+  while ((match = IMG_RE.exec(html)) && items.length < 40) {
+    const imgTag = match[0];
+    const src = attr(imgTag, 'src') || attr(imgTag, 'data-src') || attr(imgTag, 'data-lazy-src') || attr(imgTag, 'data-original');
+    if (!src || SKIP_IMAGE.test(src)) continue;
+    const imageUrl = abs(pageUrl, src);
+    if (!imageUrl) continue;
+
+    const before = html.slice(Math.max(0, match.index - WINDOW), match.index);
+    const after = html.slice(match.index + imgTag.length, match.index + imgTag.length + WINDOW);
+
+    // Require a nearby price -- this is what tells a product/menu card apart from a
+    // hero image, a decorative photo, or an unrelated content picture.
+    const priceMatch = (after.slice(0, 400).match(PRICE_RE)) || (before.slice(-200).match(PRICE_RE));
+    if (!priceMatch) continue;
+
+    const headingMatch = after.match(/<(?:h[1-6]|strong|b)[^>]*>([\s\S]*?)<\/(?:h[1-6]|strong|b)>/i)
+      || before.match(/<(?:h[1-6]|strong|b)[^>]*>([\s\S]*?)<\/(?:h[1-6]|strong|b)>(?![\s\S]*<(?:h[1-6]|strong|b)[^>]*>)/i);
+    const name = strip(headingMatch?.[1] || attr(imgTag, 'alt') || '');
+    if (!name || name.length > 120 || name.length < 2) continue;
+
+    const linkInBefore = [...before.matchAll(/<a[^>]+href=["']([^"']+)["'][^>]*>/gi)].pop()?.[1];
+    const linkAfter = after.match(/<a[^>]+href=["']([^"']+)["']/i)?.[1];
+    const href = abs(pageUrl, linkInBefore || linkAfter);
+
+    const key = `${imageUrl}|${name.toLowerCase()}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    items.push({
+      externalKey: href || key,
+      type: /menu|dish|food|drink/i.test(`${name} ${pageUrl.pathname}`) ? 'PRODUCT' : /service|booking|appointment|session/i.test(`${name} ${pageUrl.pathname}`) ? 'SERVICE' : 'PRODUCT',
+      name,
+      imageUrl,
+      url: href,
+      price: priceMatch[0].trim(),
+      sourceUrl: pageUrl.toString(),
+    });
+  }
+  return items;
+}
+
 export async function scanWebsite(input: string): Promise<WebsiteScan> {
   const base = safeUrl(input.trim());
   const response = await fetch(base.toString(), { headers: { 'user-agent': 'BizNest-Marketing-Crawler/1.0 (+https://biznest.space)' }, signal: AbortSignal.timeout(15000), redirect: 'follow', cache: 'no-store' });
@@ -207,6 +282,25 @@ export async function scanWebsite(input: string): Promise<WebsiteScan> {
   }
   const uniquePages = [...new Map(pages.map(p=>[p.url,p])).values()].slice(0,50);
 
+  // Catalog items: JSON-LD on the homepage rarely covers the actual menu/shop, which
+  // usually lives on its own page -- so crawl the few candidate pages already
+  // identified above (product/menu/shop/service links) and pull items from each,
+  // falling back to the generic image+price scraper wherever a page has no JSON-LD.
+  const homepageLdItems = ldItems;
+  const homepageItems = homepageLdItems.length ? homepageLdItems : extractGenericItems(html, finalUrl);
+  const candidatePages = uniquePages.filter(p => p.url !== finalUrl.toString() && p.url !== (canonical || '')).slice(0, 5);
+  const subpageItemLists = await Promise.all(candidatePages.map(async (p) => {
+    try {
+      const res = await fetch(p.url, { headers: FETCH_HEADERS, signal: AbortSignal.timeout(10000), redirect: 'follow', cache: 'no-store' });
+      if (!res.ok) return [];
+      const subHtml = (await res.text()).slice(0, 2_000_000);
+      const subUrl = new URL(res.url || p.url);
+      const subLd = extractLdItems(subHtml, subUrl);
+      return subLd.length ? subLd : extractGenericItems(subHtml, subUrl);
+    } catch { return []; }
+  }));
+  const allItems = [...new Map([...homepageItems, ...subpageItemLists.flat()].map(i => [i.externalKey, i])).values()].slice(0, 200);
+
   // Business name: an explicitly-declared identity (JSON-LD, og:site_name)
   // beats guessing from <title>, which is often "Page Title | Site Name" or
   // "Site Name - Tagline" in either order -- pick whichever split segment
@@ -245,6 +339,6 @@ export async function scanWebsite(input: string): Promise<WebsiteScan> {
     contactPhone,
     socialLinks,
     pages: uniquePages,
-    items: [...new Map(ldItems.map(i=>[i.externalKey,i])).values()].slice(0,200),
+    items: allItems,
   };
 }
