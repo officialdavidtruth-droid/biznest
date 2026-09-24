@@ -233,7 +233,7 @@ function curationIndustry(brand: MarketingBrand, items: MarketingItem[]) {
 export function curateMarketingTemplates(brand: MarketingBrand, items: MarketingItem[]): CuratedTemplateRecommendation[] {
   const ind = curationIndustry(brand, items);
   const score: Record<MarketingTemplateId, number> = Object.fromEntries(CURATED_TEMPLATE_IDS.map(id => [id, 0])) as Record<MarketingTemplateId, number>;
-  const reason: Record<MarketingTemplateId, string> = {};
+  const reason: Partial<Record<MarketingTemplateId, string>> = {};
 
   const add = (id: MarketingTemplateId, points: number, why: string) => {
     score[id] += points;
@@ -283,7 +283,7 @@ export function curateMarketingTemplates(brand: MarketingBrand, items: Marketing
     if (!reason[id]) { score[id] = 30; reason[id] = "Flexible design that can be adapted to your business."; }
   }
   return CURATED_TEMPLATE_IDS
-    .map(id => ({ ...getMarketingTemplate(id), score: score[id], reason: reason[id] }))
+    .map(id => ({ ...getMarketingTemplate(id), score: score[id], reason: reason[id] ?? "Flexible design that can be adapted to your business." }))
     .sort((a, b) => b.score - a.score);
 }
 
