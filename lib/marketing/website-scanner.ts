@@ -125,7 +125,38 @@ export async function scanWebsite(input: string): Promise<WebsiteScan> {
   // element rather than an <img> tag (common with SPA/component frameworks) --
   // catch that pattern too before giving up on inline markup entirely.
   const logoBgTag = html.match(/<[^>]+class=["'][^"']*(?:logo|brand)[^"']*["'][^>]*style=["'][^"']*background(?:-image)?\s*:[^"']*url\(([^)'"]+)/i)?.[1];
-  let logoUrl = abs(finalUrl, orgLogo) || abs(finalUrl, meta('og:image')) || abs(finalUrl, iconHref) || abs(finalUrl, attr(logoTag || '', 'src')) || abs(finalUrl, logoBgTag);
+  // Fallback for sites whose header image carries no "logo"/"brand" keyword
+  // at all (e.g. `<a href="/"><img src="..."> Business Name</a>` inside a
+  // plain <header>/<nav>) -- the very first <img> that appears inside the
+  // page's <header> or <nav>, before any other content, is almost always
+  // the site's own logo even when nothing in its markup says so explicitly.
+  const headerMarkup = html.match(/<(?:header|nav)\b[^>]*>[\s\S]{0,4000}?<\/(?:header|nav)>/i)?.[0] ?? html.slice(0, 4000);
+  const headerImgTag = headerMarkup.match(/<img\b[^>]*>/i)?.[0];
+
+  // None of the signals above are proof the URL actually resolves to a
+  // loadable image -- a stale og:image, a moved logo file, or a
+  // false-positive "logo" class match all produce a URL that 404s or
+  // redirects to an HTML error page, which then shows as a broken image
+  // everywhere the connector/email designer renders it. So probe each
+  // candidate, in order of trustworthiness, and keep the first one that
+  // actually comes back as image content -- rather than trusting whichever
+  // regex happened to match first and saving a link that never loads.
+  const logoCandidates = [
+    abs(finalUrl, orgLogo),
+    abs(finalUrl, meta('og:image')),
+    abs(finalUrl, attr(logoTag || '', 'src')),
+    abs(finalUrl, headerImgTag ? attr(headerImgTag, 'src') : undefined),
+    abs(finalUrl, iconHref),
+    abs(finalUrl, logoBgTag),
+  ].filter((u, i, arr): u is string => Boolean(u) && arr.indexOf(u) === i);
+
+  let logoUrl: string | undefined;
+  for (const candidate of logoCandidates.slice(0, 6)) {
+    try {
+      const probe = await fetch(candidate, { method: 'GET', headers: { 'user-agent': 'BizNest-Marketing-Crawler/1.0 (+https://biznest.space)' }, signal: AbortSignal.timeout(8000), redirect: 'follow', cache: 'no-store' });
+      if (probe.ok && (probe.headers.get('content-type') || '').startsWith('image')) { logoUrl = candidate; break; }
+    } catch { /* candidate unreachable -- try the next one */ }
+  }
   if (!logoUrl) {
     // Last resort: the path browsers themselves fall back to when no <link
     // rel="icon"> is declared at all. Verify it actually resolves first --
@@ -137,6 +168,7 @@ export async function scanWebsite(input: string): Promise<WebsiteScan> {
       if (probe.ok && (probe.headers.get('content-type') || '').startsWith('image')) logoUrl = candidate.toString();
     } catch { /* no favicon.ico available */ }
   }
+
 
   // Contact info: a mailto:/tel: link is an explicit, deliberate contact
   // channel the site published -- far more trustworthy than free-text

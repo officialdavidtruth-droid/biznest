@@ -675,7 +675,7 @@ export function EmailDesigner({
         </section>
 
         {/* Preview */}
-        <aside className={`min-w-0 xl:sticky xl:top-4 xl:self-start ${pane === "edit" ? "hidden xl:block" : ""}`}>
+        <aside className={`min-w-0 xl:sticky xl:top-4 xl:max-h-[calc(100vh-2rem)] xl:self-start xl:overflow-y-auto ${pane === "edit" ? "hidden xl:block" : ""}`}>
           <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
             <div><p className={ui.title}>Live preview</p><p className={ui.sub}>Updates as you type.</p></div>
             <div className={ui.seg} role="group" aria-label="Preview size">
