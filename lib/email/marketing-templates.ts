@@ -168,18 +168,18 @@ export const MARKETING_TEMPLATES: MarketingTemplateMeta[] = [
   { id: "premium_offer", name: "Premium Offer", description: "High-end promotional layout for discounts and limited campaigns.", icon: "◆", category: "sales", extras: ["offer", "items", "secondaryCta"], align: "center", font: "elegant" },
   { id: "hotel_signature", name: "Hotel Signature", description: "Luxury hospitality campaign for rooms, rates and reservations.", icon: "⌂", category: "industry", extras: ["items", "highlights", "offer", "secondaryCta"], align: "left", font: "elegant" },
   { id: "minimal_pro", name: "Minimal Professional", description: "Clean executive layout for agencies, consultants and B2B brands.", icon: "—", category: "industry", extras: ["items", "highlights", "secondaryCta"], align: "left", font: "modern" },
-  { id: "ref_confirmation", name: "Reference · Confirmation", description: "Dark hospitality-style confirmation with hero, details and action cards.", icon: "✓", category: "customers", extras: ["items", "highlights", "secondaryCta"], align: "left", font: "modern" },
-  { id: "ref_offer", name: "Reference · Offer", description: "Image-led promotional offer with bold discount block and feature sections.", icon: "%", category: "sales", extras: ["offer", "items", "highlights", "secondaryCta"], align: "center", font: "modern" },
-  { id: "ref_catalog", name: "Reference · Catalog", description: "Travel and hospitality catalog with featured cards and editorial footer.", icon: "▦", category: "industry", extras: ["items", "highlights", "secondaryCta"], align: "left", font: "modern" },
-  { id: "ref_journey", name: "Reference · Journey", description: "Travel editorial layout with destination feature, tips and packages.", icon: "✈", category: "news", extras: ["items", "highlights", "secondaryCta"], align: "left", font: "modern" },
-  { id: "ref_thankyou", name: "Reference · Thank You", description: "Order confirmation / thank-you layout with process timeline.", icon: "♥", category: "customers", extras: ["highlights", "secondaryCta"], align: "center", font: "modern" },
-  { id: "ref_editorial", name: "Reference · Editorial", description: "Long-form editorial product or service story with comparison blocks.", icon: "▤", category: "news", extras: ["items", "highlights", "secondaryCta"], align: "left", font: "serif" },
-  { id: "ref_pricing", name: "Reference · Pricing", description: "Pricing announcement with two-column value story and CTA.", icon: "₦", category: "sales", extras: ["offer", "highlights", "secondaryCta"], align: "left", font: "serif" },
-  { id: "ref_hotel", name: "Reference · Hotel Showcase", description: "Accommodation showcase with rooms, review, dining and amenities.", icon: "⌂", category: "industry", extras: ["items", "highlights", "secondaryCta"], align: "left", font: "serif" },
-  { id: "ref_restaurant", name: "Reference · Restaurant", description: "Restaurant campaign with featured dish, story and menu cards.", icon: "◉", category: "industry", extras: ["items", "highlights", "secondaryCta"], align: "left", font: "modern" },
-  { id: "ref_food_catalog", name: "Reference · Food Catalog", description: "Food menu catalog with multiple product cards and social footer.", icon: "🍽", category: "industry", extras: ["items", "secondaryCta"], align: "left", font: "modern" },
-  { id: "ref_dark_menu", name: "Reference · Dark Menu", description: "High-contrast restaurant menu with category tiles and reservation CTA.", icon: "◈", category: "industry", extras: ["items", "highlights", "secondaryCta"], align: "center", font: "modern" },
-  { id: "ref_product_launch", name: "Reference · Product Launch", description: "Premium product launch with hero image, benefits and final CTA.", icon: "★", category: "sales", extras: ["items", "highlights", "secondaryCta"], align: "center", font: "modern" },
+  { id: "ref_confirmation", name: "Booking Confirmation", description: "Dark hospitality-style confirmation with hero, details and action cards.", icon: "✓", category: "customers", extras: ["items", "highlights", "secondaryCta"], align: "left", font: "modern" },
+  { id: "ref_offer", name: "Signature Offer", description: "Image-led promotional offer with bold discount block and feature sections.", icon: "%", category: "sales", extras: ["offer", "items", "highlights", "secondaryCta"], align: "center", font: "modern" },
+  { id: "ref_catalog", name: "Curated Catalog", description: "Travel and hospitality catalog with featured cards and editorial footer.", icon: "▦", category: "industry", extras: ["items", "highlights", "secondaryCta"], align: "left", font: "modern" },
+  { id: "ref_journey", name: "Journey & Experiences", description: "Travel editorial layout with destination feature, tips and packages.", icon: "✈", category: "news", extras: ["items", "highlights", "secondaryCta"], align: "left", font: "modern" },
+  { id: "ref_thankyou", name: "Customer Thank You", description: "Order confirmation / thank-you layout with process timeline.", icon: "♥", category: "customers", extras: ["highlights", "secondaryCta"], align: "center", font: "modern" },
+  { id: "ref_editorial", name: "Brand Editorial", description: "Long-form editorial product or service story with comparison blocks.", icon: "▤", category: "news", extras: ["items", "highlights", "secondaryCta"], align: "left", font: "serif" },
+  { id: "ref_pricing", name: "Pricing & Packages", description: "Pricing announcement with two-column value story and CTA.", icon: "₦", category: "sales", extras: ["offer", "highlights", "secondaryCta"], align: "left", font: "serif" },
+  { id: "ref_hotel", name: "Hotel Showcase", description: "Accommodation showcase with rooms, review, dining and amenities.", icon: "⌂", category: "industry", extras: ["items", "highlights", "secondaryCta"], align: "left", font: "serif" },
+  { id: "ref_restaurant", name: "Restaurant Story", description: "Restaurant campaign with featured dish, story and menu cards.", icon: "◉", category: "industry", extras: ["items", "highlights", "secondaryCta"], align: "left", font: "modern" },
+  { id: "ref_food_catalog", name: "Food Catalog", description: "Food menu catalog with multiple product cards and social footer.", icon: "🍽", category: "industry", extras: ["items", "secondaryCta"], align: "left", font: "modern" },
+  { id: "ref_dark_menu", name: "Dark Menu", description: "High-contrast restaurant menu with category tiles and reservation CTA.", icon: "◈", category: "industry", extras: ["items", "highlights", "secondaryCta"], align: "center", font: "modern" },
+  { id: "ref_product_launch", name: "Product Launch", description: "Premium product launch with hero image, benefits and final CTA.", icon: "★", category: "sales", extras: ["items", "highlights", "secondaryCta"], align: "center", font: "modern" },
   { id: "announcement", name: "Big announcement", description: "Full-width hero, story and button for launches and news.", icon: "✦", category: "news", extras: ["highlights", "items", "secondaryCta"], align: "left", font: "brand", labels: { highlights: "Key points" } },
   { id: "launch", name: "Product launch", description: "Dark, bold reveal with feature rows for something new.", icon: "★", category: "news", extras: ["highlights", "items", "secondaryCta"], align: "left", font: "brand", labels: { eyebrow: "Badge (e.g. New)", highlights: "Key features" } },
   { id: "showcase", name: "Product showcase", description: "Image-led grid for collections and best sellers.", icon: "▦", category: "news", extras: ["items", "secondaryCta"], align: "left", font: "brand" },
@@ -211,12 +211,15 @@ const TEMPLATE_BY_ID = Object.fromEntries(MARKETING_TEMPLATES.map((t) => [t.id, 
 export type CuratedTemplateRecommendation = MarketingTemplateMeta & { reason: string; score: number };
 
 const CURATED_TEMPLATE_IDS: MarketingTemplateId[] = [
-  "luxury",
-  "welcome",
-  "premium_offer",
-  "editorial",
-  "restaurant",
-  "launch",
+  // These are the newer, reference-quality designs built for the marketing
+  // workspace. Keep the older templates registered below for compatibility,
+  // but do not surface them as the primary curated gallery.
+  "ref_offer",
+  "ref_catalog",
+  "ref_editorial",
+  "ref_product_launch",
+  "ref_thankyou",
+  "ref_confirmation",
 ];
 
 function curationIndustry(brand: MarketingBrand, items: MarketingItem[]) {
@@ -233,57 +236,54 @@ function curationIndustry(brand: MarketingBrand, items: MarketingItem[]) {
 export function curateMarketingTemplates(brand: MarketingBrand, items: MarketingItem[]): CuratedTemplateRecommendation[] {
   const ind = curationIndustry(brand, items);
   const score: Record<MarketingTemplateId, number> = Object.fromEntries(CURATED_TEMPLATE_IDS.map(id => [id, 0])) as Record<MarketingTemplateId, number>;
-  const reason: Partial<Record<MarketingTemplateId, string>> = {};
+  const reason: Record<MarketingTemplateId, string> = {};
 
   const add = (id: MarketingTemplateId, points: number, why: string) => {
     score[id] += points;
     if (!reason[id] || points > 5) reason[id] = why;
   };
 
-  // These rules are deliberately explicit and deterministic. Website type and
-  // catalog shape are the only signals used; there is no model call here.
+  // Deterministic curation: only verified website type/description and the
+  // scanned catalog shape are used. No AI/model call is made.
   if (ind.hotel) {
-    add("luxury", 100, "Best match for a hospitality brand with image-led storytelling.");
-    add("welcome", 92, "Useful for guest welcome and onboarding messages.");
-    add("premium_offer", 88, "Useful for room discounts, weekend rates and special offers.");
-    add("editorial", 72, "Works for hotel news, experiences and guest updates.");
-    add("launch", 48, "Useful for new rooms, openings and upcoming experiences.");
-    add("restaurant", 35, "Useful when the hotel also promotes dining.");
+    add("ref_hotel", 120, "Built for hotels with rooms, amenities and booking-focused storytelling.");
+    add("ref_catalog", 112, "Fits accommodation brands that want to showcase rooms and experiences.");
+    add("ref_offer", 104, "Useful for room-rate offers, weekend deals and limited promotions.");
+    add("ref_journey", 92, "Works for destination stories, guest tips and travel experiences.");
+    add("ref_confirmation", 84, "Useful for booking confirmations and guest next steps.");
+    add("ref_thankyou", 76, "Fits post-booking and guest appreciation messages.");
   } else if (ind.restaurant) {
-    add("restaurant", 100, "Best match for a restaurant or food-led website.");
-    add("editorial", 86, "Works for chef stories, specials and dining updates.");
-    add("premium_offer", 82, "Useful for percentage offers and limited-time dining promotions.");
-    add("luxury", 62, "Fits premium dining and experience-led campaigns.");
-    add("launch", 55, "Useful for new menus, events and coming-soon announcements.");
-    add("welcome", 44, "Useful for new subscriber and guest welcome messages.");
+    add("ref_dark_menu", 120, "Designed around food-led menus, featured dishes and reservations.");
+    add("ref_food_catalog", 114, "Fits restaurants and cafés with a scannable menu or product catalog.");
+    add("ref_restaurant", 108, "Built for featured dishes, dining stories and menu campaigns.");
+    add("ref_offer", 96, "Useful for dining promotions, percentage offers and special events.");
+    add("ref_editorial", 82, "Works for chef stories, restaurant news and experience-led campaigns.");
+    add("ref_thankyou", 70, "Useful for reservation, order and customer appreciation follow-ups.");
   } else if (ind.ecommerce) {
-    add("premium_offer", 100, "Best match for product sales, discounts and promotional campaigns.");
-    add("luxury", 88, "Strong image-led option for collections and premium products.");
-    add("editorial", 78, "Works for new arrivals, product stories and brand updates.");
-    add("launch", 72, "Useful for product launches and coming-soon campaigns.");
-    add("welcome", 58, "Useful for new subscriber and customer onboarding emails.");
-    add("restaurant", 30, "Fallback visual style when the catalog is image-heavy.");
+    add("ref_product_launch", 120, "Built for product launches with a strong hero, benefits and CTA.");
+    add("ref_offer", 114, "Fits product promotions, discounts and limited-time campaigns.");
+    add("ref_catalog", 108, "Works for collections and curated product selections.");
+    add("ref_editorial", 94, "Useful for product stories, brand storytelling and featured collections.");
+    add("ref_pricing", 84, "Useful when presenting pricing, options and value clearly.");
+    add("ref_thankyou", 72, "Fits post-purchase appreciation and what-happens-next messages.");
   } else if (ind.service) {
-    add("editorial", 100, "Best match for expertise, updates and service-led storytelling.");
-    add("welcome", 88, "Useful for new leads and client onboarding.");
-    add("luxury", 78, "Fits premium service positioning and visual storytelling.");
-    add("premium_offer", 70, "Useful for packages, appointments and service promotions.");
-    add("launch", 60, "Useful for new services and upcoming announcements.");
-    add("restaurant", 28, "Fallback design for visually rich service businesses.");
+    add("minimal_pro", 120, "Designed for professional services, agencies, studios and consultants.");
+    add("ref_editorial", 112, "Fits service stories, case-study-style content and expertise-led updates.");
+    add("ref_pricing", 102, "Useful for packages, pricing updates and clear service options.");
+    add("ref_catalog", 92, "Works for presenting a service portfolio or selected offerings.");
+    add("ref_product_launch", 82, "Useful for announcing a new service, package or capability.");
+    add("ref_thankyou", 72, "Fits client follow-ups, appreciation and next-step messages.");
   } else {
-    add("editorial", 95, "Flexible newsletter design for a general business website.");
-    add("welcome", 88, "Flexible onboarding design for new contacts and subscribers.");
-    add("premium_offer", 78, "Flexible option for promotions and discounts.");
-    add("luxury", 72, "Flexible image-led design that adapts to your brand.");
-    add("launch", 65, "Flexible option for announcements and anticipation campaigns.");
-    add("restaurant", 30, "Available as a visual alternative for image-led businesses.");
+    add("ref_editorial", 110, "A flexible editorial design for general business storytelling.");
+    add("ref_catalog", 104, "A flexible way to showcase products, services or selected offerings.");
+    add("ref_offer", 98, "Useful for promotions and customer-facing campaigns.");
+    add("ref_product_launch", 90, "Useful for launches, announcements and new offerings.");
+    add("ref_pricing", 82, "Useful for clear pricing, packages and value communication.");
+    add("ref_thankyou", 74, "Useful for customer appreciation and follow-up messages.");
   }
 
-  for (const id of CURATED_TEMPLATE_IDS) {
-    if (!reason[id]) { score[id] = 30; reason[id] = "Flexible design that can be adapted to your business."; }
-  }
   return CURATED_TEMPLATE_IDS
-    .map(id => ({ ...getMarketingTemplate(id), score: score[id], reason: reason[id] ?? "Flexible design that can be adapted to your business." }))
+    .map(id => ({ ...TEMPLATE_BY_ID[id], score: score[id], reason: reason[id] ?? "Matched to your connected website profile." }))
     .sort((a, b) => b.score - a.score);
 }
 
