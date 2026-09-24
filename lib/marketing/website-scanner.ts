@@ -141,6 +141,20 @@ export async function scanWebsite(input: string): Promise<WebsiteScan> {
   // candidate, in order of trustworthiness, and keep the first one that
   // actually comes back as image content -- rather than trusting whichever
   // regex happened to match first and saving a link that never loads.
+  //
+  // A strict `content-type starts with "image"` check is too strict for
+  // some storage/CDN backends (Supabase Storage among them) that serve a
+  // perfectly valid, browser-renderable image under a generic
+  // application/octet-stream or binary/octet-stream content-type when the
+  // file was uploaded without explicit content-type metadata. Browsers
+  // don't care and render it fine; our probe was rejecting it and treating
+  // a genuinely working logo as unreachable. So also accept a generic
+  // binary content-type when the URL's own extension is a known image
+  // format -- the same signal a browser effectively falls back on.
+  const IMAGE_EXT = /\.(png|jpe?g|gif|webp|svg|ico|avif|bmp)(?:[?#]|$)/i;
+  const looksLikeImage = (contentType: string, url: string) =>
+    contentType.startsWith('image') || (/^(application|binary)\/octet-stream$/i.test(contentType) && IMAGE_EXT.test(url));
+
   const logoCandidates = [
     abs(finalUrl, orgLogo),
     abs(finalUrl, meta('og:image')),
@@ -154,7 +168,7 @@ export async function scanWebsite(input: string): Promise<WebsiteScan> {
   for (const candidate of logoCandidates.slice(0, 6)) {
     try {
       const probe = await fetch(candidate, { method: 'GET', headers: { 'user-agent': 'BizNest-Marketing-Crawler/1.0 (+https://biznest.space)' }, signal: AbortSignal.timeout(8000), redirect: 'follow', cache: 'no-store' });
-      if (probe.ok && (probe.headers.get('content-type') || '').startsWith('image')) { logoUrl = candidate; break; }
+      if (probe.ok && looksLikeImage(probe.headers.get('content-type') || '', candidate)) { logoUrl = candidate; break; }
     } catch { /* candidate unreachable -- try the next one */ }
   }
   if (!logoUrl) {
@@ -165,7 +179,7 @@ export async function scanWebsite(input: string): Promise<WebsiteScan> {
     try {
       const candidate = new URL('/favicon.ico', finalUrl);
       const probe = await fetch(candidate.toString(), { method: 'GET', signal: AbortSignal.timeout(8000), redirect: 'follow', cache: 'no-store' });
-      if (probe.ok && (probe.headers.get('content-type') || '').startsWith('image')) logoUrl = candidate.toString();
+      if (probe.ok && looksLikeImage(probe.headers.get('content-type') || '', candidate.toString())) logoUrl = candidate.toString();
     } catch { /* no favicon.ico available */ }
   }
 
