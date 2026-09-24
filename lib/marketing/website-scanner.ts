@@ -58,26 +58,42 @@ export async function scanWebsite(input: string): Promise<WebsiteScan> {
   const finalUrl = new URL(response.url || base.toString());
   const title = strip((html.match(/<title[^>]*>([\s\S]*?)<\/title>/i)?.[1] || ''));
   const meta = (name: string) => html.match(new RegExp(`<meta[^>]+(?:name|property)=["']${name}["'][^>]+content=["']([^"']*)`, 'i'))?.[1] || html.match(new RegExp(`<meta[^>]+content=["']([^"']*)["'][^>]+(?:name|property)=["']${name}["']`, 'i'))?.[1];
-  const logoTag = html.match(/<img[^>]+(?:logo|brand)[^>]*>/i)?.[0];
-  const logoUrl = abs(finalUrl, attr(logoTag || '', 'src'));
   const canonical = abs(finalUrl, html.match(/<link[^>]+rel=["']canonical["'][^>]+href=["']([^"']+)/i)?.[1]);
   const text = strip(html);
-  const emails = [...new Set(text.match(/[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/gi) || [])];
-  const phones = [...new Set(text.match(/(?:\+?\d[\d\s().-]{7,}\d)/g) || [])].slice(0,5);
-  const socialLinks: Record<string,string> = {};
-  for (const [key, re] of Object.entries({ instagram:/instagram\.com\/[A-Za-z0-9_.-]+/i, facebook:/facebook\.com\/[A-Za-z0-9_.-]+/i, tiktok:/tiktok\.com\/@?[A-Za-z0-9_.-]+/i, linkedin:/linkedin\.com\/(?:company|in)\/[A-Za-z0-9_.-]+/i })) {
-    const m = html.match(new RegExp(`https?:\\/\\/[^"'\\s<>]*${re.source}`, 'i')); if (m) socialLinks[key] = m[0];
-  }
-  const colors = [...html.matchAll(/(?:color|background-color)\s*:\s*(#[0-9a-f]{3,8})/gi)].map(m=>m[1].toLowerCase());
-  const colorCount = new Map<string,number>(); colors.forEach(c=>colorCount.set(c,(colorCount.get(c)||0)+1));
-  const ranked = [...colorCount.entries()].sort((a,b)=>b[1]-a[1]).map(x=>x[0]);
+
+  // Real theme colors come from CSS, meta tags, or manifest -- not from
+  // randomly ranking whatever inline colors happen to be in the markup
+  // (a page can have zero inline styles, or inline styles that belong to a
+  // single unrelated element). Prefer explicit signals of the site's actual
+  // brand color, in order of how deliberate they are.
+  const themeColor = meta('theme-color') || html.match(/<meta[^>]+name=["']msapplication-TileColor["'][^>]+content=["'](#[0-9a-fA-F]{3,8})/i)?.[1];
+  const inlineColors = [...html.matchAll(/(?:color|background-color)\s*:\s*(#[0-9a-f]{3,8})/gi)].map(m=>m[1].toLowerCase());
+  const inlineColorCount = new Map<string,number>(); inlineColors.forEach(c=>inlineColorCount.set(c,(inlineColorCount.get(c)||0)+1));
+  const rankedInline = [...inlineColorCount.entries()].sort((a,b)=>b[1]-a[1]).map(x=>x[0]);
+
+  // Known third-party artifact domains that leak into free-text email/phone
+  // scraping (analytics beacons, CDN contact addresses, schema examples) --
+  // excluded so we don't hand back noise as if it were the business's own
+  // contact details.
+  const NOISE_EMAIL_DOMAINS = /(sentry\.io|wixpress\.com|googleapis\.com|google-analytics\.com|cloudflare\.com|schema\.org|example\.com|w3\.org|gstatic\.com|doubleclick\.net)$/i;
+
   const ldItems: ScannedCatalogItem[] = [];
+  let orgName: string | undefined, orgLogo: string | undefined, orgDescription: string | undefined, orgEmail: string | undefined, orgPhone: string | undefined;
   for (const m of html.matchAll(/<script[^>]+type=["']application\/ld\+json["'][^>]*>([\s\S]*?)<\/script>/gi)) {
     try {
       const raw = JSON.parse(m[1]); const nodes = Array.isArray(raw) ? raw : raw['@graph'] || [raw];
       for (const n of nodes) {
         if (!n || typeof n !== 'object') continue;
         const type = Array.isArray(n['@type']) ? n['@type'].join(',') : String(n['@type']||'');
+        // Organization/LocalBusiness nodes carry the site's own verified
+        // identity -- far more reliable than guessing from <title>.
+        if (/Organization|LocalBusiness|Hotel|Restaurant|Corporation/i.test(type)) {
+          orgName ||= n.name ? String(n.name) : undefined;
+          orgLogo ||= typeof n.logo === 'string' ? n.logo : n.logo?.url ? String(n.logo.url) : undefined;
+          orgDescription ||= n.description ? String(n.description) : undefined;
+          orgEmail ||= n.email ? String(n.email) : (n.contactPoint?.email ? String(n.contactPoint.email) : undefined);
+          orgPhone ||= n.telephone ? String(n.telephone) : (n.contactPoint?.telephone ? String(n.contactPoint.telephone) : undefined);
+        }
         if (/Product|HotelRoom|Room|Service|Offer/i.test(type) && n.name) {
           const offers = Array.isArray(n.offers) ? n.offers[0] : n.offers;
           ldItems.push({ externalKey: String(n.url || n['@id'] || `${type}:${n.name}`), type: /HotelRoom|Room/i.test(type) ? 'ROOM' : /Service/i.test(type) ? 'SERVICE' : 'PRODUCT', name: String(n.name), description: n.description ? String(n.description) : undefined, imageUrl: Array.isArray(n.image) ? n.image[0] : n.image, url: abs(finalUrl, n.url), price: offers?.price != null ? String(offers.price) : undefined, currency: offers?.priceCurrency ? String(offers.priceCurrency) : undefined, salePrice: offers?.price != null && offers?.priceSpecification?.price ? String(offers.priceSpecification.price) : undefined, availability: offers?.availability ? String(offers.availability).split('/').pop() : undefined, category: n.category ? String(n.category) : undefined, metadata: { schemaType:type }, sourceUrl: finalUrl.toString() });
@@ -85,11 +101,60 @@ export async function scanWebsite(input: string): Promise<WebsiteScan> {
       }
     } catch { /* ignore malformed JSON-LD */ }
   }
+
+  // Logo: prefer a source that actually claims to BE the logo (JSON-LD,
+  // og:image, a real <link rel="icon">) over guessing from any <img> whose
+  // class/src merely contains the word "logo" (false positives are common --
+  // decorative icons, unrelated partner badges, etc).
+  const iconHref = html.match(/<link[^>]+rel=["'](?:apple-touch-icon|icon)["'][^>]+href=["']([^"']+)/i)?.[1]
+    || html.match(/<link[^>]+href=["']([^"']+)["'][^>]+rel=["'](?:apple-touch-icon|icon)["']/i)?.[1];
+  const logoTag = html.match(/<img[^>]+(?:logo|brand)[^>]*>/i)?.[0];
+  const logoUrl = abs(finalUrl, orgLogo) || abs(finalUrl, meta('og:image')) || abs(finalUrl, iconHref) || abs(finalUrl, attr(logoTag || '', 'src'));
+
+  // Contact info: a mailto:/tel: link is an explicit, deliberate contact
+  // channel the site published -- far more trustworthy than free-text
+  // regex matches, which pick up tracking-pixel addresses, example emails
+  // in scripts, or any phone-shaped number on the page.
+  const mailtoEmails = [...new Set([...html.matchAll(/href=["']mailto:([^"'?]+)/gi)].map(m=>m[1].toLowerCase()))].filter(e=>!NOISE_EMAIL_DOMAINS.test(e.split('@')[1]||''));
+  const telPhones = [...new Set([...html.matchAll(/href=["']tel:([^"']+)/gi)].map(m=>m[1]))];
+  const freeTextEmails = [...new Set(text.match(/[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/gi) || [])].filter(e=>!NOISE_EMAIL_DOMAINS.test(e.split('@')[1]||''));
+  const freeTextPhones = [...new Set(text.match(/(?:\+?\d[\d\s().-]{7,}\d)/g) || [])].slice(0,5);
+  const contactEmail = orgEmail || mailtoEmails[0] || freeTextEmails[0];
+  const contactPhone = orgPhone || telPhones[0] || freeTextPhones[0];
+
+  const socialLinks: Record<string,string> = {};
+  for (const [key, re] of Object.entries({ instagram:/instagram\.com\/[A-Za-z0-9_.-]+/i, facebook:/facebook\.com\/[A-Za-z0-9_.-]+/i, tiktok:/tiktok\.com\/@?[A-Za-z0-9_.-]+/i, linkedin:/linkedin\.com\/(?:company|in)\/[A-Za-z0-9_.-]+/i })) {
+    const m = html.match(new RegExp(`https?:\\/\\/[^"'\\s<>]*${re.source}`, 'i')); if (m) socialLinks[key] = m[0];
+  }
+
   const pages = [{ title: title || finalUrl.hostname, url: canonical || finalUrl.toString() }];
   for (const m of html.matchAll(/<a[^>]+href=["']([^"']+)["'][^>]*>([\s\S]*?)<\/a>/gi)) {
     const u = abs(finalUrl, m[1]); const label = strip(m[2]);
     if (u && label && new URL(u).hostname === finalUrl.hostname && /product|room|suite|service|menu|shop|offer|sale|pricing/i.test(`${label} ${u}`)) pages.push({title:label.slice(0,100),url:u});
   }
   const uniquePages = [...new Map(pages.map(p=>[p.url,p])).values()].slice(0,50);
-  return { websiteUrl: finalUrl.toString(), businessName: meta('og:site_name') || title.split('|')[0].split('-')[0].trim() || undefined, businessType: /hotel|suite|resort/i.test(text) ? 'Hotel' : /restaurant|menu|dining/i.test(text) ? 'Restaurant' : /real estate|property|apartment/i.test(text) ? 'Real Estate' : /shop|cart|product|add to cart/i.test(text) ? 'E-commerce' : 'Professional Services', logoUrl, primaryColor: ranked[0], secondaryColor: ranked[1], description: meta('description') || undefined, contactEmail: emails[0], contactPhone: phones[0], socialLinks, pages: uniquePages, items: [...new Map(ldItems.map(i=>[i.externalKey,i])).values()].slice(0,200) };
+
+  // Business name: an explicitly-declared identity (JSON-LD, og:site_name)
+  // beats guessing from <title>, which is often "Page Title | Site Name" or
+  // "Site Name - Tagline" in either order -- pick whichever split segment
+  // looks like a name (shorter, no stopwords) rather than blindly taking
+  // the first one.
+  const titleParts = title.split(/[|\-–—]/).map(s=>s.trim()).filter(Boolean);
+  const bestTitlePart = titleParts.sort((a,b)=>a.length-b.length)[0];
+  const businessName = orgName || meta('og:site_name') || bestTitlePart || title || undefined;
+
+  return {
+    websiteUrl: finalUrl.toString(),
+    businessName,
+    businessType: /hotel|suite|resort/i.test(text) ? 'Hotel' : /restaurant|menu|dining/i.test(text) ? 'Restaurant' : /real estate|property|apartment/i.test(text) ? 'Real Estate' : /shop|cart|product|add to cart/i.test(text) ? 'E-commerce' : 'Professional Services',
+    logoUrl,
+    primaryColor: themeColor || rankedInline[0],
+    secondaryColor: rankedInline.find(c=>c!==themeColor) || rankedInline[1],
+    description: orgDescription || meta('description') || undefined,
+    contactEmail,
+    contactPhone,
+    socialLinks,
+    pages: uniquePages,
+    items: [...new Map(ldItems.map(i=>[i.externalKey,i])).values()].slice(0,200),
+  };
 }
