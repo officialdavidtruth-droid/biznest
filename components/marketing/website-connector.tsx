@@ -1,9 +1,9 @@
 "use client";
 import { useState } from 'react';
-import { Globe2, RefreshCw, CheckCircle2, Package, Palette, ExternalLink, ShieldCheck, Copy, Check } from 'lucide-react';
+import { Globe2, RefreshCw, CheckCircle2, Package, Palette, ExternalLink, ShieldCheck, Copy, Check, Mail } from 'lucide-react';
 
 type Item={id:string;type:string;name:string;category?:string|null;imageUrl?:string|null;price?:string|null;salePrice?:string|null;currency?:string|null;url?:string|null;isActive:boolean};
-type Connection={websiteUrl:string;status?:string;verificationToken?:string;businessName?:string|null;businessType?:string|null;logoUrl?:string|null;primaryColor?:string|null;secondaryColor?:string|null;lastScannedAt?:string|null};
+type Connection={websiteUrl:string;websiteHost?:string;status?:string;verificationToken?:string;businessName?:string|null;businessType?:string|null;logoUrl?:string|null;primaryColor?:string|null;secondaryColor?:string|null;lastScannedAt?:string|null};
 
 export function WebsiteConnector({initial,items:initialItems}:{initial:Connection|null;items:Item[]}){
  const [url,setUrl]=useState(initial?.websiteUrl||'');
@@ -12,10 +12,14 @@ export function WebsiteConnector({initial,items:initialItems}:{initial:Connectio
  const [loading,setLoading]=useState(false);
  const [message,setMessage]=useState('');
  const [copied,setCopied]=useState(false);
+ const [useEmail,setUseEmail]=useState(false);
+ const [email,setEmail]=useState('');
+ const [codeSent,setCodeSent]=useState(false);
+ const [code,setCode]=useState('');
  const isPending = connection && connection.status !== 'CONNECTED';
  const isConnected = connection?.status === 'CONNECTED';
 
- async function call(action:'connect'|'verify', body:Record<string,unknown> = {}){
+ async function call(action:string, body:Record<string,unknown> = {}){
    setMessage(''); setLoading(true);
    try{
      const r=await fetch('/api/marketing/website-scan',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({action,...body})});
@@ -29,12 +33,27 @@ export function WebsiteConnector({initial,items:initialItems}:{initial:Connectio
  async function connect(){
    const data = await call('connect', { url });
    if(!data) return;
-   setConnection({ websiteUrl: data.websiteUrl, status: data.status, verificationToken: data.verificationToken });
-   setMessage('Add the verification code below to your website, then click "I\'ve added it — verify".');
+   setConnection({ websiteUrl: data.websiteUrl, websiteHost: data.websiteHost, status: data.status, verificationToken: data.verificationToken });
+   setMessage('Add the verification code below to your website, then click "I\'ve added it — verify". No developer access? Use email verification instead.');
  }
 
  async function verify(){
    const data = await call('verify');
+   if(!data) return;
+   setConnection(data);
+   setItems((data.items||[]).map((x:any,i:number)=>({...x,id:`scan-${i}`,isActive:true})));
+   setMessage(`Verified and connected. Found ${(data.items||[]).length} products, rooms or services.`);
+ }
+
+ async function sendCode(){
+   const data = await call('send-email-code', { email });
+   if(!data) return;
+   setCodeSent(true);
+   setMessage(`We sent a 6-digit code to ${data.emailCodeSentTo}. It expires in 15 minutes.`);
+ }
+
+ async function verifyCode(){
+   const data = await call('verify-email-code', { code });
    if(!data) return;
    setConnection(data);
    setItems((data.items||[]).map((x:any,i:number)=>({...x,id:`scan-${i}`,isActive:true})));
@@ -65,7 +84,7 @@ export function WebsiteConnector({initial,items:initialItems}:{initial:Connectio
     </div>
   )}
 
-  {isPending && (
+  {isPending && !useEmail && (
     <div className="mt-6 rounded-2xl border border-amber-200 bg-amber-50 p-5">
       <p className="flex items-center gap-2 text-sm font-black text-amber-900"><ShieldCheck size={16}/> Prove you own {connection?.websiteUrl}</p>
       <p className="mt-2 text-sm leading-6 text-amber-900">To stop other people connecting a website they don't own, add this to your site before we import anything from it. Either works:</p>
@@ -77,7 +96,29 @@ export function WebsiteConnector({initial,items:initialItems}:{initial:Connectio
         <code className="flex-1 truncate rounded-lg bg-white px-3 py-2 text-xs">{connection?.verificationToken}</code>
         <button onClick={copyToken} className="inline-flex items-center gap-1.5 rounded-lg border border-amber-300 bg-white px-3 py-2 text-xs font-bold text-amber-800">{copied?<Check size={13}/>:<Copy size={13}/>} {copied?'Copied':'Copy'}</button>
       </div>
-      <button onClick={verify} disabled={loading} className="mt-4 inline-flex items-center justify-center gap-2 rounded-xl bg-emerald-700 px-5 py-3 text-sm font-bold text-white disabled:opacity-50">{loading?<RefreshCw className="animate-spin" size={16}/>:<ShieldCheck size={16}/>} {loading?'Verifying…':"I've added it — verify"}</button>
+      <div className="mt-4 flex flex-wrap items-center gap-3">
+        <button onClick={verify} disabled={loading} className="inline-flex items-center justify-center gap-2 rounded-xl bg-emerald-700 px-5 py-3 text-sm font-bold text-white disabled:opacity-50">{loading?<RefreshCw className="animate-spin" size={16}/>:<ShieldCheck size={16}/>} {loading?'Verifying…':"I've added it — verify"}</button>
+        <button onClick={()=>{setUseEmail(true);setMessage('');}} className="inline-flex items-center gap-1.5 text-sm font-bold text-amber-800 underline">No developer access? Verify by email instead</button>
+      </div>
+    </div>
+  )}
+
+  {isPending && useEmail && (
+    <div className="mt-6 rounded-2xl border border-amber-200 bg-amber-50 p-5">
+      <p className="flex items-center gap-2 text-sm font-black text-amber-900"><Mail size={16}/> Verify with an email at {connection?.websiteHost}</p>
+      <p className="mt-2 text-sm leading-6 text-amber-900">We'll email a 6-digit code to an address at your own domain (not a personal Gmail/Yahoo address) — only someone who controls that mailbox can receive it.</p>
+      {!codeSent ? (
+        <div className="mt-3 flex flex-col gap-3 sm:flex-row">
+          <input value={email} onChange={e=>setEmail(e.target.value)} placeholder={`you@${connection?.websiteHost||'yourbusiness.com'}`} className="min-w-0 flex-1 rounded-xl border border-slate-300 px-4 py-3 text-sm outline-none focus:border-emerald-600"/>
+          <button onClick={sendCode} disabled={loading||!email.includes('@')} className="inline-flex items-center justify-center gap-2 rounded-xl bg-emerald-700 px-5 py-3 text-sm font-bold text-white disabled:opacity-50">{loading?<RefreshCw className="animate-spin" size={16}/>:<Mail size={16}/>} {loading?'Sending…':'Send code'}</button>
+        </div>
+      ) : (
+        <div className="mt-3 flex flex-col gap-3 sm:flex-row">
+          <input value={code} onChange={e=>setCode(e.target.value.replace(/\D/g,'').slice(0,6))} placeholder="6-digit code" className="min-w-0 flex-1 rounded-xl border border-slate-300 px-4 py-3 text-sm tracking-widest outline-none focus:border-emerald-600"/>
+          <button onClick={verifyCode} disabled={loading||code.length!==6} className="inline-flex items-center justify-center gap-2 rounded-xl bg-emerald-700 px-5 py-3 text-sm font-bold text-white disabled:opacity-50">{loading?<RefreshCw className="animate-spin" size={16}/>:<ShieldCheck size={16}/>} {loading?'Verifying…':'Verify code'}</button>
+        </div>
+      )}
+      <button onClick={()=>{setUseEmail(false);setCodeSent(false);setMessage('');}} className="mt-4 text-sm font-bold text-amber-800 underline">Use the website code method instead</button>
     </div>
   )}
 

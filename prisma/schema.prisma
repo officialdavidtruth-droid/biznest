@@ -3749,6 +3749,9 @@ model MarketingWebsiteConnection {
   verificationToken  String
   verifiedAt         DateTime?
   lastAttemptAt      DateTime?
+  emailCode          String?
+  emailCodeSentTo    String?
+  emailCodeExpiresAt DateTime?
   businessName       String?
   businessType       String?
   logoUrl            String?
