@@ -50,6 +50,7 @@ export async function verifyWebsiteOwnership(input: string, token: string): Prom
   return false;
 }
 
+export async function scanWebsite(input: string): Promise<WebsiteScan> {
   const base = safeUrl(input.trim());
   const response = await fetch(base.toString(), { headers: { 'user-agent': 'BizNest-Marketing-Crawler/1.0 (+https://biznest.space)' }, signal: AbortSignal.timeout(15000), redirect: 'follow', cache: 'no-store' });
   if (!response.ok) throw new Error(`Website returned HTTP ${response.status}.`);
