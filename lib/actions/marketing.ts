@@ -75,8 +75,8 @@ export async function sendMarketingCampaign(slug: string, input: MarketingSendIn
   const content = normalizeMarketingContent(input);
   const template = getMarketingTemplate(String(input.template)).id;
   // The personal-note design has no headline; every design needs a subject and a message.
-  if (!subject || !content.body || (template !== "letter" && !content.headline)) {
-    return { success: false, error: template === "letter" ? "Subject and message are required." : "Subject, headline and message are required." };
+  if (!subject || !content.body || (!content.headline)) {
+    return { success: false, error: "Subject, headline and message are required." };
   }
   const previewText = content.previewText;
   input = { ...content, template, subject };

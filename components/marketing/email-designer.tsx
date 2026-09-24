@@ -51,7 +51,7 @@ export type EmailDesign = ReturnType<typeof useEmailDesign>;
  * trying another layout never throws away their wording.
  */
 export function useEmailDesign(brand: MarketingBrand, storeItems: MarketingItem[]) {
-  const [template, setTemplate] = useState<MarketingTemplateId>("announcement");
+  const [template, setTemplate] = useState<MarketingTemplateId>("newsletter");
   const [overrides, setOverrides] = useState<Overrides>({});
   const [style, setStyle] = useState<MarketingStyle>({});
   const meta = getMarketingTemplate(template);
