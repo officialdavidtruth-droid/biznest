@@ -8,6 +8,7 @@ import { sendMarketingEmail } from "@/lib/email/send";
 import { checkRateLimit } from "@/lib/rate-limit";
 import { getPluginEntitlement } from "@/lib/plugins";
 import { getMarketingTemplate, marketingOverLimit, normalizeMarketingContent, type MarketingCampaignInput } from "@/lib/email/marketing-templates";
+import { buildMarketingBrand } from "@/lib/email/marketing-brand";
 import type { ActionResult } from "@/types/actions";
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -120,16 +121,19 @@ export async function sendMarketingCampaign(slug: string, input: MarketingSendIn
     },
   });
 
-  const colors = (access.store.themeColors as Record<string, string> | null) ?? {};
-  const brand = {
-    name: access.store.name, storeId: access.store.id, slug: access.store.slug, logoUrl: access.store.logoUrl, bannerUrl: access.store.bannerUrl,
-    primary: colors.primary ?? colors.accent ?? "#111827", secondary: colors.secondary ?? "#111827",
-    accent: colors.accent ?? colors.primary ?? "#2563eb", background: colors.background ?? "#f3f4f6", text: colors.text ?? "#111827",
-    fontFamily: access.store.fontFamily ?? "Arial", contactEmail: access.store.contactEmail ?? access.store.business.email,
-    contactPhone: access.store.contactPhone ?? access.store.business.phone,
-    socialLinks: (access.store.socialLinks as Record<string, string> | null) ?? null, businessType: access.store.businessType,
-    businessDescription: access.store.business.description, sellsProducts: access.store.business.sellsProducts, offersServices: access.store.business.offersServices,
-  };
+  // Reuse the exact same brand-building logic the composer's live preview
+  // uses (buildMarketingBrand), including the connected/verified website's
+  // logo, colors, description and contact info when present. Previously this
+  // rebuilt a bare-bones brand from `store` fields only, so a merchant could
+  // see their site's logo and colors in the live preview yet have the actual
+  // sent campaign go out with none of that -- a marketing-only account (no
+  // storefront) has no `store.logoUrl`/`themeColors` of its own at all, so
+  // every real send silently dropped to the generic placeholder look.
+  const websiteConnection = await prisma.marketingWebsiteConnection.findUnique({
+    where: { storeId: access.store.id },
+    select: { status: true, businessName: true, businessType: true, logoUrl: true, primaryColor: true, secondaryColor: true, description: true, contactEmail: true, contactPhone: true, socialLinks: true },
+  });
+  const brand = buildMarketingBrand(access.store, websiteConnection);
 
   let sent = 0;
   let failed = 0;
