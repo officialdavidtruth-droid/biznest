@@ -118,10 +118,25 @@ export async function scanWebsite(input: string): Promise<WebsiteScan> {
   // og:image, a real <link rel="icon">) over guessing from any <img> whose
   // class/src merely contains the word "logo" (false positives are common --
   // decorative icons, unrelated partner badges, etc).
-  const iconHref = html.match(/<link[^>]+rel=["'](?:apple-touch-icon|icon)["'][^>]+href=["']([^"']+)/i)?.[1]
-    || html.match(/<link[^>]+href=["']([^"']+)["'][^>]+rel=["'](?:apple-touch-icon|icon)["']/i)?.[1];
+  const iconHref = html.match(/<link[^>]+rel=["'](?:apple-touch-icon|icon|mask-icon|shortcut icon)["'][^>]+href=["']([^"']+)/i)?.[1]
+    || html.match(/<link[^>]+href=["']([^"']+)["'][^>]+rel=["'](?:apple-touch-icon|icon|mask-icon|shortcut icon)["']/i)?.[1];
   const logoTag = html.match(/<img[^>]+(?:logo|brand)[^>]*>/i)?.[0];
-  const logoUrl = abs(finalUrl, orgLogo) || abs(finalUrl, meta('og:image')) || abs(finalUrl, iconHref) || abs(finalUrl, attr(logoTag || '', 'src'));
+  // Some sites style the logo as a background-image on a "logo"/"brand"
+  // element rather than an <img> tag (common with SPA/component frameworks) --
+  // catch that pattern too before giving up on inline markup entirely.
+  const logoBgTag = html.match(/<[^>]+class=["'][^"']*(?:logo|brand)[^"']*["'][^>]*style=["'][^"']*background(?:-image)?\s*:[^"']*url\(([^)'"]+)/i)?.[1];
+  let logoUrl = abs(finalUrl, orgLogo) || abs(finalUrl, meta('og:image')) || abs(finalUrl, iconHref) || abs(finalUrl, attr(logoTag || '', 'src')) || abs(finalUrl, logoBgTag);
+  if (!logoUrl) {
+    // Last resort: the path browsers themselves fall back to when no <link
+    // rel="icon"> is declared at all. Verify it actually resolves first --
+    // an unchecked guess that 404s would show as a broken image in the
+    // connector UI, which is worse than the clean "no logo" placeholder.
+    try {
+      const candidate = new URL('/favicon.ico', finalUrl);
+      const probe = await fetch(candidate.toString(), { method: 'GET', signal: AbortSignal.timeout(8000), redirect: 'follow', cache: 'no-store' });
+      if (probe.ok && (probe.headers.get('content-type') || '').startsWith('image')) logoUrl = candidate.toString();
+    } catch { /* no favicon.ico available */ }
+  }
 
   // Contact info: a mailto:/tel: link is an explicit, deliberate contact
   // channel the site published -- far more trustworthy than free-text

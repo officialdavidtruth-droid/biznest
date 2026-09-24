@@ -33,7 +33,7 @@ export default async function StandaloneMarketingDashboard({
     prisma.emailCampaign.findMany({ where: { storeId: store.id }, select: { id: true, subject: true, template: true, status: true, recipientCount: true, sentCount: true, failedCount: true, createdAt: true, content: true }, orderBy: { createdAt: "desc" }, take: 30 }),
     loadMarketingItems(store.id, access.storeSlug),
     prisma.automation.count({ where: { storeId: store.id, status: "ACTIVE" } }),
-    prisma.marketingWebsiteConnection.findUnique({ where: { storeId: store.id }, select: { websiteUrl: true, websiteHost: true, status: true, verificationToken: true, businessName: true, businessType: true, logoUrl: true, primaryColor: true, secondaryColor: true, lastScannedAt: true } }),
+    prisma.marketingWebsiteConnection.findUnique({ where: { storeId: store.id }, select: { websiteUrl: true, websiteHost: true, status: true, verificationToken: true, businessName: true, businessType: true, logoUrl: true, primaryColor: true, secondaryColor: true, description: true, contactEmail: true, contactPhone: true, socialLinks: true, lastScannedAt: true } }),
     prisma.marketingCatalogItem.findMany({ where: { storeId: store.id, isActive: true }, select: { id: true, type: true, name: true, category: true, imageUrl: true, price: true, salePrice: true, currency: true, url: true, isActive: true }, orderBy: { updatedAt: "desc" }, take: 200 }),
   ]);
 
@@ -81,7 +81,7 @@ export default async function StandaloneMarketingDashboard({
         <section className="rounded-3xl border border-emerald-100 bg-white p-6 shadow-sm">
           <MarketingWorkspace
             slug={access.storeSlug}
-            brand={buildMarketingBrand(store)}
+            brand={buildMarketingBrand(store, websiteConnection)}
             items={items}
             initialTab={initialTab}
             stats={{ active: activeSubscribers, unsubscribed: unsubscribedCount, sentCampaigns: campaigns.filter(c => c.status === "SENT" || c.status === "PARTIAL").length, delivered: campaigns.reduce((n,c)=>n+c.sentCount,0), automations }}

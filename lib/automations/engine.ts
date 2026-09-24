@@ -49,7 +49,14 @@ async function sendAutomationEmail(event: Event, action: Action): Promise<string
   const store = await prisma.store.findUnique({ where: { id: event.storeId }, include: { business: true } });
   if (!store) return "EMAIL_SKIPPED_NO_STORE";
 
-  const brand = buildMarketingBrand(store);
+  // A marketing-only account has no BizNest storefront to have set a
+  // logo/description/colours -- if its website is connected, that's the real
+  // brand for automated emails too (welcome, abandoned-checkout, thank-you).
+  const websiteConnection = await prisma.marketingWebsiteConnection.findUnique({
+    where: { storeId: store.id },
+    select: { status: true, businessName: true, businessType: true, logoUrl: true, primaryColor: true, secondaryColor: true, description: true, contactEmail: true, contactPhone: true, socialLinks: true },
+  });
+  const brand = buildMarketingBrand(store, websiteConnection);
   const base = defaultMarketingContent(templateId, brand, []);
   const content = {
     ...base,
