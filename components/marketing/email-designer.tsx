@@ -293,10 +293,13 @@ function Toggle({ ui, label, checked, onChange, disabled }: { ui: Tokens; label:
   );
 }
 
-function ImagePicker({ ui, label, value, onChange, hint }: { ui: Tokens; label: string; value: string; onChange: (v: string) => void; hint?: string }) {
+export type GalleryImage = { url: string; label: string };
+
+function ImagePicker({ ui, label, value, onChange, hint, gallery }: { ui: Tokens; label: string; value: string; onChange: (v: string) => void; hint?: string; gallery?: GalleryImage[] }) {
   const ref = useRef<HTMLInputElement>(null);
   const [busy, setBusy] = useState(false);
   const [note, setNote] = useState<string | null>(null);
+  const [showGallery, setShowGallery] = useState(false);
   async function pick(file: File) {
     setBusy(true);
     setNote(null);
@@ -316,10 +319,29 @@ function ImagePicker({ ui, label, value, onChange, hint }: { ui: Tokens; label: 
       <div className="flex min-w-0 flex-col gap-2 sm:flex-row">
         <input value={value} onChange={(e) => onChange(e.target.value)} placeholder="Paste image URL or upload" className={`${ui.input} flex-1`} />
         <input ref={ref} type="file" accept="image/jpeg,image/png,image/webp" className="hidden" onChange={(e) => { const f = e.target.files?.[0]; if (f) void pick(f); }} />
+        {gallery && gallery.length > 0 && (
+          <button type="button" onClick={() => setShowGallery((s) => !s)} className={`${ui.btn} shrink-0`}>{showGallery ? "Hide" : "From your website"}</button>
+        )}
         <button type="button" disabled={busy} onClick={() => ref.current?.click()} className={`${ui.btn} shrink-0`}>{busy ? "Uploading…" : "Upload"}</button>
         {value && <button type="button" onClick={() => onChange("")} className={`${ui.btn} shrink-0`}>Remove</button>}
       </div>
       {(note || hint) && <span className={ui.sub}>{note ?? hint}</span>}
+      {gallery && gallery.length > 0 && showGallery && (
+        <div className="mt-1 grid grid-cols-4 gap-2 sm:grid-cols-6">
+          {gallery.map((g, i) => (
+            <button
+              key={`${g.url}-${i}`}
+              type="button"
+              title={g.label}
+              onClick={() => { onChange(g.url); setShowGallery(false); }}
+              className={`group relative aspect-square overflow-hidden rounded-lg border ${value === g.url ? "border-primary ring-2 ring-primary/40" : "border-black/10 hover:border-primary/40"}`}
+            >
+              <img src={g.url} alt={g.label} className="h-full w-full object-cover" />
+              {value === g.url && <span className="absolute right-1 top-1 flex h-4 w-4 items-center justify-center rounded-full bg-black/70 text-white"><Check className="h-2.5 w-2.5" /></span>}
+            </button>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
@@ -390,6 +412,24 @@ export function EmailDesigner({
   const has = (x: (typeof meta.extras)[number]) => meta.extras.includes(x);
   const featuredIds = new Set(design.featured.map((f) => f.uid));
   const available = storeItems.map((item, i) => ({ item, uid: `src-${i}` })).filter(({ uid }) => !featuredIds.has(uid));
+
+  // Every image BizNest already knows about for this brand -- the logo/banner
+  // from the connected & scanned website, plus each storefront/catalog item's
+  // picture -- offered as a pick-from-gallery instead of making the merchant
+  // dig up and paste a URL by hand.
+  const imageGallery = useMemo<GalleryImage[]>(() => {
+    const seen = new Set<string>();
+    const out: GalleryImage[] = [];
+    const add = (url: string | null | undefined, label: string) => {
+      if (!url || seen.has(url)) return;
+      seen.add(url);
+      out.push({ url, label });
+    };
+    add(brand.logoUrl, "Logo");
+    add(brand.bannerUrl, "Banner");
+    storeItems.forEach((item) => add(item.imageUrl, item.name));
+    return out;
+  }, [brand.logoUrl, brand.bannerUrl, storeItems]);
   const maxItems = MARKETING_LIMITS.items;
   const white = variant === "dark" ? "text-white" : "";
 
@@ -492,7 +532,7 @@ export function EmailDesigner({
             </div>
           )}
           <div className={`${ui.divider}`} />
-          <ImagePicker ui={ui} label={meta.labels?.image ?? "Header / cover image"} value={design.text("imageUrl")} onChange={(v) => design.setText("imageUrl", v)} hint="Shown where this design places its main picture. Leave empty for none." />
+          <ImagePicker ui={ui} label={meta.labels?.image ?? "Header / cover image"} value={design.text("imageUrl")} onChange={(v) => design.setText("imageUrl", v)} hint="Shown where this design places its main picture. Leave empty for none." gallery={imageGallery} />
           <div className="grid gap-4 sm:grid-cols-2">
             <Area ui={ui} label="Sign-off (optional)" value={design.text("signature")} onChange={(v) => design.setText("signature", v)} rows={2} max={MARKETING_LIMITS.signature} placeholder={"Warmly,\nThe team"} />
             <Area ui={ui} label="P.S. note (optional)" value={design.text("closingNote")} onChange={(v) => design.setText("closingNote", v)} rows={2} max={MARKETING_LIMITS.closingNote} placeholder="A last reminder or small print" />
@@ -564,7 +604,7 @@ export function EmailDesigner({
                 <Field ui={ui} label="Price" value={f.price ?? ""} max={MARKETING_LIMITS.itemPrice} onChange={(v) => updateItem(f.uid, { price: v })} placeholder="NGN 5,000" />
               </div>
               <Area ui={ui} label="Description" value={f.description ?? ""} rows={2} max={MARKETING_LIMITS.itemDescription} onChange={(v) => updateItem(f.uid, { description: v })} />
-              <ImagePicker ui={ui} label="Picture" value={f.imageUrl ?? ""} onChange={(v) => updateItem(f.uid, { imageUrl: v })} />
+              <ImagePicker ui={ui} label="Picture" value={f.imageUrl ?? ""} onChange={(v) => updateItem(f.uid, { imageUrl: v })} gallery={imageGallery} />
               <Field ui={ui} label="Link (optional)" value={f.href ?? ""} max={MARKETING_LIMITS.itemUrl} onChange={(v) => updateItem(f.uid, { href: v })} placeholder="Opens your storefront if left empty" />
             </div>
           </details>

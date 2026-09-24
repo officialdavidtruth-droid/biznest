@@ -53,11 +53,15 @@ export function buildMarketingBrand(store: Store & { business: Business }, conne
 }
 
 /**
- * Published products and services that can be featured in a campaign. A
- * marketing-only account has no BizNest storefront, so its `Product`/`Service`
- * tables are always empty -- for those, fall back to whatever the connected
- * website's catalog scan found, so campaigns have real items to feature
- * instead of an empty list.
+ * Published products and services that can be featured in a campaign, plus
+ * whatever the connected website's catalog scan found. A marketing-only
+ * account has no BizNest storefront, so its `Product`/`Service` tables are
+ * always empty and the scan is its only source of items/images. A store that
+ * *does* have its own products can still have a connected, scanned website
+ * (e.g. selling elsewhere too, or the storefront catalog isn't fully filled
+ * in yet) -- so the scanned items are always included, not just used as a
+ * fallback, otherwise their images never reach the compose screen once the
+ * store has even one product of its own.
  */
 export async function loadMarketingItems(storeId: string, slug: string): Promise<MarketingItem[]> {
   const select = { id: true, name: true, description: true, price: true, currency: true, images: true } as const;
@@ -70,15 +74,17 @@ export async function loadMarketingItems(storeId: string, slug: string): Promise
     ...products.map((p) => ({ kind: "product" as const, name: p.name, description: p.description, price: `${p.currency} ${Number(p.price).toLocaleString()}`, imageUrl: p.images[0] ?? null, href: `/store/${slug}/product/${p.id}` })),
     ...services.map((s) => ({ kind: "service" as const, name: s.name, description: s.description, price: `${s.currency} ${Number(s.price).toLocaleString()}`, imageUrl: s.images[0] ?? null, href: `/store/${slug}/service/${s.id}` })),
   ];
-  if (own.length) return own.slice(0, 12);
-  return catalog
-    .map((c) => ({
-      kind: (c.type === "SERVICE" ? "service" : "product") as "product" | "service",
-      name: c.name,
-      description: c.description,
-      price: c.salePrice ?? (c.price ? (c.currency ? `${c.currency} ${c.price}` : c.price) : undefined),
-      imageUrl: c.imageUrl,
-      href: c.url ?? undefined,
-    }))
-    .slice(0, 12);
+  const scanned = catalog.map((c) => ({
+    kind: (c.type === "SERVICE" ? "service" : "product") as "product" | "service",
+    name: c.name,
+    description: c.description,
+    price: c.salePrice ?? (c.price ? (c.currency ? `${c.currency} ${c.price}` : c.price) : undefined),
+    imageUrl: c.imageUrl,
+    href: c.url ?? undefined,
+  }));
+  // De-dupe by name in case the same item exists in both the storefront and
+  // the website scan -- prefer the storefront's own version when that happens.
+  const seen = new Set(own.map((o) => o.name.trim().toLowerCase()));
+  const merged = [...own, ...scanned.filter((s) => !seen.has(s.name.trim().toLowerCase()))];
+  return merged.slice(0, 12);
 }
