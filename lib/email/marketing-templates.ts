@@ -211,15 +211,21 @@ const TEMPLATE_BY_ID = Object.fromEntries(MARKETING_TEMPLATES.map((t) => [t.id, 
 export type CuratedTemplateRecommendation = MarketingTemplateMeta & { reason: string; score: number };
 
 const CURATED_TEMPLATE_IDS: MarketingTemplateId[] = [
-  // These are the newer, reference-quality designs built for the marketing
-  // workspace. Keep the older templates registered below for compatibility,
-  // but do not surface them as the primary curated gallery.
+  // These are the generated/reference-quality designs built for the marketing
+  // workspace. The older templates remain registered for existing campaigns,
+  // but are not shown in the primary design gallery.
   "ref_offer",
   "ref_catalog",
   "ref_editorial",
   "ref_product_launch",
   "ref_thankyou",
   "ref_confirmation",
+  "ref_hotel",
+  "ref_restaurant",
+  "ref_food_catalog",
+  "ref_dark_menu",
+  "ref_journey",
+  "ref_pricing",
 ];
 
 function curationIndustry(brand: MarketingBrand, items: MarketingItem[]) {
@@ -252,13 +258,25 @@ export function curateMarketingTemplates(brand: MarketingBrand, items: Marketing
     add("ref_journey", 92, "Works for destination stories, guest tips and travel experiences.");
     add("ref_confirmation", 84, "Useful for booking confirmations and guest next steps.");
     add("ref_thankyou", 76, "Fits post-booking and guest appreciation messages.");
+    add("ref_pricing", 68, "Useful for presenting room rates, packages and inclusions.");
+    add("ref_restaurant", 62, "Useful for dining, restaurant and guest-experience campaigns.");
+    add("ref_food_catalog", 58, "Fits breakfast, dining and in-hotel food selections.");
+    add("ref_dark_menu", 54, "Useful for a bold dining menu or evening promotion.");
+    add("ref_editorial", 50, "Works for hotel stories, property updates and guest experiences.");
+    add("ref_product_launch", 44, "Useful for announcing a new hotel service or experience.");
   } else if (ind.restaurant) {
     add("ref_dark_menu", 120, "Designed around food-led menus, featured dishes and reservations.");
     add("ref_food_catalog", 114, "Fits restaurants and cafés with a scannable menu or product catalog.");
     add("ref_restaurant", 108, "Built for featured dishes, dining stories and menu campaigns.");
     add("ref_offer", 96, "Useful for dining promotions, percentage offers and special events.");
     add("ref_editorial", 82, "Works for chef stories, restaurant news and experience-led campaigns.");
+    add("ref_food_catalog", 78, "Fits menus with multiple dishes, prices and product cards.");
+    add("ref_dark_menu", 74, "Provides a high-contrast menu and reservation presentation.");
     add("ref_thankyou", 70, "Useful for reservation, order and customer appreciation follow-ups.");
+    add("ref_confirmation", 64, "Useful for reservation confirmations and next steps.");
+    add("ref_pricing", 58, "Useful for set menus, packages and dining options.");
+    add("ref_hotel", 48, "Useful when a restaurant also promotes hospitality or stays.");
+    add("ref_journey", 44, "Fits destination, dining-experience and local discovery stories.");
   } else if (ind.ecommerce) {
     add("ref_product_launch", 120, "Built for product launches with a strong hero, benefits and CTA.");
     add("ref_offer", 114, "Fits product promotions, discounts and limited-time campaigns.");
@@ -266,13 +284,21 @@ export function curateMarketingTemplates(brand: MarketingBrand, items: Marketing
     add("ref_editorial", 94, "Useful for product stories, brand storytelling and featured collections.");
     add("ref_pricing", 84, "Useful when presenting pricing, options and value clearly.");
     add("ref_thankyou", 72, "Fits post-purchase appreciation and what-happens-next messages.");
+    add("ref_offer", 68, "Useful for product promotions, discounts and limited-time campaigns.");
+    add("ref_catalog", 64, "Works for collections and curated product selections.");
+    add("ref_confirmation", 56, "Useful for order confirmations and customer next steps.");
+    add("ref_journey", 46, "Fits lifestyle, travel and experience-led product stories.");
+    add("ref_hotel", 42, "Useful for hospitality-related product or experience campaigns.");
+    add("ref_restaurant", 38, "Useful for food-led product collections and dining brands.");
+    add("ref_food_catalog", 34, "Fits food, grocery and menu-style product selections.");
+    add("ref_dark_menu", 30, "Useful for bold, image-led catalog campaigns.");
   } else if (ind.service) {
-    add("minimal_pro", 120, "Designed for professional services, agencies, studios and consultants.");
-    add("ref_editorial", 112, "Fits service stories, case-study-style content and expertise-led updates.");
-    add("ref_pricing", 102, "Useful for packages, pricing updates and clear service options.");
-    add("ref_catalog", 92, "Works for presenting a service portfolio or selected offerings.");
-    add("ref_product_launch", 82, "Useful for announcing a new service, package or capability.");
-    add("ref_thankyou", 72, "Fits client follow-ups, appreciation and next-step messages.");
+    add("ref_editorial", 120, "Fits service stories, case-study-style content and expertise-led updates.");
+    add("ref_pricing", 112, "Useful for packages, pricing updates and clear service options.");
+    add("ref_catalog", 104, "Works for presenting a service portfolio or selected offerings.");
+    add("ref_product_launch", 94, "Useful for announcing a new service, package or capability.");
+    add("ref_thankyou", 82, "Fits client follow-ups, appreciation and next-step messages.");
+    add("ref_confirmation", 72, "Useful for confirmed appointments and client next steps.");
   } else {
     add("ref_editorial", 110, "A flexible editorial design for general business storytelling.");
     add("ref_catalog", 104, "A flexible way to showcase products, services or selected offerings.");
@@ -280,6 +306,12 @@ export function curateMarketingTemplates(brand: MarketingBrand, items: Marketing
     add("ref_product_launch", 90, "Useful for launches, announcements and new offerings.");
     add("ref_pricing", 82, "Useful for clear pricing, packages and value communication.");
     add("ref_thankyou", 74, "Useful for customer appreciation and follow-up messages.");
+    add("ref_confirmation", 68, "Useful for confirmations, appointments and customer next steps.");
+    add("ref_hotel", 62, "Useful for hospitality and accommodation storytelling.");
+    add("ref_restaurant", 58, "Useful for food and dining campaigns.");
+    add("ref_food_catalog", 54, "Useful for menus and item-led selections.");
+    add("ref_dark_menu", 50, "Useful for bold, high-contrast campaigns.");
+    add("ref_journey", 46, "Useful for experience-led and destination storytelling.");
   }
 
   return CURATED_TEMPLATE_IDS
