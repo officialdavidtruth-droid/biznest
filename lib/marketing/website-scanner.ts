@@ -23,7 +23,33 @@ function safeUrl(input: string) {
   return u;
 }
 
-export async function scanWebsite(input: string): Promise<WebsiteScan> {
+export function hostOf(input: string) {
+  return safeUrl(input.trim()).hostname.toLowerCase().replace(/^www\./, '');
+}
+
+// Ownership proof: the account must place a BizNest-issued token on the
+// homepage (as a meta tag) or at a well-known path before the connection is
+// trusted. This is what stops someone connecting a website they don't
+// control -- e.g. a competitor's or a stranger's site -- to harvest its
+// branding/catalog and send campaigns that impersonate that business.
+export async function verifyWebsiteOwnership(input: string, token: string): Promise<boolean> {
+  const base = safeUrl(input.trim());
+  const check = (html: string) => html.includes(token) && (
+    new RegExp(`<meta[^>]+name=["']biznest-site-verification["'][^>]+content=["']${token}["']`, 'i').test(html) ||
+    new RegExp(`<meta[^>]+content=["']${token}["'][^>]+name=["']biznest-site-verification["']`, 'i').test(html)
+  );
+  try {
+    const home = await fetch(base.toString(), { headers: { 'user-agent': 'BizNest-Marketing-Crawler/1.0 (+https://biznest.space)' }, signal: AbortSignal.timeout(10000), redirect: 'follow', cache: 'no-store' });
+    if (home.ok && check((await home.text()).slice(0, 500_000))) return true;
+  } catch { /* fall through to well-known file */ }
+  try {
+    const wellKnown = new URL('/.well-known/biznest-verify.txt', base);
+    const file = await fetch(wellKnown.toString(), { signal: AbortSignal.timeout(10000), redirect: 'follow', cache: 'no-store' });
+    if (file.ok && (await file.text()).trim() === token) return true;
+  } catch { /* not found or unreachable */ }
+  return false;
+}
+
   const base = safeUrl(input.trim());
   const response = await fetch(base.toString(), { headers: { 'user-agent': 'BizNest-Marketing-Crawler/1.0 (+https://biznest.space)' }, signal: AbortSignal.timeout(15000), redirect: 'follow', cache: 'no-store' });
   if (!response.ok) throw new Error(`Website returned HTTP ${response.status}.`);

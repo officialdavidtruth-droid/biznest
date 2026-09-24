@@ -3733,25 +3733,35 @@ model HrPayrollItem {
 
 // Standalone BizNest Marketing website intelligence. This is additive to the
 // existing store CRM/catalog and is only used by the Marketing workspace.
+// Security: a website is USABLE (status CONNECTED, catalog populated) only
+// after the account proves control of it via a verification token placed on
+// the site -- otherwise anyone could point Marketing at a competitor's or a
+// stranger's website, pull its branding/catalog, and send fraudulent
+// campaigns that look like they come from that business. websiteHost is
+// unique platform-wide so the same domain can never be claimed twice.
 model MarketingWebsiteConnection {
-  id              String   @id @default(cuid())
-  storeId         String   @unique
-  store           Store    @relation(fields: [storeId], references: [id], onDelete: Cascade)
-  websiteUrl      String
-  status          String   @default("CONNECTED")
-  businessName    String?
-  businessType    String?
-  logoUrl         String?
-  primaryColor    String?
-  secondaryColor  String?
-  description     String?  @db.Text
-  contactEmail    String?
-  contactPhone    String?
-  socialLinks     Json?
-  pages           Json?
-  lastScannedAt   DateTime?
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
+  id                 String    @id @default(cuid())
+  storeId            String    @unique
+  store              Store     @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  websiteUrl         String
+  websiteHost        String    @unique
+  status             String    @default("PENDING_VERIFICATION") // PENDING_VERIFICATION | CONNECTED | FAILED
+  verificationToken  String
+  verifiedAt         DateTime?
+  lastAttemptAt      DateTime?
+  businessName       String?
+  businessType       String?
+  logoUrl            String?
+  primaryColor       String?
+  secondaryColor     String?
+  description        String?   @db.Text
+  contactEmail       String?
+  contactPhone       String?
+  socialLinks        Json?
+  pages              Json?
+  lastScannedAt      DateTime?
+  createdAt          DateTime  @default(now())
+  updatedAt          DateTime  @updatedAt
 
   @@index([status])
 }
