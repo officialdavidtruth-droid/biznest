@@ -80,12 +80,26 @@ const PRICE_RE = /(?:₦|\$|£|€|GH₵|KES|USD|NGN|GHS)\s?\d[\d,]*(?:\.\d{1,2}
 const SKIP_IMAGE = /logo|icon|avatar|sprite|placeholder|spinner|loading|badge|banner-bg|favicon/i;
 
 function extractGenericItems(html: string, pageUrl: URL): ScannedCatalogItem[] {
-  const items: ScannedCatalogItem[] = [];
   const seen = new Set<string>();
   const IMG_RE = /<img\b[^>]*>/gi;
   const WINDOW = 700;
+
+  // Pass 1: image + nearby price. This is the strongest signal a picture is a
+  // catalog card rather than a hero/decorative photo, so these are collected
+  // first and always kept.
+  const priced: ScannedCatalogItem[] = [];
+  // Pass 2 (fallback): image + link + a name, no price nearby. Plenty of
+  // real sites (service pages, portfolios, menus with prices only inside a
+  // PDF/photo, Wix/Squarespace galleries) never put a price next to the
+  // picture at all -- without this pass those sites produce zero catalog
+  // items no matter how well-structured their markup is. A linked image
+  // paired with a caption is still a deliberate "card", just priceless; cap
+  // it separately and only use it to fill in when pass 1 came up short, so a
+  // stray linked photo in body content can't drown out real price-backed items.
+  const linked: ScannedCatalogItem[] = [];
+
   let match: RegExpExecArray | null;
-  while ((match = IMG_RE.exec(html)) && items.length < 40) {
+  while ((match = IMG_RE.exec(html)) && priced.length + linked.length < 80) {
     const imgTag = match[0];
     const src = attr(imgTag, 'src') || attr(imgTag, 'data-src') || attr(imgTag, 'data-lazy-src') || attr(imgTag, 'data-original');
     if (!src || SKIP_IMAGE.test(src)) continue;
@@ -95,10 +109,7 @@ function extractGenericItems(html: string, pageUrl: URL): ScannedCatalogItem[] {
     const before = html.slice(Math.max(0, match.index - WINDOW), match.index);
     const after = html.slice(match.index + imgTag.length, match.index + imgTag.length + WINDOW);
 
-    // Require a nearby price -- this is what tells a product/menu card apart from a
-    // hero image, a decorative photo, or an unrelated content picture.
     const priceMatch = (after.slice(0, 400).match(PRICE_RE)) || (before.slice(-200).match(PRICE_RE));
-    if (!priceMatch) continue;
 
     const headingMatch = after.match(/<(?:h[1-6]|strong|b)[^>]*>([\s\S]*?)<\/(?:h[1-6]|strong|b)>/i)
       || before.match(/<(?:h[1-6]|strong|b)[^>]*>([\s\S]*?)<\/(?:h[1-6]|strong|b)>(?![\s\S]*<(?:h[1-6]|strong|b)[^>]*>)/i);
@@ -109,20 +120,25 @@ function extractGenericItems(html: string, pageUrl: URL): ScannedCatalogItem[] {
     const linkAfter = after.match(/<a[^>]+href=["']([^"']+)["']/i)?.[1];
     const href = abs(pageUrl, linkInBefore || linkAfter);
 
+    if (!priceMatch && !href) continue; // neither signal -- too likely to be unrelated body content
+
     const key = `${imageUrl}|${name.toLowerCase()}`;
     if (seen.has(key)) continue;
     seen.add(key);
-    items.push({
+
+    const item: ScannedCatalogItem = {
       externalKey: href || key,
       type: /menu|dish|food|drink/i.test(`${name} ${pageUrl.pathname}`) ? 'PRODUCT' : /service|booking|appointment|session/i.test(`${name} ${pageUrl.pathname}`) ? 'SERVICE' : 'PRODUCT',
       name,
       imageUrl,
       url: href,
-      price: priceMatch[0].trim(),
+      price: priceMatch?.[0]?.trim(),
       sourceUrl: pageUrl.toString(),
-    });
+    };
+    if (priceMatch) priced.push(item); else linked.push(item);
   }
-  return items;
+
+  return priced.length >= 40 ? priced.slice(0, 40) : [...priced, ...linked].slice(0, 40);
 }
 
 export async function scanWebsite(input: string): Promise<WebsiteScan> {
