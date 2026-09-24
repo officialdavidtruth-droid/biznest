@@ -106,8 +106,14 @@ export async function POST(req: Request) {
     }
     if (record.lastAttemptAt && Date.now() - record.lastAttemptAt.getTime() < COOLDOWN_MS) return NextResponse.json({ error: 'Please wait a moment before trying again.' }, { status: 429 });
     const code = crypto.randomInt(100000, 999999).toString();
-    await prisma.marketingWebsiteConnection.update({ where: { storeId: store.id }, data: { emailCode: code, emailCodeSentTo: email, emailCodeExpiresAt: new Date(Date.now() + CODE_TTL_MS), lastAttemptAt: new Date() } });
-    await sendBrandedHtmlEmail(email, 'Your BizNest website verification code', `<p style="margin:0 0 16px;color:#374151;font-size:15px;line-height:24px;">Use this code in BizNest Marketing to confirm you own <strong>${record.websiteHost}</strong>:</p><p style="margin:0 0 16px;font-size:28px;font-weight:800;letter-spacing:4px;">${code}</p><p style="margin:0;color:#6b7280;font-size:13px;">This code expires in 15 minutes. If you didn't request this, you can ignore it.</p>`, 'BizNest Marketing');
+    await prisma.marketingWebsiteConnection.update({ where: { storeId: store.id }, data: { lastAttemptAt: new Date() } });
+    const sent = await sendBrandedHtmlEmail(email, 'Your BizNest website verification code', `<p style="margin:0 0 16px;color:#374151;font-size:15px;line-height:24px;">Use this code in BizNest Marketing to confirm you own <strong>${record.websiteHost}</strong>:</p><p style="margin:0 0 16px;font-size:28px;font-weight:800;letter-spacing:4px;">${code}</p><p style="margin:0;color:#6b7280;font-size:13px;">This code expires in 15 minutes. If you didn't request this, you can ignore it.</p>`, 'BizNest Marketing').catch((e: unknown) => ({ error: { message: e instanceof Error ? e.message : 'Send threw' } }));
+    if (sent && 'error' in sent && sent.error) {
+      return NextResponse.json({ error: `Couldn't send the code (${sent.error.message}). Try the website-code method instead, or contact support.` }, { status: 502 });
+    }
+    // Only persist the code once we know the email actually went out -- otherwise a failed
+    // send would still leave a "valid" code sitting on the record with nothing delivered.
+    await prisma.marketingWebsiteConnection.update({ where: { storeId: store.id }, data: { emailCode: code, emailCodeSentTo: email, emailCodeExpiresAt: new Date(Date.now() + CODE_TTL_MS) } });
     return NextResponse.json({ success: true, data: { status: 'CODE_SENT', emailCodeSentTo: email } });
   }
 
