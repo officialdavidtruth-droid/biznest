@@ -53,7 +53,7 @@ export async function POST(req: Request) {
   if ('error' in auth1) return NextResponse.json({ error: auth1.error }, { status: auth1.status });
   const store = auth1.store;
   const body = await req.json().catch(() => ({}));
-  const action: string = ['verify', 'send-email-code', 'verify-email-code'].includes(body.action) ? body.action : 'connect';
+  const action: string = ['verify', 'send-email-code', 'verify-email-code', 'refresh'].includes(body.action) ? body.action : 'connect';
 
   if (action === 'connect') {
     if (typeof body.url !== 'string' || body.url.length > 500) return NextResponse.json({ error: 'Enter a valid website URL.' }, { status: 400 });
@@ -83,6 +83,18 @@ export async function POST(req: Request) {
 
   const record = await prisma.marketingWebsiteConnection.findUnique({ where: { storeId: store.id } });
   if (!record) return NextResponse.json({ error: 'Connect a website first.' }, { status: 400 });
+
+  if (action === 'refresh') {
+    // Ownership was already proven when the connection was first made --
+    // re-checking for the meta tag/well-known file here would wrongly fail
+    // for accounts that verified by email instead, since that proof never
+    // touches the site itself. A refresh just re-scans.
+    if (record.status !== 'CONNECTED') return NextResponse.json({ error: 'Verify the connection before refreshing.' }, { status: 400 });
+    if (record.lastAttemptAt && Date.now() - record.lastAttemptAt.getTime() < COOLDOWN_MS) return NextResponse.json({ error: 'Please wait a moment before trying again.' }, { status: 429 });
+    await prisma.marketingWebsiteConnection.update({ where: { storeId: store.id }, data: { lastAttemptAt: new Date() } });
+    try { return NextResponse.json({ success: true, data: await finalizeConnection(store.id, record) }); }
+    catch (e) { return NextResponse.json({ error: e instanceof Error ? e.message : 'Website scan failed.' }, { status: (e as { status?: number })?.status ?? 422 }); }
+  }
 
   if (action === 'verify') {
     if (record.lastAttemptAt && Date.now() - record.lastAttemptAt.getTime() < COOLDOWN_MS) return NextResponse.json({ error: 'Please wait a moment before trying again.' }, { status: 429 });

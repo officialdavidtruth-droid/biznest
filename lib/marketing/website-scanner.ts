@@ -67,7 +67,18 @@ export async function scanWebsite(input: string): Promise<WebsiteScan> {
   // single unrelated element). Prefer explicit signals of the site's actual
   // brand color, in order of how deliberate they are.
   const themeColor = meta('theme-color') || html.match(/<meta[^>]+name=["']msapplication-TileColor["'][^>]+content=["'](#[0-9a-fA-F]{3,8})/i)?.[1];
-  const inlineColors = [...html.matchAll(/(?:color|background-color)\s*:\s*(#[0-9a-f]{3,8})/gi)].map(m=>m[1].toLowerCase());
+  // Near-black/near-white/gray are almost always body text or background
+  // defaults, not a brand color -- and without this filter the "most
+  // frequent inline color" is nearly always plain black text, which isn't
+  // useful (or true) as a detected brand color.
+  const isNeutral = (hex: string) => {
+    const h = hex.replace('#','');
+    const bytes = h.length >= 6 ? [h.slice(0,2),h.slice(2,4),h.slice(4,6)] : [...h].map(c=>c+c);
+    const [r,g,b] = bytes.map(x=>parseInt(x,16));
+    const max=Math.max(r,g,b), min=Math.min(r,g,b);
+    return (max-min) < 12; // low saturation => grayscale-ish, not a brand color
+  };
+  const inlineColors = [...html.matchAll(/(?:color|background-color)\s*:\s*(#[0-9a-f]{3,8})/gi)].map(m=>m[1].toLowerCase()).filter(c=>!isNeutral(c));
   const inlineColorCount = new Map<string,number>(); inlineColors.forEach(c=>inlineColorCount.set(c,(inlineColorCount.get(c)||0)+1));
   const rankedInline = [...inlineColorCount.entries()].sort((a,b)=>b[1]-a[1]).map(x=>x[0]);
 
@@ -78,7 +89,7 @@ export async function scanWebsite(input: string): Promise<WebsiteScan> {
   const NOISE_EMAIL_DOMAINS = /(sentry\.io|wixpress\.com|googleapis\.com|google-analytics\.com|cloudflare\.com|schema\.org|example\.com|w3\.org|gstatic\.com|doubleclick\.net)$/i;
 
   const ldItems: ScannedCatalogItem[] = [];
-  let orgName: string | undefined, orgLogo: string | undefined, orgDescription: string | undefined, orgEmail: string | undefined, orgPhone: string | undefined;
+  let orgName: string | undefined, orgLogo: string | undefined, orgDescription: string | undefined, orgEmail: string | undefined, orgPhone: string | undefined, orgType: string | undefined;
   for (const m of html.matchAll(/<script[^>]+type=["']application\/ld\+json["'][^>]*>([\s\S]*?)<\/script>/gi)) {
     try {
       const raw = JSON.parse(m[1]); const nodes = Array.isArray(raw) ? raw : raw['@graph'] || [raw];
@@ -89,6 +100,7 @@ export async function scanWebsite(input: string): Promise<WebsiteScan> {
         // identity -- far more reliable than guessing from <title>.
         if (/Organization|LocalBusiness|Hotel|Restaurant|Corporation/i.test(type)) {
           orgName ||= n.name ? String(n.name) : undefined;
+          orgType ||= /Hotel/i.test(type) ? 'Hotel' : /Restaurant/i.test(type) ? 'Restaurant' : undefined;
           orgLogo ||= typeof n.logo === 'string' ? n.logo : n.logo?.url ? String(n.logo.url) : undefined;
           orgDescription ||= n.description ? String(n.description) : undefined;
           orgEmail ||= n.email ? String(n.email) : (n.contactPoint?.email ? String(n.contactPoint.email) : undefined);
@@ -143,13 +155,30 @@ export async function scanWebsite(input: string): Promise<WebsiteScan> {
   const bestTitlePart = titleParts.sort((a,b)=>a.length-b.length)[0];
   const businessName = orgName || meta('og:site_name') || bestTitlePart || title || undefined;
 
+  // Business type: a site's own declared schema type is real signal.
+  // Guessing from keywords is only trustworthy against title+meta (text the
+  // site deliberately wrote about itself), not the full page body, which
+  // includes nav/footer/blog content where an incidental word match (e.g.
+  // "suite" in an unrelated sentence) produces a wrong label. Word
+  // boundaries avoid matching inside unrelated words.
+  const ownWords = `${title} ${meta('description')||''} ${meta('og:title')||''}`;
+  const classify = (s: string) =>
+    /\bhotel\b|\bresort\b|\blodge\b/i.test(s) ? 'Hotel' :
+    /\brestaurant\b|\bmenu\b|\bdining\b|\bcaf[eé]\b/i.test(s) ? 'Restaurant' :
+    /\breal estate\b|\bproperty\b|\bapartments?\b/i.test(s) ? 'Real Estate' :
+    /\bshop\b|\bcart\b|\badd to cart\b/i.test(s) ? 'E-commerce' : undefined;
+  const businessType = orgType || classify(ownWords) || classify(text) || undefined;
+
   return {
     websiteUrl: finalUrl.toString(),
     businessName,
-    businessType: /hotel|suite|resort/i.test(text) ? 'Hotel' : /restaurant|menu|dining/i.test(text) ? 'Restaurant' : /real estate|property|apartment/i.test(text) ? 'Real Estate' : /shop|cart|product|add to cart/i.test(text) ? 'E-commerce' : 'Professional Services',
+    businessType,
     logoUrl,
     primaryColor: themeColor || rankedInline[0],
-    secondaryColor: rankedInline.find(c=>c!==themeColor) || rankedInline[1],
+    // Only report a second color if we actually found a genuinely different
+    // one -- duplicating the primary as a fake "secondary" is worse than
+    // just leaving it unset.
+    secondaryColor: rankedInline.find(c=>c!==themeColor && c!==rankedInline[0]) || (themeColor ? rankedInline[0] : undefined),
     description: orgDescription || meta('description') || undefined,
     contactEmail,
     contactPhone,

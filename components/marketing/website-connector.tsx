@@ -45,6 +45,14 @@ export function WebsiteConnector({initial,items:initialItems}:{initial:Connectio
    setMessage(`Verified and connected. Found ${(data.items||[]).length} products, rooms or services.`);
  }
 
+ async function refresh(){
+   const data = await call('refresh');
+   if(!data) return;
+   setConnection(data);
+   setItems((data.items||[]).map((x:any,i:number)=>({...x,id:`scan-${i}`,isActive:true})));
+   setMessage(`Refreshed. Found ${(data.items||[]).length} products, rooms or services.`);
+ }
+
  async function sendCode(){
    const data = await call('send-email-code', { email });
    if(!data) return;
@@ -125,7 +133,7 @@ export function WebsiteConnector({initial,items:initialItems}:{initial:Connectio
   {isConnected && (
     <div className="mt-6 flex flex-col gap-3 sm:flex-row">
       <input value={url} onChange={e=>setUrl(e.target.value)} placeholder="https://yourbusiness.com" className="min-w-0 flex-1 rounded-xl border border-slate-300 px-4 py-3 text-sm outline-none focus:border-emerald-600" disabled/>
-      <button onClick={verify} disabled={loading} className="inline-flex items-center justify-center gap-2 rounded-xl bg-emerald-700 px-5 py-3 text-sm font-bold text-white disabled:opacity-50">{loading?<RefreshCw className="animate-spin" size={16}/>:<Globe2 size={16}/>} {loading?'Refreshing…':'Refresh website data'}</button>
+      <button onClick={refresh} disabled={loading} className="inline-flex items-center justify-center gap-2 rounded-xl bg-emerald-700 px-5 py-3 text-sm font-bold text-white disabled:opacity-50">{loading?<RefreshCw className="animate-spin" size={16}/>:<Globe2 size={16}/>} {loading?'Refreshing…':'Refresh website data'}</button>
     </div>
   )}
 
