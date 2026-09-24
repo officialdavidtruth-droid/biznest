@@ -34,7 +34,15 @@ async function finalizeConnection(storeId: string, record: NonNullable<ConnRecor
   await prisma.$transaction(async tx => {
     await tx.marketingWebsiteConnection.update({
       where: { storeId },
-      data: { status: 'CONNECTED', verifiedAt: new Date(), emailCode: null, emailCodeSentTo: null, emailCodeExpiresAt: null, websiteUrl: result.websiteUrl, businessName: result.businessName, businessType: result.businessType, logoUrl: result.logoUrl, primaryColor: result.primaryColor, secondaryColor: result.secondaryColor, description: result.description, contactEmail: result.contactEmail, contactPhone: result.contactPhone, socialLinks: result.socialLinks, pages: result.pages, lastScannedAt: new Date() },
+      // Coerce every scanned field to `?? null` explicitly. Prisma treats a
+      // literal `undefined` in an update payload as "leave this column
+      // alone" rather than "clear it" -- so if a re-scan doesn't turn up a
+      // value this time round (site markup changed, a probe timed out,
+      // whatever), the OLD value from the very first scan would otherwise
+      // sit there forever untouched, even though "Refresh website data"
+      // reports success. A refresh must make the row match what was just
+      // found, including clearing fields that are no longer found.
+      data: { status: 'CONNECTED', verifiedAt: new Date(), emailCode: null, emailCodeSentTo: null, emailCodeExpiresAt: null, websiteUrl: result.websiteUrl, businessName: result.businessName ?? null, businessType: result.businessType ?? null, logoUrl: result.logoUrl ?? null, primaryColor: result.primaryColor ?? null, secondaryColor: result.secondaryColor ?? null, description: result.description ?? null, contactEmail: result.contactEmail ?? null, contactPhone: result.contactPhone ?? null, socialLinks: result.socialLinks, pages: result.pages, lastScannedAt: new Date() },
     });
     const seen = new Set<string>();
     for (const item of result.items) {
