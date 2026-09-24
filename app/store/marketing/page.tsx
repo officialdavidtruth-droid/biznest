@@ -11,6 +11,7 @@ import { MarketingContactImporter } from "@/components/marketing/marketing-conta
 import { CrmWorkspace } from "@/components/dashboard/crm-workspace";
 import { getCrmDashboard } from "@/lib/actions/seo-crm";
 import { WebsiteConnector } from "@/components/marketing/website-connector";
+import { SignOutButton } from "@/components/forms/sign-out-button";
 
 export default async function StandaloneMarketingDashboard({
   searchParams,
@@ -54,7 +55,7 @@ export default async function StandaloneMarketingDashboard({
             {verifiedBrand?.logoUrl && <img src={verifiedBrand.logoUrl} alt="" className="h-8 w-8 rounded-lg object-contain" />}
             <div><Link href="/marketing" className="text-xl font-black">BizNest <span className="text-emerald-600">Marketing</span></Link><p className="mt-0.5 text-xs text-slate-500">{displayName} · {verifiedBrand?.businessType || store.businessType}</p></div>
           </div>
-          <div className="flex items-center gap-2"><Link href="/marketing" className="rounded-xl border px-3 py-2 text-sm font-semibold">Marketing home</Link><Link href="/login" className="rounded-xl bg-emerald-700 px-4 py-2 text-sm font-bold text-white">Account</Link></div>
+          <div className="flex items-center gap-2"><Link href="/marketing" className="rounded-xl border px-3 py-2 text-sm font-semibold">Marketing home</Link><SignOutButton callbackUrl="/marketing" className="rounded-xl bg-emerald-700 px-4 py-2 text-sm font-bold text-white">Sign out</SignOutButton></div>
         </div>
       </header>
 
