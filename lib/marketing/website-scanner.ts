@@ -334,10 +334,12 @@ export async function scanWebsite(input: string): Promise<WebsiteScan> {
   // boundaries avoid matching inside unrelated words.
   const ownWords = `${title} ${meta('description')||''} ${meta('og:title')||''}`;
   const classify = (s: string) =>
-    /\bhotel\b|\bresort\b|\blodge\b/i.test(s) ? 'Hotel' :
-    /\brestaurant\b|\bmenu\b|\bdining\b|\bcaf[eé]\b/i.test(s) ? 'Restaurant' :
-    /\breal estate\b|\bproperty\b|\bapartments?\b/i.test(s) ? 'Real Estate' :
-    /\bshop\b|\bcart\b|\badd to cart\b/i.test(s) ? 'E-commerce' : undefined;
+    /\bhotel\b|\bresort\b|\blodge\b|\bguest house\b|\baccommodation\b/i.test(s) ? 'Hotel' :
+    /\brestaurant\b|\bmenu\b|\bdining\b|\bcaf[eé]\b|\bbakery\b|\bcatering\b/i.test(s) ? 'Restaurant' :
+    /\breal estate\b|\bproperty\b|\bapartments?\b|\brealtor\b/i.test(s) ? 'Real Estate' :
+    /\bsalon\b|\bbarber\b|\bspa\b|\bbeauty\b|\bnails?\b/i.test(s) ? 'Beauty & Wellness' :
+    /\bagency\b|\bconsult(ing|ancy)?\b|\bprofessional services?\b|\bphotography\b|\bcreative studio\b/i.test(s) ? 'Professional Services' :
+    /\bshop\b|\bcart\b|\badd to cart\b|\be-?commerce\b|\bonline store\b/i.test(s) ? 'E-commerce' : undefined;
   const businessType = orgType || classify(ownWords) || classify(text) || undefined;
 
   return {

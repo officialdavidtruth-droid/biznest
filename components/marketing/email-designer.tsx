@@ -1,12 +1,12 @@
 "use client";
 
-import { useMemo, useRef, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { ArrowDown, ArrowUp, Check, Copy, Download, Image as ImageIcon, Monitor, Palette, Plus, RotateCcw, Smartphone, Sparkles, Trash2, Type } from "lucide-react";
 import {
   MARKETING_CATEGORIES,
   MARKETING_FONT_OPTIONS,
   MARKETING_LIMITS,
-  MARKETING_TEMPLATES,
+  curateMarketingTemplates,
   defaultMarketingContent,
   getMarketingTemplate,
   normalizeMarketingContent,
@@ -51,10 +51,15 @@ export type EmailDesign = ReturnType<typeof useEmailDesign>;
  * trying another layout never throws away their wording.
  */
 export function useEmailDesign(brand: MarketingBrand, storeItems: MarketingItem[]) {
-  const [template, setTemplate] = useState<MarketingTemplateId>("newsletter");
+  const curated = useMemo(() => curateMarketingTemplates(brand, storeItems), [brand, storeItems]);
+  const [template, setTemplate] = useState<MarketingTemplateId>(() => curated[0]?.id ?? "editorial");
   const [overrides, setOverrides] = useState<Overrides>({});
   const [style, setStyle] = useState<MarketingStyle>({});
   const meta = getMarketingTemplate(template);
+
+  useEffect(() => {
+    if (!curated.some((t) => t.id === template)) setTemplate(curated[0]?.id ?? "editorial");
+  }, [curated, template]);
 
   const defaults = useMemo(() => defaultMarketingContent(template, brand, storeItems), [template, brand, storeItems]);
   const defaultFeatured = useMemo<FeaturedItem[]>(
@@ -110,7 +115,7 @@ export function useEmailDesign(brand: MarketingBrand, storeItems: MarketingItem[
   const input: MarketingCampaignInput = { ...content, template, subject, items: usesItems ? content.items : [] };
 
   return {
-    brand, storeItems, template, meta, subject, content, featured, highlights, style, overrides, defaults, input, sampleWarnings, usesItems,
+    brand, storeItems, template, meta, subject, content, featured, highlights, style, overrides, defaults, input, sampleWarnings, usesItems, curated,
     setTemplate,
     text,
     setText: (key: TextKey, value: string) => setOverrides((o) => ({ ...o, [key]: value })),
@@ -370,7 +375,7 @@ export function EmailDesigner({
   previewFooter?: ReactNode;
 }) {
   const ui = UI[variant];
-  const { brand, meta, content, style, storeItems } = design;
+  const { brand, meta, content, style, storeItems, curated } = design;
   const [category, setCategory] = useState<MarketingTemplateCategory | "all">("all");
   const [device, setDevice] = useState<"desktop" | "mobile">("desktop");
   const [pane, setPane] = useState<"edit" | "preview">("edit");
@@ -379,8 +384,8 @@ export function EmailDesigner({
   const topRef = useRef<HTMLDivElement>(null);
 
   const thumbs = useMemo(
-    () => MARKETING_TEMPLATES.map((t) => ({ t, html: renderMarketingEmail(t.id, brand, defaultMarketingContent(t.id, brand, storeItems), { unsubscribeUrl: "#" }) })),
-    [brand, storeItems]
+    () => curated.map((t) => ({ t, html: renderMarketingEmail(t.id, brand, defaultMarketingContent(t.id, brand, storeItems), { unsubscribeUrl: "#" }) })),
+    [curated, brand, storeItems]
   );
   const visible = thumbs.filter(({ t }) => category === "all" || t.category === category);
 
@@ -473,7 +478,12 @@ export function EmailDesigner({
       <div className="mb-4 flex items-start justify-between gap-3">
         <div>
           <h2 className={ui.title}>Choose a design</h2>
-          <p className={`mt-1 ${ui.sub}`}>Each one is shown with your logo, colours and products. Your edits carry over if you switch later.</p>
+          <p className={`mt-1 ${ui.sub}`}>These designs are curated automatically from your connected website's business type and catalog. No AI is used to choose them.</p>
+          <div className="mt-3 flex flex-wrap items-center gap-2">
+            <span className={`rounded-full px-2.5 py-1 text-[11px] font-bold ${variant === "dark" ? "bg-emerald-500/10 text-emerald-300" : "bg-emerald-50 text-emerald-700"}`}>Website-matched</span>
+            {brand.businessType && <span className={ui.badge}>{brand.businessType}</span>}
+            <span className={ui.sub}>Brand colours, logo and website items are already applied.</span>
+          </div>
         </div>
         <Sparkles className={`h-5 w-5 shrink-0 ${ui.accent}`} />
       </div>
@@ -491,8 +501,12 @@ export function EmailDesigner({
                 <iframe title={`${t.name} preview`} srcDoc={html} sandbox="" loading="lazy" tabIndex={-1} aria-hidden="true" className="pointer-events-none absolute left-0 top-0 border-0" style={{ width: 640, height: 900, transform: "scale(0.275)", transformOrigin: "top left" }} />
                 {on && <span className="absolute right-1.5 top-1.5 flex h-5 w-5 items-center justify-center rounded-full bg-black/70 text-white"><Check className="h-3 w-3" /></span>}
               </div>
-              <p className={`mt-2 text-sm font-semibold ${white}`}>{t.name}</p>
+              <div className="mt-2 flex items-start justify-between gap-2">
+                <p className={`text-sm font-semibold ${white}`}>{t.name}</p>
+                {t === curated[0] && <span className={`shrink-0 rounded-full px-2 py-0.5 text-[9px] font-black uppercase tracking-wide ${variant === "dark" ? "bg-emerald-500/15 text-emerald-300" : "bg-emerald-50 text-emerald-700"}`}>Recommended</span>}
+              </div>
               <p className={`mt-0.5 text-[11px] leading-4 ${ui.sub}`}>{t.description}</p>
+              {t === curated.find((x) => x.id === t.id) && (t as typeof curated[number]).reason && <p className={`mt-1 text-[10px] leading-4 ${variant === "dark" ? "text-emerald-300/80" : "text-emerald-700/80"}`}>{(t as typeof curated[number]).reason}</p>}
             </button>
           );
         })}
