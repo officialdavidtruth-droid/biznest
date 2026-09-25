@@ -216,6 +216,14 @@ const UI = {
 } as const;
 type Tokens = (typeof UI)[DesignerVariant];
 
+function previewifyEmailHtml(html: string): string {
+  // srcDoc is sandboxed, so relative /marketing-generated assets otherwise resolve
+  // against about:srcdoc. Point built-in assets at the current BizNest origin for
+  // the live editor while keeping the exported/sent HTML unchanged.
+  if (typeof window === "undefined") return html;
+  return html.replace(/src=(\"|')\/marketing-generated\//g, `src=$1${window.location.origin}/marketing-generated/`);
+}
+
 function darkenEmailPreview(html: string): string {
   // Preview-only: flips the light email to dark to match a dark dashboard. Never touches what is sent.
   const css = `<style>html,body{filter:invert(1) hue-rotate(180deg);background:#fff !important}img,svg,video,picture,[style*="background-image"]{filter:invert(1) hue-rotate(180deg)}</style>`;
@@ -325,7 +333,7 @@ function ImagePicker({ ui, label, value, onChange, hint, gallery }: { ui: Tokens
         <input value={value} onChange={(e) => onChange(e.target.value)} placeholder="Paste image URL or upload" className={`${ui.input} flex-1`} />
         <input ref={ref} type="file" accept="image/jpeg,image/png,image/webp" className="hidden" onChange={(e) => { const f = e.target.files?.[0]; if (f) void pick(f); }} />
         {gallery && gallery.length > 0 && (
-          <button type="button" onClick={() => setShowGallery((s) => !s)} className={`${ui.btn} shrink-0`}>{showGallery ? "Hide" : "From your website"}</button>
+          <button type="button" onClick={() => setShowGallery((s) => !s)} className={`${ui.btn} shrink-0`}>{showGallery ? "Hide" : "Choose image"}</button>
         )}
         <button type="button" disabled={busy} onClick={() => ref.current?.click()} className={`${ui.btn} shrink-0`}>{busy ? "Uploading…" : "Upload"}</button>
         {value && <button type="button" onClick={() => onChange("")} className={`${ui.btn} shrink-0`}>Remove</button>}
@@ -384,13 +392,13 @@ export function EmailDesigner({
   const topRef = useRef<HTMLDivElement>(null);
 
   const thumbs = useMemo(
-    () => curated.map((t) => ({ t, html: renderMarketingEmail(t.id, brand, defaultMarketingContent(t.id, brand, storeItems), { unsubscribeUrl: "#" }) })),
+    () => curated.map((t) => ({ t, html: previewifyEmailHtml(renderMarketingEmail(t.id, brand, defaultMarketingContent(t.id, brand, storeItems), { unsubscribeUrl: "#" })) })),
     [curated, brand, storeItems]
   );
   const visible = thumbs.filter(({ t }) => category === "all" || t.category === category);
 
   const previewHtml = useMemo(() => {
-    const html = design.render();
+    const html = previewifyEmailHtml(design.render());
     return darkPreview ? darkenEmailPreview(html) : html;
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [design.template, brand, content, darkPreview]);
@@ -431,8 +439,26 @@ export function EmailDesigner({
       out.push({ url, label });
     };
     add(brand.logoUrl, "Logo");
-    add(brand.bannerUrl, "Banner");
+    add(brand.bannerUrl, "Website banner");
     storeItems.forEach((item) => add(item.imageUrl, item.name));
+
+    // Built-in editorial photography gives every generated design a beautiful
+    // starting point even when the connected website has no usable images yet.
+    // These remain normal editable image URLs: the merchant can replace them
+    // with a website image, catalog image, pasted URL, or an uploaded file.
+    const defaults: GalleryImage[] = [
+      { url: "/marketing-generated/restaurant-great-moments.jpg", label: "Restaurant hero" },
+      { url: "/marketing-generated/restaurant-coming-soon.jpg", label: "Dark restaurant" },
+      { url: "/marketing-generated/luxury-hotel-escape.jpg", label: "Hotel hero" },
+      { url: "/marketing-generated/luxury-getaway.jpg", label: "Luxury getaway" },
+      { url: "/marketing-generated/luxury-escape.jpg", label: "Luxury experience" },
+      { url: "/marketing-generated/weekend-getaway.jpg", label: "Weekend offer" },
+      { url: "/marketing-generated/vertical-hotel.jpg", label: "Editorial hotel" },
+      { url: "/marketing-generated/warm-welcome.jpg", label: "Welcome" },
+      { url: "/marketing-generated/hotel-welcome-newsletter.jpg", label: "Hotel welcome" },
+      { url: "/marketing-generated/luxury-hotel-newsletter.jpg", label: "Hotel newsletter" },
+    ];
+    defaults.forEach((item) => add(item.url, item.label));
     return out;
   }, [brand.logoUrl, brand.bannerUrl, storeItems]);
   const maxItems = MARKETING_LIMITS.items;
@@ -546,7 +572,7 @@ export function EmailDesigner({
             </div>
           )}
           <div className={`${ui.divider}`} />
-          <ImagePicker ui={ui} label={meta.labels?.image ?? "Header / cover image"} value={design.text("imageUrl")} onChange={(v) => design.setText("imageUrl", v)} hint="Shown where this design places its main picture. Leave empty for none." gallery={imageGallery} />
+          <ImagePicker ui={ui} label={meta.labels?.image ?? "Header / cover image"} value={design.text("imageUrl")} onChange={(v) => design.setText("imageUrl", v)} hint="A beautiful default image is supplied. Replace it with a website image, catalog image, uploaded photo, or any image URL." gallery={imageGallery} />
           <div className="grid gap-4 sm:grid-cols-2">
             <Area ui={ui} label="Sign-off (optional)" value={design.text("signature")} onChange={(v) => design.setText("signature", v)} rows={2} max={MARKETING_LIMITS.signature} placeholder={"Warmly,\nThe team"} />
             <Area ui={ui} label="P.S. note (optional)" value={design.text("closingNote")} onChange={(v) => design.setText("closingNote", v)} rows={2} max={MARKETING_LIMITS.closingNote} placeholder="A last reminder or small print" />

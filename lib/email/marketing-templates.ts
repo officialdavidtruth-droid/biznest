@@ -1001,15 +1001,37 @@ function prefer(items: MarketingItem[], kind: "product" | "service", n: number) 
   return [...items.filter((i) => i.kind === kind), ...items.filter((i) => i.kind !== kind)].slice(0, n);
 }
 
+const GENERATED_IMAGE = (filename: string) => `/marketing-generated/${filename}`;
+
+const DEFAULT_TEMPLATE_IMAGES: Partial<Record<MarketingTemplateId, string>> = {
+  ref_confirmation: GENERATED_IMAGE("hotel-welcome-newsletter.jpg"),
+  ref_offer: GENERATED_IMAGE("weekend-getaway.jpg"),
+  ref_catalog: GENERATED_IMAGE("luxury-hotel-newsletter.jpg"),
+  ref_journey: GENERATED_IMAGE("luxury-getaway.jpg"),
+  ref_thankyou: GENERATED_IMAGE("warm-welcome.jpg"),
+  ref_editorial: GENERATED_IMAGE("vertical-hotel.jpg"),
+  ref_pricing: GENERATED_IMAGE("luxury-hotel-newsletter.jpg"),
+  ref_hotel: GENERATED_IMAGE("luxury-hotel-escape.jpg"),
+  ref_restaurant: GENERATED_IMAGE("restaurant-great-moments.jpg"),
+  ref_food_catalog: GENERATED_IMAGE("restaurant-great-moments.jpg"),
+  ref_dark_menu: GENERATED_IMAGE("restaurant-coming-soon.jpg"),
+  ref_product_launch: GENERATED_IMAGE("luxury-escape.jpg"),
+};
+
+function defaultTemplateImage(template: MarketingTemplateId, fallback?: string | null) {
+  return fallback || DEFAULT_TEMPLATE_IMAGES[template] || null;
+}
+
 /** Starter content for a design, tuned to the store's industry. Everything is editable. */
 export function defaultMarketingContent(template: MarketingTemplateId, brand: MarketingBrand, items: MarketingItem[]): MarketingDefaults {
   const ind = industryOf(brand);
   const url = `${APP_URL}/${brand.slug}`;
   const name = brand.name;
   const hero = brand.bannerUrl ?? items.find((i) => i.imageUrl)?.imageUrl ?? null;
-  const itemHero = items.find((i) => i.imageUrl)?.imageUrl ?? brand.bannerUrl ?? null;
+  const generatedHero = defaultTemplateImage(template, hero);
+  const itemHero = items.find((i) => i.imageUrl)?.imageUrl ?? generatedHero;
   const team = `The ${name} team`;
-  const base = { ctaUrl: url, imageUrl: hero, items: [] as MarketingItem[] };
+  const base = { ctaUrl: url, imageUrl: generatedHero, items: [] as MarketingItem[] };
   const buy = ind.hospitality ? "Book your stay" : ind.beauty || ind.professional ? "Book now" : ind.food ? "Order now" : "Shop now";
 
   switch (template) {
@@ -1058,11 +1080,11 @@ export function defaultMarketingContent(template: MarketingTemplateId, brand: Ma
     case "ref_journey": return { ...base, subject: "Explore with " + name, previewText: "Ideas, tips and featured experiences.", eyebrow: "Explore", headline: "Make the most of your next experience.", body: brand.businessDescription ?? "A few ideas and recommendations to help your customers discover more.", ctaLabel: buy, items: items.slice(0,3), highlights: ["Save smart", "Plan ahead", "Local recommendations"], imageUrl: hero };
     case "ref_thankyou": return { ...base, subject: "Thank you from " + name, previewText: "Here’s what happens next.", eyebrow: "Thank you", headline: "We appreciate you.", body: "Your support means a lot. Here’s what happens next and where to find us if you need anything.", ctaLabel: "Visit our website", highlights: ["We’re preparing your request", "You’ll receive an update", "Our team is here to help"], imageUrl: hero };
     case "ref_editorial": return { ...base, subject: "The story from " + name, previewText: "A closer look at what we offer.", eyebrow: "The story", headline: "Crafted with purpose.", body: brand.businessDescription ?? "A closer look at the thinking, people and products behind our business.", ctaLabel: "Discover more", items: items.slice(0,4), highlights: ["Thoughtful design", "Quality materials", "Made for real life"], imageUrl: hero };
-    case "ref_pricing": return { ...base, subject: "New pricing from " + name, previewText: "Clear options, straightforward value.", eyebrow: "Pricing update", headline: "More value, clearly presented.", body: "See the current options and choose what fits your needs.", ctaLabel: buy, offerLabel: "From your current rate", offerNote: "Flexible option", couponCode: "Available now", highlights: ["Transparent information", "Flexible choices", "Direct support"], imageUrl: null };
+    case "ref_pricing": return { ...base, subject: "New pricing from " + name, previewText: "Clear options, straightforward value.", eyebrow: "Pricing update", headline: "More value, clearly presented.", body: "See the current options and choose what fits your needs.", ctaLabel: buy, offerLabel: "From your current rate", offerNote: "Flexible option", couponCode: "Available now", highlights: ["Transparent information", "Flexible choices", "Direct support"], imageUrl: generatedHero };
     case "ref_hotel": return { ...base, subject: "Stay with " + name, previewText: "Rooms, experiences and hospitality.", eyebrow: "Your stay", headline: "Relax in comfort.", body: brand.businessDescription ?? "Discover rooms, amenities and experiences designed around your stay.", ctaLabel: "Book your stay", items: items.slice(0,4), highlights: ["Comfortable rooms", "Attentive service", "Dining and experiences"], imageUrl: hero };
     case "ref_restaurant": return { ...base, subject: "A taste of " + name, previewText: "Featured dishes and dining experiences.", eyebrow: "Featured", headline: "A taste worth remembering.", body: brand.businessDescription ?? "Explore our dining experience and a few favourites from the menu.", ctaLabel: "Reserve or order", items: items.slice(0,4), highlights: ["Fresh ingredients", "Thoughtful service", "A memorable table"], imageUrl: hero };
     case "ref_food_catalog": return { ...base, subject: "On the menu at " + name, previewText: "Explore our featured selection.", eyebrow: "Menu", headline: "Made to be enjoyed.", body: brand.businessDescription ?? "Explore a selection of dishes, products or services from our business.", ctaLabel: "View menu", items: items.slice(0,6), imageUrl: hero };
-    case "ref_dark_menu": return { ...base, subject: "The menu at " + name, previewText: "Explore our featured menu.", eyebrow: "Our menu", headline: "Made for the moment.", body: brand.businessDescription ?? "Discover featured products, services or dishes.", ctaLabel: "Reserve now", items: items.slice(0,9), highlights: ["Featured selection", "Fresh today", "Reserve online"], imageUrl: null };
+    case "ref_dark_menu": return { ...base, subject: "The menu at " + name, previewText: "Explore our featured menu.", eyebrow: "Our menu", headline: "Made for the moment.", body: brand.businessDescription ?? "Discover featured products, services or dishes.", ctaLabel: "Reserve now", items: items.slice(0,9), highlights: ["Featured selection", "Fresh today", "Reserve online"], imageUrl: generatedHero };
     case "ref_product_launch": return { ...base, subject: "Meet what’s new at " + name, previewText: "A new release worth discovering.", eyebrow: "New", headline: "Designed for what’s next.", body: brand.businessDescription ?? "Meet the latest addition to our offering.", ctaLabel: buy, items: items.slice(0,3), highlights: ["Thoughtful design", "Easy to use", "Built around your needs"], imageUrl: hero };
     case "minimal_pro": return { ...base, subject: "An update from " + name, previewText: "A concise update from our team.", eyebrow: "Business update", headline: "A clearer way forward.", body: brand.businessDescription ?? "Here is a concise update from our team, with the information you need.", ctaLabel: "Learn more", items: items.slice(0,3), highlights: ["Clear information", "Professional service", "Direct support"], imageUrl: null };
     default:
