@@ -15,6 +15,8 @@ import {
   type MarketingCampaignInput,
   type MarketingContent,
   type MarketingItem,
+  type MarketingPhoto,
+  type MarketingSection,
   type MarketingStyle,
   type MarketingTemplateCategory,
   type MarketingTemplateId,
@@ -25,15 +27,18 @@ import {
 /* -------------------------------------------------------------------------- */
 
 export type FeaturedItem = MarketingItem & { uid: string };
+export type StorySection = MarketingSection & { uid: string };
+export type GalleryPhoto = MarketingPhoto & { uid: string };
 
 const TEXT_KEYS = [
   "subject", "previewText", "eyebrow", "headline", "body", "ctaLabel", "ctaUrl", "imageUrl",
   "secondaryCtaLabel", "secondaryCtaUrl", "offerLabel", "couponCode", "offerNote",
   "eventDate", "eventTime", "eventLocation", "signature", "closingNote",
+  "galleryTitle", "bannerImageUrl", "bannerLinkUrl",
 ] as const;
 type TextKey = (typeof TEXT_KEYS)[number];
 
-type Overrides = Partial<Record<TextKey, string>> & { highlights?: string[]; items?: FeaturedItem[] };
+type Overrides = Partial<Record<TextKey, string>> & { highlights?: string[]; items?: FeaturedItem[]; sections?: StorySection[]; gallery?: GalleryPhoto[] };
 
 /** Sample values a merchant must replace before sending. */
 const SAMPLE_KEYS: Array<{ key: "offerLabel" | "couponCode" | "eventDate" | "eventTime"; group: "offer" | "event"; label: string }> = [
@@ -69,6 +74,14 @@ export function useEmailDesign(brand: MarketingBrand, storeItems: MarketingItem[
     }),
     [defaults, storeItems]
   );
+  const defaultSections = useMemo<StorySection[]>(
+    () => (defaults.sections ?? []).map((sec, i) => ({ ...sec, uid: `ds-${i}` })),
+    [defaults]
+  );
+  const defaultGallery = useMemo<GalleryPhoto[]>(
+    () => (defaults.gallery ?? []).map((ph, i) => ({ ...ph, uid: `dg-${i}` })),
+    [defaults]
+  );
 
   const text = (key: TextKey): string => {
     const o = overrides[key];
@@ -78,6 +91,8 @@ export function useEmailDesign(brand: MarketingBrand, storeItems: MarketingItem[
   };
   const featured = overrides.items ?? defaultFeatured;
   const highlights = overrides.highlights ?? defaults.highlights ?? [];
+  const sections = overrides.sections ?? defaultSections;
+  const gallery = overrides.gallery ?? defaultGallery;
 
   const content: MarketingContent = {
     eyebrow: text("eyebrow"),
@@ -99,10 +114,18 @@ export function useEmailDesign(brand: MarketingBrand, storeItems: MarketingItem[
     closingNote: text("closingNote"),
     highlights,
     items: featured.map(({ uid: _uid, ...item }) => item),
+    sections: sections.map(({ uid: _uid, ...sec }) => sec),
+    gallery: gallery.map(({ uid: _uid, ...ph }) => ph),
+    galleryTitle: text("galleryTitle"),
+    bannerImageUrl: text("bannerImageUrl") || undefined,
+    bannerLinkUrl: text("bannerLinkUrl"),
     style,
   };
 
   const usesItems = meta.extras.includes("items");
+  const usesSections = meta.extras.includes("sections");
+  const usesGallery = meta.extras.includes("gallery");
+  const usesBanner = meta.extras.includes("banner");
   const subject = text("subject");
 
   function render(opts?: { unsubscribeUrl?: string }) {
@@ -115,12 +138,14 @@ export function useEmailDesign(brand: MarketingBrand, storeItems: MarketingItem[
   const input: MarketingCampaignInput = { ...content, template, subject, items: usesItems ? content.items : [] };
 
   return {
-    brand, storeItems, template, meta, subject, content, featured, highlights, style, overrides, defaults, input, sampleWarnings, usesItems, curated,
+    brand, storeItems, template, meta, subject, content, featured, highlights, sections, gallery, style, overrides, defaults, input, sampleWarnings, usesItems, usesSections, usesGallery, usesBanner, curated,
     setTemplate,
     text,
     setText: (key: TextKey, value: string) => setOverrides((o) => ({ ...o, [key]: value })),
     setHighlights: (list: string[]) => setOverrides((o) => ({ ...o, highlights: list })),
     setFeatured: (list: FeaturedItem[]) => setOverrides((o) => ({ ...o, items: list.slice(0, MARKETING_LIMITS.items) })),
+    setSections: (list: StorySection[]) => setOverrides((o) => ({ ...o, sections: list.slice(0, MARKETING_LIMITS.sections) })),
+    setGallery: (list: GalleryPhoto[]) => setOverrides((o) => ({ ...o, gallery: list.slice(0, MARKETING_LIMITS.gallery) })),
     patchStyle: (patch: Partial<MarketingStyle>) =>
       setStyle((s) => {
         const next: Record<string, unknown> = { ...s, ...patch };
@@ -141,6 +166,8 @@ export function useEmailDesign(brand: MarketingBrand, storeItems: MarketingItem[
       next.highlights = c.highlights ?? [];
       const stamp = Date.now();
       next.items = c.items.map((item, i) => ({ ...item, uid: `re-${stamp}-${i}` }));
+      next.sections = (c.sections ?? []).map((sec, i) => ({ ...sec, uid: `res-${stamp}-${i}` }));
+      next.gallery = (c.gallery ?? []).map((ph, i) => ({ ...ph, uid: `reg-${stamp}-${i}` }));
       setTemplate(getMarketingTemplate(String(r.template)).id);
       setOverrides(next);
       setStyle(c.style ?? {});
@@ -365,7 +392,7 @@ function ImagePicker({ ui, label, value, onChange, hint, gallery }: { ui: Tokens
 
 export type SendStep = { label: string; node: ReactNode };
 
-type StepId = "design" | "content" | "items" | "style" | "send";
+type StepId = "design" | "content" | "items" | "media" | "style" | "send";
 
 export function EmailDesigner({
   design,
@@ -384,6 +411,37 @@ export function EmailDesigner({
 }) {
   const ui = UI[variant];
   const { brand, meta, content, style, storeItems, curated } = design;
+  const maxSections = MARKETING_LIMITS.sections;
+  const maxPhotos = MARKETING_LIMITS.gallery;
+
+  function updateSection(uid: string, patch: Partial<MarketingSection>) {
+    design.setSections(design.sections.map((sec) => (sec.uid === uid ? { ...sec, ...patch } : sec)));
+  }
+  function moveSection(index: number, dir: -1 | 1) {
+    const list = [...design.sections];
+    const j = index + dir;
+    if (j < 0 || j >= list.length) return;
+    [list[index], list[j]] = [list[j], list[index]];
+    design.setSections(list);
+  }
+  function addSection() {
+    if (design.sections.length >= maxSections) return;
+    design.setSections([...design.sections, { uid: `news-${Date.now()}`, title: "", body: "", imageUrl: "", linkLabel: "", linkUrl: "" }]);
+  }
+  function updatePhoto(uid: string, patch: Partial<MarketingPhoto>) {
+    design.setGallery(design.gallery.map((ph) => (ph.uid === uid ? { ...ph, ...patch } : ph)));
+  }
+  function movePhoto(index: number, dir: -1 | 1) {
+    const list = [...design.gallery];
+    const j = index + dir;
+    if (j < 0 || j >= list.length) return;
+    [list[index], list[j]] = [list[j], list[index]];
+    design.setGallery(list);
+  }
+  function addPhoto() {
+    if (design.gallery.length >= maxPhotos) return;
+    design.setGallery([...design.gallery, { uid: `newg-${Date.now()}`, url: "", caption: "", href: "" }]);
+  }
   const [category, setCategory] = useState<MarketingTemplateCategory | "all">("all");
   const [device, setDevice] = useState<"desktop" | "mobile">("desktop");
   const [pane, setPane] = useState<"edit" | "preview">("edit");
@@ -484,6 +542,9 @@ export function EmailDesigner({
     { id: "design", label: "Design" },
     { id: "content", label: "Write", warn: design.sampleWarnings.length > 0 },
     ...(design.usesItems ? [{ id: "items" as const, label: "Products", count: design.featured.length }] : []),
+    ...(design.usesSections || design.usesGallery || design.usesBanner
+      ? [{ id: "media" as const, label: "Images", count: design.sections.length + design.gallery.length + (design.content.bannerImageUrl ? 1 : 0) }]
+      : []),
     { id: "style", label: "Style" },
     { id: "send", label: sendStep?.label ?? "Export" },
   ];
@@ -669,6 +730,87 @@ export function EmailDesigner({
     </div>
   );
 
+  const mediaStep = (
+    <div className="space-y-5">
+      {design.usesSections && (
+        <div className={ui.card}>
+          <div className="mb-4 flex items-start justify-between gap-3">
+            <div><h2 className={ui.title}>Story sections</h2><p className={`mt-1 ${ui.sub}`}>Picture-and-text blocks shown one after another. Up to {maxSections}.</p></div>
+            <button type="button" disabled={design.sections.length >= maxSections} onClick={addSection} className={ui.btn}><Plus className="h-3.5 w-3.5" />Add section</button>
+          </div>
+          <div className="space-y-3">
+            {design.sections.map((sec, i) => (
+              <details key={sec.uid} className={ui.nested} open={sec.uid.startsWith("news-")}>
+                <summary className="flex cursor-pointer list-none items-center gap-3">
+                  <span className="h-10 w-10 shrink-0 overflow-hidden rounded-lg bg-black/10">{sec.imageUrl ? <img src={sec.imageUrl} alt="" className="h-full w-full object-cover" /> : null}</span>
+                  <span className="min-w-0 flex-1"><span className={`block truncate text-sm font-semibold ${white}`}>{sec.title || "Untitled section"}</span><span className={`block truncate ${ui.sub}`}>{sec.body || "No text yet"}</span></span>
+                  <span className="flex shrink-0 gap-1" onClick={(e) => e.preventDefault()}>
+                    <button type="button" aria-label="Move up" disabled={i === 0} onClick={() => moveSection(i, -1)} className={ui.btn}><ArrowUp className="h-3.5 w-3.5" /></button>
+                    <button type="button" aria-label="Move down" disabled={i === design.sections.length - 1} onClick={() => moveSection(i, 1)} className={ui.btn}><ArrowDown className="h-3.5 w-3.5" /></button>
+                    <button type="button" aria-label="Remove section" onClick={() => design.setSections(design.sections.filter((x) => x.uid !== sec.uid))} className={ui.btn}><Trash2 className="h-3.5 w-3.5" /></button>
+                  </span>
+                </summary>
+                <div className="mt-4 grid gap-3">
+                  <Field ui={ui} label="Title" value={sec.title} max={MARKETING_LIMITS.sectionTitle} onChange={(v) => updateSection(sec.uid, { title: v })} />
+                  <Area ui={ui} label="Text (optional)" value={sec.body ?? ""} rows={2} max={MARKETING_LIMITS.sectionBody} onChange={(v) => updateSection(sec.uid, { body: v })} />
+                  <ImagePicker ui={ui} label="Picture" value={sec.imageUrl ?? ""} onChange={(v) => updateSection(sec.uid, { imageUrl: v })} gallery={imageGallery} />
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    <Field ui={ui} label="Link label (optional)" value={sec.linkLabel ?? ""} max={MARKETING_LIMITS.sectionLabel} onChange={(v) => updateSection(sec.uid, { linkLabel: v })} />
+                    <Field ui={ui} label="Link URL" value={sec.linkUrl ?? ""} max={MARKETING_LIMITS.itemUrl} onChange={(v) => updateSection(sec.uid, { linkUrl: v })} placeholder="https://" />
+                  </div>
+                </div>
+              </details>
+            ))}
+            {!design.sections.length && <p className={`rounded-lg border border-dashed p-5 text-center ${ui.sub}`}>No story sections yet. Add one to tell a longer story with its own picture.</p>}
+          </div>
+        </div>
+      )}
+
+      {design.usesGallery && (
+        <div className={ui.card}>
+          <div className="mb-4 flex items-start justify-between gap-3">
+            <div><h2 className={ui.title}>Photo gallery</h2><p className={`mt-1 ${ui.sub}`}>A grid of extra pictures. Up to {maxPhotos}.</p></div>
+            <button type="button" disabled={design.gallery.length >= maxPhotos} onClick={addPhoto} className={ui.btn}><Plus className="h-3.5 w-3.5" />Add photo</button>
+          </div>
+          <Field ui={ui} label="Gallery title (optional)" value={design.text("galleryTitle")} onChange={(v) => design.setText("galleryTitle", v)} max={MARKETING_LIMITS.galleryTitle} placeholder="Photo highlights" />
+          <div className="mt-3 space-y-3">
+            {design.gallery.map((ph, i) => (
+              <details key={ph.uid} className={ui.nested} open={ph.uid.startsWith("newg-")}>
+                <summary className="flex cursor-pointer list-none items-center gap-3">
+                  <span className="h-10 w-10 shrink-0 overflow-hidden rounded-lg bg-black/10">{ph.url ? <img src={ph.url} alt="" className="h-full w-full object-cover" /> : null}</span>
+                  <span className="min-w-0 flex-1"><span className={`block truncate text-sm font-semibold ${white}`}>{ph.caption || `Photo ${i + 1}`}</span></span>
+                  <span className="flex shrink-0 gap-1" onClick={(e) => e.preventDefault()}>
+                    <button type="button" aria-label="Move up" disabled={i === 0} onClick={() => movePhoto(i, -1)} className={ui.btn}><ArrowUp className="h-3.5 w-3.5" /></button>
+                    <button type="button" aria-label="Move down" disabled={i === design.gallery.length - 1} onClick={() => movePhoto(i, 1)} className={ui.btn}><ArrowDown className="h-3.5 w-3.5" /></button>
+                    <button type="button" aria-label="Remove photo" onClick={() => design.setGallery(design.gallery.filter((x) => x.uid !== ph.uid))} className={ui.btn}><Trash2 className="h-3.5 w-3.5" /></button>
+                  </span>
+                </summary>
+                <div className="mt-4 grid gap-3">
+                  <ImagePicker ui={ui} label="Picture" value={ph.url} onChange={(v) => updatePhoto(ph.uid, { url: v })} gallery={imageGallery} />
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    <Field ui={ui} label="Caption (optional)" value={ph.caption ?? ""} max={MARKETING_LIMITS.photoCaption} onChange={(v) => updatePhoto(ph.uid, { caption: v })} />
+                    <Field ui={ui} label="Link (optional)" value={ph.href ?? ""} max={MARKETING_LIMITS.itemUrl} onChange={(v) => updatePhoto(ph.uid, { href: v })} placeholder="https://" />
+                  </div>
+                </div>
+              </details>
+            ))}
+            {!design.gallery.length && <p className={`rounded-lg border border-dashed p-5 text-center ${ui.sub}`}>No photos yet. Add a few to fill out a gallery grid.</p>}
+          </div>
+        </div>
+      )}
+
+      {design.usesBanner && (
+        <div className={ui.card}>
+          <StepHeader title="Promo banner" sub="One wide picture, shown once near the end of the email." />
+          <div className="grid gap-3">
+            <ImagePicker ui={ui} label="Banner image" value={design.text("bannerImageUrl")} onChange={(v) => design.setText("bannerImageUrl", v)} gallery={imageGallery} />
+            <Field ui={ui} label="Banner link (optional)" value={design.text("bannerLinkUrl")} onChange={(v) => design.setText("bannerLinkUrl", v)} placeholder="https://" max={MARKETING_LIMITS.bannerLinkUrl} />
+          </div>
+        </div>
+      )}
+    </div>
+  );
+
   const styleStep = (
     <div className={ui.card}>
       <div className="mb-1 flex items-center gap-2"><Palette className={`h-4 w-4 ${ui.accent}`} /><h2 className={ui.title}>Look &amp; feel</h2></div>
@@ -716,7 +858,7 @@ export function EmailDesigner({
     </div>
   );
 
-  const stepBody: Record<StepId, ReactNode> = { design: designStep, content: contentStep, items: itemsStep, style: styleStep, send: sendStep?.node ?? exportStep };
+  const stepBody: Record<StepId, ReactNode> = { design: designStep, content: contentStep, items: itemsStep, media: mediaStep, style: styleStep, send: sendStep?.node ?? exportStep };
 
   return (
     <div className="min-w-0">

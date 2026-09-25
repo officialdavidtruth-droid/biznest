@@ -51,7 +51,7 @@ export type MarketingTemplateId =
 export type MarketingTemplateCategory = "news" | "sales" | "customers" | "events" | "industry";
 
 /** Optional building blocks a design can use beyond the always-editable core fields. */
-export type MarketingExtra = "items" | "highlights" | "offer" | "event" | "secondaryCta";
+export type MarketingExtra = "items" | "highlights" | "offer" | "event" | "secondaryCta" | "sections" | "gallery" | "banner";
 
 export type MarketingFontKey = "brand" | "sans" | "modern" | "serif" | "elegant" | "rounded";
 export type MarketingButtonShape = "rounded" | "pill" | "square";
@@ -63,6 +63,22 @@ export type MarketingItem = {
   description?: string | null;
   price?: string | null;
   imageUrl?: string | null;
+  href?: string | null;
+};
+
+/** One picture-and-text story block within a design (its own photo, title, text, optional link). */
+export type MarketingSection = {
+  title: string;
+  body?: string | null;
+  imageUrl?: string | null;
+  linkLabel?: string | null;
+  linkUrl?: string | null;
+};
+
+/** One photo in a gallery grid. */
+export type MarketingPhoto = {
+  url: string;
+  caption?: string | null;
   href?: string | null;
 };
 
@@ -99,6 +115,8 @@ export type MarketingStyle = {
   showLogo?: boolean;
   showImage?: boolean;
   showItems?: boolean;
+  showSections?: boolean;
+  showGallery?: boolean;
   showFooterDetails?: boolean;
 };
 
@@ -122,6 +140,12 @@ export type MarketingContent = {
   eventLocation?: string;
   signature?: string;
   closingNote?: string;
+  /** Extra pictures beyond the hero image, for designs whose `extras` list "sections" / "gallery" / "banner". */
+  sections?: MarketingSection[];
+  gallery?: MarketingPhoto[];
+  galleryTitle?: string;
+  bannerImageUrl?: string;
+  bannerLinkUrl?: string;
   style?: MarketingStyle;
 };
 
@@ -162,28 +186,28 @@ export const MARKETING_CATEGORIES: Array<{ id: MarketingTemplateCategory | "all"
 ];
 
 export const MARKETING_TEMPLATES: MarketingTemplateMeta[] = [
-  { id: "luxury", name: "Luxury Signature", description: "Premium editorial layout with refined typography and curated content.", icon: "◇", category: "industry", extras: ["items", "highlights", "secondaryCta"], align: "left", font: "elegant" },
-  { id: "editorial", name: "Editorial Story", description: "Magazine-inspired storytelling layout for sophisticated campaigns.", icon: "▤", category: "news", extras: ["items", "highlights", "secondaryCta"], align: "left", font: "serif" },
+  { id: "luxury", name: "Luxury Signature", description: "Premium editorial layout with refined typography and curated content.", icon: "◇", category: "industry", extras: ["sections", "gallery", "banner", "items", "highlights", "secondaryCta"], align: "left", font: "elegant" },
+  { id: "editorial", name: "Editorial Story", description: "Magazine-inspired storytelling layout for sophisticated campaigns.", icon: "▤", category: "news", extras: ["sections", "gallery", "banner", "items", "highlights", "secondaryCta"], align: "left", font: "serif" },
   { id: "product_grid", name: "Curated Collection", description: "Premium product or service showcase with clean pricing.", icon: "▦", category: "sales", extras: ["items", "secondaryCta"], align: "center", font: "modern" },
   { id: "premium_offer", name: "Premium Offer", description: "High-end promotional layout for discounts and limited campaigns.", icon: "◆", category: "sales", extras: ["offer", "items", "secondaryCta"], align: "center", font: "elegant" },
-  { id: "hotel_signature", name: "Hotel Signature", description: "Luxury hospitality campaign for rooms, rates and reservations.", icon: "⌂", category: "industry", extras: ["items", "highlights", "offer", "secondaryCta"], align: "left", font: "elegant" },
-  { id: "minimal_pro", name: "Minimal Professional", description: "Clean executive layout for agencies, consultants and B2B brands.", icon: "—", category: "industry", extras: ["items", "highlights", "secondaryCta"], align: "left", font: "modern" },
+  { id: "hotel_signature", name: "Hotel Signature", description: "Luxury hospitality campaign for rooms, rates and reservations.", icon: "⌂", category: "industry", extras: ["sections", "gallery", "banner", "items", "highlights", "offer", "secondaryCta"], align: "left", font: "elegant" },
+  { id: "minimal_pro", name: "Minimal Professional", description: "Clean executive layout for agencies, consultants and B2B brands.", icon: "—", category: "industry", extras: ["sections", "gallery", "banner", "items", "highlights", "secondaryCta"], align: "left", font: "modern" },
   { id: "ref_confirmation", name: "Booking Confirmation", description: "Dark hospitality-style confirmation with hero, details and action cards.", icon: "✓", category: "customers", extras: ["items", "highlights", "secondaryCta"], align: "left", font: "modern" },
   { id: "ref_offer", name: "Signature Offer", description: "Image-led promotional offer with bold discount block and feature sections.", icon: "%", category: "sales", extras: ["offer", "items", "highlights", "secondaryCta"], align: "center", font: "modern" },
-  { id: "ref_catalog", name: "Curated Catalog", description: "Travel and hospitality catalog with featured cards and editorial footer.", icon: "▦", category: "industry", extras: ["items", "highlights", "secondaryCta"], align: "left", font: "modern" },
-  { id: "ref_journey", name: "Journey & Experiences", description: "Travel editorial layout with destination feature, tips and packages.", icon: "✈", category: "news", extras: ["items", "highlights", "secondaryCta"], align: "left", font: "modern" },
+  { id: "ref_catalog", name: "Curated Catalog", description: "Travel and hospitality catalog with featured cards and editorial footer.", icon: "▦", category: "industry", extras: ["sections", "gallery", "banner", "items", "highlights", "secondaryCta"], align: "left", font: "modern" },
+  { id: "ref_journey", name: "Journey & Experiences", description: "Travel editorial layout with destination feature, tips and packages.", icon: "✈", category: "news", extras: ["sections", "gallery", "banner", "items", "highlights", "secondaryCta"], align: "left", font: "modern" },
   { id: "ref_thankyou", name: "Customer Thank You", description: "Order confirmation / thank-you layout with process timeline.", icon: "♥", category: "customers", extras: ["highlights", "secondaryCta"], align: "center", font: "modern" },
-  { id: "ref_editorial", name: "Brand Editorial", description: "Long-form editorial product or service story with comparison blocks.", icon: "▤", category: "news", extras: ["items", "highlights", "secondaryCta"], align: "left", font: "serif" },
+  { id: "ref_editorial", name: "Brand Editorial", description: "Long-form editorial product or service story with comparison blocks.", icon: "▤", category: "news", extras: ["sections", "gallery", "banner", "items", "highlights", "secondaryCta"], align: "left", font: "serif" },
   { id: "ref_pricing", name: "Pricing & Packages", description: "Pricing announcement with two-column value story and CTA.", icon: "₦", category: "sales", extras: ["offer", "highlights", "secondaryCta"], align: "left", font: "serif" },
-  { id: "ref_hotel", name: "Hotel Showcase", description: "Accommodation showcase with rooms, review, dining and amenities.", icon: "⌂", category: "industry", extras: ["items", "highlights", "secondaryCta"], align: "left", font: "serif" },
-  { id: "ref_restaurant", name: "Restaurant Story", description: "Restaurant campaign with featured dish, story and menu cards.", icon: "◉", category: "industry", extras: ["items", "highlights", "secondaryCta"], align: "left", font: "modern" },
-  { id: "ref_food_catalog", name: "Food Catalog", description: "Food menu catalog with multiple product cards and social footer.", icon: "🍽", category: "industry", extras: ["items", "secondaryCta"], align: "left", font: "modern" },
+  { id: "ref_hotel", name: "Hotel Showcase", description: "Accommodation showcase with rooms, review, dining and amenities.", icon: "⌂", category: "industry", extras: ["sections", "gallery", "banner", "items", "highlights", "secondaryCta"], align: "left", font: "serif" },
+  { id: "ref_restaurant", name: "Restaurant Story", description: "Restaurant campaign with featured dish, story and menu cards.", icon: "◉", category: "industry", extras: ["sections", "gallery", "banner", "items", "highlights", "secondaryCta"], align: "left", font: "modern" },
+  { id: "ref_food_catalog", name: "Food Catalog", description: "Food menu catalog with multiple product cards and social footer.", icon: "🍽", category: "industry", extras: ["sections", "gallery", "banner", "items", "secondaryCta"], align: "left", font: "modern" },
   { id: "ref_dark_menu", name: "Dark Menu", description: "High-contrast restaurant menu with category tiles and reservation CTA.", icon: "◈", category: "industry", extras: ["items", "highlights", "secondaryCta"], align: "center", font: "modern" },
   { id: "ref_product_launch", name: "Product Launch", description: "Premium product launch with hero image, benefits and final CTA.", icon: "★", category: "sales", extras: ["items", "highlights", "secondaryCta"], align: "center", font: "modern" },
   { id: "announcement", name: "Big announcement", description: "Full-width hero, story and button for launches and news.", icon: "✦", category: "news", extras: ["highlights", "items", "secondaryCta"], align: "left", font: "brand", labels: { highlights: "Key points" } },
   { id: "launch", name: "Product launch", description: "Dark, bold reveal with feature rows for something new.", icon: "★", category: "news", extras: ["highlights", "items", "secondaryCta"], align: "left", font: "brand", labels: { eyebrow: "Badge (e.g. New)", highlights: "Key features" } },
   { id: "showcase", name: "Product showcase", description: "Image-led grid for collections and best sellers.", icon: "▦", category: "news", extras: ["items", "secondaryCta"], align: "left", font: "brand" },
-  { id: "newsletter", name: "Monthly newsletter", description: "Editorial masthead with a thumbnail list of updates.", icon: "✉", category: "news", extras: ["highlights", "items", "secondaryCta"], align: "left", font: "brand", labels: { eyebrow: "Issue label (e.g. September update)", highlights: "Quick reads" } },
+  { id: "newsletter", name: "Monthly newsletter", description: "Magazine-style issue: masthead, cover image, contents list, picture-and-text stories, featured picks, photo gallery and banner.", icon: "✉", category: "news", extras: ["highlights", "items", "sections", "gallery", "banner", "secondaryCta"], align: "left", font: "brand", labels: { eyebrow: "Issue label (e.g. September update)", highlights: "Quick reads" } },
   { id: "promotion", name: "Offer / promotion", description: "Colour-block sale layout with a big offer and code.", icon: "%", category: "sales", extras: ["offer", "items", "secondaryCta"], align: "center", font: "brand" },
   { id: "flash", name: "Flash sale", description: "High-urgency dark layout with a giant discount figure.", icon: "⚡", category: "sales", extras: ["offer", "items"], align: "center", font: "brand", labels: { eyebrow: "Badge (e.g. Flash sale)", offerNote: "Deadline line" } },
   { id: "coupon", name: "Discount code", description: "A ticket-style coupon your customers can screenshot.", icon: "◈", category: "sales", extras: ["offer"], align: "center", font: "brand" },
@@ -195,8 +219,8 @@ export const MARKETING_TEMPLATES: MarketingTemplateMeta[] = [
   { id: "event", name: "Event invitation", description: "Date, time and place at a glance, with an RSVP button.", icon: "◷", category: "events", extras: ["event", "highlights", "secondaryCta"], align: "left", font: "brand", labels: { eyebrow: "Badge (e.g. You're invited)", highlights: "What to expect" } },
   { id: "holiday", name: "Seasonal greeting", description: "Elegant, centred greeting for holidays and milestones.", icon: "✺", category: "events", extras: ["offer", "secondaryCta"], align: "center", font: "elegant", labels: { eyebrow: "Small line above the greeting" } },
   { id: "service", name: "Service spotlight", description: "Clean service menu for salons, agencies and studios.", icon: "◉", category: "industry", extras: ["items", "highlights", "secondaryCta"], align: "left", font: "brand", labels: { highlights: "Why choose us" } },
-  { id: "hospitality", name: "Hotel / booking", description: "Property imagery, amenities and a booking button.", icon: "⌂", category: "industry", extras: ["items", "highlights", "offer", "secondaryCta"], align: "left", font: "brand", labels: { highlights: "Amenities", offerLabel: "Special rate", offerNote: "Rate details" } },
-  { id: "restaurant", name: "Menu special", description: "Menu-style list with prices for restaurants and cafés.", icon: "◍", category: "industry", extras: ["items", "highlights", "secondaryCta"], align: "center", font: "elegant", labels: { eyebrow: "Small line above the heading", highlights: "Good to know (hours, delivery…)" } },
+  { id: "hospitality", name: "Hotel / booking", description: "Property imagery, amenities and a booking button.", icon: "⌂", category: "industry", extras: ["sections", "gallery", "banner", "items", "highlights", "offer", "secondaryCta"], align: "left", font: "brand", labels: { highlights: "Amenities", offerLabel: "Special rate", offerNote: "Rate details" } },
+  { id: "restaurant", name: "Menu special", description: "Menu-style list with prices for restaurants and cafés.", icon: "◍", category: "industry", extras: ["sections", "gallery", "banner", "items", "highlights", "secondaryCta"], align: "center", font: "elegant", labels: { eyebrow: "Small line above the heading", highlights: "Good to know (hours, delivery…)" } },
 ];
 
 const TEMPLATE_BY_ID = Object.fromEntries(MARKETING_TEMPLATES.map((t) => [t.id, t])) as Record<MarketingTemplateId, MarketingTemplateMeta>;
@@ -344,6 +368,15 @@ export const MARKETING_LIMITS = {
   itemDescription: 300,
   itemPrice: 40,
   itemUrl: 2000,
+  sections: 4,
+  sectionTitle: 100,
+  sectionBody: 500,
+  sectionLabel: 40,
+  gallery: 6,
+  photoCaption: 80,
+  galleryTitle: 60,
+  bannerImageUrl: 2000,
+  bannerLinkUrl: 2000,
 } as const;
 
 const LIMIT_LABELS: Record<string, string> = {
@@ -365,6 +398,9 @@ const LIMIT_LABELS: Record<string, string> = {
   eventLocation: "Event location",
   signature: "Sign-off",
   closingNote: "P.S. note",
+  galleryTitle: "Gallery title",
+  bannerImageUrl: "Banner image URL",
+  bannerLinkUrl: "Banner link",
 };
 
 const HEX_RE = /^#(?:[0-9a-f]{3}|[0-9a-f]{6})$/i;
@@ -397,7 +433,7 @@ function normalizeStyle(raw: unknown): MarketingStyle | undefined {
   if (typeof r.font === "string" && FONT_KEYS.includes(r.font)) out.font = r.font as MarketingFontKey;
   if (r.buttonShape === "rounded" || r.buttonShape === "pill" || r.buttonShape === "square") out.buttonShape = r.buttonShape;
   if (r.align === "left" || r.align === "center") out.align = r.align;
-  for (const key of ["showLogo", "showImage", "showItems", "showFooterDetails"] as const) {
+  for (const key of ["showLogo", "showImage", "showItems", "showSections", "showGallery", "showFooterDetails"] as const) {
     if (typeof r[key] === "boolean") out[key] = r[key] as boolean;
   }
   return Object.keys(out).length ? out : undefined;
@@ -424,6 +460,27 @@ export function normalizeMarketingContent(raw: unknown): MarketingContent {
     .filter(Boolean)
     .slice(0, L.highlights);
 
+  const sections: MarketingSection[] = (Array.isArray(r.sections) ? r.sections : [])
+    .map((entry) => asRecord(entry))
+    .filter((e) => (typeof e.title === "string" && e.title.trim()) || (typeof e.imageUrl === "string" && e.imageUrl.trim()))
+    .slice(0, L.sections)
+    .map((e) => ({
+      title: str(e.title, L.sectionTitle),
+      body: optStr(e.body, L.sectionBody) ?? null,
+      imageUrl: optStr(e.imageUrl, L.imageUrl) ?? null,
+      linkLabel: optStr(e.linkLabel, L.sectionLabel) ?? null,
+      linkUrl: optStr(e.linkUrl, L.itemUrl) ?? null,
+    }));
+  const gallery: MarketingPhoto[] = (Array.isArray(r.gallery) ? r.gallery : [])
+    .map((entry) => asRecord(entry))
+    .filter((e) => typeof e.url === "string" && e.url.trim())
+    .slice(0, L.gallery)
+    .map((e) => ({
+      url: str(e.url, L.imageUrl),
+      caption: optStr(e.caption, L.photoCaption) ?? null,
+      href: optStr(e.href, L.itemUrl) ?? null,
+    }));
+
   return {
     eyebrow: str(r.eyebrow, L.eyebrow),
     headline: str(r.headline, L.headline),
@@ -444,6 +501,11 @@ export function normalizeMarketingContent(raw: unknown): MarketingContent {
     eventLocation: optStr(r.eventLocation, L.eventLocation),
     signature: optStr(r.signature, L.signature),
     closingNote: optStr(r.closingNote, L.closingNote),
+    sections: sections.length ? sections : undefined,
+    gallery: gallery.length ? gallery : undefined,
+    galleryTitle: optStr(r.galleryTitle, L.galleryTitle),
+    bannerImageUrl: optStr(r.bannerImageUrl, L.bannerImageUrl),
+    bannerLinkUrl: optStr(r.bannerLinkUrl, L.bannerLinkUrl),
     style: normalizeStyle(r.style),
   };
 }
@@ -459,6 +521,22 @@ export function marketingOverLimit(input: unknown): string | null {
   if (Array.isArray(r.highlights)) {
     if (r.highlights.length > L.highlights) return "Highlights";
     if (r.highlights.some((h) => typeof h === "string" && h.trim().length > L.highlight)) return "Highlight";
+  }
+  if (Array.isArray(r.sections)) {
+    if (r.sections.length > L.sections) return "Story sections";
+    for (const entry of r.sections) {
+      const e = asRecord(entry);
+      if (typeof e.title === "string" && e.title.trim().length > L.sectionTitle) return "Story title";
+      if (typeof e.body === "string" && e.body.trim().length > L.sectionBody) return "Story text";
+      if (typeof e.linkLabel === "string" && e.linkLabel.trim().length > L.sectionLabel) return "Story link label";
+    }
+  }
+  if (Array.isArray(r.gallery)) {
+    if (r.gallery.length > L.gallery) return "Photo gallery";
+    for (const entry of r.gallery) {
+      const e = asRecord(entry);
+      if (typeof e.caption === "string" && e.caption.trim().length > L.photoCaption) return "Photo caption";
+    }
   }
   if (Array.isArray(r.items)) {
     if (r.items.length > L.items) return "Featured items";
@@ -565,6 +643,9 @@ type Ctx = {
   greeting: string;
   image: string | null;
   items: MarketingItem[];
+  sections: MarketingSection[];
+  gallery: MarketingPhoto[];
+  banner: string | null;
 };
 
 function buildCtx(template: MarketingTemplateId, brand: MarketingBrand, c: MarketingContent, recipientFirstName?: string, assetBaseUrl?: string): Ctx {
@@ -599,6 +680,9 @@ function buildCtx(template: MarketingTemplateId, brand: MarketingBrand, c: Marke
     greeting: recipientFirstName ? `Hi ${esc(recipientFirstName)},` : "Hello,",
     image: s.showImage === false ? null : c.imageUrl || null,
     items: s.showItems === false ? [] : c.items,
+    sections: s.showSections === false ? [] : c.sections ?? [],
+    gallery: s.showGallery === false ? [] : c.gallery ?? [],
+    banner: s.showGallery === false ? null : c.bannerImageUrl || null,
   };
 }
 
@@ -764,6 +848,90 @@ function detailRow(x: Ctx, label: string, value: string | undefined, last = fals
 }
 
 /* -------------------------------------------------------------------------- */
+/*  Extra pictures: story rows, photo gallery, promo banner                    */
+/* -------------------------------------------------------------------------- */
+
+/** Fills whatever cell it sits in, so it goes full width when a design stacks on phones. */
+function fluidImg(x: Ctx, src: string, alt: string, width: number, radius = x.imgRadius) {
+  return `<img src="${safeUrl(src)}" alt="${esc(alt)}" width="${width}" style="display:block;width:100%;height:auto;border:0;outline:none;text-decoration:none;border-radius:${radius}px;" />`;
+}
+
+/** Small ruled heading that opens a block within an issue. */
+function blockTitle(x: Ctx, text: string) {
+  if (!text) return "";
+  return `<div style="margin:0 0 16px;padding-bottom:9px;border-bottom:2px solid ${x.p};font-size:12px;line-height:16px;font-weight:800;letter-spacing:2px;text-transform:uppercase;color:${x.tx};text-align:left;">${esc(text)}</div>`;
+}
+
+/**
+ * Story rows: picture + title + text + link, one per section. Pictures
+ * alternate left/right on desktop; the picture always comes first in the
+ * markup so phones stack it above its text (the `.col` class already forces
+ * that at 480px). A section with only a picture, or only text, still works.
+ */
+function storyRows(x: Ctx, sections: MarketingSection[]) {
+  if (!sections.length) return "";
+  return sections
+    .map((sec, i) => {
+      const href = safeUrl(sec.linkUrl, storeUrl(x));
+      const link = sec.linkLabel
+        ? `<a href="${href}" style="font-size:14px;line-height:20px;font-weight:700;color:${x.pt};text-decoration:none;">${esc(sec.linkLabel)} &rarr;</a>`
+        : "";
+      const text = `${sec.title ? `<div style="margin:0 0 8px;font-size:20px;line-height:26px;font-weight:800;letter-spacing:-0.3px;color:${x.tx};text-align:left;">${esc(sec.title)}</div>` : ""}${sec.body ? para(x, sec.body, { size: 14, lh: 22, align: "left", mb: 10 }) : ""}${link ? `<div style="margin-top:4px;">${link}</div>` : ""}`;
+      const rule = i < sections.length - 1 ? `border-bottom:1px solid ${x.line};` : "";
+      const wrap = (inner: string) => `<table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0"><tr><td style="padding:22px 0;${rule}text-align:left;">${inner}</td></tr></table>`;
+      const wrapLink = (image: string) => (sec.linkUrl ? `<a href="${href}" style="display:block;text-decoration:none;">${image}</a>` : image);
+      if (!sec.imageUrl) return wrap(text);
+      if (!text) return wrap(wrapLink(fluidImg(x, sec.imageUrl, sec.title || x.brand.name, 572)));
+      const flip = i % 2 === 1;
+      const picture = `<td class="col" dir="ltr" width="224" valign="top" style="width:224px;padding:0 ${flip ? 0 : 24}px 0 ${flip ? 24 : 0}px;">${wrapLink(fluidImg(x, sec.imageUrl, sec.title || x.brand.name, 224))}</td>`;
+      const copy = `<td class="col" dir="ltr" valign="top" style="padding:0;text-align:left;">${text}</td>`;
+      return wrap(`<table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0"${flip ? ' dir="rtl"' : ""}><tr>${picture}${copy}</tr></table>`);
+    })
+    .join("");
+}
+
+/** Photo gallery: 1, 2 or 3 pictures per row, evenly spaced. */
+function photoGrid(x: Ctx, photos: MarketingPhoto[], title?: string) {
+  if (!photos.length) return "";
+  const cols = photos.length === 1 ? 1 : photos.length === 2 || photos.length === 4 ? 2 : 3;
+  const rows: MarketingPhoto[][] = [];
+  for (let i = 0; i < photos.length; i += cols) rows.push(photos.slice(i, i + cols));
+  const width = Math.floor(100 / cols);
+  const table = `<table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0">${rows
+    .map((row) => {
+      const cells = row.map((ph, idx) => {
+        const image = fluidImg(x, ph.url, ph.caption || x.brand.name, Math.floor(572 / cols));
+        const linked = ph.href ? `<a href="${safeUrl(ph.href)}" style="display:block;text-decoration:none;">${image}</a>` : image;
+        const caption = ph.caption ? `<div style="padding-top:6px;font-size:12px;line-height:17px;color:${x.muted};text-align:left;">${esc(ph.caption)}</div>` : "";
+        return `<td class="col" width="${width}%" valign="top" style="padding:0 ${idx < cols - 1 ? 8 : 0}px 14px ${idx > 0 ? 8 : 0}px;text-align:left;">${linked}${caption}</td>`;
+      });
+      while (cells.length < cols) cells.push(`<td class="col" width="${width}%" style="padding:0;"></td>`);
+      return `<tr>${cells.join("")}</tr>`;
+    })
+    .join("")}</table>`;
+  return `${blockTitle(x, title ?? "")}${table}`;
+}
+
+/** One wide promotional picture, optionally linked. */
+function bannerBlock(x: Ctx) {
+  if (!x.banner) return "";
+  const image = fluidImg(x, x.banner, x.c.headline || x.brand.name, 572);
+  return `<div style="margin:0 0 6px;">${x.c.bannerLinkUrl ? `<a href="${safeUrl(x.c.bannerLinkUrl)}" style="display:block;text-decoration:none;">${image}</a>` : image}</div>`;
+}
+
+/** Story rows, gallery and banner, appended for any design whose `extras` include them. */
+function extraMedia(x: Ctx) {
+  const ex = x.meta.extras;
+  const parts = [
+    ex.includes("sections") ? storyRows(x, x.sections) : "",
+    ex.includes("gallery") ? photoGrid(x, x.gallery, x.c.galleryTitle) : "",
+    ex.includes("banner") ? bannerBlock(x) : "",
+  ].filter(Boolean);
+  if (!parts.length) return "";
+  return pad(parts.join(`<div style="height:12px;line-height:12px;font-size:1px;">&nbsp;</div>`), { top: 8, bottom: 26, align: "left" });
+}
+
+/* -------------------------------------------------------------------------- */
 /*  The designs                                                                */
 /* -------------------------------------------------------------------------- */
 
@@ -837,14 +1005,33 @@ const RENDERERS: Record<MarketingTemplateId, (x: Ctx) => string> = {
 
   newsletter(x) {
     const { c } = x;
-    return `${pad(
-      `<table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0"><tr><td style="font-size:20px;line-height:24px;font-weight:800;letter-spacing:-0.3px;color:${x.tx};text-align:left;">${esc(x.brand.name)}</td><td align="right" style="font-size:13px;line-height:20px;color:${x.muted};">${esc(c.eyebrow)}</td></tr></table><div style="height:3px;line-height:3px;font-size:1px;background:${x.p};margin:14px 0 26px;">&nbsp;</div>${x.image ? `<div style="margin-bottom:24px;">${img(x, x.image, c.headline, 572)}</div>` : ""}${h1(x, c.headline, { size: 30, align: "left", mb: 14 })}<p style="margin:0 0 10px;font-size:15px;line-height:25px;color:${x.tx};text-align:left;">${x.greeting}</p>${para(x, c.body, { align: "left", mb: 18 })}${
-        c.highlights?.length
-          ? `<table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="margin:6px 0 20px;">${c.highlights.map((t) => `<tr><td width="18" valign="top" style="padding:0 0 8px;font-size:15px;line-height:22px;font-weight:800;color:${x.pt};">&bull;</td><td valign="top" style="padding:0 0 8px;font-size:15px;line-height:22px;color:${x.tx};text-align:left;">${esc(t)}</td></tr>`).join("")}</table>`
-          : ""
-      }${x.items.length ? `<div style="border-top:1px solid ${x.line};padding-top:24px;margin-top:6px;">${thumbRows(x, x.items)}</div>` : ""}<div style="margin-top:6px;">${ctas(x, { align: "left" })}</div>${sign(x, { align: "left" })}`,
-      { top: 30, align: "left" }
-    )}`;
+    const masthead = pad(
+      `<table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0"><tr><td valign="middle" style="font-size:22px;line-height:26px;font-weight:900;letter-spacing:-0.5px;color:${x.tx};text-align:left;">${esc(x.brand.name)}</td>${c.eyebrow ? `<td valign="middle" align="right" style="font-size:11px;line-height:16px;font-weight:800;letter-spacing:2px;text-transform:uppercase;color:${x.pt};">${esc(c.eyebrow)}</td>` : ""}</tr></table>`,
+      { top: 24, bottom: 18, align: "left" }
+    );
+    const rule = `<div style="height:4px;line-height:4px;font-size:1px;background:${x.p};">&nbsp;</div>`;
+    const lead = pad(
+      `${h1(x, c.headline, { size: 32, align: "left", mb: 14, ls: "-0.8px" })}<p style="margin:0 0 10px;font-size:15px;line-height:25px;color:${x.tx};text-align:left;">${x.greeting}</p>${para(x, c.body, { size: 16, lh: 26, align: "left", mb: 18 })}<div style="margin-top:6px;">${ctas(x, { align: "left" })}</div>`,
+      { top: 30, bottom: 26, align: "left" }
+    );
+    const contents = c.highlights?.length
+      ? pad(
+          `<table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0"><tr><td bgcolor="${x.soft}" style="background:${x.soft};border-radius:${x.imgRadius}px;padding:20px 22px 12px;text-align:left;"><div style="margin:0 0 12px;font-size:11px;line-height:14px;font-weight:800;letter-spacing:2px;text-transform:uppercase;color:${x.pt};">In this issue</div><table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0">${c.highlights
+            .map((t, i) => `<tr><td width="34" valign="top" style="padding:0 0 9px;font-size:13px;line-height:22px;font-weight:900;color:${x.pt};">${String(i + 1).padStart(2, "0")}</td><td valign="top" style="padding:0 0 9px;font-size:15px;line-height:22px;color:${x.tx};text-align:left;">${esc(t)}</td></tr>`)
+            .join("")}</table></td></tr></table>`,
+          { top: 0, bottom: 20, align: "left" }
+        )
+      : "";
+    const stories = x.sections.length ? pad(storyRows(x, x.sections), { top: 0, bottom: 10, align: "left" }) : "";
+    const featured = x.items.length
+      ? pad(`${blockTitle(x, "Featured picks")}${x.items.length > 1 ? grid(x, x.items, 2) : thumbRows(x, x.items)}`, { top: 16, bottom: 6, align: "left" })
+      : "";
+    const gallery = x.gallery.length ? pad(photoGrid(x, x.gallery, c.galleryTitle), { top: 16, bottom: 8, align: "left" }) : "";
+    const banner = x.banner ? pad(bannerBlock(x), { top: 12, bottom: 24, align: "left" }) : "";
+    const closing = c.signature || c.closingNote
+      ? pad(`<div style="border-top:1px solid ${x.line};">${sign(x, { align: "left" })}</div>`, { top: 10, bottom: 28, align: "left" })
+      : `<div style="height:10px;line-height:10px;font-size:1px;">&nbsp;</div>`;
+    return `${masthead}${rule}${x.image ? `<div style="margin-top:22px;">${fullBleed(x, c.headline)}</div>` : ""}${lead}${contents}${stories}${featured}${gallery}${banner}${closing}`;
   },
 
   promotion(x) {
@@ -1052,7 +1239,7 @@ export function defaultMarketingContent(template: MarketingTemplateId, brand: Ma
     case "showcase":
       return { ...base, subject: "Fresh picks from " + name, previewText: "A few things we think you'll love.", eyebrow: ind.food ? "From our kitchen" : "Featured picks", headline: ind.food ? "Good things are on the menu." : "A few things we think you'll love.", body: "Hand-picked from our latest collection. Tap any item to see the full details.", ctaLabel: brand.sellsProducts ? "View everything" : "Learn more", items: prefer(items, "product", 4), imageUrl: itemHero };
     case "newsletter":
-      return { ...base, subject: "The latest from " + name, previewText: "News, picks and a few useful things.", eyebrow: "Latest update", headline: "A quick update from our business.", body: brand.businessDescription ?? "Here's what's been happening at our business, plus a few things we think are worth your time.", ctaLabel: "Visit our website", items: items.slice(0, 3), highlights: ["What's new this month", "A tip we love", "Coming up next"] };
+      return { ...base, subject: "The latest from " + name, previewText: "News, picks and a few useful things.", eyebrow: "Latest update", headline: "A quick update from our business.", body: brand.businessDescription ?? "Here's what's been happening at our business, plus a few things we think are worth your time.", ctaLabel: "Visit our website", items: items.slice(0, 3), highlights: ["What's new this month", "A tip we love", "Coming up next"], galleryTitle: "Photo highlights" };
     case "promotion":
       return { ...base, subject: ind.hospitality ? "A special offer for your next stay" : "A special offer, just for you", previewText: "Available for a limited time.", eyebrow: ind.hospitality ? "Limited stay offer" : ind.food ? "This week only" : "Limited-time offer", offerLabel: "20% off", couponCode: "", offerNote: "Offer ends soon. Terms apply.", headline: ind.hospitality ? "Make your next stay feel special." : ind.beauty ? "A little self-care goes a long way." : "Something special is waiting for you.", body: ind.hospitality ? "Enjoy a memorable stay with a thoughtful offer from our team. Reserve while availability lasts." : ind.food ? "Treat yourself to something delicious. Have a look at this week's picks and enjoy a special offer." : "We put together a special offer for our community. Take a look before it ends.", ctaLabel: ind.hospitality ? "Book your stay" : "Shop the offer", items: items.slice(0, 2 + (items.length > 3 ? 2 : 0)), imageUrl: hero };
     case "flash":
@@ -1122,7 +1309,7 @@ export function renderMarketingEmail(
   // Exports leave a merge placeholder ({{unsubscribe_url}}) for the sending tool to fill in.
   const unsub = rawUnsub.startsWith("{{") ? rawUnsub.replace(/[^{}\w]/g, "") : safeUrl(rawUnsub, `${APP_URL}/${brand.slug}`);
   const render = RENDERERS[template] ?? RENDERERS.announcement;
-  const main = render(x);
+  const main = render(x) + (template === "newsletter" ? "" : extraMedia(x));
   const showLogo = s.showLogo !== false && template !== "newsletter"; // the newsletter has its own masthead
   const showDetails = s.showFooterDetails !== false;
   const onSec = readableOn(x.sec);
