@@ -14,7 +14,7 @@ export function MarketingTemplatesSection({ slug, brand, items }: { slug: string
           <p className="text-sm font-bold uppercase tracking-widest text-orange-400">Email templates</p>
           <h2 className="mt-2 text-3xl font-extrabold text-white">Design an email that looks like you</h2>
           <p className="mt-3 max-w-3xl text-base leading-7 text-slate-300">
-            BizNest reads the connected website profile and catalog, then surfaces generated designs in a deterministic order that fits the business type. No AI is required. Your logo, colours and website items are already applied, and you can still edit the wording, offer, pictures, colours, font and layout.
+            BizNest reads the connected website profile and catalog, then surfaces six designs in a deterministic order that fits the business type. No AI is required. Your logo, colours and website items are already applied, and you can still edit the wording, offer, pictures, colours, font and layout.
           </p>
         </div>
         <Link href={`/store/${slug}/admin/apps/crm/marketing`} className="rounded-full bg-orange-500 px-5 py-2.5 text-sm font-bold text-slate-950 hover:bg-orange-400">Send from Marketing Studio</Link>

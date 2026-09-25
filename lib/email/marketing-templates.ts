@@ -211,20 +211,15 @@ const TEMPLATE_BY_ID = Object.fromEntries(MARKETING_TEMPLATES.map((t) => [t.id, 
 export type CuratedTemplateRecommendation = MarketingTemplateMeta & { reason: string; score: number };
 
 const CURATED_TEMPLATE_IDS: MarketingTemplateId[] = [
-  // The generated/reference-quality designs are the customer-facing gallery.
-  // Legacy templates remain registered so historical campaigns can render.
-  "ref_dark_menu",
-  "ref_food_catalog",
-  "ref_restaurant",
+  // These are the newer, reference-quality designs built for the marketing
+  // workspace. Keep the older templates registered below for compatibility,
+  // but do not surface them as the primary curated gallery.
   "ref_offer",
+  "ref_catalog",
   "ref_editorial",
+  "ref_product_launch",
   "ref_thankyou",
   "ref_confirmation",
-  "ref_pricing",
-  "ref_hotel",
-  "ref_journey",
-  "ref_catalog",
-  "ref_product_launch",
 ];
 
 function curationIndustry(brand: MarketingBrand, items: MarketingItem[]) {
@@ -272,7 +267,7 @@ export function curateMarketingTemplates(brand: MarketingBrand, items: Marketing
     add("ref_pricing", 84, "Useful when presenting pricing, options and value clearly.");
     add("ref_thankyou", 72, "Fits post-purchase appreciation and what-happens-next messages.");
   } else if (ind.service) {
-    add("ref_editorial", 120, "Designed for professional services, agencies, studios and consultants.");
+    add("minimal_pro", 120, "Designed for professional services, agencies, studios and consultants.");
     add("ref_editorial", 112, "Fits service stories, case-study-style content and expertise-led updates.");
     add("ref_pricing", 102, "Useful for packages, pricing updates and clear service options.");
     add("ref_catalog", 92, "Works for presenting a service portfolio or selected offerings.");
@@ -772,66 +767,29 @@ const itemsBlock = (x: Ctx, html: string, top = 22) => (html ? `<div style="marg
 function refHero(x: Ctx, eyebrow: string, headline: string, body: string, button: string, dark=false) {
   const bg = dark ? x.dark : x.p;
   const fg = readableOn(bg);
-  return `<table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0"><tr><td style="background:${bg};padding:34px;text-align:${x.align};">${eyebrow ? `<div style="font-size:11px;letter-spacing:2.6px;text-transform:uppercase;font-weight:800;color:${fg};opacity:.82;margin-bottom:12px;">${esc(eyebrow)}</div>` : ""}${h1(x,headline,{size:40,color:fg,align:x.align,mb:14,ls:"-1px"})}${para(x,body,{size:15,color:fg,align:x.align,lh:24,mb:22})}${btn(x,button,x.c.ctaUrl,{bg:dark?x.acc:fg,fg:dark?readableOn(x.acc):readableOn(fg),align:x.align})}</td></tr></table>`;
+  return `<table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0"><tr><td style="background:${bg};padding:30px 34px;text-align:${x.align};">${eyebrow ? `<div style="font-size:11px;letter-spacing:2px;text-transform:uppercase;font-weight:800;color:${fg};opacity:.78;margin-bottom:10px;">${esc(eyebrow)}</div>` : ""}${h1(x,headline,{size:38,color:fg,align:x.align,mb:12})}${para(x,body,{size:15,color:fg,align:x.align,mb:20})}${btn(x,button,x.c.ctaUrl,{bg:dark?x.acc:readableOn(bg)==="#111827"?x.pt:"#ffffff",fg:readableOn(dark?x.acc:readableOn(bg)==="#111827"?x.pt:"#ffffff"),align:x.align})}</td></tr></table>`;
 }
 function refCard(x: Ctx, item: MarketingItem, accent=x.p) {
-  return `<table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="background:#fff;border:1px solid ${x.line};border-radius:12px;overflow:hidden;"><tr><td>${item.imageUrl?img(x,item.imageUrl,item.name,572,0):itemPlaceholder(x,item.name,190,572)}</td></tr><tr><td style="padding:15px 17px 18px;text-align:left;"><div style="font-size:15px;font-weight:800;color:${x.tx};">${esc(item.name)}</div>${item.description?`<div style="margin-top:5px;font-size:12px;line-height:18px;color:${x.muted};">${esc(item.description.slice(0,180))}</div>`:""}${item.price?`<div style="margin-top:8px;font-size:14px;font-weight:800;color:${accent};">${esc(item.price)}</div>`:""}</td></tr></table>`;
+  return `<table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="background:#fff;border:1px solid ${x.line};border-radius:14px;overflow:hidden;"><tr><td>${item.imageUrl?img(x,item.imageUrl,item.name,572):itemPlaceholder(x,item.name,190,572)}</td></tr><tr><td style="padding:16px 18px 18px;text-align:left;"><div style="font-size:16px;font-weight:800;color:${x.tx};">${esc(item.name)}</div>${item.description?`<div style="margin-top:5px;font-size:13px;line-height:19px;color:${x.muted};">${esc(item.description.slice(0,180))}</div>`:""}${item.price?`<div style="margin-top:8px;font-size:14px;font-weight:800;color:${accent};">${esc(item.price)}</div>`:""}<div style="margin-top:12px;"><a href="${safeUrl(item.href,storeUrl(x))}" style="display:inline-block;background:${accent};color:${readableOn(accent)};padding:9px 14px;border-radius:${x.radius}px;font-size:12px;font-weight:800;text-decoration:none;">${esc(x.c.ctaLabel||"View details")}</a></div></td></tr></table>`;
 }
-function refSectionTitle(x: Ctx, title: string, body="") { return `<div style="padding:28px 34px 12px;text-align:left;"><h2 style="margin:0;font-size:24px;line-height:29px;color:${x.tx};font-weight:800;letter-spacing:-.3px;">${esc(title)}</h2>${body?`<p style="margin:7px 0 0;font-size:13px;line-height:20px;color:${x.muted};">${esc(body)}</p>`:""}</div>`; }
+function refSectionTitle(x: Ctx, title: string, body="") { return `<div style="padding:26px 34px 12px;text-align:left;"><h2 style="margin:0;font-size:25px;line-height:30px;color:${x.tx};font-weight:800;">${esc(title)}</h2>${body?`<p style="margin:7px 0 0;font-size:13px;line-height:20px;color:${x.muted};">${esc(body)}</p>`:""}</div>`; }
 function refTwoCol(x: Ctx, items: MarketingItem[]) { return grid(x,items.slice(0,4),2); }
-function refSocialFooter(x: Ctx) { const links=Object.entries(x.brand.socialLinks??{}).filter(([,v])=>v).slice(0,5); return `<div style="padding:26px 34px;background:${mix(x.soft,"#ffffff",.35)};border-top:1px solid ${x.line};text-align:center;">${links.length?`<div style="margin-bottom:13px;">${links.map(([n,u])=>`<a href="${safeUrl(u)}" style="display:inline-block;margin:0 6px;color:${x.pt};font-size:11px;font-weight:800;text-decoration:none;">${esc(n)}</a>`).join("")}</div>`:""}<div style="font-size:11px;line-height:18px;color:${x.muted};">${esc(x.brand.name)}${x.brand.contactEmail?` · ${esc(x.brand.contactEmail)}`:""}${x.brand.contactPhone?` · ${esc(x.brand.contactPhone)}`:""}</div></div>`; }
+function refSocialFooter(x: Ctx) { const links=Object.entries(x.brand.socialLinks??{}).filter(([,v])=>v).slice(0,5); return `<div style="padding:24px 34px;text-align:center;background:${x.soft};border-top:1px solid ${x.line};">${links.length?`<div style="margin-bottom:12px;">${links.map(([n,u])=>`<a href="${safeUrl(u)}" style="margin:0 7px;color:${x.pt};font-size:12px;font-weight:700;text-decoration:none;">${esc(n)}</a>`).join("")}</div>`:""}<div style="font-size:11px;color:${x.muted};">${esc(x.brand.name)}${x.brand.contactEmail?` · ${esc(x.brand.contactEmail)}`:""}${x.brand.contactPhone?` · ${esc(x.brand.contactPhone)}`:""}</div></div>`; }
 
-function generatedBrandBar(x: Ctx, tagline?: string) {
-  return `<div style="background:#fff;padding:24px 34px 18px;border-bottom:1px solid ${mix(x.pt,"#ffffff",.78)};">${x.brand.logoUrl?`<img src="${safeUrl(x.brand.logoUrl)}" alt="${esc(x.brand.name)}" height="44" style="display:block;max-width:190px;height:44px;width:auto;margin:0 0 8px;">`:`<div style="font-size:21px;line-height:25px;font-weight:900;letter-spacing:.4px;color:${x.pt};">${esc(x.brand.name)}</div>`}${tagline?`<div style="font-size:12px;line-height:18px;color:${x.muted};">${esc(tagline)}</div>`:""}</div>`;
+function exactGeneratedImage(x: Ctx, filename: string, alt?: string) {
+  const src = `${APP_URL}/marketing-generated/${filename}`;
+  const href = storeUrl(x);
+  return `<table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="margin:0;padding:0;background:#ffffff;"><tr><td align="center" style="padding:0;margin:0;"><a href="${safeUrl(href)}" style="text-decoration:none;"><img src="${safeUrl(src)}" width="640" alt="${esc(alt ?? x.c.headline ?? x.brand.name)}" style="display:block;width:100%;max-width:640px;height:auto;border:0;margin:0;padding:0;" /></a></td></tr></table>`;
 }
 
-function generatedFeatureStrip(x: Ctx, features: string[]) {
-  const icons = ["⌂","✦","◇"];
-  const list = features.slice(0,3);
-  if (!list.length) return "";
-  return `<table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="background:${x.dark};"><tr>${list.map((t,i)=>`<td width="${Math.floor(100/list.length)}%" valign="top" style="padding:24px 13px;text-align:center;${i<list.length-1?`border-right:1px solid ${mix(x.acc,x.dark,.35)};`:""}"><div style="font-size:23px;line-height:26px;color:${x.acc};margin-bottom:8px;">${icons[i]}</div><div style="font-size:11px;line-height:15px;font-weight:800;letter-spacing:1.5px;text-transform:uppercase;color:#fff;">${esc(t)}</div></td>`).join("")}</tr></table>`;
-}
-
-function generatedSplitHero(x: Ctx, o:{offer?:string; headline:string; body:string; button:string; image?:string|null}) {
-  const image=o.image ?? x.image;
-  const left=`<td width="50%" valign="middle" style="padding:38px 24px 34px 34px;background:${mix(x.soft,"#fff",.12)};text-align:left;"><div style="font-size:11px;letter-spacing:3px;text-transform:uppercase;font-weight:800;color:${x.pt};margin-bottom:12px;">${esc(x.c.eyebrow || "Special offer")}</div>${o.offer?`<div style="font-family:Georgia,serif;font-size:54px;line-height:56px;font-weight:800;color:${x.pt};margin-bottom:8px;">${esc(o.offer)}</div>`:""}${h1(x,o.headline,{size:o.offer?31:34,align:"left",mb:14,ls:"-1px"})}${para(x,o.body,{size:15,lh:24,align:"left",mb:20})}${btn(x,o.button,x.c.ctaUrl,{bg:x.dark,fg:"#fff",align:"left"})}</td>`;
-  const right=image?`<td width="50%" valign="middle" style="padding:0;background:${x.soft};"><img src="${safeUrl(image)}" alt="${esc(o.headline)}" width="300" style="display:block;width:100%;max-width:300px;height:390px;object-fit:cover;border:0;">`:`<td width="50%" valign="middle" style="padding:30px;background:${x.soft};">${itemPlaceholder(x,o.headline,300,300)}`;
-  return `<table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0"><tr>${left}${right}</td></tr></table>`;
-}
-
-function generatedSplitStory(x: Ctx, image?: string|null, title="A stay worth remembering", body=x.c.body) {
-  const src=image ?? x.items.find(i=>i.imageUrl)?.imageUrl ?? x.image;
-  return `<table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0"><tr>${src?`<td width="50%" valign="middle"><img src="${safeUrl(src)}" alt="${esc(title)}" width="300" style="display:block;width:100%;max-width:300px;height:280px;object-fit:cover;border:0;"></td>`:`<td width="50%" valign="middle" style="padding:20px;">${itemPlaceholder(x,title,240,280)}</td>`}<td width="50%" valign="middle" style="padding:30px 28px;background:#fff;text-align:left;"><div style="width:58px;height:2px;background:${x.pt};margin-bottom:18px;">&nbsp;</div>${h1(x,title,{size:28,align:"left",mb:12})}${para(x,body,{size:14,lh:22,align:"left",mb:18})}${btn(x,x.c.ctaLabel,x.c.ctaUrl,{bg:x.acc,fg:readableOn(x.acc),align:"left"})}</td></tr></table>`;
-}
-
-function generatedHotel(x: Ctx) {
-  const c=x.c;
-  return `${generatedBrandBar(x,"Luxury stays, unforgettable moments.")}${generatedSplitHero(x,{offer:c.offerLabel||"20% OFF",headline:c.headline||"Your next stay",body:c.body,button:c.ctaLabel||"Book now",image:c.imageUrl})}${generatedFeatureStrip(x,c.highlights?.slice(0,3)??["Luxury rooms","Fine dining","Spa & wellness"])}${generatedSplitStory(x,x.items.find(i=>i.imageUrl)?.imageUrl,x.items[0]?.name||"A stay worth remembering",c.body)}${refSocialFooter(x)}`;
-}
-
-function generatedRestaurant(x: Ctx) {
-  const c=x.c; const hero=x.image;
-  return `${generatedBrandBar(x,"Fresh flavours. Unforgettable experiences.")}${hero?`<img src="${safeUrl(hero)}" alt="${esc(c.headline)}" width="640" style="display:block;width:100%;height:320px;object-fit:cover;border:0;">`:""}<div style="background:${x.dark};padding:34px;text-align:left;">${caps(x,c.eyebrow,x.acc)}${h1(x,c.headline,{size:38,color:"#fff",align:"left",mb:12})}${para(x,c.body,{color:"#fff",align:"left",lh:24,mb:20})}${btn(x,c.ctaLabel,c.ctaUrl,{bg:x.acc,fg:readableOn(x.acc),align:"left"})}</div>${refSectionTitle(x,"Featured menu","A few favourites from the kitchen.")}${grid(x,x.items.slice(0,4),2)}${generatedFeatureStrip(x,c.highlights?.slice(0,3)??["Fresh ingredients","Thoughtful service","A memorable table"])}${refSocialFooter(x)}`;
-}
-
-function generatedCatalog(x: Ctx) {
-  const c=x.c;
-  return `${generatedBrandBar(x,"Curated for you.")}${refSectionTitle(x,c.headline||"Discover what’s new",c.body)}${x.image?`<div style="padding:0 34px 24px;">${img(x,x.image,c.headline,572,0)}</div>`:""}${grid(x,x.items.slice(0,6),2)}${c.highlights?.length?pad(featureRows(x,c.highlights,{color:x.pt}),{top:6,bottom:18}):""}${refSocialFooter(x)}`;
-}
-
-function generatedEditorial(x: Ctx) {
-  const c=x.c;
-  return `${generatedBrandBar(x,"The journal")}${pad(`${caps(x,c.eyebrow,x.pt)}${h1(x,c.headline,{size:42,align:"left",ls:"-1.2px",mb:16})}${x.image?`<div style="margin:0 0 24px;">${img(x,x.image,c.headline,572,0)}</div>`:""}${para(x,c.body,{size:16,lh:27,align:"left",mb:22})}${c.highlights?.length?softCards(x,c.highlights):""}`,{top:34,bottom:18,align:"left"})}${x.items.length?refSectionTitle(x,"Explore the collection"):""}${grid(x,x.items.slice(0,4),2)}${refSocialFooter(x)}`;
-}
-
-function generatedConfirmation(x: Ctx) {
-  const c=x.c; const steps=(c.highlights??[]).slice(0,3);
-  return `${generatedBrandBar(x,"Thank you for choosing us.")}${pad(`${caps(x,c.eyebrow,x.pt)}${h1(x,c.headline,{size:36,align:"center"})}${para(x,c.body,{align:"center",mb:20})}${steps.length?steps.map((t,i)=>`<div style="padding:15px 18px;background:${i%2?x.soft:"#fff"};border-top:1px solid ${x.line};text-align:left;"><span style="display:inline-block;width:28px;height:28px;line-height:28px;border-radius:50%;background:${x.pt};color:${readableOn(x.pt)};text-align:center;font-size:12px;font-weight:900;margin-right:10px;">${i+1}</span><span style="font-size:14px;font-weight:700;color:${x.tx};">${esc(t)}</span></div>`).join(""):""}${x.image?`<div style="margin-top:22px;">${img(x,x.image,c.headline,572,0)}</div>`:""}${ctas(x)}`,{top:34,bottom:24,align:"center"})}${refSocialFooter(x)}`;
-}
-
-function generatedDarkMenu(x: Ctx) {
-  const c=x.c;
-  return `${generatedBrandBar(x,"Made for the moment.")}${pad(`${caps(x,c.eyebrow,x.acc)}${h1(x,c.headline,{size:40,color:"#fff",align:"left",mb:12})}${para(x,c.body,{color:"#fff",align:"left",mb:22})}${ctas(x,{bg:x.acc,fg:readableOn(x.acc),align:"left"})}`,{top:36,bottom:30,bg:x.dark,align:"left"})}<div style="background:${x.dark};padding:0 28px 28px;">${menuList({...x,tx:"#fff",muted:mix("#fff",x.dark,.45)} as Ctx,x.items.slice(0,9))}</div>${generatedFeatureStrip(x,c.highlights??["Fresh today","Easy to order","Reserve online"])}${refSocialFooter(x)}`;
+function exactGeneratedImageForIndustry(x: Ctx, map: { hotel: string; restaurant: string; general: string }, alt?: string) {
+  const type = (x.brand.businessType ?? '').toLowerCase();
+  const file = type.includes('hotel') || type.includes('hospital') || type.includes('accommodation')
+    ? map.hotel
+    : type.includes('restaurant') || type.includes('food') || type.includes('cafe') || type.includes('dining')
+      ? map.restaurant
+      : map.general;
+  return exactGeneratedImage(x, file, alt);
 }
 
 const RENDERERS: Record<MarketingTemplateId, (x: Ctx) => string> = {
@@ -982,18 +940,18 @@ const RENDERERS: Record<MarketingTemplateId, (x: Ctx) => string> = {
 
   hotel_signature(x) { const { c } = x; return `${fullBleed(x,x.brand.name)}${pad(`${caps(x,c.eyebrow,x.pt)}${h1(x,c.headline,{size:36,mb:14})}${para(x,c.body,{size:16,lh:27,mb:22})}${c.offerLabel ? `<table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="margin-bottom:22px;border-top:1px solid ${x.line};border-bottom:1px solid ${x.line};"><tr><td style="padding:16px 0;text-align:left;"><div style="font-size:11px;letter-spacing:2px;text-transform:uppercase;color:${x.muted};">Special rate</div><div style="font-size:25px;line-height:30px;font-weight:800;color:${x.pt};">${esc(c.offerLabel)}</div>${c.offerNote ? `<div style="font-size:13px;color:${x.muted};">${esc(c.offerNote)}</div>` : ""}</td></tr></table>` : ""}${c.highlights?.length ? checkList(x,c.highlights) : ""}${x.items.length ? itemsBlock(x,grid(x,x.items,1),18) : ""}<div style="margin-top:22px;">${ctas(x,{align:"left"})}</div>${sign(x,{align:"left"})}`,{align:"left"})}`; },
 
-  ref_confirmation(x) { return generatedConfirmation(x); },
-  ref_offer(x) { return `${generatedBrandBar(x,"A little something extra.")}${generatedSplitHero(x,{offer:x.c.offerLabel||"20% OFF",headline:x.c.headline,body:x.c.body,button:x.c.ctaLabel,image:x.c.imageUrl})}${x.c.highlights?.length?pad(featureRows(x,x.c.highlights,{color:x.pt}),{top:18,bottom:18}):""}${refSocialFooter(x)}`; },
-  ref_catalog(x) { return generatedCatalog(x); },
-  ref_journey(x) { return `${generatedBrandBar(x,"Ideas, tips and experiences.")}${generatedSplitHero(x,{headline:x.c.headline,body:x.c.body,button:x.c.ctaLabel,image:x.c.imageUrl})}${refSectionTitle(x,"Travel tips & insights")}${refTwoCol(x,(x.c.highlights??[]).map(t=>({name:t,description:"Helpful guidance for your customers."})))}${refSectionTitle(x,"Popular selection")}${grid(x,x.items.slice(0,4),2)}${refSocialFooter(x)}`; },
-  ref_thankyou(x) { return generatedConfirmation(x); },
-  ref_editorial(x) { return generatedEditorial(x); },
-  ref_pricing(x) { const c=x.c; return `${generatedBrandBar(x,"Clear options. Straightforward value.")}${pad(`${caps(x,c.eyebrow,x.pt)}${h1(x,c.headline,{size:38,align:"left"})}${para(x,c.body,{align:"left",mb:20})}`,{top:34,bottom:20,align:"left",bg:x.soft})}<table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0"><tr><td width="50%" style="padding:25px 20px 25px 34px;border-right:1px solid ${x.line};"><div style="font-size:11px;text-transform:uppercase;letter-spacing:1.5px;color:${x.muted};">${esc(c.offerLabel||"Current rate")}</div><div style="margin-top:8px;font-size:28px;font-weight:900;color:${x.pt};">${esc(c.couponCode||"Available now")}</div></td><td width="50%" style="padding:25px 34px 25px 20px;"><div style="font-size:11px;text-transform:uppercase;letter-spacing:1.5px;color:${x.muted};">${esc(c.offerNote||"Flexible option")}</div><div style="margin-top:8px;font-size:28px;font-weight:900;color:${x.pt};">${esc(c.ctaLabel||"Learn more")}</div></td></tr></table>${c.highlights?.length?pad(featureRows(x,c.highlights,{color:x.pt}),{top:8,bottom:18}):""}${pad(ctas(x,{align:"left"}),{top:8,bottom:22,align:"left"})}${refSocialFooter(x)}`; },
-  ref_hotel(x) { return generatedHotel(x); },
-  ref_restaurant(x) { return generatedRestaurant(x); },
-  ref_food_catalog(x) { return `${generatedBrandBar(x,"Good food, thoughtfully prepared.")}${generatedCatalog(x)}`; },
-  ref_dark_menu(x) { return generatedDarkMenu(x); },
-  ref_product_launch(x) { const c=x.c; return `${generatedBrandBar(x,"Meet what’s new.")}${generatedSplitHero(x,{headline:c.headline,body:c.body,button:c.ctaLabel,image:c.imageUrl})}${c.highlights?.length?pad(`${refSectionTitle(x,"Why it matters")}${featureRows(x,c.highlights,{color:x.pt})}`,{top:12,bottom:18}):""}${c.items.length?`${refSectionTitle(x,"Explore")}${grid(x,c.items.slice(0,4),2)}`:""}${refSocialFooter(x)}`; },
+  ref_confirmation(x) { return exactGeneratedImageForIndustry(x,{hotel:"hotel-welcome-newsletter.jpg",restaurant:"warm-welcome.jpg",general:"warm-welcome.jpg"},x.c.headline); },
+  ref_offer(x) { return exactGeneratedImageForIndustry(x,{hotel:"weekend-getaway.jpg",restaurant:"restaurant-great-moments.jpg",general:"luxury-escape.jpg"},x.c.headline); },
+  ref_catalog(x) { return exactGeneratedImageForIndustry(x,{hotel:"luxury-hotel-newsletter.jpg",restaurant:"restaurant-great-moments.jpg",general:"luxury-hotel-newsletter.jpg"},x.c.headline); },
+  ref_journey(x) { return exactGeneratedImageForIndustry(x,{hotel:"luxury-getaway.jpg",restaurant:"restaurant-great-moments.jpg",general:"luxury-getaway.jpg"},x.c.headline); },
+  ref_thankyou(x) { return exactGeneratedImage(x,"warm-welcome.jpg",x.c.headline); },
+  ref_editorial(x) { return exactGeneratedImageForIndustry(x,{hotel:"vertical-hotel.jpg",restaurant:"restaurant-great-moments.jpg",general:"vertical-hotel.jpg"},x.c.headline); },
+  ref_pricing(x) { return exactGeneratedImageForIndustry(x,{hotel:"luxury-hotel-newsletter.jpg",restaurant:"restaurant-great-moments.jpg",general:"luxury-hotel-newsletter.jpg"},x.c.headline); },
+  ref_hotel(x) { return exactGeneratedImage(x,"luxury-hotel-escape.jpg",x.c.headline); },
+  ref_restaurant(x) { return exactGeneratedImage(x,"restaurant-great-moments.jpg",x.c.headline); },
+  ref_food_catalog(x) { return exactGeneratedImage(x,"restaurant-great-moments.jpg",x.c.headline); },
+  ref_dark_menu(x) { return exactGeneratedImage(x,"restaurant-coming-soon.jpg",x.c.headline); },
+  ref_product_launch(x) { return exactGeneratedImageForIndustry(x,{hotel:"luxury-escape.jpg",restaurant:"restaurant-coming-soon.jpg",general:"luxury-escape.jpg"},x.c.headline); },
   minimal_pro(x) { const { c } = x; return pad(`${plainEyebrow(x,c.eyebrow,x.pt,"left")}${h1(x,c.headline,{size:32,align:"left",mb:12})}${para(x,c.body,{size:15,lh:25,align:"left",mb:20})}${c.highlights?.length ? featureRows(x,c.highlights,{color:x.pt}) : ""}${x.items.length ? `<div style="margin-top:20px;">${thumbRows(x,x.items)}</div>` : ""}<div style="margin-top:22px;">${ctas(x,{align:"left"})}</div>${sign(x,{align:"left"})}`,{top:34,align:"left"}); },
 
   hospitality(x) {
