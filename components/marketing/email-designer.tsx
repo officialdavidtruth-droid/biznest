@@ -392,7 +392,7 @@ export function EmailDesigner({
   const topRef = useRef<HTMLDivElement>(null);
 
   const thumbs = useMemo(
-    () => curated.map((t) => ({ t, html: previewifyEmailHtml(renderMarketingEmail(t.id, brand, defaultMarketingContent(t.id, brand, storeItems), { unsubscribeUrl: "#" })) })),
+    () => curated.map((t) => ({ t, html: previewifyEmailHtml(renderMarketingEmail(t.id, brand, defaultMarketingContent(t.id, brand, storeItems), { unsubscribeUrl: "#", assetBaseUrl: "" })) })),
     [curated, brand, storeItems]
   );
   const visible = thumbs.filter(({ t }) => category === "all" || t.category === category);

@@ -211,15 +211,21 @@ const TEMPLATE_BY_ID = Object.fromEntries(MARKETING_TEMPLATES.map((t) => [t.id, 
 export type CuratedTemplateRecommendation = MarketingTemplateMeta & { reason: string; score: number };
 
 const CURATED_TEMPLATE_IDS: MarketingTemplateId[] = [
-  // These are the newer, reference-quality designs built for the marketing
-  // workspace. Keep the older templates registered below for compatibility,
-  // but do not surface them as the primary curated gallery.
+  // These are the generated/reference-quality designs built for the marketing
+  // workspace. Keep legacy templates registered for compatibility, but expose
+  // the complete generated set in the composer.
+  "ref_dark_menu",
+  "ref_food_catalog",
+  "ref_restaurant",
   "ref_offer",
-  "ref_catalog",
   "ref_editorial",
-  "ref_product_launch",
   "ref_thankyou",
   "ref_confirmation",
+  "ref_pricing",
+  "ref_hotel",
+  "ref_journey",
+  "ref_catalog",
+  "ref_product_launch",
 ];
 
 function curationIndustry(brand: MarketingBrand, items: MarketingItem[]) {
@@ -537,6 +543,7 @@ function fontStack(key: MarketingFontKey, brand: MarketingBrand) {
 /* -------------------------------------------------------------------------- */
 
 type Ctx = {
+  assetBaseUrl?: string;
   brand: MarketingBrand;
   c: MarketingContent;
   meta: MarketingTemplateMeta;
@@ -560,7 +567,7 @@ type Ctx = {
   items: MarketingItem[];
 };
 
-function buildCtx(template: MarketingTemplateId, brand: MarketingBrand, c: MarketingContent, recipientFirstName?: string): Ctx {
+function buildCtx(template: MarketingTemplateId, brand: MarketingBrand, c: MarketingContent, recipientFirstName?: string, assetBaseUrl?: string): Ctx {
   const meta = getMarketingTemplate(template);
   const s = c.style ?? {};
   const p = s.primary ?? firstHex(brand.primary, "#111827");
@@ -571,6 +578,7 @@ function buildCtx(template: MarketingTemplateId, brand: MarketingBrand, c: Marke
   const shape = s.buttonShape ?? "rounded";
   return {
     brand,
+    assetBaseUrl,
     c,
     meta,
     p,
@@ -777,7 +785,11 @@ function refTwoCol(x: Ctx, items: MarketingItem[]) { return grid(x,items.slice(0
 function refSocialFooter(x: Ctx) { const links=Object.entries(x.brand.socialLinks??{}).filter(([,v])=>v).slice(0,5); return `<div style="padding:24px 34px;text-align:center;background:${x.soft};border-top:1px solid ${x.line};">${links.length?`<div style="margin-bottom:12px;">${links.map(([n,u])=>`<a href="${safeUrl(u)}" style="margin:0 7px;color:${x.pt};font-size:12px;font-weight:700;text-decoration:none;">${esc(n)}</a>`).join("")}</div>`:""}<div style="font-size:11px;color:${x.muted};">${esc(x.brand.name)}${x.brand.contactEmail?` · ${esc(x.brand.contactEmail)}`:""}${x.brand.contactPhone?` · ${esc(x.brand.contactPhone)}`:""}</div></div>`; }
 
 function exactGeneratedImage(x: Ctx, filename: string, alt?: string) {
-  const src = `${APP_URL}/marketing-generated/${filename}`;
+  // The generated design image is the default, but an explicitly selected
+  // image from the editor replaces it. This keeps the reference design
+  // beautiful out of the box while making its main image editable.
+  const selected = x.image;
+  const src = selected || (x.assetBaseUrl === "" ? `/marketing-generated/${filename}` : `${x.assetBaseUrl ?? APP_URL}/marketing-generated/${filename}`);
   const href = storeUrl(x);
   return `<table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="margin:0;padding:0;background:#ffffff;"><tr><td align="center" style="padding:0;margin:0;"><a href="${safeUrl(href)}" style="text-decoration:none;"><img src="${safeUrl(src)}" width="640" alt="${esc(alt ?? x.c.headline ?? x.brand.name)}" style="display:block;width:100%;max-width:640px;height:auto;border:0;margin:0;padding:0;" /></a></td></tr></table>`;
 }
@@ -1100,10 +1112,10 @@ export function renderMarketingEmail(
   template: MarketingTemplateId,
   brand: MarketingBrand,
   content: MarketingContent,
-  opts?: { unsubscribeUrl?: string; recipientFirstName?: string; footerNote?: string; showUnsubscribe?: boolean }
+  opts?: { unsubscribeUrl?: string; recipientFirstName?: string; footerNote?: string; showUnsubscribe?: boolean; assetBaseUrl?: string }
 ) {
   const c = normalizeMarketingContent(content);
-  const x = buildCtx(template, brand, c, opts?.recipientFirstName);
+  const x = buildCtx(template, brand, c, opts?.recipientFirstName, opts?.assetBaseUrl);
   const s = c.style ?? {};
   const bg = s.background ?? firstHex(brand.background, "#f3f4f6");
   const rawUnsub = opts?.unsubscribeUrl ?? "";
