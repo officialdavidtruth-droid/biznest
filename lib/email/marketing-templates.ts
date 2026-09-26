@@ -1314,13 +1314,6 @@ function prefer(items: MarketingItem[], kind: "product" | "service", n: number) 
   return [...items.filter((i) => i.kind === kind), ...items.filter((i) => i.kind !== kind)].slice(0, n);
 }
 
-const GENERATED_IMAGE = (filename: string) => `/marketing-generated/${filename}`;
-
-const SAMPLE_ITEM_PHOTOS = {
-  food: ["restaurant-great-moments.jpg", "restaurant-coming-soon.jpg", "warm-welcome.jpg"],
-  hospitality: ["luxury-hotel-escape.jpg", "vertical-hotel.jpg", "hotel-welcome-newsletter.jpg"],
-  general: ["luxury-getaway.jpg", "luxury-escape.jpg", "weekend-getaway.jpg"],
-} as const;
 const SAMPLE_ITEM_NAMES = {
   food: ["Chef's favourite", "Popular pick", "Weekend special", "Fresh today", "Customer favourite", "On the menu"],
   hospitality: ["Deluxe room", "Signature suite", "Garden view", "Weekend package", "Ocean view", "Family room"],
@@ -1328,17 +1321,21 @@ const SAMPLE_ITEM_NAMES = {
 } as const;
 
 /**
- * Demo catalog items with real photography. These are used only for template
- * thumbnails when a store has no real catalog content. They are never inserted
- * into the merchant's editable campaign data.
+ * Placeholder catalog items used when a store has no real catalog content yet
+ * (see defaultMarketingContent's placeholderItems option, and
+ * previewMarketingContent for thumbnails). Deliberately carry no imageUrl:
+ * every file under /public/marketing-generated is a complete mockup email
+ * screenshot for a fictional demo brand ("The Oakridge"), not a generic
+ * per-item photo, so none of them are safe to substitute into a real
+ * merchant's campaign or thumbnail. Item cards fall back to a plain text
+ * layout until real photography is added here or the merchant uploads their
+ * own picture via the Products step.
  */
 function sampleItems(ind: ReturnType<typeof industryOf>, n: number): MarketingItem[] {
-  const photos = ind.food ? SAMPLE_ITEM_PHOTOS.food : ind.hospitality ? SAMPLE_ITEM_PHOTOS.hospitality : SAMPLE_ITEM_PHOTOS.general;
   const names = ind.food ? SAMPLE_ITEM_NAMES.food : ind.hospitality ? SAMPLE_ITEM_NAMES.hospitality : SAMPLE_ITEM_NAMES.general;
   return Array.from({ length: n }, (_, i) => ({
     kind: "product" as const,
     name: names[i % names.length],
-    imageUrl: GENERATED_IMAGE(photos[i % photos.length]),
   }));
 }
 

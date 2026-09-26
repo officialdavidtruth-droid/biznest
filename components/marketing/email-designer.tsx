@@ -495,6 +495,15 @@ export function EmailDesigner({
   // from the connected & scanned website, plus each storefront/catalog item's
   // picture -- offered as a pick-from-gallery instead of making the merchant
   // dig up and paste a URL by hand.
+  //
+  // NOTE: there is deliberately no built-in "editorial photography" fallback
+  // here. Every file previously offered from /public/marketing-generated/ is
+  // actually a complete mockup email screenshot for a fictional demo brand
+  // ("The Oakridge", "The Lusso Hotel & Suites", etc.) -- logo, nav, footer,
+  // address and all -- not a generic per-item photo. Offering one here would
+  // let a merchant pick a rival fake brand's whole screenshot into their own
+  // real campaign. Add genuine, brand-neutral single-subject photography to
+  // that directory (and reference it here) before reinstating this.
   const imageGallery = useMemo<GalleryImage[]>(() => {
     const seen = new Set<string>();
     const out: GalleryImage[] = [];
@@ -506,32 +515,6 @@ export function EmailDesigner({
     add(brand.logoUrl, "Logo");
     add(brand.bannerUrl, "Website banner");
     storeItems.forEach((item) => add(item.imageUrl, item.name));
-
-    // Built-in editorial photography gives every generated design a beautiful
-    // starting point even when the connected website has no usable images yet.
-    // These remain normal editable image URLs: the merchant can replace them
-    // with a website image, catalog image, pasted URL, or an uploaded file.
-    //
-    // Stored as relative "/marketing-generated/..." paths: the renderer's
-    // assetSrc() (lib/email/marketing-templates.ts) resolves these against the
-    // current origin for the in-app preview and against the production asset
-    // host for a real send, so the same stored value works correctly in both.
-    const defaults: GalleryImage[] = [
-      "restaurant-great-moments.jpg:Restaurant hero",
-      "restaurant-coming-soon.jpg:Dark restaurant",
-      "luxury-hotel-escape.jpg:Hotel hero",
-      "luxury-getaway.jpg:Luxury getaway",
-      "luxury-escape.jpg:Luxury experience",
-      "weekend-getaway.jpg:Weekend offer",
-      "vertical-hotel.jpg:Editorial hotel",
-      "warm-welcome.jpg:Welcome",
-      "hotel-welcome-newsletter.jpg:Hotel welcome",
-      "luxury-hotel-newsletter.jpg:Hotel newsletter",
-    ].map((entry) => {
-      const [file, label] = entry.split(":");
-      return { url: `/marketing-generated/${file}`, label };
-    });
-    defaults.forEach((item) => add(item.url, item.label));
     return out;
   }, [brand.logoUrl, brand.bannerUrl, storeItems]);
   const maxItems = MARKETING_LIMITS.items;
@@ -699,7 +682,7 @@ export function EmailDesigner({
   const itemsStep = (
     <div className={ui.card}>
       <div className="mb-4 flex items-start justify-between gap-3">
-        <div><h2 className={ui.title}>Featured products &amp; services</h2><p className={`mt-1 ${ui.sub}`}>Your real storefront items are loaded automatically. Haven&rsquo;t added any yet? We start you off with placeholder photos below — every name, price, description and picture can be edited or removed. Up to {maxItems}.</p></div>
+        <div><h2 className={ui.title}>Featured products &amp; services</h2><p className={`mt-1 ${ui.sub}`}>Your real storefront items are loaded automatically. Haven&rsquo;t added any yet? We start you off with a few placeholder entries below — every name, price, description and picture can be edited or removed. Add your own picture to each one. Up to {maxItems}.</p></div>
         <ImageIcon className={`h-4 w-4 shrink-0 ${ui.accent}`} />
       </div>
       <div className="space-y-3">
