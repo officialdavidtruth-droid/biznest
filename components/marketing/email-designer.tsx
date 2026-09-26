@@ -26,6 +26,10 @@ import {
 /*  State                                                                      */
 /* -------------------------------------------------------------------------- */
 
+// Same default the renderer (lib/email/marketing-templates.ts) and send path
+// fall back to, so a stock image picked here still resolves once emailed.
+const STOCK_IMAGE_BASE = process.env.NEXT_PUBLIC_APP_URL ?? "https://biznest.space";
+
 export type FeaturedItem = MarketingItem & { uid: string };
 export type StorySection = MarketingSection & { uid: string };
 export type GalleryPhoto = MarketingPhoto & { uid: string };
@@ -129,7 +133,13 @@ export function useEmailDesign(brand: MarketingBrand, storeItems: MarketingItem[
   const subject = text("subject");
 
   function render(opts?: { unsubscribeUrl?: string }) {
-    return renderMarketingEmail(template, brand, content, { unsubscribeUrl: opts?.unsubscribeUrl ?? "#" });
+    // assetBaseUrl: "" keeps built-in stock images as relative /marketing-generated/
+    // URLs, which previewifyEmailHtml() below then points at the current origin for
+    // the sandboxed preview iframe. Without this they resolve to the production
+    // APP_URL default, which 404s until that build is deployed there. The actual
+    // send path (lib/email/send.ts) and automation engine call renderMarketingEmail
+    // directly and correctly keep the APP_URL-absolute default for real inboxes.
+    return renderMarketingEmail(template, brand, content, { unsubscribeUrl: opts?.unsubscribeUrl ?? "#", assetBaseUrl: "" });
   }
 
   /** Values still showing the design's placeholder offer/event details. */
@@ -504,18 +514,28 @@ export function EmailDesigner({
     // starting point even when the connected website has no usable images yet.
     // These remain normal editable image URLs: the merchant can replace them
     // with a website image, catalog image, pasted URL, or an uploaded file.
+    //
+    // Stored as absolute URLs (not bare "/marketing-generated/..." paths): once
+    // picked here the URL is saved as this item's imageUrl and, unlike the main
+    // hero image, is emitted as-is by the renderer. A relative path previews fine
+    // in-app but has no host to resolve against in a real inbox, so a recipient
+    // would just see a broken image. STOCK_IMAGE_BASE matches the production
+    // asset host the send path and automation engine already resolve to.
     const defaults: GalleryImage[] = [
-      { url: "/marketing-generated/restaurant-great-moments.jpg", label: "Restaurant hero" },
-      { url: "/marketing-generated/restaurant-coming-soon.jpg", label: "Dark restaurant" },
-      { url: "/marketing-generated/luxury-hotel-escape.jpg", label: "Hotel hero" },
-      { url: "/marketing-generated/luxury-getaway.jpg", label: "Luxury getaway" },
-      { url: "/marketing-generated/luxury-escape.jpg", label: "Luxury experience" },
-      { url: "/marketing-generated/weekend-getaway.jpg", label: "Weekend offer" },
-      { url: "/marketing-generated/vertical-hotel.jpg", label: "Editorial hotel" },
-      { url: "/marketing-generated/warm-welcome.jpg", label: "Welcome" },
-      { url: "/marketing-generated/hotel-welcome-newsletter.jpg", label: "Hotel welcome" },
-      { url: "/marketing-generated/luxury-hotel-newsletter.jpg", label: "Hotel newsletter" },
-    ];
+      "restaurant-great-moments.jpg:Restaurant hero",
+      "restaurant-coming-soon.jpg:Dark restaurant",
+      "luxury-hotel-escape.jpg:Hotel hero",
+      "luxury-getaway.jpg:Luxury getaway",
+      "luxury-escape.jpg:Luxury experience",
+      "weekend-getaway.jpg:Weekend offer",
+      "vertical-hotel.jpg:Editorial hotel",
+      "warm-welcome.jpg:Welcome",
+      "hotel-welcome-newsletter.jpg:Hotel welcome",
+      "luxury-hotel-newsletter.jpg:Hotel newsletter",
+    ].map((entry) => {
+      const [file, label] = entry.split(":");
+      return { url: `${STOCK_IMAGE_BASE}/marketing-generated/${file}`, label };
+    });
     defaults.forEach((item) => add(item.url, item.label));
     return out;
   }, [brand.logoUrl, brand.bannerUrl, storeItems]);
