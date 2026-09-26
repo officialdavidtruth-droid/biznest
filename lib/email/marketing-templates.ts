@@ -1016,7 +1016,7 @@ function editableReference(
   o: {
     align?: MarketingAlign;
     showItems?: boolean;
-    itemColumns?: number;
+    itemColumns?: 1 | 2 | 3;
     showHighlights?: boolean;
     showOffer?: boolean;
   } = {},
