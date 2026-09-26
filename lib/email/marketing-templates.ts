@@ -1004,6 +1004,45 @@ function iconRow(x: Ctx, labels: string[] | undefined, o: { bg?: string; fg?: st
   return `<table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0"><tr>${cells}</tr></table>`;
 }
 
+/**
+ * Shared renderer for the reference templates.
+ *
+ * Reference designs are layouts, not screenshots: every visible value comes
+ * from the campaign context so the editor can change the copy, hero image,
+ * products, offer and links without baking merchant data into a JPG.
+ */
+function editableReference(
+  x: Ctx,
+  o: {
+    align?: MarketingAlign;
+    showItems?: boolean;
+    itemColumns?: number;
+    showHighlights?: boolean;
+    showOffer?: boolean;
+  } = {},
+) {
+  const { c } = x;
+  const align = o.align ?? x.align;
+  const columns = o.itemColumns ?? 2;
+  const hero = x.image
+    ? `<div style="margin:0 0 24px;">${img(x, x.image, c.headline || x.brand.name, 572)}</div>`
+    : "";
+  const offer = o.showOffer && c.offerLabel
+    ? `<table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="margin:0 0 24px;border-top:1px solid ${x.line};border-bottom:1px solid ${x.line};"><tr><td style="padding:16px 0;text-align:${align};"><div style="font-size:11px;line-height:16px;letter-spacing:2px;text-transform:uppercase;color:${x.muted};">Special offer</div><div style="margin-top:4px;font-size:28px;line-height:32px;font-weight:900;color:${x.pt};">${esc(c.offerLabel)}</div>${c.couponCode ? `<div style="margin-top:7px;font-size:13px;font-weight:800;color:${x.tx};">Code: ${esc(c.couponCode)}</div>` : ""}${c.offerNote ? `<div style="margin-top:4px;font-size:13px;line-height:20px;color:${x.muted};">${esc(c.offerNote)}</div>` : ""}</td></tr></table>`
+    : "";
+  const items = o.showItems && x.items.length
+    ? `<div style="margin-top:22px;">${grid(x, x.items, columns)}</div>`
+    : "";
+  const highlights = o.showHighlights && c.highlights?.length
+    ? `<div style="margin-top:24px;">${featureRows(x, c.highlights, { color: x.pt })}</div>`
+    : "";
+
+  return `${hero}${pad(
+    `${plainEyebrow(x, c.eyebrow, x.pt, align)}${h1(x, c.headline, { size: 36, align, mb: 14 })}${para(x, c.body, { size: 15, lh: 25, align, mb: 22 })}${offer}${items}${highlights}<div style="margin-top:24px;">${ctas(x, { align })}</div>${sign(x, { align })}`,
+    { top: 30, bottom: 34, align },
+  )}`;
+}
+
 const RENDERERS: Record<MarketingTemplateId, (x: Ctx) => string> = {
   announcement(x) {
     const { c } = x;
