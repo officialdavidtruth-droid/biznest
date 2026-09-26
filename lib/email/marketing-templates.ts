@@ -1004,48 +1004,23 @@ function iconRow(x: Ctx, labels: string[] | undefined, o: { bg?: string; fg?: st
   return `<table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0"><tr>${cells}</tr></table>`;
 }
 
-/**
- * Dynamic replacement for the old baked-in reference JPGs.
- *
- * The previous implementation rendered files such as
- * `restaurant-great-moments.jpg`. Those files already contained another
- * business's logo, headline, copy and menu photos, so changing the merchant
- * data could never change what the customer saw. Reference templates must be
- * HTML-first: every visible value comes from the current Ctx.
- */
-function dynamicReferenceTemplate(x: Ctx, variant: "editorial" | "pricing" | "hotel" | "restaurant" | "food" | "dark" | "product") {
-  const { c } = x;
-  const image = x.image
-    ? `<div style="margin:0 0 22px;">${fullBleed(x, c.headline || x.brand.name)}</div>`
-    : "";
-  const eyebrow = c.eyebrow ? plainEyebrow(x, c.eyebrow, x.pt, variant === "restaurant" || variant === "food" ? "left" : x.align) : "";
-  const heading = h1(x, c.headline || x.brand.name, { size: variant === "product" ? 38 : 34, align: variant === "restaurant" || variant === "food" ? "left" : x.align, mb: 14 });
-  const copy = para(x, c.body || x.brand.businessDescription || "", { align: variant === "restaurant" || variant === "food" ? "left" : x.align, mb: 22 });
-  const action = ctas(x, { align: variant === "restaurant" || variant === "food" ? "left" : x.align });
-  const items = x.items.length
-    ? pad(
-        `${refSectionTitle(x, variant === "restaurant" || variant === "food" ? "Featured menu" : variant === "hotel" ? "Featured experiences" : "Featured selection")}${grid(x, x.items, x.items.length >= 3 ? 3 : 2)}`,
-        { top: 6, bottom: 6, align: variant === "restaurant" || variant === "food" ? "left" : x.align },
-      )
-    : "";
-  const highlights = c.highlights?.length ? pad(featureRows(x, c.highlights, { color: x.pt }), { top: 4, bottom: 10, align: x.align }) : "";
-  const signature = sign(x, { align: x.align });
-  const dark = variant === "dark" || variant === "product";
-  const inner = `${eyebrow}${heading}${copy}${action}${items}${highlights}${signature}`;
-  return `${image}${pad(inner, { top: image ? 8 : 34, bottom: 28, bg: dark ? x.dark : undefined, align: variant === "restaurant" || variant === "food" ? "left" : x.align })}`;
+function exactGeneratedImage(x: Ctx, filename: string, alt?: string) {
+  // The generated design image is the default, but an explicitly selected
+  // image from the editor replaces it. This keeps the reference design
+  // beautiful out of the box while making its main image editable.
+  const src = assetSrc(x, x.image || GENERATED_IMAGE(filename));
+  const href = storeUrl(x);
+  return `<table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="margin:0;padding:0;background:#ffffff;"><tr><td align="center" style="padding:0;margin:0;"><a href="${safeUrl(href)}" style="text-decoration:none;"><img src="${src}" width="640" alt="${esc(alt ?? x.c.headline ?? x.brand.name)}" style="display:block;width:100%;max-width:640px;height:auto;border:0;margin:0;padding:0;" /></a></td></tr></table>`;
 }
 
 function exactGeneratedImageForIndustry(x: Ctx, map: { hotel: string; restaurant: string; general: string }, alt?: string) {
-  // Keep the old call signature so existing template definitions remain stable.
-  // The filename map is intentionally ignored: reference designs are now
-  // generated from live merchant content instead of baked-in JPG screenshots.
   const type = (x.brand.businessType ?? '').toLowerCase();
-  const variant = type.includes('hotel') || type.includes('hospital') || type.includes('accommodation')
-    ? "hotel"
+  const file = type.includes('hotel') || type.includes('hospital') || type.includes('accommodation')
+    ? map.hotel
     : type.includes('restaurant') || type.includes('food') || type.includes('cafe') || type.includes('dining')
-      ? "restaurant"
-      : "editorial";
-  return dynamicReferenceTemplate(x, variant);
+      ? map.restaurant
+      : map.general;
+  return exactGeneratedImage(x, file, alt);
 }
 
 const RENDERERS: Record<MarketingTemplateId, (x: Ctx) => string> = {
@@ -1226,8 +1201,8 @@ const RENDERERS: Record<MarketingTemplateId, (x: Ctx) => string> = {
       { top: 36, bottom: 36, align: "center" }
     )}`;
   },
-  ref_editorial(x) { return dynamicReferenceTemplate(x, "editorial"); },
-  ref_pricing(x) { return dynamicReferenceTemplate(x, "pricing"); },
+  ref_editorial(x) { return exactGeneratedImageForIndustry(x,{hotel:"vertical-hotel.jpg",restaurant:"restaurant-great-moments.jpg",general:"vertical-hotel.jpg"},x.c.headline); },
+  ref_pricing(x) { return exactGeneratedImageForIndustry(x,{hotel:"luxury-hotel-newsletter.jpg",restaurant:"restaurant-great-moments.jpg",general:"luxury-hotel-newsletter.jpg"},x.c.headline); },
   ref_hotel(x) {
     const { c } = x;
     return `${x.image ? fullBleed(x, c.headline) : ""}${pad(
@@ -1261,7 +1236,7 @@ const RENDERERS: Record<MarketingTemplateId, (x: Ctx) => string> = {
       { top: 30, bottom: 34, align: "center" }
     )}`;
   },
-  ref_product_launch(x) { return dynamicReferenceTemplate(x, "product"); },
+  ref_product_launch(x) { return exactGeneratedImageForIndustry(x,{hotel:"luxury-escape.jpg",restaurant:"restaurant-coming-soon.jpg",general:"luxury-escape.jpg"},x.c.headline); },
   minimal_pro(x) { const { c } = x; return pad(`${plainEyebrow(x,c.eyebrow,x.pt,"left")}${h1(x,c.headline,{size:32,align:"left",mb:12})}${para(x,c.body,{size:15,lh:25,align:"left",mb:20})}${c.highlights?.length ? featureRows(x,c.highlights,{color:x.pt}) : ""}${x.items.length ? `<div style="margin-top:20px;">${thumbRows(x,x.items)}</div>` : ""}<div style="margin-top:22px;">${ctas(x,{align:"left"})}</div>${sign(x,{align:"left"})}`,{top:34,align:"left"}); },
 
   hospitality(x) {
@@ -1448,22 +1423,10 @@ export function defaultMarketingContent(template: MarketingTemplateId, brand: Ma
  * this content is never used as the starting campaign data.
  */
 export function previewMarketingContent(template: MarketingTemplateId, brand: MarketingBrand, rawItems: MarketingItem[]): MarketingDefaults {
-  const realItems = rawItems.filter((i) => Boolean(i.name || i.imageUrl || i.price || i.description));
-  const items = realItems.slice(0, 9);
-  const base = defaultMarketingContent(template, brand, items);
-  const firstItemImage = items.find((i) => i.imageUrl)?.imageUrl ?? null;
-  const merchantImage = brand.bannerUrl || firstItemImage || brand.logoUrl || null;
-
-  // Template thumbnails are previews of THIS merchant, not stock campaigns.
-  // Keep the renderer's layout defaults, but replace all image content with
-  // assets belonging to the current business and never fall back to the
-  // baked-in marketing JPGs.
-  return {
-    ...base,
-    items,
-    imageUrl: merchantImage,
-    bannerImageUrl: brand.bannerUrl || undefined,
-  };
+  const ind = industryOf(brand);
+  const realItems = rawItems.filter((i) => i.name || i.imageUrl || i.price || i.description);
+  const items = realItems.length ? realItems : sampleItems(ind, 6);
+  return defaultMarketingContent(template, brand, items);
 }
 
 /* -------------------------------------------------------------------------- */
