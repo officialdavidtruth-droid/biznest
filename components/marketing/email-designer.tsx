@@ -11,6 +11,7 @@ import {
   getMarketingTemplate,
   normalizeMarketingContent,
   renderMarketingEmail,
+  previewMarketingContent,
   type MarketingBrand,
   type MarketingCampaignInput,
   type MarketingContent,
@@ -254,7 +255,7 @@ function previewifyEmailHtml(html: string): string {
   // against about:srcdoc. Point built-in assets at the current BizNest origin for
   // the live editor while keeping the exported/sent HTML unchanged.
   if (typeof window === "undefined") return html;
-  return html.replace(/(src\s*=\s*[\"'])\/marketing-generated\//gi, `$1${window.location.origin}/marketing-generated/`);
+  return html.replace(/src=(\"|')\/marketing-generated\//g, `src=$1${window.location.origin}/marketing-generated/`);
 }
 
 function darkenEmailPreview(html: string): string {
@@ -456,7 +457,7 @@ export function EmailDesigner({
   const topRef = useRef<HTMLDivElement>(null);
 
   const thumbs = useMemo(
-    () => curated.map((t) => ({ t, html: previewifyEmailHtml(renderMarketingEmail(t.id, brand, defaultMarketingContent(t.id, brand, storeItems), { unsubscribeUrl: "#", assetBaseUrl: "" })) })),
+    () => curated.map((t) => ({ t, html: previewifyEmailHtml(renderMarketingEmail(t.id, brand, previewMarketingContent(t.id, brand, storeItems), { unsubscribeUrl: "#", assetBaseUrl: "" })) })),
     [curated, brand, storeItems]
   );
   const visible = thumbs.filter(({ t }) => category === "all" || t.category === category);
@@ -599,7 +600,7 @@ export function EmailDesigner({
           return (
             <button key={t.id} type="button" aria-pressed={on} onClick={() => design.setTemplate(t.id)} className={on ? ui.tileOn : ui.tile}>
               <div className={`relative mx-auto h-44 w-[176px] overflow-hidden rounded-lg border border-black/5 ${ui.thumbBg}`}>
-                <iframe title={`${t.name} preview`} srcDoc={html} sandbox="allow-same-origin" loading="lazy" tabIndex={-1} aria-hidden="true" className="pointer-events-none absolute left-0 top-0 border-0" style={{ width: 640, height: 900, transform: "scale(0.275)", transformOrigin: "top left" }} />
+                <iframe title={`${t.name} preview`} srcDoc={html} sandbox="" loading="lazy" tabIndex={-1} aria-hidden="true" className="pointer-events-none absolute left-0 top-0 border-0" style={{ width: 640, height: 900, transform: "scale(0.275)", transformOrigin: "top left" }} />
                 {on && <span className="absolute right-1.5 top-1.5 flex h-5 w-5 items-center justify-center rounded-full bg-black/70 text-white"><Check className="h-3 w-3" /></span>}
               </div>
               <div className="mt-2 flex items-start justify-between gap-2">
@@ -647,7 +648,7 @@ export function EmailDesigner({
             </div>
           )}
           <div className={`${ui.divider}`} />
-          <ImagePicker ui={ui} label={meta.labels?.image ?? "Header / cover image"} value={design.text("imageUrl")} onChange={(v) => design.setText("imageUrl", v)} hint="A beautiful default image is supplied. Replace it with a website image, catalog image, uploaded photo, or any image URL." gallery={imageGallery} />
+          <ImagePicker ui={ui} label={meta.labels?.image ?? "Header / cover image"} value={design.text("imageUrl")} onChange={(v) => design.setText("imageUrl", v)} hint="This is a starter image for the template, not a locked asset. Choose a website/catalog image, upload a photo, paste a URL, or remove it." gallery={imageGallery} />
           <div className="grid gap-4 sm:grid-cols-2">
             <Area ui={ui} label="Sign-off (optional)" value={design.text("signature")} onChange={(v) => design.setText("signature", v)} rows={2} max={MARKETING_LIMITS.signature} placeholder={"Warmly,\nThe team"} />
             <Area ui={ui} label="P.S. note (optional)" value={design.text("closingNote")} onChange={(v) => design.setText("closingNote", v)} rows={2} max={MARKETING_LIMITS.closingNote} placeholder="A last reminder or small print" />
@@ -698,7 +699,7 @@ export function EmailDesigner({
   const itemsStep = (
     <div className={ui.card}>
       <div className="mb-4 flex items-start justify-between gap-3">
-        <div><h2 className={ui.title}>Featured products &amp; services</h2><p className={`mt-1 ${ui.sub}`}>Pull items from your storefront or write your own. Up to {maxItems}.</p></div>
+        <div><h2 className={ui.title}>Featured products &amp; services</h2><p className={`mt-1 ${ui.sub}`}>Only your real storefront items are loaded into the campaign. Every name, price, description and picture can be edited or removed. Up to {maxItems}.</p></div>
         <ImageIcon className={`h-4 w-4 shrink-0 ${ui.accent}`} />
       </div>
       <div className="space-y-3">
@@ -933,7 +934,7 @@ export function EmailDesigner({
             </div>
           </div>
           <div className={ui.frameWrap}>
-            <iframe title="Email preview" srcDoc={previewHtml} sandbox="allow-same-origin" className={`mx-auto h-[720px] rounded-xl ${ui.frameBg} ${device === "mobile" ? "w-[390px] max-w-full" : "w-full"}`} />
+            <iframe title="Email preview" srcDoc={previewHtml} sandbox="" className={`mx-auto h-[720px] rounded-xl ${ui.frameBg} ${device === "mobile" ? "w-[390px] max-w-full" : "w-full"}`} />
           </div>
           {sendStep && (
             <div className="mt-3 flex flex-wrap gap-2">
