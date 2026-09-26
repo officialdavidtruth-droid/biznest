@@ -1300,12 +1300,9 @@ const SAMPLE_ITEM_NAMES = {
 } as const;
 
 /**
- * Placeholder catalog items with real photography, used only when the connected
- * store has no photographed items of its own yet. Without this, every template
- * that shows a product/room grid falls back to itemPlaceholder()'s plain
- * initial-letter box -- so a brand-new store's previews look unfinished even
- * though the design itself is fully built. These are never sent: they only
- * stand in until the merchant connects a catalog or edits the items by hand.
+ * Demo catalog items with real photography. These are used only for template
+ * thumbnails when a store has no real catalog content. They are never inserted
+ * into the merchant's editable campaign data.
  */
 function sampleItems(ind: ReturnType<typeof industryOf>, n: number): MarketingItem[] {
   const photos = ind.food ? SAMPLE_ITEM_PHOTOS.food : ind.hospitality ? SAMPLE_ITEM_PHOTOS.hospitality : SAMPLE_ITEM_PHOTOS.general;
@@ -1348,7 +1345,11 @@ export function defaultMarketingContent(template: MarketingTemplateId, brand: Ma
   // A brand-new or not-yet-photographed catalog would otherwise leave every
   // item/product-grid template showing plain initial-letter placeholder boxes
   // instead of a finished-looking design -- see sampleItems() above.
-  const items = rawItems.some((i) => i.imageUrl) ? rawItems : sampleItems(ind, 6);
+  // Real store content is the source of truth for the editable campaign.
+  // Demo photography/catalog cards are used only by the template gallery preview
+  // (see previewMarketingContent below) so sample assets never become a
+  // hardcoded, seemingly non-editable campaign payload.
+  const items = rawItems;
   const url = `${APP_URL}/${brand.slug}`;
   const name = brand.name;
   const hero = brand.bannerUrl ?? items.find((i) => i.imageUrl)?.imageUrl ?? null;
@@ -1414,6 +1415,18 @@ export function defaultMarketingContent(template: MarketingTemplateId, brand: Ma
     default:
       return { ...base, subject: "Big news from " + name, previewText: "We have something new for you.", eyebrow: "A note from " + name, headline: "We have something new for you.", body: brand.businessDescription ?? "Stay close to what's new, what's useful and what's worth your attention.", ctaLabel: "Explore now", items: items.slice(0, 3), imageUrl: hero, secondaryCtaLabel: "" };
   }
+}
+
+/**
+ * Content used only to render template thumbnails in the editor. It intentionally
+ * contains polished demo photography so a template can be judged visually, but
+ * this content is never used as the starting campaign data.
+ */
+export function previewMarketingContent(template: MarketingTemplateId, brand: MarketingBrand, rawItems: MarketingItem[]): MarketingDefaults {
+  const ind = industryOf(brand);
+  const realItems = rawItems.filter((i) => i.name || i.imageUrl || i.price || i.description);
+  const items = realItems.length ? realItems : sampleItems(ind, 6);
+  return defaultMarketingContent(template, brand, items);
 }
 
 /* -------------------------------------------------------------------------- */
