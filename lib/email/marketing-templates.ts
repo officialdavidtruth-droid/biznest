@@ -817,20 +817,19 @@ function itemPlaceholder(x: Ctx, name: string, height: number, width: number) {
   return `<div style="width:100%;max-width:${width}px;height:${height}px;line-height:${height}px;background:${x.soft};border-radius:${x.imgRadius}px;text-align:center;font-size:34px;font-weight:800;color:${x.pt};">${esc(name.slice(0, 1).toUpperCase())}</div>`;
 }
 
-function itemCard(x: Ctx, item: MarketingItem, width: number, anyImage: boolean) {
-  const media = item.imageUrl ? img(x, item.imageUrl, item.name, width) : anyImage ? itemPlaceholder(x, item.name, Math.round(width * 0.66), width) : "";
+function itemCard(x: Ctx, item: MarketingItem, width: number) {
+  const media = item.imageUrl ? img(x, item.imageUrl, item.name, width) : itemPlaceholder(x, item.name, Math.round(width * 0.66), width);
   return `<a href="${safeUrl(item.href, storeUrl(x))}" style="display:block;text-decoration:none;color:${x.tx};">${media}<div style="padding-top:${media ? 10 : 0}px;font-size:15px;line-height:20px;font-weight:700;color:${x.tx};">${esc(item.name)}</div>${item.description ? `<div style="padding-top:4px;color:${x.muted};font-size:12px;line-height:18px;">${esc(item.description.slice(0, 140))}</div>` : ""}${item.price ? `<div style="padding-top:6px;color:${x.pt};font-size:14px;font-weight:800;">${esc(item.price)}</div>` : ""}</a>`;
 }
 
 function grid(x: Ctx, items: MarketingItem[], cols: 1 | 2 | 3 = 2) {
   if (!items.length) return "";
   const width = cols === 1 ? 572 : cols === 2 ? 278 : 184;
-  const anyImage = items.some((i) => i.imageUrl);
   const rows: MarketingItem[][] = [];
   for (let i = 0; i < items.length; i += cols) rows.push(items.slice(i, i + cols));
   return `<table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0">${rows
     .map((row) => {
-      const cells = row.map((item, idx) => `<td class="col" width="${Math.floor(100 / cols)}%" valign="top" style="padding:0 ${idx < cols - 1 ? 8 : 0}px 22px ${idx > 0 ? 8 : 0}px;text-align:left;">${itemCard(x, item, width, anyImage)}</td>`);
+      const cells = row.map((item, idx) => `<td class="col" width="${Math.floor(100 / cols)}%" valign="top" style="padding:0 ${idx < cols - 1 ? 8 : 0}px 22px ${idx > 0 ? 8 : 0}px;text-align:left;">${itemCard(x, item, width)}</td>`);
       while (cells.length < cols) cells.push(`<td class="col" width="${Math.floor(100 / cols)}%" style="padding:0;"></td>`);
       return `<tr>${cells.join("")}</tr>`;
     })
@@ -839,10 +838,9 @@ function grid(x: Ctx, items: MarketingItem[], cols: 1 | 2 | 3 = 2) {
 
 function thumbRows(x: Ctx, items: MarketingItem[]) {
   if (!items.length) return "";
-  const anyImage = items.some((i) => i.imageUrl);
   return `<table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0">${items
     .map((item) => {
-      const media = item.imageUrl ? img(x, item.imageUrl, item.name, 120) : anyImage ? itemPlaceholder(x, item.name, 90, 120) : "";
+      const media = item.imageUrl ? img(x, item.imageUrl, item.name, 120) : itemPlaceholder(x, item.name, 90, 120);
       return `<tr>${media ? `<td width="120" valign="top" style="padding:0 18px 20px 0;">${media}</td>` : ""}<td valign="top" style="padding:0 0 20px;text-align:left;"><a href="${safeUrl(item.href, storeUrl(x))}" style="text-decoration:none;color:${x.tx};"><div style="font-size:16px;line-height:22px;font-weight:700;color:${x.tx};">${esc(item.name)}</div>${item.description ? `<div style="padding-top:4px;color:${x.muted};font-size:13px;line-height:20px;">${esc(item.description.slice(0, 200))}</div>` : ""}<div style="padding-top:6px;font-size:13px;font-weight:700;color:${x.pt};">${item.price ? `${esc(item.price)} &nbsp;&middot;&nbsp; ` : ""}Read more</div></a></td></tr>`;
     })
     .join("")}</table>`;
