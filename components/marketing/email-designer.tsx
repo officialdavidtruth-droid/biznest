@@ -26,10 +26,6 @@ import {
 /*  State                                                                      */
 /* -------------------------------------------------------------------------- */
 
-// Same default the renderer (lib/email/marketing-templates.ts) and send path
-// fall back to, so a stock image picked here still resolves once emailed.
-const STOCK_IMAGE_BASE = process.env.NEXT_PUBLIC_APP_URL ?? "https://biznest.space";
-
 export type FeaturedItem = MarketingItem & { uid: string };
 export type StorySection = MarketingSection & { uid: string };
 export type GalleryPhoto = MarketingPhoto & { uid: string };
@@ -515,12 +511,10 @@ export function EmailDesigner({
     // These remain normal editable image URLs: the merchant can replace them
     // with a website image, catalog image, pasted URL, or an uploaded file.
     //
-    // Stored as absolute URLs (not bare "/marketing-generated/..." paths): once
-    // picked here the URL is saved as this item's imageUrl and, unlike the main
-    // hero image, is emitted as-is by the renderer. A relative path previews fine
-    // in-app but has no host to resolve against in a real inbox, so a recipient
-    // would just see a broken image. STOCK_IMAGE_BASE matches the production
-    // asset host the send path and automation engine already resolve to.
+    // Stored as relative "/marketing-generated/..." paths: the renderer's
+    // assetSrc() (lib/email/marketing-templates.ts) resolves these against the
+    // current origin for the in-app preview and against the production asset
+    // host for a real send, so the same stored value works correctly in both.
     const defaults: GalleryImage[] = [
       "restaurant-great-moments.jpg:Restaurant hero",
       "restaurant-coming-soon.jpg:Dark restaurant",
@@ -534,7 +528,7 @@ export function EmailDesigner({
       "luxury-hotel-newsletter.jpg:Hotel newsletter",
     ].map((entry) => {
       const [file, label] = entry.split(":");
-      return { url: `${STOCK_IMAGE_BASE}/marketing-generated/${file}`, label };
+      return { url: `/marketing-generated/${file}`, label };
     });
     defaults.forEach((item) => add(item.url, item.label));
     return out;

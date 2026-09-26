@@ -578,6 +578,22 @@ function safeUrl(value: string | undefined | null, fallback = APP_URL) {
   return fallback;
 }
 
+/**
+ * Resolves a built-in stock image path against the right base for this render.
+ * safeUrl() above always resolves a relative URL against the hardcoded APP_URL,
+ * which is correct for a real sent email but wrong for the live in-app preview:
+ * it would silently turn "/marketing-generated/x.jpg" into an absolute
+ * production URL even when the caller asked for the current origin instead
+ * (assetBaseUrl: ""), and that production URL 404s until this build is
+ * actually deployed there. Anything that isn't one of our built-in generated
+ * paths (a catalog photo, an uploaded image, a pasted URL) is untouched and
+ * still goes through safeUrl for validation.
+ */
+function assetSrc(x: Ctx, src: string | null | undefined): string {
+  if (src && src.startsWith("/marketing-generated/")) return `${x.assetBaseUrl ?? APP_URL}${src}`;
+  return safeUrl(src);
+}
+
 function firstHex(value: string | undefined, fallback: string) {
   return /^#[0-9a-f]{3,8}$/i.test(value ?? "") ? value! : fallback;
 }
@@ -720,11 +736,11 @@ function para(x: Ctx, text: string, o: { size?: number; color?: string; align?: 
 }
 
 function img(x: Ctx, src: string, alt: string, width: number, radius = x.imgRadius) {
-  return `<img src="${safeUrl(src)}" alt="${esc(alt)}" width="${width}" style="display:block;width:100%;max-width:${width}px;height:auto;border:0;outline:none;text-decoration:none;border-radius:${radius}px;" />`;
+  return `<img src="${assetSrc(x, src)}" alt="${esc(alt)}" width="${width}" style="display:block;width:100%;max-width:${width}px;height:auto;border:0;outline:none;text-decoration:none;border-radius:${radius}px;" />`;
 }
 
 function fullBleed(x: Ctx, alt: string) {
-  return x.image ? `<img src="${safeUrl(x.image)}" alt="${esc(alt)}" width="640" style="display:block;width:100%;height:auto;border:0;outline:none;" />` : "";
+  return x.image ? `<img src="${assetSrc(x, x.image)}" alt="${esc(alt)}" width="640" style="display:block;width:100%;height:auto;border:0;outline:none;" />` : "";
 }
 
 function btn(x: Ctx, label: string, url: string, o: { bg?: string; fg?: string; outline?: boolean; block?: boolean; align?: MarketingAlign } = {}) {
@@ -970,10 +986,9 @@ function exactGeneratedImage(x: Ctx, filename: string, alt?: string) {
   // The generated design image is the default, but an explicitly selected
   // image from the editor replaces it. This keeps the reference design
   // beautiful out of the box while making its main image editable.
-  const selected = x.image;
-  const src = selected || (x.assetBaseUrl === "" ? `/marketing-generated/${filename}` : `${x.assetBaseUrl ?? APP_URL}/marketing-generated/${filename}`);
+  const src = assetSrc(x, x.image || GENERATED_IMAGE(filename));
   const href = storeUrl(x);
-  return `<table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="margin:0;padding:0;background:#ffffff;"><tr><td align="center" style="padding:0;margin:0;"><a href="${safeUrl(href)}" style="text-decoration:none;"><img src="${safeUrl(src)}" width="640" alt="${esc(alt ?? x.c.headline ?? x.brand.name)}" style="display:block;width:100%;max-width:640px;height:auto;border:0;margin:0;padding:0;" /></a></td></tr></table>`;
+  return `<table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="margin:0;padding:0;background:#ffffff;"><tr><td align="center" style="padding:0;margin:0;"><a href="${safeUrl(href)}" style="text-decoration:none;"><img src="${src}" width="640" alt="${esc(alt ?? x.c.headline ?? x.brand.name)}" style="display:block;width:100%;max-width:640px;height:auto;border:0;margin:0;padding:0;" /></a></td></tr></table>`;
 }
 
 function exactGeneratedImageForIndustry(x: Ctx, map: { hotel: string; restaurant: string; general: string }, alt?: string) {
@@ -1250,10 +1265,6 @@ function prefer(items: MarketingItem[], kind: "product" | "service", n: number) 
 }
 
 const GENERATED_IMAGE = (filename: string) => `/marketing-generated/${filename}`;
-// Item photos go through the plain img() renderer, not exactGeneratedImage, so
-// unlike GENERATED_IMAGE above they need to be absolute up front -- a relative
-// path here would 404 in a real inbox with no origin to resolve against.
-const GENERATED_IMAGE_ABS = (filename: string) => `${APP_URL}/marketing-generated/${filename}`;
 
 const SAMPLE_ITEM_PHOTOS = {
   food: ["restaurant-great-moments.jpg", "restaurant-coming-soon.jpg", "warm-welcome.jpg"],
@@ -1280,7 +1291,7 @@ function sampleItems(ind: ReturnType<typeof industryOf>, n: number): MarketingIt
   return Array.from({ length: n }, (_, i) => ({
     kind: "product" as const,
     name: names[i % names.length],
-    imageUrl: GENERATED_IMAGE_ABS(photos[i % photos.length]),
+    imageUrl: GENERATED_IMAGE(photos[i % photos.length]),
   }));
 }
 
