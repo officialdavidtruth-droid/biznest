@@ -869,7 +869,7 @@ function detailRow(x: Ctx, label: string, value: string | undefined, last = fals
 
 /** Fills whatever cell it sits in, so it goes full width when a design stacks on phones. */
 function fluidImg(x: Ctx, src: string, alt: string, width: number, radius = x.imgRadius) {
-  return `<img src="${safeUrl(src)}" alt="${esc(alt)}" width="${width}" style="display:block;width:100%;height:auto;border:0;outline:none;text-decoration:none;border-radius:${radius}px;" />`;
+  return `<img src="${assetSrc(x, src)}" alt="${esc(alt)}" width="${width}" style="display:block;width:100%;height:auto;border:0;outline:none;text-decoration:none;border-radius:${radius}px;" />`;
 }
 
 /** Small ruled heading that opens a block within an issue. */
@@ -1017,7 +1017,7 @@ const RENDERERS: Record<MarketingTemplateId, (x: Ctx) => string> = {
     return `${pad(
       `<div style="margin-bottom:20px;text-align:${x.align};">${pill(c.eyebrow, acc, readableOn(acc))}</div>${h1(x, c.headline, { size: 42, color: "#ffffff", mb: 16, ls: "-1.2px" })}${para(x, c.body, { size: 16, color: mix("#ffffff", D, 0.28), mb: 22 })}${ctas(x, { bg: acc, linkColor: "#ffffff" })}`,
       { top: 44, bottom: x.image ? 34 : 40, bg: D, align: x.align }
-    )}${x.image ? `<div style="background:${D};padding:0 34px;"><img src="${safeUrl(x.image)}" alt="${esc(c.headline)}" width="572" style="display:block;width:100%;max-width:572px;height:auto;border:0;border-radius:${x.imgRadius}px ${x.imgRadius}px 0 0;" /></div>` : ""}${
+    )}${x.image ? `<div style="background:${D};padding:0 34px;"><img src="${assetSrc(x, x.image)}" alt="${esc(c.headline)}" width="572" style="display:block;width:100%;max-width:572px;height:auto;border:0;border-radius:${x.imgRadius}px ${x.imgRadius}px 0 0;" /></div>` : ""}${
       c.highlights?.length || x.items.length || c.signature || c.closingNote
         ? pad(`${featureRows(x, c.highlights)}${itemsBlock(x, grid(x, x.items, 2), 26)}${sign(x)}`, { top: 22, bottom: 26, align: x.align })
         : ""
