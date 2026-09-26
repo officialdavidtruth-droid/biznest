@@ -945,74 +945,45 @@ function refHero(x: Ctx, eyebrow: string, headline: string, body: string, button
   const fg = readableOn(bg);
   return `<table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0"><tr><td style="background:${bg};padding:30px 34px;text-align:${x.align};">${eyebrow ? `<div style="font-size:11px;letter-spacing:2px;text-transform:uppercase;font-weight:800;color:${fg};opacity:.78;margin-bottom:10px;">${esc(eyebrow)}</div>` : ""}${h1(x,headline,{size:38,color:fg,align:x.align,mb:12})}${para(x,body,{size:15,color:fg,align:x.align,mb:20})}${btn(x,button,x.c.ctaUrl,{bg:dark?x.acc:readableOn(bg)==="#111827"?x.pt:"#ffffff",fg:readableOn(dark?x.acc:readableOn(bg)==="#111827"?x.pt:"#ffffff"),align:x.align})}</td></tr></table>`;
 }
-function refSectionTitle(x: Ctx, title: string, body="") { return `<div style="padding:26px 34px 12px;text-align:left;"><h2 style="margin:0;font-size:25px;line-height:30px;color:${x.tx};font-weight:800;">${esc(title)}</h2>${body?`<p style="margin:7px 0 0;font-size:13px;line-height:20px;color:${x.muted};">${esc(body)}</p>`:""}</div>`; }
-
-/** Centered, fixed-width image — for hero photos inside an already-centered pad block. */
-function centeredImg(x: Ctx, src: string, alt: string, width: number) {
-  return `<table role="presentation" cellspacing="0" cellpadding="0" border="0" align="center"><tr><td>${img(x, src, alt, width)}</td></tr></table>`;
+function refCard(x: Ctx, item: MarketingItem, accent=x.p) {
+  return `<table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="background:#fff;border:1px solid ${x.line};border-radius:14px;overflow:hidden;"><tr><td>${item.imageUrl?img(x,item.imageUrl,item.name,572):itemPlaceholder(x,item.name,190,572)}</td></tr><tr><td style="padding:16px 18px 18px;text-align:left;"><div style="font-size:16px;font-weight:800;color:${x.tx};">${esc(item.name)}</div>${item.description?`<div style="margin-top:5px;font-size:13px;line-height:19px;color:${x.muted};">${esc(item.description.slice(0,180))}</div>`:""}${item.price?`<div style="margin-top:8px;font-size:14px;font-weight:800;color:${accent};">${esc(item.price)}</div>`:""}<div style="margin-top:12px;"><a href="${safeUrl(item.href,storeUrl(x))}" style="display:inline-block;background:${accent};color:${readableOn(accent)};padding:9px 14px;border-radius:${x.radius}px;font-size:12px;font-weight:800;text-decoration:none;">${esc(x.c.ctaLabel||"View details")}</a></div></td></tr></table>`;
 }
+function refSectionTitle(x: Ctx, title: string, body="") { return `<div style="padding:26px 34px 12px;text-align:left;"><h2 style="margin:0;font-size:25px;line-height:30px;color:${x.tx};font-weight:800;">${esc(title)}</h2>${body?`<p style="margin:7px 0 0;font-size:13px;line-height:20px;color:${x.muted};">${esc(body)}</p>`:""}</div>`; }
+function refTwoCol(x: Ctx, items: MarketingItem[]) { return grid(x,items.slice(0,4),2); }
+function refSocialFooter(x: Ctx) { const links=Object.entries(x.brand.socialLinks??{}).filter(([,v])=>v).slice(0,5); return `<div style="padding:24px 34px;text-align:center;background:${x.soft};border-top:1px solid ${x.line};">${links.length?`<div style="margin-bottom:12px;">${links.map(([n,u])=>`<a href="${safeUrl(u)}" style="margin:0 7px;color:${x.pt};font-size:12px;font-weight:700;text-decoration:none;">${esc(n)}</a>`).join("")}</div>`:""}<div style="font-size:11px;color:${x.muted};">${esc(x.brand.name)}${x.brand.contactEmail?` · ${esc(x.brand.contactEmail)}`:""}${x.brand.contactPhone?` · ${esc(x.brand.contactPhone)}`:""}</div></div>`; }
 
-/**
- * A row of 2-4 short badges (circular glyph + label), used for amenity /
- * feature strips like "Luxury Rooms · Fine Dining · Spa & Wellness".
- */
-function iconStrip(x: Ctx, list: string[] | undefined, o: { dark?: boolean; cols?: number } = {}) {
-  if (!list?.length) return "";
-  const items = list.slice(0, o.cols ?? 4);
-  const fg = o.dark ? "#ffffff" : x.tx;
-  const ring = o.dark ? "rgba(255,255,255,.14)" : x.soft;
-  const dot = o.dark ? x.acc : x.pt;
-  const ruleColor = o.dark ? "rgba(255,255,255,.18)" : x.line;
-  const w = Math.floor(100 / items.length);
-  const cells = items
+/** A row of 3–4 short labels, each with a small round badge and a divider between columns. */
+function iconRow(x: Ctx, labels: string[] | undefined, o: { bg?: string; fg?: string } = {}) {
+  if (!labels?.length) return "";
+  const list = labels.slice(0, 4);
+  const width = Math.floor(100 / list.length);
+  const cells = list
     .map(
-      (t, i) =>
-        `<td width="${w}%" valign="top" style="padding:0 10px;text-align:center;${i < items.length - 1 ? `border-right:1px solid ${ruleColor};` : ""}"><div style="width:38px;height:38px;line-height:38px;margin:0 auto 10px;border-radius:999px;background:${ring};color:${dot};font-size:14px;font-weight:800;">&#10022;</div><div style="font-size:11px;font-weight:800;letter-spacing:.3px;color:${fg};">${esc(t)}</div></td>`
+      (label, i) =>
+        `<td width="${width}%" valign="top" style="padding:0 10px;text-align:center;${i > 0 ? `border-left:1px solid ${x.line};` : ""}"><div style="width:38px;height:38px;line-height:38px;margin:0 auto 10px;border-radius:999px;background:${o.bg ?? x.soft};font-size:15px;font-weight:800;color:${x.pt};">${esc(label.slice(0, 1).toUpperCase())}</div><div style="font-size:11px;font-weight:800;letter-spacing:1px;text-transform:uppercase;color:${o.fg ?? x.tx};">${esc(label)}</div></td>`
     )
     .join("");
   return `<table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0"><tr>${cells}</tr></table>`;
 }
 
-/** Numbered steps, for thank-you / next-steps timelines. Centers as a block when the design is centered. */
-function timelineList(x: Ctx, list: string[] | undefined) {
-  if (!list?.length) return "";
-  const rows = list
-    .map(
-      (t, i) =>
-        `<tr><td width="28" valign="top" style="padding:0 0 16px;"><div style="width:22px;height:22px;line-height:22px;border-radius:999px;background:${x.pt};color:${readableOn(x.pt)};font-size:11px;font-weight:800;text-align:center;">${i + 1}</div></td><td valign="top" style="padding:1px 0 16px 10px;font-size:14px;line-height:21px;color:${x.tx};text-align:left;">${esc(t)}</td></tr>`
-    )
-    .join("");
-  const table = `<table role="presentation" cellspacing="0" cellpadding="0" border="0" style="display:inline-block;text-align:left;">${rows}</table>`;
-  return x.align === "center" ? `<div style="text-align:center;">${table}</div>` : table;
+function exactGeneratedImage(x: Ctx, filename: string, alt?: string) {
+  // The generated design image is the default, but an explicitly selected
+  // image from the editor replaces it. This keeps the reference design
+  // beautiful out of the box while making its main image editable.
+  const selected = x.image;
+  const src = selected || (x.assetBaseUrl === "" ? `/marketing-generated/${filename}` : `${x.assetBaseUrl ?? APP_URL}/marketing-generated/${filename}`);
+  const href = storeUrl(x);
+  return `<table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="margin:0;padding:0;background:#ffffff;"><tr><td align="center" style="padding:0;margin:0;"><a href="${safeUrl(href)}" style="text-decoration:none;"><img src="${safeUrl(src)}" width="640" alt="${esc(alt ?? x.c.headline ?? x.brand.name)}" style="display:block;width:100%;max-width:640px;height:auto;border:0;margin:0;padding:0;" /></a></td></tr></table>`;
 }
 
-/** Large offer figure (e.g. "20% off"), the size the mockups use for a headline discount. */
-function bigOffer(x: Ctx, o: { dark?: boolean } = {}) {
-  const { c } = x;
-  if (!c.offerLabel) return "";
-  const fg = o.dark ? x.acc : x.pt;
-  const size = c.offerLabel.length > 14 ? 38 : 54;
-  return `<div style="font-size:${size}px;line-height:1.08;font-weight:900;letter-spacing:-1.4px;color:${fg};margin:4px 0 12px;">${esc(c.offerLabel)}</div>`;
-}
-
-/** Dark, gold-accented item tiles for a high-contrast menu grid. */
-function darkTileGrid(x: Ctx, items: MarketingItem[], cols: 2 | 3 = 2) {
-  if (!items.length) return "";
-  const rows: MarketingItem[][] = [];
-  for (let i = 0; i < items.length; i += cols) rows.push(items.slice(i, i + cols));
-  const w = Math.floor(100 / cols);
-  return `<table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0">${rows
-    .map((row) => {
-      const cells = row
-        .map(
-          (it) =>
-            `<td class="col" width="${w}%" valign="top" style="padding:0 10px 14px 0;"><a href="${safeUrl(it.href, storeUrl(x))}" style="display:block;text-decoration:none;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.16);border-radius:${x.imgRadius}px;padding:16px;text-align:left;"><div style="font-size:15px;font-weight:800;color:#ffffff;">${esc(it.name)}</div>${it.description ? `<div style="margin-top:4px;font-size:12px;line-height:18px;color:rgba(255,255,255,.62);">${esc(it.description.slice(0, 90))}</div>` : ""}${it.price ? `<div style="margin-top:8px;font-size:14px;font-weight:800;color:${x.acc};">${esc(it.price)}</div>` : ""}</a></td>`
-        )
-        .join("");
-      const filler = `<td class="col" width="${w}%" style="padding:0;"></td>`.repeat(cols - row.length);
-      return `<tr>${cells}${filler}</tr>`;
-    })
-    .join("")}</table>`;
+function exactGeneratedImageForIndustry(x: Ctx, map: { hotel: string; restaurant: string; general: string }, alt?: string) {
+  const type = (x.brand.businessType ?? '').toLowerCase();
+  const file = type.includes('hotel') || type.includes('hospital') || type.includes('accommodation')
+    ? map.hotel
+    : type.includes('restaurant') || type.includes('food') || type.includes('cafe') || type.includes('dining')
+      ? map.restaurant
+      : map.general;
+  return exactGeneratedImage(x, file, alt);
 }
 
 const RENDERERS: Record<MarketingTemplateId, (x: Ctx) => string> = {
@@ -1182,130 +1153,53 @@ const RENDERERS: Record<MarketingTemplateId, (x: Ctx) => string> = {
 
   hotel_signature(x) { const { c } = x; return `${fullBleed(x,x.brand.name)}${pad(`${caps(x,c.eyebrow,x.pt)}${h1(x,c.headline,{size:36,mb:14})}${para(x,c.body,{size:16,lh:27,mb:22})}${c.offerLabel ? `<table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="margin-bottom:22px;border-top:1px solid ${x.line};border-bottom:1px solid ${x.line};"><tr><td style="padding:16px 0;text-align:left;"><div style="font-size:11px;letter-spacing:2px;text-transform:uppercase;color:${x.muted};">Special rate</div><div style="font-size:25px;line-height:30px;font-weight:800;color:${x.pt};">${esc(c.offerLabel)}</div>${c.offerNote ? `<div style="font-size:13px;color:${x.muted};">${esc(c.offerNote)}</div>` : ""}</td></tr></table>` : ""}${c.highlights?.length ? checkList(x,c.highlights) : ""}${x.items.length ? itemsBlock(x,grid(x,x.items,1),18) : ""}<div style="margin-top:22px;">${ctas(x,{align:"left"})}</div>${sign(x,{align:"left"})}`,{align:"left"})}`; },
 
-  /** Dark hero + confirmation-style detail rows (built from the featured items) + next steps. */
-  ref_confirmation(x) {
-    const { c } = x;
-    const rows = x.items.map((it, i) => detailRow(x, it.name, it.price || it.description || "", i === x.items.length - 1)).join("");
-    return `${refHero(x, c.eyebrow || "Booking confirmed", c.headline, c.body, c.ctaLabel, true)}${x.image ? fullBleed(x, c.headline) : ""}${pad(
-      `${rows ? `<table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="margin-bottom:4px;">${rows}</table>` : ""}${c.highlights?.length ? `<div style="margin-top:20px;">${checkList(x, c.highlights)}</div>` : ""}${c.secondaryCtaLabel ? `<div style="margin-top:6px;"><a href="${safeUrl(c.secondaryCtaUrl, storeUrl(x))}" style="color:${x.pt};font-weight:700;font-size:14px;text-decoration:underline;">${esc(c.secondaryCtaLabel)}</a></div>` : ""}${sign(x, { align: x.align })}`,
-      { align: x.align }
-    )}`;
-  },
-
-  /** Photo + bold discount block, an amenity strip and supporting feature cards. */
-  ref_offer(x) {
-    const { c } = x;
-    return `${x.image ? fullBleed(x, c.headline) : ""}${pad(
-      `${caps(x, c.eyebrow || "Special offer", x.pt)}${h1(x, c.headline, { size: 32, mb: 10, align: "center" })}${bigOffer(x)}${para(x, c.body, { size: 15, lh: 24, mb: 16, align: "center" })}${c.offerNote ? `<div style="margin:0 0 18px;font-size:13px;color:${x.muted};">${esc(c.offerNote)}</div>` : ""}${c.couponCode ? codeBox(x) : ""}${ctas(x)}`,
-      { top: x.image ? 30 : 40, bottom: c.highlights?.length || x.items.length ? 26 : 34, align: "center" }
-    )}${c.highlights?.length ? pad(iconStrip(x, c.highlights), { top: 0, bottom: x.items.length ? 26 : 32, align: "center" }) : ""}${x.items.length ? pad(grid(x, x.items, x.items.length >= 3 ? 3 : 2), { top: 0, bottom: 30, align: "left" }) : ""}${sign(x, { align: "center" })}`;
-  },
-
-  /** Travel/hospitality catalog: hero, amenity strip and a card grid; sections/gallery/banner render after. */
-  ref_catalog(x) {
-    const { c } = x;
-    return `${x.image ? fullBleed(x, c.headline) : ""}${pad(
-      `${caps(x, c.eyebrow, x.pt)}${h1(x, c.headline, { size: 32, mb: 12 })}${para(x, c.body, { mb: 20 })}${ctas(x)}`,
-      { top: x.image ? 30 : 38, bottom: c.highlights?.length ? 4 : 24, align: x.align }
-    )}${c.highlights?.length ? pad(iconStrip(x, c.highlights), { top: 4, bottom: 24 }) : ""}${x.items.length ? pad(grid(x, x.items, x.items.length >= 3 ? 3 : 2), { top: 0, bottom: 8, align: "left" }) : ""}${sign(x)}`;
-  },
-
-  /** Destination editorial: hero, a dark amenities band, an inline offer box, then a small feature grid. */
-  ref_journey(x) {
-    const { c } = x;
-    return `${x.image ? fullBleed(x, c.headline) : ""}${pad(
-      `${caps(x, c.eyebrow, x.pt)}${h1(x, c.headline, { size: 32, mb: 12 })}${para(x, c.body, { mb: 20 })}${ctas(x)}`,
-      { top: x.image ? 30 : 38, bottom: 0, align: x.align }
-    )}${c.highlights?.length ? `<div style="background:${x.dark};padding:26px 34px;margin-top:22px;">${iconStrip(x, c.highlights, { dark: true })}</div>` : ""}${
-      c.offerLabel
-        ? pad(
-            `<table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="background:${x.soft};border-radius:${x.imgRadius}px;"><tr><td style="padding:22px 24px;text-align:left;">${caps(x, "Special offer", x.pt, 6)}<div style="font-size:21px;line-height:27px;font-weight:800;color:${x.tx};">${esc(c.offerLabel)}</div>${c.offerNote ? `<div style="margin-top:4px;font-size:13px;color:${x.muted};">${esc(c.offerNote)}</div>` : ""}</td></tr></table>`,
-            { top: 26, bottom: x.items.length ? 4 : 8 }
-          )
-        : ""
-    }${x.items.length ? pad(grid(x, x.items, 2), { top: c.offerLabel ? 0 : 26, bottom: 8, align: "left" }) : ""}${sign(x)}`;
-  },
-
-  /** Centered thank-you note with a numbered "what happens next" timeline. */
+  ref_confirmation(x) { return exactGeneratedImageForIndustry(x,{hotel:"hotel-welcome-newsletter.jpg",restaurant:"warm-welcome.jpg",general:"warm-welcome.jpg"},x.c.headline); },
+  ref_offer(x) { return exactGeneratedImageForIndustry(x,{hotel:"weekend-getaway.jpg",restaurant:"restaurant-great-moments.jpg",general:"luxury-escape.jpg"},x.c.headline); },
+  ref_catalog(x) { return exactGeneratedImageForIndustry(x,{hotel:"luxury-hotel-newsletter.jpg",restaurant:"restaurant-great-moments.jpg",general:"luxury-hotel-newsletter.jpg"},x.c.headline); },
+  ref_journey(x) { return exactGeneratedImageForIndustry(x,{hotel:"luxury-getaway.jpg",restaurant:"restaurant-great-moments.jpg",general:"luxury-getaway.jpg"},x.c.headline); },
   ref_thankyou(x) {
     const { c } = x;
-    return pad(
-      `${x.image ? `<div style="margin:0 0 22px;">${centeredImg(x, x.image, c.headline, 160)}</div>` : ""}${caps(x, c.eyebrow || "Thank you", x.pt)}${h1(x, c.headline, { size: 29, mb: 14, align: "center" })}${para(x, c.body, { size: 15, lh: 24, mb: 22, align: "center" })}${c.highlights?.length ? `<div style="margin:0 0 24px;">${timelineList(x, c.highlights)}</div>` : ""}${ctas(x)}${sign(x, { align: "center" })}`,
-      { top: 40, align: "center" }
-    );
-  },
-
-  /** Long-form serif editorial: hero, headline story, comparison-style highlight cards and a thumbnail list. */
-  ref_editorial(x) {
-    const { c } = x;
     return `${x.image ? fullBleed(x, c.headline) : ""}${pad(
-      `${plainEyebrow(x, c.eyebrow, x.pt, "left")}${h1(x, c.headline, { size: 36, align: "left", ls: "-0.7px", mb: 16 })}${para(x, c.body, { size: 16, lh: 27, align: "left", mb: 20 })}${c.highlights?.length ? softCards(x, c.highlights) : ""}${x.items.length ? `<div style="margin-top:20px;">${thumbRows(x, x.items)}</div>` : ""}<div style="margin-top:18px;">${ctas(x, { align: "left" })}</div>${sign(x, { align: "left" })}`,
-      { top: x.image ? 32 : 40, align: "left" }
+      `${plainEyebrow(x, c.eyebrow, x.pt)}${h1(x, c.headline, { size: 34, mb: 14 })}<p style="margin:0 0 14px;font-size:15px;line-height:24px;color:${x.tx};text-align:center;">${x.greeting}</p>${para(x, c.body, { mb: 22 })}${c.highlights?.length ? iconRow(x, c.highlights) : ""}<div style="margin-top:26px;">${ctas(x)}</div>${sign(x)}`,
+      { top: 36, bottom: 36, align: "center" }
     )}`;
   },
-
-  /** Serif pricing announcement: headline story, a bordered price block and a value checklist. */
-  ref_pricing(x) {
-    const { c } = x;
-    return pad(
-      `${plainEyebrow(x, c.eyebrow, x.pt, "left")}${h1(x, c.headline, { size: 33, align: "left", mb: 14 })}${para(x, c.body, { size: 15, lh: 25, align: "left", mb: 22 })}${
-        c.offerLabel
-          ? `<table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="margin:0 0 22px;border-top:1px solid ${x.line};border-bottom:1px solid ${x.line};"><tr><td style="padding:18px 0;text-align:left;">${caps(x, "Pricing", x.muted, 4)}${bigOffer(x)}${c.offerNote ? `<div style="font-size:13px;color:${x.muted};">${esc(c.offerNote)}</div>` : ""}</td></tr></table>`
-          : ""
-      }${c.highlights?.length ? checkList(x, c.highlights) : ""}<div style="margin-top:6px;">${ctas(x, { align: "left" })}</div>${sign(x, { align: "left" })}`,
-      { top: 40, align: "left" }
-    );
-  },
-
-  /** Hotel showcase: hero, a room grid with prices, and an amenities strip; dining/spa/review render via sections+gallery. */
+  ref_editorial(x) { return exactGeneratedImageForIndustry(x,{hotel:"vertical-hotel.jpg",restaurant:"restaurant-great-moments.jpg",general:"vertical-hotel.jpg"},x.c.headline); },
+  ref_pricing(x) { return exactGeneratedImageForIndustry(x,{hotel:"luxury-hotel-newsletter.jpg",restaurant:"restaurant-great-moments.jpg",general:"luxury-hotel-newsletter.jpg"},x.c.headline); },
   ref_hotel(x) {
     const { c } = x;
     return `${x.image ? fullBleed(x, c.headline) : ""}${pad(
-      `${caps(x, c.eyebrow, x.pt)}${h1(x, c.headline, { size: 33, mb: 12 })}${para(x, c.body, { mb: 20 })}${ctas(x)}`,
-      { top: x.image ? 30 : 38, bottom: 22, align: x.align }
-    )}${x.items.length ? `${refSectionTitle(x, "Find your perfect stay")}${pad(grid(x, x.items, x.items.length >= 3 ? 3 : 2), { top: 0, bottom: c.highlights?.length ? 6 : 10 })}` : ""}${c.highlights?.length ? `<div style="background:${x.soft};padding:26px 34px;">${iconStrip(x, c.highlights)}</div>` : ""}${sign(x)}`;
+      `${plainEyebrow(x, c.eyebrow, x.pt, "left")}${h1(x, c.headline, { size: 34, align: "left", mb: 14 })}${para(x, c.body, { align: "left", mb: 22 })}${x.items.length ? `<div style="margin-bottom:24px;">${grid(x, x.items, x.items.length >= 3 ? 3 : 2)}</div>` : ""}${c.highlights?.length ? featureRows(x, c.highlights, { color: x.pt }) : ""}<div style="margin-top:22px;">${ctas(x, { align: "left" })}</div>${sign(x, { align: "left" })}`,
+      { top: 30, align: "left" }
+    )}`;
   },
-
-  /** Restaurant story: hero, featured-dish story copy and a priced menu list; photos/story render via sections+gallery. */
   ref_restaurant(x) {
     const { c } = x;
-    return `${x.image ? fullBleed(x, c.headline) : ""}${pad(
-      `${c.eyebrow ? caps(x, c.eyebrow, x.pt) : ""}${h1(x, c.headline, { size: 33, mb: 12 })}${para(x, c.body, { mb: 20 })}${ctas(x)}`,
-      { top: x.image ? 30 : 38, bottom: x.items.length ? 4 : 20, align: x.align }
-    )}${x.items.length ? pad(menuList(x, x.items), { top: 4, bottom: 20 }) : ""}${c.highlights?.length ? `<p style="margin:0 34px 26px;font-size:13px;line-height:20px;color:${x.muted};">${c.highlights.map(esc).join(" &nbsp;&middot;&nbsp; ")}</p>` : ""}${sign(x)}`;
+    const hero = `${x.image ? fullBleed(x, c.headline) : ""}${pad(
+      `${plainEyebrow(x, c.eyebrow, x.pt, "left")}${h1(x, c.headline, { size: 36, align: "left", mb: 14 })}${para(x, c.body, { align: "left", mb: 22 })}${ctas(x, { align: "left" })}`,
+      { top: 30, bottom: x.items.length ? 8 : 30, align: "left" }
+    )}`;
+    const menu = x.items.length
+      ? pad(`${refSectionTitle(x, "Fresh flavours, unforgettable experiences")}${grid(x, x.items, x.items.length >= 3 ? 3 : 2)}`, { top: 0, bottom: 8, align: "left" })
+      : "";
+    const highlights = c.highlights?.length ? pad(featureRows(x, c.highlights, { color: x.pt }), { top: 4, bottom: 8, align: "left" }) : "";
+    return `${hero}${menu}${highlights}${pad(sign(x, { align: "left" }), { top: 0, bottom: 24, align: "left" })}`;
   },
-
-  /** Food catalog: hero and a card grid of dishes with prices; footer story/photos render via sections+gallery. */
   ref_food_catalog(x) {
     const { c } = x;
     return `${x.image ? fullBleed(x, c.headline) : ""}${pad(
-      `${caps(x, c.eyebrow, x.pt)}${h1(x, c.headline, { size: 31, mb: 12 })}${para(x, c.body, { mb: 20 })}${ctas(x)}`,
-      { top: x.image ? 30 : 38, bottom: 22, align: x.align }
-    )}${x.items.length ? pad(grid(x, x.items, x.items.length >= 3 ? 3 : 2), { top: 0, bottom: 8, align: "left" }) : ""}${sign(x)}`;
+      `${plainEyebrow(x, c.eyebrow, x.pt, "left")}${h1(x, c.headline, { size: 32, align: "left", mb: 14 })}${para(x, c.body, { align: "left", mb: 22 })}${ctas(x, { align: "left" })}`,
+      { top: 30, bottom: x.items.length ? 10 : 30, align: "left" }
+    )}${x.items.length ? pad(grid(x, x.items, x.items.length >= 3 ? 3 : 2), { top: 0, bottom: 10, align: "left" }) : ""}${pad(sign(x, { align: "left" }), { top: 0, bottom: 22, align: "left" })}`;
   },
-
-  /** High-contrast dark menu: gold-accented item tiles on a full dark card, with a reservation CTA. */
   ref_dark_menu(x) {
     const { c } = x;
-    return pad(
-      `${caps(x, c.eyebrow || "Our menu", x.acc)}${h1(x, c.headline, { size: 31, color: "#ffffff", mb: 12, align: "center" })}${para(x, c.body, { size: 15, lh: 24, color: mix("#ffffff", x.dark, 0.24), mb: 24, align: "center" })}${darkTileGrid(x, x.items, x.items.length >= 5 ? 3 : 2)}${c.highlights?.length ? `<p style="margin:22px 0 0;font-size:13px;color:${mix("#ffffff", x.dark, 0.3)};">${c.highlights.map(esc).join(" &nbsp;&middot;&nbsp; ")}</p>` : ""}<div style="margin-top:26px;">${btn(x, c.ctaLabel, c.ctaUrl, { bg: x.acc, fg: readableOn(x.acc), align: "center" })}</div>${c.secondaryCtaLabel ? `<div style="margin-top:14px;"><a href="${safeUrl(c.secondaryCtaUrl, storeUrl(x))}" style="color:${mix("#ffffff", x.dark, 0.2)};font-size:13px;font-weight:700;text-decoration:underline;">${esc(c.secondaryCtaLabel)}</a></div>` : ""}${c.signature ? `<p style="margin:22px 0 0;font-size:13px;color:${mix("#ffffff", x.dark, 0.3)};">${escBr(c.signature)}</p>` : ""}`,
-      { bg: x.dark, align: "center" }
-    );
+    return `${refHero(x, c.eyebrow, c.headline, c.body, "", true)}${pad(
+      `${x.items.length ? grid(x, x.items, x.items.length >= 3 ? 3 : 2) : ""}${c.highlights?.length ? `<div style="margin:${x.items.length ? 22 : 0}px 0 4px;">${checkList(x, c.highlights)}</div>` : ""}<div style="margin-top:24px;">${ctas(x, { align: "center" })}</div>${sign(x)}`,
+      { top: 30, bottom: 34, align: "center" }
+    )}`;
   },
-
-  /** Dark reveal hero (image optional), feature rows and a supporting grid, closing with the main CTA. */
-  ref_product_launch(x) {
-    const { c } = x;
-    const D = x.dark;
-    const acc = x.acc;
-    return `${pad(
-      `${pill(c.eyebrow || "New", acc, readableOn(acc))}${h1(x, c.headline, { size: 34, color: "#ffffff", mb: 14, align: "center", ls: "-0.8px" })}${para(x, c.body, { size: 15, color: mix("#ffffff", D, 0.26), mb: 4, align: "center" })}`,
-      { top: 40, bottom: x.image ? 28 : 8, bg: D, align: "center" }
-    )}${x.image ? `<div style="background:${D};padding:0 34px 34px;">${centeredImg(x, x.image, c.headline, 400)}</div>` : `<div style="background:${D};height:8px;line-height:8px;font-size:1px;">&nbsp;</div>`}${pad(
-      `${c.highlights?.length ? featureRows(x, c.highlights, { color: x.pt }) : ""}${x.items.length ? `<div style="margin-top:20px;">${grid(x, x.items, 2)}</div>` : ""}`,
-      { top: 26, bottom: 6, align: "left" }
-    )}${pad(`${ctas(x)}${sign(x, { align: "center" })}`, { top: 4, bottom: 34, align: "center" })}`;
-  },
+  ref_product_launch(x) { return exactGeneratedImageForIndustry(x,{hotel:"luxury-escape.jpg",restaurant:"restaurant-coming-soon.jpg",general:"luxury-escape.jpg"},x.c.headline); },
   minimal_pro(x) { const { c } = x; return pad(`${plainEyebrow(x,c.eyebrow,x.pt,"left")}${h1(x,c.headline,{size:32,align:"left",mb:12})}${para(x,c.body,{size:15,lh:25,align:"left",mb:20})}${c.highlights?.length ? featureRows(x,c.highlights,{color:x.pt}) : ""}${x.items.length ? `<div style="margin-top:20px;">${thumbRows(x,x.items)}</div>` : ""}<div style="margin-top:22px;">${ctas(x,{align:"left"})}</div>${sign(x,{align:"left"})}`,{top:34,align:"left"}); },
 
   hospitality(x) {
@@ -1362,7 +1256,7 @@ const DEFAULT_TEMPLATE_IMAGES: Partial<Record<MarketingTemplateId, string>> = {
   ref_offer: GENERATED_IMAGE("weekend-getaway.jpg"),
   ref_catalog: GENERATED_IMAGE("luxury-hotel-newsletter.jpg"),
   ref_journey: GENERATED_IMAGE("luxury-getaway.jpg"),
-  ref_thankyou: GENERATED_IMAGE("welcome-stay.jpg"),
+  ref_thankyou: GENERATED_IMAGE("warm-welcome.jpg"),
   ref_editorial: GENERATED_IMAGE("vertical-hotel.jpg"),
   ref_pricing: GENERATED_IMAGE("luxury-hotel-newsletter.jpg"),
   ref_hotel: GENERATED_IMAGE("luxury-hotel-escape.jpg"),
