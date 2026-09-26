@@ -599,7 +599,7 @@ export function EmailDesigner({
           return (
             <button key={t.id} type="button" aria-pressed={on} onClick={() => design.setTemplate(t.id)} className={on ? ui.tileOn : ui.tile}>
               <div className={`relative mx-auto h-44 w-[176px] overflow-hidden rounded-lg border border-black/5 ${ui.thumbBg}`}>
-                <iframe title={`${t.name} preview`} srcDoc={html} sandbox="" loading="lazy" tabIndex={-1} aria-hidden="true" className="pointer-events-none absolute left-0 top-0 border-0" style={{ width: 640, height: 900, transform: "scale(0.275)", transformOrigin: "top left" }} />
+                <iframe title={`${t.name} preview`} srcDoc={html} sandbox="allow-same-origin" loading="lazy" tabIndex={-1} aria-hidden="true" className="pointer-events-none absolute left-0 top-0 border-0" style={{ width: 640, height: 900, transform: "scale(0.275)", transformOrigin: "top left" }} />
                 {on && <span className="absolute right-1.5 top-1.5 flex h-5 w-5 items-center justify-center rounded-full bg-black/70 text-white"><Check className="h-3 w-3" /></span>}
               </div>
               <div className="mt-2 flex items-start justify-between gap-2">
@@ -933,7 +933,7 @@ export function EmailDesigner({
             </div>
           </div>
           <div className={ui.frameWrap}>
-            <iframe title="Email preview" srcDoc={previewHtml} sandbox="" className={`mx-auto h-[720px] rounded-xl ${ui.frameBg} ${device === "mobile" ? "w-[390px] max-w-full" : "w-full"}`} />
+            <iframe title="Email preview" srcDoc={previewHtml} sandbox="allow-same-origin" className={`mx-auto h-[720px] rounded-xl ${ui.frameBg} ${device === "mobile" ? "w-[390px] max-w-full" : "w-full"}`} />
           </div>
           {sendStep && (
             <div className="mt-3 flex flex-wrap gap-2">
