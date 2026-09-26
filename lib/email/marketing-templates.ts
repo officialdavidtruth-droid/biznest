@@ -1004,25 +1004,6 @@ function iconRow(x: Ctx, labels: string[] | undefined, o: { bg?: string; fg?: st
   return `<table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0"><tr>${cells}</tr></table>`;
 }
 
-function exactGeneratedImage(x: Ctx, filename: string, alt?: string) {
-  // The generated design image is the default, but an explicitly selected
-  // image from the editor replaces it. This keeps the reference design
-  // beautiful out of the box while making its main image editable.
-  const src = assetSrc(x, x.image || GENERATED_IMAGE(filename));
-  const href = storeUrl(x);
-  return `<table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="margin:0;padding:0;background:#ffffff;"><tr><td align="center" style="padding:0;margin:0;"><a href="${safeUrl(href)}" style="text-decoration:none;"><img src="${src}" width="640" alt="${esc(alt ?? x.c.headline ?? x.brand.name)}" style="display:block;width:100%;max-width:640px;height:auto;border:0;margin:0;padding:0;" /></a></td></tr></table>`;
-}
-
-function exactGeneratedImageForIndustry(x: Ctx, map: { hotel: string; restaurant: string; general: string }, alt?: string) {
-  const type = (x.brand.businessType ?? '').toLowerCase();
-  const file = type.includes('hotel') || type.includes('hospital') || type.includes('accommodation')
-    ? map.hotel
-    : type.includes('restaurant') || type.includes('food') || type.includes('cafe') || type.includes('dining')
-      ? map.restaurant
-      : map.general;
-  return exactGeneratedImage(x, file, alt);
-}
-
 const RENDERERS: Record<MarketingTemplateId, (x: Ctx) => string> = {
   announcement(x) {
     const { c } = x;
@@ -1190,10 +1171,10 @@ const RENDERERS: Record<MarketingTemplateId, (x: Ctx) => string> = {
 
   hotel_signature(x) { const { c } = x; return `${fullBleed(x,x.brand.name)}${pad(`${caps(x,c.eyebrow,x.pt)}${h1(x,c.headline,{size:36,mb:14})}${para(x,c.body,{size:16,lh:27,mb:22})}${c.offerLabel ? `<table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="margin-bottom:22px;border-top:1px solid ${x.line};border-bottom:1px solid ${x.line};"><tr><td style="padding:16px 0;text-align:left;"><div style="font-size:11px;letter-spacing:2px;text-transform:uppercase;color:${x.muted};">Special rate</div><div style="font-size:25px;line-height:30px;font-weight:800;color:${x.pt};">${esc(c.offerLabel)}</div>${c.offerNote ? `<div style="font-size:13px;color:${x.muted};">${esc(c.offerNote)}</div>` : ""}</td></tr></table>` : ""}${c.highlights?.length ? checkList(x,c.highlights) : ""}${x.items.length ? itemsBlock(x,grid(x,x.items,1),18) : ""}<div style="margin-top:22px;">${ctas(x,{align:"left"})}</div>${sign(x,{align:"left"})}`,{align:"left"})}`; },
 
-  ref_confirmation(x) { return exactGeneratedImageForIndustry(x,{hotel:"hotel-welcome-newsletter.jpg",restaurant:"warm-welcome.jpg",general:"warm-welcome.jpg"},x.c.headline); },
-  ref_offer(x) { return exactGeneratedImageForIndustry(x,{hotel:"weekend-getaway.jpg",restaurant:"restaurant-great-moments.jpg",general:"luxury-escape.jpg"},x.c.headline); },
-  ref_catalog(x) { return exactGeneratedImageForIndustry(x,{hotel:"luxury-hotel-newsletter.jpg",restaurant:"restaurant-great-moments.jpg",general:"luxury-hotel-newsletter.jpg"},x.c.headline); },
-  ref_journey(x) { return exactGeneratedImageForIndustry(x,{hotel:"luxury-getaway.jpg",restaurant:"restaurant-great-moments.jpg",general:"luxury-getaway.jpg"},x.c.headline); },
+  ref_confirmation(x) { return editableReference(x,{align:"center",showHighlights:true}); },
+  ref_offer(x) { return editableReference(x,{align:"center",showItems:true,itemColumns:2,showHighlights:true,showOffer:true}); },
+  ref_catalog(x) { return editableReference(x,{align:"left",showItems:true,itemColumns:3,showHighlights:true}); },
+  ref_journey(x) { return editableReference(x,{align:"left",showItems:true,itemColumns:2,showHighlights:true,showSections:true,showGallery:true}); },
   ref_thankyou(x) {
     const { c } = x;
     return `${x.image ? fullBleed(x, c.headline) : ""}${pad(
@@ -1201,8 +1182,8 @@ const RENDERERS: Record<MarketingTemplateId, (x: Ctx) => string> = {
       { top: 36, bottom: 36, align: "center" }
     )}`;
   },
-  ref_editorial(x) { return exactGeneratedImageForIndustry(x,{hotel:"vertical-hotel.jpg",restaurant:"restaurant-great-moments.jpg",general:"vertical-hotel.jpg"},x.c.headline); },
-  ref_pricing(x) { return exactGeneratedImageForIndustry(x,{hotel:"luxury-hotel-newsletter.jpg",restaurant:"restaurant-great-moments.jpg",general:"luxury-hotel-newsletter.jpg"},x.c.headline); },
+  ref_editorial(x) { return editableReference(x,{align:"left",showItems:true,itemColumns:2,showHighlights:true,showSections:true}); },
+  ref_pricing(x) { return editableReference(x,{align:"left",showItems:true,itemColumns:2,showHighlights:true,showOffer:true}); },
   ref_hotel(x) {
     const { c } = x;
     return `${x.image ? fullBleed(x, c.headline) : ""}${pad(
@@ -1236,7 +1217,7 @@ const RENDERERS: Record<MarketingTemplateId, (x: Ctx) => string> = {
       { top: 30, bottom: 34, align: "center" }
     )}`;
   },
-  ref_product_launch(x) { return exactGeneratedImageForIndustry(x,{hotel:"luxury-escape.jpg",restaurant:"restaurant-coming-soon.jpg",general:"luxury-escape.jpg"},x.c.headline); },
+  ref_product_launch(x) { return editableReference(x,{align:"center",showItems:true,itemColumns:3,showHighlights:true}); },
   minimal_pro(x) { const { c } = x; return pad(`${plainEyebrow(x,c.eyebrow,x.pt,"left")}${h1(x,c.headline,{size:32,align:"left",mb:12})}${para(x,c.body,{size:15,lh:25,align:"left",mb:20})}${c.highlights?.length ? featureRows(x,c.highlights,{color:x.pt}) : ""}${x.items.length ? `<div style="margin-top:20px;">${thumbRows(x,x.items)}</div>` : ""}<div style="margin-top:22px;">${ctas(x,{align:"left"})}</div>${sign(x,{align:"left"})}`,{top:34,align:"left"}); },
 
   hospitality(x) {
@@ -1314,30 +1295,6 @@ function sampleItems(ind: ReturnType<typeof industryOf>, n: number): MarketingIt
   }));
 }
 
-const DEFAULT_TEMPLATE_IMAGES: Partial<Record<MarketingTemplateId, string>> = {
-  flash: GENERATED_IMAGE("luxury-escape.jpg"),
-  welcome: GENERATED_IMAGE("warm-welcome.jpg"),
-  thankyou: GENERATED_IMAGE("warm-welcome.jpg"),
-  winback: GENERATED_IMAGE("weekend-getaway.jpg"),
-  holiday: GENERATED_IMAGE("luxury-getaway.jpg"),
-  restaurant: GENERATED_IMAGE("restaurant-great-moments.jpg"),
-  ref_confirmation: GENERATED_IMAGE("hotel-welcome-newsletter.jpg"),
-  ref_offer: GENERATED_IMAGE("weekend-getaway.jpg"),
-  ref_catalog: GENERATED_IMAGE("luxury-hotel-newsletter.jpg"),
-  ref_journey: GENERATED_IMAGE("luxury-getaway.jpg"),
-  ref_thankyou: GENERATED_IMAGE("warm-welcome.jpg"),
-  ref_editorial: GENERATED_IMAGE("vertical-hotel.jpg"),
-  ref_pricing: GENERATED_IMAGE("luxury-hotel-newsletter.jpg"),
-  ref_hotel: GENERATED_IMAGE("luxury-hotel-escape.jpg"),
-  ref_restaurant: GENERATED_IMAGE("restaurant-great-moments.jpg"),
-  ref_food_catalog: GENERATED_IMAGE("restaurant-great-moments.jpg"),
-  ref_dark_menu: GENERATED_IMAGE("restaurant-coming-soon.jpg"),
-  ref_product_launch: GENERATED_IMAGE("luxury-escape.jpg"),
-};
-
-function defaultTemplateImage(template: MarketingTemplateId, fallback?: string | null) {
-  return fallback || DEFAULT_TEMPLATE_IMAGES[template] || null;
-}
 
 /** Starter content for a design, tuned to the store's industry. Everything is editable. */
 export function defaultMarketingContent(template: MarketingTemplateId, brand: MarketingBrand, rawItems: MarketingItem[]): MarketingDefaults {
@@ -1353,10 +1310,9 @@ export function defaultMarketingContent(template: MarketingTemplateId, brand: Ma
   const url = `${APP_URL}/${brand.slug}`;
   const name = brand.name;
   const hero = brand.bannerUrl ?? items.find((i) => i.imageUrl)?.imageUrl ?? null;
-  const generatedHero = defaultTemplateImage(template, hero);
-  const itemHero = items.find((i) => i.imageUrl)?.imageUrl ?? generatedHero;
+  const itemHero = items.find((i) => i.imageUrl)?.imageUrl ?? hero ?? null;
   const team = `The ${name} team`;
-  const base = { ctaUrl: url, imageUrl: generatedHero, items: [] as MarketingItem[] };
+  const base = { ctaUrl: url, imageUrl: hero, items: [] as MarketingItem[] };
   const buy = ind.hospitality ? "Book your stay" : ind.beauty || ind.professional ? "Book now" : ind.food ? "Order now" : "Shop now";
 
   switch (template) {
@@ -1405,11 +1361,11 @@ export function defaultMarketingContent(template: MarketingTemplateId, brand: Ma
     case "ref_journey": return { ...base, subject: "Explore with " + name, previewText: "Ideas, tips and featured experiences.", eyebrow: "Explore", headline: "Make the most of your next experience.", body: brand.businessDescription ?? "A few ideas and recommendations to help your customers discover more.", ctaLabel: buy, items: items.slice(0,3), highlights: ["Save smart", "Plan ahead", "Local recommendations"], imageUrl: hero };
     case "ref_thankyou": return { ...base, subject: "Thank you from " + name, previewText: "Here’s what happens next.", eyebrow: "Thank you", headline: "We appreciate you.", body: "Your support means a lot. Here’s what happens next and where to find us if you need anything.", ctaLabel: "Visit our website", highlights: ["We’re preparing your request", "You’ll receive an update", "Our team is here to help"], imageUrl: hero };
     case "ref_editorial": return { ...base, subject: "The story from " + name, previewText: "A closer look at what we offer.", eyebrow: "The story", headline: "Crafted with purpose.", body: brand.businessDescription ?? "A closer look at the thinking, people and products behind our business.", ctaLabel: "Discover more", items: items.slice(0,4), highlights: ["Thoughtful design", "Quality materials", "Made for real life"], imageUrl: hero };
-    case "ref_pricing": return { ...base, subject: "New pricing from " + name, previewText: "Clear options, straightforward value.", eyebrow: "Pricing update", headline: "More value, clearly presented.", body: "See the current options and choose what fits your needs.", ctaLabel: buy, offerLabel: "From your current rate", offerNote: "Flexible option", couponCode: "Available now", highlights: ["Transparent information", "Flexible choices", "Direct support"], imageUrl: generatedHero };
+    case "ref_pricing": return { ...base, subject: "New pricing from " + name, previewText: "Clear options, straightforward value.", eyebrow: "Pricing update", headline: "More value, clearly presented.", body: "See the current options and choose what fits your needs.", ctaLabel: buy, offerLabel: "From your current rate", offerNote: "Flexible option", couponCode: "Available now", highlights: ["Transparent information", "Flexible choices", "Direct support"], imageUrl: hero };
     case "ref_hotel": return { ...base, subject: "Stay with " + name, previewText: "Rooms, experiences and hospitality.", eyebrow: "Your stay", headline: "Relax in comfort.", body: brand.businessDescription ?? "Discover rooms, amenities and experiences designed around your stay.", ctaLabel: "Book your stay", items: items.slice(0,4), highlights: ["Comfortable rooms", "Attentive service", "Dining and experiences"], imageUrl: hero };
     case "ref_restaurant": return { ...base, subject: "A taste of " + name, previewText: "Featured dishes and dining experiences.", eyebrow: "Featured", headline: "A taste worth remembering.", body: brand.businessDescription ?? "Explore our dining experience and a few favourites from the menu.", ctaLabel: "Reserve or order", items: items.slice(0,4), highlights: ["Fresh ingredients", "Thoughtful service", "A memorable table"], imageUrl: hero };
     case "ref_food_catalog": return { ...base, subject: "On the menu at " + name, previewText: "Explore our featured selection.", eyebrow: "Menu", headline: "Made to be enjoyed.", body: brand.businessDescription ?? "Explore a selection of dishes, products or services from our business.", ctaLabel: "View menu", items: items.slice(0,6), imageUrl: hero };
-    case "ref_dark_menu": return { ...base, subject: "The menu at " + name, previewText: "Explore our featured menu.", eyebrow: "Our menu", headline: "Made for the moment.", body: brand.businessDescription ?? "Discover featured products, services or dishes.", ctaLabel: "Reserve now", items: items.slice(0,9), highlights: ["Featured selection", "Fresh today", "Reserve online"], imageUrl: generatedHero };
+    case "ref_dark_menu": return { ...base, subject: "The menu at " + name, previewText: "Explore our featured menu.", eyebrow: "Our menu", headline: "Made for the moment.", body: brand.businessDescription ?? "Discover featured products, services or dishes.", ctaLabel: "Reserve now", items: items.slice(0,9), highlights: ["Featured selection", "Fresh today", "Reserve online"], imageUrl: hero };
     case "ref_product_launch": return { ...base, subject: "Meet what’s new at " + name, previewText: "A new release worth discovering.", eyebrow: "New", headline: "Designed for what’s next.", body: brand.businessDescription ?? "Meet the latest addition to our offering.", ctaLabel: buy, items: items.slice(0,3), highlights: ["Thoughtful design", "Easy to use", "Built around your needs"], imageUrl: hero };
     case "minimal_pro": return { ...base, subject: "An update from " + name, previewText: "A concise update from our team.", eyebrow: "Business update", headline: "A clearer way forward.", body: brand.businessDescription ?? "Here is a concise update from our team, with the information you need.", ctaLabel: "Learn more", items: items.slice(0,3), highlights: ["Clear information", "Professional service", "Direct support"], imageUrl: null };
     default:
@@ -1424,8 +1380,11 @@ export function defaultMarketingContent(template: MarketingTemplateId, brand: Ma
  */
 export function previewMarketingContent(template: MarketingTemplateId, brand: MarketingBrand, rawItems: MarketingItem[]): MarketingDefaults {
   const ind = industryOf(brand);
-  const realItems = rawItems.filter((i) => i.name || i.imageUrl || i.price || i.description);
+  const realItems = rawItems.filter((i) => Boolean(i.name || i.imageUrl || i.price || i.description));
   const items = realItems.length ? realItems : sampleItems(ind, 6);
+  // Gallery thumbnails are allowed to use polished sample photography so the
+  // merchant can judge the layout. Selecting the design starts from real brand
+  // data; sample/demo assets are never copied into the editable campaign.
   return defaultMarketingContent(template, brand, items);
 }
 
