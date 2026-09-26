@@ -579,6 +579,22 @@ function safeUrl(value: string | undefined | null, fallback = APP_URL) {
 }
 
 /**
+ * Just the protocol+host of a URL, discarding any path. Static assets under
+ * /marketing-generated/ live at the true site root regardless of what path
+ * NEXT_PUBLIC_APP_URL happens to carry (e.g. a base configured as
+ * "https://biznest.space/store" for building storefront links) -- naively
+ * concatenating that base with an asset path would nest the asset under that
+ * path too and 404. Falls back to the input unchanged if it isn't a valid URL.
+ */
+function originOnly(url: string): string {
+  try {
+    return new URL(url).origin;
+  } catch {
+    return url;
+  }
+}
+
+/**
  * Resolves a built-in stock image path against the right base for this render.
  * safeUrl() above always resolves a relative URL against the hardcoded APP_URL,
  * which is correct for a real sent email but wrong for the live in-app preview:
@@ -590,7 +606,13 @@ function safeUrl(value: string | undefined | null, fallback = APP_URL) {
  * still goes through safeUrl for validation.
  */
 function assetSrc(x: Ctx, src: string | null | undefined): string {
-  if (src && src.startsWith("/marketing-generated/")) return `${x.assetBaseUrl ?? APP_URL}${src}`;
+  if (src && src.startsWith("/marketing-generated/")) {
+    // assetBaseUrl === "" is the live-preview sentinel: keep the path relative
+    // here so previewifyEmailHtml (email-designer.tsx) can point it at the
+    // current origin client-side. Any other base gets path-stripped first.
+    if (x.assetBaseUrl === "") return src;
+    return `${originOnly(x.assetBaseUrl ?? APP_URL)}${src}`;
+  }
   return safeUrl(src);
 }
 
