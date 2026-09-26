@@ -1019,6 +1019,8 @@ function editableReference(
     itemColumns?: 1 | 2 | 3;
     showHighlights?: boolean;
     showOffer?: boolean;
+    showSections?: boolean;
+    showGallery?: boolean;
   } = {},
 ) {
   const { c } = x;
@@ -1036,9 +1038,15 @@ function editableReference(
   const highlights = o.showHighlights && c.highlights?.length
     ? `<div style="margin-top:24px;">${featureRows(x, c.highlights, { color: x.pt })}</div>`
     : "";
+  const sections = o.showSections && x.sections.length
+    ? `<div style="margin-top:24px;">${storyRows(x, x.sections)}</div>`
+    : "";
+  const gallery = o.showGallery && x.gallery.length
+    ? `<div style="margin-top:24px;">${photoGrid(x, x.gallery, c.galleryTitle)}</div>`
+    : "";
 
   return `${hero}${pad(
-    `${plainEyebrow(x, c.eyebrow, x.pt, align)}${h1(x, c.headline, { size: 36, align, mb: 14 })}${para(x, c.body, { size: 15, lh: 25, align, mb: 22 })}${offer}${items}${highlights}<div style="margin-top:24px;">${ctas(x, { align })}</div>${sign(x, { align })}`,
+    `${plainEyebrow(x, c.eyebrow, x.pt, align)}${h1(x, c.headline, { size: 36, align, mb: 14 })}${para(x, c.body, { size: 15, lh: 25, align, mb: 22 })}${offer}${items}${highlights}${sections}${gallery}<div style="margin-top:24px;">${ctas(x, { align })}</div>${sign(x, { align })}`,
     { top: 30, bottom: 34, align },
   )}`;
 }
