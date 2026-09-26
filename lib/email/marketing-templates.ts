@@ -1250,8 +1250,47 @@ function prefer(items: MarketingItem[], kind: "product" | "service", n: number) 
 }
 
 const GENERATED_IMAGE = (filename: string) => `/marketing-generated/${filename}`;
+// Item photos go through the plain img() renderer, not exactGeneratedImage, so
+// unlike GENERATED_IMAGE above they need to be absolute up front -- a relative
+// path here would 404 in a real inbox with no origin to resolve against.
+const GENERATED_IMAGE_ABS = (filename: string) => `${APP_URL}/marketing-generated/${filename}`;
+
+const SAMPLE_ITEM_PHOTOS = {
+  food: ["restaurant-great-moments.jpg", "restaurant-coming-soon.jpg", "warm-welcome.jpg"],
+  hospitality: ["luxury-hotel-escape.jpg", "vertical-hotel.jpg", "hotel-welcome-newsletter.jpg"],
+  general: ["luxury-getaway.jpg", "luxury-escape.jpg", "weekend-getaway.jpg"],
+} as const;
+const SAMPLE_ITEM_NAMES = {
+  food: ["Chef's favourite", "Popular pick", "Weekend special", "Fresh today", "Customer favourite", "On the menu"],
+  hospitality: ["Deluxe room", "Signature suite", "Garden view", "Weekend package", "Ocean view", "Family room"],
+  general: ["Best seller", "Customer favourite", "New arrival", "Staff pick", "Popular choice", "Featured item"],
+} as const;
+
+/**
+ * Placeholder catalog items with real photography, used only when the connected
+ * store has no photographed items of its own yet. Without this, every template
+ * that shows a product/room grid falls back to itemPlaceholder()'s plain
+ * initial-letter box -- so a brand-new store's previews look unfinished even
+ * though the design itself is fully built. These are never sent: they only
+ * stand in until the merchant connects a catalog or edits the items by hand.
+ */
+function sampleItems(ind: ReturnType<typeof industryOf>, n: number): MarketingItem[] {
+  const photos = ind.food ? SAMPLE_ITEM_PHOTOS.food : ind.hospitality ? SAMPLE_ITEM_PHOTOS.hospitality : SAMPLE_ITEM_PHOTOS.general;
+  const names = ind.food ? SAMPLE_ITEM_NAMES.food : ind.hospitality ? SAMPLE_ITEM_NAMES.hospitality : SAMPLE_ITEM_NAMES.general;
+  return Array.from({ length: n }, (_, i) => ({
+    kind: "product" as const,
+    name: names[i % names.length],
+    imageUrl: GENERATED_IMAGE_ABS(photos[i % photos.length]),
+  }));
+}
 
 const DEFAULT_TEMPLATE_IMAGES: Partial<Record<MarketingTemplateId, string>> = {
+  flash: GENERATED_IMAGE("luxury-escape.jpg"),
+  welcome: GENERATED_IMAGE("warm-welcome.jpg"),
+  thankyou: GENERATED_IMAGE("warm-welcome.jpg"),
+  winback: GENERATED_IMAGE("weekend-getaway.jpg"),
+  holiday: GENERATED_IMAGE("luxury-getaway.jpg"),
+  restaurant: GENERATED_IMAGE("restaurant-great-moments.jpg"),
   ref_confirmation: GENERATED_IMAGE("hotel-welcome-newsletter.jpg"),
   ref_offer: GENERATED_IMAGE("weekend-getaway.jpg"),
   ref_catalog: GENERATED_IMAGE("luxury-hotel-newsletter.jpg"),
@@ -1271,8 +1310,12 @@ function defaultTemplateImage(template: MarketingTemplateId, fallback?: string |
 }
 
 /** Starter content for a design, tuned to the store's industry. Everything is editable. */
-export function defaultMarketingContent(template: MarketingTemplateId, brand: MarketingBrand, items: MarketingItem[]): MarketingDefaults {
+export function defaultMarketingContent(template: MarketingTemplateId, brand: MarketingBrand, rawItems: MarketingItem[]): MarketingDefaults {
   const ind = industryOf(brand);
+  // A brand-new or not-yet-photographed catalog would otherwise leave every
+  // item/product-grid template showing plain initial-letter placeholder boxes
+  // instead of a finished-looking design -- see sampleItems() above.
+  const items = rawItems.some((i) => i.imageUrl) ? rawItems : sampleItems(ind, 6);
   const url = `${APP_URL}/${brand.slug}`;
   const name = brand.name;
   const hero = brand.bannerUrl ?? items.find((i) => i.imageUrl)?.imageUrl ?? null;
@@ -1292,15 +1335,15 @@ export function defaultMarketingContent(template: MarketingTemplateId, brand: Ma
     case "promotion":
       return { ...base, subject: ind.hospitality ? "A special offer for your next stay" : "A special offer, just for you", previewText: "Available for a limited time.", eyebrow: ind.hospitality ? "Limited stay offer" : ind.food ? "This week only" : "Limited-time offer", offerLabel: "20% off", couponCode: "", offerNote: "Offer ends soon. Terms apply.", headline: ind.hospitality ? "Make your next stay feel special." : ind.beauty ? "A little self-care goes a long way." : "Something special is waiting for you.", body: ind.hospitality ? "Enjoy a memorable stay with a thoughtful offer from our team. Reserve while availability lasts." : ind.food ? "Treat yourself to something delicious. Have a look at this week's picks and enjoy a special offer." : "We put together a special offer for our community. Take a look before it ends.", ctaLabel: ind.hospitality ? "Book your stay" : "Shop the offer", items: items.slice(0, 2 + (items.length > 3 ? 2 : 0)), imageUrl: hero };
     case "flash":
-      return { ...base, subject: "Flash sale: ends soon", previewText: "Our biggest discount, for a short time only.", eyebrow: "Flash sale", offerLabel: "40% off", couponCode: "", offerNote: "Ends tonight at midnight", headline: "Prices this low don't last.", body: "For a short time only, enjoy a big saving on selected favourites. When it's gone, it's gone.", ctaLabel: buy, items: items.slice(0, 2), imageUrl: null };
+      return { ...base, subject: "Flash sale: ends soon", previewText: "Our biggest discount, for a short time only.", eyebrow: "Flash sale", offerLabel: "40% off", couponCode: "", offerNote: "Ends tonight at midnight", headline: "Prices this low don't last.", body: "For a short time only, enjoy a big saving on selected favourites. When it's gone, it's gone.", ctaLabel: buy, items: items.slice(0, 2) };
     case "coupon":
       return { ...base, subject: "Your discount code is inside", previewText: "Use it on your next order.", eyebrow: "A little thank you", headline: "Here's something for your next visit.", body: "Use the code below at checkout to enjoy a discount with us.", offerLabel: "15% off", couponCode: "THANKS15", offerNote: "Valid for a limited time. One use per customer.", ctaLabel: "Use my code", imageUrl: null };
     case "welcome":
-      return { ...base, subject: "Welcome to " + name, previewText: "Thanks for joining. Here's what to expect.", eyebrow: "Welcome to " + name, headline: "We're so glad you're here.", body: "Thanks for subscribing. You'll hear from us when there's something worth sharing: new arrivals, helpful ideas and the occasional treat.", ctaLabel: "Take a look around", highlights: ["News and new arrivals, first", "Helpful ideas, no spam", "Offers just for subscribers"], offerLabel: "", couponCode: "", offerNote: "", signature: "Warmly,\n" + team, imageUrl: null };
+      return { ...base, subject: "Welcome to " + name, previewText: "Thanks for joining. Here's what to expect.", eyebrow: "Welcome to " + name, headline: "We're so glad you're here.", body: "Thanks for subscribing. You'll hear from us when there's something worth sharing: new arrivals, helpful ideas and the occasional treat.", ctaLabel: "Take a look around", highlights: ["News and new arrivals, first", "Helpful ideas, no spam", "Offers just for subscribers"], offerLabel: "", couponCode: "", offerNote: "", signature: "Warmly,\n" + team };
     case "thankyou":
-      return { ...base, subject: "Thank you from " + name, previewText: "We really appreciate your support.", eyebrow: "Thank you", headline: "You made our day.", body: "Thank you for choosing " + name + ". Your support means a great deal to a small team, and we hope you love it.", ctaLabel: "Visit our website", highlights: ["We're preparing everything with care", "You'll get an update as soon as it's ready", "Reply to this email if you need anything"], items: items.slice(0, 3), signature: "With thanks,\n" + team, imageUrl: null };
+      return { ...base, subject: "Thank you from " + name, previewText: "We really appreciate your support.", eyebrow: "Thank you", headline: "You made our day.", body: "Thank you for choosing " + name + ". Your support means a great deal to a small team, and we hope you love it.", ctaLabel: "Visit our website", highlights: ["We're preparing everything with care", "You'll get an update as soon as it's ready", "Reply to this email if you need anything"], items: items.slice(0, 3), signature: "With thanks,\n" + team };
     case "winback":
-      return { ...base, subject: "We've missed you at " + name, previewText: "Come back and see what's new.", eyebrow: "It's been a while", headline: "We've missed you.", body: "A lot has happened since your last visit. Come back and see what's new. We saved something for you.", offerLabel: "10% off your next order", couponCode: "", offerNote: "", ctaLabel: "Come back and look around", items: items.slice(0, 3), signature: "Hope to see you soon,\n" + team, imageUrl: null };
+      return { ...base, subject: "We've missed you at " + name, previewText: "Come back and see what's new.", eyebrow: "It's been a while", headline: "We've missed you.", body: "A lot has happened since your last visit. Come back and see what's new. We saved something for you.", offerLabel: "10% off your next order", couponCode: "", offerNote: "", ctaLabel: "Come back and look around", items: items.slice(0, 3), signature: "Hope to see you soon,\n" + team };
     case "review":
       return { ...base, subject: "How did we do?", previewText: "Your feedback takes about a minute.", eyebrow: "", headline: "How was your experience?", body: "Your honest feedback helps us improve and helps others decide with confidence. It takes less than a minute.", ctaLabel: "Leave a review", secondaryCtaLabel: "Something not right? Tell us", secondaryCtaUrl: brand.contactEmail ? `mailto:${brand.contactEmail}` : url, items: [], signature: "Thank you,\n" + team, imageUrl: null };
     case "letter":
@@ -1308,7 +1351,7 @@ export function defaultMarketingContent(template: MarketingTemplateId, brand: Ma
     case "event":
       return { ...base, subject: "You're invited: " + name, previewText: "Save the date and reserve your spot.", eyebrow: "You're invited", headline: "Join us for something special.", body: "We'd love to see you there. Come along, meet the team and enjoy the day with us.", eventDate: "Saturday, 12 October", eventTime: "6:00 PM to 9:00 PM", eventLocation: name, highlights: ["Meet the team", "Refreshments provided", "Space is limited, so reserve early"], ctaLabel: "Reserve my spot", secondaryCtaLabel: "", imageUrl: hero };
     case "holiday":
-      return { ...base, subject: "Warm wishes from " + name, previewText: "Thank you for being part of our year.", eyebrow: "With gratitude", headline: "Warm wishes to you and yours.", body: "As the season arrives, we want to say thank you. It's been a pleasure serving you, and we look forward to what's ahead together.", ctaLabel: "See what's new", offerLabel: "", couponCode: "", offerNote: "", signature: "With warm wishes,\n" + team, imageUrl: null };
+      return { ...base, subject: "Warm wishes from " + name, previewText: "Thank you for being part of our year.", eyebrow: "With gratitude", headline: "Warm wishes to you and yours.", body: "As the season arrives, we want to say thank you. It's been a pleasure serving you, and we look forward to what's ahead together.", ctaLabel: "See what's new", offerLabel: "", couponCode: "", offerNote: "", signature: "With warm wishes,\n" + team };
     case "service": {
       const services = prefer(items, "service", 4);
       return { ...base, subject: ind.beauty ? "Ready for your next appointment?" : "Let's plan your next project", previewText: "See what we offer and book online.", eyebrow: ind.beauty ? "Your next appointment" : ind.professional ? "What we do" : "Featured service", headline: ind.beauty ? "Ready for your next appointment?" : "Let's make your next project easier.", body: ind.beauty ? "Explore our services, choose what fits you and book directly from our website." : brand.businessDescription ?? "Discover a service designed around your goals, your schedule and your experience.", ctaLabel: ind.beauty ? "Book now" : "Explore services", items: services, highlights: ["Book online in a minute", "Clear pricing, no surprises"], imageUrl: services.find((i) => i.imageUrl)?.imageUrl ?? brand.bannerUrl };
@@ -1316,7 +1359,7 @@ export function defaultMarketingContent(template: MarketingTemplateId, brand: Ma
     case "hospitality":
       return { ...base, subject: "Plan your stay with " + name, previewText: "Rooms, amenities and easy online booking.", eyebrow: "Welcome to " + name, headline: "Your stay, beautifully considered.", body: "See our rooms, amenities and availability, then reserve your preferred stay in a few clicks.", offerLabel: "", offerNote: "", ctaLabel: "View rooms and book", items: items.slice(0, 3), highlights: ["Easy online booking", "Friendly, attentive service"], imageUrl: hero };
     case "restaurant":
-      return { ...base, subject: "This week on the menu at " + name, previewText: "Fresh dishes, ready when you are.", eyebrow: "Chef's selection", headline: "On the menu this week", body: "A few favourites we're especially proud of right now. Come hungry.", ctaLabel: ind.food ? "Order or reserve" : "Order now", items: prefer(items, "product", 6), highlights: ["Open daily", "Delivery available"], imageUrl: null };
+      return { ...base, subject: "This week on the menu at " + name, previewText: "Fresh dishes, ready when you are.", eyebrow: "Chef's selection", headline: "On the menu this week", body: "A few favourites we're especially proud of right now. Come hungry.", ctaLabel: ind.food ? "Order or reserve" : "Order now", items: prefer(items, "product", 6), highlights: ["Open daily", "Delivery available"] };
     case "luxury": return { ...base, subject: "A private update from " + name, previewText: "A refined selection, curated for you.", eyebrow: "A considered selection", headline: "Something worth discovering.", body: brand.businessDescription ?? "Explore our latest offering, thoughtfully selected for our customers.", ctaLabel: buy, items: items.slice(0,4), highlights: ["Thoughtfully selected", "Personal service", "Designed around you"], imageUrl: hero };
     case "editorial": return { ...base, subject: "The latest from " + name, previewText: "A story, a few highlights and what's next.", eyebrow: "The journal", headline: "What we're excited about right now.", body: brand.businessDescription ?? "A closer look at what is new, useful and worth knowing from our team.", ctaLabel: "Read more", items: items.slice(0,3), highlights: ["What's new", "Behind the scenes", "Coming next"], imageUrl: hero };
     case "product_grid": return { ...base, subject: "Curated picks from " + name, previewText: "Explore our latest collection.", eyebrow: "Featured collection", headline: "Selected for you.", body: "Explore a curated selection of products and services from our latest collection.", ctaLabel: buy, items: items.slice(0,6), imageUrl: itemHero };
