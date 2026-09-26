@@ -302,5 +302,11 @@ export default auth(async (req) => {
 });
 
 export const config = {
-  matcher: ["/((?!api|_next/static|_next/image|favicon.ico).*)"],
+  // Public assets must never enter the store-slug rewrite pipeline.
+  // In particular, /marketing-generated/* is a real public directory under
+  // /public. Without this exclusion, a request such as
+  // /marketing-generated/restaurant-great-moments.jpg is interpreted as a
+  // store slug and rewritten to /store/marketing-generated/..., which causes
+  // Vercel to return a 307 redirect instead of the image.
+  matcher: ["/((?!api|_next/static|_next/image|favicon.ico|marketing-generated).*)"],
 };
