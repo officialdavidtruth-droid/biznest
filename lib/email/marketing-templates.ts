@@ -1343,17 +1343,27 @@ function sampleItems(ind: ReturnType<typeof industryOf>, n: number): MarketingIt
 }
 
 
-/** Starter content for a design, tuned to the store's industry. Everything is editable. */
-export function defaultMarketingContent(template: MarketingTemplateId, brand: MarketingBrand, rawItems: MarketingItem[]): MarketingDefaults {
+/**
+ * Starter content for a design, tuned to the store's industry. Everything is editable.
+ *
+ * `placeholderItems`: when the store has no photographed catalog items yet, fall
+ * back to the same demo photography the template gallery uses (see sampleItems()
+ * above) so the design has something to show instead of empty tiles. These
+ * placeholders land in the real, editable campaign data -- the merchant sees them
+ * pre-filled in the Products step and can replace or remove each one before
+ * sending. Left off (the default) for anything sent without a human editing
+ * pass first -- e.g. automation emails -- so a real customer never receives a
+ * stock photo standing in for an actual product.
+ */
+export function defaultMarketingContent(
+  template: MarketingTemplateId,
+  brand: MarketingBrand,
+  rawItems: MarketingItem[],
+  opts: { placeholderItems?: boolean } = {},
+): MarketingDefaults {
   const ind = industryOf(brand);
-  // A brand-new or not-yet-photographed catalog would otherwise leave every
-  // item/product-grid template showing plain initial-letter placeholder boxes
-  // instead of a finished-looking design -- see sampleItems() above.
-  // Real store content is the source of truth for the editable campaign.
-  // Demo photography/catalog cards are used only by the template gallery preview
-  // (see previewMarketingContent below) so sample assets never become a
-  // hardcoded, seemingly non-editable campaign payload.
-  const items = rawItems;
+  const realItems = rawItems.filter((i) => Boolean(i.name || i.imageUrl || i.price || i.description));
+  const items = realItems.length ? realItems : opts.placeholderItems ? sampleItems(ind, 9) : rawItems;
   const url = `${APP_URL}/${brand.slug}`;
   const name = brand.name;
   const hero = brand.bannerUrl ?? items.find((i) => i.imageUrl)?.imageUrl ?? null;
@@ -1421,18 +1431,13 @@ export function defaultMarketingContent(template: MarketingTemplateId, brand: Ma
 }
 
 /**
- * Content used only to render template thumbnails in the editor. It intentionally
- * contains polished demo photography so a template can be judged visually, but
- * this content is never used as the starting campaign data.
+ * Content used to render template thumbnails in the "Choose a design" gallery.
+ * Same placeholder-photography fallback as the editable defaults (see
+ * defaultMarketingContent above) so a thumbnail always matches what the
+ * merchant will actually see once they pick that design.
  */
 export function previewMarketingContent(template: MarketingTemplateId, brand: MarketingBrand, rawItems: MarketingItem[]): MarketingDefaults {
-  const ind = industryOf(brand);
-  const realItems = rawItems.filter((i) => Boolean(i.name || i.imageUrl || i.price || i.description));
-  const items = realItems.length ? realItems : sampleItems(ind, 6);
-  // Gallery thumbnails are allowed to use polished sample photography so the
-  // merchant can judge the layout. Selecting the design starts from real brand
-  // data; sample/demo assets are never copied into the editable campaign.
-  return defaultMarketingContent(template, brand, items);
+  return defaultMarketingContent(template, brand, rawItems, { placeholderItems: true });
 }
 
 /* -------------------------------------------------------------------------- */

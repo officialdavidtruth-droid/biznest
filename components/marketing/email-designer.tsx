@@ -67,7 +67,7 @@ export function useEmailDesign(brand: MarketingBrand, storeItems: MarketingItem[
     if (!curated.some((t) => t.id === template)) setTemplate(curated[0]?.id ?? "editorial");
   }, [curated, template]);
 
-  const defaults = useMemo(() => defaultMarketingContent(template, brand, storeItems), [template, brand, storeItems]);
+  const defaults = useMemo(() => defaultMarketingContent(template, brand, storeItems, { placeholderItems: true }), [template, brand, storeItems]);
   const defaultFeatured = useMemo<FeaturedItem[]>(
     () => defaults.items.map((item, i) => {
       const at = storeItems.indexOf(item);
@@ -699,7 +699,7 @@ export function EmailDesigner({
   const itemsStep = (
     <div className={ui.card}>
       <div className="mb-4 flex items-start justify-between gap-3">
-        <div><h2 className={ui.title}>Featured products &amp; services</h2><p className={`mt-1 ${ui.sub}`}>Only your real storefront items are loaded into the campaign. Every name, price, description and picture can be edited or removed. Up to {maxItems}.</p></div>
+        <div><h2 className={ui.title}>Featured products &amp; services</h2><p className={`mt-1 ${ui.sub}`}>Your real storefront items are loaded automatically. Haven&rsquo;t added any yet? We start you off with placeholder photos below — every name, price, description and picture can be edited or removed. Up to {maxItems}.</p></div>
         <ImageIcon className={`h-4 w-4 shrink-0 ${ui.accent}`} />
       </div>
       <div className="space-y-3">
