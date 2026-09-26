@@ -254,7 +254,7 @@ function previewifyEmailHtml(html: string): string {
   // against about:srcdoc. Point built-in assets at the current BizNest origin for
   // the live editor while keeping the exported/sent HTML unchanged.
   if (typeof window === "undefined") return html;
-  return html.replace(/src=(\"|')\/marketing-generated\//g, `src=$1${window.location.origin}/marketing-generated/`);
+  return html.replace(/(src\s*=\s*[\"'])\/marketing-generated\//gi, `$1${window.location.origin}/marketing-generated/`);
 }
 
 function darkenEmailPreview(html: string): string {
