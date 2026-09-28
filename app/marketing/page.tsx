@@ -5,12 +5,17 @@ import { getMarketingToolAccess } from "@/lib/access/marketing-tool";
 import { getMarketingFreeTrialSetting } from "@/lib/actions/site-settings";
 
 const features = [
-  ["CRM pipeline", "Capture leads, qualify prospects, track deals and follow every opportunity from one place."],
-  ["Customer 360", "Keep contact details, notes, lead history and follow-ups together so every conversation has context."],
-  ["Email marketing", "Create niche-aware campaigns with images, offers, discounts, CTAs and your own business identity."],
-  ["Automation", "Set a trigger once and let follow-up emails, lead reminders and re-engagement journeys run automatically."],
-  ["Sales & revenue", "Track won opportunities, pipeline value and revenue signals without opening a storefront."],
-  ["Niche-aware workspace", "Hotel, salon, real estate, professional service and other businesses get workflows and templates tailored to their niche."],
+  ["Find customers", "Discover prospects, build lead lists, enrich contacts and move new opportunities into your CRM."],
+  ["Smart audiences", "Create segments from customer data, engagement, purchase history, location and lead status."],
+  ["AI Marketing", "Turn a business goal into campaign ideas, copy, audiences, offers and follow-up actions."],
+  ["Campaigns", "Plan and launch email, SMS, WhatsApp and social campaigns from one campaign workflow."],
+  ["Content Studio", "Create social captions, email copy, promotional concepts, reels scripts and content calendars."],
+  ["Landing pages", "Build campaign pages and lead forms so every promotion has somewhere to convert traffic."],
+  ["Automated journeys", "Create welcome, nurture, abandoned-cart, win-back, birthday and lead follow-up journeys."],
+  ["Analytics & ROI", "Track delivery, engagement, conversions, revenue and campaign attribution instead of stopping at opens."],
+  ["Website growth", "Connect a website, verify ownership, extract brand/catalog data and identify conversion opportunities."],
+  ["Customer 360", "Keep customer identity, interactions, lead history, campaigns and follow-up context together."],
+  ["Business-aware workspace", "Hotels, restaurants, salons, services and other businesses get relevant workflows and content patterns."],
 ];
 
 export default async function MarketingLandingPage() {
@@ -47,7 +52,7 @@ export default async function MarketingLandingPage() {
           <div>
             <p className="text-sm font-bold uppercase tracking-[.24em] text-emerald-100">Standalone business growth platform</p>
             <h1 className="mt-5 text-5xl font-black leading-[1.02] sm:text-7xl">Market your business.<br /><span className="text-lime-200">Build relationships.</span></h1>
-            <p className="mt-7 max-w-2xl text-lg leading-8 text-emerald-50">BizNest Marketing gives businesses a CRM pipeline, Customer 360, email campaigns, automated follow-ups and sales tracking — without requiring a storefront.</p>
+            <p className="mt-7 max-w-2xl text-lg leading-8 text-emerald-50">BizNest Marketing is a standalone growth operating system for finding customers, creating campaigns, reaching them across channels, automating follow-up and measuring the revenue your marketing generates — without requiring a storefront.</p>
             <div className="mt-9 flex flex-wrap gap-3">
               <Link href="/marketing/signup" className="rounded-2xl bg-white px-6 py-3.5 font-extrabold text-emerald-800 shadow-xl hover:bg-emerald-50">Start your marketing workspace</Link>
               <a href="#pricing" className="rounded-2xl border border-white/30 bg-white/10 px-6 py-3.5 font-bold text-white backdrop-blur">See pricing</a>
@@ -67,9 +72,18 @@ export default async function MarketingLandingPage() {
       </section>
 
       <section id="features" className="mx-auto max-w-7xl px-5 py-20">
-        <div className="max-w-2xl"><p className="text-sm font-black uppercase tracking-widest text-emerald-700">Everything in one workspace</p><h2 className="mt-3 text-4xl font-black tracking-tight">The tools you need to turn attention into relationships and revenue.</h2></div>
+        <div className="max-w-2xl"><p className="text-sm font-black uppercase tracking-widest text-emerald-700">Everything in one workspace</p><h2 className="mt-3 text-4xl font-black tracking-tight">Everything you need to acquire, engage, convert and retain customers.</h2></div>
         <div className="mt-10 grid gap-4 md:grid-cols-2 lg:grid-cols-3">
           {features.map(([title, body], i) => <article key={title} className="rounded-3xl border border-emerald-100 bg-white p-7 shadow-sm"><span className="flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-50 font-black text-emerald-700">0{i+1}</span><h3 className="mt-5 text-lg font-black">{title}</h3><p className="mt-2 text-sm leading-6 text-slate-600">{body}</p></article>)}
+        </div>
+      </section>
+
+      <section className="bg-white py-20" id="growth-loop">
+        <div className="mx-auto max-w-7xl px-5">
+          <div className="max-w-3xl"><p className="text-sm font-black uppercase tracking-widest text-emerald-700">The growth loop</p><h2 className="mt-3 text-4xl font-black tracking-tight">Marketing should be a connected system, not a pile of tools.</h2><p className="mt-4 text-slate-600">BizNest connects acquisition, audience data, content, campaigns, automation and measurement so each action improves the next one.</p></div>
+          <div className="mt-10 grid gap-3 md:grid-cols-6">
+            {[['01','Acquire','Find leads and capture contacts'],['02','Understand','Segment customers and prospects'],['03','Create','Build campaigns and content'],['04','Reach','Email, SMS, WhatsApp and social'],['05','Convert','Landing pages and follow-up'],['06','Measure','Revenue, ROI and attribution']].map(([n,t,b])=><div key={n} className="rounded-3xl border border-emerald-100 bg-[#f7fbf8] p-5"><p className="text-xs font-black text-emerald-700">{n}</p><h3 className="mt-4 font-black">{t}</h3><p className="mt-2 text-sm leading-6 text-slate-600">{b}</p></div>)}
+          </div>
         </div>
       </section>
 

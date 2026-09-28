@@ -12,6 +12,7 @@ import { CrmWorkspace } from "@/components/dashboard/crm-workspace";
 import { getCrmDashboard } from "@/lib/actions/seo-crm";
 import { WebsiteConnector } from "@/components/marketing/website-connector";
 import { SignOutButton } from "@/components/forms/sign-out-button";
+import { MarketingCommandCenter } from "@/components/dashboard/marketing-command-center";
 
 export default async function StandaloneMarketingDashboard({
   searchParams,
@@ -68,6 +69,18 @@ export default async function StandaloneMarketingDashboard({
             </div>
           </div>
         </section>
+
+        <MarketingCommandCenter
+          slug={access.storeSlug}
+          businessName={displayName}
+          leads={pipeline.leads.length}
+          customers={pipeline.customerCount}
+          subscribers={activeSubscribers}
+          campaigns={campaigns.length}
+          automations={automations}
+          revenue={Number(pipeline.wonValue) || 0}
+          websiteConnected={websiteConnection?.status === "CONNECTED"}
+        />
 
         <WebsiteConnector initial={websiteConnection ? { ...websiteConnection, lastScannedAt: websiteConnection.lastScannedAt?.toISOString() ?? null } : null} items={websiteItems} />
 
