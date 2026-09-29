@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { LegacyTemplateHome } from "@/components/storefront/legacy-template-renderer";
 import { SignatureScreenshotHome } from "@/components/storefront/signature-screenshot-home";
+import { ExampleStorefront } from "@/components/storefront/example-store";
 import { getTemplateDefinition } from "@/lib/template-registry";
 
 export const revalidate = 3600;
@@ -56,9 +57,10 @@ const palette: Record<string,any> = {
 
 export default async function TemplatePreviewPage({ params }: { params: Promise<{ name:string }> }) {
   const name = decodeURIComponent((await params).name);
-  if (!getTemplateDefinition(name) && !legacyNames.has(name) && !signatureMap[name] && name !== "Grandeur — Fine Dining Restaurant" && name !== "Veloura — Superior Luxury Hotel" && name !== "TasteHouse — Food Delivery") notFound();
-  const p:any = { store, slug:"__biznest-template-preview", catalogItems:items, navCategories:categories, goodReviews:[], avgRating:4.8, completedOrders:128, trustScore:null, trustChecklist:null, social:{} };
+  if (!getTemplateDefinition(name) && !legacyNames.has(name) && !signatureMap[name] && name !== "Example — Modern Electronics Store" && name !== "Grandeur — Fine Dining Restaurant" && name !== "Veloura — Superior Luxury Hotel" && name !== "TasteHouse — Food Delivery") notFound();
+  const p:any = { store, slug:"__biznest-template-preview", catalogItems:items, items, navCategories:categories, goodReviews:[], reviews:[], avgRating:4.8, completedOrders:128, trustScore:null, trustChecklist:null, social:{} };
   if (legacyNames.has(name)) return <LegacyTemplateHome name={name} p={p}/>;
+  if (name === "Example — Modern Electronics Store") return <ExampleStorefront store={store} slug={p.slug} items={items as any} mode="home"/>;
   if (name === "Grandeur — Fine Dining Restaurant") return <SignatureScreenshotHome {...p} mode="flavora-restaurant" {...palette["flavora-restaurant"]}/>;
   if (name === "Veloura — Superior Luxury Hotel") return <SignatureScreenshotHome {...p} mode="grand-vere" {...palette["grand-vere"]}/>;
   if (name === "TasteHouse — Food Delivery") return <SignatureScreenshotHome {...p} mode="tastehouse" accent="#F26B21" bg="#FFFBF5" ink="#241608" card="#FFFFFF" muted="#7A6A5D" border="#F1E4D6" accentSoft="#FDE3D3" headlineFont="Poppins, sans-serif" font="Inter, sans-serif"/>;

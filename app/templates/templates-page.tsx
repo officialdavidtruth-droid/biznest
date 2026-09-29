@@ -20,12 +20,9 @@ export default async function TemplatesPage({ params }: { params: Promise<{ slug
   const templates = TEMPLATE_DEFINITIONS.map((definition) => {
     const existing = byName.get(definition.name);
     if (existing) return existing;
-    const tierRank = definition.name === EXAMPLE_TEMPLATE_NAME ? EXAMPLE_THEME.tierRank
-      : definition.name === TASTEHOUSE_TEMPLATE_NAME ? TASTEHOUSE_THEME.tierRank
-      : definition.name === HOTEL_TEMPLATE_NAME ? HOTEL_THEME.tierRank
-      : GRANDEUR_THEME.tierRank;
+    const tierRank = definition.theme.tierRank ?? 1;
     return {
-      id: definition.name === GRANDEUR_TEMPLATE_NAME ? `__grandeur__:${definition.name}` : definition.name === HOTEL_TEMPLATE_NAME ? `__theluso__:${definition.name}` : definition.name === TASTEHOUSE_TEMPLATE_NAME ? `__tastehouse__:${definition.name}` : `__example__:${definition.name}`,
+      id: definition.aliases[0] ? `${definition.aliases[0]}:${definition.name}` : definition.id,
       name: definition.name,
       category: definition.category,
       tierRank,

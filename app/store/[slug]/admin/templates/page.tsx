@@ -22,7 +22,7 @@ export default async function TemplatesPage({ params }: { params: Promise<{ slug
     const existing = byName.get(definition.name);
     if (existing) return existing;
     return {
-      id: definition.name === GRANDEUR_TEMPLATE_NAME ? `__grandeur__:${definition.name}` : definition.name === HOTEL_TEMPLATE_NAME ? `__theluso__:${definition.name}` : definition.name === TASTEHOUSE_TEMPLATE_NAME ? `__tastehouse__:${definition.name}` : `__example__:${definition.name}`,
+      id: definition.aliases[0] ? `${definition.aliases[0]}:${definition.name}` : definition.id,
       name: definition.name,
       category: definition.category,
       tierRank: (definition.theme as any).tierRank ?? 1,
