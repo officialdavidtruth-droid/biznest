@@ -15,6 +15,8 @@ import { getTemplateDefinition } from "@/lib/template-registry";
 import { getCanonicalBusinessType, isHotelBusiness, isRestaurantBusiness } from "@/lib/business-identity";
 import { resolveStoreTheme } from "@/lib/template-themes";
 import { templateThemeToBuilderConfig } from "@/lib/template-builder-config";
+import { LegacyTemplateHome } from "@/components/storefront/legacy-template-renderer";
+import { SignatureScreenshotHome } from "@/components/storefront/signature-screenshot-home";
 
 type CatalogItem={id:string;kind:"product"|"service";name:string;description:string|null;price:number;currency:string;image:string|null;categoryName:string|null;type:string;rentalUnit:string|null;isBookable:boolean;hasVariants?:boolean};
 
@@ -26,6 +28,46 @@ export async function renderStorefront(slug:string){
  const catalogItems:CatalogItem[]=[...store.products.map(p=>({id:p.id,kind:"product" as const,name:p.name,description:null,price:Number(p.price),currency:p.currency,image:p.images[0]??null,categoryName:p.category?.name??null,type:p.type,rentalUnit:p.rentalPeriodUnit,isBookable:false,hasVariants:p.hasVariants})),...store.services.map(s=>({id:s.id,kind:"service" as const,name:s.name,description:s.description,price:Number(s.price),currency:s.currency,image:s.images[0]??null,categoryName:s.category?.name??null,type:"SERVICE",rentalUnit:null,isBookable:s.isBookable}))];
  const businessType=getCanonicalBusinessType({businessCategory:store.business?.category,storeBusinessType:store.businessType});
  const template=getTemplateDefinition(store.template?.name);
+ const templateName=store.template?.name ?? "";
+ const navCategories:any[]=[];
+ const goodReviews=(store.reviews??[]).filter((r:any)=>r.rating>=4&&r.comment);
+ const legacyNames=new Set(["Fresh & Co.","Heenzy Sneaker Co.","Heenzy — Boutique Rose","Nova Studio — Noir","Nova Studio — Ivory Minimal","Violet","Violet — Sunset","Premium Marketplace","HomeVista","rRW Premium Rental","Marketplace Hub","Arcova Architecture","Rivora Fresh","JuiceLife","Fabtex"]);
+ if(legacyNames.has(templateName)) return <LegacyTemplateHome name={templateName} p={{store,slug,catalogItems,navCategories,goodReviews,avgRating:store.business?.avgRating??null,completedOrders:0,trustScore:null,trustChecklist:null,social:{}}}/>;
+ if(templateName==="Grandeur — Fine Dining Restaurant") return <SignatureScreenshotHome store={store} slug={slug} items={catalogItems as any} reviews={store.reviews} avgRating={store.business?.avgRating??null} completedOrders={0} social={{}} mode="flavora-restaurant" accent="#F39A0B" bg="#100A06" ink="#FFF7EF" card="#17100C" muted="#B7A8A1" border="#352A29" accentSoft="#8C4722" headlineFont="Georgia, serif" font="Inter, sans-serif"/>;
+ if(templateName==="Veloura — Superior Luxury Hotel") return <SignatureScreenshotHome store={store} slug={slug} items={catalogItems as any} reviews={store.reviews} avgRating={store.business?.avgRating??null} completedOrders={0} social={{}} mode="grand-vere" accent="#0E5B45" bg="#FFFFFF" ink="#15392C" card="#FFFFFF" muted="#777" border="#E6E1D7" accentSoft="#C8BEA7" headlineFont="Georgia, serif" font="Inter, sans-serif"/>;
+ if(templateName==="TasteHouse — Food Delivery") return <SignatureScreenshotHome store={store} slug={slug} items={catalogItems as any} reviews={store.reviews} avgRating={store.business?.avgRating??null} completedOrders={0} social={{}} mode="tastehouse" accent="#F26B21" bg="#FFFBF5" ink="#241608" card="#FFFFFF" muted="#7A6A5D" border="#F1E4D6" accentSoft="#FDE3D3" headlineFont="Poppins, sans-serif" font="Inter, sans-serif"/>;
+ const signatureModeByName: Record<string,string> = {
+  "Electra — Smart Commerce":"marketplace",
+  "Atelier — Modern Fashion":"fabtex",
+  "Kinetic — Sneaker Drop":"heenzy",
+  "Bloom — Beauty Boutique":"belora",
+  "Haven — Home & Furniture":"arcova",
+  "Harvest — Grocery Market":"rivora",
+  "Maison — Hotel & Stay":"grand-vere",
+  "Grand — Hotel & Hospitality":"great-treasure",
+  "Ember — Restaurant":"flavora-restaurant",
+  "Muse — Salon & Beauty":"belora",
+  "Frame — Photography Studio":"nova",
+  "North — Creative Agency":"arcova",
+  "Pure — Cleaning Services":"fresh",
+  "Forge — Construction":"arcova",
+ };
+ const screenshotModes = new Set(["great-treasure","grand-vere","belora","tastehouse","flavora-kitchen","flavora-restaurant"]);
+ const mappedSignature = signatureModeByName[templateName];
+ if(mappedSignature && screenshotModes.has(mappedSignature)) {
+   const palette:Record<string,any> = {
+    "great-treasure":{accent:"#E7A928",bg:"#07100D",ink:"#F7F3EA",card:"#101815",muted:"#B9B6AF",border:"#2C362F",accentSoft:"#6D5420",headlineFont:"Georgia, serif",font:"Inter, sans-serif"},
+    "grand-vere":{accent:"#0E5B45",bg:"#FFFFFF",ink:"#15392C",card:"#FFFFFF",muted:"#777",border:"#E6E1D7",accentSoft:"#C8BEA7",headlineFont:"Georgia, serif",font:"Inter, sans-serif"},
+    "belora":{accent:"#7B4BC0",bg:"#F1EAF8",ink:"#2B2430",card:"#FFFFFF",muted:"#837B89",border:"#E8E0EF",accentSoft:"#D5B7EA",headlineFont:"Georgia, serif",font:"Inter, sans-serif"},
+    "flavora-restaurant":{accent:"#F39A0B",bg:"#100A06",ink:"#FFF7EF",card:"#17100C",muted:"#B7A8A1",border:"#352A29",accentSoft:"#8C4722",headlineFont:"Georgia, serif",font:"Inter, sans-serif"},
+   };
+   if(palette[mappedSignature]) return <SignatureScreenshotHome store={store} slug={slug} items={catalogItems as any} reviews={store.reviews} avgRating={store.business?.avgRating??null} completedOrders={0} social={{}} mode={mappedSignature} {...palette[mappedSignature]}/>;
+ }
+ if(mappedSignature && ["marketplace","fabtex","heenzy","arcova","rivora","nova","fresh"].includes(mappedSignature)) {
+   const target = mappedSignature === "heenzy" ? "Heenzy Sneaker Co." : mappedSignature === "fabtex" ? "Fabtex" : mappedSignature === "marketplace" ? "Marketplace Hub" : mappedSignature === "arcova" ? "Arcova Architecture" : mappedSignature === "rivora" ? "Rivora Fresh" : mappedSignature === "nova" ? "Nova Studio — Noir" : "Fresh & Co.";
+   return <LegacyTemplateHome name={target} p={{store,slug,catalogItems,navCategories,goodReviews,avgRating:store.business?.avgRating??null,completedOrders:0,trustScore:null,trustChecklist:null,social:{}}}/>;
+ }
+
 
  // Preserve the existing specialized compatibility templates for stores that
  // still use them. Newly restored templates use the hardened Builder renderer.
