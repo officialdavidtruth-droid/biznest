@@ -1,6 +1,6 @@
 import type React from "react";
 import { CartLink } from "@/components/storefront/cart-link";
-import { PREMIUM } from "@/lib/template-themes";
+import { PREMIUM, PREMIUM_THEME } from "@/lib/template-themes";
 import { subscribeToNewsletterForm } from "@/lib/actions/newsletter";
 import { CategoryNav } from "@/components/storefront/category-nav";
 import { Reveal } from "@/components/storefront/reveal";
@@ -99,13 +99,13 @@ export function PremiumStorefront({
           }}
         >
           <div style={{ position: "absolute", left: 25, top: 30, zIndex: 2, maxWidth: 300 }}>
-            <small style={{ fontSize: 10, letterSpacing: 1, opacity: 0.85 }}>{PREMIUM.eyebrow}</small>
+            <small style={{ fontSize: 10, letterSpacing: 1, opacity: 0.85 }}>{PREMIUM_THEME.eyebrow}</small>
             <h1 style={{ fontSize: 22, lineHeight: 1.1, margin: "7px 0" }}>{store.name}</h1>
-            <p style={{ fontSize: 10, maxWidth: 260 }}>{store.business.description || PREMIUM.sub}</p>
+            <p style={{ fontSize: 10, maxWidth: 260 }}>{store.business.description || PREMIUM_THEME.sub}</p>
             {catalogItems.length > 0 && (
               <div style={{ marginTop: 10 }}>
                 <a href="#flash" style={{ display: "inline-block", background: "#fff", color: "#5d4033", borderRadius: 18, padding: "8px 13px", fontWeight: 800, textDecoration: "none", fontSize: 11 }}>
-                  {PREMIUM.cta}
+                  {PREMIUM_THEME.cta}
                 </a>
               </div>
             )}
@@ -115,7 +115,7 @@ export function PremiumStorefront({
         <div style={{ height: 184, borderRadius: 9, padding: 15, background: `linear-gradient(145deg,${PREMIUM.side1},${PREMIUM.side2})`, color: "#fff" }}>
           <small style={{ fontSize: 10, opacity: 0.85 }}>FEATURED</small>
           {avgRating != null ? (
-            <h3 style={{ fontSize: 13, marginTop: 45 }}>{avgRating.toFixed(1)} / 5 — {store.reviews?.length ?? goodReviews.length}+ reviews</h3>
+            <h3 style={{ fontSize: 13, marginTop: 45 }}>{avgRating.toFixed(1)} / 5 — {goodReviews.length}+ reviews</h3>
           ) : (
             <h3 style={{ fontSize: 13, marginTop: 45 }}>{store.name}</h3>
           )}
