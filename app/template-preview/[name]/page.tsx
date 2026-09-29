@@ -30,7 +30,8 @@ export default async function TemplatePreviewPage({params}:{params:Promise<{name
  if(definition.renderer==="hotel") return <ThelusoHotel store={{id:"preview-hotel",...baseStore,name:"THELUSO Hotel & Suites",bannerUrl:DEFAULT_HOTEL_CONTENT.rooms[0].image,address:"Abuja, Nigeria"} as any} slug={slug} content={DEFAULT_HOTEL_CONTENT}/>;
  if(definition.renderer==="tastehouse") return <TasteHouseHome store={{...baseStore,name:"TasteHouse",business:{...baseStore.business,description:"Good food, good mood.",category:"Restaurant"}} as any} slug={slug} items={items} content={await getTasteHouseContent(slug)}/>;
  if(definition.renderer==="example") return <ExampleStorefront store={{...baseStore,name:"Example Electronics",business:{...baseStore.business,category:"Electronics"}} as any} slug={slug} items={items} mode="home" content={await getExampleContent(slug) as any}/>;
- const theme=resolveStoreTheme(definition.category,baseStore.name,null,null,definition.name);
- const config=templateThemeToBuilderConfig(theme,baseStore.name,baseStore.business.description,baseStore.bannerUrl);
- return <BuilderStorefront store={baseStore as any} config={config} catalogItems={items} reviews={[]} avgRating={4.8} completedOrders={128}/>;
+ const previewStore={...baseStore,name:definition.name.split(" — ")[0]};
+ const theme=resolveStoreTheme(definition.category,previewStore.name,null,null,definition.name);
+ const config=templateThemeToBuilderConfig(theme,previewStore.name,previewStore.business.description,previewStore.bannerUrl);
+ return <BuilderStorefront store={previewStore as any} config={config} catalogItems={items} reviews={[]} avgRating={4.8} completedOrders={128}/>;
 }

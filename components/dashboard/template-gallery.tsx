@@ -172,6 +172,7 @@ export function TemplateGallery({
                   src={`/template-preview/${encodeURIComponent(t.name)}`}
                   className="pointer-events-none absolute left-0 top-0 h-[300%] w-[300%] origin-top-left scale-[.333333] border-0 bg-white"
                   loading="lazy"
+                  scrolling="no"
                   tabIndex={-1}
                 />
 
@@ -183,7 +184,7 @@ export function TemplateGallery({
                   className={`absolute inset-0 z-10 ${isLocked ? "cursor-not-allowed" : "cursor-pointer"}`}
                 />
 
-                <div className="pointer-events-none absolute inset-0 z-20 bg-gradient-to-t from-black/45 via-transparent to-transparent" />
+                <div className="pointer-events-none absolute inset-0 z-20 bg-gradient-to-t from-black/60 via-transparent via-30% to-transparent" />
 
                 <div className="pointer-events-none absolute right-3 top-3 z-30 flex items-center gap-1">
                   {isLocked ? (

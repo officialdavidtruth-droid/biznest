@@ -824,6 +824,8 @@ export function resolveStoreTheme(
     ? EXAMPLE_THEME
     : templateName === GRANDEUR_TEMPLATE_NAME
     ? GRANDEUR_THEME
+    : isSignatureTemplate(templateName)
+    ? getSignatureTheme(templateName)
     : FRESH_THEME;
   return {
     ...base,
