@@ -104,8 +104,13 @@ export type GeneratedTemplate = TemplateTheme & {
 // Backward-compatible templates retained for existing stores.
 import { HOTEL_TEMPLATE_NAME } from "./hotel-content";
 import { THELUSO_THEME } from "./hotel-theme";
-import { TASTEHOUSE_TEMPLATE_NAME, TASTEHOUSE_THEME } from "./tastehouse-content";
+import { TASTEHOUSE_TEMPLATE_NAME } from "./tastehouse-content";
 import { EXAMPLE_TEMPLATE_NAME } from "./example-content";
+
+// Re-exported: template-registry.ts, template-compatibility.ts, prisma/seed.ts
+// and several storefront pages import these template names from this module
+// rather than from each template's own content file.
+export { HOTEL_TEMPLATE_NAME, TASTEHOUSE_TEMPLATE_NAME, EXAMPLE_TEMPLATE_NAME };
 
 export const HOTEL_THEME = THELUSO_THEME as unknown as GeneratedTemplate;
 export const GRANDEUR_TEMPLATE_NAME = "Grandeur — Fine Dining Restaurant";
@@ -115,6 +120,13 @@ export const GRANDEUR_THEME: GeneratedTemplate = {
   eyebrow: "FINE DINING • GREAT COMPANY", headline: "Exceptional Taste, Memorable Moments", sub: "A premium restaurant experience built around dining, reservations, ordering and a complete customer journey.",
   cta: "View Our Menu", layout: "list", heroStyle: "fullbleed", catalogLabel: "Popular Dishes", density: "relaxed", surfaceDark: "#0D0A07",
   sections: ["hero","categories","catalog","features","about","gallery","testimonials","contact","newsletter"],
+};
+export const TASTEHOUSE_THEME: GeneratedTemplate = {
+  variationName: TASTEHOUSE_TEMPLATE_NAME, tierRank: 2, bg: "#FFFBF5", ink: "#241608", card: "#FFFFFF", accent: "#E85D2C", accentSoft: "#FDE3D3",
+  muted: "#7A6A5D", border: "#F1E4D6", font: "'Inter', sans-serif", headlineFont: "'Poppins', sans-serif", radius: "16px",
+  eyebrow: "FAST • FRESH • DELIVERED", headline: "Delicious Food, Made For You.", sub: "Explore this business's menu, current offers and place your order for delivery or pickup.",
+  cta: "Order Now", layout: "grid", heroStyle: "split", catalogLabel: "Popular Menu Items", density: "relaxed", surfaceDark: "#1A0F06",
+  sections: ["hero","categories","deal","catalog","features","testimonials","contact","newsletter"],
 };
 export const EXAMPLE_THEME: GeneratedTemplate = { variationName: EXAMPLE_TEMPLATE_NAME, tierRank: 2, bg: "#ffffff", ink: "#11131a", card: "#ffffff", accent: "#4b19ff", accentSoft: "#eeeaff", muted: "#697084", border: "#e8e7ef", font: "Inter, sans-serif", headlineFont: "Inter, sans-serif", radius: "12px", eyebrow: "NEW LAUNCH", headline: "Future Technology Today.", sub: "Explore the latest smart devices and innovations.", cta: "Shop Now", layout: "grid", heroStyle: "fullbleed", catalogLabel: "Featured Products", density: "relaxed", surfaceDark: "#05050a", sections: ["hero","categories","deal","catalog","features","newsletter"] };
 
