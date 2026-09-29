@@ -1,7 +1,7 @@
 import type React from "react";
 import { CartLink } from "@/components/storefront/cart-link";
 import { JUICELIFE } from "@/lib/template-themes";
-import { subscribeToNewsletter } from "@/lib/actions/newsletter";
+import { subscribeToNewsletterForm } from "@/lib/actions/newsletter";
 import { CategoryNav } from "@/components/storefront/category-nav";
 import { Reveal } from "@/components/storefront/reveal";
 import type { CategoryTreeNode } from "@/lib/storefront-categories";
@@ -209,7 +209,7 @@ export function JuiceLifeStorefront({
           <h2 style={{ margin: "0 0 5px", fontSize: 22 }}>Join the <em style={{ fontFamily: "cursive", color: JUICELIFE.orange, fontStyle: "normal" }}>{store.name}</em> family</h2>
           <p style={{ margin: 0, fontSize: 10, color: "#c7ddc9" }}>Subscribe to get exclusive offers, health tips and updates.</p>
         </div>
-        <form action={subscribeToNewsletter} style={{ display: "flex", width: "min(100%, 420px)" }}>
+        <form action={subscribeToNewsletterForm} style={{ display: "flex", width: "min(100%, 420px)" }}>
           <input type="hidden" name="slug" value={slug} />
           <input type="email" name="email" required placeholder="Enter your email" style={{ flex: 1, border: 0, padding: "13px 16px", borderRadius: "22px 0 0 22px" }} />
           <button type="submit" style={{ border: 0, background: JUICELIFE.orange, color: "#fff", padding: "0 22px", borderRadius: "0 22px 22px 0", fontWeight: 700 }}>Subscribe</button>

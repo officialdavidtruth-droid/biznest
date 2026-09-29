@@ -1,7 +1,7 @@
 import type React from "react";
 import { CartLink } from "@/components/storefront/cart-link";
 import { HOMEVISTA, HOMEVISTA_THEME } from "@/lib/template-themes";
-import { subscribeToNewsletter } from "@/lib/actions/newsletter";
+import { subscribeToNewsletterForm } from "@/lib/actions/newsletter";
 import { CategoryNav } from "@/components/storefront/category-nav";
 import { Reveal } from "@/components/storefront/reveal";
 import type { CategoryTreeNode } from "@/lib/storefront-categories";
@@ -213,7 +213,7 @@ export function HomeVistaStorefront({
             <h2 style={{ fontSize: 18, margin: "0 0 5px" }}>Get Exclusive Updates</h2>
             <p style={{ fontSize: 9, color: "#c4d3d0" }}>Subscribe for new listings and special offers from {store.name}.</p>
           </div>
-          <form action={subscribeToNewsletter} style={{ marginLeft: "auto", display: "flex", background: "#fff", borderRadius: 6, overflow: "hidden", width: 360 }}>
+          <form action={subscribeToNewsletterForm} style={{ marginLeft: "auto", display: "flex", background: "#fff", borderRadius: 6, overflow: "hidden", width: 360 }}>
             <input type="hidden" name="slug" value={slug} />
             <input name="email" type="email" required placeholder="Enter your email address" style={{ border: 0, outline: 0, padding: 12, flex: 1, fontSize: 9 }} />
             <button type="submit" style={{ border: 0, background: HOMEVISTA.accent, color: "#fff", padding: "0 16px", fontSize: 10, fontWeight: 800, cursor: "pointer" }}>Subscribe</button>

@@ -27,3 +27,14 @@ export async function subscribeToNewsletter(storeSlug: string, formData: FormDat
 
   return { success: true, data: undefined };
 }
+
+/**
+ * Form-action wrapper for plain <form action={...}> usage. React form actions
+ * receive only (formData) and must return void, so the store slug comes from a
+ * hidden <input name="slug"> instead of a bound first argument.
+ */
+export async function subscribeToNewsletterForm(formData: FormData): Promise<void> {
+  const slug = String(formData.get("slug") ?? "").trim();
+  if (!slug) return;
+  await subscribeToNewsletter(slug, formData);
+}

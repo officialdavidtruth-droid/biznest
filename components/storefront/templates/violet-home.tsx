@@ -1,7 +1,7 @@
 import type React from "react";
 import { CartLink } from "@/components/storefront/cart-link";
 import { VIOLET } from "@/lib/template-themes";
-import { subscribeToNewsletter } from "@/lib/actions/newsletter";
+import { subscribeToNewsletterForm } from "@/lib/actions/newsletter";
 import { CategoryNav } from "@/components/storefront/category-nav";
 import { Reveal } from "@/components/storefront/reveal";
 import type { CategoryTreeNode } from "@/lib/storefront-categories";
@@ -176,7 +176,7 @@ export function VioletStorefront({
         <div style={{ ...wrap, textAlign: "center" }}>
           <h3 style={{ fontSize: 20, marginBottom: 8 }}>Stay in the loop</h3>
           <p style={{ fontSize: 13, opacity: 0.75, marginBottom: 18 }}>New arrivals and offers from {store.name}, straight to your inbox.</p>
-          <form action={subscribeToNewsletter} style={{ display: "flex", gap: 10, justifyContent: "center", flexWrap: "wrap" }}>
+          <form action={subscribeToNewsletterForm} style={{ display: "flex", gap: 10, justifyContent: "center", flexWrap: "wrap" }}>
             <input type="hidden" name="slug" value={slug} />
             <input name="email" type="email" required placeholder="you@example.com" style={{ borderRadius: 25, border: 0, padding: "13px 18px", minWidth: 260, fontSize: 13 }} />
             <button type="submit" style={{ background: VIOLET.accent, color: "#fff", border: 0, borderRadius: 25, padding: "13px 21px", fontWeight: 800, cursor: "pointer" }}>Subscribe</button>

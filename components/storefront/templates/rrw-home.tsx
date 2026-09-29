@@ -1,7 +1,7 @@
 import type React from "react";
 import { CartLink } from "@/components/storefront/cart-link";
 import { RRW } from "@/lib/template-themes";
-import { subscribeToNewsletter } from "@/lib/actions/newsletter";
+import { subscribeToNewsletterForm } from "@/lib/actions/newsletter";
 import { CategoryNav } from "@/components/storefront/category-nav";
 import { Reveal } from "@/components/storefront/reveal";
 import type { CategoryTreeNode } from "@/lib/storefront-categories";
@@ -202,7 +202,7 @@ export function RrwStorefront({
         <div>
           <h4 style={{ margin: "0 0 12px", color: "#111" }}>{store.name}</h4>
           <p>{store.business.description || "Premium rental, made simple."}</p>
-          <form action={subscribeToNewsletter} style={{ display: "flex", border: "1px solid #ddd", borderRadius: 18, overflow: "hidden", width: 160, marginTop: 10 }}>
+          <form action={subscribeToNewsletterForm} style={{ display: "flex", border: "1px solid #ddd", borderRadius: 18, overflow: "hidden", width: 160, marginTop: 10 }}>
             <input type="hidden" name="slug" value={slug} />
             <input name="email" type="email" required placeholder="Email" style={{ border: 0, padding: 8, outline: 0, width: 130, fontSize: 8 }} />
             <button type="submit" style={{ border: 0, background: "#111", color: "#fff", width: 30, cursor: "pointer" }}>→</button>
