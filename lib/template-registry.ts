@@ -51,9 +51,16 @@ const compatibility: TemplateDefinition[] = [
 export const TEMPLATE_REGISTRY: readonly TemplateDefinition[] = [...compatibility, ...publicLegacy, ...publicSignature];
 export const PUBLIC_TEMPLATE_REGISTRY: readonly TemplateDefinition[] = [...publicLegacy, ...publicSignature];
 
+const normalizeTemplateKey=(v:string)=>v.normalize("NFKC").toLowerCase().replace(/[\u2010-\u2015\u2212]/g,"-").replace(/\s+/g," ").trim();
+function safeDecode(v:string){try{return decodeURIComponent(v);}catch{return v;}}
+
 export function getTemplateDefinition(value:string|null|undefined){
   const raw=String(value??""); if(!raw)return null;
-  return TEMPLATE_REGISTRY.find(t=>t.id===raw||t.name===raw||t.aliases.some(a=>raw===a||raw.startsWith(`${a}:`)))??null;
+  const exact=TEMPLATE_REGISTRY.find(t=>t.id===raw||t.name===raw||t.aliases.some(a=>raw===a||raw.startsWith(`${a}:`)));
+  if(exact)return exact;
+  // Tolerate URL-encoded input and case/whitespace/dash-style differences.
+  const key=normalizeTemplateKey(safeDecode(raw));
+  return TEMPLATE_REGISTRY.find(t=>normalizeTemplateKey(t.name)===key||normalizeTemplateKey(t.id)===key)??null;
 }
 export function isTemplateCompatibleWithBusiness(t:TemplateDefinition,businessType:string|null|undefined){
   if(!businessType)return true;

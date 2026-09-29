@@ -18,7 +18,12 @@ const items=["Featured Collection","Signature Product","Everyday Essential","Pre
 export function generateStaticParams(){return PUBLIC_TEMPLATE_REGISTRY.map(t=>({name:t.name}));}
 
 export default async function TemplatePreviewPage({params}:{params:Promise<{name:string}>}){
- const {name}=await params;
+ const {name:rawName}=await params;
+ // Next hands dynamic params back still percent-encoded for names containing
+ // spaces / non-ASCII (e.g. "Nova%20Studio%20%E2%80%94%20Noir"). Callers use
+ // encodeURIComponent(t.name), so decode before matching against the registry
+ // — without this every template with a space or em dash 404s.
+ let name=rawName; try{name=decodeURIComponent(rawName);}catch{}
  const definition=getTemplateDefinition(name);
  if(!definition)notFound();
  if(definition.renderer==="grandeur") return <GrandeurHome store={{...baseStore,name:"The Grandeur Restaurant",business:{...baseStore.business,description:"Fine dining. Greater moments.",category:"Restaurant"}} as any} slug={slug} items={items} reviews={[]}/>;
