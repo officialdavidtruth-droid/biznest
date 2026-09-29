@@ -6,6 +6,7 @@ import { AccountLink } from "@/components/storefront/account-link";
 import type { TemplateTheme } from "@/lib/template-themes";
 import { resolveBusinessMode } from "@/lib/business-experience";
 import { isHotelBusiness } from "@/lib/business-identity";
+import { getProfessionalServiceSubNicheByName } from "@/lib/professional-services";
 import { NewsletterInlineForm } from "@/components/storefront/newsletter-inline-form";
 
 type Item = { id:string; kind:"product"|"service"; name:string; description:string|null; price:number; currency:string; image:string|null; categoryName:string|null; type:string; rentalUnit:string|null; isBookable:boolean };
@@ -37,7 +38,7 @@ function secondaryCta(store:any, slug:string){
 }
 
 function modeFor(store:any, theme:TemplateTheme){
-  const raw = `${theme.professionalMode || ""} ${store.business?.category || ""} ${store.business?.businessSubcategory || ""}`.toLowerCase();
+  const raw = `${store.business?.category || ""} ${store.business?.businessSubcategory || ""}`.toLowerCase();
   return raw.includes("print") || raw.includes("graphic") || raw.includes("brand") || raw.includes("marketing") || raw.includes("creative") || raw.includes("photograph")
     ? "creative" : "business";
 }
@@ -48,7 +49,11 @@ function modeFor(store:any, theme:TemplateTheme){
 // footer, colors and corner radius.
 type Archetype = "editorial"|"corporate"|"technical"|"built";
 function archetypeFor(store:any, theme:TemplateTheme):Archetype{
-  const pm = theme.professionalMode;
+  // businessSubcategory stores the subniche's display name (e.g. "Web &
+  // Software Development"), not its slug id -- look it up the same way
+  // app/store/[slug]/start-project/page.tsx does to get the id these
+  // comparisons expect (e.g. "web-development").
+  const pm = getProfessionalServiceSubNicheByName(store.business?.businessSubcategory)?.id;
   if (pm === "web-development" || pm === "it-services") return "technical";
   if (pm === "architecture" || pm === "engineering" || pm === "construction-company") return "built";
   if (pm === "graphic-design" || pm === "branding-agency" || pm === "marketing-agency" || pm === "photography-studio") return "editorial";
