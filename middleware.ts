@@ -279,9 +279,9 @@ export default auth(async (req) => {
     const subpath = pathname.slice(adminIndex + "/admin".length) || "/";
     const headers = withStoreSubpath(new Headers(req.headers));
     headers.set("x-bn-admin-subpath", subpath);
-    // App workspaces render outside the global admin chrome. Keep the marker
-    // explicit so app routes do not depend on subpath parsing in layouts.
-    if (/^\/(?:apps\/[^/]+|fnb(?:\/.*)?|pms(?:\/.*)?)$/.test(subpath)) {
+    // Only PMS and F&B render outside the global admin chrome. Every other app
+    // (CRM, Financial Control, HR, SEO...) opens inside the BizNest admin dashboard.
+    if (/^\/(?:fnb(?:\/.*)?|pms(?:\/.*)?)$/.test(subpath)) {
       headers.set("x-bn-standalone-app", "1");
     } else {
       headers.delete("x-bn-standalone-app");

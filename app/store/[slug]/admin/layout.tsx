@@ -42,8 +42,9 @@ export default async function StoreAdminLayout({
   const adminSubpath = (await headers()).get("x-bn-admin-subpath") ?? "/";
   const isPmsRoute = adminSubpath === "/pms" || adminSubpath.startsWith("/pms/");
   const isFnbRoute = adminSubpath === "/fnb" || adminSubpath.startsWith("/fnb/");
-  const isPluginWorkspaceRoute = (await headers()).get("x-bn-standalone-app") === "1" ||
-    adminSubpath.startsWith("/apps/") || isPmsRoute || isFnbRoute;
+  // Only PMS and F&B use their own full-screen shell; all other apps render
+  // inside the normal admin dashboard (sidebar + top bar).
+  const isPluginWorkspaceRoute = isPmsRoute || isFnbRoute;
   if (role === null) redirect("/");
 
   // No free tier — a store isn't usable until it's on a paid plan. Staff

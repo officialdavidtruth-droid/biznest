@@ -9,7 +9,8 @@ export function PluginUseButton({ slug, pluginKey, isFree, installed }: { slug: 
   const router = useRouter();
 
   if (installed) {
-    return <button onClick={() => router.push(pluginKey === "pms" ? `/store/${slug}/admin/pms` : pluginKey === "fnb-operations" ? `/store/${slug}/admin/fnb` : `/store/${slug}/admin/apps/${pluginKey}`)} className="rounded-xl bg-primary px-4 py-2 text-xs font-bold text-primary-foreground">Open app</button>;
+    const standalone = pluginKey === "pms" || pluginKey === "fnb-operations";
+    return <button onClick={() => standalone ? window.location.assign(pluginKey === "pms" ? `/store/${slug}/admin/pms` : `/store/${slug}/admin/fnb`) : router.push(pluginKey === "pms" ? `/store/${slug}/admin/pms` : pluginKey === "fnb-operations" ? `/store/${slug}/admin/fnb` : `/store/${slug}/admin/apps/${pluginKey}`)} className="rounded-xl bg-primary px-4 py-2 text-xs font-bold text-primary-foreground">Open app</button>;
   }
 
   return (

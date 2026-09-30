@@ -154,7 +154,7 @@ function NavLink({ base, item, pathname }: { base: string; item: NavItem; pathna
     // own content rendered inside it — the double-sidebar bug. A plain
     // <a> forces a full document load, which always re-evaluates the
     // layout fresh. See app/store/[slug]/admin/layout.tsx's isPmsRoute.
-    if (item.href === "/pms") {
+    if (item.href === "/pms" || item.href === "/fnb") {
       return (
         <a
           href={href}
@@ -209,8 +209,9 @@ function NavLink({ base, item, pathname }: { base: string; item: NavItem; pathna
             const childHref = `${base}${child.href}`;
             const childIsActive = pathname === childHref;
             const ChildIcon = child.icon;
+            const ChildLink = child.href === "/pms" || child.href === "/fnb" ? "a" : Link;
             return (
-              <Link
+              <ChildLink
                 key={child.label}
                 href={childHref}
                 className={`flex items-center gap-2 rounded-lg px-2.5 py-1.5 text-xs transition-colors ${
@@ -219,7 +220,7 @@ function NavLink({ base, item, pathname }: { base: string; item: NavItem; pathna
               >
                 <ChildIcon className="h-3.5 w-3.5 shrink-0 opacity-70" />
                 <span className="truncate">{child.label}</span>
-              </Link>
+              </ChildLink>
             );
           })}
         </div>

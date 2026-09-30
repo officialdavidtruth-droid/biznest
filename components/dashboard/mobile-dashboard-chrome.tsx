@@ -181,7 +181,7 @@ export function MobileDashboardChrome({
                       // plain <a> forces a full reload so the layout branch
                       // re-evaluates correctly instead of leaving the old
                       // drawer/shell mounted around the new page.
-                      const rows = item.href === "/pms" ? [
+                      const rows = item.href === "/pms" || item.href === "/fnb" ? [
                         <a
                           key={item.label}
                           href={href}
@@ -210,8 +210,9 @@ export function MobileDashboardChrome({
                         const childHref = `${base}${child.href}`;
                         const childIsActive = pathname === childHref;
                         const ChildIcon = child.icon;
+                        const ChildLink = child.href === "/pms" || child.href === "/fnb" ? "a" : Link;
                         rows.push(
-                          <Link
+                          <ChildLink
                             key={child.label}
                             href={childHref}
                             onClick={() => setDrawerOpen(false)}
@@ -221,7 +222,7 @@ export function MobileDashboardChrome({
                           >
                             <ChildIcon className="h-3.5 w-3.5 shrink-0" />
                             <span className="truncate">{child.label}</span>
-                          </Link>
+                          </ChildLink>
                         );
                       });
                       return rows;
