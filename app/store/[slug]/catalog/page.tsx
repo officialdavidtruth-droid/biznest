@@ -8,6 +8,9 @@ import { ExampleStorefront } from "@/components/storefront/example-store";
 import { CatalogGrid } from "@/components/storefront/catalog-grid";
 import { resolveStoreTheme } from "@/lib/template-themes";
 import { isRestaurantBusiness } from "@/lib/business-identity";
+import { isHotelStore } from "@/lib/storefront-routing";
+import { getHotelContent } from "@/lib/hotel-content";
+import { HotelCatalog } from "@/components/storefront/hotel-catalog";
 
 export default async function CatalogPage({ params, searchParams }: { params: Promise<{ slug: string }>; searchParams?: Promise<{ category?: string }> }) {
   const { slug } = await params;
@@ -15,6 +18,11 @@ export default async function CatalogPage({ params, searchParams }: { params: Pr
   const rawStore = await prisma.store.findUnique({ where: { slug }, include: { template: true, business: true, products: { where: { isPublished: true }, take: 100, include: { category: true } }, services: { where: { isPublished: true }, take: 100, include: { category: true } } } });
   if (!rawStore || rawStore.status !== "ACTIVE") notFound();
   const store = { ...rawStore, sellsProducts: rawStore.business?.sellsProducts ?? true };
+  if (isHotelStore({ storeBusinessType: rawStore.businessType, templateName: rawStore.template?.name, businessCategory: rawStore.business?.category })) {
+    const hotelContent = await getHotelContent(slug);
+    return <HotelCatalog store={{ name: rawStore.name, slug, logoUrl: rawStore.logoUrl, bannerUrl: rawStore.bannerUrl, address: [rawStore.business?.city, rawStore.business?.state].filter(Boolean).join(", ") || null, phone: rawStore.contactPhone ?? rawStore.business?.phone ?? null, email: rawStore.contactEmail ?? rawStore.business?.email ?? null }} slug={slug} content={hotelContent} />;
+  }
+
   const items = [
     ...store.products.map(p => ({ id:p.id, kind:"product" as const, name:p.name, price:Number(p.price), currency:p.currency, image:p.images[0] ?? null, categoryName:p.category?.name ?? undefined, hasVariants:p.hasVariants })),
     ...store.services.map(s => ({ id:s.id, kind:"service" as const, name:s.name, price:Number(s.price), currency:s.currency, image:s.images[0] ?? null, categoryName:s.category?.name ?? undefined })),
