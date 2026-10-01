@@ -21,7 +21,7 @@ export function primaryCta(store:any, slug:string, _theme?:TemplateTheme){
     sellsProducts: store.sellsProducts,
     offersServices: store.offersServices,
   });
-  if (isHotelBusiness(store.business?.category)) return { label: "Book a Stay", href: `/store/${slug}/hotel/rooms` };
+  if (isHotelBusiness(store.business?.category)) return { label: "Book a Stay", href: `/store/${slug}/catalog` };
   if (category === "restaurant") return { label: "View Menu", href: `/store/${slug}/catalog` };
   if (category === "beauty" || category === "salon" || category === "health" || category.includes("fitness")) return { label: "Book / Enquire", href: `/store/${slug}/services` };
   if (mode === "commerce") return { label: "Shop Now", href: `/store/${slug}/catalog` };
@@ -31,7 +31,7 @@ export function primaryCta(store:any, slug:string, _theme?:TemplateTheme){
 
 function secondaryCta(store:any, slug:string){
   const category = String(store.business?.category || "").toLowerCase();
-  if (isHotelBusiness(store.business?.category)) return { label: "Explore Rooms", href: `/store/${slug}/hotel/rooms` };
+  if (isHotelBusiness(store.business?.category)) return { label: "Explore Rooms", href: `/store/${slug}/catalog` };
   if (category === "restaurant") return { label: "View Menu", href: `/store/${slug}/catalog` };
   if (["fashion", "electronics", "food & groceries", "home & furniture", "agriculture", "real estate"].includes(category)) return { label: "Browse Catalog", href: `/store/${slug}/catalog` };
   return { label: "Explore Services", href: `/store/${slug}/services` };

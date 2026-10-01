@@ -7,7 +7,7 @@ import { EXAMPLE_TEMPLATE_NAME } from "@/lib/example-content";
 import { ExampleStorefront } from "@/components/storefront/example-store";
 import { CatalogGrid } from "@/components/storefront/catalog-grid";
 import { resolveStoreTheme } from "@/lib/template-themes";
-import { isHotelBusiness, isRestaurantBusiness } from "@/lib/business-identity";
+import { isRestaurantBusiness, isHotelBusiness } from "@/lib/business-identity";
 import { GrandVereCatalog } from "@/components/storefront/signature-screenshot-home";
 
 export default async function CatalogPage({ params, searchParams }: { params: Promise<{ slug: string }>; searchParams?: Promise<{ category?: string }> }) {
@@ -20,10 +20,12 @@ export default async function CatalogPage({ params, searchParams }: { params: Pr
     ...store.products.map(p => ({ id:p.id, kind:"product" as const, name:p.name, price:Number(p.price), currency:p.currency, image:p.images[0] ?? null, categoryName:p.category?.name ?? undefined, hasVariants:p.hasVariants })),
     ...store.services.map(s => ({ id:s.id, kind:"service" as const, name:s.name, price:Number(s.price), currency:s.currency, image:s.images[0] ?? null, categoryName:s.category?.name ?? undefined })),
   ];
+  if (store.template?.name === "Veloura — Superior Luxury Hotel" || isHotelBusiness(store.business?.category)) {
+    return <GrandVereCatalog store={store} slug={slug} items={items.map(i=>({...i,description:null,currency:i.currency,type:i.kind,rentalUnit:null,isBookable:i.kind==="service"})) as any} />;
+  }
   if (store.template?.name === EXAMPLE_TEMPLATE_NAME) return <ExampleStorefront store={store} slug={slug} items={items.map(i=>({...i,description:null,type:i.kind,rentalUnit:null,isBookable:false})) as any} mode="catalog" />;
   if (store.template?.name === TASTEHOUSE_TEMPLATE_NAME) return <TasteHouseMenu store={store} slug={slug} initialCategory={query?.category} items={items.map(i=>({...i,description:null,type:i.kind,isBookable:false})) as any} />;
   if (isRestaurantBusiness(store.business?.category)) return <GrandeurMenu store={store} slug={slug} items={items.map(i=>({...i,description:null,type:i.kind,isBookable:false})) as any} />;
-  if (store.template?.name === "Veloura — Superior Luxury Hotel" || isHotelBusiness(store.business?.category) || isHotelBusiness(rawStore.businessType)) return <GrandVereCatalog store={store} slug={slug} items={items.map(i=>({...i,description:i.kind === "service" ? null : null,type:i.kind,isBookable:i.kind === "service"})) as any} reviews={[]} avgRating={null} completedOrders={0} social={(store.socialLinks as Record<string,string>|null)??{}} mode="grand-vere" accent="#0E5B45" bg="#FFFFFF" ink="#15392C" card="#FFFFFF" muted="#777" border="#E6E1D7" accentSoft="#C8BEA7" headlineFont="Georgia, serif" font="Inter, sans-serif" />
   const theme = resolveStoreTheme(store.template?.category, store.name, store.themeColors as any, store.fontFamily, store.template?.name);
   return <main style={{minHeight:"100vh",background:theme.bg,color:theme.ink,fontFamily:theme.font,padding:"6rem 2rem"}}><div style={{maxWidth:1200,margin:"0 auto"}}><h1 style={{fontFamily:theme.headlineFont}}>Catalog</h1><CatalogGrid items={items} slug={slug} accent={theme.accent} ink={theme.ink} radius={theme.radius}/></div></main>;
 }
