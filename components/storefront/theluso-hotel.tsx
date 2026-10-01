@@ -57,45 +57,7 @@ function HomePage({store,slug,content}:{store:Store;slug:string;content:HotelCon
 function SectionHeading({eyebrow,title,href:link,label}:{eyebrow?:string;title:string;href?:string;label?:string}){return <div className="lux-section-heading"><div>{eyebrow&&<span className="lux-eyebrow dark">{eyebrow}</span>}<h2>{title}</h2></div>{link&&<Link href={link}>{label||"Explore"} <ArrowRight/></Link>}</div>}
 function RoomCard({room,slug}:{room:HotelRoom;slug:string}){return <article className="lux-room-card"><div className="lux-room-image">{room.badge&&<span>{room.badge}</span>}<img src={img(room.image)} alt={room.name}/></div><div className="lux-room-body"><div className="lux-room-top"><h3>{room.name}</h3><b>{money(room.price)}<small>/ night</small></b></div><p>{room.description}</p><div className="lux-room-facts"><span>{room.guests} Guests</span><span>{room.area}</span><span>{room.bed}</span></div><div className="lux-card-actions"><Link href={href(slug,`/rooms/${room.slug}`)}>View Details <ArrowRight/></Link><Link className="dark-btn" href={href(slug,"/book")}>Book Now</Link></div></div></article>}
 
-function RoomsPage({store,slug,content}:{store:Store;slug:string;content:HotelContent}){
- const [filter,setFilter]=useState("All Rooms");
- const [sort,setSort]=useState("recommended");
- const cats=["All Rooms","Deluxe","Executive","Suites","Family","Accessible"];
- const rooms=useMemo(()=>{
-   let r=content.rooms.filter(x=>filter==="All Rooms"||x.name.toLowerCase().includes(filter.toLowerCase()));
-   if(sort==="low")r=[...r].sort((a,b)=>a.price-b.price);
-   if(sort==="high")r=[...r].sort((a,b)=>b.price-a.price);
-   return r;
- },[content.rooms,filter,sort]);
- const amenities=content.amenities.slice(0,4);
- return <div className="lux-site lux-hotel-catalog-page">
-   <Hero store={store} slug={slug} active="Rooms" page="catalog" eyebrow="SUPERIOR LUXURY" title={<>Rooms <i>&amp; Amenities</i></>} subtitle="Comfort. Elegance. Unforgettable Stays."/>
-   <BookingBar slug={slug}/>
-   <main className="lux-section lux-catalog-main">
-     <div className="lux-filter-row lux-catalog-filter">
-       <div>{cats.map(c=><button key={c} className={filter===c?"on":""} onClick={()=>setFilter(c)}>{c}</button>)}</div>
-       <label className="lux-catalog-sort">Sort by <select value={sort} onChange={e=>setSort(e.target.value)}><option value="recommended">Featured</option><option value="low">Price: Low to High</option><option value="high">Price: High to Low</option></select></label>
-     </div>
-     <SectionHeading eyebrow="ROOMS & SUITES" title="Our Rooms & Suites"/>
-     <p className="lux-catalog-lead">Choose from our carefully designed rooms for a relaxing and memorable stay.</p>
-     <div className="lux-room-grid lux-catalog-room-grid">{rooms.slice(0,3).map(r=><RoomCard key={r.id} room={r} slug={slug}/>)}</div>
-   </main>
-   <section className="lux-catalog-amenities">
-     <div className="lux-catalog-amenities-copy">
-       <span className="lux-eyebrow dark">HOTEL AMENITIES</span>
-       <h2>Everything You Need<br/>for a Perfect Stay</h2>
-       <p>Enjoy world-class amenities designed to make your stay comfortable, convenient and memorable.</p>
-       <Link className="lux-dark-btn" href={href(slug,"/amenities")}>Explore All Amenities <ArrowRight/></Link>
-     </div>
-     <div className="lux-amenity-mini-grid">{amenities.map(a=><article key={a.id}>
-       <img src={img(a.image)} alt={a.title}/>
-       <div className="lux-amenity-icon">{a.icon==="pool"?"♨":a.icon==="dining"?"♜":a.icon==="fitness"?"✦":"⌁"}</div>
-       <h3>{a.title}</h3><p>{a.description}</p>
-     </article>)}</div>
-   </section>
-   <Footer store={store} slug={slug}/>
- </div>
-}
+function RoomsPage({store,slug,content}:{store:Store;slug:string;content:HotelContent}){const [filter,setFilter]=useState("All Rooms");const [sort,setSort]=useState("recommended");const cats=["All Rooms","Deluxe","Executive","Suites","Family","Accessible"];const rooms=useMemo(()=>{let r=content.rooms.filter(x=>filter==="All Rooms"||x.name.toLowerCase().includes(filter.toLowerCase()));if(sort==="low")r=[...r].sort((a,b)=>a.price-b.price);if(sort==="high")r=[...r].sort((a,b)=>b.price-a.price);return r},[content.rooms,filter,sort]);return <div className="lux-site"><Hero store={store} slug={slug} active="Rooms" page="rooms" eyebrow="OUR ROOMS & SUITES" title={<>Rest Your World<br/><i>In Greater Comfort</i></>} subtitle="Beautifully designed rooms and suites, thoughtfully appointed for modern travellers."/><BookingBar slug={slug}/><main className="lux-section"><div className="lux-filter-row"><div>{cats.map(c=><button key={c} className={filter===c?"on":""} onClick={()=>setFilter(c)}>{c}</button>)}</div><select value={sort} onChange={e=>setSort(e.target.value)}><option value="recommended">Recommended</option><option value="low">Price: Low to High</option><option value="high">Price: High to Low</option></select></div><SectionHeading eyebrow="FIND YOUR PERFECT STAY" title={`${rooms.length} Rooms & Suites`}/><div className="lux-room-grid">{rooms.map(r=><RoomCard key={r.id} room={r} slug={slug}/>)}</div></main><section className="lux-offer-banner"><div><span className="lux-eyebrow">A MORE MEMORABLE STAY</span><h2>Stay Longer.<br/><i>Experience More.</i></h2><p>Discover curated offers configured by this hotel.</p><Link className="lux-gold" href={href(slug,"/book")}>Book Your Stay <ArrowRight/></Link></div><img src={img(content.offers[0]?.image)} alt="Hotel offer"/></section><Footer store={store} slug={slug}/></div>}
 
 function RoomDetailsPage({store,slug,content,room}:{store:Store;slug:string;content:HotelContent;room:HotelRoom}){return <div className="lux-site"><section className="lux-room-detail-hero" style={{backgroundImage:`linear-gradient(90deg,rgba(5,8,6,.72),rgba(5,8,6,.08)),url(${img(room.image)})`}}><Header store={store} slug={slug} active="Rooms"/><div className="lux-room-detail-copy"><div className="lux-breadcrumb">Home　›　Rooms　›　{room.name}</div><span className="lux-eyebrow">COMFORT MEETS ELEGANCE</span><h1>{room.name}</h1><p>{room.description}</p><div className="lux-detail-meta"><span>{room.guests} Guests</span><span>{room.bed}</span><span>{room.area}</span><span>{room.view}</span></div></div><div className="lux-detail-book"><b>{money(room.price)}<small>/ night</small></b><label>Check-in<input type="date" min={today()}/></label><label>Check-out<input type="date" min={today()}/></label><label>Guests<select defaultValue="2"><option>2 Guests</option><option>1 Guest</option><option>3 Guests</option><option>4 Guests</option></select></label><Link className="lux-dark-btn" href={href(slug,"/book")}>Book This Room <ArrowRight/></Link><div className="lux-book-benefits"><span><ShieldCheck/>Cancellation terms shown with the booking</span><span><Check/>Pricing shown before payment</span><span><Check/>Payment confirmation after gateway verification</span></div></div></section><section className="lux-room-gallery-strip">{[room.image,...content.gallery.filter(g=>g.category==="Rooms").map(g=>g.image)].slice(0,5).map((u,i)=><img key={i} src={img(u)} alt={`${room.name} ${i+1}`}/>)}</section><main className="lux-room-detail-main"><section><SectionHeading eyebrow="ROOM OVERVIEW" title="A peaceful retreat in the heart of the city"/><p>{room.description} Step into a space where comfort and sophistication come together, with premium furnishings, thoughtful amenities and generous room to relax.</p><p>Whether you are in Abuja for business or a weekend escape, every detail is designed with your comfort in mind.</p><div className="lux-quote">“A peaceful retreat in the heart of the city — perfect for business or a weekend getaway.”</div></section><section><span className="lux-eyebrow dark">ROOM FEATURES</span><div className="lux-feature-list">{room.amenities.map(a=><span key={a}><Check/>{a}</span>)}</div></section></main><section className="lux-section"><SectionHeading title="You May Also Like" href={href(slug,"/rooms")} label="View All Rooms"/><div className="lux-room-grid three">{content.rooms.filter(r=>r.id!==room.id).slice(0,3).map(r=><RoomCard key={r.id} room={r} slug={slug}/>)}</div></section><Footer store={store} slug={slug}/></div>}
 
