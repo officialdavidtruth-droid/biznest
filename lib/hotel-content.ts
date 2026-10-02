@@ -1,6 +1,9 @@
 import { prisma } from "@/lib/prisma";
 
 export const HOTEL_TEMPLATE_NAME = "Veloura — Superior Luxury Hotel";
+// "Grand — Hotel & Hospitality" renders its home page in a dark/gold palette,
+// so its sub-pages (rendered by ThelusoHotel) must use the same palette.
+export const GRAND_HOTEL_TEMPLATE_NAME = "Grand — Hotel & Hospitality";
 export const HOTEL_GALLERY_CATEGORIES = ["All", "Hotel Interior", "Rooms", "Dining", "Amenities", "Events", "Meetings & Conferences", "Outdoor Spaces", "Our People"] as const;
 export const HOTEL_OFFER_CATEGORIES = ["All Offers", "Room Packages", "Dining Offers", "Spa & Wellness", "Business Travel", "Long Stay", "Seasonal"] as const;
 export const HOTEL_AMENITY_CATEGORIES = ["All Amenities", "Wellness & Fitness", "Business & Events", "Dining & Leisure", "Guest Services", "Convenience"] as const;
@@ -21,6 +24,7 @@ export type HotelContent = {
   rooms:HotelRoom[]; offers:HotelOffer[]; gallery:HotelGalleryItem[]; events:HotelEvent[]; amenities:HotelAmenity[];
   home:HotelPageContent; dining:HotelPageContent; experiences:HotelPageContent; about:HotelPageContent; contact:HotelPageContent;
   _serviceMap?:Record<string,string>;
+  theme?:"default"|"treasure";
 };
 
 const IMG = (id:string) => `https://images.unsplash.com/${id}?auto=format&fit=crop&w=1600&q=85`;
@@ -64,7 +68,7 @@ function autoPopulateEvents(){
 }
 
 export async function getHotelContent(slug:string):Promise<HotelContent>{
-  const store=await prisma.store.findUnique({where:{slug},select:{id:true,name:true}}); if(!store)return defaults;
+  const store=await prisma.store.findUnique({where:{slug},select:{id:true,name:true,template:{select:{name:true}}}}); if(!store)return defaults;
   const [pages,services]=await Promise.all([
     prisma.storePage.findMany({where:{storeId:store.id,slug:{in:["hotel-home","hotel-rooms","hotel-offers","hotel-gallery","hotel-events","hotel-amenities","hotel-contact","hotel-dining","hotel-experiences","hotel-about"]}}}),
     prisma.service.findMany({where:{storeId:store.id,isPublished:true},orderBy:{createdAt:"asc"},select:{id:true,slug:true,name:true,description:true,images:true,price:true,attributes:true,isBookable:true,totalUnits:true,currency:true}})
@@ -93,6 +97,7 @@ export async function getHotelContent(slug:string):Promise<HotelContent>{
     experiences: map.get("hotel-experiences")?.page ?? safePage("Experiences", "Explore the experiences and activities available at this property.", "hotel-experiences"),
     about: map.get("hotel-about")?.page ?? safePage("About us", "Learn more about this property and the people behind it.", "hotel-about"),
     contact: map.get("hotel-contact")?.page ?? safePage("Contact us", "Get in touch with the property for reservations, questions and assistance.", "hotel-contact"),
+    theme: store.template?.name===GRAND_HOTEL_TEMPLATE_NAME ? "treasure" : "default",
     _serviceMap:Object.fromEntries(services.flatMap(s=>[[s.id,s.id],[s.slug,s.id],[s.name.toLowerCase().replace(/[^a-z0-9]+/g,"-"),s.id]])),
   };
 }

@@ -1120,3 +1120,26 @@ a[href*="/service/"]:hover img {
 .lux-gallery-grid figcaption span{font-size:10px;letter-spacing:.16em;text-transform:uppercase;color:#e6c78f}
 @media(max-width:900px){.lux-gallery-grid{grid-template-columns:repeat(2,1fr)}}
 @media(max-width:560px){.lux-gallery-grid{grid-template-columns:1fr}}
+
+/* Dark/gold palette for "Grand - Hotel & Hospitality" (matches its home page).
+   Variables cover most of the hotel CSS; the rest are hard-coded light surfaces. */
+.lux-theme-treasure .lux-site{--lux-paper:#07100D;--lux-ink:#F7F3EA;--lux-line:#2C362F;--lux-muted:#B9B6AF;--lux-cream:#101815;--lux-green:#0B1612;--lux-deep:#050C09;--lux-gold:#E7A928}
+.lux-theme-treasure .lux-site .gv-nav{background:#07100D;color:#F7F3EA;border-bottom-color:#2C362F}
+.lux-theme-treasure .lux-site .gv-nav .ss-brand b,.lux-theme-treasure .lux-site .gv-nav nav a,.lux-theme-treasure .lux-site .gv-nav .lux-menu,.lux-theme-treasure .lux-site .lux-header-actions a:not(.gv-book){color:#F7F3EA}
+.lux-theme-treasure .lux-site .gv-nav nav a:hover,.lux-theme-treasure .lux-site .gv-nav nav a.active{color:#E7A928}
+.lux-theme-treasure .lux-site .gv-nav nav a.active:after{background:#E7A928}
+.lux-theme-treasure .lux-site .gv-logo{border-color:#E7A928;color:#E7A928}
+.lux-theme-treasure .lux-site .gv-book{background:#E7A928;color:#07100D}
+.lux-theme-treasure .lux-site .gv-nav nav.open{background:#07100D;border-bottom-color:#2C362F}
+.lux-theme-treasure .lux-booking-bar,.lux-theme-treasure .lux-room-card,.lux-theme-treasure .lux-filter-row button,.lux-theme-treasure .lux-filter-row select,.lux-theme-treasure .lux-detail-book,.lux-theme-treasure .lux-detail-book input,.lux-theme-treasure .lux-detail-book select,.lux-theme-treasure .lux-room-gallery-strip,.lux-theme-treasure .lux-dining-cards article,.lux-theme-treasure .lux-facility-grid article,.lux-theme-treasure .lux-form-grid input,.lux-theme-treasure .lux-form-grid select,.lux-theme-treasure .lux-form-grid textarea,.lux-theme-treasure .lux-booking-form,.lux-theme-treasure .lux-summary,.lux-theme-treasure .lux-steps,.lux-theme-treasure .lux-extra-grid button,.lux-theme-treasure .lux-confirm-actions a,.lux-theme-treasure .lux-confirm-actions button,.lux-theme-treasure .lux-after-booking,.lux-theme-treasure .lux-catalog-sort select,.lux-theme-treasure .lux-catalog-room-grid .lux-room-card,.lux-theme-treasure .lux-amenity-mini-grid article,.lux-theme-treasure .lux-amenity-icon{background:#101815;color:#F7F3EA;border-color:#2C362F}
+.lux-theme-treasure .lux-filter-row button.on{background:#E7A928;color:#07100D}
+.lux-theme-treasure .lux-amenity-icon{color:#E7A928}
+.lux-theme-treasure .lux-feature-strip,.lux-theme-treasure .lux-category-strip,.lux-theme-treasure .lux-values,.lux-theme-treasure .lux-contact-strip,.lux-theme-treasure .lux-hotel-catalog-page,.lux-theme-treasure .lux-catalog-main,.lux-theme-treasure .lux-catalog-amenities,.lux-theme-treasure .lux-gateway-card,.lux-theme-treasure .lux-payment-note,.lux-theme-treasure .lux-catalog-filter button,.lux-theme-treasure .lux-gallery-grid figure{background:#101815;color:#F7F3EA;border-color:#2C362F}
+.lux-theme-treasure .lux-trust,.lux-theme-treasure .lux-email-note,.lux-theme-treasure .lux-confirm-side .paid{background:#12271c;color:#8fd3a4}
+.lux-theme-treasure .lux-confirm-side .pending{background:#2a2112;color:#E7A928}
+.lux-theme-treasure .lux-error{background:#2a1512;color:#ff9b8c}
+.lux-theme-treasure .lux-contact-strip b,.lux-theme-treasure .lux-contact-strip span,.lux-theme-treasure .lux-summary-room b,.lux-theme-treasure .lux-summary-lines strong,.lux-theme-treasure .lux-steps .done span,.lux-theme-treasure .lux-confirm-facts b,.lux-theme-treasure .lux-booking-bar label input,.lux-theme-treasure .lux-booking-bar label select,.lux-theme-treasure .lux-catalog-sort select{color:#F7F3EA}
+.lux-theme-treasure select option{background:#101815;color:#F7F3EA}
+.lux-theme-treasure .lux-catalog-room-grid .lux-room-top>b,.lux-theme-treasure .lux-amenity-icon{color:#E7A928}
+.lux-theme-treasure .lux-steps .done b{background:#E7A928;border-color:#E7A928;color:#07100D}
+.lux-theme-treasure .lux-steps div:not(:last-child):after{background:#2C362F}
