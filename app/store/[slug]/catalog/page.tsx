@@ -8,7 +8,8 @@ import { ExampleStorefront } from "@/components/storefront/example-store";
 import { CatalogGrid } from "@/components/storefront/catalog-grid";
 import { resolveStoreTheme } from "@/lib/template-themes";
 import { isRestaurantBusiness, isHotelBusiness } from "@/lib/business-identity";
-import { GrandVereCatalog } from "@/components/storefront/signature-screenshot-home";
+import { ThelusoHotel } from "@/components/storefront/theluso-hotel";
+import { getHotelContent } from "@/lib/hotel-content";
 
 export default async function CatalogPage({ params, searchParams }: { params: Promise<{ slug: string }>; searchParams?: Promise<{ category?: string }> }) {
   const { slug } = await params;
@@ -21,7 +22,7 @@ export default async function CatalogPage({ params, searchParams }: { params: Pr
     ...store.services.map(s => ({ id:s.id, kind:"service" as const, name:s.name, price:Number(s.price), currency:s.currency, image:s.images[0] ?? null, categoryName:s.category?.name ?? undefined })),
   ];
   if (store.template?.name === "Veloura — Superior Luxury Hotel" || isHotelBusiness(store.business?.category)) {
-    return <GrandVereCatalog store={store} slug={slug} items={items.map(i=>({...i,description:null,currency:i.currency,type:i.kind,rentalUnit:null,isBookable:i.kind==="service"})) as any} />;
+    return <ThelusoHotel store={{...store,address:[store.business?.city,store.business?.state].filter(Boolean).join(", ")||null,phone:store.contactPhone??store.business?.phone??null,email:store.contactEmail??store.business?.email??null}} slug={slug} content={await getHotelContent(slug)} />;
   }
   if (store.template?.name === EXAMPLE_TEMPLATE_NAME) return <ExampleStorefront store={store} slug={slug} items={items.map(i=>({...i,description:null,type:i.kind,rentalUnit:null,isBookable:false})) as any} mode="catalog" />;
   if (store.template?.name === TASTEHOUSE_TEMPLATE_NAME) return <TasteHouseMenu store={store} slug={slug} initialCategory={query?.category} items={items.map(i=>({...i,description:null,type:i.kind,isBookable:false})) as any} />;
