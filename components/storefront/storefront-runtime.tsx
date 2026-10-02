@@ -77,7 +77,19 @@ export async function renderStorefront(slug:string){
 
  const rawSectionOverrides = store.sectionOverrides as { builderVersion?: number; builder?: unknown } | null;
  const savedBuilder = rawSectionOverrides?.builderVersion===1 ? readBuilderConfig(rawSectionOverrides.builder) : null;
- if(savedBuilder) return <BuilderStorefront store={store} config={savedBuilder} catalogItems={catalogItems} reviews={store.reviews} avgRating={store.business?.avgRating??null} completedOrders={0}/>;
+ if(savedBuilder) {
+   // Older saved builder drafts can omit the hero or retain it as hidden.
+   // Keep the user's saved section order/content, but guarantee a visible
+   // homepage hero using the active template's own hero settings as fallback.
+   const theme=resolveStoreTheme(store.template?.category,store.name,themeOverrides,store.fontFamily,store.template?.name);
+   const templateConfig=templateThemeToBuilderConfig(theme,store.name,store.business?.description,store.bannerUrl);
+   const fallbackHero=templateConfig.sections.find((section)=>section.type==="hero");
+   const heroIndex=savedBuilder.sections.findIndex((section)=>section.type==="hero");
+   const sections=[...savedBuilder.sections];
+   if(heroIndex<0 && fallbackHero) sections.unshift(fallbackHero);
+   else if(heroIndex>=0 && !sections[heroIndex].visible) sections[heroIndex]={...sections[heroIndex],visible:true};
+   return <BuilderStorefront store={store} config={{...savedBuilder,sections}} catalogItems={catalogItems} reviews={store.reviews} avgRating={store.business?.avgRating??null} completedOrders={0}/>;
+ }
 
  const themeOverrides = store.themeColors as {primary?:string;secondary?:string;accent?:string}|null;
  if(template?.renderer==="builder") {
