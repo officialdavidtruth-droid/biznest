@@ -75,6 +75,7 @@ export async function renderStorefront(slug:string){
  if(template?.renderer==="grandeur") return <GrandeurHome store={store} slug={slug} items={catalogItems} reviews={store.reviews}/>;
  if(template?.renderer==="hotel") return <ThelusoHotel store={store} slug={slug} content={await getHotelContent(slug)}/>;
 
+ const themeOverrides = store.themeColors as {primary?:string;secondary?:string;accent?:string}|null;
  const rawSectionOverrides = store.sectionOverrides as { builderVersion?: number; builder?: unknown } | null;
  const savedBuilder = rawSectionOverrides?.builderVersion===1 ? readBuilderConfig(rawSectionOverrides.builder) : null;
  if(savedBuilder) {
@@ -91,7 +92,6 @@ export async function renderStorefront(slug:string){
    return <BuilderStorefront store={store} config={{...savedBuilder,sections}} catalogItems={catalogItems} reviews={store.reviews} avgRating={store.business?.avgRating??null} completedOrders={0}/>;
  }
 
- const themeOverrides = store.themeColors as {primary?:string;secondary?:string;accent?:string}|null;
  if(template?.renderer==="builder") {
    const theme=resolveStoreTheme(store.template?.category,store.name,themeOverrides,store.fontFamily,store.template?.name);
    const config=templateThemeToBuilderConfig(theme,store.name,store.business?.description,store.bannerUrl);
