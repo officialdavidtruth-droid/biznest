@@ -9,6 +9,9 @@ export function isHotelStore(input:{businessCategory?:string|null;storeBusinessT
  // A selected hotel template is authoritative even when legacy business metadata is stale.
  const name=String(input.templateName??"").toLowerCase();
  if(name.includes("hotel") || name.includes("lodging") || name.includes("grand-vere") || name.includes("grand vere") || name.includes("veloura")) return true;
+ // A hotel business always needs its rooms / booking pages, whatever template it picked;
+ // those pages are skinned with the chosen template (see lib/hotel-skin.ts).
+ if(isHotelBusiness(getCanonicalBusinessType({businessCategory:input.businessCategory,storeBusinessType:input.storeBusinessType}))) return true;
  return resolveStorefrontRenderer(input)==="hotel";
 }
 export function isStorefrontRenderer(input:{businessCategory?:string|null;storeBusinessType?:string|null;templateName?:string|null}, renderer:StorefrontRenderer){return resolveStorefrontRenderer(input)===renderer;}
