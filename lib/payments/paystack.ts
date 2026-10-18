@@ -33,6 +33,7 @@ type VerifyResponse = {
     status: "success" | "failed" | "abandoned";
     reference: string;
     amount: number;
+    currency?: string;
     customer?: { customer_code: string };
     authorization?: { authorization_code: string; reusable: boolean };
   };

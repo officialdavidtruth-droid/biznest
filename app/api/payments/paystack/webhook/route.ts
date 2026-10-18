@@ -2,9 +2,8 @@ import { prisma } from "@/lib/prisma";
 import { verifyPaystackTransaction, verifyPaystackWebhookSignature } from "@/lib/payments/paystack";
 import { settleInvoicePayment } from "@/lib/actions/invoice";
 import { settleQuoteDeposit } from "@/lib/actions/quote";
-import { decrementStockForOrder } from "@/lib/actions/order";
 import { emitWebhookEvent } from "@/lib/webhooks/dispatch";
-import { notifyStoreOwnerOfPaidOrder, notifyCustomerOfPaidOrder } from "@/lib/notifications/notify";
+import { settleOrderPayment } from "@/lib/payments/settle-order";
 import { NextResponse } from "next/server";
 import { settleWalletFunding, settleServiceBookingPayment } from "@/lib/actions/customer-wallet";
 import { settleReservationPayment } from "@/lib/actions/pms";
@@ -33,11 +32,29 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Invalid signature" }, { status: 401 });
   }
 
-  let event: { event?: string; data?: { reference?: string } };
+  let event: { event?: string; data?: { reference?: string; transfer_code?: string; reason?: string; failures?: unknown } };
   try {
     event = JSON.parse(rawBody);
   } catch {
     return NextResponse.json({ error: "Invalid payload" }, { status: 400 });
+  }
+
+  // Vendor payout (Transfer API) outcomes.
+  if (event.event === "transfer.success" || event.event === "transfer.failed" || event.event === "transfer.reversed") {
+    const ref = event.data?.reference;
+    if (ref) {
+      const status = event.event === "transfer.success" ? "PAID" : event.event === "transfer.failed" ? "FAILED" : "REVERSED";
+      await prisma.payout.updateMany({
+        where: { reference: ref, status: { in: ["QUEUED", "PROCESSING", "PAID"] } },
+        data: {
+          status,
+          ...(status === "PAID" ? { paidAt: new Date(), lastError: null } : { lastError: event.data?.reason ?? event.event }),
+          ...(event.data?.transfer_code ? { gatewayTransferId: event.data.transfer_code } : {}),
+          rawPayload: event as object,
+        },
+      });
+    }
+    return NextResponse.json({ received: true });
   }
 
   // Paystack sends many event types (transfer.success, subscription.*,
@@ -84,7 +101,7 @@ export async function POST(req: Request) {
     const amountNaira = Number(verification.data?.amount ?? 0) / 100;
     const amountMatches = Boolean(plan && amountNaira >= Number(plan.price));
     const paymentMatches = Boolean(payment && Math.abs(Number(payment.amount) - amountNaira) <= 0.01);
-    if (!store || !plan || !payment || !amountMatches || !paymentMatches) {
+    if (!store || !plan || !payment || payment.storeId !== store.id || !amountMatches || !paymentMatches) {
       return NextResponse.json({ received: true });
     }
     if (store.subscriptionId !== subscriptionId) {
@@ -133,65 +150,16 @@ export async function POST(req: Request) {
     return NextResponse.json({ received: true });
   }
 
-  // Idempotent by design: only transition orders still awaiting payment,
-  // via an atomic updateMany rather than read-then-write, so a webhook
-  // retry racing the browser callback for the same reference can't both
-  // "win" and double-process. The browser callback may have already
-  // marked this PAID (whichever path wins the race is fine, both agree),
-  // or a store owner may have since moved the order further along the
-  // fulfillment pipeline — a late webhook retry must never stomp that.
-  // Payment confirmation, the order transition, and the stock decrement
-  // all describe one event (this order got paid) — grouped in one
-  // transaction so a crash partway through can't confirm payment without
-  // consuming inventory, or vice versa.
-  //
-  // Never trust that a successful charge paid the right amount — an
-  // order's total can change between checkout-init and payment (discount
-  // race, admin edit, etc.), so require the amount actually paid to cover
-  // it. Paystack reports amount in kobo; order.total is in naira. Mirrors
-  // the equivalent check in the Flutterwave webhook.
-  const order = await prisma.order.findUnique({ where: { id: reference } });
-  if (order && order.paymentProvider !== "PAYSTACK") {
-    return NextResponse.json({ received: true });
-  }
-  const amountMatches = Boolean(order && verification.data && Math.abs(Number(verification.data.amount) / 100 - Number(order.total)) < 0.01);
-  if (!order || !amountMatches) {
-    return NextResponse.json({ received: true });
-  }
-
-  const updated = await prisma.$transaction(async (tx) => {
-    const result = await tx.order.updateMany({
-      where: { id: reference, status: "PENDING_PAYMENT" },
-      data: { status: "PAID", paymentReference: reference },
-    });
-    await tx.payment.updateMany({
-      where: { reference, status: "PENDING" },
-      data: { status: "SUCCESSFUL", rawPayload: verification as object, verifiedAt: new Date() },
-    });
-    if (result.count > 0) {
-      await decrementStockForOrder(tx, reference);
-    }
-    return result;
+  // Order payment: shared settlement path (amount/currency check, late-payment
+  // revival, oversell-safe stock, review flagging). See lib/payments/settle-order.ts.
+  await settleOrderPayment({
+    orderId: reference,
+    reference,
+    provider: "PAYSTACK",
+    verifiedAmountNaira: Number(verification.data?.amount ?? 0) / 100,
+    verifiedCurrency: verification.data?.currency,
+    payload: verification as object,
   });
 
-  // Only fire on the request that actually made the transition, so a
-  // retried/duplicate webhook doesn't emit the event twice.
-  if (updated.count > 0) {
-    const order = await prisma.order.findUnique({ where: { id: reference } });
-    if (order) {
-      await emitWebhookEvent("PAYMENT_SUCCESS", order.storeId, {
-        orderId: order.id,
-        reference,
-        provider: "PAYSTACK",
-        amount: Number(order.total),
-        currency: order.currency,
-      });
-      await emitWebhookEvent("ORDER_PAID", order.storeId, { orderId: order.id, status: "PAID" });
-      void notifyStoreOwnerOfPaidOrder(order.storeId, order.id, Number(order.total), order.currency);
-      void notifyCustomerOfPaidOrder(order.id);
-    }
-  }
-
   return NextResponse.json({ received: true });
-      }
-        
+}

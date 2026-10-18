@@ -6,6 +6,7 @@ import {
   getStoreCustomerSessionForStore,
 } from "@/lib/store-customer-auth";
 import { prisma } from "@/lib/prisma";
+import { logError } from "@/lib/observability/log";
 import { createPendingPayment, markPaymentFailed } from "@/lib/payments/pending";
 import { consumeFifoStockTx, consumeFefoStockTx } from "@/lib/inventory-fifo";
 import { getFnbRotationMode } from "@/lib/fnb-settings";
@@ -65,7 +66,8 @@ const APP_URL =
  */
 export async function decrementStockForOrder(
   tx: Prisma.TransactionClient,
-  orderId: string
+  orderId: string,
+  opts: { allowOversell?: boolean } = {}
 ) {
   const order = await tx.order.findUnique({
     where: {
@@ -95,26 +97,33 @@ export async function decrementStockForOrder(
     if (item.variantId) {
       const variant = await tx.productVariant.findFirst({ where: { id: item.variantId, storeId: order.storeId } });
       if (!variant) continue;
-      if (item.quantity > variant.quantity) throw new Error(`Not enough stock for ${variant.label}.`);
-      const nextQuantity = variant.quantity - item.quantity;
+      // Payment paths pass allowOversell: the customer has already paid, so a
+      // stock shortfall must never roll the PAID transition back. Consume what
+      // exists and flag the shortfall for the merchant instead.
+      if (item.quantity > variant.quantity && !opts.allowOversell) throw new Error(`Not enough stock for ${variant.label}.`);
+      const consumed = Math.min(item.quantity, Math.max(variant.quantity, 0));
+      if (consumed < item.quantity) void logError("PAYMENTS", "Oversold order: paid quantity exceeds stock", { orderId: order.id, variantId: variant.id, ordered: item.quantity, available: variant.quantity });
+      const nextQuantity = variant.quantity - consumed;
       const justRanOut = variant.quantity > 0 && nextQuantity === 0;
       await tx.productVariant.update({ where: { id: variant.id }, data: { quantity: nextQuantity, autoUnpublished: justRanOut ? true : variant.autoUnpublished } });
       const movement = await tx.stockMovement.create({
-        data: { variantId: variant.id, storeId: order.storeId, orderId: order.id, type: "SALE", quantityChange: -item.quantity, quantityAfter: nextQuantity, note: `Online sale (order ${order.id})` },
+        data: { variantId: variant.id, storeId: order.storeId, orderId: order.id, type: "SALE", quantityChange: -consumed, quantityAfter: nextQuantity, note: `Online sale (order ${order.id})${consumed < item.quantity ? ` — OVERSOLD by ${item.quantity - consumed}` : ""}` },
       });
-      await consumeStock(tx, { variantId: variant.id, storeId: order.storeId, quantity: item.quantity, stockMovementId: movement.id });
+      if (consumed > 0) await consumeStock(tx, { variantId: variant.id, storeId: order.storeId, quantity: consumed, stockMovementId: movement.id });
     } else if (item.productId) {
       const inventory = await tx.inventoryItem.findFirst({ where: { productId: item.productId, storeId: order.storeId } });
       if (!inventory) continue;
-      if (item.quantity > inventory.quantity) throw new Error(`Not enough stock for ${item.productId}.`);
-      const nextQuantity = inventory.quantity - item.quantity;
+      if (item.quantity > inventory.quantity && !opts.allowOversell) throw new Error(`Not enough stock for ${item.productId}.`);
+      const consumed = Math.min(item.quantity, Math.max(inventory.quantity, 0));
+      if (consumed < item.quantity) void logError("PAYMENTS", "Oversold order: paid quantity exceeds stock", { orderId: order.id, productId: item.productId, ordered: item.quantity, available: inventory.quantity });
+      const nextQuantity = inventory.quantity - consumed;
       const justRanOut = inventory.quantity > 0 && nextQuantity === 0;
       await tx.inventoryItem.update({ where: { id: inventory.id }, data: { quantity: nextQuantity, autoUnpublished: justRanOut ? true : inventory.autoUnpublished } });
       if (justRanOut) await tx.product.update({ where: { id: item.productId }, data: { isPublished: false } });
       const movement = await tx.stockMovement.create({
-        data: { inventoryItemId: inventory.id, storeId: order.storeId, orderId: order.id, type: "SALE", quantityChange: -item.quantity, quantityAfter: nextQuantity, note: `Online sale (order ${order.id})` },
+        data: { inventoryItemId: inventory.id, storeId: order.storeId, orderId: order.id, type: "SALE", quantityChange: -consumed, quantityAfter: nextQuantity, note: `Online sale (order ${order.id})${consumed < item.quantity ? ` — OVERSOLD by ${item.quantity - consumed}` : ""}` },
       });
-      await consumeStock(tx, { inventoryItemId: inventory.id, storeId: order.storeId, quantity: item.quantity, stockMovementId: movement.id });
+      if (consumed > 0) await consumeStock(tx, { inventoryItemId: inventory.id, storeId: order.storeId, quantity: consumed, stockMovementId: movement.id });
     }
   }
 }

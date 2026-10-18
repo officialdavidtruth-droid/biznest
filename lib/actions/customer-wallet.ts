@@ -4,6 +4,7 @@ import { auth } from "@/lib/auth";
 import { getStoreCustomerSessionForStore } from "@/lib/store-customer-auth";
 import { requireStoreCustomer } from "@/lib/actions/store-customer";
 import { prisma } from "@/lib/prisma";
+import { flagPaymentForReview } from "@/lib/payments/review";
 import { chargeCustomer } from "@/lib/payments/gateway";
 import { checkRateLimit } from "@/lib/rate-limit";
 import { sendOrderNotificationEmail, sendBookingConfirmationEmail, type BookingStoreBranding } from "@/lib/email/send";
@@ -200,7 +201,10 @@ export async function settleWalletFunding(
   if (payment.provider !== provider) return { success: false, error: "Payment provider mismatch." };
   if (payment.status === "SUCCESSFUL") return { success: true, data: { storeSlug: payment.wallet.store.slug } };
   if (payment.status !== "PENDING") return { success: false, error: "Wallet payment is not pending." };
-  if (Math.abs(Number(payment.amount) - Number(verifiedAmountNaira)) > 0.01) return { success: false, error: "Wallet funding amount mismatch." };
+  if (Math.abs(Number(payment.amount) - Number(verifiedAmountNaira)) > 0.01) {
+    await flagPaymentForReview(reference, `wallet funding amount mismatch (paid ${verifiedAmountNaira}, expected ${Number(payment.amount)})`, rawPayload);
+    return { success: false, error: "Wallet funding amount mismatch." };
+  }
 
   const amount = Number(payment.amount);
   await prisma.$transaction(async (tx) => {

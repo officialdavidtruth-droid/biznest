@@ -3,10 +3,8 @@ import { verifyFlutterwaveTransaction } from "@/lib/payments/flutterwave";
 import { checkRateLimit, getClientIp } from "@/lib/rate-limit";
 import { settleInvoicePayment } from "@/lib/actions/invoice";
 import { settleQuoteDeposit } from "@/lib/actions/quote";
-import { decrementStockForOrder } from "@/lib/actions/order";
+import { settleOrderPayment } from "@/lib/payments/settle-order";
 import { buildStoreUrl } from "@/lib/store-url";
-import { notifyStoreOwnerOfPaidOrder, notifyCustomerOfPaidOrder } from "@/lib/notifications/notify";
-import { emitWebhookEvent } from "@/lib/webhooks/dispatch";
 import { NextResponse } from "next/server";
 import { settleWalletFunding, settleServiceBookingPayment } from "@/lib/actions/customer-wallet";
 import { settleReservationPayment } from "@/lib/actions/pms";
@@ -92,88 +90,42 @@ export async function GET(req: Request) {
     return NextResponse.redirect(`${APP_URL}/?payment=order_not_found`);
   }
 
-  // The webhook is the authoritative path and may already have resolved
-  // this order by the time the browser makes it back here. If it has,
-  // route the customer to the right page without re-verifying or
-  // mutating anything — a stale/duplicate callback must never be able to
-  // cancel an order that's already PAID or further along.
-  if (order.status !== "PENDING_PAYMENT") {
-    return order.status === "CANCELLED"
-      ? NextResponse.redirect(buildStoreUrl(order.store, "?payment=failed"))
-      : NextResponse.redirect(buildStoreUrl(order.store, `/orders/${order.id}/confirmation`));
-  }
-
-  if (status === "cancelled") {
-    await prisma.$transaction([
-      prisma.order.updateMany({
-        where: { id: order.id, status: "PENDING_PAYMENT" },
-        data: { status: "CANCELLED" },
-      }),
-      prisma.payment.updateMany({
-        where: { reference: txRef, status: "PENDING" },
-        data: { status: "FAILED" },
-      }),
-    ]);
-    return NextResponse.redirect(buildStoreUrl(order.store, "?payment=failed"));
+  // Already resolved (webhook first, or order moved on): route only. A
+  // CANCELLED order is still re-verified so a late payment can revive it.
+  if (order.status !== "PENDING_PAYMENT" && order.status !== "CANCELLED") {
+    return NextResponse.redirect(buildStoreUrl(order.store, `/orders/${order.id}/confirmation`));
   }
 
   if (order.paymentProvider !== "FLUTTERWAVE") return NextResponse.redirect(buildStoreUrl(order.store, "?payment=invalid_provider"));
 
-  // Always verify server-side against Flutterwave directly, and re-check
-  // the amount — never trust the redirect alone.
+  // Always verify server-side; the redirect (including ?status=) is not proof.
   const verification = await verifyFlutterwaveTransaction(transactionId);
-  const amountMatches = Boolean(verification.data && Math.abs(Number(verification.data.amount) - Number(order.total)) < 0.01);
+  const gatewayStatus = verification.status === "success" ? verification.data?.status : undefined;
 
-  if (verification.status === "success" && verification.data?.status === "successful" && amountMatches) {
-    // Idempotent by design: only transition an order still awaiting
-    // payment, and use the update's own affected-row count — not the
-    // read above — to decide whether this request actually won the race
-    // against a concurrent webhook delivery for the same reference.
-    // Payment confirmation, the order transition, and the stock decrement
-    // are grouped in one transaction so they can't split across a crash.
-    const result = await prisma.$transaction(async (tx) => {
-      const updateResult = await tx.order.updateMany({
-        where: { id: order.id, status: "PENDING_PAYMENT" },
-        data: { status: "PAID", paymentReference: txRef },
-      });
-      await tx.payment.updateMany({
-        where: { reference: txRef, status: "PENDING" },
-        data: { status: "SUCCESSFUL", rawPayload: verification as object, verifiedAt: new Date() },
-      });
-      if (updateResult.count > 0) {
-        await decrementStockForOrder(tx, order.id);
-      }
-      return updateResult;
+  if (gatewayStatus === "successful") {
+    const result = await settleOrderPayment({
+      orderId: order.id,
+      reference: txRef,
+      provider: "FLUTTERWAVE",
+      verifiedAmountNaira: Number(verification.data?.amount ?? 0),
+      verifiedCurrency: (verification.data as { currency?: string } | undefined)?.currency,
+      payload: verification as object,
     });
-
-    // Only this request "won" the transition (guards against a duplicate
-    // callback, or the webhook having already handled it first) — fire the
-    // same notifications the webhook fires, so the customer/owner get
-    // emailed regardless of which path resolves the order first.
-    if (result.count > 0) {
-      await emitWebhookEvent("PAYMENT_SUCCESS", order.storeId, {
-        orderId: order.id,
-        reference: txRef,
-        provider: "FLUTTERWAVE",
-        amount: Number(order.total),
-        currency: order.currency,
-      });
-      await emitWebhookEvent("ORDER_PAID", order.storeId, { orderId: order.id, status: "PAID" });
-      void notifyStoreOwnerOfPaidOrder(order.storeId, order.id, Number(order.total), order.currency);
-      void notifyCustomerOfPaidOrder(order.id);
+    if (result.outcome === "paid" || result.outcome === "already_paid") {
+      return NextResponse.redirect(buildStoreUrl(order.store, `/orders/${order.id}/confirmation`));
     }
-    return NextResponse.redirect(buildStoreUrl(order.store, `/orders/${order.id}/confirmation`));
+    return NextResponse.redirect(buildStoreUrl(order.store, "?payment=review"));
   }
 
-  await prisma.$transaction([
-    prisma.order.updateMany({
-      where: { id: order.id, status: "PENDING_PAYMENT" },
-      data: { status: "CANCELLED" },
-    }),
-    prisma.payment.updateMany({
-      where: { reference: txRef, status: "PENDING" },
-      data: { status: "FAILED", rawPayload: verification as object },
-    }),
-  ]);
-  return NextResponse.redirect(buildStoreUrl(order.store, "?payment=failed"));
-                }
+  // Cancel only on an explicit gateway failure, or when the customer
+  // explicitly cancelled on the checkout page and nothing was charged.
+  if (gatewayStatus === "failed" || (status === "cancelled" && gatewayStatus !== "pending")) {
+    await prisma.$transaction([
+      prisma.order.updateMany({ where: { id: order.id, status: "PENDING_PAYMENT" }, data: { status: "CANCELLED" } }),
+      prisma.payment.updateMany({ where: { reference: txRef, status: "PENDING" }, data: { status: "FAILED", rawPayload: verification as object } }),
+    ]);
+    return NextResponse.redirect(buildStoreUrl(order.store, "?payment=failed"));
+  }
+
+  return NextResponse.redirect(buildStoreUrl(order.store, "?payment=pending"));
+}

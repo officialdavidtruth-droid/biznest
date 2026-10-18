@@ -2,9 +2,8 @@ import { prisma } from "@/lib/prisma";
 import { verifyFlutterwaveTransaction, verifyFlutterwaveWebhookSignature } from "@/lib/payments/flutterwave";
 import { settleInvoicePayment } from "@/lib/actions/invoice";
 import { settleQuoteDeposit } from "@/lib/actions/quote";
-import { decrementStockForOrder } from "@/lib/actions/order";
 import { emitWebhookEvent } from "@/lib/webhooks/dispatch";
-import { notifyStoreOwnerOfPaidOrder, notifyCustomerOfPaidOrder } from "@/lib/notifications/notify";
+import { settleOrderPayment } from "@/lib/payments/settle-order";
 import { NextResponse } from "next/server";
 import { settleWalletFunding, settleServiceBookingPayment } from "@/lib/actions/customer-wallet";
 import { settleReservationPayment } from "@/lib/actions/pms";
@@ -82,7 +81,7 @@ export async function POST(req: Request) {
     const amountNaira = Number(verification.data?.amount ?? 0);
     const amountMatches = Boolean(plan && amountNaira >= Number(plan.price));
     const paymentMatches = Boolean(payment && Math.abs(Number(payment.amount) - amountNaira) <= 0.01);
-    if (!store || !plan || !payment || !amountMatches || !paymentMatches) {
+    if (!store || !plan || !payment || payment.storeId !== store.id || !amountMatches || !paymentMatches) {
       return NextResponse.json({ received: true });
     }
     if (store.subscriptionId !== subscriptionId) {
@@ -127,46 +126,15 @@ export async function POST(req: Request) {
     return NextResponse.json({ received: true });
   }
 
-  // Idempotent by design — see the matching comment in the Paystack
-  // webhook. The amount check still needs the order row, but the actual
-  // transition happens via an atomic updateMany so a webhook retry racing
-  // the browser callback for the same tx_ref can't both "win".
-  const order = await prisma.order.findUnique({ where: { id: txRef } });
-  if (order && order.paymentProvider === "FLUTTERWAVE" && order.status === "PENDING_PAYMENT") {
-    const amountMatches = Boolean(verification.data && Math.abs(Number(verification.data.amount) - Number(order.total)) < 0.01);
-    if (amountMatches) {
-      // Same reasoning as the Paystack webhook: group the order
-      // transition, the payment row update, and the stock decrement so
-      // they can't split across a crash.
-      const result = await prisma.$transaction(async (tx) => {
-        const updateResult = await tx.order.updateMany({
-          where: { id: txRef, status: "PENDING_PAYMENT" },
-          data: { status: "PAID", paymentReference: txRef },
-        });
-        await tx.payment.updateMany({
-          where: { reference: txRef, status: "PENDING" },
-          data: { status: "SUCCESSFUL", rawPayload: verification as object, verifiedAt: new Date() },
-        });
-        if (updateResult.count > 0) {
-          await decrementStockForOrder(tx, txRef);
-        }
-        return updateResult;
-      });
-      if (result.count > 0) {
-        await emitWebhookEvent("PAYMENT_SUCCESS", order.storeId, {
-          orderId: order.id,
-          reference: txRef,
-          provider: "FLUTTERWAVE",
-          amount: Number(order.total),
-          currency: order.currency,
-        });
-        await emitWebhookEvent("ORDER_PAID", order.storeId, { orderId: order.id, status: "PAID" });
-        void notifyStoreOwnerOfPaidOrder(order.storeId, order.id, Number(order.total), order.currency);
-        void notifyCustomerOfPaidOrder(order.id);
-      }
-    }
-  }
+  // Order payment: shared settlement path (see lib/payments/settle-order.ts).
+  await settleOrderPayment({
+    orderId: txRef,
+    reference: txRef,
+    provider: "FLUTTERWAVE",
+    verifiedAmountNaira: Number(verification.data?.amount ?? 0),
+    verifiedCurrency: (verification.data as { currency?: string } | undefined)?.currency,
+    payload: verification as object,
+  });
 
   return NextResponse.json({ received: true });
-        }
-    
+}

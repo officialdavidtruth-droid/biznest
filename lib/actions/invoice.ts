@@ -2,6 +2,7 @@
 
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { flagPaymentForReview } from "@/lib/payments/review";
 import { chargeCustomer, getActiveGateway } from "@/lib/payments/gateway";
 import { roundMoney } from "@/lib/utils/pricing";
 import { sendOrderNotificationEmail } from "@/lib/email/send";
@@ -252,7 +253,10 @@ export async function markInvoicePaid(slug: string, invoiceId: string): Promise<
 export async function settleInvoicePayment(reference: string, verifiedAmountNaira: number, rawPayload: object): Promise<void> {
   const payment = await prisma.payment.findUnique({ where: { reference } });
   if (!payment || payment.purpose !== "INVOICE" || !reference.startsWith("INV-")) return;
-  if (Math.abs(Number(payment.amount) - Number(verifiedAmountNaira)) > 0.01) return;
+  if (Math.abs(Number(payment.amount) - Number(verifiedAmountNaira)) > 0.01) {
+    await flagPaymentForReview(reference, `invoice amount mismatch (paid ${verifiedAmountNaira}, expected ${Number(payment.amount)})`, rawPayload);
+    return;
+  }
 
   const invoiceId = reference.split("-")[1];
   const invoice = await prisma.invoice.findUnique({ where: { id: invoiceId } });
