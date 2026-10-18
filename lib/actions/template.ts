@@ -6,7 +6,7 @@ import { assertStorePermission } from "@/lib/access/assert-store-access";
 import { getTemplateDefinition, isTemplateCompatibleWithBusiness } from "@/lib/template-registry";
 import { getCanonicalBusinessType } from "@/lib/business-identity";
 import type { ActionResult } from "@/types/actions";
-import type { Prisma } from "@prisma/client";
+import { Prisma } from "@prisma/client";
 
 export async function setStoreTemplate(slug:string,templateId:string):Promise<ActionResult>{
  const access=await assertStorePermission(slug,"settings");if(!access.success)return access;
@@ -27,6 +27,10 @@ export async function setStoreTemplate(slug:string,templateId:string):Promise<Ac
  // owner picked afterwards kept showing the same old layout. Switching templates
  // therefore drops the draft (and its order/hidden lists) so the new template shows;
  // all other overrides (faq, delivery note, social bio, template content) are kept.
+ // Same for themeColors / fontFamily: resolveStoreTheme() lays them over EVERY template
+ // (secondary->background, primary->accent, font), and onboarding / the AI builder set
+ // them, so every template came out in the same colours and font. A new template starts
+ // with its own palette and typography; the owner can re-customise afterwards.
  const changed=store.templateId!==template.id;
  let sectionOverrides:Prisma.InputJsonValue|undefined;
  if(changed&&store.sectionOverrides&&typeof store.sectionOverrides==="object"&&!Array.isArray(store.sectionOverrides)){
@@ -34,7 +38,7 @@ export async function setStoreTemplate(slug:string,templateId:string):Promise<Ac
   void _v;void _b;void _o;void _h;
   sectionOverrides=rest as Prisma.InputJsonValue;
  }
- await prisma.store.update({where:{id:store.id},data:{templateId:template.id,businessType:businessType,...(sectionOverrides!==undefined?{sectionOverrides}:{})}});
+ await prisma.store.update({where:{id:store.id},data:{templateId:template.id,businessType:businessType,...(changed?{themeColors:Prisma.DbNull,fontFamily:null}:{}),...(sectionOverrides!==undefined?{sectionOverrides}:{})}});
  if(templateDef.renderer==="grandeur")await seedSampleListings(slug);
  revalidatePath(`/store/${slug}`);revalidatePath(`/store/${slug}/admin/templates`);revalidatePath(`/store/${slug}/admin/customize`);return {success:true,data:undefined};
 }

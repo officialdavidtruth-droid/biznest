@@ -849,8 +849,29 @@ const SIGNATURE_BASE = {
   sections: ["hero", "categories", "catalog", "features", "testimonials", "contact"] as Section[],
 };
 
+// Each signature template gets its own page structure (which sections, in what order).
+// Previously every one of them shared SIGNATURE_BASE.sections, so apart from colours and
+// copy they all rendered the identical layout -- picking a different template looked like
+// nothing had changed. Only section types the Builder renders without extra data are used.
+const SIGNATURE_SECTIONS: Record<string, Section[]> = {
+  electra: ["hero", "categories", "catalog", "features", "testimonials", "newsletter", "contact"],
+  atelier: ["hero", "catalog", "about", "categories", "testimonials", "newsletter"],
+  kinetic: ["hero", "catalog", "categories", "newsletter", "features", "contact"],
+  bloom: ["hero", "about", "catalog", "features", "testimonials", "newsletter"],
+  haven: ["hero", "categories", "about", "catalog", "features", "contact"],
+  harvest: ["hero", "categories", "catalog", "features", "newsletter", "contact"],
+  maison: ["hero", "about", "catalog", "features", "testimonials", "contact"],
+  hotel: ["hero", "about", "catalog", "features", "testimonials", "newsletter", "contact"],
+  ember: ["hero", "catalog", "about", "testimonials", "contact"],
+  muse: ["hero", "catalog", "about", "features", "testimonials", "contact"],
+  frame: ["hero", "about", "catalog", "testimonials", "contact"],
+  north: ["hero", "features", "about", "catalog", "testimonials", "contact"],
+  pure: ["hero", "features", "catalog", "about", "testimonials", "contact"],
+  forge: ["hero", "about", "features", "catalog", "testimonials", "contact"],
+};
+
 function signatureTheme(data: Omit<TemplateTheme, "font" | "headlineFont" | "radius" | "sections"> & { signatureMode: string }): TemplateTheme & { signatureMode: string } {
-  return { ...SIGNATURE_BASE, ...data };
+  return { ...SIGNATURE_BASE, sections: SIGNATURE_SECTIONS[data.signatureMode] ?? SIGNATURE_BASE.sections, ...data };
 }
 
 export const SIGNATURE_TEMPLATES = [
