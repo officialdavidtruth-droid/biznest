@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/prisma";
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
+import { isHotelStore } from "@/lib/storefront-routing";
 import type { Metadata } from "next";
 import { CatalogGrid } from "@/components/storefront/catalog-grid";
 import { resolveStoreTheme } from "@/lib/template-themes";
@@ -17,6 +18,24 @@ export default async function CategoryPage({ params }: { params: Promise<{ slug:
   if (!store || store.status !== "ACTIVE") notFound();
   const category = await prisma.category.findFirst({ where: { id: categoryId, storeId: store.id }, include: { children: true } });
   if (!category) notFound();
+
+  // Hotel stores have dedicated pages (Amenities, Dining, Gallery...). Their
+  // header categories are just nav labels with no products, so the generic
+  // product grid would render an empty "0 shown" page. Send each one to the
+  // matching hotel page instead.
+  if (isHotelStore({ storeBusinessType: store.businessType, templateName: store.template?.name })) {
+    const name = category.name.toLowerCase();
+    const target =
+      /amenit|facilit/.test(name) ? "/amenities" :
+      /dining|restaurant|bar|food/.test(name) ? "/dining" :
+      /gallery|photo/.test(name) ? "/gallery" :
+      /experience|activit/.test(name) ? "/experiences" :
+      /event/.test(name) ? "/events" :
+      /about/.test(name) ? "/about" :
+      /contact/.test(name) ? "/contact" :
+      "/catalog";
+    redirect(`/store/${slug}${target}`);
+  }
   const ids = category.children.length ? [category.id, ...category.children.map(c=>c.id)] : [category.id];
   const [products, services] = await Promise.all([
     prisma.product.findMany({where:{storeId:store.id,categoryId:{in:ids},isPublished:true},include:{category:true}}),
