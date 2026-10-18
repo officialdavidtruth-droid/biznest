@@ -5,6 +5,10 @@ import { prisma } from "@/lib/prisma";
 import { getStoreBranding } from "@/lib/actions/store-branding";
 import { StoreMenuProvider } from "@/components/storefront/store-menu";
 import { resolveMenuRows } from "@/lib/storefront-menu";
+import { resolveStoreTheme } from "@/lib/template-themes";
+import { PromoPopup } from "@/components/storefront/promo-popup";
+import { buildPromoPalette, isPromoLive, readPromoPopup } from "@/lib/storefront/promo-popup";
+import { getPluginEntitlement } from "@/lib/plugins";
 
 // Every store page under /store/[slug] falls back to the root layout's
 // static "BizNest — Build, Sell, Grow" <title> and platform favicon unless
@@ -60,6 +64,14 @@ export default async function StoreLayout({
     where: { slug },
     select: {
       id: true,
+      // Promo pop-up card: config + the fields resolveStoreTheme needs so the
+      // card is painted in whichever template this store uses.
+      status: true,
+      name: true,
+      storefrontConfig: true,
+      themeColors: true,
+      fontFamily: true,
+      template: { select: { name: true, category: true } },
       // Owner-built header menu (Dashboard > Menus). Empty = templates use their own default links.
       menuItems: {
         where: { location: "header", isActive: true },
@@ -85,6 +97,31 @@ export default async function StoreLayout({
     }
   }
 
+  // One mount point for every template (builder, legacy, signature, dedicated
+  // renderers): the popup lives in the layout and takes its look from the
+  // resolved theme, so new templates are covered automatically.
+  const promo = exists ? readPromoPopup(exists.storefrontConfig) : null;
+  let showPromo = !!exists && exists.status === "ACTIVE" && !!promo && isPromoLive(promo);
+  if (showPromo) {
+    // Promo pop-up belongs to the Marketing tool (CRM & Sales app). If the app is
+    // uninstalled or the plan lapses, stop showing the card. Only runs when a
+    // popup is actually enabled, so other storefronts pay nothing extra.
+    const ent = await getPluginEntitlement(exists!.id, "crm");
+    showPromo = ent.allowed && !!ent.installed;
+  }
+  const promoPalette = showPromo
+    ? buildPromoPalette(
+        resolveStoreTheme(
+          exists!.template?.category,
+          exists!.name,
+          exists!.themeColors as { primary?: string; secondary?: string; accent?: string } | null,
+          exists!.fontFamily,
+          exists!.template?.name
+        ),
+        exists!.template?.name
+      )
+    : null;
+
   return (
     <>
       <link rel="preconnect" href="https://fonts.googleapis.com" />
@@ -94,6 +131,7 @@ export default async function StoreLayout({
         rel="stylesheet"
       />
       <StoreMenuProvider menu={exists?.menuItems?.length ? resolveMenuRows(exists.menuItems, slug) : null}>{children}</StoreMenuProvider>
+      {showPromo && promo && promoPalette && <PromoPopup slug={slug} config={promo} palette={promoPalette} />}
     </>
   );
 }

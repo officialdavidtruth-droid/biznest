@@ -3,21 +3,31 @@
 import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { ExternalLink, Palette, PenSquare, Users, Send, Workflow, ArrowUpRight, ArrowDownRight } from "lucide-react";
+import { ExternalLink, Megaphone, Palette, PenSquare, Users, Send, Workflow, ArrowUpRight, ArrowDownRight } from "lucide-react";
 import type { MarketingBrand, MarketingItem } from "@/lib/email/marketing-templates";
 import { useEmailDesign } from "@/components/marketing/email-designer";
 import { MarketingEmailComposer } from "@/components/dashboard/marketing-email-composer";
 import { MarketingAudience, type SubscriberRow } from "@/components/dashboard/marketing-audience";
 import { MarketingCampaigns, type CampaignRow } from "@/components/dashboard/marketing-campaigns";
 import { MarketingAutomationPanel } from "@/components/dashboard/marketing-automation-panel";
+import { PromoPopupManager } from "@/components/dashboard/promo-popup-manager";
+import type { PromoPalette, PromoPopupConfig } from "@/lib/storefront/promo-popup";
 
-export type MarketingTab = "compose" | "audience" | "campaigns" | "automations";
+export type MarketingTab = "compose" | "audience" | "campaigns" | "automations" | "popup";
+
+export type MarketingPopupData = {
+  initial: PromoPopupConfig;
+  palette: PromoPalette;
+  templateName: string | null;
+  coupons: { code: string; label: string }[];
+};
 
 const TABS: Array<{ id: MarketingTab; label: string; icon: typeof PenSquare; hint: string }> = [
   { id: "compose", label: "New campaign", icon: PenSquare, hint: "Design & send" },
   { id: "campaigns", label: "Campaigns", icon: Send, hint: "History & performance" },
   { id: "audience", label: "Audience", icon: Users, hint: "Subscribers & lists" },
   { id: "automations", label: "Automations", icon: Workflow, hint: "Always-on flows" },
+  { id: "popup", label: "Promo pop-up", icon: Megaphone, hint: "Offer card on your site" },
 ];
 
 export type MarketingStats = {
@@ -36,6 +46,7 @@ export function MarketingWorkspace({
   subscribers,
   campaigns,
   initialTab,
+  popup,
 }: {
   slug: string;
   brand: MarketingBrand;
@@ -44,6 +55,7 @@ export function MarketingWorkspace({
   subscribers: SubscriberRow[];
   campaigns: CampaignRow[];
   initialTab: MarketingTab;
+  popup: MarketingPopupData;
 }) {
   const router = useRouter();
   const design = useEmailDesign(brand, items);
@@ -275,6 +287,21 @@ export function MarketingWorkspace({
             <MarketingAutomationPanel
               slug={slug}
               activeCount={stats.automations}
+            />
+          </div>
+
+          <div
+            role="tabpanel"
+            id="mk-pane-popup"
+            aria-labelledby="mk-tab-popup"
+            hidden={tab !== "popup"}
+          >
+            <PromoPopupManager
+              slug={slug}
+              initial={popup.initial}
+              palette={popup.palette}
+              templateName={popup.templateName}
+              coupons={popup.coupons}
             />
           </div>
         </div>

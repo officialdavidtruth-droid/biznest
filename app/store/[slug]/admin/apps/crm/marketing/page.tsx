@@ -7,6 +7,8 @@ import { assertStorePermission } from "@/lib/access/assert-store-access";
 import { buildMarketingBrand, loadMarketingItems } from "@/lib/email/marketing-brand";
 import { CrmTabs } from "@/components/dashboard/crm-tabs";
 import { getPluginEntitlement } from "@/lib/plugins";
+import { resolveStoreTheme } from "@/lib/template-themes";
+import { buildPromoPalette, readPromoPopup } from "@/lib/storefront/promo-popup";
 
 export default async function MarketingPage({ params, searchParams }: { params: Promise<{ slug: string }>; searchParams: Promise<{ tab?: string }> }) {
   const { slug } = await params;
@@ -27,17 +29,25 @@ export default async function MarketingPage({ params, searchParams }: { params: 
     );
   }
 
-  const [activeSubscribers, unsubscribedCount, subscribers, campaigns, items, automations] = await Promise.all([
+  const [activeSubscribers, unsubscribedCount, subscribers, campaigns, items, automations, popupStore] = await Promise.all([
     prisma.newsletterSubscriber.count({ where: { storeId: store.id, unsubscribedAt: null } }),
     prisma.newsletterSubscriber.count({ where: { storeId: store.id, unsubscribedAt: { not: null } } }),
     prisma.newsletterSubscriber.findMany({ where: { storeId: store.id }, select: { id: true, email: true, createdAt: true, unsubscribedAt: true }, orderBy: { createdAt: "desc" }, take: 200 }),
     prisma.emailCampaign.findMany({ where: { storeId: store.id }, select: { id: true, subject: true, template: true, status: true, recipientCount: true, sentCount: true, failedCount: true, createdAt: true, content: true }, orderBy: { createdAt: "desc" }, take: 20 }),
     loadMarketingItems(store.id, slug),
     prisma.automation.count({ where: { storeId: store.id, status: "ACTIVE" } }),
+    // Promo pop-up tab: template (for the preview palette) + active coupons to pick a code from.
+    prisma.store.findUnique({
+      where: { id: store.id },
+      select: {
+        template: { select: { name: true, category: true } },
+        coupons: { where: { isActive: true }, select: { code: true, discountType: true, discountValue: true }, orderBy: { id: "desc" }, take: 50 },
+      },
+    }),
   ]);
 
   const { tab } = await searchParams;
-  const initialTab: MarketingTab = (["compose", "audience", "campaigns", "automations"] as const).find((t) => t === tab) ?? "compose";
+  const initialTab: MarketingTab = (["compose", "audience", "campaigns", "automations", "popup"] as const).find((t) => t === tab) ?? "compose";
 
   return (
     <div className="space-y-6">
@@ -47,6 +57,22 @@ export default async function MarketingPage({ params, searchParams }: { params: 
         brand={buildMarketingBrand(store)}
         items={items}
         initialTab={initialTab}
+        popup={{
+          initial: readPromoPopup(store.storefrontConfig),
+          palette: buildPromoPalette(
+            resolveStoreTheme(
+              popupStore?.template?.category, store.name,
+              store.themeColors as { primary?: string; secondary?: string; accent?: string } | null,
+              store.fontFamily, popupStore?.template?.name
+            ),
+            popupStore?.template?.name
+          ),
+          templateName: popupStore?.template?.name ?? null,
+          coupons: (popupStore?.coupons ?? []).map((c) => ({
+            code: c.code,
+            label: c.discountType === "PERCENT" ? `${Number(c.discountValue)}% off` : `₦${Number(c.discountValue).toLocaleString()} off`,
+          })),
+        }}
         stats={{
           active: activeSubscribers,
           unsubscribed: unsubscribedCount,
