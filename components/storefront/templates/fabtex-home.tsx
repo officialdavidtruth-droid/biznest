@@ -1,4 +1,5 @@
 import type React from "react";
+import { MenuLinks } from "@/components/storefront/store-menu";
 import { CartLink } from "@/components/storefront/cart-link";
 import { FABTEX } from "@/lib/template-themes";
 import { CategoryNav } from "@/components/storefront/category-nav";
@@ -65,9 +66,11 @@ export function FabtexStorefront({
           )}
         </a>
         <nav style={{ display: "flex", gap: 2, flex: 1 }}>
+          <MenuLinks slug={slug} linkStyle={{fontSize:10,textDecoration:"none",color:"#fff",padding:"10px 11px"}} fallbackNode={<>
           <a href="#catalog" style={{ fontSize: 10, textDecoration: "none", color: "#fff", padding: "10px 11px" }}>Catalog</a>
           <a href="#about" style={{ fontSize: 10, textDecoration: "none", color: "#fff", padding: "10px 11px" }}>About</a>
           <a href="#contact" style={{ fontSize: 10, textDecoration: "none", color: "#fff", padding: "10px 11px" }}>Contact</a>
+          </>} />
         </nav>
         <CartLink storeSlug={slug} accent={FABTEX.orange} onAccent="#ffffff" ink="#ffffff" />
       </header>

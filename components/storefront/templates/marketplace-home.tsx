@@ -1,4 +1,5 @@
 import type React from "react";
+import { MenuLinks } from "@/components/storefront/store-menu";
 import { CartLink } from "@/components/storefront/cart-link";
 import { MARKETPLACE, MARKETPLACE_THEME } from "@/lib/template-themes";
 import { subscribeToNewsletterForm } from "@/lib/actions/newsletter";
@@ -135,9 +136,11 @@ export function MarketplaceStorefront({
           {store.name}
         </a>
         <nav style={{ display: "flex", gap: 22, fontSize: 10 }}>
+          <MenuLinks slug={slug} upper linkStyle={{color:"inherit"}} fallbackNode={<>
           {catalogItems.length > 0 && <a href="#catalog" style={{ color: "inherit" }}>SHOP</a>}
           {store.business.description && <a href="#about" style={{ color: "inherit" }}>ABOUT US</a>}
           {(store.contactEmail || store.contactPhone) && <a href="#contact" style={{ color: "inherit" }}>CONTACT US</a>}
+          </>} />
         </nav>
         <div style={{ marginLeft: "auto", display: "flex", gap: 16, alignItems: "center", fontSize: 10, color: "#555" }}>
           <CartLink storeSlug={slug} accent={MARKETPLACE.blue} ink={MARKETPLACE.ink} />

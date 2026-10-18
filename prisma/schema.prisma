@@ -876,6 +876,7 @@ model Store {
   products      Product[]
   services      Service[]
   categories    Category[]
+  menuItems     StoreMenuItem[]
   propertyGuests PropertyGuest[]
   propertyRooms PropertyRoom[]
   propertyReservations PropertyReservation[]
@@ -3854,4 +3855,34 @@ model MarketingCatalogItem {
   @@unique([storeId, externalKey])
   @@index([storeId, type])
   @@index([storeId, isActive])
+}
+
+
+// ----------------------------------------------------------------------------
+// STOREFRONT NAVIGATION MENU
+// Owner-managed header menu (WordPress-style): top-level links with optional
+// dropdown children. When a store has no rows here, every template falls back
+// to its own default links, so nothing changes until the owner customizes.
+// linkType: PAGE (target = path like "/about"), CATEGORY (target = Category.id),
+// CUSTOM (target = full URL, "/path", "#anchor", "mailto:" or "tel:").
+// ----------------------------------------------------------------------------
+model StoreMenuItem {
+  id           String          @id @default(cuid())
+  storeId      String
+  store        Store           @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  location     String          @default("header")
+  label        String
+  linkType     String          @default("PAGE")
+  target       String?
+  openInNewTab Boolean         @default(false)
+  parentId     String?
+  parent       StoreMenuItem?  @relation("StoreMenuTree", fields: [parentId], references: [id], onDelete: Cascade)
+  children     StoreMenuItem[] @relation("StoreMenuTree")
+  sortOrder    Int             @default(0)
+  isActive     Boolean         @default(true)
+  createdAt    DateTime        @default(now())
+  updatedAt    DateTime        @updatedAt
+
+  @@index([storeId, location, sortOrder])
+  @@index([parentId])
 }

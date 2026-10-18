@@ -1,4 +1,5 @@
 import type React from "react";
+import { MenuLinks } from "@/components/storefront/store-menu";
 import { CartLink } from "@/components/storefront/cart-link";
 import { NOVA } from "@/lib/template-themes";
 import { subscribeToNewsletter } from "@/lib/actions/newsletter";
@@ -56,8 +57,10 @@ export function NovaStorefront({
           {store.name}
         </a>
         <div style={{ display: "flex", alignItems: "center", gap: 26 }}>
+          <MenuLinks slug={slug} linkStyle={{ ...label, textDecoration: "none" }} fallbackNode={<>
           {catalogItems.length > 0 && <a href="#collection" style={{ ...label, textDecoration: "none" }}>The Collection</a>}
           {catalogItems.length > 0 && <a href={`/store/${slug}/search`} style={{ ...label, textDecoration: "none" }}>Search</a>}
+          </>} />
           <CartLink storeSlug={slug} accent={NOVA.gold} ink={NOVA.cream} />
         </div>
       </div>

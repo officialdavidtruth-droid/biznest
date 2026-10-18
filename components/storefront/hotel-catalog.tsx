@@ -1,5 +1,6 @@
 "use client";
 
+import { MenuLinks } from "@/components/storefront/store-menu";
 import Link from "next/link";
 import { useMemo, useState } from "react";
 import { ArrowRight, BedDouble, CalendarDays, Check, ChevronDown, Clock3, MapPin, Menu, Sparkles, Star, Users, Wifi, X } from "lucide-react";
@@ -56,13 +57,15 @@ export function HotelCatalog({ store, slug, content }: { store: Store; slug: str
           </Link>
           <button className="hc-menu" onClick={() => setMenuOpen((v) => !v)} aria-label="Open navigation">{menuOpen ? <X /> : <Menu />}</button>
           <nav className={menuOpen ? "open" : ""}>
+            <MenuLinks slug={slug} onNavigate={() => setMenuOpen(false)} fallbackNode={<>
             <Link href={`/store/${slug}`}>Home</Link>
             <Link className="active" href={`/store/${slug}/catalog`}>Rooms &amp; Suites</Link>
             <Link href={`/store/${slug}/amenities`}>Amenities</Link>
             <Link href={`/store/${slug}/dining`}>Dining</Link>
-            <Link href={`/store/${slug}/experiences`}>Experiences</Link>
+            <Link href={`/store/${slug}/events`}>Events</Link>
             <Link href={`/store/${slug}/about`}>About</Link>
             <Link href={`/store/${slug}/contact`}>Contact</Link>
+          </>} />
           </nav>
           <div className="hc-actions"><AccountLink storeSlug={slug} ink="#fff" /><Link href={`/store/${slug}/book`} className="hc-book">Book Now <ArrowRight size={15} /></Link></div>
         </header>

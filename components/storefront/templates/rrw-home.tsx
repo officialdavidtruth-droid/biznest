@@ -1,4 +1,5 @@
 import type React from "react";
+import { MenuLinks } from "@/components/storefront/store-menu";
 import { CartLink } from "@/components/storefront/cart-link";
 import { RRW, RRW_THEME } from "@/lib/template-themes";
 import { subscribeToNewsletterForm } from "@/lib/actions/newsletter";
@@ -74,8 +75,10 @@ export function RrwStorefront({
             {store.name}
           </a>
           <nav style={{ display: "flex", gap: 28, margin: "0 auto", fontSize: 10 }}>
+            <MenuLinks slug={slug} linkStyle={{textDecoration:"none",color:RRW.ink}} fallbackNode={<>
             {catalogItems.length > 0 && <a href="#fleet" style={{ textDecoration: "none", color: RRW.ink }}>Fleet</a>}
             {navCategories.length > 0 && <a href={`/store/${slug}/catalog`} style={{ textDecoration: "none", color: RRW.ink }}>Categories</a>}
+            </>} />
           </nav>
           <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
             <CartLink storeSlug={slug} accent={RRW.accent} ink={RRW.ink} />

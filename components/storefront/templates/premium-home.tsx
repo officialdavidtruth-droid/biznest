@@ -1,4 +1,5 @@
 import type React from "react";
+import { MenuLinks } from "@/components/storefront/store-menu";
 import { CartLink } from "@/components/storefront/cart-link";
 import { PREMIUM, PREMIUM_THEME } from "@/lib/template-themes";
 import { subscribeToNewsletterForm } from "@/lib/actions/newsletter";
@@ -69,8 +70,10 @@ export function PremiumStorefront({
           ⌕<span style={{ marginLeft: 7, fontSize: 12 }}>Search the catalog…</span>
         </div>
         <nav style={{ display: "flex", gap: 15, fontSize: 11, fontWeight: 700 }}>
+          <MenuLinks slug={slug} linkStyle={{textDecoration:"none",color:PREMIUM.ink}} fallbackNode={<>
           {catalogItems.length > 0 && <a href="#flash" style={{ textDecoration: "none", color: PREMIUM.ink }}>Shop</a>}
           {navCategories.length > 0 && <a href={`/store/${slug}/catalog`} style={{ textDecoration: "none", color: PREMIUM.ink }}>Categories</a>}
+          </>} />
         </nav>
         <div style={{ marginLeft: "auto", display: "flex", gap: 15, alignItems: "center" }}>
           <CartLink storeSlug={slug} accent={PREMIUM.accent} ink={PREMIUM.ink} />

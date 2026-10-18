@@ -1,4 +1,5 @@
 import type React from "react";
+import { MenuLinks } from "@/components/storefront/store-menu";
 import { CartLink } from "@/components/storefront/cart-link";
 import { JUICELIFE } from "@/lib/template-themes";
 import { subscribeToNewsletterForm } from "@/lib/actions/newsletter";
@@ -64,12 +65,14 @@ export function JuiceLifeStorefront({
           )}
         </a>
         <nav style={{ display: "flex", gap: 24, margin: "0 auto", fontSize: 12 }}>
+          <MenuLinks slug={slug} linkStyle={{color:JUICELIFE.ink,textDecoration:"none"}} fallbackNode={<>
           <a href="#home" style={{ color: JUICELIFE.ink, textDecoration: "none" }}>Home</a>
           <a href="#shop" style={{ color: JUICELIFE.ink, textDecoration: "none" }}>Shop</a>
           <a href="#menu" style={{ color: JUICELIFE.ink, textDecoration: "none" }}>Menu</a>
           <a href="#about" style={{ color: JUICELIFE.ink, textDecoration: "none" }}>About</a>
           <a href="#benefits" style={{ color: JUICELIFE.ink, textDecoration: "none" }}>Benefits</a>
           <a href="#contact" style={{ color: JUICELIFE.ink, textDecoration: "none" }}>Contact</a>
+          </>} />
         </nav>
         <CartLink storeSlug={slug} accent={JUICELIFE.green} onAccent="#ffffff" ink={JUICELIFE.ink} />
       </header>

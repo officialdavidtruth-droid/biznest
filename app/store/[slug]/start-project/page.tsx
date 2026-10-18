@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { MenuLinks } from "@/components/storefront/store-menu";
 import { ArrowLeft } from "lucide-react";
 import { notFound } from "next/navigation";
 import { prisma } from "@/lib/prisma";
@@ -27,9 +28,9 @@ export default async function StartProjectPage({ params }: { params: Promise<{ s
             <span>{store.name}</span>
           </Link>
           <nav style={{ marginLeft: "auto", display: "flex", gap: 22, alignItems: "center", fontSize: 13, fontWeight: 700 }}>
-            {[["Home", ""], ["Services", "services"], ["About", "about"], ["Portfolio", "portfolio"], ["Pricing", "pricing"], ["Contact", "contact"]].map(([label, path]) => (
+            <MenuLinks slug={slug} linkStyle={{ color: "#111827", textDecoration: "none" }} fallbackNode={<>{[["Home", ""], ["Services", "services"], ["About", "about"], ["Portfolio", "portfolio"], ["Pricing", "pricing"], ["Contact", "contact"]].map(([label, path]) => (
               <Link key={label} href={`/store/${slug}${path ? `/${path}` : ""}`} style={{ color: "#111827", textDecoration: "none" }}>{label}</Link>
-            ))}
+            ))}</>} />
           </nav>
         </div>
       </header>

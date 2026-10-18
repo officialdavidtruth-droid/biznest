@@ -1,4 +1,5 @@
 import type React from "react";
+import { MenuLinks } from "@/components/storefront/store-menu";
 import { CartLink } from "@/components/storefront/cart-link";
 import { ARCOVA } from "@/lib/template-themes";
 import { CategoryNav } from "@/components/storefront/category-nav";
@@ -69,9 +70,11 @@ export function ArcovaStorefront({
               <span style={{ fontSize: 18, fontWeight: 700, letterSpacing: 1 }}>{store.name.toUpperCase()}</span>
             </a>
             <nav style={{ display: "flex", alignItems: "center", gap: 26, fontSize: 12, letterSpacing: 1 }}>
+              <MenuLinks slug={slug} upper linkStyle={{color:ARCOVA.ink,textDecoration:"none"}} fallbackNode={<>
               <a href="#projects" style={{ color: ARCOVA.ink, textDecoration: "none" }}>PROJECTS</a>
               <a href="#services" style={{ color: ARCOVA.ink, textDecoration: "none" }}>SERVICES</a>
               <a href="#contact" style={{ color: ARCOVA.ink, textDecoration: "none" }}>CONTACT</a>
+              </>} />
               <CartLink storeSlug={slug} accent={ARCOVA.accent} onAccent="#ffffff" ink={ARCOVA.ink} />
             </nav>
           </div>

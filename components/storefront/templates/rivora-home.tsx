@@ -1,4 +1,5 @@
 import type React from "react";
+import { MenuLinks } from "@/components/storefront/store-menu";
 import { CartLink } from "@/components/storefront/cart-link";
 import { RIVORA } from "@/lib/template-themes";
 import { subscribeToNewsletterForm } from "@/lib/actions/newsletter";
@@ -66,11 +67,13 @@ export function RivoraStorefront({
           <span style={{ fontWeight: 800, fontSize: 14 }}>{store.name}</span>
         </a>
         <nav style={{ display: "flex", gap: 22, flex: 1, justifyContent: "center", fontSize: 11 }}>
+          <MenuLinks slug={slug} linkStyle={{color:"#d8e2dc",textDecoration:"none"}} fallbackNode={<>
           <a href="#home" style={{ color: "#d8e2dc", textDecoration: "none" }}>Home</a>
           <a href="#shop" style={{ color: "#d8e2dc", textDecoration: "none" }}>Shop</a>
           <a href="#categories" style={{ color: "#d8e2dc", textDecoration: "none" }}>Categories</a>
           <a href="#about" style={{ color: "#d8e2dc", textDecoration: "none" }}>About</a>
           <a href="#contact" style={{ color: "#d8e2dc", textDecoration: "none" }}>Contact</a>
+          </>} />
         </nav>
         <CartLink storeSlug={slug} accent={RIVORA.lime} onAccent="#153600" ink="#fff" />
       </header>

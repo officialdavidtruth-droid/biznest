@@ -1,4 +1,5 @@
 import { CartLink } from "@/components/storefront/cart-link";
+import { MenuLinks } from "@/components/storefront/store-menu";
 import { HEENZY } from "@/lib/template-themes";
 import { subscribeToNewsletter } from "@/lib/actions/newsletter";
 import { CategoryNav } from "@/components/storefront/category-nav";
@@ -251,9 +252,11 @@ function HeenzyNav({ store, slug, hasCatalog }: { store: { name: string; logoUrl
           {store.name}
         </a>
         <ul className="hz-nav-links">
+          <MenuLinks slug={slug} wrap="li" fallbackNode={<>
           <li><a href={`/store/${slug}`}>Home</a></li>
           {hasCatalog && <li><a href={`/store/${slug}/catalog`}>Shop</a></li>}
           {hasCatalog && <li><a href={`/store/${slug}/search`}>Search</a></li>}
+          </>} />
         </ul>
         <div className="hz-nav-icons">
           <CartLink storeSlug={slug} accent={HEENZY.black} ink={HEENZY.black} />

@@ -1,5 +1,6 @@
 "use client";
 
+import { MenuLinks } from "@/components/storefront/store-menu";
 import type React from "react";
 import { useEffect, useState } from "react";
 import Link from "next/link";
@@ -102,7 +103,7 @@ export function BuilderStorefront({
             {store.name}
           </Link>
           <div className="bn-nav-links" style={{ display: "flex", gap: 22, fontSize: 13, color: d.muted }}>
-            {visible.filter((s) => ["catalog", "about", "contact"].includes(s.type)).map((s) => <a key={s.id} href={`#${s.id}`}>{s.settings.heading || label(s.type)}</a>)}
+            <MenuLinks slug={store.slug} fallbackNode={<>{visible.filter((s) => ["catalog", "about", "contact"].includes(s.type)).map((s) => <a key={s.id} href={`#${s.id}`}>{s.settings.heading || label(s.type)}</a>)}</>} />
           </div>
           <div style={{ display: "flex", alignItems: "center", gap: 10 }}>{experience.mode !== "service" && <CartLink storeSlug={store.slug} accent={d.accent} />}</div>
         </div>

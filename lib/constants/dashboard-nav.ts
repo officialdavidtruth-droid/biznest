@@ -3,7 +3,7 @@ import {
   CreditCard, BarChart3, Star, MessageSquare,
   Settings, BadgeCheck, Wallet, LifeBuoy, Truck, Wand2,
   LayoutTemplate, FileText, FileSignature, MailWarning, Calculator, CalendarDays, Images,
-  ClipboardList, PlusCircle, Layers, Rows3, Puzzle,
+  ClipboardList, PlusCircle, Layers, Rows3, Puzzle, ListTree,
 } from "lucide-react";
 import { getAdaptiveDashboardConfig } from "@/lib/adaptive-dashboard";
 import { getBusinessTerminology } from "@/lib/business-terminology";
@@ -159,6 +159,7 @@ export function buildNavGroups(business: { sellsProducts: boolean; offersService
       items: [
         { label: "Templates", href: "/templates", icon: LayoutTemplate, permission: "settings" },
         { label: "Website Builder", href: "/customize", icon: Wand2, permission: "settings" },
+        { label: "Menus", href: "/menus", icon: ListTree, permission: "settings" },
         ...(isHotelBusiness(canonicalType) ? [{ label: "Hotel Website", href: "/hotel", icon: Images, permission: "settings" as StaffPermissionId }] : []),
         ...(String(business.category||"").toLowerCase().includes("retail") || String(business.category||"").toLowerCase().includes("electronics") ? [{ label: "Example Website", href: "/example", icon: Wand2, permission: "settings" as StaffPermissionId }] : []),
         ...(isRestaurantBusiness(canonicalType) ? [

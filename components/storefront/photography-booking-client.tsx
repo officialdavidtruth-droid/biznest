@@ -1,5 +1,6 @@
 "use client";
 
+import { MenuLinks } from "@/components/storefront/store-menu";
 import { useEffect, useMemo, useState, useTransition } from "react";
 import Link from "next/link";
 import { toast } from "sonner";
@@ -143,6 +144,7 @@ export function PhotographyBookingClient({
             <span><strong style={{ display: "block", fontFamily: theme.headlineFont || "Georgia, serif", fontSize: 20, letterSpacing: ".08em" }}>{store.name || "VERE STUDIO"}</strong><small style={{ letterSpacing: ".25em", fontSize: 8 }}>PHOTOGRAPHY</small></span>
           </Link>
           <nav style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: 30, fontSize: 12, fontWeight: 700 }}>
+            <MenuLinks slug={slug} linkStyle={{ color: ink, textDecoration: "none" }} fallbackNode={<>
             <Link href={`/store/${slug}`} style={{ color: ink, textDecoration: "none" }}>Home</Link>
             <Link href={`/store/${slug}/about`} style={{ color: ink, textDecoration: "none" }}>About Us</Link>
             <Link href={`/store/${slug}/catalog`} style={{ color: ink, textDecoration: "none", borderBottom: `2px solid ${accent}`, paddingBottom: 7 }}>Services</Link>
@@ -150,6 +152,7 @@ export function PhotographyBookingClient({
             <Link href={`/store/${slug}/pricing`} style={{ color: ink, textDecoration: "none" }}>Packages</Link>
             <Link href={`/store/${slug}/faq`} style={{ color: ink, textDecoration: "none" }}>FAQ</Link>
             <Link href={`/store/${slug}/contact`} style={{ color: ink, textDecoration: "none" }}>Contact Us</Link>
+          </>} />
             <a href="#book" style={{ background: "#080808", color: "#fff", padding: "13px 19px", borderRadius: 24, textDecoration: "none" }}>▣ &nbsp; Book Now</a>
           </nav>
         </div>

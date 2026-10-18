@@ -1,5 +1,6 @@
 "use client";
 
+import { MenuLinks } from "@/components/storefront/store-menu";
 import type React from "react";
 import { useState } from "react";
 import Link from "next/link";
@@ -61,14 +62,16 @@ export function HotelRoomDetail({ store, slug, service, theme, hotelMode }: Prop
           <strong>{store.name}</strong>
         </Link>
         <nav>
+          <MenuLinks slug={slug} fallbackNode={<>
           <Link href={`/store/${slug}`}>Home</Link>
-          <Link href={`/store/${slug}/hotel/rooms`}>Rooms &amp; Suites</Link>
-          <Link href={`/store/${slug}/hotel/experience`}>Restaurant</Link>
-          <Link href={`/store/${slug}/hotel/gallery`}>Gallery</Link>
-          <Link href={`/store/${slug}/hotel/story`}>About Us</Link>
-          <Link href={`/store/${slug}/hotel/contact`}>Contact Us</Link>
+          <Link href={`/store/${slug}/catalog`}>Rooms &amp; Suites</Link>
+          <Link href={`/store/${slug}/dining`}>Restaurant</Link>
+          <Link href={`/store/${slug}/gallery`}>Gallery</Link>
+          <Link href={`/store/${slug}/about`}>About Us</Link>
+          <Link href={`/store/${slug}/contact`}>Contact Us</Link>
+        </>} />
         </nav>
-        <Link href={`/store/${slug}/hotel/rooms`} className="hr-book-top">Book Now</Link>
+        <Link href={`/store/${slug}/book`} className="hr-book-top">Book Now</Link>
       </header>
 
       <section className="hr-hero" style={{ backgroundImage: `linear-gradient(90deg, rgba(0,0,0,.57), rgba(0,0,0,.24)), url(${images[0] || store.bannerUrl || ""})` }}>
@@ -136,7 +139,7 @@ export function HotelRoomDetail({ store, slug, service, theme, hotelMode }: Prop
 
       <footer className="hr-footer">
         <div><div className="hr-footer-brand"><span>{store.name?.[0] || "H"}</span><b>{store.name}</b></div><p>Luxury, comfort and exceptional service designed around you.</p></div>
-        <div><b>Quick Links</b><Link href={`/store/${slug}`}>Home</Link><Link href={`/store/${slug}/hotel/rooms`}>Rooms &amp; Suites</Link><Link href={`/store/${slug}/account`}>Account</Link></div>
+        <div><b>Quick Links</b><Link href={`/store/${slug}`}>Home</Link><Link href={`/store/${slug}/catalog`}>Rooms &amp; Suites</Link><Link href={`/store/${slug}/account`}>Account</Link></div>
         <div><b>Contact</b><span>{store.contactPhone || "Contact available"}</span><span>{store.contactEmail || "Email available"}</span></div>
         <div><b>Newsletter</b><span>Get updates, offers and new arrivals.</span><NewsletterInlineForm slug={slug} inputPlaceholder="Your email">Subscribe</NewsletterInlineForm></div>
       </footer>

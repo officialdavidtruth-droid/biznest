@@ -1,4 +1,5 @@
 import React from "react";
+import { MenuLinks } from "@/components/storefront/store-menu";
 import Link from "next/link";
 import { ArrowRight, Check, Clock3, Mail, MapPin, Phone, Search, ShieldCheck, Sparkles } from "lucide-react";
 import { CartLink } from "@/components/storefront/cart-link";
@@ -91,7 +92,7 @@ export function Header({store,slug,active,accent,dark=false,radius}:{store:any;s
  const vars = { ...(radius?{"--u-radius":radius}:{}) } as React.CSSProperties;
  return <header className={`bn-universal-header${dark?" dark":""}`} style={vars}><div className="bn-universal-nav">
    <Link href={`/store/${slug}`} className="bn-universal-brand"><span className="bn-universal-logo">{store.logoUrl?<img src={store.logoUrl} alt=""/>:<span>{store.name?.[0] || "B"}</span>}</span><span>{store.name}</span></Link>
-   <nav>{links.map(([label,path])=><Link key={label} href={path?`/store/${slug}/${path}`:`/store/${slug}`} className={active===path?"active":""} style={active===path?{"--u-accent":accent} as React.CSSProperties:undefined}>{label}</Link>)}</nav>
+   <nav><MenuLinks slug={slug} fallbackNode={<>{links.map(([label,path])=><Link key={label} href={path?`/store/${slug}/${path}`:`/store/${slug}`} className={active===path?"active":""} style={active===path?{"--u-accent":accent} as React.CSSProperties:undefined}>{label}</Link>)}</>}/></nav>
    <div className="bn-universal-actions"><Link href={`/store/${slug}/search`} aria-label="Search"><Search size={20}/></Link><CartLink storeSlug={slug} accent={accent} onAccent={dark?"#111":"#fff"} ink={ink}/><AccountLink storeSlug={slug} ink={ink}/><Link href={cta.href} className="bn-universal-quote" style={{background:accent}}>{cta.label} <ArrowRight size={15}/></Link></div>
  </div></header>
 }

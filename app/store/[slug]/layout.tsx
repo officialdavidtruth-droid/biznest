@@ -3,6 +3,8 @@ import { redirect } from "next/navigation";
 import { headers } from "next/headers";
 import { prisma } from "@/lib/prisma";
 import { getStoreBranding } from "@/lib/actions/store-branding";
+import { StoreMenuProvider } from "@/components/storefront/store-menu";
+import { resolveMenuRows } from "@/lib/storefront-menu";
 
 // Every store page under /store/[slug] falls back to the root layout's
 // static "BizNest — Build, Sell, Grow" <title> and platform favicon unless
@@ -54,7 +56,18 @@ export default async function StoreLayout({
   // only in that (rare) case — the common case of a live slug costs
   // nothing extra here since every route under this layout already does
   // its own store lookup and 404s on a genuine miss.
-  const exists = await prisma.store.findUnique({ where: { slug }, select: { id: true } });
+  const exists = await prisma.store.findUnique({
+    where: { slug },
+    select: {
+      id: true,
+      // Owner-built header menu (Dashboard > Menus). Empty = templates use their own default links.
+      menuItems: {
+        where: { location: "header", isActive: true },
+        orderBy: { sortOrder: "asc" },
+        select: { id: true, label: true, linkType: true, target: true, openInNewTab: true, parentId: true, sortOrder: true },
+      },
+    },
+  });
   if (!exists) {
     const retired = await prisma.storeSlugHistory.findUnique({
       where: { oldSlug: slug },
@@ -80,7 +93,7 @@ export default async function StoreLayout({
         href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@600;700;800&family=Inter:wght@400;500;600;700&family=Playfair+Display:wght@600;700&family=Space+Grotesk:wght@500;600;700&display=swap"
         rel="stylesheet"
       />
-      {children}
+      <StoreMenuProvider menu={exists?.menuItems?.length ? resolveMenuRows(exists.menuItems, slug) : null}>{children}</StoreMenuProvider>
     </>
   );
 }

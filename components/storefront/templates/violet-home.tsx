@@ -1,4 +1,5 @@
 import type React from "react";
+import { MenuLinks } from "@/components/storefront/store-menu";
 import { CartLink } from "@/components/storefront/cart-link";
 import { VIOLET, VIOLET_THEME } from "@/lib/template-themes";
 import { subscribeToNewsletterForm } from "@/lib/actions/newsletter";
@@ -70,8 +71,10 @@ export function VioletStorefront({
           ⌕<span style={{ marginLeft: 8, fontSize: 13 }}>Search products, brands and categories</span>
         </div>
         <nav style={{ display: "flex", gap: 18, fontSize: 13, fontWeight: 700 }}>
+          <MenuLinks slug={slug} linkStyle={{textDecoration:"none",color:VIOLET.ink}} fallbackNode={<>
           {catalogItems.length > 0 && <a href="#collection" style={{ textDecoration: "none", color: VIOLET.ink }}>Shop</a>}
           {navCategories.length > 0 && <a href={`/store/${slug}/catalog`} style={{ textDecoration: "none", color: VIOLET.ink }}>Categories</a>}
+          </>} />
         </nav>
         <div style={{ display: "flex", gap: 15, alignItems: "center" }}>
           <CartLink storeSlug={slug} accent={VIOLET.accent} ink={VIOLET.ink} />

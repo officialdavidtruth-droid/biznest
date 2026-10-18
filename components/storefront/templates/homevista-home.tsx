@@ -1,4 +1,5 @@
 import type React from "react";
+import { MenuLinks } from "@/components/storefront/store-menu";
 import { CartLink } from "@/components/storefront/cart-link";
 import { HOMEVISTA, HOMEVISTA_THEME } from "@/lib/template-themes";
 import { subscribeToNewsletterForm } from "@/lib/actions/newsletter";
@@ -66,8 +67,10 @@ export function HomeVistaStorefront({
           <b>{store.name}</b>
         </a>
         <nav style={{ display: "flex", gap: 25, fontSize: 11, fontWeight: 700 }}>
+          <MenuLinks slug={slug} linkStyle={{textDecoration:"none",color:HOMEVISTA.ink}} fallbackNode={<>
           {catalogItems.length > 0 && <a href="#listings" style={{ color: HOMEVISTA.accent, borderBottom: `2px solid ${HOMEVISTA.accent}`, paddingBottom: 25, textDecoration: "none" }}>Listings</a>}
           {navCategories.length > 0 && <a href={`/store/${slug}/catalog`} style={{ textDecoration: "none", color: HOMEVISTA.ink }}>Categories</a>}
+          </>} />
         </nav>
         <div style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: 20 }}>
           <CartLink storeSlug={slug} accent={HOMEVISTA.accent} ink={HOMEVISTA.ink} />
