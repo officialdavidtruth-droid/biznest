@@ -10,6 +10,8 @@ import { getStoreAccessRole, hasStorePermission } from "@/lib/access/store-acces
 import { findNavItemForPath } from "@/lib/constants/dashboard-nav";
 import { ThemeProvider, ThemeFlashGuard } from "@/components/theme/theme-provider";
 import { getPluginEntitlement } from "@/lib/plugins";
+import { OnboardingTour, TourLauncherButton } from "@/components/dashboard/onboarding-tour";
+import { buildTourSteps } from "@/lib/onboarding-tour";
 
 export default async function StoreAdminLayout({
   children,
@@ -140,6 +142,24 @@ export default async function StoreAdminLayout({
             either the sidebar or the page's own background showed up
             as dead space. One normal, whole-document scroll can't
             produce that failure mode. */}
+        {role === "OWNER" && (
+          <OnboardingTour
+            userId={session.user.id}
+            slug={slug}
+            // Auto-runs once, only for owners of recently created stores; everyone else can still replay it.
+            autoStart={Date.now() - store.createdAt.getTime() < 14 * 24 * 60 * 60 * 1000}
+            steps={buildTourSteps({
+              storeName: store.name,
+              business: {
+                sellsProducts: store.business.sellsProducts,
+                offersServices: store.business.offersServices,
+                category: store.businessType,
+                subscriptionName: store.subscription?.name,
+                installedApps: installedAppNav,
+              },
+            })}
+          />
+        )}
         <div className="bn-admin-app flex flex-col bg-background text-foreground lg:flex-row">
           <DashboardSidebar
             slug={slug}
@@ -190,7 +210,10 @@ export default async function StoreAdminLayout({
                   : `${store.name} business`}
               </p>
               <div className="flex items-center gap-1">
-                <NotificationBell notifications={notifications} unreadCount={unreadCount} />
+                {role === "OWNER" && <TourLauncherButton />}
+                <span data-tour="notifications" className="inline-flex">
+                  <NotificationBell notifications={notifications} unreadCount={unreadCount} />
+                </span>
               </div>
             </div>
 

@@ -96,7 +96,7 @@ export function DashboardSidebar({
                 <p className="truncate text-xs font-semibold text-white">{storeName}</p>
                 <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-emerald-400" />
               </div>
-              <Link href={`/${slug}`} target="_blank" className="mt-1 flex items-center gap-1 text-[10px] text-white/70 hover:text-white">
+              <Link href={`/${slug}`} target="_blank" data-tour="view-store" className="mt-1 flex items-center gap-1 text-[10px] text-white/70 hover:text-white">
                 <span>View Store</span><ExternalLink className="h-2.5 w-2.5" />
               </Link>
             </div>
@@ -158,6 +158,7 @@ function NavLink({ base, item, pathname }: { base: string; item: NavItem; pathna
       return (
         <a
           href={href}
+          data-tour={`nav:${item.href || "/"}`}
           className={`group relative flex items-center gap-2.5 rounded-lg px-2.5 py-2 text-sm transition-colors ${
             isActive ? "bg-[var(--bn-admin-orange-soft)] text-[var(--bn-admin-text)] font-medium text-white shadow-sm" : "text-[var(--bn-admin-muted)] hover:bg-[color-mix(in_srgb,var(--bn-admin-surface)_8%,transparent)] hover:text-white"
           }`}
@@ -171,6 +172,7 @@ function NavLink({ base, item, pathname }: { base: string; item: NavItem; pathna
     return (
       <Link
         href={href}
+        data-tour={`nav:${item.href || "/"}`}
         className={`group relative flex items-center gap-2.5 rounded-lg px-2.5 py-2 text-sm transition-colors ${
           isActive ? "bg-[var(--bn-admin-orange-soft)] text-[var(--bn-admin-text)] font-medium text-white shadow-sm" : "text-[var(--bn-admin-muted)] hover:bg-[color-mix(in_srgb,var(--bn-admin-surface)_8%,transparent)] hover:text-white"
         }`}
@@ -185,6 +187,7 @@ function NavLink({ base, item, pathname }: { base: string; item: NavItem; pathna
   return (
     <div>
       <div
+        data-tour={`nav:${item.href || "/"}`}
         className={`group relative flex items-center gap-2.5 rounded-lg pr-1.5 text-sm transition-colors ${
           isActive ? "bg-[var(--bn-admin-orange-soft)] text-[var(--bn-admin-text)] font-medium text-white shadow-sm" : "text-[var(--bn-admin-muted)] hover:bg-[color-mix(in_srgb,var(--bn-admin-surface)_8%,transparent)] hover:text-white"
         }`}

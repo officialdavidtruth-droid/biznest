@@ -5,6 +5,7 @@ import { revalidatePath } from "next/cache";
 import type { ActionResult } from "@/types/actions";
 import type { PageContent } from "@/lib/actions/pages-constants";
 import { assertStorePermission } from "@/lib/access/assert-store-access";
+import { sanitizeBlocks } from "@/lib/page-blocks";
 
 function slugify(input: string) {
   return input
@@ -41,7 +42,13 @@ export async function saveStorePage(slug: string, formData: FormData): Promise<A
   if (!title) return { success: false, error: "This page needs a title." };
   if (pageSlug === "home") return { success: false, error: "\"home\" is reserved for the homepage." };
 
-  const content: PageContent = { body };
+  // Keep any blocks built in the page builder; this form only edits the plain body.
+  const existing = await prisma.storePage.findUnique({
+    where: { storeId_slug: { storeId: access.store.id, slug: pageSlug } },
+    select: { content: true },
+  });
+  const existingBlocks = sanitizeBlocks((existing?.content as { blocks?: unknown } | null)?.blocks);
+  const content: PageContent = existingBlocks.length ? { body, blocks: existingBlocks } : { body };
 
   await prisma.storePage.upsert({
     where: { storeId_slug: { storeId: access.store.id, slug: pageSlug } },
@@ -79,5 +86,30 @@ export async function deleteStorePage(slug: string, pageId: string): Promise<Act
 
   revalidatePath(`/store/${slug}/admin/customize`);
   revalidatePath(`/store/${slug}/${page.slug}`);
+  return { success: true, data: undefined };
+}
+
+/**
+ * Saves the block-based content of an existing page (the page builder).
+ * Blocks are re-validated server-side; the plain `body` is preserved.
+ */
+export async function saveStorePageBlocks(slug: string, pageSlug: string, blocks: unknown): Promise<ActionResult> {
+  const access = await assertStoreAccess(slug);
+  if (!access.success) return { success: false, error: access.error };
+
+  const page = await prisma.storePage.findUnique({
+    where: { storeId_slug: { storeId: access.store.id, slug: pageSlug } },
+    select: { id: true, content: true },
+  });
+  if (!page) return { success: false, error: "Page not found." };
+
+  const clean = sanitizeBlocks(blocks);
+  const body = (page.content as { body?: string } | null)?.body ?? "";
+  const content: PageContent = { body, blocks: clean };
+
+  await prisma.storePage.update({ where: { id: page.id }, data: { content } });
+
+  revalidatePath(`/store/${slug}/admin/customize`);
+  revalidatePath(`/store/${slug}/${pageSlug}`);
   return { success: true, data: undefined };
 }

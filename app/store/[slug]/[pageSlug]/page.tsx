@@ -4,6 +4,10 @@ import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
 import { resolveStoreTheme } from "@/lib/template-themes";
 import { UniversalSectionPage, isUniversalSectionPage } from "@/components/storefront/universal-section-pages";
+import { assertStorePermission } from "@/lib/access/assert-store-access";
+import { getPageBlocks, hasVisibleContent } from "@/lib/page-blocks";
+import { PageBlocksRenderer } from "@/components/storefront/page-blocks-renderer";
+import { PageBlockEditor } from "@/components/dashboard/page-block-editor";
 
 /**
  * Renders one of a store's extra pages (About, Gallery, FAQ, Blog, Contact,
@@ -16,10 +20,13 @@ import { UniversalSectionPage, isUniversalSectionPage } from "@/components/store
  */
 export default async function StorePagePage({
   params,
+  searchParams,
 }: {
   params: Promise<{ slug: string; pageSlug: string }>;
+  searchParams?: Promise<{ edit?: string }>;
 }) {
   const { slug, pageSlug } = await params;
+  const wantsEdit = (await searchParams)?.edit === "1";
 
   const store = await prisma.store.findUnique({
     where: { slug },
@@ -52,9 +59,41 @@ export default async function StorePagePage({
     return <UniversalSectionPage store={store} slug={slug} pageSlug={pageSlug} items={items} reviews={store.reviews} theme={theme} social={social} />;
   }
 
-  if (!page || !page.isPublished) notFound();
+  if (!page) notFound();
 
-  const body = (page.content as { body?: string } | null)?.body ?? "";
+  const blocks = getPageBlocks(page.content);
+  const isEmpty = !hasVisibleContent(blocks);
+
+  // Only look up the viewer's access when it can change what they see:
+  // drafts, empty pages (builder) and explicit ?edit=1. Normal published
+  // pages stay a plain public render.
+  let canEdit = false;
+  if (!page.isPublished || isEmpty || wantsEdit) {
+    const access = await assertStorePermission(slug, "settings");
+    canEdit = access.success;
+  }
+
+  if (!page.isPublished && !canEdit) notFound();
+
+  // WordPress-style: an empty page (or ?edit=1) gives the owner a block builder.
+  if (canEdit && (isEmpty || wantsEdit)) {
+    return (
+      <div style={{ minHeight: "100vh" }} className="bg-background">
+        <PageBlockEditor
+          slug={slug}
+          pageSlug={pageSlug}
+          title={page.title}
+          initialBlocks={blocks}
+          isPublished={page.isPublished}
+        />
+      </div>
+    );
+  }
+
+  const catalogItems = [
+    ...store.products.map((x: any) => ({ id: x.id, kind: "product" as const, name: x.name, price: Number(x.price), currency: x.currency, image: x.images?.[0] ?? null })),
+    ...store.services.map((x: any) => ({ id: x.id, kind: "service" as const, name: x.name, price: Number(x.price), currency: x.currency, image: x.images?.[0] ?? null })),
+  ];
 
   return (
     <div style={{ background: theme.bg, color: theme.ink, fontFamily: theme.font, minHeight: "100vh" }}>
@@ -70,10 +109,20 @@ export default async function StorePagePage({
           {page.title}
         </h1>
 
-        {body ? (
-          <div className="space-y-4 whitespace-pre-wrap text-base leading-relaxed opacity-90">{body}</div>
+        {isEmpty ? (
+          <p className="text-sm italic opacity-60">This page is coming soon.</p>
         ) : (
-          <p className="text-sm italic opacity-60">This page doesn't have any content yet.</p>
+          <PageBlocksRenderer
+            blocks={blocks}
+            theme={theme}
+            slug={slug}
+            items={catalogItems}
+            contact={{
+              phone: store.contactPhone ?? store.business?.phone ?? null,
+              email: store.contactEmail ?? store.business?.email ?? null,
+              address: [store.business?.city, store.business?.state].filter(Boolean).join(", ") || null,
+            }}
+          />
         )}
       </div>
     </div>

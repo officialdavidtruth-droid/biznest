@@ -73,7 +73,7 @@ export function HotelCatalog({ store, slug, content }: { store: Store; slug: str
         <div className="hc-hero-copy">
           <span className="hc-kicker">ROOMS &amp; AMENITIES</span>
           <h1>Stay beautifully.<br /><i>Feel completely at home.</i></h1>
-          <p>Discover thoughtfully designed rooms, suites and hotel amenities created for comfortable stays in the heart of Abuja.</p>
+          <p>Discover thoughtfully designed rooms, suites and hotel amenities created for comfortable stays.</p>
           <div className="hc-hero-actions"><Link href="#rooms" className="hc-primary">Explore Rooms <ArrowRight size={16} /></Link><Link href="#amenities" className="hc-secondary">View Amenities</Link></div>
         </div>
         <div className="hc-location"><MapPin size={13} /> {address}</div>

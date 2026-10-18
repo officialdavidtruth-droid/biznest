@@ -4,6 +4,7 @@ import { useState, type CSSProperties } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Menu, X, ExternalLink } from "lucide-react";
+import { TourLauncherButton } from "@/components/dashboard/onboarding-tour";
 import { buildNavGroups, buildBottomTabItems, filterNavGroupsForRole, type InstalledAppNav } from "@/lib/constants/dashboard-nav";
 import type { StoreAccessRole } from "@/lib/access/store-access";
 import { NotificationBell } from "@/components/dashboard/notification-bell";
@@ -98,6 +99,7 @@ export function MobileDashboardChrome({
           </p>
         </div>
         <div className="flex items-center gap-1">
+          {(!staffRole || staffRole === "OWNER") && <TourLauncherButton />}
           <NotificationBell notifications={notifications} unreadCount={unreadCount} />
         </div>
       </header>
@@ -127,6 +129,7 @@ export function MobileDashboardChrome({
           );
         })}
         <button
+          data-tour="mobile-menu"
           onClick={() => setDrawerOpen(true)}
           className="flex flex-col items-center gap-0.5 py-2 text-[10px] text-muted-foreground"
         >
