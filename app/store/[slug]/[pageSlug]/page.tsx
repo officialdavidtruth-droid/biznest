@@ -4,8 +4,6 @@ import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
 import { resolveStoreTheme } from "@/lib/template-themes";
 import { UniversalSectionPage, isUniversalSectionPage } from "@/components/storefront/universal-section-pages";
-import { getPageBlocks, hasVisibleContent } from "@/lib/page-blocks";
-import { PageBlocksRenderer } from "@/components/storefront/page-blocks-renderer";
 
 /**
  * Renders one of a store's extra pages (About, Gallery, FAQ, Blog, Contact,
@@ -56,15 +54,9 @@ export default async function StorePagePage({
 
   if (!page) notFound();
 
-  const blocks = getPageBlocks(page.content);
-  const isEmpty = !hasVisibleContent(blocks);
+  const body = String((page.content as { body?: string } | null)?.body ?? "").trim();
 
   if (!page.isPublished) notFound();
-
-  const catalogItems = [
-    ...store.products.map((x: any) => ({ id: x.id, kind: "product" as const, name: x.name, price: Number(x.price), currency: x.currency, image: x.images?.[0] ?? null })),
-    ...store.services.map((x: any) => ({ id: x.id, kind: "service" as const, name: x.name, price: Number(x.price), currency: x.currency, image: x.images?.[0] ?? null })),
-  ];
 
   return (
     <div style={{ background: theme.bg, color: theme.ink, fontFamily: theme.font, minHeight: "100vh" }}>
@@ -80,20 +72,10 @@ export default async function StorePagePage({
           {page.title}
         </h1>
 
-        {isEmpty ? (
-          <p className="text-sm italic opacity-60">This page is coming soon.</p>
+        {body ? (
+          <div className="space-y-4 text-base leading-relaxed whitespace-pre-line">{body}</div>
         ) : (
-          <PageBlocksRenderer
-            blocks={blocks}
-            theme={theme}
-            slug={slug}
-            items={catalogItems}
-            contact={{
-              phone: store.contactPhone ?? store.business?.phone ?? null,
-              email: store.contactEmail ?? store.business?.email ?? null,
-              address: [store.business?.city, store.business?.state].filter(Boolean).join(", ") || null,
-            }}
-          />
+          <p className="text-sm italic opacity-60">This page is coming soon.</p>
         )}
       </div>
     </div>

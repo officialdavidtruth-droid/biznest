@@ -1,0 +1,4 @@
+DELETE these files from your project:
+components/dashboard/page-block-editor.tsx
+lib/page-blocks.ts
+components/storefront/page-blocks-renderer.tsx

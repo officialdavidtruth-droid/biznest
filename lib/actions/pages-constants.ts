@@ -1,6 +1,4 @@
-import type { PageBlock } from "@/lib/page-blocks";
-
-export type PageContent = { body: string; blocks?: PageBlock[] };
+export type PageContent = { body: string };
 
 // The starter set offered in the "Pages" panel — matches the copy that used
 // to sit in the placeholder ("About, Gallery, FAQ, Blog, Contact, Policies").
