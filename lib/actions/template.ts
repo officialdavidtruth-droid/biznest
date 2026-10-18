@@ -21,7 +21,20 @@ export async function setStoreTemplate(slug:string,templateId:string):Promise<Ac
  if(!isTemplateCompatibleWithBusiness(templateDef,businessType))return {success:false,error:`${template.name} is not compatible with this business.`};
  const planRank=Number((store.subscription?.features as {templateTier?:number}|null)?.templateTier??1);
  if(template.tierRank>planRank)return {success:false,error:"This template requires a higher plan."};
- await prisma.store.update({where:{id:store.id},data:{templateId:template.id,businessType:businessType}});
+ // A saved Website Builder draft (sectionOverrides.builder) is rendered INSTEAD of the
+ // template for builder-based templates (see storefront-runtime.tsx). The AI store
+ // builder and the visual builder both write one, so without this every template the
+ // owner picked afterwards kept showing the same old layout. Switching templates
+ // therefore drops the draft (and its order/hidden lists) so the new template shows;
+ // all other overrides (faq, delivery note, social bio, template content) are kept.
+ const changed=store.templateId!==template.id;
+ let sectionOverrides:Prisma.InputJsonValue|undefined;
+ if(changed&&store.sectionOverrides&&typeof store.sectionOverrides==="object"&&!Array.isArray(store.sectionOverrides)){
+  const {builderVersion:_v,builder:_b,order:_o,hidden:_h,...rest}=store.sectionOverrides as Record<string,unknown>;
+  void _v;void _b;void _o;void _h;
+  sectionOverrides=rest as Prisma.InputJsonValue;
+ }
+ await prisma.store.update({where:{id:store.id},data:{templateId:template.id,businessType:businessType,...(sectionOverrides!==undefined?{sectionOverrides}:{})}});
  if(templateDef.renderer==="grandeur")await seedSampleListings(slug);
  revalidatePath(`/store/${slug}`);revalidatePath(`/store/${slug}/admin/templates`);revalidatePath(`/store/${slug}/admin/customize`);return {success:true,data:undefined};
 }
