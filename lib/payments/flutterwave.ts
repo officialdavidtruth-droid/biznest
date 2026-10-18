@@ -181,3 +181,100 @@ export async function listFlutterwaveRefundsForTransaction(transactionId: string
   const json = (await res.json()) as { status: "success" | "error"; message: string; data?: any[] };
   return { status: json.status, message: json.message, data: json.data ?? [] };
 }
+
+// ---------------------------------------------------------------------------
+// Transfer API (vendor payouts)
+//
+// Replaces the subaccount split: customer payments land in the platform's
+// own Flutterwave balance, then we push the vendor's money to their bank
+// account with a Transfer. Nothing here is wired into checkout yet.
+// ---------------------------------------------------------------------------
+
+export type FlutterwaveTransferStatus = "NEW" | "PENDING" | "SUCCESSFUL" | "FAILED";
+
+type FlutterwaveTransferData = {
+  id: number;
+  reference: string;
+  status: FlutterwaveTransferStatus;
+  amount: number;
+  fee?: number;
+  complete_message?: string;
+};
+
+/**
+ * Sends money from the platform's Flutterwave balance straight to a bank
+ * account (Flutterwave transfers take bank code + account number directly,
+ * so the caller must have the full account number available).
+ *
+ * `reference` is our idempotency key -- Flutterwave rejects a repeat
+ * reference, so derive it deterministically from the payout row. A `NEW` or
+ * `PENDING` status is normal; the final outcome arrives via the
+ * `transfer.completed` webhook (or verifyFlutterwaveTransfer).
+ *
+ * https://developer.flutterwave.com/reference/endpoints/transfers
+ */
+export async function initiateFlutterwaveTransfer(params: {
+  bankCode: string;
+  accountNumber: string;
+  amountNaira: number;
+  reference: string;
+  narration?: string;
+  beneficiaryName?: string;
+  callbackUrl?: string;
+}) {
+  const secretKey = process.env.FLUTTERWAVE_SECRET_KEY;
+  if (!secretKey) return { status: "error" as const, message: "Flutterwave isn't configured on this platform yet." };
+
+  const res = await fetch(`${FLW_BASE}/transfers`, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${secretKey}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      account_bank: params.bankCode,
+      account_number: params.accountNumber,
+      amount: params.amountNaira,
+      currency: "NGN",
+      debit_currency: "NGN",
+      reference: params.reference,
+      narration: params.narration ?? "BizNest payout",
+      ...(params.beneficiaryName ? { beneficiary_name: params.beneficiaryName } : {}),
+      ...(params.callbackUrl ? { callback_url: params.callbackUrl } : {}),
+    }),
+  });
+  return res.json() as Promise<{ status: "success" | "error"; message: string; data?: FlutterwaveTransferData }>;
+}
+
+/** Fetches a transfer by Flutterwave's numeric transfer id. */
+export async function verifyFlutterwaveTransfer(transferId: string | number) {
+  const secretKey = process.env.FLUTTERWAVE_SECRET_KEY;
+  if (!secretKey) return { status: "error" as const, message: "Flutterwave isn't configured on this platform yet." };
+
+  const res = await fetch(`${FLW_BASE}/transfers/${encodeURIComponent(String(transferId))}`, {
+    headers: { Authorization: `Bearer ${secretKey}` },
+  });
+  return res.json() as Promise<{ status: "success" | "error"; message: string; data?: FlutterwaveTransferData }>;
+}
+
+/** Finds transfers by our reference -- use when we never got an id back (timeout, crash mid-request). */
+export async function findFlutterwaveTransferByReference(reference: string) {
+  const secretKey = process.env.FLUTTERWAVE_SECRET_KEY;
+  if (!secretKey) return { status: "error" as const, message: "Flutterwave isn't configured on this platform yet.", data: [] as FlutterwaveTransferData[] };
+
+  const res = await fetch(`${FLW_BASE}/transfers?reference=${encodeURIComponent(reference)}`, {
+    headers: { Authorization: `Bearer ${secretKey}` },
+  });
+  const json = (await res.json()) as { status: "success" | "error"; message: string; data?: FlutterwaveTransferData[] };
+  return { status: json.status, message: json.message, data: json.data ?? [] };
+}
+
+/** Platform's available Flutterwave NGN balance in naira. */
+export async function getFlutterwaveBalanceNaira(): Promise<{ status: boolean; message: string; balanceNaira?: number }> {
+  const secretKey = process.env.FLUTTERWAVE_SECRET_KEY;
+  if (!secretKey) return { status: false, message: "Flutterwave isn't configured on this platform yet." };
+
+  const res = await fetch(`${FLW_BASE}/balances/NGN`, { headers: { Authorization: `Bearer ${secretKey}` } });
+  const json = (await res.json()) as { status: "success" | "error"; message: string; data?: { available_balance: number } };
+  return { status: json.status === "success", message: json.message, balanceNaira: json.data?.available_balance };
+}

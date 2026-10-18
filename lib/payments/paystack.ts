@@ -265,3 +265,128 @@ export async function listPaystackRefundsForTransaction(reference: string) {
   const json = (await res.json()) as { status: boolean; message: string; data?: any[] };
   return { status: json.status, message: json.message, data: json.data ?? [] };
 }
+
+// ---------------------------------------------------------------------------
+// Transfer API (vendor payouts)
+//
+// Replaces the subaccount split: customer payments land in the platform's
+// own Paystack balance, then we push the vendor's money to their bank
+// account with a Transfer. Nothing here is wired into checkout yet.
+// ---------------------------------------------------------------------------
+
+/**
+ * Registers a vendor's bank account as a Paystack transfer recipient. The
+ * returned `recipient_code` is what initiatePaystackTransfer needs, so the
+ * full account number never has to be stored on our side.
+ *
+ * https://paystack.com/docs/api/transfer-recipient/
+ */
+export async function createPaystackTransferRecipient(params: {
+  name: string; // account holder name (use the resolved account name)
+  accountNumber: string;
+  bankCode: string;
+  description?: string;
+}) {
+  const secretKey = process.env.PAYSTACK_SECRET_KEY;
+  if (!secretKey) return { status: false as const, message: "Paystack isn't configured on this platform yet." };
+
+  const res = await fetch(`${PAYSTACK_BASE}/transferrecipient`, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${secretKey}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      type: "nuban",
+      name: params.name,
+      account_number: params.accountNumber,
+      bank_code: params.bankCode,
+      currency: "NGN",
+      ...(params.description ? { description: params.description } : {}),
+    }),
+  });
+  return res.json() as Promise<{
+    status: boolean;
+    message: string;
+    data?: { recipient_code: string; active?: boolean; details?: { account_name?: string; bank_name?: string } };
+  }>;
+}
+
+export type PaystackTransferStatus = "success" | "pending" | "otp" | "failed" | "reversed" | "received" | "queued";
+
+/**
+ * Sends money from the platform's Paystack balance to a recipient.
+ *
+ * `reference` doubles as our idempotency key: Paystack rejects a second
+ * transfer with a reference it has already seen, so always derive it
+ * deterministically from the payout row (never random per attempt) --
+ * a retry then can't pay the vendor twice. Paystack requires 16-50
+ * characters, lowercase letters, digits, "-" and "_" only.
+ *
+ * A `pending`/`otp` status is not a failure: final outcome arrives via the
+ * transfer.success / transfer.failed / transfer.reversed webhooks (or
+ * verifyPaystackTransfer). `otp` means "Disable OTP for transfers" is not
+ * switched off in the Paystack dashboard, which blocks automated payouts.
+ *
+ * https://paystack.com/docs/api/transfer/
+ */
+export async function initiatePaystackTransfer(params: {
+  amountKobo: number;
+  recipientCode: string;
+  reference: string;
+  reason?: string;
+}) {
+  const secretKey = process.env.PAYSTACK_SECRET_KEY;
+  if (!secretKey) return { status: false as const, message: "Paystack isn't configured on this platform yet." };
+
+  const res = await fetch(`${PAYSTACK_BASE}/transfer`, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${secretKey}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      source: "balance",
+      amount: params.amountKobo,
+      recipient: params.recipientCode,
+      reference: params.reference,
+      currency: "NGN",
+      ...(params.reason ? { reason: params.reason } : {}),
+    }),
+  });
+  return res.json() as Promise<{
+    status: boolean;
+    message: string;
+    data?: { transfer_code: string; reference: string; status: PaystackTransferStatus; amount: number };
+  }>;
+}
+
+/** Looks up a transfer by our reference -- use to settle an uncertain/pending payout. */
+export async function verifyPaystackTransfer(reference: string) {
+  const secretKey = process.env.PAYSTACK_SECRET_KEY;
+  if (!secretKey) return { status: false as const, message: "Paystack isn't configured on this platform yet." };
+
+  const res = await fetch(`${PAYSTACK_BASE}/transfer/verify/${encodeURIComponent(reference)}`, {
+    headers: { Authorization: `Bearer ${secretKey}` },
+  });
+  return res.json() as Promise<{
+    status: boolean;
+    message: string;
+    data?: { transfer_code: string; reference: string; status: PaystackTransferStatus; amount: number };
+  }>;
+}
+
+/**
+ * Platform's available Paystack balance in kobo (NGN). Transfers fail with
+ * "insufficient balance" when this is short, so the payout job should check
+ * it and leave payouts QUEUED rather than burning failed attempts.
+ */
+export async function getPaystackBalanceKobo(): Promise<{ status: boolean; message: string; balanceKobo?: number }> {
+  const secretKey = process.env.PAYSTACK_SECRET_KEY;
+  if (!secretKey) return { status: false, message: "Paystack isn't configured on this platform yet." };
+
+  const res = await fetch(`${PAYSTACK_BASE}/balance`, { headers: { Authorization: `Bearer ${secretKey}` } });
+  const json = (await res.json()) as { status: boolean; message: string; data?: { currency: string; balance: number }[] };
+  const ngn = json.data?.find((b) => b.currency === "NGN");
+  return { status: json.status, message: json.message, balanceKobo: ngn?.balance };
+}

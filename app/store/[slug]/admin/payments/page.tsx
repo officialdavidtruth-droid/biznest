@@ -2,6 +2,7 @@
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { getPayoutStatus } from "@/lib/actions/store";
+import { getActiveGateway } from "@/lib/actions/site-settings";
 import { ConnectPayoutForm } from "@/components/dashboard/connect-payout-form";
 import { getPosCommissionBalance } from "@/lib/actions/pos";
 import { PosCommissionCard } from "@/components/dashboard/pos-commission-card";
@@ -16,6 +17,7 @@ export default async function PaymentsPage({ params }: { params: Promise<{ slug:
 
   const payout = await getPayoutStatus(slug);
   if (!payout) return null;
+  const gateway = await getActiveGateway();
 
   const session = await auth();
   const isStaff = session?.user?.role === "PLATFORM_ADMIN" || session?.user?.role === "SUPPORT_MODERATOR";
@@ -59,29 +61,20 @@ export default async function PaymentsPage({ params }: { params: Promise<{ slug:
 
       <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-muted-foreground">Payout account</h2>
       <p className="mb-3 text-sm text-muted-foreground">
-        Connect at least one to get paid. Sales automatically split — your {(100 - payout.commissionRate).toFixed(1)}% goes straight to
-        your bank, ours to the platform. No manual transfers.
+        Connect your bank account to get paid. When a customer&apos;s payment is confirmed, the money is sent
+        straight to this account — no manual transfers.
       </p>
       <div className="mb-4 rounded-lg border border-[var(--bn-admin-border)] bg-[var(--bn-admin-surface-2)] p-4 text-sm text-[var(--bn-admin-orange)]">
         <p className="font-semibold">Inline card checkout enabled</p>
-        <p className="mt-1 text-xs leading-5">Customers can pay by Visa, Mastercard or Verve inside the storefront checkout when the active payment provider has its public key configured. Your connected payout account remains the settlement destination.</p>
+        <p className="mt-1 text-xs leading-5">Customers can pay by Visa, Mastercard or Verve inside the storefront checkout when the active payment provider has its public key configured. Money from your sales is paid out to your connected bank account.</p>
       </div>
-      <div className="grid gap-4 sm:grid-cols-2">
+      <div className="max-w-md">
         <ConnectPayoutForm
           slug={slug}
-          provider="PAYSTACK"
-          connected={payout.paystackConnected}
-          details={payout.payoutDetails?.provider === "PAYSTACK" ? payout.payoutDetails : null}
-          commissionRate={payout.commissionRate}
-          verifiedAt={payout.verifiedAt}
-          connectedAt={payout.connectedAt}
-        />
-        <ConnectPayoutForm
-          slug={slug}
-          provider="FLUTTERWAVE"
-          connected={payout.flutterwaveConnected}
-          details={payout.payoutDetails?.provider === "FLUTTERWAVE" ? payout.payoutDetails : null}
-          commissionRate={payout.commissionRate}
+          provider={gateway}
+          connected={payout.connected}
+          needsReconnect={payout.needsReconnect}
+          details={payout.payoutDetails}
         />
       </div>
 

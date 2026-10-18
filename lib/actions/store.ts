@@ -6,7 +6,7 @@ import { getTemplateBusinessType, isTemplateCompatible } from "@/lib/template-co
 
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import type { Prisma } from "@prisma/client";
+import { Prisma } from "@prisma/client";
 import { assertStorePermission } from "@/lib/access/assert-store-access";
 import { createStoreSchema, type CreateStoreInput } from "@/lib/validations/business";
 import { generateUniqueStoreSlug, storeAdminUrl, storePublicUrl, SLUG_FORMAT_RE, SLUG_MIN_LENGTH, SLUG_MAX_LENGTH } from "@/lib/utils/slug";
@@ -16,8 +16,9 @@ import slugify from "slugify";
 import { getSampleListingsForBusinessType } from "@/lib/sample-listings";
 import { fetchDemoPhoto, fetchDemoPhotos } from "@/lib/demo-images";
 import type { ActionResult } from "@/types/actions";
-import { resolvePaystackAccount, createPaystackSubaccount, checkPaystackSubaccountVerification } from "@/lib/payments/paystack";
-import { resolveFlutterwaveAccount, createFlutterwaveSubaccount } from "@/lib/payments/flutterwave";
+import { resolvePaystackAccount, createPaystackTransferRecipient, checkPaystackSubaccountVerification } from "@/lib/payments/paystack";
+import { resolveFlutterwaveAccount } from "@/lib/payments/flutterwave";
+import { hasBankPayoutDestination, needsPayoutReconnect } from "@/lib/payments/payout-target";
 
 /**
  * Store creation is gated on two things, checked server-side (never trust
@@ -641,23 +642,27 @@ export async function getPayoutStatus(slug: string) {
   if (!access.success) return null;
   const { store } = access;
   return {
-    paystackConnected: Boolean(store.paystackSubaccountCode),
-    flutterwaveConnected: Boolean(store.flutterwaveSubaccountId),
+    // A bank account is saved and vendor payouts can be sent to it.
+    connected: hasBankPayoutDestination(store),
+    // Connected under the old subaccount model: still works for now, but the
+    // owner must re-enter their bank details to keep getting paid.
+    needsReconnect: needsPayoutReconnect(store),
     payoutDetails: store.payoutDetails as { bankName?: string; accountName?: string; maskedAccountNumber?: string; provider?: "PAYSTACK" | "FLUTTERWAVE" } | null,
     connectedAt: store.payoutConnectedAt,
-    // Whether the gateway has actually confirmed KYC, not just that an
-    // account is linked -- see checkPaystackSubaccountVerification. Until
-    // this is set, warn the owner their first payout will be held.
     verifiedAt: store.payoutVerifiedAt,
-    commissionRate: Number(store.subscription?.commissionRate ?? 8),
   };
 }
 
 /**
  * Resolves the account name first (so a mistyped account number is caught
- * before we save anything), then creates a real subaccount with the
- * relevant gateway so future order payments split automatically — the
- * store's cut lands directly in their bank account, ours in the platform's.
+ * before we save anything), then saves the bank details vendor payouts are
+ * sent to with the gateway Transfer API. No subaccount is created and no
+ * split is configured: customers pay the platform, and the platform
+ * transfers the vendor's money to this account.
+ *
+ * `provider` only chooses which gateway resolves the account name (and, for
+ * Paystack, registers the transfer recipient up front). The saved details
+ * work for payouts from either gateway.
  */
 export async function connectPayoutAccount(
   slug: string,
@@ -671,80 +676,63 @@ export async function connectPayoutAccount(
     return { success: false, error: "Enter a valid 10-digit account number." };
   }
 
-  const commissionRate = Number(store.subscription?.commissionRate ?? 8);
   const masked = `••••••${input.accountNumber.slice(-4)}`;
+  let accountName: string;
+  let paystackRecipientCode: string | null = null;
 
   if (input.provider === "PAYSTACK") {
     const resolved = await resolvePaystackAccount(input.accountNumber, input.bankCode);
     if (!resolved.status || !resolved.data) {
       return { success: false, error: resolved.message || "Couldn't verify that account number." };
     }
+    accountName = resolved.data.account_name;
 
-    const subaccount = await createPaystackSubaccount({
-      businessName: store.name,
-      bankCode: input.bankCode,
+    const recipient = await createPaystackTransferRecipient({
+      name: accountName,
       accountNumber: input.accountNumber,
-      commissionPercentage: commissionRate,
-      primaryContactName: store.business.businessName,
-      primaryContactEmail: store.business.email,
-      primaryContactPhone: store.business.phone,
-      description: `BizNest merchant payout account for ${store.name}`,
+      bankCode: input.bankCode,
+      description: `BizNest vendor payout for ${store.name}`,
     });
-    if (!subaccount.status || !subaccount.data) {
-      return { success: false, error: subaccount.message || "Couldn't connect this account to Paystack." };
+    if (!recipient.status || !recipient.data) {
+      return { success: false, error: recipient.message || "Couldn't register this account with Paystack." };
     }
-
-    await prisma.store.update({
-      where: { id: store.id },
-      data: {
-        paystackSubaccountCode: subaccount.data.subaccount_code,
-        // Verification belongs to this exact provider account. Never inherit
-        // an older verification timestamp when a new subaccount is created.
-        payoutVerifiedAt: subaccount.data.is_verified ? new Date() : null,
-        // Connected, not verified -- Paystack still has to manually
-        // review KYC before this subaccount's first payout releases.
-        // payoutVerifiedAt stays null until refreshPayoutVerification
-        // confirms is_verified against the real API.
-        payoutConnectedAt: new Date(),
-        payoutDetails: { provider: "PAYSTACK", bankName: input.bankName, accountName: resolved.data.account_name, maskedAccountNumber: masked },
-      },
-    });
+    paystackRecipientCode = recipient.data.recipient_code;
   } else {
     const resolved = await resolveFlutterwaveAccount(input.accountNumber, input.bankCode);
     if (resolved.status !== "success" || !resolved.data) {
       return { success: false, error: resolved.message || "Couldn't verify that account number." };
     }
-
-    const subaccount = await createFlutterwaveSubaccount({
-      businessName: store.name,
-      businessEmail: store.business.email,
-      businessPhone: store.business.phone,
-      businessContact: store.business.businessName,
-      businessContactPhone: store.business.phone,
-      bankCode: input.bankCode,
-      accountNumber: input.accountNumber,
-      splitPercentage: commissionRate,
-    });
-    if (subaccount.status !== "success" || !subaccount.data) {
-      return { success: false, error: subaccount.message || "Couldn't connect this account to Flutterwave." };
-    }
-
-    await prisma.store.update({
-      where: { id: store.id },
-      data: {
-        flutterwaveSubaccountId: subaccount.data.subaccount_id ?? String(subaccount.data.id),
-        // Same connected-vs-verified split as the Paystack branch above,
-        // for consistency in the shared Store fields. Flutterwave's own
-        // verification model isn't confirmed yet -- treat as connected
-        // only until that's checked the same way.
-        payoutConnectedAt: new Date(),
-        payoutDetails: { provider: "FLUTTERWAVE", bankName: input.bankName, accountName: resolved.data.account_name, maskedAccountNumber: masked },
-      },
-    });
+    accountName = resolved.data.account_name;
   }
 
+  const now = new Date();
+  await prisma.store.update({
+    where: { id: store.id },
+    data: {
+      payoutBankCode: input.bankCode,
+      payoutAccountNumber: input.accountNumber,
+      // Null unless Paystack registered it just now: a recipient code belongs
+      // to one exact account, so never keep one from a previous account.
+      paystackRecipientCode,
+      payoutConnectedAt: now,
+      // "Verified" now means the bank resolved this exact account number to
+      // the name shown below -- that is all a transfer destination needs.
+      // (It used to mean Paystack had finished KYC on a subaccount, which no
+      // longer exists.) Gates in order/quote/invoice and the trust score
+      // read this field.
+      payoutVerifiedAt: now,
+      payoutDetails: { provider: input.provider, bankName: input.bankName, accountName, maskedAccountNumber: masked },
+      // Connecting here moves the store onto transfers: drop any legacy
+      // subaccount so new charges stop splitting to the old account.
+      // Payments already made keep their own Payment.splitSubaccountCode,
+      // so refund handling for them is unaffected.
+      paystackSubaccountCode: null,
+      flutterwaveSubaccountId: null,
+    },
+  });
+
   await prisma.auditLog.create({
-    data: { userId: access.store.business.userId, action: "PAYOUT_ACCOUNT_CONNECTED", entity: "Store", entityId: store.id, metadata: { provider: input.provider } },
+    data: { userId: access.store.business.userId, action: "PAYOUT_ACCOUNT_CONNECTED", entity: "Store", entityId: store.id, metadata: { provider: input.provider, model: "transfer" } },
   });
 
   revalidatePath(`/store/${slug}/admin/payments`);
@@ -803,20 +791,26 @@ export async function syncPaystackPayoutVerification(
   return { status: true, isVerified: Boolean(result.isVerified) };
 }
 
-export async function disconnectPayoutAccount(slug: string, provider: "PAYSTACK" | "FLUTTERWAVE"): Promise<ActionResult> {
+export async function disconnectPayoutAccount(slug: string): Promise<ActionResult> {
   const access = await assertStoreOwner(slug);
   if (!access.success) return { success: false, error: access.error };
 
   await prisma.store.update({
     where: { id: access.store.id },
-    data:
-      provider === "PAYSTACK"
-        ? { paystackSubaccountCode: null, payoutVerifiedAt: null, payoutConnectedAt: null }
-        : { flutterwaveSubaccountId: null, payoutVerifiedAt: null, payoutConnectedAt: null },
+    data: {
+      payoutBankCode: null,
+      payoutAccountNumber: null,
+      paystackRecipientCode: null,
+      paystackSubaccountCode: null,
+      flutterwaveSubaccountId: null,
+      payoutDetails: Prisma.DbNull,
+      payoutVerifiedAt: null,
+      payoutConnectedAt: null,
+    },
   });
 
   await prisma.auditLog.create({
-    data: { userId: access.store.business.userId, action: "PAYOUT_ACCOUNT_DISCONNECTED", entity: "Store", entityId: access.store.id, metadata: { provider } },
+    data: { userId: access.store.business.userId, action: "PAYOUT_ACCOUNT_DISCONNECTED", entity: "Store", entityId: access.store.id },
   });
 
   revalidatePath(`/store/${slug}/admin/payments`);

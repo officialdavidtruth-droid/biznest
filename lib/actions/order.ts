@@ -22,6 +22,7 @@ import {
   getActiveGateway,
 } from "@/lib/payments/gateway";
 import { calculateOrderTotals } from "@/lib/utils/pricing";
+import { storeHasPayoutTarget } from "@/lib/payments/payout-target";
 import { revalidatePath } from "next/cache";
 import { checkRateLimit } from "@/lib/rate-limit";
 import { notifyCustomerOfPaidOrder } from "@/lib/notifications/notify";
@@ -325,9 +326,7 @@ export async function startCheckout(
   // that the provider has not verified. Otherwise the customer can pay
   // successfully while the merchant share is held at the gateway.
   const activeGateway = await getActiveGateway();
-  const hasPayoutTarget = activeGateway === "PAYSTACK"
-    ? Boolean(store.paystackSubaccountCode)
-    : Boolean(store.flutterwaveSubaccountId);
+  const hasPayoutTarget = storeHasPayoutTarget(store, activeGateway);
 
   if (!hasPayoutTarget) {
     return {
@@ -345,7 +344,7 @@ export async function startCheckout(
   if (activeGateway === "PAYSTACK" && !store.payoutVerifiedAt) {
     return {
       success: false,
-      error: "This store's Paystack payout account is still pending provider verification. Please try again after Paystack verifies the subaccount.",
+      error: "This store's payout account is still pending verification. Please try again later.",
     };
   }
 

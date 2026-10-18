@@ -817,6 +817,16 @@ model Store {
   // apply grace-period/downgrade logic without re-deriving state.
   subscriptionPastDueSince  DateTime?
 
+  // --- Transfer-API payouts (replaces the subaccount split; see Payout) ---
+  // Paystack: the transfer recipient created when the owner connects a bank
+  // account. Initiating a transfer only needs this code, not the account number.
+  paystackRecipientCode    String?
+  // Flutterwave transfers take bank code + account number directly, so the
+  // destination is kept here (set on connect, cleared on disconnect).
+  payoutBankCode           String?
+  payoutAccountNumber      String?
+  payouts                  Payout[]
+
   paystackSubaccountCode   String?
   flutterwaveSubaccountId  String?
   // Display-only info the owner entered when connecting payout (bank name,
@@ -2114,12 +2124,62 @@ model Payment {
   // StoreRefundClawback) because the split had already settled.
   refundClawbacks StoreRefundClawback[]
 
+  // The vendor payout (Transfer API) created for this charge, if any.
+  payout Payout?
+
   @@index([orderId])
   @@index([storeId])
   @@index([status])
   @@index([bookingId])
   @@index([walletId])
   @@index([reservationId])
+}
+
+// Money owed to a vendor for one successful customer payment, paid out with
+// the gateway Transfer API (no subaccount, no split). One row per Payment
+// (paymentId is unique), so a payment can never be paid out twice.
+//
+// Lifecycle: QUEUED -> PROCESSING (transfer accepted by gateway) -> PAID, or
+// FAILED (retryable, see attempts/nextAttemptAt) / REVERSED (gateway sent the
+// money back after accepting it). `reference` is the idempotency key sent to
+// the gateway; it is derived from this row's id and never regenerated.
+model Payout {
+  id          String         @id @default(cuid())
+  storeId     String
+  store       Store          @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  paymentId   String         @unique
+  payment     Payment        @relation(fields: [paymentId], references: [id], onDelete: Restrict)
+
+  provider    PaymentProvider
+  status      PayoutStatus   @default(QUEUED)
+  amount      Decimal        @db.Decimal(12, 2)
+  currency    String         @default("NGN")
+
+  reference         String   @unique
+  // Paystack transfer_code / Flutterwave numeric transfer id.
+  gatewayTransferId String?
+  // Where the money was sent, captured at send time (store can change bank later).
+  destination       Json?
+
+  attempts      Int          @default(0)
+  lastError     String?
+  nextAttemptAt DateTime?
+  paidAt        DateTime?
+  rawPayload    Json?
+
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
+
+  @@index([storeId, createdAt])
+  @@index([status, nextAttemptAt])
+}
+
+enum PayoutStatus {
+  QUEUED
+  PROCESSING
+  PAID
+  FAILED
+  REVERSED
 }
 
 enum PaymentPurpose {

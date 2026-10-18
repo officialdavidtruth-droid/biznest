@@ -1,6 +1,7 @@
 "use server";
 
 import { prisma } from "@/lib/prisma";
+import { storeHasPayoutTarget } from "@/lib/payments/payout-target";
 import { revalidatePath } from "next/cache";
 import { assertStorePermission } from "@/lib/access/assert-store-access";
 import { hasCapability } from "@/lib/capabilities";
@@ -358,7 +359,7 @@ export async function chargeReservationDeposit(
  if(!["PENDING","CONFIRMED","CHECKED_IN"].includes(reservation.status))return{success:false,error:"Cannot charge a cancelled, no-show, or checked-out reservation."};
 
  const gateway=await getActiveGateway();
- const hasPayoutTarget=gateway==="PAYSTACK"?Boolean(a.store.paystackSubaccountCode):Boolean(a.store.flutterwaveSubaccountId);
+ const hasPayoutTarget=storeHasPayoutTarget(a.store,gateway);
  if(!hasPayoutTarget)return{success:false,error:"This store has not connected a payout account yet."};
 
  const reference=`RES-${reservation.id}-${crypto.randomUUID()}`;
