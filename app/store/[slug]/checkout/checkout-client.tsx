@@ -11,7 +11,7 @@ import { ShieldCheck, Lock, Truck, ChevronLeft, CreditCard } from "lucide-react"
 
 declare global {
   interface Window {
-    Paystack?: new () => { resumeTransaction: (accessCode: string) => void };
+    PaystackPop?: new () => { resumeTransaction: (accessCode: string) => void };
     FlutterwaveCheckout?: (config: Record<string, unknown>) => void;
   }
 }
@@ -102,8 +102,8 @@ export function CheckoutClient({ slug }: { slug: string }) {
         const inline = result.data.inline;
         if (inline.provider === "PAYSTACK" && inline.accessCode) {
           await loadExternalScript("https://js.paystack.co/v2/inline.js");
-          if (!window.Paystack) throw new Error("Paystack checkout is unavailable. Please try again.");
-          const popup = new window.Paystack();
+          if (!window.PaystackPop) throw new Error("Paystack checkout is unavailable. Please try again.");
+          const popup = new window.PaystackPop();
           popup.resumeTransaction(inline.accessCode);
           return;
         }
