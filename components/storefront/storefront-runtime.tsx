@@ -17,6 +17,7 @@ import { resolveStoreTheme } from "@/lib/template-themes";
 import { templateThemeToBuilderConfig } from "@/lib/template-builder-config";
 import { LegacyTemplateHome } from "@/components/storefront/legacy-template-renderer";
 import { SignatureScreenshotHome } from "@/components/storefront/signature-screenshot-home";
+import { SIGNATURE_DEDICATED_RENDERER } from "@/lib/storefront/signature-renderers";
 
 type CatalogItem={id:string;kind:"product"|"service";name:string;description:string|null;price:number;currency:string;image:string|null;categoryName:string|null;type:string;rentalUnit:string|null;isBookable:boolean;hasVariants?:boolean};
 
@@ -35,24 +36,8 @@ export async function renderStorefront(slug:string){
  if(legacyNames.has(templateName)) return <LegacyTemplateHome name={templateName} p={{store,slug,catalogItems,navCategories,goodReviews,avgRating:store.business?.avgRating??null,completedOrders:0,trustScore:null,trustChecklist:null,social:(store.socialLinks as Record<string,string>|null)??{}}}/>;
  if(templateName==="Grandeur — Fine Dining Restaurant") return <SignatureScreenshotHome store={store} slug={slug} items={catalogItems as any} reviews={store.reviews} avgRating={store.business?.avgRating??null} completedOrders={0} social={(store.socialLinks as Record<string,string>|null)??{}} mode="flavora-restaurant" accent="#F39A0B" bg="#100A06" ink="#FFF7EF" card="#17100C" muted="#B7A8A1" border="#352A29" accentSoft="#8C4722" headlineFont="Georgia, serif" font="Inter, sans-serif"/>;
  if(templateName==="TasteHouse — Food Delivery") return <SignatureScreenshotHome store={store} slug={slug} items={catalogItems as any} reviews={store.reviews} avgRating={store.business?.avgRating??null} completedOrders={0} social={(store.socialLinks as Record<string,string>|null)??{}} mode="tastehouse" accent="#F26B21" bg="#FFFBF5" ink="#241608" card="#FFFFFF" muted="#7A6A5D" border="#F1E4D6" accentSoft="#FDE3D3" headlineFont="Poppins, sans-serif" font="Inter, sans-serif"/>;
- const signatureModeByName: Record<string,string> = {
-  "Electra — Smart Commerce":"marketplace",
-  "Atelier — Modern Fashion":"fabtex",
-  "Kinetic — Sneaker Drop":"heenzy",
-  "Bloom — Beauty Boutique":"belora",
-  "Haven — Home & Furniture":"arcova",
-  "Harvest — Grocery Market":"rivora",
-  "Maison — Hotel & Stay":"grand-vere",
-  "Grand — Hotel & Hospitality":"great-treasure",
-  "Ember — Restaurant":"flavora-restaurant",
-  "Muse — Salon & Beauty":"belora",
-  "Frame — Photography Studio":"nova",
-  "North — Creative Agency":"arcova",
-  "Pure — Cleaning Services":"fresh",
-  "Forge — Construction":"arcova",
- };
+ const mappedSignature = SIGNATURE_DEDICATED_RENDERER[templateName];
  const screenshotModes = new Set(["great-treasure","grand-vere","belora","tastehouse","flavora-kitchen","flavora-restaurant"]);
- const mappedSignature = signatureModeByName[templateName];
  if(mappedSignature && screenshotModes.has(mappedSignature)) {
    const palette:Record<string,any> = {
     "great-treasure":{accent:"#E7A928",bg:"#07100D",ink:"#F7F3EA",card:"#101815",muted:"#B9B6AF",border:"#2C362F",accentSoft:"#6D5420",headlineFont:"Georgia, serif",font:"Inter, sans-serif"},
@@ -61,10 +46,6 @@ export async function renderStorefront(slug:string){
     "flavora-restaurant":{accent:"#F39A0B",bg:"#100A06",ink:"#FFF7EF",card:"#17100C",muted:"#B7A8A1",border:"#352A29",accentSoft:"#8C4722",headlineFont:"Georgia, serif",font:"Inter, sans-serif"},
    };
    if(palette[mappedSignature]) return <SignatureScreenshotHome store={store} slug={slug} items={catalogItems as any} reviews={store.reviews} avgRating={store.business?.avgRating??null} completedOrders={0} social={(store.socialLinks as Record<string,string>|null)??{}} mode={mappedSignature} {...palette[mappedSignature]}/>;
- }
- if(mappedSignature && ["marketplace","fabtex","heenzy","arcova","rivora","nova","fresh"].includes(mappedSignature)) {
-   const target = mappedSignature === "heenzy" ? "Heenzy Sneaker Co." : mappedSignature === "fabtex" ? "Fabtex" : mappedSignature === "marketplace" ? "Marketplace Hub" : mappedSignature === "arcova" ? "Arcova Architecture" : mappedSignature === "rivora" ? "Rivora Fresh" : mappedSignature === "nova" ? "Nova Studio — Noir" : "Fresh & Co.";
-   return <LegacyTemplateHome name={target} p={{store,slug,catalogItems,navCategories,goodReviews,avgRating:store.business?.avgRating??null,completedOrders:0,trustScore:null,trustChecklist:null,social:(store.socialLinks as Record<string,string>|null)??{}}}/>;
  }
 
 
