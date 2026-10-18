@@ -754,15 +754,26 @@ export async function createStayBooking(
         ? { buyerId: session.user.id }
         : { guestEmail: normalizedGuest!.email }),
     },
-    select: { id: true },
+    select: { id: true, paymentStatus: true },
   });
 
+  // The customer's own identical hold (e.g. they came back after a failed or
+  // abandoned payment). Resume it instead of blocking them: the room is
+  // already held for them, so just refresh the price/add-ons and continue to
+  // payment. If a payment is mid-flight or already settled, leave it as is.
   if (duplicateStayBooking) {
-    return {
-      success: false,
-      error:
-        "You already have a pending booking for this service with these dates.",
-    };
+    if (duplicateStayBooking.paymentStatus !== "PAID" && duplicateStayBooking.paymentStatus !== "PENDING") {
+      await prisma.booking.updateMany({
+        where: { id: duplicateStayBooking.id, status: "PENDING", paymentStatus: { notIn: ["PAID", "PENDING"] } },
+        data: {
+          paymentAmount: paymentTotal,
+          paymentCurrency: service.currency,
+          addons: addons.length ? addons : undefined,
+          notes: notes?.trim() || null,
+        },
+      });
+    }
+    return { success: true, data: { bookingId: duplicateStayBooking.id } };
   }
 
   // Race-condition-safe: pick a free unit and create the booking inside one
