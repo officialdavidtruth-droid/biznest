@@ -55,7 +55,8 @@ export function MarketingWorkspace({
   subscribers: SubscriberRow[];
   campaigns: CampaignRow[];
   initialTab: MarketingTab;
-  popup: MarketingPopupData;
+  /** Omit on the standalone marketing tool (no storefront): the pop-up tab is hidden. */
+  popup?: MarketingPopupData;
 }) {
   const router = useRouter();
   const design = useEmailDesign(brand, items);
@@ -183,7 +184,7 @@ export function MarketingWorkspace({
           aria-label="Marketing sections"
           className="flex gap-1 overflow-x-auto rounded-2xl border bg-background p-1.5 lg:w-56 lg:shrink-0 lg:flex-col lg:gap-1 lg:overflow-visible"
         >
-          {TABS.map((t) => {
+          {TABS.filter((t) => t.id !== "popup" || popup).map((t) => {
             const Icon = t.icon;
             const active = tab === t.id;
 
@@ -290,6 +291,7 @@ export function MarketingWorkspace({
             />
           </div>
 
+          {popup && (
           <div
             role="tabpanel"
             id="mk-pane-popup"
@@ -304,6 +306,7 @@ export function MarketingWorkspace({
               coupons={popup.coupons}
             />
           </div>
+          )}
         </div>
       </div>
     </div>
