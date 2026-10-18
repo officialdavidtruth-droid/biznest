@@ -4,10 +4,8 @@ import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
 import { resolveStoreTheme } from "@/lib/template-themes";
 import { UniversalSectionPage, isUniversalSectionPage } from "@/components/storefront/universal-section-pages";
-import { assertStorePermission } from "@/lib/access/assert-store-access";
 import { getPageBlocks, hasVisibleContent } from "@/lib/page-blocks";
 import { PageBlocksRenderer } from "@/components/storefront/page-blocks-renderer";
-import { PageBlockEditor } from "@/components/dashboard/page-block-editor";
 
 /**
  * Renders one of a store's extra pages (About, Gallery, FAQ, Blog, Contact,
@@ -20,13 +18,10 @@ import { PageBlockEditor } from "@/components/dashboard/page-block-editor";
  */
 export default async function StorePagePage({
   params,
-  searchParams,
 }: {
   params: Promise<{ slug: string; pageSlug: string }>;
-  searchParams?: Promise<{ edit?: string }>;
 }) {
   const { slug, pageSlug } = await params;
-  const wantsEdit = (await searchParams)?.edit === "1";
 
   const store = await prisma.store.findUnique({
     where: { slug },
@@ -64,31 +59,7 @@ export default async function StorePagePage({
   const blocks = getPageBlocks(page.content);
   const isEmpty = !hasVisibleContent(blocks);
 
-  // Only look up the viewer's access when it can change what they see:
-  // drafts, empty pages (builder) and explicit ?edit=1. Normal published
-  // pages stay a plain public render.
-  let canEdit = false;
-  if (!page.isPublished || isEmpty || wantsEdit) {
-    const access = await assertStorePermission(slug, "settings");
-    canEdit = access.success;
-  }
-
-  if (!page.isPublished && !canEdit) notFound();
-
-  // WordPress-style: an empty page (or ?edit=1) gives the owner a block builder.
-  if (canEdit && (isEmpty || wantsEdit)) {
-    return (
-      <div style={{ minHeight: "100vh" }} className="bg-background">
-        <PageBlockEditor
-          slug={slug}
-          pageSlug={pageSlug}
-          title={page.title}
-          initialBlocks={blocks}
-          isPublished={page.isPublished}
-        />
-      </div>
-    );
-  }
+  if (!page.isPublished) notFound();
 
   const catalogItems = [
     ...store.products.map((x: any) => ({ id: x.id, kind: "product" as const, name: x.name, price: Number(x.price), currency: x.currency, image: x.images?.[0] ?? null })),

@@ -801,17 +801,6 @@ function PageEditor({
         Published
       </label>
 
-      {initial && (
-        <a
-          href={`/store/${slug}/${pageSlug}?edit=1`}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="block rounded-md border border-dashed border-border px-3 py-1.5 text-center text-xs font-medium text-primary hover:bg-muted"
-        >
-          Build this page with blocks →
-        </a>
-      )}
-
       <div className="flex items-center gap-2 pt-1">
         <button
           type="button"
