@@ -25,7 +25,7 @@ const nextConfig = {
             key: "Content-Security-Policy",
             value: [
               "default-src 'self'",
-              "script-src 'self' 'unsafe-inline' 'unsafe-eval'",
+              "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://js.paystack.co https://checkout.flutterwave.com https://checkout.paystack.com",
               "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
               // Website Intelligence pulls logos/catalog images straight from
               // whatever domain a merchant's own connected website happens to
@@ -40,7 +40,8 @@ const nextConfig = {
               // so this stays a real restriction, just not a fixed host list.
               "img-src 'self' data: https:",
               "font-src 'self' data: https://fonts.gstatic.com",
-              "connect-src 'self' https://api.cloudinary.com https://accounts.google.com https://*.paystack.co https://*.flutterwave.com",
+              "connect-src 'self' https://api.cloudinary.com https://accounts.google.com https://*.paystack.co https://*.paystack.com https://*.flutterwave.com",
+              "frame-src 'self' https://checkout.paystack.com https://js.paystack.co https://*.paystack.com https://checkout.flutterwave.com https://*.flutterwave.com",
               "frame-ancestors 'self'",
               "object-src 'none'",
               "manifest-src 'self'",
