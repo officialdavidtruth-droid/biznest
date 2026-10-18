@@ -297,7 +297,7 @@ export function BookingWidget({
       }
 
       setPaymentStarted(true);
-      const payment = await startBookingPayment(storeSlug, newBookingId, isSignedIn ? undefined : guestEmail);
+      const payment = await startBookingPayment(storeSlug, newBookingId, isSignedIn ? undefined : guestEmail, { inline: false });
       if (!payment.success) {
         setPaymentStarted(false);
         toast.error(payment.error);

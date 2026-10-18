@@ -241,7 +241,11 @@ export async function settleWalletFunding(
 export async function startBookingPayment(
   storeSlug: string,
   bookingId: string,
-  guestEmail?: string
+  guestEmail?: string,
+  // Templates that redirect to authorizationUrl (rather than opening the
+  // gateway's inline modal) pass { inline: false } so Flutterwave returns a
+  // real hosted-checkout link instead of the bare callback URL.
+  options: { inline?: boolean } = {}
 ): Promise<ActionResult<{ authorizationUrl: string; amount: number; inline?: { provider: "PAYSTACK" | "FLUTTERWAVE"; publicKey: string; email: string; accessCode?: string; reference: string; subaccountCode?: string | null; subaccountId?: string | null } }>> {
   const customerSession = await getStoreCustomerSessionForStore(storeSlug);
   const session = customerSession ?? await auth();
@@ -284,7 +288,7 @@ export async function startBookingPayment(
     reference,
     callbackUrl,
     gateway,
-    inline: true,
+    inline: options.inline ?? true,
   });
   if (!charge.success) {
     await prisma.$transaction([
