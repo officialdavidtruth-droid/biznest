@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/prisma";
+import { requireCronAuth } from "@/lib/cron-auth";
 import { attemptDelivery } from "@/lib/webhooks/dispatch";
 import { NextResponse } from "next/server";
 import { logError, logInfo, errorMeta } from "@/lib/observability/log";
@@ -33,10 +34,8 @@ import { logError, logInfo, errorMeta } from "@/lib/observability/log";
  * backlog drains more slowly on Hobby than the batch cap alone suggests.
  */
 export async function GET(req: Request) {
-  const auth = req.headers.get("authorization");
-  if (auth !== `Bearer ${process.env.CRON_SECRET}`) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
+  const denied = requireCronAuth(req);
+  if (denied) return denied;
 
   const start = Date.now();
   const due = await prisma.webhookDelivery.findMany({

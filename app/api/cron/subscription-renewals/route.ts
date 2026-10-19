@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/prisma";
+import { requireCronAuth } from "@/lib/cron-auth";
 import { chargePaystackAuthorization } from "@/lib/payments/paystack";
 import { notifyUser } from "@/lib/notifications/notify";
 import { NextResponse } from "next/server";
@@ -28,10 +29,8 @@ import { logInfo, logError, errorMeta } from "@/lib/observability/log";
 const GRACE_PERIOD_DAYS = 5;
 
 export async function GET(req: Request) {
-  const auth = req.headers.get("authorization");
-  if (auth !== `Bearer ${process.env.CRON_SECRET}`) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
+  const denied = requireCronAuth(req);
+  if (denied) return denied;
 
   const now = new Date();
   const in3Days = new Date(now.getTime() + 3 * 24 * 60 * 60 * 1000);

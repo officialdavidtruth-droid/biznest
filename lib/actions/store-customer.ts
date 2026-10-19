@@ -6,9 +6,9 @@ import { prisma } from "@/lib/prisma";
 
 /**
  * Password-based sign-in for a storefront customer. This is the one place
- * that should ever call signInStoreCustomer() — /api/store-auth deliberately
- * refuses to manufacture a session from credentials (see the comment in that
- * route), so the login form must come through here instead of that route.
+ * that should ever call signInStoreCustomer(). /api/store-auth has no login
+ * endpoint (GET = session check, DELETE = sign out), so the login form must
+ * come through here.
  */
 export async function loginStoreCustomer(storeSlug: string, email: string, password: string) {
   return signInStoreCustomer(storeSlug, email, password);

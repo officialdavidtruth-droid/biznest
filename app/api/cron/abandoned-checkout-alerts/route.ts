@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/prisma";
+import { requireCronAuth } from "@/lib/cron-auth";
 import { notifyUser } from "@/lib/notifications/notify";
 import { runAutomationsForEvent } from "@/lib/automations/engine";
 import { ABANDONED_CHECKOUT_THRESHOLD_MINUTES } from "@/lib/constants/order";
@@ -26,10 +27,8 @@ import { logInfo, logError, errorMeta } from "@/lib/observability/log";
  * customers on channels they didn't choose.
  */
 export async function GET(req: Request) {
-  const auth = req.headers.get("authorization");
-  if (auth !== `Bearer ${process.env.CRON_SECRET}`) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
+  const denied = requireCronAuth(req);
+  if (denied) return denied;
 
   const start = Date.now();
   const cutoff = new Date(Date.now() - ABANDONED_CHECKOUT_THRESHOLD_MINUTES * 60_000);

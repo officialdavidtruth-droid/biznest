@@ -1,3 +1,5 @@
+import { assertSafeUrl, safeFetch } from '@/lib/security/safe-fetch';
+
 export type ScannedCatalogItem = {
   externalKey: string; type: string; name: string; description?: string; imageUrl?: string;
   url?: string; price?: string; salePrice?: string; currency?: string; category?: string;
@@ -15,12 +17,11 @@ function decode(s: string) { return s.replace(/&amp;/g,'&').replace(/&quot;/g,'"
 function strip(s: string) { return decode(s.replace(/<[^>]+>/g,' ').replace(/\s+/g,' ').trim()); }
 function attr(tag: string, name: string) { const m = tag.match(new RegExp(`${name}\\s*=\\s*["']([^"']+)`, 'i')); return m?.[1]?.trim(); }
 function abs(base: URL, value?: string) { try { return value ? new URL(value, base).toString() : undefined; } catch { return undefined; } }
+// String-level validation only (protocol, credentials, hostname deny list and
+// IP literals in every notation). Resolved addresses and redirects are
+// enforced where requests are made, by safeFetch() in lib/security/safe-fetch.ts.
 function safeUrl(input: string) {
-  const u = new URL(input); if (!['http:','https:'].includes(u.protocol)) throw new Error('Only HTTP and HTTPS websites are supported.');
-  const h = u.hostname.toLowerCase();
-  if (['localhost','127.0.0.1','0.0.0.0','::1'].includes(h) || h.endsWith('.local') || h.endsWith('.internal')) throw new Error('That website address cannot be scanned.');
-  if (/^(10\.|127\.|169\.254\.|192\.168\.)/.test(h) || /^172\.(1[6-9]|2\d|3[0-1])\./.test(h)) throw new Error('Private network addresses cannot be scanned.');
-  return u;
+  return assertSafeUrl(input);
 }
 
 export function hostOf(input: string) {
@@ -39,13 +40,13 @@ export async function verifyWebsiteOwnership(input: string, token: string): Prom
     new RegExp(`<meta[^>]+content=["']${token}["'][^>]+name=["']biznest-site-verification["']`, 'i').test(html)
   );
   try {
-    const home = await fetch(base.toString(), { headers: { 'user-agent': 'BizNest-Marketing-Crawler/1.0 (+https://biznest.space)' }, signal: AbortSignal.timeout(10000), redirect: 'follow', cache: 'no-store' });
-    if (home.ok && check((await home.text()).slice(0, 500_000))) return true;
+    const home = await safeFetch(base, { headers: FETCH_HEADERS, timeoutMs: 10000, maxBytes: 500_000 });
+    if (home.ok && check(home.text)) return true;
   } catch { /* fall through to well-known file */ }
   try {
     const wellKnown = new URL('/.well-known/biznest-verify.txt', base);
-    const file = await fetch(wellKnown.toString(), { signal: AbortSignal.timeout(10000), redirect: 'follow', cache: 'no-store' });
-    if (file.ok && (await file.text()).trim() === token) return true;
+    const file = await safeFetch(wellKnown, { headers: FETCH_HEADERS, timeoutMs: 10000, maxBytes: 10_000 });
+    if (file.ok && file.text.trim() === token) return true;
   } catch { /* not found or unreachable */ }
   return false;
 }
@@ -143,10 +144,10 @@ function extractGenericItems(html: string, pageUrl: URL): ScannedCatalogItem[] {
 
 export async function scanWebsite(input: string): Promise<WebsiteScan> {
   const base = safeUrl(input.trim());
-  const response = await fetch(base.toString(), { headers: { 'user-agent': 'BizNest-Marketing-Crawler/1.0 (+https://biznest.space)' }, signal: AbortSignal.timeout(15000), redirect: 'follow', cache: 'no-store' });
+  const response = await safeFetch(base, { headers: FETCH_HEADERS, timeoutMs: 15000, maxBytes: 3_000_000 });
   if (!response.ok) throw new Error(`Website returned HTTP ${response.status}.`);
-  const html = (await response.text()).slice(0, 3_000_000);
-  const finalUrl = new URL(response.url || base.toString());
+  const html = response.text;
+  const finalUrl = new URL(response.url);
   const title = strip((html.match(/<title[^>]*>([\s\S]*?)<\/title>/i)?.[1] || ''));
   const meta = (name: string) => html.match(new RegExp(`<meta[^>]+(?:name|property)=["']${name}["'][^>]+content=["']([^"']*)`, 'i'))?.[1] || html.match(new RegExp(`<meta[^>]+content=["']([^"']*)["'][^>]+(?:name|property)=["']${name}["']`, 'i'))?.[1];
   const canonical = abs(finalUrl, html.match(/<link[^>]+rel=["']canonical["'][^>]+href=["']([^"']+)/i)?.[1]);
@@ -258,8 +259,8 @@ export async function scanWebsite(input: string): Promise<WebsiteScan> {
   let logoUrl: string | undefined;
   for (const candidate of logoCandidates.slice(0, 6)) {
     try {
-      const probe = await fetch(candidate, { method: 'GET', headers: { 'user-agent': 'BizNest-Marketing-Crawler/1.0 (+https://biznest.space)' }, signal: AbortSignal.timeout(8000), redirect: 'follow', cache: 'no-store' });
-      if (probe.ok && looksLikeImage(probe.headers.get('content-type') || '', candidate)) { logoUrl = candidate; break; }
+      const probe = await safeFetch(candidate, { headers: FETCH_HEADERS, timeoutMs: 8000, readBody: false });
+      if (probe.ok && looksLikeImage(probe.contentType, candidate)) { logoUrl = candidate; break; }
     } catch { /* candidate unreachable -- try the next one */ }
   }
   if (!logoUrl) {
@@ -269,8 +270,8 @@ export async function scanWebsite(input: string): Promise<WebsiteScan> {
     // connector UI, which is worse than the clean "no logo" placeholder.
     try {
       const candidate = new URL('/favicon.ico', finalUrl);
-      const probe = await fetch(candidate.toString(), { method: 'GET', signal: AbortSignal.timeout(8000), redirect: 'follow', cache: 'no-store' });
-      if (probe.ok && looksLikeImage(probe.headers.get('content-type') || '', candidate.toString())) logoUrl = candidate.toString();
+      const probe = await safeFetch(candidate, { headers: FETCH_HEADERS, timeoutMs: 8000, readBody: false });
+      if (probe.ok && looksLikeImage(probe.contentType, candidate.toString())) logoUrl = candidate.toString();
     } catch { /* no favicon.ico available */ }
   }
 
@@ -307,10 +308,10 @@ export async function scanWebsite(input: string): Promise<WebsiteScan> {
   const candidatePages = uniquePages.filter(p => p.url !== finalUrl.toString() && p.url !== (canonical || '')).slice(0, 5);
   const subpageItemLists = await Promise.all(candidatePages.map(async (p) => {
     try {
-      const res = await fetch(p.url, { headers: FETCH_HEADERS, signal: AbortSignal.timeout(10000), redirect: 'follow', cache: 'no-store' });
+      const res = await safeFetch(p.url, { headers: FETCH_HEADERS, timeoutMs: 10000, maxBytes: 2_000_000 });
       if (!res.ok) return [];
-      const subHtml = (await res.text()).slice(0, 2_000_000);
-      const subUrl = new URL(res.url || p.url);
+      const subHtml = res.text;
+      const subUrl = new URL(res.url);
       const subLd = extractLdItems(subHtml, subUrl);
       return subLd.length ? subLd : extractGenericItems(subHtml, subUrl);
     } catch { return []; }

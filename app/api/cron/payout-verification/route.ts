@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/prisma";
+import { requireCronAuth } from "@/lib/cron-auth";
 import { syncPaystackPayoutVerification } from "@/lib/actions/store";
 import { notifyUser } from "@/lib/notifications/notify";
 import { NextResponse } from "next/server";
@@ -20,10 +21,8 @@ import { logInfo, logError, errorMeta } from "@/lib/observability/log";
  * which stamps payoutVerifiedAt and is shared with the on-demand button).
  */
 export async function GET(req: Request) {
-  const auth = req.headers.get("authorization");
-  if (auth !== `Bearer ${process.env.CRON_SECRET}`) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
+  const denied = requireCronAuth(req);
+  if (denied) return denied;
 
   const pending = await prisma.store.findMany({
     where: { paystackSubaccountCode: { not: null }, payoutVerifiedAt: null },
