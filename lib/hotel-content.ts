@@ -1,3 +1,4 @@
+import { defaultPhoto } from "@/lib/default-images";
 import type { HotelSkin } from "./hotel-skin";
 import { prisma } from "@/lib/prisma";
 
@@ -26,7 +27,7 @@ export type HotelContent = {
   skin?:HotelSkin|null;
 };
 
-const IMG = (id:string) => `https://images.unsplash.com/${id}?auto=format&fit=crop&w=1600&q=85`;
+const IMG = (id:string) => defaultPhoto(id);
 const page=(v:Partial<HotelPageContent>):HotelPageContent=>({eyebrow:"YOUR HOTEL",title:"A Higher Standard of Hospitality",subtitle:"Thoughtfully designed spaces, exceptional service and experiences worth remembering.",image:IMG("photo-1566073771259-6a8506099945"),...v});
 
 const defaults:HotelContent = {

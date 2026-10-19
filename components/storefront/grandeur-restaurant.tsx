@@ -1,5 +1,7 @@
 "use client";
 
+import { storeHref as href } from "@/lib/utils/store-href";
+import { formatMoney } from "@/lib/utils/format-money";
 import { MenuLinks } from "@/components/storefront/store-menu";
 import Link from "next/link";
 import { useMemo, useState, useTransition } from "react";
@@ -14,8 +16,7 @@ import type { GrandeurEvent, GrandeurGalleryItem, GrandeurVideo } from "@/lib/gr
 export type GrandeurItem = { id:string; kind:"product"|"service"; name:string; description:string|null; price:number; currency:string; image:string|null; categoryName:string|null; isBookable:boolean; hasVariants?:boolean };
 export type GrandeurStore = any;
 
-const money=(n:number,currency="NGN")=>`${currency === "NGN" ? "₦" : currency+" "}${Math.round(n).toLocaleString()}`;
-const href=(slug:string,path="")=>`/store/${slug}${path}`;
+const money=(n:number,currency="NGN")=>formatMoney(Math.round(n),currency);
 const image=(url:string|null|undefined)=>url?{backgroundImage:`url(${url})`}:{};
 
 function Logo({store}:{store:GrandeurStore}){return <Link href={href(store.slug)} className="gr-logo"><span>{store.logoUrl?<img src={store.logoUrl} alt=""/>:<i>The</i>}</span><b>{store.name||"THE GRANDEUR"}<small>RESTAURANT</small></b></Link>}

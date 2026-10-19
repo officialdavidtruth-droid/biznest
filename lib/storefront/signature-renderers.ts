@@ -19,5 +19,5 @@ export const SIGNATURE_DEDICATED_RENDERER: Readonly<Record<string, string>> = {
 
 export const RENDERERS_OWNED_ELSEWHERE: readonly string[] = [
   "marketplace", "fabtex", "heenzy", "arcova", "rivora", "nova", "fresh",
-  "flavora-restaurant", "tastehouse", "flavora-kitchen",
+  "flavora-restaurant", "tastehouse",
 ];

@@ -4,20 +4,17 @@ import { prisma } from "@/lib/prisma";
 import { recordStoreVisit } from "@/lib/actions/analytics";
 import { readBuilderConfig, defaultBuilderConfig } from "@/lib/builder-config";
 import { BuilderStorefront } from "@/components/storefront/builder-renderer";
-import { GrandeurHome } from "@/components/storefront/grandeur-restaurant";
 import { ThelusoHotel } from "@/components/storefront/theluso-hotel";
-import { TasteHouseHome } from "@/components/storefront/tastehouse";
 import { ExampleStorefront } from "@/components/storefront/example-store";
-import { getTasteHouseContent } from "@/lib/tastehouse-content";
 import { getExampleContent } from "@/lib/example-content";
 import { getHotelContent } from "@/lib/hotel-content";
 import { getTemplateDefinition } from "@/lib/template-registry";
+import { resolveHomeRenderer } from "@/lib/storefront/resolve-renderer";
 import { getCanonicalBusinessType, isHotelBusiness, isRestaurantBusiness } from "@/lib/business-identity";
 import { resolveStoreTheme } from "@/lib/template-themes";
 import { templateThemeToBuilderConfig } from "@/lib/template-builder-config";
 import { LegacyTemplateHome } from "@/components/storefront/legacy-template-renderer";
 import { SignatureScreenshotHome } from "@/components/storefront/signature-screenshot-home";
-import { SIGNATURE_DEDICATED_RENDERER } from "@/lib/storefront/signature-renderers";
 
 type CatalogItem={id:string;kind:"product"|"service";name:string;description:string|null;price:number;currency:string;image:string|null;categoryName:string|null;type:string;rentalUnit:string|null;isBookable:boolean;hasVariants?:boolean};
 
@@ -32,29 +29,16 @@ export async function renderStorefront(slug:string){
  const templateName=store.template?.name ?? "";
  const navCategories:any[]=[];
  const goodReviews=(store.reviews??[]).filter((r:any)=>r.rating>=4&&r.comment);
- const legacyNames=new Set(["Fresh & Co.","Heenzy Sneaker Co.","Heenzy — Boutique Rose","Nova Studio — Noir","Nova Studio — Ivory Minimal","Violet","Violet — Sunset","Premium Marketplace","HomeVista","rRW Premium Rental","Marketplace Hub","Arcova Architecture","Rivora Fresh","JuiceLife","Fabtex"]);
- if(legacyNames.has(templateName)) return <LegacyTemplateHome name={templateName} p={{store,slug,catalogItems,navCategories,goodReviews,avgRating:store.business?.avgRating??null,completedOrders:0,trustScore:null,trustChecklist:null,social:(store.socialLinks as Record<string,string>|null)??{}}}/>;
- if(templateName==="Grandeur — Fine Dining Restaurant") return <SignatureScreenshotHome store={store} slug={slug} items={catalogItems as any} reviews={store.reviews} avgRating={store.business?.avgRating??null} completedOrders={0} social={(store.socialLinks as Record<string,string>|null)??{}} mode="flavora-restaurant" accent="#F39A0B" bg="#100A06" ink="#FFF7EF" card="#17100C" muted="#B7A8A1" border="#352A29" accentSoft="#8C4722" headlineFont="Georgia, serif" font="Inter, sans-serif"/>;
- if(templateName==="TasteHouse — Food Delivery") return <SignatureScreenshotHome store={store} slug={slug} items={catalogItems as any} reviews={store.reviews} avgRating={store.business?.avgRating??null} completedOrders={0} social={(store.socialLinks as Record<string,string>|null)??{}} mode="tastehouse" accent="#F26B21" bg="#FFFBF5" ink="#241608" card="#FFFFFF" muted="#7A6A5D" border="#F1E4D6" accentSoft="#FDE3D3" headlineFont="Poppins, sans-serif" font="Inter, sans-serif"/>;
- const mappedSignature = SIGNATURE_DEDICATED_RENDERER[templateName];
- const screenshotModes = new Set(["great-treasure","grand-vere","belora","tastehouse","flavora-kitchen","flavora-restaurant"]);
- if(mappedSignature && screenshotModes.has(mappedSignature)) {
-   const palette:Record<string,any> = {
-    "great-treasure":{accent:"#E7A928",bg:"#07100D",ink:"#F7F3EA",card:"#101815",muted:"#B9B6AF",border:"#2C362F",accentSoft:"#6D5420",headlineFont:"Georgia, serif",font:"Inter, sans-serif"},
-    "grand-vere":{accent:"#0E5B45",bg:"#FFFFFF",ink:"#15392C",card:"#FFFFFF",muted:"#777",border:"#E6E1D7",accentSoft:"#C8BEA7",headlineFont:"Georgia, serif",font:"Inter, sans-serif"},
-    "belora":{accent:"#7B4BC0",bg:"#F1EAF8",ink:"#2B2430",card:"#FFFFFF",muted:"#837B89",border:"#E8E0EF",accentSoft:"#D5B7EA",headlineFont:"Georgia, serif",font:"Inter, sans-serif"},
-    "flavora-restaurant":{accent:"#F39A0B",bg:"#100A06",ink:"#FFF7EF",card:"#17100C",muted:"#B7A8A1",border:"#352A29",accentSoft:"#8C4722",headlineFont:"Georgia, serif",font:"Inter, sans-serif"},
-   };
-   if(palette[mappedSignature]) return <SignatureScreenshotHome store={store} slug={slug} items={catalogItems as any} reviews={store.reviews} avgRating={store.business?.avgRating??null} completedOrders={0} social={(store.socialLinks as Record<string,string>|null)??{}} mode={mappedSignature} {...palette[mappedSignature]}/>;
- }
-
-
- // Preserve the existing specialized compatibility templates for stores that
- // still use them. Newly restored templates use the hardened Builder renderer.
- if(template?.renderer==="tastehouse") return <TasteHouseHome store={store} slug={slug} items={catalogItems} content={await getTasteHouseContent(slug)}/>;
- if(template?.renderer==="example") return <ExampleStorefront store={store} slug={slug} items={catalogItems} mode="home" content={await getExampleContent(slug) as any}/>;
- if(template?.renderer==="grandeur") return <GrandeurHome store={store} slug={slug} items={catalogItems} reviews={store.reviews}/>;
- if(template?.renderer==="hotel") return <ThelusoHotel store={store} slug={slug} content={await getHotelContent(slug)}/>;
+ const social=(store.socialLinks as Record<string,string>|null)??{};
+ // Real completed-order count for the "Completed orders" stat (was a hard-coded 0).
+ const completedOrders=await prisma.order.count({where:{storeId:store.id,status:"COMPLETED"}}).catch(()=>0);
+ const avgRating=store.business?.avgRating??null;
+ // One resolver decides the homepage component for runtime AND preview.
+ const home=resolveHomeRenderer(templateName);
+ if(home.kind==="legacy") return <LegacyTemplateHome name={home.name} p={{store,slug,catalogItems,navCategories,goodReviews,avgRating,completedOrders,trustScore:null,trustChecklist:null,social}}/>;
+ if(home.kind==="screenshot") return <SignatureScreenshotHome store={store} slug={slug} items={catalogItems as any} reviews={store.reviews} avgRating={avgRating} completedOrders={completedOrders} social={social} mode={home.mode} {...home.palette}/>;
+ if(home.kind==="example") return <ExampleStorefront store={store} slug={slug} items={catalogItems} mode="home" content={await getExampleContent(slug) as any}/>;
+ if(home.kind==="hotel") return <ThelusoHotel store={store} slug={slug} content={await getHotelContent(slug)}/>;
 
  const themeOverrides = store.themeColors as {primary?:string;secondary?:string;accent?:string}|null;
  const rawSectionOverrides = store.sectionOverrides as { builderVersion?: number; builder?: unknown } | null;
@@ -70,15 +54,15 @@ export async function renderStorefront(slug:string){
    const sections=[...savedBuilder.sections];
    if(heroIndex<0 && fallbackHero) sections.unshift(fallbackHero);
    else if(heroIndex>=0 && !sections[heroIndex].visible) sections[heroIndex]={...sections[heroIndex],visible:true};
-   return <BuilderStorefront store={store} config={{...savedBuilder,sections}} catalogItems={catalogItems} reviews={store.reviews} avgRating={store.business?.avgRating??null} completedOrders={0}/>;
+   return <BuilderStorefront store={store} config={{...savedBuilder,sections}} catalogItems={catalogItems} reviews={store.reviews} avgRating={store.business?.avgRating??null} completedOrders={completedOrders}/>;
  }
 
- if(template?.renderer==="builder") {
+ if(template?.home==="builder") {
    const theme=resolveStoreTheme(store.template?.category,store.name,themeOverrides,store.fontFamily,store.template?.name);
    const config=templateThemeToBuilderConfig(theme,store.name,store.business?.description,store.bannerUrl);
-   return <BuilderStorefront store={store} config={config} catalogItems={catalogItems} reviews={store.reviews} avgRating={store.business?.avgRating??null} completedOrders={0}/>;
+   return <BuilderStorefront store={store} config={config} catalogItems={catalogItems} reviews={store.reviews} avgRating={store.business?.avgRating??null} completedOrders={completedOrders}/>;
  }
 
- return <BuilderStorefront store={store} config={defaultBuilderConfig(store.name,store.business?.description,store.bannerUrl,store.business?.category,{sellsProducts:store.business?.sellsProducts,offersServices:store.business?.offersServices})} catalogItems={catalogItems} reviews={store.reviews} avgRating={store.business?.avgRating??null} completedOrders={0}/>;
+ return <BuilderStorefront store={store} config={defaultBuilderConfig(store.name,store.business?.description,store.bannerUrl,store.business?.category,{sellsProducts:store.business?.sellsProducts,offersServices:store.business?.offersServices})} catalogItems={catalogItems} reviews={store.reviews} avgRating={store.business?.avgRating??null} completedOrders={completedOrders}/>;
 }
 export default renderStorefront;

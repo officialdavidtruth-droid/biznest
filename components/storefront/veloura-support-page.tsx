@@ -1,3 +1,4 @@
+import { formatMoney } from "@/lib/utils/format-money";
 import Link from "next/link";
 import { Headphones, Mail, MessageCircle, Phone, FileText, Plus, ChevronRight, ShieldCheck, Clock3, Ticket, ExternalLink } from "lucide-react";
 import { DISPUTE_STATUS_CONFIG } from "@/lib/constants/dispute";
@@ -7,11 +8,7 @@ function formatDate(value: Date | string) {
 }
 
 function money(value: number, currency: string) {
-  try {
-    return new Intl.NumberFormat("en-NG", { style: "currency", currency, maximumFractionDigits: 0 }).format(value);
-  } catch {
-    return `${currency} ${value.toLocaleString()}`;
-  }
+  return formatMoney(value, currency);
 }
 
 type SupportProps = {

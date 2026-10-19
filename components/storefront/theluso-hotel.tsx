@@ -1,5 +1,8 @@
 "use client";
 
+import { defaultPhoto } from "@/lib/default-images";
+import { storeHref as href } from "@/lib/utils/store-href";
+import { formatMoney } from "@/lib/utils/format-money";
 import Link from "next/link";
 import { MenuLinks } from "@/components/storefront/store-menu";
 import { usePathname, useRouter } from "next/navigation";
@@ -14,10 +17,9 @@ import { NewsletterInlineForm } from "@/components/storefront/newsletter-inline-
 import { BookingPaymentRetry } from "@/components/storefront/booking-payment-retry";
 
 type Store={id:string;slug:string;name:string;logoUrl?:string|null;bannerUrl?:string|null;storyImage?:string|null;address?:string|null;phone?:string|null;email?:string|null;contactEmail?:string|null;contactPhone?:string|null};
-const FALLBACK="https://images.unsplash.com/photo-1566073771259-6a8506099945?auto=format&fit=crop&w=1800&q=88";
+const FALLBACK=defaultPhoto("photo-1566073771259-6a8506099945",1800);
 const img=(u:string|undefined|null)=>u||FALLBACK;
-const money=(n:number)=>`₦${Number(n||0).toLocaleString()}`;
-const href=(slug:string,path:string)=>`/store/${slug}${path}`;
+const money=(n:number|undefined,currency?:string)=>formatMoney(n,currency); // hotel payments are NGN today; pass a currency when rooms carry one
 // Address is stored as "City, State"; only the city is used in marketing copy.
 const cityOf=(st:{address?:string|null})=>(st.address||"").split(",")[0].trim();
 const today=()=>new Date().toISOString().slice(0,10);

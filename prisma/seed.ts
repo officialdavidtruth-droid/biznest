@@ -1,5 +1,5 @@
 import { PrismaClient, type Prisma } from "@prisma/client";
-import { TEMPLATE_NAME, GRANDEUR_THEME, HOTEL_TEMPLATE_NAME, HOTEL_THEME, TASTEHOUSE_TEMPLATE_NAME, TASTEHOUSE_THEME, RESTORED_LEGACY_TEMPLATE_CATALOG, SIGNATURE_TEMPLATE_CATALOG } from "../lib/template-themes";
+import { TEMPLATE_NAME, GRANDEUR_THEME, HOTEL_TEMPLATE_NAME, HOTEL_THEME, TASTEHOUSE_TEMPLATE_NAME, TASTEHOUSE_THEME, EXAMPLE_TEMPLATE_NAME, EXAMPLE_THEME, RESTORED_LEGACY_TEMPLATE_CATALOG, SIGNATURE_TEMPLATE_CATALOG, LEGACY_CATEGORY_BY_NAME, SIGNATURE_CATEGORY_BY_MODE } from "../lib/template-themes";
 import { fetchDemoPhoto } from "../lib/demo-images";
 
 const prisma = new PrismaClient();
@@ -148,18 +148,12 @@ async function main() {
   // Public storefront catalog: restored legacy/industry themes, six restored
   // variants, and the Signature Collection. The compatibility templates
   // remain seeded below so existing stores keep resolving safely.
-  const categoryByName: Record<string,string> = {
-    "Fresh & Co.": "Retail", "Heenzy Sneaker Co.": "Fashion", "Heenzy — Boutique Rose": "Fashion",
-    "Nova Studio — Noir": "Professional Services", "Nova Studio — Ivory Minimal": "Professional Services",
-    "Violet": "Retail", "Violet — Sunset": "Retail", "Premium Marketplace": "Retail", "HomeVista": "Real Estate",
-    "rRW Premium Rental": "Automotive", "Marketplace Hub": "Retail", "Arcova Architecture": "Professional Services",
-    "Rivora Fresh": "Food & Groceries", "JuiceLife": "Food & Groceries", "Fabtex": "Fashion",
-  };
   const templateDefs = [
-    ...RESTORED_LEGACY_TEMPLATE_CATALOG.map(theme => ({ name: theme.variationName, category: categoryByName[theme.variationName] || "Retail", theme })),
-    ...SIGNATURE_TEMPLATE_CATALOG.map(theme => ({ name: theme.variationName, category: theme.signatureMode === "hotel" || theme.signatureMode === "maison" ? "Hotel & Lodging" : theme.signatureMode, theme: { ...theme, tierRank: ["kinetic","maison","hotel","north","forge"].includes(theme.signatureMode) ? 4 : 3 } })),
+    ...RESTORED_LEGACY_TEMPLATE_CATALOG.map(theme => ({ name: theme.variationName, category: LEGACY_CATEGORY_BY_NAME[theme.variationName] || "Retail", theme })),
+    ...SIGNATURE_TEMPLATE_CATALOG.map(theme => ({ name: theme.variationName, category: SIGNATURE_CATEGORY_BY_MODE[theme.signatureMode] || "Other", theme: { ...theme, tierRank: ["kinetic","maison","hotel","north","forge"].includes(theme.signatureMode) ? 4 : 3 } })),
+    { name: EXAMPLE_TEMPLATE_NAME, category: "Electronics & Retail", theme: EXAMPLE_THEME },
     { name: TEMPLATE_NAME, category: "Restaurant", theme: GRANDEUR_THEME },
-    { name: HOTEL_TEMPLATE_NAME, category: "Hotel", theme: HOTEL_THEME },
+    { name: HOTEL_TEMPLATE_NAME, category: "Hotel & Lodging", theme: HOTEL_THEME },
     { name: TASTEHOUSE_TEMPLATE_NAME, category: "Restaurant", theme: TASTEHOUSE_THEME },
   ];
   const templates:any[] = [];

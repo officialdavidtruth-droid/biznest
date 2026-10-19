@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Check, Lock, Search, Eye, X, ShoppingBag, CalendarDays } from "lucide-react";
 import type { TemplateTheme } from "@/lib/template-themes";
 import { getBusinessExperience } from "@/lib/business-experience";
@@ -22,6 +22,35 @@ const TIER_LABEL: Record<number, string> = {
   3: "Enterprise",
   4: "Business Mogul",
 };
+
+/** Mounts the preview iframe only once its card scrolls near the viewport (avoids ~30 simultaneous storefront renders). */
+function LazyPreview({ src, title }: { src: string; title: string }) {
+  const ref = useRef<HTMLDivElement>(null);
+  const [visible, setVisible] = useState(false);
+  useEffect(() => {
+    const el = ref.current;
+    if (!el || visible) return;
+    if (typeof IntersectionObserver === "undefined") { setVisible(true); return; }
+    const io = new IntersectionObserver((entries) => {
+      if (entries.some((e) => e.isIntersecting)) { setVisible(true); io.disconnect(); }
+    }, { rootMargin: "200px" });
+    io.observe(el);
+    return () => io.disconnect();
+  }, [visible]);
+  return (
+    <div ref={ref} className="absolute inset-0">
+      {visible && (
+        <iframe
+          title={title}
+          src={src}
+          className="pointer-events-none absolute left-0 top-0 h-[300%] w-[300%] origin-top-left scale-[.333333] border-0 bg-white"
+          scrolling="no"
+          tabIndex={-1}
+        />
+      )}
+    </div>
+  );
+}
 
 function themeFromConfig(config: unknown): TemplateTheme | null {
   const c = config as Partial<TemplateTheme> | null;
@@ -51,6 +80,12 @@ export function TemplateGallery({
   const [activeCategory, setActiveCategory] = useState<string | null>(null);
   const [mode, setMode] = useState<"all" | "commerce" | "service">("all");
   const [preview, setPreview] = useState<{ name: string; url: string } | null>(null);
+  useEffect(() => {
+    if (!preview) return;
+    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") setPreview(null); };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [preview]);
   const experience = getBusinessExperience(businessCategory, { sellsProducts, offersServices });
 
   const categories = useMemo(() => {
@@ -103,6 +138,7 @@ export function TemplateGallery({
         <div className="relative max-w-sm flex-1">
           <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
           <input
+            aria-label="Search templates"
             placeholder="Search templates (e.g. Restaurant, Salon, Portfolio)…"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
@@ -120,7 +156,7 @@ export function TemplateGallery({
           ["commerce", "Shopping"],
           ["service", "Services & booking"],
         ] as const).map(([value, label]) => (
-          <button key={value} onClick={() => setMode(value)} className={`rounded-md px-3 py-2 text-xs font-semibold transition ${mode === value ? "bg-background shadow-sm" : "text-muted-foreground hover:text-foreground"}`}>
+          <button key={value} type="button" aria-pressed={mode === value} onClick={() => setMode(value)} className={`rounded-md px-3 py-2 text-xs font-semibold transition ${mode === value ? "bg-background shadow-sm" : "text-muted-foreground hover:text-foreground"}`}>
             {value === "commerce" ? <ShoppingBag className="mr-1 inline h-3.5 w-3.5" /> : value === "service" ? <CalendarDays className="mr-1 inline h-3.5 w-3.5" /> : null}{label}
           </button>
         ))}
@@ -128,6 +164,8 @@ export function TemplateGallery({
 
       <div className="mb-6 flex flex-wrap gap-2">
         <button
+          type="button"
+          aria-pressed={activeCategory === null}
           onClick={() => setActiveCategory(null)}
           className={`rounded-full border px-3 py-1 text-xs font-medium transition ${
             activeCategory === null ? "border-primary bg-primary text-primary-foreground" : "border-border text-muted-foreground hover:border-primary/40"
@@ -138,6 +176,8 @@ export function TemplateGallery({
         {categories.map((c) => (
           <button
             key={c}
+            type="button"
+            aria-pressed={activeCategory === c}
             onClick={() => setActiveCategory(c === activeCategory ? null : c)}
             className={`rounded-full border px-3 py-1 text-xs font-medium transition ${
               activeCategory === c ? "border-primary bg-primary text-primary-foreground" : "border-border text-muted-foreground hover:border-primary/40"
@@ -167,14 +207,7 @@ export function TemplateGallery({
               }`}
             >
               <div className="relative h-40 w-full overflow-hidden bg-muted">
-                <iframe
-                  title={`${t.name} live front page preview`}
-                  src={`/template-preview/${encodeURIComponent(t.name)}`}
-                  className="pointer-events-none absolute left-0 top-0 h-[300%] w-[300%] origin-top-left scale-[.333333] border-0 bg-white"
-                  loading="lazy"
-                  scrolling="no"
-                  tabIndex={-1}
-                />
+                <LazyPreview title={`${t.name} live front page preview`} src={`/template-preview/${encodeURIComponent(t.name)}`} />
 
                 <button
                   type="button"
@@ -241,14 +274,14 @@ export function TemplateGallery({
         )}
       </div>
       {preview && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/70 p-4" onClick={() => setPreview(null)}>
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/70 p-4" role="dialog" aria-modal="true" aria-label={`${preview.name} preview`} onClick={() => setPreview(null)}>
           <div className="flex h-[90vh] w-full max-w-6xl flex-col overflow-hidden rounded-2xl bg-background shadow-2xl" onClick={(e) => e.stopPropagation()}>
             <div className="flex items-center justify-between border-b border-border px-4 py-3">
               <div>
                 <p className="text-sm font-semibold">{preview.name}</p>
                 <p className="text-[11px] text-muted-foreground">Real template front page preview — rendered from the production storefront component.</p>
               </div>
-              <button onClick={() => setPreview(null)} className="rounded-md p-2 hover:bg-muted"><X className="h-4 w-4" /></button>
+              <button type="button" aria-label="Close preview" autoFocus onClick={() => setPreview(null)} className="rounded-md p-2 hover:bg-muted"><X className="h-4 w-4" /></button>
             </div>
             <iframe
               title={`${preview.name} live front page preview`}

@@ -35,6 +35,8 @@
  * what's shown inside whichever template is selected — copy and layout are
  * fixed per template.
  */
+import { canonicalizeBusinessType } from "./business-identity";
+
 
 export type HeroStyle = "centered" | "split" | "fullbleed";
 // "gallery" | "amenities" | "availability" | "map" | "packages" are new,
@@ -68,6 +70,9 @@ export const FRESH = {
 // keep working unchanged (their components still import a hardcoded
 // palette const directly); components that DO read these should fall
 // back to a sensible constant when a field is absent, never crash on it.
+/** Per-template headings for the builder's sections, so a restaurant and a cleaner do not share "Let's work together". */
+export type SectionCopy = Partial<Record<"about" | "features" | "categories" | "testimonials" | "newsletter" | "contact" | "gallery" | "map", { eyebrow: string; heading: string }>>;
+
 export type TemplateTheme = {
   bg: string;
   ink: string;
@@ -84,6 +89,8 @@ export type TemplateTheme = {
   heroStyle: HeroStyle;
   catalogLabel: string;
   sections: Section[];
+  /** Optional niche-specific section headings (falls back to generic headings in template-builder-config.ts). */
+  sectionCopy?: SectionCopy;
   /** Secondary/body text color. Falls back to a muted version of `ink` when unset. */
   muted?: string;
   /** Divider / hairline border color. Falls back to a low-opacity `ink` when unset. */
@@ -657,9 +664,9 @@ export const JUICELIFE_THEME: TemplateTheme = {
   font: JUICELIFE.font,
   headlineFont: JUICELIFE.headlineFont,
   radius: JUICELIFE.radius,
-  eyebrow: "100% Natural & Fresh",
+  eyebrow: "Fresh Juices & Smoothies",
   headline: "Good juice. Good life.",
-  sub: "Made with real fruits and vegetables. No sugar added. Just pure goodness in every sip.",
+  sub: "Fresh fruit and vegetable juices, blended to order. Browse the menu and order online.",
   cta: "Shop now",
   layout: "grid",
   heroStyle: "split",
@@ -709,7 +716,7 @@ export function isFabtexTemplate(templateName: string | null | undefined): boole
   return templateName === TEMPLATE_NAME_FABTEX;
 }
 
-/** The catalog has exactly two templates: Fresh & Co. (tier 1) and Heenzy Sneaker Co. (tier 2). */
+/** Fresh & Co. (tier 1). The other legacy templates have their own generate* functions below. */
 export function generateNicheVariations(_nicheName: string): GeneratedTemplate[] {
   return [{ ...FRESH_THEME, variationName: TEMPLATE_NAME, tierRank: 1 }];
 }
@@ -782,8 +789,15 @@ export const RESTORED_LEGACY_TEMPLATE_CATALOG: readonly GeneratedTemplate[] = [
   generateRivoraVariation(), generateJuiceLifeVariation(), generateFabtexVariation(),
 ];
 
-export function getTemplateTheme(category: string | undefined, storeName: string): TemplateTheme {
-  return resolveStoreTheme(category, storeName, null, null, undefined);
+export function getTemplateTheme(category: string | undefined, _storeName: string): TemplateTheme {
+  const wanted = canonicalizeBusinessType(category);
+  if (wanted !== "Other") {
+    const legacy = RESTORED_LEGACY_TEMPLATE_CATALOG.find((t) => LEGACY_CATEGORY_BY_NAME[t.variationName] === wanted);
+    if (legacy) return resolveStoreTheme(category, _storeName, null, null, legacy.variationName);
+    const signature = SIGNATURE_TEMPLATE_CATALOG.find((t) => SIGNATURE_CATEGORY_BY_MODE[t.signatureMode] === wanted);
+    if (signature) return resolveStoreTheme(category, _storeName, null, null, signature.variationName);
+  }
+  return resolveStoreTheme(category, _storeName, null, null, undefined);
 }
 
 /** Merge a store's saved overrides (from Settings) on top of its selected template's default. */
@@ -870,8 +884,26 @@ const SIGNATURE_SECTIONS: Record<string, Section[]> = {
   forge: ["hero", "about", "features", "catalog", "testimonials", "contact"],
 };
 
+const c = (eyebrow: string, heading: string) => ({ eyebrow, heading });
+export const SIGNATURE_SECTION_COPY: Readonly<Record<string, SectionCopy>> = {
+  electra: { categories: c("Browse", "Shop by category"), features: c("Good to know", "Shopping made simple"), testimonials: c("Reviews", "What buyers say"), newsletter: c("New arrivals", "Hear about new stock first"), contact: c("Get in touch", "Questions about a product?") },
+  atelier: { about: c("The label", "Our story"), categories: c("The edit", "Shop the collections"), testimonials: c("In their words", "Worn and loved"), newsletter: c("The list", "First look at new pieces") },
+  kinetic: { categories: c("Drops", "Shop by style"), newsletter: c("Early access", "Get notified on the next drop"), features: c("The details", "Made to be seen"), contact: c("Support", "Need help with sizing?") },
+  bloom: { about: c("The boutique", "Beauty, simply chosen"), features: c("The routine", "Made for your everyday"), testimonials: c("Kind words", "What our clients say"), newsletter: c("Beauty notes", "Tips and new arrivals") },
+  haven: { categories: c("Rooms", "Shop by room"), about: c("Our approach", "Pieces for how you live"), features: c("Good to know", "Delivery and care"), contact: c("Visit or call", "Talk to us about your space") },
+  harvest: { categories: c("Aisles", "Shop by aisle"), features: c("How it works", "Order, pack, deliver"), newsletter: c("Weekly picks", "Hear about what is in season"), contact: c("Find us", "Order help and pickup") },
+  maison: { about: c("The house", "A place to stay"), features: c("Your stay", "What is included"), testimonials: c("Guest notes", "What guests say"), contact: c("Reservations", "Plan your stay") },
+  hotel: { about: c("Our story", "Hospitality, simply done"), features: c("Facilities", "Around the property"), testimonials: c("Guest reviews", "What guests say"), newsletter: c("Offers", "Hear about stay offers"), contact: c("Reservations", "Plan your stay") },
+  ember: { about: c("From the kitchen", "Our table"), testimonials: c("At the table", "What diners say"), contact: c("Reservations", "Book a table or order") },
+  muse: { about: c("The studio", "Our approach"), features: c("Services", "What we offer"), testimonials: c("Clients", "Kind words from clients"), contact: c("Book", "Book your appointment") },
+  frame: { about: c("The studio", "Behind the lens"), testimonials: c("Clients", "What clients say"), contact: c("Enquiries", "Tell us about your shoot") },
+  north: { features: c("Services", "What we do"), about: c("The studio", "How we work"), testimonials: c("Clients", "Client feedback"), contact: c("Start a project", "Tell us what you are building") },
+  pure: { features: c("Services", "What we clean"), about: c("Our approach", "How a visit works"), testimonials: c("Reviews", "Words from our customers"), contact: c("Book a clean", "Request a booking") },
+  forge: { about: c("Who we are", "Our approach to building"), features: c("Services", "What we build"), testimonials: c("Clients", "Client feedback"), contact: c("Request a quote", "Tell us about your project") },
+};
+
 function signatureTheme(data: Omit<TemplateTheme, "font" | "headlineFont" | "radius" | "sections"> & { signatureMode: string }): TemplateTheme & { signatureMode: string } {
-  return { ...SIGNATURE_BASE, sections: SIGNATURE_SECTIONS[data.signatureMode] ?? SIGNATURE_BASE.sections, ...data };
+  return { ...SIGNATURE_BASE, sections: SIGNATURE_SECTIONS[data.signatureMode] ?? SIGNATURE_BASE.sections, sectionCopy: SIGNATURE_SECTION_COPY[data.signatureMode], ...data };
 }
 
 export const SIGNATURE_TEMPLATES = [
@@ -916,3 +948,42 @@ export function getSignatureTheme(name: string | null | undefined): TemplateThem
   const found = SIGNATURE_TEMPLATE_CATALOG.find((t) => t.variationName === name);
   return found || SIGNATURE_TEMPLATE_CATALOG[0];
 }
+
+// ---------------------------------------------------------------------------
+// Single source of truth for template names / categories / business support.
+// template-registry.ts, prisma/seed.ts and the storefront runtime + preview all
+// derive from these instead of keeping their own copies.
+// ---------------------------------------------------------------------------
+
+export const LEGACY_CATEGORY_BY_NAME: Readonly<Record<string, string>> = {
+  [TEMPLATE_NAME]: "Retail",
+  [TEMPLATE_NAME_HEENZY]: "Fashion", [TEMPLATE_NAME_HEENZY_BOUTIQUE]: "Fashion",
+  [TEMPLATE_NAME_NOVA]: "Professional Services", [TEMPLATE_NAME_NOVA_IVORY]: "Professional Services",
+  [TEMPLATE_NAME_VIOLET]: "Retail", [TEMPLATE_NAME_VIOLET_SUNSET]: "Retail",
+  [TEMPLATE_NAME_PREMIUM]: "Retail", [TEMPLATE_NAME_HOMEVISTA]: "Real Estate",
+  [TEMPLATE_NAME_RRW]: "Automotive", [TEMPLATE_NAME_MARKETPLACE]: "Retail",
+  [TEMPLATE_NAME_ARCOVA]: "Professional Services", [TEMPLATE_NAME_RIVORA]: "Food & Groceries",
+  [TEMPLATE_NAME_JUICELIFE]: "Food & Groceries", [TEMPLATE_NAME_FABTEX]: "Fashion",
+};
+
+/** Names of the legacy templates rendered by LegacyTemplateHome. */
+export const LEGACY_TEMPLATE_NAMES: ReadonlySet<string> = new Set(Object.keys(LEGACY_CATEGORY_BY_NAME));
+
+export const SIGNATURE_CATEGORY_BY_MODE: Readonly<Record<string, string>> = {
+  electra: "Electronics", atelier: "Fashion", kinetic: "Fashion", bloom: "Beauty", haven: "Home & Furniture",
+  harvest: "Food & Groceries", maison: "Hotel & Lodging", hotel: "Hotel & Lodging", ember: "Restaurant",
+  muse: "Salon", frame: "Photography", north: "Agency", pure: "Cleaning", forge: "Construction",
+};
+
+/**
+ * Business types each signature template is built for. If NO template targets a
+ * business type (e.g. Church, Logistics) every template stays available so the
+ * gallery is never empty -- see isTemplateCompatibleWithBusiness().
+ */
+export const SIGNATURE_SUPPORTS_BY_MODE: Readonly<Record<string, readonly string[]>> = {
+  electra: ["Electronics", "Retail"], atelier: ["Fashion", "Retail"], kinetic: ["Fashion", "Retail"],
+  bloom: ["Beauty", "Retail"], haven: ["Home & Furniture", "Retail"], harvest: ["Food & Groceries", "Retail", "Agriculture"],
+  maison: ["Hotel & Lodging"], hotel: ["Hotel & Lodging"], ember: ["Restaurant"], muse: ["Salon", "Beauty"],
+  frame: ["Photography", "Agency"], north: ["Agency", "Professional Services", "Software Development"],
+  pure: ["Cleaning"], forge: ["Construction", "Real Estate"],
+};

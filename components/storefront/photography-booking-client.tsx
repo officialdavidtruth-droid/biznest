@@ -1,5 +1,6 @@
 "use client";
 
+import { formatMoney } from "@/lib/utils/format-money";
 import { MenuLinks } from "@/components/storefront/store-menu";
 import { useEffect, useMemo, useState, useTransition } from "react";
 import Link from "next/link";
@@ -17,7 +18,7 @@ function todayISO() {
 }
 
 function money(currency: string, amount: number) {
-  return `${currency} ${amount.toLocaleString()}`;
+  return formatMoney(amount, currency);
 }
 
 export function PhotographyBookingClient({

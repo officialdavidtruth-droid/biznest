@@ -1,3 +1,4 @@
+import { formatMoney } from "@/lib/utils/format-money";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ArrowLeft, CalendarDays, CheckCircle2, Clock3, Mail, MapPin, Phone, Users } from "lucide-react";
@@ -7,7 +8,7 @@ import { getHotelContent } from "@/lib/hotel-content";
 import { VelouraAccountHero } from "@/components/storefront/veloura-account-shell";
 
 function money(value: unknown, currency = "NGN") {
-  return new Intl.NumberFormat("en-NG", { style: "currency", currency, maximumFractionDigits: 0 }).format(Number(value || 0));
+  return formatMoney(value, currency);
 }
 function date(value: Date | string | null | undefined, withTime = false) {
   if (!value) return "—";

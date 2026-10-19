@@ -1,8 +1,9 @@
+import { formatMoney } from "@/lib/utils/format-money";
 import Link from "next/link";
 import { CalendarDays, Camera, Check, ChevronRight, Edit3, Gift, Heart, Headphones, Star, WalletCards } from "lucide-react";
 
 function money(value: number, currency = "NGN") {
-  return new Intl.NumberFormat("en-NG", { style: "currency", currency, maximumFractionDigits: 0 }).format(value);
+  return formatMoney(value, currency);
 }
 function date(value: Date | string | null | undefined) {
   if (!value) return "—";

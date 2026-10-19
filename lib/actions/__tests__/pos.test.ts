@@ -1,3 +1,4 @@
+import crypto from "crypto";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { prisma } from "@/lib/prisma";
 import { createPosSale, getPosCommissionBalance, recordPosCommissionSettlement } from "@/lib/actions/pos";
@@ -261,5 +262,49 @@ describe("recordPosCommissionSettlement", () => {
     expect(result.error).toMatch(/don't have access/i);
 
     await cleanupTestStore(otherStore);
+  });
+});
+
+describe("createPosSale idempotency", () => {
+  let fixture: TestStoreFixture;
+
+  beforeEach(async () => {
+    fixture = await createTestStoreWithOwner({ commissionRate: 10 });
+    setSession({ id: fixture.ownerUser.id, email: fixture.ownerUser.email, role: "STORE_OWNER" });
+  });
+
+  afterEach(async () => {
+    clearSession();
+    await cleanupTestStore(fixture);
+  });
+
+  it("returns the original POS sale on a retried idempotency key without duplicating stock, payment, commission, or events", async () => {
+    const product = await createTestProduct(fixture.store.id, { price: 1000, quantity: 5 });
+    const idempotencyKey = crypto.randomUUID();
+    const input = {
+      items: [{ productId: product.id, quantity: 2 }],
+      tenderType: "Cash" as const,
+      idempotencyKey,
+    };
+
+    const first = await createPosSale(fixture.store.slug, input);
+    const second = await createPosSale(fixture.store.slug, input);
+
+    expect(first.success).toBe(true);
+    expect(second.success).toBe(true);
+    if (!first.success || !second.success) return;
+    expect(second.data.orderId).toBe(first.data.orderId);
+    expect(second.data.total).toBe(first.data.total);
+
+    const orders = await prisma.order.findMany({ where: { idempotencyKey }, include: { payments: true, statusEvents: true } });
+    expect(orders).toHaveLength(1);
+    expect(orders[0]?.payments).toHaveLength(1);
+    expect(orders[0]?.statusEvents).toHaveLength(1);
+
+    const inventory = await prisma.inventoryItem.findUnique({ where: { productId: product.id } });
+    expect(inventory?.quantity).toBe(3);
+
+    const balance = await getPosCommissionBalance(fixture.store.slug);
+    expect(balance.owed).toBe(200);
   });
 });

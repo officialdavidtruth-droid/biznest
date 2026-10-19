@@ -2,50 +2,43 @@ import {
   GRANDEUR_TEMPLATE_NAME, GRANDEUR_THEME, HOTEL_TEMPLATE_NAME, HOTEL_THEME,
   TASTEHOUSE_TEMPLATE_NAME, TASTEHOUSE_THEME, EXAMPLE_TEMPLATE_NAME, EXAMPLE_THEME,
   RESTORED_LEGACY_TEMPLATE_CATALOG, SIGNATURE_TEMPLATE_CATALOG,
+  LEGACY_CATEGORY_BY_NAME, SIGNATURE_CATEGORY_BY_MODE, SIGNATURE_SUPPORTS_BY_MODE,
   type GeneratedTemplate,
 } from "@/lib/template-themes";
+import { resolveHomeRenderer, type HomeRendererKind } from "@/lib/storefront/resolve-renderer";
 import { canonicalizeBusinessType } from "@/lib/business-identity";
 
 export type StorefrontRenderer = "grandeur" | "hotel" | "tastehouse" | "example" | "builder";
-export type TemplateDefinition = { id:string; name:string; category:string; theme:GeneratedTemplate; renderer:StorefrontRenderer; aliases:string[]; supports:string[] };
-
-const CATEGORY_BY_NAME: Record<string,string> = {
-  "Fresh & Co.": "Retail", "Heenzy Sneaker Co.": "Fashion", "Heenzy — Boutique Rose": "Fashion",
-  "Nova Studio — Noir": "Professional Services", "Nova Studio — Ivory Minimal": "Professional Services",
-  "Violet": "Retail", "Violet — Sunset": "Retail", "Premium Marketplace": "Retail", "HomeVista": "Real Estate",
-  "rRW Premium Rental": "Automotive", "Marketplace Hub": "Retail", "Arcova Architecture": "Professional Services",
-  "Rivora Fresh": "Food & Groceries", "JuiceLife": "Food & Groceries", "Fabtex": "Fashion",
-};
+/** `renderer` = journey family (used by route guards). `home` = which component draws the homepage (see lib/storefront/resolve-renderer.ts). */
+export type TemplateDefinition = { id:string; name:string; category:string; theme:GeneratedTemplate; renderer:StorefrontRenderer; home:HomeRendererKind; aliases:string[]; supports:string[] };
 
 const publicLegacy: TemplateDefinition[] = RESTORED_LEGACY_TEMPLATE_CATALOG.map((theme) => ({
   id: `legacy-${theme.variationName.toLowerCase().replace(/[^a-z0-9]+/g,"-").replace(/^-|-$/g,"")}`,
   name: theme.variationName,
-  category: CATEGORY_BY_NAME[theme.variationName] || "Retail",
+  category: LEGACY_CATEGORY_BY_NAME[theme.variationName] || "Retail",
   theme,
   renderer: "builder",
+  home: resolveHomeRenderer(theme.variationName).kind,
   aliases: [],
-  supports: [CATEGORY_BY_NAME[theme.variationName] || "Other"],
+  supports: [LEGACY_CATEGORY_BY_NAME[theme.variationName] || "Other"],
 }));
 
-const signatureCategory: Record<string,string> = {
-  electra:"Electronics", atelier:"Fashion", kinetic:"Fashion", bloom:"Beauty", haven:"Home & Furniture", harvest:"Food & Groceries",
-  maison:"Hotel & Lodging", hotel:"Hotel & Lodging", ember:"Restaurant", muse:"Salon", frame:"Photography", north:"Agency", pure:"Cleaning", forge:"Construction",
-};
 const publicSignature: TemplateDefinition[] = SIGNATURE_TEMPLATE_CATALOG.map((theme) => ({
   id: `signature-${theme.signatureMode}`,
   name: theme.variationName,
-  category: signatureCategory[theme.signatureMode] || "Other",
+  category: SIGNATURE_CATEGORY_BY_MODE[theme.signatureMode] || "Other",
   theme: { ...theme, tierRank: ["kinetic","maison","hotel","north","forge"].includes(theme.signatureMode) ? 4 : 3 },
   renderer: "builder",
+  home: resolveHomeRenderer(theme.variationName).kind,
   aliases: [],
-  supports: ["*"],
+  supports: [...(SIGNATURE_SUPPORTS_BY_MODE[theme.signatureMode] ?? ["*"])],
 }));
 
 const compatibility: TemplateDefinition[] = [
-  {id:"grandeur-restaurant",name:GRANDEUR_TEMPLATE_NAME,category:"Restaurant",theme:GRANDEUR_THEME,renderer:"grandeur",aliases:["__grandeur__"],supports:["Restaurant"]},
-  {id:"veloura-hotel",name:HOTEL_TEMPLATE_NAME,category:"Hotel",theme:HOTEL_THEME,renderer:"hotel",aliases:["__theluso__"],supports:["Hotel & Lodging"]},
-  {id:"tastehouse-food",name:TASTEHOUSE_TEMPLATE_NAME,category:"Restaurant",theme:TASTEHOUSE_THEME,renderer:"tastehouse",aliases:["__tastehouse__"],supports:["Restaurant","Food & Groceries"]},
-  {id:"example-electronics",name:EXAMPLE_TEMPLATE_NAME,category:"Electronics & Retail",theme:EXAMPLE_THEME,renderer:"example",aliases:["__example__"],supports:["Electronics","Fashion","Home & Furniture","Retail"]},
+  {id:"grandeur-restaurant",name:GRANDEUR_TEMPLATE_NAME,category:"Restaurant",theme:GRANDEUR_THEME,renderer:"grandeur",home:resolveHomeRenderer(GRANDEUR_TEMPLATE_NAME).kind,aliases:["__grandeur__"],supports:["Restaurant"]},
+  {id:"veloura-hotel",name:HOTEL_TEMPLATE_NAME,category:"Hotel & Lodging",theme:HOTEL_THEME,renderer:"hotel",home:resolveHomeRenderer(HOTEL_TEMPLATE_NAME).kind,aliases:["__theluso__"],supports:["Hotel & Lodging"]},
+  {id:"tastehouse-food",name:TASTEHOUSE_TEMPLATE_NAME,category:"Restaurant",theme:TASTEHOUSE_THEME,renderer:"tastehouse",home:resolveHomeRenderer(TASTEHOUSE_TEMPLATE_NAME).kind,aliases:["__tastehouse__"],supports:["Restaurant","Food & Groceries"]},
+  {id:"example-electronics",name:EXAMPLE_TEMPLATE_NAME,category:"Electronics & Retail",theme:EXAMPLE_THEME,renderer:"example",home:resolveHomeRenderer(EXAMPLE_TEMPLATE_NAME).kind,aliases:["__example__"],supports:["Electronics","Fashion","Home & Furniture","Retail"]},
 ];
 
 export const TEMPLATE_REGISTRY: readonly TemplateDefinition[] = [...compatibility, ...publicLegacy, ...publicSignature];
@@ -62,8 +55,12 @@ export function getTemplateDefinition(value:string|null|undefined){
   const key=normalizeTemplateKey(safeDecode(raw));
   return TEMPLATE_REGISTRY.find(t=>normalizeTemplateKey(t.name)===key||normalizeTemplateKey(t.id)===key)??null;
 }
+const explicitlySupports=(t:TemplateDefinition,b:string)=>t.supports.some(x=>canonicalizeBusinessType(x)===b);
 export function isTemplateCompatibleWithBusiness(t:TemplateDefinition,businessType:string|null|undefined){
   if(!businessType)return true;
   const b=canonicalizeBusinessType(businessType);
-  return b==="Other" || t.supports.includes("*") || t.supports.some(x=>canonicalizeBusinessType(x)===b);
+  if(b==="Other"||t.supports.includes("*")||explicitlySupports(t,b))return true;
+  // No template targets this business type (e.g. Church, Logistics): keep the whole
+  // catalog available rather than leaving the merchant with an empty gallery.
+  return !TEMPLATE_REGISTRY.some((x)=>explicitlySupports(x,b));
 }

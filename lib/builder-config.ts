@@ -17,6 +17,8 @@ export type BuilderSectionSettings = {
   background?: string;
   textColor?: string;
   align?: "left" | "center" | "right";
+  /** Hero only: "split" (text + image side by side, default), "centered" (stacked, centred) or "fullbleed" (text over a full-width background). */
+  heroStyle?: "split" | "centered" | "fullbleed";
   columns?: 1 | 2 | 3 | 4;
   padding?: "compact" | "normal" | "spacious";
   radius?: number;
@@ -74,6 +76,7 @@ const settingsSchema = z.object({
   background: z.string().max(100).optional(),
   textColor: z.string().max(100).optional(),
   align: z.enum(["left", "center", "right"]).optional(),
+  heroStyle: z.enum(["split", "centered", "fullbleed"]).optional(),
   columns: z.union([z.literal(1), z.literal(2), z.literal(3), z.literal(4)]).optional(),
   padding: z.enum(["compact", "normal", "spacious"]).optional(),
   radius: z.number().min(0).max(48).optional(),

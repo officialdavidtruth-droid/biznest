@@ -4,6 +4,12 @@ import { LegacyTemplateHome } from "@/components/storefront/legacy-template-rend
 import { SignatureScreenshotHome } from "@/components/storefront/signature-screenshot-home";
 import { ExampleStorefront } from "@/components/storefront/example-store";
 import { getTemplateDefinition } from "@/lib/template-registry";
+import { resolveHomeRenderer } from "@/lib/storefront/resolve-renderer";
+import { BuilderStorefront } from "@/components/storefront/builder-renderer";
+import { resolveStoreTheme } from "@/lib/template-themes";
+import { templateThemeToBuilderConfig } from "@/lib/template-builder-config";
+import { ThelusoHotel } from "@/components/storefront/theluso-hotel";
+import { getHotelContent } from "@/lib/hotel-content";
 
 export const revalidate = 3600;
 export const metadata: Metadata = { title: "BizNest Template Preview", robots: { index: false, follow: false } };
@@ -34,40 +40,19 @@ const store = {
   business: { description: "A production-style preview using the former BizNest storefront design system." },
 };
 
-const legacyNames = new Set([
-  "Fresh & Co.", "Heenzy Sneaker Co.", "Heenzy — Boutique Rose", "Nova Studio — Noir", "Nova Studio — Ivory Minimal",
-  "Violet", "Violet — Sunset", "Premium Marketplace", "HomeVista", "rRW Premium Rental", "Marketplace Hub", "Arcova Architecture",
-  "Rivora Fresh", "JuiceLife", "Fabtex",
-]);
-
-const signatureMap: Record<string,string> = {
-  "Electra — Smart Commerce":"marketplace", "Atelier — Modern Fashion":"fabtex", "Kinetic — Sneaker Drop":"heenzy",
-  "Bloom — Beauty Boutique":"belora", "Haven — Home & Furniture":"arcova", "Harvest — Grocery Market":"rivora",
-  "Maison — Hotel & Stay":"grand-vere", "Grand — Hotel & Hospitality":"great-treasure", "Ember — Restaurant":"flavora-restaurant",
-  "Muse — Salon & Beauty":"belora", "Frame — Photography Studio":"nova", "North — Creative Agency":"arcova",
-  "Pure — Cleaning Services":"fresh", "Forge — Construction":"arcova",
-};
-
-const palette: Record<string,any> = {
-  "great-treasure":{accent:"#E7A928",bg:"#07100D",ink:"#F7F3EA",card:"#101815",muted:"#B9B6AF",border:"#2C362F",accentSoft:"#6D5420",headlineFont:"Georgia, serif",font:"Inter, sans-serif"},
-  "grand-vere":{accent:"#0E5B45",bg:"#FFFFFF",ink:"#15392C",card:"#FFFFFF",muted:"#777",border:"#E6E1D7",accentSoft:"#C8BEA7",headlineFont:"Georgia, serif",font:"Inter, sans-serif"},
-  "belora":{accent:"#7B4BC0",bg:"#F1EAF8",ink:"#2B2430",card:"#FFFFFF",muted:"#837B89",border:"#E8E0EF",accentSoft:"#D5B7EA",headlineFont:"Georgia, serif",font:"Inter, sans-serif"},
-  "flavora-restaurant":{accent:"#F39A0B",bg:"#100A06",ink:"#FFF7EF",card:"#17100C",muted:"#B7A8A1",border:"#352A29",accentSoft:"#8C4722",headlineFont:"Georgia, serif",font:"Inter, sans-serif"},
-};
-
 export default async function TemplatePreviewPage({ params }: { params: Promise<{ name:string }> }) {
-  const name = decodeURIComponent((await params).name);
-  if (!getTemplateDefinition(name) && !legacyNames.has(name) && !signatureMap[name] && name !== "Example — Modern Electronics Store" && name !== "Grandeur — Fine Dining Restaurant" && name !== "Veloura — Superior Luxury Hotel" && name !== "TasteHouse — Food Delivery") notFound();
-  const p:any = { store, slug:"__biznest-template-preview", catalogItems:items, items, navCategories:categories, goodReviews:[], reviews:[], avgRating:4.8, completedOrders:128, trustScore:null, trustChecklist:null, social:{} };
-  if (legacyNames.has(name)) return <LegacyTemplateHome name={name} p={p}/>;
-  if (name === "Example — Modern Electronics Store") return <ExampleStorefront store={store} slug={p.slug} items={items as any} mode="home"/>;
-  if (name === "Grandeur — Fine Dining Restaurant") return <SignatureScreenshotHome {...p} mode="flavora-restaurant" {...palette["flavora-restaurant"]}/>;
-  if (name === "Veloura — Superior Luxury Hotel") return <SignatureScreenshotHome {...p} mode="grand-vere" {...palette["grand-vere"]}/>;
-  if (name === "TasteHouse — Food Delivery") return <SignatureScreenshotHome {...p} mode="tastehouse" accent="#F26B21" bg="#FFFBF5" ink="#241608" card="#FFFFFF" muted="#7A6A5D" border="#F1E4D6" accentSoft="#FDE3D3" headlineFont="Poppins, sans-serif" font="Inter, sans-serif"/>;
-  const mode=signatureMap[name];
-  if (["marketplace","fabtex","heenzy","arcova","rivora","nova","fresh"].includes(mode)) {
-    const target=mode === "heenzy" ? "Heenzy Sneaker Co." : mode === "fabtex" ? "Fabtex" : mode === "marketplace" ? "Marketplace Hub" : mode === "arcova" ? "Arcova Architecture" : mode === "rivora" ? "Rivora Fresh" : mode === "nova" ? "Nova Studio — Noir" : "Fresh & Co.";
-    return <LegacyTemplateHome name={target} p={p}/>;
-  }
-  return <SignatureScreenshotHome {...p} mode={mode} {...palette[mode]}/>;
+  let name: string;
+  try { name = decodeURIComponent((await params).name); } catch { notFound(); }
+  const definition = getTemplateDefinition(name!);
+  if (!definition) notFound();
+  // Same resolver the live storefront uses, so a preview always matches what a merchant gets.
+  const home = resolveHomeRenderer(definition.name);
+  const p:any = { store, slug:"__biznest-template-preview", catalogItems:items, items, navCategories:categories, goodReviews:[], reviews:[], avgRating:null, completedOrders:0, trustScore:null, trustChecklist:null, social:{} };
+  if (home.kind === "legacy") return <LegacyTemplateHome name={home.name} p={p}/>;
+  if (home.kind === "screenshot") return <SignatureScreenshotHome {...p} mode={home.mode} {...home.palette}/>;
+  if (home.kind === "example") return <ExampleStorefront store={store} slug={p.slug} items={items as any} mode="home"/>;
+  if (home.kind === "hotel") return <ThelusoHotel store={store as any} slug={p.slug} content={await getHotelContent(p.slug)}/>;
+  const theme = resolveStoreTheme(definition.category, store.name, null, null, definition.name);
+  const config = templateThemeToBuilderConfig(theme, store.name, store.business.description, null);
+  return <BuilderStorefront store={store as any} config={config} catalogItems={items as any} reviews={[]} avgRating={null} completedOrders={0}/>;
 }

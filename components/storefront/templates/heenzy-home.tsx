@@ -223,7 +223,7 @@ export function HeenzyStorefront({
             </div>
             <div>
               <h4>Company</h4>
-              <ul><li><a href="#">About Us</a></li></ul>
+              <ul><li><a href={`/store/${slug}/about`}>About Us</a></li></ul>
             </div>
             <div>
               <h4>Contact</h4>

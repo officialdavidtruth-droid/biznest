@@ -133,19 +133,62 @@ function BuilderSectionView({ section, store, config, catalogItems, categories, 
   const button = s.showButton === false ? null : s.ctaLabel ? <a href={s.ctaHref || "#catalog"} style={buttonStyle(d, s.radius)}>{s.ctaLabel}</a> : null;
   const heading = s.heading || label(section.type);
 
-  if (section.type === "hero") return (
-    <section id={section.id} className="bn-section" style={{ padding, background: bg }}>
-      <div className="bn-wrap bn-hero" style={{ display: "grid", gridTemplateColumns: s.image ? "1.05fr .95fr" : "1fr", alignItems: "center", gap: 50 }}>
-        <div style={{ textAlign: align }}>
-          {s.eyebrow && <div style={{ color: d.accent, fontSize: 12, fontWeight: 800, letterSpacing: ".12em", textTransform: "uppercase", marginBottom: 12 }}>{s.eyebrow}</div>}
-          <h1 style={{ fontFamily: d.headingFont, fontSize: "clamp(40px,6vw,72px)", lineHeight: 1.03, margin: 0, letterSpacing: "-.04em" }}>{heading}</h1>
-          {s.body && <p style={{ color: d.muted, maxWidth: 650, lineHeight: 1.75, fontSize: 16, margin: "22px 0 28px", marginLeft: align === "center" ? "auto" : 0, marginRight: align === "center" ? "auto" : 0 }}>{s.body}</p>}
-          {button}
+  if (section.type === "hero") {
+    const heroStyle = s.heroStyle || "split";
+    const eyebrowEl = (color: string) => s.eyebrow && <div style={{ color, fontSize: 12, fontWeight: 800, letterSpacing: ".12em", textTransform: "uppercase", marginBottom: 12 }}>{s.eyebrow}</div>;
+    const h1Style: React.CSSProperties = { fontFamily: d.headingFont, fontSize: "clamp(40px,6vw,72px)", lineHeight: 1.03, margin: 0, letterSpacing: "-.04em" };
+    const bodyEl = (color: string, a: "left" | "center" | "right") => s.body && <p style={{ color, maxWidth: 650, lineHeight: 1.75, fontSize: 16, margin: "22px 0 28px", marginLeft: a === "center" ? "auto" : 0, marginRight: a === "center" ? "auto" : 0 }}>{s.body}</p>;
+
+    // Full-bleed: text over a full-width background (the image, or a brand gradient when there is none).
+    if (heroStyle === "fullbleed") {
+      const overlay = "linear-gradient(90deg, rgba(0,0,0,.66), rgba(0,0,0,.28))";
+      const backdrop = s.image ? `${overlay}, url(${s.image}) center/cover` : `linear-gradient(135deg, ${d.primary}, ${d.primary} 55%, ${d.accent})`;
+      return (
+        <section id={section.id} className="bn-section" style={{ padding: s.padding === "compact" ? "96px 0" : "140px 0", background: backdrop, color: "#fff" }}>
+          <div className="bn-wrap bn-hero" style={{ display: "grid", gridTemplateColumns: "1fr" }}>
+            <div style={{ textAlign: align, maxWidth: 720, marginLeft: align === "center" ? "auto" : 0, marginRight: align === "center" ? "auto" : 0 }}>
+              {eyebrowEl("rgba(255,255,255,.85)")}
+              <h1 style={{ ...h1Style, color: "#fff" }}>{heading}</h1>
+              {bodyEl("rgba(255,255,255,.88)", align)}
+              {button}
+            </div>
+          </div>
+        </section>
+      );
+    }
+
+    // Centered: stacked and centred, image as a wide banner underneath.
+    if (heroStyle === "centered") {
+      return (
+        <section id={section.id} className="bn-section" style={{ padding, background: bg }}>
+          <div className="bn-wrap bn-hero" style={{ display: "grid", gridTemplateColumns: "1fr", gap: 44 }}>
+            <div style={{ textAlign: "center" }}>
+              {eyebrowEl(d.accent)}
+              <h1 style={{ ...h1Style, maxWidth: 880, marginLeft: "auto", marginRight: "auto" }}>{heading}</h1>
+              {bodyEl(d.muted, "center")}
+              {button}
+            </div>
+            {s.image && <div style={{ minHeight: 380, borderRadius: s.radius ?? d.radius, background: `url(${s.image}) center/cover`, boxShadow: `0 30px 80px ${d.primary}22` }} />}
+          </div>
+        </section>
+      );
+    }
+
+    // Split (default): text beside the image. Unchanged from before.
+    return (
+      <section id={section.id} className="bn-section" style={{ padding, background: bg }}>
+        <div className="bn-wrap bn-hero" style={{ display: "grid", gridTemplateColumns: s.image ? "1.05fr .95fr" : "1fr", alignItems: "center", gap: 50 }}>
+          <div style={{ textAlign: align }}>
+            {eyebrowEl(d.accent)}
+            <h1 style={h1Style}>{heading}</h1>
+            {bodyEl(d.muted, align)}
+            {button}
+          </div>
+          {s.image && <div style={{ minHeight: 440, borderRadius: s.radius ?? d.radius, background: `url(${s.image}) center/cover`, boxShadow: `0 30px 80px ${d.primary}22` }} />}
         </div>
-        {s.image && <div style={{ minHeight: 440, borderRadius: s.radius ?? d.radius, background: `url(${s.image}) center/cover`, boxShadow: `0 30px 80px ${d.primary}22` }} />}
-      </div>
-    </section>
-  );
+      </section>
+    );
+  }
 
   if (section.type === "catalog") return (
     <section id={section.id} className="bn-section" style={{ padding, background: bg }}>

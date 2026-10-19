@@ -1,5 +1,6 @@
 "use client";
 
+import { formatMoney } from "@/lib/utils/format-money";
 import type React from "react";
 import { useState } from "react";
 import Link from "next/link";
@@ -19,7 +20,7 @@ type Props = {
 };
 
 function money(service: any) {
-  return `${service.currency} ${Number(service.price).toLocaleString()}`;
+  return formatMoney(service.price, service.currency);
 }
 
 function itemImages(service: any, store: any) {

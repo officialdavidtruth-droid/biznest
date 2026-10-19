@@ -24,6 +24,9 @@ export function getTemplateMode(template: TemplateCandidate): BusinessMode | "un
   if (definition?.renderer === "hotel") return "service";
   if (definition?.renderer === "grandeur" || definition?.renderer === "tastehouse") return "service";
   if (definition?.renderer === "example") return "commerce";
+  // Builder-family templates: the mode follows the business type the template was built for.
+  const builtFor = definition?.supports[0];
+  if (builtFor && builtFor !== "*") return resolveBusinessMode(builtFor);
   return "unknown";
 }
 
