@@ -12,7 +12,7 @@ export default async function AboutPage({ params }: { params: Promise<{ slug: st
   if (isHotelStore({ storeBusinessType: s?.businessType, templateName: s?.template?.name })) {
     const raw = await prisma.store.findUniqueOrThrow({
       where: { slug },
-      select: { id: true, slug: true, name: true, logoUrl: true, bannerUrl: true, storyImage: true, contactPhone: true, contactEmail: true, business: { select: { city: true, state: true, phone: true, email: true } } }
+      select: { id: true, slug: true, name: true, logoUrl: true, bannerUrl: true, storyImage: true, contactPhone: true, contactEmail: true, socialLinks: true, business: { select: { description: true, city: true, state: true, phone: true, email: true } } }
     });
     const store = { ...raw, address: [raw.business?.city, raw.business?.state].filter(Boolean).join(", ") || null, phone: raw.contactPhone ?? raw.business?.phone ?? null, email: raw.contactEmail ?? raw.business?.email ?? null };
     return <ThelusoHotel store={store} slug={slug} content={await getHotelContent(slug)} />;
