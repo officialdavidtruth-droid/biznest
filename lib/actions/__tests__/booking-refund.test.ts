@@ -26,4 +26,14 @@ describe("booking refund lifecycle", () => {
   it("adds REFUNDED to PMS payment state", () => {
     expect(schema).toMatch(/enum PropertyPaymentStatus \{[\s\S]*?PAID[\s\S]*?REFUNDED[\s\S]*?\}/);
   });
+
+  it("keeps vendor payouts consistent with every refund path", () => {
+    // Defined once, then used by the order, reconcile, wallet-booking, gateway-booking and reservation refunds.
+    expect(refund).toContain("async function recordPayoutRefundEffect");
+    expect((refund.match(/recordPayoutRefundEffect\(tx, payment\.id\)/g) ?? []).length).toBeGreaterThanOrEqual(4);
+    // Unsent payouts are cancelled; sent/in-flight ones become a clawback owed by the store.
+    expect(refund).toContain('where: { id: payout.id, status: "QUEUED" }');
+    expect(refund).toContain('status === "PAID" || status === "PROCESSING"');
+    expect(refund).toContain("refundClawbackOwed: { increment: amount }");
+  });
 });

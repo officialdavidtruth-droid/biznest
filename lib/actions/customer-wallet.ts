@@ -10,6 +10,7 @@ import type { ActionResult } from "@/types/actions";
 import { revalidatePath } from "next/cache";
 import crypto from "crypto";
 import { confirmPaidBooking } from "@/lib/payments/booking-confirmation";
+import { settleAndPayout } from "@/lib/payments/payout";
 
 const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? "https://biznest.vercel.app";
 
@@ -212,6 +213,8 @@ export async function payBookingWithWallet(
     throw error;
   }
 
+  // The customer's money is already in the platform account; pay the store out of it.
+  await settleAndPayout(reference);
   void confirmPaidBooking(booking.id, reference, amount);
   revalidatePath(`/store/${storeSlug}/account/wallet`);
   revalidatePath(`/store/${storeSlug}/account/bookings`);
@@ -289,6 +292,7 @@ export async function redeemWalletPaymentRequest(storeSlug: string, token: strin
     throw error;
   }
 
+  await settleAndPayout(paymentReference);
   void confirmPaidBooking(request.booking.id, paymentReference, amount);
 
   revalidatePath(`/store/${storeSlug}/account/bookings`);

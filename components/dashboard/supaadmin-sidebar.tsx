@@ -4,7 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
   LayoutDashboard, ShieldCheck, Users, Store, CreditCard,
-  Globe, FileClock, Settings, Gavel, Activity, Puzzle,
+  Globe, FileClock, Settings, Gavel, Activity, Puzzle, Banknote,
 } from "lucide-react";
 
 type Group = {
@@ -13,7 +13,7 @@ type Group = {
     href: string;
     label: string;
     icon: typeof LayoutDashboard;
-    badgeKey?: "pendingBusinesses" | "openDisputes";
+    badgeKey?: "pendingBusinesses" | "openDisputes" | "failedPayouts";
   }[];
 };
 
@@ -28,6 +28,7 @@ const GROUPS: Group[] = [
       { href: "/supaadmin/stores", label: "Stores", icon: Store },
       { href: "/supaadmin/users", label: "Users", icon: Users },
       { href: "/supaadmin/subscriptions", label: "Subscriptions", icon: CreditCard },
+      { href: "/supaadmin/payouts", label: "Payouts", icon: Banknote, badgeKey: "failedPayouts" },
       { href: "/supaadmin/apps", label: "Apps & Plugins", icon: Puzzle },
       { href: "/supaadmin/domains", label: "Domains", icon: Globe },
     ],
@@ -52,7 +53,7 @@ const GROUPS: Group[] = [
 export function SupaAdminSidebarNav({
   counts,
 }: {
-  counts: { pendingBusinesses: number; openDisputes: number };
+  counts: { pendingBusinesses: number; openDisputes: number; failedPayouts: number };
 }) {
   const pathname = usePathname();
 

@@ -172,6 +172,20 @@ export async function createFlutterwaveSubaccount(params: {
   return res.json() as Promise<{ status: "success" | "error"; message: string; data?: { id: number; subaccount_id: string } }>;
 }
 
+/** Sets the platform's cut on an existing Flutterwave subaccount (0 = vendor keeps everything). */
+export async function updateFlutterwaveSubaccountSplit(subaccountId: string, splitPercentage: number) {
+  const secretKey = process.env.FLUTTERWAVE_SECRET_KEY;
+  if (!secretKey) return { status: "error" as const, message: "Flutterwave isn't configured on this platform yet." };
+
+  // The numeric id is what this endpoint takes (Store.flutterwaveSubaccountId may hold either form).
+  const res = await fetch(`${FLW_BASE}/subaccounts/${encodeURIComponent(subaccountId)}`, {
+    method: "PUT",
+    headers: { Authorization: `Bearer ${secretKey}`, "Content-Type": "application/json" },
+    body: JSON.stringify({ split_type: "percentage", split_value: splitPercentage / 100 }),
+  });
+  return res.json() as Promise<{ status: "success" | "error"; message: string }>;
+}
+
 /** Fetches Flutterwave v3 refund records for a transaction id. */
 export async function listFlutterwaveRefundsForTransaction(transactionId: string) {
   const secretKey = process.env.FLUTTERWAVE_SECRET_KEY;

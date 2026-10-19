@@ -97,6 +97,7 @@ export async function queuePayoutForPayment(reference: string): Promise<{ payout
   if (!payment.storeId || !payment.store) return { skipped: "payment has no store" };
   if (!(PAYOUT_PURPOSES as readonly string[]).includes(payment.purpose)) return { skipped: "not a vendor payment" };
   if (payment.splitSubaccountCode) return { skipped: "already split to the vendor by the gateway" };
+  if (payment.provider === "CASH") return { skipped: "settled outside the platform" };
 
   const amount = roundMoney(Number(payment.amount) - Number(payment.order?.commission ?? 0));
   if (amount <= 0) return { skipped: "nothing to pay out" };
@@ -105,7 +106,11 @@ export async function queuePayoutForPayment(reference: string): Promise<{ payout
   const details = (payment.store.payoutDetails ?? null) as { bankName?: string; accountName?: string; maskedAccountNumber?: string } | null;
 
   // Flutterwave collections sit in the Flutterwave balance; we only automate Paystack transfers.
-  const unsupported = payment.provider !== "PAYSTACK";
+  // Wallet payments are different: the customer's money already reached the platform when they
+  // funded the wallet, so the vendor is paid from the platform's Paystack balance like any other
+  // payout. (If that funding went through Flutterwave the balance may be short; the payout then
+  // simply stays QUEUED and retries until the money is there.)
+  const unsupported = payment.provider !== "PAYSTACK" && payment.provider !== "WALLET";
 
   // Id is generated up front so the transfer reference can be derived from it in the same insert.
   const payoutId = randomUUID().replace(/-/g, "");
@@ -196,9 +201,20 @@ export async function processPayout(
 ): Promise<{ state: Outcome | "QUEUED" | "SKIPPED"; message?: string; spentKobo?: number }> {
   const payout = await prisma.payout.findUnique({
     where: { id: payoutId },
-    include: { store: { select: { id: true, name: true, payoutBankCode: true, payoutAccountNumber: true, paystackRecipientCode: true, payoutDetails: true } } },
+    include: {
+      store: { select: { id: true, name: true, payoutBankCode: true, payoutAccountNumber: true, paystackRecipientCode: true, payoutDetails: true } },
+      payment: { select: { status: true } },
+    },
   });
   if (!payout) return { state: "SKIPPED", message: "not found" };
+
+  // Never send money for a charge that was refunded after the payout was queued.
+  if (payout.status === "QUEUED" && payout.payment && payout.payment.status !== "SUCCESSFUL") {
+    const message = `Payment is ${payout.payment.status.toLowerCase()}; payout not sent.`;
+    await prisma.payout.update({ where: { id: payout.id }, data: { status: "FAILED", lastError: message, nextAttemptAt: null } });
+    void logError("PAYMENTS", "Payout cancelled: payment no longer successful", { payoutId: payout.id, paymentStatus: payout.payment.status });
+    return { state: "FAILED", message };
+  }
 
   // Sweep path: a transfer was sent but we never heard the outcome.
   if (payout.status === "PROCESSING") {
@@ -340,4 +356,81 @@ export async function processDuePayouts(limit = 25): Promise<{ checked: number; 
 
   void logInfo("JOBS", "Payout sweep complete", summary);
   return summary;
+}
+
+
+/* -------------------------------------------------------------------------- */
+/* ADMIN RECOVERY                                                              */
+/* -------------------------------------------------------------------------- */
+
+const RETRYABLE_PROVIDERS = ["PAYSTACK", "WALLET"];
+
+/**
+ * Admin "Retry" for a FAILED / REVERSED payout. Never double pays: it first asks
+ * Paystack about the existing reference. Only when Paystack confirms that transfer
+ * failed/reversed, or has no record of it, does it issue a fresh reference and
+ * requeue. A transfer that actually went through (or is still in flight) is
+ * recorded as such instead.
+ */
+export async function retryPayout(payoutId: string): Promise<{ ok: boolean; message: string }> {
+  const payout = await prisma.payout.findUnique({ where: { id: payoutId }, select: { id: true, status: true, provider: true, reference: true } });
+  if (!payout) return { ok: false, message: "Payout not found." };
+  if (payout.status !== "FAILED" && payout.status !== "REVERSED") return { ok: false, message: `Only failed or reversed payouts can be retried (this one is ${payout.status.toLowerCase()}).` };
+  if (!RETRYABLE_PROVIDERS.includes(payout.provider)) return { ok: false, message: "This gateway's payouts aren't automated. Pay the store manually, then use \"Mark paid\"." };
+
+  const check = await verifyPaystackTransfer(payout.reference);
+  if (check.status && check.data) {
+    const state = classifyTransferStatus(check.data.status);
+    if (state !== "FAILED" && state !== "REVERSED") {
+      await applyTransferResult(payout.id, check.data, check);
+      return { ok: false, message: state === "PAID" ? "Paystack shows this transfer already went through. Marked as paid." : "Paystack still has this transfer in flight; its status was refreshed." };
+    }
+  } else if (!/not found/i.test(check.message ?? "")) {
+    return { ok: false, message: `Couldn't confirm the old transfer with Paystack (${check.message || "no response"}). Try again shortly.` };
+  }
+
+  // Confirmed not paid. A new reference is required: Paystack remembers the old one.
+  const reference = `${payoutReference(payout.id)}-r${Date.now().toString(36)}`;
+  await prisma.payout.update({
+    where: { id: payout.id },
+    data: { status: "QUEUED", reference, attempts: 0, lastError: null, nextAttemptAt: null, gatewayTransferId: null },
+  });
+  const result = await processPayout(payout.id);
+  return { ok: true, message: result.state === "PAID" || result.state === "PROCESSING" ? "Transfer sent." : `Requeued${result.message ? `: ${result.message}` : "."}` };
+}
+
+/** Admin "Mark paid": the money was sent outside the platform. Records who/why in rawPayload. */
+export async function markPayoutPaidManually(payoutId: string, note: string): Promise<{ ok: boolean; message: string }> {
+  const trimmed = note.trim();
+  if (!trimmed) return { ok: false, message: "A note is required (e.g. the bank transfer reference)." };
+  const updated = await prisma.payout.updateMany({
+    where: { id: payoutId, status: { in: ["FAILED", "REVERSED", "QUEUED"] } },
+    data: { status: "PAID", paidAt: new Date(), lastError: null, nextAttemptAt: null, rawPayload: { manual: true, note: trimmed, at: new Date().toISOString() } as Prisma.InputJsonValue },
+  });
+  if (updated.count === 0) return { ok: false, message: "This payout can't be marked paid (already paid, processing, or not found)." };
+  return { ok: true, message: "Marked as paid." };
+}
+
+/**
+ * One-off catch-up for wallet payments made before wallet bookings triggered a
+ * payout. Finds successful, unrefunded wallet booking payments with no Payout
+ * row and (unless dryRun) queues + sends them. Idempotent: Payout.paymentId is unique.
+ */
+export async function backfillWalletPayouts(opts: { dryRun?: boolean; limit?: number } = {}): Promise<{ found: number; totalNaira: number; queued: number }> {
+  const dryRun = opts.dryRun ?? true;
+  const payments = await prisma.payment.findMany({
+    where: { provider: "WALLET", purpose: "SERVICE_BOOKING", status: "SUCCESSFUL", payout: { is: null }, storeId: { not: null } },
+    select: { reference: true, amount: true },
+    orderBy: { createdAt: "asc" },
+    take: opts.limit ?? 100,
+  });
+  const totalNaira = roundMoney(payments.reduce((sum, p) => sum + Number(p.amount), 0));
+  if (dryRun) return { found: payments.length, totalNaira, queued: 0 };
+
+  let queued = 0;
+  for (const p of payments) {
+    await settleAndPayout(p.reference);
+    queued++;
+  }
+  return { found: payments.length, totalNaira, queued };
 }

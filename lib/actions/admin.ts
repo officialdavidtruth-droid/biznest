@@ -55,14 +55,15 @@ export async function getPlatformStats() {
 // couple of nav badges.
 export async function getAdminBadgeCounts() {
   const access = await assertPlatformStaff();
-  if (!access.success) return { pendingBusinesses: 0, openDisputes: 0 };
+  if (!access.success) return { pendingBusinesses: 0, openDisputes: 0, failedPayouts: 0 };
 
-  const [pendingBusinesses, openDisputes] = await Promise.all([
+  const [pendingBusinesses, openDisputes, failedPayouts] = await Promise.all([
     prisma.business.count({ where: { verificationStatus: "PENDING" } }),
     prisma.dispute.count({ where: { status: { in: ["OPEN", "UNDER_REVIEW"] } } }),
+    prisma.payout.count({ where: { status: { in: ["FAILED", "REVERSED"] } } }),
   ]);
 
-  return { pendingBusinesses, openDisputes };
+  return { pendingBusinesses, openDisputes, failedPayouts };
 }
 
 // --- Business verification review ---------------------------------------

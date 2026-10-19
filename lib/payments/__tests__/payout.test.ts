@@ -32,7 +32,7 @@ vi.mock("@prisma/client", () => ({
   Prisma: { PrismaClientKnownRequestError: class extends Error { code = "P2002"; } },
 }));
 
-import { classifyTransferStatus, payoutReference, processPayout, queuePayoutForPayment, retryDelayMs, toKobo } from "@/lib/payments/payout";
+import { classifyTransferStatus, markPayoutPaidManually, payoutReference, processPayout, queuePayoutForPayment, retryDelayMs, retryPayout, toKobo } from "@/lib/payments/payout";
 
 const payment = {
   id: "pay1",
@@ -187,5 +187,73 @@ describe("processPayout", () => {
     const r = await processPayout("p1");
     expect(r.state).toBe("QUEUED");
     expect(m.payoutUpdate).toHaveBeenCalledWith({ where: { id: "p1" }, data: expect.objectContaining({ status: "QUEUED", lastError: "socket hang up" }) });
+  });
+});
+
+describe("wallet payments", () => {
+  it("queues a payout for a booking paid from a customer wallet", async () => {
+    m.paymentFind.mockResolvedValue({ ...payment, purpose: "SERVICE_BOOKING", provider: "WALLET", order: null });
+    const r = await queuePayoutForPayment("WALPAY-b1");
+    expect(r.payoutId).toBeTruthy();
+    expect(m.payoutCreate).toHaveBeenCalledWith({ data: expect.objectContaining({ provider: "WALLET", status: "QUEUED", amount: 12500 }) });
+  });
+
+  it("ignores cash/POS payments: nothing for the platform to transfer", async () => {
+    m.paymentFind.mockResolvedValue({ ...payment, provider: "CASH" });
+    expect((await queuePayoutForPayment("pos1")).skipped).toMatch(/outside/);
+    expect(m.payoutCreate).not.toHaveBeenCalled();
+  });
+});
+
+describe("refunded payments", () => {
+  it("never sends a queued payout whose payment was refunded", async () => {
+    m.payoutFind.mockResolvedValue(queued({ payment: { status: "REFUNDED" } }));
+    const r = await processPayout("p1");
+    expect(r.state).toBe("FAILED");
+    expect(m.transfer).not.toHaveBeenCalled();
+    expect(m.payoutUpdate).toHaveBeenCalledWith(expect.objectContaining({ data: expect.objectContaining({ status: "FAILED" }) }));
+  });
+});
+
+describe("admin recovery", () => {
+  const failed = { id: "p1", status: "FAILED", provider: "PAYSTACK", reference: "bnp-p1" };
+
+  it("rotates the reference and resends only after Paystack confirms the old transfer failed", async () => {
+    m.payoutFind.mockResolvedValueOnce(failed).mockResolvedValueOnce(queued({ payment: { status: "SUCCESSFUL" } }));
+    m.verify.mockResolvedValue({ status: true, message: "ok", data: { status: "failed", transfer_code: "TRF_1" } });
+    m.transfer.mockResolvedValue({ status: true, message: "ok", data: { transfer_code: "TRF_2", status: "pending" } });
+    const r = await retryPayout("p1");
+    expect(r.ok).toBe(true);
+    const rotated = m.payoutUpdate.mock.calls.find((c) => c[0].data.reference)?.[0].data.reference as string;
+    expect(rotated).toMatch(/^bnp-p1-r/);
+    expect(rotated.length).toBeLessThanOrEqual(50);
+  });
+
+  it("does NOT resend when the old transfer actually succeeded", async () => {
+    m.payoutFind.mockResolvedValueOnce(failed);
+    m.verify.mockResolvedValue({ status: true, message: "ok", data: { status: "success", transfer_code: "TRF_1" } });
+    const r = await retryPayout("p1");
+    expect(r.ok).toBe(false);
+    expect(m.transfer).not.toHaveBeenCalled();
+    expect(m.payoutUpdate).toHaveBeenCalledWith(expect.objectContaining({ data: expect.objectContaining({ status: "PAID" }) }));
+  });
+
+  it("refuses to retry when Paystack can't be reached (unknown state)", async () => {
+    m.payoutFind.mockResolvedValueOnce(failed);
+    m.verify.mockResolvedValue({ status: false, message: "Network error" });
+    expect((await retryPayout("p1")).ok).toBe(false);
+    expect(m.transfer).not.toHaveBeenCalled();
+  });
+
+  it("won't retry a gateway that isn't automated", async () => {
+    m.payoutFind.mockResolvedValueOnce({ ...failed, provider: "FLUTTERWAVE" });
+    expect((await retryPayout("p1")).ok).toBe(false);
+    expect(m.verify).not.toHaveBeenCalled();
+  });
+
+  it("requires a note to mark a payout paid manually", async () => {
+    expect((await markPayoutPaidManually("p1", "  ")).ok).toBe(false);
+    expect(m.payoutUpdateMany).not.toHaveBeenCalled();
+    expect((await markPayoutPaidManually("p1", "GTB ref 123")).ok).toBe(true);
   });
 });

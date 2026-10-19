@@ -847,6 +847,9 @@ model Store {
   // immediately on subaccount creation, which made trust-score.ts report
   // "payout verified" for stores that were merely connected, not verified.
   payoutVerifiedAt         DateTime?
+  // Set once a legacy subaccount's platform percentage has been zeroed at the
+  // gateway (see neutralizeLegacySubaccountSplits). Null = not done yet.
+  legacySplitZeroedAt      DateTime?
 
   // Running balance of platform commission owed from POS (cash/in-person)
   // sales. Online orders never touch this -- the gateway subaccount split

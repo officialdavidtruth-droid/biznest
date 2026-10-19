@@ -195,6 +195,24 @@ export async function createPaystackSubaccount(params: {
 }
 
 /**
+ * Sets the platform's cut on an existing subaccount. Legacy stores still split
+ * through a subaccount created with a commission percentage; BizNest no longer
+ * takes a cut of sales, so we zero it until the owner reconnects a bank account.
+ * https://paystack.com/docs/api/subaccount/#update
+ */
+export async function updatePaystackSubaccountPercentage(subaccountCode: string, percentageCharge: number) {
+  const secretKey = process.env.PAYSTACK_SECRET_KEY;
+  if (!secretKey) return { status: false as const, message: "Paystack isn't configured on this platform yet." };
+
+  const res = await fetch(`${PAYSTACK_BASE}/subaccount/${encodeURIComponent(subaccountCode)}`, {
+    method: "PUT",
+    headers: { Authorization: `Bearer ${secretKey}`, "Content-Type": "application/json" },
+    body: JSON.stringify({ percentage_charge: percentageCharge }),
+  });
+  return res.json() as Promise<{ status: boolean; message: string; data?: { percentage_charge?: number } }>;
+}
+
+/**
  * Checks whether Paystack has actually verified a subaccount's KYC, since
  * this can't be done at creation time -- Paystack confirmed (support, Aug
  * 2026) that subaccount verification is a manual dashboard review, not

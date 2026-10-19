@@ -52,6 +52,50 @@ async function assertStoreAccess(slug: string) {
 }
 
 /**
+ * Keeps vendor payouts consistent with a refund. Call inside the same
+ * transaction that marks the Payment REFUNDED. Returns true when this payment
+ * has a Payout (the transfer model), so legacy subaccount handling is skipped.
+ *
+ *  - Payout not sent yet (QUEUED): cancelled so the store is never paid for it.
+ *  - Payout already sent or in flight (PAID / PROCESSING): the platform fronted
+ *    the refund, so the full payout amount is recorded as a clawback owed by
+ *    the store (same ledger as the subaccount clawbacks, see
+ *    getRefundClawbackBalance).
+ *  - FAILED / REVERSED: the store never received the money; nothing is owed.
+ */
+async function recordPayoutRefundEffect(tx: Prisma.TransactionClient, paymentId: string): Promise<boolean> {
+  const payout = await tx.payout.findUnique({ where: { paymentId }, select: { id: true, storeId: true, status: true, amount: true } });
+  if (!payout) return false;
+
+  let status = payout.status;
+  if (status === "QUEUED") {
+    const cancelled = await tx.payout.updateMany({
+      where: { id: payout.id, status: "QUEUED" },
+      data: { status: "FAILED", lastError: "Payment was refunded before this payout was sent. Not owed.", nextAttemptAt: null },
+    });
+    if (cancelled.count === 1) return true;
+    // A sender claimed it a moment ago: re-read and treat it as sent.
+    status = (await tx.payout.findUnique({ where: { id: payout.id }, select: { status: true } }))?.status ?? status;
+  }
+
+  if (status === "PAID" || status === "PROCESSING") {
+    const amount = Number(payout.amount);
+    if (amount > 0) {
+      await tx.storeRefundClawback.create({
+        data: {
+          storeId: payout.storeId,
+          paymentId,
+          amount,
+          reason: `Payment refunded after the payout was ${status === "PAID" ? "paid" : "sent"} -- platform fronted this refund.`,
+        },
+      });
+      await tx.store.update({ where: { id: payout.storeId }, data: { refundClawbackOwed: { increment: amount } } });
+    }
+  }
+  return true;
+}
+
+/**
  * Records a clawback if this refund's payment was actually split to the
  * merchant's subaccount and had already settled to their bank account by
  * the time the refund was issued. Doesn't move any money itself -- same
@@ -70,6 +114,7 @@ async function recordRefundClawbackIfSettled(
   store: { id: string; subscription: { commissionRate: unknown } | null },
   payment: { id: string; amount: unknown; verifiedAt: Date | null; provider: string; splitSubaccountCode: string | null }
 ) {
+  if (await recordPayoutRefundEffect(tx, payment.id)) return; // transfer-model payment: handled above
   if (payment.provider !== "PAYSTACK") return; // Flutterwave split-reversal behavior isn't confirmed the same way yet.
   if (!payment.splitSubaccountCode) return; // this charge wasn't split to a subaccount
   if (!payment.verifiedAt) return;
@@ -554,6 +599,7 @@ export async function issueBookingRefund(
             note: `Refund for cancelled booking: ${trimmedReason}`,
           },
         });
+        await recordPayoutRefundEffect(tx, payment.id);
         await tx.booking.update({ where: { id: booking.id }, data: { paymentStatus: "REFUNDED" } });
       }, { isolationLevel: "Serializable" });
     } catch (err) {
@@ -585,6 +631,7 @@ export async function issueBookingRefund(
     await prisma.$transaction(async (tx) => {
       const result = await tx.payment.updateMany({ where: { id: payment.id, status: "REFUND_PENDING" }, data: { status: "REFUNDED", refundReference: refund.refundReference, refundedAmount: payment.amount, refundedAt: new Date() } });
       if (!result.count) throw new Error("REFUND_CLAIM_LOST");
+      await recordPayoutRefundEffect(tx, payment.id);
       await tx.booking.update({ where: { id: booking.id }, data: { paymentStatus: "REFUNDED" } });
     });
   } catch {
@@ -638,6 +685,7 @@ export async function issueReservationRefund(
     await prisma.$transaction(async (tx) => {
       const result = await tx.payment.updateMany({ where: { id: payment.id, status: "REFUND_PENDING" }, data: { status: "REFUNDED", refundReference: refund.refundReference, refundedAmount: payment.amount, refundedAt: new Date() } });
       if (!result.count) throw new Error("REFUND_CLAIM_LOST");
+      await recordPayoutRefundEffect(tx, payment.id);
       await tx.propertyReservation.update({ where: { id: reservation.id }, data: { paymentStatus: "REFUNDED" } });
     });
   } catch {
