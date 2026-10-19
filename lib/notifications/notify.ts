@@ -47,7 +47,7 @@ export async function notifyStoreOwnerOfPaidOrder(
     type: "ORDER_PAID",
     title: "New order paid 🎉",
     body: `${currency} ${amount.toLocaleString()} just came in on ${store.name}.`,
-    url: `/${store.slug}/admin/orders/${orderId}`,
+    url: `/store/${store.slug}/admin/orders/${orderId}`,
   });
 }
 

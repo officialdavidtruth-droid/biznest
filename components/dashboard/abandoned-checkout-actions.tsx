@@ -30,7 +30,7 @@ export function AbandonedCheckoutActions({ slug, orderId }: { slug: string; orde
   }
 
   return (
-    <div className="flex gap-2">
+    <div className="flex flex-wrap gap-2">
       {CHANNELS.map((c) => (
         <button
           key={c.value}

@@ -36,37 +36,54 @@ export async function GET(req: Request) {
 
   const newlyAbandoned = await prisma.order.findMany({
     where: { status: "PENDING_PAYMENT", createdAt: { lt: cutoff }, merchantAlertedAt: null },
-    include: { store: { include: { business: true } }, items: { include: { product: true, service: true } }, buyer: { select: { email: true } } },
+    include: { store: { include: { business: true } }, items: { include: { product: true, service: true } }, buyer: { select: { name: true, email: true } } },
     take: 200, // batch cap so one sweep can't run indefinitely
   });
 
-  let failures = 0;
+  // One notification per customer per store, not per order: a buyer who
+  // retries checkout leaves several PENDING_PAYMENT orders behind, and one
+  // alert per row buried the bell in identical entries.
+  const groups = new Map<string, typeof newlyAbandoned>();
   for (const order of newlyAbandoned) {
+    const key = `${order.storeId}:${order.buyerId}`;
+    groups.set(key, [...(groups.get(key) ?? []), order]);
+  }
+
+  let failures = 0;
+  for (const orders of groups.values()) {
+    // newest first, so the alert describes the cart they most recently left
+    orders.sort((x, y) => y.createdAt.getTime() - x.createdAt.getTime());
+    const latest = orders[0];
     try {
-      const label = order.items[0]?.product?.name ?? order.items[0]?.service?.name ?? "a cart";
+      const shipping = latest.shippingAddress as { fullName?: string } | null;
+      const who = shipping?.fullName?.trim() || latest.buyer?.name?.trim() || latest.buyer?.email?.split("@")[0] || "A customer";
+      const itemCount = latest.items.reduce((n, i) => n + i.quantity, 0);
+      const first = latest.items[0]?.product?.name ?? latest.items[0]?.service?.name ?? "items";
+      const extra = latest.items.length > 1 ? ` +${latest.items.length - 1} more` : "";
+      const amount = `${latest.currency} ${Number(latest.total).toLocaleString()}`;
       await notifyUser({
-        userId: order.store.business.userId,
+        userId: latest.store.business.userId,
         type: "ABANDONED_CHECKOUT",
-        title: "A customer left their cart",
-        body: `${order.currency} ${Number(order.total).toLocaleString()} (${label}${order.items.length > 1 ? ` +${order.items.length - 1} more` : ""}) at ${order.store.name} — send a reminder?`,
-        url: `/${order.store.slug}/admin/abandoned-checkouts`,
+        title: `${who} left ${itemCount === 1 ? "an item" : "items"} in their cart`,
+        body: `${first}${extra} · ${amount}${orders.length > 1 ? ` (${orders.length} attempts)` : ""}. Tap to send a reminder.`,
+        url: `/store/${latest.store.slug}/admin/abandoned-checkouts?order=${latest.id}`,
       });
-      await prisma.order.update({ where: { id: order.id }, data: { merchantAlertedAt: new Date() } });
-      if (order.buyer?.email) {
-        await runAutomationsForEvent({ type: "CHECKOUT_ABANDONED", storeId: order.storeId, data: { orderId: order.id, email: order.buyer.email } });
+      await prisma.order.updateMany({ where: { id: { in: orders.map((o) => o.id) } }, data: { merchantAlertedAt: new Date() } });
+      if (latest.buyer?.email) {
+        await runAutomationsForEvent({ type: "CHECKOUT_ABANDONED", storeId: latest.storeId, data: { orderId: latest.id, email: latest.buyer.email } });
       }
     } catch (err) {
       failures++;
-      void logError("JOBS", "abandoned-checkout-alerts: notify failed", errorMeta(err, { orderId: order.id }));
+      void logError("JOBS", "abandoned-checkout-alerts: notify failed", errorMeta(err, { orderId: latest.id }));
     }
   }
 
   void logInfo(
     "JOBS",
     "abandoned-checkout-alerts completed",
-    { processed: newlyAbandoned.length, failures },
+    { processed: newlyAbandoned.length, notified: groups.size, failures },
     Date.now() - start
   );
 
-  return NextResponse.json({ processed: newlyAbandoned.length, failures });
+  return NextResponse.json({ processed: newlyAbandoned.length, notified: groups.size, failures });
 }

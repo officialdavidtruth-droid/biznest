@@ -107,11 +107,11 @@ export async function runAutomationsForEvent(event: Event) {
       }
       const actions = Array.isArray(automation.actions) ? automation.actions as Action[] : [];
       const result: string[] = [];
-      const store = await prisma.store.findUnique({ where: { id: event.storeId }, select: { name: true, business: { select: { userId: true } } } });
+      const store = await prisma.store.findUnique({ where: { id: event.storeId }, select: { name: true, slug: true, business: { select: { userId: true } } } });
       if (!store) throw new Error("Store not found");
       for (const action of actions) {
         if (action.type === "NOTIFY_OWNER") {
-          await prisma.notification.create({ data: { userId: store.business.userId, type: "AUTOMATION", title: action.title ?? automation.name, body: action.body ?? `Automation triggered by ${event.type}.`, url: `/admin/automations` } });
+          await prisma.notification.create({ data: { userId: store.business.userId, type: "AUTOMATION", title: action.title ?? automation.name, body: action.body ?? `Automation triggered by ${event.type}.`, url: `/store/${store.slug}/admin/automations` } });
           result.push("NOTIFY_OWNER");
         } else if (action.type === "CREATE_APPROVAL") {
           await prisma.approvalRequest.create({ data: { storeId: event.storeId, title: action.title ?? automation.name, requestType: action.requestType ?? event.type, metadata: event.data as any } });
@@ -120,7 +120,7 @@ export async function runAutomationsForEvent(event: Event) {
           await prisma.storeActivityLog.create({ data: { storeId: event.storeId, actorUserId: store.business.userId, actorName: "BizNest Automation", actorEmail: "system", actorRole: "SYSTEM", action: action.title ?? automation.name, metadata: event.data as any } });
           result.push("LOG_ACTIVITY");
         } else if (action.type === "NOTIFY_STAFF") {
-          await prisma.notification.create({ data: { userId: store.business.userId, type: "AUTOMATION", title: action.title ?? automation.name, body: action.message ?? action.body ?? `Automation triggered by ${event.type}.`, url: `/admin/automations` } });
+          await prisma.notification.create({ data: { userId: store.business.userId, type: "AUTOMATION", title: action.title ?? automation.name, body: action.message ?? action.body ?? `Automation triggered by ${event.type}.`, url: `/store/${store.slug}/admin/automations` } });
           result.push("NOTIFY_STAFF");
         } else if (action.type === "CRM_FOLLOW_UP") {
           result.push(await scheduleCrmFollowUp(event, action));

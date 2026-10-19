@@ -4,7 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { auth } from "@/lib/auth";
 import { revalidatePath } from "next/cache";
 
-export async function listMyNotifications(limit = 15) {
+export async function listMyNotifications(limit = 30) {
   const session = await auth();
   if (!session?.user?.id) return { notifications: [], unreadCount: 0 };
 
@@ -26,6 +26,17 @@ export async function markNotificationsRead() {
 
   await prisma.notification.updateMany({
     where: { userId: session.user.id, readAt: null },
+    data: { readAt: new Date() },
+  });
+  revalidatePath("/", "layout");
+}
+
+export async function markNotificationRead(id: string) {
+  const session = await auth();
+  if (!session?.user?.id) return;
+
+  await prisma.notification.updateMany({
+    where: { id, userId: session.user.id, readAt: null },
     data: { readAt: new Date() },
   });
   revalidatePath("/", "layout");

@@ -61,7 +61,7 @@ export async function GET(req: Request) {
         type: "SUBSCRIPTION_RENEWING_SOON",
         title: "Your plan renews soon",
         body: `${store.subscription?.name} (₦${Number(store.subscription?.price ?? 0).toLocaleString()}) renews on ${store.subscriptionRenewsAt?.toLocaleDateString()}. Make sure your card is up to date.`,
-        url: `/${store.slug}/admin/subscription`,
+        url: `/store/${store.slug}/admin/subscription`,
       });
       reminded++;
     } catch (err) {
@@ -213,6 +213,6 @@ async function handleRenewalFailure(
     type: "SUBSCRIPTION_PAYMENT_FAILED",
     title: "We couldn't renew your plan",
     body: "Your card was declined. Please update your payment details or your dashboard will be paused in a few days.",
-    url: `/${store.slug}/admin/subscription`,
+    url: `/store/${store.slug}/admin/subscription`,
   });
 }

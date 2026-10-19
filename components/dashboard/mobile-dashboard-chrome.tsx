@@ -14,6 +14,7 @@ import { StoreLogo } from "@/components/dashboard/store-logo";
 
 type NotificationItem = {
   id: string;
+  type?: string;
   title: string;
   body: string;
   url: string | null;

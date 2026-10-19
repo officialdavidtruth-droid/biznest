@@ -50,7 +50,7 @@ export async function GET(req: Request) {
           type: "PAYOUT_ACCOUNT_VERIFIED",
           title: "Your payout account is verified",
           body: "Paystack has approved your account. Your held payouts will now be released on the usual T+1 schedule.",
-          url: `/${store.slug}/admin/payments`,
+          url: `/store/${store.slug}/admin/payments`,
         });
       } else {
         stillPending++;
