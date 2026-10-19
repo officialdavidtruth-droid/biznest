@@ -1,5 +1,11 @@
 import { Resend } from "resend";
 import { logError } from "@/lib/observability/log";
+import {
+  abandonedCheckoutSubject,
+  renderAbandonedCheckoutEmail,
+  safeFromName,
+  type AbandonedCheckoutEmailInput,
+} from "@/lib/email/abandoned-checkout-email";
 
 const resend = new Resend(process.env.RESEND_API_KEY);
 const FROM = process.env.EMAIL_FROM ?? "BizNest <no-reply@biznest.space>";
@@ -734,4 +740,23 @@ export async function sendMarketingEmail(params: {
 
   if (result.error) return { success: false, error: result.error.message };
   return { success: true };
+}
+
+/**
+ * "You left something in your cart" email, sent AS the store the customer was
+ * shopping with: store name in the From line and subject, the store's logo and
+ * colour in the template, replies going to the store's own contact address.
+ */
+export async function sendAbandonedCheckoutEmail(params: Omit<AbandonedCheckoutEmailInput, "appUrl">) {
+  const html = renderAbandonedCheckoutEmail({ ...params, appUrl: APP_URL });
+  return send(
+    {
+      from: `${safeFromName(params.store.name)} <${FROM_ADDRESS}>`,
+      to: params.recipientEmail,
+      reply_to: params.store.contactEmail ?? undefined,
+      subject: abandonedCheckoutSubject(params.store.name),
+      html,
+    },
+    { kind: "abandoned-checkout", to: params.recipientEmail }
+  );
 }

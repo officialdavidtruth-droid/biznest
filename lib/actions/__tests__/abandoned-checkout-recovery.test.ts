@@ -5,7 +5,7 @@ const mocks = vi.hoisted(() => ({
   assertStoreAccess: vi.fn(),
   findFirst: vi.fn(),
   createNotification: vi.fn(),
-  sendOrderNotificationEmail: vi.fn(),
+  sendAbandonedCheckoutEmail: vi.fn(),
   sendWhatsAppMessage: vi.fn(),
 }));
 
@@ -17,7 +17,8 @@ vi.mock("@/lib/prisma", () => ({
     abandonedCheckoutNotification: { create: mocks.createNotification },
   },
 }));
-vi.mock("@/lib/email/send", () => ({ sendOrderNotificationEmail: mocks.sendOrderNotificationEmail }));
+vi.mock("@/lib/email/send", () => ({ sendAbandonedCheckoutEmail: mocks.sendAbandonedCheckoutEmail }));
+vi.mock("@/lib/store-url", () => ({ buildStoreUrl: (s: { slug: string }, path: string) => `https://app.test/${s.slug}${path}` }));
 vi.mock("@/lib/whatsapp/send", () => ({ sendWhatsAppMessage: mocks.sendWhatsAppMessage }));
 
 import { sendAbandonedCheckoutRecovery } from "@/lib/actions/abandoned-checkout";
@@ -25,26 +26,41 @@ import { sendAbandonedCheckoutRecovery } from "@/lib/actions/abandoned-checkout"
 const order = {
   id: "o1",
   buyer: { name: "Destiny", email: "buyer@example.com" },
-  items: [{ quantity: 1, product: { name: "Lol" }, service: null }],
+  currency: "NGN",
+  total: 5000,
+  items: [{ quantity: 1, unitPrice: 5000, product: { name: "Lol", images: [] }, service: null, variant: null }],
   shippingAddress: { fullName: "Destiny Sidi", phone: "+2348000000000" },
 };
 
 beforeEach(() => {
   vi.clearAllMocks();
-  mocks.assertStoreAccess.mockResolvedValue({ success: true, store: { id: "s1", name: "Velox Space" } });
+  mocks.assertStoreAccess.mockResolvedValue({ success: true, store: { id: "s1", name: "Velox Space", slug: "velox-space", logoUrl: null, themeColors: { primary: "#7c3aed" }, contactEmail: "hello@velox.test", contactPhone: null } });
   mocks.findFirst.mockResolvedValue(order);
 });
 
 describe("sendAbandonedCheckoutRecovery", () => {
   it("records SENT when the email provider accepts the message", async () => {
-    mocks.sendOrderNotificationEmail.mockResolvedValue({ data: { id: "em_1" }, error: null });
+    mocks.sendAbandonedCheckoutEmail.mockResolvedValue({ data: { id: "em_1" }, error: null });
     const r = await sendAbandonedCheckoutRecovery("velox-space", "o1", "EMAIL");
     expect(r.success).toBe(true);
     expect(mocks.createNotification).toHaveBeenCalledWith({ data: expect.objectContaining({ channel: "EMAIL", status: "SENT", error: null }) });
   });
 
+  it("sends the email as the store the customer shopped with, not as BizNest", async () => {
+    mocks.sendAbandonedCheckoutEmail.mockResolvedValue({ data: { id: "em_1" }, error: null });
+    await sendAbandonedCheckoutRecovery("velox-space", "o1", "EMAIL");
+    expect(mocks.sendAbandonedCheckoutEmail).toHaveBeenCalledWith(
+      expect.objectContaining({
+        recipientEmail: "buyer@example.com",
+        cartUrl: "https://app.test/velox-space/cart",
+        store: expect.objectContaining({ name: "Velox Space", primaryColor: "#7c3aed", contactEmail: "hello@velox.test" }),
+        items: [expect.objectContaining({ name: "Lol", quantity: 1, unitPrice: 5000 })],
+      })
+    );
+  });
+
   it("records FAILED when the provider resolves with an error (it does not throw)", async () => {
-    mocks.sendOrderNotificationEmail.mockResolvedValue({ data: null, error: { name: "validation_error", message: "The biznest.space domain is not verified." } });
+    mocks.sendAbandonedCheckoutEmail.mockResolvedValue({ data: null, error: { name: "validation_error", message: "The biznest.space domain is not verified." } });
     const r = await sendAbandonedCheckoutRecovery("velox-space", "o1", "EMAIL");
     expect(r.success).toBe(false);
     expect(mocks.createNotification).toHaveBeenCalledWith({
@@ -55,7 +71,7 @@ describe("sendAbandonedCheckoutRecovery", () => {
   });
 
   it("records FAILED when the email call throws", async () => {
-    mocks.sendOrderNotificationEmail.mockRejectedValue(new Error("network down"));
+    mocks.sendAbandonedCheckoutEmail.mockRejectedValue(new Error("network down"));
     const r = await sendAbandonedCheckoutRecovery("velox-space", "o1", "EMAIL");
     expect(r.success).toBe(false);
     expect(mocks.createNotification).toHaveBeenCalledWith({ data: expect.objectContaining({ status: "FAILED", error: "network down" }) });
@@ -66,7 +82,7 @@ describe("sendAbandonedCheckoutRecovery", () => {
     const r = await sendAbandonedCheckoutRecovery("velox-space", "o1", "SMS");
     expect(r.success).toBe(false);
     expect(mocks.findFirst).not.toHaveBeenCalled();
-    expect(mocks.sendOrderNotificationEmail).not.toHaveBeenCalled();
+    expect(mocks.sendAbandonedCheckoutEmail).not.toHaveBeenCalled();
     expect(mocks.sendWhatsAppMessage).not.toHaveBeenCalled();
     expect(mocks.createNotification).not.toHaveBeenCalled();
   });

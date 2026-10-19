@@ -6,10 +6,9 @@ import type { ActionResult } from "@/types/actions";
 import type { NotificationChannel } from "@prisma/client";
 import { assertStoreAccess } from "@/lib/actions/order";
 import { ABANDONED_CHECKOUT_THRESHOLD_MINUTES } from "@/lib/constants/order";
-import { sendOrderNotificationEmail } from "@/lib/email/send";
+import { sendAbandonedCheckoutEmail } from "@/lib/email/send";
+import { buildStoreUrl } from "@/lib/store-url";
 import { sendWhatsAppMessage } from "@/lib/whatsapp/send";
-
-const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? "https://biznest.vercel.app";
 
 /**
  * An "abandoned checkout" isn't its own table -- it's any Order still at
@@ -65,13 +64,13 @@ export async function sendAbandonedCheckoutRecovery(
     where: { id: orderId, storeId: access.store.id, status: "PENDING_PAYMENT" },
     include: {
       buyer: { select: { name: true, email: true } },
-      items: { include: { product: true, service: true } },
+      items: { include: { product: true, service: true, variant: true } },
     },
   });
   if (!order) return { success: false, error: "That abandoned checkout could not be found." };
 
   const shipping = order.shippingAddress as { phone?: string; fullName?: string } | null;
-  const cartUrl = `${APP_URL}/${slug}/cart`;
+  const cartUrl = buildStoreUrl(access.store, "/cart");
   const storeName = access.store.name;
   const label = cartLabel(order.items);
 
@@ -82,11 +81,29 @@ export async function sendAbandonedCheckoutRecovery(
       return { success: false, error: "This customer has no email on file." };
     }
     try {
-      const sent = await sendOrderNotificationEmail(
-        order.buyer.email,
-        "You left something in your cart",
-        `You left <strong>${label}</strong> in your cart at ${storeName}. <a href="${cartUrl}">Complete your order</a> before it sells out.`
-      );
+      const theme = (access.store.themeColors ?? null) as { primary?: string } | null;
+      const sent = await sendAbandonedCheckoutEmail({
+        recipientEmail: order.buyer.email,
+        recipientName: shipping?.fullName ?? order.buyer.name,
+        store: {
+          name: storeName,
+          slug,
+          logoUrl: access.store.logoUrl,
+          primaryColor: theme?.primary ?? null,
+          contactEmail: access.store.contactEmail,
+          contactPhone: access.store.contactPhone,
+        },
+        currency: order.currency,
+        total: Number(order.total),
+        cartUrl,
+        items: order.items.map((i) => ({
+          name: i.product?.name ?? i.service?.name ?? "Item",
+          quantity: i.quantity,
+          unitPrice: Number(i.unitPrice),
+          variantLabel: i.variant?.label ?? null,
+          imageUrl: i.product?.images?.[0] ?? i.service?.images?.[0] ?? null,
+        })),
+      });
       // Resend's SDK resolves with { data, error } on API-level failures (unverified
       // domain, bad key, invalid recipient...) instead of throwing, so a missing
       // throw does NOT mean the email went out.
