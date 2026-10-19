@@ -3,7 +3,7 @@
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { assertStorePermission } from "@/lib/access/assert-store-access";
-import { logStoreActivity } from "@/lib/actions/activity";
+import { logStoreActivity } from "@/lib/activity-log";
 import type { ActionResult } from "@/types/actions";
 
 async function access(slug: string) {

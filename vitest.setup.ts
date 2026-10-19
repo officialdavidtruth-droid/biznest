@@ -48,6 +48,6 @@ vi.mock("@/lib/webhooks/dispatch", () => ({
 
 // Best-effort audit logging — not part of what any of these tests are
 // verifying, and mocking it avoids depending on StoreActivityLog's shape.
-vi.mock("@/lib/actions/activity", () => ({
+vi.mock("@/lib/activity-log", () => ({
   logStoreActivity: vi.fn(async () => {}),
 }));

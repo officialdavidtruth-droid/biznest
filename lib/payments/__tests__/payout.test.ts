@@ -32,7 +32,7 @@ vi.mock("@prisma/client", () => ({
   Prisma: { PrismaClientKnownRequestError: class extends Error { code = "P2002"; } },
 }));
 
-import { classifyTransferStatus, markPayoutPaidManually, payoutReference, processPayout, queuePayoutForPayment, retryDelayMs, retryPayout, toKobo } from "@/lib/payments/payout";
+import { applyTransferWebhookEvent, classifyTransferStatus, isTransferEvent, markPayoutPaidManually, payoutReference, processPayout, queuePayoutForPayment, retryDelayMs, retryPayout, toKobo } from "@/lib/payments/payout";
 
 const payment = {
   id: "pay1",
@@ -255,5 +255,31 @@ describe("admin recovery", () => {
     expect((await markPayoutPaidManually("p1", "  ")).ok).toBe(false);
     expect(m.payoutUpdateMany).not.toHaveBeenCalled();
     expect((await markPayoutPaidManually("p1", "GTB ref 123")).ok).toBe(true);
+  });
+});
+
+describe("transfer webhooks", () => {
+  const where = () => m.payoutUpdateMany.mock.calls[0][0].where as { reference: string; status: { in: string[] } };
+
+  it("a late transfer.failed can never undo a payout that already went through", async () => {
+    await applyTransferWebhookEvent("transfer.failed", { reference: "bnp-p1", reason: "x" }, {});
+    expect(where().status.in).toEqual(["QUEUED", "PROCESSING"]);
+    expect(where().status.in).not.toContain("PAID");
+  });
+
+  it("a repeated transfer.success does not rewrite an already paid payout", async () => {
+    await applyTransferWebhookEvent("transfer.success", { reference: "bnp-p1" }, {});
+    expect(where().status.in).not.toContain("PAID");
+  });
+
+  it("still lets a reversal land on a paid payout (money came back)", async () => {
+    await applyTransferWebhookEvent("transfer.reversed", { reference: "bnp-p1" }, {});
+    expect(where().status.in).toContain("PAID");
+  });
+
+  it("ignores events with no reference and unrelated event names", async () => {
+    expect(await applyTransferWebhookEvent("transfer.success", {}, {})).toBe(false);
+    expect(m.payoutUpdateMany).not.toHaveBeenCalled();
+    expect(isTransferEvent("charge.success")).toBe(false);
   });
 });

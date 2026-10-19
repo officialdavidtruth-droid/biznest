@@ -434,3 +434,50 @@ export async function backfillWalletPayouts(opts: { dryRun?: boolean; limit?: nu
   }
   return { found: payments.length, totalNaira, queued };
 }
+
+
+/* -------------------------------------------------------------------------- */
+/* WEBHOOK                                                                     */
+/* -------------------------------------------------------------------------- */
+
+type TransferEvent = "transfer.success" | "transfer.failed" | "transfer.reversed";
+
+// Which current statuses each Paystack event may move a payout out of.
+// A late "failed" must never undo a payout that already went through (a
+// reversal after PAID is real, so that one is allowed), and a repeated
+// "success" must not overwrite paidAt.
+const TRANSFER_EVENT_RULES: Record<TransferEvent, { status: "PAID" | "FAILED" | "REVERSED"; from: Array<"QUEUED" | "PROCESSING" | "PAID" | "FAILED"> }> = {
+  "transfer.success": { status: "PAID", from: ["QUEUED", "PROCESSING", "FAILED"] },
+  "transfer.failed": { status: "FAILED", from: ["QUEUED", "PROCESSING"] },
+  "transfer.reversed": { status: "REVERSED", from: ["QUEUED", "PROCESSING", "PAID"] },
+};
+
+export function isTransferEvent(event: string | undefined): event is TransferEvent {
+  return event === "transfer.success" || event === "transfer.failed" || event === "transfer.reversed";
+}
+
+/** Applies a verified Paystack transfer webhook to the matching payout. Returns whether a row changed. */
+export async function applyTransferWebhookEvent(
+  event: TransferEvent,
+  data: { reference?: string; transfer_code?: string; reason?: string } | undefined,
+  raw: object
+): Promise<boolean> {
+  const reference = data?.reference;
+  if (!reference) return false;
+  const rule = TRANSFER_EVENT_RULES[event];
+
+  const result = await prisma.payout.updateMany({
+    where: { reference, status: { in: rule.from } },
+    data: {
+      status: rule.status,
+      ...(rule.status === "PAID" ? { paidAt: new Date(), lastError: null } : { lastError: data?.reason ?? event }),
+      ...(data?.transfer_code ? { gatewayTransferId: data.transfer_code } : {}),
+      rawPayload: raw as Prisma.InputJsonValue,
+    },
+  });
+
+  if (result.count > 0 && rule.status !== "PAID") {
+    void logError("PAYMENTS", `Payout ${rule.status.toLowerCase()} (webhook)`, { reference, reason: data?.reason });
+  }
+  return result.count > 0;
+}

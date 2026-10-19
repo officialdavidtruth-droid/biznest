@@ -8,7 +8,7 @@ import { sendStaffInviteEmail } from "@/lib/email/send";
 import { canManageBillingAndStaff, getStoreAccessRole } from "@/lib/access/store-access";
 import { notifyUser } from "@/lib/notifications/notify";
 import { STAFF_PERMISSION_IDS, labelForPermission } from "@/lib/access/staff-permissions";
-import { logStoreActivity } from "@/lib/actions/activity";
+import { logStoreActivity } from "@/lib/activity-log";
 import type { ActionResult } from "@/types/actions";
 
 const MAX_STAFF_PER_STORE = 20;

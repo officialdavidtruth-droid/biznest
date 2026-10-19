@@ -11,7 +11,7 @@ import { PLATFORM_COMMISSION_PERCENT } from "@/lib/constants/commission";
 import { posSaleSchema, type PosSaleInput } from "@/lib/validations/pos";
 import { emitWebhookEvent } from "@/lib/webhooks/dispatch";
 import { assertStorePermission } from "@/lib/access/assert-store-access";
-import { logStoreActivity } from "@/lib/actions/activity";
+import { logStoreActivity } from "@/lib/activity-log";
 import type { ActionResult } from "@/types/actions";
 import { Prisma, type Store, type Business } from "@prisma/client";
 

@@ -8,7 +8,7 @@ import slugify from "slugify";
 import type { ActionResult } from "@/types/actions";
 import { emitWebhookEvent } from "@/lib/webhooks/dispatch";
 import { assertStorePermission } from "@/lib/access/assert-store-access";
-import { logStoreActivity } from "@/lib/actions/activity";
+import { logStoreActivity } from "@/lib/activity-log";
 import { assertUnderPlanLimit } from "@/lib/entitlements";
 
 import type { Store, Business } from "@prisma/client";

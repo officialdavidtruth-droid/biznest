@@ -9,6 +9,7 @@ import { settleWalletFunding } from "@/lib/payments/settle-wallet-funding";
 import { settleServiceBookingPayment } from "@/lib/payments/settle-service-booking";
 import { settleReservationPayment } from "@/lib/payments/settle-reservation";
 import { settlePluginPurchase } from "@/lib/payments/settle-plugin-purchase";
+import { applyTransferWebhookEvent, isTransferEvent } from "@/lib/payments/payout";
 
 /**
  * Server-to-server payment confirmation from Paystack.
@@ -40,21 +41,9 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Invalid payload" }, { status: 400 });
   }
 
-  // Vendor payout (Transfer API) outcomes.
-  if (event.event === "transfer.success" || event.event === "transfer.failed" || event.event === "transfer.reversed") {
-    const ref = event.data?.reference;
-    if (ref) {
-      const status = event.event === "transfer.success" ? "PAID" : event.event === "transfer.failed" ? "FAILED" : "REVERSED";
-      await prisma.payout.updateMany({
-        where: { reference: ref, status: { in: ["QUEUED", "PROCESSING", "PAID"] } },
-        data: {
-          status,
-          ...(status === "PAID" ? { paidAt: new Date(), lastError: null } : { lastError: event.data?.reason ?? event.event }),
-          ...(event.data?.transfer_code ? { gatewayTransferId: event.data.transfer_code } : {}),
-          rawPayload: event as object,
-        },
-      });
-    }
+  // Vendor payout (Transfer API) outcomes. Transition rules live in applyTransferWebhookEvent.
+  if (isTransferEvent(event.event)) {
+    await applyTransferWebhookEvent(event.event, event.data, event);
     return NextResponse.json({ received: true });
   }
 

@@ -36,7 +36,10 @@ const DEFAULT_ACCOUNTS = [
   ["6300", "Marketing", "EXPENSE"],
 ] as const;
 
-export async function ensureFinancialFoundation(storeId: string) {
+// Not exported: a "use server" export is a public endpoint, and this takes a
+// caller-supplied storeId with no auth check. Only getFinancialControlData
+// (which authorizes first) calls it.
+async function ensureFinancialFoundation(storeId: string) {
   await prisma.financialAccount.createMany({
     data: DEFAULT_ACCOUNTS.map(([code, name, type]) => ({ storeId, code, name, type, isSystem: true })),
     skipDuplicates: true,

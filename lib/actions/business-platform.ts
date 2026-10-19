@@ -2,7 +2,7 @@
 
 import { prisma } from "@/lib/prisma";
 import { assertStorePermission } from "@/lib/access/assert-store-access";
-import { logStoreActivity } from "@/lib/actions/activity";
+import { logStoreActivity } from "@/lib/activity-log";
 
 const json = (v: unknown) => v as any;
 

@@ -46,7 +46,7 @@ import {
 } from "@/lib/access/assert-store-access";
 import {
   logStoreActivity,
-} from "@/lib/actions/activity";
+} from "@/lib/activity-log";
 import {
   SELLER_VISIBLE_ORDER_STATUSES,
 } from "@/lib/constants/order";
