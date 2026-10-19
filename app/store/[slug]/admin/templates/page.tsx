@@ -20,7 +20,7 @@ export default async function TemplatesPage({ params }: { params: Promise<{ slug
   const byName = new Map(dbTemplates.map((t) => [t.name, t]));
   const templates = TEMPLATE_DEFINITIONS.map((definition) => {
     const existing = byName.get(definition.name);
-    if (existing) return existing;
+    if (existing) return { ...existing, category: definition.category };
     return {
       id: definition.aliases[0] ? `${definition.aliases[0]}:${definition.name}` : definition.id,
       name: definition.name,

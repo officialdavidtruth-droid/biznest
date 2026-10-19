@@ -122,3 +122,17 @@ describe("no hardcoded promotional claims in legacy templates", () => {
       expect(src, phrase).not.toContain(phrase);
   });
 });
+
+describe("template copy is written for customers, not about the template", () => {
+  it("no public template sub-headline describes itself as a storefront/website", () => {
+    for (const t of PUBLIC_TEMPLATE_REGISTRY) {
+      const sub = String((t.theme as any).sub || "");
+      expect(sub, `${t.name}: "${sub}"`).not.toMatch(/storefront|website/i);
+    }
+  });
+  it("the merchant's own description wins over template copy in the hero", () => {
+    const theme = resolveStoreTheme(undefined, "Demo", null, null, "Ember — Restaurant");
+    const hero = templateThemeToBuilderConfig(theme, "Demo", "Our own words", null).sections.find((s) => s.type === "hero")!;
+    expect(hero.settings.body).toBe("Our own words");
+  });
+});

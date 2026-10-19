@@ -240,7 +240,7 @@ export function TemplateGallery({
                 <div className="min-w-0">
                   <p className="truncate text-sm font-medium">{t.category}</p>
                   <p className="truncate text-xs text-muted-foreground">
-                    {isLocked ? `Requires ${TIER_LABEL[t.tierRank] ?? "a higher plan"}` : isSelected ? "In use" : theme.heroStyle}
+                    {isLocked ? `Requires ${TIER_LABEL[t.tierRank] ?? "a higher plan"}` : isSelected ? "In use" : (theme.eyebrow || theme.catalogLabel)}
                   </p>
                 </div>
 
