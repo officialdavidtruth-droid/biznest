@@ -206,6 +206,7 @@ export function VioletStorefront({
             <a key={k} href={v} style={{ display: "block", color: "#aaa", fontSize: 12, margin: "9px 0", textDecoration: "none" }}>{k}</a>
           ))}
         </div>
+        <div style={{ gridColumn: "1 / -1", borderTop: "1px solid rgba(255,255,255,.15)", paddingTop: 14, color: "#aaa", fontSize: 12 }}>© {new Date().getFullYear()} {store.name}. All rights reserved.</div>
       </footer>
     </div>
   );

@@ -263,6 +263,7 @@ export function PremiumStorefront({
             <a key={k} href={v} style={{ display: "block", color: "#6e7980", fontSize: 10, margin: "6px 0", textDecoration: "none" }}>{k}</a>
           ))}
         </div>
+        <div style={{ gridColumn: "1 / -1", borderTop: "1px solid #dfe5e8", paddingTop: 12, color: "#6e7980", fontSize: 10 }}>© {new Date().getFullYear()} {store.name}. All rights reserved.</div>
       </footer>
     </div>
   );

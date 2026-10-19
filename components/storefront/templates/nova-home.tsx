@@ -179,6 +179,7 @@ export function NovaStorefront({
             {store.contactEmail && <a href={`mailto:${store.contactEmail}`} style={{ color: NOVA.cream, textDecoration: "none" }}>{store.contactEmail}</a>}
           </div>
         </div>
+        <div style={{ ...wrap, marginTop: 40, fontSize: 12, color: NOVA.gray }}>© {new Date().getFullYear()} {store.name}. All rights reserved.</div>
       </footer>
     </div>
   );

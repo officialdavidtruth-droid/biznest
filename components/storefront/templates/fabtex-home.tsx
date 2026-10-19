@@ -189,7 +189,7 @@ export function FabtexStorefront({
         </div>
       </footer>
       <div style={{ padding: "14px 11%", background: FABTEX.black, borderTop: "1px solid #222", color: "#666", fontSize: 8 }}>
-        &copy; {new Date().getFullYear()} {store.name.toUpperCase()} STOREFRONT
+        &copy; {new Date().getFullYear()} {store.name.toUpperCase()}. ALL RIGHTS RESERVED.
       </div>
     </div>
   );

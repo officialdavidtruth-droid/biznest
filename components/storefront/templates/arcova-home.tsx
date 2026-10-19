@@ -228,7 +228,7 @@ export function ArcovaStorefront({
       <footer style={{ padding: "28px 0", borderTop: `1px solid ${ARCOVA.border}`, fontSize: 12, opacity: 0.7 }}>
         <div style={{ ...wrap, display: "flex", justifyContent: "space-between", flexWrap: "wrap", gap: 10 }}>
           <span>{store.name}</span>
-          <span>&copy; {new Date().getFullYear()}</span>
+          <span>&copy; {new Date().getFullYear()} {store.name}. All rights reserved.</span>
         </div>
       </footer>
     </div>

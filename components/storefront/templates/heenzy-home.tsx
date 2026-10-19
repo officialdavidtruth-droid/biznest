@@ -219,7 +219,7 @@ export function HeenzyStorefront({
             </div>
             <div>
               <h4>Help</h4>
-              <ul><li><a href={`/store/${slug}/cart`}>Cart</a></li><li><a href="#catalog">Shop</a></li></ul>
+              <ul><li><a href={`/store/${slug}/cart`}>Cart</a></li><li><a href={`/store/${slug}/catalog`}>Shop</a></li></ul>
             </div>
             <div>
               <h4>Company</h4>
