@@ -8,6 +8,7 @@ export type ExampleContent = {
   promoTwoTitle: string; promoTwoText: string; promoTwoImage: string;
   audioTitle: string; audioImage: string; cameraTitle: string; cameraImage: string;
   newsletterTitle: string; newsletterText: string; footerTagline: string;
+  promoOneHref?: string; promoTwoHref?: string; audioHref?: string; cameraHref?: string;
 };
 
 export const DEFAULT_EXAMPLE_CONTENT: ExampleContent = {

@@ -1145,3 +1145,6 @@ a[href*="/service/"]:hover img {
 .lux-skinned .lux-eyebrow.dark,.lux-skinned .lux-text-link,.lux-skinned .lux-section-heading a,.lux-skinned .lux-room-top>b,.lux-skinned .lux-card-actions a,.lux-skinned .lux-book-benefits svg,.lux-skinned .lux-feature-list svg,.lux-skinned .lux-dining-cards a,.lux-skinned .lux-feature-strip svg,.lux-skinned .lux-facility-grid a,.lux-skinned .lux-category-strip span.active,.lux-skinned .lux-values svg,.lux-skinned .lux-contact-strip div,.lux-skinned .lux-map svg,.lux-skinned .lux-map small,.lux-skinned .lux-booking-room b,.lux-skinned .lux-extra-grid svg,.lux-skinned .lux-extra-grid span,.lux-skinned .lux-confirm-room b,.lux-skinned .lux-after-booking svg{color:var(--lux-accent-text)}
 .lux-skinned .lux-site .lux-dark-btn,.lux-skinned .lux-card-actions a.lux-dark-btn,.lux-skinned .lux-dining-cards a.lux-dark-btn{background:var(--lux-green);color:#fff}
 .lux-skinned .lux-card-actions a.dark-btn,.lux-skinned .lux-catalog-room-grid .lux-card-actions a.dark-btn{background:var(--lux-green);color:#fff;border-color:var(--lux-green)}
+
+.deal-strip a{margin-left:auto;background:#fff;color:#4b19ff;border-radius:6px;padding:8px 13px;font-size:9px;font-weight:800;text-decoration:none}
+a.ex-mini{text-decoration:none}
