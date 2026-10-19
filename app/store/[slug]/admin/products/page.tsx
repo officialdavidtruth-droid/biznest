@@ -34,7 +34,7 @@ export default async function ProductsListPage({ params }: { params: Promise<{ s
         </div>
         <div className="flex flex-wrap gap-2">
           <Link href={`/store/${slug}`} target="_blank" className="bn-admin-action rounded-lg border bg-background px-4 py-2.5 text-sm font-semibold">View Store ↗</Link>
-          <Link href={`/store/${slug}/admin/products?import=1`} className="bn-admin-action rounded-lg border bg-background px-4 py-2.5 text-sm font-semibold"><Upload className="mr-2 inline h-4 w-4" />Import {terminology.catalog}</Link>
+          <Link href={`/store/${slug}/admin/products?import=1#bulk-import`} className="bn-admin-action rounded-lg border bg-background px-4 py-2.5 text-sm font-semibold"><Upload className="mr-2 inline h-4 w-4" />Import {terminology.catalog}</Link>
           <Link href={`/store/${slug}/admin/products/new`} className="bn-admin-action rounded-lg bg-primary px-4 py-2.5 text-sm font-bold text-primary-foreground"><Plus className="mr-2 inline h-4 w-4" />Add {terminology.catalogSingular}</Link>
         </div>
       </div>
@@ -53,7 +53,7 @@ export default async function ProductsListPage({ params }: { params: Promise<{ s
               <div><h2 className="text-base font-bold">{terminology.catalog}</h2><p className="mt-1 text-xs text-muted-foreground">Manage your {terminology.catalog.toLowerCase()} and their availability</p></div>
               <button className="rounded-lg border bg-background p-2.5 text-muted-foreground"><SlidersHorizontal className="h-4 w-4" /></button>
             </div>
-            <div className="mb-4"><BulkCsvPanel storeSlug={slug} /></div>
+            <div id="bulk-import" className="mb-4 scroll-mt-24"><BulkCsvPanel storeSlug={slug} /></div>
             <ProductsTable
               storeSlug={slug}
               products={products.map((p) => ({
@@ -84,7 +84,7 @@ export default async function ProductsListPage({ params }: { params: Promise<{ s
             <h2 className="text-base font-bold">Quick Actions</h2>
             <div className="mt-3 space-y-1">
               <Quick href={`/store/${slug}/admin/products/new`} icon={Plus} title={`Add New ${terminology.catalogSingular}`} note={`Create a new ${terminology.catalogSingular.toLowerCase()}`} />
-              <Quick href={`/store/${slug}/admin/products?import=1`} icon={Upload} title={`Bulk Upload ${terminology.catalog}`} note="Import multiple items at once" />
+              <Quick href={`/store/${slug}/admin/products?import=1#bulk-import`} icon={Upload} title={`Bulk Upload ${terminology.catalog}`} note="Import multiple items at once" />
               <Quick href={`/store/${slug}/admin/categories`} icon={Layers3} title={`Manage ${genericCategory}s`} note={`Organize your ${terminology.catalog.toLowerCase()}`} />
               <Quick href={`/store/${slug}/admin/inventory`} icon={Package} title="Manage Inventory" note="Stock levels and availability" />
             </div>
