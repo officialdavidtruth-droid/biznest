@@ -20,6 +20,7 @@ import {
   getActiveGateway,
 } from "@/lib/payments/gateway";
 import { calculateOrderTotals } from "@/lib/utils/pricing";
+import { PLATFORM_COMMISSION_PERCENT } from "@/lib/constants/commission";
 import { storeHasPayoutTarget } from "@/lib/payments/payout-target";
 import { revalidatePath } from "next/cache";
 import { checkRateLimit } from "@/lib/rate-limit";
@@ -389,13 +390,7 @@ export async function startCheckout(
       Number(zone.fee);
   }
 
-  const commissionRate =
-    store.subscription
-      ? Number(
-          store.subscription
-            .commissionRate
-        )
-      : 8;
+  const commissionRate = PLATFORM_COMMISSION_PERCENT;
 
   let totals: ReturnType<typeof calculateOrderTotals>;
   try {

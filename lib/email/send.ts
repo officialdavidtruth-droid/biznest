@@ -1,5 +1,6 @@
 import { Resend } from "resend";
 import { logError } from "@/lib/observability/log";
+import { APP_URL } from "@/lib/constants/app-url";
 import {
   abandonedCheckoutSubject,
   renderAbandonedCheckoutEmail,
@@ -10,7 +11,6 @@ import {
 const resend = new Resend(process.env.RESEND_API_KEY);
 const FROM = process.env.EMAIL_FROM ?? "BizNest <no-reply@biznest.space>";
 const FROM_ADDRESS = FROM.match(/<(.+)>/)?.[1] ?? FROM;
-const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? "https://biznest.vercel.app";
 
 /**
  * Every send goes through here so a bounced/rejected/misconfigured email

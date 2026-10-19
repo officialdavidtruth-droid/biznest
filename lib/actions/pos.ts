@@ -7,6 +7,7 @@ import { consumeFifoStockTx, consumeFefoStockTx } from "@/lib/inventory-fifo";
 import { getFnbRotationMode } from "@/lib/fnb-settings";
 import { revalidatePath } from "next/cache";
 import { calculateOrderTotals, roundMoney } from "@/lib/utils/pricing";
+import { PLATFORM_COMMISSION_PERCENT } from "@/lib/constants/commission";
 import { posSaleSchema, type PosSaleInput } from "@/lib/validations/pos";
 import { emitWebhookEvent } from "@/lib/webhooks/dispatch";
 import { assertStorePermission } from "@/lib/access/assert-store-access";
@@ -370,7 +371,7 @@ export async function createPosSale(
   // No delivery fee at the register, and commission still accrues the same
   // way it would online (this is what the platform bills the merchant for
   // later) — POS just never deducts it from the cash in hand.
-  const commissionRate = store.subscription ? Number(store.subscription.commissionRate) : 8;
+  const commissionRate = PLATFORM_COMMISSION_PERCENT;
   const fnbMode = ["Restaurant", "Food & Groceries"].includes(store.businessType) ? getFnbRotationMode(store.enabledModules) : "FIFO";
   const consumeStock = fnbMode === "FEFO" ? consumeFefoStockTx : consumeFifoStockTx;
   const { subtotal, commission, total } = calculateOrderTotals(

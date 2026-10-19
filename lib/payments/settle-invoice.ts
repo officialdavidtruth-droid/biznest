@@ -1,4 +1,5 @@
 import "server-only";
+import { settleAndPayout } from "@/lib/payments/payout";
 
 import { prisma } from "@/lib/prisma";
 import { flagPaymentForReview } from "@/lib/payments/review";
@@ -41,4 +42,6 @@ export async function settleInvoicePayment(reference: string, verifiedAmountNair
       data: { status: "PAID", paidAt: new Date(), paymentId: payment.id },
     });
   }, { isolationLevel: "Serializable" });
+
+  await settleAndPayout(reference);
 }

@@ -1,3 +1,5 @@
+import "server-only";
+import { settleAndPayout } from "@/lib/payments/payout";
 import { prisma } from "@/lib/prisma";
 import { decrementStockForOrder } from "@/lib/payments/stock";
 import { emitWebhookEvent } from "@/lib/webhooks/dispatch";
@@ -78,5 +80,9 @@ export async function settleOrderPayment(input: {
   await emitWebhookEvent("ORDER_PAID", order.storeId, { orderId: order.id, status: "PAID" });
   void notifyStoreOwnerOfPaidOrder(order.storeId, order.id, Number(order.total), order.currency);
   void notifyCustomerOfPaidOrder(order.id);
+  // Send the store its money. Awaited (it never throws) so the transfer is
+  // attempted before this serverless invocation ends; the payouts cron retries
+  // anything that has to wait, e.g. for the payment to settle into the balance.
+  await settleAndPayout(reference);
   return { outcome: "paid" };
 }

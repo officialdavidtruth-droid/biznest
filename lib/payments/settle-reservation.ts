@@ -1,4 +1,5 @@
 import "server-only";
+import { settleAndPayout } from "@/lib/payments/payout";
 
 import { prisma } from "@/lib/prisma";
 import type { ActionResult } from "@/types/actions";
@@ -35,6 +36,8 @@ export async function settleReservationPayment(
   if(result.count===0)return;
   await tx.propertyReservation.updateMany({where:{id:payment.reservation!.id,status:{not:"CANCELLED"},paymentStatus:{not:"PAID"}},data:{paymentStatus:"PAID",paymentReference:reference}});
  });
+
+ await settleAndPayout(reference);
 
  revalidatePath(`/store/${payment.reservation.store.slug}/admin/pms`);
  return{success:true,data:{storeSlug:payment.reservation.store.slug,reservationId:payment.reservation.id}};

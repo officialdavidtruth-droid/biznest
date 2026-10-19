@@ -1,4 +1,5 @@
 import "server-only";
+import { settleAndPayout } from "@/lib/payments/payout";
 
 import { prisma } from "@/lib/prisma";
 import { flagPaymentForReview } from "@/lib/payments/review";
@@ -57,4 +58,6 @@ export async function settleQuoteDeposit(reference: string, verifiedAmountNaira:
       data: { status: "ACCEPTED", respondedAt: new Date(), orderId: order.id, depositPaymentId: payment.id },
     });
   }, { isolationLevel: "Serializable" });
+
+  await settleAndPayout(reference);
 }

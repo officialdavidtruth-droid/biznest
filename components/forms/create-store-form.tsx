@@ -49,7 +49,7 @@ export function CreateStoreForm({
           placeholder="Stacey's Paradise"
         />
         <p className="mt-1 text-xs text-muted-foreground">
-          Your store will be live at biznest.vercel.app/store/{previewSlug}
+          Your store will be live at biznest.space/{previewSlug}
         </p>
       </div>
 

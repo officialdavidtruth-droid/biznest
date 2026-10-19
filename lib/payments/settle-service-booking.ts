@@ -1,4 +1,5 @@
 import "server-only";
+import { settleAndPayout } from "@/lib/payments/payout";
 
 import { prisma } from "@/lib/prisma";
 import { confirmPaidBooking } from "@/lib/payments/booking-confirmation";
@@ -43,6 +44,7 @@ export async function settleServiceBookingPayment(
     });
   }, { isolationLevel: "Serializable" });
 
+  await settleAndPayout(reference);
   void confirmPaidBooking(payment.booking.id, reference, Number(payment.amount));
 
   revalidatePath(`/store/${payment.booking.store.slug}`);

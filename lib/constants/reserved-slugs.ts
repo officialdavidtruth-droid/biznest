@@ -39,6 +39,11 @@ export const RESERVED_SLUGS = new Set([
   // never activate -- which is why the "Enable notifications" button
   // got stuck on "Enabling..." permanently.
   "sw.js",
+  // Public assets served from the site root. Without these, middleware treats
+  // the first path segment as a store slug and rewrites the request, so the
+  // email logo and TasteHouse template images came back as broken images.
+  "email-logo.png",
+  "tastehouse",
   // top-level app/ routes
   "store",
   // BizNest Marketing (app/marketing/**) is its own standalone product with
