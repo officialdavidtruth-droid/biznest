@@ -8,6 +8,8 @@ export type ExampleContent = {
   promoTwoTitle: string; promoTwoText: string; promoTwoImage: string;
   audioTitle: string; audioImage: string; cameraTitle: string; cameraImage: string;
   newsletterTitle: string; newsletterText: string; footerTagline: string;
+  trustOneTitle: string; trustOneText: string; trustTwoTitle: string; trustTwoText: string;
+  trustThreeTitle: string; trustThreeText: string; trustFourTitle: string; trustFourText: string;
   promoOneHref?: string; promoTwoHref?: string; audioHref?: string; cameraHref?: string;
 };
 
@@ -28,6 +30,10 @@ export const DEFAULT_EXAMPLE_CONTENT: ExampleContent = {
   newsletterTitle: "Stay Connected",
   newsletterText: "Get exclusive offers, new arrivals and discounts straight to your inbox.",
   footerTagline: "A storefront powered by BizNest.",
+  trustOneTitle: "Secure Payment", trustOneText: "Handled by the business's configured gateway.",
+  trustTwoTitle: "Delivery Options", trustTwoText: "Available options are shown at checkout.",
+  trustThreeTitle: "Returns", trustThreeText: "See the business's published return policy.",
+  trustFourTitle: "Customer Support", trustFourText: "Contact the business for assistance.",
 };
 
 export async function getExampleContent(slug: string): Promise<ExampleContent> {
