@@ -6,6 +6,7 @@ import { toast } from "sonner";
 import { ArrowLeft, Bell, Calendar, Mail, Phone, Plus, Send, Trash2, User, X } from "lucide-react";
 import { updateReservation, updateBookingStatus, type BookingStatusValue } from "@/lib/actions/booking";
 import { issueBookingRefund } from "@/lib/actions/refund";
+import { zonedTimeToUtc, getLocalDateKey, getLocalMinutes } from "@/lib/timezone";
 import { BookingStatusBadge } from "@/components/dashboard/booking-status-badge";
 
 type Unit = { id: string; label: string; location: string | null; capacity: number | null };
@@ -45,20 +46,19 @@ const REMINDER_OPTIONS = [
   { value: "1440", label: "1 day before" },
 ];
 
-function toDateInputValue(iso: string) {
-  const d = new Date(iso);
-  return d.toISOString().slice(0, 10);
+function toDateInputValue(iso: string, tz: string) {
+  return getLocalDateKey(new Date(iso), tz);
 }
-function toTimeInputValue(iso: string) {
-  const d = new Date(iso);
-  return d.toISOString().slice(11, 16);
+function toTimeInputValue(iso: string, tz: string) {
+  const m = getLocalMinutes(new Date(iso), tz);
+  return `${String(Math.floor(m / 60)).padStart(2, "0")}:${String(m % 60).padStart(2, "0")}`;
 }
 function fmtCurrency(n: number) {
   return `₦${n.toLocaleString()}`;
 }
-function fmtDateTime(iso: string) {
+function fmtDateTime(iso: string, tz: string) {
   const d = new Date(iso);
-  return `${d.toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" })} at ${d.toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" })}`;
+  return `${d.toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric", timeZone: tz })} at ${d.toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit", timeZone: tz })}`;
 }
 
 export function ReservationEditForm({
@@ -68,6 +68,7 @@ export function ReservationEditForm({
   units,
   totalReservations,
   reservation,
+  timezone = "Africa/Lagos",
 }: {
   slug: string;
   unitLabel: string;
@@ -75,13 +76,15 @@ export function ReservationEditForm({
   units: Unit[];
   totalReservations: number;
   reservation: Reservation;
+  // IANA timezone of the store; all dates/times on this screen are in it.
+  timezone?: string;
 }) {
   const router = useRouter();
   const [guestName, setGuestName] = useState(reservation.guestName);
   const [guestPhone, setGuestPhone] = useState(reservation.guestPhone);
   const [guestEmail, setGuestEmail] = useState(reservation.guestEmail);
-  const [date, setDate] = useState(toDateInputValue(reservation.scheduledAt));
-  const [time, setTime] = useState(toTimeInputValue(reservation.scheduledAt));
+  const [date, setDate] = useState(toDateInputValue(reservation.scheduledAt, timezone));
+  const [time, setTime] = useState(toTimeInputValue(reservation.scheduledAt, timezone));
   const [durationMins, setDurationMins] = useState(reservation.durationMins);
   const [unitId, setUnitId] = useState(reservation.unitId ?? "");
   const [partySize, setPartySize] = useState(reservation.partySize ?? 1);
@@ -113,7 +116,7 @@ export function ReservationEditForm({
     if (!guestName.trim()) return toast.error("Guest name is required.");
     if (!date || !time) return toast.error("Date and time are required.");
     setSaving(true);
-    const scheduledAt = new Date(`${date}T${time}`).toISOString();
+    const scheduledAt = zonedTimeToUtc(date, time, timezone).toISOString();
     const result = await updateReservation(slug, reservation.id, {
       guestName,
       guestPhone,
@@ -323,13 +326,13 @@ export function ReservationEditForm({
             <h2 className="mb-3 text-sm font-semibold">Reservation Summary</h2>
             <dl className="space-y-2.5 text-xs">
               <div className="flex items-center justify-between"><dt className="text-muted-foreground">Reservation ID</dt><dd className="font-medium">#{reservation.id.slice(-6).toUpperCase()}</dd></div>
-              <div className="flex items-center justify-between"><dt className="flex items-center gap-1.5 text-muted-foreground"><Calendar className="h-3.5 w-3.5" /> Date & Time</dt><dd className="font-medium">{fmtDateTime(new Date(`${date}T${time}`).toISOString())}</dd></div>
+              <div className="flex items-center justify-between"><dt className="flex items-center gap-1.5 text-muted-foreground"><Calendar className="h-3.5 w-3.5" /> Date & Time</dt><dd className="font-medium">{fmtDateTime(zonedTimeToUtc(date, time, timezone).toISOString(), timezone)}</dd></div>
               <div className="flex items-center justify-between"><dt className="text-muted-foreground">{unitLabel}</dt><dd className="font-medium">{units.find((u) => u.id === unitId)?.label ?? "Unassigned"}</dd></div>
               <div className="flex items-center justify-between"><dt className="text-muted-foreground">{customerLabel}s</dt><dd className="font-medium">{partySize}</dd></div>
               <div className="flex items-center justify-between"><dt className="text-muted-foreground">Status</dt><dd><BookingStatusBadge status={status} /></dd></div>
               <div className="flex items-center justify-between"><dt className="text-muted-foreground">Reservation Type</dt><dd className="font-medium">{reservationType || "—"}</dd></div>
               <div className="flex items-center justify-between"><dt className="text-muted-foreground">Duration</dt><dd className="font-medium">{durationMins} mins</dd></div>
-              <div className="flex items-center justify-between"><dt className="text-muted-foreground">Created</dt><dd className="font-medium">{fmtDateTime(reservation.createdAt)}</dd></div>
+              <div className="flex items-center justify-between"><dt className="text-muted-foreground">Created</dt><dd className="font-medium">{fmtDateTime(reservation.createdAt, timezone)}</dd></div>
               <div className="flex items-center justify-between"><dt className="text-muted-foreground">Total Add-ons</dt><dd className="font-medium">{fmtCurrency(addonsTotal)}</dd></div>
             </dl>
           </div>
