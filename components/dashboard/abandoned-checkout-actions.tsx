@@ -2,21 +2,19 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { sendAbandonedCheckoutRecovery } from "@/lib/actions/abandoned-checkout";
-import type { NotificationChannel } from "@prisma/client";
+import { sendAbandonedCheckoutRecovery, type RecoveryChannel } from "@/lib/actions/abandoned-checkout";
 import { toast } from "sonner";
 
-const CHANNELS: { value: NotificationChannel; label: string }[] = [
+const CHANNELS: { value: RecoveryChannel; label: string }[] = [
   { value: "EMAIL", label: "Email" },
   { value: "WHATSAPP", label: "WhatsApp" },
-  { value: "SMS", label: "SMS" },
 ];
 
 export function AbandonedCheckoutActions({ slug, orderId }: { slug: string; orderId: string }) {
   const router = useRouter();
-  const [sending, setSending] = useState<NotificationChannel | null>(null);
+  const [sending, setSending] = useState<RecoveryChannel | null>(null);
 
-  async function handleSend(channel: NotificationChannel) {
+  async function handleSend(channel: RecoveryChannel) {
     setSending(channel);
     const result = await sendAbandonedCheckoutRecovery(slug, orderId, channel);
     setSending(null);

@@ -7,7 +7,6 @@ import type { NotificationChannel } from "@prisma/client";
 import { assertStoreAccess } from "@/lib/actions/order";
 import { ABANDONED_CHECKOUT_THRESHOLD_MINUTES } from "@/lib/constants/order";
 import { sendOrderNotificationEmail } from "@/lib/email/send";
-import { sendSms } from "@/lib/sms/send";
 import { sendWhatsAppMessage } from "@/lib/whatsapp/send";
 
 const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? "https://biznest.vercel.app";
@@ -41,6 +40,9 @@ function cartLabel(items: { quantity: number; product: { name: string } | null; 
   return items.length > 1 ? `${firstName} and ${items.length - 1} other item${items.length > 2 ? "s" : ""}` : firstName;
 }
 
+/** Channels a merchant can use to nudge an abandoned checkout. (SMS was removed; old SMS attempts stay in the history.) */
+export type RecoveryChannel = Extract<NotificationChannel, "EMAIL" | "WHATSAPP">;
+
 /**
  * Sends a merchant-triggered "you left something in your cart" nudge for
  * one abandoned order over one channel, and records the attempt so the
@@ -49,8 +51,13 @@ function cartLabel(items: { quantity: number; product: { name: string } | null; 
 export async function sendAbandonedCheckoutRecovery(
   slug: string,
   orderId: string,
-  channel: NotificationChannel
+  channel: RecoveryChannel
 ): Promise<ActionResult> {
+  // Server actions take whatever the client sends, so don't trust the type alone.
+  if (channel !== "EMAIL" && channel !== "WHATSAPP") {
+    return { success: false, error: "That channel is not supported." };
+  }
+
   const access = await assertStoreAccess(slug);
   if (!access.success) return { success: false, error: access.error };
 
@@ -67,7 +74,6 @@ export async function sendAbandonedCheckoutRecovery(
   const cartUrl = `${APP_URL}/${slug}/cart`;
   const storeName = access.store.name;
   const label = cartLabel(order.items);
-  const textMessage = `Hi${shipping?.fullName ? ` ${shipping.fullName.split(" ")[0]}` : ""}, you left ${label} in your ${storeName} cart. Complete your order: ${cartUrl}`;
 
   let result: { success: boolean; error?: string };
 
@@ -76,18 +82,18 @@ export async function sendAbandonedCheckoutRecovery(
       return { success: false, error: "This customer has no email on file." };
     }
     try {
-      await sendOrderNotificationEmail(
+      const sent = await sendOrderNotificationEmail(
         order.buyer.email,
         "You left something in your cart",
         `You left <strong>${label}</strong> in your cart at ${storeName}. <a href="${cartUrl}">Complete your order</a> before it sells out.`
       );
-      result = { success: true };
+      // Resend's SDK resolves with { data, error } on API-level failures (unverified
+      // domain, bad key, invalid recipient...) instead of throwing, so a missing
+      // throw does NOT mean the email went out.
+      result = sent.error ? { success: false, error: sent.error.message || "Email send failed." } : { success: true };
     } catch (err) {
       result = { success: false, error: err instanceof Error ? err.message : "Email send failed." };
     }
-  } else if (channel === "SMS") {
-    if (!shipping?.phone) return { success: false, error: "This customer has no phone number on file." };
-    result = await sendSms(shipping.phone, textMessage);
   } else {
     if (!shipping?.phone) return { success: false, error: "This customer has no phone number on file." };
     result = await sendWhatsAppMessage(shipping.phone, {
@@ -107,6 +113,11 @@ export async function sendAbandonedCheckoutRecovery(
 
   revalidatePath(`/store/${slug}/admin/abandoned-checkouts`);
 
-  if (!result.success) return { success: false, error: result.error ?? "Send failed." };
+  if (!result.success) {
+    // The provider's raw reason is stored on the notification row (and logged to
+    // System Health by lib/email/send.ts); the merchant just gets a plain message.
+    if (channel === "EMAIL") return { success: false, error: "We couldn't send that email right now. Please try again shortly." };
+    return { success: false, error: result.error ?? "Send failed." };
+  }
   return { success: true, data: undefined };
 }

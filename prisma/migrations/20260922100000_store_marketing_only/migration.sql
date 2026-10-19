@@ -1,0 +1,12 @@
+-- Marks a store created through the lightweight /marketing/signup flow.
+-- These stores have no storefront/catalog and never get admin dashboard
+-- access (see app/store/[slug]/admin/layout.tsx and
+-- lib/access/marketing-tool.ts).
+--
+-- NOTE: this migration was originally committed as
+-- "migration_20260922100000_store_marketing_only" (wrong folder name, so it
+-- sorted after every timestamped migration). It was renamed to the standard
+-- timestamp format. Databases that applied it under the old name already have
+-- the column, so the statement is idempotent: it is a no-op there instead of
+-- failing the deploy with "column already exists".
+ALTER TABLE "Store" ADD COLUMN IF NOT EXISTS "marketingOnly" BOOLEAN NOT NULL DEFAULT false;
