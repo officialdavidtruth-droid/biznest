@@ -392,32 +392,4 @@ export async function chargeReservationDeposit(
  return{success:true,data:{authorizationUrl:charge.authorizationUrl}};
 }
 
-/**
- * Settles a PMS reservation payment. Called from the Paystack/Flutterwave
- * webhook and callback routes for references starting "RES-", the same
- * way settleServiceBookingPayment (lib/actions/customer-wallet.ts) is
- * called for "BK-" references.
- */
-export async function settleReservationPayment(
- reference:string,
- provider:"PAYSTACK"|"FLUTTERWAVE",
- verifiedAmountNaira:number,
- rawPayload:object
-):Promise<ActionResult<{storeSlug:string;reservationId:string}>>{
- const payment=await prisma.payment.findUnique({where:{reference},include:{reservation:{include:{store:true}}}});
- if(!payment||payment.purpose!=="PMS_RESERVATION"||!payment.reservation)return{success:false,error:"Reservation payment not found."};
- if(payment.provider!==provider)return{success:false,error:"Payment provider mismatch."};
- if(payment.status==="SUCCESSFUL")return{success:true,data:{storeSlug:payment.reservation.store.slug,reservationId:payment.reservation.id}};
- if(payment.status!=="PENDING")return{success:false,error:"Reservation payment is not pending."};
- if(verifiedAmountNaira<Number(payment.amount))return{success:false,error:"Payment amount mismatch."};
-
- await prisma.$transaction(async(tx)=>{
-  const result=await tx.payment.updateMany({where:{id:payment.id,status:"PENDING"},data:{status:"SUCCESSFUL",rawPayload,verifiedAt:new Date()}});
-  if(result.count===0)return;
-  await tx.propertyReservation.updateMany({where:{id:payment.reservation!.id,status:{not:"CANCELLED"},paymentStatus:{not:"PAID"}},data:{paymentStatus:"PAID",paymentReference:reference}});
- });
-
- revalidatePath(`/store/${payment.reservation.store.slug}/admin/pms`);
- return{success:true,data:{storeSlug:payment.reservation.store.slug,reservationId:payment.reservation.id}};
-                                                           }
    

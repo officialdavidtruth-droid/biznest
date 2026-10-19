@@ -3,8 +3,8 @@ import fs from "fs";
 
 describe("gateway settlement amount guards", () => {
   it("invoice and quote settlement require verified gateway amount to match the stored Payment", () => {
-    const invoice = fs.readFileSync("lib/actions/invoice.ts", "utf8");
-    const quote = fs.readFileSync("lib/actions/quote.ts", "utf8");
+    const invoice = fs.readFileSync("lib/payments/settle-invoice.ts", "utf8");
+    const quote = fs.readFileSync("lib/payments/settle-quote-deposit.ts", "utf8");
     expect(invoice).toContain("Math.abs(Number(payment.amount) - Number(verifiedAmountNaira)) > 0.01");
     expect(quote).toContain("Math.abs(Number(payment.amount) - Number(verifiedAmountNaira)) > 0.01");
   });
@@ -16,8 +16,8 @@ describe("gateway settlement amount guards", () => {
   });
 
   it("invoice and quote settlement keep payment + business mutation in one transaction", () => {
-    const invoice = fs.readFileSync("lib/actions/invoice.ts", "utf8");
-    const quote = fs.readFileSync("lib/actions/quote.ts", "utf8");
+    const invoice = fs.readFileSync("lib/payments/settle-invoice.ts", "utf8");
+    const quote = fs.readFileSync("lib/payments/settle-quote-deposit.ts", "utf8");
     expect(invoice).toContain("await prisma.$transaction(async (tx) => {");
     expect(quote).toContain("await prisma.$transaction(async (tx) => {");
     expect(quote).toContain("paymentProvider: payment.provider");

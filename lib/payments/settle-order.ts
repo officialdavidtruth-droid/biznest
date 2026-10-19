@@ -1,5 +1,5 @@
 import { prisma } from "@/lib/prisma";
-import { decrementStockForOrder } from "@/lib/actions/order";
+import { decrementStockForOrder } from "@/lib/payments/stock";
 import { emitWebhookEvent } from "@/lib/webhooks/dispatch";
 import { notifyStoreOwnerOfPaidOrder, notifyCustomerOfPaidOrder } from "@/lib/notifications/notify";
 import { flagPaymentForReview } from "@/lib/payments/review";

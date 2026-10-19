@@ -1,13 +1,14 @@
 import { prisma } from "@/lib/prisma";
 import { verifyPaystackTransaction, verifyPaystackWebhookSignature } from "@/lib/payments/paystack";
-import { settleInvoicePayment } from "@/lib/actions/invoice";
-import { settleQuoteDeposit } from "@/lib/actions/quote";
+import { settleInvoicePayment } from "@/lib/payments/settle-invoice";
+import { settleQuoteDeposit } from "@/lib/payments/settle-quote-deposit";
 import { emitWebhookEvent } from "@/lib/webhooks/dispatch";
 import { settleOrderPayment } from "@/lib/payments/settle-order";
 import { NextResponse } from "next/server";
-import { settleWalletFunding, settleServiceBookingPayment } from "@/lib/actions/customer-wallet";
-import { settleReservationPayment } from "@/lib/actions/pms";
-import { settlePluginPurchase } from "@/lib/actions/plugins";
+import { settleWalletFunding } from "@/lib/payments/settle-wallet-funding";
+import { settleServiceBookingPayment } from "@/lib/payments/settle-service-booking";
+import { settleReservationPayment } from "@/lib/payments/settle-reservation";
+import { settlePluginPurchase } from "@/lib/payments/settle-plugin-purchase";
 
 /**
  * Server-to-server payment confirmation from Paystack.

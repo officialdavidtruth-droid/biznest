@@ -7,7 +7,7 @@ import { assertStorePermission } from "@/lib/access/assert-store-access";
 import { consumeFifoStockTx, consumeFefoStockTx } from "@/lib/inventory-fifo";
 import { getFnbRotationMode, type FnbRotationMode } from "@/lib/fnb-settings";
 import { extractFnbRecipe } from "@/lib/fnb-utils";
-import { awardStoreLoyaltyPointsForOrder } from "@/lib/actions/loyalty";
+import { awardStoreLoyaltyPointsForOrder } from "@/lib/payments/loyalty-award";
 import { recomputeAndPersistTrustScore } from "@/lib/actions/trust-score";
 import type { ActionResult } from "@/types/actions";
 import type { StaffPermissionId } from "@/lib/access/staff-permissions";

@@ -22,7 +22,8 @@ vi.mock("@/lib/payments/gateway", () => ({
 }));
 
 import { chargeCustomer } from "@/lib/payments/gateway";
-import { startCheckout, decrementStockForOrder } from "@/lib/actions/order";
+import { startCheckout } from "@/lib/actions/order";
+import { decrementStockForOrder } from "@/lib/payments/stock";
 
 function shippingAddress() {
   return { fullName: "Ada Lovelace", phone: "+2348000000000", address: "1 Analytical Engine Rd", city: "Lagos", state: "Lagos", country: "Nigeria" };

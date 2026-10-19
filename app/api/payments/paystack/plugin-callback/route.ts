@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { verifyPaystackTransaction } from "@/lib/payments/paystack";
-import { settlePluginPurchase } from "@/lib/actions/plugins";
+import { settlePluginPurchase } from "@/lib/payments/settle-plugin-purchase";
 import { checkRateLimit, getClientIp } from "@/lib/rate-limit";
 import { APP_URL } from "@/lib/constants/app-url";
 
