@@ -4,6 +4,7 @@ import { headers } from "next/headers";
 import { prisma } from "@/lib/prisma";
 import { getStoreBranding } from "@/lib/actions/store-branding";
 import { StoreMenuProvider } from "@/components/storefront/store-menu";
+import { StoreCategoriesProvider } from "@/components/storefront/store-categories";
 import { resolveMenuRows } from "@/lib/storefront-menu";
 import { resolveStoreTheme } from "@/lib/template-themes";
 import { PromoPopup } from "@/components/storefront/promo-popup";
@@ -72,6 +73,12 @@ export default async function StoreLayout({
       themeColors: true,
       fontFamily: true,
       template: { select: { name: true, category: true } },
+      // Real categories for storefront navigation (mega menu, category pages).
+      categories: {
+        where: { isActive: true },
+        orderBy: [{ sortOrder: "asc" }, { name: "asc" }],
+        select: { id: true, name: true, parentId: true, description: true, imageUrl: true, _count: { select: { products: { where: { isPublished: true } }, services: { where: { isPublished: true } } } } },
+      },
       // Owner-built header menu (Dashboard > Menus). Empty = templates use their own default links.
       menuItems: {
         where: { location: "header", isActive: true },
@@ -130,7 +137,9 @@ export default async function StoreLayout({
         href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@600;700;800&family=Inter:wght@400;500;600;700&family=Playfair+Display:wght@600;700&family=Space+Grotesk:wght@500;600;700&display=swap"
         rel="stylesheet"
       />
-      <StoreMenuProvider menu={exists?.menuItems?.length ? resolveMenuRows(exists.menuItems, slug) : null}>{children}</StoreMenuProvider>
+      <StoreCategoriesProvider categories={(exists?.categories ?? []).map((c) => ({ id: c.id, name: c.name, parentId: c.parentId, description: c.description, imageUrl: c.imageUrl, count: c._count.products + c._count.services }))}>
+        <StoreMenuProvider menu={exists?.menuItems?.length ? resolveMenuRows(exists.menuItems, slug) : null}>{children}</StoreMenuProvider>
+      </StoreCategoriesProvider>
       {showPromo && promo && promoPalette && <PromoPopup slug={slug} config={promo} palette={promoPalette} />}
     </>
   );
