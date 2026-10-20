@@ -1185,3 +1185,8 @@ a.ex-mini{text-decoration:none}
 .listing-layout{grid-template-columns:1fr}
 .category-grid a{text-decoration:none}
 @media(max-width:900px){.ex-sub-list{grid-template-columns:repeat(2,1fr)}}
+
+/* Checkout stepper: keep each label centred under its circle (was overlapping the number) */
+.steps{gap:56px;padding-bottom:28px}
+.steps b{position:relative;flex:0 0 auto}
+.steps span{position:absolute;top:100%;left:50%;margin-top:8px;transform:translateX(-50%);font-size:12px;line-height:1.2;text-align:center;white-space:nowrap}
