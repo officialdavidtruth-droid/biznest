@@ -51,4 +51,3 @@ vi.mock("@/lib/webhooks/dispatch", () => ({
 vi.mock("@/lib/activity-log", () => ({
   logStoreActivity: vi.fn(async () => {}),
 }));
-

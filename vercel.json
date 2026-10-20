@@ -18,7 +18,7 @@
     },
     {
       "path": "/api/cron/payouts",
-      "schedule": "*/10 * * * *"
+      "schedule": "0 3 * * *"
     }
   ]
 }
