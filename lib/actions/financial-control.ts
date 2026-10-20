@@ -73,6 +73,16 @@ export async function getFinancialControlData(slug: string) {
     prisma.purchaseOrder.findMany({ where: { storeId: a.store.id, status: { in: ["SENT", "PARTIALLY_RECEIVED", "RECEIVED"] } }, orderBy: { createdAt: "desc" }, take: 100, select: { id: true, poNumber: true, subtotal: true, currency: true, status: true, supplier: { select: { name: true } } } }),
   ]);
 
+  const cityLedgerRows = await prisma.financialCityLedgerAccount.findMany({ where: { storeId: a.store.id }, orderBy: { accountNo: "asc" } });
+  const cityLedgerBalances = cityLedgerRows.length
+    ? await prisma.financialJournalLine.groupBy({
+        by: ["accountId"],
+        where: { accountId: { in: cityLedgerRows.map((x) => x.financialAccountId) }, journalEntry: { storeId: a.store.id, status: "POSTED" } },
+        _sum: { debit: true, credit: true },
+      })
+    : [];
+  const cityLedgerBalanceMap = new Map(cityLedgerBalances.map((x) => [x.accountId, Number(x._sum.debit ?? 0) - Number(x._sum.credit ?? 0)]));
+
   const pendingRequisitionApprovals = await prisma.approvalRequest.findMany({
     where: { storeId: a.store.id, status: "PENDING", requestType: "REQUISITION", entityType: "Requisition" },
     orderBy: { createdAt: "asc" },
@@ -122,6 +132,7 @@ export async function getFinancialControlData(slug: string) {
   return {
     store: { name: a.store.name, slug, businessType: a.store.businessType },
     accounts: accounts.map((x) => ({ id: x.id, code: x.code, name: x.name, type: x.type, balance: balances.get(x.id) ?? 0 })),
+    cityLedgers: cityLedgerRows.map((x) => ({ id: x.id, accountNo: x.accountNo, name: x.name, contactName: x.contactName, email: x.email, phone: x.phone, creditLimit: x.creditLimit === null ? null : Number(x.creditLimit), paymentTermsDays: x.paymentTermsDays, isActive: x.isActive, balance: cityLedgerBalanceMap.get(x.financialAccountId) ?? 0, createdAt: x.createdAt.toISOString() })),
     expenses: expenses.map((x) => ({ id: x.id, expenseNo: x.expenseNo, description: x.description, vendorName: x.vendorName, amount: Number(x.amount), expenseDate: x.expenseDate.toISOString(), status: x.status, expenseAccount: x.expenseAccount.name, paymentAccount: x.paymentAccount.name })),
     entries: entries.map((x) => ({ id: x.id, reference: x.reference, description: x.description, entryDate: x.entryDate.toISOString(), lines: x.lines.map((l) => ({ account: l.account.name, debit: Number(l.debit), credit: Number(l.credit) })) })),
     periods: periods.map((x) => ({ id: x.id, name: x.name, startsAt: x.startsAt.toISOString(), endsAt: x.endsAt.toISOString(), status: x.status })),
@@ -365,4 +376,66 @@ export async function decideFinancialRequisition(slug: string, requisitionId: st
   revalidatePath(`/store/${slug}/admin/apps/financial-control`);
   revalidatePath(`/store/${slug}/admin/apps/requisition`);
   return { success: true, data: undefined };
+}
+export async function createCityLedgerAccount(
+  slug: string,
+  input: { name: string; contactName?: string; email?: string; phone?: string; creditLimit?: number | null; paymentTermsDays?: number; notes?: string }
+): Promise<ActionResult<{ id: string; accountNo: string }>> {
+  const a = await access(slug);
+  if (!a.success) return a;
+
+  const name = input.name?.trim();
+  if (!name) return { success: false, error: "Enter the company or guest name for this city ledger account." };
+  if (name.length > 120) return { success: false, error: "The account name is too long." };
+  const email = input.email?.trim() || null;
+  if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return { success: false, error: "Enter a valid email address." };
+  const creditLimit = input.creditLimit === null || input.creditLimit === undefined || (input.creditLimit as unknown) === "" ? null : Number(input.creditLimit);
+  if (creditLimit !== null && (!Number.isFinite(creditLimit) || creditLimit < 0)) return { success: false, error: "Credit limit must be zero or more." };
+  const terms = input.paymentTermsDays === undefined ? 30 : Number(input.paymentTermsDays);
+  if (!Number.isInteger(terms) || terms < 0 || terms > 365) return { success: false, error: "Payment terms must be a whole number of days between 0 and 365." };
+
+  // Make sure the chart of accounts (incl. 1100 Accounts Receivable) exists.
+  await ensureFinancialFoundation(a.store.id);
+  const parent = await prisma.financialAccount.findFirst({ where: { storeId: a.store.id, code: "1100" } });
+  if (!parent) return { success: false, error: "Accounts Receivable (1100) is missing from the chart of accounts." };
+
+  const duplicate = await prisma.financialCityLedgerAccount.findFirst({ where: { storeId: a.store.id, name: { equals: name, mode: "insensitive" } }, select: { id: true } });
+  if (duplicate) return { success: false, error: "A city ledger account with that name already exists." };
+
+  // Sequential number per store: CL-001, CL-002 ... The ledger account code is
+  // 1100-001 etc. so it sits directly under Accounts Receivable. Retry if two
+  // people create one at the same moment and collide on the unique number.
+  for (let attempt = 0; attempt < 4; attempt++) {
+    const count = await prisma.financialCityLedgerAccount.count({ where: { storeId: a.store.id } });
+    const seq = String(count + 1 + attempt).padStart(3, "0");
+    const accountNo = `CL-${seq}`;
+    try {
+      const row = await prisma.$transaction(async (tx) => {
+        const ledgerAccount = await tx.financialAccount.create({
+          data: { storeId: a.store.id, code: `1100-${seq}`, name: `City Ledger - ${name}`, type: "ASSET", parentId: parent.id, isSystem: false },
+        });
+        return tx.financialCityLedgerAccount.create({
+          data: {
+            storeId: a.store.id,
+            financialAccountId: ledgerAccount.id,
+            accountNo,
+            name,
+            contactName: input.contactName?.trim() || null,
+            email,
+            phone: input.phone?.trim() || null,
+            creditLimit,
+            paymentTermsDays: terms,
+            notes: input.notes?.trim() || null,
+          },
+        });
+      });
+      await prisma.auditLog.create({ data: { action: "FINANCIAL_CITY_LEDGER_CREATED", entity: "FinancialCityLedgerAccount", entityId: row.id, metadata: { storeId: a.store.id, accountNo } } });
+      revalidatePath(`/store/${slug}/admin/apps/financial-control`);
+      return { success: true, data: { id: row.id, accountNo } };
+    } catch (e: any) {
+      if (e?.code === "P2002") continue; // number/code already taken -> try the next one
+      return { success: false, error: "Could not create the city ledger account." };
+    }
+  }
+  return { success: false, error: "Could not allocate a city ledger number. Please try again." };
 }

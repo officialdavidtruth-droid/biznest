@@ -780,6 +780,7 @@ model Store {
   financialJournalEntries FinancialJournalEntry[]
   financialExpenses FinancialExpense[]
   financialBankAccounts FinancialBankAccount[]
+  financialCityLedgerAccounts FinancialCityLedgerAccount[]
   financialBankTransactions FinancialBankTransaction[]
   financialBudgets FinancialBudget[]
   requisitions Requisition[]
@@ -2807,6 +2808,7 @@ model FinancialAccount {
   expenses    FinancialExpense[] @relation("ExpenseCategoryAccount")
   paymentExpenses FinancialExpense[] @relation("ExpensePaymentAccount")
   bankAccounts FinancialBankAccount[]
+  cityLedgerAccount FinancialCityLedgerAccount?
   budgetLines FinancialBudgetLine[]
 
   @@unique([storeId, code])
@@ -2868,6 +2870,33 @@ model FinancialJournalLine {
 
   @@index([journalEntryId])
   @@index([accountId])
+}
+
+// City ledger: a receivable account for a company/guest billed on credit
+// (hotel-style "bill to account"). Each one is backed by its own child ASSET
+// account under Accounts Receivable (1100), so charges and payments are posted
+// through the normal journal and the balance always comes from the ledger.
+model FinancialCityLedgerAccount {
+  id                 String           @id @default(cuid())
+  storeId            String
+  store              Store            @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  financialAccountId String           @unique
+  financialAccount   FinancialAccount @relation(fields: [financialAccountId], references: [id])
+  accountNo          String
+  name               String
+  contactName        String?
+  email              String?
+  phone              String?
+  creditLimit        Decimal?         @db.Decimal(12, 2)
+  paymentTermsDays   Int              @default(30)
+  notes              String?          @db.Text
+  isActive           Boolean          @default(true)
+  createdAt          DateTime         @default(now())
+  updatedAt          DateTime         @updatedAt
+
+  @@unique([storeId, accountNo])
+  @@unique([storeId, name])
+  @@index([storeId, isActive])
 }
 
 model FinancialBankAccount {
