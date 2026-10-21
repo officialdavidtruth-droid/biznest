@@ -288,6 +288,15 @@ export async function processPayout(
         await requeue(payout.id, BALANCE_RETRY_MS, message, { refundAttempt: true });
         return { state: "QUEUED", message };
       }
+      // A cached recipient code is only valid under the Paystack key mode that
+      // created it. After a test<->live switch (or a deleted recipient) Paystack
+      // rejects it: drop it so the next attempt registers a fresh one.
+      if (/recipient/i.test(message)) {
+        await prisma.store.update({ where: { id: store.id }, data: { paystackRecipientCode: null } });
+        await requeue(payout.id, 0, message, { refundAttempt: true });
+        void logError("PAYMENTS", "Paystack rejected cached transfer recipient; cleared for re-registration", { payoutId: payout.id, message });
+        return { state: "QUEUED", message };
+      }
       if (payout.attempts + 1 >= MAX_ATTEMPTS) {
         await prisma.payout.update({ where: { id: payout.id }, data: { status: "FAILED", lastError: message } });
         void logError("PAYMENTS", "Payout failed after maximum attempts", { payoutId: payout.id, message });

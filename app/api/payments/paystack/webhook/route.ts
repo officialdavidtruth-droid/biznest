@@ -5,6 +5,7 @@ import { settleQuoteDeposit } from "@/lib/payments/settle-quote-deposit";
 import { emitWebhookEvent } from "@/lib/webhooks/dispatch";
 import { settleOrderPayment } from "@/lib/payments/settle-order";
 import { NextResponse } from "next/server";
+import { logError } from "@/lib/observability/log";
 import { settleWalletFunding } from "@/lib/payments/settle-wallet-funding";
 import { settleServiceBookingPayment } from "@/lib/payments/settle-service-booking";
 import { settleReservationPayment } from "@/lib/payments/settle-reservation";
@@ -65,6 +66,13 @@ export async function POST(req: Request) {
     return NextResponse.json({ received: true });
   }
 
+  // Chargebacks pull money back after a payout may already have gone out. Not
+  // auto-handled: make it loud so a human can act inside Paystack's response window.
+  if (typeof event.event === "string" && event.event.startsWith("charge.dispute.")) {
+    void logError("PAYMENTS", `Paystack dispute event: ${event.event}`, { reference: event.data?.reference });
+    return NextResponse.json({ received: true });
+  }
+
   if (event.event !== "charge.success" || !event.data?.reference) {
     return NextResponse.json({ received: true });
   }
@@ -81,6 +89,13 @@ export async function POST(req: Request) {
       const known = await prisma.payment.findUnique({ where: { reference }, select: { id: true } });
       if (known) return NextResponse.json({ error: "Verification unavailable, retry" }, { status: 502 });
     }
+    return NextResponse.json({ received: true });
+  }
+
+  // Monthly renewals ("RENEW-…", charged by the renewal cron) are recorded by
+  // the cron itself. Without this they fell through to the order path and
+  // raised a false "needs manual review" alert for every renewal.
+  if (reference.startsWith("RENEW-")) {
     return NextResponse.json({ received: true });
   }
 

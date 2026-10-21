@@ -1,6 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import { requireCronAuth } from "@/lib/cron-auth";
-import { chargePaystackAuthorization } from "@/lib/payments/paystack";
+import { chargePaystackAuthorization, verifyPaystackTransaction } from "@/lib/payments/paystack";
 import { notifyUser } from "@/lib/notifications/notify";
 import { NextResponse } from "next/server";
 import { logInfo, logError, errorMeta } from "@/lib/observability/log";
@@ -81,14 +81,21 @@ export async function GET(req: Request) {
 
   for (const store of due) {
     if (!store.subscription || !store.paystackAuthorizationCode) continue;
-    const reference = `RENEW-${store.id}-${Date.now()}`;
+    // Deterministic per store + due date (NOT Date.now()): a retry, an overlapping
+    // cron run or a crash between "charged" and "saved" re-uses the same
+    // reference, so the card can never be charged twice for one renewal.
+    const reference = `RENEW-${store.id}-${(store.subscriptionRenewsAt ?? now).getTime()}`;
     try {
-      const result = await chargePaystackAuthorization({
-        email: store.business.user.email ?? `${store.slug}@biznest.space`,
-        amountKobo: Math.round(Number(store.subscription.price) * 100),
-        authorizationCode: store.paystackAuthorizationCode,
-        reference,
-      });
+      const prior = await verifyPaystackTransaction(reference);
+      const alreadyCharged = Boolean(prior.status && prior.data?.status === "success");
+      const result = alreadyCharged
+        ? ({ status: true, data: { status: "success" as const } })
+        : await chargePaystackAuthorization({
+            email: store.business.user.email ?? `${store.slug}@biznest.space`,
+            amountKobo: Math.round(Number(store.subscription.price) * 100),
+            authorizationCode: store.paystackAuthorizationCode,
+            reference,
+          });
 
       if (result.status && result.data?.status === "success") {
         const nextRenewal = new Date(store.subscriptionRenewsAt ?? now);
@@ -102,8 +109,10 @@ export async function GET(req: Request) {
           where: { id: store.id },
           data: { subscriptionRenewsAt: safeNext, subscriptionPastDueSince: null },
         });
-        await prisma.payment.create({
-          data: {
+        await prisma.payment.upsert({
+          where: { reference },
+          update: {},
+          create: {
             reference,
             status: "SUCCESSFUL",
             amount: store.subscription.price,
