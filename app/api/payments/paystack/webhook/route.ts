@@ -75,6 +75,12 @@ export async function POST(req: Request) {
   // against Paystack's API, same discipline as the browser callback.
   const verification = await verifyPaystackTransaction(reference);
   if (!verification.status || verification.data?.status !== "success") {
+    // If the verify call itself failed for a payment we know about, answer 5xx
+    // so Paystack retries; a 200 here would drop a real payment confirmation.
+    if (!verification.status) {
+      const known = await prisma.payment.findUnique({ where: { reference }, select: { id: true } });
+      if (known) return NextResponse.json({ error: "Verification unavailable, retry" }, { status: 502 });
+    }
     return NextResponse.json({ received: true });
   }
 

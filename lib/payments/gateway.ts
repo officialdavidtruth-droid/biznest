@@ -106,14 +106,24 @@ export async function chargeCustomer(params: ChargeParams): Promise<ChargeResult
     };
   }
 
-  const init = await initializePaystackTransaction({
+  const baseInit = {
     email: params.email,
     amountKobo: Math.round(params.amountNaira * 100),
     reference: params.reference,
     callbackUrl: params.callbackUrl,
-    subaccountCode: params.paystackSubaccountCode,
     feeBearer: params.feeBearer,
-  });
+  };
+  let usedSubaccount: string | null = params.paystackSubaccountCode ?? null;
+  let init = await initializePaystackTransaction({ ...baseInit, subaccountCode: usedSubaccount });
+  // A legacy subaccount that Paystack rejects (inactive, or created under the
+  // other test/live key mode) must never block a sale. Retry once unsplit: the
+  // money lands in the platform balance and the payout job (Transfer API) sends
+  // the store its share once it has a bank account connected.
+  if ((!init.status || !init.data) && usedSubaccount) {
+    void logError("PAYMENTS", "Paystack rejected legacy subaccount; retrying without split", { reference: params.reference, subaccount: usedSubaccount, message: init.message });
+    usedSubaccount = null;
+    init = await initializePaystackTransaction({ ...baseInit, subaccountCode: null });
+  }
   if (!init.status || !init.data) {
     void logError("PAYMENTS", "Paystack charge init failed", { reference: params.reference, message: init.message });
     return { success: false, error: init.message || "Couldn't start the Paystack payment." };
@@ -123,7 +133,7 @@ export async function chargeCustomer(params: ChargeParams): Promise<ChargeResult
     success: true,
     authorizationUrl: init.data.authorization_url,
     gateway: "PAYSTACK",
-    splitSubaccountCode: params.paystackSubaccountCode ?? null,
+    splitSubaccountCode: usedSubaccount,
     ...(params.inline && publicKey
       ? {
           inline: {
@@ -132,7 +142,7 @@ export async function chargeCustomer(params: ChargeParams): Promise<ChargeResult
             email: params.email,
             accessCode: init.data.access_code,
             reference: init.data.reference || params.reference,
-            subaccountCode: params.paystackSubaccountCode ?? null,
+            subaccountCode: usedSubaccount,
           },
         }
       : {}),
