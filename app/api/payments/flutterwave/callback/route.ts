@@ -12,6 +12,20 @@ import { settleReservationPayment } from "@/lib/payments/settle-reservation";
 
 import { APP_URL } from "@/lib/constants/app-url";
 
+/**
+ * transaction_id and tx_ref are two independently controllable query params.
+ * Verifying the id only proves *some* payment succeeded, not that it was for
+ * THIS tx_ref -- without this binding, one successful payment could be
+ * replayed against any other order/invoice/wallet of the same amount.
+ */
+async function verifyBound(transactionId: string, txRef: string) {
+  const v = await verifyFlutterwaveTransaction(transactionId);
+  if (v.status === "success" && v.data?.tx_ref !== txRef) {
+    return { status: "error", message: "tx_ref does not match the verified transaction." } as typeof v;
+  }
+  return v;
+}
+
 export async function GET(req: Request) {
   const { searchParams } = new URL(req.url);
   // Flutterwave redirects with tx_ref (ours) and transaction_id (theirs) —
@@ -35,7 +49,7 @@ export async function GET(req: Request) {
   if (txRef.startsWith("INV-") || txRef.startsWith("QDEP-")) {
     const isInvoice = txRef.startsWith("INV-");
     const id = txRef.split("-")[1];
-    const verification = await verifyFlutterwaveTransaction(transactionId);
+    const verification = await verifyBound(transactionId, txRef);
 
     if (verification.status === "success" && verification.data?.status === "successful") {
       if (isInvoice) await settleInvoicePayment(txRef, Number(verification.data?.amount ?? 0), verification as object);
@@ -51,7 +65,7 @@ export async function GET(req: Request) {
   // reports amounts in the major currency unit (naira), unlike Paystack's
   // kobo, so no /100 conversion here.
   if (txRef.startsWith("WAL-") || txRef.startsWith("BK-")) {
-    const verification = await verifyFlutterwaveTransaction(transactionId);
+    const verification = await verifyBound(transactionId, txRef);
     const amount = verification.data ? Number(verification.data.amount) : 0;
     if (verification.status === "success" && verification.data?.status === "successful") {
       if (txRef.startsWith("WAL-")) {
@@ -77,7 +91,7 @@ export async function GET(req: Request) {
   }
 
   if (txRef.startsWith("RES-")) {
-    const verification = await verifyFlutterwaveTransaction(transactionId);
+    const verification = await verifyBound(transactionId, txRef);
     const amount = verification.data ? Number(verification.data.amount) : 0;
     if (verification.status === "success" && verification.data?.status === "successful") {
       const result = await settleReservationPayment(txRef, "FLUTTERWAVE", amount, verification as object);
@@ -100,7 +114,7 @@ export async function GET(req: Request) {
   if (order.paymentProvider !== "FLUTTERWAVE") return NextResponse.redirect(buildStoreUrl(order.store, "?payment=invalid_provider"));
 
   // Always verify server-side; the redirect (including ?status=) is not proof.
-  const verification = await verifyFlutterwaveTransaction(transactionId);
+  const verification = await verifyBound(transactionId, txRef);
   const gatewayStatus = verification.status === "success" ? verification.data?.status : undefined;
 
   if (gatewayStatus === "successful") {

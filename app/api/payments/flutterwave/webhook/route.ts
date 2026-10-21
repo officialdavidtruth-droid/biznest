@@ -64,6 +64,10 @@ export async function POST(req: Request) {
   if (verification.status !== "success" || verification.data?.status !== "successful") {
     return NextResponse.json({ received: true });
   }
+  // Defense in depth: the verified transaction must be the one this tx_ref names.
+  if (verification.data?.tx_ref !== txRef) {
+    return NextResponse.json({ received: true });
+  }
 
   // Subscription-upgrade references look like SUBUP-{storeId}-{subscriptionId}-{random}
   // (see lib/actions/subscription.ts) — distinct from order references,

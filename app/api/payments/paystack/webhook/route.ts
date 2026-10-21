@@ -94,12 +94,25 @@ export async function POST(req: Request) {
     if (!store || !plan || !payment || payment.storeId !== store.id || !amountMatches || !paymentMatches) {
       return NextResponse.json({ received: true });
     }
-    if (store.subscriptionId !== subscriptionId) {
-      await prisma.store.update({ where: { id: store.id }, data: { subscriptionId } });
-    }
-    await prisma.payment.updateMany({
+    // Claim first (same as the browser callback) so a replay or a second
+    // delivery can never re-grant the plan or push the renewal date out.
+    const claimed = await prisma.payment.updateMany({
       where: { reference, status: "PENDING" },
       data: { status: "SUCCESSFUL", rawPayload: verification as object, verifiedAt: new Date() },
+    });
+    if (claimed.count === 0) return NextResponse.json({ received: true });
+    const nextRenewal = new Date();
+    nextRenewal.setMonth(nextRenewal.getMonth() + 1);
+    await prisma.store.update({
+      where: { id: store.id },
+      data: {
+        subscriptionId,
+        paystackAuthorizationCode: verification.data?.authorization?.reusable
+          ? verification.data.authorization.authorization_code
+          : store.paystackAuthorizationCode,
+        subscriptionRenewsAt: nextRenewal,
+        subscriptionPastDueSince: null,
+      },
     });
     return NextResponse.json({ received: true });
   }

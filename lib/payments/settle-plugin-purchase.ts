@@ -27,21 +27,28 @@ export async function settlePluginPurchase(reference: string, amountNaira: numbe
     const store = await tx.store.findUnique({ where: { id: storeId }, select: { id: true, slug: true } });
     if (!plugin || !store) return { ok: false as const, error: "Plugin or store not found." };
 
-    await tx.payment.updateMany({
+    const claimed = await tx.payment.updateMany({
       where: { reference, status: "PENDING" },
       data: { status: "SUCCESSFUL", rawPayload: rawPayload as never, verifiedAt: new Date() },
     });
+    // Already settled (webhook or an earlier callback): never re-grant or
+    // re-extend, otherwise replaying the callback URL renews the plugin free.
+    if (claimed.count === 0) {
+      const current = await tx.payment.findUnique({ where: { reference }, select: { status: true } });
+      if (current?.status !== "SUCCESSFUL") return { ok: false as const, error: "Plugin payment is not pending." };
+      return { ok: true as const, slug: store.slug, pluginKey: plugin.key, applied: false as const };
+    }
     const renewsAt = plugin.billingInterval === "MONTHLY" ? new Date(Date.now() + 30 * 24 * 60 * 60 * 1000) : plugin.billingInterval === "YEARLY" ? new Date(Date.now() + 365 * 24 * 60 * 60 * 1000) : null;
     await tx.storePlugin.upsert({
       where: { storeId_pluginId: { storeId, pluginId } },
       update: { status: "ACTIVE", renewsAt, pastDueSince: null, lastPaymentAt: new Date() },
       create: { storeId, pluginId, status: "ACTIVE", renewsAt, lastPaymentAt: new Date() },
     });
-    return { ok: true as const, slug: store.slug, pluginKey: plugin.key };
+    return { ok: true as const, slug: store.slug, pluginKey: plugin.key, applied: true as const };
   });
 
   if (!result.ok) return { success: false, error: result.error };
-  await prisma.auditLog.create({ data: { action: "PLUGIN_PAYMENT_COMPLETED", entity: "Plugin", entityId: pluginId, metadata: { storeId, reference, amountNaira } } });
+  if (result.applied) await prisma.auditLog.create({ data: { action: "PLUGIN_PAYMENT_COMPLETED", entity: "Plugin", entityId: pluginId, metadata: { storeId, reference, amountNaira } } });
   revalidatePath(`/store/${result.slug}/admin/apps`);
   return { success: true, data: { slug: result.slug, pluginKey: result.pluginKey } };
 }

@@ -45,6 +45,20 @@ export async function GET(req: Request) {
       return NextResponse.redirect(`${APP_URL}/${store.slug}/admin/subscription?payment=failed`);
     }
 
+    // Claim the payment atomically BEFORE granting anything. Without this, the
+    // callback URL could be replayed every month to reset subscriptionRenewsAt
+    // (free forever) or to re-apply an old plan after a downgrade. The webhook
+    // applies the same claim-then-grant, so whichever arrives first wins and
+    // the other is a harmless no-op.
+    const claimed = await prisma.payment.updateMany({
+      where: { reference, status: "PENDING" },
+      data: { status: "SUCCESSFUL", rawPayload: verification as object, verifiedAt: new Date() },
+    });
+    if (claimed.count === 0) {
+      const done = await prisma.payment.findUnique({ where: { reference }, select: { status: true } });
+      return NextResponse.redirect(`${APP_URL}/${store.slug}/admin/subscription${done?.status === "SUCCESSFUL" ? "?upgraded=1" : "?payment=failed"}`);
+    }
+
     // Save the reusable authorization so the renewal cron can charge next
     // month with no card re-entry, and set the next renewal date to exactly
     // one calendar month out from this successful payment.
@@ -61,10 +75,6 @@ export async function GET(req: Request) {
         subscriptionRenewsAt: nextRenewal,
         subscriptionPastDueSince: null,
       },
-    });
-    await prisma.payment.updateMany({
-      where: { reference, status: "PENDING" },
-      data: { status: "SUCCESSFUL", rawPayload: verification as object, verifiedAt: new Date() },
     });
     return NextResponse.redirect(`${APP_URL}/${store.slug}/admin/subscription?upgraded=1`);
   }
