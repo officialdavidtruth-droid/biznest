@@ -11,7 +11,7 @@ import { getProfessionalServiceSubNicheByName } from "@/lib/professional-service
 import { NewsletterInlineForm } from "@/components/storefront/newsletter-inline-form";
 
 type Item = { id:string; kind:"product"|"service"; name:string; description:string|null; price:number; currency:string; image:string|null; categoryName:string|null; type:string; rentalUnit:string|null; isBookable:boolean };
-type Props = { store:any; slug:string; pageSlug:string; items:Item[]; reviews:any[]; theme:TemplateTheme; social:Record<string,string> };
+type Props = { store:any; slug:string; pageSlug:string; items:Item[]; reviews:any[]; theme:TemplateTheme; social:Record<string,string>; policy?:{title:string;body:string}|null };
 
 const RESERVED = new Set(["services","about","pricing","portfolio","contact","faq","policies"]);
 export function isUniversalSectionPage(slug:string){ return RESERVED.has(slug.toLowerCase()); }
@@ -148,7 +148,14 @@ function Contact({p}:{p:Props}){const {store,slug,theme}=p;const accent=theme.ac
 
 
 function Faq({p}:{p:Props}){const {store,slug}=p;return <><Header store={store} slug={slug} active="faq" accent={p.theme.accent}/><main className="bn-universal-main"><section className="bn-universal-section"><div className="bn-universal-eyebrow">FREQUENTLY ASKED QUESTIONS</div><h1>How can we help?</h1><div className="bn-faq-grid">{["Do I need an account to order?","Can I make a reservation online?","What payment methods do you accept?","How do I track my order?","Can I contact the restaurant directly?"].map(q=><details key={q}><summary>{q}<ArrowRight size={15}/></summary><p>{store.name} will provide the current answer and support details for this question.</p></details>)}</div></section></main><Footer store={store} slug={slug} accent={p.theme.accent}/></>}
-function Policies({p}:{p:Props}){const {store,slug}=p;return <><Header store={store} slug={slug} active="policies" accent={p.theme.accent}/><main className="bn-universal-main"><section className="bn-universal-section"><div className="bn-universal-eyebrow">LEGAL</div><h1>Privacy Policy & Terms</h1><p>Store-specific policies should be supplied by the business owner. This page provides a stable destination so footer policy links never produce a 404.</p><h2>Privacy</h2><p>We use customer information only to provide the services, orders, reservations and support offered through {store.name}.</p><h2>Terms</h2><p>Orders, reservations, payments, cancellations and refunds are subject to the terms published by {store.name} and applicable law.</p></section></main><Footer store={store} slug={slug} accent={p.theme.accent}/></>}
+function Policies({p}:{p:Props}){
+ const {store,slug,policy}=p;
+ const paragraphs=(policy?.body??"").split(/\n{2,}/).map((x)=>x.trim()).filter(Boolean);
+ return <><Header store={store} slug={slug} active="policies" accent={p.theme.accent}/><main className="bn-universal-main"><section className="bn-universal-section"><div className="bn-universal-eyebrow">LEGAL</div>
+ {paragraphs.length>0
+  ? <><h1>{policy?.title||"Policies"}</h1>{paragraphs.map((t,i)=><p key={i} style={{whiteSpace:"pre-line"}}>{t}</p>)}</>
+  : <><h1>Terms &amp; Policies</h1><p>{store.name} hasn&apos;t published its terms, privacy or refund policy yet. Please contact the store directly before placing an order.</p></>}
+ </section></main><Footer store={store} slug={slug} accent={p.theme.accent}/></>}
 
 export function UniversalSectionPage(p:Props){
  const normalized=p;

@@ -49,7 +49,11 @@ export default async function StorePagePage({
       ...store.services.map((x: any) => ({ id:x.id, kind:"service" as const, name:x.name, description:x.description, price:Number(x.price), currency:x.currency, image:x.images?.[0] ?? null, categoryName:x.category?.name ?? null, type:"SERVICE", rentalUnit:null, isBookable:x.isBookable })),
     ];
     const social = (store.socialLinks as Record<string,string> | null) ?? {};
-    return <UniversalSectionPage store={store} slug={slug} pageSlug={pageSlug} items={items} reviews={store.reviews} theme={theme} social={social} />;
+    // The owner writes their own terms/privacy/refund text in Admin -> Pages ("policies").
+    // Only a published page with content is shown; otherwise a neutral notice, never invented legal text.
+    const policyBody = String((page?.content as { body?: string } | null)?.body ?? "").trim();
+    const policy = pageSlug.toLowerCase() === "policies" && page?.isPublished && policyBody ? { title: page.title, body: policyBody } : null;
+    return <UniversalSectionPage store={store} slug={slug} pageSlug={pageSlug} items={items} reviews={store.reviews} theme={theme} social={social} policy={policy} />;
   }
 
   if (!page) notFound();
