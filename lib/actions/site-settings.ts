@@ -204,8 +204,6 @@ export async function updateMarketingFreeTrialSetting(value: FreeTrialValue): Pr
   });
 
   revalidatePath("/supaadmin/settings");
-  revalidatePath("/marketing");
-  revalidatePath("/marketing/select-plan");
   return { success: true, data: undefined };
 }
 

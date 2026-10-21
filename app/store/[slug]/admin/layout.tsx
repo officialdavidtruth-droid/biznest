@@ -36,7 +36,7 @@ export default async function StoreAdminLayout({
   // signUpForMarketing) never get the full admin dashboard — Marketing is
   // all they signed up for. Checked before the role lookup below so this
   // applies to the owner too, not just staff.
-  if (store.marketingOnly) redirect("/store/marketing");
+  if (store.marketingOnly) redirect("/");
 
   const role = await getStoreAccessRole(session.user.id, session.user.role, store);
   const installedApps = await prisma.storePlugin.findMany({ where: { storeId: store.id, status: "ACTIVE", plugin: { status: "ACTIVE" } }, select: { plugin: { select: { key: true, name: true, icon: true } } }, orderBy: { plugin: { sortOrder: "asc" } } });
