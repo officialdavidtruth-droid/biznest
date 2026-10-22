@@ -1215,3 +1215,15 @@ a.ex-mini{text-decoration:none}
 .lux-payment-note b{display:block;font:700 15px/1.3 'Plus Jakarta Sans',Inter,system-ui,sans-serif;letter-spacing:.01em;color:var(--lux-ink,#1d3a2b)}
 .lux-payment-note span{display:block;font:400 13.5px/1.6 'Plus Jakarta Sans',Inter,system-ui,sans-serif;color:var(--lux-ink,#5b6b61);opacity:.72;margin-top:4px}
 @media(max-width:560px){.lux-review-card{grid-template-columns:1fr}.lux-review-card img{width:100%;height:170px}}
+
+/* Services cards: price/duration meta, Book button, images on all archetypes, pager */
+.bn-service-card{display:flex;flex-direction:column}.bn-service-card-main{display:block;color:inherit;text-decoration:none;flex:1}
+.bn-service-card-foot{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:0 17px 17px}.bn-service-learn{display:flex;align-items:center;gap:6px;font-size:11px;font-weight:800;color:#111;text-decoration:none}
+.bn-service-body span.bn-service-meta,.bn-service-meta{display:flex;flex-wrap:wrap;align-items:center;gap:6px 12px;margin-top:10px;font-size:12px}.bn-service-meta b{font-size:14px;font-weight:900;letter-spacing:-.02em}.bn-service-meta span{display:inline-flex;align-items:center;gap:4px;margin:0;font-size:11px;font-weight:600;color:#657487}
+.bn-book-btn{display:inline-flex;align-items:center;gap:6px;padding:9px 14px;border-radius:6px;color:#fff;text-decoration:none;font-size:11px;font-weight:800;white-space:nowrap}.bn-book-btn.square{border-radius:2px}
+.bn-service-row{justify-content:space-between}.bn-service-row-main{display:flex;align-items:center;gap:18px;flex:1;min-width:0;color:inherit;text-decoration:none}.bn-service-row-thumb{width:64px;height:64px;flex:none;border-radius:var(--u-radius,8px)}.bn-service-row-side{display:flex;align-items:center;gap:14px;flex:none}
+.bn-service-tech-card{display:flex;flex-direction:column}.bn-service-tech-main{display:block;color:inherit;text-decoration:none;flex:1}.bn-service-tech-img{display:block;aspect-ratio:16/9;border-radius:calc(var(--u-radius,8px) - 2px);border:1px solid #ffffff14;margin-bottom:16px}.bn-service-tech-card .bn-service-meta span{color:#aab4c4}.bn-service-tech-card .bn-service-meta{margin:0 0 14px}.bn-service-tech-foot{display:flex;align-items:center;justify-content:space-between;gap:10px;text-decoration:none}
+.bn-pager{display:flex;flex-direction:column;align-items:center;gap:12px;margin-top:40px}.bn-pager p{margin:0;font-size:12px;color:#657487}.bn-pager>div{display:flex;flex-wrap:wrap;justify-content:center;align-items:center;gap:6px}.bn-pager a{min-width:38px;padding:9px 12px;text-align:center;border:1px solid #10243b1f;border-radius:6px;color:#111;text-decoration:none;font-size:12px;font-weight:700;background:#fff}.bn-pager-gap{color:#9aa5b1}
+@media(max-width:680px){.bn-service-row{flex-wrap:wrap}.bn-service-row-side{width:100%;justify-content:space-between}}
+
+#services-list{scroll-margin-top:84px}

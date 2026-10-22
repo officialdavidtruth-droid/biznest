@@ -10,8 +10,8 @@ import { isHotelBusiness } from "@/lib/business-identity";
 import { getProfessionalServiceSubNicheByName } from "@/lib/professional-services";
 import { NewsletterInlineForm } from "@/components/storefront/newsletter-inline-form";
 
-type Item = { id:string; kind:"product"|"service"; name:string; description:string|null; price:number; currency:string; image:string|null; categoryName:string|null; type:string; rentalUnit:string|null; isBookable:boolean };
-type Props = { store:any; slug:string; pageSlug:string; items:Item[]; reviews:any[]; theme:TemplateTheme; social:Record<string,string>; policy?:{title:string;body:string}|null };
+type Item = { id:string; kind:"product"|"service"; name:string; description:string|null; price:number; currency:string; image:string|null; categoryName:string|null; type:string; rentalUnit:string|null; isBookable:boolean; durationMins?:number|null };
+type Props = { store:any; slug:string; pageSlug:string; items:Item[]; reviews:any[]; theme:TemplateTheme; social:Record<string,string>; policy?:{title:string;body:string}|null; pagination?:{page:number;totalPages:number;total:number;pageSize:number} };
 
 const RESERVED = new Set(["services","about","pricing","portfolio","contact","faq","policies"]);
 export function isUniversalSectionPage(slug:string){ return RESERVED.has(slug.toLowerCase()); }
@@ -36,6 +36,20 @@ function secondaryCta(store:any, slug:string){
   if (category === "restaurant") return { label: "View Menu", href: `/store/${slug}/catalog` };
   if (["fashion", "electronics", "food & groceries", "home & furniture", "agriculture", "real estate"].includes(category)) return { label: "Browse Catalog", href: `/store/${slug}/catalog` };
   return { label: "Explore Services", href: `/store/${slug}/services` };
+}
+
+// A CTA that points at the page the visitor is already on is a dead click.
+// On /services the primary CTA (e.g. "Book / Enquire") jumps to the service
+// list below the hero instead, and a self-pointing secondary CTA is swapped
+// for "Contact Us".
+export const SERVICES_LIST_ID = "services-list";
+function ctasFor(store:any, slug:string, active:string){
+  const here = `/store/${slug}/${active}`;
+  let primary = primaryCta(store, slug);
+  let secondary = secondaryCta(store, slug);
+  if (primary.href === here) primary = { ...primary, href: `${here}#${SERVICES_LIST_ID}` };
+  if (secondary.href === here) secondary = { label: "Contact Us", href: `/store/${slug}/contact` };
+  return { primary, secondary };
 }
 
 function modeFor(store:any, theme:TemplateTheme){
@@ -86,7 +100,7 @@ function text(store:any, mode:"creative"|"business"){
 }
 
 export function Header({store,slug,active,accent,dark=false,radius}:{store:any;slug:string;active:string;accent:string;dark?:boolean;radius?:string}){
- const cta=primaryCta(store,slug,{accent} as TemplateTheme);
+ const cta=ctasFor(store,slug,active).primary;
  const links=[['Home',''],['Services','services'],['About','about'],['Portfolio','portfolio'],['Pricing','pricing'],['Contact','contact']];
  const ink = dark ? "#fff" : "#111";
  const vars = { ...(radius?{"--u-radius":radius}:{}) } as React.CSSProperties;
@@ -105,7 +119,7 @@ function Footer({store,slug,accent}:{store:any;slug:string;accent:string}){
 }
 
 function Hero({store,slug,active,copy,accent,hero,archetype="editorial",children}:{store:any;slug:string;active:string;copy:any;accent:string;hero:string|null;archetype?:Archetype;children:React.ReactNode}){
- const primary=primaryCta(store,slug); const secondary=secondaryCta(store,slug);
+ const {primary,secondary}=ctasFor(store,slug,active);
  if(archetype==="corporate"){
   return <section className="bn-universal-hero corporate"><div className="bn-universal-hero-inner corporate"><div className="bn-universal-eyebrow center"><ShieldCheck size={13}/> {copy.eyebrow}</div><h1>{children}</h1><p>{copy.description}</p><div className="bn-universal-hero-actions center"><Link href={primary.href} className="bn-primary" style={{background:accent}}>{primary.label} <ArrowRight size={16}/></Link><Link href={secondary.href} className="bn-secondary corporate">{secondary.label} <ArrowRight size={16}/></Link></div><div className="bn-hero-trust corporate"><span><ShieldCheck size={18}/>Business information</span><span><Check size={18}/>Published policies</span><span><Clock3 size={18}/>Contact the business</span></div></div></section>
  }
@@ -118,11 +132,24 @@ function Hero({store,slug,active,copy,accent,hero,archetype="editorial",children
 function SectionTitle({eyebrow,title,sub}:{eyebrow:string;title:string;sub?:string}){return <div className="bn-universal-section-title"><small>{eyebrow}</small><h2>{title}</h2>{sub&&<p>{sub}</p>}</div>}
 function imageStyle(url:string|null,fallback:string):React.CSSProperties{return url?{backgroundImage:`url(${url})`,backgroundSize:"cover",backgroundPosition:"center"}:{background:fallback}}
 
+function formatPrice(x:Item){return x.price>0?`${x.currency} ${x.price.toLocaleString()}`:null}
+function formatDuration(m?:number|null){if(!m||m<=0)return null;if(m<60)return `${m} min`;const h=Math.floor(m/60),r=m%60;return r?`${h}h ${r}m`:`${h}h`}
+function ServiceMeta({x,accent}:{x:Item;accent:string}){const price=formatPrice(x),dur=formatDuration(x.durationMins);if(!price&&!dur)return null;return <div className="bn-service-meta">{price&&<b style={{color:accent}}>{price}</b>}{dur&&<span><Clock3 size={12}/>{dur}</span>}</div>}
+function BookButton({x,href,accent,square}:{x:Item;href:string;accent:string;square?:boolean}){if(!(x.kind==="service"&&x.isBookable))return null;return <Link href={href} className={`bn-book-btn${square?" square":""}`} style={{background:accent}}>Book now <ArrowRight size={13}/></Link>}
 function ServiceCard({x,i,accent,slug,archetype}:{x:Item;i:number;accent:string;slug:string;archetype:Archetype}){
  const href=`/store/${slug}/${x.kind}/${x.id}`;
- if(archetype==="corporate") return <Link href={href} className="bn-service-row"><span className="bn-service-row-icon" style={{background:`${accent}18`,color:accent}}><ShieldCheck size={19}/></span><div><small>{x.categoryName||x.kind}</small><h3>{x.name}</h3><p>{x.description||"Professional service tailored to your requirements."}</p></div><ArrowRight size={17} className="bn-service-row-arrow"/></Link>;
- if(archetype==="technical") return <Link href={href} className="bn-service-tech-card"><span className="bn-service-tech-index" style={{color:accent}}>{String(i+1).padStart(2,"0")}</span><h3>{x.name}</h3><p>{x.description||"Engineered to spec, delivered on time."}</p><span className="bn-service-tech-more" style={{color:accent}}>View details <ArrowRight size={13}/></span></Link>;
- return <Link href={href} className="bn-service-card"><div className="bn-service-image" style={imageStyle(x.image,`${accent}${i%2?"16":"28"}`)}></div><div className="bn-service-body"><small>{x.categoryName||x.kind}</small><h3>{x.name}</h3><p>{x.description||"Professional service tailored to your requirements."}</p><span>Learn More <ArrowRight size={15}/></span></div></Link>;
+ // Cards are <article>s with a details link plus a separate Book link: a Book
+ // <a> can't be nested inside a card-wide <a>.
+ if(archetype==="corporate") return <article className="bn-service-row"><Link href={href} className="bn-service-row-main">{x.image?<span className="bn-service-row-thumb" style={imageStyle(x.image,"#e7edf4")}/>:<span className="bn-service-row-icon" style={{background:`${accent}18`,color:accent}}><ShieldCheck size={19}/></span>}<div><small>{x.categoryName||x.kind}</small><h3>{x.name}</h3><p>{x.description||"Professional service tailored to your requirements."}</p><ServiceMeta x={x} accent={accent}/></div></Link><div className="bn-service-row-side"><BookButton x={x} href={href} accent={accent}/><Link href={href} className="bn-service-row-arrow" aria-label={`View ${x.name}`}><ArrowRight size={17}/></Link></div></article>;
+ if(archetype==="technical") return <article className="bn-service-tech-card"><Link href={href} className="bn-service-tech-main">{x.image&&<span className="bn-service-tech-img" style={imageStyle(x.image,"#111a28")}/>}<span className="bn-service-tech-index" style={{color:accent}}>{String(i+1).padStart(2,"0")}</span><h3>{x.name}</h3><p>{x.description||"Engineered to spec, delivered on time."}</p><ServiceMeta x={x} accent={accent}/></Link><div className="bn-service-tech-foot"><Link href={href} className="bn-service-tech-more" style={{color:accent}}>View details <ArrowRight size={13}/></Link><BookButton x={x} href={href} accent={accent} square/></div></article>;
+ return <article className="bn-service-card"><Link href={href} className="bn-service-card-main"><div className="bn-service-image" style={imageStyle(x.image,`${accent}${i%2?"16":"28"}`)}></div><div className="bn-service-body"><small>{x.categoryName||x.kind}</small><h3>{x.name}</h3><p>{x.description||"Professional service tailored to your requirements."}</p><ServiceMeta x={x} accent={accent}/></div></Link><div className="bn-service-card-foot"><Link href={href} className="bn-service-learn">Learn More <ArrowRight size={15}/></Link><BookButton x={x} href={href} accent={accent}/></div></article>;
+}
+function Pager({slug,pagination,accent}:{slug:string;pagination?:Props["pagination"];accent:string}){
+ if(!pagination||pagination.totalPages<=1)return null;
+ const {page,totalPages,total}=pagination;
+ const href=(n:number)=>n<=1?`/store/${slug}/services`:`/store/${slug}/services?page=${n}`;
+ const nums=Array.from({length:totalPages},(_,k)=>k+1).filter(n=>n===1||n===totalPages||Math.abs(n-page)<=1);
+ return <nav className="bn-pager" aria-label="Services pagination"><p>Page {page} of {totalPages} · {total} services</p><div>{page>1&&<Link href={href(page-1)} rel="prev">← Previous</Link>}{nums.map((n,k)=><React.Fragment key={n}>{k>0&&n-nums[k-1]>1&&<span className="bn-pager-gap">…</span>}<Link href={href(n)} aria-current={n===page?"page":undefined} className={n===page?"active":undefined} style={n===page?{background:accent,borderColor:accent,color:"#fff"}:undefined}>{n}</Link></React.Fragment>)}{page<totalPages&&<Link href={href(page+1)} rel="next">Next →</Link>}</div></nav>
 }
 function WorkCard({x,accent,slug,archetype}:{x:Item;accent:string;slug:string;archetype:Archetype}){
  const href=`/store/${slug}/${x.kind}/${x.id}`;
@@ -136,7 +163,7 @@ function PriceCard({x,i,accent,slug,archetype}:{x:Item;i:number;accent:string;sl
  return <article className={`bn-price-card ${i===1?"featured":""}`} key={x.id}>{i===1&&<span className="bn-popular" style={{background:accent}}>Popular</span>}<div className="bn-price-image" style={imageStyle(x.image,`${accent}${i%2?"22":"12"}`)}></div><div className="bn-price-body"><small>{x.categoryName||"Solution"}</small><h3>{x.name}</h3><p>{x.description||"Professional quality, delivered to your requirements."}</p><div className="bn-price">{price}</div>{x.price>0&&<small>Starting price</small>}<Link href={`/store/${slug}/start-project`} style={{borderColor:accent,color:accent}}>Get a Quote <ArrowRight size={15}/></Link></div></article>;
 }
 
-function Services({p}:{p:Props}){const {store,slug,items,theme}=p;const accent=theme.accent;const archetype=archetypeFor(store,theme);const services=items.filter(x=>x.kind==="service");const list=(services.length?services:items).slice(0,8);const heroImg=(archetype==="corporate"||archetype==="technical")?null:(store.bannerUrl||store.storyImage||items.find(x=>x.image)?.image||null);return <><Header store={store} slug={slug} active="services" accent={accent}/><Hero store={store} slug={slug} active="services" archetype={archetype} copy={text(store,modeFor(store,theme))} accent={accent} hero={heroImg}><>Services<br/><span style={{color:accent}}>Made to Matter.</span></></Hero><main className="bn-universal-main"><section className="bn-universal-section"><SectionTitle eyebrow="OUR SERVICES" title={text(store,modeFor(store,theme)).services} sub="Choose the solution that fits your needs. Every offering is presented with the same clear, premium experience."/><div className={`bn-service-grid ${archetype}`}>{list.map((x,i)=><ServiceCard key={x.id} x={x} i={i} accent={accent} slug={slug} archetype={archetype}/>)}</div></section><section className="bn-band" style={{background:`linear-gradient(100deg,#061525,${accent})`}}><div><small>NEED SOMETHING CUSTOM?</small><h2>Tell us what you need.</h2><p>We can shape the right solution around your project, budget and timeline.</p></div><Link href={`/store/${slug}/start-project`}>Start a Project <ArrowRight size={17}/></Link></section></main><Footer store={store} slug={slug} accent={accent}/></>}
+function Services({p}:{p:Props}){const {store,slug,items,theme}=p;const accent=theme.accent;const archetype=archetypeFor(store,theme);const services=items.filter(x=>x.kind==="service");const list=services.length?services:items;const heroImg=(archetype==="corporate"||archetype==="technical")?null:(store.bannerUrl||store.storyImage||items.find(x=>x.image)?.image||null);return <><Header store={store} slug={slug} active="services" accent={accent}/><Hero store={store} slug={slug} active="services" archetype={archetype} copy={text(store,modeFor(store,theme))} accent={accent} hero={heroImg}><>Services<br/><span style={{color:accent}}>Made to Matter.</span></></Hero><main className="bn-universal-main"><section id={SERVICES_LIST_ID} className="bn-universal-section"><SectionTitle eyebrow="OUR SERVICES" title={text(store,modeFor(store,theme)).services} sub="Choose the solution that fits your needs. Every offering is presented with the same clear, premium experience."/><div className={`bn-service-grid ${archetype}`}>{list.map((x,i)=><ServiceCard key={x.id} x={x} i={i+((p.pagination?.page??1)-1)*(p.pagination?.pageSize??0)} accent={accent} slug={slug} archetype={archetype}/>)}</div><Pager slug={slug} pagination={p.pagination} accent={accent}/></section><section className="bn-band" style={{background:`linear-gradient(100deg,#061525,${accent})`}}><div><small>NEED SOMETHING CUSTOM?</small><h2>Tell us what you need.</h2><p>We can shape the right solution around your project, budget and timeline.</p></div><Link href={`/store/${slug}/start-project`}>Start a Project <ArrowRight size={17}/></Link></section></main><Footer store={store} slug={slug} accent={accent}/></>}
 
 function About({p}:{p:Props}){const {store,slug,items,theme}=p;const copy=text(store,modeFor(store,theme));const accent=theme.accent;const archetype=archetypeFor(store,theme);const image=store.storyImage||store.bannerUrl||items.find(x=>x.image)?.image||null;const heroImg=(archetype==="corporate"||archetype==="technical")?null:image;return <><Header store={store} slug={slug} active="about" accent={accent}/><Hero store={store} slug={slug} active="about" archetype={archetype} copy={copy} accent={accent} hero={heroImg}><>More Than a Business,<br/><span style={{color:accent}}>We Build Possibilities.</span></></Hero><main className="bn-universal-main"><section className="bn-about-intro bn-universal-section"><div><small>WHO WE ARE</small><h2>{copy.about}</h2><p>{copy.description}</p><p>We combine expertise, technology and attention to detail to deliver work that makes a lasting impression.</p><Link href={`/store/${slug}/services`} className="bn-primary" style={{background:accent}}>Explore Our Services <ArrowRight size={16}/></Link></div><div className="bn-about-image" style={imageStyle(image,"linear-gradient(135deg,#dfe8f2,#8ea6bb)")}></div></section><section className="bn-values"><SectionTitle eyebrow="OUR MISSION, VISION & VALUES" title="What Drives Us"/><div className="bn-values-grid">{[["Our Mission","Deliver dependable, high-quality solutions that help customers move forward."],["Our Vision","Become the trusted choice in our field through quality, creativity and consistency."],["Our Values","Quality in everything we do, customer satisfaction, integrity and continuous improvement."]].map(([t,b])=><article key={t}><div className="bn-value-icon" style={{color:accent}}><Sparkles size={22}/></div><h3>{t}</h3><p>{b}</p><div className="bn-check"><Check size={15}/> Customer focused</div><div className="bn-check"><Check size={15}/> Professional delivery</div></article>)}</div></section><section className="bn-band" style={{background:`linear-gradient(100deg,#061525,${accent})`}}><div><small>READY TO WORK TOGETHER?</small><h2>Let’s bring your ideas to life.</h2><p>Tell us what you’re building and our team will help with the next step.</p></div><Link href={`/store/${slug}/start-project`}>Get a Quote <ArrowRight size={17}/></Link></section></main><Footer store={store} slug={slug} accent={accent}/></>}
 

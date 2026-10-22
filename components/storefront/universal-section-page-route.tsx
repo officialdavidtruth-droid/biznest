@@ -14,18 +14,40 @@ const getStoreForSection = cache((slug: string) =>
     include: {
       template: true,
       business: true,
-      products: { where: { isPublished: true }, take: 24, include: { category: true } },
-      services: { where: { isPublished: true }, take: 24, include: { category: true } },
+      products: { where: { isPublished: true }, orderBy: { createdAt: "desc" }, take: 24, include: { category: true } },
+      services: { where: { isPublished: true }, orderBy: { createdAt: "desc" }, take: 24, include: { category: true } },
       reviews: { include: { author: true }, orderBy: { createdAt: "desc" }, take: 6 },
     },
   })
 );
 
-export async function renderUniversalSectionPage(slug: string, pageSlug: string) {
+export const SERVICES_PAGE_SIZE = 12;
+
+export async function renderUniversalSectionPage(slug: string, pageSlug: string, opts?: { page?: number }) {
   const rawStore = await getStoreForSection(slug);
   if (!rawStore || rawStore.status !== "ACTIVE") notFound();
 
-  const store = { ...rawStore, sellsProducts: rawStore.business?.sellsProducts ?? true };
+  // /services is paginated: the 24-row include above is only a cheap preview
+  // for the other section pages, so /services fetches its own page of rows
+  // (newest first, stable order) plus a total count for the pager.
+  let pagination: { page: number; totalPages: number; total: number; pageSize: number } | undefined;
+  let services = rawStore.services;
+  if (pageSlug === "services") {
+    const where = { storeId: rawStore.id, isPublished: true };
+    const total = await prisma.service.count({ where });
+    const totalPages = Math.max(1, Math.ceil(total / SERVICES_PAGE_SIZE));
+    const page = Math.min(Math.max(1, Math.floor(opts?.page ?? 1) || 1), totalPages);
+    services = await prisma.service.findMany({
+      where,
+      orderBy: [{ createdAt: "desc" }, { id: "asc" }],
+      skip: (page - 1) * SERVICES_PAGE_SIZE,
+      take: SERVICES_PAGE_SIZE,
+      include: { category: true },
+    });
+    pagination = { page, totalPages, total, pageSize: SERVICES_PAGE_SIZE };
+  }
+
+  const store = { ...rawStore, services, sellsProducts: rawStore.business?.sellsProducts ?? true };
 
   const themeOverrides = store.themeColors as { primary?: string; secondary?: string; accent?: string } | null;
   const theme: TemplateTheme = resolveStoreTheme(store.template?.category, store.name, themeOverrides, store.fontFamily, store.template?.name);
@@ -44,6 +66,7 @@ export async function renderUniversalSectionPage(slug: string, pageSlug: string)
       type: p.type,
       rentalUnit: p.rentalPeriodUnit,
       isBookable: false,
+      durationMins: null as number | null,
     })),
     ...store.services.map((s) => ({
       id: s.id,
@@ -57,6 +80,7 @@ export async function renderUniversalSectionPage(slug: string, pageSlug: string)
       type: "SERVICE",
       rentalUnit: null,
       isBookable: s.isBookable,
+      durationMins: s.durationMins ?? null,
     })),
   ];
 
@@ -69,6 +93,7 @@ export async function renderUniversalSectionPage(slug: string, pageSlug: string)
       reviews={store.reviews}
       theme={theme}
       social={social}
+      pagination={pagination}
     />
   );
 }
