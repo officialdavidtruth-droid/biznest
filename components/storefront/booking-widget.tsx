@@ -138,6 +138,9 @@ export function BookingWidget({
   headlineFont,
   startOpen = false,
   unitLabel = "unit",
+  rateUnit = "night",
+  periodUnit,
+  startLabel,
   otherOptionsHref,
 }: {
   storeSlug: string;
@@ -165,6 +168,12 @@ export function BookingWidget({
    * "table" for a restaurant, "bay" for a wash bay, etc. Falls back to the
    * generic "unit" for any other unit-based service. */
   unitLabel?: string;
+  /** What one billed period is called -- "night", "day", "event"... Defaults to "night" for hotel stays. */
+  rateUnit?: string;
+  /** What a counted span is called ("2 nights", "3 days"). Defaults to rateUnit. */
+  periodUnit?: string;
+  /** Label for the start date picker, e.g. "Check-in" / "Pickup date". Defaults to "Check-in". */
+  startLabel?: string;
   /** Where the shopper can browse other bookable options for this business
    * (e.g. the rooms grid, or a services listing) when their preferred dates
    * are tight or fully booked. */
@@ -194,8 +203,9 @@ export function BookingWidget({
   const surface = card || bg;
   const titleFont = headlineFont || undefined;
   const unitBased = Boolean(totalUnits);
-  const nights = checkOut && date ? Math.max(1, Math.round((new Date(`${checkOut}T12:00:00`).getTime() - new Date(`${date}T12:00:00`).getTime()) / 86400000)) : 0;
-  const total = unitBased ? servicePrice * Math.max(1, nights) : servicePrice;
+  const spanLabel = periodUnit ?? rateUnit;
+  const periods = checkOut && date ? Math.max(1, Math.round((new Date(`${checkOut}T12:00:00`).getTime() - new Date(`${date}T12:00:00`).getTime()) / 86400000)) : 0;
+  const total = unitBased ? servicePrice * Math.max(1, periods) : servicePrice;
 
   function selectDate(iso: string) {
     setDate(iso);
@@ -270,7 +280,7 @@ export function BookingWidget({
     }
     const guest = isSignedIn ? undefined : { name: guestName, email: guestEmail, phone: guestPhone };
     const finalNotes = unitBased && checkInTime
-      ? `Preferred check-in time: ${checkInTime}${notes ? `\n${notes}` : ""}`
+      ? `Preferred arrival time: ${checkInTime}${notes ? `\n${notes}` : ""}`
       : notes;
 
     startTransition(async () => {
@@ -348,7 +358,7 @@ export function BookingWidget({
         </div>
         <div style={{ textAlign: "right" }}>
           <div style={{ fontWeight: 800 }}>{currency} {total.toLocaleString()}</div>
-          <div style={{ fontSize: 11, opacity: .55 }}>{unitBased ? (nights ? `${nights} night${nights === 1 ? "" : "s"}` : "per night") : `${durationMins ?? ""} min`}</div>
+          <div style={{ fontSize: 11, opacity: .55 }}>{unitBased ? (periods ? `${periods} ${spanLabel}${periods === 1 ? "" : "s"}` : `per ${rateUnit}`) : `${durationMins ?? ""} min`}</div>
         </div>
       </div>
 
@@ -363,7 +373,7 @@ export function BookingWidget({
 
       {step === 1 && (
         <>
-          <div style={{ fontWeight: 750, fontSize: 13, marginBottom: 9 }}>{unitBased ? "Check-in" : "Choose a date"}</div>
+          <div style={{ fontWeight: 750, fontSize: 13, marginBottom: 9 }}>{unitBased ? (startLabel ?? "Check-in") : "Choose a date"}</div>
           <MiniCalendar selected={date || null} minDate={localISODate(new Date())} accent={accent} ink={ink} onSelect={selectDate} />
           {unitBased && (
             <div style={{ marginTop: 14 }}>
@@ -484,7 +494,7 @@ export function BookingWidget({
           <div style={{ fontWeight: 750, fontSize: 13, marginBottom: 10, fontFamily: titleFont }}>Review your booking</div>
           <div style={{ borderRadius: 11, background: `${ink}06`, padding: 12, fontSize: 12, lineHeight: 1.8 }}>
             <div><b>{serviceName}</b></div>
-            <div>{unitBased ? `${dateLabel(date)} → ${dateLabel(checkOut)} · ${nights} night${nights === 1 ? "" : "s"}` : `${dateLabel(date)} · ${selectedTime}`}</div>
+            <div>{unitBased ? `${dateLabel(date)} → ${dateLabel(checkOut)} · ${periods} ${spanLabel}${periods === 1 ? "" : "s"}` : `${dateLabel(date)} · ${selectedTime}`}</div>
             {selectedStaff && <div>{staff.find((s) => s.id === selectedStaff)?.name ?? "Specialist"} selected</div>}
             <div style={{ fontWeight: 800, marginTop: 3 }}>Total: {currency} {total.toLocaleString()}</div>
           </div>

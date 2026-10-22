@@ -8,6 +8,7 @@ import { MapPin, Star, Share2 } from "lucide-react";
 import { BookingWidget } from "@/components/storefront/booking-widget";
 import { getCatalogItemPreset } from "@/lib/catalog-item-presets";
 import { getBusinessTerminology } from "@/lib/business-terminology";
+import { getUnitBookingNiche, resolveBookingRules } from "@/lib/storefront/unit-booking-niche";
 import { NewsletterInlineForm } from "@/components/storefront/newsletter-inline-form";
 
 type Props = {
@@ -17,6 +18,12 @@ type Props = {
   theme: any;
   businessCategory?: string | null;
   hotelMode?: string;
+  /**
+   * The property's configured check-in / check-out (or pickup / return) times,
+   * e.g. "14:00". Optional: when omitted the niche default (or
+   * storefrontConfig.unitBooking.stayTimes) is used.
+   */
+  stayTimes?: { checkIn?: string | null; checkOut?: string | null } | null;
 };
 
 function money(service: any) {
@@ -41,7 +48,7 @@ function itemImages(service: any, store: any) {
  * the shared BookingWidget (handles both unit-based and appointment-based
  * services) rather than the hotel-only reservation form.
  */
-export function CatalogItemDetail({ store, slug, service, theme, businessCategory, hotelMode }: Props) {
+export function CatalogItemDetail({ store, slug, service, theme, businessCategory, hotelMode, stayTimes }: Props) {
   const images = itemImages(service, store);
   const [selectedImage, setSelectedImage] = useState(0);
   const address = [store.business?.city, store.business?.state, store.business?.country].filter(Boolean).join(", ");
@@ -65,7 +72,11 @@ export function CatalogItemDetail({ store, slug, service, theme, businessCategor
 
   const isUnitBased = Boolean(service.totalUnits);
   const isHotel = businessCategory === "Hotel & Lodging";
-  const priceSuffix = isUnitBased ? "/ night" : service.durationMins ? `/ ${service.durationMins} min` : "";
+  // Wording for unit-based items (night / day / event / booking...) and the
+  // start/end rules come from the niche config, not hard-coded hotel copy.
+  const niche = getUnitBookingNiche(businessCategory, store.storefrontConfig);
+  const bookingRules = isUnitBased ? resolveBookingRules(niche, stayTimes) : null;
+  const priceSuffix = isUnitBased ? `/ ${niche.rateUnit}` : service.durationMins ? `/ ${service.durationMins} min` : "";
   const dark = hotelMode === "great-treasure" ? "#050907" : "#063522";
   const accent = theme.accent || "#0E5B45";
   const catalogHref = `/store/${slug}/catalog`;
@@ -147,6 +158,9 @@ export function CatalogItemDetail({ store, slug, service, theme, businessCategor
                 card={theme.card}
                 headlineFont={theme.headlineFont}
                 unitLabel={terminology.unitLabel?.toLowerCase() || "unit"}
+                rateUnit={niche.rateUnit}
+                periodUnit={niche.periodUnit ?? niche.rateUnit}
+                startLabel={niche.startDateLabel}
                 otherOptionsHref={isUnitBased ? catalogHref : undefined}
                 startOpen
               />
@@ -170,12 +184,13 @@ export function CatalogItemDetail({ store, slug, service, theme, businessCategor
               {amenities.map((a) => <div key={a.label}><span>●</span><b>{a.label}: {String(a.value)}</b></div>)}
             </div>
 
-            {isUnitBased && (
+            {bookingRules && (
               <>
                 <h2>Booking Rules</h2>
                 <div className="hr-rules">
-                  <div><h3>Check In</h3><p>● Check-in from 2:00 PM</p><p>● Valid photo ID required</p><p>● Early arrival subject to availability</p></div>
-                  <div><h3>Check Out</h3><p>● Check-out by 12:00 PM</p><p>● Late checkout subject to availability</p><p>● Notify reception for assistance</p></div>
+                  {[bookingRules.start, bookingRules.end].map((rule) => (
+                    <div key={rule.title}><h3>{rule.title}</h3>{rule.items.map((item) => <p key={item}>● {item}</p>)}</div>
+                  ))}
                 </div>
               </>
             )}
