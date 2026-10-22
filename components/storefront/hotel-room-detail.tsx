@@ -2,10 +2,11 @@
 
 import { formatMoney } from "@/lib/utils/format-money";
 import { MenuLinks } from "@/components/storefront/store-menu";
+import { ShareButton } from "@/components/storefront/share-button";
 import type React from "react";
 import { useState } from "react";
 import Link from "next/link";
-import { MapPin, Star, Share2, Wifi, Tv, LockKeyhole, Volume2, Sparkles, Bath, Armchair, AlarmClock, BedDouble } from "lucide-react";
+import { MapPin, Star, Wifi, Tv, LockKeyhole, Volume2, Sparkles, Bath, Armchair, AlarmClock, BedDouble } from "lucide-react";
 import { HotelReservationForm } from "@/components/storefront/hotel-reservation-form";
 import { NewsletterInlineForm } from "@/components/storefront/newsletter-inline-form";
 
@@ -46,7 +47,7 @@ export function HotelRoomDetail({ store, slug, service, theme, hotelMode }: Prop
   const size = details.size || "300 sqft";
   const guests = details.guests || "2 Guests";
   const roomType = details.type || category;
-  const dark = hotelMode === "great-treasure" ? "#050907" : "#063522";
+  const dark = hotelMode === "great-treasure" ? "#050907" : `color-mix(in srgb, ${theme.accent || "#0E5B45"} 40%, #000)`;
   const accent = theme.accent || "#0E5B45";
 
   return (
@@ -108,7 +109,7 @@ export function HotelRoomDetail({ store, slug, service, theme, hotelMode }: Prop
               <div className="hr-specs">
                 <span><BedDouble size={15} /> {bed}</span><span><Bath size={15} /> {bath}</span><span>⌗ {size}</span><span>♟ {guests}</span>
               </div>
-              <button type="button" className="hr-share" onClick={() => navigator.share?.({ title: service.name, url: window.location.href })}><Share2 size={14} /> Share</button>
+              <ShareButton title={service.name} />
             </div>
 
             <HotelReservationForm storeSlug={slug} service={service} accent={accent} card={theme.card} ink={theme.ink} bg={theme.bg} radius={theme.radius} />

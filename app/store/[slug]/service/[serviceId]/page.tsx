@@ -1,14 +1,43 @@
 import { getCanonicalBusinessType } from "@/lib/business-identity";
 import { prisma } from "@/lib/prisma";
 import { notFound } from "next/navigation";
+import { headers } from "next/headers";
 import type { Metadata } from "next";
 import { resolveStoreTheme } from "@/lib/template-themes";
 import { CatalogItemDetail } from "@/components/storefront/catalog-item-detail";
 
 export async function generateMetadata({ params }: { params: Promise<{ slug: string; serviceId: string }> }): Promise<Metadata> {
   const { slug, serviceId } = await params;
-  const service = await prisma.service.findFirst({ where: { id: serviceId, store: { slug } } });
-  return service ? { title: `${service.name} — ${slug}`, description: service.description?.slice(0, 150) } : {};
+  // Same visibility rules as the page itself: an unpublished service or an
+  // inactive store must not leak its name/description/image through metadata.
+  const service = await prisma.service.findFirst({
+    where: { id: serviceId, isPublished: true, store: { slug, status: "ACTIVE" } },
+    select: { name: true, description: true, images: true, store: { select: { name: true, logoUrl: true, bannerUrl: true } } },
+  });
+  if (!service) return { title: "Not found", robots: { index: false, follow: false } };
+
+  const storeName = service.store.name;
+  const title = `${service.name} — ${storeName}`;
+  const description = service.description?.replace(/\s+/g, " ").trim().slice(0, 155) || undefined;
+
+  // OG/Twitter crawlers need absolute URLs; there is no metadataBase, so build
+  // the origin from the host that served this request (works for custom domains).
+  const h = await headers();
+  const host = h.get("x-forwarded-host") ?? h.get("host");
+  const proto = h.get("x-forwarded-proto") ?? (host?.startsWith("localhost") ? "http" : "https");
+  const abs = (src?: string | null) => {
+    if (!src) return undefined;
+    if (/^https?:\/\//i.test(src)) return src;
+    return host ? `${proto}://${host}${src.startsWith("/") ? "" : "/"}${src}` : undefined;
+  };
+  const image = abs(service.images?.[0]) ?? abs(service.store.bannerUrl) ?? abs(service.store.logoUrl);
+
+  return {
+    title,
+    description,
+    openGraph: { title, description, type: "website", siteName: storeName, ...(image ? { images: [{ url: image, alt: service.name }] } : {}) },
+    twitter: { card: image ? "summary_large_image" : "summary", title, description, ...(image ? { images: [image] } : {}) },
+  };
 }
 
 export default async function ServicePage({ params }: { params: Promise<{ slug: string; serviceId: string }> }) {

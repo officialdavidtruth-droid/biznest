@@ -5,7 +5,11 @@ import { formatMoney } from "@/lib/utils/format-money";
 import type React from "react";
 import { useState } from "react";
 import Link from "next/link";
-import { MapPin, Star, Share2 } from "lucide-react";
+import { MapPin, Search, Star } from "lucide-react";
+import { ShareButton } from "@/components/storefront/share-button";
+import { MenuLinks } from "@/components/storefront/store-menu";
+import { CartLink } from "@/components/storefront/cart-link";
+import { AccountLink } from "@/components/storefront/account-link";
 import { BookingWidget } from "@/components/storefront/booking-widget";
 import { getCatalogItemPreset } from "@/lib/catalog-item-presets";
 import { getBusinessTerminology } from "@/lib/business-terminology";
@@ -96,7 +100,7 @@ export function CatalogItemDetail({ store, slug, service, reviewStats, theme, bu
   const niche = getUnitBookingNiche(businessCategory, store.storefrontConfig);
   const bookingRules = isUnitBased ? resolveBookingRules(niche, stayTimes) : null;
   const priceSuffix = !hasPrice(service) ? "" : isUnitBased ? `/ ${niche.rateUnit}` : service.durationMins ? `/ ${service.durationMins} min` : "";
-  const dark = hotelMode === "great-treasure" ? "#050907" : "#063522";
+  const dark = hotelMode === "great-treasure" ? "#050907" : `color-mix(in srgb, ${theme.accent || "#0E5B45"} 40%, #000)`;
   const accent = theme.accent || "#0E5B45";
   const catalogHref = `/store/${slug}/catalog`;
 
@@ -139,10 +143,18 @@ export function CatalogItemDetail({ store, slug, service, reviewStats, theme, bu
           <strong>{store.name}</strong>
         </Link>
         <nav>
-          <Link href={`/store/${slug}`}>Home</Link>
-          <Link href={catalogHref}>{terminology.catalog}</Link>
-          <Link href={`/store/${slug}/account`}>Account</Link>
+          <MenuLinks slug={slug} fallbackNode={<>
+            <Link href={`/store/${slug}`}>Home</Link>
+            <Link href={catalogHref}>{terminology.catalog}</Link>
+            <Link href={`/store/${slug}/about`}>About</Link>
+            <Link href={`/store/${slug}/contact`}>Contact</Link>
+          </>} />
         </nav>
+        <div className="hr-header-actions">
+          <Link href={`/store/${slug}/search`} aria-label="Search"><Search size={19} /></Link>
+          <CartLink storeSlug={slug} accent={accent} onAccent="#fff" ink={theme.ink} />
+          <AccountLink storeSlug={slug} ink={theme.ink} />
+        </div>
         <Link href={catalogHref} className="hr-book-top">{isUnitBased ? "Book Now" : "View " + terminology.catalog}</Link>
       </header>
 
@@ -183,7 +195,7 @@ export function CatalogItemDetail({ store, slug, service, reviewStats, theme, bu
                   {specEntries.slice(0, 4).map((f) => <span key={f.label}>{String(f.value)}</span>)}
                 </div>
               )}
-              <button type="button" className="hr-share" onClick={() => navigator.share?.({ title: service.name, url: window.location.href })}><Share2 size={14} /> Share</button>
+              <ShareButton title={service.name} />
             </div>
 
             {service.isBookable ? (
