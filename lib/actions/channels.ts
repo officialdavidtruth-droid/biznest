@@ -12,7 +12,7 @@ import type { ActionResult } from "@/types/actions";
 
 const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? "https://biznest.space";
 
-export const CHANNEL_PROVIDERS = {
+const CHANNEL_PROVIDERS = {
   BOOKING_COM: "Booking.com",
   AIRBNB: "Airbnb",
   EXPEDIA: "Expedia",

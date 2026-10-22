@@ -1,3 +1,4 @@
+import type { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { safeFetch, SafeFetchError } from "@/lib/security/safe-fetch";
 import { buildIcs, looksLikeIcs, parseIcs, type ExportRange } from "@/lib/channels/ical";
@@ -134,7 +135,7 @@ export async function buildExportFeedForToken(token: string): Promise<string | n
 
 /** Does any OTA block overlap [checkIn, checkOut) for this room? Used by createReservation. */
 export async function findChannelBlockOverlap(
-  tx: { channelBlock: { findFirst: (args: any) => Promise<{ connection?: { provider: string } | null } | null> } },
+  tx: Prisma.TransactionClient,
   roomId: string,
   checkIn: Date,
   checkOut: Date,
