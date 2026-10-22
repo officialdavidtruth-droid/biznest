@@ -292,3 +292,17 @@ export async function getFlutterwaveBalanceNaira(): Promise<{ status: boolean; m
   const json = (await res.json()) as { status: "success" | "error"; message: string; data?: { available_balance: number } };
   return { status: json.status === "success", message: json.message, balanceNaira: json.data?.available_balance };
 }
+
+/**
+ * Flutterwave's own Nigerian bank list. Its codes are NOT the same as
+ * Paystack's for every bank (e.g. Opay, Palmpay), so the connect form must
+ * show the list of whichever gateway will resolve and pay the account.
+ */
+export async function listFlutterwaveBanks(): Promise<{ status: boolean; message: string; banks: { name: string; code: string }[] }> {
+  const secretKey = process.env.FLUTTERWAVE_SECRET_KEY;
+  if (!secretKey) return { status: false, message: "Flutterwave isn't configured on this platform yet.", banks: [] };
+  const res = await fetch(`${FLW_BASE}/banks/NG`, { headers: { Authorization: `Bearer ${secretKey}` } });
+  const json = (await res.json()) as { status: "success" | "error"; message: string; data?: { code: string; name: string }[] };
+  const banks = (json.data ?? []).map((b) => ({ name: b.name, code: b.code }));
+  return { status: json.status === "success", message: json.message, banks };
+}

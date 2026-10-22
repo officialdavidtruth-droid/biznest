@@ -419,3 +419,13 @@ export async function getPaystackBalanceKobo(): Promise<{ status: boolean; messa
   const ngn = json.data?.find((b) => b.currency === "NGN");
   return { status: json.status, message: json.message, balanceKobo: ngn?.balance };
 }
+
+/** Paystack's Nigerian bank list (codes differ from Flutterwave's for some banks). */
+export async function listPaystackBanks(): Promise<{ status: boolean; message: string; banks: { name: string; code: string }[] }> {
+  const secretKey = process.env.PAYSTACK_SECRET_KEY;
+  if (!secretKey) return { status: false, message: "Paystack isn't configured on this platform yet.", banks: [] };
+  const res = await fetch(`${PAYSTACK_BASE}/bank?country=nigeria&currency=NGN&perPage=200`, { headers: { Authorization: `Bearer ${secretKey}` } });
+  const json = (await res.json()) as { status: boolean; message: string; data?: { code: string; name: string; active?: boolean }[] };
+  const banks = (json.data ?? []).filter((b) => b.active !== false).map((b) => ({ name: b.name, code: b.code }));
+  return { status: json.status, message: json.message, banks };
+}

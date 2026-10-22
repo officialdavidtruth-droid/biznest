@@ -1,23 +1,21 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { connectPayoutAccount, disconnectPayoutAccount } from "@/lib/actions/store";
+import { connectPayoutAccount, disconnectPayoutAccount, listPayoutBanks } from "@/lib/actions/store";
 
-// A short, common Nigerian bank list keeps this usable without needing a
-// live "list banks" API call for every provider on every page load. Codes
-// match both Paystack's and Flutterwave's bank code schemes for these banks.
-const BANKS = [
+// Fallback only, used if the gateway's live bank list can't be loaded. Codes
+// are the same on both gateways for the big banks, but NOT for Opay/Palmpay,
+// so those two are left out of the fallback.
+const FALLBACK_BANKS = [
   { name: "Access Bank", code: "044" },
   { name: "GTBank", code: "058" },
   { name: "Zenith Bank", code: "057" },
   { name: "First Bank of Nigeria", code: "011" },
   { name: "UBA", code: "033" },
   { name: "Kuda Bank", code: "50211" },
-  { name: "Opay", code: "999992" },
   { name: "Moniepoint", code: "50515" },
-  { name: "Palmpay", code: "999991" },
   { name: "Fidelity Bank", code: "070" },
   { name: "Union Bank", code: "032" },
   { name: "Sterling Bank", code: "232" },
@@ -46,9 +44,19 @@ export function ConnectPayoutForm({
   const [bankCode, setBankCode] = useState("");
   const [accountNumber, setAccountNumber] = useState("");
   const [saving, setSaving] = useState(false);
+  const [banks, setBanks] = useState<{ name: string; code: string }[]>(FALLBACK_BANKS);
+
+  // Load the verifying gateway's own bank list so every code is one it accepts.
+  useEffect(() => {
+    let cancelled = false;
+    listPayoutBanks(provider).then((res) => {
+      if (!cancelled && res.success) setBanks(res.data);
+    });
+    return () => { cancelled = true; };
+  }, [provider]);
 
   async function handleConnect() {
-    const bank = BANKS.find((b) => b.code === bankCode);
+    const bank = banks.find((b) => b.code === bankCode);
     if (!bank) return toast.error("Select your bank.");
     if (!/^\d{10}$/.test(accountNumber)) return toast.error("Enter a valid 10-digit account number.");
 
@@ -116,7 +124,7 @@ export function ConnectPayoutForm({
       <div className="space-y-2">
         <select value={bankCode} onChange={(e) => setBankCode(e.target.value)} className="w-full rounded-md border px-3 py-2 text-sm">
           <option value="">Select your bank…</option>
-          {BANKS.map((b) => (
+          {banks.map((b) => (
             <option key={b.code} value={b.code}>{b.name}</option>
           ))}
         </select>

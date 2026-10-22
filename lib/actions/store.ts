@@ -16,8 +16,8 @@ import slugify from "slugify";
 import { getSampleListingsForBusinessType } from "@/lib/sample-listings";
 import { fetchDemoPhoto, fetchDemoPhotos } from "@/lib/demo-images";
 import type { ActionResult } from "@/types/actions";
-import { resolvePaystackAccount, createPaystackTransferRecipient, checkPaystackSubaccountVerification } from "@/lib/payments/paystack";
-import { resolveFlutterwaveAccount } from "@/lib/payments/flutterwave";
+import { resolvePaystackAccount, createPaystackTransferRecipient, checkPaystackSubaccountVerification, listPaystackBanks } from "@/lib/payments/paystack";
+import { resolveFlutterwaveAccount, listFlutterwaveBanks } from "@/lib/payments/flutterwave";
 import { hasBankPayoutDestination, needsPayoutReconnect } from "@/lib/payments/payout-target";
 
 /**
@@ -815,4 +815,20 @@ export async function disconnectPayoutAccount(slug: string): Promise<ActionResul
 
   revalidatePath(`/store/${slug}/admin/payments`);
   return { success: true, data: undefined };
+}
+
+
+/**
+ * Banks (name + code) for the payout form, from the gateway that will verify
+ * and pay the account. Codes differ between gateways, so a hardcoded list
+ * breaks on some banks ("Unknown Bank Code"). Public reference data, no auth.
+ */
+export async function listPayoutBanks(provider: "PAYSTACK" | "FLUTTERWAVE"): Promise<ActionResult<{ name: string; code: string }[]>> {
+  try {
+    const res = provider === "FLUTTERWAVE" ? await listFlutterwaveBanks() : await listPaystackBanks();
+    if (!res.status || res.banks.length === 0) return { success: false, error: res.message || "Couldn't load the bank list." };
+    return { success: true, data: res.banks.sort((a, b) => a.name.localeCompare(b.name)) };
+  } catch {
+    return { success: false, error: "Couldn't load the bank list." };
+  }
 }
