@@ -11,11 +11,16 @@ import { getCatalogItemPreset } from "@/lib/catalog-item-presets";
 import { getBusinessTerminology } from "@/lib/business-terminology";
 import { getUnitBookingNiche, resolveBookingRules } from "@/lib/storefront/unit-booking-niche";
 import { NewsletterInlineForm } from "@/components/storefront/newsletter-inline-form";
+import { socialHref, FooterSocial } from "@/components/storefront/footer-social";
+import { PropertyMap } from "@/components/storefront/property-map";
+import { resolveBusinessMode } from "@/lib/business-experience";
 
 type Props = {
   store: any;
   slug: string;
   service: any;
+  /** Aggregate over every review of the service (the `service.reviews` list is only the latest few). */
+  reviewStats?: { average: number | null; count: number } | null;
   theme: any;
   businessCategory?: string | null;
   hotelMode?: string;
@@ -27,13 +32,24 @@ type Props = {
   stayTimes?: { checkIn?: string | null; checkOut?: string | null } | null;
 };
 
-function money(service: any) {
-  return formatMoney(service.price, service.currency);
+// A price of 0 means "no fixed price", not "free": quote-based items show
+// "Custom Quote" (same wording as the services/pricing list pages). A
+// bookable item priced at 0 really is free to book.
+function hasPrice(service: any) {
+  return Number(service.price) > 0;
 }
 
-function itemImages(service: any, store: any) {
+function money(service: any) {
+  if (hasPrice(service)) return formatMoney(service.price, service.currency);
+  return service.isBookable ? "Free" : "Custom Quote";
+}
+
+// Gallery shows only this item's own photos. Store-level banner/story images
+// are page decoration (the hero falls back to the banner separately), not
+// pictures of the item, so they are never mixed into the gallery.
+function itemImages(service: any) {
   const images = Array.isArray(service.images) ? service.images.filter(Boolean) : [];
-  return Array.from(new Set([...images, store.storyImage, store.bannerUrl].filter(Boolean) as string[])).slice(0, 5);
+  return Array.from(new Set(images as string[])).slice(0, 8);
 }
 
 /**
@@ -49,13 +65,15 @@ function itemImages(service: any, store: any) {
  * the shared BookingWidget (handles both unit-based and appointment-based
  * services) rather than the hotel-only reservation form.
  */
-export function CatalogItemDetail({ store, slug, service, theme, businessCategory, hotelMode, stayTimes }: Props) {
-  const images = itemImages(service, store);
+export function CatalogItemDetail({ store, slug, service, reviewStats, theme, businessCategory, hotelMode, stayTimes }: Props) {
+  const images = itemImages(service);
   const [selectedImage, setSelectedImage] = useState(0);
   const address = [store.business?.city, store.business?.state, store.business?.country].filter(Boolean).join(", ");
   const reviews = Array.isArray(service.reviews) ? service.reviews : [];
-  const rating = reviews.length ? reviews.reduce((sum: number, r: any) => sum + Number(r.rating || 0), 0) / reviews.length : null;
-  const reviewCount = reviews.length;
+  const reviewCount = reviewStats ? reviewStats.count : reviews.length;
+  const rating = reviewStats
+    ? (reviewStats.count > 0 ? reviewStats.average : null)
+    : (reviews.length ? reviews.reduce((sum: number, r: any) => sum + Number(r.rating || 0), 0) / reviews.length : null);
   const preset = getCatalogItemPreset(businessCategory);
   const terminology = getBusinessTerminology(businessCategory);
   const category = service.category?.name || preset.sectionLabel;
@@ -77,19 +95,44 @@ export function CatalogItemDetail({ store, slug, service, theme, businessCategor
   // start/end rules come from the niche config, not hard-coded hotel copy.
   const niche = getUnitBookingNiche(businessCategory, store.storefrontConfig);
   const bookingRules = isUnitBased ? resolveBookingRules(niche, stayTimes) : null;
-  const priceSuffix = isUnitBased ? `/ ${niche.rateUnit}` : service.durationMins ? `/ ${service.durationMins} min` : "";
+  const priceSuffix = !hasPrice(service) ? "" : isUnitBased ? `/ ${niche.rateUnit}` : service.durationMins ? `/ ${service.durationMins} min` : "";
   const dark = hotelMode === "great-treasure" ? "#050907" : "#063522";
   const accent = theme.accent || "#0E5B45";
   const catalogHref = `/store/${slug}/catalog`;
 
+  // Enquiry actions for items that can't be booked online. Only channels the
+  // merchant has actually configured are rendered (no placeholder numbers).
+  const social = (store.socialLinks && typeof store.socialLinks === "object" ? store.socialLinks : {}) as Record<string, string | null | undefined>;
+  const phone = String(store.contactPhone || "").trim();
+  const email = String(store.contactEmail || "").trim();
+  const whatsappRaw = String(social.whatsapp || "").trim();
+  const hasSocial = (["instagram", "facebook", "twitter", "tiktok", "whatsapp"] as const).some((k) => typeof social[k] === "string" && String(social[k]).trim());
+  const lat = Number(attrs.lat), lng = Number(attrs.lng);
+  const hasCoords = typeof attrs.lat === "number" && typeof attrs.lng === "number" && Number.isFinite(lat) && Number.isFinite(lng);
+  const mapsHref = address ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${store.name}, ${address}`)}` : "";
+  const itemLabel = terminology.catalogSingular.toLowerCase();
+  const enquiryText = `Hi ${store.name}, I'm interested in "${service.name}". Could you share details and next steps?`;
+  const whatsappHref = whatsappRaw ? `${socialHref("whatsapp", whatsappRaw)}${/^https?:/i.test(whatsappRaw) ? "" : `?text=${encodeURIComponent(enquiryText)}`}` : "";
+  const mailHref = email ? `mailto:${email}?subject=${encodeURIComponent(`Enquiry: ${service.name}`)}&body=${encodeURIComponent(enquiryText)}` : "";
+  const quoteMode = resolveBusinessMode(businessCategory, { sellsProducts: store.sellsProducts, offersServices: store.offersServices });
+  const offersQuote = !isHotel && (quoteMode === "service" || quoteMode === "hybrid");
+  const actionStyle = (primary: boolean): React.CSSProperties => ({
+    display: "flex", alignItems: "center", justifyContent: "center", gap: 8, height: 40, borderRadius: 999,
+    fontSize: 13, fontWeight: 800, textDecoration: "none",
+    background: primary ? accent : "transparent", color: primary ? "#fff" : "var(--hr-ink)",
+    border: primary ? "0" : "1px solid var(--hr-border)",
+  });
+
   return (
     <div className="hotel-room-reference" style={{ "--hr-bg": theme.bg, "--hr-ink": theme.ink, "--hr-card": theme.card, "--hr-accent": accent, "--hr-dark": dark, "--hr-border": theme.border || "#E7E3D9", "--hr-muted": theme.muted || "#74736D", "--hr-head": theme.headlineFont, "--hr-font": theme.font } as React.CSSProperties}>
-      <div className="hr-topbar">
-        <span>☎ {store.contactPhone || "+1 800 555 0199"}</span>
-        <span>✉ {store.contactEmail || "reservations@example.com"}</span>
-        {address && <span>⌖ {address}</span>}
-        <span className="hr-top-social">● ● ● ● ●</span>
-      </div>
+      {(phone || email || address || hasSocial) && (
+        <div className="hr-topbar">
+          {phone && <a href={`tel:${phone}`}>☎ {phone}</a>}
+          {email && <a href={`mailto:${email}`}>✉ {email}</a>}
+          {address && <span>⌖ {address}</span>}
+          {hasSocial && <FooterSocial social={social} className="hr-top-social" iconSize={14} />}
+        </div>
+      )}
       <header className="hr-header">
         <Link href={`/store/${slug}`} className="hr-brand">
           {store.logoUrl ? <img src={store.logoUrl} alt="" /> : <span>{store.name?.[0] || "S"}</span>}
@@ -113,7 +156,7 @@ export function CatalogItemDetail({ store, slug, service, theme, businessCategor
       <main className="hr-main">
         <section className="hr-gallery-booking">
           <div className="hr-gallery">
-            <div className="hr-thumbs">
+            <div className="hr-thumbs" style={images.length < 2 ? { display: "none" } : undefined}>
               {images.map((src: string, i: number) => <button type="button" onClick={() => setSelectedImage(i)} aria-label={`View ${service.name} image ${i + 1}`} key={src + i}><img src={src} alt={`${service.name} ${i + 1}`} /></button>)}
             </div>
             <div className="hr-main-image" id="hr-image-0">
@@ -167,8 +210,19 @@ export function CatalogItemDetail({ store, slug, service, theme, businessCategor
               />
             ) : (
               <div className="hr-book-card">
-                <h3>Get in touch</h3>
-                <p style={{ fontSize: 10, color: "var(--hr-muted)", margin: 0 }}>Contact {store.name} to arrange this {terminology.catalogSingular.toLowerCase()}.</p>
+                <h3>{offersQuote ? "Request a quote" : "Get in touch"}</h3>
+                <p style={{ fontSize: 13, color: "var(--hr-muted)", margin: 0 }}>
+                  {offersQuote
+                    ? `Tell ${store.name} what you need and get a tailored quote for this ${itemLabel}.`
+                    : `Contact ${store.name} to arrange this ${itemLabel}.`}
+                </p>
+                {offersQuote && <Link href={`/store/${slug}/start-project`} style={actionStyle(true)}>Get a Quote</Link>}
+                {whatsappHref && <a href={whatsappHref} target="_blank" rel="noopener noreferrer" style={actionStyle(!offersQuote)}>Chat on WhatsApp</a>}
+                {phone && <a href={`tel:${phone}`} style={actionStyle(!offersQuote && !whatsappHref)}>Call {phone}</a>}
+                {email && <a href={mailHref} style={actionStyle(false)}>Email {email}</a>}
+                {!offersQuote && !whatsappHref && !phone && !email && (
+                  <Link href={`/store/${slug}/contact`} style={actionStyle(true)}>Contact {store.name}</Link>
+                )}
               </div>
             )}
           </div>
@@ -196,8 +250,45 @@ export function CatalogItemDetail({ store, slug, service, theme, businessCategor
               </>
             )}
 
-            <h2>Location</h2>
-            <div className="hr-map"><div className="hr-map-grid"></div><span className="hr-map-pin">●</span><small>{address || `${store.name} location`}</small></div>
+            {(hasCoords || address) && (
+              <>
+                <h2>Location</h2>
+                {hasCoords && <PropertyMap properties={[{ id: service.id, name: service.name, priceLabel: money(service), lat, lng }]} accent={accent} />}
+                {address && (
+                  <p className="hr-small-copy">
+                    <MapPin size={14} style={{ verticalAlign: "-2px" }} /> {address}{" "}
+                    <a href={mapsHref} target="_blank" rel="noopener noreferrer" style={{ color: accent, fontWeight: 700 }}>Get directions</a>
+                  </p>
+                )}
+              </>
+            )}
+
+            {reviews.length > 0 && (
+              <>
+                <h2>Reviews{rating !== null && ` · ${rating.toFixed(1)} (${reviewCount})`}</h2>
+                <div style={{ display: "grid", gap: 14 }}>
+                  {reviews.map((r: any) => {
+                    const n = Math.max(0, Math.min(5, Math.round(Number(r.rating) || 0)));
+                    const first = String(r.author?.name || "").trim().split(/\s+/)[0] || "Customer";
+                    const when = r.createdAt ? new Date(r.createdAt).toLocaleDateString("en-NG", { month: "short", year: "numeric", timeZone: "UTC" }) : "";
+                    return (
+                      <article key={r.id} style={{ border: "1px solid var(--hr-border)", borderRadius: 12, padding: 14, background: "var(--hr-card)" }}>
+                        <div style={{ display: "flex", justifyContent: "space-between", gap: 8, fontSize: 13 }}>
+                          <b>{first}</b>
+                          <span style={{ color: "var(--hr-muted)" }}>{when}</span>
+                        </div>
+                        <div aria-label={`${n} out of 5 stars`} style={{ color: accent, margin: "4px 0", letterSpacing: 2 }}>{"★".repeat(n)}<span style={{ opacity: 0.25 }}>{"★".repeat(5 - n)}</span></div>
+                        {r.comment && <p style={{ margin: 0, fontSize: 14, lineHeight: 1.55 }}>{r.comment}</p>}
+                        {r.response?.content && (
+                          <p style={{ margin: "10px 0 0", paddingLeft: 10, borderLeft: `3px solid ${accent}`, fontSize: 13, color: "var(--hr-muted)" }}><b>Reply from {store.name}:</b> {r.response.content}</p>
+                        )}
+                      </article>
+                    );
+                  })}
+                </div>
+                {reviewCount > reviews.length && <p className="hr-small-copy">Showing the latest {reviews.length} of {reviewCount} reviews.</p>}
+              </>
+            )}
           </div>
         </section>
       </main>
@@ -205,7 +296,7 @@ export function CatalogItemDetail({ store, slug, service, theme, businessCategor
       <footer className="hr-footer">
         <div><div className="hr-footer-brand"><span>{store.name?.[0] || "S"}</span><b>{store.name}</b></div><p>Quality, care and exceptional service designed around you.</p></div>
         <div><b>Quick Links</b><Link href={`/store/${slug}`}>Home</Link><Link href={catalogHref}>{terminology.catalog}</Link><Link href={`/store/${slug}/account`}>Account</Link></div>
-        <div><b>Contact</b><span>{store.contactPhone || "Contact available"}</span><span>{store.contactEmail || "Email available"}</span></div>
+        <div><b>Contact</b>{phone && <a href={`tel:${phone}`}>{phone}</a>}{email && <a href={`mailto:${email}`}>{email}</a>}{!phone && !email && <Link href={`/store/${slug}/contact`}>Contact us</Link>}</div>
         <div><b>Newsletter</b><span>Get updates, offers and new arrivals.</span><NewsletterInlineForm slug={slug} inputPlaceholder="Your email">Subscribe</NewsletterInlineForm></div>
       </footer>
     </div>

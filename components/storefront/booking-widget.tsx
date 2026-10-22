@@ -137,6 +137,7 @@ export function BookingWidget({
   card,
   headlineFont,
   startOpen = false,
+  allowNotes = true,
   unitLabel = "unit",
   rateUnit = "night",
   periodUnit,
@@ -164,6 +165,8 @@ export function BookingWidget({
    * everywhere. Falls back to the ambient font when omitted. */
   headlineFont?: string;
   startOpen?: boolean;
+  /** Merchant's "Allow special requests" toggle; when false the free-text notes box is hidden. */
+  allowNotes?: boolean;
   /** Noun used for a single bookable unit -- "room" for hotel stays,
    * "table" for a restaurant, "bay" for a wash bay, etc. Falls back to the
    * generic "unit" for any other unit-based service. */
@@ -507,7 +510,7 @@ export function BookingWidget({
             </div>
           )}
 
-          <textarea value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="Anything you'd like the business to know? (optional)" rows={3} style={{ width: "100%", marginTop: 10, resize: "vertical", padding: 10, borderRadius: 10, border: `1px solid ${ink}1f`, background: "transparent", color: ink, fontSize: 12 }} />
+          {allowNotes && <textarea value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="Anything you'd like the business to know? (optional)" rows={3} style={{ width: "100%", marginTop: 10, resize: "vertical", padding: 10, borderRadius: 10, border: `1px solid ${ink}1f`, background: "transparent", color: ink, fontSize: 12 }} />}
 
           <button onClick={submit} disabled={isPending || !canSubmit} style={{ width: "100%", marginTop: 10, border: 0, borderRadius: radius, padding: "12px", background: accent, color: bg, fontWeight: 800, cursor: isPending ? "wait" : "pointer", opacity: isPending || !canSubmit ? .65 : 1 }}>
             {paymentStarted ? "Opening payment…" : isPending ? "Securing your booking…" : `Confirm booking · ${currency} ${total.toLocaleString()}`}
@@ -524,4 +527,3 @@ export function BookingWidget({
     </div>
   );
   }
-  
