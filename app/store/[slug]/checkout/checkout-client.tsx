@@ -11,7 +11,7 @@ import { ShieldCheck, Lock, Truck, ChevronLeft, CreditCard } from "lucide-react"
 
 declare global {
   interface Window {
-    PaystackPop?: new () => { resumeTransaction: (accessCode: string) => void };
+    PaystackPop?: new () => { resumeTransaction: (accessCode: string, callbacks?: { onSuccess?: (tx: { reference?: string }) => void; onCancel?: () => void }) => void };
     FlutterwaveCheckout?: (config: Record<string, unknown>) => void;
   }
 }
@@ -104,7 +104,10 @@ export function CheckoutClient({ slug }: { slug: string }) {
           await loadExternalScript("https://js.paystack.co/v2/inline.js");
           if (!window.PaystackPop) throw new Error("Paystack checkout is unavailable. Please try again.");
           const popup = new window.PaystackPop();
-          popup.resumeTransaction(inline.accessCode);
+          popup.resumeTransaction(inline.accessCode, {
+            onSuccess: (tx) => { window.location.assign(`/api/payments/paystack/callback?reference=${encodeURIComponent(tx?.reference || inline.reference)}`); },
+            onCancel: () => setIsSubmitting(false),
+          });
           return;
         }
 
@@ -114,9 +117,9 @@ export function CheckoutClient({ slug }: { slug: string }) {
           window.FlutterwaveCheckout({
             public_key: inline.publicKey,
             tx_ref: inline.reference,
-            amount: total,
+            amount: inline.amountNaira ?? total,
             currency: currency || "NGN",
-            payment_options: "card",
+            payment_options: "card,banktransfer,ussd",
             customer: { email: inline.email, name: form.fullName, phone_number: form.phone },
             subaccounts: inline.subaccountId ? [{ id: inline.subaccountId }] : undefined,
             callback: (response: { transaction_id?: number | string; tx_ref?: string }) => {

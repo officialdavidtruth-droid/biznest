@@ -51,6 +51,8 @@ type ChargeResult =
         publicKey: string;
         email: string;
         accessCode?: string;
+        /** The amount (NGN) the server created this payment for. Inline clients must charge THIS, never a client-side recomputation. */
+        amountNaira: number;
         reference: string;
         subaccountCode?: string | null;
         subaccountId?: string | null;
@@ -81,6 +83,7 @@ export async function chargeCustomer(params: ChargeParams): Promise<ChargeResult
           provider: "FLUTTERWAVE",
           publicKey,
           email: params.email,
+          amountNaira: params.amountNaira,
           reference: params.reference,
           subaccountId: params.flutterwaveSubaccountId ?? null,
         },
@@ -140,6 +143,7 @@ export async function chargeCustomer(params: ChargeParams): Promise<ChargeResult
             provider: "PAYSTACK" as const,
             publicKey,
             email: params.email,
+            amountNaira: params.amountNaira,
             accessCode: init.data.access_code,
             reference: init.data.reference || params.reference,
             subaccountCode: usedSubaccount,

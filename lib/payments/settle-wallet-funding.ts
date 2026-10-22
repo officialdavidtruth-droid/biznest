@@ -61,7 +61,7 @@ export async function settleWalletFunding(
 
   const email = payment.wallet.user.email;
   if (email) {
-    void sendOrderNotificationEmail(email, `Wallet funded — ${payment.wallet.store.name}`, `Your BizNest wallet at <strong>${escapeHtml(payment.wallet.store.name)}</strong> was funded with <strong>₦${amount.toLocaleString()}</strong>.<br/><br/>Reference: <strong>${escapeHtml(reference)}</strong>.`);
+    await sendOrderNotificationEmail(email, `Wallet funded — ${payment.wallet.store.name}`, `Your BizNest wallet at <strong>${escapeHtml(payment.wallet.store.name)}</strong> was funded with <strong>₦${amount.toLocaleString()}</strong>.<br/><br/>Reference: <strong>${escapeHtml(reference)}</strong>.`).catch(() => undefined);
   }
   revalidatePath(`/store/${payment.wallet.store.slug}/account/wallet`);
   return { success: true, data: { storeSlug: payment.wallet.store.slug } };

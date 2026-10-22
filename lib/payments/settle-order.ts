@@ -78,8 +78,14 @@ export async function settleOrderPayment(input: {
     currency: order.currency,
   });
   await emitWebhookEvent("ORDER_PAID", order.storeId, { orderId: order.id, status: "PAID" });
-  void notifyStoreOwnerOfPaidOrder(order.storeId, order.id, Number(order.total), order.currency);
-  void notifyCustomerOfPaidOrder(order.id);
+  // Awaited on purpose: work that is merely started (`void ...`) is frozen or
+  // dropped as soon as a serverless invocation returns its response, which is
+  // how paid orders ended up with no owner alert and no customer receipt.
+  // allSettled never throws, so a failed email can't undo a settled payment.
+  await Promise.allSettled([
+    notifyStoreOwnerOfPaidOrder(order.storeId, order.id, Number(order.total), order.currency),
+    notifyCustomerOfPaidOrder(order.id),
+  ]);
   // Send the store its money. Awaited (it never throws) so the transfer is
   // attempted before this serverless invocation ends; the payouts cron retries
   // anything that has to wait, e.g. for the payment to settle into the balance.

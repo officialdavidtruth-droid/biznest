@@ -2,7 +2,9 @@ import "server-only";
 import { settleAndPayout } from "@/lib/payments/payout";
 
 import { prisma } from "@/lib/prisma";
-import { confirmPaidBooking } from "@/lib/payments/booking-confirmation";
+import { confirmPaidBooking, escapeHtml } from "@/lib/payments/booking-confirmation";
+import { notifyUser } from "@/lib/notifications/notify";
+import { sendOrderNotificationEmail } from "@/lib/email/send";
 import type { ActionResult } from "@/types/actions";
 import { revalidatePath } from "next/cache";
 
@@ -19,7 +21,7 @@ export async function settleServiceBookingPayment(
   verifiedAmountNaira: number,
   rawPayload: object
 ): Promise<ActionResult<{ storeSlug: string; bookingId: string }>> {
-  const payment = await prisma.payment.findUnique({ where: { reference }, include: { booking: { include: { service: true, store: true } } } });
+  const payment = await prisma.payment.findUnique({ where: { reference }, include: { booking: { include: { service: true, store: { include: { business: { include: { user: { select: { email: true } } } } } } } } } });
   if (!payment || payment.purpose !== "SERVICE_BOOKING" || !payment.booking) return { success: false, error: "Booking payment not found." };
   if (payment.provider !== provider) return { success: false, error: "Payment provider mismatch." };
   if (payment.status === "SUCCESSFUL") return { success: true, data: { storeSlug: payment.booking.store.slug, bookingId: payment.booking.id } };
@@ -45,7 +47,29 @@ export async function settleServiceBookingPayment(
   }, { isolationLevel: "Serializable" });
 
   await settleAndPayout(reference);
-  void confirmPaidBooking(payment.booking.id, reference, Number(payment.amount));
+  // Awaited on purpose: an un-awaited `void` send is frozen/dropped once this
+  // serverless invocation returns its redirect, so guests never got the
+  // confirmation email. allSettled never throws, so a failed email can't
+  // undo a settled payment.
+  const booking = payment.booking;
+  const money = `${booking.paymentCurrency ?? payment.currency} ${Number(payment.amount).toLocaleString()}`;
+  await Promise.allSettled([
+    confirmPaidBooking(booking.id, reference, Number(payment.amount)),
+    notifyUser({
+      userId: booking.store.business.userId,
+      type: "BOOKING_PAID",
+      title: "New booking paid 🎉",
+      body: `${booking.service.name} · ${money} on ${booking.store.name}.`,
+      url: `/store/${booking.store.slug}/admin/bookings`,
+    }),
+    booking.store.business.user?.email
+      ? sendOrderNotificationEmail(
+          booking.store.business.user.email,
+          `New paid booking — ${booking.store.name}`,
+          `A guest just paid <strong>${money}</strong> for <strong>${escapeHtml(booking.service.name)}</strong>.<br/><br/>Booking ID: ${escapeHtml(booking.id)}<br/>Payment reference: ${escapeHtml(reference)}<br/><br/>Open your dashboard to see the booking details.`,
+        )
+      : Promise.resolve(),
+  ]);
 
   revalidatePath(`/store/${payment.booking.store.slug}`);
   revalidatePath(`/store/${payment.booking.store.slug}/account/bookings`);

@@ -85,6 +85,7 @@ async function chargeExistingOrder(
       reference: string;
       subaccountCode?: string | null;
       subaccountId?: string | null;
+      amountNaira?: number;
     };
   }>
 > {
@@ -189,6 +190,7 @@ export async function startCheckout(
       reference: string;
       subaccountCode?: string | null;
       subaccountId?: string | null;
+      amountNaira?: number;
     };
   }>
 > {
