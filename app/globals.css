@@ -1203,3 +1203,15 @@ a.ex-mini{text-decoration:none}
 .promo-stack .promo h3{font-size:14px;margin:5px 0}
 .promo-stack .promo .ex-product-img{flex:0 0 34%;width:34%}
 @media(max-width:900px){.promo{min-height:170px}.promo-stack .promo{min-height:120px}}
+
+/* Hotel booking review: summary card + secure-payment note */
+.lux-review-card{display:grid;grid-template-columns:150px 1fr;gap:20px;align-items:center;padding:18px;border:1px solid #e4e0d7;background:#fff;margin:18px 0}
+.lux-review-card img{width:150px;height:110px;object-fit:cover;display:block}
+.lux-review-card h3{font:600 24px/1.2 'Playfair Display',Georgia,'Times New Roman',serif;margin:0 0 8px}
+.lux-review-card span{display:block;font:500 13px/1.5 'Plus Jakarta Sans',Inter,system-ui,sans-serif;color:#6b6b6b;margin:2px 0}
+.lux-review-card b{display:block;margin-top:12px;font:700 26px/1 'Playfair Display',Georgia,'Times New Roman',serif}
+.lux-payment-note{display:flex;gap:14px;align-items:flex-start;border:1px solid #cfe0d4;background:linear-gradient(180deg,#f6faf6,#eef5ef);border-radius:12px;padding:18px 20px;margin:18px 0}
+.lux-payment-note svg{flex:none;width:26px;height:26px;color:#2f6f4b;margin-top:1px}
+.lux-payment-note b{display:block;font:700 15px/1.3 'Plus Jakarta Sans',Inter,system-ui,sans-serif;letter-spacing:.01em;color:var(--lux-ink,#1d3a2b)}
+.lux-payment-note span{display:block;font:400 13.5px/1.6 'Plus Jakarta Sans',Inter,system-ui,sans-serif;color:var(--lux-ink,#5b6b61);opacity:.72;margin-top:4px}
+@media(max-width:560px){.lux-review-card{grid-template-columns:1fr}.lux-review-card img{width:100%;height:170px}}
