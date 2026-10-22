@@ -1,3 +1,4 @@
+import { canonicalizeBusinessType } from "@/lib/business-identity";
 import type { LucideIcon } from "lucide-react";
 import {
   Activity, BarChart3, BedDouble, BriefcaseBusiness, CalendarDays, Camera, Car, ClipboardList,
@@ -160,7 +161,7 @@ export function getAdaptiveDashboardConfig(category?: string | null, subcategory
 }
 
 function configLabel(category?: string | null) {
-  return category || "Other";
+  return canonicalizeBusinessType(category);
 }
 
 const SINGULAR_OVERRIDES: Record<string, string> = {

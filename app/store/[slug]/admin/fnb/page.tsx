@@ -1,3 +1,4 @@
+import { getCanonicalBusinessType } from "@/lib/business-identity";
 import { notFound, redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { getPluginEntitlement } from "@/lib/plugins";
@@ -8,12 +9,12 @@ export default async function FnbPage({ params }: { params: Promise<{ slug: stri
   const { slug } = await params;
   const store = await prisma.store.findUnique({
     where: { slug },
-    select: { id: true, businessType: true, subscription: { select: { commissionRate: true } } },
+    select: { id: true, businessType: true, business: { select: { category: true } }, subscription: { select: { commissionRate: true } } },
   });
   if (!store) notFound();
   const entitlement = await getPluginEntitlement(store.id, "fnb-operations");
   if (!entitlement.allowed || !entitlement.installed) redirect(`/store/${slug}/admin/apps`);
-  if (!["Restaurant", "Food & Groceries"].includes(store.businessType)) notFound();
+  if (!["Restaurant", "Food & Groceries"].includes(getCanonicalBusinessType({ businessCategory: store.business?.category, storeBusinessType: store.businessType }))) notFound();
   const data = await getFnbDashboard(slug);
   if (!data) notFound();
   return <FnbWorkspace slug={slug} data={{ ...data, posCommissionRatePercent: store.subscription ? Number(store.subscription.commissionRate) : 8 }} />;

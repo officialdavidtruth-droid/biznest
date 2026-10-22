@@ -1,3 +1,4 @@
+import { canonicalizeBusinessType } from "@/lib/business-identity";
 // Drives the niche-flexible parts of the catalog item form (ProductForm):
 // the row of "quick spec" inputs under Basic Information, the right-hand
 // Specifications panel, the Item Options toggles, the sidebar tips, and a
@@ -163,5 +164,5 @@ const DEFAULT_PRESET: CatalogItemPreset = {
 };
 
 export function getCatalogItemPreset(category?: string | null): CatalogItemPreset {
-  return (category && PRESETS[category]) || DEFAULT_PRESET;
+  return (category && (PRESETS[category] ?? PRESETS[canonicalizeBusinessType(category)])) || DEFAULT_PRESET;
 }

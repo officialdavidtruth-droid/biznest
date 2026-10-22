@@ -1,3 +1,5 @@
+import { canonicalizeBusinessType } from "@/lib/business-identity";
+
 export type BusinessTerminology = {
   customer: string;
   transaction: string;
@@ -40,6 +42,12 @@ const CATALOG_TERMS: Record<string, { customer: string; transaction: string; cat
   Agriculture: { customer: "Customer", transaction: "Order", catalog: "Products" },
   Electronics: { customer: "Customer", transaction: "Order", catalog: "Products" },
   Fashion: { customer: "Customer", transaction: "Order", catalog: "Collections" },
+  Retail: { customer: "Customer", transaction: "Order", catalog: "Products" },
+  "Professional Services": { customer: "Client", transaction: "Project", catalog: "Services" },
+  Agency: { customer: "Client", transaction: "Project", catalog: "Services" },
+  "Software Development": { customer: "Client", transaction: "Project", catalog: "Services" },
+  Church: { customer: "Member", transaction: "Booking", catalog: "Programs & Services" },
+  Other: { customer: "Customer", transaction: "Order", catalog: "Products" },
 };
 
 const SINGULAR_OVERRIDES: Record<string, string> = {
@@ -62,7 +70,10 @@ function singularize(catalog: string): string {
 }
 
 export function getBusinessTerminology(category?: string | null): BusinessTerminology {
-  const base = (category && CATALOG_TERMS[category]) || { customer: "Customer", transaction: "Order", catalog: "Products" };
+  // Callers pass raw Business.category / Store.businessType values; normalise so
+  // aliases and casing ("professional", "agency") resolve to the same entry.
+  const canonical = canonicalizeBusinessType(category);
+  const base = (category && (CATALOG_TERMS[category] ?? CATALOG_TERMS[canonical])) || { customer: "Customer", transaction: "Order", catalog: "Products" };
   const catalogSingular = singularize(base.catalog);
 
   return {

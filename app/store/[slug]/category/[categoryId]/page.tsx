@@ -23,7 +23,7 @@ export default async function CategoryPage({ params }: { params: Promise<{ slug:
   // header categories are just nav labels with no products, so the generic
   // product grid would render an empty "0 shown" page. Send each one to the
   // matching hotel page instead.
-  if (isHotelStore({ storeBusinessType: store.businessType, templateName: store.template?.name })) {
+  if (isHotelStore({ businessCategory: store.business?.category, storeBusinessType: store.businessType, templateName: store.template?.name })) {
     const name = category.name.toLowerCase();
     const target =
       /amenit|facilit/.test(name) ? "/amenities" :

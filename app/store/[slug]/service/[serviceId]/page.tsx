@@ -1,3 +1,4 @@
+import { getCanonicalBusinessType } from "@/lib/business-identity";
 import { prisma } from "@/lib/prisma";
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
@@ -17,5 +18,5 @@ export default async function ServicePage({ params }: { params: Promise<{ slug: 
   const service = await prisma.service.findFirst({ where: { id: serviceId, storeId: store.id, isPublished: true }, include: { category: true, reviews: { orderBy: { createdAt: "desc" }, take: 20 } } });
   if (!service) notFound();
   const theme = resolveStoreTheme(store.template?.category, store.name, store.themeColors as any, store.fontFamily, store.template?.name);
-  return <CatalogItemDetail store={{...store,sellsProducts:store.business?.sellsProducts??true} as any} slug={slug} service={service} theme={theme} businessCategory={store.businessType ?? store.business?.category ?? null} />;
+  return <CatalogItemDetail store={{...store,sellsProducts:store.business?.sellsProducts??true} as any} slug={slug} service={service} theme={theme} businessCategory={getCanonicalBusinessType({ businessCategory: store.business?.category, storeBusinessType: store.businessType })} />;
 }

@@ -1,3 +1,4 @@
+import { getCanonicalBusinessType } from "@/lib/business-identity";
 import { prisma } from "@/lib/prisma";
 import { notFound } from "next/navigation";
 import { TemplatesPageClient } from "@/components/dashboard/templates-page-client";
@@ -42,7 +43,7 @@ export default async function TemplatesPage({ params }: { params: Promise<{ slug
       currentTemplateId={store.templateId}
       currentTemplateName={store.template?.name ?? null}
       planRank={planRank}
-      businessCategory={store.businessType}
+      businessCategory={getCanonicalBusinessType({ businessCategory: store.business?.category, storeBusinessType: store.businessType })}
     />
   );
 }

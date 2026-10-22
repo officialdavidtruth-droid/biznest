@@ -1,4 +1,5 @@
 "use client";
+import { isHotelBusiness } from "@/lib/business-identity";
 
 import { formatMoney } from "@/lib/utils/format-money";
 import type React from "react";
@@ -71,7 +72,7 @@ export function CatalogItemDetail({ store, slug, service, theme, businessCategor
   const amenities = specEntries.length > 0 ? specEntries : [{ label: "Quality service", value: "Guaranteed" }, { label: "Support", value: "Responsive" }];
 
   const isUnitBased = Boolean(service.totalUnits);
-  const isHotel = businessCategory === "Hotel & Lodging";
+  const isHotel = isHotelBusiness(businessCategory);
   // Wording for unit-based items (night / day / event / booking...) and the
   // start/end rules come from the niche config, not hard-coded hotel copy.
   const niche = getUnitBookingNiche(businessCategory, store.storefrontConfig);

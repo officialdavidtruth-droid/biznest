@@ -1,3 +1,4 @@
+import { getCanonicalBusinessType } from "@/lib/business-identity";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { notFound } from "next/navigation";
@@ -37,7 +38,7 @@ export default async function StoreAdminOverviewPage({
 
   if (!store) notFound();
 
-  const config = getAdaptiveDashboardConfig(store.businessType, getOnboardingSubcategory(store.onboardingProfile), {
+  const config = getAdaptiveDashboardConfig(getCanonicalBusinessType({ businessCategory: store.business?.category, storeBusinessType: store.businessType }), getOnboardingSubcategory(store.onboardingProfile), {
     sellsProducts: store.business.sellsProducts,
     offersServices: store.business.offersServices,
   });

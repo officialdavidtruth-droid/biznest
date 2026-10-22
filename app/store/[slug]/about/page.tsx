@@ -8,8 +8,8 @@ import { renderUniversalSectionPage } from "@/components/storefront/universal-se
 
 export default async function AboutPage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
-  const s = await prisma.store.findUnique({ where: { slug }, select: { businessType: true, template: { select: { name: true } } } });
-  if (isHotelStore({ storeBusinessType: s?.businessType, templateName: s?.template?.name })) {
+  const s = await prisma.store.findUnique({ where: { slug }, select: { businessType: true, business: { select: { category: true } }, template: { select: { name: true } } } });
+  if (isHotelStore({ businessCategory: s?.business?.category, storeBusinessType: s?.businessType, templateName: s?.template?.name })) {
     const raw = await prisma.store.findUniqueOrThrow({
       where: { slug },
       select: { id: true, slug: true, name: true, logoUrl: true, bannerUrl: true, storyImage: true, contactPhone: true, contactEmail: true, socialLinks: true, business: { select: { description: true, city: true, state: true, phone: true, email: true } } }

@@ -1,4 +1,5 @@
 "use client";
+import { isRestaurantBusiness } from "@/lib/business-identity";
 
 import { useMemo, useState } from "react";
 import { createCategory, updateCategory, deleteCategory, setCategoryActive, reorderCategory } from "@/lib/actions/category";
@@ -387,7 +388,7 @@ function CategoryFormModal({
             <input
               value={name}
               onChange={(e) => setName(e.target.value)}
-              placeholder={businessCategory === "Restaurant" ? "e.g. Main Courses, Desserts" : `e.g. ${terminology.catalogSingular}`}
+              placeholder={isRestaurantBusiness(businessCategory) ? "e.g. Main Courses, Desserts" : `e.g. ${terminology.catalogSingular}`}
               className="h-10 w-full rounded-lg border bg-background px-3 text-sm"
             />
           </div>

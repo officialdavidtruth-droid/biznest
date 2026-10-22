@@ -1,3 +1,4 @@
+import { getCanonicalBusinessType } from "@/lib/business-identity";
 // Route: /store/[slug]/admin/bookings
 import { listBookings, listReservationUnits } from "@/lib/actions/booking";
 import { BookingsTable } from "@/components/dashboard/bookings-table";
@@ -8,7 +9,7 @@ import { getBusinessTerminology } from "@/lib/business-terminology";
 
 export default async function BookingsPage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
-  const store = await prisma.store.findUnique({ where: { slug }, select: { businessType: true } });
+  const store = await prisma.store.findUnique({ where: { slug }, select: { businessType: true, business: { select: { category: true } } } });
   const bookings = await listBookings(slug);
 
   // Unit-based niches (restaurant tables, salon chairs, etc.) get the richer
@@ -19,7 +20,7 @@ export default async function BookingsPage({ params }: { params: Promise<{ slug:
   const hasUnits = bookings.some((b) => b.unitId || b.unit) || (await listReservationUnits(slug)).length > 0;
 
   if (hasUnits) {
-    const terminology = getBusinessTerminology(store?.businessType);
+    const terminology = getBusinessTerminology(getCanonicalBusinessType({ businessCategory: store?.business?.category, storeBusinessType: store?.businessType }));
     const units = await listReservationUnits(slug);
     return (
       <div className="bn-admin-page">

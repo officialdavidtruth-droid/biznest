@@ -1,3 +1,4 @@
+import { getCanonicalBusinessType } from "@/lib/business-identity";
 // Route: /store/[slug]/admin/bookings/[id]/edit
 import { notFound } from "next/navigation";
 import { prisma } from "@/lib/prisma";
@@ -11,12 +12,12 @@ export default async function EditReservationPage({ params }: { params: Promise<
   const [result, units, store] = await Promise.all([
     getReservation(slug, id),
     listReservationUnits(slug),
-    prisma.store.findUnique({ where: { slug }, select: { businessType: true, timezone: true } }),
+    prisma.store.findUnique({ where: { slug }, select: { businessType: true, business: { select: { category: true } }, timezone: true } }),
   ]);
   if (!result) notFound();
 
   const { booking: b, totalReservations } = result;
-  const terminology = getBusinessTerminology(store?.businessType);
+  const terminology = getBusinessTerminology(getCanonicalBusinessType({ businessCategory: store?.business?.category, storeBusinessType: store?.businessType }));
   const addons = Array.isArray(b.addons)
     ? (b.addons as unknown[]).flatMap((a) => {
         const o = a as { label?: unknown; price?: unknown };

@@ -1,3 +1,4 @@
+import { getCanonicalBusinessType } from "@/lib/business-identity";
 // Route: /store/[slug]/admin/menu-addons
 import { listProducts } from "@/lib/actions/product";
 import { listAddonGroupsForProduct } from "@/lib/actions/addon";
@@ -9,9 +10,9 @@ export default async function MenuAddonsPage({ params }: { params: Promise<{ slu
   const { slug } = await params;
   const [products, store] = await Promise.all([
     listProducts(slug),
-    prisma.store.findUnique({ where: { slug }, select: { businessType: true } }),
+    prisma.store.findUnique({ where: { slug }, select: { businessType: true, business: { select: { category: true } } } }),
   ]);
-  const terminology = getBusinessTerminology(store?.businessType);
+  const terminology = getBusinessTerminology(getCanonicalBusinessType({ businessCategory: store?.business?.category, storeBusinessType: store?.businessType }));
 
   const groupsByProduct: Record<string, Awaited<ReturnType<typeof listAddonGroupsForProduct>>> = {};
   for (const p of products) {

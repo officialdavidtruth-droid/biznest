@@ -1,3 +1,4 @@
+import { getCanonicalBusinessType } from "@/lib/business-identity";
 // Route: /store/[slug]/admin/customize
 import { prisma } from "@/lib/prisma";
 import { notFound, redirect } from "next/navigation";
@@ -38,7 +39,7 @@ export default async function CustomizePage({ params }: { params: Promise<{ slug
   const heroImage = store.bannerUrl || store.template?.previewUrl || null;
   const storyImage = store.storyImage || store.bannerUrl || store.template?.previewUrl || null;
   const savedBuilder = readBuilderConfig((overrides as { builder?: unknown } | null)?.builder);
-  const initialBuilder: BuilderConfig = savedBuilder ?? defaultBuilderConfig(store.name, store.business.description, heroImage, store.businessType, { sellsProducts: store.business.sellsProducts, offersServices: store.business.offersServices });
+  const initialBuilder: BuilderConfig = savedBuilder ?? defaultBuilderConfig(store.name, store.business.description, heroImage, getCanonicalBusinessType({ businessCategory: store.business?.category, storeBusinessType: store.businessType }), { sellsProducts: store.business.sellsProducts, offersServices: store.business.offersServices });
 
   return (
     <CustomizerClient
@@ -54,7 +55,7 @@ export default async function CustomizePage({ params }: { params: Promise<{ slug
       storyOverrides={(store.storyOverrides as StoryOverrides | null) ?? {}}
       storyDescription={store.business.description ?? null}
       initialBuilder={initialBuilder}
-      businessCategory={store.businessType}
+      businessCategory={getCanonicalBusinessType({ businessCategory: store.business?.category, storeBusinessType: store.businessType })}
       sellsProducts={store.business.sellsProducts}
       offersServices={store.business.offersServices}
       seoTitle={store.seoTitle ?? store.name}
