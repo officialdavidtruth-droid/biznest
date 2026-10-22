@@ -1,4 +1,5 @@
 import crypto from "crypto";
+import { parsePaystackChannels, type PaystackChannel } from "@/lib/payments/paystack-channels";
 
 const PAYSTACK_BASE = "https://api.paystack.co";
 
@@ -18,6 +19,12 @@ type InitializeParams = {
    * isn't something we want to leave implicit for a marketplace split.
    */
   feeBearer?: "account" | "subaccount";
+  /**
+   * Restrict (never extend) the methods shown at checkout. When omitted we use
+   * the PAYSTACK_CHANNELS env var if set, and otherwise send nothing so the
+   * Paystack dashboard preferences decide, as before.
+   */
+  channels?: PaystackChannel[];
 };
 
 type InitializeResponse = {
@@ -45,6 +52,8 @@ export async function initializePaystackTransaction(params: InitializeParams): P
     return { status: false, message: "Payments aren't configured yet (missing PAYSTACK_SECRET_KEY)." };
   }
 
+  const channels = params.channels?.length ? params.channels : parsePaystackChannels(process.env.PAYSTACK_CHANNELS);
+
   const res = await fetch(`${PAYSTACK_BASE}/transaction/initialize`, {
     method: "POST",
     headers: {
@@ -56,6 +65,7 @@ export async function initializePaystackTransaction(params: InitializeParams): P
       amount: params.amountKobo,
       reference: params.reference,
       callback_url: params.callbackUrl,
+      ...(channels ? { channels } : {}),
       ...(params.subaccountCode
         ? {
             subaccount: params.subaccountCode,
