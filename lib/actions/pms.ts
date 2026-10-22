@@ -10,6 +10,7 @@ import { chargeCustomer, getActiveGateway } from "@/lib/payments/gateway";
 import { createPendingPayment, markPaymentFailed } from "@/lib/payments/pending";
 import type { ActionResult } from "@/types/actions";
 import crypto from "crypto";
+import { findChannelBlockOverlap } from "@/lib/channels/sync";
 
 const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? "https://biznest.vercel.app";
 
@@ -223,6 +224,10 @@ export async function createReservation(slug:string,input:{guestId:string;roomId
 
   const overlap=await tx.propertyReservation.findFirst({where:{storeId:a.store.id,roomId:room.id,status:{in:["PENDING","CONFIRMED","CHECKED_IN"]},checkIn:{lt:checkOut},checkOut:{gt:checkIn}}});
   if(overlap)return{success:false as const,error:"That room is already reserved for part of those dates."};
+
+  // Dates already sold on a connected OTA (Booking.com, Airbnb, ...) are just as taken.
+  const channelOverlap=await findChannelBlockOverlap(tx,room.id,checkIn,checkOut);
+  if(channelOverlap)return{success:false as const,error:`That room is already booked on ${channelOverlap.connection?.provider?.replace(/_/g," ").toLowerCase()??"a connected channel"} for part of those dates.`};
 
   const row=await tx.propertyReservation.create({data:{storeId:a.store.id,guestId:guest.id,roomId:room.id,checkIn,checkOut,status:"CONFIRMED",notes:input.notes?.trim()||null}});
   if(room.status==="AVAILABLE") await tx.propertyRoom.update({where:{id:room.id},data:{status:"RESERVED"}});

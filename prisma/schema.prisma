@@ -570,6 +570,8 @@ model PropertyRoom {
   updatedAt   DateTime   @updatedAt
   reservations PropertyReservation[]
   accessCards RoomAccessCard[]
+  channelConnections ChannelConnection[]
+  channelBlocks ChannelBlock[]
   @@unique([storeId, name])
   @@index([storeId, status])
 }
@@ -883,6 +885,9 @@ model Store {
   menuItems     StoreMenuItem[]
   propertyGuests PropertyGuest[]
   propertyRooms PropertyRoom[]
+  channelConnections ChannelConnection[]
+  channelBlocks ChannelBlock[]
+  channelManagerRequests ChannelManagerRequest[]
   propertyReservations PropertyReservation[]
   propertyFolioCharges PropertyFolioCharge[]
   orders        Order[]
@@ -3917,4 +3922,81 @@ model StoreMenuItem {
 
   @@index([storeId, location, sortOrder])
   @@index([parentId])
+}
+
+// ----------------------------------------------------------------------------
+// CHANNEL SYNC (OTA calendars via iCal) + channel-manager connection requests
+// ----------------------------------------------------------------------------
+
+/// One room <-> one OTA listing. Two directions:
+///  - export: a secret .ics URL (exportToken) the OTA imports to learn which
+///    dates are taken here (direct reservations + blocks from OTHER channels);
+///  - import: the OTA's own .ics URL (importUrl) that we poll to learn which
+///    dates were sold there, stored as ChannelBlock rows.
+model ChannelConnection {
+  id          String   @id @default(cuid())
+  storeId     String
+  store       Store    @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  roomId      String
+  room        PropertyRoom @relation(fields: [roomId], references: [id], onDelete: Cascade)
+
+  provider    String   // BOOKING_COM | AIRBNB | EXPEDIA | VRBO | AGODA | TRIPADVISOR | OTHER
+  label       String?
+  importUrl   String?
+  exportToken String   @unique
+  isActive    Boolean  @default(true)
+
+  lastSyncAt      DateTime?
+  lastSyncStatus  String?   // OK | ERROR
+  lastSyncMessage String?
+  lastBlockCount  Int       @default(0)
+
+  blocks      ChannelBlock[]
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([storeId])
+  @@index([roomId])
+  @@index([isActive, lastSyncAt])
+}
+
+/// A date range an OTA reports as sold/unavailable for a room.
+/// startDate inclusive, endDate exclusive (iCal all-day DTEND semantics).
+model ChannelBlock {
+  id           String   @id @default(cuid())
+  storeId      String
+  store        Store    @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  roomId       String
+  room         PropertyRoom @relation(fields: [roomId], references: [id], onDelete: Cascade)
+  connectionId String
+  connection   ChannelConnection @relation(fields: [connectionId], references: [id], onDelete: Cascade)
+
+  uid          String
+  startDate    DateTime
+  endDate      DateTime
+  summary      String?
+  createdAt    DateTime @default(now())
+
+  @@unique([connectionId, uid])
+  @@index([roomId, startDate, endDate])
+  @@index([storeId])
+}
+
+/// A hotel asking BizNest to connect it to a certified channel manager
+/// (e.g. RateTiger). These need a partner certification and credentials on the
+/// provider's side, so this records the request and its status for staff.
+model ChannelManagerRequest {
+  id           String   @id @default(cuid())
+  storeId      String
+  store        Store    @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  provider     String   // RATETIGER | OTHER
+  propertyCode String?
+  contactEmail String
+  notes        String?
+  status       String   @default("REQUESTED") // REQUESTED | IN_PROGRESS | CONNECTED | DECLINED
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@index([storeId])
+  @@index([status])
 }

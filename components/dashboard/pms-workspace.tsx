@@ -16,6 +16,7 @@ import {
   Download,
   Hotel,
   KeyRound,
+  Link2,
   LayoutDashboard,
   LogOut,
   Menu,
@@ -31,6 +32,7 @@ import {
   X,
 } from "lucide-react";
 import { toast } from "sonner";
+import { PmsChannels } from "@/components/dashboard/pms-channels";
 import {
   cancelReservation,
   checkInReservation,
@@ -56,9 +58,10 @@ type PmsWorkspaceProps = {
   guests: any[];
   reservations: any[];
   cards: any[];
+  channels?: { connections: import("@/lib/actions/channels").ChannelConnectionView[]; requests: import("@/lib/actions/channels").ChannelManagerRequestView[] } | null;
 };
 
-type Tab = "dashboard" | "reservations" | "calendar" | "frontdesk" | "rooms" | "housekeeping" | "guests" | "billing" | "cards" | "reports" | "maintenance" | "settings";
+type Tab = "dashboard" | "reservations" | "calendar" | "frontdesk" | "rooms" | "housekeeping" | "guests" | "billing" | "cards" | "reports" | "maintenance" | "settings" | "channels";
 
 const nav: Array<{ id: Tab; label: string; icon: any }> = [
   { id: "dashboard", label: "Dashboard", icon: LayoutDashboard },
@@ -70,6 +73,7 @@ const nav: Array<{ id: Tab; label: string; icon: any }> = [
   { id: "guests", label: "Guests", icon: Users },
   { id: "billing", label: "Billing & Payments", icon: CreditCard },
   { id: "cards", label: "Room Key Cards", icon: KeyRound },
+  { id: "channels", label: "Channels & OTAs", icon: Link2 },
 ];
 
 function money(value: number) {
@@ -96,7 +100,7 @@ function statusClass(value: string) {
   return "bg-[color-mix(in_srgb,var(--bn-admin-surface)_5%,transparent)] text-white border-[color-mix(in_srgb,var(--bn-admin-border)_10%,transparent)]";
 }
 
-export function PmsWorkspace({ slug, storeName, rooms: initialRooms, guests: initialGuests, reservations: initialReservations, cards: initialCards }: PmsWorkspaceProps) {
+export function PmsWorkspace({ slug, storeName, rooms: initialRooms, guests: initialGuests, reservations: initialReservations, cards: initialCards, channels }: PmsWorkspaceProps) {
   const [tab, setTab] = useState<Tab>("dashboard");
   const [rooms, setRooms] = useState(initialRooms);
   const [guests, setGuests] = useState(initialGuests);
@@ -333,6 +337,7 @@ export function PmsWorkspace({ slug, storeName, rooms: initialRooms, guests: ini
           {tab === "cards" && <RoomCards rooms={rooms} guests={guests} reservations={reservations} cards={cards} onAdd={() => setShowCardForm(true)} onDeactivate={deactivateCard} />}
           {tab === "reports" && <Reports data={reportData} />}
           {tab === "maintenance" && <Maintenance rooms={rooms} maintenanceRooms={maintenanceRooms} notes={maintenanceNotes} onReport={() => setShowMaintenanceForm(true)} onResolve={resolveMaintenanceIssue} />}
+          {tab === "channels" && <PmsChannels slug={slug} rooms={rooms.map((r: any) => ({ id: r.id, name: r.name }))} connections={channels?.connections ?? []} requests={channels?.requests ?? []} />}
           {tab === "settings" && <PmsSettings slug={slug} storeName={storeName} rooms={rooms} onAddRoom={() => setShowRoomForm(true)} setTab={setTab} />}
         </main>
       </section>
