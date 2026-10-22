@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/prisma";
-import { verifyFlutterwaveTransaction, verifyFlutterwaveWebhookSignature } from "@/lib/payments/flutterwave";
+import { verifyFlutterwaveTransaction, verifyFlutterwaveTransfer, verifyFlutterwaveWebhookSignature } from "@/lib/payments/flutterwave";
+import { applyFlutterwaveTransferWebhookEvent } from "@/lib/payments/payout";
 import { settleInvoicePayment } from "@/lib/payments/settle-invoice";
 import { settleQuoteDeposit } from "@/lib/payments/settle-quote-deposit";
 import { emitWebhookEvent } from "@/lib/webhooks/dispatch";
@@ -30,11 +31,26 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Invalid signature" }, { status: 401 });
   }
 
-  let event: { event?: string; data?: { id?: number; tx_ref?: string } };
+  let event: { event?: string; data?: { id?: number; tx_ref?: string; reference?: string; status?: string; complete_message?: string } };
   try {
     event = JSON.parse(rawBody);
   } catch {
     return NextResponse.json({ error: "Invalid payload" }, { status: 400 });
+  }
+
+  // Vendor payout (Transfer API) outcome. Re-verify with Flutterwave before acting on it,
+  // same discipline as charges: the signed payload alone only proves who sent it.
+  if (event.event === "transfer.completed") {
+    const { id, reference } = event.data ?? {};
+    if (!id || !reference) return NextResponse.json({ received: true });
+    const verified = await verifyFlutterwaveTransfer(id);
+    if (verified.status !== "success" || !verified.data) {
+      // Couldn't confirm: answer 5xx so Flutterwave retries rather than dropping the outcome.
+      return NextResponse.json({ error: "Verification unavailable, retry" }, { status: 502 });
+    }
+    if (verified.data.reference !== reference) return NextResponse.json({ received: true });
+    await applyFlutterwaveTransferWebhookEvent(verified.data, event);
+    return NextResponse.json({ received: true });
   }
 
   if (event.event === "charge.completed" && event.data?.tx_ref && (event.data as { status?: string }).status !== "successful") {

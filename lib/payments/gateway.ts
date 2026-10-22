@@ -12,15 +12,15 @@ type ChargeParams = {
   reference: string;
   callbackUrl: string;
   customerName?: string;
-  /** Vendor payout split target — pass the field matching whichever gateway ends up active. */
-  paystackSubaccountCode?: string | null;
-  flutterwaveSubaccountId?: string | null;
   /**
-   * Who bears Paystack's transaction fee on a split charge. Defaults to
-   * "account" (platform absorbs it) if omitted, matching Paystack's own
-   * default — set explicitly per call site rather than relying on that
-   * default staying true forever. Only applies to the Paystack path.
+   * @deprecated Charges are never split any more: the customer pays the
+   * platform's gateway account and the vendor is paid by the Transfer API
+   * (lib/payments/payout.ts). These are ignored; call sites may drop them.
    */
+  paystackSubaccountCode?: string | null;
+  /** @deprecated See paystackSubaccountCode. Ignored. */
+  flutterwaveSubaccountId?: string | null;
+  /** @deprecated Only meaningful for split charges. Ignored. */
   feeBearer?: "account" | "subaccount";
   /**
    * Force a specific gateway instead of consulting the platform's "active
@@ -41,10 +41,8 @@ type ChargeResult =
       success: true;
       authorizationUrl: string;
       gateway: "PAYSTACK" | "FLUTTERWAVE";
-      /** Whichever subaccount code/id this charge was actually split to
-       *  (matching `gateway`), or null if it wasn't split -- callers
-       *  should persist this on the Payment row rather than re-deriving
-       *  it later from the store's possibly-since-changed connection. */
+      /** Always null now: charges are not split. Kept so existing callers that
+       *  persist it on the Payment row keep compiling. */
       splitSubaccountCode: string | null;
       inline?: {
         provider: "PAYSTACK" | "FLUTTERWAVE";
@@ -78,14 +76,13 @@ export async function chargeCustomer(params: ChargeParams): Promise<ChargeResult
         success: true,
         authorizationUrl: params.callbackUrl,
         gateway: "FLUTTERWAVE",
-        splitSubaccountCode: params.flutterwaveSubaccountId ?? null,
+        splitSubaccountCode: null,
         inline: {
           provider: "FLUTTERWAVE",
           publicKey,
           email: params.email,
           amountNaira: params.amountNaira,
           reference: params.reference,
-          subaccountId: params.flutterwaveSubaccountId ?? null,
         },
       };
     }
@@ -95,7 +92,6 @@ export async function chargeCustomer(params: ChargeParams): Promise<ChargeResult
       reference: params.reference,
       callbackUrl: params.callbackUrl,
       customerName: params.customerName,
-      subaccountId: params.flutterwaveSubaccountId,
     });
     if (init.status !== "success" || !init.data) {
       void logError("PAYMENTS", "Flutterwave charge init failed", { reference: params.reference, message: init.message });
@@ -105,28 +101,16 @@ export async function chargeCustomer(params: ChargeParams): Promise<ChargeResult
       success: true,
       authorizationUrl: init.data.link,
       gateway: "FLUTTERWAVE",
-      splitSubaccountCode: params.flutterwaveSubaccountId ?? null,
+      splitSubaccountCode: null,
     };
   }
 
-  const baseInit = {
+  const init = await initializePaystackTransaction({
     email: params.email,
     amountKobo: Math.round(params.amountNaira * 100),
     reference: params.reference,
     callbackUrl: params.callbackUrl,
-    feeBearer: params.feeBearer,
-  };
-  let usedSubaccount: string | null = params.paystackSubaccountCode ?? null;
-  let init = await initializePaystackTransaction({ ...baseInit, subaccountCode: usedSubaccount });
-  // A legacy subaccount that Paystack rejects (inactive, or created under the
-  // other test/live key mode) must never block a sale. Retry once unsplit: the
-  // money lands in the platform balance and the payout job (Transfer API) sends
-  // the store its share once it has a bank account connected.
-  if ((!init.status || !init.data) && usedSubaccount) {
-    void logError("PAYMENTS", "Paystack rejected legacy subaccount; retrying without split", { reference: params.reference, subaccount: usedSubaccount, message: init.message });
-    usedSubaccount = null;
-    init = await initializePaystackTransaction({ ...baseInit, subaccountCode: null });
-  }
+  });
   if (!init.status || !init.data) {
     void logError("PAYMENTS", "Paystack charge init failed", { reference: params.reference, message: init.message });
     return { success: false, error: init.message || "Couldn't start the Paystack payment." };
@@ -136,7 +120,7 @@ export async function chargeCustomer(params: ChargeParams): Promise<ChargeResult
     success: true,
     authorizationUrl: init.data.authorization_url,
     gateway: "PAYSTACK",
-    splitSubaccountCode: usedSubaccount,
+    splitSubaccountCode: null,
     ...(params.inline && publicKey
       ? {
           inline: {
@@ -146,7 +130,6 @@ export async function chargeCustomer(params: ChargeParams): Promise<ChargeResult
             amountNaira: params.amountNaira,
             accessCode: init.data.access_code,
             reference: init.data.reference || params.reference,
-            subaccountCode: usedSubaccount,
           },
         }
       : {}),

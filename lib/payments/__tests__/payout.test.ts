@@ -12,6 +12,9 @@ const m = vi.hoisted(() => ({
   balance: vi.fn(),
   transfer: vi.fn(),
   verify: vi.fn(),
+  flwTransfer: vi.fn(),
+  flwFind: vi.fn(),
+  flwBalance: vi.fn(),
 }));
 
 vi.mock("@/lib/prisma", () => ({
@@ -27,12 +30,17 @@ vi.mock("@/lib/payments/paystack", () => ({
   initiatePaystackTransfer: m.transfer,
   verifyPaystackTransfer: m.verify,
 }));
+vi.mock("@/lib/payments/flutterwave", () => ({
+  initiateFlutterwaveTransfer: m.flwTransfer,
+  findFlutterwaveTransferByReference: m.flwFind,
+  getFlutterwaveBalanceNaira: m.flwBalance,
+}));
 vi.mock("@/lib/observability/log", () => ({ logError: vi.fn(), logInfo: vi.fn() }));
 vi.mock("@prisma/client", () => ({
   Prisma: { PrismaClientKnownRequestError: class extends Error { code = "P2002"; } },
 }));
 
-import { applyTransferWebhookEvent, classifyTransferStatus, isTransferEvent, markPayoutPaidManually, payoutReference, processPayout, queuePayoutForPayment, retryDelayMs, retryPayout, toKobo } from "@/lib/payments/payout";
+import { applyFlutterwaveTransferWebhookEvent, applyTransferWebhookEvent, classifyTransferStatus, isTransferEvent, markPayoutPaidManually, payoutReference, processPayout, queuePayoutForPayment, retryDelayMs, retryPayout, toKobo } from "@/lib/payments/payout";
 
 const payment = {
   id: "pay1",
@@ -65,6 +73,7 @@ beforeEach(() => {
   m.payoutUpdate.mockResolvedValue({});
   m.payoutUpdateMany.mockResolvedValue({ count: 1 });
   m.balance.mockResolvedValue({ status: true, message: "ok", balanceKobo: 10_000_000 });
+  m.flwBalance.mockResolvedValue({ status: true, message: "ok", balanceNaira: 100_000 });
 });
 
 describe("helpers", () => {
@@ -83,6 +92,11 @@ describe("helpers", () => {
     expect(classifyTransferStatus("pending")).toBe("PROCESSING");
     expect(classifyTransferStatus("otp")).toBe("OTP");
     expect(classifyTransferStatus("reversed")).toBe("REVERSED");
+    // Flutterwave statuses
+    expect(classifyTransferStatus("SUCCESSFUL")).toBe("PAID");
+    expect(classifyTransferStatus("FAILED")).toBe("FAILED");
+    expect(classifyTransferStatus("NEW")).toBe("PROCESSING");
+    expect(classifyTransferStatus("PENDING")).toBe("PROCESSING");
   });
 });
 
@@ -114,10 +128,23 @@ describe("queuePayoutForPayment", () => {
     expect(m.payoutCreate).toHaveBeenCalledWith({ data: expect.objectContaining({ status: "QUEUED", lastError: expect.stringMatching(/bank account/) }) });
   });
 
-  it("flags Flutterwave payments for manual payout instead of pretending", async () => {
+  it("queues Flutterwave payments for an automated Flutterwave transfer", async () => {
     m.paymentFind.mockResolvedValue({ ...payment, provider: "FLUTTERWAVE" });
     await queuePayoutForPayment("o1");
-    expect(m.payoutCreate).toHaveBeenCalledWith({ data: expect.objectContaining({ status: "FAILED" }) });
+    expect(m.payoutCreate).toHaveBeenCalledWith({
+      data: expect.objectContaining({
+        provider: "FLUTTERWAVE",
+        status: "QUEUED",
+        amount: 12500,
+        destination: expect.objectContaining({ transferGateway: "FLUTTERWAVE" }),
+      }),
+    });
+  });
+
+  it("pins Paystack payments to a Paystack transfer", async () => {
+    m.paymentFind.mockResolvedValue(payment);
+    await queuePayoutForPayment("o1");
+    expect(m.payoutCreate).toHaveBeenCalledWith({ data: expect.objectContaining({ destination: expect.objectContaining({ transferGateway: "PAYSTACK" }) }) });
   });
 
   it("is idempotent when a webhook and a callback race", async () => {
@@ -245,8 +272,8 @@ describe("admin recovery", () => {
     expect(m.transfer).not.toHaveBeenCalled();
   });
 
-  it("won't retry a gateway that isn't automated", async () => {
-    m.payoutFind.mockResolvedValueOnce({ ...failed, provider: "FLUTTERWAVE" });
+  it("won't retry a payment method that isn't automated", async () => {
+    m.payoutFind.mockResolvedValueOnce({ ...failed, provider: "CASH" });
     expect((await retryPayout("p1")).ok).toBe(false);
     expect(m.verify).not.toHaveBeenCalled();
   });
@@ -255,6 +282,92 @@ describe("admin recovery", () => {
     expect((await markPayoutPaidManually("p1", "  ")).ok).toBe(false);
     expect(m.payoutUpdateMany).not.toHaveBeenCalled();
     expect((await markPayoutPaidManually("p1", "GTB ref 123")).ok).toBe(true);
+  });
+});
+
+describe("Flutterwave payouts", () => {
+  const flwPayout = (over: Record<string, unknown> = {}) =>
+    queued({ provider: "FLUTTERWAVE", destination: { transferGateway: "FLUTTERWAVE" }, ...over });
+
+  it("sends bank details + naira amount straight from the Flutterwave balance (no recipient step)", async () => {
+    m.payoutFind.mockResolvedValue(flwPayout());
+    m.flwTransfer.mockResolvedValue({ status: "success", message: "ok", data: { id: 9001, reference: "bnp-p1", status: "NEW", amount: 12500 } });
+    const r = await processPayout("p1");
+    expect(m.createRecipient).not.toHaveBeenCalled();
+    expect(m.transfer).not.toHaveBeenCalled();
+    expect(m.flwTransfer).toHaveBeenCalledWith(expect.objectContaining({ bankCode: "058", accountNumber: "0123456789", amountNaira: 12500, reference: "bnp-p1" }));
+    expect(m.payoutUpdate).toHaveBeenCalledWith({ where: { id: "p1" }, data: expect.objectContaining({ status: "PROCESSING", gatewayTransferId: "9001" }) });
+    expect(r.state).toBe("PROCESSING");
+  });
+
+  it("records an instantly successful transfer as PAID", async () => {
+    m.payoutFind.mockResolvedValue(flwPayout());
+    m.flwTransfer.mockResolvedValue({ status: "success", message: "ok", data: { id: 9002, reference: "bnp-p1", status: "SUCCESSFUL", amount: 12500 } });
+    expect((await processPayout("p1")).state).toBe("PAID");
+  });
+
+  it("checks the Flutterwave balance, not Paystack's, and waits when it is short", async () => {
+    m.payoutFind.mockResolvedValue(flwPayout());
+    m.flwBalance.mockResolvedValue({ status: true, message: "ok", balanceNaira: 10 });
+    const r = await processPayout("p1");
+    expect(m.balance).not.toHaveBeenCalled();
+    expect(m.flwTransfer).not.toHaveBeenCalled();
+    expect(r.state).toBe("QUEUED");
+  });
+
+  it("never double-sends: a retry looks the reference up on Flutterwave first (exact match only)", async () => {
+    m.payoutFind.mockResolvedValue(flwPayout({ attempts: 1 }));
+    m.flwFind.mockResolvedValue({ status: "success", message: "ok", data: [{ id: 1, reference: "someone-else", status: "FAILED", amount: 1 }, { id: 9003, reference: "bnp-p1", status: "SUCCESSFUL", amount: 12500 }] });
+    const r = await processPayout("p1");
+    expect(m.flwTransfer).not.toHaveBeenCalled();
+    expect(r.state).toBe("PAID");
+  });
+
+  it("adopts the existing transfer when Flutterwave rejects a duplicate reference", async () => {
+    m.payoutFind.mockResolvedValue(flwPayout());
+    m.flwTransfer.mockResolvedValue({ status: "error", message: "Duplicate reference" });
+    m.flwFind.mockResolvedValue({ status: "success", message: "ok", data: [{ id: 9004, reference: "bnp-p1", status: "PENDING", amount: 12500 }] });
+    expect((await processPayout("p1")).state).toBe("PROCESSING");
+  });
+
+  it("keeps the payout queued (not failed) when Flutterwave rejects the server IP", async () => {
+    m.payoutFind.mockResolvedValue(flwPayout());
+    m.flwTransfer.mockResolvedValue({ status: "error", message: "Your IP address is not whitelisted" });
+    const r = await processPayout("p1");
+    expect(r.state).toBe("QUEUED");
+    expect(m.payoutUpdate).toHaveBeenCalledWith({ where: { id: "p1" }, data: expect.objectContaining({ status: "QUEUED", attempts: { decrement: 1 } }) });
+  });
+
+  it("does not resend a stuck payout when Flutterwave can't be reached (unknown state)", async () => {
+    m.payoutFind.mockResolvedValue(flwPayout({ status: "PROCESSING", updatedAt: new Date(Date.now() - 3_600_000) }));
+    m.flwFind.mockResolvedValue({ status: "error", message: "Network error", data: [] });
+    const r = await processPayout("p1");
+    expect(r.state).toBe("SKIPPED");
+    expect(m.flwTransfer).not.toHaveBeenCalled();
+  });
+
+  it("retryPayout resends a failed Flutterwave transfer only after Flutterwave confirms it failed", async () => {
+    m.payoutFind.mockResolvedValueOnce({ id: "p1", status: "FAILED", provider: "FLUTTERWAVE", reference: "bnp-p1", destination: { transferGateway: "FLUTTERWAVE" } });
+    m.flwFind.mockResolvedValue({ status: "success", message: "ok", data: [{ id: 5, reference: "bnp-p1", status: "FAILED", amount: 12500 }] });
+    m.payoutFind.mockResolvedValue(flwPayout());
+    m.flwTransfer.mockResolvedValue({ status: "success", message: "ok", data: { id: 6, reference: "bnp-p1-rx", status: "NEW", amount: 12500 } });
+    const r = await retryPayout("p1");
+    expect(r.ok).toBe(true);
+    expect(m.verify).not.toHaveBeenCalled();
+    expect(m.payoutUpdate).toHaveBeenCalledWith({ where: { id: "p1" }, data: expect.objectContaining({ status: "QUEUED", reference: expect.stringMatching(/^bnp-p1-r/) }) });
+  });
+
+  it("maps transfer.completed onto the same safe transition rules", async () => {
+    expect(await applyFlutterwaveTransferWebhookEvent({ id: 7, reference: "bnp-p1", status: "SUCCESSFUL" }, {})).toBe(true);
+    expect(m.payoutUpdateMany.mock.calls[0][0].data).toEqual(expect.objectContaining({ status: "PAID", gatewayTransferId: "7" }));
+    m.payoutUpdateMany.mockClear();
+    await applyFlutterwaveTransferWebhookEvent({ id: 7, reference: "bnp-p1", status: "FAILED", complete_message: "Account closed" }, {});
+    expect(m.payoutUpdateMany.mock.calls[0][0]).toEqual(expect.objectContaining({ where: { reference: "bnp-p1", status: { in: ["QUEUED", "PROCESSING"] } } }));
+  });
+
+  it("ignores non-final transfer.completed statuses", async () => {
+    expect(await applyFlutterwaveTransferWebhookEvent({ id: 7, reference: "bnp-p1", status: "PENDING" }, {})).toBe(false);
+    expect(m.payoutUpdateMany).not.toHaveBeenCalled();
   });
 });
 

@@ -2,13 +2,15 @@ import "server-only";
 import { randomUUID } from "node:crypto";
 import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
+import type { PaystackTransferStatus } from "@/lib/payments/paystack";
 import {
   createPaystackTransferRecipient,
-  getPaystackBalanceKobo,
-  initiatePaystackTransfer,
-  verifyPaystackTransfer,
-  type PaystackTransferStatus,
-} from "@/lib/payments/paystack";
+  gatewayForPayout,
+  getGatewayBalanceKobo,
+  lookupGatewayTransfer,
+  sendGatewayTransfer,
+  type TransferGateway,
+} from "@/lib/payments/payout-gateway";
 import { logError, logInfo } from "@/lib/observability/log";
 
 /**
@@ -17,7 +19,8 @@ import { logError, logInfo } from "@/lib/observability/log";
  * Customers pay the platform's gateway account; as soon as a payment is
  * verified we queue ONE Payout for it (Payout.paymentId is unique, so a
  * webhook + callback race can never create two) and push the store's money to
- * its bank account with the Paystack Transfer API. Stores receive the full
+ * its bank account with the paying gateway's Transfer API (Paystack or
+ * Flutterwave, see payout-gateway.ts). Stores receive the full
  * amount the customer paid minus Order.commission, which is 0 (BizNest earns
  * from subscription plans, not from sales -- see lib/constants/commission.ts).
  *
@@ -35,7 +38,7 @@ import { logError, logInfo } from "@/lib/observability/log";
  *
  * Only payments made through a gateway are paid out. Payments that already
  * carry a split subaccount (legacy stores) were settled to the vendor by
- * Paystack itself and are skipped.
+ * the gateway itself and are skipped. New charges are never split.
  */
 
 const PAYOUT_PURPOSES = ["ORDER", "SERVICE_BOOKING", "PMS_RESERVATION", "INVOICE", "QUOTE_DEPOSIT"] as const;
@@ -61,8 +64,10 @@ export function toKobo(naira: number): number {
 type Outcome = "PAID" | "PROCESSING" | "FAILED" | "REVERSED" | "OTP";
 
 export function classifyTransferStatus(status: PaystackTransferStatus | string | undefined): Outcome {
-  switch (status) {
+  // Paystack reports lowercase ("success"), Flutterwave uppercase ("SUCCESSFUL").
+  switch (typeof status === "string" ? status.toLowerCase() : status) {
     case "success":
+    case "successful":
       return "PAID";
     case "failed":
       return "FAILED";
@@ -71,13 +76,25 @@ export function classifyTransferStatus(status: PaystackTransferStatus | string |
     case "otp":
       return "OTP";
     default:
-      return "PROCESSING"; // pending / received / queued: the webhook finalises it
+      return "PROCESSING"; // pending / received / queued / new: the webhook finalises it
   }
 }
 
 function roundMoney(n: number) {
   return Math.round(n * 100) / 100;
 }
+
+/** Wallet payouts follow the platform's active gateway. Falls back to Paystack if the setting can't be read. */
+async function activeTransferGateway(): Promise<TransferGateway> {
+  try {
+    const { getActiveGateway } = await import("@/lib/actions/site-settings");
+    return (await getActiveGateway()) === "FLUTTERWAVE" ? "FLUTTERWAVE" : "PAYSTACK";
+  } catch {
+    return "PAYSTACK";
+  }
+}
+
+const gatewayLabel = (g: TransferGateway) => (g === "FLUTTERWAVE" ? "Flutterwave" : "Paystack");
 
 /* -------------------------------------------------------------------------- */
 /* QUEUE                                                                       */
@@ -105,12 +122,13 @@ export async function queuePayoutForPayment(reference: string): Promise<{ payout
   const hasAccount = Boolean(payment.store.payoutBankCode && payment.store.payoutAccountNumber);
   const details = (payment.store.payoutDetails ?? null) as { bankName?: string; accountName?: string; maskedAccountNumber?: string } | null;
 
-  // Flutterwave collections sit in the Flutterwave balance; we only automate Paystack transfers.
-  // Wallet payments are different: the customer's money already reached the platform when they
-  // funded the wallet, so the vendor is paid from the platform's Paystack balance like any other
-  // payout. (If that funding went through Flutterwave the balance may be short; the payout then
-  // simply stays QUEUED and retries until the money is there.)
-  const unsupported = payment.provider !== "PAYSTACK" && payment.provider !== "WALLET";
+  // Paystack and Flutterwave collections are paid out from that same gateway's balance.
+  // Wallet payments have no single source gateway: the customer's money reached the platform
+  // when they funded the wallet, so the vendor is paid from whichever gateway is active now
+  // (if that balance is short the payout simply stays QUEUED and retries until the money is there).
+  const unsupported = payment.provider !== "PAYSTACK" && payment.provider !== "FLUTTERWAVE" && payment.provider !== "WALLET";
+  const transferGateway: TransferGateway =
+    payment.provider === "FLUTTERWAVE" ? "FLUTTERWAVE" : payment.provider === "WALLET" ? await activeTransferGateway() : "PAYSTACK";
 
   // Id is generated up front so the transfer reference can be derived from it in the same insert.
   const payoutId = randomUUID().replace(/-/g, "");
@@ -126,12 +144,13 @@ export async function queuePayoutForPayment(reference: string): Promise<{ payout
         reference: payoutReference(payoutId),
         status: unsupported ? "FAILED" : "QUEUED",
         lastError: unsupported
-          ? "Payouts for this gateway are not automated yet. Pay this store manually."
+          ? "Payouts for this payment method are not automated. Pay this store manually."
           : hasAccount
             ? null
             : "Store has not connected a bank account yet.",
         nextAttemptAt: unsupported ? null : hasAccount ? null : new Date(Date.now() + NO_ACCOUNT_RETRY_MS),
-        destination: (details ?? undefined) as Prisma.InputJsonValue | undefined,
+        // transferGateway is pinned here so retries and lookups always hit the same gateway.
+        destination: { ...(details ?? {}), transferGateway } as Prisma.InputJsonValue,
       },
     });
     if (unsupported) {
@@ -219,9 +238,12 @@ export async function processPayout(
   // Sweep path: a transfer was sent but we never heard the outcome.
   if (payout.status === "PROCESSING") {
     if (Date.now() - payout.updatedAt.getTime() < STALE_PROCESSING_MS) return { state: "SKIPPED", message: "in flight" };
-    const check = await verifyPaystackTransfer(payout.reference);
-    if (check.status && check.data) return applyTransferResult(payout.id, check.data, check);
-    // Paystack has no such transfer, so nothing was sent: safe to try again.
+    const gateway = gatewayForPayout(payout.provider, payout.destination);
+    const check = await lookupGatewayTransfer(gateway, payout.reference);
+    if (check.found) return applyTransferResult(payout.id, check.data, check.raw);
+    // Only a positive "no such transfer" makes re-sending safe. An API error leaves it
+    // PROCESSING so the next sweep asks again instead of risking a double payment.
+    if (!check.notFound) return { state: "SKIPPED", message: `couldn't confirm with ${gatewayLabel(gateway)}: ${check.message || "no response"}` };
     await requeue(payout.id, 0, "Previous attempt never reached the gateway.");
     return { state: "QUEUED" };
   }
@@ -237,10 +259,13 @@ export async function processPayout(
   if (claimed.count === 0) return { state: "SKIPPED", message: "claimed elsewhere" };
 
   try {
-    // An earlier attempt may have reached Paystack even though we never saw the answer.
+    const gateway = gatewayForPayout(payout.provider, payout.destination);
+    const label = gatewayLabel(gateway);
+
+    // An earlier attempt may have reached the gateway even though we never saw the answer.
     if (payout.attempts > 0) {
-      const existing = await verifyPaystackTransfer(payout.reference);
-      if (existing.status && existing.data) return await applyTransferResult(payout.id, existing.data, existing);
+      const existing = await lookupGatewayTransfer(gateway, payout.reference);
+      if (existing.found) return await applyTransferResult(payout.id, existing.data, existing.raw);
     }
 
     const store = payout.store;
@@ -248,10 +273,11 @@ export async function processPayout(
       await requeue(payout.id, NO_ACCOUNT_RETRY_MS, "Store has not connected a bank account yet.", { refundAttempt: true });
       return { state: "QUEUED", message: "no bank account" };
     }
+    const details = (store.payoutDetails ?? null) as { accountName?: string } | null;
 
-    let recipientCode = store.paystackRecipientCode;
-    if (!recipientCode) {
-      const details = (store.payoutDetails ?? null) as { accountName?: string } | null;
+    // Paystack sends to a registered recipient; Flutterwave takes the bank details directly.
+    let recipientCode = store.paystackRecipientCode ?? undefined;
+    if (gateway === "PAYSTACK" && !recipientCode) {
       const created = await createPaystackTransferRecipient({
         name: details?.accountName ?? store.name,
         accountNumber: store.payoutAccountNumber,
@@ -269,29 +295,44 @@ export async function processPayout(
     }
 
     const amountKobo = toKobo(Number(payout.amount));
-    const balanceKobo = ctx.balanceKobo !== undefined ? ctx.balanceKobo : (await getPaystackBalanceKobo()).balanceKobo ?? null;
+    const balanceKobo = ctx.balanceKobo !== undefined ? ctx.balanceKobo : await getGatewayBalanceKobo(gateway);
     if (balanceKobo !== null && balanceKobo !== undefined && balanceKobo < amountKobo) {
-      await requeue(payout.id, BALANCE_RETRY_MS, "Waiting for the payment to settle into the platform's Paystack balance.", { refundAttempt: true });
+      await requeue(payout.id, BALANCE_RETRY_MS, `Waiting for the payment to settle into the platform's ${label} balance.`, { refundAttempt: true });
       return { state: "QUEUED", message: "insufficient balance" };
     }
 
-    const sent = await initiatePaystackTransfer({
+    const sent = await sendGatewayTransfer(gateway, {
       amountKobo,
-      recipientCode,
       reference: payout.reference,
-      reason: `BizNest payout for ${store.name}`,
+      narration: `BizNest payout for ${store.name}`,
+      bankCode: store.payoutBankCode,
+      accountNumber: store.payoutAccountNumber,
+      beneficiaryName: details?.accountName,
+      recipientCode,
     });
 
-    if (!sent.status || !sent.data) {
-      const message = sent.message || "Transfer was not accepted.";
-      if (/balance/i.test(message)) {
+    if (!sent.ok) {
+      const message = sent.message;
+      if (/balance|insufficient/i.test(message)) {
         await requeue(payout.id, BALANCE_RETRY_MS, message, { refundAttempt: true });
         return { state: "QUEUED", message };
       }
-      // A cached recipient code is only valid under the Paystack key mode that
+      // The gateway says it has seen this reference: an earlier attempt got through. Record
+      // that transfer's real state instead of failing or re-sending.
+      if (gateway === "FLUTTERWAVE" && /duplicate|already|reference/i.test(message)) {
+        const existing = await lookupGatewayTransfer(gateway, payout.reference);
+        if (existing.found) return await applyTransferResult(payout.id, existing.data, existing.raw);
+      }
+      // Flutterwave only lets whitelisted server IPs call the Transfer API in live mode.
+      if (gateway === "FLUTTERWAVE" && /whitelist|ip address/i.test(message)) {
+        await requeue(payout.id, BALANCE_RETRY_MS, message, { refundAttempt: true });
+        void logError("PAYMENTS", "Flutterwave rejected the transfer: server IP is not whitelisted", { payoutId: payout.id, message });
+        return { state: "QUEUED", message };
+      }
+      // A cached Paystack recipient code is only valid under the key mode that
       // created it. After a test<->live switch (or a deleted recipient) Paystack
       // rejects it: drop it so the next attempt registers a fresh one.
-      if (/recipient/i.test(message)) {
+      if (gateway === "PAYSTACK" && /recipient/i.test(message)) {
         await prisma.store.update({ where: { id: store.id }, data: { paystackRecipientCode: null } });
         await requeue(payout.id, 0, message, { refundAttempt: true });
         void logError("PAYMENTS", "Paystack rejected cached transfer recipient; cleared for re-registration", { payoutId: payout.id, message });
@@ -306,7 +347,7 @@ export async function processPayout(
       return { state: "QUEUED", message };
     }
 
-    const applied = await applyTransferResult(payout.id, sent.data, sent);
+    const applied = await applyTransferResult(payout.id, sent.data, sent.raw);
     return { ...applied, spentKobo: applied.state === "PAID" || applied.state === "PROCESSING" ? amountKobo : 0 };
   } catch (err) {
     // Network error etc.: the transfer may or may not exist. The next attempt
@@ -340,23 +381,27 @@ export async function processDuePayouts(limit = 25): Promise<{ checked: number; 
     where: { status: "PROCESSING", updatedAt: { lt: new Date(now.getTime() - STALE_PROCESSING_MS) } },
     orderBy: { updatedAt: "asc" },
     take: limit,
-    select: { id: true },
+    select: { id: true, provider: true, destination: true },
   });
   const due = await prisma.payout.findMany({
     where: { status: "QUEUED", OR: [{ nextAttemptAt: null }, { nextAttemptAt: { lte: now } }] },
     orderBy: { createdAt: "asc" },
     take: limit,
-    select: { id: true },
+    select: { id: true, provider: true, destination: true },
   });
 
   const summary = { checked: stale.length + due.length, paid: 0, processing: 0, queued: 0, failed: 0 };
   if (summary.checked === 0) return summary;
 
-  let balanceKobo: number | null | undefined = (await getPaystackBalanceKobo()).balanceKobo ?? null;
+  // One balance read per gateway per sweep, decremented locally as transfers go out.
+  const balances: Partial<Record<TransferGateway, number | null>> = {};
 
-  for (const { id } of [...stale, ...due]) {
+  for (const { id, provider, destination } of [...stale, ...due]) {
+    const gateway = gatewayForPayout(provider, destination);
+    if (!(gateway in balances)) balances[gateway] = await getGatewayBalanceKobo(gateway).catch(() => null);
+    const balanceKobo = balances[gateway] ?? null;
     const result = await processPayout(id, { balanceKobo });
-    if (result.spentKobo && balanceKobo !== null && balanceKobo !== undefined) balanceKobo -= result.spentKobo;
+    if (result.spentKobo && balanceKobo !== null) balances[gateway] = balanceKobo - result.spentKobo;
     if (result.state === "PAID") summary.paid++;
     else if (result.state === "PROCESSING") summary.processing++;
     else if (result.state === "QUEUED") summary.queued++;
@@ -372,33 +417,35 @@ export async function processDuePayouts(limit = 25): Promise<{ checked: number; 
 /* ADMIN RECOVERY                                                              */
 /* -------------------------------------------------------------------------- */
 
-const RETRYABLE_PROVIDERS = ["PAYSTACK", "WALLET"];
+const RETRYABLE_PROVIDERS = ["PAYSTACK", "FLUTTERWAVE", "WALLET"];
 
 /**
  * Admin "Retry" for a FAILED / REVERSED payout. Never double pays: it first asks
- * Paystack about the existing reference. Only when Paystack confirms that transfer
+ * the gateway about the existing reference. Only when it confirms that transfer
  * failed/reversed, or has no record of it, does it issue a fresh reference and
  * requeue. A transfer that actually went through (or is still in flight) is
  * recorded as such instead.
  */
 export async function retryPayout(payoutId: string): Promise<{ ok: boolean; message: string }> {
-  const payout = await prisma.payout.findUnique({ where: { id: payoutId }, select: { id: true, status: true, provider: true, reference: true } });
+  const payout = await prisma.payout.findUnique({ where: { id: payoutId }, select: { id: true, status: true, provider: true, reference: true, destination: true } });
   if (!payout) return { ok: false, message: "Payout not found." };
   if (payout.status !== "FAILED" && payout.status !== "REVERSED") return { ok: false, message: `Only failed or reversed payouts can be retried (this one is ${payout.status.toLowerCase()}).` };
-  if (!RETRYABLE_PROVIDERS.includes(payout.provider)) return { ok: false, message: "This gateway's payouts aren't automated. Pay the store manually, then use \"Mark paid\"." };
+  if (!RETRYABLE_PROVIDERS.includes(payout.provider)) return { ok: false, message: "This payment method's payouts aren't automated. Pay the store manually, then use \"Mark paid\"." };
 
-  const check = await verifyPaystackTransfer(payout.reference);
-  if (check.status && check.data) {
+  const gateway = gatewayForPayout(payout.provider, payout.destination);
+  const label = gatewayLabel(gateway);
+  const check = await lookupGatewayTransfer(gateway, payout.reference);
+  if (check.found) {
     const state = classifyTransferStatus(check.data.status);
     if (state !== "FAILED" && state !== "REVERSED") {
-      await applyTransferResult(payout.id, check.data, check);
-      return { ok: false, message: state === "PAID" ? "Paystack shows this transfer already went through. Marked as paid." : "Paystack still has this transfer in flight; its status was refreshed." };
+      await applyTransferResult(payout.id, check.data, check.raw);
+      return { ok: false, message: state === "PAID" ? `${label} shows this transfer already went through. Marked as paid.` : `${label} still has this transfer in flight; its status was refreshed.` };
     }
-  } else if (!/not found/i.test(check.message ?? "")) {
-    return { ok: false, message: `Couldn't confirm the old transfer with Paystack (${check.message || "no response"}). Try again shortly.` };
+  } else if (!check.notFound) {
+    return { ok: false, message: `Couldn't confirm the old transfer with ${label} (${check.message || "no response"}). Try again shortly.` };
   }
 
-  // Confirmed not paid. A new reference is required: Paystack remembers the old one.
+  // Confirmed not paid. A new reference is required: the gateway remembers the old one.
   const reference = `${payoutReference(payout.id)}-r${Date.now().toString(36)}`;
   await prisma.payout.update({
     where: { id: payout.id },
@@ -489,4 +536,27 @@ export async function applyTransferWebhookEvent(
     void logError("PAYMENTS", `Payout ${rule.status.toLowerCase()} (webhook)`, { reference, reason: data?.reason });
   }
   return result.count > 0;
+}
+
+/**
+ * Applies a Flutterwave `transfer.completed` webhook. Flutterwave only sends
+ * this event for a finished transfer (SUCCESSFUL or FAILED), so it maps onto
+ * the same transition rules as Paystack's success/failed events. The caller
+ * must already have re-verified the transfer with Flutterwave's API.
+ */
+export async function applyFlutterwaveTransferWebhookEvent(
+  data: { id?: number | string; reference?: string; status?: string; complete_message?: string } | undefined,
+  raw: object
+): Promise<boolean> {
+  const outcome = classifyTransferStatus(data?.status);
+  if (outcome !== "PAID" && outcome !== "FAILED") return false; // NEW / PENDING: nothing final yet
+  return applyTransferWebhookEvent(
+    outcome === "PAID" ? "transfer.success" : "transfer.failed",
+    {
+      reference: data?.reference,
+      transfer_code: data?.id !== undefined ? String(data.id) : undefined,
+      reason: data?.complete_message,
+    },
+    raw
+  );
 }
