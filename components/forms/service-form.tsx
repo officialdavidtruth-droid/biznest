@@ -486,7 +486,7 @@ export function ServiceForm({
                 <label className="mb-1 block text-sm font-medium">Price ({watch("currency") || "NGN"}) <span className="text-destructive">*</span></label>
                 <div className="relative">
                   <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">₦</span>
-                  <input type="number" step="0.01" placeholder="e.g. 5,500" className="input pl-7" {...register("price")} />
+                  <input type="number" step="0.01" placeholder="e.g. 5,500" className="input pl-8" {...register("price")} />
                 </div>
                 {errors.price && <p className="mt-1 text-xs text-destructive">{errors.price.message}</p>}
               </div>
@@ -588,6 +588,12 @@ export function ServiceForm({
           font-size: 0.875rem;
           background: hsl(var(--background));
         }
+        /* .input sets shorthand padding and is injected after Tailwind, so it
+           overrides pl-*/pr-* utilities. Restore them with higher specificity
+           so prefix/suffix icons and the ₦ symbol don't overlap the text. */
+        .input.pl-8 { padding-left: 2rem; }
+        .input.pl-9 { padding-left: 2.25rem; }
+        .input.pr-12 { padding-right: 3rem; }
       `}</style>
     </form>
   );
