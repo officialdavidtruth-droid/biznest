@@ -287,7 +287,12 @@ describe("admin recovery", () => {
 
 describe("Flutterwave payouts", () => {
   const flwPayout = (over: Record<string, unknown> = {}) =>
-    queued({ provider: "FLUTTERWAVE", destination: { transferGateway: "FLUTTERWAVE" }, ...over });
+    queued({
+      provider: "FLUTTERWAVE",
+      destination: { transferGateway: "FLUTTERWAVE" },
+      store: { ...queued().store, payoutDetails: { provider: "FLUTTERWAVE", accountName: "Ada Stores" } },
+      ...over,
+    });
 
   it("sends bank details + naira amount straight from the Flutterwave balance (no recipient step)", async () => {
     m.payoutFind.mockResolvedValue(flwPayout());

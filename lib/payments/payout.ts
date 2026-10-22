@@ -3,6 +3,7 @@ import { randomUUID } from "node:crypto";
 import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import type { PaystackTransferStatus } from "@/lib/payments/paystack";
+import { resolveBankCodeForGateway } from "@/lib/payments/bank-codes";
 import {
   createPaystackTransferRecipient,
   gatewayForPayout,
@@ -275,13 +276,21 @@ export async function processPayout(
     }
     const details = (store.payoutDetails ?? null) as { accountName?: string } | null;
 
+    // Bank codes differ between gateways for some banks (Opay, Palmpay): use the one this gateway accepts.
+    const bank = await resolveBankCodeForGateway(store, gateway);
+    if ("error" in bank) {
+      await requeue(payout.id, NO_ACCOUNT_RETRY_MS, bank.error, { refundAttempt: true });
+      void logError("PAYMENTS", "Payout waiting on bank code", { payoutId: payout.id, message: bank.error });
+      return { state: "QUEUED", message: bank.error };
+    }
+
     // Paystack sends to a registered recipient; Flutterwave takes the bank details directly.
     let recipientCode = store.paystackRecipientCode ?? undefined;
     if (gateway === "PAYSTACK" && !recipientCode) {
       const created = await createPaystackTransferRecipient({
         name: details?.accountName ?? store.name,
         accountNumber: store.payoutAccountNumber,
-        bankCode: store.payoutBankCode,
+        bankCode: bank.code,
         description: `BizNest vendor payout for ${store.name}`,
       });
       if (!created.status || !created.data) {
@@ -305,7 +314,7 @@ export async function processPayout(
       amountKobo,
       reference: payout.reference,
       narration: `BizNest payout for ${store.name}`,
-      bankCode: store.payoutBankCode,
+      bankCode: bank.code,
       accountNumber: store.payoutAccountNumber,
       beneficiaryName: details?.accountName,
       recipientCode,

@@ -721,7 +721,8 @@ export async function connectPayoutAccount(
       // longer exists.) Gates in order/quote/invoice and the trust score
       // read this field.
       payoutVerifiedAt: now,
-      payoutDetails: { provider: input.provider, bankName: input.bankName, accountName, maskedAccountNumber: masked },
+      // codes records which gateway this code belongs to; the payout job derives the other gateway's code on demand.
+      payoutDetails: { provider: input.provider, bankName: input.bankName, accountName, maskedAccountNumber: masked, codes: { [input.provider]: input.bankCode } },
       // Connecting here moves the store onto transfers: drop any legacy
       // subaccount so new charges stop splitting to the old account.
       // Payments already made keep their own Payment.splitSubaccountCode,
