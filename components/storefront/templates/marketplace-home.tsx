@@ -1,4 +1,5 @@
 import type React from "react";
+import { whatsappLink } from "@/lib/utils/whatsapp-link";
 import { MenuLinks } from "@/components/storefront/store-menu";
 import { CartLink } from "@/components/storefront/cart-link";
 import { MARKETPLACE, MARKETPLACE_THEME } from "@/lib/template-themes";
@@ -286,7 +287,7 @@ export function MarketplaceStorefront({
           {(store.contactEmail || store.contactPhone || social.whatsapp) && (
             <div id="contact" style={{ border: `1px solid ${MARKETPLACE.border}`, padding: 10, fontSize: 9 }}>
               <h3 style={{ marginTop: 0, fontSize: 10 }}>Get in touch</h3>
-              {social.whatsapp && <a href={`https://wa.me/${social.whatsapp}`} style={{ display: "block", margin: "4px 0", color: MARKETPLACE.blue }}>WhatsApp</a>}
+              {whatsappLink(social.whatsapp) && <a href={whatsappLink(social.whatsapp)!} style={{ display: "block", margin: "4px 0", color: MARKETPLACE.blue }}>WhatsApp</a>}
               {store.contactPhone && <a href={`tel:${store.contactPhone}`} style={{ display: "block", margin: "4px 0", color: "inherit" }}>{store.contactPhone}</a>}
               {store.contactEmail && <a href={`mailto:${store.contactEmail}`} style={{ display: "block", margin: "4px 0", color: "inherit" }}>{store.contactEmail}</a>}
             </div>

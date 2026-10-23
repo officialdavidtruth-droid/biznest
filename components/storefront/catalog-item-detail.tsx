@@ -1,5 +1,6 @@
 "use client";
 import { isHotelBusiness } from "@/lib/business-identity";
+import { whatsappLink } from "@/lib/utils/whatsapp-link";
 
 import { formatMoney } from "@/lib/utils/format-money";
 import type React from "react";
@@ -116,7 +117,7 @@ export function CatalogItemDetail({ store, slug, service, reviewStats, theme, bu
   const mapsHref = address ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${store.name}, ${address}`)}` : "";
   const itemLabel = terminology.catalogSingular.toLowerCase();
   const enquiryText = `Hi ${store.name}, I'm interested in "${service.name}". Could you share details and next steps?`;
-  const whatsappHref = whatsappRaw ? `${socialHref("whatsapp", whatsappRaw)}${/^https?:/i.test(whatsappRaw) ? "" : `?text=${encodeURIComponent(enquiryText)}`}` : "";
+  const whatsappHref = whatsappLink(whatsappRaw, /^https?:/i.test(whatsappRaw) ? undefined : enquiryText) ?? "";
   const mailHref = email ? `mailto:${email}?subject=${encodeURIComponent(`Enquiry: ${service.name}`)}&body=${encodeURIComponent(enquiryText)}` : "";
   const quoteMode = resolveBusinessMode(businessCategory, { sellsProducts: store.sellsProducts, offersServices: store.offersServices });
   const offersQuote = !isHotel && (quoteMode === "service" || quoteMode === "hybrid");

@@ -1,4 +1,5 @@
 import type React from "react";
+import { whatsappLink } from "@/lib/utils/whatsapp-link";
 import { MenuLinks } from "@/components/storefront/store-menu";
 import { CartLink } from "@/components/storefront/cart-link";
 import { NOVA } from "@/lib/template-themes";
@@ -174,7 +175,7 @@ export function NovaStorefront({
             <p style={{ marginTop: 10, fontSize: 13, color: NOVA.gray, maxWidth: 320 }}>{store.business.description}</p>
           </div>
           <div style={{ display: "flex", flexDirection: "column", gap: 10, fontSize: 13 }}>
-            {social.whatsapp && <a href={`https://wa.me/${social.whatsapp}`} style={{ color: NOVA.cream, textDecoration: "none" }}>WhatsApp</a>}
+            {whatsappLink(social.whatsapp) && <a href={whatsappLink(social.whatsapp)!} style={{ color: NOVA.cream, textDecoration: "none" }}>WhatsApp</a>}
             {store.contactPhone && <a href={`tel:${store.contactPhone}`} style={{ color: NOVA.cream, textDecoration: "none" }}>{store.contactPhone}</a>}
             {store.contactEmail && <a href={`mailto:${store.contactEmail}`} style={{ color: NOVA.cream, textDecoration: "none" }}>{store.contactEmail}</a>}
           </div>

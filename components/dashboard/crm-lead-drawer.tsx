@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, useTransition } from "react";
+import { whatsappLink } from "@/lib/utils/whatsapp-link";
 import { CalendarClock, Mail, MessageCircle, Phone, StickyNote, Users, X, type LucideIcon } from "lucide-react";
 import { addCrmActivity, updateCrmLeadDetails } from "@/lib/actions/seo-crm";
 import { STAGES, initials, money, shortDate, sourceLabel, stageOf, type Lead, type LeadActivity } from "@/components/dashboard/crm-types";
@@ -110,7 +111,7 @@ export function LeadDrawer({
             <section aria-label="Contact" className="flex flex-wrap gap-2">
               {lead.email && <a href={`mailto:${lead.email}`} className="inline-flex items-center gap-1.5 rounded-lg border px-3 py-2 text-xs font-semibold hover:border-primary"><Mail className="h-3.5 w-3.5" />{lead.email}</a>}
               {lead.phone && <a href={`tel:${lead.phone}`} className="inline-flex items-center gap-1.5 rounded-lg border px-3 py-2 text-xs font-semibold hover:border-primary"><Phone className="h-3.5 w-3.5" />{lead.phone}</a>}
-              {lead.phone && <a href={`https://wa.me/${lead.phone.replace(/\D/g, "")}`} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1.5 rounded-lg border px-3 py-2 text-xs font-semibold hover:border-primary"><MessageCircle className="h-3.5 w-3.5" />WhatsApp</a>}
+              {whatsappLink(lead.phone) && <a href={whatsappLink(lead.phone)!} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1.5 rounded-lg border px-3 py-2 text-xs font-semibold hover:border-primary"><MessageCircle className="h-3.5 w-3.5" />WhatsApp</a>}
             </section>
           )}
 

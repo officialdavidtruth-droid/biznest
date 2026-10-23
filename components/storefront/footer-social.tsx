@@ -1,5 +1,6 @@
 import { Instagram, Facebook, Twitter, MessageCircle } from "lucide-react";
 import type { CSSProperties } from "react";
+import { whatsappLink } from "@/lib/utils/whatsapp-link";
 
 // Shared, data-driven social links for template footers. Templates used to
 // hardcode decorative icons ("f ◎ ♥ ▶") that linked nowhere and ignored what
@@ -16,7 +17,7 @@ const BASES: Record<string, string> = {
 
 export function socialHref(key: string, raw: string): string {
   const v = raw.trim();
-  if (key === "whatsapp") return /^https?:/i.test(v) ? v : `https://wa.me/${v.replace(/[^\d]/g, "")}`;
+  if (key === "whatsapp") return whatsappLink(v) ?? "";
   if (/^https?:\/\//i.test(v)) return v;
   return `${BASES[key] ?? "https://"}${v.replace(/^@/, "")}`;
 }
@@ -35,7 +36,8 @@ export function FooterSocial({
   const s = social ?? {};
   const items = (["instagram", "facebook", "twitter", "tiktok", "whatsapp"] as const)
     .filter((k) => typeof s[k] === "string" && (s[k] as string).trim())
-    .map((k) => ({ key: k, href: socialHref(k, s[k] as string) }));
+    .map((k) => ({ key: k, href: socialHref(k, s[k] as string) }))
+    .filter((i) => i.href);
   if (!items.length) return null;
   const icon = (k: string) =>
     k === "instagram" ? <Instagram size={iconSize} /> :

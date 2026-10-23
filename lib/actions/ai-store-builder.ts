@@ -108,7 +108,6 @@ export async function applyAiStoreDraft(slug: string, draft: StoreDraft): Promis
       storyOverrides: { heading: draft.aboutHeading, body: draft.aboutBody },
       seoTitle: draft.seoTitle.slice(0, 60),
       seoDescription: draft.seoDescription.slice(0, 160),
-      socialLinks: { whatsapp: draft.whatsappCta },
       sectionOverrides: { faq: parsedFaq, deliveryNote: draft.deliveryNote, socialBio: draft.socialBio, builderVersion: 1, builder, order: builder.sections.map((s) => s.id), hidden: [] },
     },
   });

@@ -1,6 +1,7 @@
 "use server";
 
 import { auth } from "@/lib/auth";
+import { whatsappLink } from "@/lib/utils/whatsapp-link";
 import { prisma } from "@/lib/prisma";
 import { chargeCustomer, resolveCheckoutGateway, paymentCallbackUrl } from "@/lib/payments/gateway";
 import { roundMoney } from "@/lib/utils/pricing";
@@ -173,7 +174,7 @@ export async function sendInvoice(
     const message = encodeURIComponent(
       `Invoice ${invoice.invoiceNo} from ${access.store.name}: ${invoice.currency} ${Number(invoice.total).toLocaleString()}. Pay here: ${viewUrl}`
     );
-    whatsappUrl = `https://wa.me/${phone.replace(/[^\d]/g, "")}?text=${message}`;
+    whatsappUrl = whatsappLink(phone, decodeURIComponent(message)) ?? undefined;
   }
 
   await prisma.invoice.update({

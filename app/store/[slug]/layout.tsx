@@ -10,6 +10,8 @@ import { resolveStoreTheme } from "@/lib/template-themes";
 import { PromoPopup } from "@/components/storefront/promo-popup";
 import { buildPromoPalette, isPromoLive, readPromoPopup } from "@/lib/storefront/promo-popup";
 import { getPluginEntitlement } from "@/lib/plugins";
+import { WhatsAppChatButton } from "@/components/storefront/whatsapp-chat-button";
+import { whatsappLink } from "@/lib/utils/whatsapp-link";
 
 // Every store page under /store/[slug] falls back to the root layout's
 // static "BizNest — Build, Sell, Grow" <title> and platform favicon unless
@@ -69,6 +71,7 @@ export default async function StoreLayout({
       // card is painted in whichever template this store uses.
       status: true,
       name: true,
+      socialLinks: true,
       storefrontConfig: true,
       themeColors: true,
       fontFamily: true,
@@ -129,6 +132,10 @@ export default async function StoreLayout({
       )
     : null;
 
+  // Opt-in floating chat button -> the vendor's own WhatsApp number.
+  const social = (exists?.socialLinks && typeof exists.socialLinks === "object" ? exists.socialLinks : {}) as Record<string, string | undefined>;
+  const chatHref = exists && exists.status === "ACTIVE" && social.whatsappFloat === "on" ? whatsappLink(social.whatsapp, `Hi ${exists.name}!`) : null;
+
   return (
     <>
       <link rel="preconnect" href="https://fonts.googleapis.com" />
@@ -140,6 +147,7 @@ export default async function StoreLayout({
       <StoreCategoriesProvider categories={(exists?.categories ?? []).map((c) => ({ id: c.id, name: c.name, parentId: c.parentId, description: c.description, imageUrl: c.imageUrl, count: c._count.products + c._count.services }))}>
         <StoreMenuProvider menu={exists?.menuItems?.length ? resolveMenuRows(exists.menuItems, slug) : null}>{children}</StoreMenuProvider>
       </StoreCategoriesProvider>
+      {chatHref && exists && <WhatsAppChatButton href={chatHref} storeName={exists.name} />}
       {showPromo && promo && promoPalette && <PromoPopup slug={slug} config={promo} palette={promoPalette} />}
     </>
   );

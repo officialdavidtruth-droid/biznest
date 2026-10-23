@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { whatsappLink } from "@/lib/utils/whatsapp-link";
 import { Mail, MessageCircle, Phone, Search, ShoppingBag, UserRound, Users, Wallet, Repeat } from "lucide-react";
 import type { Customer360 } from "@/lib/actions/customers";
 import { ListPagination, StatCard } from "@/components/dashboard/list-toolbar";
@@ -146,8 +147,8 @@ export function Customer360View({
             <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
               <div className="flex items-center gap-3"><div className="grid h-12 w-12 place-items-center rounded-full bg-primary/10 font-semibold text-primary">{initials(selected.name)}</div><div><h2 className="text-lg font-semibold">{selected.name}</h2><div className="mt-1 flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted-foreground"><span>{selected.email || "No email"}</span><span>{selected.phone || "No phone"}</span></div></div></div>
               <div className="flex gap-2">
-                {selected.phone && <a className="inline-flex items-center gap-1.5 rounded-lg border px-3 py-2 text-xs font-medium hover:bg-muted" href={`tel:${selected.phone}`}><Phone className="h-3.5 w-3.5" /> Call</a>}
-                {selected.phone && <a className="inline-flex items-center gap-1.5 rounded-lg bg-primary px-3 py-2 text-xs font-medium text-primary-foreground hover:opacity-90" target="_blank" rel="noreferrer" href={`https://wa.me/${selected.phone.replace(/\D/g, "")}`}><MessageCircle className="h-3.5 w-3.5" /> WhatsApp</a>}
+                {whatsappLink(selected.phone) && <a className="inline-flex items-center gap-1.5 rounded-lg border px-3 py-2 text-xs font-medium hover:bg-muted" href={`tel:${selected.phone}`}><Phone className="h-3.5 w-3.5" /> Call</a>}
+                {selected.phone && <a className="inline-flex items-center gap-1.5 rounded-lg bg-primary px-3 py-2 text-xs font-medium text-primary-foreground hover:opacity-90" target="_blank" rel="noreferrer" href={whatsappLink(selected.phone)!}><MessageCircle className="h-3.5 w-3.5" /> WhatsApp</a>}
                 {selected.email && <a className="inline-flex items-center gap-1.5 rounded-lg border px-3 py-2 text-xs font-medium hover:bg-muted" href={`mailto:${selected.email}`}><Mail className="h-3.5 w-3.5" /> Email</a>}
               </div>
             </div>

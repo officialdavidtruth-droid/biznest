@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { Mail, Phone, MessageCircle, Instagram, Facebook, Twitter, ArrowRight } from "lucide-react";
 import type { StoreBranding } from "@/lib/actions/store-branding";
+import { whatsappLink } from "@/lib/utils/whatsapp-link";
 
 // Every template's *-chrome.tsx wraps its own themed footer around
 // home/product/cart/checkout pages. This is for the generic, non-template
@@ -11,6 +12,7 @@ import type { StoreBranding } from "@/lib/actions/store-branding";
 export function StoreFooter({ store, slug }: { store: NonNullable<StoreBranding>; slug: string }) {
   const accent = store.themeColors?.primary || "#0f172a";
   const social = store.socialLinks ?? {};
+  const waHref = whatsappLink(social.whatsapp);
 
   const quickLinks = [
     { href: `/${slug}`, label: "Home" },
@@ -35,10 +37,10 @@ export function StoreFooter({ store, slug }: { store: NonNullable<StoreBranding>
             <p className="mt-3 max-w-xs text-sm text-slate-500">
               Thanks for shopping with {store.name}. Your orders, wishlist and account are always one tap away.
             </p>
-            {(social.instagram || social.facebook || social.twitter || social.whatsapp) && (
+            {(social.instagram || social.facebook || social.twitter || waHref) && (
               <div className="mt-4 flex items-center gap-3">
-                {social.whatsapp && (
-                  <a href={`https://wa.me/${social.whatsapp}`} aria-label="WhatsApp" className="text-slate-400 transition hover:text-slate-700">
+                {waHref && (
+                  <a href={waHref} aria-label="WhatsApp" className="text-slate-400 transition hover:text-slate-700">
                     <MessageCircle className="h-[18px] w-[18px]" />
                   </a>
                 )}

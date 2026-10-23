@@ -107,8 +107,13 @@ export default async function SettingsPage({ params }: { params: Promise<{ slug:
           <p className="mb-3 text-sm font-medium">Social links</p>
           <label className="mb-1 block text-xs text-muted-foreground">Instagram</label>
           <input name="instagram" defaultValue={social.instagram ?? ""} placeholder="https://instagram.com/yourstore" className="mb-3 w-full rounded-md border px-3 py-1.5 text-sm" />
-          <label className="mb-1 block text-xs text-muted-foreground">WhatsApp</label>
-          <input name="whatsapp" defaultValue={social.whatsapp ?? ""} placeholder="2348031234567" className="w-full rounded-md border px-3 py-1.5 text-sm" />
+          <label className="mb-1 block text-xs text-muted-foreground">Your WhatsApp number</label>
+          <input name="whatsapp" defaultValue={social.whatsapp ?? ""} placeholder="0803 123 4567 or +234 803 123 4567" className="w-full rounded-md border px-3 py-1.5 text-sm" />
+          <p className="mt-1 text-xs text-muted-foreground">Customers chat with you directly on this number. It is your own, never BizNest&apos;s.</p>
+          <label className="mt-2 flex items-center gap-2 text-xs">
+            <input type="checkbox" name="whatsappFloat" defaultChecked={(social as Record<string, string | undefined>).whatsappFloat === "on"} />
+            Show a floating &ldquo;Chat on WhatsApp&rdquo; button on my storefront
+          </label>
         </div>
 
         <button className="rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground">Save changes</button>

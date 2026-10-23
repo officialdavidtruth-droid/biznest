@@ -1,7 +1,7 @@
 import { prisma } from "@/lib/prisma";
 
 type ThemeColors = { primary?: string; background?: string; text?: string; accent?: string; secondary?: string };
-type SocialLinks = { instagram?: string; facebook?: string; twitter?: string; tiktok?: string; whatsapp?: string };
+type SocialLinks = { instagram?: string; facebook?: string; twitter?: string; tiktok?: string; whatsapp?: string; whatsappFloat?: string };
 
 export type StoreBranding = {
   name: string;

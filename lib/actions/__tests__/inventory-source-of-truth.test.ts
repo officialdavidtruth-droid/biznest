@@ -13,12 +13,12 @@ describe("inventory source of truth", () => {
     const source = read("lib/actions/product.ts");
     expect(source).toContain("if (current.hasVariants)");
     expect(source).toContain("Parent quantity/SKU/barcode are not authoritative");
-    expect(source).toContain("...(current.hasVariants ? {} : {");
+    expect(source).toMatch(/if \(current\.hasVariants\) \{[\s\S]*?inventoryData = undefined;/);
   });
 
   it("uses active variant stock for storefront availability", () => {
     const source = read("app/store/[slug]/product/[productId]/page.tsx");
-    expect(source).toContain("product.variants.some((variant) => variant.quantity > 0)");
+    expect(source).toMatch(/product\.hasVariants\s*\?\s*product\.variants\.some\(\(?(\w+)\)?\s*=>\s*\1\.quantity\s*>\s*0\)/);
   });
 
   it("uses variant stock in the admin product list", () => {

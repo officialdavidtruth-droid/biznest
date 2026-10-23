@@ -1,6 +1,7 @@
 "use server";
 
 import { getStoreConfiguration } from "@/lib/capabilities";
+import { normalizeWhatsAppNumber } from "@/lib/utils/whatsapp-link";
 import { getBusinessExperience } from "@/lib/business-experience";
 import { getTemplateBusinessType, isTemplateCompatible } from "@/lib/template-compatibility";
 
@@ -350,7 +351,11 @@ export async function updateStoreSettings(slug: string, formData: FormData) {
   const accent = String(formData.get("accent") ?? "").trim();
   const fontFamily = String(formData.get("fontFamily") ?? "").trim() || null;
   const instagram = String(formData.get("instagram") ?? "").trim();
-  const whatsapp = String(formData.get("whatsapp") ?? "").trim();
+  const whatsappInput = String(formData.get("whatsapp") ?? "").trim();
+  // Store the clean number (or WhatsApp URL) so every link built from it works.
+  // If it can't be understood, keep what they typed so they can see and fix it.
+  const whatsapp = /^https?:\/\//i.test(whatsappInput) ? whatsappInput : normalizeWhatsAppNumber(whatsappInput) ?? whatsappInput;
+  const whatsappFloat = formData.get("whatsappFloat") === "on" ? "on" : "";
 
   if (!name) return;
 
@@ -364,7 +369,13 @@ export async function updateStoreSettings(slug: string, formData: FormData) {
       bannerUrl,
       themeColors: { primary, secondary, accent },
       fontFamily,
-      socialLinks: { instagram, whatsapp },
+      // Merge, don't replace: other saved links (facebook, tiktok...) must survive.
+      socialLinks: {
+        ...((access.store.socialLinks && typeof access.store.socialLinks === "object" ? access.store.socialLinks : {}) as Record<string, string>),
+        instagram,
+        whatsapp,
+        whatsappFloat,
+      },
     },
   });
 
