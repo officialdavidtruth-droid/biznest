@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import { verifyPaystackTransaction } from "@/lib/payments/paystack";
+import { secretKeyForReference } from "@/lib/payments/store-gateway";
 import { checkRateLimit, getClientIp } from "@/lib/rate-limit";
 import { settleInvoicePayment } from "@/lib/payments/settle-invoice";
 import { settleQuoteDeposit } from "@/lib/payments/settle-quote-deposit";
@@ -30,8 +31,12 @@ export async function GET(req: Request) {
     return NextResponse.redirect(`${APP_URL}/?payment=rate_limited`);
   }
 
+  // Payments a store collected with its own gateway keys must be verified with
+  // THAT store's key (undefined = platform payment -> platform key).
+  const storeSecretKey = await secretKeyForReference(reference);
+
   if (reference.startsWith("PLUG-")) {
-    const verification = await verifyPaystackTransaction(reference);
+    const verification = await verifyPaystackTransaction(reference, storeSecretKey);
     if (verification.status && verification.data?.status === "success") {
       const amountNaira = Number(verification.data?.amount ?? 0) / 100;
       const result = await settlePluginPurchase(reference, amountNaira, verification as object);
@@ -48,7 +53,7 @@ export async function GET(req: Request) {
   if (reference.startsWith("INV-") || reference.startsWith("QDEP-")) {
     const isInvoice = reference.startsWith("INV-");
     const id = reference.split("-")[1];
-    const verification = await verifyPaystackTransaction(reference);
+    const verification = await verifyPaystackTransaction(reference, storeSecretKey);
 
     if (verification.status && verification.data?.status === "success") {
       if (isInvoice) await settleInvoicePayment(reference, Number(verification.data?.amount ?? 0) / 100, verification as object);
@@ -59,7 +64,7 @@ export async function GET(req: Request) {
   }
 
   if (reference.startsWith("WAL-") || reference.startsWith("BK-")) {
-    const verification = await verifyPaystackTransaction(reference);
+    const verification = await verifyPaystackTransaction(reference, storeSecretKey);
     const amount = verification.data ? Number(verification.data.amount) / 100 : 0;
     if (verification.status && verification.data?.status === "success") {
       if (reference.startsWith("WAL-")) {
@@ -85,7 +90,7 @@ export async function GET(req: Request) {
   }
 
   if (reference.startsWith("RES-")) {
-    const verification = await verifyPaystackTransaction(reference);
+    const verification = await verifyPaystackTransaction(reference, storeSecretKey);
     const amount = verification.data ? Number(verification.data.amount) / 100 : 0;
     if (verification.status && verification.data?.status === "success") {
       const result = await settleReservationPayment(reference, "PAYSTACK", amount, verification as object);
@@ -109,7 +114,7 @@ export async function GET(req: Request) {
   if (order.paymentProvider !== "PAYSTACK") return NextResponse.redirect(buildStoreUrl(order.store, "?payment=invalid_provider"));
 
   // The redirect itself is not proof of payment: verify with Paystack.
-  const verification = await verifyPaystackTransaction(reference);
+  const verification = await verifyPaystackTransaction(reference, storeSecretKey);
   const gatewayStatus = verification.status ? verification.data?.status : undefined;
 
   if (gatewayStatus === "success") {

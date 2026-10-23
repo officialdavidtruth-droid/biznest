@@ -17,11 +17,14 @@ import {
 } from "@/lib/validations/order";
 import {
   chargeCustomer,
+  resolveCheckoutGateway,
+  paymentCallbackUrl,
   getActiveGateway,
 } from "@/lib/payments/gateway";
 import { calculateOrderTotals } from "@/lib/utils/pricing";
 import { PLATFORM_COMMISSION_PERCENT } from "@/lib/constants/commission";
 import { storeHasPayoutTarget } from "@/lib/payments/payout-target";
+import { resolveStoreGateway } from "@/lib/payments/store-gateway";
 import { revalidatePath } from "next/cache";
 import { checkRateLimit } from "@/lib/rate-limit";
 import { notifyCustomerOfPaidOrder } from "@/lib/notifications/notify";
@@ -91,13 +94,14 @@ async function chargeExistingOrder(
 > {
   const totalNaira = Number(order.total);
 
-  const gateway =
-    await getActiveGateway();
+  // The store's own gateway (bring-your-own keys) wins over the platform's
+  // active gateway when the owner has switched it on.
+  const checkoutGateway = await resolveCheckoutGateway(store.id);
+  if (!checkoutGateway.ok) return { success: false, error: checkoutGateway.error };
+  const gateway = checkoutGateway.gateway;
+  const usesStoreGateway = checkoutGateway.usesStoreGateway;
 
-  const callbackUrl =
-    gateway === "FLUTTERWAVE"
-      ? `${APP_URL}/api/payments/flutterwave/callback`
-      : `${APP_URL}/api/payments/paystack/callback`;
+  const callbackUrl = paymentCallbackUrl(gateway);
 
   const pendingPayment = await prisma.payment.findUnique({ where: { reference: order.id }, select: { id: true, status: true } });
   if (pendingPayment?.status === "SUCCESSFUL") return { success: true, data: { authorizationUrl: `${APP_URL}/store/${store.slug}/orders/${order.id}/confirmation` } };
@@ -105,9 +109,9 @@ async function chargeExistingOrder(
     return { success: true, data: { authorizationUrl: order.checkoutUrl } };
   }
   if (!pendingPayment) {
-    await createPendingPayment({ storeId: store.id, orderId: order.id, purpose: "ORDER", provider: gateway, reference: order.id, amount: totalNaira, currency: order.currency });
+    await createPendingPayment({ storeId: store.id, orderId: order.id, purpose: "ORDER", provider: gateway, reference: order.id, amount: totalNaira, currency: order.currency, usesStoreGateway });
   } else if (pendingPayment.status === "FAILED") {
-    await prisma.payment.update({ where: { id: pendingPayment.id }, data: { status: "PENDING", provider: gateway, amount: totalNaira, currency: order.currency } });
+    await prisma.payment.update({ where: { id: pendingPayment.id }, data: { status: "PENDING", provider: gateway, amount: totalNaira, currency: order.currency, usesStoreGateway } });
   }
 
   const charge =
@@ -119,6 +123,7 @@ async function chargeExistingOrder(
       amountNaira: totalNaira,
       reference: order.id,
       callbackUrl,
+      storeId: store.id,
       paystackSubaccountCode:
         store.paystackSubaccountCode,
       flutterwaveSubaccountId:
@@ -159,7 +164,7 @@ async function chargeExistingOrder(
 
     prisma.payment.update({
       where: { reference: order.id },
-      data: { provider: charge.gateway, status: "PENDING", splitSubaccountCode: charge.splitSubaccountCode },
+      data: { provider: charge.gateway, status: "PENDING", splitSubaccountCode: charge.splitSubaccountCode, usesStoreGateway: charge.usesStoreGateway ?? false },
     }),
   ]);
 
@@ -263,8 +268,15 @@ export async function startCheckout(
   // Never accept a marketplace payment when BizNest has a payout target
   // that the provider has not verified. Otherwise the customer can pay
   // successfully while the merchant share is held at the gateway.
+  // Stores that take payments straight into their own gateway account have no
+  // BizNest payout to wait on, so these payout gates don't apply to them.
+  const ownGateway = await resolveStoreGateway(store.id);
+  if (ownGateway.status === "error") {
+    return { success: false, error: ownGateway.message };
+  }
+  const usesOwnGateway = ownGateway.status === "ok";
   const activeGateway = await getActiveGateway();
-  const hasPayoutTarget = storeHasPayoutTarget(store, activeGateway);
+  const hasPayoutTarget = usesOwnGateway || storeHasPayoutTarget(store, activeGateway);
 
   if (!hasPayoutTarget) {
     return {
@@ -279,7 +291,7 @@ export async function startCheckout(
   // is_verified field, so do not invent one in BizNest or block every
   // successfully-created Flutterwave subaccount forever. Flutterwave remains
   // authoritative for any compliance/settlement hold on its side.
-  if (activeGateway === "PAYSTACK" && !store.payoutVerifiedAt) {
+  if (!usesOwnGateway && activeGateway === "PAYSTACK" && !store.payoutVerifiedAt) {
     return {
       success: false,
       error: "This store's payout account is still pending verification. Please try again later.",

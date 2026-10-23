@@ -2,7 +2,7 @@
 
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { chargeCustomer, getActiveGateway } from "@/lib/payments/gateway";
+import { chargeCustomer, resolveCheckoutGateway, paymentCallbackUrl } from "@/lib/payments/gateway";
 import { roundMoney } from "@/lib/utils/pricing";
 import { sendOrderNotificationEmail } from "@/lib/email/send";
 import { revalidatePath } from "next/cache";
@@ -223,7 +223,10 @@ export async function acceptQuote(quoteId: string): Promise<ActionResult<{ autho
     return { success: false, error: "This quote has expired." };
   }
 
-  if (!quote.store.payoutVerifiedAt) {
+  // A store collecting into its own gateway account has no BizNest payout to verify.
+  const checkoutGateway = await resolveCheckoutGateway(quote.storeId);
+  if (!checkoutGateway.ok) return { success: false, error: checkoutGateway.error };
+  if (!checkoutGateway.usesStoreGateway && !quote.store.payoutVerifiedAt) {
     return { success: false, error: "This store's payout account is still pending provider verification. The deposit cannot be accepted yet." };
   }
 
@@ -235,20 +238,21 @@ export async function acceptQuote(quoteId: string): Promise<ActionResult<{ autho
   // Reference prefix "QDEP-" tells the shared payment webhook/callback
   // routes to settle this as a quote deposit — see settleQuoteDeposit below.
   const reference = `QDEP-${quote.id}-${Math.random().toString(36).slice(2, 8)}`;
-  const gateway = await getActiveGateway();
-  await createPendingPayment({ storeId: quote.storeId, purpose: "QUOTE_DEPOSIT", provider: gateway, reference, amount: Number(quote.depositRequired), currency: quote.currency });
+  const gateway = checkoutGateway.gateway;
+  await createPendingPayment({ storeId: quote.storeId, purpose: "QUOTE_DEPOSIT", provider: gateway, reference, amount: Number(quote.depositRequired), currency: quote.currency, usesStoreGateway: checkoutGateway.usesStoreGateway });
 
   const charge = await chargeCustomer({
     email: session.user.email ?? quote.customerEmail ?? "guest@biznest.space",
     amountNaira: Number(quote.depositRequired),
     reference,
-    callbackUrl: `${APP_URL}/api/payments/paystack/callback`,
+    callbackUrl: paymentCallbackUrl(gateway),
+    storeId: quote.storeId,
     paystackSubaccountCode: quote.store.paystackSubaccountCode,
     flutterwaveSubaccountId: quote.store.flutterwaveSubaccountId,
   });
   if (!charge.success) { await markPaymentFailed(reference); return { success: false, error: charge.error }; }
 
-  await prisma.payment.update({ where: { reference }, data: { provider: charge.gateway, splitSubaccountCode: charge.splitSubaccountCode } });
+  await prisma.payment.update({ where: { reference }, data: { provider: charge.gateway, splitSubaccountCode: charge.splitSubaccountCode, usesStoreGateway: charge.usesStoreGateway ?? false } });
 
   // Remember which signed-in customer is accepting, in case the quote was
   // only addressed by name/email so far.

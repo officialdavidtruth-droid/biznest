@@ -856,6 +856,23 @@ model Store {
   // immediately on subaccount creation, which made trust-score.ts report
   // "payout verified" for stores that were merely connected, not verified.
   payoutVerifiedAt         DateTime?
+
+  // Bring-your-own payment gateway. When ownGatewayEnabled is true, customer
+  // payments for this store (orders, invoices, quote deposits, bookings, PMS
+  // reservations) are charged with the merchant's own Paystack/Flutterwave
+  // keys, so the money lands in the merchant's own gateway account and no
+  // BizNest payout is created. Secret values are AES-256-GCM encrypted
+  // (lib/payments/store-gateway.ts); public keys are not secret.
+  ownGatewayEnabled        Boolean   @default(false)
+  ownGatewayProvider       PaymentProvider?
+  ownPaystackSecretKey     String?
+  ownPaystackPublicKey     String?
+  ownFlutterwaveSecretKey  String?
+  ownFlutterwavePublicKey  String?
+  // Webhook secret hash BizNest generates; the merchant pastes it into their
+  // Flutterwave dashboard so webhooks can be verified.
+  ownFlutterwaveSecretHash String?
+  ownGatewayVerifiedAt     DateTime?
   // Set once a legacy subaccount's platform percentage has been zeroed at the
   // gateway (see neutralizeLegacySubaccountSplits). Null = not done yet.
   legacySplitZeroedAt      DateTime?
@@ -2119,6 +2136,11 @@ model Payment {
   // refund time may not match what a much older charge actually used.
   // See recordRefundClawbackIfSettled in lib/actions/refund.ts.
   splitSubaccountCode String?
+
+  // True when this charge was made with the store's OWN gateway keys (see
+  // Store.ownGatewayEnabled). Verification, webhooks and refunds must then
+  // use the store's keys, and no vendor payout is created for it.
+  usesStoreGateway Boolean @default(false)
 
   // Refund tracking, set when a support/admin agent issues a refund
   // against this charge (see lib/actions/refund.ts). refundReference is

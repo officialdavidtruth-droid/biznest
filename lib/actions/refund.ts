@@ -3,6 +3,7 @@
 import { prisma } from "@/lib/prisma";
 import { createFifoBatchTx } from "@/lib/inventory-fifo";
 import { refundPayment } from "@/lib/payments/gateway";
+import { secretKeyForPayment } from "@/lib/payments/store-gateway";
 import { listPaystackRefundsForTransaction } from "@/lib/payments/paystack";
 import { listFlutterwaveRefundsForTransaction } from "@/lib/payments/flutterwave";
 import { emitWebhookEvent } from "@/lib/webhooks/dispatch";
@@ -359,7 +360,7 @@ export async function issueRefund(
   });
   if (!claimed.count) return { success: false, error: "This payment is already being refunded or was refunded by another request." };
 
-  const refund = await refundPayment({ provider: payment.provider, gatewayTransactionRef, amountNaira: Number(payment.amount) });
+  const refund = await refundPayment({ provider: payment.provider, gatewayTransactionRef, amountNaira: Number(payment.amount), secretKey: await secretKeyForPayment(payment) });
   if (!refund.success) {
     await prisma.payment.updateMany({ where: { id: payment.id, status: "REFUND_PENDING" }, data: { status: "SUCCESSFUL", refundReason: null, refundedByEmail: null } });
     return { success: false, error: refund.error };
@@ -495,14 +496,14 @@ export async function reconcileRefundPendingPayment(slug: string, paymentId: str
   let gatewayStatus: "REFUNDED" | "FAILED" | "STILL_PENDING" = "STILL_PENDING";
   let refundReference: string | null = null;
   if (payment.provider === "PAYSTACK") {
-    const result = await listPaystackRefundsForTransaction(payment.reference);
+    const result = await listPaystackRefundsForTransaction(payment.reference, await secretKeyForPayment(payment));
     if (!result.status) return { success: false, error: result.message || "Couldn't query Paystack refund status." };
     const refund = result.data.filter((r: any) => Number(r.amount ?? 0) === Math.round(Number(payment.amount) * 100)).sort((a: any, b: any) => new Date(b.createdAt ?? 0).getTime() - new Date(a.createdAt ?? 0).getTime())[0];
     if (refund) { refundReference = refund.id != null ? String(refund.id) : null; if (refund.status === "processed") gatewayStatus = "REFUNDED"; else if (refund.status === "failed") gatewayStatus = "FAILED"; }
   } else if (payment.provider === "FLUTTERWAVE") {
     const rawId = (payment.rawPayload as { data?: { id?: number } } | null)?.data?.id;
     if (!rawId) return { success: false, error: "Missing Flutterwave transaction id; cannot reconcile this refund safely." };
-    const result = await listFlutterwaveRefundsForTransaction(String(rawId));
+    const result = await listFlutterwaveRefundsForTransaction(String(rawId), await secretKeyForPayment(payment));
     if (result.status !== "success") return { success: false, error: result.message || "Couldn't query Flutterwave refund status." };
     const refund = result.data.filter((r: any) => Number(r.amount_refunded ?? r.amount ?? 0) === Number(payment.amount)).sort((a: any, b: any) => new Date(b.updatedAt ?? b.createdAt ?? 0).getTime() - new Date(a.updatedAt ?? a.createdAt ?? 0).getTime())[0];
     if (refund) { refundReference = refund.id != null ? String(refund.id) : null; const status = String(refund.status ?? "").toLowerCase(); if (status.startsWith("completed")) gatewayStatus = "REFUNDED"; else if (status === "failed") gatewayStatus = "FAILED"; }
@@ -622,7 +623,7 @@ export async function issueBookingRefund(
   const claimed = await prisma.payment.updateMany({ where: { id: payment.id, status: "SUCCESSFUL" }, data: { status: "REFUND_PENDING", refundReason: trimmedReason, refundedByEmail: access.actorEmail } });
   if (!claimed.count) return { success: false, error: "This payment is already being refunded or was refunded by another request." };
 
-  const refund = await refundPayment({ provider: payment.provider, gatewayTransactionRef, amountNaira: Number(payment.amount) });
+  const refund = await refundPayment({ provider: payment.provider, gatewayTransactionRef, amountNaira: Number(payment.amount), secretKey: await secretKeyForPayment(payment) });
   if (!refund.success) {
     await prisma.payment.updateMany({ where: { id: payment.id, status: "REFUND_PENDING" }, data: { status: "SUCCESSFUL", refundReason: null, refundedByEmail: null } });
     return { success: false, error: refund.error };
@@ -676,7 +677,7 @@ export async function issueReservationRefund(
   const claimed = await prisma.payment.updateMany({ where: { id: payment.id, status: "SUCCESSFUL" }, data: { status: "REFUND_PENDING", refundReason: trimmedReason, refundedByEmail: access.actorEmail } });
   if (!claimed.count) return { success: false, error: "This payment is already being refunded or was refunded by another request." };
 
-  const refund = await refundPayment({ provider: payment.provider, gatewayTransactionRef, amountNaira: Number(payment.amount) });
+  const refund = await refundPayment({ provider: payment.provider, gatewayTransactionRef, amountNaira: Number(payment.amount), secretKey: await secretKeyForPayment(payment) });
   if (!refund.success) {
     await prisma.payment.updateMany({ where: { id: payment.id, status: "REFUND_PENDING" }, data: { status: "SUCCESSFUL", refundReason: null, refundedByEmail: null } });
     return { success: false, error: refund.error };

@@ -143,11 +143,15 @@ export async function startBookingPayment(
   const amount = Number(booking.paymentAmount ?? booking.service.price);
   if (!Number.isFinite(amount) || amount <= 0) return { success: false, error: "This service has an invalid price." };
   const reference = `BK-${booking.id}-${crypto.randomUUID()}`;
-  const gateway = await import("@/lib/actions/site-settings").then((m) => m.getActiveGateway());
-  const callbackUrl = gateway === "FLUTTERWAVE" ? `${APP_URL}/api/payments/flutterwave/callback` : `${APP_URL}/api/payments/paystack/callback`;
+  const { resolveCheckoutGateway, paymentCallbackUrl } = await import("@/lib/payments/gateway");
+  // The store's own gateway (bring-your-own keys) wins over the platform's active gateway.
+  const checkoutGateway = await resolveCheckoutGateway(booking.storeId);
+  if (!checkoutGateway.ok) return { success: false, error: checkoutGateway.error };
+  const gateway = checkoutGateway.gateway;
+  const callbackUrl = paymentCallbackUrl(gateway);
   await prisma.$transaction([
     prisma.booking.update({ where: { id: booking.id }, data: { paymentStatus: "PENDING", paymentAmount: amount, paymentCurrency: booking.service.currency } }),
-    prisma.payment.create({ data: { storeId: booking.storeId, bookingId: booking.id, purpose: "SERVICE_BOOKING", provider: gateway, reference, status: "PENDING", amount, currency: booking.service.currency } }),
+    prisma.payment.create({ data: { storeId: booking.storeId, bookingId: booking.id, purpose: "SERVICE_BOOKING", provider: gateway, reference, status: "PENDING", amount, currency: booking.service.currency, usesStoreGateway: checkoutGateway.usesStoreGateway } }),
   ]);
 
   const charge = await chargeCustomer({
@@ -157,6 +161,7 @@ export async function startBookingPayment(
     reference,
     callbackUrl,
     gateway,
+    storeId: booking.storeId,
     inline: options.inline ?? true,
   });
   if (!charge.success) {

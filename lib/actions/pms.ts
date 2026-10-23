@@ -8,13 +8,12 @@ import { revalidatePath } from "next/cache";
 import { assertStorePermission } from "@/lib/access/assert-store-access";
 import { hasCapability } from "@/lib/capabilities";
 import { getPluginEntitlement } from "@/lib/plugins";
-import { chargeCustomer, getActiveGateway } from "@/lib/payments/gateway";
+import { chargeCustomer, resolveCheckoutGateway, paymentCallbackUrl } from "@/lib/payments/gateway";
 import { createPendingPayment, markPaymentFailed } from "@/lib/payments/pending";
 import type { ActionResult } from "@/types/actions";
 import crypto from "crypto";
 import { findChannelBlockOverlap } from "@/lib/channels/sync";
 
-const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? "https://biznest.vercel.app";
 
 async function access(slug: string) {
   // PMS is a premium vertical app. It is deliberately enforced on the
@@ -387,17 +386,20 @@ export async function chargeReservationDeposit(
  if(reservation.paymentStatus==="PENDING")return{success:false,error:"A payment is already in progress for this reservation."};
  if(!["PENDING","CONFIRMED","CHECKED_IN"].includes(reservation.status))return{success:false,error:"Cannot charge a cancelled, no-show, or checked-out reservation."};
 
- const gateway=await getActiveGateway();
- const hasPayoutTarget=storeHasPayoutTarget(a.store,gateway);
+ const checkoutGateway=await resolveCheckoutGateway(a.store.id);
+ if(!checkoutGateway.ok)return{success:false,error:checkoutGateway.error};
+ const gateway=checkoutGateway.gateway;
+ // A store collecting into its own gateway account has no BizNest payout target to require.
+ const hasPayoutTarget=checkoutGateway.usesStoreGateway||storeHasPayoutTarget(a.store,gateway);
  if(!hasPayoutTarget)return{success:false,error:"This store has not connected a payout account yet."};
 
  const reference=`RES-${reservation.id}-${crypto.randomUUID()}`;
- const callbackUrl=gateway==="FLUTTERWAVE"?`${APP_URL}/api/payments/flutterwave/callback`:`${APP_URL}/api/payments/paystack/callback`;
+ const callbackUrl=paymentCallbackUrl(gateway);
  const currency="NGN";
 
  await createPendingPayment({
   storeId:a.store.id, reservationId:reservation.id, purpose:"PMS_RESERVATION",
-  provider:gateway, reference, amount:amountNaira, currency,
+  provider:gateway, reference, amount:amountNaira, currency, usesStoreGateway:checkoutGateway.usesStoreGateway,
  });
 
  const charge=await chargeCustomer({
@@ -406,6 +408,7 @@ export async function chargeReservationDeposit(
   amountNaira,
   reference,
   callbackUrl,
+  storeId:a.store.id,
   paystackSubaccountCode:a.store.paystackSubaccountCode,
   flutterwaveSubaccountId:a.store.flutterwaveSubaccountId,
  });
@@ -414,7 +417,7 @@ export async function chargeReservationDeposit(
 
  await prisma.$transaction([
   prisma.propertyReservation.update({where:{id:reservation.id},data:{paymentStatus:"PENDING",depositAmount:amountNaira,paymentCurrency:currency}}),
-  prisma.payment.update({where:{reference},data:{provider:charge.gateway,splitSubaccountCode:charge.splitSubaccountCode}}),
+  prisma.payment.update({where:{reference},data:{provider:charge.gateway,splitSubaccountCode:charge.splitSubaccountCode,usesStoreGateway:charge.usesStoreGateway??false}}),
  ]);
 
  revalidatePath(`/store/${slug}/admin/pms`);

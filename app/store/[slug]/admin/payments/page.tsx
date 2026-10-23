@@ -4,6 +4,8 @@ import { prisma } from "@/lib/prisma";
 import { getPayoutStatus } from "@/lib/actions/store";
 import { getActiveGateway } from "@/lib/actions/site-settings";
 import { ConnectPayoutForm } from "@/components/dashboard/connect-payout-form";
+import { getOwnGatewaySettings } from "@/lib/actions/store-gateway";
+import { OwnGatewayForm } from "@/components/dashboard/own-gateway-form";
 import { getPosCommissionBalance } from "@/lib/actions/pos";
 import { PosCommissionCard } from "@/components/dashboard/pos-commission-card";
 import { getRefundClawbackBalance, getRefundPendingPayments } from "@/lib/actions/refund";
@@ -18,6 +20,8 @@ export default async function PaymentsPage({ params }: { params: Promise<{ slug:
   const payout = await getPayoutStatus(slug);
   if (!payout) return null;
   const gateway = await getActiveGateway();
+  // Owner-only: null for staff, who must not see or change the store's payment keys.
+  const ownGateway = await getOwnGatewaySettings(slug);
 
   const session = await auth();
   const isStaff = session?.user?.role === "PLATFORM_ADMIN" || session?.user?.role === "SUPPORT_MODERATOR";
@@ -77,6 +81,13 @@ export default async function PaymentsPage({ params }: { params: Promise<{ slug:
           details={payout.payoutDetails}
         />
       </div>
+
+      {ownGateway && (
+        <section className="mt-8">
+          <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-muted-foreground">Your own payment gateway</h2>
+          <OwnGatewayForm slug={slug} settings={ownGateway} />
+        </section>
+      )}
 
       {refundPending && <div className="mt-6"><RefundPendingCard slug={slug} payments={refundPending} /></div>}
 

@@ -25,6 +25,8 @@ type InitializeParams = {
    * Paystack dashboard preferences decide, as before.
    */
   channels?: PaystackChannel[];
+  /** A store's own secret key (bring-your-own gateway). Omit to use the platform's. */
+  secretKey?: string | null;
 };
 
 type InitializeResponse = {
@@ -47,7 +49,7 @@ type VerifyResponse = {
 };
 
 export async function initializePaystackTransaction(params: InitializeParams): Promise<InitializeResponse> {
-  const secretKey = process.env.PAYSTACK_SECRET_KEY;
+  const secretKey = params.secretKey ?? process.env.PAYSTACK_SECRET_KEY;
   if (!secretKey) {
     return { status: false, message: "Payments aren't configured yet (missing PAYSTACK_SECRET_KEY)." };
   }
@@ -82,8 +84,10 @@ export async function initializePaystackTransaction(params: InitializeParams): P
   return res.json();
 }
 
-export async function verifyPaystackTransaction(reference: string): Promise<VerifyResponse> {
-  const secretKey = process.env.PAYSTACK_SECRET_KEY;
+export async function verifyPaystackTransaction(reference: string, secretKeyOverride?: string | null): Promise<VerifyResponse> {
+  // An override (even an empty one) means "this is a store's own-gateway payment":
+  // never fall back to the platform key for it.
+  const secretKey = secretKeyOverride ?? process.env.PAYSTACK_SECRET_KEY;
   if (!secretKey) {
     return { status: false, message: "Payments aren't configured yet (missing PAYSTACK_SECRET_KEY)." };
   }
@@ -112,9 +116,10 @@ type RefundResponse = {
  */
 export async function refundPaystackTransaction(
   reference: string,
-  amountKobo?: number
+  amountKobo?: number,
+  secretKeyOverride?: string | null
 ): Promise<RefundResponse> {
-  const secretKey = process.env.PAYSTACK_SECRET_KEY;
+  const secretKey = secretKeyOverride ?? process.env.PAYSTACK_SECRET_KEY;
   if (!secretKey) {
     return { status: false, message: "Payments aren't configured yet (missing PAYSTACK_SECRET_KEY)." };
   }
@@ -141,8 +146,8 @@ export async function refundPaystackTransaction(
  * and comparing is the only way to trust a webhook payload, since anyone
  * can POST to a public URL claiming to be Paystack otherwise.
  */
-export function verifyPaystackWebhookSignature(rawBody: string, signature: string | null): boolean {
-  const secretKey = process.env.PAYSTACK_SECRET_KEY;
+export function verifyPaystackWebhookSignature(rawBody: string, signature: string | null, secretKeyOverride?: string | null): boolean {
+  const secretKey = secretKeyOverride ?? process.env.PAYSTACK_SECRET_KEY;
   if (!secretKey || !signature) return false;
   const hash = crypto.createHmac("sha512", secretKey).update(rawBody).digest("hex");
   // Constant-time comparison so signature checking itself can't leak timing
@@ -286,8 +291,8 @@ export async function chargePaystackAuthorization(params: {
 }
 
 /** Fetches the refund records associated with a Paystack transaction. */
-export async function listPaystackRefundsForTransaction(reference: string) {
-  const secretKey = process.env.PAYSTACK_SECRET_KEY;
+export async function listPaystackRefundsForTransaction(reference: string, secretKeyOverride?: string | null) {
+  const secretKey = secretKeyOverride ?? process.env.PAYSTACK_SECRET_KEY;
   if (!secretKey) return { status: false as const, message: "Payments aren't configured yet (missing PAYSTACK_SECRET_KEY).", data: [] as any[] };
   const url = `${PAYSTACK_BASE}/refund?transaction=${encodeURIComponent(reference)}&perPage=50&page=1`;
   const res = await fetch(url, { headers: { Authorization: `Bearer ${secretKey}` } });

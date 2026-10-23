@@ -5,6 +5,8 @@ import { initializePaystackTransaction, refundPaystackTransaction } from "@/lib/
 import { initializeFlutterwaveTransaction, refundFlutterwaveTransaction } from "@/lib/payments/flutterwave";
 import type { PaymentProvider } from "@prisma/client";
 import { logError } from "@/lib/observability/log";
+import { APP_URL } from "@/lib/constants/app-url";
+import { resolveStoreGateway, type StoreGatewayCredentials } from "@/lib/payments/store-gateway";
 
 type ChargeParams = {
   email: string;
@@ -34,6 +36,13 @@ type ChargeParams = {
   gateway?: "PAYSTACK" | "FLUTTERWAVE";
   /** Storefront checkout can use the provider's hosted inline modal instead of navigating away. */
   inline?: boolean;
+  /**
+   * The store the customer is paying. When that store has switched on its own
+   * payment gateway keys, the charge goes through THEIR account (and overrides
+   * `gateway`). Omit for platform-owned money: subscriptions, app purchases
+   * and customer wallet funding must never pass this.
+   */
+  storeId?: string | null;
 };
 
 type ChargeResult =
@@ -41,6 +50,8 @@ type ChargeResult =
       success: true;
       authorizationUrl: string;
       gateway: "PAYSTACK" | "FLUTTERWAVE";
+      /** True when the charge was made with the store's own gateway keys. Persist it on the Payment row. */
+      usesStoreGateway?: boolean;
       /** Always null now: charges are not split. Kept so existing callers that
        *  persist it on the Payment row keep compiling. */
       splitSubaccountCode: string | null;
@@ -67,15 +78,23 @@ type ChargeResult =
  * use one specific provider (see ChargeParams.gateway).
  */
 export async function chargeCustomer(params: ChargeParams): Promise<ChargeResult> {
-  const gateway = params.gateway ?? (await getActiveGateway());
+  let own: StoreGatewayCredentials | null = null;
+  if (params.storeId) {
+    const resolved = await resolveStoreGateway(params.storeId);
+    if (resolved.status === "error") return { success: false, error: resolved.message };
+    if (resolved.status === "ok") own = resolved.credentials;
+  }
+  const usesStoreGateway = Boolean(own);
+  const gateway = own?.provider ?? params.gateway ?? (await getActiveGateway());
 
   if (gateway === "FLUTTERWAVE") {
-    const publicKey = process.env.NEXT_PUBLIC_FLUTTERWAVE_PUBLIC_KEY || process.env.FLUTTERWAVE_PUBLIC_KEY;
+    const publicKey = own ? own.publicKey : process.env.NEXT_PUBLIC_FLUTTERWAVE_PUBLIC_KEY || process.env.FLUTTERWAVE_PUBLIC_KEY;
     if (params.inline && publicKey) {
       return {
         success: true,
         authorizationUrl: params.callbackUrl,
         gateway: "FLUTTERWAVE",
+        usesStoreGateway,
         splitSubaccountCode: null,
         inline: {
           provider: "FLUTTERWAVE",
@@ -92,6 +111,7 @@ export async function chargeCustomer(params: ChargeParams): Promise<ChargeResult
       reference: params.reference,
       callbackUrl: params.callbackUrl,
       customerName: params.customerName,
+      secretKey: own?.secretKey,
     });
     if (init.status !== "success" || !init.data) {
       void logError("PAYMENTS", "Flutterwave charge init failed", { reference: params.reference, message: init.message });
@@ -101,6 +121,7 @@ export async function chargeCustomer(params: ChargeParams): Promise<ChargeResult
       success: true,
       authorizationUrl: init.data.link,
       gateway: "FLUTTERWAVE",
+      usesStoreGateway,
       splitSubaccountCode: null,
     };
   }
@@ -110,16 +131,18 @@ export async function chargeCustomer(params: ChargeParams): Promise<ChargeResult
     amountKobo: Math.round(params.amountNaira * 100),
     reference: params.reference,
     callbackUrl: params.callbackUrl,
+    secretKey: own?.secretKey,
   });
   if (!init.status || !init.data) {
     void logError("PAYMENTS", "Paystack charge init failed", { reference: params.reference, message: init.message });
     return { success: false, error: init.message || "Couldn't start the Paystack payment." };
   }
-  const publicKey = process.env.NEXT_PUBLIC_PAYSTACK_PUBLIC_KEY || process.env.PAYSTACK_PUBLIC_KEY;
+  const publicKey = own ? own.publicKey : process.env.NEXT_PUBLIC_PAYSTACK_PUBLIC_KEY || process.env.PAYSTACK_PUBLIC_KEY;
   return {
     success: true,
     authorizationUrl: init.data.authorization_url,
     gateway: "PAYSTACK",
+    usesStoreGateway,
     splitSubaccountCode: null,
     ...(params.inline && publicKey
       ? {
@@ -144,6 +167,8 @@ type RefundParams = {
    *  tx_ref isn't what Flutterwave's refund endpoint accepts). */
   gatewayTransactionRef: string;
   amountNaira?: number;
+  /** The store's own secret key for payments made with its own gateway (see secretKeyForPayment). */
+  secretKey?: string;
 };
 
 type RefundResult = { success: true; refundReference: string } | { success: false; error: string };
@@ -157,7 +182,7 @@ type RefundResult = { success: true; refundReference: string } | { success: fals
  */
 export async function refundPayment(params: RefundParams): Promise<RefundResult> {
   if (params.provider === "FLUTTERWAVE") {
-    const res = await refundFlutterwaveTransaction(params.gatewayTransactionRef, params.amountNaira);
+    const res = await refundFlutterwaveTransaction(params.gatewayTransactionRef, params.amountNaira, params.secretKey);
     if (res.status !== "success" || !res.data) {
       void logError("PAYMENTS", "Flutterwave refund failed", { ref: params.gatewayTransactionRef, message: res.message });
       return { success: false, error: res.message || "Flutterwave declined the refund." };
@@ -166,10 +191,33 @@ export async function refundPayment(params: RefundParams): Promise<RefundResult>
   }
 
   const amountKobo = params.amountNaira ? Math.round(params.amountNaira * 100) : undefined;
-  const res = await refundPaystackTransaction(params.gatewayTransactionRef, amountKobo);
+  const res = await refundPaystackTransaction(params.gatewayTransactionRef, amountKobo, params.secretKey);
   if (!res.status || !res.data) {
     void logError("PAYMENTS", "Paystack refund failed", { ref: params.gatewayTransactionRef, message: res.message });
     return { success: false, error: res.message || "Paystack declined the refund." };
   }
   return { success: true, refundReference: String(res.data.id) };
+}
+
+
+type CheckoutGateway =
+  | { ok: true; gateway: "PAYSTACK" | "FLUTTERWAVE"; usesStoreGateway: boolean }
+  | { ok: false; error: string };
+
+/**
+ * Which gateway a store's customer payment will go through, decided BEFORE the
+ * Payment row and callback URL are built. Mirrors the choice chargeCustomer
+ * makes when given the same `storeId`: the store's own gateway if it has one
+ * switched on, otherwise the platform's active gateway.
+ */
+export async function resolveCheckoutGateway(storeId: string, platformGateway?: "PAYSTACK" | "FLUTTERWAVE"): Promise<CheckoutGateway> {
+  const resolved = await resolveStoreGateway(storeId);
+  if (resolved.status === "error") return { ok: false, error: resolved.message };
+  if (resolved.status === "ok") return { ok: true, gateway: resolved.credentials.provider, usesStoreGateway: true };
+  return { ok: true, gateway: platformGateway ?? (await getActiveGateway()), usesStoreGateway: false };
+}
+
+/** The redirect target a gateway sends the customer back to after paying. */
+export function paymentCallbackUrl(gateway: "PAYSTACK" | "FLUTTERWAVE"): string {
+  return gateway === "FLUTTERWAVE" ? `${APP_URL}/api/payments/flutterwave/callback` : `${APP_URL}/api/payments/paystack/callback`;
 }

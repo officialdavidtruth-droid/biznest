@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import { verifyFlutterwaveTransaction, verifyFlutterwaveTransfer, verifyFlutterwaveWebhookSignature } from "@/lib/payments/flutterwave";
 import { applyFlutterwaveTransferWebhookEvent } from "@/lib/payments/payout";
+import { loadStoreCredentials } from "@/lib/payments/store-gateway";
 import { settleInvoicePayment } from "@/lib/payments/settle-invoice";
 import { settleQuoteDeposit } from "@/lib/payments/settle-quote-deposit";
 import { emitWebhookEvent } from "@/lib/webhooks/dispatch";
@@ -27,7 +28,21 @@ export async function POST(req: Request) {
   const rawBody = await req.text();
   const signature = req.headers.get("verif-hash");
 
-  if (!verifyFlutterwaveWebhookSignature(signature)) {
+  // A store that collects with its own Flutterwave account points ITS webhook at
+  // this same route with ?store=<storeId> and uses the secret hash BizNest
+  // generated for it. Those events may only ever settle that store's own
+  // payments (guarded below).
+  const storeId = new URL(req.url).searchParams.get("store");
+  let storeSecretKey: string | undefined;
+  let storeSecretHash: string | undefined;
+  if (storeId) {
+    const creds = await loadStoreCredentials(storeId, "FLUTTERWAVE");
+    if (!creds || !creds.secretHash) return NextResponse.json({ error: "Invalid signature" }, { status: 401 });
+    storeSecretKey = creds.secretKey;
+    storeSecretHash = creds.secretHash;
+  }
+
+  if (!verifyFlutterwaveWebhookSignature(signature, storeSecretHash)) {
     return NextResponse.json({ error: "Invalid signature" }, { status: 401 });
   }
 
@@ -40,6 +55,11 @@ export async function POST(req: Request) {
 
   // Vendor payout (Transfer API) outcome. Re-verify with Flutterwave before acting on it,
   // same discipline as charges: the signed payload alone only proves who sent it.
+  if (storeId && event.event === "transfer.completed") {
+    // Vendor payouts only exist on the platform account.
+    return NextResponse.json({ received: true });
+  }
+
   if (event.event === "transfer.completed") {
     const { id, reference } = event.data ?? {};
     if (!id || !reference) return NextResponse.json({ received: true });
@@ -55,6 +75,9 @@ export async function POST(req: Request) {
 
   if (event.event === "charge.completed" && event.data?.tx_ref && (event.data as { status?: string }).status !== "successful") {
     const payment = await prisma.payment.findUnique({ where: { reference: event.data.tx_ref } });
+    if (storeId && (!payment || !payment.usesStoreGateway || payment.storeId !== storeId)) {
+      return NextResponse.json({ received: true });
+    }
     if (payment?.orderId) {
       const order = await prisma.order.findUnique({ where: { id: payment.orderId } });
       if (order) {
@@ -73,10 +96,20 @@ export async function POST(req: Request) {
 
   const { id: transactionId, tx_ref: txRef } = event.data;
 
+  // Keep the two worlds apart (same rule as the Paystack webhook).
+  const knownPayment = await prisma.payment.findUnique({ where: { reference: txRef }, select: { storeId: true, usesStoreGateway: true } });
+  if (storeId) {
+    if (!knownPayment || !knownPayment.usesStoreGateway || knownPayment.storeId !== storeId) {
+      return NextResponse.json({ received: true });
+    }
+  } else if (knownPayment?.usesStoreGateway) {
+    return NextResponse.json({ received: true });
+  }
+
   // Never trust the webhook payload's amount/status alone — re-verify
   // directly against Flutterwave's API, same discipline as the browser
   // callback.
-  const verification = await verifyFlutterwaveTransaction(String(transactionId));
+  const verification = await verifyFlutterwaveTransaction(String(transactionId), storeSecretKey);
   if (verification.status !== "success" || verification.data?.status !== "successful") {
     return NextResponse.json({ received: true });
   }

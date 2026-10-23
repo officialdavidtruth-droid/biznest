@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import { verifyFlutterwaveTransaction } from "@/lib/payments/flutterwave";
+import { secretKeyForReference } from "@/lib/payments/store-gateway";
 import { checkRateLimit, getClientIp } from "@/lib/rate-limit";
 import { settleInvoicePayment } from "@/lib/payments/settle-invoice";
 import { settleQuoteDeposit } from "@/lib/payments/settle-quote-deposit";
@@ -19,7 +20,8 @@ import { APP_URL } from "@/lib/constants/app-url";
  * replayed against any other order/invoice/wallet of the same amount.
  */
 async function verifyBound(transactionId: string, txRef: string) {
-  const v = await verifyFlutterwaveTransaction(transactionId);
+  // Store-collected payments (own gateway keys) verify with that store's key.
+  const v = await verifyFlutterwaveTransaction(transactionId, await secretKeyForReference(txRef));
   if (v.status === "success" && v.data?.tx_ref !== txRef) {
     return { status: "error", message: "tx_ref does not match the verified transaction." } as typeof v;
   }

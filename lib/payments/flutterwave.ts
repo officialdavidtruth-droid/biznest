@@ -9,6 +9,8 @@ type InitializeParams = {
   callbackUrl: string;
   subaccountId?: string | null;
   customerName?: string;
+  /** A store's own secret key (bring-your-own gateway). Omit to use the platform's. */
+  secretKey?: string | null;
 };
 
 type InitializeResponse = {
@@ -24,7 +26,7 @@ type VerifyResponse = {
 };
 
 export async function initializeFlutterwaveTransaction(params: InitializeParams): Promise<InitializeResponse> {
-  const secretKey = process.env.FLUTTERWAVE_SECRET_KEY;
+  const secretKey = params.secretKey ?? process.env.FLUTTERWAVE_SECRET_KEY;
   if (!secretKey) {
     return { status: "error", message: "Payments aren't configured yet (missing FLUTTERWAVE_SECRET_KEY)." };
   }
@@ -53,8 +55,10 @@ export async function initializeFlutterwaveTransaction(params: InitializeParams)
  * tx_ref we generated — the caller gets that id back from the redirect query
  * string (`transaction_id`) after the customer completes payment.
  */
-export async function verifyFlutterwaveTransaction(transactionId: string): Promise<VerifyResponse> {
-  const secretKey = process.env.FLUTTERWAVE_SECRET_KEY;
+export async function verifyFlutterwaveTransaction(transactionId: string, secretKeyOverride?: string | null): Promise<VerifyResponse> {
+  // An override (even an empty one) means "this is a store's own-gateway payment":
+  // never fall back to the platform key for it.
+  const secretKey = secretKeyOverride ?? process.env.FLUTTERWAVE_SECRET_KEY;
   if (!secretKey) {
     return { status: "error", message: "Payments aren't configured yet (missing FLUTTERWAVE_SECRET_KEY)." };
   }
@@ -82,9 +86,10 @@ type RefundResponse = {
  */
 export async function refundFlutterwaveTransaction(
   transactionId: string,
-  amountNaira?: number
+  amountNaira?: number,
+  secretKeyOverride?: string | null
 ): Promise<RefundResponse> {
-  const secretKey = process.env.FLUTTERWAVE_SECRET_KEY;
+  const secretKey = secretKeyOverride ?? process.env.FLUTTERWAVE_SECRET_KEY;
   if (!secretKey) {
     return { status: "error", message: "Payments aren't configured yet (missing FLUTTERWAVE_SECRET_KEY)." };
   }
@@ -108,8 +113,8 @@ export async function refundFlutterwaveTransaction(
  * the `verif-hash` header. A plain equality check against that configured
  * value is what Flutterwave's own docs specify.
  */
-export function verifyFlutterwaveWebhookSignature(signature: string | null): boolean {
-  const secretHash = process.env.FLUTTERWAVE_SECRET_HASH;
+export function verifyFlutterwaveWebhookSignature(signature: string | null, secretHashOverride?: string | null): boolean {
+  const secretHash = secretHashOverride ?? process.env.FLUTTERWAVE_SECRET_HASH;
   if (!secretHash || !signature) return false;
   const a = Buffer.from(secretHash);
   const b = Buffer.from(signature);
@@ -187,8 +192,8 @@ export async function updateFlutterwaveSubaccountSplit(subaccountId: string, spl
 }
 
 /** Fetches Flutterwave v3 refund records for a transaction id. */
-export async function listFlutterwaveRefundsForTransaction(transactionId: string) {
-  const secretKey = process.env.FLUTTERWAVE_SECRET_KEY;
+export async function listFlutterwaveRefundsForTransaction(transactionId: string, secretKeyOverride?: string | null) {
+  const secretKey = secretKeyOverride ?? process.env.FLUTTERWAVE_SECRET_KEY;
   if (!secretKey) return { status: "error" as const, message: "Payments aren't configured yet (missing FLUTTERWAVE_SECRET_KEY).", data: [] as any[] };
   const url = `${FLW_BASE}/refunds?id=${encodeURIComponent(transactionId)}`;
   const res = await fetch(url, { headers: { Authorization: `Bearer ${secretKey}` } });

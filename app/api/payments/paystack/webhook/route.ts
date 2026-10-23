@@ -11,6 +11,7 @@ import { settleServiceBookingPayment } from "@/lib/payments/settle-service-booki
 import { settleReservationPayment } from "@/lib/payments/settle-reservation";
 import { settlePluginPurchase } from "@/lib/payments/settle-plugin-purchase";
 import { applyTransferWebhookEvent, isTransferEvent } from "@/lib/payments/payout";
+import { loadStoreCredentials } from "@/lib/payments/store-gateway";
 
 /**
  * Server-to-server payment confirmation from Paystack.
@@ -31,7 +32,19 @@ export async function POST(req: Request) {
   const rawBody = await req.text();
   const signature = req.headers.get("x-paystack-signature");
 
-  if (!verifyPaystackWebhookSignature(rawBody, signature)) {
+  // A store that collects with its own Paystack account points ITS webhook at
+  // this same route with ?store=<storeId>. Those events are signed with the
+  // store's secret key instead of the platform's, and may only ever settle that
+  // store's own payments (guarded below).
+  const storeId = new URL(req.url).searchParams.get("store");
+  let storeSecretKey: string | undefined;
+  if (storeId) {
+    const creds = await loadStoreCredentials(storeId, "PAYSTACK");
+    if (!creds) return NextResponse.json({ error: "Invalid signature" }, { status: 401 });
+    storeSecretKey = creds.secretKey;
+  }
+
+  if (!verifyPaystackWebhookSignature(rawBody, signature, storeSecretKey)) {
     return NextResponse.json({ error: "Invalid signature" }, { status: 401 });
   }
 
@@ -40,6 +53,11 @@ export async function POST(req: Request) {
     event = JSON.parse(rawBody);
   } catch {
     return NextResponse.json({ error: "Invalid payload" }, { status: 400 });
+  }
+
+  // Vendor payout (Transfer API) outcomes belong to the platform account only.
+  if (storeId && isTransferEvent(event.event)) {
+    return NextResponse.json({ received: true });
   }
 
   // Vendor payout (Transfer API) outcomes. Transition rules live in applyTransferWebhookEvent.
@@ -53,6 +71,9 @@ export async function POST(req: Request) {
   // it's the event we care about here.
   if (event.event === "charge.failed" && event.data?.reference) {
     const payment = await prisma.payment.findUnique({ where: { reference: event.data.reference } });
+    if (storeId && (!payment || !payment.usesStoreGateway || payment.storeId !== storeId)) {
+      return NextResponse.json({ received: true });
+    }
     if (payment?.orderId) {
       const order = await prisma.order.findUnique({ where: { id: payment.orderId } });
       if (order) {
@@ -79,9 +100,21 @@ export async function POST(req: Request) {
 
   const reference = event.data.reference;
 
+  // Keep the two worlds apart. A store webhook may only settle that store's own
+  // own-gateway payments; the platform webhook never settles store-gateway ones
+  // (their money isn't in the platform account).
+  const knownPayment = await prisma.payment.findUnique({ where: { reference }, select: { storeId: true, usesStoreGateway: true } });
+  if (storeId) {
+    if (!knownPayment || !knownPayment.usesStoreGateway || knownPayment.storeId !== storeId) {
+      return NextResponse.json({ received: true });
+    }
+  } else if (knownPayment?.usesStoreGateway) {
+    return NextResponse.json({ received: true });
+  }
+
   // Never trust the webhook payload's status alone — re-verify directly
   // against Paystack's API, same discipline as the browser callback.
-  const verification = await verifyPaystackTransaction(reference);
+  const verification = await verifyPaystackTransaction(reference, storeSecretKey);
   if (!verification.status || verification.data?.status !== "success") {
     // If the verify call itself failed for a payment we know about, answer 5xx
     // so Paystack retries; a 200 here would drop a real payment confirmation.

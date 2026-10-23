@@ -111,6 +111,9 @@ export async function queuePayoutForPayment(reference: string): Promise<{ payout
   });
 
   if (!payment) return { skipped: "payment not found" };
+  // Collected with the store's own gateway keys: the money is already in the
+  // merchant's own gateway account, so there is nothing for BizNest to pay out.
+  if (payment.usesStoreGateway) return { skipped: "paid directly to the store's own gateway account" };
   if (payment.status !== "SUCCESSFUL") return { skipped: "payment not successful" };
   if (!payment.storeId || !payment.store) return { skipped: "payment has no store" };
   if (!(PAYOUT_PURPOSES as readonly string[]).includes(payment.purpose)) return { skipped: "not a vendor payment" };
