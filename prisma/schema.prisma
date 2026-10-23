@@ -564,6 +564,12 @@ model PropertyRoom {
   store       Store      @relation(fields: [storeId], references: [id], onDelete: Cascade)
   name        String
   roomType    String
+  // The online-booking unit (ServiceUnit) that is this same physical room.
+  // When set, front-desk reservations and OTA blocks on this room make the
+  // unit unavailable online, and online bookings block this room in the PMS.
+  // One-to-one: a physical room is never counted twice.
+  serviceUnitId String?    @unique
+  serviceUnit   ServiceUnit? @relation(fields: [serviceUnitId], references: [id], onDelete: SetNull)
   status      RoomStatus @default(AVAILABLE)
   notes       String?
   createdAt   DateTime   @default(now())
@@ -1363,6 +1369,8 @@ model ServiceUnit {
   capacity  Int?
 
   bookings  Booking[]
+  // PMS room that is this same physical room (see PropertyRoom.serviceUnitId).
+  propertyRoom PropertyRoom?
 
   createdAt DateTime          @default(now())
   updatedAt DateTime          @updatedAt

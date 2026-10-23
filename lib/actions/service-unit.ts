@@ -1,6 +1,7 @@
 "use server";
 
 import { prisma } from "@/lib/prisma";
+import { findPmsConflictForUnit } from "@/lib/stay-availability";
 import { revalidatePath } from "next/cache";
 import { assertStorePermission } from "@/lib/access/assert-store-access";
 import type { ActionResult } from "@/types/actions";
@@ -87,6 +88,10 @@ export async function createUnitBooking(
   if (!service) return { success: false, error: "Service not found." };
   if (!unit) return { success: false, error: "Unit does not belong to this service." };
   if (overlap) return { success: false, error: "That unit is already booked for part of those dates." };
+
+  // The same physical room may also be reserved in the PMS or blocked by an OTA.
+  const pmsConflict = await findPmsConflictForUnit(prisma, input.unitId, checkIn, checkOut);
+  if (pmsConflict) return { success: false, error: `That room is ${pmsConflict} for part of those dates.` };
 
   const nights = Math.max(1, Math.round((checkOut.getTime() - checkIn.getTime()) / (1000 * 60 * 60 * 24)));
 

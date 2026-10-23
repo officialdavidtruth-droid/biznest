@@ -1,6 +1,8 @@
 "use server";
 
 import { prisma } from "@/lib/prisma";
+import { findBookingOverlapForUnit } from "@/lib/stay-availability";
+import { Prisma } from "@prisma/client";
 import { storeHasPayoutTarget } from "@/lib/payments/payout-target";
 import { revalidatePath } from "next/cache";
 import { assertStorePermission } from "@/lib/access/assert-store-access";
@@ -42,11 +44,13 @@ export async function getPmsAccessStatus(slug: string) {
 
 export async function getPmsData(slug: string) {
   const a = await access(slug); if (!a.success) return null;
-  const [rooms, guests, reservations, cards] = await Promise.all([
+  const [rooms, guests, reservations, cards, units] = await Promise.all([
     prisma.propertyRoom.findMany({ where: { storeId: a.store.id }, orderBy: { name: "asc" } }),
     prisma.propertyGuest.findMany({ where: { storeId: a.store.id }, orderBy: { updatedAt: "desc" }, take: 100 }),
     prisma.propertyReservation.findMany({ where: { storeId: a.store.id }, include: { guest: true, room: true }, orderBy: { checkIn: "asc" }, take: 100 }),
     prisma.roomAccessCard.findMany({ where: { storeId: a.store.id }, include: { room: true, guest: true, reservation: true }, orderBy: { createdAt: "desc" }, take: 500 }),
+    // Online room units, so each PMS room can be linked to the same physical room.
+    prisma.serviceUnit.findMany({ where: { storeId: a.store.id }, select: { id: true, label: true, service: { select: { name: true } } }, orderBy: [{ serviceId: "asc" }, { label: "asc" }] }),
   ]);
   // depositAmount is a Prisma Decimal (a decimal.js class instance), not a
   // plain JS value — React Server Components can't serialize it across the
@@ -65,7 +69,8 @@ export async function getPmsData(slug: string) {
     activatedAt: card.activatedAt.toISOString(),
     revokedAt: card.revokedAt?.toISOString() ?? null,
   }));
-  return { rooms, guests, reservations: plainReservations, cards: plainCards };
+  const plainUnits = units.map((u) => ({ id: u.id, label: u.label, serviceName: u.service.name }));
+  return { rooms, guests, reservations: plainReservations, cards: plainCards, units: plainUnits };
 }
 
 export async function activateRoomCard(
@@ -219,20 +224,39 @@ export async function createReservation(slug:string,input:{guestId:string;roomId
  // pg_advisory_xact_lock serializes concurrent attempts *for this room*
  // (the lock auto-releases at transaction end, success or failure), so
  // the overlap check and the create are effectively one atomic step.
- const result=await prisma.$transaction(async(tx)=>{
-  await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${room.id})::bigint)`;
+ // Serializable (not just the per-room lock) because online bookings are written
+ // under Serializable too: that lets Postgres detect a PMS reservation and an
+ // online booking racing for the same physical room. The loser is retried.
+ let result:{success:true;data:{id:string}}|{success:false;error:string}|null=null;
+ for(let attempt=1;attempt<=3&&!result;attempt++){
+  try{
+   result=await prisma.$transaction(async(tx)=>{
+    await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${room.id})::bigint)`;
 
-  const overlap=await tx.propertyReservation.findFirst({where:{storeId:a.store.id,roomId:room.id,status:{in:["PENDING","CONFIRMED","CHECKED_IN"]},checkIn:{lt:checkOut},checkOut:{gt:checkIn}}});
-  if(overlap)return{success:false as const,error:"That room is already reserved for part of those dates."};
+    const overlap=await tx.propertyReservation.findFirst({where:{storeId:a.store.id,roomId:room.id,status:{in:["PENDING","CONFIRMED","CHECKED_IN"]},checkIn:{lt:checkOut},checkOut:{gt:checkIn}}});
+    if(overlap)return{success:false as const,error:"That room is already reserved for part of those dates."};
 
-  // Dates already sold on a connected OTA (Booking.com, Airbnb, ...) are just as taken.
-  const channelOverlap=await findChannelBlockOverlap(tx,room.id,checkIn,checkOut);
-  if(channelOverlap)return{success:false as const,error:`That room is already booked on ${channelOverlap.connection?.provider?.replace(/_/g," ").toLowerCase()??"a connected channel"} for part of those dates.`};
+    // Dates already sold on a connected OTA (Booking.com, Airbnb, ...) are just as taken.
+    const channelOverlap=await findChannelBlockOverlap(tx,room.id,checkIn,checkOut);
+    if(channelOverlap)return{success:false as const,error:`That room is already booked on ${channelOverlap.connection?.provider?.replace(/_/g," ").toLowerCase()??"a connected channel"} for part of those dates.`};
 
-  const row=await tx.propertyReservation.create({data:{storeId:a.store.id,guestId:guest.id,roomId:room.id,checkIn,checkOut,status:"CONFIRMED",notes:input.notes?.trim()||null}});
-  if(room.status==="AVAILABLE") await tx.propertyRoom.update({where:{id:room.id},data:{status:"RESERVED"}});
-  return{success:true as const,data:{id:row.id}};
- });
+    // The same physical room sold through the online storefront (or the staff calendar) is taken too.
+    if(room.serviceUnitId){
+     const online=await findBookingOverlapForUnit(tx,room.serviceUnitId,checkIn,checkOut);
+     if(online)return{success:false as const,error:"That room is already booked online for part of those dates."};
+    }
+
+    const row=await tx.propertyReservation.create({data:{storeId:a.store.id,guestId:guest.id,roomId:room.id,checkIn,checkOut,status:"CONFIRMED",notes:input.notes?.trim()||null}});
+    if(room.status==="AVAILABLE") await tx.propertyRoom.update({where:{id:room.id},data:{status:"RESERVED"}});
+    return{success:true as const,data:{id:row.id}};
+   },{isolationLevel:"Serializable"});
+  }catch(err){
+   const serializationFailure=err instanceof Prisma.PrismaClientKnownRequestError&&(err.code==="P2034"||err.meta?.code==="40001");
+   if(!serializationFailure)throw err;
+   if(attempt===3)return{success:false,error:"That room was just taken. Please pick other dates or try again."};
+  }
+ }
+ if(!result)return{success:false,error:"That room was just taken. Please pick other dates or try again."};
 
  if(!result.success)return result;
  revalidatePath(`/store/${slug}/admin/pms`);return result;
@@ -398,3 +422,55 @@ export async function chargeReservationDeposit(
 }
 
    
+
+
+/**
+ * Links a PMS room to the online room unit that is the same physical room
+ * (or unlinks with unitId = null). Once linked, front-desk reservations and
+ * OTA blocks make the unit unavailable online, and online bookings block the
+ * room here. One-to-one: a unit can only be linked to one room.
+ */
+export async function linkRoomToUnit(slug:string, roomId:string, unitId:string|null):Promise<ActionResult>{
+ const a=await access(slug);if(!a.success)return{success:false,error:a.error};
+ const room=await prisma.propertyRoom.findFirst({where:{id:roomId,storeId:a.store.id}});
+ if(!room)return{success:false,error:"Room not found."};
+ if(unitId){
+  const unit=await prisma.serviceUnit.findFirst({where:{id:unitId,storeId:a.store.id},select:{id:true}});
+  if(!unit)return{success:false,error:"That online room unit doesn't belong to this store."};
+  const taken=await prisma.propertyRoom.findFirst({where:{serviceUnitId:unitId,NOT:{id:roomId}},select:{name:true}});
+  if(taken)return{success:false,error:`That online unit is already linked to room ${taken.name}.`};
+ }
+ await prisma.propertyRoom.update({where:{id:roomId},data:{serviceUnitId:unitId}});
+ revalidatePath(`/store/${slug}/admin/pms`);
+ return{success:true,data:undefined};
+}
+
+/**
+ * Links every PMS room whose name matches exactly one online unit label
+ * (case-insensitive, e.g. room "101" and unit "101"). Ambiguous or already
+ * linked rooms are left alone. Returns how many were linked.
+ */
+export async function autoLinkRoomsToUnits(slug:string):Promise<ActionResult<{linked:number}>>{
+ const a=await access(slug);if(!a.success)return{success:false,error:a.error};
+ const [rooms,units]=await Promise.all([
+  prisma.propertyRoom.findMany({where:{storeId:a.store.id},select:{id:true,name:true,serviceUnitId:true}}),
+  prisma.serviceUnit.findMany({where:{storeId:a.store.id},select:{id:true,label:true}}),
+ ]);
+ const norm=(v:string)=>v.trim().toLowerCase();
+ const linkedUnits=new Set(rooms.map(r=>r.serviceUnitId).filter(Boolean) as string[]);
+ const roomsByName=new Map<string,typeof rooms>();
+ for(const r of rooms){const k=norm(r.name);roomsByName.set(k,[...(roomsByName.get(k)??[]),r])}
+ const unitsByLabel=new Map<string,typeof units>();
+ for(const u of units){const k=norm(u.label);unitsByLabel.set(k,[...(unitsByLabel.get(k)??[]),u])}
+ let linked=0;
+ for(const [key,rs] of roomsByName){
+  const us=unitsByLabel.get(key)??[];
+  if(rs.length!==1||us.length!==1)continue;           // ambiguous: leave for a human
+  const [r]=rs,[u]=us;
+  if(r.serviceUnitId||linkedUnits.has(u.id))continue;  // already linked
+  await prisma.propertyRoom.update({where:{id:r.id},data:{serviceUnitId:u.id}});
+  linkedUnits.add(u.id);linked++;
+ }
+ revalidatePath(`/store/${slug}/admin/pms`);
+ return{success:true,data:{linked}};
+}

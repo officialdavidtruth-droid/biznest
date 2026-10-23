@@ -11,6 +11,7 @@ import { revalidatePath } from "next/cache";
 import { Prisma } from "@prisma/client";
 import type { ActionResult } from "@/types/actions";
 import { assertStorePermission } from "@/lib/access/assert-store-access";
+import { busyUnitIds, getBusyIntervals } from "@/lib/stay-availability";
 
 // Shared by createBooking/createStayBooking: what to tell the shopper when
 // the database rejects the write because someone else just took the slot.
@@ -547,24 +548,13 @@ export async function getAvailableUnitCount(
   const checkOut = localDateStartUtc(checkOutISO, timezone);
   if (Number.isNaN(checkIn.getTime()) || Number.isNaN(checkOut.getTime()) || checkOut <= checkIn) return 0;
 
-  const totalUnits = await prisma.serviceUnit.count({ where: { serviceId, status: { not: "OUT_OF_SERVICE" } } });
-  if (totalUnits === 0) return 0;
+  const units = await prisma.serviceUnit.findMany({ where: { serviceId, status: { not: "OUT_OF_SERVICE" } }, select: { id: true } });
+  if (units.length === 0) return 0;
 
-  const bookedUnitIds = await prisma.booking.findMany({
-    where: {
-      serviceId,
-      AND: [
-              { status: { not: "CANCELLED" } },
-              { OR: [{ status: { not: "PENDING" } }, { createdAt: { gte: getOnlineBookingHoldCutoff() } }] },
-            ],
-      checkIn: { lt: checkOut },
-      checkOut: { gt: checkIn },
-    },
-    select: { unitId: true },
-    distinct: ["unitId"],
-  });
+  // Online/staff bookings, front-desk (PMS) reservations and OTA blocks all take a unit.
+  const busy = busyUnitIds(await getBusyIntervals(prisma, serviceId, checkIn, checkOut), checkIn, checkOut);
 
-  return Math.max(0, totalUnits - bookedUnitIds.length);
+  return units.filter((u) => !busy.has(u.id)).length;
 }
 
 /**
@@ -585,8 +575,8 @@ export async function getNextAvailableStay(
   const service = await prisma.service.findUnique({ where: { id: serviceId }, include: { store: { select: { timezone: true } } } });
   if (!service || !service.isBookable || !service.totalUnits) return null;
 
-  const totalUnits = await prisma.serviceUnit.count({ where: { serviceId, status: { not: "OUT_OF_SERVICE" } } });
-  if (totalUnits === 0) return null;
+  const units = await prisma.serviceUnit.findMany({ where: { serviceId, status: { not: "OUT_OF_SERVICE" } }, select: { id: true } });
+  if (units.length === 0) return null;
 
   const timezone = service.store.timezone || "Africa/Lagos";
   const startIn = localDateStartUtc(checkInISO, timezone);
@@ -598,30 +588,15 @@ export async function getNextAvailableStay(
   // in memory rather than round-tripping to the DB for each day.
   const horizonEndISO = addLocalDays(checkOutISO, horizonDays);
   const horizonEnd = localDateStartUtc(horizonEndISO, timezone);
-  const bookings = await prisma.booking.findMany({
-    where: {
-      serviceId,
-      AND: [
-              { status: { not: "CANCELLED" } },
-              { OR: [{ status: { not: "PENDING" } }, { createdAt: { gte: getOnlineBookingHoldCutoff() } }] },
-            ],
-      checkIn: { lt: horizonEnd },
-      checkOut: { gt: startIn },
-    },
-    select: { unitId: true, checkIn: true, checkOut: true },
-  });
+  const bookings = await getBusyIntervals(prisma, serviceId, startIn, horizonEnd);
 
   for (let offset = 1; offset <= horizonDays; offset++) {
     const candidateInISO = addLocalDays(checkInISO, offset);
     const candidateOutISO = addLocalDays(checkOutISO, offset);
     const candidateIn = localDateStartUtc(candidateInISO, timezone);
     const candidateOut = localDateStartUtc(candidateOutISO, timezone);
-    const overlapping = new Set(
-      bookings
-        .filter((b) => b.checkIn && b.checkOut && b.checkIn < candidateOut && b.checkOut > candidateIn)
-        .map((b) => b.unitId)
-    );
-    if (overlapping.size < totalUnits) {
+    const overlapping = busyUnitIds(bookings, candidateIn, candidateOut);
+    if (units.some((u) => !overlapping.has(u.id))) {
       return { checkIn: candidateInISO, checkOut: candidateOutISO };
     }
   }
@@ -798,19 +773,8 @@ export async function createStayBooking(
         });
         if (units.length === 0) throw new Error("NO_UNITS");
 
-        const overlapping = await tx.booking.findMany({
-          where: {
-            serviceId,
-            AND: [
-              { status: { not: "CANCELLED" } },
-              { OR: [{ status: { not: "PENDING" } }, { createdAt: { gte: getOnlineBookingHoldCutoff() } }] },
-            ],
-            checkIn: { lt: checkOut },
-            checkOut: { gt: checkIn },
-          },
-          select: { unitId: true },
-        });
-        const takenIds = new Set(overlapping.map((b) => b.unitId));
+        // Includes front-desk (PMS) reservations and OTA blocks on rooms linked to these units.
+        const takenIds = busyUnitIds(await getBusyIntervals(tx, serviceId, checkIn, checkOut), checkIn, checkOut);
         const freeUnit = units.find((u) => !takenIds.has(u.id));
         if (!freeUnit) throw new Error("NO_AVAILABILITY");
 

@@ -46,6 +46,8 @@ import {
   revokeRoomCard,
   setGuestPresence,
   updateRoomStatus,
+  linkRoomToUnit,
+  autoLinkRoomsToUnits,
 } from "@/lib/actions/pms";
 import { issueReservationRefund } from "@/lib/actions/refund";
 
@@ -58,6 +60,8 @@ type PmsWorkspaceProps = {
   guests: any[];
   reservations: any[];
   cards: any[];
+  /** Online room units a PMS room can be linked to (same physical room). */
+  units?: { id: string; label: string; serviceName: string }[];
   channels?: { connections: import("@/lib/actions/channels").ChannelConnectionView[]; requests: import("@/lib/actions/channels").ChannelManagerRequestView[] } | null;
 };
 
@@ -100,7 +104,7 @@ function statusClass(value: string) {
   return "bg-[color-mix(in_srgb,var(--bn-admin-surface)_5%,transparent)] text-white border-[color-mix(in_srgb,var(--bn-admin-border)_10%,transparent)]";
 }
 
-export function PmsWorkspace({ slug, storeName, rooms: initialRooms, guests: initialGuests, reservations: initialReservations, cards: initialCards, channels }: PmsWorkspaceProps) {
+export function PmsWorkspace({ slug, storeName, rooms: initialRooms, guests: initialGuests, reservations: initialReservations, cards: initialCards, units = [], channels }: PmsWorkspaceProps) {
   const [tab, setTab] = useState<Tab>("dashboard");
   const [rooms, setRooms] = useState(initialRooms);
   const [guests, setGuests] = useState(initialGuests);
@@ -196,6 +200,23 @@ export function PmsWorkspace({ slug, storeName, rooms: initialRooms, guests: ini
       if (!result.success) toast.error(result.error);
       else toast.success(success);
       return result;
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function linkRoom(room: any, unitId: string) {
+    const result = await run(() => linkRoomToUnit(slug, room.id, unitId || null), unitId ? "Linked to online room" : "Unlinked");
+    if (result?.success) setRooms((items) => items.map((r) => r.id === room.id ? { ...r, serviceUnitId: unitId || null } : r));
+  }
+
+  async function autoLinkRooms() {
+    setBusy(true);
+    try {
+      const result = await autoLinkRoomsToUnits(slug);
+      if (!result.success) { toast.error(result.error); return; }
+      toast.success(result.data.linked ? `${result.data.linked} room(s) linked to their online units` : "No rooms matched an online unit by name");
+      if (result.data.linked) window.location.reload();
     } finally {
       setBusy(false);
     }
@@ -330,7 +351,7 @@ export function PmsWorkspace({ slug, storeName, rooms: initialRooms, guests: ini
           {tab === "reservations" && <Reservations slug={slug} reservations={filteredReservations} search={search} setSearch={setSearch} onCreate={() => setShowReservationForm(true)} onAction={reservationAction} />}
           {tab === "calendar" && <CalendarView rooms={rooms} reservations={reservations} />}
           {tab === "frontdesk" && <FrontDesk slug={slug} reservations={reservations} onAction={reservationAction} />}
-          {tab === "rooms" && <Rooms rooms={rooms} onAdd={() => setShowRoomForm(true)} onStatus={roomStatus} />}
+          {tab === "rooms" && <Rooms rooms={rooms} units={units} onAdd={() => setShowRoomForm(true)} onStatus={roomStatus} onLink={linkRoom} onAutoLink={autoLinkRooms} />}
           {tab === "housekeeping" && <Housekeeping rooms={rooms} onStatus={roomStatus} />}
           {tab === "guests" && <Guests guests={guests} reservations={reservations} onAdd={() => setShowGuestForm(true)} />}
           {tab === "billing" && <Billing slug={slug} reservations={reservations} onAction={reservationAction} />}
@@ -384,7 +405,7 @@ function FrontDesk({ slug, reservations, onAction }: any) {
   return <div className="space-y-6"><div><h2 className="text-2xl font-semibold">Front Desk</h2><p className="mt-1 text-sm text-white">Fast check-in, check-out and guest presence controls.</p></div><div className="grid gap-5 xl:grid-cols-2"><DeskList title="Arrivals & pending check-ins" icon={DoorOpen} items={arrivals} action="Check in" onAction={(r: any) => onAction(() => checkInReservation(slug, r.id), r.id, "Checked in")} /><DeskList title="Guests in-house" icon={Users} items={inHouse} action="Check out" onAction={(r: any) => onAction(() => checkOutReservation(slug, r.id), r.id, "Checked out")} secondaryAction={(r: any) => r.guestPresence === "IN" ? "Mark OUT" : "Mark IN"} onSecondaryAction={(r: any) => onAction(() => setGuestPresence(slug, r.id, r.guestPresence === "IN" ? "OUT" : "IN"), r.id, r.guestPresence === "IN" ? "Guest marked OUT" : "Guest marked IN")} /></div></div>;
 }
 
-function Rooms({ rooms, onAdd, onStatus }: any) { return <div className="space-y-5"><Toolbar title="Rooms" subtitle="Manage room inventory and operational status." action="Add room" onAction={onAdd} /><div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">{rooms.map((r: any) => <div key={r.id} className="rounded-2xl border border-[color-mix(in_srgb,var(--bn-admin-border)_10%,transparent)] bg-[var(--bn-admin-surface)]/[0.025] p-5"><div className="flex items-start justify-between"><div className="flex h-11 w-11 items-center justify-center rounded-xl bg-[color-mix(in_srgb,var(--bn-admin-surface-2)_10%,transparent)] text-[var(--bn-admin-orange)]"><BedDouble className="h-5 w-5" /></div><span className={`rounded-full border px-2 py-1 text-[10px] ${statusClass(r.status)}`}>{statusLabel(r.status)}</span></div><h3 className="mt-5 font-semibold">{r.name}</h3><p className="mt-1 text-xs text-white">{r.roomType}</p><select value={r.status} onChange={(e) => onStatus(r, e.target.value)} className="mt-5 w-full rounded-xl border border-[color-mix(in_srgb,var(--bn-admin-border)_10%,transparent)] bg-[color-mix(in_srgb,var(--bn-admin-page)_20%,transparent)] px-3 py-2.5 text-xs text-white"><option className="bg-[var(--bn-admin-page)]" value="AVAILABLE">Available</option>{ROOM_STATUSES.filter((s) => s !== "AVAILABLE").map((s) => <option className="bg-[var(--bn-admin-page)]" key={s} value={s}>{statusLabel(s)}</option>)}</select></div>)}{rooms.length === 0 && <Empty text="No rooms configured" />}</div></div>; }
+function Rooms({ rooms, units = [], onAdd, onStatus, onLink, onAutoLink }: any) { return <div className="space-y-5"><Toolbar title="Rooms" subtitle="Manage room inventory and operational status." action="Add room" onAction={onAdd} />{units.length > 0 && <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-[color-mix(in_srgb,var(--bn-admin-border)_10%,transparent)] px-4 py-3 text-xs text-white"><span>Link each room to its online room so a booking made in one place blocks the other.</span><button onClick={onAutoLink} className="rounded-lg border border-[color-mix(in_srgb,var(--bn-admin-border)_20%,transparent)] px-3 py-1.5 font-medium">Match rooms to online units by name</button></div>}<div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">{rooms.map((r: any) => <div key={r.id} className="rounded-2xl border border-[color-mix(in_srgb,var(--bn-admin-border)_10%,transparent)] bg-[var(--bn-admin-surface)]/[0.025] p-5"><div className="flex items-start justify-between"><div className="flex h-11 w-11 items-center justify-center rounded-xl bg-[color-mix(in_srgb,var(--bn-admin-surface-2)_10%,transparent)] text-[var(--bn-admin-orange)]"><BedDouble className="h-5 w-5" /></div><span className={`rounded-full border px-2 py-1 text-[10px] ${statusClass(r.status)}`}>{statusLabel(r.status)}</span></div><h3 className="mt-5 font-semibold">{r.name}</h3><p className="mt-1 text-xs text-white">{r.roomType}</p><select value={r.status} onChange={(e) => onStatus(r, e.target.value)} className="mt-5 w-full rounded-xl border border-[color-mix(in_srgb,var(--bn-admin-border)_10%,transparent)] bg-[color-mix(in_srgb,var(--bn-admin-page)_20%,transparent)] px-3 py-2.5 text-xs text-white"><option className="bg-[var(--bn-admin-page)]" value="AVAILABLE">Available</option>{ROOM_STATUSES.filter((s) => s !== "AVAILABLE").map((s) => <option className="bg-[var(--bn-admin-page)]" key={s} value={s}>{statusLabel(s)}</option>)}</select>{units.length > 0 && <select value={r.serviceUnitId || ""} onChange={(e) => onLink(r, e.target.value)} className="mt-2 w-full rounded-xl border border-[color-mix(in_srgb,var(--bn-admin-border)_10%,transparent)] bg-[color-mix(in_srgb,var(--bn-admin-page)_20%,transparent)] px-3 py-2.5 text-xs text-white"><option className="bg-[var(--bn-admin-page)]" value="">Not linked to an online room</option>{units.filter((u: any) => !rooms.some((x: any) => x.id !== r.id && x.serviceUnitId === u.id)).map((u: any) => <option className="bg-[var(--bn-admin-page)]" key={u.id} value={u.id}>Online: {u.serviceName} · {u.label}</option>)}</select>}</div>)}{rooms.length === 0 && <Empty text="No rooms configured" />}</div></div>; }
 
 function Housekeeping({ rooms, onStatus }: any) { const items = rooms.filter((r: any) => ["DIRTY", "CLEANING", "MAINTENANCE", "AVAILABLE"].includes(r.status)); return <div className="space-y-5"><div><h2 className="text-2xl font-semibold">Housekeeping</h2><p className="mt-1 text-sm text-white">Keep room readiness visible to the whole team.</p></div><div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">{items.map((r: any) => <div key={r.id} className="rounded-2xl border border-[color-mix(in_srgb,var(--bn-admin-border)_10%,transparent)] bg-[var(--bn-admin-surface)]/[0.025] p-5"><div className="flex items-center justify-between"><div><p className="font-semibold">{r.name}</p><p className="mt-1 text-xs text-white">{r.roomType}</p></div><Sparkles className="h-5 w-5 text-[var(--bn-admin-orange)]" /></div><span className={`mt-4 inline-flex rounded-full border px-2 py-1 text-[10px] ${statusClass(r.status)}`}>{statusLabel(r.status)}</span><div className="mt-5 grid grid-cols-2 gap-2">{r.status !== "CLEANING" && <button onClick={() => onStatus(r, "CLEANING")} className="rounded-xl bg-[var(--bn-admin-surface-2)] px-3 py-2 text-xs font-semibold text-[var(--bn-admin-text)]">Start cleaning</button>}<button onClick={() => onStatus(r, "AVAILABLE")} className="rounded-xl border border-[color-mix(in_srgb,var(--bn-admin-border)_10%,transparent)] px-3 py-2 text-xs text-white">Mark ready</button></div></div>)}</div></div>; }
 

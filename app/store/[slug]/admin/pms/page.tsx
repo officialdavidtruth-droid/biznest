@@ -33,5 +33,5 @@ export default async function PmsPage({ params }: { params: Promise<{ slug: stri
     getChannelData(slug),
   ]);
   if (!data || !store) notFound();
-  return <PmsWorkspace slug={slug} storeName={store.name} rooms={data.rooms} guests={data.guests} reservations={data.reservations} cards={data.cards} channels={channels} />;
+  return <PmsWorkspace slug={slug} storeName={store.name} rooms={data.rooms} guests={data.guests} reservations={data.reservations} cards={data.cards} units={data.units} channels={channels} />;
 }
