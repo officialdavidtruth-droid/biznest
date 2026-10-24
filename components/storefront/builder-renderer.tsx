@@ -8,6 +8,7 @@ import { CartLink } from "@/components/storefront/cart-link";
 import { BuilderNewsletterForm } from "@/components/storefront/builder-newsletter-form";
 import type { BuilderConfig, BuilderSection } from "@/lib/builder-config";
 import { getBusinessExperience } from "@/lib/business-experience";
+import { HeroVariantView } from "@/components/storefront/hero-variants";
 
 type CatalogItem = {
   id: string; kind: "product" | "service"; name: string; price: number; currency: string;
@@ -118,6 +119,8 @@ function BuilderSectionView({ section, store, config, catalogItems, categories, 
   const heading = s.heading || label(section.type);
 
   if (section.type === "hero") {
+    // A template's own hero composition wins over the generic split / centered / fullbleed layouts.
+    if (s.heroVariant) return <HeroVariantView variant={s.heroVariant} section={section} d={d} items={catalogItems} categories={categories} />;
     const heroStyle = s.heroStyle || "split";
     const eyebrowEl = (color: string) => s.eyebrow && <div style={{ color, fontSize: 12, fontWeight: 800, letterSpacing: ".12em", textTransform: "uppercase", marginBottom: 12 }}>{s.eyebrow}</div>;
     const h1Style: React.CSSProperties = { fontFamily: d.headingFont, fontSize: "clamp(40px,6vw,72px)", lineHeight: 1.03, margin: 0, letterSpacing: "-.04em" };
@@ -245,6 +248,20 @@ function BuilderHeader({ store, d, experience, visible }: { store: BuilderStore;
         <div className="bn-nav-links" style={linkRow("flex-start")}>{links}</div>
         <div style={{ fontSize: 20, textAlign: "center" }}>{brand}</div>
         <div style={{ display: "flex", justifyContent: "flex-end" }}>{cart}</div>
+      </div>
+    </nav>
+  );
+  if (style === "stripe") return (
+    <nav style={{ position: "sticky", top: 0, zIndex: 20, background: d.primary, color: "#fff", borderBottom: `3px solid ${d.accent}` }}>
+      <div className="bn-wrap" style={{ height: 60, display: "grid", gridTemplateColumns: "auto 1fr auto", alignItems: "center", gap: 28 }}>
+        <Link href={`/store/${store.slug}`} style={{ display: "flex", alignItems: "center", gap: 10, fontWeight: 900, fontFamily: d.headingFont, letterSpacing: "-.02em", textTransform: "uppercase" }}>
+          {store.logoUrl
+            ? <img src={store.logoUrl} alt="" style={{ width: 32, height: 32, objectFit: "cover", borderRadius: 2 }} />
+            : <span style={{ width: 32, height: 32, background: d.accent, color: "#111", display: "grid", placeItems: "center", borderRadius: 2 }}>{store.name.slice(0, 1).toUpperCase()}</span>}
+          {store.name}
+        </Link>
+        <div className="bn-nav-links" style={{ ...linkRow("flex-end"), color: "rgba(255,255,255,.78)", fontWeight: 700 }}>{links}</div>
+        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>{cart}</div>
       </div>
     </nav>
   );

@@ -103,10 +103,12 @@ export type TemplateTheme = {
   accentSoft?: string;
   /** Structural identity: header / footer / product-card layout. Every template gets its own combination. */
   chrome?: TemplateChrome;
+  /** This template's own hero composition (components/storefront/hero-variants.tsx). Unique per header. */
+  heroVariant?: HeroVariant;
 };
 
 export type TemplateChrome = {
-  header: "classic" | "centered" | "overlay" | "bar";
+  header: "classic" | "centered" | "overlay" | "bar" | "stripe";
   footer: "columns" | "centered" | "cta" | "minimal";
   card: "bordered" | "overlay" | "minimal" | "tall";
 };
@@ -118,6 +120,7 @@ export type GeneratedTemplate = TemplateTheme & {
 
 // Backward-compatible templates retained for existing stores.
 import { HOTEL_TEMPLATE_NAME } from "./hotel-content";
+import type { HeroVariant } from "./builder-config";
 import { THELUSO_THEME } from "./hotel-theme";
 import { TASTEHOUSE_TEMPLATE_NAME } from "./tastehouse-content";
 import { EXAMPLE_TEMPLATE_NAME } from "./example-content";
@@ -817,7 +820,7 @@ const C = (header: TemplateChrome["header"], footer: TemplateChrome["footer"], c
 export const SIGNATURE_CHROME: Record<string, TemplateChrome> = {
   electra: C("bar", "columns", "bordered"),
   atelier: C("centered", "centered", "tall"),
-  kinetic: C("overlay", "minimal", "overlay"),
+  kinetic: C("stripe", "minimal", "overlay"),
   haven: C("classic", "cta", "minimal"),
   harvest: C("bar", "cta", "tall"),
   ember: C("centered", "columns", "overlay"),
@@ -827,17 +830,27 @@ export const SIGNATURE_CHROME: Record<string, TemplateChrome> = {
   pure: C("bar", "centered", "minimal"),
   forge: C("classic", "minimal", "tall"),
 };
+/**
+ * Each builder-rendered signature template owns one hero composition. The pair (header, heroVariant)
+ * must be unique across ALL builder templates -- enforced by lib/__tests__/template-uniqueness.test.ts.
+ */
+export const HERO_VARIANT_BY_MODE: Readonly<Record<string, HeroVariant>> = {
+  electra: "tiles", atelier: "editorial", kinetic: "poster", haven: "frame", harvest: "splitcard",
+  ember: "menu", muse: "arch", frame: "frame", north: "ledger", pure: "quiet", forge: "poster",
+  // Dedicated-renderer templates (bloom, maison, hotel) never reach the Builder; listed so the map is complete.
+  bloom: "arch", maison: "splitcard", hotel: "splitcard",
+};
 /** Templates that used to reuse another template's renderer. They now render through the Builder with their own identity. */
-export const NAMED_TEMPLATE_IDENTITY: Record<string, { chrome: TemplateChrome; heroStyle?: HeroStyle }> = {
-  "Emarket Furniture & Home": { chrome: C("classic", "columns", "tall"), heroStyle: "split" },
-  "ShopNova Marketplace": { chrome: C("bar", "minimal", "bordered"), heroStyle: "centered" },
-  "Electra Blue Electronics": { chrome: C("centered", "minimal", "bordered"), heroStyle: "fullbleed" },
-  "TechNova Mobile Store": { chrome: C("overlay", "cta", "bordered"), heroStyle: "split" },
-  "TechVerse Gadgets": { chrome: C("bar", "centered", "overlay"), heroStyle: "centered" },
-  "ShopEase General Store": { chrome: C("centered", "columns", "minimal"), heroStyle: "fullbleed" },
-  "Violet — Sunset": { chrome: C("centered", "minimal", "tall"), heroStyle: "centered" },
-  "Nova Studio — Ivory Minimal": { chrome: C("bar", "columns", "minimal"), heroStyle: "split" },
-  "Heenzy — Boutique Rose": { chrome: C("overlay", "columns", "tall"), heroStyle: "fullbleed" },
+export const NAMED_TEMPLATE_IDENTITY: Record<string, { chrome: TemplateChrome; heroStyle?: HeroStyle; heroVariant?: HeroVariant }> = {
+  "Emarket Furniture & Home": { chrome: C("classic", "columns", "tall"), heroStyle: "split", heroVariant: "splitcard" },
+  "ShopNova Marketplace": { chrome: C("bar", "minimal", "bordered"), heroStyle: "centered", heroVariant: "banner" },
+  "Electra Blue Electronics": { chrome: C("centered", "minimal", "bordered"), heroStyle: "fullbleed", heroVariant: "quiet" },
+  "TechNova Mobile Store": { chrome: C("overlay", "cta", "bordered"), heroStyle: "split", heroVariant: "splitcard" },
+  "TechVerse Gadgets": { chrome: C("bar", "centered", "overlay"), heroStyle: "centered", heroVariant: "poster" },
+  "ShopEase General Store": { chrome: C("centered", "columns", "minimal"), heroStyle: "fullbleed", heroVariant: "tiles" },
+  "Violet — Sunset": { chrome: C("centered", "minimal", "tall"), heroStyle: "centered", heroVariant: "banner" },
+  "Nova Studio — Ivory Minimal": { chrome: C("bar", "columns", "minimal"), heroStyle: "split", heroVariant: "ledger" },
+  "Heenzy — Boutique Rose": { chrome: C("overlay", "columns", "tall"), heroStyle: "fullbleed", heroVariant: "lookbook" },
 };
 
 function lookupReferenceTheme(name: string | null | undefined): TemplateTheme | null {
@@ -895,7 +908,7 @@ export function resolveStoreTheme(
   const identity = templateName ? NAMED_TEMPLATE_IDENTITY[templateName] : undefined;
   return {
     ...base,
-    ...(identity ? { chrome: identity.chrome, ...(identity.heroStyle ? { heroStyle: identity.heroStyle } : {}) } : {}),
+    ...(identity ? { chrome: identity.chrome, ...(identity.heroStyle ? { heroStyle: identity.heroStyle } : {}), ...(identity.heroVariant ? { heroVariant: identity.heroVariant } : {}) } : {}),
     bg: overrides?.secondary || base.bg,
     accent: overrides?.primary || overrides?.accent || base.accent,
     font: fontFamily || base.font,
@@ -975,7 +988,7 @@ const SIGNATURE_STYLE: Record<string, { font?: string; headlineFont?: string; ra
 };
 
 function signatureTheme(data: Omit<TemplateTheme, "font" | "headlineFont" | "radius" | "sections"> & { signatureMode: string }): TemplateTheme & { signatureMode: string } {
-  return { ...SIGNATURE_BASE, ...(SIGNATURE_STYLE[data.signatureMode] ?? {}), sections: SIGNATURE_SECTIONS[data.signatureMode] ?? SIGNATURE_BASE.sections, sectionCopy: SIGNATURE_SECTION_COPY[data.signatureMode], chrome: SIGNATURE_CHROME[data.signatureMode], ...data };
+  return { ...SIGNATURE_BASE, ...(SIGNATURE_STYLE[data.signatureMode] ?? {}), sections: SIGNATURE_SECTIONS[data.signatureMode] ?? SIGNATURE_BASE.sections, sectionCopy: SIGNATURE_SECTION_COPY[data.signatureMode], chrome: SIGNATURE_CHROME[data.signatureMode], heroVariant: HERO_VARIANT_BY_MODE[data.signatureMode], ...data };
 }
 
 export const SIGNATURE_TEMPLATES = [

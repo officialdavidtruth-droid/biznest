@@ -18,7 +18,7 @@ function sectionFor(theme: TemplateTheme, type: string, index: number, storeName
   const id = `${type}-${index}`;
   const copy = theme.sectionCopy?.[type as keyof NonNullable<TemplateTheme["sectionCopy"]>];
   const base = { id, type: type as BuilderSectionType, visible: true, settings: {} as BuilderSection["settings"] };
-  if (type === "hero") base.settings = { eyebrow: theme.eyebrow, heading: theme.headline || storeName, body: description || theme.sub || undefined, ctaLabel: theme.cta, ctaHref: "#catalog", image: heroImage || undefined, heroStyle: theme.heroStyle, align: theme.heroStyle === "centered" ? "center" : "left", padding: theme.density === "compact" ? "normal" : "spacious" };
+  if (type === "hero") base.settings = { eyebrow: theme.eyebrow, heading: theme.headline || storeName, body: description || theme.sub || undefined, ctaLabel: theme.cta, ctaHref: "#catalog", image: heroImage || undefined, heroStyle: theme.heroStyle, heroVariant: theme.heroVariant, align: theme.heroStyle === "centered" ? "center" : "left", padding: theme.density === "compact" ? "normal" : "spacious" };
   else if (type === "catalog") base.settings = { eyebrow: theme.catalogLabel, heading: theme.catalogLabel, columns: theme.layout === "list" ? 3 : 4, padding: theme.density === "compact" ? "normal" : "spacious" };
   else if (type === "about") base.settings = { eyebrow: copy?.eyebrow ?? "Our story", heading: copy?.heading ?? "Built around what matters", body: description || theme.sub, padding: theme.density === "compact" ? "normal" : "spacious" };
   else if (type === "stats") base.settings = { padding: "normal" };

@@ -19,11 +19,16 @@ export type BuilderSectionSettings = {
   align?: "left" | "center" | "right";
   /** Hero only: "split" (text + image side by side, default), "centered" (stacked, centred) or "fullbleed" (text over a full-width background). */
   heroStyle?: "split" | "centered" | "fullbleed";
+  /** A template's own hero composition (see components/storefront/hero-variants.tsx). Overrides heroStyle when set. */
+  heroVariant?: HeroVariant;
   columns?: 1 | 2 | 3 | 4;
   padding?: "compact" | "normal" | "spacious";
   radius?: number;
   showButton?: boolean;
 };
+
+export const HERO_VARIANTS = ["poster", "editorial", "lookbook", "tiles", "arch", "ledger", "frame", "splitcard", "menu", "banner", "quiet"] as const;
+export type HeroVariant = (typeof HERO_VARIANTS)[number];
 
 export type BuilderSection = {
   id: string;
@@ -45,7 +50,7 @@ export type BuilderDesign = {
   containerWidth: "compact" | "standard" | "wide";
   buttonStyle: "solid" | "outline" | "pill";
   /** Structural identity of a template (so templates differ in layout, not just colours). All optional. */
-  headerStyle?: "classic" | "centered" | "overlay" | "bar";
+  headerStyle?: "classic" | "centered" | "overlay" | "bar" | "stripe";
   footerStyle?: "columns" | "centered" | "cta" | "minimal";
   cardStyle?: "bordered" | "overlay" | "minimal" | "tall";
 };
@@ -81,6 +86,7 @@ const settingsSchema = z.object({
   textColor: z.string().max(100).optional(),
   align: z.enum(["left", "center", "right"]).optional(),
   heroStyle: z.enum(["split", "centered", "fullbleed"]).optional(),
+  heroVariant: z.enum(HERO_VARIANTS).optional(),
   columns: z.union([z.literal(1), z.literal(2), z.literal(3), z.literal(4)]).optional(),
   padding: z.enum(["compact", "normal", "spacious"]).optional(),
   radius: z.number().min(0).max(48).optional(),
@@ -102,7 +108,7 @@ export const builderConfigSchema = z.object({
     font: z.string().max(100), headingFont: z.string().max(100), radius: z.number().min(0).max(48),
     containerWidth: z.enum(["compact", "standard", "wide"]),
     buttonStyle: z.enum(["solid", "outline", "pill"]),
-    headerStyle: z.enum(["classic", "centered", "overlay", "bar"]).optional(),
+    headerStyle: z.enum(["classic", "centered", "overlay", "bar", "stripe"]).optional(),
     footerStyle: z.enum(["columns", "centered", "cta", "minimal"]).optional(),
     cardStyle: z.enum(["bordered", "overlay", "minimal", "tall"]).optional(),
   }),

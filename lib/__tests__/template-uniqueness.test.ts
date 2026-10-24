@@ -23,6 +23,23 @@ describe("template uniqueness", () => {
     }
   });
 
+  it("every builder-rendered template has its own hero composition", () => {
+    for (const t of builderTemplates) {
+      const theme = resolveStoreTheme(t.category, "Test", null, null, t.name);
+      expect(theme.heroVariant, `${t.name} has no heroVariant`).toBeTruthy();
+    }
+  });
+
+  it("no two builder-rendered templates share the same header + hero composition (what the gallery card shows)", () => {
+    const seen = new Map<string, string>();
+    for (const t of builderTemplates) {
+      const theme = resolveStoreTheme(t.category, "Test", null, null, t.name);
+      const key = `${theme.chrome!.header}|${theme.heroVariant}`;
+      expect(seen.get(key), `${t.name} looks like ${seen.get(key)} above the fold (${key})`).toBeUndefined();
+      seen.set(key, t.name);
+    }
+  });
+
   it("a dedicated home component is owned by exactly one template", () => {
     const legacy = PUBLIC_TEMPLATE_REGISTRY.filter((t) => resolveHomeRenderer(t.name).kind === "legacy").map((t) => t.name);
     // Colour-variant names must not be rendered by a sibling's component any more.
