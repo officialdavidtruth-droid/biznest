@@ -10,6 +10,19 @@
 export type HotelSkin = {
   bg: string; ink: string; card: string; accent: string; accentInk: string; accentText: string;
   muted: string; line: string; panel: string; font: string; headlineFont: string; dark: boolean;
+  /** Layout identity of the template (hero arrangement + corner style), so templates differ in structure, not just colour. */
+  variant: "fullbleed" | "centered" | "framed"; radius: string;
+  /** Template's own marketing copy for the home hero. */
+  headline?: string; sub?: string;
+};
+
+// Layout identity per hotel template. Unlisted templates keep the classic full-bleed hero.
+const HOTEL_VARIANT_BY_NAME: Record<string, { variant: HotelSkin["variant"]; radius: string }> = {
+  "Aspire Resort": { variant: "fullbleed", radius: "4px" },
+  "Larita Luxury Hotel": { variant: "centered", radius: "0px" },
+  "Skyview Hotels & Resorts": { variant: "framed", radius: "20px" },
+  "Maison — Hotel & Stay": { variant: "centered", radius: "2px" },
+  "Grand — Hotel & Hospitality": { variant: "fullbleed", radius: "10px" },
 };
 
 type Palette = { bg: string; ink: string; card: string; accent: string; muted?: string; border?: string; font: string; headlineFont: string; surfaceDark?: string };
@@ -59,7 +72,7 @@ function mix(a: string, b: string, t: number) {
   return `#${m.map((v) => v.toString(16).padStart(2, "0")).join("")}`;
 }
 
-function toSkin(p: Palette): HotelSkin {
+function toSkin(p: Palette, name = "", copy?: { headline?: string; sub?: string }): HotelSkin {
   const dark = lum(p.bg) < 0.35;
   return {
     bg: p.bg, ink: p.ink, card: p.card, accent: p.accent,
@@ -71,15 +84,22 @@ function toSkin(p: Palette): HotelSkin {
     // Strong surface for footers / dark feature bands.
     panel: dark ? p.card : (p.surfaceDark || p.ink),
     font: p.font, headlineFont: p.headlineFont, dark,
+    variant: HOTEL_VARIANT_BY_NAME[name]?.variant ?? "fullbleed", radius: HOTEL_VARIANT_BY_NAME[name]?.radius ?? "6px",
+    headline: copy?.headline, sub: copy?.sub,
   };
 }
 
 /** Skin for the template a store actually chose (never null for a known template). */
 export async function resolveHotelSkin(templateName: string): Promise<HotelSkin> {
   const mode = SCREENSHOT_MODE_BY_NAME[templateName];
-  if (mode && SCREENSHOT_PALETTES[mode]) return toSkin(SCREENSHOT_PALETTES[mode]);
+  if (mode && SCREENSHOT_PALETTES[mode]) return toSkin(SCREENSHOT_PALETTES[mode], templateName);
+  // Reference templates (Aspire, Larita, Skyview ...) are NOT known to resolveStoreTheme, which silently
+  // fell back to one shared default theme -- so every one of them got the same palette and fonts.
+  const { REFERENCE_TEMPLATE_CATALOG } = await import("./reference-template-catalog");
+  const ref: any = REFERENCE_TEMPLATE_CATALOG.find((t) => t.variationName === templateName);
+  if (ref) return toSkin({ bg: ref.bg, ink: ref.ink, card: ref.card, accent: ref.accent, muted: ref.muted, border: ref.border, font: ref.font, headlineFont: ref.headlineFont, surfaceDark: ref.surfaceDark }, templateName, { headline: ref.headline, sub: ref.sub });
   // Loaded lazily: template-themes imports hotel-content, which imports this file's type.
   const { resolveStoreTheme } = await import("./template-themes");
   const t = resolveStoreTheme(undefined, "", null, null, LEGACY_TARGET_BY_NAME[templateName] || templateName);
-  return toSkin({ bg: t.bg, ink: t.ink, card: t.card, accent: t.accent, muted: t.muted, border: t.border, font: t.font, headlineFont: t.headlineFont, surfaceDark: t.surfaceDark });
+  return toSkin({ bg: t.bg, ink: t.ink, card: t.card, accent: t.accent, muted: t.muted, border: t.border, font: t.font, headlineFont: t.headlineFont, surfaceDark: t.surfaceDark }, templateName);
 }

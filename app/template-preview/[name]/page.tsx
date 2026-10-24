@@ -70,6 +70,9 @@ const store = {
 const PREVIEW_HERO_PHOTOS: Record<string, string> = {
   "Maison — Hotel & Stay": defaultPhoto("photo-1540541338287-41700207dee6", 1800),
   "Grand — Hotel & Hospitality": defaultPhoto("photo-1517248135467-4c7edcad34c4", 1800),
+  "Aspire Resort": defaultPhoto("photo-1542314831-068cd1dbfeeb", 1800),
+  "Larita Luxury Hotel": defaultPhoto("photo-1564501049412-61c2a3083791", 1800),
+  "Skyview Hotels & Resorts": defaultPhoto("photo-1520250497591-112f2f40a3f4", 1800),
 };
 
 export default async function TemplatePreviewPage({ params }: { params: Promise<{ name:string }> }) {
@@ -93,7 +96,7 @@ export default async function TemplatePreviewPage({ params }: { params: Promise<
   if (home.kind === "legacy") return <LegacyTemplateHome name={home.name} p={p}/>;
   if (home.kind === "screenshot") return <SignatureScreenshotHome {...p} mode={home.mode} {...home.palette}/>;
   if (home.kind === "example") return <ExampleStorefront store={previewStore} slug={p.slug} items={sampleItems as any} mode="home"/>;
-  if (home.kind === "hotel") return <ThelusoHotel store={previewStore as any} slug={p.slug} content={await getHotelContent(p.slug)}/>;
+  if (home.kind === "hotel") return <ThelusoHotel store={previewStore as any} slug={p.slug} content={await getHotelContent(p.slug, definition.name)}/>;
   const theme = resolveStoreTheme(definition.category, previewStore.name, null, null, definition.name);
   const config = templateThemeToBuilderConfig(theme, previewStore.name, previewStore.business.description, previewStore.bannerUrl);
   return <BuilderStorefront store={previewStore as any} config={config} catalogItems={sampleItems as any} reviews={[]} avgRating={null} completedOrders={0}/>;

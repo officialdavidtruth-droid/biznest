@@ -67,8 +67,8 @@ function autoPopulateEvents(){
   ];
 }
 
-export async function getHotelContent(slug:string):Promise<HotelContent>{
-  const store=await prisma.store.findUnique({where:{slug},select:{id:true,name:true,template:{select:{name:true}}}}); if(!store)return defaults;
+export async function getHotelContent(slug:string,templateOverride?:string):Promise<HotelContent>{
+  const store=await prisma.store.findUnique({where:{slug},select:{id:true,name:true,template:{select:{name:true}}}}); if(!store)return templateOverride&&templateOverride!==HOTEL_TEMPLATE_NAME?{...defaults,skin:await (await import("./hotel-skin")).resolveHotelSkin(templateOverride)}:defaults;
   const [pages,services]=await Promise.all([
     prisma.storePage.findMany({where:{storeId:store.id,slug:{in:["hotel-home","hotel-rooms","hotel-offers","hotel-gallery","hotel-events","hotel-amenities","hotel-contact","hotel-dining","hotel-experiences","hotel-about"]}}}),
     prisma.service.findMany({where:{storeId:store.id,isPublished:true},orderBy:{createdAt:"asc"},select:{id:true,slug:true,name:true,description:true,images:true,price:true,attributes:true,isBookable:true,totalUnits:true,currency:true}})

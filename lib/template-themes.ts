@@ -902,8 +902,24 @@ export const SIGNATURE_SECTION_COPY: Readonly<Record<string, SectionCopy>> = {
   forge: { about: c("Who we are", "Our approach to building"), features: c("Services", "What we build"), testimonials: c("Clients", "Client feedback"), contact: c("Request a quote", "Tell us about your project") },
 };
 
+// Per-template typography + corner style. These used to come ONLY from SIGNATURE_BASE, so every
+// signature template (professional services, hotel, ...) rendered in the same fonts and radius.
+const SIGNATURE_STYLE: Record<string, { font?: string; headlineFont?: string; radius?: string }> = {
+  north: { headlineFont: "'Space Grotesk', sans-serif", radius: "10px" },
+  frame: { font: "'Inter', sans-serif", headlineFont: "'Playfair Display', Georgia, serif", radius: "0px" },
+  forge: { font: "'Inter', sans-serif", headlineFont: "'Space Grotesk', Impact, sans-serif", radius: "2px" },
+  pure: { font: "'Plus Jakarta Sans', sans-serif", headlineFont: "'Plus Jakarta Sans', sans-serif", radius: "26px" },
+  maison: { font: "'Inter', sans-serif", headlineFont: "'Playfair Display', Georgia, serif", radius: "4px" },
+  hotel: { font: "'Plus Jakarta Sans', sans-serif", headlineFont: "Georgia, 'Times New Roman', serif", radius: "12px" },
+  ember: { headlineFont: "'Playfair Display', Georgia, serif", radius: "8px" },
+  muse: { font: "'Plus Jakarta Sans', sans-serif", headlineFont: "'Playfair Display', Georgia, serif", radius: "22px" },
+  atelier: { headlineFont: "'Playfair Display', Georgia, serif", radius: "2px" },
+  bloom: { font: "'Plus Jakarta Sans', sans-serif", headlineFont: "'Playfair Display', Georgia, serif", radius: "24px" },
+  kinetic: { headlineFont: "'Space Grotesk', sans-serif", radius: "4px" },
+};
+
 function signatureTheme(data: Omit<TemplateTheme, "font" | "headlineFont" | "radius" | "sections"> & { signatureMode: string }): TemplateTheme & { signatureMode: string } {
-  return { ...SIGNATURE_BASE, sections: SIGNATURE_SECTIONS[data.signatureMode] ?? SIGNATURE_BASE.sections, sectionCopy: SIGNATURE_SECTION_COPY[data.signatureMode], ...data };
+  return { ...SIGNATURE_BASE, ...(SIGNATURE_STYLE[data.signatureMode] ?? {}), sections: SIGNATURE_SECTIONS[data.signatureMode] ?? SIGNATURE_BASE.sections, sectionCopy: SIGNATURE_SECTION_COPY[data.signatureMode], ...data };
 }
 
 export const SIGNATURE_TEMPLATES = [

@@ -1295,3 +1295,14 @@ a.ex-mini{text-decoration:none}
   .bn-admin-sidebar.bn-sidebar-motion .bn-sidebar-subnav { animation: none !important; }
   .bn-admin-sidebar.bn-sidebar-motion .bn-sidebar-link { transition: none !important; }
 }
+
+/* Hotel template layout identities (set by SkinScope via lux-v-<variant>). */
+.lux-skinned .lux-room-card,.lux-skinned .lux-booking-bar,.lux-skinned .lux-detail-book,.lux-skinned .lux-room-image,.lux-skinned .lux-room-image img,.lux-skinned .lux-intro>img,.lux-skinned .lux-site .gv-book,.lux-skinned .lux-site .lux-gold,.lux-skinned .lux-site .lux-outline,.lux-skinned .lux-site .lux-book-btn{border-radius:var(--lux-radius,6px)}
+.lux-v-centered .lux-hero{text-align:center;align-items:center}
+.lux-v-centered .lux-hero-inner{display:flex;flex-direction:column;align-items:center}
+.lux-v-centered .lux-hero-inner h1,.lux-v-centered .lux-hero-inner p{margin-left:auto;margin-right:auto}
+.lux-v-centered .lux-hero-buttons{justify-content:center}
+.lux-v-centered .lux-hero-inner h1{font-weight:300;letter-spacing:.01em;text-transform:none}
+.lux-v-framed .lux-hero{min-height:560px;margin:0 3% 0;border-radius:0 0 var(--lux-radius,20px) var(--lux-radius,20px);justify-content:flex-end}
+.lux-v-framed .lux-hero-inner{padding-bottom:70px}
+.lux-v-framed .lux-hero-inner h1{font-weight:600;font-size:clamp(40px,5vw,66px);letter-spacing:-.02em}
