@@ -52,6 +52,21 @@ function LazyPreview({ src, title }: { src: string; title: string }) {
   );
 }
 
+const TEMPLATE_REFERENCE_PREVIEWS: Array<{ keys: RegExp; src: string }> = [
+  { keys: /hotel|resort|hospitality|lodging|stay/i, src: "/template-reference-previews/luxury-hotel-white.jpg" },
+  { keys: /travel|tour|destination|adventure/i, src: "/template-reference-previews/travel-wanderly.jpg" },
+  { keys: /real estate|property|homevista|property/i, src: "/template-reference-previews/real-estate-nestoria.jpg" },
+  { keys: /electronics|technology|tech|gadget/i, src: "/template-reference-previews/electronics-blue.jpg" },
+  { keys: /fashion|clothing|apparel|boutique/i, src: "/template-reference-previews/shop-ease.jpg" },
+  { keys: /marketplace|market|retail|general|shop|commerce/i, src: "/template-reference-previews/home-marketplace.jpg" },
+  { keys: /restaurant|food|cafe|bakery/i, src: "/template-reference-previews/luxury-hotel-dark.jpg" },
+];
+
+function referencePreviewFor(name: string, category: string): string | null {
+  const value = `${name} ${category}`;
+  return TEMPLATE_REFERENCE_PREVIEWS.find((item) => item.keys.test(value))?.src ?? null;
+}
+
 function themeFromConfig(config: unknown): TemplateTheme | null {
   const c = config as Partial<TemplateTheme> | null;
   if (!c || typeof c !== "object" || !c.bg) return null;
@@ -207,7 +222,16 @@ export function TemplateGallery({
               }`}
             >
               <div className="relative h-40 w-full overflow-hidden bg-muted">
-                <LazyPreview title={`${t.name} live front page preview`} src={`/template-preview/${encodeURIComponent(t.name)}`} />
+                {referencePreviewFor(t.name, t.category) ? (
+                  <img
+                    src={referencePreviewFor(t.name, t.category)!}
+                    alt={`${t.name} design reference`}
+                    loading="lazy"
+                    className="absolute inset-0 h-full w-full object-cover object-top transition-transform duration-500 group-hover:scale-[1.035]"
+                  />
+                ) : (
+                  <LazyPreview title={`${t.name} live front page preview`} src={`/template-preview/${encodeURIComponent(t.name)}`} />
+                )}
 
                 <button
                   type="button"
@@ -279,7 +303,7 @@ export function TemplateGallery({
             <div className="flex items-center justify-between border-b border-border px-4 py-3">
               <div>
                 <p className="text-sm font-semibold">{preview.name}</p>
-                <p className="text-[11px] text-muted-foreground">Real template front page preview — rendered from the production storefront component.</p>
+                <p className="text-[11px] text-muted-foreground">Live storefront preview. Product and service content should come from your store catalog; reference images are used only as visual inspiration.</p>
               </div>
               <button type="button" aria-label="Close preview" autoFocus onClick={() => setPreview(null)} className="rounded-md p-2 hover:bg-muted"><X className="h-4 w-4" /></button>
             </div>

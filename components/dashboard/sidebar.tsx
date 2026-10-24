@@ -59,7 +59,7 @@ export function DashboardSidebar({
     // component squeezed into a hamburger; mobile gets its own layout
     // tuned for one-thumb use, not a shrunk desktop sidebar.
     <aside
-      className="bn-admin-sidebar bn-sidebar-motion hidden h-screen max-h-screen w-[250px] shrink-0 flex-col overflow-y-auto overscroll-contain border-r border-[color:var(--bn-ink-line)] bg-[color:var(--bn-ink)] text-white lg:sticky lg:top-0 lg:flex lg:self-start"
+      className="bn-admin-sidebar hidden h-screen max-h-screen w-[250px] shrink-0 flex-col overflow-y-auto overscroll-contain border-r border-[color:var(--bn-ink-line)] bg-[color:var(--bn-ink)] text-white lg:sticky lg:top-0 lg:flex lg:self-start"
       style={{
         // Sidebar is always a dark surface — --bn-admin-muted (#64748b) was
         // tuned for the light admin body text and reads as near-invisible
@@ -73,7 +73,7 @@ export function DashboardSidebar({
         "--bn-admin-muted": "rgba(255,255,255,0.66)",
       } as CSSProperties}
     >
-      <div className="bn-sidebar-brand border-b border-white/15 px-4 py-4">
+      <div className="border-b border-white/15 px-4 py-4">
         <div className="mb-4 flex items-center gap-2.5">
           <div className="flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-xl bg-white shadow-sm">
             <img src="/icon-192.png" alt="BizNest" className="h-full w-full object-cover" />
@@ -105,9 +105,9 @@ export function DashboardSidebar({
         </div>
       </div>
 
-      <nav className="bn-sidebar-nav space-y-5 px-3 py-4">
+      <nav className="space-y-5 px-3 py-4">
         {NAV_GROUPS.map((group) => (
-          <div key={group.label} className="bn-sidebar-group">
+          <div key={group.label}>
             <p className="mb-1.5 px-2 text-[10px] font-semibold uppercase tracking-wider text-[var(--bn-admin-muted)]">
               {group.label}
             </p>
@@ -120,7 +120,7 @@ export function DashboardSidebar({
         ))}
       </nav>
 
-      <div className="bn-sidebar-footer border-t border-white/15 px-3 py-3">
+      <div className="border-t border-white/15 px-3 py-3">
         <div className="mb-3 rounded-xl border border-white/15 bg-white/10 p-3">
           <div className="flex items-center gap-2 text-[11px] font-semibold text-white"><Crown className="h-4 w-4 text-white/80" /> {subscriptionName ?? "No active plan"}</div>
           <p className="mt-1 text-[10px] text-white/70">Your workspace is powered by BizNest.</p>
@@ -159,7 +159,7 @@ function NavLink({ base, item, pathname }: { base: string; item: NavItem; pathna
         <a
           href={href}
           data-tour={`nav:${item.href || "/"}`}
-          className={`bn-sidebar-link group relative flex items-center gap-2.5 rounded-lg px-2.5 py-2 text-sm transition-colors outline-none focus-visible:ring-2 focus-visible:ring-[var(--bn-admin-ring)] active:bg-[var(--bn-admin-active-dark)] active:text-white ${
+          className={`group relative flex items-center gap-2.5 rounded-lg px-2.5 py-2 text-sm transition-colors outline-none focus-visible:ring-2 focus-visible:ring-[var(--bn-admin-ring)] active:bg-[var(--bn-admin-active-dark)] active:text-white ${
             isActive ? "bg-[var(--bn-admin-active)] font-semibold text-white shadow-sm" : "text-[var(--bn-admin-muted)] hover:bg-[color-mix(in_srgb,var(--bn-admin-surface)_14%,transparent)] hover:text-white"
           }`}
         >
@@ -173,7 +173,7 @@ function NavLink({ base, item, pathname }: { base: string; item: NavItem; pathna
       <Link
         href={href}
         data-tour={`nav:${item.href || "/"}`}
-        className={`bn-sidebar-link group relative flex items-center gap-2.5 rounded-lg px-2.5 py-2 text-sm transition-colors outline-none focus-visible:ring-2 focus-visible:ring-[var(--bn-admin-ring)] active:bg-[var(--bn-admin-active-dark)] active:text-white ${
+        className={`group relative flex items-center gap-2.5 rounded-lg px-2.5 py-2 text-sm transition-colors outline-none focus-visible:ring-2 focus-visible:ring-[var(--bn-admin-ring)] active:bg-[var(--bn-admin-active-dark)] active:text-white ${
           isActive ? "bg-[var(--bn-admin-active)] font-semibold text-white shadow-sm" : "text-[var(--bn-admin-muted)] hover:bg-[color-mix(in_srgb,var(--bn-admin-surface)_14%,transparent)] hover:text-white"
         }`}
       >
@@ -188,7 +188,7 @@ function NavLink({ base, item, pathname }: { base: string; item: NavItem; pathna
     <div>
       <div
         data-tour={`nav:${item.href || "/"}`}
-        className={`bn-sidebar-link group relative flex items-center gap-2.5 rounded-lg pr-1.5 text-sm transition-colors outline-none focus-visible:ring-2 focus-visible:ring-[var(--bn-admin-ring)] active:bg-[var(--bn-admin-active-dark)] active:text-white ${
+        className={`group relative flex items-center gap-2.5 rounded-lg pr-1.5 text-sm transition-colors outline-none focus-visible:ring-2 focus-visible:ring-[var(--bn-admin-ring)] active:bg-[var(--bn-admin-active-dark)] active:text-white ${
           isActive ? "bg-[var(--bn-admin-active)] font-semibold text-white shadow-sm" : "text-[var(--bn-admin-muted)] hover:bg-[color-mix(in_srgb,var(--bn-admin-surface)_14%,transparent)] hover:text-white"
         }`}
       >
@@ -207,7 +207,7 @@ function NavLink({ base, item, pathname }: { base: string; item: NavItem; pathna
         </button>
       </div>
       {open && (
-        <div className={`bn-sidebar-subnav ml-4 mt-0.5 space-y-0.5 border-l border-white/15 pl-3 ${open ? "is-open" : ""}`}>
+        <div className="ml-4 mt-0.5 space-y-0.5 border-l border-white/15 pl-3">
           {item.children.map((child) => {
             const childHref = `${base}${child.href}`;
             const childIsActive = pathname === childHref;
