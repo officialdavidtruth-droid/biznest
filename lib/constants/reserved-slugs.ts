@@ -44,6 +44,7 @@ export const RESERVED_SLUGS = new Set([
   // email logo and TasteHouse template images came back as broken images.
   "email-logo.png",
   "tastehouse",
+  "template-reference-previews",
   // top-level app/ routes
   "store",
   // BizNest Marketing (app/marketing/**) is its own standalone product with

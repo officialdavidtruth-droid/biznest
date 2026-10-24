@@ -307,6 +307,7 @@ export const config = {
   // /public. Without this exclusion, a request such as
   // /marketing-generated/restaurant-great-moments.jpg is interpreted as a
   // store slug and rewritten to /store/marketing-generated/..., which causes
-  // Vercel to return a 307 redirect instead of the image.
-  matcher: ["/((?!api|_next/static|_next/image|favicon.ico|marketing-generated).*)"],
+  // Vercel to return a 307 redirect instead of the image. The same applies to
+  // /template-reference-previews/* (template gallery cover images).
+  matcher: ["/((?!api|_next/static|_next/image|favicon.ico|marketing-generated|template-reference-previews).*)"],
 };
