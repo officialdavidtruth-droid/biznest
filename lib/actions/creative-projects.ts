@@ -1,7 +1,7 @@
 "use server";
 import { prisma } from "@/lib/prisma";
 import { assertStorePermission } from "@/lib/access/assert-store-access";
-import { sendOrderNotificationEmail } from "@/lib/email/send";
+import { sendOrderNotificationEmail, storeEmailBrand } from "@/lib/email/send";
 import { checkRateLimit } from "@/lib/rate-limit";
 import { notifyUser } from "@/lib/notifications/notify";
 import { logError } from "@/lib/observability/log";
@@ -281,7 +281,8 @@ export async function addCreativeRevision(slug: string, id: string, previewUrl: 
     await sendOrderNotificationEmail(
       p.customerEmail,
       `Design v${version} is ready for ${p.projectNo}`,
-      `<p>Your latest design is ready for review.</p><p><a href="${APP_URL}/store/projects/${p.id}?token=${p.publicAccessToken}">Review and approve the design</a></p>`
+      `<p>Your latest design is ready for review.</p><p><a href="${APP_URL}/store/projects/${p.id}?token=${p.publicAccessToken}">Review and approve the design</a></p>`,
+      storeEmailBrand(access.store)
     );
   }
   revalidatePath(`/${slug}/admin/projects/${id}`);

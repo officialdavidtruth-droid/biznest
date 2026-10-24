@@ -7,6 +7,9 @@ export function resolveStorefrontRenderer(input:{businessCategory?:string|null;s
 }
 export function isHotelStore(input:{businessCategory?:string|null;storeBusinessType?:string|null;templateName?:string|null}){
  // A selected hotel template is authoritative even when legacy business metadata is stale.
+ // The registry is the source of truth: any template whose homepage is the hotel renderer
+ // (e.g. "Aspire Resort", which has no "hotel" in its name) must also get the hotel inner pages.
+ if(getTemplateDefinition(input.templateName)?.home==="hotel") return true;
  const name=String(input.templateName??"").toLowerCase();
  if(name.includes("hotel") || name.includes("lodging") || name.includes("grand-vere") || name.includes("grand vere") || name.includes("veloura")) return true;
  // A hotel business always needs its rooms / booking pages, whatever template it picked;

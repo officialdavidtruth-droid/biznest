@@ -36,6 +36,51 @@ async function send(params: Parameters<typeof resend.emails.send>[0], context: {
   }
 }
 
+/** Identity of the store an email is sent on behalf of. */
+export type StoreEmailBrand = {
+  name: string;
+  logoUrl?: string | null;
+  color?: string | null;
+  contactEmail?: string | null;
+  contactPhone?: string | null;
+};
+
+function escapeHtml(value: string) {
+  return value.replace(/[&<>'"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", "'": "&#39;", '"': "&quot;" }[c]!));
+}
+
+/** "Store Name <no-reply@…>" — strips characters that would break the From header. */
+function fromFor(brand?: StoreEmailBrand) {
+  return brand ? `${safeFromName(brand.name)} <${FROM_ADDRESS}>` : FROM;
+}
+
+/** Builds the email identity for a Store row (or any object with the same fields). */
+export function storeEmailBrand(store: {
+  name: string;
+  logoUrl?: string | null;
+  themeColors?: unknown;
+  contactEmail?: string | null;
+  contactPhone?: string | null;
+}): StoreEmailBrand {
+  const theme = (store.themeColors ?? null) as { primary?: string } | null;
+  return {
+    name: store.name,
+    logoUrl: store.logoUrl ?? null,
+    color: /^#[0-9a-f]{3}([0-9a-f]{3})?$/i.test(theme?.primary ?? "") ? theme!.primary! : null,
+    contactEmail: store.contactEmail ?? null,
+    contactPhone: store.contactPhone ?? null,
+  };
+}
+
+function brandShellOpts(brand: StoreEmailBrand) {
+  return {
+    brand,
+    headerLogoUrl: brand.logoUrl ?? undefined,
+    headerLogoAlt: brand.name,
+    headerColor: brand.color ?? undefined,
+  };
+}
+
 /**
  * Shared wrapper for every transactional email: branded header, card shell,
  * message-specific footer note, then a consistent company-info block (logo
@@ -55,10 +100,12 @@ function emailShell(opts: {
   headerLogoUrl?: string;
   headerLogoAlt?: string;
   headerColor?: string;
+  /** When set, the email is sent AS this store: no BizNest name, links or copyright anywhere. */
+  brand?: StoreEmailBrand;
 }) {
   const headerColor = opts.headerColor ?? "#0b6413";
   const logoSrc = opts.headerLogoUrl ?? `${APP_URL}/email-logo.png`;
-  const logoAlt = opts.headerLogoAlt ?? "BizNest";
+  const logoAlt = escapeHtml(opts.brand?.name ?? opts.headerLogoAlt ?? "BizNest");
   return `<!DOCTYPE html>
 <html>
   <body style="margin:0;padding:0;background-color:#f3f4f6;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;">
@@ -73,7 +120,9 @@ function emailShell(opts: {
                   <tr>
                     <td valign="middle">
                       ${
-                        opts.headerLogoUrl
+                        opts.brand && !opts.headerLogoUrl
+                          ? `<span style="display:block;color:#ffffff;font-size:20px;font-weight:700;line-height:32px;">${logoAlt}</span>`
+                          : opts.headerLogoUrl
                           ? `<img
                               src="${logoSrc}"
                               alt="${logoAlt}"
@@ -103,7 +152,27 @@ function emailShell(opts: {
                 <p style="margin:0;color:#9ca3af;font-size:12px;line-height:18px;">${opts.footer}</p>
               </td>
             </tr>
-            <tr>
+            ${
+              opts.brand
+                ? `<tr>
+              <td style="padding:20px 32px 24px;background-color:#f9fafb;border-top:1px solid #f0f0f0;">
+                <p style="margin:0 0 6px;color:#374151;font-size:12px;font-weight:600;">${escapeHtml(opts.brand.name)}</p>
+                ${
+                  opts.brand.contactEmail || opts.brand.contactPhone
+                    ? `<p style="margin:0 0 10px;font-size:11px;line-height:18px;color:#6b7280;">${[
+                        opts.brand.contactEmail
+                          ? `<a href="mailto:${escapeHtml(opts.brand.contactEmail)}" style="color:${escapeHtml(opts.brand.color ?? "#0f6410")};text-decoration:none;">${escapeHtml(opts.brand.contactEmail)}</a>`
+                          : "",
+                        opts.brand.contactPhone ? escapeHtml(opts.brand.contactPhone) : "",
+                      ]
+                        .filter(Boolean)
+                        .join(" · ")}</p>`
+                    : ""
+                }
+                <p style="margin:0;color:#c4cbd4;font-size:10px;">© ${new Date().getFullYear()} ${escapeHtml(opts.brand.name)}. All rights reserved.</p>
+              </td>
+            </tr>`
+                : `<tr>
               <td style="padding:20px 32px 24px;background-color:#f9fafb;border-top:1px solid #f0f0f0;">
                 <p style="margin:0 0 6px;color:#374151;font-size:12px;font-weight:600;">
                   BizNest
@@ -124,7 +193,8 @@ function emailShell(opts: {
                   © ${new Date().getFullYear()} BizNest. All rights reserved.
                 </p>
               </td>
-            </tr>
+            </tr>`
+            }
           </table>
         </td>
       </tr>
@@ -232,18 +302,26 @@ export async function sendStaffInviteEmail(
 export async function sendVerificationEmail(
   email: string,
   token: string,
-  store?: { storeName: string; logoUrl?: string | null; primaryColor?: string; storeSlug?: string }
+  store?: {
+    storeName: string;
+    logoUrl?: string | null;
+    primaryColor?: string;
+    storeSlug?: string;
+    contactEmail?: string | null;
+    contactPhone?: string | null;
+  }
 ) {
   const url = `${APP_URL}/verify-email?token=${token}`;
   const brandColor = store?.primaryColor ?? "#0b6413";
   const buttonColor = store?.primaryColor ?? "#0f6410";
   const storeName = store?.storeName;
+  const brand: StoreEmailBrand | undefined = store
+    ? { name: store.storeName, logoUrl: store.logoUrl, color: store.primaryColor, contactEmail: store.contactEmail, contactPhone: store.contactPhone }
+    : undefined;
 
   const html = emailShell({
     preheader: storeName ? `Confirm your email to finish signing up with ${storeName}` : "Confirm your email to get started on BizNest",
-    headerLogoUrl: store?.logoUrl ?? undefined,
-    headerLogoAlt: storeName ?? "BizNest",
-    headerColor: brandColor,
+    ...(brand ? brandShellOpts(brand) : { headerLogoAlt: "BizNest", headerColor: brandColor }),
     body: `
       <p style="margin:0 0 16px;color:#111827;font-size:16px;line-height:24px;">
         Welcome${storeName ? ` to ${storeName}` : " to BizNest"} 👋
@@ -274,7 +352,7 @@ export async function sendVerificationEmail(
       </p>
     `,
     footer: storeName
-      ? `This email was sent to ${email} because an account was created with this address on ${storeName}, powered by BizNest.
+      ? `This email was sent to ${email} because an account was created with this address on ${escapeHtml(storeName)}.
       If you didn't do this, you can safely ignore this email.`
       : `This email was sent to ${email} because an account was created with this address on BizNest.
       If you didn't do this, you can safely ignore this email.`,
@@ -282,7 +360,8 @@ export async function sendVerificationEmail(
 
   return send(
     {
-      from: FROM,
+      from: fromFor(brand),
+      reply_to: brand?.contactEmail ?? undefined,
       to: email,
       subject: storeName ? `Verify your email for ${storeName}` : "Verify your BizNest email",
       html,
@@ -291,21 +370,30 @@ export async function sendVerificationEmail(
   );
 }
 
-export async function sendPasswordResetEmail(email: string, token: string, storeSlug?: string) {
+export async function sendPasswordResetEmail(
+  email: string,
+  token: string,
+  storeSlug?: string,
+  brand?: StoreEmailBrand
+) {
   const url = `${APP_URL}/reset-password?token=${token}${storeSlug ? `&store=${encodeURIComponent(storeSlug)}` : ""}`;
 
+  const accountLabel = brand ? escapeHtml(brand.name) : "BizNest";
+  const buttonColor = brand?.color ?? "#0f6410";
+
   const html = emailShell({
-    preheader: "Reset your BizNest password",
+    preheader: `Reset your ${brand ? brand.name : "BizNest"} password`,
+    ...(brand ? brandShellOpts(brand) : {}),
     body: `
       <p style="margin:0 0 16px;color:#111827;font-size:16px;line-height:24px;">Reset your password</p>
       <p style="margin:0 0 24px;color:#374151;font-size:15px;line-height:24px;">
-        We received a request to reset the password for your BizNest account. Click the button below to
+        We received a request to reset the password for your ${accountLabel} account. Click the button below to
         choose a new one.
       </p>
 
       <table role="presentation" cellpadding="0" cellspacing="0" style="margin:0 auto 24px;">
         <tr>
-          <td align="center" style="border-radius:8px;background-color:#0f6410;">
+          <td align="center" style="border-radius:8px;background-color:${buttonColor};">
             <a href="${url}" style="display:inline-block;padding:12px 28px;color:#ffffff;font-size:15px;font-weight:600;text-decoration:none;border-radius:8px;">
               Reset password
             </a>
@@ -317,21 +405,22 @@ export async function sendPasswordResetEmail(email: string, token: string, store
         If the button doesn't work, copy and paste this link into your browser:
       </p>
       <p style="margin:0 0 24px;word-break:break-all;">
-        <a href="${url}" style="color:#0f6410;font-size:13px;text-decoration:underline;">${url}</a>
+        <a href="${url}" style="color:${buttonColor};font-size:13px;text-decoration:underline;">${url}</a>
       </p>
 
       <p style="margin:0;color:#9ca3af;font-size:13px;line-height:20px;">
         This link expires in 1 hour. If you didn't request a password reset, you can safely ignore this email.
       </p>
     `,
-    footer: `This email was sent to ${email} because a password reset was requested for this BizNest account.`,
+    footer: `This email was sent to ${email} because a password reset was requested for this ${accountLabel} account.`,
   });
 
   return send(
     {
-      from: FROM,
+      from: fromFor(brand),
+      reply_to: brand?.contactEmail ?? undefined,
       to: email,
-      subject: "Reset your BizNest password",
+      subject: `Reset your ${brand ? safeFromName(brand.name) : "BizNest"} password`,
       html,
     },
     { kind: "password-reset", to: email }
@@ -449,6 +538,10 @@ export async function sendOrderConfirmationEmail(
     id: string;
     storeName: string;
     storeSlug: string;
+    storeLogoUrl?: string | null;
+    storeColor?: string | null;
+    storeContactEmail?: string | null;
+    storeContactPhone?: string | null;
     currency: string;
     subtotal: number;
     deliveryFee: number;
@@ -480,12 +573,22 @@ export async function sendOrderConfirmationEmail(
 
   const subject = `Order confirmed — ${order.storeName}`;
 
+  const brand: StoreEmailBrand = {
+    name: order.storeName,
+    logoUrl: order.storeLogoUrl,
+    color: order.storeColor,
+    contactEmail: order.storeContactEmail,
+    contactPhone: order.storeContactPhone,
+  };
+  const buttonColor = brand.color ?? "#0f6410";
+
   const html = emailShell({
     preheader: subject,
+    ...brandShellOpts(brand),
     body: `
       <p style="margin:0 0 16px;color:#111827;font-size:16px;line-height:24px;">Thanks for your order!</p>
       <p style="margin:0 0 24px;color:#374151;font-size:15px;line-height:24px;">
-        Your order from <strong>${order.storeName}</strong> has been placed and is being processed.
+        Your order from <strong>${escapeHtml(order.storeName)}</strong> has been placed and is being processed.
       </p>
 
       <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin-bottom:16px;">
@@ -514,7 +617,7 @@ export async function sendOrderConfirmationEmail(
 
       <table role="presentation" cellpadding="0" cellspacing="0" style="margin:0 auto;">
         <tr>
-          <td align="center" style="border-radius:8px;background-color:#0f6410;">
+          <td align="center" style="border-radius:8px;background-color:${buttonColor};">
             <a href="${orderUrl}" style="display:inline-block;padding:12px 28px;color:#ffffff;font-size:15px;font-weight:600;text-decoration:none;border-radius:8px;">
               View your order
             </a>
@@ -522,14 +625,13 @@ export async function sendOrderConfirmationEmail(
         </tr>
       </table>
     `,
-    footer: `This email was sent to ${email} regarding an order placed on BizNest at ${order.storeName}.`,
+    footer: `This email was sent to ${email} regarding an order placed with ${escapeHtml(order.storeName)}.`,
   });
 
-  return send({ from: FROM, to: email, subject, html }, { kind: "order-confirmation", to: email });
-}
-
-function escapeHtml(value: string) {
-  return value.replace(/[&<>'"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", "'": "&#39;", '"': "&quot;" }[c]!));
+  return send(
+    { from: fromFor(brand), reply_to: brand.contactEmail ?? undefined, to: email, subject, html },
+    { kind: "order-confirmation", to: email }
+  );
 }
 
 export type BookingConfirmationDetails = {
@@ -607,11 +709,17 @@ export async function sendBookingConfirmationEmail(
     .filter(Boolean)
     .join("");
 
+  const brand: StoreEmailBrand = {
+    name: store.name,
+    logoUrl: store.logoUrl,
+    color: store.primaryColor,
+    contactEmail: store.contactEmail,
+    contactPhone: store.contactPhone,
+  };
+
   const html = emailShell({
     preheader: subject,
-    headerLogoUrl: store.logoUrl ?? undefined,
-    headerLogoAlt: store.name,
-    headerColor: store.primaryColor ?? undefined,
+    ...brandShellOpts(brand),
     body: `
       <p style="margin:0 0 6px;color:#111827;font-size:16px;line-height:24px;">Hi ${greetingName},</p>
       <p style="margin:0 0 20px;color:#374151;font-size:15px;line-height:24px;">
@@ -652,48 +760,60 @@ export async function sendBookingConfirmationEmail(
           : ""
       }
     `,
-    footer: `This email was sent to ${email} regarding a booking made with ${escapeHtml(store.name)} on BizNest.`,
+    footer: `This email was sent to ${email} regarding a booking made with ${escapeHtml(store.name)}.`,
   });
 
-  return send({ from: FROM, to: email, subject, html }, { kind: "booking-confirmation", to: email });
+  return send(
+    { from: fromFor(brand), reply_to: brand.contactEmail ?? undefined, to: email, subject, html },
+    { kind: "booking-confirmation", to: email }
+  );
 }
 
 /**
- * Generic transactional notification email — used for quotes, invoices,
- * abandoned-checkout nudges, low-stock alerts, and anything else that just
- * needs a subject line and an HTML message body inside the standard shell.
- *
- * Pass `fromName` when the recipient is the store's own customer/subscriber
- * (automation emails, etc.) so the message shows as coming from that store's
- * brand rather than the platform. Leave it unset for platform-to-merchant
- * notifications (quotes, invoices, low-stock alerts), which should still
- * read as coming from BizNest.
- */
-/**
  * Sends a fully-rendered HTML email (already built by renderMarketingEmail,
  * e.g. by the automation engine) as-is, under the store's own name — unlike
- * sendOrderNotificationEmail, which wraps a short message in the generic
- * BizNest shell.
+ * sendOrderNotificationEmail, which wraps a short message in the standard shell.
  */
 export async function sendBrandedHtmlEmail(email: string, subject: string, html: string, fromName: string) {
   return send(
-    { from: `${fromName} <${FROM_ADDRESS}>`, to: email, subject, html },
+    { from: `${safeFromName(fromName)} <${FROM_ADDRESS}>`, to: email, subject, html },
     { kind: "branded-html", to: email }
   );
 }
 
-export async function sendOrderNotificationEmail(email: string, subject: string, messageHtml: string, fromName?: string) {
+/**
+ * Generic transactional notification email — quotes, invoices, recovery codes,
+ * low-stock alerts, and anything else that needs a subject line and an HTML
+ * message body inside the standard shell.
+ *
+ * Pass `sender` (a StoreEmailBrand, or just the store's name) whenever the
+ * recipient is the store's own customer: the email then carries the store's
+ * name, logo, colour and contact details and never mentions BizNest. Leave it
+ * unset only for platform-to-merchant notifications (new booking paid, contact
+ * enquiries, low-stock alerts), which are legitimately from BizNest.
+ */
+export async function sendOrderNotificationEmail(
+  email: string,
+  subject: string,
+  messageHtml: string,
+  sender?: string | StoreEmailBrand
+) {
+  const brand: StoreEmailBrand | undefined = typeof sender === "string" ? { name: sender } : sender;
   const html = emailShell({
     preheader: subject,
+    ...(brand ? brandShellOpts(brand) : {}),
     body: `
       <p style="margin:0 0 24px;color:#374151;font-size:15px;line-height:24px;">
         ${messageHtml}
       </p>
     `,
-    footer: fromName ? `This email was sent to ${email} by ${fromName}.` : `This email was sent to ${email} by BizNest.`,
+    footer: brand ? `This email was sent to ${email} by ${escapeHtml(brand.name)}.` : `This email was sent to ${email} by BizNest.`,
   });
 
-  return send({ from: fromName ? `${fromName} <${FROM_ADDRESS}>` : FROM, to: email, subject, html }, { kind: "order-notification", to: email });
+  return send(
+    { from: fromFor(brand), reply_to: brand?.contactEmail ?? undefined, to: email, subject, html },
+    { kind: "order-notification", to: email }
+  );
 }
 
 /**

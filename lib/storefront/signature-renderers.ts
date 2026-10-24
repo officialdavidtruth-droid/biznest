@@ -5,6 +5,8 @@
  * Every other signature template renders through the hardened Builder with
  * its own theme from SIGNATURE_TEMPLATE_CATALOG (see resolveStoreTheme).
  *
+ * Maison and Grand are NOT listed: they render through the hotel journey (see resolveHomeRenderer).
+ *
  * Renderers already owned elsewhere and therefore NOT allowed here:
  *  - legacy renderers (marketplace, fabtex, heenzy, arcova, rivora, nova, fresh)
  *    are owned by the legacy template of the same name;
@@ -13,8 +15,6 @@
  */
 export const SIGNATURE_DEDICATED_RENDERER: Readonly<Record<string, string>> = {
   "Bloom — Beauty Boutique": "belora",
-  "Maison — Hotel & Stay": "grand-vere",
-  "Grand — Hotel & Hospitality": "great-treasure",
 };
 
 export const RENDERERS_OWNED_ELSEWHERE: readonly string[] = [

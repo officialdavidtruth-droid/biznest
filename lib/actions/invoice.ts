@@ -5,7 +5,7 @@ import { whatsappLink } from "@/lib/utils/whatsapp-link";
 import { prisma } from "@/lib/prisma";
 import { chargeCustomer, resolveCheckoutGateway, paymentCallbackUrl } from "@/lib/payments/gateway";
 import { roundMoney } from "@/lib/utils/pricing";
-import { sendOrderNotificationEmail } from "@/lib/email/send";
+import { sendOrderNotificationEmail, storeEmailBrand } from "@/lib/email/send";
 import { revalidatePath } from "next/cache";
 import type { ActionResult } from "@/types/actions";
 import { createPendingPayment, markPaymentFailed } from "@/lib/payments/pending";
@@ -165,7 +165,8 @@ export async function sendInvoice(
     await sendOrderNotificationEmail(
       email,
       `Invoice ${invoice.invoiceNo} from ${access.store.name}`,
-      `You have a new invoice for ${invoice.currency} ${Number(invoice.total).toLocaleString()}. View and pay it here: <a href="${viewUrl}">${viewUrl}</a>`
+      `You have a new invoice for ${invoice.currency} ${Number(invoice.total).toLocaleString()}. View and pay it here: <a href="${viewUrl}">${viewUrl}</a>`,
+      storeEmailBrand(access.store)
     );
   }
 

@@ -5,7 +5,7 @@ import { nanoid } from "nanoid";
 import { headers } from "next/headers";
 import { prisma } from "@/lib/prisma";
 import { registerSchema, forgotPasswordSchema, resetPasswordSchema, type RegisterInput, type ForgotPasswordInput, type ResetPasswordInput } from "@/lib/validations/auth";
-import { sendVerificationEmail, sendPasswordResetEmail } from "@/lib/email/send";
+import { sendVerificationEmail, sendPasswordResetEmail, storeEmailBrand, type StoreEmailBrand } from "@/lib/email/send";
 import { checkRateLimit, getClientIp } from "@/lib/rate-limit";
 import { emitPlatformWebhookEvent } from "@/lib/webhooks/dispatch";
 import type { ActionResult } from "@/types/actions";
@@ -125,6 +125,8 @@ export async function registerUser(
       logoUrl: storeForCustomer.logoUrl,
       primaryColor: themeColors?.primary,
       storeSlug,
+      contactEmail: storeForCustomer.contactEmail,
+      contactPhone: storeForCustomer.contactPhone,
     } : undefined);
   } catch (err) {
     // The account still exists at this point — a broken email provider
@@ -171,12 +173,14 @@ export async function requestPasswordReset(input: ForgotPasswordInput): Promise<
   // the lookup must be scoped from the start rather than found generically
   // and then checked after the fact.
   let scopeStoreId: string | null = null;
+  let resetBrand: StoreEmailBrand | undefined;
   if (parsed.data.storeSlug) {
-    const store = await prisma.store.findUnique({ where: { slug: parsed.data.storeSlug }, select: { id: true } });
+    const store = await prisma.store.findUnique({ where: { slug: parsed.data.storeSlug }, select: { id: true, name: true, logoUrl: true, themeColors: true, contactEmail: true, contactPhone: true } });
     // Unknown store slug -- respond the same as "no matching account" so
     // this can't be used to probe for valid store slugs either.
     if (!store) return { success: true, data: undefined };
     scopeStoreId = store.id;
+    resetBrand = storeEmailBrand(store);
   }
 
   // Scope-null now covers two independent products (see isMarketingOnly on
@@ -213,7 +217,7 @@ export async function requestPasswordReset(input: ForgotPasswordInput): Promise<
         },
       });
       try {
-        await sendPasswordResetEmail(user.email, token, parsed.data.storeSlug);
+        await sendPasswordResetEmail(user.email, token, parsed.data.storeSlug, resetBrand);
       } catch (err) {
         console.error("Failed to send password reset email:", err);
       }

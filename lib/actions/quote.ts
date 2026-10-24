@@ -5,7 +5,7 @@ import { whatsappLink } from "@/lib/utils/whatsapp-link";
 import { prisma } from "@/lib/prisma";
 import { chargeCustomer, resolveCheckoutGateway, paymentCallbackUrl } from "@/lib/payments/gateway";
 import { roundMoney } from "@/lib/utils/pricing";
-import { sendOrderNotificationEmail } from "@/lib/email/send";
+import { sendOrderNotificationEmail, storeEmailBrand } from "@/lib/email/send";
 import { revalidatePath } from "next/cache";
 import type { ActionResult } from "@/types/actions";
 import { createPendingPayment, markPaymentFailed } from "@/lib/payments/pending";
@@ -178,7 +178,8 @@ export async function sendQuote(
     await sendOrderNotificationEmail(
       email,
       `Quote ${quote.quoteNo} from ${access.store.name}`,
-      `You have a new quote for ${quote.currency} ${Number(quote.total).toLocaleString()}. Review and accept it here: <a href="${viewUrl}">${viewUrl}</a>`
+      `You have a new quote for ${quote.currency} ${Number(quote.total).toLocaleString()}. Review and accept it here: <a href="${viewUrl}">${viewUrl}</a>`,
+      storeEmailBrand(access.store)
     );
   }
 

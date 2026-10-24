@@ -5,7 +5,7 @@ import { revalidatePath } from "next/cache";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import type { ActionResult } from "@/types/actions";
-import { sendOrderNotificationEmail } from "@/lib/email/send";
+import { sendOrderNotificationEmail, storeEmailBrand } from "@/lib/email/send";
 
 // ============================================================================
 // ORDER RECOVERY
@@ -30,7 +30,7 @@ import { sendOrderNotificationEmail } from "@/lib/email/send";
 const CODE_TTL_MS = 15 * 60 * 1000;
 
 type StoreSessionContext =
-  | { ok: true; userId: string; store: { id: string; name: string } }
+  | { ok: true; userId: string; store: { id: string; name: string; logoUrl: string | null; themeColors: unknown; contactEmail: string | null; contactPhone: string | null } }
   | { ok: false; error: string };
 
 async function getStoreAndVerifiedSession(storeSlug: string): Promise<StoreSessionContext> {
@@ -38,7 +38,7 @@ async function getStoreAndVerifiedSession(storeSlug: string): Promise<StoreSessi
   if (!session?.user?.id || session.user.role !== "CUSTOMER") {
     return { ok: false, error: "Sign in to your account first, then recover the order into it." };
   }
-  const store = await prisma.store.findUnique({ where: { slug: storeSlug }, select: { id: true, name: true } });
+  const store = await prisma.store.findUnique({ where: { slug: storeSlug }, select: { id: true, name: true, logoUrl: true, themeColors: true, contactEmail: true, contactPhone: true } });
   if (!store) return { ok: false, error: "Store not found." };
   if (session.user.customerStoreId !== store.id) {
     return { ok: false, error: "Sign in to your account at this store first." };
@@ -86,7 +86,8 @@ export async function requestOrderRecovery(storeSlug: string, email: string): Pr
   await sendOrderNotificationEmail(
     normalizedEmail,
     `Your order recovery code for ${ctx.store.name}`,
-    `Someone requested to recover ${matchCount === 1 ? "an order" : "orders"} at <strong>${ctx.store.name}</strong> into an account signed in with this email. Your code is <strong style="font-size:18px;letter-spacing:2px;">${code}</strong>. It expires in 15 minutes. If this wasn't you, you can safely ignore this email — nothing happens without the code.`
+    `Someone requested to recover ${matchCount === 1 ? "an order" : "orders"} at <strong>${ctx.store.name}</strong> into an account signed in with this email. Your code is <strong style="font-size:18px;letter-spacing:2px;">${code}</strong>. It expires in 15 minutes. If this wasn't you, you can safely ignore this email — nothing happens without the code.`,
+    storeEmailBrand(ctx.store)
   );
 
   return { success: true, data: undefined };

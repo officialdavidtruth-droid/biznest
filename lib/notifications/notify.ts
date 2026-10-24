@@ -1,6 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import { sendPushToUser } from "@/lib/push/send";
-import { sendOrderConfirmationEmail } from "@/lib/email/send";
+import { sendOrderConfirmationEmail, storeEmailBrand } from "@/lib/email/send";
 import { logError } from "@/lib/observability/log";
 
 type NotifyInput = {
@@ -85,6 +85,10 @@ export async function notifyCustomerOfPaidOrder(orderId: string): Promise<void> 
       id: order.id,
       storeName: order.store.name,
       storeSlug: order.store.slug,
+      storeLogoUrl: order.store.logoUrl,
+      storeColor: storeEmailBrand(order.store).color,
+      storeContactEmail: order.store.contactEmail,
+      storeContactPhone: order.store.contactPhone,
       currency: order.currency,
       subtotal: Number(order.subtotal),
       deliveryFee: Number(order.deliveryFee),

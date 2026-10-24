@@ -3,7 +3,7 @@ import "server-only";
 import { prisma } from "@/lib/prisma";
 import { flagPaymentForReview } from "@/lib/payments/review";
 import { escapeHtml } from "@/lib/payments/booking-confirmation";
-import { sendOrderNotificationEmail } from "@/lib/email/send";
+import { sendOrderNotificationEmail, storeEmailBrand } from "@/lib/email/send";
 import type { ActionResult } from "@/types/actions";
 import { revalidatePath } from "next/cache";
 
@@ -61,7 +61,7 @@ export async function settleWalletFunding(
 
   const email = payment.wallet.user.email;
   if (email) {
-    await sendOrderNotificationEmail(email, `Wallet funded — ${payment.wallet.store.name}`, `Your BizNest wallet at <strong>${escapeHtml(payment.wallet.store.name)}</strong> was funded with <strong>₦${amount.toLocaleString()}</strong>.<br/><br/>Reference: <strong>${escapeHtml(reference)}</strong>.`).catch(() => undefined);
+    await sendOrderNotificationEmail(email, `Wallet funded — ${payment.wallet.store.name}`, `Your wallet at <strong>${escapeHtml(payment.wallet.store.name)}</strong> was funded with <strong>₦${amount.toLocaleString()}</strong>.<br/><br/>Reference: <strong>${escapeHtml(reference)}</strong>.`, storeEmailBrand(payment.wallet.store)).catch(() => undefined);
   }
   revalidatePath(`/store/${payment.wallet.store.slug}/account/wallet`);
   return { success: true, data: { storeSlug: payment.wallet.store.slug } };

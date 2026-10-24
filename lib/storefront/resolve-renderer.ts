@@ -45,6 +45,9 @@ const isScreenshotMode = (m: string | undefined): m is ScreenshotMode => !!m && 
 export function resolveHomeRenderer(templateName: string | null | undefined): HomeRenderer {
   const name = templateName ?? "";
   if (name === "Aspire Resort" || name === "Larita Luxury Hotel" || name === "Skyview Hotels & Resorts") return { kind: "hotel" };
+  // Maison / Grand: homepage and every inner page (rooms, booking, contact...) must share ONE chrome. Inner pages are
+  // always the hotel journey (isHotelStore), so the homepage is the hotel renderer too, skinned from the same palette (lib/hotel-skin.ts).
+  if (name === "Maison — Hotel & Stay" || name === "Grand — Hotel & Hospitality") return { kind: "hotel" };
   // One renderer, one owner: only these two reference templates have their own dedicated home component.
   // The other reference templates (Emarket, ShopNova, Electra Blue, TechNova, TechVerse, ShopEase) and the colour
   // variants (Violet — Sunset, Nova Ivory, Heenzy Boutique Rose) used to reuse another template's component,

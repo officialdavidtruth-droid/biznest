@@ -1,7 +1,7 @@
 import Link from "next/link";
 import type { Metadata } from "next";
 import { Space_Grotesk, Inter } from "next/font/google";
-import { prisma } from "@/lib/prisma";
+import { PUBLIC_TEMPLATE_REGISTRY } from "@/lib/template-registry";
 import type { TemplateTheme } from "@/lib/template-themes";
 import { TemplateCover } from "@/components/storefront/template-cover";
 
@@ -13,18 +13,12 @@ export const metadata: Metadata = {
   description: "Browse every BizNest storefront template and click through a fully functional live demo before you build.",
 };
 
-function themeFromConfig(config: unknown): TemplateTheme | null {
-  const c = config as Partial<TemplateTheme> | null;
-  if (!c || typeof c !== "object" || !c.bg) return null;
-  return c as TemplateTheme;
-}
-
 export default async function TemplatesPage() {
-  const templates = await prisma.storeTemplate.findMany({
-    where: { isActive: true, name: { in: ["Grandeur — Fine Dining Restaurant", "Veloura — Superior Luxury Hotel", "TasteHouse — Food Delivery", "Example — Modern Electronics Store"] } },
-    orderBy: { tierRank: "asc" },
-  });
-
+  // The registry is the single source of truth for the public catalog (same list the seed activates),
+  // so this page can never drift from, or depend on, what happens to be in the database.
+  const templates = [...PUBLIC_TEMPLATE_REGISTRY]
+    .map((d) => ({ id: d.id, name: d.name, category: d.category, tierRank: (d.theme as { tierRank?: number }).tierRank ?? 1, theme: d.theme as unknown as TemplateTheme }))
+    .sort((a, b) => a.tierRank - b.tierRank || a.name.localeCompare(b.name));
 
   return (
     <div
@@ -61,8 +55,7 @@ export default async function TemplatesPage() {
 
       <section className="mx-auto grid max-w-6xl gap-6 px-6 pb-24 sm:px-10 lg:grid-cols-3">
         {templates.map((t) => {
-          const theme = themeFromConfig(t.config);
-          if (!theme) return null;
+          const theme = t.theme;
 
           return (
             <div
@@ -111,11 +104,6 @@ export default async function TemplatesPage() {
           );
         })}
 
-        {templates.length === 0 && (
-          <div className="col-span-full rounded-2xl border border-dashed p-12 text-center text-sm opacity-70" style={{ borderColor: "var(--bn-ink-line)" }}>
-            No templates are set up yet — run <code>npm run db:seed</code> against your database.
-          </div>
-        )}
       </section>
     </div>
   );

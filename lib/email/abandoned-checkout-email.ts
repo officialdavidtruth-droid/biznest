@@ -5,7 +5,7 @@
  * and previewed without any infrastructure. The email is written from the
  * STORE's point of view -- its logo (or name as a wordmark), its brand colour,
  * its contact details -- because the customer was shopping with that store, not
- * with BizNest. BizNest only appears as a tiny "powered by" line at the bottom.
+ * with BizNest. BizNest is not mentioned anywhere in the email.
  */
 
 export type AbandonedCheckoutEmailStore = {
@@ -33,7 +33,7 @@ export type AbandonedCheckoutEmailInput = {
   currency: string;
   total: number;
   cartUrl: string;
-  /** Platform base URL, used to resolve relative image paths and the powered-by link. */
+  /** Platform base URL, used to resolve relative image paths. */
   appUrl: string;
 };
 
@@ -260,7 +260,6 @@ export function renderAbandonedCheckoutEmail(input: AbandonedCheckoutEmailInput)
                 <p style="margin:0 0 4px;color:#111827;font-size:14px;line-height:20px;font-weight:700;">${storeName}</p>
                 ${contactBits.length ? `<p style="margin:0 0 12px;color:#6b7280;font-size:12px;line-height:18px;">${contactBits.join(" &nbsp;·&nbsp; ")}</p>` : ""}
                 <p style="margin:0;color:#9ca3af;font-size:11px;line-height:17px;">You're receiving this because you started a checkout at ${storeName} using ${escapeHtml(input.recipientEmail)}.</p>
-                <p style="margin:12px 0 0;color:#b8bfc9;font-size:10px;line-height:14px;">Powered by <a href="${escapeHtml(appUrl)}" style="color:#b8bfc9;text-decoration:none;">BizNest</a></p>
               </td>
             </tr>
           </table>

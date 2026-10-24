@@ -53,7 +53,11 @@ export default async function StorePagePage({
     // Only a published page with content is shown; otherwise a neutral notice, never invented legal text.
     const policyBody = String((page?.content as { body?: string } | null)?.body ?? "").trim();
     const policy = pageSlug.toLowerCase() === "policies" && page?.isPublished && policyBody ? { title: page.title, body: policyBody } : null;
-    return <UniversalSectionPage store={store} slug={slug} pageSlug={pageSlug} items={items} reviews={store.reviews} theme={theme} social={social} policy={policy} />;
+    // Merchant-written FAQ (Admin -> Pages -> "faq"): blank-line separated blocks, first line = question, rest = answer.
+    const faq = pageSlug.toLowerCase() === "faq" && page?.isPublished && policyBody
+      ? policyBody.split(/\n{2,}/).map((b) => b.trim().split("\n")).map(([q, ...a]) => ({ q: q.trim(), a: a.join("\n").trim() })).filter((x) => x.q && x.a).slice(0, 20)
+      : [];
+    return <UniversalSectionPage store={store} slug={slug} pageSlug={pageSlug} items={items} reviews={store.reviews} theme={theme} social={social} policy={policy} faq={faq} />;
   }
 
   if (!page) notFound();
