@@ -1,4 +1,7 @@
+import type { Metadata } from "next";
 import Link from "next/link";
+import { JsonLd } from "@/components/seo/json-ld";
+import { SITE_DESCRIPTION, SITE_NAME, SITE_URL } from "@/lib/seo";
 import { Space_Grotesk, Inter, JetBrains_Mono } from "next/font/google";
 import { ShieldCheck, Landmark, KeyRound, LifeBuoy, ArrowRight } from "lucide-react";
 import { auth } from "@/lib/auth";
@@ -81,6 +84,16 @@ const FAQS = [
   },
 ];
 
+const HOME_TITLE = "BizNest — Create an Online Store in Nigeria | Sell, Book & Get Paid";
+
+export const metadata: Metadata = {
+  title: { absolute: HOME_TITLE },
+  description: SITE_DESCRIPTION,
+  alternates: { canonical: SITE_URL },
+  openGraph: { type: "website", url: SITE_URL, siteName: SITE_NAME, title: HOME_TITLE, description: SITE_DESCRIPTION, locale: "en_NG" },
+  twitter: { card: "summary_large_image", title: HOME_TITLE, description: SITE_DESCRIPTION },
+};
+
 export default async function HomePage() {
   const session = await auth();
   const [
@@ -146,6 +159,35 @@ export default async function HomePage() {
       className={`${display.variable} ${body.variable} ${mono.variable} min-h-screen overflow-x-clip`}
       style={{ background: "var(--bn-hero-gradient)", color: "var(--bn-ivory)", fontFamily: "var(--font-body)" }}
     >
+      <JsonLd
+        data={[
+          {
+            "@context": "https://schema.org",
+            "@type": "Organization",
+            "@id": `${SITE_URL}/#organization`,
+            name: SITE_NAME,
+            url: SITE_URL,
+            logo: `${SITE_URL}/icon-512.png`,
+            description: SITE_DESCRIPTION,
+            areaServed: "NG",
+          },
+          {
+            "@context": "https://schema.org",
+            "@type": "WebSite",
+            "@id": `${SITE_URL}/#website`,
+            url: SITE_URL,
+            name: SITE_NAME,
+            description: SITE_DESCRIPTION,
+            inLanguage: "en-NG",
+            publisher: { "@id": `${SITE_URL}/#organization` },
+            potentialAction: {
+              "@type": "SearchAction",
+              target: { "@type": "EntryPoint", urlTemplate: `${SITE_URL}/search?q={search_term_string}` },
+              "query-input": "required name=search_term_string",
+            },
+          },
+        ]}
+      />
       {/* Nav */}
       <header
         className="sticky top-0 z-30 flex items-center justify-between px-6 py-4 backdrop-blur-md sm:px-10"

@@ -9,10 +9,48 @@ import { getMaintenanceSetting, getAnnouncementSetting } from "@/lib/actions/sit
 import { AnnouncementBanner } from "@/components/site/announcement-banner";
 import { MaintenanceScreen } from "@/components/site/maintenance-screen";
 import { ADMIN_COOKIE_NAME, verifyAdminToken } from "@/lib/admin-pin-auth";
+import { SITE_DESCRIPTION, SITE_KEYWORDS, SITE_NAME, SITE_URL } from "@/lib/seo";
 
 export const metadata: Metadata = {
+  // Lets every relative OG/Twitter image and alternate URL resolve to an
+  // absolute one. Pages on a vendor's custom domain set their own absolute
+  // canonical/image URLs (see lib/seo.ts).
+  metadataBase: new URL(SITE_URL),
   title: "BizNest — Build, Sell, Grow",
-  description: "The all-in-one marketplace and website builder for products, services, and bookings.",
+  description: SITE_DESCRIPTION,
+  applicationName: SITE_NAME,
+  keywords: SITE_KEYWORDS,
+  authors: [{ name: SITE_NAME, url: SITE_URL }],
+  creator: SITE_NAME,
+  publisher: SITE_NAME,
+  // Deliberately NO root-level `alternates.canonical`: it would be inherited
+  // by every page that doesn't set its own and tell Google they all
+  // duplicate the homepage. The homepage sets its own canonical.
+  openGraph: {
+    type: "website",
+    siteName: SITE_NAME,
+    locale: "en_NG",
+    title: "BizNest — Build, Sell, Grow",
+    description: SITE_DESCRIPTION,
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "BizNest — Build, Sell, Grow",
+    description: SITE_DESCRIPTION,
+  },
+  robots: {
+    index: true,
+    follow: true,
+    googleBot: { index: true, follow: true, "max-image-preview": "large", "max-snippet": -1, "max-video-preview": -1 },
+  },
+  // Set these in your environment after adding the site in Google Search
+  // Console / Bing Webmaster Tools (HTML-tag method) -- see .env.example.
+  verification: {
+    google: process.env.NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION || undefined,
+    other: process.env.NEXT_PUBLIC_BING_SITE_VERIFICATION
+      ? { "msvalidate.01": process.env.NEXT_PUBLIC_BING_SITE_VERIFICATION }
+      : undefined,
+  },
   manifest: "/manifest.json",
   icons: {
     icon: [

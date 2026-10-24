@@ -5,6 +5,8 @@ import { headers } from "next/headers";
 import type { Metadata } from "next";
 import { resolveStoreTheme } from "@/lib/template-themes";
 import { CatalogItemDetail } from "@/components/storefront/catalog-item-detail";
+import { JsonLd } from "@/components/seo/json-ld";
+import { NO_INDEX, absoluteUrl as absUrl, cleanDescription, storeUrl } from "@/lib/seo";
 
 export async function generateMetadata({ params }: { params: Promise<{ slug: string; serviceId: string }> }): Promise<Metadata> {
   const { slug, serviceId } = await params;
@@ -12,13 +14,14 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
   // inactive store must not leak its name/description/image through metadata.
   const service = await prisma.service.findFirst({
     where: { id: serviceId, isPublished: true, store: { slug, status: "ACTIVE" } },
-    select: { name: true, description: true, images: true, store: { select: { name: true, logoUrl: true, bannerUrl: true } } },
+    select: { name: true, description: true, images: true, store: { select: { slug: true, name: true, logoUrl: true, bannerUrl: true, customDomain: true, customDomainStatus: true, seoNoIndex: true } } },
   });
   if (!service) return { title: "Not found", robots: { index: false, follow: false } };
 
   const storeName = service.store.name;
   const title = `${service.name} — ${storeName}`;
-  const description = service.description?.replace(/\s+/g, " ").trim().slice(0, 155) || undefined;
+  const description = cleanDescription(service.description) ?? `Book ${service.name} with ${storeName} on BizNest.`;
+  const canonical = storeUrl(service.store, `/service/${serviceId}`);
 
   // OG/Twitter crawlers need absolute URLs; there is no metadataBase, so build
   // the origin from the host that served this request (works for custom domains).
@@ -35,7 +38,9 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
   return {
     title,
     description,
-    openGraph: { title, description, type: "website", siteName: storeName, ...(image ? { images: [{ url: image, alt: service.name }] } : {}) },
+    robots: service.store.seoNoIndex ? NO_INDEX : undefined,
+    alternates: { canonical },
+    openGraph: { title, description, url: canonical, type: "website", siteName: storeName, locale: "en_NG", ...(image ? { images: [{ url: image, alt: service.name }] } : {}) },
     twitter: { card: image ? "summary_large_image" : "summary", title, description, ...(image ? { images: [image] } : {}) },
   };
 }
@@ -58,5 +63,28 @@ export default async function ServicePage({ params }: { params: Promise<{ slug: 
   const reviewAgg = await prisma.review.aggregate({ where: { serviceId: service.id }, _avg: { rating: true }, _count: { _all: true } });
   const reviewStats = { average: reviewAgg._avg.rating ?? null, count: reviewAgg._count._all };
   const theme = resolveStoreTheme(store.template?.category, store.name, store.themeColors as any, store.fontFamily, store.template?.name);
-  return <CatalogItemDetail store={{...store,sellsProducts:store.business?.sellsProducts??true} as any} slug={slug} service={service} reviewStats={reviewStats} theme={theme} businessCategory={getCanonicalBusinessType({ businessCategory: store.business?.category, storeBusinessType: store.businessType })} />;
+  const url = storeUrl(store, `/service/${service.id}`);
+  const serviceLd = {
+    "@context": "https://schema.org",
+    "@type": "Service",
+    name: service.name,
+    description: cleanDescription(service.description, 500),
+    ...(service.images.length ? { image: service.images.map((i) => absUrl(i)).filter(Boolean) } : {}),
+    ...(service.category?.name ? { serviceType: service.category.name } : {}),
+    url,
+    provider: { "@type": "Organization", name: store.name, url: storeUrl(store) },
+    offers: { "@type": "Offer", url, price: Number(service.price).toFixed(2), priceCurrency: service.currency, availability: "https://schema.org/InStock" },
+    ...(reviewStats.count > 0 && reviewStats.average
+      ? { aggregateRating: { "@type": "AggregateRating", ratingValue: Number(reviewStats.average.toFixed(1)), reviewCount: reviewStats.count, bestRating: 5, worstRating: 1 } }
+      : {}),
+  };
+  const breadcrumbLd = {
+    "@context": "https://schema.org",
+    "@type": "BreadcrumbList",
+    itemListElement: [
+      { "@type": "ListItem", position: 1, name: store.name, item: storeUrl(store) },
+      { "@type": "ListItem", position: 2, name: service.name, item: url },
+    ],
+  };
+  return <><JsonLd data={store.seoNoIndex ? [] : [serviceLd, breadcrumbLd]} /><CatalogItemDetail store={{...store,sellsProducts:store.business?.sellsProducts??true} as any} slug={slug} service={service} reviewStats={reviewStats} theme={theme} businessCategory={getCanonicalBusinessType({ businessCategory: store.business?.category, storeBusinessType: store.businessType })} /></>;
 }

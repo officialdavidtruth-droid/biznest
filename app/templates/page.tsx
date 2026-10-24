@@ -11,6 +11,7 @@ const body = Inter({ subsets: ["latin"], variable: "--font-body" });
 export const metadata: Metadata = {
   title: "Templates — BizNest",
   description: "Browse every BizNest storefront template and click through a fully functional live demo before you build.",
+  alternates: { canonical: "/templates" },
 };
 
 export default async function TemplatesPage() {

@@ -12,7 +12,28 @@ const nextConfig = {
     },
   },
   async headers() {
+    // Pages that must never appear in search results: logins, dashboards,
+    // carts/checkout, personal account pages. X-Robots-Tag works for every
+    // response under these paths (pages, redirects, route handlers) and
+    // doesn't depend on each layout remembering to set robots metadata.
+    // "/:slug/..." covers biznest.space/<slug>/...; the bare paths cover a
+    // vendor's custom domain (where there is no slug segment).
+    const NOINDEX_SOURCES = [
+      "/supaadmin/:path*", "/admin/:path*", "/account/:path*", "/orders/:path*", "/disputes/:path*",
+      "/invoices/:path*", "/quotes/:path*", "/projects/:path*", "/staff/:path*", "/onboarding/:path*",
+      "/login", "/register", "/forgot-password", "/reset-password", "/verify-email", "/unsubscribe",
+      "/template-preview/:path*", "/api/:path*",
+      "/:slug/admin/:path*", "/:slug/checkout/:path*", "/:slug/cart", "/:slug/account/:path*",
+      "/:slug/orders/:path*", "/:slug/payment/:path*", "/:slug/wallet-pay/:path*", "/:slug/favorites",
+      "/:slug/search", "/:slug/booking/:path*", "/:slug/login", "/:slug/register",
+      "/store/:slug/admin/:path*", "/store/:slug/checkout/:path*",
+      "/checkout/:path*", "/cart", "/payment/:path*", "/wallet-pay/:path*", "/favorites"
+    ];
     return [
+      ...NOINDEX_SOURCES.map((source) => ({
+        source,
+        headers: [{ key: "X-Robots-Tag", value: "noindex, nofollow" }],
+      })),
       {
         source: "/:path*",
         headers: [

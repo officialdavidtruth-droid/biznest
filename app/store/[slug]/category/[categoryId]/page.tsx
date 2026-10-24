@@ -4,13 +4,27 @@ import { isHotelStore } from "@/lib/storefront-routing";
 import type { Metadata } from "next";
 import { CatalogExperience } from "@/components/storefront/catalog-experience";
 import { catalogDesign, catalogStoreInfo } from "@/lib/storefront/catalog-props";
+import { NO_INDEX, absoluteUrl, cleanDescription, storeUrl } from "@/lib/seo";
 import { resolveStoreTheme } from "@/lib/template-themes";
 
 export async function generateMetadata({ params }: { params: Promise<{ slug: string; categoryId: string }> }): Promise<Metadata> {
   const { slug, categoryId } = await params;
-  const store = await prisma.store.findUnique({ where: { slug }, select: { id: true } });
-  const category = store ? await prisma.category.findFirst({ where: { id: categoryId, storeId: store.id } }) : null;
-  return { title: category?.name ?? "Category" };
+  const store = await prisma.store.findUnique({ where: { slug }, select: { id: true, slug: true, name: true, status: true, logoUrl: true, bannerUrl: true, customDomain: true, customDomainStatus: true, seoNoIndex: true } });
+  const category = store && store.status === "ACTIVE" ? await prisma.category.findFirst({ where: { id: categoryId, storeId: store.id, isActive: true } }) : null;
+  if (!store || !category) return { title: "Category", robots: NO_INDEX };
+
+  const title = `${category.name} — ${store.name}`;
+  const description = cleanDescription(category.description) ?? `Browse ${category.name} from ${store.name} on BizNest.`;
+  const canonical = storeUrl(store, `/category/${categoryId}`);
+  const image = absoluteUrl(category.imageUrl) ?? absoluteUrl(store.bannerUrl) ?? absoluteUrl(store.logoUrl);
+  return {
+    title,
+    description,
+    robots: store.seoNoIndex ? NO_INDEX : undefined,
+    alternates: { canonical },
+    openGraph: { type: "website", url: canonical, title, description, siteName: store.name, locale: "en_NG", ...(image ? { images: [{ url: image, alt: category.name }] } : {}) },
+    twitter: { card: image ? "summary_large_image" : "summary", title, description, ...(image ? { images: [image] } : {}) },
+  };
 }
 
 export default async function CategoryPage({ params }: { params: Promise<{ slug: string; categoryId: string }> }) {

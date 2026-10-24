@@ -1,6 +1,6 @@
 import Link from "next/link";
 
-export const metadata = { title: "Privacy Policy — BizNest" };
+export const metadata = { title: "Privacy Policy — BizNest", alternates: { canonical: "/privacy" } };
 
 export default function PrivacyPage() {
   return (

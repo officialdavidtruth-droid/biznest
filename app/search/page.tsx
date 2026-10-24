@@ -4,7 +4,12 @@ import { searchBusinesses, type DiscoverySearchParams } from "@/lib/search/busin
 import { SearchFilters } from "@/components/search/search-filters";
 import { BusinessResultCard } from "@/components/search/business-result-card";
 
-export const metadata: Metadata = { title: "Search — BizNest" };
+export const metadata: Metadata = {
+  title: "Browse Businesses & Stores in Nigeria — BizNest",
+  description: "Discover verified Nigerian businesses on BizNest: shops, restaurants, hotels and service providers. Filter by category, location and rating.",
+  // Filtered/paginated result URLs (?q=, ?page=, ?sort=...) all canonicalise to the plain listing.
+  alternates: { canonical: "/search" },
+};
 
 const PAGE_SIZE = 20;
 

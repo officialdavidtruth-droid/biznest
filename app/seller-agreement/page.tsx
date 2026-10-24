@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { FRAUD_POLICY_TEXT } from "@/lib/constants/fraud-policy";
 
-export const metadata = { title: "Seller Agreement — BizNest" };
+export const metadata = { title: "Seller Agreement — BizNest", alternates: { canonical: "/seller-agreement" } };
 
 export default function SellerAgreementPage() {
   return (

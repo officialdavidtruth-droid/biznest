@@ -13,6 +13,7 @@ import { buildPromoPalette, isPromoLive, readPromoPopup } from "@/lib/storefront
 import { getPluginEntitlement } from "@/lib/plugins";
 import { WhatsAppChatButton } from "@/components/storefront/whatsapp-chat-button";
 import { whatsappLink } from "@/lib/utils/whatsapp-link";
+import { NO_INDEX } from "@/lib/seo";
 
 // Every store page under /store/[slug] falls back to the root layout's
 // static "BizNest — Build, Sell, Grow" <title> and platform favicon unless
@@ -27,10 +28,24 @@ export async function generateMetadata({
   params: Promise<{ slug: string }>;
 }): Promise<Metadata> {
   const { slug } = await params;
-  const store = await getStoreBranding(slug);
+  const [store, seo] = await Promise.all([
+    getStoreBranding(slug),
+    prisma.store.findUnique({
+      where: { slug },
+      select: { status: true, marketingOnly: true, seoNoIndex: true, seoGoogleVerification: true },
+    }),
+  ]);
   if (!store) return {};
+  // A suspended/paused store, a marketing-only account (no storefront), or a
+  // store that opted out must never be indexed, whatever page is loaded.
+  const hidden = !seo || seo.status !== "ACTIVE" || seo.marketingOnly || seo.seoNoIndex;
   return {
     title: store.name,
+    // Store pages must not inherit the platform's "BizNest" social card/title.
+    openGraph: { type: "website", siteName: store.name, title: store.name, ...(store.logoUrl ? { images: [{ url: store.logoUrl }] } : {}) },
+    twitter: { card: store.logoUrl ? "summary_large_image" : "summary", title: store.name, ...(store.logoUrl ? { images: [store.logoUrl] } : {}) },
+    robots: hidden ? NO_INDEX : undefined,
+    verification: seo?.seoGoogleVerification ? { google: seo.seoGoogleVerification } : undefined,
     icons: store.logoUrl
       ? {
           icon: [{ url: store.logoUrl, sizes: "any" }],
