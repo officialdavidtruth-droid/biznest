@@ -3,29 +3,20 @@
 import Link from "next/link";
 import { useCart } from "@/lib/cart-context";
 import { Minus, Plus, X, ArrowRight } from "lucide-react";
+import { DEFAULT_STORE_PALETTE, type StorePalette } from "@/lib/store-palette-defaults";
 
-// Lumina design tokens (see lib/template-themes.ts LUMINA) — this page sits
-// outside the per-store theme (no store fetch here), so it uses the fixed
-// Lumina palette directly rather than passed-in theme props.
-const ACCENT = "#0041C8";
-const INK = "#141D23";
-const SURFACE = "#F6FAFF";
-const CARD = "#FFFFFF";
-const CARD_ALT = "#E6EFF8";
-const INVERSE = "#293138";
-const INVERSE_INK = "#E9F2FB";
-
-export function CartClient({ slug }: { slug: string }) {
+export function CartClient({ slug, palette = DEFAULT_STORE_PALETTE }: { slug: string; palette?: StorePalette }) {
+  const ACCENT = palette.accent, INK = palette.ink, SURFACE = palette.surface, CARD = palette.card, CARD_ALT = palette.cardAlt, INVERSE = palette.inverse, INVERSE_INK = palette.inverseInk;
   const { items, storeSlug, setQuantity, removeItem, subtotal } = useCart();
 
   const cartItems = storeSlug === slug ? items : [];
   const itemCount = cartItems.reduce((n, i) => n + i.quantity, 0);
 
   return (
-    <div style={{ background: SURFACE, color: INK, minHeight: "100vh", fontFamily: "'Inter', sans-serif" }} className="storefront-root">
+    <div style={{ background: SURFACE, color: INK, minHeight: "100vh", fontFamily: palette.font }} className="storefront-root">
       <div style={{ maxWidth: 1280 }} className="mx-auto px-6 py-14">
         <div style={{ borderBottom: `1px solid ${INK}1a` }} className="mb-8 flex items-baseline justify-between pb-4">
-          <h1 style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }} className="text-3xl font-extrabold sm:text-4xl">Your Cart</h1>
+          <h1 style={{ fontFamily: palette.headlineFont }} className="text-3xl font-extrabold sm:text-4xl">Your Cart</h1>
           <span style={{ opacity: 0.65 }} className="text-sm">{itemCount} item{itemCount !== 1 ? "s" : ""}</span>
         </div>
 
@@ -57,7 +48,7 @@ export function CartClient({ slug }: { slug: string }) {
                   <div className="flex flex-grow flex-col justify-between">
                     <div className="flex items-start justify-between gap-4">
                       <div>
-                        <h3 style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }} className="text-lg font-semibold">{item.name}</h3>{item.variantLabel && <p className="mt-1 text-xs opacity-65">{item.variantLabel}</p>}
+                        <h3 style={{ fontFamily: palette.headlineFont }} className="text-lg font-semibold">{item.name}</h3>{item.variantLabel && <p className="mt-1 text-xs opacity-65">{item.variantLabel}</p>}
                       </div>
                       <span className="text-right text-lg font-semibold">
                         {item.currency} {(item.price * item.quantity).toLocaleString()}
@@ -102,7 +93,7 @@ export function CartClient({ slug }: { slug: string }) {
                 style={{ background: INVERSE, color: INVERSE_INK, borderRadius: "1.25rem", boxShadow: "0 20px 50px rgba(0,0,0,0.15)" }}
                 className="sticky top-24 flex flex-col gap-5 p-7"
               >
-                <h2 style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }} className="text-xl font-bold">Summary</h2>
+                <h2 style={{ fontFamily: palette.headlineFont }} className="text-xl font-bold">Summary</h2>
                 <div style={{ borderTop: `1px solid ${INVERSE_INK}22` }} className="flex flex-col gap-2.5 pt-5 text-sm">
                   <div className="flex items-center justify-between">
                     <span style={{ opacity: 0.8 }}>Subtotal</span>
@@ -119,7 +110,7 @@ export function CartClient({ slug }: { slug: string }) {
                 </div>
                 <Link
                   href={`/store/${slug}/checkout`}
-                  style={{ background: ACCENT, color: "#fff", boxShadow: `0 8px 20px ${ACCENT}4d` }}
+                  style={{ background: ACCENT, color: palette.onAccent, boxShadow: `0 8px 20px ${ACCENT}4d` }}
                   className="mt-1 flex items-center justify-center gap-2 rounded-xl py-3.5 text-sm font-semibold no-underline transition-transform hover:-translate-y-0.5"
                 >
                   Proceed to Checkout

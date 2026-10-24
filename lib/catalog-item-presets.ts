@@ -273,8 +273,15 @@ const RETAIL_PRODUCT = (section: string, fields: SpecField[], specs: QuickSpecFi
   fields, tips: DEFAULT_TIPS, images: "Upload high quality images to make this product more appealing", importLabel: "Import Products",
 });
 Object.assign(PRESETS, {
-  Fashion: RETAIL_PRODUCT("Collection", [{ key: "material", label: "Material", placeholder: "e.g. 100% cotton" }, { key: "care", label: "Care Instructions", placeholder: "e.g. Machine wash cold" }, { key: "fit", label: "Fit", placeholder: "e.g. Regular" }],
-    [{ key: "sizes", label: "Available Sizes", icon: "Ruler", placeholder: "e.g. S, M, L", type: "text" }, { key: "colors", label: "Colors", icon: "Sparkles", placeholder: "e.g. Black, Navy", type: "text" }], "Product Details"),
+  // Sizes and colours are NOT free-text specs here: customers can only pick (and stock is only
+  // tracked for) real variants, which are set up under Products -> Variants. A free-text
+  // "Available Sizes" box looked like it did that but never produced a size picker.
+  Fashion: {
+    ...RETAIL_PRODUCT("Collection", [{ key: "material", label: "Material", placeholder: "e.g. 100% cotton" }, { key: "care", label: "Care Instructions", placeholder: "e.g. Machine wash cold" }, { key: "fit", label: "Fit", placeholder: "e.g. Regular" }],
+      [{ key: "sizeGuide", label: "Size Guide Note", icon: "Ruler", placeholder: "e.g. Fits true to size", type: "text" }], "Product Details"),
+    specificationsHint: "Optional — shown on the product page. Add sizes and colours as Variants (Products → Variants) so customers can pick them and stock is tracked per size.",
+    tips: ["Add sizes and colours as Variants so customers can choose them", "Show the item on a model and flat-lay", "State the fabric, fit and care instructions", "Mention the model's height and the size worn"],
+  },
   Electronics: RETAIL_PRODUCT("Product Category", [{ key: "brand", label: "Brand", placeholder: "e.g. Samsung" }, { key: "model", label: "Model", placeholder: "e.g. S24" }, { key: "warranty", label: "Warranty", placeholder: "e.g. 12 months" }, { key: "specs", label: "Key Specs", placeholder: "e.g. 8GB RAM, 256GB" }],
     [{ key: "condition", label: "Condition", icon: "Sparkles", type: "select", options: ["New", "Open box", "Refurbished", "Used"] }, { key: "warrantyMonths", label: "Warranty", icon: "Clock3", placeholder: "e.g. 12", unit: "months", type: "number" }], "Technical Specifications"),
   "Food & Groceries": RETAIL_PRODUCT("Category", [{ key: "ingredients", label: "Ingredients", placeholder: "e.g. Rice, palm oil" }, { key: "storage", label: "Storage", placeholder: "e.g. Keep refrigerated" }, { key: "shelfLife", label: "Shelf Life", placeholder: "e.g. 6 months" }],

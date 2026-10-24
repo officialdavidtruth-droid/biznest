@@ -31,6 +31,30 @@ const categories = [
   { id:"cat-4", name:"Services", children:[] },
 ] as any;
 
+
+// Fashion templates previewed with the generic sample items looked like empty grey boxes. These are
+// fashion-flavoured samples with self-contained SVG swatches (no external image hosts to break),
+// tinted from the template's own palette so each fashion template still looks distinct.
+const swatch = (a: string, b: string, label: string) => {
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="800" height="1000" viewBox="0 0 800 1000"><defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="${a}"/><stop offset="1" stop-color="${b}"/></linearGradient></defs><rect width="800" height="1000" fill="url(#g)"/><text x="400" y="520" text-anchor="middle" font-family="Georgia,serif" font-size="46" fill="#ffffff" fill-opacity="0.85" letter-spacing="6">${label}</text></svg>`;
+  return `data:image/svg+xml;base64,${Buffer.from(svg).toString("base64")}`;
+};
+function fashionItems(tpl: any) {
+  const hex = /^#[0-9a-f]{3,8}$/i;
+  const a = hex.test(tpl?.accent) ? tpl.accent : "#B56B45";
+  const b = hex.test(tpl?.accentSoft) ? tpl.accentSoft : hex.test(tpl?.ink) ? tpl.ink : "#211C1A";
+  const base = { kind: "product" as const, currency: "NGN", type: "PRODUCT", rentalUnit: null, isBookable: false };
+  return [
+    { ...base, id: "preview-1", name: "Linen Co-ord Set", description: "Relaxed two-piece in breathable linen.", price: 48000, image: swatch(a, b, "CO-ORD"), categoryName: "Women" },
+    { ...base, id: "preview-2", name: "Ankara Wrap Dress", description: "Bold print, flattering wrap fit.", price: 36500, image: swatch(b, a, "DRESS"), categoryName: "Women" },
+    { ...base, id: "preview-3", name: "Tailored Blazer", description: "Sharp shoulders, soft lining.", price: 72000, image: swatch(a, "#1b1b1d", "BLAZER"), categoryName: "Men" },
+    { ...base, id: "preview-4", name: "Leather Tote Bag", description: "Roomy everyday carry in full-grain leather.", price: 95000, image: swatch("#1b1b1d", a, "TOTE"), categoryName: "Accessories" },
+    { ...base, id: "preview-5", name: "Classic Low Sneakers", description: "Clean silhouette, cushioned sole.", price: 54000, image: swatch(b, "#1b1b1d", "SNEAKER"), categoryName: "Footwear" },
+    { ...base, id: "preview-6", name: "Silk Head Wrap", description: "Hand-finished silk in a rich tone.", price: 15000, image: swatch(a, b, "WRAP"), categoryName: "Accessories" },
+  ];
+}
+const fashionCategories = ["Women", "Men", "Accessories", "Footwear"].map((name, i) => ({ id: `cat-${i + 1}`, name, children: [] })) as any;
+
 const store = {
   name: "BizNest Demo Store",
   logoUrl: null,
@@ -63,12 +87,14 @@ export default async function TemplatePreviewPage({ params }: { params: Promise<
     bannerUrl: PREVIEW_HERO_PHOTOS[definition.name] ?? null,
     business: { description: tpl.sub || store.business.description },
   };
-  const p:any = { store: previewStore, slug:"__biznest-template-preview", catalogItems:items, items, navCategories:categories, goodReviews:[], reviews:[], avgRating:null, completedOrders:0, trustScore:null, trustChecklist:null, social:{} };
+  const isFashion = definition.category === "Fashion";
+  const sampleItems = isFashion ? fashionItems(tpl) : items;
+  const p:any = { store: previewStore, slug:"__biznest-template-preview", catalogItems:sampleItems, items:sampleItems, navCategories:isFashion ? fashionCategories : categories, goodReviews:[], reviews:[], avgRating:null, completedOrders:0, trustScore:null, trustChecklist:null, social:{} };
   if (home.kind === "legacy") return <LegacyTemplateHome name={home.name} p={p}/>;
   if (home.kind === "screenshot") return <SignatureScreenshotHome {...p} mode={home.mode} {...home.palette}/>;
-  if (home.kind === "example") return <ExampleStorefront store={previewStore} slug={p.slug} items={items as any} mode="home"/>;
+  if (home.kind === "example") return <ExampleStorefront store={previewStore} slug={p.slug} items={sampleItems as any} mode="home"/>;
   if (home.kind === "hotel") return <ThelusoHotel store={previewStore as any} slug={p.slug} content={await getHotelContent(p.slug)}/>;
   const theme = resolveStoreTheme(definition.category, previewStore.name, null, null, definition.name);
   const config = templateThemeToBuilderConfig(theme, previewStore.name, previewStore.business.description, previewStore.bannerUrl);
-  return <BuilderStorefront store={previewStore as any} config={config} catalogItems={items as any} reviews={[]} avgRating={null} completedOrders={0}/>;
+  return <BuilderStorefront store={previewStore as any} config={config} catalogItems={sampleItems as any} reviews={[]} avgRating={null} completedOrders={0}/>;
 }

@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { DEFAULT_STORE_PALETTE, type StorePalette } from "@/lib/store-palette-defaults";
 import Link from "next/link";
 import { useCart } from "@/lib/cart-context";
 import { submitCheckout } from "@/lib/checkout/client";
@@ -38,18 +39,9 @@ async function loadExternalScript(src: string) {
 
 type Zone = { id: string; name: string; city: string | null; fee: unknown; estimatedMinutes: number | null };
 
-// Lumina design tokens — matches cart/cart-client.tsx exactly, so the
-// checkout doesn't feel like a different, lower-effort product from the
-// cart the customer just came from.
-const ACCENT = "#0041C8";
-const INK = "#141D23";
-const SURFACE = "#F6FAFF";
-const CARD = "#FFFFFF";
-const CARD_ALT = "#E6EFF8";
-const INVERSE = "#293138";
-const INVERSE_INK = "#E9F2FB";
-
-export function CheckoutClient({ slug }: { slug: string }) {
+export function CheckoutClient({ slug, palette = DEFAULT_STORE_PALETTE }: { slug: string; palette?: StorePalette }) {
+  const ACCENT = palette.accent, INK = palette.ink, SURFACE = palette.surface, CARD = palette.card, CARD_ALT = palette.cardAlt, INVERSE = palette.inverse, INVERSE_INK = palette.inverseInk;
+  const inputStyle = { color: INK };
   const { items, storeSlug, subtotal } = useCart();
   const cartItems = storeSlug === slug ? items : [];
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -158,7 +150,7 @@ export function CheckoutClient({ slug }: { slug: string }) {
   }
 
   return (
-    <div style={{ background: SURFACE, color: INK, minHeight: "100vh", fontFamily: "'Inter', sans-serif" }} className="storefront-root">
+    <div style={{ background: SURFACE, color: INK, minHeight: "100vh", fontFamily: palette.font }} className="storefront-root">
       <div style={{ maxWidth: 1280 }} className="mx-auto px-6 py-14">
         {/* ---------- HEADER + STEP INDICATOR ---------- */}
         <div className="mb-8">
@@ -288,7 +280,7 @@ export function CheckoutClient({ slug }: { slug: string }) {
                 type="submit"
                 form="checkout-form"
                 disabled={isSubmitting}
-                style={{ background: ACCENT, color: "#fff", boxShadow: `0 8px 20px ${ACCENT}4d` }}
+                style={{ background: ACCENT, color: palette.onAccent, boxShadow: `0 8px 20px ${ACCENT}4d` }}
                 className="mt-1 flex items-center justify-center gap-2 rounded-xl py-3.5 text-sm font-semibold transition-transform hover:-translate-y-0.5 disabled:opacity-50 disabled:hover:translate-y-0"
               >
                 {isSubmitting ? "Opening secure card checkout…" : `Pay ${currency} ${total.toLocaleString()}`}
@@ -327,4 +319,4 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
   );
 }
 
-const inputStyle = { color: INK };
+

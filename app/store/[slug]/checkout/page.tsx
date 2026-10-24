@@ -1,3 +1,4 @@
+import { resolveStorePalette } from "@/lib/store-palette";
 import { isHotelStore } from "@/lib/storefront-routing"; import { prisma } from "@/lib/prisma";
 import { redirect, notFound } from "next/navigation";
 import { getStoreCustomerSessionForStore } from "@/lib/store-customer-auth";
@@ -27,5 +28,5 @@ export default async function CheckoutPage({ params }: { params: Promise<{ slug:
     const data = await getGrandeurRestaurantData(slug);
     if (data) return <GrandeurCheckout store={data.store} slug={slug} />;
   }
-  return <CheckoutClient slug={slug} />;
+  return <CheckoutClient slug={slug} palette={resolveStorePalette(rawStore)} />;
 }
