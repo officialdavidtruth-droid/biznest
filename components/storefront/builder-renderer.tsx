@@ -1,6 +1,6 @@
 "use client";
 
-import { MenuLinks } from "@/components/storefront/store-menu";
+import { MenuLinks, type FallbackLink } from "@/components/storefront/store-menu";
 import type React from "react";
 import { useEffect, useState } from "react";
 import Link from "next/link";
@@ -238,7 +238,16 @@ function BuilderHeader({ store, d, experience, visible }: { store: BuilderStore;
     ? <img src={store.logoUrl} alt="" style={{ width: 36, height: 36, borderRadius: Math.min(d.radius, 12), objectFit: "cover" }} />
     : <span style={{ width: 36, height: 36, borderRadius: Math.min(d.radius, 12), background: d.primary, display: "grid", placeItems: "center", color: "#fff" }}>{store.name.slice(0, 1).toUpperCase()}</span>;
   const brand = <Link href={`/store/${store.slug}`} style={{ display: "flex", alignItems: "center", gap: 10, fontWeight: 800, fontFamily: d.headingFont }}>{mark}{store.name}</Link>;
-  const links = <MenuLinks slug={store.slug} fallbackNode={<>{visible.filter((s) => ["catalog", "about", "contact"].includes(s.type)).map((s) => <a key={s.id} href={`#${s.id}`}>{s.settings.heading || label(s.type)}</a>)}</>} />;
+  // Default header menu (used until the owner builds one in Dashboard > Menus). It used to list only the
+  // homepage sections that happened to exist, so a simple store showed a single "Featured Products" link.
+  const defaultMenu: FallbackLink[] = [
+    ["Home", "/"],
+    [experience.mode === "service" ? "Services" : "Shop", "/catalog"],
+    ...(experience.mode === "service" ? [] : ([["Categories", "/categories"]] as FallbackLink[])),
+    ["About", "/about"],
+    ["Contact", "/contact"],
+  ];
+  const links = <MenuLinks slug={store.slug} fallback={defaultMenu} />;
   const cart = experience.mode !== "service" ? <CartLink storeSlug={store.slug} accent={d.accent} /> : null;
   const linkRow = (justify: string): React.CSSProperties => ({ display: "flex", gap: 22, fontSize: 13, color: d.muted, justifyContent: justify });
 
