@@ -1,4 +1,5 @@
 import crypto from "crypto";
+import { logWarn } from "@/lib/observability/log";
 
 /**
  * Korapay (Kora) adapter.
@@ -43,12 +44,35 @@ async function koraFetch<T>(
   } catch {
     /* non-JSON error body: fall through with the HTTP status */
   }
+  let message = json.message ?? (res.ok ? "" : `Korapay returned HTTP ${res.status}`);
+  if (json.status !== true) {
+    // Kora's validation replies are just "One or more fields are invalid" with
+    // the offending fields in `data`. Surface them so the vendor (and our
+    // logs) can see WHICH field was rejected.
+    const detail = koraErrorDetail(json.data);
+    if (detail) message = `${message} (${detail})`;
+    void logWarn("PAYMENTS", "Korapay request rejected", { path, httpStatus: res.status, message: json.message, data: json.data ?? null });
+  }
   return {
     status: json.status === true,
-    message: json.message ?? (res.ok ? "" : `Korapay returned HTTP ${res.status}`),
+    message,
     data: json.data ?? null,
     httpStatus: res.status,
   };
+}
+
+function koraErrorDetail(data: unknown): string {
+  if (!data) return "";
+  if (typeof data === "string") return data;
+  if (Array.isArray(data)) return data.map((d) => koraErrorDetail(d)).filter(Boolean).join("; ");
+  if (typeof data === "object") {
+    const o = data as Record<string, unknown>;
+    if (o.errors) return koraErrorDetail(o.errors);
+    return Object.entries(o)
+      .map(([k, v]) => `${k}: ${typeof v === "string" ? v : JSON.stringify(v)}`)
+      .join("; ");
+  }
+  return String(data);
 }
 
 const to2dp = (n: number) => Math.round(n * 100) / 100;
