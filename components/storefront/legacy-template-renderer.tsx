@@ -4,6 +4,7 @@ import React from "react";
 import { MenuLinks } from "@/components/storefront/store-menu";
 import Link from "next/link";
 import { HeenzyStorefront } from "@/components/storefront/templates/heenzy-home";
+import { WanderlyHome, NestoriaHome } from "@/components/storefront/reference-homes";
 import type { CategoryTreeNode } from "@/lib/storefront-categories";
 
 export type LegacyCatalogItem = {
@@ -65,8 +66,8 @@ function JuiceLife({p}:{p:Props}){return <div className="lt-root juicelife"><Hea
 function Fabtex({p}:{p:Props}){return <div className="lt-root fabtex"><Header p={p} variant="fabtex"/><section className="fab-hero"><div><small>FABRIC / FORM / FASHION</small><h1>{heroHeadline(p.store)||<>Make a statement<br/><em>with what you wear.</em></>}</h1><p>{heroSub(p.store,"Textiles, fashion and pieces made to stand out.")}</p><Link href={href(p.slug,"/catalog")} className="fab-btn">Explore the edit →</Link></div><div style={image(p.store.bannerUrl||p.catalogItems[0]?.image)}/></section><section className="fab-marquee">NEW SEASON · FABTEX · LIMITED EDITS · NEW SEASON · FABTEX · LIMITED EDITS</section><section className="lt-section"><div className="lt-section-head"><div><small>THE EDIT</small><h2>Featured pieces</h2></div><Link href={href(p.slug,"/catalog")}>Shop all →</Link></div><Cards p={p} items={p.catalogItems} className="fab-cards"/></section><section className="fab-editorial"><div><small>CRAFTED WITH INTENT</small><h2>Texture. Colour. Character.</h2><p>Build a wardrobe and a brand presence around pieces that feel unmistakably yours.</p></div><div style={image(p.catalogItems[1]?.image||p.store.bannerUrl)}/></section><Footer p={p}/></div>}
 
 export function LegacyTemplateHome({name,p}:{name:string;p:Props}){
- if(name === "Wanderly Travel") return <Nova p={p}/>;
- if(name === "Nestoria Real Estate") return <HomeVista p={p}/>;
+ if(name === "Wanderly Travel") return <WanderlyHome p={p as any}/>;
+ if(name === "Nestoria Real Estate") return <NestoriaHome p={p as any}/>;
  if(name === "Emarket Furniture & Home" || name === "ShopNova Marketplace") return <Marketplace p={p}/>;
  if(name === "ShopEase General Store") return <Violet p={p}/>;
  if(name === "TechNova Mobile Store") return <Premium p={p}/>;

@@ -12,15 +12,17 @@ export type HotelSkin = {
   muted: string; line: string; panel: string; font: string; headlineFont: string; dark: boolean;
   /** Layout identity of the template (hero arrangement + corner style), so templates differ in structure, not just colour. */
   variant: "fullbleed" | "centered" | "framed"; radius: string;
+  /** Dedicated home layout (see components/storefront/hotel-reference-homes.tsx). */
+  homeLayout?: "aspire" | "larita" | "skyview";
   /** Template's own marketing copy for the home hero. */
   headline?: string; sub?: string;
 };
 
 // Layout identity per hotel template. Unlisted templates keep the classic full-bleed hero.
-const HOTEL_VARIANT_BY_NAME: Record<string, { variant: HotelSkin["variant"]; radius: string }> = {
-  "Aspire Resort": { variant: "fullbleed", radius: "4px" },
-  "Larita Luxury Hotel": { variant: "centered", radius: "0px" },
-  "Skyview Hotels & Resorts": { variant: "framed", radius: "20px" },
+const HOTEL_VARIANT_BY_NAME: Record<string, { variant: HotelSkin["variant"]; radius: string; homeLayout?: HotelSkin["homeLayout"] }> = {
+  "Aspire Resort": { variant: "fullbleed", radius: "4px", homeLayout: "aspire" },
+  "Larita Luxury Hotel": { variant: "centered", radius: "0px", homeLayout: "larita" },
+  "Skyview Hotels & Resorts": { variant: "framed", radius: "20px", homeLayout: "skyview" },
   "Maison — Hotel & Stay": { variant: "centered", radius: "2px" },
   "Grand — Hotel & Hospitality": { variant: "fullbleed", radius: "10px" },
 };
@@ -85,6 +87,7 @@ function toSkin(p: Palette, name = "", copy?: { headline?: string; sub?: string 
     panel: dark ? p.card : (p.surfaceDark || p.ink),
     font: p.font, headlineFont: p.headlineFont, dark,
     variant: HOTEL_VARIANT_BY_NAME[name]?.variant ?? "fullbleed", radius: HOTEL_VARIANT_BY_NAME[name]?.radius ?? "6px",
+    homeLayout: HOTEL_VARIANT_BY_NAME[name]?.homeLayout,
     headline: copy?.headline, sub: copy?.sub,
   };
 }
