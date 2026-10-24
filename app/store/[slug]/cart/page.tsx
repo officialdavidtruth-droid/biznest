@@ -19,5 +19,5 @@ export default async function CartPage({ params }: { params: Promise<{ slug: str
     const data = await getGrandeurRestaurantData(slug);
     if (data) return <GrandeurCart store={data.store} slug={slug} />;
   }
-  return <CartClient slug={slug} palette={resolveStorePalette(store)} />;
+  return <CartClient slug={slug} storeName={store.name} logoUrl={store.logoUrl ?? null} palette={resolveStorePalette(store)} />;
 }
