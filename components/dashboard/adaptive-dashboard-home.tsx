@@ -205,7 +205,7 @@ export function AdaptiveDashboardHome({
         <Bell className="h-5 w-5 text-[var(--bn-admin-text)]" />
       </div>
 
-      <div className="mx-auto w-full max-w-[1440px] px-4 py-5 sm:px-6 lg:px-7 lg:py-7">
+      <div className="bn-dashboard-content mx-auto w-full max-w-[1440px] px-4 py-5 sm:px-6 lg:px-7 lg:py-7">
         <div className="mb-6 flex flex-wrap items-start justify-between gap-4">
           <div>
             <h1 className="text-[24px] font-bold tracking-[-0.02em] text-[var(--bn-admin-text)]">Welcome back{userName ? `, ${userName.split(" ")[0]}` : ""}! <span aria-hidden>👋</span></h1>
@@ -222,7 +222,7 @@ export function AdaptiveDashboardHome({
 
         <div className="mb-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
           {finalKpis.map((kpi, index) => (
-            <div key={kpi.id} className="rounded-xl border border-[var(--bn-admin-border)] bg-[var(--bn-admin-surface)] px-4 py-4 shadow-[0_1px_2px_rgba(15,23,42,0.03)]">
+            <div key={kpi.id} className="bn-dashboard-kpi rounded-xl border border-[var(--bn-admin-border)] bg-[var(--bn-admin-surface)] px-4 py-4 shadow-[0_1px_2px_rgba(15,23,42,0.03)]">
               <div className="mb-3 flex items-start justify-between">
                 <span className={`flex h-9 w-9 items-center justify-center rounded-xl ${index % 4 === 0 ? "bg-[var(--bn-admin-surface-2)] text-[var(--bn-admin-muted)]" : index % 4 === 1 ? "bg-[var(--bn-admin-surface-2)] text-[var(--bn-admin-orange)]" : index % 4 === 2 ? "bg-[var(--bn-admin-surface-2)] text-[var(--bn-admin-text)]" : "bg-[var(--bn-admin-surface-2)] text-[var(--bn-admin-muted)]"}`}>
                   {index === 0 ? <WalletCards className="h-4.5 w-4.5" /> : index === 1 ? <ShoppingBag className="h-4.5 w-4.5" /> : index === 2 ? <TrendingUp className="h-4.5 w-4.5" /> : index === 3 ? <Users className="h-4.5 w-4.5" /> : <BarChart3 className="h-4.5 w-4.5" />}
@@ -348,8 +348,8 @@ function RevenueChart({ hourly }: { hourly: number[] }) {
             <stop offset="100%" stopColor="var(--bn-admin-orange)" stopOpacity="0.02" />
           </linearGradient>
         </defs>
-        <path d={areaPath} fill="url(#revenue-fill)" stroke="none" />
-        <path d={linePath} fill="none" stroke="var(--bn-admin-orange)" strokeWidth={2.5} vectorEffect="non-scaling-stroke" strokeLinecap="round" />
+        <path className="bn-revenue-area" d={areaPath} fill="url(#revenue-fill)" stroke="none" />
+        <path className="bn-revenue-line" pathLength={1} d={linePath} fill="none" stroke="var(--bn-admin-orange)" strokeWidth={2.5} vectorEffect="non-scaling-stroke" strokeLinecap="round" />
       </svg>
     </div>
   );
