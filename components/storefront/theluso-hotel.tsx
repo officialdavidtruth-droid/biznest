@@ -6,11 +6,12 @@ import { formatMoney } from "@/lib/utils/format-money";
 import Link from "next/link";
 import { MenuLinks } from "@/components/storefront/store-menu";
 import { usePathname, useRouter } from "next/navigation";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { createContext, useContext, useEffect, useMemo, useRef, useState } from "react";
+const SkinCtx=createContext<HotelSkin|null>(null);
 import { ArrowRight, CalendarDays, Check, ChevronDown, ChevronLeft, ChevronRight, Clock3, Heart, MapPin, Menu, ShieldCheck, Sparkles, Star, User, Users, X } from "lucide-react";
 import type { HotelAmenity, HotelContent, HotelPageContent, HotelRoom } from "@/lib/hotel-content";
 import type { HotelSkin } from "@/lib/hotel-skin";
-import { ReferenceHotelHome } from "@/components/storefront/hotel-reference-homes";
+import { ReferenceHotelHome, RefHeader } from "@/components/storefront/hotel-reference-homes";
 import { createStayBooking, getAvailableUnitCount, getNextAvailableStay } from "@/lib/actions/booking";
 import { addDaysISO, isoDate, parseBookingQuery } from "@/lib/hotel-booking-query";
 import { startBookingPayment } from "@/lib/actions/customer-wallet";
@@ -52,7 +53,9 @@ function ThelusoHotelRoutes({store,slug,content}:{store:Store;slug:string;conten
 }
 
 function Header({store,slug,active}:{store:Store;slug:string;active:string}){
+ const skinCtx=useContext(SkinCtx);
  const [open,setOpen]=useState(false);
+ if(skinCtx?.homeLayout) return <RefHeader layout={skinCtx.homeLayout} store={store as any} slug={slug} active={active} solid/>;
  const nav=[["Home","/"],["Rooms & Suites","/catalog"],["Amenities","/amenities"],["Dining","/dining"],["Gallery","/gallery"],["About Us","/about"],["Blog","/blog"],["Contact","/contact"]];
  return <header className="gv-nav"><Link href={href(slug,"/")} className="ss-brand">{store.logoUrl?<img src={store.logoUrl} alt={store.name}/>:<span className="gv-logo">{store.name?.split(/\s+/).map(x=>x[0]).join("").slice(0,2)}</span>}<b>{store.name.toUpperCase()}<br/><small>HOTEL &amp; LODGING</small></b></Link><button className="lux-menu" onClick={()=>setOpen(v=>!v)} aria-label="Menu">{open?<X/>:<Menu/>}</button><nav className={`bn-menu ${open?"open":""}`}><MenuLinks slug={slug} upper active={active} fallback={nav as [string,string][]} onNavigate={()=>setOpen(false)}/></nav><div className="lux-header-actions"><AccountLink storeSlug={slug}/><Link className="gv-book" href={href(slug,"/book")}>BOOK NOW</Link></div></header>
 }
@@ -117,9 +120,9 @@ function HotelConfirmationInner({store,slug,booking}:{store:Store;slug:string;bo
 
 // display:contents keeps the wrapper out of layout; it only carries the template's palette.
 function SkinScope({skin,children}:{skin?:HotelSkin|null;children:React.ReactNode}){
- if(!skin) return <div className="lux-theme-default" style={{display:"contents"}}>{children}</div>;
+ if(!skin) return <SkinCtx.Provider value={null}><div className="lux-theme-default" style={{display:"contents"}}>{children}</div></SkinCtx.Provider>;
  const vars={display:"contents","--lux-paper":skin.bg,"--lux-ink":skin.ink,"--lux-cream":skin.card,"--lux-card":skin.card,"--lux-line":skin.line,"--lux-muted":skin.muted,"--lux-gold":skin.accent,"--lux-accent-ink":skin.accentInk,"--lux-accent-text":skin.accentText,"--lux-green":skin.panel,"--lux-deep":skin.panel,"--lux-serif":skin.headlineFont,"--lux-sans":skin.font,"--lux-radius":skin.radius} as React.CSSProperties;
- return <div className={`lux-skinned lux-v-${skin.variant}${skin.dark?" lux-skin-dark":""}`} style={vars}>{children}</div>}
+ return <SkinCtx.Provider value={skin}><div className={`lux-skinned lux-v-${skin.variant}${skin.dark?" lux-skin-dark":""}`} style={vars}>{children}</div></SkinCtx.Provider>}
 
 export function ThelusoHotel(props:{store:Store;slug:string;content:HotelContent}){return <SkinScope skin={props.content.skin}><ThelusoHotelRoutes {...props}/></SkinScope>}
 export function HotelCheckout(props:{store:Store;slug:string;content:HotelContent}){return <SkinScope skin={props.content.skin}><HotelCheckoutInner {...props}/></SkinScope>}
