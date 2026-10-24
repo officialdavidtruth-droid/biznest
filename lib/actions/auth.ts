@@ -41,11 +41,11 @@ export async function registerUser(
   // itself also has to tolerate case for accounts created before this.
   const normalizedEmail = parsed.data.email.trim().toLowerCase();
 
-  let storeForCustomer: { id: string; name: string; logoUrl: string | null; themeColors: unknown } | null = null;
+  let storeForCustomer: { id: string; name: string; logoUrl: string | null; themeColors: unknown; contactEmail: string | null; contactPhone: string | null } | null = null;
   if (storeSlug) {
     storeForCustomer = await prisma.store.findUnique({
       where: { slug: storeSlug },
-      select: { id: true, name: true, logoUrl: true, themeColors: true },
+      select: { id: true, name: true, logoUrl: true, themeColors: true, contactEmail: true, contactPhone: true },
     });
     if (!storeForCustomer) return { success: false, error: "That store could not be found." };
   }
