@@ -3,7 +3,7 @@
 import { getStoreConfiguration } from "@/lib/capabilities";
 import { normalizeWhatsAppNumber } from "@/lib/utils/whatsapp-link";
 import { getBusinessExperience } from "@/lib/business-experience";
-import { getTemplateBusinessType, isTemplateCompatible } from "@/lib/template-compatibility";
+import { getTemplateBusinessType } from "@/lib/template-compatibility";
 
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
@@ -68,9 +68,6 @@ export async function createStore(
     const chosenTemplate = await prisma.storeTemplate.findUnique({ where: { id: parsed.data.templateId } });
     if (!chosenTemplate) {
       return { success: false, error: "That website design is no longer available. Choose another template." };
-    }
-    if (!isTemplateCompatible(chosenTemplate, business.category, { sellsProducts: business.sellsProducts, offersServices: business.offersServices })) {
-      return { success: false, error: "That website design is not compatible with this business model. Choose a product, service, or hybrid design that matches what you selected during onboarding." };
     }
     if (chosenTemplate.tierRank > 1) {
       return { success: false, error: "That template requires a paid plan. Pick a Free template for now — you can upgrade and switch after your store is created." };

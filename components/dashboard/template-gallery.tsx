@@ -136,7 +136,7 @@ export function TemplateGallery({
   });
 
   const compatibleTemplates = templates.filter((t) => isTemplateCompatible(t, businessCategory, { sellsProducts, offersServices }));
-  const unlockedCount = compatibleTemplates.filter((t) => t.tierRank <= planRank).length;
+  const unlockedCount = templates.filter((t) => t.tierRank <= planRank).length;
 
   if (templates.length === 0) {
     return (
@@ -165,7 +165,7 @@ export function TemplateGallery({
           />
         </div>
         <p className="text-xs text-muted-foreground">
-          {unlockedCount} of {compatibleTemplates.length} templates for your business unlocked on your plan · {templates.length} templates in total
+          {unlockedCount} of {templates.length} templates unlocked on your plan
         </p>
       </div>
 
@@ -186,7 +186,7 @@ export function TemplateGallery({
           <p className="text-muted-foreground">
             {showAll
               ? `Showing all ${templates.length} templates. Templates built for ${businessCategory} are listed first; others can be previewed but not applied to a ${businessCategory} store.`
-              : `Showing only the ${compatibleTemplates.length} templates built for ${businessCategory}.`}
+              : `Showing the ${compatibleTemplates.length} templates suggested for ${businessCategory}.`}
           </p>
           <button type="button" aria-pressed={showAll} onClick={() => setShowAll((v) => !v)} className="shrink-0 rounded-full border border-border px-3 py-1 font-medium transition hover:border-primary/50 hover:text-primary">
             {showAll ? `Only show ${businessCategory} templates` : `Show all ${templates.length} templates`}
@@ -227,7 +227,7 @@ export function TemplateGallery({
           const isSelected = selectedId === t.id;
           const isLocked = t.tierRank > planRank;
           const fitsBusiness = isTemplateCompatible(t, businessCategory, { sellsProducts, offersServices });
-          const isUnavailable = isLocked || !fitsBusiness;
+          const isUnavailable = isLocked;
 
           return (
             <div
@@ -256,7 +256,7 @@ export function TemplateGallery({
                   type="button"
                   onClick={() => !isUnavailable && onSelect(t.id)}
                   disabled={isUnavailable}
-                  aria-label={isLocked ? `Locked template: ${t.name}` : !fitsBusiness ? `${t.name} is not available for ${businessCategory}` : `Use ${t.name} template`}
+                  aria-label={isLocked ? `Locked template: ${t.name}` : `Use ${t.name} template`}
                   className={`absolute inset-0 z-10 ${isUnavailable ? "cursor-not-allowed" : "cursor-pointer"}`}
                 />
 
@@ -283,7 +283,7 @@ export function TemplateGallery({
                 <div className="min-w-0">
                   <p className="truncate text-sm font-medium">{t.category}</p>
                   <p className="truncate text-xs text-muted-foreground">
-                    {isLocked ? `Requires ${TIER_LABEL[t.tierRank] ?? "a higher plan"}` : !fitsBusiness ? `Not built for ${businessCategory}` : isSelected ? "In use" : (theme.eyebrow || theme.catalogLabel)}
+                    {isLocked ? `Requires ${TIER_LABEL[t.tierRank] ?? "a higher plan"}` : isSelected ? "In use" : (theme.eyebrow || theme.catalogLabel)}
                   </p>
                 </div>
 

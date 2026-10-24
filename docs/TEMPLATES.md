@@ -27,8 +27,7 @@ which described earlier states of the catalog.
 4. Run `vitest lib/__tests__/template-consistency.test.ts`; it checks runtime/preview agreement, categories, compatibility and claim copy.
 
 ## Compatibility rule
-A template is offered to a business type if it lists that type, supports `*`, or **no template targets that type** (so Church,
-Logistics etc. never see an empty gallery). "Other" sees everything.
+Niche never blocks a template. Any business can preview, select and create a store with any template (`setStoreTemplate`, `createStore`, the gallery and the setup wizard no longer reject or grey out by niche). `isTemplateCompatibleWithBusiness` is used only to rank "best fit" templates first and for the optional "Only show <niche> templates" filter. Plan tier is still enforced.
 
 ## Known gap
 Inner pages (About, Contact, FAQ, Policies, Services, Pricing, Portfolio) render through `UniversalSectionPage` with the store

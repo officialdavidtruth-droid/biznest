@@ -10,7 +10,7 @@ import { TemplateGallery, type TemplateOption } from "@/components/dashboard/tem
 import { FileUploadField } from "@/components/forms/file-upload-field";
 import { getBusinessOnboardingPlan, type OnboardingField } from "@/lib/onboarding-business";
 import { getBusinessExperience } from "@/lib/business-experience";
-import { isTemplateCompatible, templateCompatibilityScore } from "@/lib/template-compatibility";
+import { templateCompatibilityScore } from "@/lib/template-compatibility";
 
 type BusinessSnapshot = {
   businessName: string;
@@ -132,7 +132,7 @@ export function StoreSetupWizard({
   const previewSlug = storeName ? slugify(storeName, { lower: true, strict: true }) : "your-store-name";
   const suggestedTemplates = useMemo(
     () => templates
-      .filter((t) => isTemplateCompatible(t, business.category, { sellsProducts: business.sellsProducts, offersServices: business.offersServices }))
+      .slice()
       .sort((a, b) => templateCompatibilityScore(b, business.category, { sellsProducts: business.sellsProducts, offersServices: business.offersServices }) - templateCompatibilityScore(a, business.category, { sellsProducts: business.sellsProducts, offersServices: business.offersServices })),
     [templates, business.category, business.sellsProducts, business.offersServices]
   );

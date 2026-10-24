@@ -6,6 +6,8 @@ import { ArrowRight, BedDouble, CalendarDays, Check, MapPin, Phone, Play, Shield
 import { defaultPhoto } from "@/lib/default-images";
 import { storeHref as href } from "@/lib/utils/store-href";
 import { formatMoney } from "@/lib/utils/format-money";
+import { NewsletterInlineForm } from "@/components/storefront/newsletter-inline-form";
+import { FooterSocial } from "@/components/storefront/footer-social";
 import type { HotelContent, HotelRoom } from "@/lib/hotel-content";
 
 type Store = { name: string; logoUrl?: string | null; bannerUrl?: string | null; address?: string | null; phone?: string | null; contactPhone?: string | null; email?: string | null; contactEmail?: string | null; business?: { description?: string | null } | null };
@@ -85,7 +87,6 @@ function Aspire({ store, slug, content }: P) {
 .rh-aspire .disc h2{font:400 clamp(30px,3.4vw,42px) var(--lux-serif,'Playfair Display',serif);margin:0 0 20px;color:#e2c28a}.rh-aspire .disc h2 em{color:#c69a52;font-style:normal}
 .rh-aspire .disc p{font-size:14px;line-height:1.8;color:#e5d4b8;margin:0 0 16px}.rh-aspire .disc img{width:100%;height:330px;object-fit:cover;border-radius:3px}
 .rh-aspire .ghost{display:inline-block;border:1px solid #c69a52;color:#e2c28a;padding:12px 20px;font-size:11px;letter-spacing:.14em;margin-top:8px}
-.rh-aspire footer{border-top:1px solid #5a4030;padding:28px 6%;display:flex;justify-content:space-between;font-size:12px;color:#c5b5a2}
 @media(max-width:860px){.rh-aspire nav{display:none}.rh-aspire .strip,.rh-aspire .rooms,.rh-aspire .disc{grid-template-columns:1fr}.rh-aspire .strip div{border-right:0;border-bottom:1px solid #5a4030}}
 `.replace("HERO", hero)}</style>
     <section className="hero">
@@ -103,7 +104,7 @@ function Aspire({ store, slug, content }: P) {
       <Link href={href(slug, `/rooms/${r.slug}`)} className="card" style={{ display: "block" }}><img src={ph(r.image, i)} alt={r.name} /><div className="b"><h4>{r.name.toUpperCase()}</h4><p>{r.guests} guests · {r.bed || r.area}</p><span className="from">FROM {money(r.price)} / NIGHT</span></div></Link></div>)}</section>
     <section className="disc"><div><h2>Discover Refined <em>Luxury</em></h2><p>{content.home.body || "Thoughtful rooms, warm service and an unhurried pace. Every detail is considered so your stay feels effortless."}</p><Link className="ghost" href={href(slug, "/about")}>BOOK ROOMS ›</Link></div>
       <img src={ph(content.gallery[0]?.image, 1)} alt="" /><img src={ph(content.gallery[1]?.image, 2)} alt="" /></section>
-    <footer><span>© {store.name}</span><span>{store.address}</span></footer>
+    <RefFooter layout="aspire" store={store} slug={slug} content={content} />
   </div>;
 }
 
@@ -139,7 +140,6 @@ function Larita({ store, slug, content }: P) {
 .rh-larita .fg div{display:flex;gap:14px}.rh-larita .fg svg{color:#b58a69;flex:none}.rh-larita .fg h5{font:400 17px Georgia,serif;margin:0 0 6px}.rh-larita .fg p{font-size:12.5px;color:#77716d;margin:0;line-height:1.6}
 .rh-larita .vid{position:relative;min-height:380px;background:linear-gradient(rgba(20,15,12,.6),rgba(20,15,12,.6)),url(VID) center/cover;color:#fff;text-align:center;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px}
 .rh-larita .vid b{width:64px;height:64px;border-radius:50%;background:#b58a69;display:flex;align-items:center;justify-content:center}
-.rh-larita footer{background:#24201d;color:#d9d2cb;padding:28px 5%;font-size:12px;display:flex;justify-content:space-between}
 @media(max-width:860px){.rh-larita .hd nav{display:none}.rh-larita .feat,.rh-larita .wel,.rh-larita .slide,.rh-larita .fg{grid-template-columns:1fr}}
 `.replace("HERO", hero).replace("VID", ph(content.gallery[2]?.image, 5))}</style>
     <section className="hero">
@@ -157,7 +157,7 @@ function Larita({ store, slug, content }: P) {
     <section className="fac"><small className="e">Modern and comfortable</small><h2>Facilities and amenities</h2>
       <div className="fg">{(am.length ? am.map(a => [a.title, a.description]) : [["High Speed Wifi", "Seamless internet access throughout the hotel."], ["Parking Space", "Secure parking for all guests."], ...(content.hasDining ? [["Restaurant & Bar", "Gourmet dishes and cocktails."]] : [["Room Service", "Round-the-clock in-room assistance."]]), ["Spa Center", "Relaxing and rejuvenating treatments."], ["Fitness Center", "Modern gym equipment."], ["Swimming Pool", "Our pristine outdoor pool."]]).map(([t, d], i) => { const I = AM[i % 6]; return <div key={t}><I size={30} strokeWidth={1.2} /><div><h5>{t}</h5><p>{d}</p></div></div>; })}</div></section>
     <section className="vid"><small className="e" style={{ color: "#fff" }}>Hotel video</small><h2 style={{ margin: 0 }}>Explore {store.name}</h2><b><Play fill="#fff" /></b></section>
-    <footer><span>© {store.name}</span><span>{store.address}</span></footer>
+    <RefFooter layout="larita" store={store} slug={slug} content={content} />
   </div>;
 }
 
@@ -190,7 +190,6 @@ function Skyview({ store, slug, content }: P) {
 .rh-sky .ag{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:16px}.rh-sky .ag div{background:#e6eff9;border-radius:8px;padding:14px;font-size:12.5px}.rh-sky .ag b{display:block;font-size:13.5px}
 .rh-sky .q{background:#fff;border-radius:10px;padding:26px;font-size:14px;line-height:1.7}
 .rh-sky .off{background:linear-gradient(90deg,rgba(10,35,56,.9),rgba(10,35,56,.5)),url(OFF) center/cover;color:#fff;padding:70px 5%}.rh-sky .off h2{font-size:34px;max-width:560px}.rh-sky .off .ol{background:#fff;color:#0a2338;border-color:#fff}
-.rh-sky footer{background:#0a2338;color:#cfdce8;padding:26px 5%;display:flex;justify-content:space-between;font-size:12px}
 @media(max-width:900px){.rh-sky .hd nav{display:none}.rh-sky .feats,.rh-sky .rm,.rh-sky .split,.rh-sky .adv,.rh-sky .rg,.rh-sky .xg,.rh-sky .bar{grid-template-columns:1fr 1fr}.rh-sky .rm,.rh-sky .split,.rh-sky .adv{grid-template-columns:1fr}}
 `.replace("HERO", hero).replace("DEST", ph(content.gallery[1]?.image, 2)).replace("OFF", ph(content.gallery[3]?.image, 5))}</style>
     <section className="hero">
@@ -206,8 +205,54 @@ function Skyview({ store, slug, content }: P) {
     <section className="adv"><div><small className="e">Why choose us</small><h2>The {first(store.name)} Advantage</h2><div className="ag">{[["5-Star Service", "Always at your service"], ["Best Price Guarantee", "More value, always"], ["Flexible Booking", "Cancel with ease"], ["24/7 Support", "We're here for you"]].map(([t, s]) => <div key={t}><b><Check size={14} /> {t}</b>{s}</div>)}</div></div>
       <img src={ph(content.gallery[2]?.image, 4)} alt="" /><div className="q"><div style={{ color: "#e6a935" }}>★★★★★</div>“A wonderful stay from the first moment to the last. The staff, the views and the comfort were exceptional.”<br /><b style={{ display: "block", marginTop: 12 }}>Verified guest</b></div></section>
     <section className="off"><small>LIMITED TIME OFFER</small><h2>{offer?.title || "Save on Your Dream Stay"}</h2><p style={{ maxWidth: 440, fontSize: 14 }}>{offer?.description || "Book direct and enjoy exclusive rates, complimentary breakfast and more special benefits."}</p><Link className="ol" href={href(slug, "/book")}>Book Now →</Link></section>
-    <footer><span>© {store.name}</span><span>{store.address}</span></footer>
+    <RefFooter layout="skyview" store={store} slug={slug} content={content} />
   </div>;
+}
+
+/* ───────────── Shared footer for the reference hotel homes ───────────── */
+const FOOT_CSS = `
+.rhf{padding:56px 6% 0;font-size:13.5px;line-height:1.6}
+.rhf a{color:inherit;text-decoration:none;opacity:.85}.rhf a:hover{opacity:1;text-decoration:underline}
+.rhf-grid{display:grid;grid-template-columns:1.4fr 1fr 1.2fr 1.3fr;gap:40px;padding-bottom:40px}
+.rhf h4{margin:0 0 14px;font-size:12px;letter-spacing:.16em;text-transform:uppercase;font-weight:700}
+.rhf-col{display:flex;flex-direction:column;gap:8px}
+.rhf-brand{font:400 24px Georgia,serif;margin-bottom:10px}
+.rhf p{margin:0;opacity:.8;max-width:34ch}
+.rhf-news{display:flex;gap:6px;margin-top:12px}
+.rhf-news input{flex:1;min-width:0;padding:10px 12px;border:1px solid currentColor;background:transparent;color:inherit;font:inherit;border-radius:3px;opacity:.9}
+.rhf-news button{padding:10px 14px;border:0;cursor:pointer;font:inherit;font-weight:700;border-radius:3px}
+.rhf-social{display:flex;gap:12px;margin-top:14px}
+.rhf-bottom{display:flex;justify-content:space-between;flex-wrap:wrap;gap:10px;padding:20px 0;border-top:1px solid currentColor;font-size:12px}
+.rhf-bottom{border-top-color:rgba(255,255,255,.18)}
+.rhf-aspire{background:#2a1c14;color:#e9dccb}.rhf-aspire h4,.rhf-aspire .rhf-brand{color:#e2c28a}.rhf-aspire .rhf-news button{background:#c69a52;color:#21150f}
+.rhf-larita{background:#24201d;color:#d9d2cb}.rhf-larita h4,.rhf-larita .rhf-brand{color:#d9b595}.rhf-larita .rhf-news button{background:#b58a69;color:#fff}
+.rhf-skyview{background:#0a2338;color:#cfdce8}.rhf-skyview h4{color:#fff}.rhf-skyview .rhf-brand{color:#fff}.rhf-skyview .rhf-news button{background:#1d638a;color:#fff}
+@media(max-width:900px){.rhf-grid{grid-template-columns:1fr 1fr}}
+@media(max-width:560px){.rhf{padding-top:40px}.rhf-grid{grid-template-columns:1fr}}`;
+
+export function RefFooter({ layout, store, slug, content }: { layout: "aspire" | "larita" | "skyview"; store: Store; slug: string; content: HotelContent }) {
+  const raw = (store as any).socialLinks;
+  const social = raw && typeof raw === "object" && !Array.isArray(raw) ? (raw as Record<string, string>) : null;
+  const hasSocial = !!social && Object.values(social).some(Boolean);
+  const phone = store.contactPhone || store.phone;
+  const email = store.contactEmail || store.email;
+  const links: [string, string][] = [["Home", "/"], ["Rooms", "/rooms"], ...(content.hasDining ? [["Dining", "/dining"] as [string, string]] : []), ["Facilities", "/facilities"], ["Experiences", "/experiences"], ["Gallery", "/gallery"], ["About", "/about"], ["Contact", "/contact"]];
+  const desc = (store as any).business?.description as string | undefined;
+  return <footer className={`rhf rhf-${layout}`}><style>{FOOT_CSS}</style>
+    <div className="rhf-grid">
+      <div className="rhf-col"><div className="rhf-brand">{store.name}</div>{desc ? <p>{desc}</p> : <p>Thoughtful rooms, warm service and an unhurried pace.</p>}
+        {hasSocial && <FooterSocial className="rhf-social" social={social} />}</div>
+      <div className="rhf-col"><h4>Quick Links</h4>{links.map(([l, h]) => <Link key={l} href={href(slug, h)}>{l}</Link>)}</div>
+      <div className="rhf-col"><h4>Contact</h4>
+        <span>{store.address || "Address not published"}</span>
+        {phone ? <a href={`tel:${phone}`}>{phone}</a> : null}
+        {email ? <a href={`mailto:${email}`}>{email}</a> : null}
+        <Link href={href(slug, "/book")}>Book your stay →</Link></div>
+      <div className="rhf-col"><h4>Newsletter</h4><p>Exclusive offers and updates, straight to your inbox.</p>
+        <NewsletterInlineForm slug={slug} className="rhf-news" inputPlaceholder="Your email address">Join</NewsletterInlineForm></div>
+    </div>
+    <div className="rhf-bottom"><span>© {new Date().getFullYear()} {store.name}. All rights reserved.</span><span><Link href={href(slug, "/policies")}>Privacy &amp; Policies</Link></span></div>
+  </footer>;
 }
 
 export function ReferenceHotelHome({ layout, ...p }: P & { layout: "aspire" | "larita" | "skyview" }) {
