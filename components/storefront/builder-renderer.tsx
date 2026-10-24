@@ -96,27 +96,11 @@ export function BuilderStorefront({
   return (
     <main onClickCapture={handleSectionClick} style={{ background: d.background, color: d.text, fontFamily: d.font, minHeight: "100vh" }}>
       <style>{`a{text-decoration:none;color:inherit}.bn-wrap{width:min(${width}px,calc(100% - 32px));margin:0 auto}.bn-grid{display:grid;gap:20px}@media(max-width:720px){.bn-grid{grid-template-columns:1fr!important}.bn-hero{grid-template-columns:1fr!important}.bn-section{padding-top:56px!important;padding-bottom:56px!important}.bn-nav-links{display:none!important}}${isEditMode ? `.bn-section{cursor:pointer;transition:outline .12s ease}.bn-section:hover{outline:2px dashed ${d.accent};outline-offset:-2px}` : ""}`}</style>
-      <nav style={{ borderBottom: `1px solid ${d.text}14`, background: d.background, position: "sticky", top: 0, zIndex: 20, backdropFilter: "blur(14px)" }}>
-        <div className="bn-wrap" style={{ height: 70, display: "flex", alignItems: "center", justifyContent: "space-between", gap: 18 }}>
-          <Link href={`/store/${store.slug}`} style={{ display: "flex", alignItems: "center", gap: 10, fontWeight: 800 }}>
-            {store.logoUrl ? <img src={store.logoUrl} alt="" style={{ width: 36, height: 36, borderRadius: Math.min(d.radius, 12), objectFit: "cover" }} /> : <span style={{ width: 36, height: 36, borderRadius: Math.min(d.radius, 12), background: d.primary, display: "grid", placeItems: "center", color: "#fff" }}>{store.name.slice(0,1).toUpperCase()}</span>}
-            {store.name}
-          </Link>
-          <div className="bn-nav-links" style={{ display: "flex", gap: 22, fontSize: 13, color: d.muted }}>
-            <MenuLinks slug={store.slug} fallbackNode={<>{visible.filter((s) => ["catalog", "about", "contact"].includes(s.type)).map((s) => <a key={s.id} href={`#${s.id}`}>{s.settings.heading || label(s.type)}</a>)}</>} />
-          </div>
-          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>{experience.mode !== "service" && <CartLink storeSlug={store.slug} accent={d.accent} />}</div>
-        </div>
-      </nav>
+      <BuilderHeader store={store} d={d} experience={experience} visible={visible} />
 
       {visible.map((section) => <BuilderSectionView key={section.id} section={section} store={store} config={config} catalogItems={featured} categories={categories} experience={experience} reviews={reviews} avgRating={avgRating} completedOrders={completedOrders} />)}
 
-      <footer style={{ marginTop: 60, padding: "48px 0", background: d.primary, color: "#fff" }}>
-        <div className="bn-wrap" style={{ display: "flex", justifyContent: "space-between", gap: 24, flexWrap: "wrap" }}>
-          <div><strong style={{ fontSize: 20 }}>{store.name}</strong><p style={{ opacity: .72, maxWidth: 460, lineHeight: 1.7, fontSize: 13 }}>{store.business.description || "Built with BizNest."}</p></div>
-          <div style={{ opacity: .75, fontSize: 13 }}>{store.contactEmail || store.contactPhone || "Online business"}</div>
-        </div>
-      </footer>
+      <BuilderFooter store={store} d={d} visible={visible} />
     </main>
   );
 }
@@ -193,7 +177,7 @@ function BuilderSectionView({ section, store, config, catalogItems, categories, 
   if (section.type === "catalog") return (
     <section id={section.id} className="bn-section" style={{ padding, background: bg }}>
       <div className="bn-wrap"><SectionIntro section={section} config={config} />
-        {catalogItems.length ? <div className="bn-grid" style={{ gridTemplateColumns: `repeat(${Math.min(cols,4)}, minmax(0,1fr))` }}>{catalogItems.map((item) => <Link key={`${item.kind}-${item.id}`} href={`/store/${store.slug}/${item.kind}/${item.id}`} style={{ border: `1px solid ${d.text}12`, borderRadius: s.radius ?? d.radius, overflow: "hidden", background: d.surface }}><div style={{ aspectRatio: "1/1", background: item.image ? `url(${item.image}) center/cover` : `${d.primary}12` }} /><div style={{ padding: 16 }}><div style={{ fontWeight: 750, marginBottom: 7 }}>{item.name}</div><div style={{ color: d.accent, fontWeight: 800 }}>{item.currency} {item.price.toLocaleString()}</div><div style={{ marginTop: 10, fontSize: 11, color: d.muted, fontWeight: 700 }}>{item.kind === "service" ? experience.primaryAction : "View product"} →</div></div></Link>)}</div> : <EmptyState text="Your published products and services will appear here." />}
+        {catalogItems.length ? <div className="bn-grid" style={{ gridTemplateColumns: `repeat(${Math.min(cols,4)}, minmax(0,1fr))` }}>{catalogItems.map((item) => <ItemCard key={`${item.kind}-${item.id}`} item={item} store={store} d={d} radius={s.radius ?? d.radius} actionLabel={item.kind === "service" ? experience.primaryAction : "View product"} />)}</div> : <EmptyState text="Your published products and services will appear here." />}
       </div>
     </section>
   );
@@ -239,3 +223,157 @@ function label(type: string) { return ({ hero: "Welcome", catalog: "Shop", about
 function buttonStyle(d: BuilderConfig["design"], radius?: number, inverse = false): React.CSSProperties { return { display: "inline-block", padding: "12px 20px", borderRadius: d.buttonStyle === "pill" ? 999 : radius ?? d.radius, background: d.buttonStyle === "outline" ? "transparent" : (inverse ? "#fff" : d.primary), color: inverse ? d.primary : (d.buttonStyle === "outline" ? d.primary : "#fff"), fontWeight: 800, fontSize: 13, border: d.buttonStyle === "outline" ? `1px solid ${inverse ? "#fff" : d.primary}` : "none" }; }
 function Stat({ value, label, d }: { value: string; label: string; d: BuilderConfig["design"] }) { return <div><div style={{ fontFamily: d.headingFont, fontSize: 30, fontWeight: 800 }}>{value}</div><div style={{ color: d.muted, fontSize: 12 }}>{label}</div></div>; }
 function EmptyState({ text }: { text: string }) { return <div style={{ padding: 28, border: "1px dashed currentColor", opacity: .6, borderRadius: 12, gridColumn: "1/-1" }}>{text}</div>; }
+
+
+/* ───────────── Structural variants: each template picks its own header / footer / card ───────────── */
+type DesignT = BuilderConfig["design"];
+type SectionT = BuilderConfig["sections"][number];
+
+function BuilderHeader({ store, d, experience, visible }: { store: BuilderStore; d: DesignT; experience: ReturnType<typeof getBusinessExperience>; visible: SectionT[] }) {
+  const style = d.headerStyle ?? "classic";
+  const mark = store.logoUrl
+    ? <img src={store.logoUrl} alt="" style={{ width: 36, height: 36, borderRadius: Math.min(d.radius, 12), objectFit: "cover" }} />
+    : <span style={{ width: 36, height: 36, borderRadius: Math.min(d.radius, 12), background: d.primary, display: "grid", placeItems: "center", color: "#fff" }}>{store.name.slice(0, 1).toUpperCase()}</span>;
+  const brand = <Link href={`/store/${store.slug}`} style={{ display: "flex", alignItems: "center", gap: 10, fontWeight: 800, fontFamily: d.headingFont }}>{mark}{store.name}</Link>;
+  const links = <MenuLinks slug={store.slug} fallbackNode={<>{visible.filter((s) => ["catalog", "about", "contact"].includes(s.type)).map((s) => <a key={s.id} href={`#${s.id}`}>{s.settings.heading || label(s.type)}</a>)}</>} />;
+  const cart = experience.mode !== "service" ? <CartLink storeSlug={store.slug} accent={d.accent} /> : null;
+  const linkRow = (justify: string): React.CSSProperties => ({ display: "flex", gap: 22, fontSize: 13, color: d.muted, justifyContent: justify });
+
+  if (style === "centered") return (
+    <nav style={{ borderBottom: `1px solid ${d.text}14`, background: d.background, position: "sticky", top: 0, zIndex: 20 }}>
+      <div className="bn-wrap" style={{ padding: "14px 0 10px", display: "grid", gridTemplateColumns: "1fr auto 1fr", alignItems: "center", gap: 12 }}>
+        <div className="bn-nav-links" style={linkRow("flex-start")}>{links}</div>
+        <div style={{ fontSize: 20, textAlign: "center" }}>{brand}</div>
+        <div style={{ display: "flex", justifyContent: "flex-end" }}>{cart}</div>
+      </div>
+    </nav>
+  );
+  if (style === "overlay") return (
+    <div style={{ position: "sticky", top: 12, zIndex: 20, padding: "12px 0 0" }}>
+      <nav className="bn-wrap" style={{ background: `${d.background}f2`, border: `1px solid ${d.text}14`, borderRadius: 999, boxShadow: "0 10px 30px rgba(0,0,0,.12)", backdropFilter: "blur(14px)", padding: "0 22px", height: 58, display: "flex", alignItems: "center", justifyContent: "space-between", gap: 18 }}>
+        {brand}
+        <div className="bn-nav-links" style={linkRow("center")}>{links}</div>
+        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>{cart}</div>
+      </nav>
+    </div>
+  );
+  if (style === "bar") return (
+    <div style={{ position: "sticky", top: 0, zIndex: 20 }}>
+      <div style={{ background: d.primary, color: "#fff", fontSize: 12, padding: "8px 0" }}>
+        <div className="bn-wrap" style={{ display: "flex", justifyContent: "space-between", gap: 12, flexWrap: "wrap" }}>
+          <span style={{ opacity: .9 }}>{store.business?.description ? String(store.business.description).slice(0, 70) : `Welcome to ${store.name}`}</span>
+          <span style={{ opacity: .8 }}>{store.contactPhone || store.contactEmail || ""}</span>
+        </div>
+      </div>
+      <nav style={{ borderBottom: `1px solid ${d.text}14`, background: d.background }}>
+        <div className="bn-wrap" style={{ height: 64, display: "flex", alignItems: "center", justifyContent: "space-between", gap: 18 }}>
+          {brand}<div className="bn-nav-links" style={linkRow("center")}>{links}</div><div style={{ display: "flex", alignItems: "center", gap: 10 }}>{cart}</div>
+        </div>
+      </nav>
+    </div>
+  );
+  return (
+    <nav style={{ borderBottom: `1px solid ${d.text}14`, background: d.background, position: "sticky", top: 0, zIndex: 20, backdropFilter: "blur(14px)" }}>
+      <div className="bn-wrap" style={{ height: 70, display: "flex", alignItems: "center", justifyContent: "space-between", gap: 18 }}>
+        {brand}<div className="bn-nav-links" style={linkRow("flex-start")}>{links}</div><div style={{ display: "flex", alignItems: "center", gap: 10 }}>{cart}</div>
+      </div>
+    </nav>
+  );
+}
+
+function BuilderFooter({ store, d, visible }: { store: BuilderStore; d: DesignT; visible: SectionT[] }) {
+  const style = d.footerStyle ?? "columns";
+  const year = new Date().getFullYear();
+  const desc = store.business?.description || "Built with BizNest.";
+  const contact = store.contactEmail || store.contactPhone || "Online business";
+  const anchors = visible.filter((s) => ["catalog", "about", "contact", "testimonials", "features"].includes(s.type)).slice(0, 5);
+  const link = { color: "inherit", opacity: .78, fontSize: 13 } as React.CSSProperties;
+  const base: React.CSSProperties = { marginTop: 60, background: d.primary, color: "#fff" };
+
+  if (style === "minimal") return (
+    <footer style={{ ...base, padding: "22px 0" }}>
+      <div className="bn-wrap" style={{ display: "flex", justifyContent: "space-between", gap: 12, flexWrap: "wrap", fontSize: 13 }}>
+        <strong style={{ fontFamily: d.headingFont }}>{store.name}</strong><span style={{ opacity: .7 }}>© {year} · {contact}</span>
+      </div>
+    </footer>
+  );
+  if (style === "centered") return (
+    <footer style={{ ...base, padding: "56px 0 28px", textAlign: "center" }}>
+      <div className="bn-wrap">
+        <strong style={{ fontSize: 24, fontFamily: d.headingFont }}>{store.name}</strong>
+        <p style={{ opacity: .72, maxWidth: 520, margin: "12px auto 20px", lineHeight: 1.7, fontSize: 13 }}>{desc}</p>
+        <div style={{ display: "flex", justifyContent: "center", gap: 24, flexWrap: "wrap", marginBottom: 24 }}>{anchors.map((s) => <a key={s.id} href={`#${s.id}`} style={link}>{s.settings.heading || label(s.type)}</a>)}</div>
+        <div style={{ borderTop: "1px solid rgba(255,255,255,.14)", paddingTop: 18, fontSize: 12, opacity: .6 }}>© {year} {store.name} · {contact}</div>
+      </div>
+    </footer>
+  );
+  if (style === "cta") return (
+    <>
+      <section style={{ marginTop: 60, background: d.accent, color: "#fff", padding: "56px 0", textAlign: "center" }}>
+        <div className="bn-wrap">
+          <h2 style={{ margin: 0, fontSize: 34, fontFamily: d.headingFont }}>Ready when you are.</h2>
+          <p style={{ opacity: .9, margin: "10px 0 22px" }}>Browse {store.name} and order in minutes.</p>
+          <a href="#catalog" style={{ display: "inline-block", background: "#fff", color: d.primary, padding: "13px 26px", borderRadius: d.buttonStyle === "pill" ? 999 : d.radius, fontWeight: 800, fontSize: 14 }}>Start now →</a>
+        </div>
+      </section>
+      <footer style={{ background: d.primary, color: "#fff", padding: "22px 0" }}>
+        <div className="bn-wrap" style={{ display: "flex", justifyContent: "space-between", gap: 12, flexWrap: "wrap", fontSize: 13, opacity: .85 }}>
+          <strong>{store.name}</strong><span>{contact}</span><span>© {year}</span>
+        </div>
+      </footer>
+    </>
+  );
+  return (
+    <footer style={{ ...base, padding: "56px 0 24px" }}>
+      <div className="bn-wrap">
+        <div style={{ display: "grid", gridTemplateColumns: "2fr 1fr 1.2fr", gap: 36 }} className="bn-grid">
+          <div><strong style={{ fontSize: 22, fontFamily: d.headingFont }}>{store.name}</strong><p style={{ opacity: .72, maxWidth: 380, lineHeight: 1.7, fontSize: 13 }}>{desc}</p></div>
+          <div style={{ display: "flex", flexDirection: "column", gap: 10 }}><b style={{ fontSize: 12, letterSpacing: ".14em", textTransform: "uppercase" }}>Explore</b>{anchors.map((s) => <a key={s.id} href={`#${s.id}`} style={link}>{s.settings.heading || label(s.type)}</a>)}</div>
+          <div style={{ display: "flex", flexDirection: "column", gap: 10 }}><b style={{ fontSize: 12, letterSpacing: ".14em", textTransform: "uppercase" }}>Contact</b><span style={link}>{store.contactEmail || "—"}</span><span style={link}>{store.contactPhone || ""}</span></div>
+        </div>
+        <div style={{ borderTop: "1px solid rgba(255,255,255,.14)", marginTop: 36, paddingTop: 18, fontSize: 12, opacity: .6 }}>© {year} {store.name}. All rights reserved.</div>
+      </div>
+    </footer>
+  );
+}
+
+function ItemCard({ item, store, d, radius, actionLabel }: { item: CatalogItem; store: BuilderStore; d: DesignT; radius: number; actionLabel: string }) {
+  const style = d.cardStyle ?? "bordered";
+  const href = `/store/${store.slug}/${item.kind}/${item.id}`;
+  const price = `${item.currency} ${item.price.toLocaleString()}`;
+  const img = (ratio: string, r: number | string = 0): React.CSSProperties => ({ aspectRatio: ratio, borderRadius: r, background: item.image ? `url(${item.image}) center/cover` : `${d.primary}12` });
+  if (style === "overlay") return (
+    <Link href={href} style={{ position: "relative", display: "block", borderRadius: radius, overflow: "hidden" }}>
+      <div style={img("4/5")} />
+      <div style={{ position: "absolute", inset: "auto 0 0 0", padding: 16, color: "#fff", background: "linear-gradient(0deg,rgba(0,0,0,.78),rgba(0,0,0,0))" }}>
+        <div style={{ fontWeight: 750, fontFamily: d.headingFont }}>{item.name}</div>
+        <div style={{ fontWeight: 800, marginTop: 4, color: d.accent }}>{price}</div>
+      </div>
+    </Link>
+  );
+  if (style === "minimal") return (
+    <Link href={href} style={{ display: "block" }}>
+      <div style={img("1/1", radius)} />
+      <div style={{ paddingTop: 12, display: "flex", justifyContent: "space-between", gap: 10, alignItems: "baseline" }}>
+        <span style={{ fontWeight: 650 }}>{item.name}</span><span style={{ color: d.muted, fontSize: 13, whiteSpace: "nowrap" }}>{price}</span>
+      </div>
+    </Link>
+  );
+  if (style === "tall") return (
+    <Link href={href} style={{ display: "block", textAlign: "center" }}>
+      <div style={img("3/4", radius)} />
+      <div style={{ paddingTop: 14, fontSize: 12, letterSpacing: ".14em", textTransform: "uppercase", fontWeight: 700 }}>{item.name}</div>
+      <div style={{ color: d.accent, fontWeight: 800, marginTop: 4 }}>{price}</div>
+    </Link>
+  );
+  return (
+    <Link href={href} style={{ border: `1px solid ${d.text}12`, borderRadius: radius, overflow: "hidden", background: d.surface }}>
+      <div style={img("1/1")} />
+      <div style={{ padding: 16 }}>
+        <div style={{ fontWeight: 750, marginBottom: 7 }}>{item.name}</div>
+        <div style={{ color: d.accent, fontWeight: 800 }}>{price}</div>
+        <div style={{ marginTop: 10, fontSize: 11, color: d.muted, fontWeight: 700 }}>{actionLabel} →</div>
+      </div>
+    </Link>
+  );
+}

@@ -68,14 +68,10 @@ function Fabtex({p}:{p:Props}){return <div className="lt-root fabtex"><Header p=
 export function LegacyTemplateHome({name,p}:{name:string;p:Props}){
  if(name === "Wanderly Travel") return <WanderlyHome p={p as any}/>;
  if(name === "Nestoria Real Estate") return <NestoriaHome p={p as any}/>;
- if(name === "Emarket Furniture & Home" || name === "ShopNova Marketplace") return <Marketplace p={p}/>;
- if(name === "ShopEase General Store") return <Violet p={p}/>;
- if(name === "TechNova Mobile Store") return <Premium p={p}/>;
- if(name === "Electra Blue Electronics" || name === "TechVerse Gadgets") return <Premium p={p}/>;
- if(name==="Heenzy Sneaker Co."||name==="Heenzy — Boutique Rose") return <HeenzyStorefront {...p as any} catalogCategories={[]} />;
+ if(name==="Heenzy Sneaker Co.") return <HeenzyStorefront {...p as any} catalogCategories={[]} />;
  if(name==="Fresh & Co.") return <Fresh p={p}/>;
- if(name.startsWith("Nova Studio")) return <Nova p={p}/>;
- if(name.startsWith("Violet")) return <Violet p={p}/>;
+ if(name.startsWith("Nova Studio") && name!=="Nova Studio — Ivory Minimal") return <Nova p={p}/>;
+ if(name==="Violet") return <Violet p={p}/>;
  if(name==="Premium Marketplace") return <Premium p={p}/>;
  if(name==="HomeVista") return <HomeVista p={p}/>;
  if(name==="rRW Premium Rental") return <Rrw p={p}/>;

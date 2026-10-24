@@ -51,6 +51,9 @@ export function templateThemeToBuilderConfig(theme: TemplateTheme, storeName: st
       radius: radiusPx(theme.radius),
       containerWidth: theme.layout === "list" ? "standard" : "wide",
       buttonStyle: theme.radius === "2px" ? "solid" : theme.density === "compact" ? "pill" : "solid",
+      headerStyle: theme.chrome?.header,
+      footerStyle: theme.chrome?.footer,
+      cardStyle: theme.chrome?.card,
     },
     sections,
   };

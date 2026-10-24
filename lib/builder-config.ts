@@ -44,6 +44,10 @@ export type BuilderDesign = {
   radius: number;
   containerWidth: "compact" | "standard" | "wide";
   buttonStyle: "solid" | "outline" | "pill";
+  /** Structural identity of a template (so templates differ in layout, not just colours). All optional. */
+  headerStyle?: "classic" | "centered" | "overlay" | "bar";
+  footerStyle?: "columns" | "centered" | "cta" | "minimal";
+  cardStyle?: "bordered" | "overlay" | "minimal" | "tall";
 };
 
 export type BuilderConfig = {
@@ -98,6 +102,9 @@ export const builderConfigSchema = z.object({
     font: z.string().max(100), headingFont: z.string().max(100), radius: z.number().min(0).max(48),
     containerWidth: z.enum(["compact", "standard", "wide"]),
     buttonStyle: z.enum(["solid", "outline", "pill"]),
+    headerStyle: z.enum(["classic", "centered", "overlay", "bar"]).optional(),
+    footerStyle: z.enum(["columns", "centered", "cta", "minimal"]).optional(),
+    cardStyle: z.enum(["bordered", "overlay", "minimal", "tall"]).optional(),
   }),
   sections: z.array(sectionSchema).min(1).max(30),
 });

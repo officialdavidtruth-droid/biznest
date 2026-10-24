@@ -1,6 +1,6 @@
 import {
   GRANDEUR_TEMPLATE_NAME, TASTEHOUSE_TEMPLATE_NAME, HOTEL_TEMPLATE_NAME, EXAMPLE_TEMPLATE_NAME,
-  LEGACY_TEMPLATE_NAMES,
+  LEGACY_TEMPLATE_NAMES, NAMED_TEMPLATE_IDENTITY,
 } from "@/lib/template-themes";
 import { SIGNATURE_DEDICATED_RENDERER } from "@/lib/storefront/signature-renderers";
 
@@ -45,7 +45,12 @@ const isScreenshotMode = (m: string | undefined): m is ScreenshotMode => !!m && 
 export function resolveHomeRenderer(templateName: string | null | undefined): HomeRenderer {
   const name = templateName ?? "";
   if (name === "Aspire Resort" || name === "Larita Luxury Hotel" || name === "Skyview Hotels & Resorts") return { kind: "hotel" };
-  if (["Emarket Furniture & Home", "Electra Blue Electronics", "TechNova Mobile Store", "ShopEase General Store", "ShopNova Marketplace", "TechVerse Gadgets", "Wanderly Travel", "Nestoria Real Estate"].includes(name)) return { kind: "legacy", name };
+  // One renderer, one owner: only these two reference templates have their own dedicated home component.
+  // The other reference templates (Emarket, ShopNova, Electra Blue, TechNova, TechVerse, ShopEase) and the colour
+  // variants (Violet — Sunset, Nova Ivory, Heenzy Boutique Rose) used to reuse another template's component,
+  // so picking them looked identical. They now render through the Builder with their own identity (NAMED_TEMPLATE_IDENTITY).
+  if (["Wanderly Travel", "Nestoria Real Estate"].includes(name)) return { kind: "legacy", name };
+  if (NAMED_TEMPLATE_IDENTITY[name]) return { kind: "builder" };
   if (LEGACY_TEMPLATE_NAMES.has(name)) return { kind: "legacy", name };
   if (name === GRANDEUR_TEMPLATE_NAME) return { kind: "screenshot", mode: "flavora-restaurant", palette: SCREENSHOT_PALETTES["flavora-restaurant"] };
   if (name === TASTEHOUSE_TEMPLATE_NAME) return { kind: "screenshot", mode: "tastehouse", palette: SCREENSHOT_PALETTES.tastehouse };

@@ -101,6 +101,14 @@ export type TemplateTheme = {
   surfaceDark?: string;
   /** Softer/lighter tint of `accent`, used in gradients and subtle fills. Falls back to `accent` when unset. */
   accentSoft?: string;
+  /** Structural identity: header / footer / product-card layout. Every template gets its own combination. */
+  chrome?: TemplateChrome;
+};
+
+export type TemplateChrome = {
+  header: "classic" | "centered" | "overlay" | "bar";
+  footer: "columns" | "centered" | "cta" | "minimal";
+  card: "bordered" | "overlay" | "minimal" | "tall";
 };
 
 export type GeneratedTemplate = TemplateTheme & {
@@ -801,6 +809,47 @@ export function getTemplateTheme(category: string | undefined, _storeName: strin
 }
 
 /** Merge a store's saved overrides (from Settings) on top of its selected template's default. */
+// ---------------------------------------------------------------------------
+// Template identity presets. Rule: no two builder-rendered templates may share the same
+// header + footer + card combination (enforced by lib/__tests__/template-uniqueness.test.ts).
+// ---------------------------------------------------------------------------
+const C = (header: TemplateChrome["header"], footer: TemplateChrome["footer"], card: TemplateChrome["card"]): TemplateChrome => ({ header, footer, card });
+export const SIGNATURE_CHROME: Record<string, TemplateChrome> = {
+  electra: C("bar", "columns", "bordered"),
+  atelier: C("centered", "centered", "tall"),
+  kinetic: C("overlay", "minimal", "overlay"),
+  haven: C("classic", "cta", "minimal"),
+  harvest: C("bar", "cta", "tall"),
+  ember: C("centered", "columns", "overlay"),
+  muse: C("centered", "cta", "bordered"),
+  frame: C("overlay", "centered", "minimal"),
+  north: C("classic", "columns", "bordered"),
+  pure: C("bar", "centered", "minimal"),
+  forge: C("classic", "minimal", "tall"),
+};
+/** Templates that used to reuse another template's renderer. They now render through the Builder with their own identity. */
+export const NAMED_TEMPLATE_IDENTITY: Record<string, { chrome: TemplateChrome; heroStyle?: HeroStyle }> = {
+  "Emarket Furniture & Home": { chrome: C("classic", "columns", "tall"), heroStyle: "split" },
+  "ShopNova Marketplace": { chrome: C("bar", "minimal", "bordered"), heroStyle: "centered" },
+  "Electra Blue Electronics": { chrome: C("centered", "minimal", "bordered"), heroStyle: "fullbleed" },
+  "TechNova Mobile Store": { chrome: C("overlay", "cta", "bordered"), heroStyle: "split" },
+  "TechVerse Gadgets": { chrome: C("bar", "centered", "overlay"), heroStyle: "centered" },
+  "ShopEase General Store": { chrome: C("centered", "columns", "minimal"), heroStyle: "fullbleed" },
+  "Violet — Sunset": { chrome: C("centered", "minimal", "tall"), heroStyle: "centered" },
+  "Nova Studio — Ivory Minimal": { chrome: C("bar", "columns", "minimal"), heroStyle: "split" },
+  "Heenzy — Boutique Rose": { chrome: C("overlay", "columns", "tall"), heroStyle: "fullbleed" },
+};
+
+function lookupReferenceTheme(name: string | null | undefined): TemplateTheme | null {
+  if (!name || !NAMED_TEMPLATE_IDENTITY[name]) return null;
+  try {
+    // Lazy require: reference-template-catalog imports this module.
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
+    const { REFERENCE_TEMPLATE_CATALOG } = require("@/lib/reference-template-catalog") as { REFERENCE_TEMPLATE_CATALOG: readonly (TemplateTheme & { variationName: string })[] };
+    return REFERENCE_TEMPLATE_CATALOG.find((t) => t.variationName === name) ?? null;
+  } catch { return null; }
+}
+
 export function resolveStoreTheme(
   _templateCategory: string | undefined,
   _storeName: string,
@@ -808,7 +857,9 @@ export function resolveStoreTheme(
   fontFamily: string | null | undefined,
   templateName?: string | null
 ): TemplateTheme {
-  const base = isHeenzyTemplate(templateName)
+  const base = lookupReferenceTheme(templateName)
+    ? lookupReferenceTheme(templateName)!
+    : isHeenzyTemplate(templateName)
     ? resolveHeenzyTheme(templateName)
     : isNovaTemplate(templateName)
     ? resolveNovaTheme(templateName)
@@ -841,8 +892,10 @@ export function resolveStoreTheme(
     : isSignatureTemplate(templateName)
     ? getSignatureTheme(templateName)
     : FRESH_THEME;
+  const identity = templateName ? NAMED_TEMPLATE_IDENTITY[templateName] : undefined;
   return {
     ...base,
+    ...(identity ? { chrome: identity.chrome, ...(identity.heroStyle ? { heroStyle: identity.heroStyle } : {}) } : {}),
     bg: overrides?.secondary || base.bg,
     accent: overrides?.primary || overrides?.accent || base.accent,
     font: fontFamily || base.font,
@@ -905,6 +958,9 @@ export const SIGNATURE_SECTION_COPY: Readonly<Record<string, SectionCopy>> = {
 // Per-template typography + corner style. These used to come ONLY from SIGNATURE_BASE, so every
 // signature template (professional services, hotel, ...) rendered in the same fonts and radius.
 const SIGNATURE_STYLE: Record<string, { font?: string; headlineFont?: string; radius?: string }> = {
+  electra: { font: "'Inter', sans-serif", headlineFont: "'Inter', sans-serif", radius: "14px" },
+  harvest: { font: "'Plus Jakarta Sans', sans-serif", headlineFont: "Georgia, 'Times New Roman', serif", radius: "20px" },
+  haven: { font: "'Inter', sans-serif", headlineFont: "'Playfair Display', Georgia, serif", radius: "6px" },
   north: { headlineFont: "'Space Grotesk', sans-serif", radius: "10px" },
   frame: { font: "'Inter', sans-serif", headlineFont: "'Playfair Display', Georgia, serif", radius: "0px" },
   forge: { font: "'Inter', sans-serif", headlineFont: "'Space Grotesk', Impact, sans-serif", radius: "2px" },
@@ -919,7 +975,7 @@ const SIGNATURE_STYLE: Record<string, { font?: string; headlineFont?: string; ra
 };
 
 function signatureTheme(data: Omit<TemplateTheme, "font" | "headlineFont" | "radius" | "sections"> & { signatureMode: string }): TemplateTheme & { signatureMode: string } {
-  return { ...SIGNATURE_BASE, ...(SIGNATURE_STYLE[data.signatureMode] ?? {}), sections: SIGNATURE_SECTIONS[data.signatureMode] ?? SIGNATURE_BASE.sections, sectionCopy: SIGNATURE_SECTION_COPY[data.signatureMode], ...data };
+  return { ...SIGNATURE_BASE, ...(SIGNATURE_STYLE[data.signatureMode] ?? {}), sections: SIGNATURE_SECTIONS[data.signatureMode] ?? SIGNATURE_BASE.sections, sectionCopy: SIGNATURE_SECTION_COPY[data.signatureMode], chrome: SIGNATURE_CHROME[data.signatureMode], ...data };
 }
 
 export const SIGNATURE_TEMPLATES = [
