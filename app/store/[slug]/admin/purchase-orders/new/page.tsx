@@ -26,7 +26,7 @@ export default async function NewPurchaseOrderPage({
       select: {
         id: true,
         name: true,
-        costPrice: true,
+        inventory: { select: { costPrice: true } },
         hasVariants: true,
         variants: {
           where: { isActive: true },
@@ -44,7 +44,7 @@ export default async function NewPurchaseOrderPage({
   for (const p of products) {
     if (p.hasVariants && p.variants.length > 0) {
       for (const v of p.variants) {
-        const cost = v.costPrice ?? p.costPrice;
+        const cost = v.costPrice ?? p.inventory?.costPrice ?? null;
         options.push({
           key: `variant:${v.id}`,
           productId: p.id,
@@ -58,7 +58,7 @@ export default async function NewPurchaseOrderPage({
         key: `product:${p.id}`,
         productId: p.id,
         label: p.name,
-        defaultCost: p.costPrice != null ? Number(p.costPrice) : null,
+        defaultCost: p.inventory?.costPrice != null ? Number(p.inventory.costPrice) : null,
       });
     }
   }
