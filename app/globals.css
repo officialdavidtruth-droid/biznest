@@ -1271,3 +1271,27 @@ a.ex-mini{text-decoration:none}
   .bn-adaptive-dashboard .bn-dashboard-content > *, .bn-adaptive-dashboard .bn-revenue-area, .bn-adaptive-dashboard .bn-revenue-line { animation: none !important; opacity: 1 !important; stroke-dashoffset: 0 !important; }
   .bn-adaptive-dashboard .bn-dashboard-kpi, .bn-adaptive-dashboard .bn-dashboard-action, .bn-adaptive-dashboard section { transition: none !important; }
 }
+
+/* BizNest sidebar + dashboard motion polish */
+.bn-admin-sidebar.bn-sidebar-motion .bn-sidebar-brand { animation: bn-sidebar-brand-in 480ms cubic-bezier(.2,.75,.25,1) both; }
+.bn-admin-sidebar.bn-sidebar-motion .bn-sidebar-group { animation: bn-sidebar-item-in 440ms cubic-bezier(.2,.75,.25,1) both; }
+.bn-admin-sidebar.bn-sidebar-motion .bn-sidebar-group:nth-child(2) { animation-delay: 45ms; }
+.bn-admin-sidebar.bn-sidebar-motion .bn-sidebar-group:nth-child(3) { animation-delay: 90ms; }
+.bn-admin-sidebar.bn-sidebar-motion .bn-sidebar-group:nth-child(4) { animation-delay: 135ms; }
+.bn-admin-sidebar.bn-sidebar-motion .bn-sidebar-group:nth-child(5) { animation-delay: 180ms; }
+.bn-admin-sidebar.bn-sidebar-motion .bn-sidebar-group:nth-child(6) { animation-delay: 225ms; }
+.bn-admin-sidebar.bn-sidebar-motion .bn-sidebar-link { transition: background-color 180ms ease, color 180ms ease, transform 180ms ease, box-shadow 180ms ease; }
+.bn-admin-sidebar.bn-sidebar-motion .bn-sidebar-link:hover { transform: translateX(3px); }
+.bn-admin-sidebar.bn-sidebar-motion .bn-sidebar-link:active { transform: translateX(1px) scale(.99); }
+.bn-admin-sidebar.bn-sidebar-motion .bn-sidebar-subnav { animation: bn-sidebar-subnav-in 200ms cubic-bezier(.2,.75,.25,1) both; transform-origin: top; }
+.bn-admin-sidebar.bn-sidebar-motion .bn-sidebar-footer { animation: bn-sidebar-item-in 480ms 180ms ease both; }
+@keyframes bn-sidebar-brand-in { from { opacity: 0; transform: translateY(-8px); } to { opacity: 1; transform: translateY(0); } }
+@keyframes bn-sidebar-item-in { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+@keyframes bn-sidebar-subnav-in { from { opacity: 0; transform: scaleY(.92) translateY(-3px); } to { opacity: 1; transform: scaleY(1) translateY(0); } }
+@media (prefers-reduced-motion: reduce) {
+  .bn-admin-sidebar.bn-sidebar-motion .bn-sidebar-brand,
+  .bn-admin-sidebar.bn-sidebar-motion .bn-sidebar-group,
+  .bn-admin-sidebar.bn-sidebar-motion .bn-sidebar-footer,
+  .bn-admin-sidebar.bn-sidebar-motion .bn-sidebar-subnav { animation: none !important; }
+  .bn-admin-sidebar.bn-sidebar-motion .bn-sidebar-link { transition: none !important; }
+}

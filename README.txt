@@ -1,12 +1,15 @@
-BIZNEST DASHBOARD ANIMATION PATCH
+BizNest sidebar + dashboard animation update
 
-Files included:
-1. app/globals.css
-2. components/dashboard/adaptive-dashboard-home.tsx
+Copy these files into the ROOT of your BizNest project, preserving folders:
+- app/globals.css
+- components/dashboard/sidebar.tsx
+- components/dashboard/adaptive-dashboard-home.tsx
 
-How to apply:
-- Make a backup of your current versions of these two files.
-- Copy these files into the matching paths in your Biznest project, replacing the existing files.
-- Run your normal build/test checks before deploying.
+Back up your existing files first. This update adds sidebar entrance/hover/submenu animations and retains the dashboard entrance/chart/card animation CSS.
 
-Only replace these files if they match the project version used for this patch. The app build has not been verified in this environment.
+After copying:
+1. Restart the dev server (stop it and run npm run dev again).
+2. Hard refresh the browser (Ctrl+Shift+R).
+3. Check npm run build before deploying.
+
+Note: The project build was not run in this environment because dependencies are not installed here.
