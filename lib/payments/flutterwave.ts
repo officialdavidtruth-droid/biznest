@@ -70,6 +70,21 @@ export async function verifyFlutterwaveTransaction(transactionId: string, secret
   return res.json();
 }
 
+/**
+ * Looks a charge up by OUR tx_ref instead of Flutterwave's numeric id. Used by
+ * the reconciliation job, which has no webhook/redirect to read the id from.
+ */
+export async function verifyFlutterwaveByReference(txRef: string, secretKeyOverride?: string | null): Promise<VerifyResponse & { data?: { currency?: string } }> {
+  const secretKey = secretKeyOverride ?? process.env.FLUTTERWAVE_SECRET_KEY;
+  if (!secretKey) {
+    return { status: "error", message: "Payments aren't configured yet (missing FLUTTERWAVE_SECRET_KEY)." };
+  }
+  const res = await fetch(`${FLW_BASE}/transactions/verify_by_reference?tx_ref=${encodeURIComponent(txRef)}`, {
+    headers: { Authorization: `Bearer ${secretKey}` },
+  });
+  return res.json();
+}
+
 type RefundResponse = {
   status: "success" | "error";
   message: string;

@@ -111,6 +111,12 @@ export async function POST(req: Request) {
   // callback.
   const verification = await verifyFlutterwaveTransaction(String(transactionId), storeSecretKey);
   if (verification.status !== "success" || verification.data?.status !== "successful") {
+    // Couldn't reach/confirm with Flutterwave for a payment we know about: answer
+    // 5xx so Flutterwave retries instead of this confirmation being lost (the
+    // reconciliation cron is the second safety net).
+    if (verification.status !== "success" && knownPayment) {
+      return NextResponse.json({ error: "Verification unavailable, retry" }, { status: 502 });
+    }
     return NextResponse.json({ received: true });
   }
   // Defense in depth: the verified transaction must be the one this tx_ref names.
