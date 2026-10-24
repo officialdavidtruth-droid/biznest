@@ -3,10 +3,14 @@ import { getActiveGateway } from "@/lib/actions/site-settings";
 export { getActiveGateway };
 import { initializePaystackTransaction, refundPaystackTransaction } from "@/lib/payments/paystack";
 import { initializeFlutterwaveTransaction, refundFlutterwaveTransaction } from "@/lib/payments/flutterwave";
+import { initializeKorapayTransaction, refundKorapayTransaction } from "@/lib/payments/korapay";
 import type { PaymentProvider } from "@prisma/client";
 import { logError } from "@/lib/observability/log";
 import { APP_URL } from "@/lib/constants/app-url";
 import { resolveStoreGateway, type StoreGatewayCredentials } from "@/lib/payments/store-gateway";
+
+/** Every gateway a platform charge can go through. SupaAdmin picks the active one. */
+export type PaymentGatewayId = "PAYSTACK" | "FLUTTERWAVE" | "KORAPAY";
 
 type ChargeParams = {
   email: string;
@@ -33,7 +37,7 @@ type ChargeParams = {
    * Store-checkout flows (orders/invoices/quotes) omit this and keep
    * following the toggle as before.
    */
-  gateway?: "PAYSTACK" | "FLUTTERWAVE";
+  gateway?: PaymentGatewayId;
   /** Storefront checkout can use the provider's hosted inline modal instead of navigating away. */
   inline?: boolean;
   /**
@@ -49,13 +53,14 @@ type ChargeResult =
   | {
       success: true;
       authorizationUrl: string;
-      gateway: "PAYSTACK" | "FLUTTERWAVE";
+      gateway: PaymentGatewayId;
       /** True when the charge was made with the store's own gateway keys. Persist it on the Payment row. */
       usesStoreGateway?: boolean;
       /** Always null now: charges are not split. Kept so existing callers that
        *  persist it on the Payment row keep compiling. */
       splitSubaccountCode: string | null;
       inline?: {
+        // Korapay is redirect-only, so inline modals only exist for these two.
         provider: "PAYSTACK" | "FLUTTERWAVE";
         publicKey: string;
         email: string;
@@ -86,6 +91,29 @@ export async function chargeCustomer(params: ChargeParams): Promise<ChargeResult
   }
   const usesStoreGateway = Boolean(own);
   const gateway = own?.provider ?? params.gateway ?? (await getActiveGateway());
+
+  if (gateway === "KORAPAY") {
+    // Kora's hosted checkout is redirect-only here (no inline modal), so `inline` is never returned.
+    const init = await initializeKorapayTransaction({
+      email: params.email,
+      amountNaira: params.amountNaira,
+      reference: params.reference,
+      callbackUrl: params.callbackUrl,
+      notificationUrl: `${APP_URL}/api/payments/korapay/webhook`,
+      customerName: params.customerName,
+    });
+    if (!init.status || !init.data?.checkout_url) {
+      void logError("PAYMENTS", "Korapay charge init failed", { reference: params.reference, message: init.message });
+      return { success: false, error: init.message || "Couldn't start the Korapay payment." };
+    }
+    return {
+      success: true,
+      authorizationUrl: init.data.checkout_url,
+      gateway: "KORAPAY",
+      usesStoreGateway,
+      splitSubaccountCode: null,
+    };
+  }
 
   if (gateway === "FLUTTERWAVE") {
     const publicKey = own ? own.publicKey : process.env.NEXT_PUBLIC_FLUTTERWAVE_PUBLIC_KEY || process.env.FLUTTERWAVE_PUBLIC_KEY;
@@ -181,6 +209,16 @@ type RefundResult = { success: true; refundReference: string } | { success: fals
  * switched on.
  */
 export async function refundPayment(params: RefundParams): Promise<RefundResult> {
+  if (params.provider === "KORAPAY") {
+    // Kora refunds by OUR payment reference, so no gateway transaction id is needed.
+    const res = await refundKorapayTransaction(params.gatewayTransactionRef, params.amountNaira, params.secretKey);
+    if (!res.status || !res.data) {
+      void logError("PAYMENTS", "Korapay refund failed", { ref: params.gatewayTransactionRef, message: res.message });
+      return { success: false, error: res.message || "Korapay declined the refund." };
+    }
+    return { success: true, refundReference: String(res.data.refund_reference) };
+  }
+
   if (params.provider === "FLUTTERWAVE") {
     const res = await refundFlutterwaveTransaction(params.gatewayTransactionRef, params.amountNaira, params.secretKey);
     if (res.status !== "success" || !res.data) {
@@ -201,7 +239,7 @@ export async function refundPayment(params: RefundParams): Promise<RefundResult>
 
 
 type CheckoutGateway =
-  | { ok: true; gateway: "PAYSTACK" | "FLUTTERWAVE"; usesStoreGateway: boolean }
+  | { ok: true; gateway: PaymentGatewayId; usesStoreGateway: boolean }
   | { ok: false; error: string };
 
 /**
@@ -210,7 +248,7 @@ type CheckoutGateway =
  * makes when given the same `storeId`: the store's own gateway if it has one
  * switched on, otherwise the platform's active gateway.
  */
-export async function resolveCheckoutGateway(storeId: string, platformGateway?: "PAYSTACK" | "FLUTTERWAVE"): Promise<CheckoutGateway> {
+export async function resolveCheckoutGateway(storeId: string, platformGateway?: PaymentGatewayId): Promise<CheckoutGateway> {
   const resolved = await resolveStoreGateway(storeId);
   if (resolved.status === "error") return { ok: false, error: resolved.message };
   if (resolved.status === "ok") return { ok: true, gateway: resolved.credentials.provider, usesStoreGateway: true };
@@ -218,6 +256,7 @@ export async function resolveCheckoutGateway(storeId: string, platformGateway?: 
 }
 
 /** The redirect target a gateway sends the customer back to after paying. */
-export function paymentCallbackUrl(gateway: "PAYSTACK" | "FLUTTERWAVE"): string {
+export function paymentCallbackUrl(gateway: PaymentGatewayId): string {
+  if (gateway === "KORAPAY") return `${APP_URL}/api/payments/korapay/callback`;
   return gateway === "FLUTTERWAVE" ? `${APP_URL}/api/payments/flutterwave/callback` : `${APP_URL}/api/payments/paystack/callback`;
 }

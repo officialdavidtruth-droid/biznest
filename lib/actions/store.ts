@@ -19,6 +19,7 @@ import { fetchDemoPhoto, fetchDemoPhotos } from "@/lib/demo-images";
 import type { ActionResult } from "@/types/actions";
 import { resolvePaystackAccount, createPaystackTransferRecipient, checkPaystackSubaccountVerification, listPaystackBanks } from "@/lib/payments/paystack";
 import { resolveFlutterwaveAccount, listFlutterwaveBanks } from "@/lib/payments/flutterwave";
+import { resolveKorapayAccount, listKorapayBanks } from "@/lib/payments/korapay";
 import { hasBankPayoutDestination, needsPayoutReconnect } from "@/lib/payments/payout-target";
 
 /**
@@ -658,7 +659,7 @@ export async function getPayoutStatus(slug: string) {
     // Connected under the old subaccount model: still works for now, but the
     // owner must re-enter their bank details to keep getting paid.
     needsReconnect: needsPayoutReconnect(store),
-    payoutDetails: store.payoutDetails as { bankName?: string; accountName?: string; maskedAccountNumber?: string; provider?: "PAYSTACK" | "FLUTTERWAVE" } | null,
+    payoutDetails: store.payoutDetails as { bankName?: string; accountName?: string; maskedAccountNumber?: string; provider?: "PAYSTACK" | "FLUTTERWAVE" | "KORAPAY" } | null,
     connectedAt: store.payoutConnectedAt,
     verifiedAt: store.payoutVerifiedAt,
   };
@@ -677,7 +678,7 @@ export async function getPayoutStatus(slug: string) {
  */
 export async function connectPayoutAccount(
   slug: string,
-  input: { provider: "PAYSTACK" | "FLUTTERWAVE"; bankCode: string; bankName: string; accountNumber: string }
+  input: { provider: "PAYSTACK" | "FLUTTERWAVE" | "KORAPAY"; bankCode: string; bankName: string; accountNumber: string }
 ): Promise<ActionResult> {
   const access = await assertStoreOwner(slug);
   if (!access.success) return { success: false, error: access.error };
@@ -708,6 +709,12 @@ export async function connectPayoutAccount(
       return { success: false, error: recipient.message || "Couldn't register this account with Paystack." };
     }
     paystackRecipientCode = recipient.data.recipient_code;
+  } else if (input.provider === "KORAPAY") {
+    const resolved = await resolveKorapayAccount(input.accountNumber, input.bankCode);
+    if (!resolved.status || !resolved.data) {
+      return { success: false, error: resolved.message || "Couldn't verify that account number." };
+    }
+    accountName = resolved.data.account_name;
   } else {
     const resolved = await resolveFlutterwaveAccount(input.accountNumber, input.bankCode);
     if (resolved.status !== "success" || !resolved.data) {
@@ -835,9 +842,9 @@ export async function disconnectPayoutAccount(slug: string): Promise<ActionResul
  * and pay the account. Codes differ between gateways, so a hardcoded list
  * breaks on some banks ("Unknown Bank Code"). Public reference data, no auth.
  */
-export async function listPayoutBanks(provider: "PAYSTACK" | "FLUTTERWAVE"): Promise<ActionResult<{ name: string; code: string }[]>> {
+export async function listPayoutBanks(provider: "PAYSTACK" | "FLUTTERWAVE" | "KORAPAY"): Promise<ActionResult<{ name: string; code: string }[]>> {
   try {
-    const res = provider === "FLUTTERWAVE" ? await listFlutterwaveBanks() : await listPaystackBanks();
+    const res = provider === "FLUTTERWAVE" ? await listFlutterwaveBanks() : provider === "KORAPAY" ? await listKorapayBanks() : await listPaystackBanks();
     if (!res.status || res.banks.length === 0) return { success: false, error: res.message || "Couldn't load the bank list." };
     return { success: true, data: res.banks.sort((a, b) => a.name.localeCompare(b.name)) };
   } catch {

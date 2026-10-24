@@ -4,7 +4,7 @@ import { auth } from "@/lib/auth";
 import { getStoreCustomerSessionForStore } from "@/lib/store-customer-auth";
 import { requireStoreCustomer } from "@/lib/actions/store-customer";
 import { prisma } from "@/lib/prisma";
-import { chargeCustomer } from "@/lib/payments/gateway";
+import { chargeCustomer, paymentCallbackUrl } from "@/lib/payments/gateway";
 import { checkRateLimit } from "@/lib/rate-limit";
 import type { ActionResult } from "@/types/actions";
 import { revalidatePath } from "next/cache";
@@ -70,9 +70,7 @@ export async function startWalletFunding(
 
   const reference = `WAL-${wallet.id}-${crypto.randomUUID()}`;
   const gateway = await import("@/lib/actions/site-settings").then((m) => m.getActiveGateway());
-  const callbackUrl = gateway === "FLUTTERWAVE"
-    ? `${APP_URL}/api/payments/flutterwave/callback`
-    : `${APP_URL}/api/payments/paystack/callback`;
+  const callbackUrl = paymentCallbackUrl(gateway);
 
   // Persist the pending charge before calling the provider. If the provider
   // accepts the charge but the request dies immediately afterwards, the
@@ -143,7 +141,7 @@ export async function startBookingPayment(
   const amount = Number(booking.paymentAmount ?? booking.service.price);
   if (!Number.isFinite(amount) || amount <= 0) return { success: false, error: "This service has an invalid price." };
   const reference = `BK-${booking.id}-${crypto.randomUUID()}`;
-  const { resolveCheckoutGateway, paymentCallbackUrl } = await import("@/lib/payments/gateway");
+  const { resolveCheckoutGateway } = await import("@/lib/payments/gateway");
   // The store's own gateway (bring-your-own keys) wins over the platform's active gateway.
   const checkoutGateway = await resolveCheckoutGateway(booking.storeId);
   if (!checkoutGateway.ok) return { success: false, error: checkoutGateway.error };

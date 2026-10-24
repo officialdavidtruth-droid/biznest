@@ -1697,6 +1697,7 @@ enum FnbOrderType {
 enum PaymentProvider {
   PAYSTACK
   FLUTTERWAVE
+  KORAPAY
   // In-person sale settled outside any online gateway (cash, transfer, or a
   // card terminal the merchant runs themselves) -- see lib/actions/pos.ts.
   // The actual tender type is free text on Order.posTenderType since it

@@ -89,13 +89,14 @@ function roundMoney(n: number) {
 async function activeTransferGateway(): Promise<TransferGateway> {
   try {
     const { getActiveGateway } = await import("@/lib/actions/site-settings");
-    return (await getActiveGateway()) === "FLUTTERWAVE" ? "FLUTTERWAVE" : "PAYSTACK";
+    const active = await getActiveGateway();
+    return active === "FLUTTERWAVE" || active === "KORAPAY" ? active : "PAYSTACK";
   } catch {
     return "PAYSTACK";
   }
 }
 
-const gatewayLabel = (g: TransferGateway) => (g === "FLUTTERWAVE" ? "Flutterwave" : "Paystack");
+const gatewayLabel = (g: TransferGateway) => (g === "FLUTTERWAVE" ? "Flutterwave" : g === "KORAPAY" ? "Korapay" : "Paystack");
 
 /* -------------------------------------------------------------------------- */
 /* QUEUE                                                                       */
@@ -126,13 +127,19 @@ export async function queuePayoutForPayment(reference: string): Promise<{ payout
   const hasAccount = Boolean(payment.store.payoutBankCode && payment.store.payoutAccountNumber);
   const details = (payment.store.payoutDetails ?? null) as { bankName?: string; accountName?: string; maskedAccountNumber?: string } | null;
 
-  // Paystack and Flutterwave collections are paid out from that same gateway's balance.
+  // Paystack, Flutterwave and Korapay collections are paid out from that same gateway's balance.
   // Wallet payments have no single source gateway: the customer's money reached the platform
   // when they funded the wallet, so the vendor is paid from whichever gateway is active now
   // (if that balance is short the payout simply stays QUEUED and retries until the money is there).
-  const unsupported = payment.provider !== "PAYSTACK" && payment.provider !== "FLUTTERWAVE" && payment.provider !== "WALLET";
+  const unsupported = payment.provider !== "PAYSTACK" && payment.provider !== "FLUTTERWAVE" && payment.provider !== "KORAPAY" && payment.provider !== "WALLET";
   const transferGateway: TransferGateway =
-    payment.provider === "FLUTTERWAVE" ? "FLUTTERWAVE" : payment.provider === "WALLET" ? await activeTransferGateway() : "PAYSTACK";
+    payment.provider === "FLUTTERWAVE"
+      ? "FLUTTERWAVE"
+      : payment.provider === "KORAPAY"
+        ? "KORAPAY"
+        : payment.provider === "WALLET"
+          ? await activeTransferGateway()
+          : "PAYSTACK";
 
   // Id is generated up front so the transfer reference can be derived from it in the same insert.
   const payoutId = randomUUID().replace(/-/g, "");
@@ -287,7 +294,7 @@ export async function processPayout(
       return { state: "QUEUED", message: bank.error };
     }
 
-    // Paystack sends to a registered recipient; Flutterwave takes the bank details directly.
+    // Paystack sends to a registered recipient; Flutterwave and Korapay take the bank details directly.
     let recipientCode = store.paystackRecipientCode ?? undefined;
     if (gateway === "PAYSTACK" && !recipientCode) {
       const created = await createPaystackTransferRecipient({
@@ -331,14 +338,14 @@ export async function processPayout(
       }
       // The gateway says it has seen this reference: an earlier attempt got through. Record
       // that transfer's real state instead of failing or re-sending.
-      if (gateway === "FLUTTERWAVE" && /duplicate|already|reference/i.test(message)) {
+      if ((gateway === "FLUTTERWAVE" || gateway === "KORAPAY") && /duplicate|already|reference/i.test(message)) {
         const existing = await lookupGatewayTransfer(gateway, payout.reference);
         if (existing.found) return await applyTransferResult(payout.id, existing.data, existing.raw);
       }
-      // Flutterwave only lets whitelisted server IPs call the Transfer API in live mode.
-      if (gateway === "FLUTTERWAVE" && /whitelist|ip address/i.test(message)) {
+      // Flutterwave and Korapay only let whitelisted server IPs call the Transfer API in live mode.
+      if ((gateway === "FLUTTERWAVE" || gateway === "KORAPAY") && /whitelist|ip address/i.test(message)) {
         await requeue(payout.id, BALANCE_RETRY_MS, message, { refundAttempt: true });
-        void logError("PAYMENTS", "Flutterwave rejected the transfer: server IP is not whitelisted", { payoutId: payout.id, message });
+        void logError("PAYMENTS", `${label} rejected the transfer: server IP is not whitelisted`, { payoutId: payout.id, message });
         return { state: "QUEUED", message };
       }
       // A cached Paystack recipient code is only valid under the key mode that
@@ -429,7 +436,7 @@ export async function processDuePayouts(limit = 25): Promise<{ checked: number; 
 /* ADMIN RECOVERY                                                              */
 /* -------------------------------------------------------------------------- */
 
-const RETRYABLE_PROVIDERS = ["PAYSTACK", "FLUTTERWAVE", "WALLET"];
+const RETRYABLE_PROVIDERS = ["PAYSTACK", "FLUTTERWAVE", "KORAPAY", "WALLET"];
 
 /**
  * Admin "Retry" for a FAILED / REVERSED payout. Never double pays: it first asks
@@ -569,6 +576,25 @@ export async function applyFlutterwaveTransferWebhookEvent(
       transfer_code: data?.id !== undefined ? String(data.id) : undefined,
       reason: data?.complete_message,
     },
+    raw
+  );
+}
+
+
+/**
+ * Applies a Korapay `transfer.success` / `transfer.failed` webhook. The caller
+ * must already have verified the signature and re-checked the payout with
+ * Korapay's API.
+ */
+export async function applyKorapayTransferWebhookEvent(
+  data: { reference?: string; status?: string; message?: string } | undefined,
+  raw: object
+): Promise<boolean> {
+  const outcome = classifyTransferStatus(data?.status);
+  if (outcome !== "PAID" && outcome !== "FAILED") return false; // processing: nothing final yet
+  return applyTransferWebhookEvent(
+    outcome === "PAID" ? "transfer.success" : "transfer.failed",
+    { reference: data?.reference, transfer_code: data?.reference, reason: data?.message },
     raw
   );
 }

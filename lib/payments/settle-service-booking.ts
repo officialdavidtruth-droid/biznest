@@ -17,7 +17,7 @@ import { revalidatePath } from "next/cache";
 
 export async function settleServiceBookingPayment(
   reference: string,
-  provider: "PAYSTACK" | "FLUTTERWAVE",
+  provider: "PAYSTACK" | "FLUTTERWAVE" | "KORAPAY",
   verifiedAmountNaira: number,
   rawPayload: object
 ): Promise<ActionResult<{ storeSlug: string; bookingId: string }>> {

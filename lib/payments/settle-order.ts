@@ -22,7 +22,7 @@ export type SettleOrderOutcome = "paid" | "already_paid" | "not_found" | "wrong_
 export async function settleOrderPayment(input: {
   orderId: string;
   reference: string;
-  provider: "PAYSTACK" | "FLUTTERWAVE";
+  provider: "PAYSTACK" | "FLUTTERWAVE" | "KORAPAY";
   verifiedAmountNaira: number;
   verifiedCurrency?: string | null;
   payload: object;

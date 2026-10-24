@@ -17,7 +17,7 @@ async function assertPlatformAdmin() {
 
 export type MaintenanceValue = { enabled: boolean; message: string };
 export type AnnouncementValue = { enabled: boolean; message: string; tone: "info" | "warning" | "success" };
-export type ActiveGateway = "PAYSTACK" | "FLUTTERWAVE";
+export type ActiveGateway = "PAYSTACK" | "FLUTTERWAVE" | "KORAPAY";
 // pointsPerNaira: how many points a customer earns per ₦1 spent (order total).
 // nairaPerPoint: how many naira one point is worth when cashed out as a coupon.
 export type LoyaltyRates = { pointsPerNaira: number; nairaPerPoint: number };
@@ -77,8 +77,12 @@ export const getAnnouncementSetting = unstable_cache(
  */
 export async function getActiveGateway(): Promise<ActiveGateway> {
   const stored = await getSetting<ActiveGateway | null>(SETTING_KEYS.ACTIVE_GATEWAY, null);
-  if (stored === "PAYSTACK" || stored === "FLUTTERWAVE") return stored;
-  if (process.env.FLUTTERWAVE_SECRET_KEY && !process.env.PAYSTACK_SECRET_KEY) return "FLUTTERWAVE";
+  if (stored === "PAYSTACK" || stored === "FLUTTERWAVE" || stored === "KORAPAY") return stored;
+  // No explicit choice yet: use the only gateway that has keys, else Paystack (the original default).
+  if (!process.env.PAYSTACK_SECRET_KEY) {
+    if (process.env.FLUTTERWAVE_SECRET_KEY) return "FLUTTERWAVE";
+    if (process.env.KORAPAY_SECRET_KEY) return "KORAPAY";
+  }
   return "PAYSTACK";
 }
 
@@ -86,6 +90,7 @@ export async function getGatewayAvailability() {
   return {
     paystackConfigured: Boolean(process.env.PAYSTACK_SECRET_KEY),
     flutterwaveConfigured: Boolean(process.env.FLUTTERWAVE_SECRET_KEY),
+    korapayConfigured: Boolean(process.env.KORAPAY_SECRET_KEY),
     active: await getActiveGateway(),
   };
 }
@@ -212,9 +217,13 @@ export async function setActiveGateway(gateway: ActiveGateway): Promise<ActionRe
   if (!access.success) return { success: false, error: access.error };
 
   const availability = await getGatewayAvailability();
-  const configured = gateway === "PAYSTACK" ? availability.paystackConfigured : availability.flutterwaveConfigured;
+  if (gateway !== "PAYSTACK" && gateway !== "FLUTTERWAVE" && gateway !== "KORAPAY") {
+    return { success: false, error: "Unknown payment gateway." };
+  }
+  const configured =
+    gateway === "PAYSTACK" ? availability.paystackConfigured : gateway === "FLUTTERWAVE" ? availability.flutterwaveConfigured : availability.korapayConfigured;
   if (!configured) {
-    return { success: false, error: `Add ${gateway === "PAYSTACK" ? "PAYSTACK_SECRET_KEY" : "FLUTTERWAVE_SECRET_KEY"} to your environment variables before activating it.` };
+    return { success: false, error: `Add ${gateway}_SECRET_KEY to your environment variables before activating it.` };
   }
 
   await setSetting(SETTING_KEYS.ACTIVE_GATEWAY, gateway);

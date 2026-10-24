@@ -120,14 +120,18 @@ export function AnnouncementForm({ initial }: { initial: AnnouncementValue }) {
 
 // --- Payment gateway toggle ------------------------------------------------
 
+const GATEWAY_LABELS: Record<ActiveGateway, string> = { PAYSTACK: "Paystack", FLUTTERWAVE: "Flutterwave", KORAPAY: "Korapay" };
+
 export function GatewayToggle({
   active,
   paystackConfigured,
   flutterwaveConfigured,
+  korapayConfigured,
 }: {
   active: ActiveGateway;
   paystackConfigured: boolean;
   flutterwaveConfigured: boolean;
+  korapayConfigured: boolean;
 }) {
   const router = useRouter();
   const [saving, setSaving] = useState(false);
@@ -137,13 +141,14 @@ export function GatewayToggle({
     const result = await setActiveGateway(gateway);
     setSaving(false);
     if (!result.success) return toast.error(result.error);
-    toast.success(`${gateway === "PAYSTACK" ? "Paystack" : "Flutterwave"} is now the active gateway everywhere on the platform.`);
+    toast.success(`${GATEWAY_LABELS[gateway]} is now the active gateway for store checkout on the platform.`);
     router.refresh();
   }
 
   const gateways: { id: ActiveGateway; label: string; configured: boolean }[] = [
     { id: "PAYSTACK", label: "Paystack", configured: paystackConfigured },
     { id: "FLUTTERWAVE", label: "Flutterwave", configured: flutterwaveConfigured },
+    { id: "KORAPAY", label: "Korapay", configured: korapayConfigured },
   ];
 
   return (
@@ -151,7 +156,7 @@ export function GatewayToggle({
       <h3 className="mb-1 text-sm font-semibold">Active payment gateway</h3>
       <p className="mb-3 text-xs text-muted-foreground">
         Whichever gateway is active handles every checkout and plan upgrade on the platform. Add its secret key to your
-        environment variables first (PAYSTACK_SECRET_KEY / FLUTTERWAVE_SECRET_KEY), then activate it here.
+        environment variables first (PAYSTACK_SECRET_KEY / FLUTTERWAVE_SECRET_KEY / KORAPAY_SECRET_KEY), then activate it here.
       </p>
       <div className="space-y-2">
         {gateways.map((g) => (

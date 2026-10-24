@@ -6,20 +6,26 @@ import {
   verifyPaystackTransfer,
 } from "@/lib/payments/paystack";
 import {
+  getKorapayBalanceNaira,
+  initiateKorapayTransfer,
+  verifyKorapayTransfer,
+} from "@/lib/payments/korapay";
+import { APP_URL } from "@/lib/constants/app-url";
+import {
   findFlutterwaveTransferByReference,
   getFlutterwaveBalanceNaira,
   initiateFlutterwaveTransfer,
 } from "@/lib/payments/flutterwave";
 
 /**
- * One interface over the two gateways' Transfer APIs, so payout.ts holds the
+ * One interface over the three gateways' Transfer APIs, so payout.ts holds the
  * safety logic (idempotent references, retries, claims) exactly once.
  *
  * Amounts cross this boundary in kobo; the Flutterwave adapter converts to
  * naira because Flutterwave works in the major currency unit.
  */
 
-export type TransferGateway = "PAYSTACK" | "FLUTTERWAVE";
+export type TransferGateway = "PAYSTACK" | "FLUTTERWAVE" | "KORAPAY";
 
 /** Gateway-neutral transfer record: `transfer_code` holds Paystack's code or Flutterwave's numeric id as a string. */
 export type NormalizedTransfer = { transfer_code?: string; status?: string };
@@ -41,12 +47,17 @@ export type SendResult =
  */
 export function gatewayForPayout(provider: string, destination: unknown): TransferGateway {
   const stored = (destination as { transferGateway?: string } | null | undefined)?.transferGateway;
-  if (stored === "FLUTTERWAVE" || stored === "PAYSTACK") return stored;
+  if (stored === "FLUTTERWAVE" || stored === "PAYSTACK" || stored === "KORAPAY") return stored;
+  if (provider === "KORAPAY") return "KORAPAY";
   return provider === "FLUTTERWAVE" ? "FLUTTERWAVE" : "PAYSTACK";
 }
 
 /** Platform balance at the gateway in kobo, or null when it couldn't be read. */
 export async function getGatewayBalanceKobo(gateway: TransferGateway): Promise<number | null> {
+  if (gateway === "KORAPAY") {
+    const res = await getKorapayBalanceNaira();
+    return res.status && typeof res.balanceNaira === "number" ? Math.round(res.balanceNaira * 100) : null;
+  }
   if (gateway === "FLUTTERWAVE") {
     const res = await getFlutterwaveBalanceNaira();
     return res.status && typeof res.balanceNaira === "number" ? Math.round(res.balanceNaira * 100) : null;
@@ -56,6 +67,14 @@ export async function getGatewayBalanceKobo(gateway: TransferGateway): Promise<n
 }
 
 export async function lookupGatewayTransfer(gateway: TransferGateway, reference: string): Promise<LookupResult> {
+  if (gateway === "KORAPAY") {
+    const res = await verifyKorapayTransfer(reference);
+    if (res.status && res.data) {
+      // Kora has no separate transfer id: our reference is the handle.
+      return { found: true, data: { transfer_code: res.data.reference ?? reference, status: res.data.status }, raw: res };
+    }
+    return { found: false, notFound: res.notFound, message: res.message };
+  }
   if (gateway === "FLUTTERWAVE") {
     const res = await findFlutterwaveTransferByReference(reference);
     if (res.status !== "success") {
@@ -84,6 +103,19 @@ export async function sendGatewayTransfer(
     recipientCode?: string;
   }
 ): Promise<SendResult> {
+  if (gateway === "KORAPAY") {
+    const res = await initiateKorapayTransfer({
+      bankCode: p.bankCode,
+      accountNumber: p.accountNumber,
+      amountNaira: p.amountKobo / 100,
+      reference: p.reference,
+      narration: p.narration,
+      beneficiaryName: p.beneficiaryName,
+      notificationUrl: `${APP_URL}/api/payments/korapay/webhook`,
+    });
+    if (!res.status || !res.data) return { ok: false, message: res.message || "Transfer was not accepted." };
+    return { ok: true, data: { transfer_code: res.data.reference ?? p.reference, status: res.data.status }, raw: res };
+  }
   if (gateway === "FLUTTERWAVE") {
     const res = await initiateFlutterwaveTransfer({
       bankCode: p.bankCode,
@@ -106,5 +138,5 @@ export async function sendGatewayTransfer(
   return { ok: true, data: res.data, raw: res };
 }
 
-/** Paystack needs a registered recipient before it can send; Flutterwave takes bank details directly. */
+/** Paystack needs a registered recipient before it can send; Flutterwave and Korapay take bank details directly. */
 export { createPaystackTransferRecipient };

@@ -36,6 +36,7 @@ export default async function SupaAdminSettingsPage() {
           active={gatewayAvailability.active}
           paystackConfigured={gatewayAvailability.paystackConfigured}
           flutterwaveConfigured={gatewayAvailability.flutterwaveConfigured}
+          korapayConfigured={gatewayAvailability.korapayConfigured}
         />
       </section>
 

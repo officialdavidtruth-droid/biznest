@@ -6,7 +6,7 @@ import { toast } from "sonner";
 import { connectPayoutAccount, disconnectPayoutAccount, listPayoutBanks } from "@/lib/actions/store";
 
 // Fallback only, used if the gateway's live bank list can't be loaded. Codes
-// are the same on both gateways for the big banks, but NOT for Opay/Palmpay,
+// are the same on every gateway for the big banks, but NOT for Opay/Palmpay,
 // so those two are left out of the fallback.
 const FALLBACK_BANKS = [
   { name: "Access Bank", code: "044" },
@@ -23,7 +23,7 @@ const FALLBACK_BANKS = [
   { name: "Stanbic IBTC", code: "221" },
 ];
 
-type Provider = "PAYSTACK" | "FLUTTERWAVE";
+type Provider = "PAYSTACK" | "FLUTTERWAVE" | "KORAPAY";
 
 export function ConnectPayoutForm({
   slug,

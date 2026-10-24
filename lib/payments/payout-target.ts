@@ -19,8 +19,10 @@ export function hasBankPayoutDestination(store: StorePayoutFields): boolean {
   return Boolean(store.payoutBankCode && store.payoutAccountNumber);
 }
 
-export function storeHasPayoutTarget(store: StorePayoutFields, gateway: "PAYSTACK" | "FLUTTERWAVE"): boolean {
+export function storeHasPayoutTarget(store: StorePayoutFields, gateway: "PAYSTACK" | "FLUTTERWAVE" | "KORAPAY"): boolean {
   if (hasBankPayoutDestination(store)) return true;
+  // Korapay never had a subaccount model: only a saved bank account counts.
+  if (gateway === "KORAPAY") return false;
   return gateway === "PAYSTACK" ? Boolean(store.paystackSubaccountCode) : Boolean(store.flutterwaveSubaccountId);
 }
 

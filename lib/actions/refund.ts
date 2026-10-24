@@ -6,6 +6,7 @@ import { refundPayment } from "@/lib/payments/gateway";
 import { secretKeyForPayment } from "@/lib/payments/store-gateway";
 import { listPaystackRefundsForTransaction } from "@/lib/payments/paystack";
 import { listFlutterwaveRefundsForTransaction } from "@/lib/payments/flutterwave";
+import { getKorapayRefund, korapayRefundReference } from "@/lib/payments/korapay";
 import { emitWebhookEvent } from "@/lib/webhooks/dispatch";
 import { revalidatePath } from "next/cache";
 import type { ActionResult } from "@/types/actions";
@@ -507,6 +508,16 @@ export async function reconcileRefundPendingPayment(slug: string, paymentId: str
     if (result.status !== "success") return { success: false, error: result.message || "Couldn't query Flutterwave refund status." };
     const refund = result.data.filter((r: any) => Number(r.amount_refunded ?? r.amount ?? 0) === Number(payment.amount)).sort((a: any, b: any) => new Date(b.updatedAt ?? b.createdAt ?? 0).getTime() - new Date(a.updatedAt ?? a.createdAt ?? 0).getTime())[0];
     if (refund) { refundReference = refund.id != null ? String(refund.id) : null; const status = String(refund.status ?? "").toLowerCase(); if (status.startsWith("completed")) gatewayStatus = "REFUNDED"; else if (status === "failed") gatewayStatus = "FAILED"; }
+  } else if (payment.provider === "KORAPAY") {
+    // Refund references are derived from the payment reference + amount (see refundKorapayTransaction), so we can read it back.
+    const result = await getKorapayRefund(korapayRefundReference(payment.reference, Number(payment.amount)), await secretKeyForPayment(payment));
+    if (!result.status && !result.notFound) return { success: false, error: result.message || "Couldn't query Korapay refund status." };
+    if (result.data) {
+      refundReference = result.data.reference ?? null;
+      const status = String(result.data.status ?? "").toLowerCase();
+      if (status === "success") gatewayStatus = "REFUNDED";
+      else if (status === "failed") gatewayStatus = "FAILED";
+    }
   } else return { success: false, error: "This payment provider does not support gateway refund reconciliation." };
 
   if (gatewayStatus === "STILL_PENDING") return { success: true, data: { status: "STILL_PENDING" } };
@@ -666,7 +677,7 @@ export async function issueReservationRefund(
 
   const payment = reservation.payments.find((p) => p.purpose === "PMS_RESERVATION" && p.status === "SUCCESSFUL");
   if (!payment) return { success: false, error: "No successful payment found for this reservation." };
-  if (payment.provider !== "PAYSTACK" && payment.provider !== "FLUTTERWAVE") return { success: false, error: "This reservation payment cannot be refunded through the gateway." };
+  if (payment.provider !== "PAYSTACK" && payment.provider !== "FLUTTERWAVE" && payment.provider !== "KORAPAY") return { success: false, error: "This reservation payment cannot be refunded through the gateway." };
 
   let gatewayTransactionRef = payment.reference;
   if (payment.provider === "FLUTTERWAVE") {

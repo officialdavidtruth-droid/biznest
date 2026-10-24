@@ -20,7 +20,7 @@ import { revalidatePath } from "next/cache";
  */
 export async function settleReservationPayment(
  reference:string,
- provider:"PAYSTACK"|"FLUTTERWAVE",
+ provider:"PAYSTACK"|"FLUTTERWAVE"|"KORAPAY",
  verifiedAmountNaira:number,
  rawPayload:object
 ):Promise<ActionResult<{storeSlug:string;reservationId:string}>>{

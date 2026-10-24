@@ -1,6 +1,7 @@
 import "server-only";
 import { prisma } from "@/lib/prisma";
 import { listFlutterwaveBanks, resolveFlutterwaveAccount } from "@/lib/payments/flutterwave";
+import { listKorapayBanks, resolveKorapayAccount } from "@/lib/payments/korapay";
 import { listPaystackBanks, resolvePaystackAccount } from "@/lib/payments/paystack";
 import { logError, logInfo } from "@/lib/observability/log";
 import type { TransferGateway } from "@/lib/payments/payout-gateway";
@@ -70,7 +71,13 @@ export function candidateBanks(bankName: string, banks: { name: string; code: st
   return loose.slice(0, 3);
 }
 
+const GATEWAY_NAME: Record<TransferGateway, string> = { PAYSTACK: "Paystack", FLUTTERWAVE: "Flutterwave", KORAPAY: "Korapay" };
+
 async function resolveOn(gateway: TransferGateway, accountNumber: string, bankCode: string): Promise<string | null> {
+  if (gateway === "KORAPAY") {
+    const r = await resolveKorapayAccount(accountNumber, bankCode);
+    return r.status && r.data ? r.data.account_name : null;
+  }
   if (gateway === "FLUTTERWAVE") {
     const r = await resolveFlutterwaveAccount(accountNumber, bankCode);
     return r.status === "success" && r.data ? r.data.account_name : null;
@@ -94,10 +101,11 @@ export async function resolveBankCodeForGateway(
   if (savedWith === gateway) return { code: store.payoutBankCode };
 
   const bankName = details?.bankName;
-  if (!bankName) return { error: `Can't match this bank on ${gateway === "FLUTTERWAVE" ? "Flutterwave" : "Paystack"}: reconnect the bank account.` };
+  if (!bankName) return { error: `Can't match this bank on ${GATEWAY_NAME[gateway]}: reconnect the bank account.` };
 
-  const list = gateway === "FLUTTERWAVE" ? await listFlutterwaveBanks() : await listPaystackBanks();
-  if (!list.status) return { error: `Couldn't load the ${gateway === "FLUTTERWAVE" ? "Flutterwave" : "Paystack"} bank list: ${list.message}` };
+  const list =
+    gateway === "FLUTTERWAVE" ? await listFlutterwaveBanks() : gateway === "KORAPAY" ? await listKorapayBanks() : await listPaystackBanks();
+  if (!list.status) return { error: `Couldn't load the ${GATEWAY_NAME[gateway]} bank list: ${list.message}` };
 
   const expectedName = details?.accountName ?? "";
   for (const candidate of candidateBanks(bankName, list.banks)) {
@@ -111,5 +119,5 @@ export async function resolveBankCodeForGateway(
       return { code: candidate.code };
     }
   }
-  return { error: `Couldn't confirm this bank account on ${gateway === "FLUTTERWAVE" ? "Flutterwave" : "Paystack"}. Ask the store to reconnect its bank account.` };
+  return { error: `Couldn't confirm this bank account on ${GATEWAY_NAME[gateway]}. Ask the store to reconnect its bank account.` };
 }

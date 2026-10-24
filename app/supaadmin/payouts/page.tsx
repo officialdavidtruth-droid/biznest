@@ -93,7 +93,7 @@ export default async function PayoutsPage({ searchParams }: { searchParams: Prom
                     <td className="px-4 py-3">{p.attempts}</td>
                     <td className="px-4 py-3 text-muted-foreground">{new Date(p.updatedAt).toLocaleString()}</td>
                     <td className="px-4 py-3 text-right">
-                      {open ? <PayoutRowActions payoutId={p.id} canRetry={p.provider === "PAYSTACK" || p.provider === "WALLET"} /> : null}
+                      {open ? <PayoutRowActions payoutId={p.id} canRetry={p.provider === "PAYSTACK" || p.provider === "FLUTTERWAVE" || p.provider === "KORAPAY" || p.provider === "WALLET"} /> : null}
                     </td>
                   </tr>
                 );
