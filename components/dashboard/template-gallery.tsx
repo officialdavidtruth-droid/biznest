@@ -52,19 +52,26 @@ function LazyPreview({ src, title }: { src: string; title: string }) {
   );
 }
 
+// Static screenshots exist ONLY for the reference templates, matched by template NAME.
+// (This used to match name + category with broad regexes, so every "Retail"/"marketplace"
+// template -- Violet, Premium Marketplace, Fresh & Co. etc. -- got the same Emarket image.)
+// Every other template falls back to its own live front-page preview.
 const TEMPLATE_REFERENCE_PREVIEWS: Array<{ keys: RegExp; src: string }> = [
-  { keys: /hotel|resort|hospitality|lodging|stay/i, src: "/template-reference-previews/luxury-hotel-white.jpg" },
-  { keys: /travel|tour|destination|adventure/i, src: "/template-reference-previews/travel-wanderly.jpg" },
-  { keys: /real estate|property|homevista|property/i, src: "/template-reference-previews/real-estate-nestoria.jpg" },
-  { keys: /electronics|technology|tech|gadget/i, src: "/template-reference-previews/electronics-blue.jpg" },
-  { keys: /fashion|clothing|apparel|boutique/i, src: "/template-reference-previews/shop-ease.jpg" },
-  { keys: /marketplace|market|retail|general|shop|commerce/i, src: "/template-reference-previews/home-marketplace.jpg" },
-  { keys: /restaurant|food|cafe|bakery/i, src: "/template-reference-previews/luxury-hotel-dark.jpg" },
+  { keys: /aspire/i, src: "/template-reference-previews/luxury-hotel-dark.jpg" },
+  { keys: /larita/i, src: "/template-reference-previews/luxury-hotel-white.jpg" },
+  { keys: /skyview/i, src: "/template-reference-previews/hotel-resort-skyview.jpg" },
+  { keys: /emarket/i, src: "/template-reference-previews/home-marketplace.jpg" },
+  { keys: /electra blue/i, src: "/template-reference-previews/electronics-blue.jpg" },
+  { keys: /technova/i, src: "/template-reference-previews/tech-store-mobile.jpg" },
+  { keys: /shopease/i, src: "/template-reference-previews/shop-ease.jpg" },
+  { keys: /shopnova/i, src: "/template-reference-previews/shop-nova.jpg" },
+  { keys: /techverse/i, src: "/template-reference-previews/techverse.jpg" },
+  { keys: /wanderly/i, src: "/template-reference-previews/travel-wanderly.jpg" },
+  { keys: /nestoria/i, src: "/template-reference-previews/real-estate-nestoria.jpg" },
 ];
 
-function referencePreviewFor(name: string, category: string): string | null {
-  const value = `${name} ${category}`;
-  return TEMPLATE_REFERENCE_PREVIEWS.find((item) => item.keys.test(value))?.src ?? null;
+function referencePreviewFor(name: string, _category?: string): string | null {
+  return TEMPLATE_REFERENCE_PREVIEWS.find((item) => item.keys.test(name))?.src ?? null;
 }
 
 function themeFromConfig(config: unknown): TemplateTheme | null {
