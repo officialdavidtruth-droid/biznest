@@ -12,6 +12,7 @@ import { chargeCustomer, resolveCheckoutGateway, paymentCallbackUrl } from "@/li
 import { createPendingPayment, markPaymentFailed } from "@/lib/payments/pending";
 import type { ActionResult } from "@/types/actions";
 import crypto from "crypto";
+import { shortToken } from "@/lib/payments/reference";
 import { findChannelBlockOverlap } from "@/lib/channels/sync";
 
 
@@ -393,7 +394,7 @@ export async function chargeReservationDeposit(
  const hasPayoutTarget=checkoutGateway.usesStoreGateway||storeHasPayoutTarget(a.store,gateway);
  if(!hasPayoutTarget)return{success:false,error:"This store has not connected a payout account yet."};
 
- const reference=`RES-${reservation.id}-${crypto.randomUUID()}`;
+ const reference=`RES-${reservation.id}-${shortToken()}`;
  const callbackUrl=paymentCallbackUrl(gateway);
  const currency="NGN";
 
