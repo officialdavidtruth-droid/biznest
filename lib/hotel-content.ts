@@ -22,6 +22,8 @@ export type HotelPageContent = {
 export type HotelContent = {
   rooms:HotelRoom[]; offers:HotelOffer[]; gallery:HotelGalleryItem[]; events:HotelEvent[]; amenities:HotelAmenity[];
   home:HotelPageContent; dining:HotelPageContent; experiences:HotelPageContent; about:HotelPageContent; contact:HotelPageContent;
+  /** True only when the business also runs a restaurant (see lib/hotel-dining.ts). */
+  hasDining?:boolean;
   _serviceMap?:Record<string,string>;
   /** Palette + fonts of the template the store chose. null = Veloura (the dedicated hotel look). */
   skin?:HotelSkin|null;
@@ -68,10 +70,10 @@ function autoPopulateEvents(){
 }
 
 export async function getHotelContent(slug:string,templateOverride?:string):Promise<HotelContent>{
-  const store=await prisma.store.findUnique({where:{slug},select:{id:true,name:true,template:{select:{name:true}}}}); if(!store)return templateOverride&&templateOverride!==HOTEL_TEMPLATE_NAME?{...defaults,skin:await (await import("./hotel-skin")).resolveHotelSkin(templateOverride)}:defaults;
+  const store=await prisma.store.findUnique({where:{slug},select:{id:true,name:true,template:{select:{name:true}},business:{select:{category:true,businessSubcategory:true}}}}); if(!store)return templateOverride&&templateOverride!==HOTEL_TEMPLATE_NAME?{...defaults,hasDining:false,skin:await (await import("./hotel-skin")).resolveHotelSkin(templateOverride)}:defaults;
   const [pages,services]=await Promise.all([
     prisma.storePage.findMany({where:{storeId:store.id,slug:{in:["hotel-home","hotel-rooms","hotel-offers","hotel-gallery","hotel-events","hotel-amenities","hotel-contact","hotel-dining","hotel-experiences","hotel-about"]}}}),
-    prisma.service.findMany({where:{storeId:store.id,isPublished:true},orderBy:{createdAt:"asc"},select:{id:true,slug:true,name:true,description:true,images:true,price:true,attributes:true,isBookable:true,totalUnits:true,currency:true}})
+    prisma.service.findMany({where:{storeId:store.id,isPublished:true},orderBy:{createdAt:"asc"},select:{id:true,slug:true,name:true,description:true,images:true,price:true,attributes:true,isBookable:true,totalUnits:true,currency:true,category:{select:{name:true}}}})
   ]);
   const map=new Map(pages.map(p=>[p.slug,p.content as any]));
   const realRooms:HotelRoom[]=services.map(s=>{
@@ -87,17 +89,20 @@ export async function getHotelContent(slug:string,templateOverride?:string):Prom
     image: services[0]?.images?.[0] || "",
     ...(map.get(key)?.page || map.get(key)?.home || {}),
   });
+  const hasDining=(await import("./hotel-dining")).hotelHasDining({category:store.business?.category,subcategory:store.business?.businessSubcategory,itemCategoryNames:services.map((x:any)=>x.category?.name)});
+  const dn=(...v:any[])=>!hasDining&&/dining|restaurant|culinary|kitchen|\bbar\b/i.test(v.filter(Boolean).join(" "));
   return {
     rooms: realRooms.length ? realRooms : (map.get("hotel-rooms")?.rooms ?? []),
-    offers: map.get("hotel-offers")?.offers ?? [],
-    gallery: map.get("hotel-gallery")?.items ?? [],
-    events: map.get("hotel-events")?.events ?? [],
-    amenities: map.get("hotel-amenities")?.amenities ?? [],
+    offers: ((map.get("hotel-offers")?.offers ?? []) as any[]).filter(o=>!dn(o.category,o.title)),
+    gallery: ((map.get("hotel-gallery")?.items ?? []) as any[]).filter(g=>!dn(g.category,g.title)),
+    events: ((map.get("hotel-events")?.events ?? []) as any[]).filter(e=>!dn(e.category,e.venue,e.title)),
+    amenities: ((map.get("hotel-amenities")?.amenities ?? []) as any[]).filter(a=>!dn(a.category,a.title)),
     home: map.get("hotel-home")?.page ?? map.get("hotel-home")?.home ?? safePage("Welcome to our hotel", "Comfortable stays, thoughtful service and a location that works for you.", "hotel-home"),
     dining: map.get("hotel-dining")?.page ?? safePage("Dining at our hotel", "Discover the food and beverage experiences currently offered by this property.", "hotel-dining"),
     experiences: map.get("hotel-experiences")?.page ?? safePage("Experiences", "Explore the experiences and activities available at this property.", "hotel-experiences"),
     about: map.get("hotel-about")?.page ?? safePage("About us", "Learn more about this property and the people behind it.", "hotel-about"),
     contact: map.get("hotel-contact")?.page ?? safePage("Contact us", "Get in touch with the property for reservations, questions and assistance.", "hotel-contact"),
+    hasDining,
     skin: templateName && templateName!==HOTEL_TEMPLATE_NAME ? await (await import("./hotel-skin")).resolveHotelSkin(templateName) : null,
     _serviceMap:Object.fromEntries(services.flatMap(s=>[[s.id,s.id],[s.slug,s.id],[s.name.toLowerCase().replace(/[^a-z0-9]+/g,"-"),s.id]])),
   };

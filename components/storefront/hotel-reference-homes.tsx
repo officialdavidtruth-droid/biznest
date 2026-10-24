@@ -48,8 +48,8 @@ const HDR_CSS = `
 .rhh-larita{font-size:11px;letter-spacing:.14em;text-transform:uppercase}.rhh-larita .logo{font:400 23px Georgia,serif;letter-spacing:.12em}.rhh-larita nav{gap:30px;font-size:11px}.rhh-larita nav a.on{color:#d9b595}.rhh-larita .bk{background:#b58a69;color:#fff}
 .rhh-skyview .logo{font:400 25px Georgia,serif}.rhh-skyview .bk{background:#0a2338;border-radius:8px;letter-spacing:0;font-size:13px;font-weight:600}.rhh-skyview.solid .bk{background:#1d638a}
 @media(max-width:900px){.rhh>nav{display:none}.rhh details{display:block}}`;
-export function RefHeader({ layout, store, slug, active = "", solid = false }: { layout: "aspire" | "larita" | "skyview"; store: Store; slug: string; active?: string; solid?: boolean }) {
-  const c = HDR[layout]; const a = active.toLowerCase();
+export function RefHeader({ layout, store, slug, active = "", solid = false, hasDining = false }: { layout: "aspire" | "larita" | "skyview"; store: Store; slug: string; active?: string; solid?: boolean; hasDining?: boolean }) {
+  const c = { ...HDR[layout], nav: HDR[layout].nav.filter(([, h]) => hasDining || h !== "/dining") }; const a = active.toLowerCase();
   const links = c.nav.map(([l, h]) => { const on = a === l.toLowerCase() || (a === "rooms" && h === "/rooms") || (a === "home" && h === "/"); return <Link key={l} href={href(slug, h)} className={on ? "on" : ""}>{l}</Link>; });
   return <header className={`rhh rhh-${layout}${solid ? " solid" : ""}`} style={{ ["--rhh-bg" as any]: c.solid }}><style>{HDR_CSS}</style>
     <Link href={href(slug, "/")} className="logo">{store.logoUrl ? <img src={store.logoUrl} alt={store.name} /> : null}<b style={{ fontWeight: "inherit" }}>{store.name}</b></Link>
@@ -89,7 +89,7 @@ function Aspire({ store, slug, content }: P) {
 @media(max-width:860px){.rh-aspire nav{display:none}.rh-aspire .strip,.rh-aspire .rooms,.rh-aspire .disc{grid-template-columns:1fr}.rh-aspire .strip div{border-right:0;border-bottom:1px solid #5a4030}}
 `.replace("HERO", hero)}</style>
     <section className="hero">
-      <RefHeader layout="aspire" store={store} slug={slug} active="Home" />
+      <RefHeader layout="aspire" store={store} slug={slug} active="Home" hasDining={!!content.hasDining} />
       <h1>{content.skin?.headline || "Experience Five-Star Luxury"}</h1>
       <p>{content.skin?.sub || content.home.subtitle}</p>
       <Link className="cta" href={href(slug, "/book")}>BOOK YOUR STAY</Link>
@@ -110,7 +110,7 @@ function Aspire({ store, slug, content }: P) {
 /* ───────────────────────── LARITA ───────────────────────── */
 function Larita({ store, slug, content }: P) {
   const rs = rooms(content); const room = rs[0]; const hero = ph(store.bannerUrl, 4);
-  const am = content.amenities.slice(0, 6);
+  const am = content.amenities.filter(a => content.hasDining || !/restaurant|dining|bar\b|kitchen/i.test(a.title + " " + a.category)).slice(0, 6);
   const AM = [Wifi, Car, Utensils, Sparkles, Dumbbell, Waves];
   return <div className="rh-larita">
     <style>{`
@@ -143,7 +143,7 @@ function Larita({ store, slug, content }: P) {
 @media(max-width:860px){.rh-larita .hd nav{display:none}.rh-larita .feat,.rh-larita .wel,.rh-larita .slide,.rh-larita .fg{grid-template-columns:1fr}}
 `.replace("HERO", hero).replace("VID", ph(content.gallery[2]?.image, 5))}</style>
     <section className="hero">
-      <RefHeader layout="larita" store={store} slug={slug} active="Home" />
+      <RefHeader layout="larita" store={store} slug={slug} active="Home" hasDining={!!content.hasDining} />
       <div style={{ color: "#e6a935", letterSpacing: 4 }}>★★★★★</div>
       <h1>{store.name}</h1><p>{content.skin?.sub || content.home.subtitle}</p><Link className="exp" href={href(slug, "/rooms")}>EXPLORE →</Link>
       <div className="since"><span>SINCE {new Date().getFullYear() - 5} · TRUSTED HOSPITALITY</span><b>OUR STORY →</b></div>
@@ -155,7 +155,7 @@ function Larita({ store, slug, content }: P) {
     {room && <section className="col"><small className="e">Exquisite and luxurious</small><h2>Room and suite collection</h2>
       <div className="slide"><div className="t"><span style={{ fontSize: 13 }}>From:</span> <b className="pr">{money(room.price)}</b><small>/NIGHT</small><h3>{room.name}</h3><p>{room.description}</p><p>{room.area} · {room.bed} · {room.guests} guests</p><Link className="btn" href={href(slug, "/book")}>Book now</Link> <Link className="btn" style={{ background: "#fff", color: "#181716", border: "1px solid #181716" }} href={href(slug, `/rooms/${room.slug}`)}>View room →</Link></div><img src={ph(room.image, 4)} alt={room.name} /></div></section>}
     <section className="fac"><small className="e">Modern and comfortable</small><h2>Facilities and amenities</h2>
-      <div className="fg">{(am.length ? am.map(a => [a.title, a.description]) : [["High Speed Wifi", "Seamless internet access throughout the hotel."], ["Parking Space", "Secure parking for all guests."], ["Restaurant & Bar", "Gourmet dishes and cocktails."], ["Spa Center", "Relaxing and rejuvenating treatments."], ["Fitness Center", "Modern gym equipment."], ["Swimming Pool", "Our pristine outdoor pool."]]).map(([t, d], i) => { const I = AM[i % 6]; return <div key={t}><I size={30} strokeWidth={1.2} /><div><h5>{t}</h5><p>{d}</p></div></div>; })}</div></section>
+      <div className="fg">{(am.length ? am.map(a => [a.title, a.description]) : [["High Speed Wifi", "Seamless internet access throughout the hotel."], ["Parking Space", "Secure parking for all guests."], ...(content.hasDining ? [["Restaurant & Bar", "Gourmet dishes and cocktails."]] : [["Room Service", "Round-the-clock in-room assistance."]]), ["Spa Center", "Relaxing and rejuvenating treatments."], ["Fitness Center", "Modern gym equipment."], ["Swimming Pool", "Our pristine outdoor pool."]]).map(([t, d], i) => { const I = AM[i % 6]; return <div key={t}><I size={30} strokeWidth={1.2} /><div><h5>{t}</h5><p>{d}</p></div></div>; })}</div></section>
     <section className="vid"><small className="e" style={{ color: "#fff" }}>Hotel video</small><h2 style={{ margin: 0 }}>Explore {store.name}</h2><b><Play fill="#fff" /></b></section>
     <footer><span>© {store.name}</span><span>{store.address}</span></footer>
   </div>;
@@ -194,15 +194,15 @@ function Skyview({ store, slug, content }: P) {
 @media(max-width:900px){.rh-sky .hd nav{display:none}.rh-sky .feats,.rh-sky .rm,.rh-sky .split,.rh-sky .adv,.rh-sky .rg,.rh-sky .xg,.rh-sky .bar{grid-template-columns:1fr 1fr}.rh-sky .rm,.rh-sky .split,.rh-sky .adv{grid-template-columns:1fr}}
 `.replace("HERO", hero).replace("DEST", ph(content.gallery[1]?.image, 2)).replace("OFF", ph(content.gallery[3]?.image, 5))}</style>
     <section className="hero">
-      <RefHeader layout="skyview" store={store} slug={slug} active="Home" />
+      <RefHeader layout="skyview" store={store} slug={slug} active="Home" hasDining={!!content.hasDining} />
       <div className="hc"><small>LUXURY STAYS. UNFORGETTABLE JOURNEYS.</small><h1>{content.skin?.headline || "Your Perfect Getaway Awaits"}</h1><p>{content.skin?.sub || content.home.subtitle}</p>
         <div className="bar"><div><b>Destination</b>{first(store.address || "Where are you going?")}</div><div><b>Check In</b>Select date</div><div><b>Guests</b>2 Adults</div><Link href={href(slug, "/book")}>Search Rooms →</Link></div></div>
     </section>
-    <section className="feats">{[[BedDouble, "Luxury Rooms & Suites", "Elegant spaces"], [Sparkles, "World-Class Amenities", "Pool, spa, fitness"], [Utensils, "Fine Dining", "Local ingredients"], [MapPin, "Prime Locations", "Nature & coast"], [ShieldCheck, "Trusted & Safe", "Your comfort first"]].map(([I, t, s]: any) => <div key={t}><I /><span><b>{t}</b><small>{s}</small></span></div>)}</section>
+    <section className="feats">{[[BedDouble, "Luxury Rooms & Suites", "Elegant spaces"], [Sparkles, "World-Class Amenities", "Pool, spa, fitness"], ...(content.hasDining ? [[Utensils, "Fine Dining", "Local ingredients"]] : [[Wifi, "Modern Comforts", "Fast Wi-Fi, 24/7 service"]]), [MapPin, "Prime Locations", "Nature & coast"], [ShieldCheck, "Trusted & Safe", "Your comfort first"]].map(([I, t, s]: any) => <div key={t}><I /><span><b>{t}</b><small>{s}</small></span></div>)}</section>
     <section className="rm"><div><small className="e">Featured stays</small><h2>Exquisite Rooms &amp; Suites</h2><p>Thoughtfully designed for your comfort, our rooms blend modern luxury with natural beauty.</p><Link className="ol" href={href(slug, "/rooms")}>View All Rooms →</Link></div>
       <div className="rg">{rs.map((r, i) => <Link key={r.id} href={href(slug, `/rooms/${r.slug}`)} className="rc"><img src={ph(r.image, i)} alt={r.name} /><div><h5>{r.name}</h5><span>{r.guests} Guests · {r.bed || r.area}</span><b>{money(r.price)} <small style={{ fontWeight: 400, fontSize: 11 }}>/ night</small></b></div></Link>)}</div></section>
     <section className="split"><div className="dest"><small>TOP DESTINATION</small><h2>Experience Paradise at Our Resort</h2><p style={{ maxWidth: 380, fontSize: 14 }}>{content.experiences.subtitle}</p><Link className="ol" href={href(slug, "/experiences")}>Explore Resort →</Link></div>
-      <div className="xp"><h2 style={{ fontSize: 28 }}>Hotel Experiences</h2><small style={{ color: "#5d7387" }}>More than a stay — a journey of unforgettable moments.</small><div className="xg">{(exp.length ? exp.map(g => [g.title, g.image]) : [["Spa & Wellness", ""], ["Culinary Journey", ""], ["Adventure Tours", ""], ["Local Culture", ""]]).map(([t, im], i) => <div key={t + i}><img src={ph(im, i + 1)} alt="" /><span>{t}</span></div>)}</div></div></section>
+      <div className="xp"><h2 style={{ fontSize: 28 }}>Hotel Experiences</h2><small style={{ color: "#5d7387" }}>More than a stay — a journey of unforgettable moments.</small><div className="xg">{(exp.length ? exp.map(g => [g.title, g.image]) : (content.hasDining ? [["Spa & Wellness", ""], ["Culinary Journey", ""], ["Adventure Tours", ""], ["Local Culture", ""]] : [["Spa & Wellness", ""], ["City Tours", ""], ["Adventure Tours", ""], ["Local Culture", ""]])).map(([t, im], i) => <div key={t + i}><img src={ph(im, i + 1)} alt="" /><span>{t}</span></div>)}</div></div></section>
     <section className="adv"><div><small className="e">Why choose us</small><h2>The {first(store.name)} Advantage</h2><div className="ag">{[["5-Star Service", "Always at your service"], ["Best Price Guarantee", "More value, always"], ["Flexible Booking", "Cancel with ease"], ["24/7 Support", "We're here for you"]].map(([t, s]) => <div key={t}><b><Check size={14} /> {t}</b>{s}</div>)}</div></div>
       <img src={ph(content.gallery[2]?.image, 4)} alt="" /><div className="q"><div style={{ color: "#e6a935" }}>★★★★★</div>“A wonderful stay from the first moment to the last. The staff, the views and the comfort were exceptional.”<br /><b style={{ display: "block", marginTop: 12 }}>Verified guest</b></div></section>
     <section className="off"><small>LIMITED TIME OFFER</small><h2>{offer?.title || "Save on Your Dream Stay"}</h2><p style={{ maxWidth: 440, fontSize: 14 }}>{offer?.description || "Book direct and enjoy exclusive rates, complimentary breakfast and more special benefits."}</p><Link className="ol" href={href(slug, "/book")}>Book Now →</Link></section>

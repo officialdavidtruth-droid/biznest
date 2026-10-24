@@ -61,7 +61,7 @@ export function HotelCatalog({ store, slug, content }: { store: Store; slug: str
             <Link href={`/store/${slug}`}>Home</Link>
             <Link className="active" href={`/store/${slug}/catalog`}>Rooms &amp; Suites</Link>
             <Link href={`/store/${slug}/amenities`}>Amenities</Link>
-            <Link href={`/store/${slug}/dining`}>Dining</Link>
+            {content.hasDining&&<Link href={`/store/${slug}/dining`}>Dining</Link>}
             <Link href={`/store/${slug}/events`}>Events</Link>
             <Link href={`/store/${slug}/about`}>About</Link>
             <Link href={`/store/${slug}/contact`}>Contact</Link>
@@ -114,7 +114,7 @@ export function HotelCatalog({ store, slug, content }: { store: Store; slug: str
         </section>
       </main>
 
-      <footer className="hc-footer"><div><div className="hc-brand footer-brand"><span className="hc-mark">L</span><span><b>{store.name}</b><small>HOTEL &amp; SUITES</small></span></div><p>A higher standard of hospitality.</p></div><div><b>Explore</b><Link href={`/store/${slug}/catalog`}>Rooms &amp; Suites</Link><Link href={`/store/${slug}/amenities`}>Amenities</Link><Link href={`/store/${slug}/dining`}>Dining</Link></div><div><b>Contact</b><span>{address}</span><span>{store.phone || "Contact the hotel"}</span><span>{store.email || "Email available"}</span></div><div><b>Reservations</b><p>For availability and special requests, our team is ready to help.</p><Link href={`/store/${slug}/contact`} className="hc-footer-link">Contact Us <ArrowRight size={14} /></Link></div></footer>
+      <footer className="hc-footer"><div><div className="hc-brand footer-brand"><span className="hc-mark">L</span><span><b>{store.name}</b><small>HOTEL &amp; SUITES</small></span></div><p>A higher standard of hospitality.</p></div><div><b>Explore</b><Link href={`/store/${slug}/catalog`}>Rooms &amp; Suites</Link><Link href={`/store/${slug}/amenities`}>Amenities</Link>{content.hasDining&&<Link href={`/store/${slug}/dining`}>Dining</Link>}</div><div><b>Contact</b><span>{address}</span><span>{store.phone || "Contact the hotel"}</span><span>{store.email || "Email available"}</span></div><div><b>Reservations</b><p>For availability and special requests, our team is ready to help.</p><Link href={`/store/${slug}/contact`} className="hc-footer-link">Contact Us <ArrowRight size={14} /></Link></div></footer>
     </div>
   );
 }
