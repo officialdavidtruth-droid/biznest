@@ -52,28 +52,6 @@ function LazyPreview({ src, title }: { src: string; title: string }) {
   );
 }
 
-// Static screenshots exist ONLY for the reference templates, matched by template NAME.
-// (This used to match name + category with broad regexes, so every "Retail"/"marketplace"
-// template -- Violet, Premium Marketplace, Fresh & Co. etc. -- got the same Emarket image.)
-// Every other template falls back to its own live front-page preview.
-const TEMPLATE_REFERENCE_PREVIEWS: Array<{ keys: RegExp; src: string }> = [
-  { keys: /aspire/i, src: "/template-reference-previews/luxury-hotel-dark.jpg" },
-  { keys: /larita/i, src: "/template-reference-previews/luxury-hotel-white.jpg" },
-  { keys: /skyview/i, src: "/template-reference-previews/hotel-resort-skyview.jpg" },
-  { keys: /emarket/i, src: "/template-reference-previews/home-marketplace.jpg" },
-  { keys: /electra blue/i, src: "/template-reference-previews/electronics-blue.jpg" },
-  { keys: /technova/i, src: "/template-reference-previews/tech-store-mobile.jpg" },
-  { keys: /shopease/i, src: "/template-reference-previews/shop-ease.jpg" },
-  { keys: /shopnova/i, src: "/template-reference-previews/shop-nova.jpg" },
-  { keys: /techverse/i, src: "/template-reference-previews/techverse.jpg" },
-  { keys: /wanderly/i, src: "/template-reference-previews/travel-wanderly.jpg" },
-  { keys: /nestoria/i, src: "/template-reference-previews/real-estate-nestoria.jpg" },
-];
-
-function referencePreviewFor(name: string, _category?: string): string | null {
-  return TEMPLATE_REFERENCE_PREVIEWS.find((item) => item.keys.test(name))?.src ?? null;
-}
-
 function themeFromConfig(config: unknown): TemplateTheme | null {
   const c = config as Partial<TemplateTheme> | null;
   if (!c || typeof c !== "object" || !c.bg) return null;
@@ -248,16 +226,9 @@ export function TemplateGallery({
               }`}
             >
               <div className="relative h-40 w-full overflow-hidden bg-muted">
-                {referencePreviewFor(t.name, t.category) ? (
-                  <img
-                    src={referencePreviewFor(t.name, t.category)!}
-                    alt={`${t.name} design reference`}
-                    loading="lazy"
-                    className="absolute inset-0 h-full w-full object-cover object-top transition-transform duration-500 group-hover:scale-[1.035]"
-                  />
-                ) : (
-                  <LazyPreview title={`${t.name} live front page preview`} src={`/template-preview/${encodeURIComponent(t.name)}`} />
-                )}
+                {/* Always the live render (same resolver as the real storefront), never a static screenshot,
+                    so the card can't drift from what the page actually shows. */}
+                <LazyPreview title={`${t.name} live front page preview`} src={`/template-preview/${encodeURIComponent(t.name)}`} />
 
                 <button
                   type="button"

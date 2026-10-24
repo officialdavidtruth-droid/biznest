@@ -27,7 +27,11 @@ export async function renderStorefront(slug:string){
  const businessType=getCanonicalBusinessType({businessCategory:store.business?.category,storeBusinessType:store.businessType});
  const template=getTemplateDefinition(store.template?.name);
  const templateName=store.template?.name ?? "";
- const navCategories:any[]=[];
+ // Real category menu. This used to be a hard-coded [] while /template-preview passes sample
+ // categories, so every category menu / sidebar / chip row the preview shows was missing on the live page.
+ const dbCats=await prisma.category.findMany({where:{storeId:store.id,isActive:true,parentId:null},orderBy:{sortOrder:"asc"},take:12,include:{children:{where:{isActive:true},orderBy:{sortOrder:"asc"},take:12}}}).catch(()=>[] as any[]);
+ let navCategories:any[]=dbCats.map((c:any)=>({id:c.id,name:c.name,children:(c.children??[]).map((ch:any)=>({id:ch.id,name:ch.name,children:[]}))}));
+ if(!navCategories.length){const seen=new Set<string>();navCategories=catalogItems.filter(i=>i.categoryName&&!seen.has(i.categoryName)&&seen.add(i.categoryName)).slice(0,12).map((i,n)=>({id:`cat-${n}`,name:i.categoryName as string,children:[]}));}
  const goodReviews=(store.reviews??[]).filter((r:any)=>r.rating>=4&&r.comment);
  const social=(store.socialLinks as Record<string,string>|null)??{};
  // Real completed-order count for the "Completed orders" stat (was a hard-coded 0).
