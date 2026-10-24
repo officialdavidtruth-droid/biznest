@@ -185,7 +185,7 @@ export function TemplateGallery({
         <div className="mb-4 flex flex-col gap-2 rounded-lg border border-border bg-muted/30 px-3 py-2 text-xs sm:flex-row sm:items-center sm:justify-between">
           <p className="text-muted-foreground">
             {showAll
-              ? `Showing all ${templates.length} templates. Templates built for ${businessCategory} are listed first; others can be previewed but not applied to a ${businessCategory} store.`
+              ? `Showing all ${templates.length} templates. Templates built for ${businessCategory} are listed first; you can use any of them for your ${businessCategory} store.`
               : `Showing the ${compatibleTemplates.length} templates suggested for ${businessCategory}.`}
           </p>
           <button type="button" aria-pressed={showAll} onClick={() => setShowAll((v) => !v)} className="shrink-0 rounded-full border border-border px-3 py-1 font-medium transition hover:border-primary/50 hover:text-primary">
