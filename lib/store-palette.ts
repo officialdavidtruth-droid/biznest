@@ -18,6 +18,18 @@ function luminance(hex: string): number {
   return 0.2126 * lin(r) + 0.7152 * lin(g) + 0.0722 * lin(b);
 }
 
+function contrast(a: string, b: string): number {
+  const [hi, lo] = [luminance(a), luminance(b)].sort((x, y) => y - x);
+  return (hi + 0.05) / (lo + 0.05);
+}
+
+/** First candidate that reads on `bg` (>= 4.5:1), else plain black/white, whichever is stronger. */
+function readableOn(bg: string, candidates: string[]): string {
+  const ok = candidates.find((c) => isHex(c) && contrast(c, bg) >= 4.5);
+  if (ok) return ok;
+  return contrast("#FFFFFF", bg) >= contrast("#111111", bg) ? "#FFFFFF" : "#111111";
+}
+
 const isHex = (v: unknown): v is string => typeof v === "string" && HEX.test(v);
 const pick = (v: unknown, fallback: string) => (isHex(v) ? v : fallback);
 
@@ -37,8 +49,10 @@ export function resolveStorePalette(store: {
     );
     const d = DEFAULT_STORE_PALETTE;
     const accent = pick(t.accent, d.accent);
-    const ink = pick(t.ink, d.ink);
     const surface = pick(t.bg, d.surface);
+    // Dark-themed stores can ship an ink that is too close to their background
+    // (or the wrong way round) — make sure body text always reads on the page.
+    const ink = readableOn(surface, [pick(t.ink, d.ink)]);
     const card = pick(t.card, d.card);
     const inverse = pick(t.surfaceDark, ink);
     return {
@@ -49,7 +63,9 @@ export function resolveStorePalette(store: {
       card,
       cardAlt: card,
       inverse,
-      inverseInk: luminance(inverse) > 0.5 ? "#111111" : pick(t.bg, "#FFFFFF"),
+      // Text on the dark order-summary card: previously this fell back to the page
+      // background, which on dark themes is ALSO dark (invisible text).
+      inverseInk: readableOn(inverse, [pick(t.bg, "#FFFFFF"), pick(t.ink, "#FFFFFF")]),
       font: t.font || d.font,
       headlineFont: t.headlineFont || d.headlineFont,
     };
