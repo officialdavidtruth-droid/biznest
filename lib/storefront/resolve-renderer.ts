@@ -44,6 +44,8 @@ const isScreenshotMode = (m: string | undefined): m is ScreenshotMode => !!m && 
 
 export function resolveHomeRenderer(templateName: string | null | undefined): HomeRenderer {
   const name = templateName ?? "";
+  if (name === "Aspire Resort" || name === "Larita Luxury Hotel" || name === "Skyview Hotels & Resorts") return { kind: "hotel" };
+  if (["Emarket Furniture & Home", "Electra Blue Electronics", "TechNova Mobile Store", "ShopEase General Store", "ShopNova Marketplace", "TechVerse Gadgets", "Wanderly Travel", "Nestoria Real Estate"].includes(name)) return { kind: "legacy", name };
   if (LEGACY_TEMPLATE_NAMES.has(name)) return { kind: "legacy", name };
   if (name === GRANDEUR_TEMPLATE_NAME) return { kind: "screenshot", mode: "flavora-restaurant", palette: SCREENSHOT_PALETTES["flavora-restaurant"] };
   if (name === TASTEHOUSE_TEMPLATE_NAME) return { kind: "screenshot", mode: "tastehouse", palette: SCREENSHOT_PALETTES.tastehouse };

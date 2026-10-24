@@ -7,6 +7,7 @@ import {
 } from "@/lib/template-themes";
 import { resolveHomeRenderer, type HomeRendererKind } from "@/lib/storefront/resolve-renderer";
 import { canonicalizeBusinessType } from "@/lib/business-identity";
+import { REFERENCE_TEMPLATE_CATALOG, REFERENCE_TEMPLATE_CATEGORY } from "@/lib/reference-template-catalog";
 
 export type StorefrontRenderer = "grandeur" | "hotel" | "tastehouse" | "example" | "builder";
 /** `renderer` = journey family (used by route guards). `home` = which component draws the homepage (see lib/storefront/resolve-renderer.ts). */
@@ -34,6 +35,12 @@ const publicSignature: TemplateDefinition[] = SIGNATURE_TEMPLATE_CATALOG.map((th
   supports: [...(SIGNATURE_SUPPORTS_BY_MODE[theme.signatureMode] ?? ["*"])],
 }));
 
+const referenceTemplates: TemplateDefinition[] = REFERENCE_TEMPLATE_CATALOG.map((theme) => ({
+  id: `reference-${theme.variationName.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "")}`,
+  name: theme.variationName, category: REFERENCE_TEMPLATE_CATEGORY[theme.variationName] || "Retail", theme, renderer: "builder",
+  home: resolveHomeRenderer(theme.variationName).kind, aliases: [], supports: [REFERENCE_TEMPLATE_CATEGORY[theme.variationName] || "Retail"],
+}));
+
 const compatibility: TemplateDefinition[] = [
   {id:"grandeur-restaurant",name:GRANDEUR_TEMPLATE_NAME,category:"Restaurant",theme:GRANDEUR_THEME,renderer:"grandeur",home:resolveHomeRenderer(GRANDEUR_TEMPLATE_NAME).kind,aliases:["__grandeur__"],supports:["Restaurant"]},
   {id:"veloura-hotel",name:HOTEL_TEMPLATE_NAME,category:"Hotel & Lodging",theme:HOTEL_THEME,renderer:"hotel",home:resolveHomeRenderer(HOTEL_TEMPLATE_NAME).kind,aliases:["__theluso__"],supports:["Hotel & Lodging"]},
@@ -41,8 +48,8 @@ const compatibility: TemplateDefinition[] = [
   {id:"example-electronics",name:EXAMPLE_TEMPLATE_NAME,category:"Electronics & Retail",theme:EXAMPLE_THEME,renderer:"example",home:resolveHomeRenderer(EXAMPLE_TEMPLATE_NAME).kind,aliases:["__example__"],supports:["Electronics","Fashion","Home & Furniture","Retail"]},
 ];
 
-export const TEMPLATE_REGISTRY: readonly TemplateDefinition[] = [...compatibility, ...publicLegacy, ...publicSignature];
-export const PUBLIC_TEMPLATE_REGISTRY: readonly TemplateDefinition[] = [...publicLegacy, ...publicSignature];
+export const TEMPLATE_REGISTRY: readonly TemplateDefinition[] = [...compatibility, ...referenceTemplates, ...publicLegacy, ...publicSignature];
+export const PUBLIC_TEMPLATE_REGISTRY: readonly TemplateDefinition[] = [...referenceTemplates, ...publicLegacy, ...publicSignature];
 
 const normalizeTemplateKey=(v:string)=>v.normalize("NFKC").toLowerCase().replace(/[\u2010-\u2015\u2212]/g,"-").replace(/\s+/g," ").trim();
 function safeDecode(v:string){try{return decodeURIComponent(v);}catch{return v;}}

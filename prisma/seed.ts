@@ -1,4 +1,5 @@
 import { PrismaClient, type Prisma } from "@prisma/client";
+import { REFERENCE_TEMPLATE_CATALOG, REFERENCE_TEMPLATE_CATEGORY } from "../lib/reference-template-catalog";
 import { TEMPLATE_NAME, GRANDEUR_THEME, HOTEL_TEMPLATE_NAME, HOTEL_THEME, TASTEHOUSE_TEMPLATE_NAME, TASTEHOUSE_THEME, EXAMPLE_TEMPLATE_NAME, EXAMPLE_THEME, RESTORED_LEGACY_TEMPLATE_CATALOG, SIGNATURE_TEMPLATE_CATALOG, LEGACY_CATEGORY_BY_NAME, SIGNATURE_CATEGORY_BY_MODE } from "../lib/template-themes";
 import { fetchDemoPhoto } from "../lib/demo-images";
 
@@ -149,6 +150,7 @@ async function main() {
   // variants, and the Signature Collection. The compatibility templates
   // remain seeded below so existing stores keep resolving safely.
   const templateDefs = [
+    ...REFERENCE_TEMPLATE_CATALOG.map(theme => ({ name: theme.variationName, category: REFERENCE_TEMPLATE_CATEGORY[theme.variationName] || "Retail", theme })),
     ...RESTORED_LEGACY_TEMPLATE_CATALOG.map(theme => ({ name: theme.variationName, category: LEGACY_CATEGORY_BY_NAME[theme.variationName] || "Retail", theme })),
     ...SIGNATURE_TEMPLATE_CATALOG.map(theme => ({ name: theme.variationName, category: SIGNATURE_CATEGORY_BY_MODE[theme.signatureMode] || "Other", theme: { ...theme, tierRank: ["kinetic","maison","hotel","north","forge"].includes(theme.signatureMode) ? 4 : 3 } })),
     { name: EXAMPLE_TEMPLATE_NAME, category: "Electronics & Retail", theme: EXAMPLE_THEME },
