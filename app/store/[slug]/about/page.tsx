@@ -4,6 +4,7 @@ import { ThelusoHotel } from "@/components/storefront/theluso-hotel";
 import { getHotelContent } from "@/lib/hotel-content";
 import { GrandeurAbout } from "@/components/storefront/grandeur-restaurant";
 import { getGrandeurRestaurantData } from "@/lib/grandeur-restaurant";
+import { renderBuilderSubpage } from "@/lib/storefront/builder-subpage";
 import { renderUniversalSectionPage } from "@/components/storefront/universal-section-page-route";
 
 export default async function AboutPage({ params }: { params: Promise<{ slug: string }> }) {
@@ -19,5 +20,7 @@ export default async function AboutPage({ params }: { params: Promise<{ slug: st
   }
   const data = await getGrandeurRestaurantData(slug);
   if (data) return <GrandeurAbout store={data.store} slug={slug} items={data.items} reviews={data.reviews} />;
+  const builder = await renderBuilderSubpage(slug, "about");
+  if (builder) return builder;
   return renderUniversalSectionPage(slug, "about");
 }
