@@ -9,6 +9,7 @@ import { checkRateLimit } from "@/lib/rate-limit";
 import type { ActionResult } from "@/types/actions";
 import { revalidatePath } from "next/cache";
 import crypto from "crypto";
+import { shortToken } from "@/lib/payments/reference";
 import { confirmPaidBooking } from "@/lib/payments/booking-confirmation";
 import { settleAndPayout } from "@/lib/payments/payout";
 
@@ -68,7 +69,7 @@ export async function startWalletFunding(
   });
   if (wallet.status !== "ACTIVE") return { success: false, error: "Your wallet is currently unavailable." };
 
-  const reference = `WAL-${wallet.id}-${crypto.randomUUID()}`;
+  const reference = `WAL-${wallet.id}-${shortToken()}`;
   const gateway = await import("@/lib/actions/site-settings").then((m) => m.getActiveGateway());
   const callbackUrl = paymentCallbackUrl(gateway);
 
@@ -140,7 +141,7 @@ export async function startBookingPayment(
 
   const amount = Number(booking.paymentAmount ?? booking.service.price);
   if (!Number.isFinite(amount) || amount <= 0) return { success: false, error: "This service has an invalid price." };
-  const reference = `BK-${booking.id}-${crypto.randomUUID()}`;
+  const reference = `BK-${booking.id}-${shortToken()}`;
   const { resolveCheckoutGateway } = await import("@/lib/payments/gateway");
   // The store's own gateway (bring-your-own keys) wins over the platform's active gateway.
   const checkoutGateway = await resolveCheckoutGateway(booking.storeId);
