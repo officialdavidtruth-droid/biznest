@@ -5,13 +5,14 @@ import { TasteHouseMenu } from "@/components/storefront/tastehouse";
 import { TASTEHOUSE_TEMPLATE_NAME } from "@/lib/template-themes";
 import { EXAMPLE_TEMPLATE_NAME } from "@/lib/example-content";
 import { ExampleStorefront } from "@/components/storefront/example-store";
-import { CatalogGrid } from "@/components/storefront/catalog-grid";
+import { CatalogExperience } from "@/components/storefront/catalog-experience";
+import { catalogDesign, catalogStoreInfo } from "@/lib/storefront/catalog-props";
 import { resolveStoreTheme } from "@/lib/template-themes";
 import { isRestaurantBusiness, isHotelBusiness } from "@/lib/business-identity";
 import { ThelusoHotel } from "@/components/storefront/theluso-hotel";
 import { getHotelContent } from "@/lib/hotel-content";
 
-export default async function CatalogPage({ params, searchParams }: { params: Promise<{ slug: string }>; searchParams?: Promise<{ category?: string }> }) {
+export default async function CatalogPage({ params, searchParams }: { params: Promise<{ slug: string }>; searchParams?: Promise<{ category?: string; q?: string }> }) {
   const { slug } = await params;
   const query = await searchParams;
   const rawStore = await prisma.store.findUnique({ where: { slug }, include: { template: true, business: true, products: { where: { isPublished: true }, take: 100, include: { category: true } }, services: { where: { isPublished: true }, take: 100, include: { category: true } } } });
@@ -28,5 +29,13 @@ export default async function CatalogPage({ params, searchParams }: { params: Pr
   if (store.template?.name === TASTEHOUSE_TEMPLATE_NAME) return <TasteHouseMenu store={store} slug={slug} initialCategory={query?.category} items={items.map(i=>({...i,description:null,type:i.kind,isBookable:false})) as any} />;
   if (isRestaurantBusiness(store.business?.category)) return <GrandeurMenu store={store} slug={slug} items={items.map(i=>({...i,description:null,type:i.kind,isBookable:false})) as any} />;
   const theme = resolveStoreTheme(store.template?.category, store.name, store.themeColors as any, store.fontFamily, store.template?.name);
-  return <main style={{minHeight:"100vh",background:theme.bg,color:theme.ink,fontFamily:theme.font,padding:"6rem 2rem"}}><div style={{maxWidth:1200,margin:"0 auto"}}><h1 style={{fontFamily:theme.headlineFont}}>Catalog</h1><CatalogGrid items={items} slug={slug} accent={theme.accent} ink={theme.ink} radius={theme.radius}/></div></main>;
+  return (
+    <CatalogExperience
+      store={catalogStoreInfo(store, slug)}
+      design={catalogDesign(store, theme)}
+      items={items.map((i) => ({ id: i.id, kind: i.kind, name: i.name, price: i.price, currency: i.currency, image: i.image, categoryName: i.categoryName ?? null, hasVariants: "hasVariants" in i ? Boolean(i.hasVariants) : false }))}
+      initialCategory={query?.category}
+      initialQuery={query?.q}
+    />
+  );
 }

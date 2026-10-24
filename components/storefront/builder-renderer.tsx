@@ -3,6 +3,7 @@
 import { MenuLinks, type FallbackLink } from "@/components/storefront/store-menu";
 import type React from "react";
 import { useEffect, useState } from "react";
+import { createPortal } from "react-dom";
 import Link from "next/link";
 import { CartLink } from "@/components/storefront/cart-link";
 import { BuilderNewsletterForm } from "@/components/storefront/builder-newsletter-form";
@@ -232,7 +233,7 @@ function EmptyState({ text }: { text: string }) { return <div style={{ padding: 
 type DesignT = BuilderConfig["design"];
 type SectionT = BuilderConfig["sections"][number];
 
-function BuilderHeader({ store, d, experience, visible }: { store: BuilderStore; d: DesignT; experience: ReturnType<typeof getBusinessExperience>; visible: SectionT[] }) {
+export function BuilderHeader({ store, d, experience, visible }: { store: BuilderStore; d: DesignT; experience: ReturnType<typeof getBusinessExperience>; visible: SectionT[] }) {
   const style = d.headerStyle ?? "classic";
   const mark = store.logoUrl
     ? <img src={store.logoUrl} alt="" style={{ width: 36, height: 36, borderRadius: Math.min(d.radius, 12), objectFit: "cover" }} />
@@ -248,6 +249,38 @@ function BuilderHeader({ store, d, experience, visible }: { store: BuilderStore;
     ["Contact", "/contact"],
   ];
   const links = <MenuLinks slug={store.slug} fallback={defaultMenu} />;
+
+  // Phones: the inline links are hidden below 720px, so a menu button opens a full-screen sheet instead.
+  const [menuOpen, setMenuOpen] = useState(false);
+  useEffect(() => {
+    if (!menuOpen) return;
+    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") setMenuOpen(false); };
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    window.addEventListener("keydown", onKey);
+    return () => { document.body.style.overflow = prev; window.removeEventListener("keydown", onKey); };
+  }, [menuOpen]);
+  const sheetLink: React.CSSProperties = { display: "block", padding: "16px 0", fontSize: 24, fontFamily: d.headingFont, fontWeight: 650, borderBottom: `1px solid ${d.text}14`, color: d.text, textDecoration: "none" };
+  const mobile = (
+    <>
+      <style>{`.bn-menu-btn{display:none}@media(max-width:720px){.bn-menu-btn{display:inline-grid!important}}`}</style>
+      <button type="button" className="bn-menu-btn" aria-label="Open menu" aria-expanded={menuOpen} onClick={() => setMenuOpen(true)} style={{ width: 40, height: 40, placeItems: "center", border: 0, background: "transparent", color: "inherit", cursor: "pointer" }}>
+        <svg width="22" height="22" viewBox="0 0 22 22" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden><path d="M3 6h16M3 11h16M3 16h16" /></svg>
+      </button>
+      {menuOpen && typeof document !== "undefined" && createPortal(
+        <div role="dialog" aria-modal="true" aria-label="Menu" style={{ position: "fixed", inset: 0, zIndex: 100, background: d.background, color: d.text, fontFamily: d.font, padding: "16px 22px 32px", overflowY: "auto" }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 18 }}>
+            <strong style={{ fontFamily: d.headingFont, fontSize: 18 }}>{store.name}</strong>
+            <button type="button" aria-label="Close menu" onClick={() => setMenuOpen(false)} style={{ width: 40, height: 40, border: 0, background: "transparent", color: "inherit", cursor: "pointer", display: "grid", placeItems: "center" }}>
+              <svg width="22" height="22" viewBox="0 0 22 22" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden><path d="M4 4l14 14M18 4L4 18" /></svg>
+            </button>
+          </div>
+          <nav><MenuLinks slug={store.slug} fallback={defaultMenu} linkStyle={sheetLink} onNavigate={() => setMenuOpen(false)} /></nav>
+        </div>,
+        document.body,
+      )}
+    </>
+  );
   const cart = experience.mode !== "service" ? <CartLink storeSlug={store.slug} accent={d.accent} /> : null;
   const linkRow = (justify: string): React.CSSProperties => ({ display: "flex", gap: 22, fontSize: 13, color: d.muted, justifyContent: justify });
 
@@ -256,7 +289,7 @@ function BuilderHeader({ store, d, experience, visible }: { store: BuilderStore;
       <div className="bn-wrap" style={{ padding: "14px 0 10px", display: "grid", gridTemplateColumns: "1fr auto 1fr", alignItems: "center", gap: 12 }}>
         <div className="bn-nav-links" style={linkRow("flex-start")}>{links}</div>
         <div style={{ fontSize: 20, textAlign: "center" }}>{brand}</div>
-        <div style={{ display: "flex", justifyContent: "flex-end" }}>{cart}</div>
+        <div style={{ display: "flex", justifyContent: "flex-end" }}>{cart}{mobile}</div>
       </div>
     </nav>
   );
@@ -270,7 +303,7 @@ function BuilderHeader({ store, d, experience, visible }: { store: BuilderStore;
           {store.name}
         </Link>
         <div className="bn-nav-links" style={{ ...linkRow("flex-end"), color: "rgba(255,255,255,.78)", fontWeight: 700 }}>{links}</div>
-        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>{cart}</div>
+        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>{cart}{mobile}</div>
       </div>
     </nav>
   );
@@ -279,7 +312,7 @@ function BuilderHeader({ store, d, experience, visible }: { store: BuilderStore;
       <nav className="bn-wrap" style={{ background: `${d.background}f2`, border: `1px solid ${d.text}14`, borderRadius: 999, boxShadow: "0 10px 30px rgba(0,0,0,.12)", backdropFilter: "blur(14px)", padding: "0 22px", height: 58, display: "flex", alignItems: "center", justifyContent: "space-between", gap: 18 }}>
         {brand}
         <div className="bn-nav-links" style={linkRow("center")}>{links}</div>
-        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>{cart}</div>
+        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>{cart}{mobile}</div>
       </nav>
     </div>
   );
@@ -293,7 +326,7 @@ function BuilderHeader({ store, d, experience, visible }: { store: BuilderStore;
       </div>
       <nav style={{ borderBottom: `1px solid ${d.text}14`, background: d.background }}>
         <div className="bn-wrap" style={{ height: 64, display: "flex", alignItems: "center", justifyContent: "space-between", gap: 18 }}>
-          {brand}<div className="bn-nav-links" style={linkRow("center")}>{links}</div><div style={{ display: "flex", alignItems: "center", gap: 10 }}>{cart}</div>
+          {brand}<div className="bn-nav-links" style={linkRow("center")}>{links}</div><div style={{ display: "flex", alignItems: "center", gap: 10 }}>{cart}{mobile}</div>
         </div>
       </nav>
     </div>
@@ -301,18 +334,19 @@ function BuilderHeader({ store, d, experience, visible }: { store: BuilderStore;
   return (
     <nav style={{ borderBottom: `1px solid ${d.text}14`, background: d.background, position: "sticky", top: 0, zIndex: 20, backdropFilter: "blur(14px)" }}>
       <div className="bn-wrap" style={{ height: 70, display: "flex", alignItems: "center", justifyContent: "space-between", gap: 18 }}>
-        {brand}<div className="bn-nav-links" style={linkRow("flex-start")}>{links}</div><div style={{ display: "flex", alignItems: "center", gap: 10 }}>{cart}</div>
+        {brand}<div className="bn-nav-links" style={linkRow("flex-start")}>{links}</div><div style={{ display: "flex", alignItems: "center", gap: 10 }}>{cart}{mobile}</div>
       </div>
     </nav>
   );
 }
 
-function BuilderFooter({ store, d, visible }: { store: BuilderStore; d: DesignT; visible: SectionT[] }) {
+export function BuilderFooter({ store, d, visible, storeLinks }: { store: BuilderStore; d: DesignT; visible: SectionT[]; storeLinks?: { label: string; href: string }[] }) {
   const style = d.footerStyle ?? "columns";
   const year = new Date().getFullYear();
   const desc = store.business?.description || "Built with BizNest.";
   const contact = store.contactEmail || store.contactPhone || "Online business";
   const anchors = visible.filter((s) => ["catalog", "about", "contact", "testimonials", "features"].includes(s.type)).slice(0, 5);
+  const navLinks = storeLinks ?? anchors.map((s) => ({ label: s.settings.heading || label(s.type), href: `#${s.id}` }));
   const link = { color: "inherit", opacity: .78, fontSize: 13 } as React.CSSProperties;
   const base: React.CSSProperties = { marginTop: 60, background: d.primary, color: "#fff" };
 
@@ -328,7 +362,7 @@ function BuilderFooter({ store, d, visible }: { store: BuilderStore; d: DesignT;
       <div className="bn-wrap">
         <strong style={{ fontSize: 24, fontFamily: d.headingFont }}>{store.name}</strong>
         <p style={{ opacity: .72, maxWidth: 520, margin: "12px auto 20px", lineHeight: 1.7, fontSize: 13 }}>{desc}</p>
-        <div style={{ display: "flex", justifyContent: "center", gap: 24, flexWrap: "wrap", marginBottom: 24 }}>{anchors.map((s) => <a key={s.id} href={`#${s.id}`} style={link}>{s.settings.heading || label(s.type)}</a>)}</div>
+        <div style={{ display: "flex", justifyContent: "center", gap: 24, flexWrap: "wrap", marginBottom: 24 }}>{navLinks.map((l) => <a key={l.label} href={l.href} style={link}>{l.label}</a>)}</div>
         <div style={{ borderTop: "1px solid rgba(255,255,255,.14)", paddingTop: 18, fontSize: 12, opacity: .6 }}>© {year} {store.name} · {contact}</div>
       </div>
     </footer>
@@ -339,7 +373,7 @@ function BuilderFooter({ store, d, visible }: { store: BuilderStore; d: DesignT;
         <div className="bn-wrap">
           <h2 style={{ margin: 0, fontSize: 34, fontFamily: d.headingFont }}>Ready when you are.</h2>
           <p style={{ opacity: .9, margin: "10px 0 22px" }}>Browse {store.name} and order in minutes.</p>
-          <a href="#catalog" style={{ display: "inline-block", background: "#fff", color: d.primary, padding: "13px 26px", borderRadius: d.buttonStyle === "pill" ? 999 : d.radius, fontWeight: 800, fontSize: 14 }}>Start now →</a>
+          <a href={storeLinks?.[1]?.href ?? "#catalog"} style={{ display: "inline-block", background: "#fff", color: d.primary, padding: "13px 26px", borderRadius: d.buttonStyle === "pill" ? 999 : d.radius, fontWeight: 800, fontSize: 14 }}>Start now →</a>
         </div>
       </section>
       <footer style={{ background: d.primary, color: "#fff", padding: "22px 0" }}>
@@ -354,7 +388,7 @@ function BuilderFooter({ store, d, visible }: { store: BuilderStore; d: DesignT;
       <div className="bn-wrap">
         <div style={{ display: "grid", gridTemplateColumns: "2fr 1fr 1.2fr", gap: 36 }} className="bn-grid">
           <div><strong style={{ fontSize: 22, fontFamily: d.headingFont }}>{store.name}</strong><p style={{ opacity: .72, maxWidth: 380, lineHeight: 1.7, fontSize: 13 }}>{desc}</p></div>
-          <div style={{ display: "flex", flexDirection: "column", gap: 10 }}><b style={{ fontSize: 12, letterSpacing: ".14em", textTransform: "uppercase" }}>Explore</b>{anchors.map((s) => <a key={s.id} href={`#${s.id}`} style={link}>{s.settings.heading || label(s.type)}</a>)}</div>
+          <div style={{ display: "flex", flexDirection: "column", gap: 10 }}><b style={{ fontSize: 12, letterSpacing: ".14em", textTransform: "uppercase" }}>Explore</b>{navLinks.map((l) => <a key={l.label} href={l.href} style={link}>{l.label}</a>)}</div>
           <div style={{ display: "flex", flexDirection: "column", gap: 10 }}><b style={{ fontSize: 12, letterSpacing: ".14em", textTransform: "uppercase" }}>Contact</b><span style={link}>{store.contactEmail || "—"}</span><span style={link}>{store.contactPhone || ""}</span></div>
         </div>
         <div style={{ borderTop: "1px solid rgba(255,255,255,.14)", marginTop: 36, paddingTop: 18, fontSize: 12, opacity: .6 }}>© {year} {store.name}. All rights reserved.</div>
@@ -363,7 +397,7 @@ function BuilderFooter({ store, d, visible }: { store: BuilderStore; d: DesignT;
   );
 }
 
-function ItemCard({ item, store, d, radius, actionLabel }: { item: CatalogItem; store: BuilderStore; d: DesignT; radius: number; actionLabel: string }) {
+export function ItemCard({ item, store, d, radius, actionLabel }: { item: CatalogItem; store: BuilderStore; d: DesignT; radius: number; actionLabel: string }) {
   const style = d.cardStyle ?? "bordered";
   const href = `/store/${store.slug}/${item.kind}/${item.id}`;
   const price = `${item.currency} ${item.price.toLocaleString()}`;
