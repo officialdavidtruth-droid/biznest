@@ -23,10 +23,13 @@ export function PosRegister({
   slug,
   catalog,
   commissionRatePercent,
+  showOrderType = true,
 }: {
   slug: string;
   catalog: PosCatalogItem[];
   commissionRatePercent: number;
+  /** Dine-in/takeaway + table fields. Only meaningful for restaurant/food stores. */
+  showOrderType?: boolean;
 }) {
   const router = useRouter();
   const [query, setQuery] = useState("");
@@ -394,8 +397,10 @@ export function PosRegister({
           </div>
 
           <div className="grid grid-cols-2 gap-2">
+            {showOrderType && (<>
             <label className="text-[11px] font-semibold text-muted-foreground">Order type<select value={orderType} onChange={(e) => setOrderType(e.target.value as typeof orderType)} className="mt-1 w-full rounded-md border bg-background px-2 py-1.5 text-xs"><option value="DINE_IN">Dine in</option><option value="TAKEAWAY">Takeaway</option><option value="DELIVERY">Delivery</option></select></label>
             <label className="text-[11px] font-semibold text-muted-foreground">Table / reference<input value={tableLabel} onChange={(e) => setTableLabel(e.target.value)} placeholder={orderType === "DINE_IN" ? "Table 12" : "Optional"} className="mt-1 w-full rounded-md border bg-background px-2 py-1.5 text-xs" /></label>
+            </>)}
           </div>
 
           <div className="flex gap-1.5">

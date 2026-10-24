@@ -106,8 +106,6 @@ export function buildNavGroups(business: { sellsProducts: boolean; offersService
   const allManageItems: NavItem[] = [
     { label: "Inventory", href: "/inventory", icon: Boxes, permission: "products" },
     { label: terminology.customer === "Client" ? "Clients" : terminology.customer + "s", href: "/customers", icon: Users, permission: "customers" },
-    { label: "Suppliers", href: "/suppliers", icon: Users, permission: "products" },
-    { label: "Purchase orders", href: "/purchase-orders", icon: FileSignature, permission: "products" },
     { label: "Delivery zones", href: "/delivery", icon: Truck, permission: "settings" },
     { label: "Staff Management", href: "/staff", icon: Users, ownerOnly: true },
   ];

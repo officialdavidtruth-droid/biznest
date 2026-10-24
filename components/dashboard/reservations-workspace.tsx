@@ -199,7 +199,7 @@ export function ReservationsWorkspace({
           </button>
           <button
             onClick={() => setShowNewForm(true)}
-            className="flex items-center gap-1 rounded-lg bg-[var(--bn-admin-orange-soft)] px-3 py-2 text-sm font-semibold text-white hover:bg-[var(--bn-admin-orange-soft)]"
+            className="flex items-center gap-1 rounded-lg bg-[var(--bn-admin-active)] px-3 py-2 text-sm font-semibold text-white hover:bg-[var(--bn-admin-active)]"
           >
             <Plus className="h-4 w-4" /> New Reservation
           </button>
@@ -229,7 +229,7 @@ export function ReservationsWorkspace({
                 key={t.id}
                 onClick={() => setTab(t.id)}
                 className={`rounded-full px-3 py-1.5 text-xs font-medium transition ${
-                  tab === t.id ? "bg-[var(--bn-admin-orange-soft)] text-white" : "bg-muted text-muted-foreground hover:bg-muted/70"
+                  tab === t.id ? "bg-[var(--bn-admin-active)] text-white" : "bg-muted text-muted-foreground hover:bg-muted/70"
                 }`}
               >
                 {t.label}
@@ -447,7 +447,7 @@ export function ReservationsWorkspace({
               </select>
               <textarea value={fNotes} onChange={(e) => setFNotes(e.target.value)} placeholder="Special requests" className="w-full rounded-lg border px-3 py-2 text-sm" rows={2} />
             </div>
-            <button disabled={busy} type="submit" className="mt-4 w-full rounded-lg bg-[var(--bn-admin-orange-soft)] py-2 text-sm font-semibold text-white hover:bg-[var(--bn-admin-orange-soft)]">
+            <button disabled={busy} type="submit" className="mt-4 w-full rounded-lg bg-[var(--bn-admin-active)] py-2 text-sm font-semibold text-white hover:bg-[var(--bn-admin-active)]">
               Create Reservation
             </button>
           </form>
@@ -468,7 +468,7 @@ export function ReservationsWorkspace({
               <input value={uLocation} onChange={(e) => setULocation(e.target.value)} placeholder="Location, e.g. Indoor / Outdoor" className="w-full rounded-lg border px-3 py-2 text-sm" />
               <input type="number" min={1} value={uCapacity} onChange={(e) => setUCapacity(e.target.value)} placeholder="Seats" className="w-full rounded-lg border px-3 py-2 text-sm" />
             </div>
-            <button disabled={busy} type="submit" className="mt-4 w-full rounded-lg bg-[var(--bn-admin-orange-soft)] py-2 text-sm font-semibold text-white hover:bg-[var(--bn-admin-orange-soft)]">
+            <button disabled={busy} type="submit" className="mt-4 w-full rounded-lg bg-[var(--bn-admin-active)] py-2 text-sm font-semibold text-white hover:bg-[var(--bn-admin-active)]">
               Add {unitLabel}
             </button>
           </form>

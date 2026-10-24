@@ -5,6 +5,7 @@ import crypto from "crypto";
 import { prisma } from "@/lib/prisma";
 import { consumeFifoStockTx, consumeFefoStockTx } from "@/lib/inventory-fifo";
 import { getFnbRotationMode } from "@/lib/fnb-settings";
+import { getPluginEntitlement } from "@/lib/plugins";
 import { revalidatePath } from "next/cache";
 import { calculateOrderTotals, roundMoney } from "@/lib/utils/pricing";
 import { PLATFORM_COMMISSION_PERCENT } from "@/lib/constants/commission";
@@ -372,7 +373,15 @@ export async function createPosSale(
   // way it would online (this is what the platform bills the merchant for
   // later) — POS just never deducts it from the cash in hand.
   const commissionRate = PLATFORM_COMMISSION_PERCENT;
-  const fnbMode = ["Restaurant", "Food & Groceries"].includes(store.businessType) ? getFnbRotationMode(store.enabledModules) : "FIFO";
+  const isFoodBusiness = ["Restaurant", "Food & Groceries"].includes(store.businessType);
+  // POS works on its own for every store. Staff shifts and kitchen tickets are
+  // FnB-plugin features, so they're only enforced when FnB is actually installed.
+  let requiresShift = false;
+  if (isFoodBusiness) {
+    const fnbEntitlement = await getPluginEntitlement(store.id, "fnb-operations");
+    requiresShift = Boolean(fnbEntitlement.allowed && fnbEntitlement.installed);
+  }
+  const fnbMode = isFoodBusiness ? getFnbRotationMode(store.enabledModules) : "FIFO";
   const consumeStock = fnbMode === "FEFO" ? consumeFefoStockTx : consumeFifoStockTx;
   const { subtotal, commission, total } = calculateOrderTotals(
     resolved.map((l) => ({ unitPrice: l.unitPrice, quantity: l.quantity })),
@@ -450,22 +459,24 @@ export async function createPosSale(
 
         const session = await auth();
         const staffUserId = session?.user?.id;
-        if (!staffUserId) throw new PosTransactionError("You must be signed in to use the restaurant POS.");
+        if (!staffUserId) throw new PosTransactionError("You must be signed in to use the POS.");
         const shift = await tx.fnbShift.findFirst({
           where: { storeId: store.id, staffUserId, status: "OPEN" },
           select: { id: true },
         });
-        if (!shift) throw new PosTransactionError("Start your staff shift before recording a POS sale.");
+        if (!shift && requiresShift) throw new PosTransactionError("Start your staff shift before recording a POS sale.");
 
         const order = await tx.order.create({
           data: {
             storeId: store.id,
             buyerId: walkIn.id,
             status: "PAID",
-            fulfillmentStatus: "NEW",
-            kitchenStatus: "QUEUED",
+            // In-person sale: with FnB it enters the kitchen queue; without it,
+            // the customer already has the goods, so it's complete immediately.
+            fulfillmentStatus: requiresShift ? "NEW" : "FULFILLED",
+            kitchenStatus: requiresShift ? "QUEUED" : "SERVED",
             channel: "POS",
-            fnbOrderType: data.orderType,
+            fnbOrderType: isFoodBusiness ? data.orderType : null,
             fnbTableLabel: data.tableLabel || null,
             subtotal,
             commission,
@@ -478,7 +489,7 @@ export async function createPosSale(
             posCustomerPhone: customerPhone,
             customerProfileId,
             idempotencyKey,
-            fnbShiftId: shift.id,
+            fnbShiftId: shift?.id ?? null,
             items: {
               create: resolved.map((l) => ({
                 productId: l.productId ?? null,
@@ -586,11 +597,13 @@ export async function createPosSale(
           }
         }
 
-        const shiftUpdate = await tx.fnbShift.updateMany({
-          where: { id: shift.id, storeId: store.id, staffUserId, status: "OPEN" },
-          data: { salesCount: { increment: 1 }, salesTotal: { increment: total } },
-        });
-        if (shiftUpdate.count === 0) throw new PosTransactionError("Your shift is no longer open. The sale was not recorded.");
+        if (shift) {
+          const shiftUpdate = await tx.fnbShift.updateMany({
+            where: { id: shift.id, storeId: store.id, staffUserId, status: "OPEN" },
+            data: { salesCount: { increment: 1 }, salesTotal: { increment: total } },
+          });
+          if (shiftUpdate.count === 0) throw new PosTransactionError("Your shift is no longer open. The sale was not recorded.");
+        }
 
         return { orderId: order.id, created: true as const };
       },

@@ -159,8 +159,8 @@ function NavLink({ base, item, pathname }: { base: string; item: NavItem; pathna
         <a
           href={href}
           data-tour={`nav:${item.href || "/"}`}
-          className={`group relative flex items-center gap-2.5 rounded-lg px-2.5 py-2 text-sm transition-colors ${
-            isActive ? "bg-[var(--bn-admin-orange-soft)] text-[var(--bn-admin-text)] font-medium text-white shadow-sm" : "text-[var(--bn-admin-muted)] hover:bg-[color-mix(in_srgb,var(--bn-admin-surface)_8%,transparent)] hover:text-white"
+          className={`group relative flex items-center gap-2.5 rounded-lg px-2.5 py-2 text-sm transition-colors outline-none focus-visible:ring-2 focus-visible:ring-[var(--bn-admin-ring)] active:bg-[var(--bn-admin-active-dark)] active:text-white ${
+            isActive ? "bg-[var(--bn-admin-active)] font-semibold text-white shadow-sm" : "text-[var(--bn-admin-muted)] hover:bg-[color-mix(in_srgb,var(--bn-admin-surface)_14%,transparent)] hover:text-white"
           }`}
         >
           {isActive && <span className="absolute -left-3 top-1/2 h-4 w-0.5 -translate-y-1/2 rounded-full bg-primary" />}
@@ -173,8 +173,8 @@ function NavLink({ base, item, pathname }: { base: string; item: NavItem; pathna
       <Link
         href={href}
         data-tour={`nav:${item.href || "/"}`}
-        className={`group relative flex items-center gap-2.5 rounded-lg px-2.5 py-2 text-sm transition-colors ${
-          isActive ? "bg-[var(--bn-admin-orange-soft)] text-[var(--bn-admin-text)] font-medium text-white shadow-sm" : "text-[var(--bn-admin-muted)] hover:bg-[color-mix(in_srgb,var(--bn-admin-surface)_8%,transparent)] hover:text-white"
+        className={`group relative flex items-center gap-2.5 rounded-lg px-2.5 py-2 text-sm transition-colors outline-none focus-visible:ring-2 focus-visible:ring-[var(--bn-admin-ring)] active:bg-[var(--bn-admin-active-dark)] active:text-white ${
+          isActive ? "bg-[var(--bn-admin-active)] font-semibold text-white shadow-sm" : "text-[var(--bn-admin-muted)] hover:bg-[color-mix(in_srgb,var(--bn-admin-surface)_14%,transparent)] hover:text-white"
         }`}
       >
         {isActive && <span className="absolute -left-3 top-1/2 h-4 w-0.5 -translate-y-1/2 rounded-full bg-primary" />}
@@ -188,8 +188,8 @@ function NavLink({ base, item, pathname }: { base: string; item: NavItem; pathna
     <div>
       <div
         data-tour={`nav:${item.href || "/"}`}
-        className={`group relative flex items-center gap-2.5 rounded-lg pr-1.5 text-sm transition-colors ${
-          isActive ? "bg-[var(--bn-admin-orange-soft)] text-[var(--bn-admin-text)] font-medium text-white shadow-sm" : "text-[var(--bn-admin-muted)] hover:bg-[color-mix(in_srgb,var(--bn-admin-surface)_8%,transparent)] hover:text-white"
+        className={`group relative flex items-center gap-2.5 rounded-lg pr-1.5 text-sm transition-colors outline-none focus-visible:ring-2 focus-visible:ring-[var(--bn-admin-ring)] active:bg-[var(--bn-admin-active-dark)] active:text-white ${
+          isActive ? "bg-[var(--bn-admin-active)] font-semibold text-white shadow-sm" : "text-[var(--bn-admin-muted)] hover:bg-[color-mix(in_srgb,var(--bn-admin-surface)_14%,transparent)] hover:text-white"
         }`}
       >
         {isActive && <span className="absolute -left-3 top-1/2 h-4 w-0.5 -translate-y-1/2 rounded-full bg-primary" />}
@@ -217,8 +217,8 @@ function NavLink({ base, item, pathname }: { base: string; item: NavItem; pathna
               <ChildLink
                 key={child.label}
                 href={childHref}
-                className={`flex items-center gap-2 rounded-lg px-2.5 py-1.5 text-xs transition-colors ${
-                  childIsActive ? "bg-[var(--bn-admin-orange-soft)] text-[color-mix(in_srgb,var(--bn-admin-text)_90%,transparent)] font-medium" : "text-[var(--bn-admin-muted)] hover:bg-[color-mix(in_srgb,var(--bn-admin-surface)_8%,transparent)] hover:text-white"
+                className={`flex items-center gap-2 rounded-lg px-2.5 py-1.5 text-xs transition-colors outline-none focus-visible:ring-2 focus-visible:ring-[var(--bn-admin-ring)] active:bg-[var(--bn-admin-active-dark)] active:text-white ${
+                  childIsActive ? "bg-[var(--bn-admin-active)] font-semibold text-white" : "text-[var(--bn-admin-muted)] hover:bg-[color-mix(in_srgb,var(--bn-admin-surface)_14%,transparent)] hover:text-white"
                 }`}
               >
                 <ChildIcon className="h-3.5 w-3.5 shrink-0 opacity-70" />

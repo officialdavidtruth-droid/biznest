@@ -68,7 +68,7 @@ export function MenuSectionsManager({ slug, initialSections }: { slug: string; i
         </h3>
         <form onSubmit={addSection} className="flex gap-2">
           <input value={name} onChange={(e) => setName(e.target.value)} placeholder='e.g. "Breakfast", "Mains", "Drinks"' className="flex-1 rounded-lg border px-3 py-2 text-sm" />
-          <button disabled={busy} type="submit" className="flex items-center gap-1 rounded-lg bg-[var(--bn-admin-orange-soft)] px-3 py-2 text-sm font-semibold text-white hover:bg-[var(--bn-admin-orange-soft)]">
+          <button disabled={busy} type="submit" className="flex items-center gap-1 rounded-lg bg-[var(--bn-admin-active)] px-3 py-2 text-sm font-semibold text-white hover:bg-[var(--bn-admin-active)]">
             <Plus className="h-4 w-4" /> Add Section
           </button>
         </form>

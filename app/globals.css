@@ -1050,6 +1050,12 @@ a[href*="/service/"]:hover img {
   --bn-admin-orange-dark: #0b4d0c;
   --bn-admin-orange-soft: #e8f5ea;
   --bn-admin-on-orange: #ffffff;
+  /* Selected / pressed fill: solid and dark enough for white text, and clearly
+     visible against the dark sidebar. (orange-soft is a pale tint - never put
+     white text on it.) */
+  --bn-admin-active: #15803d;
+  --bn-admin-active-dark: #166534;
+  --bn-admin-ring: #4ade80;
   --bn-admin-danger: #dc2626;
   --bn-admin-danger-soft: #fef2f2;
   --bn-admin-danger-line: #fecaca;
@@ -1227,3 +1233,18 @@ a.ex-mini{text-decoration:none}
 @media(max-width:680px){.bn-service-row{flex-wrap:wrap}.bn-service-row-side{width:100%;justify-content:space-between}}
 
 #services-list{scroll-margin-top:84px}
+
+
+/* Admin: show exactly what is being clicked.
+   - No lingering browser focus outline after a mouse click (that was the white box).
+   - Keyboard focus still gets a clear ring.
+   - Buttons and sidebar links dim while pressed. */
+.bn-admin-app a:focus:not(:focus-visible),
+.bn-admin-app button:focus:not(:focus-visible),
+.bn-admin-app [role="button"]:focus:not(:focus-visible) { outline: none; }
+.bn-admin-app a:focus-visible,
+.bn-admin-app button:focus-visible,
+.bn-admin-app [role="button"]:focus-visible { outline: 2px solid var(--bn-admin-active); outline-offset: 2px; }
+.bn-admin-app .bn-admin-sidebar a:focus-visible,
+.bn-admin-app .bn-admin-sidebar button:focus-visible { outline-color: var(--bn-admin-ring); }
+.bn-admin-app button:not(:disabled):active { filter: brightness(.88); }

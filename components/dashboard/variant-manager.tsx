@@ -101,7 +101,7 @@ export function VariantManager({
             <li key={p.id}>
               <button
                 onClick={() => switchProduct(p.id)}
-                className={`w-full rounded-lg px-3 py-2 text-left text-sm ${productId === p.id ? "bg-[var(--bn-admin-orange-soft)] text-white" : "hover:bg-muted"}`}
+                className={`w-full rounded-lg px-3 py-2 text-left text-sm ${productId === p.id ? "bg-[var(--bn-admin-active)] text-white" : "hover:bg-muted"}`}
               >
                 {p.name}
               </button>
@@ -142,7 +142,7 @@ export function VariantManager({
               <button type="button" onClick={() => setOptions((prev) => [...prev, { name: "", values: "" }])} className="flex items-center gap-1 rounded-lg border px-3 py-1.5 text-xs font-medium hover:bg-muted">
                 <Plus className="h-3.5 w-3.5" /> Add option
               </button>
-              <button disabled={busy || !productId} type="submit" className="rounded-lg bg-[var(--bn-admin-orange-soft)] px-3 py-1.5 text-xs font-semibold text-white hover:bg-[var(--bn-admin-orange-soft)]">
+              <button disabled={busy || !productId} type="submit" className="rounded-lg bg-[var(--bn-admin-active)] px-3 py-1.5 text-xs font-semibold text-white hover:bg-[var(--bn-admin-active)]">
                 Save & Generate Variants
               </button>
             </div>
