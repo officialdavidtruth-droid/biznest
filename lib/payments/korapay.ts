@@ -233,10 +233,10 @@ export function verifyKorapayWebhookSignature(signature: string | null, data: un
 /* -------------------------------------------------------------------------- */
 
 export async function resolveKorapayAccount(accountNumber: string, bankCode: string) {
-  // Kora's resolve endpoint calls the country code "currency" (e.g. NG).
+  // Kora's resolve endpoint takes a currency code, not a country code: "NGN" ("NG" is rejected).
   const res = await koraFetch<{ account_name: string; bank_name?: string }>("/misc/banks/resolve", {
     method: "POST",
-    body: { bank: bankCode, account: accountNumber, currency: "NG" },
+    body: { bank: bankCode, account: accountNumber, currency: "NGN" },
   });
   return { status: res.status, message: res.message, data: res.data };
 }
