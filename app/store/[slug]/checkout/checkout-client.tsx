@@ -8,6 +8,7 @@ import { submitCheckout } from "@/lib/checkout/client";
 import { listActiveDeliveryZones } from "@/lib/actions/delivery-zone";
 import { DeliveryZoneOptions } from "@/components/checkout/delivery-zone-options";
 import { toast } from "sonner";
+import { openKorapayInline } from "@/lib/checkout/korapay-inline";
 import { ShieldCheck, Lock, Truck, ChevronLeft, CreditCard } from "lucide-react";
 
 declare global {
@@ -99,6 +100,19 @@ export function CheckoutClient({ slug, palette = DEFAULT_STORE_PALETTE }: { slug
           popup.resumeTransaction(inline.accessCode, {
             onSuccess: (tx) => { window.location.assign(`/api/payments/paystack/callback?reference=${encodeURIComponent(tx?.reference || inline.reference)}`); },
             onCancel: () => setIsSubmitting(false),
+          });
+          return;
+        }
+
+        if (inline.provider === "KORAPAY") {
+          await openKorapayInline({
+            publicKey: inline.publicKey,
+            reference: inline.reference,
+            amountNaira: inline.amountNaira ?? total,
+            email: inline.email,
+            name: form.fullName,
+            onClose: () => setIsSubmitting(false),
+            onFailed: () => { toast.error("Payment failed. Please try again."); setIsSubmitting(false); },
           });
           return;
         }

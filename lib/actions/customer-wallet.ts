@@ -44,7 +44,7 @@ export async function getWallet(storeSlug: string) {
 export async function startWalletFunding(
   storeSlug: string,
   amountNaira: number
-): Promise<ActionResult<{ authorizationUrl: string; amount: number; inline?: { provider: "PAYSTACK" | "FLUTTERWAVE"; publicKey: string; email: string; accessCode?: string; reference: string; subaccountCode?: string | null; subaccountId?: string | null; amountNaira?: number } }>> {
+): Promise<ActionResult<{ authorizationUrl: string; amount: number; inline?: { provider: "PAYSTACK" | "FLUTTERWAVE" | "KORAPAY"; publicKey: string; email: string; accessCode?: string; reference: string; subaccountCode?: string | null; subaccountId?: string | null; amountNaira?: number } }>> {
   const customer = await getCustomer(storeSlug);
   if (!customer) return { success: false, error: "Please sign in to use your wallet." };
 
@@ -96,7 +96,8 @@ export async function startWalletFunding(
     reference,
     callbackUrl,
     gateway,
-    inline: true,
+    // The wallet form only follows authorizationUrl (no popup handling), so ask for the hosted redirect.
+    inline: false,
   });
   if (!charge.success) {
     await prisma.payment.updateMany({ where: { reference, status: "PENDING" }, data: { status: "FAILED" } });
@@ -114,7 +115,7 @@ export async function startBookingPayment(
   // gateway's inline modal) pass { inline: false } so Flutterwave returns a
   // real hosted-checkout link instead of the bare callback URL.
   options: { inline?: boolean } = {}
-): Promise<ActionResult<{ authorizationUrl: string; amount: number; inline?: { provider: "PAYSTACK" | "FLUTTERWAVE"; publicKey: string; email: string; accessCode?: string; reference: string; subaccountCode?: string | null; subaccountId?: string | null; amountNaira?: number } }>> {
+): Promise<ActionResult<{ authorizationUrl: string; amount: number; inline?: { provider: "PAYSTACK" | "FLUTTERWAVE" | "KORAPAY"; publicKey: string; email: string; accessCode?: string; reference: string; subaccountCode?: string | null; subaccountId?: string | null; amountNaira?: number } }>> {
   const customerSession = await getStoreCustomerSessionForStore(storeSlug);
   const session = customerSession ?? await auth();
   const booking = await prisma.booking.findFirst({

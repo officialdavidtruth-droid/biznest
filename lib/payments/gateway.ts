@@ -60,8 +60,7 @@ type ChargeResult =
        *  persist it on the Payment row keep compiling. */
       splitSubaccountCode: string | null;
       inline?: {
-        // Korapay is redirect-only, so inline modals only exist for these two.
-        provider: "PAYSTACK" | "FLUTTERWAVE";
+        provider: "PAYSTACK" | "FLUTTERWAVE" | "KORAPAY";
         publicKey: string;
         email: string;
         accessCode?: string;
@@ -93,7 +92,26 @@ export async function chargeCustomer(params: ChargeParams): Promise<ChargeResult
   const gateway = own?.provider ?? params.gateway ?? (await getActiveGateway());
 
   if (gateway === "KORAPAY") {
-    // Kora's hosted checkout is redirect-only here (no inline modal), so `inline` is never returned.
+    // In-page popup when the caller asked for it and a Kora public key is configured
+    // (platform gateway only: stores can't bring their own Kora keys). The popup
+    // finishes on the same /korapay/callback + webhook that the redirect uses.
+    const koraPublicKey = process.env.NEXT_PUBLIC_KORAPAY_PUBLIC_KEY || process.env.KORAPAY_PUBLIC_KEY;
+    if (params.inline && koraPublicKey && !own) {
+      return {
+        success: true,
+        authorizationUrl: params.callbackUrl,
+        gateway: "KORAPAY",
+        usesStoreGateway,
+        splitSubaccountCode: null,
+        inline: {
+          provider: "KORAPAY",
+          publicKey: koraPublicKey,
+          email: params.email,
+          amountNaira: params.amountNaira,
+          reference: params.reference,
+        },
+      };
+    }
     const init = await initializeKorapayTransaction({
       email: params.email,
       amountNaira: params.amountNaira,

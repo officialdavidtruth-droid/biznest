@@ -81,7 +81,7 @@ async function chargeExistingOrder(
   ActionResult<{
     authorizationUrl: string;
     inline?: {
-      provider: "PAYSTACK" | "FLUTTERWAVE";
+      provider: "PAYSTACK" | "FLUTTERWAVE" | "KORAPAY";
       publicKey: string;
       email: string;
       accessCode?: string;
@@ -188,7 +188,7 @@ export async function startCheckout(
   ActionResult<{
     authorizationUrl: string;
     inline?: {
-      provider: "PAYSTACK" | "FLUTTERWAVE";
+      provider: "PAYSTACK" | "FLUTTERWAVE" | "KORAPAY";
       publicKey: string;
       email: string;
       accessCode?: string;

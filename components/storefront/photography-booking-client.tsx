@@ -103,7 +103,7 @@ export function PhotographyBookingClient({
         return;
       }
       setPaymentStarted(true);
-      const payment = await startBookingPayment(slug, result.data.bookingId, isSignedIn ? undefined : email.trim());
+      const payment = await startBookingPayment(slug, result.data.bookingId, isSignedIn ? undefined : email.trim(), { inline: false });
       if (!payment.success) {
         setPaymentStarted(false);
         toast.error(payment.error || "Booking created, but payment could not be opened.");
