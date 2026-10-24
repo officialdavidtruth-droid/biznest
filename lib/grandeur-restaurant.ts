@@ -1,6 +1,21 @@
 import { prisma } from "@/lib/prisma";
+import { isGrandeurStore } from "@/lib/store-pages";
 
 export async function getGrandeurRestaurantData(slug: string) {
+  // Grandeur is the restaurant skin only. This helper used to return data for ANY
+  // active store, so /about, /contact, /events, /gallery, /reservations, /payment
+  // and order confirmation rendered the restaurant template on electronics,
+  // fashion, services stores, etc. Gate with a cheap query first; return null
+  // unless this really is a Grandeur/restaurant store so callers fall through
+  // to their own fallback.
+  const gate = await prisma.store.findUnique({
+    where: { slug },
+    select: { status: true, businessType: true, business: { select: { category: true } }, template: { select: { name: true } } },
+  });
+  if (!gate || gate.status !== "ACTIVE") return null;
+  const isGrandeur = isGrandeurStore({ businessCategory: gate.business?.category ?? null, storeBusinessType: gate.businessType, templateName: gate.template?.name });
+  if (!isGrandeur) return null;
+
   const rawStore = await prisma.store.findUnique({
     where: { slug },
     include: {
@@ -11,7 +26,7 @@ export async function getGrandeurRestaurantData(slug: string) {
       reviews: { include: { author: true }, orderBy: { createdAt: "desc" }, take: 8 },
     },
   });
-  if (!rawStore || rawStore.status !== "ACTIVE") return null;
+  if (!rawStore) return null;
 
   const store = {
     id: rawStore.id,

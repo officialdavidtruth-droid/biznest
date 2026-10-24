@@ -28,8 +28,8 @@ function move<T>(arr: T[], i: number, dir: -1 | 1): T[] {
 }
 
 export function MenuManager({
-  slug, initialTree, categories, pages, hasCustomMenu,
-}: { slug: string; initialTree: MenuNodeInput[]; categories: Category[]; pages: CustomPage[]; hasCustomMenu: boolean }) {
+  slug, initialTree, categories, pages, pageOptions, hasCustomMenu,
+}: { slug: string; initialTree: MenuNodeInput[]; categories: Category[]; pages: CustomPage[]; pageOptions?: { label: string; path: string }[]; hasCustomMenu: boolean }) {
   const [tree, setTree] = useState<MNode[]>(() => withKeys(initialTree));
   const [custom, setCustom] = useState(hasCustomMenu);
   const [pending, start] = useTransition();
@@ -107,7 +107,7 @@ export function MenuManager({
           </select>
           {n.linkType === "PAGE" && (
             <select value={n.target ?? "/"} onChange={(e) => setTarget(path, e.target.value)} className="rounded-lg border px-3 py-2 text-sm">
-              {MENU_PAGE_OPTIONS.map((p) => <option key={p.path} value={p.path}>{p.label}</option>)}
+              {(pageOptions ?? MENU_PAGE_OPTIONS).map((p) => <option key={p.path} value={p.path}>{p.label}</option>)}
               {pages.length > 0 && (
                 <optgroup label="Your pages">
                   {pages.map((p) => <option key={p.slug} value={`/${p.slug}`}>{p.title}</option>)}

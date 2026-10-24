@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { revalidatePath } from "next/cache";
 import { assertStorePermission } from "@/lib/access/assert-store-access";
 import { sanitizeCustomUrl, MENU_PAGE_OPTIONS, type MenuLinkType } from "@/lib/storefront-menu";
+import { filterAvailablePages, isStorePageAvailable, type StoreIdentity } from "@/lib/store-pages";
 import type { ActionResult } from "@/types/actions";
 
 export type MenuNodeInput = {
@@ -16,6 +17,14 @@ export type MenuNodeInput = {
 
 const MAX_TOP = 12;
 const MAX_CHILDREN = 20;
+
+async function getStoreIdentity(storeId: string): Promise<StoreIdentity> {
+  const s = await prisma.store.findUnique({
+    where: { id: storeId },
+    select: { businessType: true, business: { select: { category: true } }, template: { select: { name: true } } },
+  });
+  return { businessCategory: s?.business?.category ?? null, storeBusinessType: s?.businessType ?? null, templateName: s?.template?.name ?? null };
+}
 
 async function access(slug: string) {
   const a = await assertStorePermission(slug, "settings");
@@ -60,15 +69,19 @@ export async function getMenuEditorData(slug: string) {
         .map((c) => ({ label: c.label, linkType: c.linkType as MenuLinkType, target: c.target, openInNewTab: c.openInNewTab })),
     }));
 
-  return { tree, categories, pages, hasCustomMenu: rows.length > 0, storeName: a.store.name };
+  // Only offer built-in pages this store's skin actually serves.
+  const pageOptions = filterAvailablePages(MENU_PAGE_OPTIONS, await getStoreIdentity(a.store.id));
+
+  return { tree, categories, pages, pageOptions, hasCustomMenu: rows.length > 0, storeName: a.store.name };
 }
 
-function validateNode(n: MenuNodeInput, categoryIds: Set<string>, pagePaths: Set<string>): string | null {
+function validateNode(n: MenuNodeInput, categoryIds: Set<string>, pagePaths: Set<string>, identity: StoreIdentity): string | null {
   const label = n.label?.trim();
   if (!label) return "Every menu item needs a label.";
   if (label.length > 40) return `"${label.slice(0, 20)}…" is too long (max 40 characters).`;
   if (n.linkType === "PAGE") {
     if (!MENU_PAGE_OPTIONS.some((p) => p.path === (n.target || "/")) && !pagePaths.has(n.target || "/")) return `"${label}" points to an unknown page.`;
+    if (!isStorePageAvailable(n.target || "/", identity)) return `"${label}" links to a page your store doesn't have. Remove it or pick another page.`;
   } else if (n.linkType === "CATEGORY") {
     if (!n.target || !categoryIds.has(n.target)) return `"${label}" points to a category that no longer exists.`;
   } else if (n.linkType === "CUSTOM") {
@@ -88,12 +101,13 @@ export async function saveStoreMenu(slug: string, tree: MenuNodeInput[]): Promis
   const pageRows = await prisma.storePage.findMany({ where: { storeId: a.store.id, isPublished: true }, select: { slug: true } });
   const pagePaths = new Set<string>(pageRows.map((p: { slug: string }) => `/${p.slug}`));
 
+  const identity = await getStoreIdentity(a.store.id);
   for (const n of tree) {
-    const err = validateNode(n, categoryIds, pagePaths);
+    const err = validateNode(n, categoryIds, pagePaths, identity);
     if (err) return { success: false, error: err };
     if ((n.children?.length ?? 0) > MAX_CHILDREN) return { success: false, error: `"${n.label}" has too many dropdown items (max ${MAX_CHILDREN}).` };
     for (const c of n.children ?? []) {
-      const cerr = validateNode(c, categoryIds, pagePaths);
+      const cerr = validateNode(c, categoryIds, pagePaths, identity);
       if (cerr) return { success: false, error: cerr };
     }
   }

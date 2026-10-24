@@ -8,7 +8,7 @@ export default async function MenusPage({ params }: { params: Promise<{ slug: st
   if ("error" in data) return <div className="bn-admin-page"><p className="text-sm text-muted-foreground">{data.error}</p></div>;
   return (
     <div className="bn-admin-page">
-      <MenuManager slug={slug} initialTree={data.tree} categories={data.categories} pages={data.pages} hasCustomMenu={data.hasCustomMenu} />
+      <MenuManager slug={slug} initialTree={data.tree} categories={data.categories} pages={data.pages} pageOptions={data.pageOptions} hasCustomMenu={data.hasCustomMenu} />
     </div>
   );
 }

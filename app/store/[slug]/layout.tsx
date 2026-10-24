@@ -6,6 +6,7 @@ import { getStoreBranding } from "@/lib/actions/store-branding";
 import { StoreMenuProvider } from "@/components/storefront/store-menu";
 import { StoreCategoriesProvider } from "@/components/storefront/store-categories";
 import { resolveMenuRows } from "@/lib/storefront-menu";
+import { isStorePageAvailable } from "@/lib/store-pages";
 import { resolveStoreTheme } from "@/lib/template-themes";
 import { PromoPopup } from "@/components/storefront/promo-popup";
 import { buildPromoPalette, isPromoLive, readPromoPopup } from "@/lib/storefront/promo-popup";
@@ -76,6 +77,8 @@ export default async function StoreLayout({
       themeColors: true,
       fontFamily: true,
       template: { select: { name: true, category: true } },
+      businessType: true,
+      business: { select: { category: true } },
       // Real categories for storefront navigation (mega menu, category pages).
       categories: {
         where: { isActive: true },
@@ -145,7 +148,7 @@ export default async function StoreLayout({
         rel="stylesheet"
       />
       <StoreCategoriesProvider categories={(exists?.categories ?? []).map((c) => ({ id: c.id, name: c.name, parentId: c.parentId, description: c.description, imageUrl: c.imageUrl, count: c._count.products + c._count.services }))}>
-        <StoreMenuProvider menu={exists?.menuItems?.length ? resolveMenuRows(exists.menuItems, slug) : null}>{children}</StoreMenuProvider>
+        <StoreMenuProvider menu={exists?.menuItems?.length ? resolveMenuRows(exists.menuItems.filter((m) => m.linkType !== "PAGE" || isStorePageAvailable(m.target || "/", { businessCategory: exists.business?.category ?? null, storeBusinessType: exists.businessType, templateName: exists.template?.name ?? null })), slug) : null}>{children}</StoreMenuProvider>
       </StoreCategoriesProvider>
       {chatHref && exists && <WhatsAppChatButton href={chatHref} storeName={exists.name} />}
       {showPromo && promo && promoPalette && <PromoPopup slug={slug} config={promo} palette={promoPalette} />}
