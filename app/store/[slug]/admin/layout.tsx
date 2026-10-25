@@ -13,6 +13,7 @@ import { ThemeProvider, ThemeFlashGuard } from "@/components/theme/theme-provide
 import { getPluginEntitlement } from "@/lib/plugins";
 import { OnboardingTour, TourLauncherButton } from "@/components/dashboard/onboarding-tour";
 import { buildTourSteps } from "@/lib/onboarding-tour";
+import { PageGuideButton } from "@/components/app/page-guide";
 import { isTrialLapsed, expireLapsedTrial } from "@/lib/billing/trial";
 
 export default async function StoreAdminLayout({
@@ -226,6 +227,8 @@ export default async function StoreAdminLayout({
                 </span>
               </div>
             </div>
+
+            <PageGuideButton userId={session.user.id} />
 
             <main className="bg-background pb-20 lg:pb-0">
               <div className="mx-auto max-w-none px-4 py-4 lg:px-7 lg:py-7">{children}</div>

@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { usePathname, useSearchParams } from "next/navigation";
+import { AppTabBar } from "./app-tab-bar";
 
 const SPLASH_KEY = "bn-splash-shown";
 
@@ -154,6 +155,8 @@ export function AppShell() {
           <div className="bn-splash-bar"><span /></div>
         </div>
       )}
+
+      <AppTabBar />
 
       <div className={`bn-navbar ${navigating ? "bn-navbar-on" : ""}`} aria-hidden><span /></div>
 
