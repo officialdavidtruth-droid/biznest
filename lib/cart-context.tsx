@@ -1,6 +1,7 @@
 "use client";
 
 import { createContext, useContext, useEffect, useState, useCallback } from "react";
+import { trackEvent } from "@/lib/tracking/client";
 
 export type CartItem = {
   productId: string;
@@ -53,6 +54,13 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
 
   const addItem = useCallback(
     (storeSlug: string, item: Omit<CartItem, "quantity">, quantity = 1) => {
+      // Single choke point for every template's "add to cart" button. Called
+      // here (not inside the setState updater, which React may run twice).
+      trackEvent(storeSlug, {
+        type: "add_to_cart",
+        currency: item.currency,
+        item: { id: item.productId, name: item.name, price: item.price, quantity, variant: item.variantLabel },
+      });
       setState((prev) => {
         // Adding from a different store starts a fresh cart — checkout is
         // per-seller, so mixing stores in one cart doesn't make sense yet.

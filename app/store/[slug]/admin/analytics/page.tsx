@@ -208,6 +208,13 @@ export default async function AnalyticsPage({
             })()}
           </div>
         )}
+        <p className="mt-4 text-xs text-muted-foreground">
+          Running ads or want deeper reports?{" "}
+          <Link href={`/store/${slug}/admin/settings`} className="font-medium text-primary hover:underline">
+            Connect Google Analytics, Meta Pixel or Plausible
+          </Link>{" "}
+          to track where visitors come from and which ads lead to orders.
+        </p>
       </div>
 
       {/* ---------- Profit (only if any product has a cost set) ---------- */}

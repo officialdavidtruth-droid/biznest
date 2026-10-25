@@ -6,6 +6,7 @@ import { ProductDetail } from "@/components/storefront/product-detail";
 import { recordStoreVisit } from "@/lib/actions/analytics";
 import { JsonLd } from "@/components/seo/json-ld";
 import { NO_INDEX, absoluteUrl, availability, cleanDescription, storeUrl } from "@/lib/seo";
+import { TrackViewItem } from "@/components/storefront/store-tracking";
 
 export async function generateMetadata({ params }: { params: Promise<{ slug: string; productId: string }> }): Promise<Metadata> {
   const { slug, productId } = await params;
@@ -68,5 +69,5 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
       { "@type": "ListItem", position: product.category ? 3 : 2, name: product.name, item: url },
     ],
   };
-  return <><JsonLd data={store.seoNoIndex ? [] : [productLd, breadcrumbLd]}/><main style={{minHeight:"100vh",background:theme.bg,color:theme.ink,fontFamily:theme.font,padding:"3rem 1.25rem 4rem"}}><ProductDetail storeSlug={slug} productId={product.id} name={product.name} price={Number(product.price)} compareAtPrice={product.compareAtPrice ? Number(product.compareAtPrice) : null} currency={product.currency} images={product.images} description={product.description} categoryName={product.category?.name ?? null} type={product.type} rentalUnit={product.rentalPeriodUnit} inStock={inStock} variants={product.variants.map(v => ({ id: v.id, label: v.label, optionValues: v.optionValues as Record<string,string>, price: v.price ? Number(v.price) : null, quantity: v.quantity, images: v.images }))} accent={theme.accent} ink={theme.ink} radius={theme.radius} related={relatedRows.map(r => ({ id: r.id, name: r.name, price: Number(r.price), currency: r.currency, image: r.images[0] ?? null }))}/></main></>;
+  return <><JsonLd data={store.seoNoIndex ? [] : [productLd, breadcrumbLd]}/><TrackViewItem slug={slug} currency={product.currency} item={{ id: product.id, name: product.name, price: Number(product.price) }}/><main style={{minHeight:"100vh",background:theme.bg,color:theme.ink,fontFamily:theme.font,padding:"3rem 1.25rem 4rem"}}><ProductDetail storeSlug={slug} productId={product.id} name={product.name} price={Number(product.price)} compareAtPrice={product.compareAtPrice ? Number(product.compareAtPrice) : null} currency={product.currency} images={product.images} description={product.description} categoryName={product.category?.name ?? null} type={product.type} rentalUnit={product.rentalPeriodUnit} inStock={inStock} variants={product.variants.map(v => ({ id: v.id, label: v.label, optionValues: v.optionValues as Record<string,string>, price: v.price ? Number(v.price) : null, quantity: v.quantity, images: v.images }))} accent={theme.accent} ink={theme.ink} radius={theme.radius} related={relatedRows.map(r => ({ id: r.id, name: r.name, price: Number(r.price), currency: r.currency, image: r.images[0] ?? null }))}/></main></>;
 }

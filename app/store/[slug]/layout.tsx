@@ -18,6 +18,8 @@ import { InstallStoreApp } from "@/components/storefront/install-store-app";
 import { OrderPushPrompt } from "@/components/storefront/order-push-prompt";
 import { requireStoreCustomer } from "@/lib/actions/store-customer";
 import { logoVersion, storeBasePath } from "@/lib/store-pwa";
+import { StoreTracking } from "@/components/storefront/store-tracking";
+import { hasAnyTracking, isTrackablePath, sanitizeStoredTrackingIds } from "@/lib/tracking/ids";
 
 // Every store page under /store/[slug] falls back to the root layout's
 // static "BizNest — Build, Sell, Grow" <title> and platform favicon unless
@@ -104,6 +106,11 @@ export default async function StoreLayout({
       // Promo pop-up card: config + the fields resolveStoreTheme needs so the
       // card is painted in whichever template this store uses.
       status: true,
+      marketingOnly: true,
+      // Owner-configured analytics / ad-conversion IDs (Settings > Tracking & analytics).
+      trackingGaId: true,
+      trackingMetaPixelId: true,
+      trackingPlausibleDomain: true,
       name: true,
       socialLinks: true,
       storefrontConfig: true,
@@ -178,6 +185,15 @@ export default async function StoreLayout({
   // Order-update push opt-in is only offered to a signed-in customer of this store.
   const pushEligible = installable && !!(await requireStoreCustomer(slug));
 
+  // Analytics / ad pixels: live storefronts only. Never on the owner dashboard
+  // (staff browsing their own admin would pollute the numbers and leak internal
+  // URLs), never for suspended stores or marketing-only accounts. IDs are
+  // re-validated here, not just on save, because they end up in script URLs.
+  const subpath = (await headers()).get("x-bn-store-subpath") ?? "/";
+  const tracking = exists ? sanitizeStoredTrackingIds(exists) : null;
+  const trackingOn =
+    !!exists && !!tracking && exists.status === "ACTIVE" && !exists.marketingOnly && isTrackablePath(subpath) && hasAnyTracking(tracking);
+
   return (
     <>
       <link rel="preconnect" href="https://fonts.googleapis.com" />
@@ -191,6 +207,9 @@ export default async function StoreLayout({
       </StoreCategoriesProvider>
       {installable && exists && (
         <InstallStoreApp slug={slug} storeName={exists.name} base={pwaBase} iconSrc={`${pwaBase}/pwa-icon/192`} />
+      )}
+      {trackingOn && tracking && (
+        <StoreTracking slug={slug} gaId={tracking.gaId} metaPixelId={tracking.metaPixelId} plausibleDomain={tracking.plausibleDomain} />
       )}
       {pushEligible && <OrderPushPrompt slug={slug} base={pwaBase} />}
       {chatHref && exists && <WhatsAppChatButton href={chatHref} storeName={exists.name} />}

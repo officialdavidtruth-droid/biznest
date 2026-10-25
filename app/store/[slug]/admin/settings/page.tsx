@@ -10,6 +10,8 @@ import { WebhooksPanel } from "@/components/dashboard/webhooks-panel";
 import { listWebhookEndpoints, availableWebhookEvents } from "@/lib/actions/webhook";
 import { APP_URL } from "@/lib/constants/app-url";
 import { GuideToggle } from "@/components/app/page-guide";
+import { TrackingIdsForm } from "@/components/dashboard/tracking-ids-form";
+import { sanitizeStoredTrackingIds } from "@/lib/tracking/ids";
 
 export default async function SettingsPage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
@@ -121,6 +123,10 @@ export default async function SettingsPage({ params }: { params: Promise<{ slug:
       </form>
 
       <GuideToggle />
+
+      <div className="mt-6">
+        <TrackingIdsForm slug={slug} initial={sanitizeStoredTrackingIds(store)} />
+      </div>
 
       <div className="mt-6">
         <StoreSlugEditor slug={slug} domainRoot={new URL(APP_URL).host.replace(/^www\./, "")} />

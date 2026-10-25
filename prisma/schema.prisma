@@ -775,6 +775,16 @@ model Store {
   seoNoIndex    Boolean @default(false)
   seoGoogleVerification String?
 
+  // Per-store visitor analytics / ad-conversion tracking IDs, set by the owner
+  // in Dashboard > Settings > Tracking & analytics. Always validated against a
+  // strict allowlist pattern before storing AND before rendering (see
+  // lib/tracking/ids.ts) because they end up in script URLs on a public page.
+  // GA4 Measurement ID (G-XXXXXXXXXX), Meta/Facebook Pixel ID (digits), and the
+  // site domain as registered in Plausible (example.com).
+  trackingGaId          String?
+  trackingMetaPixelId   String?
+  trackingPlausibleDomain String?
+
   socialLinks   Json? // { instagram, facebook, twitter, tiktok, whatsapp }
   contactEmail  String?
   contactPhone  String?

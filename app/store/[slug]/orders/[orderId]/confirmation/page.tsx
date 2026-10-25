@@ -1,3 +1,28 @@
 import {OrderConfirmation} from "@/components/storefront/order-confirmation"; import {resolveStorePalette} from "@/lib/store-palette";
 import {getOrderForBuyer} from "@/lib/actions/order"; import {notFound} from "next/navigation"; import {getGrandeurRestaurantData} from "@/lib/grandeur-restaurant"; import {TasteHouseConfirmation} from "@/components/storefront/tastehouse"; import {GrandeurConfirmation} from "@/components/storefront/grandeur-restaurant"; import {ExampleConfirmation} from "@/components/storefront/example-confirmation"; import {prisma} from "@/lib/prisma"; import {TASTEHOUSE_TEMPLATE_NAME, EXAMPLE_TEMPLATE_NAME} from "@/lib/template-themes";
-export default async function Page({params}:{params:Promise<{slug:string;orderId:string}>}){const {slug,orderId}=await params; const order=await getOrderForBuyer(orderId,slug); if(!order)notFound(); const s=await prisma.store.findUnique({where:{slug},include:{template:true,business:true}}); if(s?.template?.name===EXAMPLE_TEMPLATE_NAME)return <ExampleConfirmation store={{...s,sellsProducts:s.business?.sellsProducts??true}} slug={slug} order={order}/>; if(s?.template?.name===TASTEHOUSE_TEMPLATE_NAME)return <TasteHouseConfirmation store={{...s,sellsProducts:s.business?.sellsProducts??true}} slug={slug} order={order}/>; const data=await getGrandeurRestaurantData(slug); if(data)return <GrandeurConfirmation store={data.store} slug={slug} order={order}/>; if(!s||s.status!=="ACTIVE")notFound(); return <OrderConfirmation slug={slug} storeName={s.name} order={order} palette={resolveStorePalette(s)}/>;}
+import {TrackPurchase} from "@/components/storefront/store-tracking";
+
+// Only orders that have actually been paid for count as a conversion. An order
+// still waiting on its gateway (PENDING_PAYMENT), or one that was cancelled /
+// refunded / disputed, must not be reported to an ad account as a sale.
+const COUNTED_STATUSES = new Set(["PAID", "IN_PROGRESS", "DELIVERED", "COMPLETED"]);
+
+export default async function Page({params}:{params:Promise<{slug:string;orderId:string}>}){
+  const {slug,orderId}=await params;
+  const order=await getOrderForBuyer(orderId,slug);
+  if(!order)notFound();
+  const view=await renderConfirmation(slug,order);
+  // One tracker for every confirmation skin (default, TasteHouse, Grandeur, Example).
+  const items=(order.items??[]).map((i:any)=>({id:String(i.productId??i.serviceId??i.id),name:String(i.product?.name??i.service?.name??"Item"),price:Number(i.unitPrice),quantity:i.quantity}));
+  return <>{COUNTED_STATUSES.has(String(order.status))&&<TrackPurchase slug={slug} transactionId={order.id} currency={order.currency} value={Number(order.total||0)} items={items}/>}{view}</>;
+}
+
+async function renderConfirmation(slug:string,order:NonNullable<Awaited<ReturnType<typeof getOrderForBuyer>>>){
+  const s=await prisma.store.findUnique({where:{slug},include:{template:true,business:true}});
+  if(s?.template?.name===EXAMPLE_TEMPLATE_NAME)return <ExampleConfirmation store={{...s,sellsProducts:s.business?.sellsProducts??true}} slug={slug} order={order}/>;
+  if(s?.template?.name===TASTEHOUSE_TEMPLATE_NAME)return <TasteHouseConfirmation store={{...s,sellsProducts:s.business?.sellsProducts??true}} slug={slug} order={order}/>;
+  const data=await getGrandeurRestaurantData(slug);
+  if(data)return <GrandeurConfirmation store={data.store} slug={slug} order={order}/>;
+  if(!s||s.status!=="ACTIVE")notFound();
+  return <OrderConfirmation slug={slug} storeName={s.name} order={order} palette={resolveStorePalette(s)}/>;
+}

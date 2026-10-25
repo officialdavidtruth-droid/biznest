@@ -7,6 +7,7 @@ import { resolveStoreTheme } from "@/lib/template-themes";
 import { CatalogItemDetail } from "@/components/storefront/catalog-item-detail";
 import { JsonLd } from "@/components/seo/json-ld";
 import { NO_INDEX, absoluteUrl as absUrl, cleanDescription, storeUrl } from "@/lib/seo";
+import { TrackViewItem } from "@/components/storefront/store-tracking";
 
 export async function generateMetadata({ params }: { params: Promise<{ slug: string; serviceId: string }> }): Promise<Metadata> {
   const { slug, serviceId } = await params;
@@ -86,5 +87,5 @@ export default async function ServicePage({ params }: { params: Promise<{ slug: 
       { "@type": "ListItem", position: 2, name: service.name, item: url },
     ],
   };
-  return <><JsonLd data={store.seoNoIndex ? [] : [serviceLd, breadcrumbLd]} /><CatalogItemDetail store={{...store,sellsProducts:store.business?.sellsProducts??true} as any} slug={slug} service={service} reviewStats={reviewStats} theme={theme} businessCategory={getCanonicalBusinessType({ businessCategory: store.business?.category, storeBusinessType: store.businessType })} /></>;
+  return <><JsonLd data={store.seoNoIndex ? [] : [serviceLd, breadcrumbLd]} /><TrackViewItem slug={slug} currency={service.currency} item={{ id: service.id, name: service.name, price: Number(service.price) }} /><CatalogItemDetail store={{...store,sellsProducts:store.business?.sellsProducts??true} as any} slug={slug} service={service} reviewStats={reviewStats} theme={theme} businessCategory={getCanonicalBusinessType({ businessCategory: store.business?.category, storeBusinessType: store.businessType })} /></>;
 }

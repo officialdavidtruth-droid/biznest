@@ -11,9 +11,18 @@ import { getGrandeurRestaurantData } from "@/lib/grandeur-restaurant";
 import { TasteHouseCheckout } from "@/components/storefront/tastehouse";
 import { TASTEHOUSE_TEMPLATE_NAME, EXAMPLE_TEMPLATE_NAME } from "@/lib/template-themes";
 import { ExampleStorefront } from "@/components/storefront/example-store";
+import { TrackBeginCheckout } from "@/components/storefront/store-tracking";
 
+// One wrapper for every checkout skin (default, hotel, restaurant, TasteHouse,
+// Example): the begin-checkout event fires once the buyer's cart is loaded,
+// whichever template renders. redirect()/notFound() inside still propagate.
 export default async function CheckoutPage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
+  const view = await renderCheckout(slug);
+  return <><TrackBeginCheckout slug={slug} />{view}</>;
+}
+
+async function renderCheckout(slug: string) {
   const rawStore = await prisma.store.findUnique({ where: { slug }, include: { template: true, business: true } });
   if (!rawStore || rawStore.status !== "ACTIVE") notFound();
   const isHotel = isHotelStore({ businessCategory: rawStore.business?.category, storeBusinessType: rawStore.businessType, templateName: rawStore.template?.name });
