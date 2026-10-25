@@ -72,6 +72,7 @@ export function AppShell() {
       el.classList.remove("bn-page-enter");
       void el.offsetWidth;
       el.classList.add("bn-page-enter");
+      el.addEventListener("animationend", () => el.classList.remove("bn-page-enter"), { once: true });
     }
   }, [routeKey, active]);
 

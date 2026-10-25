@@ -1336,8 +1336,9 @@ a.ex-mini{text-decoration:none}
 .bn-ptr-spin { animation: bn-ptr-rot .8s linear infinite; }
 @keyframes bn-ptr-rot { to { transform: rotate(360deg); } }
 
-.bn-page-enter { animation: bn-app-page-in .28s cubic-bezier(.2,.8,.2,1) both; }
-@keyframes bn-app-page-in { from { opacity: 0; transform: translate3d(0, 14px, 0); } to { opacity: 1; transform: none; } }
+/* Opacity only, no fill-mode: a transform (even a filling one) on this wrapper would trap every position:fixed bar (dashboard tabs, guide button) inside the page. */
+.bn-page-enter { animation: bn-app-page-in .22s ease-out; }
+@keyframes bn-app-page-in { from { opacity: 0; } to { opacity: 1; } }
 
 .bn-welcome-logo { animation: bn-splash-pop .7s cubic-bezier(.2,1.3,.4,1) both; }
 .bn-welcome-rise { animation: bn-fade-up .55s ease both; }

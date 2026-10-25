@@ -77,14 +77,14 @@ export function SupportChat() {
   const showChips = msgs.length <= 1;
 
   return (
-    <div className="flex h-[min(560px,calc(100dvh-220px))] min-h-[360px] flex-col overflow-hidden rounded-2xl border bg-background" data-no-pull>
-      <div className="flex items-center gap-2 border-b px-4 py-3">
+    <div className="flex h-[calc(100dvh-330px)] min-h-[300px] max-h-[600px] lg:h-[560px] flex-col overflow-hidden rounded-2xl border bg-background" data-no-pull>
+      <div className="flex shrink-0 items-center gap-2 border-b px-3 py-2.5">
         <span className="flex h-8 w-8 items-center justify-center rounded-full bg-primary/10 text-primary"><Sparkles className="h-4 w-4" /></span>
         <div className="leading-tight">
           <p className="text-sm font-semibold">BizNest assistant</p>
-          <p className="text-[11px] text-muted-foreground">Instant answers. A person is one tap away.</p>
+          <p className="hidden text-[11px] text-muted-foreground sm:block">Instant answers. A person is one tap away.</p>
         </div>
-        <a href={mailto(msgs)} className="ml-auto inline-flex items-center gap-1 rounded-full border px-3 py-1.5 text-xs font-medium">
+        <a href={mailto(msgs)} className="ml-auto inline-flex shrink-0 items-center gap-1 whitespace-nowrap rounded-full border px-3 py-1.5 text-xs font-medium">
           <UserRound className="h-3.5 w-3.5" /> Talk to a person
         </a>
       </div>
@@ -124,7 +124,7 @@ export function SupportChat() {
         <div ref={endRef} />
       </div>
 
-      <form onSubmit={(e) => { e.preventDefault(); send(input); }} className="flex items-center gap-2 border-t p-3">
+      <form onSubmit={(e) => { e.preventDefault(); send(input); }} className="flex shrink-0 items-center gap-2 border-t p-2.5">
         <input
           value={input}
           onChange={(e) => setInput(e.target.value)}
