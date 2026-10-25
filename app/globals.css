@@ -1308,11 +1308,29 @@ a.ex-mini{text-decoration:none}
 .lux-v-framed .lux-hero-inner h1{font-weight:600;font-size:clamp(40px,5vw,66px);letter-spacing:-.02em}
 
 /* ===== BizNest native app mode (html[data-app], set by <AppShell/>) ===== */
-.bn-logo-loader { position: relative; display: inline-block; }
-.bn-logo-loader-img { border-radius: 24%; animation: bn-logo-breathe 1.4s ease-in-out infinite; }
-.bn-logo-loader-ring { position: absolute; inset: -8px; border-radius: 30%; border: 2px solid #0f6410; opacity: 0; animation: bn-logo-ring 1.4s ease-out infinite; }
-@keyframes bn-logo-breathe { 0%,100% { transform: scale(.92); } 50% { transform: scale(1.04); } }
-@keyframes bn-logo-ring { 0% { opacity: .55; transform: scale(.9); } 100% { opacity: 0; transform: scale(1.35); } }
+.bn-logo-loader { position: relative; display: inline-flex; align-items: center; justify-content: center; isolation: isolate; }
+/* soft green glow that breathes behind the logo */
+.bn-logo-loader-glow { position: absolute; inset: -22%; border-radius: 50%; background: radial-gradient(circle, rgba(15,100,16,.35), transparent 68%); z-index: -1; animation: bn-logo-glow 1.8s ease-in-out infinite; }
+/* spinning comet ring: a conic gradient masked down to a thin stroke */
+.bn-logo-loader-orbit { position: absolute; inset: -14%; border-radius: 50%; z-index: 0;
+  background: conic-gradient(from 0deg, rgba(15,100,16,0) 0deg, rgba(15,100,16,0) 90deg, #34b43a 300deg, #0f6410 345deg, rgba(15,100,16,0) 360deg);
+  -webkit-mask: radial-gradient(farthest-side, transparent calc(100% - 3px), #000 calc(100% - 2.5px));
+          mask: radial-gradient(farthest-side, transparent calc(100% - 3px), #000 calc(100% - 2.5px));
+  animation: bn-logo-orbit 1.3s cubic-bezier(.45,.1,.55,.9) infinite; }
+/* bright dot riding the head of the comet */
+.bn-logo-loader-dot { position: absolute; inset: -14%; z-index: 0; animation: bn-logo-orbit 1.3s cubic-bezier(.45,.1,.55,.9) infinite; }
+.bn-logo-loader-dot::after { content: ""; position: absolute; top: -1px; left: 50%; width: 7px; height: 7px; margin-left: -3.5px; border-radius: 50%; background: #5ddc63; box-shadow: 0 0 10px 2px rgba(93,220,99,.8); transform: translateY(-1px); }
+/* expanding pulse ring */
+.bn-logo-loader-ring { position: absolute; inset: -4px; border-radius: 30%; border: 2px solid #0f6410; opacity: 0; z-index: 0; animation: bn-logo-ring 1.8s ease-out infinite; }
+/* logo with a light sweep passing across it */
+.bn-logo-loader-mark { position: relative; z-index: 1; display: block; border-radius: 24%; overflow: hidden; animation: bn-logo-breathe 1.8s ease-in-out infinite; box-shadow: 0 6px 20px rgba(15,100,16,.28); }
+.bn-logo-loader-img { display: block; width: 100%; height: 100%; }
+.bn-logo-loader-shine { position: absolute; inset: 0; background: linear-gradient(115deg, transparent 35%, rgba(255,255,255,.55) 50%, transparent 65%); transform: translateX(-120%); animation: bn-logo-shine 1.8s ease-in-out infinite; }
+@keyframes bn-logo-breathe { 0%,100% { transform: scale(.9); } 50% { transform: scale(1); } }
+@keyframes bn-logo-orbit { to { transform: rotate(360deg); } }
+@keyframes bn-logo-glow { 0%,100% { opacity: .5; transform: scale(.9); } 50% { opacity: 1; transform: scale(1.1); } }
+@keyframes bn-logo-ring { 0% { opacity: .5; transform: scale(.95); } 100% { opacity: 0; transform: scale(1.5); } }
+@keyframes bn-logo-shine { 0%,25% { transform: translateX(-120%); } 70%,100% { transform: translateX(120%); } }
 
 .bn-splash { position: fixed; inset: 0; z-index: 100000; display: flex; flex-direction: column; align-items: center; justify-content: center; background: #0f6410; transition: opacity .45s ease, transform .45s ease; }
 .bn-splash-out { opacity: 0; transform: scale(1.06); pointer-events: none; }
@@ -1352,7 +1370,7 @@ html[data-app] a:active, html[data-app] button:not(:disabled):active, html[data-
 html[data-app] .bn-web-only { display: none !important; }
 
 @media (prefers-reduced-motion: reduce) {
-  .bn-splash *, .bn-page-enter, .bn-welcome-logo, .bn-welcome-rise, .bn-logo-loader-img, .bn-logo-loader-ring { animation-duration: .01ms !important; animation-iteration-count: 1 !important; }
+  .bn-splash *, .bn-page-enter, .bn-welcome-logo, .bn-welcome-rise, .bn-logo-loader-mark, .bn-logo-loader-glow, .bn-logo-loader-orbit, .bn-logo-loader-dot, .bn-logo-loader-shine, .bn-logo-loader-ring { animation-duration: .01ms !important; animation-iteration-count: 1 !important; }
 }
 
 /* ----- App tab bar (storefront) ----- */

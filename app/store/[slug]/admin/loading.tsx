@@ -12,18 +12,16 @@
 //      immediately on click, independent of any template's layout, so it
 //      never looks broken sitting on top of a hero image, a light theme,
 //      or a dark one.
-//   2. A centered spinner using the same jade token as the platform's own
-//      root loading.tsx, so the two loading states feel like one system.
+//   2. The animated BizNest logo (same LogoLoader as the platform's root
+//      loading.tsx), so the two loading states feel like one system.
+import { LogoLoader } from "@/components/app/logo-loader";
+
 export default function StorefrontLoading() {
   return (
     <>
       <div className="bn-store-progress" role="status" aria-label="Loading" />
       <div className="flex min-h-[70vh] items-center justify-center">
-        <div
-          className="h-8 w-8 animate-spin rounded-full border-2 border-t-transparent"
-          style={{ borderColor: "var(--bn-jade)", borderTopColor: "transparent" }}
-          aria-hidden="true"
-        />
+        <LogoLoader size={72} />
       </div>
       <style>{`
         .bn-store-progress {
