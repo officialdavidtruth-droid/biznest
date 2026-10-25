@@ -8,6 +8,7 @@ import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { SignOutButton } from "@/components/forms/sign-out-button";
 import { ALL_BUSINESS_TYPE_NAMES } from "@/lib/capabilities";
+import { DownloadAppLink } from "@/components/site/download-app-link";
 import { FaqAccordion } from "@/components/site/faq-accordion";
 import { StorefrontPreviewMock } from "@/components/site/storefront-preview-mock";
 
@@ -206,6 +207,9 @@ export default async function HomePage() {
           <a href="#pricing" className="hidden opacity-80 transition hover:opacity-100 sm:inline">
             Pricing
           </a>
+          <DownloadAppLink className="hidden opacity-80 transition hover:opacity-100 md:inline">
+            Get the app
+          </DownloadAppLink>
           {session?.user ? (
             <>
               <Link href={dashboardHref} className="opacity-80 transition hover:opacity-100">
@@ -289,6 +293,13 @@ export default async function HomePage() {
                 </Link>
               </>
             )}
+            <DownloadAppLink
+              icon
+              className="rounded-full px-6 py-3 text-sm font-medium transition hover:brightness-110"
+              style={{ background: "var(--bn-ivory)", color: "var(--bn-ink)" }}
+            >
+              Download the app
+            </DownloadAppLink>
           </div>
           <div
             className="mt-10 flex gap-8 text-sm"
@@ -517,6 +528,13 @@ export default async function HomePage() {
             >
               Browse stores first
             </Link>
+            <DownloadAppLink
+              icon
+              className="inline-block rounded-full px-8 py-3.5 text-sm font-medium transition"
+              style={{ background: "var(--bn-ivory)", color: "var(--bn-ink)" }}
+            >
+              Download the app
+            </DownloadAppLink>
           </div>
         </div>
       </section>
@@ -538,6 +556,7 @@ export default async function HomePage() {
             <ul className="space-y-2 text-sm" style={{ color: "var(--bn-mute)" }}>
               <li><Link href="/register" className="hover:opacity-80">Open a store</Link></li>
               <li><Link href="/login" className="hover:opacity-80">Sign in</Link></li>
+              <li><Link href="/download" className="hover:opacity-80">Download the app</Link></li>
               <li><a href="#pricing" className="hover:opacity-80">Pricing</a></li>
               <li><a href="#categories" className="hover:opacity-80">Categories</a></li>
             </ul>
