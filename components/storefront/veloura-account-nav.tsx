@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { CalendarDays, Heart, WalletCards, Star, MessageCircle, Headphones, LogOut, UserRound, Settings2, LayoutDashboard, Package, MapPin, Bell, Wallet } from "lucide-react";
+import { CalendarDays, Heart, WalletCards, Star, MessageCircle, Headphones, LogOut, UserRound, Settings2, LayoutDashboard, Package, MapPin, Bell, Wallet, Gift, Share2 } from "lucide-react";
 import { SignOutButton } from "@/components/forms/sign-out-button";
 
 type NavItem = {
@@ -13,7 +13,7 @@ type NavItem = {
   badge?: number;
 };
 
-const ICONS = { UserRound, CalendarDays, Heart, Star, WalletCards, Settings2, MessageCircle, Headphones, LayoutDashboard, Package, MapPin, Bell, Wallet };
+const ICONS = { UserRound, CalendarDays, Heart, Star, WalletCards, Settings2, MessageCircle, Headphones, LayoutDashboard, Package, MapPin, Bell, Wallet, Gift, Share2 };
 
 export function VelouraAccountNav({
   slug,

@@ -85,6 +85,14 @@ export const PAGE_GUIDES: Record<string, PageGuide> = {
     s("Create a code", "Set the code, the discount and when it expires."),
     s("Share it", "Give the code to customers. You can pause or delete it any time."),
   ]),
+  "/gift-cards": g("Gift cards", "Stored-value cards customers can spend with you.", [
+    s("Issue a card", "Enter an amount (and a recipient email if it is a gift). You get a code to hand over."),
+    s("Take it in store", "When a customer pays with a card, enter the code and amount to deduct it."),
+  ]),
+  "/referrals": g("Referrals", "Reward customers who bring friends.", [
+    s("Set the rewards", "Choose how many points the referrer and the new customer each get."),
+    s("Switch it on", "Customers then see a personal link in their account. Rewards are paid on the friend's first completed order."),
+  ]),
   "/abandoned-checkouts": g("Abandoned checkouts", "Shoppers who left before paying.", [
     s("Review them", "See who left and what was in their cart."),
     s("Follow up", "Send a reminder or a small discount to win the sale back."),

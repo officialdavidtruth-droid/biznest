@@ -5,9 +5,9 @@ import { getStoreBranding } from "@/lib/actions/store-branding";
 export default async function RegisterPage({
   searchParams,
 }: {
-  searchParams: Promise<{ email?: string; callbackUrl?: string; store?: string }>;
+  searchParams: Promise<{ email?: string; callbackUrl?: string; store?: string; ref?: string }>;
 }) {
-  const { email, callbackUrl, store: storeSlug } = await searchParams;
+  const { email, callbackUrl, store: storeSlug, ref: referralCode } = await searchParams;
   const store = await getStoreBranding(storeSlug);
 
   return (
@@ -29,7 +29,7 @@ export default async function RegisterPage({
       sellsProducts={store?.sellsProducts}
       offersServices={store?.offersServices}
     >
-      <RegisterForm defaultEmail={email} callbackUrl={callbackUrl} storeSlug={storeSlug} />
+      <RegisterForm defaultEmail={email} callbackUrl={callbackUrl} storeSlug={storeSlug} referralCode={referralCode} />
     </AuthShell>
   );
 }

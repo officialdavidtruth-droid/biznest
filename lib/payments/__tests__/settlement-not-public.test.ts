@@ -7,7 +7,7 @@ import path from "path";
  * do no auth of their own. Exporting them from a "use server" file would make
  * them callable endpoints, so they must live in server-only modules.
  */
-const FORBIDDEN = /export\s+async\s+function\s+(settle[A-Z]\w*|decrementStockForOrder|awardLoyaltyPointsForOrder|awardStoreLoyaltyPointsForOrder|confirmPaidBooking)\b/;
+const FORBIDDEN = /export\s+async\s+function\s+(settle[A-Z]\w*|decrementStockForOrder|awardLoyaltyPointsForOrder|awardStoreLoyaltyPointsForOrder|awardReferralRewardForOrder|issueGiftCard|redeemGiftCard|refundGiftCardRedemptionsForOrder|confirmPaidBooking)\b/;
 
 function walk(dir: string): string[] {
   return fs.readdirSync(dir, { withFileTypes: true }).flatMap((e) => {
@@ -27,7 +27,7 @@ describe("payment settlement helpers are not server actions", () => {
   });
 
   it("every lib/payments settlement module imports server-only", () => {
-    const files = fs.readdirSync("lib/payments").filter((f) => /^(settle-|stock|loyalty-award|booking-confirmation)/.test(f) && f.endsWith(".ts"));
+    const files = fs.readdirSync("lib/payments").filter((f) => /^(settle-|stock|loyalty-award|referral-award|gift-card|booking-confirmation)/.test(f) && f.endsWith(".ts"));
     expect(files.length).toBeGreaterThan(0);
     for (const f of files) {
       expect(fs.readFileSync(path.join("lib/payments", f), "utf8"), f).toContain('import "server-only";');

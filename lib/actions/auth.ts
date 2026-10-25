@@ -8,11 +8,13 @@ import { registerSchema, forgotPasswordSchema, resetPasswordSchema, resendVerifi
 import { sendVerificationEmail, sendPasswordResetEmail, storeEmailBrand, type StoreEmailBrand } from "@/lib/email/send";
 import { checkRateLimit, getClientIp } from "@/lib/rate-limit";
 import { emitPlatformWebhookEvent } from "@/lib/webhooks/dispatch";
+import { attachReferral } from "@/lib/referrals/attach";
 import type { ActionResult } from "@/types/actions";
 
 export async function registerUser(
   input: RegisterInput,
-  storeSlug?: string
+  storeSlug?: string,
+  referralCode?: string
 ): Promise<ActionResult<{ userId: string }>> {
   const ip = getClientIp(await headers());
 
@@ -102,6 +104,17 @@ export async function registerUser(
   if (storeForCustomer) {
     await prisma.storeCustomer.create({ data: { userId: user.id, storeId: storeForCustomer.id } });
     await prisma.storeCustomerProfile.create({ data: { userId: user.id, storeId: storeForCustomer.id, name: parsed.data.name, email: normalizedEmail } });
+
+    // Arrived through a friend's referral link (?ref=CODE). Best-effort: an
+    // invalid/expired code or a program that's been switched off must never
+    // block account creation.
+    if (referralCode) {
+      try {
+        await attachReferral({ storeId: storeForCustomer.id, refereeId: user.id, code: referralCode.slice(0, 32) });
+      } catch (err) {
+        console.error("Failed to attach referral at signup:", err);
+      }
+    }
   }
 
   const token = nanoid(32);

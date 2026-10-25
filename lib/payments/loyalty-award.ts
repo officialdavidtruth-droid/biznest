@@ -2,6 +2,7 @@ import "server-only";
 
 import { prisma } from "@/lib/prisma";
 import { getLoyaltyRates } from "@/lib/actions/site-settings";
+import { awardReferralRewardForOrder } from "@/lib/payments/referral-award";
 
 /**
  * System-triggered loyalty awards (no auth check of their own).
@@ -58,6 +59,13 @@ export async function awardLoyaltyPointsForOrder(orderId: string): Promise<void>
 }
 
 export async function awardStoreLoyaltyPointsForOrder(orderId: string): Promise<void> {
+  // Referral rewards ride on the same "order completed" trigger. Independent of
+  // the points-earned early returns below, and never allowed to break completion.
+  try {
+    await awardReferralRewardForOrder(orderId);
+  } catch (err) {
+    console.error("[referral] reward failed for order", orderId, err);
+  }
   const order = await prisma.order.findUnique({ where: { id: orderId } });
   if (!order) return;
   const alreadyAwarded = await prisma.storeLoyaltyEntry.findFirst({ where: { orderId, type: "EARN" } });

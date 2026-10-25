@@ -20,6 +20,8 @@ export function StoreAccountLegacyShell({ children, slug, store, membership, unr
     { key: "wishlist", href: `/store/${slug}/account/wishlist`, label: copy.wishlist, iconKey: "Heart" },
     ...(nav.sellsProducts ? [{ key: "addresses", href: `/store/${slug}/account/addresses`, label: "Addresses", iconKey: "MapPin" }] : []),
     { key: "rewards", href: `/store/${slug}/account/loyalty`, label: "Rewards", iconKey: "Bell" },
+    { key: "referrals", href: `/store/${slug}/account/referrals`, label: "Refer a friend", iconKey: "Share2" },
+    { key: "giftcards", href: `/store/${slug}/account/gift-cards`, label: "Gift cards", iconKey: "Gift" },
     { key: "payments", href: `/store/${slug}/account/wallet`, label: "Wallet", iconKey: "Wallet" },
     ...(nav.offersServices ? [{ key: "bookings", href: `/store/${slug}/account/bookings`, label: copy.bookings, iconKey: "CalendarDays" }] : []),
     { key: "reviews", href: `/store/${slug}/account/reviews`, label: "My Reviews", iconKey: "Star" },

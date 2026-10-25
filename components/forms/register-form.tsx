@@ -18,10 +18,12 @@ export function RegisterForm({
   defaultEmail,
   callbackUrl,
   storeSlug,
+  referralCode,
 }: {
   defaultEmail?: string;
   callbackUrl?: string;
   storeSlug?: string;
+  referralCode?: string;
 }) {
   const router = useRouter();
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -36,7 +38,7 @@ export function RegisterForm({
 
   async function onSubmit(values: RegisterInput) {
     setIsSubmitting(true);
-    const result = await registerUser(values, storeSlug);
+    const result = await registerUser(values, storeSlug, referralCode);
     setIsSubmitting(false);
 
     if (!result.success) {
