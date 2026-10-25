@@ -866,9 +866,9 @@ export async function listBookings(
         },
       },
     },
-    orderBy: {
-      scheduledAt: "asc",
-    },
+    // Newest first: the latest reservation date is at the top, oldest at the
+    // bottom. createdAt breaks ties between bookings for the same time slot.
+    orderBy: [{ scheduledAt: "desc" }, { createdAt: "desc" }],
   });
 }
 
