@@ -15,6 +15,8 @@ import { WhatsAppChatButton } from "@/components/storefront/whatsapp-chat-button
 import { whatsappLink } from "@/lib/utils/whatsapp-link";
 import { NO_INDEX } from "@/lib/seo";
 import { InstallStoreApp } from "@/components/storefront/install-store-app";
+import { OrderPushPrompt } from "@/components/storefront/order-push-prompt";
+import { requireStoreCustomer } from "@/lib/actions/store-customer";
 import { logoVersion, storeBasePath } from "@/lib/store-pwa";
 
 // Every store page under /store/[slug] falls back to the root layout's
@@ -173,6 +175,8 @@ export default async function StoreLayout({
   // Install-as-app banner (customers on the storefront, not the admin).
   const pwaBase = storeBasePath((await headers()).get("host"), slug);
   const installable = !!exists && exists.status === "ACTIVE";
+  // Order-update push opt-in is only offered to a signed-in customer of this store.
+  const pushEligible = installable && !!(await requireStoreCustomer(slug));
 
   return (
     <>
@@ -188,6 +192,7 @@ export default async function StoreLayout({
       {installable && exists && (
         <InstallStoreApp slug={slug} storeName={exists.name} base={pwaBase} iconSrc={`${pwaBase}/pwa-icon/192`} />
       )}
+      {pushEligible && <OrderPushPrompt slug={slug} base={pwaBase} />}
       {chatHref && exists && <WhatsAppChatButton href={chatHref} storeName={exists.name} />}
       {showPromo && promo && promoPalette && <PromoPopup slug={slug} config={promo} palette={promoPalette} />}
     </>

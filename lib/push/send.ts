@@ -15,7 +15,7 @@ function ensureConfigured() {
   return true;
 }
 
-type PushPayload = { title: string; body: string; url?: string };
+type PushPayload = { title: string; body: string; url?: string; tag?: string };
 
 /**
  * Pushes to every device a user has subscribed from (phone + laptop both

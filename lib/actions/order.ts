@@ -27,7 +27,7 @@ import { storeHasPayoutTarget } from "@/lib/payments/payout-target";
 import { resolveStoreGateway } from "@/lib/payments/store-gateway";
 import { revalidatePath } from "next/cache";
 import { checkRateLimit } from "@/lib/rate-limit";
-import { notifyCustomerOfPaidOrder } from "@/lib/notifications/notify";
+import { notifyCustomerOfPaidOrder, notifyCustomerOfOrderStatus } from "@/lib/notifications/notify";
 import { runAutomationsForEvent } from "@/lib/automations/engine";
 import type { ActionResult } from "@/types/actions";
 import type {
@@ -1060,6 +1060,10 @@ export async function updateOrderStatus(
     await recomputeAndPersistTrustScore(
       access.store.business.id
     );
+  }
+
+  if (status !== order.status) {
+    void notifyCustomerOfOrderStatus(orderId, status);
   }
 
   if (

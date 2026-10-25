@@ -109,3 +109,39 @@ export async function notifyCustomerOfPaidOrder(orderId: string): Promise<void> 
     });
   }
       }
+
+const CUSTOMER_ORDER_PUSH: Record<string, { title: string; body: (store: string) => string }> = {
+  PAID: { title: "Payment received", body: (s) => `${s} has received your payment and will start on your order.` },
+  IN_PROGRESS: { title: "Your order is being prepared", body: (s) => `${s} is working on your order now.` },
+  DELIVERED: { title: "Your order is ready", body: (s) => `Your order from ${s} is ready.` },
+  COMPLETED: { title: "Order completed", body: (s) => `Your order from ${s} is complete. Thanks for shopping!` },
+  CANCELLED: { title: "Order cancelled", body: (s) => `Your order from ${s} was cancelled.` },
+  REFUNDED: { title: "Order refunded", body: (s) => `Your order from ${s} was refunded.` },
+};
+
+/**
+ * Push to the buyer when their order moves to a new status. Push-only (no
+ * Notification row): customers have no in-app bell, and the order page +
+ * email remain the source of truth. The url is store-relative; the store's
+ * service worker resolves it against its own scope (biznest.space/<slug> or
+ * a custom domain). Never throws -- it must not break a status update.
+ */
+export async function notifyCustomerOfOrderStatus(orderId: string, status: string): Promise<void> {
+  try {
+    const copy = CUSTOMER_ORDER_PUSH[status];
+    if (!copy) return;
+    const order = await prisma.order.findUnique({
+      where: { id: orderId },
+      select: { id: true, buyerId: true, store: { select: { name: true } } },
+    });
+    if (!order) return;
+    await sendPushToUser(order.buyerId, {
+      title: copy.title,
+      body: copy.body(order.store.name),
+      url: `/orders/${order.id}`,
+      tag: `order-${order.id}`,
+    });
+  } catch (err) {
+    void logError("MESSAGING", "Customer order push failed", { orderId, error: err instanceof Error ? err.message : String(err) });
+  }
+}
