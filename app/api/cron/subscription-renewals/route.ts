@@ -3,6 +3,7 @@ import { requireCronAuth } from "@/lib/cron-auth";
 import { chargePaystackAuthorization, verifyPaystackTransaction } from "@/lib/payments/paystack";
 import { notifyUser } from "@/lib/notifications/notify";
 import { NextResponse } from "next/server";
+import { expireLapsedTrial, TRIAL_REMINDER_DAYS } from "@/lib/billing/trial";
 import { logInfo, logError, errorMeta } from "@/lib/observability/log";
 
 /**
@@ -23,8 +24,13 @@ import { logInfo, logError, errorMeta } from "@/lib/observability/log";
  *     /onboarding/select-plan, same as a store that never paid.
  *
  * A store with no paystackAuthorizationCode (shouldn't happen post-checkout,
- * but covers manually-granted trials/admin overrides) is skipped entirely --
- * there's nothing to charge, and admin-granted access isn't this job's business.
+ * but covers manually-granted trials/admin overrides) is skipped by the
+ * charging steps -- there's nothing to charge.
+ *
+ * Free trials (trialEndsAt, no billing yet) are handled first: owners get a
+ * heads-up 3 days out, and once trialEndsAt passes the store is dropped back
+ * to unsubscribed (see lib/billing/trial.ts). The dashboard gate also checks
+ * this live, so access never depends on this job having run.
  */
 const GRACE_PERIOD_DAYS = 5;
 
@@ -42,6 +48,60 @@ export async function GET(req: Request) {
   let downgraded = 0;
   let pluginsCharged = 0;
   let pluginsSuspended = 0;
+  let trialReminded = 0;
+  let trialsExpired = 0;
+
+  // --- 0a. Trial-ending reminders ---
+  // Window is exactly one cron interval wide (2-3 days out) so each trial is
+  // reminded once, not on every daily run.
+  const trialWindowStart = new Date(now.getTime() + (TRIAL_REMINDER_DAYS - 1) * 24 * 60 * 60 * 1000);
+  const trialWindowEnd = new Date(now.getTime() + TRIAL_REMINDER_DAYS * 24 * 60 * 60 * 1000);
+  const endingTrials = await prisma.store.findMany({
+    where: {
+      trialEndsAt: { gt: trialWindowStart, lte: trialWindowEnd },
+      subscriptionRenewsAt: null,
+      subscriptionId: { not: null },
+    },
+    include: { business: true, subscription: true },
+    take: 500,
+  });
+  for (const store of endingTrials) {
+    try {
+      await notifyUser({
+        userId: store.business.userId,
+        type: "TRIAL_ENDING_SOON",
+        title: "Your free trial ends soon",
+        body: `Your ${store.subscription?.name ?? ""} trial ends on ${store.trialEndsAt?.toLocaleDateString()}. Subscribe before then to keep your dashboard unlocked.`,
+        url: `/store/${store.slug}/admin/subscription`,
+      });
+      trialReminded++;
+    } catch (err) {
+      void logError("JOBS", "Trial reminder failed", errorMeta(err, { storeId: store.id }));
+    }
+  }
+
+  // --- 0b. Expired trials -> back to unsubscribed ---
+  const lapsedTrials = await prisma.store.findMany({
+    where: { trialEndsAt: { lte: now }, subscriptionRenewsAt: null, subscriptionId: { not: null } },
+    include: { business: true },
+    take: 500,
+  });
+  for (const store of lapsedTrials) {
+    try {
+      // Atomic claim: if the dashboard gate already expired it, skip (no double notice).
+      if (!(await expireLapsedTrial(store.id, now))) continue;
+      await notifyUser({
+        userId: store.business.userId,
+        type: "TRIAL_ENDED",
+        title: "Your free trial has ended",
+        body: "Your dashboard is locked until you choose a plan. Your store data is safe.",
+        url: store.marketingOnly ? `/store/${store.slug}/admin/subscription` : `/onboarding/select-plan?slug=${store.slug}`,
+      });
+      trialsExpired++;
+    } catch (err) {
+      void logError("JOBS", "Trial expiry failed", errorMeta(err, { storeId: store.id }));
+    }
+  }
 
   // --- 1. Upcoming-renewal reminders (3-day heads up, not yet due) ---
   const upcoming = await prisma.store.findMany({
@@ -203,8 +263,8 @@ export async function GET(req: Request) {
     }
   }
 
-  void logInfo("JOBS", "Subscription renewal sweep complete", { reminded, charged, failed, downgraded, pluginsCharged, pluginsSuspended });
-  return NextResponse.json({ reminded, charged, failed, downgraded, pluginsCharged, pluginsSuspended });
+  void logInfo("JOBS", "Subscription renewal sweep complete", { reminded, charged, failed, downgraded, pluginsCharged, pluginsSuspended, trialReminded, trialsExpired });
+  return NextResponse.json({ reminded, charged, failed, downgraded, pluginsCharged, pluginsSuspended, trialReminded, trialsExpired });
 }
 
 async function handleRenewalFailure(

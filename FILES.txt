@@ -1,0 +1,34 @@
+BizNest changes - copy each file to the same path in your repo root
+
+#1 Trial expiry
+  lib/billing/trial.ts
+  app/api/cron/subscription-renewals/route.ts
+  app/store/[slug]/admin/layout.tsx
+  lib/actions/subscription.ts
+  app/api/payments/paystack/subscription-callback/route.ts
+  app/api/payments/paystack/webhook/route.ts
+  app/api/payments/flutterwave/subscription-callback/route.ts
+  app/api/payments/flutterwave/webhook/route.ts
+
+#2 Private KYC documents (#6 Guarantor errors is in business.ts + business-verification-form.tsx)
+  lib/kyc-storage.ts
+  app/api/upload/route.ts
+  app/api/admin/kyc-doc/route.ts
+  components/forms/file-upload-field.tsx
+  components/forms/business-verification-form.tsx
+  lib/actions/business.ts
+  app/supaadmin/businesses/[businessId]/page.tsx
+  scripts/migrate-kyc-to-private.ts
+
+#5 Verification resend
+  lib/actions/auth.ts
+  lib/validations/auth.ts
+  components/forms/resend-verification.tsx
+  components/forms/login-form.tsx
+  app/verify-email/page.tsx
+
+#4 Google sign-in
+  lib/auth.ts
+  lib/auth-adapter.ts
+  lib/__tests__/google-sign-in.test.ts
+  (components/forms/login-form.tsx is shared by #5 and #4)

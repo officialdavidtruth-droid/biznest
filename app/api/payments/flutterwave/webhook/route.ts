@@ -144,8 +144,8 @@ export async function POST(req: Request) {
     if (!store || !plan || !payment || payment.storeId !== store.id || !amountMatches || !paymentMatches) {
       return NextResponse.json({ received: true });
     }
-    if (store.subscriptionId !== subscriptionId) {
-      await prisma.store.update({ where: { id: store.id }, data: { subscriptionId } });
+    if (store.subscriptionId !== subscriptionId || store.trialEndsAt) {
+      await prisma.store.update({ where: { id: store.id }, data: { subscriptionId, trialEndsAt: null } });
     }
     await prisma.payment.updateMany({
       where: { reference: txRef, status: "PENDING" },

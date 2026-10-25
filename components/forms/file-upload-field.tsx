@@ -7,11 +7,14 @@ export function FileUploadField({
   value,
   onChange,
   error,
+  privateDoc = false,
 }: {
   label: string;
   value?: string;
   onChange: (url: string) => void;
   error?: string;
+  /** KYC/ID documents: uploaded privately, so no thumbnail can be shown. */
+  privateDoc?: boolean;
 }) {
   const [isUploading, setIsUploading] = useState(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
@@ -22,6 +25,7 @@ export function FileUploadField({
     try {
       const formData = new FormData();
       formData.append("file", file);
+      if (privateDoc) formData.append("purpose", "kyc");
       const res = await fetch("/api/upload", { method: "POST", body: formData });
       const body = await res.json().catch(() => null);
 
@@ -40,9 +44,12 @@ export function FileUploadField({
   return (
     <div>
       {label && <label className="mb-1 block text-sm font-medium">{label}</label>}
-      {value && !isUploading && (
+      {value && !isUploading && !privateDoc && (
         // eslint-disable-next-line @next/next/no-img-element
         <img src={value} alt="" className="mb-2 h-20 w-20 rounded-md border object-cover" />
+      )}
+      {value && !isUploading && privateDoc && (
+        <p className="mb-2 text-xs font-medium text-emerald-700">✓ Uploaded securely — only BizNest reviewers can view it.</p>
       )}
       <input
         type="file"

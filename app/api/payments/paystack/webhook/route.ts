@@ -166,6 +166,7 @@ export async function POST(req: Request) {
           : store.paystackAuthorizationCode,
         subscriptionRenewsAt: nextRenewal,
         subscriptionPastDueSince: null,
+        trialEndsAt: null, // converted: no longer a trial
       },
     });
     return NextResponse.json({ received: true });

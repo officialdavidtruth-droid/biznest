@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { prisma } from "@/lib/prisma";
+import { ResendVerification } from "@/components/forms/resend-verification";
 
 /**
  * Consumes the token from sendVerificationEmail (lib/email/send.ts). This
@@ -30,21 +31,31 @@ export default async function VerifyEmailPage({
     return (
       <Message
         title="Invalid verification link"
-        body="This link is invalid. It may have already been used — if your email is already verified, you can just sign in."
+        body="This link is invalid. It may have already been used — if your email is already verified, you can just sign in. Otherwise, request a new link below."
         cta
+        resend={{}}
       />
     );
   }
 
   if (record.expires < new Date()) {
+    // Look the account up first so the resend control below can be pre-filled
+    // and sent to the right account (a store customer vs. a platform account).
+    const owner = await prisma.user.findUnique({
+      where: { id: record.identifier },
+      select: { email: true, customerScopeStoreId: true },
+    });
+    const ownerStore = owner?.customerScopeStoreId
+      ? await prisma.store.findUnique({ where: { id: owner.customerScopeStoreId }, select: { slug: true } })
+      : null;
     // One-time use, so a stale/expired token is deleted here too rather
     // than left to linger in the table.
     await prisma.verificationToken.delete({ where: { token } }).catch(() => {});
     return (
       <Message
         title="Link expired"
-        body="This verification link has expired. Sign in and we'll send you a fresh one."
-        cta
+        body="This verification link has expired. Request a new one below."
+        resend={{ email: owner?.email, storeSlug: ownerStore?.slug }}
       />
     );
   }
@@ -67,11 +78,26 @@ export default async function VerifyEmailPage({
   );
 }
 
-function Message({ title, body, cta }: { title: string; body: string; cta?: boolean }) {
+function Message({
+  title,
+  body,
+  cta,
+  resend,
+}: {
+  title: string;
+  body: string;
+  cta?: boolean;
+  resend?: { email?: string | null; storeSlug?: string | null };
+}) {
   return (
     <div className="mx-auto flex min-h-[60vh] max-w-md flex-col items-center justify-center px-6 text-center">
       <h1 className="text-xl font-semibold">{title}</h1>
       <p className="mt-2 text-sm text-muted-foreground">{body}</p>
+      {resend && (
+        <div className="mt-6 w-full">
+          <ResendVerification defaultEmail={resend.email ?? undefined} storeSlug={resend.storeSlug ?? undefined} heading="Send me a new verification link" />
+        </div>
+      )}
       {cta && (
         <Link
           href="/login"

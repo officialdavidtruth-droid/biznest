@@ -60,7 +60,7 @@ export async function GET(req: Request) {
     const amountMatches = plan && Number(verification.data.amount) >= Number(plan.price);
 
     if (plan && amountMatches) {
-      await prisma.store.update({ where: { id: store.id }, data: { subscriptionId } });
+      await prisma.store.update({ where: { id: store.id }, data: { subscriptionId, trialEndsAt: null } });
       await prisma.payment.updateMany({
         where: { reference: txRef, status: "PENDING" },
         data: { status: "SUCCESSFUL", rawPayload: verification as object, verifiedAt: new Date() },

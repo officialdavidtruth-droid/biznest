@@ -55,3 +55,10 @@ export type LoginInput = z.infer<typeof loginSchema>;
 export type RegisterInput = z.infer<typeof registerSchema>;
 export type ForgotPasswordInput = z.infer<typeof forgotPasswordSchema>;
 export type ResetPasswordInput = z.infer<typeof resetPasswordSchema>;
+
+export const resendVerificationSchema = z.object({
+  email: z.string().email(),
+  storeSlug: z.string().min(1).optional(),
+});
+
+export type ResendVerificationInput = z.infer<typeof resendVerificationSchema>;

@@ -4,7 +4,8 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { loginSchema, type LoginInput } from "@/lib/validations/auth";
 import { signIn, getSession } from "next-auth/react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { ResendVerification } from "@/components/forms/resend-verification";
 import { useSearchParams } from "next/navigation";
 import { toast } from "sonner";
 import { Mail } from "lucide-react";
@@ -39,6 +40,17 @@ export function LoginForm({
   const prefillEmail = searchParams.get("email") ?? undefined;
   const marketingStoreSlug = searchParams.get("marketingStore") ?? undefined;
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // Auth.js sends failed Google sign-ins back here as /login?error=<code>.
+  const oauthError = searchParams.get("error");
+  useEffect(() => {
+    if (!oauthError) return;
+    const messages: Record<string, string> = {
+      OAuthAccountNotLinked: "An account with this email already exists. Sign in with your email and password instead.",
+      AccessDenied: "Google sign-in isn't available for this account. Use your email and password.",
+    };
+    toast.error(messages[oauthError] ?? "Google sign-in failed. Please try again.");
+  }, [oauthError]);
 
   const {
     register,
@@ -162,6 +174,8 @@ export function LoginForm({
         <AuthDivider />
         <GoogleButton onClick={() => signIn("google", { callbackUrl })} />
       </>}
+
+      <ResendVerification defaultEmail={prefillEmail} storeSlug={isStoreContext ? storeSlug : undefined} />
 
       <p className="text-center text-sm text-muted-foreground">
         Don&apos;t have an account?{" "}

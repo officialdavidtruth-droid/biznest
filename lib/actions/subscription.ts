@@ -51,7 +51,8 @@ export async function initiatePlanUpgrade(
   // through the normal charge below, and a store can only ever get this
   // trial once (this same check blocks re-triggering it by downgrading
   // back to this plan after the trial ends).
-  const isFirstPlanChoice = !store.subscriptionId;
+  // trialEndsAt is kept (in the past) after a trial lapses, so it also marks "trial already used".
+  const isFirstPlanChoice = !store.subscriptionId && !store.trialEndsAt;
   const trialSetting = store.marketingOnly ? await getMarketingFreeTrialSetting() : await getFreeTrialSetting();
   const trialApplies = isFirstPlanChoice && trialSetting.enabled && trialSetting.planId === plan.id;
   if (trialApplies) {

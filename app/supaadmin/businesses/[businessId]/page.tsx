@@ -49,11 +49,11 @@ export default async function BusinessDetailPage({
 
       <Section title="Documents">
         {business.registrationType === "REGISTERED" ? (
-          <DocLink label="Business registration certificate" url={business.registrationCertUrl} />
+          <DocLink label="Business registration certificate" url={business.registrationCertUrl} href={kycDocHref(business.id, "cert")} />
         ) : (
           <div className="space-y-2">
-            <DocLink label="Government-issued ID" url={business.governmentIdUrl} />
-            <DocLink label="Selfie verification" url={business.selfieUrl} />
+            <DocLink label="Government-issued ID" url={business.governmentIdUrl} href={kycDocHref(business.id, "id")} />
+            <DocLink label="Selfie verification" url={business.selfieUrl} href={kycDocHref(business.id, "selfie")} />
           </div>
         )}
       </Section>
@@ -65,7 +65,7 @@ export default async function BusinessDetailPage({
               <div key={g.id} className="rounded-md border p-3 text-sm">
                 <p className="font-medium">{g.fullName} — {g.relationship}</p>
                 <p className="text-muted-foreground">{g.phone} · {g.email}</p>
-                <DocLink label="Government ID" url={g.governmentIdUrl} />
+                <DocLink label="Government ID" url={g.governmentIdUrl} href={kycDocHref(business.id, "guarantor", g.id)} />
               </div>
             ))}
           </div>
@@ -107,11 +107,19 @@ function Field({ label, value }: { label: string; value: string }) {
   );
 }
 
-function DocLink({ label, url }: { label: string; url: string | null }) {
+// KYC documents are private: links go through the admin-only viewer route,
+// never straight to storage (see app/api/admin/kyc-doc/route.ts).
+function kycDocHref(businessId: string, doc: "cert" | "id" | "selfie" | "guarantor", guarantorId?: string) {
+  const q = new URLSearchParams({ businessId, doc });
+  if (guarantorId) q.set("guarantorId", guarantorId);
+  return `/api/admin/kyc-doc?${q.toString()}`;
+}
+
+function DocLink({ label, url, href }: { label: string; url: string | null; href: string }) {
   if (!url) return <p className="text-sm text-muted-foreground">{label}: not provided</p>;
   return (
     <a
-      href={url}
+      href={href}
       target="_blank"
       rel="noopener noreferrer"
       className="block text-sm text-primary hover:underline"

@@ -2,7 +2,7 @@ import type { UserRole } from "@prisma/client";
 import NextAuth, { CredentialsSignin } from "next-auth";
 import Credentials from "next-auth/providers/credentials";
 import Google from "next-auth/providers/google";
-import { PrismaAdapter } from "@auth/prisma-adapter";
+import { bizNestAdapter, canSignInWithGoogle } from "@/lib/auth-adapter";
 import bcrypt from "bcryptjs";
 import { prisma } from "@/lib/prisma";
 import { loginSchema } from "@/lib/validations/auth";
@@ -66,7 +66,7 @@ function withTimeout<T>(promise: Promise<T>, ms = 8000): Promise<T> {
 // regression that broke sign-in sitewide; don't reintroduce it.
 export const { handlers, auth, signIn, signOut } = NextAuth({
   ...authConfig,
-  adapter: PrismaAdapter(prisma),
+  adapter: bizNestAdapter(prisma),
   providers: [
     Google({
       clientId: process.env.GOOGLE_CLIENT_ID,
@@ -330,7 +330,11 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       // it could safely create a customer session; the current store
       // customer flow uses credentials so Store A can never silently become
       // a BizNest-global customer session.
-      if (account?.provider === "google" && user.role === "CUSTOMER") return false;
+      // Decided by store scope, not role: an owner awaiting business review
+      // is also role CUSTOMER and must still be able to sign in with Google.
+      if (account?.provider === "google") {
+        return canSignInWithGoogle(user as { customerScopeStoreId?: string | null; isBanned?: boolean | null });
+      }
       return true;
     },
     async jwt({ token, user }) {

@@ -4,6 +4,7 @@ import { NextResponse } from "next/server";
 import { v2 as cloudinary } from "cloudinary";
 import { withObservability } from "@/lib/observability/api-wrapper";
 import { logError } from "@/lib/observability/log";
+import { kycFolderFor } from "@/lib/kyc-storage";
 
 cloudinary.config({
   cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
@@ -44,13 +45,20 @@ export const POST = withObservability("upload", async (req: Request) => {
     return NextResponse.json({ error: "File too large (10MB max)" }, { status: 400 });
   }
 
+  // purpose=kyc -> identity documents: stored as Cloudinary "authenticated"
+  // assets in a per-user folder, so the returned URL is NOT publicly viewable.
+  // Everything else stays a normal public upload.
+  const isKyc = formData.get("purpose") === "kyc";
+
   const arrayBuffer = await file.arrayBuffer();
   const buffer = Buffer.from(arrayBuffer);
 
   try {
     const result = await new Promise<{ secure_url: string }>((resolve, reject) => {
       const uploadStream = cloudinary.uploader.upload_stream(
-        { folder: `biznest/${session.user.id}`, resource_type: "auto" },
+        isKyc
+          ? { folder: kycFolderFor(session.user.id), resource_type: "auto", type: "authenticated" }
+          : { folder: `biznest/${session.user.id}`, resource_type: "auto" },
         (error, result) => {
           if (error || !result) reject(error);
           else resolve(result);

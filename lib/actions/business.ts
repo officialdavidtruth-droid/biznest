@@ -10,6 +10,16 @@ import {
 import { revalidatePath } from "next/cache";
 import { BUSINESS_TYPES } from "@/lib/capabilities";
 import type { ActionResult } from "@/types/actions";
+import { isOwnKycUrl } from "@/lib/kyc-storage";
+
+function pathFieldErrors(issues: { path: (string | number)[]; message: string }[]) {
+  const out: Record<string, string[]> = {};
+  for (const issue of issues) {
+    const key = issue.path.join(".") || "form";
+    (out[key] ??= []).push(issue.message);
+  }
+  return out;
+}
 
 /**
  * Step 1 of onboarding: submit business details + KYC documents.
@@ -31,7 +41,9 @@ export async function submitBusinessVerification(
     return {
       success: false,
       error: "Please correct the highlighted fields.",
-      fieldErrors: parsed.error.flatten().fieldErrors as Record<string, string[]>,
+      // Full dotted paths (e.g. "guarantors.1.email") so the form can mark the
+      // exact guarantor field -- flatten() only reports the top-level key.
+      fieldErrors: pathFieldErrors(parsed.error.issues),
     };
   }
 
@@ -41,6 +53,17 @@ export async function submitBusinessVerification(
   }
 
   const data = parsed.data;
+
+  // KYC documents must be the private uploads made by THIS user (see
+  // lib/kyc-storage.ts) -- not public URLs, and not someone else's files.
+  const docUrls =
+    data.registrationType === "REGISTERED"
+      ? [data.registrationCertUrl]
+      : [data.governmentIdUrl, data.selfieUrl, ...data.guarantors.map((g) => g.governmentIdUrl)];
+  if (!docUrls.every((u) => isOwnKycUrl(u, session.user.id))) {
+    return { success: false, error: "One of your documents wasn't uploaded securely. Please re-upload your documents and try again." };
+  }
+
   if (!BUSINESS_TYPES[data.category]) return { success: false, error: "Please select a supported business type." };
 
   // A rejected verification is a new KYC submission. Clear the previous

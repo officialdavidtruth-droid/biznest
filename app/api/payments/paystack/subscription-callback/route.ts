@@ -74,6 +74,7 @@ export async function GET(req: Request) {
           : store.paystackAuthorizationCode,
         subscriptionRenewsAt: nextRenewal,
         subscriptionPastDueSince: null,
+        trialEndsAt: null, // converted: no longer a trial
       },
     });
     return NextResponse.redirect(`${APP_URL}/${store.slug}/admin/subscription?upgraded=1`);

@@ -13,6 +13,7 @@ import { ThemeProvider, ThemeFlashGuard } from "@/components/theme/theme-provide
 import { getPluginEntitlement } from "@/lib/plugins";
 import { OnboardingTour, TourLauncherButton } from "@/components/dashboard/onboarding-tour";
 import { buildTourSteps } from "@/lib/onboarding-tour";
+import { isTrialLapsed, expireLapsedTrial } from "@/lib/billing/trial";
 
 export default async function StoreAdminLayout({
   children,
@@ -54,6 +55,14 @@ export default async function StoreAdminLayout({
   // (owner-invited or platform) can still get in while unpaid so platform
   // support can investigate, but an unpaid store blocks its own owner and
   // invited staff the same way — see /onboarding/select-plan.
+  // A lapsed free trial counts as unpaid immediately -- don't wait for the
+  // daily cron. Expiring it here keeps the DB consistent so the owner can
+  // actually pick a plan on the next page.
+  if (role !== "PLATFORM_STAFF" && isTrialLapsed(store)) {
+    await expireLapsedTrial(store.id);
+    redirect(`/onboarding/select-plan?slug=${slug}`);
+  }
+
   if (!store.subscriptionId && role !== "PLATFORM_STAFF") {
     redirect(`/onboarding/select-plan?slug=${slug}`);
   }

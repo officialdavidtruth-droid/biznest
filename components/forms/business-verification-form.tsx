@@ -33,6 +33,7 @@ export function BusinessVerificationForm({
     register,
     control,
     handleSubmit,
+    setError,
     formState: { errors },
   } = useForm<BusinessVerificationInput>({
     resolver: zodResolver(businessVerificationSchema),
@@ -47,12 +48,38 @@ export function BusinessVerificationForm({
     } as Partial<BusinessVerificationInput>,
   });
 
+  // The radio below needs RHF's own onChange as well as our local state;
+  // overriding it (as this used to) left the form value stuck on REGISTERED,
+  // so the UNREGISTERED path was validated against the certificate rule and
+  // guarantor errors never surfaced.
+  const registrationTypeField = register("registrationType");
+
+  // Guarantor field errors: errors.guarantors[i].<field>, plus an array-level
+  // message (e.g. "Exactly two guarantors are required").
+  const guarantorError = (i: number, field: string) =>
+    ((errors.guarantors as unknown as Array<Record<string, { message?: string }> | undefined> | undefined)?.[i]?.[field])?.message;
+  const guarantorsError = (errors.guarantors as unknown as { message?: string } | undefined)?.message;
+
+  function onInvalid() {
+    toast.error("Please fix the highlighted fields.");
+    requestAnimationFrame(() => {
+      document.querySelector('[data-bv-error="true"]')?.scrollIntoView({ behavior: "smooth", block: "center" });
+    });
+  }
+
   async function onSubmit(values: BusinessVerificationInput) {
     setIsSubmitting(true);
     const result = await submitBusinessVerification(values);
     setIsSubmitting(false);
 
     if (!result.success) {
+      // Mark the exact fields the server rejected (incl. guarantors.N.field).
+      if (result.fieldErrors) {
+        for (const [path, messages] of Object.entries(result.fieldErrors)) {
+          setError(path as never, { type: "server", message: messages[0] });
+        }
+        onInvalid();
+      }
       toast.error(result.error);
       return;
     }
@@ -61,7 +88,7 @@ export function BusinessVerificationForm({
   }
 
   return (
-    <form onSubmit={handleSubmit(onSubmit)} className="bv-form">
+    <form onSubmit={handleSubmit(onSubmit, onInvalid)} className="bv-form">
       {existingRejection && (
         <div className="mb-8 flex gap-3 rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800">
           <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" strokeWidth={2} />
@@ -165,8 +192,11 @@ export function BusinessVerificationForm({
                     type="radio"
                     value={type}
                     checked={active}
-                    {...register("registrationType")}
-                    onChange={() => setRegistrationType(type)}
+                    {...registrationTypeField}
+                    onChange={(e) => {
+                      void registrationTypeField.onChange(e);
+                      setRegistrationType(type);
+                    }}
                     className="sr-only"
                   />
                   {type === "REGISTERED" ? "Registered business" : "Not registered yet"}
@@ -183,6 +213,7 @@ export function BusinessVerificationForm({
                 render={({ field }) => (
                   <FileUploadField
                     label="Business registration certificate"
+                    privateDoc
                     value={field.value as string}
                     onChange={field.onChange}
                     error={(errors as Record<string, { message?: string }>).registrationCertUrl?.message}
@@ -199,6 +230,7 @@ export function BusinessVerificationForm({
                   render={({ field }) => (
                     <FileUploadField
                       label="Government-issued ID"
+                      privateDoc
                       value={field.value as string}
                       onChange={field.onChange}
                       error={(errors as Record<string, { message?: string }>).governmentIdUrl?.message}
@@ -213,6 +245,7 @@ export function BusinessVerificationForm({
                   render={({ field }) => (
                     <FileUploadField
                       label="Selfie verification"
+                      privateDoc
                       value={field.value as string}
                       onChange={field.onChange}
                       error={(errors as Record<string, { message?: string }>).selfieUrl?.message}
@@ -223,6 +256,7 @@ export function BusinessVerificationForm({
 
               <div className="pt-2">
                 <p className="mb-3 text-sm font-medium text-foreground">Guarantors <span className="font-normal text-muted-foreground">(2 required)</span></p>
+                {guarantorsError && <p data-bv-error="true" className="mb-3 text-xs text-destructive">{guarantorsError}</p>}
                 <div className="space-y-3">
                   {[0, 1].map((i) => (
                     <div key={i} className="rounded-xl border border-border bg-muted/50 p-4">
@@ -230,10 +264,22 @@ export function BusinessVerificationForm({
                         {i + 1}
                       </div>
                       <div className="grid gap-3 sm:grid-cols-2">
-                        <input className="bv-input" placeholder="Full name" {...register(`guarantors.${i}.fullName` as const)} />
-                        <input className="bv-input" placeholder="Phone" {...register(`guarantors.${i}.phone` as const)} />
-                        <input className="bv-input" placeholder="Email" {...register(`guarantors.${i}.email` as const)} />
-                        <input className="bv-input" placeholder="Relationship" {...register(`guarantors.${i}.relationship` as const)} />
+                        <div>
+                          <input className="bv-input" placeholder="Full name" {...register(`guarantors.${i}.fullName` as const)} />
+                          {guarantorError(i, "fullName") && <p data-bv-error="true" className="mt-1 text-xs text-destructive">{guarantorError(i, "fullName")}</p>}
+                        </div>
+                        <div>
+                          <input className="bv-input" placeholder="Phone" {...register(`guarantors.${i}.phone` as const)} />
+                          {guarantorError(i, "phone") && <p data-bv-error="true" className="mt-1 text-xs text-destructive">{guarantorError(i, "phone")}</p>}
+                        </div>
+                        <div>
+                          <input className="bv-input" type="email" placeholder="Email" {...register(`guarantors.${i}.email` as const)} />
+                          {guarantorError(i, "email") && <p data-bv-error="true" className="mt-1 text-xs text-destructive">{guarantorError(i, "email")}</p>}
+                        </div>
+                        <div>
+                          <input className="bv-input" placeholder="Relationship" {...register(`guarantors.${i}.relationship` as const)} />
+                          {guarantorError(i, "relationship") && <p data-bv-error="true" className="mt-1 text-xs text-destructive">{guarantorError(i, "relationship")}</p>}
+                        </div>
                       </div>
                       <div className="mt-3">
                         <Controller
@@ -241,7 +287,7 @@ export function BusinessVerificationForm({
                           control={control}
                           render={({ field }) => (
                             <UploadFrame>
-                              <FileUploadField label="Guarantor government ID" value={field.value as string} onChange={field.onChange} />
+                              <FileUploadField label="Guarantor government ID" privateDoc value={field.value as string} onChange={field.onChange} error={guarantorError(i, "governmentIdUrl")} />
                             </UploadFrame>
                           )}
                         />

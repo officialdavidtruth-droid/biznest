@@ -4,7 +4,7 @@ import bcrypt from "bcryptjs";
 import { nanoid } from "nanoid";
 import { headers } from "next/headers";
 import { prisma } from "@/lib/prisma";
-import { registerSchema, forgotPasswordSchema, resetPasswordSchema, type RegisterInput, type ForgotPasswordInput, type ResetPasswordInput } from "@/lib/validations/auth";
+import { registerSchema, forgotPasswordSchema, resetPasswordSchema, resendVerificationSchema, type ResendVerificationInput, type RegisterInput, type ForgotPasswordInput, type ResetPasswordInput } from "@/lib/validations/auth";
 import { sendVerificationEmail, sendPasswordResetEmail, storeEmailBrand, type StoreEmailBrand } from "@/lib/email/send";
 import { checkRateLimit, getClientIp } from "@/lib/rate-limit";
 import { emitPlatformWebhookEvent } from "@/lib/webhooks/dispatch";
@@ -288,6 +288,88 @@ export async function resetPassword(input: ResetPasswordInput): Promise<ActionRe
 
   // One-time use — delete immediately so the same link can't be replayed.
   await prisma.verificationToken.delete({ where: { token: parsed.data.token } });
+
+  return { success: true, data: undefined };
+}
+
+
+/**
+ * Sends a fresh verification link to an unverified account.
+ *
+ * Like requestPasswordReset, this answers the same way whether or not the
+ * email belongs to an account (or is already verified), so it can't be used
+ * to find out who has an account. Limits: 5/hour per IP, 3/hour and 1 per
+ * minute per account. Older unused links are invalidated, so only the
+ * newest email works.
+ */
+export async function resendVerificationEmail(input: ResendVerificationInput): Promise<ActionResult<void>> {
+  const ip = getClientIp(await headers());
+
+  const ipLimit = await checkRateLimit(`resend-verification:${ip}`, 5, 60 * 60 * 1000);
+  if (!ipLimit.allowed) {
+    return {
+      success: false,
+      error: `Too many requests from this connection. Try again in ${Math.ceil((ipLimit.retryAfterSeconds ?? 3600) / 60)} minutes.`,
+    };
+  }
+
+  const parsed = resendVerificationSchema.safeParse(input);
+  if (!parsed.success) return { success: false, error: "Enter a valid email address." };
+
+  // Same scoping as password reset: a storeSlug means that store's customer
+  // account; none means the platform account (or a Marketing-only one).
+  let scopeStoreId: string | null = null;
+  let store: { id: string; name: string; logoUrl: string | null; themeColors: unknown; contactEmail: string | null; contactPhone: string | null } | null = null;
+  if (parsed.data.storeSlug) {
+    store = await prisma.store.findUnique({
+      where: { slug: parsed.data.storeSlug },
+      select: { id: true, name: true, logoUrl: true, themeColors: true, contactEmail: true, contactPhone: true },
+    });
+    if (!store) return { success: true, data: undefined };
+    scopeStoreId = store.id;
+  }
+
+  const email = parsed.data.email.trim();
+  const user =
+    (await prisma.user.findFirst({
+      where: { email: { equals: email, mode: "insensitive" }, customerScopeStoreId: scopeStoreId, isMarketingOnly: false },
+    })) ??
+    (scopeStoreId
+      ? null
+      : await prisma.user.findFirst({
+          where: { email: { equals: email, mode: "insensitive" }, customerScopeStoreId: null, isMarketingOnly: true },
+        }));
+
+  if (!user || user.emailVerified) return { success: true, data: undefined };
+
+  const [perMinute, perHour] = await Promise.all([
+    checkRateLimit(`resend-verification-account-min:${user.id}`, 1, 60 * 1000),
+    checkRateLimit(`resend-verification-account:${user.id}`, 3, 60 * 60 * 1000),
+  ]);
+  if (!perMinute.allowed || !perHour.allowed) return { success: true, data: undefined };
+
+  const token = nanoid(32);
+  await prisma.$transaction([
+    // Only the newest link should work.
+    prisma.verificationToken.deleteMany({ where: { identifier: user.id, type: "EMAIL" } }),
+    prisma.verificationToken.create({
+      data: { identifier: user.id, token, type: "EMAIL", expires: new Date(Date.now() + 1000 * 60 * 60 * 24) },
+    }),
+  ]);
+
+  try {
+    const themeColors = store?.themeColors as { primary?: string } | null | undefined;
+    await sendVerificationEmail(user.email, token, store ? {
+      storeName: store.name,
+      logoUrl: store.logoUrl,
+      primaryColor: themeColors?.primary,
+      storeSlug: parsed.data.storeSlug,
+      contactEmail: store.contactEmail,
+      contactPhone: store.contactPhone,
+    } : undefined);
+  } catch (err) {
+    console.error("Failed to resend verification email:", err);
+  }
 
   return { success: true, data: undefined };
 }
