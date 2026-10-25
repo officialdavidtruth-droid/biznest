@@ -14,6 +14,8 @@ import { getPluginEntitlement } from "@/lib/plugins";
 import { WhatsAppChatButton } from "@/components/storefront/whatsapp-chat-button";
 import { whatsappLink } from "@/lib/utils/whatsapp-link";
 import { NO_INDEX } from "@/lib/seo";
+import { InstallStoreApp } from "@/components/storefront/install-store-app";
+import { logoVersion, storeBasePath } from "@/lib/store-pwa";
 
 // Every store page under /store/[slug] falls back to the root layout's
 // static "BizNest — Build, Sell, Grow" <title> and platform favicon unless
@@ -36,6 +38,14 @@ export async function generateMetadata({
     }),
   ]);
   if (!store) return {};
+  // Per-store installable web app: own manifest (name + logo + colour), and a
+  // PNG apple-touch-icon (iOS needs PNG; vendor logos can be WebP/SVG/etc).
+  // Not on /admin: merchants installing from the dashboard keep the BizNest app
+  // manifest from the root layout.
+  const hdrs = await headers();
+  const isAdminPath = (hdrs.get("x-bn-store-subpath") ?? "/").startsWith("/admin");
+  const base = storeBasePath(hdrs.get("host"), slug);
+  const pwaIcon = `${base}/pwa-icon/180?v=${logoVersion(store.logoUrl)}`;
   // A suspended/paused store, a marketing-only account (no storefront), or a
   // store that opted out must never be indexed, whatever page is loaded.
   const hidden = !seo || seo.status !== "ACTIVE" || seo.marketingOnly || seo.seoNoIndex;
@@ -46,13 +56,19 @@ export async function generateMetadata({
     twitter: { card: store.logoUrl ? "summary_large_image" : "summary", title: store.name, ...(store.logoUrl ? { images: [store.logoUrl] } : {}) },
     robots: hidden ? NO_INDEX : undefined,
     verification: seo?.seoGoogleVerification ? { google: seo.seoGoogleVerification } : undefined,
+    ...(isAdminPath
+      ? {}
+      : {
+          manifest: `${base}/manifest.webmanifest`,
+          appleWebApp: { capable: true, title: store.name, statusBarStyle: "default" as const },
+        }),
     icons: store.logoUrl
       ? {
           icon: [{ url: store.logoUrl, sizes: "any" }],
-          apple: [{ url: store.logoUrl }],
+          apple: [{ url: pwaIcon, sizes: "180x180", type: "image/png" }],
           shortcut: [{ url: store.logoUrl }],
         }
-      : undefined,
+      : { apple: [{ url: pwaIcon, sizes: "180x180", type: "image/png" }] },
   };
 }
 
@@ -154,6 +170,10 @@ export default async function StoreLayout({
   const social = (exists?.socialLinks && typeof exists.socialLinks === "object" ? exists.socialLinks : {}) as Record<string, string | undefined>;
   const chatHref = exists && exists.status === "ACTIVE" && social.whatsappFloat === "on" ? whatsappLink(social.whatsapp, `Hi ${exists.name}!`) : null;
 
+  // Install-as-app banner (customers on the storefront, not the admin).
+  const pwaBase = storeBasePath((await headers()).get("host"), slug);
+  const installable = !!exists && exists.status === "ACTIVE";
+
   return (
     <>
       <link rel="preconnect" href="https://fonts.googleapis.com" />
@@ -165,6 +185,9 @@ export default async function StoreLayout({
       <StoreCategoriesProvider categories={(exists?.categories ?? []).map((c) => ({ id: c.id, name: c.name, parentId: c.parentId, description: c.description, imageUrl: c.imageUrl, count: c._count.products + c._count.services }))}>
         <StoreMenuProvider menu={exists?.menuItems?.length ? resolveMenuRows(exists.menuItems.filter((m) => m.linkType !== "PAGE" || isStorePageAvailable(m.target || "/", { businessCategory: exists.business?.category ?? null, storeBusinessType: exists.businessType, templateName: exists.template?.name ?? null })), slug) : null}>{children}</StoreMenuProvider>
       </StoreCategoriesProvider>
+      {installable && exists && (
+        <InstallStoreApp slug={slug} storeName={exists.name} base={pwaBase} iconSrc={`${pwaBase}/pwa-icon/192`} />
+      )}
       {chatHref && exists && <WhatsAppChatButton href={chatHref} storeName={exists.name} />}
       {showPromo && promo && promoPalette && <PromoPopup slug={slug} config={promo} palette={promoPalette} />}
     </>
