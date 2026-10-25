@@ -30,6 +30,11 @@ export const RESERVED_SLUGS = new Set([
   "icon-192.png",
   "icon-512.png",
   "icon-32.png",
+  "icon-maskable-192.png",
+  "icon-maskable-512.png",
+  // /download page (app/download) + public/downloads/ (the Android APK)
+  "download",
+  "downloads",
   // Service worker script (public/sw.js) -- same failure mode as the
   // manifest above: missing here meant middleware served a 404 page in
   // place of the real script, so navigator.serviceWorker.register("/sw.js")

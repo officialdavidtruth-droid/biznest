@@ -1,15 +1,69 @@
 {
-  "name": "BizNest Merchant Dashboard",
+  "name": "BizNest \u2014 Build, Sell, Grow",
   "short_name": "BizNest",
-  "description": "Manage your BizNest store — orders, products, and abandoned checkouts — from your phone.",
+  "description": "Manage your BizNest store \u2014 orders, products, and abandoned checkouts \u2014 from your phone.",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",
   "background_color": "#0f6410",
   "theme_color": "#0f6410",
-  "orientation": "portrait-primary",
+  "orientation": "any",
   "icons": [
-    { "src": "/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any maskable" },
-    { "src": "/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable" }
+    {
+      "src": "/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icon-maskable-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "maskable"
+    },
+    {
+      "src": "/icon-maskable-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ],
+  "id": "/",
+  "lang": "en-NG",
+  "dir": "ltr",
+  "categories": [
+    "business",
+    "shopping",
+    "productivity"
+  ],
+  "shortcuts": [
+    {
+      "name": "Log in",
+      "short_name": "Log in",
+      "url": "/login",
+      "icons": [
+        {
+          "src": "/icon-192.png",
+          "sizes": "192x192"
+        }
+      ]
+    },
+    {
+      "name": "Create a store",
+      "short_name": "Register",
+      "url": "/register",
+      "icons": [
+        {
+          "src": "/icon-192.png",
+          "sizes": "192x192"
+        }
+      ]
+    }
   ]
 }

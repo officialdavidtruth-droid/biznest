@@ -9,6 +9,7 @@ import { getMaintenanceSetting, getAnnouncementSetting } from "@/lib/actions/sit
 import { AnnouncementBanner } from "@/components/site/announcement-banner";
 import { MaintenanceScreen } from "@/components/site/maintenance-screen";
 import { ADMIN_COOKIE_NAME, verifyAdminToken } from "@/lib/admin-pin-auth";
+import { InstallAppPrompt } from "@/components/site/install-app-prompt";
 import { SITE_DESCRIPTION, SITE_KEYWORDS, SITE_NAME, SITE_URL } from "@/lib/seo";
 
 export const metadata: Metadata = {
@@ -124,6 +125,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
               <div className="flex min-h-0 flex-1 flex-col">{children}</div>
             </>
           )}
+          <InstallAppPrompt />
           <Toaster richColors position="top-center" />
         </CartProvider>
         </SessionProvider>

@@ -1,0 +1,21 @@
+{
+  "name": "biznest-mobile",
+  "version": "1.0.0",
+  "private": true,
+  "description": "BizNest native Android app (Capacitor shell around the live BizNest platform)",
+  "scripts": {
+    "sync": "cap sync android",
+    "open": "cap open android",
+    "assets": "python3 scripts/generate-assets.py"
+  },
+  "dependencies": {
+    "@capacitor/android": "^6.1.2",
+    "@capacitor/app": "^6.0.1",
+    "@capacitor/core": "^6.1.2",
+    "@capacitor/splash-screen": "^6.0.2",
+    "@capacitor/status-bar": "^6.0.1"
+  },
+  "devDependencies": {
+    "@capacitor/cli": "^6.1.2"
+  }
+}

@@ -1,0 +1,40 @@
+{
+	"appId": "space.biznest.app",
+	"appName": "BizNest",
+	"webDir": "www",
+	"backgroundColor": "#0f6410",
+	"server": {
+		"url": "https://biznest.space",
+		"cleartext": false,
+		"errorPath": "offline.html",
+		"allowNavigation": [
+			"biznest.space",
+			"*.biznest.space",
+			"*.paystack.com",
+			"*.paystack.co",
+			"*.flutterwave.com",
+			"*.korapay.com",
+			"res.cloudinary.com"
+		]
+	},
+	"android": {
+		"allowMixedContent": false,
+		"webContentsDebuggingEnabled": false,
+		"backgroundColor": "#0f6410",
+		"appendUserAgent": "BizNestApp/1.0"
+	},
+	"plugins": {
+		"SplashScreen": {
+			"launchShowDuration": 1500,
+			"launchAutoHide": true,
+			"backgroundColor": "#0f6410",
+			"androidScaleType": "CENTER_INSIDE",
+			"showSpinner": false
+		},
+		"StatusBar": {
+			"style": "DARK",
+			"backgroundColor": "#0f6410",
+			"overlaysWebView": false
+		}
+	}
+}

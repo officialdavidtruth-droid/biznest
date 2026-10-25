@@ -1,0 +1,94 @@
+name: Build Android app
+
+# Builds the BizNest Android app in the cloud (no Android Studio needed).
+# Run it from GitHub → Actions → "Build Android app" → Run workflow.
+# Output: biznest.apk (download from the run's Artifacts, or from the
+# "android-latest" release).
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths: ["mobile/**", ".github/workflows/build-android.yml"]
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      BN_VERSION_CODE: ${{ github.run_number }}
+      BN_VERSION_NAME: 1.0.${{ github.run_number }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: mobile/package-lock.json
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+
+      - uses: android-actions/setup-android@v3
+
+      - name: Install Capacitor
+        working-directory: mobile
+        run: npm ci
+
+      - name: Sync Capacitor
+        working-directory: mobile
+        run: npx cap sync android
+
+      - name: Decode release keystore (if configured)
+        id: keystore
+        env:
+          KS_B64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+        run: |
+          if [ -n "$KS_B64" ]; then
+            echo "$KS_B64" | base64 -d > "$RUNNER_TEMP/release.keystore"
+            echo "signed=true" >> "$GITHUB_OUTPUT"
+            echo "BN_KEYSTORE_PATH=$RUNNER_TEMP/release.keystore" >> "$GITHUB_ENV"
+            echo "BN_KEYSTORE_PASSWORD=${{ secrets.ANDROID_KEYSTORE_PASSWORD }}" >> "$GITHUB_ENV"
+            echo "BN_KEY_ALIAS=${{ secrets.ANDROID_KEY_ALIAS }}" >> "$GITHUB_ENV"
+            echo "BN_KEY_PASSWORD=${{ secrets.ANDROID_KEY_PASSWORD }}" >> "$GITHUB_ENV"
+          else
+            echo "signed=false" >> "$GITHUB_OUTPUT"
+            echo "No keystore secrets set: building a debug-signed APK (installable, but not for Play Store)."
+          fi
+
+      - name: Build APK
+        working-directory: mobile/android
+        run: |
+          chmod +x gradlew
+          if [ "${{ steps.keystore.outputs.signed }}" = "true" ]; then
+            ./gradlew assembleRelease bundleRelease --no-daemon
+            cp app/build/outputs/apk/release/app-release.apk "$GITHUB_WORKSPACE/biznest.apk"
+            cp app/build/outputs/bundle/release/app-release.aab "$GITHUB_WORKSPACE/biznest.aab"
+          else
+            ./gradlew assembleDebug --no-daemon
+            cp app/build/outputs/apk/debug/app-debug.apk "$GITHUB_WORKSPACE/biznest.apk"
+          fi
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: biznest-android
+          path: |
+            biznest.apk
+            biznest.aab
+          if-no-files-found: ignore
+
+      - name: Publish to the android-latest release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          FILES="biznest.apk"
+          [ -f biznest.aab ] && FILES="$FILES biznest.aab"
+          gh release view android-latest >/dev/null 2>&1 \
+            || gh release create android-latest --title "BizNest Android (latest)" --notes "Latest Android build." --latest=false
+          gh release upload android-latest $FILES --clobber

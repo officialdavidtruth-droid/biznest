@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">BizNest</string>
+    <string name="title_activity_main">BizNest</string>
+    <string name="package_name">space.biznest.app</string>
+    <string name="custom_url_scheme">space.biznest.app</string>
+</resources>
