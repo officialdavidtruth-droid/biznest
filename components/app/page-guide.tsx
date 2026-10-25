@@ -9,6 +9,48 @@ import { findGuide, type PageGuide } from "@/lib/page-guides";
 type Step = { eyebrow: string; title: string; body: string; el?: HTMLElement };
 type Rect = { top: number; left: number; width: number; height: number };
 
+const HIDE_KEY = "bn-guide:hidden";
+const PREF_EVENT = "bn:guide-pref";
+
+function readHidden(): boolean {
+  try { return localStorage.getItem(HIDE_KEY) === "1"; } catch { return false; }
+}
+function writeHidden(hidden: boolean) {
+  try { if (hidden) localStorage.setItem(HIDE_KEY, "1"); else localStorage.removeItem(HIDE_KEY); } catch {}
+  window.dispatchEvent(new Event(PREF_EVENT));
+}
+
+/** Settings switch: show or hide the floating "Learn this page" button (saved on this device). */
+export function GuideToggle() {
+  const [on, setOn] = useState(true);
+  useEffect(() => {
+    const sync = () => setOn(!readHidden());
+    sync();
+    window.addEventListener(PREF_EVENT, sync);
+    return () => window.removeEventListener(PREF_EVENT, sync);
+  }, []);
+  return (
+    <div className="mt-6 rounded-lg border bg-background p-4">
+      <p className="mb-1 text-sm font-medium">Help &amp; guides</p>
+      <label className="flex cursor-pointer items-center justify-between gap-4">
+        <span className="text-xs text-muted-foreground">
+          Show the floating &ldquo;Learn this page&rdquo; button on dashboard pages. Turn it off if it gets in your way; you can turn it back on here any time. Saved on this device.
+        </span>
+        <button
+          type="button"
+          role="switch"
+          aria-checked={on}
+          aria-label="Show Learn this page button"
+          onClick={() => writeHidden(on)}
+          className={`relative h-6 w-11 shrink-0 rounded-full transition-colors ${on ? "bg-[#0f6410]" : "bg-gray-300"}`}
+        >
+          <span className={`absolute top-0.5 h-5 w-5 rounded-full bg-white shadow transition-all ${on ? "left-[22px]" : "left-0.5"}`} />
+        </button>
+      </label>
+    </div>
+  );
+}
+
 const key = (userId: string, rel: string) => `bn-guide:v1:${userId}:${rel || "/"}`;
 
 function relPath(pathname: string): string | null {
@@ -65,8 +107,22 @@ export function PageGuideButton({ userId }: { userId: string }) {
   const [rect, setRect] = useState<Rect | null>(null);
   const [done, setDone] = useState(true);
   const [mounted, setMounted] = useState(false);
+  const [hidden, setHidden] = useState(false);
+  const [hint, setHint] = useState(false);
 
-  useEffect(() => setMounted(true), []);
+  useEffect(() => {
+    setMounted(true);
+    const sync = () => setHidden(readHidden());
+    sync();
+    window.addEventListener(PREF_EVENT, sync);
+    return () => window.removeEventListener(PREF_EVENT, sync);
+  }, []);
+
+  function dismissButton() {
+    writeHidden(true);
+    setHint(true);
+    setTimeout(() => setHint(false), 4500);
+  }
   useEffect(() => {
     setOpen(false);
     if (rel === null) return;
@@ -132,11 +188,19 @@ export function PageGuideButton({ userId }: { userId: string }) {
 
   return createPortal(
     <>
-      {!open && (
-        <button type="button" onClick={start} className={`bn-guide-fab ${done ? "" : "bn-guide-fab-new"}`} aria-label="Learn this page">
-          <GraduationCap className="h-5 w-5" />
-          <span>Learn this page</span>
-        </button>
+      {!open && !hidden && (
+        <div className="bn-guide-fabwrap">
+          <button type="button" onClick={start} className={`bn-guide-fab ${done ? "" : "bn-guide-fab-new"}`} aria-label="Learn this page">
+            <GraduationCap className="h-5 w-5" />
+            <span>Learn this page</span>
+          </button>
+          <button type="button" onClick={dismissButton} className="bn-guide-fab-x" aria-label="Hide Learn this page button">
+            <X className="h-3 w-3" />
+          </button>
+        </div>
+      )}
+      {hint && (
+        <div className="bn-guide-hint" role="status">Hidden. Turn it back on in Settings → Help &amp; guides.</div>
       )}
 
       {open && step && (

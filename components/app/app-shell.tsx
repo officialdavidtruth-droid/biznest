@@ -10,16 +10,14 @@ function inApp(): boolean {
   return typeof navigator !== "undefined" && navigator.userAgent.includes("BizNestApp");
 }
 
-function scrollableAncestorAtTop(el: EventTarget | null): boolean {
+/** True only if EVERY scrollable ancestor (and the page itself) is at the very top. */
+function atTop(el: EventTarget | null): boolean {
   let node = el as HTMLElement | null;
   while (node && node !== document.body && node !== document.documentElement) {
-    const s = getComputedStyle(node);
-    if ((s.overflowY === "auto" || s.overflowY === "scroll") && node.scrollHeight > node.clientHeight) {
-      return node.scrollTop <= 0;
-    }
+    if (node.scrollTop > 0) return false;
     node = node.parentElement;
   }
-  return (document.scrollingElement?.scrollTop ?? 0) <= 0;
+  return (document.scrollingElement?.scrollTop ?? 0) <= 0 && window.scrollY <= 0;
 }
 
 function haptic(ms = 8) {
@@ -95,33 +93,49 @@ export function AppShell() {
     return () => document.removeEventListener("click", onClick, true);
   }, [active]);
 
-  // Pull to refresh.
+  // Pull to refresh: only when the page is already at the very top and the
+  // finger drags DOWN, like a browser. Any scrolling cancels it.
   useEffect(() => {
     if (!active) return;
     let startY = 0;
+    let startX = 0;
+    let target: EventTarget | null = null;
     let tracking = false;
+    let pulling = false;
     let dist = 0;
     const MAX = 110;
-    const THRESHOLD = 80;
+    const TRIGGER = 56;
+    const reset = () => { tracking = false; pulling = false; dist = 0; setPull(0); };
     const start = (e: TouchEvent) => {
+      tracking = false; pulling = false; dist = 0;
+      if (e.touches.length !== 1) return;
       const el = e.target as HTMLElement | null;
-      if (el?.closest?.("input,textarea,select,[data-no-pull]")) return;
-      if (!scrollableAncestorAtTop(e.target)) return;
+      if (el?.closest?.("input,textarea,select,[contenteditable],[data-no-pull]")) return;
+      if (!atTop(e.target)) return;
       startY = e.touches[0].clientY;
+      startX = e.touches[0].clientX;
+      target = e.target;
       tracking = true;
-      dist = 0;
     };
     const move = (e: TouchEvent) => {
       if (!tracking) return;
+      // The page scrolled (or was not really at the top): never pull.
+      if (!atTop(target)) { reset(); return; }
       const dy = e.touches[0].clientY - startY;
-      if (dy <= 0) { dist = 0; setPull(0); return; }
-      dist = Math.min(MAX, dy * 0.5);
+      const dx = Math.abs(e.touches[0].clientX - startX);
+      if (!pulling) {
+        if (dy < -4 || dx > Math.abs(dy)) { tracking = false; return; } // going up / sideways
+        if (dy < 14) return;                                            // small dead zone
+        pulling = true;
+      }
+      dist = Math.min(MAX, (dy - 14) * 0.5);
       setPull(dist);
     };
     const end = () => {
       if (!tracking) return;
-      tracking = false;
-      if (dist >= THRESHOLD * 0.5 + 10) {
+      const go = pulling && dist >= TRIGGER;
+      tracking = false; pulling = false;
+      if (go) {
         haptic(15);
         setRefreshing(true);
         setPull(60);
@@ -130,15 +144,18 @@ export function AppShell() {
         setPull(0);
       }
     };
+    const onScroll = () => { if (tracking && pulling) return; if (tracking) tracking = false; };
     document.addEventListener("touchstart", start, { passive: true });
     document.addEventListener("touchmove", move, { passive: true });
     document.addEventListener("touchend", end, { passive: true });
-    document.addEventListener("touchcancel", end, { passive: true });
+    document.addEventListener("touchcancel", reset, { passive: true });
+    document.addEventListener("scroll", onScroll, { capture: true, passive: true });
     return () => {
       document.removeEventListener("touchstart", start);
       document.removeEventListener("touchmove", move);
       document.removeEventListener("touchend", end);
-      document.removeEventListener("touchcancel", end);
+      document.removeEventListener("touchcancel", reset);
+      document.removeEventListener("scroll", onScroll, { capture: true });
     };
   }, [active]);
 

@@ -1371,8 +1371,11 @@ html[data-tabbar] #bn-app-content { padding-bottom: calc(64px + env(safe-area-in
 html[data-app]:not([data-tabbar]) .bn-tabbar { display: none; }
 
 /* ===== "Learn this page" guide ===== */
-.bn-guide-fab { position: fixed; right: 14px; bottom: calc(76px + env(safe-area-inset-bottom)); z-index: 8500; display: inline-flex; align-items: center; gap: 8px; padding: 11px 16px; border-radius: 999px; background: #0f6410; color: #fff; font-size: 13px; font-weight: 600; box-shadow: 0 6px 20px rgba(15,100,16,.4); animation: bn-guide-in .4s cubic-bezier(.2,1.3,.4,1) both; }
-@media (min-width: 1024px) { .bn-guide-fab { bottom: 22px; right: 22px; } }
+.bn-guide-fabwrap { position: fixed; right: 14px; bottom: calc(76px + env(safe-area-inset-bottom)); z-index: 8500; }
+@media (min-width: 1024px) { .bn-guide-fabwrap { bottom: 22px; right: 22px; } }
+.bn-guide-fab-x { position: absolute; top: -8px; right: -6px; width: 22px; height: 22px; display: flex; align-items: center; justify-content: center; border-radius: 50%; background: #111827; color: #fff; box-shadow: 0 2px 8px rgba(0,0,0,.35); z-index: 1; }
+.bn-guide-hint { position: fixed; left: 12px; right: 12px; bottom: calc(80px + env(safe-area-inset-bottom)); margin: 0 auto; max-width: 340px; z-index: 8600; padding: 10px 14px; border-radius: 12px; background: #111827; color: #fff; font-size: 12.5px; text-align: center; animation: bn-guide-in .3s ease both; }
+.bn-guide-fab { position: relative; display: inline-flex; align-items: center; gap: 8px; padding: 11px 16px; border-radius: 999px; background: #0f6410; color: #fff; font-size: 13px; font-weight: 600; box-shadow: 0 6px 20px rgba(15,100,16,.4); animation: bn-guide-in .4s cubic-bezier(.2,1.3,.4,1) both; }
 .bn-guide-fab:active { transform: scale(.96); }
 .bn-guide-fab-new::after { content: ""; position: absolute; inset: 0; border-radius: 999px; box-shadow: 0 0 0 0 rgba(15,100,16,.55); animation: bn-guide-pulse 1.8s ease-out infinite; }
 @keyframes bn-guide-pulse { to { box-shadow: 0 0 0 14px rgba(15,100,16,0); } }

@@ -9,6 +9,7 @@ import { BusinessCapabilitiesEditor } from "@/components/dashboard/business-capa
 import { WebhooksPanel } from "@/components/dashboard/webhooks-panel";
 import { listWebhookEndpoints, availableWebhookEvents } from "@/lib/actions/webhook";
 import { APP_URL } from "@/lib/constants/app-url";
+import { GuideToggle } from "@/components/app/page-guide";
 
 export default async function SettingsPage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
@@ -118,6 +119,8 @@ export default async function SettingsPage({ params }: { params: Promise<{ slug:
 
         <button className="rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground">Save changes</button>
       </form>
+
+      <GuideToggle />
 
       <div className="mt-6">
         <StoreSlugEditor slug={slug} domainRoot={new URL(APP_URL).host.replace(/^www\./, "")} />
