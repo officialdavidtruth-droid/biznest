@@ -11,6 +11,9 @@ import { ALL_BUSINESS_TYPE_NAMES } from "@/lib/capabilities";
 import { DownloadAppLink } from "@/components/site/download-app-link";
 import { FaqAccordion } from "@/components/site/faq-accordion";
 import { StorefrontPreviewMock } from "@/components/site/storefront-preview-mock";
+import { redirect } from "next/navigation";
+import { isAppRequest } from "@/lib/app-mode";
+import { AppWelcome } from "@/components/app/app-welcome";
 
 const display = Space_Grotesk({ subsets: ["latin"], variable: "--font-display", weight: ["500", "700"] });
 const body = Inter({ subsets: ["latin"], variable: "--font-body" });
@@ -97,6 +100,20 @@ export const metadata: Metadata = {
 
 export default async function HomePage() {
   const session = await auth();
+
+  // Inside the native app the marketing homepage is replaced: signed-out
+  // users get a full-screen welcome, signed-in users go straight to work.
+  if (await isAppRequest()) {
+    if (!session?.user?.id) return <AppWelcome />;
+    const uid = session.user.id;
+    const slug =
+      session.user.storeSlug ??
+      (await prisma.store.findFirst({ where: { business: { userId: uid } }, select: { slug: true } }))?.slug ??
+      (await prisma.store.findFirst({ where: { staffMembers: { some: { userId: uid, status: "ACTIVE" } } }, select: { slug: true } }))?.slug;
+    if (slug) redirect(`/${encodeURIComponent(slug)}/admin`);
+    const membership = await prisma.storeCustomer.findFirst({ where: { userId: uid }, select: { store: { select: { slug: true } } } });
+    redirect(membership ? `/store/${membership.store.slug}` : "/onboarding/business-verification");
+  }
   const [
   plans,
   activeStoreCount,

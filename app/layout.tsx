@@ -10,6 +10,8 @@ import { AnnouncementBanner } from "@/components/site/announcement-banner";
 import { MaintenanceScreen } from "@/components/site/maintenance-screen";
 import { ADMIN_COOKIE_NAME, verifyAdminToken } from "@/lib/admin-pin-auth";
 import { InstallAppPrompt } from "@/components/site/install-app-prompt";
+import { AppShell } from "@/components/app/app-shell";
+import { Suspense } from "react";
 import { SITE_DESCRIPTION, SITE_KEYWORDS, SITE_NAME, SITE_URL } from "@/lib/seo";
 
 export const metadata: Metadata = {
@@ -94,7 +96,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
   const showMaintenance = maintenance.enabled && !isStaff;
 
   return (
-    <html lang="en">
+    <html lang="en" {...(headerList.get("user-agent")?.includes("BizNestApp") ? { "data-app": "1" } : {})}>
       <body className="flex h-screen flex-col bg-background font-sans antialiased">
         <SessionProvider>
         <CartProvider>
@@ -122,9 +124,10 @@ export default async function RootLayout({ children }: { children: React.ReactNo
                   region (see theme-provider.tsx); ordinary pages (like
                   onboarding) ignore it entirely and just render at their
                   own natural content height. */}
-              <div className="flex min-h-0 flex-1 flex-col">{children}</div>
+              <div id="bn-app-content" className="flex min-h-0 flex-1 flex-col">{children}</div>
             </>
           )}
+          <Suspense fallback={null}><AppShell /></Suspense>
           <InstallAppPrompt />
           <Toaster richColors position="top-center" />
         </CartProvider>
