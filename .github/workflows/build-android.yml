@@ -1,18 +1,15 @@
-
 name: Build Android app
 
-# Builds the BizNest Android app using GitHub Actions.
-# Run manually from GitHub → Actions → Build Android app.
-# Downloads: biznest.apk and, when release signing is configured, biznest.aab.
+# Builds the BizNest Android app in the cloud (no Android Studio needed).
+# Run it from GitHub → Actions → "Build Android app" → Run workflow.
+# Output: biznest.apk (download from the run's Artifacts, or from the
+# "android-latest" release).
 
 on:
   workflow_dispatch:
   push:
-    branches:
-      - main
-    paths:
-      - "mobile/**"
-      - ".github/workflows/build-android.yml"
+    branches: [main]
+    paths: ["mobile/**", ".github/workflows/build-android.yml"]
 
 permissions:
   contents: write
@@ -21,193 +18,86 @@ jobs:
   build:
     runs-on: ubuntu-latest
     timeout-minutes: 30
-
     env:
       BN_VERSION_CODE: ${{ github.run_number }}
       BN_VERSION_NAME: 1.0.${{ github.run_number }}
-      ANDROID_HOME: /usr/local/lib/android/sdk
-      ANDROID_SDK_ROOT: /usr/local/lib/android/sdk
-
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v5
+      - uses: actions/checkout@v4
 
-      - name: Check mobile project
+      - name: Check the mobile folder is in the repo
         run: |
           if [ ! -f mobile/package.json ]; then
-            echo "::error::mobile/package.json was not found at the repository root."
-            echo "Repository contents:"
-            ls -la
+            echo "::error::mobile/package.json not found. The 'mobile' folder must be at the ROOT of the repo, next to package.json and .github."
+            echo "Repo root contains:"; ls -la
             exit 1
           fi
 
-      - name: Set up Node.js
-        uses: actions/setup-node@v5
+      - uses: actions/setup-node@v4
         with:
-          node-version: 22
-          cache: npm
-          cache-dependency-path: mobile/package-lock.json
+          node-version: 20
 
-      - name: Set up Java
-        uses: actions/setup-java@v5
+      - uses: actions/setup-java@v5
         with:
           distribution: temurin
-          java-version: "17"
+          java-version: 17
 
-      # Avoid the legacy "tools" package requested by the
-      # Android SDK setup action. Install only the SDK components
-      # required by the project's compileSdkVersion 34.
-      - name: Install Android SDK packages
-        shell: bash
-        run: |
-          set -euo pipefail
+      - uses: android-actions/setup-android@v3
+        with:
+          # Google no longer serves the legacy 'tools' package (the action's old default).
+          packages: 'platform-tools'
 
-          if [ ! -d "$ANDROID_HOME" ]; then
-            echo "::error::Android SDK directory not found: $ANDROID_HOME"
-            exit 1
-          fi
-
-          echo "Android SDK: $ANDROID_HOME"
-
-          SDKMANAGER="$(
-            find "$ANDROID_HOME/cmdline-tools" \
-              -type f -name sdkmanager 2>/dev/null \
-              | sort -V \
-              | tail -n 1
-          )"
-
-          if [ -z "$SDKMANAGER" ] || [ ! -x "$SDKMANAGER" ]; then
-            echo "::error::Could not find an executable Android sdkmanager."
-            find "$ANDROID_HOME/cmdline-tools" \
-              -maxdepth 3 -type f -name sdkmanager 2>/dev/null || true
-            exit 1
-          fi
-
-          echo "Using sdkmanager: $SDKMANAGER"
-
-          # Accept SDK licenses without installing the obsolete
-          # Android SDK "tools" package.
-          yes | "$SDKMANAGER" --licenses >/dev/null || true
-
-          "$SDKMANAGER" --install \
-            "platform-tools" \
-            "platforms;android-34" \
-            "build-tools;34.0.0"
-
-          echo "Installed Android SDK packages:"
-          "$SDKMANAGER" --list_installed
-
-      - name: Install Capacitor dependencies
+      - name: Install Capacitor
         working-directory: mobile
         run: npm install --no-audit --no-fund
 
-      - name: Sync Capacitor Android project
+      - name: Sync Capacitor
         working-directory: mobile
         run: npx cap sync android
 
-      - name: Decode release keystore
+      - name: Decode release keystore (if configured)
         id: keystore
-        shell: bash
         env:
           KS_B64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
-          KS_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
-          KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
-          KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
         run: |
-          set -euo pipefail
-
-          if [ -n "${KS_B64:-}" ]; then
-            if [ -z "${KS_PASSWORD:-}" ] ||
-               [ -z "${KEY_ALIAS:-}" ] ||
-               [ -z "${KEY_PASSWORD:-}" ]; then
-              echo "::error::Keystore is configured but one or more signing secrets are missing."
-              exit 1
-            fi
-
-            echo "$KS_B64" | base64 --decode \
-              > "$RUNNER_TEMP/release.keystore"
-
+          if [ -n "$KS_B64" ]; then
+            echo "$KS_B64" | base64 -d > "$RUNNER_TEMP/release.keystore"
             echo "signed=true" >> "$GITHUB_OUTPUT"
-            echo "BN_KEYSTORE_PATH=$RUNNER_TEMP/release.keystore" \
-              >> "$GITHUB_ENV"
-            echo "BN_KEYSTORE_PASSWORD=$KS_PASSWORD" \
-              >> "$GITHUB_ENV"
-            echo "BN_KEY_ALIAS=$KEY_ALIAS" >> "$GITHUB_ENV"
-            echo "BN_KEY_PASSWORD=$KEY_PASSWORD" >> "$GITHUB_ENV"
+            echo "BN_KEYSTORE_PATH=$RUNNER_TEMP/release.keystore" >> "$GITHUB_ENV"
+            echo "BN_KEYSTORE_PASSWORD=${{ secrets.ANDROID_KEYSTORE_PASSWORD }}" >> "$GITHUB_ENV"
+            echo "BN_KEY_ALIAS=${{ secrets.ANDROID_KEY_ALIAS }}" >> "$GITHUB_ENV"
+            echo "BN_KEY_PASSWORD=${{ secrets.ANDROID_KEY_PASSWORD }}" >> "$GITHUB_ENV"
           else
             echo "signed=false" >> "$GITHUB_OUTPUT"
-            echo "No release keystore configured; building a debug APK."
+            echo "No keystore secrets set: building a debug-signed APK (installable, but not for Play Store)."
           fi
 
-      - name: Build Android APK
+      - name: Build APK
         working-directory: mobile/android
-        shell: bash
         run: |
-          set -euo pipefail
-
           chmod +x gradlew
-
           if [ "${{ steps.keystore.outputs.signed }}" = "true" ]; then
             ./gradlew assembleRelease bundleRelease --no-daemon
-
-            cp app/build/outputs/apk/release/app-release.apk \
-              "$GITHUB_WORKSPACE/biznest.apk"
-
-            cp app/build/outputs/bundle/release/app-release.aab \
-              "$GITHUB_WORKSPACE/biznest.aab"
+            cp app/build/outputs/apk/release/app-release.apk "$GITHUB_WORKSPACE/biznest.apk"
+            cp app/build/outputs/bundle/release/app-release.aab "$GITHUB_WORKSPACE/biznest.aab"
           else
             ./gradlew assembleDebug --no-daemon
-
-            cp app/build/outputs/apk/debug/app-debug.apk \
-              "$GITHUB_WORKSPACE/biznest.apk"
+            cp app/build/outputs/apk/debug/app-debug.apk "$GITHUB_WORKSPACE/biznest.apk"
           fi
 
-          echo "Android build completed."
-
-      - name: Verify APK
-        run: |
-          if [ ! -s biznest.apk ]; then
-            echo "::error::APK is missing or empty."
-            exit 1
-          fi
-
-          ls -lh biznest.apk
-
-          if [ -f biznest.aab ]; then
-            ls -lh biznest.aab
-          fi
-
-      - name: Upload Android build artifacts
-        uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v4
         with:
           name: biznest-android
           path: |
             biznest.apk
             biznest.aab
-          if-no-files-found: warn
-          retention-days: 14
+          if-no-files-found: ignore
 
-      - name: Publish Android release
-        if: success()
+      - name: Publish to the android-latest release
         env:
           GH_TOKEN: ${{ github.token }}
-        shell: bash
         run: |
-          set -euo pipefail
-
-          FILES=(biznest.apk)
-
-          if [ -f biznest.aab ]; then
-            FILES+=(biznest.aab)
-          fi
-
-          if ! gh release view android-latest >/dev/null 2>&1; then
-            gh release create android-latest \
-              --title "BizNest Android (latest)" \
-              --notes "Latest successful BizNest Android build." \
-              --latest=false
-          fi
-
-          gh release upload android-latest "${FILES[@]}" --clobber
-
-          echo "Android release updated successfully."
+          FILES="biznest.apk"
+          [ -f biznest.aab ] && FILES="$FILES biznest.aab"
+          gh release view android-latest >/dev/null 2>&1 \
+            || gh release create android-latest --title "BizNest Android (latest)" --notes "Latest Android build." --latest=false
+          gh release upload android-latest $FILES --clobber
