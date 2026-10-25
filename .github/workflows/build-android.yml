@@ -24,13 +24,19 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Check the mobile folder is in the repo
+        run: |
+          if [ ! -f mobile/package.json ]; then
+            echo "::error::mobile/package.json not found. The 'mobile' folder must be at the ROOT of the repo, next to package.json and .github."
+            echo "Repo root contains:"; ls -la
+            exit 1
+          fi
+
       - uses: actions/setup-node@v4
         with:
           node-version: 20
-          cache: npm
-          cache-dependency-path: mobile/package-lock.json
 
-      - uses: actions/setup-java@v4
+      - uses: actions/setup-java@v5
         with:
           distribution: temurin
           java-version: 17
@@ -39,7 +45,7 @@ jobs:
 
       - name: Install Capacitor
         working-directory: mobile
-        run: npm ci
+        run: npm install --no-audit --no-fund
 
       - name: Sync Capacitor
         working-directory: mobile
