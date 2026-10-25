@@ -84,6 +84,26 @@ jobs:
             cp app/build/outputs/apk/debug/app-debug.apk "$GITHUB_WORKSPACE/biznest.apk"
           fi
 
+      # Commit the APK into public/downloads so the site serves it at
+      # /downloads/biznest.apk. The push redeploys the site on Vercel.
+      # (Only on main; the commit touches neither mobile/** nor this file,
+      # so it does not re-trigger this workflow.)
+      - name: Publish APK to the website (public/downloads)
+        if: github.ref == 'refs/heads/main'
+        run: |
+          mkdir -p public/downloads
+          cp biznest.apk public/downloads/biznest.apk
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -f public/downloads/biznest.apk
+          if git diff --cached --quiet; then
+            echo "APK unchanged, nothing to commit."
+          else
+            git commit -m "chore: update Android APK (build ${{ github.run_number }}) [skip ci]"
+            git pull --rebase origin main
+            git push origin HEAD:main
+          fi
+
       - uses: actions/upload-artifact@v4
         with:
           name: biznest-android

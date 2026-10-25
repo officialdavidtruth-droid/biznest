@@ -30,6 +30,15 @@ const nextConfig = {
       "/checkout/:path*", "/cart", "/payment/:path*", "/wallet-pay/:path*", "/favorites"
     ];
     return [
+      // Make Android treat the APK as a file download, not a page to render.
+      {
+        source: "/downloads/biznest.apk",
+        headers: [
+          { key: "Content-Type", value: "application/vnd.android.package-archive" },
+          { key: "Content-Disposition", value: 'attachment; filename="biznest.apk"' },
+          { key: "Cache-Control", value: "public, max-age=0, must-revalidate" },
+        ],
+      },
       ...NOINDEX_SOURCES.map((source) => ({
         source,
         headers: [{ key: "X-Robots-Tag", value: "noindex, nofollow" }],
