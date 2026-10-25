@@ -333,7 +333,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       // Decided by store scope, not role: an owner awaiting business review
       // is also role CUSTOMER and must still be able to sign in with Google.
       if (account?.provider === "google") {
-        return canSignInWithGoogle(user as { customerScopeStoreId?: string | null; isBanned?: boolean | null });
+        return canSignInWithGoogle(user as unknown as { customerScopeStoreId?: string | null; isBanned?: boolean | null });
       }
       return true;
     },

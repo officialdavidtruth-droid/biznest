@@ -1,5 +1,5 @@
 import { PrismaAdapter } from "@auth/prisma-adapter";
-import type { Adapter } from "next-auth/adapters";
+import type { Adapter, AdapterUser } from "next-auth/adapters";
 import type { PrismaClient } from "@prisma/client";
 
 /**
@@ -25,7 +25,7 @@ export function bizNestAdapter(prisma: PrismaClient): Adapter {
           isMarketingOnly: false,
         },
       });
-      return (user as unknown as ReturnType<NonNullable<Adapter["getUserByEmail"]>>) ?? null;
+      return (user as unknown as AdapterUser | null) ?? null;
     },
     async createUser(data) {
       // Stored lowercase, same as registerUser.

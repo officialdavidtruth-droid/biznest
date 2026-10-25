@@ -56,11 +56,12 @@ export async function submitBusinessVerification(
 
   // KYC documents must be the private uploads made by THIS user (see
   // lib/kyc-storage.ts) -- not public URLs, and not someone else's files.
+  const ownerId = session.user.id;
   const docUrls =
     data.registrationType === "REGISTERED"
       ? [data.registrationCertUrl]
       : [data.governmentIdUrl, data.selfieUrl, ...data.guarantors.map((g) => g.governmentIdUrl)];
-  if (!docUrls.every((u) => isOwnKycUrl(u, session.user.id))) {
+  if (!docUrls.every((u) => isOwnKycUrl(u, ownerId))) {
     return { success: false, error: "One of your documents wasn't uploaded securely. Please re-upload your documents and try again." };
   }
 

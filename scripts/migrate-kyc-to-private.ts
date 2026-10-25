@@ -32,15 +32,15 @@ async function moveToPrivate(url: string): Promise<string | null> {
   const to = `biznest-kyc/${userId}/${name}`;
   console.log(`${APPLY ? "MOVE" : "would move"} ${from} -> ${to} (${resourceType})`);
   if (!APPLY) return `(dry-run)`;
-  const res = await cloudinary.uploader.rename(from, to, {
-    resource_type: resourceType as "image" | "video" | "raw",
+  const res = (await cloudinary.uploader.rename(from, to, {
+    resource_type: resourceType,
     type: "upload",
     to_type: "authenticated",
     overwrite: false,
     invalidate: true, // purge the CDN copy of the old public URL
-  });
+  } as never)) as { secure_url: string };
   // Stored form: unsigned delivery URL (useless without a signature).
-  const secureUrl = res.secure_url as string;
+  const secureUrl = res.secure_url;
   return secureUrl.includes("/authenticated/") ? secureUrl : secureUrl.replace("/upload/", "/authenticated/");
 }
 
@@ -50,7 +50,7 @@ async function main() {
   });
   let moved = 0;
   for (const b of businesses) {
-    const data: Record<string, string> = {};
+    const data: { registrationCertUrl?: string; governmentIdUrl?: string; selfieUrl?: string } = {};
     for (const key of ["registrationCertUrl", "governmentIdUrl", "selfieUrl"] as const) {
       const v = b[key];
       if (!v) continue;

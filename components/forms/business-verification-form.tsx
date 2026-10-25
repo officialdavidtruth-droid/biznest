@@ -56,9 +56,13 @@ export function BusinessVerificationForm({
 
   // Guarantor field errors: errors.guarantors[i].<field>, plus an array-level
   // message (e.g. "Exactly two guarantors are required").
-  const guarantorError = (i: number, field: string) =>
-    ((errors.guarantors as unknown as Array<Record<string, { message?: string }> | undefined> | undefined)?.[i]?.[field])?.message;
-  const guarantorsError = (errors.guarantors as unknown as { message?: string } | undefined)?.message;
+  // `errors` is a union over both registration paths, and only the
+  // UNREGISTERED branch has `guarantors`, so read it through a loose view.
+  const guarantorErrors = (errors as unknown as {
+    guarantors?: Array<Record<string, { message?: string } | undefined> | undefined> & { message?: string };
+  }).guarantors;
+  const guarantorError = (i: number, field: string) => guarantorErrors?.[i]?.[field]?.message;
+  const guarantorsError = guarantorErrors?.message;
 
   function onInvalid() {
     toast.error("Please fix the highlighted fields.");
