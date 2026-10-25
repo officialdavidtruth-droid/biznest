@@ -3,6 +3,8 @@ import { getCanonicalBusinessType } from "@/lib/business-identity";
 import { listBookings, listReservationUnits } from "@/lib/actions/booking";
 import { BookingsTable } from "@/components/dashboard/bookings-table";
 import { ReservationsWorkspace } from "@/components/dashboard/reservations-workspace";
+import { OccupancyCards } from "@/components/dashboard/occupancy-cards";
+import { getOccupancyStats } from "@/lib/actions/occupancy";
 import { BookingCodeVerifier } from "@/components/dashboard/booking-code-verifier";
 import { BookingStatCards } from "@/components/dashboard/booking-stat-cards";
 import { prisma } from "@/lib/prisma";
@@ -12,6 +14,7 @@ export default async function BookingsPage({ params }: { params: Promise<{ slug:
   const { slug } = await params;
   const store = await prisma.store.findUnique({ where: { slug }, select: { businessType: true, business: { select: { category: true } } } });
   const bookings = await listBookings(slug);
+  const occupancy = await getOccupancyStats(slug);
 
   // Unit-based niches (restaurant tables, salon chairs, etc.) get the richer
   // reservations workspace -- tabs, per-reservation detail panel, and table/
@@ -25,6 +28,7 @@ export default async function BookingsPage({ params }: { params: Promise<{ slug:
     const units = await listReservationUnits(slug);
     return (
       <div className="bn-admin-page space-y-5">
+        {occupancy && <OccupancyCards stats={occupancy} />}
         <BookingCodeVerifier slug={slug} />
         <ReservationsWorkspace
           slug={slug}
@@ -56,6 +60,8 @@ export default async function BookingsPage({ params }: { params: Promise<{ slug:
         <h1 className="text-2xl font-bold">Bookings</h1>
         <p className="mt-1 text-sm text-muted-foreground">Manage appointments and reservations</p>
       </div>
+
+      {occupancy && <OccupancyCards stats={occupancy} />}
 
       <BookingCodeVerifier slug={slug} />
 
