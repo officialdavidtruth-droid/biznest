@@ -42,7 +42,7 @@ export default async function BookingDetailsPage({ params }: { params: Promise<{
         <div>
           <span className="veloura-badge">{booking.status}</span>
           <h2>{booking.service.name}</h2>
-          <p>Reservation ID <strong>{booking.id}</strong></p>
+          <p>Booking code <strong>{booking.referenceCode || booking.id}</strong></p>
         </div>
         <div className="veloura-booking-detail-price">
           <span>Total</span>

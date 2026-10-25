@@ -5,6 +5,7 @@ import { redirect, notFound } from "next/navigation";
 import { getStoreAccessRole, canManageBillingAndStaff } from "@/lib/access/store-access";
 import { listStaffMembers } from "@/lib/actions/staff";
 import { StaffManager } from "@/components/dashboard/staff-manager";
+import { getAvailableStaffPermissions } from "@/lib/access/available-staff-permissions";
 
 export default async function StaffPage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
@@ -24,6 +25,7 @@ export default async function StaffPage({ params }: { params: Promise<{ slug: st
     select: { plugin: { select: { key: true, name: true, category: true } } },
     orderBy: { plugin: { sortOrder: "asc" } },
   });
+  const availablePermissions = await getAvailableStaffPermissions(store.id);
   const pluginPermissions = installedPlugins.map((x) => ({
     id: `plugin:${x.plugin.key}` as `plugin:${string}`,
     key: x.plugin.key,
@@ -40,7 +42,7 @@ export default async function StaffPage({ params }: { params: Promise<{ slug: st
         everything except billing and staff management; <strong>Staff</strong> get products, services, orders,
         and messages only.
       </p>
-      <StaffManager slug={slug} initialMembers={members} installedPluginPermissions={pluginPermissions} />
+      <StaffManager slug={slug} initialMembers={members} installedPluginPermissions={pluginPermissions} availablePermissions={availablePermissions} />
     </div>
   );
 }

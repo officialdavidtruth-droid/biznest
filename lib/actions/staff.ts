@@ -7,19 +7,28 @@ import bcrypt from "bcryptjs";
 import { sendStaffInviteEmail } from "@/lib/email/send";
 import { canManageBillingAndStaff, getStoreAccessRole } from "@/lib/access/store-access";
 import { notifyUser } from "@/lib/notifications/notify";
-import { STAFF_PERMISSION_IDS, labelForPermission } from "@/lib/access/staff-permissions";
+import { labelForPermission } from "@/lib/access/staff-permissions";
+import { getAvailableStaffPermissions } from "@/lib/access/available-staff-permissions";
 import { logStoreActivity } from "@/lib/activity-log";
 import type { ActionResult } from "@/types/actions";
 
 const MAX_STAFF_PER_STORE = 20;
 
+// Server-side twin of the invite checklist: only permissions this store's
+// dashboard actually offers (see getAvailableStaffPermissions) or plugin
+// permissions for installed apps can be granted, so a hand-crafted request
+// can't hand out e.g. FnB access to a store that has no FnB app.
 async function validatePermissionsForInstalledPlugins(storeId: string, permissions: string[]) {
-  const installed = await prisma.storePlugin.findMany({
-    where: { storeId, status: "ACTIVE", plugin: { status: "ACTIVE" } },
-    select: { plugin: { select: { key: true } } },
-  });
+  const [installed, available] = await Promise.all([
+    prisma.storePlugin.findMany({
+      where: { storeId, status: "ACTIVE", plugin: { status: "ACTIVE" } },
+      select: { plugin: { select: { key: true } } },
+    }),
+    getAvailableStaffPermissions(storeId),
+  ]);
   const installedIds = new Set(installed.map((x) => `plugin:${x.plugin.key}`));
-  return permissions.filter((p) => STAFF_PERMISSION_IDS.includes(p as (typeof STAFF_PERMISSION_IDS)[number]) || installedIds.has(p));
+  const availableIds = new Set(available.map((p) => p.id));
+  return permissions.filter((p) => availableIds.has(p) || installedIds.has(p));
 }
 
 async function requireOwner(slug: string, userId: string, userRole: string) {

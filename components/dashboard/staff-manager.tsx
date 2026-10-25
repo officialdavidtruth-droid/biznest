@@ -3,7 +3,9 @@
 import { useState } from "react";
 import { toast } from "sonner";
 import { inviteStaffMember, revokeStaffMember, updateStaffAccess } from "@/lib/actions/staff";
-import { STAFF_PERMISSIONS, labelForPermission, type AvailablePluginPermission } from "@/lib/access/staff-permissions";
+import { labelForPermission, type AvailablePluginPermission } from "@/lib/access/staff-permissions";
+
+type AvailablePermission = { id: string; label: string };
 
 type Member = {
   id: string;
@@ -17,7 +19,7 @@ type Member = {
   permissions: string[];
 };
 
-export function StaffManager({ slug, initialMembers, installedPluginPermissions }: { slug: string; initialMembers: Member[]; installedPluginPermissions: AvailablePluginPermission[] }) {
+export function StaffManager({ slug, initialMembers, installedPluginPermissions, availablePermissions }: { slug: string; initialMembers: Member[]; installedPluginPermissions: AvailablePluginPermission[]; availablePermissions: AvailablePermission[] }) {
   const [members, setMembers] = useState(initialMembers);
   const [name, setName] = useState("");
   const [position, setPosition] = useState("");
@@ -169,7 +171,7 @@ export function StaffManager({ slug, initialMembers, installedPluginPermissions 
             What can they access? <span className="text-destructive">*</span>
           </label>
           <div className="mt-2 grid grid-cols-2 gap-2 sm:grid-cols-4">
-            {STAFF_PERMISSIONS.map((perm) => (
+            {availablePermissions.map((perm) => (
               <label
                 key={perm.id}
                 className="flex cursor-pointer items-center gap-2 rounded border border-border p-2 text-xs"
@@ -266,6 +268,7 @@ export function StaffManager({ slug, initialMembers, installedPluginPermissions 
                     slug={slug}
                     member={m}
                     installedPluginPermissions={installedPluginPermissions}
+                    availablePermissions={availablePermissions}
                     onDone={async () => {
                       setEditingId(null);
                       await refresh();
@@ -284,11 +287,13 @@ export function StaffManager({ slug, initialMembers, installedPluginPermissions 
 function EditAccessForm({
   slug,
   member,
+  availablePermissions,
   onDone,
 }: {
   slug: string;
   member: Member;
   installedPluginPermissions: AvailablePluginPermission[];
+  availablePermissions: AvailablePermission[];
   onDone: () => void;
 }) {
   const [role, setRole] = useState<"MANAGER" | "STAFF">(member.role === "MANAGER" ? "MANAGER" : "STAFF");
@@ -331,7 +336,7 @@ function EditAccessForm({
       <div>
         <label className="text-xs font-medium text-muted-foreground">What can they access?</label>
         <div className="mt-2 grid grid-cols-2 gap-2 sm:grid-cols-4">
-          {STAFF_PERMISSIONS.map((perm) => (
+          {availablePermissions.map((perm) => (
             <label
               key={perm.id}
               className="flex cursor-pointer items-center gap-2 rounded border border-border bg-background p-2 text-xs"

@@ -173,6 +173,18 @@ export const PLUGIN_CATALOG: PluginSeed[] = [
     sortOrder: 120,
     plans: ["Growth Store", "Business Mogul"],
   },
+  {
+    key: "qr-codes",
+    name: "QR Codes",
+    description: "Create printable QR codes for your store, catalog, categories, products and services, so customers can scan a menu, shelf tag or flyer and land straight on the right page.",
+    category: "Growth",
+    icon: "QrCode",
+    price: 0,
+    isFree: true,
+    eligibleBusinessTypes: ["*"],
+    sortOrder: 125,
+    plans: [],
+  },
 ];
 
 export async function ensureSystemPlugins() {

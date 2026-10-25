@@ -64,7 +64,7 @@ export async function confirmPaidBooking(
   const staffName = booking.staff?.user?.name || booking.staff?.invitedName || booking.staff?.position || null;
 
   await sendBookingConfirmationEmail(recipientEmail, toStoreBranding(booking.store), {
-    bookingId: booking.id,
+    bookingId: booking.referenceCode || booking.id,
     status: booking.status === "PENDING" ? "CONFIRMED" : (booking.status as "CONFIRMED"),
     serviceName: booking.service.name,
     price: amount,

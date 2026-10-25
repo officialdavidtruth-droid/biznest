@@ -10,6 +10,7 @@ import { emitWebhookEvent } from "@/lib/webhooks/dispatch";
 import { revalidatePath } from "next/cache";
 import { Prisma } from "@prisma/client";
 import type { ActionResult } from "@/types/actions";
+import { generateUniqueBookingReference } from "@/lib/booking-reference";
 import { assertStorePermission } from "@/lib/access/assert-store-access";
 import { busyUnitIds, getBusyIntervals } from "@/lib/stay-availability";
 
@@ -51,6 +52,13 @@ const DAY_KEYS = [
 // Bookings/Calendar live under "Products & inventory" in the nav
 // (dashboard-nav.ts), so a MANAGER/STAFF granted "products" should be
 // able to actually manage bookings here, not just view the page.
+// Allocated with the global client (not the Serializable tx) so the
+// uniqueness probe never widens the transaction's conflict footprint; the
+// unique index on Booking.referenceCode remains the final guarantee.
+async function referenceCodeForNewBooking() {
+  return generateUniqueBookingReference(prisma);
+}
+
 async function assertStoreAccess(slug: string) {
   return assertStorePermission(slug, "products");
 }
@@ -469,6 +477,7 @@ export async function createBooking(
 
         return tx.booking.create({
           data: {
+            referenceCode: await referenceCodeForNewBooking(),
             storeId: service.storeId,
             serviceId,
             buyerId: session?.user?.id ?? null,
@@ -780,6 +789,7 @@ export async function createStayBooking(
 
         return tx.booking.create({
           data: {
+            referenceCode: await referenceCodeForNewBooking(),
             storeId: service.storeId,
             serviceId,
             unitId: freeUnit.id,
@@ -950,6 +960,7 @@ export async function createReservation(
 
   const booking = await prisma.booking.create({
     data: {
+      referenceCode: await generateUniqueBookingReference(prisma),
       storeId: access.store.id,
       serviceId: service.id,
       unitId: input.unitId || null,

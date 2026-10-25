@@ -1628,6 +1628,12 @@ model Booking {
   // BizNest customer account attached (see guestName/guestPhone above).
   guestEmail  String?
 
+  // Short human-friendly code (7 alphanumeric characters) sent to the guest
+  // after payment and entered by staff to verify the reservation. Null for
+  // bookings made before codes existed -- those keep using their original
+  // id, so older confirmations stay valid. See lib/booking-reference.ts.
+  referenceCode String? @unique
+
   // Wallet payment tracking (see lib/actions/customer-wallet.ts).
   paymentStatus    BookingPaymentStatus @default(UNPAID)
   paymentReference String?              @unique

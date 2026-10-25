@@ -1,6 +1,7 @@
 "use server";
 
 import { prisma } from "@/lib/prisma";
+import { generateUniqueBookingReference } from "@/lib/booking-reference";
 import { findPmsConflictForUnit } from "@/lib/stay-availability";
 import { revalidatePath } from "next/cache";
 import { assertStorePermission } from "@/lib/access/assert-store-access";
@@ -97,6 +98,7 @@ export async function createUnitBooking(
 
   const booking = await prisma.booking.create({
     data: {
+      referenceCode: await generateUniqueBookingReference(prisma),
       storeId: a.store.id,
       serviceId: input.serviceId,
       unitId: input.unitId,

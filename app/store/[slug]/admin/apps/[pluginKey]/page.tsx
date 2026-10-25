@@ -7,6 +7,7 @@ import { PluginInstallGate } from "@/components/dashboard/plugin-install-gate";
 import FinancialControlPage from "../financial-control/page";
 import RequisitionPage from "../requisition/page";
 import HrPayrollPage from "../hr-payroll/page";
+import QrCodesPage from "../qr-codes/page";
 import { ProcurementWorkspace, type ProcurementData } from "@/components/dashboard/procurement-workspace";
 
 // PMS and FNB are full dedicated workspaces (/admin/pms, /admin/fnb), not the generic
@@ -29,6 +30,7 @@ export default async function PluginPage({ params }: { params: Promise<{ slug: s
   if (dedicated) redirect(`/store/${slug}${dedicated}`);
   if (pluginKey === "financial-control") return <FinancialControlPage params={Promise.resolve({ slug })} />;
   if (pluginKey === "requisition") return <RequisitionPage params={Promise.resolve({ slug })} />;
+  if (pluginKey === "qr-codes") return <QrCodesPage params={Promise.resolve({ slug })} />;
   if (pluginKey === "hr-payroll") return <HrPayrollPage params={Promise.resolve({ slug })} />;
   if (pluginKey === "procurement") {
     const data = await getPluginWorkspace(slug, pluginKey);

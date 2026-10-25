@@ -3,6 +3,7 @@ import { getCanonicalBusinessType } from "@/lib/business-identity";
 import { listBookings, listReservationUnits } from "@/lib/actions/booking";
 import { BookingsTable } from "@/components/dashboard/bookings-table";
 import { ReservationsWorkspace } from "@/components/dashboard/reservations-workspace";
+import { BookingCodeVerifier } from "@/components/dashboard/booking-code-verifier";
 import { BookingStatCards } from "@/components/dashboard/booking-stat-cards";
 import { prisma } from "@/lib/prisma";
 import { getBusinessTerminology } from "@/lib/business-terminology";
@@ -23,7 +24,8 @@ export default async function BookingsPage({ params }: { params: Promise<{ slug:
     const terminology = getBusinessTerminology(getCanonicalBusinessType({ businessCategory: store?.business?.category, storeBusinessType: store?.businessType }));
     const units = await listReservationUnits(slug);
     return (
-      <div className="bn-admin-page">
+      <div className="bn-admin-page space-y-5">
+        <BookingCodeVerifier slug={slug} />
         <ReservationsWorkspace
           slug={slug}
           unitLabel={terminology.unitLabel}
@@ -54,6 +56,8 @@ export default async function BookingsPage({ params }: { params: Promise<{ slug:
         <h1 className="text-2xl font-bold">Bookings</h1>
         <p className="mt-1 text-sm text-muted-foreground">Manage appointments and reservations</p>
       </div>
+
+      <BookingCodeVerifier slug={slug} />
 
       <BookingStatCards total={bookings.length} pending={pendingCount} confirmed={confirmedCount} completed={completedCount} />
 
