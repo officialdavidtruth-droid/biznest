@@ -2,6 +2,7 @@ import { prisma } from "@/lib/prisma";
 import { sendPushToUser } from "@/lib/push/send";
 import { sendOrderConfirmationEmail, storeEmailBrand } from "@/lib/email/send";
 import { logError } from "@/lib/observability/log";
+import { formatNumber } from "@/lib/i18n/locale";
 
 type NotifyInput = {
   userId: string;
@@ -46,7 +47,7 @@ export async function notifyStoreOwnerOfPaidOrder(
     userId: store.business.userId,
     type: "ORDER_PAID",
     title: "New order paid 🎉",
-    body: `${currency} ${amount.toLocaleString()} just came in on ${store.name}.`,
+    body: `${currency} ${formatNumber(amount)} just came in on ${store.name}.`,
     url: `/store/${store.slug}/admin/orders/${orderId}`,
   });
 }

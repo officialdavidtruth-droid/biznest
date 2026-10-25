@@ -1,3 +1,5 @@
+import { formatMoney } from "@/lib/utils/format-money";
+import { formatDate } from "@/lib/i18n/locale";
 export type LeadActivity = {
   id: string;
   type: string;
@@ -56,9 +58,9 @@ export const SOURCES = [
 ] as const;
 export const sourceLabel = (id: string) => SOURCES.find((s) => s.id === id)?.label ?? id;
 
-export const money = (n: number | string | null | undefined) => `₦${Number(n ?? 0).toLocaleString("en-NG")}`;
+export const money = (n: number | string | null | undefined) => `${formatMoney(Number(n ?? 0))}`;
 export const initials = (name: string) => name.trim().split(/\s+/).slice(0, 2).map((p) => p[0]?.toUpperCase() ?? "").join("") || "?";
-export const shortDate = (d: Date | string) => new Date(d).toLocaleDateString("en-NG", { day: "numeric", month: "short" });
+export const shortDate = (d: Date | string) => formatDate(new Date(d), { day: "numeric", month: "short" });
 
 /** Where a lead's next follow-up sits relative to today (null `now` = not mounted yet). */
 export function followUpState(lead: Pick<Lead, "status" | "nextFollowUpAt">, now: number | null): "none" | "overdue" | "today" | "upcoming" {

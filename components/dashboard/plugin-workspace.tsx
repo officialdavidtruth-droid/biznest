@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { BarChart3, Boxes, ClipboardCheck, FileText, ShoppingCart, Truck, Users, Wallet } from "lucide-react";
 import type { getPluginWorkspace } from "@/lib/actions/plugin-workspaces";
+import { formatNumber } from "@/lib/i18n/locale";
 
 type WorkspaceData = Awaited<ReturnType<typeof getPluginWorkspace>> & { error?: string };
 
@@ -11,17 +12,17 @@ export function PluginWorkspace({ slug, data }: { slug: string; data: WorkspaceD
   const cards: [string, number | string, typeof Users][] = (() => {
     switch (s.kind) {
       case "procurement":
-        return [["Suppliers", s.suppliers, Boxes], ["Open POs", s.openPos, ShoppingCart], ["Pending approvals", s.pendingApprovals, ClipboardCheck], ["Requisitions", s.requisitions, FileText], ["Spend (30d)", s.spend30.toLocaleString(), Wallet]];
+        return [["Suppliers", s.suppliers, Boxes], ["Open POs", s.openPos, ShoppingCart], ["Pending approvals", s.pendingApprovals, ClipboardCheck], ["Requisitions", s.requisitions, FileText], ["Spend (30d)", formatNumber(s.spend30), Wallet]];
       case "analytics":
-        return [["Orders (30d)", s.orders, ShoppingCart], ["Revenue (30d)", s.revenue30.toLocaleString(), Wallet], ["Customers (30d)", s.customers, Users], ["Visitors (30d)", s.visitors, Users], ["Low stock", s.lowStock, Boxes]];
+        return [["Orders (30d)", s.orders, ShoppingCart], ["Revenue (30d)", formatNumber(s.revenue30), Wallet], ["Customers (30d)", s.customers, Users], ["Visitors (30d)", s.visitors, Users], ["Low stock", s.lowStock, Boxes]];
       case "helpdesk":
         return [["Conversations", s.conversations, FileText], ["Unread", s.unread, FileText], ["Customers", s.customers, Users]];
       case "assets":
-        return [["Assets", s.assets, Boxes], ["Active", s.active, Boxes], ["Total cost", s.totalCost.toLocaleString(), Wallet]];
+        return [["Assets", s.assets, Boxes], ["Active", s.active, Boxes], ["Total cost", formatNumber(s.totalCost), Wallet]];
       case "legal":
         return [["Documents", s.documents, FileText], ["Expiring soon", s.expiring, FileText], ["Expired", s.expired, FileText], ["Pending approvals", s.approvals, ClipboardCheck]];
       case "fleet":
-        return [["Vehicles", s.vehicles, Truck], ["Fuel spend (30d)", s.fuelSpend30.toLocaleString(), Wallet]];
+        return [["Vehicles", s.vehicles, Truck], ["Fuel spend (30d)", formatNumber(s.fuelSpend30), Wallet]];
       case "loyalty":
         return [["Accounts", s.accounts, Users], ["Points balance", s.balance, Wallet], ["Earned (30d)", s.earned30, Wallet], ["Redeemed (30d)", s.redeemed30, Wallet]];
       case "hr":

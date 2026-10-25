@@ -5,6 +5,8 @@ import { whatsappLink } from "@/lib/utils/whatsapp-link";
 import { CalendarClock, Mail, MessageCircle, Phone, StickyNote, Users, X, type LucideIcon } from "lucide-react";
 import { addCrmActivity, updateCrmLeadDetails } from "@/lib/actions/seo-crm";
 import { STAGES, initials, money, shortDate, sourceLabel, stageOf, type Lead, type LeadActivity } from "@/components/dashboard/crm-types";
+import { currencySymbol } from "@/lib/utils/format-money";
+import { formatDate } from "@/lib/i18n/locale";
 
 const ACTIVITY_TYPES: Array<{ id: string; label: string; icon: LucideIcon }> = [
   { id: "NOTE", label: "Note", icon: StickyNote },
@@ -117,7 +119,7 @@ export function LeadDrawer({
 
           <section aria-label="Details" className="space-y-3">
             <div className="grid grid-cols-2 gap-3">
-              <label className="grid gap-1.5 text-xs font-medium">Deal value (₦)<input type="number" min="0" inputMode="decimal" value={value} onChange={(e) => setValue(e.target.value)} placeholder="0" className={field} /></label>
+              <label className="grid gap-1.5 text-xs font-medium">Deal value ({currencySymbol()})<input type="number" min="0" inputMode="decimal" value={value} onChange={(e) => setValue(e.target.value)} placeholder="0" className={field} /></label>
               <label className="grid gap-1.5 text-xs font-medium">Next follow-up<input type="date" value={follow} onChange={(e) => setFollow(e.target.value)} className={field} /></label>
             </div>
             <label className="grid gap-1.5 text-xs font-medium">Notes<textarea value={notes} onChange={(e) => setNotes(e.target.value)} rows={3} placeholder="What do you need to remember about this lead?" className={field} /></label>
@@ -151,7 +153,7 @@ export function LeadDrawer({
                       <span className="absolute -left-[26px] top-0.5 flex h-5 w-5 items-center justify-center rounded-full border bg-background text-muted-foreground"><Icon className="h-3 w-3" /></span>
                       <p className="text-sm font-medium leading-snug">{a.title}</p>
                       {a.body && <p className="mt-0.5 text-xs text-muted-foreground">{a.body}</p>}
-                      <p className="mt-1 flex items-center gap-1 text-[10px] text-muted-foreground"><CalendarClock className="h-3 w-3" />{new Date(a.createdAt).toLocaleString("en-NG", { day: "numeric", month: "short", hour: "numeric", minute: "2-digit" })}</p>
+                      <p className="mt-1 flex items-center gap-1 text-[10px] text-muted-foreground"><CalendarClock className="h-3 w-3" />{formatDate(new Date(a.createdAt), { day: "numeric", month: "short", hour: "numeric", minute: "2-digit" })}</p>
                     </li>
                   );
                 })}

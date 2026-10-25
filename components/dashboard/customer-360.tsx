@@ -5,6 +5,8 @@ import { whatsappLink } from "@/lib/utils/whatsapp-link";
 import { Mail, MessageCircle, Phone, Search, ShoppingBag, UserRound, Users, Wallet, Repeat } from "lucide-react";
 import type { Customer360 } from "@/lib/actions/customers";
 import { ListPagination, StatCard } from "@/components/dashboard/list-toolbar";
+import { formatMoney } from "@/lib/utils/format-money";
+import { formatDate as formatLocaleDate } from "@/lib/i18n/locale";
 
 // Set when arriving here from a link elsewhere in the dashboard (e.g.
 // clicking a customer's name on the Bookings page) that wants a specific
@@ -43,7 +45,7 @@ function resolveHint(customers: Customer360[], hint?: OpenHint) {
 }
 
 function money(value: number) {
-  return `₦${value.toLocaleString("en-NG", { maximumFractionDigits: 2 })}`;
+  return `${formatMoney(value)}`;
 }
 
 function initials(name: string) {
@@ -52,7 +54,7 @@ function initials(name: string) {
 
 function formatDate(value: string | null) {
   if (!value) return "—";
-  return new Intl.DateTimeFormat("en-NG", { day: "numeric", month: "short", year: "numeric" }).format(new Date(value));
+  return formatLocaleDate(value);
 }
 
 export function Customer360View({

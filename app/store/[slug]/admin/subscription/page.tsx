@@ -4,6 +4,7 @@ import { auth } from "@/lib/auth";
 import { redirect } from "next/navigation";
 import { getStoreAccessRole, canManageBillingAndStaff } from "@/lib/access/store-access";
 import { UpgradeButton } from "@/components/forms/upgrade-button";
+import { formatMoney } from "@/lib/utils/format-money";
 
 export default async function SubscriptionPage({
   params,
@@ -65,7 +66,7 @@ export default async function SubscriptionPage({
             <div key={p.id} className={`rounded-lg border bg-background p-4 ${isCurrent ? "border-primary ring-1 ring-primary" : ""}`}>
               <p className="font-medium">{p.name}</p>
               <p className="mt-1 text-2xl font-semibold">
-                ₦{Number(p.price).toLocaleString()}
+                {formatMoney(Number(p.price))}
                 <span className="text-xs font-normal text-muted-foreground">/{p.interval.toLowerCase()}</span>
               </p>
               <ul className="mt-3 space-y-1.5 text-xs text-muted-foreground">

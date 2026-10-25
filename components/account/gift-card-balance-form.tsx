@@ -2,6 +2,8 @@
 
 import { useState } from "react";
 import { checkGiftCardBalance } from "@/lib/actions/gift-card";
+import { formatMoney } from "@/lib/utils/format-money";
+import { formatDate } from "@/lib/i18n/locale";
 
 export function GiftCardBalanceForm({ slug }: { slug: string }) {
   const [code, setCode] = useState("");
@@ -14,8 +16,8 @@ export function GiftCardBalanceForm({ slug }: { slug: string }) {
     try {
       const res = await checkGiftCardBalance(slug, code);
       if (!res.success) return setMessage({ ok: false, text: res.error });
-      const exp = res.data.expiresAt ? ` Expires ${new Date(res.data.expiresAt).toLocaleDateString()}.` : "";
-      setMessage({ ok: true, text: `Balance: ₦${res.data.balance.toLocaleString()}.${exp}` });
+      const exp = res.data.expiresAt ? ` Expires ${formatDate(new Date(res.data.expiresAt))}.` : "";
+      setMessage({ ok: true, text: `Balance: ${formatMoney(res.data.balance)}.${exp}` });
     } catch {
       setMessage({ ok: false, text: "Something went wrong. Please try again." });
     } finally {

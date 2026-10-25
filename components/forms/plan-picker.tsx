@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { initiatePlanUpgrade } from "@/lib/actions/subscription";
+import { formatMoney } from "@/lib/utils/format-money";
 
 type Plan = {
   id: string;
@@ -13,7 +14,7 @@ type Plan = {
 };
 
 function fmtNaira(price: unknown) {
-  return `₦${Number(price).toLocaleString("en-NG")}`;
+  return `${formatMoney(Number(price))}`;
 }
 
 export function PlanPicker({

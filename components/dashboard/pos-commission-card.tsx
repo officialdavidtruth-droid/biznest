@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { recordPosCommissionSettlement, type PosCommissionBalance } from "@/lib/actions/pos";
+import { formatNumber } from "@/lib/i18n/locale";
 
 export function PosCommissionCard({ slug, balance }: { slug: string; balance: PosCommissionBalance }) {
   const router = useRouter();
@@ -27,7 +28,7 @@ export function PosCommissionCard({ slug, balance }: { slug: string; balance: Po
     <div className="rounded-lg border bg-background p-4">
       <p className="text-xs uppercase text-muted-foreground">POS commission owed</p>
       <p className="mt-1 text-2xl font-semibold">
-        {balance.currency} {balance.owed.toLocaleString()}
+        {balance.currency} {formatNumber(balance.owed)}
       </p>
       <p className="mt-1 text-xs text-muted-foreground">
         Accrues from in-person sales since cash isn&apos;t split automatically like online orders.
@@ -81,7 +82,7 @@ export function PosCommissionCard({ slug, balance }: { slug: string; balance: Po
           {balance.recentSettlements.map((s) => (
             <div key={s.id} className="flex items-center justify-between text-xs text-muted-foreground">
               <span>{s.note || "Settlement"} · {s.settledByEmail}</span>
-              <span>{balance.currency} {s.amount.toLocaleString()}</span>
+              <span>{balance.currency} {formatNumber(s.amount)}</span>
             </div>
           ))}
         </div>

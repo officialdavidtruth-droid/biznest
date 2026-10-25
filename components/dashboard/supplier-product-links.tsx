@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { linkSupplierProduct, unlinkSupplierProduct } from "@/lib/actions/supplier";
+import { formatNumber } from "@/lib/i18n/locale";
 
 type Product = { id: string; name: string };
 type Link = { productId: string; productName: string; supplierSku: string | null; costPrice: number | null };
@@ -99,7 +100,7 @@ export function SupplierProductLinks({
               <tr key={l.productId} className="border-b last:border-0">
                 <td className="px-4 py-3 font-medium">{l.productName}</td>
                 <td className="px-4 py-3 text-muted-foreground">{l.supplierSku || "—"}</td>
-                <td className="px-4 py-3">{l.costPrice != null ? l.costPrice.toLocaleString() : "—"}</td>
+                <td className="px-4 py-3">{l.costPrice != null ? formatNumber(l.costPrice) : "—"}</td>
                 <td className="px-4 py-3 text-right">
                   <button onClick={() => handleUnlink(l.productId)} className="text-xs font-medium text-destructive hover:underline">
                     Unlink

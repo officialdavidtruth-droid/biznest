@@ -4,6 +4,7 @@ import { ArrowLeft, CalendarDays, ExternalLink, FileImage, FileText, Mail, Messa
 import { getQuote } from "@/lib/actions/quote";
 import { QuoteRowActions } from "@/components/dashboard/quote-row-actions";
 import type { Prisma } from "@prisma/client";
+import { formatDate, formatNumber } from "@/lib/i18n/locale";
 
 const STATUS_STYLES: Record<string, string> = {
   DRAFT: "bg-[var(--bn-admin-surface-2)] text-[var(--bn-admin-orange)] ring-[var(--bn-admin-orange)]",
@@ -54,7 +55,7 @@ export default async function QuoteDetailPage({ params }: { params: Promise<{ sl
             <h1 className="text-2xl font-semibold">{quote.quoteNo}</h1>
             <span className={`rounded-full px-2.5 py-1 text-xs font-semibold ring-1 ${STATUS_STYLES[quote.status] ?? "bg-muted text-muted-foreground ring-border"}`}>{quote.status === "DRAFT" && project ? "NEW REQUEST" : quote.status}</span>
           </div>
-          <p className="mt-1 text-sm text-muted-foreground">Submitted {new Date(quote.createdAt).toLocaleString()}</p>
+          <p className="mt-1 text-sm text-muted-foreground">Submitted {formatDate(new Date(quote.createdAt), { day: "numeric", month: "short", year: "numeric", hour: "numeric", minute: "2-digit" })}</p>
         </div>
         <QuoteRowActions storeSlug={slug} quoteId={quote.id} status={quote.status} incomingRequest={Boolean(project)} />
       </div>
@@ -65,9 +66,9 @@ export default async function QuoteDetailPage({ params }: { params: Promise<{ sl
             <div className="mb-5 flex items-center gap-3"><div className="rounded-xl bg-primary/10 p-2 text-primary"><MessageSquareText className="h-5 w-5" /></div><div><h2 className="font-semibold">Customer request</h2><p className="text-xs text-muted-foreground">The exact brief submitted from your storefront.</p></div></div>
             <div className="grid gap-4 sm:grid-cols-2">
               <div className="rounded-xl border p-4"><p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">Service</p><p className="mt-1 font-medium">{quote.serviceType ?? quote.items[0]?.description ?? "—"}</p></div>
-              <div className="rounded-xl border p-4"><p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">Requested amount / budget</p><p className="mt-1 text-lg font-bold">{budget != null ? `${quote.currency} ${budget.toLocaleString()}` : "Not specified"}</p></div>
+              <div className="rounded-xl border p-4"><p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">Requested amount / budget</p><p className="mt-1 text-lg font-bold">{budget != null ? `${quote.currency} ${formatNumber(budget)}` : "Not specified"}</p></div>
               <div className="rounded-xl border p-4 sm:col-span-2"><p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">Brief</p><p className="mt-2 whitespace-pre-wrap text-sm leading-7">{quote.brief ?? "No written brief was supplied."}</p></div>
-              {quote.deadline && <div className="rounded-xl border p-4 sm:col-span-2"><p className="flex items-center gap-2 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground"><CalendarDays className="h-3.5 w-3.5" /> Deadline</p><p className="mt-1 font-medium">{new Date(quote.deadline).toLocaleDateString()}</p></div>}
+              {quote.deadline && <div className="rounded-xl border p-4 sm:col-span-2"><p className="flex items-center gap-2 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground"><CalendarDays className="h-3.5 w-3.5" /> Deadline</p><p className="mt-1 font-medium">{formatDate(new Date(quote.deadline))}</p></div>}
             </div>
           </section>
 
@@ -89,7 +90,7 @@ export default async function QuoteDetailPage({ params }: { params: Promise<{ sl
             </div>
           </section>
 
-          <section className="rounded-2xl border bg-background p-6"><p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">Quote summary</p><div className="mt-4 space-y-3 text-sm"><div className="flex justify-between gap-4"><span className="text-muted-foreground">Requested budget</span><span className="font-semibold">{budget != null ? `${quote.currency} ${budget.toLocaleString()}` : "Not specified"}</span></div><div className="flex justify-between gap-4 border-t pt-3"><span className="text-muted-foreground">Current quote total</span><span className="font-bold">{quote.currency} {Number(quote.total).toLocaleString()}</span></div><p className="pt-1 text-xs leading-5 text-muted-foreground">The customer&apos;s budget is the amount they said they want to spend. Review the brief before preparing the final quote.</p></div></section>
+          <section className="rounded-2xl border bg-background p-6"><p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">Quote summary</p><div className="mt-4 space-y-3 text-sm"><div className="flex justify-between gap-4"><span className="text-muted-foreground">Requested budget</span><span className="font-semibold">{budget != null ? `${quote.currency} ${formatNumber(budget)}` : "Not specified"}</span></div><div className="flex justify-between gap-4 border-t pt-3"><span className="text-muted-foreground">Current quote total</span><span className="font-bold">{quote.currency} {formatNumber(Number(quote.total))}</span></div><p className="pt-1 text-xs leading-5 text-muted-foreground">The customer&apos;s budget is the amount they said they want to spend. Review the brief before preparing the final quote.</p></div></section>
         </aside>
       </div>
     </div>

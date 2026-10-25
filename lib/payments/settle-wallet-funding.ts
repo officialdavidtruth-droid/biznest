@@ -6,6 +6,7 @@ import { escapeHtml } from "@/lib/payments/booking-confirmation";
 import { sendOrderNotificationEmail, storeEmailBrand } from "@/lib/email/send";
 import type { ActionResult } from "@/types/actions";
 import { revalidatePath } from "next/cache";
+import { formatMoney } from "@/lib/utils/format-money";
 
 /**
  * Wallet funding settlement.
@@ -61,7 +62,7 @@ export async function settleWalletFunding(
 
   const email = payment.wallet.user.email;
   if (email) {
-    await sendOrderNotificationEmail(email, `Wallet funded — ${payment.wallet.store.name}`, `Your wallet at <strong>${escapeHtml(payment.wallet.store.name)}</strong> was funded with <strong>₦${amount.toLocaleString()}</strong>.<br/><br/>Reference: <strong>${escapeHtml(reference)}</strong>.`, storeEmailBrand(payment.wallet.store)).catch(() => undefined);
+    await sendOrderNotificationEmail(email, `Wallet funded — ${payment.wallet.store.name}`, `Your wallet at <strong>${escapeHtml(payment.wallet.store.name)}</strong> was funded with <strong>${formatMoney(amount)}</strong>.<br/><br/>Reference: <strong>${escapeHtml(reference)}</strong>.`, storeEmailBrand(payment.wallet.store)).catch(() => undefined);
   }
   revalidatePath(`/store/${payment.wallet.store.slug}/account/wallet`);
   return { success: true, data: { storeSlug: payment.wallet.store.slug } };

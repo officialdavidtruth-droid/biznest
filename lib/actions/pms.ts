@@ -14,6 +14,7 @@ import type { ActionResult } from "@/types/actions";
 import crypto from "crypto";
 import { shortToken } from "@/lib/payments/reference";
 import { findChannelBlockOverlap } from "@/lib/channels/sync";
+import { formatDate } from "@/lib/i18n/locale";
 
 
 async function access(slug: string) {
@@ -282,7 +283,7 @@ export async function checkInReservation(slug:string,id:string):Promise<ActionRe
  // start of the reservation's check-in calendar day onward — just not
  // before that day at all.
  const checkInDayStart=new Date(r.checkIn.getFullYear(),r.checkIn.getMonth(),r.checkIn.getDate());
- if(now<checkInDayStart)return{success:false,error:`This reservation isn't due to check in until ${r.checkIn.toLocaleDateString()}.`};
+ if(now<checkInDayStart)return{success:false,error:`This reservation isn't due to check in until ${formatDate(r.checkIn)}.`};
  // If the whole stay window already elapsed without a check-in, checking
  // in now would create a nonsensical stay (checked-in after check-out).
  // The room was never actually occupied for these dates, so route the

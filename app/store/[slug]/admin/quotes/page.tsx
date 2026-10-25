@@ -2,6 +2,7 @@ import Link from "next/link";
 import { listQuotes } from "@/lib/actions/quote";
 import { QuoteForm } from "@/components/dashboard/quote-form";
 import { QuoteRowActions } from "@/components/dashboard/quote-row-actions";
+import { formatDate, formatNumber } from "@/lib/i18n/locale";
 
 const STATUS_STYLES: Record<string, string> = {
   DRAFT: "bg-[var(--bn-admin-surface-2)] text-[var(--bn-admin-orange)]",
@@ -65,14 +66,14 @@ export default async function QuotesPage({ params }: { params: Promise<{ slug: s
                   </td>
                   <td className="px-4 py-3">{quote.serviceType ?? quote.items[0]?.description ?? "—"}</td>
                   <td className="px-4 py-3">
-                    {quote.budget != null ? `${quote.currency} ${Number(quote.budget).toLocaleString()}` : "Not specified"}
+                    {quote.budget != null ? `${quote.currency} ${formatNumber(Number(quote.budget))}` : "Not specified"}
                   </td>
                   <td className="px-4 py-3">
                     <span className={`rounded-full px-2 py-0.5 text-xs ${STATUS_STYLES[quote.status] ?? "bg-muted text-muted-foreground"}`}>
                       {quote.status === "DRAFT" && quote.creativeProject ? "NEW REQUEST" : quote.status}
                     </span>
                   </td>
-                  <td className="px-4 py-3 text-muted-foreground">{new Date(quote.createdAt).toLocaleDateString()}</td>
+                  <td className="px-4 py-3 text-muted-foreground">{formatDate(new Date(quote.createdAt))}</td>
                   <td className="px-4 py-3">
                     <QuoteRowActions storeSlug={slug} quoteId={quote.id} status={quote.status} incomingRequest={Boolean(quote.creativeProject)} />
                   </td>

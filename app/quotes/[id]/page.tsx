@@ -3,6 +3,7 @@ import Link from "next/link";
 import { CheckCircle2, XCircle, Clock, FileSignature } from "lucide-react";
 import { getQuoteForCustomer } from "@/lib/actions/quote";
 import { QuoteActions } from "@/components/quotes/quote-actions";
+import { formatDate, formatNumber } from "@/lib/i18n/locale";
 
 const STATUS_STYLES: Record<string, string> = {
   SENT: "bg-amber-50 text-amber-700 ring-amber-200",
@@ -53,7 +54,7 @@ export default async function CustomerQuotePage({
           {quote.expiresAt && isRespondable && (
             <span className="ml-2 inline-flex items-center gap-1 text-xs text-slate-500">
               <Clock className="h-3.5 w-3.5" />
-              Expires {new Date(quote.expiresAt).toLocaleDateString()}
+              Expires {formatDate(new Date(quote.expiresAt))}
             </span>
           )}
         </div>
@@ -65,18 +66,18 @@ export default async function CustomerQuotePage({
                 {item.description} × {item.quantity}
               </span>
               <span className="font-medium">
-                {quote.currency} {(Number(item.unitPrice) * item.quantity).toLocaleString()}
+                {quote.currency} {formatNumber((Number(item.unitPrice) * item.quantity))}
               </span>
             </div>
           ))}
           <div className="mt-2 flex justify-between border-t pt-3 text-base font-bold">
             <span>Total</span>
-            <span>{quote.currency} {Number(quote.total).toLocaleString()}</span>
+            <span>{quote.currency} {formatNumber(Number(quote.total))}</span>
           </div>
           {quote.depositRequired && Number(quote.depositRequired) > 0 && (
             <div className="mt-1 flex justify-between text-sm text-slate-500">
               <span>Deposit required to accept</span>
-              <span>{quote.currency} {Number(quote.depositRequired).toLocaleString()}</span>
+              <span>{quote.currency} {formatNumber(Number(quote.depositRequired))}</span>
             </div>
           )}
         </div>

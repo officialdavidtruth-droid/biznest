@@ -2,6 +2,8 @@
 import Link from "next/link";
 import { prisma } from "@/lib/prisma";
 import { getStoreAnalytics, type DailyPoint } from "@/lib/actions/analytics-report";
+import { moneyFormatter } from "@/lib/utils/format-money";
+import { formatNumber } from "@/lib/i18n/locale";
 
 const RANGES = [
   { label: "7 days", value: 7 },
@@ -76,7 +78,7 @@ export default async function AnalyticsPage({
   const data = await getStoreAnalytics(store.id, rangeDays);
   const { summary } = data;
 
-  const currency = "₦"; // stores are NGN-first; see Order.currency default
+  const money = moneyFormatter(store);
 
   return (
     <div>
@@ -99,9 +101,9 @@ export default async function AnalyticsPage({
 
       {/* ---------- Summary stat cards ---------- */}
       <div className="mb-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
-        <StatCard label="Revenue" value={`${currency}${summary.revenue.toLocaleString()}`} />
-        <StatCard label="Orders" value={summary.orders.toLocaleString()} />
-        <StatCard label="Customers" value={summary.customers.toLocaleString()} />
+        <StatCard label="Revenue" value={`${money(summary.revenue)}`} />
+        <StatCard label="Orders" value={formatNumber(summary.orders)} />
+        <StatCard label="Customers" value={formatNumber(summary.customers)} />
         <StatCard
           label="Conversion rate"
           value={summary.conversionRate != null ? `${summary.conversionRate}%` : "—"}
@@ -109,13 +111,13 @@ export default async function AnalyticsPage({
         />
         <StatCard
           label="Average order value"
-          value={summary.averageOrderValue != null ? `${currency}${summary.averageOrderValue.toLocaleString()}` : "—"}
+          value={summary.averageOrderValue != null ? `${money(summary.averageOrderValue)}` : "—"}
         />
       </div>
 
       {/* ---------- Graphs ---------- */}
       <div className="mb-6 grid gap-4 lg:grid-cols-2">
-        <DailyBarChart title="Revenue" series={data.series} field="revenue" format={(v) => `${currency}${v.toLocaleString()}`} />
+        <DailyBarChart title="Revenue" series={data.series} field="revenue" format={(v) => `${money(v)}`} />
         <DailyBarChart title="Orders" series={data.series} field="orders" format={(v) => `${v}`} />
         <DailyBarChart title="Visitors" series={data.series} field="visitors" format={(v) => `${v}`} />
         <DailyBarChart
@@ -130,7 +132,7 @@ export default async function AnalyticsPage({
       <div className="mb-6 grid gap-4 sm:grid-cols-2">
         <div className="rounded-lg border bg-background p-4">
           <p className="text-xs uppercase text-muted-foreground">Abandoned carts</p>
-          <p className="mt-1 text-2xl font-semibold">{summary.abandonedCarts.toLocaleString()}</p>
+          <p className="mt-1 text-2xl font-semibold">{formatNumber(summary.abandonedCarts)}</p>
           <p className="mt-0.5 text-xs text-muted-foreground">
             Checkouts started but never paid, in the last {rangeDays} days.{" "}
             <Link href={`/store/${slug}/admin/orders`} className="underline">
@@ -161,7 +163,7 @@ export default async function AnalyticsPage({
                 <li key={p.id} className="flex items-center justify-between text-sm">
                   <span className="truncate pr-2">{p.name}</span>
                   <span className="shrink-0 text-xs text-muted-foreground">
-                    {p.unitsSold} sold · {currency}{p.revenue.toLocaleString()}
+                    {p.unitsSold} sold · {money(p.revenue)}
                   </span>
                 </li>
               ))}
@@ -178,7 +180,7 @@ export default async function AnalyticsPage({
                 <li key={c.id} className="flex items-center justify-between text-sm">
                   <span className="truncate pr-2">{c.name}</span>
                   <span className="shrink-0 text-xs text-muted-foreground">
-                    {c.unitsSold} sold · {currency}{c.revenue.toLocaleString()}
+                    {c.unitsSold} sold · {money(c.revenue)}
                   </span>
                 </li>
               ))}
@@ -202,7 +204,7 @@ export default async function AnalyticsPage({
                   <div className="h-2 flex-1 overflow-hidden rounded-full bg-muted">
                     <div className="h-full rounded-full bg-primary/70" style={{ width: `${(t.visits / total) * 100}%` }} />
                   </div>
-                  <span className="w-16 shrink-0 text-right text-xs text-muted-foreground">{t.visits.toLocaleString()}</span>
+                  <span className="w-16 shrink-0 text-right text-xs text-muted-foreground">{formatNumber(t.visits)}</span>
                 </div>
               ));
             })()}
@@ -222,7 +224,7 @@ export default async function AnalyticsPage({
         <p className="mb-1 text-sm font-medium">Profit</p>
         {data.profit ? (
           <>
-            <p className="text-2xl font-semibold">{currency}{data.profit.amount.toLocaleString()}</p>
+            <p className="text-2xl font-semibold">{money(data.profit.amount)}</p>
             <p className="mt-0.5 text-xs text-muted-foreground">
               Based on {data.profit.coveragePct}% of revenue — only items with a cost price set on their inventory
               record are included.{" "}

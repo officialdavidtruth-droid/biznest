@@ -1,6 +1,7 @@
 // Route: /store/[slug]/admin/abandoned-checkouts
 import { listAbandonedCheckouts } from "@/lib/actions/abandoned-checkout";
 import { AbandonedCheckoutActions } from "@/components/dashboard/abandoned-checkout-actions";
+import { formatDate, formatNumber } from "@/lib/i18n/locale";
 
 const CHANNEL_LABEL: Record<string, string> = { EMAIL: "Email", WHATSAPP: "WhatsApp", SMS: "SMS" };
 
@@ -38,11 +39,11 @@ export default async function AbandonedCheckoutsPage({
                   <p className="mt-0.5 line-clamp-2 text-sm text-muted-foreground">{label}</p>
                 </div>
                 <p className="shrink-0 text-sm font-semibold">
-                  {order.currency} {Number(order.total).toLocaleString()}
+                  {order.currency} {formatNumber(Number(order.total))}
                 </p>
               </div>
               <p className="mt-2 text-xs text-muted-foreground">
-                Left {new Date(order.createdAt).toLocaleString()}
+                Left {formatDate(new Date(order.createdAt), { day: "numeric", month: "short", year: "numeric", hour: "numeric", minute: "2-digit" })}
                 {order.abandonedNotifications.length > 0 && (
                   <>
                     {" · Sent: "}

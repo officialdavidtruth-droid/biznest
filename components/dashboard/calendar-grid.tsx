@@ -4,6 +4,7 @@ import { useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { createUnitBooking, updateBookingGuestInfo, updateUnitStatus, checkOutUnitBooking } from "@/lib/actions/service-unit";
 import { SingleImageUpload } from "@/components/forms/single-image-upload";
+import { formatDate } from "@/lib/i18n/locale";
 
 type Booking = {
   id: string;
@@ -92,7 +93,7 @@ export function CalendarGrid({
           <button onClick={() => goToWeek(14)} className="rounded-md border px-3 py-1.5 text-sm hover:bg-muted">2 weeks →</button>
         </div>
         <p className="text-sm text-muted-foreground">
-          {new Date(`${rangeStart}T00:00:00`).toLocaleDateString(undefined, { month: "short", day: "numeric" })} – {new Date(`${rangeEnd}T00:00:00`).toLocaleDateString(undefined, { month: "short", day: "numeric" })}
+          {formatDate(new Date(`${rangeStart}T00:00:00`), { month: "short", day: "numeric" })} – {formatDate(new Date(`${rangeEnd}T00:00:00`), { month: "short", day: "numeric" })}
         </p>
       </div>
 
@@ -110,7 +111,7 @@ export function CalendarGrid({
                   <th className="sticky left-0 z-10 min-w-[90px] border-r bg-background px-2 py-2 text-left font-medium">Unit</th>
                   {days.map((d) => (
                     <th key={d} className="min-w-[64px] border-r px-1 py-2 text-center font-medium text-muted-foreground last:border-r-0">
-                      {new Date(`${d}T00:00:00`).toLocaleDateString(undefined, { weekday: "short", day: "numeric" })}
+                      {formatDate(new Date(`${d}T00:00:00`), { weekday: "short", day: "numeric" })}
                     </th>
                   ))}
                 </tr>

@@ -12,6 +12,7 @@ import { getProfessionalServiceSubNicheByName } from "@/lib/professional-service
 import { NewsletterInlineForm } from "@/components/storefront/newsletter-inline-form";
 import { ContactEnquiryForm } from "@/components/storefront/contact-enquiry-form";
 import { isCreativeText, nicheFor, resolveServicesListing, servicesNavLink, type Archetype, type NicheIcon, type NicheProfile } from "@/lib/storefront-niche";
+import { formatNumber } from "@/lib/i18n/locale";
 
 const NICHE_ICONS: Record<NicheIcon, LucideIcon> = {
   shield: ShieldCheck, check: Check, clock: Clock3, sparkles: Sparkles, calendar: CalendarCheck, map: MapPin, heart: Heart,
@@ -153,7 +154,7 @@ function Hero({store,slug,active,copy,accent,hero,archetype="editorial",children
 function SectionTitle({eyebrow,title,sub}:{eyebrow:string;title:string;sub?:string}){return <div className="bn-universal-section-title"><small>{eyebrow}</small><h2>{title}</h2>{sub&&<p>{sub}</p>}</div>}
 function imageStyle(url:string|null,fallback:string):React.CSSProperties{return url?{backgroundImage:`url(${url})`,backgroundSize:"cover",backgroundPosition:"center"}:{background:fallback}}
 
-function formatPrice(x:Item){return x.price>0?`${x.currency} ${x.price.toLocaleString()}`:null}
+function formatPrice(x:Item){return x.price>0?`${x.currency} ${formatNumber(x.price)}`:null}
 function formatDuration(m?:number|null){if(!m||m<=0)return null;if(m<60)return `${m} min`;const h=Math.floor(m/60),r=m%60;return r?`${h}h ${r}m`:`${h}h`}
 function ServiceMeta({x,accent}:{x:Item;accent:string}){const price=formatPrice(x),dur=formatDuration(x.durationMins);if(!price&&!dur)return null;return <div className="bn-service-meta">{price&&<b style={{color:accent}}>{price}</b>}{dur&&<span><Clock3 size={12}/>{dur}</span>}</div>}
 function BookButton({x,href,accent,square}:{x:Item;href:string;accent:string;square?:boolean}){if(!(x.kind==="service"&&x.isBookable))return null;return <Link href={href} className={`bn-book-btn${square?" square":""}`} style={{background:accent}}>Book now <ArrowRight size={13}/></Link>}
@@ -178,7 +179,7 @@ function WorkCard({x,accent,slug,archetype}:{x:Item;accent:string;slug:string;ar
  return <Link href={href} className="bn-portfolio-card"><div className="bn-portfolio-image" style={imageStyle(x.image,"#e7edf4")}></div><h3>{x.name}</h3><p>{x.categoryName||x.kind}</p></Link>;
 }
 function PriceCard({x,i,accent,slug,archetype,cta}:{x:Item;i:number;accent:string;slug:string;archetype:Archetype;cta:{label:string;href:string}}){
- const price=x.price?`${x.currency} ${x.price.toLocaleString()}`:"Custom Quote";
+ const price=x.price?`${x.currency} ${formatNumber(x.price)}`:"Custom Quote";
  if(archetype==="corporate") return <article className={`bn-price-row ${i===1?"featured":""}`} key={x.id}>{i===1&&<span className="bn-popular" style={{background:accent}}>Popular</span>}<small>{x.categoryName||"Solution"}</small><h3>{x.name}</h3><p>{x.description||"Professional quality, delivered to your requirements."}</p><div className="bn-price" style={{color:accent}}>{price}</div><Link href={cta.href} style={{background:accent}} className="bn-primary">{cta.label} <ArrowRight size={15}/></Link></article>;
  if(archetype==="technical") return <article className={`bn-price-tech-card ${i===1?"featured":""}`} key={x.id} style={i===1?{borderColor:accent}:undefined}><small style={{color:accent}}>{x.categoryName||"Plan"}</small><h3>{x.name}</h3><div className="bn-price mono">{price}</div><p>{x.description||"Built to spec, deployed fast."}</p><Link href={cta.href} className="bn-primary square" style={{background:accent}}>{cta.label} <ArrowRight size={15}/></Link></article>;
  return <article className={`bn-price-card ${i===1?"featured":""}`} key={x.id}>{i===1&&<span className="bn-popular" style={{background:accent}}>Popular</span>}<div className="bn-price-image" style={imageStyle(x.image,`${accent}${i%2?"22":"12"}`)}></div><div className="bn-price-body"><small>{x.categoryName||"Solution"}</small><h3>{x.name}</h3><p>{x.description||"Professional quality, delivered to your requirements."}</p><div className="bn-price">{price}</div>{x.price>0&&<small>Starting price</small>}<Link href={cta.href} style={{borderColor:accent,color:accent}}>{cta.label} <ArrowRight size={15}/></Link></div></article>;

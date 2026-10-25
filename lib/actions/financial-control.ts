@@ -7,6 +7,7 @@ import { getPluginEntitlement } from "@/lib/plugins";
 import { nanoid } from "nanoid";
 import { revalidatePath } from "next/cache";
 import type { ActionResult } from "@/types/actions";
+import { formatDate } from "@/lib/i18n/locale";
 
 async function access(slug: string) {
   const a = await assertStorePermission(slug, "plugin:financial-control");
@@ -50,7 +51,7 @@ async function ensureFinancialFoundation(storeId: string) {
   await prisma.financialPeriod.upsert({
     where: { storeId_startsAt_endsAt: { storeId, startsAt, endsAt } },
     update: {},
-    create: { storeId, name: startsAt.toLocaleString("en-NG", { month: "long", year: "numeric", timeZone: "UTC" }), startsAt, endsAt },
+    create: { storeId, name: formatDate(startsAt, { month: "long", year: "numeric", timeZone: "UTC" }), startsAt, endsAt },
   });
 }
 
@@ -251,7 +252,7 @@ export async function createFinancialPeriod(slug: string, year: number, month: n
   if (!Number.isInteger(year) || !Number.isInteger(month) || month < 1 || month > 12) return { success: false, error: "Invalid accounting period." };
   const startsAt = new Date(Date.UTC(year, month - 1, 1));
   const endsAt = new Date(Date.UTC(year, month, 0, 23, 59, 59, 999));
-  const name = startsAt.toLocaleString("en-NG", { month: "long", year: "numeric", timeZone: "UTC" });
+  const name = formatDate(startsAt, { month: "long", year: "numeric", timeZone: "UTC" });
   const period = await prisma.financialPeriod.upsert({ where: { storeId_startsAt_endsAt: { storeId: a.store.id, startsAt, endsAt } }, update: {}, create: { storeId: a.store.id, name, startsAt, endsAt } });
   revalidatePath(`/store/${slug}/admin/apps/financial-control`);
   return { success: true, data: { id: period.id } };

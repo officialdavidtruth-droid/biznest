@@ -7,6 +7,7 @@ import { subscribeToNewsletter } from "@/lib/actions/newsletter";
 import { CategoryNav } from "@/components/storefront/category-nav";
 import { Reveal } from "@/components/storefront/reveal";
 import type { CategoryTreeNode } from "@/lib/storefront-categories";
+import { formatNumber } from "@/lib/i18n/locale";
 
 // All images (logo, banner, product/service photos) come from the store
 // owner's own uploads — nothing here is hardcoded artwork. This template is
@@ -131,7 +132,7 @@ export function NovaStorefront({
                     <h4 style={{ ...serif, fontSize: 20, fontWeight: 700 }}>{item.name}</h4>
                     {item.categoryName && <span style={{ ...label, marginTop: 6, display: "inline-block" }}>{item.categoryName}</span>}
                   </div>
-                  <span style={{ ...serif, fontSize: 18, color: NOVA.gold, whiteSpace: "nowrap" }}>{item.currency} {item.price.toLocaleString()}</span>
+                  <span style={{ ...serif, fontSize: 18, color: NOVA.gold, whiteSpace: "nowrap" }}>{item.currency} {formatNumber(item.price)}</span>
                 </a>
               </Reveal>
             ))}

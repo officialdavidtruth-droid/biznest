@@ -7,6 +7,7 @@ import { notifyUser } from "@/lib/notifications/notify";
 import { sendOrderNotificationEmail } from "@/lib/email/send";
 import type { ActionResult } from "@/types/actions";
 import { revalidatePath } from "next/cache";
+import { formatNumber } from "@/lib/i18n/locale";
 
 /**
  * Service booking payment settlement.
@@ -52,7 +53,7 @@ export async function settleServiceBookingPayment(
   // confirmation email. allSettled never throws, so a failed email can't
   // undo a settled payment.
   const booking = payment.booking;
-  const money = `${booking.paymentCurrency ?? payment.currency} ${Number(payment.amount).toLocaleString()}`;
+  const money = `${booking.paymentCurrency ?? payment.currency} ${formatNumber(Number(payment.amount))}`;
   await Promise.allSettled([
     confirmPaidBooking(booking.id, reference, Number(payment.amount)),
     notifyUser({

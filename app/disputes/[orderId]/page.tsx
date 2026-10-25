@@ -5,6 +5,7 @@ import { OpenDisputeForm } from "@/components/dispute/open-dispute-form";
 import { DisputeEvidenceForm } from "@/components/dispute/dispute-evidence-form";
 import { DisputeMessageForm } from "@/components/dispute/dispute-message-form";
 import { DISPUTE_STATUS_CONFIG } from "@/lib/constants/dispute";
+import { formatDate, formatNumber } from "@/lib/i18n/locale";
 import {
   ArrowLeft, ShieldAlert, Camera, StickyNote, MessageSquare,
   Truck, CreditCard, Gavel, User as UserIcon, Store as StoreIcon,
@@ -39,7 +40,7 @@ export default async function DisputeThreadPage({ params }: { params: Promise<{ 
               Order #{orderId.slice(-8).toUpperCase()}
             </h1>
             <p className="mt-1 text-sm text-slate-500">
-              {viewer === "buyer" ? "with" : "from"} {otherPartyLabel} · {order.currency} {Number(order.total).toLocaleString()}
+              {viewer === "buyer" ? "with" : "from"} {otherPartyLabel} · {order.currency} {formatNumber(Number(order.total))}
             </p>
           </div>
           {dispute && (
@@ -75,7 +76,7 @@ export default async function DisputeThreadPage({ params }: { params: Promise<{ 
                 <p className="text-sm leading-relaxed">{dispute.adminNotes}</p>
                 {dispute.resolvedAt && (
                   <p className="mt-2 text-xs text-slate-400">
-                    Decided {new Date(dispute.resolvedAt).toLocaleString()}
+                    Decided {formatDate(new Date(dispute.resolvedAt), { day: "numeric", month: "short", year: "numeric", hour: "numeric", minute: "2-digit" })}
                   </p>
                 )}
               </div>
@@ -84,7 +85,7 @@ export default async function DisputeThreadPage({ params }: { params: Promise<{ 
             {/* ---------- Reason ---------- */}
             <div className="rounded-2xl border border-slate-200 bg-white p-5">
               <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-slate-400">
-                Opened by {dispute.raisedById === order.buyerId ? "buyer" : "seller"} · {new Date(dispute.createdAt).toLocaleString()}
+                Opened by {dispute.raisedById === order.buyerId ? "buyer" : "seller"} · {formatDate(new Date(dispute.createdAt), { day: "numeric", month: "short", year: "numeric", hour: "numeric", minute: "2-digit" })}
               </p>
               <p className="text-sm text-slate-800">{dispute.reason}</p>
             </div>
@@ -104,7 +105,7 @@ export default async function DisputeThreadPage({ params }: { params: Promise<{ 
                         {/* eslint-disable-next-line @next/next/no-img-element */}
                         <img src={p.fileUrl!} alt="" className="aspect-square w-full rounded-lg border object-cover" />
                         <p className="mt-1 truncate text-[10px] text-slate-400">
-                          {p.submittedBy.id === order.buyerId ? "Buyer" : "Seller"} · {new Date(p.createdAt).toLocaleDateString()}
+                          {p.submittedBy.id === order.buyerId ? "Buyer" : "Seller"} · {formatDate(new Date(p.createdAt))}
                         </p>
                       </a>
                     ))}
@@ -122,7 +123,7 @@ export default async function DisputeThreadPage({ params }: { params: Promise<{ 
                       <li key={n.id} className="rounded-lg bg-slate-50 p-2 text-xs text-slate-700">
                         <p>{n.note}</p>
                         <p className="mt-1 text-[10px] text-slate-400">
-                          {n.submittedBy.id === order.buyerId ? "Buyer" : "Seller"} · {new Date(n.createdAt).toLocaleDateString()}
+                          {n.submittedBy.id === order.buyerId ? "Buyer" : "Seller"} · {formatDate(new Date(n.createdAt))}
                         </p>
                       </li>
                     ))}
@@ -150,7 +151,7 @@ export default async function DisputeThreadPage({ params }: { params: Promise<{ 
                         >
                           <p>{m.content}</p>
                           <p className={`mt-1 text-[10px] ${mine ? "text-slate-300" : "text-slate-400"}`}>
-                            {m.sender.name ?? "—"} · {new Date(m.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+                            {m.sender.name ?? "—"} · {formatDate(new Date(m.createdAt), { hour: "2-digit", minute: "2-digit" })}
                           </p>
                         </div>
                       </div>
@@ -179,7 +180,7 @@ export default async function DisputeThreadPage({ params }: { params: Promise<{ 
                 )}
                 {order.deliveryZone && (
                   <p className="mb-3 text-xs text-slate-500">
-                    Delivery zone: {order.deliveryZone.name} ({order.currency} {Number(order.deliveryZone.fee).toLocaleString()})
+                    Delivery zone: {order.deliveryZone.name} ({order.currency} {formatNumber(Number(order.deliveryZone.fee))})
                   </p>
                 )}
                 <ol className="space-y-1.5 border-l border-slate-200 pl-3">
@@ -187,7 +188,7 @@ export default async function DisputeThreadPage({ params }: { params: Promise<{ 
                     <li key={ev.id} className="text-xs text-slate-600">
                       <span className="font-medium text-slate-800">{ev.status.replace("_", " ")}</span>
                       {" — "}
-                      {new Date(ev.createdAt).toLocaleString()}
+                      {formatDate(new Date(ev.createdAt), { day: "numeric", month: "short", year: "numeric", hour: "numeric", minute: "2-digit" })}
                       {ev.note && <span className="text-slate-400"> ({ev.note})</span>}
                     </li>
                   ))}
@@ -222,9 +223,9 @@ export default async function DisputeThreadPage({ params }: { params: Promise<{ 
                             {p.status}
                           </span>
                         </div>
-                        <p>{p.currency} {Number(p.amount).toLocaleString()}</p>
-                        {p.verifiedAt && <p className="text-slate-400">Verified {new Date(p.verifiedAt).toLocaleString()}</p>}
-                        {p.refundedAt && <p className="text-amber-600">Refunded {new Date(p.refundedAt).toLocaleString()}</p>}
+                        <p>{p.currency} {formatNumber(Number(p.amount))}</p>
+                        {p.verifiedAt && <p className="text-slate-400">Verified {formatDate(new Date(p.verifiedAt), { day: "numeric", month: "short", year: "numeric", hour: "numeric", minute: "2-digit" })}</p>}
+                        {p.refundedAt && <p className="text-amber-600">Refunded {formatDate(new Date(p.refundedAt), { day: "numeric", month: "short", year: "numeric", hour: "numeric", minute: "2-digit" })}</p>}
                       </li>
                     ))}
                   </ul>

@@ -6,6 +6,7 @@ import { toast } from "sonner";
 import { createStayBooking } from "@/lib/actions/booking";
 import { startBookingPayment } from "@/lib/actions/customer-wallet";
 import { useShopAuthGate } from "@/lib/hooks/use-shop-auth-gate";
+import { formatNumber } from "@/lib/i18n/locale";
 
 function today() { return new Date().toISOString().slice(0, 10); }
 function tomorrow() { const d = new Date(); d.setDate(d.getDate()+1); return d.toISOString().slice(0,10); }
@@ -34,6 +35,6 @@ export function HotelReservationForm({storeSlug,service,accent,card,ink,bg,radiu
     <label>Room Type *<select defaultValue={service.id}><option value={service.id}>{service.name}</option></select></label>
     <label>Number of Rooms *<select value={rooms} onChange={e=>setRooms(e.target.value)}>{[1,2,3,4].map(n=><option key={n}>{n} Room{n===1?"":"s"}</option>)}</select></label>
     <button disabled={pending} type="submit">{pending?"Securing Room…":"Book Now"}</button>
-    <small>{n>0 ? `${n} night${n===1?"":"s"} · ${service.currency} ${total.toLocaleString()}` : "Select your dates"}</small>
+    <small>{n>0 ? `${n} night${n===1?"":"s"} · ${service.currency} ${formatNumber(total)}` : "Select your dates"}</small>
   </form>
 }

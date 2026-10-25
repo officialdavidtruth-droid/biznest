@@ -2,6 +2,7 @@
 
 import { Copy, Send } from "lucide-react";
 import { marketingTemplateName } from "@/lib/email/marketing-templates";
+import { formatDate, formatNumber } from "@/lib/i18n/locale";
 
 export type CampaignRow = {
   id: string;
@@ -52,10 +53,10 @@ export function MarketingCampaigns({ campaigns, onReuse, onCompose }: { campaign
                   <p className="truncate text-sm font-semibold">{c.subject}</p>
                   <span className={`inline-flex shrink-0 items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-semibold ${st.cls}`}><span className={`h-1.5 w-1.5 rounded-full ${st.dot}`} />{st.label}</span>
                 </div>
-                <p className="mt-1 text-xs text-muted-foreground">{marketingTemplateName(c.template)} · {new Date(c.createdAt).toLocaleDateString("en-NG", { day: "numeric", month: "short", year: "numeric" })}</p>
+                <p className="mt-1 text-xs text-muted-foreground">{marketingTemplateName(c.template)} · {formatDate(new Date(c.createdAt), { day: "numeric", month: "short", year: "numeric" })}</p>
               </div>
               <div className="w-full sm:w-48">
-                <div className="flex justify-between text-[11px] text-muted-foreground"><span>Delivered</span><span className="font-semibold text-foreground tabular-nums">{c.sentCount.toLocaleString()} / {c.recipientCount.toLocaleString()}</span></div>
+                <div className="flex justify-between text-[11px] text-muted-foreground"><span>Delivered</span><span className="font-semibold text-foreground tabular-nums">{formatNumber(c.sentCount)} / {formatNumber(c.recipientCount)}</span></div>
                 <div className="mt-1 h-1.5 overflow-hidden rounded-full bg-muted" role="progressbar" aria-valuenow={pct} aria-valuemin={0} aria-valuemax={100}><div className={`h-full rounded-full ${c.status === "FAILED" ? "bg-rose-500" : "bg-emerald-500"}`} style={{ width: `${pct}%` }} /></div>
                 {c.failedCount > 0 && <p className="mt-1 text-[10px] text-rose-600">{c.failedCount} failed</p>}
               </div>

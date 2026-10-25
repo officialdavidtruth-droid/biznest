@@ -6,6 +6,7 @@ import { subscribeToNewsletterForm } from "@/lib/actions/newsletter";
 import { CategoryNav } from "@/components/storefront/category-nav";
 import { Reveal } from "@/components/storefront/reveal";
 import type { CategoryTreeNode } from "@/lib/storefront-categories";
+import { formatNumber } from "@/lib/i18n/locale";
 
 // Ported from the JuiceLife cold-pressed-juice template
 // (juicelife-react-nestjs.zip): green/orange palette, split hero with a
@@ -128,7 +129,7 @@ export function JuiceLifeStorefront({
                   <h3 style={{ fontSize: 13, margin: "13px 0 6px" }}>{p.name}</h3>
                   <p style={{ fontSize: 9, color: "#777", height: 28, margin: 0 }}>{p.description || p.categoryName}</p>
                   <div style={{ display: "flex", justifyContent: "space-between", marginTop: 15, color: JUICELIFE.green, fontWeight: 700 }}>
-                    <b>{p.currency} {p.price.toLocaleString()}</b>
+                    <b>{p.currency} {formatNumber(p.price)}</b>
                   </div>
                 </a>
               ))}
@@ -181,7 +182,7 @@ export function JuiceLifeStorefront({
                 <a key={p.id} href={`/store/${slug}/${p.kind}/${p.id}`} style={{ background: "#fff", border: "1px solid #edf1eb", borderRadius: 12, padding: 16, textDecoration: "none", color: JUICELIFE.ink, display: "block" }}>
                   <div style={{ height: 130, borderRadius: 9, background: p.image ? `url(${p.image}) center/cover` : "#f7faf3" }} />
                   <h3 style={{ fontSize: 12, margin: "10px 0 4px" }}>{p.name}</h3>
-                  <b style={{ fontSize: 11, color: JUICELIFE.green }}>{p.currency} {p.price.toLocaleString()}</b>
+                  <b style={{ fontSize: 11, color: JUICELIFE.green }}>{p.currency} {formatNumber(p.price)}</b>
                 </a>
               ))}
             </div>

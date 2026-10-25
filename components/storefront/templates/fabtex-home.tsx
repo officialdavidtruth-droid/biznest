@@ -5,6 +5,7 @@ import { FABTEX } from "@/lib/template-themes";
 import { CategoryNav } from "@/components/storefront/category-nav";
 import { Reveal } from "@/components/storefront/reveal";
 import type { CategoryTreeNode } from "@/lib/storefront-categories";
+import { formatNumber } from "@/lib/i18n/locale";
 
 // Ported from the Fabtex fabric/textile B2B storefront template
 // (fabtex-react-nestjs-storefront.zip): dark industrial palette, wide
@@ -132,7 +133,7 @@ export function FabtexStorefront({
                   <div style={{ height: 170, background: p.image ? `url(${p.image}) center/cover` : "linear-gradient(135deg,#76695e,#292321)" }} />
                   <h3 style={{ fontWeight: 400, fontSize: 14, margin: "10px 0 4px" }}>{p.name}</h3>
                   <p style={{ fontSize: 9, color: "#aaa", minHeight: 30 }}>{p.description || p.categoryName}</p>
-                  <div style={{ color: FABTEX.orange, fontWeight: 700, marginBottom: 4 }}>{p.currency} {p.price.toLocaleString()}</div>
+                  <div style={{ color: FABTEX.orange, fontWeight: 700, marginBottom: 4 }}>{p.currency} {formatNumber(p.price)}</div>
                 </a>
               ))}
             </div>

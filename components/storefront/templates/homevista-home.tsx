@@ -6,6 +6,7 @@ import { subscribeToNewsletterForm } from "@/lib/actions/newsletter";
 import { CategoryNav } from "@/components/storefront/category-nav";
 import { Reveal } from "@/components/storefront/reveal";
 import type { CategoryTreeNode } from "@/lib/storefront-categories";
+import { formatNumber } from "@/lib/i18n/locale";
 
 // Ported from the HomeVista Real Estate template (homevista_nextjs_template.zip).
 // Per its own README ("Replace lib/mock-data.ts with your existing
@@ -105,7 +106,7 @@ export function HomeVistaStorefront({
           <div style={{ position: "absolute", right: "5%", bottom: 20, background: "#fff", borderRadius: 12, padding: "12px 18px", boxShadow: "0 5px 22px #193b3218", zIndex: 3, minWidth: 190, fontSize: 9 }}>
             ⌂ <b style={{ fontSize: 10 }}>{heroListing.name}</b>
             {heroListing.categoryName && <small style={{ display: "block", color: "#677276", margin: "5px 0" }}>{heroListing.categoryName}</small>}
-            <strong style={{ fontSize: 13, color: HOMEVISTA.accent }}>{heroListing.currency} {heroListing.price.toLocaleString()}</strong>
+            <strong style={{ fontSize: 13, color: HOMEVISTA.accent }}>{heroListing.currency} {formatNumber(heroListing.price)}</strong>
           </div>
         )}
       </section>
@@ -154,7 +155,7 @@ export function HomeVistaStorefront({
                   <div style={{ padding: 9 }}>
                     <h3 style={{ fontSize: 10, margin: "0 0 5px" }}>{item.name}</h3>
                     {item.categoryName && <small style={{ fontSize: 8, color: "#758084" }}>{item.categoryName}</small>}
-                    <strong style={{ display: "block", color: HOMEVISTA.accent, fontSize: 13, margin: "6px 0" }}>{item.currency} {item.price.toLocaleString()}</strong>
+                    <strong style={{ display: "block", color: HOMEVISTA.accent, fontSize: 13, margin: "6px 0" }}>{item.currency} {formatNumber(item.price)}</strong>
                   </div>
                 </a>
               </Reveal>

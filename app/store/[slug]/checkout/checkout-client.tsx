@@ -10,6 +10,7 @@ import { DeliveryZoneOptions } from "@/components/checkout/delivery-zone-options
 import { toast } from "sonner";
 import { openKorapayInline } from "@/lib/checkout/korapay-inline";
 import { ShieldCheck, Lock, Truck, ChevronLeft, CreditCard } from "lucide-react";
+import { formatNumber } from "@/lib/i18n/locale";
 
 declare global {
   interface Window {
@@ -269,7 +270,7 @@ export function CheckoutClient({ slug, palette = DEFAULT_STORE_PALETTE }: { slug
                       <p className="truncate text-sm font-medium">{i.name}</p>
                       <p style={{ opacity: 0.6 }} className="text-xs">Qty {i.quantity}</p>
                     </div>
-                    <span className="text-sm font-semibold">{i.currency} {(i.price * i.quantity).toLocaleString()}</span>
+                    <span className="text-sm font-semibold">{i.currency} {formatNumber((i.price * i.quantity))}</span>
                   </div>
                 ))}
               </div>
@@ -277,17 +278,17 @@ export function CheckoutClient({ slug, palette = DEFAULT_STORE_PALETTE }: { slug
               <div style={{ borderTop: `1px solid ${INVERSE_INK}22` }} className="flex flex-col gap-2.5 pt-5 text-sm">
                 <div className="flex items-center justify-between">
                   <span style={{ opacity: 0.8 }}>Subtotal</span>
-                  <span className="font-semibold">{currency} {subtotal.toLocaleString()}</span>
+                  <span className="font-semibold">{currency} {formatNumber(subtotal)}</span>
                 </div>
                 <div className="flex items-center justify-between">
                   <span style={{ opacity: 0.8 }}>Delivery{selectedZone ? ` (${selectedZone.name})` : ""}</span>
-                  <span className="font-semibold">{selectedZone ? `${currency} ${deliveryFee.toLocaleString()}` : "Free / pickup"}</span>
+                  <span className="font-semibold">{selectedZone ? `${currency} ${formatNumber(deliveryFee)}` : "Free / pickup"}</span>
                 </div>
               </div>
 
               <div style={{ borderTop: `1px solid ${INVERSE_INK}22` }} className="flex items-end justify-between pt-5">
                 <span className="text-base font-semibold">Total</span>
-                <span className="text-2xl font-extrabold leading-none">{currency} {total.toLocaleString()}</span>
+                <span className="text-2xl font-extrabold leading-none">{currency} {formatNumber(total)}</span>
               </div>
 
               <button
@@ -297,7 +298,7 @@ export function CheckoutClient({ slug, palette = DEFAULT_STORE_PALETTE }: { slug
                 style={{ background: ACCENT, color: palette.onAccent, boxShadow: `0 8px 20px ${ACCENT}4d` }}
                 className="mt-1 flex items-center justify-center gap-2 rounded-xl py-3.5 text-sm font-semibold transition-transform hover:-translate-y-0.5 disabled:opacity-50 disabled:hover:translate-y-0"
               >
-                {isSubmitting ? "Opening secure card checkout…" : `Pay ${currency} ${total.toLocaleString()}`}
+                {isSubmitting ? "Opening secure card checkout…" : `Pay ${currency} ${formatNumber(total)}`}
               </button>
               <p className="flex items-center justify-center gap-2 text-center text-[11px] uppercase tracking-widest" style={{ opacity: 0.55 }}><CreditCard className="h-3.5 w-3.5" /> Visa · Mastercard · Verve · Secure card checkout</p>
             </div>

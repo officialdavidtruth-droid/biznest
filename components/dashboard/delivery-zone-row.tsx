@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { updateDeliveryZone, deleteDeliveryZone, toggleDeliveryZone } from "@/lib/actions/delivery-zone";
 import { toast } from "sonner";
+import { formatNumber } from "@/lib/i18n/locale";
 
 type Zone = {
   id: string;
@@ -92,7 +93,7 @@ export function DeliveryZoneRow({ storeSlug, currency, zone }: { storeSlug: stri
     <tr className="border-b last:border-0">
       <td className="px-4 py-3 text-muted-foreground">{zone.city ?? "—"}</td>
       <td className="px-4 py-3 font-medium">{zone.name}</td>
-      <td className="px-4 py-3">{currency} {Number(zone.fee).toLocaleString()}</td>
+      <td className="px-4 py-3">{currency} {formatNumber(Number(zone.fee))}</td>
       <td className="px-4 py-3 text-muted-foreground">{zone.estimatedMinutes ? `${zone.estimatedMinutes} min` : "—"}</td>
       <td className="px-4 py-3">
         <div className="flex items-center gap-2">

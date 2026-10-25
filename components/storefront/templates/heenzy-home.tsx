@@ -5,6 +5,7 @@ import { subscribeToNewsletter } from "@/lib/actions/newsletter";
 import { CategoryNav } from "@/components/storefront/category-nav";
 import { Reveal } from "@/components/storefront/reveal";
 import type { CategoryTreeNode } from "@/lib/storefront-categories";
+import { formatNumber } from "@/lib/i18n/locale";
 
 // All images below (logo, banner, category thumb, product/service photos,
 // promo art, review avatars) come straight from the store owner's own
@@ -111,7 +112,7 @@ export function HeenzyStorefront({
                     <p className="hz-name">{item.name}</p>
                     {item.categoryName && <span className="hz-rating">{item.categoryName}</span>}
                   </div>
-                  <div className="hz-trend-price">{item.currency} {item.price.toLocaleString()}</div>
+                  <div className="hz-trend-price">{item.currency} {formatNumber(item.price)}</div>
                 </div>
               ))}
             </div>
@@ -275,7 +276,7 @@ function HeenzyProductCard({ item, slug, storeName }: { item: CatalogItem; slug:
       </div>
       <p className="hz-product-name">{item.name}</p>
       <div className="hz-product-meta">
-        <span className="hz-product-price">{item.currency} {item.price.toLocaleString()}</span>
+        <span className="hz-product-price">{item.currency} {formatNumber(item.price)}</span>
       </div>
       <div style={{ marginTop: 10, fontSize: 12, fontWeight: 700, color: HEENZY.black, textDecoration: "underline" }}>
         {item.kind === "service" ? (item.isBookable ? "Book now →" : "View details →") : "View & buy →"}

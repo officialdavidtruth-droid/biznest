@@ -1,6 +1,7 @@
 // Route: /store/[slug]/admin/referrals
 import { prisma } from "@/lib/prisma";
 import { ReferralSettingsForm } from "@/components/dashboard/referral-settings-form";
+import { formatDate } from "@/lib/i18n/locale";
 
 export default async function ReferralsPage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
@@ -42,7 +43,7 @@ export default async function ReferralsPage({ params }: { params: Promise<{ slug
                 <td className="px-4 py-3">{r.referee.name ?? "—"}</td>
                 <td className="px-4 py-3">{r.status === "REWARDED" ? "Rewarded" : r.status === "PENDING" ? "Waiting for first order" : "Cancelled"}</td>
                 <td className="px-4 py-3">{r.status === "REWARDED" ? `${r.referrerPoints} + ${r.refereePoints}` : "—"}</td>
-                <td className="px-4 py-3">{r.createdAt.toLocaleDateString()}</td>
+                <td className="px-4 py-3">{formatDate(r.createdAt)}</td>
               </tr>
             ))}
             {referrals.length === 0 && (

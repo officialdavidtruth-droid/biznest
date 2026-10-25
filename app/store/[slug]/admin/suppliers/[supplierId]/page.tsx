@@ -5,6 +5,7 @@ import { getSupplier } from "@/lib/actions/supplier";
 import { listProducts } from "@/lib/actions/product";
 import { SupplierForm } from "@/components/dashboard/supplier-form";
 import { SupplierProductLinks } from "@/components/dashboard/supplier-product-links";
+import { formatNumber } from "@/lib/i18n/locale";
 
 export default async function SupplierDetailPage({
   params,
@@ -72,7 +73,7 @@ export default async function SupplierDetailPage({
                 <tr key={po.id} className="border-b last:border-0">
                   <td className="px-4 py-3 font-medium">{po.poNumber}</td>
                   <td className="px-4 py-3">{po.status.replace("_", " ")}</td>
-                  <td className="px-4 py-3">{po.currency} {Number(po.subtotal).toLocaleString()}</td>
+                  <td className="px-4 py-3">{po.currency} {formatNumber(Number(po.subtotal))}</td>
                   <td className="px-4 py-3 text-right">
                     <Link href={`/store/${slug}/admin/purchase-orders/${po.id}`} className="text-xs font-medium text-primary hover:underline">
                       View

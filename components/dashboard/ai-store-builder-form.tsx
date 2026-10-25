@@ -4,6 +4,7 @@ import { useState } from "react";
 import { toast } from "sonner";
 import { generateAiStoreDraft, applyAiStoreDraft } from "@/lib/actions/ai-store-builder";
 import type { StoreDraft } from "@/lib/ai/store-builder";
+import { formatMoney } from "@/lib/utils/format-money";
 
 export function AiStoreBuilderForm({ slug, defaultDescription }: { slug: string; defaultDescription: string }) {
   const [description, setDescription] = useState(defaultDescription);
@@ -147,7 +148,7 @@ export function AiStoreBuilderForm({ slug, defaultDescription }: { slug: string;
             <ul className="mt-1 space-y-1 text-xs text-muted-foreground">
               {draft.sampleProducts.map((p, i) => (
                 <li key={i}>
-                  {p.name} — ₦{p.suggestedPriceNaira.toLocaleString("en-NG")} — {p.description}
+                  {p.name} — {formatMoney(p.suggestedPriceNaira)} — {p.description}
                 </li>
               ))}
             </ul>

@@ -2,6 +2,7 @@
 import { notFound } from "next/navigation";
 import { getPurchaseOrder } from "@/lib/actions/purchase-order";
 import { PurchaseOrderActions } from "@/components/dashboard/purchase-order-actions";
+import { formatDate, formatNumber } from "@/lib/i18n/locale";
 
 const STATUS_STYLES: Record<string, string> = {
   DRAFT: "bg-muted text-muted-foreground",
@@ -30,7 +31,7 @@ export default async function PurchaseOrderDetailPage({
           </span>
         </div>
         <p className="text-sm text-muted-foreground">Supplier: {po.supplier.name}</p>
-        {po.expectedAt && <p className="text-sm text-muted-foreground">Expected: {po.expectedAt.toLocaleDateString()}</p>}
+        {po.expectedAt && <p className="text-sm text-muted-foreground">Expected: {formatDate(po.expectedAt)}</p>}
       </div>
 
       <div className="overflow-hidden rounded-lg border bg-background">
@@ -50,14 +51,14 @@ export default async function PurchaseOrderDetailPage({
                 <td className="px-4 py-3 font-medium">{item.description}</td>
                 <td className="px-4 py-3">{item.quantityOrdered}</td>
                 <td className="px-4 py-3">{item.quantityReceived}</td>
-                <td className="px-4 py-3">{Number(item.unitCost).toLocaleString()}</td>
-                <td className="px-4 py-3">{(item.quantityOrdered * Number(item.unitCost)).toLocaleString()}</td>
+                <td className="px-4 py-3">{formatNumber(Number(item.unitCost))}</td>
+                <td className="px-4 py-3">{formatNumber((item.quantityOrdered * Number(item.unitCost)))}</td>
               </tr>
             ))}
           </tbody>
         </table>
         <div className="border-t px-4 py-3 text-right text-sm font-medium">
-          Subtotal: {po.currency} {Number(po.subtotal).toLocaleString()}
+          Subtotal: {po.currency} {formatNumber(Number(po.subtotal))}
         </div>
       </div>
 

@@ -8,6 +8,8 @@
  * with BizNest. BizNest is not mentioned anywhere in the email.
  */
 
+import { formatMoney as formatMoneyBase } from "@/lib/utils/format-money";
+
 export type AbandonedCheckoutEmailStore = {
   name: string;
   slug: string;
@@ -84,11 +86,7 @@ export function mixHex(hex: string, toward: string, amount: number): string {
 }
 
 export function formatMoney(amount: number, currency: string): string {
-  try {
-    return new Intl.NumberFormat("en-NG", { style: "currency", currency, maximumFractionDigits: 2, minimumFractionDigits: 0 }).format(amount);
-  } catch {
-    return `${currency} ${amount.toLocaleString()}`;
-  }
+  return formatMoneyBase(amount, currency);
 }
 
 /** Display name safe to put in a `From: "Name" <addr>` header. */

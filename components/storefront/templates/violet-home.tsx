@@ -6,6 +6,7 @@ import { subscribeToNewsletterForm } from "@/lib/actions/newsletter";
 import { CategoryNav } from "@/components/storefront/category-nav";
 import { Reveal } from "@/components/storefront/reveal";
 import type { CategoryTreeNode } from "@/lib/storefront-categories";
+import { formatNumber } from "@/lib/i18n/locale";
 
 // Ported from the Violet store template (violet_store_template.zip). Per its
 // own integration notes (integration/PRISMA_INTEGRATION.md) that template is
@@ -145,7 +146,7 @@ export function VioletStorefront({
                   <div style={{ padding: 14 }}>
                     {item.categoryName && <small style={{ fontSize: 9, color: "#999", textTransform: "uppercase", fontWeight: 900 }}>{item.categoryName}</small>}
                     <h3 style={{ fontSize: 14, margin: "6px 0" }}>{item.name}</h3>
-                    <b style={{ fontSize: 15 }}>{item.currency} {item.price.toLocaleString()}</b>
+                    <b style={{ fontSize: 15 }}>{item.currency} {formatNumber(item.price)}</b>
                   </div>
                 </a>
               </Reveal>

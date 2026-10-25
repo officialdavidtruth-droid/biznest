@@ -6,6 +6,7 @@ import { subscribeToNewsletterForm } from "@/lib/actions/newsletter";
 import { CategoryNav } from "@/components/storefront/category-nav";
 import { Reveal } from "@/components/storefront/reveal";
 import type { CategoryTreeNode } from "@/lib/storefront-categories";
+import { formatNumber } from "@/lib/i18n/locale";
 
 // Ported from the Premium Marketplace template (premium_marketplace_template.zip).
 // Per its own README ("Replace lib/mock-data.ts with your existing
@@ -168,7 +169,7 @@ export function PremiumStorefront({
                   </div>
                   {item.categoryName && <small style={{ display: "block", color: "#7d878d", fontSize: 8, marginTop: 5 }}>{item.categoryName}</small>}
                   <h3 style={{ fontSize: 9, margin: "4px 0", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{item.name}</h3>
-                  <div style={{ fontSize: 10, fontWeight: 900, marginTop: 3 }}>{item.currency} {item.price.toLocaleString()}</div>
+                  <div style={{ fontSize: 10, fontWeight: 900, marginTop: 3 }}>{item.currency} {formatNumber(item.price)}</div>
                 </a>
               </Reveal>
             ))}
@@ -196,7 +197,7 @@ export function PremiumStorefront({
                     ) : null}
                   </div>
                   <h3 style={{ fontSize: 9, margin: "4px 0", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{item.name}</h3>
-                  <div style={{ fontSize: 10, fontWeight: 900, marginTop: 3 }}>{item.currency} {item.price.toLocaleString()}</div>
+                  <div style={{ fontSize: 10, fontWeight: 900, marginTop: 3 }}>{item.currency} {formatNumber(item.price)}</div>
                 </a>
               ))}
             </div>

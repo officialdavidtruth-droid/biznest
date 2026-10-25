@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { Plus, Trash2 } from "lucide-react";
 import { createQuote, type QuoteLineInput } from "@/lib/actions/quote";
+import { formatNumber } from "@/lib/i18n/locale";
 
 const EMPTY_ITEM: QuoteLineInput = { description: "", quantity: 1, unitPrice: 0 };
 
@@ -152,7 +153,7 @@ export function QuoteForm({ storeSlug }: { storeSlug: string }) {
 
       <div className="flex items-center justify-between">
         <p className="text-sm">
-          Total: <strong>{subtotal.toLocaleString()}</strong>
+          Total: <strong>{formatNumber(subtotal)}</strong>
         </p>
         <button
           onClick={handleSubmit}

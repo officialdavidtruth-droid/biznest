@@ -14,6 +14,7 @@ import type { Prisma } from "@prisma/client";
 import { roundMoney } from "@/lib/utils/pricing";
 import { assertStorePermission } from "@/lib/access/assert-store-access";
 import { auth } from "@/lib/auth";
+import { formatNumber } from "@/lib/i18n/locale";
 
 // Order statuses a refund can be issued from. PENDING_PAYMENT/CANCELLED
 // never had money move; REFUNDED is already done; DISPUTED is left out
@@ -467,7 +468,7 @@ export async function recordRefundClawbackSettlement(
       });
       if (result.count === 0) {
         const current = await tx.store.findUnique({ where: { id: store.id }, select: { refundClawbackOwed: true } });
-        throw new Error(`That's more than the ${Number(current?.refundClawbackOwed ?? 0).toLocaleString()} currently owed.`);
+        throw new Error(`That's more than the ${formatNumber(Number(current?.refundClawbackOwed ?? 0))} currently owed.`);
       }
 
       await tx.refundClawbackSettlement.create({

@@ -12,6 +12,7 @@ import {
   type BookingStatusValue,
 } from "@/lib/actions/booking";
 import { BookingStatusBadge } from "@/components/dashboard/booking-status-badge";
+import { formatDate } from "@/lib/i18n/locale";
 
 type Unit = {
   id: string;
@@ -45,8 +46,8 @@ const TABS: Array<{ id: string; label: string; statuses: string[] | null }> = [
 function fmtDateTime(value: string) {
   const d = new Date(value);
   return {
-    date: d.toLocaleDateString(undefined, { day: "2-digit", month: "short", year: "numeric" }),
-    time: d.toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" }),
+    date: formatDate(d, { day: "2-digit", month: "short", year: "numeric" }),
+    time: formatDate(d, { hour: "numeric", minute: "2-digit" }),
   };
 }
 

@@ -6,10 +6,11 @@ import { toast } from "sonner";
 import { BadgeCheck, Search } from "lucide-react";
 import { findBookingByCode, type BookingCodeMatch } from "@/lib/actions/booking-code";
 import { updateBookingStatus } from "@/lib/actions/booking";
+import { formatDate, formatNumber } from "@/lib/i18n/locale";
 
 function fmt(value: string | null) {
   if (!value) return "—";
-  return new Date(value).toLocaleString(undefined, { day: "2-digit", month: "short", year: "numeric", hour: "numeric", minute: "2-digit" });
+  return formatDate(new Date(value), { day: "2-digit", month: "short", year: "numeric", hour: "numeric", minute: "2-digit" });
 }
 
 /**
@@ -95,7 +96,7 @@ export function BookingCodeVerifier({ slug }: { slug: string }) {
             <div><dt className="text-xs text-muted-foreground">Service</dt><dd>{match.serviceName}{match.unitLabel ? ` · ${match.unitLabel}` : ""}</dd></div>
             <div><dt className="text-xs text-muted-foreground">{match.checkIn ? "Stay" : "When"}</dt><dd>{match.checkIn ? `${fmt(match.checkIn)} → ${fmt(match.checkOut)}` : fmt(match.scheduledAt)}</dd></div>
             {match.partySize != null && <div><dt className="text-xs text-muted-foreground">Party size</dt><dd>{match.partySize}</dd></div>}
-            {match.amount != null && <div><dt className="text-xs text-muted-foreground">Amount</dt><dd>{match.currency} {match.amount.toLocaleString()}</dd></div>}
+            {match.amount != null && <div><dt className="text-xs text-muted-foreground">Amount</dt><dd>{match.currency} {formatNumber(match.amount)}</dd></div>}
           </dl>
 
           {!paid && match.status !== "CANCELLED" && <p className="mt-3 text-xs text-amber-700">This booking isn&apos;t marked as paid yet.</p>}

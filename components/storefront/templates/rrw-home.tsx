@@ -6,6 +6,7 @@ import { subscribeToNewsletterForm } from "@/lib/actions/newsletter";
 import { CategoryNav } from "@/components/storefront/category-nav";
 import { Reveal } from "@/components/storefront/reveal";
 import type { CategoryTreeNode } from "@/lib/storefront-categories";
+import { formatNumber } from "@/lib/i18n/locale";
 
 // Ported from the rRW Premium Car Rental template (rrw_car_rental_nextjs.zip).
 // Per its own README ("does not alter Prisma, auth, payments, or existing
@@ -141,7 +142,7 @@ export function RrwStorefront({
                   <div style={{ padding: 10 }}>
                     <h3 style={{ fontSize: 12, margin: 0 }}>{item.name}</h3>
                     {item.rentalUnit && <p style={{ fontSize: 8, color: "#777" }}>Per {item.rentalUnit}</p>}
-                    <strong style={{ fontSize: 9 }}>{item.currency} {item.price.toLocaleString()}</strong>
+                    <strong style={{ fontSize: 9 }}>{item.currency} {formatNumber(item.price)}</strong>
                   </div>
                 </a>
               </Reveal>

@@ -16,6 +16,8 @@ import {
   type FreeTrialValue,
 } from "@/lib/actions/site-settings";
 import { updatePlanPricing } from "@/lib/actions/admin";
+import { currencySymbol, formatMoney } from "@/lib/utils/format-money";
+import { formatNumber } from "@/lib/i18n/locale";
 
 // --- Maintenance mode --------------------------------------------------
 
@@ -249,7 +251,7 @@ export function PlanPricingRow({ plan }: { plan: Plan }) {
       <td className="px-4 py-3 text-muted-foreground">{plan.interval}</td>
       <td className="px-4 py-3">
         <div className="flex items-center gap-1">
-          <span className="text-xs text-muted-foreground">₦</span>
+          <span className="text-xs text-muted-foreground">{currencySymbol()}</span>
           <input
             value={price}
             onChange={(e) => setPrice(e.target.value)}
@@ -349,7 +351,7 @@ export function LoyaltyRatesForm({ initial }: { initial: LoyaltyRates }) {
 
       <div className="mb-3 grid grid-cols-2 gap-3">
         <label className="text-xs text-muted-foreground">
-          Points earned per ₦1 spent
+          Points earned per {currencySymbol()}1 spent
           <input
             value={pointsPerNaira}
             onChange={(e) => setPointsPerNaira(e.target.value)}
@@ -360,7 +362,7 @@ export function LoyaltyRatesForm({ initial }: { initial: LoyaltyRates }) {
           />
         </label>
         <label className="text-xs text-muted-foreground">
-          ₦ value per point cashed out
+          {currencySymbol()} value per point cashed out
           <input
             value={nairaPerPoint}
             onChange={(e) => setNairaPerPoint(e.target.value)}
@@ -373,7 +375,7 @@ export function LoyaltyRatesForm({ initial }: { initial: LoyaltyRates }) {
       </div>
 
       <p className="mb-3 text-xs text-muted-foreground">
-        Example: a ₦{sampleSpend.toLocaleString()} order earns {samplePoints.toLocaleString()} points, worth ₦{sampleValue.toLocaleString()} if cashed out.
+        Example: a {formatMoney(sampleSpend)} order earns {formatNumber(samplePoints)} points, worth {formatMoney(sampleValue)} if cashed out.
       </p>
 
       <button

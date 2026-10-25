@@ -6,16 +6,16 @@ import { getStoreBranding } from "@/lib/actions/store-branding";
 import { getStoreBookingDetails } from "@/lib/actions/account";
 import { getHotelContent } from "@/lib/hotel-content";
 import { VelouraAccountHero } from "@/components/storefront/veloura-account-shell";
+import { formatDate } from "@/lib/i18n/locale";
 
 function money(value: unknown, currency = "NGN") {
   return formatMoney(value, currency);
 }
 function date(value: Date | string | null | undefined, withTime = false) {
   if (!value) return "—";
-  return new Intl.DateTimeFormat("en-GB", withTime
+  return formatDate(value, withTime
     ? { day: "2-digit", month: "short", year: "numeric", hour: "numeric", minute: "2-digit" }
-    : { day: "2-digit", month: "short", year: "numeric" }
-  ).format(new Date(value));
+    : { day: "2-digit", month: "short", year: "numeric" });
 }
 
 export default async function BookingDetailsPage({ params }: { params: Promise<{ slug: string; bookingId: string }> }) {

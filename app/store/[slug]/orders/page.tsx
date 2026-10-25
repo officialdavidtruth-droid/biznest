@@ -10,6 +10,7 @@ import { Package, CheckCircle2, XCircle, RotateCcw, AlertTriangle, ArrowUpRight,
 import { StoreFooter } from "@/components/storefront/store-footer";
 import { TasteHouseOrders } from "@/components/storefront/tastehouse";
 import { TASTEHOUSE_TEMPLATE_NAME } from "@/lib/template-themes";
+import { formatDate, formatNumber } from "@/lib/i18n/locale";
 
 // Store-scoped order history. A customer account only ever belongs to one
 // store (see StoreCustomer), so this is simply "my orders here" — themed
@@ -67,7 +68,7 @@ export async function OrdersListContent({ slug }: { slug: string }) {
               </div>
               <div className="min-w-0">
                 <p className="text-[11px] font-medium uppercase tracking-wide text-white/80">Total spent</p>
-                <p className="truncate text-lg font-extrabold leading-tight">{currency} {totalSpent.toLocaleString()}</p>
+                <p className="truncate text-lg font-extrabold leading-tight">{currency} {formatNumber(totalSpent)}</p>
               </div>
             </div>
             <div className="flex items-center gap-3 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
@@ -155,12 +156,12 @@ export async function OrdersListContent({ slug }: { slug: string }) {
                             {status.label}
                           </span>
                           <span className="flex-shrink-0 text-sm font-extrabold text-slate-900">
-                            {order.currency} {Number(order.total).toLocaleString()}
+                            {order.currency} {formatNumber(Number(order.total))}
                           </span>
                         </div>
                         {itemNames && <p className="mt-1.5 truncate text-sm font-medium text-slate-700">{itemNames}</p>}
                         <p className="mt-0.5 truncate text-xs text-slate-400">
-                          #{order.id.slice(-8).toUpperCase()} · {new Date(order.createdAt).toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" })}
+                          #{order.id.slice(-8).toUpperCase()} · {formatDate(new Date(order.createdAt), { month: "short", day: "numeric", year: "numeric" })}
                         </p>
                       </div>
 

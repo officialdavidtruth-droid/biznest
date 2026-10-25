@@ -6,6 +6,7 @@ import Link from "next/link";
 import { toast } from "sonner";
 import { Wand2 } from "lucide-react";
 import { updateCostPrice, updateSku, generateSku, updateBarcode, generateBarcode, type InventoryOverviewItem } from "@/lib/actions/inventory";
+import { formatNumber } from "@/lib/i18n/locale";
 
 const STATUS_STYLES: Record<InventoryOverviewItem["status"], string> = {
   OUT_OF_STOCK: "bg-destructive/10 text-destructive",
@@ -147,12 +148,12 @@ export function InventoryRow({ storeSlug, item }: { storeSlug: string; item: Inv
         </div>
       </td>
 
-      <td className="px-4 py-3">{item.currency} {item.sellingPrice.toLocaleString()}</td>
+      <td className="px-4 py-3">{item.currency} {formatNumber(item.sellingPrice)}</td>
 
       <td className="px-4 py-3">
         {item.profitPerUnit != null ? (
           <span className={item.profitPerUnit >= 0 ? "text-[var(--bn-admin-orange)]" : "text-destructive"}>
-            {item.currency} {item.profitPerUnit.toLocaleString()}
+            {item.currency} {formatNumber(item.profitPerUnit)}
           </span>
         ) : (
           <span className="text-muted-foreground">—</span>

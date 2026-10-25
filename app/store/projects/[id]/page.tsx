@@ -2,6 +2,8 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getCreativeProjectPublic } from "@/lib/actions/creative-projects";
 import { ProjectReviewActions } from "@/components/projects/project-review-actions";
+import { formatMoney } from "@/lib/utils/format-money";
+import { formatDate } from "@/lib/i18n/locale";
 
 export default async function StoreProjectPage({
   params,
@@ -80,8 +82,8 @@ export default async function StoreProjectPage({
                 <div><dt className="text-slate-400">Customer</dt><dd className="mt-1 font-semibold">{project.customerName}</dd></div>
                 {project.customerEmail && <div><dt className="text-slate-400">Email</dt><dd className="mt-1 font-semibold break-all">{project.customerEmail}</dd></div>}
                 {project.customerPhone && <div><dt className="text-slate-400">Phone</dt><dd className="mt-1 font-semibold">{project.customerPhone}</dd></div>}
-                {project.budget && <div><dt className="text-slate-400">Budget</dt><dd className="mt-1 font-semibold">₦{project.budget.toLocaleString()}</dd></div>}
-                {project.deadline && <div><dt className="text-slate-400">Deadline</dt><dd className="mt-1 font-semibold">{new Date(project.deadline).toLocaleDateString("en-NG")}</dd></div>}
+                {project.budget && <div><dt className="text-slate-400">Budget</dt><dd className="mt-1 font-semibold">{formatMoney(project.budget)}</dd></div>}
+                {project.deadline && <div><dt className="text-slate-400">Deadline</dt><dd className="mt-1 font-semibold">{formatDate(new Date(project.deadline))}</dd></div>}
               </dl>
             </div>
 

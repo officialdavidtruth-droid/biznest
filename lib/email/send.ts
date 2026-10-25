@@ -1,6 +1,7 @@
 import { Resend } from "resend";
 import { logError } from "@/lib/observability/log";
 import { APP_URL } from "@/lib/constants/app-url";
+import { formatNumber } from "@/lib/i18n/locale";
 import {
   abandonedCheckoutSubject,
   renderAbandonedCheckoutEmail,
@@ -550,7 +551,7 @@ export async function sendOrderConfirmationEmail(
     items: OrderConfirmationLineItem[];
   }
 ) {
-  const fmt = (n: number) => `${order.currency} ${n.toLocaleString()}`;
+  const fmt = (n: number) => `${order.currency} ${formatNumber(n)}`;
   const orderUrl = `${APP_URL}/orders/${order.id}`;
 
   const itemRows = order.items
@@ -683,7 +684,7 @@ export async function sendBookingConfirmationEmail(
   const statusColor = booking.status === "CONFIRMED" ? "#0f6410" : "#b45309";
   const statusBg = booking.status === "CONFIRMED" ? "#ecfdf3" : "#fffbeb";
   const subject = `Booking ${statusLabel.toLowerCase()} — ${store.name}`;
-  const fmtPrice = `${booking.currency} ${booking.price.toLocaleString()}`;
+  const fmtPrice = `${booking.currency} ${formatNumber(booking.price)}`;
   const greetingName = booking.recipientName ? escapeHtml(booking.recipientName) : "there";
 
   const detailRow = (label: string, value: string) => `

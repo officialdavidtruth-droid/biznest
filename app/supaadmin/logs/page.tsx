@@ -1,4 +1,5 @@
 import { listActivityLogs, listDistinctLogActions } from "@/lib/actions/admin";
+import { formatDate } from "@/lib/i18n/locale";
 
 export default async function ActivityLogPage({
   searchParams,
@@ -56,7 +57,7 @@ export default async function ActivityLogPage({
             {logs.map((log) => (
               <tr key={log.id} className="border-b last:border-0 align-top">
                 <td className="whitespace-nowrap px-4 py-3 text-muted-foreground">
-                  {new Date(log.createdAt).toLocaleString()}
+                  {formatDate(new Date(log.createdAt), { day: "numeric", month: "short", year: "numeric", hour: "numeric", minute: "2-digit" })}
                 </td>
                 <td className="px-4 py-3">
                   {log.user ? (

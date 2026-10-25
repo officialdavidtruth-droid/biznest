@@ -7,6 +7,7 @@ import { assertStorePermission } from "@/lib/access/assert-store-access";
 import { checkRateLimit } from "@/lib/rate-limit";
 import { attachReferral, getOrCreateReferralCode } from "@/lib/referrals/attach";
 import type { ActionResult } from "@/types/actions";
+import { formatNumber } from "@/lib/i18n/locale";
 
 const MAX_REWARD_POINTS = 1_000_000;
 
@@ -98,7 +99,7 @@ export async function updateReferralSettingsAction(
   const { referrerPoints, refereePoints } = input;
   const valid = (n: number) => Number.isInteger(n) && n >= 0 && n <= MAX_REWARD_POINTS;
   if (!valid(referrerPoints) || !valid(refereePoints)) {
-    return { success: false, error: `Rewards must be whole numbers between 0 and ${MAX_REWARD_POINTS.toLocaleString()} points.` };
+    return { success: false, error: `Rewards must be whole numbers between 0 and ${formatNumber(MAX_REWARD_POINTS)} points.` };
   }
   if (input.enabled && referrerPoints === 0 && refereePoints === 0) {
     return { success: false, error: "Set a reward for at least one side, or switch the program off." };

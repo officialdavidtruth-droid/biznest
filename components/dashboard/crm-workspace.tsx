@@ -6,6 +6,8 @@ import Link from "next/link";
 import { createCrmLead, updateCrmLeadStatus } from "@/lib/actions/seo-crm";
 import { LeadDrawer } from "@/components/dashboard/crm-lead-drawer";
 import { SOURCES, STAGES, followUpState, initials, isClosed, money, nextStage, shortDate, sourceLabel, stageOf, type Lead } from "@/components/dashboard/crm-types";
+import { currencySymbol } from "@/lib/utils/format-money";
+import { formatNumber } from "@/lib/i18n/locale";
 
 type Notice = { tone: "ok" | "error"; text: string } | null;
 
@@ -91,8 +93,8 @@ export function CrmWorkspace({
       <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
         <Kpi icon={Wallet} label="Open pipeline" value={money(openValue)} sub={`${open.length} open lead${open.length === 1 ? "" : "s"}`} />
         <Kpi icon={CalendarClock} label="Follow-ups due" value={String(dueLeads.length)} sub={overdueCount ? `${overdueCount} overdue` : "Nothing overdue"} tone={overdueCount ? "warn" : undefined} onClick={dueLeads.length ? () => { setDueOnly(true); setView("list"); } : undefined} />
-        <Kpi icon={CheckCircle2} label="Won deals" value={initial.wonCount.toLocaleString()} sub={`${money(initial.wonValue)} closed`} />
-        <Kpi icon={Users} label="Customers" value={initial.customerCount.toLocaleString()} sub="Open Customer 360" href={`/store/${slug}/admin/customers`} />
+        <Kpi icon={CheckCircle2} label="Won deals" value={formatNumber(initial.wonCount)} sub={`${money(initial.wonValue)} closed`} />
+        <Kpi icon={Users} label="Customers" value={formatNumber(initial.customerCount)} sub="Open Customer 360" href={`/store/${slug}/admin/customers`} />
       </div>
 
       {/* Toolbar */}
@@ -217,7 +219,7 @@ export function CrmWorkspace({
                 </select>
               </label>
             </div>
-            <div className="grid gap-3 sm:grid-cols-2"><Input name="value" label="Estimated value (₦)" type="number" /><Input name="follow" label="Follow up on" type="date" /></div>
+            <div className="grid gap-3 sm:grid-cols-2"><Input name="value" label={`Estimated value (${currencySymbol()})`} type="number" /><Input name="follow" label="Follow up on" type="date" /></div>
             <label className="grid gap-1.5 text-xs font-medium">Notes<textarea name="notes" rows={3} className="rounded-lg border bg-background p-3 text-sm font-normal outline-none focus:border-primary" /></label>
             <div className="mt-1 flex justify-end gap-2">
               <button type="button" onClick={() => setShowNew(false)} className="rounded-lg border px-4 py-2 text-sm font-semibold hover:bg-muted">Cancel</button>

@@ -6,6 +6,7 @@ import { useMemo, useState } from "react";
 import { ArrowRight, BedDouble, CalendarDays, Check, ChevronDown, Clock3, MapPin, Menu, Sparkles, Star, Users, Wifi, X } from "lucide-react";
 import type { HotelContent, HotelRoom } from "@/lib/hotel-content";
 import { AccountLink } from "@/components/storefront/account-link";
+import { formatMoney } from "@/lib/utils/format-money";
 
 type Store = {
   name: string;
@@ -19,7 +20,7 @@ type Store = {
 
 const FALLBACK = "https://images.unsplash.com/photo-1566073771259-6a8506099945?auto=format&fit=crop&w=1800&q=88";
 const img = (u?: string | null) => u || FALLBACK;
-const money = (n: number) => `₦${Number(n || 0).toLocaleString()}`;
+const money = (n: number) => formatMoney(n, "NGN");
 
 export function HotelCatalog({ store, slug, content }: { store: Store; slug: string; content: HotelContent }) {
   const [menuOpen, setMenuOpen] = useState(false);

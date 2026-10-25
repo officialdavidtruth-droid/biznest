@@ -1,6 +1,7 @@
 import { listUsers, listPlans } from "@/lib/actions/admin";
 import { UserPlanSelect, UserTrialControl, UserActionButtons } from "@/components/dashboard/user-plan-controls";
 import { Search } from "lucide-react";
+import { formatDate } from "@/lib/i18n/locale";
 
 export default async function UsersPage({
   searchParams,
@@ -82,7 +83,7 @@ export default async function UsersPage({
                   </span>
                 </td>
                 <td className="px-4 py-3 text-xs" style={{ color: "hsl(var(--muted-foreground))" }}>
-                  {new Date(u.createdAt).toLocaleDateString()}
+                  {formatDate(new Date(u.createdAt))}
                 </td>
                 <td className="px-4 py-3">
                   <UserActionButtons userId={u.id} email={u.email} isBanned={u.isBanned} businessName={u.business?.businessName ?? null} />

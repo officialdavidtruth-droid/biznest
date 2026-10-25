@@ -3,12 +3,14 @@
 import { useMemo } from "react";
 import { ArrowRight, Bot, CalendarDays, ChartNoAxesCombined, FileText, Megaphone, MessageSquareText, Palette, Search, Send, Sparkles, Target, Users, Workflow } from "lucide-react";
 import Link from "next/link";
+import { formatMoney } from "@/lib/utils/format-money";
+import { formatNumber } from "@/lib/i18n/locale";
 
 type Props = { slug: string; businessName: string; leads: number; customers: number; subscribers: number; campaigns: number; automations: number; revenue: number; websiteConnected: boolean; };
 
 export function MarketingCommandCenter(p: Props) {
   const opportunities = useMemo(() => [
-    p.subscribers > 0 ? { icon: Users, title: `${p.subscribers.toLocaleString()} reachable contacts`, body: "Build a segment and launch a targeted campaign instead of sending to everyone.", href: "?tab=audience" } : { icon: Users, title: "Build your first audience", body: "Import opted-in contacts or capture subscribers from your website.", href: "#contacts" },
+    p.subscribers > 0 ? { icon: Users, title: `${formatNumber(p.subscribers)} reachable contacts`, body: "Build a segment and launch a targeted campaign instead of sending to everyone.", href: "?tab=audience" } : { icon: Users, title: "Build your first audience", body: "Import opted-in contacts or capture subscribers from your website.", href: "#contacts" },
     p.campaigns > 0 ? { icon: ChartNoAxesCombined, title: "Measure campaign performance", body: "Review sent and failed delivery, then use the winners to plan your next campaign.", href: "?tab=campaigns" } : { icon: Megaphone, title: "Launch your first campaign", body: "Create a branded email campaign with your business identity and call to action.", href: "?tab=compose" },
     p.automations > 0 ? { icon: Workflow, title: `${p.automations} active automation${p.automations === 1 ? "" : "s"}`, body: "Keep follow-ups running automatically while you work on the business.", href: "?tab=automations" } : { icon: Workflow, title: "Automate follow-up", body: "Create welcome, nurture, win-back and lead follow-up journeys.", href: "?tab=automations" },
   ], [p]);
@@ -33,7 +35,7 @@ export function MarketingCommandCenter(p: Props) {
         <div className="flex flex-wrap gap-2"><Link href="?tab=compose" className="inline-flex items-center gap-2 rounded-xl bg-emerald-700 px-4 py-2.5 text-sm font-bold text-white"><Send className="h-4 w-4" />Create campaign</Link><Link href="#growth-tools" className="inline-flex items-center gap-2 rounded-xl border border-slate-200 px-4 py-2.5 text-sm font-bold text-slate-700"><Sparkles className="h-4 w-4" />Explore growth tools</Link></div>
       </div>
       <div className="mt-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-6">
-        {[["Leads", p.leads], ["Customers", p.customers], ["Contacts", p.subscribers], ["Campaigns", p.campaigns], ["Automations", p.automations], ["Won value", `₦${p.revenue.toLocaleString()}`]].map(([label, value]) => <div key={String(label)} className="rounded-2xl bg-slate-50 p-4"><p className="text-xs font-medium text-slate-500">{label}</p><p className="mt-1 text-xl font-black text-slate-950">{value}</p></div>)}
+        {[["Leads", p.leads], ["Customers", p.customers], ["Contacts", p.subscribers], ["Campaigns", p.campaigns], ["Automations", p.automations], ["Won value", `${formatMoney(p.revenue)}`]].map(([label, value]) => <div key={String(label)} className="rounded-2xl bg-slate-50 p-4"><p className="text-xs font-medium text-slate-500">{label}</p><p className="mt-1 text-xl font-black text-slate-950">{value}</p></div>)}
       </div>
     </section>
 

@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useMemo, useState } from "react";
 import { ListToolbar, ListPagination } from "@/components/dashboard/list-toolbar";
 import { BookingStatusBadge } from "@/components/dashboard/booking-status-badge";
+import { formatDate } from "@/lib/i18n/locale";
 
 type BookingRow = {
   id: string;
@@ -62,7 +63,7 @@ export function BookingsTable({ storeSlug, bookings }: { storeSlug: string; book
           <tbody>
             {paged.map((b) => (
               <tr key={b.id} className="border-b last:border-0">
-                <td className="px-4 py-3">{new Date(b.scheduledAt).toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" })}</td>
+                <td className="px-4 py-3">{formatDate(new Date(b.scheduledAt), { dateStyle: "medium", timeStyle: "short" })}</td>
                 <td className="px-4 py-3">{b.serviceName}</td>
                 <td className="px-4 py-3">
                   <Link href={`/${storeSlug}/admin/customers?${b.query}`} className="text-muted-foreground hover:text-primary hover:underline">

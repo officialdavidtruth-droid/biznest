@@ -3,6 +3,7 @@ import { getStoreBranding } from "@/lib/actions/store-branding";
 import { getMyReferralInfo } from "@/lib/actions/referral";
 import { ReferralPanel } from "@/components/account/referral-panel";
 import { APP_URL } from "@/lib/constants/app-url";
+import { formatDate, formatNumber } from "@/lib/i18n/locale";
 
 export default async function Page({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
@@ -21,8 +22,8 @@ export default async function Page({ params }: { params: Promise<{ slug: string 
       ) : (
         <>
           <p className="text-sm">
-            When a friend joins with your code and their first order is completed, you get <strong>{info.referrerPoints.toLocaleString()} points</strong>
-            {info.refereePoints > 0 ? <> and they get <strong>{info.refereePoints.toLocaleString()} points</strong></> : null}.
+            When a friend joins with your code and their first order is completed, you get <strong>{formatNumber(info.referrerPoints)} points</strong>
+            {info.refereePoints > 0 ? <> and they get <strong>{formatNumber(info.refereePoints)} points</strong></> : null}.
           </p>
           <ReferralPanel
             slug={slug}
@@ -43,7 +44,7 @@ export default async function Page({ params }: { params: Promise<{ slug: string 
                       <td className="px-4 py-3">{r.friend}</td>
                       <td className="px-4 py-3">{r.status === "REWARDED" ? "Rewarded" : r.status === "PENDING" ? "Waiting for their first order" : "Cancelled"}</td>
                       <td className="px-4 py-3">{r.status === "REWARDED" ? `+${r.points}` : "—"}</td>
-                      <td className="px-4 py-3">{new Date(r.createdAt).toLocaleDateString()}</td>
+                      <td className="px-4 py-3">{formatDate(new Date(r.createdAt))}</td>
                     </tr>
                   ))}
                   {info.referrals.length === 0 && (

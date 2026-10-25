@@ -1,10 +1,12 @@
 // Route: /store/[slug]/admin/coupons
 import { prisma } from "@/lib/prisma";
 import { createCoupon } from "@/lib/actions/coupon";
+import { currencySymbol, moneyFormatter } from "@/lib/utils/format-money";
 
 export default async function CouponsPage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
   const store = await prisma.store.findUnique({ where: { slug } });
+  const money = moneyFormatter(store);
   if (!store) return null;
 
   const coupons = await prisma.coupon.findMany({ where: { storeId: store.id }, orderBy: { id: "desc" } });
@@ -18,7 +20,7 @@ export default async function CouponsPage({ params }: { params: Promise<{ slug: 
         <input name="code" placeholder="CODE20" required className="rounded-md border px-3 py-1.5 text-sm sm:col-span-1" />
         <select name="discountType" className="rounded-md border px-3 py-1.5 text-sm">
           <option value="PERCENT">% off</option>
-          <option value="FIXED">₦ off</option>
+          <option value="FIXED">{currencySymbol(store?.currency, { locale: store?.locale })} off</option>
         </select>
         <input name="discountValue" type="number" min="0" placeholder="20" required className="rounded-md border px-3 py-1.5 text-sm" />
         <input name="maxUses" type="number" min="0" placeholder="Max uses (optional)" className="rounded-md border px-3 py-1.5 text-sm" />
@@ -34,7 +36,7 @@ export default async function CouponsPage({ params }: { params: Promise<{ slug: 
             {coupons.map((c) => (
               <tr key={c.id} className="border-b last:border-0">
                 <td className="px-4 py-3 font-mono font-medium">{c.code}</td>
-                <td className="px-4 py-3">{c.discountType === "PERCENT" ? `${c.discountValue}%` : `₦${Number(c.discountValue).toLocaleString()}`}</td>
+                <td className="px-4 py-3">{c.discountType === "PERCENT" ? `${c.discountValue}%` : money(Number(c.discountValue))}</td>
                 <td className="px-4 py-3">{c.usedCount}{c.maxUses ? ` / ${c.maxUses}` : ""}</td>
                 <td className="px-4 py-3">
                   <span className={`rounded-full px-2 py-0.5 text-xs ${c.isActive ? "bg-[var(--bn-admin-surface-2)] text-[var(--bn-admin-orange)]" : "bg-muted text-muted-foreground"}`}>

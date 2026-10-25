@@ -1,5 +1,7 @@
 import { getPlatformStats } from "@/lib/actions/admin";
 import Link from "next/link";
+import { formatMoney } from "@/lib/utils/format-money";
+import { formatDate, formatNumber } from "@/lib/i18n/locale";
 import {
   DollarSign, TrendingUp, Users, ShieldAlert, Store,
   ShoppingCart, Ban, ArrowRight, Gavel, Clock,
@@ -10,10 +12,10 @@ export default async function SupaAdminOverview() {
   if (!stats) return null;
 
   const secondaryCards = [
-    { label: "Total users", value: stats.totalUsers.toLocaleString(), icon: Users },
-    { label: "Total stores", value: stats.totalStores.toLocaleString(), icon: Store },
-    { label: "Total orders", value: stats.totalOrders.toLocaleString(), icon: ShoppingCart },
-    { label: "Banned users", value: stats.bannedUsers.toLocaleString(), icon: Ban },
+    { label: "Total users", value: formatNumber(stats.totalUsers), icon: Users },
+    { label: "Total stores", value: formatNumber(stats.totalStores), icon: Store },
+    { label: "Total orders", value: formatNumber(stats.totalOrders), icon: ShoppingCart },
+    { label: "Banned users", value: formatNumber(stats.bannedUsers), icon: Ban },
   ];
 
   const attentionItems = [
@@ -48,8 +50,8 @@ export default async function SupaAdminOverview() {
           {/* Headline financial metrics */}
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             {[
-              { label: "Gross merchandise value", value: `₦${stats.gmv.toLocaleString()}`, icon: DollarSign },
-              { label: "Monthly recurring revenue", value: `₦${stats.mrr.toLocaleString()}`, icon: TrendingUp },
+              { label: "Gross merchandise value", value: `${formatMoney(stats.gmv)}`, icon: DollarSign },
+              { label: "Monthly recurring revenue", value: `${formatMoney(stats.mrr)}`, icon: TrendingUp },
             ].map((c) => {
               const Icon = c.icon;
               return (
@@ -139,7 +141,7 @@ export default async function SupaAdminOverview() {
                       </span>
                     </div>
                     <span className="shrink-0" style={{ color: "hsl(var(--muted-foreground))" }}>
-                      {new Date(log.createdAt).toLocaleString()}
+                      {formatDate(new Date(log.createdAt), { day: "numeric", month: "short", year: "numeric", hour: "numeric", minute: "2-digit" })}
                     </span>
                   </li>
                 ))}

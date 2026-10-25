@@ -14,6 +14,8 @@ import { StorefrontPreviewMock } from "@/components/site/storefront-preview-mock
 import { redirect } from "next/navigation";
 import { isAppRequest } from "@/lib/app-mode";
 import { AppWelcome } from "@/components/app/app-welcome";
+import { formatMoney } from "@/lib/utils/format-money";
+import { formatNumber } from "@/lib/i18n/locale";
 
 const display = Space_Grotesk({ subsets: ["latin"], variable: "--font-display", weight: ["500", "700"] });
 const body = Inter({ subsets: ["latin"], variable: "--font-body" });
@@ -166,8 +168,8 @@ export default async function HomePage() {
   }));
 
   const STATS = [
-    { label: "Stores open right now", value: `${activeStoreCount.toLocaleString()}${activeStoreCount >= 50 ? "+" : ""}` },
-    { label: "Products & services listed", value: `${listingCount.toLocaleString()}${listingCount >= 50 ? "+" : ""}` },
+    { label: "Stores open right now", value: `${formatNumber(activeStoreCount)}${activeStoreCount >= 50 ? "+" : ""}` },
+    { label: "Products & services listed", value: `${formatNumber(listingCount)}${listingCount >= 50 ? "+" : ""}` },
     { label: "Business categories", value: `${CATEGORIES.length}+` },
     { label: "Payment providers, your account", value: "2" },
   ];
@@ -263,7 +265,7 @@ export default async function HomePage() {
             style={{ border: "1px solid var(--bn-ink-line)", background: "rgba(18, 48, 36, 0.6)", color: "var(--bn-mute)" }}
           >
             <span className="bn-pulse-dot h-1.5 w-1.5 rounded-full" style={{ background: "var(--bn-marigold)" }} />
-            <span style={{ fontFamily: "var(--font-mono)" }}>{activeStoreCount.toLocaleString()} stores open right now</span>
+            <span style={{ fontFamily: "var(--font-mono)" }}>{formatNumber(activeStoreCount)} stores open right now</span>
           </div>
           <p
             className="mb-4 text-xs uppercase tracking-[0.2em]"
@@ -465,7 +467,7 @@ export default async function HomePage() {
                 )}
                 <p className="text-sm font-semibold">{p.name}</p>
                 <p className="mt-2 text-3xl font-bold" style={{ fontFamily: "var(--font-display)" }}>
-                  {Number(p.price) === 0 ? "Free" : `₦${Number(p.price).toLocaleString()}`}
+                  {Number(p.price) === 0 ? "Free" : `${formatMoney(Number(p.price))}`}
                   {Number(p.price) > 0 && <span className="text-sm font-normal opacity-70">/mo</span>}
                 </p>
                 <ul className="mt-5 space-y-2 text-sm" style={{ opacity: featured ? 0.85 : 0.75 }}>

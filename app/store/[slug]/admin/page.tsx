@@ -6,6 +6,7 @@ import { AdaptiveDashboardHome, type DashboardHomeData, type DashboardBooking, t
 import { getAdaptiveDashboardConfig } from "@/lib/adaptive-dashboard";
 import { getDashboardInsights } from "@/lib/actions/analytics";
 import { SELLER_VISIBLE_ORDER_STATUSES } from "@/lib/constants/order";
+import { formatDate } from "@/lib/i18n/locale";
 
 /**
  * Merchant overview only.
@@ -278,11 +279,7 @@ function getOnboardingSubcategory(profile: unknown): string | null {
 }
 
 function formatNigeriaTime(date: Date): string {
-  return new Intl.DateTimeFormat("en-NG", {
-    timeZone: "Africa/Lagos",
-    hour: "numeric",
-    minute: "2-digit",
-  }).format(date);
+  return formatDate(date, { timeZone: "Africa/Lagos", hour: "numeric", minute: "2-digit" });
 }
 
 function formatOrderStatus(status: string): string {

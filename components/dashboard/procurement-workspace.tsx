@@ -1,5 +1,7 @@
 import Link from "next/link";
 import { Boxes, ClipboardCheck, FileText, Plus, ReceiptText, Truck, Wallet } from "lucide-react";
+import { formatMoney } from "@/lib/utils/format-money";
+import { formatDate } from "@/lib/i18n/locale";
 
 export type ProcurementData = {
   plugin: { name: string; description: string };
@@ -18,7 +20,7 @@ export type ProcurementData = {
   suppliers: { id: string; name: string; orders: number; spend: number; openOrders: number; onTimeRate: number | null }[];
 };
 
-const money = (n: number, currency = "NGN") => `${currency === "NGN" ? "₦" : currency + " "}${n.toLocaleString("en-NG", { maximumFractionDigits: 2 })}`;
+const money = (n: number, currency = "NGN") => formatMoney(n, currency);
 const statusClass: Record<string, string> = {
   DRAFT: "bg-muted text-muted-foreground",
   SENT: "bg-[color-mix(in_srgb,var(--bn-admin-surface-2)_10%,transparent)] text-[var(--bn-admin-orange)]",
@@ -63,7 +65,7 @@ export function ProcurementWorkspace({ slug, data }: { slug: string; data: Procu
       <div className="grid gap-5 xl:grid-cols-[1.25fr_1fr]">
         <section className="rounded-xl border bg-background shadow-sm">
           <div className="flex items-center justify-between border-b p-4"><div><h2 className="text-sm font-bold">Purchase order control</h2><p className="mt-1 text-[11px] text-muted-foreground">Track ordered quantity against what has actually been received.</p></div><Link href={`${base}/purchase-orders`} className="text-xs font-bold text-primary">All POs</Link></div>
-          <div className="divide-y">{data.purchaseOrders.map(po => { const pct = po.orderedUnits ? Math.min(100, Math.round(po.receivedUnits / po.orderedUnits * 100)) : 0; return <Link key={po.id} href={`${base}/purchase-orders/${po.id}`} className="block p-4 hover:bg-muted/20"><div className="flex flex-wrap items-center justify-between gap-2"><div><b className="text-sm">{po.poNumber}</b><p className="mt-0.5 text-xs text-muted-foreground">{po.supplier}</p></div><span className={`rounded-full px-2 py-0.5 text-[10px] font-bold ${statusClass[po.status] ?? "bg-muted"}`}>{po.status.replaceAll("_", " ")}</span></div><div className="mt-3 flex items-center gap-3"><div className="h-1.5 flex-1 overflow-hidden rounded-full bg-muted"><div className="h-full rounded-full bg-primary" style={{ width: `${pct}%` }} /></div><span className="text-[10px] font-bold">{po.receivedUnits}/{po.orderedUnits}</span><span className="text-xs font-bold">{money(po.subtotal, po.currency)}</span></div>{po.expectedAt && <p className="mt-2 text-[10px] text-muted-foreground">Expected {new Date(po.expectedAt).toLocaleDateString("en-NG")}</p>}</Link> })}{!data.purchaseOrders.length && <p className="p-8 text-center text-xs text-muted-foreground">No purchase orders yet.</p>}</div>
+          <div className="divide-y">{data.purchaseOrders.map(po => { const pct = po.orderedUnits ? Math.min(100, Math.round(po.receivedUnits / po.orderedUnits * 100)) : 0; return <Link key={po.id} href={`${base}/purchase-orders/${po.id}`} className="block p-4 hover:bg-muted/20"><div className="flex flex-wrap items-center justify-between gap-2"><div><b className="text-sm">{po.poNumber}</b><p className="mt-0.5 text-xs text-muted-foreground">{po.supplier}</p></div><span className={`rounded-full px-2 py-0.5 text-[10px] font-bold ${statusClass[po.status] ?? "bg-muted"}`}>{po.status.replaceAll("_", " ")}</span></div><div className="mt-3 flex items-center gap-3"><div className="h-1.5 flex-1 overflow-hidden rounded-full bg-muted"><div className="h-full rounded-full bg-primary" style={{ width: `${pct}%` }} /></div><span className="text-[10px] font-bold">{po.receivedUnits}/{po.orderedUnits}</span><span className="text-xs font-bold">{money(po.subtotal, po.currency)}</span></div>{po.expectedAt && <p className="mt-2 text-[10px] text-muted-foreground">Expected {formatDate(po.expectedAt)}</p>}</Link> })}{!data.purchaseOrders.length && <p className="p-8 text-center text-xs text-muted-foreground">No purchase orders yet.</p>}</div>
         </section>
 
         <section className="rounded-xl border bg-background shadow-sm">
@@ -74,7 +76,7 @@ export function ProcurementWorkspace({ slug, data }: { slug: string; data: Procu
 
       <section className="rounded-xl border bg-background shadow-sm">
         <div className="flex items-center justify-between border-b p-4"><div><h2 className="text-sm font-bold">Requisitions entering procurement</h2><p className="mt-1 text-[11px] text-muted-foreground">Financial Control approves spend before Procurement turns an approved request into a PO.</p></div><Link href={`${base}/apps/requisition`} className="text-xs font-bold text-primary">View queue</Link></div>
-        <div className="divide-y">{data.requisitions.map(r => <Link key={r.id} href={`${base}/apps/requisition`} className="flex flex-col gap-2 p-4 hover:bg-muted/20 sm:flex-row sm:items-center sm:justify-between"><div><div className="flex flex-wrap items-center gap-2"><b className="text-sm">{r.number}</b><span className="text-xs text-muted-foreground">{r.title}</span><span className={`rounded-full px-2 py-0.5 text-[10px] font-bold ${statusClass[r.status] ?? 'bg-muted'}`}>{r.status}</span></div><p className="mt-1 text-[10px] text-muted-foreground">{r.department || 'General'} · {r.requesterName || 'Staff member'}{r.neededBy ? ` · Needed by ${new Date(r.neededBy).toLocaleDateString('en-NG')}` : ''}</p></div><b className="text-sm">{r.estimate > 0 ? money(r.estimate) : 'Estimate pending'}</b></Link>)}{!data.requisitions.length && <p className="p-8 text-center text-xs text-muted-foreground">No active requisitions.</p>}</div>
+        <div className="divide-y">{data.requisitions.map(r => <Link key={r.id} href={`${base}/apps/requisition`} className="flex flex-col gap-2 p-4 hover:bg-muted/20 sm:flex-row sm:items-center sm:justify-between"><div><div className="flex flex-wrap items-center gap-2"><b className="text-sm">{r.number}</b><span className="text-xs text-muted-foreground">{r.title}</span><span className={`rounded-full px-2 py-0.5 text-[10px] font-bold ${statusClass[r.status] ?? 'bg-muted'}`}>{r.status}</span></div><p className="mt-1 text-[10px] text-muted-foreground">{r.department || 'General'} · {r.requesterName || 'Staff member'}{r.neededBy ? ` · Needed by ${formatDate(new Date(r.neededBy))}` : ''}</p></div><b className="text-sm">{r.estimate > 0 ? money(r.estimate) : 'Estimate pending'}</b></Link>)}{!data.requisitions.length && <p className="p-8 text-center text-xs text-muted-foreground">No active requisitions.</p>}</div>
       </section>
 
       <div className="grid gap-3 sm:grid-cols-3">

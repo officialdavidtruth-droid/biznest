@@ -706,6 +706,10 @@ enum DomainStatus {
 
 model Store {
   timezone      String      @default("Africa/Lagos")
+  // Display currency and locale for everything this store shows (prices, receipts, emails).
+  // Existing stores keep NGN / the deployment default locale (en-NG); set locale to e.g. "en-GH".
+  currency      String      @default("NGN")
+  locale        String?
   id            String      @id @default(cuid())
   businessId    String      @unique
   business      Business    @relation(fields: [businessId], references: [id], onDelete: Cascade)

@@ -12,6 +12,7 @@ import { MarketingCampaigns, type CampaignRow } from "@/components/dashboard/mar
 import { MarketingAutomationPanel } from "@/components/dashboard/marketing-automation-panel";
 import { PromoPopupManager } from "@/components/dashboard/promo-popup-manager";
 import type { PromoPalette, PromoPopupConfig } from "@/lib/storefront/promo-popup";
+import { formatNumber } from "@/lib/i18n/locale";
 
 export type MarketingTab = "compose" | "audience" | "campaigns" | "automations" | "popup";
 
@@ -162,7 +163,7 @@ export function MarketingWorkspace({
               {s.label}
             </dt>
             <dd className="mt-1.5 text-2xl font-bold tabular-nums tracking-tight">
-              {s.value.toLocaleString()}
+              {formatNumber(s.value)}
             </dd>
 
             {s.trend && (

@@ -3,6 +3,7 @@ import { PDFDocument, StandardFonts, rgb } from "pdf-lib";
 import { NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { getStoreAccessRole } from "@/lib/access/store-access";
+import { formatDate, formatNumber } from "@/lib/i18n/locale";
 
 /**
  * Renders a simple, clean PDF for an invoice on the fly. Deliberately not
@@ -56,7 +57,7 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
     draw(`Email: ${invoice.customerEmail ?? invoice.customer?.email}`, left, 10);
     y -= 14;
   }
-  draw(`Date: ${invoice.createdAt.toLocaleDateString()}`, left, 10);
+  draw(`Date: ${formatDate(invoice.createdAt)}`, left, 10);
   y -= 14;
   draw(`Status: ${invoice.status}`, left, 10);
   y -= 30;
@@ -74,8 +75,8 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
     const amount = Number(item.unitPrice) * item.quantity;
     draw(item.description.slice(0, 48), left, 10);
     draw(String(item.quantity), 380, 10);
-    draw(Number(item.unitPrice).toLocaleString(), 440, 10);
-    draw(amount.toLocaleString(), 500, 10);
+    draw(formatNumber(Number(item.unitPrice)), 440, 10);
+    draw(formatNumber(amount), 500, 10);
     y -= 18;
     if (y < 120) break; // simple v1: no multi-page overflow yet
   }
@@ -86,7 +87,7 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
 
   const totalsLine = (label: string, value: number, useBold = false) => {
     draw(label, 380, 10, useBold);
-    draw(`${invoice.currency} ${value.toLocaleString()}`, 480, 10, useBold);
+    draw(`${invoice.currency} ${formatNumber(value)}`, 480, 10, useBold);
     y -= 16;
   };
 

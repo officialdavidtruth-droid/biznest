@@ -2,6 +2,8 @@ import { notFound } from "next/navigation";
 import { getStoreBranding } from "@/lib/actions/store-branding";
 import { listMyGiftCards } from "@/lib/actions/gift-card";
 import { GiftCardBalanceForm } from "@/components/account/gift-card-balance-form";
+import { formatMoney } from "@/lib/utils/format-money";
+import { formatDate } from "@/lib/i18n/locale";
 
 export default async function Page({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
@@ -19,8 +21,8 @@ export default async function Page({ params }: { params: Promise<{ slug: string 
         {cards.map((c) => (
           <div key={c.id} className="rounded-lg border p-4">
             <p className="font-mono text-lg font-semibold">{c.code}</p>
-            <p className="text-sm">Balance: <strong>₦{Number(c.balance).toLocaleString()}</strong></p>
-            {c.expiresAt && <p className="text-xs text-muted-foreground">Expires {c.expiresAt.toLocaleDateString()}</p>}
+            <p className="text-sm">Balance: <strong>{formatMoney(Number(c.balance))}</strong></p>
+            {c.expiresAt && <p className="text-xs text-muted-foreground">Expires {formatDate(c.expiresAt)}</p>}
             {c.message && <p className="mt-2 text-sm italic">“{c.message}”</p>}
           </div>
         ))}

@@ -3,6 +3,7 @@ import Link from "next/link";
 import { CheckCircle2, XCircle, FileText } from "lucide-react";
 import { getInvoiceForCustomer } from "@/lib/actions/invoice";
 import { PayInvoiceButton } from "@/components/invoices/pay-invoice-button";
+import { formatNumber } from "@/lib/i18n/locale";
 
 const STATUS_STYLES: Record<string, string> = {
   SENT: "bg-amber-50 text-amber-700 ring-amber-200",
@@ -56,37 +57,37 @@ export default async function CustomerInvoicePage({
                 {item.description} × {item.quantity}
               </span>
               <span className="font-medium">
-                {invoice.currency} {(Number(item.unitPrice) * item.quantity).toLocaleString()}
+                {invoice.currency} {formatNumber((Number(item.unitPrice) * item.quantity))}
               </span>
             </div>
           ))}
           <div className="mt-2 space-y-1 border-t pt-3 text-sm">
             <div className="flex justify-between text-slate-500">
               <span>Subtotal</span>
-              <span>{invoice.currency} {Number(invoice.subtotal).toLocaleString()}</span>
+              <span>{invoice.currency} {formatNumber(Number(invoice.subtotal))}</span>
             </div>
             {Number(invoice.tax) > 0 && (
               <div className="flex justify-between text-slate-500">
                 <span>Tax</span>
-                <span>{invoice.currency} {Number(invoice.tax).toLocaleString()}</span>
+                <span>{invoice.currency} {formatNumber(Number(invoice.tax))}</span>
               </div>
             )}
             {Number(invoice.discount) > 0 && (
               <div className="flex justify-between text-slate-500">
                 <span>Discount</span>
-                <span>-{invoice.currency} {Number(invoice.discount).toLocaleString()}</span>
+                <span>-{invoice.currency} {formatNumber(Number(invoice.discount))}</span>
               </div>
             )}
             {Number(invoice.deliveryFee) > 0 && (
               <div className="flex justify-between text-slate-500">
                 <span>Delivery</span>
-                <span>{invoice.currency} {Number(invoice.deliveryFee).toLocaleString()}</span>
+                <span>{invoice.currency} {formatNumber(Number(invoice.deliveryFee))}</span>
               </div>
             )}
           </div>
           <div className="mt-2 flex justify-between border-t pt-3 text-base font-bold">
             <span>Total</span>
-            <span>{invoice.currency} {Number(invoice.total).toLocaleString()}</span>
+            <span>{invoice.currency} {formatNumber(Number(invoice.total))}</span>
           </div>
         </div>
 

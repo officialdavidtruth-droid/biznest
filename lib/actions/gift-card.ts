@@ -10,6 +10,7 @@ import { checkRateLimit, getClientIp } from "@/lib/rate-limit";
 import { roundMoney } from "@/lib/utils/pricing";
 import { issueGiftCard, redeemGiftCard, normalizeGiftCardCode } from "@/lib/payments/gift-card-ledger";
 import type { ActionResult } from "@/types/actions";
+import { formatMoney } from "@/lib/utils/format-money";
 
 // Gift cards are stored value, so they sit behind the same "marketing"
 // permission as coupons. In-store redemption also accepts "pos" so a cashier
@@ -38,7 +39,7 @@ export async function issueGiftCardAction(
 
   const amount = roundMoney(Number(formData.get("amount") ?? 0));
   if (!(amount > 0) || amount > MAX_CARD_AMOUNT) {
-    return { success: false, error: `Enter an amount between ₦1 and ₦${MAX_CARD_AMOUNT.toLocaleString()}.` };
+    return { success: false, error: `Enter an amount between ${formatMoney(1)} and ${formatMoney(MAX_CARD_AMOUNT)}.` };
   }
 
   const recipientEmail = String(formData.get("recipientEmail") ?? "").trim().toLowerCase();

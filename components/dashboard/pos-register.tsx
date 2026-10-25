@@ -7,6 +7,7 @@ import { Search, Barcode, Minus, Plus, Trash2, X, ShoppingBag } from "lucide-rea
 import { createPosSale, lookupPosBarcode, searchPosCustomers, type PosCatalogItem, type PosCustomerMatch } from "@/lib/actions/pos";
 import { posTenderTypes } from "@/lib/validations/pos";
 import { roundMoney } from "@/lib/utils/pricing";
+import { formatNumber } from "@/lib/i18n/locale";
 
 type CartLine = {
   key: string; // productId, variantId, or serviceId — unique per cart
@@ -222,7 +223,7 @@ export function PosRegister({
     });
     setCharging(false);
     if (!result.success) return toast.error(result.error);
-    toast.success(`Sale complete — ${currency} ${result.data.total.toLocaleString()}`);
+    toast.success(`Sale complete — ${currency} ${formatNumber(result.data.total)}`);
     setCart([]);
     setCustomerName("");
     setCustomerPhone("");
@@ -287,7 +288,7 @@ export function PosRegister({
                   )}
                   <p className="line-clamp-2 font-medium leading-snug">{item.name}</p>
                   <p className="text-xs text-muted-foreground">
-                    {item.currency} {item.price.toLocaleString()}
+                    {item.currency} {formatNumber(item.price)}
                     {item.hasVariants ? " · variants" : ""}
                   </p>
                   {outOfStock && <span className="text-xs font-medium text-destructive">Out of stock</span>}
@@ -311,7 +312,7 @@ export function PosRegister({
                         >
                           <span>{v.label}</span>
                           <span className="text-muted-foreground">
-                            {item.currency} {v.price.toLocaleString()} · {v.quantity} left
+                            {item.currency} {formatNumber(v.price)} · {v.quantity} left
                           </span>
                         </button>
                       ))}
@@ -339,7 +340,7 @@ export function PosRegister({
                   <div className="min-w-0 flex-1">
                     <p className="truncate font-medium">{line.name}</p>
                     <p className="text-xs text-muted-foreground">
-                      {currency} {line.unitPrice.toLocaleString()} each
+                      {currency} {formatNumber(line.unitPrice)} each
                     </p>
                   </div>
                   <div className="flex items-center gap-1">
@@ -388,7 +389,7 @@ export function PosRegister({
                 {customerMatches.map((customer) => (
                   <button key={customer.id} type="button" onClick={() => chooseCustomer(customer)} className="flex w-full items-center justify-between border-b px-3 py-2 text-left text-xs last:border-0 hover:bg-muted">
                     <span><b>{customer.name}</b><span className="ml-2 text-muted-foreground">{customer.phone || customer.email || ""}</span></span>
-                    <span className="text-muted-foreground">{customer.orders} orders · {currency} {customer.spent.toLocaleString()}</span>
+                    <span className="text-muted-foreground">{customer.orders} orders · {currency} {formatNumber(customer.spent)}</span>
                   </button>
                 ))}
               </div>
@@ -421,18 +422,18 @@ export function PosRegister({
             <div className="flex items-center justify-between">
               <span className="text-muted-foreground">Collect from customer</span>
               <span className="font-semibold">
-                {currency} {subtotal.toLocaleString()}
+                {currency} {formatNumber(subtotal)}
               </span>
             </div>
             {estimatedCommission > 0 && (
               <>
                 <div className="flex items-center justify-between text-xs text-muted-foreground">
                   <span>Platform commission ({commissionRatePercent}%)</span>
-                  <span>-{currency} {estimatedCommission.toLocaleString()}</span>
+                  <span>-{currency} {formatNumber(estimatedCommission)}</span>
                 </div>
                 <div className="flex items-center justify-between text-xs text-muted-foreground">
                   <span>Yours to keep</span>
-                  <span>{currency} {netToKeep.toLocaleString()}</span>
+                  <span>{currency} {formatNumber(netToKeep)}</span>
                 </div>
                 <p className="text-[11px] text-muted-foreground/80">
                   Cash is collected in full — commission is tracked and settled separately (see Payments).
@@ -446,7 +447,7 @@ export function PosRegister({
             disabled={cart.length === 0 || charging}
             className="w-full rounded-lg bg-[var(--bn-admin-orange-soft)] py-2.5 text-sm font-medium text-[var(--bn-admin-orange)]-foreground transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
           >
-            {charging ? "Charging…" : `Charge ${currency} ${subtotal.toLocaleString()}`}
+            {charging ? "Charging…" : `Charge ${currency} ${formatNumber(subtotal)}`}
           </button>
         </div>
       </div>

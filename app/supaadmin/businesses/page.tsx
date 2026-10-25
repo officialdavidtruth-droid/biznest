@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { listBusinesses } from "@/lib/actions/admin";
 import type { VerificationStatus } from "@prisma/client";
+import { formatDate } from "@/lib/i18n/locale";
 
 const TABS: { label: string; value: VerificationStatus | "ALL" }[] = [
   { label: "Pending", value: "PENDING" },
@@ -61,7 +62,7 @@ export default async function BusinessesReviewPage({
                   {b.registrationType === "REGISTERED" ? "Registered" : "Unregistered + guarantors"}
                 </td>
                 <td className="px-4 py-3 text-muted-foreground">
-                  {new Date(b.createdAt).toLocaleDateString()}
+                  {formatDate(new Date(b.createdAt))}
                 </td>
                 <td className="px-4 py-3">
                   <StatusBadge status={b.verificationStatus} />

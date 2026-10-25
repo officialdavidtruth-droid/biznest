@@ -5,6 +5,7 @@ import Link from "next/link";
 import { toast } from "sonner";
 import { deleteSavedCart } from "@/lib/actions/account";
 import { ShoppingBag, Trash2 } from "lucide-react";
+import { formatDate } from "@/lib/i18n/locale";
 
 type SavedCart = {
   id: string;
@@ -45,7 +46,7 @@ export function SavedCartsList({ initialCarts }: { initialCarts: SavedCart[] }) 
             <div className="truncate text-sm font-semibold text-slate-900">{cart.store.name}</div>
             <div className="text-xs text-slate-500">
               {itemCount(cart.items)} item{itemCount(cart.items) === 1 ? "" : "s"} · saved{" "}
-              {new Date(cart.updatedAt).toLocaleDateString()}
+              {formatDate(new Date(cart.updatedAt))}
             </div>
           </Link>
           <button onClick={() => handleDelete(cart.id)} className="rounded p-1.5 text-slate-400 hover:text-red-500">

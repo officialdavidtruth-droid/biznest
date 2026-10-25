@@ -7,6 +7,7 @@ import type { BuilderConfig } from "@/lib/builder-config";
 import { getBusinessExperience } from "@/lib/business-experience";
 import { useCart } from "@/lib/cart-context";
 import { BuilderFooter, BuilderHeader, ItemCard } from "@/components/storefront/builder-renderer";
+import { formatNumber } from "@/lib/i18n/locale";
 
 export type CatalogEntry = {
   id: string; kind: "product" | "service"; name: string; price: number; currency: string;
@@ -140,7 +141,7 @@ export function CatalogExperience({
               ? "Nothing has been published yet. Check back soon."
               : mode === "search" && q.trim()
                 ? `${results.length} ${results.length === 1 ? "result" : "results"} found.`
-                : `${items.length} ${items.length === 1 ? "item" : "items"} to browse${lowest > 0 ? `, starting from ${currency} ${lowest.toLocaleString()}` : ""}.`}
+                : `${items.length} ${items.length === 1 ? "item" : "items"} to browse${lowest > 0 ? `, starting from ${currency} ${formatNumber(lowest)}` : ""}.`}
           </p>
         </div>
       </section>
@@ -186,7 +187,7 @@ export function CatalogExperience({
           {highest > lowest && (
             <label style={{ display: "flex", alignItems: "center", gap: 10 }}>Up to
               <input className="cx-focus" type="range" min={lowest} max={highest} step={Math.max(1, Math.round((highest - lowest) / 100))} value={maxPrice ?? highest} onChange={(e) => setMaxPrice(Number(e.target.value))} style={{ accentColor: d.accent, width: 160 }} />
-              <strong style={{ color: d.text, minWidth: 90 }}>{currency} {(maxPrice ?? highest).toLocaleString()}</strong>
+              <strong style={{ color: d.text, minWidth: 90 }}>{currency} {formatNumber((maxPrice ?? highest))}</strong>
             </label>
           )}
           <span aria-live="polite" style={{ marginLeft: "auto" }}>Showing {Math.min(shown, results.length)} of {results.length}</span>
@@ -219,7 +220,7 @@ export function CatalogExperience({
                   <Link href={href}>
                     {item.categoryName && <div style={{ fontSize: 12, color: d.muted, marginBottom: 4 }}>{item.categoryName}</div>}
                     <div style={{ fontWeight: 750, fontSize: 17, fontFamily: d.headingFont }}>{item.name}</div>
-                    <div style={{ fontWeight: 800, color: d.accent, marginTop: 6 }}>{item.currency} {item.price.toLocaleString()}</div>
+                    <div style={{ fontWeight: 800, color: d.accent, marginTop: 6 }}>{item.currency} {formatNumber(item.price)}</div>
                   </Link>
                   <div style={{ minWidth: 150 }}><QuickAdd item={item} slug={store.slug} base={base} d={d} radius={radius} serviceLabel={experience.primaryAction} /></div>
                 </div>

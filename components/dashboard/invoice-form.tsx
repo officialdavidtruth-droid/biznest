@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { Plus, Trash2 } from "lucide-react";
 import { createInvoice, type InvoiceLineInput } from "@/lib/actions/invoice";
+import { formatNumber } from "@/lib/i18n/locale";
 
 // Line items are edited as strings so the field can sit empty mid-edit
 // (typing over "0", deleting to clear it) without React snapping it back
@@ -202,7 +203,7 @@ export function InvoiceForm({ storeSlug, currency = "NGN" }: { storeSlug: string
 
       <div className="flex items-center justify-between">
         <p className="text-sm">
-          Total: <strong>{currency} {total.toLocaleString()}</strong>
+          Total: <strong>{currency} {formatNumber(total)}</strong>
         </p>
         <button
           onClick={handleSubmit}

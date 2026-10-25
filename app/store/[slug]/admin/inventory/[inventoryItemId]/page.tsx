@@ -4,6 +4,7 @@ import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
 import { getInventoryItem, listStockHistory } from "@/lib/actions/inventory";
 import { StockAdjustForm } from "@/components/dashboard/stock-adjust-form";
+import { formatDate, formatNumber } from "@/lib/i18n/locale";
 
 const MOVEMENT_LABELS: Record<string, string> = {
   RESTOCK: "Restock",
@@ -36,16 +37,16 @@ export default async function InventoryItemPage({
       <div className="mb-6 grid grid-cols-2 gap-3 sm:grid-cols-4">
         <div className="rounded-lg border bg-background p-4">
           <p className="text-xs text-muted-foreground">Selling price</p>
-          <p className="mt-1 text-lg font-semibold">{item.currency} {item.sellingPrice.toLocaleString()}</p>
+          <p className="mt-1 text-lg font-semibold">{item.currency} {formatNumber(item.sellingPrice)}</p>
         </div>
         <div className="rounded-lg border bg-background p-4">
           <p className="text-xs text-muted-foreground">Cost</p>
-          <p className="mt-1 text-lg font-semibold">{item.costPrice != null ? `${item.currency} ${item.costPrice.toLocaleString()}` : "—"}</p>
+          <p className="mt-1 text-lg font-semibold">{item.costPrice != null ? `${item.currency} ${formatNumber(item.costPrice)}` : "—"}</p>
         </div>
         <div className="rounded-lg border bg-background p-4">
           <p className="text-xs text-muted-foreground">Profit</p>
           <p className="mt-1 text-lg font-semibold text-[var(--bn-admin-orange)]">
-            {item.profitPerUnit != null ? `${item.currency} ${item.profitPerUnit.toLocaleString()}` : "—"}
+            {item.profitPerUnit != null ? `${item.currency} ${formatNumber(item.profitPerUnit)}` : "—"}
           </p>
         </div>
         <div className="rounded-lg border bg-background p-4">
@@ -89,7 +90,7 @@ export default async function InventoryItemPage({
           <tbody>
             {history.map((h) => (
               <tr key={h.id} className="border-b last:border-0">
-                <td className="px-4 py-3 text-muted-foreground">{new Date(h.createdAt).toLocaleString()}</td>
+                <td className="px-4 py-3 text-muted-foreground">{formatDate(new Date(h.createdAt), { day: "numeric", month: "short", year: "numeric", hour: "numeric", minute: "2-digit" })}</td>
                 <td className="px-4 py-3">{MOVEMENT_LABELS[h.type] ?? h.type}</td>
                 <td className={`px-4 py-3 font-medium ${h.quantityChange >= 0 ? "text-[var(--bn-admin-orange)]" : "text-destructive"}`}>
                   {h.quantityChange >= 0 ? "+" : ""}

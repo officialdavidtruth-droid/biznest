@@ -4,6 +4,7 @@ import { useMemo, useState, useTransition } from "react";
 import { AlertCircle, CheckCircle2, Mail, Send, Users } from "lucide-react";
 import { sendMarketingCampaign } from "@/lib/actions/marketing";
 import { EmailDesigner, type EmailDesign } from "@/components/marketing/email-designer";
+import { formatNumber } from "@/lib/i18n/locale";
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -88,7 +89,7 @@ export function MarketingEmailComposer({
         <div className="mb-4 flex items-center gap-2"><Users className="h-4 w-4 text-primary" /><h2 className="text-sm font-semibold">Who receives it</h2></div>
         <div className="mb-4 flex items-center justify-between rounded-xl bg-muted/40 px-4 py-3">
           <div><p className="text-sm font-medium">Newsletter subscribers</p><p className="text-xs text-muted-foreground">Active and opted in. Unsubscribed people are always excluded.</p></div>
-          <span className="text-xl font-bold tabular-nums">{activeSubscribers.toLocaleString()}</span>
+          <span className="text-xl font-bold tabular-nums">{formatNumber(activeSubscribers)}</span>
         </div>
         <label className="grid gap-1.5">
           <span className="flex items-center gap-2 text-xs font-medium"><Mail className="h-3.5 w-3.5 text-primary" />Add more email addresses (optional)</span>
@@ -104,7 +105,7 @@ export function MarketingEmailComposer({
       </div>
 
       <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border bg-background p-4">
-        <div><p className="text-sm font-semibold">{totalRecipients.toLocaleString()} recipient{totalRecipients === 1 ? "" : "s"}</p><p className="mt-0.5 text-xs text-muted-foreground">{blocked ? "Complete the items marked in red above to send." : "Sending can’t be undone."}</p></div>
+        <div><p className="text-sm font-semibold">{formatNumber(totalRecipients)} recipient{totalRecipients === 1 ? "" : "s"}</p><p className="mt-0.5 text-xs text-muted-foreground">{blocked ? "Complete the items marked in red above to send." : "Sending can’t be undone."}</p></div>
         <button type="button" disabled={isPending || totalRecipients === 0 || blocked} onClick={submit} className="inline-flex items-center gap-2 rounded-xl bg-primary px-5 py-2.5 text-sm font-semibold text-primary-foreground disabled:opacity-50"><Send className="h-4 w-4" />{isPending ? "Sending…" : "Send campaign"}</button>
       </div>
       {result && (

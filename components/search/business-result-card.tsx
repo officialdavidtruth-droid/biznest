@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { BadgeCheck, MapPin, Star } from "lucide-react";
 import { TrustBadge } from "@/components/storefront/trust-badge";
+import { formatNumber } from "@/lib/i18n/locale";
 
 export type SearchResultBusiness = {
   id: string;
@@ -30,7 +31,7 @@ function formatFrom(items: CatalogPreviewItem[]) {
   if (prices.length === 0) return null;
   const min = Math.min(...prices);
   const currency = items[0].currency;
-  return `From ${currency} ${min.toLocaleString()}`;
+  return `From ${currency} ${formatNumber(min)}`;
 }
 
 export function BusinessResultCard({ business }: { business: SearchResultBusiness }) {

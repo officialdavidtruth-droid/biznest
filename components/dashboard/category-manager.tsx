@@ -20,6 +20,7 @@ import {
 } from "lucide-react";
 import { StatCard, ListToolbar } from "@/components/dashboard/list-toolbar";
 import type { BusinessTerminology } from "@/lib/business-terminology";
+import { formatDate } from "@/lib/i18n/locale";
 
 type Category = {
   id: string;
@@ -39,7 +40,7 @@ type Category = {
 type StatusFilter = "all" | "active" | "inactive";
 
 function fmtDate(d: Date | string) {
-  return new Date(d).toLocaleString(undefined, { month: "short", day: "numeric", year: "numeric", hour: "numeric", minute: "2-digit" });
+  return formatDate(new Date(d), { month: "short", day: "numeric", year: "numeric", hour: "numeric", minute: "2-digit" });
 }
 
 export function CategoryManager({

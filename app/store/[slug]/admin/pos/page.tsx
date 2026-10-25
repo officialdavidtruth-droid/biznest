@@ -9,6 +9,7 @@ import { getPluginEntitlement } from "@/lib/plugins";
 import { assertStorePermission } from "@/lib/access/assert-store-access";
 import { getPosCatalog, getPosDailySummary } from "@/lib/actions/pos";
 import { PosRegister } from "@/components/dashboard/pos-register";
+import { formatNumber } from "@/lib/i18n/locale";
 
 const FOOD_TYPES = ["Restaurant", "Food & Groceries"];
 
@@ -44,7 +45,7 @@ export default async function PosPage({ params }: { params: Promise<{ slug: stri
           <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Today</p>
           <p className="text-sm font-semibold">
             {summary.salesCount} {summary.salesCount === 1 ? "sale" : "sales"} · {summary.currency}{" "}
-            {summary.totalAmount.toLocaleString()}
+            {formatNumber(summary.totalAmount)}
           </p>
         </div>
       </div>

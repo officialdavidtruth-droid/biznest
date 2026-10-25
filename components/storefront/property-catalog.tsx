@@ -2,6 +2,8 @@
 
 import { useMemo, useState } from "react";
 import { PropertyMap, type MapProperty } from "./property-map";
+import { currencySymbol } from "@/lib/utils/format-money";
+import { formatNumber } from "@/lib/i18n/locale";
 
 export type PropertyAttributes = {
   bedrooms?: number;
@@ -42,7 +44,7 @@ export function PropertyCatalog({ listings, theme }: {
     .map((l) => ({
       id: l.id,
       name: l.name,
-      priceLabel: `${l.currency} ${l.price.toLocaleString()}`,
+      priceLabel: `${l.currency} ${formatNumber(l.price)}`,
       lat: l.attributes.lat as number,
       lng: l.attributes.lng as number,
     }));
@@ -56,10 +58,10 @@ export function PropertyCatalog({ listings, theme }: {
           style={{ fontSize: 13, padding: "10px 14px", borderRadius: 8, border: `1px solid ${theme.ink}22`, background: theme.card, color: theme.ink, boxShadow: "0 1px 2px rgba(18,18,18,0.06)" }}
         >
           <option value="">Any price</option>
-          <option value={5000000}>Up to ₦5,000,000</option>
-          <option value={20000000}>Up to ₦20,000,000</option>
-          <option value={50000000}>Up to ₦50,000,000</option>
-          <option value={150000000}>Up to ₦150,000,000</option>
+          <option value={5000000}>Up to {currencySymbol()}5,000,000</option>
+          <option value={20000000}>Up to {currencySymbol()}20,000,000</option>
+          <option value={50000000}>Up to {currencySymbol()}50,000,000</option>
+          <option value={150000000}>Up to {currencySymbol()}150,000,000</option>
         </select>
         <select
           value={minBeds}
@@ -90,7 +92,7 @@ export function PropertyCatalog({ listings, theme }: {
               )}
             </div>
             <div style={{ padding: 18 }}>
-              <p style={{ fontFamily: theme.headlineFont, fontWeight: 700, fontSize: 16 }}>{l.currency} {l.price.toLocaleString()}</p>
+              <p style={{ fontFamily: theme.headlineFont, fontWeight: 700, fontSize: 16 }}>{l.currency} {formatNumber(l.price)}</p>
               <p style={{ fontSize: 13.5, fontWeight: 600, marginTop: 3, opacity: 0.9 }}>{l.name}</p>
               {l.attributes.address && <p style={{ fontSize: 12, opacity: 0.6, marginTop: 3 }}>{l.attributes.address}</p>}
               <div style={{ display: "flex", gap: 10, marginTop: 10, fontSize: 12, opacity: 0.75 }}>

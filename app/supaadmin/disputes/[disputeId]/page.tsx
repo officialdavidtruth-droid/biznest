@@ -2,6 +2,7 @@ import { getDisputeForAdmin } from "@/lib/actions/admin";
 import { notFound } from "next/navigation";
 import { AdminDisputeDecision } from "@/components/dashboard/admin-dispute-decision";
 import { DISPUTE_STATUS_CONFIG } from "@/lib/constants/dispute";
+import { formatDate, formatNumber } from "@/lib/i18n/locale";
 
 export default async function DisputeDetailPage({
   params,
@@ -39,24 +40,24 @@ export default async function DisputeDetailPage({
       <Section title="Reason">
         <p className="mb-1 text-xs text-muted-foreground">
           Opened by {dispute.raisedById === order.buyerId ? "buyer" : "seller"} ({dispute.raisedBy.name ?? dispute.raisedBy.email}) ·{" "}
-          {new Date(dispute.createdAt).toLocaleString()}
+          {formatDate(new Date(dispute.createdAt), { day: "numeric", month: "short", year: "numeric", hour: "numeric", minute: "2-digit" })}
         </p>
         <p className="text-sm">{dispute.reason}</p>
       </Section>
 
       <Section title="Order">
         <Grid>
-          <Field label="Total" value={`${order.currency} ${Number(order.total).toLocaleString()}`} />
-          <Field label="Commission" value={`${order.currency} ${Number(order.commission).toLocaleString()}`} />
+          <Field label="Total" value={`${order.currency} ${formatNumber(Number(order.total))}`} />
+          <Field label="Commission" value={`${order.currency} ${formatNumber(Number(order.commission))}`} />
           <Field label="Current status" value={order.status.replace("_", " ")} />
-          <Field label="Placed" value={new Date(order.createdAt).toLocaleString()} />
+          <Field label="Placed" value={formatDate(new Date(order.createdAt), { day: "numeric", month: "short", year: "numeric", hour: "numeric", minute: "2-digit" })} />
         </Grid>
         <div className="mt-3">
           <p className="mb-1 text-xs font-medium text-muted-foreground">Items</p>
           {order.items.map((item) => (
             <div key={item.id} className="flex justify-between py-1 text-sm">
               <span>{item.product?.name ?? item.service?.name} × {item.quantity}</span>
-              <span>{order.currency} {(Number(item.unitPrice) * item.quantity).toLocaleString()}</span>
+              <span>{order.currency} {formatNumber((Number(item.unitPrice) * item.quantity))}</span>
             </div>
           ))}
         </div>
@@ -72,7 +73,7 @@ export default async function DisputeDetailPage({
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img src={p.fileUrl!} alt="" className="aspect-square w-full rounded-md border object-cover" />
                 <p className="mt-1 truncate text-[10px] text-muted-foreground">
-                  {p.submittedBy.id === order.buyerId ? "Buyer" : "Seller"} · {new Date(p.createdAt).toLocaleDateString()}
+                  {p.submittedBy.id === order.buyerId ? "Buyer" : "Seller"} · {formatDate(new Date(p.createdAt))}
                 </p>
               </a>
             ))}
@@ -90,7 +91,7 @@ export default async function DisputeDetailPage({
                 <p>{n.note}</p>
                 <p className="mt-1 text-xs text-muted-foreground">
                   {n.submittedBy.id === order.buyerId ? "Buyer" : "Seller"} ({n.submittedBy.name ?? n.submittedBy.email}) ·{" "}
-                  {new Date(n.createdAt).toLocaleString()}
+                  {formatDate(new Date(n.createdAt), { day: "numeric", month: "short", year: "numeric", hour: "numeric", minute: "2-digit" })}
                 </p>
               </div>
             ))}
@@ -108,7 +109,7 @@ export default async function DisputeDetailPage({
                 <p>{m.content}</p>
                 <p className="mt-1 text-xs text-muted-foreground">
                   {m.senderId === order.buyerId ? "Buyer" : "Seller"} ({m.sender.name ?? "—"}) ·{" "}
-                  {new Date(m.createdAt).toLocaleString()}
+                  {formatDate(new Date(m.createdAt), { day: "numeric", month: "short", year: "numeric", hour: "numeric", minute: "2-digit" })}
                 </p>
               </div>
             ))}
@@ -129,7 +130,7 @@ export default async function DisputeDetailPage({
         )}
         {order.deliveryZone && (
           <p className="mb-3 text-sm text-muted-foreground">
-            Delivery zone: {order.deliveryZone.name} ({order.currency} {Number(order.deliveryZone.fee).toLocaleString()})
+            Delivery zone: {order.deliveryZone.name} ({order.currency} {formatNumber(Number(order.deliveryZone.fee))})
           </p>
         )}
         <ol className="space-y-1.5 border-l pl-3">
@@ -137,7 +138,7 @@ export default async function DisputeDetailPage({
             <li key={ev.id} className="text-sm">
               <span className="font-medium">{ev.status.replace("_", " ")}</span>
               {" — "}
-              <span className="text-muted-foreground">{new Date(ev.createdAt).toLocaleString()}</span>
+              <span className="text-muted-foreground">{formatDate(new Date(ev.createdAt), { day: "numeric", month: "short", year: "numeric", hour: "numeric", minute: "2-digit" })}</span>
               {ev.note && <span className="text-muted-foreground"> ({ev.note})</span>}
             </li>
           ))}
@@ -156,11 +157,11 @@ export default async function DisputeDetailPage({
                   <span className="font-medium">{p.provider} · {p.reference}</span>
                   <span className="text-xs text-muted-foreground">{p.status}</span>
                 </div>
-                <p className="text-muted-foreground">{p.currency} {Number(p.amount).toLocaleString()}</p>
-                {p.verifiedAt && <p className="text-xs text-muted-foreground">Verified {new Date(p.verifiedAt).toLocaleString()}</p>}
+                <p className="text-muted-foreground">{p.currency} {formatNumber(Number(p.amount))}</p>
+                {p.verifiedAt && <p className="text-xs text-muted-foreground">Verified {formatDate(new Date(p.verifiedAt), { day: "numeric", month: "short", year: "numeric", hour: "numeric", minute: "2-digit" })}</p>}
                 {p.refundedAt && (
                   <p className="text-xs text-muted-foreground">
-                    Refunded {new Date(p.refundedAt).toLocaleString()} by {p.refundedByEmail ?? "—"} — {p.refundReason}
+                    Refunded {formatDate(new Date(p.refundedAt), { day: "numeric", month: "short", year: "numeric", hour: "numeric", minute: "2-digit" })} by {p.refundedByEmail ?? "—"} — {p.refundReason}
                   </p>
                 )}
               </div>

@@ -3,6 +3,7 @@ import type { Metadata } from "next";
 import { searchBusinesses, type DiscoverySearchParams } from "@/lib/search/businesses";
 import { SearchFilters } from "@/components/search/search-filters";
 import { BusinessResultCard } from "@/components/search/business-result-card";
+import { formatNumber } from "@/lib/i18n/locale";
 
 export const metadata: Metadata = {
   title: "Browse Businesses & Stores in Nigeria — BizNest",
@@ -76,7 +77,7 @@ export default async function SearchPage({
       </div>
 
       <p className="mb-4 text-sm text-muted-foreground">
-        {total.toLocaleString()} business{total === 1 ? "" : "es"} found
+        {formatNumber(total)} business{total === 1 ? "" : "es"} found
       </p>
 
       {results.length === 0 ? (

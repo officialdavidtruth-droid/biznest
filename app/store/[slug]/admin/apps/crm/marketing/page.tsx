@@ -9,6 +9,7 @@ import { CrmTabs } from "@/components/dashboard/crm-tabs";
 import { getPluginEntitlement } from "@/lib/plugins";
 import { resolveStoreTheme } from "@/lib/template-themes";
 import { buildPromoPalette, readPromoPopup } from "@/lib/storefront/promo-popup";
+import { formatMoney } from "@/lib/utils/format-money";
 
 export default async function MarketingPage({ params, searchParams }: { params: Promise<{ slug: string }>; searchParams: Promise<{ tab?: string }> }) {
   const { slug } = await params;
@@ -70,7 +71,7 @@ export default async function MarketingPage({ params, searchParams }: { params: 
           templateName: popupStore?.template?.name ?? null,
           coupons: (popupStore?.coupons ?? []).map((c) => ({
             code: c.code,
-            label: c.discountType === "PERCENT" ? `${Number(c.discountValue)}% off` : `₦${Number(c.discountValue).toLocaleString()} off`,
+            label: c.discountType === "PERCENT" ? `${Number(c.discountValue)}% off` : `${formatMoney(Number(c.discountValue))} off`,
           })),
         }}
         stats={{

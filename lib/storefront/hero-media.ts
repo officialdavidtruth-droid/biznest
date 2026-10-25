@@ -3,16 +3,10 @@
 // YouTube/Vimeo link) so the hero can render as an autoplay video instead of
 // a static background image, without requiring a schema change.
 
+import { formatMoney as formatMoneyBase } from "@/lib/utils/format-money";
+
 export function formatMoney(amount: number, currency: string) {
-  try {
-    return new Intl.NumberFormat("en-NG", {
-      style: "currency",
-      currency: currency || "NGN",
-      maximumFractionDigits: 0,
-    }).format(amount);
-  } catch {
-    return `${currency} ${amount.toLocaleString()}`;
-  }
+  return formatMoneyBase(amount, currency, { decimals: 0 });
 }
 
 export type HeroMedia =

@@ -7,6 +7,7 @@ import { Check, ChevronRight, Lock, Minus, Plus, RotateCcw, ShoppingBag, Truck }
 import { useCart } from "@/lib/cart-context";
 import { useShopAuthGate } from "@/lib/hooks/use-shop-auth-gate";
 import { toast } from "sonner";
+import { formatNumber } from "@/lib/i18n/locale";
 
 export type RelatedProduct = { id: string; name: string; price: number; currency: string; image: string | null };
 
@@ -128,9 +129,9 @@ export function ProductDetail({
           <h1 className="pd-title">{name}</h1>
 
           <div className="pd-price">
-            <strong>{currency} {effectivePrice.toLocaleString()}</strong>
-            {hasDiscount && <s>{currency} {(compareAtPrice as number).toLocaleString()}</s>}
-            {hasDiscount && <em>Save {currency} {((compareAtPrice as number) - effectivePrice).toLocaleString()}</em>}
+            <strong>{currency} {formatNumber(effectivePrice)}</strong>
+            {hasDiscount && <s>{currency} {formatNumber((compareAtPrice as number))}</s>}
+            {hasDiscount && <em>Save {currency} {formatNumber(((compareAtPrice as number) - effectivePrice))}</em>}
             {type === "RENTAL" && rentalUnit && <span className="pd-unit">/ {rentalUnit}</span>}
           </div>
 
@@ -170,7 +171,7 @@ export function ProductDetail({
                   <button type="button" onClick={() => setQty((q) => q + 1)} aria-label="Increase quantity"><Plus size={16} /></button>
                 </div>
                 <button type="button" className="pd-add" onClick={() => handleAdd(false)} disabled={!canBuy}>
-                  <ShoppingBag size={18} /> Add to cart · {currency} {(effectivePrice * qty).toLocaleString()}
+                  <ShoppingBag size={18} /> Add to cart · {currency} {formatNumber((effectivePrice * qty))}
                 </button>
               </div>
               <button type="button" className="pd-now" onClick={() => handleAdd(true)} disabled={!canBuy}>Buy it now</button>
@@ -200,7 +201,7 @@ export function ProductDetail({
               <Link key={p.id} href={`${base}/product/${p.id}`} className="pd-rel-card">
                 <div>{p.image ? /* eslint-disable-next-line @next/next/no-img-element */ <img src={p.image} alt={p.name} /> : <span>{p.name.charAt(0).toUpperCase()}</span>}</div>
                 <b>{p.name}</b>
-                <small>{p.currency} {p.price.toLocaleString()}</small>
+                <small>{p.currency} {formatNumber(p.price)}</small>
               </Link>
             ))}
           </div>
@@ -209,7 +210,7 @@ export function ProductDetail({
 
       {!outOfStock && (
         <div className="pd-mobilebar">
-          <div><small>Total</small><b>{currency} {(effectivePrice * qty).toLocaleString()}</b></div>
+          <div><small>Total</small><b>{currency} {formatNumber((effectivePrice * qty))}</b></div>
           <button type="button" onClick={() => handleAdd(false)} disabled={!canBuy}>Add to cart</button>
         </div>
       )}

@@ -1,5 +1,6 @@
 import { AlertTriangle, PackageX, TrendingUp } from "lucide-react";
 import type { getInventoryProfitSummary } from "@/lib/actions/inventory";
+import { formatNumber } from "@/lib/i18n/locale";
 
 export function InventoryProfitSummary({
   summary,
@@ -13,7 +14,7 @@ export function InventoryProfitSummary({
       <div className="rounded-lg border bg-background p-4">
         <p className="text-xs text-muted-foreground">Potential profit</p>
         <p className="mt-1 text-lg font-semibold text-[var(--bn-admin-orange)]">
-          {currency} {summary.totalPotentialProfit.toLocaleString()}
+          {currency} {formatNumber(summary.totalPotentialProfit)}
         </p>
         <p className="mt-0.5 text-xs text-muted-foreground">
           across {summary.trackedWithCost} of {summary.trackedTotal} items with cost set
@@ -29,7 +30,7 @@ export function InventoryProfitSummary({
       <div className="rounded-lg border bg-background p-4">
         <p className="text-xs text-muted-foreground">Stock on hand (cost value)</p>
         <p className="mt-1 text-lg font-semibold">
-          {currency} {summary.totalCostValue.toLocaleString()}
+          {currency} {formatNumber(summary.totalCostValue)}
         </p>
       </div>
       <div className="rounded-lg border bg-background p-4">

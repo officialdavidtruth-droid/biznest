@@ -2,6 +2,7 @@ import Link from "next/link";
 import { listDisputes } from "@/lib/actions/admin";
 import { DISPUTE_STATUS_CONFIG } from "@/lib/constants/dispute";
 import type { DisputeStatus } from "@prisma/client";
+import { formatDate, formatNumber } from "@/lib/i18n/locale";
 
 const TABS: { label: string; value: DisputeStatus | "ALL" }[] = [
   { label: "Open", value: "OPEN" },
@@ -74,8 +75,8 @@ export default async function DisputesPage({
                 <td className="px-4 py-3">{d.order.buyer.name ?? d.order.buyer.email}</td>
                 <td className="px-4 py-3 text-muted-foreground">{d.order.store.name}</td>
                 <td className="px-4 py-3 text-muted-foreground">{d.raisedBy.name ?? d.raisedBy.email}</td>
-                <td className="px-4 py-3">{d.order.currency} {Number(d.order.total).toLocaleString()}</td>
-                <td className="px-4 py-3 text-muted-foreground">{new Date(d.createdAt).toLocaleDateString()}</td>
+                <td className="px-4 py-3">{d.order.currency} {formatNumber(Number(d.order.total))}</td>
+                <td className="px-4 py-3 text-muted-foreground">{formatDate(new Date(d.createdAt))}</td>
                 <td className="px-4 py-3">
                   <span
                     className={`rounded-full px-2 py-0.5 text-xs ring-1 ring-inset ${DISPUTE_STATUS_CONFIG[d.status].bg} ${DISPUTE_STATUS_CONFIG[d.status].text} ${DISPUTE_STATUS_CONFIG[d.status].ring}`}

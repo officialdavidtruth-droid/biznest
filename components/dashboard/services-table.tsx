@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useMemo, useState } from "react";
 import { ListToolbar, ListPagination } from "@/components/dashboard/list-toolbar";
 import type { BusinessTerminology } from "@/lib/business-terminology";
+import { formatNumber } from "@/lib/i18n/locale";
 
 type ServiceRow = {
   id: string;
@@ -61,7 +62,7 @@ export function ServicesTable({ storeSlug, services, terminology }: { storeSlug:
             {paged.map((s) => (
               <tr key={s.id} className="border-b last:border-0">
                 <td className="px-4 py-3 font-medium">{s.name}</td>
-                <td className="px-4 py-3">{s.currency} {Number(s.price).toLocaleString()}</td>
+                <td className="px-4 py-3">{s.currency} {formatNumber(Number(s.price))}</td>
                 <td className="px-4 py-3 text-muted-foreground">{s.isBookable ? `${s.durationMins ?? "—"} min slots` : "Not bookable"}</td>
                 <td className="px-4 py-3">
                   <span className={`rounded-full px-2 py-0.5 text-xs ${s.isPublished ? "bg-[var(--bn-admin-surface-2)] text-[var(--bn-admin-orange)]" : "bg-muted text-muted-foreground"}`}>

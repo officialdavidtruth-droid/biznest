@@ -3,6 +3,7 @@
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
 import { Layers, Plus, Trash2 } from "lucide-react";
+import { currencySymbol, formatMoney } from "@/lib/utils/format-money";
 import {
   createAddon,
   createAddonGroup,
@@ -16,7 +17,7 @@ type Group = { id: string; name: string; minSelect: number; maxSelect: number | 
 type MenuItem = { id: string; name: string };
 
 function money(v: string | number) {
-  return `₦${Number(v || 0).toLocaleString()}`;
+  return formatMoney(v, "NGN");
 }
 
 export function AddonManager({
@@ -201,7 +202,7 @@ export function AddonManager({
                   min={0}
                   value={addonDrafts[group.id]?.price ?? ""}
                   onChange={(e) => setAddonDrafts((prev) => ({ ...prev, [group.id]: { name: prev[group.id]?.name ?? "", price: e.target.value } }))}
-                  placeholder="Extra price (₦)"
+                  placeholder={`Extra price (${currencySymbol()})`}
                   className="w-32 rounded-lg border px-3 py-2 text-sm"
                 />
                 <button disabled={busy} onClick={() => addAddon(group.id)} className="rounded-lg border px-3 py-2 text-sm font-medium hover:bg-muted">

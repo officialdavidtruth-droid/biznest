@@ -5,6 +5,7 @@ import { prisma } from "@/lib/prisma";
 import { assertStorePermission } from "@/lib/access/assert-store-access";
 import { SELLER_VISIBLE_ORDER_STATUSES } from "@/lib/constants/order";
 import { checkRateLimit, getClientIp } from "@/lib/rate-limit";
+import { formatNumber } from "@/lib/i18n/locale";
 
 /**
  * Records one storefront page view. Fire-and-forget, best-effort: analytics
@@ -204,7 +205,7 @@ export async function getDashboardInsights(storeId: string, slug: string): Promi
     recommendations.push({
       id: "low-conversion-reviews",
       severity: "warning",
-      message: `Your store received ${visitorsToday.toLocaleString()} visitors but only ${conversionRate}% purchased. Add product reviews to improve conversion.`,
+      message: `Your store received ${formatNumber(visitorsToday)} visitors but only ${conversionRate}% purchased. Add product reviews to improve conversion.`,
       actionLabel: "Review products",
       actionHref: `/${slug}/admin/reviews`,
     });

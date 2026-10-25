@@ -11,6 +11,7 @@ import type { ActionResult } from "@/types/actions";
 import { createPendingPayment, markPaymentFailed } from "@/lib/payments/pending";
 import type { Invoice, InvoiceItem } from "@prisma/client";
 import { assertStorePermission } from "@/lib/access/assert-store-access";
+import { formatNumber } from "@/lib/i18n/locale";
 
 const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? "https://biznest.vercel.app";
 
@@ -165,7 +166,7 @@ export async function sendInvoice(
     await sendOrderNotificationEmail(
       email,
       `Invoice ${invoice.invoiceNo} from ${access.store.name}`,
-      `You have a new invoice for ${invoice.currency} ${Number(invoice.total).toLocaleString()}. View and pay it here: <a href="${viewUrl}">${viewUrl}</a>`,
+      `You have a new invoice for ${invoice.currency} ${formatNumber(Number(invoice.total))}. View and pay it here: <a href="${viewUrl}">${viewUrl}</a>`,
       storeEmailBrand(access.store)
     );
   }
@@ -173,7 +174,7 @@ export async function sendInvoice(
   let whatsappUrl: string | undefined;
   if ((via === "whatsapp" || via === "both") && phone) {
     const message = encodeURIComponent(
-      `Invoice ${invoice.invoiceNo} from ${access.store.name}: ${invoice.currency} ${Number(invoice.total).toLocaleString()}. Pay here: ${viewUrl}`
+      `Invoice ${invoice.invoiceNo} from ${access.store.name}: ${invoice.currency} ${formatNumber(Number(invoice.total))}. Pay here: ${viewUrl}`
     );
     whatsappUrl = whatsappLink(phone, decodeURIComponent(message)) ?? undefined;
   }

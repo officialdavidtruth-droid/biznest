@@ -6,6 +6,7 @@ import { subscribeToNewsletterForm } from "@/lib/actions/newsletter";
 import { CategoryNav } from "@/components/storefront/category-nav";
 import { Reveal } from "@/components/storefront/reveal";
 import type { CategoryTreeNode } from "@/lib/storefront-categories";
+import { formatNumber } from "@/lib/i18n/locale";
 
 // Ported from the Rivora Fresh grocery template (rivora-fresh-react-nestjs.zip)
 // -- exactly as requested: same deep-green/lime layout (topbar, sticky nav,
@@ -170,7 +171,7 @@ export function RivoraStorefront({
                   )}
                   <div style={{ height: 140, borderRadius: 8, background: p.image ? `url(${p.image}) center/cover` : "linear-gradient(145deg,#f5f8f1,#e4f0dc)" }} />
                   <h3 style={{ fontSize: 11, margin: "9px 0 3px" }}>{p.name}</h3>
-                  <strong style={{ fontSize: 12 }}>{p.currency} {p.price.toLocaleString()}</strong>
+                  <strong style={{ fontSize: 12 }}>{p.currency} {formatNumber(p.price)}</strong>
                 </a>
               ))}
             </div>

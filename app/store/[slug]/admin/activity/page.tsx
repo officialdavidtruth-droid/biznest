@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { redirect, notFound } from "next/navigation";
 import { getStoreAccessRole, canManageBillingAndStaff } from "@/lib/access/store-access";
 import { listStoreActivity } from "@/lib/actions/activity";
+import { formatDate } from "@/lib/i18n/locale";
 
 const ACTION_LABELS: Record<string, string> = {
   "staff.invited": "invited a staff member",
@@ -56,7 +57,7 @@ export default async function ActivityPage({ params }: { params: Promise<{ slug:
                 </p>
                 <p className="mt-0.5 text-xs text-muted-foreground">
                   {e.actorRole} ·{" "}
-                  {new Date(e.createdAt).toLocaleString(undefined, {
+                  {formatDate(new Date(e.createdAt), {
                     dateStyle: "medium",
                     timeStyle: "short",
                   })}

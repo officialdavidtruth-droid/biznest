@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { formatNumber } from "@/lib/i18n/locale";
 
 export type GridItem = {
   id: string; kind: "product" | "service"; name: string;
@@ -64,7 +65,7 @@ export function CatalogGrid({
               style={{ accentColor: accent, width: 140 }}
             />
             <span style={{ fontSize: 12, opacity: 0.7, minWidth: 70 }}>
-              {items[0]?.currency} {(maxPrice ?? highestPrice).toLocaleString()}
+              {items[0]?.currency} {formatNumber((maxPrice ?? highestPrice))}
             </span>
           </div>
         )}
@@ -83,7 +84,7 @@ export function CatalogGrid({
             <div style={{ padding: 14 }}>
               {item.categoryName && <div style={{ fontSize: 10.5, opacity: 0.55, textTransform: "uppercase", marginBottom: 4 }}>{item.categoryName}</div>}
               <h4 style={{ fontSize: 14.5, fontWeight: 700, marginBottom: 6 }}>{item.name}</h4>
-              <span style={{ fontSize: 15, fontWeight: 800, color: accent }}>{item.currency} {item.price.toLocaleString()}</span>
+              <span style={{ fontSize: 15, fontWeight: 800, color: accent }}>{item.currency} {formatNumber(item.price)}</span>
             </div>
           </a>
         ))}

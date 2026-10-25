@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/prisma";
+import { formatMoney } from "@/lib/utils/format-money";
 
 export default async function SubscriptionsOverview() {
   const [plans, stores] = await Promise.all([
@@ -24,7 +25,7 @@ export default async function SubscriptionsOverview() {
       <div className="mb-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
         <div className="rounded-lg border bg-background p-4">
           <p className="text-xs text-muted-foreground">MRR</p>
-          <p className="mt-1 text-2xl font-semibold">₦{mrr.toLocaleString()}</p>
+          <p className="mt-1 text-2xl font-semibold">{formatMoney(mrr)}</p>
         </div>
         {plans.map((p) => (
           <div key={p.id} className="rounded-lg border bg-background p-4">

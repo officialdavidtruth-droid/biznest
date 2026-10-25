@@ -5,6 +5,8 @@ import { notifyUser } from "@/lib/notifications/notify";
 import { NextResponse } from "next/server";
 import { expireLapsedTrial, TRIAL_REMINDER_DAYS } from "@/lib/billing/trial";
 import { logInfo, logError, errorMeta } from "@/lib/observability/log";
+import { formatMoney } from "@/lib/utils/format-money";
+import { formatDate } from "@/lib/i18n/locale";
 
 /**
  * Runs daily (see vercel.json, 06:00 UTC). Handles the full
@@ -71,7 +73,7 @@ export async function GET(req: Request) {
         userId: store.business.userId,
         type: "TRIAL_ENDING_SOON",
         title: "Your free trial ends soon",
-        body: `Your ${store.subscription?.name ?? ""} trial ends on ${store.trialEndsAt?.toLocaleDateString()}. Subscribe before then to keep your dashboard unlocked.`,
+        body: `Your ${store.subscription?.name ?? ""} trial ends on ${formatDate(store.trialEndsAt)}. Subscribe before then to keep your dashboard unlocked.`,
         url: `/store/${store.slug}/admin/subscription`,
       });
       trialReminded++;
@@ -119,7 +121,7 @@ export async function GET(req: Request) {
         userId: store.business.userId,
         type: "SUBSCRIPTION_RENEWING_SOON",
         title: "Your plan renews soon",
-        body: `${store.subscription?.name} (₦${Number(store.subscription?.price ?? 0).toLocaleString()}) renews on ${store.subscriptionRenewsAt?.toLocaleDateString()}. Make sure your card is up to date.`,
+        body: `${store.subscription?.name} (${formatMoney(Number(store.subscription?.price ?? 0))}) renews on ${formatDate(store.subscriptionRenewsAt)}. Make sure your card is up to date.`,
         url: `/store/${store.slug}/admin/subscription`,
       });
       reminded++;

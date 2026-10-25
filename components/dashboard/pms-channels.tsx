@@ -4,6 +4,7 @@ import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { Copy, Link2, Pause, Play, RefreshCw, Trash2 } from "lucide-react";
+import { formatDate } from "@/lib/i18n/locale";
 import {
   createChannelConnection,
   deleteChannelConnection,
@@ -30,7 +31,7 @@ const btn = "inline-flex items-center gap-1.5 rounded-xl border border-[color-mi
 
 function when(iso: string | null) {
   if (!iso) return "Never";
-  return new Date(iso).toLocaleString(undefined, { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" });
+  return formatDate(new Date(iso), { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" });
 }
 
 function copy(text: string) {

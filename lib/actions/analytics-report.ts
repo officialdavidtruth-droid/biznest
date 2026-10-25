@@ -2,6 +2,7 @@
 
 import { prisma } from "@/lib/prisma";
 import { assertStorePermission } from "@/lib/access/assert-store-access";
+import { formatDate } from "@/lib/i18n/locale";
 
 // --- Deep store analytics ----------------------------------------------------
 // Everything on the /admin/analytics dashboard, computed for an arbitrary
@@ -153,7 +154,7 @@ export async function getStoreAnalytics(storeId: string, rangeDays = 30): Promis
     const dayRevenue = dayOrders.reduce((s, o) => s + Number(o.total), 0);
     series.push({
       date: d.toISOString().slice(0, 10),
-      label: d.toLocaleDateString(undefined, { day: "numeric", month: "short" }),
+      label: formatDate(d, { day: "numeric", month: "short" }),
       revenue: dayRevenue,
       orders: dayOrders.length,
       visitors: dayVisitors,

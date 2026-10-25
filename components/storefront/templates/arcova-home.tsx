@@ -5,6 +5,7 @@ import { ARCOVA } from "@/lib/template-themes";
 import { CategoryNav } from "@/components/storefront/category-nav";
 import { Reveal } from "@/components/storefront/reveal";
 import type { CategoryTreeNode } from "@/lib/storefront-categories";
+import { formatNumber } from "@/lib/i18n/locale";
 
 // Ported from the Arcova architecture/agency template
 // (arcova-react-nestjs.zip). The source project was a standalone Vite +
@@ -154,7 +155,7 @@ export function ArcovaStorefront({
                 {services.map((s) => (
                   <a key={s.id} href={`/store/${slug}/service/${s.id}`} style={{ textDecoration: "none", color: "#fff", border: "1px solid rgba(255,255,255,0.15)", padding: 22 }}>
                     <h3 style={{ fontSize: 16, margin: "0 0 8px" }}>{s.name}</h3>
-                    <p style={{ fontSize: 13, opacity: 0.65, margin: 0 }}>{s.description || `Starting at ${s.currency} ${s.price.toLocaleString()}`}</p>
+                    <p style={{ fontSize: 13, opacity: 0.65, margin: 0 }}>{s.description || `Starting at ${s.currency} ${formatNumber(s.price)}`}</p>
                   </a>
                 ))}
               </div>

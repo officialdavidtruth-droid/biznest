@@ -3,6 +3,7 @@ import { listOrders } from "@/lib/actions/order";
 import { OrdersTable } from "@/components/dashboard/orders-table";
 import { ShoppingBag, Clock3, CheckCircle2, Banknote } from "lucide-react";
 import { StatCard } from "@/components/dashboard/stat-card";
+import { formatNumber } from "@/lib/i18n/locale";
 
 export default async function StoreOrdersPage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
@@ -24,7 +25,7 @@ export default async function StoreOrdersPage({ params }: { params: Promise<{ sl
         <StatCard icon={ShoppingBag} tone="purple" label="Total Orders" value={orders.length} note="All time" />
         <StatCard icon={Clock3} tone="orange" label="Pending" value={pendingCount} note="Awaiting action" />
         <StatCard icon={CheckCircle2} tone="green" label="Completed" value={completedCount} note="Fulfilled orders" />
-        <StatCard icon={Banknote} tone="blue" label="Revenue" value={`${currency} ${totalRevenue.toLocaleString()}`} note="From all orders" />
+        <StatCard icon={Banknote} tone="blue" label="Revenue" value={`${currency} ${formatNumber(totalRevenue)}`} note="From all orders" />
       </div>
 
       <section className="rounded-xl border bg-[var(--bn-admin-surface)] p-5 shadow-sm">

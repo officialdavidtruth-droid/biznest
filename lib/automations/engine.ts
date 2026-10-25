@@ -3,6 +3,7 @@ import { sendBrandedHtmlEmail } from "@/lib/email/send";
 import { buildMarketingBrand } from "@/lib/email/marketing-brand";
 import { defaultMarketingContent, renderMarketingEmail, type MarketingTemplateId } from "@/lib/email/marketing-templates";
 import { createUnsubscribeToken } from "@/lib/email/unsubscribe-token";
+import { formatDate } from "@/lib/i18n/locale";
 
 const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? "https://biznest.space";
 
@@ -89,7 +90,7 @@ async function scheduleCrmFollowUp(event: Event, action: Action): Promise<string
   due.setHours(9, 0, 0, 0);
   const updated = await prisma.crmLead.updateMany({ where: { id: leadId, storeId: event.storeId, nextFollowUpAt: null }, data: { nextFollowUpAt: due } });
   if (updated.count) {
-    await prisma.crmActivity.create({ data: { leadId, type: "NOTE", title: "Follow-up scheduled", body: `Automation set a follow-up for ${due.toLocaleDateString("en-NG", { day: "numeric", month: "short" })}.` } });
+    await prisma.crmActivity.create({ data: { leadId, type: "NOTE", title: "Follow-up scheduled", body: `Automation set a follow-up for ${formatDate(due, { day: "numeric", month: "short" })}.` } });
   }
   return "CRM_FOLLOW_UP";
 }

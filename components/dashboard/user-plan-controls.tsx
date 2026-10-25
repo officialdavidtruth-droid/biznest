@@ -6,6 +6,7 @@ import { changeUserPlan, grantUserTrial, endUserTrial, forceLogoutUser, deleteUs
 import { toast } from "sonner";
 import { Ban, LogOut, Trash2, Clock, RefreshCw } from "lucide-react";
 import type { Subscription } from "@prisma/client";
+import { formatDate } from "@/lib/i18n/locale";
 
 type StoreInfo = {
   id: string;
@@ -106,12 +107,12 @@ export function UserTrialControl({ userId, store, plans }: { userId: string; sto
       <button
         onClick={end}
         disabled={submitting}
-        title={`Trial ends ${new Date(store.trialEndsAt!).toLocaleDateString()} — click to end early`}
+        title={`Trial ends ${formatDate(new Date(store.trialEndsAt!))} — click to end early`}
         className="mt-1 flex items-center gap-1 text-[10px] font-semibold disabled:opacity-50"
         style={{ color: "hsl(var(--primary))" }}
       >
         <Clock size={10} />
-        Trial → {new Date(store.trialEndsAt!).toLocaleDateString()}
+        Trial → {formatDate(new Date(store.trialEndsAt!))}
       </button>
     );
   }

@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { Download, Search, Users } from "lucide-react";
+import { formatDate, formatNumber } from "@/lib/i18n/locale";
 
 export type SubscriberRow = { id: string; email: string; createdAt: string; unsubscribedAt: string | null };
 
@@ -37,9 +38,9 @@ export function MarketingAudience({ subscribers, total, activeCount, unsubscribe
           <Search className="pointer-events-none absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
           <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search emails…" aria-label="Search subscribers" className="w-full rounded-lg border bg-background py-2 pl-9 pr-3 text-sm outline-none focus:border-primary" />
         </div>
-        <button type="button" onClick={() => setFilter("all")} className={chip(filter === "all")}>All {total.toLocaleString()}</button>
-        <button type="button" onClick={() => setFilter("active")} className={chip(filter === "active")}>Active {activeCount.toLocaleString()}</button>
-        <button type="button" onClick={() => setFilter("unsub")} className={chip(filter === "unsub")}>Unsubscribed {unsubscribedCount.toLocaleString()}</button>
+        <button type="button" onClick={() => setFilter("all")} className={chip(filter === "all")}>All {formatNumber(total)}</button>
+        <button type="button" onClick={() => setFilter("active")} className={chip(filter === "active")}>Active {formatNumber(activeCount)}</button>
+        <button type="button" onClick={() => setFilter("unsub")} className={chip(filter === "unsub")}>Unsubscribed {formatNumber(unsubscribedCount)}</button>
       </div>
       {rows.length ? (
         <div className="max-h-[520px] overflow-auto">
@@ -49,7 +50,7 @@ export function MarketingAudience({ subscribers, total, activeCount, unsubscribe
               {rows.map((s) => (
                 <tr key={s.id} className="border-b last:border-0">
                   <td className="px-5 py-2.5 font-medium">{s.email}</td>
-                  <td className="px-5 py-2.5 text-muted-foreground">{new Date(s.createdAt).toLocaleDateString("en-NG", { day: "numeric", month: "short", year: "numeric" })}</td>
+                  <td className="px-5 py-2.5 text-muted-foreground">{formatDate(new Date(s.createdAt), { day: "numeric", month: "short", year: "numeric" })}</td>
                   <td className="px-5 py-2.5">{s.unsubscribedAt ? <span className="rounded-full bg-muted px-2 py-0.5 text-[11px] font-medium text-muted-foreground">Unsubscribed</span> : <span className="rounded-full bg-emerald-500/10 px-2 py-0.5 text-[11px] font-semibold text-emerald-700">Active</span>}</td>
                 </tr>
               ))}
@@ -63,7 +64,7 @@ export function MarketingAudience({ subscribers, total, activeCount, unsubscribe
           <p className="mx-auto mt-1 max-w-sm text-xs text-muted-foreground">{subscribers.length ? "Try a different search or filter." : "Add the newsletter section to your website to start collecting sign-ups, or paste emails directly when you send a campaign."}</p>
         </div>
       )}
-      {total > subscribers.length && <p className="border-t px-5 py-3 text-[11px] text-muted-foreground">Showing the latest {subscribers.length.toLocaleString()} of {total.toLocaleString()} subscribers.</p>}
+      {total > subscribers.length && <p className="border-t px-5 py-3 text-[11px] text-muted-foreground">Showing the latest {formatNumber(subscribers.length)} of {formatNumber(total)} subscribers.</p>}
     </section>
   );
 }

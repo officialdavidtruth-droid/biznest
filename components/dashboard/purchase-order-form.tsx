@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { Plus, Trash2 } from "lucide-react";
 import { createPurchaseOrder, type PurchaseOrderLineInput } from "@/lib/actions/purchase-order";
+import { formatNumber } from "@/lib/i18n/locale";
 
 export type PoLineOption = {
   key: string; // "product:<id>" or "variant:<id>"
@@ -153,7 +154,7 @@ export function PurchaseOrderForm({
                 />
               </label>
               <div className="w-24 pb-1.5 text-right text-sm text-muted-foreground">
-                {(l.line.quantityOrdered * l.line.unitCost).toLocaleString()}
+                {formatNumber((l.line.quantityOrdered * l.line.unitCost))}
               </div>
               <button onClick={() => removeLine(i)} className="rounded-md p-2 text-muted-foreground hover:text-destructive">
                 <Trash2 className="h-4 w-4" />
@@ -173,7 +174,7 @@ export function PurchaseOrderForm({
 
       <div className="flex items-center justify-between border-t pt-4">
         <div className="text-sm text-muted-foreground">
-          Subtotal: <span className="font-medium text-foreground">{subtotal.toLocaleString()}</span>
+          Subtotal: <span className="font-medium text-foreground">{formatNumber(subtotal)}</span>
         </div>
         <button
           onClick={handleSubmit}

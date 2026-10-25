@@ -2,9 +2,10 @@
 import { useState, useTransition, type FormEvent } from "react";
 import { BriefcaseBusiness, CalendarDays, CheckCircle2, Clock3, Plus, Users, Wallet, X } from "lucide-react";
 import { createHrEmployee, createHrPayrollRun, recordHrAttendance, requestHrLeave, decideHrLeave } from "@/lib/actions/hr-payroll";
+import { formatMoney } from "@/lib/utils/format-money";
 
 type Data = Awaited<ReturnType<typeof import("@/lib/actions/hr-payroll").getHrDashboard>>;
-const fmt=(n:number)=>`₦${n.toLocaleString("en-NG",{maximumFractionDigits:0})}`;
+const fmt=(n:number)=>`${formatMoney(n)}`;
 function Metric({icon:Icon,label,value,sub}:{icon:any;label:string;value:string|number;sub:string}){return <div className="rounded-xl border bg-background p-3"><div className="flex items-center justify-between"><span className="text-[11px] text-muted-foreground">{label}</span><Icon className="h-4 w-4 text-primary"/></div><p className="mt-1.5 text-xl font-bold">{value}</p><p className="mt-1 text-[10px] text-muted-foreground">{sub}</p></div>}
 export function HrPayrollWorkspace({slug,data}:{slug:string;data:Exclude<Data,{error:string}>}){
  const [d,setD]=useState(data); const [tab,setTab]=useState<"overview"|"employees"|"attendance"|"leave"|"payroll">("overview"); const [show,setShow]=useState(false); const [payroll,setPayroll]=useState(false); const [pending,start]=useTransition(); const [msg,setMsg]=useState("");

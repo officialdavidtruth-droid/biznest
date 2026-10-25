@@ -4,6 +4,7 @@ import { getStoreBranding } from "@/lib/actions/store-branding";
 import { listStoreReviews } from "@/lib/actions/account";
 import { getHotelContent } from "@/lib/hotel-content";
 import { VelouraAccountHero } from "@/components/storefront/veloura-account-shell";
+import { formatDate } from "@/lib/i18n/locale";
 
 export default async function Page({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
@@ -41,7 +42,7 @@ export default async function Page({ params }: { params: Promise<{ slug: string 
                     <div className="veloura-review-rating" aria-label={`${review.rating} out of 5 stars`}>
                       {Array.from({ length: 5 }).map((_, i) => <Star key={i} fill={i < review.rating ? "currentColor" : "none"} />)}
                     </div>
-                    <time>{new Date(review.createdAt).toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" })}</time>
+                    <time>{formatDate(new Date(review.createdAt), { day: "2-digit", month: "short", year: "numeric" })}</time>
                   </div>
                   <h3>{subject}</h3>
                   {review.comment && <p className="veloura-review-comment">{review.comment}</p>}

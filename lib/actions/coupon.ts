@@ -5,6 +5,7 @@ import { checkRateLimit } from "@/lib/rate-limit";
 import { revalidatePath } from "next/cache";
 import { assertStorePermission } from "@/lib/access/assert-store-access";
 import type { ActionResult } from "@/types/actions";
+import { formatMoney } from "@/lib/utils/format-money";
 
 // "marketing" permission — see product.ts's assertStoreAccess for why this
 // delegates to assertStorePermission instead of the old owner-only check.
@@ -82,7 +83,7 @@ export async function validateBookingCoupon(
       ? Math.round((subtotal * discountValue) / 100)
       : Math.round(Math.min(discountValue, subtotal));
 
-  const discountLabel = coupon.discountType === "PERCENT" ? `${discountValue}% off` : `₦${discountValue.toLocaleString()} off`;
+  const discountLabel = coupon.discountType === "PERCENT" ? `${discountValue}% off` : `${formatMoney(discountValue)} off`;
 
   return { success: true, data: { code: trimmed, discountLabel, discountAmount } };
 }

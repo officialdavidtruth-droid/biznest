@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { getPayoutCounts, listPayouts, type PayoutTab } from "@/lib/actions/admin-payouts";
 import { PayoutRowActions } from "@/components/dashboard/payout-row-actions";
+import { formatDate, formatNumber } from "@/lib/i18n/locale";
 
 export const dynamic = "force-dynamic";
 
@@ -83,7 +84,7 @@ export default async function PayoutsPage({ searchParams }: { searchParams: Prom
                       <p className="font-medium">{p.store.name}</p>
                       <p className="font-mono text-[11px] text-muted-foreground">{p.payment.purpose} · {p.provider}</p>
                     </td>
-                    <td className="px-4 py-3">{p.currency} {Number(p.amount).toLocaleString()}</td>
+                    <td className="px-4 py-3">{p.currency} {formatNumber(Number(p.amount))}</td>
                     <td className="px-4 py-3">
                       <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${STATUS_STYLE[p.status] ?? ""}`}>{p.status}</span>
                     </td>
@@ -91,7 +92,7 @@ export default async function PayoutsPage({ searchParams }: { searchParams: Prom
                       {p.lastError ?? (p.rawPayload && (p.rawPayload as { manual?: boolean }).manual ? "Paid manually" : "—")}
                     </td>
                     <td className="px-4 py-3">{p.attempts}</td>
-                    <td className="px-4 py-3 text-muted-foreground">{new Date(p.updatedAt).toLocaleString()}</td>
+                    <td className="px-4 py-3 text-muted-foreground">{formatDate(new Date(p.updatedAt), { day: "numeric", month: "short", year: "numeric", hour: "numeric", minute: "2-digit" })}</td>
                     <td className="px-4 py-3 text-right">
                       {open ? <PayoutRowActions payoutId={p.id} canRetry={p.provider === "PAYSTACK" || p.provider === "FLUTTERWAVE" || p.provider === "KORAPAY" || p.provider === "WALLET"} /> : null}
                     </td>

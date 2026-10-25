@@ -50,6 +50,8 @@ import {
   autoLinkRoomsToUnits,
 } from "@/lib/actions/pms";
 import { issueReservationRefund } from "@/lib/actions/refund";
+import { formatMoney } from "@/lib/utils/format-money";
+import { formatDate } from "@/lib/i18n/locale";
 
 const ROOM_STATUSES = ["AVAILABLE", "OCCUPIED", "RESERVED", "DIRTY", "CLEANING", "MAINTENANCE", "OUT_OF_SERVICE"] as const;
 
@@ -81,15 +83,15 @@ const nav: Array<{ id: Tab; label: string; icon: any }> = [
 ];
 
 function money(value: number) {
-  return `₦${Number(value || 0).toLocaleString()}`;
+  return `${formatMoney(Number(value || 0))}`;
 }
 
 function date(value: string | Date) {
-  return new Date(value).toLocaleDateString(undefined, { day: "2-digit", month: "short", year: "numeric" });
+  return formatDate(new Date(value), { day: "2-digit", month: "short", year: "numeric" });
 }
 
 function dateTime(value: string | Date) {
-  return new Date(value).toLocaleString(undefined, { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" });
+  return formatDate(new Date(value), { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" });
 }
 
 function statusLabel(value: string) {
@@ -177,7 +179,7 @@ export function PmsWorkspace({ slug, storeName, rooms: initialRooms, guests: ini
       return d;
     });
     const arrivalsByDay = dayBuckets.map((d) => ({
-      label: d.toLocaleDateString(undefined, { day: "2-digit", month: "short" }),
+      label: formatDate(d, { day: "2-digit", month: "short" }),
       count: reservations.filter((r) => new Date(r.checkIn).toDateString() === d.toDateString()).length,
     }));
     const maxArrivals = Math.max(1, ...arrivalsByDay.map((d) => d.count));
@@ -396,7 +398,7 @@ function Reservations({ slug, reservations, search, setSearch, onCreate, onActio
 
 function CalendarView({ rooms, reservations }: any) {
   const days = Array.from({ length: 7 }, (_, i) => { const d = new Date(); d.setDate(d.getDate() + i); return d; });
-  return <div className="space-y-5"><div><h2 className="text-2xl font-semibold">Reservation calendar</h2><p className="mt-1 text-sm text-white">Seven-day room occupancy at a glance.</p></div><div className="overflow-x-auto rounded-2xl border border-[color-mix(in_srgb,var(--bn-admin-border)_10%,transparent)] bg-[var(--bn-admin-surface)]/[0.025]"><div className="min-w-[950px]"><div className="grid grid-cols-[180px_repeat(7,1fr)] border-b border-[color-mix(in_srgb,var(--bn-admin-border)_10%,transparent)]"><div className="p-4 text-xs text-white">Room</div>{days.map((d) => <div key={d.toISOString()} className="border-l border-[color-mix(in_srgb,var(--bn-admin-border)_10%,transparent)] p-4"><p className="text-xs text-white">{d.toLocaleDateString(undefined, { weekday: "short" })}</p><p className="mt-1 text-sm font-semibold">{d.getDate()} {d.toLocaleDateString(undefined, { month: "short" })}</p></div>)}</div>{rooms.map((room: any) => <div key={room.id} className="grid grid-cols-[180px_repeat(7,1fr)] border-b border-[color-mix(in_srgb,var(--bn-admin-border)_5%,transparent)] last:border-0"><div className="p-4"><p className="text-sm font-medium">{room.name}</p><p className="mt-1 text-[10px] text-white">{room.roomType}</p></div>{days.map((d) => { const booking = reservations.find((r: any) => r.roomId === room.id && new Date(r.checkIn) <= new Date(d.getFullYear(), d.getMonth(), d.getDate(), 23, 59) && new Date(r.checkOut) > new Date(d.getFullYear(), d.getMonth(), d.getDate())); return <div key={d.toISOString()} className="border-l border-[color-mix(in_srgb,var(--bn-admin-border)_5%,transparent)] p-2">{booking ? <div className={`h-full min-h-12 rounded-lg border px-2 py-2 text-[10px] ${statusClass(booking.status)}`}><p className="truncate font-medium">{booking.guest?.fullName}</p><p className="mt-1 opacity-70">{statusLabel(booking.status)}</p></div> : <div className="min-h-12 rounded-lg border border-dashed border-[color-mix(in_srgb,var(--bn-admin-border)_5%,transparent)]" />}</div>; })}</div>)}</div></div></div>;
+  return <div className="space-y-5"><div><h2 className="text-2xl font-semibold">Reservation calendar</h2><p className="mt-1 text-sm text-white">Seven-day room occupancy at a glance.</p></div><div className="overflow-x-auto rounded-2xl border border-[color-mix(in_srgb,var(--bn-admin-border)_10%,transparent)] bg-[var(--bn-admin-surface)]/[0.025]"><div className="min-w-[950px]"><div className="grid grid-cols-[180px_repeat(7,1fr)] border-b border-[color-mix(in_srgb,var(--bn-admin-border)_10%,transparent)]"><div className="p-4 text-xs text-white">Room</div>{days.map((d) => <div key={d.toISOString()} className="border-l border-[color-mix(in_srgb,var(--bn-admin-border)_10%,transparent)] p-4"><p className="text-xs text-white">{formatDate(d, { weekday: "short" })}</p><p className="mt-1 text-sm font-semibold">{d.getDate()} {formatDate(d, { month: "short" })}</p></div>)}</div>{rooms.map((room: any) => <div key={room.id} className="grid grid-cols-[180px_repeat(7,1fr)] border-b border-[color-mix(in_srgb,var(--bn-admin-border)_5%,transparent)] last:border-0"><div className="p-4"><p className="text-sm font-medium">{room.name}</p><p className="mt-1 text-[10px] text-white">{room.roomType}</p></div>{days.map((d) => { const booking = reservations.find((r: any) => r.roomId === room.id && new Date(r.checkIn) <= new Date(d.getFullYear(), d.getMonth(), d.getDate(), 23, 59) && new Date(r.checkOut) > new Date(d.getFullYear(), d.getMonth(), d.getDate())); return <div key={d.toISOString()} className="border-l border-[color-mix(in_srgb,var(--bn-admin-border)_5%,transparent)] p-2">{booking ? <div className={`h-full min-h-12 rounded-lg border px-2 py-2 text-[10px] ${statusClass(booking.status)}`}><p className="truncate font-medium">{booking.guest?.fullName}</p><p className="mt-1 opacity-70">{statusLabel(booking.status)}</p></div> : <div className="min-h-12 rounded-lg border border-dashed border-[color-mix(in_srgb,var(--bn-admin-border)_5%,transparent)]" />}</div>; })}</div>)}</div></div></div>;
 }
 
 function FrontDesk({ slug, reservations, onAction }: any) {

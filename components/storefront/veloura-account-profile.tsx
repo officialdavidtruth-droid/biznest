@@ -1,13 +1,14 @@
 import { formatMoney } from "@/lib/utils/format-money";
 import Link from "next/link";
 import { CalendarDays, Camera, Check, ChevronRight, Edit3, Gift, Heart, Headphones, Star, WalletCards } from "lucide-react";
+import { formatDate, formatNumber } from "@/lib/i18n/locale";
 
 function money(value: number, currency = "NGN") {
   return formatMoney(value, currency);
 }
 function date(value: Date | string | null | undefined) {
   if (!value) return "—";
-  return new Intl.DateTimeFormat("en-GB", { day: "2-digit", month: "short", year: "numeric" }).format(new Date(value));
+  return formatDate(value, { day: "2-digit", month: "short", year: "numeric" });
 }
 
 export function VelouraAccountProfile({ slug, store, user, overview, bookings, savedRooms, wallet, loyalty, heroImage }: any) {
@@ -28,7 +29,7 @@ export function VelouraAccountProfile({ slug, store, user, overview, bookings, s
         <div><CalendarDays /><strong>{overview?.bookingCount ?? bookings.length}</strong><span>Total bookings</span></div>
         <div><Heart /><strong>{overview?.wishlistCount ?? savedRooms.length}</strong><span>Saved rooms</span></div>
         <div><Star /><strong>{tier}</strong><span>Membership</span></div>
-        <div><Gift /><strong>{points.toLocaleString()}</strong><span>Loyalty points</span></div>
+        <div><Gift /><strong>{formatNumber(points)}</strong><span>Loyalty points</span></div>
       </div>
 
       <div className="bn-account-dashboard-grid">
@@ -48,7 +49,7 @@ export function VelouraAccountProfile({ slug, store, user, overview, bookings, s
         <section className="bn-account-card bn-account-loyalty-card">
           <div className="bn-account-card-heading"><div><span className="bn-account-kicker">MEMBERSHIP</span><h2>Loyalty & rewards</h2></div><Link href={`/store/${slug}/account/loyalty`}>View details <ChevronRight size={15}/></Link></div>
           <div className="bn-account-tier"><div className="bn-account-tier-icon">♛</div><div><strong>{store?.name || "Hotel"} {tier}</strong><span>Exclusive benefits and member pricing.</span></div></div>
-          <div className="bn-account-progress"><span style={{width:`${progress}%`}}/></div><div className="bn-account-progress-meta"><span>{points.toLocaleString()} points</span><span>{Math.max(0, loyaltyTarget-points).toLocaleString()} to next tier</span></div>
+          <div className="bn-account-progress"><span style={{width:`${progress}%`}}/></div><div className="bn-account-progress-meta"><span>{formatNumber(points)} points</span><span>{formatNumber(Math.max(0, loyaltyTarget-points))} to next tier</span></div>
           <ul>{["Member-only rates","Priority booking support","Exclusive offers & invitations","Special stay benefits"].map(item=><li key={item}><Check size={14}/>{item}</li>)}</ul>
         </section>
 

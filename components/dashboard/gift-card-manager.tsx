@@ -4,6 +4,8 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { issueGiftCardAction, redeemGiftCardInStoreAction, setGiftCardStatusAction } from "@/lib/actions/gift-card";
+import { currencySymbol, formatMoney } from "@/lib/utils/format-money";
+import { formatDate } from "@/lib/i18n/locale";
 
 export type GiftCardRow = {
   id: string;
@@ -17,7 +19,7 @@ export type GiftCardRow = {
   createdAt: string;
 };
 
-const naira = (n: number) => `₦${n.toLocaleString()}`;
+const naira = (n: number) => `${formatMoney(n)}`;
 const input = "rounded-md border px-3 py-1.5 text-sm";
 
 export function GiftCardManager({ slug, cards }: { slug: string; cards: GiftCardRow[] }) {
@@ -84,7 +86,7 @@ export function GiftCardManager({ slug, cards }: { slug: string; cards: GiftCard
 
       <form onSubmit={onIssue} className="grid grid-cols-2 gap-3 rounded-lg border bg-background p-4 sm:grid-cols-6">
         <h2 className="col-span-full text-sm font-semibold">Issue a gift card</h2>
-        <input name="amount" type="number" min="1" step="any" placeholder="Amount (₦)" required className={input} />
+        <input name="amount" type="number" min="1" step="any" placeholder={`Amount (${currencySymbol()})`} required className={input} />
         <input name="recipientName" placeholder="Recipient name" className={input} />
         <input name="recipientEmail" type="email" placeholder="Recipient email" className={input} />
         <input name="expiresAt" type="date" aria-label="Expiry date (optional)" className={input} />
@@ -95,7 +97,7 @@ export function GiftCardManager({ slug, cards }: { slug: string; cards: GiftCard
       <form onSubmit={onRedeem} className="grid grid-cols-2 gap-3 rounded-lg border bg-background p-4 sm:grid-cols-4">
         <h2 className="col-span-full text-sm font-semibold">Take a card as payment (in store)</h2>
         <input name="code" placeholder="GC-XXXX-XXXX-XXXX" required className={`${input} font-mono`} />
-        <input name="amount" type="number" min="1" step="any" placeholder="Amount to deduct (₦)" required className={input} />
+        <input name="amount" type="number" min="1" step="any" placeholder={`Amount to deduct (${currencySymbol()})`} required className={input} />
         <input name="note" placeholder="Note / receipt no. (optional)" className={input} />
         <button disabled={pending} className="rounded-md border px-3 py-1.5 text-sm font-medium disabled:opacity-50">Deduct</button>
       </form>
@@ -117,7 +119,7 @@ export function GiftCardManager({ slug, cards }: { slug: string; cards: GiftCard
                   <td className="px-4 py-3 font-mono font-medium">{c.code}</td>
                   <td className="px-4 py-3">{c.recipientName || c.recipientEmail || <span className="text-muted-foreground">—</span>}</td>
                   <td className="px-4 py-3">{naira(c.balance)} <span className="text-muted-foreground">/ {naira(c.initialAmount)}</span></td>
-                  <td className="px-4 py-3">{c.expiresAt ? new Date(c.expiresAt).toLocaleDateString() : "Never"}</td>
+                  <td className="px-4 py-3">{c.expiresAt ? formatDate(new Date(c.expiresAt)) : "Never"}</td>
                   <td className="px-4 py-3"><span className="rounded-full bg-muted px-2 py-0.5 text-xs">{label}</span></td>
                   <td className="px-4 py-3 text-right">
                     <button type="button" disabled={pending} onClick={() => toggle(c)} className="text-xs underline disabled:opacity-50">

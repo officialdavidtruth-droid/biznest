@@ -1,10 +1,11 @@
 // Route: /store/[slug]/admin/gift-cards
 import { prisma } from "@/lib/prisma";
 import { GiftCardManager, type GiftCardRow } from "@/components/dashboard/gift-card-manager";
+import { moneyFormatter } from "@/lib/utils/format-money";
 
 export default async function GiftCardsPage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
-  const store = await prisma.store.findUnique({ where: { slug }, select: { id: true } });
+  const store = await prisma.store.findUnique({ where: { slug }, select: { id: true, currency: true, locale: true } });
   if (!store) return null;
 
   const [cards, outstanding] = await Promise.all([
@@ -33,7 +34,7 @@ export default async function GiftCardsPage({ params }: { params: Promise<{ slug
       <div className="mb-6 flex flex-wrap items-baseline justify-between gap-2">
         <h1 className="text-xl font-semibold">Gift cards</h1>
         <p className="text-sm text-muted-foreground">
-          Unspent on active cards: <strong>₦{Number(outstanding._sum.balance ?? 0).toLocaleString()}</strong>
+          Unspent on active cards: <strong>{moneyFormatter(store)(Number(outstanding._sum.balance ?? 0))}</strong>
         </p>
       </div>
       <GiftCardManager slug={slug} cards={rows} />

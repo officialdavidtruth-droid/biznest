@@ -1,6 +1,7 @@
 import { getSystemHealth, listRecentSystemEvents, getApiLatencyStats } from "@/lib/actions/system-health";
 import type { HealthStatus } from "@/lib/actions/system-health";
 import type { SystemEvent } from "@prisma/client";
+import { formatDate } from "@/lib/i18n/locale";
 
 export const dynamic = "force-dynamic"; // always live — never cache a health page
 
@@ -100,7 +101,7 @@ export default async function SystemHealthPage() {
             {recentEvents.map((e: SystemEvent) => (
               <tr key={e.id} className="border-b last:border-0 align-top">
                 <td className="whitespace-nowrap px-4 py-3 text-muted-foreground">
-                  {new Date(e.createdAt).toLocaleString()}
+                  {formatDate(new Date(e.createdAt), { day: "numeric", month: "short", year: "numeric", hour: "numeric", minute: "2-digit" })}
                 </td>
                 <td className="px-4 py-3">
                   <span

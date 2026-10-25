@@ -8,6 +8,8 @@ import { updateReservation, updateBookingStatus, type BookingStatusValue } from 
 import { issueBookingRefund } from "@/lib/actions/refund";
 import { zonedTimeToUtc, getLocalDateKey, getLocalMinutes } from "@/lib/timezone";
 import { BookingStatusBadge } from "@/components/dashboard/booking-status-badge";
+import { formatMoney } from "@/lib/utils/format-money";
+import { formatDate } from "@/lib/i18n/locale";
 
 type Unit = { id: string; label: string; location: string | null; capacity: number | null };
 type Addon = { label: string; price: number };
@@ -54,11 +56,11 @@ function toTimeInputValue(iso: string, tz: string) {
   return `${String(Math.floor(m / 60)).padStart(2, "0")}:${String(m % 60).padStart(2, "0")}`;
 }
 function fmtCurrency(n: number) {
-  return `₦${n.toLocaleString()}`;
+  return `${formatMoney(n)}`;
 }
 function fmtDateTime(iso: string, tz: string) {
   const d = new Date(iso);
-  return `${d.toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric", timeZone: tz })} at ${d.toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit", timeZone: tz })}`;
+  return `${formatDate(d, { month: "short", day: "numeric", year: "numeric", timeZone: tz })} at ${formatDate(d, { hour: "numeric", minute: "2-digit", timeZone: tz })}`;
 }
 
 export function ReservationEditForm({
@@ -346,7 +348,7 @@ export function ReservationEditForm({
               <div className="flex items-center justify-between"><dt className="flex items-center gap-1.5 text-muted-foreground"><Phone className="h-3.5 w-3.5" /> Phone</dt><dd className="font-medium">{guestPhone || "—"}</dd></div>
               <div className="flex items-center justify-between"><dt className="flex items-center gap-1.5 text-muted-foreground"><Mail className="h-3.5 w-3.5" /> Email</dt><dd className="font-medium">{guestEmail || "—"}</dd></div>
               <div className="flex items-center justify-between"><dt className="text-muted-foreground">Total Reservations</dt><dd className="font-medium">{totalReservations} times</dd></div>
-              <div className="flex items-center justify-between"><dt className="text-muted-foreground">Member Since</dt><dd className="font-medium">{new Date(reservation.memberSince).toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" })}</dd></div>
+              <div className="flex items-center justify-between"><dt className="text-muted-foreground">Member Since</dt><dd className="font-medium">{formatDate(new Date(reservation.memberSince), { month: "short", day: "numeric", year: "numeric" })}</dd></div>
             </dl>
           </div>
 

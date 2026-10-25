@@ -5,6 +5,7 @@ import { runAutomationsForEvent } from "@/lib/automations/engine";
 import { ABANDONED_CHECKOUT_THRESHOLD_MINUTES } from "@/lib/constants/order";
 import { NextResponse } from "next/server";
 import { logInfo, logError, errorMeta } from "@/lib/observability/log";
+import { formatNumber } from "@/lib/i18n/locale";
 
 /**
  * Alerts a merchant once one of their buyers' checkouts crosses the
@@ -59,7 +60,7 @@ export async function GET(req: Request) {
       const itemCount = latest.items.reduce((n, i) => n + i.quantity, 0);
       const first = latest.items[0]?.product?.name ?? latest.items[0]?.service?.name ?? "items";
       const extra = latest.items.length > 1 ? ` +${latest.items.length - 1} more` : "";
-      const amount = `${latest.currency} ${Number(latest.total).toLocaleString()}`;
+      const amount = `${latest.currency} ${formatNumber(Number(latest.total))}`;
       await notifyUser({
         userId: latest.store.business.userId,
         type: "ABANDONED_CHECKOUT",

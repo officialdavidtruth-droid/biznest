@@ -5,6 +5,7 @@ import { getHotelContent } from "@/lib/hotel-content";
 import { VelouraAccountHero } from "@/components/storefront/veloura-account-shell";
 import { VelouraMessageComposer } from "@/components/storefront/veloura-message-composer";
 import { getStoreCustomerSessionForStore } from "@/lib/store-customer-auth";
+import { formatDate } from "@/lib/i18n/locale";
 export default async function Page({params}:{params:Promise<{slug:string}>}){
  const{slug}=await params;
  const[store,session,conversation,conversations,hotel]=await Promise.all([getStoreBranding(slug),getStoreCustomerSessionForStore(slug),getGeneralStoreConversation(slug),listStoreConversations(slug),getHotelContent(slug)]);
@@ -21,7 +22,7 @@ export default async function Page({params}:{params:Promise<{slug:string}>}){
    <div className="veloura-chat">
     <div className="veloura-chat-head"><strong>{store.name} Team</strong><small style={{display:"block",color:"#279451"}}>● Available</small></div>
     <div className="veloura-chat-body">
-     {conversation?.messages?.length ? conversation.messages.map((m:any)=><div key={m.id} className={`veloura-bubble ${m.senderId===session.user.id?"mine":""}`}>{m.content}<small style={{display:"block",opacity:.55,marginTop:5}}>{new Date(m.createdAt).toLocaleString()}</small></div>) : <div className="veloura-empty">Start a conversation with the hotel team.</div>}
+     {conversation?.messages?.length ? conversation.messages.map((m:any)=><div key={m.id} className={`veloura-bubble ${m.senderId===session.user.id?"mine":""}`}>{m.content}<small style={{display:"block",opacity:.55,marginTop:5}}>{formatDate(new Date(m.createdAt), { day: "numeric", month: "short", year: "numeric", hour: "numeric", minute: "2-digit" })}</small></div>) : <div className="veloura-empty">Start a conversation with the hotel team.</div>}
     </div>
     <VelouraMessageComposer slug={slug} conversationId={conversation?.id??null}/>
    </div>

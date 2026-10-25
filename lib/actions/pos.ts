@@ -15,6 +15,7 @@ import { assertStorePermission } from "@/lib/access/assert-store-access";
 import { logStoreActivity } from "@/lib/activity-log";
 import type { ActionResult } from "@/types/actions";
 import { Prisma, type Store, type Business } from "@prisma/client";
+import { formatNumber } from "@/lib/i18n/locale";
 
 type StoreAccessResult =
   | { success: true; store: Store & { business: Business } }
@@ -787,7 +788,7 @@ export async function recordPosCommissionSettlement(
       });
       if (result.count === 0) {
         const current = await tx.store.findUnique({ where: { id: access.store.id }, select: { posCommissionOwed: true } });
-        throw new PosTransactionError(`That's more than the ${Number(current?.posCommissionOwed ?? 0).toLocaleString()} currently owed.`);
+        throw new PosTransactionError(`That's more than the ${formatNumber(Number(current?.posCommissionOwed ?? 0))} currently owed.`);
       }
 
       await tx.posCommissionSettlement.create({
@@ -806,7 +807,7 @@ export async function recordPosCommissionSettlement(
     storeId: access.store.id,
     actor: { id: session?.user?.id, name: session?.user?.name, email: session?.user?.email, role: session?.user?.role ?? "unknown" },
     action: "pos.commission_settled",
-    target: `${roundedAmount.toLocaleString()}`,
+    target: `${formatNumber(roundedAmount)}`,
     metadata: { amount: roundedAmount, note: note?.trim() || undefined },
   });
 

@@ -1,3 +1,4 @@
+import { formatNumber } from "@/lib/i18n/locale";
 // Shared across every checkout theme (see app/store/[slug]/checkout/*-checkout-client.tsx)
 // so a merchant's city grouping ("Abuja: Gwarinpa, Wuse, Maitama…") shows up the
 // same way no matter which storefront template they're using.
@@ -15,7 +16,7 @@ export type DeliveryZoneOption = {
 };
 
 function optionLabel(z: DeliveryZoneOption) {
-  return `${z.name} — ${Number(z.fee).toLocaleString()}${z.estimatedMinutes ? ` (~${z.estimatedMinutes} min)` : ""}`;
+  return `${z.name} — ${formatNumber(Number(z.fee))}${z.estimatedMinutes ? ` (~${z.estimatedMinutes} min)` : ""}`;
 }
 
 export function DeliveryZoneOptions({ zones }: { zones: DeliveryZoneOption[] }) {

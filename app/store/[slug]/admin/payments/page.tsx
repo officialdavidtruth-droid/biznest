@@ -11,10 +11,12 @@ import { PosCommissionCard } from "@/components/dashboard/pos-commission-card";
 import { getRefundClawbackBalance, getRefundPendingPayments } from "@/lib/actions/refund";
 import { RefundPendingCard } from "@/components/dashboard/refund-pending-card";
 import { RefundClawbackCard } from "@/components/dashboard/refund-clawback-card";
+import { moneyFormatter } from "@/lib/utils/format-money";
 
 export default async function PaymentsPage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
   const store = await prisma.store.findUnique({ where: { slug } });
+  const money = moneyFormatter(store);
   if (!store) return null;
 
   const payout = await getPayoutStatus(slug);
@@ -50,11 +52,11 @@ export default async function PaymentsPage({ params }: { params: Promise<{ slug:
       <div className="mb-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <div className="rounded-lg border bg-background p-4">
           <p className="text-xs uppercase text-muted-foreground">Gross sales</p>
-          <p className="mt-1 text-2xl font-semibold">₦{gross.toLocaleString()}</p>
+          <p className="mt-1 text-2xl font-semibold">{money(gross)}</p>
         </div>
         <div className="rounded-lg border bg-background p-4">
           <p className="text-xs uppercase text-muted-foreground">Platform commission</p>
-          <p className="mt-1 text-2xl font-semibold">₦{commission.toLocaleString()}</p>
+          <p className="mt-1 text-2xl font-semibold">{money(commission)}</p>
         </div>
         <div className="rounded-lg border bg-background p-4">
           <p className="text-xs uppercase text-muted-foreground">Paid orders</p>

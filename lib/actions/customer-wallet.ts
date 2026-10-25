@@ -12,6 +12,7 @@ import crypto from "crypto";
 import { shortToken } from "@/lib/payments/reference";
 import { confirmPaidBooking } from "@/lib/payments/booking-confirmation";
 import { settleAndPayout } from "@/lib/payments/payout";
+import { formatMoney } from "@/lib/utils/format-money";
 
 const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? "https://biznest.vercel.app";
 
@@ -50,7 +51,7 @@ export async function startWalletFunding(
 
   const amount = Number(amountNaira);
   if (!Number.isFinite(amount) || amount < 100 || amount > 5000000) {
-    return { success: false, error: "Enter an amount between ₦100 and ₦5,000,000." };
+    return { success: false, error: `Enter an amount between ${formatMoney(100)} and ${formatMoney(5000000)}.` };
   }
 
   const rate = await checkRateLimit(`wallet-fund:${customer.userId}`, 5, 10 * 60 * 1000);

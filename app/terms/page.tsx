@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { formatDate } from "@/lib/i18n/locale";
 
 export const metadata = { title: "Terms of Service — BizNest", alternates: { canonical: "/terms" } };
 
@@ -7,7 +8,7 @@ export default function TermsPage() {
     <div className="mx-auto max-w-3xl px-6 py-16">
       <Link href="/" className="text-sm text-muted-foreground hover:text-foreground">← Back to BizNest</Link>
       <h1 className="mb-2 mt-4 text-3xl font-bold">Terms of Service</h1>
-      <p className="mb-8 text-sm text-muted-foreground">Last updated: {new Date().toLocaleDateString()}</p>
+      <p className="mb-8 text-sm text-muted-foreground">Last updated: {formatDate(new Date())}</p>
 
       <div className="rounded-md border border-yellow-500/40 bg-yellow-500/10 p-4 text-sm">
         <strong>Before you launch:</strong> this is a starting draft covering the standard terms a

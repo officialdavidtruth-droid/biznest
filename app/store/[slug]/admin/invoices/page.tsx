@@ -3,6 +3,7 @@ import { listInvoices } from "@/lib/actions/invoice";
 import { InvoiceForm } from "@/components/dashboard/invoice-form";
 import { InvoiceRowActions } from "@/components/dashboard/invoice-row-actions";
 import { prisma } from "@/lib/prisma";
+import { formatDate, formatNumber } from "@/lib/i18n/locale";
 
 const STATUS_STYLES: Record<string, string> = {
   DRAFT: "bg-[var(--bn-admin-surface)] text-[var(--bn-admin-text)]",
@@ -47,7 +48,7 @@ export default async function InvoicesPage({ params }: { params: Promise<{ slug:
                 <td className="px-4 py-3 font-mono text-xs">{invoice.invoiceNo}</td>
                 <td className="px-4 py-3">{invoice.customer?.name ?? invoice.customerName ?? "—"}</td>
                 <td className="px-4 py-3">
-                  {invoice.currency} {Number(invoice.total).toLocaleString()}
+                  {invoice.currency} {formatNumber(Number(invoice.total))}
                 </td>
                 <td className="px-4 py-3">
                   <span className={`rounded-full px-2 py-0.5 text-xs ${STATUS_STYLES[invoice.status]}`}>
@@ -55,7 +56,7 @@ export default async function InvoicesPage({ params }: { params: Promise<{ slug:
                   </span>
                 </td>
                 <td className="px-4 py-3 text-muted-foreground">
-                  {new Date(invoice.createdAt).toLocaleDateString()}
+                  {formatDate(new Date(invoice.createdAt))}
                 </td>
                 <td className="px-4 py-3">
                   <InvoiceRowActions storeSlug={slug} invoiceId={invoice.id} status={invoice.status} />

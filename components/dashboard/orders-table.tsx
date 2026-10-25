@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useMemo, useState } from "react";
 import { ListToolbar, ListPagination } from "@/components/dashboard/list-toolbar";
+import { formatDate, formatNumber } from "@/lib/i18n/locale";
 
 const STATUS_STYLES: Record<string, string> = {
   PENDING_PAYMENT: "bg-[var(--bn-admin-orange-soft)] text-[var(--bn-admin-orange)]",
@@ -89,13 +90,13 @@ export function OrdersTable({ storeSlug, orders }: { storeSlug: string; orders: 
                   )}
                 </td>
                 <td className="px-4 py-3 text-muted-foreground">{order.itemCount}</td>
-                <td className="px-4 py-3">{order.currency} {order.total.toLocaleString()}</td>
+                <td className="px-4 py-3">{order.currency} {formatNumber(order.total)}</td>
                 <td className="px-4 py-3">
                   <span className={`rounded-full px-2 py-0.5 text-xs ${STATUS_STYLES[order.status] ?? "bg-muted text-muted-foreground"}`}>
                     {order.status.replace("_", " ")}
                   </span>
                 </td>
-                <td className="px-4 py-3 text-muted-foreground">{new Date(order.createdAt).toLocaleDateString()}</td>
+                <td className="px-4 py-3 text-muted-foreground">{formatDate(new Date(order.createdAt))}</td>
                 <td className="px-4 py-3 text-right">
                   <Link href={`/${storeSlug}/admin/orders/${order.id}`} className="text-xs font-medium text-primary hover:underline">View</Link>
                 </td>

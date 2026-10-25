@@ -13,6 +13,7 @@ import {
 import { startBookingPayment } from "@/lib/actions/customer-wallet";
 import { useShopAuthGate } from "@/lib/hooks/use-shop-auth-gate";
 import { toast } from "sonner";
+import { formatDate, formatNumber } from "@/lib/i18n/locale";
 
 function localISODate(d: Date) {
   const y = d.getFullYear();
@@ -28,7 +29,7 @@ function addDays(iso: string, amount: number) {
 }
 
 function dateLabel(iso: string) {
-  return new Date(`${iso}T12:00:00`).toLocaleDateString(undefined, {
+  return formatDate(new Date(`${iso}T12:00:00`), {
     weekday: "short",
     day: "numeric",
     month: "short",
@@ -72,7 +73,7 @@ function MiniCalendar({
       return `${y}-${mo}-${day}`;
     }),
   ];
-  const monthLabel = first.toLocaleDateString(undefined, { month: "long", year: "numeric" });
+  const monthLabel = formatDate(first, { month: "long", year: "numeric" });
 
   function shiftMonth(delta: number) {
     const d = new Date(y, m - 1 + delta, 1);
@@ -360,7 +361,7 @@ export function BookingWidget({
           <div style={{ fontWeight: 800, marginTop: 3, fontFamily: titleFont }}>{serviceName}</div>
         </div>
         <div style={{ textAlign: "right" }}>
-          <div style={{ fontWeight: 800 }}>{currency} {total.toLocaleString()}</div>
+          <div style={{ fontWeight: 800 }}>{currency} {formatNumber(total)}</div>
           <div style={{ fontSize: 11, opacity: .55 }}>{unitBased ? (periods ? `${periods} ${spanLabel}${periods === 1 ? "" : "s"}` : `per ${rateUnit}`) : `${durationMins ?? ""} min`}</div>
         </div>
       </div>
@@ -499,7 +500,7 @@ export function BookingWidget({
             <div><b>{serviceName}</b></div>
             <div>{unitBased ? `${dateLabel(date)} → ${dateLabel(checkOut)} · ${periods} ${spanLabel}${periods === 1 ? "" : "s"}` : `${dateLabel(date)} · ${selectedTime}`}</div>
             {selectedStaff && <div>{staff.find((s) => s.id === selectedStaff)?.name ?? "Specialist"} selected</div>}
-            <div style={{ fontWeight: 800, marginTop: 3 }}>Total: {currency} {total.toLocaleString()}</div>
+            <div style={{ fontWeight: 800, marginTop: 3 }}>Total: {currency} {formatNumber(total)}</div>
           </div>
 
           {!isSignedIn && (
@@ -513,7 +514,7 @@ export function BookingWidget({
           {allowNotes && <textarea value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="Anything you'd like the business to know? (optional)" rows={3} style={{ width: "100%", marginTop: 10, resize: "vertical", padding: 10, borderRadius: 10, border: `1px solid ${ink}1f`, background: "transparent", color: ink, fontSize: 12 }} />}
 
           <button onClick={submit} disabled={isPending || !canSubmit} style={{ width: "100%", marginTop: 10, border: 0, borderRadius: radius, padding: "12px", background: accent, color: bg, fontWeight: 800, cursor: isPending ? "wait" : "pointer", opacity: isPending || !canSubmit ? .65 : 1 }}>
-            {paymentStarted ? "Opening payment…" : isPending ? "Securing your booking…" : `Confirm booking · ${currency} ${total.toLocaleString()}`}
+            {paymentStarted ? "Opening payment…" : isPending ? "Securing your booking…" : `Confirm booking · ${currency} ${formatNumber(total)}`}
           </button>
           {isSignedIn && <div style={{ marginTop: 8, fontSize: 10.5, textAlign: "center", opacity: .5 }}>You'll be asked to pay to confirm your slot.</div>}
         </>

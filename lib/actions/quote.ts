@@ -10,6 +10,7 @@ import { revalidatePath } from "next/cache";
 import type { ActionResult } from "@/types/actions";
 import { createPendingPayment, markPaymentFailed } from "@/lib/payments/pending";
 import { assertStorePermission } from "@/lib/access/assert-store-access";
+import { formatNumber } from "@/lib/i18n/locale";
 
 const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? "https://biznest.vercel.app";
 
@@ -178,7 +179,7 @@ export async function sendQuote(
     await sendOrderNotificationEmail(
       email,
       `Quote ${quote.quoteNo} from ${access.store.name}`,
-      `You have a new quote for ${quote.currency} ${Number(quote.total).toLocaleString()}. Review and accept it here: <a href="${viewUrl}">${viewUrl}</a>`,
+      `You have a new quote for ${quote.currency} ${formatNumber(Number(quote.total))}. Review and accept it here: <a href="${viewUrl}">${viewUrl}</a>`,
       storeEmailBrand(access.store)
     );
   }
@@ -186,7 +187,7 @@ export async function sendQuote(
   let whatsappUrl: string | undefined;
   if ((via === "whatsapp" || via === "both") && phone) {
     const message = encodeURIComponent(
-      `Quote ${quote.quoteNo} from ${access.store.name}: ${quote.currency} ${Number(quote.total).toLocaleString()}. Review here: ${viewUrl}`
+      `Quote ${quote.quoteNo} from ${access.store.name}: ${quote.currency} ${formatNumber(Number(quote.total))}. Review here: ${viewUrl}`
     );
     whatsappUrl = whatsappLink(phone, decodeURIComponent(message)) ?? undefined;
   }

@@ -1,6 +1,7 @@
 import type { Business, Store } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import type { MarketingBrand, MarketingItem } from "@/lib/email/marketing-templates";
+import { formatNumber } from "@/lib/i18n/locale";
 
 /** The subset of a MarketingWebsiteConnection needed to brand an email. Pass the row however it was fetched (full model or a select). */
 export type MarketingWebsiteBrand = {
@@ -71,8 +72,8 @@ export async function loadMarketingItems(storeId: string, slug: string): Promise
     prisma.marketingCatalogItem.findMany({ where: { storeId, isActive: true }, orderBy: { updatedAt: "desc" }, take: 12 }),
   ]);
   const own = [
-    ...products.map((p) => ({ kind: "product" as const, name: p.name, description: p.description, price: `${p.currency} ${Number(p.price).toLocaleString()}`, imageUrl: p.images[0] ?? null, href: `/store/${slug}/product/${p.id}` })),
-    ...services.map((s) => ({ kind: "service" as const, name: s.name, description: s.description, price: `${s.currency} ${Number(s.price).toLocaleString()}`, imageUrl: s.images[0] ?? null, href: `/store/${slug}/service/${s.id}` })),
+    ...products.map((p) => ({ kind: "product" as const, name: p.name, description: p.description, price: `${p.currency} ${formatNumber(Number(p.price))}`, imageUrl: p.images[0] ?? null, href: `/store/${slug}/product/${p.id}` })),
+    ...services.map((s) => ({ kind: "service" as const, name: s.name, description: s.description, price: `${s.currency} ${formatNumber(Number(s.price))}`, imageUrl: s.images[0] ?? null, href: `/store/${slug}/service/${s.id}` })),
   ];
   const scanned = catalog.map((c) => ({
     kind: (c.type === "SERVICE" ? "service" : "product") as "product" | "service",

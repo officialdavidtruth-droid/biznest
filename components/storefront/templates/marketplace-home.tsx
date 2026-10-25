@@ -7,6 +7,7 @@ import { subscribeToNewsletterForm } from "@/lib/actions/newsletter";
 import { CategoryNav } from "@/components/storefront/category-nav";
 import { Reveal } from "@/components/storefront/reveal";
 import type { CategoryTreeNode } from "@/lib/storefront-categories";
+import { formatNumber } from "@/lib/i18n/locale";
 
 // Ported from the Marketplace Next.js template (marketplace_nextjs_template.zip).
 // Per its own INTEGRATION_NOTES.md ("Use app/page.jsx as the storefront
@@ -54,7 +55,7 @@ function ItemCard({ item, slug }: { item: CatalogItem; slug: string }) {
       <h3 style={{ fontSize: 11, margin: "8px 0 5px", lineHeight: 1.3 }}>{item.name}</h3>
       {item.description && <p style={{ fontSize: 9, color: "#999", margin: "0 0 6px" }}>{item.description.slice(0, 60)}</p>}
       <strong style={{ fontSize: 12, color: MARKETPLACE.price, fontWeight: 700 }}>
-        {item.currency} {item.price.toLocaleString()}
+        {item.currency} {formatNumber(item.price)}
       </strong>
     </a>
   );
@@ -277,7 +278,7 @@ export function MarketplaceStorefront({
             {mostViewed.length > 0
               ? mostViewed.map((item) => (
                   <a key={`${item.kind}-${item.id}`} href={`/store/${slug}/${item.kind === "product" ? "product" : "service"}/${item.id}`} style={{ display: "flex", justifyContent: "space-between", padding: 8, borderBottom: "1px solid #eee", fontSize: 8, textDecoration: "none", color: "inherit" }}>
-                    {item.name}<b>{item.currency} {item.price.toLocaleString()}</b>
+                    {item.name}<b>{item.currency} {formatNumber(item.price)}</b>
                   </a>
                 ))
               : (

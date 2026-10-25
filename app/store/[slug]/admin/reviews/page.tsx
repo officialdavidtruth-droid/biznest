@@ -1,5 +1,6 @@
 // Route: /store/[slug]/admin/reviews
 import { prisma } from "@/lib/prisma";
+import { formatDate } from "@/lib/i18n/locale";
 
 export default async function ReviewsPage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
@@ -31,7 +32,7 @@ export default async function ReviewsPage({ params }: { params: Promise<{ slug: 
               <span className="text-sm">{"★".repeat(r.rating)}{"☆".repeat(5 - r.rating)}</span>
             </div>
             <p className="mt-1 text-xs text-muted-foreground">
-              {r.product?.name ?? r.service?.name ?? "General"} · {new Date(r.createdAt).toLocaleDateString()}
+              {r.product?.name ?? r.service?.name ?? "General"} · {formatDate(new Date(r.createdAt))}
             </p>
             {r.comment && <p className="mt-2 text-sm">{r.comment}</p>}
             {r.response && (

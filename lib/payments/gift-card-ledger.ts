@@ -4,6 +4,7 @@ import { randomInt } from "crypto";
 import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { roundMoney } from "@/lib/utils/pricing";
+import { formatMoney } from "@/lib/utils/format-money";
 
 /**
  * Gift-card ledger. Every balance change goes through here so GiftCard.balance
@@ -128,7 +129,7 @@ export async function redeemGiftCard(params: {
       data: { balance: { decrement: amount } },
     });
     if (updated.count !== 1) {
-      return { ok: false as const, error: `Not enough balance — ₦${Number(card.balance).toLocaleString()} remaining.` };
+      return { ok: false as const, error: `Not enough balance — ${formatMoney(Number(card.balance))} remaining.` };
     }
 
     const fresh = await tx.giftCard.findUniqueOrThrow({ where: { id: card.id }, select: { balance: true } });

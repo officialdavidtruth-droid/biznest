@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { recordRefundClawbackSettlement } from "@/lib/actions/refund";
+import { formatNumber } from "@/lib/i18n/locale";
 
 type ClawbackBalance = {
   owed: number;
@@ -43,7 +44,7 @@ export function RefundClawbackCard({ slug, balance }: { slug: string; balance: C
     <div className="rounded-lg border bg-background p-4">
       <p className="text-xs uppercase text-muted-foreground">Refund clawback owed to platform</p>
       <p className="mt-1 text-2xl font-semibold">
-        {balance.currency} {balance.owed.toLocaleString()}
+        {balance.currency} {formatNumber(balance.owed)}
       </p>
       <p className="mt-1 text-xs text-muted-foreground">
         Merchant share the platform fronted on refunds issued after the split had already settled — Paystack
@@ -98,7 +99,7 @@ export function RefundClawbackCard({ slug, balance }: { slug: string; balance: C
           {balance.recentClawbacks.map((c) => (
             <div key={c.id} className="flex items-center justify-between text-xs text-muted-foreground">
               <span className="truncate pr-2">{c.reason}</span>
-              <span className="shrink-0">{balance.currency} {c.amount.toLocaleString()}</span>
+              <span className="shrink-0">{balance.currency} {formatNumber(c.amount)}</span>
             </div>
           ))}
         </div>
@@ -110,7 +111,7 @@ export function RefundClawbackCard({ slug, balance }: { slug: string; balance: C
           {balance.recentSettlements.map((s) => (
             <div key={s.id} className="flex items-center justify-between text-xs text-muted-foreground">
               <span>{s.note || "Recovery"} · {s.settledByEmail}</span>
-              <span>{balance.currency} {s.amount.toLocaleString()}</span>
+              <span>{balance.currency} {formatNumber(s.amount)}</span>
             </div>
           ))}
         </div>

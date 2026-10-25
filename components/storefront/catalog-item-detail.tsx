@@ -19,6 +19,7 @@ import { NewsletterInlineForm } from "@/components/storefront/newsletter-inline-
 import { socialHref, FooterSocial } from "@/components/storefront/footer-social";
 import { PropertyMap } from "@/components/storefront/property-map";
 import { resolveBusinessMode } from "@/lib/business-experience";
+import { formatDate } from "@/lib/i18n/locale";
 
 type Props = {
   store: any;
@@ -283,7 +284,7 @@ export function CatalogItemDetail({ store, slug, service, reviewStats, theme, bu
                   {reviews.map((r: any) => {
                     const n = Math.max(0, Math.min(5, Math.round(Number(r.rating) || 0)));
                     const first = String(r.author?.name || "").trim().split(/\s+/)[0] || "Customer";
-                    const when = r.createdAt ? new Date(r.createdAt).toLocaleDateString("en-NG", { month: "short", year: "numeric", timeZone: "UTC" }) : "";
+                    const when = r.createdAt ? formatDate(new Date(r.createdAt), { month: "short", year: "numeric", timeZone: "UTC" }) : "";
                     return (
                       <article key={r.id} style={{ border: "1px solid var(--hr-border)", borderRadius: 12, padding: 14, background: "var(--hr-card)" }}>
                         <div style={{ display: "flex", justifyContent: "space-between", gap: 8, fontSize: 13 }}>

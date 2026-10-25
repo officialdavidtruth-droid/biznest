@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/prisma";
+import { formatNumber } from "@/lib/i18n/locale";
 
 // --- BizNest Trust Score ----------------------------------------------------
 // A single 0-100 number that goes beyond a star rating: it blends how
@@ -83,7 +84,7 @@ export async function getTrustScoreChecklist(businessId: string): Promise<TrustS
     },
     {
       key: "orders",
-      label: completedOrders > 0 ? `${completedOrders.toLocaleString()} successful order${completedOrders === 1 ? "" : "s"}` : "No completed orders yet",
+      label: completedOrders > 0 ? `${formatNumber(completedOrders)} successful order${completedOrders === 1 ? "" : "s"}` : "No completed orders yet",
       met: completedOrders > 0,
     },
     {
@@ -225,7 +226,7 @@ function completedTransactionsFactor(completed: number): TrustScoreFactor {
     label: "Completed transactions",
     points,
     max,
-    detail: completed === 0 ? "No completed orders yet" : `${completed.toLocaleString()} completed order${completed === 1 ? "" : "s"}`,
+    detail: completed === 0 ? "No completed orders yet" : `${formatNumber(completed)} completed order${completed === 1 ? "" : "s"}`,
   };
 }
 
@@ -243,7 +244,7 @@ function reviewsFactor(avgRating: number | null, reviewCount: number): TrustScor
     label: "Reviews",
     points,
     max,
-    detail: `${avgRating.toFixed(1)}/5 average across ${reviewCount.toLocaleString()} review${reviewCount === 1 ? "" : "s"}`,
+    detail: `${avgRating.toFixed(1)}/5 average across ${formatNumber(reviewCount)} review${reviewCount === 1 ? "" : "s"}`,
   };
 }
 
@@ -285,7 +286,7 @@ function complaintsFactor(buyerFaultDisputes: number, totalDisputes: number, tot
   const points = Math.max(0, 1 - rate * 5) * max; // 20%+ upheld-complaint rate → 0 points
   const detail = totalDisputes === 0
     ? "No disputes filed"
-    : `${buyerFaultDisputes} dispute${buyerFaultDisputes === 1 ? "" : "s"} resolved in the buyer's favor out of ${totalDisputes.toLocaleString()} filed`;
+    : `${buyerFaultDisputes} dispute${buyerFaultDisputes === 1 ? "" : "s"} resolved in the buyer's favor out of ${formatNumber(totalDisputes)} filed`;
   return { key: "complaints", label: "Customer complaints", points, max, detail };
 }
 

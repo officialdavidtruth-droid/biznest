@@ -1,6 +1,7 @@
 // Route: /store/[slug]/admin/purchase-orders
 import Link from "next/link";
 import { listPurchaseOrders } from "@/lib/actions/purchase-order";
+import { formatNumber } from "@/lib/i18n/locale";
 
 const STATUS_STYLES: Record<string, string> = {
   DRAFT: "bg-muted text-muted-foreground",
@@ -44,7 +45,7 @@ export default async function PurchaseOrdersListPage({ params }: { params: Promi
                 <td className="px-4 py-3 font-medium">{po.poNumber}</td>
                 <td className="px-4 py-3">{po.supplier.name}</td>
                 <td className="px-4 py-3 text-muted-foreground">{po.items.length}</td>
-                <td className="px-4 py-3">{po.currency} {Number(po.subtotal).toLocaleString()}</td>
+                <td className="px-4 py-3">{po.currency} {formatNumber(Number(po.subtotal))}</td>
                 <td className="px-4 py-3">
                   <span className={`rounded-full px-2 py-0.5 text-xs ${STATUS_STYLES[po.status] ?? ""}`}>
                     {po.status.replace("_", " ")}

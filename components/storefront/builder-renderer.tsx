@@ -10,6 +10,7 @@ import { BuilderNewsletterForm } from "@/components/storefront/builder-newslette
 import type { BuilderConfig, BuilderSection } from "@/lib/builder-config";
 import { getBusinessExperience } from "@/lib/business-experience";
 import { HeroVariantView } from "@/components/storefront/hero-variants";
+import { formatNumber } from "@/lib/i18n/locale";
 
 type CatalogItem = {
   id: string; kind: "product" | "service"; name: string; price: number; currency: string;
@@ -400,7 +401,7 @@ export function BuilderFooter({ store, d, visible, storeLinks }: { store: Builde
 export function ItemCard({ item, store, d, radius, actionLabel }: { item: CatalogItem; store: BuilderStore; d: DesignT; radius: number; actionLabel: string }) {
   const style = d.cardStyle ?? "bordered";
   const href = `/store/${store.slug}/${item.kind}/${item.id}`;
-  const price = `${item.currency} ${item.price.toLocaleString()}`;
+  const price = `${item.currency} ${formatNumber(item.price)}`;
   const img = (ratio: string, r: number | string = 0): React.CSSProperties => ({ aspectRatio: ratio, borderRadius: r, background: item.image ? `url(${item.image}) center/cover` : `${d.primary}12` });
   if (style === "overlay") return (
     <Link href={href} style={{ position: "relative", display: "block", borderRadius: radius, overflow: "hidden" }}>

@@ -4,6 +4,8 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { cashOutLoyaltyPoints } from "@/lib/actions/loyalty";
 import { toast } from "sonner";
+import { formatMoney } from "@/lib/utils/format-money";
+import { formatNumber } from "@/lib/i18n/locale";
 
 type StoreOption = { id: string; name: string };
 
@@ -44,7 +46,7 @@ export function LoyaltyCashoutForm({
       toast.error(result.error);
       return;
     }
-    toast.success(`Coupon ${result.data.couponCode} created — worth ₦${result.data.discountValue.toLocaleString()}`);
+    toast.success(`Coupon ${result.data.couponCode} created — worth ${formatMoney(result.data.discountValue)}`);
     router.refresh();
   }
 
@@ -65,7 +67,7 @@ export function LoyaltyCashoutForm({
 
       <div>
         <label className="mb-1 block text-xs font-medium text-slate-600">
-          Points to cash out (you have {pointsBalance.toLocaleString()})
+          Points to cash out (you have {formatNumber(pointsBalance)})
         </label>
         <input
           type="number"
@@ -78,7 +80,7 @@ export function LoyaltyCashoutForm({
       </div>
 
       <p className="text-sm text-slate-500">
-        You'll get a one-time coupon worth <span className="font-semibold text-slate-900">₦{discountPreview.toLocaleString()}</span>, usable only at the store you selected.
+        You'll get a one-time coupon worth <span className="font-semibold text-slate-900">{formatMoney(discountPreview)}</span>, usable only at the store you selected.
       </p>
 
       <button

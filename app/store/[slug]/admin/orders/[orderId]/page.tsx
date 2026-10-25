@@ -6,6 +6,7 @@ import { ShieldAlert } from "lucide-react";
 import { OrderStatusControl } from "@/components/dashboard/order-status-control";
 import { RefundControl } from "@/components/dashboard/refund-control";
 import { DISPUTE_STATUS_CONFIG } from "@/lib/constants/dispute";
+import { formatDate, formatNumber } from "@/lib/i18n/locale";
 
 const REFUNDABLE_STATUSES = ["PAID", "IN_PROGRESS", "DELIVERED", "COMPLETED"];
 
@@ -33,7 +34,7 @@ export default async function StoreOrderDetailPage({
         )}
       </h1>
       <p className="mb-6 text-sm text-muted-foreground">
-        Placed {new Date(order.createdAt).toLocaleString()}
+        Placed {formatDate(new Date(order.createdAt), { day: "numeric", month: "short", year: "numeric", hour: "numeric", minute: "2-digit" })}
       </p>
 
       <div className="mb-6 rounded-lg border bg-background p-4">
@@ -41,20 +42,20 @@ export default async function StoreOrderDetailPage({
         {order.items.map((item) => (
           <div key={item.id} className="flex justify-between py-1 text-sm">
             <span>{item.product?.name ?? item.service?.name} × {item.quantity}</span>
-            <span>{order.currency} {(Number(item.unitPrice) * item.quantity).toLocaleString()}</span>
+            <span>{order.currency} {formatNumber((Number(item.unitPrice) * item.quantity))}</span>
           </div>
         ))}
         <div className="mt-2 flex justify-between border-t pt-2 text-sm">
           <span className="text-muted-foreground">Subtotal</span>
-          <span>{order.currency} {Number(order.subtotal).toLocaleString()}</span>
+          <span>{order.currency} {formatNumber(Number(order.subtotal))}</span>
         </div>
         <div className="flex justify-between text-sm">
           <span className="text-muted-foreground">Platform commission</span>
-          <span>-{order.currency} {Number(order.commission).toLocaleString()}</span>
+          <span>-{order.currency} {formatNumber(Number(order.commission))}</span>
         </div>
         <div className="mt-1 flex justify-between border-t pt-2 font-medium">
           <span>Total</span>
-          <span>{order.currency} {Number(order.total).toLocaleString()}</span>
+          <span>{order.currency} {formatNumber(Number(order.total))}</span>
         </div>
       </div>
 

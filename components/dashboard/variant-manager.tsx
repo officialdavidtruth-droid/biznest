@@ -4,6 +4,7 @@ import { useState } from "react";
 import { toast } from "sonner";
 import { Layers3, Minus, Plus, Trash2 } from "lucide-react";
 import { setVariantOptions, updateVariant, deleteVariant } from "@/lib/actions/variant";
+import { currencySymbol } from "@/lib/utils/format-money";
 
 type MenuItem = { id: string; name: string; hasVariants: boolean; variantOptions: { name: string; values: string[] }[] | null };
 type Variant = {
@@ -159,7 +160,7 @@ export function VariantManager({
                 <thead className="border-b bg-muted/40 text-left text-xs uppercase text-muted-foreground">
                   <tr>
                     <th className="px-3 py-2">Variant</th>
-                    <th className="px-3 py-2">Price Override (₦)</th>
+                    <th className="px-3 py-2">Price Override ({currencySymbol()})</th>
                     <th className="px-3 py-2">Stock</th>
                     <th className="px-3 py-2">Active</th>
                     <th className="px-3 py-2"></th>

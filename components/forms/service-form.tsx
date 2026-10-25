@@ -9,6 +9,8 @@ import { getCatalogItemPreset } from "@/lib/catalog-item-presets";
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
+import { currencySymbol } from "@/lib/utils/format-money";
+import { formatDate } from "@/lib/i18n/locale";
 import {
   X, Plus, Trash2, Save, CheckSquare, ChevronRight,
   Star, MessageSquare, Receipt, Lightbulb, CheckCircle2, Clock3,
@@ -35,7 +37,7 @@ const DAYS: Array<{ key: string; label: string }> = [
 
 function fmtDate(d: unknown) {
   if (!d) return "—";
-  return new Date(d as string).toLocaleString(undefined, { month: "short", day: "numeric", year: "numeric", hour: "numeric", minute: "2-digit" });
+  return formatDate(new Date(d as string), { month: "short", day: "numeric", year: "numeric", hour: "numeric", minute: "2-digit" });
 }
 
 export function ServiceForm({
@@ -485,7 +487,7 @@ export function ServiceForm({
               <div>
                 <label className="mb-1 block text-sm font-medium">Price ({watch("currency") || "NGN"}) <span className="text-destructive">*</span></label>
                 <div className="relative">
-                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">₦</span>
+                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">{currencySymbol()}</span>
                   <input type="number" step="0.01" placeholder="e.g. 5,500" className="input pl-8" {...register("price")} />
                 </div>
                 {errors.price && <p className="mt-1 text-xs text-destructive">{errors.price.message}</p>}

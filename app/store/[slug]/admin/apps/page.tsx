@@ -2,6 +2,7 @@ import Link from "next/link";
 import { Calculator, Hotel, Users, BriefcaseBusiness, ClipboardList, BarChart3, ChefHat, LifeBuoy, Boxes, Scale, Truck, Gift, LockKeyhole, Puzzle, QrCode } from "lucide-react";
 import { getStoreApps } from "@/lib/actions/plugins";
 import { PluginUseButton } from "@/components/dashboard/plugin-use-button";
+import { formatMoney } from "@/lib/utils/format-money";
 
 const ICONS: Record<string, typeof Puzzle> = { Calculator, Hotel, Users, BriefcaseBusiness, ClipboardList, BarChart3, ChefHat, LifeBuoy, Boxes, Scale, Truck, Gift, QrCode };
 
@@ -32,7 +33,7 @@ export default async function AppsPage({ params }: { params: Promise<{ slug: str
               <p className="mt-1 flex-1 text-sm leading-6 text-muted-foreground">{plugin.description}</p>
               <div className="mt-4 flex items-end justify-between gap-3 border-t pt-4">
                 <div>
-                  {plugin.isFree ? <p className="text-sm font-bold text-primary">Included in plan</p> : <p className="text-sm font-bold">₦{plugin.price.toLocaleString()}<span className="text-[10px] font-normal text-muted-foreground">/{plugin.billingInterval === "YEARLY" ? "year" : plugin.billingInterval === "ONE_TIME" ? "one time" : "month"}</span></p>}
+                  {plugin.isFree ? <p className="text-sm font-bold text-primary">Included in plan</p> : <p className="text-sm font-bold">{formatMoney(plugin.price)}<span className="text-[10px] font-normal text-muted-foreground">/{plugin.billingInterval === "YEARLY" ? "year" : plugin.billingInterval === "ONE_TIME" ? "one time" : "month"}</span></p>}
                   <p className="mt-1 text-[10px] text-muted-foreground">{plugin.supportedPlans.length ? `Available on ${plugin.supportedPlans.join(" / ")}` : "Plan access not configured"}</p>
                 </div>
                 {plugin.isComingSoon ? <span className="rounded-xl border px-4 py-2 text-xs font-semibold text-muted-foreground">Coming soon</span> : unavailable ? (

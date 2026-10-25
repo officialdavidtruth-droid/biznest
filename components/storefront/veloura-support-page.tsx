@@ -2,9 +2,10 @@ import { formatMoney } from "@/lib/utils/format-money";
 import Link from "next/link";
 import { Headphones, Mail, MessageCircle, Phone, FileText, Plus, ChevronRight, ShieldCheck, Clock3, Ticket, ExternalLink } from "lucide-react";
 import { DISPUTE_STATUS_CONFIG } from "@/lib/constants/dispute";
+import { formatDate as formatLocaleDate } from "@/lib/i18n/locale";
 
 function formatDate(value: Date | string) {
-  return new Intl.DateTimeFormat("en-GB", { day: "2-digit", month: "short", year: "numeric" }).format(new Date(value));
+  return formatLocaleDate(value, { day: "2-digit", month: "short", year: "numeric" });
 }
 
 function money(value: number, currency: string) {

@@ -1,5 +1,6 @@
 import type React from "react";
 import type { BuilderConfig, BuilderSection, HeroVariant } from "@/lib/builder-config";
+import { formatNumber } from "@/lib/i18n/locale";
 
 /**
  * Signature hero compositions for the Builder.
@@ -29,7 +30,7 @@ function Cta({ s, d, bg, fg, kind = "solid" }: { s: BuilderSection["settings"]; 
   return <a href={s.ctaHref || "#catalog"} style={{ ...common, padding: "14px 24px", background: bg, color: fg, borderRadius: d.buttonStyle === "pill" ? 999 : Math.min(d.radius, 14) }}>{s.ctaLabel}</a>;
 }
 
-const money = (i: HeroItem) => `${i.currency} ${i.price.toLocaleString()}`;
+const money = (i: HeroItem) => `${i.currency} ${formatNumber(i.price)}`;
 
 /** Product tiles for variants that show the catalogue; falls back to tinted blocks so empty stores still look designed. */
 function Tile({ item, d, ratio, r }: { item?: HeroItem; d: D; ratio: string; r: number }) {

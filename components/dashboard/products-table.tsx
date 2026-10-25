@@ -8,6 +8,7 @@ import { Search, SlidersHorizontal } from "lucide-react";
 import { ProductRowActions } from "@/components/dashboard/product-row-actions";
 import { bulkUpdateProducts } from "@/lib/actions/bulk";
 import type { BusinessTerminology } from "@/lib/business-terminology";
+import { formatNumber } from "@/lib/i18n/locale";
 
 type Category = { id: string; name: string };
 
@@ -296,7 +297,7 @@ export function ProductsTable({
                     <span className="font-medium">{p.name}</span>
                   </td>
                   <td className="px-4 py-3 text-muted-foreground">{p.category?.name ?? "—"}</td>
-                  <td className="px-4 py-3">{p.currency} {Number(p.price).toLocaleString()}</td>
+                  <td className="px-4 py-3">{p.currency} {formatNumber(Number(p.price))}</td>
                   <td className="px-4 py-3">
                     <span
                       className={`rounded-full px-2 py-0.5 text-xs ${

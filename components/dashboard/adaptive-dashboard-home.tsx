@@ -5,6 +5,8 @@ import {
   WalletCards, Utensils, CheckCircle2, CircleAlert, Truck, BriefcaseBusiness, Megaphone, Receipt,
 } from "lucide-react";
 import type { AdaptiveDashboardConfig } from "@/lib/adaptive-dashboard";
+import { formatMoney } from "@/lib/utils/format-money";
+import { formatNumber } from "@/lib/i18n/locale";
 
 export type DashboardOrder = {
   id: string;
@@ -59,7 +61,7 @@ export type DashboardHomeData = {
 };
 
 function money(value: number) {
-  return new Intl.NumberFormat("en-NG", { style: "currency", currency: "NGN", maximumFractionDigits: 0 }).format(value);
+  return formatMoney(value, "NGN", { decimals: 0 });
 }
 
 type KpiSub = { text: string; direction?: "up" | "down" };
@@ -167,13 +169,13 @@ export function AdaptiveDashboardHome({
     let value = "—";
     let sub: KpiSub = { text: "Today" };
     if (kpi.source === "revenue") { value = money(data.revenueToday); sub = deltaSub(data.revenueToday, data.revenueYesterday); }
-    if (kpi.source === "orders") { value = data.ordersToday.toLocaleString(); sub = deltaSub(data.ordersToday, data.ordersYesterday); }
-    if (kpi.source === "bookings") { value = data.bookingCount.toLocaleString(); sub = { text: "Today" }; }
-    if (kpi.source === "customers") { value = data.newCustomersToday.toLocaleString(); sub = deltaSub(data.newCustomersToday, data.newCustomersYesterday); }
+    if (kpi.source === "orders") { value = formatNumber(data.ordersToday); sub = deltaSub(data.ordersToday, data.ordersYesterday); }
+    if (kpi.source === "bookings") { value = formatNumber(data.bookingCount); sub = { text: "Today" }; }
+    if (kpi.source === "customers") { value = formatNumber(data.newCustomersToday); sub = deltaSub(data.newCustomersToday, data.newCustomersYesterday); }
     if (kpi.source === "avgOrderValue") { value = money(data.avgOrderValueToday); sub = deltaSub(data.avgOrderValueToday, data.avgOrderValueYesterday); }
-    if (kpi.source === "products" || kpi.source === "services") { value = data.activeCatalogCount.toLocaleString(); sub = { text: "Active" }; }
-    if (kpi.source === "rooms") { value = data.roomCount.toLocaleString(); sub = { text: "Currently" }; }
-    if (kpi.source === "visitors") { value = data.visitorsToday.toLocaleString(); sub = { text: "Today" }; }
+    if (kpi.source === "products" || kpi.source === "services") { value = formatNumber(data.activeCatalogCount); sub = { text: "Active" }; }
+    if (kpi.source === "rooms") { value = formatNumber(data.roomCount); sub = { text: "Currently" }; }
+    if (kpi.source === "visitors") { value = formatNumber(data.visitorsToday); sub = { text: "Today" }; }
     if (kpi.source === "conversion") { value = data.conversionRate === null ? "—" : `${data.conversionRate}%`; sub = { text: "Today" }; }
     if (kpi.source === "bestProduct") { value = data.topProducts[0]?.name ?? "—"; sub = { text: "Today" }; }
     if (kpi.source === "returning") { value = "—"; sub = { text: "Today" }; }
@@ -184,9 +186,9 @@ export function AdaptiveDashboardHome({
   // meaningful capability-specific cards instead of leaving awkward gaps
   // (only reached by niches whose config.kpis has fewer than 5 entries).
   const fallbackKpis = [
-    ...(hasBookings ? [{ id: "bookings", label: isHotel ? "Reservations" : config.terminology.transaction + "s", value: data.bookingCount.toLocaleString(), sub: { text: "Today" } as KpiSub }] : []),
-    ...(hasProducts ? [{ id: "catalog", label: config.terminology.catalog, value: data.activeCatalogCount.toLocaleString(), sub: { text: "Active" } as KpiSub }] : []),
-    ...(isHotel ? [{ id: "rooms", label: "Available Rooms", value: Math.max(0, data.roomCount).toLocaleString(), sub: { text: "Currently" } as KpiSub }] : []),
+    ...(hasBookings ? [{ id: "bookings", label: isHotel ? "Reservations" : config.terminology.transaction + "s", value: formatNumber(data.bookingCount), sub: { text: "Today" } as KpiSub }] : []),
+    ...(hasProducts ? [{ id: "catalog", label: config.terminology.catalog, value: formatNumber(data.activeCatalogCount), sub: { text: "Active" } as KpiSub }] : []),
+    ...(isHotel ? [{ id: "rooms", label: "Available Rooms", value: formatNumber(Math.max(0, data.roomCount)), sub: { text: "Currently" } as KpiSub }] : []),
   ];
   const finalKpis = [...kpis, ...fallbackKpis].filter((item, index, arr) => arr.findIndex((x) => x.id === item.id) === index).slice(0, 5);
 
@@ -290,7 +292,7 @@ export function AdaptiveDashboardHome({
           <div className="space-y-5">
             {hasBookings && <section className="rounded-xl border border-[var(--bn-admin-border)] bg-[var(--bn-admin-surface)] p-5 shadow-[0_1px_2px_rgba(15,23,42,0.03)]"><div className="mb-3 flex items-center justify-between"><h2 className="text-[16px] font-bold">Today’s {isHotel ? "Reservations" : config.terminology.transaction + "s"}</h2><Link href={`${base}/bookings`} className="text-xs font-semibold text-[var(--bn-admin-orange)]">View all</Link></div><div className="divide-y divide-border">{bookings.length ? bookings.map((b) => <div key={b.id} className="flex items-center gap-3 py-3 first:pt-0"><div className="w-14 text-xs font-bold text-[var(--bn-admin-text)]">{b.time}</div><div className="min-w-0 flex-1"><p className="truncate text-sm font-semibold">{b.customer}</p><p className="truncate text-[11px] text-[var(--bn-admin-muted)]">{b.detail}</p></div>{b.guests ? <span className="rounded-full bg-[var(--bn-admin-surface-2)] px-2 py-1 text-[10px] font-semibold text-[var(--bn-admin-muted)]">{b.guests} Guests</span> : <Clock3 className="h-4 w-4 text-[var(--bn-admin-muted)]" />}</div>) : <div className="py-8 text-center text-xs text-[var(--bn-admin-muted)]">No bookings scheduled yet.</div>}<Link href={`${base}/bookings`} className="mt-2 flex w-full items-center justify-center rounded-lg border border-[var(--bn-admin-border)] px-3 py-2 text-xs font-semibold text-[var(--bn-admin-orange)]">Manage {isHotel ? "Reservations" : "Bookings"}</Link></div></section>}
 
-            <section className="rounded-xl border border-[var(--bn-admin-border)] bg-[var(--bn-admin-surface)] p-5 shadow-[0_1px_2px_rgba(15,23,42,0.03)]"><div className="mb-3 flex items-center justify-between"><h2 className="text-[16px] font-bold">{isRestaurant ? "Kitchen Status" : isHotel ? "Property Status" : "What needs attention"}</h2><CircleAlert className="h-5 w-5 text-[var(--bn-admin-muted)]" /></div><div className="space-y-2.5">{isRestaurant ? <><StatusRow icon={CircleAlert} title="Orders waiting" value={data.ordersToday.toLocaleString()} tone="amber" /><StatusRow icon={Utensils} title="Preparing / active" value={Math.max(0, Math.round(data.ordersToday * 0.35)).toLocaleString()} tone="blue" /><StatusRow icon={CheckCircle2} title="Ready / completed" value={Math.max(0, Math.round(data.ordersToday * 0.2)).toLocaleString()} tone="green" /></> : isHotel ? <><StatusRow icon={CheckCircle2} title="Rooms available" value={data.roomCount.toLocaleString()} tone="green" /><StatusRow icon={Clock3} title="Arrivals / reservations" value={data.bookingCount.toLocaleString()} tone="blue" /><StatusRow icon={CircleAlert} title="Needs attention" value={data.lowStockCount.toLocaleString()} tone="amber" /></> : <><StatusRow icon={CheckCircle2} title={`${config.terminology.catalog} active`} value={data.activeCatalogCount.toLocaleString()} tone="green" /><StatusRow icon={CalendarDays} title={`${config.terminology.transaction}s`} value={data.bookingCount.toLocaleString()} tone="blue" /><StatusRow icon={CircleAlert} title="Needs attention" value={data.outOfStockCount.toLocaleString()} tone="amber" /></>}</div></section>
+            <section className="rounded-xl border border-[var(--bn-admin-border)] bg-[var(--bn-admin-surface)] p-5 shadow-[0_1px_2px_rgba(15,23,42,0.03)]"><div className="mb-3 flex items-center justify-between"><h2 className="text-[16px] font-bold">{isRestaurant ? "Kitchen Status" : isHotel ? "Property Status" : "What needs attention"}</h2><CircleAlert className="h-5 w-5 text-[var(--bn-admin-muted)]" /></div><div className="space-y-2.5">{isRestaurant ? <><StatusRow icon={CircleAlert} title="Orders waiting" value={formatNumber(data.ordersToday)} tone="amber" /><StatusRow icon={Utensils} title="Preparing / active" value={formatNumber(Math.max(0, Math.round(data.ordersToday * 0.35)))} tone="blue" /><StatusRow icon={CheckCircle2} title="Ready / completed" value={formatNumber(Math.max(0, Math.round(data.ordersToday * 0.2)))} tone="green" /></> : isHotel ? <><StatusRow icon={CheckCircle2} title="Rooms available" value={formatNumber(data.roomCount)} tone="green" /><StatusRow icon={Clock3} title="Arrivals / reservations" value={formatNumber(data.bookingCount)} tone="blue" /><StatusRow icon={CircleAlert} title="Needs attention" value={formatNumber(data.lowStockCount)} tone="amber" /></> : <><StatusRow icon={CheckCircle2} title={`${config.terminology.catalog} active`} value={formatNumber(data.activeCatalogCount)} tone="green" /><StatusRow icon={CalendarDays} title={`${config.terminology.transaction}s`} value={formatNumber(data.bookingCount)} tone="blue" /><StatusRow icon={CircleAlert} title="Needs attention" value={formatNumber(data.outOfStockCount)} tone="amber" /></>}</div></section>
 
             <section className="overflow-hidden rounded-xl bg-[var(--bn-admin-page)] p-5 text-[var(--bn-admin-text)] shadow-[0_8px_24px_rgba(15,23,42,0.12)]"><div className="flex items-start gap-3"><div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-[var(--bn-admin-surface-2)] text-[var(--bn-admin-text)]"><Lightbulb className="h-4.5 w-4.5" /></div><div><p className="text-[11px] font-bold uppercase tracking-[0.12em] text-[var(--bn-admin-muted)]">BizNest Insight</p><p className="mt-2 text-sm font-semibold leading-5">{data.outOfStockCount > 0 ? `You have ${data.outOfStockCount} item${data.outOfStockCount === 1 ? "" : "s"} that need attention.` : data.bookingCount > 0 ? `Your business has ${data.bookingCount} active ${config.terminology.transaction.toLowerCase()}${data.bookingCount === 1 ? "" : "s"} today.` : "Your workspace is ready. Add your first listing to start building momentum."}</p><Link href={`${base}${data.outOfStockCount > 0 ? "/inventory" : hasBookings ? "/bookings" : hasProducts ? "/products" : "/services"}`} className="mt-4 inline-flex items-center rounded-lg bg-[var(--bn-admin-surface-2)] px-3 py-2 text-xs font-bold text-[var(--bn-admin-text)]">Take a look <ArrowUpRight className="ml-1.5 h-3.5 w-3.5" /></Link></div></div></section>
           </div>
