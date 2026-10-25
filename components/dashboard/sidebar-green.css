@@ -1,0 +1,17 @@
+/* BizNest green admin sidebar (desktop) and mobile menu drawer: green surface, white text.
+   A store brand colour (themeColor) still wins: sidebar.tsx / mobile-dashboard-chrome.tsx set --bn-sidebar-bg inline. */
+.bn-admin-app aside.bn-admin-sidebar,
+.bn-admin-mobile-drawer.bn-admin-mobile-drawer {
+  background: var(--bn-sidebar-bg, #0f6410) !important;
+  color: #fff !important;
+  --bn-admin-muted: rgba(255, 255, 255, 0.9) !important;
+  --bn-admin-active: rgba(255, 255, 255, 0.2) !important;
+  --bn-admin-active-dark: rgba(255, 255, 255, 0.3) !important;
+  --bn-admin-ring: #fff !important;
+}
+.bn-admin-app aside.bn-admin-sidebar { border-color: rgba(255, 255, 255, 0.18) !important; }
+/* The little marker beside the selected item is green by default, so make it white. */
+.bn-admin-app aside.bn-admin-sidebar span.bg-primary { background: #fff !important; }
+.bn-admin-mobile-drawer.bn-admin-mobile-drawer .bn-admin-mobile-link { color: #fff !important; }
+.bn-admin-mobile-drawer.bn-admin-mobile-drawer .bn-admin-mobile-link.active { background: rgba(255, 255, 255, 0.2) !important; }
+.bn-admin-mobile-drawer.bn-admin-mobile-drawer .bn-admin-mobile-muted { color: rgba(255, 255, 255, 0.8) !important; }

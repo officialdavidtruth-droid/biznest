@@ -3,7 +3,8 @@
 import { useState, type CSSProperties } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Menu, X, ExternalLink } from "lucide-react";
+import { Menu, X, ExternalLink, LayoutGrid } from "lucide-react";
+import { FloatingTabBar } from "@/components/app/floating-tab-bar";
 import { TourLauncherButton } from "@/components/dashboard/onboarding-tour";
 import { buildNavGroups, buildBottomTabItems, filterNavGroupsForRole, type InstalledAppNav } from "@/lib/constants/dashboard-nav";
 import type { StoreAccessRole } from "@/lib/access/store-access";
@@ -28,9 +29,10 @@ type NotificationItem = {
  * halves position independently via CSS rather than wrapping page content:
  *  - Top bar: sticky, in normal flow — hamburger (opens the full nav
  *    drawer) + store name + notification bell.
- *  - Bottom tab bar: `fixed` to the viewport bottom (the one-thumb reach
+ *  - Bottom bar: `fixed` to the viewport bottom (the one-thumb reach
  *    zone on a phone) with safe-area padding for phones with a gesture
- *    bar — the 4 highest-frequency destinations plus a Menu tab.
+ *    bar — the 4 highest-frequency destinations either side of a raised
+ *    centre Menu button (FloatingTabBar).
  * Because the bottom bar is fixed rather than a flex sibling after
  * {children}, the admin layout only has to render page content once and
  * give it bottom padding to clear it — see app/store/[slug]/admin/layout.tsx.
@@ -107,37 +109,17 @@ export function MobileDashboardChrome({
 
       <PushSubscribePrompt />
 
-      {/* Bottom tab bar — fixed, so it stays put while page content scrolls */}
-      <nav
-        className="bn-admin-mobile-bottom fixed inset-x-0 bottom-0 z-30 grid border-t pb-[env(safe-area-inset-bottom)]"
-        style={{ gridTemplateColumns: `repeat(${bottomItems.length + 1}, minmax(0, 1fr))` }}
-      >
-        {bottomItems.map((item) => {
-          const href = `${base}${item.href}`;
-          const isActive = pathname === href;
-          const Icon = item.icon;
-          return (
-            <Link
-              key={item.label}
-              href={href}
-              className={`flex flex-col items-center gap-0.5 py-2 text-[10px] ${
-                isActive ? "text-primary" : "text-muted-foreground"
-              }`}
-            >
-              <Icon className={`h-5 w-5 ${isActive ? "" : "opacity-70"}`} />
-              <span className="truncate px-0.5">{item.label}</span>
-            </Link>
-          );
-        })}
-        <button
-          data-tour="mobile-menu"
-          onClick={() => setDrawerOpen(true)}
-          className="flex flex-col items-center gap-0.5 py-2 text-[10px] text-muted-foreground"
-        >
-          <Menu className="h-5 w-5 opacity-70" />
-          <span>Menu</span>
-        </button>
-      </nav>
+      {/* Bottom bar: white floating bar, the 4 highest-frequency destinations either side of a raised green Menu button */}
+      <FloatingTabBar
+        tabs={bottomItems.map((item) => ({
+          key: item.label,
+          label: item.label,
+          href: `${base}${item.href}`,
+          icon: item.icon,
+          active: pathname === `${base}${item.href}`,
+        }))}
+        center={{ label: "Menu", icon: LayoutGrid, onClick: () => setDrawerOpen(true), tourId: "mobile-menu" }}
+      />
 
       {/* Slide-in drawer with the full nav — same buildNavGroups the desktop sidebar uses */}
       {drawerOpen && (
@@ -147,7 +129,7 @@ export function MobileDashboardChrome({
             className="bn-admin-mobile-drawer absolute inset-y-0 left-0 flex w-[82%] max-w-xs flex-col overflow-y-auto pb-[env(safe-area-inset-bottom)] shadow-2xl"
             style={{
               ...(themeColor
-                ? { "--bn-ink": `color-mix(in srgb, ${themeColor} 55%, #04140b 45%)` }
+                ? (() => { const mix = `color-mix(in srgb, ${themeColor} 55%, #04140b 45%)`; return { "--bn-ink": mix, "--bn-sidebar-bg": mix }; })()
                 : {}),
               "--bn-admin-muted": "rgba(255,255,255,0.66)",
             } as CSSProperties}

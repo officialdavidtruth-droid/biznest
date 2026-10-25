@@ -1,0 +1,21 @@
+/* ----- Floating bottom bar (merchant dashboard, mobile) -----
+   White surface with a half-circle notch and a raised BizNest-green button. */
+.bn-fbar { --fb-bar: var(--bn-admin-surface, #fff); --fb-ink: #0f6410; --fb-ink-soft: var(--bn-admin-muted, #64748b); --fb-core: #0f6410; --fb-core-fg: #fff; --fb-gap: 92px; --fb-h: 64px;
+  position: fixed; left: 0; right: 0; bottom: 0; z-index: 30; pointer-events: none;
+  filter: drop-shadow(0 -3px 14px rgba(15,23,42,.12)); animation: bn-fbar-in .35s cubic-bezier(.2,.8,.2,1) both; }
+@keyframes bn-fbar-in { from { transform: translateY(100%); } to { transform: none; } }
+/* The surface is masked with a half-circle so the raised button sits in a clean notch. */
+.bn-fbar-surface { pointer-events: auto; display: grid; align-items: stretch; height: calc(var(--fb-h) + env(safe-area-inset-bottom)); padding: 0 6px env(safe-area-inset-bottom);
+  background: var(--fb-bar); border-radius: 24px 24px 0 0;
+  -webkit-mask: radial-gradient(circle 41px at 50% 0, transparent 40px, #000 41.5px); mask: radial-gradient(circle 41px at 50% 0, transparent 40px, #000 41.5px); }
+.bn-fbar-tab { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; min-width: 0; color: var(--fb-ink-soft); font-size: 11px; font-weight: 500; transition: color .2s; }
+.bn-fbar-label { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; padding: 0 2px; }
+.bn-fbar-tab-active { color: var(--fb-ink); font-weight: 700; }
+.bn-fbar-tab-active .bn-fbar-icon { animation: bn-fbar-pop .35s cubic-bezier(.3,1.6,.5,1); }
+@keyframes bn-fbar-pop { 0% { transform: scale(.8); } 100% { transform: scale(1); } }
+.bn-fbar-center { position: absolute; left: 50%; top: -30px; width: 64px; height: 64px; margin-left: -32px; display: flex; align-items: center; justify-content: center; border-radius: 50%; pointer-events: auto;
+  background: var(--fb-core); color: var(--fb-core-fg); transition: transform .15s ease; }
+.bn-fbar-center:active { transform: scale(.94); }
+.bn-fbar-center-active { box-shadow: 0 0 0 3px var(--fb-bar), 0 0 0 5px var(--fb-core); }
+.bn-fbar-badge { position: absolute; top: -2px; right: -2px; min-width: 20px; height: 20px; padding: 0 5px; border-radius: 10px; background: #e11d48; color: #fff; font-size: 11px; font-weight: 700; line-height: 20px; text-align: center; box-shadow: 0 0 0 2px var(--fb-bar); }
+@media (prefers-reduced-motion: reduce) { .bn-fbar, .bn-fbar-tab-active .bn-fbar-icon { animation-duration: .01ms !important; } }

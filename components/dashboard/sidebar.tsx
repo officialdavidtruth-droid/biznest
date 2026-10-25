@@ -1,10 +1,11 @@
 "use client";
 
 import type { CSSProperties } from "react";
+import "./sidebar-green.css";
 import Link from "next/link";
 import { useState } from "react";
 import { usePathname } from "next/navigation";
-import { ExternalLink, Pencil, Crown, ChevronDown } from "lucide-react";
+import { ExternalLink, Pencil, ChevronDown } from "lucide-react";
 import { buildNavGroups, filterNavGroupsForRole, type NavItem, type InstalledAppNav } from "@/lib/constants/dashboard-nav";
 import type { StoreAccessRole } from "@/lib/access/store-access";
 import { SignOutButton } from "@/components/forms/sign-out-button";
@@ -61,14 +62,14 @@ export function DashboardSidebar({
     <aside
       className="bn-admin-sidebar bn-sidebar-motion hidden h-screen max-h-screen w-[250px] shrink-0 flex-col overflow-y-auto overscroll-contain border-r border-[color:var(--bn-ink-line)] bg-[color:var(--bn-ink)] text-white lg:sticky lg:top-0 lg:flex lg:self-start"
       style={{
-        // Sidebar is always a dark surface — --bn-admin-muted (#64748b) was
+        // Sidebar is always a saturated surface (BizNest green, see sidebar-green.css) — --bn-admin-muted (#64748b) was
         // tuned for the light admin body text and reads as near-invisible
         // slate-on-dark here, so give the sidebar its own lighter muted
         // tone regardless of accent. When a store has a brand color, blend
         // it down with black rather than using it raw: an un-darkened
         // brand color (light/saturated) fails contrast against white text.
         ...(themeColor
-          ? { "--bn-ink": `color-mix(in srgb, ${themeColor} 55%, #04140b 45%)` }
+          ? (() => { const mix = `color-mix(in srgb, ${themeColor} 55%, #04140b 45%)`; return { "--bn-ink": mix, "--bn-sidebar-bg": mix }; })()
           : {}),
         "--bn-admin-muted": "rgba(255,255,255,0.66)",
       } as CSSProperties}
@@ -121,12 +122,6 @@ export function DashboardSidebar({
       </nav>
 
       <div className="bn-sidebar-footer border-t border-white/15 px-3 py-3">
-        <div className="mb-3 rounded-xl border border-white/15 bg-white/10 p-3">
-          <div className="flex items-center gap-2 text-[11px] font-semibold text-white"><Crown className="h-4 w-4 text-white/80" /> {subscriptionName ?? "No active plan"}</div>
-          <p className="mt-1 text-[10px] text-white/70">Your workspace is powered by BizNest.</p>
-          <p className="mt-2 text-[10px] text-white/70">Plan access is managed from your subscription settings.</p>
-          <Link href={`/${slug}/admin/subscription`} className="block rounded-md bg-white/90 px-2 py-1.5 text-center text-[10px] font-bold text-[var(--bn-admin-text)] hover:bg-white">Manage Plan</Link>
-        </div>
         <div className="flex items-center gap-2 px-1">
           <StoreLogo logoUrl={logoUrl} storeName={storeName} size="sm" />
           <div className="min-w-0 flex-1"><p className="truncate text-[11px] font-semibold text-white">Business Admin</p><p className="text-[10px] text-white/70">{staffRole ?? "OWNER"}</p></div>
