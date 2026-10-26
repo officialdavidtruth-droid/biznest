@@ -2,7 +2,16 @@
    A store brand colour (themeColor) still wins: sidebar.tsx / mobile-dashboard-chrome.tsx set --bn-sidebar-bg inline. */
 .bn-admin-app aside.bn-admin-sidebar,
 .bn-admin-mobile-drawer.bn-admin-mobile-drawer {
-  background: var(--bn-sidebar-bg, #0f6410) !important;
+  /* Dark green gradient derived from the same base colour: BizNest green by default,
+     or the store's brand colour when themeColor is set (via --bn-sidebar-bg). */
+  --bn-sidebar-gradient: linear-gradient(
+    180deg,
+    color-mix(in srgb, var(--bn-sidebar-bg, #0f6410) 78%, #000) 0%,
+    color-mix(in srgb, var(--bn-sidebar-bg, #0f6410) 55%, #000) 55%,
+    color-mix(in srgb, var(--bn-sidebar-bg, #0f6410) 32%, #000) 100%
+  );
+  background: #0a3f0c !important; /* fallback for browsers without color-mix */
+  background: var(--bn-sidebar-gradient) !important;
   color: #fff !important;
   --bn-admin-muted: rgba(255, 255, 255, 0.9) !important;
   --bn-admin-active: rgba(255, 255, 255, 0.2) !important;
