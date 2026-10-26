@@ -70,6 +70,14 @@ export default async function PaymentsPage({ params }: { params: Promise<{ slug:
         Connect your bank account to get paid. When a customer&apos;s payment is confirmed, the money is sent
         straight to this account — no manual transfers.
       </p>
+      <div className="mb-4 rounded-lg border border-[var(--bn-admin-border)] bg-[var(--bn-admin-surface-2)] p-4 text-sm">
+        <p className="font-semibold">Payment processing fees</p>
+        <p className="mt-1 text-xs leading-5 text-muted-foreground">
+          BizNest takes no commission on your sales. The payment gateway charges a processing fee on each customer payment, and that fee is
+          deducted from your payout. Your customer always pays exactly the price shown at checkout. For example, on a ₦10,000 order with a
+          ₦150 gateway fee, ₦9,850 is sent to your bank account. The fee for each payout is shown on your payout record.
+        </p>
+      </div>
       <div className="mb-4 rounded-lg border border-[var(--bn-admin-border)] bg-[var(--bn-admin-surface-2)] p-4 text-sm text-[var(--bn-admin-orange)]">
         <p className="font-semibold">Inline card checkout enabled</p>
         <p className="mt-1 text-xs leading-5">Customers can pay by Visa, Mastercard or Verve inside the storefront checkout when the active payment provider has its public key configured. Money from your sales is paid out to your connected bank account.</p>

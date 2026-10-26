@@ -108,7 +108,7 @@ export async function initializeKorapayTransaction(params: {
       redirect_url: params.callbackUrl,
       ...(params.notificationUrl ? { notification_url: params.notificationUrl } : {}),
       narration: params.narration ?? "BizNest payment",
-      // The customer pays exactly the order total; any gateway fee comes out of the platform's balance.
+      // The customer pays exactly the order total; Kora keeps its fee out of that, and the fee is held back from the vendor's payout (gateway-fee.ts).
       merchant_bears_cost: true,
       customer: { name: params.customerName ?? params.email, email: params.email },
     },

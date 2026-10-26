@@ -13,6 +13,7 @@ import {
   type TransferGateway,
 } from "@/lib/payments/payout-gateway";
 import { logError, logInfo } from "@/lib/observability/log";
+import { vendorPayoutAmount } from "@/lib/payments/gateway-fee";
 
 /**
  * Vendor payouts.
@@ -20,10 +21,11 @@ import { logError, logInfo } from "@/lib/observability/log";
  * Customers pay the platform's gateway account; as soon as a payment is
  * verified we queue ONE Payout for it (Payout.paymentId is unique, so a
  * webhook + callback race can never create two) and push the store's money to
- * its bank account with the paying gateway's Transfer API (Paystack or
- * Flutterwave, see payout-gateway.ts). Stores receive the full
- * amount the customer paid minus Order.commission, which is 0 (BizNest earns
- * from subscription plans, not from sales -- see lib/constants/commission.ts).
+ * its bank account with the paying gateway's Transfer API (Paystack,
+ * Flutterwave or Korapay, see payout-gateway.ts). Stores receive what the
+ * customer paid minus Order.commission (0: BizNest earns from subscription
+ * plans, not from sales) minus the gateway's own fee, which the vendor bears
+ * (see gateway-fee.ts). That keeps the platform balance equal to what it owes.
  *
  * Safety properties:
  *  - The transfer reference is derived from the payout id, never random, so a
@@ -121,7 +123,8 @@ export async function queuePayoutForPayment(reference: string): Promise<{ payout
   if (payment.splitSubaccountCode) return { skipped: "already split to the vendor by the gateway" };
   if (payment.provider === "CASH") return { skipped: "settled outside the platform" };
 
-  const amount = roundMoney(Number(payment.amount) - Number(payment.order?.commission ?? 0));
+  const gross = roundMoney(Number(payment.amount) - Number(payment.order?.commission ?? 0));
+  const { amount, feeAmount } = vendorPayoutAmount(payment.provider, payment.rawPayload, gross);
   if (amount <= 0) return { skipped: "nothing to pay out" };
 
   const hasAccount = Boolean(payment.store.payoutBankCode && payment.store.payoutAccountNumber);
@@ -151,6 +154,7 @@ export async function queuePayoutForPayment(reference: string): Promise<{ payout
         paymentId: payment.id,
         provider: payment.provider,
         amount,
+        feeAmount,
         currency: payment.currency,
         reference: payoutReference(payoutId),
         status: unsupported ? "FAILED" : "QUEUED",

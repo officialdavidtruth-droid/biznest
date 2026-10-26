@@ -34,6 +34,11 @@ export default function SellerAgreementPage() {
         subscription tier (visible in your dashboard under Subscription). Commission rates may
         change with notice; continued use of your store after a rate change takes effect
         constitutes acceptance.
+        <br /><br />
+        Payment processing fees. The payment gateway that processes a customer&apos;s payment charges a
+        processing fee on that payment. BizNest does not keep this fee: it is deducted from the amount
+        paid out to you, and the fee for each payout is recorded on that payout. The customer pays only
+        the price shown at checkout.
       </Section>
 
       <Section title="4. Listing standards">

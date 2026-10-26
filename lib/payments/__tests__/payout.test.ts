@@ -108,6 +108,12 @@ describe("queuePayoutForPayment", () => {
     expect(m.payoutCreate).toHaveBeenCalledWith({ data: expect.objectContaining({ amount: 12500, status: "QUEUED", paymentId: "pay1", storeId: "s1" }) });
   });
 
+  it("holds the gateway fee back from the vendor payout", async () => {
+    m.paymentFind.mockResolvedValue({ ...payment, provider: "KORAPAY", rawPayload: { data: { raw: { fee: 187.5 } } } });
+    await queuePayoutForPayment("o1");
+    expect(m.payoutCreate).toHaveBeenCalledWith({ data: expect.objectContaining({ amount: 12312.5, feeAmount: 187.5 }) });
+  });
+
   it("skips payments the gateway already split to a vendor subaccount", async () => {
     m.paymentFind.mockResolvedValue({ ...payment, splitSubaccountCode: "ACCT_x" });
     expect((await queuePayoutForPayment("o1")).skipped).toMatch(/split/);

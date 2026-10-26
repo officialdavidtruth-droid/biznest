@@ -94,7 +94,7 @@ export function ConnectPayoutForm({
           {details?.accountName} · {details?.bankName} · {details?.maskedAccountNumber}
         </p>
         <p className="mt-1 text-xs text-muted-foreground">
-          The full amount of each paid order is sent to this account after the customer&apos;s payment is confirmed.
+          Each paid order is sent to this account after the customer&apos;s payment is confirmed, minus the payment gateway&apos;s processing fee.
         </p>
         <div className="mt-3 flex items-center gap-3">
           <button
