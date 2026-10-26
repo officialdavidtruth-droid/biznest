@@ -36,6 +36,7 @@
  * fixed per template.
  */
 import { canonicalizeBusinessType } from "./business-identity";
+import { REFERENCE_THEME_DATA, type ReferenceThemeData, type ReferenceBase } from "./reference-theme-data";
 
 
 export type HeroStyle = "centered" | "split" | "fullbleed";
@@ -853,14 +854,24 @@ export const NAMED_TEMPLATE_IDENTITY: Record<string, { chrome: TemplateChrome; h
   "Heenzy — Boutique Rose": { chrome: C("overlay", "columns", "tall"), heroStyle: "fullbleed", heroVariant: "lookbook" },
 };
 
+/** Assembles a reference template's theme from its plain data + the shared base theme it builds on. */
+export function buildReferenceTheme(d: ReferenceThemeData): GeneratedTemplate {
+  const bases: Record<ReferenceBase, GeneratedTemplate> = {
+    HOTEL: HOTEL_THEME, MARKETPLACE: MARKETPLACE_THEME, EXAMPLE: EXAMPLE_THEME, PREMIUM: PREMIUM_THEME,
+    VIOLET: VIOLET_THEME, NOVA: NOVA_THEME, HOMEVISTA: HOMEVISTA_THEME,
+  };
+  return {
+    ...bases[d.base], ...d.colors, variationName: d.name, tierRank: d.tier, eyebrow: d.category.toUpperCase(),
+    headline: d.headline, sub: d.sub, ...(d.sectionCopy ? { sectionCopy: d.sectionCopy } : {}),
+  } as GeneratedTemplate;
+}
+
+// Every reference template resolves to its own theme. This used to be a lazy require() wrapped in try/catch that
+// only covered names listed in NAMED_TEMPLATE_IDENTITY, so Aspire, Larita, Skyview, Wanderly and Nestoria silently
+// fell back to the default Fresh & Co. theme.
 function lookupReferenceTheme(name: string | null | undefined): TemplateTheme | null {
-  if (!name || !NAMED_TEMPLATE_IDENTITY[name]) return null;
-  try {
-    // Lazy require: reference-template-catalog imports this module.
-    // eslint-disable-next-line @typescript-eslint/no-var-requires
-    const { REFERENCE_TEMPLATE_CATALOG } = require("@/lib/reference-template-catalog") as { REFERENCE_TEMPLATE_CATALOG: readonly (TemplateTheme & { variationName: string })[] };
-    return REFERENCE_TEMPLATE_CATALOG.find((t) => t.variationName === name) ?? null;
-  } catch { return null; }
+  const data = name ? REFERENCE_THEME_DATA.find((d) => d.name === name) : undefined;
+  return data ? buildReferenceTheme(data) : null;
 }
 
 export function resolveStoreTheme(

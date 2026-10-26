@@ -91,7 +91,7 @@ function Aspire({ store, slug, content }: P) {
 `.replace("HERO", hero)}</style>
     <section className="hero">
       <RefHeader layout="aspire" store={store} slug={slug} active="Home" hasDining={!!content.hasDining} />
-      <h1>{content.skin?.headline || "Experience Five-Star Luxury"}</h1>
+      <h1>{content.skin?.headline || "Experience Comfort and Hospitality"}</h1>
       <p>{content.skin?.sub || content.home.subtitle}</p>
       <Link className="cta" href={href(slug, "/book")}>BOOK YOUR STAY</Link>
     </section>
@@ -144,14 +144,14 @@ function Larita({ store, slug, content }: P) {
 `.replace("HERO", hero).replace("VID", ph(content.gallery[2]?.image, 5))}</style>
     <section className="hero">
       <RefHeader layout="larita" store={store} slug={slug} active="Home" hasDining={!!content.hasDining} />
-      <div style={{ color: "#e6a935", letterSpacing: 4 }}>★★★★★</div>
+
       <h1>{store.name}</h1><p>{content.skin?.sub || content.home.subtitle}</p><Link className="exp" href={href(slug, "/rooms")}>EXPLORE →</Link>
-      <div className="since"><span>SINCE {new Date().getFullYear() - 5} · TRUSTED HOSPITALITY</span><b>OUR STORY →</b></div>
+      <div className="since"><span>WELCOME TO {first(store.name).toUpperCase()}</span><b>OUR STORY →</b></div>
     </section>
-    <section className="feat">{["Located in the heart of the city", "Luxurious, modern and comfortable", "Friendly and welcoming staff", "Best prices and great offers"].map((t, i) => { const I = FEATURE_ICONS[i]; return <div key={t}><I size={34} strokeWidth={1.2} /><h4>{t}</h4><p>Thoughtful details that make every stay easy and memorable.</p></div>; })}</section>
+    <section className="feat">{["Rooms for every kind of stay", "Book directly online", "Clear rates and room details", "Questions? Contact the front desk"].map((t, i) => { const I = FEATURE_ICONS[i]; return <div key={t}><I size={34} strokeWidth={1.2} /><h4>{t}</h4><p>Thoughtful details that make every stay easy and memorable.</p></div>; })}</section>
     <section className="wel"><div className="imgs"><img src={ph(content.gallery[0]?.image, 2)} alt="" /><img src={ph(content.gallery[1]?.image, 3)} alt="" /></div>
       <div><small className="e">Welcome to {first(store.name)}</small><h2>{content.skin?.headline || "Luxury hotel in the heart of the city."}</h2><p>{content.home.body || content.home.subtitle}</p><Link className="btn" href={href(slug, "/about")}>Read more →</Link></div></section>
-    <div className="rate">{["Booking", "Agoda", "Tripadvisor"].map((n, i) => <span key={n}><b>{["4.9", "5.0", "4.8"][i]}</b> ★ Excellent · reviews on {n}</span>)}</div>
+
     {room && <section className="col"><small className="e">Exquisite and luxurious</small><h2>Room and suite collection</h2>
       <div className="slide"><div className="t"><span style={{ fontSize: 13 }}>From:</span> <b className="pr">{money(room.price)}</b><small>/NIGHT</small><h3>{room.name}</h3><p>{room.description}</p><p>{room.area} · {room.bed} · {room.guests} guests</p><Link className="btn" href={href(slug, "/book")}>Book now</Link> <Link className="btn" style={{ background: "#fff", color: "#181716", border: "1px solid #181716" }} href={href(slug, `/rooms/${room.slug}`)}>View room →</Link></div><img src={ph(room.image, 4)} alt={room.name} /></div></section>}
     <section className="fac"><small className="e">Modern and comfortable</small><h2>Facilities and amenities</h2>
@@ -197,14 +197,14 @@ function Skyview({ store, slug, content }: P) {
       <div className="hc"><small>LUXURY STAYS. UNFORGETTABLE JOURNEYS.</small><h1>{content.skin?.headline || "Your Perfect Getaway Awaits"}</h1><p>{content.skin?.sub || content.home.subtitle}</p>
         <div className="bar"><div><b>Destination</b>{first(store.address || "Where are you going?")}</div><div><b>Check In</b>Select date</div><div><b>Guests</b>2 Adults</div><Link href={href(slug, "/book")}>Search Rooms →</Link></div></div>
     </section>
-    <section className="feats">{[[BedDouble, "Luxury Rooms & Suites", "Elegant spaces"], [Sparkles, "World-Class Amenities", "Pool, spa, fitness"], ...(content.hasDining ? [[Utensils, "Fine Dining", "Local ingredients"]] : [[Wifi, "Modern Comforts", "Fast Wi-Fi, 24/7 service"]]), [MapPin, "Prime Locations", "Nature & coast"], [ShieldCheck, "Trusted & Safe", "Your comfort first"]].map(([I, t, s]: any) => <div key={t}><I /><span><b>{t}</b><small>{s}</small></span></div>)}</section>
+    <section className="feats">{[[BedDouble, "Rooms & Suites", "Browse available rooms"], [Sparkles, "Amenities", "See what the property offers"], ...(content.hasDining ? [[Utensils, "Dining", "See the menu"]] : [[Wifi, "Stay Details", "Room facilities and rates"]]), [MapPin, "Location", "Find us and plan your visit"], [ShieldCheck, "Direct Booking", "Reserve straight from the property"]].map(([I, t, s]: any) => <div key={t}><I /><span><b>{t}</b><small>{s}</small></span></div>)}</section>
     <section className="rm"><div><small className="e">Featured stays</small><h2>Exquisite Rooms &amp; Suites</h2><p>Thoughtfully designed for your comfort, our rooms blend modern luxury with natural beauty.</p><Link className="ol" href={href(slug, "/rooms")}>View All Rooms →</Link></div>
       <div className="rg">{rs.map((r, i) => <Link key={r.id} href={href(slug, `/rooms/${r.slug}`)} className="rc"><img src={ph(r.image, i)} alt={r.name} /><div><h5>{r.name}</h5><span>{r.guests} Guests · {r.bed || r.area}</span><b>{money(r.price)} <small style={{ fontWeight: 400, fontSize: 11 }}>/ night</small></b></div></Link>)}</div></section>
     <section className="split"><div className="dest"><small>TOP DESTINATION</small><h2>Experience Paradise at Our Resort</h2><p style={{ maxWidth: 380, fontSize: 14 }}>{content.experiences.subtitle}</p><Link className="ol" href={href(slug, "/experiences")}>Explore Resort →</Link></div>
       <div className="xp"><h2 style={{ fontSize: 28 }}>Hotel Experiences</h2><small style={{ color: "#5d7387" }}>More than a stay — a journey of unforgettable moments.</small><div className="xg">{(exp.length ? exp.map(g => [g.title, g.image]) : (content.hasDining ? [["Spa & Wellness", ""], ["Culinary Journey", ""], ["Adventure Tours", ""], ["Local Culture", ""]] : [["Spa & Wellness", ""], ["City Tours", ""], ["Adventure Tours", ""], ["Local Culture", ""]])).map(([t, im], i) => <div key={t + i}><img src={ph(im, i + 1)} alt="" /><span>{t}</span></div>)}</div></div></section>
-    <section className="adv"><div><small className="e">Why choose us</small><h2>The {first(store.name)} Advantage</h2><div className="ag">{[["5-Star Service", "Always at your service"], ["Best Price Guarantee", "More value, always"], ["Flexible Booking", "Cancel with ease"], ["24/7 Support", "We're here for you"]].map(([t, s]) => <div key={t}><b><Check size={14} /> {t}</b>{s}</div>)}</div></div>
-      <img src={ph(content.gallery[2]?.image, 4)} alt="" /><div className="q"><div style={{ color: "#e6a935" }}>★★★★★</div>“A wonderful stay from the first moment to the last. The staff, the views and the comfort were exceptional.”<br /><b style={{ display: "block", marginTop: 12 }}>Verified guest</b></div></section>
-    <section className="off"><small>LIMITED TIME OFFER</small><h2>{offer?.title || "Save on Your Dream Stay"}</h2><p style={{ maxWidth: 440, fontSize: 14 }}>{offer?.description || "Book direct and enjoy exclusive rates, complimentary breakfast and more special benefits."}</p><Link className="ol" href={href(slug, "/book")}>Book Now →</Link></section>
+    <section className="adv"><div><small className="e">Why choose us</small><h2>The {first(store.name)} Advantage</h2><div className="ag">{[["Direct Booking", "Reserve straight from the property"], ["Room Details", "Clear rates and facilities"], ["Get in Touch", "Contact the front desk"], ["Local Area", "Find us and plan your visit"]].map(([t, s]) => <div key={t}><b><Check size={14} /> {t}</b>{s}</div>)}</div></div>
+      <img src={ph(content.gallery[2]?.image, 4)} alt="" /></section>
+    {offer && <section className="off"><small>SPECIAL OFFER</small><h2>{offer.title}</h2>{offer.description && <p style={{ maxWidth: 440, fontSize: 14 }}>{offer.description}</p>}<Link className="ol" href={href(slug, "/book")}>Book Now →</Link></section>}
     <RefFooter layout="skyview" store={store} slug={slug} content={content} />
   </div>;
 }

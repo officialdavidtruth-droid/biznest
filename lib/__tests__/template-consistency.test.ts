@@ -8,7 +8,7 @@ import { canonicalizeBusinessType } from "@/lib/business-identity";
 import { containsDemoClaim } from "@/lib/template-quality";
 import {
   LEGACY_CATEGORY_BY_NAME, SIGNATURE_CATEGORY_BY_MODE, SIGNATURE_SUPPORTS_BY_MODE,
-  RESTORED_LEGACY_TEMPLATE_CATALOG, SIGNATURE_TEMPLATE_CATALOG, getTemplateTheme, FRESH_THEME,
+  RESTORED_LEGACY_TEMPLATE_CATALOG, SIGNATURE_TEMPLATE_CATALOG, getTemplateTheme, FRESH_THEME, NAMED_TEMPLATE_IDENTITY, resolveStoreTheme as resolveThemeForReference,
 } from "@/lib/template-themes";
 
 const read = (p: string) => readFileSync(resolve(process.cwd(), p), "utf8");
@@ -29,7 +29,12 @@ describe("renderer resolution is shared", () => {
     for (const mode of Object.values(SIGNATURE_DEDICATED_RENDERER)) expect(SCREENSHOT_PALETTES, mode).toHaveProperty(mode);
   });
   it("every legacy template resolves to the legacy renderer", () => {
-    for (const t of RESTORED_LEGACY_TEMPLATE_CATALOG) expect(resolveHomeRenderer(t.variationName).kind, t.variationName).toBe("legacy");
+    // Colour variants (Violet — Sunset, Nova Ivory, Heenzy Boutique Rose) deliberately render through the Builder with
+    // their own identity (NAMED_TEMPLATE_IDENTITY); every other legacy template owns a dedicated legacy component.
+    for (const t of RESTORED_LEGACY_TEMPLATE_CATALOG) {
+      const expected = NAMED_TEMPLATE_IDENTITY[t.variationName] ? "builder" : "legacy";
+      expect(resolveHomeRenderer(t.variationName).kind, t.variationName).toBe(expected);
+    }
   });
 });
 
@@ -134,5 +139,16 @@ describe("template copy is written for customers, not about the template", () =>
     const theme = resolveStoreTheme(undefined, "Demo", null, null, "Ember — Restaurant");
     const hero = templateThemeToBuilderConfig(theme, "Demo", "Our own words", null).sections.find((s) => s.type === "hero")!;
     expect(hero.settings.body).toBe("Our own words");
+  });
+});
+
+import { REFERENCE_TEMPLATE_CATALOG } from "@/lib/reference-template-catalog";
+describe("reference templates resolve to their own theme", () => {
+  it("none falls back to the default Fresh & Co. theme", () => {
+    for (const t of REFERENCE_TEMPLATE_CATALOG) {
+      const r = resolveThemeForReference(undefined, "Demo", null, null, t.variationName);
+      expect(r.accent, `${t.variationName} accent`).toBe(t.accent);
+      expect(r.bg, `${t.variationName} background`).toBe(t.bg);
+    }
   });
 });
