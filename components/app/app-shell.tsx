@@ -1,23 +1,13 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { usePathname, useSearchParams } from "next/navigation";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { AppTabBar } from "./app-tab-bar";
 
 const SPLASH_KEY = "bn-splash-shown";
 
 function inApp(): boolean {
   return typeof navigator !== "undefined" && navigator.userAgent.includes("BizNestApp");
-}
-
-/** True only if EVERY scrollable ancestor (and the page itself) is at the very top. */
-function atTop(el: EventTarget | null): boolean {
-  let node = el as HTMLElement | null;
-  while (node && node !== document.body && node !== document.documentElement) {
-    if (node.scrollTop > 0) return false;
-    node = node.parentElement;
-  }
-  return (document.scrollingElement?.scrollTop ?? 0) <= 0 && window.scrollY <= 0;
 }
 
 function haptic(ms = 8) {
@@ -30,7 +20,7 @@ function haptic(ms = 8) {
  *  - animated logo launch screen (once per app session)
  *  - top progress bar + logo loader while navigating
  *  - page enter transition on every route change
- *  - pull-to-refresh with the logo
+ *  - silent background refresh (no pull-to-refresh, no spinner)
  *  - light haptic tick on taps
  */
 export function AppShell() {
@@ -41,8 +31,9 @@ export function AppShell() {
   const [active, setActive] = useState(false);
   const [splash, setSplash] = useState<"off" | "show" | "hide">("off");
   const [navigating, setNavigating] = useState(false);
-  const [pull, setPull] = useState(0);
-  const [refreshing, setRefreshing] = useState(false);
+  const router = useRouter();
+  const lastInput = useRef(0);
+  const lastRefresh = useRef(Date.now());
   const firstRoute = useRef(true);
   const navTimeout = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
 
@@ -94,71 +85,45 @@ export function AppShell() {
     return () => document.removeEventListener("click", onClick, true);
   }, [active]);
 
-  // Pull to refresh: only when the page is already at the very top and the
-  // finger drags DOWN, like a browser. Any scrolling cancels it.
+  // Silent background refresh. Re-fetches server data via router.refresh()
+  // (client state, scroll position, typed text and open dialogs are kept), so
+  // it never reloads the page or shows any indicator. It only runs while the
+  // app is visible and online, and is skipped whenever the user is busy:
+  // typing/focused in a field, a dialog is open, or they just touched the screen.
   useEffect(() => {
     if (!active) return;
-    let startY = 0;
-    let startX = 0;
-    let target: EventTarget | null = null;
-    let tracking = false;
-    let pulling = false;
-    let dist = 0;
-    const MAX = 110;
-    const TRIGGER = 56;
-    const reset = () => { tracking = false; pulling = false; dist = 0; setPull(0); };
-    const start = (e: TouchEvent) => {
-      tracking = false; pulling = false; dist = 0;
-      if (e.touches.length !== 1) return;
-      const el = e.target as HTMLElement | null;
-      if (el?.closest?.("input,textarea,select,[contenteditable],[data-no-pull]")) return;
-      if (!atTop(e.target)) return;
-      startY = e.touches[0].clientY;
-      startX = e.touches[0].clientX;
-      target = e.target;
-      tracking = true;
+    const INTERVAL = 30_000;
+    const IDLE_MS = 4_000;
+    const markInput = () => { lastInput.current = Date.now(); };
+    const busy = () => {
+      if (Date.now() - lastInput.current < IDLE_MS) return true;
+      const el = document.activeElement as HTMLElement | null;
+      if (el?.matches?.("input,textarea,select,[contenteditable='true']")) return true;
+      if (document.querySelector("[role='dialog'],[aria-modal='true'],dialog[open]")) return true;
+      return false;
     };
-    const move = (e: TouchEvent) => {
-      if (!tracking) return;
-      // The page scrolled (or was not really at the top): never pull.
-      if (!atTop(target)) { reset(); return; }
-      const dy = e.touches[0].clientY - startY;
-      const dx = Math.abs(e.touches[0].clientX - startX);
-      if (!pulling) {
-        if (dy < -4 || dx > Math.abs(dy)) { tracking = false; return; } // going up / sideways
-        if (dy < 14) return;                                            // small dead zone
-        pulling = true;
-      }
-      dist = Math.min(MAX, (dy - 14) * 0.5);
-      setPull(dist);
+    const tryRefresh = () => {
+      if (document.visibilityState !== "visible") return;
+      if (typeof navigator !== "undefined" && navigator.onLine === false) return;
+      if (busy()) return;
+      lastRefresh.current = Date.now();
+      try { router.refresh(); } catch {}
     };
-    const end = () => {
-      if (!tracking) return;
-      const go = pulling && dist >= TRIGGER;
-      tracking = false; pulling = false;
-      if (go) {
-        haptic(15);
-        setRefreshing(true);
-        setPull(60);
-        setTimeout(() => location.reload(), 350);
-      } else {
-        setPull(0);
-      }
+    const timer = setInterval(tryRefresh, INTERVAL);
+    const onVisible = () => {
+      if (document.visibilityState === "visible" && Date.now() - lastRefresh.current > INTERVAL) tryRefresh();
     };
-    const onScroll = () => { if (tracking && pulling) return; if (tracking) tracking = false; };
-    document.addEventListener("touchstart", start, { passive: true });
-    document.addEventListener("touchmove", move, { passive: true });
-    document.addEventListener("touchend", end, { passive: true });
-    document.addEventListener("touchcancel", reset, { passive: true });
-    document.addEventListener("scroll", onScroll, { capture: true, passive: true });
+    const evts: Array<keyof DocumentEventMap> = ["touchstart", "touchmove", "keydown", "pointerdown"];
+    evts.forEach((e) => document.addEventListener(e, markInput, { passive: true, capture: true }));
+    document.addEventListener("visibilitychange", onVisible);
+    window.addEventListener("online", onVisible);
     return () => {
-      document.removeEventListener("touchstart", start);
-      document.removeEventListener("touchmove", move);
-      document.removeEventListener("touchend", end);
-      document.removeEventListener("touchcancel", reset);
-      document.removeEventListener("scroll", onScroll, { capture: true });
+      clearInterval(timer);
+      evts.forEach((e) => document.removeEventListener(e, markInput, { capture: true }));
+      document.removeEventListener("visibilitychange", onVisible);
+      window.removeEventListener("online", onVisible);
     };
-  }, [active]);
+  }, [active, router]);
 
   if (!active) return null;
 
@@ -177,13 +142,6 @@ export function AppShell() {
       <AppTabBar />
 
       <div className={`bn-navbar ${navigating ? "bn-navbar-on" : ""}`} aria-hidden><span /></div>
-
-      {(pull > 0 || refreshing) && (
-        <div className="bn-ptr" style={{ transform: `translate(-50%, ${pull - 56}px)`, opacity: Math.min(1, pull / 50) }} aria-hidden>
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src="/icon-192.png" alt="" width={36} height={36} className={refreshing ? "bn-ptr-spin" : ""} style={{ transform: refreshing ? undefined : `rotate(${pull * 3}deg)` }} />
-        </div>
-      )}
     </>
   );
 }

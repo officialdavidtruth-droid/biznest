@@ -1349,10 +1349,6 @@ a.ex-mini{text-decoration:none}
 .bn-navbar-on span { animation: bn-nav-run 1s ease-in-out infinite; }
 @keyframes bn-nav-run { 0% { transform: translateX(-100%); } 100% { transform: translateX(300%); } }
 
-.bn-ptr { position: fixed; top: 0; left: 50%; z-index: 99980; width: 44px; height: 44px; display: flex; align-items: center; justify-content: center; border-radius: 50%; background: #fff; box-shadow: 0 4px 16px rgba(0,0,0,.2); pointer-events: none; }
-.bn-ptr img { border-radius: 10px; }
-.bn-ptr-spin { animation: bn-ptr-rot .8s linear infinite; }
-@keyframes bn-ptr-rot { to { transform: rotate(360deg); } }
 
 /* Opacity only, no fill-mode: a transform (even a filling one) on this wrapper would trap every position:fixed bar (dashboard tabs, guide button) inside the page. */
 .bn-page-enter { animation: bn-app-page-in .22s ease-out; }
