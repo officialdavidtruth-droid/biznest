@@ -1,5 +1,6 @@
 import crypto from "crypto";
 import { logWarn } from "@/lib/observability/log";
+import { fixedIpFetch } from "@/lib/payments/fixed-ip-fetch";
 
 /**
  * Korapay (Kora) adapter.
@@ -25,11 +26,11 @@ type KoraEnvelope<T> = { status: boolean; message: string; data?: T | null };
 
 async function koraFetch<T>(
   path: string,
-  init: { method?: "GET" | "POST"; body?: unknown; secretKey?: string | null } = {}
+  init: { method?: "GET" | "POST"; body?: unknown; secretKey?: string | null; fixedIp?: boolean } = {}
 ): Promise<KoraEnvelope<T> & { httpStatus: number }> {
   const key = secret(init.secretKey);
   if (!key) return { status: false, message: NOT_CONFIGURED, httpStatus: 0 };
-  const res = await fetch(`${KORA_BASE}${path}`, {
+  const res = await (init.fixedIp ? fixedIpFetch : fetch)(`${KORA_BASE}${path}`, {
     method: init.method ?? "GET",
     headers: {
       Authorization: `Bearer ${key}`,
@@ -273,6 +274,7 @@ export async function initiateKorapayTransfer(params: {
 }) {
   const res = await koraFetch<KorapayTransferData>("/transactions/disburse", {
     method: "POST",
+    fixedIp: true,
     body: {
       reference: params.reference,
       destination: {
@@ -294,14 +296,14 @@ export async function initiateKorapayTransfer(params: {
 
 /** Looks a payout up by OUR reference. `notFound` is true only on a positive 404 / "not found". */
 export async function verifyKorapayTransfer(reference: string) {
-  const res = await koraFetch<KorapayTransferData>(`/transactions/${encodeURIComponent(reference)}`);
+  const res = await koraFetch<KorapayTransferData>(`/transactions/${encodeURIComponent(reference)}`, { fixedIp: true });
   const notFound = !res.status && (res.httpStatus === 404 || /not found|no transaction|does not exist/i.test(res.message));
   return { status: res.status, message: res.message, data: res.data, notFound };
 }
 
 /** Platform's available Kora NGN balance in naira, or undefined when it couldn't be read. */
 export async function getKorapayBalanceNaira(): Promise<{ status: boolean; message: string; balanceNaira?: number }> {
-  const res = await koraFetch<{ NGN?: { available_balance?: number | string } }>("/balances");
+  const res = await koraFetch<{ NGN?: { available_balance?: number | string } }>("/balances", { fixedIp: true });
   const raw = res.data?.NGN?.available_balance;
   const n = raw === undefined ? NaN : Number(raw);
   return { status: res.status, message: res.message, balanceNaira: Number.isFinite(n) ? n : undefined };

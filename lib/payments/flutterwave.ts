@@ -1,4 +1,5 @@
 import crypto from "crypto";
+import { fixedIpFetch } from "@/lib/payments/fixed-ip-fetch";
 
 const FLW_BASE = "https://api.flutterwave.com/v3";
 
@@ -259,7 +260,7 @@ export async function initiateFlutterwaveTransfer(params: {
   const secretKey = process.env.FLUTTERWAVE_SECRET_KEY;
   if (!secretKey) return { status: "error" as const, message: "Flutterwave isn't configured on this platform yet." };
 
-  const res = await fetch(`${FLW_BASE}/transfers`, {
+  const res = await fixedIpFetch(`${FLW_BASE}/transfers`, {
     method: "POST",
     headers: {
       Authorization: `Bearer ${secretKey}`,
@@ -285,7 +286,7 @@ export async function verifyFlutterwaveTransfer(transferId: string | number) {
   const secretKey = process.env.FLUTTERWAVE_SECRET_KEY;
   if (!secretKey) return { status: "error" as const, message: "Flutterwave isn't configured on this platform yet." };
 
-  const res = await fetch(`${FLW_BASE}/transfers/${encodeURIComponent(String(transferId))}`, {
+  const res = await fixedIpFetch(`${FLW_BASE}/transfers/${encodeURIComponent(String(transferId))}`, {
     headers: { Authorization: `Bearer ${secretKey}` },
   });
   return res.json() as Promise<{ status: "success" | "error"; message: string; data?: FlutterwaveTransferData }>;
@@ -296,7 +297,7 @@ export async function findFlutterwaveTransferByReference(reference: string) {
   const secretKey = process.env.FLUTTERWAVE_SECRET_KEY;
   if (!secretKey) return { status: "error" as const, message: "Flutterwave isn't configured on this platform yet.", data: [] as FlutterwaveTransferData[] };
 
-  const res = await fetch(`${FLW_BASE}/transfers?reference=${encodeURIComponent(reference)}`, {
+  const res = await fixedIpFetch(`${FLW_BASE}/transfers?reference=${encodeURIComponent(reference)}`, {
     headers: { Authorization: `Bearer ${secretKey}` },
   });
   const json = (await res.json()) as { status: "success" | "error"; message: string; data?: FlutterwaveTransferData[] };
@@ -308,7 +309,7 @@ export async function getFlutterwaveBalanceNaira(): Promise<{ status: boolean; m
   const secretKey = process.env.FLUTTERWAVE_SECRET_KEY;
   if (!secretKey) return { status: false, message: "Flutterwave isn't configured on this platform yet." };
 
-  const res = await fetch(`${FLW_BASE}/balances/NGN`, { headers: { Authorization: `Bearer ${secretKey}` } });
+  const res = await fixedIpFetch(`${FLW_BASE}/balances/NGN`, { headers: { Authorization: `Bearer ${secretKey}` } });
   const json = (await res.json()) as { status: "success" | "error"; message: string; data?: { available_balance: number } };
   return { status: json.status === "success", message: json.message, balanceNaira: json.data?.available_balance };
 }

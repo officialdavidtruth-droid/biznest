@@ -21,14 +21,15 @@ Korapay is a third platform gateway next to Paystack and Flutterwave. **SupaAdmi
 |---|---|---|
 | `KORAPAY_SECRET_KEY` | yes | Dashboard -> Settings -> API Configuration. Test keys = sandbox, live keys = live. Also signs webhooks. |
 | `KORAPAY_PAYOUT_EMAIL` | no | Customer email Kora requires on payouts. Defaults to `payouts@biznest.space`. |
+| `PAYOUT_PROXY_URL` | live payouts | HTTP forward proxy with a static IP. Payout/balance calls (Kora and Flutterwave) go through it; whitelist its IP in the Kora dashboard. |
 | `KORAPAY_BASE_URL` | no | Only if Kora tells you to use a different host. Default `https://api.korapay.com/merchant/api/v1`. |
 
 ## Kora dashboard setup
 1. Webhook URL (collections and payouts): `https://biznest.space/api/payments/korapay/webhook`
    (there is no separate secret hash: Kora signs the `data` object with your secret key, header `x-korapay-signature`).
 2. Whitelist your server IPs for payouts (Kora only accepts the Payout API from whitelisted IPs in live mode).
-   Vercel has no fixed outbound IP by default: use a static-IP add-on or a small proxy, otherwise payouts stay QUEUED
-   with a "whitelist" error and retry.
+   Vercel has no fixed outbound IP: run a small forward proxy on a static-IP VPS and set `PAYOUT_PROXY_URL`,
+   then whitelist that IP. Without it payouts stay QUEUED with a "whitelist" error and retry automatically.
 3. Keep enough NGN balance: payouts are sent from it, and wait/retry when it is short.
 
 ## Database
