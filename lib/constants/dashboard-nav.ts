@@ -245,17 +245,33 @@ export function buildBottomTabItems(
   const groups = buildNavGroups(business);
   const filtered = opts ? filterNavGroupsForRole(groups, opts) : groups;
   const items = filtered.flatMap((g) => g.items.flatMap((i) => [i, ...(i.children ?? [])]));
-  // Dashboard is never permission-gated, so it's always present. The rest
-  // are the next-highest-priority items still available to this account,
-  // falling back down the list if a preferred one was filtered out.
+  // Dashboard is deliberately NOT a tab: the raised centre Menu button already opens
+  // the full menu (Dashboard first), and having both looked like a duplicate. The four
+  // tabs are the highest-frequency day-to-day destinations still available to this
+  // account, in priority order, falling back down the list when one is filtered out
+  // (hotels, for instance, have no POS or Orders, so they get Reservations, Services,
+  // Calendar and Customers).
+  const find = (...hrefs: string[]) => items.find((i) => hrefs.includes(i.href));
   const preferred = [
-    items.find((i) => i.href === ""),
-    items.find((i) => i.href === "/pos"),
-    items.find((i) => i.href === "/orders"),
-    items.find((i) => i.href === "/products" || i.href === "/services"),
+    find("/pos"),
+    find("/orders"),
+    find("/bookings"),
+    find("/products", "/services"),
+    find("/calendar"),
+    find("/customers"),
+    find("/payments"),
   ].filter((i): i is NavItem => Boolean(i));
-  const rest = items.filter((i) => !preferred.includes(i));
-  return preferred.concat(rest).slice(0, 4);
-    }
+  // Last-resort filler: never Dashboard, never the app store screens, and never the
+  // PMS / F&B shells (those need a full page load, which a tab <Link> doesn't do).
+  const rest = items.filter(
+    (i) => !preferred.includes(i) && i.href !== "" && !i.href.startsWith("/apps") && i.href !== "/pms" && i.href !== "/fnb"
+  );
+  const tabs = preferred.concat(rest).slice(0, 4);
+  // A heavily restricted staff account can end up with almost nothing left. Dashboard is
+  // never permission-gated, so use it to keep the bar from being a single lonely tab.
+  const dashboard = items.find((i) => i.href === "");
+  if (tabs.length < 2 && dashboard) tabs.unshift(dashboard);
+  return tabs;
+}
 
          

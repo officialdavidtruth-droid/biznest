@@ -7,6 +7,9 @@ import { getAdaptiveDashboardConfig } from "@/lib/adaptive-dashboard";
 import { getDashboardInsights } from "@/lib/actions/analytics";
 import { SELLER_VISIBLE_ORDER_STATUSES } from "@/lib/constants/order";
 import { formatDate } from "@/lib/i18n/locale";
+import { getStoreAccessRole } from "@/lib/access/store-access";
+import { FirstSaleChecklist } from "@/components/dashboard/first-sale-checklist";
+import { loadFirstSaleChecklist } from "@/lib/onboarding-checklist-data";
 
 /**
  * Merchant overview only.
@@ -45,6 +48,11 @@ export default async function StoreAdminOverviewPage({
   });
 
   const insightsPromise = getDashboardInsights(store.id, slug);
+
+  // "Get your first sale" checklist: owners only, and never allowed to break the dashboard.
+  const checklistPromise = getStoreAccessRole(session.user.id, session.user.role, store)
+    .then((role) => (role === "OWNER" ? loadFirstSaleChecklist(store.id) : null))
+    .catch(() => null);
   const now = new Date();
   const dayStart = new Date(now);
   dayStart.setHours(0, 0, 0, 0);
@@ -259,16 +267,33 @@ export default async function StoreAdminOverviewPage({
     hourlyRevenue: insights.hourlyRevenue,
   };
 
+  const checklist = await checklistPromise;
+
   return (
-    <AdaptiveDashboardHome
-      slug={slug}
-      storeName={store.name}
-      logoUrl={store.logoUrl}
-      userName={session.user.name}
-      userImage={session.user.image}
-      config={config}
-      data={data}
-    />
+    <>
+      {checklist && (
+        <FirstSaleChecklist
+          slug={slug}
+          storeName={store.name}
+          publicUrl={checklist.publicUrl}
+          steps={checklist.state.steps}
+          doneCount={checklist.state.doneCount}
+          total={checklist.state.total}
+          complete={checklist.state.complete}
+          listingNoun={checklist.state.listingNoun}
+          ideas={checklist.ideas}
+        />
+      )}
+      <AdaptiveDashboardHome
+        slug={slug}
+        storeName={store.name}
+        logoUrl={store.logoUrl}
+        userName={session.user.name}
+        userImage={session.user.image}
+        config={config}
+        data={data}
+      />
+    </>
   );
 }
 

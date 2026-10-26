@@ -72,6 +72,13 @@ export const RESERVED_SLUGS = new Set([
   "onboarding",
   "staff",
   "verify-email",
+  // Real top-level routes that were missing from this list, so middleware
+  // rewrote them into /store/<name>/... (the storefront stack) and they 404'd
+  // instead of reaching their own pages: app/projects, app/unsubscribe (email
+  // unsubscribe links), and app/opengraph-image (the homepage social card).
+  "projects",
+  "unsubscribe",
+  "opengraph-image",
   // app/(auth)
   "login",
   "register",

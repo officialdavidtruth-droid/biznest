@@ -3,6 +3,7 @@
 import { useEffect, useLayoutEffect, useRef } from "react";
 import { usePathname } from "next/navigation";
 import { useCart } from "@/lib/cart-context";
+import { isTrackablePath } from "@/lib/tracking/ids";
 import {
   firstTimeFor,
   registerTracking,
@@ -42,6 +43,12 @@ export function StoreTracking({
   const pathname = usePathname();
   const first = useRef(true);
   useEffect(() => {
+    // This component lives in the store layout, which persists across soft
+    // navigations -- so an owner who moves from the storefront into /admin keeps
+    // it mounted, and the server-side isTrackablePath check (done once, at layout
+    // render) is stale. Re-check on every route change so dashboard URLs are
+    // never sent to GA / Meta / Plausible.
+    if (!isTrackablePath(pathname ?? "")) return;
     // Wait a tick so document.title / location reflect the new route.
     const t = setTimeout(() => {
       trackPageView(slug, first.current);
