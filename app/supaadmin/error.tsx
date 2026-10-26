@@ -1,5 +1,6 @@
 "use client";
 
+import * as Sentry from "@sentry/nextjs";
 import { useEffect } from "react";
 
 export default function SupaAdminError({
@@ -11,6 +12,7 @@ export default function SupaAdminError({
 }) {
   useEffect(() => {
     console.error("Supaadmin error:", error);
+    Sentry.captureException(error);
   }, [error]);
 
   return (

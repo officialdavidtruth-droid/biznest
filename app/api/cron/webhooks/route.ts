@@ -1,5 +1,5 @@
 import { prisma } from "@/lib/prisma";
-import { requireCronAuth } from "@/lib/cron-auth";
+import { withCronMonitor } from "@/lib/observability/cron";
 import { attemptDelivery } from "@/lib/webhooks/dispatch";
 import { NextResponse } from "next/server";
 import { logError, logInfo, errorMeta } from "@/lib/observability/log";
@@ -33,9 +33,7 @@ import { logError, logInfo, errorMeta } from "@/lib/observability/log";
  * reached just waits for tomorrow's sweep -- but it does mean a big
  * backlog drains more slowly on Hobby than the batch cap alone suggests.
  */
-export async function GET(req: Request) {
-  const denied = requireCronAuth(req);
-  if (denied) return denied;
+export const GET = withCronMonitor("webhooks", async () => {
 
   const start = Date.now();
   const due = await prisma.webhookDelivery.findMany({
@@ -60,4 +58,4 @@ export async function GET(req: Request) {
   void logInfo("JOBS", "webhook-retry-sweep completed", { processed: due.length, failures }, Date.now() - start);
 
   return NextResponse.json({ processed: due.length, failures });
-}
+});

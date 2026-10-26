@@ -1,5 +1,5 @@
 import { prisma } from "@/lib/prisma";
-import { requireCronAuth } from "@/lib/cron-auth";
+import { withCronMonitor } from "@/lib/observability/cron";
 import { chargePaystackAuthorization, verifyPaystackTransaction } from "@/lib/payments/paystack";
 import { notifyUser } from "@/lib/notifications/notify";
 import { NextResponse } from "next/server";
@@ -36,9 +36,7 @@ import { formatDate } from "@/lib/i18n/locale";
  */
 const GRACE_PERIOD_DAYS = 5;
 
-export async function GET(req: Request) {
-  const denied = requireCronAuth(req);
-  if (denied) return denied;
+export const GET = withCronMonitor("subscription-renewals", async (_req, ctx) => {
 
   const now = new Date();
   const in3Days = new Date(now.getTime() + 3 * 24 * 60 * 60 * 1000);
@@ -192,6 +190,7 @@ export async function GET(req: Request) {
       }
     } catch (err) {
       void logError("JOBS", "Renewal charge failed", errorMeta(err, { storeId: store.id }));
+      ctx.fail("Renewal charge threw (gateway/network/DB error, not a card decline)", { storeId: store.id, error: err instanceof Error ? err.message : String(err) });
       await handleRenewalFailure(store, graceCutoff).catch(() => {});
       failed++;
     }
@@ -219,6 +218,7 @@ export async function GET(req: Request) {
       downgraded++;
     } catch (err) {
       void logError("JOBS", "Downgrade failed", errorMeta(err, { storeId: store.id }));
+      ctx.fail("Downgrade of an overdue store failed", { storeId: store.id });
     }
   }
 
@@ -262,12 +262,19 @@ export async function GET(req: Request) {
       }
     } catch (err) {
       void logError("JOBS", "Plugin renewal failed", errorMeta(err, { storeId: installed.storeId, pluginId: installed.pluginId }));
+      ctx.fail("Plugin renewal threw", { storeId: installed.storeId, pluginId: installed.pluginId });
     }
+  }
+
+  // Every due renewal failing at once is almost never "everyone's card expired":
+  // it means Paystack is down, the secret key changed, or the saved authorizations broke.
+  if (due.length >= 3 && charged === 0 && failed === due.length) {
+    ctx.fail(`All ${due.length} due renewals failed — check Paystack status and PAYSTACK_SECRET_KEY`);
   }
 
   void logInfo("JOBS", "Subscription renewal sweep complete", { reminded, charged, failed, downgraded, pluginsCharged, pluginsSuspended, trialReminded, trialsExpired });
   return NextResponse.json({ reminded, charged, failed, downgraded, pluginsCharged, pluginsSuspended, trialReminded, trialsExpired });
-}
+});
 
 async function handleRenewalFailure(
   store: { id: string; slug: string; subscriptionPastDueSince: Date | null; business: { userId: string } },

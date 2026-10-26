@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { requireCronAuth } from "@/lib/cron-auth";
+import { withCronMonitor } from "@/lib/observability/cron";
 import { processDuePayouts } from "@/lib/payments/payout";
 import { neutralizeLegacySubaccountSplits } from "@/lib/payments/legacy-subaccounts";
 import { logError, errorMeta } from "@/lib/observability/log";
@@ -14,9 +14,7 @@ export const maxDuration = 60;
  * arrived. See lib/payments/payout.ts. Also zeroes the platform percentage on
  * legacy gateway subaccounts (lib/payments/legacy-subaccounts.ts).
  */
-export async function GET(req: Request) {
-  const denied = requireCronAuth(req);
-  if (denied) return denied;
+export const GET = withCronMonitor("payouts", async () => {
   try {
     const payouts = await processDuePayouts();
     // Separate guard: a gateway hiccup here must never block payouts above.
@@ -29,4 +27,4 @@ export async function GET(req: Request) {
     void logError("JOBS", "payouts cron failed", errorMeta(err));
     return NextResponse.json({ ok: false }, { status: 500 });
   }
-}
+});

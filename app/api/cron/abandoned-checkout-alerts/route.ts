@@ -1,5 +1,5 @@
 import { prisma } from "@/lib/prisma";
-import { requireCronAuth } from "@/lib/cron-auth";
+import { withCronMonitor } from "@/lib/observability/cron";
 import { notifyUser } from "@/lib/notifications/notify";
 import { runAutomationsForEvent } from "@/lib/automations/engine";
 import { ABANDONED_CHECKOUT_THRESHOLD_MINUTES } from "@/lib/constants/order";
@@ -27,9 +27,7 @@ import { formatNumber } from "@/lib/i18n/locale";
  * (lib/actions/abandoned-checkout.ts) so a merchant isn't auto-spamming
  * customers on channels they didn't choose.
  */
-export async function GET(req: Request) {
-  const denied = requireCronAuth(req);
-  if (denied) return denied;
+export const GET = withCronMonitor("abandoned-checkout-alerts", async () => {
 
   const start = Date.now();
   const cutoff = new Date(Date.now() - ABANDONED_CHECKOUT_THRESHOLD_MINUTES * 60_000);
@@ -86,4 +84,4 @@ export async function GET(req: Request) {
   );
 
   return NextResponse.json({ processed: newlyAbandoned.length, notified: groups.size, failures });
-}
+});

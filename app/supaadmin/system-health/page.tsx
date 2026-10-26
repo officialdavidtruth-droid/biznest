@@ -2,6 +2,7 @@ import { getSystemHealth, listRecentSystemEvents, getApiLatencyStats } from "@/l
 import type { HealthStatus } from "@/lib/actions/system-health";
 import type { SystemEvent } from "@prisma/client";
 import { formatDate } from "@/lib/i18n/locale";
+import { checkCronHealth } from "@/lib/observability/cron";
 
 export const dynamic = "force-dynamic"; // always live — never cache a health page
 
@@ -30,6 +31,7 @@ export default async function SystemHealthPage() {
     return <p className="text-sm text-muted-foreground">Not authorized.</p>;
   }
 
+  const crons = await checkCronHealth();
   const overallDown = health.some((h) => h.status === "down");
   const overallDegraded = health.some((h) => h.status === "degraded");
 
@@ -79,6 +81,30 @@ export default async function SystemHealthPage() {
             <p className="mt-1 text-[11px] text-muted-foreground">{timeAgo(h.lastEventAt)}</p>
           </div>
         ))}
+      </div>
+
+      <div className="mb-2 flex items-center justify-between">
+        <h2 className="text-sm font-semibold">Scheduled jobs</h2>
+        <p className="text-xs text-muted-foreground">Last successful run per cron</p>
+      </div>
+      <div className="mb-6 overflow-hidden rounded-lg border bg-background">
+        <div className="overflow-x-auto">
+          <table className="w-full min-w-[480px] text-sm">
+            <tbody>
+              {crons.map((c) => (
+                <tr key={c.name} className="border-b last:border-0">
+                  <td className="px-4 py-2.5 font-medium">
+                    {c.state === "ok" ? "🟢" : c.state === "never_run" ? "⚪" : "🔴"} {c.name}
+                  </td>
+                  <td className="px-4 py-2.5 text-muted-foreground">{c.detail}</td>
+                  <td className="whitespace-nowrap px-4 py-2.5 text-xs text-muted-foreground">
+                    {c.lastOkAt ? timeAgo(c.lastOkAt) : "—"}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       </div>
 
       <div className="mb-2 flex items-center justify-between">

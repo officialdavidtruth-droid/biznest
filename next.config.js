@@ -1,3 +1,5 @@
+const { withSentryConfig } = require("@sentry/nextjs/config");
+
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   images: {
@@ -70,7 +72,7 @@ const nextConfig = {
               // so this stays a real restriction, just not a fixed host list.
               "img-src 'self' data: https:",
               "font-src 'self' data: https://fonts.gstatic.com",
-              "connect-src 'self' https://api.cloudinary.com https://accounts.google.com https://*.paystack.co https://*.paystack.com https://*.flutterwave.com https://*.korapay.com https://korablobstorage.blob.core.windows.net",
+              "connect-src 'self' https://*.sentry.io https://api.cloudinary.com https://accounts.google.com https://*.paystack.co https://*.paystack.com https://*.flutterwave.com https://*.korapay.com https://korablobstorage.blob.core.windows.net",
               "frame-src 'self' https://checkout.paystack.com https://js.paystack.co https://*.paystack.com https://checkout.flutterwave.com https://*.flutterwave.com https://*.korapay.com",
               "frame-ancestors 'self'",
               "object-src 'none'",
@@ -85,4 +87,14 @@ const nextConfig = {
   },
 };
 
-module.exports = nextConfig;
+// Source-map upload + release tagging for readable Sentry stack traces.
+// Without SENTRY_AUTH_TOKEN the build still succeeds; traces are just minified.
+module.exports = withSentryConfig(nextConfig, {
+  org: process.env.SENTRY_ORG,
+  project: process.env.SENTRY_PROJECT,
+  authToken: process.env.SENTRY_AUTH_TOKEN,
+  silent: !process.env.CI,
+  telemetry: false,
+  widenClientFileUpload: true,
+  sourcemaps: { deleteSourcemapsAfterUpload: true },
+});

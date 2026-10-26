@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/prisma";
-import { requireCronAuth } from "@/lib/cron-auth";
+import { withCronMonitor } from "@/lib/observability/cron";
+import { sendAlert } from "@/lib/observability/alert";
 import { NextResponse } from "next/server";
 import { logError, logInfo, logWarn, errorMeta } from "@/lib/observability/log";
 import { verifyPaystackTransaction } from "@/lib/payments/paystack";
@@ -82,9 +83,7 @@ async function settle(provider: "PAYSTACK" | "FLUTTERWAVE" | "KORAPAY", referenc
   return settleOrderPayment({ orderId: reference, reference, provider, verifiedAmountNaira: amount, verifiedCurrency: g.currency, payload });
 }
 
-export async function GET(req: Request) {
-  const denied = requireCronAuth(req);
-  if (denied) return denied;
+export const GET = withCronMonitor("payment-reconciliation", async (_req, ctx) => {
 
   const started = Date.now();
   const now = Date.now();
@@ -136,6 +135,27 @@ export async function GET(req: Request) {
     }
   }
 
+  if (stats.checked >= 3 && stats.errors === stats.checked) {
+    ctx.fail(`Every one of ${stats.checked} checked payments errored — gateway keys or gateway outage?`);
+  }
+  // Money moved but our webhook/callback never recorded it: the primary payment path is leaking.
+  if (stats.settled > 0) {
+    await sendAlert({
+      key: "payments-missed-webhooks",
+      subject: "[BizNest] Paid payments were missed by webhooks",
+      body: `${stats.settled} paid payment(s) were only recovered by the reconciliation sweep. Check the Paystack/Flutterwave/Korapay webhook URLs and signatures.`,
+      throttleMinutes: 720,
+    });
+  }
+  if (stats.flagged > 0) {
+    await sendAlert({
+      key: "payments-flagged",
+      subject: "[BizNest] Payments flagged for manual review",
+      body: `${stats.flagged} payment(s) were paid at the gateway but could not be applied automatically. Review them in the admin panel.`,
+      throttleMinutes: 720,
+    });
+  }
+
   void logInfo("PAYMENTS", "Payment reconciliation sweep complete", { ...stats, candidates: stuck.length }, Date.now() - started);
   return NextResponse.json({ ok: true, candidates: stuck.length, ...stats });
-}
+});

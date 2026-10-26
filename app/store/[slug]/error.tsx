@@ -1,5 +1,6 @@
 "use client";
 
+import * as Sentry from "@sentry/nextjs";
 import { useEffect } from "react";
 
 export default function StoreError({
@@ -11,6 +12,7 @@ export default function StoreError({
 }) {
   useEffect(() => {
     console.error("Storefront error:", error);
+    Sentry.captureException(error);
   }, [error]);
 
   return (

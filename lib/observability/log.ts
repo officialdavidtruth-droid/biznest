@@ -1,4 +1,6 @@
+import * as Sentry from "@sentry/nextjs";
 import { prisma } from "@/lib/prisma";
+import { sendAlert } from "@/lib/observability/alert";
 import type { EventCategory, EventLevel, Prisma } from "@prisma/client";
 
 /**
@@ -38,6 +40,35 @@ export async function logEvent(
     // which is exactly when we'd most want a DATABASE event to exist),
     // there's nowhere left to put this but stderr.
     console.error("[observability] failed to persist SystemEvent:", err);
+  }
+
+  if (level === "ERROR") await escalate(category, message, metadata);
+}
+
+// Unexpected failures in these areas page the owner directly. JOBS is covered
+// per-cron by withCronMonitor (lib/observability/cron.ts), so it isn't here.
+const ALERT_CATEGORIES = new Set<EventCategory>(["PAYMENTS", "DATABASE"]);
+
+async function escalate(category: EventCategory, message: string, metadata?: Record<string, unknown>) {
+  try {
+    Sentry.withScope((scope) => {
+      scope.setTag("category", category);
+      scope.setFingerprint([category, message]);
+      if (metadata) scope.setExtras(metadata);
+      Sentry.captureMessage(`[${category}] ${message}`, "error");
+    });
+  } catch {
+    /* Sentry must never break the caller */
+  }
+
+  if (ALERT_CATEGORIES.has(category) && !metadata?.skipAlert) {
+    const detail = metadata ? JSON.stringify(metadata).slice(0, 700) : "";
+    await sendAlert({
+      key: `event:${category}`,
+      subject: `[BizNest] ${category} error`,
+      body: `${message}\n\n${detail}\n\nDetails: ${process.env.NEXT_PUBLIC_APP_URL ?? "https://www.biznest.space"}/supaadmin/system-health`,
+      throttleMinutes: 30,
+    });
   }
 }
 

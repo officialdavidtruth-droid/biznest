@@ -1,0 +1,123 @@
+name: Backup restore test
+
+# A backup you've never restored is a hope, not a backup. Every Sunday this
+# downloads the newest nightly backup, decrypts it, restores it into a throwaway
+# Postgres, and checks the data is really there. Run it by hand after changing
+# anything in the backup workflow (Actions -> Backup restore test -> Run workflow).
+#
+# Uses the same secrets as db-backup.yml (BACKUP_PASSPHRASE, optional
+# HEALTHCHECK_RESTORE_URL, TELEGRAM_*). The restore target is a disposable
+# container: it never touches your real database.
+
+on:
+  schedule:
+    - cron: "43 4 * * 0" # Sundays 04:43 UTC
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  restore-test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    services:
+      postgres:
+        image: postgres:17 # keep the major in step with db-backup.yml
+        env:
+          POSTGRES_PASSWORD: restore
+          POSTGRES_DB: restore_test
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s --health-timeout 5s --health-retries 12
+    env:
+      GH_TOKEN: ${{ github.token }}
+      BACKUP_PASSPHRASE: ${{ secrets.BACKUP_PASSPHRASE }}
+      HC_URL: ${{ secrets.HEALTHCHECK_RESTORE_URL }}
+      TG_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+      TG_CHAT: ${{ secrets.TELEGRAM_CHAT_ID }}
+      RESTORE_URL: postgresql://postgres:restore@localhost:5432/restore_test
+    steps:
+      - name: Install PostgreSQL 17 client
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq postgresql-common
+          sudo /usr/share/postgresql-common/pgdg/apt.postgresql.org.sh -y
+          sudo apt-get install -y -qq postgresql-client-17
+
+      - name: Download the newest successful backup
+        run: |
+          [ -n "$BACKUP_PASSPHRASE" ] || { echo "::error::Secret BACKUP_PASSPHRASE is not set"; exit 1; }
+          read -r run_id created <<<"$(gh run list --repo "$GITHUB_REPOSITORY" --workflow db-backup.yml \
+            --status success --limit 1 --json databaseId,createdAt --jq '.[0] | "\(.databaseId) \(.createdAt)"')"
+          [ -n "$run_id" ] && [ "$run_id" != "null" ] || { echo "::error::No successful backup run found"; exit 1; }
+          age_h=$(( ( $(date -u +%s) - $(date -u -d "$created" +%s) ) / 3600 ))
+          echo "Newest backup: run $run_id, ${age_h}h old"
+          [ "$age_h" -le 48 ] || { echo "::error::Newest backup is ${age_h}h old: nightly backups have stopped"; exit 1; }
+          gh run download "$run_id" --repo "$GITHUB_REPOSITORY" -n db-backup -D dl
+          ls -l dl
+
+      - name: Decrypt
+        run: |
+          f=$(ls dl/*.dump.gpg | head -1)
+          gpg --batch --yes --pinentry-mode loopback --passphrase "$BACKUP_PASSPHRASE" \
+            --decrypt -o biznest.dump "$f"
+          ls -l biznest.dump
+
+      - name: Restore into a throwaway database
+        run: |
+          set +e
+          pg_restore --no-owner --no-privileges --dbname "$RESTORE_URL" biznest.dump 2> restore.err
+          set -e
+          # Ignore only "already exists" noise (e.g. the public schema itself); anything else fails the test.
+          bad=$(grep -E "^pg_restore: error:" restore.err | grep -v "already exists" || true)
+          if [ -n "$bad" ]; then
+            echo "::error::pg_restore reported errors:"; echo "$bad" | head -20; exit 1
+          fi
+          echo "pg_restore finished cleanly"
+
+      - name: Verify the restored data
+        run: |
+          q() { psql "$RESTORE_URL" -Atc "$1"; }
+          tables=$(q "SELECT count(*) FROM information_schema.tables WHERE table_schema='public'")
+          echo "public tables: $tables"
+          [ "$tables" -ge 50 ] || { echo "::error::Only $tables tables restored"; exit 1; }
+
+          pending=$(q "SELECT count(*) FROM public._prisma_migrations WHERE finished_at IS NULL AND rolled_back_at IS NULL")
+          applied=$(q "SELECT count(*) FROM public._prisma_migrations WHERE finished_at IS NOT NULL")
+          echo "migrations applied=$applied unfinished=$pending"
+          [ "$applied" -gt 0 ] && [ "$pending" -eq 0 ] || { echo "::error::Migration history looks wrong"; exit 1; }
+
+          fail=0
+          {
+            echo "### Restore test"
+            echo "| Table | In backup manifest | Restored |"
+            echo "|---|---|---|"
+          } >> "$GITHUB_STEP_SUMMARY"
+          while IFS='=' read -r t expected; do
+            [ "$t" = "created_at" ] && { echo "Backup taken: $expected"; continue; }
+            got=$(q "SELECT count(*) FROM public.\"$t\"")
+            echo "$t: manifest=$expected restored=$got"
+            echo "| $t | $expected | $got |" >> "$GITHUB_STEP_SUMMARY"
+            # Tolerate small drift (writes happen between the count and the dump snapshot).
+            if [ "$expected" -gt 0 ] && { [ "$got" -eq 0 ] || [ $((got * 100)) -lt $((expected * 95)) ]; }; then
+              echo "::error::$t restored $got rows, expected about $expected"; fail=1
+            fi
+          done < dl/manifest.txt
+          [ "$fail" -eq 0 ]
+
+      - name: Ping healthchecks (success)
+        if: env.HC_URL != ''
+        run: curl -fsS -m 10 --retry 3 "$HC_URL"
+
+      - name: Alert on failure
+        if: failure()
+        run: |
+          [ -n "$HC_URL" ] && curl -fsS -m 10 --retry 3 "$HC_URL/fail" || true
+          if [ -n "$TG_TOKEN" ] && [ -n "$TG_CHAT" ]; then
+            curl -s "https://api.telegram.org/bot$TG_TOKEN/sendMessage" \
+              --data-urlencode "chat_id=$TG_CHAT" \
+              --data-urlencode "text=[BizNest] BACKUP RESTORE TEST FAILED. ${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}" >/dev/null
+          fi

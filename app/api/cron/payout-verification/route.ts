@@ -1,5 +1,5 @@
 import { prisma } from "@/lib/prisma";
-import { requireCronAuth } from "@/lib/cron-auth";
+import { withCronMonitor } from "@/lib/observability/cron";
 import { syncPaystackPayoutVerification } from "@/lib/actions/store";
 import { notifyUser } from "@/lib/notifications/notify";
 import { NextResponse } from "next/server";
@@ -20,9 +20,7 @@ import { logInfo, logError, errorMeta } from "@/lib/observability/log";
  * store drops out of this query for good (see syncPaystackPayoutVerification,
  * which stamps payoutVerifiedAt and is shared with the on-demand button).
  */
-export async function GET(req: Request) {
-  const denied = requireCronAuth(req);
-  if (denied) return denied;
+export const GET = withCronMonitor("payout-verification", async (_req, ctx) => {
 
   const pending = await prisma.store.findMany({
     where: { paystackSubaccountCode: { not: null }, payoutVerifiedAt: null },
@@ -60,6 +58,10 @@ export async function GET(req: Request) {
     }
   }
 
+  if (pending.length >= 3 && errored === pending.length) {
+    ctx.fail(`All ${pending.length} payout-verification checks errored — Paystack outage or key problem?`);
+  }
+
   void logInfo("JOBS", "Payout verification sweep complete", { checked: pending.length, verified, stillPending, errored });
   return NextResponse.json({ checked: pending.length, verified, stillPending, errored });
-}
+});

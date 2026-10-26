@@ -1,0 +1,134 @@
+name: Database backup
+
+# Nightly encrypted logical backup of the Supabase Postgres database, stored
+# OUTSIDE Supabase (GitHub artifact, and optionally S3-compatible storage such
+# as Cloudflare R2 / Backblaze B2). The weekly "Backup restore test" workflow
+# proves these files can actually be restored.
+#
+# Required repo secrets (Settings -> Secrets and variables -> Actions):
+#   BACKUP_DATABASE_URL  Supabase *session pooler* connection string (port 5432),
+#                        i.e. the same kind of value as DIRECT_URL. Do NOT use the
+#                        transaction pooler (6543); the db.<ref>.supabase.co direct
+#                        host is IPv6-only and GitHub runners can't reach it.
+#   BACKUP_PASSPHRASE    long random string used to encrypt the dump. STORE IT IN
+#                        YOUR PASSWORD MANAGER TOO: without it the backups are useless.
+# Optional:
+#   BACKUP_S3_BUCKET, BACKUP_S3_ENDPOINT, AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY
+#                        off-site copy (endpoint e.g. https://<acct>.r2.cloudflarestorage.com)
+#   HEALTHCHECK_BACKUP_URL  healthchecks.io ping URL: alerts you if backups STOP running
+#                        (e.g. GitHub disabling the schedule), which a failed run can't tell you.
+#   TELEGRAM_BOT_TOKEN, TELEGRAM_CHAT_ID   instant phone alert on failure
+
+on:
+  schedule:
+    - cron: "17 2 * * *" # 02:17 UTC = 03:17 Lagos, a quiet hour
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: db-backup
+  cancel-in-progress: false
+
+jobs:
+  backup:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      BACKUP_DATABASE_URL: ${{ secrets.BACKUP_DATABASE_URL }}
+      BACKUP_PASSPHRASE: ${{ secrets.BACKUP_PASSPHRASE }}
+      S3_BUCKET: ${{ secrets.BACKUP_S3_BUCKET }}
+      S3_ENDPOINT: ${{ secrets.BACKUP_S3_ENDPOINT }}
+      AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+      AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+      AWS_DEFAULT_REGION: auto
+      HC_URL: ${{ secrets.HEALTHCHECK_BACKUP_URL }}
+      TG_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+      TG_CHAT: ${{ secrets.TELEGRAM_CHAT_ID }}
+      PGCONNECT_TIMEOUT: "30"
+    steps:
+      - name: Check secrets are set
+        run: |
+          [ -n "$BACKUP_DATABASE_URL" ] || { echo "::error::Secret BACKUP_DATABASE_URL is not set"; exit 1; }
+          [ -n "$BACKUP_PASSPHRASE" ]   || { echo "::error::Secret BACKUP_PASSPHRASE is not set"; exit 1; }
+
+      - name: Tell healthchecks a run started
+        if: env.HC_URL != ''
+        run: curl -fsS -m 10 --retry 3 "$HC_URL/start" || true
+
+      # Keep this major >= your Supabase Postgres major (pg_dump refuses to dump a
+      # NEWER server). The restore-test workflow's postgres image must match.
+      - name: Install PostgreSQL 17 client
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq postgresql-common
+          sudo /usr/share/postgresql-common/pgdg/apt.postgresql.org.sh -y
+          sudo apt-get install -y -qq postgresql-client-17
+          pg_dump --version
+
+      - name: Dump (public schema, custom format)
+        run: |
+          # Prisma owns only the public schema. Supabase's internal schemas
+          # (auth, storage, realtime...) are managed by Supabase and not used by BizNest.
+          pg_dump "$BACKUP_DATABASE_URL" \
+            --format=custom --compress=9 --schema=public \
+            --no-owner --no-privileges \
+            --file=biznest.dump
+          ls -l biznest.dump
+
+      - name: Sanity-check the dump
+        run: |
+          size=$(stat -c%s biznest.dump)
+          entries=$(pg_restore --list biznest.dump | wc -l)
+          echo "size=$size bytes, catalog entries=$entries"
+          [ "$size" -gt 20000 ]   || { echo "::error::Dump suspiciously small ($size bytes)"; exit 1; }
+          [ "$entries" -gt 50 ]   || { echo "::error::Dump catalog suspiciously small ($entries entries)"; exit 1; }
+
+      - name: Record row counts (used by the restore test)
+        run: |
+          : > manifest.txt
+          for t in User Store Payment Order Booking Product; do
+            n=$(psql "$BACKUP_DATABASE_URL" -Atc "SELECT count(*) FROM public.\"$t\"")
+            echo "$t=$n" >> manifest.txt
+          done
+          date -u +"created_at=%Y-%m-%dT%H:%M:%SZ" >> manifest.txt
+          cat manifest.txt
+
+      - name: Encrypt
+        run: |
+          stamp=$(date -u +%Y%m%dT%H%M%SZ)
+          gpg --batch --yes --pinentry-mode loopback --passphrase "$BACKUP_PASSPHRASE" \
+            --symmetric --cipher-algo AES256 -o "biznest-$stamp.dump.gpg" biznest.dump
+          rm -f biznest.dump
+          mkdir -p out && mv "biznest-$stamp.dump.gpg" manifest.txt out/
+          ls -l out
+
+      - name: Upload artifact (30 days)
+        uses: actions/upload-artifact@v4
+        with:
+          name: db-backup
+          path: out/
+          retention-days: 30
+          if-no-files-found: error
+
+      - name: Off-site copy (S3-compatible)
+        if: env.S3_BUCKET != ''
+        run: |
+          args=()
+          [ -n "$S3_ENDPOINT" ] && args+=(--endpoint-url "$S3_ENDPOINT")
+          aws s3 cp out/ "s3://$S3_BUCKET/biznest-backups/" --recursive "${args[@]}"
+
+      - name: Ping healthchecks (success)
+        if: env.HC_URL != ''
+        run: curl -fsS -m 10 --retry 3 "$HC_URL"
+
+      - name: Alert on failure
+        if: failure()
+        run: |
+          [ -n "$HC_URL" ] && curl -fsS -m 10 --retry 3 "$HC_URL/fail" || true
+          if [ -n "$TG_TOKEN" ] && [ -n "$TG_CHAT" ]; then
+            curl -s "https://api.telegram.org/bot$TG_TOKEN/sendMessage" \
+              --data-urlencode "chat_id=$TG_CHAT" \
+              --data-urlencode "text=[BizNest] DATABASE BACKUP FAILED. ${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}" >/dev/null
+          fi

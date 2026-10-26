@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { requireCronAuth } from "@/lib/cron-auth";
+import { withCronMonitor } from "@/lib/observability/cron";
 import { syncConnection } from "@/lib/channels/sync";
 import { logError, errorMeta } from "@/lib/observability/log";
 
@@ -13,9 +13,7 @@ export const maxDuration = 60;
  * every 15 minutes) at this URL with `Authorization: Bearer $CRON_SECRET`.
  * Least-recently-synced connections go first so a slow channel can't starve the rest.
  */
-export async function GET(req: Request) {
-  const denied = requireCronAuth(req);
-  if (denied) return denied;
+export const GET = withCronMonitor("channel-sync", async () => {
 
   const due = await prisma.channelConnection.findMany({
     where: { isActive: true, importUrl: { not: null } },
@@ -38,4 +36,4 @@ export async function GET(req: Request) {
     }
   }
   return NextResponse.json({ synced: ok, failed, remaining: Math.max(0, due.length - ok - failed) });
-}
+});
