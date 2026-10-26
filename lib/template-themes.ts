@@ -856,7 +856,7 @@ export const NAMED_TEMPLATE_IDENTITY: Record<string, { chrome: TemplateChrome; h
 
 /** Assembles a reference template's theme from its plain data + the shared base theme it builds on. */
 export function buildReferenceTheme(d: ReferenceThemeData): GeneratedTemplate {
-  const bases: Record<ReferenceBase, GeneratedTemplate> = {
+  const bases: Record<ReferenceBase, TemplateTheme> = {
     HOTEL: HOTEL_THEME, MARKETPLACE: MARKETPLACE_THEME, EXAMPLE: EXAMPLE_THEME, PREMIUM: PREMIUM_THEME,
     VIOLET: VIOLET_THEME, NOVA: NOVA_THEME, HOMEVISTA: HOMEVISTA_THEME,
   };
