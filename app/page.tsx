@@ -244,7 +244,7 @@ export default async function HomePage() {
               <Link
                 href="/register"
                 className="rounded-full px-4 py-2 text-sm font-medium shadow-[0_4px_20px_-6px_rgba(52,211,153,0.6)] transition hover:brightness-110"
-                style={{ background: "var(--bn-accent-gradient)", color: "var(--bn-ink)" }}
+                style={{ background: "var(--bn-accent-gradient)", color: "var(--bn-ivory)" }}
               >
                 Open your store
               </Link>
@@ -290,7 +290,7 @@ export default async function HomePage() {
               <Link
                 href={dashboardHref}
                 className="rounded-full px-6 py-3 text-sm font-medium transition hover:brightness-110"
-                style={{ background: "var(--bn-accent-gradient)", color: "var(--bn-ink)" }}
+                style={{ background: "var(--bn-accent-gradient)", color: "var(--bn-ivory)" }}
               >
                 Go to your dashboard
               </Link>
@@ -299,7 +299,7 @@ export default async function HomePage() {
                 <Link
                   href="/register"
                   className="rounded-full px-6 py-3 text-sm font-medium transition hover:brightness-110"
-                  style={{ background: "var(--bn-accent-gradient)", color: "var(--bn-ink)" }}
+                  style={{ background: "var(--bn-accent-gradient)", color: "var(--bn-ivory)" }}
                 >
                   Start selling — it's free
                 </Link>
@@ -536,7 +536,7 @@ export default async function HomePage() {
             <Link
               href="/register"
               className="inline-block rounded-full px-8 py-3.5 text-sm font-medium transition hover:brightness-110"
-              style={{ background: "var(--bn-accent-gradient)", color: "var(--bn-ink)" }}
+              style={{ background: "var(--bn-accent-gradient)", color: "var(--bn-ivory)" }}
             >
               Open your store
             </Link>

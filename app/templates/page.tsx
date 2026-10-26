@@ -35,7 +35,7 @@ export default async function TemplatesPage() {
           <Link
             href="/register"
             className="rounded-full px-4 py-2 text-sm font-medium transition hover:brightness-110"
-            style={{ background: "var(--bn-accent-gradient)", color: "var(--bn-ink)" }}
+            style={{ background: "var(--bn-accent-gradient)", color: "var(--bn-ivory)" }}
           >
             Open your store
           </Link>
@@ -76,7 +76,7 @@ export default async function TemplatesPage() {
                   <h2 style={{ fontFamily: "var(--font-display)", fontWeight: 700 }} className="text-lg">
                     {t.name}
                   </h2>
-                  <span className="rounded-full px-2.5 py-1 text-[11px] font-semibold" style={{ background: "var(--bn-accent-gradient)", color: "var(--bn-ink)" }}>
+                  <span className="rounded-full px-2.5 py-1 text-[11px] font-semibold" style={{ background: "var(--bn-accent-gradient)", color: "var(--bn-ivory)" }}>
                     {TIER_LABEL[t.tierRank] ?? "Free"}
                   </span>
                 </div>
@@ -88,7 +88,7 @@ export default async function TemplatesPage() {
                     href={`/template-preview/${encodeURIComponent(t.name)}`}
                     target="_blank"
                     className="flex-1 rounded-full px-4 py-2.5 text-center text-sm font-semibold transition hover:brightness-110"
-                    style={{ background: "var(--bn-accent-gradient)", color: "var(--bn-ink)" }}
+                    style={{ background: "var(--bn-accent-gradient)", color: "var(--bn-ivory)" }}
                   >
                     View live demo →
                   </Link>

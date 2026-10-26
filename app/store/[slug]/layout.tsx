@@ -50,6 +50,7 @@ export async function generateMetadata({
   const isAdminPath = (hdrs.get("x-bn-store-subpath") ?? "/").startsWith("/admin");
   const base = storeBasePath(hdrs.get("host"), slug);
   const pwaIcon = `${base}/pwa-icon/180?v=${logoVersion(store.logoUrl)}`;
+  const tabIcon = `${base}/pwa-icon/192?v=${logoVersion(store.logoUrl)}`;
   // A suspended/paused store, a marketing-only account (no storefront), or a
   // store that opted out must never be indexed, whatever page is loaded.
   const hidden = !seo || seo.status !== "ACTIVE" || seo.marketingOnly || seo.seoNoIndex;
@@ -66,13 +67,20 @@ export async function generateMetadata({
           manifest: `${base}/manifest.webmanifest`,
           appleWebApp: { capable: true, title: store.name, statusBarStyle: "default" as const },
         }),
+    // Never fall back to the BizNest favicon on a storefront: with a logo the
+    // tab shows it directly; without one it shows the generated PNG tile
+    // (store colour + first letter) from the pwa-icon route.
     icons: store.logoUrl
       ? {
           icon: [{ url: store.logoUrl, sizes: "any" }],
           apple: [{ url: pwaIcon, sizes: "180x180", type: "image/png" }],
           shortcut: [{ url: store.logoUrl }],
         }
-      : { apple: [{ url: pwaIcon, sizes: "180x180", type: "image/png" }] },
+      : {
+          icon: [{ url: tabIcon, sizes: "192x192", type: "image/png" }],
+          apple: [{ url: pwaIcon, sizes: "180x180", type: "image/png" }],
+          shortcut: [{ url: tabIcon }],
+        },
   };
 }
 

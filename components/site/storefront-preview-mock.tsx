@@ -45,7 +45,7 @@ export function StorefrontPreviewMock() {
             ))}
             <span
               className="rounded-full px-2.5 py-1 text-[10px] font-medium"
-              style={{ background: "var(--bn-accent-gradient)", color: "var(--bn-ink)" }}
+              style={{ background: "var(--bn-accent-gradient)", color: "var(--bn-ivory)" }}
             >
               Cart · 2
             </span>

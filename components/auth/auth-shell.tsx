@@ -184,7 +184,7 @@ export function AuthShell({
             ) : (
               <span
                 className="flex h-8 w-8 items-center justify-center rounded-lg text-xs font-bold"
-                style={{ background: "var(--bn-accent-gradient)", color: "#05100a" }}
+                style={{ background: "var(--bn-accent-gradient)", color: "var(--bn-ivory)" }}
               >
                 BN
               </span>
