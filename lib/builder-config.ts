@@ -118,7 +118,6 @@ export const builderConfigSchema = z.object({
 export function defaultBuilderConfig(storeName: string, description?: string | null, heroImage?: string | null, businessCategory?: string | null, businessModel?: { sellsProducts?: boolean | null; offersServices?: boolean | null }): BuilderConfig {
   // Industry-aware presets are loaded lazily here to avoid a circular dependency.
   if (businessCategory) {
-    // eslint-disable-next-line @typescript-eslint/no-var-requires
     const { buildIndustryHomepage } = require("@/lib/business-experience") as typeof import("@/lib/business-experience");
     return buildIndustryHomepage(businessCategory, storeName, description, heroImage, businessModel);
   }

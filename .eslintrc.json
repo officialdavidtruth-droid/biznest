@@ -1,0 +1,17 @@
+{
+  "extends": ["next/core-web-vitals"],
+  "ignorePatterns": ["node_modules/", ".next/", "mobile/", "public/", "scripts/", "prisma/migrations/"],
+  "rules": {
+    "jsx-a11y/alt-text": "error",
+    "react/no-unescaped-entities": "warn",
+    "react/jsx-no-comment-textnodes": "warn",
+    "react-hooks/exhaustive-deps": "warn",
+    "@next/next/no-img-element": "off"
+  },
+  "overrides": [
+    {
+      "files": ["app/error.tsx", "app/global-error.tsx", "app/not-found.tsx", "app/store/**/not-found.tsx"],
+      "rules": { "@next/next/no-html-link-for-pages": "off" }
+    }
+  ]
+}

@@ -142,7 +142,7 @@ export function HeenzyStorefront({
                 <span className="hz-quote-mark">&ldquo;</span>
                 <p>{goodReviews[0].comment}</p>
                 <div className="hz-testimonial-author">
-                  <div className="hz-name">{goodReviews[0].author.name ?? "Verified buyer"}</div>
+                  <div className="hz-name">{goodReviews[0].author.name ?? "Customer"}</div>
                 </div>
               </div>
             </div>
