@@ -185,7 +185,7 @@ export async function saveFnbRecipe(slug: string, productId: string, recipe: { y
   if (!Number.isFinite(recipe.yieldQty) || recipe.yieldQty <= 0) return { success: false, error: "Recipe yield must be greater than zero." };
   const product = await prisma.product.findFirst({ where: { id: productId, storeId: a.store.id }, select: { id: true, attributes: true } });
   if (!product) return { success: false, error: "Menu item not found." };
-  const ids = recipe.ingredients.map((i) => i.inventoryItemId).filter(Boolean);
+  const ids = Array.from(new Set(recipe.ingredients.map((i) => i.inventoryItemId).filter(Boolean)));
   const inventory = await prisma.inventoryItem.findMany({ where: { id: { in: ids }, storeId: a.store.id }, include: { product: { select: { name: true } } } });
   if (inventory.length !== ids.length) return { success: false, error: "One or more ingredients do not belong to this store." };
   const names = new Map(inventory.map((i) => [i.id, i.product.name]));

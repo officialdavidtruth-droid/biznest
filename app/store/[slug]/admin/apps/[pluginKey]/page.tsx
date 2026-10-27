@@ -9,6 +9,15 @@ import RequisitionPage from "../requisition/page";
 import HrPayrollPage from "../hr-payroll/page";
 import QrCodesPage from "../qr-codes/page";
 import CouponsGiftCardsPage from "../coupons-gift-cards/page";
+import { AdvancedAnalyticsWorkspace } from "@/components/dashboard/advanced-analytics-workspace";
+import { getAdvancedAnalytics } from "@/lib/actions/analytics-report";
+import { moneyFormatter } from "@/lib/utils/format-money";
+import { LegalComplianceWorkspace } from "@/components/dashboard/legal-compliance-workspace";
+import { getLegalWorkspace } from "@/lib/actions/legal-compliance";
+import { HelpdeskWorkspace } from "@/components/dashboard/helpdesk-workspace";
+import { getHelpdeskWorkspace } from "@/lib/actions/helpdesk";
+import { AssetManagementWorkspace } from "@/components/dashboard/asset-management-workspace";
+import { getAssetWorkspace } from "@/lib/actions/asset-management";
 import { ProcurementWorkspace, type ProcurementData } from "@/components/dashboard/procurement-workspace";
 
 // PMS and FNB are full dedicated workspaces (/admin/pms, /admin/fnb), not the generic
@@ -17,8 +26,9 @@ import { ProcurementWorkspace, type ProcurementData } from "@/components/dashboa
 // app" message when it isn't installed yet, rather than bouncing the visitor away.
 const DEDICATED_ROUTE: Record<string, string> = { pms: "/pms", "fnb-operations": "/fnb" };
 
-export default async function PluginPage({ params }: { params: Promise<{ slug: string; pluginKey: string }> }) {
+export default async function PluginPage({ params, searchParams }: { params: Promise<{ slug: string; pluginKey: string }>; searchParams: Promise<{ range?: string }> }) {
   const { slug, pluginKey } = await params;
+  const { range } = await searchParams;
   const store = await prisma.store.findUnique({ where: { slug }, select: { id: true } });
   if (!store) notFound();
   const entitlement = await getPluginEntitlement(store.id, pluginKey);
@@ -34,6 +44,32 @@ export default async function PluginPage({ params }: { params: Promise<{ slug: s
   if (pluginKey === "coupons-gift-cards") return <CouponsGiftCardsPage params={Promise.resolve({ slug })} />;
   if (pluginKey === "qr-codes") return <QrCodesPage params={Promise.resolve({ slug })} />;
   if (pluginKey === "hr-payroll") return <HrPayrollPage params={Promise.resolve({ slug })} />;
+  if (pluginKey === "advanced-analytics") {
+    const rangeDays = ["7", "30", "90"].includes(range ?? "") ? Number(range) : 30;
+    const fullStore = await prisma.store.findUnique({ where: { id: store.id } });
+    if (!fullStore) notFound();
+    try {
+      const data = await getAdvancedAnalytics(store.id, rangeDays);
+      return <AdvancedAnalyticsWorkspace slug={slug} rangeDays={rangeDays} data={data} money={moneyFormatter(fullStore)} />;
+    } catch (e) {
+      return <PluginInstallGate slug={slug} title="Advanced Analytics" message={e instanceof Error ? e.message : "Analytics could not be loaded."} />;
+    }
+  }
+  if (pluginKey === "legal-compliance") {
+    const data = await getLegalWorkspace(slug);
+    if ("error" in data) return <PluginInstallGate slug={slug} title="Legal & Compliance" message={data.error} />;
+    return <LegalComplianceWorkspace slug={slug} data={data} />;
+  }
+  if (pluginKey === "helpdesk") {
+    const data = await getHelpdeskWorkspace(slug);
+    if ("error" in data) return <PluginInstallGate slug={slug} title="Customer Support" message={data.error} />;
+    return <HelpdeskWorkspace slug={slug} data={data} />;
+  }
+  if (pluginKey === "asset-management") {
+    const data = await getAssetWorkspace(slug);
+    if ("error" in data) return <PluginInstallGate slug={slug} title="Asset Management" message={data.error} />;
+    return <AssetManagementWorkspace slug={slug} data={data} />;
+  }
   if (pluginKey === "procurement") {
     const data = await getPluginWorkspace(slug, pluginKey);
     if ("error" in data) return <PluginInstallGate slug={slug} title="Procurement" message={data.error} />;

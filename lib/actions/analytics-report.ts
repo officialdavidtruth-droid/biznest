@@ -248,3 +248,66 @@ export async function getStoreAnalytics(storeId: string, rangeDays = 30): Promis
       : null,
   };
 }
+
+
+// --- Advanced Analytics (plugin) -----------------------------------------------
+// Everything in getStoreAnalytics for the chosen range, plus the same metrics
+// for the immediately preceding period of equal length (so every KPI can show
+// "vs previous period"), and a low-stock list that respects each item's own
+// reorder threshold instead of a hardcoded "5 or fewer".
+export type PeriodTotals = {
+  revenue: number;
+  orders: number;
+  visitors: number;
+  averageOrderValue: number | null;
+  conversionRate: number | null;
+};
+
+export type LowStockRow = { id: string; name: string; quantity: number; threshold: number };
+
+export type AdvancedAnalytics = {
+  current: StoreAnalytics;
+  currentTotals: PeriodTotals;
+  previousTotals: PeriodTotals;
+  lowStock: LowStockRow[];
+};
+
+function totalsFromSeries(series: DailyPoint[]): PeriodTotals {
+  const revenue = series.reduce((s, d) => s + d.revenue, 0);
+  const orders = series.reduce((s, d) => s + d.orders, 0);
+  const visitors = series.reduce((s, d) => s + d.visitors, 0);
+  return {
+    revenue,
+    orders,
+    visitors,
+    averageOrderValue: orders > 0 ? Math.round((revenue / orders) * 100) / 100 : null,
+    conversionRate: visitors >= 20 ? Math.round((orders / visitors) * 1000) / 10 : null,
+  };
+}
+
+export async function getAdvancedAnalytics(storeId: string, rangeDays = 30): Promise<AdvancedAnalytics> {
+  // getStoreAnalytics enforces store access + the analytics permission.
+  const [current, doubled] = await Promise.all([
+    getStoreAnalytics(storeId, rangeDays),
+    getStoreAnalytics(storeId, rangeDays * 2),
+  ]);
+  const previousSeries = doubled.series.slice(0, rangeDays);
+
+  const inventory = await prisma.inventoryItem.findMany({
+    where: { storeId },
+    select: { id: true, quantity: true, lowStockThreshold: true, product: { select: { name: true } } },
+    orderBy: { quantity: "asc" },
+    take: 300,
+  });
+  const lowStock = inventory
+    .filter((i) => i.quantity <= i.lowStockThreshold)
+    .slice(0, 8)
+    .map((i) => ({ id: i.id, name: i.product.name, quantity: i.quantity, threshold: i.lowStockThreshold }));
+
+  return {
+    current,
+    currentTotals: totalsFromSeries(current.series),
+    previousTotals: totalsFromSeries(previousSeries),
+    lowStock,
+  };
+}

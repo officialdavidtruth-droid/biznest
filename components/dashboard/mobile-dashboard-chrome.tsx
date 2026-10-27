@@ -3,10 +3,10 @@
 import { useState, type CSSProperties } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Menu, X, ExternalLink, LayoutGrid } from "lucide-react";
+import { Menu, X, ExternalLink, LayoutGrid, ChevronDown } from "lucide-react";
 import { FloatingTabBar } from "@/components/app/floating-tab-bar";
 import { TourLauncherButton } from "@/components/dashboard/onboarding-tour";
-import { buildNavGroups, buildBottomTabItems, filterNavGroupsForRole, type InstalledAppNav } from "@/lib/constants/dashboard-nav";
+import { buildNavGroups, buildBottomTabItems, filterNavGroupsForRole, type InstalledAppNav, type NavItem } from "@/lib/constants/dashboard-nav";
 import type { StoreAccessRole } from "@/lib/access/store-access";
 import { NotificationBell } from "@/components/dashboard/notification-bell";
 import { PushSubscribePrompt } from "@/components/dashboard/push-subscribe-prompt";
@@ -162,6 +162,9 @@ export function MobileDashboardChrome({
                       const href = `${base}${item.href}`;
                       const isActive = pathname === href;
                       const Icon = item.icon;
+                      if (item.children && item.children.length > 0) {
+                        return [<MobileNavGroup key={item.label} item={item} base={base} pathname={pathname} onNavigate={() => setDrawerOpen(false)} />];
+                      }
                       // PMS uses a different persistent shell entirely (see
                       // sidebar.tsx's NavLink for the full explanation) — a
                       // plain <a> forces a full reload so the layout branch
@@ -224,6 +227,49 @@ export function MobileDashboardChrome({
               <SignOutButton className="text-xs font-medium text-[var(--bn-admin-muted)]" />
             </div>
           </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function MobileNavGroup({ item, base, pathname, onNavigate }: { item: NavItem; base: string; pathname: string | null; onNavigate: () => void }) {
+  const children = item.children ?? [];
+  const childActive = children.some((c) => pathname === `${base}${c.href}`);
+  const [open, setOpen] = useState(childActive);
+  const Icon = item.icon;
+  return (
+    <div>
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        aria-expanded={open}
+        className={`bn-admin-mobile-link flex w-full items-center gap-2.5 rounded-lg border border-white/15 px-2.5 py-2.5 text-left text-sm ${open ? "bg-white/10" : ""} ${childActive ? "active font-medium" : ""}`}
+      >
+        <Icon className="h-4 w-4 shrink-0" />
+        <span className="flex-1 truncate">{item.label}</span>
+        <span className="rounded-full bg-white/15 px-1.5 text-[10px] font-semibold">{children.length}</span>
+        <ChevronDown className={`h-5 w-5 shrink-0 transition-transform duration-200 ${open ? "rotate-180" : ""}`} />
+      </button>
+      {open && (
+        <div className="ml-4 mt-0.5 space-y-0.5 border-l border-white/15 pl-2">
+          {children.map((child) => {
+            const childHref = `${base}${child.href}`;
+            const childIsActive = pathname === childHref;
+            const ChildIcon = child.icon;
+            const ChildLink = child.href === "/pms" || child.href === "/fnb" ? "a" : Link;
+            return (
+              <ChildLink
+                key={child.label}
+                href={childHref}
+                onClick={onNavigate}
+                className={`bn-admin-mobile-link flex items-center gap-2 rounded-lg px-2.5 py-2 text-xs ${childIsActive ? "active font-medium" : ""}`}
+              >
+                <ChildIcon className="h-3.5 w-3.5 shrink-0" />
+                <span className="truncate">{child.label}</span>
+              </ChildLink>
+            );
+          })}
         </div>
       )}
     </div>
