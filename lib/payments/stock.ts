@@ -1,5 +1,6 @@
 import "server-only";
 
+import { getCanonicalBusinessType } from "@/lib/business-identity";
 import { logError } from "@/lib/observability/log";
 import { consumeFifoStockTx, consumeFefoStockTx } from "@/lib/inventory-fifo";
 import { getFnbRotationMode } from "@/lib/fnb-settings";
@@ -29,12 +30,12 @@ export async function decrementStockForOrder(
     },
     include: {
       items: true,
-      store: { select: { businessType: true, enabledModules: true } },
+      store: { select: { businessType: true, enabledModules: true, business: { select: { category: true } } } },
     },
   });
 
   if (!order) return;
-  const consumeStock = ["Restaurant", "Food & Groceries"].includes(order.store.businessType) && getFnbRotationMode(order.store.enabledModules) === "FEFO" ? consumeFefoStockTx : consumeFifoStockTx;
+  const consumeStock = ["Restaurant", "Food & Groceries"].includes(getCanonicalBusinessType({ businessCategory: order.store.business?.category, storeBusinessType: order.store.businessType })) && getFnbRotationMode(order.store.enabledModules) === "FEFO" ? consumeFefoStockTx : consumeFifoStockTx;
 
   // Payment callbacks/webhooks are intentionally replay-safe, but keep this
   // helper safe on its own as well. If this order already has an automatic

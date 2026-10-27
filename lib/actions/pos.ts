@@ -1,5 +1,6 @@
 "use server";
 
+import { getCanonicalBusinessType } from "@/lib/business-identity";
 import { auth } from "@/lib/auth";
 import crypto from "crypto";
 import { prisma } from "@/lib/prisma";
@@ -374,7 +375,7 @@ export async function createPosSale(
   // way it would online (this is what the platform bills the merchant for
   // later) — POS just never deducts it from the cash in hand.
   const commissionRate = PLATFORM_COMMISSION_PERCENT;
-  const isFoodBusiness = ["Restaurant", "Food & Groceries"].includes(store.businessType);
+  const isFoodBusiness = ["Restaurant", "Food & Groceries"].includes(getCanonicalBusinessType({ businessCategory: access.store.business?.category, storeBusinessType: store.businessType }));
   // POS works on its own for every store. Staff shifts and kitchen tickets are
   // FnB-plugin features, so they're only enforced when FnB is actually installed.
   let requiresShift = false;

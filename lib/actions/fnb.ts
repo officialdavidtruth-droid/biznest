@@ -1,5 +1,6 @@
 "use server";
 
+import { getCanonicalBusinessType } from "@/lib/business-identity";
 import { prisma } from "@/lib/prisma";
 import { auth } from "@/lib/auth";
 import { revalidatePath } from "next/cache";
@@ -10,42 +11,60 @@ import { extractFnbRecipe } from "@/lib/fnb-utils";
 import { awardStoreLoyaltyPointsForOrder } from "@/lib/payments/loyalty-award";
 import { recomputeAndPersistTrustScore } from "@/lib/actions/trust-score";
 import type { ActionResult } from "@/types/actions";
+import type { OrderStatus } from "@prisma/client";
+import { getLocalDateKey, localDateEndUtc, localDateStartUtc } from "@/lib/timezone";
 import type { StaffPermissionId } from "@/lib/access/staff-permissions";
+
+// Order.status values at which the kitchen is allowed to move a ticket. READY
+// and EXPO are mirrored to DELIVERED on Order.status, so it must be included.
+const KITCHEN_WORKABLE_ORDER_STATUSES: OrderStatus[] = ["PAID", "IN_PROGRESS", "DELIVERED"];
 
 async function access(slug: string, modulePermission?: StaffPermissionId) {
   const a = await assertStorePermission(slug, "plugin:fnb-operations");
   if (!a.success) return a;
-  if (!["Restaurant", "Food & Groceries"].includes(a.store.businessType)) {
+  if (!["Restaurant", "Food & Groceries"].includes(getCanonicalBusinessType({ businessCategory: a.store.business?.category, storeBusinessType: a.store.businessType }))) {
     return { success: false as const, error: "BizNest FnB is available to restaurant and food/grocery businesses." };
   }
   // Existing staff who were granted the app-level entitlement keep full FnB
   // access. Once any granular fnb:* permission is configured, staff are
   // restricted to the specific module(s) they were granted. This gives us a
   // backwards-compatible migration path without silently locking anyone out.
-  if (modulePermission && a.role === "STAFF") {
-    const membership = await prisma.storeStaff.findFirst({ where: { storeId: a.store.id, userId: (await auth())?.user?.id, status: "ACTIVE" }, select: { permissions: true } });
+  // fnbModules === null means unrestricted; otherwise the explicit fnb:* grants.
+  let fnbModules: string[] | null = null;
+  if (a.role === "STAFF") {
+    const userId = (await auth())?.user?.id;
+    if (!userId) return { success: false as const, error: "You must be signed in." };
+    const membership = await prisma.storeStaff.findFirst({ where: { storeId: a.store.id, userId, status: "ACTIVE" }, select: { permissions: true } });
     const permissions = membership?.permissions ?? [];
     const granular = permissions.filter((permission) => permission.startsWith("fnb:"));
-    if (granular.length > 0 && !permissions.includes(modulePermission)) {
-      return { success: false as const, error: "You don't have access to this FnB module." };
+    if (granular.length > 0) {
+      if (modulePermission && !permissions.includes(modulePermission)) {
+        return { success: false as const, error: "You don't have access to this FnB module." };
+      }
+      fnbModules = granular;
     }
   }
-  return a;
+  return { ...a, fnbModules };
 }
 
 export async function getFnbDashboard(slug: string) {
   const a = await access(slug);
   if (!a.success) return null;
   const storeId = a.store.id;
-  const start = new Date(); start.setHours(0, 0, 0, 0);
-  const end = new Date(start); end.setDate(end.getDate() + 1);
+  // "Today" is the store's local day, not the server's.
   const now = new Date();
+  const tz = a.store.timezone || "Africa/Lagos";
+  const todayKey = getLocalDateKey(now, tz);
+  const start = localDateStartUtc(todayKey, tz);
+  const end = localDateEndUtc(todayKey, tz);
+  const todayOrderWhere = { storeId, createdAt: { gte: start, lt: end }, status: { notIn: ["PENDING_PAYMENT", "CANCELLED", "REFUNDED"] as OrderStatus[] } };
   const seven = new Date(now); seven.setDate(seven.getDate() + 7);
   const session = await auth();
   const shiftHistoryWhere = a.role === "STAFF" && session?.user?.id ? { storeId, staffUserId: session.user.id } : { storeId };
 
-  const [orders, reservations, products, inventory, batches, purchaseOrders, suppliers, customers, wasteMovements, currentShift, recentShifts] = await Promise.all([
-    prisma.order.findMany({ where: { storeId, createdAt: { gte: start, lt: end }, status: { notIn: ["CANCELLED", "REFUNDED"] } }, orderBy: { createdAt: "desc" }, take: 60, select: { id: true, total: true, currency: true, status: true, fulfillmentStatus: true, kitchenStatus: true, channel: true, fnbOrderType: true, fnbTableLabel: true, posCustomerName: true, createdAt: true, items: { select: { quantity: true, fnbStation: true, product: { select: { name: true, attributes: true } }, variant: { select: { label: true, product: { select: { name: true, attributes: true } } } } } } } }),
+  const [raw_orders, raw_todayTotals, raw_reservations, raw_products, raw_inventory, raw_batches, raw_purchaseOrders, raw_suppliers, raw_customers, raw_wasteMovements, raw_currentShift, raw_recentShifts] = await Promise.all([
+    prisma.order.findMany({ where: todayOrderWhere, orderBy: { createdAt: "desc" }, take: 60, select: { id: true, total: true, currency: true, status: true, fulfillmentStatus: true, kitchenStatus: true, channel: true, fnbOrderType: true, fnbTableLabel: true, posCustomerName: true, createdAt: true, items: { select: { quantity: true, fnbStation: true, product: { select: { name: true, attributes: true } }, variant: { select: { label: true, product: { select: { name: true, attributes: true } } } } } } } }),
+    prisma.order.aggregate({ where: todayOrderWhere, _count: { _all: true }, _sum: { total: true } }),
     prisma.booking.findMany({ where: { storeId, scheduledAt: { gte: start, lt: end }, status: { notIn: ["CANCELLED"] } }, orderBy: { scheduledAt: "asc" }, take: 50, select: { id: true, scheduledAt: true, status: true, guestName: true, partySize: true } }),
     prisma.product.findMany({ where: { storeId, type: "PHYSICAL" }, select: { id: true, name: true, price: true, currency: true, images: true, attributes: true, isPublished: true, inventory: { select: { id: true, quantity: true, lowStockThreshold: true, costPrice: true } } }, orderBy: { name: "asc" }, take: 300 }),
     prisma.inventoryItem.findMany({ where: { storeId }, select: { id: true, productId: true, quantity: true, lowStockThreshold: true, costPrice: true, product: { select: { name: true, price: true, currency: true, isPublished: true } } }, orderBy: { product: { name: "asc" } } }),
@@ -58,7 +77,24 @@ export async function getFnbDashboard(slug: string) {
     prisma.fnbShift.findMany({ where: shiftHistoryWhere, orderBy: { startedAt: "desc" }, take: 20, select: { id: true, status: true, startedAt: true, endedAt: true, salesCount: true, salesTotal: true, staffUser: { select: { id: true, name: true, email: true } } } }),
   ]);
 
-  const revenue = orders.reduce((sum, o) => sum + Number(o.total), 0);
+  // Staff with explicit fnb:* grants only receive data for the modules they hold.
+  const can = (...perms: string[]) => a.fnbModules === null || perms.some((perm) => a.fnbModules!.includes(perm));
+  const seeOrders = can("fnb:orders", "fnb:kitchen", "fnb:pos", "fnb:reports");
+  const seeStock = can("fnb:inventory", "fnb:recipes", "fnb:reports");
+  const orders: typeof raw_orders = seeOrders ? raw_orders : [];
+  const todayTotals: { _count: { _all: number }; _sum: { total: unknown } } = seeOrders ? raw_todayTotals : { _count: { _all: 0 }, _sum: { total: null } };
+  const reservations: typeof raw_reservations = can("fnb:orders", "fnb:reports") ? raw_reservations : [];
+  const products: typeof raw_products = can("fnb:menu", "fnb:recipes", "fnb:reports") ? raw_products : [];
+  const inventory: typeof raw_inventory = seeStock ? raw_inventory : [];
+  const batches: typeof raw_batches = seeStock ? raw_batches : [];
+  const purchaseOrders: typeof raw_purchaseOrders = can("fnb:procurement", "fnb:reports") ? raw_purchaseOrders : [];
+  const suppliers: typeof raw_suppliers = can("fnb:suppliers", "fnb:procurement") ? raw_suppliers : [];
+  const customers: typeof raw_customers = can("fnb:customers") ? raw_customers : [];
+  const wasteMovements: typeof raw_wasteMovements = can("fnb:inventory", "fnb:reports") ? raw_wasteMovements : [];
+  const currentShift = raw_currentShift;
+  const recentShifts: typeof raw_recentShifts = can("fnb:pos", "fnb:reports") ? raw_recentShifts : [];
+
+  const revenue = Number(todayTotals._sum.total ?? 0);
   const activeOrders = orders.filter((o) => ["QUEUED", "STARTED", "READY", "EXPO"].includes(o.kitchenStatus)).length;
   const completedOrders = orders.filter((o) => ["SERVED"].includes(o.kitchenStatus)).length;
   const stockValue = inventory.reduce((sum, i) => sum + (i.costPrice == null ? 0 : Number(i.costPrice) * i.quantity), 0);
@@ -73,6 +109,7 @@ export async function getFnbDashboard(slug: string) {
 
   return {
     storeName: a.store.name,
+    currency: a.store.currency,
     role: a.role,
     mode,
     orders: orders.map((o) => ({ ...o, total: Number(o.total), items: o.items.map((i) => ({ ...i, fnbStation: i.fnbStation || (i.variant?.product?.attributes && typeof i.variant.product.attributes === "object" && !Array.isArray(i.variant.product.attributes) && typeof (i.variant.product.attributes as Record<string, unknown>).fnbStation === "string" ? String((i.variant.product.attributes as Record<string, unknown>).fnbStation) : i.product?.attributes && typeof i.product.attributes === "object" && !Array.isArray(i.product.attributes) && typeof (i.product.attributes as Record<string, unknown>).fnbStation === "string" ? String((i.product.attributes as Record<string, unknown>).fnbStation) : "Hot Kitchen") })) })),
@@ -86,7 +123,7 @@ export async function getFnbDashboard(slug: string) {
     wasteMovements,
     currentShift: currentShift ? { ...currentShift, salesTotal: Number(currentShift.salesTotal) } : null,
     recentShifts: recentShifts.map((shift) => ({ ...shift, salesTotal: Number(shift.salesTotal) })),
-    metrics: { revenue, activeOrders, completedOrders, ordersToday: orders.length, reservationsToday: reservations.length, stockValue, lowStock, outOfStock, expiringSoon, expired, batchValue, recipeCount, wasteUnits },
+    metrics: { revenue, activeOrders, completedOrders, ordersToday: todayTotals._count._all, reservationsToday: reservations.length, stockValue, lowStock, outOfStock, expiringSoon, expired, batchValue, recipeCount, wasteUnits },
   };
 }
 
@@ -102,6 +139,12 @@ export async function advanceFnbOrderStatus(
     select: { id: true, status: true, kitchenStatus: true, fulfillmentStatus: true },
   });
   if (!order) return { success: false, error: "Order not found." };
+  // The kitchen may only work on orders that are paid and still live. Without
+  // this, a cancelled/refunded/disputed or unpaid order could be "served",
+  // which would overwrite its commercial status and release escrow.
+  if (!KITCHEN_WORKABLE_ORDER_STATUSES.includes(order.status)) {
+    return { success: false, error: `This order is ${order.status.replaceAll("_", " ").toLowerCase()} and can't be moved through the kitchen.` };
+  }
   const allowed: Record<string, string[]> = {
     QUEUED: ["STARTED"],
     STARTED: ["READY"],
@@ -113,9 +156,11 @@ export async function advanceFnbOrderStatus(
   }
   const orderStatus = kitchenStatus === "STARTED" ? "IN_PROGRESS" : kitchenStatus === "SERVED" ? "COMPLETED" : "DELIVERED";
   const fulfillmentStatus = kitchenStatus === "STARTED" ? "PREPARING" : kitchenStatus === "SERVED" ? "FULFILLED" : "READY";
-  await prisma.$transaction(async (tx) => {
-    await tx.order.update({
-      where: { id: order.id },
+  // Compare-and-set on the status we just validated, so two screens tapping the
+  // same ticket can't both succeed (which would double-award loyalty points).
+  const moved = await prisma.$transaction(async (tx) => {
+    const updated = await tx.order.updateMany({
+      where: { id: order.id, storeId: a.store.id, kitchenStatus: order.kitchenStatus, status: { in: KITCHEN_WORKABLE_ORDER_STATUSES } },
       data: {
         kitchenStatus,
         fulfillmentStatus,
@@ -123,10 +168,13 @@ export async function advanceFnbOrderStatus(
         escrowReleasedAt: kitchenStatus === "SERVED" ? new Date() : undefined,
       },
     });
+    if (updated.count === 0) return false;
     await tx.orderStatusEvent.create({
       data: { orderId: order.id, status: orderStatus as any, note: `FnB kitchen: ${kitchenStatus}` },
     });
+    return true;
   });
+  if (!moved) return { success: false, error: "This ticket was just updated elsewhere. Refresh and try again." };
   if (kitchenStatus === "SERVED") {
     await awardStoreLoyaltyPointsForOrder(order.id);
     await recomputeAndPersistTrustScore(a.store.business.id);
