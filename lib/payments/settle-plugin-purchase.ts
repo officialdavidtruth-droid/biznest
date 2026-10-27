@@ -28,7 +28,7 @@ export async function settlePluginPurchase(reference: string, amountNaira: numbe
     if (!plugin || !store) return { ok: false as const, error: "Plugin or store not found." };
 
     const claimed = await tx.payment.updateMany({
-      where: { reference, status: "PENDING" },
+      where: { reference, status: { in: ["PENDING", "FAILED"] } },
       data: { status: "SUCCESSFUL", rawPayload: rawPayload as never, verifiedAt: new Date() },
     });
     // Already settled (webhook or an earlier callback): never re-grant or

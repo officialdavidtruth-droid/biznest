@@ -31,7 +31,7 @@ export async function GET(req: Request) {
       where: { reference: txRef, status: "PENDING" },
       data: { status: "FAILED" },
     });
-    return NextResponse.redirect(`${APP_URL}/${store.slug}/admin/subscription?payment=failed`);
+    return NextResponse.redirect(`${APP_URL}/store/${store.slug}/admin/subscription?payment=failed`);
   }
 
   const verification = await verifyFlutterwaveTransaction(transactionId);
@@ -65,13 +65,16 @@ export async function GET(req: Request) {
         where: { reference: txRef, status: "PENDING" },
         data: { status: "SUCCESSFUL", rawPayload: verification as object, verifiedAt: new Date() },
       });
-      return NextResponse.redirect(`${APP_URL}/${store.slug}/admin/subscription?upgraded=1`);
+      return NextResponse.redirect(`${APP_URL}/store/${store.slug}/admin/subscription?upgraded=1`);
     }
   }
 
-  await prisma.payment.updateMany({
-    where: { reference: txRef, status: "PENDING" },
-    data: { status: "FAILED", rawPayload: verification as object },
-  });
-  return NextResponse.redirect(`${APP_URL}/${store.slug}/admin/subscription?payment=failed`);
+  // Only an explicit gateway "failed" is a failure; pending/unknown stays PENDING.
+  if (verification.status === "success" && verification.data?.status === "failed") {
+    await prisma.payment.updateMany({
+      where: { reference: txRef, status: "PENDING" },
+      data: { status: "FAILED", rawPayload: verification as object },
+    });
+  }
+  return NextResponse.redirect(`${APP_URL}/store/${store.slug}/admin/subscription?payment=failed`);
 }

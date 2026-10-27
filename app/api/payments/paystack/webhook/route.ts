@@ -12,6 +12,7 @@ import { settleReservationPayment } from "@/lib/payments/settle-reservation";
 import { settlePluginPurchase } from "@/lib/payments/settle-plugin-purchase";
 import { applyTransferWebhookEvent, isTransferEvent } from "@/lib/payments/payout";
 import { loadStoreCredentials } from "@/lib/payments/store-gateway";
+import { flagPaymentForReview } from "@/lib/payments/review";
 
 /**
  * Server-to-server payment confirmation from Paystack.
@@ -151,7 +152,7 @@ export async function POST(req: Request) {
     // Claim first (same as the browser callback) so a replay or a second
     // delivery can never re-grant the plan or push the renewal date out.
     const claimed = await prisma.payment.updateMany({
-      where: { reference, status: "PENDING" },
+      where: { reference, status: { in: ["PENDING", "FAILED"] } },
       data: { status: "SUCCESSFUL", rawPayload: verification as object, verifiedAt: new Date() },
     });
     if (claimed.count === 0) return NextResponse.json({ received: true });
@@ -174,7 +175,8 @@ export async function POST(req: Request) {
 
   if (reference.startsWith("PLUG-")) {
     const amountNaira = Number(verification.data?.amount ?? 0) / 100;
-    await settlePluginPurchase(reference, amountNaira, verification as object);
+    const plug = await settlePluginPurchase(reference, amountNaira, verification as object);
+    if (!plug.success) await flagPaymentForReview(reference, `Paystack verified success but plugin settlement refused: ${plug.error}`, verification);
     return NextResponse.json({ received: true });
   }
 
@@ -194,17 +196,18 @@ export async function POST(req: Request) {
 
   if (reference.startsWith("WAL-") || reference.startsWith("BK-")) {
     const amount = verification.data ? Number(verification.data.amount) / 100 : 0;
-    if (reference.startsWith("WAL-")) {
-      await settleWalletFunding(reference, "PAYSTACK", amount, verification as object);
-    } else {
-      await settleServiceBookingPayment(reference, "PAYSTACK", amount, verification as object);
-    }
+    const result = reference.startsWith("WAL-")
+      ? await settleWalletFunding(reference, "PAYSTACK", amount, verification as object)
+      : await settleServiceBookingPayment(reference, "PAYSTACK", amount, verification as object);
+    // Paystack confirmed the money but we refused to apply it: never drop that silently.
+    if (!result.success) await flagPaymentForReview(reference, `Paystack verified success but settlement refused: ${result.error}`, verification);
     return NextResponse.json({ received: true });
   }
 
   if (reference.startsWith("RES-")) {
     const amount = verification.data ? Number(verification.data.amount) / 100 : 0;
-    await settleReservationPayment(reference, "PAYSTACK", amount, verification as object);
+    const result = await settleReservationPayment(reference, "PAYSTACK", amount, verification as object);
+    if (!result.success) await flagPaymentForReview(reference, `Paystack verified success but reservation settlement refused: ${result.error}`, verification);
     return NextResponse.json({ received: true });
   }
 

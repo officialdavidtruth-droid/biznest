@@ -48,6 +48,21 @@ type VerifyResponse = {
   };
 };
 
+/**
+ * Paystack occasionally answers with a non-JSON body (gateway 502/504 HTML page)
+ * or the request times out. An uncaught throw there turned into a 500 on the
+ * customer's callback and a lost confirmation. Treat it as "couldn't ask":
+ * callers already handle `status: false` (webhook answers 5xx so Paystack retries).
+ */
+async function paystackRequest<T extends { status: boolean; message: string }>(url: string, init: RequestInit): Promise<T> {
+  try {
+    const res = await fetch(url, { ...init, signal: AbortSignal.timeout(20_000) });
+    return (await res.json()) as T;
+  } catch {
+    return { status: false, message: "Couldn't reach Paystack. Please try again." } as T;
+  }
+}
+
 export async function initializePaystackTransaction(params: InitializeParams): Promise<InitializeResponse> {
   const secretKey = params.secretKey ?? process.env.PAYSTACK_SECRET_KEY;
   if (!secretKey) {
@@ -56,7 +71,7 @@ export async function initializePaystackTransaction(params: InitializeParams): P
 
   const channels = params.channels?.length ? params.channels : parsePaystackChannels(process.env.PAYSTACK_CHANNELS);
 
-  const res = await fetch(`${PAYSTACK_BASE}/transaction/initialize`, {
+  return paystackRequest<InitializeResponse>(`${PAYSTACK_BASE}/transaction/initialize`, {
     method: "POST",
     headers: {
       Authorization: `Bearer ${secretKey}`,
@@ -80,8 +95,6 @@ export async function initializePaystackTransaction(params: InitializeParams): P
         : {}),
     }),
   });
-
-  return res.json();
 }
 
 export async function verifyPaystackTransaction(reference: string, secretKeyOverride?: string | null): Promise<VerifyResponse> {
@@ -92,11 +105,9 @@ export async function verifyPaystackTransaction(reference: string, secretKeyOver
     return { status: false, message: "Payments aren't configured yet (missing PAYSTACK_SECRET_KEY)." };
   }
 
-  const res = await fetch(`${PAYSTACK_BASE}/transaction/verify/${encodeURIComponent(reference)}`, {
+  return paystackRequest<VerifyResponse>(`${PAYSTACK_BASE}/transaction/verify/${encodeURIComponent(reference)}`, {
     headers: { Authorization: `Bearer ${secretKey}` },
   });
-
-  return res.json();
 }
 
 type RefundResponse = {

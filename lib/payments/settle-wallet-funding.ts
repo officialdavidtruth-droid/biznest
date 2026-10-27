@@ -31,7 +31,7 @@ export async function settleWalletFunding(
   if (!payment || payment.purpose !== "WALLET_FUNDING" || !payment.wallet) return { success: false, error: "Wallet payment not found." };
   if (payment.provider !== provider) return { success: false, error: "Payment provider mismatch." };
   if (payment.status === "SUCCESSFUL") return { success: true, data: { storeSlug: payment.wallet.store.slug } };
-  if (payment.status !== "PENDING") return { success: false, error: "Wallet payment is not pending." };
+  if (payment.status !== "PENDING" && payment.status !== "FAILED") return { success: false, error: "Wallet payment is not pending." };
   if (Math.abs(Number(payment.amount) - Number(verifiedAmountNaira)) > 0.01) {
     await flagPaymentForReview(reference, `wallet funding amount mismatch (paid ${verifiedAmountNaira}, expected ${Number(payment.amount)})`, rawPayload);
     return { success: false, error: "Wallet funding amount mismatch." };
@@ -42,7 +42,7 @@ export async function settleWalletFunding(
     const fresh = await tx.storeWallet.findUnique({ where: { id: payment.wallet!.id } });
     if (!fresh || fresh.status !== "ACTIVE") throw new Error("WALLET_UNAVAILABLE");
     const paymentUpdate = await tx.payment.updateMany({
-      where: { id: payment.id, status: "PENDING" },
+      where: { id: payment.id, status: { in: ["PENDING", "FAILED"] } },
       data: { status: "SUCCESSFUL", rawPayload, verifiedAt: new Date() },
     });
     if (paymentUpdate.count === 0) return;

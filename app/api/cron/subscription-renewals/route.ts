@@ -184,6 +184,12 @@ export const GET = withCronMonitor("subscription-renewals", async (_req, ctx) =>
           },
         });
         charged++;
+      } else if (result.status && !["success", "failed"].includes(String(result.data?.status))) {
+        // Paystack accepted the charge but hasn't finished it (pending / ongoing /
+        // pay_offline). That is NOT a decline: starting the grace period here would
+        // wrongly downgrade a customer whose card is about to succeed. The reference
+        // is deterministic, so tomorrow's run re-verifies it and renews if it landed.
+        void logError("JOBS", "Renewal charge still pending at Paystack; will re-check next run", { storeId: store.id, reference, status: String(result.data?.status) });
       } else {
         await handleRenewalFailure(store, graceCutoff);
         failed++;

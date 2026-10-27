@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it } from "vitest";
-import { extractGatewayFeeNaira, vendorPayoutAmount } from "@/lib/payments/gateway-fee";
+import { extractGatewayFeeNaira, vendorPayoutAmount, walletEffectiveFeeRate } from "@/lib/payments/gateway-fee";
 
 afterEach(() => {
   delete process.env.PAYOUT_TRANSFER_FEE_NAIRA;
@@ -39,5 +39,17 @@ describe("vendorPayoutAmount", () => {
   it("pays in full when no fee is known, and never goes negative", () => {
     expect(vendorPayoutAmount("KORAPAY", {}, 10000)).toEqual({ amount: 10000, feeAmount: 0 });
     expect(vendorPayoutAmount("KORAPAY", { data: { raw: { fee: 500 } } }, 300)).toEqual({ amount: 0, feeAmount: 300 });
+  });
+});
+
+describe("wallet fee pass-through", () => {
+  it("derives the effective rate from real top-up fees", () => {
+    const rate = walletEffectiveFeeRate([{ provider: "PAYSTACK", amount: 10000, rawPayload: { data: { fees: 15000 } } }]);
+    expect(rate).toBeCloseTo(0.015);
+    expect(vendorPayoutAmount("WALLET", null, 20000, rate)).toEqual({ amount: 19700, feeAmount: 300 });
+  });
+  it("returns 0 with no usable history", () => {
+    expect(walletEffectiveFeeRate([])).toBe(0);
+    expect(vendorPayoutAmount("WALLET", null, 20000, 0)).toEqual({ amount: 20000, feeAmount: 0 });
   });
 });

@@ -6,6 +6,7 @@ import { settleQuoteDeposit } from "@/lib/payments/settle-quote-deposit";
 import { settleOrderPayment } from "@/lib/payments/settle-order";
 import { buildStoreUrl } from "@/lib/store-url";
 import { NextResponse } from "next/server";
+import { flagPaymentForReview } from "@/lib/payments/review";
 import { settleWalletFunding } from "@/lib/payments/settle-wallet-funding";
 import { settleServiceBookingPayment } from "@/lib/payments/settle-service-booking";
 import { settleReservationPayment } from "@/lib/payments/settle-reservation";
@@ -65,27 +66,43 @@ export async function GET(req: Request) {
   if (txRef.startsWith("WAL-") || txRef.startsWith("BK-")) {
     const verification = await verifyBound(txRef);
     const amount = verification.data ? Number(verification.data.amount) : 0;
-    if (verification.status === "success" && verification.data?.status === "successful") {
+    const verifiedPaid = verification.status === "success" && verification.data?.status === "successful";
+    let settleError: string | undefined;
+    if (verifiedPaid) {
       if (txRef.startsWith("WAL-")) {
         const result = await settleWalletFunding(txRef, "KORAPAY", amount, verification as object);
         if (result.success) return NextResponse.redirect(`${APP_URL}/store/${result.data.storeSlug}/account/wallet?funding=success`);
+        settleError = result.error;
       } else {
         const result = await settleServiceBookingPayment(txRef, "KORAPAY", amount, verification as object);
         if (result.success) return NextResponse.redirect(`${APP_URL}/store/${result.data.storeSlug}/booking/${result.data.bookingId}/confirmation?payment=success`);
+        settleError = result.error;
       }
     }
+
     const bookingId = txRef.startsWith("BK-") ? txRef.split("-")[1] : null;
-    if (bookingId && verification.data?.status !== "pending") {
-      const booking = await prisma.booking.findFirst({ where: { id: bookingId }, include: { store: true } });
-      if (booking) {
-        await prisma.$transaction([
-          prisma.payment.updateMany({ where: { reference: txRef, status: "PENDING" }, data: { status: "FAILED", rawPayload: verification as object } }),
-          prisma.booking.updateMany({ where: { id: booking.id, paymentStatus: "PENDING" }, data: { paymentStatus: "UNPAID" } }),
-        ]);
-        return NextResponse.redirect(`${APP_URL}/store/${booking.store.slug}/booking/${booking.id}/confirmation?payment=failed`);
-      }
+    const booking = bookingId ? await prisma.booking.findFirst({ where: { id: bookingId }, include: { store: true } }) : null;
+    const bookingUrl = (flag: string) => `${APP_URL}/store/${booking!.store.slug}/booking/${booking!.id}/confirmation?payment=${flag}`;
+
+    // The gateway says the money moved but we could not apply it: flag for a human,
+    // never mark the payment FAILED (that made it unrecoverable).
+    if (verifiedPaid) {
+      await flagPaymentForReview(txRef, `KORAPAY verified success but settlement refused: ${settleError ?? "unknown"}`, verification);
+      return NextResponse.redirect(booking ? bookingUrl("review") : `${APP_URL}/?payment=review`);
     }
-    return NextResponse.redirect(`${APP_URL}/?payment=failed`);
+
+    // Only an explicit gateway "failed" is a failure; pending / unknown / a failed
+    // verify call stay PENDING so the webhook or reconciliation cron can still settle.
+    const explicitlyFailed = verification.status === "success" && verification.data?.status === "failed";
+    if (explicitlyFailed && booking) {
+      await prisma.$transaction([
+        prisma.payment.updateMany({ where: { reference: txRef, status: "PENDING" }, data: { status: "FAILED", rawPayload: verification as object } }),
+        prisma.booking.updateMany({ where: { id: booking.id, paymentStatus: "PENDING" }, data: { paymentStatus: "UNPAID" } }),
+      ]);
+      return NextResponse.redirect(bookingUrl("failed"));
+    }
+    if (booking) return NextResponse.redirect(bookingUrl("pending"));
+    return NextResponse.redirect(`${APP_URL}/?payment=${explicitlyFailed ? "failed" : "pending"}`);
   }
 
   if (txRef.startsWith("RES-")) {

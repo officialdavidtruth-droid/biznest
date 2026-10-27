@@ -13,7 +13,7 @@ import {
   type TransferGateway,
 } from "@/lib/payments/payout-gateway";
 import { logError, logInfo } from "@/lib/observability/log";
-import { vendorPayoutAmount } from "@/lib/payments/gateway-fee";
+import { vendorPayoutAmount, walletEffectiveFeeRate } from "@/lib/payments/gateway-fee";
 
 /**
  * Vendor payouts.
@@ -124,7 +124,19 @@ export async function queuePayoutForPayment(reference: string): Promise<{ payout
   if (payment.provider === "CASH") return { skipped: "settled outside the platform" };
 
   const gross = roundMoney(Number(payment.amount) - Number(payment.order?.commission ?? 0));
-  const { amount, feeAmount } = vendorPayoutAmount(payment.provider, payment.rawPayload, gross);
+  // A wallet payment has no gateway fee of its own: the gateway took it when the
+  // customer topped up. Use that wallet's real top-up fee rate so the vendor bears it.
+  let walletFeeRate = 0;
+  if (payment.provider === "WALLET" && payment.walletId) {
+    const fundings = await prisma.payment.findMany({
+      where: { walletId: payment.walletId, purpose: "WALLET_FUNDING", status: "SUCCESSFUL" },
+      select: { provider: true, amount: true, rawPayload: true },
+      orderBy: { createdAt: "desc" },
+      take: 50,
+    });
+    walletFeeRate = walletEffectiveFeeRate(fundings);
+  }
+  const { amount, feeAmount } = vendorPayoutAmount(payment.provider, payment.rawPayload, gross, walletFeeRate);
   if (amount <= 0) return { skipped: "nothing to pay out" };
 
   const hasAccount = Boolean(payment.store.payoutBankCode && payment.store.payoutAccountNumber);
@@ -601,4 +613,39 @@ export async function applyKorapayTransferWebhookEvent(
     { reference: data?.reference, transfer_code: data?.reference, reason: data?.message },
     raw
   );
+}
+
+
+/**
+ * One-off catch-up for card-paid payments that were settled but never got a Payout
+ * row (store ORDER payments, before settleOrderPayment queued payouts). Finds
+ * SUCCESSFUL, unrefunded, platform-collected payments with no Payout and (unless
+ * dryRun) queues + sends them. Idempotent: Payout.paymentId is unique.
+ * Defaults to a dry run: review `found`/`totalNaira` before executing.
+ */
+export async function backfillMissingOrderPayouts(opts: { dryRun?: boolean; limit?: number } = {}): Promise<{ found: number; totalNaira: number; queued: number }> {
+  const dryRun = opts.dryRun ?? true;
+  const payments = await prisma.payment.findMany({
+    where: {
+      purpose: "ORDER",
+      provider: { in: ["PAYSTACK", "FLUTTERWAVE", "KORAPAY"] },
+      status: "SUCCESSFUL",
+      usesStoreGateway: false,
+      splitSubaccountCode: null,
+      payout: { is: null },
+      storeId: { not: null },
+    },
+    select: { reference: true, amount: true },
+    orderBy: { createdAt: "asc" },
+    take: opts.limit ?? 25,
+  });
+  const totalNaira = roundMoney(payments.reduce((sum, p) => sum + Number(p.amount), 0));
+  if (dryRun) return { found: payments.length, totalNaira, queued: 0 };
+
+  let queued = 0;
+  for (const p of payments) {
+    await settleAndPayout(p.reference);
+    queued++;
+  }
+  return { found: payments.length, totalNaira, queued };
 }

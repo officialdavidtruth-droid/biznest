@@ -11,6 +11,8 @@ import { settleWalletFunding } from "@/lib/payments/settle-wallet-funding";
 import { settleServiceBookingPayment } from "@/lib/payments/settle-service-booking";
 import { settleReservationPayment } from "@/lib/payments/settle-reservation";
 import { settlePluginPurchase } from "@/lib/payments/settle-plugin-purchase";
+import { flagPaymentForReview } from "@/lib/payments/review";
+import { logError } from "@/lib/observability/log";
 
 import { APP_URL } from "@/lib/constants/app-url";
 
@@ -41,6 +43,7 @@ export async function GET(req: Request) {
       const amountNaira = Number(verification.data?.amount ?? 0) / 100;
       const result = await settlePluginPurchase(reference, amountNaira, verification as object);
       if (result.success) return NextResponse.redirect(`${APP_URL}/store/${result.data.slug}/admin/apps/${result.data.pluginKey}?payment=success`);
+      await flagPaymentForReview(reference, `Paystack verified success but plugin settlement refused: ${result.error}`, verification);
     }
     const storeId = reference.split("-")[1];
     const store = await prisma.store.findUnique({ where: { id: storeId }, select: { slug: true } });
@@ -66,27 +69,49 @@ export async function GET(req: Request) {
   if (reference.startsWith("WAL-") || reference.startsWith("BK-")) {
     const verification = await verifyPaystackTransaction(reference, storeSecretKey);
     const amount = verification.data ? Number(verification.data.amount) / 100 : 0;
-    if (verification.status && verification.data?.status === "success") {
+    const gatewayStatus = verification.status ? verification.data?.status : undefined;
+    let settleError: string | undefined;
+    if (gatewayStatus === "success") {
       if (reference.startsWith("WAL-")) {
         const result = await settleWalletFunding(reference, "PAYSTACK", amount, verification as object);
         if (result.success) return NextResponse.redirect(`${APP_URL}/store/${result.data.storeSlug}/account/wallet?funding=success`);
+        settleError = result.error;
       } else {
         const result = await settleServiceBookingPayment(reference, "PAYSTACK", amount, verification as object);
         if (result.success) return NextResponse.redirect(`${APP_URL}/store/${result.data.storeSlug}/booking/${result.data.bookingId}/confirmation?payment=success`);
+        settleError = result.error;
       }
     }
+
     const bookingId = reference.startsWith("BK-") ? reference.split("-")[1] : null;
-    if (bookingId) {
-      const booking = await prisma.booking.findFirst({ where: { id: bookingId }, include: { store: true } });
-      if (booking) {
-        await prisma.$transaction([
-          prisma.payment.updateMany({ where: { reference: reference, status: "PENDING" }, data: { status: "FAILED", rawPayload: verification as object } }),
-          prisma.booking.updateMany({ where: { id: booking.id, paymentStatus: "PENDING" }, data: { paymentStatus: "UNPAID" } }),
-        ]);
-        return NextResponse.redirect(`${APP_URL}/store/${booking.store.slug}/booking/${booking.id}/confirmation?payment=failed`);
-      }
+    const booking = bookingId
+      ? await prisma.booking.findFirst({ where: { id: bookingId }, include: { store: true } })
+      : null;
+    const bookingUrl = (flag: string) => `${APP_URL}/store/${booking!.store.slug}/booking/${booking!.id}/confirmation?payment=${flag}`;
+
+    // Paystack says the money moved but we could not apply it (amount/provider
+    // mismatch, etc.). NEVER mark that FAILED: flag it for a human and keep the
+    // Payment row recoverable. Log the real reason so it is visible.
+    if (gatewayStatus === "success") {
+      await flagPaymentForReview(reference, `Paystack verified success but settlement refused: ${settleError ?? "unknown"}`, verification);
+      return NextResponse.redirect(booking ? bookingUrl("review") : `${APP_URL}/?payment=review`);
     }
-    return NextResponse.redirect(`${APP_URL}/?payment=failed`);
+
+    // Only an explicit gateway "failed" is a failure. Abandoned / ongoing /
+    // a failed verify call can still be settled later by the webhook or the
+    // reconciliation cron, so leave the Payment PENDING.
+    if (gatewayStatus === "failed" && booking) {
+      await prisma.$transaction([
+        prisma.payment.updateMany({ where: { reference, status: "PENDING" }, data: { status: "FAILED", rawPayload: verification as object } }),
+        prisma.booking.updateMany({ where: { id: booking.id, paymentStatus: "PENDING" }, data: { paymentStatus: "UNPAID" } }),
+      ]);
+      return NextResponse.redirect(bookingUrl("failed"));
+    }
+    if (booking) {
+      void logError("PAYMENTS", "Paystack booking callback: payment not confirmed yet", { reference, gatewayStatus: gatewayStatus ?? "verify_error", message: verification.message });
+      return NextResponse.redirect(bookingUrl(gatewayStatus === "abandoned" ? "failed" : "pending"));
+    }
+    return NextResponse.redirect(`${APP_URL}/?payment=${gatewayStatus === "failed" ? "failed" : "pending"}`);
   }
 
   if (reference.startsWith("RES-")) {
@@ -95,6 +120,7 @@ export async function GET(req: Request) {
     if (verification.status && verification.data?.status === "success") {
       const result = await settleReservationPayment(reference, "PAYSTACK", amount, verification as object);
       if (result.success) return NextResponse.redirect(`${APP_URL}/store/${result.data.storeSlug}/admin/pms?payment=success`);
+      await flagPaymentForReview(reference, `Paystack verified success but reservation settlement refused: ${result.error}`, verification);
     }
     return NextResponse.redirect(`${APP_URL}/?payment=failed`);
   }

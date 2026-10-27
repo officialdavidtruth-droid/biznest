@@ -30,11 +30,11 @@ export async function settleReservationPayment(
  if(!payment||payment.purpose!=="PMS_RESERVATION"||!payment.reservation)return{success:false,error:"Reservation payment not found."};
  if(payment.provider!==provider)return{success:false,error:"Payment provider mismatch."};
  if(payment.status==="SUCCESSFUL")return{success:true,data:{storeSlug:payment.reservation.store.slug,reservationId:payment.reservation.id}};
- if(payment.status!=="PENDING")return{success:false,error:"Reservation payment is not pending."};
+ if(payment.status!=="PENDING"&&payment.status!=="FAILED")return{success:false,error:"Reservation payment is not pending."};
  if(verifiedAmountNaira<Number(payment.amount))return{success:false,error:"Payment amount mismatch."};
 
  await prisma.$transaction(async(tx)=>{
-  const result=await tx.payment.updateMany({where:{id:payment.id,status:"PENDING"},data:{status:"SUCCESSFUL",rawPayload,verifiedAt:new Date()}});
+  const result=await tx.payment.updateMany({where:{id:payment.id,status:{in:["PENDING","FAILED"]}},data:{status:"SUCCESSFUL",rawPayload,verifiedAt:new Date()}});
   if(result.count===0)return;
   // Record the money against the reservation whatever its status now is. Skipping
   // CANCELLED/NO_SHOW (as this used to) left the guest charged with the reservation

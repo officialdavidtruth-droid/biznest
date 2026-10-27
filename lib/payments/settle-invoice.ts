@@ -32,7 +32,7 @@ export async function settleInvoicePayment(reference: string, verifiedAmountNair
 
   await prisma.$transaction(async (tx) => {
     const paymentResult = await tx.payment.updateMany({
-      where: { reference, status: "PENDING" },
+      where: { reference, status: { in: ["PENDING", "FAILED"] } },
       data: { status: "SUCCESSFUL", rawPayload, verifiedAt: new Date() },
     });
     if (paymentResult.count === 0) return;

@@ -2,6 +2,7 @@ import { prisma } from "@/lib/prisma";
 import { verifyPaystackTransaction } from "@/lib/payments/paystack";
 import { checkRateLimit, getClientIp } from "@/lib/rate-limit";
 import { NextResponse } from "next/server";
+import { flagPaymentForReview } from "@/lib/payments/review";
 
 import { APP_URL } from "@/lib/constants/app-url";
 
@@ -38,11 +39,10 @@ export async function GET(req: Request) {
     const amountMatches = plan && Number(verification.data.amount) >= Math.round(Number(plan.price) * 100);
 
     if (!plan || !amountMatches) {
-      await prisma.payment.updateMany({
-        where: { reference, status: "PENDING" },
-        data: { status: "FAILED", rawPayload: verification as object },
-      });
-      return NextResponse.redirect(`${APP_URL}/${store.slug}/admin/subscription?payment=failed`);
+      // Money moved but doesn't match the plan: never mark that FAILED. Flag it
+      // so a human can reconcile it.
+      await flagPaymentForReview(reference, "subscription payment verified at Paystack but plan/amount did not match", verification);
+      return NextResponse.redirect(`${APP_URL}/store/${store.slug}/admin/subscription?payment=review`);
     }
 
     // Claim the payment atomically BEFORE granting anything. Without this, the
@@ -50,13 +50,15 @@ export async function GET(req: Request) {
     // (free forever) or to re-apply an old plan after a downgrade. The webhook
     // applies the same claim-then-grant, so whichever arrives first wins and
     // the other is a harmless no-op.
+    // FAILED is claimable too: an earlier premature callback may have marked it
+    // failed before Paystack finished. Verified success always wins.
     const claimed = await prisma.payment.updateMany({
-      where: { reference, status: "PENDING" },
+      where: { reference, status: { in: ["PENDING", "FAILED"] } },
       data: { status: "SUCCESSFUL", rawPayload: verification as object, verifiedAt: new Date() },
     });
     if (claimed.count === 0) {
       const done = await prisma.payment.findUnique({ where: { reference }, select: { status: true } });
-      return NextResponse.redirect(`${APP_URL}/${store.slug}/admin/subscription${done?.status === "SUCCESSFUL" ? "?upgraded=1" : "?payment=failed"}`);
+      return NextResponse.redirect(`${APP_URL}/store/${store.slug}/admin/subscription${done?.status === "SUCCESSFUL" ? "?upgraded=1" : "?payment=failed"}`);
     }
 
     // Save the reusable authorization so the renewal cron can charge next
@@ -77,12 +79,19 @@ export async function GET(req: Request) {
         trialEndsAt: null, // converted: no longer a trial
       },
     });
-    return NextResponse.redirect(`${APP_URL}/${store.slug}/admin/subscription?upgraded=1`);
+    return NextResponse.redirect(`${APP_URL}/store/${store.slug}/admin/subscription?upgraded=1`);
   }
 
-  await prisma.payment.updateMany({
-    where: { reference, status: "PENDING" },
-    data: { status: "FAILED", rawPayload: verification as object },
-  });
-  return NextResponse.redirect(`${APP_URL}/${store.slug}/admin/subscription?payment=failed`);
+  // Only an explicit gateway "failed" is a failure. Abandoned / ongoing / a failed
+  // verify call can still be settled by the webhook or reconciliation cron, so the
+  // payment stays PENDING.
+  const gatewayStatus = verification.status ? verification.data?.status : undefined;
+  if (gatewayStatus === "failed") {
+    await prisma.payment.updateMany({
+      where: { reference, status: "PENDING" },
+      data: { status: "FAILED", rawPayload: verification as object },
+    });
+    return NextResponse.redirect(`${APP_URL}/store/${store.slug}/admin/subscription?payment=failed`);
+  }
+  return NextResponse.redirect(`${APP_URL}/store/${store.slug}/admin/subscription?payment=${gatewayStatus === "abandoned" ? "failed" : "pending"}`);
 }

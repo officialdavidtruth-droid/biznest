@@ -63,15 +63,43 @@ export function transferFeeNaira(): number {
 export function vendorPayoutAmount(
   provider: string,
   rawPayload: unknown,
-  paymentAmount: number
+  paymentAmount: number,
+  /**
+   * Wallet payments carry no gateway response of their own: the gateway's fee was
+   * taken when the customer topped up. Callers pass that wallet's real effective
+   * fee rate (fee / topped-up amount, 0..1) so the vendor still bears it.
+   */
+  effectiveFeeRate?: number
 ): { amount: number; feeAmount: number } {
   if (!VENDOR_BEARS_GATEWAY_FEE) return { amount: round2(paymentAmount), feeAmount: 0 };
 
   let collectionFee = extractGatewayFeeNaira(provider, rawPayload);
+  if (collectionFee === 0 && effectiveFeeRate && effectiveFeeRate > 0 && effectiveFeeRate < 1) {
+    collectionFee = round2(paymentAmount * effectiveFeeRate);
+  }
   if (collectionFee === 0) {
     const pct = Number(process.env.GATEWAY_FEE_FALLBACK_PERCENT ?? 0);
     if (Number.isFinite(pct) && pct > 0) collectionFee = round2((paymentAmount * pct) / 100);
   }
   const feeAmount = Math.min(round2(collectionFee + transferFeeNaira()), round2(paymentAmount));
   return { amount: round2(paymentAmount - feeAmount), feeAmount };
+}
+
+/**
+ * Effective gateway fee rate (0..1) a wallet's top-ups actually cost, from the
+ * verify payloads stored on its successful WALLET_FUNDING payments.
+ * Returns 0 when there is no usable history (callers then fall back to
+ * GATEWAY_FEE_FALLBACK_PERCENT).
+ */
+export function walletEffectiveFeeRate(fundings: Array<{ provider: string; amount: unknown; rawPayload: unknown }>): number {
+  let funded = 0;
+  let fees = 0;
+  for (const f of fundings) {
+    const amount = Number(f.amount);
+    if (!Number.isFinite(amount) || amount <= 0) continue;
+    funded += amount;
+    fees += extractGatewayFeeNaira(f.provider, f.rawPayload);
+  }
+  if (funded <= 0 || fees <= 0) return 0;
+  return Math.min(fees / funded, 0.5);
 }

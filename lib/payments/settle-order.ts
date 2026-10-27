@@ -5,6 +5,7 @@ import { emitWebhookEvent } from "@/lib/webhooks/dispatch";
 import { notifyStoreOwnerOfPaidOrder, notifyCustomerOfPaidOrder } from "@/lib/notifications/notify";
 import { flagPaymentForReview } from "@/lib/payments/review";
 import { postOrderSaleToLedger } from "@/lib/financial/order-ledger";
+import { settleAndPayout } from "@/lib/payments/payout";
 
 export type SettleOrderOutcome = "paid" | "already_paid" | "not_found" | "wrong_provider" | "mismatch" | "blocked";
 
@@ -79,7 +80,16 @@ export async function settleOrderPayment(input: {
   });
   await emitWebhookEvent("ORDER_PAID", order.storeId, { orderId: order.id, status: "PAID" });
   await postOrderSaleToLedger(order.id);
-  void notifyStoreOwnerOfPaidOrder(order.storeId, order.id, Number(order.total), order.currency);
-  void notifyCustomerOfPaidOrder(order.id);
+  // Queue + send the vendor's payout. Every other settlement path (bookings,
+  // invoices, quotes, reservations) already does this; orders were the only one
+  // that did not, so card-paid store orders never reached the vendor's bank.
+  // Idempotent (Payout.paymentId is unique) and never throws.
+  await settleAndPayout(reference);
+  // Awaited on purpose: an un-awaited `void` send is frozen/dropped once this
+  // serverless invocation returns its redirect, so owners/customers were not notified.
+  await Promise.allSettled([
+    notifyStoreOwnerOfPaidOrder(order.storeId, order.id, Number(order.total), order.currency),
+    notifyCustomerOfPaidOrder(order.id),
+  ]);
   return { outcome: "paid" };
 }

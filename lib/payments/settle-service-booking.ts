@@ -8,6 +8,7 @@ import { sendOrderNotificationEmail } from "@/lib/email/send";
 import type { ActionResult } from "@/types/actions";
 import { revalidatePath } from "next/cache";
 import { formatNumber } from "@/lib/i18n/locale";
+import { logError } from "@/lib/observability/log";
 import { postPaymentToLedgerByReference } from "@/lib/financial/order-ledger";
 
 /**
@@ -27,13 +28,16 @@ export async function settleServiceBookingPayment(
   if (!payment || payment.purpose !== "SERVICE_BOOKING" || !payment.booking) return { success: false, error: "Booking payment not found." };
   if (payment.provider !== provider) return { success: false, error: "Payment provider mismatch." };
   if (payment.status === "SUCCESSFUL") return { success: true, data: { storeSlug: payment.booking.store.slug, bookingId: payment.booking.id } };
-  if (payment.status !== "PENDING") return { success: false, error: "Booking payment is not pending." };
+  // FAILED is revivable: a premature callback may have marked it failed before the
+  // gateway finished. Gateway-verified success always wins over a stale FAILED.
+  if (payment.status !== "PENDING" && payment.status !== "FAILED") return { success: false, error: "Booking payment is not pending." };
   if (Math.abs(Number(payment.amount) - Number(verifiedAmountNaira)) > 0.01) return { success: false, error: "Payment amount mismatch." };
 
+  let bookingNotMarkedPaid = false;
   await prisma.$transaction(async (tx) => {
-    const result = await tx.payment.updateMany({ where: { id: payment.id, status: "PENDING" }, data: { status: "SUCCESSFUL", rawPayload, verifiedAt: new Date() } });
+    const result = await tx.payment.updateMany({ where: { id: payment.id, status: { in: ["PENDING", "FAILED"] } }, data: { status: "SUCCESSFUL", rawPayload, verifiedAt: new Date() } });
     if (result.count === 0) return;
-    await tx.booking.updateMany({
+    const bookingUpdate = await tx.booking.updateMany({
       where: {
         id: payment.booking!.id,
         paymentStatus: { not: "PAID" },
@@ -46,7 +50,18 @@ export async function settleServiceBookingPayment(
         paymentCurrency: payment.currency,
       },
     });
+    if (bookingUpdate.count === 0) bookingNotMarkedPaid = true;
   }, { isolationLevel: "Serializable" });
+
+  // The gateway took the money but the booking could not be marked paid (most
+  // often: its 30-minute hold expired and it was cancelled). Never let that pass
+  // silently: a guest has paid for a booking that is not confirmed.
+  if (bookingNotMarkedPaid) {
+    const current = await prisma.booking.findUnique({ where: { id: payment.booking.id }, select: { status: true, paymentStatus: true } });
+    if (current?.paymentStatus !== "PAID") {
+      void logError("PAYMENTS", "Booking payment received but booking not marked paid (cancelled/expired hold?) - needs manual review or refund", { reference, bookingId: payment.booking.id, bookingStatus: current?.status });
+    }
+  }
 
   await postPaymentToLedgerByReference(reference);
   await settleAndPayout(reference);
