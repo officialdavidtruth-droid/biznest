@@ -1,26 +1,22 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { Send, Mail, Sparkles, UserRound } from "lucide-react";
+import { Send, Mail, LifeBuoy, UserRound } from "lucide-react";
+import { answerQuestion, SUGGESTIONS } from "@/lib/support-faq";
 
-type Msg = { role: "user" | "assistant"; content: string; handoff?: boolean };
+type Msg = { role: "user" | "assistant"; content: string; handoff?: boolean; chips?: string[]; greeting?: boolean };
 
 const SUPPORT_EMAIL = "biznestsupport@gmail.com";
-const STORE_KEY = "bn-support-chat:v1";
-const SUGGESTIONS = [
-  "How do I add my first product?",
-  "How do I get paid out?",
-  "How do I invite my staff?",
-  "How do I install an app?",
-];
+const STORE_KEY = "bn-support-chat:v2";
 const GREETING: Msg = {
   role: "assistant",
-  content: "Hi! I'm the BizNest assistant. Ask me how to do anything in your dashboard, or tap a question below.",
+  content: "Hi! I'm the BizNest help assistant. Ask me how to do anything in your dashboard, or tap a question below.",
+  greeting: true,
 };
 
 function mailto(msgs: Msg[]) {
   const transcript = msgs
-    .filter((m) => m !== GREETING)
+    .filter((m) => !m.greeting)
     .map((m) => `${m.role === "user" ? "Me" : "Assistant"}: ${m.content}`)
     .join("\n\n");
   const subject = "BizNest support request";
@@ -28,12 +24,11 @@ function mailto(msgs: Msg[]) {
   return `mailto:${SUPPORT_EMAIL}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
 }
 
-/** Support chat: AI answers first, one tap hands over to the BizNest team by email. */
+/** Support chat: instant answers from our own help content, one tap hands over to the BizNest team by email. */
 export function SupportChat() {
   const [msgs, setMsgs] = useState<Msg[]>([GREETING]);
   const [input, setInput] = useState("");
   const [busy, setBusy] = useState(false);
-  const [error, setError] = useState<string | null>(null);
   const endRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -47,31 +42,22 @@ export function SupportChat() {
     endRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
   }, [msgs, busy]);
 
-  async function send(text: string) {
+  function send(text: string) {
     const content = text.trim();
     if (!content || busy) return;
-    setError(null);
     setInput("");
     const next: Msg[] = [...msgs, { role: "user", content }];
     setMsgs(next);
     setBusy(true);
-    try {
-      const res = await fetch("/api/support-chat", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          messages: next.filter((m) => m !== GREETING).map(({ role, content }) => ({ role, content })),
-          page: typeof location !== "undefined" ? location.pathname.replace(/^\/(store\/)?[^/]+\/admin/, "") || "/" : undefined,
-        }),
-      });
-      const data = (await res.json()) as { reply?: string; handoff?: boolean; error?: string };
-      if (!res.ok || !data.reply) throw new Error(data.error || "Something went wrong.");
-      setMsgs([...next, { role: "assistant", content: data.reply, handoff: data.handoff }]);
-    } catch (e) {
-      setError(e instanceof Error ? e.message : "Something went wrong.");
-    } finally {
+    const page = typeof location !== "undefined" ? location.pathname.replace(/^\/(store\/)?[^/]+\/admin/, "") || "/" : undefined;
+    // Answers are instant and local; the short pause just feels natural.
+    const delay = 350 + Math.min(content.length * 6, 450);
+    window.setTimeout(() => {
+      let r;
+      try { r = answerQuestion(content, page); } catch { r = { reply: "Something went wrong on our side. Please tap \"Talk to a person\" and we will help.", handoff: true }; }
+      setMsgs([...next, { role: "assistant", content: r.reply, handoff: r.handoff, chips: r.chips }]);
       setBusy(false);
-    }
+    }, delay);
   }
 
   const showChips = msgs.length <= 1;
@@ -79,9 +65,9 @@ export function SupportChat() {
   return (
     <div className="flex h-[calc(100dvh-330px)] min-h-[300px] max-h-[600px] lg:h-[560px] flex-col overflow-hidden rounded-2xl border bg-background" data-no-pull>
       <div className="flex shrink-0 items-center gap-2 border-b px-3 py-2.5">
-        <span className="flex h-8 w-8 items-center justify-center rounded-full bg-primary/10 text-primary"><Sparkles className="h-4 w-4" /></span>
+        <span className="flex h-8 w-8 items-center justify-center rounded-full bg-primary/10 text-primary"><LifeBuoy className="h-4 w-4" /></span>
         <div className="leading-tight">
-          <p className="text-sm font-semibold">BizNest assistant</p>
+          <p className="text-sm font-semibold">BizNest help</p>
           <p className="hidden text-[11px] text-muted-foreground sm:block">Instant answers. A person is one tap away.</p>
         </div>
         <a href={mailto(msgs)} className="ml-auto inline-flex shrink-0 items-center gap-1 whitespace-nowrap rounded-full border px-3 py-1.5 text-xs font-medium">
@@ -92,13 +78,22 @@ export function SupportChat() {
       <div className="flex-1 space-y-3 overflow-y-auto px-4 py-4 select-text">
         {msgs.map((m, i) => (
           <div key={i} className={`bn-chat-in flex ${m.role === "user" ? "justify-end" : "justify-start"}`}>
-            <div className={`max-w-[85%] whitespace-pre-wrap rounded-2xl px-3.5 py-2.5 text-sm leading-relaxed ${m.role === "user" ? "rounded-br-md bg-primary text-primary-foreground" : "rounded-bl-md bg-muted"}`}>
+            <div className="max-w-[85%]">
+            <div className={`w-fit whitespace-pre-wrap rounded-2xl px-3.5 py-2.5 text-sm leading-relaxed ${m.role === "user" ? "rounded-br-md bg-primary text-primary-foreground" : "rounded-bl-md bg-muted"}`}>
               {m.content}
               {m.handoff && (
                 <a href={mailto(msgs.slice(0, i + 1))} className="mt-2 flex items-center gap-1.5 rounded-lg bg-background px-3 py-2 text-xs font-semibold text-primary">
                   <Mail className="h-3.5 w-3.5" /> Send this to the BizNest team
                 </a>
               )}
+            </div>
+            {m.role === "assistant" && m.chips && i === msgs.length - 1 && !busy && (
+              <div className="mt-2 flex flex-wrap gap-2">
+                {m.chips.map((q) => (
+                  <button key={q} type="button" onClick={() => send(q)} className="rounded-full border px-3 py-1.5 text-left text-xs font-medium text-primary">{q}</button>
+                ))}
+              </div>
+            )}
             </div>
           </div>
         ))}
@@ -108,11 +103,6 @@ export function SupportChat() {
               <span className="bn-typing-dot" /><span className="bn-typing-dot" style={{ animationDelay: ".15s" }} /><span className="bn-typing-dot" style={{ animationDelay: ".3s" }} />
             </div>
           </div>
-        )}
-        {error && (
-          <p className="rounded-lg bg-red-50 px-3 py-2 text-xs text-red-700">
-            {error} You can also <a className="underline" href={mailto(msgs)}>email us</a>.
-          </p>
         )}
         {showChips && (
           <div className="flex flex-wrap gap-2 pt-1">
