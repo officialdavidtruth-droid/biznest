@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useState, type CSSProperties } from "react";
 import {
   Activity,
   BedDouble,
@@ -320,7 +320,25 @@ export function PmsWorkspace({ slug, storeName, rooms: initialRooms, guests: ini
   }
 
   return (
-    <div className="flex min-h-screen bg-[var(--bn-admin-page)] text-[var(--bn-admin-text)]">
+    <div
+      className="bn-gradient-dark flex min-h-screen text-[var(--bn-admin-text)]"
+      style={{
+        // Same dark-forest look as the homepage: re-point the admin theme tokens for this workspace only.
+        "--bn-admin-page": "#0a240b",
+        "--bn-admin-surface": "#153716",
+        "--bn-admin-surface-2": "#1d4a1e",
+        "--bn-admin-text": "#ffffff",
+        "--bn-admin-text-strong": "#ffffff",
+        "--bn-admin-muted": "#adc2ad",
+        "--bn-admin-border": "#2e562f",
+        "--bn-admin-border-soft": "#2e562f",
+        "--bn-admin-orange": "#6ee7a8",
+        "--bn-admin-orange-soft": "#153716",
+        "--bn-admin-danger": "#fca5a5",
+        "--bn-admin-danger-soft": "#450a0a",
+        "--bn-admin-danger-line": "#7f1d1d",
+      } as CSSProperties}
+    >
       <aside className={`fixed inset-y-0 left-0 z-50 flex w-72 flex-col border-r border-[color-mix(in_srgb,var(--bn-admin-border)_10%,transparent)] bg-[var(--bn-admin-page)] transition-transform lg:static lg:translate-x-0 ${mobileOpen ? "translate-x-0" : "-translate-x-full"}`}>
         <div className="flex h-20 items-center gap-3 border-b border-[color-mix(in_srgb,var(--bn-admin-border)_10%,transparent)] px-5">
           <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[color-mix(in_srgb,var(--bn-admin-surface-2)_10%,transparent)] text-[var(--bn-admin-orange)]"><Hotel className="h-5 w-5" /></div>
