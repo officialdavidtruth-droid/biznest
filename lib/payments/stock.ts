@@ -1,5 +1,6 @@
 import "server-only";
 
+import { consumeRecipeIngredientsTx } from "@/lib/fnb-recipe-stock";
 import { getCanonicalBusinessType } from "@/lib/business-identity";
 import { logError } from "@/lib/observability/log";
 import { consumeFifoStockTx, consumeFefoStockTx } from "@/lib/inventory-fifo";
@@ -49,6 +50,18 @@ export async function decrementStockForOrder(
   if (alreadyDecremented) return;
 
   for (const item of order.items) {
+    // Dishes with a recipe consume their ingredients instead of their own
+    // stock count. Paid orders (allowOversell) take what exists and log any
+    // shortfall; otherwise a short ingredient aborts the transition.
+    if (item.productId || item.variantId) {
+      const dishProductId = item.productId ?? (await tx.productVariant.findFirst({ where: { id: item.variantId!, storeId: order.storeId }, select: { productId: true } }))?.productId;
+      const dish = dishProductId ? await tx.product.findFirst({ where: { id: dishProductId, storeId: order.storeId }, select: { name: true, attributes: true } }) : null;
+      if (dish) {
+        const recipe = await consumeRecipeIngredientsTx(tx, { storeId: order.storeId, orderId: order.id, attributes: dish.attributes, portions: item.quantity, dishName: dish.name, source: "Online", strict: !opts.allowOversell, consume: consumeStock });
+        if (recipe.shortfalls.length > 0) void logError("PAYMENTS", "Oversold order: recipe ingredient shortfall", { orderId: order.id, productId: dishProductId, shortfalls: recipe.shortfalls });
+        if (recipe.handled) continue;
+      }
+    }
     if (item.variantId) {
       const variant = await tx.productVariant.findFirst({ where: { id: item.variantId, storeId: order.storeId } });
       if (!variant) continue;

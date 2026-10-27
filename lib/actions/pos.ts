@@ -6,6 +6,7 @@ import crypto from "crypto";
 import { prisma } from "@/lib/prisma";
 import { consumeFifoStockTx, consumeFefoStockTx } from "@/lib/inventory-fifo";
 import { getFnbRotationMode } from "@/lib/fnb-settings";
+import { computeRecipeRequirements, consumeRecipeIngredientsTx, RecipeStockError } from "@/lib/fnb-recipe-stock";
 import { getPluginEntitlement } from "@/lib/plugins";
 import { revalidatePath } from "next/cache";
 import { calculateOrderTotals, roundMoney } from "@/lib/utils/pricing";
@@ -95,7 +96,9 @@ export async function getPosCatalog(slug: string): Promise<PosCatalogItem[]> {
     }),
   ]);
 
-  const productItems: PosCatalogItem[] = products.map((p) => ({
+  // A dish with a recipe is limited by its ingredients (checked server-side at
+  // sale time), not by its own stock count, so the register must not lock it.
+  const productItems: PosCatalogItem[] = products.map((p) => { const hasRecipe = computeRecipeRequirements(p.attributes, 1) !== null; return ({
     kind: "product",
     id: p.id,
     name: p.name,
@@ -104,7 +107,7 @@ export async function getPosCatalog(slug: string): Promise<PosCatalogItem[]> {
     currency: p.currency,
     sku: p.inventory?.sku ?? null,
     barcode: p.inventory?.barcode ?? null,
-    quantity: p.hasVariants ? null : p.inventory?.quantity ?? null,
+    quantity: p.hasVariants || hasRecipe ? null : p.inventory?.quantity ?? null,
     hasVariants: p.hasVariants,
     variants: p.variants.map((v) => ({
       id: v.id,
@@ -112,9 +115,9 @@ export async function getPosCatalog(slug: string): Promise<PosCatalogItem[]> {
       price: v.price !== null ? Number(v.price) : Number(p.price),
       sku: v.sku,
       barcode: v.barcode,
-      quantity: v.quantity,
+      quantity: hasRecipe ? 9999 : v.quantity,
     })),
-  }));
+  }); });
 
   const serviceItems: PosCatalogItem[] = services.map((s) => ({
     kind: "service",
@@ -329,7 +332,7 @@ export async function createPosSale(
     if (line.variantId) {
       const variant = variants.find((v) => v.id === line.variantId);
       if (!variant) return { success: false, error: "One of the items in this sale no longer exists." };
-      if (variant.quantity < line.quantity) {
+      if (!computeRecipeRequirements(variant.product.attributes, 1) && variant.quantity < line.quantity) {
         return { success: false, error: `Not enough stock for ${variant.product.name} — ${variant.label}.` };
       }
       currency = variant.product.currency;
@@ -344,7 +347,7 @@ export async function createPosSale(
     } else if (line.productId) {
       const product = products.find((p) => p.id === line.productId);
       if (!product) return { success: false, error: "One of the items in this sale no longer exists." };
-      if (product.inventory && product.inventory.quantity < line.quantity) {
+      if (product.inventory && !computeRecipeRequirements(product.attributes, 1) && product.inventory.quantity < line.quantity) {
         return { success: false, error: `Not enough stock for ${product.name}.` };
       }
       currency = product.currency;
@@ -544,6 +547,21 @@ export async function createPosSale(
         // concurrent sale for the same item can't oversell it -- whichever
         // transaction commits second sees 0 rows affected and rolls back.
         for (const line of resolved) {
+          // Dishes with a recipe consume their ingredients instead of their own
+          // stock count (see lib/fnb-recipe-stock.ts). Strict: a short
+          // ingredient blocks the sale, like a short dish count always has.
+          if (line.variantId || line.productId) {
+            const recipeAttributes = line.variantId
+              ? variants.find((v) => v.id === line.variantId)?.product.attributes
+              : products.find((p) => p.id === line.productId)?.attributes;
+            try {
+              const recipe = await consumeRecipeIngredientsTx(tx, { storeId: store.id, orderId: order.id, attributes: recipeAttributes, portions: line.quantity, dishName: line.name, source: "POS", strict: true, consume: consumeStock });
+              if (recipe.handled) continue;
+            } catch (err) {
+              if (err instanceof RecipeStockError) throw new PosTransactionError(err.message);
+              throw err;
+            }
+          }
           if (line.variantId) {
             const variant = variants.find((v) => v.id === line.variantId)!;
             const result = await tx.productVariant.updateMany({

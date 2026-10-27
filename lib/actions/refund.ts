@@ -1,5 +1,6 @@
 "use server";
 
+import { RECIPE_INGREDIENT_NOTE_MARKER, computeRecipeRequirements } from "@/lib/fnb-recipe-stock";
 import { prisma } from "@/lib/prisma";
 import { createFifoBatchTx } from "@/lib/inventory-fifo";
 import { refundPayment } from "@/lib/payments/gateway";
@@ -166,7 +167,19 @@ async function restoreInventoryForRefund(
   });
   if (!order) throw new Error("ORDER_NOT_FOUND");
 
+  // Dishes with a recipe consumed their ingredients, not their own stock, so a
+  // refund must put the ingredients back and leave the dish count alone.
+  const ingredientSales = await tx.stockMovement.findMany({
+    where: { orderId, storeId, type: "SALE", inventoryItemId: { not: null }, note: { endsWith: RECIPE_INGREDIENT_NOTE_MARKER } },
+    select: { inventoryItemId: true, quantityChange: true },
+  });
+
   for (const item of order.items) {
+    if (ingredientSales.length > 0 && (item.productId || item.variantId)) {
+      const dishProductId = item.productId ?? (await tx.productVariant.findUnique({ where: { id: item.variantId! }, select: { productId: true } }))?.productId;
+      const dish = dishProductId ? await tx.product.findUnique({ where: { id: dishProductId }, select: { attributes: true } }) : null;
+      if (dish && computeRecipeRequirements(dish.attributes, 1)) continue;
+    }
     if (item.variantId) {
       const variant = await tx.productVariant.findUnique({
         where: { id: item.variantId },
@@ -230,6 +243,22 @@ async function restoreInventoryForRefund(
         });
       }
     }
+  }
+
+  const returned = new Map<string, number>();
+  for (const sale of ingredientSales) {
+    if (sale.inventoryItemId) returned.set(sale.inventoryItemId, (returned.get(sale.inventoryItemId) ?? 0) + Math.abs(sale.quantityChange));
+  }
+  for (const [inventoryItemId, quantity] of returned) {
+    if (quantity <= 0) continue;
+    const ingredient = await tx.inventoryItem.findUnique({ where: { id: inventoryItemId } });
+    if (!ingredient || ingredient.storeId !== storeId) continue;
+    const nextQuantity = ingredient.quantity + quantity;
+    await tx.inventoryItem.update({ where: { id: ingredient.id }, data: { quantity: nextQuantity } });
+    await tx.stockMovement.create({
+      data: { inventoryItemId: ingredient.id, storeId, orderId, type: "RETURN", quantityChange: quantity, quantityAfter: nextQuantity, note: `Refund return of recipe ingredient (order ${orderId})` },
+    });
+    await createFifoBatchTx(tx, { inventoryItemId: ingredient.id, storeId, quantity, unitCost: ingredient.costPrice == null ? null : Number(ingredient.costPrice), sourceNote: `Refund return of recipe ingredient (order ${orderId})` });
   }
 
   return true;

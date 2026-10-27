@@ -169,6 +169,8 @@ function RecipesPanel({ slug, products, inventory, role }: { slug: string; produ
     if (!Number.isFinite(y) || y <= 0) { toast.error("Yield must be greater than zero."); return; }
     const rows = ingredients.map((i) => ({ inventoryItemId: i.inventoryItemId, quantity: Number(i.quantity), unit: i.unit }));
     if (rows.some((i) => !Number.isFinite(i.quantity) || i.quantity <= 0)) { toast.error("Every ingredient needs a quantity above zero."); return; }
+    if (rows.some((i) => !Number.isInteger(i.quantity))) { toast.error("Use whole numbers in your stock unit (for example 200 g, not 0.2 kg)."); return; }
+    if (new Set(rows.map((i) => i.inventoryItemId)).size !== rows.length) { toast.error("Each ingredient can only appear once in a recipe."); return; }
     start(async () => {
       const r = await saveFnbRecipe(slug, product.id, { yieldQty: y, ingredients: rows });
       if (!r.success) toast.error(r.error); else toast.success("Recipe saved");
@@ -183,14 +185,14 @@ function RecipesPanel({ slug, products, inventory, role }: { slug: string; produ
         <select value={product?.id || ""} onChange={(e) => selectProduct(e.target.value)} className="mt-2 w-full rounded-xl border border-[var(--bn-admin-border)] bg-[var(--bn-admin-surface-2)] px-3 py-2 text-sm">{products.map((p: any) => <option key={p.id} value={p.id}>{p.name}</option>)}</select>
         <label className="mt-4 block text-xs font-bold">Yield / portions</label>
         <input disabled={!canEdit} type="number" inputMode="decimal" min="1" step="any" value={yieldQty} onChange={(e) => setYieldQty(e.target.value)} className="mt-2 w-full rounded-xl border border-[var(--bn-admin-border)] bg-[var(--bn-admin-surface-2)] px-3 py-2 text-sm" />
-        <div className="mt-5 rounded-xl border border-[color-mix(in_srgb,var(--bn-admin-border)_20%,transparent)] p-3 text-xs text-[var(--bn-admin-orange)]">Recipes connect menu sales to ingredient cost and production planning.</div>
+        <div className="mt-5 rounded-xl border border-[color-mix(in_srgb,var(--bn-admin-border)_20%,transparent)] p-3 text-xs text-[var(--bn-admin-orange)]">Selling this dish deducts its ingredients from stock. Enter quantities for the full yield, as whole numbers in the unit you count that ingredient in (g, ml, pcs).</div>
       </section>
       <section className="rounded-2xl border border-[var(--bn-admin-border)] bg-[color-mix(in_srgb,var(--bn-admin-surface-2)_60%,transparent)] p-4">
         {inventory.length === 0 && <div className="mb-3 rounded-xl border border-[var(--bn-admin-border)] p-3 text-xs text-[var(--bn-admin-orange)]">Ingredients come from your inventory, and you have none yet. <Link href={`/store/${slug}/admin/inventory`} className="font-bold underline">Add ingredients in Inventory</Link> first.</div>}
         <div className="hidden grid-cols-[1fr_100px_100px_32px] gap-2 text-[10px] font-bold uppercase tracking-wide text-[var(--bn-admin-orange)] sm:grid"><span>Ingredient</span><span>Qty</span><span>Unit</span><span /></div>
         {ingredients.map((i, idx) => <div key={idx} className="mt-2 grid grid-cols-[1fr_1fr_40px] gap-2 rounded-xl border border-[var(--bn-admin-border)] p-2 sm:grid-cols-[1fr_100px_100px_32px] sm:border-0 sm:p-0">
           <select disabled={!canEdit} value={i.inventoryItemId} onChange={(e) => update(idx, { inventoryItemId: e.target.value })} className={`${field} col-span-3 sm:col-span-1`}>{inventory.map((v: any) => <option key={v.id} value={v.id}>{v.product.name}</option>)}</select>
-          <input disabled={!canEdit} type="number" inputMode="decimal" min="0" step="any" placeholder="Qty" value={i.quantity} onChange={(e) => update(idx, { quantity: e.target.value })} className={field} />
+          <input disabled={!canEdit} type="number" inputMode="numeric" min="1" step="1" placeholder="Qty" value={i.quantity} onChange={(e) => update(idx, { quantity: e.target.value })} className={field} />
           <input disabled={!canEdit} placeholder="Unit (g, kg, pcs)" value={i.unit} onChange={(e) => update(idx, { unit: e.target.value })} className={field} />
           <button type="button" aria-label="Remove ingredient" disabled={!canEdit} onClick={() => setIngredients((prev) => prev.filter((_, n) => n !== idx))} className="rounded-lg border border-[var(--bn-admin-border)] text-[var(--bn-admin-orange)]">×</button>
         </div>)}

@@ -231,6 +231,11 @@ export async function saveFnbRecipe(slug: string, productId: string, recipe: { y
   if (!a.success) return { success: false, error: a.error };
   if (a.role === "STAFF") return { success: false, error: "Only the store owner or manager can edit recipes and food cost." };
   if (!Number.isFinite(recipe.yieldQty) || recipe.yieldQty <= 0) return { success: false, error: "Recipe yield must be greater than zero." };
+  // Stock is counted in whole units (g, ml, pcs), so ingredient quantities must be whole numbers.
+  if (recipe.ingredients.some((i) => Number(i.quantity) > 0 && !Number.isInteger(Number(i.quantity)))) {
+    return { success: false, error: "Ingredient quantities must be whole numbers in your stock unit (for example 200 g, not 0.2 kg)." };
+  }
+  if (recipe.ingredients.length > 60) return { success: false, error: "A recipe can have at most 60 ingredients." };
   const product = await prisma.product.findFirst({ where: { id: productId, storeId: a.store.id }, select: { id: true, attributes: true } });
   if (!product) return { success: false, error: "Menu item not found." };
   const ids = Array.from(new Set(recipe.ingredients.map((i) => i.inventoryItemId).filter(Boolean)));

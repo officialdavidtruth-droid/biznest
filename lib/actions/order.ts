@@ -1,5 +1,6 @@
 "use server";
 
+import { computeRecipeRequirements } from "@/lib/fnb-recipe-stock";
 import { auth } from "@/lib/auth";
 import {
   getStoreCustomerSession,
@@ -365,10 +366,19 @@ export async function startCheckout(
     if (item.variantId && (!variant || variant.productId !== product.id)) {
       return { success: false, error: `The selected option for ${product.name} is no longer available.` };
     }
-    if (variant && variant.quantity < item.quantity) {
+    // A dish with a recipe is limited by its ingredients, not its own count.
+    const recipeNeeds = computeRecipeRequirements(product.attributes, item.quantity);
+    if (recipeNeeds) {
+      const stock = recipeNeeds.length
+        ? await prisma.inventoryItem.findMany({ where: { id: { in: recipeNeeds.map((n) => n.inventoryItemId) }, storeId: store.id }, select: { id: true, quantity: true } })
+        : [];
+      if (recipeNeeds.some((n) => { const s = stock.find((x) => x.id === n.inventoryItemId); return s && s.quantity < n.quantity; })) {
+        return { success: false, error: `${product.name} is not available in that quantity right now.` };
+      }
+    } else if (variant && variant.quantity < item.quantity) {
       return { success: false, error: `Only ${variant.quantity} of ${variant.label} is available.` };
     }
-    if (!variant && product.type === "PHYSICAL") {
+    if (!variant && !recipeNeeds && product.type === "PHYSICAL") {
       const inventory = await prisma.inventoryItem.findFirst({ where: { productId: product.id, storeId: store.id }, select: { quantity: true } });
       if (inventory && inventory.quantity < item.quantity) {
         return { success: false, error: `Only ${inventory.quantity} of ${product.name} is available.` };
