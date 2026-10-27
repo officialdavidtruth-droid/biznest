@@ -1,5 +1,6 @@
 import "server-only";
 import { settleAndPayout } from "@/lib/payments/payout";
+import { amountCoversExpected } from "@/lib/payments/amount";
 
 import { prisma } from "@/lib/prisma";
 import { confirmPaidBooking, escapeHtml } from "@/lib/payments/booking-confirmation";
@@ -31,7 +32,7 @@ export async function settleServiceBookingPayment(
   // FAILED is revivable: a premature callback may have marked it failed before the
   // gateway finished. Gateway-verified success always wins over a stale FAILED.
   if (payment.status !== "PENDING" && payment.status !== "FAILED") return { success: false, error: "Booking payment is not pending." };
-  if (Math.abs(Number(payment.amount) - Number(verifiedAmountNaira)) > 0.01) return { success: false, error: "Payment amount mismatch." };
+  if (!amountCoversExpected(Number(verifiedAmountNaira), Number(payment.amount))) return { success: false, error: `Payment amount mismatch (paid ${verifiedAmountNaira}, expected ${Number(payment.amount)}).` };
 
   let bookingNotMarkedPaid = false;
   await prisma.$transaction(async (tx) => {

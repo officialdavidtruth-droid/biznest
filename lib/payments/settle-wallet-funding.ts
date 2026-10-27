@@ -1,4 +1,5 @@
 import "server-only";
+import { amountCoversExpected } from "@/lib/payments/amount";
 
 import { prisma } from "@/lib/prisma";
 import { flagPaymentForReview } from "@/lib/payments/review";
@@ -32,7 +33,7 @@ export async function settleWalletFunding(
   if (payment.provider !== provider) return { success: false, error: "Payment provider mismatch." };
   if (payment.status === "SUCCESSFUL") return { success: true, data: { storeSlug: payment.wallet.store.slug } };
   if (payment.status !== "PENDING" && payment.status !== "FAILED") return { success: false, error: "Wallet payment is not pending." };
-  if (Math.abs(Number(payment.amount) - Number(verifiedAmountNaira)) > 0.01) {
+  if (!amountCoversExpected(Number(verifiedAmountNaira), Number(payment.amount))) {
     await flagPaymentForReview(reference, `wallet funding amount mismatch (paid ${verifiedAmountNaira}, expected ${Number(payment.amount)})`, rawPayload);
     return { success: false, error: "Wallet funding amount mismatch." };
   }

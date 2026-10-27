@@ -1,4 +1,5 @@
 import "server-only";
+import { amountCoversExpected } from "@/lib/payments/amount";
 import { prisma } from "@/lib/prisma";
 import { decrementStockForOrder } from "@/lib/payments/stock";
 import { emitWebhookEvent } from "@/lib/webhooks/dispatch";
@@ -40,7 +41,7 @@ export async function settleOrderPayment(input: {
     await flagPaymentForReview(reference, `provider mismatch (order=${order.paymentProvider}, paid via ${provider})`, payload);
     return { outcome: "wrong_provider" };
   }
-  if (Math.abs(verifiedAmountNaira - Number(order.total)) >= 0.01) {
+  if (!amountCoversExpected(verifiedAmountNaira, Number(order.total))) {
     await flagPaymentForReview(reference, `amount mismatch (paid ${verifiedAmountNaira}, order total ${Number(order.total)})`, payload);
     return { outcome: "mismatch" };
   }

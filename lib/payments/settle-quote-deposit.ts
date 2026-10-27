@@ -1,4 +1,5 @@
 import "server-only";
+import { amountCoversExpected } from "@/lib/payments/amount";
 import { settleAndPayout } from "@/lib/payments/payout";
 
 import { prisma } from "@/lib/prisma";
@@ -21,7 +22,7 @@ import { flagPaymentForReview } from "@/lib/payments/review";
 export async function settleQuoteDeposit(reference: string, verifiedAmountNaira: number, rawPayload: object): Promise<void> {
   const payment = await prisma.payment.findUnique({ where: { reference } });
   if (!payment || payment.purpose !== "QUOTE_DEPOSIT" || !reference.startsWith("QDEP-")) return;
-  if (Math.abs(Number(payment.amount) - Number(verifiedAmountNaira)) > 0.01) {
+  if (!amountCoversExpected(Number(verifiedAmountNaira), Number(payment.amount))) {
     await flagPaymentForReview(reference, `quote deposit amount mismatch (paid ${verifiedAmountNaira}, expected ${Number(payment.amount)})`, rawPayload);
     return;
   }

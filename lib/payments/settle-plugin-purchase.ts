@@ -1,4 +1,5 @@
 import "server-only";
+import { amountCoversExpected } from "@/lib/payments/amount";
 
 import { prisma } from "@/lib/prisma";
 import type { ActionResult } from "@/types/actions";
@@ -15,7 +16,7 @@ export async function settlePluginPurchase(reference: string, amountNaira: numbe
   if (!reference.startsWith("PLUG-")) return { success: false, error: "Invalid plugin payment reference." };
   const payment = await prisma.payment.findUnique({ where: { reference } });
   if (!payment?.storeId || payment.purpose !== "PLUGIN_PURCHASE") return { success: false, error: "Plugin payment not found." };
-  if (Math.abs(Number(payment.amount) - amountNaira) > 0.01) return { success: false, error: "Plugin payment amount mismatch." };
+  if (!amountCoversExpected(amountNaira, Number(payment.amount))) return { success: false, error: "Plugin payment amount mismatch." };
 
   const parts = reference.split("-");
   const storeId = parts[1];
