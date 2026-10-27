@@ -9,3 +9,14 @@ import { randomUUID } from "crypto";
 export function shortToken(): string {
   return randomUUID().replace(/-/g, "").slice(0, 12);
 }
+
+/**
+ * Collapses a gateway reference that arrived with its own prefix+id repeated
+ * ("BK-<id>-BK-<id>-<token>") back to the one we actually issued
+ * ("BK-<id>-<token>"). Anything that doesn't match that exact shape is
+ * returned untouched, so this can never rewrite a legitimate reference.
+ */
+export function canonicalizeReference(reference: string): string {
+  const m = reference.match(/^(BK|WAL|RES)-([A-Za-z0-9]+)-\1-\2-([a-f0-9]{12})$/);
+  return m ? `${m[1]}-${m[2]}-${m[3]}` : reference;
+}

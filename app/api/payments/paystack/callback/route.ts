@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import { verifyPaystackTransaction } from "@/lib/payments/paystack";
+import { canonicalizeReference } from "@/lib/payments/reference";
 import { secretKeyForReference } from "@/lib/payments/store-gateway";
 import { checkRateLimit, getClientIp } from "@/lib/rate-limit";
 import { settleInvoicePayment } from "@/lib/payments/settle-invoice";
@@ -18,11 +19,13 @@ import { APP_URL } from "@/lib/constants/app-url";
 
 export async function GET(req: Request) {
   const { searchParams } = new URL(req.url);
-  const reference = searchParams.get("reference") ?? searchParams.get("trxref");
+  const rawReference = searchParams.get("reference") ?? searchParams.get("trxref");
 
-  if (!reference) {
+  if (!rawReference) {
     return NextResponse.redirect(`${APP_URL}/?payment=missing_reference`);
   }
+
+  const reference = canonicalizeReference(rawReference);
 
   // This is an unauthenticated redirect target, so key by IP rather than
   // reference — an attacker probing many references from one IP is exactly
