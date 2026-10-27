@@ -53,5 +53,27 @@ export async function createPendingPayment(input: {
 }
 
 export async function markPaymentFailed(reference: string) {
-  await prisma.payment.updateMany({ where: { reference, status: "PENDING" }, data: { status: "FAILED" } });
+  const failed = await prisma.payment.updateMany({ where: { reference, status: "PENDING" }, data: { status: "FAILED" } });
+  if (!failed.count) return;
+  // A failed/abandoned PMS deposit must not leave the reservation stuck on
+  // "payment in progress" — that state blocks cancelling, no-show and any new
+  // deposit request until someone edits the database.
+  const payment = await prisma.payment.findUnique({ where: { reference }, select: { reservationId: true } });
+  if (payment?.reservationId) await reconcileReservationPaymentState(payment.reservationId);
+}
+
+/**
+ * Puts a reservation's paymentStatus back to UNPAID when it says PENDING but
+ * no payment for it is actually pending any more (the attempt failed, was
+ * abandoned or its row was never created). Safe to call any time; returns the
+ * resulting paymentStatus.
+ */
+export async function reconcileReservationPaymentState(reservationId: string) {
+  const reservation = await prisma.propertyReservation.findUnique({ where: { id: reservationId }, select: { paymentStatus: true } });
+  if (!reservation) return null;
+  if (reservation.paymentStatus !== "PENDING") return reservation.paymentStatus;
+  const stillPending = await prisma.payment.count({ where: { reservationId, purpose: "PMS_RESERVATION", status: "PENDING" } });
+  if (stillPending > 0) return "PENDING" as const;
+  await prisma.propertyReservation.updateMany({ where: { id: reservationId, paymentStatus: "PENDING" }, data: { paymentStatus: "UNPAID" } });
+  return "UNPAID" as const;
 }

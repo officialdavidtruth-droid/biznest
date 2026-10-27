@@ -1,6 +1,7 @@
 import crypto from "crypto";
 import { logWarn } from "@/lib/observability/log";
 import { fixedIpFetch } from "@/lib/payments/fixed-ip-fetch";
+import { parseKorapayChannels } from "@/lib/payments/korapay-channels";
 
 /**
  * Korapay (Kora) adapter.
@@ -99,21 +100,30 @@ export async function initializeKorapayTransaction(params: {
   narration?: string;
   secretKey?: string | null;
 }): Promise<KorapayInitializeResponse> {
-  const res = await koraFetch<{ reference: string; checkout_url: string }>("/charges/initialize", {
-    method: "POST",
-    secretKey: params.secretKey,
-    body: {
-      amount: to2dp(params.amountNaira),
-      currency: "NGN",
-      reference: params.reference,
-      redirect_url: params.callbackUrl,
-      ...(params.notificationUrl ? { notification_url: params.notificationUrl } : {}),
-      narration: params.narration ?? "BizNest payment",
-      // The customer pays exactly the order total; Kora keeps its fee out of that, and the fee is held back from the vendor's payout (gateway-fee.ts).
-      merchant_bears_cost: true,
-      customer: { name: params.customerName ?? params.email, email: params.email },
-    },
-  });
+  const base = {
+    amount: to2dp(params.amountNaira),
+    currency: "NGN",
+    reference: params.reference,
+    redirect_url: params.callbackUrl,
+    ...(params.notificationUrl ? { notification_url: params.notificationUrl } : {}),
+    narration: params.narration ?? "BizNest payment",
+    // The customer pays exactly the order total; Kora keeps its fee out of that, and the fee is held back from the vendor's payout (gateway-fee.ts).
+    merchant_bears_cost: true,
+    customer: { name: params.customerName ?? params.email, email: params.email },
+  };
+  const send = (body: Record<string, unknown>) =>
+    koraFetch<{ reference: string; checkout_url: string }>("/charges/initialize", { method: "POST", secretKey: params.secretKey, body });
+
+  // Lead with bank transfer / Pay with Bank so customers aren't forced through a card OTP.
+  const res = await send({ ...base, channels: parseKorapayChannels(process.env.KORAPAY_CHANNELS) });
+  if (res.status) return { status: res.status, message: res.message, data: res.data };
+
+  // A channel that isn't enabled on the Kora account makes Kora reject the whole request
+  // as invalid. Never let that take checkout down: retry once with Kora's own defaults.
+  if (res.httpStatus >= 400 && res.httpStatus < 500) {
+    const fallback = await send(base);
+    return { status: fallback.status, message: fallback.message, data: fallback.data };
+  }
   return { status: res.status, message: res.message, data: res.data };
 }
 

@@ -3,8 +3,18 @@
 import { prisma } from "@/lib/prisma";
 import { revalidatePath } from "next/cache";
 import type { ActionResult } from "@/types/actions";
-import { assertStorePermission } from "@/lib/access/assert-store-access";
+import { assertAnyStorePermission } from "@/lib/access/assert-store-access";
 import { auth } from "@/lib/auth";
+
+// Conversations are reachable from the "Customer messages" permission and from
+// the Customer Support app, so either grants access.
+const CONVERSATION_PERMISSIONS = ["messages", "plugin:helpdesk"] as const;
+
+/** Owner + every active staff member. Anyone else in a thread is the customer. */
+async function getStoreSideIds(storeId: string, ownerId: string) {
+  const staff = await prisma.storeStaff.findMany({ where: { storeId, status: "ACTIVE" }, select: { userId: true } });
+  return new Set<string>([ownerId, ...staff.map((s) => s.userId).filter((id): id is string => !!id)]);
+}
 
 /**
  * All conversations tied to this store — both order-tied threads and the
@@ -12,7 +22,7 @@ import { auth } from "@/lib/auth";
  * page (see lib/actions/account.ts's getOrCreateGeneralConversation).
  */
 export async function listStoreConversations(slug: string) {
-  const access = await assertStorePermission(slug, "messages");
+  const access = await assertAnyStorePermission(slug, [...CONVERSATION_PERMISSIONS]);
   if (!access.success) return [];
 
   const conversations = await prisma.conversation.findMany({
@@ -30,10 +40,16 @@ export async function listStoreConversations(slug: string) {
   // include the owner (see getOrCreateGeneralConversation in
   // lib/actions/account.ts), so without this the list could show the
   // owner's own name instead of the customer's.
-  return conversations.map((c) => ({
-    ...c,
-    customer: c.order?.buyer ?? c.participants.find((p) => p.user.id !== access.store.business.userId)?.user ?? null,
-  }));
+  // Staff who reply get added as participants, so "not the owner" alone would
+  // mislabel them as the customer — exclude the whole store side.
+  const storeSide = await getStoreSideIds(access.store.id, access.store.business.userId);
+  return conversations
+    .map((c) => ({
+      ...c,
+      customer: c.order?.buyer ?? c.participants.find((p) => !storeSide.has(p.user.id))?.user ?? null,
+    }))
+    // Most recent activity first (a new customer message should surface an old thread).
+    .sort((a, b) => (b.messages[0]?.createdAt.getTime() ?? b.createdAt.getTime()) - (a.messages[0]?.createdAt.getTime() ?? a.createdAt.getTime()));
 }
 
 /**
@@ -42,7 +58,7 @@ export async function listStoreConversations(slug: string) {
  * read another store's customer messages by guessing a conversation id.
  */
 export async function getStoreConversation(slug: string, conversationId: string) {
-  const access = await assertStorePermission(slug, "messages");
+  const access = await assertAnyStorePermission(slug, [...CONVERSATION_PERMISSIONS]);
   if (!access.success) return null;
 
   const conversation = await prisma.conversation.findFirst({
@@ -57,9 +73,10 @@ export async function getStoreConversation(slug: string, conversationId: string)
 
   // See listStoreConversations — same "not the owner" logic for picking
   // out the customer on general (non-order-tied) threads.
+  const storeSide = await getStoreSideIds(access.store.id, access.store.business.userId);
   const customer =
     conversation.order?.buyer ??
-    conversation.participants.find((p) => p.user.id !== access.store.business.userId)?.user ??
+    conversation.participants.find((p) => !storeSide.has(p.user.id))?.user ??
     null;
 
   return { ...conversation, customer };
@@ -76,7 +93,7 @@ export async function replyToStoreConversation(
   conversationId: string,
   content: string
 ): Promise<ActionResult> {
-  const access = await assertStorePermission(slug, "messages");
+  const access = await assertAnyStorePermission(slug, [...CONVERSATION_PERMISSIONS]);
   if (!access.success) return { success: false, error: access.error };
   if (!content.trim()) return { success: false, error: "Message can't be empty." };
 
@@ -107,7 +124,10 @@ export async function replyToStoreConversation(
   await prisma.message.create({ data: { conversationId, senderId, content: content.trim() } });
 
   // Notify the customer(s) in the thread, not the staff member who just sent it.
-  const customerIds = conversation.participants.map((p) => p.userId).filter((id) => id !== senderId);
+  // Participants also include the owner and other staff — don't tell them
+  // "new reply from the store" about a reply the store itself just sent.
+  const storeSide = await getStoreSideIds(access.store.id, access.store.business.userId);
+  const customerIds = conversation.participants.map((p) => p.userId).filter((id) => id !== senderId && !storeSide.has(id));
   await Promise.all(
     customerIds.map((userId) =>
       prisma.notification

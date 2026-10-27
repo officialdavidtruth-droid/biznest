@@ -6,10 +6,11 @@ import { Prisma } from "@prisma/client";
 import { storeHasPayoutTarget } from "@/lib/payments/payout-target";
 import { revalidatePath } from "next/cache";
 import { assertStorePermission } from "@/lib/access/assert-store-access";
+import { auth } from "@/lib/auth";
 import { hasCapability } from "@/lib/capabilities";
 import { getPluginEntitlement } from "@/lib/plugins";
 import { chargeCustomer, resolveCheckoutGateway, paymentCallbackUrl } from "@/lib/payments/gateway";
-import { createPendingPayment, markPaymentFailed } from "@/lib/payments/pending";
+import { createPendingPayment, markPaymentFailed, reconcileReservationPaymentState } from "@/lib/payments/pending";
 import type { ActionResult } from "@/types/actions";
 import crypto from "crypto";
 import { shortToken } from "@/lib/payments/reference";
@@ -32,6 +33,52 @@ async function access(slug: string) {
   return a;
 }
 
+/**
+ * Frees a room that was held RESERVED for a reservation that just ended
+ * without a stay — but only if no other live reservation still needs it.
+ * (A room is flipped to RESERVED by the first booking; releasing it when one
+ * of several bookings is cancelled used to show it as free while another
+ * guest was still due.)
+ */
+async function releaseRoomIfNoOtherStay(tx:Prisma.TransactionClient,roomId:string,endedReservationId:string){
+ const other=await tx.propertyReservation.findFirst({where:{roomId,id:{not:endedReservationId},status:{in:["PENDING","CONFIRMED"]},checkOut:{gt:new Date()}},select:{id:true}});
+ if(!other)await tx.propertyRoom.updateMany({where:{id:roomId,status:"RESERVED"},data:{status:"AVAILABLE"}});
+}
+
+/**
+ * room.status is stored, so it can drift from the reservations (a cancelled
+ * booking elsewhere, a check-in done through another path, a booking that
+ * becomes due today). Re-derive only the three states reservations decide —
+ * AVAILABLE / RESERVED / OCCUPIED — and never touch DIRTY, CLEANING,
+ * MAINTENANCE or OUT_OF_SERVICE, which staff set deliberately. A manually
+ * set OCCUPIED (walk-in with no reservation) is also left alone.
+ */
+async function syncRoomStatuses(storeId:string){
+ const now=new Date();
+ const endOfToday=new Date(now);endOfToday.setHours(23,59,59,999);
+ const [rooms,live]=await Promise.all([
+  prisma.propertyRoom.findMany({where:{storeId,status:{in:["AVAILABLE","RESERVED"]}},select:{id:true,status:true}}),
+  prisma.propertyReservation.findMany({where:{storeId,OR:[{status:"CHECKED_IN"},{status:{in:["PENDING","CONFIRMED"]},checkOut:{gt:now}}]},select:{roomId:true,status:true,checkIn:true}}),
+ ]);
+ const inHouse=new Set<string>(),due=new Set<string>();
+ for(const r of live){
+  if(r.status==="CHECKED_IN")inHouse.add(r.roomId);
+  else if(r.checkIn<=endOfToday)due.add(r.roomId);
+ }
+ const toOccupied:string[]=[],toReserved:string[]=[],toAvailable:string[]=[];
+ for(const room of rooms){
+  if(inHouse.has(room.id))toOccupied.push(room.id);
+  else if(room.status==="AVAILABLE"&&due.has(room.id))toReserved.push(room.id);
+  else if(room.status==="RESERVED"&&!due.has(room.id)&&!live.some(l=>l.roomId===room.id))toAvailable.push(room.id);
+ }
+ // A RESERVED room whose only booking is further out stays RESERVED (createReservation set it); only rooms with no live booking at all are freed.
+ await Promise.all([
+  toOccupied.length?prisma.propertyRoom.updateMany({where:{id:{in:toOccupied},storeId,status:{in:["AVAILABLE","RESERVED"]}},data:{status:"OCCUPIED"}}):null,
+  toReserved.length?prisma.propertyRoom.updateMany({where:{id:{in:toReserved},storeId,status:"AVAILABLE"},data:{status:"RESERVED"}}):null,
+  toAvailable.length?prisma.propertyRoom.updateMany({where:{id:{in:toAvailable},storeId,status:"RESERVED"},data:{status:"AVAILABLE"}}):null,
+ ]);
+}
+
 export async function getPmsAccessStatus(slug: string) {
   const a = await assertStorePermission(slug, "plugin:pms");
   if (!a.success) return { allowed: false as const, error: a.error };
@@ -45,13 +92,21 @@ export async function getPmsAccessStatus(slug: string) {
 
 export async function getPmsData(slug: string) {
   const a = await access(slug); if (!a.success) return null;
-  const [rooms, guests, reservations, cards, units] = await Promise.all([
+  await syncRoomStatuses(a.store.id).catch(() => {}); // best effort: never block the workspace on a sync failure
+  const [rooms, guests, reservations, cards, units, tickets] = await Promise.all([
     prisma.propertyRoom.findMany({ where: { storeId: a.store.id }, orderBy: { name: "asc" } }),
-    prisma.propertyGuest.findMany({ where: { storeId: a.store.id }, orderBy: { updatedAt: "desc" }, take: 100 }),
-    prisma.propertyReservation.findMany({ where: { storeId: a.store.id }, include: { guest: true, room: true }, orderBy: { checkIn: "asc" }, take: 100 }),
+    prisma.propertyGuest.findMany({ where: { storeId: a.store.id }, orderBy: { updatedAt: "desc" }, take: 300 }),
+    // Oldest-first with a hard cap used to cut off the newest bookings once a
+    // property passed 100 reservations. Always include everything live (pending /
+    // confirmed / checked in) plus the last 90 days of history.
+    prisma.propertyReservation.findMany({
+      where: { storeId: a.store.id, OR: [{ status: { in: ["PENDING", "CONFIRMED", "CHECKED_IN"] } }, { checkOut: { gte: new Date(Date.now() - 90 * 86_400_000) } }] },
+      include: { guest: true, room: true }, orderBy: { checkIn: "asc" }, take: 1000,
+    }),
     prisma.roomAccessCard.findMany({ where: { storeId: a.store.id }, include: { room: true, guest: true, reservation: true }, orderBy: { createdAt: "desc" }, take: 500 }),
     // Online room units, so each PMS room can be linked to the same physical room.
     prisma.serviceUnit.findMany({ where: { storeId: a.store.id }, select: { id: true, label: true, service: { select: { name: true } } }, orderBy: [{ serviceId: "asc" }, { label: "asc" }] }),
+    prisma.propertyMaintenanceTicket.findMany({ where: { storeId: a.store.id, OR: [{ status: "OPEN" }, { resolvedAt: { gte: new Date(Date.now() - 90 * 86_400_000) } }] }, orderBy: { reportedAt: "desc" }, take: 300 }),
   ]);
   // depositAmount is a Prisma Decimal (a decimal.js class instance), not a
   // plain JS value — React Server Components can't serialize it across the
@@ -71,7 +126,8 @@ export async function getPmsData(slug: string) {
     revokedAt: card.revokedAt?.toISOString() ?? null,
   }));
   const plainUnits = units.map((u) => ({ id: u.id, label: u.label, serviceName: u.service.name }));
-  return { rooms, guests, reservations: plainReservations, cards: plainCards, units: plainUnits };
+  const plainTickets = tickets.map((t) => ({ ...t, reportedAt: t.reportedAt.toISOString(), resolvedAt: t.resolvedAt?.toISOString() ?? null }));
+  return { rooms, guests, reservations: plainReservations, cards: plainCards, units: plainUnits, tickets: plainTickets };
 }
 
 export async function activateRoomCard(
@@ -90,7 +146,9 @@ export async function activateRoomCard(
   if (["OUT_OF_SERVICE", "MAINTENANCE"].includes(room.status)) return { success: false, error: "Cards cannot be activated for a room that is out of service or under maintenance." };
 
   const existing = await prisma.roomAccessCard.findUnique({ where: { storeId_cardUid: { storeId: a.store.id, cardUid } } });
-  if (existing?.status === "ACTIVE") return { success: false, error: "This card is already active. Deactivate it before reusing it." };
+  // A card that is past its expiry is no longer usable even though its row is still ACTIVE
+  // (it is only flipped to REVOKED when someone scans it), so it can be reissued.
+  if (existing?.status === "ACTIVE" && !(existing.expiresAt && existing.expiresAt <= new Date())) return { success: false, error: "This card is already active. Deactivate it before reusing it." };
 
   let reservation: any = null;
   if (input.reservationId) {
@@ -218,6 +276,8 @@ export async function createReservation(slug:string,input:{guestId:string;roomId
   prisma.propertyRoom.findFirst({where:{id:input.roomId,storeId:a.store.id}}),
  ]);
  if(!guest||!room)return{success:false,error:"Guest or room does not belong to this store."};
+ if(checkOut<=new Date())return{success:false,error:"Check-out must be in the future."};
+ if(room.status==="OUT_OF_SERVICE")return{success:false,error:"This room is out of service and can't be reserved."};
 
  // The overlap check and the insert used to be two separate round-trips,
  // so two concurrent booking attempts for the same room/dates could both
@@ -278,6 +338,10 @@ export async function checkInReservation(slug:string,id:string):Promise<ActionRe
  if(!r)return{success:false,error:"Reservation not found."};
  if(!["PENDING","CONFIRMED"].includes(r.status))return{success:false,error:"Reservation cannot be checked in."};
 
+ if(r.room.status==="OUT_OF_SERVICE")return{success:false,error:"This room is out of service. Move the guest to another room first."};
+ const occupant=await prisma.propertyReservation.findFirst({where:{roomId:r.roomId,status:"CHECKED_IN",NOT:{id}},include:{guest:true}});
+ if(occupant)return{success:false,error:`${occupant.guest.fullName} is still checked in to this room. Check them out first.`};
+
  const now=new Date();
  // Same-day early arrival is normal for hotels, so allow check-in from the
  // start of the reservation's check-in calendar day onward — just not
@@ -322,17 +386,17 @@ export async function cancelReservation(slug:string,id:string,reason?:string):Pr
  const r=await prisma.propertyReservation.findFirst({where:{id,storeId:a.store.id}});
  if(!r)return{success:false,error:"Reservation not found."};
  if(!["PENDING","CONFIRMED"].includes(r.status))return{success:false,error:"Only pending or confirmed reservations can be cancelled."};
- if(r.paymentStatus==="PENDING")return{success:false,error:"This reservation has a payment in progress. Wait for the payment result before cancelling it."};
+ if(await reconcileReservationPaymentState(r.id)==="PENDING")return{success:false,error:"This reservation has a payment in progress. Wait for the payment result before cancelling it."};
  const trimmedReason=reason?.trim();
- await prisma.$transaction([
-  prisma.propertyReservation.update({where:{id},data:{
+ await prisma.$transaction(async(tx)=>{
+  await tx.propertyReservation.update({where:{id},data:{
    status:"CANCELLED",
    cancelledAt:new Date(),
    notes:trimmedReason?`${r.notes?`${r.notes}\n`:""}Cancelled: ${trimmedReason}`:r.notes,
-  }}),
-  prisma.propertyRoom.updateMany({where:{id:r.roomId,status:"RESERVED"},data:{status:"AVAILABLE"}}),
-  prisma.roomAccessCard.updateMany({where:{storeId:a.store.id,reservationId:id,status:"ACTIVE"},data:{status:"REVOKED",revokedAt:new Date(),revokedReason:"Reservation cancelled"}}),
- ]);
+  }});
+  await releaseRoomIfNoOtherStay(tx,r.roomId,id);
+  await tx.roomAccessCard.updateMany({where:{storeId:a.store.id,reservationId:id,status:"ACTIVE"},data:{status:"REVOKED",revokedAt:new Date(),revokedReason:"Reservation cancelled"}});
+ });
  revalidatePath(`/store/${slug}/admin/pms`);return{success:true,data:undefined};
 }
 
@@ -345,12 +409,12 @@ export async function markReservationNoShow(slug:string,id:string):Promise<Actio
  const r=await prisma.propertyReservation.findFirst({where:{id,storeId:a.store.id}});
  if(!r)return{success:false,error:"Reservation not found."};
  if(!["PENDING","CONFIRMED"].includes(r.status))return{success:false,error:"Only pending or confirmed reservations can be marked as a no-show."};
- if(r.paymentStatus==="PENDING")return{success:false,error:"This reservation has a payment in progress. Wait for the payment result before marking it as a no-show."};
- await prisma.$transaction([
-  prisma.propertyReservation.update({where:{id},data:{status:"NO_SHOW",cancelledAt:new Date()}}),
-  prisma.propertyRoom.updateMany({where:{id:r.roomId,status:"RESERVED"},data:{status:"AVAILABLE"}}),
-  prisma.roomAccessCard.updateMany({where:{storeId:a.store.id,reservationId:id,status:"ACTIVE"},data:{status:"REVOKED",revokedAt:new Date(),revokedReason:"Reservation marked no-show"}}),
- ]);
+ if(await reconcileReservationPaymentState(r.id)==="PENDING")return{success:false,error:"This reservation has a payment in progress. Wait for the payment result before marking it as a no-show."};
+ await prisma.$transaction(async(tx)=>{
+  await tx.propertyReservation.update({where:{id},data:{status:"NO_SHOW",cancelledAt:new Date()}});
+  await releaseRoomIfNoOtherStay(tx,r.roomId,id);
+  await tx.roomAccessCard.updateMany({where:{storeId:a.store.id,reservationId:id,status:"ACTIVE"},data:{status:"REVOKED",revokedAt:new Date(),revokedReason:"Reservation marked no-show"}});
+ });
  revalidatePath(`/store/${slug}/admin/pms`);return{success:true,data:undefined};
 }
 
@@ -385,7 +449,7 @@ export async function chargeReservationDeposit(
  const reservation=await prisma.propertyReservation.findFirst({where:{id:reservationId,storeId:a.store.id},include:{guest:true}});
  if(!reservation)return{success:false,error:"Reservation not found."};
  if(reservation.paymentStatus==="PAID")return{success:false,error:"This reservation is already paid."};
- if(reservation.paymentStatus==="PENDING")return{success:false,error:"A payment is already in progress for this reservation."};
+ if(await reconcileReservationPaymentState(reservation.id)==="PENDING")return{success:false,error:"A payment is already in progress for this reservation."};
  if(!["PENDING","CONFIRMED","CHECKED_IN"].includes(reservation.status))return{success:false,error:"Cannot charge a cancelled, no-show, or checked-out reservation."};
 
  const checkoutGateway=await resolveCheckoutGateway(a.store.id);
@@ -478,4 +542,53 @@ export async function autoLinkRoomsToUnits(slug:string):Promise<ActionResult<{li
  }
  revalidatePath(`/store/${slug}/admin/pms`);
  return{success:true,data:{linked}};
+}
+
+
+/* -------------------------------------------------------------------------- */
+/* MAINTENANCE TICKETS                                                         */
+/* -------------------------------------------------------------------------- */
+
+/**
+ * Logs a fault against a room. The room is taken out of sale (MAINTENANCE) unless
+ * a guest is in it right now or it is already out of service — in those cases the
+ * ticket is still recorded, but the guest's room status is left alone.
+ */
+export async function reportMaintenanceIssue(slug:string,input:{roomId:string;description:string;priority:"LOW"|"MEDIUM"|"HIGH"}):Promise<ActionResult<{id:string}>>{
+ const a=await access(slug);if(!a.success)return{success:false,error:a.error};
+ const description=input.description.trim();
+ if(!description)return{success:false,error:"Describe the problem."};
+ if(description.length>2000)return{success:false,error:"Description is too long (max 2000 characters)."};
+ if(!["LOW","MEDIUM","HIGH"].includes(input.priority))return{success:false,error:"Choose a priority."};
+ const room=await prisma.propertyRoom.findFirst({where:{id:input.roomId,storeId:a.store.id}});
+ if(!room)return{success:false,error:"Room not found."};
+ const session=await auth();
+ const ticket=await prisma.$transaction(async(tx)=>{
+  const t=await tx.propertyMaintenanceTicket.create({data:{storeId:a.store.id,roomId:room.id,description,priority:input.priority,reportedById:session?.user?.id??null},select:{id:true}});
+  const occupied=await tx.propertyReservation.findFirst({where:{roomId:room.id,status:"CHECKED_IN"},select:{id:true}});
+  if(!occupied&&room.status!=="OUT_OF_SERVICE")await tx.propertyRoom.update({where:{id:room.id},data:{status:"MAINTENANCE"}});
+  return t;
+ });
+ revalidatePath(`/store/${slug}/admin/pms`);
+ return{success:true,data:{id:ticket.id}};
+}
+
+/**
+ * Closes a ticket. The room only returns to service when its LAST open ticket is
+ * resolved and it is still sitting in MAINTENANCE; `nextStatus` says whether it
+ * then needs cleaning first or is ready to sell.
+ */
+export async function resolveMaintenanceTicket(slug:string,ticketId:string,nextStatus:"AVAILABLE"|"DIRTY",resolution?:string):Promise<ActionResult>{
+ const a=await access(slug);if(!a.success)return{success:false,error:a.error};
+ if(!["AVAILABLE","DIRTY"].includes(nextStatus))return{success:false,error:"Invalid room status."};
+ const ticket=await prisma.propertyMaintenanceTicket.findFirst({where:{id:ticketId,storeId:a.store.id}});
+ if(!ticket)return{success:false,error:"Ticket not found."};
+ if(ticket.status==="RESOLVED")return{success:true,data:undefined};
+ await prisma.$transaction(async(tx)=>{
+  await tx.propertyMaintenanceTicket.update({where:{id:ticket.id},data:{status:"RESOLVED",resolvedAt:new Date(),resolution:resolution?.trim()||null}});
+  const stillOpen=await tx.propertyMaintenanceTicket.count({where:{roomId:ticket.roomId,status:"OPEN"}});
+  if(stillOpen===0)await tx.propertyRoom.updateMany({where:{id:ticket.roomId,status:"MAINTENANCE"},data:{status:nextStatus}});
+ });
+ revalidatePath(`/store/${slug}/admin/pms`);
+ return{success:true,data:undefined};
 }

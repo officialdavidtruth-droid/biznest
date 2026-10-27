@@ -5,6 +5,7 @@ import { revalidatePath } from "next/cache";
 import { nanoid } from "nanoid";
 import { assertStorePermission } from "@/lib/access/assert-store-access";
 import { getPluginEntitlement } from "@/lib/plugins";
+import { applyStraightLineDepreciation } from "@/lib/asset-depreciation";
 import type { ActionResult } from "@/types/actions";
 
 const KEY = "asset-management";
@@ -58,9 +59,10 @@ export async function addAsset(slug: string, input: { name: string; category: st
   if (!Number.isInteger(input.usefulLifeMonths) || input.usefulLifeMonths <= 0 || input.usefulLifeMonths > 600) return { success: false, error: "Useful life must be a whole number of months (1 to 600)." };
   const residual = input.residualValue ?? 0;
   if (!Number.isFinite(residual) || residual < 0 || residual >= input.purchaseCost) return { success: false, error: "Residual value must be lower than the purchase cost." };
-  await prisma.financialAsset.create({
+  const created = await prisma.financialAsset.create({
     data: { storeId: g.store.id, assetNo: `BN-AST-${Date.now()}-${nanoid(5).toUpperCase()}`, name, category, purchaseDate, purchaseCost: input.purchaseCost, usefulLifeMonths: input.usefulLifeMonths, residualValue: residual, notes: input.notes?.trim() || null },
   });
+  await prisma.auditLog.create({ data: { action: "FINANCIAL_ASSET_CREATED", entity: "FinancialAsset", entityId: created.id, metadata: { storeId: g.store.id } } }).catch(() => {});
   done(slug);
   return { success: true, data: undefined };
 }
@@ -68,17 +70,10 @@ export async function addAsset(slug: string, input: { name: string; category: st
 export async function depreciateAsset(slug: string, id: string, months: number): Promise<ActionResult<{ amount: number }>> {
   const g = await guard(slug);
   if (!g.ok) return { success: false, error: g.error };
-  if (!Number.isInteger(months) || months <= 0 || months > 120) return { success: false, error: "Choose between 1 and 120 months." };
-  const asset = await prisma.financialAsset.findFirst({ where: { id, storeId: g.store.id, status: "ACTIVE" } });
-  if (!asset) return { success: false, error: "Asset not found or no longer active." };
-  const depreciable = Number(asset.purchaseCost) - Number(asset.residualValue);
-  const remaining = depreciable - Number(asset.accumulatedDepreciation);
-  if (remaining <= 0) return { success: false, error: "This asset is already fully depreciated." };
-  const amount = Math.min(remaining, (depreciable / asset.usefulLifeMonths) * months);
-  const fully = Number(asset.accumulatedDepreciation) + amount >= depreciable - 0.005;
-  await prisma.financialAsset.update({ where: { id: asset.id }, data: { accumulatedDepreciation: { increment: amount }, status: fully ? "FULLY_DEPRECIATED" : "ACTIVE" } });
-  done(slug);
-  return { success: true, data: { amount } };
+  // Up to 600 months so "Catch up" works for long-lived assets bought years ago.
+  const r = await applyStraightLineDepreciation(g.store.id, id, months, 600);
+  if (r.success) done(slug);
+  return r;
 }
 
 export async function addMaintenanceNote(slug: string, id: string, note: string): Promise<ActionResult> {

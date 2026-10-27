@@ -584,6 +584,7 @@ model PropertyRoom {
   accessCards RoomAccessCard[]
   channelConnections ChannelConnection[]
   channelBlocks ChannelBlock[]
+  maintenanceTickets PropertyMaintenanceTicket[]
   @@unique([storeId, name])
   @@index([storeId, status])
 }
@@ -653,6 +654,36 @@ model PropertyReservation {
   @@index([storeId, checkIn, checkOut])
   @@index([storeId, status])
   @@index([roomId, checkIn, checkOut])
+}
+
+enum MaintenancePriority {
+  LOW
+  MEDIUM
+  HIGH
+}
+
+enum MaintenanceTicketStatus {
+  OPEN
+  RESOLVED
+}
+
+// A reported fault on a room. Persisted so the Maintenance tab survives a reload
+// and keeps a history; room.status is only a label for "can I sell this room".
+model PropertyMaintenanceTicket {
+  id           String                  @id @default(cuid())
+  storeId      String
+  store        Store                   @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  roomId       String
+  room         PropertyRoom            @relation(fields: [roomId], references: [id], onDelete: Cascade)
+  description  String
+  priority     MaintenancePriority     @default(MEDIUM)
+  status       MaintenanceTicketStatus @default(OPEN)
+  reportedById String?
+  reportedAt   DateTime                @default(now())
+  resolvedAt   DateTime?
+  resolution   String?
+  @@index([storeId, status, reportedAt])
+  @@index([roomId, status])
 }
 
 enum PropertyFolioChargeStatus {
@@ -938,6 +969,7 @@ model Store {
   menuItems     StoreMenuItem[]
   propertyGuests PropertyGuest[]
   propertyRooms PropertyRoom[]
+  propertyMaintenanceTickets PropertyMaintenanceTicket[]
   channelConnections ChannelConnection[]
   channelBlocks ChannelBlock[]
   channelManagerRequests ChannelManagerRequest[]

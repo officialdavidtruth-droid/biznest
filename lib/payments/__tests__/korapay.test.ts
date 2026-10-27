@@ -4,7 +4,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 // payout.ts pulls in Prisma; these tests only exercise pure helpers, so stub the DB layer.
 vi.mock("@/lib/prisma", () => ({ prisma: {} }));
 vi.mock("@prisma/client", () => ({ Prisma: {} }));
-vi.mock("@/lib/observability/log", () => ({ logError: vi.fn(), logInfo: vi.fn() }));
+vi.mock("@/lib/observability/log", () => ({ logError: vi.fn(), logInfo: vi.fn(), logWarn: vi.fn() }));
 
 import {
   initiateKorapayTransfer,
@@ -81,6 +81,21 @@ describe("charge init + verify", () => {
   it("reports an error (never a success) when Kora can't be reached or the charge is unknown", async () => {
     reply({ status: false, message: "Charge not found" }, 404);
     expect((await verifyKorapayTransaction("nope")).status).toBe("error");
+  });
+
+  it("asks Kora to lead with bank transfer / pay with bank, keeping card as a fallback", async () => {
+    reply({ status: true, message: "ok", data: { reference: "r", checkout_url: "https://checkout.kora/x" } });
+    await initializeKorapayTransaction({ email: "a@b.co", amountNaira: 100, reference: "r", callbackUrl: "https://x" });
+    expect(JSON.parse(fetchMock.mock.calls[0][1].body).channels).toEqual(["bank_transfer", "pay_with_bank", "card"]);
+  });
+
+  it("retries without channels when Kora rejects the request (e.g. a channel not enabled on the account)", async () => {
+    reply({ status: false, message: "One or more fields are invalid", data: { channels: "not enabled" } }, 422);
+    reply({ status: true, message: "ok", data: { reference: "r", checkout_url: "https://checkout.kora/x" } });
+    const res = await initializeKorapayTransaction({ email: "a@b.co", amountNaira: 100, reference: "r", callbackUrl: "https://x" });
+    expect(res.status).toBe(true);
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    expect(JSON.parse(fetchMock.mock.calls[1][1].body).channels).toBeUndefined();
   });
 
   it("refuses to call Kora with no key configured", async () => {

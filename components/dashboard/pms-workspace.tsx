@@ -48,6 +48,8 @@ import {
   updateRoomStatus,
   linkRoomToUnit,
   autoLinkRoomsToUnits,
+  reportMaintenanceIssue as reportMaintenanceIssueAction,
+  resolveMaintenanceTicket,
 } from "@/lib/actions/pms";
 import { issueReservationRefund } from "@/lib/actions/refund";
 import { formatMoney } from "@/lib/utils/format-money";
@@ -64,6 +66,8 @@ type PmsWorkspaceProps = {
   cards: any[];
   /** Online room units a PMS room can be linked to (same physical room). */
   units?: { id: string; label: string; serviceName: string }[];
+  /** Persisted maintenance tickets (open + recently resolved). */
+  tickets?: any[];
   channels?: { connections: import("@/lib/actions/channels").ChannelConnectionView[]; requests: import("@/lib/actions/channels").ChannelManagerRequestView[] } | null;
 };
 
@@ -106,7 +110,7 @@ function statusClass(value: string) {
   return "bg-[color-mix(in_srgb,var(--bn-admin-surface)_5%,transparent)] text-white border-[color-mix(in_srgb,var(--bn-admin-border)_10%,transparent)]";
 }
 
-export function PmsWorkspace({ slug, storeName, rooms: initialRooms, guests: initialGuests, reservations: initialReservations, cards: initialCards, units = [], channels }: PmsWorkspaceProps) {
+export function PmsWorkspace({ slug, storeName, rooms: initialRooms, guests: initialGuests, reservations: initialReservations, cards: initialCards, units = [], tickets: initialTickets = [], channels }: PmsWorkspaceProps) {
   const [tab, setTab] = useState<Tab>("dashboard");
   const [rooms, setRooms] = useState(initialRooms);
   const [guests, setGuests] = useState(initialGuests);
@@ -127,7 +131,7 @@ export function PmsWorkspace({ slug, storeName, rooms: initialRooms, guests: ini
   const [roomId, setRoomId] = useState("");
   const [checkIn, setCheckIn] = useState("");
   const [checkOut, setCheckOut] = useState("");
-  const [maintenanceNotes, setMaintenanceNotes] = useState<Record<string, { note: string; severity: "LOW" | "MEDIUM" | "HIGH"; reportedAt: string }>>({});
+  const [tickets, setTickets] = useState<any[]>(initialTickets);
   const [showMaintenanceForm, setShowMaintenanceForm] = useState(false);
   const [maintenanceRoomId, setMaintenanceRoomId] = useState("");
   const [maintenanceNote, setMaintenanceNote] = useState("");
@@ -271,22 +275,23 @@ export function PmsWorkspace({ slug, storeName, rooms: initialRooms, guests: ini
   async function reportMaintenanceIssue(e: React.FormEvent) {
     e.preventDefault();
     if (!maintenanceRoomId) { toast.error("Select a room."); return; }
-    const room = rooms.find((r: any) => r.id === maintenanceRoomId);
-    if (!room) return;
-    const result = await run(() => updateRoomStatus(slug, room.id, "MAINTENANCE"), "Issue logged");
+    if (!maintenanceNote.trim()) { toast.error("Describe the problem."); return; }
+    const result = await run(() => reportMaintenanceIssueAction(slug, { roomId: maintenanceRoomId, description: maintenanceNote, priority: maintenanceSeverity }), "Issue logged");
     if (result?.success) {
-      setRooms((items) => items.map((r) => r.id === room.id ? { ...r, status: "MAINTENANCE" } : r));
-      setMaintenanceNotes((items) => ({ ...items, [room.id]: { note: maintenanceNote || "No details provided", severity: maintenanceSeverity, reportedAt: new Date().toISOString() } }));
       setMaintenanceRoomId(""); setMaintenanceNote(""); setMaintenanceSeverity("MEDIUM"); setShowMaintenanceForm(false);
+      window.location.reload(); // room status and ticket list both changed server-side
     }
   }
 
+  async function resolveTicket(ticket: any, nextStatus: "AVAILABLE" | "DIRTY") {
+    const result = await run(() => resolveMaintenanceTicket(slug, ticket.id, nextStatus), "Marked resolved");
+    if (result?.success) window.location.reload();
+  }
+
+  // Rooms flagged MAINTENANCE / OUT_OF_SERVICE by hand, with no ticket behind them.
   async function resolveMaintenanceIssue(room: any, nextStatus: "AVAILABLE" | "DIRTY") {
     const result = await run(() => updateRoomStatus(slug, room.id, nextStatus), "Marked resolved");
-    if (result?.success) {
-      setRooms((items) => items.map((r) => r.id === room.id ? { ...r, status: nextStatus } : r));
-      setMaintenanceNotes((items) => { const next = { ...items }; delete next[room.id]; return next; });
-    }
+    if (result?.success) setRooms((items) => items.map((r) => r.id === room.id ? { ...r, status: nextStatus } : r));
   }
 
   const maintenanceRooms = useMemo(() => rooms.filter((r: any) => ["MAINTENANCE", "OUT_OF_SERVICE"].includes(r.status)), [rooms]);
@@ -359,7 +364,7 @@ export function PmsWorkspace({ slug, storeName, rooms: initialRooms, guests: ini
           {tab === "billing" && <Billing slug={slug} reservations={reservations} onAction={reservationAction} />}
           {tab === "cards" && <RoomCards rooms={rooms} guests={guests} reservations={reservations} cards={cards} onAdd={() => setShowCardForm(true)} onDeactivate={deactivateCard} />}
           {tab === "reports" && <Reports data={reportData} />}
-          {tab === "maintenance" && <Maintenance rooms={rooms} maintenanceRooms={maintenanceRooms} notes={maintenanceNotes} onReport={() => setShowMaintenanceForm(true)} onResolve={resolveMaintenanceIssue} />}
+          {tab === "maintenance" && <Maintenance rooms={rooms} maintenanceRooms={maintenanceRooms} tickets={tickets} onReport={() => setShowMaintenanceForm(true)} onResolve={resolveMaintenanceIssue} onResolveTicket={resolveTicket} />}
           {tab === "channels" && <PmsChannels slug={slug} rooms={rooms.map((r: any) => ({ id: r.id, name: r.name }))} connections={channels?.connections ?? []} requests={channels?.requests ?? []} />}
           {tab === "settings" && <PmsSettings slug={slug} storeName={storeName} rooms={rooms} onAddRoom={() => setShowRoomForm(true)} setTab={setTab} />}
         </main>
@@ -369,7 +374,7 @@ export function PmsWorkspace({ slug, storeName, rooms: initialRooms, guests: ini
       {showGuestForm && <Modal title="Create guest" onClose={() => setShowGuestForm(false)}><form onSubmit={addGuest} className="space-y-4"><Field label="Full name" value={guestName} onChange={setGuestName} placeholder="John Doe" /><Field label="Email" value={guestEmail} onChange={setGuestEmail} placeholder="guest@example.com" /><Field label="Phone" value={guestPhone} onChange={setGuestPhone} placeholder="080…" /><button disabled={busy} className="w-full rounded-xl bg-[var(--bn-admin-surface-2)] px-4 py-3 text-sm font-semibold text-[var(--bn-admin-text)]">{busy ? "Saving…" : "Create guest"}</button></form></Modal>}
       {showReservationForm && <Modal title="New reservation" onClose={() => setShowReservationForm(false)}><form onSubmit={addReservation} className="space-y-4"><SelectField label="Guest" value={guestId} onChange={setGuestId} options={guests.map((g) => [g.id, g.fullName])} /><SelectField label="Room" value={roomId} onChange={setRoomId} options={rooms.filter((r) => !["OUT_OF_SERVICE", "MAINTENANCE"].includes(r.status)).map((r) => [r.id, `${r.name} — ${r.roomType}`])} /><Field label="Check-in" type="datetime-local" value={checkIn} onChange={setCheckIn} /><Field label="Check-out" type="datetime-local" value={checkOut} onChange={setCheckOut} /><button disabled={busy} className="w-full rounded-xl bg-[var(--bn-admin-surface-2)] px-4 py-3 text-sm font-semibold text-[var(--bn-admin-text)]">{busy ? "Saving…" : "Confirm reservation"}</button></form></Modal>}
       {showCardForm && <Modal title="Activate room key card" onClose={() => setShowCardForm(false)}><form onSubmit={activateCard} className="space-y-4"><div><p className="text-sm font-medium">Issue a physical access card</p><p className="mt-1 text-xs text-white">You can activate multiple cards for the same room. Each card must have its own UID or number.</p></div><SelectField label="Room" value={cardRoomId} onChange={(value: string) => { setCardRoomId(value); setCardReservationId(""); }} options={rooms.filter((r: any) => !["OUT_OF_SERVICE", "MAINTENANCE"].includes(r.status)).map((r: any) => [r.id, `${r.name} — ${r.roomType}`])} /><SelectField label="Guest reservation (optional)" value={cardReservationId} onChange={setCardReservationId} options={reservations.filter((r: any) => ["CONFIRMED", "CHECKED_IN"].includes(r.status) && (!cardRoomId || r.roomId === cardRoomId)).map((r: any) => [r.id, `${r.guest?.fullName || "Guest"} · ${r.room?.name || "Room"}`])} /><Field label="Card UID / number" value={cardUid} onChange={setCardUid} placeholder="RFID-001928" /><Field label="Card label (optional)" value={cardLabel} onChange={setCardLabel} placeholder="Guest 1 / Spare / Master" /><Field label="Expiry (optional)" type="datetime-local" value={cardExpiry} onChange={setCardExpiry} /><button disabled={busy} className="w-full rounded-xl bg-[var(--bn-admin-surface-2)] px-4 py-3 text-sm font-semibold text-[var(--bn-admin-text)]">{busy ? "Activating…" : "Activate card"}</button></form></Modal>}
-      {showMaintenanceForm && <Modal title="Report maintenance issue" onClose={() => setShowMaintenanceForm(false)}><form onSubmit={reportMaintenanceIssue} className="space-y-4"><SelectField label="Room" value={maintenanceRoomId} onChange={setMaintenanceRoomId} options={rooms.filter((r: any) => !["MAINTENANCE", "OUT_OF_SERVICE"].includes(r.status)).map((r: any) => [r.id, `${r.name} — ${r.roomType}`])} /><label className="block"><span className="mb-1.5 block text-xs text-white">Severity</span><select value={maintenanceSeverity} onChange={(e) => setMaintenanceSeverity(e.target.value as any)} className="w-full rounded-xl border border-[color-mix(in_srgb,var(--bn-admin-border)_10%,transparent)] bg-[color-mix(in_srgb,var(--bn-admin-page)_20%,transparent)] px-3 py-3 text-sm text-white"><option className="bg-[var(--bn-admin-page)]" value="LOW">Low</option><option className="bg-[var(--bn-admin-page)]" value="MEDIUM">Medium</option><option className="bg-[var(--bn-admin-page)]" value="HIGH">High</option></select></label><label className="block"><span className="mb-1.5 block text-xs text-white">Issue details</span><textarea value={maintenanceNote} onChange={(e) => setMaintenanceNote(e.target.value)} placeholder="e.g. AC unit not cooling, leaking faucet…" rows={3} className="w-full rounded-xl border border-[color-mix(in_srgb,var(--bn-admin-border)_10%,transparent)] bg-[color-mix(in_srgb,var(--bn-admin-page)_20%,transparent)] px-3 py-3 text-sm text-white placeholder:text-white" /></label><button disabled={busy} className="w-full rounded-xl bg-[var(--bn-admin-surface-2)] px-4 py-3 text-sm font-semibold text-[var(--bn-admin-text)]">{busy ? "Saving…" : "Log issue & take room offline"}</button></form></Modal>}
+      {showMaintenanceForm && <Modal title="Report maintenance issue" onClose={() => setShowMaintenanceForm(false)}><form onSubmit={reportMaintenanceIssue} className="space-y-4"><SelectField label="Room" value={maintenanceRoomId} onChange={setMaintenanceRoomId} options={rooms.map((r: any) => [r.id, `${r.name} — ${r.roomType}`])} /><label className="block"><span className="mb-1.5 block text-xs text-white">Severity</span><select value={maintenanceSeverity} onChange={(e) => setMaintenanceSeverity(e.target.value as any)} className="w-full rounded-xl border border-[color-mix(in_srgb,var(--bn-admin-border)_10%,transparent)] bg-[color-mix(in_srgb,var(--bn-admin-page)_20%,transparent)] px-3 py-3 text-sm text-white"><option className="bg-[var(--bn-admin-page)]" value="LOW">Low</option><option className="bg-[var(--bn-admin-page)]" value="MEDIUM">Medium</option><option className="bg-[var(--bn-admin-page)]" value="HIGH">High</option></select></label><label className="block"><span className="mb-1.5 block text-xs text-white">Issue details</span><textarea value={maintenanceNote} onChange={(e) => setMaintenanceNote(e.target.value)} placeholder="e.g. AC unit not cooling, leaking faucet…" rows={3} className="w-full rounded-xl border border-[color-mix(in_srgb,var(--bn-admin-border)_10%,transparent)] bg-[color-mix(in_srgb,var(--bn-admin-page)_20%,transparent)] px-3 py-3 text-sm text-white placeholder:text-white" /></label><button disabled={busy} className="w-full rounded-xl bg-[var(--bn-admin-surface-2)] px-4 py-3 text-sm font-semibold text-[var(--bn-admin-text)]">{busy ? "Saving…" : "Log issue & take room offline"}</button></form></Modal>}
     </div>
   );
 }
@@ -424,15 +429,20 @@ function RoomCards({ rooms, reservations, cards, onAdd, onDeactivate }: any) {
 
 function Billing({ slug, reservations, onAction }: any) { const unpaid = reservations.filter((r: any) => r.paymentStatus !== "PAID" && !["CANCELLED", "NO_SHOW"].includes(r.status)); const paid = reservations.filter((r: any) => r.paymentStatus === "PAID"); return <div className="space-y-5"><div><h2 className="text-2xl font-semibold">Billing & Payments</h2><p className="mt-1 text-sm text-white">Monitor reservation payment state and collect deposits through BizNest payments.</p></div><div className="grid gap-4 md:grid-cols-3"><Metric label="Unpaid stays" value={unpaid.length} icon={CreditCard} /><Metric label="Paid stays" value={paid.length} icon={CheckCircle2} /><Metric label="Payment coverage" value={`${reservations.length ? Math.round((paid.length / reservations.length) * 100) : 0}%`} icon={WalletCards} /></div><div className="overflow-hidden rounded-2xl border border-[color-mix(in_srgb,var(--bn-admin-border)_10%,transparent)] bg-[var(--bn-admin-surface)]/[0.025]"><div className="overflow-x-auto"><table className="w-full min-w-[800px] text-left text-sm"><thead className="border-b border-[color-mix(in_srgb,var(--bn-admin-border)_10%,transparent)] text-xs text-white"><tr><th className="px-5 py-4">Guest</th><th className="px-5 py-4">Reservation</th><th className="px-5 py-4">Payment</th><th className="px-5 py-4">Deposit</th><th className="px-5 py-4">Action</th></tr></thead><tbody>{reservations.map((r: any) => <tr key={r.id} className="border-b border-[color-mix(in_srgb,var(--bn-admin-border)_5%,transparent)] last:border-0"><td className="px-5 py-4 font-medium">{r.guest?.fullName}</td><td className="px-5 py-4 text-white">{r.room?.name} · {date(r.checkIn)}</td><td className="px-5 py-4"><span className={`rounded-full border px-2 py-1 text-[10px] ${statusClass(r.paymentStatus || "UNPAID")}`}>{statusLabel(r.paymentStatus || "UNPAID")}</span></td><td className="px-5 py-4 text-white">{r.depositAmount ? money(Number(r.depositAmount)) : "—"}</td><td className="px-5 py-4">{r.paymentStatus !== "PAID" && !["CANCELLED", "NO_SHOW", "CHECKED_OUT"].includes(r.status) ? <button onClick={() => { const amount = window.prompt("Deposit amount to request (NGN):", r.depositAmount ? String(Number(r.depositAmount)) : ""); if (!amount) return; const n = Number(amount); if (!Number.isFinite(n) || n <= 0) { toast.error("Enter a valid amount."); return; } chargeReservationDeposit(slug, r.id, n, r.guest?.email).then((result) => { if (!result.success) toast.error(result.error); else { navigator.clipboard?.writeText(result.data.authorizationUrl).catch(() => {}); window.open(result.data.authorizationUrl, "_blank"); toast.success("Payment link created"); } }); }} className="rounded-lg bg-[color-mix(in_srgb,var(--bn-admin-surface-2)_10%,transparent)] px-2.5 py-1.5 text-[11px] text-[var(--bn-admin-orange)]">Request payment</button> : <span className="text-xs text-white">No action</span>}</td></tr>)}</tbody></table></div></div></div>; }
 
-function Maintenance({ rooms, maintenanceRooms, notes, onReport, onResolve }: any) {
+function Maintenance({ rooms, maintenanceRooms, tickets, onReport, onResolve, onResolveTicket }: any) {
+  const openTickets = tickets.filter((t: any) => t.status === "OPEN");
+  const resolvedTickets = tickets.filter((t: any) => t.status === "RESOLVED").slice(0, 12);
+  const roomName = (id: string) => rooms.find((r: any) => r.id === id);
+  const ticketRoomIds = new Set(openTickets.map((t: any) => t.roomId));
+  const untracked = maintenanceRooms.filter((r: any) => !ticketRoomIds.has(r.id));
   const operational = rooms.filter((r: any) => !["MAINTENANCE", "OUT_OF_SERVICE"].includes(r.status));
-  const highSeverity = maintenanceRooms.filter((r: any) => notes[r.id]?.severity === "HIGH").length;
+  const highSeverity = openTickets.filter((t: any) => t.priority === "HIGH").length;
   const severityClass = (s: string) => s === "HIGH" ? "bg-[color-mix(in_srgb,var(--bn-admin-danger-soft)_10%,transparent)] text-[var(--bn-admin-danger)] border-[color-mix(in_srgb,var(--bn-admin-danger-line)_20%,transparent)]" : s === "MEDIUM" ? "bg-[color-mix(in_srgb,var(--bn-admin-orange-soft)_10%,transparent)] text-[var(--bn-admin-orange)] border-[color-mix(in_srgb,var(--bn-admin-border)_20%,transparent)]" : "bg-[color-mix(in_srgb,var(--bn-admin-surface-2)_10%,transparent)] text-[var(--bn-admin-orange)] border-[color-mix(in_srgb,var(--bn-admin-border)_20%,transparent)]";
   return <div className="space-y-6">
     <Toolbar title="Maintenance" subtitle="Track rooms out of service and resolve issues." action="Report issue" onAction={onReport} />
 
     <div className="grid gap-4 md:grid-cols-3">
-      <Metric label="Rooms affected" value={maintenanceRooms.length} icon={Wrench} />
+      <Metric label="Open issues" value={openTickets.length + untracked.length} icon={Wrench} />
       <Metric label="High severity" value={highSeverity} icon={Activity} />
       <Metric label="Operational rooms" value={operational.length} icon={CheckCircle2} />
     </div>
@@ -440,23 +450,37 @@ function Maintenance({ rooms, maintenanceRooms, notes, onReport, onResolve }: an
     <div className="rounded-2xl border border-[color-mix(in_srgb,var(--bn-admin-border)_10%,transparent)] bg-[var(--bn-admin-surface)]/[0.025] p-5">
       <h3 className="font-semibold">Open issues</h3>
       <div className="mt-4 grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-        {maintenanceRooms.map((r: any) => { const info = notes[r.id]; return <div key={r.id} className="rounded-2xl border border-[color-mix(in_srgb,var(--bn-admin-border)_10%,transparent)] bg-[color-mix(in_srgb,var(--bn-admin-page)_10%,transparent)] p-5">
+        {openTickets.map((t: any) => { const r = roomName(t.roomId); return <div key={t.id} className="rounded-2xl border border-[color-mix(in_srgb,var(--bn-admin-border)_10%,transparent)] bg-[color-mix(in_srgb,var(--bn-admin-page)_10%,transparent)] p-5">
+          <div className="flex items-start justify-between"><div className="flex h-11 w-11 items-center justify-center rounded-xl bg-[color-mix(in_srgb,var(--bn-admin-danger-soft)_10%,transparent)] text-[var(--bn-admin-danger)]"><Wrench className="h-5 w-5" /></div>{r && <span className={`rounded-full border px-2 py-1 text-[10px] ${statusClass(r.status)}`}>{statusLabel(r.status)}</span>}</div>
+          <h4 className="mt-4 font-semibold">{r?.name ?? "Room"}</h4>
+          <p className="mt-1 text-xs text-white">{r?.roomType}</p>
+          <span className={`mt-3 inline-flex rounded-full border px-2 py-1 text-[10px] ${severityClass(t.priority)}`}>{t.priority} severity</span>
+          <p className="mt-3 text-xs text-white">{t.description}</p>
+          <p className="mt-2 text-[10px] text-white">Reported {dateTime(t.reportedAt)}</p>
+          <div className="mt-5 grid grid-cols-2 gap-2">
+            <button onClick={() => onResolveTicket(t, "DIRTY")} className="rounded-xl bg-[var(--bn-admin-surface-2)] px-3 py-2 text-xs font-semibold text-[var(--bn-admin-text)]">Resolve → Clean</button>
+            <button onClick={() => onResolveTicket(t, "AVAILABLE")} className="rounded-xl border border-[color-mix(in_srgb,var(--bn-admin-border)_10%,transparent)] px-3 py-2 text-xs text-white">Resolve → Ready</button>
+          </div>
+        </div>; })}
+        {untracked.map((r: any) => <div key={r.id} className="rounded-2xl border border-[color-mix(in_srgb,var(--bn-admin-border)_10%,transparent)] bg-[color-mix(in_srgb,var(--bn-admin-page)_10%,transparent)] p-5">
           <div className="flex items-start justify-between"><div className="flex h-11 w-11 items-center justify-center rounded-xl bg-[color-mix(in_srgb,var(--bn-admin-danger-soft)_10%,transparent)] text-[var(--bn-admin-danger)]"><Wrench className="h-5 w-5" /></div><span className={`rounded-full border px-2 py-1 text-[10px] ${statusClass(r.status)}`}>{statusLabel(r.status)}</span></div>
           <h4 className="mt-4 font-semibold">{r.name}</h4>
           <p className="mt-1 text-xs text-white">{r.roomType}</p>
-          {info ? <>
-            <span className={`mt-3 inline-flex rounded-full border px-2 py-1 text-[10px] ${severityClass(info.severity)}`}>{info.severity} severity</span>
-            <p className="mt-3 text-xs text-white">{info.note}</p>
-            <p className="mt-2 text-[10px] text-white">Reported {dateTime(info.reportedAt)}</p>
-          </> : <p className="mt-3 text-xs text-white">No details on file for this room.</p>}
+          <p className="mt-3 text-xs text-white">Flagged by hand, no issue logged for this room.</p>
           <div className="mt-5 grid grid-cols-2 gap-2">
             <button onClick={() => onResolve(r, "DIRTY")} className="rounded-xl bg-[var(--bn-admin-surface-2)] px-3 py-2 text-xs font-semibold text-[var(--bn-admin-text)]">Resolve → Clean</button>
             <button onClick={() => onResolve(r, "AVAILABLE")} className="rounded-xl border border-[color-mix(in_srgb,var(--bn-admin-border)_10%,transparent)] px-3 py-2 text-xs text-white">Resolve → Ready</button>
           </div>
-        </div>; })}
+        </div>)}
       </div>
-      {maintenanceRooms.length === 0 && <Empty text="No open maintenance issues" />}
+      {openTickets.length + untracked.length === 0 && <Empty text="No open maintenance issues" />}
     </div>
+    {resolvedTickets.length > 0 && <div className="rounded-2xl border border-[color-mix(in_srgb,var(--bn-admin-border)_10%,transparent)] bg-[var(--bn-admin-surface)]/[0.025] p-5">
+      <h3 className="font-semibold">Recently resolved</h3>
+      <ul className="mt-3 divide-y divide-[color-mix(in_srgb,var(--bn-admin-border)_10%,transparent)] text-xs text-white">
+        {resolvedTickets.map((t: any) => <li key={t.id} className="flex flex-wrap items-center justify-between gap-2 py-2"><span><b>{roomName(t.roomId)?.name ?? "Room"}</b> · {t.description}</span><span className="text-[10px]">Resolved {t.resolvedAt ? dateTime(t.resolvedAt) : ""}</span></li>)}
+      </ul>
+    </div>}
   </div>;
 }
 

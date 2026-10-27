@@ -35,12 +35,22 @@ export async function getHelpdeskWorkspace(slug: string) {
   const storeId = a.store.id;
   const since30 = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
 
+  // Pick the 150 most recently ACTIVE conversations (by last message), not the
+  // 150 most recently created — otherwise an older thread where a customer just
+  // wrote back would silently drop out of the queue.
+  const active = await prisma.message.groupBy({
+    by: ["conversationId"],
+    where: { conversation: { storeId } },
+    _max: { createdAt: true },
+    orderBy: { _max: { createdAt: "desc" } },
+    take: 150,
+  });
+  const activeIds = active.map((x) => x.conversationId);
+
   const [staff, convs, recentMessages] = await Promise.all([
     prisma.storeStaff.findMany({ where: { storeId, status: "ACTIVE" }, select: { userId: true } }),
     prisma.conversation.findMany({
-      where: { storeId },
-      orderBy: { createdAt: "desc" },
-      take: 150,
+      where: { storeId, id: { in: activeIds } },
       include: {
         order: { select: { id: true, buyer: { select: { id: true, name: true, email: true } } } },
         participants: { include: { user: { select: { id: true, name: true, email: true } } } },

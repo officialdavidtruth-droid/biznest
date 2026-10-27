@@ -8,6 +8,7 @@ import { nanoid } from "nanoid";
 import { revalidatePath } from "next/cache";
 import type { ActionResult } from "@/types/actions";
 import { formatDate } from "@/lib/i18n/locale";
+import { applyStraightLineDepreciation } from "@/lib/asset-depreciation";
 
 async function access(slug: string) {
   const a = await assertStorePermission(slug, "plugin:financial-control");
@@ -347,17 +348,9 @@ export async function createFinancialAsset(slug: string, input: { name: string; 
 
 export async function recordAssetDepreciation(slug: string, assetId: string, months = 1): Promise<ActionResult<{ amount: number }>> {
   const a = await access(slug); if (!a.success) return a;
-  if (!Number.isInteger(months) || months <= 0 || months > 12) return { success: false, error: "Depreciation months must be between 1 and 12." };
-  const asset = await prisma.financialAsset.findFirst({ where: { id: assetId, storeId: a.store.id, status: "ACTIVE" } });
-  if (!asset) return { success: false, error: "Asset not found or inactive." };
-  const remaining = Number(asset.purchaseCost) - Number(asset.residualValue) - Number(asset.accumulatedDepreciation);
-  if (remaining <= 0) return { success: false, error: "This asset is fully depreciated." };
-  const monthly = (Number(asset.purchaseCost) - Number(asset.residualValue)) / asset.usefulLifeMonths;
-  const amount = Math.min(remaining, monthly * months);
-  await prisma.financialAsset.update({ where: { id: asset.id }, data: { accumulatedDepreciation: { increment: amount }, status: Number(asset.accumulatedDepreciation) + amount >= Number(asset.purchaseCost) - Number(asset.residualValue) ? "FULLY_DEPRECIATED" : "ACTIVE" } });
-  await prisma.auditLog.create({ data: { action: "FINANCIAL_ASSET_DEPRECIATED", entity: "FinancialAsset", entityId: asset.id, metadata: { storeId: a.store.id, amount, months } } });
-  revalidatePath(`/store/${slug}/admin/apps/financial-control`);
-  return { success: true, data: { amount } };
+  const r = await applyStraightLineDepreciation(a.store.id, assetId, months, 12);
+  if (r.success) revalidatePath(`/store/${slug}/admin/apps/financial-control`);
+  return r;
 }
 
 export async function decideFinancialRequisition(slug: string, requisitionId: string, decision: "APPROVED" | "REJECTED", note?: string): Promise<ActionResult> {

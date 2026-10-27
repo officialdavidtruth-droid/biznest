@@ -2,6 +2,7 @@ import "server-only";
 import { settleAndPayout } from "@/lib/payments/payout";
 
 import { prisma } from "@/lib/prisma";
+import { logWarn } from "@/lib/observability/log";
 import type { ActionResult } from "@/types/actions";
 import { revalidatePath } from "next/cache";
 
@@ -34,8 +35,13 @@ export async function settleReservationPayment(
  await prisma.$transaction(async(tx)=>{
   const result=await tx.payment.updateMany({where:{id:payment.id,status:"PENDING"},data:{status:"SUCCESSFUL",rawPayload,verifiedAt:new Date()}});
   if(result.count===0)return;
-  await tx.propertyReservation.updateMany({where:{id:payment.reservation!.id,status:{not:"CANCELLED"},paymentStatus:{not:"PAID"}},data:{paymentStatus:"PAID",paymentReference:reference}});
+  // Record the money against the reservation whatever its status now is. Skipping
+  // CANCELLED/NO_SHOW (as this used to) left the guest charged with the reservation
+  // showing UNPAID/PENDING and no way to issue a refund, which needs paymentStatus PAID.
+  await tx.propertyReservation.updateMany({where:{id:payment.reservation!.id,paymentStatus:{notIn:["PAID","REFUNDED"]}},data:{paymentStatus:"PAID",paymentReference:reference}});
  });
+
+ if(["CANCELLED","NO_SHOW"].includes(payment.reservation.status))void logWarn("PAYMENTS","Deposit paid for a reservation that was already cancelled/no-show — refund may be needed",{reference,reservationId:payment.reservation.id});
 
  await settleAndPayout(reference);
 

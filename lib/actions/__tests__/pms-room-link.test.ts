@@ -39,6 +39,7 @@ vi.mock("@/lib/prisma", () => ({
     $transaction: m.transaction,
   },
 }));
+vi.mock("@/lib/auth", () => ({ auth: vi.fn().mockResolvedValue({ user: { id: "u1" } }) }));
 vi.mock("next/cache", () => ({ revalidatePath: vi.fn() }));
 vi.mock("@/lib/access/assert-store-access", () => ({
   assertStorePermission: vi.fn().mockResolvedValue({ success: true, store: { id: "s1", business: { category: "HOTEL" } } }),
@@ -47,7 +48,7 @@ vi.mock("@/lib/capabilities", () => ({ hasCapability: () => true }));
 vi.mock("@/lib/plugins", () => ({ getPluginEntitlement: vi.fn().mockResolvedValue({ allowed: true, installed: true }) }));
 vi.mock("@/lib/payments/payout-target", () => ({ storeHasPayoutTarget: vi.fn() }));
 vi.mock("@/lib/payments/gateway", () => ({ chargeCustomer: vi.fn(), getActiveGateway: vi.fn() }));
-vi.mock("@/lib/payments/pending", () => ({ createPendingPayment: vi.fn(), markPaymentFailed: vi.fn() }));
+vi.mock("@/lib/payments/pending", () => ({ createPendingPayment: vi.fn(), markPaymentFailed: vi.fn(), reconcileReservationPaymentState: vi.fn().mockResolvedValue("UNPAID") }));
 vi.mock("@/lib/channels/sync", () => ({ findChannelBlockOverlap: m.channelOverlap }));
 
 import { autoLinkRoomsToUnits, createReservation, linkRoomToUnit } from "@/lib/actions/pms";

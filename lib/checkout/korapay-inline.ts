@@ -6,6 +6,8 @@
  * our /api/payments/korapay/callback, which RE-VERIFIES the payment with Kora
  * before settling anything -- the popup's success event is never trusted.
  */
+import { parseKorapayChannels } from "@/lib/payments/korapay-channels";
+
 const KORA_SCRIPT = "https://korablobstorage.blob.core.windows.net/modal-bucket/korapay-collections.min.js";
 
 type KoraWindow = Window & {
@@ -51,6 +53,8 @@ export async function openKorapayInline(params: {
     reference: params.reference,
     amount: params.amountNaira,
     currency: "NGN",
+    // Bank transfer / Pay with Bank first: card payments often stall on the OTP step.
+    channels: parseKorapayChannels(process.env.NEXT_PUBLIC_KORAPAY_CHANNELS),
     customer: { name: params.name || params.email, email: params.email },
     onClose: () => params.onClose?.(),
     onSuccess: () => {

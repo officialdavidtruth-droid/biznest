@@ -47,3 +47,23 @@ export async function assertStorePermission(
 
   return { success: true, store, role };
 }
+
+/**
+ * Same as assertStorePermission, but passes when the caller holds ANY of the
+ * given permissions. Used where one capability is reachable from two places
+ * (e.g. the "Customer messages" permission and the Customer Support app both
+ * need to read/reply to store conversations) so a staff member granted only
+ * one of them isn't shown a queue they can't act on.
+ */
+export async function assertAnyStorePermission(
+  slug: string,
+  permissionIds: StaffPermissionId[]
+): Promise<StoreAccessResult> {
+  let last: StoreAccessResult = { success: false, error: "You don't have access to this area." };
+  for (const id of permissionIds) {
+    const r = await assertStorePermission(slug, id);
+    if (r.success) return r;
+    last = r;
+  }
+  return last;
+}
