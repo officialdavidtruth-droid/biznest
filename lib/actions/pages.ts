@@ -8,8 +8,8 @@ import { assertStorePermission } from "@/lib/access/assert-store-access";
 
 // Folders under app/store/[slug]/ (plus a few reserved files). A static route always wins over
 // the dynamic /[pageSlug] route, so a custom page saved under one of these slugs could never be
-// reached. The six suggested slugs (about, gallery, faq, blog, contact, policies) are exempt here;
-// see the audit notes for which of them actually render saved content.
+// reached. The six suggested slugs (about, gallery, faq, blog, contact, policies) are exempt here:
+// each has a built-in route that shows the saved page (see lib/storefront/owner-pages.ts).
 const UNREACHABLE_PAGE_SLUGS = new Set([
   "home", "account", "admin", "amenities", "book", "booking", "brands", "cart", "catalog", "categories",
   "category", "checkout", "deals", "dining", "events", "experiences", "facilities", "favorites",

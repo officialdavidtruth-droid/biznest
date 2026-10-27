@@ -73,7 +73,7 @@ const nextConfig = {
               "img-src 'self' data: https:",
               "font-src 'self' data: https://fonts.gstatic.com",
               "connect-src 'self' https://*.sentry.io https://api.cloudinary.com https://accounts.google.com https://*.paystack.co https://*.paystack.com https://*.flutterwave.com https://*.korapay.com https://korablobstorage.blob.core.windows.net",
-              "frame-src 'self' https://checkout.paystack.com https://js.paystack.co https://*.paystack.com https://checkout.flutterwave.com https://*.flutterwave.com https://*.korapay.com",
+              "frame-src 'self' https://checkout.paystack.com https://js.paystack.co https://*.paystack.com https://checkout.flutterwave.com https://*.flutterwave.com https://*.korapay.com https://www.google.com/maps https://maps.google.com/maps",
               "frame-ancestors 'self'",
               "object-src 'none'",
               "manifest-src 'self'",

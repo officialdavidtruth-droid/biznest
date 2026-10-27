@@ -9,6 +9,9 @@ import { renderUniversalSectionPage } from "@/components/storefront/universal-se
 
 export default async function AboutPage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
+  // The owner's own About page (Customize > Pages), or a published visual builder, wins over every template's default page.
+  const customised = await renderBuilderSubpage(slug, "about", { onlyIfCustomised: true });
+  if (customised) return customised;
   const s = await prisma.store.findUnique({ where: { slug }, select: { businessType: true, business: { select: { category: true } }, template: { select: { name: true } } } });
   if (isHotelStore({ businessCategory: s?.business?.category, storeBusinessType: s?.businessType, templateName: s?.template?.name })) {
     const raw = await prisma.store.findUniqueOrThrow({

@@ -8,6 +8,7 @@ import type { BuilderConfig } from "@/lib/builder-config";
 import { getBusinessExperience } from "@/lib/business-experience";
 import { BuilderFooter, BuilderHeader } from "@/components/storefront/builder-renderer";
 import { ContactEnquiryForm } from "@/components/storefront/contact-enquiry-form";
+import { parseBlogPosts, parseGalleryBody } from "@/lib/storefront/owner-page-format";
 
 type Design = BuilderConfig["design"];
 export type SubpageStore = {
@@ -19,12 +20,16 @@ export type SubpageData = {
   storyImage: string | null; location: string; itemCount: number; completedOrders: number; avgRating: number | null;
   reviews: { id: string; rating: number; comment: string; author: string }[]; categories: SubpageCategory[];
 };
-export type SubpageKind = "about" | "contact" | "categories";
+export type SubpageKind = "about" | "contact" | "categories" | "gallery" | "blog";
+/** The owner's own text for this page (Customize > Pages). When present it replaces the page's default copy. */
+export type OwnerContent = { title: string; body: string };
 
 const COPY: Record<SubpageKind, { title: string; subtitle: string }> = {
   about: { title: "About us", subtitle: "Who we are and what we stand for." },
   contact: { title: "Contact us", subtitle: "Questions, orders or special requests? We'd love to hear from you." },
   categories: { title: "Shop by category", subtitle: "Find exactly what you need across the whole collection." },
+  gallery: { title: "Gallery", subtitle: "A closer look." },
+  blog: { title: "Blog", subtitle: "News and updates." },
 };
 
 /**
@@ -33,7 +38,7 @@ const COPY: Record<SubpageKind, { title: string; subtitle: string }> = {
  * catalogue, so every page looks like one site. (The generic "universal" pages have their
  * own header and palette, which is what made /about look like a different template.)
  */
-export function BuilderSubpage({ kind, store, design: d, data }: { kind: SubpageKind; store: SubpageStore; design: Design; data: SubpageData }) {
+export function BuilderSubpage({ kind, store, design: d, data, owner }: { kind: SubpageKind; store: SubpageStore; design: Design; data: SubpageData; owner?: OwnerContent | null }) {
   const experience = getBusinessExperience(store.business.category, { sellsProducts: store.business.sellsProducts, offersServices: store.business.offersServices }, store.business.businessSubcategory);
   const isService = experience.mode === "service";
   const width = d.containerWidth === "compact" ? 960 : d.containerWidth === "wide" ? 1320 : 1160;
@@ -46,7 +51,7 @@ export function BuilderSubpage({ kind, store, design: d, data }: { kind: Subpage
     { label: "About", href: `${base}/about` },
     { label: "Contact", href: `${base}/contact` },
   ];
-  const copy = COPY[kind];
+  const copy = owner ? { ...COPY[kind], title: owner.title, subtitle: kind === "about" || kind === "contact" ? COPY[kind].subtitle : "" } : COPY[kind];
   const card: React.CSSProperties = { background: d.surface, border: `1px solid ${line}`, borderRadius: d.radius };
   const btn = (primary: boolean): React.CSSProperties => ({
     display: "inline-block", padding: "12px 22px", fontWeight: 750, fontSize: 14, borderRadius: d.buttonStyle === "pill" ? 999 : d.radius,
@@ -55,7 +60,7 @@ export function BuilderSubpage({ kind, store, design: d, data }: { kind: Subpage
 
   let body: ReactNode;
   if (kind === "about") {
-    const desc = store.business.description?.trim() || `${store.name} is a local business. Browse what we offer and get in touch any time.`;
+    const desc = owner?.body || store.business.description?.trim() || `${store.name} is a local business. Browse what we offer and get in touch any time.`;
     body = (
       <>
         <div className="bn-grid" style={{ gridTemplateColumns: data.storyImage ? "1.1fr .9fr" : "1fr", alignItems: "center", gap: 40 }}>
@@ -109,6 +114,8 @@ export function BuilderSubpage({ kind, store, design: d, data }: { kind: Subpage
       return href ? <a key={label} href={href}>{inner}</a> : <div key={label}>{inner}</div>;
     };
     body = (
+      <>
+      {owner && <p style={{ color: d.muted, lineHeight: 1.8, fontSize: 16, whiteSpace: "pre-line", maxWidth: 760, margin: "0 0 32px" }}>{owner.body}</p>}
       <div className="bn-grid" style={{ gridTemplateColumns: "1.3fr .9fr", gap: 28, alignItems: "start" }}>
         {/* The form's own stylesheet (.bn-contact-form in globals.css) is light; keep its text dark on any design. */}
         <div style={{ color: "#111" }}>
@@ -119,6 +126,36 @@ export function BuilderSubpage({ kind, store, design: d, data }: { kind: Subpage
           {store.contactEmail && tile(<Mail size={18} />, "Email us", store.contactEmail, `mailto:${store.contactEmail}`)}
           {tile(<MapPin size={18} />, "Location", data.location || "Contact us for location details.")}
         </div>
+      </div>
+      </>
+    );
+  } else if (kind === "gallery") {
+    const g = parseGalleryBody(owner?.body ?? "");
+    body = (
+      <>
+        {g.intro && <p style={{ color: d.muted, lineHeight: 1.8, fontSize: 16, whiteSpace: "pre-line", maxWidth: 760, margin: "0 0 32px" }}>{g.intro}</p>}
+        {g.images.length > 0 && (
+          <div className="bn-grid" style={{ gridTemplateColumns: "repeat(3,1fr)" }}>
+            {g.images.map((img, i) => (
+              <figure key={`${img.url}-${i}`} style={{ margin: 0 }}>
+                <div role="img" aria-label={img.caption || `${store.name} photo ${i + 1}`} style={{ aspectRatio: "1/1", borderRadius: d.radius, background: `url(${cssUrl(img.url)}) center/cover`, border: `1px solid ${line}` }} />
+                {img.caption && <figcaption style={{ color: d.muted, fontSize: 13, marginTop: 8 }}>{img.caption}</figcaption>}
+              </figure>
+            ))}
+          </div>
+        )}
+      </>
+    );
+  } else if (kind === "blog") {
+    const posts = parseBlogPosts(owner?.body ?? "");
+    body = (
+      <div style={{ display: "grid", gap: 20, maxWidth: 820 }}>
+        {posts.map((post, i) => (
+          <article key={`${post.title}-${i}`} style={{ ...card, padding: 28 }}>
+            <h2 style={{ fontFamily: d.headingFont, fontSize: 26, lineHeight: 1.2, margin: 0 }}>{post.title}</h2>
+            {post.text && <p style={{ color: d.muted, lineHeight: 1.8, fontSize: 16, whiteSpace: "pre-line", margin: "14px 0 0" }}>{post.text}</p>}
+          </article>
+        ))}
       </div>
     );
   } else {
@@ -161,7 +198,7 @@ export function BuilderSubpage({ kind, store, design: d, data }: { kind: Subpage
             <Link href={base}>Home</Link> / <span style={{ color: d.text }}>{copy.title}</span>
           </nav>
           <h1 style={{ fontFamily: d.headingFont, fontSize: 40, lineHeight: 1.1, margin: 0 }}>{kind === "categories" && isService ? "Services" : copy.title}</h1>
-          <p style={{ color: d.muted, margin: "10px 0 0", maxWidth: 640 }}>{copy.subtitle}</p>
+          {copy.subtitle && <p style={{ color: d.muted, margin: "10px 0 0", maxWidth: 640 }}>{copy.subtitle}</p>}
         </div>
       </section>
       <div className="bn-wrap" style={{ padding: "48px 0 8px" }}>{body}</div>

@@ -18,16 +18,14 @@ The save pipeline works (permission check, schema validation, revalidate). But "
 | 7 | Low | Stale test `storefront-routes.test.ts` failed although the code was correct. | Test matches the current code. |
 | 8 | Medium | The editor gave no sign when the chosen template ignores the builder. | Amber notice in the Customize menu with a link to change template. |
 
-## Needs your decision (not changed)
-1. **24 of 44 templates ignore the visual builder.** `resolveHomeRenderer` returns legacy (14), hotel (6), screenshot (3) or example (1) before the saved builder config is checked. Owners on Violet, Fabtex, Heenzy Sneaker, JuiceLife, Rivora, Fresh & Co., Premium Marketplace, HomeVista, etc. see "Website published" but nothing changes, and the live preview never updates. Options: convert those templates to builder-kind, or hide the builder entirely for them. The new notice only warns.
-2. **Pages panel: About, Gallery, Blog, Contact save but never display.** `app/store/[slug]/{about,gallery,blog,contact}` are static routes that never read `StorePage`. Only FAQ, Policies and non-colliding custom slugs render saved content. Either make those routes read `StorePage`, or drop the four from `SUGGESTED_PAGE_SLUGS`.
-3. **Hard-coded placeholder content on live stores:**
-   - Features section: four fixed titles and "This section highlights a customer benefit configured by the business." Not editable.
-   - FAQ section: fixed generic questions, not editable.
-   - Map section: always shows "Add your location in Store Settings", never a map.
-   - Gallery section: shows product images, not uploaded gallery images.
+## Resolved after the audit
+1. **Templates that ignored the visual builder.** A published builder layout now wins over every template's own homepage (`lib/storefront/saved-builder.ts`, used by `storefront-runtime.tsx`). Customize shows a notice on those templates, previews the draft live, and has a "Restore the template homepage" button (`resetBuilderToTemplate`). Switching template still drops the published layout.
+2. **About, Gallery, Blog, Contact pages.** When the owner has published that page in Customize > Pages, the route shows it (any template). About replaces the story text, Contact shows the note above the form, Gallery reads one image URL per line, Blog reads posts separated by `---`. With no page written, nothing changes.
+3. **Placeholder sections.** Features and FAQ have editable items (FAQ also uses the AI builder's FAQ when present), Gallery has its own uploads, Map embeds a real map from an address or the business city/state. `next.config.js` allows the Google Maps frame.
+
+## Still open
 4. **Edit-mode detection** is `window.self !== window.top`, so a storefront embedded in any other site's iframe has its links disabled.
-5. **Cleanup:** the legacy `order`/`hidden` state and `saveSections` in `customizer-client.tsx` are now unreachable. `saveBuilderConfig` also writes builder ids into the legacy `order`/`hidden` keys. `ImageField` nests a `<label>` inside a `<label>`. No unsaved-changes warning when leaving Customize.
+5. **Cleanup:** the legacy `order`/`hidden` state and `saveSections` in `customizer-client.tsx` are unreachable. `saveBuilderConfig` also writes builder ids into the legacy `order`/`hidden` keys. No unsaved-changes warning when leaving Customize.
 
 ## Verified working
 - `saveBuilderConfig` / `updateStoreSeo` / page actions all gate on the `settings` permission and scope queries to the store.

@@ -12,8 +12,10 @@ import { SUGGESTED_PAGE_SLUGS, SUGGESTED_PAGE_TITLES } from "@/lib/actions/pages
 import type { Section, TemplateTheme } from "@/lib/template-themes";
 import type { HeroOverrides, StoryOverrides } from "@/lib/actions/store";
 import { ContentPanel } from "@/components/dashboard/content-panel";
-import { saveBuilderConfig, updateStoreSeo } from "@/lib/actions/builder";
-import { BUILDER_SECTION_TYPES, type BuilderConfig, type BuilderSection, type BuilderSectionType } from "@/lib/builder-config";
+import { saveBuilderConfig, updateStoreSeo, resetBuilderToTemplate } from "@/lib/actions/builder";
+import { BUILDER_SECTION_TYPES, type BuilderConfig, type BuilderSection, type BuilderSectionItem, type BuilderSectionType } from "@/lib/builder-config";
+import { defaultFaqItems, defaultFeatureItems } from "@/lib/builder-defaults";
+import { PAGE_FORMAT_HINTS } from "@/lib/storefront/owner-page-format";
 import { buildIndustryHomepage, getBusinessExperience } from "@/lib/business-experience";
 
 export type StorePageRow = { id: string; slug: string; title: string; body: string; isPublished: boolean };
@@ -69,7 +71,8 @@ export function CustomizerClient({
   offersServices,
   seoTitle,
   seoDescription,
-  builderActive = true,
+  templateHasOwnHomepage = false,
+  builderPublished = false,
 }: {
   slug: string;
   storeName: string;
@@ -89,14 +92,17 @@ export function CustomizerClient({
   offersServices: boolean;
   seoTitle: string;
   seoDescription: string;
-  /** False when the chosen template draws its own homepage and ignores the visual builder. */
-  builderActive?: boolean;
+  /** True when the chosen template draws its own homepage (legacy, hotel, signature...) instead of the shared builder. */
+  templateHasOwnHomepage?: boolean;
+  /** True when a visual-builder layout has been published for this store (it replaces the template's own homepage). */
+  builderPublished?: boolean;
 }) {
   const [panel, setPanel] = useState<Panel>(null);
   const [device, setDevice] = useState<Device>("desktop");
   const [order, setOrder] = useState<Section[]>(initialOrder);
   const [hidden, setHidden] = useState<Set<Section>>(new Set(initialHidden));
   const [isSaving, setIsSaving] = useState(false);
+  const [published, setPublished] = useState(builderPublished);
   const [previewKey, setPreviewKey] = useState(0);
   const [pages, setPages] = useState<StorePageRow[]>(initialPages);
   const [builder, setBuilder] = useState<BuilderConfig>(initialBuilder);
@@ -199,9 +205,25 @@ export function CustomizerClient({
       if (!result.success) { toast.error(result.error); return; }
       toast.success("Website published");
       setBuilder(next);
+      setPublished(true);
       refreshPreview();
     } catch {
       toast.error("Something went wrong publishing your website. Please try again.");
+    } finally {
+      setIsSaving(false);
+    }
+  }
+
+  async function restoreTemplateHomepage() {
+    setIsSaving(true);
+    try {
+      const result = await resetBuilderToTemplate(slug);
+      if (!result.success) { toast.error(result.error); return; }
+      toast.success("Template homepage restored");
+      setPublished(false);
+      refreshPreview();
+    } catch {
+      toast.error("Something went wrong restoring the template homepage. Please try again.");
     } finally {
       setIsSaving(false);
     }
@@ -280,11 +302,20 @@ export function CustomizerClient({
                 Change
               </a>
             </div>
-            {!builderActive && (
+            {templateHasOwnHomepage && (
               <div className="mb-2 rounded-md border border-amber-300 bg-amber-50 px-3 py-3 text-[11px] text-amber-900">
-                <p className="font-semibold">This template doesn&apos;t use the visual builder</p>
-                <p className="mt-1">{currentTemplateName ?? "This template"} draws its own homepage, so section, design and layout changes made here are saved but won&apos;t change your live homepage. Switch to a builder-based template to use them.</p>
-                <a href={`/${slug}/admin/templates`} className="mt-2 inline-block font-semibold underline">Choose a template</a>
+                {published ? (
+                  <>
+                    <p className="font-semibold">Your visual website replaces this template&apos;s homepage</p>
+                    <p className="mt-1">{currentTemplateName ?? "This template"} has its own homepage design, but the layout you published here is what visitors see now.</p>
+                    <button type="button" disabled={isSaving} onClick={restoreTemplateHomepage} className="mt-2 inline-block font-semibold underline disabled:opacity-50">Restore the {currentTemplateName ?? "template"} homepage</button>
+                  </>
+                ) : (
+                  <>
+                    <p className="font-semibold">This template has its own homepage design</p>
+                    <p className="mt-1">The preview shows your visual-builder draft. Nothing changes on your live homepage until you publish; publishing replaces {currentTemplateName ?? "the template"}&apos;s homepage with this layout.</p>
+                  </>
+                )}
               </div>
             )}
             <div className="mb-2 rounded-md border border-primary/20 bg-primary/5 px-3 py-3">
@@ -384,7 +415,7 @@ export function CustomizerClient({
                             {section.type !== "hero" && <button type="button" onClick={() => removeBuilderSection(section.id)} className="rounded p-1 text-destructive hover:bg-destructive/10"><Trash2 className="h-3 w-3" /></button>}
                           </div>
                         </div>
-                        {selectedSectionId === section.id && <SectionSettingsEditor section={section} onChange={(patch) => updateBuilderSection(section.id, patch)} />}
+                        {selectedSectionId === section.id && <SectionSettingsEditor section={section} mode={experience.mode} onChange={(patch) => updateBuilderSection(section.id, patch)} />}
                       </div>
                     ))}
                   </div>
@@ -514,19 +545,65 @@ function defaultSectionSettings(type: BuilderSectionType) {
   return { eyebrow: type === "hero" ? "Welcome" : undefined, heading: headings[type], body: type === "hero" ? "Tell customers what makes your business special." : undefined, align: type === "hero" ? "left" as const : "left" as const, padding: "spacious" as const, columns: type === "catalog" ? 4 as const : 3 as const, showButton: true };
 }
 
-function SectionSettingsEditor({ section, onChange }: { section: BuilderSection; onChange: (patch: Partial<BuilderSection>) => void }) {
+function SectionSettingsEditor({ section, mode, onChange }: { section: BuilderSection; mode: string; onChange: (patch: Partial<BuilderSection>) => void }) {
   const s = section.settings;
   const update = (patch: Partial<typeof s>) => onChange({ settings: { ...s, ...patch } });
   return <div className="space-y-2 border-t bg-muted/20 p-3">
     <TextField label="Eyebrow" value={s.eyebrow || ""} onChange={(v) => update({ eyebrow: v })} />
     <TextField label="Heading" value={s.heading || ""} onChange={(v) => update({ heading: v })} />
     <TextField label="Body" value={s.body || ""} multiline onChange={(v) => update({ body: v })} />
-    {!["stats","catalog","categories","testimonials","newsletter","contact","gallery","map","faq"].includes(section.type) && <ImageField label="Image" value={s.image || ""} onChange={(v) => update({ image: v })} />}
+    {!["stats","catalog","categories","testimonials","newsletter","contact","gallery","map","faq","features"].includes(section.type) && <ImageField label="Image" value={s.image || ""} onChange={(v) => update({ image: v })} />}
+    {section.type === "features" && <ItemsEditor label="Features" titleLabel="Feature title" bodyLabel="Description" items={s.items} defaults={defaultFeatureItems(mode)} onChange={(items) => update({ items })} />}
+    {section.type === "faq" && <ItemsEditor label="Questions" titleLabel="Question" bodyLabel="Answer" items={s.items} defaults={defaultFaqItems(mode)} onChange={(items) => update({ items })} />}
+    {section.type === "gallery" && <GalleryImagesEditor images={s.images} onChange={(images) => update({ images })} />}
+    {section.type === "map" && <TextField label="Address or place name" value={s.address || ""} onChange={(v) => update({ address: v })} />}
+    {section.type === "map" && <p className="text-[10px] text-muted-foreground">Leave blank to use your business city and state.</p>}
     <div className="grid grid-cols-2 gap-2"><SelectField label="Alignment" value={s.align || "left"} options={["left","center","right"]} onChange={(v) => update({ align: v as "left"|"center"|"right" })} /><SelectField label="Padding" value={s.padding || "normal"} options={["compact","normal","spacious"]} onChange={(v) => update({ padding: v as "compact"|"normal"|"spacious" })} /></div>
     <TextField label="Button label" value={s.ctaLabel || ""} onChange={(v) => update({ ctaLabel: v })} />
     <TextField label="Button link" value={s.ctaHref || ""} onChange={(v) => update({ ctaHref: v })} />
     <div className="grid grid-cols-2 gap-2"><ColorField label="Section background" value={s.background || "#ffffff"} onChange={(v) => update({ background: v })} /><ColorField label="Section text" value={s.textColor || ""} onChange={(v) => update({ textColor: v })} /></div>
   </div>;
+}
+
+/** Editable list for Features and FAQ. With nothing saved yet, shows the starter text and lets the owner take it over. */
+function ItemsEditor({ label, titleLabel, bodyLabel, items, defaults, onChange }: { label: string; titleLabel: string; bodyLabel: string; items: BuilderSectionItem[] | undefined; defaults: BuilderSectionItem[]; onChange: (items: BuilderSectionItem[]) => void }) {
+  const list = items ?? [];
+  const set = (i: number, patch: Partial<BuilderSectionItem>) => onChange(list.map((it, n) => (n === i ? { ...it, ...patch } : it)));
+  return (
+    <div className="space-y-2 rounded border bg-background p-2">
+      <div className="flex items-center justify-between"><span className="text-[11px] font-semibold">{label}</span><span className="text-[10px] text-muted-foreground">{list.length ? `${list.length}/12` : "Starter text shown"}</span></div>
+      {list.length === 0 && (
+        <div className="space-y-1.5">
+          <ul className="list-disc space-y-0.5 pl-4 text-[11px] text-muted-foreground">{defaults.map((d) => <li key={d.title}>{d.title}</li>)}</ul>
+          <button type="button" onClick={() => onChange(defaults.map((d) => ({ ...d })))} className="w-full rounded border px-2 py-1.5 text-[11px] font-medium hover:bg-muted">Edit these</button>
+        </div>
+      )}
+      {list.map((it, i) => (
+        <div key={i} className="space-y-1.5 rounded border border-dashed p-2">
+          <TextField label={titleLabel} value={it.title} onChange={(v) => set(i, { title: v })} />
+          <TextField label={bodyLabel} value={it.body || ""} multiline onChange={(v) => set(i, { body: v })} />
+          <button type="button" onClick={() => onChange(list.filter((_, n) => n !== i))} className="text-[10px] text-muted-foreground underline hover:text-destructive">Remove</button>
+        </div>
+      ))}
+      {list.length > 0 && list.length < 12 && <button type="button" onClick={() => onChange([...list, { title: "", body: "" }])} className="w-full rounded border px-2 py-1.5 text-[11px] font-medium hover:bg-muted">Add another</button>}
+    </div>
+  );
+}
+
+/** The owner's own gallery photos. With none, the live gallery falls back to catalogue photos. */
+function GalleryImagesEditor({ images, onChange }: { images: string[] | undefined; onChange: (images: string[]) => void }) {
+  const list = images ?? [];
+  return (
+    <div className="space-y-2 rounded border bg-background p-2">
+      <div className="flex items-center justify-between"><span className="text-[11px] font-semibold">Gallery photos</span><span className="text-[10px] text-muted-foreground">{list.length ? `${list.length}/24` : "Using catalogue photos"}</span></div>
+      {list.map((url, i) => (
+        <div key={i} className="space-y-1">
+          <ImageField label={`Photo ${i + 1}`} value={url} onChange={(v) => onChange(v ? list.map((u, n) => (n === i ? v : u)) : list.filter((_, n) => n !== i))} />
+        </div>
+      ))}
+      {list.length < 24 && <button type="button" onClick={() => onChange([...list, ""])} className="w-full rounded border px-2 py-1.5 text-[11px] font-medium hover:bg-muted">Add a photo</button>}
+    </div>
+  );
 }
 
 function TextField({ label, value, onChange, multiline = false }: { label: string; value: string; onChange: (v: string) => void; multiline?: boolean }) { return <label className="block text-[11px]"><span className="mb-1 block text-muted-foreground">{label}</span>{multiline ? <textarea value={value} onChange={(e) => onChange(e.target.value)} rows={3} className="w-full rounded border bg-background px-2 py-1.5 text-xs" /> : <input value={value} onChange={(e) => onChange(e.target.value)} className="w-full rounded border bg-background px-2 py-1.5 text-xs" />}</label>; }
@@ -553,7 +630,7 @@ function ImageField({ label, value, onChange }: { label: string; value: string; 
   }
 
   return (
-    <label className="block text-[11px]">
+    <div className="block text-[11px]">
       <span className="mb-1 block text-muted-foreground">{label}</span>
       {value && (
         // eslint-disable-next-line @next/next/no-img-element
@@ -587,7 +664,7 @@ function ImageField({ label, value, onChange }: { label: string; value: string; 
         </button>
       )}
       {uploadError && <p className="mt-1 text-[10px] text-destructive">{uploadError}</p>}
-    </label>
+    </div>
   );
 }
 function ColorField({ label, value, onChange }: { label: string; value: string; onChange: (v: string) => void }) { return <label className="block text-[11px]"><span className="mb-1 block text-muted-foreground">{label}</span><div className="flex gap-1.5"><input type="color" value={/^#[0-9a-f]{6}$/i.test(value) ? value : "#000000"} onChange={(e) => onChange(e.target.value)} className="h-8 w-10 rounded border" /><input value={value} onChange={(e) => onChange(e.target.value)} className="min-w-0 flex-1 rounded border bg-background px-2 py-1.5 text-xs" /></div></label>; }
@@ -804,6 +881,7 @@ function PageEditor({
       </label>
       <label className="block text-xs">
         <span className="mb-1 block text-muted-foreground">Content</span>
+        {PAGE_FORMAT_HINTS[pageSlug] && <span className="mb-1 block text-[10px] text-muted-foreground">{PAGE_FORMAT_HINTS[pageSlug]}</span>}
         <textarea
           value={body}
           onChange={(e) => setBody(e.target.value)}

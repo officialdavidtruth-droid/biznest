@@ -12,6 +12,8 @@ import type { BuilderConfig, BuilderSection } from "@/lib/builder-config";
 import { getBusinessExperience } from "@/lib/business-experience";
 import { HeroVariantView } from "@/components/storefront/hero-variants";
 import { formatNumber } from "@/lib/i18n/locale";
+import { defaultFaqItems, defaultFeatureItems, mapDirectionsUrl, mapEmbedUrl, mapQuery } from "@/lib/builder-defaults";
+import type { BuilderSectionItem } from "@/lib/builder-config";
 
 type CatalogItem = {
   id: string; kind: "product" | "service"; name: string; price: number; currency: string;
@@ -22,11 +24,11 @@ type Review = { id: string; rating: number; comment: string | null; author: { na
 
 type BuilderStore = {
   name: string; slug: string; logoUrl: string | null; contactEmail: string | null; contactPhone: string | null;
-  business: { description: string | null; category?: string | null; businessSubcategory?: string | null; sellsProducts?: boolean; offersServices?: boolean };
+  business: { description: string | null; category?: string | null; businessSubcategory?: string | null; sellsProducts?: boolean; offersServices?: boolean; city?: string | null; state?: string | null; country?: string | null };
 };
 
 export function BuilderStorefront({
-  store, config: initialConfig, catalogItems, reviews, avgRating, completedOrders,
+  store, config: initialConfig, catalogItems, reviews, avgRating, completedOrders, fallbackFaq,
 }: {
   store: BuilderStore;
   config: BuilderConfig;
@@ -34,6 +36,8 @@ export function BuilderStorefront({
   reviews: Review[];
   avgRating: number | null;
   completedOrders: number;
+  /** The store's own FAQ (e.g. written by the AI store builder), shown when the FAQ section has no entries of its own. */
+  fallbackFaq?: BuilderSectionItem[];
 }) {
   const [liveConfig, setLiveConfig] = useState<BuilderConfig>(initialConfig);
   // True only when this storefront is rendered inside the customizer's
@@ -113,15 +117,15 @@ export function BuilderStorefront({
       <style>{`a{text-decoration:none;color:inherit}.bn-wrap{width:min(${width}px,calc(100% - 32px));margin:0 auto}.bn-grid{display:grid;gap:20px}@media(max-width:720px){.bn-grid{grid-template-columns:1fr!important}.bn-hero{grid-template-columns:1fr!important}.bn-section{padding-top:56px!important;padding-bottom:56px!important}.bn-nav-links{display:none!important}}${isEditMode ? `.bn-section{cursor:pointer;transition:outline .12s ease}.bn-section:hover{outline:2px dashed ${d.accent};outline-offset:-2px}` : ""}`}</style>
       <BuilderHeader store={store} d={d} experience={experience} visible={visible} />
 
-      {visible.map((section) => <BuilderSectionView key={section.id} section={section} store={store} config={config} catalogItems={featured} categories={categories} experience={experience} reviews={reviews} avgRating={avgRating} completedOrders={completedOrders} />)}
+      {visible.map((section) => <BuilderSectionView key={section.id} section={section} store={store} config={config} catalogItems={featured} categories={categories} experience={experience} reviews={reviews} avgRating={avgRating} completedOrders={completedOrders} fallbackFaq={fallbackFaq} />)}
 
       <BuilderFooter store={store} d={d} visible={visible} />
     </main>
   );
 }
 
-function BuilderSectionView({ section, store, config, catalogItems, categories, experience, reviews, avgRating, completedOrders }: {
-  section: BuilderSection; store: BuilderStore; config: BuilderConfig; catalogItems: CatalogItem[]; categories: string[]; experience: ReturnType<typeof getBusinessExperience>; reviews: Review[]; avgRating: number | null; completedOrders: number;
+function BuilderSectionView({ section, store, config, catalogItems, categories, experience, reviews, avgRating, completedOrders, fallbackFaq }: {
+  section: BuilderSection; store: BuilderStore; config: BuilderConfig; catalogItems: CatalogItem[]; categories: string[]; experience: ReturnType<typeof getBusinessExperience>; reviews: Review[]; avgRating: number | null; completedOrders: number; fallbackFaq?: BuilderSectionItem[];
 }) {
   const d = config.design;
   const s = section.settings;
@@ -208,7 +212,10 @@ function BuilderSectionView({ section, store, config, catalogItems, categories, 
 
   if (section.type === "stats") return <section id={section.id} data-bn-type={section.type} className="bn-section" style={{ padding: "28px 0", background: bg }}><div className="bn-wrap bn-grid" style={{ gridTemplateColumns: "repeat(3,1fr)", textAlign: "center" }}><Stat value={`${catalogItems.length}+`} label={experience.mode === "commerce" ? "Published products" : experience.mode === "service" ? "Services" : "Products & services"} d={d} /><Stat value={completedOrders > 0 ? `${completedOrders}+` : "New"} label={experience.mode === "commerce" ? "Completed orders" : "Completed bookings"} d={d} /><Stat value={avgRating ? `${avgRating.toFixed(1)}/5` : "New"} label="Customer rating" d={d} /></div></section>;
 
-  if (section.type === "features") return <section id={section.id} data-bn-type={section.type} className="bn-section" style={{ padding, background: bg }}><div className="bn-wrap"><SectionIntro section={section} config={config} /><div className="bn-grid" style={{ gridTemplateColumns: `repeat(${Math.min(cols,4)},1fr)` }}>{["Quality you can trust", "Simple online ordering", "Responsive customer support", "Built for your business"].map((item, i) => <div key={item} style={{ padding: 24, background: d.surface, borderRadius: s.radius ?? d.radius, border: `1px solid ${d.text}12` }}><div style={{ color: d.accent, fontWeight: 900, fontSize: 12 }}>0{i + 1}</div><h3 style={{ margin: "10px 0 7px", fontFamily: d.headingFont, fontSize: 18 }}>{item}</h3><p style={{ color: d.muted, fontSize: 13, lineHeight: 1.7 }}>This section highlights a customer benefit configured by the business.</p></div>)}</div></div></section>;
+  if (section.type === "features") {
+    const items = s.items?.length ? s.items : defaultFeatureItems(experience.mode);
+    return <section id={section.id} data-bn-type={section.type} className="bn-section" style={{ padding, background: bg }}><div className="bn-wrap"><SectionIntro section={section} config={config} /><div className="bn-grid" style={{ gridTemplateColumns: `repeat(${Math.min(cols,4)},1fr)` }}>{items.map((item, i) => <div key={`${item.title}-${i}`} style={{ padding: 24, background: d.surface, borderRadius: s.radius ?? d.radius, border: `1px solid ${d.text}12` }}><div style={{ color: d.accent, fontWeight: 900, fontSize: 12 }}>{String(i + 1).padStart(2, "0")}</div><h3 style={{ margin: "10px 0 7px", fontFamily: d.headingFont, fontSize: 18 }}>{item.title}</h3>{item.body && <p style={{ color: d.muted, fontSize: 13, lineHeight: 1.7, whiteSpace: "pre-line" }}>{item.body}</p>}</div>)}</div></div></section>;
+  }
 
   if (section.type === "categories") return <section id={section.id} data-bn-type={section.type} className="bn-section" style={{ padding, background: bg }}><div className="bn-wrap"><SectionIntro section={section} config={config} /><div className="bn-grid" style={{ gridTemplateColumns: `repeat(${Math.min(cols,4)},1fr)` }}>{categories.map((c) => <a key={c} href={`/store/${store.slug}/search?q=${encodeURIComponent(c)}`} style={{ padding: 22, borderRadius: s.radius ?? d.radius, background: d.surface, border: `1px solid ${d.text}12`, fontWeight: 750 }}>{c}</a>)}</div></div></section>;
 
@@ -218,11 +225,28 @@ function BuilderSectionView({ section, store, config, catalogItems, categories, 
 
   if (section.type === "contact") return <section id={section.id} data-bn-type={section.type} className="bn-section" style={{ padding, background: bg }}><div className="bn-wrap"><SectionIntro section={section} config={config} /><div className="bn-grid" style={{ gridTemplateColumns: "repeat(2,1fr)" }}>{store.contactEmail && <a href={`mailto:${store.contactEmail}`} style={{ padding: 24, background: d.surface, borderRadius: s.radius ?? d.radius }}><small style={{ color: d.muted }}>Email</small><div style={{ fontWeight: 750, marginTop: 5 }}>{store.contactEmail}</div></a>}{store.contactPhone && <a href={`tel:${store.contactPhone}`} style={{ padding: 24, background: d.surface, borderRadius: s.radius ?? d.radius }}><small style={{ color: d.muted }}>Phone</small><div style={{ fontWeight: 750, marginTop: 5 }}>{store.contactPhone}</div></a>}</div></div></section>;
 
-  if (section.type === "gallery") return <section id={section.id} data-bn-type={section.type} className="bn-section" style={{ padding, background: bg }}><div className="bn-wrap"><SectionIntro section={section} config={config} /><div className="bn-grid" style={{ gridTemplateColumns: `repeat(${Math.min(cols,4)},1fr)` }}>{catalogItems.slice(0,8).map((item) => <div key={item.id} style={{ aspectRatio: "1/1", borderRadius: s.radius ?? d.radius, background: item.image ? `url(${cssUrl(item.image)}) center/cover` : d.surface }} />)}</div></div></section>;
+  if (section.type === "gallery") {
+    // The owner's own uploads win; with none, fall back to catalogue photos so the section is never blank.
+    const own = (s.images ?? []).filter(Boolean);
+    const tiles: { key: string; image: string | null }[] = own.length ? own.slice(0, 24).map((image, i) => ({ key: `img-${i}`, image })) : catalogItems.slice(0, 8).map((item) => ({ key: `${item.kind}-${item.id}`, image: item.image }));
+    return <section id={section.id} data-bn-type={section.type} className="bn-section" style={{ padding, background: bg }}><div className="bn-wrap"><SectionIntro section={section} config={config} /><div className="bn-grid" style={{ gridTemplateColumns: `repeat(${Math.min(cols,4)},1fr)` }}>{tiles.map((t) => <div key={t.key} style={{ aspectRatio: "1/1", borderRadius: s.radius ?? d.radius, background: t.image ? `url(${cssUrl(t.image)}) center/cover` : d.surface }} />)}</div></div></section>;
+  }
 
-  if (section.type === "map") return <section id={section.id} data-bn-type={section.type} className="bn-section" style={{ padding, background: bg }}><div className="bn-wrap"><SectionIntro section={section} config={config} /><div style={{ minHeight: 280, borderRadius: s.radius ?? d.radius, background: `linear-gradient(135deg, ${d.primary}16, ${d.accent}18)`, display: "grid", placeItems: "center", color: d.muted }}>Add your location in Store Settings to show your map here.</div></div></section>;
+  if (section.type === "map") {
+    const query = mapQuery(s.address, store.business);
+    return <section id={section.id} data-bn-type={section.type} className="bn-section" style={{ padding, background: bg }}><div className="bn-wrap"><SectionIntro section={section} config={config} />{query ? <>
+      <iframe title={`Map of ${query}`} src={mapEmbedUrl(query)} loading="lazy" referrerPolicy="no-referrer-when-downgrade" style={{ width: "100%", height: 340, border: 0, borderRadius: s.radius ?? d.radius, background: d.surface, display: "block" }} />
+      <p style={{ marginTop: 14, color: d.muted, fontSize: 14 }}>{query} · <a href={mapDirectionsUrl(query)} target="_blank" rel="noopener noreferrer" style={{ color: d.accent, fontWeight: 750 }}>Get directions</a></p>
+    </> : <div style={{ minHeight: 280, borderRadius: s.radius ?? d.radius, background: `linear-gradient(135deg, ${d.primary}16, ${d.accent}18)`, display: "grid", placeItems: "center", color: d.muted, padding: 24, textAlign: "center" }}>Add an address to this section, or set your city and state in Store Settings, to show your map here.</div>}</div></section>;
+  }
 
-  if (section.type === "faq" || section.type === "text") return <section id={section.id} data-bn-type={section.type} className="bn-section" style={{ padding, background: bg }}><div className="bn-wrap" style={{ maxWidth: section.type === "faq" ? 850 : 1160 }}>{section.type === "faq" ? <><SectionIntro section={section} config={config} /><details style={{ borderTop: `1px solid ${d.text}14`, padding: "18px 0" }}><summary style={{ cursor: "pointer", fontWeight: 750 }}>{experience.mode === "commerce" ? "How do I place an order?" : "How do I book a service?"}</summary><p style={{ color: d.muted, lineHeight: 1.7 }}>Browse the business website, choose what you need, and follow the purchase or booking instructions.</p></details><details style={{ borderTop: `1px solid ${d.text}14`, padding: "18px 0" }}><summary style={{ cursor: "pointer", fontWeight: 750 }}>How can I contact this business?</summary><p style={{ color: d.muted, lineHeight: 1.7 }}>{store.contactEmail || store.contactPhone || "Use the contact section on this store."}</p></details></> : <><SectionIntro section={section} config={config} /><p style={{ color: d.muted, lineHeight: 1.8, whiteSpace: "pre-wrap" }}>{s.body}</p></>}</div></section>;
+  if (section.type === "faq") {
+    const contact = store.contactEmail || store.contactPhone;
+    const items = s.items?.length ? s.items : fallbackFaq?.length ? fallbackFaq : defaultFaqItems(experience.mode, contact);
+    return <section id={section.id} data-bn-type={section.type} className="bn-section" style={{ padding, background: bg }}><div className="bn-wrap" style={{ maxWidth: 850 }}><SectionIntro section={section} config={config} />{items.map((item, i) => <details key={`${item.title}-${i}`} style={{ borderTop: `1px solid ${d.text}14`, padding: "18px 0" }}><summary style={{ cursor: "pointer", fontWeight: 750 }}>{item.title}</summary>{item.body && <p style={{ color: d.muted, lineHeight: 1.7, whiteSpace: "pre-line" }}>{item.body}</p>}</details>)}</div></section>;
+  }
+
+  if (section.type === "text") return <section id={section.id} data-bn-type={section.type} className="bn-section" style={{ padding, background: bg }}><div className="bn-wrap" style={{ maxWidth: 1160 }}><SectionIntro section={section} config={config} /><p style={{ color: d.muted, lineHeight: 1.8, whiteSpace: "pre-wrap" }}>{s.body}</p></div></section>;
 
   return null;
 }

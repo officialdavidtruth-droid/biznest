@@ -1,6 +1,7 @@
 "use server";
 
 import { prisma } from "@/lib/prisma";
+import type { Prisma } from "@prisma/client";
 import { revalidatePath } from "next/cache";
 import { builderConfigSchema, type BuilderConfig } from "@/lib/builder-config";
 import type { ActionResult } from "@/types/actions";
@@ -32,6 +33,26 @@ export async function saveBuilderConfig(slug: string, config: BuilderConfig): Pr
       },
     },
   });
+
+  revalidatePath(`/store/${slug}`);
+  revalidatePath(`/store/${slug}/admin/customize`);
+  return { success: true, data: undefined };
+}
+
+/**
+ * Un-publishes the visual builder: removes the saved layout so the store's template draws its own homepage again.
+ * Other overrides (faq, delivery note, social bio, template content) are kept.
+ */
+export async function resetBuilderToTemplate(slug: string): Promise<ActionResult> {
+  const access = await assertStoreAccess(slug);
+  if (!access.success) return { success: false, error: access.error };
+
+  const current = access.store.sectionOverrides;
+  if (current && typeof current === "object" && !Array.isArray(current)) {
+    const { builderVersion: _v, builder: _b, order: _o, hidden: _h, ...rest } = current as Record<string, unknown>;
+    void _v; void _b; void _o; void _h;
+    await prisma.store.update({ where: { id: access.store.id }, data: { sectionOverrides: rest as Prisma.InputJsonValue } });
+  }
 
   revalidatePath(`/store/${slug}`);
   revalidatePath(`/store/${slug}/admin/customize`);

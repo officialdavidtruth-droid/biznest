@@ -41,8 +41,9 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
   };
 }
 
-export default async function StorefrontPage({ params }: { params: Promise<{ slug: string }> }) {
+export default async function StorefrontPage({ params, searchParams }: { params: Promise<{ slug: string }>; searchParams: Promise<{ preview?: string | string[] }> }) {
   const { slug } = await params;
+  const { preview } = await searchParams;
   const store = await getStoreForSlug(slug);
   if (!store || store.status !== "ACTIVE") notFound();
 
@@ -80,7 +81,7 @@ export default async function StorefrontPage({ params }: { params: Promise<{ slu
   return (
     <>
       {!store.seoNoIndex && !store.marketingOnly && <JsonLd data={businessLd} />}
-      {await renderStorefront(slug)}
+      {await renderStorefront(slug, { preview: preview === "1" })}
     </>
   );
 }

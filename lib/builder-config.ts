@@ -26,7 +26,15 @@ export type BuilderSectionSettings = {
   padding?: "compact" | "normal" | "spacious";
   radius?: number;
   showButton?: boolean;
+  /** Features and FAQ sections: the owner's own entries (feature title + text, or question + answer). */
+  items?: BuilderSectionItem[];
+  /** Gallery section: the owner's own uploaded images. Falls back to catalogue photos when empty. */
+  images?: string[];
+  /** Map section: street address or place name to show. Falls back to the business city / state / country. */
+  address?: string;
 };
+
+export type BuilderSectionItem = { title: string; body?: string };
 
 export const HERO_VARIANTS = ["poster", "editorial", "lookbook", "tiles", "arch", "ledger", "frame", "splitcard", "menu", "banner", "quiet"] as const;
 export type HeroVariant = (typeof HERO_VARIANTS)[number];
@@ -92,6 +100,9 @@ const settingsSchema = z.object({
   padding: z.enum(["compact", "normal", "spacious"]).optional(),
   radius: z.number().min(0).max(48).optional(),
   showButton: z.boolean().optional(),
+  items: z.array(z.object({ title: z.string().max(160), body: z.string().max(1200).optional() })).max(12).optional(),
+  images: z.array(z.string().max(2000).refine(isSafeImageUrl, "Image must be an http(s) URL or a site path.")).max(24).optional(),
+  address: z.string().max(300).optional(),
 });
 
 const colorField = z.string().max(100).refine(isSafeColor, "Invalid colour.");
