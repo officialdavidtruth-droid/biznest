@@ -103,6 +103,7 @@
   --bn-ink-raised: #153716; /* raised green for cards and panels */
   --bn-ink-line: #2e562f;   /* subtle green border */
   --bn-marigold: #0f6410;  /* green accent, from logo (legacy variable name retained) */
+  --bn-accent-text: #6ee7a8; /* light green for accent TEXT/icons on dark green surfaces */
   --bn-jade: #0b4d0c;      /* deeper green for hover states */
   --bn-ivory: #ffffff;     /* white, for text on dark surfaces */
   --bn-mute: #adc2ad;      /* muted sage for secondary text */

@@ -168,7 +168,6 @@ export default async function HomePage() {
   }));
 
   const STATS = [
-    { label: "Stores open right now", value: `${formatNumber(activeStoreCount)}${activeStoreCount >= 50 ? "+" : ""}` },
     { label: "Products & services listed", value: `${formatNumber(listingCount)}${listingCount >= 50 ? "+" : ""}` },
     { label: "Business categories", value: `${CATEGORIES.length}+` },
     { label: "Payment providers, your account", value: "2" },
@@ -260,16 +259,9 @@ export default async function HomePage() {
         <div className="bn-glow-orb h-64 w-64" style={{ background: "rgba(16,150,122,0.2)", top: "8rem", right: "-4rem" }} />
 
         <div className="bn-fade-up relative z-10">
-          <div
-            className="mb-5 inline-flex items-center gap-2 rounded-full px-3 py-1.5 text-xs"
-            style={{ border: "1px solid var(--bn-ink-line)", background: "rgba(18, 48, 36, 0.6)", color: "var(--bn-mute)" }}
-          >
-            <span className="bn-pulse-dot h-1.5 w-1.5 rounded-full" style={{ background: "var(--bn-marigold)" }} />
-            <span style={{ fontFamily: "var(--font-mono)" }}>{formatNumber(activeStoreCount)} stores open right now</span>
-          </div>
           <p
             className="mb-4 text-xs uppercase tracking-[0.2em]"
-            style={{ color: "var(--bn-marigold)", fontFamily: "var(--font-mono)" }}
+            style={{ color: "var(--bn-accent-text)", fontFamily: "var(--font-mono)" }}
           >
             One marketplace, every kind of business
           </p>
@@ -279,7 +271,7 @@ export default async function HomePage() {
           >
             Your BUSINESS belongs
             <br />
-            in the <span style={{ color: "var(--bn-marigold)" }}>nest</span>.
+            in the <span style={{ color: "var(--bn-accent-text)" }}>nest</span>.
           </h1>
           <p className="mt-5 max-w-md text-base leading-relaxed" style={{ color: "var(--bn-mute)" }}>
             BizNest is where sellers of products, services, and bookings get a real storefront,
@@ -360,7 +352,7 @@ export default async function HomePage() {
           {STATS.map((s) => (
             <div key={s.label} className="bn-receipt-row" style={{ fontFamily: "var(--font-mono)" }}>
               <span className="text-xs" style={{ color: "var(--bn-mute)" }}>{s.label}</span>
-              <span className="text-sm font-semibold" style={{ color: "var(--bn-marigold)" }}>{s.value}</span>
+              <span className="text-sm font-semibold" style={{ color: "var(--bn-accent-text)" }}>{s.value}</span>
             </div>
           ))}
         </div>
@@ -376,7 +368,7 @@ export default async function HomePage() {
             <div key={s.n}>
               <span
                 className="text-sm"
-                style={{ fontFamily: "var(--font-mono)", color: "var(--bn-marigold)" }}
+                style={{ fontFamily: "var(--font-mono)", color: "var(--bn-accent-text)" }}
               >
                 {s.n}
               </span>
@@ -395,7 +387,7 @@ export default async function HomePage() {
         <div className="bn-dot-grid absolute inset-0 opacity-60" />
         <div className="relative mx-auto grid max-w-5xl gap-12 lg:grid-cols-2 lg:items-center">
           <div>
-            <p className="mb-3 text-xs uppercase tracking-[0.2em]" style={{ color: "var(--bn-marigold)", fontFamily: "var(--font-mono)" }}>
+            <p className="mb-3 text-xs uppercase tracking-[0.2em]" style={{ color: "var(--bn-accent-text)", fontFamily: "var(--font-mono)" }}>
               What you actually get
             </p>
             <h2 className="text-2xl sm:text-3xl" style={{ fontFamily: "var(--font-display)", fontWeight: 700 }}>
@@ -409,7 +401,7 @@ export default async function HomePage() {
             <Link
               href="/templates"
               className="mt-6 inline-flex items-center gap-1.5 text-sm font-medium transition hover:gap-2.5"
-              style={{ color: "var(--bn-marigold)" }}
+              style={{ color: "var(--bn-accent-text)" }}
             >
               Browse storefront templates <ArrowRight className="h-4 w-4" />
             </Link>
@@ -501,7 +493,7 @@ export default async function HomePage() {
         <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
           {TRUST.map((f) => (
             <div key={f.title} className="rounded-2xl p-6" style={{ background: "var(--bn-ink)", border: "1px solid var(--bn-ink-line)" }}>
-              <f.icon className="h-6 w-6" style={{ color: "var(--bn-marigold)" }} strokeWidth={1.75} />
+              <f.icon className="h-6 w-6" style={{ color: "var(--bn-accent-text)" }} strokeWidth={1.75} />
               <h3 className="mt-3 text-base font-semibold">{f.title}</h3>
               <p className="mt-2 text-sm leading-relaxed" style={{ color: "var(--bn-mute)" }}>{f.body}</p>
             </div>
