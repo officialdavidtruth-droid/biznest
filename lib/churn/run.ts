@@ -31,7 +31,7 @@ export async function runChurnWatch(now = new Date()) {
       select: {
         id: true, slug: true, name: true, createdAt: true, subscriptionPastDueSince: true,
         business: { select: { userId: true, user: { select: { email: true, lastLoginAt: true } } } },
-        plugins: {
+        installedPlugins: {
           where: { status: "ACTIVE", plugin: { isFree: false } },
           select: { installedAt: true, pastDueSince: true, plugin: { select: { key: true, name: true } } },
         },
@@ -59,7 +59,7 @@ export async function runChurnWatch(now = new Date()) {
           lastOrderAt: lastOrder.get(store.id) ?? null,
           lastActivityAt: lastActivity.get(store.id) ?? null,
           subscriptionPastDueSince: store.subscriptionPastDueSince,
-          paidPlugins: store.plugins.map((p) => ({ key: p.plugin.key, name: p.plugin.name, installedAt: p.installedAt, pastDueSince: p.pastDueSince })),
+          paidPlugins: store.installedPlugins.map((p) => ({ key: p.plugin.key, name: p.plugin.name, installedAt: p.installedAt, pastDueSince: p.pastDueSince })),
         });
         const detectedMap = new Map<string, DetectedSignal>(detected.map((d) => [signalKey(d.kind, d.subject), d]));
         const mine = openRows.filter((r) => r.storeId === store.id);
