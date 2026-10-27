@@ -741,6 +741,9 @@ enum DomainStatus {
 
 model Store {
   timezone      String      @default("Africa/Lagos")
+  // Owner opt-in: also email the end-of-day summary (sales, stock risks, unpaid
+  // checkouts). The in-app notification + push are always sent. See app/api/cron/daily-summary.
+  dailySummaryEmail Boolean @default(false)
   // Display currency and locale for everything this store shows (prices, receipts, emails).
   // Existing stores keep NGN / the deployment default locale (en-NG); set locale to e.g. "en-GH".
   currency      String      @default("NGN")

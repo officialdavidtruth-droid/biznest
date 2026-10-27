@@ -4,6 +4,7 @@ import { decrementStockForOrder } from "@/lib/payments/stock";
 import { emitWebhookEvent } from "@/lib/webhooks/dispatch";
 import { notifyStoreOwnerOfPaidOrder, notifyCustomerOfPaidOrder } from "@/lib/notifications/notify";
 import { flagPaymentForReview } from "@/lib/payments/review";
+import { postOrderSaleToLedger } from "@/lib/financial/order-ledger";
 
 export type SettleOrderOutcome = "paid" | "already_paid" | "not_found" | "wrong_provider" | "mismatch" | "blocked";
 
@@ -77,6 +78,7 @@ export async function settleOrderPayment(input: {
     currency: order.currency,
   });
   await emitWebhookEvent("ORDER_PAID", order.storeId, { orderId: order.id, status: "PAID" });
+  await postOrderSaleToLedger(order.id);
   void notifyStoreOwnerOfPaidOrder(order.storeId, order.id, Number(order.total), order.currency);
   void notifyCustomerOfPaidOrder(order.id);
   return { outcome: "paid" };

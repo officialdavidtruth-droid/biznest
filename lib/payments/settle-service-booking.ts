@@ -8,6 +8,7 @@ import { sendOrderNotificationEmail } from "@/lib/email/send";
 import type { ActionResult } from "@/types/actions";
 import { revalidatePath } from "next/cache";
 import { formatNumber } from "@/lib/i18n/locale";
+import { postPaymentToLedgerByReference } from "@/lib/financial/order-ledger";
 
 /**
  * Service booking payment settlement.
@@ -47,6 +48,7 @@ export async function settleServiceBookingPayment(
     });
   }, { isolationLevel: "Serializable" });
 
+  await postPaymentToLedgerByReference(reference);
   await settleAndPayout(reference);
   // Awaited on purpose: an un-awaited `void` send is frozen/dropped once this
   // serverless invocation returns its redirect, so guests never got the

@@ -8,6 +8,8 @@ import { nanoid } from "nanoid";
 import { revalidatePath } from "next/cache";
 import type { ActionResult } from "@/types/actions";
 import { formatDate } from "@/lib/i18n/locale";
+import { getLocalDateKey, localDateStartUtc } from "@/lib/timezone";
+import { backfillOrderLedger, ledgerNeedsBackfill } from "@/lib/financial/order-ledger";
 import { applyStraightLineDepreciation } from "@/lib/asset-depreciation";
 
 async function access(slug: string) {
@@ -60,6 +62,8 @@ export async function getFinancialControlData(slug: string) {
   const a = await access(slug);
   if (!a.success) return { error: a.error };
   await ensureFinancialFoundation(a.store.id);
+  // Catch up any paid/refunded orders that predate automatic posting (idempotent, capped per load).
+  if (await ledgerNeedsBackfill(a.store.id)) await backfillOrderLedger(a.store.id);
 
   const [accounts, expenses, entries, periods, auditLogs, bankAccounts, bankTransactions, budgets, assets, invoices, purchaseOrders] = await Promise.all([
     prisma.financialAccount.findMany({ where: { storeId: a.store.id, isActive: true }, orderBy: { code: "asc" } }),
@@ -95,12 +99,15 @@ export async function getFinancialControlData(slug: string) {
   const pendingReqs = pendingReqIds.length ? await prisma.requisition.findMany({ where: { storeId: a.store.id, id: { in: pendingReqIds } }, include: { items: true }, orderBy: { createdAt: "asc" } }) : [];
   const pendingReqMap = new Map(pendingReqs.map((r) => [r.id, r]));
 
-  const balances = new Map<string, number>();
-  for (const entry of entries) {
-    for (const line of entry.lines) {
-      balances.set(line.accountId, (balances.get(line.accountId) ?? 0) + Number(line.debit) - Number(line.credit));
-    }
-  }
+  // Balances come from ALL posted journal lines, aggregated in the database.
+  // `entries` above is only the latest 100 for display; summing it would make
+  // revenue, expenses, profit and cash wrong once a store passes 100 entries.
+  const lineTotals = await prisma.financialJournalLine.groupBy({
+    by: ["accountId"],
+    where: { journalEntry: { storeId: a.store.id, status: "POSTED" } },
+    _sum: { debit: true, credit: true },
+  });
+  const balances = new Map<string, number>(lineTotals.map((x) => [x.accountId, Number(x._sum.debit ?? 0) - Number(x._sum.credit ?? 0)]));
 
   let revenue = 0;
   let expensesTotal = 0;
@@ -123,13 +130,31 @@ export async function getFinancialControlData(slug: string) {
     else if (days <= 90) arAging.days61to90 += amount;
     else arAging.over90 += amount;
   }
-  const cashMovement30d = bankTransactions.filter(x => x.transactionDate >= new Date(now.getTime() - 30 * 86400000)).reduce((sum, x) => sum + Number(x.amount), 0);
-  const unmatchedBankItems = bankTransactions.filter(x => x.status === "UNMATCHED").length;
-  const expenseAccountActuals = new Map<string, number>();
-  for (const entry of entries) for (const line of entry.lines) {
-    if (line.account.type === "EXPENSE") expenseAccountActuals.set(line.accountId, (expenseAccountActuals.get(line.accountId) ?? 0) + Number(line.debit) - Number(line.credit));
-  }
-  const budgetVariance = budgets.flatMap(b => b.lines.map(l => ({ budgetId: b.id, budget: b.name, account: l.account.name, budgeted: Number(l.amount), actual: expenseAccountActuals.get(l.accountId) ?? 0, variance: Number(l.amount) - (expenseAccountActuals.get(l.accountId) ?? 0) })));
+  // Database-side so they cover every bank transaction, not just the 50 shown.
+  const [cashMovementAgg, unmatchedBankItems] = await Promise.all([
+    prisma.financialBankTransaction.aggregate({ where: { storeId: a.store.id, transactionDate: { gte: new Date(now.getTime() - 30 * 86400000) } }, _sum: { amount: true } }),
+    prisma.financialBankTransaction.count({ where: { storeId: a.store.id, status: "UNMATCHED" } }),
+  ]);
+  const cashMovement30d = Number(cashMovementAgg._sum.amount ?? 0);
+  // Actuals are measured inside each budget's own period, over all posted lines.
+  const budgetActuals = await Promise.all(budgets.map(async (b) => {
+    const rows = await prisma.financialJournalLine.groupBy({
+      by: ["accountId"],
+      where: { accountId: { in: b.lines.map((l) => l.accountId) }, journalEntry: { storeId: a.store.id, status: "POSTED", entryDate: { gte: b.startsAt, lte: b.endsAt } } },
+      _sum: { debit: true, credit: true },
+    });
+    return new Map(rows.map((x) => [x.accountId, Number(x._sum.debit ?? 0) - Number(x._sum.credit ?? 0)]));
+  }));
+  // Sales taken through orders/POS this month (store-local). The ledger only
+  // holds entries posted in this workspace, so this is shown beside it, not mixed in.
+  const tz = a.store.timezone || "Africa/Lagos";
+  const monthStartKey = `${getLocalDateKey(now, tz).slice(0, 8)}01`;
+  const orderSalesAgg = await prisma.order.aggregate({
+    where: { storeId: a.store.id, status: { in: ["PAID", "IN_PROGRESS", "DELIVERED", "COMPLETED"] }, createdAt: { gte: localDateStartUtc(monthStartKey, tz) } },
+    _count: { _all: true },
+    _sum: { total: true },
+  });
+  const budgetVariance = budgets.flatMap((b, i) => b.lines.map(l => { const actual = budgetActuals[i].get(l.accountId) ?? 0; return { budgetId: b.id, budget: b.name, account: l.account.name, budgeted: Number(l.amount), actual, variance: Number(l.amount) - actual }; }));
 
   return {
     store: { name: a.store.name, slug, businessType: a.store.businessType },
@@ -145,6 +170,7 @@ export async function getFinancialControlData(slug: string) {
     assets: assets.map(x => ({ id: x.id, assetNo: x.assetNo, name: x.name, category: x.category, purchaseDate: x.purchaseDate.toISOString(), purchaseCost: Number(x.purchaseCost), usefulLifeMonths: x.usefulLifeMonths, residualValue: Number(x.residualValue), accumulatedDepreciation: Number(x.accumulatedDepreciation), status: x.status })),
     receivables: invoices.map(x => ({ id: x.id, invoiceNo: x.invoiceNo, customerName: x.customerName, total: Number(x.total), currency: x.currency, status: x.status, createdAt: x.createdAt.toISOString(), paidAt: x.paidAt?.toISOString() ?? null })),
     payables: purchaseOrders.map(x => ({ id: x.id, poNumber: x.poNumber, supplierName: x.supplier.name, amount: Number(x.subtotal), currency: x.currency, status: x.status })),
+    orderSales: { monthToDate: Number(orderSalesAgg._sum.total ?? 0), orders: orderSalesAgg._count._all, currency: a.store.currency },
     metrics: { revenue, expenses: expensesTotal, netProfit: revenue - expensesTotal, cash, receivables: invoices.filter(x => x.status !== "PAID").reduce((s,x)=>s+Number(x.total),0), payables: purchaseOrders.filter(x => x.status !== "RECEIVED").reduce((s,x)=>s+Number(x.subtotal),0) },
     management: { arAging, cashMovement30d, unmatchedBankItems, budgetVariance, pendingRequisitions: pendingRequisitionApprovals.map((a) => { const r = a.entityId ? pendingReqMap.get(a.entityId) : null; return r ? { approvalId: a.id, id: r.id, number: r.number, title: r.title, department: r.department, requesterName: r.requesterName, priority: r.priority, neededBy: r.neededBy?.toISOString() ?? null, notes: r.notes, totalEstimate: r.items.reduce((sum, i) => sum + Number(i.estimatedUnitCost ?? 0) * i.quantity, 0), createdAt: r.createdAt.toISOString() } : null; }).filter((x): x is NonNullable<typeof x> => x !== null) },
   };

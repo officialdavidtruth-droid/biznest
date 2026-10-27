@@ -19,6 +19,7 @@ export const CRONS: CronDef[] = [
   { name: "month-end-export", path: "/api/cron/month-end-export", schedule: "0 8 1 * *", maxAgeHours: 746 },
   { name: "abandoned-checkout-alerts", path: "/api/cron/abandoned-checkout-alerts", schedule: "0 12 * * *", maxAgeHours: 26 },
   { name: "webhooks", path: "/api/cron/webhooks", schedule: "0 18 * * *", maxAgeHours: 26 },
+  { name: "daily-summary", path: "/api/cron/daily-summary", schedule: "0 20 * * *", maxAgeHours: 26 },
 ];
 
 export const CRON_BY_NAME: Record<string, CronDef> = Object.fromEntries(CRONS.map((c) => [c.name, c]));

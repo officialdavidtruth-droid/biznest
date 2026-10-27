@@ -3,7 +3,8 @@
 import { headers } from "next/headers";
 import { prisma } from "@/lib/prisma";
 import { assertStorePermission } from "@/lib/access/assert-store-access";
-import { SELLER_VISIBLE_ORDER_STATUSES } from "@/lib/constants/order";
+import type { OrderStatus } from "@prisma/client";
+import { getLocalDateKey, getLocalMinutes, localDateStartUtc, addLocalDays } from "@/lib/timezone";
 import { checkRateLimit, getClientIp } from "@/lib/rate-limit";
 import { formatNumber } from "@/lib/i18n/locale";
 
@@ -56,7 +57,7 @@ export type DashboardInsights = {
   bestProduct: { id: string; name: string; unitsSold: number } | null;
   returningCustomerRate: number | null;
   recommendations: Recommendation[];
-  /** Same rolling-24h window, shifted back one day, so the dashboard can
+  /** Same elapsed window of the previous local day, so the dashboard can
    * show real "vs yesterday" deltas instead of a static "Today" label. */
   revenueYesterday: number;
   ordersYesterday: number;
@@ -64,28 +65,33 @@ export type DashboardInsights = {
   newCustomersYesterday: number;
   avgOrderValueToday: number;
   avgOrderValueYesterday: number;
-  /** 24 hourly revenue buckets covering the rolling "today" window, oldest
-   * first, for the revenue-overview chart — real paid-order totals per
-   * hour rather than a decorative fixed shape. */
+  /** 24 hourly revenue buckets (local hours 00-23 of today), for the
+   * revenue-overview chart — real paid-order totals per hour. */
   hourlyRevenue: number[];
 };
 
-const PAID_STATUSES = SELLER_VISIBLE_ORDER_STATUSES;
+// Money actually received and kept. REFUNDED and DISPUTED are visible to the
+// seller in the order list but must never count as sales on a dashboard.
+const PAID_STATUSES: OrderStatus[] = ["PAID", "IN_PROGRESS", "DELIVERED", "COMPLETED"];
 
 /**
  * Everything the "Your business today" + "BizNest recommends" sections need,
  * computed in one place so the dashboard reads real signals instead of raw
- * counts. "Today" is a rolling 24h window rather than calendar-midnight, so
- * the numbers don't reset to zero at 00:00 and look artificially empty for
- * whoever checks first thing in the morning.
+ * counts. "Today" is the store's local calendar day (store.timezone), matching
+ * the FnB dashboard. "Yesterday" is the same elapsed window of the previous
+ * local day so the deltas compare like with like.
  */
 export async function getDashboardInsights(storeId: string, slug: string): Promise<DashboardInsights> {
   const access = await assertStorePermission(slug, "analytics");
   if (!access.success || access.store.id !== storeId) {
     throw new Error(access.success ? "Store access mismatch." : access.error);
   }
-  const since24h = new Date(Date.now() - 24 * 60 * 60 * 1000);
-  const since48h = new Date(Date.now() - 48 * 60 * 60 * 1000);
+  const tz = access.store.timezone || "Africa/Lagos";
+  const nowDate = new Date();
+  const todayKey = getLocalDateKey(nowDate, tz);
+  const since24h = localDateStartUtc(todayKey, tz); // start of today (local)
+  const since48h = localDateStartUtc(addLocalDays(todayKey, -1), tz); // start of yesterday (local)
+  const yesterdayEnd = new Date(since48h.getTime() + (nowDate.getTime() - since24h.getTime())); // same elapsed time yesterday
   const since7d = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
 
   const [
@@ -152,13 +158,13 @@ export async function getDashboardInsights(storeId: string, slug: string): Promi
     // Coupon has no createdAt field, so we can't check "created in the last
     // 7 days" — fall back to whether an active coupon exists at all.
     prisma.coupon.findFirst({ where: { storeId, isActive: true }, select: { id: true } }),
-    prisma.order.count({ where: { storeId, status: { in: PAID_STATUSES }, createdAt: { gte: since48h, lt: since24h } } }),
+    prisma.order.count({ where: { storeId, status: { in: PAID_STATUSES }, createdAt: { gte: since48h, lt: yesterdayEnd } } }),
     prisma.order.aggregate({
-      where: { storeId, status: { in: PAID_STATUSES }, createdAt: { gte: since48h, lt: since24h } },
+      where: { storeId, status: { in: PAID_STATUSES }, createdAt: { gte: since48h, lt: yesterdayEnd } },
       _sum: { total: true },
     }),
     prisma.storeCustomer.count({ where: { storeId, createdAt: { gte: since24h } } }),
-    prisma.storeCustomer.count({ where: { storeId, createdAt: { gte: since48h, lt: since24h } } }),
+    prisma.storeCustomer.count({ where: { storeId, createdAt: { gte: since48h, lt: yesterdayEnd } } }),
     prisma.order.findMany({
       where: { storeId, status: { in: PAID_STATUSES }, createdAt: { gte: since24h } },
       select: { total: true, createdAt: true },
@@ -170,13 +176,11 @@ export async function getDashboardInsights(storeId: string, slug: string): Promi
   const avgOrderValueToday = ordersToday > 0 ? revenueToday / ordersToday : 0;
   const avgOrderValueYesterday = ordersYesterday > 0 ? revenueYesterday / ordersYesterday : 0;
 
-  // 24 hourly buckets covering the rolling "today" window, oldest first —
-  // real order totals per hour-of-window, not a decorative fixed shape.
+  // 24 buckets = local hours 00-23 of the store's day, real paid totals.
   const hourlyRevenue = new Array(24).fill(0) as number[];
   for (const order of hourlyOrders) {
-    const hoursAgo = Math.floor((Date.now() - order.createdAt.getTime()) / (60 * 60 * 1000));
-    const bucket = 23 - Math.min(23, Math.max(0, hoursAgo));
-    hourlyRevenue[bucket] += Number(order.total);
+    const hour = Math.min(23, Math.max(0, Math.floor(getLocalMinutes(order.createdAt, tz) / 60)));
+    hourlyRevenue[hour] += Number(order.total);
   }
 
   let bestProduct: DashboardInsights["bestProduct"] = null;

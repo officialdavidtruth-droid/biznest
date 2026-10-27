@@ -18,6 +18,8 @@ import { logStoreActivity } from "@/lib/activity-log";
 import type { ActionResult } from "@/types/actions";
 import { Prisma, type Store, type Business } from "@prisma/client";
 import { formatNumber } from "@/lib/i18n/locale";
+import { postOrderSaleToLedger } from "@/lib/financial/order-ledger";
+import { getLocalDateKey, localDateStartUtc, localDateEndUtc } from "@/lib/timezone";
 
 type StoreAccessResult =
   | { success: true; store: Store & { business: Business } }
@@ -663,6 +665,7 @@ export async function createPosSale(
   // webhooks are an external call (shouldn't sit inside a DB transaction
   // holding a connection open) and the activity log is best-effort audit
   // trail, not something a failure here should roll the sale back for.
+  await postOrderSaleToLedger(orderId);
   await emitWebhookEvent("ORDER_CREATED", store.id, {
     orderId,
     storeId: store.id,
@@ -706,11 +709,16 @@ export async function getPosDailySummary(slug: string): Promise<PosDailySummary>
   const access = await assertStoreAccess(slug);
   if (!access.success) return { salesCount: 0, totalAmount: 0, currency: "NGN" };
 
-  const startOfDay = new Date();
-  startOfDay.setHours(0, 0, 0, 0);
+  // "Today" is the store's local day, not the server's (UTC on Vercel).
+  const tz = access.store.timezone || "Africa/Lagos";
+  const todayKey = getLocalDateKey(new Date(), tz);
+  const startOfDay = localDateStartUtc(todayKey, tz);
+  const endOfDay = localDateEndUtc(todayKey, tz);
 
+  // Only paid sales: unpaid (PENDING_PAYMENT), CANCELLED, REFUNDED and
+  // DISPUTED orders are not takings.
   const orders = await prisma.order.findMany({
-    where: { storeId: access.store.id, channel: "POS", createdAt: { gte: startOfDay }, status: { not: "CANCELLED" } },
+    where: { storeId: access.store.id, channel: "POS", createdAt: { gte: startOfDay, lt: endOfDay }, status: { in: ["PAID", "IN_PROGRESS", "DELIVERED", "COMPLETED"] } },
     select: { total: true, currency: true },
   });
 

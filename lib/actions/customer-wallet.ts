@@ -13,6 +13,7 @@ import { shortToken } from "@/lib/payments/reference";
 import { confirmPaidBooking } from "@/lib/payments/booking-confirmation";
 import { settleAndPayout } from "@/lib/payments/payout";
 import { formatMoney } from "@/lib/utils/format-money";
+import { postPaymentToLedgerByReference } from "@/lib/financial/order-ledger";
 
 const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? "https://biznest.vercel.app";
 
@@ -220,6 +221,7 @@ export async function payBookingWithWallet(
   }
 
   // The customer's money is already in the platform account; pay the store out of it.
+  await postPaymentToLedgerByReference(reference);
   await settleAndPayout(reference);
   void confirmPaidBooking(booking.id, reference, amount);
   revalidatePath(`/store/${storeSlug}/account/wallet`);
@@ -298,6 +300,7 @@ export async function redeemWalletPaymentRequest(storeSlug: string, token: strin
     throw error;
   }
 
+  await postPaymentToLedgerByReference(paymentReference);
   await settleAndPayout(paymentReference);
   void confirmPaidBooking(request.booking.id, paymentReference, amount);
 

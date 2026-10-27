@@ -16,6 +16,7 @@ import { roundMoney } from "@/lib/utils/pricing";
 import { assertStorePermission } from "@/lib/access/assert-store-access";
 import { auth } from "@/lib/auth";
 import { formatNumber } from "@/lib/i18n/locale";
+import { postOrderRefundToLedger, postPaymentRefundToLedger } from "@/lib/financial/order-ledger";
 
 // Order statuses a refund can be issued from. PENDING_PAYMENT/CANCELLED
 // never had money move; REFUNDED is already done; DISPUTED is left out
@@ -355,6 +356,7 @@ export async function issueRefund(
       return { success: false, error: "This payment was already refunded by another request." };
     }
 
+    await postOrderRefundToLedger(order.id);
     await emitWebhookEvent("PAYMENT_REFUNDED", access.store.id, {
       orderId: order.id,
       paymentId: payment.id,
@@ -412,6 +414,7 @@ export async function issueRefund(
   } catch {
     return { success: false, error: "The gateway refund was accepted, but BizNest could not finish recording it. The payment is locked as refund-pending to prevent a duplicate refund; reconcile this payment before retrying." };
   }
+  await postOrderRefundToLedger(order.id);
   await emitWebhookEvent("PAYMENT_REFUNDED", access.store.id, {
     orderId: order.id,
     paymentId: payment.id,
@@ -567,6 +570,8 @@ export async function reconcileRefundPendingPayment(slug: string, paymentId: str
       if (payment.reservation) await tx.propertyReservation.update({ where: { id: payment.reservation.id }, data: { paymentStatus: "REFUNDED" } });
     });
   } catch { return { success: false, error: "The gateway confirms the refund, but BizNest could not finalize the local record. It remains refund-pending and is safe to reconcile again." }; }
+  if (payment.order) await postOrderRefundToLedger(payment.order.id);
+  else await postPaymentRefundToLedger(payment.id);
   await emitWebhookEvent("PAYMENT_REFUNDED", store.id, { paymentId: payment.id, amount: Number(payment.amount), currency: payment.currency, reason: payment.refundReason ?? "Refund reconciled from gateway" });
   revalidatePath(`/store/${slug}/admin/payments`); revalidatePath(`/store/${slug}/admin/orders`); revalidatePath(`/store/${slug}/admin/bookings`); revalidatePath(`/store/${slug}/admin/pms`);
   return { success: true, data: { status: "REFUNDED" } };
@@ -649,6 +654,7 @@ export async function issueBookingRefund(
       if (message === "ALREADY_REFUNDED") return { success: false, error: "This payment was already refunded by another request." };
       return { success: false, error: "Couldn't return the wallet payment." };
     }
+    await postPaymentRefundToLedger(payment.id);
     await emitWebhookEvent("PAYMENT_REFUNDED", access.store.id, { bookingId: booking.id, paymentId: payment.id, amount: Number(payment.amount), currency: payment.currency, reason: trimmedReason });
     revalidatePath(`/store/${slug}/admin/bookings`);
     revalidatePath(`/store/${slug}/account/bookings`);
@@ -679,6 +685,7 @@ export async function issueBookingRefund(
   } catch {
     return { success: false, error: "The gateway refund was accepted, but BizNest could not finish recording it. The payment is locked as refund-pending to prevent a duplicate refund; reconcile this payment before retrying." };
   }
+  await postPaymentRefundToLedger(payment.id);
   await emitWebhookEvent("PAYMENT_REFUNDED", access.store.id, { bookingId: booking.id, paymentId: payment.id, amount: Number(payment.amount), currency: payment.currency, reason: trimmedReason });
   revalidatePath(`/store/${slug}/admin/bookings`);
   revalidatePath(`/store/${slug}/account/bookings`);
@@ -733,6 +740,7 @@ export async function issueReservationRefund(
   } catch {
     return { success: false, error: "The gateway refund was accepted, but BizNest could not finish recording it. The payment is locked as refund-pending to prevent a duplicate refund; reconcile this payment before retrying." };
   }
+  await postPaymentRefundToLedger(payment.id);
   await emitWebhookEvent("PAYMENT_REFUNDED", access.store.id, { reservationId: reservation.id, paymentId: payment.id, amount: Number(payment.amount), currency: payment.currency, reason: trimmedReason });
   revalidatePath(`/store/${slug}/admin/pms`);
   return { success: true, data: undefined };

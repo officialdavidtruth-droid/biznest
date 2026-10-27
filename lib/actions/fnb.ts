@@ -94,6 +94,17 @@ export async function getFnbDashboard(slug: string) {
   const currentShift = raw_currentShift;
   const recentShifts: typeof raw_recentShifts = can("fnb:pos", "fnb:reports") ? raw_recentShifts : [];
 
+  // Open shifts: recompute from the shift's orders instead of trusting the
+  // running counter, which is incremented at sale time and never reduced on
+  // refund. Same filter as closeFnbShift, so the figure doesn't jump at close.
+  const openShiftIds = [currentShift?.id, ...recentShifts.filter((x) => x.status === "OPEN").map((x) => x.id)].filter((x): x is string => Boolean(x));
+  const liveRows = openShiftIds.length
+    ? await prisma.order.groupBy({ by: ["fnbShiftId"], where: { storeId, fnbShiftId: { in: openShiftIds }, channel: "POS", status: { in: ["PAID", "IN_PROGRESS", "DELIVERED", "COMPLETED"] } }, _count: { _all: true }, _sum: { total: true } })
+    : [];
+  const live = new Map(liveRows.map((r) => [r.fnbShiftId, { salesCount: r._count._all, salesTotal: Number(r._sum.total ?? 0) }]));
+  const withLive = <T extends { id: string; status: string; salesCount: number; salesTotal: unknown }>(shift: T) =>
+    shift.status === "OPEN" ? { ...shift, salesCount: live.get(shift.id)?.salesCount ?? 0, salesTotal: live.get(shift.id)?.salesTotal ?? 0 } : { ...shift, salesTotal: Number(shift.salesTotal) };
+
   const revenue = Number(todayTotals._sum.total ?? 0);
   const activeOrders = orders.filter((o) => ["QUEUED", "STARTED", "READY", "EXPO"].includes(o.kitchenStatus)).length;
   const completedOrders = orders.filter((o) => ["SERVED"].includes(o.kitchenStatus)).length;
@@ -121,8 +132,8 @@ export async function getFnbDashboard(slug: string) {
     suppliers,
     customers,
     wasteMovements,
-    currentShift: currentShift ? { ...currentShift, salesTotal: Number(currentShift.salesTotal) } : null,
-    recentShifts: recentShifts.map((shift) => ({ ...shift, salesTotal: Number(shift.salesTotal) })),
+    currentShift: currentShift ? withLive(currentShift) : null,
+    recentShifts: recentShifts.map((shift) => withLive(shift)),
     metrics: { revenue, activeOrders, completedOrders, ordersToday: todayTotals._count._all, reservationsToday: reservations.length, stockValue, lowStock, outOfStock, expiringSoon, expired, batchValue, recipeCount, wasteUnits },
   };
 }
@@ -209,7 +220,7 @@ export async function endFnbShift(slug: string): Promise<ActionResult<{ id: stri
   const shift = await prisma.fnbShift.findFirst({ where: { storeId: a.store.id, staffUserId: userId, status: "OPEN" }, select: { id: true } });
   if (!shift) return { success: false, error: "You do not have an open shift." };
   const endedAt = new Date();
-  const sales = await prisma.order.aggregate({ where: { storeId: a.store.id, fnbShiftId: shift.id, channel: "POS", status: { notIn: ["CANCELLED", "REFUNDED"] } }, _count: { _all: true }, _sum: { total: true } });
+  const sales = await prisma.order.aggregate({ where: { storeId: a.store.id, fnbShiftId: shift.id, channel: "POS", status: { in: ["PAID", "IN_PROGRESS", "DELIVERED", "COMPLETED"] } }, _count: { _all: true }, _sum: { total: true } });
   const result = await prisma.fnbShift.updateMany({ where: { id: shift.id, storeId: a.store.id, staffUserId: userId, status: "OPEN" }, data: { status: "CLOSED", endedAt, salesCount: sales._count._all, salesTotal: sales._sum.total ?? 0 } });
   if (result.count === 0) return { success: false, error: "This shift was already closed." };
   revalidatePath(`/store/${slug}/admin/fnb`);

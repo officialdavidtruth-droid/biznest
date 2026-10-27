@@ -3,6 +3,7 @@
 import { prisma } from "@/lib/prisma";
 import { assertStorePermission } from "@/lib/access/assert-store-access";
 import { formatDate } from "@/lib/i18n/locale";
+import { addLocalDays, getLocalDateKey, localDateStartUtc } from "@/lib/timezone";
 
 // --- Deep store analytics ----------------------------------------------------
 // Everything on the /admin/analytics dashboard, computed for an arbitrary
@@ -97,9 +98,10 @@ export async function getStoreAnalytics(storeId: string, rangeDays = 30): Promis
   if (!access.success) throw new Error(access.error);
   if (access.store.id !== storeId) throw new Error("Store access mismatch.");
 
-  const since = new Date();
-  since.setDate(since.getDate() - (rangeDays - 1));
-  since.setHours(0, 0, 0, 0);
+  // Day boundaries are the store's local midnight, not the server's (UTC).
+  const tz = access.store.timezone || "Africa/Lagos";
+  const startKey = addLocalDays(getLocalDateKey(new Date(), tz), -(rangeDays - 1));
+  const since = localDateStartUtc(startKey, tz);
 
   const [store, orders, visits, pendingCartCount] = await Promise.all([
     prisma.store.findUnique({ where: { id: storeId }, select: { customDomain: true, slug: true } }),
@@ -145,16 +147,25 @@ export async function getStoreAnalytics(storeId: string, rangeDays = 30): Promis
 
   // ---------- Day-by-day series ----------
   const series: DailyPoint[] = [];
+  const ordersByDay = new Map<string, typeof orders>();
+  for (const o of orders) {
+    const k = getLocalDateKey(o.createdAt, tz);
+    const list = ordersByDay.get(k);
+    if (list) list.push(o); else ordersByDay.set(k, [o]);
+  }
+  const visitsByDay = new Map<string, number>();
+  for (const v of visits) {
+    const k = getLocalDateKey(v.createdAt, tz);
+    visitsByDay.set(k, (visitsByDay.get(k) ?? 0) + 1);
+  }
   for (let i = 0; i < rangeDays; i++) {
-    const d = new Date(since);
-    d.setDate(d.getDate() + i);
-    const key = d.toDateString();
-    const dayOrders = orders.filter((o) => o.createdAt.toDateString() === key);
-    const dayVisitors = visits.filter((v) => v.createdAt.toDateString() === key).length;
+    const key = addLocalDays(startKey, i);
+    const dayOrders = ordersByDay.get(key) ?? [];
+    const dayVisitors = visitsByDay.get(key) ?? 0;
     const dayRevenue = dayOrders.reduce((s, o) => s + Number(o.total), 0);
     series.push({
-      date: d.toISOString().slice(0, 10),
-      label: formatDate(d, { day: "numeric", month: "short" }),
+      date: key,
+      label: formatDate(localDateStartUtc(key, tz), { day: "numeric", month: "short", timeZone: tz }),
       revenue: dayRevenue,
       orders: dayOrders.length,
       visitors: dayVisitors,

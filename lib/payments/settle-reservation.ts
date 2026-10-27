@@ -5,6 +5,7 @@ import { prisma } from "@/lib/prisma";
 import { logWarn } from "@/lib/observability/log";
 import type { ActionResult } from "@/types/actions";
 import { revalidatePath } from "next/cache";
+import { postPaymentToLedgerByReference } from "@/lib/financial/order-ledger";
 
 /**
  * PMS reservation payment settlement.
@@ -43,6 +44,7 @@ export async function settleReservationPayment(
 
  if(["CANCELLED","NO_SHOW"].includes(payment.reservation.status))void logWarn("PAYMENTS","Deposit paid for a reservation that was already cancelled/no-show — refund may be needed",{reference,reservationId:payment.reservation.id});
 
+ await postPaymentToLedgerByReference(reference);
  await settleAndPayout(reference);
 
  revalidatePath(`/store/${payment.reservation.store.slug}/admin/pms`);

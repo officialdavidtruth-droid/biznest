@@ -63,6 +63,12 @@ export default async function SettingsPage({ params }: { params: Promise<{ slug:
           <input name="contactEmail" type="email" defaultValue={store.contactEmail ?? ""} className="mb-3 w-full rounded-md border px-3 py-1.5 text-sm" />
           <label className="mb-1 block text-xs text-muted-foreground">Contact phone</label>
           <input name="contactPhone" defaultValue={store.contactPhone ?? ""} className="mb-3 w-full rounded-md border px-3 py-1.5 text-sm" />
+          {isOwner && (
+            <label className="mb-3 flex items-start gap-2 text-sm">
+              <input type="checkbox" name="dailySummaryEmail" defaultChecked={store.dailySummaryEmail} className="mt-1" />
+              <span>Email me a daily summary<span className="block text-xs text-muted-foreground">Sales, stock risks and unpaid checkouts, sent each evening to your account email. You always get it in the app too.</span></span>
+            </label>
+          )}
           <label className="mb-1 block text-xs text-muted-foreground">About your business</label>
           <textarea
             name="description"

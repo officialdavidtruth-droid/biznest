@@ -354,6 +354,8 @@ export async function updateStoreSettings(slug: string, formData: FormData) {
   // If it can't be understood, keep what they typed so they can see and fix it.
   const whatsapp = /^https?:\/\//i.test(whatsappInput) ? whatsappInput : normalizeWhatsAppNumber(whatsappInput) ?? whatsappInput;
   const whatsappFloat = formData.get("whatsappFloat") === "on" ? "on" : "";
+  // Owner-only opt-in. Managers/staff saving this form leave the owner's choice untouched.
+  const dailySummaryEmail = access.role === "OWNER" ? formData.get("dailySummaryEmail") === "on" : undefined;
 
   if (!name) return;
 
@@ -363,6 +365,7 @@ export async function updateStoreSettings(slug: string, formData: FormData) {
       name,
       contactEmail,
       contactPhone,
+      ...(dailySummaryEmail === undefined ? {} : { dailySummaryEmail }),
       logoUrl,
       bannerUrl,
       themeColors: { primary, secondary, accent },
