@@ -14,6 +14,9 @@ export const CRONS: CronDef[] = [
   { name: "subscription-renewals", path: "/api/cron/subscription-renewals", schedule: "0 6 * * *", maxAgeHours: 26 },
   { name: "watchdog", path: "/api/cron/watchdog", schedule: "30 7 * * *", maxAgeHours: 26 },
   { name: "payout-verification", path: "/api/cron/payout-verification", schedule: "0 9 * * *", maxAgeHours: 26 },
+  { name: "churn-watch", path: "/api/cron/churn-watch", schedule: "0 10 * * *", maxAgeHours: 26 },
+  { name: "weekly-chores", path: "/api/cron/weekly-chores", schedule: "30 5 * * 1", maxAgeHours: 170 },
+  { name: "month-end-export", path: "/api/cron/month-end-export", schedule: "0 8 1 * *", maxAgeHours: 746 },
   { name: "abandoned-checkout-alerts", path: "/api/cron/abandoned-checkout-alerts", schedule: "0 12 * * *", maxAgeHours: 26 },
   { name: "webhooks", path: "/api/cron/webhooks", schedule: "0 18 * * *", maxAgeHours: 26 },
 ];

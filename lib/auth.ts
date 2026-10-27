@@ -341,6 +341,11 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       if (user) {
         token.id = user.id;
         token.role = user.role;
+        // Churn watch: stamp the sign-in of platform identities (owner/staff).
+        // Fire-and-forget; must never block or fail a login.
+        if (!(user as { customerStoreId?: string }).customerStoreId && user.id) {
+          void prisma.user.update({ where: { id: user.id }, data: { lastLoginAt: new Date() } }).catch(() => {});
+        }
         // Only set on a fresh sign-in via the "Position@store" path (see
         // authorize() above). Deliberately not re-derived on later
         // requests below — a staff member's position/store doesn't change

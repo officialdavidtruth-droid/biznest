@@ -79,6 +79,10 @@ model User {
   twoFactorEnabled  Boolean   @default(false)
   twoFactorSecret   String?
   phone             String?
+  // Stamped on every fresh sign-in of a platform identity (owner/staff).
+  // Read by the churn-watch cron ("no logins for 7 days"). Null = never
+  // signed in since this column was added.
+  lastLoginAt       DateTime?
   createdAt         DateTime  @default(now())
   updatedAt         DateTime  @updatedAt
 
@@ -786,6 +790,7 @@ model Store {
   nextRequisitionNo Int @default(1)
 
   creativeProjects CreativeProject[]
+  churnSignals     ChurnSignal[]
 
   sectionOverrides Json?
   // Industry-specific answers captured during store onboarding. The object
@@ -2796,6 +2801,45 @@ model StorePlugin {
 
   @@unique([storeId, pluginId])
   @@index([storeId, status])
+}
+
+// ----------------------------------------------------------------------------
+// CHURN WATCH
+// One row per (store, warning sign) while that sign is active. The daily
+// churn-watch cron opens a row the first time a sign appears (and nudges the
+// owner once), refreshes lastDetectedAt while it persists, and sets
+// resolvedAt when it clears -- so a store that goes quiet, recovers, and goes
+// quiet again is nudged again, but never twice for the same quiet spell.
+// ----------------------------------------------------------------------------
+enum ChurnSignalKind {
+  NO_LOGIN
+  NO_ORDERS
+  PAYMENT_FAILED
+  UNUSED_PLUGIN
+}
+
+model ChurnSignal {
+  id              String          @id @default(cuid())
+  storeId         String
+  store           Store           @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  kind            ChurnSignalKind
+  // Sub-key for kinds that can fire more than once per store (UNUSED_PLUGIN
+  // uses the plugin key). Empty string otherwise -- not null, so the unique
+  // index below actually dedupes.
+  subject         String          @default("")
+  detail          String?
+  firstDetectedAt DateTime        @default(now())
+  lastDetectedAt  DateTime        @default(now())
+  notifiedAt      DateTime?
+  // Owner hid the dashboard tip. Does not resolve the signal.
+  dismissedAt     DateTime?
+  resolvedAt      DateTime?
+
+  // At most one OPEN row per (storeId, kind, subject) is enforced by a partial
+  // unique index added in raw SQL (prisma/migrations/20261031090000_churn_signals);
+  // Prisma's schema DSL can't express a WHERE-scoped unique index.
+  @@index([storeId, resolvedAt])
+  @@index([resolvedAt, kind])
 }
 
 

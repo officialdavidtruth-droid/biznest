@@ -10,6 +10,8 @@ import { formatDate } from "@/lib/i18n/locale";
 import { getStoreAccessRole } from "@/lib/access/store-access";
 import { FirstSaleChecklist } from "@/components/dashboard/first-sale-checklist";
 import { loadFirstSaleChecklist } from "@/lib/onboarding-checklist-data";
+import { ChurnTipCard } from "@/components/dashboard/churn-tip-card";
+import { getOpenChurnTip } from "@/lib/actions/churn";
 
 /**
  * Merchant overview only.
@@ -52,6 +54,10 @@ export default async function StoreAdminOverviewPage({
   // "Get your first sale" checklist: owners only, and never allowed to break the dashboard.
   const checklistPromise = getStoreAccessRole(session.user.id, session.user.role, store)
     .then((role) => (role === "OWNER" ? loadFirstSaleChecklist(store.id) : null))
+    .catch(() => null);
+  // Churn-watch tip: owners only, never allowed to break the dashboard.
+  const churnTipPromise = getStoreAccessRole(session.user.id, session.user.role, store)
+    .then((role) => (role === "OWNER" ? getOpenChurnTip(store.id, slug) : null))
     .catch(() => null);
   const now = new Date();
   const dayStart = new Date(now);
@@ -268,9 +274,11 @@ export default async function StoreAdminOverviewPage({
   };
 
   const checklist = await checklistPromise;
+  const churnTip = await churnTipPromise;
 
   return (
     <>
+      {churnTip && <ChurnTipCard slug={slug} {...churnTip} />}
       {checklist && (
         <FirstSaleChecklist
           slug={slug}

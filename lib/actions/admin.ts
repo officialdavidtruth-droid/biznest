@@ -906,3 +906,27 @@ export async function resolveDispute(
   revalidatePath(`/disputes/${dispute.orderId}`);
   return { success: true, data: undefined };
 }
+
+// --- Churn watch --------------------------------------------------------
+
+/** Open churn warning signs, grouped by store, for manual outreach. null = not authorized. */
+export async function listAtRiskStores() {
+  const access = await assertPlatformStaff();
+  if (!access.success) return null;
+
+  const rows = await prisma.churnSignal.findMany({
+    where: { resolvedAt: null },
+    orderBy: { firstDetectedAt: "asc" },
+    take: 1000,
+    include: { store: { select: { id: true, name: true, slug: true, business: { select: { phone: true, email: true, user: { select: { email: true } } } } } } },
+  });
+
+  const byStore = new Map<string, { store: (typeof rows)[number]["store"]; signals: typeof rows }>();
+  for (const r of rows) {
+    const g = byStore.get(r.storeId) ?? { store: r.store, signals: [] as typeof rows };
+    g.signals.push(r);
+    byStore.set(r.storeId, g);
+  }
+  // Most warning signs first, then the longest-standing.
+  return [...byStore.values()].sort((a, b) => b.signals.length - a.signals.length || a.signals[0].firstDetectedAt.getTime() - b.signals[0].firstDetectedAt.getTime());
+}
