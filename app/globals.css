@@ -57,6 +57,22 @@
   }
 }
 
+/* Dark-green marketing surface (same look as the homepage hero). Re-points the
+   shadcn tokens locally so existing components (bn-card, inputs, muted text)
+   restyle themselves without needing dark variants. */
+.bn-dark-surface {
+  --background: 122 45% 15%;
+  --foreground: 0 0% 100%;
+  --muted: 122 60% 9%;
+  --muted-foreground: 120 15% 72%;
+  --border: 121 30% 26%;
+  background: var(--bn-hero-gradient);
+  color: var(--bn-ivory);
+  color-scheme: dark;
+}
+.bn-dark-surface .text-primary { color: var(--bn-accent-text); }
+.bn-dark-surface .bn-card { box-shadow: 0 1px 2px rgba(0, 0, 0, 0.35); }
+
 /* Shared card elevation for dashboard surfaces — one consistent shadow
    language instead of every page inventing its own border treatment. */
 .bn-card {

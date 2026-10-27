@@ -185,6 +185,18 @@ export const PLUGIN_CATALOG: PluginSeed[] = [
     sortOrder: 125,
     plans: [],
   },
+  {
+    key: "coupons-gift-cards",
+    name: "Coupons & Gift Cards",
+    description: "Create discount codes and issue stored-value gift cards your customers can spend with you, and take them as payment in store.",
+    category: "Growth",
+    icon: "Ticket",
+    price: 0,
+    isFree: true,
+    eligibleBusinessTypes: ["*"],
+    sortOrder: 126,
+    plans: [],
+  },
 ];
 
 export async function ensureSystemPlugins() {

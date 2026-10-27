@@ -1,9 +1,9 @@
 import {
-  LayoutDashboard, ShoppingCart, Package, Wrench, Users, Boxes, Ticket,
+  LayoutDashboard, ShoppingCart, Package, Wrench, Users, Boxes,
   CreditCard, BarChart3, Star, MessageSquare,
   Settings, BadgeCheck, Wallet, LifeBuoy, Truck, Wand2,
   LayoutTemplate, FileText, FileSignature, MailWarning, Calculator, CalendarDays, Images,
-  ClipboardList, PlusCircle, Layers, Rows3, Puzzle, ListTree, Gift, Share2,
+  ClipboardList, PlusCircle, Layers, Rows3, Puzzle, ListTree, Share2,
 } from "lucide-react";
 import { getAdaptiveDashboardConfig } from "@/lib/adaptive-dashboard";
 import { getBusinessTerminology } from "@/lib/business-terminology";
@@ -145,8 +145,6 @@ export function buildNavGroups(business: { sellsProducts: boolean; offersService
     {
       label: "Grow",
       items: [
-        { label: "Coupons", href: "/coupons", icon: Ticket, permission: "marketing" },
-        { label: "Gift cards", href: "/gift-cards", icon: Gift, permission: "marketing" },
         { label: "Referrals", href: "/referrals", icon: Share2, permission: "marketing" },
         { label: "Abandoned checkouts", href: "/abandoned-checkouts", icon: MailWarning, permission: "marketing" },
         { label: "Reviews", href: "/reviews", icon: Star, permission: "marketing" },

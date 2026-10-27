@@ -4,17 +4,24 @@ import { prisma } from "@/lib/prisma";
 import { checkRateLimit } from "@/lib/rate-limit";
 import { revalidatePath } from "next/cache";
 import { assertStorePermission } from "@/lib/access/assert-store-access";
+import { getPluginEntitlement } from "@/lib/plugins";
 import type { ActionResult } from "@/types/actions";
 import { formatMoney } from "@/lib/utils/format-money";
 
-// "marketing" permission — see product.ts's assertStoreAccess for why this
-// delegates to assertStorePermission instead of the old owner-only check.
-async function assertStoreAccess(slug: string) {
-  return assertStorePermission(slug, "marketing");
+// Coupons & Gift Cards is an installable app: managing them needs the app
+// installed (and, for invited staff, the app's own permission).
+async function assertCouponsApp(slug: string) {
+  const access = await assertStorePermission(slug, "plugin:coupons-gift-cards");
+  if (!access.success) return access;
+  const entitlement = await getPluginEntitlement(access.store.id, "coupons-gift-cards");
+  if (!entitlement.allowed || !entitlement.installed) {
+    return { success: false as const, error: "Install the Coupons & Gift Cards app to use this." };
+  }
+  return access;
 }
 
 export async function createCoupon(slug: string, formData: FormData) {
-  const access = await assertStoreAccess(slug);
+  const access = await assertCouponsApp(slug);
   if (!access.success) return;
 
   // Loose backstop (this is already store-owner-gated) against a runaway
@@ -40,7 +47,7 @@ export async function createCoupon(slug: string, formData: FormData) {
     },
   });
 
-  revalidatePath(`/store/${slug}/admin/coupons`);
+  revalidatePath(`/store/${slug}/admin/apps/coupons-gift-cards`);
 }
 
 /**

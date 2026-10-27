@@ -5,6 +5,7 @@ import { prisma } from "@/lib/prisma";
 import { headers } from "next/headers";
 import { revalidatePath } from "next/cache";
 import { assertStorePermission } from "@/lib/access/assert-store-access";
+import { getPluginEntitlement } from "@/lib/plugins";
 import { requireStoreCustomer } from "@/lib/actions/store-customer";
 import { checkRateLimit, getClientIp } from "@/lib/rate-limit";
 import { roundMoney } from "@/lib/utils/pricing";
@@ -17,8 +18,16 @@ import { formatMoney } from "@/lib/utils/format-money";
 // without marketing access can still take a card as payment.
 const MAX_CARD_AMOUNT = 5_000_000;
 
+// Issuing / disabling cards needs the Coupons & Gift Cards app installed.
+// Redeeming (below) deliberately does not, so cards already sold keep working.
 async function adminAccess(slug: string) {
-  return assertStorePermission(slug, "marketing");
+  const access = await assertStorePermission(slug, "plugin:coupons-gift-cards");
+  if (!access.success) return access;
+  const entitlement = await getPluginEntitlement(access.store.id, "coupons-gift-cards");
+  if (!entitlement.allowed || !entitlement.installed) {
+    return { success: false as const, error: "Install the Coupons & Gift Cards app to use this." };
+  }
+  return access;
 }
 
 async function redeemAccess(slug: string) {
@@ -67,7 +76,7 @@ export async function issueGiftCardAction(
     issuedById: session?.user?.id ?? null,
   });
 
-  revalidatePath(`/store/${slug}/admin/gift-cards`);
+  revalidatePath(`/store/${slug}/admin/apps/coupons-gift-cards`);
   return { success: true, data: { code: card.code } };
 }
 
@@ -81,7 +90,7 @@ export async function setGiftCardStatusAction(
   // storeId in the where clause: a card id from another store must not match.
   const updated = await prisma.giftCard.updateMany({ where: { id: cardId, storeId: access.store.id }, data: { status } });
   if (updated.count !== 1) return { success: false, error: "Gift card not found." };
-  revalidatePath(`/store/${slug}/admin/gift-cards`);
+  revalidatePath(`/store/${slug}/admin/apps/coupons-gift-cards`);
   return { success: true, data: undefined };
 }
 
@@ -106,7 +115,7 @@ export async function redeemGiftCardInStoreAction(
   });
   if (!result.ok) return { success: false, error: result.error };
 
-  revalidatePath(`/store/${slug}/admin/gift-cards`);
+  revalidatePath(`/store/${slug}/admin/apps/coupons-gift-cards`);
   return { success: true, data: { redeemed: result.redeemed, balanceAfter: result.balanceAfter } };
 }
 

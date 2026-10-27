@@ -81,11 +81,9 @@ export const PAGE_GUIDES: Record<string, PageGuide> = {
     s("Read the brief", "Open a request to see exactly what the customer wants."),
     s("Reply with a price", "Send a quote back, then turn it into an invoice when they accept."),
   ]),
-  "/coupons": g("Coupons", "Discount codes for checkout.", [
+  "/apps/coupons-gift-cards": g("Coupons & Gift Cards", "Discount codes and stored-value cards for your customers.", [
     s("Create a code", "Set the code, the discount and when it expires."),
     s("Share it", "Give the code to customers. You can pause or delete it any time."),
-  ]),
-  "/gift-cards": g("Gift cards", "Stored-value cards customers can spend with you.", [
     s("Issue a card", "Enter an amount (and a recipient email if it is a gift). You get a code to hand over."),
     s("Take it in store", "When a customer pays with a card, enter the code and amount to deduct it."),
   ]),

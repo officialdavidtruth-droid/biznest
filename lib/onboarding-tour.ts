@@ -40,7 +40,7 @@ const ITEM_COPY: Record<string, string> = {
   "/payments": "See the payments you've received and manage how you get paid out.",
   "/invoices": "Create invoices, send them to customers and track which are paid.",
   "/quotes": "Quote requests from your website arrive here with the customer's full brief.",
-  "/coupons": "Create discount codes customers can use at checkout.",
+  "/apps/coupons-gift-cards": "Create discount codes and gift cards customers can use at checkout.",
   "/abandoned-checkouts": "See shoppers who left before paying, so you can follow up.",
   "/reviews": "See what customers are saying about your business.",
   "/messages": "Conversations with customers who contact your store.",

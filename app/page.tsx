@@ -219,9 +219,6 @@ export default async function HomePage() {
           <Link href="/search" className="opacity-80 transition hover:opacity-100">
             Browse
           </Link>
-          <Link href="/templates" className="opacity-80 transition hover:opacity-100">
-            Templates
-          </Link>
           <a href="#pricing" className="hidden opacity-80 transition hover:opacity-100 sm:inline">
             Pricing
           </a>
@@ -448,7 +445,7 @@ export default async function HomePage() {
                 className="relative rounded-2xl p-6 transition hover:-translate-y-1"
                 style={{
                   background: featured ? "var(--bn-accent-gradient)" : "var(--bn-ink-raised)",
-                  color: featured ? "var(--bn-ink)" : "var(--bn-ivory)",
+                  color: "var(--bn-ivory)",
                   border: featured ? "none" : "1px solid var(--bn-ink-line)",
                 }}
               >
@@ -474,7 +471,7 @@ export default async function HomePage() {
                   className="mt-6 block rounded-full py-2.5 text-center text-sm font-medium transition hover:brightness-110"
                   style={{
                     background: featured ? "var(--bn-ink)" : "var(--bn-accent-gradient)",
-                    color: featured ? "var(--bn-ivory)" : "var(--bn-ink)",
+                    color: "var(--bn-ivory)",
                   }}
                 >
                   {Number(p.price) === 0 ? "Start free" : "Get started"}

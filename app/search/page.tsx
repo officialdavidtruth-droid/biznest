@@ -62,6 +62,7 @@ export default async function SearchPage({
   };
 
   return (
+    <div className="bn-dark-surface min-h-screen">
     <div className="mx-auto max-w-6xl px-4 py-8 sm:px-6">
       <div className="mb-6 flex items-center justify-between">
         <h1 className="text-2xl font-bold">
@@ -117,6 +118,7 @@ export default async function SearchPage({
           </Link>
         </div>
       )}
+    </div>
     </div>
   );
 }

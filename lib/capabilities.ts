@@ -221,7 +221,7 @@ export const BUSINESS_TYPES: Record<string, BusinessTypeConfig> = {
     quickActions: [
       { label: "Add a product", href: "/products/new" },
       { label: "Set up size & color variants", href: "/products" },
-      { label: "Run a seasonal coupon", href: "/coupons" },
+      { label: "Run a seasonal coupon", href: "/apps/coupons-gift-cards" },
     ],
   },
   "Electronics": {
