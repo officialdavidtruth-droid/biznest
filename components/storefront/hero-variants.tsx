@@ -1,4 +1,5 @@
 import type React from "react";
+import { cssUrl, safeHref } from "@/lib/builder-safe";
 import type { BuilderConfig, BuilderSection, HeroVariant } from "@/lib/builder-config";
 import { formatNumber } from "@/lib/i18n/locale";
 
@@ -21,13 +22,13 @@ function lum(hex: string): number {
   return (parseInt(m[1], 16) * 299 + parseInt(m[2], 16) * 587 + parseInt(m[3], 16) * 114) / 255000;
 }
 const on = (bg: string, light = "#fff", dark = "#111") => (lum(bg) < 0.55 ? light : dark);
-const bgImg = (src: string | undefined | null, fallback: string): React.CSSProperties => ({ background: src ? `url(${src}) center/cover` : fallback });
+const bgImg = (src: string | undefined | null, fallback: string): React.CSSProperties => ({ background: src ? `url(${cssUrl(src)}) center/cover` : fallback });
 
 function Cta({ s, d, bg, fg, kind = "solid" }: { s: BuilderSection["settings"]; d: D; bg: string; fg: string; kind?: "solid" | "link" }) {
   if (s.showButton === false || !s.ctaLabel) return null;
   const common: React.CSSProperties = { display: "inline-block", fontWeight: 800, fontSize: 14 };
-  if (kind === "link") return <a href={s.ctaHref || "#catalog"} style={{ ...common, color: fg, borderBottom: `2px solid ${bg}`, paddingBottom: 4 }}>{s.ctaLabel}</a>;
-  return <a href={s.ctaHref || "#catalog"} style={{ ...common, padding: "14px 24px", background: bg, color: fg, borderRadius: d.buttonStyle === "pill" ? 999 : Math.min(d.radius, 14) }}>{s.ctaLabel}</a>;
+  if (kind === "link") return <a href={safeHref(s.ctaHref, "#catalog")} style={{ ...common, color: fg, borderBottom: `2px solid ${bg}`, paddingBottom: 4 }}>{s.ctaLabel}</a>;
+  return <a href={safeHref(s.ctaHref, "#catalog")} style={{ ...common, padding: "14px 24px", background: bg, color: fg, borderRadius: d.buttonStyle === "pill" ? 999 : Math.min(d.radius, 14) }}>{s.ctaLabel}</a>;
 }
 
 const money = (i: HeroItem) => `${i.currency} ${formatNumber(i.price)}`;
@@ -57,7 +58,7 @@ export function HeroVariantView({ variant, section, d, items, categories }: Prop
     case "poster": {
       const bg = d.primary, fg = on(bg);
       return (
-        <section id={id} className="bn-section" style={{ position: "relative", overflow: "hidden", background: bg, color: fg, padding: "88px 0 0" }}>
+        <section id={id} data-bn-type="hero" className="bn-section" style={{ position: "relative", overflow: "hidden", background: bg, color: fg, padding: "88px 0 0" }}>
           <div aria-hidden style={{ position: "absolute", top: 0, right: 0, bottom: 0, width: "44%", clipPath: "polygon(22% 0,100% 0,100% 100%,0 100%)", ...bgImg(s.image, d.accent), opacity: s.image ? 0.9 : 1 }} />
           <div className="bn-wrap" style={{ position: "relative" }}>
             {s.eyebrow && <span style={{ display: "inline-block", background: d.accent, color: on(d.accent), fontWeight: 900, fontSize: 12, padding: "6px 12px", borderRadius: 2, marginBottom: 22 }}>{s.eyebrow}</span>}
@@ -75,7 +76,7 @@ export function HeroVariantView({ variant, section, d, items, categories }: Prop
     case "editorial": {
       const inset = items.find((i) => i.image);
       return (
-        <section id={id} className="bn-section" style={{ background: d.background, padding: "64px 0 80px" }}>
+        <section id={id} data-bn-type="hero" className="bn-section" style={{ background: d.background, padding: "64px 0 80px" }}>
           <div className={wrap} style={{ display: "grid", gridTemplateColumns: "1fr 1.05fr", gap: 64, alignItems: "end" }}>
             <div style={{ paddingBottom: 12 }}>
               {s.eyebrow && <p style={{ margin: "0 0 26px", color: d.muted, fontStyle: "italic", fontFamily: d.headingFont, fontSize: 18 }}>{s.eyebrow}</p>}
@@ -97,7 +98,7 @@ export function HeroVariantView({ variant, section, d, items, categories }: Prop
       const panels = [items[0], items[1], items[2]];
       const offsets = [48, 0, 48];
       return (
-        <section id={id} className="bn-section" style={{ background: d.background, padding: "80px 0 72px" }}>
+        <section id={id} data-bn-type="hero" className="bn-section" style={{ background: d.background, padding: "80px 0 72px" }}>
           <div className="bn-wrap" style={{ textAlign: "center" }}>
             {s.eyebrow && <p style={{ margin: "0 0 14px", color: d.accent, fontWeight: 700, fontSize: 14 }}>{s.eyebrow}</p>}
             <h1 style={{ fontFamily: d.headingFont, fontWeight: 500, fontSize: "clamp(40px,6.4vw,92px)", lineHeight: 1.02, letterSpacing: "-.035em", margin: "0 auto", maxWidth: 900 }}>{heading}</h1>
@@ -119,7 +120,7 @@ export function HeroVariantView({ variant, section, d, items, categories }: Prop
     /* Text left, a 2x2 grid of live products right. Electronics, general stores. */
     case "tiles": {
       return (
-        <section id={id} className="bn-section" style={{ background: d.background, padding: "56px 0 72px" }}>
+        <section id={id} data-bn-type="hero" className="bn-section" style={{ background: d.background, padding: "56px 0 72px" }}>
           <div className={wrap} style={{ display: "grid", gridTemplateColumns: "1fr 1.1fr", gap: 48, alignItems: "center" }}>
             <div>
               {s.eyebrow && <p style={{ margin: "0 0 12px", color: d.accent, fontWeight: 700, fontSize: 14 }}>{s.eyebrow}</p>}
@@ -138,7 +139,7 @@ export function HeroVariantView({ variant, section, d, items, categories }: Prop
     /* Arched image beside text. Beauty, wellness, soft retail. */
     case "arch": {
       return (
-        <section id={id} className="bn-section" style={{ background: d.surface, padding: "72px 0" }}>
+        <section id={id} data-bn-type="hero" className="bn-section" style={{ background: d.surface, padding: "72px 0" }}>
           <div className={wrap} style={{ display: "grid", gridTemplateColumns: ".8fr 1.2fr", gap: 64, alignItems: "center" }}>
             <div style={{ position: "relative", maxWidth: 400, width: "100%", margin: "0 auto" }}>
               <div style={{ aspectRatio: "3/4", borderRadius: "999px 999px 24px 24px", ...bgImg(s.image, `linear-gradient(180deg, ${d.accent}66, ${d.accent}22)`) }} />
@@ -159,7 +160,7 @@ export function HeroVariantView({ variant, section, d, items, categories }: Prop
     case "ledger": {
       const rows = (categories.length ? categories : items.map((i) => i.name)).slice(0, 5);
       return (
-        <section id={id} className="bn-section" style={{ background: d.background, padding: "72px 0 64px" }}>
+        <section id={id} data-bn-type="hero" className="bn-section" style={{ background: d.background, padding: "72px 0 64px" }}>
           <div className="bn-wrap" style={{ borderTop: `3px solid ${d.text}`, paddingTop: 28 }}>
             <div className="bn-hero" style={{ display: "grid", gridTemplateColumns: "1.25fr .75fr", gap: 56, alignItems: "end" }}>
               <div>
@@ -185,9 +186,9 @@ export function HeroVariantView({ variant, section, d, items, categories }: Prop
     case "frame": {
       const ink = s.image ? "#fff" : d.text;
       return (
-        <section id={id} className="bn-section" style={{ background: d.background, padding: "28px 0 56px" }}>
+        <section id={id} data-bn-type="hero" className="bn-section" style={{ background: d.background, padding: "28px 0 56px" }}>
           <div className="bn-wrap">
-            <div style={{ position: "relative", minHeight: 560, borderRadius: r, overflow: "hidden", display: "grid", placeItems: "center", textAlign: "center", color: ink, background: s.image ? `linear-gradient(rgba(0,0,0,.32),rgba(0,0,0,.32)), url(${s.image}) center/cover` : d.surface }}>
+            <div style={{ position: "relative", minHeight: 560, borderRadius: r, overflow: "hidden", display: "grid", placeItems: "center", textAlign: "center", color: ink, background: s.image ? `linear-gradient(rgba(0,0,0,.32),rgba(0,0,0,.32)), url(${cssUrl(s.image)}) center/cover` : d.surface }}>
               <div aria-hidden style={{ position: "absolute", inset: 18, border: `1px solid ${ink}`, opacity: 0.55, borderRadius: Math.max(r - 4, 0) }} />
               <div style={{ position: "relative", padding: "0 8%" }}>
                 <h1 style={{ fontFamily: d.headingFont, fontWeight: 400, fontSize: "clamp(40px,6.6vw,96px)", lineHeight: 1.02, letterSpacing: "-.02em", margin: 0 }}>{heading}</h1>
@@ -205,7 +206,7 @@ export function HeroVariantView({ variant, section, d, items, categories }: Prop
     /* Wide image with an overlapping card. Hotels, real estate, devices. */
     case "splitcard": {
       return (
-        <section id={id} className="bn-section" style={{ background: d.background, padding: "0 0 72px" }}>
+        <section id={id} data-bn-type="hero" className="bn-section" style={{ background: d.background, padding: "0 0 72px" }}>
           <div style={{ minHeight: 520, ...bgImg(s.image, `linear-gradient(135deg, ${d.primary}, ${d.accent})`) }} />
           <div className="bn-wrap" style={{ position: "relative" }}>
             <div style={{ marginTop: -150, width: "min(560px,100%)", background: d.surface, color: d.text, padding: "36px 36px 34px", borderRadius: r, boxShadow: "0 24px 60px rgba(0,0,0,.18)" }}>
@@ -223,7 +224,7 @@ export function HeroVariantView({ variant, section, d, items, categories }: Prop
     case "menu": {
       const rows = items.slice(0, 4);
       return (
-        <section id={id} className="bn-section" style={{ background: d.background, padding: "80px 0" }}>
+        <section id={id} data-bn-type="hero" className="bn-section" style={{ background: d.background, padding: "80px 0" }}>
           <div className={wrap} style={{ display: "grid", gridTemplateColumns: "1.1fr .9fr", gap: 56, alignItems: "center" }}>
             <div>
               <h1 style={{ fontFamily: d.headingFont, fontWeight: 600, fontSize: "clamp(42px,6vw,88px)", lineHeight: 1, letterSpacing: "-.03em", margin: 0 }}>{heading}</h1>
@@ -248,7 +249,7 @@ export function HeroVariantView({ variant, section, d, items, categories }: Prop
       const bg = d.accent, fg = on(bg);
       const hero = items.find((i) => i.image);
       return (
-        <section id={id} className="bn-section" style={{ background: bg, color: fg, padding: "64px 0 112px", clipPath: "polygon(0 0,100% 0,100% 90%,0 100%)" }}>
+        <section id={id} data-bn-type="hero" className="bn-section" style={{ background: bg, color: fg, padding: "64px 0 112px", clipPath: "polygon(0 0,100% 0,100% 90%,0 100%)" }}>
           <div className={wrap} style={{ display: "grid", gridTemplateColumns: "1.2fr .8fr", gap: 40, alignItems: "center" }}>
             <div>
               {s.eyebrow && <span style={{ display: "inline-block", border: `1.5px solid ${fg}`, borderRadius: 999, padding: "5px 14px", fontWeight: 800, fontSize: 13, marginBottom: 20 }}>{s.eyebrow}</span>}
@@ -268,7 +269,7 @@ export function HeroVariantView({ variant, section, d, items, categories }: Prop
     /* Lots of air, light type, a thin image strip. Cleaning, wellness, minimal brands. */
     case "quiet": {
       return (
-        <section id={id} className="bn-section" style={{ background: d.background, padding: "112px 0 56px" }}>
+        <section id={id} data-bn-type="hero" className="bn-section" style={{ background: d.background, padding: "112px 0 56px" }}>
           <div className="bn-wrap" style={{ textAlign: "center" }}>
             <h1 style={{ fontFamily: d.headingFont, fontWeight: 300, fontSize: "clamp(36px,5.2vw,68px)", lineHeight: 1.12, letterSpacing: "-.025em", margin: "0 auto", maxWidth: 760 }}>{heading}</h1>
             <div aria-hidden style={{ width: 56, height: 1, background: d.accent, margin: "30px auto" }} />

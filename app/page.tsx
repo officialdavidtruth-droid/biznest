@@ -209,13 +209,13 @@ export default async function HomePage() {
       />
       {/* Nav */}
       <header
-        className="sticky top-0 z-30 flex items-center justify-between px-6 py-4 backdrop-blur-md sm:px-10"
+        className="sticky top-0 z-30 flex items-center justify-between gap-4 px-4 py-4 backdrop-blur-md sm:px-10"
         style={{ background: "rgba(10, 28, 18, 0.72)", borderBottom: "1px solid var(--bn-ink-line)" }}
       >
-        <span className="text-lg tracking-tight" style={{ fontFamily: "var(--font-display)", fontWeight: 700 }}>
+        <span className="shrink-0 text-lg tracking-tight" style={{ fontFamily: "var(--font-display)", fontWeight: 700 }}>
           BizNest
         </span>
-        <nav className="flex items-center gap-3 text-sm sm:gap-6">
+        <nav className="flex min-w-0 items-center gap-4 whitespace-nowrap text-sm sm:gap-6">
           <Link href="/search" className="opacity-80 transition hover:opacity-100">
             Browse
           </Link>
@@ -239,10 +239,11 @@ export default async function HomePage() {
               </Link>
               <Link
                 href="/register"
-                className="rounded-full px-4 py-2 text-sm font-medium shadow-[0_4px_20px_-6px_rgba(52,211,153,0.6)] transition hover:brightness-110"
+                className="rounded-full px-3 py-2 text-sm font-medium shadow-[0_4px_20px_-6px_rgba(52,211,153,0.6)] transition hover:brightness-110 sm:px-4"
                 style={{ background: "var(--bn-accent-gradient)", color: "var(--bn-ivory)" }}
               >
-                Open your store
+                <span className="sm:hidden">Get started</span>
+                <span className="hidden sm:inline">Open your store</span>
               </Link>
             </>
           )}

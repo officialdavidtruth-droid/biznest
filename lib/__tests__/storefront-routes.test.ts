@@ -9,7 +9,7 @@ describe("builder storefront routes", () => {
     expect(source).not.toContain("href={`/${store.slug}/${item.kind}/${item.id}`}");
     expect(source).not.toContain("href={`/${store.slug}/search?q=${encodeURIComponent(c)}`}");
     expect(source).toContain("href={`/store/${store.slug}`}");
-    expect(source).toContain("href={`/store/${store.slug}/${item.kind}/${item.id}`}");
+    expect(source).toContain("`/store/${store.slug}/${item.kind}/${item.id}`");
     expect(source).toContain("href={`/store/${store.slug}/search?q=${encodeURIComponent(c)}`}");
   });
 });

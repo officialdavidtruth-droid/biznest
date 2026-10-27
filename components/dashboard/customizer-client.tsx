@@ -69,6 +69,7 @@ export function CustomizerClient({
   offersServices,
   seoTitle,
   seoDescription,
+  builderActive = true,
 }: {
   slug: string;
   storeName: string;
@@ -88,6 +89,8 @@ export function CustomizerClient({
   offersServices: boolean;
   seoTitle: string;
   seoDescription: string;
+  /** False when the chosen template draws its own homepage and ignores the visual builder. */
+  builderActive?: boolean;
 }) {
   const [panel, setPanel] = useState<Panel>(null);
   const [device, setDevice] = useState<Device>("desktop");
@@ -216,9 +219,12 @@ export function CustomizerClient({
   }
 
   function removeBuilderSection(id: string) {
-    if (id === "hero") return;
+    const target = builder.sections.find((s) => s.id === id);
+    // Template-generated sections have ids like "hero-0", so protect the hero by type, not by id.
+    if (!target || target.type === "hero") return;
+    const remaining = builder.sections.filter((s) => s.id !== id);
     setBuilder((current) => ({ ...current, sections: current.sections.filter((s) => s.id !== id) }));
-    setSelectedSectionId("hero");
+    setSelectedSectionId(remaining[0]?.id ?? null);
   }
 
   function moveBuilderSection(index: number, direction: -1 | 1) {
@@ -274,6 +280,13 @@ export function CustomizerClient({
                 Change
               </a>
             </div>
+            {!builderActive && (
+              <div className="mb-2 rounded-md border border-amber-300 bg-amber-50 px-3 py-3 text-[11px] text-amber-900">
+                <p className="font-semibold">This template doesn&apos;t use the visual builder</p>
+                <p className="mt-1">{currentTemplateName ?? "This template"} draws its own homepage, so section, design and layout changes made here are saved but won&apos;t change your live homepage. Switch to a builder-based template to use them.</p>
+                <a href={`/${slug}/admin/templates`} className="mt-2 inline-block font-semibold underline">Choose a template</a>
+              </div>
+            )}
             <div className="mb-2 rounded-md border border-primary/20 bg-primary/5 px-3 py-3">
               <div className="flex items-start justify-between gap-3">
                 <div>
@@ -284,7 +297,7 @@ export function CustomizerClient({
               </div>
               <div className="mt-2 flex flex-wrap gap-1">{experience.journey.map((step) => <span key={step} className="rounded-full border border-border bg-background px-2 py-1 text-[10px] text-muted-foreground">{step}</span>)}</div>
               <button
-                onClick={() => { const next = buildIndustryHomepage(businessCategory, storeName, storyDescription, heroImage); setBuilder(next); setSelectedSectionId(next.sections[0]?.id ?? null); setPanel("sections"); }}
+                onClick={() => { const next = buildIndustryHomepage(businessCategory, storeName, storyDescription, heroImage, { sellsProducts, offersServices }); setBuilder(next); setSelectedSectionId(next.sections[0]?.id ?? null); setPanel("sections"); }}
                 className="mt-3 w-full rounded-md border border-primary/30 bg-background px-3 py-2 text-xs font-semibold hover:bg-muted"
               >
                 Use recommended homepage
@@ -368,7 +381,7 @@ export function CustomizerClient({
                           <div className="flex gap-1">
                             <button type="button" onClick={() => moveBuilderSection(index, -1)} disabled={index === 0} className="rounded p-1 hover:bg-muted disabled:opacity-30"><ArrowUp className="h-3 w-3" /></button>
                             <button type="button" onClick={() => moveBuilderSection(index, 1)} disabled={index === builder.sections.length - 1} className="rounded p-1 hover:bg-muted disabled:opacity-30"><ArrowDown className="h-3 w-3" /></button>
-                            {section.id !== "hero" && <button type="button" onClick={() => removeBuilderSection(section.id)} className="rounded p-1 text-destructive hover:bg-destructive/10"><Trash2 className="h-3 w-3" /></button>}
+                            {section.type !== "hero" && <button type="button" onClick={() => removeBuilderSection(section.id)} className="rounded p-1 text-destructive hover:bg-destructive/10"><Trash2 className="h-3 w-3" /></button>}
                           </div>
                         </div>
                         {selectedSectionId === section.id && <SectionSettingsEditor section={section} onChange={(patch) => updateBuilderSection(section.id, patch)} />}
@@ -753,8 +766,10 @@ function PageEditor({
       }
       toast.success("Page saved");
       onSaved({
-        id: initial?.id ?? `${effectiveSlug}-${Date.now()}`,
-        slug: effectiveSlug.trim().toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, ""),
+        // Real database id from the server, so Publish/Unpublish and Delete work immediately
+        // for a page created in this session (a made-up client id made them fail with "Page not found").
+        id: result.data.id,
+        slug: result.data.slug,
         title,
         body,
         isPublished,

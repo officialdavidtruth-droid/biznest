@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { isSafeColor, isSafeHref, isSafeImageUrl } from "@/lib/builder-safe";
 
 export const BUILDER_SECTION_TYPES = [
   "hero", "catalog", "about", "stats", "features", "categories", "testimonials",
@@ -80,10 +81,10 @@ const settingsSchema = z.object({
   heading: z.string().max(180).optional(),
   body: z.string().max(4000).optional(),
   ctaLabel: z.string().max(80).optional(),
-  ctaHref: z.string().max(500).optional(),
-  image: z.string().max(2000).optional(),
-  background: z.string().max(100).optional(),
-  textColor: z.string().max(100).optional(),
+  ctaHref: z.string().max(500).refine(isSafeHref, "Button link must be a page path, #anchor, http(s), mailto: or tel: link.").optional(),
+  image: z.string().max(2000).refine(isSafeImageUrl, "Image must be an http(s) URL or a site path.").optional(),
+  background: z.string().max(100).refine(isSafeColor, "Invalid colour.").optional(),
+  textColor: z.string().max(100).refine(isSafeColor, "Invalid colour.").optional(),
   align: z.enum(["left", "center", "right"]).optional(),
   heroStyle: z.enum(["split", "centered", "fullbleed"]).optional(),
   heroVariant: z.enum(HERO_VARIANTS).optional(),
@@ -92,6 +93,8 @@ const settingsSchema = z.object({
   radius: z.number().min(0).max(48).optional(),
   showButton: z.boolean().optional(),
 });
+
+const colorField = z.string().max(100).refine(isSafeColor, "Invalid colour.");
 
 const sectionSchema = z.object({
   id: z.string().min(1).max(80),
@@ -103,8 +106,8 @@ const sectionSchema = z.object({
 export const builderConfigSchema = z.object({
   version: z.literal(1),
   design: z.object({
-    primary: z.string().max(100), accent: z.string().max(100), background: z.string().max(100),
-    surface: z.string().max(100), text: z.string().max(100), muted: z.string().max(100),
+    primary: colorField, accent: colorField, background: colorField,
+    surface: colorField, text: colorField, muted: colorField,
     font: z.string().max(100), headingFont: z.string().max(100), radius: z.number().min(0).max(48),
     containerWidth: z.enum(["compact", "standard", "wide"]),
     buttonStyle: z.enum(["solid", "outline", "pill"]),

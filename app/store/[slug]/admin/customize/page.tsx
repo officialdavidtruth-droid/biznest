@@ -5,6 +5,7 @@ import { notFound, redirect } from "next/navigation";
 import { CustomizerClient } from "@/components/dashboard/customizer-client";
 import { resolveStoreTheme, type Section } from "@/lib/template-themes";
 import type { HeroOverrides, StoryOverrides } from "@/lib/actions/store";
+import { resolveHomeRenderer } from "@/lib/storefront/resolve-renderer";
 import { defaultBuilderConfig, readBuilderConfig, type BuilderConfig } from "@/lib/builder-config";
 
 const TEMPLATE_DEFAULT_SECTIONS: Section[] = ["hero", "catalog", "about", "testimonials", "contact"];
@@ -60,6 +61,7 @@ export default async function CustomizePage({ params }: { params: Promise<{ slug
       offersServices={store.business.offersServices}
       seoTitle={store.seoTitle ?? store.name}
       seoDescription={store.seoDescription ?? ""}
+      builderActive={resolveHomeRenderer(store.template?.name).kind === "builder"}
       pages={pages.map((p) => ({
         id: p.id,
         slug: p.slug,

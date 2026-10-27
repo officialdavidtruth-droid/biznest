@@ -7,6 +7,7 @@ import { createPortal } from "react-dom";
 import Link from "next/link";
 import { CartLink } from "@/components/storefront/cart-link";
 import { BuilderNewsletterForm } from "@/components/storefront/builder-newsletter-form";
+import { cssUrl, safeHref } from "@/lib/builder-safe";
 import type { BuilderConfig, BuilderSection } from "@/lib/builder-config";
 import { getBusinessExperience } from "@/lib/business-experience";
 import { HeroVariantView } from "@/components/storefront/hero-variants";
@@ -85,7 +86,18 @@ export function BuilderStorefront({
   // intercepting/preventing normal link navigation on the real storefront
   // would break the actual customer experience.
   function handleSectionClick(e: React.MouseEvent) {
-    if (!isEditMode) return;
+    if (!isEditMode) {
+      // Template-generated sections get ids like "catalog-2", but default button
+      // links point at "#catalog". When no element has that exact id, scroll to
+      // the first section of that type instead of silently doing nothing.
+      const anchor = (e.target as HTMLElement).closest?.("a[href^='#']") as HTMLAnchorElement | null;
+      const hash = anchor?.getAttribute("href")?.slice(1);
+      if (anchor && hash && !document.getElementById(hash)) {
+        const match = document.querySelector(`[data-bn-type="${CSS.escape(hash)}"]`);
+        if (match) { e.preventDefault(); match.scrollIntoView({ behavior: "smooth", block: "start" }); }
+      }
+      return;
+    }
     const target = (e.target as HTMLElement).closest("[id]") as HTMLElement | null;
     if (!target?.id || !config.sections.some((s) => s.id === target.id)) return;
     e.preventDefault();
@@ -117,7 +129,7 @@ function BuilderSectionView({ section, store, config, catalogItems, categories, 
   const bg = s.background || d.background;
   const align = s.align || "left";
   const cols = s.columns || 3;
-  const button = s.showButton === false ? null : s.ctaLabel ? <a href={s.ctaHref || "#catalog"} style={buttonStyle(d, s.radius)}>{s.ctaLabel}</a> : null;
+  const button = s.showButton === false ? null : s.ctaLabel ? <a href={safeHref(s.ctaHref, "#catalog")} style={buttonStyle(d, s.radius)}>{s.ctaLabel}</a> : null;
   const heading = s.heading || label(section.type);
 
   if (section.type === "hero") {
@@ -131,9 +143,9 @@ function BuilderSectionView({ section, store, config, catalogItems, categories, 
     // Full-bleed: text over a full-width background (the image, or a brand gradient when there is none).
     if (heroStyle === "fullbleed") {
       const overlay = "linear-gradient(90deg, rgba(0,0,0,.66), rgba(0,0,0,.28))";
-      const backdrop = s.image ? `${overlay}, url(${s.image}) center/cover` : `linear-gradient(135deg, ${d.primary}, ${d.primary} 55%, ${d.accent})`;
+      const backdrop = s.image ? `${overlay}, url(${cssUrl(s.image)}) center/cover` : `linear-gradient(135deg, ${d.primary}, ${d.primary} 55%, ${d.accent})`;
       return (
-        <section id={section.id} className="bn-section" style={{ padding: s.padding === "compact" ? "96px 0" : "140px 0", background: backdrop, color: "#fff" }}>
+        <section id={section.id} data-bn-type={section.type} className="bn-section" style={{ padding: s.padding === "compact" ? "96px 0" : "140px 0", background: backdrop, color: "#fff" }}>
           <div className="bn-wrap bn-hero" style={{ display: "grid", gridTemplateColumns: "1fr" }}>
             <div style={{ textAlign: align, maxWidth: 720, marginLeft: align === "center" ? "auto" : 0, marginRight: align === "center" ? "auto" : 0 }}>
               {eyebrowEl("rgba(255,255,255,.85)")}
@@ -149,7 +161,7 @@ function BuilderSectionView({ section, store, config, catalogItems, categories, 
     // Centered: stacked and centred, image as a wide banner underneath.
     if (heroStyle === "centered") {
       return (
-        <section id={section.id} className="bn-section" style={{ padding, background: bg }}>
+        <section id={section.id} data-bn-type={section.type} className="bn-section" style={{ padding, background: bg }}>
           <div className="bn-wrap bn-hero" style={{ display: "grid", gridTemplateColumns: "1fr", gap: 44 }}>
             <div style={{ textAlign: "center" }}>
               {eyebrowEl(d.accent)}
@@ -157,7 +169,7 @@ function BuilderSectionView({ section, store, config, catalogItems, categories, 
               {bodyEl(d.muted, "center")}
               {button}
             </div>
-            {s.image && <div style={{ minHeight: 380, borderRadius: s.radius ?? d.radius, background: `url(${s.image}) center/cover`, boxShadow: `0 30px 80px ${d.primary}22` }} />}
+            {s.image && <div style={{ minHeight: 380, borderRadius: s.radius ?? d.radius, background: `url(${cssUrl(s.image)}) center/cover`, boxShadow: `0 30px 80px ${d.primary}22` }} />}
           </div>
         </section>
       );
@@ -165,7 +177,7 @@ function BuilderSectionView({ section, store, config, catalogItems, categories, 
 
     // Split (default): text beside the image. Unchanged from before.
     return (
-      <section id={section.id} className="bn-section" style={{ padding, background: bg }}>
+      <section id={section.id} data-bn-type={section.type} className="bn-section" style={{ padding, background: bg }}>
         <div className="bn-wrap bn-hero" style={{ display: "grid", gridTemplateColumns: s.image ? "1.05fr .95fr" : "1fr", alignItems: "center", gap: 50 }}>
           <div style={{ textAlign: align }}>
             {eyebrowEl(d.accent)}
@@ -173,14 +185,14 @@ function BuilderSectionView({ section, store, config, catalogItems, categories, 
             {bodyEl(d.muted, align)}
             {button}
           </div>
-          {s.image && <div style={{ minHeight: 440, borderRadius: s.radius ?? d.radius, background: `url(${s.image}) center/cover`, boxShadow: `0 30px 80px ${d.primary}22` }} />}
+          {s.image && <div style={{ minHeight: 440, borderRadius: s.radius ?? d.radius, background: `url(${cssUrl(s.image)}) center/cover`, boxShadow: `0 30px 80px ${d.primary}22` }} />}
         </div>
       </section>
     );
   }
 
   if (section.type === "catalog") return (
-    <section id={section.id} className="bn-section" style={{ padding, background: bg }}>
+    <section id={section.id} data-bn-type={section.type} className="bn-section" style={{ padding, background: bg }}>
       <div className="bn-wrap"><SectionIntro section={section} config={config} />
         {catalogItems.length ? <div className="bn-grid" style={{ gridTemplateColumns: `repeat(${Math.min(cols,4)}, minmax(0,1fr))` }}>{catalogItems.map((item) => <ItemCard key={`${item.kind}-${item.id}`} item={item} store={store} d={d} radius={s.radius ?? d.radius} actionLabel={item.kind === "service" ? experience.primaryAction : "View product"} />)}</div> : <EmptyState text="Your published products and services will appear here." />}
       </div>
@@ -188,29 +200,29 @@ function BuilderSectionView({ section, store, config, catalogItems, categories, 
   );
 
   if (section.type === "about" || section.type === "imageText") return (
-    <section id={section.id} className="bn-section" style={{ padding, background: bg }}><div className="bn-wrap bn-hero" style={{ display: "grid", gridTemplateColumns: s.image ? "1fr 1fr" : "1fr", gap: 50, alignItems: "center" }}>
+    <section id={section.id} data-bn-type={section.type} className="bn-section" style={{ padding, background: bg }}><div className="bn-wrap bn-hero" style={{ display: "grid", gridTemplateColumns: s.image ? "1fr 1fr" : "1fr", gap: 50, alignItems: "center" }}>
       <div><SectionIntro section={section} config={config} /><p style={{ color: d.muted, lineHeight: 1.8, maxWidth: 650 }}>{s.body || store.business.description}</p></div>
-      {s.image && <div style={{ minHeight: 360, borderRadius: s.radius ?? d.radius, background: `url(${s.image}) center/cover` }} />}
+      {s.image && <div style={{ minHeight: 360, borderRadius: s.radius ?? d.radius, background: `url(${cssUrl(s.image)}) center/cover` }} />}
     </div></section>
   );
 
-  if (section.type === "stats") return <section id={section.id} className="bn-section" style={{ padding: "28px 0", background: bg }}><div className="bn-wrap bn-grid" style={{ gridTemplateColumns: "repeat(3,1fr)", textAlign: "center" }}><Stat value={`${catalogItems.length}+`} label={experience.mode === "commerce" ? "Published products" : experience.mode === "service" ? "Services" : "Products & services"} d={d} /><Stat value={completedOrders > 0 ? `${completedOrders}+` : "New"} label={experience.mode === "commerce" ? "Completed orders" : "Completed bookings"} d={d} /><Stat value={avgRating ? `${avgRating.toFixed(1)}/5` : "New"} label="Customer rating" d={d} /></div></section>;
+  if (section.type === "stats") return <section id={section.id} data-bn-type={section.type} className="bn-section" style={{ padding: "28px 0", background: bg }}><div className="bn-wrap bn-grid" style={{ gridTemplateColumns: "repeat(3,1fr)", textAlign: "center" }}><Stat value={`${catalogItems.length}+`} label={experience.mode === "commerce" ? "Published products" : experience.mode === "service" ? "Services" : "Products & services"} d={d} /><Stat value={completedOrders > 0 ? `${completedOrders}+` : "New"} label={experience.mode === "commerce" ? "Completed orders" : "Completed bookings"} d={d} /><Stat value={avgRating ? `${avgRating.toFixed(1)}/5` : "New"} label="Customer rating" d={d} /></div></section>;
 
-  if (section.type === "features") return <section id={section.id} className="bn-section" style={{ padding, background: bg }}><div className="bn-wrap"><SectionIntro section={section} config={config} /><div className="bn-grid" style={{ gridTemplateColumns: `repeat(${Math.min(cols,4)},1fr)` }}>{["Quality you can trust", "Simple online ordering", "Responsive customer support", "Built for your business"].map((item, i) => <div key={item} style={{ padding: 24, background: d.surface, borderRadius: s.radius ?? d.radius, border: `1px solid ${d.text}12` }}><div style={{ color: d.accent, fontWeight: 900, fontSize: 12 }}>0{i + 1}</div><h3 style={{ margin: "10px 0 7px", fontFamily: d.headingFont, fontSize: 18 }}>{item}</h3><p style={{ color: d.muted, fontSize: 13, lineHeight: 1.7 }}>This section highlights a customer benefit configured by the business.</p></div>)}</div></div></section>;
+  if (section.type === "features") return <section id={section.id} data-bn-type={section.type} className="bn-section" style={{ padding, background: bg }}><div className="bn-wrap"><SectionIntro section={section} config={config} /><div className="bn-grid" style={{ gridTemplateColumns: `repeat(${Math.min(cols,4)},1fr)` }}>{["Quality you can trust", "Simple online ordering", "Responsive customer support", "Built for your business"].map((item, i) => <div key={item} style={{ padding: 24, background: d.surface, borderRadius: s.radius ?? d.radius, border: `1px solid ${d.text}12` }}><div style={{ color: d.accent, fontWeight: 900, fontSize: 12 }}>0{i + 1}</div><h3 style={{ margin: "10px 0 7px", fontFamily: d.headingFont, fontSize: 18 }}>{item}</h3><p style={{ color: d.muted, fontSize: 13, lineHeight: 1.7 }}>This section highlights a customer benefit configured by the business.</p></div>)}</div></div></section>;
 
-  if (section.type === "categories") return <section id={section.id} className="bn-section" style={{ padding, background: bg }}><div className="bn-wrap"><SectionIntro section={section} config={config} /><div className="bn-grid" style={{ gridTemplateColumns: `repeat(${Math.min(cols,4)},1fr)` }}>{categories.map((c) => <a key={c} href={`/store/${store.slug}/search?q=${encodeURIComponent(c)}`} style={{ padding: 22, borderRadius: s.radius ?? d.radius, background: d.surface, border: `1px solid ${d.text}12`, fontWeight: 750 }}>{c}</a>)}</div></div></section>;
+  if (section.type === "categories") return <section id={section.id} data-bn-type={section.type} className="bn-section" style={{ padding, background: bg }}><div className="bn-wrap"><SectionIntro section={section} config={config} /><div className="bn-grid" style={{ gridTemplateColumns: `repeat(${Math.min(cols,4)},1fr)` }}>{categories.map((c) => <a key={c} href={`/store/${store.slug}/search?q=${encodeURIComponent(c)}`} style={{ padding: 22, borderRadius: s.radius ?? d.radius, background: d.surface, border: `1px solid ${d.text}12`, fontWeight: 750 }}>{c}</a>)}</div></div></section>;
 
-  if (section.type === "testimonials") return <section id={section.id} className="bn-section" style={{ padding, background: bg }}><div className="bn-wrap"><SectionIntro section={section} config={config} /><div className="bn-grid" style={{ gridTemplateColumns: `repeat(${Math.min(cols,3)},1fr)` }}>{reviews.length ? reviews.map((r) => <div key={r.id} style={{ background: d.surface, border: `1px solid ${d.text}12`, borderRadius: s.radius ?? d.radius, padding: 22 }}><div style={{ color: d.accent }}>{"★".repeat(r.rating)}{"☆".repeat(5-r.rating)}</div><p style={{ lineHeight: 1.7, color: d.muted }}>{r.comment}</p><strong style={{ fontSize: 13 }}>{r.author?.name || "Customer"}</strong></div>) : <EmptyState text="Customer reviews will appear here when you receive them." />}</div></div></section>;
+  if (section.type === "testimonials") return <section id={section.id} data-bn-type={section.type} className="bn-section" style={{ padding, background: bg }}><div className="bn-wrap"><SectionIntro section={section} config={config} /><div className="bn-grid" style={{ gridTemplateColumns: `repeat(${Math.min(cols,3)},1fr)` }}>{reviews.length ? reviews.map((r) => <div key={r.id} style={{ background: d.surface, border: `1px solid ${d.text}12`, borderRadius: s.radius ?? d.radius, padding: 22 }}><div style={{ color: d.accent }}>{"★".repeat(r.rating)}{"☆".repeat(5-r.rating)}</div><p style={{ lineHeight: 1.7, color: d.muted }}>{r.comment}</p><strong style={{ fontSize: 13 }}>{r.author?.name || "Customer"}</strong></div>) : <EmptyState text="Customer reviews will appear here when you receive them." />}</div></div></section>;
 
-  if (section.type === "newsletter") return <section id={section.id} className="bn-section" style={{ padding, background: s.background || d.primary, color: s.textColor || "#fff" }}><div className="bn-wrap" style={{ textAlign: "center" }}><SectionIntro section={section} config={config} inverse /><p style={{ opacity: .75, maxWidth: 560, margin: "0 auto 22px", lineHeight: 1.7 }}>{s.body || "Get occasional updates, new arrivals and offers."}</p><BuilderNewsletterForm storeSlug={store.slug} accent={d.accent} /></div></section>;
+  if (section.type === "newsletter") return <section id={section.id} data-bn-type={section.type} className="bn-section" style={{ padding, background: s.background || d.primary, color: s.textColor || "#fff" }}><div className="bn-wrap" style={{ textAlign: "center" }}><SectionIntro section={section} config={config} inverse /><p style={{ opacity: .75, maxWidth: 560, margin: "0 auto 22px", lineHeight: 1.7 }}>{s.body || "Get occasional updates, new arrivals and offers."}</p><BuilderNewsletterForm storeSlug={store.slug} accent={d.accent} /></div></section>;
 
-  if (section.type === "contact") return <section id={section.id} className="bn-section" style={{ padding, background: bg }}><div className="bn-wrap"><SectionIntro section={section} config={config} /><div className="bn-grid" style={{ gridTemplateColumns: "repeat(2,1fr)" }}>{store.contactEmail && <a href={`mailto:${store.contactEmail}`} style={{ padding: 24, background: d.surface, borderRadius: s.radius ?? d.radius }}><small style={{ color: d.muted }}>Email</small><div style={{ fontWeight: 750, marginTop: 5 }}>{store.contactEmail}</div></a>}{store.contactPhone && <a href={`tel:${store.contactPhone}`} style={{ padding: 24, background: d.surface, borderRadius: s.radius ?? d.radius }}><small style={{ color: d.muted }}>Phone</small><div style={{ fontWeight: 750, marginTop: 5 }}>{store.contactPhone}</div></a>}</div></div></section>;
+  if (section.type === "contact") return <section id={section.id} data-bn-type={section.type} className="bn-section" style={{ padding, background: bg }}><div className="bn-wrap"><SectionIntro section={section} config={config} /><div className="bn-grid" style={{ gridTemplateColumns: "repeat(2,1fr)" }}>{store.contactEmail && <a href={`mailto:${store.contactEmail}`} style={{ padding: 24, background: d.surface, borderRadius: s.radius ?? d.radius }}><small style={{ color: d.muted }}>Email</small><div style={{ fontWeight: 750, marginTop: 5 }}>{store.contactEmail}</div></a>}{store.contactPhone && <a href={`tel:${store.contactPhone}`} style={{ padding: 24, background: d.surface, borderRadius: s.radius ?? d.radius }}><small style={{ color: d.muted }}>Phone</small><div style={{ fontWeight: 750, marginTop: 5 }}>{store.contactPhone}</div></a>}</div></div></section>;
 
-  if (section.type === "gallery") return <section id={section.id} className="bn-section" style={{ padding, background: bg }}><div className="bn-wrap"><SectionIntro section={section} config={config} /><div className="bn-grid" style={{ gridTemplateColumns: `repeat(${Math.min(cols,4)},1fr)` }}>{catalogItems.slice(0,8).map((item) => <div key={item.id} style={{ aspectRatio: "1/1", borderRadius: s.radius ?? d.radius, background: item.image ? `url(${item.image}) center/cover` : d.surface }} />)}</div></div></section>;
+  if (section.type === "gallery") return <section id={section.id} data-bn-type={section.type} className="bn-section" style={{ padding, background: bg }}><div className="bn-wrap"><SectionIntro section={section} config={config} /><div className="bn-grid" style={{ gridTemplateColumns: `repeat(${Math.min(cols,4)},1fr)` }}>{catalogItems.slice(0,8).map((item) => <div key={item.id} style={{ aspectRatio: "1/1", borderRadius: s.radius ?? d.radius, background: item.image ? `url(${cssUrl(item.image)}) center/cover` : d.surface }} />)}</div></div></section>;
 
-  if (section.type === "map") return <section id={section.id} className="bn-section" style={{ padding, background: bg }}><div className="bn-wrap"><SectionIntro section={section} config={config} /><div style={{ minHeight: 280, borderRadius: s.radius ?? d.radius, background: `linear-gradient(135deg, ${d.primary}16, ${d.accent}18)`, display: "grid", placeItems: "center", color: d.muted }}>Add your location in Store Settings to show your map here.</div></div></section>;
+  if (section.type === "map") return <section id={section.id} data-bn-type={section.type} className="bn-section" style={{ padding, background: bg }}><div className="bn-wrap"><SectionIntro section={section} config={config} /><div style={{ minHeight: 280, borderRadius: s.radius ?? d.radius, background: `linear-gradient(135deg, ${d.primary}16, ${d.accent}18)`, display: "grid", placeItems: "center", color: d.muted }}>Add your location in Store Settings to show your map here.</div></div></section>;
 
-  if (section.type === "faq" || section.type === "text") return <section id={section.id} className="bn-section" style={{ padding, background: bg }}><div className="bn-wrap" style={{ maxWidth: section.type === "faq" ? 850 : 1160 }}>{section.type === "faq" ? <><SectionIntro section={section} config={config} /><details style={{ borderTop: `1px solid ${d.text}14`, padding: "18px 0" }}><summary style={{ cursor: "pointer", fontWeight: 750 }}>{experience.mode === "commerce" ? "How do I place an order?" : "How do I book a service?"}</summary><p style={{ color: d.muted, lineHeight: 1.7 }}>Browse the business website, choose what you need, and follow the purchase or booking instructions.</p></details><details style={{ borderTop: `1px solid ${d.text}14`, padding: "18px 0" }}><summary style={{ cursor: "pointer", fontWeight: 750 }}>How can I contact this business?</summary><p style={{ color: d.muted, lineHeight: 1.7 }}>{store.contactEmail || store.contactPhone || "Use the contact section on this store."}</p></details></> : <><SectionIntro section={section} config={config} /><p style={{ color: d.muted, lineHeight: 1.8, whiteSpace: "pre-wrap" }}>{s.body}</p></>}</div></section>;
+  if (section.type === "faq" || section.type === "text") return <section id={section.id} data-bn-type={section.type} className="bn-section" style={{ padding, background: bg }}><div className="bn-wrap" style={{ maxWidth: section.type === "faq" ? 850 : 1160 }}>{section.type === "faq" ? <><SectionIntro section={section} config={config} /><details style={{ borderTop: `1px solid ${d.text}14`, padding: "18px 0" }}><summary style={{ cursor: "pointer", fontWeight: 750 }}>{experience.mode === "commerce" ? "How do I place an order?" : "How do I book a service?"}</summary><p style={{ color: d.muted, lineHeight: 1.7 }}>Browse the business website, choose what you need, and follow the purchase or booking instructions.</p></details><details style={{ borderTop: `1px solid ${d.text}14`, padding: "18px 0" }}><summary style={{ cursor: "pointer", fontWeight: 750 }}>How can I contact this business?</summary><p style={{ color: d.muted, lineHeight: 1.7 }}>{store.contactEmail || store.contactPhone || "Use the contact section on this store."}</p></details></> : <><SectionIntro section={section} config={config} /><p style={{ color: d.muted, lineHeight: 1.8, whiteSpace: "pre-wrap" }}>{s.body}</p></>}</div></section>;
 
   return null;
 }
@@ -402,7 +414,7 @@ export function ItemCard({ item, store, d, radius, actionLabel }: { item: Catalo
   const style = d.cardStyle ?? "bordered";
   const href = `/store/${store.slug}/${item.kind}/${item.id}`;
   const price = `${item.currency} ${formatNumber(item.price)}`;
-  const img = (ratio: string, r: number | string = 0): React.CSSProperties => ({ aspectRatio: ratio, borderRadius: r, background: item.image ? `url(${item.image}) center/cover` : `${d.primary}12` });
+  const img = (ratio: string, r: number | string = 0): React.CSSProperties => ({ aspectRatio: ratio, borderRadius: r, background: item.image ? `url(${cssUrl(item.image)}) center/cover` : `${d.primary}12` });
   if (style === "overlay") return (
     <Link href={href} style={{ position: "relative", display: "block", borderRadius: radius, overflow: "hidden" }}>
       <div style={img("4/5")} />

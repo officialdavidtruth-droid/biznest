@@ -181,6 +181,12 @@ export default auth(async (req) => {
     return passThroughSupaAdmin(req);
   }
 
+  // The matcher below no longer excludes /favicon.ico (a vendor's custom domain
+  // must serve ITS logo there, not BizNest's). On BizNest's own hosts the
+  // platform icon is still correct, and "favicon.ico" must never be parsed as a
+  // store slug, so pass it straight through.
+  if (rawPathname === "/favicon.ico" && isPlatformHost(host)) return NextResponse.next();
+
   const url = req.nextUrl.clone();
   let slug: string | null = null;
 
@@ -204,7 +210,11 @@ export default auth(async (req) => {
     // above where only the first segment is the slug.
     slug = await resolveCustomDomain(host, req.nextUrl.origin);
     if (slug) {
-      url.pathname = `/store/${slug}${rawPathname === "/" ? "" : rawPathname}`;
+      // Browsers (and Safari, bookmarks, search results) request /favicon.ico implicitly,
+      // ignoring <link rel="icon">. Serve the store's own logo as that icon.
+      url.pathname = rawPathname === "/favicon.ico"
+        ? `/store/${slug}/pwa-icon/192`
+        : `/store/${slug}${rawPathname === "/" ? "" : rawPathname}`;
     }
   }
 
@@ -309,5 +319,5 @@ export const config = {
   // store slug and rewritten to /store/marketing-generated/..., which causes
   // Vercel to return a 307 redirect instead of the image. The same applies to
   // /template-reference-previews/* (template gallery cover images).
-  matcher: ["/((?!api|_next/static|_next/image|favicon.ico|marketing-generated|template-reference-previews).*)"],
+  matcher: ["/((?!api|_next/static|_next/image|marketing-generated|template-reference-previews).*)"],
 };

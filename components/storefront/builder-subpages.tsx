@@ -1,5 +1,6 @@
 "use client";
 
+import { cssUrl } from "@/lib/builder-safe";
 import Link from "next/link";
 import type { ReactNode } from "react";
 import { Mail, MapPin, Phone } from "lucide-react";
@@ -67,7 +68,7 @@ export function BuilderSubpage({ kind, store, design: d, data }: { kind: Subpage
               <Link href={`${base}/contact`} style={btn(false)}>Contact us</Link>
             </div>
           </div>
-          {data.storyImage && <div style={{ aspectRatio: "4/3", borderRadius: d.radius, background: `url(${data.storyImage}) center/cover`, border: `1px solid ${line}` }} />}
+          {data.storyImage && <div style={{ aspectRatio: "4/3", borderRadius: d.radius, background: `url(${cssUrl(data.storyImage)}) center/cover`, border: `1px solid ${line}` }} />}
         </div>
         <div className="bn-grid" style={{ gridTemplateColumns: "repeat(3,1fr)", textAlign: "center", marginTop: 48 }}>
           {[
