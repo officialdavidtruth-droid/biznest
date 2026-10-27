@@ -107,6 +107,7 @@ export async function postPaymentToLedger(paymentId: string, entryDate?: Date): 
   try {
     const payment = await prisma.payment.findUnique({ where: { id: paymentId }, select: PAYMENT_SELECT });
     if (!payment || payment.orderId || (!payment.bookingId && !payment.reservationId)) return;
+    if (!payment.storeId) return; // payments without a store can't be ledgered
     if (!PAYMENT_POSTABLE.includes(payment.status)) return;
     const amount = Number(payment.amount);
     if (!(amount > 0)) return;
@@ -134,6 +135,7 @@ export async function postPaymentRefundToLedger(paymentId: string, entryDate?: D
   try {
     const payment = await prisma.payment.findUnique({ where: { id: paymentId }, select: PAYMENT_SELECT });
     if (!payment || payment.orderId || (!payment.bookingId && !payment.reservationId)) return;
+    if (!payment.storeId) return; // payments without a store can't be ledgered
     if (!(await loadAccounts(payment.storeId))) return;
     await postPaymentToLedger(payment.id, payment.verifiedAt ?? payment.createdAt);
     const original = await prisma.financialJournalEntry.findUnique({
