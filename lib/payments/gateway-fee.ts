@@ -51,6 +51,27 @@ export function extractGatewayFeeNaira(provider: string, rawPayload: unknown): n
   return 0;
 }
 
+/**
+ * Part of the gateway fee the CUSTOMER already paid on top of the price.
+ *
+ * Paystack can add its fee to the charge (bank transfer: requested 118.00,
+ * collected 119.80, fees 1.80). The platform then nets exactly the price, so
+ * taking the fee out of the vendor again would charge them twice. Only
+ * Paystack's verify shape (kobo: amount, requested_amount, fees) is handled;
+ * everything else returns 0 and behaves as before.
+ */
+export function customerPaidFeeNaira(provider: string, rawPayload: unknown, paymentAmount: number): number {
+  if (provider !== "PAYSTACK") return 0;
+  const root = asRecord(rawPayload);
+  const data = asRecord(root?.data) ?? root;
+  if (!data) return 0;
+  const collected = num(data.amount) / 100;
+  const requested = num(data.requested_amount) / 100 || paymentAmount;
+  const fee = num(data.fees) / 100;
+  if (collected <= 0 || requested <= 0 || fee <= 0) return 0;
+  return round2(Math.max(0, Math.min(collected - requested, fee)));
+}
+
 /** Flat fee BizNest pays the gateway per payout transfer, passed on to the vendor. Default 0. */
 export function transferFeeNaira(): number {
   return round2(num(process.env.PAYOUT_TRANSFER_FEE_NAIRA));
@@ -74,10 +95,13 @@ export function vendorPayoutAmount(
   if (!VENDOR_BEARS_GATEWAY_FEE) return { amount: round2(paymentAmount), feeAmount: 0 };
 
   let collectionFee = extractGatewayFeeNaira(provider, rawPayload);
-  if (collectionFee === 0 && effectiveFeeRate && effectiveFeeRate > 0 && effectiveFeeRate < 1) {
+  // The vendor only bears the part of the fee that came out of the price itself.
+  collectionFee = round2(Math.max(0, collectionFee - customerPaidFeeNaira(provider, rawPayload, paymentAmount)));
+  const gatewayFeeKnown = collectionFee > 0 || extractGatewayFeeNaira(provider, rawPayload) > 0;
+  if (collectionFee === 0 && !gatewayFeeKnown && effectiveFeeRate && effectiveFeeRate > 0 && effectiveFeeRate < 1) {
     collectionFee = round2(paymentAmount * effectiveFeeRate);
   }
-  if (collectionFee === 0) {
+  if (collectionFee === 0 && !gatewayFeeKnown) {
     const pct = Number(process.env.GATEWAY_FEE_FALLBACK_PERCENT ?? 0);
     if (Number.isFinite(pct) && pct > 0) collectionFee = round2((paymentAmount * pct) / 100);
   }

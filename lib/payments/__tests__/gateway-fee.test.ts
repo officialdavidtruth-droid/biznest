@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it } from "vitest";
-import { extractGatewayFeeNaira, vendorPayoutAmount, walletEffectiveFeeRate } from "@/lib/payments/gateway-fee";
+import { customerPaidFeeNaira, extractGatewayFeeNaira, vendorPayoutAmount, walletEffectiveFeeRate } from "@/lib/payments/gateway-fee";
 
 afterEach(() => {
   delete process.env.PAYOUT_TRANSFER_FEE_NAIRA;
@@ -51,5 +51,17 @@ describe("wallet fee pass-through", () => {
   it("returns 0 with no usable history", () => {
     expect(walletEffectiveFeeRate([])).toBe(0);
     expect(vendorPayoutAmount("WALLET", null, 20000, 0)).toEqual({ amount: 20000, feeAmount: 0 });
+  });
+});
+
+describe("customer-paid gateway fee (Paystack bank transfer)", () => {
+  const transfer = { data: { amount: 11980, requested_amount: 11800, fees: 180 } };
+  it("does not charge the vendor a fee the customer already paid", () => {
+    expect(customerPaidFeeNaira("PAYSTACK", transfer, 118)).toBe(1.8);
+    expect(vendorPayoutAmount("PAYSTACK", transfer, 118)).toEqual({ amount: 118, feeAmount: 0 });
+  });
+  it("still charges the vendor when the fee came out of the price", () => {
+    const card = { data: { amount: 11800, requested_amount: 11800, fees: 180 } };
+    expect(vendorPayoutAmount("PAYSTACK", card, 118)).toEqual({ amount: 116.2, feeAmount: 1.8 });
   });
 });
