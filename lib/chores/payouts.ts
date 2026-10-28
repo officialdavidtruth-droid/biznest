@@ -1,5 +1,5 @@
 /** Weekly payout reconciliation summary. Pure; lib/chores/run.ts loads the rows. */
-export type PayoutRow = { status: "QUEUED" | "PROCESSING" | "PAID" | "FAILED" | "REVERSED"; amount: number; feeAmount: number; createdAt: Date };
+export type PayoutRow = { status: "HELD" | "QUEUED" | "PROCESSING" | "PAID" | "FAILED" | "REVERSED"; amount: number; feeAmount: number; createdAt: Date };
 
 export type PayoutDigest = {
   paidCount: number;

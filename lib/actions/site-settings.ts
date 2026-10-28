@@ -86,6 +86,28 @@ export async function getActiveGateway(): Promise<ActiveGateway> {
   return "PAYSTACK";
 }
 
+export type PayoutMode = "AUTO" | "HOLD";
+
+/** AUTO: every sale is paid out to the store immediately. HOLD: sales wait in the payout wallet until SupaAdmin releases them. */
+export async function getPayoutMode(): Promise<PayoutMode> {
+  const stored = await getSetting<PayoutMode | null>(SETTING_KEYS.PAYOUT_MODE, null);
+  return stored === "HOLD" ? "HOLD" : "AUTO";
+}
+
+export async function setPayoutMode(mode: PayoutMode): Promise<ActionResult> {
+  const access = await assertPlatformAdmin();
+  if (!access.success) return { success: false, error: access.error };
+  if (mode !== "AUTO" && mode !== "HOLD") return { success: false, error: "Unknown payout mode." };
+
+  await setSetting(SETTING_KEYS.PAYOUT_MODE, mode);
+  await prisma.auditLog.create({
+    data: { userId: access.userId, action: "PAYOUT_MODE_CHANGED", entity: "PlatformSetting", entityId: SETTING_KEYS.PAYOUT_MODE, metadata: { mode } },
+  });
+
+  revalidatePath("/supaadmin/payouts");
+  return { success: true, data: undefined };
+}
+
 export async function getGatewayAvailability() {
   return {
     paystackConfigured: Boolean(process.env.PAYSTACK_SECRET_KEY),

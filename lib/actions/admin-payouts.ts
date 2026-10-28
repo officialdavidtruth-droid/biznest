@@ -5,7 +5,9 @@ import { revalidatePath } from "next/cache";
 import type { PayoutStatus } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { ADMIN_COOKIE_NAME, verifyAdminToken } from "@/lib/admin-pin-auth";
-import { markPayoutPaidManually, retryPayout } from "@/lib/payments/payout";
+import { markPayoutPaidManually, releaseHeldPayouts, retryPayout } from "@/lib/payments/payout";
+import { getGatewayBalanceKobo } from "@/lib/payments/payout-gateway";
+import { getActiveGateway, getPayoutMode, type PayoutMode } from "@/lib/actions/site-settings";
 import type { ActionResult } from "@/types/actions";
 
 // Same ADMIN_PIN cookie gate as lib/actions/admin.ts.
@@ -15,10 +17,11 @@ async function assertPlatformStaff() {
   return valid ? { success: true as const } : { success: false as const, error: "Admin PIN session expired or invalid. Please sign in again." };
 }
 
-export type PayoutTab = "NEEDS_ATTENTION" | "QUEUED" | "PROCESSING" | "PAID" | "ALL";
+export type PayoutTab = "NEEDS_ATTENTION" | "HELD" | "QUEUED" | "PROCESSING" | "PAID" | "ALL";
 
 const TAB_FILTER: Record<PayoutTab, PayoutStatus[] | undefined> = {
   NEEDS_ATTENTION: ["FAILED", "REVERSED"],
+  HELD: ["HELD"],
   QUEUED: ["QUEUED"],
   PROCESSING: ["PROCESSING"],
   PAID: ["PAID"],
@@ -42,7 +45,7 @@ export async function getPayoutCounts() {
   if (!access.success) return null;
   const rows = await prisma.payout.groupBy({ by: ["status"], _count: { _all: true } });
   const count = (s: PayoutStatus) => rows.find((r) => r.status === s)?._count._all ?? 0;
-  return { needsAttention: count("FAILED") + count("REVERSED"), queued: count("QUEUED"), processing: count("PROCESSING"), paid: count("PAID") };
+  return { needsAttention: count("FAILED") + count("REVERSED"), held: count("HELD"), queued: count("QUEUED"), processing: count("PROCESSING"), paid: count("PAID") };
 }
 
 export async function retryFailedPayout(payoutId: string): Promise<ActionResult> {
@@ -69,4 +72,84 @@ export async function markPayoutPaid(payoutId: string, note: string): Promise<Ac
   }
   revalidatePath("/supaadmin/payouts");
   return result.ok ? { success: true, data: undefined } : { success: false, error: result.message };
+}
+
+export type PayoutWallet = {
+  mode: PayoutMode;
+  gateway: "PAYSTACK" | "FLUTTERWAVE" | "KORAPAY";
+  /** Platform balance at the active gateway in naira, null when it couldn't be read. */
+  gatewayBalance: number | null;
+  heldTotal: number;
+  heldCount: number;
+  /** Held money that no connected bank account can receive yet. */
+  heldNoBank: number;
+  stores: { storeId: string; name: string; slug: string; count: number; total: number; hasBank: boolean }[];
+};
+
+/** The payout wallet: money held for each store, plus the platform's gateway balance it will be paid from. */
+export async function getPayoutWallet(): Promise<PayoutWallet | null> {
+  const access = await assertPlatformStaff();
+  if (!access.success) return null;
+
+  const [mode, gateway, grouped] = await Promise.all([
+    getPayoutMode(),
+    getActiveGateway(),
+    prisma.payout.groupBy({ by: ["storeId"], where: { status: "HELD" }, _sum: { amount: true }, _count: { _all: true } }),
+  ]);
+  const stores = grouped.length
+    ? await prisma.store.findMany({
+        where: { id: { in: grouped.map((g) => g.storeId) } },
+        select: { id: true, name: true, slug: true, payoutBankCode: true, payoutAccountNumber: true },
+      })
+    : [];
+  const balanceKobo = await getGatewayBalanceKobo(gateway).catch(() => null);
+
+  const rows = grouped
+    .map((g) => {
+      const s = stores.find((x) => x.id === g.storeId);
+      return {
+        storeId: g.storeId,
+        name: s?.name ?? "Unknown store",
+        slug: s?.slug ?? "",
+        count: g._count._all,
+        total: Number(g._sum.amount ?? 0),
+        hasBank: Boolean(s?.payoutBankCode && s?.payoutAccountNumber),
+      };
+    })
+    .sort((a, b) => b.total - a.total);
+
+  return {
+    mode,
+    gateway,
+    gatewayBalance: balanceKobo === null ? null : balanceKobo / 100,
+    heldTotal: rows.reduce((n, r) => n + r.total, 0),
+    heldCount: rows.reduce((n, r) => n + r.count, 0),
+    heldNoBank: rows.filter((r) => !r.hasBank).reduce((n, r) => n + r.total, 0),
+    stores: rows,
+  };
+}
+
+export type ReleaseSummary = { released: number; paid: number; processing: number; stillQueued: number; failed: number };
+
+async function release(storeId: string | undefined): Promise<ActionResult<ReleaseSummary>> {
+  const access = await assertPlatformStaff();
+  if (!access.success) return { success: false, error: access.error };
+
+  const summary = await releaseHeldPayouts(storeId ? { storeId } : {});
+  await prisma.auditLog.create({
+    data: { userId: null, action: storeId ? "PAYOUTS_RELEASED_STORE" : "PAYOUTS_RELEASED_ALL", entity: storeId ? "Store" : "Payout", entityId: storeId ?? "all", metadata: summary },
+  });
+  revalidatePath("/supaadmin/payouts");
+  return { success: true, data: summary };
+}
+
+/** One click: queue and send everything held for one store. */
+export async function releaseStorePayouts(storeId: string): Promise<ActionResult<ReleaseSummary>> {
+  if (!storeId) return { success: false, error: "Store is required." };
+  return release(storeId);
+}
+
+/** One click: queue and send everything held for every store. */
+export async function releaseAllPayouts(): Promise<ActionResult<ReleaseSummary>> {
+  return release(undefined);
 }

@@ -32,7 +32,7 @@ describe("booking refund lifecycle", () => {
     expect(refund).toContain("async function recordPayoutRefundEffect");
     expect((refund.match(/recordPayoutRefundEffect\(tx, payment\.id\)/g) ?? []).length).toBeGreaterThanOrEqual(4);
     // Unsent payouts are cancelled; sent/in-flight ones become a clawback owed by the store.
-    expect(refund).toContain('where: { id: payout.id, status: "QUEUED" }');
+    expect(refund).toContain('where: { id: payout.id, status: { in: ["QUEUED", "HELD"] } }');
     expect(refund).toContain('status === "PAID" || status === "PROCESSING"');
     expect(refund).toContain("refundClawbackOwed: { increment: amount }");
   });

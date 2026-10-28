@@ -98,6 +98,16 @@ async function activeTransferGateway(): Promise<TransferGateway> {
   }
 }
 
+/** HOLD parks new payouts in the wallet (status HELD) until SupaAdmin releases them. Any read failure means AUTO, so a settings hiccup never blocks sales. */
+async function currentPayoutMode(): Promise<"AUTO" | "HOLD"> {
+  try {
+    const { getPayoutMode } = await import("@/lib/actions/site-settings");
+    return await getPayoutMode();
+  } catch {
+    return "AUTO";
+  }
+}
+
 const gatewayLabel = (g: TransferGateway) => (g === "FLUTTERWAVE" ? "Flutterwave" : g === "KORAPAY" ? "Korapay" : "Paystack");
 
 /* -------------------------------------------------------------------------- */
@@ -156,6 +166,8 @@ export async function queuePayoutForPayment(reference: string): Promise<{ payout
           ? await activeTransferGateway()
           : "PAYSTACK";
 
+  const hold = !unsupported && (await currentPayoutMode()) === "HOLD";
+
   // Id is generated up front so the transfer reference can be derived from it in the same insert.
   const payoutId = randomUUID().replace(/-/g, "");
   try {
@@ -169,13 +181,15 @@ export async function queuePayoutForPayment(reference: string): Promise<{ payout
         feeAmount,
         currency: payment.currency,
         reference: payoutReference(payoutId),
-        status: unsupported ? "FAILED" : "QUEUED",
+        status: unsupported ? "FAILED" : hold ? "HELD" : "QUEUED",
         lastError: unsupported
           ? "Payouts for this payment method are not automated. Pay this store manually."
-          : hasAccount
+          : hold
             ? null
-            : "Store has not connected a bank account yet.",
-        nextAttemptAt: unsupported ? null : hasAccount ? null : new Date(Date.now() + NO_ACCOUNT_RETRY_MS),
+            : hasAccount
+              ? null
+              : "Store has not connected a bank account yet.",
+        nextAttemptAt: unsupported || hold ? null : hasAccount ? null : new Date(Date.now() + NO_ACCOUNT_RETRY_MS),
         // transferGateway is pinned here so retries and lookups always hit the same gateway.
         destination: { ...(details ?? {}), transferGateway } as Prisma.InputJsonValue,
       },
@@ -449,6 +463,59 @@ export async function processDuePayouts(limit = 25): Promise<{ checked: number; 
 
 
 /* -------------------------------------------------------------------------- */
+/* PAYOUT WALLET (HOLD mode)                                                   */
+/* -------------------------------------------------------------------------- */
+
+const RELEASE_BATCH = 40;
+
+/**
+ * Releases HELD payouts: flips them to QUEUED (the normal pipeline takes over, with
+ * all its double-pay protections) and sends up to RELEASE_BATCH right away. Anything
+ * beyond the batch stays QUEUED and the payouts cron / the next release click sends it.
+ * Pass storeId to release one store, omit it to release every store.
+ */
+export async function releaseHeldPayouts(opts: { storeId?: string } = {}): Promise<{ released: number; paid: number; processing: number; stillQueued: number; failed: number }> {
+  const held = await prisma.payout.findMany({
+    where: { status: "HELD", ...(opts.storeId ? { storeId: opts.storeId } : {}) },
+    orderBy: { createdAt: "asc" },
+    take: 500,
+    select: { id: true },
+  });
+  const summary = { released: 0, paid: 0, processing: 0, stillQueued: 0, failed: 0 };
+  if (held.length === 0) return summary;
+
+  // Only rows still HELD are moved, so a double click or a concurrent refund can't be overridden.
+  const moved = await prisma.payout.updateMany({
+    where: { id: { in: held.map((h) => h.id) }, status: "HELD" },
+    data: { status: "QUEUED", nextAttemptAt: null, lastError: null },
+  });
+  summary.released = moved.count;
+
+  const batch = await prisma.payout.findMany({
+    where: { id: { in: held.map((h) => h.id) }, status: "QUEUED" },
+    orderBy: { createdAt: "asc" },
+    take: RELEASE_BATCH,
+    select: { id: true, provider: true, destination: true },
+  });
+
+  // One balance read per gateway, decremented locally as transfers go out (same as the sweep).
+  const balances: Partial<Record<TransferGateway, number | null>> = {};
+  for (const { id, provider, destination } of batch) {
+    const gateway = gatewayForPayout(provider, destination);
+    if (!(gateway in balances)) balances[gateway] = await getGatewayBalanceKobo(gateway).catch(() => null);
+    const balanceKobo = balances[gateway] ?? null;
+    const result = await processPayout(id, { balanceKobo });
+    if (result.spentKobo && balanceKobo !== null) balances[gateway] = balanceKobo - result.spentKobo;
+    if (result.state === "PAID") summary.paid++;
+    else if (result.state === "PROCESSING") summary.processing++;
+    else if (result.state === "FAILED" || result.state === "REVERSED" || result.state === "OTP") summary.failed++;
+  }
+  summary.stillQueued = summary.released - summary.paid - summary.processing - summary.failed;
+  void logInfo("JOBS", "Held payouts released", { ...summary, storeId: opts.storeId ?? "all" });
+  return summary;
+}
+
+/* -------------------------------------------------------------------------- */
 /* ADMIN RECOVERY                                                              */
 /* -------------------------------------------------------------------------- */
 
@@ -495,7 +562,7 @@ export async function markPayoutPaidManually(payoutId: string, note: string): Pr
   const trimmed = note.trim();
   if (!trimmed) return { ok: false, message: "A note is required (e.g. the bank transfer reference)." };
   const updated = await prisma.payout.updateMany({
-    where: { id: payoutId, status: { in: ["FAILED", "REVERSED", "QUEUED"] } },
+    where: { id: payoutId, status: { in: ["FAILED", "REVERSED", "QUEUED", "HELD"] } },
     data: { status: "PAID", paidAt: new Date(), lastError: null, nextAttemptAt: null, rawPayload: { manual: true, note: trimmed, at: new Date().toISOString() } as Prisma.InputJsonValue },
   });
   if (updated.count === 0) return { ok: false, message: "This payout can't be marked paid (already paid, processing, or not found)." };

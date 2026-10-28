@@ -6,6 +6,7 @@ export const SETTING_KEYS = {
   MAINTENANCE: "site.maintenance",
   ANNOUNCEMENT: "site.announcement",
   ACTIVE_GATEWAY: "payments.active_gateway",
+  PAYOUT_MODE: "payments.payout_mode",
   LOYALTY_RATES: "loyalty.rates",
   FREE_TRIAL: "billing.free_trial",
   MARKETING_FREE_TRIAL: "billing.marketing_free_trial",

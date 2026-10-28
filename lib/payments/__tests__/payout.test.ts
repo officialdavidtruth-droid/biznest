@@ -15,6 +15,7 @@ const m = vi.hoisted(() => ({
   flwTransfer: vi.fn(),
   flwFind: vi.fn(),
   flwBalance: vi.fn(),
+  payoutMode: vi.fn(),
 }));
 
 vi.mock("@/lib/prisma", () => ({
@@ -35,12 +36,16 @@ vi.mock("@/lib/payments/flutterwave", () => ({
   findFlutterwaveTransferByReference: m.flwFind,
   getFlutterwaveBalanceNaira: m.flwBalance,
 }));
+vi.mock("@/lib/actions/site-settings", () => ({
+  getPayoutMode: m.payoutMode,
+  getActiveGateway: async () => "PAYSTACK",
+}));
 vi.mock("@/lib/observability/log", () => ({ logError: vi.fn(), logInfo: vi.fn() }));
 vi.mock("@prisma/client", () => ({
   Prisma: { PrismaClientKnownRequestError: class extends Error { code = "P2002"; } },
 }));
 
-import { applyFlutterwaveTransferWebhookEvent, applyTransferWebhookEvent, classifyTransferStatus, isTransferEvent, markPayoutPaidManually, payoutReference, processPayout, queuePayoutForPayment, retryDelayMs, retryPayout, toKobo } from "@/lib/payments/payout";
+import { applyFlutterwaveTransferWebhookEvent, applyTransferWebhookEvent, classifyTransferStatus, isTransferEvent, markPayoutPaidManually, payoutReference, processPayout, queuePayoutForPayment, releaseHeldPayouts, retryDelayMs, retryPayout, toKobo } from "@/lib/payments/payout";
 
 const payment = {
   id: "pay1",
@@ -69,6 +74,7 @@ const queued = (over: Record<string, unknown> = {}) => ({
 
 beforeEach(() => {
   vi.clearAllMocks();
+  m.payoutMode.mockResolvedValue("AUTO");
   m.payoutCreate.mockResolvedValue({});
   m.payoutUpdate.mockResolvedValue({});
   m.payoutUpdateMany.mockResolvedValue({ count: 1 });
@@ -405,5 +411,46 @@ describe("transfer webhooks", () => {
     expect(await applyTransferWebhookEvent("transfer.success", {}, {})).toBe(false);
     expect(m.payoutUpdateMany).not.toHaveBeenCalled();
     expect(isTransferEvent("charge.success")).toBe(false);
+  });
+});
+
+describe("payout wallet (hold mode)", () => {
+  it("parks a new payout as HELD with no retry timer when mode is HOLD", async () => {
+    m.payoutMode.mockResolvedValue("HOLD");
+    m.paymentFind.mockResolvedValue(payment);
+    await queuePayoutForPayment("o1");
+    expect(m.payoutCreate).toHaveBeenCalledWith({ data: expect.objectContaining({ status: "HELD", nextAttemptAt: null, lastError: null, amount: 12500 }) });
+  });
+
+  it("still queues immediately in AUTO mode, and if the setting can't be read", async () => {
+    m.paymentFind.mockResolvedValue(payment);
+    await queuePayoutForPayment("o1");
+    expect(m.payoutCreate).toHaveBeenCalledWith({ data: expect.objectContaining({ status: "QUEUED" }) });
+    m.payoutMode.mockRejectedValue(new Error("db down"));
+    await queuePayoutForPayment("o1");
+    expect(m.payoutCreate).toHaveBeenLastCalledWith({ data: expect.objectContaining({ status: "QUEUED" }) });
+  });
+
+  it("releasing flips HELD to QUEUED then sends through the normal pipeline", async () => {
+    m.payoutFindMany.mockResolvedValueOnce([{ id: "p1" }]).mockResolvedValueOnce([{ id: "p1", provider: "PAYSTACK", destination: null }]);
+    m.payoutFind.mockResolvedValue(queued());
+    m.transfer.mockResolvedValue({ status: true, message: "ok", data: { transfer_code: "TRF_1", status: "success", reference: "bnp-p1", amount: 1250000 } });
+    const r = await releaseHeldPayouts({ storeId: "s1" });
+    expect(m.payoutUpdateMany).toHaveBeenCalledWith({ where: { id: { in: ["p1"] }, status: "HELD" }, data: expect.objectContaining({ status: "QUEUED", nextAttemptAt: null }) });
+    expect(m.transfer).toHaveBeenCalledTimes(1);
+    expect(r).toMatchObject({ released: 1, paid: 1, stillQueued: 0 });
+  });
+
+  it("does nothing when nothing is held", async () => {
+    m.payoutFindMany.mockResolvedValueOnce([]);
+    expect(await releaseHeldPayouts()).toMatchObject({ released: 0 });
+    expect(m.payoutUpdateMany).not.toHaveBeenCalled();
+  });
+
+  it("never sends a HELD payout through processPayout", async () => {
+    m.payoutFind.mockResolvedValue(queued({ status: "HELD" }));
+    const r = await processPayout("p1");
+    expect(r.state).toBe("SKIPPED");
+    expect(m.transfer).not.toHaveBeenCalled();
   });
 });

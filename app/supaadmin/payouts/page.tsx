@@ -1,12 +1,16 @@
 import Link from "next/link";
-import { getPayoutCounts, listPayouts, type PayoutTab } from "@/lib/actions/admin-payouts";
+import { getPayoutCounts, getPayoutWallet, listPayouts, type PayoutTab } from "@/lib/actions/admin-payouts";
 import { PayoutRowActions } from "@/components/dashboard/payout-row-actions";
+import { PayoutWalletPanel } from "@/components/dashboard/payout-wallet-panel";
 import { formatDate, formatNumber } from "@/lib/i18n/locale";
 
 export const dynamic = "force-dynamic";
+// Releasing a batch sends transfers one by one.
+export const maxDuration = 60;
 
 const TABS: { label: string; value: PayoutTab }[] = [
   { label: "Needs attention", value: "NEEDS_ATTENTION" },
+  { label: "Held", value: "HELD" },
   { label: "Queued", value: "QUEUED" },
   { label: "Processing", value: "PROCESSING" },
   { label: "Paid", value: "PAID" },
@@ -16,6 +20,7 @@ const TABS: { label: string; value: PayoutTab }[] = [
 const STATUS_STYLE: Record<string, string> = {
   FAILED: "bg-red-100 text-red-700",
   REVERSED: "bg-red-100 text-red-700",
+  HELD: "bg-violet-100 text-violet-700",
   QUEUED: "bg-amber-100 text-amber-700",
   PROCESSING: "bg-blue-100 text-blue-700",
   PAID: "bg-emerald-100 text-emerald-700",
@@ -25,11 +30,12 @@ export default async function PayoutsPage({ searchParams }: { searchParams: Prom
   const { status } = await searchParams;
   const activeTab: PayoutTab = TABS.some((t) => t.value === status) ? (status as PayoutTab) : "NEEDS_ATTENTION";
 
-  const [payouts, counts] = await Promise.all([listPayouts(activeTab), getPayoutCounts()]);
-  if (!payouts || !counts) return <p className="text-sm text-muted-foreground">Not authorized.</p>;
+  const [payouts, counts, wallet] = await Promise.all([listPayouts(activeTab), getPayoutCounts(), getPayoutWallet()]);
+  if (!payouts || !counts || !wallet) return <p className="text-sm text-muted-foreground">Not authorized.</p>;
 
   const badge: Partial<Record<PayoutTab, number>> = {
     NEEDS_ATTENTION: counts.needsAttention,
+    HELD: counts.held,
     QUEUED: counts.queued,
     PROCESSING: counts.processing,
   };
@@ -40,6 +46,8 @@ export default async function PayoutsPage({ searchParams }: { searchParams: Prom
       <p className="mb-4 text-sm text-muted-foreground">
         Money owed to stores. Failed and reversed payouts stay here until someone retries or settles them.
       </p>
+
+      <PayoutWalletPanel wallet={wallet} />
 
       <div className="mb-4 flex gap-1 overflow-x-auto border-b">
         {TABS.map((t) => (

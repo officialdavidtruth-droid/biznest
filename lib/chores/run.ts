@@ -107,7 +107,7 @@ export async function sendPayoutDigests(now = new Date()) {
   const since = new Date(now.getTime() - 7 * 86_400_000);
 
   const rows = await prisma.payout.findMany({
-    where: { OR: [{ createdAt: { gte: since } }, { paidAt: { gte: since } }, { status: { in: ["QUEUED", "PROCESSING"] } }] },
+    where: { OR: [{ createdAt: { gte: since } }, { paidAt: { gte: since } }, { status: { in: ["HELD", "QUEUED", "PROCESSING"] } }] },
     select: { storeId: true, status: true, amount: true, feeAmount: true, currency: true, createdAt: true },
     take: 10_000,
   });

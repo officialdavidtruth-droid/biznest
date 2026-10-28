@@ -61,7 +61,7 @@ async function assertStoreAccess(slug: string) {
  * transaction that marks the Payment REFUNDED. Returns true when this payment
  * has a Payout (the transfer model), so legacy subaccount handling is skipped.
  *
- *  - Payout not sent yet (QUEUED): cancelled so the store is never paid for it.
+ *  - Payout not sent yet (HELD / QUEUED): cancelled so the store is never paid for it.
  *  - Payout already sent or in flight (PAID / PROCESSING): the platform fronted
  *    the refund, so the full payout amount is recorded as a clawback owed by
  *    the store (same ledger as the subaccount clawbacks, see
@@ -73,9 +73,9 @@ async function recordPayoutRefundEffect(tx: Prisma.TransactionClient, paymentId:
   if (!payout) return false;
 
   let status = payout.status;
-  if (status === "QUEUED") {
+  if (status === "QUEUED" || status === "HELD") {
     const cancelled = await tx.payout.updateMany({
-      where: { id: payout.id, status: "QUEUED" },
+      where: { id: payout.id, status: { in: ["QUEUED", "HELD"] } },
       data: { status: "FAILED", lastError: "Payment was refunded before this payout was sent. Not owed.", nextAttemptAt: null },
     });
     if (cancelled.count === 1) return true;

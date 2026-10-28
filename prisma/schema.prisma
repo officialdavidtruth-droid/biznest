@@ -2297,6 +2297,8 @@ model Payout {
 }
 
 enum PayoutStatus {
+  // Held in the platform wallet until SupaAdmin releases it (payout mode HOLD).
+  HELD
   QUEUED
   PROCESSING
   PAID
