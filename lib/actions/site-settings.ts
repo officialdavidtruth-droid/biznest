@@ -88,16 +88,16 @@ export async function getActiveGateway(): Promise<ActiveGateway> {
 
 export type PayoutMode = "AUTO" | "HOLD";
 
-/** AUTO: every sale is paid out to the store immediately. HOLD: sales wait in the payout wallet until SupaAdmin releases them. */
+/** Payouts are always automatic: every sale is paid out to the store immediately. Hold mode has been removed, so any stored HOLD value is ignored. */
 export async function getPayoutMode(): Promise<PayoutMode> {
-  const stored = await getSetting<PayoutMode | null>(SETTING_KEYS.PAYOUT_MODE, null);
-  return stored === "HOLD" ? "HOLD" : "AUTO";
+  return "AUTO";
 }
 
 export async function setPayoutMode(mode: PayoutMode): Promise<ActionResult> {
   const access = await assertPlatformAdmin();
   if (!access.success) return { success: false, error: access.error };
-  if (mode !== "AUTO" && mode !== "HOLD") return { success: false, error: "Unknown payout mode." };
+  if (mode === "HOLD") return { success: false, error: "Hold mode has been removed. Payouts are always automatic." };
+  if (mode !== "AUTO") return { success: false, error: "Unknown payout mode." };
 
   await setSetting(SETTING_KEYS.PAYOUT_MODE, mode);
   await prisma.auditLog.create({

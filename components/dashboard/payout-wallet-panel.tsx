@@ -3,7 +3,6 @@
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { releaseAllPayouts, releaseStorePayouts, type PayoutWallet, type ReleaseSummary } from "@/lib/actions/admin-payouts";
-import { setPayoutMode } from "@/lib/actions/site-settings";
 
 const naira = (n: number) => `₦${n.toLocaleString("en-NG", { maximumFractionDigits: 2 })}`;
 const GATEWAY_LABEL = { PAYSTACK: "Paystack", FLUTTERWAVE: "Flutterwave", KORAPAY: "Korapay" } as const;
@@ -23,7 +22,6 @@ export function PayoutWalletPanel({ wallet }: { wallet: PayoutWallet }) {
   const [pending, start] = useTransition();
   const [busyStore, setBusyStore] = useState<string | null>(null);
   const [message, setMessage] = useState<{ ok: boolean; text: string } | null>(null);
-  const hold = wallet.mode === "HOLD";
   const short = wallet.gatewayBalance !== null && wallet.gatewayBalance < wallet.heldTotal;
 
   function run(storeId: string | null, fn: () => Promise<{ success: true; data: ReleaseSummary } | { success: false; error: string }>) {
@@ -37,38 +35,15 @@ export function PayoutWalletPanel({ wallet }: { wallet: PayoutWallet }) {
     });
   }
 
-  function toggleMode() {
-    const next = hold ? "AUTO" : "HOLD";
-    const ok = window.confirm(
-      next === "HOLD"
-        ? "Hold mode: new sales stop paying out automatically and wait here until you release them. Continue?"
-        : "Automatic mode: new sales are paid to stores immediately again. Money already held stays here until you release it. Continue?"
-    );
-    if (!ok) return;
-    setMessage(null);
-    start(async () => {
-      const res = await setPayoutMode(next);
-      if (!res.success) setMessage({ ok: false, text: res.error });
-      router.refresh();
-    });
-  }
-
   return (
     <section className="mb-6 rounded-lg border bg-background p-4">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <h2 className="text-sm font-semibold">Payout wallet</h2>
           <p className="text-xs text-muted-foreground">
-            {hold ? "Hold mode: sales wait here until you release them." : "Automatic mode: every sale is paid to the store straight away."}
+            Automatic mode: every sale is paid to the store straight away. Anything already held can be released below.
           </p>
         </div>
-        <button
-          disabled={pending}
-          onClick={toggleMode}
-          className="rounded-md border px-2.5 py-1 text-xs font-medium hover:bg-muted disabled:opacity-50"
-        >
-          {hold ? "Switch to automatic" : "Switch to hold mode"}
-        </button>
       </div>
 
       <div className="mt-4 grid gap-3 sm:grid-cols-3">
