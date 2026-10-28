@@ -13,7 +13,7 @@ import { settleServiceBookingPayment } from "@/lib/payments/settle-service-booki
 import { settleReservationPayment } from "@/lib/payments/settle-reservation";
 import { settlePluginPurchase } from "@/lib/payments/settle-plugin-purchase";
 import { flagPaymentForReview } from "@/lib/payments/review";
-import { logError } from "@/lib/observability/log";
+import { logError, logWarn } from "@/lib/observability/log";
 
 import { APP_URL } from "@/lib/constants/app-url";
 
@@ -26,6 +26,17 @@ export async function GET(req: Request) {
   }
 
   const reference = canonicalizeReference(rawReference);
+  if (reference !== rawReference) {
+    // Our own code never issues this shape, so record who sent it: the next
+    // occurrence will show whether it is a browser, a bot or a stale link.
+    void logWarn("PAYMENTS", "Paystack callback received a repeated-prefix reference", {
+      rawReference,
+      reference,
+      referer: req.headers.get("referer"),
+      userAgent: req.headers.get("user-agent"),
+      query: new URL(req.url).search,
+    });
+  }
 
   // This is an unauthenticated redirect target, so key by IP rather than
   // reference — an attacker probing many references from one IP is exactly
