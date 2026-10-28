@@ -1,4 +1,5 @@
 import { formatMoney } from "@/lib/utils/format-money";
+import { BookingNotes } from "@/components/shared/booking-notes";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ArrowLeft, CalendarDays, CheckCircle2, Clock3, Mail, MapPin, Phone, Users } from "lucide-react";
@@ -78,7 +79,7 @@ export default async function BookingDetailsPage({ params }: { params: Promise<{
       {(booking.notes || booking.specialRequests?.length) && (
         <section className="veloura-panel veloura-detail-wide">
           <div className="veloura-panel-head"><h2>Special requests</h2></div>
-          {booking.notes && <p>{booking.notes}</p>}
+          {booking.notes && <BookingNotes notes={booking.notes} className="mb-3" />}
           {booking.specialRequests?.length ? <ul>{booking.specialRequests.map((item: string) => <li key={item}>{item}</li>)}</ul> : null}
         </section>
       )}

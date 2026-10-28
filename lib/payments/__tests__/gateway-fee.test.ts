@@ -65,3 +65,10 @@ describe("customer-paid gateway fee (Paystack bank transfer)", () => {
     expect(vendorPayoutAmount("PAYSTACK", card, 118)).toEqual({ amount: 116.2, feeAmount: 1.8 });
   });
 });
+
+describe("wallet fee rate ignores fees the customer paid", () => {
+  it("is 0 when the top-up fee was paid on top by the customer", () => {
+    const f = { provider: "PAYSTACK", amount: 118, rawPayload: { data: { amount: 11980, requested_amount: 11800, fees: 180 } } };
+    expect(walletEffectiveFeeRate([f])).toBe(0);
+  });
+});

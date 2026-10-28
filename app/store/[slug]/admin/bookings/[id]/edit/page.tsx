@@ -1,4 +1,5 @@
 import { getCanonicalBusinessType } from "@/lib/business-identity";
+import { formatBookingNotes } from "@/lib/booking-notes";
 // Route: /store/[slug]/admin/bookings/[id]/edit
 import { notFound } from "next/navigation";
 import { prisma } from "@/lib/prisma";
@@ -42,7 +43,7 @@ export default async function EditReservationPage({ params }: { params: Promise<
           paymentStatus: b.paymentStatus as "UNPAID" | "PENDING" | "PAID" | "REFUNDED",
           partySize: b.partySize,
           specialRequests: b.specialRequests,
-          notes: b.notes,
+          notes: formatBookingNotes(b.notes),
           source: b.source,
           reservationType: b.reservationType,
           addons,

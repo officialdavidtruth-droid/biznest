@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState, useTransition } from "react";
+import { formatBookingNotes } from "@/lib/booking-notes";
 import { useRouter } from "next/navigation";
 import { createUnitBooking, updateBookingGuestInfo, updateUnitStatus, checkOutUnitBooking } from "@/lib/actions/service-unit";
 import { SingleImageUpload } from "@/components/forms/single-image-upload";
@@ -361,7 +362,7 @@ function GuestInfoModal({
         </div>
 
         <label className="mb-1 block text-xs text-muted-foreground">Notes</label>
-        <textarea name="notes" defaultValue={booking.notes ?? ""} rows={2} className="mb-4 w-full rounded-md border px-3 py-1.5 text-sm" />
+        <textarea name="notes" defaultValue={formatBookingNotes(booking.notes)} rows={2} className="mb-4 w-full rounded-md border px-3 py-1.5 text-sm" />
 
         <div className="flex items-center justify-between gap-2">
           <button

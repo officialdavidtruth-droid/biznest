@@ -1,6 +1,7 @@
 "use server";
 
 import { zonedTimeToUtc, localDateStartUtc, localDateEndUtc, getLocalDateKey, getLocalMinutes, getLocalWeekday, addLocalDays } from "@/lib/timezone";
+import { formatBookingNotes } from "@/lib/booking-notes";
 import { auth } from "@/lib/auth";
 import { getStoreCustomerSession } from "@/lib/store-customer-auth";
 import { prisma } from "@/lib/prisma";
@@ -753,7 +754,7 @@ export async function createStayBooking(
           paymentAmount: paymentTotal,
           paymentCurrency: service.currency,
           addons: addons.length ? addons : undefined,
-          notes: notes?.trim() || null,
+          notes: formatBookingNotes(notes) || null,
         },
       });
     }
@@ -804,7 +805,7 @@ export async function createStayBooking(
             paymentAmount: paymentTotal,
             paymentCurrency: service.currency,
             addons: addons.length ? addons : undefined,
-            notes: notes?.trim() || null,
+            notes: formatBookingNotes(notes) || null,
             source: "Online",
             guestName: normalizedGuest?.name ?? null,
             guestEmail: normalizedGuest?.email ?? null,

@@ -122,7 +122,8 @@ export function walletEffectiveFeeRate(fundings: Array<{ provider: string; amoun
     const amount = Number(f.amount);
     if (!Number.isFinite(amount) || amount <= 0) continue;
     funded += amount;
-    fees += extractGatewayFeeNaira(f.provider, f.rawPayload);
+    // A fee the customer paid on top of the top-up is not a cost to the vendor.
+    fees += Math.max(0, extractGatewayFeeNaira(f.provider, f.rawPayload) - customerPaidFeeNaira(f.provider, f.rawPayload, amount));
   }
   if (funded <= 0 || fees <= 0) return 0;
   return Math.min(fees / funded, 0.5);
