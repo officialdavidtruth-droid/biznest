@@ -227,7 +227,7 @@ export function StaffManager({ slug, initialMembers, installedPluginPermissions,
                       ) : null}
                     </p>
                     <p className="truncate text-xs text-muted-foreground">
-                      {m.username ? `${m.username}@${slug}` : m.email} · {m.role === "MANAGER" ? "Manager" : "Staff"} ·{" "}
+                      {m.username ? `${m.username}@${slug}` : (m.email ?? "Removed account")} · {m.role === "MANAGER" ? "Manager" : "Staff"} ·{" "}
                       <span
                         className={
                           m.status === "ACTIVE"

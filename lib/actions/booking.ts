@@ -6,7 +6,10 @@ import { auth } from "@/lib/auth";
 import { getStoreCustomerSession } from "@/lib/store-customer-auth";
 import { prisma } from "@/lib/prisma";
 import { requireStoreCustomerByStoreId } from "@/lib/actions/store-customer";
-import { checkRateLimit } from "@/lib/rate-limit";
+import { checkRateLimit, getClientIp } from "@/lib/rate-limit";
+import { enforceGuestBookingLimits } from "@/lib/guest-booking-limits";
+import { validateGuest, validateNotes } from "@/lib/guest-validation";
+import { headers } from "next/headers";
 import { emitWebhookEvent } from "@/lib/webhooks/dispatch";
 import { revalidatePath } from "next/cache";
 import { Prisma } from "@prisma/client";
@@ -284,16 +287,13 @@ export async function createBooking(
     return { success: false, error: "Enter your name, email and phone to book as a guest." };
   }
 
-  const normalizedGuest = guest
-    ? {
-        name: guest.name.trim(),
-        email: guest.email.trim().toLowerCase(),
-        phone: guest.phone.trim(),
-      }
-    : null;
+  const guestCheck = validateGuest(guest);
+  const normalizedGuest = guestCheck.ok ? guestCheck.guest : null;
+  const notesCheck = validateNotes(notes);
+  if (!notesCheck.ok) return { success: false, error: notesCheck.error };
 
-  if (!initialSession?.user?.id && (!normalizedGuest?.name || !normalizedGuest.email || !normalizedGuest.phone || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalizedGuest.email))) {
-    return { success: false, error: "Please provide a valid name, email and phone number." };
+  if (!initialSession?.user?.id && !guestCheck.ok) {
+    return { success: false, error: guestCheck.error };
   }
 
   const rateKey = initialSession?.user?.id ? `booking:${initialSession.user.id}` : `booking-guest:${normalizedGuest!.email}:${serviceId}`;
@@ -374,6 +374,19 @@ export async function createBooking(
         };
       }
     }
+  }
+
+  // Guest bookings (including a signed-in customer of another store who fell
+  // back to guest above): per-IP, per-store and unpaid-hold limits, so the
+  // 30-minute slot hold can't be abused by rotating the email address.
+  if (!session?.user?.id && normalizedGuest) {
+    const guestLimit = await enforceGuestBookingLimits({
+      storeId: service.storeId,
+      ip: getClientIp(await headers()),
+      guest: normalizedGuest,
+      holdCutoff: getOnlineBookingHoldCutoff(),
+    });
+    if (!guestLimit.ok) return { success: false, error: guestLimit.error };
   }
 
   /**
@@ -643,12 +656,13 @@ export async function createStayBooking(
     return { success: false, error: "Enter your name, email and phone to book as a guest." };
   }
 
-  const normalizedGuest = guest
-    ? { name: guest.name.trim(), email: guest.email.trim().toLowerCase(), phone: guest.phone.trim() }
-    : null;
+  const guestCheck = validateGuest(guest);
+  const normalizedGuest = guestCheck.ok ? guestCheck.guest : null;
+  const notesCheck = validateNotes(notes);
+  if (!notesCheck.ok) return { success: false, error: notesCheck.error };
 
-  if (!initialSession?.user?.id && (!normalizedGuest?.name || !normalizedGuest.email || !normalizedGuest.phone || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalizedGuest.email))) {
-    return { success: false, error: "Please provide a valid name, email and phone number." };
+  if (!initialSession?.user?.id && !guestCheck.ok) {
+    return { success: false, error: guestCheck.error };
   }
 
   const rateKey = initialSession?.user?.id ? `booking:${initialSession.user.id}` : `booking-guest:${normalizedGuest!.email}:${serviceId}`;
@@ -680,6 +694,17 @@ export async function createStayBooking(
         };
       }
     }
+  }
+
+  // Same guest abuse limits as createBooking (shared helper).
+  if (!session?.user?.id && normalizedGuest) {
+    const guestLimit = await enforceGuestBookingLimits({
+      storeId: service.storeId,
+      ip: getClientIp(await headers()),
+      guest: normalizedGuest,
+      holdCutoff: getOnlineBookingHoldCutoff(),
+    });
+    if (!guestLimit.ok) return { success: false, error: guestLimit.error };
   }
 
   const timezone = service.store.timezone || "Africa/Lagos";

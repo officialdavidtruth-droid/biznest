@@ -10,9 +10,27 @@ import { notifyUser } from "@/lib/notifications/notify";
 import { labelForPermission } from "@/lib/access/staff-permissions";
 import { getAvailableStaffPermissions } from "@/lib/access/available-staff-permissions";
 import { logStoreActivity } from "@/lib/activity-log";
+import { checkRateLimit } from "@/lib/rate-limit";
+import { Prisma } from "@prisma/client";
 import type { ActionResult } from "@/types/actions";
 
 const MAX_STAFF_PER_STORE = 20;
+
+// Input limits. Password is capped at 72 bytes because bcrypt ignores
+// everything past that, so a longer password would silently be a shorter one.
+const STAFF_INPUT_LIMITS = { name: 100, position: 60, email: 254, passwordMin: 8, passwordMaxBytes: 72, permissions: 100 } as const;
+
+const TOO_MANY_STAFF_ACTIONS = "Too many staff changes in a short time. Please wait a few minutes and try again.";
+
+// Invites run bcrypt (cost 12) and create accounts, so they get the tight
+// limit; edits and revokes are cheap and get a looser one.
+async function staffActionAllowed(userId: string, kind: "invite" | "manage") {
+  const rate =
+    kind === "invite"
+      ? await checkRateLimit(`staff-invite:${userId}`, 10, 60 * 60 * 1000)
+      : await checkRateLimit(`staff-manage:${userId}`, 30, 10 * 60 * 1000);
+  return rate.allowed;
+}
 
 // Server-side twin of the invite checklist: only permissions this store's
 // dashboard actually offers (see getAvailableStaffPermissions) or plugin
@@ -29,6 +47,38 @@ async function validatePermissionsForInstalledPlugins(storeId: string, permissio
   const installedIds = new Set(installed.map((x) => `plugin:${x.plugin.key}`));
   const availableIds = new Set(available.map((p) => p.id));
   return permissions.filter((p) => availableIds.has(p) || installedIds.has(p));
+}
+
+/**
+ * Frees everything a revoked staff row was holding so the same person (or a
+ * corrected username/email) can be invited again.
+ *
+ * Why this is needed: StoreStaff has @@unique([storeId, username]) and
+ * @@unique([storeId, invitedEmail]), and the staff member's User row owns the
+ * login email. Revoking only flipped `status`, so all three stayed taken
+ * forever and a re-invite always failed with "username already taken".
+ *
+ * The row itself stays (name, position, role, history); only the identifiers
+ * are released. The linked User is only disabled when it was created by
+ * inviteStaffMember (the row has a username) and is a plain staff account --
+ * never a legacy invite linked to someone's real BizNest account, or a
+ * business owner. Disabling also stops the revoked person signing in with
+ * their own email, which a plain status flip never did.
+ */
+async function releaseStaffIdentity(member: { id: string; userId: string | null; username: string | null }) {
+  const { id, userId, username } = member;
+  await prisma.$transaction(async (tx) => {
+    await tx.storeStaff.update({ where: { id }, data: { username: null, invitedEmail: null } });
+    if (!userId || !username) return;
+    const user = await tx.user.findUnique({ where: { id: userId }, select: { role: true } });
+    if (!user || user.role !== "CUSTOMER") return;
+    const ownsBusiness = await tx.business.count({ where: { userId } });
+    if (ownsBusiness > 0) return;
+    await tx.user.update({
+      where: { id: userId },
+      data: { email: `revoked.${id}@internal.biznest`, passwordHash: null },
+    });
+  });
 }
 
 async function requireOwner(slug: string, userId: string, userRole: string) {
@@ -55,10 +105,22 @@ export async function inviteStaffMember(
   const { store, error } = await requireOwner(slug, session.user.id, session.user.role);
   if (!store) return { success: false, error: error! };
 
-  const trimmedName = name.trim();
+  if (!(await staffActionAllowed(session.user.id, "invite"))) return { success: false, error: TOO_MANY_STAFF_ACTIONS };
+
+  if (
+    typeof username !== "string" || typeof password !== "string" || typeof name !== "string" ||
+    typeof position !== "string" || !Array.isArray(permissions) || permissions.length > STAFF_INPUT_LIMITS.permissions ||
+    permissions.some((p) => typeof p !== "string")
+  ) {
+    return { success: false, error: "Invalid staff details." };
+  }
+
+  const trimmedName = name.trim().replace(/\s+/g, " ");
   if (!trimmedName) return { success: false, error: "Enter the staff member's name." };
-  const trimmedPosition = position.trim();
+  if (trimmedName.length > STAFF_INPUT_LIMITS.name) return { success: false, error: `Name can be at most ${STAFF_INPUT_LIMITS.name} characters.` };
+  const trimmedPosition = position.trim().replace(/\s+/g, " ");
   if (!trimmedPosition) return { success: false, error: "Enter the staff member's position." };
+  if (trimmedPosition.length > STAFF_INPUT_LIMITS.position) return { success: false, error: `Position can be at most ${STAFF_INPUT_LIMITS.position} characters.` };
 
   // Login handle: letters, numbers, dots, underscores, hyphens only —
   // it becomes "username@store-slug" at sign-in, so keep it free of
@@ -70,12 +132,15 @@ export async function inviteStaffMember(
       error: "Username must be 3-32 characters: letters, numbers, dots, underscores, or hyphens only.",
     };
   }
-  if (password.length < 8) {
-    return { success: false, error: "Password must be at least 8 characters." };
+  if (password.length < STAFF_INPUT_LIMITS.passwordMin) {
+    return { success: false, error: `Password must be at least ${STAFF_INPUT_LIMITS.passwordMin} characters.` };
+  }
+  if (Buffer.byteLength(password, "utf8") > STAFF_INPUT_LIMITS.passwordMaxBytes) {
+    return { success: false, error: `Password is too long (at most ${STAFF_INPUT_LIMITS.passwordMaxBytes} bytes).` };
   }
 
-  const normalizedEmail = email?.trim().toLowerCase() || undefined;
-  if (normalizedEmail && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalizedEmail)) {
+  const normalizedEmail = (typeof email === "string" ? email.trim().toLowerCase() : "") || undefined;
+  if (normalizedEmail && (normalizedEmail.length > STAFF_INPUT_LIMITS.email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalizedEmail))) {
     return { success: false, error: "Enter a valid email address, or leave it blank." };
   }
   if (normalizedEmail && normalizedEmail === session.user.email?.toLowerCase()) {
@@ -87,12 +152,20 @@ export async function inviteStaffMember(
     return { success: false, error: "Select at least one area they should have access to." };
   }
 
-  const existingCount = await prisma.storeStaff.count({
-    where: { storeId: store.id, status: { in: ["PENDING", "ACTIVE"] } },
+  // Release identifiers held by revoked rows so a revoked person can be
+  // re-invited (also cleans up rows revoked before this existed).
+  const revokedHolders = await prisma.storeStaff.findMany({
+    where: {
+      storeId: store.id,
+      status: "REVOKED",
+      OR: [
+        { username: { equals: normalizedUsername, mode: "insensitive" } },
+        ...(normalizedEmail ? [{ invitedEmail: { equals: normalizedEmail, mode: "insensitive" as const } }] : []),
+      ],
+    },
+    select: { id: true, userId: true, username: true },
   });
-  if (existingCount >= MAX_STAFF_PER_STORE) {
-    return { success: false, error: `You've reached the ${MAX_STAFF_PER_STORE}-staff limit for one store.` };
-  }
+  for (const holder of revokedHolders) await releaseStaffIdentity(holder);
 
   const usernameClash = await prisma.storeStaff.findFirst({
     where: { storeId: store.id, username: { equals: normalizedUsername, mode: "insensitive" } },
@@ -101,63 +174,87 @@ export async function inviteStaffMember(
     return { success: false, error: "That username is already taken at this store — pick another." };
   }
 
-  // The User table requires a real, globally-unique, non-null email.
-  // Staff sign in with username@store-slug regardless (see lib/auth.ts),
-  // so a real email is optional here -- fall back to an internal
-  // placeholder that can never collide with a real address or another
-  // store's staff.
-  const userEmail = normalizedEmail ?? `${normalizedUsername}.${store.slug}.staff@internal.biznest`;
+  // The User table requires a globally-unique, non-null email. Staff always
+  // sign in with username@store-slug (see lib/auth.ts), so the account gets an
+  // internal placeholder that can't collide with a real address or another
+  // store's staff. The real address, if given, is kept only on the StoreStaff
+  // row (invitedEmail) for notices. It is deliberately NOT used as the User's
+  // email: otherwise the owner could register someone else's address with a
+  // password they chose, blocking that person from signing up themselves.
+  const userEmail = `${normalizedUsername}.${store.slug}.staff@internal.biznest`;
 
   const emailClash = await prisma.user.findFirst({ where: { email: userEmail, customerScopeStoreId: null, isMarketingOnly: false } });
   if (emailClash) {
-    return {
-      success: false,
-      error: normalizedEmail
-        ? "That email is already associated with another account."
-        : "That username is already taken — pick another.",
-    };
+    return { success: false, error: "That username is already taken — pick another." };
+  }
+
+  if (normalizedEmail) {
+    const inviteEmailClash = await prisma.storeStaff.findFirst({
+      where: { storeId: store.id, invitedEmail: { equals: normalizedEmail, mode: "insensitive" }, status: { in: ["PENDING", "ACTIVE"] } },
+      select: { id: true },
+    });
+    if (inviteEmailClash) return { success: false, error: "Someone with that email is already on your staff." };
   }
 
   const passwordHash = await bcrypt.hash(password, 12);
   const token = nanoid(32);
 
-  let staffUser;
-  try {
-    staffUser = await prisma.user.create({
-      data: {
-        name: trimmedName,
-        email: userEmail,
-        passwordHash,
-        // Dashboard access for this account comes from the StoreStaff row's
-        // role/permissions (see getStoreAccessRole), not from User.role --
-        // CUSTOMER is just the harmless default for a non-owner account.
-        role: "CUSTOMER",
-      },
-    });
-  } catch {
-    // Most likely a last-moment unique-constraint race on the email we just
-    // checked above -- surface it as a normal ActionResult instead of an
-    // unhandled throw, which would otherwise leave the client's "Creating
-    // account..." button stuck forever with no feedback.
-    return { success: false, error: "Couldn't create that account — the email or username may already be in use." };
-  }
+  // Cap check, account and staff row are one Serializable transaction so
+  // concurrent invites can't overshoot the cap, and a failed staff insert
+  // can't leave an orphan login account behind.
+  const MAX_ATTEMPTS = 3;
+  for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
+    try {
+      await prisma.$transaction(
+        async (tx) => {
+          const existingCount = await tx.storeStaff.count({
+            where: { storeId: store.id, status: { in: ["PENDING", "ACTIVE"] } },
+          });
+          if (existingCount >= MAX_STAFF_PER_STORE) throw new Error("STAFF_LIMIT");
 
-  await prisma.storeStaff.create({
-    data: {
-      storeId: store.id,
-      invitedEmail: normalizedEmail,
-      invitedName: trimmedName,
-      position: trimmedPosition,
-      username: normalizedUsername,
-      permissions: validPermissions,
-      role,
-      inviteToken: token,
-      invitedByUserId: session.user.id,
-      userId: staffUser.id,
-      status: "ACTIVE",
-      acceptedAt: new Date(),
-    },
-  });
+          const staffUser = await tx.user.create({
+            data: {
+              name: trimmedName,
+              email: userEmail,
+              passwordHash,
+              // Dashboard access for this account comes from the StoreStaff row's
+              // role/permissions (see getStoreAccessRole), not from User.role --
+              // CUSTOMER is just the harmless default for a non-owner account.
+              role: "CUSTOMER",
+            },
+          });
+
+          await tx.storeStaff.create({
+            data: {
+              storeId: store.id,
+              invitedEmail: normalizedEmail,
+              invitedName: trimmedName,
+              position: trimmedPosition,
+              username: normalizedUsername,
+              permissions: validPermissions,
+              role,
+              inviteToken: token,
+              invitedByUserId: session.user.id,
+              userId: staffUser.id,
+              status: "ACTIVE",
+              acceptedAt: new Date(),
+            },
+          });
+        },
+        { isolationLevel: "Serializable" }
+      );
+      break;
+    } catch (err) {
+      if (err instanceof Error && err.message === "STAFF_LIMIT") {
+        return { success: false, error: `You've reached the ${MAX_STAFF_PER_STORE}-staff limit for one store.` };
+      }
+      const code = err instanceof Prisma.PrismaClientKnownRequestError ? err.code : undefined;
+      if (code === "P2034" && attempt < MAX_ATTEMPTS) continue;
+      if (code === "P2034") return { success: false, error: "Couldn't add that person right now. Please try again." };
+      if (code === "P2002") return { success: false, error: "That username or email is already in use at this store." };
+      throw err;
+    }
+  }
 
   if (normalizedEmail) {
     try {
@@ -248,7 +345,11 @@ export async function updateStaffAccess(
 
   const { store, error } = await requireOwner(slug, session.user.id, session.user.role);
   if (!store) return { success: false, error: error! };
+  if (!(await staffActionAllowed(session.user.id, "manage"))) return { success: false, error: TOO_MANY_STAFF_ACTIONS };
 
+  if (!Array.isArray(permissions) || permissions.length > STAFF_INPUT_LIMITS.permissions || permissions.some((p) => typeof p !== "string")) {
+    return { success: false, error: "Invalid permissions." };
+  }
   const validPermissions = await validatePermissionsForInstalledPlugins(store.id, permissions);
   if (validPermissions.length === 0) {
     return { success: false, error: "Select at least one area they should have access to." };
@@ -289,18 +390,21 @@ export async function revokeStaffMember(slug: string, staffId: string): Promise<
 
   const { store, error } = await requireOwner(slug, session.user.id, session.user.role);
   if (!store) return { success: false, error: error! };
+  if (!(await staffActionAllowed(session.user.id, "manage"))) return { success: false, error: TOO_MANY_STAFF_ACTIONS };
 
   const member = await prisma.storeStaff.findFirst({ where: { id: staffId, storeId: store.id } });
   if (!member) return { success: false, error: "Staff member not found." };
+  if (member.status === "REVOKED") return { success: true, data: undefined };
 
   await prisma.storeStaff.update({ where: { id: member.id }, data: { status: "REVOKED" } });
-
+  // Log before releasing: the username/email are about to be cleared.
   await logStoreActivity({
     storeId: store.id,
     actor: { id: session.user.id, name: session.user.name, email: session.user.email, role: "OWNER" },
     action: "staff.removed",
-    target: member.invitedEmail ?? undefined,
+    target: member.username ?? member.invitedEmail ?? member.invitedName ?? undefined,
   });
+  await releaseStaffIdentity(member);
 
   if (member.userId) {
     await notifyUser({

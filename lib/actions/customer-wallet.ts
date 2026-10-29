@@ -5,7 +5,9 @@ import { getStoreCustomerSessionForStore } from "@/lib/store-customer-auth";
 import { requireStoreCustomer } from "@/lib/actions/store-customer";
 import { prisma } from "@/lib/prisma";
 import { chargeCustomer, paymentCallbackUrl } from "@/lib/payments/gateway";
-import { checkRateLimit } from "@/lib/rate-limit";
+import { checkRateLimit, getClientIp } from "@/lib/rate-limit";
+import { safeEqualEmail } from "@/lib/safe-equal";
+import { headers } from "next/headers";
 import type { ActionResult } from "@/types/actions";
 import { revalidatePath } from "next/cache";
 import crypto from "crypto";
@@ -118,6 +120,19 @@ export async function startBookingPayment(
   // real hosted-checkout link instead of the bare callback URL.
   options: { inline?: boolean } = {}
 ): Promise<ActionResult<{ authorizationUrl: string; amount: number; inline?: { provider: "PAYSTACK" | "FLUTTERWAVE" | "KORAPAY"; publicKey: string; email: string; accessCode?: string; reference: string; subaccountCode?: string | null; subaccountId?: string | null; amountNaira?: number } }>> {
+  // Throttle before any lookup, per booking and per IP. Each call that passes
+  // verification writes a PENDING payment row and calls the gateway, and the
+  // same endpoint is the only proof-of-ownership check for guests, so it must
+  // not be a free oracle for guessing the booking email either.
+  const retryLimitMessage = "Too many payment attempts. Please wait a few minutes and try again.";
+  const bookingRate = await checkRateLimit(`booking-pay:${bookingId}`, 6, 10 * 60 * 1000);
+  if (!bookingRate.allowed) return { success: false, error: retryLimitMessage };
+  const clientIp = getClientIp(await headers());
+  if (clientIp !== "unknown") {
+    const ipRate = await checkRateLimit(`booking-pay-ip:${clientIp}`, 20, 10 * 60 * 1000);
+    if (!ipRate.allowed) return { success: false, error: retryLimitMessage };
+  }
+
   const customerSession = await getStoreCustomerSessionForStore(storeSlug);
   const session = customerSession ?? await auth();
   const booking = await prisma.booking.findFirst({
@@ -139,7 +154,7 @@ export async function startBookingPayment(
   }
 
   const authenticatedOwner = session?.user?.id && booking.buyerId === session.user.id;
-  const guestOwner = !booking.buyerId && booking.guestEmail && guestEmail && booking.guestEmail.toLowerCase() === guestEmail.trim().toLowerCase();
+  const guestOwner = !booking.buyerId && safeEqualEmail(booking.guestEmail, guestEmail);
   if (!authenticatedOwner && !guestOwner) return { success: false, error: "We couldn't verify this booking." };
 
   const amount = Number(booking.paymentAmount ?? booking.service.price);
