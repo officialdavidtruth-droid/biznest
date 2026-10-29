@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { sendQuote, getQuoteShareLink } from "@/lib/actions/quote";
+import { sendQuote, getQuoteShareLink, withdrawQuote } from "@/lib/actions/quote";
 import type { QuoteStatus } from "@prisma/client";
 
 export function QuoteRowActions({
@@ -30,6 +30,20 @@ export function QuoteRowActions({
     }
     if (result.data.whatsappUrl) window.open(result.data.whatsappUrl, "_blank");
     toast.success("Quote sent.");
+    router.refresh();
+  }
+
+  async function handleWithdraw() {
+    if (!window.confirm("Withdraw this quote? The customer will no longer be able to accept it.")) return;
+    setIsSubmitting(true);
+    const result = await withdrawQuote(storeSlug, quoteId);
+    setIsSubmitting(false);
+    if (!result.success) {
+      toast.error(result.error);
+      return;
+    }
+    if (result.data.depositInFlight) toast.warning("Quote withdrawn. A customer was mid-payment on the deposit; review and refund it if needed.");
+    else toast.success("Quote withdrawn.");
     router.refresh();
   }
 
@@ -62,6 +76,11 @@ export function QuoteRowActions({
       {status !== "DRAFT" && (
         <button disabled={isSubmitting} onClick={copyLink} className="text-primary hover:underline">
           Copy link
+        </button>
+      )}
+      {status === "SENT" && (
+        <button disabled={isSubmitting} onClick={handleWithdraw} className="text-destructive hover:underline disabled:opacity-50">
+          Withdraw
         </button>
       )}
     </div>

@@ -47,6 +47,10 @@
     {
       "path": "/api/cron/daily-summary",
       "schedule": "0 20 * * *"
+    },
+    {
+      "path": "/api/cron/quote-expiry",
+      "schedule": "45 0 * * *"
     }
   ]
 }

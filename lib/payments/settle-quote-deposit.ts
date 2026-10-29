@@ -5,6 +5,7 @@ import { settlePrepaidQuoteOrder } from "@/lib/payments/settle-prepaid-order";
 
 import { prisma } from "@/lib/prisma";
 import { flagPaymentForReview } from "@/lib/payments/review";
+import { isQuoteLapsed } from "@/lib/quotes/expiry";
 
 /**
  * Quote deposit settlement.
@@ -48,8 +49,20 @@ export async function settleQuoteDeposit(reference: string, verifiedAmountNaira:
     await flagPaymentForReview(reference, `duplicate or late quote deposit: quote is already ${quote.status}`, rawPayload);
     return;
   }
+  // The quote's validity ends at expiresAt even if the customer began paying before it:
+  // the offer can't be taken up after that, so the deposit goes to review for a refund.
+  if (isQuoteLapsed(quote)) {
+    await flagPaymentForReview(reference, "late quote deposit: the quote expired before the payment completed", rawPayload);
+    return;
+  }
   if (!quote.customerId) {
     await flagPaymentForReview(reference, "quote deposit verified but quote has no customer to create the order for", rawPayload);
+    return;
+  }
+  // The merchant can edit a sent quote. A deposit started before the deposit was
+  // raised doesn't cover what the quote now asks for: flag it instead of accepting.
+  if (quote.depositRequired && !amountCoversExpected(Number(payment.amount), Number(quote.depositRequired))) {
+    await flagPaymentForReview(reference, `quote deposit is below the amount now required (paid ${Number(payment.amount)}, now ${Number(quote.depositRequired)}): quote was edited`, rawPayload);
     return;
   }
 
@@ -62,7 +75,7 @@ export async function settleQuoteDeposit(reference: string, verifiedAmountNaira:
       if (paymentResult.count === 0) return;
 
       const freshQuote = await tx.quote.findUniqueOrThrow({ where: { id: quoteId }, include: { items: true } });
-      if (freshQuote.status !== "SENT" || !freshQuote.customerId) throw new Error("QUOTE_NO_LONGER_OPEN"); // rolls the payment claim back
+      if (freshQuote.status !== "SENT" || isQuoteLapsed(freshQuote) || !freshQuote.customerId) throw new Error("QUOTE_NO_LONGER_OPEN"); // rolls the payment claim back
 
       const order = await tx.order.create({
         data: {

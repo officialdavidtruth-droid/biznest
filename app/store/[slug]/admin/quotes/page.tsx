@@ -3,6 +3,7 @@ import { listQuotes } from "@/lib/actions/quote";
 import { QuoteForm } from "@/components/dashboard/quote-form";
 import { QuoteRowActions } from "@/components/dashboard/quote-row-actions";
 import { formatDate, formatNumber } from "@/lib/i18n/locale";
+import { effectiveQuoteStatus } from "@/lib/quotes/expiry";
 
 const STATUS_STYLES: Record<string, string> = {
   DRAFT: "bg-[var(--bn-admin-surface-2)] text-[var(--bn-admin-orange)]",
@@ -48,7 +49,9 @@ export default async function QuotesPage({ params }: { params: Promise<{ slug: s
               </tr>
             </thead>
             <tbody>
-              {quotes.map((quote) => (
+              {quotes.map((quote) => {
+                const status = effectiveQuoteStatus(quote);
+                return (
                 <tr key={quote.id} className="border-b last:border-0 hover:bg-muted/20">
                   <td className="px-4 py-3">
                     <Link href={`/store/${slug}/admin/quotes/${quote.id}`} className="font-mono text-xs font-semibold text-primary hover:underline">
@@ -69,16 +72,17 @@ export default async function QuotesPage({ params }: { params: Promise<{ slug: s
                     {quote.budget != null ? `${quote.currency} ${formatNumber(Number(quote.budget))}` : "Not specified"}
                   </td>
                   <td className="px-4 py-3">
-                    <span className={`rounded-full px-2 py-0.5 text-xs ${STATUS_STYLES[quote.status] ?? "bg-muted text-muted-foreground"}`}>
-                      {quote.status === "DRAFT" && quote.creativeProject ? "NEW REQUEST" : quote.status}
+                    <span className={`rounded-full px-2 py-0.5 text-xs ${STATUS_STYLES[status] ?? "bg-muted text-muted-foreground"}`}>
+                      {status === "DRAFT" && quote.creativeProject ? "NEW REQUEST" : status}
                     </span>
                   </td>
                   <td className="px-4 py-3 text-muted-foreground">{formatDate(new Date(quote.createdAt))}</td>
                   <td className="px-4 py-3">
-                    <QuoteRowActions storeSlug={slug} quoteId={quote.id} status={quote.status} incomingRequest={Boolean(quote.creativeProject)} />
+                    <QuoteRowActions storeSlug={slug} quoteId={quote.id} status={status} incomingRequest={Boolean(quote.creativeProject)} />
                   </td>
                 </tr>
-              ))}
+                );
+              })}
               {quotes.length === 0 && (
                 <tr>
                   <td colSpan={7} className="px-4 py-10 text-center text-muted-foreground">No quotes yet — create one above or wait for a customer request.</td>

@@ -6,6 +6,7 @@ import { getQuoteForCustomer } from "@/lib/actions/quote";
 import { QuoteActions, PayQuoteBalanceButton } from "@/components/quotes/quote-actions";
 import { getOrderPayableNaira } from "@/lib/payments/order-payable";
 import { formatDate, formatNumber } from "@/lib/i18n/locale";
+import { effectiveQuoteStatus } from "@/lib/quotes/expiry";
 
 const STATUS_STYLES: Record<string, string> = {
   SENT: "bg-amber-50 text-amber-700 ring-amber-200",
@@ -26,7 +27,9 @@ export default async function CustomerQuotePage({
   const quote = await getQuoteForCustomer(id, token);
   if (!quote) notFound();
 
-  const isRespondable = quote.status === "SENT";
+  // A quote past its expiry date is closed even if nothing has flipped its status yet.
+  const status = effectiveQuoteStatus(quote);
+  const isRespondable = status === "SENT";
 
   // Accepting needs a buyer (the order is created for a signed-in account), so
   // guests holding a valid link are sent through sign-in / sign-up and come
@@ -66,9 +69,9 @@ export default async function CustomerQuotePage({
         )}
 
         <div className="mb-4">
-          <span className={`inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-medium ring-1 ${STATUS_STYLES[quote.status] ?? "bg-gray-100 text-gray-600 ring-gray-200"}`}>
-            {quote.status === "ACCEPTED" && <CheckCircle2 className="h-3.5 w-3.5" />}
-            {quote.status}
+          <span className={`inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-medium ring-1 ${STATUS_STYLES[status] ?? "bg-gray-100 text-gray-600 ring-gray-200"}`}>
+            {status === "ACCEPTED" && <CheckCircle2 className="h-3.5 w-3.5" />}
+            {status}
           </span>
           {quote.expiresAt && isRespondable && (
             <span className="ml-2 inline-flex items-center gap-1 text-xs text-slate-500">
@@ -141,8 +144,8 @@ export default async function CustomerQuotePage({
         {quote.status === "DECLINED" && (
           <p className="text-center text-sm text-slate-500">You declined this quote.</p>
         )}
-        {quote.status === "EXPIRED" && (
-          <p className="text-center text-sm text-slate-500">This quote has expired.</p>
+        {status === "EXPIRED" && (
+          <p className="text-center text-sm text-slate-500">This quote has expired or been withdrawn by {quote.store.name}. Contact them if you still need it.</p>
         )}
 
         <div className="mt-6 text-center">

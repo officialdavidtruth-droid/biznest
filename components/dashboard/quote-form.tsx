@@ -141,7 +141,7 @@ export function QuoteForm({ storeSlug }: { storeSlug: string }) {
           />
         </label>
         <label className="text-xs text-muted-foreground">
-          Expires on (optional)
+          Expires on (default 30 days)
           <input
             type="date"
             value={expiresAt}

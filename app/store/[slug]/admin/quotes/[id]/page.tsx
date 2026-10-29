@@ -3,8 +3,10 @@ import { notFound } from "next/navigation";
 import { ArrowLeft, CalendarDays, ExternalLink, FileImage, FileText, Mail, MessageSquareText, Paperclip, Phone, UserRound } from "lucide-react";
 import { getQuote } from "@/lib/actions/quote";
 import { QuoteRowActions } from "@/components/dashboard/quote-row-actions";
+import { QuoteEditor } from "@/components/dashboard/quote-editor";
 import type { Prisma } from "@prisma/client";
 import { formatDate, formatNumber } from "@/lib/i18n/locale";
+import { effectiveQuoteStatus } from "@/lib/quotes/expiry";
 
 const STATUS_STYLES: Record<string, string> = {
   DRAFT: "bg-[var(--bn-admin-surface-2)] text-[var(--bn-admin-orange)] ring-[var(--bn-admin-orange)]",
@@ -42,6 +44,7 @@ export default async function QuoteDetailPage({ params }: { params: Promise<{ sl
   const quote = await getQuote(slug, id);
   if (!quote) notFound();
 
+  const status = effectiveQuoteStatus(quote);
   const references = getReferenceFiles(quote.referenceFiles);
   const project = quote.creativeProject;
   const budget = quote.budget != null ? Number(quote.budget) : null;
@@ -53,11 +56,11 @@ export default async function QuoteDetailPage({ params }: { params: Promise<{ sl
           <Link href={`/store/${slug}/admin/quotes`} className="mb-3 inline-flex items-center gap-2 text-xs font-semibold text-muted-foreground hover:text-foreground"><ArrowLeft className="h-4 w-4" /> Back to quotes</Link>
           <div className="flex flex-wrap items-center gap-3">
             <h1 className="text-2xl font-semibold">{quote.quoteNo}</h1>
-            <span className={`rounded-full px-2.5 py-1 text-xs font-semibold ring-1 ${STATUS_STYLES[quote.status] ?? "bg-muted text-muted-foreground ring-border"}`}>{quote.status === "DRAFT" && project ? "NEW REQUEST" : quote.status}</span>
+            <span className={`rounded-full px-2.5 py-1 text-xs font-semibold ring-1 ${STATUS_STYLES[status] ?? "bg-muted text-muted-foreground ring-border"}`}>{status === "DRAFT" && project ? "NEW REQUEST" : status}</span>
           </div>
           <p className="mt-1 text-sm text-muted-foreground">Submitted {formatDate(new Date(quote.createdAt), { day: "numeric", month: "short", year: "numeric", hour: "numeric", minute: "2-digit" })}</p>
         </div>
-        <QuoteRowActions storeSlug={slug} quoteId={quote.id} status={quote.status} incomingRequest={Boolean(project)} />
+        <QuoteRowActions storeSlug={slug} quoteId={quote.id} status={status} incomingRequest={Boolean(project)} />
       </div>
 
       <div className="grid gap-6 lg:grid-cols-[1fr_340px]">
@@ -77,6 +80,18 @@ export default async function QuoteDetailPage({ params }: { params: Promise<{ sl
             {references.length === 0 ? <div className="rounded-xl border border-dashed p-8 text-center text-sm text-muted-foreground">No reference files were uploaded.</div> : <div className="grid gap-3 sm:grid-cols-2">{references.map((file) => { const isPdf = file.type === "application/pdf" || file.url.toLowerCase().includes(".pdf"); return <a key={file.url} href={file.url} target="_blank" rel="noreferrer" className="group flex items-center gap-3 rounded-xl border p-3 transition hover:border-primary/40 hover:bg-muted/30"><div className="rounded-lg bg-muted p-2">{isPdf ? <FileText className="h-5 w-5 text-[var(--bn-admin-danger)]" /> : <FileImage className="h-5 w-5 text-primary" />}</div><div className="min-w-0 flex-1"><p className="truncate text-sm font-medium">{file.name ?? "Reference file"}</p>{file.size ? <p className="text-xs text-muted-foreground">{formatBytes(file.size)}</p> : null}</div><ExternalLink className="h-4 w-4 shrink-0 text-muted-foreground group-hover:text-primary" /></a>; })}</div>}
           </section>
 
+          {(status === "DRAFT" || status === "SENT") && (
+            <QuoteEditor
+              storeSlug={slug}
+              quoteId={quote.id}
+              status={status}
+              currency={quote.currency}
+              initialItems={quote.items.map((i) => ({ description: i.description, quantity: i.quantity, unitPrice: Number(i.unitPrice) }))}
+              initialDeposit={quote.depositRequired ? Number(quote.depositRequired) : null}
+              initialExpiresAt={quote.expiresAt ? new Date(quote.expiresAt).toISOString().slice(0, 10) : ""}
+            />
+          )}
+
           {project && <section className="rounded-2xl border bg-background p-6"><div className="flex flex-wrap items-center justify-between gap-4"><div><p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Project workflow</p><h2 className="mt-1 font-semibold">{project.projectNo}</h2><p className="mt-1 text-sm text-muted-foreground">Design and production workflow is linked to this quote.</p></div><Link href={`/store/${slug}/admin/projects/${project.id}`} className="rounded-lg border px-3 py-2 text-xs font-semibold hover:bg-muted">Open project</Link></div></section>}
         </main>
 
@@ -90,7 +105,7 @@ export default async function QuoteDetailPage({ params }: { params: Promise<{ sl
             </div>
           </section>
 
-          <section className="rounded-2xl border bg-background p-6"><p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">Quote summary</p><div className="mt-4 space-y-3 text-sm"><div className="flex justify-between gap-4"><span className="text-muted-foreground">Requested budget</span><span className="font-semibold">{budget != null ? `${quote.currency} ${formatNumber(budget)}` : "Not specified"}</span></div><div className="flex justify-between gap-4 border-t pt-3"><span className="text-muted-foreground">Current quote total</span><span className="font-bold">{quote.currency} {formatNumber(Number(quote.total))}</span></div><p className="pt-1 text-xs leading-5 text-muted-foreground">The customer&apos;s budget is the amount they said they want to spend. Review the brief before preparing the final quote.</p></div></section>
+          <section className="rounded-2xl border bg-background p-6"><p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">Quote summary</p><div className="mt-4 space-y-3 text-sm"><div className="flex justify-between gap-4"><span className="text-muted-foreground">Requested budget</span><span className="font-semibold">{budget != null ? `${quote.currency} ${formatNumber(budget)}` : "Not specified"}</span></div><div className="flex justify-between gap-4 border-t pt-3"><span className="text-muted-foreground">Current quote total</span><span className="font-bold">{quote.currency} {formatNumber(Number(quote.total))}</span></div>{quote.expiresAt && <div className="flex justify-between gap-4"><span className="text-muted-foreground">{status === "EXPIRED" ? "Expired / withdrawn" : "Expires"}</span><span className="font-semibold">{formatDate(new Date(quote.expiresAt))}</span></div>}<p className="pt-1 text-xs leading-5 text-muted-foreground">The customer&apos;s budget is the amount they said they want to spend. Review the brief before preparing the final quote.</p></div></section>
         </aside>
       </div>
     </div>
