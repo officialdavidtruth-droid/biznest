@@ -37,7 +37,7 @@ export const GET = withCronMonitor("abandoned-checkout-alerts", async () => {
     where: {
       status: "PENDING_PAYMENT", createdAt: { lt: cutoff }, merchantAlertedAt: null,
       // Cart-checkout businesses only: no alerts for hotels (reservations) or service-only stores.
-      store: { business: { sellsProducts: true, OR: [{ category: null }, { NOT: { category: { in: HOTEL_CATEGORY_ALIASES, mode: "insensitive" } } }] } },
+      store: { business: { sellsProducts: true, NOT: { category: { in: HOTEL_CATEGORY_ALIASES, mode: "insensitive" } } } },
     },
     include: { store: { include: { business: true } }, items: { include: { product: true, service: true } }, buyer: { select: { name: true, email: true } } },
     take: 200, // batch cap so one sweep can't run indefinitely
