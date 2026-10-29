@@ -4,9 +4,9 @@ import { useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { CheckCircle2, Copy, ImagePlus, Landmark, MessageCircle, RefreshCw } from "lucide-react";
+import { CheckCircle2, Copy, ImagePlus, Landmark, MessageCircle, Phone, RefreshCw } from "lucide-react";
 import type { StorePalette } from "@/lib/store-palette-defaults";
-import { PROOF_ALLOWED_TYPES, PROOF_MAX_BYTES, whatsappLink } from "@/lib/payments/manual-transfer";
+import { PROOF_ALLOWED_TYPES, PROOF_MAX_BYTES, formatPhoneDisplay, sameNumber, telLink, whatsappLink } from "@/lib/payments/manual-transfer";
 
 type Info = {
   bankName: string;
@@ -14,6 +14,7 @@ type Info = {
   accountNumber: string;
   note: string | null;
   whatsapp: string | null;
+  call: string | null;
 };
 
 /** Shrinks big phone photos so the upload stays under the serverless body limit. */
@@ -66,6 +67,10 @@ export function ManualPaymentPanel({
     info.whatsapp,
     `Hello ${storeName}, I've paid ${totalLabel} for order #${orderCode}. Please confirm my payment.`
   );
+  const tel = telLink(info.call);
+  // One line that does both jobs gets one row with both buttons instead of the number twice.
+  const sameLine = Boolean(wa && tel && sameNumber(info.whatsapp, info.call));
+  const hasContact = Boolean(wa || tel);
 
   async function copyAccount() {
     try {
@@ -201,14 +206,46 @@ export function ManualPaymentPanel({
       <section style={box} className="p-6">
         <h2 className="mb-1 text-base font-bold">Taking a while to confirm?</h2>
         <p className="text-sm" style={{ opacity: 0.75 }}>
-          {wa ? `Message ${storeName} directly on WhatsApp and they can check their account.` : `Contact ${storeName} to confirm your payment.`}
+          {hasContact ? `Message or call ${storeName} directly and they can check their account.` : `Contact ${storeName} to confirm your payment.`}
         </p>
-        <div className="mt-3 flex flex-wrap gap-2">
-          {wa && (
-            <a href={wa} target="_blank" rel="noopener noreferrer" style={{ background: "#25D366", color: "#fff" }} className="inline-flex items-center gap-2 rounded-full px-5 py-2.5 text-sm font-semibold no-underline">
-              <MessageCircle className="h-4 w-4" /> Chat on WhatsApp
-            </a>
-          )}
+
+        {hasContact && (
+          <ul className="mt-4 space-y-3">
+            {sameLine ? (
+              <li className="flex flex-wrap items-center gap-3">
+                <div className="min-w-[10rem]">
+                  <p className="text-xs font-semibold uppercase tracking-wide" style={{ opacity: 0.55 }}>Call or WhatsApp</p>
+                  <p className="mt-0.5 text-sm font-semibold">{formatPhoneDisplay(info.call)}</p>
+                </div>
+                <CallButton href={tel!} ink={ink} />
+                <WhatsAppButton href={wa!} />
+              </li>
+            ) : (
+              <>
+                {wa && (
+                  <li className="flex flex-wrap items-center gap-3">
+                    <div className="min-w-[10rem]">
+                      <p className="text-xs font-semibold uppercase tracking-wide" style={{ opacity: 0.55 }}>WhatsApp</p>
+                      <p className="mt-0.5 text-sm font-semibold">{formatPhoneDisplay(info.whatsapp)}</p>
+                    </div>
+                    <WhatsAppButton href={wa} />
+                  </li>
+                )}
+                {tel && (
+                  <li className="flex flex-wrap items-center gap-3">
+                    <div className="min-w-[10rem]">
+                      <p className="text-xs font-semibold uppercase tracking-wide" style={{ opacity: 0.55 }}>Call line</p>
+                      <p className="mt-0.5 text-sm font-semibold">{formatPhoneDisplay(info.call)}</p>
+                    </div>
+                    <CallButton href={tel} ink={ink} />
+                  </li>
+                )}
+              </>
+            )}
+          </ul>
+        )}
+
+        <div className="mt-4 flex flex-wrap gap-2">
           <button type="button" onClick={() => router.refresh()} style={{ border: `1px solid ${ink}33`, color: ink }} className="inline-flex items-center gap-2 rounded-full px-5 py-2.5 text-sm font-semibold">
             <RefreshCw className="h-4 w-4" /> Check status
           </button>
@@ -218,5 +255,21 @@ export function ManualPaymentPanel({
         </div>
       </section>
     </div>
+  );
+}
+
+function WhatsAppButton({ href }: { href: string }) {
+  return (
+    <a href={href} target="_blank" rel="noopener noreferrer" style={{ background: "#25D366", color: "#fff" }} className="inline-flex items-center gap-2 rounded-full px-5 py-2.5 text-sm font-semibold no-underline">
+      <MessageCircle className="h-4 w-4" /> Chat on WhatsApp
+    </a>
+  );
+}
+
+function CallButton({ href, ink }: { href: string; ink: string }) {
+  return (
+    <a href={href} style={{ border: `1px solid ${ink}33`, color: ink }} className="inline-flex items-center gap-2 rounded-full px-5 py-2.5 text-sm font-semibold no-underline">
+      <Phone className="h-4 w-4" /> Call now
+    </a>
   );
 }

@@ -21,6 +21,8 @@ export type ManualPayInfo = {
   note: string | null;
   /** Digits only, international format (e.g. 2348012345678). */
   whatsapp: string | null;
+  /** The store's call line, digits only, international format. May be the same number as `whatsapp`. */
+  call: string | null;
 };
 
 type StoreLike = {
@@ -62,13 +64,37 @@ export function whatsappLink(number: string | null | undefined, message?: string
   return `https://wa.me/${n}${message ? `?text=${encodeURIComponent(message)}` : ""}`;
 }
 
+/** tel: link for a call line. Null when the number can't be dialled. */
+export function telLink(number: string | null | undefined): string | null {
+  const n = normalizeWhatsapp(number);
+  return n ? `tel:+${n}` : null;
+}
+
+/** True when two numbers are the same line, whatever format they were typed in. */
+export function sameNumber(a: string | null | undefined, b: string | null | undefined): boolean {
+  const x = normalizeWhatsapp(a);
+  const y = normalizeWhatsapp(b);
+  return Boolean(x && y && x === y);
+}
+
+/** Readable form of a stored number: Nigerian numbers as 0801 234 5678, everything else as +<digits>. */
+export function formatPhoneDisplay(number: string | null | undefined): string {
+  const n = normalizeWhatsapp(number);
+  if (!n) return "";
+  if (n.startsWith("234") && n.length === 13) return `0${n.slice(3, 6)} ${n.slice(6, 9)} ${n.slice(9)}`;
+  return `+${n}`;
+}
+
 function socialWhatsapp(socialLinks: unknown): string | null {
   if (!socialLinks || typeof socialLinks !== "object") return null;
   const v = (socialLinks as Record<string, unknown>).whatsapp;
   return typeof v === "string" ? v : null;
 }
 
-/** What a customer sees on the pay page. Falls back to older contact fields for the WhatsApp number. */
+/**
+ * What a customer sees on the pay page. The WhatsApp number falls back to older
+ * contact fields; the call line is the store's contact phone.
+ */
 export function manualPayInfoFromStore(store: StoreLike): ManualPayInfo {
   return {
     enabled: store.manualPayEnabled !== false,
@@ -80,6 +106,7 @@ export function manualPayInfoFromStore(store: StoreLike): ManualPayInfo {
       normalizeWhatsapp(store.whatsappNumber) ??
       normalizeWhatsapp(socialWhatsapp(store.socialLinks)) ??
       normalizeWhatsapp(store.contactPhone),
+    call: normalizeWhatsapp(store.contactPhone),
   };
 }
 

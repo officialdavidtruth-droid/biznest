@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { manualPayInfoFromStore, manualPayReady, normalizeWhatsapp, whatsappLink } from "@/lib/payments/manual-transfer";
+import { formatPhoneDisplay, manualPayInfoFromStore, manualPayReady, normalizeWhatsapp, sameNumber, telLink, whatsappLink } from "@/lib/payments/manual-transfer";
 
 describe("normalizeWhatsapp", () => {
   it("turns local Nigerian numbers into international digits", () => {
@@ -47,5 +47,27 @@ describe("manualPayInfoFromStore / manualPayReady", () => {
     expect(manualPayInfoFromStore({ socialLinks: { whatsapp: "08099999999" }, contactPhone: "08011111111" }).whatsapp).toBe("2348099999999");
     expect(manualPayInfoFromStore({ contactPhone: "08011111111" }).whatsapp).toBe("2348011111111");
     expect(manualPayInfoFromStore({}).whatsapp).toBeNull();
+  });
+});
+
+describe("call line", () => {
+  it("builds tel links and readable numbers", () => {
+    expect(telLink("0801 234 5678")).toBe("tel:+2348012345678");
+    expect(telLink("junk")).toBeNull();
+    expect(formatPhoneDisplay("+2348012345678")).toBe("0801 234 5678");
+    expect(formatPhoneDisplay("+44 7700 900123")).toBe("+447700900123");
+  });
+
+  it("recognises the same line typed two ways", () => {
+    expect(sameNumber("08012345678", "+234 801 234 5678")).toBe(true);
+    expect(sameNumber("08012345678", "08099999999")).toBe(false);
+    expect(sameNumber(null, "08012345678")).toBe(false);
+  });
+
+  it("uses the contact phone as the call line, separate from WhatsApp", () => {
+    const info = manualPayInfoFromStore({ whatsappNumber: "2348012345678", contactPhone: "08099999999" });
+    expect(info.whatsapp).toBe("2348012345678");
+    expect(info.call).toBe("2348099999999");
+    expect(manualPayInfoFromStore({}).call).toBeNull();
   });
 });

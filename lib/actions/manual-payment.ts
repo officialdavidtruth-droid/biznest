@@ -16,9 +16,10 @@ export type ManualPaymentSettingsInput = {
   accountNumber: string;
   note: string;
   whatsapp: string;
+  call: string;
 };
 
-/** Vendor publishes (or updates) the account customers pay into, plus their WhatsApp contact. */
+/** Vendor publishes (or updates) the account customers pay into, plus their WhatsApp number and call line. */
 export async function saveManualPaymentSettings(slug: string, input: ManualPaymentSettingsInput): Promise<ActionResult> {
   const access = await assertStorePermission(slug, "payments");
   if (!access.success) return { success: false, error: access.error };
@@ -29,12 +30,15 @@ export async function saveManualPaymentSettings(slug: string, input: ManualPayme
   const note = input.note.trim().slice(0, 500);
   const whatsappRaw = input.whatsapp.trim();
   const whatsapp = whatsappRaw ? normalizeWhatsapp(whatsappRaw) : null;
+  const callRaw = (input.call ?? "").trim();
+  const call = callRaw ? normalizeWhatsapp(callRaw) : null;
 
   if (whatsappRaw && !whatsapp) return { success: false, error: "That WhatsApp number doesn't look right. Use the international format, e.g. +234 801 234 5678." };
+  if (callRaw && !call) return { success: false, error: "That call line doesn't look right. Use the international format, e.g. +234 801 234 5678." };
   if (input.enabled) {
     if (!bankName || !accountName || !accountNumber) return { success: false, error: "Add the bank name, account name and account number before turning this on." };
     if (!/^[0-9A-Za-z-]{6,34}$/.test(accountNumber)) return { success: false, error: "The account number can only contain letters, digits and dashes." };
-    if (!whatsapp) return { success: false, error: "Add your WhatsApp number so customers can reach you if confirming takes time." };
+    if (!whatsapp && !call) return { success: false, error: "Add your WhatsApp number or call line so customers can reach you if confirming takes time." };
   }
 
   await prisma.store.update({
@@ -46,6 +50,8 @@ export async function saveManualPaymentSettings(slug: string, input: ManualPayme
       manualAccountNumber: accountNumber || null,
       manualPayNote: note || null,
       whatsappNumber: whatsapp,
+      // The call line is the store's contact phone (also used in the storefront footer).
+      contactPhone: call ? `+${call}` : null,
     },
   });
 

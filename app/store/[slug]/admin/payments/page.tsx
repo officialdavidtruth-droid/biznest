@@ -83,6 +83,8 @@ export default async function PaymentsPage({ params }: { params: Promise<{ slug:
           accountNumber: store.manualAccountNumber ?? "",
           note: store.manualPayNote ?? "",
           whatsapp: manual.whatsapp ? `+${manual.whatsapp}` : "",
+          // The call line is the store's contact phone.
+          call: manual.call ? `+${manual.call}` : "",
         }}
       />
 

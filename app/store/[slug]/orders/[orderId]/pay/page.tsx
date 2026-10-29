@@ -53,6 +53,7 @@ export default async function PayOrderPage({ params }: { params: Promise<{ slug:
               accountNumber: info.accountNumber!,
               note: info.note,
               whatsapp: info.whatsapp,
+              call: info.call,
             }}
             initialProofUrl={order.paymentProofUrl ?? null}
             palette={palette}

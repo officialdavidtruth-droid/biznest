@@ -12,6 +12,7 @@ type Initial = {
   accountNumber: string;
   note: string;
   whatsapp: string;
+  call: string;
 };
 
 const fieldClass = "w-full rounded-md border bg-background px-3 py-2 text-sm outline-none focus:border-[var(--bn-admin-orange)]";
@@ -61,11 +62,25 @@ export function ManualPaymentSettingsForm({ slug, initial, canEdit }: { slug: st
         <span className="mb-1 block text-xs font-semibold uppercase tracking-wide text-muted-foreground">Account name</span>
         <input className={fieldClass} value={form.accountName} disabled={!canEdit} onChange={(e) => set({ accountName: e.target.value })} placeholder="Name on the account" maxLength={120} />
       </label>
-      <label className="block text-sm">
-        <span className="mb-1 block text-xs font-semibold uppercase tracking-wide text-muted-foreground">WhatsApp number</span>
-        <input className={fieldClass} value={form.whatsapp} disabled={!canEdit} onChange={(e) => set({ whatsapp: e.target.value })} placeholder="+234 801 234 5678" inputMode="tel" maxLength={25} />
-        <span className="mt-1 block text-xs text-muted-foreground">Shown next to your account details. If confirming takes time, customers can message you here.</span>
-      </label>
+      <div className="grid gap-4 sm:grid-cols-2">
+        <label className="text-sm">
+          <span className="mb-1 block text-xs font-semibold uppercase tracking-wide text-muted-foreground">WhatsApp number</span>
+          <input className={fieldClass} value={form.whatsapp} disabled={!canEdit} onChange={(e) => set({ whatsapp: e.target.value })} placeholder="+234 801 234 5678" inputMode="tel" maxLength={25} />
+        </label>
+        <label className="text-sm">
+          <span className="mb-1 block text-xs font-semibold uppercase tracking-wide text-muted-foreground">Call line</span>
+          <input className={fieldClass} value={form.call} disabled={!canEdit} onChange={(e) => set({ call: e.target.value })} placeholder="+234 809 876 5432" inputMode="tel" maxLength={25} />
+        </label>
+      </div>
+      <div className="-mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-muted-foreground">
+        <span>Customers see both next to your account details if confirming takes time. Add at least one.</span>
+        {canEdit && (
+          <button type="button" className="font-semibold underline" onClick={() => set({ call: form.whatsapp })}>
+            Call line is the same as WhatsApp
+          </button>
+        )}
+        <span className="block w-full">The call line is also your store&apos;s contact phone, so it appears in your storefront footer.</span>
+      </div>
       <label className="block text-sm">
         <span className="mb-1 block text-xs font-semibold uppercase tracking-wide text-muted-foreground">Note to customers (optional)</span>
         <textarea className={fieldClass} rows={2} value={form.note} disabled={!canEdit} onChange={(e) => set({ note: e.target.value })} placeholder="e.g. Orders are confirmed within 30 minutes, 8am to 8pm." maxLength={500} />
