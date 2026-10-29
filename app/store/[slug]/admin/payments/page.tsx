@@ -2,7 +2,6 @@
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { getPayoutStatus } from "@/lib/actions/store";
-import { ConnectPayoutForm } from "@/components/dashboard/connect-payout-form";
 import { getOwnGatewaySettings } from "@/lib/actions/store-gateway";
 import { OwnGatewayForm } from "@/components/dashboard/own-gateway-form";
 import { ManualPaymentSettingsForm } from "@/components/dashboard/manual-payment-settings-form";
@@ -21,6 +20,8 @@ export default async function PaymentsPage({ params }: { params: Promise<{ slug:
   const money = moneyFormatter(store);
   if (!store) return null;
 
+  // Owner-only gate: getPayoutStatus returns null for anyone but the store owner.
+  // (The legacy payout account card is hidden for now; only the own-gateway form remains.)
   const payout = await getPayoutStatus(slug);
   if (!payout) return null;
   // Owner-only: null for staff, who must not see or change the store's payment keys.
@@ -87,24 +88,6 @@ export default async function PaymentsPage({ params }: { params: Promise<{ slug:
           call: manual.call ? `+${manual.call}` : "",
         }}
       />
-
-      {payout.connected && (
-        <section className="mt-8">
-          <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-muted-foreground">Legacy payout account</h2>
-          <p className="mb-3 max-w-xl text-sm text-muted-foreground">
-            New customer payments no longer go through BizNest, so no new payouts are created. This account is kept only to settle payments received before the switch.
-          </p>
-          <div className="max-w-md">
-            <ConnectPayoutForm
-              slug={slug}
-              provider={store.ownGatewayProvider === "FLUTTERWAVE" ? "FLUTTERWAVE" : "PAYSTACK"}
-              connected={payout.connected}
-              needsReconnect={payout.needsReconnect}
-              details={payout.payoutDetails}
-            />
-          </div>
-        </section>
-      )}
 
       {ownGateway && (
         <section className="mt-8">
