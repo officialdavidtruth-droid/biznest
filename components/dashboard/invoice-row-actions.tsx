@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { sendInvoice, markInvoicePaid } from "@/lib/actions/invoice";
+import { sendInvoice, markInvoicePaid, getInvoiceShareLink } from "@/lib/actions/invoice";
 import type { InvoiceStatus } from "@prisma/client";
 
 export function InvoiceRowActions({
@@ -43,10 +43,19 @@ export function InvoiceRowActions({
     router.refresh();
   }
 
-  function copyLink() {
-    const url = `${window.location.origin}/invoices/${invoiceId}`;
-    navigator.clipboard.writeText(url);
-    toast.success("Link copied.");
+  async function copyLink() {
+    // The customer page needs the signed token, which only the server can mint.
+    const result = await getInvoiceShareLink(storeSlug, invoiceId);
+    if (!result.success) {
+      toast.error(result.error);
+      return;
+    }
+    try {
+      await navigator.clipboard.writeText(result.data.url);
+      toast.success("Link copied.");
+    } catch {
+      toast.error("Couldn't copy automatically. Please try again.");
+    }
   }
 
   return (

@@ -16,11 +16,11 @@ export default async function CustomerInvoicePage({
   searchParams,
 }: {
   params: Promise<{ id: string }>;
-  searchParams: Promise<{ payment?: string }>;
+  searchParams: Promise<{ payment?: string; token?: string }>;
 }) {
   const { id } = await params;
-  const { payment } = await searchParams;
-  const invoice = await getInvoiceForCustomer(id);
+  const { payment, token } = await searchParams;
+  const invoice = await getInvoiceForCustomer(id, token);
   if (!invoice) notFound();
 
   return (
@@ -100,6 +100,12 @@ export default async function CustomerInvoicePage({
         )}
 
         <div className="mt-6 text-center">
+          <a
+            href={`/api/invoices/${invoice.id}/pdf${token ? `?token=${encodeURIComponent(token)}` : ""}`}
+            className="mr-4 text-xs font-medium text-slate-500 hover:text-primary"
+          >
+            Download PDF
+          </a>
           <Link href={`/${invoice.store.slug}`} className="text-xs font-medium text-slate-500 hover:text-primary">
             Visit {invoice.store.name} →
           </Link>

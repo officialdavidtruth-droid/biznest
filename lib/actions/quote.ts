@@ -11,29 +11,14 @@ import type { ActionResult } from "@/types/actions";
 import { createPendingPayment, markPaymentFailed } from "@/lib/payments/pending";
 import { assertStorePermission } from "@/lib/access/assert-store-access";
 import { formatNumber } from "@/lib/i18n/locale";
+import { signDocToken, verifyDocToken } from "@/lib/documents/share-token";
+import { isCustomerOfStore } from "@/lib/access/store-customer";
+import { cleanLines, parseOptionalDate, validateContact, validateLines, validateOptionalAmount } from "@/lib/utils/document-validation";
 
 const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? "https://biznest.vercel.app";
 
-function quoteSecret() {
-  const secret = process.env.AUTH_SECRET;
-  if (!secret) throw new Error("AUTH_SECRET is not configured.");
-  return secret;
-}
-
-async function quoteToken(quoteId: string) {
-  const key = await crypto.subtle.importKey("raw", new TextEncoder().encode(quoteSecret()), { name: "HMAC", hash: "SHA-256" }, false, ["sign", "verify"]);
-  const sig = await crypto.subtle.sign("HMAC", key, new TextEncoder().encode(`quote:${quoteId}`));
-  return Buffer.from(sig).toString("base64url");
-}
-
-async function verifyQuoteToken(quoteId: string, token: string) {
-  if (!token) return false;
-  const expected = await quoteToken(quoteId);
-  if (expected.length !== token.length) return false;
-  let diff = 0;
-  for (let i = 0; i < expected.length; i++) diff |= expected.charCodeAt(i) ^ token.charCodeAt(i);
-  return diff === 0;
-}
+const quoteToken = (quoteId: string) => signDocToken("quote", quoteId);
+const verifyQuoteToken = (quoteId: string, token: string) => verifyDocToken("quote", quoteId, token);
 
 // Quotes live under the "orders" permission in the nav (dashboard-nav.ts).
 async function assertStoreAccess(slug: string) {
@@ -61,12 +46,20 @@ export async function createQuote(
   const access = await assertStoreAccess(slug);
   if (!access.success) return { success: false, error: access.error };
 
-  if (!input.items.length) return { success: false, error: "Add at least one line item." };
+  const invalid = validateLines(input.items) ?? validateContact(input) ?? validateOptionalAmount("Deposit", input.depositRequired);
+  if (invalid) return { success: false, error: invalid };
   if (!input.customerId && !input.customerName) {
     return { success: false, error: "Provide a customer, or at minimum a customer name." };
   }
+  const expires = parseOptionalDate(input.expiresAt);
+  if (!expires.ok) return { success: false, error: "The expiry date isn't valid." };
+  // customerId arrives from the client: only accept a customer this store actually has.
+  if (input.customerId && !(await isCustomerOfStore(access.store.id, input.customerId))) {
+    return { success: false, error: "That customer doesn't belong to this store." };
+  }
+  const items = cleanLines(input.items);
 
-  const subtotal = roundMoney(input.items.reduce((sum, i) => sum + i.unitPrice * i.quantity, 0));
+  const subtotal = roundMoney(items.reduce((sum, i) => sum + i.unitPrice * i.quantity, 0));
   if (subtotal <= 0) return { success: false, error: "Quote total must be greater than zero." };
 
   if (input.depositRequired != null && input.depositRequired > subtotal) {
@@ -91,8 +84,8 @@ export async function createQuote(
         subtotal,
         total: subtotal,
         depositRequired: input.depositRequired != null ? roundMoney(input.depositRequired) : null,
-        expiresAt: input.expiresAt ? new Date(input.expiresAt) : null,
-        items: { create: input.items.map((i) => ({ description: i.description, quantity: i.quantity, unitPrice: i.unitPrice })) },
+        expiresAt: expires.date,
+        items: { create: items.map((i) => ({ description: i.description, quantity: i.quantity, unitPrice: i.unitPrice })) },
       },
     });
   });
@@ -158,6 +151,18 @@ export async function getQuoteForCustomer(quoteId: string, token?: string) {
   return null;
 }
 
+/** Merchant-facing: the same tokenised customer link that sendQuote emails, for "Copy link". */
+export async function getQuoteShareLink(slug: string, quoteId: string): Promise<ActionResult<{ url: string }>> {
+  const access = await assertStoreAccess(slug);
+  if (!access.success) return { success: false, error: access.error };
+
+  const quote = await prisma.quote.findFirst({ where: { id: quoteId, storeId: access.store.id }, select: { id: true, status: true } });
+  if (!quote) return { success: false, error: "Quote not found." };
+  if (quote.status === "DRAFT") return { success: false, error: "Send the quote first to get a customer link." };
+
+  return { success: true, data: { url: `${APP_URL}/quotes/${quote.id}?token=${encodeURIComponent(await quoteToken(quote.id))}` } };
+}
+
 // --- Send ------------------------------------------------------------------
 
 export async function sendQuote(
@@ -221,6 +226,8 @@ export async function acceptQuote(quoteId: string): Promise<ActionResult<{ autho
   if (!quote.customerId && quote.customerEmail && session.user.email && quote.customerEmail.toLowerCase() !== session.user.email.toLowerCase()) return { success: false, error: "This quote was sent to a different email address." };
   if (quote.status === "ACCEPTED") return { success: false, error: "This quote has already been accepted." };
   if (quote.status === "DECLINED" || quote.status === "EXPIRED") return { success: false, error: "This quote is no longer available." };
+  // Drafts are hidden from the customer page, but the action is callable with just an id.
+  if (quote.status !== "SENT") return { success: false, error: "This quote isn't open for acceptance yet." };
   if (quote.expiresAt && quote.expiresAt < new Date()) {
     await prisma.quote.update({ where: { id: quoteId }, data: { status: "EXPIRED" } });
     return { success: false, error: "This quote has expired." };
@@ -275,7 +282,14 @@ export async function declineQuote(quoteId: string): Promise<ActionResult> {
   if (quote.customerId && quote.customerId !== session.user.id) return { success: false, error: "This quote is assigned to another customer." };
   if (!quote.customerId && quote.customerEmail && session.user.email && quote.customerEmail.toLowerCase() !== session.user.email.toLowerCase()) return { success: false, error: "This quote was sent to a different email address." };
 
-  await prisma.quote.update({ where: { id: quoteId }, data: { status: "DECLINED", respondedAt: new Date() } });
+  // Only an open quote can be declined. Without this, a customer could flip an
+  // ACCEPTED quote (deposit paid, order created) to DECLINED.
+  if (quote.status === "ACCEPTED") return { success: false, error: "This quote has already been accepted." };
+  if (quote.status !== "SENT") return { success: false, error: "This quote is no longer open." };
+
+  // Conditional write so a concurrent acceptance can't be overwritten.
+  const updated = await prisma.quote.updateMany({ where: { id: quoteId, status: "SENT" }, data: { status: "DECLINED", respondedAt: new Date() } });
+  if (updated.count === 0) return { success: false, error: "This quote is no longer open." };
   return { success: true, data: undefined };
 }
 

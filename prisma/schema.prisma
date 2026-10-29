@@ -3665,7 +3665,7 @@ model Referral {
 
 model Invoice {
   id           String        @id @default(cuid())
-  invoiceNo    String        @unique
+  invoiceNo    String
 
   storeId      String
   store        Store         @relation(fields: [storeId], references: [id])
@@ -3707,6 +3707,7 @@ model Invoice {
   createdAt    DateTime      @default(now())
   updatedAt    DateTime      @updatedAt
 
+  @@unique([storeId, invoiceNo])
   @@index([storeId])
   @@index([customerId])
 }
@@ -3739,7 +3740,7 @@ enum InvoiceStatus {
 
 model Quote {
   id            String       @id @default(cuid())
-  quoteNo       String       @unique
+  quoteNo       String
 
   storeId       String
   store         Store        @relation(fields: [storeId], references: [id])
@@ -3783,6 +3784,7 @@ model Quote {
   createdAt     DateTime     @default(now())
   updatedAt     DateTime     @updatedAt
 
+  @@unique([storeId, quoteNo])
   @@index([storeId])
   @@index([customerId])
 }

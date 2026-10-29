@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { sendQuote } from "@/lib/actions/quote";
+import { sendQuote, getQuoteShareLink } from "@/lib/actions/quote";
 import type { QuoteStatus } from "@prisma/client";
 
 export function QuoteRowActions({
@@ -33,10 +33,19 @@ export function QuoteRowActions({
     router.refresh();
   }
 
-  function copyLink() {
-    const url = `${window.location.origin}/quotes/${quoteId}`;
-    navigator.clipboard.writeText(url);
-    toast.success("Link copied.");
+  async function copyLink() {
+    // The customer page needs the signed token, which only the server can mint.
+    const result = await getQuoteShareLink(storeSlug, quoteId);
+    if (!result.success) {
+      toast.error(result.error);
+      return;
+    }
+    try {
+      await navigator.clipboard.writeText(result.data.url);
+      toast.success("Link copied.");
+    } catch {
+      toast.error("Couldn't copy automatically. Please copy the link from the address bar.");
+    }
   }
 
   if (incomingRequest) {

@@ -12,6 +12,9 @@ import { createPendingPayment, markPaymentFailed } from "@/lib/payments/pending"
 import type { Invoice, InvoiceItem } from "@prisma/client";
 import { assertStorePermission } from "@/lib/access/assert-store-access";
 import { formatNumber } from "@/lib/i18n/locale";
+import { customerDocUrl, invoiceTokenRequiredFrom, verifyDocToken } from "@/lib/documents/share-token";
+import { isCustomerOfStore } from "@/lib/access/store-customer";
+import { cleanLines, validateContact, validateLines, validateOptionalAmount } from "@/lib/utils/document-validation";
 
 const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? "https://biznest.vercel.app";
 
@@ -43,12 +46,28 @@ export async function createInvoice(
   const access = await assertStoreAccess(slug);
   if (!access.success) return { success: false, error: access.error };
 
-  if (!input.items.length) return { success: false, error: "Add at least one line item." };
+  const invalid =
+    validateLines(input.items) ??
+    validateContact(input) ??
+    validateOptionalAmount("Tax", input.tax) ??
+    validateOptionalAmount("Discount", input.discount) ??
+    validateOptionalAmount("Delivery fee", input.deliveryFee);
+  if (invalid) return { success: false, error: invalid };
   if (!input.customerId && !input.customerName) {
     return { success: false, error: "Provide a customer, or at minimum a customer name." };
   }
 
-  const subtotal = roundMoney(input.items.reduce((sum, i) => sum + i.unitPrice * i.quantity, 0));
+  // customerId / orderId arrive from the client: only link records that belong to this store.
+  if (input.customerId && !(await isCustomerOfStore(access.store.id, input.customerId))) {
+    return { success: false, error: "That customer doesn't belong to this store." };
+  }
+  if (input.orderId) {
+    const order = await prisma.order.findFirst({ where: { id: input.orderId, storeId: access.store.id }, select: { id: true } });
+    if (!order) return { success: false, error: "That order doesn't belong to this store." };
+  }
+  const items = cleanLines(input.items);
+
+  const subtotal = roundMoney(items.reduce((sum, i) => sum + i.unitPrice * i.quantity, 0));
   const tax = roundMoney(input.tax ?? 0);
   const discount = roundMoney(input.discount ?? 0);
   const deliveryFee = roundMoney(input.deliveryFee ?? 0);
@@ -79,7 +98,7 @@ export async function createInvoice(
         discount,
         deliveryFee,
         total,
-        items: { create: input.items.map((i) => ({ description: i.description, quantity: i.quantity, unitPrice: i.unitPrice })) },
+        items: { create: items.map((i) => ({ description: i.description, quantity: i.quantity, unitPrice: i.unitPrice })) },
       },
     });
   });
@@ -113,11 +132,34 @@ export async function getInvoice(slug: string, invoiceId: string): Promise<(Invo
 }
 
 /** Customer-facing read, e.g. a link sent via email/WhatsApp — no store-owner auth required, but only ever returns an invoice that's actually been sent. */
-export async function getInvoiceForCustomer(invoiceId: string) {
-  return prisma.invoice.findFirst({
+export async function getInvoiceForCustomer(invoiceId: string, token?: string) {
+  const invoice = await prisma.invoice.findFirst({
     where: { id: invoiceId, status: { not: "DRAFT" } },
     include: { items: true, store: { select: { name: true, slug: true, logoUrl: true } } },
   });
+  if (!invoice) return null;
+
+  // Same rules as quotes: a signed link, or the signed-in customer it was raised for.
+  if (await verifyDocToken("invoice", invoiceId, token)) return invoice;
+  const session = await auth();
+  if (session?.user?.id && invoice.customerId === session.user.id) return invoice;
+  const customerEmail = invoice.customerEmail?.toLowerCase();
+  if (customerEmail && session?.user?.email?.toLowerCase() === customerEmail) return invoice;
+  // Links emailed before tokens existed (see invoiceTokenRequiredFrom) keep working.
+  if (invoice.sentAt && invoice.sentAt < invoiceTokenRequiredFrom()) return invoice;
+  return null;
+}
+
+/** Merchant-facing: the same tokenised customer link that sendInvoice emails, for "Copy link". */
+export async function getInvoiceShareLink(slug: string, invoiceId: string): Promise<ActionResult<{ url: string }>> {
+  const access = await assertStoreAccess(slug);
+  if (!access.success) return { success: false, error: access.error };
+
+  const invoice = await prisma.invoice.findFirst({ where: { id: invoiceId, storeId: access.store.id }, select: { id: true, status: true } });
+  if (!invoice) return { success: false, error: "Invoice not found." };
+  if (invoice.status === "DRAFT") return { success: false, error: "Send the invoice first to get a customer link." };
+
+  return { success: true, data: { url: await customerDocUrl(APP_URL, "invoice", invoice.id) } };
 }
 
 // --- PDF generation --------------------------------------------------------
@@ -160,7 +202,7 @@ export async function sendInvoice(
 
   const email = invoice.customerEmail ?? invoice.customer?.email;
   const phone = invoice.customerPhone ?? invoice.customer?.phone;
-  const viewUrl = `${APP_URL}/invoices/${invoice.id}`;
+  const viewUrl = await customerDocUrl(APP_URL, "invoice", invoice.id);
 
   if ((via === "email" || via === "both") && email) {
     await sendOrderNotificationEmail(
@@ -199,6 +241,8 @@ export async function payInvoice(invoiceId: string): Promise<ActionResult<{ auth
   if (!invoice) return { success: false, error: "Invoice not found." };
   if (invoice.status === "PAID") return { success: false, error: "This invoice has already been paid." };
   if (invoice.status === "CANCELLED") return { success: false, error: "This invoice was cancelled." };
+  // Drafts are hidden from the customer page, but the action is callable with just an id.
+  if (invoice.status !== "SENT") return { success: false, error: "This invoice isn't open for payment yet." };
 
   // A store collecting into its own gateway account has no BizNest payout to verify.
   const checkoutGateway = await resolveCheckoutGateway(invoice.storeId);
@@ -242,8 +286,11 @@ export async function markInvoicePaid(slug: string, invoiceId: string): Promise<
   const invoice = await prisma.invoice.findFirst({ where: { id: invoiceId, storeId: access.store.id } });
   if (!invoice) return { success: false, error: "Invoice not found." };
   if (invoice.status === "PAID") return { success: false, error: "Already marked paid." };
+  if (invoice.status === "CANCELLED") return { success: false, error: "This invoice was cancelled." };
 
-  await prisma.invoice.update({ where: { id: invoiceId }, data: { status: "PAID", paidAt: new Date() } });
+  // Conditional write: never overwrite a payment that settled (or a cancellation) meanwhile.
+  const updated = await prisma.invoice.updateMany({ where: { id: invoiceId, status: { in: ["DRAFT", "SENT"] } }, data: { status: "PAID", paidAt: new Date() } });
+  if (updated.count === 0) return { success: false, error: "This invoice can no longer be marked paid." };
 
   revalidatePath(`/store/${slug}/admin/invoices/${invoiceId}`);
   return { success: true, data: undefined };

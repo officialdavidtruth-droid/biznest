@@ -2,6 +2,7 @@ import { prisma } from "@/lib/prisma";
 import { verifyKorapayTransaction } from "@/lib/payments/korapay";
 import { checkRateLimit, getClientIp } from "@/lib/rate-limit";
 import { settleInvoicePayment } from "@/lib/payments/settle-invoice";
+import { customerDocUrl } from "@/lib/documents/share-token";
 import { settleQuoteDeposit } from "@/lib/payments/settle-quote-deposit";
 import { settleOrderPayment } from "@/lib/payments/settle-order";
 import { buildStoreUrl } from "@/lib/store-url";
@@ -56,9 +57,9 @@ export async function GET(req: Request) {
     if (verification.status === "success" && verification.data?.status === "successful") {
       if (isInvoice) await settleInvoicePayment(txRef, Number(verification.data?.amount ?? 0), verification as object);
       else await settleQuoteDeposit(txRef, Number(verification.data?.amount ?? 0), verification as object);
-      return NextResponse.redirect(isInvoice ? `${APP_URL}/invoices/${id}` : `${APP_URL}/quotes/${id}`);
+      return NextResponse.redirect(await customerDocUrl(APP_URL, isInvoice ? "invoice" : "quote", id));
     }
-    return NextResponse.redirect(`${APP_URL}/${isInvoice ? "invoices" : "quotes"}/${id}?payment=failed`);
+    return NextResponse.redirect(await customerDocUrl(APP_URL, isInvoice ? "invoice" : "quote", id, { payment: "failed" }));
   }
 
   // Wallet funding ("WAL-...") and service-booking payments ("BK-...").
