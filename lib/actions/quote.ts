@@ -141,7 +141,7 @@ export async function getQuote(slug: string, quoteId: string) {
 export async function getQuoteForCustomer(quoteId: string, token?: string) {
   const quote = await prisma.quote.findFirst({
     where: { id: quoteId, status: { not: "DRAFT" } },
-    include: { items: true, store: { select: { name: true, slug: true, logoUrl: true } } },
+    include: { items: true, store: { select: { name: true, slug: true, logoUrl: true } }, order: { select: { id: true, status: true, total: true } } },
   });
   if (!quote) return null;
   if (token && await verifyQuoteToken(quoteId, token)) return quote;
@@ -242,6 +242,8 @@ export async function acceptQuote(quoteId: string): Promise<ActionResult<{ autho
 
   if (!quote.depositRequired || Number(quote.depositRequired) <= 0) {
     const order = await convertQuoteToOrder(quote.id, quote.customerId ?? session.user.id);
+    // null means a concurrent request already claimed this quote.
+    if (!order) return { success: false, error: "This quote has already been accepted." };
     return { success: true, data: { orderId: order.id } };
   }
 
@@ -303,6 +305,15 @@ export async function declineQuote(quoteId: string): Promise<ActionResult> {
  */
 async function convertQuoteToOrder(quoteId: string, buyerId: string) {
   return prisma.$transaction(async (tx) => {
+    // Claim the quote first with a conditional write. Two near-simultaneous
+    // accepts both pass the status check in acceptQuote, but only one can flip
+    // SENT -> ACCEPTED; the loser gets count 0 and must not create an order.
+    const claimed = await tx.quote.updateMany({
+      where: { id: quoteId, status: "SENT" },
+      data: { status: "ACCEPTED", respondedAt: new Date() },
+    });
+    if (claimed.count === 0) return null;
+
     const quote = await tx.quote.findUniqueOrThrow({ where: { id: quoteId }, include: { items: true } });
 
     const order = await tx.order.create({
@@ -321,7 +332,7 @@ async function convertQuoteToOrder(quoteId: string, buyerId: string) {
 
     await tx.quote.update({
       where: { id: quoteId },
-      data: { status: "ACCEPTED", respondedAt: new Date(), orderId: order.id, customerId: quote.customerId ?? buyerId },
+      data: { orderId: order.id, customerId: quote.customerId ?? buyerId },
     });
 
     return order;

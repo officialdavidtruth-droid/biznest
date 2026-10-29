@@ -7,6 +7,7 @@ import { getOrderForBuyer } from "@/lib/actions/order";
 import { getStoreCustomerSessionForStore } from "@/lib/store-customer-auth";
 import { resolveStorePalette } from "@/lib/store-palette";
 import { formatMoney } from "@/lib/utils/format-money";
+import { getOrderPayableNaira } from "@/lib/payments/order-payable";
 import { manualPayInfoFromStore, manualPayReady } from "@/lib/payments/manual-transfer";
 import { ManualPaymentPanel } from "@/components/storefront/manual-payment-panel";
 
@@ -45,7 +46,7 @@ export default async function PayOrderPage({ params }: { params: Promise<{ slug:
             orderId={order.id}
             orderCode={orderCode}
             storeName={store.name}
-            totalLabel={formatMoney(Number(order.total || 0), order.currency)}
+            totalLabel={formatMoney(await getOrderPayableNaira(order.id, order.total), order.currency)}
             info={{
               bankName: info.bankName!,
               accountName: info.accountName!,

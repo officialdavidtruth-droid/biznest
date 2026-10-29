@@ -1,6 +1,7 @@
 import "server-only";
 import { amountCoversExpected } from "@/lib/payments/amount";
 import { settleAndPayout } from "@/lib/payments/payout";
+import { settlePrepaidQuoteOrder } from "@/lib/payments/settle-prepaid-order";
 
 import { prisma } from "@/lib/prisma";
 import { flagPaymentForReview } from "@/lib/payments/review";
@@ -80,6 +81,9 @@ export async function settleQuoteDeposit(reference: string, verifiedAmountNaira:
         where: { id: quoteId },
         data: { status: "ACCEPTED", respondedAt: new Date(), orderId: order.id, depositPaymentId: payment.id },
       });
+      // Attach the deposit to the order so disputes/payment history show it.
+      // The payable balance is credited via getOrderPayableNaira.
+      await tx.payment.update({ where: { id: payment.id }, data: { orderId: order.id } });
     }, { isolationLevel: "Serializable" });
   } catch (error) {
     if (error instanceof Error && error.message === "QUOTE_NO_LONGER_OPEN") {
@@ -90,4 +94,8 @@ export async function settleQuoteDeposit(reference: string, verifiedAmountNaira:
   }
 
   await settleAndPayout(reference);
+
+  // A deposit that covers the whole quote leaves nothing to charge: mark the order paid now.
+  const settled = await prisma.quote.findUnique({ where: { id: quoteId }, select: { orderId: true } });
+  if (settled?.orderId) await settlePrepaidQuoteOrder(settled.orderId);
 }

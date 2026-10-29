@@ -25,6 +25,8 @@ import { PLATFORM_COMMISSION_PERCENT } from "@/lib/constants/commission";
 import { buildStoreUrl } from "@/lib/store-url";
 import { manualPayInfoFromStore, manualPayReady } from "@/lib/payments/manual-transfer";
 import { resolveStoreGateway } from "@/lib/payments/store-gateway";
+import { getOrderPayableNaira } from "@/lib/payments/order-payable";
+import { settlePrepaidQuoteOrder } from "@/lib/payments/settle-prepaid-order";
 import { revalidatePath } from "next/cache";
 import { checkRateLimit } from "@/lib/rate-limit";
 import { notifyCustomerOfPaidOrder, notifyCustomerOfOrderStatus } from "@/lib/notifications/notify";
@@ -140,7 +142,9 @@ async function chargeExistingOrder(
     };
   }>
 > {
-  const totalNaira = Number(order.total);
+  // Order.total less any quote deposit already paid.
+  const totalNaira = await getOrderPayableNaira(order.id, order.total);
+  if (!(totalNaira > 0)) return { success: false, error: "Nothing is left to pay on this order." };
 
   // A store charges customers only through ITS OWN Paystack/Flutterwave keys (when the
   // owner has switched them on). Otherwise the customer pays the vendor's bank account
@@ -225,6 +229,49 @@ async function chargeExistingOrder(
       ...(charge.inline ? { inline: charge.inline } : {}),
     },
   };
+}
+
+/**
+ * Pays the balance of an order created from an accepted quote (the order total
+ * less any deposit already paid). Reuses the normal order charge path, so the
+ * existing callbacks/webhooks settle it. If the deposit already covers the
+ * total, the order is marked paid with no charge.
+ */
+export async function payQuoteOrderBalance(
+  quoteId: string
+): Promise<ActionResult<{ authorizationUrl?: string; orderId: string; paid?: boolean }>> {
+  const session = await auth();
+  if (!session?.user?.id) return { success: false, error: "Please sign in to pay for this quote." };
+
+  const quote = await prisma.quote.findUnique({ where: { id: quoteId }, select: { orderId: true, status: true } });
+  if (!quote?.orderId || quote.status !== "ACCEPTED") return { success: false, error: "This quote has no order to pay yet." };
+
+  const order = await prisma.order.findUnique({ where: { id: quote.orderId } });
+  if (!order || order.buyerId !== session.user.id) return { success: false, error: "This order belongs to another customer." };
+  if (order.status !== "PENDING_PAYMENT" && order.status !== "CANCELLED") return { success: false, error: "This order has already been paid." };
+
+  if ((await getOrderPayableNaira(order.id, order.total)) <= 0) {
+    const settled = await settlePrepaidQuoteOrder(order.id);
+    if (settled.outcome === "paid" || settled.outcome === "already_paid") return { success: true, data: { orderId: order.id, paid: true } };
+    return { success: false, error: "We couldn't confirm your deposit yet. Please try again shortly." };
+  }
+
+  // A failed earlier attempt cancels the order; reopen it so the customer can retry.
+  if (order.status === "CANCELLED") {
+    await prisma.order.updateMany({ where: { id: order.id, status: "CANCELLED" }, data: { status: "PENDING_PAYMENT", checkoutUrl: null } });
+  }
+
+  const store = await prisma.store.findUnique({ where: { id: order.storeId } });
+  if (!store) return { success: false, error: "Store not found." };
+
+  const result = await chargeExistingOrder(
+    { id: order.id, total: order.total, currency: order.currency, checkoutUrl: order.status === "CANCELLED" ? null : order.checkoutUrl },
+    store,
+    session.user.name ?? "Customer",
+    session.user.email
+  );
+  if (!result.success) return result;
+  return { success: true, data: { authorizationUrl: result.data.authorizationUrl, orderId: order.id } };
 }
 
 /* -------------------------------------------------------------------------- */

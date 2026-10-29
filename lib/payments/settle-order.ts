@@ -7,6 +7,7 @@ import { notifyStoreOwnerOfPaidOrder, notifyCustomerOfPaidOrder } from "@/lib/no
 import { flagPaymentForReview } from "@/lib/payments/review";
 import { postOrderSaleToLedger } from "@/lib/financial/order-ledger";
 import { settleAndPayout } from "@/lib/payments/payout";
+import { getOrderPayableNaira } from "@/lib/payments/order-payable";
 
 export type SettleOrderOutcome = "paid" | "already_paid" | "not_found" | "wrong_provider" | "mismatch" | "blocked";
 
@@ -41,8 +42,9 @@ export async function settleOrderPayment(input: {
     await flagPaymentForReview(reference, `provider mismatch (order=${order.paymentProvider}, paid via ${provider})`, payload);
     return { outcome: "wrong_provider" };
   }
-  if (!amountCoversExpected(verifiedAmountNaira, Number(order.total))) {
-    await flagPaymentForReview(reference, `amount mismatch (paid ${verifiedAmountNaira}, order total ${Number(order.total)})`, payload);
+  const payableNaira = await getOrderPayableNaira(order.id, order.total);
+  if (!amountCoversExpected(verifiedAmountNaira, payableNaira)) {
+    await flagPaymentForReview(reference, `amount mismatch (paid ${verifiedAmountNaira}, order payable ${payableNaira}, order total ${Number(order.total)})`, payload);
     return { outcome: "mismatch" };
   }
   if (verifiedCurrency && order.currency && verifiedCurrency.toUpperCase() !== order.currency.toUpperCase()) {

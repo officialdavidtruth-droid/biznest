@@ -4,6 +4,7 @@ import { decrementStockForOrder } from "@/lib/payments/stock";
 import { emitWebhookEvent } from "@/lib/webhooks/dispatch";
 import { notifyStoreOwnerOfPaidOrder, notifyCustomerOfPaidOrder } from "@/lib/notifications/notify";
 import { postOrderSaleToLedger } from "@/lib/financial/order-ledger";
+import { getOrderPayableNaira } from "@/lib/payments/order-payable";
 
 export type SettleManualOutcome = "paid" | "already_paid" | "not_found" | "not_manual";
 
@@ -46,7 +47,7 @@ export async function settleManualOrderPayment(input: { orderId: string; storeId
           provider: "CASH",
           reference,
           status: "SUCCESSFUL",
-          amount: order.total,
+          amount: await getOrderPayableNaira(order.id, order.total),
           currency: order.currency,
           verifiedAt: new Date(),
           rawPayload: { method: "BANK_TRANSFER", confirmedBy: input.confirmedByUserId ?? null, proofUrl: order.paymentProofUrl ?? null },

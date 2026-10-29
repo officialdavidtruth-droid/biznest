@@ -4,6 +4,39 @@ import { useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { acceptQuote, declineQuote } from "@/lib/actions/quote";
+import { payQuoteOrderBalance } from "@/lib/actions/order";
+
+/** Shown on an accepted quote whose order is still unpaid. */
+export function PayQuoteBalanceButton({ quoteId, label }: { quoteId: string; label: string }) {
+  const router = useRouter();
+  const [isPending, startTransition] = useTransition();
+
+  function pay() {
+    startTransition(async () => {
+      const result = await payQuoteOrderBalance(quoteId);
+      if (!result.success) {
+        toast.error(result.error);
+        return;
+      }
+      if (result.data.authorizationUrl) {
+        window.location.href = result.data.authorizationUrl;
+        return;
+      }
+      toast.success("Payment complete.");
+      router.refresh();
+    });
+  }
+
+  return (
+    <button
+      onClick={pay}
+      disabled={isPending}
+      className="w-full rounded-md bg-primary px-4 py-2.5 text-sm font-semibold text-primary-foreground disabled:opacity-50"
+    >
+      {isPending ? "Please wait…" : label}
+    </button>
+  );
+}
 
 export function QuoteActions({ quoteId, hasDeposit }: { quoteId: string; hasDeposit: boolean }) {
   const router = useRouter();

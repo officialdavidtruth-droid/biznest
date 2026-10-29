@@ -2,7 +2,8 @@ import { notFound } from "next/navigation";
 import Link from "next/link";
 import { CheckCircle2, XCircle, Clock, FileSignature } from "lucide-react";
 import { getQuoteForCustomer } from "@/lib/actions/quote";
-import { QuoteActions } from "@/components/quotes/quote-actions";
+import { QuoteActions, PayQuoteBalanceButton } from "@/components/quotes/quote-actions";
+import { getOrderPayableNaira } from "@/lib/payments/order-payable";
 import { formatDate, formatNumber } from "@/lib/i18n/locale";
 
 const STATUS_STYLES: Record<string, string> = {
@@ -25,6 +26,10 @@ export default async function CustomerQuotePage({
   if (!quote) notFound();
 
   const isRespondable = quote.status === "SENT";
+
+  // An accepted quote's order may still have a balance to pay (total less deposit).
+  const orderUnpaid = quote.order && (quote.order.status === "PENDING_PAYMENT" || quote.order.status === "CANCELLED");
+  const balance = orderUnpaid && quote.order ? await getOrderPayableNaira(quote.order.id, quote.order.total) : 0;
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-slate-50 via-white to-white">
@@ -86,7 +91,16 @@ export default async function CustomerQuotePage({
           <QuoteActions quoteId={quote.id} hasDeposit={Boolean(quote.depositRequired && Number(quote.depositRequired) > 0)} />
         )}
         {quote.status === "ACCEPTED" && (
-          <p className="text-center text-sm font-medium text-emerald-700">You&apos;ve accepted this quote.</p>
+          <p className="mb-3 text-center text-sm font-medium text-emerald-700">You&apos;ve accepted this quote.</p>
+        )}
+        {quote.status === "ACCEPTED" && orderUnpaid && (
+          <PayQuoteBalanceButton
+            quoteId={quote.id}
+            label={balance > 0 ? `Pay balance · ${quote.currency} ${formatNumber(balance)}` : "Confirm order"}
+          />
+        )}
+        {quote.status === "ACCEPTED" && quote.order && !orderUnpaid && (
+          <p className="text-center text-sm text-slate-500">Paid in full. Thank you.</p>
         )}
         {quote.status === "DECLINED" && (
           <p className="text-center text-sm text-slate-500">You declined this quote.</p>
