@@ -159,6 +159,16 @@ export async function startBookingPayment(
 
   const amount = Number(booking.paymentAmount ?? booking.service.price);
   if (!Number.isFinite(amount) || amount <= 0) return { success: false, error: "This service has an invalid price." };
+  // Bank transfer to the vendor's own account unless the store has added its own gateway keys.
+  const { resolvePayRoute, startManualTransfer } = await import("@/lib/payments/manual-flow");
+  const route = await resolvePayRoute(booking.storeId);
+  if (route.mode === "error") return { success: false, error: route.error };
+  if (route.mode === "manual") {
+    await prisma.booking.update({ where: { id: booking.id }, data: { paymentStatus: "PENDING", paymentAmount: amount, paymentCurrency: booking.service.currency } });
+    const { payUrl } = await startManualTransfer({ store: booking.store, purpose: "SERVICE_BOOKING", entityId: booking.id, amount, currency: booking.service.currency, bookingId: booking.id });
+    return { success: true, data: { authorizationUrl: payUrl, amount } };
+  }
+
   const reference = `BK-${booking.id}-${shortToken()}`;
   const { resolveCheckoutGateway } = await import("@/lib/payments/gateway");
   // The store's own gateway (bring-your-own keys) wins over the platform's active gateway.

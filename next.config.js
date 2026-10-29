@@ -26,10 +26,10 @@ const nextConfig = {
       "/login", "/register", "/forgot-password", "/reset-password", "/verify-email", "/unsubscribe",
       "/template-preview/:path*", "/api/:path*",
       "/:slug/admin/:path*", "/:slug/checkout/:path*", "/:slug/cart", "/:slug/account/:path*",
-      "/:slug/orders/:path*", "/:slug/payment/:path*", "/:slug/wallet-pay/:path*", "/:slug/favorites",
+      "/:slug/orders/:path*", "/:slug/pay/:path*", "/:slug/payment/:path*", "/:slug/wallet-pay/:path*", "/:slug/favorites",
       "/:slug/search", "/:slug/booking/:path*", "/:slug/login", "/:slug/register",
-      "/store/:slug/admin/:path*", "/store/:slug/checkout/:path*",
-      "/checkout/:path*", "/cart", "/payment/:path*", "/wallet-pay/:path*", "/favorites"
+      "/store/:slug/admin/:path*", "/store/:slug/checkout/:path*", "/store/:slug/pay/:path*",
+      "/checkout/:path*", "/pay/:path*", "/cart", "/payment/:path*", "/wallet-pay/:path*", "/favorites"
     ];
     return [
       // Make Android treat the APK as a file download, not a page to render.

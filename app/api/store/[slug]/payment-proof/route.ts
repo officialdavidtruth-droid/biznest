@@ -34,6 +34,10 @@ function looksLikeImage(buf: Buffer, type: string): boolean {
 export async function POST(req: Request, { params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
 
+  // Invoices, quote deposits, bookings and PMS deposits identify the payment by its (unguessable) reference.
+  const paymentReference = new URL(req.url).searchParams.get("reference") ?? "";
+  if (paymentReference) return uploadTransferProof(req, slug, paymentReference);
+
   const session = (await getStoreCustomerSessionForStore(slug)) ?? (await auth());
   if (!session?.user?.id) return NextResponse.json({ error: "Please sign in to upload your payment proof." }, { status: 401 });
 
@@ -106,6 +110,84 @@ export async function POST(req: Request, { params }: { params: Promise<{ slug: s
     title: "Payment proof received",
     body: `A customer uploaded proof of a ${order.currency} ${formatNumber(Number(order.total))} transfer on ${order.store.name}. Confirm it once the money is in your account.`,
     url: `/store/${order.store.slug}/admin/orders/${order.id}`,
+  }).catch(() => undefined);
+
+  return NextResponse.json({ ok: true, url });
+}
+
+
+/**
+ * Proof for a non-order bank-transfer payment. The pay page is a capability
+ * link (the reference is random), so a guest holding an invoice link can upload
+ * without an account; abuse is bounded by an IP rate limit and by the payment
+ * having to be an open, pending transfer for this store.
+ */
+async function uploadTransferProof(req: Request, slug: string, reference: string) {
+  const ip = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || "unknown";
+  const rate = await checkRateLimit(`payment-proof-ref:${ip}`, 10, 10 * 60 * 1000);
+  if (!rate.allowed) {
+    return NextResponse.json(
+      { error: "Too many uploads. Please wait a few minutes and try again." },
+      { status: 429, headers: rate.retryAfterSeconds ? { "Retry-After": String(rate.retryAfterSeconds) } : undefined }
+    );
+  }
+
+  let form: FormData;
+  try {
+    form = await req.formData();
+  } catch {
+    return NextResponse.json({ error: "That upload couldn't be read. Try a smaller image." }, { status: 400 });
+  }
+  const file = form.get("file");
+  const noteRaw = String(form.get("note") ?? "").trim().slice(0, 300);
+  if (!(file instanceof File)) return NextResponse.json({ error: "Choose an image of your payment first." }, { status: 400 });
+  if (!(PROOF_ALLOWED_TYPES as readonly string[]).includes(file.type)) {
+    return NextResponse.json({ error: "Upload a JPG, PNG or WebP image." }, { status: 400 });
+  }
+  if (file.size > PROOF_MAX_BYTES) return NextResponse.json({ error: "That image is too large (4MB max)." }, { status: 400 });
+
+  const payment = await prisma.payment.findFirst({
+    where: { reference, provider: "CASH", purpose: { not: "ORDER" }, store: { slug } },
+    select: {
+      id: true, status: true, amount: true, currency: true, storeId: true,
+      store: { select: { name: true, slug: true, business: { select: { userId: true } } } },
+    },
+  });
+  if (!payment || !payment.storeId || !payment.store) return NextResponse.json({ error: "Payment not found." }, { status: 404 });
+  if (payment.status !== "PENDING") {
+    return NextResponse.json({ error: payment.status === "SUCCESSFUL" ? "This payment is already confirmed." : "This payment is no longer open." }, { status: 409 });
+  }
+
+  const buffer = Buffer.from(await file.arrayBuffer());
+  if (!looksLikeImage(buffer, file.type)) return NextResponse.json({ error: "That file isn't a valid image." }, { status: 400 });
+
+  let url: string;
+  try {
+    const uploaded = await new Promise<{ secure_url: string }>((resolve, reject) => {
+      const stream = cloudinary.uploader.upload_stream(
+        { folder: `biznest/payment-proofs/${payment.storeId}`, resource_type: "image" },
+        (error, result) => (error || !result ? reject(error) : resolve(result))
+      );
+      stream.end(buffer);
+    });
+    url = uploaded.secure_url;
+  } catch (err) {
+    void logError("STORAGE", "Payment proof upload failed", { reference, message: err instanceof Error ? err.message : String(err) });
+    return NextResponse.json({ error: "We couldn't upload that image. Please try again." }, { status: 502 });
+  }
+
+  const updated = await prisma.payment.updateMany({
+    where: { id: payment.id, status: "PENDING", provider: "CASH" },
+    data: { proofUrl: url, proofAt: new Date(), proofNote: noteRaw || null },
+  });
+  if (updated.count === 0) return NextResponse.json({ error: "This payment was already confirmed." }, { status: 409 });
+
+  await notifyUser({
+    userId: payment.store.business.userId,
+    type: "PAYMENT_PROOF",
+    title: "Payment proof received",
+    body: `A customer uploaded proof of a ${payment.currency} ${formatNumber(Number(payment.amount))} transfer on ${payment.store.name}. Confirm it once the money is in your account.`,
+    url: `/store/${payment.store.slug}/admin/payments`,
   }).catch(() => undefined);
 
   return NextResponse.json({ ok: true, url });

@@ -7,6 +7,7 @@ import { assertStorePermission } from "@/lib/access/assert-store-access";
 import { logStoreActivity } from "@/lib/activity-log";
 import { normalizeWhatsapp } from "@/lib/payments/manual-transfer";
 import { settleManualOrderPayment } from "@/lib/payments/settle-manual-order";
+import { settleManualTransfer, MANUAL_PURPOSE_LABEL, isManualPurpose } from "@/lib/payments/manual-flow";
 import type { ActionResult } from "@/types/actions";
 
 export type ManualPaymentSettingsInput = {
@@ -88,5 +89,68 @@ export async function confirmManualOrderPayment(slug: string, orderId: string): 
 
   revalidatePath(`/store/${slug}/admin/orders`);
   revalidatePath(`/store/${slug}/admin/orders/${orderId}`);
+  return { success: true, data: undefined };
+}
+
+
+export type PendingTransfer = {
+  reference: string;
+  purposeLabel: string;
+  amount: number;
+  currency: string;
+  createdAt: string;
+  proofUrl: string | null;
+  proofAt: string | null;
+  proofNote: string | null;
+};
+
+/** Open bank transfers for invoices, quote deposits, bookings and PMS deposits, waiting for the vendor to confirm. */
+export async function getPendingTransfers(slug: string): Promise<PendingTransfer[]> {
+  const access = await assertStorePermission(slug, "payments");
+  if (!access.success) return [];
+  const rows = await prisma.payment.findMany({
+    where: { storeId: access.store.id, provider: "CASH", status: "PENDING", purpose: { in: ["INVOICE", "QUOTE_DEPOSIT", "SERVICE_BOOKING", "PMS_RESERVATION"] } },
+    orderBy: [{ proofAt: { sort: "desc", nulls: "last" } }, { createdAt: "desc" }],
+    take: 100,
+  });
+  return rows.filter((r) => isManualPurpose(r.purpose)).map((r) => ({
+    reference: r.reference,
+    purposeLabel: MANUAL_PURPOSE_LABEL[r.purpose as keyof typeof MANUAL_PURPOSE_LABEL],
+    amount: Number(r.amount),
+    currency: r.currency,
+    createdAt: r.createdAt.toISOString(),
+    proofUrl: r.proofUrl,
+    proofAt: r.proofAt?.toISOString() ?? null,
+    proofNote: r.proofNote,
+  }));
+}
+
+/** Vendor confirms an invoice / quote deposit / booking / PMS deposit transfer reached their account. */
+export async function confirmManualTransferPayment(slug: string, reference: string): Promise<ActionResult> {
+  const access = await assertStorePermission(slug, "payments");
+  if (!access.success) return { success: false, error: access.error };
+
+  const session = await auth();
+  const result = await settleManualTransfer({ reference, storeId: access.store.id, confirmedByUserId: session?.user?.id ?? null });
+
+  if (result.outcome === "not_found") return { success: false, error: "Payment not found." };
+  if (result.outcome === "not_manual") return { success: false, error: "This payment wasn't made by bank transfer." };
+  if (result.outcome === "already_paid") return { success: false, error: "This payment is already confirmed." };
+  if (result.outcome === "needs_review") {
+    return { success: false, error: "This payment couldn't be applied automatically (the invoice, quote or booking may have been cancelled or expired meanwhile). It has been flagged for review." };
+  }
+
+  await logStoreActivity({
+    storeId: access.store.id,
+    actor: { id: session?.user?.id, name: session?.user?.name, email: session?.user?.email, role: session?.user?.role ?? "unknown" },
+    action: "payment.bank_transfer_confirmed",
+    target: reference,
+  });
+
+  revalidatePath(`/store/${slug}/admin/payments`);
+  revalidatePath(`/store/${slug}/admin/invoices`);
+  revalidatePath(`/store/${slug}/admin/quotes`);
+  revalidatePath(`/store/${slug}/admin/bookings`);
+  revalidatePath(`/store/${slug}/admin/pms`);
   return { success: true, data: undefined };
 }

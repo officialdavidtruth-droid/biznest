@@ -3,7 +3,6 @@
 import { prisma } from "@/lib/prisma";
 import { findBookingOverlapForUnit } from "@/lib/stay-availability";
 import { Prisma } from "@prisma/client";
-import { storeHasPayoutTarget } from "@/lib/payments/payout-target";
 import { revalidatePath } from "next/cache";
 import { assertStorePermission } from "@/lib/access/assert-store-access";
 import { auth } from "@/lib/auth";
@@ -11,6 +10,7 @@ import { hasCapability } from "@/lib/capabilities";
 import { getPluginEntitlement } from "@/lib/plugins";
 import { chargeCustomer, resolveCheckoutGateway, paymentCallbackUrl } from "@/lib/payments/gateway";
 import { createPendingPayment, markPaymentFailed, reconcileReservationPaymentState } from "@/lib/payments/pending";
+import { resolvePayRoute, startManualTransfer } from "@/lib/payments/manual-flow";
 import type { ActionResult } from "@/types/actions";
 import crypto from "crypto";
 import { shortToken } from "@/lib/payments/reference";
@@ -452,12 +452,19 @@ export async function chargeReservationDeposit(
  if(await reconcileReservationPaymentState(reservation.id)==="PENDING")return{success:false,error:"A payment is already in progress for this reservation."};
  if(!["PENDING","CONFIRMED","CHECKED_IN"].includes(reservation.status))return{success:false,error:"Cannot charge a cancelled, no-show, or checked-out reservation."};
 
+ // Bank transfer to the vendor's own account unless the store has added its own gateway keys.
+ const route=await resolvePayRoute(a.store.id);
+ if(route.mode==="error")return{success:false,error:route.error};
+ if(route.mode==="manual"){
+  const{payUrl}=await startManualTransfer({store:a.store,purpose:"PMS_RESERVATION",entityId:reservation.id,amount:amountNaira,currency:"NGN",reservationId:reservation.id});
+  await prisma.propertyReservation.update({where:{id:reservation.id},data:{paymentStatus:"PENDING",depositAmount:amountNaira,paymentCurrency:"NGN"}});
+  revalidatePath(`/store/${slug}/admin/pms`);
+  return{success:true,data:{authorizationUrl:payUrl}};
+ }
+
  const checkoutGateway=await resolveCheckoutGateway(a.store.id);
  if(!checkoutGateway.ok)return{success:false,error:checkoutGateway.error};
  const gateway=checkoutGateway.gateway;
- // A store collecting into its own gateway account has no BizNest payout target to require.
- const hasPayoutTarget=checkoutGateway.usesStoreGateway||storeHasPayoutTarget(a.store,gateway);
- if(!hasPayoutTarget)return{success:false,error:"This store has not connected a payout account yet."};
 
  const reference=`RES-${reservation.id}-${shortToken()}`;
  const callbackUrl=paymentCallbackUrl(gateway);

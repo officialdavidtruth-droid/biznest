@@ -22,7 +22,7 @@ import { postPaymentToLedgerByReference } from "@/lib/financial/order-ledger";
  */
 export async function settleReservationPayment(
  reference:string,
- provider:"PAYSTACK"|"FLUTTERWAVE"|"KORAPAY",
+ provider:"PAYSTACK"|"FLUTTERWAVE"|"KORAPAY"|"CASH",
  verifiedAmountNaira:number,
  rawPayload:object
 ):Promise<ActionResult<{storeSlug:string;reservationId:string}>>{

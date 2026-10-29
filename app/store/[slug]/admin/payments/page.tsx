@@ -13,6 +13,8 @@ import { getRefundClawbackBalance, getRefundPendingPayments } from "@/lib/action
 import { RefundPendingCard } from "@/components/dashboard/refund-pending-card";
 import { RefundClawbackCard } from "@/components/dashboard/refund-clawback-card";
 import { moneyFormatter } from "@/lib/utils/format-money";
+import { getPendingTransfers } from "@/lib/actions/manual-payment";
+import { PendingTransfersList } from "@/components/dashboard/pending-transfers-list";
 
 export default async function PaymentsPage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
@@ -46,6 +48,7 @@ export default async function PaymentsPage({ params }: { params: Promise<{ slug:
     isStaff ? getRefundPendingPayments(slug) : Promise.resolve(null),
   ]);
 
+  const pendingTransfers = await getPendingTransfers(slug);
   const gross = Number(paidTotal._sum.total ?? 0);
   const commission = Number(paidTotal._sum.commission ?? 0);
 
@@ -88,6 +91,8 @@ export default async function PaymentsPage({ params }: { params: Promise<{ slug:
           call: manual.call ? `+${manual.call}` : "",
         }}
       />
+
+      <PendingTransfersList slug={slug} transfers={pendingTransfers} />
 
       {ownGateway && (
         <section className="mt-8">

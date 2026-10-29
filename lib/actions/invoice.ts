@@ -9,6 +9,7 @@ import { sendOrderNotificationEmail, storeEmailBrand } from "@/lib/email/send";
 import { revalidatePath } from "next/cache";
 import type { ActionResult } from "@/types/actions";
 import { createPendingPayment, markPaymentFailed } from "@/lib/payments/pending";
+import { resolvePayRoute, startManualTransfer } from "@/lib/payments/manual-flow";
 import type { Invoice, InvoiceItem } from "@prisma/client";
 import { assertStorePermission } from "@/lib/access/assert-store-access";
 import { formatNumber } from "@/lib/i18n/locale";
@@ -270,12 +271,16 @@ export async function payInvoice(invoiceId: string, token?: string): Promise<Act
   // Drafts are hidden from the customer page, but the action is callable with just an id.
   if (invoice.status !== "SENT") return { success: false, error: "This invoice isn't open for payment yet." };
 
-  // A store collecting into its own gateway account has no BizNest payout to verify.
+  // Bank transfer to the vendor's own account unless the store has added its own gateway keys.
+  const route = await resolvePayRoute(invoice.storeId);
+  if (route.mode === "error") return { success: false, error: route.error };
+  if (route.mode === "manual") {
+    const { payUrl } = await startManualTransfer({ store: invoice.store, purpose: "INVOICE", entityId: invoice.id, amount: Number(invoice.total), currency: invoice.currency });
+    return { success: true, data: { authorizationUrl: payUrl } };
+  }
+
   const checkoutGateway = await resolveCheckoutGateway(invoice.storeId);
   if (!checkoutGateway.ok) return { success: false, error: checkoutGateway.error };
-  if (!checkoutGateway.usesStoreGateway && !invoice.store.payoutVerifiedAt) {
-    return { success: false, error: "This store's payout account is still pending provider verification. The invoice cannot be paid yet." };
-  }
 
   // Reference prefix "INV-" tells the shared payment webhook/callback
   // routes to settle this as an invoice rather than an order — see

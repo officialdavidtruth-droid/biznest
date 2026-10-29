@@ -38,6 +38,8 @@ async function shrinkImage(file: File): Promise<File> {
 export function ManualPaymentPanel({
   slug,
   orderId,
+  reference,
+  subject,
   orderCode,
   storeName,
   totalLabel,
@@ -46,7 +48,11 @@ export function ManualPaymentPanel({
   palette,
 }: {
   slug: string;
-  orderId: string;
+  /** Order checkout identifies the payment by order id; every other purpose by payment reference. */
+  orderId?: string;
+  reference?: string;
+  /** What is being paid, e.g. "invoice #AB12CD34". Defaults to the order. */
+  subject?: string;
   orderCode: string;
   storeName: string;
   totalLabel: string;
@@ -63,9 +69,10 @@ export function ManualPaymentPanel({
   const [busy, setBusy] = useState(false);
   const [proofUrl, setProofUrl] = useState<string | null>(initialProofUrl);
 
+  const what = subject ?? `order #${orderCode}`;
   const wa = whatsappLink(
     info.whatsapp,
-    `Hello ${storeName}, I've paid ${totalLabel} for order #${orderCode}. Please confirm my payment.`
+    `Hello ${storeName}, I've paid ${totalLabel} for ${what}. Please confirm my payment.`
   );
   const tel = telLink(info.call);
   // One line that does both jobs gets one row with both buttons instead of the number twice.
@@ -102,10 +109,11 @@ export function ManualPaymentPanel({
     setBusy(true);
     try {
       const body = new FormData();
-      body.set("orderId", orderId);
+      if (!reference) body.set("orderId", orderId ?? "");
       body.set("file", file);
       if (note.trim()) body.set("note", note.trim());
-      const res = await fetch(`/api/store/${encodeURIComponent(slug)}/payment-proof`, { method: "POST", body });
+      const query = reference ? `?reference=${encodeURIComponent(reference)}` : "";
+      const res = await fetch(`/api/store/${encodeURIComponent(slug)}/payment-proof${query}`, { method: "POST", body });
       const json = (await res.json().catch(() => ({}))) as { url?: string; error?: string };
       if (!res.ok || !json.url) {
         toast.error(json.error ?? "Upload failed. Please try again.");
@@ -157,7 +165,7 @@ export function ManualPaymentPanel({
         {info.note && (
           <p style={{ background: surface }} className="mt-4 rounded-lg px-4 py-3 text-sm">{info.note}</p>
         )}
-        <p className="mt-4 text-xs" style={{ opacity: 0.6 }}>Use order #{orderCode} as the transfer narration if your bank allows it.</p>
+        <p className="mt-4 text-xs" style={{ opacity: 0.6 }}>Use {what} as the transfer narration if your bank allows it.</p>
       </section>
 
       <section style={box} className="p-6">
@@ -171,7 +179,7 @@ export function ManualPaymentPanel({
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img src={proofUrl} alt="Your uploaded payment proof" className="max-h-64 rounded-lg border object-contain" style={{ borderColor: `${ink}22` }} />
             <p className="mt-2 text-sm" style={{ opacity: 0.75 }}>
-              {storeName} has been notified. Your order is confirmed as soon as they see the money in their account. You can replace the screenshot below if it was wrong.
+              {storeName} has been notified. Your payment is confirmed as soon as they see the money in their account. You can replace the screenshot below if it was wrong.
             </p>
           </div>
         )}

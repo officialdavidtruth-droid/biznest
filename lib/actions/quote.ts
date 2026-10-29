@@ -9,6 +9,7 @@ import { sendOrderNotificationEmail, storeEmailBrand } from "@/lib/email/send";
 import { revalidatePath } from "next/cache";
 import type { ActionResult } from "@/types/actions";
 import { createPendingPayment, markPaymentFailed } from "@/lib/payments/pending";
+import { resolvePayRoute, startManualTransfer } from "@/lib/payments/manual-flow";
 import { assertStorePermission } from "@/lib/access/assert-store-access";
 import { formatDate, formatNumber } from "@/lib/i18n/locale";
 import { signDocToken, verifyDocToken } from "@/lib/documents/share-token";
@@ -362,18 +363,24 @@ export async function acceptQuote(quoteId: string): Promise<ActionResult<{ autho
     return { success: false, error: "This quote has expired." };
   }
 
-  // A store collecting into its own gateway account has no BizNest payout to verify.
+  // Bank transfer to the vendor's own account unless the store has added its own gateway keys.
+  const route = await resolvePayRoute(quote.storeId);
+  if (route.mode === "error") return { success: false, error: route.error };
   const checkoutGateway = await resolveCheckoutGateway(quote.storeId);
   if (!checkoutGateway.ok) return { success: false, error: checkoutGateway.error };
-  if (!checkoutGateway.usesStoreGateway && !quote.store.payoutVerifiedAt) {
-    return { success: false, error: "This store's payout account is still pending provider verification. The deposit cannot be accepted yet." };
-  }
 
   if (!quote.depositRequired || Number(quote.depositRequired) <= 0) {
     const order = await convertQuoteToOrder(quote.id, quote.customerId ?? session.user.id);
     // null means a concurrent request claimed this quote, or it expired in the meantime.
     if (!order) return { success: false, error: "This quote is no longer open: it was already accepted or has expired." };
     return { success: true, data: { orderId: order.id } };
+  }
+
+  if (route.mode === "manual") {
+    const { payUrl } = await startManualTransfer({ store: quote.store, purpose: "QUOTE_DEPOSIT", entityId: quote.id, amount: Number(quote.depositRequired), currency: quote.currency });
+    // Remember which signed-in customer is accepting, in case the quote was only addressed by name/email so far.
+    if (!quote.customerId) await prisma.quote.update({ where: { id: quoteId }, data: { customerId: session.user.id } });
+    return { success: true, data: { authorizationUrl: payUrl } };
   }
 
   // Reference prefix "QDEP-" tells the shared payment webhook/callback

@@ -2254,6 +2254,14 @@ model Payment {
   // use the store's keys, and no vendor payout is created for it.
   usesStoreGateway Boolean @default(false)
 
+  // Bank-transfer payments (provider CASH) for invoices, quote deposits,
+  // service bookings and PMS deposits: the customer's screenshot of the
+  // transfer, kept here because those purposes have no Order row to hold it.
+  // (Order checkout keeps its proof on Order.paymentProofUrl.)
+  proofUrl    String?
+  proofAt     DateTime?
+  proofNote   String?
+
   // Refund tracking, set when a support/admin agent issues a refund
   // against this charge (see lib/actions/refund.ts). refundReference is
   // the gateway's own refund id -- unique so the same charge can't somehow

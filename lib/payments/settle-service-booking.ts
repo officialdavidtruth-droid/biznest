@@ -21,7 +21,7 @@ import { postPaymentToLedgerByReference } from "@/lib/financial/order-ledger";
 
 export async function settleServiceBookingPayment(
   reference: string,
-  provider: "PAYSTACK" | "FLUTTERWAVE" | "KORAPAY",
+  provider: "PAYSTACK" | "FLUTTERWAVE" | "KORAPAY" | "CASH",
   verifiedAmountNaira: number,
   rawPayload: object
 ): Promise<ActionResult<{ storeSlug: string; bookingId: string }>> {
