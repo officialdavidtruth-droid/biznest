@@ -38,15 +38,15 @@ export async function customerDocUrl(appUrl: string, kind: DocKind, id: string, 
 }
 
 /**
- * Invoice links emailed before tokens existed look like /invoices/<id>. So customers
- * with an outstanding invoice aren't locked out, invoices first sent before this
- * moment stay viewable without a token. Set INVOICE_LINK_TOKEN_REQUIRED_FROM (an ISO
- * date) to the time this change is deployed.
+ * Invoice links emailed before tokens existed look like /invoices/<id>. Tokens are now
+ * required for every invoice by default. To keep old links working for a while, set
+ * INVOICE_LINK_TOKEN_REQUIRED_FROM (an ISO date): invoices first sent before it stay
+ * viewable without a token. Returns null (no grandfathering) when unset or invalid, so
+ * a forgotten env var fails closed instead of leaving invoices open.
  */
-export function invoiceTokenRequiredFrom(): Date {
-  const fallback = new Date("2026-11-03T00:00:00Z");
+export function invoiceTokenRequiredFrom(): Date | null {
   const raw = process.env.INVOICE_LINK_TOKEN_REQUIRED_FROM;
-  if (!raw) return fallback;
+  if (!raw) return null;
   const parsed = new Date(raw);
-  return Number.isNaN(parsed.getTime()) ? fallback : parsed;
+  return Number.isNaN(parsed.getTime()) ? null : parsed;
 }

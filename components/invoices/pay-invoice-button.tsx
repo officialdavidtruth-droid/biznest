@@ -4,12 +4,12 @@ import { useTransition } from "react";
 import { toast } from "sonner";
 import { payInvoice } from "@/lib/actions/invoice";
 
-export function PayInvoiceButton({ invoiceId }: { invoiceId: string }) {
+export function PayInvoiceButton({ invoiceId, token }: { invoiceId: string; token?: string }) {
   const [isPending, startTransition] = useTransition();
 
   function pay() {
     startTransition(async () => {
-      const result = await payInvoice(invoiceId);
+      const result = await payInvoice(invoiceId, token);
       if (!result.success) {
         toast.error(result.error);
         return;

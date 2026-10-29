@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { sendInvoice, markInvoicePaid, getInvoiceShareLink } from "@/lib/actions/invoice";
+import { sendInvoice, markInvoicePaid, cancelInvoice, getInvoiceShareLink } from "@/lib/actions/invoice";
 import type { InvoiceStatus } from "@prisma/client";
 
 export function InvoiceRowActions({
@@ -31,9 +31,24 @@ export function InvoiceRowActions({
     router.refresh();
   }
 
-  async function handleMarkPaid() {
+  async function handleCancel() {
+    if (!window.confirm("Cancel this invoice? The customer will no longer be able to pay it.")) return;
     setIsSubmitting(true);
-    const result = await markInvoicePaid(storeSlug, invoiceId);
+    const result = await cancelInvoice(storeSlug, invoiceId);
+    setIsSubmitting(false);
+    if (!result.success) {
+      toast.error(result.error);
+      return;
+    }
+    toast.success("Invoice cancelled.");
+    router.refresh();
+  }
+
+  async function handleMarkPaid() {
+    const method = window.prompt("How was it paid? (e.g. cash, bank transfer) — optional");
+    if (method === null) return;
+    setIsSubmitting(true);
+    const result = await markInvoicePaid(storeSlug, invoiceId, method);
     setIsSubmitting(false);
     if (!result.success) {
       toast.error(result.error);
@@ -73,6 +88,11 @@ export function InvoiceRowActions({
       {(status === "SENT") && (
         <button disabled={isSubmitting} onClick={handleMarkPaid} className="text-primary hover:underline disabled:opacity-50">
           Mark paid
+        </button>
+      )}
+      {(status === "DRAFT" || status === "SENT") && (
+        <button disabled={isSubmitting} onClick={handleCancel} className="text-destructive hover:underline disabled:opacity-50">
+          Cancel
         </button>
       )}
     </div>

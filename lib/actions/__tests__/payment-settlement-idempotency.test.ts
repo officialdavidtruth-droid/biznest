@@ -54,7 +54,7 @@ describe("invoice and quote state guards", () => {
 describe("invoice access and ownership guards", () => {
   const read = (p: string) => fs.readFileSync(p, "utf8");
 
-  it("customer invoice reads need a signed token, the matching customer, or a pre-token legacy link", () => {
+  it("customer invoice reads need a signed token, the matching customer, or an opt-in legacy link", () => {
     const invoice = read("lib/actions/invoice.ts");
     expect(invoice).toContain('verifyDocToken("invoice", invoiceId, token)');
     expect(invoice).toContain("invoiceTokenRequiredFrom()");

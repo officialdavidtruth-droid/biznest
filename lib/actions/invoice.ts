@@ -145,8 +145,9 @@ export async function getInvoiceForCustomer(invoiceId: string, token?: string) {
   if (session?.user?.id && invoice.customerId === session.user.id) return invoice;
   const customerEmail = invoice.customerEmail?.toLowerCase();
   if (customerEmail && session?.user?.email?.toLowerCase() === customerEmail) return invoice;
-  // Links emailed before tokens existed (see invoiceTokenRequiredFrom) keep working.
-  if (invoice.sentAt && invoice.sentAt < invoiceTokenRequiredFrom()) return invoice;
+  // Optional grandfathering for links emailed before tokens existed (off unless configured).
+  const legacyCutoff = invoiceTokenRequiredFrom();
+  if (legacyCutoff && invoice.sentAt && invoice.sentAt < legacyCutoff) return invoice;
   return null;
 }
 
@@ -200,30 +201,45 @@ export async function sendInvoice(
   });
   if (!invoice) return { success: false, error: "Invoice not found." };
 
+  if (invoice.status === "PAID" || invoice.status === "CANCELLED") {
+    return { success: false, error: `This invoice is ${invoice.status.toLowerCase()} and can't be sent.` };
+  }
+
   const email = invoice.customerEmail ?? invoice.customer?.email;
   const phone = invoice.customerPhone ?? invoice.customer?.phone;
+  const wantsEmail = via === "email" || via === "both";
+  const wantsWhatsapp = via === "whatsapp" || via === "both";
+  if (wantsEmail && !wantsWhatsapp && !email) return { success: false, error: "This invoice has no customer email address." };
+  if (wantsWhatsapp && !wantsEmail && !phone) return { success: false, error: "This invoice has no customer phone number." };
+  if (!email && !phone) return { success: false, error: "Add a customer email or phone number before sending." };
   const viewUrl = await customerDocUrl(APP_URL, "invoice", invoice.id);
 
-  if ((via === "email" || via === "both") && email) {
-    await sendOrderNotificationEmail(
-      email,
-      `Invoice ${invoice.invoiceNo} from ${access.store.name}`,
-      `You have a new invoice for ${invoice.currency} ${formatNumber(Number(invoice.total))}. View and pay it here: <a href="${viewUrl}">${viewUrl}</a>`,
-      storeEmailBrand(access.store)
-    );
+  let emailed = false;
+  if (wantsEmail && email) {
+    try {
+      await sendOrderNotificationEmail(
+        email,
+        `Invoice ${invoice.invoiceNo} from ${access.store.name}`,
+        `You have a new invoice for ${invoice.currency} ${formatNumber(Number(invoice.total))}. View and pay it here: <a href="${viewUrl}">${viewUrl}</a>`,
+        storeEmailBrand(access.store)
+      );
+      emailed = true;
+    } catch {
+      if (!wantsWhatsapp) return { success: false, error: "The email couldn't be sent. Please try again." };
+    }
   }
 
   let whatsappUrl: string | undefined;
-  if ((via === "whatsapp" || via === "both") && phone) {
-    const message = encodeURIComponent(
-      `Invoice ${invoice.invoiceNo} from ${access.store.name}: ${invoice.currency} ${formatNumber(Number(invoice.total))}. Pay here: ${viewUrl}`
-    );
-    whatsappUrl = whatsappLink(phone, decodeURIComponent(message)) ?? undefined;
+  if (wantsWhatsapp && phone) {
+    whatsappUrl =
+      whatsappLink(phone, `Invoice ${invoice.invoiceNo} from ${access.store.name}: ${invoice.currency} ${formatNumber(Number(invoice.total))}. Pay here: ${viewUrl}`) ?? undefined;
   }
+  if (!emailed && !whatsappUrl) return { success: false, error: "Couldn't reach the customer with that channel. Check their contact details." };
 
+  // Keep the first sent time: it's when the customer first got the link.
   await prisma.invoice.update({
     where: { id: invoiceId },
-    data: { status: invoice.status === "DRAFT" ? "SENT" : invoice.status, sentAt: new Date(), sentVia: via },
+    data: { status: invoice.status === "DRAFT" ? "SENT" : invoice.status, sentAt: invoice.sentAt ?? new Date(), sentVia: via },
   });
 
   revalidatePath(`/store/${slug}/admin/invoices/${invoiceId}`);
@@ -233,12 +249,22 @@ export async function sendInvoice(
 // --- Payment -------------------------------------------------------------
 
 /** Customer-facing: starts a real gateway charge for the invoice total. */
-export async function payInvoice(invoiceId: string): Promise<ActionResult<{ authorizationUrl: string }>> {
+export async function payInvoice(invoiceId: string, token?: string): Promise<ActionResult<{ authorizationUrl: string }>> {
   const session = await auth();
-  if (!session?.user?.id) return { success: false, error: "Please sign in to pay this invoice." };
 
-  const invoice = await prisma.invoice.findUnique({ where: { id: invoiceId }, include: { store: true } });
+  const invoice = await prisma.invoice.findUnique({ where: { id: invoiceId }, include: { store: true, customer: { select: { email: true } } } });
   if (!invoice) return { success: false, error: "Invoice not found." };
+
+  // The signed link in the invoice email/WhatsApp is itself the authorization to pay,
+  // so the customer doesn't need an account. Otherwise it must be their own signed-in invoice.
+  const hasValidToken = await verifyDocToken("invoice", invoiceId, token);
+  if (!hasValidToken) {
+    if (!session?.user?.id) return { success: false, error: "Please open the payment link from your invoice, or sign in, to pay." };
+    const sessionEmail = session.user.email?.toLowerCase();
+    const invoiceEmail = (invoice.customerEmail ?? invoice.customer?.email)?.toLowerCase();
+    const isRecipient = invoice.customerId === session.user.id || (!!sessionEmail && sessionEmail === invoiceEmail);
+    if (!isRecipient) return { success: false, error: "This invoice wasn't issued to your account." };
+  }
   if (invoice.status === "PAID") return { success: false, error: "This invoice has already been paid." };
   if (invoice.status === "CANCELLED") return { success: false, error: "This invoice was cancelled." };
   // Drafts are hidden from the customer page, but the action is callable with just an id.
@@ -259,7 +285,7 @@ export async function payInvoice(invoiceId: string): Promise<ActionResult<{ auth
   await createPendingPayment({ storeId: invoice.storeId, purpose: "INVOICE", provider: gateway, reference, amount: Number(invoice.total), currency: invoice.currency, usesStoreGateway: checkoutGateway.usesStoreGateway });
 
   const charge = await chargeCustomer({
-    email: session.user.email ?? "guest@biznest.space",
+    email: invoice.customerEmail ?? invoice.customer?.email ?? session?.user?.email ?? "guest@biznest.space",
     amountNaira: Number(invoice.total),
     reference,
     callbackUrl: paymentCallbackUrl(gateway),
@@ -277,9 +303,10 @@ export async function payInvoice(invoiceId: string): Promise<ActionResult<{ auth
 /**
  * Merchant manually marks an invoice paid (cash, bank transfer, etc. paid
  * outside the gateway) — the common case for service businesses who
- * collected payment offline.
+ * collected payment offline. Records a CASH Payment row so reports and
+ * reconciliation see the money; payout skips CASH (settled outside the platform).
  */
-export async function markInvoicePaid(slug: string, invoiceId: string): Promise<ActionResult> {
+export async function markInvoicePaid(slug: string, invoiceId: string, method?: string): Promise<ActionResult> {
   const access = await assertStoreAccess(slug);
   if (!access.success) return { success: false, error: access.error };
 
@@ -288,11 +315,59 @@ export async function markInvoicePaid(slug: string, invoiceId: string): Promise<
   if (invoice.status === "PAID") return { success: false, error: "Already marked paid." };
   if (invoice.status === "CANCELLED") return { success: false, error: "This invoice was cancelled." };
 
-  // Conditional write: never overwrite a payment that settled (or a cancellation) meanwhile.
-  const updated = await prisma.invoice.updateMany({ where: { id: invoiceId, status: { in: ["DRAFT", "SENT"] } }, data: { status: "PAID", paidAt: new Date() } });
-  if (updated.count === 0) return { success: false, error: "This invoice can no longer be marked paid." };
+  const note = typeof method === "string" ? method.trim().slice(0, 60) : "";
+  try {
+    await prisma.$transaction(async (tx) => {
+      // Claim the invoice first, conditionally: never overwrite a payment that settled (or a cancellation) meanwhile.
+      const claimed = await tx.invoice.updateMany({ where: { id: invoiceId, status: { in: ["DRAFT", "SENT"] } }, data: { status: "PAID", paidAt: new Date() } });
+      if (claimed.count === 0) throw new Error("INVOICE_NO_LONGER_PAYABLE");
+
+      const payment = await tx.payment.create({
+        data: {
+          storeId: invoice.storeId,
+          purpose: "INVOICE",
+          provider: "CASH",
+          reference: `MANUAL-INV-${invoice.id}`,
+          status: "SUCCESSFUL",
+          amount: invoice.total,
+          currency: invoice.currency,
+          verifiedAt: new Date(),
+          rawPayload: { manual: true, method: note || null, markedByUserId: (await auth())?.user?.id ?? null },
+        },
+      });
+      await tx.invoice.update({ where: { id: invoiceId }, data: { paymentId: payment.id } });
+    });
+  } catch (error) {
+    if (error instanceof Error && error.message === "INVOICE_NO_LONGER_PAYABLE") return { success: false, error: "This invoice can no longer be marked paid." };
+    throw error;
+  }
 
   revalidatePath(`/store/${slug}/admin/invoices/${invoiceId}`);
+  revalidatePath(`/store/${slug}/admin/invoices`);
   return { success: true, data: undefined };
 }
 
+/**
+ * Merchant cancels an invoice that hasn't been paid. Conditional write so it can't
+ * clobber a payment that settles at the same moment; any later gateway payment on a
+ * cancelled invoice is flagged for review/refund by settleInvoicePayment.
+ */
+export async function cancelInvoice(slug: string, invoiceId: string): Promise<ActionResult> {
+  const access = await assertStoreAccess(slug);
+  if (!access.success) return { success: false, error: access.error };
+
+  const invoice = await prisma.invoice.findFirst({ where: { id: invoiceId, storeId: access.store.id }, select: { status: true } });
+  if (!invoice) return { success: false, error: "Invoice not found." };
+  if (invoice.status === "PAID") return { success: false, error: "A paid invoice can't be cancelled. Refund the payment instead." };
+  if (invoice.status === "CANCELLED") return { success: false, error: "Already cancelled." };
+
+  const updated = await prisma.invoice.updateMany({ where: { id: invoiceId, storeId: access.store.id, status: { in: ["DRAFT", "SENT"] } }, data: { status: "CANCELLED" } });
+  if (updated.count === 0) return { success: false, error: "This invoice can no longer be cancelled." };
+
+  // A customer may have started a payment: stop pending attempts from lingering.
+  await prisma.payment.updateMany({ where: { purpose: "INVOICE", status: "PENDING", reference: { startsWith: `INV-${invoiceId}-` } }, data: { status: "FAILED" } });
+
+  revalidatePath(`/store/${slug}/admin/invoices/${invoiceId}`);
+  revalidatePath(`/store/${slug}/admin/invoices`);
+  return { success: true, data: undefined };
+}

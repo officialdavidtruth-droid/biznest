@@ -91,7 +91,7 @@ export default async function CustomerInvoicePage({
           </div>
         </div>
 
-        {invoice.status === "SENT" && <PayInvoiceButton invoiceId={invoice.id} />}
+        {invoice.status === "SENT" && <PayInvoiceButton invoiceId={invoice.id} token={token} />}
         {invoice.status === "PAID" && (
           <p className="text-center text-sm font-medium text-emerald-700">This invoice has been paid. Thank you!</p>
         )}
