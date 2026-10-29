@@ -5,6 +5,8 @@ import { revalidatePath } from "next/cache";
 import type { ActionResult } from "@/types/actions";
 import { assertAnyStorePermission } from "@/lib/access/assert-store-access";
 import { auth } from "@/lib/auth";
+import { checkRateLimit } from "@/lib/rate-limit";
+import { CONVERSATIONS_PAGE_SIZE, STORE_REPLY_LIMIT, validateMessageContent } from "@/lib/message-limits";
 
 // Conversations are reachable from the "Customer messages" permission and from
 // the Customer Support app, so either grants access.
@@ -17,39 +19,113 @@ async function getStoreSideIds(storeId: string, ownerId: string) {
 }
 
 /**
- * All conversations tied to this store — both order-tied threads and the
- * general "contact the store" thread started from the customer account
- * page (see lib/actions/account.ts's getOrCreateGeneralConversation).
+ * Conversations tied to this store, newest activity first, one page at a time
+ * (both order-tied threads and the general "contact the store" thread started
+ * from the customer account page — see lib/actions/account.ts's
+ * getOrCreateGeneralConversation).
+ *
+ * Loading stays cheap as the inbox grows:
+ *  1. One aggregate query (latest message time per thread) orders ALL threads
+ *     without pulling any message bodies.
+ *  2. Only the requested page's threads are loaded in full, with just the
+ *     columns the list renders (never the whole buyer User row).
  */
-export async function listStoreConversations(slug: string) {
+export async function listStoreConversations(slug: string, page = 1, pageSize = CONVERSATIONS_PAGE_SIZE) {
+  const empty = { conversations: [], total: 0, page: 1, totalPages: 1, pageSize, denied: false };
   const access = await assertAnyStorePermission(slug, [...CONVERSATION_PERMISSIONS]);
-  if (!access.success) return [];
+  // `denied` lets the page say "no access" instead of the misleading
+  // "No conversations yet" it would show for an empty list.
+  if (!access.success) return { ...empty, denied: true };
 
-  const conversations = await prisma.conversation.findMany({
-    where: { storeId: access.store.id },
-    include: {
-      order: { include: { buyer: true } },
-      participants: { include: { user: { select: { id: true, name: true, email: true } } } },
-      messages: { orderBy: { createdAt: "desc" }, take: 1 },
-    },
-    orderBy: { createdAt: "desc" },
-  });
+  const storeId = access.store.id;
+  // Needed both to count unread customer messages and to pick out the
+  // customer on each thread.
+  const storeSide = await getStoreSideIds(storeId, access.store.business.userId);
+  const storeSideIds = [...storeSide];
+
+  // 1. Ordering pass: ids + creation time, plus last-activity per thread.
+  const [threads, activity] = await Promise.all([
+    prisma.conversation.findMany({ where: { storeId }, select: { id: true, createdAt: true } }),
+    prisma.message.groupBy({
+      by: ["conversationId"],
+      where: { conversation: { storeId } },
+      _max: { createdAt: true },
+    }),
+  ]);
+  const lastActivity = new Map(activity.map((a) => [a.conversationId, a._max.createdAt]));
+  const ordered = threads
+    .map((t) => ({ id: t.id, at: (lastActivity.get(t.id) ?? t.createdAt).getTime() }))
+    // Most recent activity first (a new customer message should surface an old thread).
+    .sort((a, b) => b.at - a.at);
+
+  const total = ordered.length;
+  const totalPages = Math.max(1, Math.ceil(total / pageSize));
+  const safePage = Math.min(Math.max(1, Math.floor(page) || 1), totalPages);
+  const pageIds = ordered.slice((safePage - 1) * pageSize, safePage * pageSize).map((t) => t.id);
+  if (pageIds.length === 0) return { ...empty, page: safePage, totalPages };
+
+  // 2. Detail pass for this page only.
+  const [rows, unread, lastMessages] = await Promise.all([
+    prisma.conversation.findMany({
+      where: { id: { in: pageIds }, storeId },
+      select: {
+        id: true,
+        createdAt: true,
+        order: { select: { id: true, buyer: { select: { id: true, name: true, email: true } } } },
+        participants: { select: { user: { select: { id: true, name: true, email: true } } } },
+      },
+    }),
+    // Messages from anyone outside the store side that nobody on the store
+    // side has opened yet. Message.readAt on a customer message means "the
+    // store has read it" (the customer side only ever marks the store's
+    // messages, see account.ts).
+    prisma.message.groupBy({
+      by: ["conversationId"],
+      where: { conversationId: { in: pageIds }, readAt: null, senderId: { notIn: storeSideIds } },
+      _count: { _all: true },
+    }),
+    // One indexed "latest message" lookup per thread on the page. Deliberately
+    // not a nested `messages: { take: 1 }`, which can load a thread's whole
+    // history before trimming it.
+    Promise.all(
+      pageIds.map((id) =>
+        prisma.message.findFirst({
+          where: { conversationId: id },
+          orderBy: { createdAt: "desc" },
+          select: { content: true, createdAt: true, senderId: true },
+        })
+      )
+    ),
+  ]);
+
+  const unreadById = new Map(unread.map((u) => [u.conversationId, u._count._all]));
+  const lastById = new Map(pageIds.map((id, i) => [id, lastMessages[i]]));
+  const rowById = new Map(rows.map((r) => [r.id, r]));
 
   // For general (non-order-tied) threads, the "customer" to display is
-  // whichever participant isn't the store's owner — participants also
+  // whichever participant isn't part of the store side — participants also
   // include the owner (see getOrCreateGeneralConversation in
-  // lib/actions/account.ts), so without this the list could show the
-  // owner's own name instead of the customer's.
-  // Staff who reply get added as participants, so "not the owner" alone would
-  // mislabel them as the customer — exclude the whole store side.
-  const storeSide = await getStoreSideIds(access.store.id, access.store.business.userId);
-  return conversations
-    .map((c) => ({
-      ...c,
-      customer: c.order?.buyer ?? c.participants.find((p) => !storeSide.has(p.user.id))?.user ?? null,
-    }))
-    // Most recent activity first (a new customer message should surface an old thread).
-    .sort((a, b) => (b.messages[0]?.createdAt.getTime() ?? b.createdAt.getTime()) - (a.messages[0]?.createdAt.getTime() ?? a.createdAt.getTime()));
+  // lib/actions/account.ts), and staff who reply get added as participants,
+  // so excluding only the owner would mislabel staff as the customer.
+  const conversations = pageIds.flatMap((id) => {
+    const c = rowById.get(id);
+    if (!c) return [];
+    const last = lastById.get(id) ?? null;
+    return [
+      {
+        id: c.id,
+        createdAt: c.createdAt,
+        order: c.order ? { id: c.order.id } : null,
+        customer: c.order?.buyer ?? c.participants.find((p) => !storeSide.has(p.user.id))?.user ?? null,
+        // Kept as a 0/1-element array so the list markup reads the same as before.
+        messages: last ? [{ content: last.content, createdAt: last.createdAt }] : [],
+        unreadCount: unreadById.get(id) ?? 0,
+        lastMessageFromStore: last ? storeSide.has(last.senderId) : false,
+      },
+    ];
+  });
+
+  return { conversations, total, page: safePage, totalPages, pageSize, denied: false };
 }
 
 /**
@@ -79,7 +155,21 @@ export async function getStoreConversation(slug: string, conversationId: string)
     conversation.participants.find((p) => !storeSide.has(p.user.id))?.user ??
     null;
 
-  return { ...conversation, customer };
+  // Opening the thread counts as reading the customer's messages. Same
+  // read-on-open pattern the customer side uses in account.ts. Best-effort:
+  // a failed update must never stop the thread from loading.
+  await prisma.message
+    .updateMany({
+      where: { conversationId: conversation.id, readAt: null, senderId: { notIn: [...storeSide] } },
+      data: { readAt: new Date() },
+    })
+    .catch(() => {});
+
+  // Flag every message sent by the store side (owner or any staff member) so
+  // the thread can render colleagues' replies as the team, not as the customer.
+  const messages = conversation.messages.map((m) => ({ ...m, fromStore: storeSide.has(m.sender.id) }));
+
+  return { ...conversation, messages, customer };
 }
 
 /**
@@ -95,7 +185,9 @@ export async function replyToStoreConversation(
 ): Promise<ActionResult> {
   const access = await assertAnyStorePermission(slug, [...CONVERSATION_PERMISSIONS]);
   if (!access.success) return { success: false, error: access.error };
-  if (!content.trim()) return { success: false, error: "Message can't be empty." };
+  const checked = validateMessageContent(content);
+  if (!checked.ok) return { success: false, error: checked.error };
+  content = checked.content;
 
   const conversation = await prisma.conversation.findFirst({
     where: { id: conversationId, storeId: access.store.id },
@@ -106,6 +198,9 @@ export async function replyToStoreConversation(
   const session = await auth();
   const senderId = session?.user?.id;
   if (!senderId) return { success: false, error: "You must be signed in." };
+
+  const limit = await checkRateLimit(`store-reply:${senderId}`, STORE_REPLY_LIMIT.max, STORE_REPLY_LIMIT.windowMs);
+  if (!limit.allowed) return { success: false, error: "You're replying too quickly. Please wait a moment and try again." };
 
   // Owner/staff replying might not already be a listed participant (e.g. a
   // newly invited staff member replying for the first time, or the general
@@ -121,7 +216,7 @@ export async function replyToStoreConversation(
     });
   }
 
-  await prisma.message.create({ data: { conversationId, senderId, content: content.trim() } });
+  await prisma.message.create({ data: { conversationId, senderId, content } });
 
   // Notify the customer(s) in the thread, not the staff member who just sent it.
   // Participants also include the owner and other staff — don't tell them
@@ -136,7 +231,7 @@ export async function replyToStoreConversation(
             userId,
             type: "MESSAGE",
             title: "New reply from the store",
-            body: content.trim().slice(0, 140),
+            body: content.slice(0, 140),
           },
         })
         .catch(() => {})

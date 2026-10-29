@@ -30,6 +30,54 @@ export async function notifyUser(input: NotifyInput): Promise<void> {
 }
 
 /**
+ * A customer wrote to the store. Notifies the owner AND every active staff
+ * member who can read store conversations (the "messages" permission or the
+ * Customer Support app), each with a link straight to the thread. Before this,
+ * only the owner was told, so staff who answer the inbox never heard about new
+ * messages and notifications didn't open the conversation.
+ *
+ * Never throws: a failed notification must not fail the customer's send.
+ */
+export async function notifyStoreOfCustomerMessage(input: {
+  storeId: string;
+  storeSlug: string;
+  ownerId: string;
+  conversationId: string;
+  content: string;
+}): Promise<void> {
+  try {
+    const staff = await prisma.storeStaff.findMany({
+      where: {
+        storeId: input.storeId,
+        status: "ACTIVE",
+        userId: { not: null },
+        OR: [{ permissions: { has: "messages" } }, { permissions: { has: "plugin:helpdesk" } }],
+      },
+      select: { userId: true },
+    });
+    const recipients = new Set<string>([input.ownerId]);
+    for (const s of staff) if (s.userId) recipients.add(s.userId);
+
+    await Promise.allSettled(
+      [...recipients].map((userId) =>
+        notifyUser({
+          userId,
+          type: "MESSAGE",
+          title: "New message from a customer",
+          body: input.content.trim().slice(0, 140),
+          url: `/store/${input.storeSlug}/admin/messages/${input.conversationId}`,
+        })
+      )
+    );
+  } catch (err) {
+    void logError("MESSAGING", "Customer message notification failed", {
+      conversationId: input.conversationId,
+      error: err instanceof Error ? err.message : String(err),
+    });
+  }
+}
+
+/**
  * Convenience wrapper for the single most time-sensitive merchant alert on
  * the platform: money landing. Resolves storeId -> the store owner's
  * userId so payment webhooks don't each need to duplicate that lookup.

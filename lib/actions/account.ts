@@ -6,6 +6,9 @@ import { revalidatePath } from "next/cache";
 import type { ActionResult } from "@/types/actions";
 import { requireStoreCustomer, requireStoreCustomerByStoreId } from "@/lib/actions/store-customer";
 import type { Prisma } from "@prisma/client";
+import { notifyStoreOfCustomerMessage } from "@/lib/notifications/notify";
+import { checkRateLimit } from "@/lib/rate-limit";
+import { CUSTOMER_MESSAGE_LIMIT, validateMessageContent } from "@/lib/message-limits";
 
 // ============ ADDRESSES ============
 
@@ -627,8 +630,14 @@ export async function listStoreDisputes(storeSlug: string) {
 // nullable/unique, so unlike order-tied threads this can't be looked up by
 // orderId — it's identified by storeId + participant instead).
 async function getOrCreateGeneralConversation(storeId: string, buyerId: string, sellerId: string) {
+  // Match on "this buyer is a participant", not "every participant is the buyer
+  // or owner": staff who reply get added as participants, and an `every` check
+  // would then fail and spawn a duplicate thread on the customer's next message.
+  // Dispute/order threads always have an orderId, so orderId: null isolates the
+  // general thread. Oldest first keeps the choice stable if duplicates already exist.
   const existing = await prisma.conversation.findFirst({
-    where: { storeId, orderId: null, participants: { every: { userId: { in: [buyerId, sellerId] } } } },
+    where: { storeId, orderId: null, participants: { some: { userId: buyerId } } },
+    orderBy: { createdAt: "asc" },
   });
   if (existing) return existing;
   return prisma.conversation.create({
@@ -639,23 +648,25 @@ async function getOrCreateGeneralConversation(storeId: string, buyerId: string, 
 export async function startStoreConversation(storeSlug: string, message: string): Promise<ActionResult<{ conversationId: string }>> {
   const ctx = await getStoreCustomerContext(storeSlug);
   if (!ctx) return { success: false, error: "You don't have access to this store account." };
-  if (!message.trim()) return { success: false, error: "Message can't be empty." };
+  const checked = validateMessageContent(message);
+  if (!checked.ok) return { success: false, error: checked.error };
+  message = checked.content;
+
+  const limit = await checkRateLimit(`store-msg:${ctx.userId}`, CUSTOMER_MESSAGE_LIMIT.max, CUSTOMER_MESSAGE_LIMIT.windowMs);
+  if (!limit.allowed) return { success: false, error: "You're sending messages too quickly. Please wait a few minutes and try again." };
 
   const store = await prisma.store.findUnique({ where: { id: ctx.storeId }, include: { business: { select: { userId: true } } } });
   if (!store) return { success: false, error: "Store not found." };
 
   const conversation = await getOrCreateGeneralConversation(ctx.storeId, ctx.userId, store.business.userId);
-  await prisma.message.create({ data: { conversationId: conversation.id, senderId: ctx.userId, content: message.trim() } });
-  await prisma.notification
-    .create({
-      data: {
-        userId: store.business.userId,
-        type: "MESSAGE",
-        title: "New message from a customer",
-        body: message.trim().slice(0, 140),
-      },
-    })
-    .catch(() => {});
+  await prisma.message.create({ data: { conversationId: conversation.id, senderId: ctx.userId, content: message } });
+  await notifyStoreOfCustomerMessage({
+    storeId: store.id,
+    storeSlug: store.slug,
+    ownerId: store.business.userId,
+    conversationId: conversation.id,
+    content: message,
+  });
 
   revalidatePath(`/store/${storeSlug}/account/messages`);
   return { success: true, data: { conversationId: conversation.id } };
@@ -664,7 +675,12 @@ export async function startStoreConversation(storeSlug: string, message: string)
 export async function sendStoreMessage(storeSlug: string, conversationId: string, content: string): Promise<ActionResult> {
   const ctx = await getStoreCustomerContext(storeSlug);
   if (!ctx) return { success: false, error: "You don't have access to this store account." };
-  if (!content.trim()) return { success: false, error: "Message can't be empty." };
+  const checked = validateMessageContent(content);
+  if (!checked.ok) return { success: false, error: checked.error };
+  content = checked.content;
+
+  const limit = await checkRateLimit(`store-msg:${ctx.userId}`, CUSTOMER_MESSAGE_LIMIT.max, CUSTOMER_MESSAGE_LIMIT.windowMs);
+  if (!limit.allowed) return { success: false, error: "You're sending messages too quickly. Please wait a few minutes and try again." };
 
   const conversation = await prisma.conversation.findFirst({
     where: { id: conversationId, storeId: ctx.storeId, participants: { some: { userId: ctx.userId } } },
@@ -672,18 +688,15 @@ export async function sendStoreMessage(storeSlug: string, conversationId: string
   });
   if (!conversation) return { success: false, error: "Conversation not found." };
 
-  await prisma.message.create({ data: { conversationId, senderId: ctx.userId, content: content.trim() } });
+  await prisma.message.create({ data: { conversationId, senderId: ctx.userId, content } });
   if (conversation.store) {
-    await prisma.notification
-      .create({
-        data: {
-          userId: conversation.store.business.userId,
-          type: "MESSAGE",
-          title: "New message from a customer",
-          body: content.trim().slice(0, 140),
-        },
-      })
-      .catch(() => {});
+    await notifyStoreOfCustomerMessage({
+      storeId: conversation.store.id,
+      storeSlug: conversation.store.slug,
+      ownerId: conversation.store.business.userId,
+      conversationId,
+      content,
+    });
   }
 
   revalidatePath(`/store/${storeSlug}/account/messages`);

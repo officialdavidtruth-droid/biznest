@@ -4,6 +4,7 @@ import Link from "next/link";
 import { auth } from "@/lib/auth";
 import { getStoreConversation } from "@/lib/actions/store-messages";
 import { AdminMessageThread } from "@/components/dashboard/admin-message-thread";
+import { AutoRefresh } from "@/components/dashboard/auto-refresh";
 import { ChevronLeft } from "lucide-react";
 
 export default async function AdminConversationPage({
@@ -20,6 +21,7 @@ export default async function AdminConversationPage({
 
   return (
     <div>
+      <AutoRefresh />
       <Link
         href={`/store/${slug}/admin/messages`}
         className="mb-4 inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground"

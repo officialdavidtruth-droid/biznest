@@ -1,0 +1,10 @@
+2699a2700,2703
+> 
+>   // Already exists in the database (migration 20260822150000); declared here so
+>   // the schema matches and `prisma migrate dev` doesn't try to drop it.
+>   @@index([storeId])
+2723a2728,2731
+> 
+>   // Thread loading, "latest message" lookups and per-thread unread counts all
+>   // filter by conversationId and sort/aggregate by createdAt.
+>   @@index([conversationId, createdAt])
