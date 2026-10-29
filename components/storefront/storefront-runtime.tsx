@@ -21,7 +21,7 @@ import { SignatureScreenshotHome } from "@/components/storefront/signature-scree
 
 type CatalogItem={id:string;kind:"product"|"service";name:string;description:string|null;price:number;currency:string;image:string|null;categoryName:string|null;type:string;rentalUnit:string|null;isBookable:boolean;hasVariants?:boolean};
 
-export const getStoreForSlug=cache((slug:string)=>prisma.store.findUnique({where:{slug},include:{template:true,business:true,products:{where:{isPublished:true},take:24,include:{category:true}},services:{where:{isPublished:true},take:24,include:{category:true}},reviews:{include:{author:true},orderBy:{createdAt:"desc"},take:6}}}));
+export const getStoreForSlug=cache((slug:string)=>prisma.store.findUnique({where:{slug},include:{template:true,business:true,products:{where:{isPublished:true},take:24,include:{category:true}},services:{where:{isPublished:true},take:24,include:{category:true}},reviews:{include:{author:{select:{name:true}}},orderBy:{createdAt:"desc"},take:6}}}));
 
 export async function renderStorefront(slug:string,opts?:{preview?:boolean}){
  const raw=await getStoreForSlug(slug);if(!raw||raw.status!=="ACTIVE")notFound();

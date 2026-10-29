@@ -12,7 +12,8 @@ import { getProfessionalServiceSubNicheByName } from "@/lib/professional-service
 import { NewsletterInlineForm } from "@/components/storefront/newsletter-inline-form";
 import { ContactEnquiryForm } from "@/components/storefront/contact-enquiry-form";
 import { isCreativeText, nicheFor, resolveServicesListing, servicesNavLink, type Archetype, type NicheIcon, type NicheProfile } from "@/lib/storefront-niche";
-import { formatNumber } from "@/lib/i18n/locale";
+import { formatDate, formatNumber } from "@/lib/i18n/locale";
+import { starEmpty, starFill } from "@/lib/utils/stars";
 
 const NICHE_ICONS: Record<NicheIcon, LucideIcon> = {
   shield: ShieldCheck, check: Check, clock: Clock3, sparkles: Sparkles, calendar: CalendarCheck, map: MapPin, heart: Heart,
@@ -22,7 +23,12 @@ const NICHE_ICONS: Record<NicheIcon, LucideIcon> = {
 function NicheGlyph({name,size}:{name:NicheIcon;size:number}){const I=NICHE_ICONS[name]??ShieldCheck;return <I size={size}/>}
 
 type Item = { id:string; kind:"product"|"service"; name:string; description:string|null; price:number; currency:string; image:string|null; categoryName:string|null; type:string; rentalUnit:string|null; isBookable:boolean; durationMins?:number|null };
-type Props = { store:any; slug:string; pageSlug:string; items:Item[]; reviews:any[]; theme:TemplateTheme; social:Record<string,string>; policy?:{title:string;body:string}|null; faq?:{q:string;a:string}[]; pagination?:{page:number;totalPages:number;total:number;pageSize:number} };
+export type ReviewsView = {
+  total:number; average:number; page:number; totalPages:number; pageSize:number;
+  distribution:{rating:number;count:number}[];
+  items:{id:string;rating:number;comment:string|null;images:string[];createdAt:Date|string;author:{name:string|null};response:{content:string}|null}[];
+};
+type Props = { store:any; slug:string; pageSlug:string; items:Item[]; reviews:any[]; theme:TemplateTheme; social:Record<string,string>; policy?:{title:string;body:string}|null; faq?:{q:string;a:string}[]; pagination?:{page:number;totalPages:number;total:number;pageSize:number}; reviewsView?:ReviewsView };
 
 const RESERVED = new Set(["services","about","pricing","portfolio","contact","faq","policies"]);
 export function isUniversalSectionPage(slug:string){ return RESERVED.has(slug.toLowerCase()); }
@@ -223,7 +229,39 @@ function Policies({p}:{p:Props}){
   : <><h1>Terms &amp; Policies</h1><p>{store.name} hasn&apos;t published its terms, privacy or refund policy yet. Please contact the store directly before placing an order. <Link href={`/store/${slug}/contact`}>Contact the store</Link></p></>}
  </section></main><Footer store={store} slug={slug} accent={p.theme.accent}/></>}
 
+function ReviewStars({value,label}:{value:number;label?:string}){return <span role="img" aria-label={label??`${value} out of 5 stars`}><span aria-hidden="true">{starFill(value)}{starEmpty(value)}</span></span>}
+
+/** Public /reviews for every template that has no dedicated reviews page (TasteHouse has its own). Server-paginated; totals come from the database. */
+function Reviews({p}:{p:Props}){
+ const {store,slug,theme,reviewsView:v}=p; const accent=theme.accent;
+ const pageHref=(n:number)=>n<=1?`/store/${slug}/reviews`:`/store/${slug}/reviews?page=${n}`;
+ return <><Header store={store} slug={slug} active="reviews" accent={accent}/><main className="bn-universal-main"><section className="bn-universal-section">
+  <div className="bn-universal-eyebrow">CUSTOMER REVIEWS</div>
+  <h1>What customers say about {store.name}</h1>
+  {!v||v.total===0
+   ? <p>{store.name} has no reviews yet. <Link href={`/store/${slug}/account/reviews`}>Be the first to leave one</Link>.</p>
+   : <>
+    <div style={{display:"flex",flexWrap:"wrap",gap:32,alignItems:"center",margin:"20px 0 28px"}}>
+     <div><div style={{fontSize:44,fontWeight:800,lineHeight:1}}>{v.average.toFixed(1)}</div><div style={{color:accent,fontSize:20}}><ReviewStars value={Math.round(v.average)} label={`${v.average.toFixed(1)} out of 5 stars on average`}/></div><small>Based on {formatNumber(v.total)} {v.total===1?"review":"reviews"}</small></div>
+     <div style={{flex:"1 1 240px",maxWidth:380}}>{v.distribution.map(d=>{const pct=Math.round(d.count/v.total*100);return <div key={d.rating} style={{display:"flex",alignItems:"center",gap:8,fontSize:13,margin:"4px 0"}}><span style={{width:34}}>{d.rating} ★</span><span style={{flex:1,height:8,borderRadius:99,background:"rgba(0,0,0,.08)",overflow:"hidden"}}><i style={{display:"block",height:"100%",width:`${pct}%`,background:accent}}/></span><span style={{width:38,textAlign:"right"}}>{pct}%</span></div>})}</div>
+     <Link href={`/store/${slug}/account/reviews`} style={{background:accent,color:"#fff",padding:"10px 18px",borderRadius:8,fontWeight:700,fontSize:14}}>Write a review</Link>
+    </div>
+    <div style={{display:"grid",gap:16,gridTemplateColumns:"repeat(auto-fill,minmax(280px,1fr))"}}>{v.items.map(r=><article key={r.id} style={{border:"1px solid rgba(0,0,0,.1)",borderRadius:12,padding:16}}>
+     <div style={{display:"flex",justifyContent:"space-between",gap:8}}><strong>{r.author.name?.trim()||"Customer"}</strong><small>{formatDate(new Date(r.createdAt))}</small></div>
+     <div style={{color:accent,margin:"6px 0"}}><ReviewStars value={r.rating}/></div>
+     {r.comment&&<p style={{whiteSpace:"pre-line"}}>{r.comment}</p>}
+     {r.images[0]&&<img src={r.images[0]} alt="Customer photo" style={{marginTop:8,maxWidth:"100%",maxHeight:180,borderRadius:8,objectFit:"cover"}}/>}
+     {r.response?.content&&<p style={{margin:"10px 0 0",paddingLeft:10,borderLeft:`3px solid ${accent}`,fontSize:13,opacity:.85}}><b>Reply from {store.name}:</b> {r.response.content}</p>}
+    </article>)}</div>
+    {v.totalPages>1&&<nav aria-label="Reviews pagination" style={{display:"flex",alignItems:"center",justifyContent:"center",gap:14,marginTop:28,fontSize:14}}>
+     {v.page>1?<Link href={pageHref(v.page-1)}>Previous</Link>:<span style={{opacity:.4}}>Previous</span>}
+     <span>Page {v.page} of {v.totalPages}</span>
+     {v.page<v.totalPages?<Link href={pageHref(v.page+1)}>Next</Link>:<span style={{opacity:.4}}>Next</span>}
+    </nav>}
+   </>}
+ </section></main><Footer store={store} slug={slug} accent={accent}/></>}
+
 export function UniversalSectionPage(p:Props){
  const normalized=p;
- switch(p.pageSlug.toLowerCase()){case"services":return <Services p={normalized}/>;case"about":return <About p={normalized}/>;case"portfolio":return <Portfolio p={normalized}/>;case"pricing":return <Pricing p={normalized}/>;case"contact":return <Contact p={normalized}/>;case"faq":return <Faq p={normalized}/>;case"policies":return <Policies p={normalized}/>;default:return null;}
+ switch(p.pageSlug.toLowerCase()){case"services":return <Services p={normalized}/>;case"about":return <About p={normalized}/>;case"portfolio":return <Portfolio p={normalized}/>;case"pricing":return <Pricing p={normalized}/>;case"contact":return <Contact p={normalized}/>;case"faq":return <Faq p={normalized}/>;case"policies":return <Policies p={normalized}/>;case"reviews":return <Reviews p={normalized}/>;default:return null;}
 }

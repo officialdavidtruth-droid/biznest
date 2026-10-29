@@ -2,7 +2,7 @@ import { cache } from "react";
 import { notFound } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { resolveStoreTheme, type TemplateTheme } from "@/lib/template-themes";
-import { UniversalSectionPage } from "@/components/storefront/universal-section-pages";
+import { UniversalSectionPage, type ReviewsView } from "@/components/storefront/universal-section-pages";
 
 // Shared by /about, /services, /portfolio, /pricing and /contact — each of
 // those route files just calls this with its own pageSlug. Mirrors the
@@ -16,12 +16,13 @@ const getStoreForSection = cache((slug: string) =>
       business: true,
       products: { where: { isPublished: true }, orderBy: { createdAt: "desc" }, take: 24, include: { category: true } },
       services: { where: { isPublished: true }, orderBy: { createdAt: "desc" }, take: 24, include: { category: true } },
-      reviews: { include: { author: true }, orderBy: { createdAt: "desc" }, take: 6 },
+      reviews: { include: { author: { select: { name: true } } }, orderBy: { createdAt: "desc" }, take: 6 },
     },
   })
 );
 
 export const SERVICES_PAGE_SIZE = 12;
+export const REVIEWS_PAGE_SIZE = 12;
 
 export async function renderUniversalSectionPage(slug: string, pageSlug: string, opts?: { page?: number }) {
   const rawStore = await getStoreForSection(slug);
@@ -45,6 +46,44 @@ export async function renderUniversalSectionPage(slug: string, pageSlug: string,
       include: { category: true },
     });
     pagination = { page, totalPages, total, pageSize: SERVICES_PAGE_SIZE };
+  }
+
+  // /reviews is paginated the same way: the average, count and star
+  // breakdown come from the database, and only one page of rows is loaded.
+  let reviewsView: ReviewsView | undefined;
+  if (pageSlug === "reviews") {
+    const where = { storeId: rawStore.id };
+    const [agg, grouped] = await Promise.all([
+      prisma.review.aggregate({ where, _avg: { rating: true }, _count: { _all: true } }),
+      prisma.review.groupBy({ by: ["rating"], where, _count: { _all: true } }),
+    ]);
+    const total = agg._count._all;
+    const totalPages = Math.max(1, Math.ceil(total / REVIEWS_PAGE_SIZE));
+    const page = Math.min(Math.max(1, Math.floor(opts?.page ?? 1) || 1), totalPages);
+    const items = await prisma.review.findMany({
+      where,
+      select: {
+        id: true,
+        rating: true,
+        comment: true,
+        images: true,
+        createdAt: true,
+        author: { select: { name: true } },
+        response: { select: { content: true } },
+      },
+      orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+      skip: (page - 1) * REVIEWS_PAGE_SIZE,
+      take: REVIEWS_PAGE_SIZE,
+    });
+    reviewsView = {
+      total,
+      average: agg._avg.rating ?? 0,
+      page,
+      totalPages,
+      pageSize: REVIEWS_PAGE_SIZE,
+      distribution: [5, 4, 3, 2, 1].map((n) => ({ rating: n, count: grouped.find((g) => g.rating === n)?._count._all ?? 0 })),
+      items,
+    };
   }
 
   const store = { ...rawStore, services, sellsProducts: rawStore.business?.sellsProducts ?? true };
@@ -94,6 +133,7 @@ export async function renderUniversalSectionPage(slug: string, pageSlug: string,
       theme={theme}
       social={social}
       pagination={pagination}
+      reviewsView={reviewsView}
     />
   );
 }

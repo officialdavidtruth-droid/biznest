@@ -23,7 +23,7 @@ export async function getGrandeurRestaurantData(slug: string) {
       business: true,
       products: { where: { isPublished: true }, take: 60, include: { category: true, variants: { where: { isActive: true }, select: { id: true } } } },
       services: { where: { isPublished: true }, take: 60, include: { category: true } },
-      reviews: { include: { author: true }, orderBy: { createdAt: "desc" }, take: 8 },
+      reviews: { include: { author: { select: { name: true } } }, orderBy: { createdAt: "desc" }, take: 8 },
     },
   });
   if (!rawStore) return null;

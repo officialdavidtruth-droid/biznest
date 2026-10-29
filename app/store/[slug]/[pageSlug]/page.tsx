@@ -28,7 +28,7 @@ export default async function StorePagePage({
       business: true,
       products: { where: { isPublished: true }, take: 30, include: { category: true } },
       services: { where: { isPublished: true }, take: 30, include: { category: true } },
-      reviews: { include: { author: true }, orderBy: { createdAt: "desc" }, take: 12 },
+      reviews: { include: { author: { select: { name: true } } }, orderBy: { createdAt: "desc" }, take: 12 },
     },
   });
   if (!store) notFound();

@@ -4,7 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
   LayoutDashboard, ShieldCheck, Users, Store, CreditCard,
-  Globe, FileClock, Settings, Gavel, Activity, Puzzle, Banknote, AlertTriangle,
+  Globe, FileClock, Settings, Gavel, Activity, Puzzle, Banknote, AlertTriangle, Flag,
 } from "lucide-react";
 
 type Group = {
@@ -39,6 +39,7 @@ const GROUPS: Group[] = [
     items: [
       { href: "/supaadmin/businesses", label: "Business verification", icon: ShieldCheck, badgeKey: "pendingBusinesses" },
       { href: "/supaadmin/disputes", label: "Disputes", icon: Gavel, badgeKey: "openDisputes" },
+      { href: "/supaadmin/review-reports", label: "Review reports", icon: Flag },
     ],
   },
   {

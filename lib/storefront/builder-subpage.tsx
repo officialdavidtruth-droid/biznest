@@ -28,7 +28,7 @@ export async function renderBuilderSubpage(slug: string, kind: SubpageKind, opts
     include: {
       template: true,
       business: true,
-      reviews: { include: { author: true }, orderBy: { createdAt: "desc" }, take: 12 },
+      reviews: { include: { author: { select: { name: true } } }, orderBy: { createdAt: "desc" }, take: 12 },
     },
   });
   if (!raw || raw.status !== "ACTIVE") notFound();

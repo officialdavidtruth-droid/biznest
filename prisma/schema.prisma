@@ -93,6 +93,7 @@ model User {
   bookings          Booking[]       @relation("BuyerBookings")
   storeWallets      StoreWallet[]
   reviews           Review[]
+  reviewReportsMade ReviewReport[] @relation("ReviewReportedBy")
   reviewResponses   ReviewResponse[]
   messages          Message[]
   conversations     ConversationParticipant[]
@@ -1006,6 +1007,7 @@ model Store {
   invoices      Invoice[]
   quotes        Quote[]
   reviews       Review[]
+  reviewReports ReviewReport[]
   pages         StorePage[]
   inventory     InventoryItem[]
   variants      ProductVariant[]
@@ -2629,6 +2631,7 @@ model Review {
   videos     String[]
 
   response   ReviewResponse?
+  report     ReviewReport?
 
   createdAt  DateTime @default(now())
 }
@@ -2641,6 +2644,42 @@ model ReviewResponse {
   author    User     @relation(fields: [authorId], references: [id])
   content   String   @db.Text
   createdAt DateTime @default(now())
+}
+
+enum ReviewReportStatus {
+  OPEN
+  UPHELD
+  DISMISSED
+}
+
+// A merchant's report of a review that breaks the rules (abusive, spam, fake,
+// off-topic, private info). One report per review: BizNest staff decide it in
+// /supaadmin/review-reports. UPHELD removes the review; DISMISSED keeps it.
+// reviewId is SetNull + the snapshot columns so the record (and what was
+// decided) survives the review being deleted after an upheld report.
+model ReviewReport {
+  id               String             @id @default(cuid())
+  storeId          String
+  store            Store              @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  reviewId         String?            @unique
+  review           Review?            @relation(fields: [reviewId], references: [id], onDelete: SetNull)
+  reportedById     String
+  reportedBy       User               @relation("ReviewReportedBy", fields: [reportedById], references: [id])
+
+  reason           String
+  details          String?            @db.Text
+  status           ReviewReportStatus @default(OPEN)
+  adminNotes       String?            @db.Text
+  resolvedAt       DateTime?
+
+  reviewRating     Int
+  reviewComment    String?            @db.Text
+  reviewAuthorName String?
+
+  createdAt        DateTime           @default(now())
+
+  @@index([status, createdAt])
+  @@index([storeId])
 }
 
 // ----------------------------------------------------------------------------
