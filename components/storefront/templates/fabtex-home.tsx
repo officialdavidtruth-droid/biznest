@@ -1,3 +1,4 @@
+import { starFill } from "@/lib/utils/stars";
 import type React from "react";
 import { MenuLinks } from "@/components/storefront/store-menu";
 import { CartLink } from "@/components/storefront/cart-link";
@@ -155,7 +156,7 @@ export function FabtexStorefront({
           <div>
             <h2 style={{ fontWeight: 400, letterSpacing: 2, fontSize: 22 }}>WHAT CUSTOMERS SAY</h2>
             {avgRating && (
-              <p style={{ color: FABTEX.orange, fontSize: 12, fontWeight: 700 }}>{"★".repeat(Math.round(avgRating))} {avgRating.toFixed(1)} average</p>
+              <p style={{ color: FABTEX.orange, fontSize: 12, fontWeight: 700 }}>{starFill(Math.round(avgRating))} {avgRating.toFixed(1)} average</p>
             )}
             {goodReviews.slice(0, 2).map((r) => (
               <div key={r.id} style={{ display: "flex", gap: 10, padding: "8px 0", borderBottom: "1px solid #333" }}>

@@ -11,7 +11,7 @@
  *
  * After this, keep avgRating/reviewCount in sync going forward via a
  * recompute-on-write hook wherever a Review is created/updated/deleted
- * (see lib/actions/reviews.ts) -- this script is for existing data only.
+ * (see lib/reviews/rating.ts, called from lib/actions/reviews.ts) -- this script is for existing data only.
  */
 
 import { PrismaClient } from "@prisma/client";

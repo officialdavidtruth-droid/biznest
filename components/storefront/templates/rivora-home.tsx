@@ -1,3 +1,4 @@
+import { starFill } from "@/lib/utils/stars";
 import type React from "react";
 import { MenuLinks } from "@/components/storefront/store-menu";
 import { CartLink } from "@/components/storefront/cart-link";
@@ -97,7 +98,7 @@ export function RivoraStorefront({
           </div>
           {avgRating && (
             <div style={{ display: "flex", alignItems: "center", gap: 10, marginTop: 10 }}>
-              <strong style={{ color: RIVORA.lime, fontSize: 13 }}>{"★".repeat(Math.round(avgRating))}</strong>
+              <strong style={{ color: RIVORA.lime, fontSize: 13 }}>{starFill(Math.round(avgRating))}</strong>
               <small style={{ fontSize: 9, color: "#aabcb3" }}>{avgRating.toFixed(1)} average rating &middot; {completedOrders} orders completed</small>
             </div>
           )}

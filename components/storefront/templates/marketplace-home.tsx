@@ -1,3 +1,4 @@
+import { starFill } from "@/lib/utils/stars";
 import type React from "react";
 import { whatsappLink } from "@/lib/utils/whatsapp-link";
 import { MenuLinks } from "@/components/storefront/store-menu";
@@ -252,7 +253,7 @@ export function MarketplaceStorefront({
               <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(200px, 1fr))", gap: 8 }}>
                 {goodReviews.slice(0, 4).map((r) => (
                   <div key={r.id} style={{ border: "1px solid #e4e4e4", padding: 10, fontSize: 9 }}>
-                    <b style={{ color: MARKETPLACE.orange }}>{"★".repeat(r.rating)}</b>
+                    <b style={{ color: MARKETPLACE.orange }}>{starFill(r.rating)}</b>
                     <p style={{ margin: "6px 0" }}>{r.comment}</p>
                     <small style={{ color: "#999" }}>{r.author.name ?? "Verified customer"}</small>
                   </div>

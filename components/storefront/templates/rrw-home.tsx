@@ -1,3 +1,4 @@
+import { starFill } from "@/lib/utils/stars";
 import type React from "react";
 import { MenuLinks } from "@/components/storefront/store-menu";
 import { CartLink } from "@/components/storefront/cart-link";
@@ -183,7 +184,7 @@ export function RrwStorefront({
           <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 12 }}>
             {goodReviews.slice(0, 3).map((r) => (
               <div key={r.id} style={{ background: "#f4f5f6", padding: 20 }}>
-                <strong style={{ fontSize: 14, color: "#79a7ff" }}>{"★".repeat(r.rating)}</strong>
+                <strong style={{ fontSize: 14, color: "#79a7ff" }}>{starFill(r.rating)}</strong>
                 <p style={{ fontSize: 10, color: "#666", lineHeight: 1.6, marginTop: 8 }}>{r.comment}</p>
                 <small style={{ display: "block", marginTop: 8, fontWeight: 700 }}>{r.author.name ?? "Verified customer"}</small>
               </div>

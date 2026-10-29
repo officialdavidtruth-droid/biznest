@@ -1,3 +1,4 @@
+import { starFill } from "@/lib/utils/stars";
 import type React from "react";
 import { whatsappLink } from "@/lib/utils/whatsapp-link";
 import { MenuLinks } from "@/components/storefront/store-menu";
@@ -144,7 +145,7 @@ export function NovaStorefront({
       {goodReviews.length > 0 && goodReviews[0].comment && (
         <section style={{ padding: "110px 0", borderTop: `1px solid ${NOVA.line}`, background: NOVA.charcoal }}>
           <Reveal style={{ ...wrap, maxWidth: 820, textAlign: "center" }}>
-            <div style={{ color: NOVA.gold, fontSize: 20, letterSpacing: 4, marginBottom: 22 }}>{"★".repeat(goodReviews[0].rating)}</div>
+            <div style={{ color: NOVA.gold, fontSize: 20, letterSpacing: 4, marginBottom: 22 }}>{starFill(goodReviews[0].rating)}</div>
             <p style={{ ...serif, fontSize: "clamp(22px,2.8vw,32px)", lineHeight: 1.5 }}>&ldquo;{goodReviews[0].comment}&rdquo;</p>
             <p style={{ marginTop: 26, ...label }}>{goodReviews[0].author.name ?? "Verified client"}</p>
           </Reveal>

@@ -1,3 +1,4 @@
+import { starFill } from "@/lib/utils/stars";
 import type React from "react";
 import { MenuLinks } from "@/components/storefront/store-menu";
 import { CartLink } from "@/components/storefront/cart-link";
@@ -159,7 +160,7 @@ export function VioletStorefront({
       {goodReviews.length > 0 && goodReviews[0].comment && (
         <section style={{ background: "#fff", padding: "50px 0" }}>
           <Reveal style={{ ...wrap, maxWidth: 720, textAlign: "center", margin: "0 auto" }}>
-            <div style={{ color: VIOLET.accent, fontSize: 18, letterSpacing: 3, marginBottom: 14 }}>{"★".repeat(goodReviews[0].rating)}</div>
+            <div style={{ color: VIOLET.accent, fontSize: 18, letterSpacing: 3, marginBottom: 14 }}>{starFill(goodReviews[0].rating)}</div>
             <p style={{ fontSize: 20, lineHeight: 1.5 }}>&ldquo;{goodReviews[0].comment}&rdquo;</p>
             <p style={{ marginTop: 16, fontSize: 12, fontWeight: 800, color: "#888" }}>{goodReviews[0].author.name ?? "Verified customer"}</p>
           </Reveal>

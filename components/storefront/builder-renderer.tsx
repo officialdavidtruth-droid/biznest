@@ -1,5 +1,6 @@
 "use client";
 
+import { starFill, starEmpty } from "@/lib/utils/stars";
 import { MenuLinks, type FallbackLink } from "@/components/storefront/store-menu";
 import type React from "react";
 import { useEffect, useState } from "react";
@@ -219,7 +220,7 @@ function BuilderSectionView({ section, store, config, catalogItems, categories, 
 
   if (section.type === "categories") return <section id={section.id} data-bn-type={section.type} className="bn-section" style={{ padding, background: bg }}><div className="bn-wrap"><SectionIntro section={section} config={config} /><div className="bn-grid" style={{ gridTemplateColumns: `repeat(${Math.min(cols,4)},1fr)` }}>{categories.map((c) => <a key={c} href={`/store/${store.slug}/search?q=${encodeURIComponent(c)}`} style={{ padding: 22, borderRadius: s.radius ?? d.radius, background: d.surface, border: `1px solid ${d.text}12`, fontWeight: 750 }}>{c}</a>)}</div></div></section>;
 
-  if (section.type === "testimonials") return <section id={section.id} data-bn-type={section.type} className="bn-section" style={{ padding, background: bg }}><div className="bn-wrap"><SectionIntro section={section} config={config} /><div className="bn-grid" style={{ gridTemplateColumns: `repeat(${Math.min(cols,3)},1fr)` }}>{reviews.length ? reviews.map((r) => <div key={r.id} style={{ background: d.surface, border: `1px solid ${d.text}12`, borderRadius: s.radius ?? d.radius, padding: 22 }}><div style={{ color: d.accent }}>{"★".repeat(r.rating)}{"☆".repeat(5-r.rating)}</div><p style={{ lineHeight: 1.7, color: d.muted }}>{r.comment}</p><strong style={{ fontSize: 13 }}>{r.author?.name || "Customer"}</strong></div>) : <EmptyState text="Customer reviews will appear here when you receive them." />}</div></div></section>;
+  if (section.type === "testimonials") return <section id={section.id} data-bn-type={section.type} className="bn-section" style={{ padding, background: bg }}><div className="bn-wrap"><SectionIntro section={section} config={config} /><div className="bn-grid" style={{ gridTemplateColumns: `repeat(${Math.min(cols,3)},1fr)` }}>{reviews.length ? reviews.map((r) => <div key={r.id} style={{ background: d.surface, border: `1px solid ${d.text}12`, borderRadius: s.radius ?? d.radius, padding: 22 }}><div style={{ color: d.accent }}>{starFill(r.rating)}{starEmpty(r.rating)}</div><p style={{ lineHeight: 1.7, color: d.muted }}>{r.comment}</p><strong style={{ fontSize: 13 }}>{r.author?.name || "Customer"}</strong></div>) : <EmptyState text="Customer reviews will appear here when you receive them." />}</div></div></section>;
 
   if (section.type === "newsletter") return <section id={section.id} data-bn-type={section.type} className="bn-section" style={{ padding, background: s.background || d.primary, color: s.textColor || "#fff" }}><div className="bn-wrap" style={{ textAlign: "center" }}><SectionIntro section={section} config={config} inverse /><p style={{ opacity: .75, maxWidth: 560, margin: "0 auto 22px", lineHeight: 1.7 }}>{s.body || "Get occasional updates, new arrivals and offers."}</p><BuilderNewsletterForm storeSlug={store.slug} accent={d.accent} /></div></section>;
 

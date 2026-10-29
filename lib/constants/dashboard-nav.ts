@@ -147,7 +147,7 @@ export function buildNavGroups(business: { sellsProducts: boolean; offersService
       items: [
         { label: "Referrals", href: "/referrals", icon: Share2, permission: "marketing" },
         ...(supportsAbandonedCheckout(business.category, business) ? [{ label: "Abandoned checkouts", href: "/abandoned-checkouts", icon: MailWarning, permission: "marketing" as StaffPermissionId }] : []),
-        { label: "Reviews", href: "/reviews", icon: Star, permission: "marketing" },
+        { label: "Reviews", href: "/reviews", icon: Star, permission: "reviews" },
         { label: "Messages", href: "/messages", icon: MessageSquare, permission: "messages" },
         { label: "Analytics & Reports", href: "/analytics", icon: BarChart3, permission: "analytics" },
       ],

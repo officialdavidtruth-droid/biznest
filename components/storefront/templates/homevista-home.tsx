@@ -1,3 +1,4 @@
+import { starFill } from "@/lib/utils/stars";
 import type React from "react";
 import { MenuLinks } from "@/components/storefront/store-menu";
 import { CartLink } from "@/components/storefront/cart-link";
@@ -194,7 +195,7 @@ export function HomeVistaStorefront({
                 <em style={{ color: HOMEVISTA.accent, fontSize: 28, fontStyle: "normal" }}>&ldquo;</em>
                 <p style={{ fontSize: 9, lineHeight: 1.6, color: "#526064" }}>{r.comment}</p>
                 <b style={{ fontSize: 9, display: "block" }}>{r.author.name ?? "Verified client"}</b>
-                <strong style={{ color: "#eab51b", float: "right", letterSpacing: 2 }}>{"★".repeat(r.rating)}</strong>
+                <strong style={{ color: "#eab51b", float: "right", letterSpacing: 2 }}>{starFill(r.rating)}</strong>
               </div>
             ))}
           </div>

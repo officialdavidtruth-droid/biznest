@@ -1,3 +1,4 @@
+import { starFill } from "@/lib/utils/stars";
 import type React from "react";
 import { MenuLinks } from "@/components/storefront/store-menu";
 import { CartLink } from "@/components/storefront/cart-link";
@@ -214,7 +215,7 @@ export function PremiumStorefront({
           <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 8 }}>
             {goodReviews.slice(0, 4).map((r) => (
               <div key={r.id} style={{ background: "#fff", border: "1px solid #e2e7e9", borderRadius: 8, padding: 10, minHeight: 75, fontSize: 9 }}>
-                <b style={{ color: "#d79600" }}>{"★".repeat(r.rating)}</b>
+                <b style={{ color: "#d79600" }}>{starFill(r.rating)}</b>
                 <p>{r.comment}</p>
                 <small style={{ color: "#758087" }}>{r.author.name ?? "Verified customer"}</small>
               </div>

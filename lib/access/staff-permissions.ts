@@ -14,6 +14,7 @@ export const STAFF_PERMISSIONS = [
   { id: "pos", label: "Point of sale" },
   { id: "customers", label: "Customer list" },
   { id: "messages", label: "Customer messages" },
+  { id: "reviews", label: "Reviews & replies" },
   { id: "marketing", label: "Marketing & coupons" },
   { id: "analytics", label: "Analytics & reports" },
   { id: "payments", label: "Payments & payouts" },

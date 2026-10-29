@@ -8,7 +8,7 @@ import { NextResponse } from "next/server";
 // Deliberately no caching: storefront prices/stock/orders must never be stale.
 // The pass-through fetch handler just keeps browsers that want one for
 // installability happy. Its only other job is delivering order-update pushes
-// to signed-in customers (see lib/push/send.ts -> sendPushToStoreCustomer).
+// to signed-in customers (see lib/notifications/notify.ts -> notifyCustomerOfOrderStatus / notifyCustomerOfPaidOrder).
 //
 // Push payload urls are STORE-RELATIVE ("/orders/<id>") and are resolved
 // against this worker's scope, so the same script works for both

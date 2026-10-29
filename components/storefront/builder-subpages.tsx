@@ -1,5 +1,6 @@
 "use client";
 
+import { starFill, starEmpty } from "@/lib/utils/stars";
 import { cssUrl } from "@/lib/builder-safe";
 import Link from "next/link";
 import type { ReactNode } from "react";
@@ -93,7 +94,7 @@ export function BuilderSubpage({ kind, store, design: d, data, owner }: { kind: 
             <div className="bn-grid" style={{ gridTemplateColumns: "repeat(3,1fr)" }}>
               {data.reviews.map((r) => (
                 <div key={r.id} style={{ ...card, padding: 22 }}>
-                  <div style={{ color: d.accent }}>{"★".repeat(r.rating)}{"☆".repeat(5 - r.rating)}</div>
+                  <div style={{ color: d.accent }}>{starFill(r.rating)}{starEmpty(r.rating)}</div>
                   <p style={{ lineHeight: 1.7, color: d.muted }}>{r.comment}</p>
                   <strong style={{ fontSize: 13 }}>{r.author}</strong>
                 </div>

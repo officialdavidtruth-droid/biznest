@@ -2,16 +2,19 @@ import { notFound } from "next/navigation";
 import { Star, MessageSquareText } from "lucide-react";
 import { getStoreBranding } from "@/lib/actions/store-branding";
 import { listStoreReviews } from "@/lib/actions/account";
+import { listReviewableItems } from "@/lib/actions/reviews";
+import { ReviewForm } from "@/components/storefront/review-form";
 import { getHotelContent } from "@/lib/hotel-content";
 import { VelouraAccountHero } from "@/components/storefront/veloura-account-shell";
 import { formatDate } from "@/lib/i18n/locale";
 
 export default async function Page({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
-  const [store, reviews, hotel] = await Promise.all([
+  const [store, reviews, hotel, reviewable] = await Promise.all([
     getStoreBranding(slug),
     listStoreReviews(slug),
     getHotelContent(slug),
+    listReviewableItems(slug),
   ]);
   if (!store) notFound();
   const hero = hotel.rooms.find((r: any) => r.featured)?.image || hotel.rooms[0]?.image || null;
@@ -23,6 +26,11 @@ export default async function Page({ params }: { params: Promise<{ slug: string 
         subtitle={`Your reviews and feedback for ${store.name}.`}
         image={hero}
       />
+      {reviewable.length > 0 && (
+        <section className="veloura-panel">
+          <ReviewForm storeSlug={slug} items={reviewable} />
+        </section>
+      )}
       <section className="veloura-panel veloura-reviews-panel">
         <div className="veloura-panel-head">
           <div>
@@ -46,6 +54,16 @@ export default async function Page({ params }: { params: Promise<{ slug: string 
                   </div>
                   <h3>{subject}</h3>
                   {review.comment && <p className="veloura-review-comment">{review.comment}</p>}
+                  {review.images?.length > 0 && (
+                    <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginTop: 8 }}>
+                      {review.images.map((url: string) => (
+                        <a key={url} href={url} target="_blank" rel="noreferrer">
+                          {/* eslint-disable-next-line @next/next/no-img-element */}
+                          <img src={url} alt="Review photo" style={{ width: 64, height: 64, objectFit: "cover", borderRadius: 6 }} />
+                        </a>
+                      ))}
+                    </div>
+                  )}
                   {review.response && (
                     <div className="veloura-review-response">
                       <MessageSquareText size={16} />

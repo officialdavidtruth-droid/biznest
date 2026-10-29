@@ -1,3 +1,4 @@
+import { starFill } from "@/lib/utils/stars";
 import type React from "react";
 import { MenuLinks } from "@/components/storefront/store-menu";
 import { CartLink } from "@/components/storefront/cart-link";
@@ -159,7 +160,7 @@ export function JuiceLifeStorefront({
                 {store.business.description || "We believe nature has everything we need to live a healthy life. Our juices are cold-pressed, preservative-free and made with love."}
               </p>
               {avgRating && (
-                <p style={{ fontSize: 12, color: JUICELIFE.green, fontWeight: 700 }}>{"★".repeat(Math.round(avgRating))} {avgRating.toFixed(1)} average &middot; {completedOrders} orders completed</p>
+                <p style={{ fontSize: 12, color: JUICELIFE.green, fontWeight: 700 }}>{starFill(Math.round(avgRating))} {avgRating.toFixed(1)} average &middot; {completedOrders} orders completed</p>
               )}
             </div>
             <div style={{ height: 300, borderRadius: 14, background: "linear-gradient(135deg, #dcefcf, #71ad4e 55%, #234f24)" }} />
