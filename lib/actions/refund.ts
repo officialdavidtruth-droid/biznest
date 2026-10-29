@@ -1,8 +1,7 @@
 "use server";
 
-import { RECIPE_INGREDIENT_NOTE_MARKER, computeRecipeRequirements } from "@/lib/fnb-recipe-stock";
 import { prisma } from "@/lib/prisma";
-import { createFifoBatchTx } from "@/lib/inventory-fifo";
+import { restoreInventoryForRefund } from "@/lib/inventory-refund";
 import { refundPayment } from "@/lib/payments/gateway";
 import { secretKeyForPayment } from "@/lib/payments/store-gateway";
 import { listPaystackRefundsForTransaction } from "@/lib/payments/paystack";
@@ -141,128 +140,6 @@ async function recordRefundClawbackIfSettled(
     },
   });
   await tx.store.update({ where: { id: store.id }, data: { refundClawbackOwed: { increment: merchantShare } } });
-}
-
-/**
- * Restores inventory for a fully refunded order exactly once.
- *
- * The RETURN movements are linked back to the order. That link is the
- * idempotency boundary: a replay of the refund (or a webhook/reconciliation
- * retry) sees the existing RETURN movement and does not add stock again.
- * This runs inside the same transaction as the payment/order refund state.
- */
-async function restoreInventoryForRefund(
-  tx: Prisma.TransactionClient,
-  orderId: string,
-  storeId: string,
-) {
-  const existingReturn = await tx.stockMovement.findFirst({
-    where: { orderId, storeId, type: "RETURN" },
-    select: { id: true },
-  });
-  if (existingReturn) return false;
-
-  const order = await tx.order.findUnique({
-    where: { id: orderId },
-    include: { items: true },
-  });
-  if (!order) throw new Error("ORDER_NOT_FOUND");
-
-  // Dishes with a recipe consumed their ingredients, not their own stock, so a
-  // refund must put the ingredients back and leave the dish count alone.
-  const ingredientSales = await tx.stockMovement.findMany({
-    where: { orderId, storeId, type: "SALE", inventoryItemId: { not: null }, note: { endsWith: RECIPE_INGREDIENT_NOTE_MARKER } },
-    select: { inventoryItemId: true, quantityChange: true },
-  });
-
-  for (const item of order.items) {
-    if (ingredientSales.length > 0 && (item.productId || item.variantId)) {
-      const dishProductId = item.productId ?? (await tx.productVariant.findUnique({ where: { id: item.variantId! }, select: { productId: true } }))?.productId;
-      const dish = dishProductId ? await tx.product.findUnique({ where: { id: dishProductId }, select: { attributes: true } }) : null;
-      if (dish && computeRecipeRequirements(dish.attributes, 1)) continue;
-    }
-    if (item.variantId) {
-      const variant = await tx.productVariant.findUnique({
-        where: { id: item.variantId },
-      });
-      if (!variant) continue;
-
-      const nextQuantity = variant.quantity + item.quantity;
-      await tx.productVariant.update({
-        where: { id: variant.id },
-        data: {
-          quantity: nextQuantity,
-          autoUnpublished: false,
-        },
-      });
-      await tx.stockMovement.create({
-        data: {
-          variantId: variant.id,
-          storeId,
-          orderId,
-          type: "RETURN",
-          quantityChange: item.quantity,
-          quantityAfter: nextQuantity,
-          note: `Refund return (order ${orderId})`,
-        },
-      });
-      await createFifoBatchTx(tx, { variantId: variant.id, storeId, quantity: item.quantity, unitCost: variant.costPrice == null ? null : Number(variant.costPrice), sourceNote: `Refund return (order ${orderId})` });
-    } else if (item.productId) {
-      const inventory = await tx.inventoryItem.findUnique({
-        where: { productId: item.productId },
-      });
-      if (!inventory) continue;
-
-      const wasAutoUnpublished = inventory.autoUnpublished;
-      const nextQuantity = inventory.quantity + item.quantity;
-      await tx.inventoryItem.update({
-        where: { id: inventory.id },
-        data: {
-          quantity: nextQuantity,
-          autoUnpublished: wasAutoUnpublished ? false : inventory.autoUnpublished,
-        },
-      });
-      await tx.stockMovement.create({
-        data: {
-          inventoryItemId: inventory.id,
-          storeId,
-          orderId,
-          type: "RETURN",
-          quantityChange: item.quantity,
-          quantityAfter: nextQuantity,
-          note: `Refund return (order ${orderId})`,
-        },
-      });
-      await createFifoBatchTx(tx, { inventoryItemId: inventory.id, storeId, quantity: item.quantity, unitCost: inventory.costPrice == null ? null : Number(inventory.costPrice), sourceNote: `Refund return (order ${orderId})` });
-      // A refund restores stock, but do not silently override a merchant's
-      // publication decision. Only republish when the product was actually
-      // unpublished because this inventory item hit zero.
-      if (!inventory.quantity && wasAutoUnpublished) {
-        await tx.product.update({
-          where: { id: item.productId },
-          data: { isPublished: true },
-        });
-      }
-    }
-  }
-
-  const returned = new Map<string, number>();
-  for (const sale of ingredientSales) {
-    if (sale.inventoryItemId) returned.set(sale.inventoryItemId, (returned.get(sale.inventoryItemId) ?? 0) + Math.abs(sale.quantityChange));
-  }
-  for (const [inventoryItemId, quantity] of returned) {
-    if (quantity <= 0) continue;
-    const ingredient = await tx.inventoryItem.findUnique({ where: { id: inventoryItemId } });
-    if (!ingredient || ingredient.storeId !== storeId) continue;
-    const nextQuantity = ingredient.quantity + quantity;
-    await tx.inventoryItem.update({ where: { id: ingredient.id }, data: { quantity: nextQuantity } });
-    await tx.stockMovement.create({
-      data: { inventoryItemId: ingredient.id, storeId, orderId, type: "RETURN", quantityChange: quantity, quantityAfter: nextQuantity, note: `Refund return of recipe ingredient (order ${orderId})` },
-    });
-    await createFifoBatchTx(tx, { inventoryItemId: ingredient.id, storeId, quantity, unitCost: ingredient.costPrice == null ? null : Number(ingredient.costPrice), sourceNote: `Refund return of recipe ingredient (order ${orderId})` });
-  }
-
-  return true;
 }
 
 /**

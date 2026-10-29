@@ -14,6 +14,48 @@ import type { Prisma } from "@prisma/client";
  * the webhook and callback route handlers.
  */
 
+
+type StockRow = { quantity: number };
+type StockAccessor = {
+  read: () => Promise<StockRow | null>;
+  /** Atomic guarded decrement: matches 0 rows if stock fell below `amount` since the read. */
+  decrement: (amount: number) => Promise<number>;
+};
+
+/**
+ * Takes up to `wanted` units from one stock row without a read-modify-write
+ * race. The decrement is a single guarded UPDATE (`quantity >= consumed`), so
+ * two paid orders settling at once for the same item can never overwrite each
+ * other's decrement: whichever commits second matches 0 rows, re-reads the
+ * fresh balance and retries with what is actually left.
+ *
+ * Returns the units taken and the balance afterwards (read inside the same
+ * transaction, i.e. after our own row lock, so the ledger's running balance
+ * stays consistent). With allowOversell the shortfall is not an error: the
+ * customer has already paid, so we take what exists and let the caller log it.
+ */
+async function takeStockAtomically(
+  stock: StockAccessor,
+  wanted: number,
+  opts: { allowOversell?: boolean; shortMessage: string }
+): Promise<{ consumed: number; before: number; after: number } | null> {
+  for (let attempt = 0; attempt < 5; attempt++) {
+    const row = await stock.read();
+    if (!row) return null;
+    const available = Math.max(row.quantity, 0);
+    if (wanted > available && !opts.allowOversell) throw new Error(opts.shortMessage);
+    const consumed = Math.min(wanted, available);
+    if (consumed <= 0) return { consumed: 0, before: row.quantity, after: row.quantity };
+    const count = await stock.decrement(consumed);
+    if (count === 1) {
+      const fresh = await stock.read();
+      return { consumed, before: available, after: fresh ? fresh.quantity : available - consumed };
+    }
+    // Lost the race to a concurrent decrement: loop and re-read.
+  }
+  throw new Error("Stock changed too quickly while settling the order. Please retry.");
+}
+
 /**
  * Decrements stock for a paid order's line items.
  *
@@ -49,7 +91,11 @@ export async function decrementStockForOrder(
   });
   if (alreadyDecremented) return;
 
-  for (const item of order.items) {
+  // Lock rows in a stable order: two orders containing the same items in
+  // opposite order would otherwise deadlock on each other's row locks.
+  const orderedItems = [...order.items].sort((a, b) => (a.variantId ?? a.productId ?? "").localeCompare(b.variantId ?? b.productId ?? ""));
+
+  for (const item of orderedItems) {
     // Dishes with a recipe consume their ingredients instead of their own
     // stock count. Paid orders (allowOversell) take what exists and log any
     // shortfall; otherwise a short ingredient aborts the transition.
@@ -68,12 +114,19 @@ export async function decrementStockForOrder(
       // Payment paths pass allowOversell: the customer has already paid, so a
       // stock shortfall must never roll the PAID transition back. Consume what
       // exists and flag the shortfall for the merchant instead.
-      if (item.quantity > variant.quantity && !opts.allowOversell) throw new Error(`Not enough stock for ${variant.label}.`);
-      const consumed = Math.min(item.quantity, Math.max(variant.quantity, 0));
-      if (consumed < item.quantity) void logError("PAYMENTS", "Oversold order: paid quantity exceeds stock", { orderId: order.id, variantId: variant.id, ordered: item.quantity, available: variant.quantity });
-      const nextQuantity = variant.quantity - consumed;
-      const justRanOut = variant.quantity > 0 && nextQuantity === 0;
-      await tx.productVariant.update({ where: { id: variant.id }, data: { quantity: nextQuantity, autoUnpublished: justRanOut ? true : variant.autoUnpublished } });
+      const taken = await takeStockAtomically(
+        {
+          read: () => tx.productVariant.findFirst({ where: { id: variant.id, storeId: order.storeId }, select: { quantity: true } }),
+          decrement: async (amount) => (await tx.productVariant.updateMany({ where: { id: variant.id, storeId: order.storeId, quantity: { gte: amount } }, data: { quantity: { decrement: amount } } })).count,
+        },
+        item.quantity,
+        { allowOversell: opts.allowOversell, shortMessage: `Not enough stock for ${variant.label}.` }
+      );
+      if (!taken) continue;
+      const { consumed, before, after: nextQuantity } = taken;
+      if (consumed < item.quantity) void logError("PAYMENTS", "Oversold order: paid quantity exceeds stock", { orderId: order.id, variantId: variant.id, ordered: item.quantity, available: before });
+      const justRanOut = consumed > 0 && nextQuantity === 0;
+      if (justRanOut) await tx.productVariant.update({ where: { id: variant.id }, data: { autoUnpublished: true } });
       const movement = await tx.stockMovement.create({
         data: { variantId: variant.id, storeId: order.storeId, orderId: order.id, type: "SALE", quantityChange: -consumed, quantityAfter: nextQuantity, note: `Online sale (order ${order.id})${consumed < item.quantity ? ` — OVERSOLD by ${item.quantity - consumed}` : ""}` },
       });
@@ -81,13 +134,22 @@ export async function decrementStockForOrder(
     } else if (item.productId) {
       const inventory = await tx.inventoryItem.findFirst({ where: { productId: item.productId, storeId: order.storeId } });
       if (!inventory) continue;
-      if (item.quantity > inventory.quantity && !opts.allowOversell) throw new Error(`Not enough stock for ${item.productId}.`);
-      const consumed = Math.min(item.quantity, Math.max(inventory.quantity, 0));
-      if (consumed < item.quantity) void logError("PAYMENTS", "Oversold order: paid quantity exceeds stock", { orderId: order.id, productId: item.productId, ordered: item.quantity, available: inventory.quantity });
-      const nextQuantity = inventory.quantity - consumed;
-      const justRanOut = inventory.quantity > 0 && nextQuantity === 0;
-      await tx.inventoryItem.update({ where: { id: inventory.id }, data: { quantity: nextQuantity, autoUnpublished: justRanOut ? true : inventory.autoUnpublished } });
-      if (justRanOut) await tx.product.update({ where: { id: item.productId }, data: { isPublished: false } });
+      const taken = await takeStockAtomically(
+        {
+          read: () => tx.inventoryItem.findFirst({ where: { id: inventory.id, storeId: order.storeId }, select: { quantity: true } }),
+          decrement: async (amount) => (await tx.inventoryItem.updateMany({ where: { id: inventory.id, storeId: order.storeId, quantity: { gte: amount } }, data: { quantity: { decrement: amount } } })).count,
+        },
+        item.quantity,
+        { allowOversell: opts.allowOversell, shortMessage: `Not enough stock for ${item.productId}.` }
+      );
+      if (!taken) continue;
+      const { consumed, before, after: nextQuantity } = taken;
+      if (consumed < item.quantity) void logError("PAYMENTS", "Oversold order: paid quantity exceeds stock", { orderId: order.id, productId: item.productId, ordered: item.quantity, available: before });
+      const justRanOut = consumed > 0 && nextQuantity === 0;
+      if (justRanOut) {
+        await tx.inventoryItem.update({ where: { id: inventory.id }, data: { autoUnpublished: true } });
+        await tx.product.update({ where: { id: item.productId }, data: { isPublished: false } });
+      }
       const movement = await tx.stockMovement.create({
         data: { inventoryItemId: inventory.id, storeId: order.storeId, orderId: order.id, type: "SALE", quantityChange: -consumed, quantityAfter: nextQuantity, note: `Online sale (order ${order.id})${consumed < item.quantity ? ` — OVERSOLD by ${item.quantity - consumed}` : ""}` },
       });

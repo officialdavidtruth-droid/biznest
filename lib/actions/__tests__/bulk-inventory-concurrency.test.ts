@@ -19,8 +19,16 @@ describe("bulk product inventory concurrency hardening", () => {
 
   it("records a correction movement for successful quantity changes", () => {
     expect(source).toContain('type: "CORRECTION"');
-    expect(source).toContain("quantityChange: nextQuantity - currentInventory.quantity");
+    expect(source).toContain("const bulkDelta = nextQuantity - currentInventory.quantity");
+    expect(source).toContain("quantityChange: bulkDelta");
     expect(source).toContain("quantityAfter: nextQuantity");
     expect(source).toContain('note: "Bulk edit"');
+  });
+
+  it("keeps the FIFO batch ledger in step with every stock correction", () => {
+    // product CSV (existing + new inventory), variant CSV, new product, bulk edit
+    const calls = source.match(/recordBatchLedgerForQuantityChangeTx\(tx/g) ?? [];
+    expect(calls.length).toBeGreaterThanOrEqual(3);
+    expect(source.match(/createFifoBatchTx\(tx/g)?.length).toBeGreaterThanOrEqual(2);
   });
 });

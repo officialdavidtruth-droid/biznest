@@ -8,6 +8,9 @@ import { roundMoney } from "@/lib/utils/pricing";
 import type { ActionResult } from "@/types/actions";
 import { assertUnderPlanLimit } from "@/lib/entitlements";
 import { assertStorePermission } from "@/lib/access/assert-store-access";
+import { createFifoBatchTx, recordBatchLedgerForQuantityChangeTx } from "@/lib/inventory-fifo";
+
+const toCost = (v: unknown): number | null => (v == null ? null : Number(v));
 
 // Bulk import/export is used from the Products page ("products" permission in dashboard-nav.ts).
 async function assertStoreAccess(slug: string) {
@@ -164,13 +167,14 @@ export async function importProductsCsv(slug: string, csvText: string): Promise<
 
           const delta = nextQuantity - variant.quantity;
           const justRestocked = variant.quantity === 0 && nextQuantity > 0;
+          const nextCostPrice = r.costPrice?.trim() === "" ? variant.costPrice : (parseNum(r.costPrice ?? "") != null ? roundMoney(parseNum(r.costPrice)!) : variant.costPrice);
           const updated = await tx.productVariant.updateMany({
             where: { id: variant.id, storeId: access.store.id, updatedAt: variant.updatedAt },
             data: {
               sku: r.sku?.trim() || variant.sku,
               barcode: r.barcode?.trim() || variant.barcode,
               price: r.price?.trim() === "" ? variant.price : (parseNum(r.price ?? "") != null ? roundMoney(parseNum(r.price)!) : variant.price),
-              costPrice: r.costPrice?.trim() === "" ? variant.costPrice : (parseNum(r.costPrice ?? "") != null ? roundMoney(parseNum(r.costPrice)!) : variant.costPrice),
+              costPrice: nextCostPrice,
               quantity: nextQuantity,
               lowStockThreshold: parseNum(r.lowStockThreshold ?? "") ?? variant.lowStockThreshold,
               isActive: parseBool(r.isPublished ?? "", variant.isActive),
@@ -180,7 +184,7 @@ export async function importProductsCsv(slug: string, csvText: string): Promise<
           if (updated.count !== 1) throw new Error("INVENTORY_CONFLICT");
 
           if (delta !== 0) {
-            await tx.stockMovement.create({
+            const movement = await tx.stockMovement.create({
               data: {
                 variantId: variant.id,
                 storeId: access.store.id,
@@ -190,6 +194,7 @@ export async function importProductsCsv(slug: string, csvText: string): Promise<
                 note: "CSV import",
               },
             });
+            await recordBatchLedgerForQuantityChangeTx(tx, { variantId: variant.id, storeId: access.store.id, delta, stockMovementId: movement.id, unitCost: toCost(nextCostPrice), sourceNote: "CSV import" });
           }
           return variant.id;
         }, { isolationLevel: "Serializable", timeout: 15000 });
@@ -245,7 +250,7 @@ export async function importProductsCsv(slug: string, csvText: string): Promise<
             if (updated.count !== 1) throw new Error("INVENTORY_CONFLICT");
 
             if (delta !== 0) {
-              await tx.stockMovement.create({
+              const movement = await tx.stockMovement.create({
                 data: {
                   inventoryItemId: product.inventory.id,
                   storeId: access.store.id,
@@ -255,6 +260,7 @@ export async function importProductsCsv(slug: string, csvText: string): Promise<
                   note: "CSV import",
                 },
               });
+              await recordBatchLedgerForQuantityChangeTx(tx, { inventoryItemId: product.inventory.id, storeId: access.store.id, delta, stockMovementId: movement.id, unitCost: toCost(inventoryData.costPrice), sourceNote: "CSV import" });
             }
             if (product.inventory.quantity > 0 && nextQuantity === 0) {
               await tx.product.update({ where: { id: product.id }, data: { isPublished: false } });
@@ -262,12 +268,12 @@ export async function importProductsCsv(slug: string, csvText: string): Promise<
               await tx.product.update({ where: { id: product.id }, data: { isPublished: true } });
             }
           } else {
-            await tx.inventoryItem.create({ data: { productId: product.id, storeId: access.store.id, ...inventoryData } });
+            const createdInventory = await tx.inventoryItem.create({ data: { productId: product.id, storeId: access.store.id, ...inventoryData } });
             delta = nextQuantity;
             if (nextQuantity > 0) {
               await tx.stockMovement.create({
                 data: {
-                  inventoryItemId: (await tx.inventoryItem.findUnique({ where: { productId: product.id }, select: { id: true } }))!.id,
+                  inventoryItemId: createdInventory.id,
                   storeId: access.store.id,
                   type: "RESTOCK",
                   quantityChange: nextQuantity,
@@ -275,6 +281,7 @@ export async function importProductsCsv(slug: string, csvText: string): Promise<
                   note: "CSV import initial stock",
                 },
               });
+              await createFifoBatchTx(tx, { inventoryItemId: createdInventory.id, storeId: access.store.id, quantity: nextQuantity, unitCost: toCost(inventoryData.costPrice), sourceNote: "CSV import initial stock" });
             }
           }
 
@@ -348,17 +355,19 @@ export async function importProductsCsv(slug: string, csvText: string): Promise<
           },
           include: { inventory: true },
         });
-        if (quantity > 0 && product.inventory) {
+        const initialQty = Math.max(0, Math.round(quantity));
+        if (initialQty > 0 && product.inventory) {
           await tx.stockMovement.create({
             data: {
               inventoryItemId: product.inventory.id,
               storeId: access.store.id,
               type: "RESTOCK",
-              quantityChange: Math.max(0, Math.round(quantity)),
-              quantityAfter: Math.max(0, Math.round(quantity)),
+              quantityChange: initialQty,
+              quantityAfter: initialQty,
               note: "CSV import initial stock",
             },
           });
+          await createFifoBatchTx(tx, { inventoryItemId: product.inventory.id, storeId: access.store.id, quantity: initialQty, unitCost: toCost(product.inventory.costPrice), sourceNote: "CSV import initial stock" });
         }
         return product.id;
       }, { isolationLevel: "Serializable", timeout: 15000 });
@@ -455,16 +464,18 @@ export async function bulkUpdateProducts(slug: string, patches: BulkEditPatch[])
           });
           if (updated.count !== 1) throw new Error(`INVENTORY_CONFLICT:${product.id}`);
 
-          await tx.stockMovement.create({
+          const bulkDelta = nextQuantity - currentInventory.quantity;
+          const movement = await tx.stockMovement.create({
             data: {
               inventoryItemId: currentInventory.id,
               storeId: access.store.id,
               type: "CORRECTION",
-              quantityChange: nextQuantity - currentInventory.quantity,
+              quantityChange: bulkDelta,
               quantityAfter: nextQuantity,
               note: "Bulk edit",
             },
           });
+          await recordBatchLedgerForQuantityChangeTx(tx, { inventoryItemId: currentInventory.id, storeId: access.store.id, delta: bulkDelta, stockMovementId: movement.id, unitCost: toCost(product.inventory.costPrice), sourceNote: "Bulk edit" });
         }
       }
       updated++;

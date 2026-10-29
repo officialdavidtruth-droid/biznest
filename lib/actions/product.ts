@@ -10,6 +10,7 @@ import { emitWebhookEvent } from "@/lib/webhooks/dispatch";
 import { assertStorePermission } from "@/lib/access/assert-store-access";
 import { logStoreActivity } from "@/lib/activity-log";
 import { assertUnderPlanLimit } from "@/lib/entitlements";
+import { createFifoBatchTx, recordBatchLedgerForQuantityChangeTx } from "@/lib/inventory-fifo";
 
 import type { Store, Business } from "@prisma/client";
 
@@ -133,7 +134,8 @@ export async function createProduct(
     productSlug = `${baseSlug}-${suffix}`;
   }
 
-  const product = await prisma.product.create({
+  const product = await prisma.$transaction(async (tx) => {
+  const created = await tx.product.create({
     data: {
       storeId: access.store.id,
       categoryId: data.categoryId || null,
@@ -153,6 +155,17 @@ export async function createProduct(
         create: { quantity: data.quantity, storeId: access.store.id, sku: trimmedSku, barcode: trimmedBarcode },
       },
     },
+    include: { inventory: true },
+  });
+  // Opening stock gets a RESTOCK movement and a receipt lot so the ledger and
+  // batches start in agreement instead of relying on a synthetic 1970 lot.
+  if (created.inventory && created.inventory.quantity > 0) {
+    await tx.stockMovement.create({
+      data: { inventoryItemId: created.inventory.id, storeId: access.store.id, type: "RESTOCK", quantityChange: created.inventory.quantity, quantityAfter: created.inventory.quantity, note: "Initial stock" },
+    });
+    await createFifoBatchTx(tx, { inventoryItemId: created.inventory.id, storeId: access.store.id, quantity: created.inventory.quantity, sourceNote: "Initial stock" });
+  }
+  return created;
   });
 
   await emitWebhookEvent("PRODUCT_CREATED", access.store.id, {
@@ -272,7 +285,7 @@ export async function updateProduct(
               data: { quantity: nextQuantity },
             });
             if (updated.count !== 1) throw new Error("INVENTORY_CONFLICT");
-            await tx.stockMovement.create({
+            const movement = await tx.stockMovement.create({
               data: {
                 inventoryItemId: current.inventory.id,
                 storeId: access.store.id,
@@ -281,6 +294,14 @@ export async function updateProduct(
                 quantityAfter: nextQuantity,
                 note: "Product edit",
               },
+            });
+            await recordBatchLedgerForQuantityChangeTx(tx, {
+              inventoryItemId: current.inventory.id,
+              storeId: access.store.id,
+              delta,
+              stockMovementId: movement.id,
+              unitCost: current.inventory.costPrice == null ? null : Number(current.inventory.costPrice),
+              sourceNote: "Product edit",
             });
             quantityChanged = true;
             quantityDelta = delta;
@@ -318,6 +339,19 @@ export async function updateProduct(
               : {}),
           },
         });
+
+        // Stock created by the upsert above (product had no inventory row yet)
+        // needs its own opening movement + lot, otherwise it has no ledger.
+        if (!current.hasVariants && !current.inventory && nextQuantity > 0) {
+          const created = await tx.inventoryItem.findUnique({ where: { productId }, select: { id: true } });
+          if (created) {
+            const movement = await tx.stockMovement.create({
+              data: { inventoryItemId: created.id, storeId: access.store.id, type: "RESTOCK", quantityChange: nextQuantity, quantityAfter: nextQuantity, note: "Product edit initial stock" },
+            });
+            await createFifoBatchTx(tx, { inventoryItemId: created.id, storeId: access.store.id, quantity: nextQuantity, sourceNote: "Product edit initial stock" });
+            delta = nextQuantity;
+          }
+        }
 
         return { quantityChanged: delta !== 0, quantityDelta: delta, resultingQuantity: nextQuantity };
       }, { isolationLevel: "Serializable", timeout: 15000 });
