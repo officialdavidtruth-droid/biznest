@@ -21,7 +21,7 @@ export function InventoryTable({ storeSlug, items }: { storeSlug: string; items:
     return items.filter((i) => {
       if (search.trim()) {
         const q = search.trim().toLowerCase();
-        if (!i.productName.toLowerCase().includes(q) && !(i.sku ?? "").toLowerCase().includes(q)) return false;
+        if (!i.productName.toLowerCase().includes(q) && !(i.variantLabel ?? "").toLowerCase().includes(q) && !(i.sku ?? "").toLowerCase().includes(q)) return false;
       }
       if (statusFilter && i.status !== statusFilter) return false;
       return true;
@@ -37,7 +37,7 @@ export function InventoryTable({ storeSlug, items }: { storeSlug: string; items:
       <ListToolbar
         search={search}
         onSearchChange={(v) => { setSearch(v); setPage(1); }}
-        searchPlaceholder="Search by product or SKU..."
+        searchPlaceholder="Search by product, variant or SKU..."
         filters={[
           { id: "status", value: statusFilter, onChange: (v) => { setStatusFilter(v); setPage(1); }, placeholder: "All Status", options: STATUS_OPTIONS },
         ]}

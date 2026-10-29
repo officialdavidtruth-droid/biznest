@@ -17,37 +17,61 @@ const naira = (n: number, cur = "NGN") => `${cur} ${formatNumber(Math.round(n))}
 export async function draftLowStockReorders() {
   let stores = 0, drafts = 0, lines = 0, failures = 0;
 
-  // Prisma can't compare two columns in a where clause.
-  const low = await prisma.$queryRaw<{ id: string }[]>`
-    SELECT i."id" FROM "InventoryItem" i
-    JOIN "Store" s ON s."id" = i."storeId"
-    WHERE i."quantity" <= i."lowStockThreshold" AND s."status" = 'ACTIVE' AND s."marketingOnly" = false
-    LIMIT 5000`;
-  if (low.length === 0) return { stores, drafts, lines, failures };
+  // Prisma can't compare two columns in a where clause. Variant-enabled
+  // products keep a stale InventoryItem (stock lives on their variants), so
+  // those are excluded here and their active variants are queried instead.
+  const [lowItemRows, lowVariantRows] = await Promise.all([
+    prisma.$queryRaw<{ id: string }[]>`
+      SELECT i."id" FROM "InventoryItem" i
+      JOIN "Store" s ON s."id" = i."storeId"
+      JOIN "Product" p ON p."id" = i."productId"
+      WHERE i."quantity" <= i."lowStockThreshold" AND p."hasVariants" = false
+        AND s."status" = 'ACTIVE' AND s."marketingOnly" = false
+      LIMIT 5000`,
+    prisma.$queryRaw<{ id: string }[]>`
+      SELECT v."id" FROM "ProductVariant" v
+      JOIN "Store" s ON s."id" = v."storeId"
+      JOIN "Product" p ON p."id" = v."productId"
+      WHERE v."quantity" <= v."lowStockThreshold" AND v."isActive" = true AND p."hasVariants" = true
+        AND s."status" = 'ACTIVE' AND s."marketingOnly" = false
+      LIMIT 5000`,
+  ]);
+  if (lowItemRows.length === 0 && lowVariantRows.length === 0) return { stores, drafts, lines, failures };
 
-  const items = await prisma.inventoryItem.findMany({
-    where: { id: { in: low.map((l) => l.id) } },
-    select: {
-      storeId: true, productId: true, quantity: true, lowStockThreshold: true, costPrice: true,
-      product: { select: { name: true, supplierLinks: { where: { supplier: { isArchived: false } }, select: { supplierId: true, costPrice: true } } } },
-    },
-  });
+  const supplierSelect = { name: true, supplierLinks: { where: { supplier: { isArchived: false } }, select: { supplierId: true, costPrice: true } } } as const;
+  const [itemRows, variantRows] = await Promise.all([
+    prisma.inventoryItem.findMany({
+      where: { id: { in: lowItemRows.map((l) => l.id) } },
+      select: { storeId: true, productId: true, quantity: true, lowStockThreshold: true, costPrice: true, product: { select: supplierSelect } },
+    }),
+    prisma.productVariant.findMany({
+      where: { id: { in: lowVariantRows.map((l) => l.id) } },
+      select: { id: true, label: true, storeId: true, productId: true, quantity: true, lowStockThreshold: true, costPrice: true, product: { select: supplierSelect } },
+    }),
+  ]);
+
+  const items = [
+    ...itemRows.map((i) => ({ ...i, variantId: null as string | null, name: i.product.name })),
+    ...variantRows.map((v) => ({ ...v, variantId: v.id as string | null, name: `${v.product.name} — ${v.label}` })),
+  ];
 
   const byStore = new Map<string, typeof items>();
   for (const i of items) byStore.set(i.storeId, [...(byStore.get(i.storeId) ?? []), i]);
 
   for (const [storeId, storeItems] of byStore) {
     try {
-      const productIds = storeItems.map((i) => i.productId);
+      const productIds = [...new Set(storeItems.map((i) => i.productId))];
       const open = await prisma.purchaseOrderItem.findMany({
         where: { productId: { in: productIds }, purchaseOrder: { storeId, status: { in: [...OPEN_PO] } } },
-        select: { productId: true },
+        select: { productId: true, variantId: true },
       });
-      const alreadyOrdered = new Set(open.map((o) => o.productId!).filter(Boolean));
+      // Variant lines match on the variant; simple-product lines on the product.
+      const alreadyOrdered = new Set(open.map((o) => (o.variantId ?? o.productId)!).filter(Boolean));
 
       const lowItems: LowStockItem[] = storeItems.map((i) => ({
         productId: i.productId,
-        name: i.product.name,
+        variantId: i.variantId,
+        name: i.name,
         quantity: i.quantity,
         threshold: i.lowStockThreshold,
         costPrice: i.costPrice == null ? null : Number(i.costPrice),
@@ -72,7 +96,7 @@ export async function draftLowStockReorders() {
               currency: store.currency,
               subtotal,
               notes: "Auto-drafted from low-stock alerts. Review quantities and costs, then send.",
-              items: { create: order.lines.map((l) => ({ productId: l.productId, description: l.description, quantityOrdered: l.quantityOrdered, unitCost: roundMoney(l.unitCost) })) },
+              items: { create: order.lines.map((l) => ({ productId: l.productId, variantId: l.variantId, description: l.description, quantityOrdered: l.quantityOrdered, unitCost: roundMoney(l.unitCost) })) },
             },
           });
         });

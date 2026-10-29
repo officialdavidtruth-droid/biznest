@@ -39,6 +39,17 @@ describe("planReorders", () => {
     expect(planReorders([item({ productId: "a", quantity: 9, suppliers: [{ supplierId: "s1", costPrice: 1 }] })], new Set()).orders).toEqual([]);
   });
 
+  it("treats variants of one product as separate lines and matches open POs per variant", () => {
+    const sup = [{ supplierId: "s1", costPrice: 10 }];
+    const plan = planReorders([
+      item({ productId: "p", variantId: "v1", name: "Tee — S", suppliers: sup }),
+      item({ productId: "p", variantId: "v2", name: "Tee — M", suppliers: sup }),
+    ], new Set(["v1"]));
+    expect(plan.skippedAlreadyOrdered).toBe(1);
+    expect(plan.orders[0].lines).toHaveLength(1);
+    expect(plan.orders[0].lines[0]).toMatchObject({ productId: "p", variantId: "v2", description: "Tee — M" });
+  });
+
   it("falls back to the item's own cost when the supplier link has none", () => {
     const plan = planReorders([item({ productId: "a", costPrice: 70, suppliers: [{ supplierId: "s1", costPrice: null }] })], new Set());
     expect(plan.orders[0].lines[0].unitCost).toBe(70);

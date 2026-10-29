@@ -27,7 +27,15 @@ async function assertStoreAccess(slug: string): Promise<StoreAccessResult> {
 // --- Reads -------------------------------------------------------------
 
 export type InventoryOverviewItem = {
+  /**
+   * Row id. For simple products this is the InventoryItem id; for variant
+   * rows it is the ProductVariant id (check `stockType` before calling any
+   * action that takes an InventoryItem id).
+   */
   inventoryItemId: string;
+  stockType: "PRODUCT" | "VARIANT";
+  variantId: string | null;
+  variantLabel: string | null;
   productId: string;
   productName: string;
   productImage: string | null;
@@ -45,46 +53,77 @@ export type InventoryOverviewItem = {
 };
 
 /**
- * One row per physical product with inventory tracking, plus the
- * cost/profit/margin math merchants actually want to see. costPrice is
- * optional per item, so profit/margin are null (shown as "—") until the
- * merchant fills it in -- never silently assumed as zero, which would show
- * a misleadingly perfect 100% margin.
+ * One row per sellable stock unit: simple (non-variant) products via their
+ * InventoryItem, and each active ProductVariant for variant-enabled
+ * products. A variant-enabled product's own InventoryItem is a stale
+ * leftover (stock lives on its variants), so it is excluded -- counting it
+ * would double-count or show phantom stock. costPrice is optional per row,
+ * so profit/margin are null (shown as "—") until the merchant fills it in
+ * -- never silently assumed as zero, which would show a misleadingly
+ * perfect 100% margin.
  */
 export async function getInventoryOverview(slug: string): Promise<InventoryOverviewItem[]> {
   const access = await assertStoreAccess(slug);
   if (!access.success) return [];
 
-  const items = await prisma.inventoryItem.findMany({
-    where: { storeId: access.store.id },
-    include: { product: true },
-    orderBy: { updatedAt: "desc" },
-  });
+  const [items, variants] = await Promise.all([
+    prisma.inventoryItem.findMany({
+      where: { storeId: access.store.id, product: { hasVariants: false } },
+      include: { product: true },
+      orderBy: { updatedAt: "desc" },
+    }),
+    prisma.productVariant.findMany({
+      where: { storeId: access.store.id, isActive: true, product: { hasVariants: true } },
+      include: { product: true },
+      orderBy: { updatedAt: "desc" },
+    }),
+  ]);
 
-  return items.map((i) => {
-    const sellingPrice = Number(i.product.price);
-    const costPrice = i.costPrice != null ? Number(i.costPrice) : null;
-    const profitPerUnit = costPrice != null ? roundMoney(sellingPrice - costPrice) : null;
-    const marginPercent = costPrice != null && sellingPrice > 0 ? roundMoney((profitPerUnit! / sellingPrice) * 100) : null;
-
+  const build = (o: {
+    id: string; stockType: "PRODUCT" | "VARIANT"; variantId: string | null; variantLabel: string | null;
+    product: { id: string; name: string; images: string[]; isPublished: boolean; currency: string };
+    sku: string | null; barcode: string | null; quantity: number; lowStockThreshold: number;
+    cost: unknown; price: number;
+  }): InventoryOverviewItem => {
+    const costPrice = o.cost != null ? Number(o.cost) : null;
+    const profitPerUnit = costPrice != null ? roundMoney(o.price - costPrice) : null;
+    const marginPercent = costPrice != null && o.price > 0 ? roundMoney((profitPerUnit! / o.price) * 100) : null;
     return {
-      inventoryItemId: i.id,
-      productId: i.productId,
-      productName: i.product.name,
-      productImage: i.product.images[0] ?? null,
-      isPublished: i.product.isPublished,
-      sku: i.sku,
-      barcode: i.barcode,
-      quantity: i.quantity,
-      lowStockThreshold: i.lowStockThreshold,
+      inventoryItemId: o.id,
+      stockType: o.stockType,
+      variantId: o.variantId,
+      variantLabel: o.variantLabel,
+      productId: o.product.id,
+      productName: o.product.name,
+      productImage: o.product.images[0] ?? null,
+      isPublished: o.product.isPublished,
+      sku: o.sku,
+      barcode: o.barcode,
+      quantity: o.quantity,
+      lowStockThreshold: o.lowStockThreshold,
       costPrice,
-      sellingPrice,
-      currency: i.product.currency,
+      sellingPrice: o.price,
+      currency: o.product.currency,
       profitPerUnit,
       marginPercent,
-      status: i.quantity === 0 ? "OUT_OF_STOCK" : i.quantity <= i.lowStockThreshold ? "LOW_STOCK" : "IN_STOCK",
+      status: o.quantity === 0 ? "OUT_OF_STOCK" : o.quantity <= o.lowStockThreshold ? "LOW_STOCK" : "IN_STOCK",
     };
-  });
+  };
+
+  const rows = [
+    ...items.map((i) => build({
+      id: i.id, stockType: "PRODUCT", variantId: null, variantLabel: null, product: i.product,
+      sku: i.sku, barcode: i.barcode, quantity: i.quantity, lowStockThreshold: i.lowStockThreshold,
+      cost: i.costPrice, price: Number(i.product.price),
+    })),
+    ...variants.map((v) => build({
+      id: v.id, stockType: "VARIANT", variantId: v.id, variantLabel: v.label, product: v.product,
+      sku: v.sku, barcode: v.barcode, quantity: v.quantity, lowStockThreshold: v.lowStockThreshold,
+      // A null variant price means "inherit the parent product's price".
+      cost: v.costPrice, price: Number(v.price ?? v.product.price),
+    })),
+  ];
+  return rows;
 }
 
 /** Store-wide profit summary bar for the top of the inventory page. */
@@ -446,28 +485,50 @@ export async function getInventoryReconciliation(slug: string): Promise<Inventor
   return [...productRows, ...variantRows];
 }
 
-/** Reorder queue derived from real on-hand quantities; never mutates stock. */
+/**
+ * Reorder queue derived from real on-hand quantities; never mutates stock.
+ * Covers simple products and active variants; variant-enabled parents are
+ * excluded (their own InventoryItem is stale -- stock lives on the variants).
+ */
 export async function getInventoryReorderSuggestions(slug: string) {
   const access = await assertStoreAccess(slug);
   if (!access.success) return [];
-  const items = await prisma.inventoryItem.findMany({
-    where: { storeId: access.store.id },
-    include: { product: true },
-    orderBy: { quantity: "asc" },
-    take: 100,
-  });
-  return items.filter((i) => i.quantity <= i.lowStockThreshold).map((i) => ({
-    inventoryItemId: i.id,
-    productId: i.productId,
-    productName: i.product.name,
-    quantity: i.quantity,
-    threshold: i.lowStockThreshold,
-    suggestedQuantity: Math.max(i.lowStockThreshold * 2 - i.quantity, 1),
-    costPrice: i.costPrice == null ? null : Number(i.costPrice),
-    estimatedSpend: i.costPrice == null ? null : Number(i.costPrice) * Math.max(i.lowStockThreshold * 2 - i.quantity, 1),
-  }));
-}
+  const [items, variants] = await Promise.all([
+    prisma.inventoryItem.findMany({
+      where: { storeId: access.store.id, product: { hasVariants: false } },
+      include: { product: true },
+    }),
+    prisma.productVariant.findMany({
+      where: { storeId: access.store.id, isActive: true, product: { hasVariants: true } },
+      include: { product: true },
+    }),
+  ]);
 
+  const rows = [
+    ...items.map((i) => ({ stockId: i.id, stockType: "PRODUCT" as const, variantLabel: null as string | null, productId: i.productId, productName: i.product.name, quantity: i.quantity, threshold: i.lowStockThreshold, cost: i.costPrice })),
+    ...variants.map((v) => ({ stockId: v.id, stockType: "VARIANT" as const, variantLabel: v.label as string | null, productId: v.productId, productName: v.product.name, quantity: v.quantity, threshold: v.lowStockThreshold, cost: v.costPrice })),
+  ];
+
+  return rows
+    .filter((r) => r.quantity <= r.threshold)
+    .sort((a, b) => a.quantity - b.quantity)
+    .map((r) => {
+      const suggestedQuantity = Math.max(r.threshold * 2 - r.quantity, 1);
+      const costPrice = r.cost == null ? null : Number(r.cost);
+      return {
+        inventoryItemId: r.stockId,
+        stockType: r.stockType,
+        variantLabel: r.variantLabel,
+        productId: r.productId,
+        productName: r.productName,
+        quantity: r.quantity,
+        threshold: r.threshold,
+        suggestedQuantity,
+        costPrice,
+        estimatedSpend: costPrice == null ? null : roundMoney(costPrice * suggestedQuantity),
+      };
+    });
+}
 
 export async function getFifoBatches(slug: string) {
   const access = await assertStoreAccess(slug);
@@ -490,4 +551,57 @@ export async function getFifoBatches(slug: string) {
     isExpired: row.expiryDate ? row.expiryDate < now : false,
     expiresSoon: row.expiryDate ? row.expiryDate >= now && row.expiryDate <= new Date(now.getTime() + 7 * 86400000) : false,
   }));
+}
+
+
+// --- Variant row edits (inventory table) --------------------------------
+// The inventory table lists variant rows next to simple products; these are
+// the ProductVariant equivalents of updateCostPrice/updateSku/updateBarcode
+// (SKU/barcode generation lives in lib/actions/variant.ts).
+
+export async function updateVariantCostPrice(slug: string, variantId: string, costPrice: number | null): Promise<ActionResult> {
+  const access = await assertStoreAccess(slug);
+  if (!access.success) return { success: false, error: access.error };
+  if (costPrice != null && (!Number.isFinite(costPrice) || costPrice < 0)) return { success: false, error: "Cost price can't be negative." };
+
+  const variant = await prisma.productVariant.findFirst({ where: { id: variantId, storeId: access.store.id } });
+  if (!variant) return { success: false, error: "Variant not found." };
+
+  await prisma.productVariant.update({ where: { id: variantId }, data: { costPrice: costPrice != null ? roundMoney(costPrice) : null } });
+  revalidatePath(`/store/${slug}/admin/inventory`);
+  return { success: true, data: undefined };
+}
+
+export async function updateVariantSku(slug: string, variantId: string, sku: string): Promise<ActionResult> {
+  const access = await assertStoreAccess(slug);
+  if (!access.success) return { success: false, error: access.error };
+
+  const variant = await prisma.productVariant.findFirst({ where: { id: variantId, storeId: access.store.id } });
+  if (!variant) return { success: false, error: "Variant not found." };
+
+  const trimmed = sku.trim();
+  if (trimmed) {
+    const clash = await prisma.productVariant.findFirst({ where: { storeId: access.store.id, sku: trimmed, NOT: { id: variantId } } });
+    if (clash) return { success: false, error: "That SKU is already in use." };
+  }
+  await prisma.productVariant.update({ where: { id: variantId }, data: { sku: trimmed || null } });
+  revalidatePath(`/store/${slug}/admin/inventory`);
+  return { success: true, data: undefined };
+}
+
+export async function updateVariantBarcode(slug: string, variantId: string, barcode: string): Promise<ActionResult> {
+  const access = await assertStoreAccess(slug);
+  if (!access.success) return { success: false, error: access.error };
+
+  const variant = await prisma.productVariant.findFirst({ where: { id: variantId, storeId: access.store.id } });
+  if (!variant) return { success: false, error: "Variant not found." };
+
+  const trimmed = barcode.trim();
+  if (trimmed) {
+    const clash = await prisma.productVariant.findFirst({ where: { storeId: access.store.id, barcode: trimmed, NOT: { id: variantId } } });
+    if (clash) return { success: false, error: "That barcode is already in use." };
+  }
+  await prisma.productVariant.update({ where: { id: variantId }, data: { barcode: trimmed || null } });
+  revalidatePath(`/store/${slug}/admin/inventory`);
+  return { success: true, data: undefined };
 }

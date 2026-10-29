@@ -5,7 +5,12 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { toast } from "sonner";
 import { Wand2 } from "lucide-react";
-import { updateCostPrice, updateSku, generateSku, updateBarcode, generateBarcode, type InventoryOverviewItem } from "@/lib/actions/inventory";
+import {
+  updateCostPrice, updateSku, generateSku, updateBarcode, generateBarcode,
+  updateVariantCostPrice, updateVariantSku, updateVariantBarcode,
+  type InventoryOverviewItem,
+} from "@/lib/actions/inventory";
+import { generateVariantSku, generateVariantBarcode } from "@/lib/actions/variant";
 import { formatNumber } from "@/lib/i18n/locale";
 
 const STATUS_STYLES: Record<InventoryOverviewItem["status"], string> = {
@@ -29,10 +34,11 @@ export function InventoryRow({ storeSlug, item }: { storeSlug: string; item: Inv
   const [savingBarcode, setSavingBarcode] = useState(false);
   const [generating, setGenerating] = useState(false);
   const [generatingBarcode, setGeneratingBarcode] = useState(false);
+  const isVariant = item.stockType === "VARIANT";
 
   async function saveCost() {
     setSavingCost(true);
-    const result = await updateCostPrice(storeSlug, item.inventoryItemId, costPrice === "" ? null : Number(costPrice));
+    const result = await (isVariant ? updateVariantCostPrice : updateCostPrice)(storeSlug, item.inventoryItemId, costPrice === "" ? null : Number(costPrice));
     setSavingCost(false);
     if (!result.success) return toast.error(result.error);
     toast.success("Cost price updated.");
@@ -41,7 +47,7 @@ export function InventoryRow({ storeSlug, item }: { storeSlug: string; item: Inv
 
   async function saveSku() {
     setSavingSku(true);
-    const result = await updateSku(storeSlug, item.inventoryItemId, sku);
+    const result = await (isVariant ? updateVariantSku : updateSku)(storeSlug, item.inventoryItemId, sku);
     setSavingSku(false);
     if (!result.success) return toast.error(result.error);
     toast.success("SKU updated.");
@@ -50,7 +56,7 @@ export function InventoryRow({ storeSlug, item }: { storeSlug: string; item: Inv
 
   async function handleGenerateSku() {
     setGenerating(true);
-    const result = await generateSku(storeSlug, item.inventoryItemId);
+    const result = await (isVariant ? generateVariantSku : generateSku)(storeSlug, item.inventoryItemId);
     setGenerating(false);
     if (!result.success) return toast.error(result.error);
     setSku(result.data.sku);
@@ -60,7 +66,7 @@ export function InventoryRow({ storeSlug, item }: { storeSlug: string; item: Inv
 
   async function saveBarcode() {
     setSavingBarcode(true);
-    const result = await updateBarcode(storeSlug, item.inventoryItemId, barcode);
+    const result = await (isVariant ? updateVariantBarcode : updateBarcode)(storeSlug, item.inventoryItemId, barcode);
     setSavingBarcode(false);
     if (!result.success) return toast.error(result.error);
     toast.success("Barcode updated.");
@@ -69,7 +75,7 @@ export function InventoryRow({ storeSlug, item }: { storeSlug: string; item: Inv
 
   async function handleGenerateBarcode() {
     setGeneratingBarcode(true);
-    const result = await generateBarcode(storeSlug, item.inventoryItemId);
+    const result = await (isVariant ? generateVariantBarcode : generateBarcode)(storeSlug, item.inventoryItemId);
     setGeneratingBarcode(false);
     if (!result.success) return toast.error(result.error);
     setBarcode(result.data.barcode);
@@ -79,7 +85,10 @@ export function InventoryRow({ storeSlug, item }: { storeSlug: string; item: Inv
 
   return (
     <tr className="border-b last:border-0 align-top">
-      <td className="px-4 py-3 font-medium">{item.productName}</td>
+      <td className="px-4 py-3 font-medium">
+        {item.productName}
+        {item.variantLabel && <span className="block text-xs font-normal text-muted-foreground">{item.variantLabel}</span>}
+      </td>
 
       <td className="px-4 py-3">
         <div className="flex items-center gap-1">
@@ -175,7 +184,10 @@ export function InventoryRow({ storeSlug, item }: { storeSlug: string; item: Inv
       </td>
 
       <td className="px-4 py-3 text-right">
-        <Link href={`/${storeSlug}/admin/inventory/${item.inventoryItemId}`} className="text-xs font-medium text-primary hover:underline">
+        <Link
+          href={isVariant ? `/${storeSlug}/admin/products/${item.productId}/edit` : `/${storeSlug}/admin/inventory/${item.inventoryItemId}`}
+          className="text-xs font-medium text-primary hover:underline"
+        >
           Manage
         </Link>
       </td>
