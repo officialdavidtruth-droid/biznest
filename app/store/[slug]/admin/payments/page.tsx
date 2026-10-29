@@ -2,10 +2,12 @@
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { getPayoutStatus } from "@/lib/actions/store";
-import { getActiveGateway } from "@/lib/actions/site-settings";
 import { ConnectPayoutForm } from "@/components/dashboard/connect-payout-form";
 import { getOwnGatewaySettings } from "@/lib/actions/store-gateway";
 import { OwnGatewayForm } from "@/components/dashboard/own-gateway-form";
+import { ManualPaymentSettingsForm } from "@/components/dashboard/manual-payment-settings-form";
+import { assertStorePermission } from "@/lib/access/assert-store-access";
+import { manualPayInfoFromStore } from "@/lib/payments/manual-transfer";
 import { getPosCommissionBalance } from "@/lib/actions/pos";
 import { PosCommissionCard } from "@/components/dashboard/pos-commission-card";
 import { getRefundClawbackBalance, getRefundPendingPayments } from "@/lib/actions/refund";
@@ -21,10 +23,11 @@ export default async function PaymentsPage({ params }: { params: Promise<{ slug:
 
   const payout = await getPayoutStatus(slug);
   if (!payout) return null;
-  const gateway = await getActiveGateway();
   // Owner-only: null for staff, who must not see or change the store's payment keys.
   const ownGateway = await getOwnGatewaySettings(slug);
 
+  const canEditPayments = (await assertStorePermission(slug, "payments")).success;
+  const manual = manualPayInfoFromStore(store);
   const session = await auth();
   const isStaff = session?.user?.role === "PLATFORM_ADMIN" || session?.user?.role === "SUPPORT_MODERATOR";
 
@@ -65,41 +68,49 @@ export default async function PaymentsPage({ params }: { params: Promise<{ slug:
         <PosCommissionCard slug={slug} balance={posCommission} />
       </div>
 
-      <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-muted-foreground">Payout account</h2>
-      <p className="mb-3 text-sm text-muted-foreground">
-        Connect your bank account to get paid. When a customer&apos;s payment is confirmed, the money is sent
-        straight to this account — no manual transfers.
+      <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-muted-foreground">Bank transfer</h2>
+      <p className="mb-3 max-w-xl text-sm text-muted-foreground">
+        Customers pay you directly: they see your account details at checkout, transfer the money, and upload a screenshot of the payment.
+        You confirm each payment once it reaches your account. BizNest never holds your money.
       </p>
-      <div className="mb-4 rounded-lg border border-[var(--bn-admin-border)] bg-[var(--bn-admin-surface-2)] p-4 text-sm">
-        <p className="font-semibold">Payment processing fees</p>
-        <p className="mt-1 text-xs leading-5 text-muted-foreground">
-          BizNest takes no commission on your sales. The payment gateway charges a processing fee on each customer payment, and that fee is
-          deducted from your payout. Your customer always pays exactly the price shown at checkout. For example, on a ₦10,000 order with a
-          ₦150 gateway fee, ₦9,850 is sent to your bank account. The fee for each payout is shown on your payout record.
-        </p>
-      </div>
-      <div className="mb-4 rounded-lg border border-[var(--bn-admin-border)] bg-[var(--bn-admin-surface-2)] p-4 text-sm text-[var(--bn-admin-orange)]">
-        <p className="font-semibold">Inline card checkout enabled</p>
-        <p className="mt-1 text-xs leading-5">Customers can pay by Visa, Mastercard or Verve inside the storefront checkout when the active payment provider has its public key configured. Money from your sales is paid out to your connected bank account.</p>
-      </div>
-      <div className="max-w-md">
-        <ConnectPayoutForm
-          slug={slug}
-          provider={gateway}
-          connected={payout.connected}
-          needsReconnect={payout.needsReconnect}
-          details={payout.payoutDetails}
-        />
-      </div>
+      <ManualPaymentSettingsForm
+        slug={slug}
+        canEdit={canEditPayments}
+        initial={{
+          enabled: manual.enabled,
+          bankName: store.manualBankName ?? "",
+          accountName: store.manualAccountName ?? "",
+          accountNumber: store.manualAccountNumber ?? "",
+          note: store.manualPayNote ?? "",
+          whatsapp: manual.whatsapp ? `+${manual.whatsapp}` : "",
+        }}
+      />
 
-      {ownGateway && (
+      {payout.connected && (
         <section className="mt-8">
-          <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-muted-foreground">Your own payment gateway</h2>
-          <OwnGatewayForm slug={slug} settings={ownGateway} />
+          <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-muted-foreground">Legacy payout account</h2>
+          <p className="mb-3 max-w-xl text-sm text-muted-foreground">
+            New customer payments no longer go through BizNest, so no new payouts are created. This account is kept only to settle payments received before the switch.
+          </p>
+          <div className="max-w-md">
+            <ConnectPayoutForm
+              slug={slug}
+              provider={store.ownGatewayProvider === "FLUTTERWAVE" ? "FLUTTERWAVE" : "PAYSTACK"}
+              connected={payout.connected}
+              needsReconnect={payout.needsReconnect}
+              details={payout.payoutDetails}
+            />
+          </div>
         </section>
       )}
 
-      {refundPending && <div className="mt-6"><RefundPendingCard slug={slug} payments={refundPending} /></div>}
+      {ownGateway && (
+        <section className="mt-8">
+          <h2 className="mb-1 text-sm font-semibold uppercase tracking-wide text-muted-foreground">Your own payment gateway (optional)</h2>
+          <p className="mb-3 max-w-xl text-sm text-muted-foreground">Add your own Paystack or Flutterwave keys to take card payments straight into your gateway account. While switched on, checkout uses your gateway instead of bank transfer.</p>
+          <OwnGatewayForm slug={slug} settings={ownGateway} />
+        </section>
+      )}
 
       {refundPending && <div className="mt-6"><RefundPendingCard slug={slug} payments={refundPending} /></div>}
 

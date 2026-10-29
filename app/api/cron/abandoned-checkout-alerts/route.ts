@@ -36,6 +36,8 @@ export const GET = withCronMonitor("abandoned-checkout-alerts", async () => {
   const newlyAbandoned = await prisma.order.findMany({
     where: {
       status: "PENDING_PAYMENT", createdAt: { lt: cutoff }, merchantAlertedAt: null,
+      // Bank-transfer orders awaiting the vendor are not abandoned carts.
+      OR: [{ paymentProvider: null }, { paymentProvider: { not: "CASH" } }],
       // Cart-checkout businesses only: no alerts for hotels (reservations) or service-only stores.
       store: { business: { sellsProducts: true, NOT: { category: { in: HOTEL_CATEGORY_ALIASES, mode: "insensitive" } } } },
     },

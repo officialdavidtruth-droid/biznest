@@ -23,7 +23,7 @@ export async function listAbandonedCheckouts(slug: string) {
   const cutoff = new Date(Date.now() - ABANDONED_CHECKOUT_THRESHOLD_MINUTES * 60_000);
 
   return prisma.order.findMany({
-    where: { storeId: access.store.id, status: "PENDING_PAYMENT", createdAt: { lt: cutoff } },
+    where: { storeId: access.store.id, status: "PENDING_PAYMENT", createdAt: { lt: cutoff }, OR: [{ paymentProvider: null }, { paymentProvider: { not: "CASH" } }] },
     include: {
       buyer: { select: { name: true, email: true } },
       items: { include: { product: true, service: true } },

@@ -1,4 +1,4 @@
-import { listOrdersForBuyerAtStore } from "@/lib/actions/order";
+import { listAwaitingTransferOrdersForBuyer, listOrdersForBuyerAtStore } from "@/lib/actions/order";
 import { getStoreBranding } from "@/lib/actions/store-branding";
 import { requireStoreCustomer } from "@/lib/actions/store-customer";
 import { DISPUTABLE_ORDER_STATUSES } from "@/lib/constants/dispute";
@@ -44,6 +44,7 @@ export async function OrdersListContent({ slug }: { slug: string }) {
   if (!customer) notFound();
 
   const orders = await listOrdersForBuyerAtStore(slug);
+  const awaiting = await listAwaitingTransferOrdersForBuyer(slug);
   const accent = store.themeColors?.primary || "#4f46e5"; // sensible fallback, still per-store when set
   const record = await prisma.store.findUnique({ where: { slug }, select: { template: { select: { name: true } } } });
   const copy = getAccountCopy(record?.template?.name, store.businessCategory);
@@ -57,6 +58,24 @@ export async function OrdersListContent({ slug }: { slug: string }) {
 
   return (
     <>
+        {awaiting.length > 0 && (
+          <div className="mb-6 space-y-2">
+            {awaiting.map((o) => (
+              <Link
+                key={o.id}
+                href={`/store/${slug}/orders/${o.id}/pay`}
+                className="flex items-center justify-between gap-3 rounded-2xl border border-amber-200 bg-amber-50 p-4 no-underline shadow-sm"
+              >
+                <div className="min-w-0">
+                  <p className="text-sm font-bold text-amber-900">Order #{o.id.slice(-8).toUpperCase()} · {o.currency} {formatNumber(Number(o.total))}</p>
+                  <p className="text-xs text-amber-800">{o.paymentProofUrl ? "Payment proof sent. Waiting for the store to confirm." : "Waiting for your bank transfer. Tap to pay and upload proof."}</p>
+                </div>
+                <ArrowUpRight className="h-4 w-4 flex-shrink-0 text-amber-800" />
+              </Link>
+            ))}
+          </div>
+        )}
+
         {orders.length > 0 && (
           <div className="mb-6 grid grid-cols-2 gap-3">
             <div

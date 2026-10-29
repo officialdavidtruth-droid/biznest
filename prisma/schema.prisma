@@ -848,6 +848,19 @@ model Store {
   contactEmail  String?
   contactPhone  String?
 
+  // --- Manual bank-transfer payments (the default way customers pay a store) ---
+  // The vendor's own account details, shown to customers at checkout. The
+  // customer transfers, uploads a screenshot, and the vendor confirms. BizNest
+  // never holds this money. whatsappNumber is the vendor's WhatsApp contact
+  // (digits, international format) shown next to the account details so a
+  // customer can chase a slow confirmation.
+  whatsappNumber      String?
+  manualPayEnabled    Boolean @default(true)
+  manualBankName      String?
+  manualAccountName   String?
+  manualAccountNumber String?
+  manualPayNote       String?
+
   // Installed marketplace applications. App access is enforced by the plugin entitlement layer,
   // not by hard-coded plan names in individual pages.
   installedPlugins StorePlugin[]
@@ -2069,6 +2082,13 @@ model Order {
   // starting a second charge against the customer -- see the dedupe
   // check at the top of startCheckout in lib/actions/order.ts.
   checkoutUrl      String?
+  // Manual bank-transfer orders: screenshot the customer uploaded as proof of
+  // payment, when, and an optional note. Orders paid this way carry
+  // paymentProvider CASH (settled outside the platform) and stay
+  // PENDING_PAYMENT until the vendor confirms receipt.
+  paymentProofUrl  String?
+  paymentProofAt   DateTime?
+  paymentProofNote String?
   escrowReleasedAt DateTime?
 
   deliveryZoneId String?

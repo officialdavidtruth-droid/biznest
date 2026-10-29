@@ -59,7 +59,7 @@ export async function postOrderSaleToLedger(orderId: string, entryDate: Date = n
   try {
     const order = await prisma.order.findUnique({
       where: { id: orderId },
-      select: { id: true, storeId: true, total: true, status: true, items: { select: { productId: true, serviceId: true } } },
+      select: { id: true, storeId: true, total: true, status: true, channel: true, items: { select: { productId: true, serviceId: true } } },
     });
     if (!order) return;
     if (!([...LEDGER_SALE_STATUSES, "REFUNDED"] as string[]).includes(order.status)) return;
@@ -68,7 +68,7 @@ export async function postOrderSaleToLedger(orderId: string, entryDate: Date = n
     const accounts = await loadAccounts(order.storeId);
     if (!accounts) return;
     const payment = await prisma.payment.findFirst({ where: { orderId: order.id }, orderBy: { createdAt: "asc" }, select: { provider: true } });
-    const debitId = accounts.get(payment?.provider === "CASH" ? "1000" : "1010")!;
+    const debitId = accounts.get(payment?.provider === "CASH" && order.channel !== "ONLINE" ? "1000" : "1010")!; // online CASH = vendor-confirmed bank transfer -> bank account
     const serviceOnly = order.items.length > 0 && order.items.every((i) => i.serviceId && !i.productId);
     const revenueId = accounts.get(serviceOnly ? "4100" : "4000")!;
     await createEntry(order.storeId, SALE_REF(order.id), `Sale: order ${order.id}`, entryDate, [

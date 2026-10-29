@@ -18,13 +18,12 @@ import {
 } from "@/lib/validations/order";
 import {
   chargeCustomer,
-  resolveCheckoutGateway,
   paymentCallbackUrl,
-  getActiveGateway,
 } from "@/lib/payments/gateway";
 import { calculateOrderTotals } from "@/lib/utils/pricing";
 import { PLATFORM_COMMISSION_PERCENT } from "@/lib/constants/commission";
-import { storeHasPayoutTarget } from "@/lib/payments/payout-target";
+import { buildStoreUrl } from "@/lib/store-url";
+import { manualPayInfoFromStore, manualPayReady } from "@/lib/payments/manual-transfer";
 import { resolveStoreGateway } from "@/lib/payments/store-gateway";
 import { revalidatePath } from "next/cache";
 import { checkRateLimit } from "@/lib/rate-limit";
@@ -60,6 +59,52 @@ const APP_URL =
   "https://biznest.vercel.app";
 
 /**
+ * What a vendor may see. Normal rule (see SELLER_VISIBLE_ORDER_STATUSES): never an
+ * unpaid cart. The one exception: a bank-transfer order whose customer has uploaded
+ * proof of payment. That is a real order waiting for the vendor to confirm the money.
+ */
+const SELLER_VISIBLE_OR_AWAITING_TRANSFER = [
+  { status: { in: SELLER_VISIBLE_ORDER_STATUSES } },
+  { status: "PENDING_PAYMENT" as const, paymentProvider: "CASH" as const, paymentProofUrl: { not: null } },
+];
+
+/**
+ * Bank-transfer checkout: no gateway involved. The order stays PENDING_PAYMENT
+ * with a CASH ("settled outside the platform") payment row until the vendor
+ * confirms the transfer, and the customer is sent to the pay page that shows
+ * the vendor's account details and takes the proof-of-payment upload.
+ */
+async function prepareManualTransferOrder(
+  order: { id: string; currency: string },
+  store: { id: string; slug: string; customDomain: string | null; customDomainStatus: string },
+  totalNaira: number
+): Promise<ActionResult<{ authorizationUrl: string }>> {
+  const full = await prisma.store.findUnique({ where: { id: store.id } });
+  if (!full || !manualPayReady(manualPayInfoFromStore(full))) {
+    await prisma.order.update({ where: { id: order.id }, data: { status: "CANCELLED" } });
+    return {
+      success: false,
+      error: "This store hasn't finished setting up how to receive payments yet. Please contact the store.",
+    };
+  }
+
+  const payUrl = buildStoreUrl(store, `/orders/${order.id}/pay`);
+
+  const existing = await prisma.payment.findUnique({ where: { reference: order.id }, select: { id: true, status: true } });
+  if (existing?.status === "SUCCESSFUL") return { success: true, data: { authorizationUrl: payUrl } };
+  if (!existing) {
+    await createPendingPayment({ storeId: store.id, orderId: order.id, purpose: "ORDER", provider: "CASH", reference: order.id, amount: totalNaira, currency: order.currency });
+  } else {
+    await prisma.payment.update({ where: { id: existing.id }, data: { provider: "CASH", status: "PENDING", amount: totalNaira, currency: order.currency, usesStoreGateway: false } });
+  }
+  await prisma.order.update({
+    where: { id: order.id },
+    data: { status: "PENDING_PAYMENT", paymentProvider: "CASH", checkoutUrl: payUrl },
+  });
+  return { success: true, data: { authorizationUrl: payUrl } };
+}
+
+/**
  * Charges an existing order.
  */
 async function chargeExistingOrder(
@@ -72,6 +117,8 @@ async function chargeExistingOrder(
   store: {
     id: string;
     slug: string;
+    customDomain: string | null;
+    customDomainStatus: string;
     paystackSubaccountCode: string | null;
     flutterwaveSubaccountId: string | null;
     payoutVerifiedAt: Date | null;
@@ -95,13 +142,15 @@ async function chargeExistingOrder(
 > {
   const totalNaira = Number(order.total);
 
-  // The store's own gateway (bring-your-own keys) wins over the platform's
-  // active gateway when the owner has switched it on.
-  const checkoutGateway = await resolveCheckoutGateway(store.id);
-  if (!checkoutGateway.ok) return { success: false, error: checkoutGateway.error };
-  const gateway = checkoutGateway.gateway;
-  const usesStoreGateway = checkoutGateway.usesStoreGateway;
+  // A store charges customers only through ITS OWN Paystack/Flutterwave keys (when the
+  // owner has switched them on). Otherwise the customer pays the vendor's bank account
+  // directly and uploads proof: BizNest no longer collects store payments itself.
+  const ownGateway = await resolveStoreGateway(store.id);
+  if (ownGateway.status === "error") return { success: false, error: ownGateway.message };
+  if (ownGateway.status === "none") return prepareManualTransferOrder(order, store, totalNaira);
 
+  const gateway = ownGateway.credentials.provider;
+  const usesStoreGateway = true;
   const callbackUrl = paymentCallbackUrl(gateway);
 
   const pendingPayment = await prisma.payment.findUnique({ where: { reference: order.id }, select: { id: true, status: true } });
@@ -266,36 +315,18 @@ export async function startCheckout(
     };
   }
 
-  // Never accept a marketplace payment when BizNest has a payout target
-  // that the provider has not verified. Otherwise the customer can pay
-  // successfully while the merchant share is held at the gateway.
-  // Stores that take payments straight into their own gateway account have no
-  // BizNest payout to wait on, so these payout gates don't apply to them.
+  // Payment is taken either through the store's OWN gateway keys, or by bank
+  // transfer to the vendor's own account. Either way the money never passes
+  // through BizNest, so there is no payout target to wait on. A store that has
+  // neither set up can't take an order: say so before the customer fills a cart.
   const ownGateway = await resolveStoreGateway(store.id);
   if (ownGateway.status === "error") {
     return { success: false, error: ownGateway.message };
   }
-  const usesOwnGateway = ownGateway.status === "ok";
-  const activeGateway = await getActiveGateway();
-  const hasPayoutTarget = usesOwnGateway || storeHasPayoutTarget(store, activeGateway);
-
-  if (!hasPayoutTarget) {
+  if (ownGateway.status === "none" && !manualPayReady(manualPayInfoFromStore(store))) {
     return {
       success: false,
-      error: "This store has not connected a payout account yet. Online checkout is temporarily unavailable.",
-    };
-  }
-
-  // Paystack exposes an explicit subaccount is_verified flag. Do not accept a
-  // new marketplace payment while that provider-side verification is pending.
-  // Flutterwave's v3 collection-subaccount API does not expose an equivalent
-  // is_verified field, so do not invent one in BizNest or block every
-  // successfully-created Flutterwave subaccount forever. Flutterwave remains
-  // authoritative for any compliance/settlement hold on its side.
-  if (!usesOwnGateway && activeGateway === "PAYSTACK" && !store.payoutVerifiedAt) {
-    return {
-      success: false,
-      error: "This store's payout account is still pending verification. Please try again later.",
+      error: "This store hasn't finished setting up how to receive payments yet. Please contact the store.",
     };
   }
 
@@ -880,6 +911,23 @@ export async function listOrdersForBuyerAtStore(
   });
 }
 
+/**
+ * The signed-in customer's bank-transfer orders that still need paying or are
+ * waiting for the vendor to confirm. Shown above "My orders" so a customer who
+ * closed the pay page can get back to it.
+ */
+export async function listAwaitingTransferOrdersForBuyer(slug: string) {
+  const customerSession = await getStoreCustomerSessionForStore(slug);
+  const session = customerSession ? customerSession : await auth();
+  if (!session?.user?.id) return [];
+  return prisma.order.findMany({
+    where: { buyerId: session.user.id, store: { slug }, status: "PENDING_PAYMENT", paymentProvider: "CASH" },
+    select: { id: true, total: true, currency: true, createdAt: true, paymentProofUrl: true },
+    orderBy: { createdAt: "desc" },
+    take: 20,
+  });
+}
+
 /* -------------------------------------------------------------------------- */
 /* SELLER ORDERS                                                              */
 /* -------------------------------------------------------------------------- */
@@ -899,10 +947,7 @@ export async function listOrders(
       storeId:
         access.store.id,
 
-      status: {
-        in:
-          SELLER_VISIBLE_ORDER_STATUSES,
-      },
+      OR: SELLER_VISIBLE_OR_AWAITING_TRANSFER,
     },
 
     include: {
@@ -953,10 +998,7 @@ export async function getOrder(
       storeId:
         access.store.id,
 
-      status: {
-        in:
-          SELLER_VISIBLE_ORDER_STATUSES,
-      },
+      OR: SELLER_VISIBLE_OR_AWAITING_TRANSFER,
     },
 
     include: {

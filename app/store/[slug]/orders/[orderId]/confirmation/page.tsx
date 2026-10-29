@@ -1,4 +1,4 @@
-import {OrderConfirmation} from "@/components/storefront/order-confirmation"; import {resolveStorePalette} from "@/lib/store-palette";
+import {redirect} from "next/navigation"; import {OrderConfirmation} from "@/components/storefront/order-confirmation"; import {resolveStorePalette} from "@/lib/store-palette";
 import {getOrderForBuyer} from "@/lib/actions/order"; import {notFound} from "next/navigation"; import {getGrandeurRestaurantData} from "@/lib/grandeur-restaurant"; import {TasteHouseConfirmation} from "@/components/storefront/tastehouse"; import {GrandeurConfirmation} from "@/components/storefront/grandeur-restaurant"; import {ExampleConfirmation} from "@/components/storefront/example-confirmation"; import {prisma} from "@/lib/prisma"; import {TASTEHOUSE_TEMPLATE_NAME, EXAMPLE_TEMPLATE_NAME} from "@/lib/template-themes";
 import {TrackPurchase} from "@/components/storefront/store-tracking";
 
@@ -11,6 +11,8 @@ export default async function Page({params}:{params:Promise<{slug:string;orderId
   const {slug,orderId}=await params;
   const order=await getOrderForBuyer(orderId,slug);
   if(!order)notFound();
+  // Bank-transfer order the vendor hasn't confirmed yet: this is not a confirmation, send them to pay/upload proof.
+  if(order.status==="PENDING_PAYMENT"&&order.paymentProvider==="CASH")redirect(`/store/${slug}/orders/${orderId}/pay`);
   const view=await renderConfirmation(slug,order);
   // One tracker for every confirmation skin (default, TasteHouse, Grandeur, Example).
   const items=(order.items??[]).map((i:any)=>({id:String(i.productId??i.serviceId??i.id),name:String(i.product?.name??i.service?.name??"Item"),price:Number(i.unitPrice),quantity:i.quantity}));

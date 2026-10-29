@@ -5,6 +5,7 @@ import Link from "next/link";
 import { ShieldAlert } from "lucide-react";
 import { OrderStatusControl } from "@/components/dashboard/order-status-control";
 import { RefundControl } from "@/components/dashboard/refund-control";
+import { ConfirmManualPaymentButton } from "@/components/dashboard/confirm-manual-payment-button";
 import { DISPUTE_STATUS_CONFIG } from "@/lib/constants/dispute";
 import { formatDate, formatNumber } from "@/lib/i18n/locale";
 
@@ -81,6 +82,27 @@ export default async function StoreOrderDetailPage({
           </div>
         )}
       </div>
+
+      {order.channel !== "POS" && order.paymentProvider === "CASH" && order.status === "PENDING_PAYMENT" && (
+        <div className="mb-6 rounded-lg border border-[var(--bn-admin-border)] bg-[var(--bn-admin-surface-2)] p-4">
+          <h2 className="mb-1 text-sm font-semibold">Bank transfer: awaiting your confirmation</h2>
+          <p className="mb-3 text-xs text-muted-foreground">
+            The customer says they paid {order.currency} {formatNumber(Number(order.total))} to your account.
+            Check your bank app, then confirm. {order.paymentProofAt ? `Proof uploaded ${formatDate(new Date(order.paymentProofAt), { day: "numeric", month: "short", hour: "numeric", minute: "2-digit" })}.` : ""}
+          </p>
+          {order.paymentProofUrl ? (
+            <a href={order.paymentProofUrl} target="_blank" rel="noopener noreferrer" className="mb-3 block">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src={order.paymentProofUrl} alt="Customer's payment proof" className="max-h-80 rounded-md border object-contain" />
+            </a>
+          ) : (
+            <p className="mb-3 text-sm">No proof uploaded yet.</p>
+          )}
+          {order.paymentProofNote && <p className="mb-3 text-sm">Customer note: {order.paymentProofNote}</p>}
+          {address?.phone && <p className="mb-3 text-xs text-muted-foreground">Customer phone: {address.phone}</p>}
+          <ConfirmManualPaymentButton storeSlug={slug} orderId={order.id} />
+        </div>
+      )}
 
       <div className="mb-6 rounded-lg border bg-background p-4">
         <h2 className="mb-3 text-sm font-semibold">Status</h2>
