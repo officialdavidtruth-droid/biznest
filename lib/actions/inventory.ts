@@ -1,5 +1,6 @@
 "use server";
 
+import { logActivity } from "@/lib/activity-log";
 import { canonicalizeBusinessType } from "@/lib/business-identity";
 import { prisma } from "@/lib/prisma";
 import { revalidatePath } from "next/cache";
@@ -281,6 +282,7 @@ export async function adjustStock(
 
   revalidatePath(`/store/${slug}/admin/inventory`);
   revalidatePath(`/store/${slug}/admin/products`);
+  await logActivity({ storeId: access.store.id, action: "inventory.stock_adjusted", target: inventoryItemId, metadata: { type, delta, note: note?.slice(0, 200) ?? null, newQuantity: result.quantity } });
   return { success: true, data: { quantity: result.quantity } };
 }
 

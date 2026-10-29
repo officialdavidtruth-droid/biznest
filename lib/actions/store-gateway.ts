@@ -1,5 +1,6 @@
 "use server";
 
+import { logActivity } from "@/lib/activity-log";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { revalidatePath } from "next/cache";
@@ -170,6 +171,7 @@ export async function saveOwnGatewayKeys(
           },
   });
 
+  await logActivity({ storeId: store.id, action: "payments.gateway_keys_saved", target: provider, metadata: { provider } });
   revalidatePath(`/store/${slug}/admin/payments`);
   return { success: true, data: undefined };
 }
@@ -185,6 +187,7 @@ export async function setOwnGatewayActive(
 
   if (!input.enabled) {
     await prisma.store.update({ where: { id: store.id }, data: { ownGatewayEnabled: false } });
+    await logActivity({ storeId: store.id, action: "payments.own_gateway_disabled" });
     revalidatePath(`/store/${slug}/admin/payments`);
     return { success: true, data: undefined };
   }
@@ -196,6 +199,7 @@ export async function setOwnGatewayActive(
   if (!hasKeys) return { success: false, error: `Add your ${provider === "PAYSTACK" ? "Paystack" : "Flutterwave"} keys first.` };
 
   await prisma.store.update({ where: { id: store.id }, data: { ownGatewayEnabled: true, ownGatewayProvider: provider } });
+  await logActivity({ storeId: store.id, action: "payments.own_gateway_enabled", target: provider, metadata: { provider } });
   revalidatePath(`/store/${slug}/admin/payments`);
   return { success: true, data: undefined };
 }
@@ -234,6 +238,7 @@ export async function removeOwnGatewayKeys(slug: string, provider: GatewayProvid
         : { ownFlutterwaveSecretKey: null, ownFlutterwavePublicKey: null, ownFlutterwaveSecretHash: null, ...(wasActive ? { ownGatewayEnabled: false, ownGatewayProvider: null } : {}) },
   });
 
+  await logActivity({ storeId: store.id, action: "payments.gateway_keys_removed", target: provider, metadata: { provider } });
   revalidatePath(`/store/${slug}/admin/payments`);
   return { success: true, data: undefined };
 }

@@ -1,5 +1,6 @@
 "use server";
 
+import { reverseReferralForOrderSafely } from "@/lib/payments/referral-award";
 import { computeRecipeRequirements } from "@/lib/fnb-recipe-stock";
 import { auth } from "@/lib/auth";
 import {
@@ -1146,6 +1147,10 @@ export async function updateOrderStatus(
         data: { orderId, email: order.buyer.email },
       });
     }
+  }
+
+  if (status === "REFUNDED" && order.status !== "REFUNDED") {
+    await reverseReferralForOrderSafely(orderId);
   }
 
   if (

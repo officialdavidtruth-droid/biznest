@@ -1,5 +1,6 @@
 "use server";
 
+import { logActivity } from "@/lib/activity-log";
 import { prisma } from "@/lib/prisma";
 import { revalidatePath } from "next/cache";
 import { addDomainToVercel, checkDomainStatus, removeDomainFromVercel } from "@/lib/vercel-domains";
@@ -49,6 +50,7 @@ export async function setCustomDomain(slug: string, formData: FormData): Promise
     where: { id: access.store.id },
     data: { customDomain: domain, customDomainStatus: result.verified ? "VERIFIED" : "PENDING" },
   });
+  await logActivity({ storeId: access.store.id, action: "settings.domain_set", target: domain, metadata: { verified: result.verified } });
 
   revalidatePath(`/store/${slug}/admin/settings`);
   return { success: true, data: undefined };
@@ -82,6 +84,7 @@ export async function removeCustomDomain(slug: string): Promise<ActionResult> {
     where: { id: access.store.id },
     data: { customDomain: null, customDomainStatus: "NONE" },
   });
+  await logActivity({ storeId: access.store.id, action: "settings.domain_removed", target: access.store.customDomain });
 
   revalidatePath(`/store/${slug}/admin/settings`);
   return { success: true, data: undefined };

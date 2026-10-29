@@ -21,7 +21,10 @@ export type StoreActivityEntry = {
  * what staff have been doing. MANAGER/STAFF never see this, regardless of
  * their permission grants; it's not one of the invite-time checkboxes.
  */
-export async function listStoreActivity(slug: string, limit = 100): Promise<ActionResult<StoreActivityEntry[]>> {
+export async function listStoreActivity(
+  slug: string,
+  opts: { page?: number; pageSize?: number; action?: string } = {}
+): Promise<ActionResult<{ entries: StoreActivityEntry[]; total: number; page: number; pageSize: number }>> {
   const session = await auth();
   if (!session?.user?.id) return { success: false, error: "You must be signed in." };
 
@@ -33,11 +36,17 @@ export async function listStoreActivity(slug: string, limit = 100): Promise<Acti
     return { success: false, error: "Only the store owner can view the activity log." };
   }
 
+  const pageSize = Math.min(100, Math.max(1, opts.pageSize ?? 50));
+  const where = { storeId: store.id, ...(opts.action ? { action: opts.action } : {}) };
+  const total = await prisma.storeActivityLog.count({ where });
+  const page = Math.min(Math.max(1, Math.ceil(total / pageSize)), Math.max(1, Math.floor(opts.page ?? 1)));
+
   const entries = await prisma.storeActivityLog.findMany({
-    where: { storeId: store.id },
+    where,
     orderBy: { createdAt: "desc" },
-    take: limit,
+    skip: (page - 1) * pageSize,
+    take: pageSize,
   });
 
-  return { success: true, data: entries };
+  return { success: true, data: { entries, total, page, pageSize } };
 }

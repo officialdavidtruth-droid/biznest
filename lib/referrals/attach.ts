@@ -41,7 +41,33 @@ export async function getOrCreateReferralCode(storeId: string, userId: string) {
   throw new Error("REFERRAL_CODE_GENERATION_FAILED");
 }
 
-export type AttachResult = { ok: true } | { ok: false; error: string };
+export type AttachResult = { ok: true; refereePoints: number } | { ok: false; error: string };
+
+/**
+ * Collapses cosmetic email variants (gmail dots, +tags) so a "second account"
+ * made from the same mailbox is recognised as the same person.
+ */
+export function canonicalEmail(email: string): string {
+  const [rawLocal = "", domain = ""] = email.trim().toLowerCase().split("@");
+  const local = rawLocal.split("+")[0];
+  const isGoogle = domain === "gmail.com" || domain === "googlemail.com";
+  return `${isGoogle ? local.replace(/\./g, "") : local}@${isGoogle ? "gmail.com" : domain}`;
+}
+
+export type ReferralCodePreview =
+  | { status: "valid"; refereePoints: number }
+  | { status: "paused" | "invalid" | "none" };
+
+/** Read-only check used by the register page to tell the friend what the code is worth. */
+export async function previewReferralCode(storeId: string, rawCode: string | undefined): Promise<ReferralCodePreview> {
+  const code = normalizeReferralCode(rawCode ?? "");
+  if (!code) return { status: "none" };
+  const store = await prisma.store.findUnique({ where: { id: storeId }, select: { referralEnabled: true, referralRefereePoints: true } });
+  if (!store?.referralEnabled) return { status: "paused" };
+  const owner = await prisma.referralCode.findUnique({ where: { storeId_code: { storeId, code } }, select: { id: true } });
+  if (!owner) return { status: "invalid" };
+  return { status: "valid", refereePoints: store.referralRefereePoints };
+}
 
 /**
  * Links `refereeId` to whoever owns `code` at this store. Rules:
@@ -54,12 +80,21 @@ export async function attachReferral(params: { storeId: string; refereeId: strin
   const code = normalizeReferralCode(params.code);
   if (!code) return { ok: false, error: "Enter a referral code." };
 
-  const store = await prisma.store.findUnique({ where: { id: params.storeId }, select: { referralEnabled: true } });
+  const store = await prisma.store.findUnique({ where: { id: params.storeId }, select: { referralEnabled: true, referralReferrerPoints: true, referralRefereePoints: true } });
   if (!store?.referralEnabled) return { ok: false, error: "This store isn't running a referral program right now." };
 
   const owner = await prisma.referralCode.findUnique({ where: { storeId_code: { storeId: params.storeId, code } } });
   if (!owner) return { ok: false, error: "That referral code isn't valid." };
   if (owner.userId === params.refereeId) return { ok: false, error: "You can't use your own referral code." };
+
+  // A second account on the same mailbox (gmail dots / +tags) is still self-referral.
+  const [referrer, referee] = await Promise.all([
+    prisma.user.findUnique({ where: { id: owner.userId }, select: { email: true } }),
+    prisma.user.findUnique({ where: { id: params.refereeId }, select: { email: true } }),
+  ]);
+  if (referrer?.email && referee?.email && canonicalEmail(referrer.email) === canonicalEmail(referee.email)) {
+    return { ok: false, error: "You can't use your own referral code." };
+  }
 
   const already = await prisma.referral.findUnique({
     where: { storeId_refereeId: { storeId: params.storeId, refereeId: params.refereeId } },
@@ -74,7 +109,15 @@ export async function attachReferral(params: { storeId: string; refereeId: strin
 
   try {
     await prisma.referral.create({
-      data: { storeId: params.storeId, codeId: owner.id, referrerId: owner.userId, refereeId: params.refereeId },
+      data: {
+        storeId: params.storeId,
+        codeId: owner.id,
+        referrerId: owner.userId,
+        refereeId: params.refereeId,
+        // Lock in what the friend was shown at signup; payout honours this.
+        promisedReferrerPoints: Math.max(0, store.referralReferrerPoints),
+        promisedRefereePoints: Math.max(0, store.referralRefereePoints),
+      },
     });
   } catch (err) {
     if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === "P2002") {
@@ -82,5 +125,5 @@ export async function attachReferral(params: { storeId: string; refereeId: strin
     }
     throw err;
   }
-  return { ok: true };
+  return { ok: true, refereePoints: Math.max(0, store.referralRefereePoints) };
 }

@@ -47,6 +47,7 @@ export function RegisterForm({
     }
 
     toast.success("Account created. Check your email to verify your address.");
+    if (result.data.referralNotice) toast.message(result.data.referralNotice, { duration: 10000 });
     // Carries a staff-invite link (or any other pending destination) through
     // registration → login, so e.g. someone accepting a staff invite lands
     // back on /staff/accept?token=... automatically instead of having to
@@ -107,7 +108,11 @@ export function RegisterForm({
       <p className="text-center text-sm text-muted-foreground">
         Already have an account?{" "}
         <Link
-          href={storeSlug ? `/login?store=${encodeURIComponent(storeSlug)}` : "/login"}
+          href={
+            storeSlug
+              ? `/login?store=${encodeURIComponent(storeSlug)}${referralCode ? `&callbackUrl=${encodeURIComponent(`/store/${storeSlug}/account/referrals?ref=${referralCode.slice(0, 32)}`)}` : ""}`
+              : "/login"
+          }
           className="font-medium text-[var(--bn-ink)] hover:underline"
         >
           Sign in

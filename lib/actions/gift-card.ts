@@ -1,5 +1,6 @@
 "use server";
 
+import { logActivity } from "@/lib/activity-log";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { headers } from "next/headers";
@@ -76,6 +77,7 @@ export async function issueGiftCardAction(
     issuedById: session?.user?.id ?? null,
   });
 
+  await logActivity({ storeId: access.store.id, role: access.role, action: "giftcard.issued", target: card.code, metadata: { amount } });
   revalidatePath(`/store/${slug}/admin/apps/coupons-gift-cards`);
   return { success: true, data: { code: card.code } };
 }
@@ -90,6 +92,7 @@ export async function setGiftCardStatusAction(
   // storeId in the where clause: a card id from another store must not match.
   const updated = await prisma.giftCard.updateMany({ where: { id: cardId, storeId: access.store.id }, data: { status } });
   if (updated.count !== 1) return { success: false, error: "Gift card not found." };
+  await logActivity({ storeId: access.store.id, role: access.role, action: status === "DISABLED" ? "giftcard.disabled" : "giftcard.enabled", target: cardId });
   revalidatePath(`/store/${slug}/admin/apps/coupons-gift-cards`);
   return { success: true, data: undefined };
 }
@@ -115,6 +118,7 @@ export async function redeemGiftCardInStoreAction(
   });
   if (!result.ok) return { success: false, error: result.error };
 
+  await logActivity({ storeId: access.store.id, role: access.role, action: "giftcard.redeemed_in_store", metadata: { redeemed: result.redeemed, balanceAfter: result.balanceAfter } });
   revalidatePath(`/store/${slug}/admin/apps/coupons-gift-cards`);
   return { success: true, data: { redeemed: result.redeemed, balanceAfter: result.balanceAfter } };
 }

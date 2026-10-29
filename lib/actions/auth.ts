@@ -15,7 +15,7 @@ export async function registerUser(
   input: RegisterInput,
   storeSlug?: string,
   referralCode?: string
-): Promise<ActionResult<{ userId: string }>> {
+): Promise<ActionResult<{ userId: string; referralNotice?: string }>> {
   const ip = getClientIp(await headers());
 
   const rateLimit = await checkRateLimit(`register:${ip}`, 5, 60 * 60 * 1000); // 5/hour/IP
@@ -101,6 +101,7 @@ export async function registerUser(
   // customerScopeStoreId change) isn't even the same underlying account
   // as any other store's version of this email. See lib/auth.ts's
   // authorize(), which looks the account up scoped to this same store.
+  let referralNotice: string | undefined;
   if (storeForCustomer) {
     await prisma.storeCustomer.create({ data: { userId: user.id, storeId: storeForCustomer.id } });
     await prisma.storeCustomerProfile.create({ data: { userId: user.id, storeId: storeForCustomer.id, name: parsed.data.name, email: normalizedEmail } });
@@ -108,11 +109,19 @@ export async function registerUser(
     // Arrived through a friend's referral link (?ref=CODE). Best-effort: an
     // invalid/expired code or a program that's been switched off must never
     // block account creation.
+    // The outcome is reported back (never blocks signup) so a bad code or a
+    // paused program isn't silent for the new customer.
     if (referralCode) {
       try {
-        await attachReferral({ storeId: storeForCustomer.id, refereeId: user.id, code: referralCode.slice(0, 32) });
+        const attached = await attachReferral({ storeId: storeForCustomer.id, refereeId: user.id, code: referralCode.slice(0, 32) });
+        referralNotice = attached.ok
+          ? attached.refereePoints > 0
+            ? `Referral applied — you'll get ${attached.refereePoints} points after your first order is completed.`
+            : "Referral applied."
+          : `Your account was created, but the referral code wasn't applied: ${attached.error}`;
       } catch (err) {
         console.error("Failed to attach referral at signup:", err);
+        referralNotice = "Your account was created, but we couldn't apply the referral code. You can enter it later under Refer a friend.";
       }
     }
   }
@@ -154,7 +163,7 @@ export async function registerUser(
     name: user.name,
   });
 
-  return { success: true, data: { userId: user.id } };
+  return { success: true, data: { userId: user.id, referralNotice } };
 }
 
 /**

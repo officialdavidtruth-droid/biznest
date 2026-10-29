@@ -1,5 +1,6 @@
 "use server";
 
+import { reverseReferralForOrderSafely } from "@/lib/payments/referral-award";
 import { cookies } from "next/headers";
 import { prisma } from "@/lib/prisma";
 import { revalidatePath } from "next/cache";
@@ -868,6 +869,8 @@ export async function resolveDispute(
       data: { orderId: dispute.orderId, status: nextOrderStatus, note: `Dispute resolved: ${decision.replace("_", " ").toLowerCase()}` },
     }),
   ]);
+
+  if (nextOrderStatus === "REFUNDED") await reverseReferralForOrderSafely(dispute.orderId);
 
   const order = await prisma.order.findUnique({
     where: { id: dispute.orderId },

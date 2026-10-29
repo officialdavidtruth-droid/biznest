@@ -2,7 +2,7 @@
 
 import { prisma } from "@/lib/prisma";
 import { assertStorePermission } from "@/lib/access/assert-store-access";
-import { logStoreActivity } from "@/lib/activity-log";
+import { logActivity } from "@/lib/activity-log";
 
 const json = (v: unknown) => v as any;
 
@@ -10,7 +10,7 @@ export async function createAutomation(slug: string, input: { name: string; desc
   const access = await assertStorePermission(slug, "settings");
   if (!access.success) return access;
   const a = await prisma.automation.create({ data: { storeId: access.store.id, name: input.name.trim(), description: input.description?.trim() || null, trigger: input.trigger.trim(), conditions: input.conditions ? json(input.conditions) : undefined, actions: json(input.actions), createdById: access.store.business.userId } });
-  await logStoreActivity({ storeId: access.store.id, actor: { id: access.store.business.userId, role: access.role ?? "OWNER" }, action: "automation.created", target: a.id, metadata: { name: a.name, trigger: a.trigger } });
+  await logActivity({ storeId: access.store.id, role: access.role, action: "automation.created", target: a.id, metadata: { name: a.name, trigger: a.trigger } });
   return { success: true, data: a };
 }
 
@@ -41,7 +41,7 @@ export async function activatePresetAutomation(slug: string, input: { name: stri
   const a = existing
     ? await prisma.automation.update({ where: { id: existing.id }, data: { status: "ACTIVE" } })
     : await prisma.automation.create({ data: { storeId: access.store.id, name: input.name.trim(), description: input.description?.trim() || null, trigger: input.trigger.trim(), actions: json(input.actions), createdById: access.store.business.userId } });
-  await logStoreActivity({ storeId: access.store.id, actor: { id: access.store.business.userId, role: access.role ?? "OWNER" }, action: existing ? "automation.activated" : "automation.created", target: a.id, metadata: { name: a.name, trigger: a.trigger } });
+  await logActivity({ storeId: access.store.id, role: access.role, action: existing ? "automation.activated" : "automation.created", target: a.id, metadata: { name: a.name, trigger: a.trigger } });
   return { success: true, data: a };
 }
 

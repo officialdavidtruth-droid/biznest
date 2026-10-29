@@ -481,7 +481,7 @@ export async function updateStoreSlug(
   ]);
 
   await prisma.auditLog.create({
-    data: { userId: access.store.business.userId, action: "STORE_SLUG_CHANGED", entity: "Store", entityId: access.store.id, metadata: { from: currentSlug, to: raw } },
+    data: { userId: (await auth())?.user?.id ?? access.store.business.userId, action: "STORE_SLUG_CHANGED", entity: "Store", entityId: access.store.id, metadata: { from: currentSlug, to: raw } },
   });
 
   revalidatePath(`/store/${currentSlug}/admin/settings`);
@@ -524,7 +524,7 @@ export async function updateBusinessCapabilities(
 
   await prisma.auditLog.create({
     data: {
-      userId: access.store.business.userId,
+      userId: (await auth())?.user?.id ?? access.store.business.userId,
       action: "BUSINESS_CAPABILITIES_CHANGED",
       entity: "Business",
       entityId: access.store.business.id,
@@ -751,7 +751,7 @@ export async function connectPayoutAccount(
   });
 
   await prisma.auditLog.create({
-    data: { userId: access.store.business.userId, action: "PAYOUT_ACCOUNT_CONNECTED", entity: "Store", entityId: store.id, metadata: { provider: input.provider, model: "transfer" } },
+    data: { userId: (await auth())?.user?.id ?? access.store.business.userId, action: "PAYOUT_ACCOUNT_CONNECTED", entity: "Store", entityId: store.id, metadata: { provider: input.provider, model: "transfer" } },
   });
 
   revalidatePath(`/store/${slug}/admin/payments`);
@@ -829,7 +829,7 @@ export async function disconnectPayoutAccount(slug: string): Promise<ActionResul
   });
 
   await prisma.auditLog.create({
-    data: { userId: access.store.business.userId, action: "PAYOUT_ACCOUNT_DISCONNECTED", entity: "Store", entityId: access.store.id },
+    data: { userId: (await auth())?.user?.id ?? access.store.business.userId, action: "PAYOUT_ACCOUNT_DISCONNECTED", entity: "Store", entityId: access.store.id },
   });
 
   revalidatePath(`/store/${slug}/admin/payments`);

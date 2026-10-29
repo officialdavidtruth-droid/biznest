@@ -10,14 +10,16 @@ export function ReferralPanel({
   shareUrl,
   code,
   appliedCode,
+  defaultCode,
 }: {
   slug: string;
   shareUrl: string;
   code: string;
   appliedCode: boolean;
+  defaultCode?: string;
 }) {
   const router = useRouter();
-  const [entered, setEntered] = useState("");
+  const [entered, setEntered] = useState(defaultCode ?? "");
   const [pending, setPending] = useState(false);
 
   function copy(text: string, what: string) {

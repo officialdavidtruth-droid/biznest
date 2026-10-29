@@ -50,4 +50,5 @@ vi.mock("@/lib/webhooks/dispatch", () => ({
 // verifying, and mocking it avoids depending on StoreActivityLog's shape.
 vi.mock("@/lib/activity-log", () => ({
   logStoreActivity: vi.fn(async () => {}),
+  logActivity: vi.fn(async () => {}),
 }));

@@ -1,5 +1,6 @@
 "use server";
 
+import { logActivity } from "@/lib/activity-log";
 import { prisma } from "@/lib/prisma";
 import { checkRateLimit } from "@/lib/rate-limit";
 import { revalidatePath } from "next/cache";
@@ -46,6 +47,7 @@ export async function createCoupon(slug: string, formData: FormData) {
       maxUses,
     },
   });
+  await logActivity({ storeId: access.store.id, role: access.role, action: "coupon.created", target: code, metadata: { discountType, discountValue, maxUses } });
 
   revalidatePath(`/store/${slug}/admin/apps/coupons-gift-cards`);
 }

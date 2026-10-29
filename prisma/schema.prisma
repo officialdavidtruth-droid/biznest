@@ -184,10 +184,15 @@ model StoreLoyaltyEntry {
   type               LoyaltyEntryType
   points             Int
   note               String?
+  // Set on credits/debits created by the referral program so they can be
+  // traced from the loyalty ledger back to the referral (and its order).
+  referralId         String?
+  referral           Referral?          @relation(fields: [referralId], references: [id], onDelete: SetNull)
   createdAt          DateTime           @default(now())
 
   @@index([loyaltyAccountId, createdAt])
   @@index([orderId, type])
+  @@index([referralId])
 }
 
 model Address {
@@ -841,6 +846,12 @@ model Store {
   referralEnabled         Boolean @default(false)
   referralReferrerPoints  Int     @default(0)
   referralRefereePoints   Int     @default(0)
+  // Anti-abuse controls: a referral only qualifies when the friend's order
+  // subtotal reaches the minimum, a referrer can earn at most this many
+  // rewards (0 = unlimited), and PENDING referrals lapse after N days (0 = never).
+  referralMinOrderAmount        Decimal @default(0) @db.Decimal(12, 2)
+  referralMaxRewardsPerReferrer Int     @default(20)
+  referralExpiryDays            Int     @default(0)
   giftCards               GiftCard[]
   referralCodes           ReferralCode[]
   referrals               Referral[]
@@ -3652,6 +3663,7 @@ enum ReferralStatus {
   PENDING
   REWARDED
   CANCELLED
+  REVERSED // was REWARDED, then the qualifying order was refunded and the points clawed back
 }
 
 model ReferralCode {
@@ -3685,7 +3697,17 @@ model Referral {
   referrerPoints    Int            @default(0)
   refereePoints     Int            @default(0)
   rewardedAt        DateTime?
+  // Points promised when the code was applied (snapshot of the store's rates
+  // at that moment). Payout honours these even if the merchant later lowers
+  // the reward. Null on rows created before this field existed.
+  promisedReferrerPoints Int?
+  promisedRefereePoints  Int?
+  // Why a PENDING referral is waiting / why it was cancelled or reversed.
+  note              String?
+  cancelledAt       DateTime?
+  reversedAt        DateTime?
   createdAt         DateTime       @default(now())
+  loyaltyEntries    StoreLoyaltyEntry[]
 
   @@unique([storeId, refereeId])
   @@index([storeId, referrerId])

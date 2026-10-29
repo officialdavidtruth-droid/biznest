@@ -15,6 +15,8 @@ import { roundMoney } from "@/lib/utils/pricing";
 import { assertStorePermission } from "@/lib/access/assert-store-access";
 import { auth } from "@/lib/auth";
 import { formatNumber } from "@/lib/i18n/locale";
+import { logActivity } from "@/lib/activity-log";
+import { reverseReferralForOrderSafely } from "@/lib/payments/referral-award";
 import { postOrderRefundToLedger, postPaymentRefundToLedger } from "@/lib/financial/order-ledger";
 
 // Order statuses a refund can be issued from. PENDING_PAYMENT/CANCELLED
@@ -234,6 +236,8 @@ export async function issueRefund(
     }
 
     await postOrderRefundToLedger(order.id);
+    await reverseReferralForOrderSafely(order.id);
+    await logActivity({ storeId: access.store.id, action: "order.refunded", target: orderId, metadata: { amount: Number(payment.amount), method: "cash/POS", reason: reason.trim().slice(0, 200) } });
     await emitWebhookEvent("PAYMENT_REFUNDED", access.store.id, {
       orderId: order.id,
       paymentId: payment.id,
@@ -292,6 +296,8 @@ export async function issueRefund(
     return { success: false, error: "The gateway refund was accepted, but BizNest could not finish recording it. The payment is locked as refund-pending to prevent a duplicate refund; reconcile this payment before retrying." };
   }
   await postOrderRefundToLedger(order.id);
+  await reverseReferralForOrderSafely(order.id);
+  await logActivity({ storeId: access.store.id, action: "order.refunded", target: orderId, metadata: { amount: Number(payment.amount), method: "gateway", provider: payment.provider, reason: reason.trim().slice(0, 200) } });
   await emitWebhookEvent("PAYMENT_REFUNDED", access.store.id, {
     orderId: order.id,
     paymentId: payment.id,
@@ -447,8 +453,9 @@ export async function reconcileRefundPendingPayment(slug: string, paymentId: str
       if (payment.reservation) await tx.propertyReservation.update({ where: { id: payment.reservation.id }, data: { paymentStatus: "REFUNDED" } });
     });
   } catch { return { success: false, error: "The gateway confirms the refund, but BizNest could not finalize the local record. It remains refund-pending and is safe to reconcile again." }; }
-  if (payment.order) await postOrderRefundToLedger(payment.order.id);
+  if (payment.order) { await postOrderRefundToLedger(payment.order.id); await reverseReferralForOrderSafely(payment.order.id); }
   else await postPaymentRefundToLedger(payment.id);
+  await logActivity({ storeId: store.id, action: "payment.refund_reconciled", target: payment.id, metadata: { amount: Number(payment.amount) } });
   await emitWebhookEvent("PAYMENT_REFUNDED", store.id, { paymentId: payment.id, amount: Number(payment.amount), currency: payment.currency, reason: payment.refundReason ?? "Refund reconciled from gateway" });
   revalidatePath(`/store/${slug}/admin/payments`); revalidatePath(`/store/${slug}/admin/orders`); revalidatePath(`/store/${slug}/admin/bookings`); revalidatePath(`/store/${slug}/admin/pms`);
   return { success: true, data: { status: "REFUNDED" } };

@@ -1,0 +1,34 @@
+# Changed / new files (paths relative to project root)
+
+- modified: app/(auth)/register/page.tsx
+- modified: app/store/[slug]/account/referrals/page.tsx
+- modified: app/store/[slug]/admin/activity/page.tsx
+- modified: app/store/[slug]/admin/referrals/page.tsx
+- modified: app/verify-email/page.tsx
+- modified: components/account/referral-panel.tsx
+- new:      components/dashboard/referral-row-actions.tsx
+- modified: components/dashboard/referral-settings-form.tsx
+- modified: components/forms/register-form.tsx
+- new:      lib/__tests__/activity-log.test.ts
+- modified: lib/actions/activity.ts
+- modified: lib/actions/admin.ts
+- modified: lib/actions/auth.ts
+- modified: lib/actions/business-platform.ts
+- modified: lib/actions/coupon.ts
+- modified: lib/actions/domain.ts
+- modified: lib/actions/gift-card.ts
+- modified: lib/actions/inventory.ts
+- modified: lib/actions/order.ts
+- modified: lib/actions/referral.ts
+- modified: lib/actions/refund.ts
+- modified: lib/actions/store-gateway.ts
+- modified: lib/actions/store.ts
+- modified: lib/activity-log.ts
+- modified: lib/payments/__tests__/referral-award.test.ts
+- modified: lib/payments/loyalty-award.ts
+- modified: lib/payments/referral-award.ts
+- new:      lib/referrals/__tests__/attach.test.ts
+- modified: lib/referrals/attach.ts
+- new:      prisma/migrations/20261106100000_referral_hardening/migration.sql
+- modified: prisma/schema.prisma
+- modified: vitest.setup.ts

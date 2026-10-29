@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { prisma } from "@/lib/prisma";
+import { reconcileReferralsForReferee } from "@/lib/payments/referral-award";
 import { ResendVerification } from "@/components/forms/resend-verification";
 
 /**
@@ -68,6 +69,8 @@ export default async function VerifyEmailPage({
     data: { emailVerified: new Date() },
   });
   await prisma.verificationToken.delete({ where: { token } }).catch(() => {});
+  // A referral reward may have been waiting on this verification.
+  await reconcileReferralsForReferee(record.identifier);
 
   return (
     <Message
