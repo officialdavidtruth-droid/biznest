@@ -1,6 +1,7 @@
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import { CheckCircle2, XCircle, Clock, FileSignature } from "lucide-react";
+import { auth } from "@/lib/auth";
 import { getQuoteForCustomer } from "@/lib/actions/quote";
 import { QuoteActions, PayQuoteBalanceButton } from "@/components/quotes/quote-actions";
 import { getOrderPayableNaira } from "@/lib/payments/order-payable";
@@ -26,6 +27,19 @@ export default async function CustomerQuotePage({
   if (!quote) notFound();
 
   const isRespondable = quote.status === "SENT";
+
+  // Accepting needs a buyer (the order is created for a signed-in account), so
+  // guests holding a valid link are sent through sign-in / sign-up and come
+  // straight back here with the token intact. Deliberately no `store=` param:
+  // that switches login to the storefront-customer session, which acceptQuote
+  // (platform session) would not see.
+  const session = await auth();
+  const isSignedIn = Boolean(session?.user?.id);
+  const returnTo = `/quotes/${encodeURIComponent(id)}${token ? `?token=${encodeURIComponent(token)}` : ""}`;
+  const authParams = new URLSearchParams({ callbackUrl: returnTo });
+  if (quote.customerEmail) authParams.set("email", quote.customerEmail);
+  const loginHref = `/login?${authParams.toString()}`;
+  const registerHref = `/register?${authParams.toString()}`;
 
   // An accepted quote's order may still have a balance to pay (total less deposit).
   const orderUnpaid = quote.order && (quote.order.status === "PENDING_PAYMENT" || quote.order.status === "CANCELLED");
@@ -87,7 +101,29 @@ export default async function CustomerQuotePage({
           )}
         </div>
 
-        {isRespondable && (
+        {isRespondable && !isSignedIn && (
+          <div className="rounded-2xl border bg-white p-5 text-center shadow-sm">
+            <p className="text-sm font-medium text-slate-900">Sign in to respond to this quote</p>
+            <p className="mt-1 text-xs text-slate-500">
+              We need an account to attach your order to. You&apos;ll come straight back to this quote afterwards.
+            </p>
+            <div className="mt-4 flex gap-3">
+              <Link
+                href={loginHref}
+                className="flex-1 rounded-md bg-primary px-4 py-2.5 text-sm font-semibold text-primary-foreground"
+              >
+                Sign in
+              </Link>
+              <Link
+                href={registerHref}
+                className="flex-1 rounded-md border px-4 py-2.5 text-sm font-semibold hover:bg-muted"
+              >
+                Create account
+              </Link>
+            </div>
+          </div>
+        )}
+        {isRespondable && isSignedIn && (
           <QuoteActions quoteId={quote.id} hasDeposit={Boolean(quote.depositRequired && Number(quote.depositRequired) > 0)} />
         )}
         {quote.status === "ACCEPTED" && (
