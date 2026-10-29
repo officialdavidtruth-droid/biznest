@@ -48,6 +48,7 @@ export function MarketingWorkspace({
   campaigns,
   initialTab,
   popup,
+  showAbandonedCheckout = true,
 }: {
   slug: string;
   brand: MarketingBrand;
@@ -58,6 +59,8 @@ export function MarketingWorkspace({
   initialTab: MarketingTab;
   /** Omit on the standalone marketing tool (no storefront): the pop-up tab is hidden. */
   popup?: MarketingPopupData;
+  /** False for hotels / service-only stores: hides the abandoned-checkout automation preset. */
+  showAbandonedCheckout?: boolean;
 }) {
   const router = useRouter();
   const design = useEmailDesign(brand, items);
@@ -289,6 +292,7 @@ export function MarketingWorkspace({
             <MarketingAutomationPanel
               slug={slug}
               activeCount={stats.automations}
+              showAbandonedCheckout={showAbandonedCheckout}
             />
           </div>
 

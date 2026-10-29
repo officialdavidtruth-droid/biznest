@@ -7,6 +7,7 @@ import type { OrderStatus } from "@prisma/client";
 import { getLocalDateKey, getLocalMinutes, localDateStartUtc, addLocalDays } from "@/lib/timezone";
 import { checkRateLimit, getClientIp } from "@/lib/rate-limit";
 import { formatNumber } from "@/lib/i18n/locale";
+import { supportsAbandonedCheckout } from "@/lib/business-identity";
 
 /**
  * Records one storefront page view. Fire-and-forget, best-effort: analytics
@@ -233,7 +234,7 @@ export async function getDashboardInsights(storeId: string, slug: string): Promi
     });
   }
 
-  if (abandonedCartCount > 0) {
+  if (abandonedCartCount > 0 && supportsAbandonedCheckout(access.store.business.category, access.store.business)) {
     recommendations.push({
       id: "abandoned-carts",
       severity: "warning",

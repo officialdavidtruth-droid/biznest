@@ -9,6 +9,7 @@ import RequisitionPage from "../requisition/page";
 import HrPayrollPage from "../hr-payroll/page";
 import QrCodesPage from "../qr-codes/page";
 import CouponsGiftCardsPage from "../coupons-gift-cards/page";
+import { supportsAbandonedCheckout } from "@/lib/business-identity";
 import { AdvancedAnalyticsWorkspace } from "@/components/dashboard/advanced-analytics-workspace";
 import { getAdvancedAnalytics } from "@/lib/actions/analytics-report";
 import { moneyFormatter } from "@/lib/utils/format-money";
@@ -46,11 +47,11 @@ export default async function PluginPage({ params, searchParams }: { params: Pro
   if (pluginKey === "hr-payroll") return <HrPayrollPage params={Promise.resolve({ slug })} />;
   if (pluginKey === "advanced-analytics") {
     const rangeDays = ["7", "30", "90"].includes(range ?? "") ? Number(range) : 30;
-    const fullStore = await prisma.store.findUnique({ where: { id: store.id } });
+    const fullStore = await prisma.store.findUnique({ where: { id: store.id }, include: { business: true } });
     if (!fullStore) notFound();
     try {
       const data = await getAdvancedAnalytics(store.id, rangeDays);
-      return <AdvancedAnalyticsWorkspace slug={slug} rangeDays={rangeDays} data={data} money={moneyFormatter(fullStore)} />;
+      return <AdvancedAnalyticsWorkspace slug={slug} rangeDays={rangeDays} data={data} money={moneyFormatter(fullStore)} showAbandoned={supportsAbandonedCheckout(fullStore.business.category, fullStore.business)} />;
     } catch (e) {
       return <PluginInstallGate slug={slug} title="Advanced Analytics" message={e instanceof Error ? e.message : "Analytics could not be loaded."} />;
     }

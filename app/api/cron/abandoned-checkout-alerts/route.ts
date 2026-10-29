@@ -6,6 +6,7 @@ import { ABANDONED_CHECKOUT_THRESHOLD_MINUTES } from "@/lib/constants/order";
 import { NextResponse } from "next/server";
 import { logInfo, logError, errorMeta } from "@/lib/observability/log";
 import { formatNumber } from "@/lib/i18n/locale";
+import { HOTEL_CATEGORY_ALIASES } from "@/lib/business-identity";
 
 /**
  * Alerts a merchant once one of their buyers' checkouts crosses the
@@ -33,7 +34,11 @@ export const GET = withCronMonitor("abandoned-checkout-alerts", async () => {
   const cutoff = new Date(Date.now() - ABANDONED_CHECKOUT_THRESHOLD_MINUTES * 60_000);
 
   const newlyAbandoned = await prisma.order.findMany({
-    where: { status: "PENDING_PAYMENT", createdAt: { lt: cutoff }, merchantAlertedAt: null },
+    where: {
+      status: "PENDING_PAYMENT", createdAt: { lt: cutoff }, merchantAlertedAt: null,
+      // Cart-checkout businesses only: no alerts for hotels (reservations) or service-only stores.
+      store: { business: { sellsProducts: true, OR: [{ category: null }, { NOT: { category: { in: HOTEL_CATEGORY_ALIASES, mode: "insensitive" } } }] } },
+    },
     include: { store: { include: { business: true } }, items: { include: { product: true, service: true } }, buyer: { select: { name: true, email: true } } },
     take: 200, // batch cap so one sweep can't run indefinitely
   });

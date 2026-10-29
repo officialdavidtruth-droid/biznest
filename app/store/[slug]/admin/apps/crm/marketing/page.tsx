@@ -10,6 +10,7 @@ import { getPluginEntitlement } from "@/lib/plugins";
 import { resolveStoreTheme } from "@/lib/template-themes";
 import { buildPromoPalette, readPromoPopup } from "@/lib/storefront/promo-popup";
 import { formatMoney } from "@/lib/utils/format-money";
+import { supportsAbandonedCheckout } from "@/lib/business-identity";
 
 export default async function MarketingPage({ params, searchParams }: { params: Promise<{ slug: string }>; searchParams: Promise<{ tab?: string }> }) {
   const { slug } = await params;
@@ -55,6 +56,7 @@ export default async function MarketingPage({ params, searchParams }: { params: 
       <CrmTabs slug={slug} active="marketing" />
       <MarketingWorkspace
         slug={slug}
+        showAbandonedCheckout={supportsAbandonedCheckout(store.business.category, store.business)}
         brand={buildMarketingBrand(store)}
         items={items}
         initialTab={initialTab}

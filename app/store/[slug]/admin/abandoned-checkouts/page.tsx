@@ -1,4 +1,7 @@
 // Route: /store/[slug]/admin/abandoned-checkouts
+import { notFound } from "next/navigation";
+import { prisma } from "@/lib/prisma";
+import { supportsAbandonedCheckout } from "@/lib/business-identity";
 import { listAbandonedCheckouts } from "@/lib/actions/abandoned-checkout";
 import { AbandonedCheckoutActions } from "@/components/dashboard/abandoned-checkout-actions";
 import { formatDate, formatNumber } from "@/lib/i18n/locale";
@@ -14,6 +17,9 @@ export default async function AbandonedCheckoutsPage({
 }) {
   const { slug } = await params;
   const { order: highlightId } = await searchParams;
+  // Hotels (reservations) and service-only businesses have no cart checkout to abandon.
+  const store = await prisma.store.findUnique({ where: { slug }, select: { business: { select: { category: true, sellsProducts: true } } } });
+  if (!store || !supportsAbandonedCheckout(store.business.category, store.business)) notFound();
   const checkouts = await listAbandonedCheckouts(slug);
 
   return (

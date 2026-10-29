@@ -23,3 +23,18 @@ export function getCanonicalBusinessType(input:{businessCategory?:string|null;st
 export function isHotelBusiness(value:string|null|undefined){return canonicalizeBusinessType(value)==="Hotel & Lodging";}
 export function isRestaurantBusiness(value:string|null|undefined){return canonicalizeBusinessType(value)==="Restaurant";}
 export function isCommerceBusiness(value:string|null|undefined){return ["Fashion","Electronics","Retail","Food & Groceries","Home & Furniture","Agriculture"].includes(canonicalizeBusinessType(value));}
+
+/** Raw Business.category spellings that canonicalize to Hotel & Lodging (for DB filters that can't call canonicalizeBusinessType). */
+export const HOTEL_CATEGORY_ALIASES = ["hotel", "hotels", "lodging", "hotel & lodging"];
+
+/**
+ * Abandoned checkouts only make sense for businesses that run a cart-style
+ * online checkout (products / menu items). Hotels take reservations through
+ * the booking + PMS flow, and service-only businesses don't have a cart to
+ * abandon, so the page, alerts, KPI and automation preset are hidden for them.
+ * Unknown (undefined) selling model is treated as supported.
+ */
+export function supportsAbandonedCheckout(category: string | null | undefined, model?: { sellsProducts?: boolean | null }) {
+  if (isHotelBusiness(category)) return false;
+  return model?.sellsProducts !== false;
+}

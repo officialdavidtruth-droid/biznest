@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { getStoreAnalytics, type DailyPoint } from "@/lib/actions/analytics-report";
 import { moneyFormatter } from "@/lib/utils/format-money";
 import { formatNumber } from "@/lib/i18n/locale";
+import { supportsAbandonedCheckout } from "@/lib/business-identity";
 
 const RANGES = [
   { label: "7 days", value: 7 },
@@ -72,8 +73,9 @@ export default async function AnalyticsPage({
   const { range } = await searchParams;
   const rangeDays = RANGES.some((r) => String(r.value) === range) ? Number(range) : 30;
 
-  const store = await prisma.store.findUnique({ where: { slug } });
+  const store = await prisma.store.findUnique({ where: { slug }, include: { business: true } });
   if (!store) return null;
+  const showAbandoned = supportsAbandonedCheckout(store.business.category, store.business);
 
   const data = await getStoreAnalytics(store.id, rangeDays);
   const { summary } = data;
@@ -129,8 +131,8 @@ export default async function AnalyticsPage({
       </div>
 
       {/* ---------- Abandoned carts + returning customers ---------- */}
-      <div className="mb-6 grid gap-4 sm:grid-cols-2">
-        <div className="rounded-lg border bg-background p-4">
+      <div className={`mb-6 grid gap-4 ${showAbandoned ? "sm:grid-cols-2" : ""}`}>
+        {showAbandoned && <div className="rounded-lg border bg-background p-4">
           <p className="text-xs uppercase text-muted-foreground">Abandoned carts</p>
           <p className="mt-1 text-2xl font-semibold">{formatNumber(summary.abandonedCarts)}</p>
           <p className="mt-0.5 text-xs text-muted-foreground">
@@ -139,7 +141,7 @@ export default async function AnalyticsPage({
               View orders
             </Link>
           </p>
-        </div>
+        </div>}
         <div className="rounded-lg border bg-background p-4">
           <p className="text-xs uppercase text-muted-foreground">Returning customers</p>
           <p className="mt-1 text-2xl font-semibold">

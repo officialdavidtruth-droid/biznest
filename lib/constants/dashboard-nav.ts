@@ -7,7 +7,7 @@ import {
 } from "lucide-react";
 import { getAdaptiveDashboardConfig } from "@/lib/adaptive-dashboard";
 import { getBusinessTerminology } from "@/lib/business-terminology";
-import { canonicalizeBusinessType, isRestaurantBusiness, isHotelBusiness } from "@/lib/business-identity";
+import { canonicalizeBusinessType, isRestaurantBusiness, isHotelBusiness, supportsAbandonedCheckout } from "@/lib/business-identity";
 import type { StaffPermissionId } from "@/lib/access/staff-permissions";
 
 export type NavItem = {
@@ -146,7 +146,7 @@ export function buildNavGroups(business: { sellsProducts: boolean; offersService
       label: "Grow",
       items: [
         { label: "Referrals", href: "/referrals", icon: Share2, permission: "marketing" },
-        { label: "Abandoned checkouts", href: "/abandoned-checkouts", icon: MailWarning, permission: "marketing" },
+        ...(supportsAbandonedCheckout(business.category, business) ? [{ label: "Abandoned checkouts", href: "/abandoned-checkouts", icon: MailWarning, permission: "marketing" as StaffPermissionId }] : []),
         { label: "Reviews", href: "/reviews", icon: Star, permission: "marketing" },
         { label: "Messages", href: "/messages", icon: MessageSquare, permission: "messages" },
         { label: "Analytics & Reports", href: "/analytics", icon: BarChart3, permission: "analytics" },

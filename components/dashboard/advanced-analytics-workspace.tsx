@@ -58,7 +58,7 @@ function BarChart({ title, series, field, format }: { title: string; series: Dai
   );
 }
 
-export function AdvancedAnalyticsWorkspace({ slug, rangeDays, data, money }: { slug: string; rangeDays: number; data: AdvancedAnalytics; money: (v: number) => string }) {
+export function AdvancedAnalyticsWorkspace({ slug, rangeDays, data, money, showAbandoned = true }: { slug: string; rangeDays: number; data: AdvancedAnalytics; money: (v: number) => string; showAbandoned?: boolean }) {
   const { current, currentTotals: now, previousTotals: prev, lowStock } = data;
   const summary = current.summary;
   const hasAnyData = now.orders > 0 || now.visitors > 0;
@@ -89,7 +89,7 @@ export function AdvancedAnalyticsWorkspace({ slug, rangeDays, data, money }: { s
         <Kpi label="Visitors" value={formatNumber(now.visitors)} pct={change(now.visitors, prev.visitors)} />
         <Kpi label="Customers" value={formatNumber(summary.customers)} sub="Distinct buyers in range" />
         <Kpi label="Returning customers" value={current.returningCustomerRate != null ? `${current.returningCustomerRate}%` : "—"} sub={current.returningCustomerRate == null ? "Needs at least 5 orders" : "Ordered more than once"} />
-        <Kpi label="Abandoned checkouts" value={formatNumber(summary.abandonedCarts)} sub="Started, never paid" />
+        {showAbandoned && <Kpi label="Abandoned checkouts" value={formatNumber(summary.abandonedCarts)} sub="Started, never paid" />}
       </div>
 
       <div className="grid gap-4 lg:grid-cols-2">

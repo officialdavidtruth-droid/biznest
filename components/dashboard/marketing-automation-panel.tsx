@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useTransition, type ComponentType } from "react";
+import { useEffect, useMemo, useState, useTransition, type ComponentType } from "react";
 import { ArrowRight, CheckCircle2, Loader2, Mail, Pencil, ShoppingCart, UserPlus, Workflow, X, Zap } from "lucide-react";
 import { activatePresetAutomation, listAutomationsByTrigger, toggleAutomation, updatePresetAutomation } from "@/lib/actions/business-platform";
 
@@ -18,7 +18,7 @@ type Preset = {
   actions: AnyAction[];
 };
 
-const PRESETS: Preset[] = [
+const ALL_PRESETS: Preset[] = [
   { trigger: "NEWSLETTER_SUBSCRIBER_CREATED", name: "New subscriber welcome", description: "Send a branded welcome email when a new newsletter subscriber joins.", icon: UserPlus, kind: "email", actions: [{ type: "EMAIL", template: "welcome" }] },
   { trigger: "CRM_LEAD_CREATED", name: "Lead follow-up", description: "Notify you and schedule a follow-up date when a new CRM lead comes in.", icon: Zap, kind: "followup", actions: [{ type: "NOTIFY_STAFF", message: "New lead needs follow-up." }, { type: "CRM_FOLLOW_UP", days: 1 }] },
   { trigger: "CHECKOUT_ABANDONED", name: "Abandoned checkout", description: "Email a reminder, in your branding, when a checkout is abandoned.", icon: ShoppingCart, kind: "email", actions: [{ type: "EMAIL", template: "winback" }] },
@@ -27,7 +27,9 @@ const PRESETS: Preset[] = [
 
 type Row = { id: string; trigger: string; status: "ACTIVE" | "PAUSED"; actions: AnyAction[] };
 
-export function MarketingAutomationPanel({ slug, activeCount }: { slug: string; activeCount: number }) {
+export function MarketingAutomationPanel({ slug, activeCount, showAbandonedCheckout = true }: { slug: string; activeCount: number; showAbandonedCheckout?: boolean }) {
+  // Hotels / service-only stores have no cart checkout, so the abandoned-checkout preset is hidden for them.
+  const PRESETS = useMemo(() => ALL_PRESETS.filter((p) => showAbandonedCheckout || p.trigger !== "CHECKOUT_ABANDONED"), [showAbandonedCheckout]);
   const [rows, setRows] = useState<Record<string, Row | null> | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
   const [editing, setEditing] = useState<Preset | null>(null);
@@ -43,7 +45,7 @@ export function MarketingAutomationPanel({ slug, activeCount }: { slug: string; 
       setRows(map);
     });
     return () => { cancelled = true; };
-  }, [slug]);
+  }, [slug, PRESETS]);
 
   const liveCount = rows ? Object.values(rows).filter((r) => r?.status === "ACTIVE").length : activeCount;
 
