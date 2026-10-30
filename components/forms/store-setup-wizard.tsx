@@ -6,11 +6,10 @@ import { createStore } from "@/lib/actions/store";
 import { toast } from "sonner";
 import slugify from "slugify";
 import { Check, ChevronLeft, ChevronRight, Loader2, Sparkles } from "lucide-react";
-import { TemplateGallery, type TemplateOption } from "@/components/dashboard/template-gallery";
+import { type TemplateOption } from "@/components/dashboard/template-gallery";
 import { FileUploadField } from "@/components/forms/file-upload-field";
 import { getBusinessOnboardingPlan, type OnboardingField } from "@/lib/onboarding-business";
 import { getBusinessExperience } from "@/lib/business-experience";
-import { templateCompatibilityScore } from "@/lib/template-compatibility";
 
 type BusinessSnapshot = {
   businessName: string;
@@ -23,7 +22,7 @@ type BusinessSnapshot = {
 type ProfileValue = string | number | boolean | string[];
 type Profile = Record<string, ProfileValue>;
 
-const STEPS = ["Business", "Setup", "Branding", "Template", "Review"] as const;
+const STEPS = ["Business", "Setup", "Branding", "Review"] as const;
 type Step = (typeof STEPS)[number];
 
 function fieldIsEmpty(value: ProfileValue | undefined) {
@@ -115,7 +114,7 @@ export function StoreSetupWizard({
   const [storeName, setStoreName] = useState(business.businessName);
   const [logoUrl, setLogoUrl] = useState("");
   const [bannerUrl, setBannerUrl] = useState("");
-  const [templateId, setTemplateId] = useState<string | undefined>(undefined);
+  const [templateId] = useState<string | undefined>(undefined);
   const [profile, setProfile] = useState<Profile>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -130,12 +129,6 @@ export function StoreSetupWizard({
   const PlanIcon = plan.icon;
 
   const previewSlug = storeName ? slugify(storeName, { lower: true, strict: true }) : "your-store-name";
-  const suggestedTemplates = useMemo(
-    () => templates
-      .slice()
-      .sort((a, b) => templateCompatibilityScore(b, business.category, { sellsProducts: business.sellsProducts, offersServices: business.offersServices }) - templateCompatibilityScore(a, business.category, { sellsProducts: business.sellsProducts, offersServices: business.offersServices })),
-    [templates, business.category, business.sellsProducts, business.offersServices]
-  );
   const selectedTemplate = templates.find((t) => t.id === templateId);
 
   function updateProfile(key: string, value: ProfileValue) {
@@ -288,25 +281,10 @@ export function StoreSetupWizard({
         </div>
       )}
 
-      {step === "Template" && (
-        <div className="space-y-5">
-          <div>
-            <p className="text-xs font-semibold uppercase tracking-[0.16em] text-primary">Step 4 · Website design</p>
-            <h2 className="mt-1 text-2xl font-bold tracking-tight">Choose the website experience that fits your business.</h2>
-            <p className="mt-2 text-sm text-muted-foreground">Designs that match your business model appear first. You can change the design later without rebuilding your business data.</p>
-          </div>
-          {suggestedTemplates.length > 0 && <TemplateGallery templates={suggestedTemplates} selectedId={templateId} onSelect={setTemplateId} planRank={planRank} businessCategory={business.category} sellsProducts={business.sellsProducts} offersServices={business.offersServices} />}
-          <details className="rounded-2xl border border-border bg-background">
-            <summary className="cursor-pointer px-5 py-3.5 text-sm font-semibold">Browse all templates</summary>
-            <div className="border-t border-border p-5"><TemplateGallery templates={templates} selectedId={templateId} onSelect={setTemplateId} planRank={planRank} businessCategory={business.category} sellsProducts={business.sellsProducts} offersServices={business.offersServices} /></div>
-          </details>
-        </div>
-      )}
-
       {step === "Review" && (
         <div className="space-y-6">
           <div>
-            <p className="text-xs font-semibold uppercase tracking-[0.16em] text-primary">Step 5 · Review</p>
+            <p className="text-xs font-semibold uppercase tracking-[0.16em] text-primary">Step 4 · Review</p>
             <h2 className="mt-1 text-2xl font-bold tracking-tight">Everything is ready.</h2>
             <p className="mt-2 text-sm text-muted-foreground">Review the setup before BizNest creates your business website.</p>
           </div>
