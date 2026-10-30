@@ -480,14 +480,36 @@ export function ProductForm({
                     onChange={async (e) => {
                       const file = e.target.files?.[0];
                       if (!file) return;
-                      const fd = new FormData();
-                      fd.append("file", file);
-                      const res = await fetch("/api/upload", { method: "POST", body: fd });
-                      const { url } = await res.json();
-                      field.onChange(url);
+                      try {
+                        // 1) ask our server for a short-lived signature, 2) upload straight to Cloudinary
+                        const signRes = await fetch("/api/upload/sign", {
+                          method: "POST",
+                          headers: { "Content-Type": "application/json" },
+                          body: JSON.stringify({ contentType: file.type, size: file.size }),
+                        });
+                        const sign = await signRes.json().catch(() => ({}));
+                        if (!signRes.ok) {
+                          toast.error(sign.error ?? "Couldn't start the upload. Please try again.");
+                          return;
+                        }
+                        const fd = new FormData();
+                        fd.append("file", file);
+                        fd.append("api_key", sign.apiKey);
+                        fd.append("signature", sign.signature);
+                        for (const [k, v] of Object.entries(sign.params)) fd.append(k, String(v));
+                        const up = await fetch(`https://api.cloudinary.com/v1_1/${sign.cloudName}/raw/upload`, { method: "POST", body: fd });
+                        const out = await up.json().catch(() => ({}));
+                        if (!up.ok || !out.public_id) {
+                          toast.error(out?.error?.message ?? "Upload failed. Please try again.");
+                          return;
+                        }
+                        field.onChange(`private-asset://${out.public_id}`);
+                      } catch {
+                        toast.error("Upload failed. Check your connection and try again.");
+                      }
                     }}
                   />
-                  {field.value && <p className="mt-1 text-xs text-green-600">File attached ✓</p>}
+                  {field.value && <p className="mt-1 text-xs text-green-600">File attached ✓{!String(field.value).startsWith("private-asset://") && <span className="text-amber-600"> (older public link: re-upload to make it download-protected)</span>}</p>}
                 </section>
               )}
             />

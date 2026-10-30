@@ -10,6 +10,7 @@ import { emitWebhookEvent } from "@/lib/webhooks/dispatch";
 import { assertStorePermission } from "@/lib/access/assert-store-access";
 import { logStoreActivity } from "@/lib/activity-log";
 import { assertUnderPlanLimit } from "@/lib/entitlements";
+import { findIdentifierClash, clashResult } from "@/lib/catalog-identifiers";
 import { createFifoBatchTx, recordBatchLedgerForQuantityChangeTx } from "@/lib/inventory-fifo";
 
 import type { Store, Business } from "@prisma/client";
@@ -57,6 +58,33 @@ export async function listProducts(slug: string) {
   });
 }
 
+/**
+ * Accurate catalog counts straight from the database. listProducts is capped
+ * at 300 rows, so the dashboard cards and category counts must not be derived
+ * from it. Out of stock only applies to physical products that actually track
+ * stock (same rule the storefront uses).
+ */
+export async function getProductStats(slug: string) {
+  const access = await assertStoreAccess(slug);
+  if (!access.success) return null;
+  const storeId = access.store.id;
+
+  const [total, published, outPlain, outVariant, byCategory] = await Promise.all([
+    prisma.product.count({ where: { storeId } }),
+    prisma.product.count({ where: { storeId, isPublished: true } }),
+    prisma.product.count({ where: { storeId, type: "PHYSICAL", hasVariants: false, inventory: { is: { quantity: { lte: 0 } } } } }),
+    prisma.product.count({ where: { storeId, type: "PHYSICAL", hasVariants: true, variants: { none: { isActive: true, quantity: { gt: 0 } } } } }),
+    prisma.product.groupBy({ by: ["categoryId"], where: { storeId }, _count: { _all: true } }),
+  ]);
+
+  return {
+    total,
+    published,
+    outOfStock: outPlain + outVariant,
+    byCategory: Object.fromEntries(byCategory.filter((r) => r.categoryId).map((r) => [r.categoryId as string, r._count._all])) as Record<string, number>,
+  };
+}
+
 export async function getProduct(slug: string, productId: string) {
   const access = await assertStoreAccess(slug);
   if (!access.success) return null;
@@ -97,34 +125,13 @@ export async function createProduct(
 
   const trimmedSku = data.sku?.trim() || null;
   const trimmedBarcode = data.barcode?.trim() || null;
-  if (trimmedBarcode) {
-    const clash = await prisma.inventoryItem.findFirst({
-      where: { storeId: access.store.id, barcode: trimmedBarcode },
-    });
-    if (clash) {
-      return {
-        success: false,
-        error: "That barcode is already in use.",
-        fieldErrors: { barcode: ["Already in use"] },
-      };
-    }
-  }
-  if (trimmedSku) {
-    const clash = await prisma.inventoryItem.findFirst({
-      where: { storeId: access.store.id, sku: trimmedSku },
-    });
-    if (clash) {
-      return {
-        success: false,
-        error: "That SKU is already in use.",
-        fieldErrors: { sku: ["Already in use"] },
-      };
-    }
-  }
+  const clash = await findIdentifierClash(access.store.id, { sku: trimmedSku, barcode: trimmedBarcode });
+  if (clash) return clashResult(clash);
 
-  const baseSlug = slugify(data.name, { lower: true, strict: true });
+  const baseSlug = slugify(data.name, { lower: true, strict: true }) || "item";
   let productSlug = baseSlug;
   let suffix = 1;
+  // Fast path only: the unique index below is the real guard against a race.
   while (
     await prisma.product.findUnique({
       where: { storeId_slug: { storeId: access.store.id, slug: productSlug } },
@@ -134,39 +141,67 @@ export async function createProduct(
     productSlug = `${baseSlug}-${suffix}`;
   }
 
-  const product = await prisma.$transaction(async (tx) => {
-  const created = await tx.product.create({
-    data: {
-      storeId: access.store.id,
-      categoryId: data.categoryId || null,
-      type: data.type,
-      name: data.name,
-      slug: productSlug,
-      description: data.description,
-      price: data.price,
-      compareAtPrice: data.compareAtPrice || null,
-      currency: data.currency,
-      images: data.images,
-      isPublished: data.isPublished,
-      digitalFileUrl: data.digitalFileUrl || null,
-      rentalPeriodUnit: data.rentalPeriodUnit ?? null,
-      attributes: data.attributes ?? undefined,
-      inventory: {
-        create: { quantity: data.quantity, storeId: access.store.id, sku: trimmedSku, barcode: trimmedBarcode },
-      },
-    },
-    include: { inventory: true },
-  });
-  // Opening stock gets a RESTOCK movement and a receipt lot so the ledger and
-  // batches start in agreement instead of relying on a synthetic 1970 lot.
-  if (created.inventory && created.inventory.quantity > 0) {
-    await tx.stockMovement.create({
-      data: { inventoryItemId: created.inventory.id, storeId: access.store.id, type: "RESTOCK", quantityChange: created.inventory.quantity, quantityAfter: created.inventory.quantity, note: "Initial stock" },
-    });
-    await createFifoBatchTx(tx, { inventoryItemId: created.inventory.id, storeId: access.store.id, quantity: created.inventory.quantity, sourceNote: "Initial stock" });
+  const createError = { success: false as const, error: "Couldn't create the product. Please try again." };
+  let product: { id: string; name: string; price: unknown; currency: string; isPublished: boolean } | null = null;
+  for (let attempt = 0; attempt < 5; attempt++) {
+    try {
+      product = await prisma.$transaction(async (tx) => {
+        // Plan limit is checked inside the Serializable transaction so two
+        // concurrent creates can't both pass it.
+        const limit = await assertUnderPlanLimit(access.store.id, "products", tx);
+        if (!limit.allowed) throw new Error(`PLAN_LIMIT:${limit.error}`);
+        const created = await tx.product.create({
+          data: {
+            storeId: access.store.id,
+            categoryId: data.categoryId || null,
+            type: data.type,
+            name: data.name,
+            slug: productSlug,
+            description: data.description,
+            price: data.price,
+            compareAtPrice: data.compareAtPrice || null,
+            currency: data.currency,
+            images: data.images,
+            isPublished: data.isPublished,
+            digitalFileUrl: data.digitalFileUrl || null,
+            rentalPeriodUnit: data.rentalPeriodUnit ?? null,
+            attributes: data.attributes ?? undefined,
+            inventory: {
+              create: { quantity: data.quantity, storeId: access.store.id, sku: trimmedSku, barcode: trimmedBarcode },
+            },
+          },
+          include: { inventory: true },
+        });
+        // Opening stock gets a RESTOCK movement and a receipt lot so the ledger and
+        // batches start in agreement instead of relying on a synthetic 1970 lot.
+        if (created.inventory && created.inventory.quantity > 0) {
+          await tx.stockMovement.create({
+            data: { inventoryItemId: created.inventory.id, storeId: access.store.id, type: "RESTOCK", quantityChange: created.inventory.quantity, quantityAfter: created.inventory.quantity, note: "Initial stock" },
+          });
+          await createFifoBatchTx(tx, { inventoryItemId: created.inventory.id, storeId: access.store.id, quantity: created.inventory.quantity, sourceNote: "Initial stock" });
+        }
+        return created;
+      }, { isolationLevel: "Serializable", timeout: 15000 });
+      break;
+    } catch (err: any) {
+      if (typeof err?.message === "string" && err.message.startsWith("PLAN_LIMIT:")) {
+        return { success: false, error: err.message.slice("PLAN_LIMIT:".length) };
+      }
+      if (err?.code === "P2034" && attempt < 4) continue;
+      if (err?.code === "P2002") {
+        const target = String(err?.meta?.target ?? "");
+        if (target.includes("slug")) {
+          suffix += 1;
+          productSlug = `${baseSlug}-${suffix}`;
+          continue;
+        }
+        if (target.includes("barcode")) return clashResult({ field: "barcode" });
+        if (target.includes("sku")) return clashResult({ field: "sku" });
+      }
+      return createError;
+    }
   }
-  return created;
-  });
+  if (!product) return createError;
 
   await emitWebhookEvent("PRODUCT_CREATED", access.store.id, {
     productId: product.id,
@@ -222,29 +257,10 @@ export async function updateProduct(
 
   const trimmedSku = data.sku?.trim() || null;
   const trimmedBarcode = data.barcode?.trim() || null;
-  if (trimmedBarcode) {
-    const clash = await prisma.inventoryItem.findFirst({
-      where: { storeId: access.store.id, barcode: trimmedBarcode, NOT: { productId } },
-    });
-    if (clash) {
-      return {
-        success: false,
-        error: "That barcode is already in use.",
-        fieldErrors: { barcode: ["Already in use"] },
-      };
-    }
-  }
-  if (trimmedSku) {
-    const clash = await prisma.inventoryItem.findFirst({
-      where: { storeId: access.store.id, sku: trimmedSku, NOT: { productId } },
-    });
-    if (clash) {
-      return {
-        success: false,
-        error: "That SKU is already in use.",
-        fieldErrors: { sku: ["Already in use"] },
-      };
-    }
+  // Variant products ignore the parent SKU/barcode, so only check plain products.
+  if (!existing.hasVariants) {
+    const clash = await findIdentifierClash(access.store.id, { sku: trimmedSku, barcode: trimmedBarcode }, { productId });
+    if (clash) return clashResult(clash);
   }
 
   // Variant-enabled products have per-variant stock as their sole sellable
@@ -271,6 +287,7 @@ export async function updateProduct(
 
         let inventoryData: { quantity: number; sku: string | null; barcode: string | null; storeId: string } | undefined;
         let delta = 0;
+        let publishOverride: boolean | null = null;
         let nextQuantity = Math.max(0, Math.round(data.quantity));
         if (current.hasVariants) {
           // Parent quantity/SKU/barcode are not authoritative once variants
@@ -280,9 +297,19 @@ export async function updateProduct(
         } else if (current.inventory) {
           delta = nextQuantity - current.inventory.quantity;
           if (delta !== 0) {
+            // Same out-of-stock automation as adjustStock / CSV import: running
+            // out takes the listing down, and a restock only republishes what
+            // the automation (not the merchant) unpublished.
+            const justRanOut = current.inventory.quantity > 0 && nextQuantity === 0;
+            const justRestocked = current.inventory.quantity === 0 && nextQuantity > 0;
+            if (justRanOut) publishOverride = false;
+            else if (justRestocked && current.inventory.autoUnpublished) publishOverride = true;
             const updated = await tx.inventoryItem.updateMany({
               where: { id: current.inventory.id, storeId: access.store.id, quantity: current.inventory.quantity },
-              data: { quantity: nextQuantity },
+              data: {
+                quantity: nextQuantity,
+                autoUnpublished: justRanOut ? true : justRestocked ? false : current.inventory.autoUnpublished,
+              },
             });
             if (updated.count !== 1) throw new Error("INVENTORY_CONFLICT");
             const movement = await tx.stockMovement.create({
@@ -323,7 +350,7 @@ export async function updateProduct(
             compareAtPrice: data.compareAtPrice || null,
             currency: data.currency,
             images: data.images,
-            isPublished: data.isPublished,
+            isPublished: publishOverride ?? data.isPublished,
             digitalFileUrl: data.digitalFileUrl || null,
             rentalPeriodUnit: data.rentalPeriodUnit ?? null,
             attributes: data.attributes ?? undefined,
@@ -364,6 +391,11 @@ export async function updateProduct(
       if (err?.message === "Product not found.") return { success: false, error: err.message };
       if (err?.message === "INVENTORY_CONFLICT" && attempt < 2) continue;
       if (err?.code === "P2034" && attempt < 2) continue;
+      if (err?.code === "P2002") {
+        const target = String(err?.meta?.target ?? "");
+        if (target.includes("barcode")) return clashResult({ field: "barcode" });
+        if (target.includes("sku")) return clashResult({ field: "sku" });
+      }
       return { success: false, error: "Couldn't update the product safely. Please try again." };
     }
   }
@@ -389,7 +421,7 @@ export async function updateProduct(
   return { success: true, data: { productId } };
 }
 
-export async function deleteProduct(slug: string, productId: string): Promise<ActionResult> {
+export async function deleteProduct(slug: string, productId: string): Promise<ActionResult<{ archived: boolean }>> {
   const access = await assertMenuEditor(slug);
   if (!access.success) return { success: false, error: access.error };
 
@@ -398,17 +430,37 @@ export async function deleteProduct(slug: string, productId: string): Promise<Ac
   });
   if (!existing) return { success: false, error: "Product not found." };
 
-  await prisma.product.delete({ where: { id: productId } });
+  // A product that appears on orders or purchase orders keeps its history:
+  // hard-deleting it would null the product link on those records. Take it
+  // off the storefront instead and keep the row.
+  const [orderRefs, purchaseRefs] = await Promise.all([
+    prisma.orderItem.count({ where: { productId } }),
+    prisma.purchaseOrderItem.count({ where: { productId } }),
+  ]);
+  const archived = orderRefs + purchaseRefs > 0;
+
+  if (archived) {
+    await prisma.product.update({ where: { id: productId }, data: { isPublished: false } });
+  } else {
+    await prisma.product.delete({ where: { id: productId } });
+  }
+
+  // Subscribers hear about a real deletion; an archive is just an unpublish.
+  await emitWebhookEvent(archived ? "PRODUCT_UPDATED" : "PRODUCT_DELETED", access.store.id, {
+    productId,
+    name: existing.name,
+    ...(archived ? { isPublished: false } : {}),
+  });
 
   const session = await auth();
   await logStoreActivity({
     storeId: access.store.id,
     actor: { id: session?.user?.id, name: session?.user?.name, email: session?.user?.email, role: session?.user?.role ?? "unknown" },
-    action: "product.deleted",
+    action: archived ? "product.archived" : "product.deleted",
     target: existing.name,
-    metadata: { productId },
+    metadata: { productId, ...(archived ? { orderRefs, purchaseRefs } : {}) },
   });
 
   revalidatePath(`/store/${slug}/admin/products`);
-  return { success: true, data: undefined };
+  return { success: true, data: { archived } };
 }

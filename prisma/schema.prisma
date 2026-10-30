@@ -1947,6 +1947,7 @@ enum WebhookEventType {
 
   PRODUCT_CREATED
   PRODUCT_UPDATED
+  PRODUCT_DELETED
 }
 
 enum WebhookDeliveryStatus {

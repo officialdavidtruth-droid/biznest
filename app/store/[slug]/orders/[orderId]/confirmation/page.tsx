@@ -20,7 +20,19 @@ export default async function Page({params}:{params:Promise<{slug:string;orderId
   const view=await renderConfirmation(slug,order);
   // One tracker for every confirmation skin (default, TasteHouse, Grandeur, Example).
   const items=(order.items??[]).map((i:any)=>({id:String(i.productId??i.serviceId??i.id),name:String(i.product?.name??i.service?.name??"Item"),price:Number(i.unitPrice),quantity:i.quantity}));
-  return <>{COUNTED_STATUSES.has(String(order.status))&&<TrackPurchase slug={slug} transactionId={order.id} currency={order.currency} value={Number(order.total||0)} items={items}/>}{view}</>;
+  return <>{COUNTED_STATUSES.has(String(order.status))&&<TrackPurchase slug={slug} transactionId={order.id} currency={order.currency} value={Number(order.total||0)} items={items}/>}{COUNTED_STATUSES.has(String(order.status))&&<DigitalDownloads slug={slug} orderId={order.id} items={order.items??[]}/>}{view}</>;
+}
+
+// Shared across every confirmation skin: paid digital items get a download link.
+function DigitalDownloads({slug,orderId,items}:{slug:string;orderId:string;items:any[]}){
+  const files=items.filter((i)=>i.product?.type==="DIGITAL"&&i.product?.digitalFileUrl);
+  if(!files.length)return null;
+  return <section style={{maxWidth:640,margin:"1rem auto",padding:"1rem 1.25rem",border:"1px solid rgba(0,0,0,.12)",borderRadius:12,background:"#fff",color:"#111"}}>
+    <h2 style={{fontSize:16,fontWeight:700,margin:0}}>Your downloads</h2>
+    <ul style={{margin:"0.5rem 0 0",padding:0,listStyle:"none"}}>
+      {files.map((i)=><li key={i.id} style={{padding:"0.35rem 0"}}><a href={`/store/${slug}/orders/${orderId}/download/${i.id}`} style={{fontWeight:600,textDecoration:"underline"}}>Download {i.product.name}</a></li>)}
+    </ul>
+  </section>;
 }
 
 async function renderNotice(slug:string,order:NonNullable<Awaited<ReturnType<typeof getOrderForBuyer>>>){

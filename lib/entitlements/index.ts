@@ -17,9 +17,12 @@ export type EntitlementCheck =
  */
 export async function assertUnderPlanLimit(
   storeId: string,
-  resource: EntitlementResource
+  resource: EntitlementResource,
+  // Pass a transaction client to run the check inside the same (Serializable)
+  // transaction as the insert, so concurrent creates can't both slip under the limit.
+  db: Pick<typeof prisma, "store" | "product" | "service"> = prisma
 ): Promise<EntitlementCheck> {
-  const store = await prisma.store.findUnique({
+  const store = await db.store.findUnique({
     where: { id: storeId },
     select: { subscription: { select: { name: true, features: true } } },
   });
@@ -43,8 +46,8 @@ export async function assertUnderPlanLimit(
 
   const count =
     resource === "products"
-      ? await prisma.product.count({ where: { storeId } })
-      : await prisma.service.count({ where: { storeId } });
+      ? await db.product.count({ where: { storeId } })
+      : await db.service.count({ where: { storeId } });
 
   if (count >= limit) {
     const label = resource === "products" ? "products" : "services";

@@ -22,6 +22,7 @@ export const WEBHOOK_EVENT_NAMES: Record<WebhookEventType, string> = {
 
   PRODUCT_CREATED: "product.created",
   PRODUCT_UPDATED: "product.updated",
+  PRODUCT_DELETED: "product.deleted",
 };
 
 export const WEBHOOK_EVENT_TYPES = Object.keys(WEBHOOK_EVENT_NAMES) as WebhookEventType[];

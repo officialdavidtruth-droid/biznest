@@ -5,6 +5,7 @@ import { v2 as cloudinary } from "cloudinary";
 import { withObservability } from "@/lib/observability/api-wrapper";
 import { logError } from "@/lib/observability/log";
 import { kycFolderFor } from "@/lib/kyc-storage";
+import { DIGITAL_ALLOWED_TYPES, DIGITAL_MAX_BYTES, makePrivateRef } from "@/lib/digital-files";
 
 cloudinary.config({
   cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
@@ -38,11 +39,13 @@ export const POST = withObservability("upload", async (req: Request) => {
   if (!(file instanceof File)) {
     return NextResponse.json({ error: "No file provided" }, { status: 400 });
   }
-  if (!ALLOWED_TYPES.has(file.type)) {
+  const isDigital = formData.get("purpose") === "digital";
+  if (!(isDigital ? DIGITAL_ALLOWED_TYPES : ALLOWED_TYPES).has(file.type)) {
     return NextResponse.json({ error: "Unsupported file type" }, { status: 400 });
   }
-  if (file.size > MAX_FILE_BYTES) {
-    return NextResponse.json({ error: "File too large (10MB max)" }, { status: 400 });
+  const maxBytes = isDigital ? DIGITAL_MAX_BYTES : MAX_FILE_BYTES;
+  if (file.size > maxBytes) {
+    return NextResponse.json({ error: `File too large (${Math.round(maxBytes / 1024 / 1024)}MB max)` }, { status: 400 });
   }
 
   // purpose=kyc -> identity documents: stored as Cloudinary "authenticated"
@@ -54,9 +57,11 @@ export const POST = withObservability("upload", async (req: Request) => {
   const buffer = Buffer.from(arrayBuffer);
 
   try {
-    const result = await new Promise<{ secure_url: string }>((resolve, reject) => {
+    const result = await new Promise<{ secure_url: string; public_id: string }>((resolve, reject) => {
       const uploadStream = cloudinary.uploader.upload_stream(
-        isKyc
+        isDigital
+          ? { folder: `biznest/${session.user.id}/digital`, resource_type: "raw", type: "authenticated", use_filename: true, unique_filename: true }
+          : isKyc
           ? { folder: kycFolderFor(session.user.id), resource_type: "auto", type: "authenticated" }
           : { folder: `biznest/${session.user.id}`, resource_type: "auto" },
         (error, result) => {
@@ -67,7 +72,8 @@ export const POST = withObservability("upload", async (req: Request) => {
       uploadStream.end(buffer);
     });
 
-    return NextResponse.json({ url: result.secure_url });
+    // Digital files return a private reference, never a fetchable URL.
+    return NextResponse.json({ url: isDigital ? makePrivateRef(result.public_id) : result.secure_url, ...(isDigital ? { filename: file.name } : {}) });
   } catch (err) {
     const message =
       err instanceof Error

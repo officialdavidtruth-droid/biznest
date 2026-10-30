@@ -1,7 +1,7 @@
 // Route: /store/[slug]/admin/products
 import Link from "next/link";
 import { prisma } from "@/lib/prisma";
-import { listProducts } from "@/lib/actions/product";
+import { listProducts, getProductStats } from "@/lib/actions/product";
 import { ProductsTable } from "@/components/dashboard/products-table";
 import { BulkCsvPanel } from "@/components/dashboard/bulk-csv-panel";
 import { getBusinessTerminology } from "@/lib/business-terminology";
@@ -9,20 +9,18 @@ import { Package, Layers3, CheckCircle2, CircleAlert, Plus, Upload, SlidersHoriz
 
 export default async function ProductsListPage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
-  const [products, store] = await Promise.all([
+  const [products, stats, store] = await Promise.all([
     listProducts(slug),
+    getProductStats(slug),
     prisma.store.findUnique({ where: { slug }, select: { id: true, name: true, business: { select: { category: true } } } }),
   ]);
   const terminology = getBusinessTerminology(store?.business.category);
   const categories = store ? await prisma.category.findMany({ where: { storeId: store.id, type: "PRODUCT" }, orderBy: { name: "asc" } }) : [];
-  const activeCount = products.filter((p) => p.isPublished).length;
-  const outOfStock = products.filter((p) =>
-    p.hasVariants
-      ? !p.variants.some((variant) => variant.isActive && variant.quantity > 0)
-      : (p.inventory?.quantity ?? 0) <= 0
-  ).length;
-
-  const categoryCounts = categories.map((c) => ({ ...c, count: products.filter((p) => p.category?.id === c.id).length }));
+  // Counts come from the database, not from the (capped) list below.
+  const totalCount = stats?.total ?? products.length;
+  const activeCount = stats?.published ?? products.filter((p) => p.isPublished).length;
+  const outOfStock = stats?.outOfStock ?? 0;
+  const categoryCounts = categories.map((c) => ({ ...c, count: stats?.byCategory[c.id] ?? 0 }));
   const genericCategory = terminology.category;
 
   return (
@@ -40,7 +38,7 @@ export default async function ProductsListPage({ params }: { params: Promise<{ s
       </div>
 
       <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
-        <Stat icon={Package} tone="purple" label={`Total ${terminology.catalog}`} value={products.length} note="Across all categories" />
+        <Stat icon={Package} tone="purple" label={`Total ${terminology.catalog}`} value={totalCount} note="Across all categories" />
         <Stat icon={Layers3} tone="orange" label={genericCategory + "s"} value={categories.length} note={`Active ${genericCategory.toLowerCase()}s`} />
         <Stat icon={CheckCircle2} tone="green" label={`Active ${terminology.catalog}`} value={activeCount} note="Published and visible" />
         <Stat icon={CircleAlert} tone="red" label="Out of Stock" value={outOfStock} note="Currently unavailable" />
@@ -53,6 +51,11 @@ export default async function ProductsListPage({ params }: { params: Promise<{ s
               <div><h2 className="text-base font-bold">{terminology.catalog}</h2><p className="mt-1 text-xs text-muted-foreground">Manage your {terminology.catalog.toLowerCase()} and their availability</p></div>
               <button className="rounded-lg border bg-background p-2.5 text-muted-foreground"><SlidersHorizontal className="h-4 w-4" /></button>
             </div>
+            {totalCount > products.length && (
+              <p className="mb-3 rounded-lg border bg-[var(--bn-admin-surface)] px-3 py-2 text-xs text-muted-foreground">
+                Showing your {products.length} newest of {totalCount} {terminology.catalog.toLowerCase()}. Use the CSV export to see them all.
+              </p>
+            )}
             <div id="bulk-import" className="mb-4 scroll-mt-24"><BulkCsvPanel storeSlug={slug} /></div>
             <ProductsTable
               storeSlug={slug}
@@ -75,7 +78,7 @@ export default async function ProductsListPage({ params }: { params: Promise<{ s
           <section className="rounded-xl border bg-background p-5 shadow-sm">
             <div className="mb-3"><h2 className="text-base font-bold">{terminology.catalog} Categories</h2><p className="mt-1 text-xs text-muted-foreground">Manage your {genericCategory.toLowerCase()}s</p></div>
             <div className="divide-y divide-border">
-              <CategoryRow name={`All ${terminology.catalog}`} count={products.length} />
+              <CategoryRow name={`All ${terminology.catalog}`} count={totalCount} />
               {categoryCounts.slice(0, 8).map((c) => <CategoryRow key={c.id} name={c.name} count={c.count} />)}
             </div>
             <Link href={`/store/${slug}/admin/categories`} className="mt-4 block rounded-lg border px-3 py-2.5 text-center text-xs font-semibold hover:bg-[var(--bn-admin-surface)]">＋ Add {genericCategory}</Link>

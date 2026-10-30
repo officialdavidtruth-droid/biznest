@@ -1,10 +1,15 @@
 "use server";
 
 import { prisma } from "@/lib/prisma";
+import { findIdentifierClash, clashResult } from "@/lib/catalog-identifiers";
+import { cartesian, planVariantSync } from "@/lib/variant-combos";
+import { auth } from "@/lib/auth";
+import { logStoreActivity } from "@/lib/activity-log";
+import { emitWebhookEvent } from "@/lib/webhooks/dispatch";
 import { consumeFifoStockTx, createFifoBatchTx } from "@/lib/inventory-fifo";
 import { revalidatePath } from "next/cache";
 import { roundMoney } from "@/lib/utils/pricing";
-import { variantOptionSchema, variantSchema, type VariantOption, type VariantInput } from "@/lib/validations/variant";
+import { variantOptionSchema, variantSchema, MAX_OPTIONS, MAX_VARIANT_COMBINATIONS, type VariantOption, type VariantInput } from "@/lib/validations/variant";
 import type { ActionResult } from "@/types/actions";
 import type { StockMovementType } from "@prisma/client";
 import { z } from "zod";
@@ -22,17 +27,28 @@ async function assertMenuEditor(slug: string) {
   return a;
 }
 
-function comboLabel(combo: Record<string, string>): string {
-  return Object.values(combo).join(" / ");
-}
-
-/** Cartesian product of each option's values, e.g. Size×Color -> every combo. */
-function cartesian(options: VariantOption[]): Record<string, string>[] {
-  return options.reduce<Record<string, string>[]>(
-    (combos, opt) =>
-      combos.flatMap((combo) => opt.values.map((v) => ({ ...combo, [opt.name]: v }))),
-    [{}]
-  );
+/** Audit-logs a variant change and (unless told not to) tells webhook subscribers the product changed. */
+async function recordVariantChange(
+  store: { id: string },
+  action: string,
+  target: string,
+  metadata: Record<string, unknown>,
+  opts: { webhook?: boolean } = {}
+) {
+  const session = await auth();
+  await logStoreActivity({
+    storeId: store.id,
+    actor: { id: session?.user?.id, name: session?.user?.name, email: session?.user?.email, role: session?.user?.role ?? "unknown" },
+    action,
+    target,
+    metadata,
+  });
+  if (opts.webhook === false) return;
+  try {
+    await emitWebhookEvent("PRODUCT_UPDATED", store.id, { productId: metadata.productId ?? null, variantId: metadata.variantId ?? null, change: action });
+  } catch {
+    // A dead subscriber must never fail the merchant's action.
+  }
 }
 
 // --- Reads -----------------------------------------------------------------
@@ -130,41 +146,71 @@ export async function setVariantOptions(
     return { success: false, error: parsed.error.errors[0]?.message ?? "Invalid options." };
   }
 
-  const product = await prisma.product.findFirst({ where: { id: productId, storeId: access.store.id } });
+  const product = await prisma.product.findFirst({
+    where: { id: productId, storeId: access.store.id },
+    include: { inventory: { select: { quantity: true } } },
+  });
   if (!product) return { success: false, error: "Product not found." };
 
-  const combos = cartesian(parsed.data);
+  if (parsed.data.length > MAX_OPTIONS) {
+    return { success: false, error: `Use at most ${MAX_OPTIONS} options (for example Size, Color, Material).` };
+  }
+
+  // Turning variants on makes per-variant stock the only sellable stock; the
+  // product's own stock would silently stop counting. Require it to be
+  // cleared first (a ledgered correction from the product edit page) so no
+  // stock disappears without a record.
+  if (!product.hasVariants && (product.inventory?.quantity ?? 0) > 0) {
+    return {
+      success: false,
+      error: `This product has ${product.inventory!.quantity} in stock. Set its stock to 0 on the product page first, then add variants and enter stock for each one.`,
+    };
+  }
+
+  // De-duplicate values within each axis so a repeated value can't create a
+  // duplicate combination.
+  const cleaned: VariantOption[] = parsed.data.map((o) => ({
+    name: o.name.trim(),
+    values: [...new Set(o.values.map((v) => v.trim()).filter(Boolean))],
+  }));
+  if (cleaned.some((o) => o.values.length === 0)) return { success: false, error: "Each option needs at least one value." };
+  if (new Set(cleaned.map((o) => o.name.toLowerCase())).size !== cleaned.length) {
+    return { success: false, error: "Option names must be unique." };
+  }
+
+  const combos = cartesian(cleaned);
+  if (combos.length > MAX_VARIANT_COMBINATIONS) {
+    return { success: false, error: `That makes ${combos.length} variants. The limit is ${MAX_VARIANT_COMBINATIONS}; remove some option values.` };
+  }
   const existing = await prisma.productVariant.findMany({ where: { productId } });
-  const existingLabels = new Set(existing.map((v) => v.label));
-  const validLabels = new Set(combos.map(comboLabel));
+  const plan = planVariantSync(
+    existing.map((v) => ({ id: v.id, label: v.label, optionValues: v.optionValues as unknown as Record<string, string>, isActive: v.isActive })),
+    Array.isArray(product.variantOptions) ? (product.variantOptions as unknown as VariantOption[]) : null,
+    cleaned
+  );
 
   await prisma.$transaction(async (tx) => {
     await tx.product.update({
       where: { id: productId },
-      data: { hasVariants: true, variantOptions: parsed.data },
+      data: { hasVariants: true, variantOptions: cleaned },
     });
-
-    for (const combo of combos) {
-      const label = comboLabel(combo);
-      if (existingLabels.has(label)) continue;
-      await tx.productVariant.create({
-        data: {
-          productId,
-          storeId: access.store.id,
-          optionValues: combo,
-          label,
-        },
+    if (plan.toCreate.length) {
+      await tx.productVariant.createMany({
+        data: plan.toCreate.map((c) => ({ productId, storeId: access.store.id, optionValues: c.optionValues, label: c.label })),
       });
     }
-
-    // Combos that existed before but no longer match the option schema
-    // (e.g. a value was removed) are deactivated, not deleted.
-    const stale = existing.filter((v) => !validLabels.has(v.label) && v.isActive);
-    for (const v of stale) {
-      await tx.productVariant.update({ where: { id: v.id }, data: { isActive: false } });
+    for (const u of plan.toUpdate) {
+      await tx.productVariant.update({
+        where: { id: u.id },
+        data: { ...(u.reactivate ? { isActive: true } : {}), label: u.label, optionValues: u.optionValues },
+      });
     }
-  });
+    if (plan.toDeactivate.length) {
+      await tx.productVariant.updateMany({ where: { id: { in: plan.toDeactivate } }, data: { isActive: false } });
+    }
+  }, { timeout: 30000 });
 
+  await recordVariantChange(access.store, "variant.options_updated", product.name, { productId, variantCount: combos.length, created: plan.toCreate.length, deactivated: plan.toDeactivate.length });
   revalidatePath(`/store/${slug}/admin/products`);
   return { success: true, data: { variantCount: combos.length } };
 }
@@ -184,30 +230,25 @@ export async function updateVariant(slug: string, variantId: string, input: Vari
   const variant = await prisma.productVariant.findFirst({ where: { id: variantId, storeId: access.store.id } });
   if (!variant) return { success: false, error: "Variant not found." };
 
-  if (data.sku) {
-    const clash = await prisma.productVariant.findFirst({
-      where: { storeId: access.store.id, sku: data.sku, NOT: { id: variantId } },
-    });
-    if (clash) return { success: false, error: "That SKU is already in use.", fieldErrors: { sku: ["Already in use"] } };
-  }
-  if (data.barcode) {
-    const clash = await prisma.productVariant.findFirst({
-      where: { storeId: access.store.id, barcode: data.barcode, NOT: { id: variantId } },
-    });
-    if (clash) return { success: false, error: "That barcode is already in use.", fieldErrors: { barcode: ["Already in use"] } };
-  }
+  const sku = data.sku?.trim() || null;
+  const barcode = data.barcode?.trim() || null;
+  // Checks other variants AND plain-product inventory (excluding this variant
+  // and its own product's legacy parent item, so a converted product's SKU can move onto a variant).
+  const clash = await findIdentifierClash(access.store.id, { sku, barcode }, { variantId, productId: variant.productId });
+  if (clash) return clashResult(clash);
 
   await prisma.productVariant.update({
     where: { id: variantId },
     data: {
-      sku: data.sku || null,
-      barcode: data.barcode || null,
+      sku,
+      barcode,
       price: data.price === "" || data.price == null ? null : roundMoney(data.price),
       lowStockThreshold: data.lowStockThreshold,
       isActive: data.isActive,
     },
   });
 
+  await recordVariantChange(access.store, "variant.updated", variant.label, { productId: variant.productId, variantId });
   revalidatePath(`/store/${slug}/admin/products`);
   revalidatePath(`/store/${slug}/admin/inventory`);
   return { success: true, data: undefined };
@@ -227,6 +268,7 @@ export async function deleteVariant(slug: string, variantId: string): Promise<Ac
   } else {
     await prisma.productVariant.delete({ where: { id: variantId } });
   }
+  await recordVariantChange(access.store, usedInOrder ? "variant.deactivated" : "variant.deleted", variant.label, { productId: variant.productId, variantId });
 
   revalidatePath(`/store/${slug}/admin/products`);
   return { success: true, data: undefined };
@@ -260,7 +302,9 @@ export async function adjustVariantStock(
           data: {
             quantity: nextQuantity,
             autoUnpublished: justRanOut ? true : justRestocked ? false : variant.autoUnpublished,
-            isActive: justRanOut ? variant.isActive : justRestocked ? true : variant.isActive,
+            // Only bring a variant back if the out-of-stock automation took it down;
+            // never override a merchant's deliberate deactivation.
+            isActive: justRestocked && variant.autoUnpublished ? true : variant.isActive,
           },
         });
         const movement = await tx.stockMovement.create({
@@ -281,6 +325,7 @@ export async function adjustVariantStock(
     }
   }
   if (quantity == null) return { success: false, error: "Couldn't update variant stock safely. Please try again." };
+  await recordVariantChange(access.store, "inventory.stock_adjusted", variantId, { variantId, type, delta, note: note?.slice(0, 200) ?? null, newQuantity: quantity }, { webhook: false });
   revalidatePath(`/store/${slug}/admin/inventory`);
   revalidatePath(`/store/${slug}/admin/products`);
   return { success: true, data: { quantity } };

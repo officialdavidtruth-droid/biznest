@@ -49,7 +49,7 @@ export function ProductRowActions({
     setBusy(false);
     setOpen(false);
     if (!result.success) return toast.error(result.error);
-    toast.success("Deleted");
+    toast.success(result.data?.archived ? "Has orders: unpublished instead of deleted" : "Deleted");
     router.refresh();
   }
 

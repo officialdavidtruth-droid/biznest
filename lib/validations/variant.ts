@@ -1,8 +1,13 @@
 import { z } from "zod";
 
+// Keeps the cartesian product (one DB row per combination) bounded.
+export const MAX_OPTIONS = 3;
+export const MAX_VALUES_PER_OPTION = 30;
+export const MAX_VARIANT_COMBINATIONS = 200;
+
 export const variantOptionSchema = z.object({
   name: z.string().min(1).max(40),
-  values: z.array(z.string().min(1).max(40)).min(1, "Add at least one value"),
+  values: z.array(z.string().min(1).max(40)).min(1, "Add at least one value").max(MAX_VALUES_PER_OPTION, `Up to ${MAX_VALUES_PER_OPTION} values per option`),
 });
 
 export type VariantOption = z.infer<typeof variantOptionSchema>;

@@ -27,7 +27,7 @@ export function DeleteProductButton({
       toast.error(result.error);
       return;
     }
-    toast.success("Product deleted");
+    toast.success(result.data?.archived ? "This product has orders, so it was unpublished instead of deleted" : "Product deleted");
     router.refresh();
   }
 
