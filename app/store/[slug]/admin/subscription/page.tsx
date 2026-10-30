@@ -5,6 +5,7 @@ import { redirect } from "next/navigation";
 import { getStoreAccessRole, canManageBillingAndStaff } from "@/lib/access/store-access";
 import { UpgradeButton } from "@/components/forms/upgrade-button";
 import { formatMoney } from "@/lib/utils/format-money";
+import { formatDate } from "@/lib/i18n/locale";
 
 export default async function SubscriptionPage({
   params,
@@ -78,7 +79,17 @@ export default async function SubscriptionPage({
                 </li>
               </ul>
               {isCurrent ? (
-                <span className="mt-3 inline-block rounded-full bg-primary/10 px-2 py-0.5 text-xs font-medium text-primary">Current plan</span>
+                <>
+                  <span className="mt-3 inline-block rounded-full bg-primary/10 px-2 py-0.5 text-xs font-medium text-primary">Current plan</span>
+                  {Number(p.price) > 0 && store.subscriptionRenewsAt && !store.paystackAuthorizationCode && (
+                    <>
+                      <p className="mt-2 text-xs text-muted-foreground">Active until {formatDate(store.subscriptionRenewsAt)}</p>
+                      {store.subscriptionRenewsAt.getTime() <= Date.now() + 7 * 24 * 60 * 60 * 1000 && (
+                        <UpgradeButton storeSlug={slug} planId={p.id} label="Renew plan" />
+                      )}
+                    </>
+                  )}
+                </>
               ) : (
                 <UpgradeButton storeSlug={slug} planId={p.id} label={Number(p.price) === 0 ? "Switch to Free" : "Upgrade"} />
               )}

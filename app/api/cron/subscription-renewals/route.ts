@@ -119,7 +119,9 @@ export const GET = withCronMonitor("subscription-renewals", async (_req, ctx) =>
         userId: store.business.userId,
         type: "SUBSCRIPTION_RENEWING_SOON",
         title: "Your plan renews soon",
-        body: `${store.subscription?.name} (${formatMoney(Number(store.subscription?.price ?? 0))}) renews on ${formatDate(store.subscriptionRenewsAt)}. Make sure your card is up to date.`,
+        body: store.paystackAuthorizationCode
+          ? `${store.subscription?.name} (${formatMoney(Number(store.subscription?.price ?? 0))}) renews on ${formatDate(store.subscriptionRenewsAt)}. Make sure your card is up to date.`
+          : `${store.subscription?.name} (${formatMoney(Number(store.subscription?.price ?? 0))}) expires on ${formatDate(store.subscriptionRenewsAt)}. Renew it from your subscription page to keep your dashboard unlocked.`,
         url: `/store/${store.slug}/admin/subscription`,
       });
       reminded++;
@@ -202,6 +204,29 @@ export const GET = withCronMonitor("subscription-renewals", async (_req, ctx) =>
     }
   }
 
+  // --- 2b. Plans paid through Korapay have no saved card to charge: when one lapses, start the
+  // grace period and ask the owner to renew from the subscription page. Step 3 pauses it if they don't.
+  const lapsed = await prisma.store.findMany({
+    where: { subscriptionRenewsAt: { lte: now }, subscriptionId: { not: null }, paystackAuthorizationCode: null, subscriptionPastDueSince: null },
+    include: { business: true, subscription: true },
+    take: 500,
+  });
+  for (const store of lapsed) {
+    try {
+      await prisma.store.update({ where: { id: store.id }, data: { subscriptionPastDueSince: now } });
+      await notifyUser({
+        userId: store.business.userId,
+        type: "SUBSCRIPTION_PAYMENT_FAILED",
+        title: "Your plan has expired",
+        body: `Renew ${store.subscription?.name ?? "your plan"} within ${GRACE_PERIOD_DAYS} days to keep your dashboard unlocked.`,
+        url: `/store/${store.slug}/admin/subscription`,
+      });
+      failed++;
+    } catch (err) {
+      void logError("JOBS", "Lapsed-plan notice failed", errorMeta(err, { storeId: store.id }));
+    }
+  }
+
   // --- 3. Past-due beyond grace period -> downgrade ---
   const overdue = await prisma.store.findMany({
     where: { subscriptionPastDueSince: { lte: graceCutoff }, subscriptionId: { not: null } },
@@ -269,6 +294,34 @@ export const GET = withCronMonitor("subscription-renewals", async (_req, ctx) =>
     } catch (err) {
       void logError("JOBS", "Plugin renewal failed", errorMeta(err, { storeId: installed.storeId, pluginId: installed.pluginId }));
       ctx.fail("Plugin renewal threw", { storeId: installed.storeId, pluginId: installed.pluginId });
+    }
+  }
+
+  // --- 4b. App renewals for stores with no saved Paystack card (apps are paid through Korapay) ---
+  // The app keeps working through a 5-day grace period; the owner is told once and can renew from
+  // the Apps page. After the grace period only that app is suspended.
+  const lapsedPlugins = await prisma.storePlugin.findMany({
+    where: { status: "ACTIVE", renewsAt: { lte: now }, plugin: { isFree: false, billingInterval: { in: ["MONTHLY", "YEARLY"] }, status: "ACTIVE" }, store: { paystackAuthorizationCode: null } },
+    include: { plugin: true, store: { include: { business: true } } },
+    take: 500,
+  });
+  for (const installed of lapsedPlugins) {
+    try {
+      const pastDueSince = installed.pastDueSince ?? now;
+      const suspend = pastDueSince.getTime() <= now.getTime() - GRACE_PERIOD_DAYS * 24 * 60 * 60 * 1000;
+      await prisma.storePlugin.update({ where: { id: installed.id }, data: { pastDueSince, ...(suspend ? { status: "SUSPENDED" as const } : {}) } });
+      if (suspend) pluginsSuspended++;
+      if (!installed.pastDueSince || suspend) {
+        await notifyUser({
+          userId: installed.store.business.userId,
+          type: "SUBSCRIPTION_PAYMENT_FAILED",
+          title: suspend ? `${installed.plugin.name} has been suspended` : `${installed.plugin.name} has expired`,
+          body: suspend ? `Renew ${installed.plugin.name} from the Apps page to turn it back on.` : `Renew ${installed.plugin.name} from the Apps page within ${GRACE_PERIOD_DAYS} days to keep it running.`,
+          url: `/store/${installed.store.slug}/admin/apps`,
+        });
+      }
+    } catch (err) {
+      void logError("JOBS", "Lapsed app notice failed", errorMeta(err, { storeId: installed.storeId, pluginId: installed.pluginId }));
     }
   }
 

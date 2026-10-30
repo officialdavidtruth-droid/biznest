@@ -35,7 +35,10 @@ export async function initiatePlanUpgrade(
 
   const plan = await prisma.subscription.findUnique({ where: { id: subscriptionId } });
   if (!plan || !plan.isActive) return { success: false, error: "That plan isn't available." };
-  if (store.subscriptionId === plan.id) return { success: false, error: "You're already on this plan." };
+  // Plan payments are one-off Korapay payments (no saved card), so the plan you are on can be
+  // renewed once it is within a week of expiring (or has expired).
+  const renewable = store.subscriptionId === plan.id && Number(plan.price) > 0 && !!store.subscriptionRenewsAt && store.subscriptionRenewsAt.getTime() <= Date.now() + 7 * 24 * 60 * 60 * 1000;
+  if (store.subscriptionId === plan.id && !renewable) return { success: false, error: "You're already on this plan." };
 
   if (Number(plan.price) === 0) {
     // Free tier — no charge needed, just switch immediately.
@@ -65,13 +68,13 @@ export async function initiatePlanUpgrade(
   }
 
   const reference = buildReference(store.id, plan.id);
-  await createPendingPayment({ storeId: store.id, purpose: "SUBSCRIPTION_UPGRADE", provider: "PAYSTACK", reference, amount: Number(plan.price), currency: "NGN" });
+  await createPendingPayment({ storeId: store.id, purpose: "SUBSCRIPTION_UPGRADE", provider: "KORAPAY", reference, amount: Number(plan.price), currency: "NGN" });
 
-  // Platform-billing (subscription upgrades) always goes through Paystack,
+  // Platform-billing (BizNest plan payments) always goes through Korapay,
   // regardless of whichever gateway supaadmin has toggled "active" for
   // store checkout — see the `gateway` override on chargeCustomer. This is
   // deliberate: the two purposes must never share the same switch again.
-  const callbackUrl = `${APP_URL}/api/payments/paystack/subscription-callback`;
+  const callbackUrl = `${APP_URL}/api/payments/korapay/subscription-callback`;
 
   // No subaccount passed — this charge goes straight to the platform
   // account, unlike order payments which split to the vendor's subaccount.
@@ -80,7 +83,7 @@ export async function initiatePlanUpgrade(
     amountNaira: Number(plan.price),
     reference,
     callbackUrl,
-    gateway: "PAYSTACK",
+    gateway: "KORAPAY",
   });
 
   if (!charge.success) {

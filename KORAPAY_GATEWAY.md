@@ -12,8 +12,18 @@ Korapay is a third platform gateway next to Paystack and Flutterwave. **SupaAdmi
   Wallet payments pick the active gateway once, when the payout is queued.
 
 ## Deliberately unchanged
-- Subscription upgrades and app purchases stay pinned to Paystack (`gateway: "PAYSTACK"` in
-  `lib/actions/subscription.ts` and `lib/actions/plugins.ts`).
+- Nothing is pinned to Paystack any more: plan payments and app purchases/renewals are pinned to Korapay
+  (`gateway: "KORAPAY"` in `lib/actions/subscription.ts` and `lib/actions/plugins.ts`). Apps use `app/api/payments/korapay/plugin-callback`;
+  an app lapses into a 5-day grace period, then is suspended until renewed from the Apps page ("Renew" shows in its last 7 days).
+
+## BizNest plan (subscription) payments are on Korapay
+- `lib/actions/subscription.ts` charges plan payments through Korapay (`gateway: "KORAPAY"`), settled by
+  `app/api/payments/korapay/subscription-callback`, the Korapay webhook and the reconciliation cron
+  (all via `lib/payments/settle-subscription.ts`).
+- Kora hosted checkout has no saved card, so plans are renewed by the owner: they get a reminder 3 days before expiry,
+  a "Renew plan" button appears on the subscription page in the last 7 days, and a plan that lapses gets the usual
+  5-day grace period before the dashboard is paused. Stores that still hold an old Paystack saved card keep
+  auto-renewing until their next plan payment, which clears it.
 - Store-owned gateway keys (`/store/[slug]/admin/payments`) are still Paystack/Flutterwave only.
 
 ## Environment variables

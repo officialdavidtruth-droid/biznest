@@ -72,7 +72,12 @@ export async function generateMetadata({
     // (store colour + first letter) from the pwa-icon route.
     icons: store.logoUrl
       ? {
-          icon: [{ url: store.logoUrl, sizes: "any" }],
+          // The vendor's own logo, plus a PNG render of it for browsers that can't use the raw file
+          // (WebP/SVG/very large logos). Both are the store's logo; neither is BizNest's.
+          icon: [
+            { url: store.logoUrl, sizes: "any" },
+            { url: tabIcon, sizes: "192x192", type: "image/png" },
+          ],
           apple: [{ url: pwaIcon, sizes: "180x180", type: "image/png" }],
           shortcut: [{ url: store.logoUrl }],
         }

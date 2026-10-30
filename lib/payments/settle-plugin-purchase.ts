@@ -39,7 +39,10 @@ export async function settlePluginPurchase(reference: string, amountNaira: numbe
       if (current?.status !== "SUCCESSFUL") return { ok: false as const, error: "Plugin payment is not pending." };
       return { ok: true as const, slug: store.slug, pluginKey: plugin.key, applied: false as const };
     }
-    const renewsAt = plugin.billingInterval === "MONTHLY" ? new Date(Date.now() + 30 * 24 * 60 * 60 * 1000) : plugin.billingInterval === "YEARLY" ? new Date(Date.now() + 365 * 24 * 60 * 60 * 1000) : null;
+    // Renewing an app that is still running extends from its current end date (no lost days).
+    const existing = await tx.storePlugin.findUnique({ where: { storeId_pluginId: { storeId, pluginId } }, select: { status: true, renewsAt: true } });
+    const startFrom = existing?.status === "ACTIVE" && existing.renewsAt && existing.renewsAt.getTime() > Date.now() ? existing.renewsAt.getTime() : Date.now();
+    const renewsAt = plugin.billingInterval === "MONTHLY" ? new Date(startFrom + 30 * 24 * 60 * 60 * 1000) : plugin.billingInterval === "YEARLY" ? new Date(startFrom + 365 * 24 * 60 * 60 * 1000) : null;
     await tx.storePlugin.upsert({
       where: { storeId_pluginId: { storeId, pluginId } },
       update: { status: "ACTIVE", renewsAt, pastDueSince: null, lastPaymentAt: new Date() },

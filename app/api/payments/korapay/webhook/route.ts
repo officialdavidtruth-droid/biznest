@@ -9,6 +9,8 @@ import { NextResponse } from "next/server";
 import { settleWalletFunding } from "@/lib/payments/settle-wallet-funding";
 import { settleServiceBookingPayment } from "@/lib/payments/settle-service-booking";
 import { settleReservationPayment } from "@/lib/payments/settle-reservation";
+import { settleSubscriptionUpgrade } from "@/lib/payments/settle-subscription";
+import { settlePluginPurchase } from "@/lib/payments/settle-plugin-purchase";
 
 /**
  * Server-to-server confirmation from Korapay (charge.success / charge.failed /
@@ -102,8 +104,14 @@ export async function POST(req: Request) {
     await settleReservationPayment(reference, "KORAPAY", amount, verification as object);
     return NextResponse.json({ received: true });
   }
-  // Subscription / plugin charges are pinned to Paystack and never reach here.
-  if (reference.startsWith("SUBUP-") || reference.startsWith("PLUG-")) {
+  // BizNest plan payments are paid through Korapay.
+  if (reference.startsWith("SUBUP-")) {
+    await settleSubscriptionUpgrade(reference, amount, verification as object);
+    return NextResponse.json({ received: true });
+  }
+  // App purchases and renewals are paid through Korapay too.
+  if (reference.startsWith("PLUG-")) {
+    await settlePluginPurchase(reference, amount, verification as object);
     return NextResponse.json({ received: true });
   }
 

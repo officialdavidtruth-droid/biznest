@@ -22,7 +22,7 @@ export async function getStoreApps(slug: string) {
       where: { status: "ACTIVE" },
       include: {
         planAccess: { where: { enabled: true }, include: { subscription: { select: { name: true, price: true } } } },
-        stores: { where: { storeId: access.store.id }, select: { status: true } },
+        stores: { where: { storeId: access.store.id }, select: { status: true, renewsAt: true } },
       },
       orderBy: [{ sortOrder: "asc" }, { name: "asc" }],
     }),
@@ -38,7 +38,12 @@ export async function getStoreApps(slug: string) {
         : true;
       const planAllowed = plugin.isFree || plugin.planAccess.some((p) => p.subscriptionId === access.store.subscriptionId);
       const installed = plugin.stores[0]?.status === "ACTIVE";
+      // Paid recurring apps are renewed by the owner (one-off Korapay payment, no saved card):
+      // offer "Renew" in the last 7 days before the app expires.
+      const renewsAt = plugin.stores[0]?.renewsAt ?? null;
+      const renewalDue = installed && !plugin.isFree && plugin.billingInterval !== "ONE_TIME" && !!renewsAt && renewsAt.getTime() <= Date.now() + 7 * 24 * 60 * 60 * 1000;
       return {
+        renewalDue,
         id: plugin.id,
         key: plugin.key,
         name: plugin.name,
@@ -87,7 +92,7 @@ export async function installFreePlugin(slug: string, pluginKey: string): Promis
   return { success: true, data: { installed: true } };
 }
 
-export async function startPluginPurchase(slug: string, pluginKey: string): Promise<ActionResult<{ authorizationUrl: string }>> {
+export async function startPluginPurchase(slug: string, pluginKey: string, options: { renew?: boolean } = {}): Promise<ActionResult<{ authorizationUrl: string }>> {
   const access = await assertOwner(slug);
   if (!access.success) return access;
   await ensureSystemPlugins();
@@ -95,27 +100,31 @@ export async function startPluginPurchase(slug: string, pluginKey: string): Prom
   if (!entitlement.allowed) return { success: false, error: entitlement.reason };
   if (entitlement.plugin.isFree) return { success: false, error: "This app is free; install it directly." };
   if (Number(entitlement.plugin.price) <= 0) return { success: false, error: "This app does not have a valid price configured." };
-  if (entitlement.installed) return { success: false, error: "This app is already installed." };
+  if (entitlement.installed && !options.renew) return { success: false, error: "This app is already installed." };
+  if (options.renew && !entitlement.installed) return { success: false, error: "Install this app first." };
 
-  const pending = await prisma.storePlugin.upsert({
-    where: { storeId_pluginId: { storeId: access.store.id, pluginId: entitlement.plugin.id } },
-    update: { status: "SUSPENDED" },
-    create: { storeId: access.store.id, pluginId: entitlement.plugin.id, status: "SUSPENDED" },
-  });
+  // A renewal leaves the running app ACTIVE; a first purchase holds it SUSPENDED until the payment lands.
+  const pending = options.renew
+    ? await prisma.storePlugin.findUniqueOrThrow({ where: { storeId_pluginId: { storeId: access.store.id, pluginId: entitlement.plugin.id } } })
+    : await prisma.storePlugin.upsert({
+        where: { storeId_pluginId: { storeId: access.store.id, pluginId: entitlement.plugin.id } },
+        update: { status: "SUSPENDED" },
+        create: { storeId: access.store.id, pluginId: entitlement.plugin.id, status: "SUSPENDED" },
+      });
 
   const reference = `PLUG-${access.store.id}-${entitlement.plugin.id}-${nanoid(8)}`;
-  await createPendingPayment({ storeId: access.store.id, purpose: "PLUGIN_PURCHASE", provider: "PAYSTACK", reference, amount: entitlement.plugin.price, currency: entitlement.plugin.currency });
+  await createPendingPayment({ storeId: access.store.id, purpose: "PLUGIN_PURCHASE", provider: "KORAPAY", reference, amount: entitlement.plugin.price, currency: entitlement.plugin.currency });
   const session = await auth();
   const charge = await chargeCustomer({
     email: session?.user?.email ?? `${access.store.slug}@biznest.space`,
     amountNaira: Number(entitlement.plugin.price),
     reference,
-    callbackUrl: `${APP_URL}/api/payments/paystack/plugin-callback?slug=${encodeURIComponent(slug)}`,
-    gateway: "PAYSTACK",
+    callbackUrl: `${APP_URL}/api/payments/korapay/plugin-callback?slug=${encodeURIComponent(slug)}`,
+    gateway: "KORAPAY",
   });
   if (!charge.success) {
     await markPaymentFailed(reference);
-    await prisma.storePlugin.update({ where: { id: pending.id }, data: { status: "SUSPENDED" } });
+    if (!options.renew) await prisma.storePlugin.update({ where: { id: pending.id }, data: { status: "SUSPENDED" } });
     return { success: false, error: charge.error };
   }
 

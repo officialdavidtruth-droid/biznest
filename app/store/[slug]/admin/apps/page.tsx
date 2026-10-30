@@ -38,7 +38,7 @@ export default async function AppsPage({ params }: { params: Promise<{ slug: str
                 </div>
                 {plugin.isComingSoon ? <span className="rounded-xl border px-4 py-2 text-xs font-semibold text-muted-foreground">Coming soon</span> : unavailable ? (
                   <Link href={`/store/${slug}/admin/subscription?apps=${encodeURIComponent(plugin.key)}`} className="flex items-center gap-1.5 rounded-xl border px-3 py-2 text-xs font-bold"><LockKeyhole size={13} /> Upgrade</Link>
-                ) : <PluginUseButton slug={slug} pluginKey={plugin.key} isFree={plugin.isFree} installed={plugin.installed} />}
+                ) : <PluginUseButton slug={slug} pluginKey={plugin.key} isFree={plugin.isFree} installed={plugin.installed} renewalDue={plugin.renewalDue} />}
               </div>
             </div>
           );
