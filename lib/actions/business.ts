@@ -10,6 +10,7 @@ import {
 import { revalidatePath } from "next/cache";
 import { BUSINESS_TYPES } from "@/lib/capabilities";
 import { isValidSubcategory } from "@/lib/business-subcategories";
+import { isValidStateForCountry } from "@/lib/geo";
 import type { ActionResult } from "@/types/actions";
 import { isOwnKycUrl } from "@/lib/kyc-storage";
 
@@ -45,6 +46,16 @@ export async function submitBusinessVerification(
       // Full dotted paths (e.g. "guarantors.1.email") so the form can mark the
       // exact guarantor field -- flatten() only reports the top-level key.
       fieldErrors: pathFieldErrors(parsed.error.issues),
+    };
+  }
+
+  // State must be one of the chosen country's states (free text only for
+  // countries the dataset has no states for).
+  if (!(await isValidStateForCountry(parsed.data.country, parsed.data.state))) {
+    return {
+      success: false,
+      error: "Please correct the highlighted fields.",
+      fieldErrors: { state: ["Choose a state that belongs to the selected country"] },
     };
   }
 

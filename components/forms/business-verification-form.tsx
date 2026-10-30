@@ -5,11 +5,13 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { businessVerificationSchema, type BusinessVerificationInput } from "@/lib/validations/business";
 import { submitBusinessVerification } from "@/lib/actions/business";
 import { FileUploadField } from "@/components/forms/file-upload-field";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { ALL_BUSINESS_TYPE_NAMES, getBusinessTypeConfig } from "@/lib/capabilities";
 import { getSubcategoryConfig, getSubcategoryOption } from "@/lib/business-subcategories";
+import { SearchableSelect } from "@/components/forms/searchable-select";
+import { COUNTRIES, DEFAULT_COUNTRY, getStatesForCountry } from "@/lib/geo";
 import { AlertTriangle, Check, Package, CalendarClock, FileText, type LucideIcon } from "lucide-react";
 
 // Sourced from lib/capabilities.ts — this used to be a separate
@@ -35,11 +37,13 @@ export function BusinessVerificationForm({
     handleSubmit,
     setError,
     setValue,
+    watch,
     formState: { errors },
   } = useForm<BusinessVerificationInput>({
     resolver: zodResolver(businessVerificationSchema),
     defaultValues: {
       registrationType: "REGISTERED",
+      country: DEFAULT_COUNTRY,
       sellsProducts: true,
       offersServices: false,
       guarantors: [
@@ -54,6 +58,23 @@ export function BusinessVerificationForm({
   // so the UNREGISTERED path was validated against the certificate rule and
   // guarantor errors never surfaced.
   const registrationTypeField = register("registrationType");
+
+  // Country drives the state list. States load on demand (large dataset).
+  const country = watch("country") ?? "";
+  const stateValue = watch("state") ?? "";
+  const [states, setStates] = useState<string[]>([]);
+  const [statesLoading, setStatesLoading] = useState(false);
+  useEffect(() => {
+    let cancelled = false;
+    setStatesLoading(true);
+    getStatesForCountry(country).then((list) => {
+      if (cancelled) return;
+      setStates(list);
+      setStatesLoading(false);
+    });
+    return () => { cancelled = true; };
+  }, [country]);
+  const countryOptions = COUNTRIES.map((c) => c.name);
 
   const categoryField = register("category");
   const subcategoryField = register("businessSubcategory");
@@ -179,10 +200,48 @@ export function BusinessVerificationForm({
 
           <div className="grid gap-4 sm:grid-cols-3">
             <Field label="Country" error={errors.country?.message}>
-              <input className="bv-input" {...register("country")} />
+              <Controller
+                name="country"
+                control={control}
+                render={({ field }) => (
+                  <SearchableSelect
+                    value={field.value ?? ""}
+                    onChange={(v) => {
+                      if (v !== field.value) setValue("state", "", { shouldValidate: false });
+                      field.onChange(v);
+                    }}
+                    onBlur={field.onBlur}
+                    options={countryOptions}
+                    placeholder="Select a country"
+                    searchPlaceholder="Search countries…"
+                    invalid={Boolean(errors.country)}
+                  />
+                )}
+              />
             </Field>
             <Field label="State" error={errors.state?.message}>
-              <input className="bv-input" {...register("state")} />
+              {states.length > 0 || statesLoading ? (
+                <Controller
+                  name="state"
+                  control={control}
+                  render={({ field }) => (
+                    <SearchableSelect
+                      value={field.value ?? ""}
+                      onChange={field.onChange}
+                      onBlur={field.onBlur}
+                      options={states}
+                      loading={statesLoading}
+                      disabled={!country}
+                      placeholder={country ? "Select a state" : "Select a country first"}
+                      searchPlaceholder="Search states…"
+                      invalid={Boolean(errors.state)}
+                    />
+                  )}
+                />
+              ) : (
+                // Country with no state list in the dataset: free text.
+                <input className="bv-input" placeholder={country ? "State / region" : "Select a country first"} disabled={!country} {...register("state")} />
+              )}
             </Field>
             <Field label="City" error={errors.city?.message}>
               <input className="bv-input" {...register("city")} />

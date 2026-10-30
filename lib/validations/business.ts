@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { isValidCountry } from "@/lib/geo";
 import { getSubcategoryConfig, isValidSubcategory } from "@/lib/business-subcategories";
 
 export const guarantorSchema = z.object({
@@ -21,9 +22,9 @@ const businessBaseSchema = z.object({
   description: z.string().min(20, "Please provide a fuller description (20+ characters)"),
   phone: z.string().min(7, "Enter a valid phone number"),
   email: z.string().email(),
-  country: z.string().min(1),
-  state: z.string().min(1),
-  city: z.string().min(1),
+  country: z.string().min(1, "Select a country").refine((c) => isValidCountry(c), "Choose a country from the list"),
+  state: z.string().min(1, "Select a state"),
+  city: z.string().min(1, "Enter your city"),
   // What the business sells. At least one must be true — a store can be
   // a pure product seller, a pure service provider, or hybrid (both).
   // This drives which dashboard sections and storefront layout show up.
