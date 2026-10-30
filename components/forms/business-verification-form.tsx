@@ -449,8 +449,8 @@ function Section({
   children: React.ReactNode;
 }) {
   return (
-    <section className="py-7 first:pt-0 last:pb-0">
-      <div className="mb-5 flex items-start gap-3">
+    <section className="py-5 first:pt-0 last:pb-0 sm:py-7">
+      <div className="mb-4 flex items-start gap-3 sm:mb-5">
         <span className="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full border border-primary/25 text-[11px] font-bold text-primary">
           {n}
         </span>
@@ -459,7 +459,7 @@ function Section({
           {description && <p className="mt-0.5 text-[13px] leading-relaxed text-muted-foreground">{description}</p>}
         </div>
       </div>
-      <div className="space-y-4 pl-9">{children}</div>
+      <div className="space-y-4 sm:pl-9">{children}</div>
     </section>
   );
 }

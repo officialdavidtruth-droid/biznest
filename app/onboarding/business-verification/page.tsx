@@ -50,7 +50,7 @@ export default async function BusinessVerificationPage() {
             from the top with normal spacing instead of being split
             top/bottom, so any extra stretched height below it just
             reads as breathing room, not an abandoned gap. */}
-        <aside className="relative flex w-full shrink-0 flex-col overflow-hidden bg-foreground px-8 py-12 text-background sm:px-10 sm:py-16 lg:w-[380px] lg:px-12">
+        <aside className="relative flex w-full shrink-0 flex-col overflow-hidden bg-foreground px-6 py-8 text-background sm:px-10 sm:py-16 lg:w-[380px] lg:px-12">
           <div
             aria-hidden
             className="pointer-events-none absolute -right-24 -top-24 h-64 w-64 rounded-full opacity-[0.14]"
@@ -70,7 +70,7 @@ export default async function BusinessVerificationPage() {
               you're a real business before they hand over their money.
             </p>
 
-            <ul className="mt-9 space-y-4">
+            <ul className="mt-6 space-y-3 sm:mt-9 sm:space-y-4">
               {CHECKLIST.map(({ icon: Icon, text }) => (
                 <li key={text} className="flex items-start gap-3">
                   <span className="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full border border-background/15 bg-white/5">
@@ -91,7 +91,7 @@ export default async function BusinessVerificationPage() {
             the content itself is capped at a comfortable reading width and
             centered, so text and inputs don't stretch edge-to-edge on a
             wide screen, without needing an outer "card" to do that job. */}
-        <div className="min-w-0 flex-1 bg-white px-5 py-10 sm:px-10 sm:py-16 lg:px-16">
+        <div className="min-w-0 flex-1 bg-white px-4 py-6 sm:px-10 sm:py-16 lg:px-16">
           <div className="mx-auto max-w-2xl">
             <BusinessVerificationForm
               existingRejection={existing?.verificationStatus === "REJECTED" ? existing.rejectionReason : null}
