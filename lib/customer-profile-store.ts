@@ -13,12 +13,10 @@ import { mergeProfileUpdate, pickProfile, type ProfileLike } from "@/lib/custome
  */
 
 // Structural type so tests can pass a fake and callers pass the real PrismaClient.
-/* eslint-disable @typescript-eslint/no-explicit-any */
 export type ProfileDb = {
   storeCustomerProfile: { findMany: (a: any) => Promise<any[]>; findFirst: (a: any) => Promise<any>; create: (a: any) => Promise<any>; update: (a: any) => Promise<any> };
   user: { findFirst: (a: any) => Promise<any> };
 };
-/* eslint-enable @typescript-eslint/no-explicit-any */
 
 const isUniqueViolation = (err: unknown) => (err as { code?: string } | null)?.code === "P2002";
 const SELECT = { id: true, name: true, email: true, phone: true, userId: true, updatedAt: true } as const;
