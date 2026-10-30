@@ -1,5 +1,6 @@
 "use server";
 
+import { ensureAccountProfile } from "@/lib/customer-profile-store";
 import bcrypt from "bcryptjs";
 import { nanoid } from "nanoid";
 import { headers } from "next/headers";
@@ -104,7 +105,7 @@ export async function registerUser(
   let referralNotice: string | undefined;
   if (storeForCustomer) {
     await prisma.storeCustomer.create({ data: { userId: user.id, storeId: storeForCustomer.id } });
-    await prisma.storeCustomerProfile.create({ data: { userId: user.id, storeId: storeForCustomer.id, name: parsed.data.name, email: normalizedEmail } });
+    await ensureAccountProfile(prisma, { userId: user.id, storeId: storeForCustomer.id, name: parsed.data.name, email: normalizedEmail });
 
     // Arrived through a friend's referral link (?ref=CODE). Best-effort: an
     // invalid/expired code or a program that's been switched off must never

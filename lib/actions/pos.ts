@@ -1,7 +1,8 @@
 "use server";
 
 import { walkInEmail } from "@/lib/walk-in-customer";
-import { canonicalPhone, phoneVariants } from "@/lib/phone";
+import { canonicalPhone, phoneSearchTerms } from "@/lib/phone";
+import { findOrCreatePosProfile } from "@/lib/customer-profile-store";
 import { findMixedCurrencies, mixedCurrencyMessage } from "@/lib/currency-guard";
 import { getCanonicalBusinessType } from "@/lib/business-identity";
 import { auth } from "@/lib/auth";
@@ -201,6 +202,8 @@ export async function searchPosCustomers(slug: string, query: string): Promise<P
   if (!access.success) return [];
   const q = query.trim();
   if (q.length < 2) return [];
+  // Phone matching must work across stored formats (+234803…, 0803…, 803…).
+  const phoneTerms = phoneSearchTerms(q);
 
   const [profiles, orders] = await Promise.all([
     prisma.storeCustomerProfile.findMany({
@@ -209,7 +212,7 @@ export async function searchPosCustomers(slug: string, query: string): Promise<P
         OR: [
           { name: { contains: q, mode: "insensitive" } },
           { email: { contains: q, mode: "insensitive" } },
-          { phone: { contains: q } },
+          ...phoneTerms.map((t) => ({ phone: { contains: t } })),
         ],
       },
       select: { id: true, name: true, email: true, phone: true },
@@ -224,7 +227,7 @@ export async function searchPosCustomers(slug: string, query: string): Promise<P
           { buyer: { name: { contains: q, mode: "insensitive" } } },
           { buyer: { email: { contains: q, mode: "insensitive" } } },
           { posCustomerName: { contains: q, mode: "insensitive" } },
-          { posCustomerPhone: { contains: q } },
+          ...phoneTerms.map((t) => ({ posCustomerPhone: { contains: t } })),
         ],
       },
       select: { buyerId: true, posCustomerName: true, posCustomerPhone: true, total: true, buyer: { select: { name: true, email: true, phone: true } } },
@@ -424,32 +427,11 @@ export async function createPosSale(
     if (!profile) return { success: false, error: "The selected customer is no longer available." };
     customerProfileId = profile.id;
   } else if (customerName || customerPhone || customerEmail) {
-    const [existing, matchingUser] = await Promise.all([
-      prisma.storeCustomerProfile.findFirst({
-        where: {
-          storeId: store.id,
-          OR: [
-            // Any written form of the same number matches (0803…, +234803…, 234803…).
-            ...(customerPhone ? [{ phone: { in: phoneVariants(data.customerPhone) } }] : []),
-            ...(customerEmail ? [{ email: customerEmail }] : []),
-          ],
-        },
-        select: { id: true },
-        orderBy: { updatedAt: "desc" },
-      }),
-      customerEmail ? prisma.user.findFirst({ where: { email: customerEmail, customerScopeStoreId: store.id }, select: { id: true } }) : Promise.resolve(null),
-    ]);
-    const profile = existing
-      ? await prisma.storeCustomerProfile.update({
-          where: { id: existing.id },
-          data: { name: customerName ?? undefined, phone: customerPhone ?? undefined, email: customerEmail ?? undefined, userId: matchingUser?.id ?? undefined },
-          select: { id: true },
-        })
-      : await prisma.storeCustomerProfile.create({
-          data: { storeId: store.id, userId: matchingUser?.id ?? null, name: customerName || customerPhone || customerEmail || "Customer", phone: customerPhone, email: customerEmail },
-          select: { id: true },
-        });
-    customerProfileId = profile.id;
+    // Race-safe: backed by unique indexes on (store, email/phone/user); fills
+    // blanks only and never overwrites an existing customer's details.
+    customerProfileId = await findOrCreatePosProfile(prisma, {
+      storeId: store.id, name: customerName, email: customerEmail, phone: customerPhone, phoneRaw: data.customerPhone ?? null,
+    });
   }
 
   // Order + payment + commission accrual + every stock decrement live in

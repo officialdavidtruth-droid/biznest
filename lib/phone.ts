@@ -45,3 +45,23 @@ export function phoneVariants(value: string | null | undefined): string[] {
   }
   return [...out];
 }
+
+/**
+ * Substrings to use with a database `contains` when searching phone columns by
+ * what a cashier typed. Stored numbers come in several forms (+234803…, 0803…,
+ * 803…) so searching the raw input misses most of them: "0803123" is not a
+ * substring of "+2348031234567". The national core (no 0 / 234 prefix) is a
+ * substring of every form. Returns [] when the input isn't phone-like, so a
+ * name or email search never turns into a phone search.
+ */
+export function phoneSearchTerms(query: string | null | undefined): string[] {
+  const q = query?.trim();
+  if (!q || !/^[+\d\s().-]+$/.test(q)) return [];
+  let d = q.replace(/\D/g, "");
+  if (d.startsWith("00")) d = d.slice(2);
+  const core = d.startsWith("234") && d.length > 3 ? d.slice(3) : d.startsWith("0") ? d.slice(1) : d;
+  const terms = new Set<string>();
+  if (core.length >= 3) terms.add(core);
+  if (q.length >= 3) terms.add(q); // keeps matching numbers stored exactly as typed (spaces, dashes)
+  return [...terms];
+}
