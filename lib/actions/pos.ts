@@ -23,6 +23,7 @@ import type { ActionResult } from "@/types/actions";
 import { Prisma, type Store, type Business } from "@prisma/client";
 import { formatNumber } from "@/lib/i18n/locale";
 import { postOrderSaleToLedger } from "@/lib/financial/order-ledger";
+import { logError, errorMeta } from "@/lib/observability/log";
 import { getLocalDateKey, localDateStartUtc, localDateEndUtc } from "@/lib/timezone";
 
 type StoreAccessResult =
@@ -79,7 +80,8 @@ export type PosCatalogItem = {
 };
 
 /**
- * Everything sellable from the register: every product (regardless of
+ * Everything sellable from the register: every physical product (digital
+ * products have nothing to hand over in person, so they're excluded), regardless of
  * isPublished — a merchant may sell something in person that isn't listed
  * on the storefront, e.g. a wholesale-only or one-off item) plus every
  * service. Deliberately not paginated; a single store's catalog is small
@@ -143,7 +145,7 @@ export async function getPosCatalog(slug: string): Promise<PosCatalogItem[]> {
 }
 
 export type PosBarcodeMatch =
-  | { success: true; productId: string; variantId: string | null; name: string; price: number }
+  | { success: true; productId: string; variantId: string | null; name: string; price: number; quantity: number | null }
   | { success: false; error: string };
 
 /** Quick-add lookup for a barcode scan/entry at the register. */
@@ -165,6 +167,8 @@ export async function lookupPosBarcode(slug: string, barcode: string): Promise<P
       variantId: variant.id,
       name: `${variant.product.name} — ${variant.label}`,
       price: variant.price !== null ? Number(variant.price) : Number(variant.product.price),
+      // null = not capped client-side (recipe dishes are limited by ingredients, checked at charge).
+      quantity: computeRecipeRequirements(variant.product.attributes, 1) !== null ? null : variant.quantity,
     };
   }
 
@@ -179,6 +183,7 @@ export async function lookupPosBarcode(slug: string, barcode: string): Promise<P
       variantId: null,
       name: item.product.name,
       price: Number(item.product.price),
+      quantity: item.product.hasVariants || computeRecipeRequirements(item.product.attributes, 1) !== null ? null : item.quantity,
     };
   }
 
@@ -269,13 +274,23 @@ export async function searchPosCustomers(slug: string, query: string): Promise<P
  */
 async function getOrCreateWalkInCustomer(storeId: string) {
   const email = walkInEmail(storeId);
-  const existing = await prisma.user.findFirst({
-    where: { email, customerScopeStoreId: null, isMarketingOnly: false },
-  });
+  const where = { email, customerScopeStoreId: null, isMarketingOnly: false };
+  const existing = await prisma.user.findFirst({ where });
   if (existing) return existing;
-  return prisma.user.create({
-    data: { email, name: "Walk-in customer", role: "CUSTOMER", isMarketingOnly: false },
-  });
+  try {
+    return await prisma.user.create({
+      data: { email, name: "Walk-in customer", role: "CUSTOMER", isMarketingOnly: false },
+    });
+  } catch (err) {
+    // Two first-ever sales for a store can both miss the find above. The partial
+    // unique index on platform-scope email lets exactly one create win; the loser
+    // re-reads the winner's row instead of failing the sale.
+    if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === "P2002") {
+      const winner = await prisma.user.findFirst({ where });
+      if (winner) return winner;
+    }
+    throw err;
+  }
 }
 
 export async function createPosSale(
@@ -649,6 +664,9 @@ export async function createPosSale(
   // A replay returns the original sale but must not emit duplicate webhook
   // events or duplicate audit entries.
   if (!created) {
+    // Idempotent (unique journal reference): heals a first attempt whose ledger
+    // post failed after the sale committed. Never throws.
+    await postOrderSaleToLedger(orderId);
     const existing = await prisma.order.findUnique({ where: { id: orderId }, select: { total: true } });
     return { success: true, data: { orderId, total: Number(existing?.total ?? total) } };
   }
@@ -657,22 +675,20 @@ export async function createPosSale(
   // webhooks are an external call (shouldn't sit inside a DB transaction
   // holding a connection open) and the activity log is best-effort audit
   // trail, not something a failure here should roll the sale back for.
-  await postOrderSaleToLedger(orderId);
-  await emitWebhookEvent("ORDER_CREATED", store.id, {
-    orderId,
-    storeId: store.id,
-    status: "PAID",
-    channel: "POS",
-    subtotal,
-    total,
-    currency,
-  });
-  await emitWebhookEvent("PAYMENT_SUCCESS", store.id, {
-    orderId,
-    amount: total,
-    currency,
-    provider: "CASH",
-  });
+  // The sale is already committed, so nothing below may turn it into an error
+  // for the cashier (a retry would only replay the order and skip these anyway).
+  await postOrderSaleToLedger(orderId); // never throws
+  const webhookEvents = [
+    ["ORDER_CREATED", { orderId, storeId: store.id, status: "PAID", channel: "POS", subtotal, total, currency }],
+    ["PAYMENT_SUCCESS", { orderId, amount: total, currency, provider: "CASH" }],
+  ] as const;
+  for (const [eventType, payload] of webhookEvents) {
+    try {
+      await emitWebhookEvent(eventType, store.id, payload);
+    } catch (err) {
+      await logError("JOBS", "pos: webhook emit failed after committed sale", errorMeta(err, { orderId, eventType }));
+    }
+  }
 
   const session = await auth();
   await logStoreActivity({
@@ -717,7 +733,7 @@ export async function getPosDailySummary(slug: string): Promise<PosDailySummary>
   return {
     salesCount: orders.length,
     totalAmount: roundMoney(orders.reduce((sum, o) => sum + Number(o.total), 0)),
-    currency: orders[0]?.currency ?? "NGN",
+    currency: orders[0]?.currency ?? access.store.currency ?? "NGN",
   };
 }
 
@@ -755,7 +771,7 @@ export async function getPosCommissionBalance(slug: string): Promise<PosCommissi
 
   return {
     owed: roundMoney(Number(store?.posCommissionOwed ?? 0)),
-    currency: "NGN",
+    currency: access.store.currency ?? "NGN",
     recentSettlements: settlements.map((s) => ({
       id: s.id,
       amount: Number(s.amount),

@@ -10,6 +10,7 @@ import { assertStorePermission } from "@/lib/access/assert-store-access";
 import { getPosCatalog, getPosDailySummary } from "@/lib/actions/pos";
 import { PosRegister } from "@/components/dashboard/pos-register";
 import { formatNumber } from "@/lib/i18n/locale";
+import { PLATFORM_COMMISSION_PERCENT } from "@/lib/constants/commission";
 
 const FOOD_TYPES = ["Restaurant", "Food & Groceries"];
 
@@ -21,7 +22,7 @@ export default async function PosPage({ params }: { params: Promise<{ slug: stri
 
   const store = await prisma.store.findUnique({
     where: { slug },
-    select: { id: true, businessType: true, subscription: { select: { commissionRate: true } } },
+    select: { id: true, businessType: true },
   });
   if (!store) notFound();
 
@@ -32,7 +33,9 @@ export default async function PosPage({ params }: { params: Promise<{ slug: stri
   }
 
   const [catalog, summary] = await Promise.all([getPosCatalog(slug), getPosDailySummary(slug)]);
-  const commissionRatePercent = store.subscription ? Number(store.subscription.commissionRate) : 8;
+  // Same source of truth createPosSale uses, so the register never shows a
+  // commission the server will not record.
+  const commissionRatePercent = PLATFORM_COMMISSION_PERCENT;
 
   return (
     <div className="bn-admin-page space-y-5">

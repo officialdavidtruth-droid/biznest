@@ -53,6 +53,13 @@ export function PosRegister({
   const chargeIdempotencyKeyRef = useRef<string>(crypto.randomUUID());
   const [lookingUpBarcode, setLookingUpBarcode] = useState(false);
 
+  // The key must identify ONE specific sale. If the cashier changes the cart,
+  // tender or customer after a failed attempt, that is a different sale, so it
+  // gets a new key (otherwise the server would replay the earlier order).
+  useEffect(() => {
+    chargeIdempotencyKeyRef.current = crypto.randomUUID();
+  }, [cart, tenderType, orderType, tableLabel, customerName, customerPhone, customerEmail, customerProfileId]);
+
   const currency = catalog[0]?.currency ?? "NGN";
 
   useEffect(() => {
@@ -194,7 +201,7 @@ export function PosRegister({
       name: result.name,
       unitPrice: result.price,
       quantity: 1,
-      maxQuantity: null, // barcode lookup doesn't return stock; the charge step still enforces it
+      maxQuantity: result.quantity, // same stock cap as tapping the tile; the charge step still enforces it
     });
   }
 
@@ -203,9 +210,11 @@ export function PosRegister({
   const netToKeep = roundMoney(subtotal - estimatedCommission);
 
   async function handleCharge() {
-    if (cart.length === 0) return;
+    if (cart.length === 0 || charging) return;
     setCharging(true);
-    const result = await createPosSale(slug, {
+    let result: Awaited<ReturnType<typeof createPosSale>>;
+    try {
+    result = await createPosSale(slug, {
       items: cart.map((l) => ({
         productId: l.variantId ? undefined : l.productId,
         variantId: l.variantId,
@@ -221,7 +230,14 @@ export function PosRegister({
       customerProfileId,
       idempotencyKey: chargeIdempotencyKeyRef.current,
     });
-    setCharging(false);
+    } catch {
+      // Network drop or server error: keep the cart and the SAME idempotency key so
+      // pressing Charge again cannot create a second order if the first one landed.
+      toast.error("Couldn't reach the server. Check your connection and press Charge again — you won't be charged twice.");
+      return;
+    } finally {
+      setCharging(false);
+    }
     if (!result.success) return toast.error(result.error);
     toast.success(`Sale complete — ${currency} ${formatNumber(result.data.total)}`);
     setCart([]);

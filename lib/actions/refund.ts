@@ -221,10 +221,19 @@ export async function issueRefund(
       // owner shouldn't end up with a negative balance from a single
       // refund; that gets reconciled the normal way instead.
       if (order.channel === "POS" && Number(order.commission) > 0) {
-        const store = await tx.store.findUnique({ where: { id: access.store.id }, select: { posCommissionOwed: true } });
-        const reduceBy = Math.min(Number(order.commission), Number(store?.posCommissionOwed ?? 0));
-        if (reduceBy > 0) {
-          await tx.store.update({ where: { id: access.store.id }, data: { posCommissionOwed: { decrement: reduceBy } } });
+        // Guarded updates instead of read-then-write: a concurrent sale or
+        // settlement can't make this decrement from a stale balance.
+        const commission = Number(order.commission);
+        const full = await tx.store.updateMany({
+          where: { id: access.store.id, posCommissionOwed: { gte: commission } },
+          data: { posCommissionOwed: { decrement: commission } },
+        });
+        if (full.count === 0) {
+          // Part of it was already settled: clear whatever is left, never below zero.
+          await tx.store.updateMany({
+            where: { id: access.store.id, posCommissionOwed: { gt: 0, lt: commission } },
+            data: { posCommissionOwed: 0 },
+          });
         }
       }
 

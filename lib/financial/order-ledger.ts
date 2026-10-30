@@ -7,7 +7,7 @@ import { logError, errorMeta } from "@/lib/observability/log";
  * "Recorded revenue" matches the sales shown on the dashboards.
  *
  * Rules:
- *  - Sale: Dr Cash (1000) for CASH payments (POS), else Dr Bank (1010);
+ *  - Sale: Dr Cash (1000) for cash-tender POS payments, else Dr Bank (1010) (card/transfer POS tenders included);
  *    Cr Product Sales (4000), or Service Revenue (4100) when the order has
  *    only service lines. Gross order total. Gateway fees/commission are not booked.
  *  - Service bookings and property (hotel) reservations are posted from their
@@ -59,7 +59,7 @@ export async function postOrderSaleToLedger(orderId: string, entryDate: Date = n
   try {
     const order = await prisma.order.findUnique({
       where: { id: orderId },
-      select: { id: true, storeId: true, total: true, status: true, channel: true, items: { select: { productId: true, serviceId: true } } },
+      select: { id: true, storeId: true, total: true, status: true, channel: true, posTenderType: true, items: { select: { productId: true, serviceId: true } } },
     });
     if (!order) return;
     if (!([...LEDGER_SALE_STATUSES, "REFUNDED"] as string[]).includes(order.status)) return;
@@ -68,7 +68,12 @@ export async function postOrderSaleToLedger(orderId: string, entryDate: Date = n
     const accounts = await loadAccounts(order.storeId);
     if (!accounts) return;
     const payment = await prisma.payment.findFirst({ where: { orderId: order.id }, orderBy: { createdAt: "asc" }, select: { provider: true } });
-    const debitId = accounts.get(payment?.provider === "CASH" && order.channel !== "ONLINE" ? "1000" : "1010")!; // online CASH = vendor-confirmed bank transfer -> bank account
+    // CASH provider = settled outside any gateway. Online CASH is a vendor-confirmed
+    // bank transfer -> bank account. At the register only physical cash goes to the
+    // cash account (1000); Card and Transfer tenders land in the bank account (1010).
+    // A POS order with no recorded tender (legacy rows) is treated as cash.
+    const posNonCash = order.channel === "POS" && !!order.posTenderType && order.posTenderType !== "Cash";
+    const debitId = accounts.get(payment?.provider === "CASH" && order.channel !== "ONLINE" && !posNonCash ? "1000" : "1010")!;
     const serviceOnly = order.items.length > 0 && order.items.every((i) => i.serviceId && !i.productId);
     const revenueId = accounts.get(serviceOnly ? "4100" : "4000")!;
     await createEntry(order.storeId, SALE_REF(order.id), `Sale: order ${order.id}`, entryDate, [
