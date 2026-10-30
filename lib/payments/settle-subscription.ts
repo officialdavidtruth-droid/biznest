@@ -1,3 +1,4 @@
+import { resolveSubscriptionId } from "@/lib/payments/subscription-reference";
 import "server-only";
 import { prisma } from "@/lib/prisma";
 import { amountCoversExpected } from "@/lib/payments/amount";
@@ -16,7 +17,8 @@ export type SettleSubscriptionResult =
   | { outcome: "review" | "not_found"; storeSlug?: string };
 
 export async function settleSubscriptionUpgrade(reference: string, verifiedAmountNaira: number, rawPayload: object): Promise<SettleSubscriptionResult> {
-  const [, storeId, subscriptionId] = reference.split("-");
+  const [, storeId, planToken] = reference.split("-");
+  const subscriptionId = await resolveSubscriptionId(planToken);
   const [store, plan, payment] = await Promise.all([
     storeId ? prisma.store.findUnique({ where: { id: storeId } }) : null,
     subscriptionId ? prisma.subscription.findUnique({ where: { id: subscriptionId } }) : null,

@@ -1,3 +1,4 @@
+import { resolveSubscriptionId } from "@/lib/payments/subscription-reference";
 import { prisma } from "@/lib/prisma";
 import { verifyPaystackTransaction, verifyPaystackWebhookSignature } from "@/lib/payments/paystack";
 import { settleInvoicePayment } from "@/lib/payments/settle-invoice";
@@ -137,7 +138,8 @@ export async function POST(req: Request) {
   // (see lib/actions/subscription.ts) — distinct from order references,
   // which are just the order's cuid.
   if (reference.startsWith("SUBUP-")) {
-    const [, storeId, subscriptionId] = reference.split("-");
+    const [, storeId, planToken] = reference.split("-");
+  const subscriptionId = await resolveSubscriptionId(planToken);
     const [store, plan, payment] = await Promise.all([
       prisma.store.findUnique({ where: { id: storeId } }),
       subscriptionId ? prisma.subscription.findUnique({ where: { id: subscriptionId } }) : null,

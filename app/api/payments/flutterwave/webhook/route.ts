@@ -1,3 +1,4 @@
+import { resolveSubscriptionId } from "@/lib/payments/subscription-reference";
 import { prisma } from "@/lib/prisma";
 import { verifyFlutterwaveTransaction, verifyFlutterwaveTransfer, verifyFlutterwaveWebhookSignature } from "@/lib/payments/flutterwave";
 import { applyFlutterwaveTransferWebhookEvent } from "@/lib/payments/payout";
@@ -128,7 +129,8 @@ export async function POST(req: Request) {
   // (see lib/actions/subscription.ts) — distinct from order references,
   // which are just the order's cuid.
   if (txRef.startsWith("SUBUP-")) {
-    const [, storeId, subscriptionId] = txRef.split("-");
+    const [, storeId, planToken] = txRef.split("-");
+  const subscriptionId = await resolveSubscriptionId(planToken);
     const store = await prisma.store.findUnique({ where: { id: storeId } });
     // txRef and transactionId both come from this same signed webhook
     // payload, so they're already bound to one real event — this amount

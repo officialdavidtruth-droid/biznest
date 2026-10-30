@@ -4,7 +4,7 @@ import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { chargeCustomer } from "@/lib/payments/gateway";
 import { getFreeTrialSetting, getMarketingFreeTrialSetting } from "@/lib/actions/site-settings";
-import { nanoid } from "nanoid";
+import { buildSubscriptionReference } from "@/lib/payments/subscription-reference";
 import type { ActionResult } from "@/types/actions";
 import { createPendingPayment, markPaymentFailed } from "@/lib/payments/pending";
 
@@ -16,9 +16,6 @@ const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? "https://www.biznest.space";
  * deliberately separate from the Order payment flow/reference format so the
  * two can never be confused with each other.
  */
-function buildReference(storeId: string, subscriptionId: string) {
-  return `SUBUP-${storeId}-${subscriptionId}-${nanoid(8)}`;
-}
 
 export async function initiatePlanUpgrade(
   slug: string,
@@ -67,7 +64,7 @@ export async function initiatePlanUpgrade(
     return { success: true, data: { trialStarted: true } };
   }
 
-  const reference = buildReference(store.id, plan.id);
+  const reference = buildSubscriptionReference(store.id, plan.id);
   await createPendingPayment({ storeId: store.id, purpose: "SUBSCRIPTION_UPGRADE", provider: "KORAPAY", reference, amount: Number(plan.price), currency: "NGN" });
 
   // Platform-billing (BizNest plan payments) always goes through Korapay,

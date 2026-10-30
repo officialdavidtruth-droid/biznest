@@ -1,3 +1,4 @@
+import { resolveSubscriptionId } from "@/lib/payments/subscription-reference";
 import { prisma } from "@/lib/prisma";
 import { verifyFlutterwaveTransaction } from "@/lib/payments/flutterwave";
 import { checkRateLimit, getClientIp } from "@/lib/rate-limit";
@@ -22,7 +23,8 @@ export async function GET(req: Request) {
   }
 
   // Reference shape: SUBUP-{storeId}-{subscriptionId}-{random}
-  const [, storeId, subscriptionId] = txRef.split("-");
+  const [, storeId, planToken] = txRef.split("-");
+  const subscriptionId = await resolveSubscriptionId(planToken);
   const store = await prisma.store.findUnique({ where: { id: storeId } });
   if (!store) return NextResponse.redirect(`${APP_URL}/?payment=store_not_found`);
 
