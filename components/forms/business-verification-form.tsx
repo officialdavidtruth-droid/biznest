@@ -9,7 +9,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { ALL_BUSINESS_TYPE_NAMES, getBusinessTypeConfig } from "@/lib/capabilities";
-import { PROFESSIONAL_SERVICE_SUBNICHES } from "@/lib/professional-services";
+import { getSubcategoryConfig, getSubcategoryOption } from "@/lib/business-subcategories";
 import { AlertTriangle, Check, Package, CalendarClock, FileText, type LucideIcon } from "lucide-react";
 
 // Sourced from lib/capabilities.ts — this used to be a separate
@@ -34,6 +34,7 @@ export function BusinessVerificationForm({
     control,
     handleSubmit,
     setError,
+    setValue,
     formState: { errors },
   } = useForm<BusinessVerificationInput>({
     resolver: zodResolver(businessVerificationSchema),
@@ -53,6 +54,12 @@ export function BusinessVerificationForm({
   // so the UNREGISTERED path was validated against the certificate rule and
   // guarantor errors never surfaced.
   const registrationTypeField = register("registrationType");
+
+  const categoryField = register("category");
+  const subcategoryField = register("businessSubcategory");
+  const subcategoryConfig = getSubcategoryConfig(category);
+  const [subcategory, setSubcategory] = useState("");
+  const subcategoryOption = getSubcategoryOption(category, subcategory);
 
   // Guarantor field errors: errors.guarantors[i].<field>, plus an array-level
   // message (e.g. "Exactly two guarantors are required").
@@ -113,8 +120,14 @@ export function BusinessVerificationForm({
           <Field label="Category" error={errors.category?.message}>
             <select
               className="bv-input"
-              {...register("category")}
-              onChange={(e) => { setCategory(e.target.value); register("category").onChange(e); }}
+              {...categoryField}
+              onChange={(e) => {
+                void categoryField.onChange(e);
+                setCategory(e.target.value);
+                // A specialty belongs to one category — never carry it across.
+                setSubcategory("");
+                setValue("businessSubcategory", "", { shouldValidate: false });
+              }}
             >
               <option value="">Select a category</option>
               {CATEGORIES.map((c) => (
@@ -123,13 +136,31 @@ export function BusinessVerificationForm({
             </select>
           </Field>
 
-          {category === "Professional Services" && (
-            <Field label="Professional services specialty" error={errors.businessSubcategory?.message}>
-              <select className="bv-input" {...register("businessSubcategory")}>
+          {subcategoryConfig && (
+            <Field label={subcategoryConfig.label} error={errors.businessSubcategory?.message}>
+              <select
+                key={category}
+                className="bv-input"
+                {...subcategoryField}
+                onChange={(e) => {
+                  void subcategoryField.onChange(e);
+                  setSubcategory(e.target.value);
+                }}
+              >
                 <option value="">Choose your specialty</option>
-                {PROFESSIONAL_SERVICE_SUBNICHES.map((n) => <option key={n.id} value={n.name}>{n.name}</option>)}
+                {groupedOptions(subcategoryConfig.options).map(({ group, options }) =>
+                  group ? (
+                    <optgroup key={group} label={group}>
+                      {options.map((n) => <option key={n.id} value={n.name}>{n.name}</option>)}
+                    </optgroup>
+                  ) : (
+                    options.map((n) => <option key={n.id} value={n.name}>{n.name}</option>)
+                  )
+                )}
               </select>
-              <p className="mt-1.5 text-xs text-muted-foreground">This controls the storefront, dashboard workflow and recommended tools BizNest gives you.</p>
+              <p className="mt-1.5 text-xs text-muted-foreground">
+                {subcategoryOption?.description ?? "This controls the storefront, dashboard workflow and recommended tools BizNest gives you."}
+              </p>
             </Field>
           )}
 
@@ -335,6 +366,16 @@ export function BusinessVerificationForm({
       `}</style>
     </form>
   );
+}
+
+function groupedOptions<T extends { group?: string }>(options: T[]): Array<{ group?: string; options: T[] }> {
+  const out: Array<{ group?: string; options: T[] }> = [];
+  for (const o of options) {
+    const last = out[out.length - 1];
+    if (last && last.group === o.group) last.options.push(o);
+    else out.push({ group: o.group, options: [o] });
+  }
+  return out;
 }
 
 function Section({

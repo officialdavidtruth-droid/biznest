@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { getSubcategoryConfig, isValidSubcategory } from "@/lib/business-subcategories";
 
 export const guarantorSchema = z.object({
   fullName: z.string().min(2),
@@ -47,9 +48,24 @@ export const businessVerificationSchema = z
         .length(2, "Exactly two guarantors are required"),
     }),
   ])
-  .refine((data) => data.sellsProducts || data.offersServices, {
-    message: "Select at least one: you sell products, offer services, or both",
-    path: ["sellsProducts"],
+  .superRefine((data, ctx) => {
+    if (!data.sellsProducts && !data.offersServices) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "Select at least one: you sell products, offer services, or both",
+        path: ["sellsProducts"],
+      });
+    }
+    // Categories with a specialty list (see lib/business-subcategories.ts)
+    // must pick one of its options; the stored value is the option name.
+    const config = getSubcategoryConfig(data.category);
+    if (config && !isValidSubcategory(data.category, data.businessSubcategory)) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: data.businessSubcategory ? "Choose a specialty from the list" : "Choose your specialty",
+        path: ["businessSubcategory"],
+      });
+    }
   });
 
 export type BusinessVerificationInput = z.infer<typeof businessVerificationSchema>;

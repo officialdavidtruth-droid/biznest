@@ -9,6 +9,7 @@ import {
 } from "@/lib/validations/business";
 import { revalidatePath } from "next/cache";
 import { BUSINESS_TYPES } from "@/lib/capabilities";
+import { isValidSubcategory } from "@/lib/business-subcategories";
 import type { ActionResult } from "@/types/actions";
 import { isOwnKycUrl } from "@/lib/kyc-storage";
 
@@ -67,6 +68,11 @@ export async function submitBusinessVerification(
 
   if (!BUSINESS_TYPES[data.category]) return { success: false, error: "Please select a supported business type." };
 
+  // Only keep a specialty that belongs to the chosen category. The schema
+  // already rejects a missing/invalid one for categories that have a list;
+  // this also drops a stale value left over from a different category.
+  const subcategory = isValidSubcategory(data.category, data.businessSubcategory) ? data.businessSubcategory! : null;
+
   // A rejected verification is a new KYC submission. Clear the previous
   // fraud-policy acceptance and replace the previous guarantor records so
   // stale/rejected identity data cannot silently carry into the new review.
@@ -83,7 +89,7 @@ export async function submitBusinessVerification(
         userId: session.user.id,
         businessName: data.businessName,
         category: data.category,
-        businessSubcategory: data.businessSubcategory ?? null,
+        businessSubcategory: subcategory,
         description: data.description,
         phone: data.phone,
         email: data.email,
@@ -104,7 +110,7 @@ export async function submitBusinessVerification(
       update: {
         businessName: data.businessName,
         category: data.category,
-        businessSubcategory: data.businessSubcategory ?? null,
+        businessSubcategory: subcategory,
         description: data.description,
         phone: data.phone,
         email: data.email,

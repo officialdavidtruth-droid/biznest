@@ -16,6 +16,7 @@ import {
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { getProfessionalServiceSubNicheByName } from "@/lib/professional-services";
+import { getSubcategoryOption } from "@/lib/business-subcategories";
 
 export type OnboardingField = {
   key: string;
@@ -244,16 +245,33 @@ const PLANS: Record<string, Partial<BusinessOnboardingPlan>> = {
   },
 };
 
+// The onboarding field that describes "what the business mainly sells/offers".
+// A chosen specialty swaps its placeholder for specialty-specific examples.
+const FOCUS_FIELD_KEYS = new Set(["productFocus", "serviceFocus", "menuFocus", "specialties", "roomTypes", "eventTypes", "projectTypes"]);
+
 export function getBusinessOnboardingPlan(category: string, sellsProducts: boolean, offersServices: boolean, subcategory?: string | null): BusinessOnboardingPlan {
   const base = sellsProducts && offersServices ? PRODUCT_PLAN : sellsProducts ? PRODUCT_PLAN : SERVICE_PLAN;
   const override = PLANS[category];
   const niche = category === "Professional Services" ? getProfessionalServiceSubNicheByName(subcategory) : null;
+  // Every other category's specialty (lib/business-subcategories.ts).
+  const option = niche ? null : getSubcategoryOption(category, subcategory);
+
+  let fields = niche?.onboarding.fields ?? override?.fields ?? base.fields;
+  if (option) {
+    let swapped = false;
+    fields = fields.map((f) => {
+      if (swapped || !FOCUS_FIELD_KEYS.has(f.key)) return f;
+      swapped = true;
+      return { ...f, placeholder: `e.g. ${option.focus}` };
+    });
+  }
+
   return {
     ...base,
     ...override,
     icon: override?.icon ?? base.icon,
-    fields: niche?.onboarding.fields ?? override?.fields ?? base.fields,
+    fields,
     checklist: niche ? ["Specialized service catalog", "Project / enquiry flow", "Branded client experience"] : override?.checklist ?? base.checklist,
-    recommendations: niche?.onboarding.recommendations ?? override?.recommendations ?? base.recommendations,
+    recommendations: niche?.onboarding.recommendations ?? option?.recommendations ?? override?.recommendations ?? base.recommendations,
   };
 }

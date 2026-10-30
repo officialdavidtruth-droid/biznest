@@ -125,7 +125,7 @@ export function StoreSetupWizard({
   );
   const experience = useMemo(
     () => getBusinessExperience(business.category, { sellsProducts: business.sellsProducts, offersServices: business.offersServices }, business.businessSubcategory),
-    [business.category, business.sellsProducts, business.offersServices]
+    [business.category, business.sellsProducts, business.offersServices, business.businessSubcategory]
   );
   const PlanIcon = plan.icon;
 
