@@ -3,13 +3,9 @@ import { getStoreBranding } from "@/lib/actions/store-branding";
 import { requireStoreCustomer } from "@/lib/actions/store-customer";
 import { DISPUTABLE_ORDER_STATUSES } from "@/lib/constants/dispute";
 import { getAccountCopy } from "@/lib/account-copy";
-import { prisma } from "@/lib/prisma";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { Package, CheckCircle2, XCircle, RotateCcw, AlertTriangle, ArrowUpRight, ShoppingBag, ShieldAlert, ArrowLeft, Wallet, Layers } from "lucide-react";
-import { StoreFooter } from "@/components/storefront/store-footer";
-import { TasteHouseOrders } from "@/components/storefront/tastehouse";
-import { TASTEHOUSE_TEMPLATE_NAME } from "@/lib/template-themes";
+import { Package, CheckCircle2, XCircle, RotateCcw, AlertTriangle, ArrowUpRight, ShoppingBag, ShieldAlert, Wallet, Layers } from "lucide-react";
 import { formatDate, formatNumber } from "@/lib/i18n/locale";
 
 // Store-scoped order history. A customer account only ever belongs to one
@@ -31,11 +27,13 @@ const STATUS_CONFIG: Record<string, { label: string; icon: typeof Package; dot: 
   DISPUTED: { label: "Disputed", icon: AlertTriangle, dot: "bg-red-500", bg: "bg-red-50", text: "text-red-700" },
 };
 
-// StoreOrdersPage (below) is the standalone, full-chrome route. It is also
-// reachable nested inside the themed account shell at /account/orders (see
-// that route's page.tsx) — that page renders OrdersListContent directly, on
-// purpose, so it doesn't stack its own sticky header/footer on top of the
+// The standalone, full-chrome route (orders/page.tsx) wraps this component. It
+// is also reachable nested inside the themed account shell at /account/orders
+// (see that route's page.tsx) — that page renders OrdersListContent directly,
+// on purpose, so it doesn't stack its own sticky header/footer on top of the
 // shell's header/sidebar that already surround it.
+const ORDER_LIST_LIMIT = 200; // must match `take` in listOrdersForBuyerAtStore
+
 export async function OrdersListContent({ slug }: { slug: string }) {
   const store = await getStoreBranding(slug);
   if (!store) notFound();
@@ -43,17 +41,26 @@ export async function OrdersListContent({ slug }: { slug: string }) {
   const customer = await requireStoreCustomer(slug);
   if (!customer) notFound();
 
-  const orders = await listOrdersForBuyerAtStore(slug);
-  const awaiting = await listAwaitingTransferOrdersForBuyer(slug);
+  const [orders, awaiting] = await Promise.all([
+    listOrdersForBuyerAtStore(slug),
+    listAwaitingTransferOrdersForBuyer(slug),
+  ]);
   const accent = store.themeColors?.primary || "#4f46e5"; // sensible fallback, still per-store when set
-  const record = await prisma.store.findUnique({ where: { slug }, select: { template: { select: { name: true } } } });
-  const copy = getAccountCopy(record?.template?.name, store.businessCategory);
+  // getAccountCopy only varies by business category; the template name is ignored.
+  const copy = getAccountCopy(undefined, store.businessCategory);
   const orderWord = copy.orders.toLowerCase();
 
-  const totalSpent = orders
-    .filter((o) => !["CANCELLED", "REFUNDED"].includes(o.status))
-    .reduce((sum, o) => sum + Number(o.total), 0);
-  const currency = orders[0]?.currency ?? "NGN";
+  // Money the customer has actually spent and kept: paid/fulfilled orders only.
+  // Cancelled, refunded and disputed orders are left out (a disputed order may
+  // end up refunded). Totals are kept per currency so mixed-currency histories
+  // are never added together under one label.
+  const spentByCurrency = new Map<string, number>();
+  for (const o of orders) {
+    if (!["PAID", "IN_PROGRESS", "DELIVERED", "COMPLETED"].includes(o.status)) continue;
+    spentByCurrency.set(o.currency, (spentByCurrency.get(o.currency) ?? 0) + Number(o.total));
+  }
+  const spentLines = [...spentByCurrency.entries()].map(([currency, amount]) => `${currency} ${formatNumber(amount)}`);
+  if (spentLines.length === 0) spentLines.push(`${orders[0]?.currency ?? "NGN"} ${formatNumber(0)}`);
   const activeCount = orders.filter((o) => ["PAID", "IN_PROGRESS", "DELIVERED"].includes(o.status)).length;
 
   return (
@@ -87,7 +94,9 @@ export async function OrdersListContent({ slug }: { slug: string }) {
               </div>
               <div className="min-w-0">
                 <p className="text-[11px] font-medium uppercase tracking-wide text-white/80">Total spent</p>
-                <p className="truncate text-lg font-extrabold leading-tight">{currency} {formatNumber(totalSpent)}</p>
+                {spentLines.map((line) => (
+                  <p key={line} className="truncate text-lg font-extrabold leading-tight">{line}</p>
+                ))}
               </div>
             </div>
             <div className="flex items-center gap-3 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
@@ -204,6 +213,11 @@ export async function OrdersListContent({ slug }: { slug: string }) {
                 );
               })}
             </div>
+            {orders.length >= ORDER_LIST_LIMIT && (
+              <p className="mt-3 text-center text-xs text-slate-400">
+                Showing your {ORDER_LIST_LIMIT} most recent {orderWord}.
+              </p>
+            )}
           </div>
         )}
     </>

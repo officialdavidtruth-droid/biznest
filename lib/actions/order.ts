@@ -55,6 +55,7 @@ import {
 } from "@/lib/activity-log";
 import {
   SELLER_VISIBLE_ORDER_STATUSES,
+  canMerchantTransition,
 } from "@/lib/constants/order";
 
 const APP_URL =
@@ -942,9 +943,20 @@ export async function listOrdersForBuyerAtStore(
       // never paid shouldn't see them cluttering their order history. Only
       // orders that were actually paid for (or that reached a terminal
       // cancelled/refunded state) belong in "My orders".
-      status: {
-        not: "PENDING_PAYMENT",
-      },
+      //
+      // CANCELLED is also the system's status for a checkout whose payment
+      // failed or was abandoned, so a cancelled order is only listed if a
+      // payment on it was actually verified (the buyer may have been charged
+      // and needs to see it). Payment.verifiedAt is set when settlement
+      // confirms the money arrived. If a late payment later lands, settlement
+      // moves the order to PAID and it appears here again.
+      NOT: [
+        { status: "PENDING_PAYMENT" },
+        {
+          status: "CANCELLED",
+          payments: { none: { verifiedAt: { not: null } } },
+        },
+      ],
     },
 
     include: {
@@ -1118,6 +1130,11 @@ export async function updateOrderStatus(
             email: true,
           },
         },
+        dispute: {
+          select: {
+            status: true,
+          },
+        },
       },
     });
 
@@ -1128,31 +1145,68 @@ export async function updateOrderStatus(
     };
   }
 
-  await prisma.order.update({
-    where: {
-      id: orderId,
-    },
+  // Enforce the lifecycle here, not just in the dashboard UI: this is a server
+  // action, so anyone with orders permission can call it with any status.
+  if (
+    order.dispute &&
+    (order.dispute.status === "OPEN" ||
+      order.dispute.status === "UNDER_REVIEW")
+  ) {
+    return {
+      success: false,
+      error:
+        "This order has an open dispute. Resolve it in the Resolution Center first.",
+    };
+  }
 
-    data: {
-      status,
-      ...(status === "PAID" ? { fulfillmentStatus: "NEW", kitchenStatus: "QUEUED" } : {}),
-      ...(status === "IN_PROGRESS" ? { fulfillmentStatus: "PREPARING", kitchenStatus: "STARTED" } : {}),
-      ...(status === "DELIVERED" ? { fulfillmentStatus: "READY", kitchenStatus: "READY" } : {}),
-      ...(status === "COMPLETED" ? { fulfillmentStatus: "FULFILLED", kitchenStatus: "SERVED" } : {}),
-      ...(status === "CANCELLED" || status === "REFUNDED" ? { fulfillmentStatus: "CANCELLED", kitchenStatus: "VOIDED" } : {}),
-      escrowReleasedAt:
-        status === "COMPLETED"
-          ? new Date()
-          : order.escrowReleasedAt,
-    },
+  if (!canMerchantTransition(order.status, status)) {
+    return {
+      success: false,
+      error: `An order that is ${order.status
+        .replace(/_/g, " ")
+        .toLowerCase()} can't be marked as ${status
+        .replace(/_/g, " ")
+        .toLowerCase()}.`,
+    };
+  }
+
+  // Compare-and-swap on the status we just validated against, and write the
+  // timeline event in the same transaction, so a concurrent change can't be
+  // overwritten and the status never changes without its event.
+  const swapped = await prisma.$transaction(async (tx) => {
+    const res = await tx.order.updateMany({
+      where: {
+        id: orderId,
+        storeId: access.store.id,
+        status: order.status,
+      },
+      data: {
+        status,
+        ...(status === "IN_PROGRESS" ? { fulfillmentStatus: "PREPARING", kitchenStatus: "STARTED" } : {}),
+        ...(status === "DELIVERED" ? { fulfillmentStatus: "READY", kitchenStatus: "READY" } : {}),
+        ...(status === "COMPLETED"
+          ? {
+              fulfillmentStatus: "FULFILLED",
+              kitchenStatus: "SERVED",
+              escrowReleasedAt: order.escrowReleasedAt ?? new Date(),
+            }
+          : {}),
+        ...(status === "CANCELLED" ? { fulfillmentStatus: "CANCELLED", kitchenStatus: "VOIDED" } : {}),
+      },
+    });
+    if (res.count !== 1) return false;
+    await tx.orderStatusEvent.create({
+      data: { orderId, status },
+    });
+    return true;
   });
 
-  await prisma.orderStatusEvent.create({
-    data: {
-      orderId,
-      status,
-    },
-  });
+  if (!swapped) {
+    return {
+      success: false,
+      error: "This order was just updated by someone else. Refresh and try again.",
+    };
+  }
 
   if (
     status === "COMPLETED" &&

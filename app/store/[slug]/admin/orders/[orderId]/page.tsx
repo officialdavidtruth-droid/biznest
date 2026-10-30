@@ -21,6 +21,11 @@ export default async function StoreOrderDetailPage({
   const order = await getOrder(slug, orderId);
   if (!order) notFound();
 
+  const subtotal = Number(order.subtotal);
+  const deliveryFee = Number(order.deliveryFee ?? 0);
+  const commission = Number(order.commission ?? 0);
+  const total = Number(order.total);
+
   const address = order.shippingAddress as {
     fullName: string; phone: string; address: string; city: string; state: string; country: string;
   } | null;
@@ -49,16 +54,30 @@ export default async function StoreOrderDetailPage({
         ))}
         <div className="mt-2 flex justify-between border-t pt-2 text-sm">
           <span className="text-muted-foreground">Subtotal</span>
-          <span>{order.currency} {formatNumber(Number(order.subtotal))}</span>
+          <span>{order.currency} {formatNumber(subtotal)}</span>
         </div>
-        <div className="flex justify-between text-sm">
-          <span className="text-muted-foreground">Platform commission</span>
-          <span>-{order.currency} {formatNumber(Number(order.commission))}</span>
-        </div>
+        {deliveryFee > 0 && (
+          <div className="flex justify-between text-sm">
+            <span className="text-muted-foreground">Delivery fee</span>
+            <span>{order.currency} {formatNumber(deliveryFee)}</span>
+          </div>
+        )}
         <div className="mt-1 flex justify-between border-t pt-2 font-medium">
-          <span>Total</span>
-          <span>{order.currency} {formatNumber(Number(order.total))}</span>
+          <span>{order.status === "PENDING_PAYMENT" || order.status === "CANCELLED" ? "Order total" : "Customer paid"}</span>
+          <span>{order.currency} {formatNumber(total)}</span>
         </div>
+        {commission > 0 && (
+          <>
+            <div className="mt-1 flex justify-between text-sm">
+              <span className="text-muted-foreground">Platform commission</span>
+              <span>-{order.currency} {formatNumber(commission)}</span>
+            </div>
+            <div className="flex justify-between text-sm font-medium">
+              <span>You keep (before payment fees)</span>
+              <span>{order.currency} {formatNumber(Math.max(0, total - commission))}</span>
+            </div>
+          </>
+        )}
       </div>
 
       <div className="mb-6 rounded-lg border bg-background p-4">
@@ -147,4 +166,4 @@ export default async function StoreOrderDetailPage({
       )}
     </div>
   );
-        }
+}

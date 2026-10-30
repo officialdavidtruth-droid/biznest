@@ -5,17 +5,7 @@ import { useRouter } from "next/navigation";
 import { updateOrderStatus } from "@/lib/actions/order";
 import { toast } from "sonner";
 import type { OrderStatus } from "@prisma/client";
-
-const NEXT_STATUSES: Record<string, OrderStatus[]> = {
-  PAID: ["IN_PROGRESS", "CANCELLED"],
-  IN_PROGRESS: ["DELIVERED", "CANCELLED"],
-  DELIVERED: ["COMPLETED"],
-  COMPLETED: [],
-  PENDING_PAYMENT: [],
-  CANCELLED: [],
-  REFUNDED: [],
-  DISPUTED: [],
-};
+import { merchantNextStatuses } from "@/lib/constants/order";
 
 export function OrderStatusControl({
   storeSlug,
@@ -28,7 +18,7 @@ export function OrderStatusControl({
 }) {
   const router = useRouter();
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const options = NEXT_STATUSES[currentStatus] ?? [];
+  const options = merchantNextStatuses(currentStatus);
 
   async function handleChange(status: OrderStatus) {
     setIsSubmitting(true);
@@ -39,28 +29,37 @@ export function OrderStatusControl({
       toast.error(result.error);
       return;
     }
-    toast.success(`Order marked as ${status.replace("_", " ").toLowerCase()}`);
+    toast.success(`Order marked as ${status.replace(/_/g, " ").toLowerCase()}`);
     router.refresh();
   }
 
+  const mustRefundToCancel = currentStatus === "PAID" || currentStatus === "IN_PROGRESS";
+
   return (
-    <div className="flex items-center gap-3">
-      <span className="text-sm">
-        Current: <strong>{currentStatus.replace("_", " ")}</strong>
-      </span>
-      {options.length > 0 && (
-        <div className="flex gap-2">
-          {options.map((status) => (
-            <button
-              key={status}
-              disabled={isSubmitting}
-              onClick={() => handleChange(status)}
-              className="rounded-md border px-3 py-1.5 text-xs font-medium hover:bg-muted disabled:opacity-50"
-            >
-              Mark as {status.replace("_", " ").toLowerCase()}
-            </button>
-          ))}
-        </div>
+    <div>
+      <div className="flex flex-wrap items-center gap-3">
+        <span className="text-sm">
+          Current: <strong>{currentStatus.replace(/_/g, " ")}</strong>
+        </span>
+        {options.length > 0 && (
+          <div className="flex gap-2">
+            {options.map((status) => (
+              <button
+                key={status}
+                disabled={isSubmitting}
+                onClick={() => handleChange(status)}
+                className="rounded-md border px-3 py-1.5 text-xs font-medium hover:bg-muted disabled:opacity-50"
+              >
+                Mark as {status.replace(/_/g, " ").toLowerCase()}
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
+      {mustRefundToCancel && (
+        <p className="mt-2 text-xs text-muted-foreground">
+          Can&apos;t fulfil this order? Use <strong>Issue refund</strong> below. It returns the customer&apos;s money and closes the order.
+        </p>
       )}
     </div>
   );

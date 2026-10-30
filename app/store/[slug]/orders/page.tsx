@@ -1,29 +1,31 @@
-import { listAwaitingTransferOrdersForBuyer, listOrdersForBuyerAtStore } from "@/lib/actions/order";
+import { listOrdersForBuyerAtStore } from "@/lib/actions/order";
 import { getStoreBranding } from "@/lib/actions/store-branding";
-import { requireStoreCustomer } from "@/lib/actions/store-customer";
-import { DISPUTABLE_ORDER_STATUSES } from "@/lib/constants/dispute";
 import { getAccountCopy } from "@/lib/account-copy";
 import { prisma } from "@/lib/prisma";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { Package, CheckCircle2, XCircle, RotateCcw, AlertTriangle, ArrowUpRight, ShoppingBag, ShieldAlert, ArrowLeft, Wallet, Layers } from "lucide-react";
+import { ArrowLeft } from "lucide-react";
 import { StoreFooter } from "@/components/storefront/store-footer";
 import { TasteHouseOrders } from "@/components/storefront/tastehouse";
 import { TASTEHOUSE_TEMPLATE_NAME } from "@/lib/template-themes";
-import { formatDate, formatNumber } from "@/lib/i18n/locale";
 import { OrdersListContent } from "./orders-list-content";
 
 export default async function StoreOrdersPage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
   const store = await getStoreBranding(slug);
   if (!store) notFound();
-  const record = await prisma.store.findUnique({ where: { slug }, select: { template: { select: { name: true } } } });
-  const copy = getAccountCopy(record?.template?.name, store.businessCategory);
 
-  const templateRecord = await prisma.store.findUnique({ where: { slug }, select: { template: { select: { name: true } }, business: { select: { sellsProducts: true } }, reviews: { select: { id: true } } } });
-  if (templateRecord?.template?.name === TASTEHOUSE_TEMPLATE_NAME) {
+  // One lookup for everything this page needs from the store record.
+  const record = await prisma.store.findUnique({
+    where: { slug },
+    select: { template: { select: { name: true } }, business: { select: { sellsProducts: true } } },
+  });
+  const templateName = record?.template?.name ?? null;
+  const copy = getAccountCopy(undefined, store.businessCategory);
+
+  if (templateName === TASTEHOUSE_TEMPLATE_NAME) {
     const themedOrders = await listOrdersForBuyerAtStore(slug);
-    return <TasteHouseOrders store={{...store,sellsProducts:templateRecord.business?.sellsProducts??true}} slug={slug} orders={themedOrders}/>;
+    return <TasteHouseOrders store={{ ...store, sellsProducts: record?.business?.sellsProducts ?? true }} slug={slug} orders={themedOrders} />;
   }
   return (
     <div className="min-h-screen bg-slate-50">

@@ -1,6 +1,7 @@
 "use server";
 
 import { auth } from "@/lib/auth";
+import { getStoreCustomerSession } from "@/lib/store-customer-auth";
 import { prisma } from "@/lib/prisma";
 import { requireStoreCustomerByStoreId } from "@/lib/actions/store-customer";
 import { revalidatePath } from "next/cache";
@@ -9,8 +10,16 @@ import { DISPUTABLE_ORDER_STATUSES, type DisputeViewerRole } from "@/lib/constan
 import { getStoreAccessRole, hasStorePermission } from "@/lib/access/store-access";
 
 async function assertOrderParticipant(orderId: string) {
-  const session = await auth();
-  if (!session?.user?.id) return { success: false as const, error: "You must be signed in." };
+  // Two independent sign-ins can exist in one browser: the main (NextAuth)
+  // session used by store owners/staff, and the separate storefront customer
+  // cookie. Storefront customers log in ONLY via the cookie (see
+  // loginStoreCustomer), so checking auth() alone locked every buyer out of
+  // their own disputes. Look at both and let whichever one actually
+  // participates in this order act.
+  const [customerSession, session] = await Promise.all([getStoreCustomerSession(), auth()]);
+  const customerUserId = customerSession?.user?.id ?? null;
+  const sessionUserId = session?.user?.id ?? null;
+  if (!customerUserId && !sessionUserId) return { success: false as const, error: "You must be signed in." };
 
   const order = await prisma.order.findUnique({
     where: { id: orderId },
@@ -18,19 +27,23 @@ async function assertOrderParticipant(orderId: string) {
   });
   if (!order) return { success: false as const, error: "Order not found." };
 
-  const isBuyer = order.buyerId === session.user.id;
-  if (isBuyer && session.user.role === "CUSTOMER") {
+  const buyerViaCookie = customerUserId !== null && customerUserId === order.buyerId;
+  const buyerViaSession = sessionUserId !== null && sessionUserId === order.buyerId;
+  const isBuyer = buyerViaCookie || buyerViaSession;
+  if (isBuyer && (buyerViaCookie || session?.user?.role === "CUSTOMER")) {
+    // Also enforces that the customer's account belongs to this order's store.
     const membership = await requireStoreCustomerByStoreId(order.storeId);
     if (!membership) return { success: false as const, error: "You don't have access to this store account." };
   }
+
   // "Seller side" also covers a MANAGER/STAFF granted "orders" access —
   // disputes are reachable from the Orders page (see dashboard-nav.ts),
   // so a staff member with that permission should be able to act on them,
-  // not just the store owner.
-  const isOwner = order.store.business.userId === session.user.id;
-  const isStaff = session.user.role === "PLATFORM_ADMIN" || session.user.role === "SUPPORT_MODERATOR";
+  // not just the store owner. Only the main session can be seller-side.
+  const isOwner = sessionUserId !== null && order.store.business.userId === sessionUserId;
+  const isStaff = session?.user?.role === "PLATFORM_ADMIN" || session?.user?.role === "SUPPORT_MODERATOR";
   let isSeller = isOwner || isStaff;
-  if (!isSeller) {
+  if (!isSeller && session?.user?.id) {
     const role = await getStoreAccessRole(session.user.id, session.user.role, order.store);
     if (role === "MANAGER" || role === "STAFF") {
       const staffMembership = await prisma.storeStaff.findFirst({
@@ -50,7 +63,8 @@ async function assertOrderParticipant(orderId: string) {
   // doesn't apply to them since they can't post evidence/messages below,
   // only the two real participants can.
   const viewer: DisputeViewerRole = isBuyer ? "buyer" : "seller";
-  return { success: true as const, order, userId: session.user.id, viewer, isBuyer, isSeller };
+  const userId = (isBuyer ? (buyerViaCookie ? customerUserId : sessionUserId) : sessionUserId) as string;
+  return { success: true as const, order, userId, viewer, isBuyer, isSeller };
 }
 
 async function getOrCreateConversation(orderId: string, storeId: string, buyerId: string, sellerId: string) {

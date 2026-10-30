@@ -43,8 +43,8 @@ export function OrderConfirmation({
           </div>
         </section>
         <div className="mt-8 flex flex-wrap justify-center gap-3">
-          <Link href={`/store/${slug}/orders/${order.id}/track`} style={{ background: accent, color: onAccent }} className="rounded-full px-6 py-3 text-sm font-semibold no-underline">
-            Track order
+          <Link href={`/store/${slug}/orders`} style={{ background: accent, color: onAccent }} className="rounded-full px-6 py-3 text-sm font-semibold no-underline">
+            View my orders
           </Link>
           <Link href={`/store/${slug}`} style={{ border: `1px solid ${ink}33`, color: ink }} className="rounded-full px-6 py-3 text-sm font-semibold no-underline">
             Continue shopping

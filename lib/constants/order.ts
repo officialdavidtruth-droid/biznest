@@ -27,3 +27,30 @@ export const SELLER_VISIBLE_ORDER_STATUSES: OrderStatus[] = [
 // lib/actions/abandoned-checkout.ts, the same way SELLER_VISIBLE_ORDER_STATUSES
 // filters at read time rather than mutating rows.
 export const ABANDONED_CHECKOUT_THRESHOLD_MINUTES = 30;
+
+// --- Merchant-driven status transitions -----------------------------------
+// Single source of truth for which status a seller may move an order to from
+// the dashboard. Enforced server-side in updateOrderStatus; the dashboard
+// control reads the same map to decide which buttons to show.
+//
+// Deliberately absent: PENDING_PAYMENT (confirmed via the payment flow),
+// REFUNDED (set by the refund flow), DISPUTED (set by the dispute flow) and
+// the terminal states COMPLETED / CANCELLED / REFUNDED.
+//
+// There is no merchant "cancel" from a paid order: flipping the status would
+// leave the customer's money untouched. Cancelling a paid order goes through
+// issueRefund (lib/actions/refund.ts), which returns the money and sets
+// REFUNDED. CANCELLED is reserved for payments that failed or were abandoned.
+export const MERCHANT_ORDER_TRANSITIONS: Partial<Record<OrderStatus, readonly OrderStatus[]>> = {
+  PAID: ["IN_PROGRESS"],
+  IN_PROGRESS: ["DELIVERED"],
+  DELIVERED: ["COMPLETED"],
+};
+
+export function merchantNextStatuses(from: OrderStatus): readonly OrderStatus[] {
+  return MERCHANT_ORDER_TRANSITIONS[from] ?? [];
+}
+
+export function canMerchantTransition(from: OrderStatus, to: OrderStatus): boolean {
+  return merchantNextStatuses(from).includes(to);
+}
