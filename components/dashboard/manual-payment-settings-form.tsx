@@ -43,7 +43,7 @@ export function ManualPaymentSettingsForm({ slug, initial, canEdit }: { slug: st
         <span>
           <b>Accept payment by bank transfer</b>
           <span className="block text-xs text-muted-foreground">
-            Customers see these details at checkout, transfer the money straight to you, and upload a screenshot. You confirm once it lands.
+            Customers see these details at checkout, transfer the money straight to you, and upload proof of payment (an image or a document). You confirm once it lands.
           </span>
         </span>
       </label>

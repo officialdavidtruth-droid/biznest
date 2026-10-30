@@ -74,7 +74,7 @@ export default async function PaymentsPage({ params }: { params: Promise<{ slug:
 
       <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-muted-foreground">Bank transfer</h2>
       <p className="mb-3 max-w-xl text-sm text-muted-foreground">
-        Customers pay you directly: they see your account details at checkout, transfer the money, and upload a screenshot of the payment.
+        Customers pay you directly: they see your account details at checkout, transfer the money, and upload proof of the payment (an image or a document).
         You confirm each payment once it reaches your account. BizNest never holds your money.
       </p>
       <ManualPaymentSettingsForm

@@ -1,3 +1,4 @@
+import crypto from "crypto";
 import { NextResponse } from "next/server";
 import { v2 as cloudinary } from "cloudinary";
 import { auth } from "@/lib/auth";
@@ -18,17 +19,50 @@ cloudinary.config({
   api_secret: process.env.CLOUDINARY_API_SECRET,
 });
 
-/** The first bytes of the file must match the declared image type (a renamed .exe is not a screenshot). */
-function looksLikeImage(buf: Buffer, type: string): boolean {
-  if (type === "image/jpeg") return buf.length > 3 && buf[0] === 0xff && buf[1] === 0xd8 && buf[2] === 0xff;
-  if (type === "image/png") return buf.length > 8 && buf.subarray(0, 8).equals(Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]));
-  if (type === "image/webp") return buf.length > 12 && buf.subarray(0, 4).toString("ascii") === "RIFF" && buf.subarray(8, 12).toString("ascii") === "WEBP";
-  return false;
+const EXT_BY_TYPE: Record<string, string> = {
+  "image/jpeg": "jpg", "image/png": "png", "image/webp": "webp", "image/gif": "gif",
+  "application/pdf": "pdf", "application/msword": "doc",
+  "application/vnd.openxmlformats-officedocument.wordprocessingml.document": "docx",
+  "application/vnd.ms-excel": "xls",
+  "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": "xlsx",
+  "text/plain": "txt", "text/csv": "csv",
+};
+
+/** The first bytes of the file must match its declared type (a renamed .exe is not a receipt). */
+function looksLikeProof(buf: Buffer, type: string): boolean {
+  const head = (n: number) => buf.subarray(0, n);
+  switch (type) {
+    case "image/jpeg": return buf.length > 3 && buf[0] === 0xff && buf[1] === 0xd8 && buf[2] === 0xff;
+    case "image/png": return buf.length > 8 && head(8).equals(Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]));
+    case "image/webp": return buf.length > 12 && head(4).toString("ascii") === "RIFF" && buf.subarray(8, 12).toString("ascii") === "WEBP";
+    case "image/gif": return buf.length > 6 && ["GIF87a", "GIF89a"].includes(head(6).toString("ascii"));
+    case "application/pdf": return buf.length > 5 && buf.subarray(0, 1024).includes("%PDF-");
+    case "application/msword":
+    case "application/vnd.ms-excel": return buf.length > 8 && head(8).equals(Buffer.from([0xd0, 0xcf, 0x11, 0xe0, 0xa1, 0xb1, 0x1a, 0xe1]));
+    case "application/vnd.openxmlformats-officedocument.wordprocessingml.document":
+    case "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": return buf.length > 4 && buf[0] === 0x50 && buf[1] === 0x4b;
+    case "text/plain":
+    case "text/csv": return !buf.subarray(0, 4096).includes(0); // text has no NUL bytes
+    default: return false;
+  }
+}
+
+/** Uploads the proof to Cloudinary: images as images, documents as raw files that keep their extension. */
+function uploadProof(buffer: Buffer, type: string, folder: string): Promise<string> {
+  const isImage = type.startsWith("image/");
+  const publicId = `${Date.now()}-${crypto.randomBytes(6).toString("hex")}${isImage ? "" : `.${EXT_BY_TYPE[type]}`}`;
+  return new Promise((resolve, reject) => {
+    const stream = cloudinary.uploader.upload_stream(
+      { folder, public_id: publicId, resource_type: isImage ? "image" : "raw" },
+      (error, result) => (error || !result ? reject(error) : resolve(result.secure_url))
+    );
+    stream.end(buffer);
+  });
 }
 
 /**
  * POST /api/store/<slug>/payment-proof  (multipart: orderId, file, note?)
- * A customer attaches a screenshot of their bank transfer to their own
+ * A customer attaches proof of their bank transfer (image or document) to their own
  * pending bank-transfer order. They can replace it until the vendor confirms.
  */
 export async function POST(req: Request, { params }: { params: Promise<{ slug: string }> }) {
@@ -60,11 +94,11 @@ export async function POST(req: Request, { params }: { params: Promise<{ slug: s
   const noteRaw = String(form.get("note") ?? "").trim().slice(0, 300);
 
   if (!orderId) return NextResponse.json({ error: "Missing order." }, { status: 400 });
-  if (!(file instanceof File)) return NextResponse.json({ error: "Choose an image of your payment first." }, { status: 400 });
+  if (!(file instanceof File)) return NextResponse.json({ error: "Choose your proof of payment first." }, { status: 400 });
   if (!(PROOF_ALLOWED_TYPES as readonly string[]).includes(file.type)) {
-    return NextResponse.json({ error: "Upload a JPG, PNG or WebP image." }, { status: 400 });
+    return NextResponse.json({ error: "Upload an image or a document (PDF, Word, Excel, text)." }, { status: 400 });
   }
-  if (file.size > PROOF_MAX_BYTES) return NextResponse.json({ error: "That image is too large (4MB max)." }, { status: 400 });
+  if (file.size > PROOF_MAX_BYTES) return NextResponse.json({ error: "That file is too large (4MB max)." }, { status: 400 });
 
   const order = await prisma.order.findFirst({
     where: { id: orderId, buyerId: session.user.id, store: { slug } },
@@ -80,18 +114,11 @@ export async function POST(req: Request, { params }: { params: Promise<{ slug: s
   }
 
   const buffer = Buffer.from(await file.arrayBuffer());
-  if (!looksLikeImage(buffer, file.type)) return NextResponse.json({ error: "That file isn't a valid image." }, { status: 400 });
+  if (!looksLikeProof(buffer, file.type)) return NextResponse.json({ error: "That file doesn't look like a valid image or document." }, { status: 400 });
 
   let url: string;
   try {
-    const uploaded = await new Promise<{ secure_url: string }>((resolve, reject) => {
-      const stream = cloudinary.uploader.upload_stream(
-        { folder: `biznest/payment-proofs/${order.storeId}`, resource_type: "image" },
-        (error, result) => (error || !result ? reject(error) : resolve(result))
-      );
-      stream.end(buffer);
-    });
-    url = uploaded.secure_url;
+    url = await uploadProof(buffer, file.type, `biznest/payment-proofs/${order.storeId}`);
   } catch (err) {
     void logError("STORAGE", "Payment proof upload failed", { orderId, message: err instanceof Error ? err.message : String(err) });
     return NextResponse.json({ error: "We couldn't upload that image. Please try again." }, { status: 502 });
@@ -140,11 +167,11 @@ async function uploadTransferProof(req: Request, slug: string, reference: string
   }
   const file = form.get("file");
   const noteRaw = String(form.get("note") ?? "").trim().slice(0, 300);
-  if (!(file instanceof File)) return NextResponse.json({ error: "Choose an image of your payment first." }, { status: 400 });
+  if (!(file instanceof File)) return NextResponse.json({ error: "Choose your proof of payment first." }, { status: 400 });
   if (!(PROOF_ALLOWED_TYPES as readonly string[]).includes(file.type)) {
-    return NextResponse.json({ error: "Upload a JPG, PNG or WebP image." }, { status: 400 });
+    return NextResponse.json({ error: "Upload an image or a document (PDF, Word, Excel, text)." }, { status: 400 });
   }
-  if (file.size > PROOF_MAX_BYTES) return NextResponse.json({ error: "That image is too large (4MB max)." }, { status: 400 });
+  if (file.size > PROOF_MAX_BYTES) return NextResponse.json({ error: "That file is too large (4MB max)." }, { status: 400 });
 
   const payment = await prisma.payment.findFirst({
     where: { reference, provider: "CASH", purpose: { not: "ORDER" }, store: { slug } },
@@ -159,18 +186,11 @@ async function uploadTransferProof(req: Request, slug: string, reference: string
   }
 
   const buffer = Buffer.from(await file.arrayBuffer());
-  if (!looksLikeImage(buffer, file.type)) return NextResponse.json({ error: "That file isn't a valid image." }, { status: 400 });
+  if (!looksLikeProof(buffer, file.type)) return NextResponse.json({ error: "That file doesn't look like a valid image or document." }, { status: 400 });
 
   let url: string;
   try {
-    const uploaded = await new Promise<{ secure_url: string }>((resolve, reject) => {
-      const stream = cloudinary.uploader.upload_stream(
-        { folder: `biznest/payment-proofs/${payment.storeId}`, resource_type: "image" },
-        (error, result) => (error || !result ? reject(error) : resolve(result))
-      );
-      stream.end(buffer);
-    });
-    url = uploaded.secure_url;
+    url = await uploadProof(buffer, file.type, `biznest/payment-proofs/${payment.storeId}`);
   } catch (err) {
     void logError("STORAGE", "Payment proof upload failed", { reference, message: err instanceof Error ? err.message : String(err) });
     return NextResponse.json({ error: "We couldn't upload that image. Please try again." }, { status: 502 });

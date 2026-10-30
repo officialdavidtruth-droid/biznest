@@ -1,4 +1,5 @@
 // Route: /store/[slug]/admin/orders/[orderId]
+import { isImageProofUrl } from "@/lib/payments/manual-transfer";
 import { getOrder } from "@/lib/actions/order";
 import { notFound } from "next/navigation";
 import Link from "next/link";
@@ -92,8 +93,12 @@ export default async function StoreOrderDetailPage({
           </p>
           {order.paymentProofUrl ? (
             <a href={order.paymentProofUrl} target="_blank" rel="noopener noreferrer" className="mb-3 block">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={order.paymentProofUrl} alt="Customer's payment proof" className="max-h-80 rounded-md border object-contain" />
+              {isImageProofUrl(order.paymentProofUrl) ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={order.paymentProofUrl} alt="Customer's payment proof" className="max-h-80 rounded-md border object-contain" />
+              ) : (
+                <span className="text-sm font-semibold underline">Open the customer&apos;s payment document</span>
+              )}
             </a>
           ) : (
             <p className="mb-3 text-sm">No proof uploaded yet.</p>

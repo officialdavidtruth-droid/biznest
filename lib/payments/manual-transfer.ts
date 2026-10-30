@@ -2,7 +2,7 @@
  * Manual bank-transfer payments.
  *
  * A vendor publishes their own bank account (and WhatsApp number). The
- * customer transfers the money themselves, uploads a screenshot as proof and
+ * customer transfers the money themselves, uploads proof of payment (an image or a document) and
  * the vendor confirms receipt. BizNest never holds or moves this money, so the
  * resulting Payment row is recorded as provider CASH ("settled outside the
  * platform"): no vendor payout is queued and refunds are recorded directly.
@@ -116,4 +116,31 @@ export function manualPayReady(info: ManualPayInfo): boolean {
 }
 
 export const PROOF_MAX_BYTES = 4 * 1024 * 1024; // stays under the serverless request body limit
-export const PROOF_ALLOWED_TYPES = ["image/jpeg", "image/png", "image/webp"] as const;
+
+/**
+ * Proof of payment can be an image (screenshot or photo of a receipt) or a
+ * document (bank PDF receipt, Word/Excel statement, text/CSV export).
+ * Deliberately NOT "any file": executables, scripts, HTML and SVG are refused
+ * because the vendor opens these files from their dashboard.
+ */
+export const PROOF_ALLOWED_TYPES = [
+  "image/jpeg",
+  "image/png",
+  "image/webp",
+  "image/gif",
+  "application/pdf",
+  "application/msword",
+  "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+  "application/vnd.ms-excel",
+  "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+  "text/plain",
+  "text/csv",
+] as const;
+
+/** Value for <input accept>. */
+export const PROOF_ACCEPT = "image/*,.pdf,.doc,.docx,.xls,.xlsx,.txt,.csv";
+
+/** Proof files are stored as Cloudinary images (viewable inline) or raw documents. */
+export function isImageProofUrl(url: string | null | undefined): boolean {
+  return Boolean(url && url.includes("/image/upload/"));
+}

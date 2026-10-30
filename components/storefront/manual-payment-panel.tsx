@@ -6,7 +6,7 @@ import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { CheckCircle2, Copy, ImagePlus, Landmark, MessageCircle, Phone, RefreshCw } from "lucide-react";
 import type { StorePalette } from "@/lib/store-palette-defaults";
-import { PROOF_ALLOWED_TYPES, PROOF_MAX_BYTES, formatPhoneDisplay, sameNumber, telLink, whatsappLink } from "@/lib/payments/manual-transfer";
+import { PROOF_ACCEPT, PROOF_ALLOWED_TYPES, PROOF_MAX_BYTES, isImageProofUrl, formatPhoneDisplay, sameNumber, telLink, whatsappLink } from "@/lib/payments/manual-transfer";
 
 type Info = {
   bankName: string;
@@ -92,16 +92,16 @@ export function ManualPaymentPanel({
     const chosen = e.target.files?.[0];
     if (!chosen) return;
     if (!(PROOF_ALLOWED_TYPES as readonly string[]).includes(chosen.type)) {
-      toast.error("Choose a JPG, PNG or WebP screenshot.");
+      toast.error("Choose an image or a document (PDF, Word, Excel, text).");
       return;
     }
-    const ready = await shrinkImage(chosen);
+    const ready = chosen.type.startsWith("image/") ? await shrinkImage(chosen) : chosen;
     if (ready.size > PROOF_MAX_BYTES) {
-      toast.error("That image is too large. Try a smaller screenshot.");
+      toast.error("That file is too large (4MB max). Try a smaller file.");
       return;
     }
     setFile(ready);
-    setPreview(URL.createObjectURL(ready));
+    setPreview(ready.type.startsWith("image/") ? URL.createObjectURL(ready) : null);
   }
 
   async function upload() {
@@ -141,7 +141,7 @@ export function ManualPaymentPanel({
           <h2 className="text-base font-bold">Pay by bank transfer</h2>
         </div>
         <p className="text-sm" style={{ opacity: 0.75 }}>
-          Transfer exactly <b>{totalLabel}</b> to the account below, then upload a screenshot of your payment.
+          Transfer exactly <b>{totalLabel}</b> to the account below, then upload your proof of payment (an image or a document, like a PDF receipt).
         </p>
         <dl className="mt-4 grid gap-3 text-sm sm:grid-cols-3">
           <div>
@@ -176,22 +176,27 @@ export function ManualPaymentPanel({
 
         {proofUrl && (
           <div className="mb-4">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={proofUrl} alt="Your uploaded payment proof" className="max-h-64 rounded-lg border object-contain" style={{ borderColor: `${ink}22` }} />
+            {isImageProofUrl(proofUrl) ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src={proofUrl} alt="Your uploaded payment proof" className="max-h-64 rounded-lg border object-contain" style={{ borderColor: `${ink}22` }} />
+            ) : (
+              <a href={proofUrl} target="_blank" rel="noopener noreferrer" style={{ color: accent }} className="text-sm font-semibold underline">View the document you uploaded</a>
+            )}
             <p className="mt-2 text-sm" style={{ opacity: 0.75 }}>
-              {storeName} has been notified. Your payment is confirmed as soon as they see the money in their account. You can replace the screenshot below if it was wrong.
+              {storeName} has been notified. Your payment is confirmed as soon as they see the money in their account. You can replace the file below if it was wrong.
             </p>
           </div>
         )}
 
-        <input ref={fileRef} type="file" accept="image/jpeg,image/png,image/webp" onChange={pick} className="hidden" />
+        <input ref={fileRef} type="file" accept={PROOF_ACCEPT} onChange={pick} className="hidden" />
+        {file && !preview && <p className="mb-3 text-sm font-semibold">Selected: {file.name}</p>}
         {preview && (
           // eslint-disable-next-line @next/next/no-img-element
-          <img src={preview} alt="Selected screenshot" className="mb-3 max-h-64 rounded-lg border object-contain" style={{ borderColor: `${ink}22` }} />
+          <img src={preview} alt="Selected proof of payment" className="mb-3 max-h-64 rounded-lg border object-contain" style={{ borderColor: `${ink}22` }} />
         )}
         <div className="flex flex-wrap gap-2">
           <button type="button" onClick={() => fileRef.current?.click()} style={{ border: `1px solid ${ink}33`, color: ink }} className="rounded-full px-5 py-2.5 text-sm font-semibold">
-            {file ? "Choose a different image" : proofUrl ? "Replace screenshot" : "Choose screenshot"}
+            {file ? "Choose a different file" : proofUrl ? "Replace file" : "Upload image or document"}
           </button>
           {file && (
             <button type="button" onClick={upload} disabled={busy} style={{ background: accent, color: onAccent }} className="rounded-full px-5 py-2.5 text-sm font-semibold disabled:opacity-50">
