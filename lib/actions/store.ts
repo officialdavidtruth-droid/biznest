@@ -9,7 +9,9 @@ import { getTemplateBusinessType } from "@/lib/template-compatibility";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { Prisma } from "@prisma/client";
-import { assertStorePermission } from "@/lib/access/assert-store-access";
+import { z } from "zod";
+import { sanitizeHexColor, sanitizeHttpUrl, isAllowedStoreFont, STORE_SETTINGS_LIMITS } from "@/lib/validations/store-settings";
+import { assertStorePermission, assertStoreOwnerAccess } from "@/lib/access/assert-store-access";
 import { createStoreSchema, type CreateStoreInput } from "@/lib/validations/business";
 import { generateUniqueStoreSlug, storeAdminUrl, storePublicUrl, SLUG_FORMAT_RE, SLUG_MIN_LENGTH, SLUG_MAX_LENGTH } from "@/lib/utils/slug";
 import { RESERVED_SLUGS } from "@/lib/constants/reserved-slugs";
@@ -336,67 +338,94 @@ async function assertStoreAccess(slug: string) {
 }
 
 /** Storefront settings: branding, theme colors, contact info, social links. */
-export async function updateStoreSettings(slug: string, formData: FormData) {
+export async function updateStoreSettings(slug: string, formData: FormData): Promise<ActionResult> {
   const access = await assertStoreAccess(slug);
-  if (!access.success) return;
+  if (!access.success) return { success: false, error: access.error };
 
-  const name = String(formData.get("name") ?? "").trim();
-  const description = String(formData.get("description") ?? "").trim();
-  const contactEmail = String(formData.get("contactEmail") ?? "").trim() || null;
-  const contactPhone = String(formData.get("contactPhone") ?? "").trim() || null;
-  const logoUrl = String(formData.get("logoUrl") ?? "").trim() || null;
-  const bannerUrl = String(formData.get("bannerUrl") ?? "").trim() || null;
-  const primary = String(formData.get("primary") ?? "").trim();
-  const secondary = String(formData.get("secondary") ?? "").trim();
-  const accent = String(formData.get("accent") ?? "").trim();
-  const fontFamily = String(formData.get("fontFamily") ?? "").trim() || null;
-  const instagram = String(formData.get("instagram") ?? "").trim();
-  const whatsappInput = String(formData.get("whatsapp") ?? "").trim();
+  const text = (k: string) => String(formData.get(k) ?? "").trim();
+  const name = text("name");
+  const description = text("description");
+  const contactEmail = text("contactEmail") || null;
+  const contactPhone = text("contactPhone") || null;
+  const logoUrlInput = text("logoUrl");
+  const bannerUrlInput = text("bannerUrl");
+  const fontFamily = text("fontFamily") || null;
+  const instagramInput = text("instagram");
+  const whatsappInput = text("whatsapp");
+
+  // --- Validate everything first and report all problems at once, so the owner
+  // never gets a silent no-op. (Theme colors / URLs are also re-checked at render.)
+  const L = STORE_SETTINGS_LIMITS;
+  if (!name) return { success: false, error: "Store name is required." };
+  if (name.length > L.name) return { success: false, error: `Store name must be ${L.name} characters or fewer.` };
+  if (contactEmail && (contactEmail.length > L.contactEmail || !z.string().email().safeParse(contactEmail).success)) {
+    return { success: false, error: "Enter a valid contact email address." };
+  }
+  if (contactPhone && contactPhone.length > L.contactPhone) return { success: false, error: `Contact phone must be ${L.contactPhone} characters or fewer.` };
+  // Business.description backs the storefront About section, the builder defaults and SEO,
+  // so it can be edited but not emptied.
+  if (!description) return { success: false, error: "Describe your business: this text appears on your storefront." };
+  if (description.length > L.description) return { success: false, error: `Business description must be ${L.description} characters or fewer.` };
+
+  const primary = sanitizeHexColor(text("primary"));
+  const secondary = sanitizeHexColor(text("secondary"));
+  const accent = sanitizeHexColor(text("accent"));
+  if (!primary || !secondary || !accent) return { success: false, error: "Theme colors must be valid hex colors like #0B3D2E." };
+
+  if (fontFamily && !isAllowedStoreFont(fontFamily)) return { success: false, error: "Choose one of the listed fonts." };
+
+  const logoUrl = logoUrlInput ? sanitizeHttpUrl(logoUrlInput, 1000) : null;
+  const bannerUrl = bannerUrlInput ? sanitizeHttpUrl(bannerUrlInput, 1000) : null;
+  if (logoUrlInput && !logoUrl) return { success: false, error: "The logo must be an uploaded image. Please upload it again." };
+  if (bannerUrlInput && !bannerUrl) return { success: false, error: "The banner must be an uploaded image. Please upload it again." };
+
+  const instagram = instagramInput ? sanitizeHttpUrl(instagramInput) : "";
+  if (instagramInput && !instagram) return { success: false, error: "Instagram must be a full link starting with https://, e.g. https://instagram.com/yourstore." };
+
   // Store the clean number (or WhatsApp URL) so every link built from it works.
-  // If it can't be understood, keep what they typed so they can see and fix it.
-  const whatsapp = /^https?:\/\//i.test(whatsappInput) ? whatsappInput : normalizeWhatsAppNumber(whatsappInput) ?? whatsappInput;
+  let whatsapp = "";
+  if (whatsappInput) {
+    if (/^https?:\/\//i.test(whatsappInput)) {
+      const url = sanitizeHttpUrl(whatsappInput);
+      if (!url) return { success: false, error: "That WhatsApp link isn't valid." };
+      whatsapp = url;
+    } else {
+      const normalized = normalizeWhatsAppNumber(whatsappInput);
+      if (!normalized) return { success: false, error: "Enter your WhatsApp number with country code, e.g. 0803 123 4567 or +234 803 123 4567." };
+      whatsapp = normalized;
+    }
+  }
   const whatsappFloat = formData.get("whatsappFloat") === "on" ? "on" : "";
   // Owner-only opt-in. Managers/staff saving this form leave the owner's choice untouched.
   const dailySummaryEmail = access.role === "OWNER" ? formData.get("dailySummaryEmail") === "on" : undefined;
 
-  if (!name) return;
-
-  await prisma.store.update({
-    where: { id: access.store.id },
-    data: {
-      name,
-      contactEmail,
-      contactPhone,
-      ...(dailySummaryEmail === undefined ? {} : { dailySummaryEmail }),
-      logoUrl,
-      bannerUrl,
-      themeColors: { primary, secondary, accent },
-      fontFamily,
-      // Merge, don't replace: other saved links (facebook, tiktok...) must survive.
-      socialLinks: {
-        ...((access.store.socialLinks && typeof access.store.socialLinks === "object" ? access.store.socialLinks : {}) as Record<string, string>),
-        instagram,
-        whatsapp,
-        whatsappFloat,
+  await prisma.$transaction([
+    prisma.store.update({
+      where: { id: access.store.id },
+      data: {
+        name,
+        contactEmail,
+        contactPhone,
+        ...(dailySummaryEmail === undefined ? {} : { dailySummaryEmail }),
+        logoUrl,
+        bannerUrl,
+        themeColors: { primary, secondary, accent },
+        fontFamily,
+        // Merge, don't replace: other saved links (facebook, tiktok...) must survive.
+        socialLinks: {
+          ...((access.store.socialLinks && typeof access.store.socialLinks === "object" ? access.store.socialLinks : {}) as Record<string, string>),
+          instagram,
+          whatsapp,
+          whatsappFloat,
+        },
       },
-    },
-  });
-
-  // Business.description backs the storefront's About section — it was
-  // only ever set once, during onboarding, with no way to edit it after.
-  // That's how a vendor ends up permanently stuck with placeholder/test
-  // text on their live storefront. Optional here on purpose: leave it
-  // untouched if the field is submitted empty, rather than blanking real
-  // content by accident.
-  if (description) {
-    await prisma.business.update({
-      where: { id: access.store.business.id },
-      data: { description },
-    });
-  }
+    }),
+    prisma.business.update({ where: { id: access.store.business.id }, data: { description } }),
+  ]);
 
   revalidatePath(`/store/${slug}/admin/settings`);
   revalidatePath(`/store/${slug}`);
+  return { success: true, data: undefined };
 }
 
 /**
@@ -410,6 +439,8 @@ export async function checkSlugAvailability(
   currentSlug: string,
   candidate: string
 ): Promise<{ available: boolean; reason?: string }> {
+  const access = await assertStoreOwnerAccess(currentSlug);
+  if (!access.success) return { available: false, reason: access.error };
   const raw = candidate.trim().toLowerCase();
   if (raw === currentSlug) return { available: true };
   if (!raw) return { available: false, reason: "Enter a URL." };
@@ -449,7 +480,7 @@ export async function updateStoreSlug(
   currentSlug: string,
   formData: FormData
 ): Promise<ActionResult<{ slug: string; publicUrl: string }>> {
-  const access = await assertStoreAccess(currentSlug);
+  const access = await assertStoreOwnerAccess(currentSlug);
   if (!access.success) return { success: false, error: access.error };
 
   const raw = String(formData.get("slug") ?? "").trim().toLowerCase();
@@ -477,10 +508,19 @@ export async function updateStoreSlug(
     return { success: false, error: "That URL is already taken. Try another." };
   }
 
-  await prisma.$transaction([
-    prisma.storeSlugHistory.create({ data: { storeId: access.store.id, oldSlug: currentSlug } }),
-    prisma.store.update({ where: { id: access.store.id }, data: { slug: raw } }),
-  ]);
+  try {
+    await prisma.$transaction([
+      prisma.storeSlugHistory.create({ data: { storeId: access.store.id, oldSlug: currentSlug } }),
+      prisma.store.update({ where: { id: access.store.id }, data: { slug: raw } }),
+    ]);
+  } catch (err) {
+    // Another store (or a second tab) claimed the slug between the check above and
+    // this write; the unique constraints are the real authority.
+    if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === "P2002") {
+      return { success: false, error: "That URL is already taken. Try another." };
+    }
+    throw err;
+  }
 
   await prisma.auditLog.create({
     data: { userId: (await auth())?.user?.id ?? access.store.business.userId, action: "STORE_SLUG_CHANGED", entity: "Store", entityId: access.store.id, metadata: { from: currentSlug, to: raw } },

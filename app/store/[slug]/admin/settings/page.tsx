@@ -12,6 +12,9 @@ import { APP_URL } from "@/lib/constants/app-url";
 import { GuideToggle } from "@/components/app/page-guide";
 import { TrackingIdsForm } from "@/components/dashboard/tracking-ids-form";
 import { sanitizeStoredTrackingIds } from "@/lib/tracking/ids";
+import { getStoreAccessRole } from "@/lib/access/store-access";
+import { StoreSettingsForm } from "@/components/dashboard/store-settings-form";
+import { STORE_FONT_OPTIONS, STORE_SETTINGS_LIMITS } from "@/lib/validations/store-settings";
 
 export default async function SettingsPage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
@@ -20,6 +23,9 @@ export default async function SettingsPage({ params }: { params: Promise<{ slug:
 
   const session = await auth();
   const isOwner = session?.user?.id === store.business.userId;
+  // Store URL and custom domain are owner/platform-support only (see assertStoreOwnerAccess).
+  const accessRole = session?.user?.id ? await getStoreAccessRole(session.user.id, session.user.role, store) : null;
+  const canManageIdentity = accessRole === "OWNER" || accessRole === "PLATFORM_STAFF";
 
   const theme = (store.themeColors as Record<string, string> | null) ?? {};
   const social = (store.socialLinks as Record<string, string> | null) ?? {};
@@ -53,16 +59,16 @@ export default async function SettingsPage({ params }: { params: Promise<{ slug:
   return (
     <div className="max-w-xl">
       <h1 className="mb-6 text-xl font-semibold">Settings</h1>
-      <form action={save} className="space-y-6">
+      <StoreSettingsForm action={save}>
         <LogoBannerFields initialLogo={store.logoUrl ?? ""} initialBanner={store.bannerUrl ?? ""} />
         <div className="rounded-lg border bg-background p-4">
           <p className="mb-3 text-sm font-medium">Store details</p>
           <label className="mb-1 block text-xs text-muted-foreground">Store name</label>
-          <input name="name" defaultValue={store.name} className="mb-3 w-full rounded-md border px-3 py-1.5 text-sm" />
+          <input name="name" required maxLength={STORE_SETTINGS_LIMITS.name} defaultValue={store.name} className="mb-3 w-full rounded-md border px-3 py-1.5 text-sm" />
           <label className="mb-1 block text-xs text-muted-foreground">Contact email</label>
-          <input name="contactEmail" type="email" defaultValue={store.contactEmail ?? ""} className="mb-3 w-full rounded-md border px-3 py-1.5 text-sm" />
+          <input name="contactEmail" type="email" maxLength={STORE_SETTINGS_LIMITS.contactEmail} defaultValue={store.contactEmail ?? ""} className="mb-3 w-full rounded-md border px-3 py-1.5 text-sm" />
           <label className="mb-1 block text-xs text-muted-foreground">Contact phone</label>
-          <input name="contactPhone" defaultValue={store.contactPhone ?? ""} className="mb-3 w-full rounded-md border px-3 py-1.5 text-sm" />
+          <input name="contactPhone" maxLength={STORE_SETTINGS_LIMITS.contactPhone} defaultValue={store.contactPhone ?? ""} className="mb-3 w-full rounded-md border px-3 py-1.5 text-sm" />
           {isOwner && (
             <label className="mb-3 flex items-start gap-2 text-sm">
               <input type="checkbox" name="dailySummaryEmail" defaultChecked={store.dailySummaryEmail} className="mt-1" />
@@ -72,6 +78,8 @@ export default async function SettingsPage({ params }: { params: Promise<{ slug:
           <label className="mb-1 block text-xs text-muted-foreground">About your business</label>
           <textarea
             name="description"
+            required
+            maxLength={STORE_SETTINGS_LIMITS.description}
             defaultValue={store.business.description}
             rows={4}
             placeholder="What you do, what makes you different — this shows on your storefront's About section."
@@ -101,13 +109,9 @@ export default async function SettingsPage({ params }: { params: Promise<{ slug:
           <p className="mb-3 text-sm font-medium">Typography</p>
           <label className="mb-1 block text-xs text-muted-foreground">Body font</label>
           <select name="fontFamily" defaultValue={store.fontFamily ?? ""} className="w-full rounded-md border px-3 py-1.5 text-sm">
-            <option value="">Template default</option>
-            <option value="'Inter', sans-serif">Inter (clean, modern)</option>
-            <option value="'Plus Jakarta Sans', sans-serif">Plus Jakarta Sans (friendly, rounded)</option>
-            <option value="'Georgia', serif">Georgia (classic, editorial)</option>
-            <option value="'Playfair Display', serif">Playfair Display (elegant, upscale)</option>
-            <option value="'Space Grotesk', sans-serif">Space Grotesk (bold, technical)</option>
-            <option value="'Courier New', monospace">Courier New (typewriter)</option>
+            {STORE_FONT_OPTIONS.map((o) => (
+              <option key={o.value} value={o.value}>{o.label}</option>
+            ))}
           </select>
           <p className="mt-1 text-xs text-muted-foreground">Applies to your storefront's body text.</p>
         </div>
@@ -125,8 +129,7 @@ export default async function SettingsPage({ params }: { params: Promise<{ slug:
           </label>
         </div>
 
-        <button className="rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground">Save changes</button>
-      </form>
+      </StoreSettingsForm>
 
       <GuideToggle />
 
@@ -134,9 +137,11 @@ export default async function SettingsPage({ params }: { params: Promise<{ slug:
         <TrackingIdsForm slug={slug} initial={sanitizeStoredTrackingIds(store)} />
       </div>
 
-      <div className="mt-6">
-        <StoreSlugEditor slug={slug} domainRoot={new URL(APP_URL).host.replace(/^www\./, "")} />
-      </div>
+      {canManageIdentity && (
+        <div className="mt-6">
+          <StoreSlugEditor slug={slug} domainRoot={new URL(APP_URL).host.replace(/^www\./, "")} />
+        </div>
+      )}
 
       {isOwner && (
         <div className="mt-6">
@@ -148,6 +153,7 @@ export default async function SettingsPage({ params }: { params: Promise<{ slug:
         </div>
       )}
 
+      {canManageIdentity && (
       <div className="mt-6 rounded-lg border bg-background p-4">
         <p className="mb-1 text-sm font-medium">Custom domain</p>
         {!domainUnlocked ? (
@@ -188,6 +194,7 @@ export default async function SettingsPage({ params }: { params: Promise<{ slug:
           </form>
         )}
       </div>
+      )}
 
       <div className="mt-6">
         <WebhooksPanel slug={slug} endpoints={webhookEndpoints} eventOptions={webhookEventOptions} />
