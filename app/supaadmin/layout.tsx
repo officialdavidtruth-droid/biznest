@@ -1,9 +1,31 @@
+import type { Metadata, Viewport } from "next";
 import { getAdminBadgeCounts } from "@/lib/actions/admin";
 import { SupaAdminMobileShell } from "@/components/dashboard/supaadmin-mobile-shell";
 import { ThemeProvider, ThemeFlashGuard } from "@/components/theme/theme-provider";
 
 // Auth for everything under /supaadmin is enforced in middleware.ts via the
 // ADMIN_PIN cookie, before this layout ever renders — nothing to check here.
+
+// SupaAdmin installs as its own app, so it overrides the root layout's manifest
+// and icons. Never indexed.
+export const metadata: Metadata = {
+  title: "SupaAdmin — BizNest Platform",
+  manifest: "/supaadmin/manifest.webmanifest",
+  robots: { index: false, follow: false },
+  icons: {
+    icon: [{ url: "/supaadmin/pwa/icon-192.png", sizes: "192x192", type: "image/png" }],
+    apple: [{ url: "/supaadmin/pwa/apple-touch-icon.png", sizes: "180x180" }],
+  },
+  appleWebApp: { capable: true, title: "SupaAdmin", statusBarStyle: "black-translucent" },
+  other: { "mobile-web-app-capable": "yes" },
+};
+
+// viewport-fit=cover lets the app draw under the notch/home bar when installed;
+// the shell pads itself with env(safe-area-inset-*).
+export const viewport: Viewport = {
+  themeColor: "#07180f",
+  viewportFit: "cover",
+};
 
 export default async function SupaAdminLayout({ children }: { children: React.ReactNode }) {
   const counts = await getAdminBadgeCounts();

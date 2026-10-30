@@ -34,8 +34,8 @@ export default async function PurchaseOrderDetailPage({
         {po.expectedAt && <p className="text-sm text-muted-foreground">Expected: {formatDate(po.expectedAt)}</p>}
       </div>
 
-      <div className="overflow-hidden rounded-lg border bg-background">
-        <table className="w-full text-sm">
+      <div className="overflow-x-auto rounded-lg border bg-background">
+        <table className="min-w-[640px] w-full text-sm">
           <thead className="border-b bg-muted/40 text-left text-xs uppercase text-muted-foreground">
             <tr>
               <th className="px-4 py-2">Item</th>

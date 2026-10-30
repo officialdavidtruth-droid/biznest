@@ -26,8 +26,8 @@ export async function CouponsSection({ params }: { params: Promise<{ slug: strin
         <button className="rounded-md bg-primary px-3 py-1.5 text-sm font-medium text-primary-foreground">Create coupon</button>
       </form>
 
-      <div className="overflow-hidden rounded-lg border bg-background">
-        <table className="w-full text-sm">
+      <div className="overflow-x-auto rounded-lg border bg-background">
+        <table className="min-w-[640px] w-full text-sm">
           <thead className="border-b bg-muted/40 text-left text-xs uppercase text-muted-foreground">
             <tr><th className="px-4 py-2">Code</th><th className="px-4 py-2">Discount</th><th className="px-4 py-2">Used</th><th className="px-4 py-2">Status</th></tr>
           </thead>

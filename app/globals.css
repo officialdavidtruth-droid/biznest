@@ -1429,3 +1429,12 @@ html[data-app]:not([data-tabbar]) .bn-tabbar { display: none; }
 @keyframes bn-chat-pop { from { opacity: 0; transform: translateY(8px) scale(.97); } to { opacity: 1; transform: none; } }
 .bn-typing-dot { width: 7px; height: 7px; border-radius: 50%; background: currentColor; opacity: .35; animation: bn-typing 1s ease-in-out infinite; }
 @keyframes bn-typing { 0%,60%,100% { transform: translateY(0); opacity: .3; } 30% { transform: translateY(-4px); opacity: .9; } }
+
+/* Dashboard overflow safeguard: grid/flex items default to min-width:auto, so a
+   wide table inside a grid cell stretches the whole card past the viewport.
+   html/body are overflow-x:hidden, so the overflow then becomes unreachable.
+   Letting grid children shrink makes the inner overflow-x-auto wrappers scroll. */
+.bn-admin-app main .grid > *,
+.bn-admin-app main section { min-width: 0; }
+.bn-admin-app main { min-width: 0; max-width: 100%; }
+.bn-admin-app main .overflow-x-auto { -webkit-overflow-scrolling: touch; overscroll-behavior-x: contain; }

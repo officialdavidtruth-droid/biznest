@@ -168,6 +168,17 @@ export default auth(async (req) => {
   // site — a shared PIN, not a user login. Handle it first and return
   // early, so it never touches the NextAuth session logic below at all.
   if (rawPathname === "/supaadmin" || rawPathname.startsWith("/supaadmin/")) {
+    // The installed SupaAdmin app's manifest, service worker and icons are
+    // fetched by the browser without the PIN cookie, so they must bypass the
+    // gate or install would silently fail (redirected to the login page).
+    // They hold nothing sensitive; every admin page stays behind the PIN.
+    if (
+      rawPathname === "/supaadmin/manifest.webmanifest" ||
+      rawPathname === "/supaadmin/sw.js" ||
+      rawPathname.startsWith("/supaadmin/pwa/")
+    ) {
+      return NextResponse.next();
+    }
     if (rawPathname === "/supaadmin/login") {
       return passThroughSupaAdmin(req);
     }

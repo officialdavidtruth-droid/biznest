@@ -30,8 +30,8 @@ export default async function InvoicesPage({ params }: { params: Promise<{ slug:
 
       <InvoiceForm storeSlug={slug} currency={currency} />
 
-      <div className="overflow-hidden rounded-lg border bg-background">
-        <table className="w-full text-sm">
+      <div className="overflow-x-auto rounded-lg border bg-background">
+        <table className="min-w-[640px] w-full text-sm">
           <thead className="border-b bg-muted/40 text-left text-xs uppercase text-muted-foreground">
             <tr>
               <th className="px-4 py-2">Invoice</th>

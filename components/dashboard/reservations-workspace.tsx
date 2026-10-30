@@ -222,8 +222,8 @@ export function ReservationsWorkspace({
         ))}
       </div>
 
-      <div className="grid gap-5 lg:grid-cols-[1fr_320px]">
-        <section className="rounded-xl border bg-[var(--bn-admin-surface)] p-5 shadow-sm">
+      <div className="grid grid-cols-1 gap-5 lg:grid-cols-[minmax(0,1fr)_320px]">
+        <section className="min-w-0 rounded-xl border bg-[var(--bn-admin-surface)] p-5 shadow-sm">
           <div className="mb-4 flex flex-wrap items-center gap-2 border-b pb-3">
             {TABS.map((t) => (
               <button
@@ -245,8 +245,8 @@ export function ReservationsWorkspace({
             className="mb-4 w-full rounded-lg border px-3 py-2 text-sm"
           />
 
-          <div className="overflow-hidden rounded-lg border">
-            <table className="w-full text-sm">
+          <div className="overflow-x-auto rounded-lg border">
+            <table className="w-full min-w-[640px] text-sm">
               <thead className="border-b bg-muted/40 text-left text-xs uppercase text-muted-foreground">
                 <tr>
                   <th className="px-4 py-2">Time</th>
