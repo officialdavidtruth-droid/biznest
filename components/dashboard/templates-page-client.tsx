@@ -35,6 +35,17 @@ export function TemplatesPageClient({
   const [isSaving, setIsSaving] = useState(false);
 
   async function handleSelect(id: string) {
+    if (isSaving) return;
+    // Switching to a different template resets the store's colors and font and
+    // removes any saved Website Builder layout (see setStoreTemplate), so ask first.
+    // Re-selecting the template already in use changes nothing and needs no prompt.
+    const next = templates.find((t) => t.id === id);
+    if (templateId && id !== templateId) {
+      const ok = window.confirm(
+        `Switch to "${next?.name ?? "this template"}"?\n\nThis resets your store's colors and font and removes any layout you saved in the Website Builder. Your products, text content and settings are kept.\n\nThis can't be undone.`
+      );
+      if (!ok) return;
+    }
     setIsSaving(true);
     const result = await setStoreTemplate(slug, id);
     setIsSaving(false);

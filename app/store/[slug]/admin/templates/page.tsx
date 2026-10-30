@@ -21,12 +21,23 @@ export default async function TemplatesPage({ params }: { params: Promise<{ slug
   const templateNames = galleryDefinitions.map((definition) => definition.name);
   const dbTemplates = await prisma.storeTemplate.findMany({
     where: { name: { in: templateNames } },
-    select: { id: true, name: true, category: true, tierRank: true, previewUrl: true, config: true },
+    select: { id: true, name: true, category: true, tierRank: true, previewUrl: true, config: true, isActive: true },
   });
   const byName = new Map(dbTemplates.map((t) => [t.name, t]));
-  const templates = galleryDefinitions.map((definition) => {
+  // Templates switched off in the database can't be applied, so don't offer them (a store
+  // already using one still sees it, marked as current).
+  const offered = galleryDefinitions.filter((definition) => {
+    const row = byName.get(definition.name);
+    return !row || row.isActive || row.id === store.templateId;
+  });
+  const templates = offered.map((definition) => {
     const existing = byName.get(definition.name);
-    if (existing) return { ...existing, category: definition.category };
+    // Tier comes from the registry (what setStoreTemplate enforces), not the possibly stale DB copy.
+    if (existing) {
+      const { isActive: _isActive, ...row } = existing;
+      void _isActive;
+      return { ...row, category: definition.category, tierRank: Number((definition.theme as any).tierRank ?? existing.tierRank) };
+    }
     return {
       id: definition.aliases[0] ? `${definition.aliases[0]}:${definition.name}` : definition.id,
       name: definition.name,

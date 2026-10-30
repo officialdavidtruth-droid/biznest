@@ -1,6 +1,7 @@
 "use client";
 
 import { starFill, starEmpty } from "@/lib/utils/stars";
+import { readableAccentText } from "@/lib/utils/readable-accent";
 import { MenuLinks, type FallbackLink } from "@/components/storefront/store-menu";
 import type React from "react";
 import { useEffect, useState } from "react";
@@ -255,7 +256,7 @@ function BuilderSectionView({ section, store, config, catalogItems, categories, 
 function SectionIntro({ section, config, inverse = false }: { section: BuilderSection; config: BuilderConfig; inverse?: boolean }) {
   const d = config.design, s = section.settings;
   return <div style={{ marginBottom: 30, textAlign: s.align || "left" }}>
-    {s.eyebrow && <div style={{ color: d.accent, fontSize: 11, fontWeight: 800, letterSpacing: ".12em", textTransform: "uppercase", marginBottom: 8 }}>{s.eyebrow}</div>}
+    {s.eyebrow && <div style={{ color: inverse ? d.accent : readableAccentText(d.accent, s.background || d.background), fontSize: 11, fontWeight: 800, letterSpacing: ".12em", textTransform: "uppercase", marginBottom: 8 }}>{s.eyebrow}</div>}
     <h2 style={{ fontFamily: d.headingFont, fontSize: "clamp(28px,4vw,46px)", lineHeight: 1.08, letterSpacing: "-.035em", margin: 0, color: inverse ? "#fff" : d.text }}>{s.heading || label(section.type)}</h2>
     {s.body && <p style={{ color: inverse ? "rgba(255,255,255,.72)" : d.muted, lineHeight: 1.7, maxWidth: 650, marginTop: 12 }}>{s.body}</p>}
   </div>;
@@ -461,7 +462,7 @@ export function ItemCard({ item, store, d, radius, actionLabel }: { item: Catalo
     <Link href={href} style={{ display: "block", textAlign: "center" }}>
       <div style={img("3/4", radius)} />
       <div style={{ paddingTop: 14, fontSize: 12, letterSpacing: ".14em", textTransform: "uppercase", fontWeight: 700 }}>{item.name}</div>
-      <div style={{ color: d.accent, fontWeight: 800, marginTop: 4 }}>{price}</div>
+      <div style={{ color: readableAccentText(d.accent, d.background), fontWeight: 800, marginTop: 4 }}>{price}</div>
     </Link>
   );
   return (
@@ -469,7 +470,7 @@ export function ItemCard({ item, store, d, radius, actionLabel }: { item: Catalo
       <div style={img("1/1")} />
       <div style={{ padding: 16 }}>
         <div style={{ fontWeight: 750, marginBottom: 7 }}>{item.name}</div>
-        <div style={{ color: d.accent, fontWeight: 800 }}>{price}</div>
+        <div style={{ color: readableAccentText(d.accent, d.surface), fontWeight: 800 }}>{price}</div>
         <div style={{ marginTop: 10, fontSize: 11, color: d.muted, fontWeight: 700 }}>{actionLabel} →</div>
       </div>
     </Link>

@@ -442,6 +442,9 @@ function tokens(text: string): string[] {
     .replace(/sign[\s-]?in/g, "login")
     .replace(/[^a-z0-9.\s]/g, " ")
     .split(/\s+/)
+    // Keep inner dots (e.g. "yourstore.com") but drop sentence punctuation,
+    // otherwise "payouts." never matches the keyword "payout".
+    .map((w) => w.replace(/^\.+|\.+$/g, ""))
     .filter((w) => w && !STOP.has(w))
     .map(stem);
 }

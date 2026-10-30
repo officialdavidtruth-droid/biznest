@@ -97,7 +97,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
 
   return (
     <html lang="en" {...(headerList.get("user-agent")?.includes("BizNestApp") ? { "data-app": "1" } : {})}>
-      <body className="flex h-screen flex-col bg-background font-sans antialiased">
+      <body className="flex min-h-screen flex-col bg-background font-sans antialiased">
         <SessionProvider>
         <CartProvider>
           {showMaintenance ? (

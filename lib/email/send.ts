@@ -881,3 +881,37 @@ export async function sendAbandonedCheckoutEmail(params: Omit<AbandonedCheckoutE
     { kind: "abandoned-checkout", to: params.recipientEmail }
   );
 }
+
+
+/** Notifies the BizNest team of a merchant support request. Reply-To is the merchant. */
+export async function sendSupportRequestEmail(input: {
+  to: string;
+  requestId: string;
+  storeName: string | null;
+  storeSlug: string | null;
+  userName: string | null;
+  userEmail: string | null;
+  message: string;
+  transcript: string;
+}) {
+  const who = `${input.userName ?? "Unknown"} (${input.userEmail ?? "no email"})`;
+  const store = input.storeSlug ? `${input.storeName ?? input.storeSlug} (/${input.storeSlug})` : "—";
+  const html = `<div style="font-family:Arial,sans-serif;font-size:14px;line-height:22px;color:#111827">
+    <p><strong>New support request</strong> <span style="color:#6b7280">#${escapeHtml(input.requestId)}</span></p>
+    <p><strong>From:</strong> ${escapeHtml(who)}<br><strong>Store:</strong> ${escapeHtml(store)}</p>
+    <p><strong>Message</strong></p>
+    <p style="white-space:pre-wrap">${escapeHtml(input.message)}</p>
+    <p><strong>Chat so far</strong></p>
+    <pre style="white-space:pre-wrap;background:#f3f4f6;padding:12px;border-radius:8px;font-size:13px">${escapeHtml(input.transcript)}</pre>
+  </div>`;
+  return send(
+    {
+      from: FROM,
+      to: input.to,
+      ...(input.userEmail ? { replyTo: input.userEmail } : {}),
+      subject: `Support request${input.storeName ? ` - ${input.storeName}` : ""}`,
+      html,
+    },
+    { kind: "support-request", to: input.to }
+  );
+}

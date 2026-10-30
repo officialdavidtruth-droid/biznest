@@ -3,10 +3,11 @@
 import { useEffect, useRef, useState } from "react";
 import { Send, Mail, LifeBuoy, UserRound } from "lucide-react";
 import { answerQuestion, SUGGESTIONS } from "@/lib/support-faq";
+import { SUPPORT_EMAIL } from "@/lib/constants/support";
+import { submitSupportRequest } from "@/lib/actions/support-request";
 
 type Msg = { role: "user" | "assistant"; content: string; handoff?: boolean; chips?: string[]; greeting?: boolean };
 
-const SUPPORT_EMAIL = "biznestsupport@gmail.com";
 const STORE_KEY = "bn-support-chat:v2";
 const GREETING: Msg = {
   role: "assistant",
@@ -25,11 +26,16 @@ function mailto(msgs: Msg[]) {
 }
 
 /** Support chat: instant answers from our own help content, one tap hands over to the BizNest team by email. */
-export function SupportChat() {
+export function SupportChat({ slug }: { slug: string }) {
   const [msgs, setMsgs] = useState<Msg[]>([GREETING]);
   const [input, setInput] = useState("");
   const [busy, setBusy] = useState(false);
   const endRef = useRef<HTMLDivElement>(null);
+  const [handoffOpen, setHandoffOpen] = useState(false);
+  const [note, setNote] = useState("");
+  const [sending, setSending] = useState(false);
+  const [sentId, setSentId] = useState<string | null>(null);
+  const [sendError, setSendError] = useState<string | null>(null);
 
   useEffect(() => {
     try {
@@ -60,6 +66,24 @@ export function SupportChat() {
     }, delay);
   }
 
+  async function sendToTeam() {
+    if (sending) return;
+    setSending(true);
+    setSendError(null);
+    const transcript = msgs
+      .filter((m) => !m.greeting)
+      .map((m) => `${m.role === "user" ? "Me" : "Assistant"}: ${m.content}`)
+      .join("\n\n");
+    try {
+      const r = await submitSupportRequest(slug, note, transcript);
+      if (r.success) { setSentId(r.data.id); setNote(""); }
+      else setSendError(r.error);
+    } catch {
+      setSendError("Could not send right now. Please try again, or email us instead.");
+    }
+    setSending(false);
+  }
+
   const showChips = msgs.length <= 1;
 
   return (
@@ -70,9 +94,9 @@ export function SupportChat() {
           <p className="text-sm font-semibold">BizNest help</p>
           <p className="hidden text-[11px] text-muted-foreground sm:block">Instant answers. A person is one tap away.</p>
         </div>
-        <a href={mailto(msgs)} className="ml-auto inline-flex shrink-0 items-center gap-1 whitespace-nowrap rounded-full border px-3 py-1.5 text-xs font-medium">
+        <button type="button" onClick={() => setHandoffOpen(true)} className="ml-auto inline-flex shrink-0 items-center gap-1 whitespace-nowrap rounded-full border px-3 py-1.5 text-xs font-medium">
           <UserRound className="h-3.5 w-3.5" /> Talk to a person
-        </a>
+        </button>
       </div>
 
       <div className="flex-1 space-y-3 overflow-y-auto px-4 py-4 select-text">
@@ -82,9 +106,9 @@ export function SupportChat() {
             <div className={`w-fit whitespace-pre-wrap rounded-2xl px-3.5 py-2.5 text-sm leading-relaxed ${m.role === "user" ? "rounded-br-md bg-primary text-primary-foreground" : "rounded-bl-md bg-muted"}`}>
               {m.content}
               {m.handoff && (
-                <a href={mailto(msgs.slice(0, i + 1))} className="mt-2 flex items-center gap-1.5 rounded-lg bg-background px-3 py-2 text-xs font-semibold text-primary">
+                <button type="button" onClick={() => setHandoffOpen(true)} className="mt-2 flex items-center gap-1.5 rounded-lg bg-background px-3 py-2 text-xs font-semibold text-primary">
                   <Mail className="h-3.5 w-3.5" /> Send this to the BizNest team
-                </a>
+                </button>
               )}
             </div>
             {m.role === "assistant" && m.chips && i === msgs.length - 1 && !busy && (
@@ -113,6 +137,38 @@ export function SupportChat() {
         )}
         <div ref={endRef} />
       </div>
+
+      {handoffOpen && (
+        <div className="shrink-0 space-y-2 border-t bg-muted/30 p-3">
+          {sentId ? (
+            <>
+              <p className="text-sm font-medium">Sent. The BizNest team will reply to your account email.</p>
+              <p className="text-xs text-muted-foreground">Reference: {sentId}</p>
+              <button type="button" onClick={() => { setHandoffOpen(false); setSentId(null); }} className="rounded-full border px-3 py-1.5 text-xs font-medium">Close</button>
+            </>
+          ) : (
+            <>
+              <p className="text-sm font-medium">Tell the team what you need</p>
+              <textarea
+                value={note}
+                onChange={(e) => setNote(e.target.value)}
+                maxLength={2000}
+                rows={3}
+                placeholder="Describe your problem. Your chat so far is included automatically."
+                className="w-full rounded-lg border bg-background px-3 py-2 text-base outline-none focus:ring-2 focus:ring-primary/40 sm:text-sm"
+              />
+              {sendError && <p className="text-xs text-destructive">{sendError}</p>}
+              <div className="flex flex-wrap items-center gap-2">
+                <button type="button" onClick={sendToTeam} disabled={sending || note.trim().length < 5} className="rounded-full bg-primary px-4 py-2 text-xs font-semibold text-primary-foreground disabled:opacity-40">
+                  {sending ? "Sending…" : "Send to BizNest team"}
+                </button>
+                <button type="button" onClick={() => setHandoffOpen(false)} className="rounded-full border px-3 py-2 text-xs font-medium">Cancel</button>
+                <a href={mailto(msgs)} className="ml-auto text-xs text-muted-foreground underline">Email instead</a>
+              </div>
+            </>
+          )}
+        </div>
+      )}
 
       <form onSubmit={(e) => { e.preventDefault(); send(input); }} className="flex shrink-0 items-center gap-2 border-t p-2.5">
         <input

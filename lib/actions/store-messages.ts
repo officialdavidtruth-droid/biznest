@@ -12,9 +12,15 @@ import { CONVERSATIONS_PAGE_SIZE, STORE_REPLY_LIMIT, validateMessageContent } fr
 // the Customer Support app, so either grants access.
 const CONVERSATION_PERMISSIONS = ["messages", "plugin:helpdesk"] as const;
 
-/** Owner + every active staff member. Anyone else in a thread is the customer. */
+/**
+ * Owner + every staff member the store has ever had, including deactivated
+ * ones. Anyone else in a thread is the customer. Deliberately NOT filtered to
+ * ACTIVE: a removed staff member's past replies must still count as the store
+ * speaking, otherwise they'd show up as unread "customer" messages and could
+ * be mislabelled as the customer on the thread.
+ */
 async function getStoreSideIds(storeId: string, ownerId: string) {
-  const staff = await prisma.storeStaff.findMany({ where: { storeId, status: "ACTIVE" }, select: { userId: true } });
+  const staff = await prisma.storeStaff.findMany({ where: { storeId }, select: { userId: true } });
   return new Set<string>([ownerId, ...staff.map((s) => s.userId).filter((id): id is string => !!id)]);
 }
 
@@ -232,6 +238,8 @@ export async function replyToStoreConversation(
             type: "MESSAGE",
             title: "New reply from the store",
             body: content.slice(0, 140),
+            // Customer inbox for this store (there is no per-thread customer route).
+            url: `/store/${slug}/account/messages`,
           },
         })
         .catch(() => {})
