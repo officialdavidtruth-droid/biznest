@@ -21,7 +21,11 @@ export async function GET(_req: Request, { params }: { params: Promise<{ slug: s
 
   const publicId = parsePrivateRef(product.digitalFileUrl);
   // Legacy public URL: nothing to sign, send the buyer to it.
-  if (!publicId) return NextResponse.redirect(product.digitalFileUrl);
+  if (!publicId) {
+    // Only https links are ever followed; anything else is treated as missing.
+    if (!/^https:\/\/\S+$/i.test(product.digitalFileUrl)) return NextResponse.json({ error: "No file for this item." }, { status: 404 });
+    return NextResponse.redirect(product.digitalFileUrl);
+  }
 
   const upstream = await fetch(signedPrivateUrl(publicId));
   if (!upstream.ok || !upstream.body) return NextResponse.json({ error: "The file is unavailable right now. Please contact the seller." }, { status: 502 });

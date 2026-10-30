@@ -5,6 +5,7 @@ import { prisma } from "@/lib/prisma";
 import { productSchema, type ProductInput } from "@/lib/validations/product";
 import { revalidatePath } from "next/cache";
 import slugify from "slugify";
+import { roundMoney } from "@/lib/utils/pricing";
 import type { ActionResult } from "@/types/actions";
 import { emitWebhookEvent } from "@/lib/webhooks/dispatch";
 import { assertStorePermission } from "@/lib/access/assert-store-access";
@@ -18,6 +19,20 @@ import type { Store, Business } from "@prisma/client";
 type StoreAccessResult =
   | { success: true; store: Store & { business: Business } }
   | { success: false; error: string };
+
+/**
+ * Digital file references must be ones this user uploaded (the upload folder is
+ * biznest/<userId>/digital). An unchanged existing value is always accepted so
+ * other staff and legacy https links keep working; anything new that is not the
+ * caller's own private upload is rejected.
+ */
+async function checkDigitalRef(value: string | null | undefined, existing: string | null): Promise<string | null> {
+  if (!value || value === existing) return null;
+  const session = await auth();
+  const m = value.match(/^private-asset:\/\/biznest\/([^/]+)\/digital\//);
+  if (m && session?.user?.id && m[1] === session.user.id) return null;
+  return m ? "That file wasn't uploaded from your account. Upload it again." : "Upload the file instead of pasting a link, so only paying buyers can download it.";
+}
 
 /**
  * Confirms the current user has "products" access to this store — owner,
@@ -37,7 +52,7 @@ async function assertStoreAccess(slug: string): Promise<StoreAccessResult> {
 async function assertMenuEditor(slug: string) {
   const a = await assertStorePermission(slug, "products");
   if (!a.success) return a;
-  if (a.role === "STAFF") return { success: false as const, error: "Staff can view the menu but cannot edit menu items, categories, variants or add-ons." };
+  // Anyone granted the "products" permission (including STAFF) may create, edit and delete products and variants.
   return a;
 }
 
@@ -117,11 +132,14 @@ export async function createProduct(
 
   if (data.categoryId) {
     const category = await prisma.category.findFirst({
-      where: { id: data.categoryId, storeId: access.store.id },
+      where: { id: data.categoryId, storeId: access.store.id, type: "PRODUCT" },
       select: { id: true },
     });
-    if (!category) return { success: false, error: "Category does not belong to this store." };
+    if (!category) return { success: false, error: "Choose a product category from this store." };
   }
+
+  const fileError = await checkDigitalRef(data.digitalFileUrl, null);
+  if (fileError) return { success: false, error: fileError, fieldErrors: { digitalFileUrl: [fileError] } };
 
   const trimmedSku = data.sku?.trim() || null;
   const trimmedBarcode = data.barcode?.trim() || null;
@@ -158,8 +176,8 @@ export async function createProduct(
             name: data.name,
             slug: productSlug,
             description: data.description,
-            price: data.price,
-            compareAtPrice: data.compareAtPrice || null,
+            price: roundMoney(data.price),
+            compareAtPrice: data.compareAtPrice ? roundMoney(data.compareAtPrice) : null,
             currency: access.store.currency,
             images: data.images,
             isPublished: data.isPublished,
@@ -252,16 +270,19 @@ export async function updateProduct(
 
   if (data.categoryId) {
     const category = await prisma.category.findFirst({
-      where: { id: data.categoryId, storeId: access.store.id },
+      where: { id: data.categoryId, storeId: access.store.id, type: "PRODUCT" },
       select: { id: true },
     });
-    if (!category) return { success: false, error: "Category does not belong to this store." };
+    if (!category) return { success: false, error: "Choose a product category from this store." };
   }
 
   const existing = await prisma.product.findFirst({
     where: { id: productId, storeId: access.store.id },
   });
   if (!existing) return { success: false, error: "Product not found." };
+
+  const fileError = await checkDigitalRef(data.digitalFileUrl, existing.digitalFileUrl);
+  if (fileError) return { success: false, error: fileError, fieldErrors: { digitalFileUrl: [fileError] } };
 
   const trimmedSku = data.sku?.trim() || null;
   const trimmedBarcode = data.barcode?.trim() || null;
@@ -283,6 +304,9 @@ export async function updateProduct(
   let quantityChanged = false;
   let quantityDelta = 0;
   let resultingQuantity = data.quantity;
+  // What the published flag actually ended up as (the out-of-stock automation
+  // can override the submitted value inside the transaction).
+  let finalPublished = data.isPublished;
 
   for (let attempt = 0; attempt < 3; attempt++) {
     try {
@@ -363,8 +387,8 @@ export async function updateProduct(
             type: data.type,
             name: data.name,
             description: data.description,
-            price: data.price,
-            compareAtPrice: data.compareAtPrice || null,
+            price: roundMoney(data.price),
+            compareAtPrice: data.compareAtPrice ? roundMoney(data.compareAtPrice) : null,
             currency: existing.currency,
             images: data.images,
             isPublished: publishOverride ?? data.isPublished,
@@ -397,12 +421,13 @@ export async function updateProduct(
           }
         }
 
-        return { quantityChanged: delta !== 0, quantityDelta: delta, resultingQuantity: nextQuantity };
+        return { quantityChanged: delta !== 0, quantityDelta: delta, resultingQuantity: nextQuantity, isPublished: publishOverride ?? data.isPublished };
       }, { isolationLevel: "Serializable", timeout: 15000 });
 
       quantityChanged = result.quantityChanged;
       quantityDelta = result.quantityDelta;
       resultingQuantity = result.resultingQuantity;
+      finalPublished = result.isPublished;
       break;
     } catch (err: any) {
       if (err?.message === "Product not found.") return { success: false, error: err.message };
@@ -423,9 +448,9 @@ export async function updateProduct(
   await emitWebhookEvent("PRODUCT_UPDATED", access.store.id, {
     productId,
     name: data.name,
-    price: data.price,
+    price: roundMoney(data.price),
     currency: existing.currency,
-    isPublished: data.isPublished,
+    isPublished: finalPublished,
   });
 
   const session = await auth();
@@ -434,7 +459,13 @@ export async function updateProduct(
     actor: { id: session?.user?.id, name: session?.user?.name, email: session?.user?.email, role: session?.user?.role ?? "unknown" },
     action: "product.updated",
     target: data.name,
-    metadata: { productId },
+    metadata: {
+      productId,
+      // Before/after for the changes merchants most often need to trace.
+      ...(Number(existing.price) !== roundMoney(data.price) ? { price: { from: Number(existing.price), to: roundMoney(data.price) } } : {}),
+      ...(existing.isPublished !== finalPublished ? { isPublished: { from: existing.isPublished, to: finalPublished } } : {}),
+      ...(quantityChanged ? { quantity: { change: quantityDelta, after: resultingQuantity } } : {}),
+    },
   });
 
   revalidatePath(`/store/${slug}/admin/products`);
@@ -453,11 +484,19 @@ export async function deleteProduct(slug: string, productId: string): Promise<Ac
   // A product that appears on orders or purchase orders keeps its history:
   // hard-deleting it would null the product link on those records. Take it
   // off the storefront instead and keep the row.
-  const [orderRefs, purchaseRefs] = await Promise.all([
+  // Stock records (InventoryItem, StockMovement, FIFO batches) cascade from the
+  // product, so a product with stock or any stock history is archived too --
+  // hard-deleting it would erase the ledger and write stock off unrecorded.
+  const [orderRefs, purchaseRefs, movementRefs, liveStock] = await Promise.all([
     prisma.orderItem.count({ where: { productId } }),
     prisma.purchaseOrderItem.count({ where: { productId } }),
+    prisma.stockMovement.count({ where: { storeId: access.store.id, OR: [{ inventoryItem: { productId } }, { variant: { productId } }] } }),
+    Promise.all([
+      prisma.inventoryItem.count({ where: { productId, quantity: { gt: 0 } } }),
+      prisma.productVariant.count({ where: { productId, quantity: { gt: 0 } } }),
+    ]).then(([a, b]) => a + b),
   ]);
-  const archived = orderRefs + purchaseRefs > 0;
+  const archived = orderRefs + purchaseRefs + movementRefs + liveStock > 0;
 
   if (archived) {
     await prisma.product.update({ where: { id: productId }, data: { isPublished: false } });
@@ -478,7 +517,7 @@ export async function deleteProduct(slug: string, productId: string): Promise<Ac
     actor: { id: session?.user?.id, name: session?.user?.name, email: session?.user?.email, role: session?.user?.role ?? "unknown" },
     action: archived ? "product.archived" : "product.deleted",
     target: existing.name,
-    metadata: { productId, ...(archived ? { orderRefs, purchaseRefs } : {}) },
+    metadata: { productId, ...(archived ? { orderRefs, purchaseRefs, movementRefs, liveStock } : {}) },
   });
 
   revalidatePath(`/store/${slug}/admin/products`);

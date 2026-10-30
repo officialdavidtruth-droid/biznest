@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { whatsappLink } from "@/lib/utils/whatsapp-link";
+import { phoneKey } from "@/lib/phone";
 import { Mail, MessageCircle, Phone, Search, ShoppingBag, UserRound, Users, Wallet, Repeat } from "lucide-react";
 import type { Customer360 } from "@/lib/actions/customers";
 import { ListPagination, StatCard } from "@/components/dashboard/list-toolbar";
@@ -12,10 +13,6 @@ import { formatDate as formatLocaleDate } from "@/lib/i18n/locale";
 // clicking a customer's name on the Bookings page) that wants a specific
 // person opened rather than whoever happens to be first in the list.
 type OpenHint = { userId?: string; email?: string; phone?: string; name?: string };
-
-function phoneDigits(value: string | null | undefined) {
-  return value?.replace(/\D/g, "") ?? "";
-}
 
 // Finds the customer a link was pointing at: match on account first
 // (most reliable), then email, then phone, then exact name as a last
@@ -33,8 +30,8 @@ function resolveHint(customers: Customer360[], hint?: OpenHint) {
     if (match) return match;
   }
   if (phone) {
-    const target = phoneDigits(phone);
-    const match = customers.find((c) => phoneDigits(c.phone) === target);
+    const target = phoneKey(phone);
+    const match = target ? customers.find((c) => phoneKey(c.phone) === target) : undefined;
     if (match) return match;
   }
   if (name) {
@@ -62,6 +59,7 @@ export function Customer360View({
   openHint,
   sellsProducts = true,
   offersServices = false,
+  walkIn,
 }: {
   customers: Customer360[];
   openHint?: OpenHint;
@@ -72,6 +70,8 @@ export function Customer360View({
   // since they do run POS sales alongside services.
   sellsProducts?: boolean;
   offersServices?: boolean;
+  // Anonymous POS sales, shown as a note rather than as a customer.
+  walkIn?: { orders: number; spent: number };
 }) {
   const isServiceOnly = offersServices && !sellsProducts;
   const personLabel = isServiceOnly ? "Client" : "Customer";
@@ -115,6 +115,12 @@ export function Customer360View({
         <StatCard icon={ShoppingBag} tone="orange" label="Average Order" value={money(avgOrderValue)} note="Per customer" />
         <StatCard icon={Repeat} tone="blue" label="Repeat" value={repeatCount} note={`${peopleLabel} with 2+ orders`} />
       </div>
+
+      {walkIn && walkIn.orders > 0 && (
+        <p className="rounded-lg border bg-muted/30 px-3 py-2 text-xs text-muted-foreground">
+          Walk-in sales with no {personLabel.toLowerCase()} recorded: {walkIn.orders} order{walkIn.orders === 1 ? "" : "s"} · {money(walkIn.spent)}. These are not counted in the figures above.
+        </p>
+      )}
 
       <div className="grid gap-4 lg:grid-cols-[280px_1fr]">
         <section className="overflow-hidden rounded-xl border bg-background shadow-sm">

@@ -68,4 +68,16 @@ describe("variantOptionSchema", () => {
     expect(variantOptionSchema.safeParse({ name: "Size", values }).success).toBe(false);
     expect(variantOptionSchema.safeParse({ name: "Size", values: values.slice(0, 30) }).success).toBe(true);
   });
+
+  it("requires a file for DIGITAL products and a period for RENTAL products", () => {
+    expect(productSchema.safeParse({ ...base, type: "DIGITAL" }).success).toBe(false);
+    expect(productSchema.safeParse({ ...base, type: "RENTAL" }).success).toBe(false);
+    expect(productSchema.safeParse({ ...base, type: "RENTAL", rentalPeriodUnit: "day" }).success).toBe(true);
+  });
+
+  it("rejects path tricks and plain http in digital file references", () => {
+    const d = { ...base, type: "DIGITAL" as const };
+    expect(productSchema.safeParse({ ...d, digitalFileUrl: "private-asset://biznest/u1/digital/../u2/digital/a.zip" }).success).toBe(false);
+    expect(productSchema.safeParse({ ...d, digitalFileUrl: "http://example.com/a.pdf" }).success).toBe(false);
+  });
 });

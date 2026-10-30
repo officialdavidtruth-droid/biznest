@@ -37,7 +37,10 @@ export const productSchema = z.object({
   // or a legacy http(s) link. Nothing else.
   digitalFileUrl: z
     .string()
-    .refine((v) => /^private-asset:\/\/biznest\/[^/]+\/digital\/[^/].*$/.test(v) || /^https?:\/\/\S+$/i.test(v), "Invalid file reference")
+    .refine(
+      (v) => !v.includes("..") && !v.includes("\\") && (/^private-asset:\/\/biznest\/[^/]+\/digital\/[^/].*$/.test(v) || /^https:\/\/\S+$/i.test(v)),
+      "Invalid file reference"
+    )
     .optional()
     .or(z.literal("")),
   rentalPeriodUnit: z.enum(["day", "week", "month"]).optional(),
@@ -51,6 +54,13 @@ export const productSchema = z.object({
     .refine((a) => JSON.stringify(a).length <= MAX_ATTRIBUTES_BYTES, "Extra details are too large")
     .optional(),
 }).superRefine((d, ctx) => {
+  // A paid digital product without a file would take payment and then 404 on download.
+  if (d.type === "DIGITAL" && !d.digitalFileUrl) {
+    ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["digitalFileUrl"], message: "Upload the file buyers will receive" });
+  }
+  if (d.type === "RENTAL" && !d.rentalPeriodUnit) {
+    ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["rentalPeriodUnit"], message: "Choose a rental period (day, week or month)" });
+  }
   if (typeof d.compareAtPrice === "number" && d.compareAtPrice <= d.price) {
     ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["compareAtPrice"], message: "Compare-at price must be higher than the price" });
   }

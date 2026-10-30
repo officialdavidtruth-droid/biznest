@@ -11,12 +11,13 @@ export default async function CustomersPage({
 }) {
   const { slug } = await params;
   const { u, e, p, n } = await searchParams;
-  const { customers, sellsProducts, offersServices } = await getCustomer360(slug);
+  const { customers, sellsProducts, offersServices, walkIn } = await getCustomer360(slug);
   return (
     <Customer360View
       customers={customers}
       sellsProducts={sellsProducts}
       offersServices={offersServices}
+      walkIn={walkIn}
       openHint={{ userId: u, email: e, phone: p, name: n }}
     />
   );

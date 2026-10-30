@@ -11,7 +11,7 @@ import { revalidatePath } from "next/cache";
 import { roundMoney } from "@/lib/utils/pricing";
 import { variantOptionSchema, variantSchema, MAX_OPTIONS, MAX_VARIANT_COMBINATIONS, type VariantOption, type VariantInput } from "@/lib/validations/variant";
 import type { ActionResult } from "@/types/actions";
-import type { StockMovementType } from "@prisma/client";
+import { Prisma, type StockMovementType } from "@prisma/client";
 import { z } from "zod";
 import { assertStorePermission } from "@/lib/access/assert-store-access";
 
@@ -23,7 +23,7 @@ async function assertStoreAccess(slug: string) {
 async function assertMenuEditor(slug: string) {
   const a = await assertStorePermission(slug, "products");
   if (!a.success) return a;
-  if (a.role === "STAFF") return { success: false as const, error: "Staff can view the menu but cannot edit menu items, categories, variants or add-ons." };
+  // Anyone granted the "products" permission (including STAFF) may create, edit and delete products and variants.
   return a;
 }
 
@@ -189,7 +189,15 @@ export async function setVariantOptions(
     cleaned
   );
 
+  for (let attempt = 0; attempt < 3; attempt++) {
+    try {
   await prisma.$transaction(async (tx) => {
+    if (!product.hasVariants) {
+      // Re-checked inside the transaction so a sale or restock can't slip in
+      // between the check above and the switch to per-variant stock.
+      const inv = await tx.inventoryItem.findUnique({ where: { productId }, select: { quantity: true } });
+      if ((inv?.quantity ?? 0) > 0) throw new Error(`HAS_STOCK:${inv!.quantity}`);
+    }
     await tx.product.update({
       where: { id: productId },
       data: { hasVariants: true, variantOptions: cleaned },
@@ -208,7 +216,16 @@ export async function setVariantOptions(
     if (plan.toDeactivate.length) {
       await tx.productVariant.updateMany({ where: { id: { in: plan.toDeactivate } }, data: { isActive: false } });
     }
-  }, { timeout: 30000 });
+  }, { timeout: 30000, isolationLevel: "Serializable" });
+      break;
+    } catch (err: any) {
+      if (typeof err?.message === "string" && err.message.startsWith("HAS_STOCK:")) {
+        return { success: false, error: `This product has ${err.message.slice("HAS_STOCK:".length)} in stock. Set its stock to 0 on the product page first, then add variants and enter stock for each one.` };
+      }
+      if (err?.code === "P2034" && attempt < 2) continue;
+      return { success: false, error: "Couldn't update the options safely. Please try again." };
+    }
+  }
 
   await recordVariantChange(access.store, "variant.options_updated", product.name, { productId, variantCount: combos.length, created: plan.toCreate.length, deactivated: plan.toDeactivate.length });
   revalidatePath(`/store/${slug}/admin/products`);
@@ -237,18 +254,31 @@ export async function updateVariant(slug: string, variantId: string, input: Vari
   const clash = await findIdentifierClash(access.store.id, { sku, barcode }, { variantId, productId: variant.productId });
   if (clash) return clashResult(clash);
 
-  await prisma.productVariant.update({
-    where: { id: variantId },
-    data: {
-      sku,
-      barcode,
-      price: data.price === "" || data.price == null ? null : roundMoney(data.price),
-      lowStockThreshold: data.lowStockThreshold,
-      isActive: data.isActive,
-    },
-  });
+  try {
+    await prisma.productVariant.update({
+      where: { id: variantId },
+      data: {
+        sku,
+        barcode,
+        price: data.price === "" || data.price == null ? null : roundMoney(data.price),
+        lowStockThreshold: data.lowStockThreshold,
+        isActive: data.isActive,
+        // A merchant toggling availability is a deliberate choice: clear the
+        // automation flag so a later restock can't flip it back.
+        ...(data.isActive !== variant.isActive ? { autoUnpublished: false } : {}),
+      },
+    });
+  } catch (err: any) {
+    if (err?.code === "P2002") return clashResult({ field: String(err?.meta?.target ?? "").includes("barcode") ? "barcode" : "sku" });
+    throw err;
+  }
 
-  await recordVariantChange(access.store, "variant.updated", variant.label, { productId: variant.productId, variantId });
+  await recordVariantChange(access.store, "variant.updated", variant.label, {
+    productId: variant.productId,
+    variantId,
+    ...(data.isActive !== variant.isActive ? { isActive: { from: variant.isActive, to: data.isActive } } : {}),
+    ...(Number(variant.price ?? NaN) !== (data.price === "" || data.price == null ? NaN : roundMoney(data.price)) ? { price: { from: variant.price == null ? null : Number(variant.price), to: data.price === "" || data.price == null ? null : roundMoney(data.price) } } : {}),
+  });
   revalidatePath(`/store/${slug}/admin/products`);
   revalidatePath(`/store/${slug}/admin/inventory`);
   return { success: true, data: undefined };
@@ -266,13 +296,30 @@ export async function deleteVariant(slug: string, variantId: string): Promise<Ac
     // Keep order history intact -- deactivate instead of hard-deleting.
     await prisma.productVariant.update({ where: { id: variantId }, data: { isActive: false } });
   } else {
-    await prisma.productVariant.delete({ where: { id: variantId } });
+    await prisma.$transaction(async (tx) => {
+      await tx.productVariant.delete({ where: { id: variantId } });
+      // Deleting the last variant must not leave the product flagged as
+      // variant-enabled with nothing to sell. Return it to plain-product mode
+      // with a zero-stock inventory row so it stays out of stock until the
+      // merchant sets a quantity.
+      const remaining = await tx.productVariant.count({ where: { productId: variant.productId } });
+      if (remaining === 0) {
+        await tx.product.update({ where: { id: variant.productId }, data: { hasVariants: false, variantOptions: Prisma.DbNull } });
+        await tx.inventoryItem.upsert({
+          where: { productId: variant.productId },
+          create: { productId: variant.productId, storeId: access.store.id, quantity: 0 },
+          update: {},
+        });
+      }
+    }, { isolationLevel: "Serializable", timeout: 15000 });
   }
   await recordVariantChange(access.store, usedInOrder ? "variant.deactivated" : "variant.deleted", variant.label, { productId: variant.productId, variantId });
 
   revalidatePath(`/store/${slug}/admin/products`);
   return { success: true, data: undefined };
 }
+
+const MANUAL_MOVEMENT_TYPES = new Set<StockMovementType>(["RESTOCK", "RETURN", "MANUAL_ADJUSTMENT", "CORRECTION"]);
 
 /** Same ledgered write path as adjustStock, but against a ProductVariant. */
 export async function adjustVariantStock(
@@ -285,6 +332,11 @@ export async function adjustVariantStock(
   const access = await assertMenuEditor(slug);
   if (!access.success) return { success: false, error: access.error };
   if (!Number.isInteger(delta) || delta === 0) return { success: false, error: "Stock change must be a non-zero whole number." };
+  // Manual adjustments can only use manual movement types. SALE is reserved for
+  // order automation; sign must match the meaning of the type.
+  if (!MANUAL_MOVEMENT_TYPES.has(type)) return { success: false, error: "That isn't a valid stock adjustment type." };
+  if ((type === "RESTOCK" || type === "RETURN") && delta < 0) return { success: false, error: `A ${type.toLowerCase()} must add stock.` };
+  note = note?.trim().slice(0, 500) || undefined;
 
   let quantity: number | null = null;
   for (let attempt = 0; attempt < 3; attempt++) {
@@ -354,7 +406,7 @@ export async function generateVariantSku(slug: string, variantId: string): Promi
   for (let attempt = 0; attempt < 5; attempt++) {
     const suffix = Math.random().toString(36).slice(2, 6).toUpperCase();
     const candidate = `${storePrefix}-${namePrefix}-${optPrefix}-${suffix}`;
-    const collision = await prisma.productVariant.findFirst({ where: { storeId: access.store.id, sku: candidate } });
+    const collision = await findIdentifierClash(access.store.id, { sku: candidate });
     if (!collision) {
       sku = candidate;
       break;
@@ -362,7 +414,12 @@ export async function generateVariantSku(slug: string, variantId: string): Promi
   }
   if (!sku) return { success: false, error: "Couldn't generate a unique SKU, try again." };
 
-  await prisma.productVariant.update({ where: { id: variantId }, data: { sku } });
+  try {
+    await prisma.productVariant.update({ where: { id: variantId }, data: { sku } });
+  } catch (err: any) {
+    if (err?.code === "P2002") return { success: false, error: "That SKU was just taken. Try again." };
+    throw err;
+  }
   revalidatePath(`/store/${slug}/admin/products`);
   return { success: true, data: { sku } };
 }
@@ -381,8 +438,10 @@ export async function generateVariantBarcode(slug: string, variantId: string): P
 
   let barcode = "";
   for (let attempt = 0; attempt < 5; attempt++) {
-    const candidate = Array.from({ length: 12 }, () => Math.floor(Math.random() * 10)).join("");
-    const collision = await prisma.productVariant.findFirst({ where: { storeId: access.store.id, barcode: candidate } });
+    // Leading "2" is the GS1 range reserved for in-store/internal codes, so a
+    // generated code can never equal a real retail barcode.
+    const candidate = "2" + Array.from({ length: 11 }, () => Math.floor(Math.random() * 10)).join("");
+    const collision = await findIdentifierClash(access.store.id, { barcode: candidate });
     if (!collision) {
       barcode = candidate;
       break;
@@ -390,7 +449,12 @@ export async function generateVariantBarcode(slug: string, variantId: string): P
   }
   if (!barcode) return { success: false, error: "Couldn't generate a unique barcode, try again." };
 
-  await prisma.productVariant.update({ where: { id: variantId }, data: { barcode } });
+  try {
+    await prisma.productVariant.update({ where: { id: variantId }, data: { barcode } });
+  } catch (err: any) {
+    if (err?.code === "P2002") return { success: false, error: "That barcode was just taken. Try again." };
+    throw err;
+  }
   revalidatePath(`/store/${slug}/admin/products`);
   return { success: true, data: { barcode } };
 }

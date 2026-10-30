@@ -5,12 +5,18 @@ const productUpdate = vi.fn();
 const productDelete = vi.fn();
 const orderItemCount = vi.fn();
 const poItemCount = vi.fn();
+const movementCount = vi.fn();
+const inventoryCount = vi.fn();
+const variantCount = vi.fn();
 
 vi.mock("@/lib/prisma", () => ({
   prisma: {
     product: { findFirst: (...a: unknown[]) => productFindFirst(...a), update: (...a: unknown[]) => productUpdate(...a), delete: (...a: unknown[]) => productDelete(...a) },
     orderItem: { count: (...a: unknown[]) => orderItemCount(...a) },
     purchaseOrderItem: { count: (...a: unknown[]) => poItemCount(...a) },
+    stockMovement: { count: (...a: unknown[]) => movementCount(...a) },
+    inventoryItem: { count: (...a: unknown[]) => inventoryCount(...a) },
+    productVariant: { count: (...a: unknown[]) => variantCount(...a) },
   },
 }));
 vi.mock("@/lib/access/assert-store-access", () => ({
@@ -28,6 +34,9 @@ beforeEach(() => {
   productFindFirst.mockResolvedValue({ id: "p1", name: "Tote" });
   orderItemCount.mockResolvedValue(0);
   poItemCount.mockResolvedValue(0);
+  movementCount.mockResolvedValue(0);
+  inventoryCount.mockResolvedValue(0);
+  variantCount.mockResolvedValue(0);
 });
 
 describe("deleteProduct", () => {
@@ -61,6 +70,21 @@ describe("deleteProduct", () => {
     productFindFirst.mockResolvedValue(null);
     const r = await deleteProduct("shop", "nope");
     expect(r).toEqual({ success: false, error: "Product not found." });
+    expect(productDelete).not.toHaveBeenCalled();
+  });
+
+  it("archives instead of deleting when the product has stock history (the ledger would cascade away)", async () => {
+    movementCount.mockResolvedValue(3);
+    const r = await deleteProduct("shop", "p1");
+    expect(r).toEqual({ success: true, data: { archived: true } });
+    expect(productDelete).not.toHaveBeenCalled();
+    expect(productUpdate).toHaveBeenCalledWith({ where: { id: "p1" }, data: { isPublished: false } });
+  });
+
+  it("archives instead of deleting when units are still on hand", async () => {
+    inventoryCount.mockResolvedValue(1);
+    const r = await deleteProduct("shop", "p1");
+    expect(r).toEqual({ success: true, data: { archived: true } });
     expect(productDelete).not.toHaveBeenCalled();
   });
 });

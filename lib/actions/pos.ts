@@ -1,5 +1,7 @@
 "use server";
 
+import { walkInEmail } from "@/lib/walk-in-customer";
+import { canonicalPhone, phoneVariants } from "@/lib/phone";
 import { findMixedCurrencies, mixedCurrencyMessage } from "@/lib/currency-guard";
 import { getCanonicalBusinessType } from "@/lib/business-identity";
 import { auth } from "@/lib/auth";
@@ -263,7 +265,7 @@ export async function searchPosCustomers(slug: string, query: string): Promise<P
  * on Order.posCustomerName/posCustomerPhone rather than the buyer relation.
  */
 async function getOrCreateWalkInCustomer(storeId: string) {
-  const email = `pos-walkin-${storeId}@biznest.internal`;
+  const email = walkInEmail(storeId);
   const existing = await prisma.user.findFirst({
     where: { email, customerScopeStoreId: null, isMarketingOnly: false },
   });
@@ -412,7 +414,7 @@ export async function createPosSale(
   // profile is preferred; otherwise the profile is matched by phone/email.
   let customerProfileId: string | null = null;
   const customerName = data.customerName?.trim() || null;
-  const customerPhone = data.customerPhone?.trim() || null;
+  const customerPhone = canonicalPhone(data.customerPhone);
   const customerEmail = data.customerEmail?.trim().toLowerCase() || null;
   if (data.customerProfileId) {
     const profile = await prisma.storeCustomerProfile.findFirst({
@@ -427,7 +429,8 @@ export async function createPosSale(
         where: {
           storeId: store.id,
           OR: [
-            ...(customerPhone ? [{ phone: customerPhone }] : []),
+            // Any written form of the same number matches (0803…, +234803…, 234803…).
+            ...(customerPhone ? [{ phone: { in: phoneVariants(data.customerPhone) } }] : []),
             ...(customerEmail ? [{ email: customerEmail }] : []),
           ],
         },

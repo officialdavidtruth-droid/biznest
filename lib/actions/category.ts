@@ -16,6 +16,16 @@ async function assertMenuEditor(slug: string) {
   return a;
 }
 
+/** Shared field checks so unvalidated URLs/long text can't be stored. Returns an error message or null. */
+function checkCategoryFields(input: { imageUrl?: string | null; icon?: string | null; description?: string | null }): string | null {
+  const img = input.imageUrl?.trim();
+  if (img && !/^https:\/\/\S+$/i.test(img)) return "Image link must start with https://";
+  if (img && img.length > 2000) return "Image link is too long.";
+  if ((input.icon?.trim().length ?? 0) > 40) return "Icon name is too long.";
+  if ((input.description?.trim().length ?? 0) > 500) return "Keep the description under 500 characters.";
+  return null;
+}
+
 export async function getStoreCategories(slug: string) {
   const a = await access(slug);
   if (!a.success) return [];
@@ -46,6 +56,8 @@ export async function createCategory(slug: string, input: { name: string; type: 
   if (!a.success) return { success: false, error: a.error };
   const name = input.name.trim();
   if (name.length < 2 || name.length > 80) return { success: false, error: "Category name must be 2–80 characters." };
+  const fieldError = checkCategoryFields(input);
+  if (fieldError) return { success: false, error: fieldError };
   if (input.parentId) {
     const parent = await prisma.category.findFirst({ where: { id: input.parentId, storeId: a.store.id } });
     if (!parent) return { success: false, error: "Parent category not found." };
@@ -66,6 +78,8 @@ export async function updateCategory(slug: string, id: string, input: { name: st
   if (!row) return { success: false, error: "Category not found." };
   const name = input.name.trim();
   if (name.length < 2 || name.length > 80) return { success: false, error: "Category name must be 2–80 characters." };
+  const fieldError = checkCategoryFields(input);
+  if (fieldError) return { success: false, error: fieldError };
   if (input.parentId === id) return { success: false, error: "A category cannot be its own parent." };
   if (input.parentId) {
     const parent = await prisma.category.findFirst({ where: { id: input.parentId, storeId: a.store.id } });
@@ -119,11 +133,11 @@ export async function reorderCategory(slug: string, id: string, direction: "up" 
   const index = siblings.findIndex(x => x.id === id);
   const target = direction === "up" ? index - 1 : index + 1;
   if (index < 0 || target < 0 || target >= siblings.length) return { success: true, data: undefined };
-  const other = siblings[target];
-  await prisma.$transaction([
-    prisma.category.update({ where: { id: row.id }, data: { sortOrder: target } }),
-    prisma.category.update({ where: { id: other.id }, data: { sortOrder: index } }),
-  ]);
+  // Swap in the list, then renumber every sibling 0..n-1. Swapping two raw
+  // sortOrder values breaks when siblings share the default 0.
+  const ordered = [...siblings];
+  [ordered[index], ordered[target]] = [ordered[target], ordered[index]];
+  await prisma.$transaction(ordered.map((c, i) => prisma.category.update({ where: { id: c.id }, data: { sortOrder: i } })));
   revalidatePath(`/store/${slug}/admin/categories`); revalidatePath(`/store/${slug}`);
   return { success: true, data: undefined };
         }

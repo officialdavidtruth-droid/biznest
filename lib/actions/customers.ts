@@ -3,6 +3,8 @@
 import { prisma } from "@/lib/prisma";
 import { assertStorePermission } from "@/lib/access/assert-store-access";
 import { SELLER_VISIBLE_ORDER_STATUSES } from "@/lib/constants/order";
+import { walkInEmail } from "@/lib/walk-in-customer";
+import { phoneKey } from "@/lib/phone";
 
 export type Customer360Order = {
   id: string;
@@ -55,11 +57,14 @@ export type Customer360Result = {
   // true) keep the full customer-style view since they do run POS sales.
   sellsProducts: boolean;
   offersServices: boolean;
+  // Anonymous POS sales (no customer recorded). Reported separately so they
+  // don't appear as one giant "Walk-in customer" and skew customer metrics.
+  walkIn: { orders: number; spent: number };
 };
 
 export async function getCustomer360(slug: string): Promise<Customer360Result> {
   const access = await assertStorePermission(slug, "customers");
-  if (!access.success) return { customers: [], sellsProducts: true, offersServices: false };
+  if (!access.success) return { customers: [], sellsProducts: true, offersServices: false, walkIn: { orders: 0, spent: 0 } };
   const { sellsProducts, offersServices } = access.store.business;
 
   const [profiles, orders, folioCharges] = await Promise.all([
@@ -81,12 +86,16 @@ export async function getCustomer360(slug: string): Promise<Customer360Result> {
     prisma.propertyFolioCharge.findMany({ where: { storeId: access.store.id }, include: { guest: true, reservation: { include: { room: true } } }, orderBy: { postedAt: "desc" }, take: 500 }),
   ]);
 
+  const walkInAddr = walkInEmail(access.store.id);
+  const isWalkInBuyer = (email: string | null | undefined) => norm(email) === walkInAddr;
+  const walkIn = { orders: 0, spent: 0 };
+
   const profileById = new Map(profiles.map((p) => [p.id, p]));
   const profileByIdentity = new Map<string, string>();
   const profileByName = new Map<string, string>();
   for (const p of profiles) {
     profileByName.set(p.name.trim().toLowerCase(), p.id);
-    const e = norm(p.email); const ph = phoneNorm(p.phone);
+    const e = norm(p.email); const ph = phoneKey(p.phone);
     if (e) profileByIdentity.set(`e:${e}`, p.id);
     if (ph) profileByIdentity.set(`p:${ph}`, p.id);
     if (p.userId) profileByIdentity.set(`u:${p.userId}`, p.id);
@@ -104,11 +113,17 @@ export async function getCustomer360(slug: string): Promise<Customer360Result> {
 
   function getBucket(o: typeof orders[number]) {
     const profile = o.customerProfileId ? profileById.get(o.customerProfileId) : undefined;
-    const email = norm(profile?.email ?? o.buyer.email);
+    // The shared walk-in user's internal address/id must never be shown as a
+    // real customer's email or account.
+    const walkInBuyer = isWalkInBuyer(o.buyer.email);
+    const email = norm(profile?.email ?? (walkInBuyer ? null : o.buyer.email));
     const phone = phoneNorm(profile?.phone ?? o.posCustomerPhone ?? o.buyer.phone);
-    const profileId = profile?.id ?? profileByIdentity.get(email ? `e:${email}` : "") ?? (phone ? profileByIdentity.get(`p:${phone}`) : undefined) ?? null;
-    const userId = profile?.userId ?? o.buyerId ?? null;
-    const key = profileId ? `profile:${profileId}` : email ? `email:${email}` : phone ? `phone:${phone}` : `user:${o.buyerId}`;
+    // Matching uses phoneKey so 0803…, +234803… and 234803… are one person;
+    // `phone` stays the display/contact value.
+    const pk = phoneKey(phone);
+    const profileId = profile?.id ?? profileByIdentity.get(email ? `e:${email}` : "") ?? (pk ? profileByIdentity.get(`p:${pk}`) : undefined) ?? null;
+    const userId = profile?.userId ?? (walkInBuyer ? null : o.buyerId) ?? null;
+    const key = profileId ? `profile:${profileId}` : email ? `email:${email}` : pk ? `phone:${pk}` : `user:${o.buyerId}`;
     let b = buckets.get(key);
     if (!b) {
       b = { id: key, profileId, userId, name: profile?.name ?? o.posCustomerName ?? o.buyer.name ?? "Customer", email, phone, notes: profile?.notes ?? null,
@@ -119,6 +134,11 @@ export async function getCustomer360(slug: string): Promise<Customer360Result> {
   }
 
   for (const o of orders) {
+    if (isWalkInBuyer(o.buyer.email) && !o.customerProfileId) {
+      walkIn.orders += 1;
+      walkIn.spent += Number(o.total);
+      continue;
+    }
     const b = getBucket(o);
     const total = Number(o.total);
     b.orders += 1; b.spent += total;
@@ -143,8 +163,9 @@ export async function getCustomer360(slug: string): Promise<Customer360Result> {
   for (const bill of folioCharges) {
     const email = norm(bill.guest.email);
     const phone = phoneNorm(bill.guest.phone);
-    const profileId = profileByIdentity.get(email ? `e:${email}` : "") ?? (phone ? profileByIdentity.get(`p:${phone}`) : undefined) ?? profileByName.get(bill.guest.fullName.trim().toLowerCase()) ?? null;
-    const key = profileId ? `profile:${profileId}` : email ? `email:${email}` : phone ? `phone:${phone}` : `guest:${bill.guestId}`;
+    const pk = phoneKey(phone);
+    const profileId = profileByIdentity.get(email ? `e:${email}` : "") ?? (pk ? profileByIdentity.get(`p:${pk}`) : undefined) ?? profileByName.get(bill.guest.fullName.trim().toLowerCase()) ?? null;
+    const key = profileId ? `profile:${profileId}` : email ? `email:${email}` : pk ? `phone:${pk}` : `guest:${bill.guestId}`;
     let b = buckets.get(key);
     if (!b) { b = { id: key, profileId, userId: profileId ? profileById.get(profileId)?.userId ?? null : null, name: bill.guest.fullName, email, phone, notes: bill.guest.notes ?? null, orders: 0, spent: 0, onlineOrders: 0, posOrders: 0, lastPurchase: null, firstPurchase: null, ordersList: [], products: new Map(), bills: [] }; buckets.set(key, b); }
     b.bills.push({ id: bill.id, description: bill.description, category: bill.category, amount: Number(bill.amount), currency: bill.currency, status: bill.status, room: bill.reservation.room?.name ?? null, reservationId: bill.reservationId, postedAt: bill.postedAt.toISOString() });
@@ -167,5 +188,5 @@ export async function getCustomer360(slug: string): Promise<Customer360Result> {
       ordersList: b.ordersList.slice(0, 20), topProducts: [...b.products.values()].sort((a,b) => b.revenue-a.revenue).slice(0,5).map((p) => ({ ...p, revenue: Math.round(p.revenue*100)/100 })), bills: b.bills.slice(0, 30) }))
     .sort((a,b) => b.spent-a.spent || a.name.localeCompare(b.name));
 
-  return { customers, sellsProducts, offersServices };
+  return { customers, sellsProducts, offersServices, walkIn: { orders: walkIn.orders, spent: Math.round(walkIn.spent * 100) / 100 } };
 }
