@@ -28,7 +28,7 @@ function timeAgo(date: Date) {
 
 function iconFor(type?: string) {
   if (type === "ABANDONED_CHECKOUT") return { Icon: ShoppingCart, tone: "bg-amber-100 text-amber-700" };
-  if (type === "ORDER_PAID") return { Icon: CreditCard, tone: "bg-emerald-100 text-emerald-700" };
+  if (type === "ORDER_PAID" || type === "PAYMENT_PROOF" || type === "BOOKING_PAID") return { Icon: CreditCard, tone: "bg-emerald-100 text-emerald-700" };
   if (type === "MESSAGE") return { Icon: MessageSquare, tone: "bg-sky-100 text-sky-700" };
   if (type === "VERIFICATION") return { Icon: ShieldCheck, tone: "bg-violet-100 text-violet-700" };
   if (type?.startsWith("SUBSCRIPTION")) return { Icon: CreditCard, tone: "bg-rose-100 text-rose-700" };

@@ -24,6 +24,12 @@ self.addEventListener("push", (event) => {
 
   const { title, body, url } = payload;
 
+  // Tell any open dashboard tab to refresh its data right away.
+  const refreshOpenTabs = self.clients
+    .matchAll({ type: "window", includeUncontrolled: true })
+    .then((clients) => clients.forEach((c) => c.postMessage({ type: "bn-push" })));
+
+  event.waitUntil(refreshOpenTabs);
   event.waitUntil(
     self.registration.showNotification(title || "BizNest", {
       body: body || "",

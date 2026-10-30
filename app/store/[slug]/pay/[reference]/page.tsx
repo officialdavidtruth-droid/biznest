@@ -3,12 +3,13 @@
 // the vendor's account details, the proof-of-payment upload and the vendor's WhatsApp / call line.
 // Reachable by whoever holds the (random) payment reference, so guests with an invoice link can pay.
 import Link from "next/link";
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { resolveStorePalette } from "@/lib/store-palette";
 import { formatMoney } from "@/lib/utils/format-money";
 import { manualPayInfoFromStore, manualPayReady } from "@/lib/payments/manual-transfer";
 import { MANUAL_PURPOSE_LABEL, isManualPurpose } from "@/lib/payments/manual-flow";
+import { confirmationPath } from "@/lib/payments/confirm-destination";
 import { ManualPaymentPanel } from "@/components/storefront/manual-payment-panel";
 
 export const dynamic = "force-dynamic";
@@ -21,6 +22,12 @@ export default async function PayTransferPage({ params }: { params: Promise<{ sl
 
   const payment = await prisma.payment.findFirst({ where: { reference, storeId: store.id, provider: "CASH" } });
   if (!payment || !isManualPurpose(payment.purpose)) notFound();
+
+  // Already confirmed (e.g. the customer reopened this link): go straight to the confirmation page.
+  if (payment.status === "SUCCESSFUL") {
+    const next = confirmationPath(slug, payment);
+    if (next) redirect(next);
+  }
 
   const info = manualPayInfoFromStore(store);
   const palette = resolveStorePalette(store);

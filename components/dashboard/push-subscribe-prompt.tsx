@@ -23,17 +23,56 @@ function urlBase64ToUint8Array(base64String: string) {
  * ("new orders, abandoned carts"), gets a real answer instead of a reflex
  * dismissal.
  */
+async function readyRegistration() {
+  return Promise.race([
+    navigator.serviceWorker.ready,
+    new Promise<never>((_, reject) => setTimeout(() => reject(new Error("Service worker didn't become ready in time")), 8000)),
+  ]);
+}
+
+/** Subscribes this device (reusing an existing subscription) and saves it for the signed-in user. */
+async function subscribeAndSave() {
+  if (!VAPID_PUBLIC_KEY) return;
+  const registration = await readyRegistration();
+  const subscription =
+    (await registration.pushManager.getSubscription()) ??
+    (await registration.pushManager.subscribe({
+      userVisibleOnly: true,
+      applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY),
+    }));
+  const json = subscription.toJSON() as { endpoint: string; keys?: { p256dh: string; auth: string } };
+  if (json.keys) await subscribeToPush({ endpoint: json.endpoint, keys: json.keys, userAgent: navigator.userAgent });
+}
+
 export function PushSubscribePrompt() {
   const [visible, setVisible] = useState(false);
+  const [blocked, setBlocked] = useState(false);
   const [busy, setBusy] = useState(false);
 
   useEffect(() => {
     if (!VAPID_PUBLIC_KEY) return;
     if (!("serviceWorker" in navigator) || !("PushManager" in window)) return;
-    if (Notification.permission !== "default") return;
-    if (sessionStorage.getItem("bn-push-prompt-dismissed")) return;
 
     navigator.serviceWorker.register("/sw.js").catch(() => {});
+
+    // Already allowed on this device: make sure it is really subscribed and saved against this
+    // account (covers a new login, cleared data, or an earlier save that failed). No prompt needed.
+    if (Notification.permission === "granted") {
+      if (!sessionStorage.getItem("bn-push-synced")) {
+        sessionStorage.setItem("bn-push-synced", "1");
+        subscribeAndSave().catch(() => sessionStorage.removeItem("bn-push-synced"));
+      }
+      return;
+    }
+    // Blocked in the browser: the site can't re-ask, so tell the vendor how to turn it back on.
+    if (Notification.permission === "denied") {
+      if (!sessionStorage.getItem("bn-push-prompt-dismissed")) {
+        setBlocked(true);
+        setVisible(true);
+      }
+      return;
+    }
+    if (sessionStorage.getItem("bn-push-prompt-dismissed")) return;
     setVisible(true);
   }, []);
 
@@ -46,26 +85,9 @@ export function PushSubscribePrompt() {
         setVisible(false);
         return;
       }
-      // navigator.serviceWorker.ready never resolves if the worker failed
-      // to register (e.g. the earlier register() call in the effect above
-      // hit a network error, or a stale worker got stuck) -- it just waits
-      // forever for a worker that will never activate. That's exactly what
-      // left this button stuck on "Enabling..." permanently. A timeout
-      // can't make the subscription succeed, but it guarantees the button
-      // always recovers instead of hanging, so retrying is at least
-      // possible instead of the prompt being silently dead until reload.
-      const registration = await Promise.race([
-        navigator.serviceWorker.ready,
-        new Promise<never>((_, reject) => setTimeout(() => reject(new Error("Service worker didn't become ready in time")), 8000)),
-      ]);
-      const subscription = await registration.pushManager.subscribe({
-        userVisibleOnly: true,
-        applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY),
-      });
-      const json = subscription.toJSON() as { endpoint: string; keys?: { p256dh: string; auth: string } };
-      if (json.keys) {
-        await subscribeToPush({ endpoint: json.endpoint, keys: json.keys, userAgent: navigator.userAgent });
-      }
+      // subscribeAndSave times out instead of hanging if the service worker never becomes ready,
+      // so the button always recovers and can be pressed again.
+      await subscribeAndSave();
     } catch {
       // Swallow and just let finally reset the button -- there's no
       // separate error UI here yet, but "stuck forever" is worse than
@@ -87,21 +109,24 @@ export function PushSubscribePrompt() {
     <div className="mx-3 mt-3 flex items-start gap-3 rounded-xl border border-primary/30 bg-primary/10 p-3 sm:mx-0 sm:mt-0 sm:mb-4">
       <BellRing className="mt-0.5 h-5 w-5 shrink-0 text-primary" />
       <div className="min-w-0 flex-1">
-        <p className="text-sm font-medium">Turn on notifications</p>
+        <p className="text-sm font-medium">{blocked ? "Notifications are blocked" : "Turn on notifications"}</p>
         <p className="mt-0.5 text-xs text-muted-foreground">
-          Get alerted the moment an order comes in or a customer abandons their cart — even
-          when the app isn&apos;t open.
+          {blocked
+            ? "You won't be alerted when a customer pays or uploads proof of payment. Allow notifications for this site in your browser's site settings (the lock icon next to the address), then reload."
+            : "Get alerted the moment a customer pays, uploads proof of payment, places an order or abandons their cart, even when the app isn't open."}
         </p>
         <div className="mt-2 flex gap-3">
-          <button
-            onClick={handleEnable}
-            disabled={busy}
-            className="rounded-full bg-primary px-3 py-1 text-xs font-medium text-primary-foreground disabled:opacity-50"
-          >
-            {busy ? "Enabling…" : "Enable"}
-          </button>
+          {!blocked && (
+            <button
+              onClick={handleEnable}
+              disabled={busy}
+              className="rounded-full bg-primary px-3 py-1 text-xs font-medium text-primary-foreground disabled:opacity-50"
+            >
+              {busy ? "Enabling…" : "Enable"}
+            </button>
+          )}
           <button onClick={handleDismiss} className="text-xs text-muted-foreground hover:text-foreground">
-            Not now
+            {blocked ? "Dismiss" : "Not now"}
           </button>
         </div>
       </div>

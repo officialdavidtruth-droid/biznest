@@ -6,6 +6,8 @@ import { headers } from "next/headers";
 import { DashboardSidebar } from "@/components/dashboard/sidebar";
 import { MobileDashboardChrome } from "@/components/dashboard/mobile-dashboard-chrome";
 import { NotificationBell } from "@/components/dashboard/notification-bell";
+import { PushSubscribePrompt } from "@/components/dashboard/push-subscribe-prompt";
+import { DashboardAutoRefresh } from "@/components/dashboard/dashboard-auto-refresh";
 import { listMyNotifications } from "@/lib/actions/notifications";
 import { getStoreAccessRole, hasStorePermission } from "@/lib/access/store-access";
 import { findNavItemForPath } from "@/lib/constants/dashboard-nav";
@@ -226,6 +228,12 @@ export default async function StoreAdminLayout({
                   <NotificationBell notifications={notifications} unreadCount={unreadCount} />
                 </span>
               </div>
+            </div>
+
+            <DashboardAutoRefresh />
+            {/* The mobile chrome carries its own prompt; this one is for desktop. */}
+            <div className="hidden px-6 pt-4 lg:block">
+              <PushSubscribePrompt />
             </div>
 
             <PageGuideButton userId={session.user.id} />

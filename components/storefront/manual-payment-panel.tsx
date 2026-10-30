@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
@@ -70,6 +70,35 @@ export function ManualPaymentPanel({
   const [proofUrl, setProofUrl] = useState<string | null>(initialProofUrl);
 
   const what = subject ?? `order #${orderCode}`;
+  // Watch for the vendor's confirmation and move the customer on as soon as it lands.
+  useEffect(() => {
+    let stopped = false;
+    const query = reference ? `reference=${encodeURIComponent(reference)}` : `orderId=${encodeURIComponent(orderId ?? "")}`;
+    async function check() {
+      if (stopped || document.hidden) return;
+      try {
+        const res = await fetch(`/api/store/${encodeURIComponent(slug)}/payment-status?${query}`, { cache: "no-store" });
+        if (!res.ok) return;
+        const json = (await res.json()) as { paid?: boolean; redirectUrl?: string | null };
+        if (!json.paid || stopped) return;
+        stopped = true;
+        toast.success("Payment confirmed!");
+        if (json.redirectUrl) router.push(json.redirectUrl);
+        else router.refresh();
+      } catch {
+        /* try again on the next tick */
+      }
+    }
+    const timer = window.setInterval(check, 5000);
+    const onVisible = () => { if (!document.hidden) void check(); };
+    document.addEventListener("visibilitychange", onVisible);
+    return () => {
+      stopped = true;
+      window.clearInterval(timer);
+      document.removeEventListener("visibilitychange", onVisible);
+    };
+  }, [slug, reference, orderId, router]);
+
   const wa = whatsappLink(
     info.whatsapp,
     `Hello ${storeName}, I've paid ${totalLabel} for ${what}. Please confirm my payment.`
