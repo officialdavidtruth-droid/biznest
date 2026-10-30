@@ -1,5 +1,6 @@
 "use client";
 
+import { ApproxPrice } from "@/components/storefront/approx-price";
 import Link from "next/link";
 import { useCart } from "@/lib/cart-context";
 import { Minus, Plus, Trash2, ArrowRight, ArrowLeft, ShieldCheck, Truck, ShoppingBag, Check } from "lucide-react";
@@ -184,6 +185,7 @@ export function CartClient({
                   <span className="text-base font-semibold">Total</span>
                   <span className="text-2xl font-extrabold leading-none">{total}</span>
                 </div>
+                {currency && <ApproxPrice amount={subtotal} currency={currency} />}
                 <Link
                   href={`/store/${slug}/checkout`}
                   style={{ background: ACCENT, color: palette.onAccent, boxShadow: `0 8px 20px ${ACCENT}4d` }}

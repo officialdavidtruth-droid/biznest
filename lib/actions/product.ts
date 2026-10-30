@@ -160,7 +160,7 @@ export async function createProduct(
             description: data.description,
             price: data.price,
             compareAtPrice: data.compareAtPrice || null,
-            currency: data.currency,
+            currency: access.store.currency,
             images: data.images,
             isPublished: data.isPublished,
             digitalFileUrl: data.digitalFileUrl || null,
@@ -227,10 +227,18 @@ export async function createProduct(
 export async function updateProduct(
   slug: string,
   productId: string,
-  input: ProductInput
+  input: ProductInput,
+  // The on-hand quantity the edit form was loaded with. Stock is only touched
+  // when the submitted quantity differs from this baseline, and only if live
+  // stock still equals it -- otherwise a stale form would undo sales/restocks.
+  opts?: { baselineQuantity?: number }
 ): Promise<ActionResult<{ productId: string }>> {
   const access = await assertMenuEditor(slug);
   if (!access.success) return { success: false, error: access.error };
+  const baselineQuantity =
+    typeof opts?.baselineQuantity === "number" && Number.isInteger(opts.baselineQuantity) && opts.baselineQuantity >= 0
+      ? opts.baselineQuantity
+      : null;
 
   const parsed = productSchema.safeParse(input);
   if (!parsed.success) {
@@ -295,6 +303,15 @@ export async function updateProduct(
           // a non-null create payload when no legacy parent inventory exists.
           inventoryData = undefined;
         } else if (current.inventory) {
+          if (baselineQuantity !== null) {
+            if (nextQuantity === baselineQuantity) {
+              // Quantity field untouched by the editor: keep live stock as-is.
+              nextQuantity = current.inventory.quantity;
+            } else if (current.inventory.quantity !== baselineQuantity) {
+              // Editor changed stock, but it moved since the form opened.
+              throw new Error("STALE_STOCK");
+            }
+          }
           delta = nextQuantity - current.inventory.quantity;
           if (delta !== 0) {
             // Same out-of-stock automation as adjustStock / CSV import: running
@@ -348,7 +365,7 @@ export async function updateProduct(
             description: data.description,
             price: data.price,
             compareAtPrice: data.compareAtPrice || null,
-            currency: data.currency,
+            currency: existing.currency,
             images: data.images,
             isPublished: publishOverride ?? data.isPublished,
             digitalFileUrl: data.digitalFileUrl || null,
@@ -389,6 +406,9 @@ export async function updateProduct(
       break;
     } catch (err: any) {
       if (err?.message === "Product not found.") return { success: false, error: err.message };
+      if (err?.message === "STALE_STOCK") {
+        return { success: false, error: "Stock changed since you opened this page (a sale or restock). Reload to see the current quantity, then re-apply your stock change." };
+      }
       if (err?.message === "INVENTORY_CONFLICT" && attempt < 2) continue;
       if (err?.code === "P2034" && attempt < 2) continue;
       if (err?.code === "P2002") {
@@ -404,7 +424,7 @@ export async function updateProduct(
     productId,
     name: data.name,
     price: data.price,
-    currency: data.currency,
+    currency: existing.currency,
     isPublished: data.isPublished,
   });
 

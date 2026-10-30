@@ -119,6 +119,7 @@ export function ProductsTable({
       productId,
       price: priceInput.trim() !== "" ? Number(priceInput) : undefined,
       quantity: quantityInput.trim() !== "" ? Number(quantityInput) : undefined,
+      expectedQuantity: quantityInput.trim() !== "" ? products.find((p) => p.id === productId)?.inventory?.quantity : undefined,
       categoryId: categoryInput !== "" ? (categoryInput === "__none__" ? null : categoryInput) : undefined,
       isPublished: publishInput === "" ? undefined : publishInput === "publish",
     }));

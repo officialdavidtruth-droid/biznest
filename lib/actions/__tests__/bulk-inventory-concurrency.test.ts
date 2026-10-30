@@ -12,7 +12,7 @@ describe("bulk product inventory concurrency hardening", () => {
   });
 
   it("detects stale absolute quantity edits instead of overwriting newer stock", () => {
-    expect(source).toContain("currentInventory.quantity !== product.inventory.quantity");
+    expect(source).toContain("currentInventory.quantity !== patch.expectedQuantity");
     expect(source).toContain("INVENTORY_CONFLICT:");
     expect(source).toContain("Refresh the products page and apply the bulk edit again.");
   });

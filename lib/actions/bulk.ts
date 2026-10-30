@@ -236,15 +236,28 @@ export async function importProductsCsv(slug: string, csvText: string): Promise<
             lowStockThreshold: parseNum(r.lowStockThreshold ?? "") ?? product.inventory?.lowStockThreshold ?? 5,
           };
 
+          // Publish state is decided once, here, and written once at the end.
+          // The CSV's isPublished column only counts as the merchant's choice
+          // when it differs from the product's current state: an exported row
+          // always carries the state at export time, and that stale echo must
+          // not override the out-of-stock automation.
+          const csvPublishValue = parseBool(r.isPublished ?? "", product.isPublished);
+          const csvChangedPublish = (r.isPublished ?? "").trim() !== "" && csvPublishValue !== product.isPublished;
+          let finalPublished = csvChangedPublish ? csvPublishValue : product.isPublished;
+
           let delta = 0;
           if (product.inventory) {
             delta = nextQuantity - product.inventory.quantity;
+            const justRanOut = product.inventory.quantity > 0 && nextQuantity === 0;
             const justRestocked = product.inventory.quantity === 0 && nextQuantity > 0;
+            // Only flag a take-down as automatic if the listing was live, so a
+            // restock never republishes something the merchant hid themselves.
+            const autoTakeDown = justRanOut && product.isPublished;
             const updated = await tx.inventoryItem.updateMany({
               where: { id: product.inventory.id, storeId: access.store.id, updatedAt: product.inventory.updatedAt },
               data: {
                 ...inventoryData,
-                autoUnpublished: justRestocked ? false : product.inventory.autoUnpublished,
+                autoUnpublished: autoTakeDown ? true : justRestocked ? false : product.inventory.autoUnpublished,
               },
             });
             if (updated.count !== 1) throw new Error("INVENTORY_CONFLICT");
@@ -262,11 +275,8 @@ export async function importProductsCsv(slug: string, csvText: string): Promise<
               });
               await recordBatchLedgerForQuantityChangeTx(tx, { inventoryItemId: product.inventory.id, storeId: access.store.id, delta, stockMovementId: movement.id, unitCost: toCost(inventoryData.costPrice), sourceNote: "CSV import" });
             }
-            if (product.inventory.quantity > 0 && nextQuantity === 0) {
-              await tx.product.update({ where: { id: product.id }, data: { isPublished: false } });
-            } else if (product.inventory.quantity === 0 && nextQuantity > 0 && product.inventory.autoUnpublished) {
-              await tx.product.update({ where: { id: product.id }, data: { isPublished: true } });
-            }
+            if (justRanOut) finalPublished = false;
+            else if (justRestocked && product.inventory.autoUnpublished && !csvChangedPublish) finalPublished = true;
           } else {
             const createdInventory = await tx.inventoryItem.create({ data: { productId: product.id, storeId: access.store.id, ...inventoryData } });
             delta = nextQuantity;
@@ -290,7 +300,7 @@ export async function importProductsCsv(slug: string, csvText: string): Promise<
             data: {
               ...(categoryId !== undefined ? { categoryId } : {}),
               price: parseNum(r.price ?? "") != null ? roundMoney(parseNum(r.price)!) : product.price,
-              isPublished: parseBool(r.isPublished ?? "", product.isPublished),
+              isPublished: finalPublished,
             },
           });
           return product.id;
@@ -339,7 +349,7 @@ export async function importProductsCsv(slug: string, csvText: string): Promise<
             slug: productSlug,
             description: r.name.trim(),
             price: roundMoney(price),
-            currency: r.currency?.trim() || "NGN",
+            currency: access.store.currency,
             images: [],
             isPublished: parseBool(r.isPublished ?? "", true),
             inventory: {
@@ -396,6 +406,10 @@ export type BulkEditPatch = {
   productId: string;
   price?: number;
   quantity?: number;
+  // Quantity the editor saw when the page loaded. Required with `quantity`:
+  // the server compares it with live stock so a stale absolute value can't
+  // overwrite a sale, restock or refund that happened in between.
+  expectedQuantity?: number;
   categoryId?: string | null;
   isPublished?: boolean;
 };
@@ -439,17 +453,23 @@ export async function bulkUpdateProducts(slug: string, patches: BulkEditPatch[])
       if (patch.quantity != null && product.inventory) {
         const nextQuantity = Math.max(0, Math.round(patch.quantity));
 
-        // Bulk quantity edits are absolute values, so silently applying a
-        // stale value would overwrite stock changed by another staff member
-        // (sale, restock, refund, or another bulk edit). The initial query is
-        // the user's edit snapshot; re-read inside the transaction and abort
-        // the whole batch if that inventory row has changed since the snapshot.
+        // Bulk quantity edits are absolute values, so applying a stale value
+        // would overwrite stock changed since the user loaded the page (sale,
+        // restock, refund, another edit). The baseline must come from the
+        // client's page-load snapshot -- re-reading inside this request only
+        // compares the database with itself and can never detect staleness.
+        if (product.hasVariants) {
+          throw new Error(`VARIANT_STOCK:${product.name}`);
+        }
+        if (typeof patch.expectedQuantity !== "number" || !Number.isInteger(patch.expectedQuantity)) {
+          throw new Error("MISSING_BASELINE");
+        }
         const currentInventory = await tx.inventoryItem.findFirst({
           where: { id: product.inventory.id, storeId: access.store.id },
           select: { id: true, quantity: true },
         });
         if (!currentInventory) throw new Error("Inventory item not found.");
-        if (currentInventory.quantity !== product.inventory.quantity) {
+        if (currentInventory.quantity !== patch.expectedQuantity) {
           throw new Error(`INVENTORY_CONFLICT:${product.id}`);
         }
 
@@ -487,6 +507,12 @@ export async function bulkUpdateProducts(slug: string, patches: BulkEditPatch[])
     }
     if (err?.code === "P2034") {
       return { success: false, error: "Inventory changed concurrently. Refresh the products page and try the bulk edit again." };
+    }
+    if (err?.message?.startsWith("VARIANT_STOCK:")) {
+      return { success: false, error: `${err.message.slice("VARIANT_STOCK:".length)} uses variant stock. Change its quantities from the Variants page.` };
+    }
+    if (err?.message === "MISSING_BASELINE") {
+      return { success: false, error: "Refresh the products page and try the bulk edit again." };
     }
     return { success: false, error: err instanceof Error ? err.message : "Couldn't update products safely." };
   }

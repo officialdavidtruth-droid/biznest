@@ -1,5 +1,6 @@
 "use server";
 
+import { resolveStoreCurrency } from "@/lib/store-currency";
 import { getStoreConfiguration } from "@/lib/capabilities";
 import { normalizeWhatsAppNumber } from "@/lib/utils/whatsapp-link";
 import { getBusinessExperience } from "@/lib/business-experience";
@@ -100,6 +101,7 @@ export async function createStore(
         templateId: parsed.data.templateId,
         businessType: business.category,
         timezone: "Africa/Lagos",
+        currency: resolveStoreCurrency(business.country),
         enabledModules: { capabilities: getStoreConfiguration(business.category, { sellsProducts: business.sellsProducts, offersServices: business.offersServices }).capabilities },
         storefrontConfig: {
           mode: getBusinessExperience(business.category, { sellsProducts: business.sellsProducts, offersServices: business.offersServices }, business.businessSubcategory).mode,

@@ -1,5 +1,6 @@
 "use client";
 
+import { ApproxPrice } from "@/components/storefront/approx-price";
 import { useEffect, useState } from "react";
 import { DEFAULT_STORE_PALETTE, type StorePalette } from "@/lib/store-palette-defaults";
 import Link from "next/link";
@@ -318,6 +319,7 @@ export function CheckoutClient({ slug, palette = DEFAULT_STORE_PALETTE }: { slug
                 <span className="text-base font-semibold">Total</span>
                 <span className="text-2xl font-extrabold leading-none">{currency} {formatNumber(total)}</span>
               </div>
+              <ApproxPrice amount={total} currency={currency} />
 
               <button
                 type="submit"

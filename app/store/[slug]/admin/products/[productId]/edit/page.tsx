@@ -10,7 +10,7 @@ export default async function EditProductPage({ params }: { params: Promise<{ sl
 
   const [product, store] = await Promise.all([
     getProduct(slug, productId),
-    prisma.store.findUnique({ where: { slug }, select: { id: true, business: { select: { category: true } } } }),
+    prisma.store.findUnique({ where: { slug }, select: { id: true, currency: true, business: { select: { category: true } } } }),
   ]);
   if (!product) notFound();
 
@@ -30,6 +30,7 @@ export default async function EditProductPage({ params }: { params: Promise<{ sl
         entityLabel={terminology.catalogSingular}
         categoryLabel={terminology.category}
         businessCategory={store?.business?.category}
+        storeCurrency={store?.currency}
         product={plainProduct}
       />
     </div>

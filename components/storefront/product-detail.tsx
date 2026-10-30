@@ -1,5 +1,6 @@
 "use client";
 
+import { ApproxPrice } from "@/components/storefront/approx-price";
 import { useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -185,6 +186,7 @@ export function ProductDetail({
 
           <div className="pd-price">
             <strong>{currency} {formatNumber(effectivePrice)}</strong>
+            <div style={{ flexBasis: "100%" }}><ApproxPrice amount={effectivePrice} currency={currency} picker /></div>
             {hasDiscount && <s>{currency} {formatNumber((compareAtPrice as number))}</s>}
             {hasDiscount && <em>Save {currency} {formatNumber(((compareAtPrice as number) - effectivePrice))}</em>}
             {type === "RENTAL" && rentalUnit && <span className="pd-unit">/ {rentalUnit}</span>}

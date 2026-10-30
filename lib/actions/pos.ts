@@ -1,5 +1,6 @@
 "use server";
 
+import { findMixedCurrencies, mixedCurrencyMessage } from "@/lib/currency-guard";
 import { getCanonicalBusinessType } from "@/lib/business-identity";
 import { auth } from "@/lib/auth";
 import crypto from "crypto";
@@ -329,6 +330,7 @@ export async function createPosSale(
   };
   const resolved: ResolvedLine[] = [];
   let currency = "NGN";
+  const seenCurrencies: string[] = [];
 
   for (const line of data.items) {
     if (line.variantId) {
@@ -338,6 +340,7 @@ export async function createPosSale(
         return { success: false, error: `Not enough stock for ${variant.product.name} — ${variant.label}.` };
       }
       currency = variant.product.currency;
+      seenCurrencies.push(currency);
       resolved.push({
         variantId: variant.id,
         productId: variant.productId,
@@ -353,6 +356,7 @@ export async function createPosSale(
         return { success: false, error: `Not enough stock for ${product.name}.` };
       }
       currency = product.currency;
+      seenCurrencies.push(currency);
       resolved.push({
         productId: product.id,
         quantity: line.quantity,
@@ -364,6 +368,7 @@ export async function createPosSale(
       const service = services.find((s) => s.id === line.serviceId);
       if (!service) return { success: false, error: "One of the items in this sale no longer exists." };
       currency = service.currency;
+      seenCurrencies.push(currency);
       resolved.push({
         serviceId: service.id,
         quantity: line.quantity,
@@ -375,6 +380,8 @@ export async function createPosSale(
   }
 
   if (resolved.length === 0) return { success: false, error: "Add at least one item to the sale." };
+  const mixedCurrencies = findMixedCurrencies(seenCurrencies);
+  if (mixedCurrencies) return { success: false, error: mixedCurrencyMessage(mixedCurrencies) };
 
   // No delivery fee at the register, and commission still accrues the same
   // way it would online (this is what the platform bills the merchant for

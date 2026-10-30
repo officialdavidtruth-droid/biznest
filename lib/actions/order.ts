@@ -1,5 +1,7 @@
 "use server";
 
+import { isGatewayChargeable } from "@/lib/store-currency";
+import { findMixedCurrencies, mixedCurrencyMessage } from "@/lib/currency-guard";
 import { reverseReferralForOrderSafely } from "@/lib/payments/referral-award";
 import { computeRecipeRequirements } from "@/lib/fnb-recipe-stock";
 import { auth } from "@/lib/auth";
@@ -154,6 +156,9 @@ async function chargeExistingOrder(
   const ownGateway = await resolveStoreGateway(store.id);
   if (ownGateway.status === "error") return { success: false, error: ownGateway.message };
   if (ownGateway.status === "none") return prepareManualTransferOrder(order, store, totalNaira);
+  // Gateway charges are NGN-only today. An order in any other currency goes to
+  // bank transfer instead of being charged as if the amount were naira.
+  if (!isGatewayChargeable(order.currency)) return prepareManualTransferOrder(order, store, totalNaira);
 
   const gateway = ownGateway.credentials.provider;
   const usesStoreGateway = true;
@@ -434,6 +439,9 @@ export async function startCheckout(
   if (products.length !== productIds.length) {
     return { success: false, error: "One or more items in your cart are no longer available." };
   }
+
+  const mixed = findMixedCurrencies(products.map((p) => p.currency));
+  if (mixed) return { success: false, error: mixedCurrencyMessage(mixed) };
 
   const lines: { unitPrice: number; quantity: number }[] = [];
   for (const item of data.items) {

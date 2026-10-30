@@ -7,7 +7,7 @@ export default async function NewProductPage({ params }: { params: Promise<{ slu
   const { slug } = await params;
   const store = await prisma.store.findUnique({
     where: { slug },
-    select: { id: true, business: { select: { category: true } } },
+    select: { id: true, currency: true, business: { select: { category: true } } },
   });
   const terminology = getBusinessTerminology(store?.business?.category);
   const categories = store
@@ -22,6 +22,7 @@ export default async function NewProductPage({ params }: { params: Promise<{ slu
         entityLabel={terminology.catalogSingular}
         categoryLabel={terminology.category}
         businessCategory={store?.business?.category}
+        storeCurrency={store?.currency}
       />
     </div>
   );

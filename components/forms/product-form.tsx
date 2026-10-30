@@ -80,6 +80,7 @@ export function ProductForm({
   entityLabel = "Product",
   categoryLabel = "Category",
   businessCategory,
+  storeCurrency,
 }: {
   storeSlug: string;
   categories: Category[];
@@ -90,6 +91,8 @@ export function ProductForm({
   // lib/catalog-item-presets.ts. Unrecognized/omitted niches fall back to a
   // sensible generic preset, so this form works for any business type.
   businessCategory?: string | null;
+  // The store's single currency (set from the vendor's country). Products inherit it.
+  storeCurrency?: string;
   product?: {
     id: string;
     name: string;
@@ -161,7 +164,7 @@ export function ProductForm({
       description: product?.description ?? "",
       price: product ? Number(product.price) : undefined,
       compareAtPrice: product?.compareAtPrice ? Number(product.compareAtPrice) : undefined,
-      currency: product?.currency ?? "NGN",
+      currency: product?.currency ?? storeCurrency ?? "NGN",
       images: product?.images ?? [],
       isPublished: product?.isPublished ?? true,
       quantity: product?.inventory?.quantity ?? 0,
@@ -225,7 +228,7 @@ export function ProductForm({
       if (k) attributes[k] = value;
     }
     const payload: ProductInput = { ...values, isPublished: publish, attributes };
-    const result = product ? await updateProduct(storeSlug, product.id, payload) : await createProduct(storeSlug, payload);
+    const result = product ? await updateProduct(storeSlug, product.id, payload, { baselineQuantity: product.inventory?.quantity }) : await createProduct(storeSlug, payload);
     setIsSubmitting(null);
 
     if (!result.success) {
@@ -654,7 +657,8 @@ export function ProductForm({
               </div>
               <div>
                 <label className="mb-1 block text-sm font-medium">Currency</label>
-                <input className="input" {...register("currency")} />
+                <input className="input bg-muted" readOnly {...register("currency")} />
+                <p className="mt-1 text-[11px] text-muted-foreground">Set by your store's country.</p>
               </div>
             </div>
           </section>
