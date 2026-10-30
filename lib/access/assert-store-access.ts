@@ -1,6 +1,6 @@
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { getStoreAccessRole, hasStorePermission, type StoreAccessRole } from "@/lib/access/store-access";
+import { getStoreAccessRole, hasStorePermission, canManageBillingAndStaff, type StoreAccessRole } from "@/lib/access/store-access";
 import type { StaffPermissionId } from "@/lib/access/staff-permissions";
 import type { Store, Business } from "@prisma/client";
 
@@ -66,4 +66,25 @@ export async function assertAnyStorePermission(
     last = r;
   }
   return last;
+}
+
+/**
+ * Owner-only gate (OWNER or PLATFORM_STAFF). MANAGER/STAFF are rejected
+ * regardless of granted permissions. Used for store URL / custom domain
+ * changes and other owner-only surfaces.
+ */
+export async function assertStoreOwnerAccess(slug: string): Promise<StoreAccessResult> {
+  const session = await auth();
+  if (!session?.user?.id) return { success: false, error: "You must be signed in." };
+
+  const store = await prisma.store.findUnique({ where: { slug }, include: { business: true } });
+  if (!store) return { success: false, error: "Store not found." };
+
+  const role = await getStoreAccessRole(session.user.id, session.user.role, store);
+  if (role === null) return { success: false, error: "You don't have access to this store." };
+  if (!canManageBillingAndStaff(role)) {
+    return { success: false, error: "Only the store owner can do this." };
+  }
+
+  return { success: true, store, role };
 }
