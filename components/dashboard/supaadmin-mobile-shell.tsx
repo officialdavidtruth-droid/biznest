@@ -111,7 +111,7 @@ export function SupaAdminMobileShell({
         {sidebarInner}
       </aside>
 
-      <div className="relative z-10 flex min-h-0 flex-1 flex-col">
+      <div className="relative z-10 flex min-h-0 min-w-0 flex-1 flex-col">
         <header
           className="flex shrink-0 items-center justify-between gap-3 border-b px-4 py-3 backdrop-blur sm:px-6"
           style={{
@@ -146,7 +146,7 @@ export function SupaAdminMobileShell({
             </span>
           </div>
         </header>
-        <main className="min-h-0 flex-1 overflow-y-auto overflow-x-hidden p-4 sm:p-6">{children}</main>
+        <main className="min-h-0 min-w-0 flex-1 overflow-y-auto overflow-x-auto p-4 sm:p-6">{children}</main>
 
         {/* Phone-only app tab bar (the full menu stays in the drawer via "More").
             A flex sibling rather than position:fixed, so it can never cover
