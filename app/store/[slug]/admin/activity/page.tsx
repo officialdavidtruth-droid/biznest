@@ -42,6 +42,10 @@ const ACTION_LABELS: Record<string, string> = {
   "automation.created": "created an automation",
   "automation.activated": "turned on an automation",
   "hr.employee_created": "added an employee",
+  "delivery_zone.created": "added a delivery zone",
+  "delivery_zone.updated": "edited a delivery zone",
+  "delivery_zone.deleted": "removed a delivery zone",
+  "delivery_zone.toggled": "turned a delivery zone on or off",
 };
 
 function describe(action: string): string {

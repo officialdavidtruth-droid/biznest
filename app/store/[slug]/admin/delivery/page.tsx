@@ -13,19 +13,17 @@ export default async function DeliveryPage({ params }: { params: Promise<{ slug:
     orderBy: [{ city: "asc" }, { fee: "asc" }],
   });
 
-  const firstProduct = await prisma.product.findFirst({
-    where: { storeId: store.id },
-    select: { currency: true },
-  });
-  const currency = firstProduct?.currency ?? "NGN";
+  // Store-level display currency (not whichever product happens to come first).
+  const currency = store.currency;
 
   return (
     <div className="max-w-3xl">
       <h1 className="mb-1 text-xl font-semibold">Delivery zones</h1>
       <p className="mb-6 text-sm text-muted-foreground">
         Define local areas you deliver to and what each costs — group them by city for
-        multi-city coverage (e.g. Abuja: Gwarinpa, Wuse, Maitama…). Buyers pick one at
-        checkout — no zone selected means no delivery fee is added.
+        multi-city coverage (e.g. Abuja: Gwarinpa, Wuse, Maitama…). Buyers must pick
+        one of your active areas at checkout, or choose pickup instead. If you
+        deactivate every zone, delivery is paused and buyers can only pick up.
       </p>
 
       <DeliveryZoneForm storeSlug={slug} currency={currency} />
@@ -46,7 +44,7 @@ export default async function DeliveryPage({ params }: { params: Promise<{ slug:
               <DeliveryZoneRow key={z.id} storeSlug={slug} currency={currency} zone={{ ...z, fee: Number(z.fee) }} />
             ))}
             {zones.length === 0 && (
-              <tr><td colSpan={5} className="px-4 py-10 text-center text-muted-foreground">No zones yet — add one above. Until then, checkout won't charge a delivery fee.</td></tr>
+              <tr><td colSpan={5} className="px-4 py-10 text-center text-muted-foreground">No zones yet — add one above. Until then, checkout won't add a delivery fee.</td></tr>
             )}
           </tbody>
         </table>

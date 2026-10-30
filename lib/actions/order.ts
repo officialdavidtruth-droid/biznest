@@ -471,15 +471,21 @@ export async function startCheckout(
   // Pickup never carries a zone or fee, even if a client sends one.
   const deliveryZoneId = data.fulfillment === "pickup" ? undefined : data.deliveryZoneId;
 
-  // A delivery order must say where it's going whenever the store has set up
-  // delivery areas — otherwise it would go out with a zero fee.
-  if (data.fulfillment === "delivery" && !deliveryZoneId) {
-    const hasZones = await prisma.deliveryZone.findFirst({
-      where: { storeId: store.id, isActive: true },
-      select: { id: true },
-    });
-    if (hasZones) {
+  // Anything that isn't an explicit pickup is treated as delivery. It must say
+  // where it's going whenever the store has set up delivery areas — otherwise
+  // it would go out with a zero fee (e.g. a client that omits `fulfillment`).
+  if (data.fulfillment !== "pickup" && !deliveryZoneId) {
+    const [activeZone, anyZone] = await Promise.all([
+      prisma.deliveryZone.findFirst({ where: { storeId: store.id, isActive: true }, select: { id: true } }),
+      prisma.deliveryZone.findFirst({ where: { storeId: store.id }, select: { id: true } }),
+    ]);
+    if (activeZone) {
       return { success: false, error: "Choose a delivery area to continue." };
+    }
+    // The merchant set up zones but deactivated all of them: delivery is paused,
+    // not free. (A store that never configured zones keeps the old behaviour.)
+    if (anyZone) {
+      return { success: false, error: "Delivery isn't available right now. Please choose pickup." };
     }
   }
 

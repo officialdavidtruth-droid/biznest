@@ -22,7 +22,8 @@ function optionLabel(z: DeliveryZoneOption, currency?: string) {
 export function DeliveryZoneOptions({ zones, currency }: { zones: DeliveryZoneOption[]; currency?: string }) {
   const grouped: { city: string | null; zones: DeliveryZoneOption[] }[] = [];
   for (const z of zones) {
-    const bucket = grouped.find((g) => g.city === z.city);
+    // Case-insensitive so legacy "Abuja" / "abuja" rows share one group.
+    const bucket = grouped.find((g) => (g.city ?? "").toLowerCase() === (z.city ?? "").toLowerCase());
     if (bucket) bucket.zones.push(z);
     else grouped.push({ city: z.city, zones: [z] });
   }

@@ -22,7 +22,7 @@ export function DeliveryZoneRow({ storeSlug, currency, zone }: { storeSlug: stri
   const [city, setCity] = useState(zone.city ?? "");
   const [name, setName] = useState(zone.name);
   const [fee, setFee] = useState(String(zone.fee));
-  const [eta, setEta] = useState(zone.estimatedMinutes ? String(zone.estimatedMinutes) : "");
+  const [eta, setEta] = useState(zone.estimatedMinutes != null ? String(zone.estimatedMinutes) : "");
 
   async function handleSave() {
     if (fee.trim() === "") {
@@ -65,8 +65,12 @@ export function DeliveryZoneRow({ storeSlug, currency, zone }: { storeSlug: stri
 
   async function handleToggle() {
     setIsSubmitting(true);
-    await toggleDeliveryZone(storeSlug, zone.id, !zone.isActive);
+    const result = await toggleDeliveryZone(storeSlug, zone.id, !zone.isActive);
     setIsSubmitting(false);
+    if (!result.success) {
+      toast.error(result.error);
+      return;
+    }
     router.refresh();
   }
 
@@ -98,7 +102,7 @@ export function DeliveryZoneRow({ storeSlug, currency, zone }: { storeSlug: stri
       <td className="px-4 py-3 text-muted-foreground">{zone.city ?? "—"}</td>
       <td className="px-4 py-3 font-medium">{zone.name}</td>
       <td className="px-4 py-3">{currency} {formatNumber(Number(zone.fee))}</td>
-      <td className="px-4 py-3 text-muted-foreground">{zone.estimatedMinutes ? `${zone.estimatedMinutes} min` : "—"}</td>
+      <td className="px-4 py-3 text-muted-foreground">{zone.estimatedMinutes != null ? `${zone.estimatedMinutes} min` : "—"}</td>
       <td className="px-4 py-3">
         <div className="flex items-center gap-2">
           <button

@@ -24,7 +24,9 @@ export const deliveryZoneSchema = z.object({
         .finite("Fee must be a number.")
         .min(0, "Fee must be zero or more.")
         .max(MAX_DELIVERY_FEE, "Fee is too large.")
-    ),
+    )
+    // Column is Decimal(12,2): round here so the saved value is what was validated.
+    .transform((n) => Math.round(n * 100) / 100),
   estimatedMinutes: z
     .string()
     .trim()
