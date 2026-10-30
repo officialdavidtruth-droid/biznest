@@ -5,6 +5,10 @@ export const checkoutSchema = z.object({
     .array(z.object({ productId: z.string().cuid(), variantId: z.string().cuid().optional(), quantity: z.coerce.number().int().min(1).max(999) }))
     .min(1, "Your cart is empty"),
   deliveryZoneId: z.string().cuid().optional(),
+  // Declared by checkout UIs that offer both modes. "delivery" requires a zone
+  // whenever the store has active ones; "pickup" never carries a zone or fee.
+  // Omitted = legacy clients (no enforcement).
+  fulfillment: z.enum(["delivery", "pickup"]).optional(),
   shippingAddress: z.object({
     fullName: z.string().min(2),
     phone: z.string().min(7),

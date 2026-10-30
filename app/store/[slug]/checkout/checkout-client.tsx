@@ -59,6 +59,7 @@ export function CheckoutClient({ slug, palette = DEFAULT_STORE_PALETTE }: { slug
   );
   const [zones, setZones] = useState<Zone[]>([]);
   const [zoneId, setZoneId] = useState<string>("");
+  const [fulfillment, setFulfillment] = useState<"delivery" | "pickup">("delivery");
 
   const [form, setForm] = useState({
     fullName: "", phone: "", address: "", city: "", state: "", country: "Nigeria",
@@ -68,7 +69,7 @@ export function CheckoutClient({ slug, palette = DEFAULT_STORE_PALETTE }: { slug
     listActiveDeliveryZones(slug).then(setZones);
   }, [slug]);
 
-  const selectedZone = zones.find((z) => z.id === zoneId);
+  const selectedZone = fulfillment === "delivery" ? zones.find((z) => z.id === zoneId) : undefined;
   const deliveryFee = selectedZone ? Number(selectedZone.fee) : 0;
   const total = subtotal + deliveryFee;
   const currency = cartItems[0]?.currency ?? "NGN";
@@ -76,12 +77,17 @@ export function CheckoutClient({ slug, palette = DEFAULT_STORE_PALETTE }: { slug
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (cartItems.length === 0) return;
+    if (zones.length > 0 && fulfillment === "delivery" && !zoneId) {
+      toast.error("Choose a delivery area, or switch to pickup.");
+      return;
+    }
 
     setIsSubmitting(true);
     const result = await submitCheckout({
       slug,
       items: cartItems,
-      deliveryZoneId: zoneId || undefined,
+      deliveryZoneId: fulfillment === "delivery" ? zoneId || undefined : undefined,
+      fulfillment: zones.length > 0 ? fulfillment : undefined,
       shippingAddress: form,
       idempotencyKey,
     });
@@ -193,16 +199,38 @@ export function CheckoutClient({ slug, palette = DEFAULT_STORE_PALETTE }: { slug
                   <Truck className="h-4 w-4" style={{ color: ACCENT }} />
                   <h2 style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }} className="text-base font-bold">Delivery</h2>
                 </div>
-                <label style={{ opacity: 0.6 }} className="mb-1.5 block text-xs font-semibold uppercase tracking-wide">Delivery area</label>
-                <select
-                  value={zoneId}
-                  onChange={(e) => setZoneId(e.target.value)}
-                  style={{ background: SURFACE, border: `1px solid ${INK}22`, color: INK }}
-                  className="w-full rounded-lg px-4 py-2.5 text-sm outline-none focus:border-[#0041C8]"
-                >
-                  <option value="">Pickup / no delivery fee</option>
-                  <DeliveryZoneOptions zones={zones} />
-                </select>
+                <div className="mb-3 grid grid-cols-2 gap-2" role="radiogroup" aria-label="Fulfilment method">
+                  {(["delivery", "pickup"] as const).map((mode) => (
+                    <button
+                      key={mode}
+                      type="button"
+                      role="radio"
+                      aria-checked={fulfillment === mode}
+                      onClick={() => setFulfillment(mode)}
+                      style={{ border: `1px solid ${fulfillment === mode ? ACCENT : `${INK}22`}`, background: fulfillment === mode ? `${ACCENT}14` : SURFACE, color: INK }}
+                      className="rounded-lg px-4 py-2.5 text-sm font-semibold"
+                    >
+                      {mode === "delivery" ? "Delivery" : "Pickup"}
+                    </button>
+                  ))}
+                </div>
+                {fulfillment === "delivery" ? (
+                  <>
+                    <label style={{ opacity: 0.6 }} className="mb-1.5 block text-xs font-semibold uppercase tracking-wide">Delivery area</label>
+                    <select
+                      value={zoneId}
+                      onChange={(e) => setZoneId(e.target.value)}
+                      required
+                      style={{ background: SURFACE, border: `1px solid ${INK}22`, color: INK }}
+                      className="w-full rounded-lg px-4 py-2.5 text-sm outline-none focus:border-[#0041C8]"
+                    >
+                      <option value="">Select delivery area</option>
+                      <DeliveryZoneOptions zones={zones} currency={currency} />
+                    </select>
+                  </>
+                ) : (
+                  <p style={{ opacity: 0.6 }} className="text-sm">You&apos;ll collect your order from the store — no delivery fee.</p>
+                )}
               </div>
             )}
 

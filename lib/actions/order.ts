@@ -468,13 +468,28 @@ export async function startCheckout(
 
   let deliveryFeeInput = 0;
 
-  if (data.deliveryZoneId) {
+  // Pickup never carries a zone or fee, even if a client sends one.
+  const deliveryZoneId = data.fulfillment === "pickup" ? undefined : data.deliveryZoneId;
+
+  // A delivery order must say where it's going whenever the store has set up
+  // delivery areas — otherwise it would go out with a zero fee.
+  if (data.fulfillment === "delivery" && !deliveryZoneId) {
+    const hasZones = await prisma.deliveryZone.findFirst({
+      where: { storeId: store.id, isActive: true },
+      select: { id: true },
+    });
+    if (hasZones) {
+      return { success: false, error: "Choose a delivery area to continue." };
+    }
+  }
+
+  if (deliveryZoneId) {
     const zone =
       await prisma.deliveryZone.findFirst(
         {
           where: {
             id:
-              data.deliveryZoneId,
+              deliveryZoneId,
             storeId: store.id,
             isActive: true,
           },
@@ -585,7 +600,7 @@ export async function startCheckout(
         commission,
         total,
         deliveryZoneId:
-          data.deliveryZoneId ??
+          deliveryZoneId ??
           null,
         deliveryFee,
         currency:

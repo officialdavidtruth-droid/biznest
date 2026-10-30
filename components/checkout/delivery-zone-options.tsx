@@ -15,11 +15,11 @@ export type DeliveryZoneOption = {
   estimatedMinutes: number | null;
 };
 
-function optionLabel(z: DeliveryZoneOption) {
-  return `${z.name} — ${formatNumber(Number(z.fee))}${z.estimatedMinutes ? ` (~${z.estimatedMinutes} min)` : ""}`;
+function optionLabel(z: DeliveryZoneOption, currency?: string) {
+  return `${z.name} — ${currency ? `${currency} ` : ""}${formatNumber(Number(z.fee))}${z.estimatedMinutes ? ` (~${z.estimatedMinutes} min)` : ""}`;
 }
 
-export function DeliveryZoneOptions({ zones }: { zones: DeliveryZoneOption[] }) {
+export function DeliveryZoneOptions({ zones, currency }: { zones: DeliveryZoneOption[]; currency?: string }) {
   const grouped: { city: string | null; zones: DeliveryZoneOption[] }[] = [];
   for (const z of zones) {
     const bucket = grouped.find((g) => g.city === z.city);
@@ -34,14 +34,14 @@ export function DeliveryZoneOptions({ zones }: { zones: DeliveryZoneOption[] }) 
           <optgroup key={g.city} label={g.city}>
             {g.zones.map((z) => (
               <option key={z.id} value={z.id}>
-                {optionLabel(z)}
+                {optionLabel(z, currency)}
               </option>
             ))}
           </optgroup>
         ) : (
           g.zones.map((z) => (
             <option key={z.id} value={z.id}>
-              {optionLabel(z)}
+              {optionLabel(z, currency)}
             </option>
           ))
         )

@@ -25,6 +25,10 @@ export function DeliveryZoneRow({ storeSlug, currency, zone }: { storeSlug: stri
   const [eta, setEta] = useState(zone.estimatedMinutes ? String(zone.estimatedMinutes) : "");
 
   async function handleSave() {
+    if (fee.trim() === "") {
+      toast.error("Fee is required.");
+      return;
+    }
     setIsSubmitting(true);
     const formData = new FormData();
     formData.set("city", city);
@@ -73,7 +77,7 @@ export function DeliveryZoneRow({ storeSlug, currency, zone }: { storeSlug: stri
           <div className="grid grid-cols-2 gap-2 sm:grid-cols-5">
             <input value={city} onChange={(e) => setCity(e.target.value)} placeholder="City (optional)" className="rounded-md border px-3 py-1.5 text-sm" />
             <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Zone name" className="rounded-md border px-3 py-1.5 text-sm" />
-            <input value={fee} onChange={(e) => setFee(e.target.value)} type="number" min="0" step="0.01" placeholder={`Fee (${currency})`} className="rounded-md border px-3 py-1.5 text-sm" />
+            <input value={fee} onChange={(e) => setFee(e.target.value)} type="number" min="0" step="0.01" placeholder={`Fee (${currency})`} required className="rounded-md border px-3 py-1.5 text-sm" />
             <input value={eta} onChange={(e) => setEta(e.target.value)} type="number" min="0" placeholder="ETA (mins)" className="rounded-md border px-3 py-1.5 text-sm" />
             <div className="flex gap-2">
               <button onClick={handleSave} disabled={isSubmitting || !name.trim()} className="flex-1 rounded-md bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground disabled:opacity-50">

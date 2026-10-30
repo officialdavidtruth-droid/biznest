@@ -3,6 +3,7 @@
 import { prisma } from "@/lib/prisma";
 import { revalidatePath } from "next/cache";
 import type { ActionResult } from "@/types/actions";
+import { parseDeliveryZoneForm } from "@/lib/validations/delivery-zone";
 import { assertStorePermission } from "@/lib/access/assert-store-access";
 
 // Delivery zones live under the store's Settings area in the nav (see
@@ -16,13 +17,9 @@ export async function createDeliveryZone(slug: string, formData: FormData): Prom
   const access = await assertStoreAccess(slug);
   if (!access.success) return { success: false, error: access.error };
 
-  const city = String(formData.get("city") ?? "").trim() || null;
-  const name = String(formData.get("name") ?? "").trim();
-  const fee = Number(formData.get("fee") ?? 0);
-  const estimatedMinutes = formData.get("estimatedMinutes") ? Number(formData.get("estimatedMinutes")) : null;
-
-  if (!name) return { success: false, error: "Zone name is required." };
-  if (!(fee >= 0)) return { success: false, error: "Fee must be zero or more." };
+  const parsed = parseDeliveryZoneForm(formData);
+  if (!parsed.success) return { success: false, error: parsed.error };
+  const { city, name, fee, estimatedMinutes } = parsed.data;
 
   await prisma.deliveryZone.create({
     data: { storeId: access.store.id, city, name, fee, estimatedMinutes },
@@ -36,13 +33,9 @@ export async function updateDeliveryZone(slug: string, zoneId: string, formData:
   const access = await assertStoreAccess(slug);
   if (!access.success) return { success: false, error: access.error };
 
-  const city = String(formData.get("city") ?? "").trim() || null;
-  const name = String(formData.get("name") ?? "").trim();
-  const fee = Number(formData.get("fee") ?? 0);
-  const estimatedMinutes = formData.get("estimatedMinutes") ? Number(formData.get("estimatedMinutes")) : null;
-
-  if (!name) return { success: false, error: "Zone name is required." };
-  if (!(fee >= 0)) return { success: false, error: "Fee must be zero or more." };
+  const parsed = parseDeliveryZoneForm(formData);
+  if (!parsed.success) return { success: false, error: parsed.error };
+  const { city, name, fee, estimatedMinutes } = parsed.data;
 
   const result = await prisma.deliveryZone.updateMany({
     where: { id: zoneId, storeId: access.store.id },
