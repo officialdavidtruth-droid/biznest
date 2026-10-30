@@ -24,6 +24,7 @@ vi.mock("@/lib/access/assert-store-access", () => ({
 }));
 
 import { getCustomer360 } from "@/lib/actions/customers";
+import { assertStorePermission } from "@/lib/access/assert-store-access";
 
 const WALKIN = "pos-walkin-s1@biznest.internal";
 const order = (id: string, total: number, buyer: { email: string; name: string; phone?: string | null }, extra: Record<string, unknown> = {}) => ({
@@ -241,5 +242,47 @@ describe("getCustomer360 service bookings", () => {
     expect(r.customers).toHaveLength(2);
     const ada = r.customers.find((c) => c.email === "ada@example.com")!;
     expect(ada.ordersList.map((o) => o.channel)).toEqual(["BOOKING", "ONLINE"]);
+  });
+});
+
+describe("getCustomer360 currency", () => {
+  const asStore = (store: Record<string, unknown>) =>
+    vi.mocked(assertStorePermission).mockResolvedValueOnce({ success: true, role: "OWNER", store: { id: "s1", slug: "shop", business: { sellsProducts: true, offersServices: false }, ...store } } as never);
+
+  it("defaults to NGN and reports no mixed currencies for a normal store", async () => {
+    profiles.mockResolvedValue([]);
+    orders.mockResolvedValue([order("o1", 1000, { email: "a@x.com", name: "A" })]);
+    const r = await getCustomer360("shop");
+    expect(r.currency).toBe("NGN");
+    expect(r.locale).toBeNull();
+    expect(r.mixedCurrencies).toBeNull();
+  });
+
+  it("passes the store's own currency and locale through so non-NGN stores are not shown in naira", async () => {
+    asStore({ currency: "GHS", locale: "en-GH" });
+    profiles.mockResolvedValue([]);
+    orders.mockResolvedValue([order("o1", 1000, { email: "a@x.com", name: "A" }, { currency: "GHS" })]);
+    const r = await getCustomer360("shop");
+    expect(r.currency).toBe("GHS");
+    expect(r.locale).toBe("en-GH");
+    expect(r.mixedCurrencies).toBeNull();
+  });
+
+  it("flags counted orders or bookings recorded in a currency other than the store's", async () => {
+    asStore({ currency: "GHS" });
+    profiles.mockResolvedValue([]);
+    orders.mockResolvedValue([order("o1", 1000, { email: "a@x.com", name: "A" }, { currency: "NGN" })]);
+    const r = await getCustomer360("shop");
+    expect(r.mixedCurrencies).toEqual(["GHS", "NGN"]);
+  });
+
+  it("does not let a refunded order in another currency trigger the warning", async () => {
+    asStore({ currency: "GHS" });
+    profiles.mockResolvedValue([]);
+    orders.mockResolvedValue([
+      order("o1", 1000, { email: "a@x.com", name: "A" }, { currency: "GHS" }),
+      order("o2", 500, { email: "a@x.com", name: "A" }, { currency: "NGN", status: "REFUNDED" }),
+    ]);
+    expect((await getCustomer360("shop")).mixedCurrencies).toBeNull();
   });
 });

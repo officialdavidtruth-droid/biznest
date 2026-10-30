@@ -5,6 +5,7 @@ import { assertStorePermission } from "@/lib/access/assert-store-access";
 import { SELLER_VISIBLE_ORDER_STATUSES } from "@/lib/constants/order";
 import { walkInEmail } from "@/lib/walk-in-customer";
 import { phoneKey } from "@/lib/phone";
+import { findMixedCurrencies } from "@/lib/currency-guard";
 
 export type Customer360Order = {
   id: string;
@@ -71,11 +72,18 @@ export type Customer360Result = {
   // Anonymous POS sales (no customer recorded). Reported separately so they
   // don't appear as one giant "Walk-in customer" and skew customer metrics.
   walkIn: { orders: number; spent: number };
+  // A store operates in one currency (see lib/store-currency.ts), so amounts are
+  // formatted in it. If any counted order/booking was recorded in a different
+  // currency (e.g. the store's currency was changed later), these are listed and
+  // the UI warns that totals are not converted.
+  currency: string;
+  locale: string | null;
+  mixedCurrencies: string[] | null;
 };
 
 export async function getCustomer360(slug: string): Promise<Customer360Result> {
   const access = await assertStorePermission(slug, "customers");
-  if (!access.success) return { customers: [], sellsProducts: true, offersServices: false, walkIn: { orders: 0, spent: 0 } };
+  if (!access.success) return { customers: [], sellsProducts: true, offersServices: false, walkIn: { orders: 0, spent: 0 }, currency: "NGN", locale: null, mixedCurrencies: null };
   const { sellsProducts, offersServices } = access.store.business;
 
   const [profiles, orders, bookings, folioTotals] = await Promise.all([
@@ -143,6 +151,8 @@ export async function getCustomer360(slug: string): Promise<Customer360Result> {
   const walkInAddr = walkInEmail(access.store.id);
   const isWalkInBuyer = (email: string | null | undefined) => norm(email) === walkInAddr;
   const walkIn = { orders: 0, spent: 0 };
+  const storeCurrency = (access.store.currency || "NGN").toUpperCase();
+  const currenciesSeen = new Set<string>();
 
   const profileById = new Map(profiles.map((p) => [p.id, p]));
   const profileByIdentity = new Map<string, string>();
@@ -190,6 +200,7 @@ export async function getCustomer360(slug: string): Promise<Customer360Result> {
     const countsAsRevenue = !NON_REVENUE_STATUSES.has(o.status);
     if (isWalkInBuyer(o.buyer.email) && !o.customerProfileId) {
       if (countsAsRevenue) {
+        currenciesSeen.add(o.currency);
         walkIn.orders += 1;
         walkIn.spent += Number(o.total);
       }
@@ -198,6 +209,7 @@ export async function getCustomer360(slug: string): Promise<Customer360Result> {
     const b = getBucket(o);
     const total = Number(o.total);
     if (countsAsRevenue) {
+      currenciesSeen.add(o.currency);
       b.orders += 1; b.spent += total;
       if (o.channel === "POS") b.posOrders += 1; else b.onlineOrders += 1;
       if (!b.lastPurchase || o.createdAt > b.lastPurchase) b.lastPurchase = o.createdAt;
@@ -238,6 +250,7 @@ export async function getCustomer360(slug: string): Promise<Customer360Result> {
     const counts = bk.paymentStatus === "PAID" && bk.status !== "CANCELLED";
     const serviceName = bk.service?.name ?? "Booking";
     if (counts) {
+      currenciesSeen.add(bk.paymentCurrency);
       b.orders += 1; b.spent += amount; b.bookingCount += 1;
       if (!b.lastPurchase || bk.createdAt > b.lastPurchase) b.lastPurchase = bk.createdAt;
       if (!b.firstPurchase || bk.createdAt < b.firstPurchase) b.firstPurchase = bk.createdAt;
@@ -288,5 +301,7 @@ export async function getCustomer360(slug: string): Promise<Customer360Result> {
       roomChargesPaid: Math.round(b.roomPaid * 100) / 100, roomChargesOpen: Math.round(b.roomOpen * 100) / 100 }))
     .sort((a,b) => b.spent-a.spent || a.name.localeCompare(b.name));
 
-  return { customers, sellsProducts, offersServices, walkIn: { orders: walkIn.orders, spent: Math.round(walkIn.spent * 100) / 100 } };
+  return { customers, sellsProducts, offersServices, walkIn: { orders: walkIn.orders, spent: Math.round(walkIn.spent * 100) / 100 },
+    currency: storeCurrency, locale: access.store.locale ?? null,
+    mixedCurrencies: findMixedCurrencies([storeCurrency, ...currenciesSeen]) };
 }
