@@ -3,7 +3,7 @@ import Link from "next/link";
 import { getStoreBranding } from "@/lib/actions/store-branding";
 import { getAccountCopy } from "@/lib/account-copy";
 import { prisma } from "@/lib/prisma";
-import { OrdersListContent } from "../../orders/page";
+import { OrdersListContent } from "../../orders/orders-list-content";
 import { VelouraAccountHero } from "@/components/storefront/veloura-account-shell";
 import { getHotelContent } from "@/lib/hotel-content";
 
