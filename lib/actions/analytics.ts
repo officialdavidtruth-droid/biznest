@@ -82,7 +82,16 @@ const PAID_STATUSES: OrderStatus[] = ["PAID", "IN_PROGRESS", "DELIVERED", "COMPL
  * the FnB dashboard. "Yesterday" is the same elapsed window of the previous
  * local day so the deltas compare like with like.
  */
-export async function getDashboardInsights(storeId: string, slug: string): Promise<DashboardInsights> {
+export async function getDashboardInsights(
+  storeId: string,
+  slug: string,
+  // The "BizNest recommends" signals (best seller, returning-customer rate,
+  // abandoned carts, low stock, reviews, coupons) cost six extra queries, two
+  // of them unbounded. The overview doesn't show them, so they're opt-in:
+  // pass { recommendations: true } from a screen that renders them.
+  opts: { recommendations?: boolean } = {},
+): Promise<DashboardInsights> {
+  const wantRecs = opts.recommendations === true;
   const access = await assertStorePermission(slug, "analytics");
   if (!access.success || access.store.id !== storeId) {
     throw new Error(access.success ? "Store access mismatch." : access.error);
@@ -119,46 +128,56 @@ export async function getDashboardInsights(storeId: string, slug: string): Promi
       where: { storeId, status: { in: PAID_STATUSES }, createdAt: { gte: since24h } },
       _sum: { total: true },
     }),
-    prisma.orderItem.groupBy({
-      by: ["productId"],
-      where: { productId: { not: null }, order: { storeId, status: { in: PAID_STATUSES } } },
-      _sum: { quantity: true },
-      orderBy: { _sum: { quantity: "desc" } },
-      take: 1,
-    }),
-    prisma.order.findMany({
-      where: { storeId, status: { in: PAID_STATUSES } },
-      select: { buyerId: true },
-    }),
+    wantRecs
+      ? prisma.orderItem.groupBy({
+          by: ["productId"],
+          where: { productId: { not: null }, order: { storeId, status: { in: PAID_STATUSES } } },
+          _sum: { quantity: true },
+          orderBy: { _sum: { quantity: "desc" } },
+          take: 1,
+        })
+      : Promise.resolve([]),
+    wantRecs
+      ? prisma.order.findMany({
+          where: { storeId, status: { in: PAID_STATUSES } },
+          select: { buyerId: true },
+        })
+      : Promise.resolve([]),
     // A checkout was started (an Order row exists) but never completed, and
     // it's been long enough that it's not just mid-checkout right now —
     // the real-world definition of an abandoned cart on this schema.
-    prisma.order.count({
-      where: { storeId, status: "PENDING_PAYMENT", createdAt: { lte: new Date(Date.now() - 60 * 60 * 1000), gte: since7d } },
-    }),
-    prisma.product.findMany({
-      where: {
-        storeId,
-        isPublished: true,
-        OR: [
-          { hasVariants: false, inventory: { quantity: { gt: 0 } } },
-          { hasVariants: true, variants: { some: { isActive: true, quantity: { gt: 0 } } } },
-        ],
-      },
-      select: {
-        id: true,
-        name: true,
-        hasVariants: true,
-        inventory: { select: { quantity: true, lowStockThreshold: true } },
-        variants: { where: { isActive: true }, select: { quantity: true, lowStockThreshold: true } },
-      },
-    }),
-    prisma.product.count({
-      where: { storeId, isPublished: true, reviews: { none: {} } },
-    }),
+    wantRecs
+      ? prisma.order.count({
+          where: { storeId, status: "PENDING_PAYMENT", createdAt: { lte: new Date(Date.now() - 60 * 60 * 1000), gte: since7d } },
+        })
+      : Promise.resolve(0),
+    wantRecs
+      ? prisma.product.findMany({
+          where: {
+            storeId,
+            isPublished: true,
+            OR: [
+              { hasVariants: false, inventory: { quantity: { gt: 0 } } },
+              { hasVariants: true, variants: { some: { isActive: true, quantity: { gt: 0 } } } },
+            ],
+          },
+          select: {
+            id: true,
+            name: true,
+            hasVariants: true,
+            inventory: { select: { quantity: true, lowStockThreshold: true } },
+            variants: { where: { isActive: true }, select: { quantity: true, lowStockThreshold: true } },
+          },
+        })
+      : Promise.resolve([]),
+    wantRecs
+      ? prisma.product.count({
+          where: { storeId, isPublished: true, reviews: { none: {} } },
+        })
+      : Promise.resolve(0),
     // Coupon has no createdAt field, so we can't check "created in the last
     // 7 days" — fall back to whether an active coupon exists at all.
-    prisma.coupon.findFirst({ where: { storeId, isActive: true }, select: { id: true } }),
+    wantRecs ? prisma.coupon.findFirst({ where: { storeId, isActive: true }, select: { id: true } }) : Promise.resolve(null),
     prisma.order.count({ where: { storeId, status: { in: PAID_STATUSES }, createdAt: { gte: since48h, lt: yesterdayEnd } } }),
     prisma.order.aggregate({
       where: { storeId, status: { in: PAID_STATUSES }, createdAt: { gte: since48h, lt: yesterdayEnd } },
@@ -205,63 +224,65 @@ export async function getDashboardInsights(storeId: string, slug: string): Promi
   const conversionRate = visitorsToday >= 20 ? Math.round((ordersToday / visitorsToday) * 1000) / 10 : null;
 
   const recommendations: Recommendation[] = [];
+  if (wantRecs) {
 
-  if (conversionRate !== null && conversionRate < 5 && productsMissingReviews > 0) {
-    recommendations.push({
-      id: "low-conversion-reviews",
-      severity: "warning",
-      message: `Your store received ${formatNumber(visitorsToday)} visitors but only ${conversionRate}% purchased. Add product reviews to improve conversion.`,
-      actionLabel: "Review products",
-      actionHref: `/${slug}/admin/reviews`,
-    });
-  }
+    if (conversionRate !== null && conversionRate < 5 && productsMissingReviews > 0) {
+      recommendations.push({
+        id: "low-conversion-reviews",
+        severity: "warning",
+        message: `Your store received ${formatNumber(visitorsToday)} visitors but only ${conversionRate}% purchased. Add product reviews to improve conversion.`,
+        actionLabel: "Review products",
+        actionHref: `/${slug}/admin/reviews`,
+      });
+    }
 
-  const lowStockBest = bestProduct
-    ? lowStockProducts.find((p) =>
-        p.id === bestProduct!.id &&
-        (p.hasVariants
-          ? p.variants.some((variant) => variant.quantity <= variant.lowStockThreshold)
-          : Boolean(p.inventory && p.inventory.quantity <= p.inventory.lowStockThreshold))
-      )
-    : null;
-  if (lowStockBest) {
-    recommendations.push({
-      id: "best-product-low-stock",
-      severity: "warning",
-      message: `Your best-selling product, ${bestProduct!.name}, is running low on stock.`,
-      actionLabel: "Restock now",
-      actionHref: `/${slug}/admin/inventory`,
-    });
-  }
+    const lowStockBest = bestProduct
+      ? lowStockProducts.find((p) =>
+          p.id === bestProduct!.id &&
+          (p.hasVariants
+            ? p.variants.some((variant) => variant.quantity <= variant.lowStockThreshold)
+            : Boolean(p.inventory && p.inventory.quantity <= p.inventory.lowStockThreshold))
+        )
+      : null;
+    if (lowStockBest) {
+      recommendations.push({
+        id: "best-product-low-stock",
+        severity: "warning",
+        message: `Your best-selling product, ${bestProduct!.name}, is running low on stock.`,
+        actionLabel: "Restock now",
+        actionHref: `/${slug}/admin/inventory`,
+      });
+    }
 
-  if (abandonedCartCount > 0 && supportsAbandonedCheckout(access.store.business.category, access.store.business)) {
-    recommendations.push({
-      id: "abandoned-carts",
-      severity: "warning",
-      message: `You have ${abandonedCartCount} abandoned cart${abandonedCartCount === 1 ? "" : "s"} from the last 7 days. Following up can recover some of that revenue.`,
-      actionLabel: "View orders",
-      actionHref: `/${slug}/admin/orders`,
-    });
-  }
+    if (abandonedCartCount > 0 && supportsAbandonedCheckout(access.store.business.category, access.store.business)) {
+      recommendations.push({
+        id: "abandoned-carts",
+        severity: "warning",
+        message: `You have ${abandonedCartCount} abandoned cart${abandonedCartCount === 1 ? "" : "s"} from the last 7 days. Following up can recover some of that revenue.`,
+        actionLabel: "View orders",
+        actionHref: `/${slug}/admin/orders`,
+      });
+    }
 
-  if (!recentCoupon) {
-    recommendations.push({
-      id: "no-promo-this-week",
-      severity: "info",
-      message: "You don't have an active promotion right now. A short-term coupon is one of the fastest ways to bring visitors back.",
-      actionLabel: "Create a coupon",
-      actionHref: `/${slug}/admin/apps/coupons-gift-cards`,
-    });
-  }
+    if (!recentCoupon) {
+      recommendations.push({
+        id: "no-promo-this-week",
+        severity: "info",
+        message: "You don't have an active promotion right now. A short-term coupon is one of the fastest ways to bring visitors back.",
+        actionLabel: "Create a coupon",
+        actionHref: `/${slug}/admin/apps/coupons-gift-cards`,
+      });
+    }
 
-  if (productsMissingReviews > 0 && !recommendations.some((r) => r.id === "low-conversion-reviews")) {
-    recommendations.push({
-      id: "missing-reviews",
-      severity: "info",
-      message: `${productsMissingReviews} product${productsMissingReviews === 1 ? " has" : "s have"} no reviews yet. Reviews are one of the strongest trust signals for new buyers.`,
-      actionLabel: "View products",
-      actionHref: `/${slug}/admin/products`,
-    });
+    if (productsMissingReviews > 0 && !recommendations.some((r) => r.id === "low-conversion-reviews")) {
+      recommendations.push({
+        id: "missing-reviews",
+        severity: "info",
+        message: `${productsMissingReviews} product${productsMissingReviews === 1 ? " has" : "s have"} no reviews yet. Reviews are one of the strongest trust signals for new buyers.`,
+        actionLabel: "View products",
+        actionHref: `/${slug}/admin/products`,
+      });
+    }
   }
 
   return {
