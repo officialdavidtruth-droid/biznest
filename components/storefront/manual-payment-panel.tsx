@@ -73,28 +73,52 @@ export function ManualPaymentPanel({
   // Watch for the vendor's confirmation and move the customer on as soon as it lands.
   useEffect(() => {
     let stopped = false;
+    let delay = 5000;
+    let timer: number | undefined;
     const query = reference ? `reference=${encodeURIComponent(reference)}` : `orderId=${encodeURIComponent(orderId ?? "")}`;
     async function check() {
-      if (stopped || document.hidden) return;
+      if (stopped) return;
+      if (document.hidden) return schedule();
       try {
         const res = await fetch(`/api/store/${encodeURIComponent(slug)}/payment-status?${query}`, { cache: "no-store" });
-        if (!res.ok) return;
-        const json = (await res.json()) as { paid?: boolean; redirectUrl?: string | null };
-        if (!json.paid || stopped) return;
-        stopped = true;
-        toast.success("Payment confirmed!");
-        if (json.redirectUrl) router.push(json.redirectUrl);
-        else router.refresh();
+        if (res.ok) {
+          const json = (await res.json()) as { paid?: boolean; closed?: boolean; redirectUrl?: string | null };
+          if (stopped) return;
+          if (json.paid) {
+            stopped = true;
+            toast.success("Payment confirmed!");
+            if (json.redirectUrl) router.push(json.redirectUrl);
+            else router.refresh();
+            return;
+          }
+          if (json.closed) {
+            stopped = true;
+            toast.error("This payment is no longer open. Please contact the store.");
+            router.refresh();
+            return;
+          }
+        }
       } catch {
         /* try again on the next tick */
       }
+      // Back off gently (5s -> 30s) so an idle tab doesn't hammer the server for hours.
+      delay = Math.min(30000, Math.round(delay * 1.25));
+      schedule();
     }
-    const timer = window.setInterval(check, 5000);
-    const onVisible = () => { if (!document.hidden) void check(); };
+    function schedule() {
+      if (!stopped) timer = window.setTimeout(check, delay);
+    }
+    const onVisible = () => {
+      if (document.hidden || stopped) return;
+      delay = 5000;
+      window.clearTimeout(timer);
+      void check();
+    };
+    schedule();
     document.addEventListener("visibilitychange", onVisible);
     return () => {
       stopped = true;
-      window.clearInterval(timer);
+      window.clearTimeout(timer);
       document.removeEventListener("visibilitychange", onVisible);
     };
   }, [slug, reference, orderId, router]);

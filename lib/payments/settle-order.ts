@@ -78,7 +78,9 @@ export async function settleOrderPayment(input: {
     orderId: order.id,
     reference,
     provider,
-    amount: Number(order.total),
+    // What the customer actually paid: the order total less any quote deposit already settled.
+    amount: await getOrderPayableNaira(order.id, order.total),
+    orderTotal: Number(order.total),
     currency: order.currency,
   });
   await emitWebhookEvent("ORDER_PAID", order.storeId, { orderId: order.id, status: "PAID" });

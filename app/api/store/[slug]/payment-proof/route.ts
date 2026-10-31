@@ -40,10 +40,31 @@ function looksLikeProof(buf: Buffer, type: string): boolean {
     case "application/msword":
     case "application/vnd.ms-excel": return buf.length > 8 && head(8).equals(Buffer.from([0xd0, 0xcf, 0x11, 0xe0, 0xa1, 0xb1, 0x1a, 0xe1]));
     case "application/vnd.openxmlformats-officedocument.wordprocessingml.document":
-    case "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": return buf.length > 4 && buf[0] === 0x50 && buf[1] === 0x4b;
+    case "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": {
+      // A zip local-file header, plus the part every Office Open XML package must contain
+      // (its name sits uncompressed in the zip directory), so a random .zip renamed .docx is refused.
+      if (!(buf.length > 4 && buf[0] === 0x50 && buf[1] === 0x4b && buf[2] === 0x03 && buf[3] === 0x04)) return false;
+      if (!buf.includes("[Content_Types].xml")) return false;
+      return type.includes("wordprocessingml") ? buf.includes("word/") : buf.includes("xl/");
+    }
     case "text/plain":
     case "text/csv": return !buf.subarray(0, 4096).includes(0); // text has no NUL bytes
     default: return false;
+  }
+}
+
+/** Best-effort removal of a proof the customer replaced, so old receipts don't pile up in storage. Only our own proof folder is ever touched. */
+async function removeOldProof(url: string | null | undefined): Promise<void> {
+  if (!url) return;
+  try {
+    const m = url.match(/\/(image|raw)\/upload\/(?:v\d+\/)?(biznest\/payment-proofs\/[^?#]+)$/);
+    if (!m) return;
+    const resourceType = m[1] as "image" | "raw";
+    // Images are addressed without their extension; raw files keep it.
+    const publicId = resourceType === "image" ? m[2].replace(/\.[A-Za-z0-9]+$/, "") : m[2];
+    await cloudinary.uploader.destroy(publicId, { resource_type: resourceType });
+  } catch {
+    // leftover file is harmless; never fail the upload over cleanup
   }
 }
 
@@ -103,7 +124,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ slug: s
   const order = await prisma.order.findFirst({
     where: { id: orderId, buyerId: session.user.id, store: { slug } },
     select: {
-      id: true, status: true, paymentProvider: true, total: true, currency: true, storeId: true,
+      id: true, status: true, paymentProvider: true, total: true, currency: true, storeId: true, paymentProofUrl: true,
       store: { select: { name: true, slug: true, business: { select: { userId: true } } } },
     },
   });
@@ -129,7 +150,12 @@ export async function POST(req: Request, { params }: { params: Promise<{ slug: s
     where: { id: order.id, status: "PENDING_PAYMENT", paymentProvider: "CASH" },
     data: { paymentProofUrl: url, paymentProofAt: new Date(), paymentProofNote: noteRaw || null },
   });
-  if (updated.count === 0) return NextResponse.json({ error: "This order was already confirmed." }, { status: 409 });
+  if (updated.count === 0) {
+    // Lost the race to a confirm: this upload is not attached to anything, so don't keep it.
+    await removeOldProof(url);
+    return NextResponse.json({ error: "This order was already confirmed." }, { status: 409 });
+  }
+  if (order.paymentProofUrl && order.paymentProofUrl !== url) await removeOldProof(order.paymentProofUrl);
 
   await notifyUser({
     userId: order.store.business.userId,
@@ -176,7 +202,7 @@ async function uploadTransferProof(req: Request, slug: string, reference: string
   const payment = await prisma.payment.findFirst({
     where: { reference, provider: "CASH", purpose: { not: "ORDER" }, store: { slug } },
     select: {
-      id: true, status: true, amount: true, currency: true, storeId: true,
+      id: true, status: true, amount: true, currency: true, storeId: true, proofUrl: true,
       store: { select: { name: true, slug: true, business: { select: { userId: true } } } },
     },
   });
@@ -200,7 +226,11 @@ async function uploadTransferProof(req: Request, slug: string, reference: string
     where: { id: payment.id, status: "PENDING", provider: "CASH" },
     data: { proofUrl: url, proofAt: new Date(), proofNote: noteRaw || null },
   });
-  if (updated.count === 0) return NextResponse.json({ error: "This payment was already confirmed." }, { status: 409 });
+  if (updated.count === 0) {
+    await removeOldProof(url);
+    return NextResponse.json({ error: "This payment was already confirmed." }, { status: 409 });
+  }
+  if (payment.proofUrl && payment.proofUrl !== url) await removeOldProof(payment.proofUrl);
 
   await notifyUser({
     userId: payment.store.business.userId,

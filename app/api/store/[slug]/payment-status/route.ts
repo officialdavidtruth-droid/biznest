@@ -18,14 +18,18 @@ export async function GET(req: Request, { params }: { params: Promise<{ slug: st
 
   const payment = await prisma.payment.findFirst({
     where: { provider: "CASH", store: { slug }, ...(reference ? { reference } : { orderId: orderId!, purpose: "ORDER" }) },
-    select: { status: true, purpose: true, orderId: true, bookingId: true },
+    select: { status: true, purpose: true, orderId: true, bookingId: true, order: { select: { status: true } } },
     orderBy: { createdAt: "desc" },
   });
   if (!payment) return NextResponse.json({ error: "Payment not found." }, { status: 404 });
 
   const paid = payment.status === "SUCCESSFUL";
+  // Nothing more can arrive for a payment that is no longer open (cancelled order, failed/refunded
+  // payment), so tell the page to stop polling. A cancelled order can still be confirmed late by the
+  // vendor, but the customer is told to contact the store rather than being polled forever.
+  const closed = !paid && (payment.status !== "PENDING" || payment.order?.status === "CANCELLED");
   return NextResponse.json(
-    { paid, status: payment.status, redirectUrl: paid ? confirmationPath(slug, payment) : null },
+    { paid, closed, status: payment.status, redirectUrl: paid ? confirmationPath(slug, payment) : null },
     { headers: { "Cache-Control": "no-store" } }
   );
 }
