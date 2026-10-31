@@ -173,7 +173,12 @@ export default async function StoreAdminLayout({
             })}
           />
         )}
-        <div className="bn-admin-app flex flex-col bg-background text-foreground lg:flex-row">
+        {/* shrink-0: this row must always be as tall as its content. Its parents are flex
+            columns (root layout -> #bn-app-content -> theme wrapper), and a flex item
+            that is allowed to shrink can end up one screen tall while the page content
+            overflows it; the sticky sidebar then runs out of room and scrolls away
+            with the page, leaving blank space under it. */}
+        <div className="bn-admin-app flex shrink-0 flex-col bg-background text-foreground lg:flex-row">
           <DashboardSidebar
             slug={slug}
             storeName={store.name}
