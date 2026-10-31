@@ -1,26 +1,40 @@
 // Route: /store/[slug]/admin/products
 import Link from "next/link";
 import { prisma } from "@/lib/prisma";
-import { listProducts, getProductStats } from "@/lib/actions/product";
+import { listProductsPage, getProductStats, type ProductListQuery } from "@/lib/actions/product";
 import { ProductsTable } from "@/components/dashboard/products-table";
 import { BulkCsvPanel } from "@/components/dashboard/bulk-csv-panel";
 import { getBusinessTerminology } from "@/lib/business-terminology";
 import { Package, Layers3, CheckCircle2, CircleAlert, Plus, Upload, SlidersHorizontal } from "lucide-react";
 
-export default async function ProductsListPage({ params }: { params: Promise<{ slug: string }> }) {
+function one(v: string | string[] | undefined): string | undefined {
+  return Array.isArray(v) ? v[0] : v;
+}
+
+export default async function ProductsListPage({ params, searchParams }: { params: Promise<{ slug: string }>; searchParams: Promise<Record<string, string | string[] | undefined>> }) {
   const { slug } = await params;
-  const [products, stats, store] = await Promise.all([
-    listProducts(slug),
+  const sp = await searchParams;
+  const pick = <T extends string>(v: string | undefined, allowed: readonly T[]): T | undefined => (v && (allowed as readonly string[]).includes(v) ? (v as T) : undefined);
+  const query: ProductListQuery = {
+    q: one(sp.q)?.slice(0, 120),
+    categoryId: one(sp.category) || undefined,
+    status: pick(one(sp.status), ["published", "draft", "archived"] as const),
+    availability: pick(one(sp.avail), ["available", "low", "out"] as const),
+    page: Number(one(sp.page)) || 1,
+    size: Number(one(sp.size)) || 20,
+  };
+  const [list, stats, store] = await Promise.all([
+    listProductsPage(slug, query),
     getProductStats(slug),
     prisma.store.findUnique({ where: { slug }, select: { id: true, name: true, business: { select: { category: true } } } }),
   ]);
+  const products = list.rows;
   const terminology = getBusinessTerminology(store?.business.category);
   const categories = store ? await prisma.category.findMany({ where: { storeId: store.id, type: "PRODUCT" }, orderBy: { name: "asc" } }) : [];
   // Counts come from the database, not from the (capped) list below.
-  const totalCount = stats?.total ?? products.length;
-  const activeCount = stats?.published ?? products.filter((p) => p.isPublished).length;
+  const totalCount = stats?.total ?? list.total;
+  const activeCount = stats?.published ?? 0;
   const outOfStock = stats?.outOfStock ?? 0;
-  const loadedActive = products.filter((p) => !p.archivedAt).length;
   const categoryCounts = categories.map((c) => ({ ...c, count: stats?.byCategory[c.id] ?? 0 }));
   const genericCategory = terminology.category;
 
@@ -52,11 +66,6 @@ export default async function ProductsListPage({ params }: { params: Promise<{ s
               <div><h2 className="text-base font-bold">{terminology.catalog}</h2><p className="mt-1 text-xs text-muted-foreground">Manage your {terminology.catalog.toLowerCase()} and their availability</p></div>
               <button className="rounded-lg border bg-background p-2.5 text-muted-foreground"><SlidersHorizontal className="h-4 w-4" /></button>
             </div>
-            {totalCount > loadedActive && (
-              <p className="mb-3 rounded-lg border bg-[var(--bn-admin-surface)] px-3 py-2 text-xs text-muted-foreground">
-                Showing your {loadedActive} newest of {totalCount} {terminology.catalog.toLowerCase()}. Use the CSV export to see them all.
-              </p>
-            )}
             <div id="bulk-import" className="mb-4 scroll-mt-24"><BulkCsvPanel storeSlug={slug} /></div>
             <ProductsTable
               storeSlug={slug}
@@ -71,11 +80,13 @@ export default async function ProductsListPage({ params }: { params: Promise<{ s
                   ? null
                   : p.hasVariants
                   ? { quantity: p.variants.reduce((sum, variant) => sum + (variant.isActive ? variant.quantity : 0), 0) }
-                  : p.inventory ? { quantity: p.inventory.quantity } : null,
+                  : p.inventory ? { quantity: p.inventory.quantity, lowStockThreshold: p.inventory.lowStockThreshold } : null,
                 orders: p._count.orderItems,
               }))}
               categories={categories.map((c) => ({ id: c.id, name: c.name }))}
               terminology={terminology}
+              query={{ q: query.q ?? "", categoryId: query.categoryId ?? "", status: query.status ?? "", availability: query.availability ?? "" }}
+              pagination={{ page: list.page, size: list.size, total: list.total, totalPages: list.totalPages }}
             />
           </section>
         </div>

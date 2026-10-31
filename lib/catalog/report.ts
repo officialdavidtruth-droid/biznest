@@ -21,9 +21,13 @@ export async function reportCatalogChange(
   actor?: { id?: string | null; name?: string | null; email?: string | null; role: string }
 ): Promise<void> {
   try {
-    const resolved =
-      actor ??
-      (await auth().then((s) => ({ id: s?.user?.id, name: s?.user?.name, email: s?.user?.email, role: s?.user?.role ?? "unknown" })));
+    let resolved: { id?: string | null; name?: string | null; email?: string | null; role: string };
+    if (actor) {
+      resolved = actor;
+    } else {
+      const session = await auth();
+      resolved = { id: session?.user?.id, name: session?.user?.name, email: session?.user?.email, role: session?.user?.role ?? "unknown" };
+    }
     await logStoreActivity({ storeId, actor: resolved, action: change.action, target: change.target, metadata: change.metadata });
   } catch {
     // see above

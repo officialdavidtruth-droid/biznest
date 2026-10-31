@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useMemo, useState } from "react";
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { Search, SlidersHorizontal } from "lucide-react";
 import { ProductRowActions } from "@/components/dashboard/product-row-actions";
@@ -33,13 +33,19 @@ export function ProductsTable({
   products,
   categories,
   terminology,
+  query,
+  pagination,
 }: {
   storeSlug: string;
   products: ProductRow[];
   categories: Category[];
   terminology: BusinessTerminology;
+  /** Current server-side filters (from the URL). */
+  query: { q: string; categoryId: string; status: string; availability: string };
+  pagination: { page: number; size: number; total: number; totalPages: number };
 }) {
   const router = useRouter();
+  const pathname = usePathname();
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [isSaving, setIsSaving] = useState(false);
 
@@ -48,12 +54,12 @@ export function ProductsTable({
   const [categoryInput, setCategoryInput] = useState("");
   const [publishInput, setPublishInput] = useState<"" | "publish" | "unpublish">("");
 
-  const [search, setSearch] = useState("");
-  const [categoryFilter, setCategoryFilter] = useState("");
-  const [statusFilter, setStatusFilter] = useState<"" | "published" | "draft" | "archived">("");
-  const [availabilityFilter, setAvailabilityFilter] = useState<"" | "available" | "low" | "out">("");
-  const [page, setPage] = useState(1);
-  const [pageSize, setPageSize] = useState(8);
+  const [search, setSearch] = useState(query.q);
+  const currentPage = pagination.page;
+  const totalPages = pagination.totalPages;
+  const pageSize = pagination.size;
+  const rangeStart = pagination.total === 0 ? 0 : (currentPage - 1) * pageSize + 1;
+  const rangeEnd = Math.min(currentPage * pageSize, pagination.total);
 
   function availabilityOf(p: ProductRow): "available" | "low" | "out" {
     const qty = p.inventory?.quantity;
@@ -63,35 +69,20 @@ export function ProductsTable({
     return "available";
   }
 
-  const filtered = useMemo(() => {
-    return products.filter((p) => {
-      // Archived products only show under the Archived filter; every other view hides them.
-      if (statusFilter === "archived" ? !p.archived : p.archived) return false;
-      if (search.trim() && !p.name.toLowerCase().includes(search.trim().toLowerCase())) return false;
-      if (categoryFilter && p.category?.id !== categoryFilter) return false;
-      if (statusFilter === "published" && !p.isPublished) return false;
-      if (statusFilter === "draft" && p.isPublished) return false;
-      if (availabilityFilter && availabilityOf(p) !== availabilityFilter) return false;
-      return true;
-    });
-  }, [products, search, categoryFilter, statusFilter, availabilityFilter]);
-
-  // Selection can outlive a filter change. Bulk actions only ever touch rows that are both
-  // selected and currently visible, so nothing hidden by a filter gets edited unseen.
-  const visibleSelected = useMemo(() => filtered.filter((p) => selected.has(p.id)), [filtered, selected]);
-
-  const totalPages = Math.max(1, Math.ceil(filtered.length / pageSize));
-  const currentPage = Math.min(page, totalPages);
-  const paged = filtered.slice((currentPage - 1) * pageSize, currentPage * pageSize);
-  const rangeStart = filtered.length === 0 ? 0 : (currentPage - 1) * pageSize + 1;
-  const rangeEnd = Math.min(currentPage * pageSize, filtered.length);
-
-  function resetToFirstPage<T>(setter: (v: T) => void) {
-    return (v: T) => {
-      setter(v);
-      setPage(1);
-    };
+  // Filters and pages live in the URL and are applied by the server, so every product is reachable.
+  function go(changes: Record<string, string | number>) {
+    const params = new URLSearchParams();
+    const base: Record<string, string | number> = { q: query.q, category: query.categoryId, status: query.status, avail: query.availability, size: pageSize };
+    const next = { ...base, ...changes };
+    if (!("page" in changes)) delete (next as Record<string, unknown>).page;
+    for (const [k, v] of Object.entries(next)) if (v !== "" && v !== undefined && !(k === "size" && v === 20)) params.set(k, String(v));
+    const qs = params.toString();
+    router.push(qs ? `${pathname}?${qs}` : pathname);
   }
+
+  // Bulk actions only touch rows on the current page that are selected.
+  const visibleSelected = useMemo(() => products.filter((p) => selected.has(p.id)), [products, selected]);
+  const paged = products;
 
   const allSelected = paged.length > 0 && paged.every((p) => selected.has(p.id));
 
@@ -126,7 +117,8 @@ export function ProductsTable({
     const patches = visibleSelected.map((row) => row.id).map((productId) => ({
       productId,
       price: priceInput.trim() !== "" ? Number(priceInput) : undefined,
-      quantity: quantityInput.trim() !== "" ? Number(quantityInput) : undefined,
+      // Rows that don't track stock here (digital, rental) are skipped for the stock field.
+      quantity: quantityInput.trim() !== "" && products.find((p) => p.id === productId)?.inventory ? Number(quantityInput) : undefined,
       expectedQuantity: quantityInput.trim() !== "" ? products.find((p) => p.id === productId)?.inventory?.quantity : undefined,
       categoryId: categoryInput !== "" ? (categoryInput === "__none__" ? null : categoryInput) : undefined,
       isPublished: publishInput === "" ? undefined : publishInput === "publish",
@@ -157,15 +149,16 @@ export function ProductsTable({
           <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
           <input
             type="text"
-            placeholder={`Search ${terminology.catalog.toLowerCase()}...`}
+            placeholder={`Search ${terminology.catalog.toLowerCase()} (press Enter)...`}
             value={search}
-            onChange={(e) => resetToFirstPage(setSearch)(e.target.value)}
+            onChange={(e) => setSearch(e.target.value)}
+            onKeyDown={(e) => { if (e.key === "Enter") go({ q: search.trim() }); }}
             className="w-full rounded-lg border bg-background py-2.5 pl-9 pr-3 text-sm"
           />
         </div>
         <select
-          value={categoryFilter}
-          onChange={(e) => resetToFirstPage(setCategoryFilter)(e.target.value)}
+          value={query.categoryId}
+          onChange={(e) => go({ category: e.target.value })}
           className="rounded-lg border bg-background px-3 py-2.5 text-sm"
         >
           <option value="">All Categories</option>
@@ -174,8 +167,8 @@ export function ProductsTable({
           ))}
         </select>
         <select
-          value={statusFilter}
-          onChange={(e) => resetToFirstPage(setStatusFilter)(e.target.value as typeof statusFilter)}
+          value={query.status}
+          onChange={(e) => go({ status: e.target.value })}
           className="rounded-lg border bg-background px-3 py-2.5 text-sm"
         >
           <option value="">All Status</option>
@@ -184,8 +177,8 @@ export function ProductsTable({
           <option value="draft">Inactive</option>
         </select>
         <select
-          value={availabilityFilter}
-          onChange={(e) => resetToFirstPage(setAvailabilityFilter)(e.target.value as typeof availabilityFilter)}
+          value={query.availability}
+          onChange={(e) => go({ avail: e.target.value })}
           className="rounded-lg border bg-background px-3 py-2.5 text-sm"
         >
           <option value="">All Availability</option>
@@ -195,7 +188,7 @@ export function ProductsTable({
         </select>
         <button
           type="button"
-          onClick={() => { setSearch(""); setCategoryFilter(""); setStatusFilter(""); setAvailabilityFilter(""); setPage(1); }}
+          onClick={() => { setSearch(""); router.push(pathname); }}
           className="flex items-center gap-2 rounded-lg border bg-background px-3 py-2.5 text-sm font-medium text-muted-foreground hover:bg-[var(--bn-admin-surface)]"
         >
           <SlidersHorizontal className="h-4 w-4" /> Filter
@@ -340,7 +333,7 @@ export function ProductsTable({
             {paged.length === 0 && (
               <tr>
                 <td colSpan={8} className="px-4 py-10 text-center text-muted-foreground">
-                  {products.length === 0
+                  {pagination.total === 0 && !query.q && !query.categoryId && !query.status && !query.availability
                     ? `No ${terminology.catalog.toLowerCase()} yet. Add your first one to get your storefront started.`
                     : `No ${terminology.catalog.toLowerCase()} match your filters.`}
                 </td>
@@ -349,15 +342,15 @@ export function ProductsTable({
           </tbody>
         </table>
 
-        {filtered.length > 0 && (
+        {pagination.total > 0 && (
           <div className="flex flex-wrap items-center justify-between gap-3 border-t bg-background px-4 py-3 text-xs text-muted-foreground">
-            <span>Showing {rangeStart} to {rangeEnd} of {filtered.length} items</span>
+            <span>Showing {rangeStart} to {rangeEnd} of {pagination.total} items</span>
             <div className="flex items-center gap-3">
               <div className="flex items-center gap-1">
                 <button
                   type="button"
                   disabled={currentPage <= 1}
-                  onClick={() => setPage((p) => Math.max(1, p - 1))}
+                  onClick={() => go({ page: Math.max(1, currentPage - 1) })}
                   className="rounded-md border px-2 py-1 disabled:opacity-40"
                 >
                   ‹
@@ -376,7 +369,7 @@ export function ProductsTable({
                       <button
                         key={n}
                         type="button"
-                        onClick={() => setPage(n)}
+                        onClick={() => go({ page: n })}
                         className={`rounded-md border px-2.5 py-1 ${n === currentPage ? "border-primary bg-primary/10 font-semibold text-primary" : ""}`}
                       >
                         {n}
@@ -386,7 +379,7 @@ export function ProductsTable({
                 <button
                   type="button"
                   disabled={currentPage >= totalPages}
-                  onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+                  onClick={() => go({ page: Math.min(totalPages, currentPage + 1) })}
                   className="rounded-md border px-2 py-1 disabled:opacity-40"
                 >
                   ›
@@ -394,7 +387,7 @@ export function ProductsTable({
               </div>
               <select
                 value={pageSize}
-                onChange={(e) => { setPageSize(Number(e.target.value)); setPage(1); }}
+                onChange={(e) => go({ size: Number(e.target.value) })}
                 className="rounded-md border px-2 py-1"
               >
                 {PAGE_SIZE_OPTIONS.map((n) => (

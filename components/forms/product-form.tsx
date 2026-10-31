@@ -239,7 +239,8 @@ export function ProductForm({
       const k = key.trim();
       if (k) attributes[k] = value;
     }
-    const payload: ProductInput = { ...values, isPublished: publish, attributes };
+    // Editing: the plain Save keeps the current published state; only Save & Publish changes it.
+    const payload: ProductInput = { ...values, isPublished: product && !publish ? product.isPublished : publish, attributes };
     const result = product ? await updateProduct(storeSlug, product.id, payload, { baselineQuantity: product.inventory?.quantity }) : await createProduct(storeSlug, payload);
     setIsSubmitting(null);
 
@@ -281,7 +282,7 @@ export function ProductForm({
             onClick={handleSubmit((v) => submit(v, false))}
             className="flex items-center gap-1.5 rounded-lg border px-3.5 py-2 text-xs font-semibold hover:bg-muted disabled:opacity-60"
           >
-            <Save className="h-3.5 w-3.5" /> {isSubmitting === "draft" ? "Saving…" : "Save as Draft"}
+            <Save className="h-3.5 w-3.5" /> {isSubmitting === "draft" ? "Saving…" : product ? "Save" : "Save as Draft"}
           </button>
           <button
             type="button"

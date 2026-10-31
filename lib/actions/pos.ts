@@ -94,7 +94,7 @@ export async function getPosCatalog(slug: string): Promise<PosCatalogItem[]> {
 
   const [products, services] = await Promise.all([
     prisma.product.findMany({
-      where: { storeId: access.store.id, type: "PHYSICAL" },
+      where: { storeId: access.store.id, type: "PHYSICAL", archivedAt: null },
       include: { inventory: true, variants: { where: { isActive: true } } },
       orderBy: { name: "asc" },
     }),
@@ -329,10 +329,10 @@ export async function createPosSale(
 
   const [products, variants, services] = await Promise.all([
     productIds.length
-      ? prisma.product.findMany({ where: { id: { in: productIds }, storeId: store.id }, include: { inventory: true } })
+      ? prisma.product.findMany({ where: { id: { in: productIds }, storeId: store.id, archivedAt: null }, include: { inventory: true } })
       : Promise.resolve([]),
     variantIds.length
-      ? prisma.productVariant.findMany({ where: { id: { in: variantIds }, storeId: store.id }, include: { product: true } })
+      ? prisma.productVariant.findMany({ where: { id: { in: variantIds }, storeId: store.id, product: { archivedAt: null } }, include: { product: true } })
       : Promise.resolve([]),
     serviceIds.length
       ? prisma.service.findMany({ where: { id: { in: serviceIds }, storeId: store.id } })

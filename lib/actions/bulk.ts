@@ -259,6 +259,10 @@ export async function importProductsCsv(slug: string, csvText: string): Promise<
           const rowCompare = parseNum(r.compareAtPrice ?? "");
           const effectivePrice = rowPrice ?? Number(product.price);
           if (rowCompare != null && rowCompare <= effectivePrice) throw new Error("compareAtPrice must be higher than the price");
+          // A new price that reaches the existing compare-at price would leave an invalid pair the editor then rejects.
+          if (rowCompare == null && rowPrice != null && product.compareAtPrice != null && Number(product.compareAtPrice) <= rowPrice) {
+            throw new Error("price must stay below the existing compareAtPrice. Include a higher compareAtPrice too.");
+          }
           const rowQty = parseNum(r.quantity ?? "");
           if (rowQty != null && (rowQty < 0 || rowQty > MAX_QUANTITY)) throw new Error("quantity must be between 0 and 1,000,000");
           const rowCost = parseNum(r.costPrice ?? "");
@@ -429,7 +433,7 @@ export async function importProductsCsv(slug: string, csvText: string): Promise<
                 type: "PHYSICAL",
                 name: newName,
                 slug: productSlug,
-                description: newName,
+                description: newName.length >= 10 ? newName : `${newName} (imported item)`,
                 price: roundMoney(price),
                 compareAtPrice: compareAt != null ? roundMoney(compareAt) : null,
                 currency: access.store.currency,
@@ -541,7 +545,7 @@ export async function bulkUpdateProducts(slug: string, patches: BulkEditPatch[])
     await prisma.$transaction(async (tx) => {
     for (const patch of patches) {
       const product = byId.get(patch.productId);
-      if (!product) continue;
+      if (!product) throw new Error("One of the selected products no longer exists. Refresh the page.");
 
       const productData: Record<string, unknown> = {};
       const change: (typeof changes)[number] = { id: product.id, name: product.name };
@@ -549,6 +553,9 @@ export async function bulkUpdateProducts(slug: string, patches: BulkEditPatch[])
       if (patch.price != null && patch.price > 0) {
         if (patch.price > MAX_PRICE) throw new Error(`${product.name}: price is too large.`);
         const nextPrice = roundMoney(patch.price);
+        if (product.compareAtPrice != null && Number(product.compareAtPrice) <= nextPrice) {
+          throw new Error(`${product.name}: price must stay below its compare-at price (${Number(product.compareAtPrice)}). Edit the product to change both.`);
+        }
         productData.price = nextPrice;
         if (Number(product.price) !== nextPrice) change.price = { from: Number(product.price), to: nextPrice };
       }

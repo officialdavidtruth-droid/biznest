@@ -15,7 +15,7 @@ import { decidePublishAfterStockChange } from "@/lib/catalog/publish";
 import { correctInventoryQuantityTx } from "@/lib/catalog/stock";
 import { reportCatalogChange } from "@/lib/catalog/report";
 
-import type { Store, Business } from "@prisma/client";
+import type { Store, Business, Prisma } from "@prisma/client";
 
 type StoreAccessResult =
   | { success: true; store: Store & { business: Business } }
@@ -62,10 +62,13 @@ export async function listProducts(slug: string) {
   const access = await assertStoreAccess(slug);
   if (!access.success) return [];
 
-  return prisma.product.findMany({
-    // Archived products are included (flagged) so they can be restored; the table hides them by default.
-    where: { storeId: access.store.id },
-    include: { category: true, inventory: true, variants: { select: { quantity: true, isActive: true } }, _count: { select: { orderItems: true } } },
+  const include = { category: true, inventory: true, variants: { select: { quantity: true, isActive: true } }, _count: { select: { orderItems: true } } } as const;
+  // Archived products are listed (flagged) so they can be restored, but get their own
+  // window so they never use up the 300 active slots.
+  const archived = await prisma.product.findMany({ where: { storeId: access.store.id, archivedAt: { not: null } }, include, orderBy: { createdAt: "desc" }, take: 100 });
+  const active = await prisma.product.findMany({
+    where: { storeId: access.store.id, archivedAt: null },
+    include,
     orderBy: { createdAt: "desc" },
     // No pagination UI on this page yet -- bounded so a growing catalog
     // doesn't make the admin products list get slower every month. Raise
@@ -73,7 +76,77 @@ export async function listProducts(slug: string) {
     // exceeds 300 products.
     take: 300,
   });
+  return [...active, ...archived];
 }
+
+export type ProductListQuery = {
+  q?: string;
+  categoryId?: string;
+  status?: "published" | "draft" | "archived";
+  availability?: "available" | "low" | "out";
+  page?: number;
+  size?: number;
+};
+
+const PRODUCT_PAGE_SIZES = [8, 20, 50] as const;
+
+/**
+ * Server-side filtered, paginated product list for the admin Products page. Unlike
+ * listProducts (a bounded picker feed for other screens) this reaches every product,
+ * so catalogs of any size stay searchable and editable.
+ */
+export async function listProductsPage(slug: string, query: ProductListQuery = {}) {
+  const empty = { rows: [] as ProductListRow[], total: 0, page: 1, size: 20, totalPages: 1 };
+  const access = await assertStoreAccess(slug);
+  if (!access.success) return empty;
+  const storeId = access.store.id;
+  const size = (PRODUCT_PAGE_SIZES as readonly number[]).includes(query.size ?? 0) ? (query.size as number) : 20;
+
+  const where: Prisma.ProductWhereInput = { storeId, archivedAt: query.status === "archived" ? { not: null } : null };
+  const q = query.q?.trim();
+  if (q) where.name = { contains: q, mode: "insensitive" };
+  if (query.categoryId) where.categoryId = query.categoryId;
+  if (query.status === "published") where.isPublished = true;
+  if (query.status === "draft") where.isPublished = false;
+
+  if (query.availability) {
+    // Same rules the table badge uses: only physical products track stock; variant products
+    // use the sum of their active variants; no stock record counts as available.
+    const [items, variantProducts, variants] = await Promise.all([
+      prisma.inventoryItem.findMany({ where: { storeId, product: { type: "PHYSICAL", hasVariants: false } }, select: { productId: true, quantity: true, lowStockThreshold: true } }),
+      prisma.product.findMany({ where: { storeId, type: "PHYSICAL", hasVariants: true }, select: { id: true } }),
+      prisma.productVariant.findMany({ where: { storeId, isActive: true, product: { type: "PHYSICAL", hasVariants: true } }, select: { productId: true, quantity: true } }),
+    ]);
+    const out = new Set<string>();
+    const low = new Set<string>();
+    for (const i of items) {
+      if (i.quantity <= 0) out.add(i.productId);
+      else if (i.quantity <= i.lowStockThreshold) low.add(i.productId);
+    }
+    const sums = new Map<string, number>();
+    for (const v of variants) sums.set(v.productId, (sums.get(v.productId) ?? 0) + v.quantity);
+    for (const vp of variantProducts) if ((sums.get(vp.id) ?? 0) <= 0) out.add(vp.id);
+
+    if (query.availability === "out") where.id = { in: [...out] };
+    else if (query.availability === "low") where.id = { in: [...low] };
+    else where.id = { notIn: [...out, ...low] };
+  }
+
+  const total = await prisma.product.count({ where });
+  const totalPages = Math.max(1, Math.ceil(total / size));
+  const page = Math.min(Math.max(1, Math.floor(query.page ?? 1) || 1), totalPages);
+  const rows = await prisma.product.findMany({
+    where,
+    include: listInclude,
+    orderBy: [{ createdAt: "desc" }, { id: "asc" }],
+    skip: (page - 1) * size,
+    take: size,
+  });
+  return { rows, total, page, size, totalPages };
+}
+
+type ProductListRow = Prisma.ProductGetPayload<{ include: typeof listInclude }>;
+const listInclude = { category: true, inventory: true, variants: { select: { quantity: true, isActive: true } }, _count: { select: { orderItems: true } } } as const;
 
 /**
  * Accurate catalog counts straight from the database. listProducts is capped
@@ -272,6 +345,9 @@ export async function updateProduct(
     where: { id: productId, storeId: access.store.id },
   });
   if (!existing) return { success: false, error: "Product not found." };
+  if (existing.hasVariants && data.type !== existing.type) {
+    return { success: false, error: "This product has variants, so its type can't be changed. Remove the variants first.", fieldErrors: { type: ["Has variants"] } };
+  }
 
   const fileError = await checkDigitalRef(data.digitalFileUrl, existing.digitalFileUrl);
   if (fileError) return { success: false, error: fileError, fieldErrors: { digitalFileUrl: [fileError] } };
