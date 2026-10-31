@@ -18,7 +18,20 @@ export async function saveBuilderConfig(slug: string, config: BuilderConfig): Pr
   const access = await assertStoreAccess(slug);
   if (!access.success) return { success: false, error: access.error };
   const parsed = builderConfigSchema.safeParse(config);
-  if (!parsed.success) return { success: false, error: "Invalid website builder configuration." };
+  if (!parsed.success) {
+    // Show the specific rule that failed (the schema's own messages) instead of a generic error.
+    const issue = parsed.error.issues[0];
+    const path = issue?.path ?? [];
+    const sectionIdx = path[0] === "sections" && typeof path[1] === "number" ? path[1] : null;
+    const where = sectionIdx !== null ? `Section ${sectionIdx + 1} (${config.sections?.[sectionIdx]?.type ?? "unknown"}), ${String(path[3] ?? path[2] ?? "")}` : path.length ? String(path.join(" › ")) : "";
+    return { success: false, error: `${where ? where + ": " : ""}${issue?.message ?? "Invalid website builder configuration."}` };
+  }
+  // Drop blank entries so Features/FAQ never render empty cards and Gallery never stores "" URLs.
+  for (const section of parsed.data.sections) {
+    const st = section.settings;
+    if (st.items) st.items = st.items.filter((i) => i.title.trim());
+    if (st.images) st.images = st.images.filter((u) => u.trim());
+  }
 
   const current = (access.store.sectionOverrides as Record<string, unknown> | null) ?? {};
   await prisma.store.update({
@@ -28,8 +41,6 @@ export async function saveBuilderConfig(slug: string, config: BuilderConfig): Pr
         ...current,
         builderVersion: 1,
         builder: parsed.data,
-        order: parsed.data.sections.map((s) => s.id),
-        hidden: parsed.data.sections.filter((s) => !s.visible).map((s) => s.id),
       },
     },
   });

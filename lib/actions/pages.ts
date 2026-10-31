@@ -13,7 +13,7 @@ import { assertStorePermission } from "@/lib/access/assert-store-access";
 const UNREACHABLE_PAGE_SLUGS = new Set([
   "home", "account", "admin", "amenities", "book", "booking", "brands", "cart", "catalog", "categories",
   "category", "checkout", "deals", "dining", "events", "experiences", "facilities", "favorites",
-  "new-arrivals", "offers", "orders", "payment", "portfolio", "pricing", "product", "pwa-icon",
+  "new-arrivals", "offers", "orders", "pay", "payment", "portfolio", "pricing", "product", "pwa-icon",
   "reservations", "review", "reviews", "rooms", "search", "service", "services", "start-project",
   "support", "wallet-pay", "manifest.webmanifest", "robots.txt", "sitemap.xml", "sw.js", "api",
 ]);

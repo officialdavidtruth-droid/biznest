@@ -3,14 +3,11 @@ import { getCanonicalBusinessType } from "@/lib/business-identity";
 import { prisma } from "@/lib/prisma";
 import { notFound, redirect } from "next/navigation";
 import { CustomizerClient } from "@/components/dashboard/customizer-client";
-import { resolveStoreTheme, type Section } from "@/lib/template-themes";
+import { resolveStoreTheme } from "@/lib/template-themes";
 import type { HeroOverrides, StoryOverrides } from "@/lib/actions/store";
 import { resolveHomeRenderer } from "@/lib/storefront/resolve-renderer";
 import { getSavedBuilder } from "@/lib/storefront/saved-builder";
 import { defaultBuilderConfig, readBuilderConfig, type BuilderConfig } from "@/lib/builder-config";
-
-const TEMPLATE_DEFAULT_SECTIONS: Section[] = ["hero", "catalog", "about", "testimonials", "contact"];
-const OPT_IN_SECTIONS: Section[] = ["stats", "newsletter"];
 
 // The single entry point for editing what a store's public website looks
 // like — section order/visibility and a live preview — laid out like the
@@ -26,12 +23,7 @@ export default async function CustomizePage({ params }: { params: Promise<{ slug
 
   const pages = await prisma.storePage.findMany({ where: { storeId: store.id }, orderBy: { updatedAt: "desc" } });
 
-  const overrides = store.sectionOverrides as { order?: Section[]; hidden?: Section[] } | null;
-  const templateSections = (store.template?.config as { sections?: Section[] } | null)?.sections ?? TEMPLATE_DEFAULT_SECTIONS;
-  const baseOrder = overrides?.order?.length ? overrides.order : templateSections;
-  const missingOptIns = OPT_IN_SECTIONS.filter((s) => !baseOrder.includes(s));
-  const initialOrder = [...baseOrder, ...missingOptIns];
-  const initialHidden = overrides?.hidden ?? missingOptIns;
+  const overrides = store.sectionOverrides as { builder?: unknown } | null;
 
   // Content (hero + story) needs the same data the old standalone
   // /website-editor page used, now folded into this screen as a "Content"
@@ -48,8 +40,6 @@ export default async function CustomizePage({ params }: { params: Promise<{ slug
       slug={slug}
       storeName={store.name}
       currentTemplateName={store.template?.name ?? null}
-      initialOrder={initialOrder}
-      initialHidden={initialHidden}
       theme={theme}
       heroImage={heroImage}
       heroOverrides={(store.heroOverrides as HeroOverrides | null) ?? {}}

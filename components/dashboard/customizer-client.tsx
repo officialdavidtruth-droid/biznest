@@ -6,14 +6,13 @@ import {
   X, Monitor, Tablet, Smartphone, LayoutTemplate, Rows3, ChevronRight,
   ArrowUp, ArrowDown, RotateCw, PenSquare, FileText, Trash2, Eye, EyeOff, Plus, ChevronDown,
 } from "lucide-react";
-import { updateSectionOverrides } from "@/lib/actions/sections";
 import { saveStorePage, toggleStorePagePublished, deleteStorePage } from "@/lib/actions/pages";
 import { SUGGESTED_PAGE_SLUGS, SUGGESTED_PAGE_TITLES } from "@/lib/actions/pages-constants";
-import type { Section, TemplateTheme } from "@/lib/template-themes";
+import type { TemplateTheme } from "@/lib/template-themes";
 import type { HeroOverrides, StoryOverrides } from "@/lib/actions/store";
 import { ContentPanel } from "@/components/dashboard/content-panel";
 import { saveBuilderConfig, updateStoreSeo, resetBuilderToTemplate } from "@/lib/actions/builder";
-import { BUILDER_SECTION_TYPES, type BuilderConfig, type BuilderSection, type BuilderSectionItem, type BuilderSectionType } from "@/lib/builder-config";
+import { BUILDER_SECTION_TYPES, readBuilderConfig, type BuilderConfig, type BuilderSection, type BuilderSectionItem, type BuilderSectionType } from "@/lib/builder-config";
 import { defaultFaqItems, defaultFeatureItems } from "@/lib/builder-defaults";
 import { PAGE_FORMAT_HINTS } from "@/lib/storefront/owner-page-format";
 import { buildIndustryHomepage, getBusinessExperience } from "@/lib/business-experience";
@@ -22,24 +21,6 @@ export type StorePageRow = { id: string; slug: string; title: string; body: stri
 
 type Device = "desktop" | "tablet" | "mobile";
 const DEVICE_WIDTH: Record<Device, string> = { desktop: "100%", tablet: "768px", mobile: "390px" };
-
-const SECTION_LABELS: Record<Section, string> = {
-  hero: "Hero",
-  catalog: "Catalog (products/services)",
-  about: "About",
-  stats: "Stats bar (listings, rating, orders)",
-  features: "Why choose us (feature grid)",
-  categories: "Shop by category",
-  deal: "Deal banner",
-  testimonials: "Testimonials",
-  newsletter: "Email signup",
-  contact: "Contact",
-  gallery: "Gallery",
-  amenities: "Amenities",
-  availability: "Availability / booking",
-  map: "Map / location",
-  packages: "Packages / pricing",
-};
 
 type Panel = "sections" | "content" | "design" | "seo" | "pages" | null;
 
@@ -56,8 +37,6 @@ export function CustomizerClient({
   slug,
   storeName,
   currentTemplateName,
-  initialOrder,
-  initialHidden,
   theme,
   heroImage,
   heroOverrides,
@@ -77,8 +56,6 @@ export function CustomizerClient({
   slug: string;
   storeName: string;
   currentTemplateName: string | null;
-  initialOrder: Section[];
-  initialHidden: Section[];
   theme: TemplateTheme;
   heroImage: string | null;
   heroOverrides: HeroOverrides;
@@ -98,9 +75,9 @@ export function CustomizerClient({
   builderPublished?: boolean;
 }) {
   const [panel, setPanel] = useState<Panel>(null);
+  // Below the lg breakpoint the controls and the preview cannot sit side by side, so show one at a time.
+  const [mobileView, setMobileView] = useState<"edit" | "preview">("edit");
   const [device, setDevice] = useState<Device>("desktop");
-  const [order, setOrder] = useState<Section[]>(initialOrder);
-  const [hidden, setHidden] = useState<Set<Section>>(new Set(initialHidden));
   const [isSaving, setIsSaving] = useState(false);
   const [published, setPublished] = useState(builderPublished);
   const [previewKey, setPreviewKey] = useState(0);
@@ -114,6 +91,51 @@ export function CustomizerClient({
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const builderRef = useRef<BuilderConfig>(initialBuilder);
   const previewReadyRef = useRef(false);
+
+  // Unsaved-changes tracking: `savedJson` is the last published (or loaded) layout; any difference is an unpublished draft.
+  const [savedJson, setSavedJson] = useState(() => JSON.stringify(initialBuilder));
+  const [restoredDraft, setRestoredDraft] = useState(false);
+  const dirty = useMemo(() => JSON.stringify(builder) !== savedJson, [builder, savedJson]);
+  const draftKey = `biznest-builder-draft:${slug}`;
+
+  // Bring back an unpublished draft left by a reload or closed tab.
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem(draftKey);
+      if (!raw) return;
+      const draft = readBuilderConfig(JSON.parse(raw));
+      if (draft && JSON.stringify(draft) !== JSON.stringify(initialBuilder)) {
+        setBuilder(draft);
+        setSelectedSectionId(draft.sections[0]?.id ?? null);
+        setRestoredDraft(true);
+      } else localStorage.removeItem(draftKey);
+    } catch { /* storage unavailable or corrupt: start from the saved layout */ }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Keep the draft in this browser while it differs from what is published.
+  useEffect(() => {
+    try {
+      if (dirty) localStorage.setItem(draftKey, JSON.stringify(builder));
+      else localStorage.removeItem(draftKey);
+    } catch { /* ignore */ }
+  }, [builder, dirty, draftKey]);
+
+  // Warn before closing or reloading the tab with unpublished changes.
+  useEffect(() => {
+    if (!dirty) return;
+    const warn = (e: BeforeUnloadEvent) => { e.preventDefault(); e.returnValue = ""; };
+    window.addEventListener("beforeunload", warn);
+    return () => window.removeEventListener("beforeunload", warn);
+  }, [dirty]);
+
+  function discardDraft() {
+    if (!confirm("Discard your unpublished changes and go back to the published layout?")) return;
+    const saved = JSON.parse(savedJson) as BuilderConfig;
+    setBuilder(saved);
+    setSelectedSectionId(saved.sections[0]?.id ?? null);
+    setRestoredDraft(false);
+  }
 
   const previewUrl = useMemo(() => `/store/${slug}?preview=1`, [slug]);
 
@@ -148,6 +170,7 @@ export function CustomizerClient({
       if (event.data?.type === "BIZNEST_CUSTOMIZER_SELECT_SECTION" && typeof event.data.sectionId === "string") {
         setSelectedSectionId(event.data.sectionId);
         setPanel("sections");
+        setMobileView("edit");
       }
     }
     window.addEventListener("message", handlePreviewReady);
@@ -163,41 +186,6 @@ export function CustomizerClient({
     setPreviewKey((k) => k + 1);
   }
 
-  function move(index: number, dir: -1 | 1) {
-    const target = index + dir;
-    if (target < 1 || target >= order.length) return;
-    const next = [...order];
-    [next[index], next[target]] = [next[target], next[index]];
-    setOrder(next);
-  }
-
-  function toggleHidden(s: Section) {
-    const next = new Set(hidden);
-    if (next.has(s)) next.delete(s);
-    else next.add(s);
-    setHidden(next);
-  }
-
-  async function saveSections() {
-    setIsSaving(true);
-    try {
-      const formData = new FormData();
-      for (const s of order) formData.append("order", s);
-      for (const s of hidden) formData.append(`hidden-${s}`, "on");
-      const result = await updateSectionOverrides(slug, formData);
-      if (!result.success) {
-        toast.error(result.error);
-        return;
-      }
-      toast.success("Layout published");
-      refreshPreview();
-    } catch {
-      toast.error("Something went wrong publishing the layout. Please try again.");
-    } finally {
-      setIsSaving(false);
-    }
-  }
-
   async function publishBuilder(next = builder) {
     setIsSaving(true);
     try {
@@ -205,6 +193,8 @@ export function CustomizerClient({
       if (!result.success) { toast.error(result.error); return; }
       toast.success("Website published");
       setBuilder(next);
+      setSavedJson(JSON.stringify(next));
+      setRestoredDraft(false);
       setPublished(true);
       refreshPreview();
     } catch {
@@ -234,6 +224,7 @@ export function CustomizerClient({
   }
 
   function addBuilderSection(type: BuilderSectionType) {
+    if (builder.sections.length >= 30) { toast.error("A homepage can have at most 30 sections."); return; }
     const id = `${type}-${Date.now()}`;
     const section: BuilderSection = { id, type, visible: true, settings: defaultSectionSettings(type) };
     setBuilder((current) => ({ ...current, sections: [...current.sections, section] }));
@@ -244,6 +235,7 @@ export function CustomizerClient({
     const target = builder.sections.find((s) => s.id === id);
     // Template-generated sections have ids like "hero-0", so protect the hero by type, not by id.
     if (!target || target.type === "hero") return;
+    if (!confirm(`Remove this ${pretty(target.type)} section? Use Discard to undo before you publish.`)) return;
     const remaining = builder.sections.filter((s) => s.id !== id);
     setBuilder((current) => ({ ...current, sections: current.sections.filter((s) => s.id !== id) }));
     setSelectedSectionId(remaining[0]?.id ?? null);
@@ -258,9 +250,17 @@ export function CustomizerClient({
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex bg-muted/20">
+    <div className="fixed inset-0 z-50 flex flex-col bg-muted/20 lg:flex-row">
+      {/* Small screens: switch between the controls and the live preview */}
+      <div className="flex shrink-0 gap-1 border-b border-border bg-background p-1.5 lg:hidden" role="tablist" aria-label="Editor view">
+        {(["edit", "preview"] as const).map((v) => (
+          <button key={v} type="button" role="tab" aria-selected={mobileView === v} onClick={() => setMobileView(v)} className={`flex-1 rounded-md px-3 py-2 text-xs font-semibold ${mobileView === v ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:bg-muted"}`}>
+            {v === "edit" ? "Edit" : "Preview"}{v === "edit" && dirty ? " •" : ""}
+          </button>
+        ))}
+      </div>
       {/* Left control panel */}
-      <div className="flex h-full w-[380px] shrink-0 flex-col border-r border-border bg-background">
+      <div className={`${mobileView === "edit" ? "flex" : "hidden"} min-h-0 w-full flex-1 flex-col bg-background lg:flex lg:h-full lg:w-[380px] lg:flex-none lg:shrink-0 lg:border-r lg:border-border`}>
         {/* Top bar */}
         <div className="flex items-center gap-2 border-b border-border px-4 py-3">
           {/* Plain <a>, not <Link>: this whole page is a full-screen preview
@@ -274,6 +274,8 @@ export function CustomizerClient({
               full page load always renders the destination cleanly. */}
           <a
             href={`/${slug}/admin`}
+            aria-label="Close editor"
+            onClick={(e) => { if (dirty && !confirm("You have unpublished changes. Leave anyway? (They are kept in this browser for next time.)")) e.preventDefault(); }}
             className="flex h-8 w-8 items-center justify-center rounded-md text-muted-foreground hover:bg-muted"
           >
             <X className="h-4 w-4" />
@@ -282,6 +284,12 @@ export function CustomizerClient({
             <p className="truncate text-sm font-semibold leading-tight">Customize</p>
             <p className="truncate text-xs text-muted-foreground">{storeName}</p>
           </div>
+          {dirty && (
+            <div className="ml-auto flex shrink-0 items-center gap-2">
+              <span className="rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-semibold text-amber-900">Unpublished changes</span>
+              <button type="button" onClick={discardDraft} className="text-[10px] text-muted-foreground underline hover:text-foreground">Discard</button>
+            </div>
+          )}
         </div>
 
         {panel === null ? (
@@ -302,6 +310,9 @@ export function CustomizerClient({
                 Change
               </a>
             </div>
+            {restoredDraft && dirty && (
+              <div className="mb-2 rounded-md border border-amber-300 bg-amber-50 px-3 py-2 text-[11px] text-amber-900">Restored your unpublished draft from this browser. Publish to make it live, or Discard to go back.</div>
+            )}
             {templateHasOwnHomepage && (
               <div className="mb-2 rounded-md border border-amber-300 bg-amber-50 px-3 py-3 text-[11px] text-amber-900">
                 {published ? (
@@ -328,7 +339,7 @@ export function CustomizerClient({
               </div>
               <div className="mt-2 flex flex-wrap gap-1">{experience.journey.map((step) => <span key={step} className="rounded-full border border-border bg-background px-2 py-1 text-[10px] text-muted-foreground">{step}</span>)}</div>
               <button
-                onClick={() => { const next = buildIndustryHomepage(businessCategory, storeName, storyDescription, heroImage, { sellsProducts, offersServices }); setBuilder(next); setSelectedSectionId(next.sections[0]?.id ?? null); setPanel("sections"); }}
+                onClick={() => { if (!confirm("Replace your current draft with the recommended homepage? Unpublished edits will be lost.")) return; const next = buildIndustryHomepage(businessCategory, storeName, storyDescription, heroImage, { sellsProducts, offersServices }); setBuilder(next); setSelectedSectionId(next.sections[0]?.id ?? null); setPanel("sections"); }}
                 className="mt-3 w-full rounded-md border border-primary/30 bg-background px-3 py-2 text-xs font-semibold hover:bg-muted"
               >
                 Use recommended homepage
@@ -410,9 +421,9 @@ export function CustomizerClient({
                         <div className="flex items-center justify-between border-t px-2 py-1.5">
                           <label className="flex items-center gap-1.5 text-[11px] text-muted-foreground"><input type="checkbox" checked={section.visible} onChange={(e) => updateBuilderSection(section.id, { visible: e.target.checked })} /> Visible</label>
                           <div className="flex gap-1">
-                            <button type="button" onClick={() => moveBuilderSection(index, -1)} disabled={index === 0} className="rounded p-1 hover:bg-muted disabled:opacity-30"><ArrowUp className="h-3 w-3" /></button>
-                            <button type="button" onClick={() => moveBuilderSection(index, 1)} disabled={index === builder.sections.length - 1} className="rounded p-1 hover:bg-muted disabled:opacity-30"><ArrowDown className="h-3 w-3" /></button>
-                            {section.type !== "hero" && <button type="button" onClick={() => removeBuilderSection(section.id)} className="rounded p-1 text-destructive hover:bg-destructive/10"><Trash2 className="h-3 w-3" /></button>}
+                            <button type="button" onClick={() => moveBuilderSection(index, -1)} aria-label="Move section up" disabled={index === 0} className="rounded p-1 hover:bg-muted disabled:opacity-30"><ArrowUp className="h-3 w-3" /></button>
+                            <button type="button" onClick={() => moveBuilderSection(index, 1)} aria-label="Move section down" disabled={index === builder.sections.length - 1} className="rounded p-1 hover:bg-muted disabled:opacity-30"><ArrowDown className="h-3 w-3" /></button>
+                            {section.type !== "hero" && <button type="button" onClick={() => removeBuilderSection(section.id)} aria-label="Remove section" className="rounded p-1 text-destructive hover:bg-destructive/10"><Trash2 className="h-3 w-3" /></button>}
                           </div>
                         </div>
                         {selectedSectionId === section.id && <SectionSettingsEditor section={section} mode={experience.mode} onChange={(patch) => updateBuilderSection(section.id, patch)} />}
@@ -426,7 +437,7 @@ export function CustomizerClient({
 
             {panel === "design" && (
               <div className="flex-1 overflow-y-auto p-4">
-                <p className="mb-3 text-xs text-muted-foreground">These controls change the actual published visual builder. Save them by publishing the website.</p>
+                <p className="mb-3 text-xs text-muted-foreground">These controls change the published visual builder. Publishing saves your whole draft, including any section edits you have made.</p>
                 <div className="space-y-3">
                   <ColorField label="Primary" value={builder.design.primary} onChange={(v) => setBuilder((b) => ({ ...b, design: { ...b.design, primary: v } }))} />
                   <ColorField label="Accent" value={builder.design.accent} onChange={(v) => setBuilder((b) => ({ ...b, design: { ...b.design, accent: v } }))} />
@@ -438,7 +449,7 @@ export function CustomizerClient({
                   <SelectField label="Button style" value={builder.design.buttonStyle} options={["solid","outline","pill"]} onChange={(v) => setBuilder((b) => ({ ...b, design: { ...b.design, buttonStyle: v as BuilderConfig["design"]["buttonStyle"] } }))} />
                   <label className="block text-xs"><span className="mb-1 block text-muted-foreground">Corner radius: {builder.design.radius}px</span><input type="range" min="0" max="40" value={builder.design.radius} onChange={(e) => setBuilder((b) => ({ ...b, design: { ...b.design, radius: Number(e.target.value) } }))} className="w-full" /></label>
                 </div>
-                <button onClick={() => publishBuilder()} disabled={isSaving} className="mt-4 w-full rounded-md bg-primary px-3 py-2.5 text-xs font-semibold text-primary-foreground">{isSaving ? "Publishing…" : "Publish design"}</button>
+                <button onClick={() => publishBuilder()} disabled={isSaving} className="mt-4 w-full rounded-md bg-primary px-3 py-2.5 text-xs font-semibold text-primary-foreground">{isSaving ? "Publishing…" : "Publish all changes"}</button>
               </div>
             )}
 
@@ -481,7 +492,7 @@ export function CustomizerClient({
       </div>
 
       {/* Right: live preview */}
-      <div className="flex flex-1 flex-col overflow-hidden">
+      <div className={`${mobileView === "preview" ? "flex" : "hidden"} min-h-0 flex-1 flex-col overflow-hidden lg:flex`}>
         <div className="flex shrink-0 items-center justify-between border-b border-border bg-background px-4 py-2.5">
           <div className="flex items-center gap-1 rounded-md border border-border p-0.5">
             <button
@@ -515,7 +526,7 @@ export function CustomizerClient({
           </button>
         </div>
 
-        <div className="flex flex-1 items-start justify-center overflow-auto bg-muted/40 p-6">
+        <div className="flex flex-1 items-start justify-center overflow-auto bg-muted/40 p-2 lg:p-6">
           <iframe
             key={previewKey}
             ref={iframeRef}
@@ -523,7 +534,7 @@ export function CustomizerClient({
             onLoad={() => { previewReadyRef.current = true; pushPreview(builderRef.current); }}
             title="Live website preview"
             className="h-full min-h-[900px] rounded-lg border border-border bg-background shadow-sm transition-[width] duration-200"
-            style={{ width: DEVICE_WIDTH[device] }}
+            style={{ width: DEVICE_WIDTH[device], maxWidth: "100%" }}
           />
         </div>
       </div>
@@ -549,9 +560,9 @@ function SectionSettingsEditor({ section, mode, onChange }: { section: BuilderSe
   const s = section.settings;
   const update = (patch: Partial<typeof s>) => onChange({ settings: { ...s, ...patch } });
   return <div className="space-y-2 border-t bg-muted/20 p-3">
-    <TextField label="Eyebrow" value={s.eyebrow || ""} onChange={(v) => update({ eyebrow: v })} />
-    <TextField label="Heading" value={s.heading || ""} onChange={(v) => update({ heading: v })} />
-    <TextField label="Body" value={s.body || ""} multiline onChange={(v) => update({ body: v })} />
+    <TextField maxLength={120} label="Eyebrow" value={s.eyebrow || ""} onChange={(v) => update({ eyebrow: v })} />
+    <TextField maxLength={180} label="Heading" value={s.heading || ""} onChange={(v) => update({ heading: v })} />
+    <TextField maxLength={4000} label="Body" value={s.body || ""} multiline onChange={(v) => update({ body: v })} />
     {!["stats","catalog","categories","testimonials","newsletter","contact","gallery","map","faq","features"].includes(section.type) && <ImageField label="Image" value={s.image || ""} onChange={(v) => update({ image: v })} />}
     {section.type === "features" && <ItemsEditor label="Features" titleLabel="Feature title" bodyLabel="Description" items={s.items} defaults={defaultFeatureItems(mode)} onChange={(items) => update({ items })} />}
     {section.type === "faq" && <ItemsEditor label="Questions" titleLabel="Question" bodyLabel="Answer" items={s.items} defaults={defaultFaqItems(mode)} onChange={(items) => update({ items })} />}
@@ -559,8 +570,8 @@ function SectionSettingsEditor({ section, mode, onChange }: { section: BuilderSe
     {section.type === "map" && <TextField label="Address or place name" value={s.address || ""} onChange={(v) => update({ address: v })} />}
     {section.type === "map" && <p className="text-[10px] text-muted-foreground">Leave blank to use your business city and state.</p>}
     <div className="grid grid-cols-2 gap-2"><SelectField label="Alignment" value={s.align || "left"} options={["left","center","right"]} onChange={(v) => update({ align: v as "left"|"center"|"right" })} /><SelectField label="Padding" value={s.padding || "normal"} options={["compact","normal","spacious"]} onChange={(v) => update({ padding: v as "compact"|"normal"|"spacious" })} /></div>
-    <TextField label="Button label" value={s.ctaLabel || ""} onChange={(v) => update({ ctaLabel: v })} />
-    <TextField label="Button link" value={s.ctaHref || ""} onChange={(v) => update({ ctaHref: v })} />
+    <TextField maxLength={80} label="Button label" value={s.ctaLabel || ""} onChange={(v) => update({ ctaLabel: v })} />
+    <TextField maxLength={500} label="Button link" value={s.ctaHref || ""} onChange={(v) => update({ ctaHref: v })} />
     <div className="grid grid-cols-2 gap-2"><ColorField label="Section background" value={s.background || "#ffffff"} onChange={(v) => update({ background: v })} /><ColorField label="Section text" value={s.textColor || ""} onChange={(v) => update({ textColor: v })} /></div>
   </div>;
 }
@@ -580,8 +591,8 @@ function ItemsEditor({ label, titleLabel, bodyLabel, items, defaults, onChange }
       )}
       {list.map((it, i) => (
         <div key={i} className="space-y-1.5 rounded border border-dashed p-2">
-          <TextField label={titleLabel} value={it.title} onChange={(v) => set(i, { title: v })} />
-          <TextField label={bodyLabel} value={it.body || ""} multiline onChange={(v) => set(i, { body: v })} />
+          <TextField maxLength={160} label={titleLabel} value={it.title} onChange={(v) => set(i, { title: v })} />
+          <TextField maxLength={1200} label={bodyLabel} value={it.body || ""} multiline onChange={(v) => set(i, { body: v })} />
           <button type="button" onClick={() => onChange(list.filter((_, n) => n !== i))} className="text-[10px] text-muted-foreground underline hover:text-destructive">Remove</button>
         </div>
       ))}
@@ -606,7 +617,7 @@ function GalleryImagesEditor({ images, onChange }: { images: string[] | undefine
   );
 }
 
-function TextField({ label, value, onChange, multiline = false }: { label: string; value: string; onChange: (v: string) => void; multiline?: boolean }) { return <label className="block text-[11px]"><span className="mb-1 block text-muted-foreground">{label}</span>{multiline ? <textarea value={value} onChange={(e) => onChange(e.target.value)} rows={3} className="w-full rounded border bg-background px-2 py-1.5 text-xs" /> : <input value={value} onChange={(e) => onChange(e.target.value)} className="w-full rounded border bg-background px-2 py-1.5 text-xs" />}</label>; }
+function TextField({ label, value, onChange, multiline = false, maxLength }: { label: string; value: string; onChange: (v: string) => void; multiline?: boolean; maxLength?: number }) { return <label className="block text-[11px]"><span className="mb-1 block text-muted-foreground">{label}</span>{multiline ? <textarea maxLength={maxLength} value={value} onChange={(e) => onChange(e.target.value)} rows={3} className="w-full rounded border bg-background px-2 py-1.5 text-xs" /> : <input maxLength={maxLength} value={value} onChange={(e) => onChange(e.target.value)} className="w-full rounded border bg-background px-2 py-1.5 text-xs" />}</label>; }
 
 function ImageField({ label, value, onChange }: { label: string; value: string; onChange: (v: string) => void }) {
   const [isUploading, setIsUploading] = useState(false);
@@ -732,7 +743,7 @@ function PagesPanel({
     <div className="flex-1 overflow-y-auto p-4">
       <p className="mb-3 text-xs text-muted-foreground">
         Extra pages (About, Gallery, FAQ, Blog, Contact, Policies) beyond the homepage. Each is live at{" "}
-        <span className="font-mono">/{slug}/&lt;page&gt;</span> once published.
+        <span className="font-mono">{slug}.biznest.space/&lt;page&gt;</span> (or your custom domain) once published.
       </p>
 
       <div className="space-y-1.5">
