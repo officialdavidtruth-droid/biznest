@@ -62,6 +62,8 @@ export async function settleInvoicePayment(reference: string, verifiedAmountNair
         data: { status: "PAID", paidAt: new Date(), paymentId: payment.id },
       });
       if (claimed.count === 0) throw new Error("INVOICE_NO_LONGER_PAYABLE"); // rolls the payment claim back
+      // Paid online: if this bill had been posted to a hotel room, drop that open charge so the guest isn't billed twice.
+      await tx.propertyFolioCharge.updateMany({ where: { sourceType: "INVOICE", sourceId: invoiceId, status: "OPEN" }, data: { status: "VOID", voidedAt: new Date() } });
     }, { isolationLevel: "Serializable" });
   } catch (error) {
     if (error instanceof Error && error.message === "INVOICE_NO_LONGER_PAYABLE") {

@@ -3,12 +3,15 @@ import { isImageProofUrl } from "@/lib/payments/manual-transfer";
 import { getOrder } from "@/lib/actions/order";
 import { notFound } from "next/navigation";
 import Link from "next/link";
-import { ShieldAlert } from "lucide-react";
+import { Printer, ShieldAlert } from "lucide-react";
 import { OrderStatusControl } from "@/components/dashboard/order-status-control";
 import { RefundControl } from "@/components/dashboard/refund-control";
 import { ConfirmManualPaymentButton } from "@/components/dashboard/confirm-manual-payment-button";
 import { DISPUTE_STATUS_CONFIG } from "@/lib/constants/dispute";
 import { formatDate, formatNumber } from "@/lib/i18n/locale";
+import { prisma } from "@/lib/prisma";
+import { getInHouseReservations } from "@/lib/actions/folio";
+import { PostToRoomButton } from "@/components/dashboard/post-to-room-button";
 
 const REFUNDABLE_STATUSES = ["PAID", "IN_PROGRESS", "DELIVERED", "COMPLETED"];
 
@@ -26,6 +29,16 @@ export default async function StoreOrderDetailPage({
   const commission = Number(order.commission ?? 0);
   const total = Number(order.total);
 
+  // Hotels: in-store (POS) sales can be charged to a checked-in guest's room.
+  const isPos = order.channel === "POS";
+  const rooms = isPos ? await getInHouseReservations(slug) : [];
+  const roomCharge = isPos
+    ? await prisma.propertyFolioCharge.findFirst({
+        where: { storeId: order.storeId, sourceType: "ORDER", sourceId: order.id, status: { not: "VOID" } },
+        select: { reservation: { select: { room: { select: { name: true } } } } },
+      })
+    : null;
+
   const address = order.shippingAddress as {
     fullName: string; phone: string; address: string; city: string; state: string; country: string;
   } | null;
@@ -40,9 +53,22 @@ export default async function StoreOrderDetailPage({
           </span>
         )}
       </h1>
-      <p className="mb-6 text-sm text-muted-foreground">
+      <p className="mb-2 text-sm text-muted-foreground">
         Placed {formatDate(new Date(order.createdAt), { day: "numeric", month: "short", year: "numeric", hour: "numeric", minute: "2-digit" })}
       </p>
+      <a
+        href={`/receipts/${slug}/order/${order.id}`}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="mb-6 inline-flex items-center gap-1.5 rounded-md border px-3 py-1.5 text-xs font-medium hover:bg-muted"
+      >
+        <Printer className="h-3.5 w-3.5" /> Print order receipt
+      </a>
+      {isPos && (
+        <span className="mb-6 ml-3 inline-block align-middle text-xs">
+          <PostToRoomButton storeSlug={slug} kind="order" id={order.id} rooms={rooms} postedTo={roomCharge?.reservation.room.name ?? null} />
+        </span>
+      )}
 
       <div className="mb-6 rounded-lg border bg-background p-4">
         <h2 className="mb-3 text-sm font-semibold">Items</h2>

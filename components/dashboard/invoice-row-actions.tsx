@@ -5,15 +5,23 @@ import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { sendInvoice, markInvoicePaid, cancelInvoice, getInvoiceShareLink } from "@/lib/actions/invoice";
 import type { InvoiceStatus } from "@prisma/client";
+import type { InHouseReservation } from "@/lib/actions/folio";
+import { PostToRoomButton } from "@/components/dashboard/post-to-room-button";
 
 export function InvoiceRowActions({
   storeSlug,
   invoiceId,
   status,
+  rooms = [],
+  postedTo = null,
 }: {
   storeSlug: string;
   invoiceId: string;
   status: InvoiceStatus;
+  /** Checked-in hotel guests this bill can be charged to (empty for non-hotel stores). */
+  rooms?: InHouseReservation[];
+  /** Room name when this bill is already on a guest's room bill. */
+  postedTo?: string | null;
 }) {
   const router = useRouter();
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -80,10 +88,16 @@ export function InvoiceRowActions({
           Send
         </button>
       )}
+      <a href={`/receipts/${storeSlug}/bill/${invoiceId}`} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">
+        Print
+      </a>
       {status !== "DRAFT" && (
         <button disabled={isSubmitting} onClick={copyLink} className="text-primary hover:underline">
           Copy link
         </button>
+      )}
+      {(status === "DRAFT" || status === "SENT") && (
+        <PostToRoomButton storeSlug={storeSlug} kind="invoice" id={invoiceId} rooms={rooms} postedTo={postedTo} />
       )}
       {(status === "SENT") && (
         <button disabled={isSubmitting} onClick={handleMarkPaid} className="text-primary hover:underline disabled:opacity-50">

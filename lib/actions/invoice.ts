@@ -341,6 +341,8 @@ export async function markInvoicePaid(slug: string, invoiceId: string, method?: 
         },
       });
       await tx.invoice.update({ where: { id: invoiceId }, data: { paymentId: payment.id } });
+      // Paid directly: if it was posted to a hotel room, drop that open charge so the guest isn't billed twice.
+      await tx.propertyFolioCharge.updateMany({ where: { sourceType: "INVOICE", sourceId: invoiceId, status: "OPEN" }, data: { status: "VOID", voidedAt: new Date() } });
     });
   } catch (error) {
     if (error instanceof Error && error.message === "INVOICE_NO_LONGER_PAYABLE") return { success: false, error: "This invoice can no longer be marked paid." };
@@ -368,6 +370,9 @@ export async function cancelInvoice(slug: string, invoiceId: string): Promise<Ac
 
   const updated = await prisma.invoice.updateMany({ where: { id: invoiceId, storeId: access.store.id, status: { in: ["DRAFT", "SENT"] } }, data: { status: "CANCELLED" } });
   if (updated.count === 0) return { success: false, error: "This invoice can no longer be cancelled." };
+
+  // Cancelled bills must not stay open on a hotel guest's room folio.
+  await prisma.propertyFolioCharge.updateMany({ where: { sourceType: "INVOICE", sourceId: invoiceId, status: "OPEN" }, data: { status: "VOID", voidedAt: new Date() } });
 
   // A customer may have started a payment: stop pending attempts from lingering.
   await prisma.payment.updateMany({ where: { purpose: "INVOICE", status: "PENDING", reference: { startsWith: `INV-${invoiceId}-` } }, data: { status: "FAILED" } });

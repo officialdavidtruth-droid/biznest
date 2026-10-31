@@ -3,7 +3,7 @@ import {
   CreditCard, BarChart3, Star, MessageSquare,
   Settings, BadgeCheck, Wallet, LifeBuoy, Truck, Wand2,
   LayoutTemplate, FileText, FileSignature, MailWarning, Calculator, CalendarDays, Images,
-  ClipboardList, PlusCircle, Layers, Rows3, Puzzle, ListTree, Share2,
+  ClipboardList, Receipt, PlusCircle, Layers, Rows3, Puzzle, ListTree, Share2,
 } from "lucide-react";
 import { getAdaptiveDashboardConfig } from "@/lib/adaptive-dashboard";
 import { getBusinessTerminology } from "@/lib/business-terminology";
@@ -114,6 +114,8 @@ export function buildNavGroups(business: { sellsProducts: boolean; offersService
   const allMoneyItems: NavItem[] = [
     { label: "Payments", href: "/payments", icon: CreditCard, permission: "payments" },
     { label: "Invoices", href: "/invoices", icon: FileText, permission: "orders" },
+    { label: "Receipts", href: "/receipts", icon: Receipt, permission: "orders" },
+    ...(isHotelBusiness(canonicalType) ? [{ label: "Room bills", href: "/folio", icon: Receipt, permission: "orders" as StaffPermissionId }] : []),
     { label: "Quotes", href: "/quotes", icon: FileSignature, permission: "orders" },
     // Profit is surfaced inside Analytics until a dedicated profit/expense
     // ledger exists, so we don't create a dead navigation destination.

@@ -4,6 +4,7 @@ import { InvoiceForm } from "@/components/dashboard/invoice-form";
 import { InvoiceRowActions } from "@/components/dashboard/invoice-row-actions";
 import { prisma } from "@/lib/prisma";
 import { formatDate, formatNumber } from "@/lib/i18n/locale";
+import { getInHouseReservations } from "@/lib/actions/folio";
 
 const STATUS_STYLES: Record<string, string> = {
   DRAFT: "bg-[var(--bn-admin-surface)] text-[var(--bn-admin-text)]",
@@ -23,6 +24,16 @@ export default async function InvoicesPage({ params }: { params: Promise<{ slug:
     select: { currency: true },
   });
   const currency = sampleProduct?.currency ?? "NGN";
+
+  // Hotels: which bills are already on a guest's room, and who is in-house to charge to.
+  const rooms = await getInHouseReservations(slug);
+  const onRoom = invoices.length
+    ? await prisma.propertyFolioCharge.findMany({
+        where: { store: { slug }, sourceType: "INVOICE", sourceId: { in: invoices.map((i) => i.id) }, status: "OPEN" },
+        select: { sourceId: true, reservation: { select: { room: { select: { name: true } } } } },
+      })
+    : [];
+  const roomByInvoice = new Map(onRoom.map((c) => [c.sourceId, c.reservation.room.name]));
 
   return (
     <div>
@@ -59,7 +70,7 @@ export default async function InvoicesPage({ params }: { params: Promise<{ slug:
                   {formatDate(new Date(invoice.createdAt))}
                 </td>
                 <td className="px-4 py-3">
-                  <InvoiceRowActions storeSlug={slug} invoiceId={invoice.id} status={invoice.status} />
+                  <InvoiceRowActions storeSlug={slug} invoiceId={invoice.id} status={invoice.status} rooms={rooms} postedTo={roomByInvoice.get(invoice.id) ?? null} />
                 </td>
               </tr>
             ))}

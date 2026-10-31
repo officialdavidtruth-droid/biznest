@@ -54,7 +54,12 @@ export default async function PaymentsPage({ params }: { params: Promise<{ slug:
 
   return (
     <div>
-      <h1 className="mb-6 text-xl font-semibold">Payments</h1>
+      <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
+        <h1 className="text-xl font-semibold">Payments</h1>
+        <a href={`/${slug}/admin/receipts?type=payments`} className="text-sm font-medium text-primary hover:underline">
+          Print payment receipts →
+        </a>
+      </div>
 
       <div className="mb-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <div className="rounded-lg border bg-background p-4">

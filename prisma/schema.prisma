@@ -722,10 +722,15 @@ model PropertyFolioCharge {
   paidAt        DateTime?
   voidedAt      DateTime?
   notes         String?
+  // Set when the charge was posted from an existing bill (sourceType "INVOICE") or POS order
+  // (sourceType "ORDER"), so the same bill can never be posted to a room twice.
+  sourceType    String?
+  sourceId      String?
 
   @@index([storeId, postedAt])
   @@index([storeId, reservationId, status])
   @@index([storeId, guestId, postedAt])
+  @@index([storeId, sourceType, sourceId])
 }
 
 // ----------------------------------------------------------------------------

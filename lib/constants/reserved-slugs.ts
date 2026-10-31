@@ -61,6 +61,7 @@ export const RESERVED_SLUGS = new Set([
   "account",
   "orders",
   "invoices",
+  "receipts",
   "quotes",
   "disputes",
   "search",
