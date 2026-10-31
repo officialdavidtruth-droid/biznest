@@ -1268,6 +1268,10 @@ model Product {
   currency     String      @default("NGN")
   images       String[]
   isPublished  Boolean     @default(true)
+  // Set when a product that has orders/stock history was "deleted": it is kept
+  // for its records but hidden everywhere, and no longer counts toward the
+  // plan's product limit. Cleared when the merchant restores or republishes it.
+  archivedAt   DateTime?
 
   digitalFileUrl String?   // for DIGITAL type
   rentalPeriodUnit String? // "day" | "week" | "month" for RENTAL type
@@ -1304,6 +1308,7 @@ model Product {
 
   @@unique([storeId, slug])
   @@index([storeId])
+  @@index([storeId, archivedAt])
 }
 
 // One row per sellable size/color/etc combo of a variant-enabled product.

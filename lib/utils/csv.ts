@@ -53,9 +53,25 @@ export function parseCsv(text: string): string[][] {
   return rows.filter((r) => !(r.length === 1 && r[0] === ""));
 }
 
+// Spreadsheet apps treat a cell starting with one of these as a formula.
+const FORMULA_START = /^[=+\-@\t\r]/;
+
+/**
+ * Text cells that could be read as a formula get a leading apostrophe so Excel
+ * and Sheets show them as text (CSV injection). Numbers are left alone so
+ * negative values stay numeric. Reverse with unescapeFormulaCell on import.
+ */
+export function escapeFormulaCell(value: string): string {
+  return FORMULA_START.test(value) ? `'${value}` : value;
+}
+
+export function unescapeFormulaCell(value: string): string {
+  return /^'[=+\-@\t\r]/.test(value) ? value.slice(1) : value;
+}
+
 function escapeCsvField(value: string | number | boolean | null | undefined): string {
-  const str = value == null ? "" : String(value);
-  if (/[",\n]/.test(str)) {
+  let str = value == null ? "" : typeof value === "string" ? escapeFormulaCell(value) : String(value);
+  if (/[",\n\r]/.test(str)) {
     return `"${str.replace(/"/g, '""')}"`;
   }
   return str;

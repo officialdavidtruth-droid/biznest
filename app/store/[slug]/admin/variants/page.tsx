@@ -37,6 +37,8 @@ export default async function MenuVariantsPage({ params }: { params: Promise<{ s
               label: v.label,
               optionValues: v.optionValues as Record<string, string>,
               sku: v.sku,
+              barcode: v.barcode,
+              lowStockThreshold: v.lowStockThreshold,
               price: v.price ? v.price.toString() : null,
               quantity: v.quantity,
               isActive: v.isActive,

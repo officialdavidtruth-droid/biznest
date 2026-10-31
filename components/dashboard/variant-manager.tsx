@@ -12,6 +12,8 @@ type Variant = {
   label: string;
   optionValues: Record<string, string>;
   sku: string | null;
+  barcode: string | null;
+  lowStockThreshold: number;
   price: string | null;
   quantity: number;
   isActive: boolean;
@@ -72,10 +74,10 @@ export function VariantManager({
         updateVariant(slug, v.id, {
           optionValues: next.optionValues,
           sku: next.sku ?? "",
-          barcode: "",
+          barcode: next.barcode ?? "",
           price: next.price ? Number(next.price) : "",
           quantity: next.quantity,
-          lowStockThreshold: 5,
+          lowStockThreshold: next.lowStockThreshold,
           isActive: next.isActive,
         } as any),
       "Variant saved"
@@ -89,7 +91,13 @@ export function VariantManager({
     if (!window.confirm("Delete this variant?")) return;
     const result = await run(() => deleteVariant(slug, id), "Variant removed");
     if (result?.success) {
-      setVariantsByProduct((prev) => ({ ...prev, [productId]: (prev[productId] ?? []).filter((x) => x.id !== id) }));
+      if (result.data?.archived) {
+        // Kept for its stock history / orders: shown as inactive instead of removed.
+        toast.info("This variant has stock or order history, so it was deactivated instead of deleted.");
+        setVariantsByProduct((prev) => ({ ...prev, [productId]: (prev[productId] ?? []).map((x) => (x.id === id ? { ...x, isActive: false } : x)) }));
+      } else {
+        setVariantsByProduct((prev) => ({ ...prev, [productId]: (prev[productId] ?? []).filter((x) => x.id !== id) }));
+      }
     }
   }
 

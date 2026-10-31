@@ -20,6 +20,7 @@ export default async function ProductsListPage({ params }: { params: Promise<{ s
   const totalCount = stats?.total ?? products.length;
   const activeCount = stats?.published ?? products.filter((p) => p.isPublished).length;
   const outOfStock = stats?.outOfStock ?? 0;
+  const loadedActive = products.filter((p) => !p.archivedAt).length;
   const categoryCounts = categories.map((c) => ({ ...c, count: stats?.byCategory[c.id] ?? 0 }));
   const genericCategory = terminology.category;
 
@@ -51,9 +52,9 @@ export default async function ProductsListPage({ params }: { params: Promise<{ s
               <div><h2 className="text-base font-bold">{terminology.catalog}</h2><p className="mt-1 text-xs text-muted-foreground">Manage your {terminology.catalog.toLowerCase()} and their availability</p></div>
               <button className="rounded-lg border bg-background p-2.5 text-muted-foreground"><SlidersHorizontal className="h-4 w-4" /></button>
             </div>
-            {totalCount > products.length && (
+            {totalCount > loadedActive && (
               <p className="mb-3 rounded-lg border bg-[var(--bn-admin-surface)] px-3 py-2 text-xs text-muted-foreground">
-                Showing your {products.length} newest of {totalCount} {terminology.catalog.toLowerCase()}. Use the CSV export to see them all.
+                Showing your {loadedActive} newest of {totalCount} {terminology.catalog.toLowerCase()}. Use the CSV export to see them all.
               </p>
             )}
             <div id="bulk-import" className="mb-4 scroll-mt-24"><BulkCsvPanel storeSlug={slug} /></div>
@@ -62,6 +63,7 @@ export default async function ProductsListPage({ params }: { params: Promise<{ s
               products={products.map((p) => ({
                 id: p.id, name: p.name, images: p.images, price: Number(p.price), currency: p.currency,
                 isPublished: p.isPublished,
+                archived: p.archivedAt != null,
                 category: p.category ? { id: p.category.id, name: p.category.name } : null,
                 inventory: p.hasVariants
                   ? { quantity: p.variants.reduce((sum, variant) => sum + (variant.isActive ? variant.quantity : 0), 0) }

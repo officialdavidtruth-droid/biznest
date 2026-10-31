@@ -9,16 +9,19 @@ const movementCount = vi.fn();
 const inventoryCount = vi.fn();
 const variantCount = vi.fn();
 
-vi.mock("@/lib/prisma", () => ({
-  prisma: {
+vi.mock("@/lib/prisma", () => {
+  const prisma: Record<string, unknown> = {
     product: { findFirst: (...a: unknown[]) => productFindFirst(...a), update: (...a: unknown[]) => productUpdate(...a), delete: (...a: unknown[]) => productDelete(...a) },
     orderItem: { count: (...a: unknown[]) => orderItemCount(...a) },
     purchaseOrderItem: { count: (...a: unknown[]) => poItemCount(...a) },
     stockMovement: { count: (...a: unknown[]) => movementCount(...a) },
     inventoryItem: { count: (...a: unknown[]) => inventoryCount(...a) },
     productVariant: { count: (...a: unknown[]) => variantCount(...a) },
-  },
-}));
+  };
+  // The checks and the delete/archive run in one transaction; the mock hands the same tables to it.
+  prisma.$transaction = async (fn: (tx: unknown) => unknown) => fn(prisma);
+  return { prisma };
+});
 vi.mock("@/lib/access/assert-store-access", () => ({
   assertStorePermission: vi.fn(async () => ({ success: true, role: "OWNER", store: { id: "s1", slug: "shop" } })),
 }));
@@ -54,7 +57,7 @@ describe("deleteProduct", () => {
     const r = await deleteProduct("shop", "p1");
     expect(r).toEqual({ success: true, data: { archived: true } });
     expect(productDelete).not.toHaveBeenCalled();
-    expect(productUpdate).toHaveBeenCalledWith({ where: { id: "p1" }, data: { isPublished: false } });
+    expect(productUpdate).toHaveBeenCalledWith({ where: { id: "p1" }, data: { isPublished: false, archivedAt: expect.any(Date) } });
     expect(emitWebhookEvent).toHaveBeenCalledWith("PRODUCT_UPDATED", "s1", expect.objectContaining({ isPublished: false }));
     expect(logStoreActivity).toHaveBeenCalledWith(expect.objectContaining({ action: "product.archived" }));
   });
@@ -78,7 +81,7 @@ describe("deleteProduct", () => {
     const r = await deleteProduct("shop", "p1");
     expect(r).toEqual({ success: true, data: { archived: true } });
     expect(productDelete).not.toHaveBeenCalled();
-    expect(productUpdate).toHaveBeenCalledWith({ where: { id: "p1" }, data: { isPublished: false } });
+    expect(productUpdate).toHaveBeenCalledWith({ where: { id: "p1" }, data: { isPublished: false, archivedAt: expect.any(Date) } });
   });
 
   it("archives instead of deleting when units are still on hand", async () => {

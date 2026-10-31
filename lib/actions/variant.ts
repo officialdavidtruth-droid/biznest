@@ -189,9 +189,24 @@ export async function setVariantOptions(
     cleaned
   );
 
+  // Deactivated variants drop out of every stock total, so one that still holds stock
+  // would make that stock vanish with no ledger entry. Zero it first, with a ledgered
+  // adjustment, then remove the option value.
+  if (plan.toDeactivate.length) {
+    const stranded = existing.filter((v) => plan.toDeactivate.includes(v.id) && v.quantity > 0);
+    if (stranded.length) {
+      return { success: false, error: `Can't remove ${stranded.map((v) => v.label).join(", ")}: still has stock. Set its stock to 0 first, then remove the option value.` };
+    }
+  }
+
   for (let attempt = 0; attempt < 3; attempt++) {
     try {
   await prisma.$transaction(async (tx) => {
+    if (plan.toDeactivate.length) {
+      // Re-checked inside the transaction so a restock can't slip in after the check above.
+      const stillStocked = await tx.productVariant.count({ where: { id: { in: plan.toDeactivate }, quantity: { gt: 0 } } });
+      if (stillStocked > 0) throw new Error("VARIANT_HAS_STOCK");
+    }
     if (!product.hasVariants) {
       // Re-checked inside the transaction so a sale or restock can't slip in
       // between the check above and the switch to per-variant stock.
@@ -221,6 +236,9 @@ export async function setVariantOptions(
     } catch (err: any) {
       if (typeof err?.message === "string" && err.message.startsWith("HAS_STOCK:")) {
         return { success: false, error: `This product has ${err.message.slice("HAS_STOCK:".length)} in stock. Set its stock to 0 on the product page first, then add variants and enter stock for each one.` };
+      }
+      if (err?.message === "VARIANT_HAS_STOCK") {
+        return { success: false, error: "A variant you're removing received stock just now. Set its stock to 0 first, then try again." };
       }
       if (err?.code === "P2034" && attempt < 2) continue;
       return { success: false, error: "Couldn't update the options safely. Please try again." };
@@ -284,39 +302,61 @@ export async function updateVariant(slug: string, variantId: string, input: Vari
   return { success: true, data: undefined };
 }
 
-export async function deleteVariant(slug: string, variantId: string): Promise<ActionResult> {
+export async function deleteVariant(slug: string, variantId: string): Promise<ActionResult<{ archived: boolean }>> {
   const access = await assertMenuEditor(slug);
   if (!access.success) return { success: false, error: access.error };
 
   const variant = await prisma.productVariant.findFirst({ where: { id: variantId, storeId: access.store.id } });
   if (!variant) return { success: false, error: "Variant not found." };
 
-  const usedInOrder = await prisma.orderItem.findFirst({ where: { variantId } });
-  if (usedInOrder) {
-    // Keep order history intact -- deactivate instead of hard-deleting.
-    await prisma.productVariant.update({ where: { id: variantId }, data: { isActive: false } });
-  } else {
-    await prisma.$transaction(async (tx) => {
-      await tx.productVariant.delete({ where: { id: variantId } });
-      // Deleting the last variant must not leave the product flagged as
-      // variant-enabled with nothing to sell. Return it to plain-product mode
-      // with a zero-stock inventory row so it stays out of stock until the
-      // merchant sets a quantity.
-      const remaining = await tx.productVariant.count({ where: { productId: variant.productId } });
-      if (remaining === 0) {
-        await tx.product.update({ where: { id: variant.productId }, data: { hasVariants: false, variantOptions: Prisma.DbNull } });
-        await tx.inventoryItem.upsert({
-          where: { productId: variant.productId },
-          create: { productId: variant.productId, storeId: access.store.id, quantity: 0 },
-          update: {},
-        });
-      }
-    }, { isolationLevel: "Serializable", timeout: 15000 });
+  // Same rule as deleteProduct: a variant that is on orders or purchase orders,
+  // holds stock, or has any stock history is deactivated, never hard-deleted.
+  // StockMovement and InventoryBatch cascade from the variant, so deleting one
+  // with stock or history would erase the ledger and write stock off unrecorded.
+  // The checks run inside the same Serializable transaction as the delete so an
+  // order or restock can't slip in between the check and the write.
+  let archived = false;
+  for (let attempt = 0; attempt < 3; attempt++) {
+    try {
+      archived = await prisma.$transaction(async (tx) => {
+        const [live, orderRefs, purchaseRefs, movementRefs] = await Promise.all([
+          tx.productVariant.findFirst({ where: { id: variantId, storeId: access.store.id }, select: { quantity: true } }),
+          tx.orderItem.count({ where: { variantId } }),
+          tx.purchaseOrderItem.count({ where: { variantId } }),
+          tx.stockMovement.count({ where: { variantId, storeId: access.store.id } }),
+        ]);
+        if (!live) throw new Error("Variant not found.");
+        if (live.quantity > 0 || orderRefs + purchaseRefs + movementRefs > 0) {
+          await tx.productVariant.update({ where: { id: variantId }, data: { isActive: false, autoUnpublished: false } });
+          return true;
+        }
+        await tx.productVariant.delete({ where: { id: variantId } });
+        // Deleting the last variant must not leave the product flagged as
+        // variant-enabled with nothing to sell. Return it to plain-product mode
+        // with a zero-stock inventory row so it stays out of stock until the
+        // merchant sets a quantity.
+        const remaining = await tx.productVariant.count({ where: { productId: variant.productId } });
+        if (remaining === 0) {
+          await tx.product.update({ where: { id: variant.productId }, data: { hasVariants: false, variantOptions: Prisma.DbNull } });
+          await tx.inventoryItem.upsert({
+            where: { productId: variant.productId },
+            create: { productId: variant.productId, storeId: access.store.id, quantity: 0 },
+            update: {},
+          });
+        }
+        return false;
+      }, { isolationLevel: "Serializable", timeout: 15000 });
+      break;
+    } catch (err: any) {
+      if (err?.message === "Variant not found.") return { success: false, error: err.message };
+      if (err?.code === "P2034" && attempt < 2) continue;
+      return { success: false, error: "Couldn't remove the variant safely. Please try again." };
+    }
   }
-  await recordVariantChange(access.store, usedInOrder ? "variant.deactivated" : "variant.deleted", variant.label, { productId: variant.productId, variantId });
+  await recordVariantChange(access.store, archived ? "variant.deactivated" : "variant.deleted", variant.label, { productId: variant.productId, variantId });
 
   revalidatePath(`/store/${slug}/admin/products`);
-  return { success: true, data: undefined };
+  return { success: true, data: { archived } };
 }
 
 const MANUAL_MOVEMENT_TYPES = new Set<StockMovementType>(["RESTOCK", "RETURN", "MANUAL_ADJUSTMENT", "CORRECTION"]);

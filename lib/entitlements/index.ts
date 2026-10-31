@@ -46,7 +46,7 @@ export async function assertUnderPlanLimit(
 
   const count =
     resource === "products"
-      ? await db.product.count({ where: { storeId } })
+      ? await db.product.count({ where: { storeId, archivedAt: null } })
       : await db.service.count({ where: { storeId } });
 
   if (count >= limit) {

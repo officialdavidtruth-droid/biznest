@@ -13,11 +13,13 @@ export function ProductRowActions({
   productId,
   productName,
   isPublished,
+  archived = false,
 }: {
   storeSlug: string;
   productId: string;
   productName: string;
   isPublished: boolean;
+  archived?: boolean;
 }) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
@@ -38,7 +40,7 @@ export function ProductRowActions({
     setBusy(false);
     setOpen(false);
     if (!result.success) return toast.error(result.error);
-    toast.success(isPublished ? "Marked inactive" : "Marked active");
+    toast.success(archived ? "Restored" : isPublished ? "Marked inactive" : "Marked active");
     router.refresh();
   }
 
@@ -49,7 +51,7 @@ export function ProductRowActions({
     setBusy(false);
     setOpen(false);
     if (!result.success) return toast.error(result.error);
-    toast.success(result.data?.archived ? "Has orders: unpublished instead of deleted" : "Deleted");
+    toast.success(result.data?.archived ? "Has orders or stock history: archived instead of deleted. Find it under the Archived filter." : "Deleted");
     router.refresh();
   }
 
@@ -76,11 +78,11 @@ export function ProductRowActions({
           <div className="absolute right-0 top-full z-10 mt-1 w-44 rounded-lg border bg-[var(--bn-admin-surface)] py-1 shadow-lg">
             <button onClick={togglePublish} className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm hover:bg-muted/50">
               {isPublished ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
-              {isPublished ? "Mark inactive" : "Mark active"}
+              {archived ? "Restore" : isPublished ? "Mark inactive" : "Mark active"}
             </button>
-            <button onClick={handleDelete} className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-destructive hover:bg-destructive/10">
+            {!archived && <button onClick={handleDelete} className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-destructive hover:bg-destructive/10">
               <Trash2 className="h-3.5 w-3.5" /> Delete
-            </button>
+            </button>}
           </div>
         )}
       </div>

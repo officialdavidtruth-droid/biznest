@@ -19,6 +19,8 @@ type ProductRow = {
   price: number;
   currency: string;
   isPublished: boolean;
+  /** Deleted but kept for order/stock history. Hidden unless the "Archived" filter is chosen. */
+  archived?: boolean;
   category: { id: string; name: string } | null;
   inventory: { quantity: number; lowStockThreshold?: number } | null;
   orders: number;
@@ -48,7 +50,7 @@ export function ProductsTable({
 
   const [search, setSearch] = useState("");
   const [categoryFilter, setCategoryFilter] = useState("");
-  const [statusFilter, setStatusFilter] = useState<"" | "published" | "draft">("");
+  const [statusFilter, setStatusFilter] = useState<"" | "published" | "draft" | "archived">("");
   const [availabilityFilter, setAvailabilityFilter] = useState<"" | "available" | "low" | "out">("");
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(8);
@@ -63,6 +65,8 @@ export function ProductsTable({
 
   const filtered = useMemo(() => {
     return products.filter((p) => {
+      // Archived products only show under the Archived filter; every other view hides them.
+      if (statusFilter === "archived" ? !p.archived : p.archived) return false;
       if (search.trim() && !p.name.toLowerCase().includes(search.trim().toLowerCase())) return false;
       if (categoryFilter && p.category?.id !== categoryFilter) return false;
       if (statusFilter === "published" && !p.isPublished) return false;
@@ -172,6 +176,7 @@ export function ProductsTable({
         >
           <option value="">All Status</option>
           <option value="published">Active</option>
+          <option value="archived">Archived</option>
           <option value="draft">Inactive</option>
         </select>
         <select
@@ -302,10 +307,10 @@ export function ProductsTable({
                   <td className="px-4 py-3">
                     <span
                       className={`rounded-full px-2 py-0.5 text-xs ${
-                        p.isPublished ? "bg-[var(--bn-admin-surface-2)] text-[var(--bn-admin-orange)]" : "bg-muted text-muted-foreground"
+                        p.isPublished && !p.archived ? "bg-[var(--bn-admin-surface-2)] text-[var(--bn-admin-orange)]" : "bg-muted text-muted-foreground"
                       }`}
                     >
-                      {p.isPublished ? "Active" : "Inactive"}
+                      {p.archived ? "Archived" : p.isPublished ? "Active" : "Inactive"}
                     </span>
                   </td>
                   <td className="px-4 py-3">
@@ -323,7 +328,7 @@ export function ProductsTable({
                   </td>
                   <td className="px-4 py-3 text-muted-foreground">{p.orders}</td>
                   <td className="px-4 py-3 text-right">
-                    <ProductRowActions storeSlug={storeSlug} productId={p.id} productName={p.name} isPublished={p.isPublished} />
+                    <ProductRowActions storeSlug={storeSlug} productId={p.id} productName={p.name} isPublished={p.isPublished} archived={p.archived} />
                   </td>
                 </tr>
               );

@@ -19,7 +19,7 @@ const tx = () => ({
 vi.mock("@/lib/prisma", () => ({
   prisma: {
     // Snapshot read by the action itself: always equals live stock.
-    product: { findMany: vi.fn(async () => [{ id: "p1", name: "Tote", hasVariants: state.hasVariants, inventory: { id: "i1", quantity: state.live, costPrice: null } }]) },
+    product: { findMany: vi.fn(async () => [{ id: "p1", name: "Tote", hasVariants: state.hasVariants, price: 100, isPublished: true, inventory: { id: "i1", quantity: state.live, costPrice: null, autoUnpublished: false } }]) },
     $transaction: vi.fn(async (fn: (t: unknown) => unknown) => fn(tx())),
   },
 }));
@@ -28,6 +28,10 @@ vi.mock("@/lib/access/assert-store-access", () => ({
 }));
 vi.mock("@/lib/entitlements", () => ({ assertUnderPlanLimit: vi.fn(async () => ({ allowed: true })) }));
 vi.mock("@/lib/inventory-fifo", () => ({ createFifoBatchTx: vi.fn(), recordBatchLedgerForQuantityChangeTx: vi.fn() }));
+vi.mock("@/lib/auth", () => ({ auth: vi.fn(async () => ({ user: { id: "u1", name: "Owner", email: "o@x.com", role: "USER" } })) }));
+vi.mock("@/lib/activity-log", () => ({ logStoreActivity: vi.fn() }));
+vi.mock("@/lib/webhooks/dispatch", () => ({ emitWebhookEvent: vi.fn() }));
+vi.mock("@/lib/catalog-identifiers", () => ({ findIdentifierClash: vi.fn(async () => null) }));
 
 import { bulkUpdateProducts } from "@/lib/actions/bulk";
 

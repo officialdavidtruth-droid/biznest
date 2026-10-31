@@ -7,12 +7,13 @@ import { revalidatePath } from "next/cache";
 import slugify from "slugify";
 import { roundMoney } from "@/lib/utils/pricing";
 import type { ActionResult } from "@/types/actions";
-import { emitWebhookEvent } from "@/lib/webhooks/dispatch";
 import { assertStorePermission } from "@/lib/access/assert-store-access";
-import { logStoreActivity } from "@/lib/activity-log";
 import { assertUnderPlanLimit } from "@/lib/entitlements";
 import { findIdentifierClash, clashResult } from "@/lib/catalog-identifiers";
-import { createFifoBatchTx, recordBatchLedgerForQuantityChangeTx } from "@/lib/inventory-fifo";
+import { createFifoBatchTx } from "@/lib/inventory-fifo";
+import { decidePublishAfterStockChange } from "@/lib/catalog/publish";
+import { correctInventoryQuantityTx } from "@/lib/catalog/stock";
+import { reportCatalogChange } from "@/lib/catalog/report";
 
 import type { Store, Business } from "@prisma/client";
 
@@ -62,6 +63,7 @@ export async function listProducts(slug: string) {
   if (!access.success) return [];
 
   return prisma.product.findMany({
+    // Archived products are included (flagged) so they can be restored; the table hides them by default.
     where: { storeId: access.store.id },
     include: { category: true, inventory: true, variants: { select: { quantity: true, isActive: true } }, _count: { select: { orderItems: true } } },
     orderBy: { createdAt: "desc" },
@@ -85,11 +87,11 @@ export async function getProductStats(slug: string) {
   const storeId = access.store.id;
 
   const [total, published, outPlain, outVariant, byCategory] = await Promise.all([
-    prisma.product.count({ where: { storeId } }),
-    prisma.product.count({ where: { storeId, isPublished: true } }),
-    prisma.product.count({ where: { storeId, type: "PHYSICAL", hasVariants: false, inventory: { is: { quantity: { lte: 0 } } } } }),
-    prisma.product.count({ where: { storeId, type: "PHYSICAL", hasVariants: true, variants: { none: { isActive: true, quantity: { gt: 0 } } } } }),
-    prisma.product.groupBy({ by: ["categoryId"], where: { storeId }, _count: { _all: true } }),
+    prisma.product.count({ where: { storeId, archivedAt: null } }),
+    prisma.product.count({ where: { storeId, archivedAt: null, isPublished: true } }),
+    prisma.product.count({ where: { storeId, archivedAt: null, type: "PHYSICAL", hasVariants: false, inventory: { is: { quantity: { lte: 0 } } } } }),
+    prisma.product.count({ where: { storeId, archivedAt: null, type: "PHYSICAL", hasVariants: true, variants: { none: { isActive: true, quantity: { gt: 0 } } } } }),
+    prisma.product.groupBy({ by: ["categoryId"], where: { storeId, archivedAt: null }, _count: { _all: true } }),
   ]);
 
   return {
@@ -221,21 +223,11 @@ export async function createProduct(
   }
   if (!product) return createError;
 
-  await emitWebhookEvent("PRODUCT_CREATED", access.store.id, {
-    productId: product.id,
-    name: product.name,
-    price: Number(product.price),
-    currency: product.currency,
-    isPublished: product.isPublished,
-  });
-
-  const session = await auth();
-  await logStoreActivity({
-    storeId: access.store.id,
-    actor: { id: session?.user?.id, name: session?.user?.name, email: session?.user?.email, role: session?.user?.role ?? "unknown" },
+  await reportCatalogChange(access.store.id, {
     action: "product.created",
     target: product.name,
     metadata: { productId: product.id },
+    webhook: { event: "PRODUCT_CREATED", payload: { productId: product.id, name: product.name, price: Number(product.price), currency: product.currency, isPublished: product.isPublished } },
   });
 
   revalidatePath(`/store/${slug}/admin/products`);
@@ -319,8 +311,10 @@ export async function updateProduct(
 
         let inventoryData: { quantity: number; sku: string | null; barcode: string | null; storeId: string } | undefined;
         let delta = 0;
-        let publishOverride: boolean | null = null;
         let nextQuantity = Math.max(0, Math.round(data.quantity));
+        // The published flag only counts as the merchant's decision when it differs from
+        // the stored one: the form always echoes the current value back.
+        let publishResult = { isPublished: data.isPublished, autoUnpublished: false, justRanOut: false, justRestocked: false };
         if (current.hasVariants) {
           // Parent quantity/SKU/barcode are not authoritative once variants
           // exist. Do not include the relation write at all: an upsert requires
@@ -336,41 +330,27 @@ export async function updateProduct(
               throw new Error("STALE_STOCK");
             }
           }
-          delta = nextQuantity - current.inventory.quantity;
+          // Same out-of-stock automation as bulk edit / CSV import / the inventory screen.
+          publishResult = decidePublishAfterStockChange({
+            wasPublished: current.isPublished,
+            explicitPublish: data.isPublished !== current.isPublished,
+            requestedPublished: data.isPublished,
+            prevQuantity: current.inventory.quantity,
+            nextQuantity,
+            wasAutoUnpublished: current.inventory.autoUnpublished,
+          });
+          const corrected = await correctInventoryQuantityTx(tx, {
+            storeId: access.store.id,
+            inventoryItemId: current.inventory.id,
+            currentQuantity: current.inventory.quantity,
+            nextQuantity,
+            guard: { quantity: current.inventory.quantity },
+            autoUnpublished: publishResult.autoUnpublished,
+            note: "Product edit",
+            unitCost: current.inventory.costPrice == null ? null : Number(current.inventory.costPrice),
+          });
+          delta = corrected.delta;
           if (delta !== 0) {
-            // Same out-of-stock automation as adjustStock / CSV import: running
-            // out takes the listing down, and a restock only republishes what
-            // the automation (not the merchant) unpublished.
-            const justRanOut = current.inventory.quantity > 0 && nextQuantity === 0;
-            const justRestocked = current.inventory.quantity === 0 && nextQuantity > 0;
-            if (justRanOut) publishOverride = false;
-            else if (justRestocked && current.inventory.autoUnpublished) publishOverride = true;
-            const updated = await tx.inventoryItem.updateMany({
-              where: { id: current.inventory.id, storeId: access.store.id, quantity: current.inventory.quantity },
-              data: {
-                quantity: nextQuantity,
-                autoUnpublished: justRanOut ? true : justRestocked ? false : current.inventory.autoUnpublished,
-              },
-            });
-            if (updated.count !== 1) throw new Error("INVENTORY_CONFLICT");
-            const movement = await tx.stockMovement.create({
-              data: {
-                inventoryItemId: current.inventory.id,
-                storeId: access.store.id,
-                type: "CORRECTION",
-                quantityChange: delta,
-                quantityAfter: nextQuantity,
-                note: "Product edit",
-              },
-            });
-            await recordBatchLedgerForQuantityChangeTx(tx, {
-              inventoryItemId: current.inventory.id,
-              storeId: access.store.id,
-              delta,
-              stockMovementId: movement.id,
-              unitCost: current.inventory.costPrice == null ? null : Number(current.inventory.costPrice),
-              sourceNote: "Product edit",
-            });
             quantityChanged = true;
             quantityDelta = delta;
             resultingQuantity = nextQuantity;
@@ -391,7 +371,9 @@ export async function updateProduct(
             compareAtPrice: data.compareAtPrice ? roundMoney(data.compareAtPrice) : null,
             currency: existing.currency,
             images: data.images,
-            isPublished: publishOverride ?? data.isPublished,
+            isPublished: publishResult.isPublished,
+            // Publishing an archived product restores it.
+            ...(publishResult.isPublished ? { archivedAt: null } : {}),
             digitalFileUrl: data.digitalFileUrl || null,
             rentalPeriodUnit: data.rentalPeriodUnit ?? null,
             attributes: data.attributes ?? undefined,
@@ -421,7 +403,7 @@ export async function updateProduct(
           }
         }
 
-        return { quantityChanged: delta !== 0, quantityDelta: delta, resultingQuantity: nextQuantity, isPublished: publishOverride ?? data.isPublished };
+        return { quantityChanged: delta !== 0, quantityDelta: delta, resultingQuantity: nextQuantity, isPublished: publishResult.isPublished };
       }, { isolationLevel: "Serializable", timeout: 15000 });
 
       quantityChanged = result.quantityChanged;
@@ -445,18 +427,7 @@ export async function updateProduct(
     }
   }
 
-  await emitWebhookEvent("PRODUCT_UPDATED", access.store.id, {
-    productId,
-    name: data.name,
-    price: roundMoney(data.price),
-    currency: existing.currency,
-    isPublished: finalPublished,
-  });
-
-  const session = await auth();
-  await logStoreActivity({
-    storeId: access.store.id,
-    actor: { id: session?.user?.id, name: session?.user?.name, email: session?.user?.email, role: session?.user?.role ?? "unknown" },
+  await reportCatalogChange(access.store.id, {
     action: "product.updated",
     target: data.name,
     metadata: {
@@ -466,6 +437,7 @@ export async function updateProduct(
       ...(existing.isPublished !== finalPublished ? { isPublished: { from: existing.isPublished, to: finalPublished } } : {}),
       ...(quantityChanged ? { quantity: { change: quantityDelta, after: resultingQuantity } } : {}),
     },
+    webhook: { event: "PRODUCT_UPDATED", payload: { productId, name: data.name, price: roundMoney(data.price), currency: existing.currency, isPublished: finalPublished } },
   });
 
   revalidatePath(`/store/${slug}/admin/products`);
@@ -487,37 +459,45 @@ export async function deleteProduct(slug: string, productId: string): Promise<Ac
   // Stock records (InventoryItem, StockMovement, FIFO batches) cascade from the
   // product, so a product with stock or any stock history is archived too --
   // hard-deleting it would erase the ledger and write stock off unrecorded.
-  const [orderRefs, purchaseRefs, movementRefs, liveStock] = await Promise.all([
-    prisma.orderItem.count({ where: { productId } }),
-    prisma.purchaseOrderItem.count({ where: { productId } }),
-    prisma.stockMovement.count({ where: { storeId: access.store.id, OR: [{ inventoryItem: { productId } }, { variant: { productId } }] } }),
-    Promise.all([
-      prisma.inventoryItem.count({ where: { productId, quantity: { gt: 0 } } }),
-      prisma.productVariant.count({ where: { productId, quantity: { gt: 0 } } }),
-    ]).then(([a, b]) => a + b),
-  ]);
-  const archived = orderRefs + purchaseRefs + movementRefs + liveStock > 0;
-
-  if (archived) {
-    await prisma.product.update({ where: { id: productId }, data: { isPublished: false } });
-  } else {
-    await prisma.product.delete({ where: { id: productId } });
+  // The reference checks and the delete/archive run in one Serializable transaction so an
+  // order or restock placed in between can't be missed (and have its product link nulled
+  // or its ledger cascaded away).
+  let archived = false;
+  let refs = { orderRefs: 0, purchaseRefs: 0, movementRefs: 0, liveStock: 0 };
+  for (let attempt = 0; attempt < 3; attempt++) {
+    try {
+      const outcome = await prisma.$transaction(async (tx) => {
+        const [orderRefs, purchaseRefs, movementRefs, liveInv, liveVar] = await Promise.all([
+          tx.orderItem.count({ where: { productId } }),
+          tx.purchaseOrderItem.count({ where: { productId } }),
+          tx.stockMovement.count({ where: { storeId: access.store.id, OR: [{ inventoryItem: { productId } }, { variant: { productId } }] } }),
+          tx.inventoryItem.count({ where: { productId, quantity: { gt: 0 } } }),
+          tx.productVariant.count({ where: { productId, quantity: { gt: 0 } } }),
+        ]);
+        const liveStock = liveInv + liveVar;
+        const keep = orderRefs + purchaseRefs + movementRefs + liveStock > 0;
+        if (keep) {
+          await tx.product.update({ where: { id: productId }, data: { isPublished: false, archivedAt: new Date() } });
+        } else {
+          await tx.product.delete({ where: { id: productId } });
+        }
+        return { keep, refs: { orderRefs, purchaseRefs, movementRefs, liveStock } };
+      }, { isolationLevel: "Serializable", timeout: 15000 });
+      archived = outcome.keep;
+      refs = outcome.refs;
+      break;
+    } catch (err: any) {
+      if (err?.code === "P2034" && attempt < 2) continue;
+      return { success: false, error: "Couldn't delete the product safely. Please try again." };
+    }
   }
 
   // Subscribers hear about a real deletion; an archive is just an unpublish.
-  await emitWebhookEvent(archived ? "PRODUCT_UPDATED" : "PRODUCT_DELETED", access.store.id, {
-    productId,
-    name: existing.name,
-    ...(archived ? { isPublished: false } : {}),
-  });
-
-  const session = await auth();
-  await logStoreActivity({
-    storeId: access.store.id,
-    actor: { id: session?.user?.id, name: session?.user?.name, email: session?.user?.email, role: session?.user?.role ?? "unknown" },
+  await reportCatalogChange(access.store.id, {
     action: archived ? "product.archived" : "product.deleted",
     target: existing.name,
-    metadata: { productId, ...(archived ? { orderRefs, purchaseRefs, movementRefs, liveStock } : {}) },
+    metadata: { productId, ...(archived ? refs : {}) },
+    webhook: { event: archived ? "PRODUCT_UPDATED" : "PRODUCT_DELETED", payload: { productId, name: existing.name, ...(archived ? { isPublished: false } : {}) } },
   });
 
   revalidatePath(`/store/${slug}/admin/products`);
