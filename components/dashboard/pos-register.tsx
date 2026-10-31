@@ -415,8 +415,27 @@ export function PosRegister({
 
           <div className="grid grid-cols-2 gap-2">
             {showOrderType && (<>
-            <label className="text-[11px] font-semibold text-muted-foreground">Order type<select value={orderType} onChange={(e) => setOrderType(e.target.value as typeof orderType)} className="mt-1 w-full rounded-md border bg-background px-2 py-1.5 text-xs"><option value="DINE_IN">Dine in</option><option value="TAKEAWAY">Takeaway</option><option value="DELIVERY">Delivery</option></select></label>
-            <label className="text-[11px] font-semibold text-muted-foreground">Table / reference<input value={tableLabel} onChange={(e) => setTableLabel(e.target.value)} placeholder={orderType === "DINE_IN" ? "Table 12" : "Optional"} className="mt-1 w-full rounded-md border bg-background px-2 py-1.5 text-xs" /></label>
+            <div className="col-span-2">
+              <p className="text-[11px] font-semibold text-muted-foreground" id="pos-order-type-label">Order type</p>
+              {/* Big tap targets instead of a native <select>: easier to hit on touch screens and always works in installed-app webviews. */}
+              <div role="radiogroup" aria-labelledby="pos-order-type-label" className="mt-1 grid grid-cols-3 gap-1.5">
+                {([["DINE_IN", "Dine in"], ["TAKEAWAY", "Takeaway"], ["DELIVERY", "Delivery"]] as const).map(([value, label]) => (
+                  <button
+                    key={value}
+                    type="button"
+                    role="radio"
+                    aria-checked={orderType === value}
+                    onClick={() => setOrderType(value)}
+                    className={`min-h-11 rounded-md border px-2 py-2 text-sm font-medium transition-colors ${
+                      orderType === value ? "border-[var(--bn-admin-border)] bg-[color-mix(in_srgb,var(--bn-admin-orange-soft)_10%,transparent)] text-[var(--bn-admin-orange)]" : "text-muted-foreground hover:bg-muted"
+                    }`}
+                  >
+                    {label}
+                  </button>
+                ))}
+              </div>
+            </div>
+            <label className="col-span-2 text-[11px] font-semibold text-muted-foreground">Table / reference<input value={tableLabel} onChange={(e) => setTableLabel(e.target.value)} placeholder={orderType === "DINE_IN" ? "Table 12" : "Optional"} className="mt-1 w-full rounded-md border bg-background px-2 py-2 text-sm" /></label>
             </>)}
           </div>
 
