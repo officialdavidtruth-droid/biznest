@@ -76,6 +76,10 @@ export function ProductsTable({
     });
   }, [products, search, categoryFilter, statusFilter, availabilityFilter]);
 
+  // Selection can outlive a filter change. Bulk actions only ever touch rows that are both
+  // selected and currently visible, so nothing hidden by a filter gets edited unseen.
+  const visibleSelected = useMemo(() => filtered.filter((p) => selected.has(p.id)), [filtered, selected]);
+
   const totalPages = Math.max(1, Math.ceil(filtered.length / pageSize));
   const currentPage = Math.min(page, totalPages);
   const paged = filtered.slice((currentPage - 1) * pageSize, currentPage * pageSize);
@@ -89,7 +93,7 @@ export function ProductsTable({
     };
   }
 
-  const allSelected = selected.size > 0 && paged.every((p) => selected.has(p.id));
+  const allSelected = paged.length > 0 && paged.every((p) => selected.has(p.id));
 
   function toggleAll() {
     setSelected((prev) => {
@@ -112,14 +116,14 @@ export function ProductsTable({
   const hasChanges = priceInput.trim() !== "" || quantityInput.trim() !== "" || categoryInput !== "" || publishInput !== "";
 
   async function applyBulkEdit() {
-    if (selected.size === 0) return;
+    if (visibleSelected.length === 0) return;
     if (!hasChanges) {
       toast.error("Set at least one field to apply.");
       return;
     }
 
     setIsSaving(true);
-    const patches = Array.from(selected).map((productId) => ({
+    const patches = visibleSelected.map((row) => row.id).map((productId) => ({
       productId,
       price: priceInput.trim() !== "" ? Number(priceInput) : undefined,
       quantity: quantityInput.trim() !== "" ? Number(quantityInput) : undefined,
@@ -144,7 +148,7 @@ export function ProductsTable({
     router.refresh();
   }
 
-  const selectedLabel = useMemo(() => `${selected.size} selected`, [selected]);
+  const selectedLabel = `${visibleSelected.length} selected`;
 
   return (
     <div>
@@ -198,7 +202,7 @@ export function ProductsTable({
         </button>
       </div>
 
-      {selected.size > 0 && (
+      {visibleSelected.length > 0 && (
         <div className="mb-4 flex flex-wrap items-end gap-3 rounded-lg border bg-muted/30 p-3">
           <span className="text-xs font-medium text-muted-foreground">{selectedLabel}</span>
 

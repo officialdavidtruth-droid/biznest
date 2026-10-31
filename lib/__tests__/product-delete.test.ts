@@ -8,6 +8,9 @@ const poItemCount = vi.fn();
 const movementCount = vi.fn();
 const inventoryCount = vi.fn();
 const variantCount = vi.fn();
+const requisitionCount = vi.fn();
+const inventoryUpdateMany = vi.fn();
+const variantUpdateMany = vi.fn();
 
 vi.mock("@/lib/prisma", () => {
   const prisma: Record<string, unknown> = {
@@ -15,8 +18,9 @@ vi.mock("@/lib/prisma", () => {
     orderItem: { count: (...a: unknown[]) => orderItemCount(...a) },
     purchaseOrderItem: { count: (...a: unknown[]) => poItemCount(...a) },
     stockMovement: { count: (...a: unknown[]) => movementCount(...a) },
-    inventoryItem: { count: (...a: unknown[]) => inventoryCount(...a) },
-    productVariant: { count: (...a: unknown[]) => variantCount(...a) },
+    requisitionItem: { count: (...a: unknown[]) => requisitionCount(...a) },
+    inventoryItem: { count: (...a: unknown[]) => inventoryCount(...a), updateMany: (...a: unknown[]) => inventoryUpdateMany(...a) },
+    productVariant: { count: (...a: unknown[]) => variantCount(...a), updateMany: (...a: unknown[]) => variantUpdateMany(...a) },
   };
   // The checks and the delete/archive run in one transaction; the mock hands the same tables to it.
   prisma.$transaction = async (fn: (tx: unknown) => unknown) => fn(prisma);
@@ -40,6 +44,7 @@ beforeEach(() => {
   movementCount.mockResolvedValue(0);
   inventoryCount.mockResolvedValue(0);
   variantCount.mockResolvedValue(0);
+  requisitionCount.mockResolvedValue(0);
 });
 
 describe("deleteProduct", () => {
@@ -89,5 +94,24 @@ describe("deleteProduct", () => {
     const r = await deleteProduct("shop", "p1");
     expect(r).toEqual({ success: true, data: { archived: true } });
     expect(productDelete).not.toHaveBeenCalled();
+  });
+  it("archives instead of deleting when only a requisition line references the product", async () => {
+    requisitionCount.mockResolvedValue(2);
+    const r = await deleteProduct("shop", "p1");
+    expect(r).toEqual({ success: true, data: { archived: true } });
+    expect(productDelete).not.toHaveBeenCalled();
+  });
+
+  it("clears the out-of-stock automation flags when archiving, so a later restock can't republish it", async () => {
+    orderItemCount.mockResolvedValue(1);
+    await deleteProduct("shop", "p1");
+    expect(inventoryUpdateMany).toHaveBeenCalledWith({ where: { productId: "p1" }, data: { autoUnpublished: false } });
+    expect(variantUpdateMany).toHaveBeenCalledWith({ where: { productId: "p1" }, data: { autoUnpublished: false } });
+  });
+
+  it("leaves stock flags alone on a real hard delete", async () => {
+    await deleteProduct("shop", "p1");
+    expect(inventoryUpdateMany).not.toHaveBeenCalled();
+    expect(variantUpdateMany).not.toHaveBeenCalled();
   });
 });

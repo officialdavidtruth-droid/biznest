@@ -65,7 +65,11 @@ export default async function ProductsListPage({ params }: { params: Promise<{ s
                 isPublished: p.isPublished,
                 archived: p.archivedAt != null,
                 category: p.category ? { id: p.category.id, name: p.category.name } : null,
-                inventory: p.hasVariants
+                // Only physical products track stock (same rule as the stats cards and the
+                // storefront); digital and rental items would otherwise show "Out of Stock".
+                inventory: p.type !== "PHYSICAL"
+                  ? null
+                  : p.hasVariants
                   ? { quantity: p.variants.reduce((sum, variant) => sum + (variant.isActive ? variant.quantity : 0), 0) }
                   : p.inventory ? { quantity: p.inventory.quantity } : null,
                 orders: p._count.orderItems,

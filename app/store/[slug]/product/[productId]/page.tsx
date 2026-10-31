@@ -17,7 +17,7 @@ import { TrackViewItem } from "@/components/storefront/store-tracking";
 const loadStore = cache((slug: string) => prisma.store.findUnique({ where: { slug }, include: { template: true, business: true } }));
 const loadProduct = cache((storeId: string, productId: string) =>
   prisma.product.findFirst({
-    where: { id: productId, storeId, isPublished: true },
+    where: { id: productId, storeId, isPublished: true, archivedAt: null },
     include: { category: true, inventory: true, variants: { where: { isActive: true }, select: { id: true, label: true, optionValues: true, price: true, quantity: true, images: true } } },
   }));
 
@@ -49,7 +49,7 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
   // The related query doesn't depend on the product row (the id filter uses the URL id), so run both together.
   const [product, relatedRows] = await Promise.all([
     loadProduct(store.id, productId),
-    prisma.product.findMany({ where: { storeId: store.id, isPublished: true, id: { not: productId } }, orderBy: { createdAt: "desc" }, take: 4, select: { id: true, name: true, price: true, currency: true, images: true } }),
+    prisma.product.findMany({ where: { storeId: store.id, isPublished: true, archivedAt: null, id: { not: productId } }, orderBy: { createdAt: "desc" }, take: 4, select: { id: true, name: true, price: true, currency: true, images: true } }),
   ]);
   if (!product) notFound();
   // Read request headers now: request APIs aren't available inside after().
@@ -92,5 +92,5 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
       { "@type": "ListItem", position: product.category ? 3 : 2, name: product.name, item: url },
     ],
   };
-  return <><JsonLd data={store.seoNoIndex ? [] : [productLd, breadcrumbLd]}/><TrackViewItem slug={slug} currency={product.currency} item={{ id: product.id, name: product.name, price: Number(product.price) }}/><main style={{minHeight:"100vh",background:theme.bg,color:theme.ink,fontFamily:theme.font,padding:"3rem 1.25rem 4rem"}}><ProductDetail storeSlug={slug} productId={product.id} name={product.name} price={Number(product.price)} compareAtPrice={product.compareAtPrice ? Number(product.compareAtPrice) : null} currency={product.currency} images={product.images} description={product.description} categoryName={product.category?.name ?? null} type={product.type} rentalUnit={product.rentalPeriodUnit} inStock={inStock} stock={product.type === "PHYSICAL" && !product.hasVariants ? (product.inventory?.quantity ?? null) : null} variants={product.variants.map(v => ({ id: v.id, label: v.label, optionValues: v.optionValues as Record<string,string>, price: v.price ? Number(v.price) : null, quantity: v.quantity, images: v.images }))} accent={theme.accent} ink={theme.ink} bg={theme.bg} radius={theme.radius} related={relatedRows.map(r => ({ id: r.id, name: r.name, price: Number(r.price), currency: r.currency, image: r.images[0] ?? null }))}/></main></>;
+  return <><JsonLd data={store.seoNoIndex ? [] : [productLd, breadcrumbLd]}/><TrackViewItem slug={slug} currency={product.currency} item={{ id: product.id, name: product.name, price: Number(product.price) }}/><main style={{minHeight:"100vh",background:theme.bg,color:theme.ink,fontFamily:theme.font,padding:"3rem 1.25rem 4rem"}}><ProductDetail storeSlug={slug} productId={product.id} name={product.name} price={Number(product.price)} compareAtPrice={product.compareAtPrice ? Number(product.compareAtPrice) : null} currency={product.currency} images={product.images} description={product.description} detailedDescription={typeof (product.attributes as Record<string, unknown> | null)?.detailedDescription === "string" ? ((product.attributes as Record<string, unknown>).detailedDescription as string) : ""} categoryName={product.category?.name ?? null} type={product.type} rentalUnit={product.rentalPeriodUnit} inStock={inStock} stock={product.type === "PHYSICAL" && !product.hasVariants ? (product.inventory?.quantity ?? null) : null} variants={product.variants.map(v => ({ id: v.id, label: v.label, optionValues: v.optionValues as Record<string,string>, price: v.price ? Number(v.price) : null, quantity: v.quantity, images: v.images }))} accent={theme.accent} ink={theme.ink} bg={theme.bg} radius={theme.radius} related={relatedRows.map(r => ({ id: r.id, name: r.name, price: Number(r.price), currency: r.currency, image: r.images[0] ?? null }))}/></main></>;
 }

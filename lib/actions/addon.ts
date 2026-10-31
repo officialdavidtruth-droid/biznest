@@ -4,6 +4,21 @@ import { prisma } from "@/lib/prisma";
 import { revalidatePath } from "next/cache";
 import type { ActionResult } from "@/types/actions";
 import { assertStorePermission } from "@/lib/access/assert-store-access";
+import { roundMoney } from "@/lib/utils/pricing";
+
+const MAX_ADDON_PRICE = 999_999_999; // column is Decimal(12,2)
+const MAX_SELECT = 100;
+
+/** A valid add-on price (0 = free) rounded to 2dp, or null when the number is unusable. */
+function cleanAddonPrice(v: number | undefined): number | null {
+  const n = v ?? 0;
+  if (!Number.isFinite(n) || n < 0 || n > MAX_ADDON_PRICE) return null;
+  return roundMoney(n);
+}
+
+function cleanSelectCount(v: number): number | null {
+  return Number.isInteger(v) && v >= 0 && v <= MAX_SELECT ? v : null;
+}
 
 // Add-ons are managed from the Products/Menu page, same permission as
 // products/categories/variants.
@@ -41,8 +56,15 @@ export async function createAddonGroup(
   const product = await prisma.product.findFirst({ where: { id: productId, storeId: a.store.id } });
   if (!product) return { success: false, error: "Menu item not found." };
 
-  const minSelect = Math.max(0, input.minSelect ?? 0);
-  const maxSelect = input.maxSelect == null ? null : Math.max(minSelect, input.maxSelect);
+  const minSelect = cleanSelectCount(input.minSelect ?? 0);
+  if (minSelect == null) return { success: false, error: `Minimum choices must be a whole number from 0 to ${MAX_SELECT}.` };
+  let maxSelect: number | null = null;
+  if (input.maxSelect != null) {
+    const m = cleanSelectCount(input.maxSelect);
+    if (m == null) return { success: false, error: `Maximum choices must be a whole number from 0 to ${MAX_SELECT}.` };
+    if (m < minSelect) return { success: false, error: "Maximum choices can't be lower than the minimum." };
+    maxSelect = m;
+  }
 
   const row = await prisma.productAddonGroup.create({
     data: { productId, storeId: a.store.id, name, minSelect, maxSelect },
@@ -67,8 +89,22 @@ export async function updateAddonGroup(
     if (name.length < 2 || name.length > 60) return { success: false, error: "Group name must be 2–60 characters." };
     data.name = name;
   }
-  if (input.minSelect !== undefined) data.minSelect = Math.max(0, input.minSelect);
-  if (input.maxSelect !== undefined) data.maxSelect = input.maxSelect;
+  // Validate against the values the group will end up with, so a lone edit can't leave
+  // max below min (a group no shopper could ever satisfy at checkout).
+  const nextMin = input.minSelect !== undefined ? cleanSelectCount(input.minSelect) : group.minSelect;
+  if (nextMin == null) return { success: false, error: `Minimum choices must be a whole number from 0 to ${MAX_SELECT}.` };
+  let nextMax: number | null = group.maxSelect;
+  if (input.maxSelect !== undefined) {
+    if (input.maxSelect === null) nextMax = null;
+    else {
+      const m = cleanSelectCount(input.maxSelect);
+      if (m == null) return { success: false, error: `Maximum choices must be a whole number from 0 to ${MAX_SELECT}.` };
+      nextMax = m;
+    }
+  }
+  if (nextMax != null && nextMax < nextMin) return { success: false, error: "Maximum choices can't be lower than the minimum." };
+  if (input.minSelect !== undefined) data.minSelect = nextMin;
+  if (input.maxSelect !== undefined) data.maxSelect = nextMax;
   if (input.isActive !== undefined) data.isActive = input.isActive;
 
   await prisma.productAddonGroup.update({ where: { id: groupId }, data });
@@ -98,7 +134,8 @@ export async function createAddon(
 
   const name = input.name.trim();
   if (name.length < 1 || name.length > 60) return { success: false, error: "Add-on name must be 1–60 characters." };
-  const price = Math.max(0, input.price ?? 0);
+  const price = cleanAddonPrice(input.price);
+  if (price == null) return { success: false, error: "Enter a valid price (0 or more)." };
 
   const row = await prisma.productAddon.create({
     data: { groupId, storeId: a.store.id, name, price },
@@ -123,7 +160,11 @@ export async function updateAddon(
     if (name.length < 1 || name.length > 60) return { success: false, error: "Add-on name must be 1–60 characters." };
     data.name = name;
   }
-  if (input.price !== undefined) data.price = Math.max(0, input.price);
+  if (input.price !== undefined) {
+    const price = cleanAddonPrice(input.price);
+    if (price == null) return { success: false, error: "Enter a valid price (0 or more)." };
+    data.price = price;
+  }
   if (input.isActive !== undefined) data.isActive = input.isActive;
 
   await prisma.productAddon.update({ where: { id: addonId }, data });

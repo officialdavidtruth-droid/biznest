@@ -14,7 +14,7 @@ import { formatDate } from "@/lib/i18n/locale";
 import {
   X, Plus, Trash2, Upload, Save, CheckSquare, ChevronRight,
   Star, MessageSquare, Receipt, Lightbulb, CheckCircle2,
-  Bold, Italic, Underline, Strikethrough, List, ListOrdered, Link2, ImageIcon, Undo2, Redo2,
+  Bold, Italic, Underline, Strikethrough, List, ListOrdered,
   Clock3, Flame, Soup, Users, Ruler, BedDouble, Bath, Sparkles,
   type LucideIcon,
 } from "lucide-react";
@@ -205,6 +205,18 @@ export function ProductForm({
   const wordCount = detailedDescription.trim() ? detailedDescription.trim().split(/\s+/).length : 0;
 
   async function submit(values: ProductInput, publish: boolean) {
+    // A custom detail named like one of the fields above would silently overwrite it
+    // (e.g. a custom "taxable" turning the toggle into text), so stop and say so.
+    const reservedKeys = new Set<string>([
+      ...RESERVED_ATTR_KEYS,
+      ...preset.quickSpecs.map((f) => f.key),
+      ...preset.specFields.map((f) => f.key),
+    ]);
+    const clashing = customAttrs.find((a) => reservedKeys.has(a.key.trim()));
+    if (clashing) {
+      toast.error(`"${clashing.key.trim()}" is already used by a field above. Rename this extra detail.`);
+      return;
+    }
     setIsSubmitting(publish ? "publish" : "draft");
     const attributes: Record<string, string | number | boolean | string[]> = {
       tags,
@@ -549,11 +561,6 @@ export function ProductForm({
             <h2 className="mb-2 text-sm font-bold">Detailed Description</h2>
             <div className="overflow-hidden rounded-lg border">
               <div className="flex flex-wrap items-center gap-0.5 border-b bg-muted/40 px-2 py-1.5">
-                <select className="mr-1 rounded-md border-0 bg-transparent px-1.5 py-1 text-xs" defaultValue="Paragraph">
-                  <option>Paragraph</option>
-                  <option>Heading</option>
-                </select>
-                <span className="mx-1 h-4 w-px bg-border" />
                 {[
                   { Icon: Bold, action: () => wrapSelection(descTextareaRef.current, "**", "**", setDetailedDescription, detailedDescription) },
                   { Icon: Italic, action: () => wrapSelection(descTextareaRef.current, "_", "_", setDetailedDescription, detailedDescription) },
@@ -570,18 +577,6 @@ export function ProductForm({
                   { Icon: ListOrdered, action: () => prefixLines(descTextareaRef.current, (i) => `${i + 1}. `, setDetailedDescription, detailedDescription) },
                 ].map(({ Icon, action }, i) => (
                   <button key={i} type="button" onClick={action} className="rounded-md p-1.5 hover:bg-muted">
-                    <Icon className="h-3.5 w-3.5" />
-                  </button>
-                ))}
-                <span className="mx-1 h-4 w-px bg-border" />
-                {[Link2, ImageIcon].map((Icon, i) => (
-                  <button key={i} type="button" className="rounded-md p-1.5 hover:bg-muted">
-                    <Icon className="h-3.5 w-3.5" />
-                  </button>
-                ))}
-                <span className="mx-1 h-4 w-px bg-border" />
-                {[Undo2, Redo2].map((Icon, i) => (
-                  <button key={i} type="button" className="rounded-md p-1.5 hover:bg-muted">
                     <Icon className="h-3.5 w-3.5" />
                   </button>
                 ))}

@@ -1,6 +1,7 @@
 "use client";
 
 import { ApproxPrice } from "@/components/storefront/approx-price";
+import { RichText } from "@/components/storefront/rich-text";
 import { useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -30,6 +31,7 @@ export function ProductDetail({
   currency,
   images,
   description,
+  detailedDescription = "",
   categoryName,
   type,
   rentalUnit,
@@ -50,6 +52,8 @@ export function ProductDetail({
   currency: string;
   images: string[];
   description: string;
+  /** Merchant's long-form description (small markdown subset), shown below the buy box. */
+  detailedDescription?: string;
   categoryName: string | null;
   type: string;
   rentalUnit: string | null;
@@ -250,6 +254,12 @@ export function ProductDetail({
         </div>
       </div>
 
+      {detailedDescription.trim() && (
+      <section className="pd-long">
+        <h2>About this {type === "PHYSICAL" ? "product" : "item"}</h2>
+        <RichText text={detailedDescription} />
+      </section>
+      )}
       {related.length > 0 && (
         <section className="pd-related">
           <div className="pd-rel-head"><h2>More from this store</h2><Link href={`${base}/catalog`}>View all →</Link></div>
@@ -307,6 +317,7 @@ const CSS = `
 .pd-price s{font-size:17px;color:var(--soft)}
 .pd-price em{font-style:normal;font-size:12.5px;font-weight:800;color:#15803d;background:#dcfce7;padding:4px 10px;border-radius:999px}
 .pd-unit{font-size:14px;color:var(--soft)}
+.pd-long{margin:32px 0 8px;max-width:760px}.pd-long h2{font-size:20px;margin:0 0 12px}.pd-long p,.pd-long li{font-size:15.5px;line-height:1.75;overflow-wrap:anywhere;color:color-mix(in srgb,var(--pd-ink) 82%,transparent)}.pd-long p{margin:0 0 14px}.pd-long ul{list-style:disc;padding-left:22px;margin:0 0 14px}.pd-long ol{list-style:decimal;padding-left:22px;margin:0 0 14px}
 .pd-desc{font-size:15.5px;line-height:1.75;color:color-mix(in srgb,var(--pd-ink) 78%,transparent);white-space:pre-wrap;overflow-wrap:anywhere;padding:18px 0;margin:0 0 22px;border-top:1px solid var(--bd);border-bottom:1px solid var(--bd)}
 .pd-variants{display:grid;gap:18px;margin-bottom:24px;transition:outline-color .2s}
 .pd-variants.need{outline:2px solid var(--pd-accent);outline-offset:8px;border-radius:var(--pd-radius)}

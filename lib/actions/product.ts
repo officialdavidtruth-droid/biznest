@@ -360,6 +360,14 @@ export async function updateProduct(
           inventoryData = { quantity: nextQuantity, sku: trimmedSku, barcode: trimmedBarcode, storeId: access.store.id };
         }
 
+        // Publishing an archived product restores it, which takes a plan slot again
+        // (archived products don't count toward the limit). Checked in the same
+        // Serializable transaction as the restore so it can't slip past the cap.
+        if (current.archivedAt && publishResult.isPublished) {
+          const limit = await assertUnderPlanLimit(access.store.id, "products", tx);
+          if (!limit.allowed) throw new Error(`PLAN_LIMIT:${limit.error}`);
+        }
+
         await tx.product.update({
           where: { id: productId },
           data: {
@@ -413,6 +421,9 @@ export async function updateProduct(
       break;
     } catch (err: any) {
       if (err?.message === "Product not found.") return { success: false, error: err.message };
+      if (typeof err?.message === "string" && err.message.startsWith("PLAN_LIMIT:")) {
+        return { success: false, error: err.message.slice("PLAN_LIMIT:".length) };
+      }
       if (err?.message === "STALE_STOCK") {
         return { success: false, error: "Stock changed since you opened this page (a sale or restock). Reload to see the current quantity, then re-apply your stock change." };
       }
@@ -467,21 +478,27 @@ export async function deleteProduct(slug: string, productId: string): Promise<Ac
   for (let attempt = 0; attempt < 3; attempt++) {
     try {
       const outcome = await prisma.$transaction(async (tx) => {
-        const [orderRefs, purchaseRefs, movementRefs, liveInv, liveVar] = await Promise.all([
+        const [orderRefs, purchaseRefs, requisitionRefs, movementRefs, liveInv, liveVar] = await Promise.all([
           tx.orderItem.count({ where: { productId } }),
           tx.purchaseOrderItem.count({ where: { productId } }),
+          // Requisition lines also null their product link on hard delete, so they keep it too.
+          tx.requisitionItem.count({ where: { productId } }),
           tx.stockMovement.count({ where: { storeId: access.store.id, OR: [{ inventoryItem: { productId } }, { variant: { productId } }] } }),
           tx.inventoryItem.count({ where: { productId, quantity: { gt: 0 } } }),
           tx.productVariant.count({ where: { productId, quantity: { gt: 0 } } }),
         ]);
         const liveStock = liveInv + liveVar;
-        const keep = orderRefs + purchaseRefs + movementRefs + liveStock > 0;
+        const keep = orderRefs + purchaseRefs + requisitionRefs + movementRefs + liveStock > 0;
         if (keep) {
           await tx.product.update({ where: { id: productId }, data: { isPublished: false, archivedAt: new Date() } });
+          // Clear the out-of-stock automation flags. Left set, a later restock (purchase
+          // order receipt, refund, stock adjustment) would republish this archived product.
+          await tx.inventoryItem.updateMany({ where: { productId }, data: { autoUnpublished: false } });
+          await tx.productVariant.updateMany({ where: { productId }, data: { autoUnpublished: false } });
         } else {
           await tx.product.delete({ where: { id: productId } });
         }
-        return { keep, refs: { orderRefs, purchaseRefs, movementRefs, liveStock } };
+        return { keep, refs: { orderRefs, purchaseRefs: purchaseRefs + requisitionRefs, movementRefs, liveStock } };
       }, { isolationLevel: "Serializable", timeout: 15000 });
       archived = outcome.keep;
       refs = outcome.refs;

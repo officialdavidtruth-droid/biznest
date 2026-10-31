@@ -173,6 +173,15 @@ export async function importProductsCsv(slug: string, csvText: string): Promise<
           }
 
           const quantity = parseNum(r.quantity ?? "");
+          // Same bounds the product editor enforces. Without them a variant row could store
+          // a negative or absurd price, a negative cost, or overflow the quantity column.
+          const vPrice = parseNum(r.price ?? "");
+          if (vPrice != null && (vPrice <= 0 || vPrice > MAX_PRICE)) throw new Error("price must be greater than 0 and not absurdly large");
+          const vCost = parseNum(r.costPrice ?? "");
+          if (vCost != null && (vCost < 0 || vCost > MAX_PRICE)) throw new Error("costPrice must be between 0 and 999,999,999");
+          const vThreshold = parseNum(r.lowStockThreshold ?? "");
+          if (vThreshold != null && (!Number.isInteger(vThreshold) || vThreshold < 0 || vThreshold > MAX_QUANTITY)) throw new Error("lowStockThreshold must be a whole number, 0 or more");
+          if (quantity != null && (quantity < 0 || quantity > MAX_QUANTITY)) throw new Error("quantity must be between 0 and 1,000,000");
           const nextQuantity = quantity != null ? Math.max(0, Math.round(quantity)) : variant.quantity;
           const expectedUpdatedAt = r.inventoryUpdatedAt?.trim();
           if (expectedUpdatedAt) {
@@ -251,7 +260,11 @@ export async function importProductsCsv(slug: string, csvText: string): Promise<
           const effectivePrice = rowPrice ?? Number(product.price);
           if (rowCompare != null && rowCompare <= effectivePrice) throw new Error("compareAtPrice must be higher than the price");
           const rowQty = parseNum(r.quantity ?? "");
-          if (rowQty != null && rowQty > MAX_QUANTITY) throw new Error("quantity is too large");
+          if (rowQty != null && (rowQty < 0 || rowQty > MAX_QUANTITY)) throw new Error("quantity must be between 0 and 1,000,000");
+          const rowCost = parseNum(r.costPrice ?? "");
+          if (rowCost != null && (rowCost < 0 || rowCost > MAX_PRICE)) throw new Error("costPrice must be between 0 and 999,999,999");
+          const rowThreshold = parseNum(r.lowStockThreshold ?? "");
+          if (rowThreshold != null && (!Number.isInteger(rowThreshold) || rowThreshold < 0 || rowThreshold > MAX_QUANTITY)) throw new Error("lowStockThreshold must be a whole number, 0 or more");
 
           const quantity = parseNum(r.quantity ?? "");
           const nextQuantity = quantity != null ? Math.max(0, Math.round(quantity)) : product.inventory?.quantity ?? 0;
@@ -319,6 +332,11 @@ export async function importProductsCsv(slug: string, csvText: string): Promise<
             }
           }
 
+          // Publishing an archived product restores it, which takes a plan slot again.
+          if (product.archivedAt && finalPublished) {
+            const limit = await assertUnderPlanLimit(access.store.id, "products", tx);
+            if (!limit.allowed) throw new Error(`PLAN_LIMIT:${limit.error}`);
+          }
           await tx.product.update({
             where: { id: product.id },
             data: {
@@ -363,12 +381,23 @@ export async function importProductsCsv(slug: string, csvText: string): Promise<
       }
 
       const quantity = parseNum(r.quantity ?? "") ?? 0;
-      if (quantity > MAX_QUANTITY) {
+      if (quantity < 0 || quantity > MAX_QUANTITY) {
         summary.errors++;
-        summary.rows.push({ row: rowNum, status: "error", message: "quantity is too large" });
+        summary.rows.push({ row: rowNum, status: "error", message: "quantity must be between 0 and 1,000,000" });
         continue;
       }
       const costPrice = parseNum(r.costPrice ?? "");
+      if (costPrice != null && (costPrice < 0 || costPrice > MAX_PRICE)) {
+        summary.errors++;
+        summary.rows.push({ row: rowNum, status: "error", message: "costPrice must be between 0 and 999,999,999" });
+        continue;
+      }
+      const newThreshold = parseNum(r.lowStockThreshold ?? "");
+      if (newThreshold != null && (!Number.isInteger(newThreshold) || newThreshold < 0 || newThreshold > MAX_QUANTITY)) {
+        summary.errors++;
+        summary.rows.push({ row: rowNum, status: "error", message: "lowStockThreshold must be a whole number, 0 or more" });
+        continue;
+      }
       const newSku = r.sku?.trim() || null;
       const newBarcode = r.barcode?.trim() || null;
       const newClash = await findIdentifierClash(access.store.id, { sku: newSku, barcode: newBarcode });
@@ -595,8 +624,14 @@ export async function bulkUpdateProducts(slug: string, patches: BulkEditPatch[])
 
       if (finalPublished !== product.isPublished) {
         productData.isPublished = finalPublished;
-        // Publishing an archived product restores it.
-        if (finalPublished) productData.archivedAt = null;
+        // Publishing an archived product restores it, which takes a plan slot again.
+        if (finalPublished) {
+          productData.archivedAt = null;
+          if (product.archivedAt) {
+            const limit = await assertUnderPlanLimit(access.store.id, "products", tx);
+            if (!limit.allowed) throw new Error(`PLAN_LIMIT:${limit.error}`);
+          }
+        }
         change.isPublished = { from: product.isPublished, to: finalPublished };
       }
       if (Object.keys(productData).length > 0) {
@@ -618,6 +653,9 @@ export async function bulkUpdateProducts(slug: string, patches: BulkEditPatch[])
     }
     if (err?.message?.startsWith("NO_INVENTORY:")) {
       return { success: false, error: `${err.message.slice("NO_INVENTORY:".length)} has no stock record yet. Set its stock from the product page first.` };
+    }
+    if (typeof err?.message === "string" && err.message.startsWith("PLAN_LIMIT:")) {
+      return { success: false, error: err.message.slice("PLAN_LIMIT:".length) };
     }
     if (err?.message === "MISSING_BASELINE") {
       return { success: false, error: "Refresh the products page and try the bulk edit again." };

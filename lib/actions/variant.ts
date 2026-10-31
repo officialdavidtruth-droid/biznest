@@ -35,14 +35,20 @@ async function recordVariantChange(
   metadata: Record<string, unknown>,
   opts: { webhook?: boolean } = {}
 ) {
-  const session = await auth();
-  await logStoreActivity({
-    storeId: store.id,
-    actor: { id: session?.user?.id, name: session?.user?.name, email: session?.user?.email, role: session?.user?.role ?? "unknown" },
-    action,
-    target,
-    metadata,
-  });
+  // Best-effort, like reportCatalogChange: by now the change is committed, so a logging
+  // hiccup must not turn a successful save into an error message.
+  try {
+    const session = await auth();
+    await logStoreActivity({
+      storeId: store.id,
+      actor: { id: session?.user?.id, name: session?.user?.name, email: session?.user?.email, role: session?.user?.role ?? "unknown" },
+      action,
+      target,
+      metadata,
+    });
+  } catch {
+    // see above
+  }
   if (opts.webhook === false) return;
   try {
     await emitWebhookEvent("PRODUCT_UPDATED", store.id, { productId: metadata.productId ?? null, variantId: metadata.variantId ?? null, change: action });

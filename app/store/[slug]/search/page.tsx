@@ -19,7 +19,7 @@ export default async function SearchPage({ params, searchParams }: { params: Pro
 
   // Load the catalogue once; the page filters it live as the shopper types. `searchText` keeps description matches working.
   const [products, services] = await Promise.all([
-    prisma.product.findMany({ where: { storeId: store.id, isPublished: true }, take: 200, include: { category: true } }),
+    prisma.product.findMany({ where: { storeId: store.id, isPublished: true, archivedAt: null }, orderBy: { createdAt: "desc" }, take: 200, include: { category: true } }),
     prisma.service.findMany({ where: { storeId: store.id, isPublished: true }, take: 200, include: { category: true } }),
   ]);
   const items = [
