@@ -12,6 +12,9 @@ import { toast } from "sonner";
 import { advanceFnbOrderStatus, endFnbShift, recordFnbWaste, saveFnbRecipe, saveFnbStation, setFnbRotationMode, startFnbShift } from "@/lib/actions/fnb";
 import { getPosCatalog, getPosDailySummary } from "@/lib/actions/pos";
 import { PosRegister } from "@/components/dashboard/pos-register";
+import { PosOpenTabs } from "@/components/dashboard/pos-open-tabs";
+import { getOpenPosTabs } from "@/lib/actions/pos-tabs";
+import { getInHouseReservations } from "@/lib/actions/folio";
 import { extractFnbRecipe } from "@/lib/fnb-utils";
 import { formatMoney } from "@/lib/utils/format-money";
 import { formatDate, formatNumber } from "@/lib/i18n/locale";
@@ -50,10 +53,12 @@ export function FnbWorkspace({ slug, data }: { slug: string; data: any }) {
   const navigate = async (next: Tab) => {
     setTab(next); setMobileOpen(false);
     if (next === "pos" && !pos) {
-      const [catalog, summary] = await Promise.all([getPosCatalog(slug), getPosDailySummary(slug)]);
-      setPos({ catalog, summary, commissionRatePercent: data.posCommissionRatePercent ?? 8 });
+      const [catalog, summary, openTabs, inHouseRooms] = await Promise.all([getPosCatalog(slug), getPosDailySummary(slug), getOpenPosTabs(slug), getInHouseReservations(slug)]);
+      setPos({ catalog, summary, openTabs, inHouseRooms, commissionRatePercent: data.posCommissionRatePercent ?? 8 });
     }
   };
+  // The tab list lives in this component's state, so re-read it after a sale or a settlement.
+  const refreshTabs = async () => { const openTabs = await getOpenPosTabs(slug); setPos((p: any) => (p ? { ...p, openTabs } : p)); };
   return <div className="bn-fnb-workspace min-h-screen bg-[var(--bn-admin-surface-2)] text-[var(--bn-admin-orange)]">
     <header className="sticky top-0 z-30 border-b border-[var(--bn-admin-border)] bg-[color-mix(in_srgb,var(--bn-admin-surface-2)_95%,transparent)] backdrop-blur"><div className="flex items-center gap-3 px-4 py-3 lg:px-7"><button className="rounded-lg border border-[var(--bn-admin-border)] p-2 lg:hidden" onClick={() => setMobileOpen(!mobileOpen)}><ChefHat className="h-4 w-4" /></button><a href={`/store/${slug}/admin/apps`} className="hidden items-center gap-2 text-xs font-semibold text-[var(--bn-admin-orange)] hover:text-[var(--bn-admin-orange)] lg:flex"><ArrowLeft className="h-4 w-4" /> Apps</a><div className="hidden h-5 w-px bg-[var(--bn-admin-surface-2)] lg:block" /><div className="min-w-0 flex-1"><p className="text-[10px] font-bold uppercase tracking-[0.18em] text-[var(--bn-admin-orange)]">BizNest FnB</p><p className="truncate text-sm font-bold">{data.storeName} · Restaurant Operations</p></div><span className="hidden rounded-xl border border-[color-mix(in_srgb,var(--bn-admin-border)_20%,transparent)] bg-[color-mix(in_srgb,var(--bn-admin-surface-2)_10%,transparent)] px-3 py-2 text-[10px] font-bold text-[var(--bn-admin-orange)] sm:inline-flex">POS · Kitchen · Inventory</span></div></header>
     <div className="flex">{mobileOpen && <button className="fixed inset-0 z-30 bg-[color-mix(in_srgb,var(--bn-admin-page)_50%,transparent)] lg:hidden" onClick={() => setMobileOpen(false)} />}
@@ -62,7 +67,7 @@ export function FnbWorkspace({ slug, data }: { slug: string; data: any }) {
         {tab === "overview" && <OverviewPanel slug={slug} data={data} />}
         {tab === "kitchen" && <KitchenPanel slug={slug} orders={data.orders} />}
         {tab === "orders" && <OrdersPanel slug={slug} orders={data.orders} />}
-        {tab === "pos" && (pos ? <PosPanel slug={slug} pos={pos} currentShift={data.currentShift} recentShifts={data.recentShifts} /> : <LoadingPanel title="Loading POS" />)}
+        {tab === "pos" && (pos ? <PosPanel slug={slug} pos={pos} currentShift={data.currentShift} recentShifts={data.recentShifts} refreshTabs={refreshTabs} /> : <LoadingPanel title="Loading POS" />)}
         {tab === "tables" && <TablesPanel reservations={data.reservations} />}
         {tab === "menu" && <MenuPanel slug={slug} products={data.products} role={data.role} />}
         {tab === "recipes" && <RecipesPanel slug={slug} products={data.products} inventory={data.inventory} role={data.role} />}
@@ -78,8 +83,8 @@ export function FnbWorkspace({ slug, data }: { slug: string; data: any }) {
   </div>;
 }
 
-function PosPanel({ slug, pos, currentShift, recentShifts }: { slug: string; pos: any; currentShift: any; recentShifts: any[] }) {
-  return <div className="space-y-5"><SectionTitle title="POS" description="Run in-person sales with every sale linked to the signed-in operator's shift." /><ShiftControl slug={slug} currentShift={currentShift} recentShifts={recentShifts} />{currentShift ? <PosRegister slug={slug} catalog={pos.catalog} commissionRatePercent={pos.commissionRatePercent} /> : <div className="rounded-2xl border border-[color-mix(in_srgb,var(--bn-admin-border)_30%,transparent)] bg-[color-mix(in_srgb,var(--bn-admin-orange-soft)_5%,transparent)] p-8 text-center"><Clock3 className="mx-auto h-8 w-8 text-[var(--bn-admin-orange)]" /><h2 className="mt-3 text-lg font-bold">Start your shift before selling</h2><p className="mt-1 text-sm text-[var(--bn-admin-orange)]">The register stays locked until the signed-in operator has an active shift.</p></div>}</div>;
+function PosPanel({ slug, pos, currentShift, recentShifts, refreshTabs }: { slug: string; pos: any; currentShift: any; recentShifts: any[]; refreshTabs: () => void }) {
+  return <div className="space-y-5"><SectionTitle title="POS" description="Run in-person sales with every sale linked to the signed-in operator's shift." /><ShiftControl slug={slug} currentShift={currentShift} recentShifts={recentShifts} />{currentShift ? <><PosRegister slug={slug} catalog={pos.catalog} commissionRatePercent={pos.commissionRatePercent} inHouseRooms={pos.inHouseRooms ?? []} openTabs={pos.openTabs ?? []} onSaleComplete={refreshTabs} /><PosOpenTabs slug={slug} tabs={pos.openTabs ?? []} inHouseRooms={pos.inHouseRooms ?? []} onChanged={refreshTabs} /></> : <div className="rounded-2xl border border-[color-mix(in_srgb,var(--bn-admin-border)_30%,transparent)] bg-[color-mix(in_srgb,var(--bn-admin-orange-soft)_5%,transparent)] p-8 text-center"><Clock3 className="mx-auto h-8 w-8 text-[var(--bn-admin-orange)]" /><h2 className="mt-3 text-lg font-bold">Start your shift before selling</h2><p className="mt-1 text-sm text-[var(--bn-admin-orange)]">The register stays locked until the signed-in operator has an active shift.</p></div>}</div>;
 }
 
 function ShiftControl({ slug, currentShift, recentShifts }: { slug: string; currentShift: any; recentShifts: any[] }) {

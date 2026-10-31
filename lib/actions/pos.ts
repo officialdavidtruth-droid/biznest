@@ -293,6 +293,27 @@ async function getOrCreateWalkInCustomer(storeId: string) {
   }
 }
 
+/** "  table   5 " -> "table 5": one spelling per table so tabs don't split on stray spaces. */
+function normalizeTableLabel(raw?: string | null): string {
+  return (raw ?? "").trim().replace(/\s+/g, " ");
+}
+
+/** The table's open tab, created on first use. Race-safe via the partial unique index on (store, lower(label)) WHERE OPEN. */
+async function findOrCreateOpenTab(storeId: string, label: string, customerName: string | null) {
+  const where = { storeId, status: "OPEN" as const, label: { equals: label, mode: "insensitive" as const } };
+  const existing = await prisma.posTab.findFirst({ where });
+  if (existing) return existing;
+  try {
+    return await prisma.posTab.create({ data: { storeId, label, customerName } });
+  } catch (err) {
+    if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === "P2002") {
+      const winner = await prisma.posTab.findFirst({ where });
+      if (winner) return winner;
+    }
+    throw err;
+  }
+}
+
 export async function createPosSale(
   slug: string,
   input: PosSaleInput
@@ -322,6 +343,26 @@ export async function createPosSale(
     include: { subscription: true },
   });
   if (!store) return { success: false, error: "Store not found." };
+
+  // Charge-to-account sales: resolve the room or the table tab up front so a bad
+  // choice fails before any stock is touched.
+  const tableLabel = normalizeTableLabel(data.tableLabel);
+  let roomCharge: { reservationId: string; guestId: string; roomName: string } | null = null;
+  let tabId: string | null = null;
+  if (data.chargeTo?.kind === "ROOM") {
+    const reservation = await prisma.propertyReservation.findFirst({
+      where: { id: data.chargeTo.reservationId, storeId: store.id, status: "CHECKED_IN" },
+      select: { id: true, guestId: true, room: { select: { name: true } } },
+    });
+    if (!reservation) return { success: false, error: "That guest isn't checked in." };
+    roomCharge = { reservationId: reservation.id, guestId: reservation.guestId, roomName: reservation.room.name };
+  } else if (data.chargeTo?.kind === "TABLE") {
+    if (!tableLabel) return { success: false, error: "Enter the table to charge this to." };
+    tabId = (await findOrCreateOpenTab(store.id, tableLabel, data.customerName?.trim() || null)).id;
+  }
+  const room = roomCharge;
+  const chargedToAccount = Boolean(room || tabId);
+  const tenderLabel = room ? `Room charge (${room.roomName})` : tabId ? `Table tab (${tableLabel})` : data.tenderType;
 
   const productIds = data.items.filter((i) => i.productId && !i.variantId).map((i) => i.productId!);
   const variantIds = data.items.filter((i) => i.variantId).map((i) => i.variantId!);
@@ -474,6 +515,12 @@ export async function createPosSale(
         const session = await auth();
         const staffUserId = session?.user?.id;
         if (!staffUserId) throw new PosTransactionError("You must be signed in to use the POS.");
+        // Lock the table's tab for the rest of this transaction: if someone is settling it right now
+        // we wait, then see it closed, instead of attaching an order to a bill that was already paid.
+        if (tabId) {
+          const lockedTab = await tx.$queryRaw<{ id: string }[]>`SELECT "id" FROM "PosTab" WHERE "id" = ${tabId} AND "status" = 'OPEN' FOR UPDATE`;
+          if (lockedTab.length === 0) throw new PosTransactionError("That table's bill was just closed. Ring the order up again to open a new one.");
+        }
         const shift = await tx.fnbShift.findFirst({
           where: { storeId: store.id, staffUserId, status: "OPEN" },
           select: { id: true },
@@ -491,14 +538,15 @@ export async function createPosSale(
             kitchenStatus: requiresShift ? "QUEUED" : "SERVED",
             channel: "POS",
             fnbOrderType: isFoodBusiness ? data.orderType : null,
-            fnbTableLabel: data.tableLabel || null,
+            fnbTableLabel: tableLabel || null,
             subtotal,
             commission,
             total,
             currency,
             deliveryFee: 0,
             paymentProvider: "CASH",
-            posTenderType: data.tenderType,
+            posTenderType: tenderLabel,
+            posTabId: tabId,
             posCustomerName: customerName,
             posCustomerPhone: customerPhone,
             customerProfileId,
@@ -518,22 +566,53 @@ export async function createPosSale(
         });
 
         await tx.orderStatusEvent.create({
-          data: { orderId: order.id, status: "PAID", note: `POS sale — ${data.tenderType}` },
+          data: { orderId: order.id, status: "PAID", note: chargedToAccount ? `POS sale — ${tenderLabel}` : `POS sale — ${data.tenderType}` },
         });
 
-        await tx.payment.create({
-          data: {
-            orderId: order.id,
-            storeId: store.id,
-            purpose: "ORDER",
-            provider: "CASH",
-            reference: `POS-${order.id}`,
-            status: "SUCCESSFUL",
-            amount: total,
-            currency,
-            verifiedAt: new Date(),
-          },
-        });
+        // Money only changes hands when the sale is paid on the spot. A room or table-tab
+        // charge records its Payment (and ledger entry) later, when the bill is settled
+        // (settlePosTab / settleFolio), so "cash collected" never counts unpaid bills.
+        if (!chargedToAccount) {
+          await tx.payment.create({
+            data: {
+              orderId: order.id,
+              storeId: store.id,
+              purpose: "ORDER",
+              provider: "CASH",
+              reference: `POS-${order.id}`,
+              status: "SUCCESSFUL",
+              amount: total,
+              currency,
+              verifiedAt: new Date(),
+            },
+          });
+        }
+
+        if (room) {
+          await tx.propertyFolioCharge.createMany({
+            data: [
+              ...resolved.map((l) => ({
+                description: l.name,
+                quantity: l.quantity,
+                unitAmount: l.unitPrice,
+                amount: roundMoney(l.unitPrice * l.quantity),
+              })),
+              // Anything not itemised (none today, but never let the folio drift from the bill).
+              ...(Math.abs(roundMoney(total - subtotal)) > 0.009
+                ? [{ description: "Taxes, fees & discounts", quantity: 1, unitAmount: roundMoney(total - subtotal), amount: roundMoney(total - subtotal) }]
+                : []),
+            ].map((l) => ({
+              ...l,
+              storeId: store.id,
+              reservationId: room.reservationId,
+              guestId: room.guestId,
+              category: `Order #${order.id.slice(-8).toUpperCase()}`,
+              currency,
+              sourceType: "ORDER",
+              sourceId: order.id,
+            })),
+          });
+        }
 
         // No gateway split happened for this sale (it was cash/card-in-hand),
         // so the commission the platform is owed just accrues on the store
@@ -666,7 +745,7 @@ export async function createPosSale(
   if (!created) {
     // Idempotent (unique journal reference): heals a first attempt whose ledger
     // post failed after the sale committed. Never throws.
-    await postOrderSaleToLedger(orderId);
+    if (!chargedToAccount) await postOrderSaleToLedger(orderId);
     const existing = await prisma.order.findUnique({ where: { id: orderId }, select: { total: true } });
     return { success: true, data: { orderId, total: Number(existing?.total ?? total) } };
   }
@@ -677,10 +756,10 @@ export async function createPosSale(
   // trail, not something a failure here should roll the sale back for.
   // The sale is already committed, so nothing below may turn it into an error
   // for the cashier (a retry would only replay the order and skip these anyway).
-  await postOrderSaleToLedger(orderId); // never throws
+  if (!chargedToAccount) await postOrderSaleToLedger(orderId); // never throws
   const webhookEvents = [
     ["ORDER_CREATED", { orderId, storeId: store.id, status: "PAID", channel: "POS", subtotal, total, currency }],
-    ["PAYMENT_SUCCESS", { orderId, amount: total, currency, provider: "CASH" }],
+    ...(chargedToAccount ? [] : [["PAYMENT_SUCCESS", { orderId, amount: total, currency, provider: "CASH" }] as const]),
   ] as const;
   for (const [eventType, payload] of webhookEvents) {
     try {
@@ -696,7 +775,7 @@ export async function createPosSale(
     actor: { id: session?.user?.id, name: session?.user?.name, email: session?.user?.email, role: session?.user?.role ?? "unknown" },
     action: "pos.sale_completed",
     target: `Order #${orderId.slice(-8).toUpperCase()}`,
-    metadata: { orderId, total, itemCount: resolved.length, tenderType: data.tenderType },
+    metadata: { orderId, total, itemCount: resolved.length, tenderType: tenderLabel },
   });
 
   revalidatePath(`/store/${slug}/admin/pos`);
@@ -705,6 +784,7 @@ export async function createPosSale(
   revalidatePath(`/store/${slug}/admin/orders`);
   revalidatePath(`/store/${slug}/admin/inventory`);
   revalidatePath(`/store/${slug}/admin/products`);
+  if (roomCharge) revalidatePath(`/store/${slug}/admin/folio`);
 
   return { success: true, data: { orderId, total: roundMoney(total) } };
 }

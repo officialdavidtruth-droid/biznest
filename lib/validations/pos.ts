@@ -12,11 +12,20 @@ export const posSaleItemSchema = z.object({
 
 export const posTenderTypes = ["Cash", "Card", "Transfer"] as const;
 
+// Instead of taking payment now, the sale can be put on an account that is settled later:
+//  - TABLE: added to that table's running bill (needs tableLabel); the guest pays once at the end.
+//  - ROOM:  charged to a checked-in guest's room folio; settled at checkout.
+export const posChargeToSchema = z.discriminatedUnion("kind", [
+  z.object({ kind: z.literal("TABLE") }),
+  z.object({ kind: z.literal("ROOM"), reservationId: z.string().cuid() }),
+]);
+
 export const posSaleSchema = z.object({
   items: z.array(posSaleItemSchema).min(1, "Add at least one item to the sale."),
   tenderType: z.enum(posTenderTypes),
   orderType: z.enum(["DINE_IN", "TAKEAWAY", "DELIVERY"]).default("DINE_IN"),
   tableLabel: z.string().trim().max(40).optional(),
+  chargeTo: posChargeToSchema.optional(),
   customerName: z.string().trim().max(120).optional(),
   customerPhone: z.string().trim().max(30).optional(),
   customerEmail: z.string().trim().email().max(180).optional(),

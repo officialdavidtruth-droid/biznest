@@ -6,6 +6,8 @@ import { toast } from "sonner";
 import { Search, Barcode, Minus, Plus, Trash2, X, ShoppingBag } from "lucide-react";
 import { createPosSale, lookupPosBarcode, searchPosCustomers, type PosCatalogItem, type PosCustomerMatch } from "@/lib/actions/pos";
 import { posTenderTypes } from "@/lib/validations/pos";
+import type { InHouseReservation } from "@/lib/actions/folio";
+import type { PosTabSummary } from "@/lib/actions/pos-tabs";
 import { roundMoney } from "@/lib/utils/pricing";
 import { formatNumber } from "@/lib/i18n/locale";
 
@@ -25,12 +27,21 @@ export function PosRegister({
   catalog,
   commissionRatePercent,
   showOrderType = true,
+  inHouseRooms = [],
+  openTabs = [],
+  onSaleComplete,
 }: {
   slug: string;
   catalog: PosCatalogItem[];
   commissionRatePercent: number;
   /** Dine-in/takeaway + table fields. Only meaningful for restaurant/food stores. */
   showOrderType?: boolean;
+  /** Checked-in guests the sale can be charged to (hotels/apartments). Empty hides "Charge to room". */
+  inHouseRooms?: InHouseReservation[];
+  /** Tables with a running bill, so a waiter can pick one and see what it's already at. */
+  openTabs?: PosTabSummary[];
+  /** Called after a sale is saved, for hosts that hold the tab list in their own state. */
+  onSaleComplete?: () => void;
 }) {
   const router = useRouter();
   const [query, setQuery] = useState("");
@@ -41,6 +52,9 @@ export function PosRegister({
   const [tenderType, setTenderType] = useState<(typeof posTenderTypes)[number]>("Cash");
   const [orderType, setOrderType] = useState<"DINE_IN" | "TAKEAWAY" | "DELIVERY">("DINE_IN");
   const [tableLabel, setTableLabel] = useState("");
+  // Pay now, or put it on an account settled later: a table's running bill, or a guest's room.
+  const [chargeMode, setChargeMode] = useState<"NOW" | "TABLE" | "ROOM">("NOW");
+  const [reservationId, setReservationId] = useState("");
   const [customerName, setCustomerName] = useState("");
   const [customerPhone, setCustomerPhone] = useState("");
   const [customerEmail, setCustomerEmail] = useState("");
@@ -58,7 +72,7 @@ export function PosRegister({
   // gets a new key (otherwise the server would replay the earlier order).
   useEffect(() => {
     chargeIdempotencyKeyRef.current = crypto.randomUUID();
-  }, [cart, tenderType, orderType, tableLabel, customerName, customerPhone, customerEmail, customerProfileId]);
+  }, [cart, tenderType, orderType, tableLabel, chargeMode, reservationId, customerName, customerPhone, customerEmail, customerProfileId]);
 
   const currency = catalog[0]?.currency ?? "NGN";
 
@@ -209,8 +223,15 @@ export function PosRegister({
   const estimatedCommission = roundMoney(subtotal * (commissionRatePercent / 100));
   const netToKeep = roundMoney(subtotal - estimatedCommission);
 
+  const canTab = showOrderType;
+  const canRoom = inHouseRooms.length > 0;
+  const currentTab = chargeMode === "TABLE" ? openTabs.find((t) => t.label.toLowerCase() === tableLabel.trim().replace(/\s+/g, " ").toLowerCase()) : undefined;
+  const chosenRoom = inHouseRooms.find((r) => r.id === reservationId);
+
   async function handleCharge() {
     if (cart.length === 0 || charging) return;
+    if (chargeMode === "TABLE" && !tableLabel.trim()) return toast.error("Enter the table to add this to.");
+    if (chargeMode === "ROOM" && !reservationId) return toast.error("Choose the room to charge.");
     setCharging(true);
     let result: Awaited<ReturnType<typeof createPosSale>>;
     try {
@@ -224,6 +245,7 @@ export function PosRegister({
       tenderType,
       orderType,
       tableLabel: tableLabel.trim() || undefined,
+      chargeTo: chargeMode === "TABLE" ? { kind: "TABLE" } : chargeMode === "ROOM" ? { kind: "ROOM", reservationId } : undefined,
       customerName: customerName.trim() || undefined,
       customerPhone: customerPhone.trim() || undefined,
       customerEmail: customerEmail.trim() || undefined,
@@ -239,17 +261,26 @@ export function PosRegister({
       setCharging(false);
     }
     if (!result.success) return toast.error(result.error);
-    toast.success(`Sale complete — ${currency} ${formatNumber(result.data.total)}`);
+    toast.success(
+      chargeMode === "TABLE"
+        ? `Added ${currency} ${formatNumber(result.data.total)} to ${tableLabel.trim()}'s tab.`
+        : chargeMode === "ROOM"
+          ? `Charged ${currency} ${formatNumber(result.data.total)} to room ${chosenRoom?.roomName ?? ""}.`
+          : `Sale complete — ${currency} ${formatNumber(result.data.total)}`,
+    );
     setCart([]);
     setCustomerName("");
     setCustomerPhone("");
     setOrderType("DINE_IN");
     setTableLabel("");
+    setChargeMode("NOW");
+    setReservationId("");
     setCustomerEmail("");
     setCustomerProfileId(undefined);
     setCustomerMatches([]);
     chargeIdempotencyKeyRef.current = crypto.randomUUID();
     router.refresh();
+    onSaleComplete?.();
   }
 
   return (
@@ -435,10 +466,50 @@ export function PosRegister({
                 ))}
               </div>
             </div>
-            <label className="col-span-2 text-[11px] font-semibold text-muted-foreground">Table / reference<input value={tableLabel} onChange={(e) => setTableLabel(e.target.value)} placeholder={orderType === "DINE_IN" ? "Table 12" : "Optional"} className="mt-1 w-full rounded-md border bg-background px-2 py-2 text-sm" /></label>
+            <label className="col-span-2 text-[11px] font-semibold text-muted-foreground">Table / reference<input list="pos-open-tables" value={tableLabel} onChange={(e) => setTableLabel(e.target.value)} placeholder={orderType === "DINE_IN" || chargeMode === "TABLE" ? "Table 12" : "Optional"} className="mt-1 w-full rounded-md border bg-background px-2 py-2 text-sm" /><datalist id="pos-open-tables">{openTabs.map((t) => <option key={t.id} value={t.label} />)}</datalist></label>
             </>)}
           </div>
 
+          {(canTab || canRoom) && (
+            <div>
+              <p className="text-[11px] font-semibold text-muted-foreground" id="pos-charge-mode-label">Payment</p>
+              <div role="radiogroup" aria-labelledby="pos-charge-mode-label" className="mt-1 grid gap-1.5" style={{ gridTemplateColumns: `repeat(${1 + Number(canTab) + Number(canRoom)}, minmax(0, 1fr))` }}>
+                {([["NOW", "Pay now", true], ["TABLE", "Add to table tab", canTab], ["ROOM", "Charge to room", canRoom]] as const)
+                  .filter(([, , shown]) => shown)
+                  .map(([value, label]) => (
+                    <button
+                      key={value}
+                      type="button"
+                      role="radio"
+                      aria-checked={chargeMode === value}
+                      onClick={() => { setChargeMode(value); if (value === "TABLE") setOrderType("DINE_IN"); }}
+                      className={`min-h-10 rounded-md border px-2 py-1.5 text-xs font-medium transition-colors ${
+                        chargeMode === value ? "border-[var(--bn-admin-border)] bg-[color-mix(in_srgb,var(--bn-admin-orange-soft)_10%,transparent)] text-[var(--bn-admin-orange)]" : "text-muted-foreground hover:bg-muted"
+                      }`}
+                    >
+                      {label}
+                    </button>
+                  ))}
+              </div>
+              {chargeMode === "TABLE" && (
+                <p className="mt-1.5 text-[11px] text-muted-foreground">
+                  {currentTab
+                    ? `${currentTab.label} is already at ${currency} ${formatNumber(currentTab.total)} — this adds to it. Take payment from the open tabs list below.`
+                    : "Opens a running bill for this table. Keep adding orders; take payment once at the end."}
+                </p>
+              )}
+              {chargeMode === "ROOM" && (
+                <select value={reservationId} onChange={(e) => setReservationId(e.target.value)} className="mt-1.5 w-full rounded-md border bg-background px-2 py-2 text-sm">
+                  <option value="">Choose room…</option>
+                  {inHouseRooms.map((r) => (
+                    <option key={r.id} value={r.id}>Room {r.roomName} · {r.guestName}</option>
+                  ))}
+                </select>
+              )}
+            </div>
+          )}
+
+          {chargeMode === "NOW" && (
           <div className="flex gap-1.5">
             {posTenderTypes.map((t) => (
               <button
@@ -452,10 +523,11 @@ export function PosRegister({
               </button>
             ))}
           </div>
+          )}
 
           <div className="space-y-1 border-t pt-2 text-sm">
             <div className="flex items-center justify-between">
-              <span className="text-muted-foreground">Collect from customer</span>
+              <span className="text-muted-foreground">{chargeMode === "NOW" ? "Collect from customer" : chargeMode === "TABLE" ? "Add to tab" : "Charge to room"}</span>
               <span className="font-semibold">
                 {currency} {formatNumber(subtotal)}
               </span>
@@ -471,7 +543,7 @@ export function PosRegister({
                   <span>{currency} {formatNumber(netToKeep)}</span>
                 </div>
                 <p className="text-[11px] text-muted-foreground/80">
-                  Cash is collected in full — commission is tracked and settled separately (see Payments).
+                  {chargeMode === "NOW" ? "Cash is collected in full — commission is tracked and settled separately (see Payments)." : "Nothing is collected yet — the guest pays the whole bill later. Commission is tracked now and settled separately (see Payments)."}
                 </p>
               </>
             )}
@@ -482,7 +554,13 @@ export function PosRegister({
             disabled={cart.length === 0 || charging}
             className="w-full rounded-lg bg-[var(--bn-admin-orange-soft)] py-2.5 text-sm font-medium text-[var(--bn-admin-orange)]-foreground transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
           >
-            {charging ? "Charging…" : `Charge ${currency} ${formatNumber(subtotal)}`}
+            {charging
+              ? "Charging…"
+              : chargeMode === "TABLE"
+                ? `Add ${currency} ${formatNumber(subtotal)} to ${tableLabel.trim() || "table"} tab`
+                : chargeMode === "ROOM"
+                  ? `Charge ${currency} ${formatNumber(subtotal)} to room${chosenRoom ? ` ${chosenRoom.roomName}` : ""}`
+                  : `Charge ${currency} ${formatNumber(subtotal)}`}
           </button>
         </div>
       </div>

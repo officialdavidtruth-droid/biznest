@@ -9,6 +9,9 @@ import { getPluginEntitlement } from "@/lib/plugins";
 import { assertStorePermission } from "@/lib/access/assert-store-access";
 import { getPosCatalog, getPosDailySummary } from "@/lib/actions/pos";
 import { PosRegister } from "@/components/dashboard/pos-register";
+import { PosOpenTabs } from "@/components/dashboard/pos-open-tabs";
+import { getOpenPosTabs } from "@/lib/actions/pos-tabs";
+import { getInHouseReservations } from "@/lib/actions/folio";
 import { formatNumber } from "@/lib/i18n/locale";
 import { PLATFORM_COMMISSION_PERCENT } from "@/lib/constants/commission";
 
@@ -32,7 +35,12 @@ export default async function PosPage({ params }: { params: Promise<{ slug: stri
     if (fnb.allowed && fnb.installed) redirect(`/store/${slug}/admin/fnb`);
   }
 
-  const [catalog, summary] = await Promise.all([getPosCatalog(slug), getPosDailySummary(slug)]);
+  const [catalog, summary, openTabs, inHouseRooms] = await Promise.all([
+    getPosCatalog(slug),
+    getPosDailySummary(slug),
+    getOpenPosTabs(slug),
+    getInHouseReservations(slug),
+  ]);
   // Same source of truth createPosSale uses, so the register never shows a
   // commission the server will not record.
   const commissionRatePercent = PLATFORM_COMMISSION_PERCENT;
@@ -52,7 +60,15 @@ export default async function PosPage({ params }: { params: Promise<{ slug: stri
           </p>
         </div>
       </div>
-      <PosRegister slug={slug} catalog={catalog} commissionRatePercent={commissionRatePercent} showOrderType={isFoodBusiness} />
+      <PosRegister
+        slug={slug}
+        catalog={catalog}
+        commissionRatePercent={commissionRatePercent}
+        showOrderType={isFoodBusiness}
+        inHouseRooms={inHouseRooms}
+        openTabs={openTabs}
+      />
+      {(isFoodBusiness || openTabs.length > 0) && <PosOpenTabs slug={slug} tabs={openTabs} inHouseRooms={inHouseRooms} />}
     </div>
   );
 }

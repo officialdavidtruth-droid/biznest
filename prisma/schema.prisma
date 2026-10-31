@@ -988,6 +988,7 @@ model Store {
   // for *why* the balance moved.
   posCommissionOwed        Decimal     @default(0) @db.Decimal(12, 2)
   posCommissionSettlements PosCommissionSettlement[]
+  posTabs                  PosTab[]
 
   // Running balance of merchant share the platform has fronted on refunds
   // where the split had already settled to the merchant's bank account
@@ -1828,6 +1829,32 @@ enum OrderChannel {
   POS
 }
 
+enum PosTabStatus {
+  OPEN
+  SETTLED
+}
+
+// A running bill for one table (restaurants, bars, any dining). Every round of
+// food/drinks rung up "to the table" is a normal POS Order linked here; the
+// guest pays once at the end and the whole tab is settled in one go (or moved
+// onto a checked-in guest's room folio). At most one OPEN tab per table label.
+model PosTab {
+  id            String        @id @default(cuid())
+  storeId       String
+  store         Store         @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  label         String
+  status        PosTabStatus  @default(OPEN)
+  customerName  String?
+  openedAt      DateTime      @default(now())
+  settledAt     DateTime?
+  // How the tab was finally paid: Cash / Card / Transfer, or "Room charge (101)".
+  settledTender String?
+  settledByUserId String?
+  orders        Order[]
+
+  @@index([storeId, status])
+}
+
 // One row per time an owner/admin marks POS commission as settled (see
 // Store.posCommissionOwed) -- append-only record of "we cleared ₦X of the
 // balance on this date", same ledger pattern as StockMovement/
@@ -2140,6 +2167,11 @@ model Order {
   fnbShift       FnbShift?       @relation(fields: [fnbShiftId], references: [id], onDelete: SetNull)
   fnbShiftId     String?
 
+  // Running table bill: set when this POS order was added to an open table tab
+  // instead of being paid on the spot. See PosTab.
+  posTabId       String?
+  posTab         PosTab?         @relation(fields: [posTabId], references: [id], onDelete: SetNull)
+
   // Recovery nudges sent while this order was stuck at PENDING_PAYMENT --
   // see AbandonedCheckoutNotification above.
   abandonedNotifications AbandonedCheckoutNotification[]
@@ -2156,6 +2188,7 @@ model Order {
   @@index([storeId, kitchenStatus])
   @@index([buyerId])
   @@index([customerProfileId])
+  @@index([posTabId])
 }
 
 // Append-only timeline of Order.status transitions -- this is what lets the

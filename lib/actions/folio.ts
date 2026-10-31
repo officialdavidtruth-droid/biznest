@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { revalidatePath } from "next/cache";
 import { auth } from "@/lib/auth";
 import { assertAnyStorePermission } from "@/lib/access/assert-store-access";
+import { postOrderSaleToLedger } from "@/lib/financial/order-ledger";
 import type { ActionResult } from "@/types/actions";
 
 /**
@@ -140,6 +141,8 @@ export async function settleFolio(slug: string, reservationId: string, method?: 
   const note = typeof method === "string" ? method.trim().slice(0, 60) : "";
   const userId = (await auth())?.user?.id ?? null;
   const invoiceIds = [...new Set(open.filter((c) => c.sourceType === "INVOICE" && c.sourceId).map((c) => c.sourceId as string))];
+  const orderIds = [...new Set(open.filter((c) => c.sourceType === "ORDER" && c.sourceId).map((c) => c.sourceId as string))];
+  const paidOrderIds: string[] = [];
 
   await prisma.$transaction(async (tx) => {
     const now = new Date();
@@ -167,7 +170,32 @@ export async function settleFolio(slug: string, reservationId: string, method?: 
       });
       await tx.invoice.update({ where: { id: invoiceId }, data: { paymentId: payment.id } });
     }
+
+    // POS orders charged straight to the room have no Payment yet (the money wasn't taken at the
+    // register); record it now that the guest has paid. Orders posted to the room after being rung
+    // up already have one, so they're left alone.
+    for (const orderId of orderIds) {
+      const order = await tx.order.findFirst({ where: { id: orderId, storeId: store.id }, select: { id: true, total: true, currency: true, payments: { select: { id: true }, take: 1 } } });
+      if (!order || order.payments.length > 0) continue;
+      await tx.payment.create({
+        data: {
+          orderId: order.id,
+          storeId: store.id,
+          purpose: "ORDER",
+          provider: "CASH",
+          reference: `POS-${order.id}`,
+          status: "SUCCESSFUL",
+          amount: order.total,
+          currency: order.currency,
+          verifiedAt: now,
+          rawPayload: { method: note || "Settled with room bill", settledByUserId: userId },
+        },
+      });
+      paidOrderIds.push(order.id);
+    }
   });
+
+  for (const orderId of paidOrderIds) await postOrderSaleToLedger(orderId); // never throws; idempotent
 
   revalidatePath(`/store/${slug}/admin/folio`);
   revalidatePath(`/store/${slug}/admin/invoices`);
