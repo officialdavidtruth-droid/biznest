@@ -27,6 +27,7 @@ export function ContentPanel({
   storyImage,
   storyOverrides,
   storyDescription,
+  builderHome = false,
   onSaved,
 }: {
   slug: string;
@@ -37,6 +38,8 @@ export function ContentPanel({
   storyImage: string | null;
   storyOverrides: StoryOverrides;
   storyDescription: string | null;
+  /** True when the visual-builder homepage is what visitors see: its hero/story text is edited under Sections & Layout, not here. */
+  builderHome?: boolean;
   onSaved: () => void;
 }) {
   const [open, setOpen] = useState<"hero" | "story" | null>("hero");
@@ -49,12 +52,13 @@ export function ContentPanel({
       </p>
 
       <BlockGroup title="Hero" open={open === "hero"} onToggle={() => setOpen(open === "hero" ? null : "hero")}>
-        <HeroFields slug={slug} storeName={storeName} theme={theme} heroImage={heroImage} initial={heroOverrides} onSaved={onSaved} />
+        <HeroFields builderHome={builderHome} slug={slug} storeName={storeName} theme={theme} heroImage={heroImage} initial={heroOverrides} onSaved={onSaved} />
       </BlockGroup>
 
       {storyDescription && (
         <BlockGroup title="About / Story" open={open === "story"} onToggle={() => setOpen(open === "story" ? null : "story")}>
           <StoryFields
+            builderHome={builderHome}
             slug={slug}
             storeName={storeName}
             description={storyDescription}
@@ -108,8 +112,8 @@ function Field({ label, value, onChange, onSave, isSaving, multiline }: {
   );
 }
 
-function HeroFields({ slug, storeName, theme, heroImage, initial, onSaved }: {
-  slug: string; storeName: string; theme: TemplateTheme; heroImage: string | null; initial: HeroOverrides; onSaved: () => void;
+function HeroFields({ slug, storeName, theme, heroImage, initial, onSaved, builderHome }: {
+  builderHome: boolean; slug: string; storeName: string; theme: TemplateTheme; heroImage: string | null; initial: HeroOverrides; onSaved: () => void;
 }) {
   const [headline, setHeadline] = useState(initial.headline || storeName);
   const [subtitle, setSubtitle] = useState(initial.subtitle || theme.sub);
@@ -137,17 +141,20 @@ function HeroFields({ slug, storeName, theme, heroImage, initial, onSaved }: {
 
   return (
     <div>
+      {builderHome && <p className="mb-3 rounded-md border border-amber-300 bg-amber-50 px-2.5 py-2 text-[11px] text-amber-900">Your homepage is built with the visual builder, so its text is edited under Sections &amp; Layout. The image below is used there too.</p>}
+      {!builderHome && <>
       <Field label="Headline" value={headline} onChange={setHeadline} onSave={() => saveField("headline", headline)} isSaving={isSaving} />
       <Field label="Subtitle" value={subtitle} onChange={setSubtitle} onSave={() => saveField("subtitle", subtitle)} isSaving={isSaving} multiline />
       <Field label="Button label" value={ctaLabel} onChange={setCtaLabel} onSave={() => saveField("ctaLabel", ctaLabel)} isSaving={isSaving} />
+      </>}
       <div className="mb-1 mt-1 text-xs font-medium text-muted-foreground">Background image</div>
-      <FileUploadField label="" value={image} onChange={(url) => { setImage(url); saveImage(url); }} />
+      <FileUploadField label="" imageOnly keepValueOnError value={image} onChange={(url) => { setImage(url); saveImage(url); }} />
     </div>
   );
 }
 
-function StoryFields({ slug, storeName, description, storyImage, theme, initial, onSaved }: {
-  slug: string; storeName: string; description: string; storyImage: string | null; theme: TemplateTheme; initial: StoryOverrides; onSaved: () => void;
+function StoryFields({ slug, storeName, description, storyImage, theme, initial, onSaved, builderHome }: {
+  builderHome: boolean; slug: string; storeName: string; description: string; storyImage: string | null; theme: TemplateTheme; initial: StoryOverrides; onSaved: () => void;
 }) {
   const [eyebrow, setEyebrow] = useState(initial.eyebrow || "What we do");
   const [heading, setHeading] = useState(initial.heading || `Behind the ${storeName} story.`);
@@ -175,11 +182,13 @@ function StoryFields({ slug, storeName, description, storyImage, theme, initial,
 
   return (
     <div>
+      {!builderHome && <>
       <Field label="Eyebrow" value={eyebrow} onChange={setEyebrow} onSave={() => saveField("eyebrow", eyebrow)} isSaving={isSaving} />
       <Field label="Heading" value={heading} onChange={setHeading} onSave={() => saveField("heading", heading)} isSaving={isSaving} />
       <Field label="Body" value={body} onChange={setBody} onSave={() => saveField("body", body)} isSaving={isSaving} multiline />
+      </>}
       <div className="mb-1 mt-1 text-xs font-medium text-muted-foreground">Image</div>
-      <FileUploadField label="" value={image} onChange={(url) => { setImage(url); saveImage(url); }} />
+      <FileUploadField label="" imageOnly keepValueOnError value={image} onChange={(url) => { setImage(url); saveImage(url); }} />
     </div>
   );
 }

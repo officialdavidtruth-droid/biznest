@@ -13,6 +13,7 @@ import { decidePublishAfterStockChange } from "@/lib/catalog/publish";
 import { correctInventoryQuantityTx } from "@/lib/catalog/stock";
 import { reportCatalogChange } from "@/lib/catalog/report";
 import { findIdentifierClash } from "@/lib/catalog-identifiers";
+import { isSafeImageUrl } from "@/lib/builder-safe";
 
 // Same bounds as productSchema so a CSV row can't create what the form would reject.
 const MAX_PRICE = 999_999_999;
@@ -50,7 +51,16 @@ const CSV_HEADERS = [
   "lowStockThreshold",
   "isPublished",
   "inventoryUpdatedAt",
+  "imageUrl",
 ] as const;
+
+/** The picture column: an https URL (or site path) for a product's main image. Blank leaves images alone. */
+function parseImageUrl(v: string | undefined): string | null {
+  const t = (v ?? "").trim();
+  if (!t) return null;
+  if (t.length > 2000 || !/^(https:\/\/|\/(?!\/))/i.test(t) || !isSafeImageUrl(t)) throw new Error("imageUrl must be an https:// link to an image");
+  return t;
+}
 
 /**
  * One row per plain product, plus one row per variant of a variant-enabled
@@ -90,6 +100,7 @@ export async function exportProductsCsv(slug: string): Promise<ActionResult<{ cs
           v.lowStockThreshold,
           v.isActive,
           v.updatedAt.toISOString(),
+          "",
         ]);
       }
     } else {
@@ -109,6 +120,7 @@ export async function exportProductsCsv(slug: string): Promise<ActionResult<{ cs
         p.inventory?.lowStockThreshold ?? 5,
         p.isPublished,
         p.inventory?.updatedAt?.toISOString() ?? "",
+        p.images?.[0] ?? "",
       ]);
     }
   }
@@ -263,6 +275,7 @@ export async function importProductsCsv(slug: string, csvText: string): Promise<
           if (rowCompare == null && rowPrice != null && product.compareAtPrice != null && Number(product.compareAtPrice) <= rowPrice) {
             throw new Error("price must stay below the existing compareAtPrice. Include a higher compareAtPrice too.");
           }
+          const rowImage = parseImageUrl(r.imageUrl);
           const rowQty = parseNum(r.quantity ?? "");
           if (rowQty != null && (rowQty < 0 || rowQty > MAX_QUANTITY)) throw new Error("quantity must be between 0 and 1,000,000");
           const rowCost = parseNum(r.costPrice ?? "");
@@ -347,6 +360,8 @@ export async function importProductsCsv(slug: string, csvText: string): Promise<
               ...(categoryId !== undefined ? { categoryId } : {}),
               price: rowPrice != null ? roundMoney(rowPrice) : product.price,
               ...(rowCompare != null ? { compareAtPrice: roundMoney(rowCompare) } : {}),
+              // A new picture replaces the main image and keeps any other photos.
+              ...(rowImage && rowImage !== product.images?.[0] ? { images: [rowImage, ...(product.images ?? []).filter((u: string) => u !== rowImage).slice(0, 11)] } : {}),
               isPublished: finalPublished,
               ...(finalPublished ? { archivedAt: null } : {}),
             },
@@ -402,6 +417,7 @@ export async function importProductsCsv(slug: string, csvText: string): Promise<
         summary.rows.push({ row: rowNum, status: "error", message: "lowStockThreshold must be a whole number, 0 or more" });
         continue;
       }
+      const newImage = parseImageUrl(r.imageUrl);
       const newSku = r.sku?.trim() || null;
       const newBarcode = r.barcode?.trim() || null;
       const newClash = await findIdentifierClash(access.store.id, { sku: newSku, barcode: newBarcode });
@@ -437,7 +453,7 @@ export async function importProductsCsv(slug: string, csvText: string): Promise<
                 price: roundMoney(price),
                 compareAtPrice: compareAt != null ? roundMoney(compareAt) : null,
                 currency: access.store.currency,
-                images: [],
+                images: newImage ? [newImage] : [],
                 isPublished: parseBool(r.isPublished ?? "", true),
                 inventory: {
                   create: {

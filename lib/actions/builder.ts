@@ -1,11 +1,11 @@
 "use server";
 
 import { prisma } from "@/lib/prisma";
-import type { Prisma } from "@prisma/client";
 import { revalidatePath } from "next/cache";
 import { builderConfigSchema, type BuilderConfig } from "@/lib/builder-config";
 import type { ActionResult } from "@/types/actions";
 import { assertStorePermission } from "@/lib/access/assert-store-access";
+import { updateSectionOverridesJson } from "@/lib/store-overrides";
 
 // Website Builder lives under "settings" in the nav (dashboard-nav.ts), so
 // a MANAGER/STAFF granted "settings" should be able to actually save
@@ -33,17 +33,7 @@ export async function saveBuilderConfig(slug: string, config: BuilderConfig): Pr
     if (st.images) st.images = st.images.filter((u) => u.trim());
   }
 
-  const current = (access.store.sectionOverrides as Record<string, unknown> | null) ?? {};
-  await prisma.store.update({
-    where: { id: access.store.id },
-    data: {
-      sectionOverrides: {
-        ...current,
-        builderVersion: 1,
-        builder: parsed.data,
-      },
-    },
-  });
+  await updateSectionOverridesJson(access.store.id, (current) => ({ ...current, builderVersion: 1, builder: parsed.data }));
 
   revalidatePath(`/store/${slug}`);
   revalidatePath(`/store/${slug}/admin/customize`);
@@ -58,12 +48,11 @@ export async function resetBuilderToTemplate(slug: string): Promise<ActionResult
   const access = await assertStoreAccess(slug);
   if (!access.success) return { success: false, error: access.error };
 
-  const current = access.store.sectionOverrides;
-  if (current && typeof current === "object" && !Array.isArray(current)) {
-    const { builderVersion: _v, builder: _b, order: _o, hidden: _h, ...rest } = current as Record<string, unknown>;
+  await updateSectionOverridesJson(access.store.id, (current) => {
+    const { builderVersion: _v, builder: _b, order: _o, hidden: _h, ...rest } = current;
     void _v; void _b; void _o; void _h;
-    await prisma.store.update({ where: { id: access.store.id }, data: { sectionOverrides: rest as Prisma.InputJsonValue } });
-  }
+    return rest;
+  });
 
   revalidatePath(`/store/${slug}`);
   revalidatePath(`/store/${slug}/admin/customize`);

@@ -103,8 +103,13 @@ export function CustomizerClient({
     try {
       const raw = localStorage.getItem(draftKey);
       if (!raw) return;
-      const draft = readBuilderConfig(JSON.parse(raw));
-      if (draft && JSON.stringify(draft) !== JSON.stringify(initialBuilder)) {
+      const parsed = JSON.parse(raw) as { base?: string; config?: unknown };
+      // Drafts are stored with the published layout they started from; older ones were the bare config.
+      const draft = readBuilderConfig(parsed && "config" in parsed ? parsed.config : parsed);
+      const stale = !!parsed?.base && parsed.base !== JSON.stringify(initialBuilder);
+      if (draft && stale && !confirm("The published layout changed since you saved this draft (someone else may have published). Restore your old draft anyway?")) {
+        localStorage.removeItem(draftKey);
+      } else if (draft && JSON.stringify(draft) !== JSON.stringify(initialBuilder)) {
         setBuilder(draft);
         setSelectedSectionId(draft.sections[0]?.id ?? null);
         setRestoredDraft(true);
@@ -116,10 +121,10 @@ export function CustomizerClient({
   // Keep the draft in this browser while it differs from what is published.
   useEffect(() => {
     try {
-      if (dirty) localStorage.setItem(draftKey, JSON.stringify(builder));
+      if (dirty) localStorage.setItem(draftKey, JSON.stringify({ base: savedJson, config: builder }));
       else localStorage.removeItem(draftKey);
     } catch { /* ignore */ }
-  }, [builder, dirty, draftKey]);
+  }, [builder, dirty, draftKey, savedJson]);
 
   // Warn before closing or reloading the tab with unpublished changes.
   useEffect(() => {
@@ -473,6 +478,7 @@ export function CustomizerClient({
                 storyImage={storyImage}
                 storyOverrides={storyOverrides}
                 storyDescription={storyDescription}
+                builderHome={!templateHasOwnHomepage || published}
                 onSaved={refreshPreview}
               />
             )}

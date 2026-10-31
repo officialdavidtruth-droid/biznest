@@ -1,5 +1,6 @@
 "use server";
 
+import { isSafeImageUrl } from "@/lib/builder-safe";
 import { resolveStoreCurrency } from "@/lib/store-currency";
 import { getStoreConfiguration } from "@/lib/capabilities";
 import { normalizeWhatsAppNumber } from "@/lib/utils/whatsapp-link";
@@ -580,6 +581,22 @@ export async function updateBusinessCapabilities(
   return { success: true, data: input };
 }
 
+/**
+ * Applies a partial update to a text-overrides object. A field sent as blank is removed, so the owner can
+ * clear it and get the template's default back (it used to be silently ignored). Over-long text is rejected.
+ */
+function mergeOverrides<T extends Record<string, string | undefined>>(existing: T, patch: Partial<T>, maxLen: Record<string, number>): { ok: true; value: T } | { ok: false; error: string } {
+  const value: Record<string, string | undefined> = { ...existing };
+  for (const [key, raw] of Object.entries(patch)) {
+    if (raw === undefined || !(key in maxLen)) continue;
+    const text = String(raw).trim();
+    if (text.length > maxLen[key]) return { ok: false, error: `Keep this under ${maxLen[key]} characters.` };
+    if (text) value[key] = text;
+    else delete value[key];
+  }
+  return { ok: true, value: value as T };
+}
+
 export type HeroOverrides = { headline?: string; subtitle?: string; ctaLabel?: string };
 
 /**
@@ -593,12 +610,15 @@ export async function updateHeroImage(slug: string, bannerUrl: string): Promise<
   const access = await assertStoreAccess(slug);
   if (!access.success) return { success: false, error: access.error };
 
+  const url = bannerUrl.trim();
+  if (url.length > 2000 || !isSafeImageUrl(url)) return { success: false, error: "Image must be an http(s) URL or a site path." };
+
   await prisma.store.update({
     where: { id: access.store.id },
-    data: { bannerUrl: bannerUrl.trim() || null },
+    data: { bannerUrl: url || null },
   });
 
-  revalidatePath(`/store/${slug}/admin/website-editor`);
+  revalidatePath(`/store/${slug}/admin/customize`);
   revalidatePath(`/store/${slug}/admin/settings`);
   revalidatePath(`/store/${slug}`);
   return { success: true, data: undefined };
@@ -614,18 +634,14 @@ export async function updateHeroOverrides(slug: string, overrides: HeroOverrides
   const access = await assertStoreAccess(slug);
   if (!access.success) return { success: false, error: access.error };
 
-  const clean: HeroOverrides = {};
-  if (overrides.headline?.trim()) clean.headline = overrides.headline.trim();
-  if (overrides.subtitle?.trim()) clean.subtitle = overrides.subtitle.trim();
-  if (overrides.ctaLabel?.trim()) clean.ctaLabel = overrides.ctaLabel.trim();
-
-  const existing = (access.store.heroOverrides as HeroOverrides | null) ?? {};
+  const merged = mergeOverrides((access.store.heroOverrides as HeroOverrides | null) ?? {}, overrides, { headline: 180, subtitle: 500, ctaLabel: 80 });
+  if (!merged.ok) return { success: false, error: merged.error };
   await prisma.store.update({
     where: { id: access.store.id },
-    data: { heroOverrides: { ...existing, ...clean } },
+    data: { heroOverrides: merged.value },
   });
 
-  revalidatePath(`/store/${slug}/admin/website-editor`);
+  revalidatePath(`/store/${slug}/admin/customize`);
   revalidatePath(`/store/${slug}`);
   return { success: true, data: undefined };
 }
@@ -641,12 +657,15 @@ export async function updateStoryImage(slug: string, imageUrl: string): Promise<
   const access = await assertStoreAccess(slug);
   if (!access.success) return { success: false, error: access.error };
 
+  const url = imageUrl.trim();
+  if (url.length > 2000 || !isSafeImageUrl(url)) return { success: false, error: "Image must be an http(s) URL or a site path." };
+
   await prisma.store.update({
     where: { id: access.store.id },
-    data: { storyImage: imageUrl.trim() || null },
+    data: { storyImage: url || null },
   });
 
-  revalidatePath(`/store/${slug}/admin/website-editor`);
+  revalidatePath(`/store/${slug}/admin/customize`);
   revalidatePath(`/store/${slug}`);
   return { success: true, data: undefined };
 }
@@ -661,18 +680,14 @@ export async function updateStoryOverrides(slug: string, overrides: StoryOverrid
   const access = await assertStoreAccess(slug);
   if (!access.success) return { success: false, error: access.error };
 
-  const clean: StoryOverrides = {};
-  if (overrides.eyebrow?.trim()) clean.eyebrow = overrides.eyebrow.trim();
-  if (overrides.heading?.trim()) clean.heading = overrides.heading.trim();
-  if (overrides.body?.trim()) clean.body = overrides.body.trim();
-
-  const existing = (access.store.storyOverrides as StoryOverrides | null) ?? {};
+  const merged = mergeOverrides((access.store.storyOverrides as StoryOverrides | null) ?? {}, overrides, { eyebrow: 120, heading: 180, body: 4000 });
+  if (!merged.ok) return { success: false, error: merged.error };
   await prisma.store.update({
     where: { id: access.store.id },
-    data: { storyOverrides: { ...existing, ...clean } },
+    data: { storyOverrides: merged.value },
   });
 
-  revalidatePath(`/store/${slug}/admin/website-editor`);
+  revalidatePath(`/store/${slug}/admin/customize`);
   revalidatePath(`/store/${slug}`);
   return { success: true, data: undefined };
 }

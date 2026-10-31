@@ -1,6 +1,7 @@
 "use server";
 import { prisma } from "@/lib/prisma";
 import { revalidatePath } from "next/cache";
+import { updateSectionOverridesJson } from "@/lib/store-overrides";
 import { assertStorePermission } from "@/lib/access/assert-store-access";
 import type { ActionResult } from "@/types/actions";
 import { DEFAULT_EXAMPLE_CONTENT, EXAMPLE_TEMPLATE_NAME, type ExampleContent } from "@/lib/example-content";
@@ -8,12 +9,8 @@ import { DEFAULT_EXAMPLE_CONTENT, EXAMPLE_TEMPLATE_NAME, type ExampleContent } f
 export async function saveExampleContent(slug: string, content: Partial<ExampleContent>): Promise<ActionResult> {
   const access = await assertStorePermission(slug, "settings");
   if (!access.success) return access;
-  const current = (access.store.sectionOverrides as Record<string, unknown> | null) ?? {};
   const clean = { ...DEFAULT_EXAMPLE_CONTENT, ...content };
-  await prisma.store.update({
-    where: { id: access.store.id },
-    data: { sectionOverrides: { ...current, exampleContent: clean } },
-  });
+  await updateSectionOverridesJson(access.store.id, (current) => ({ ...current, exampleContent: clean }));
   revalidatePath(`/store/${slug}`);
   revalidatePath(`/store/${slug}/categories`);
   revalidatePath(`/store/${slug}/deals`);

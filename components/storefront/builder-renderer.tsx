@@ -9,7 +9,7 @@ import { createPortal } from "react-dom";
 import Link from "next/link";
 import { CartLink } from "@/components/storefront/cart-link";
 import { BuilderNewsletterForm } from "@/components/storefront/builder-newsletter-form";
-import { cssUrl, safeHref } from "@/lib/builder-safe";
+import { cssUrl, isSafeImageUrl, safeHref } from "@/lib/builder-safe";
 import type { BuilderConfig, BuilderSection } from "@/lib/builder-config";
 import { getBusinessExperience } from "@/lib/business-experience";
 import { HeroVariantView } from "@/components/storefront/hero-variants";
@@ -25,7 +25,7 @@ type CatalogItem = {
 type Review = { id: string; rating: number; comment: string | null; author: { name: string | null } | null };
 
 type BuilderStore = {
-  name: string; slug: string; logoUrl: string | null; contactEmail: string | null; contactPhone: string | null;
+  name: string; slug: string; logoUrl: string | null; bannerUrl?: string | null; contactEmail: string | null; contactPhone: string | null;
   business: { description: string | null; category?: string | null; businessSubcategory?: string | null; sellsProducts?: boolean; offersServices?: boolean; city?: string | null; state?: string | null; country?: string | null };
 };
 
@@ -81,7 +81,9 @@ export function BuilderStorefront({
   const config = liveConfig; // used by JSX below (BuilderSectionView expects `config`)
   const experience = getBusinessExperience(store.business.category, { sellsProducts: store.business.sellsProducts, offersServices: store.business.offersServices }, store.business.businessSubcategory);
   const width = d.containerWidth === "compact" ? 960 : d.containerWidth === "wide" ? 1320 : 1160;
-  const visible = config.sections.filter((s) => s.visible);
+  // A hero with no image of its own shows the store's banner (Customize > Content > Background image),
+  // so changing that image updates a published builder homepage instead of being ignored.
+  const visible = config.sections.filter((s) => s.visible).map((s) => s.type === "hero" && !s.settings.image && store.bannerUrl && isSafeImageUrl(store.bannerUrl) ? { ...s, settings: { ...s.settings, image: store.bannerUrl } } : s);
   const featured = catalogItems.slice(0, 8);
   const categories = Array.from(new Set(catalogItems.map((i) => i.categoryName).filter(Boolean))) as string[];
 

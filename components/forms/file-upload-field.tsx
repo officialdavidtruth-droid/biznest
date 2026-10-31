@@ -8,6 +8,8 @@ export function FileUploadField({
   onChange,
   error,
   privateDoc = false,
+  imageOnly = false,
+  keepValueOnError = false,
 }: {
   label: string;
   value?: string;
@@ -15,6 +17,10 @@ export function FileUploadField({
   error?: string;
   /** KYC/ID documents: uploaded privately, so no thumbnail can be shown. */
   privateDoc?: boolean;
+  /** Photos only: no PDFs. For image slots such as the hero and story picture. */
+  imageOnly?: boolean;
+  /** On a failed upload, keep the current value instead of clearing it (clearing would save an empty image). */
+  keepValueOnError?: boolean;
 }) {
   const [isUploading, setIsUploading] = useState(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
@@ -34,7 +40,7 @@ export function FileUploadField({
       }
       onChange(body.url);
     } catch (err) {
-      onChange("");
+      if (!keepValueOnError) onChange("");
       setUploadError(err instanceof Error ? err.message : "Upload failed");
     } finally {
       setIsUploading(false);
@@ -53,7 +59,7 @@ export function FileUploadField({
       )}
       <input
         type="file"
-        accept="image/jpeg,image/png,image/webp,application/pdf"
+        accept={imageOnly ? "image/jpeg,image/png,image/webp" : "image/jpeg,image/png,image/webp,application/pdf"}
         onChange={(e) => {
           const file = e.target.files?.[0];
           if (file) handleFile(file);
@@ -61,7 +67,7 @@ export function FileUploadField({
         }}
         className="block w-full text-sm"
       />
-      <p className="mt-1 text-xs text-muted-foreground">JPG, PNG, WEBP, or PDF — up to 10MB.</p>
+      <p className="mt-1 text-xs text-muted-foreground">{imageOnly ? "JPG, PNG or WEBP — up to 10MB." : "JPG, PNG, WEBP, or PDF — up to 10MB."}</p>
       {isUploading && <p className="mt-1 text-xs text-muted-foreground">Uploading…</p>}
       {value && !isUploading && (
         <button type="button" onClick={() => onChange("")} className="mt-1 text-xs text-muted-foreground underline hover:text-foreground">
