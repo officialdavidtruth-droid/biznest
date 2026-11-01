@@ -65,9 +65,9 @@ describe("page content checks", () => {
     expect(ownerPageBlocks({ body: "x", blocks: [{ type: "text", text: "<b>hi</b>" }, { type: "button", label: "x", href: "javascript:1" }] })).toHaveLength(1);
   });
 
-  it("keeps fixed-format pages on the text editor", () => {
-    for (const s of ["faq", "policies", "gallery", "blog"]) expect(pageUsesBlocks(s)).toBe(false);
-    for (const s of ["about", "contact", "shipping"]) expect(pageUsesBlocks(s)).toBe(true);
+  it("keeps only policies on the text editor", () => {
+    expect(pageUsesBlocks("policies")).toBe(false);
+    for (const s of ["about", "contact", "shipping", "faq", "gallery", "blog"]) expect(pageUsesBlocks(s)).toBe(true);
   });
 
   it("makes new blocks that are empty until filled", () => {

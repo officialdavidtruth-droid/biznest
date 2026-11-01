@@ -1,5 +1,6 @@
 import { isSafeHref, isSecureImageUrl } from "@/lib/builder-safe";
 import { ownerPageBody } from "@/lib/storefront/page-registry";
+import { parseBlogPosts, parseGalleryBody } from "@/lib/storefront/owner-page-format";
 
 /**
  * Block content for the pages an owner writes in Customize > Pages.
@@ -9,7 +10,12 @@ import { ownerPageBody } from "@/lib/storefront/page-registry";
  * ({ body } only) open in the editor as text blocks. Pure functions, safe for client components.
  */
 
-export type BlockType = "heading" | "text" | "image" | "button" | "faq" | "gallery" | "divider";
+export type BlockType = "heading" | "text" | "image" | "button" | "faq" | "gallery" | "divider" | "products" | "collection";
+
+export type CollectionSort = "newest" | "price-asc" | "price-desc";
+export const COLLECTION_LIMITS = [4, 8, 12] as const;
+export const MAX_PRODUCTS_PER_BLOCK = 12;
+export const MAX_CATALOG_BLOCKS = 6;
 
 export type PageBlock =
   | { id: string; type: "heading"; text: string; level: 2 | 3 }
@@ -18,19 +24,25 @@ export type PageBlock =
   | { id: string; type: "button"; label: string; href: string }
   | { id: string; type: "faq"; items: { q: string; a: string }[] }
   | { id: string; type: "gallery"; images: { url: string; caption: string }[] }
-  | { id: string; type: "divider" };
+  | { id: string; type: "divider" }
+  // Catalogue blocks store only references. Names, prices and photos are read from the catalogue when the page is
+  // shown, so a price change or an unpublished product is never out of date on the page.
+  | { id: string; type: "products"; title: string; productIds: string[] }
+  // categoryId "" means every product in the store.
+  | { id: string; type: "collection"; title: string; categoryId: string; limit: 4 | 8 | 12; sort: CollectionSort };
 
 export const MAX_BLOCKS = 60;
 export const BLOCK_LABELS: Record<BlockType, string> = {
-  heading: "Heading", text: "Text", image: "Image", button: "Button", faq: "Questions", gallery: "Photo grid", divider: "Divider",
+  heading: "Heading", text: "Text", image: "Image", button: "Button", faq: "Questions", gallery: "Photo grid", divider: "Divider", products: "Products", collection: "Collection",
 };
 
-/** Pages whose storefront renderer reads a fixed text format, so they keep the plain-text editor. */
-const TEXT_FORMAT_SLUGS = new Set(["gallery", "faq", "blog", "policies"]);
+/** Pages that still use the plain-text editor. Policies is legal text the owner writes in their own words, so it stays plain text. */
+const TEXT_FORMAT_SLUGS = new Set(["policies"]);
 export function pageUsesBlocks(slug: string): boolean {
   return !TEXT_FORMAT_SLUGS.has(slug.trim().toLowerCase());
 }
 
+const ID_RE = /^[a-z0-9_-]{1,64}$/i;
 const clip = (v: unknown, max: number) => (typeof v === "string" ? v.replace(/\r\n/g, "\n").slice(0, max) : "");
 const rid = () => Math.random().toString(36).slice(2, 10);
 
@@ -44,6 +56,8 @@ export function newBlock(type: BlockType): PageBlock {
     case "faq": return { id, type, items: [{ q: "", a: "" }] };
     case "gallery": return { id, type, images: [] };
     case "divider": return { id, type };
+    case "products": return { id, type, title: "", productIds: [] };
+    case "collection": return { id, type, title: "", categoryId: "", limit: 4, sort: "newest" };
   }
 }
 
@@ -52,6 +66,7 @@ export function sanitizeBlocks(input: unknown): PageBlock[] {
   if (!Array.isArray(input)) return [];
   const out: PageBlock[] = [];
   const seen = new Set<string>();
+  let catalogBlocks = 0;
   for (const raw of input.slice(0, MAX_BLOCKS)) {
     if (!raw || typeof raw !== "object") continue;
     const b = raw as Record<string, unknown>;
@@ -102,6 +117,23 @@ export function sanitizeBlocks(input: unknown): PageBlock[] {
       case "divider":
         out.push({ id, type: "divider" });
         break;
+      case "products": {
+        const seenIds = new Set<string>();
+        const productIds = (Array.isArray(b.productIds) ? b.productIds : []).flatMap((v) => {
+          if (typeof v !== "string" || !ID_RE.test(v) || seenIds.has(v)) return [];
+          seenIds.add(v);
+          return [v];
+        }).slice(0, MAX_PRODUCTS_PER_BLOCK);
+        if (productIds.length && catalogBlocks < MAX_CATALOG_BLOCKS) { catalogBlocks++; out.push({ id, type: "products", title: clip(b.title, 120).trim(), productIds }); }
+        break;
+      }
+      case "collection": {
+        const categoryId = typeof b.categoryId === "string" && ID_RE.test(b.categoryId) ? b.categoryId : "";
+        const limit = b.limit === 8 ? 8 : b.limit === 12 ? 12 : 4;
+        const sort: CollectionSort = b.sort === "price-asc" || b.sort === "price-desc" ? b.sort : "newest";
+        if (catalogBlocks < MAX_CATALOG_BLOCKS) { catalogBlocks++; out.push({ id, type: "collection", title: clip(b.title, 120).trim(), categoryId, limit, sort }); }
+        break;
+      }
     }
   }
   return out;
@@ -118,6 +150,7 @@ export function blocksToPlainText(blocks: PageBlock[]): string {
       case "faq": parts.push(b.items.map((i) => `${i.q}\n${i.a}`).join("\n\n")); break;
       case "gallery": parts.push(b.images.map((i) => (i.caption ? `${i.url} | ${i.caption}` : i.url)).join("\n")); break;
       case "divider": break;
+      case "products": case "collection": if (b.title) parts.push(b.title); break;
     }
   }
   return parts.join("\n\n").trim();
@@ -126,6 +159,36 @@ export function blocksToPlainText(blocks: PageBlock[]): string {
 /** Opens an older text-only page in the block editor: one text block per paragraph. */
 export function textToBlocks(body: string): PageBlock[] {
   return sanitizeBlocks(body.split(/\n{2,}/).map((t) => ({ type: "text", text: t })));
+}
+
+/**
+ * Opens a page saved before blocks existed in the block editor. Gallery, FAQ and Blog used fixed text formats
+ * ("url | caption" lines, blank-line separated questions, "---" between posts); each becomes the matching blocks so
+ * nothing the owner wrote is lost. Other pages become one text block per paragraph.
+ */
+export function legacyTextToBlocks(slug: string, body: string): PageBlock[] {
+  const s = slug.trim().toLowerCase();
+  if (s === "gallery") {
+    const g = parseGalleryBody(body);
+    const out: unknown[] = [];
+    if (g.intro) out.push({ type: "text", text: g.intro });
+    for (let i = 0; i < g.images.length; i += 24) out.push({ type: "gallery", images: g.images.slice(i, i + 24) });
+    return sanitizeBlocks(out);
+  }
+  if (s === "faq") {
+    const items = body.split(/\n{2,}/).map((b) => b.trim().split("\n")).map(([q, ...a]) => ({ q: (q ?? "").trim(), a: a.join("\n").trim() })).filter((x) => x.q && x.a).slice(0, 30);
+    return sanitizeBlocks(items.length ? [{ type: "faq", items }] : []);
+  }
+  if (s === "blog") {
+    const out: unknown[] = [];
+    parseBlogPosts(body).forEach((p, i) => {
+      if (i > 0) out.push({ type: "divider" });
+      out.push({ type: "heading", text: p.title, level: 2 });
+      if (p.text) out.push({ type: "text", text: p.text });
+    });
+    return sanitizeBlocks(out);
+  }
+  return textToBlocks(body);
 }
 
 /** The saved blocks of a page row, validated again on every read. */

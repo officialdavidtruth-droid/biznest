@@ -1,6 +1,7 @@
 "use client";
 
 import { ApproxPrice } from "@/components/storefront/approx-price";
+import type { ReactNode } from "react";
 import Link from "next/link";
 import { useCart } from "@/lib/cart-context";
 import { Minus, Plus, Trash2, ArrowRight, ArrowLeft, ShieldCheck, Truck, ShoppingBag, Check } from "lucide-react";
@@ -12,11 +13,16 @@ export function CartClient({
   storeName,
   logoUrl,
   palette = DEFAULT_STORE_PALETTE,
+  topSlot,
+  bottomSlot,
 }: {
   slug: string;
   storeName?: string;
   logoUrl?: string | null;
   palette?: StorePalette;
+  /** Owner blocks above and below the cart (Customize > Pages > Cart page). */
+  topSlot?: ReactNode;
+  bottomSlot?: ReactNode;
 }) {
   const ACCENT = palette.accent, INK = palette.ink, SURFACE = palette.surface, CARD = palette.card, CARD_ALT = palette.cardAlt, INVERSE = palette.inverse, INVERSE_INK = palette.inverseInk;
   const { items, storeSlug, setQuantity, removeItem, clear, subtotal } = useCart();
@@ -55,6 +61,7 @@ export function CartClient({
           </Link>
         </div>
       </header>
+      {topSlot}
 
       <div style={{ maxWidth: 1280 }} className="mx-auto px-6 pb-32 pt-10 lg:pb-14">
         <div className="mb-8 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
@@ -204,6 +211,8 @@ export function CartClient({
           </div>
         )}
       </div>
+
+      {bottomSlot}
 
       {/* Mobile sticky checkout bar */}
       {cartItems.length > 0 && (

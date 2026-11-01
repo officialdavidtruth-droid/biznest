@@ -1,5 +1,8 @@
 import { ownerPageBody } from "@/lib/storefront/page-registry";
 import { ownerPageBlocks } from "@/lib/storefront/page-blocks";
+import { loadCatalogOptions } from "@/lib/storefront/page-block-catalog";
+import { readAllSystemSections } from "@/lib/storefront/system-sections";
+import { systemPageSupport } from "@/lib/storefront/system-page-support";
 import { getCanonicalBusinessType } from "@/lib/business-identity";
 // Route: /store/[slug]/admin/customize
 import { prisma } from "@/lib/prisma";
@@ -23,7 +26,10 @@ export default async function CustomizePage({ params }: { params: Promise<{ slug
   if (!store) notFound();
   if (!store.templateId) redirect(`/${slug}/admin/templates`);
 
-  const pages = await prisma.storePage.findMany({ where: { storeId: store.id }, orderBy: { updatedAt: "desc" } });
+  const [pages, catalogOptions] = await Promise.all([
+    prisma.storePage.findMany({ where: { storeId: store.id }, orderBy: { updatedAt: "desc" } }),
+    loadCatalogOptions(store.id),
+  ]);
 
   const overrides = store.sectionOverrides as { builder?: unknown } | null;
 
@@ -57,6 +63,9 @@ export default async function CustomizePage({ params }: { params: Promise<{ slug
       templateHasOwnHomepage={resolveHomeRenderer(store.template?.name).kind !== "builder"}
       homeKind={resolveHomeRenderer(store.template?.name).kind}
       builderPublished={!!getSavedBuilder(store.sectionOverrides)}
+      catalogOptions={catalogOptions}
+      systemSections={readAllSystemSections(store.sectionOverrides)}
+      systemSupport={systemPageSupport({ templateName: store.template?.name, businessCategory: store.business?.category })}
       // Only owner-written text pages. Template content rows (hotel-*, events ...) and legacy empty
       // placeholders (Home, Products, Testimonials ...) are not pages the owner can edit here.
       pages={pages

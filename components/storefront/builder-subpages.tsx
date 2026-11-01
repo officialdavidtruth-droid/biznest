@@ -12,6 +12,7 @@ import { ContactEnquiryForm } from "@/components/storefront/contact-enquiry-form
 import { parseBlogPosts, parseGalleryBody } from "@/lib/storefront/owner-page-format";
 import { PageBlocks } from "@/components/storefront/page-blocks";
 import type { PageBlock } from "@/lib/storefront/page-blocks";
+import type { BlockCatalog } from "@/lib/storefront/page-block-catalog";
 
 type Design = BuilderConfig["design"];
 export type SubpageStore = {
@@ -25,7 +26,7 @@ export type SubpageData = {
 };
 export type SubpageKind = "about" | "contact" | "categories" | "gallery" | "blog";
 /** The owner's own text for this page (Customize > Pages). When present it replaces the page's default copy. */
-export type OwnerContent = { title: string; body: string; blocks?: PageBlock[] };
+export type OwnerContent = { title: string; body: string; blocks?: PageBlock[]; catalog?: BlockCatalog };
 
 const COPY: Record<SubpageKind, { title: string; subtitle: string }> = {
   about: { title: "About us", subtitle: "Who we are and what we stand for." },
@@ -72,7 +73,7 @@ export function BuilderSubpage({ kind, store, design: designIn, data, owner }: {
             <small style={{ color: d.accent, fontWeight: 800, letterSpacing: ".14em", textTransform: "uppercase" }}>Our story</small>
             <h2 style={{ fontFamily: d.headingFont, fontSize: 34, lineHeight: 1.15, margin: "10px 0 16px" }}>Built around what matters</h2>
             {owner?.blocks?.length
-              ? <PageBlocks blocks={owner.blocks} slug={store.slug} tokens={{ text: d.muted, accent: d.accent, primary: d.primary, line, radius: d.radius, headingFont: d.headingFont }} />
+              ? <PageBlocks blocks={owner.blocks} catalog={owner.catalog} slug={store.slug} tokens={{ text: d.muted, accent: d.accent, primary: d.primary, line, radius: d.radius, headingFont: d.headingFont }} />
               : <p style={{ color: d.muted, lineHeight: 1.8, fontSize: 16, whiteSpace: "pre-line" }}>{desc}</p>}
             <div style={{ display: "flex", gap: 12, flexWrap: "wrap", marginTop: 24 }}>
               <Link href={`${base}/catalog`} style={btn(true)}>{isService ? "See our services" : "Shop now"}</Link>
@@ -122,7 +123,7 @@ export function BuilderSubpage({ kind, store, design: designIn, data, owner }: {
     body = (
       <>
       {owner && (owner.blocks?.length
-        ? <div style={{ margin: "0 0 32px" }}><PageBlocks blocks={owner.blocks} slug={store.slug} tokens={{ text: d.muted, accent: d.accent, primary: d.primary, line, radius: d.radius, headingFont: d.headingFont }} /></div>
+        ? <div style={{ margin: "0 0 32px" }}><PageBlocks blocks={owner.blocks} catalog={owner.catalog} slug={store.slug} tokens={{ text: d.muted, accent: d.accent, primary: d.primary, line, radius: d.radius, headingFont: d.headingFont }} /></div>
         : <p style={{ color: d.muted, lineHeight: 1.8, fontSize: 16, whiteSpace: "pre-line", maxWidth: 760, margin: "0 0 32px" }}>{owner.body}</p>)}
       <div className="bn-grid" style={{ gridTemplateColumns: "1.3fr .9fr", gap: 28, alignItems: "start" }}>
         {/* The form's own stylesheet (.bn-contact-form in globals.css) is light; keep its text dark on any design. */}
@@ -137,6 +138,9 @@ export function BuilderSubpage({ kind, store, design: designIn, data, owner }: {
       </div>
       </>
     );
+  } else if ((kind === "gallery" || kind === "blog") && owner?.blocks?.length) {
+    // Written with the block editor. Pages saved before blocks existed fall through to the text readers below.
+    body = <PageBlocks blocks={owner.blocks} catalog={owner.catalog} wide={kind === "gallery"} slug={store.slug} tokens={{ text: d.muted, accent: d.accent, primary: d.primary, line, radius: d.radius, headingFont: d.headingFont }} />;
   } else if (kind === "gallery") {
     const g = parseGalleryBody(owner?.body ?? "");
     body = (

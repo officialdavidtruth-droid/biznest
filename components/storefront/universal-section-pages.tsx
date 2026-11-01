@@ -1,6 +1,9 @@
 import React from "react";
 import { MenuLinks } from "@/components/storefront/store-menu";
 import Link from "next/link";
+import { PageBlocks } from "@/components/storefront/page-blocks";
+import type { PageBlock } from "@/lib/storefront/page-blocks";
+import type { BlockCatalog } from "@/lib/storefront/page-block-catalog";
 import { ArrowRight, Check, Clock3, Mail, MapPin, Phone, Search, ShieldCheck, Sparkles, BedDouble, CalendarCheck, Camera, Church, Dumbbell, Heart, Package, PartyPopper, Scissors, Truck, UtensilsCrossed, Users, Wrench, type LucideIcon } from "lucide-react";
 import { redirect } from "next/navigation";
 import { CartLink } from "@/components/storefront/cart-link";
@@ -28,7 +31,7 @@ export type ReviewsView = {
   distribution:{rating:number;count:number}[];
   items:{id:string;rating:number;comment:string|null;images:string[];createdAt:Date|string;author:{name:string|null};response:{content:string}|null}[];
 };
-type Props = { store:any; slug:string; pageSlug:string; items:Item[]; reviews:any[]; theme:TemplateTheme; social:Record<string,string>; policy?:{title:string;body:string}|null; faq?:{q:string;a:string}[]; pagination?:{page:number;totalPages:number;total:number;pageSize:number}; reviewsView?:ReviewsView };
+type Props = { store:any; slug:string; pageSlug:string; items:Item[]; reviews:any[]; theme:TemplateTheme; social:Record<string,string>; policy?:{title:string;body:string}|null; faq?:{q:string;a:string}[]; blocks?:PageBlock[]; blockCatalog?:BlockCatalog; pagination?:{page:number;totalPages:number;total:number;pageSize:number}; reviewsView?:ReviewsView };
 
 const RESERVED = new Set(["services","about","pricing","portfolio","contact","faq","policies"]);
 export function isUniversalSectionPage(slug:string){ return RESERVED.has(slug.toLowerCase()); }
@@ -217,7 +220,9 @@ function Pricing({p}:{p:Props}){const {store,slug,items,theme}=p;const accent=th
 function Contact({p}:{p:Props}){const {store,slug,theme}=p;const accent=theme.accent;const archetype=archetypeFor(store,theme);const copy=text(store,modeFor(store,theme));const city=[store.business?.city,store.business?.state,store.business?.country].filter(Boolean).join(", ");const heroImg=(archetype==="corporate"||archetype==="technical")?null:(store.bannerUrl||null);return <><Header store={store} slug={slug} active="contact" accent={accent}/><Hero store={store} slug={slug} active="contact" archetype={archetype} copy={copy} accent={accent} hero={heroImg}><>We’re Here<br/><span style={{color:accent}}>to Help.</span></></Hero><main className="bn-universal-main"><section className="bn-contact-grid bn-universal-section"><ContactEnquiryForm slug={slug} accent={accent} phonePlaceholder={store.contactPhone||undefined} subjects={["General enquiry",nicheOf(store).band.action==="quote"?"Request a quote":"Booking / availability",nicheOf(store).servicesLabel]}/><aside className="bn-contact-side"><div><h3>Contact Information</h3><p>Reach us through any of the channels below. We’d love to hear from you.</p>{store.contactPhone&&<a href={`tel:${store.contactPhone}`}><span style={{background:accent}}><Phone size={19}/></span><div><b>Call Us</b><small>{store.contactPhone}</small></div></a>}{store.contactEmail&&<a href={`mailto:${store.contactEmail}`}><span style={{background:accent}}><Mail size={19}/></span><div><b>Email Us</b><small>{store.contactEmail}</small></div></a>}<div><span style={{background:accent}}><MapPin size={19}/></span><div><b>Visit / Location</b><small>{city||"Contact us for location details."}</small></div></div></div><div className="bn-hours"><h3>Business Information</h3><div><span>Availability</span><b>Open for enquiries</b></div><div><span>Response time</span><b>Usually within 1 business day</b></div></div></aside></section><section className="bn-location" style={{backgroundImage:`linear-gradient(120deg,${accent}12,#eaf1f8)`}}><MapPin size={28} style={{color:accent}}/><div><small>OUR LOCATION</small><h2>{city||"Serving customers wherever they are"}</h2><p>{store.contactPhone||store.contactEmail||"Contact us to arrange a visit or consultation."}</p></div></section><section className="bn-band" style={{background:`linear-gradient(100deg,#061525,${accent})`}}><div><small>HAVE A LARGE PROJECT?</small><h2>Let’s discuss it.</h2><p>Special arrangements are available for larger, recurring or corporate work.</p></div><Link href={`/store/${slug}/start-project`}>Request a Quote <ArrowRight size={17}/></Link></section></main><Footer store={store} slug={slug} accent={accent}/></>}
 
 
-function Faq({p}:{p:Props}){const {store,slug}=p;return <><Header store={store} slug={slug} active="faq" accent={p.theme.accent}/><main className="bn-universal-main"><section className="bn-universal-section"><div className="bn-universal-eyebrow">FREQUENTLY ASKED QUESTIONS</div><h1>How can we help?</h1>{(p.faq?.length??0)>0
+function Faq({p}:{p:Props}){const {store,slug}=p;return <><Header store={store} slug={slug} active="faq" accent={p.theme.accent}/><main className="bn-universal-main"><section className="bn-universal-section"><div className="bn-universal-eyebrow">FREQUENTLY ASKED QUESTIONS</div><h1>How can we help?</h1>{(p.blocks?.length??0)>0
+  ? <PageBlocks blocks={p.blocks!} catalog={p.blockCatalog} slug={slug} tokens={{text:p.theme.ink,accent:p.theme.accent,primary:p.theme.accent,line:`${p.theme.ink}22`,radius:8,headingFont:p.theme.font}}/>
+  : (p.faq?.length??0)>0
   ? <div className="bn-faq-grid">{p.faq!.map(x=><details key={x.q}><summary>{x.q}<ArrowRight size={15}/></summary><p style={{whiteSpace:"pre-line"}}>{x.a}</p></details>)}</div>
   : <p>{store.name} hasn&apos;t published its FAQ yet. <Link href={`/store/${slug}/contact`}>Contact the store</Link> and they will answer directly.</p>}</section></main><Footer store={store} slug={slug} accent={p.theme.accent}/></>}
 function Policies({p}:{p:Props}){

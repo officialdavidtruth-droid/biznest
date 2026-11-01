@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
 import Link from "next/link";
 import { LayoutGrid, List, Search, X } from "lucide-react";
 import type { BuilderConfig } from "@/lib/builder-config";
@@ -39,8 +39,10 @@ const SORTS: { value: Sort; label: string }[] = [
  * a price ceiling, sorting, grid or list view and "show more".
  */
 export function CatalogExperience({
-  store, design: d, items, initialCategory, initialQuery, mode = "catalog", heading,
+  store, design: d, items, initialCategory, initialQuery, mode = "catalog", heading, topSlot, bottomSlot,
 }: {
+  /** Owner blocks above and below the product grid (Customize > Pages > Shop page). */
+  topSlot?: ReactNode; bottomSlot?: ReactNode;
   store: StoreInfo; design: BuilderConfig["design"]; items: CatalogEntry[]; initialCategory?: string; initialQuery?: string;
   /** "category" pins the title to the category name; "search" turns the title into the live query. */
   mode?: "catalog" | "category" | "search"; heading?: string;
@@ -129,6 +131,7 @@ export function CatalogExperience({
 @media(max-width:720px){.bn-nav-links{display:none!important}.cx-tools{flex-direction:column;align-items:stretch!important}.cx-row{grid-template-columns:84px 1fr!important}.cx-row>div:last-child{grid-column:1/-1}}`}</style>
 
       <BuilderHeader store={store} d={d} experience={experience} visible={[]} />
+      {topSlot}
 
       {/* Title band */}
       <section style={{ background: `linear-gradient(135deg, ${d.primary}18, ${d.accent}12), ${d.surface}`, borderBottom: `1px solid ${line}` }}>
@@ -251,6 +254,7 @@ export function CatalogExperience({
         )}
       </div>
 
+      {bottomSlot}
       <BuilderFooter store={store} d={d} visible={[]} storeLinks={storeLinks} />
     </main>
   );

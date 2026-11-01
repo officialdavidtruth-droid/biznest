@@ -1,20 +1,73 @@
 "use client";
 
-import type { ComponentType } from "react";
+import { useState, type ComponentType } from "react";
 import { ArrowDown, ArrowUp, Plus, Trash2, X } from "lucide-react";
-import { BLOCK_LABELS, MAX_BLOCKS, newBlock, type BlockType, type PageBlock } from "@/lib/storefront/page-blocks";
+import { BLOCK_LABELS, COLLECTION_LIMITS, MAX_BLOCKS, MAX_CATALOG_BLOCKS, MAX_PRODUCTS_PER_BLOCK, newBlock, type BlockType, type CollectionSort, type PageBlock } from "@/lib/storefront/page-blocks";
+import type { CatalogOptions } from "@/lib/storefront/page-block-catalog";
 
 type ImageFieldProps = { label: string; value: string; onChange: (v: string) => void };
 
 const input = "w-full rounded-md border border-input bg-background px-2.5 py-1.5 text-sm";
 const small = "mb-1 block text-[11px] text-muted-foreground";
-const ADDABLE: BlockType[] = ["heading", "text", "image", "button", "faq", "gallery", "divider"];
+const ADDABLE: BlockType[] = ["heading", "text", "image", "button", "faq", "gallery", "divider", "products", "collection"];
+const EMPTY_OPTIONS: CatalogOptions = { products: [], categories: [] };
+const SORT_LABELS: Record<CollectionSort, string> = { newest: "Newest first", "price-asc": "Price: low to high", "price-desc": "Price: high to low" };
+
+/** Picks products for a Products block: search the catalogue, tap to add, remove from the chosen list. */
+function ProductPicker({ chosen, options, onChange }: { chosen: string[]; options: CatalogOptions["products"]; onChange: (ids: string[]) => void }) {
+  const [query, setQuery] = useState("");
+  const byId = new Map(options.map((p) => [p.id, p]));
+  const q = query.trim().toLowerCase();
+  const matches = options.filter((p) => !chosen.includes(p.id) && (!q || p.name.toLowerCase().includes(q))).slice(0, 8);
+  const full = chosen.length >= MAX_PRODUCTS_PER_BLOCK;
+  return (
+    <div className="space-y-2">
+      {chosen.length > 0 && (
+        <ul className="space-y-1">
+          {chosen.map((id, n) => {
+            const p = byId.get(id);
+            return (
+              <li key={id} className="flex items-center gap-1.5 rounded border border-border bg-background px-2 py-1 text-xs">
+                <span className="min-w-0 flex-1 truncate">{p ? p.name : "Product no longer available"}</span>
+                <button type="button" title="Move up" disabled={n === 0} onClick={() => { const next = [...chosen]; [next[n - 1], next[n]] = [next[n], next[n - 1]]; onChange(next); }} className="rounded p-0.5 text-muted-foreground hover:bg-muted disabled:opacity-30"><ArrowUp className="h-3 w-3" /></button>
+                <button type="button" title="Move down" disabled={n === chosen.length - 1} onClick={() => { const next = [...chosen]; [next[n + 1], next[n]] = [next[n], next[n + 1]]; onChange(next); }} className="rounded p-0.5 text-muted-foreground hover:bg-muted disabled:opacity-30"><ArrowDown className="h-3 w-3" /></button>
+                <button type="button" title="Remove product" onClick={() => onChange(chosen.filter((x) => x !== id))} className="rounded p-0.5 text-muted-foreground hover:bg-muted"><X className="h-3 w-3" /></button>
+              </li>
+            );
+          })}
+        </ul>
+      )}
+      {options.length === 0 ? (
+        <p className="text-xs text-muted-foreground">You have no published products yet. Add products first, then pick them here.</p>
+      ) : full ? (
+        <p className="text-xs text-muted-foreground">You can show up to {MAX_PRODUCTS_PER_BLOCK} products in one block. Add another Products block for more.</p>
+      ) : (
+        <>
+          <input className={input} value={query} placeholder="Search your products" onChange={(e) => setQuery(e.target.value)} />
+          <ul className="max-h-40 space-y-1 overflow-y-auto">
+            {matches.map((p) => (
+              <li key={p.id}>
+                <button type="button" onClick={() => onChange([...chosen, p.id])} className="flex w-full items-center gap-1.5 rounded border border-border bg-background px-2 py-1 text-left text-xs hover:bg-muted">
+                  <Plus className="h-3 w-3 shrink-0 text-muted-foreground" />
+                  <span className="min-w-0 flex-1 truncate">{p.name}</span>
+                </button>
+              </li>
+            ))}
+            {matches.length === 0 && <li className="px-1 text-xs text-muted-foreground">{q ? "No product matches that search." : "Every product is already added."}</li>}
+          </ul>
+          <p className="text-[11px] text-muted-foreground">{chosen.length}/{MAX_PRODUCTS_PER_BLOCK} chosen. Names, prices and photos update automatically when you change the product.</p>
+        </>
+      )}
+    </div>
+  );
+}
 
 /**
  * Block editor for a page's content. The parent owns the blocks and the Save button; ImageField is passed in so
  * image uploads use the same control as the rest of the customizer.
  */
-export function PageBlockEditor({ blocks, onChange, ImageField }: { blocks: PageBlock[]; onChange: (next: PageBlock[]) => void; ImageField: ComponentType<ImageFieldProps> }) {
+export function PageBlockEditor({ blocks, onChange, ImageField, catalog = EMPTY_OPTIONS }: { blocks: PageBlock[]; onChange: (next: PageBlock[]) => void; ImageField: ComponentType<ImageFieldProps>; catalog?: CatalogOptions }) {
+  const catalogBlocks = blocks.filter((b) => b.type === "products" || b.type === "collection").length;
   const patch = (id: string, change: Partial<PageBlock>) => onChange(blocks.map((b) => (b.id === id ? ({ ...b, ...change } as PageBlock) : b)));
   const remove = (id: string) => onChange(blocks.filter((b) => b.id !== id));
   const move = (i: number, dir: -1 | 1) => {
@@ -96,6 +149,40 @@ export function PageBlockEditor({ blocks, onChange, ImageField }: { blocks: Page
             </div>
           )}
 
+          {b.type === "products" && (
+            <div className="space-y-2">
+              <label className="block"><span className={small}>Heading above the products (optional)</span><input className={input} maxLength={120} value={b.title} placeholder="Our favourites" onChange={(e) => patch(b.id, { title: e.target.value })} /></label>
+              <ProductPicker chosen={b.productIds} options={catalog.products} onChange={(ids) => patch(b.id, { productIds: ids })} />
+              {b.productIds.length === 0 && <p className="text-[11px] text-muted-foreground">A Products block with nothing chosen is not saved.</p>}
+            </div>
+          )}
+
+          {b.type === "collection" && (
+            <div className="space-y-2">
+              <label className="block"><span className={small}>Heading above the products (optional)</span><input className={input} maxLength={120} value={b.title} placeholder="New arrivals" onChange={(e) => patch(b.id, { title: e.target.value })} /></label>
+              <label className="block"><span className={small}>Show products from</span>
+                <select className={input} value={b.categoryId} onChange={(e) => patch(b.id, { categoryId: e.target.value })}>
+                  <option value="">All products</option>
+                  {catalog.categories.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+                  {b.categoryId && !catalog.categories.some((c) => c.id === b.categoryId) && <option value={b.categoryId}>Category no longer available</option>}
+                </select>
+              </label>
+              <div className="grid grid-cols-2 gap-2">
+                <label className="block"><span className={small}>How many</span>
+                  <select className={input} value={b.limit} onChange={(e) => patch(b.id, { limit: e.target.value === "12" ? 12 : e.target.value === "8" ? 8 : 4 })}>
+                    {COLLECTION_LIMITS.map((n) => <option key={n} value={n}>{n} products</option>)}
+                  </select>
+                </label>
+                <label className="block"><span className={small}>Order</span>
+                  <select className={input} value={b.sort} onChange={(e) => patch(b.id, { sort: e.target.value as CollectionSort })}>
+                    {(Object.keys(SORT_LABELS) as CollectionSort[]).map((k) => <option key={k} value={k}>{SORT_LABELS[k]}</option>)}
+                  </select>
+                </label>
+              </div>
+              <p className="text-[11px] text-muted-foreground">Fills itself from your catalogue, so new products appear without editing this page.</p>
+            </div>
+          )}
+
           {b.type === "divider" && <p className="text-xs text-muted-foreground">A thin line between sections.</p>}
         </div>
       ))}
@@ -104,9 +191,12 @@ export function PageBlockEditor({ blocks, onChange, ImageField }: { blocks: Page
         <div className="rounded-md border border-dashed border-border p-2">
           <p className="mb-1.5 flex items-center gap-1 text-[11px] text-muted-foreground"><Plus className="h-3 w-3" /> Add a block</p>
           <div className="flex flex-wrap gap-1.5">
-            {ADDABLE.map((t) => (
-              <button key={t} type="button" onClick={() => onChange([...blocks, newBlock(t)])} className="rounded-md border border-border bg-background px-2 py-1 text-xs hover:bg-muted">{BLOCK_LABELS[t]}</button>
-            ))}
+            {ADDABLE.map((t) => {
+              const capped = (t === "products" || t === "collection") && catalogBlocks >= MAX_CATALOG_BLOCKS;
+              return (
+                <button key={t} type="button" disabled={capped} title={capped ? `A page can have up to ${MAX_CATALOG_BLOCKS} product blocks` : undefined} onClick={() => onChange([...blocks, newBlock(t)])} className="rounded-md border border-border bg-background px-2 py-1 text-xs hover:bg-muted disabled:opacity-40">{BLOCK_LABELS[t]}</button>
+              );
+            })}
           </div>
         </div>
       )}

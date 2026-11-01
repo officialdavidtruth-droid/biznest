@@ -2,6 +2,7 @@ import { prisma } from "@/lib/prisma";
 import { notFound, redirect } from "next/navigation";
 import { SYSTEM_PAGE_REDIRECTS, ownerPageBody } from "@/lib/storefront/page-registry";
 import { hasPageContent, ownerPageBlocks } from "@/lib/storefront/page-blocks";
+import { resolveBlockCatalog } from "@/lib/storefront/page-block-catalog";
 import { PageBlocks } from "@/components/storefront/page-blocks";
 import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
@@ -57,15 +58,17 @@ export default async function StorePagePage({
     const policyBody = String((page?.content as { body?: string } | null)?.body ?? "").trim();
     const policy = pageSlug.toLowerCase() === "policies" && page?.isPublished && policyBody ? { title: page.title, body: policyBody } : null;
     // Merchant-written FAQ (Admin -> Pages -> "faq"): blank-line separated blocks, first line = question, rest = answer.
-    const faq = pageSlug.toLowerCase() === "faq" && page?.isPublished && policyBody
+    const faqBlocks = pageSlug.toLowerCase() === "faq" && page?.isPublished ? ownerPageBlocks(page.content) : [];
+    const faq = pageSlug.toLowerCase() === "faq" && page?.isPublished && policyBody && faqBlocks.length === 0
       ? policyBody.split(/\n{2,}/).map((b) => b.trim().split("\n")).map(([q, ...a]) => ({ q: q.trim(), a: a.join("\n").trim() })).filter((x) => x.q && x.a).slice(0, 20)
       : [];
-    return <UniversalSectionPage store={store} slug={slug} pageSlug={pageSlug} items={items} reviews={store.reviews} theme={theme} social={social} policy={policy} faq={faq} />;
+    return <UniversalSectionPage store={store} slug={slug} pageSlug={pageSlug} items={items} reviews={store.reviews} theme={theme} social={social} policy={policy} faq={faq} blocks={faqBlocks} blockCatalog={faqBlocks.length ? await resolveBlockCatalog(store.id, faqBlocks) : undefined} />;
   }
 
   // Owner-written text only. Template content rows and legacy empty placeholders are not pages.
   const body = (ownerPageBody(page?.content) ?? "").trim();
   const blocks = ownerPageBlocks(page?.content);
+  const catalog = await resolveBlockCatalog(store.id, blocks);
   const isLive = !!page && page.isPublished && hasPageContent(page.content);
 
   // Home, Products and Testimonials are drawn by the platform. Send visitors to where that content really
@@ -90,7 +93,7 @@ export default async function StorePagePage({
         </h1>
 
         {blocks.length > 0 ? (
-          <PageBlocks blocks={blocks} slug={slug} tokens={{ text: theme.ink, accent: theme.accent, primary: theme.accent, line: `${theme.ink}22`, radius: 8, headingFont: theme.font }} />
+          <PageBlocks blocks={blocks} catalog={catalog} slug={slug} tokens={{ text: theme.ink, accent: theme.accent, primary: theme.accent, line: `${theme.ink}22`, radius: 8, headingFont: theme.font }} />
         ) : body ? (
           <div className="space-y-4 text-base leading-relaxed whitespace-pre-line">{body}</div>
         ) : (

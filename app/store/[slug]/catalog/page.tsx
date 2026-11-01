@@ -11,6 +11,8 @@ import { resolveStoreTheme } from "@/lib/template-themes";
 import { isRestaurantBusiness, isHotelBusiness } from "@/lib/business-identity";
 import { ThelusoHotel } from "@/components/storefront/theluso-hotel";
 import { getHotelContent } from "@/lib/hotel-content";
+import { buildSystemSlots } from "@/components/storefront/system-slots";
+import { fontStack } from "@/lib/builder-safe";
 
 export default async function CatalogPage({ params, searchParams }: { params: Promise<{ slug: string }>; searchParams?: Promise<{ category?: string; q?: string }> }) {
   const { slug } = await params;
@@ -29,10 +31,14 @@ export default async function CatalogPage({ params, searchParams }: { params: Pr
   if (store.template?.name === TASTEHOUSE_TEMPLATE_NAME) return <TasteHouseMenu store={store} slug={slug} initialCategory={query?.category} items={items.map(i=>({...i,description:null,type:i.kind,isBookable:false})) as any} />;
   if (isRestaurantBusiness(store.business?.category)) return <GrandeurMenu store={store} slug={slug} items={items.map(i=>({...i,description:null,type:i.kind,isBookable:false})) as any} />;
   const theme = resolveStoreTheme(store.template?.category, store.name, store.themeColors as any, store.fontFamily, store.template?.name);
+  const design = catalogDesign(store, theme);
+  const slots = await buildSystemSlots(store, "shop", { text: design.text, accent: design.accent, primary: design.primary, line: `${design.text}1f`, radius: design.radius, headingFont: fontStack(design.headingFont) });
   return (
     <CatalogExperience
+      topSlot={slots.top}
+      bottomSlot={slots.bottom}
       store={catalogStoreInfo(store, slug)}
-      design={catalogDesign(store, theme)}
+      design={design}
       items={items.map((i) => ({ id: i.id, kind: i.kind, name: i.name, price: i.price, currency: i.currency, image: i.image, categoryName: i.categoryName ?? null, hasVariants: "hasVariants" in i ? Boolean(i.hasVariants) : false }))}
       initialCategory={query?.category}
       initialQuery={query?.q}

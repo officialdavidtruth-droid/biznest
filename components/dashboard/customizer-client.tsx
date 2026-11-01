@@ -17,8 +17,11 @@ import { resetTemplateColors, saveTemplateColors } from "@/lib/actions/theme";
 import { BUILDER_SECTION_TYPES, readBuilderConfig, type BuilderConfig, type BuilderSection, type BuilderSectionItem, type BuilderSectionType } from "@/lib/builder-config";
 import { defaultFaqItems, defaultFeatureItems } from "@/lib/builder-defaults";
 import { PAGE_FORMAT_HINTS } from "@/lib/storefront/owner-page-format";
+import type { CatalogOptions } from "@/lib/storefront/page-block-catalog";
+import { SystemPagesSection } from "@/components/dashboard/system-sections-editor";
+import type { SystemPageKey, SystemSectionsMap } from "@/lib/storefront/system-sections";
 import { PageBlockEditor } from "@/components/dashboard/page-block-editor";
-import { blocksToPlainText, pageUsesBlocks, textToBlocks, type PageBlock } from "@/lib/storefront/page-blocks";
+import { blocksToPlainText, legacyTextToBlocks, pageUsesBlocks, type PageBlock } from "@/lib/storefront/page-blocks";
 import { buildIndustryHomepage, getBusinessExperience } from "@/lib/business-experience";
 
 export type StorePageRow = { id: string; slug: string; title: string; body: string; blocks: PageBlock[]; isPublished: boolean };
@@ -50,6 +53,9 @@ export function CustomizerClient({
   storyOverrides,
   storyDescription,
   pages: initialPages,
+  catalogOptions,
+  systemSections: initialSystemSections,
+  systemSupport,
   initialBuilder,
   businessCategory,
   sellsProducts,
@@ -70,6 +76,9 @@ export function CustomizerClient({
   storyOverrides: StoryOverrides;
   storyDescription: string | null;
   pages: StorePageRow[];
+  catalogOptions?: CatalogOptions;
+  systemSections: SystemSectionsMap;
+  systemSupport: Record<SystemPageKey, boolean>;
   initialBuilder: BuilderConfig;
   businessCategory: string | null;
   sellsProducts: boolean;
@@ -95,6 +104,7 @@ export function CustomizerClient({
   const inTemplateMode = templateHasOwnHomepage && !published && templateMode === "template";
   const [previewKey, setPreviewKey] = useState(0);
   const [pages, setPages] = useState<StorePageRow[]>(initialPages);
+  const [systemSections, setSystemSections] = useState<SystemSectionsMap>(initialSystemSections);
   const [builder, setBuilder] = useState<BuilderConfig>(initialBuilder);
   const [selectedSectionId, setSelectedSectionId] = useState<string | null>(initialBuilder.sections[0]?.id ?? null);
   const [seoTitleState, setSeoTitleState] = useState(seoTitle);
@@ -173,6 +183,8 @@ export function CustomizerClient({
     const list: { path: string; label: string }[] = [{ path: "", label: "Home" }];
     if (experience.mode !== "service") list.push({ path: "/catalog", label: "Shop" });
     if (experience.mode !== "commerce") list.push({ path: "/services", label: "Services" });
+    if (catalogOptions?.products[0]) list.push({ path: `/product/${catalogOptions.products[0].id}`, label: "Product" });
+    list.push({ path: "/cart", label: "Cart" });
     list.push({ path: "/about", label: "About" }, { path: "/contact", label: "Contact" }, { path: "/faq", label: "FAQ" }, { path: "/policies", label: "Policies" });
     if (has("gallery")) list.push({ path: "/gallery", label: "Gallery" });
     if (has("blog")) list.push({ path: "/blog", label: "Blog" });
@@ -180,7 +192,7 @@ export function CustomizerClient({
       if (!(SUGGESTED_PAGE_SLUGS as readonly string[]).includes(p.slug)) list.push({ path: `/${p.slug}`, label: p.title });
     }
     return list;
-  }, [pages, experience.mode]);
+  }, [pages, experience.mode, catalogOptions]);
 
   // Opening a written page in the Pages panel shows it in the preview.
   useEffect(() => {
@@ -631,6 +643,11 @@ export function CustomizerClient({
               <PagesPanel
                 slug={slug}
                 pages={pages}
+                catalogOptions={catalogOptions}
+                systemSections={systemSections}
+                setSystemSections={setSystemSections}
+                systemSupport={systemSupport}
+                onPreviewPath={setPreviewPath}
                 setPages={setPages}
                 editingSlug={editingSlug}
                 setEditingSlug={setEditingSlug}
@@ -892,6 +909,11 @@ function SelectField({ label, value, options, onChange }: { label: string; value
 function PagesPanel({
   slug,
   pages,
+  catalogOptions,
+  systemSections,
+  setSystemSections,
+  systemSupport,
+  onPreviewPath,
   setPages,
   editingSlug,
   setEditingSlug,
@@ -899,6 +921,11 @@ function PagesPanel({
 }: {
   slug: string;
   pages: StorePageRow[];
+  catalogOptions?: CatalogOptions;
+  systemSections: SystemSectionsMap;
+  setSystemSections: Dispatch<SetStateAction<SystemSectionsMap>>;
+  systemSupport: Record<SystemPageKey, boolean>;
+  onPreviewPath: (path: string) => void;
   setPages: Dispatch<SetStateAction<StorePageRow[]>>;
   editingSlug: string | null;
   setEditingSlug: (s: string | null) => void;
@@ -949,6 +976,20 @@ function PagesPanel({
 
   return (
     <div className="flex-1 overflow-y-auto p-4">
+      <SystemPagesSection
+        slug={slug}
+        sections={systemSections}
+        setSections={setSystemSections}
+        support={systemSupport}
+        catalogOptions={catalogOptions}
+        ImageField={ImageField}
+        onSaved={onSaved}
+        onPreview={(key) => {
+          if (key === "shop") onPreviewPath("/catalog");
+          else if (key === "cart") onPreviewPath("/cart");
+          else if (catalogOptions?.products[0]) onPreviewPath(`/product/${catalogOptions.products[0].id}`);
+        }}
+      />
       <p className="mb-3 text-xs text-muted-foreground">
         Extra pages (About, Gallery, FAQ, Blog, Contact, Policies) beyond the homepage. Each is live at{" "}
         <span className="font-mono">biznest.space/{slug}/&lt;page&gt;</span> (or your custom domain) once published. A page appears here once you write and save it.
@@ -979,6 +1020,7 @@ function PagesPanel({
                 slug={slug}
                 pageSlug={row.slug}
                 initial={row.page}
+                catalogOptions={catalogOptions}
                 onSaved={(row2) => {
                   upsertLocal(row2);
                   onSaved();
@@ -998,6 +1040,7 @@ function PagesPanel({
             pageSlug=""
             initial={null}
             allowSlugEdit
+            catalogOptions={catalogOptions}
             onSaved={(row2) => {
               upsertLocal(row2);
               setAddingCustom(false);
@@ -1024,6 +1067,7 @@ function PageEditor({
   pageSlug,
   initial,
   allowSlugEdit,
+  catalogOptions,
   onSaved,
   onTogglePublished,
   onDelete,
@@ -1032,6 +1076,7 @@ function PageEditor({
   pageSlug: string;
   initial: StorePageRow | null;
   allowSlugEdit?: boolean;
+  catalogOptions?: CatalogOptions;
   onSaved: (row: StorePageRow) => void;
   onTogglePublished?: () => void;
   onDelete?: () => void;
@@ -1040,7 +1085,7 @@ function PageEditor({
   const [title, setTitle] = useState(initial?.title ?? SUGGESTED_PAGE_TITLES[pageSlug] ?? "");
   const [body, setBody] = useState(initial?.body ?? "");
   // Block pages open with their saved blocks; a page written as plain text opens as one text block per paragraph.
-  const [blocks, setBlocks] = useState<PageBlock[]>(() => (initial?.blocks?.length ? initial.blocks : textToBlocks(initial?.body ?? "")));
+  const [blocks, setBlocks] = useState<PageBlock[]>(() => (initial?.blocks?.length ? initial.blocks : legacyTextToBlocks(pageSlug, initial?.body ?? "")));
   const blockMode = pageUsesBlocks(allowSlugEdit ? customSlug || "custom" : pageSlug);
   const [isPublished, setIsPublished] = useState(initial?.isPublished ?? true);
   const [isSaving, setIsSaving] = useState(false);
@@ -1106,7 +1151,7 @@ function PageEditor({
       <div className="block text-xs">
         <span className="mb-1 block text-muted-foreground">Content</span>
         {blockMode ? (
-          <PageBlockEditor blocks={blocks} onChange={setBlocks} ImageField={ImageField} />
+          <PageBlockEditor blocks={blocks} onChange={setBlocks} ImageField={ImageField} catalog={catalogOptions} />
         ) : (
           <>
             {PAGE_FORMAT_HINTS[pageSlug] && <span className="mb-1 block text-[10px] text-muted-foreground">{PAGE_FORMAT_HINTS[pageSlug]}</span>}
