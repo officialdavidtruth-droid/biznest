@@ -20,6 +20,7 @@ export const CRONS: CronDef[] = [
   { name: "abandoned-checkout-alerts", path: "/api/cron/abandoned-checkout-alerts", schedule: "0 12 * * *", maxAgeHours: 26 },
   { name: "transfer-order-followup", path: "/api/cron/transfer-order-followup", schedule: "0 11 * * *", maxAgeHours: 26 },
   { name: "webhooks", path: "/api/cron/webhooks", schedule: "0 18 * * *", maxAgeHours: 26 },
+  { name: "quote-expiry", path: "/api/cron/quote-expiry", schedule: "45 0 * * *", maxAgeHours: 26 },
   { name: "daily-summary", path: "/api/cron/daily-summary", schedule: "0 20 * * *", maxAgeHours: 26 },
 ];
 

@@ -30,7 +30,7 @@
     },
     {
       "path": "/api/cron/payouts",
-      "schedule": "*/15 * * * *"
+      "schedule": "0 3 * * *"
     },
     {
       "path": "/api/cron/channel-sync",
@@ -38,7 +38,7 @@
     },
     {
       "path": "/api/cron/payment-reconciliation",
-      "schedule": "*/30 * * * *"
+      "schedule": "15 5 * * *"
     },
     {
       "path": "/api/cron/watchdog",
@@ -51,6 +51,10 @@
     {
       "path": "/api/cron/quote-expiry",
       "schedule": "45 0 * * *"
+    },
+    {
+      "path": "/api/cron/transfer-order-followup",
+      "schedule": "0 11 * * *"
     }
   ]
 }

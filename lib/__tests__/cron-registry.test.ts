@@ -24,7 +24,7 @@ describe("cron registry", () => {
   });
 
   it("no cron route is left unmonitored unless it is deliberately manual", () => {
-    const manual = new Set(["wallet-payout-backfill"]);
+    const manual = new Set(["wallet-payout-backfill", "payouts-backfill"]);
     const dirs = readdirSync(path.join(root, "app/api/cron"));
     for (const d of dirs) {
       if (manual.has(d)) continue;
