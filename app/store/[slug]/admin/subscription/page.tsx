@@ -81,7 +81,7 @@ export default async function SubscriptionPage({
               {isCurrent ? (
                 <>
                   <span className="mt-3 inline-block rounded-full bg-primary/10 px-2 py-0.5 text-xs font-medium text-primary">Current plan</span>
-                  {Number(p.price) > 0 && store.subscriptionRenewsAt && !store.paystackAuthorizationCode && (
+                  {Number(p.price) > 0 && store.subscriptionRenewsAt && (
                     <>
                       <p className="mt-2 text-xs text-muted-foreground">Active until {formatDate(store.subscriptionRenewsAt)}</p>
                       {store.subscriptionRenewsAt.getTime() <= Date.now() + 7 * 24 * 60 * 60 * 1000 && (

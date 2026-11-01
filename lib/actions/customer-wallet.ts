@@ -4,7 +4,7 @@ import { auth } from "@/lib/auth";
 import { getStoreCustomerSessionForStore } from "@/lib/store-customer-auth";
 import { requireStoreCustomer } from "@/lib/actions/store-customer";
 import { prisma } from "@/lib/prisma";
-import { chargeCustomer, paymentCallbackUrl } from "@/lib/payments/gateway";
+import { chargeCustomer, paymentCallbackUrl, PLATFORM_BILLING_GATEWAY } from "@/lib/payments/gateway";
 import { checkRateLimit, getClientIp } from "@/lib/rate-limit";
 import { safeEqualEmail } from "@/lib/safe-equal";
 import { headers } from "next/headers";
@@ -74,7 +74,8 @@ export async function startWalletFunding(
   if (wallet.status !== "ACTIVE") return { success: false, error: "Your wallet is currently unavailable." };
 
   const reference = `WAL-${wallet.id}-${shortToken()}`;
-  const gateway = await import("@/lib/actions/site-settings").then((m) => m.getActiveGateway());
+  // Wallet top-ups are platform-owned money: always Korapay.
+  const gateway = PLATFORM_BILLING_GATEWAY;
   const callbackUrl = paymentCallbackUrl(gateway);
 
   // Persist the pending charge before calling the provider. If the provider

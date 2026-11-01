@@ -25,7 +25,7 @@ import { ProcurementWorkspace, type ProcurementData } from "@/components/dashboa
 // catalog-style plugin page below, so they redirect there once installed. Every other
 // plugin renders its workspace inline here — including showing an inline "install this
 // app" message when it isn't installed yet, rather than bouncing the visitor away.
-const DEDICATED_ROUTE: Record<string, string> = { pms: "/pms", "fnb-operations": "/fnb" };
+const DEDICATED_ROUTE: Record<string, string> = { pms: "/admin/pms", "fnb-operations": "/admin/fnb" };
 
 export default async function PluginPage({ params, searchParams }: { params: Promise<{ slug: string; pluginKey: string }>; searchParams: Promise<{ range?: string }> }) {
   const { slug, pluginKey } = await params;

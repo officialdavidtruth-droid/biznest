@@ -31,6 +31,7 @@ export async function updatePluginConfiguration(input: { pluginId: string; price
   const access = await assertPlatform();
   if (!access.success) return access;
   if (!Number.isFinite(input.price) || input.price < 0) return { success: false, error: "Price cannot be negative." };
+  if (!input.isFree && !input.isComingSoon && input.status === "ACTIVE" && input.price <= 0) return { success: false, error: "Set a price greater than 0, or mark the app free or coming soon." };
   if (!input.category.trim()) return { success: false, error: "Category is required." };
   const plugin = await prisma.plugin.findUnique({ where: { id: input.pluginId } });
   if (!plugin) return { success: false, error: "Plugin not found." };

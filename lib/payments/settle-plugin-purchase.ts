@@ -18,10 +18,14 @@ export async function settlePluginPurchase(reference: string, amountNaira: numbe
   if (!payment?.storeId || payment.purpose !== "PLUGIN_PURCHASE") return { success: false, error: "Plugin payment not found." };
   if (!amountCoversExpected(amountNaira, Number(payment.amount))) return { success: false, error: "Plugin payment amount mismatch." };
 
-  const parts = reference.split("-");
-  const storeId = parts[1];
-  const pluginId = parts[2];
-  if (storeId !== payment.storeId) return { success: false, error: "Invalid plugin payment." };
+  // Reference format: PLUG-<storeId>-<pluginId>-<8-char nonce>. Plugin ids and the
+  // nonce come from nanoid, whose alphabet contains "-", so the reference must NOT be
+  // split on "-". Strip the known prefix and the fixed-length nonce instead.
+  const storeId = payment.storeId;
+  const prefix = `PLUG-${storeId}-`;
+  if (!reference.startsWith(prefix) || reference.length <= prefix.length + 9) return { success: false, error: "Invalid plugin payment." };
+  const pluginId = reference.slice(prefix.length, reference.length - 9);
+  if (reference[reference.length - 9] !== "-" || !pluginId) return { success: false, error: "Invalid plugin payment." };
 
   const result = await prisma.$transaction(async (tx) => {
     const plugin = await tx.plugin.findUnique({ where: { id: pluginId }, select: { id: true, key: true, billingInterval: true, isFree: true, price: true } });

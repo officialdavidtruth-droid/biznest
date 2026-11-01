@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { auth } from "@/lib/auth";
 import { revalidatePath } from "next/cache";
 import { assertStorePermission } from "@/lib/access/assert-store-access";
+import { getPluginEntitlement } from "@/lib/plugins";
 import type { ActionResult } from "@/types/actions";
 
 const STATUSES = ["DRAFT", "SUBMITTED", "APPROVED", "REJECTED", "CONVERTED", "CANCELLED"] as const;
@@ -23,7 +24,12 @@ export type RequisitionLineInput = {
 };
 
 async function accessStore(slug: string) {
-  return assertStorePermission(slug, "plugin:requisition");
+  const access = await assertStorePermission(slug, "plugin:requisition");
+  if (!access.success) return access;
+  const entitlement = await getPluginEntitlement(access.store.id, "requisition");
+  if (!entitlement.allowed) return { success: false as const, error: entitlement.reason };
+  if (!entitlement.installed) return { success: false as const, error: "Install Requisitions from Apps to use this workspace." };
+  return access;
 }
 
 function validPriority(value?: string): RequisitionPriority {

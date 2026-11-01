@@ -10,7 +10,7 @@ import { assertStorePermission } from "@/lib/access/assert-store-access";
 export default async function CRMPage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
   const access = await assertStorePermission(slug, "customers");
-  if (!access.success) return null;
+  if (!access.success) return <Notice text={access.error} />;
   const entitlement = await getPluginEntitlement(access.store.id, "crm");
   if (!entitlement.allowed || !entitlement.installed) {
     return (
@@ -23,7 +23,7 @@ export default async function CRMPage({ params }: { params: Promise<{ slug: stri
     );
   }
   const result = await getCrmDashboard(slug);
-  if (!result.success) return null;
+  if (!result.success) return <Notice text={result.error} />;
   const d = result.data;
 
   return (
@@ -39,7 +39,17 @@ export default async function CRMPage({ params }: { params: Promise<{ slug: stri
           <Link href={`/store/${slug}/admin/automations`} className="inline-flex items-center gap-2 rounded-xl border bg-background px-4 py-2.5 text-xs font-semibold hover:border-primary/50"><Workflow className="h-4 w-4" />Automations<ArrowUpRight className="h-3.5 w-3.5 text-muted-foreground" /></Link>
         </div>
       </div>
-      <CrmWorkspace slug={slug} initial={{ leads: d.leads as unknown as Lead[], customerCount: d.customerCount, wonCount: d.wonCount, wonValue: d.wonValue }} />
+      <CrmWorkspace slug={slug} initial={{ leads: d.leads as unknown as Lead[], customerCount: d.customerCount, wonCount: d.wonCount, wonValue: d.wonValue, openCount: d.openCount, openValue: d.openValue, truncated: d.truncated }} />
+    </div>
+  );
+}
+
+function Notice({ text }: { text: string }) {
+  return (
+    <div className="rounded-3xl border bg-background p-10 text-center">
+      <Users className="mx-auto h-10 w-10 text-primary" />
+      <h1 className="mt-4 text-xl font-bold">BizNest CRM</h1>
+      <p className="mx-auto mt-2 max-w-md text-sm text-muted-foreground">{text}</p>
     </div>
   );
 }

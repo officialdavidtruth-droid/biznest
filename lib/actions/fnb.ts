@@ -5,6 +5,7 @@ import { prisma } from "@/lib/prisma";
 import { auth } from "@/lib/auth";
 import { revalidatePath } from "next/cache";
 import { assertStorePermission } from "@/lib/access/assert-store-access";
+import { getPluginEntitlement } from "@/lib/plugins";
 import { consumeFifoStockTx, consumeFefoStockTx } from "@/lib/inventory-fifo";
 import { getFnbRotationMode, type FnbRotationMode } from "@/lib/fnb-settings";
 import { extractFnbRecipe } from "@/lib/fnb-utils";
@@ -22,6 +23,9 @@ const KITCHEN_WORKABLE_ORDER_STATUSES: OrderStatus[] = ["PAID", "IN_PROGRESS", "
 async function access(slug: string, modulePermission?: StaffPermissionId) {
   const a = await assertStorePermission(slug, "plugin:fnb-operations");
   if (!a.success) return a;
+  const fnbEntitlement = await getPluginEntitlement(a.store.id, "fnb-operations");
+  if (!fnbEntitlement.allowed) return { success: false as const, error: fnbEntitlement.reason };
+  if (!fnbEntitlement.installed) return { success: false as const, error: "Install BizNest FnB from Apps to use this workspace." };
   if (!["Restaurant", "Food & Groceries"].includes(getCanonicalBusinessType({ businessCategory: a.store.business?.category, storeBusinessType: a.store.businessType }))) {
     return { success: false as const, error: "BizNest FnB is available to restaurant and food/grocery businesses." };
   }

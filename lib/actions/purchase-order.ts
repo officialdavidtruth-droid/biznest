@@ -5,10 +5,14 @@ import { revalidatePath } from "next/cache";
 import { roundMoney } from "@/lib/utils/pricing";
 import type { ActionResult } from "@/types/actions";
 import { assertStorePermission } from "@/lib/access/assert-store-access";
+import { getProcurementGate } from "@/lib/access/procurement-access";
 import { createFifoBatchTx } from "@/lib/inventory-fifo";
 
 // Purchase orders live under "Products & inventory" in the nav (dashboard-nav.ts).
 async function assertStoreAccess(slug: string) {
+  // Same gate as the Suppliers / Purchase Orders pages: Procurement (or FnB) installed + app permission.
+  const gate = await getProcurementGate(slug);
+  if (!gate.ok) return { success: false as const, error: gate.message };
   return assertStorePermission(slug, "products");
 }
 

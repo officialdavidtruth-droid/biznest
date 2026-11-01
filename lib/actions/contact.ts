@@ -7,6 +7,7 @@ import { sendOrderNotificationEmail } from "@/lib/email/send";
 import { escapeHtml } from "@/lib/email/abandoned-checkout-email";
 import { logError } from "@/lib/observability/log";
 import { runAutomationsForEvent } from "@/lib/automations/engine";
+import { findOrCreateOpenLead } from "@/lib/crm-leads";
 import { validateContactEnquiry, type ContactEnquiryInput } from "@/lib/contact-enquiry";
 import type { ActionResult } from "@/types/actions";
 
@@ -51,12 +52,9 @@ export async function submitContactEnquiry(slug: string, input: ContactEnquiryIn
   try {
     // Re-submitting with the same email while an earlier lead is still open
     // adds to that lead instead of creating a duplicate.
-    const existing = await prisma.crmLead.findFirst({ where: { storeId: store.id, email, status: { notIn: ["WON", "LOST"] } } });
-    const lead = existing ?? (await prisma.crmLead.create({
-      data: { storeId: store.id, name, email, phone, source: "FORM", notes: `Contacted via the website contact form: ${subject}` },
-    }));
-    leadId = lead.id;
-    isNewLead = !existing;
+    const found = await findOrCreateOpenLead(store.id, { name, email, phone, source: "FORM", notes: `Contacted via the website contact form: ${subject}` });
+    leadId = found.lead.id;
+    isNewLead = found.created;
     await prisma.crmActivity.create({ data: { leadId, type: "ENQUIRY", title: `Contact form: ${subject}`.slice(0, 180), body: message } });
   } catch (err) {
     await logError("API", "Contact enquiry save failed", { storeId: store.id, error: err instanceof Error ? err.message : String(err) });

@@ -4,7 +4,7 @@ import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { assertStorePermission } from "@/lib/access/assert-store-access";
 import { canManageBillingAndStaff, getStoreAccessRole } from "@/lib/access/store-access";
-import { chargeCustomer } from "@/lib/payments/gateway";
+import { chargeCustomer, PLATFORM_BILLING_GATEWAY } from "@/lib/payments/gateway";
 import { revalidatePath } from "next/cache";
 import { nanoid } from "nanoid";
 import type { ActionResult } from "@/types/actions";
@@ -36,7 +36,9 @@ export async function getStoreApps(slug: string) {
       const eligible = Array.isArray(plugin.eligibleBusinessTypes)
         ? (plugin.eligibleBusinessTypes as unknown[]).some((v) => v === "*" || v === access.store.businessType)
         : true;
-      const planAllowed = plugin.isFree || plugin.planAccess.some((p) => p.subscriptionId === access.store.subscriptionId);
+      const planAllowed = plugin.planAccess.length > 0
+        ? plugin.planAccess.some((p) => p.subscriptionId === access.store.subscriptionId)
+        : plugin.isFree;
       const installed = plugin.stores[0]?.status === "ACTIVE";
       // Paid recurring apps are renewed by the owner (one-off Korapay payment, no saved card):
       // offer "Renew" in the last 7 days before the app expires.
@@ -113,14 +115,14 @@ export async function startPluginPurchase(slug: string, pluginKey: string, optio
       });
 
   const reference = `PLUG-${access.store.id}-${entitlement.plugin.id}-${nanoid(8)}`;
-  await createPendingPayment({ storeId: access.store.id, purpose: "PLUGIN_PURCHASE", provider: "KORAPAY", reference, amount: entitlement.plugin.price, currency: entitlement.plugin.currency });
+  await createPendingPayment({ storeId: access.store.id, purpose: "PLUGIN_PURCHASE", provider: PLATFORM_BILLING_GATEWAY, reference, amount: entitlement.plugin.price, currency: entitlement.plugin.currency });
   const session = await auth();
   const charge = await chargeCustomer({
     email: session?.user?.email ?? `${access.store.slug}@biznest.space`,
     amountNaira: Number(entitlement.plugin.price),
     reference,
     callbackUrl: `${APP_URL}/api/payments/korapay/plugin-callback?slug=${encodeURIComponent(slug)}`,
-    gateway: "KORAPAY",
+    gateway: PLATFORM_BILLING_GATEWAY,
   });
   if (!charge.success) {
     await markPaymentFailed(reference);

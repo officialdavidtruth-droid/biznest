@@ -16,6 +16,8 @@ export type PluginSeed = {
   plans: string[];
 };
 
+// Prices are never decided in code: paid apps are seeded with price 0 and stay unpurchasable until
+// the super admin sets a price (or marks the app free / coming soon) in /supaadmin/apps.
 export const PLUGIN_CATALOG: PluginSeed[] = [
   {
     key: "pms",
@@ -35,7 +37,7 @@ export const PLUGIN_CATALOG: PluginSeed[] = [
     description: "A professional finance workspace for accountants, financial controllers and auditors, with double-entry journals, expenses, periods and reports.",
     category: "Finance",
     icon: "Calculator",
-    price: 25000,
+    price: 0, // set by the super admin (/supaadmin/apps)
     billingInterval: "MONTHLY",
     eligibleBusinessTypes: ["*"],
     sortOrder: 20,
@@ -47,7 +49,7 @@ export const PLUGIN_CATALOG: PluginSeed[] = [
     description: "Lead management, customer pipeline, follow-ups and sales activity in one workspace.",
     category: "Sales",
     icon: "Users",
-    price: 12000,
+    price: 0, // set by the super admin (/supaadmin/apps)
     billingInterval: "MONTHLY",
     eligibleBusinessTypes: ["*"],
     sortOrder: 30,
@@ -59,7 +61,7 @@ export const PLUGIN_CATALOG: PluginSeed[] = [
     description: "Employee records, attendance, leave, payroll and workforce reporting.",
     category: "Operations",
     icon: "BriefcaseBusiness",
-    price: 18000,
+    price: 0, // set by the super admin (/supaadmin/apps)
     billingInterval: "MONTHLY",
     eligibleBusinessTypes: ["*"],
     sortOrder: 40,
@@ -71,7 +73,7 @@ export const PLUGIN_CATALOG: PluginSeed[] = [
     description: "Controlled internal requests for stock, supplies, equipment and services, with priorities, approvals and purchasing handoff.",
     category: "Operations",
     icon: "ClipboardCheck",
-    price: 10000,
+    price: 0, // set by the super admin (/supaadmin/apps)
     billingInterval: "MONTHLY",
     eligibleBusinessTypes: ["*"],
     sortOrder: 45,
@@ -83,7 +85,7 @@ export const PLUGIN_CATALOG: PluginSeed[] = [
     description: "Purchase requests, approvals, vendor management, purchase orders and supplier performance.",
     category: "Operations",
     icon: "ClipboardList",
-    price: 15000,
+    price: 0, // set by the super admin (/supaadmin/apps)
     billingInterval: "MONTHLY",
     eligibleBusinessTypes: ["*"],
     sortOrder: 50,
@@ -95,7 +97,7 @@ export const PLUGIN_CATALOG: PluginSeed[] = [
     description: "Deeper business intelligence, KPI dashboards and operational reporting across BizNest.",
     category: "Analytics",
     icon: "BarChart3",
-    price: 10000,
+    price: 0, // set by the super admin (/supaadmin/apps)
     billingInterval: "MONTHLY",
     eligibleBusinessTypes: ["*"],
     sortOrder: 60,
@@ -107,7 +109,7 @@ export const PLUGIN_CATALOG: PluginSeed[] = [
     description: "The complete restaurant operating system: POS, orders, kitchen display, menu, tables, reservations, recipes, food cost, inventory, procurement, suppliers, customers, waste and reports.",
     category: "Industry",
     icon: "ChefHat",
-    price: 20000,
+    price: 0, // set by the super admin (/supaadmin/apps)
     billingInterval: "MONTHLY",
     eligibleBusinessTypes: ["Restaurant", "Food & Groceries"],
     sortOrder: 65,
@@ -116,10 +118,10 @@ export const PLUGIN_CATALOG: PluginSeed[] = [
   {
     key: "helpdesk",
     name: "Customer Support",
-    description: "Tickets, assignments, response tracking, internal notes and customer support reporting.",
+    description: "A support inbox over customer conversations: see what needs a reply, what has waited over 24 hours, and your median first-response time.",
     category: "Customer",
     icon: "LifeBuoy",
-    price: 9000,
+    price: 0, // set by the super admin (/supaadmin/apps)
     billingInterval: "MONTHLY",
     eligibleBusinessTypes: ["*"],
     sortOrder: 80,
@@ -128,10 +130,10 @@ export const PLUGIN_CATALOG: PluginSeed[] = [
   {
     key: "asset-management",
     name: "Asset Management",
-    description: "Track equipment, vehicles, property assets, depreciation schedules and maintenance history.",
+    description: "Keep an asset register for equipment, vehicles and property, with purchase cost, depreciation you post by period, maintenance notes and disposal.",
     category: "Operations",
     icon: "Boxes",
-    price: 12000,
+    price: 0, // set by the super admin (/supaadmin/apps)
     billingInterval: "MONTHLY",
     eligibleBusinessTypes: ["*"],
     sortOrder: 90,
@@ -140,10 +142,10 @@ export const PLUGIN_CATALOG: PluginSeed[] = [
   {
     key: "legal-compliance",
     name: "Legal & Compliance",
-    description: "Contracts, compliance tasks, document expiry and business risk registers.",
+    description: "Store contracts and statutory documents with expiry dates and notes, and see what is expiring or expired alongside pending approvals.",
     category: "Professional",
     icon: "Scale",
-    price: 15000,
+    price: 0, // set by the super admin (/supaadmin/apps)
     billingInterval: "MONTHLY",
     eligibleBusinessTypes: ["*"],
     sortOrder: 100,
@@ -152,10 +154,11 @@ export const PLUGIN_CATALOG: PluginSeed[] = [
   {
     key: "fleet-management",
     name: "Fleet Management",
-    description: "Vehicles, drivers, fuel, servicing, assignments and fleet cost tracking.",
+    description: "Vehicle, driver, fuel and servicing tracking for logistics and construction businesses.",
     category: "Operations",
     icon: "Truck",
-    price: 14000,
+    price: 0, // set by the super admin (/supaadmin/apps)
+    isComingSoon: true,
     billingInterval: "MONTHLY",
     eligibleBusinessTypes: ["Logistics", "Courier", "Travel", "Construction"],
     sortOrder: 110,
@@ -164,10 +167,10 @@ export const PLUGIN_CATALOG: PluginSeed[] = [
   {
     key: "loyalty-rewards",
     name: "Loyalty & Rewards",
-    description: "Customer points, tiers, rewards and retention campaigns.",
+    description: "See customer points balances and the points earned and redeemed over the last 30 days.",
     category: "Growth",
     icon: "Gift",
-    price: 7000,
+    price: 0, // set by the super admin (/supaadmin/apps)
     billingInterval: "MONTHLY",
     eligibleBusinessTypes: ["*"],
     sortOrder: 120,
@@ -195,6 +198,17 @@ export const PLUGIN_CATALOG: PluginSeed[] = [
     isFree: true,
     eligibleBusinessTypes: ["*"],
     sortOrder: 126,
+    plans: [],
+  },
+  {
+    key: "seo",
+    name: "SEO & Search",
+    description: "Search titles, descriptions, social share images, canonical URL and Google verification for your storefront.",
+    category: "Growth",
+    icon: "Search",
+    price: 0,
+    eligibleBusinessTypes: ["*"],
+    sortOrder: 127,
     plans: [],
   },
 ];
@@ -308,7 +322,12 @@ export async function getPluginEntitlement(storeId: string, pluginKey: string) {
     return { allowed: false as const, reason: "This app is not available for this business type." };
   }
 
-  const planAllowed = plugin.isFree || plugin.planAccess.some((p) => p.subscriptionId === store.subscriptionId && p.enabled);
+  // A plugin with enabled plan-access rows is limited to those plans, free or not.
+  // Only a plugin with no enabled plan rows falls back to its isFree flag.
+  const enabledAccess = plugin.planAccess.filter((p) => p.enabled);
+  const planAllowed = enabledAccess.length > 0
+    ? enabledAccess.some((p) => p.subscriptionId === store.subscriptionId)
+    : plugin.isFree;
   if (!planAllowed) {
     const supportedPlans = await prisma.pluginPlanAccess.findMany({
       where: { pluginId: plugin.id, enabled: true },

@@ -2,7 +2,7 @@
 
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { chargeCustomer } from "@/lib/payments/gateway";
+import { chargeCustomer, PLATFORM_BILLING_GATEWAY } from "@/lib/payments/gateway";
 import { getFreeTrialSetting, getMarketingFreeTrialSetting } from "@/lib/actions/site-settings";
 import { buildSubscriptionReference } from "@/lib/payments/subscription-reference";
 import type { ActionResult } from "@/types/actions";
@@ -65,7 +65,7 @@ export async function initiatePlanUpgrade(
   }
 
   const reference = buildSubscriptionReference(store.id, plan.id);
-  await createPendingPayment({ storeId: store.id, purpose: "SUBSCRIPTION_UPGRADE", provider: "KORAPAY", reference, amount: Number(plan.price), currency: "NGN" });
+  await createPendingPayment({ storeId: store.id, purpose: "SUBSCRIPTION_UPGRADE", provider: PLATFORM_BILLING_GATEWAY, reference, amount: Number(plan.price), currency: "NGN" });
 
   // Platform-billing (BizNest plan payments) always goes through Korapay,
   // regardless of whichever gateway supaadmin has toggled "active" for
@@ -80,7 +80,7 @@ export async function initiatePlanUpgrade(
     amountNaira: Number(plan.price),
     reference,
     callbackUrl,
-    gateway: "KORAPAY",
+    gateway: PLATFORM_BILLING_GATEWAY,
   });
 
   if (!charge.success) {

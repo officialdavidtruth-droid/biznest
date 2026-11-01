@@ -3,14 +3,16 @@
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { assertStorePermission } from "@/lib/access/assert-store-access";
+import { getPluginEntitlement } from "@/lib/plugins";
 import { logStoreActivity } from "@/lib/activity-log";
 import type { ActionResult } from "@/types/actions";
 
 async function access(slug: string) {
   const a = await assertStorePermission(slug, "plugin:hr-payroll");
   if (!a.success) return { ok: false as const, error: a.error };
-  const e = await prisma.storePlugin.findFirst({ where: { storeId: a.store.id, plugin: { key: "hr-payroll" }, status: "ACTIVE" } });
-  if (!e) return { ok: false as const, error: "Install HR & Payroll to use this workspace." };
+  const e = await getPluginEntitlement(a.store.id, "hr-payroll");
+  if (!e.allowed) return { ok: false as const, error: e.reason };
+  if (!e.installed) return { ok: false as const, error: "Install HR & Payroll to use this workspace." };
   return { ok: true as const, store: a.store };
 }
 

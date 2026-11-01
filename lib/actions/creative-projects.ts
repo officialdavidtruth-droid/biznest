@@ -1,4 +1,5 @@
 "use server";
+import { findOrCreateOpenLead } from "@/lib/crm-leads";
 import { prisma } from "@/lib/prisma";
 import { assertStorePermission } from "@/lib/access/assert-store-access";
 import { sendOrderNotificationEmail, storeEmailBrand } from "@/lib/email/send";
@@ -139,23 +140,16 @@ export async function createCreativeProject(
   // Re-submitting the same email while an earlier request is still open reuses
   // that lead instead of creating a duplicate one.
   try {
-    const email = input.customerEmail?.trim() || null;
-    const existingLead = email
-      ? await prisma.crmLead.findFirst({ where: { storeId: storeAccess.id, email, status: { notIn: ["WON", "LOST"] } } })
-      : null;
-    const lead = existingLead
-      ? existingLead
-      : await prisma.crmLead.create({
-          data: {
-            storeId: storeAccess.id,
-            name: created.quote.customerName ?? "Website enquiry",
-            email,
-            phone: input.customerPhone?.trim() || null,
-            source: "FORM",
-            notes: `Requested ${created.quote.serviceType} via the website quote form.`,
-            value: budget ?? undefined,
-          },
-        });
+    const found = await findOrCreateOpenLead(storeAccess.id, {
+      name: created.quote.customerName ?? "Website enquiry",
+      email: input.customerEmail,
+      phone: input.customerPhone,
+      source: "FORM",
+      notes: `Requested ${created.quote.serviceType} via the website quote form.`,
+      value: budget ?? undefined,
+    });
+    const lead = found.lead;
+    const existingLead = !found.created;
     if (!existingLead) {
       await runAutomationsForEvent({ type: "CRM_LEAD_CREATED", storeId: storeAccess.id, data: { leadId: lead.id, name: lead.name, email: lead.email ?? undefined } });
     }

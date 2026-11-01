@@ -2,9 +2,9 @@
 
 import { useEffect, useState, useTransition } from "react";
 import { whatsappLink } from "@/lib/utils/whatsapp-link";
-import { CalendarClock, Mail, MessageCircle, Phone, StickyNote, Users, X, type LucideIcon } from "lucide-react";
-import { addCrmActivity, updateCrmLeadDetails } from "@/lib/actions/seo-crm";
-import { STAGES, initials, money, shortDate, sourceLabel, stageOf, type Lead, type LeadActivity } from "@/components/dashboard/crm-types";
+import { ArrowRightLeft, CalendarClock, Inbox, Mail, MessageCircle, Phone, StickyNote, Trash2, Users, X, type LucideIcon } from "lucide-react";
+import { addCrmActivity, deleteCrmLead, updateCrmLeadContact, updateCrmLeadDetails } from "@/lib/actions/seo-crm";
+import { SOURCES, STAGES, initials, money, shortDate, sourceLabel, stageOf, type Lead, type LeadActivity } from "@/components/dashboard/crm-types";
 import { currencySymbol } from "@/lib/utils/format-money";
 import { formatDate } from "@/lib/i18n/locale";
 
@@ -14,7 +14,8 @@ const ACTIVITY_TYPES: Array<{ id: string; label: string; icon: LucideIcon }> = [
   { id: "EMAIL", label: "Email", icon: Mail },
   { id: "MEETING", label: "Meeting", icon: Users },
 ];
-const iconFor = (type: string) => ACTIVITY_TYPES.find((t) => t.id === type.toUpperCase())?.icon ?? StickyNote;
+const EXTRA_ICONS: Record<string, LucideIcon> = { STAGE: ArrowRightLeft, ENQUIRY: Inbox };
+const iconFor = (type: string) => ACTIVITY_TYPES.find((t) => t.id === type.toUpperCase())?.icon ?? EXTRA_ICONS[type.toUpperCase()] ?? StickyNote;
 
 const toDateInput = (d: Date | string | null) => {
   if (!d) return "";
@@ -29,6 +30,7 @@ export function LeadDrawer({
   onMove,
   onPatch,
   onActivity,
+  onDeleted,
 }: {
   slug: string;
   lead: Lead;
@@ -36,7 +38,10 @@ export function LeadDrawer({
   onMove: (status: string) => void;
   onPatch: (patch: Partial<Lead>) => void;
   onActivity: (activity: LeadActivity) => void;
+  onDeleted: () => void;
 }) {
+  const [editing, setEditing] = useState(false);
+  const [contact, setContact] = useState({ name: lead.name, email: lead.email ?? "", phone: lead.phone ?? "", company: lead.company ?? "", source: lead.source });
   const [value, setValue] = useState(lead.value ? String(lead.value) : "");
   const [follow, setFollow] = useState(toDateInput(lead.nextFollowUpAt));
   const [notes, setNotes] = useState(lead.notes ?? "");
@@ -69,6 +74,27 @@ export function LeadDrawer({
         setSaved(true);
         setTimeout(() => setSaved(false), 2000);
       } else setError(("error" in r && r.error) || "Could not save changes.");
+    });
+  }
+
+  function saveContact() {
+    setError("");
+    start(async () => {
+      const r = await updateCrmLeadContact(slug, lead.id, contact);
+      if (r.success && "data" in r && r.data) {
+        onPatch({ name: r.data.name, email: r.data.email, phone: r.data.phone, company: r.data.company, source: r.data.source });
+        setEditing(false);
+      } else setError(("error" in r && r.error) || "Could not save contact details.");
+    });
+  }
+
+  function remove() {
+    if (!window.confirm(`Delete ${lead.name}? This removes the lead and its activity history and can't be undone.`)) return;
+    setError("");
+    start(async () => {
+      const r = await deleteCrmLead(slug, lead.id);
+      if (r.success) onDeleted();
+      else setError(("error" in r && r.error) || "Could not delete the lead.");
     });
   }
 
@@ -117,6 +143,28 @@ export function LeadDrawer({
             </section>
           )}
 
+          <section aria-label="Contact details" className="space-y-3">
+            {editing ? (
+              <div className="grid gap-3 rounded-xl border p-3">
+                <label className="grid gap-1.5 text-xs font-medium">Name<input value={contact.name} maxLength={120} onChange={(e) => setContact({ ...contact, name: e.target.value })} className={field} /></label>
+                <div className="grid grid-cols-2 gap-3">
+                  <label className="grid gap-1.5 text-xs font-medium">Email<input type="email" value={contact.email} onChange={(e) => setContact({ ...contact, email: e.target.value })} className={field} /></label>
+                  <label className="grid gap-1.5 text-xs font-medium">Phone<input type="tel" value={contact.phone} onChange={(e) => setContact({ ...contact, phone: e.target.value })} className={field} /></label>
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <label className="grid gap-1.5 text-xs font-medium">Company<input value={contact.company} maxLength={120} onChange={(e) => setContact({ ...contact, company: e.target.value })} className={field} /></label>
+                  <label className="grid gap-1.5 text-xs font-medium">Source<select value={contact.source} onChange={(e) => setContact({ ...contact, source: e.target.value })} className={field}>{SOURCES.map((s) => <option key={s.id} value={s.id}>{s.label}</option>)}</select></label>
+                </div>
+                <div className="flex gap-2">
+                  <button type="button" disabled={pending || !contact.name.trim()} onClick={saveContact} className="rounded-lg bg-primary px-4 py-2 text-xs font-semibold text-primary-foreground disabled:opacity-40">{pending ? "Saving…" : "Save contact"}</button>
+                  <button type="button" onClick={() => { setEditing(false); setContact({ name: lead.name, email: lead.email ?? "", phone: lead.phone ?? "", company: lead.company ?? "", source: lead.source }); }} className="rounded-lg border px-4 py-2 text-xs font-semibold hover:bg-muted">Cancel</button>
+                </div>
+              </div>
+            ) : (
+              <button type="button" onClick={() => setEditing(true)} className="text-xs font-semibold text-primary underline">Edit name, email, phone or company</button>
+            )}
+          </section>
+
           <section aria-label="Details" className="space-y-3">
             <div className="grid grid-cols-2 gap-3">
               <label className="grid gap-1.5 text-xs font-medium">Deal value ({currencySymbol()})<input type="number" min="0" inputMode="decimal" value={value} onChange={(e) => setValue(e.target.value)} placeholder="0" className={field} /></label>
@@ -162,6 +210,10 @@ export function LeadDrawer({
               <p className="mt-4 rounded-xl border border-dashed p-5 text-center text-xs text-muted-foreground">No activity yet. Log your first call or note above.</p>
             )}
             {lead.createdAt && <p className="mt-4 text-[11px] text-muted-foreground">Lead added {shortDate(lead.createdAt)}</p>}
+          </section>
+
+          <section aria-label="Danger zone" className="border-t pt-4">
+            <button type="button" disabled={pending} onClick={remove} className="inline-flex items-center gap-1.5 rounded-lg border border-rose-500/30 px-3 py-2 text-xs font-semibold text-rose-700 hover:bg-rose-500/10 disabled:opacity-40"><Trash2 className="h-3.5 w-3.5" />Delete lead</button>
           </section>
 
           {error && <p role="alert" className="rounded-lg border border-rose-500/30 bg-rose-500/10 px-3 py-2 text-xs text-rose-700">{error}</p>}

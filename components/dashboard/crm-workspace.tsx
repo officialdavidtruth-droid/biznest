@@ -17,7 +17,7 @@ export function CrmWorkspace({
   initial,
 }: {
   slug: string;
-  initial: { leads: Lead[]; customerCount: number; wonCount: number; wonValue: number };
+  initial: { leads: Lead[]; customerCount: number; wonCount: number; wonValue: number; openCount: number; openValue: number; truncated: boolean };
 }) {
   const [leads, setLeads] = useState<Lead[]>(initial.leads);
   const [query, setQuery] = useState("");
@@ -41,7 +41,9 @@ export function CrmWorkspace({
 
   const selected = leads.find((l) => l.id === selectedId) ?? null;
   const open = leads.filter((l) => !isClosed(l.status));
-  const openValue = open.reduce((sum, l) => sum + Number(l.value ?? 0), 0);
+  // The board only holds the most recent open leads; when there are more, totals come from the database.
+  const openValue = initial.truncated ? initial.openValue : open.reduce((sum, l) => sum + Number(l.value ?? 0), 0);
+  const openCount = initial.truncated ? initial.openCount : open.length;
   const dueLeads = open.filter((l) => ["overdue", "today"].includes(followUpState(l, now)));
   const overdueCount = open.filter((l) => followUpState(l, now) === "overdue").length;
 
@@ -61,7 +63,11 @@ export function CrmWorkspace({
     setLeads((cur) => cur.map((l) => (l.id === id ? { ...l, status } : l)));
     start(async () => {
       const r = await updateCrmLeadStatus(slug, id, status);
-      if (r.success) setNotice({ tone: "ok", text: `Moved to ${stageOf(status).label}.` });
+      if (r.success) {
+        const activity = "data" in r ? r.data?.activity : null;
+        if (activity) setLeads((cur) => cur.map((l) => (l.id === id ? { ...l, activities: [activity, ...l.activities].slice(0, 5), ...(status === "CONTACTED" ? { lastContactedAt: new Date().toISOString() } : {}) } : l)));
+        setNotice({ tone: "ok", text: `Moved to ${stageOf(status).label}.` });
+      }
       else {
         setLeads((cur) => cur.map((l) => (l.id === id ? { ...l, status: prev } : l)));
         setNotice({ tone: "error", text: ("error" in r && r.error) || "Could not update lead." });
@@ -79,9 +85,9 @@ export function CrmWorkspace({
     start(async () => {
       const r = await createCrmLead(slug, { name: text("name"), email: text("email"), phone: text("phone"), company: text("company"), source: text("source") || "MANUAL", value, notes: text("notes"), nextFollowUpAt });
       if (r.success && "data" in r && r.data) {
-        setLeads((cur) => [{ id: r.data.id, name: text("name"), email: text("email") || null, phone: text("phone") || null, company: text("company") || null, source: text("source") || "MANUAL", status: "NEW", value: value > 0 ? value : null, currency: "NGN", notes: text("notes") || null, nextFollowUpAt: nextFollowUpAt ?? null, createdAt: new Date().toISOString(), activities: [] }, ...cur]);
+        setLeads((cur) => [{ id: r.data.id, name: r.data.name, email: r.data.email, phone: r.data.phone, company: r.data.company, source: r.data.source, status: "NEW", value: r.data.value, currency: "NGN", notes: r.data.notes, nextFollowUpAt: r.data.nextFollowUpAt, createdAt: new Date().toISOString(), activities: [] }, ...cur]);
         setShowNew(false);
-        setNotice({ tone: "ok", text: `${text("name")} added to New.` });
+        setNotice({ tone: "ok", text: `${r.data.name} added to New.` });
       } else setNotice({ tone: "error", text: ("error" in r && r.error) || "Could not create lead." });
     });
   }
@@ -92,7 +98,7 @@ export function CrmWorkspace({
     <div className="space-y-5">
       {/* KPIs */}
       <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-        <Kpi icon={Wallet} label="Open pipeline" value={money(openValue)} sub={`${open.length} open lead${open.length === 1 ? "" : "s"}`} />
+        <Kpi icon={Wallet} label="Open pipeline" value={money(openValue)} sub={`${openCount} open lead${openCount === 1 ? "" : "s"}`} />
         <Kpi icon={CalendarClock} label="Follow-ups due" value={String(dueLeads.length)} sub={overdueCount ? `${overdueCount} overdue` : "Nothing overdue"} tone={overdueCount ? "warn" : undefined} onClick={dueLeads.length ? () => { setDueOnly(true); setView("list"); } : undefined} />
         <Kpi icon={CheckCircle2} label="Won deals" value={formatNumber(initial.wonCount)} sub={`${money(initial.wonValue)} closed`} />
         <Kpi icon={Users} label="Customers" value={formatNumber(initial.customerCount)} sub="Open Customer 360" href={`/store/${slug}/admin/customers`} />
@@ -119,6 +125,10 @@ export function CrmWorkspace({
           <button type="button" onClick={() => setShowNew(true)} className="inline-flex items-center gap-1.5 rounded-xl bg-primary px-4 py-2 text-xs font-semibold text-primary-foreground"><Plus className="h-4 w-4" />Add lead</button>
         </div>
       </div>
+
+      {initial.truncated && (
+        <p className="rounded-xl border border-amber-500/30 bg-amber-500/10 px-4 py-2.5 text-xs text-amber-800">Showing your {open.length} most recently updated open leads out of {initial.openCount}. Totals above include all of them.</p>
+      )}
 
       {notice && (
         <div role="status" className={`flex items-center gap-2 rounded-xl border px-4 py-2.5 text-sm ${notice.tone === "ok" ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-700" : "border-rose-500/30 bg-rose-500/10 text-rose-700"}`}>
@@ -203,6 +213,7 @@ export function CrmWorkspace({
           onClose={() => setSelectedId(null)}
           onMove={(status) => move(selected.id, status)}
           onPatch={(patch) => setLeads((cur) => cur.map((l) => (l.id === selected.id ? { ...l, ...patch } : l)))}
+          onDeleted={() => { const id = selected.id; setSelectedId(null); setLeads((cur) => cur.filter((l) => l.id !== id)); setNotice({ tone: "ok", text: "Lead deleted." }); }}
           onActivity={(a) => setLeads((cur) => cur.map((l) => (l.id === selected.id ? { ...l, activities: [a, ...l.activities] } : l)))}
         />
       )}
@@ -261,9 +272,9 @@ function LeadCard({ lead, now, dragging, onOpen, onDragStart, onDragEnd, onAdvan
       <div className="mt-2 flex items-center justify-between gap-2 border-t pt-2">
         <span className="rounded-full bg-muted px-2 py-0.5 text-[10px] font-medium text-muted-foreground">{sourceLabel(lead.source)}</span>
         <span className="flex items-center gap-1">
-          {lead.email && <a href={`mailto:${lead.email}`} onClick={(e) => e.stopPropagation()} aria-label={`Email ${lead.name}`} className="rounded-md p-1 text-muted-foreground opacity-0 transition hover:bg-muted hover:text-foreground focus:opacity-100 group-hover:opacity-100"><Mail className="h-3.5 w-3.5" /></a>}
-          {lead.phone && <a href={`tel:${lead.phone}`} onClick={(e) => e.stopPropagation()} aria-label={`Call ${lead.name}`} className="rounded-md p-1 text-muted-foreground opacity-0 transition hover:bg-muted hover:text-foreground focus:opacity-100 group-hover:opacity-100"><Phone className="h-3.5 w-3.5" /></a>}
-          {next && <button type="button" onClick={(e) => { e.stopPropagation(); onAdvance(next.id); }} aria-label={`Move ${lead.name} to ${next.label}`} title={`Move to ${next.label}`} className="inline-flex items-center gap-0.5 rounded-md px-1.5 py-1 text-[10px] font-semibold text-primary opacity-0 transition hover:bg-[hsl(var(--primary)/0.1)] focus:opacity-100 group-hover:opacity-100">{next.label}<ChevronRight className="h-3 w-3" /></button>}
+          {lead.email && <a href={`mailto:${lead.email}`} onClick={(e) => e.stopPropagation()} aria-label={`Email ${lead.name}`} className="rounded-md p-2 text-muted-foreground transition sm:p-1 hover:bg-muted hover:text-foreground focus:opacity-100 sm:opacity-0 sm:group-hover:opacity-100"><Mail className="h-3.5 w-3.5" /></a>}
+          {lead.phone && <a href={`tel:${lead.phone}`} onClick={(e) => e.stopPropagation()} aria-label={`Call ${lead.name}`} className="rounded-md p-2 text-muted-foreground transition sm:p-1 hover:bg-muted hover:text-foreground focus:opacity-100 sm:opacity-0 sm:group-hover:opacity-100"><Phone className="h-3.5 w-3.5" /></a>}
+          {next && <button type="button" onClick={(e) => { e.stopPropagation(); onAdvance(next.id); }} aria-label={`Move ${lead.name} to ${next.label}`} title={`Move to ${next.label}`} className="inline-flex items-center gap-0.5 rounded-md px-1.5 py-1 text-[10px] font-semibold text-primary transition hover:bg-[hsl(var(--primary)/0.1)] focus:opacity-100 sm:opacity-0 sm:group-hover:opacity-100">{next.label}<ChevronRight className="h-3 w-3" /></button>}
         </span>
       </div>
     </div>

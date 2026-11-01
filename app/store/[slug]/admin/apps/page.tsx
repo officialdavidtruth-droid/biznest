@@ -1,10 +1,10 @@
 import Link from "next/link";
-import { Calculator, Hotel, Users, BriefcaseBusiness, ClipboardList, BarChart3, ChefHat, LifeBuoy, Boxes, Scale, Truck, Gift, LockKeyhole, Puzzle, QrCode, Ticket } from "lucide-react";
+import { Calculator, Hotel, Users, BriefcaseBusiness, ClipboardList, BarChart3, ChefHat, LifeBuoy, Boxes, Scale, Truck, Gift, LockKeyhole, Puzzle, QrCode, Ticket, ClipboardCheck, Search } from "lucide-react";
 import { getStoreApps } from "@/lib/actions/plugins";
 import { PluginUseButton } from "@/components/dashboard/plugin-use-button";
 import { formatMoney } from "@/lib/utils/format-money";
 
-const ICONS: Record<string, typeof Puzzle> = { Calculator, Hotel, Users, BriefcaseBusiness, ClipboardList, BarChart3, ChefHat, LifeBuoy, Boxes, Scale, Truck, Gift, QrCode, Ticket };
+const ICONS: Record<string, typeof Puzzle> = { Calculator, Hotel, Users, BriefcaseBusiness, ClipboardList, BarChart3, ChefHat, LifeBuoy, Boxes, Scale, Truck, Gift, QrCode, Ticket, ClipboardCheck, Search };
 
 export default async function AppsPage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
@@ -23,6 +23,7 @@ export default async function AppsPage({ params }: { params: Promise<{ slug: str
         {data.plugins.map((plugin) => {
           const Icon = ICONS[plugin.icon ?? ""] ?? Puzzle;
           const unavailable = !plugin.eligible || !plugin.planAllowed;
+          const unpriced = !plugin.isFree && plugin.price <= 0 && !plugin.installed;
           return (
             <div key={plugin.key} className="flex min-h-[245px] flex-col rounded-2xl border bg-background p-5 shadow-sm">
               <div className="flex items-start justify-between gap-3">
@@ -33,10 +34,10 @@ export default async function AppsPage({ params }: { params: Promise<{ slug: str
               <p className="mt-1 flex-1 text-sm leading-6 text-muted-foreground">{plugin.description}</p>
               <div className="mt-4 flex items-end justify-between gap-3 border-t pt-4">
                 <div>
-                  {plugin.isFree ? <p className="text-sm font-bold text-primary">Included in plan</p> : <p className="text-sm font-bold">{formatMoney(plugin.price)}<span className="text-[10px] font-normal text-muted-foreground">/{plugin.billingInterval === "YEARLY" ? "year" : plugin.billingInterval === "ONE_TIME" ? "one time" : "month"}</span></p>}
+                  {plugin.isFree ? <p className="text-sm font-bold text-primary">Included in plan</p> : unpriced ? <p className="text-sm font-bold text-muted-foreground">Price not set</p> : <p className="text-sm font-bold">{formatMoney(plugin.price)}<span className="text-[10px] font-normal text-muted-foreground">/{plugin.billingInterval === "YEARLY" ? "year" : plugin.billingInterval === "ONE_TIME" ? "one time" : "month"}</span></p>}
                   <p className="mt-1 text-[10px] text-muted-foreground">{plugin.supportedPlans.length ? `Available on ${plugin.supportedPlans.join(" / ")}` : "Plan access not configured"}</p>
                 </div>
-                {plugin.isComingSoon ? <span className="rounded-xl border px-4 py-2 text-xs font-semibold text-muted-foreground">Coming soon</span> : unavailable ? (
+                {plugin.isComingSoon ? <span className="rounded-xl border px-4 py-2 text-xs font-semibold text-muted-foreground">Coming soon</span> : unpriced ? <span className="rounded-xl border px-4 py-2 text-xs font-semibold text-muted-foreground">Not available yet</span> : unavailable ? (
                   <Link href={`/store/${slug}/admin/subscription?apps=${encodeURIComponent(plugin.key)}`} className="flex items-center gap-1.5 rounded-xl border px-3 py-2 text-xs font-bold"><LockKeyhole size={13} /> Upgrade</Link>
                 ) : <PluginUseButton slug={slug} pluginKey={plugin.key} isFree={plugin.isFree} installed={plugin.installed} renewalDue={plugin.renewalDue} />}
               </div>

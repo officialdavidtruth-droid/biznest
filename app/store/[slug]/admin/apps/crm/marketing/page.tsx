@@ -15,7 +15,15 @@ import { supportsAbandonedCheckout } from "@/lib/business-identity";
 export default async function MarketingPage({ params, searchParams }: { params: Promise<{ slug: string }>; searchParams: Promise<{ tab?: string }> }) {
   const { slug } = await params;
   const access = await assertStorePermission(slug, "marketing");
-  if (!access.success) return null;
+  if (!access.success) {
+    return (
+      <div className="rounded-3xl border bg-background p-10 text-center">
+        <Mail className="mx-auto h-10 w-10 text-primary" />
+        <h1 className="mt-4 text-xl font-bold">Email marketing</h1>
+        <p className="mx-auto mt-2 max-w-md text-sm text-muted-foreground">{access.error}</p>
+      </div>
+    );
+  }
   const store = access.store;
 
   // Marketing is part of the CRM & Sales app: same install / plan check as the CRM page.
