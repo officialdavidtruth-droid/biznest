@@ -29,6 +29,7 @@ export function HeenzyStorefront({
     name: string; logoUrl: string | null; bannerUrl: string | null;
     contactEmail: string | null; contactPhone: string | null;
     business: { description: string | null };
+    heroOverrides?: { headline?: string; subtitle?: string; ctaLabel?: string } | null;
   };
   slug: string;
   catalogItems: CatalogItem[];
@@ -54,15 +55,13 @@ export function HeenzyStorefront({
           <div className="hz-hero-overlay" />
           <div className="hz-hero-content">
             <h1 className="hz-hero-title">
-              {store.name} <span className="hz-accent">Reimagined</span>
+              {String(store.heroOverrides?.headline || "").trim() || store.name}
             </h1>
-            <p className="hz-hero-sub">{store.business.description || "Built for every mood, every move, and every milestone. Unleash the lifestyle in you."}</p>
-            <div className="hz-pill-row">
-              <button className="hz-pill active">Style</button>
-              <button className="hz-pill">Comfort</button>
-              <button className="hz-pill">Trendy</button>
-            </div>
-            {catalogItems.length > 0 && <a href="#catalog" className="hz-btn hz-btn-yellow">Shop Now</a>}
+            <p className="hz-hero-sub">{String(store.heroOverrides?.subtitle || "").trim() || store.business.description || `Welcome to ${store.name}.`}</p>
+            {navCategories.length > 0 && <div className="hz-pill-row">
+              {navCategories.slice(0, 3).map((c, i) => <a key={c.id} href={`#catalog`} className={`hz-pill${i === 0 ? " active" : ""}`}>{c.name}</a>)}
+            </div>}
+            {catalogItems.length > 0 && <a href="#catalog" className="hz-btn hz-btn-yellow">{String(store.heroOverrides?.ctaLabel || "").trim() || "Shop Now"}</a>}
           </div>
           <div className="hz-social-proof">
             <div className="hz-avatars">

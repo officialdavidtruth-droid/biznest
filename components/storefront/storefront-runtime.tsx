@@ -75,14 +75,17 @@ export async function renderStorefront(slug:string,opts?:{preview?:boolean}){
 
  const arrangement=getTemplateArrangement(store.sectionOverrides);
  const arranged=(node:ReactNode)=><SectionArranger arrangement={arrangement}>{node}</SectionArranger>;
- if(home.kind==="legacy") return arranged(<LegacyTemplateHome name={home.name} p={{store,slug,catalogItems,navCategories,goodReviews,avgRating,completedOrders,trustScore:null,trustChecklist:null,social}}/>);
+ if(home.kind==="legacy") return arranged(<LegacyTemplateHome name={home.name} p={{store,slug,catalogItems,navCategories,goodReviews,avgRating,completedOrders,trustScore:null,trustChecklist:null,social,theme:resolveStoreTheme(store.template?.category,store.name,themeOverrides,store.fontFamily,store.template?.name)}}/>);
  if(home.kind==="screenshot") return arranged(<SignatureScreenshotHome store={store} slug={slug} items={catalogItems as any} reviews={store.reviews} avgRating={avgRating} completedOrders={completedOrders} social={social} mode={home.mode} {...home.palette}/>);
  if(home.kind==="example") return arranged(<ExampleStorefront store={store} slug={slug} items={catalogItems} mode="home" content={await getExampleContent(slug) as any}/>);
  if(home.kind==="hotel") return arranged(<ThelusoHotel store={store} slug={slug} content={await getHotelContent(slug)}/>);
 
  if(template?.home==="builder") {
    const theme=resolveStoreTheme(store.template?.category,store.name,themeOverrides,store.fontFamily,store.template?.name);
-   const config=templateThemeToBuilderConfig(theme,store.name,store.business?.description,store.bannerUrl);
+   const baseConfig=templateThemeToBuilderConfig(theme,store.name,store.business?.description,store.bannerUrl);
+   // The owner's Content-panel hero text (headline / subtitle / button) wins over the template defaults.
+   const ho=(store.heroOverrides??{}) as {headline?:string;subtitle?:string;ctaLabel?:string};
+   const config={...baseConfig,sections:baseConfig.sections.map((sec:any)=>sec.type!=="hero"?sec:{...sec,settings:{...sec.settings,...(ho.headline?.trim()?{heading:ho.headline.trim()}:{}),...(ho.subtitle?.trim()?{body:ho.subtitle.trim()}:{}),...(ho.ctaLabel?.trim()?{ctaLabel:ho.ctaLabel.trim()}:{})}})};
    return <BuilderStorefront store={store} config={config} catalogItems={catalogItems} reviews={store.reviews} avgRating={store.business?.avgRating??null} completedOrders={completedOrders} fallbackFaq={fallbackFaq}/>;
  }
 

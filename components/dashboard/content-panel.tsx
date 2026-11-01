@@ -52,7 +52,7 @@ export function ContentPanel({
       </p>
 
       <BlockGroup title="Hero" open={open === "hero"} onToggle={() => setOpen(open === "hero" ? null : "hero")}>
-        <HeroFields builderHome={builderHome} slug={slug} storeName={storeName} theme={theme} heroImage={heroImage} initial={heroOverrides} onSaved={onSaved} />
+        <HeroFields builderHome={builderHome} slug={slug} storeName={storeName} description={storyDescription ?? ""} theme={theme} heroImage={heroImage} initial={heroOverrides} onSaved={onSaved} />
       </BlockGroup>
 
       {storyDescription && (
@@ -112,11 +112,11 @@ function Field({ label, value, onChange, onSave, isSaving, multiline }: {
   );
 }
 
-function HeroFields({ slug, storeName, theme, heroImage, initial, onSaved, builderHome }: {
-  builderHome: boolean; slug: string; storeName: string; theme: TemplateTheme; heroImage: string | null; initial: HeroOverrides; onSaved: () => void;
+function HeroFields({ slug, storeName, description, theme, heroImage, initial, onSaved, builderHome }: {
+  builderHome: boolean; slug: string; storeName: string; description: string; theme: TemplateTheme; heroImage: string | null; initial: HeroOverrides; onSaved: () => void;
 }) {
   const [headline, setHeadline] = useState(initial.headline || storeName);
-  const [subtitle, setSubtitle] = useState(initial.subtitle || theme.sub);
+  const [subtitle, setSubtitle] = useState(initial.subtitle || description || theme.sub);
   const [ctaLabel, setCtaLabel] = useState(initial.ctaLabel || theme.cta);
   const [image, setImage] = useState(heroImage || "");
   const [isSaving, setIsSaving] = useState(false);
