@@ -10,6 +10,7 @@ import { buildNavGroups, filterNavGroupsForRole, type NavItem, type InstalledApp
 import type { StoreAccessRole } from "@/lib/access/store-access";
 import { SignOutButton } from "@/components/forms/sign-out-button";
 import { StoreLogo } from "@/components/dashboard/store-logo";
+import { PlaybookCard } from "@/components/dashboard/playbook-card";
 
 export function DashboardSidebar({
   slug,
@@ -120,6 +121,12 @@ export function DashboardSidebar({
           </div>
         ))}
       </nav>
+
+      {(staffRole === undefined || staffRole === "OWNER" || staffRole === "PLATFORM_STAFF") && (
+        <div className="px-3 pb-3">
+          <PlaybookCard slug={slug} category={category} />
+        </div>
+      )}
 
       <div className="bn-sidebar-footer border-t border-white/15 px-3 py-3">
         <div className="flex items-center gap-2 px-1">

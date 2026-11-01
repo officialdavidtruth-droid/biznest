@@ -16,6 +16,8 @@ export type TourStep = {
   target: string | null;
   /** desktop: pointer on a sidebar item; mobile: condensed overview; both: always shown. */
   kind: "item" | "group" | "both";
+  /** Phones only: keep the nav drawer open while this step is shown. */
+  drawer?: boolean;
   eyebrow?: string;
   title: string;
   body: string;
@@ -95,8 +97,9 @@ export function buildTourSteps(opts: {
     if (group.label !== "Overview") {
       steps.push({
         id: `group:${group.label}`,
-        target: null,
+        target: `group:${group.label}`,
         kind: "group",
+        drawer: true,
         eyebrow: group.label,
         title: group.label,
         body: `${GROUP_COPY[group.label] ?? ""} Here: ${group.items.map((i) => i.label).join(", ")}.`.trim(),
@@ -119,6 +122,14 @@ export function buildTourSteps(opts: {
 
   steps.push(
     {
+      id: "view-store",
+      target: "view-store",
+      kind: "both",
+      drawer: true,
+      title: "See your live store",
+      body: "This opens your public website, exactly as customers see it. Check it after every change.",
+    },
+    {
       id: "mobile-menu",
       target: "mobile-menu",
       kind: "group",
@@ -126,16 +137,9 @@ export function buildTourSteps(opts: {
       body: "Tap Menu any time to open everything: sales, customers, website, settings and more.",
     },
     {
-      id: "view-store",
-      target: "view-store",
-      kind: "item",
-      title: "See your live store",
-      body: "This opens your public website in a new tab, exactly as customers see it. Check it after every change.",
-    },
-    {
       id: "notifications",
       target: "notifications",
-      kind: "item",
+      kind: "both",
       title: "Notifications",
       body: "New orders, bookings and messages show up here so you never miss one.",
     },

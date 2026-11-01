@@ -1,13 +1,14 @@
 "use client";
 
-import { useState, type CSSProperties } from "react";
+import { useEffect, useState, type CSSProperties } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Menu, X, ExternalLink, LayoutGrid, ChevronDown } from "lucide-react";
 import { FloatingTabBar } from "@/components/app/floating-tab-bar";
-import { TourLauncherButton } from "@/components/dashboard/onboarding-tour";
+import { TourLauncherButton, TOUR_DRAWER_EVENT } from "@/components/dashboard/onboarding-tour";
 import { buildNavGroups, buildBottomTabItems, filterNavGroupsForRole, type InstalledAppNav, type NavItem } from "@/lib/constants/dashboard-nav";
 import type { StoreAccessRole } from "@/lib/access/store-access";
+import { PlaybookCard } from "@/components/dashboard/playbook-card";
 import { NotificationBell } from "@/components/dashboard/notification-bell";
 import { PushSubscribePrompt } from "@/components/dashboard/push-subscribe-prompt";
 import { SignOutButton } from "@/components/forms/sign-out-button";
@@ -76,6 +77,13 @@ export function MobileDashboardChrome({
   const [drawerOpen, setDrawerOpen] = useState(false);
   const pathname = usePathname();
   const base = `/${slug}/admin`;
+
+  // The onboarding tour opens/closes the drawer so it can point at real menu sections.
+  useEffect(() => {
+    const onTour = (e: Event) => setDrawerOpen(!!(e as CustomEvent<{ open: boolean }>).detail?.open);
+    window.addEventListener(TOUR_DRAWER_EVENT, onTour);
+    return () => window.removeEventListener(TOUR_DRAWER_EVENT, onTour);
+  }, []);
   const business = { sellsProducts, offersServices, category, subscriptionName, installedApps };
   const canManageOwnerOnly = staffRole === undefined || staffRole === "OWNER" || staffRole === "PLATFORM_STAFF";
   const navGroups = filterNavGroupsForRole(buildNavGroups(business), {
@@ -103,7 +111,9 @@ export function MobileDashboardChrome({
         </div>
         <div className="flex items-center gap-1">
           {(!staffRole || staffRole === "OWNER") && <TourLauncherButton />}
-          <NotificationBell notifications={notifications} unreadCount={unreadCount} />
+          <span data-tour="notifications" className="inline-flex">
+            <NotificationBell notifications={notifications} unreadCount={unreadCount} />
+          </span>
         </div>
       </header>
 
@@ -154,7 +164,7 @@ export function MobileDashboardChrome({
             <div className="flex-1 space-y-5 px-3 py-4">
               {navGroups.map((group) => (
                 <div key={group.label}>
-                  <p className="bn-admin-mobile-muted mb-1.5 px-2 text-[10px] font-semibold uppercase tracking-wider">
+                  <p data-tour={`group:${group.label}`} className="bn-admin-mobile-muted mb-1.5 px-2 text-[10px] font-semibold uppercase tracking-wider">
                     {group.label}
                   </p>
                   <div className="space-y-0.5">
@@ -220,8 +230,13 @@ export function MobileDashboardChrome({
                 </div>
               ))}
             </div>
+            {canManageOwnerOnly && (
+              <div className="px-3 pb-3">
+                <PlaybookCard slug={slug} category={category} onNavigate={() => setDrawerOpen(false)} />
+              </div>
+            )}
             <div className="space-y-2 border-t border-[var(--bn-admin-border)] px-4 py-3">
-              <Link href={`/${slug}`} className="bn-admin-mobile-muted block text-xs font-medium">
+              <Link href={`/${slug}`} data-tour="view-store" className="bn-admin-mobile-muted block text-xs font-medium">
                 View live store →
               </Link>
               <SignOutButton className="text-xs font-medium text-[var(--bn-admin-muted)]" />
