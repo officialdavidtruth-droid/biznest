@@ -34,7 +34,7 @@ export function readableOn(bg: string): string {
   return contrastRatio("#ffffff", bg) >= contrastRatio("#111111", bg) ? "#ffffff" : "#111111";
 }
 
-function mix(a: string, b: string, t: number): string {
+export function mix(a: string, b: string, t: number): string {
   const x = parseHex(a), y = parseHex(b);
   if (!x || !y) return a;
   return toHex([x[0] + (y[0] - x[0]) * t, x[1] + (y[1] - x[1]) * t, x[2] + (y[2] - x[2]) * t]);
@@ -52,4 +52,25 @@ export function ensureReadableDesign<T extends Tokens>(design: T): T {
   if (!parseHex(out.surface) || contrastRatio(out.text, out.surface) < 4.5) out.surface = dark ? mix(bg, "#ffffff", 0.09) : mix(bg, "#ffffff", 0.6);
   if (contrastRatio(out.accent, bg) < 3) out.accent = dark ? "#ffc247" : mix(out.primary, "#000000", 0.25);
   return out;
+}
+
+/**
+ * Text, secondary text, card and border colours that stay readable on an owner-chosen page background. Anything the
+ * owner set explicitly (`set`) is kept unless it cannot be read, in which case the readable fallback is used.
+ */
+export function deriveReadableTheme(
+  bg: string,
+  current: { ink: string; muted?: string; card: string; border?: string },
+  set: { ink?: boolean; card?: boolean; muted?: boolean; border?: boolean } = {},
+): { ink: string; muted: string; card: string; border: string } {
+  if (!parseHex(bg)) return { ink: current.ink, muted: current.muted ?? current.ink, card: current.card, border: current.border ?? `${current.ink}22` };
+  const dark = isDarkColor(bg);
+  const ink = contrastRatio(current.ink, bg) >= 4.5 ? current.ink : dark ? "#f4f6f3" : "#14181a";
+  const mutedGiven = current.muted && parseHex(current.muted) ? current.muted : "";
+  const muted = mutedGiven && contrastRatio(mutedGiven, bg) >= 4.5 ? mutedGiven : dark ? mix(bg, "#ffffff", 0.78) : mix(bg, "#000000", 0.72);
+  const cardOk = parseHex(current.card) && contrastRatio(ink, current.card) >= 4.5;
+  const card = set.card && cardOk ? current.card : cardOk && !isDarkColor(current.card) === !dark ? current.card : dark ? mix(bg, "#ffffff", 0.09) : mix(bg, "#ffffff", 0.6);
+  const borderGiven = current.border && parseHex(current.border) ? current.border : "";
+  const border = set.border && borderGiven ? borderGiven : dark ? mix(bg, "#ffffff", 0.18) : mix(bg, "#000000", 0.12);
+  return { ink, muted, card, border };
 }

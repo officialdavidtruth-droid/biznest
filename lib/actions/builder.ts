@@ -112,6 +112,6 @@ export async function saveTemplateArrangement(slug: string, input: { order: stri
 
   revalidatePath(`/store/${slug}`);
   revalidatePath(`/${slug}`);
-  revalidatePath(`/store/${slug}/admin/customize`);
+  // The Customize page is not revalidated here: the editor reloads its own preview, and re-rendering it made saves slow.
   return { success: true, data: undefined };
 }

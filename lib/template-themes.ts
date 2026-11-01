@@ -36,6 +36,7 @@
  * fixed per template.
  */
 import { canonicalizeBusinessType } from "./business-identity";
+import { deriveReadableTheme } from "./storefront/readable-design";
 import { REFERENCE_THEME_DATA, type ReferenceThemeData, type ReferenceBase } from "./reference-theme-data";
 
 
@@ -877,7 +878,7 @@ function lookupReferenceTheme(name: string | null | undefined): TemplateTheme | 
 export function resolveStoreTheme(
   _templateCategory: string | undefined,
   _storeName: string,
-  overrides: { primary?: string; secondary?: string; accent?: string } | null | undefined,
+  overrides: { primary?: string; secondary?: string; accent?: string; ink?: string; card?: string; muted?: string; border?: string; surfaceDark?: string; headlineFont?: string; font?: string; radius?: string } | null | undefined,
   fontFamily: string | null | undefined,
   templateName?: string | null
 ): TemplateTheme {
@@ -917,12 +918,28 @@ export function resolveStoreTheme(
     ? getSignatureTheme(templateName)
     : FRESH_THEME;
   const identity = templateName ? NAMED_TEMPLATE_IDENTITY[templateName] : undefined;
+  const bg = overrides?.secondary || base.bg;
+  // Owner-picked colours never leave text unreadable: when the page background changes, text, card and line colours
+  // are checked against it and replaced only where they would be hard to read.
+  const readable = deriveReadableTheme(
+    bg,
+    { ink: overrides?.ink || base.ink, muted: overrides?.muted || base.muted, card: overrides?.card || base.card, border: overrides?.border || base.border },
+    { ink: !!overrides?.ink, card: !!overrides?.card, muted: !!overrides?.muted, border: !!overrides?.border },
+  );
+  const changedBg = !!overrides?.secondary && overrides.secondary !== base.bg;
   return {
     ...base,
     ...(identity ? { chrome: identity.chrome, ...(identity.heroStyle ? { heroStyle: identity.heroStyle } : {}), ...(identity.heroVariant ? { heroVariant: identity.heroVariant } : {}) } : {}),
-    bg: overrides?.secondary || base.bg,
+    bg,
+    ink: readable.ink,
+    ...(changedBg || overrides?.muted ? { muted: readable.muted } : {}),
+    ...(changedBg || overrides?.card ? { card: readable.card } : {}),
+    ...(changedBg || overrides?.border ? { border: readable.border } : {}),
+    ...(overrides?.surfaceDark ? { surfaceDark: overrides.surfaceDark } : {}),
     accent: overrides?.primary || overrides?.accent || base.accent,
-    font: fontFamily || base.font,
+    font: fontFamily || overrides?.font || base.font,
+    headlineFont: overrides?.headlineFont || base.headlineFont,
+    radius: overrides?.radius || base.radius,
   };
 }
 

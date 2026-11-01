@@ -24,10 +24,20 @@ export async function saveSystemSections(slug: string, page: string, formData: F
   try { parsed = raw ? JSON.parse(raw) : {}; } catch { return { success: false, error: "The content could not be read. Reload and try again." }; }
   const sections = sanitizeSystemSections(parsed);
 
-  await updateSectionOverridesJson(access.store.id, (current) => withSystemSections(current, page, sections));
+  try {
+    await updateSectionOverridesJson(access.store.id, (current) => withSystemSections(current, page, sections));
+  } catch (error) {
+    console.error("saveSystemSections failed", error);
+    return { success: false, error: "Could not save right now. Please try again in a moment." };
+  }
 
-  revalidatePath(`/store/${slug}/admin/customize`);
-  if (page === "product") revalidatePath("/store/[slug]/product/[productId]", "page");
-  else revalidatePath(`/store/${slug}/${page === "shop" ? "catalog" : "cart"}`);
+  // The Customize page is deliberately not revalidated: the editor already holds the saved blocks, and re-rendering that
+  // whole page inside this action made the save slow and could leave the button stuck on "Saving".
+  try {
+    if (page === "product") revalidatePath("/store/[slug]/product/[productId]", "page");
+    else revalidatePath(`/store/${slug}/${page === "shop" ? "catalog" : "cart"}`);
+  } catch (error) {
+    console.error("saveSystemSections revalidate failed", error);
+  }
   return { success: true, data: sections };
 }

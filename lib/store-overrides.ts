@@ -17,5 +17,7 @@ export async function updateSectionOverridesJson(storeId: string, change: (curre
     const raw = rows[0]?.sectionOverrides;
     const current: Overrides = raw && typeof raw === "object" && !Array.isArray(raw) ? { ...(raw as Overrides) } : {};
     await tx.store.update({ where: { id: storeId }, data: { sectionOverrides: change(current) as Prisma.InputJsonValue } });
-  });
+    // Wait up to 10s for a pooled connection and allow 15s for the work, so a busy database returns an error the editor can
+    // show instead of leaving a save pending.
+  }, { maxWait: 10_000, timeout: 15_000 });
 }

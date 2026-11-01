@@ -49,6 +49,7 @@ export default async function CustomizePage({ params }: { params: Promise<{ slug
       storeName={store.name}
       currentTemplateName={store.template?.name ?? null}
       theme={theme}
+      savedLook={{ buttonStyle: (store.themeColors as { buttonStyle?: string } | null)?.buttonStyle, containerWidth: (store.themeColors as { containerWidth?: string } | null)?.containerWidth }}
       heroImage={heroImage}
       heroOverrides={(store.heroOverrides as HeroOverrides | null) ?? {}}
       storyImage={storyImage}

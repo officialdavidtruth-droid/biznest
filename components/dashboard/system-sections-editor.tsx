@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, type ComponentType, type Dispatch, type SetStateAction } from "react";
+import { useEffect, useRef, useState, type ComponentType, type Dispatch, type SetStateAction } from "react";
 import { ChevronDown, ChevronRight, Lock } from "lucide-react";
 import { toast } from "sonner";
 import { saveSystemSections } from "@/lib/actions/system-sections";
@@ -16,7 +16,7 @@ type ImageFieldProps = { label: string; value: string; onChange: (v: string) => 
  * page editor, so uploads use the same control as the rest of the customizer.
  */
 export function SystemPagesSection({
-  slug, sections, setSections, support, catalogOptions, ImageField, onSaved, onPreview,
+  slug, sections, setSections, support, catalogOptions, ImageField, onSaved, onPreview, onDraft,
 }: {
   slug: string;
   sections: SystemSectionsMap;
@@ -26,6 +26,8 @@ export function SystemPagesSection({
   ImageField: ComponentType<ImageFieldProps>;
   onSaved: () => void;
   onPreview: (key: SystemPageKey) => void;
+  /** Called on every edit with the unsaved blocks so the preview can show them live. */
+  onDraft?: (key: SystemPageKey, draft: SystemSections) => void;
 }) {
   const [open, setOpen] = useState<SystemPageKey | null>(null);
 
@@ -60,6 +62,7 @@ export function SystemPagesSection({
                     initial={sections[key]}
                     catalogOptions={catalogOptions}
                     ImageField={ImageField}
+                    onDraft={(d) => onDraft?.(key, d)}
                     onSaved={(next) => { setSections((prev) => ({ ...prev, [key]: next })); onSaved(); }}
                   />
                 ) : (
@@ -77,28 +80,37 @@ export function SystemPagesSection({
 }
 
 function SystemPageEditor({
-  slug, pageKey, initial, catalogOptions, ImageField, onSaved,
+  slug, pageKey, initial, catalogOptions, ImageField, onSaved, onDraft,
 }: {
   slug: string; pageKey: SystemPageKey; initial: SystemSections; catalogOptions?: CatalogOptions;
-  ImageField: ComponentType<ImageFieldProps>; onSaved: (next: SystemSections) => void;
+  ImageField: ComponentType<ImageFieldProps>; onSaved: (next: SystemSections) => void; onDraft: (draft: SystemSections) => void;
 }) {
   const [draft, setDraft] = useState<SystemSections>(initial);
   const [saving, setSaving] = useState(false);
   const label = SYSTEM_PAGE_LABELS[pageKey];
+  const onDraftRef = useRef(onDraft);
+  onDraftRef.current = onDraft;
+
+  // Show what is being typed in the preview straight away, without waiting for Save.
+  useEffect(() => { onDraftRef.current(draft); }, [draft]);
 
   async function save() {
     setSaving(true);
     try {
       const fd = new FormData();
       fd.set("sections", JSON.stringify(draft));
-      const res = await saveSystemSections(slug, pageKey, fd);
+      // Never leave the button on "Saving": if the server has not answered in 30 seconds, say so and let the owner retry.
+      const res = await Promise.race([
+        saveSystemSections(slug, pageKey, fd),
+        new Promise<never>((_, reject) => setTimeout(() => reject(new Error("timeout")), 30_000)),
+      ]);
       if (!res.success) { toast.error(res.error); return; }
       // Blocks that were empty or unsafe are dropped on save; show what was actually kept.
       setDraft(res.data);
       onSaved(res.data);
       toast.success(`${label.title} saved`);
     } catch {
-      toast.error("Could not save. Check your connection and try again.");
+      toast.error("Saving is taking too long or your connection dropped. Check it and press Save again.");
     } finally {
       setSaving(false);
     }

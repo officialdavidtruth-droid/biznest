@@ -21,8 +21,9 @@ export async function saveTemplateColors(slug: string, colors: TemplateColorInpu
   const current = row?.themeColors && typeof row.themeColors === "object" && !Array.isArray(row.themeColors) ? (row.themeColors as Record<string, unknown>) : {};
   await prisma.store.update({ where: { id: access.store.id }, data: { themeColors: { ...current, ...cleaned.value } as Prisma.InputJsonValue } });
 
-  revalidatePath(`/store/${slug}`);
-  revalidatePath(`/store/${slug}/admin/customize`);
+  // Only the public store is revalidated. Re-rendering the whole Customize page inside this action made saves slow and
+  // could leave the button on "Saving"; the editor refreshes its own preview after the save instead.
+  revalidatePath(`/store/${slug}`, "layout");
   return { success: true, data: undefined };
 }
 
@@ -31,7 +32,6 @@ export async function resetTemplateColors(slug: string): Promise<ActionResult> {
   const access = await assertStorePermission(slug, "settings");
   if (!access.success) return { success: false, error: access.error };
   await prisma.store.update({ where: { id: access.store.id }, data: { themeColors: Prisma.DbNull } });
-  revalidatePath(`/store/${slug}`);
-  revalidatePath(`/store/${slug}/admin/customize`);
+  revalidatePath(`/store/${slug}`, "layout");
   return { success: true, data: undefined };
 }

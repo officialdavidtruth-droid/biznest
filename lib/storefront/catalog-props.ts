@@ -13,7 +13,12 @@ type StoreRow = {
 export function catalogDesign(store: StoreRow, theme: TemplateTheme) {
   const overrides = store.sectionOverrides as { builderVersion?: number; builder?: unknown } | null;
   const saved = overrides?.builderVersion === 1 ? readBuilderConfig(overrides.builder) : null;
-  return ensureReadableDesign((saved ?? templateThemeToBuilderConfig(theme, store.name, store.business?.description, store.bannerUrl)).design);
+  const design = (saved ?? templateThemeToBuilderConfig(theme, store.name, store.business?.description, store.bannerUrl)).design;
+  // Owner's button style and page width from Customize > Design apply to template stores (a saved visual builder has its own).
+  const tc = !saved && store.themeColors && typeof store.themeColors === "object" && !Array.isArray(store.themeColors) ? (store.themeColors as Record<string, unknown>) : {};
+  const buttonStyle = tc.buttonStyle === "solid" || tc.buttonStyle === "outline" || tc.buttonStyle === "pill" ? tc.buttonStyle : design.buttonStyle;
+  const containerWidth = tc.containerWidth === "compact" || tc.containerWidth === "standard" || tc.containerWidth === "wide" ? tc.containerWidth : design.containerWidth;
+  return ensureReadableDesign({ ...design, buttonStyle, containerWidth });
 }
 
 /** Only plain, serialisable fields may cross into a client component (Prisma rows hold Decimals and Dates). */

@@ -19,7 +19,7 @@ import { defaultFaqItems, defaultFeatureItems } from "@/lib/builder-defaults";
 import { PAGE_FORMAT_HINTS } from "@/lib/storefront/owner-page-format";
 import type { CatalogOptions } from "@/lib/storefront/page-block-catalog";
 import { SystemPagesSection } from "@/components/dashboard/system-sections-editor";
-import type { SystemPageKey, SystemSectionsMap } from "@/lib/storefront/system-sections";
+import type { SystemPageKey, SystemSections, SystemSectionsMap } from "@/lib/storefront/system-sections";
 import { PageBlockEditor } from "@/components/dashboard/page-block-editor";
 import { blocksToPlainText, legacyTextToBlocks, pageUsesBlocks, type PageBlock } from "@/lib/storefront/page-blocks";
 import { buildIndustryHomepage, getBusinessExperience } from "@/lib/business-experience";
@@ -47,6 +47,7 @@ export function CustomizerClient({
   storeName,
   currentTemplateName,
   theme,
+  savedLook,
   heroImage,
   heroOverrides,
   storyImage,
@@ -70,6 +71,7 @@ export function CustomizerClient({
   storeName: string;
   currentTemplateName: string | null;
   theme: TemplateTheme;
+  savedLook?: { buttonStyle?: string; containerWidth?: string };
   heroImage: string | null;
   heroOverrides: HeroOverrides;
   storyImage: string | null;
@@ -120,6 +122,8 @@ export function CustomizerClient({
   const arrangeRef = useRef<{ order: string[]; hidden: string[] } | null>(null);
   const builderRef = useRef<BuilderConfig>(initialBuilder);
   const previewReadyRef = useRef(false);
+  // Unsaved Shop / Product / Cart blocks, sent to the preview as they are edited (and again whenever the preview reloads).
+  const systemDraftRef = useRef<{ page: SystemPageKey; sections: SystemSections } | null>(null);
 
   // Unsaved-changes tracking: `savedJson` is the last published (or loaded) layout; any difference is an unpublished draft.
   const [savedJson, setSavedJson] = useState(() => JSON.stringify(initialBuilder));
@@ -218,6 +222,12 @@ export function CustomizerClient({
     pushPreview(builder);
   }, [builder]);
 
+  function pushSystemDraft(page?: SystemPageKey) {
+    const draft = systemDraftRef.current;
+    if (!draft || (page && draft.page !== page)) return;
+    iframeRef.current?.contentWindow?.postMessage({ type: "BIZNEST_SYSTEM_SECTIONS_PREVIEW", page: draft.page, sections: draft.sections }, window.location.origin);
+  }
+
   useEffect(() => {
     function handlePreviewReady(event: MessageEvent) {
       if (event.origin !== window.location.origin) return;
@@ -227,6 +237,10 @@ export function CustomizerClient({
         setPreviewSections(list);
         // The iframe reloaded while an unsaved arrangement was open: put the draft back on the new page.
         if (arrangeRef.current) iframeRef.current?.contentWindow?.postMessage({ type: "BIZNEST_TEMPLATE_ARRANGE", ...arrangeRef.current }, window.location.origin);
+        return;
+      }
+      if (event.data?.type === "BIZNEST_SYSTEM_PREVIEW_READY") {
+        pushSystemDraft(event.data.page);
         return;
       }
       if (event.data?.type === "BIZNEST_CUSTOMIZER_PREVIEW_READY") {
@@ -593,7 +607,7 @@ export function CustomizerClient({
             )}
 
             {panel === "design" && inTemplateMode && (
-              <TemplateColorsPanel slug={slug} accent={theme.accent} background={theme.bg} onSaved={refreshPreview} />
+              <TemplateColorsPanel slug={slug} theme={theme} initialButtonStyle={savedLook?.buttonStyle} initialContainerWidth={savedLook?.containerWidth} onSaved={refreshPreview} />
             )}
 
             {panel === "design" && !inTemplateMode && (
@@ -648,6 +662,7 @@ export function CustomizerClient({
                 setSystemSections={setSystemSections}
                 systemSupport={systemSupport}
                 onPreviewPath={setPreviewPath}
+                onSystemDraft={(page, sections) => { systemDraftRef.current = { page, sections }; pushSystemDraft(page); }}
                 setPages={setPages}
                 editingSlug={editingSlug}
                 setEditingSlug={setEditingSlug}
@@ -865,40 +880,95 @@ function ImageField({ label, value, onChange }: { label: string; value: string; 
     </div>
   );
 }
-/** Accent and background colours for a template that draws its own homepage. Saved live and shown in the preview. */
-function TemplateColorsPanel({ slug, accent, background, onSaved }: { slug: string; accent: string; background: string; onSaved: () => void }) {
-  const hex = (v: string, fallback: string) => (/^#[0-9a-f]{6}$/i.test(v) ? v : fallback);
-  const [accentValue, setAccentValue] = useState(hex(accent, "#0e5b45"));
-  const [backgroundValue, setBackgroundValue] = useState(hex(background, "#ffffff"));
+const PANEL_FONTS = ["Inter", "Plus Jakarta Sans", "Poppins", "DM Sans", "Montserrat", "Raleway", "Space Grotesk", "Playfair Display", "Lora"];
+const fontName = (stack: string) => (stack.match(/^\s*['"]?([^,'"]+)/)?.[1] ?? "").trim();
+
+/** Colours, fonts and corner roundness for a template that draws its own homepage. Saved together, then the preview reloads. */
+function TemplateColorsPanel({ slug, theme, initialButtonStyle = "solid", initialContainerWidth = "wide", onSaved }: { slug: string; theme: TemplateTheme; initialButtonStyle?: string; initialContainerWidth?: string; onSaved: () => void }) {
+  const hex = (v: string | undefined, fallback: string) => (v && /^#[0-9a-f]{6}$/i.test(v) ? v : fallback);
+  const [accent, setAccent] = useState(hex(theme.accent, "#0e5b45"));
+  const [background, setBackground] = useState(hex(theme.bg, "#ffffff"));
+  const [text, setText] = useState(hex(theme.ink, "#111111"));
+  const [card, setCard] = useState(hex(theme.card, "#ffffff"));
+  const [muted, setMuted] = useState(hex(theme.muted, "#666666"));
+  const [border, setBorder] = useState(hex(theme.border, "#dddddd"));
+  const [header, setHeader] = useState(hex(theme.surfaceDark, hex(theme.ink, "#111111")));
+  const [headingFont, setHeadingFont] = useState(fontName(theme.headlineFont));
+  const [bodyFont, setBodyFont] = useState(fontName(theme.font));
+  const [radius, setRadius] = useState(Number.parseInt(theme.radius, 10) || 0);
+  const [buttonStyle, setButtonStyle] = useState(initialButtonStyle);
+  const [containerWidth, setContainerWidth] = useState(initialContainerWidth);
   const [busy, setBusy] = useState(false);
+
+  // Warn before saving unreadable combinations (the storefront also corrects text that cannot be read).
+  const lum = (c: string) => { const m = /^#([0-9a-f]{6})$/i.exec(c); if (!m) return 0; const f = (i: number) => { const v = parseInt(m[1].slice(i, i + 2), 16) / 255; return v <= 0.03928 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4; }; return 0.2126 * f(0) + 0.7152 * f(2) + 0.0722 * f(4); };
+  const ratio = (a: string, b: string) => { const [hi, lo] = [lum(a), lum(b)].sort((x, y) => y - x); return (hi + 0.05) / (lo + 0.05); };
+  const lowContrast = ratio(text, background) < 4.5 || ratio(text, card) < 4.5;
 
   async function save() {
     setBusy(true);
-    const result = await saveTemplateColors(slug, { accent: accentValue, background: backgroundValue });
-    setBusy(false);
-    if (!result.success) { toast.error(result.error); return; }
-    toast.success("Colours saved");
-    onSaved();
+    try {
+      const result = await Promise.race([
+        saveTemplateColors(slug, { accent, background, text, card, muted, border, header, headingFont, bodyFont, radius, buttonStyle, containerWidth }),
+        new Promise<never>((_, reject) => setTimeout(() => reject(new Error("timeout")), 30_000)),
+      ]);
+      if (!result.success) { toast.error(result.error); return; }
+      toast.success("Design saved");
+      onSaved();
+    } catch {
+      toast.error("Saving is taking too long or your connection dropped. Check it and press Save again.");
+    } finally {
+      setBusy(false);
+    }
   }
   async function reset() {
-    if (!confirm("Go back to this template's own colours?")) return;
+    if (!confirm("Go back to this template's own colours and fonts?")) return;
     setBusy(true);
-    const result = await resetTemplateColors(slug);
-    setBusy(false);
-    if (!result.success) { toast.error(result.error); return; }
-    toast.success("Template colours restored");
-    onSaved();
+    try {
+      const result = await resetTemplateColors(slug);
+      if (!result.success) { toast.error(result.error); return; }
+      toast.success("Template design restored");
+      onSaved();
+    } catch {
+      toast.error("Could not restore the template design. Please try again.");
+    } finally {
+      setBusy(false);
+    }
   }
+
+  const fontSelect = (label: string, value: string, set: (v: string) => void) => (
+    <label className="block text-[11px]"><span className="mb-1 block text-muted-foreground">{label}</span>
+      <select value={value} onChange={(e) => set(e.target.value)} className="w-full rounded border bg-background px-2 py-1.5 text-xs">
+        {value && !PANEL_FONTS.includes(value) && <option value={value}>{value}</option>}
+        {PANEL_FONTS.map((f) => <option key={f} value={f}>{f}</option>)}
+      </select>
+    </label>
+  );
 
   return (
     <div className="flex-1 overflow-y-auto p-4">
-      <p className="mb-3 text-xs text-muted-foreground">Change the main colours of your template. Saved straight away and shown in the preview. Other colours stay as the template designed them.</p>
+      <p className="mb-3 text-xs text-muted-foreground">Change the look of your template: colours, fonts and corners. Press Save and the preview reloads with your changes. Text that would be hard to read on your background is corrected automatically.</p>
+      <p className="mb-2 text-[11px] font-semibold">Colours</p>
       <div className="space-y-3">
-        <ColorField label="Accent (buttons and highlights)" value={accentValue} onChange={setAccentValue} />
-        <ColorField label="Page background" value={backgroundValue} onChange={setBackgroundValue} />
+        <ColorField label="Accent (buttons and highlights)" value={accent} onChange={setAccent} />
+        <ColorField label="Page background" value={background} onChange={setBackground} />
+        <ColorField label="Text" value={text} onChange={setText} />
+        <ColorField label="Secondary text" value={muted} onChange={setMuted} />
+        <ColorField label="Cards and panels" value={card} onChange={setCard} />
+        <ColorField label="Lines and borders" value={border} onChange={setBorder} />
+        <ColorField label="Header and footer" value={header} onChange={setHeader} />
       </div>
-      <button type="button" onClick={save} disabled={busy} className="mt-4 w-full rounded-md bg-primary px-3 py-2.5 text-xs font-semibold text-primary-foreground disabled:opacity-50">{busy ? "Saving…" : "Save colours"}</button>
-      <button type="button" onClick={reset} disabled={busy} className="mt-2 w-full rounded-md border border-border px-3 py-2 text-xs font-medium hover:bg-muted disabled:opacity-50">Use the template&apos;s own colours</button>
+      {lowContrast && <p className="mt-3 rounded-md border border-amber-300 bg-amber-50 p-2 text-[11px] text-amber-900">Your text colour is hard to read on the background or cards. Pick a lighter text on dark backgrounds, or a darker one on light backgrounds.</p>}
+      <p className="mb-2 mt-5 text-[11px] font-semibold">Fonts and shape</p>
+      <div className="space-y-3">
+        {fontSelect("Heading font", headingFont, setHeadingFont)}
+        {fontSelect("Body font", bodyFont, setBodyFont)}
+        <label className="block text-[11px]"><span className="mb-1 block text-muted-foreground">Corner roundness: {radius}px</span><input type="range" min="0" max="40" value={radius} onChange={(e) => setRadius(Number(e.target.value))} className="w-full" /></label>
+        <SelectField label="Button style (shop and builder pages)" value={buttonStyle} options={["solid", "outline", "pill"]} onChange={setButtonStyle} />
+        <SelectField label="Page width (shop and builder pages)" value={containerWidth} options={["compact", "standard", "wide"]} onChange={setContainerWidth} />
+      </div>
+      <button type="button" onClick={save} disabled={busy} className="mt-4 w-full rounded-md bg-primary px-3 py-2.5 text-xs font-semibold text-primary-foreground disabled:opacity-50">{busy ? "Saving…" : "Save design"}</button>
+      <button type="button" onClick={reset} disabled={busy} className="mt-2 w-full rounded-md border border-border px-3 py-2 text-xs font-medium hover:bg-muted disabled:opacity-50">Use the template&apos;s own design</button>
     </div>
   );
 }
@@ -914,6 +984,7 @@ function PagesPanel({
   setSystemSections,
   systemSupport,
   onPreviewPath,
+  onSystemDraft,
   setPages,
   editingSlug,
   setEditingSlug,
@@ -926,6 +997,7 @@ function PagesPanel({
   setSystemSections: Dispatch<SetStateAction<SystemSectionsMap>>;
   systemSupport: Record<SystemPageKey, boolean>;
   onPreviewPath: (path: string) => void;
+  onSystemDraft: (page: SystemPageKey, sections: SystemSections) => void;
   setPages: Dispatch<SetStateAction<StorePageRow[]>>;
   editingSlug: string | null;
   setEditingSlug: (s: string | null) => void;
@@ -984,6 +1056,7 @@ function PagesPanel({
         catalogOptions={catalogOptions}
         ImageField={ImageField}
         onSaved={onSaved}
+        onDraft={onSystemDraft}
         onPreview={(key) => {
           if (key === "shop") onPreviewPath("/catalog");
           else if (key === "cart") onPreviewPath("/cart");
