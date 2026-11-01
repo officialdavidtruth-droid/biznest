@@ -35,6 +35,14 @@ You asked me to skip the AI Store Builder, so findings 1 to 4 and 14 are left op
 
 Checks run: all builder and utility suites pass (55 tests); all 44 templates and the industry presets pass the new publish rules; no TypeScript errors in the touched files. `prisma generate` is blocked here, so run `npm run typecheck && npm test` locally.
 
+## Template homepages: edit the real design
+Templates that draw their own homepage (14 legacy, 5 hotel, 1 screenshot; 20 in total) used to be previewed as a builder draft, so you could not see or edit the real design. Now:
+- Customize opens on the **real template** (`?preview=template`). Hero and story text, images and pages save live and show in the preview.
+- A new **Colours** panel sets the accent and page background (`lib/actions/theme.ts`, hex only, with "use the template's own colours" to undo).
+- Hotel templates also link to Rooms, dining & amenities.
+- The visual builder is now opt-in for these templates ("Use the visual builder" and "Back to my real template"). Publishing it still replaces the template homepage, and Restore still undoes that.
+- Not editable from here: layout and section order of these templates. That needs the builder.
+
 ## Findings (original list)
 
 ### High

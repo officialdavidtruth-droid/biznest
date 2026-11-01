@@ -53,6 +53,7 @@ export default async function CustomizePage({ params }: { params: Promise<{ slug
       seoTitle={store.seoTitle ?? store.name}
       seoDescription={store.seoDescription ?? ""}
       templateHasOwnHomepage={resolveHomeRenderer(store.template?.name).kind !== "builder"}
+      homeKind={resolveHomeRenderer(store.template?.name).kind}
       builderPublished={!!getSavedBuilder(store.sectionOverrides)}
       pages={pages.map((p) => ({
         id: p.id,

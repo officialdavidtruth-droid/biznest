@@ -13,6 +13,7 @@ import type { HeroOverrides, StoryOverrides } from "@/lib/actions/store";
 import { ContentPanel } from "@/components/dashboard/content-panel";
 import { saveBuilderConfig, updateStoreSeo, resetBuilderToTemplate } from "@/lib/actions/builder";
 import { BUILDER_CONFLICT_ERROR } from "@/lib/builder-config";
+import { resetTemplateColors, saveTemplateColors } from "@/lib/actions/theme";
 import { BUILDER_SECTION_TYPES, readBuilderConfig, type BuilderConfig, type BuilderSection, type BuilderSectionItem, type BuilderSectionType } from "@/lib/builder-config";
 import { defaultFaqItems, defaultFeatureItems } from "@/lib/builder-defaults";
 import { PAGE_FORMAT_HINTS } from "@/lib/storefront/owner-page-format";
@@ -52,6 +53,7 @@ export function CustomizerClient({
   seoTitle,
   seoDescription,
   templateHasOwnHomepage = false,
+  homeKind = "builder",
   builderPublished = false,
 }: {
   slug: string;
@@ -72,6 +74,8 @@ export function CustomizerClient({
   seoDescription: string;
   /** True when the chosen template draws its own homepage (legacy, hotel, signature...) instead of the shared builder. */
   templateHasOwnHomepage?: boolean;
+  /** Which component draws this template's homepage ("builder" means the visual builder itself). */
+  homeKind?: "legacy" | "screenshot" | "hotel" | "example" | "builder";
   /** True when a visual-builder layout has been published for this store (it replaces the template's own homepage). */
   builderPublished?: boolean;
 }) {
@@ -81,6 +85,10 @@ export function CustomizerClient({
   const [device, setDevice] = useState<Device>("desktop");
   const [isSaving, setIsSaving] = useState(false);
   const [published, setPublished] = useState(builderPublished);
+  // Templates with their own homepage design: edit the REAL template by default (preview shows it, edits save live);
+  // "builder" is the opt-in alternative that swaps in a visual-builder layout.
+  const [templateMode, setTemplateMode] = useState<"template" | "builder">("template");
+  const inTemplateMode = templateHasOwnHomepage && !published && templateMode === "template";
   const [previewKey, setPreviewKey] = useState(0);
   const [pages, setPages] = useState<StorePageRow[]>(initialPages);
   const [builder, setBuilder] = useState<BuilderConfig>(initialBuilder);
@@ -143,7 +151,7 @@ export function CustomizerClient({
     setRestoredDraft(false);
   }
 
-  const previewUrl = useMemo(() => `/store/${slug}?preview=1`, [slug]);
+  const previewUrl = useMemo(() => (inTemplateMode ? `/store/${slug}?preview=template` : `/store/${slug}?preview=1`), [slug, inTemplateMode]);
 
   function pushPreview(config: BuilderConfig = builderRef.current) {
     const target = iframeRef.current?.contentWindow;
@@ -323,7 +331,14 @@ export function CustomizerClient({
             {restoredDraft && dirty && (
               <div className="mb-2 rounded-md border border-amber-300 bg-amber-50 px-3 py-2 text-[11px] text-amber-900">Restored your unpublished draft from this browser. Publish to make it live, or Discard to go back.</div>
             )}
-            {templateHasOwnHomepage && (
+            {inTemplateMode && (
+              <div className="mb-2 rounded-md border border-emerald-300 bg-emerald-50 px-3 py-3 text-[11px] text-emerald-900">
+                <p className="font-semibold">You&apos;re editing your real {currentTemplateName ?? "template"} homepage</p>
+                <p className="mt-1">The preview on the right is the live design. Text, images, colours and pages you change here show up straight away.</p>
+                <button type="button" onClick={() => { setTemplateMode("builder"); setPanel(null); }} className="mt-2 inline-block font-semibold underline">Want to rearrange sections instead? Use the visual builder</button>
+              </div>
+            )}
+            {templateHasOwnHomepage && !inTemplateMode && (
               <div className="mb-2 rounded-md border border-amber-300 bg-amber-50 px-3 py-3 text-[11px] text-amber-900">
                 {published ? (
                   <>
@@ -333,12 +348,14 @@ export function CustomizerClient({
                   </>
                 ) : (
                   <>
-                    <p className="font-semibold">This template has its own homepage design</p>
-                    <p className="mt-1">The preview shows your visual-builder draft. Nothing changes on your live homepage until you publish; publishing replaces {currentTemplateName ?? "the template"}&apos;s homepage with this layout.</p>
+                    <p className="font-semibold">You&apos;re designing a visual-builder homepage</p>
+                    <p className="mt-1">The preview shows your builder draft. Nothing changes on your live homepage until you publish; publishing replaces {currentTemplateName ?? "the template"}&apos;s homepage with this layout.</p>
+                    <button type="button" onClick={() => { setTemplateMode("template"); setPanel(null); }} className="mt-2 inline-block font-semibold underline">Back to my real {currentTemplateName ?? "template"} homepage</button>
                   </>
                 )}
               </div>
             )}
+            {!inTemplateMode && (<>
             <div className="mb-2 rounded-md border border-primary/20 bg-primary/5 px-3 py-3">
               <div className="flex items-start justify-between gap-3">
                 <div>
@@ -360,11 +377,12 @@ export function CustomizerClient({
               <p className="mt-1 text-[11px] text-muted-foreground">Build the actual published homepage from sections, settings and responsive styles.</p>
               <button onClick={() => setPanel("sections")} className="mt-2 w-full rounded-md bg-primary px-3 py-2 text-xs font-semibold text-primary-foreground">Open visual builder</button>
             </div>
+            </>)}
             <button
               onClick={() => setPanel("design")}
               className="flex w-full items-center justify-between rounded-md px-3 py-3 text-left text-sm font-medium hover:bg-muted"
             >
-              <span className="flex items-center gap-2"><LayoutTemplate className="h-4 w-4" /> Design & Theme</span>
+              <span className="flex items-center gap-2"><LayoutTemplate className="h-4 w-4" /> {inTemplateMode ? "Colours" : "Design & Theme"}</span>
               <ChevronRight className="h-4 w-4 text-muted-foreground" />
             </button>
             <button
@@ -383,6 +401,7 @@ export function CustomizerClient({
               </span>
               <ChevronRight className="h-4 w-4 text-muted-foreground" />
             </button>
+            {!inTemplateMode && (
             <button
               onClick={() => setPanel("sections")}
               className="flex w-full items-center justify-between rounded-md px-3 py-3 text-left text-sm font-medium hover:bg-muted"
@@ -392,6 +411,7 @@ export function CustomizerClient({
               </span>
               <ChevronRight className="h-4 w-4 text-muted-foreground" />
             </button>
+            )}
             <button
               onClick={() => setPanel("pages")}
               className="flex w-full items-center justify-between rounded-md px-3 py-3 text-left text-sm font-medium hover:bg-muted"
@@ -401,6 +421,12 @@ export function CustomizerClient({
               </span>
               <ChevronRight className="h-4 w-4 text-muted-foreground" />
             </button>
+            {inTemplateMode && homeKind === "hotel" && (
+              <a href={`/${slug}/admin/hotel`} className="flex w-full items-center justify-between rounded-md px-3 py-3 text-left text-sm font-medium hover:bg-muted">
+                <span className="flex items-center gap-2"><PenSquare className="h-4 w-4" /> Rooms, dining & amenities</span>
+                <ChevronRight className="h-4 w-4 text-muted-foreground" />
+              </a>
+            )}
           </div>
         ) : (
           <div className="flex flex-1 flex-col overflow-hidden">
@@ -445,7 +471,11 @@ export function CustomizerClient({
               </div>
             )}
 
-            {panel === "design" && (
+            {panel === "design" && inTemplateMode && (
+              <TemplateColorsPanel slug={slug} accent={theme.accent} background={theme.bg} onSaved={refreshPreview} />
+            )}
+
+            {panel === "design" && !inTemplateMode && (
               <div className="flex-1 overflow-y-auto p-4">
                 <p className="mb-3 text-xs text-muted-foreground">These controls change the published visual builder. Publishing saves your whole draft, including any section edits you have made.</p>
                 <div className="space-y-3">
@@ -483,7 +513,7 @@ export function CustomizerClient({
                 storyImage={storyImage}
                 storyOverrides={storyOverrides}
                 storyDescription={storyDescription}
-                builderHome={!templateHasOwnHomepage || published}
+                builderHome={!inTemplateMode}
                 onSaved={refreshPreview}
               />
             )}
@@ -697,6 +727,44 @@ function ImageField({ label, value, onChange }: { label: string; value: string; 
     </div>
   );
 }
+/** Accent and background colours for a template that draws its own homepage. Saved live and shown in the preview. */
+function TemplateColorsPanel({ slug, accent, background, onSaved }: { slug: string; accent: string; background: string; onSaved: () => void }) {
+  const hex = (v: string, fallback: string) => (/^#[0-9a-f]{6}$/i.test(v) ? v : fallback);
+  const [accentValue, setAccentValue] = useState(hex(accent, "#0e5b45"));
+  const [backgroundValue, setBackgroundValue] = useState(hex(background, "#ffffff"));
+  const [busy, setBusy] = useState(false);
+
+  async function save() {
+    setBusy(true);
+    const result = await saveTemplateColors(slug, { accent: accentValue, background: backgroundValue });
+    setBusy(false);
+    if (!result.success) { toast.error(result.error); return; }
+    toast.success("Colours saved");
+    onSaved();
+  }
+  async function reset() {
+    if (!confirm("Go back to this template's own colours?")) return;
+    setBusy(true);
+    const result = await resetTemplateColors(slug);
+    setBusy(false);
+    if (!result.success) { toast.error(result.error); return; }
+    toast.success("Template colours restored");
+    onSaved();
+  }
+
+  return (
+    <div className="flex-1 overflow-y-auto p-4">
+      <p className="mb-3 text-xs text-muted-foreground">Change the main colours of your template. Saved straight away and shown in the preview. Other colours stay as the template designed them.</p>
+      <div className="space-y-3">
+        <ColorField label="Accent (buttons and highlights)" value={accentValue} onChange={setAccentValue} />
+        <ColorField label="Page background" value={backgroundValue} onChange={setBackgroundValue} />
+      </div>
+      <button type="button" onClick={save} disabled={busy} className="mt-4 w-full rounded-md bg-primary px-3 py-2.5 text-xs font-semibold text-primary-foreground disabled:opacity-50">{busy ? "Saving…" : "Save colours"}</button>
+      <button type="button" onClick={reset} disabled={busy} className="mt-2 w-full rounded-md border border-border px-3 py-2 text-xs font-medium hover:bg-muted disabled:opacity-50">Use the template&apos;s own colours</button>
+    </div>
+  );
+}
+
 function ColorField({ label, value, onChange }: { label: string; value: string; onChange: (v: string) => void }) { return <label className="block text-[11px]"><span className="mb-1 block text-muted-foreground">{label}</span><div className="flex gap-1.5"><input type="color" value={/^#[0-9a-f]{6}$/i.test(value) ? value : "#000000"} onChange={(e) => onChange(e.target.value)} className="h-8 w-10 rounded border" /><input value={value} onChange={(e) => onChange(e.target.value)} className="min-w-0 flex-1 rounded border bg-background px-2 py-1.5 text-xs" /></div></label>; }
 function SelectField({ label, value, options, onChange }: { label: string; value: string; options: string[]; onChange: (v: string) => void }) { return <label className="block text-[11px]"><span className="mb-1 block text-muted-foreground">{label}</span><select value={value} onChange={(e) => onChange(e.target.value)} className="w-full rounded border bg-background px-2 py-1.5 text-xs">{options.map((o) => <option key={o}>{o}</option>)}</select></label>; }
 
