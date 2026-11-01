@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { isSafeColor, isSafeHref, isSafeImageUrl } from "@/lib/builder-safe";
+import { isSafeColor, isSafeHref, isSafeImageUrl, isSecureImageUrl } from "@/lib/builder-safe";
 
 export const BUILDER_SECTION_TYPES = [
   "hero", "catalog", "about", "stats", "features", "categories", "testimonials",
@@ -150,7 +150,43 @@ export function defaultBuilderConfig(storeName: string, description?: string | n
   };
 }
 
+/**
+ * The rules a layout must meet to be PUBLISHED. Reading (below) stays lenient so a layout saved under older rules
+ * never makes a live store fall back to its template.
+ */
+export const builderConfigSaveSchema = builderConfigSchema.superRefine((config, ctx) => {
+  const seen = new Set<string>();
+  config.sections.forEach((section, index) => {
+    if (seen.has(section.id)) ctx.addIssue({ code: "custom", path: ["sections", index, "id"], message: "Two sections share the same id. Remove one and add it again." });
+    seen.add(section.id);
+    if (!isSecureImageUrl(section.settings.image)) ctx.addIssue({ code: "custom", path: ["sections", index, "settings", "image"], message: "Use an https:// image link (plain http images are blocked by browsers)." });
+    section.settings.images?.forEach((url, i) => {
+      if (!isSecureImageUrl(url)) ctx.addIssue({ code: "custom", path: ["sections", index, "settings", "images", i], message: "Use https:// image links (plain http images are blocked by browsers)." });
+    });
+  });
+  if (!config.sections.some((s) => s.type === "hero")) ctx.addIssue({ code: "custom", path: ["sections"], message: "Your homepage needs a Hero section." });
+  if (!config.sections.some((s) => s.visible)) ctx.addIssue({ code: "custom", path: ["sections"], message: "At least one section must be visible, otherwise your homepage would be blank." });
+});
+
+/** Shown when a save is based on an older published layout than the one now live. The editor offers to overwrite. */
+export const BUILDER_CONFLICT_ERROR = "Your website was published from somewhere else while you were editing.";
+
+/** Gives repeated section ids a numeric suffix so old data with duplicates renders and selects correctly. */
+function uniqueSectionIds(config: BuilderConfig): BuilderConfig {
+  const seen = new Set<string>();
+  let changed = false;
+  const sections = config.sections.map((section) => {
+    let id = section.id;
+    for (let n = 2; seen.has(id); n++) id = `${section.id}-${n}`;
+    seen.add(id);
+    if (id === section.id) return section;
+    changed = true;
+    return { ...section, id };
+  });
+  return changed ? { ...config, sections } : config;
+}
+
 export function readBuilderConfig(value: unknown): BuilderConfig | null {
   const result = builderConfigSchema.safeParse(value);
-  return result.success ? result.data : null;
+  return result.success ? uniqueSectionIds(result.data) : null;
 }

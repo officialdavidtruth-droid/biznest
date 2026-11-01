@@ -58,3 +58,14 @@ export function mapEmbedUrl(query: string): string {
 export function mapDirectionsUrl(query: string): string {
   return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(query)}`;
 }
+
+/**
+ * wa.me link from a stored WhatsApp number. Accepts international digits ("2348012345678", "+234 801 234 5678")
+ * or a Nigerian local number starting with 0 ("0801 234 5678"). Returns null when there is nothing usable.
+ */
+export function whatsappLink(raw: string | null | undefined): string | null {
+  let digits = (raw ?? "").replace(/\D/g, "");
+  if (digits.startsWith("00")) digits = digits.slice(2);
+  if (digits.length === 11 && digits.startsWith("0")) digits = `234${digits.slice(1)}`;
+  return digits.length >= 10 && digits.length <= 15 ? `https://wa.me/${digits}` : null;
+}

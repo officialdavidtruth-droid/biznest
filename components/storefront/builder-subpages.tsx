@@ -1,7 +1,7 @@
 "use client";
 
 import { starFill, starEmpty } from "@/lib/utils/stars";
-import { cssUrl } from "@/lib/builder-safe";
+import { cssUrl, fontStack } from "@/lib/builder-safe";
 import Link from "next/link";
 import type { ReactNode } from "react";
 import { Mail, MapPin, Phone } from "lucide-react";
@@ -39,7 +39,8 @@ const COPY: Record<SubpageKind, { title: string; subtitle: string }> = {
  * catalogue, so every page looks like one site. (The generic "universal" pages have their
  * own header and palette, which is what made /about look like a different template.)
  */
-export function BuilderSubpage({ kind, store, design: d, data, owner }: { kind: SubpageKind; store: SubpageStore; design: Design; data: SubpageData; owner?: OwnerContent | null }) {
+export function BuilderSubpage({ kind, store, design: designIn, data, owner }: { kind: SubpageKind; store: SubpageStore; design: Design; data: SubpageData; owner?: OwnerContent | null }) {
+  const d: Design = { ...designIn, font: fontStack(designIn.font), headingFont: fontStack(designIn.headingFont) };
   const experience = getBusinessExperience(store.business.category, { sellsProducts: store.business.sellsProducts, offersServices: store.business.offersServices }, store.business.businessSubcategory);
   const isService = experience.mode === "service";
   const width = d.containerWidth === "compact" ? 960 : d.containerWidth === "wide" ? 1320 : 1160;

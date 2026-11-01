@@ -20,7 +20,7 @@ export function safeHref(value: string | undefined | null, fallback = "#"): stri
   return v && SAFE_HREF.test(v) ? v : fallback;
 }
 
-const SAFE_IMAGE = /^(https:\/\/|http:\/\/|\/(?!\/))[^\s"'()<>\\]+$/i;
+const SAFE_IMAGE = /^(https:\/\/|http:\/\/|\/(?!\/))[^\s"'<>\\]+$/i;
 
 /** True for "", an http(s) URL or a site-relative path with no quotes, parentheses or whitespace. */
 export function isSafeImageUrl(value: string | undefined | null): boolean {
@@ -28,10 +28,27 @@ export function isSafeImageUrl(value: string | undefined | null): boolean {
   return SAFE_IMAGE.test(value.trim());
 }
 
-/** CSS-safe value for use inside `url(...)`. Returns `none` for unsafe input so nothing is injected into the style. */
+/**
+ * Stricter rule used when SAVING: https only (or a site-relative path). A plain http image on an https store is
+ * blocked by browsers as mixed content, so it would just show as a broken picture.
+ */
+export function isSecureImageUrl(value: string | undefined | null): boolean {
+  if (!value) return true;
+  const v = value.trim();
+  return isSafeImageUrl(v) && !/^http:\/\//i.test(v);
+}
+
+/** CSS-safe value for use inside `url(...)`. Returns `none` for unsafe input so nothing is injected into the style. Parentheses are percent-encoded. */
 export function cssUrl(value: string | undefined | null): string {
   const v = (value ?? "").trim();
-  return v && SAFE_IMAGE.test(v) ? `"${v}"` : "none";
+  return v && SAFE_IMAGE.test(v) ? `"${v.replace(/\(/g, "%28").replace(/\)/g, "%29")}"` : "none";
+}
+
+/** Adds a generic fallback to a font name so a font that is not loaded still renders in a sensible face. */
+export function fontStack(name: string | undefined | null): string {
+  const n = (name ?? "").trim().replace(/["';{}<>\\]/g, "");
+  if (!n) return "system-ui, sans-serif";
+  return /,/.test(n) ? n : `"${n}", system-ui, sans-serif`;
 }
 
 const SAFE_COLOR = /^[#a-zA-Z0-9(),.%\s/-]*$/;

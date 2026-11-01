@@ -12,6 +12,7 @@ import type { TemplateTheme } from "@/lib/template-themes";
 import type { HeroOverrides, StoryOverrides } from "@/lib/actions/store";
 import { ContentPanel } from "@/components/dashboard/content-panel";
 import { saveBuilderConfig, updateStoreSeo, resetBuilderToTemplate } from "@/lib/actions/builder";
+import { BUILDER_CONFLICT_ERROR } from "@/lib/builder-config";
 import { BUILDER_SECTION_TYPES, readBuilderConfig, type BuilderConfig, type BuilderSection, type BuilderSectionItem, type BuilderSectionType } from "@/lib/builder-config";
 import { defaultFaqItems, defaultFeatureItems } from "@/lib/builder-defaults";
 import { PAGE_FORMAT_HINTS } from "@/lib/storefront/owner-page-format";
@@ -194,7 +195,11 @@ export function CustomizerClient({
   async function publishBuilder(next = builder) {
     setIsSaving(true);
     try {
-      const result = await saveBuilderConfig(slug, next);
+      let result = await saveBuilderConfig(slug, next, savedJson);
+      if (!result.success && result.error === BUILDER_CONFLICT_ERROR) {
+        if (!confirm(`${BUILDER_CONFLICT_ERROR}\n\nPublish anyway and replace that version with yours? Press Cancel to keep editing, then reload to see their changes.`)) return;
+        result = await saveBuilderConfig(slug, next);
+      }
       if (!result.success) { toast.error(result.error); return; }
       toast.success("Website published");
       setBuilder(next);
@@ -571,6 +576,8 @@ function SectionSettingsEditor({ section, mode, onChange }: { section: BuilderSe
     <TextField maxLength={4000} label="Body" value={s.body || ""} multiline onChange={(v) => update({ body: v })} />
     {!["stats","catalog","categories","testimonials","newsletter","contact","gallery","map","faq","features"].includes(section.type) && <ImageField label="Image" value={s.image || ""} onChange={(v) => update({ image: v })} />}
     {section.type === "features" && <ItemsEditor label="Features" titleLabel="Feature title" bodyLabel="Description" items={s.items} defaults={defaultFeatureItems(mode)} onChange={(items) => update({ items })} />}
+    {section.type === "stats" && <ItemsEditor label="Your own numbers" titleLabel="Number (e.g. 500+)" bodyLabel="Label (e.g. Happy customers)" items={s.items} defaults={[]} emptyNote="Live numbers from your store are shown (products, orders, rating). Add your own to replace them." onChange={(items) => update({ items })} />}
+    {section.type === "testimonials" && <ItemsEditor label="Your own testimonials" titleLabel="Customer name" bodyLabel="What they said" items={s.items} defaults={[]} emptyNote="Real reviews from your store are shown. Only add testimonials a customer actually gave you; they appear after your real reviews." onChange={(items) => update({ items })} />}
     {section.type === "faq" && <ItemsEditor label="Questions" titleLabel="Question" bodyLabel="Answer" items={s.items} defaults={defaultFaqItems(mode)} onChange={(items) => update({ items })} />}
     {section.type === "gallery" && <GalleryImagesEditor images={s.images} onChange={(images) => update({ images })} />}
     {section.type === "map" && <TextField label="Address or place name" value={s.address || ""} onChange={(v) => update({ address: v })} />}
@@ -583,13 +590,19 @@ function SectionSettingsEditor({ section, mode, onChange }: { section: BuilderSe
 }
 
 /** Editable list for Features and FAQ. With nothing saved yet, shows the starter text and lets the owner take it over. */
-function ItemsEditor({ label, titleLabel, bodyLabel, items, defaults, onChange }: { label: string; titleLabel: string; bodyLabel: string; items: BuilderSectionItem[] | undefined; defaults: BuilderSectionItem[]; onChange: (items: BuilderSectionItem[]) => void }) {
+function ItemsEditor({ label, titleLabel, bodyLabel, items, defaults, emptyNote, onChange }: { label: string; titleLabel: string; bodyLabel: string; items: BuilderSectionItem[] | undefined; defaults: BuilderSectionItem[]; emptyNote?: string; onChange: (items: BuilderSectionItem[]) => void }) {
   const list = items ?? [];
   const set = (i: number, patch: Partial<BuilderSectionItem>) => onChange(list.map((it, n) => (n === i ? { ...it, ...patch } : it)));
   return (
     <div className="space-y-2 rounded border bg-background p-2">
-      <div className="flex items-center justify-between"><span className="text-[11px] font-semibold">{label}</span><span className="text-[10px] text-muted-foreground">{list.length ? `${list.length}/12` : "Starter text shown"}</span></div>
-      {list.length === 0 && (
+      <div className="flex items-center justify-between"><span className="text-[11px] font-semibold">{label}</span><span className="text-[10px] text-muted-foreground">{list.length ? `${list.length}/12` : defaults.length ? "Starter text shown" : "None added"}</span></div>
+      {list.length === 0 && defaults.length === 0 && (
+        <div className="space-y-1.5">
+          {emptyNote && <p className="text-[11px] text-muted-foreground">{emptyNote}</p>}
+          <button type="button" onClick={() => onChange([{ title: "", body: "" }])} className="w-full rounded border px-2 py-1.5 text-[11px] font-medium hover:bg-muted">Add one</button>
+        </div>
+      )}
+      {list.length === 0 && defaults.length > 0 && (
         <div className="space-y-1.5">
           <ul className="list-disc space-y-0.5 pl-4 text-[11px] text-muted-foreground">{defaults.map((d) => <li key={d.title}>{d.title}</li>)}</ul>
           <button type="button" onClick={() => onChange(defaults.map((d) => ({ ...d })))} className="w-full rounded border px-2 py-1.5 text-[11px] font-medium hover:bg-muted">Edit these</button>

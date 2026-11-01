@@ -4,17 +4,17 @@ import { starFill, starEmpty } from "@/lib/utils/stars";
 import { readableAccentText } from "@/lib/utils/readable-accent";
 import { MenuLinks, type FallbackLink } from "@/components/storefront/store-menu";
 import type React from "react";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { createPortal } from "react-dom";
 import Link from "next/link";
 import { CartLink } from "@/components/storefront/cart-link";
 import { BuilderNewsletterForm } from "@/components/storefront/builder-newsletter-form";
-import { cssUrl, isSafeImageUrl, safeHref } from "@/lib/builder-safe";
-import type { BuilderConfig, BuilderSection } from "@/lib/builder-config";
+import { cssUrl, fontStack, isSafeImageUrl, safeHref } from "@/lib/builder-safe";
+import { readBuilderConfig, type BuilderConfig, type BuilderSection } from "@/lib/builder-config";
 import { getBusinessExperience } from "@/lib/business-experience";
 import { HeroVariantView } from "@/components/storefront/hero-variants";
 import { formatNumber } from "@/lib/i18n/locale";
-import { defaultFaqItems, defaultFeatureItems, mapDirectionsUrl, mapEmbedUrl, mapQuery } from "@/lib/builder-defaults";
+import { defaultFaqItems, defaultFeatureItems, mapDirectionsUrl, mapEmbedUrl, mapQuery, whatsappLink } from "@/lib/builder-defaults";
 import type { BuilderSectionItem } from "@/lib/builder-config";
 
 type CatalogItem = {
@@ -25,9 +25,22 @@ type CatalogItem = {
 type Review = { id: string; rating: number; comment: string | null; author: { name: string | null } | null };
 
 type BuilderStore = {
-  name: string; slug: string; logoUrl: string | null; bannerUrl?: string | null; contactEmail: string | null; contactPhone: string | null;
+  name: string; slug: string; logoUrl: string | null; bannerUrl?: string | null; contactEmail: string | null; contactPhone: string | null; whatsappNumber?: string | null;
   business: { description: string | null; category?: string | null; businessSubcategory?: string | null; sellsProducts?: boolean; offersServices?: boolean; city?: string | null; state?: string | null; country?: string | null };
 };
+
+/**
+ * True only inside the Customize preview: the page is framed AND the frame's parent is this same site.
+ * (A store embedded in some other website is framed too, but cross-origin, and must keep working normally.)
+ */
+function isInOwnPreview(): boolean {
+  try {
+    if (window.self === window.top) return false;
+    return window.parent.location.origin === window.location.origin;
+  } catch {
+    return false;
+  }
+}
 
 export function BuilderStorefront({
   store, config: initialConfig, catalogItems, reviews, avgRating, completedOrders, fallbackFaq,
@@ -48,7 +61,7 @@ export function BuilderStorefront({
   const [isEditMode, setIsEditMode] = useState(false);
 
   useEffect(() => {
-    setIsEditMode(window.self !== window.top);
+    setIsEditMode(isInOwnPreview());
   }, []);
 
   useEffect(() => {
@@ -65,20 +78,21 @@ export function BuilderStorefront({
     );
 
     function handleMessage(event: MessageEvent) {
+      if (!isInOwnPreview()) return; // a normal visitor's page never takes layout updates from a message
       if (event.source !== window.parent) return;
       if (event.origin !== window.location.origin) return;
       const data = event.data;
       if (!data || data.type !== "BIZNEST_CUSTOMIZER_PREVIEW") return;
-      if (!data.config || typeof data.config !== "object") return;
-      setLiveConfig(data.config as BuilderConfig);
+      const draft = readBuilderConfig(data.config);
+      if (draft) setLiveConfig(draft); // a half-typed value that fails validation keeps the last good preview
     }
 
     window.addEventListener("message", handleMessage);
     return () => window.removeEventListener("message", handleMessage);
   }, []);
 
-  const d = liveConfig.design;
-  const config = liveConfig; // used by JSX below (BuilderSectionView expects `config`)
+  const d = useMemo(() => ({ ...liveConfig.design, font: fontStack(liveConfig.design.font), headingFont: fontStack(liveConfig.design.headingFont) }), [liveConfig.design]);
+  const config = useMemo(() => ({ ...liveConfig, design: d }), [liveConfig, d]); // used by JSX below (BuilderSectionView expects `config`)
   const experience = getBusinessExperience(store.business.category, { sellsProducts: store.business.sellsProducts, offersServices: store.business.offersServices }, store.business.businessSubcategory);
   const width = d.containerWidth === "compact" ? 960 : d.containerWidth === "wide" ? 1320 : 1160;
   // A hero with no image of its own shows the store's banner (Customize > Content > Background image),
@@ -121,15 +135,15 @@ export function BuilderStorefront({
       <style>{`a{text-decoration:none;color:inherit}.bn-wrap{width:min(${width}px,calc(100% - 32px));margin:0 auto}.bn-grid{display:grid;gap:20px}@media(max-width:720px){.bn-grid{grid-template-columns:1fr!important}.bn-hero{grid-template-columns:1fr!important}.bn-section{padding-top:56px!important;padding-bottom:56px!important}.bn-nav-links{display:none!important}}${isEditMode ? `.bn-section{cursor:pointer;transition:outline .12s ease}.bn-section:hover{outline:2px dashed ${d.accent};outline-offset:-2px}` : ""}`}</style>
       <BuilderHeader store={store} d={d} experience={experience} visible={visible} />
 
-      {visible.map((section) => <BuilderSectionView key={section.id} section={section} store={store} config={config} catalogItems={featured} categories={categories} experience={experience} reviews={reviews} avgRating={avgRating} completedOrders={completedOrders} fallbackFaq={fallbackFaq} />)}
+      {visible.map((section) => <BuilderSectionView key={section.id} section={section} store={store} config={config} catalogItems={featured} categories={categories} experience={experience} reviews={reviews} avgRating={avgRating} completedOrders={completedOrders} fallbackFaq={fallbackFaq} isEditMode={isEditMode} catalogTotal={catalogItems.length} />)}
 
       <BuilderFooter store={store} d={d} visible={visible} />
     </main>
   );
 }
 
-function BuilderSectionView({ section, store, config, catalogItems, categories, experience, reviews, avgRating, completedOrders, fallbackFaq }: {
-  section: BuilderSection; store: BuilderStore; config: BuilderConfig; catalogItems: CatalogItem[]; categories: string[]; experience: ReturnType<typeof getBusinessExperience>; reviews: Review[]; avgRating: number | null; completedOrders: number; fallbackFaq?: BuilderSectionItem[];
+function BuilderSectionView({ section, store, config, catalogItems, categories, experience, reviews, avgRating, completedOrders, fallbackFaq, isEditMode, catalogTotal }: {
+  section: BuilderSection; store: BuilderStore; config: BuilderConfig; catalogItems: CatalogItem[]; categories: string[]; experience: ReturnType<typeof getBusinessExperience>; reviews: Review[]; avgRating: number | null; completedOrders: number; fallbackFaq?: BuilderSectionItem[]; isEditMode?: boolean; catalogTotal?: number;
 }) {
   const d = config.design;
   const s = section.settings;
@@ -214,7 +228,19 @@ function BuilderSectionView({ section, store, config, catalogItems, categories, 
     </div></section>
   );
 
-  if (section.type === "stats") return <section id={section.id} data-bn-type={section.type} className="bn-section" style={{ padding: "28px 0", background: bg }}><div className="bn-wrap bn-grid" style={{ gridTemplateColumns: "repeat(3,1fr)", textAlign: "center" }}><Stat value={`${catalogItems.length}+`} label={experience.mode === "commerce" ? "Published products" : experience.mode === "service" ? "Services" : "Products & services"} d={d} /><Stat value={completedOrders > 0 ? `${completedOrders}+` : "New"} label={experience.mode === "commerce" ? "Completed orders" : "Completed bookings"} d={d} /><Stat value={avgRating ? `${avgRating.toFixed(1)}/5` : "New"} label="Customer rating" d={d} /></div></section>;
+  if (section.type === "stats") {
+    // The owner's own numbers win; otherwise live store numbers, and only the ones that are real (no "0+" or "New" to customers).
+    const own = (s.items ?? []).filter((i) => i.title.trim());
+    const total = catalogTotal ?? catalogItems.length; // catalogItems here is only the 8 featured ones
+    const live = [
+      total > 0 ? { title: `${total}+`, body: experience.mode === "commerce" ? "Published products" : experience.mode === "service" ? "Services" : "Products & services" } : null,
+      completedOrders > 0 ? { title: `${completedOrders}+`, body: experience.mode === "commerce" ? "Completed orders" : "Completed bookings" } : null,
+      avgRating ? { title: `${avgRating.toFixed(1)}/5`, body: "Customer rating" } : null,
+    ].filter((i): i is { title: string; body: string } => i !== null);
+    const stats = own.length ? own : live;
+    if (!stats.length) return isEditMode ? <section id={section.id} data-bn-type={section.type} className="bn-section" style={{ padding: "28px 0", background: bg }}><div className="bn-wrap"><EmptyState text="Numbers (products, orders, rating) appear here once your store has some. Visitors do not see this box. You can also add your own numbers." /></div></section> : null;
+    return <section id={section.id} data-bn-type={section.type} className="bn-section" style={{ padding: "28px 0", background: bg }}><div className="bn-wrap bn-grid" style={{ gridTemplateColumns: `repeat(${Math.min(stats.length, 4)},1fr)`, textAlign: "center" }}>{stats.map((st, i) => <Stat key={`${st.title}-${i}`} value={st.title} label={st.body || ""} d={d} />)}</div></section>;
+  }
 
   if (section.type === "features") {
     const items = s.items?.length ? s.items : defaultFeatureItems(experience.mode);
@@ -223,11 +249,25 @@ function BuilderSectionView({ section, store, config, catalogItems, categories, 
 
   if (section.type === "categories") return <section id={section.id} data-bn-type={section.type} className="bn-section" style={{ padding, background: bg }}><div className="bn-wrap"><SectionIntro section={section} config={config} /><div className="bn-grid" style={{ gridTemplateColumns: `repeat(${Math.min(cols,4)},1fr)` }}>{categories.map((c) => <a key={c} href={`/store/${store.slug}/search?q=${encodeURIComponent(c)}`} style={{ padding: 22, borderRadius: s.radius ?? d.radius, background: d.surface, border: `1px solid ${d.text}12`, fontWeight: 750 }}>{c}</a>)}</div></div></section>;
 
-  if (section.type === "testimonials") return <section id={section.id} data-bn-type={section.type} className="bn-section" style={{ padding, background: bg }}><div className="bn-wrap"><SectionIntro section={section} config={config} /><div className="bn-grid" style={{ gridTemplateColumns: `repeat(${Math.min(cols,3)},1fr)` }}>{reviews.length ? reviews.map((r) => <div key={r.id} style={{ background: d.surface, border: `1px solid ${d.text}12`, borderRadius: s.radius ?? d.radius, padding: 22 }}><div style={{ color: d.accent }}>{starFill(r.rating)}{starEmpty(r.rating)}</div><p style={{ lineHeight: 1.7, color: d.muted }}>{r.comment}</p><strong style={{ fontSize: 13 }}>{r.author?.name || "Customer"}</strong></div>) : <EmptyState text="Customer reviews will appear here when you receive them." />}</div></div></section>;
+  if (section.type === "testimonials") {
+    // Real reviews first, then testimonials the owner typed in. Capped so the grid stays tidy.
+    const cards: { key: string; rating: number | null; text: string; name: string }[] = [
+      ...reviews.map((r) => ({ key: r.id, rating: r.rating, text: r.comment ?? "", name: r.author?.name || "Customer" })),
+      ...(s.items ?? []).filter((i) => i.title.trim()).map((i, n) => ({ key: `own-${n}`, rating: null, text: i.body ?? "", name: i.title })),
+    ].slice(0, 6);
+    if (!cards.length && !isEditMode) return null; // never show customers an empty "reviews will appear here" box
+    return <section id={section.id} data-bn-type={section.type} className="bn-section" style={{ padding, background: bg }}><div className="bn-wrap"><SectionIntro section={section} config={config} /><div className="bn-grid" style={{ gridTemplateColumns: `repeat(${Math.min(cols,3)},1fr)` }}>{cards.length ? cards.map((c) => <div key={c.key} style={{ background: d.surface, border: `1px solid ${d.text}12`, borderRadius: s.radius ?? d.radius, padding: 22 }}>{c.rating !== null && <div style={{ color: d.accent }}>{starFill(c.rating)}{starEmpty(c.rating)}</div>}<p style={{ lineHeight: 1.7, color: d.muted }}>{c.text}</p><strong style={{ fontSize: 13 }}>{c.name}</strong></div>) : <EmptyState text="Customer reviews will appear here when you receive them. Visitors do not see this box. You can also add your own testimonials." />}</div></div></section>;
+  }
 
   if (section.type === "newsletter") return <section id={section.id} data-bn-type={section.type} className="bn-section" style={{ padding, background: s.background || d.primary, color: s.textColor || "#fff" }}><div className="bn-wrap" style={{ textAlign: "center" }}><SectionIntro section={section} config={config} inverse /><p style={{ opacity: .75, maxWidth: 560, margin: "0 auto 22px", lineHeight: 1.7 }}>{s.body || "Get occasional updates, new arrivals and offers."}</p><BuilderNewsletterForm storeSlug={store.slug} accent={d.accent} /></div></section>;
 
-  if (section.type === "contact") return <section id={section.id} data-bn-type={section.type} className="bn-section" style={{ padding, background: bg }}><div className="bn-wrap"><SectionIntro section={section} config={config} /><div className="bn-grid" style={{ gridTemplateColumns: "repeat(2,1fr)" }}>{store.contactEmail && <a href={`mailto:${store.contactEmail}`} style={{ padding: 24, background: d.surface, borderRadius: s.radius ?? d.radius }}><small style={{ color: d.muted }}>Email</small><div style={{ fontWeight: 750, marginTop: 5 }}>{store.contactEmail}</div></a>}{store.contactPhone && <a href={`tel:${store.contactPhone}`} style={{ padding: 24, background: d.surface, borderRadius: s.radius ?? d.radius }}><small style={{ color: d.muted }}>Phone</small><div style={{ fontWeight: 750, marginTop: 5 }}>{store.contactPhone}</div></a>}</div></div></section>;
+  if (section.type === "contact") {
+    const wa = whatsappLink(store.whatsappNumber);
+    const tile = { padding: 24, background: d.surface, borderRadius: s.radius ?? d.radius } as const;
+    const hasAny = !!(store.contactEmail || store.contactPhone || wa);
+    if (!hasAny && !isEditMode) return null; // an intro with nothing under it helps nobody
+    return <section id={section.id} data-bn-type={section.type} className="bn-section" style={{ padding, background: bg }}><div className="bn-wrap"><SectionIntro section={section} config={config} /><div className="bn-grid" style={{ gridTemplateColumns: "repeat(2,1fr)" }}>{wa && <a href={wa} target="_blank" rel="noopener noreferrer" style={tile}><small style={{ color: d.muted }}>WhatsApp</small><div style={{ fontWeight: 750, marginTop: 5 }}>Chat with us</div></a>}{store.contactPhone && <a href={`tel:${store.contactPhone}`} style={tile}><small style={{ color: d.muted }}>Phone</small><div style={{ fontWeight: 750, marginTop: 5 }}>{store.contactPhone}</div></a>}{store.contactEmail && <a href={`mailto:${store.contactEmail}`} style={tile}><small style={{ color: d.muted }}>Email</small><div style={{ fontWeight: 750, marginTop: 5 }}>{store.contactEmail}</div></a>}{!hasAny && <EmptyState text="Add a WhatsApp number, phone or email in Settings to show contact options. Visitors do not see this box." />}</div></div></section>;
+  }
 
   if (section.type === "gallery") {
     // The owner's own uploads win; with none, fall back to catalogue photos so the section is never blank.

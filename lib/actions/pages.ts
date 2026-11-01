@@ -3,20 +3,11 @@
 import { prisma } from "@/lib/prisma";
 import { revalidatePath } from "next/cache";
 import type { ActionResult } from "@/types/actions";
-import type { PageContent } from "@/lib/actions/pages-constants";
+import { RESERVED_PAGE_SLUGS, type PageContent } from "@/lib/actions/pages-constants";
 import { assertStorePermission } from "@/lib/access/assert-store-access";
 
-// Folders under app/store/[slug]/ (plus a few reserved files). A static route always wins over
-// the dynamic /[pageSlug] route, so a custom page saved under one of these slugs could never be
-// reached. The six suggested slugs (about, gallery, faq, blog, contact, policies) are exempt here:
-// each has a built-in route that shows the saved page (see lib/storefront/owner-pages.ts).
-const UNREACHABLE_PAGE_SLUGS = new Set([
-  "home", "account", "admin", "amenities", "book", "booking", "brands", "cart", "catalog", "categories",
-  "category", "checkout", "deals", "dining", "events", "experiences", "facilities", "favorites",
-  "new-arrivals", "offers", "orders", "pay", "payment", "portfolio", "pricing", "product", "pwa-icon",
-  "reservations", "review", "reviews", "rooms", "search", "service", "services", "start-project",
-  "support", "wallet-pay", "manifest.webmanifest", "robots.txt", "sitemap.xml", "sw.js", "api",
-]);
+const PAGE_TITLE_MAX = 120;
+const PAGE_BODY_MAX = 20000;
 
 function slugify(input: string) {
   return input
@@ -51,8 +42,10 @@ export async function saveStorePage(slug: string, formData: FormData): Promise<A
 
   if (!pageSlug) return { success: false, error: "This page needs a URL slug." };
   if (!title) return { success: false, error: "This page needs a title." };
+  if (title.length > PAGE_TITLE_MAX) return { success: false, error: `The title is too long (max ${PAGE_TITLE_MAX} characters).` };
+  if (body.length > PAGE_BODY_MAX) return { success: false, error: `This page is too long (max ${PAGE_BODY_MAX.toLocaleString("en")} characters). Split it into two pages.` };
   if (pageSlug === "home") return { success: false, error: "\"home\" is reserved for the homepage." };
-  if (UNREACHABLE_PAGE_SLUGS.has(pageSlug)) return { success: false, error: `"${pageSlug}" is already used by a built-in store page. Choose a different URL slug.` };
+  if (RESERVED_PAGE_SLUGS.has(pageSlug)) return { success: false, error: `"${pageSlug}" is already used by a built-in store page. Choose a different URL slug.` };
 
   const content: PageContent = { body };
 
