@@ -43,8 +43,8 @@ export async function setStoreTemplate(slug:string,templateId:string):Promise<Ac
  const changed=store.templateId!==template.id;
  let sectionOverrides:Prisma.InputJsonValue|undefined;
  if(changed&&store.sectionOverrides&&typeof store.sectionOverrides==="object"&&!Array.isArray(store.sectionOverrides)){
-  const {builderVersion:_v,builder:_b,order:_o,hidden:_h,...rest}=store.sectionOverrides as Record<string,unknown>;
-  void _v;void _b;void _o;void _h;
+  const {builderVersion:_v,builder:_b,order:_o,hidden:_h,templateArrangement:_a,...rest}=store.sectionOverrides as Record<string,unknown>;
+  void _v;void _b;void _o;void _h;void _a;
   sectionOverrides=rest as Prisma.InputJsonValue;
  }
  await prisma.store.update({where:{id:store.id},data:{templateId:template.id,businessType:businessType,...(changed?{themeColors:Prisma.DbNull,fontFamily:null}:{}),...(sectionOverrides!==undefined?{sectionOverrides}:{})}});

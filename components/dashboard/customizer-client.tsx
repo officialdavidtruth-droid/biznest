@@ -11,7 +11,7 @@ import { SUGGESTED_PAGE_SLUGS, SUGGESTED_PAGE_TITLES } from "@/lib/actions/pages
 import type { TemplateTheme } from "@/lib/template-themes";
 import type { HeroOverrides, StoryOverrides } from "@/lib/actions/store";
 import { ContentPanel } from "@/components/dashboard/content-panel";
-import { saveBuilderConfig, updateStoreSeo, resetBuilderToTemplate } from "@/lib/actions/builder";
+import { saveBuilderConfig, updateStoreSeo, resetBuilderToTemplate, saveTemplateArrangement } from "@/lib/actions/builder";
 import { BUILDER_CONFLICT_ERROR } from "@/lib/builder-config";
 import { resetTemplateColors, saveTemplateColors } from "@/lib/actions/theme";
 import { BUILDER_SECTION_TYPES, readBuilderConfig, type BuilderConfig, type BuilderSection, type BuilderSectionItem, type BuilderSectionType } from "@/lib/builder-config";
@@ -21,10 +21,11 @@ import { buildIndustryHomepage, getBusinessExperience } from "@/lib/business-exp
 
 export type StorePageRow = { id: string; slug: string; title: string; body: string; isPublished: boolean };
 
+type PreviewSection = { key: string; label: string; hidden: boolean };
 type Device = "desktop" | "tablet" | "mobile";
 const DEVICE_WIDTH: Record<Device, string> = { desktop: "100%", tablet: "768px", mobile: "390px" };
 
-type Panel = "sections" | "content" | "design" | "seo" | "pages" | null;
+type Panel = "sections" | "arrange" | "content" | "design" | "seo" | "pages" | null;
 
 /**
  * A WordPress-Customizer-style editor for a store's already-chosen template:
@@ -98,6 +99,10 @@ export function CustomizerClient({
   const experience = getBusinessExperience(businessCategory, { sellsProducts, offersServices });
   const [editingSlug, setEditingSlug] = useState<string | null>(null);
   const iframeRef = useRef<HTMLIFrameElement>(null);
+  // Fixed-layout templates: the preview reports which sections it drew; the owner reorders / hides them here.
+  const [previewSections, setPreviewSections] = useState<PreviewSection[]>([]);
+  const [arrangeDirty, setArrangeDirty] = useState(false);
+  const arrangeRef = useRef<{ order: string[]; hidden: string[] } | null>(null);
   const builderRef = useRef<BuilderConfig>(initialBuilder);
   const previewReadyRef = useRef(false);
 
@@ -173,6 +178,13 @@ export function CustomizerClient({
     function handlePreviewReady(event: MessageEvent) {
       if (event.origin !== window.location.origin) return;
       if (event.source !== iframeRef.current?.contentWindow) return;
+      if (event.data?.type === "BIZNEST_TEMPLATE_SECTIONS" && Array.isArray(event.data.sections)) {
+        const list = (event.data.sections as PreviewSection[]).filter((x) => x && typeof x.key === "string");
+        setPreviewSections(list);
+        // The iframe reloaded while an unsaved arrangement was open: put the draft back on the new page.
+        if (arrangeRef.current) iframeRef.current?.contentWindow?.postMessage({ type: "BIZNEST_TEMPLATE_ARRANGE", ...arrangeRef.current }, window.location.origin);
+        return;
+      }
       if (event.data?.type === "BIZNEST_CUSTOMIZER_PREVIEW_READY") {
         previewReadyRef.current = true;
         pushPreview(builderRef.current);
@@ -195,6 +207,36 @@ export function CustomizerClient({
     previewReadyRef.current = false;
     builderRef.current = builder;
   }, [previewKey]);
+
+  function pushArrangement(list: PreviewSection[]) {
+    const next = { order: list.map((x) => x.key), hidden: list.filter((x) => x.hidden).map((x) => x.key) };
+    arrangeRef.current = next;
+    setPreviewSections(list);
+    setArrangeDirty(true);
+    iframeRef.current?.contentWindow?.postMessage({ type: "BIZNEST_TEMPLATE_ARRANGE", ...next }, window.location.origin);
+  }
+  function moveTemplateSection(index: number, dir: -1 | 1) {
+    const target = index + dir;
+    if (target < 0 || target >= previewSections.length) return;
+    const list = [...previewSections];
+    [list[index], list[target]] = [list[target], list[index]];
+    pushArrangement(list);
+  }
+  function toggleTemplateSection(index: number) {
+    pushArrangement(previewSections.map((x, i) => (i === index ? { ...x, hidden: !x.hidden } : x)));
+  }
+  async function saveArrangement(reset = false) {
+    setIsSaving(true);
+    try {
+      const payload = reset || !arrangeRef.current ? { order: [], hidden: [] } : arrangeRef.current;
+      const result = await saveTemplateArrangement(slug, payload);
+      if (!result.success) { toast.error(result.error ?? "Could not save the section order."); return; }
+      toast.success(reset ? "Original layout restored." : "Section order saved.");
+      arrangeRef.current = null;
+      setArrangeDirty(false);
+      refreshPreview();
+    } finally { setIsSaving(false); }
+  }
 
   function refreshPreview() {
     setPreviewKey((k) => k + 1);
@@ -335,7 +377,7 @@ export function CustomizerClient({
               <div className="mb-2 rounded-md border border-emerald-300 bg-emerald-50 px-3 py-3 text-[11px] text-emerald-900">
                 <p className="font-semibold">You&apos;re editing your real {currentTemplateName ?? "template"} homepage</p>
                 <p className="mt-1">The preview on the right is the live design. Text, images, colours and pages you change here show up straight away.</p>
-                <button type="button" onClick={() => { setTemplateMode("builder"); setPanel(null); }} className="mt-2 inline-block font-semibold underline">Want to rearrange sections instead? Use the visual builder</button>
+                <button type="button" onClick={() => setPanel("arrange")} className="mt-2 inline-block font-semibold underline">Reorder or hide sections</button>
               </div>
             )}
             {templateHasOwnHomepage && !inTemplateMode && (
@@ -421,6 +463,12 @@ export function CustomizerClient({
               </span>
               <ChevronRight className="h-4 w-4 text-muted-foreground" />
             </button>
+            {inTemplateMode && (
+              <button type="button" onClick={() => setPanel("arrange")} className="flex w-full items-center justify-between rounded-md px-3 py-3 text-left text-sm font-medium hover:bg-muted">
+                <span className="flex items-center gap-2"><Rows3 className="h-4 w-4" /> Reorder sections</span>
+                <ChevronRight className="h-4 w-4 text-muted-foreground" />
+              </button>
+            )}
             {inTemplateMode && homeKind === "hotel" && (
               <a href={`/${slug}/admin/hotel`} className="flex w-full items-center justify-between rounded-md px-3 py-3 text-left text-sm font-medium hover:bg-muted">
                 <span className="flex items-center gap-2"><PenSquare className="h-4 w-4" /> Rooms, dining & amenities</span>
@@ -468,6 +516,35 @@ export function CustomizerClient({
                   </div>
                 </div>
                 <div className="border-t p-3"><button onClick={() => publishBuilder()} disabled={isSaving} className="w-full rounded-md bg-primary px-3 py-2.5 text-xs font-semibold text-primary-foreground disabled:opacity-50">{isSaving ? "Publishing…" : "Publish visual website"}</button></div>
+              </div>
+            )}
+
+            {panel === "arrange" && (
+              <div className="flex flex-1 flex-col overflow-hidden">
+                <div className="flex-1 overflow-y-auto p-4">
+                  <p className="mb-3 text-xs text-muted-foreground">Move sections up or down, or hide the ones you don&apos;t need. The preview updates as you go. The menu bar and footer stay where they are.</p>
+                  {previewSections.length === 0 ? (
+                    <div className="rounded-md border bg-muted/30 p-3 text-[11px] text-muted-foreground">
+                      <p>No movable sections were found yet. Wait for the preview to finish loading, then tap Refresh preview. If none appear, use the visual builder.</p>
+                      <button type="button" onClick={() => { setTemplateMode("builder"); setPanel(null); }} className="mt-2 font-semibold underline">Use the visual builder instead</button>
+                    </div>
+                  ) : (
+                    <div className="space-y-1.5">
+                      {previewSections.map((section, index) => (
+                        <div key={section.key} className="flex items-center gap-2 rounded-md border border-border px-3 py-2">
+                          <span className={`min-w-0 flex-1 truncate text-sm font-medium ${section.hidden ? "text-muted-foreground line-through" : ""}`}>{section.label}</span>
+                          <button type="button" onClick={() => toggleTemplateSection(index)} aria-label={section.hidden ? "Show section" : "Hide section"} className="rounded p-1 hover:bg-muted">{section.hidden ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}</button>
+                          <button type="button" onClick={() => moveTemplateSection(index, -1)} disabled={index === 0} aria-label="Move section up" className="rounded p-1 hover:bg-muted disabled:opacity-30"><ArrowUp className="h-3.5 w-3.5" /></button>
+                          <button type="button" onClick={() => moveTemplateSection(index, 1)} disabled={index === previewSections.length - 1} aria-label="Move section down" className="rounded p-1 hover:bg-muted disabled:opacity-30"><ArrowDown className="h-3.5 w-3.5" /></button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+                <div className="flex gap-2 border-t p-3">
+                  <button type="button" onClick={() => saveArrangement(true)} disabled={isSaving} className="rounded-md border border-border px-3 py-2.5 text-xs font-medium hover:bg-muted disabled:opacity-50">Restore default</button>
+                  <button type="button" onClick={() => saveArrangement()} disabled={isSaving || !arrangeDirty} className="flex-1 rounded-md bg-primary px-3 py-2.5 text-xs font-semibold text-primary-foreground disabled:opacity-50">{isSaving ? "Saving…" : "Save order"}</button>
+                </div>
               </div>
             )}
 

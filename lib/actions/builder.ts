@@ -6,6 +6,7 @@ import { BUILDER_CONFLICT_ERROR, builderConfigSaveSchema, readBuilderConfig, typ
 import type { ActionResult } from "@/types/actions";
 import { assertStorePermission } from "@/lib/access/assert-store-access";
 import { updateSectionOverridesJson } from "@/lib/store-overrides";
+import { ARRANGEMENT_KEY, normalizeArrangement } from "@/lib/storefront/arrangement";
 
 // Website Builder lives under "settings" in the nav (dashboard-nav.ts), so
 // a MANAGER/STAFF granted "settings" should be able to actually save
@@ -67,8 +68,8 @@ export async function resetBuilderToTemplate(slug: string): Promise<ActionResult
   if (!access.success) return { success: false, error: access.error };
 
   await updateSectionOverridesJson(access.store.id, (current) => {
-    const { builderVersion: _v, builder: _b, order: _o, hidden: _h, ...rest } = current;
-    void _v; void _b; void _o; void _h;
+    const { builderVersion: _v, builder: _b, order: _o, hidden: _h, [ARRANGEMENT_KEY]: _a, ...rest } = current;
+    void _v; void _b; void _o; void _h; void _a;
     return rest;
   });
 
@@ -89,6 +90,28 @@ export async function updateStoreSeo(slug: string, seoTitle: string, seoDescript
   if (!title) return { success: false, error: "SEO title is required." };
   await prisma.store.update({ where: { id: access.store.id }, data: { seoTitle: title, seoDescription: description || null } });
   revalidatePath(`/store/${slug}`);
+  revalidatePath(`/store/${slug}/admin/customize`);
+  return { success: true, data: undefined };
+}
+
+/**
+ * Saves the owner's section order / hidden sections for a template that draws its own homepage.
+ * An empty arrangement removes the key, which restores the template's default layout.
+ */
+export async function saveTemplateArrangement(slug: string, input: { order: string[]; hidden: string[] }): Promise<ActionResult> {
+  const access = await assertStoreAccess(slug);
+  if (!access.success) return { success: false, error: access.error };
+  const arrangement = normalizeArrangement(input);
+  const empty = arrangement.order.length === 0 && arrangement.hidden.length === 0;
+
+  await updateSectionOverridesJson(access.store.id, (current) => {
+    const { [ARRANGEMENT_KEY]: _old, ...rest } = current;
+    void _old;
+    return empty ? rest : { ...rest, [ARRANGEMENT_KEY]: arrangement };
+  });
+
+  revalidatePath(`/store/${slug}`);
+  revalidatePath(`/${slug}`);
   revalidatePath(`/store/${slug}/admin/customize`);
   return { success: true, data: undefined };
 }

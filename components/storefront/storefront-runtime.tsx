@@ -1,4 +1,4 @@
-import { cache } from "react";
+import { cache, type ReactNode } from "react";
 import { notFound } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { recordStoreVisit } from "@/lib/actions/analytics";
@@ -17,6 +17,8 @@ import { getCanonicalBusinessType, isHotelBusiness, isRestaurantBusiness } from 
 import { resolveStoreTheme } from "@/lib/template-themes";
 import { templateThemeToBuilderConfig } from "@/lib/template-builder-config";
 import { LegacyTemplateHome } from "@/components/storefront/legacy-template-renderer";
+import { SectionArranger } from "@/components/storefront/section-arranger";
+import { getTemplateArrangement } from "@/lib/storefront/arrangement";
 import { SignatureScreenshotHome } from "@/components/storefront/signature-screenshot-home";
 
 type CatalogItem={id:string;kind:"product"|"service";name:string;description:string|null;price:number;currency:string;image:string|null;categoryName:string|null;type:string;rentalUnit:string|null;isBookable:boolean;hasVariants?:boolean};
@@ -71,10 +73,12 @@ export async function renderStorefront(slug:string,opts?:{preview?:boolean}){
    if(access.success) return <BuilderStorefront store={store} config={defaultBuilderConfig(store.name,store.business?.description,store.bannerUrl,store.business?.category,{sellsProducts:store.business?.sellsProducts,offersServices:store.business?.offersServices})} catalogItems={catalogItems} reviews={store.reviews} avgRating={store.business?.avgRating??null} completedOrders={completedOrders} fallbackFaq={fallbackFaq}/>;
  }
 
- if(home.kind==="legacy") return <LegacyTemplateHome name={home.name} p={{store,slug,catalogItems,navCategories,goodReviews,avgRating,completedOrders,trustScore:null,trustChecklist:null,social}}/>;
- if(home.kind==="screenshot") return <SignatureScreenshotHome store={store} slug={slug} items={catalogItems as any} reviews={store.reviews} avgRating={avgRating} completedOrders={completedOrders} social={social} mode={home.mode} {...home.palette}/>;
- if(home.kind==="example") return <ExampleStorefront store={store} slug={slug} items={catalogItems} mode="home" content={await getExampleContent(slug) as any}/>;
- if(home.kind==="hotel") return <ThelusoHotel store={store} slug={slug} content={await getHotelContent(slug)}/>;
+ const arrangement=getTemplateArrangement(store.sectionOverrides);
+ const arranged=(node:ReactNode)=><SectionArranger arrangement={arrangement}>{node}</SectionArranger>;
+ if(home.kind==="legacy") return arranged(<LegacyTemplateHome name={home.name} p={{store,slug,catalogItems,navCategories,goodReviews,avgRating,completedOrders,trustScore:null,trustChecklist:null,social}}/>);
+ if(home.kind==="screenshot") return arranged(<SignatureScreenshotHome store={store} slug={slug} items={catalogItems as any} reviews={store.reviews} avgRating={avgRating} completedOrders={completedOrders} social={social} mode={home.mode} {...home.palette}/>);
+ if(home.kind==="example") return arranged(<ExampleStorefront store={store} slug={slug} items={catalogItems} mode="home" content={await getExampleContent(slug) as any}/>);
+ if(home.kind==="hotel") return arranged(<ThelusoHotel store={store} slug={slug} content={await getHotelContent(slug)}/>);
 
  if(template?.home==="builder") {
    const theme=resolveStoreTheme(store.template?.category,store.name,themeOverrides,store.fontFamily,store.template?.name);
