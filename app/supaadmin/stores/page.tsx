@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { listStores } from "@/lib/actions/admin";
 import { StoreStatusButton } from "@/components/dashboard/store-status-button";
+import { TableScroll } from "@/components/ui/table-scroll";
 
 export default async function StoresPage() {
   const stores = await listStores();
@@ -9,7 +10,7 @@ export default async function StoresPage() {
     <div>
       <h1 className="mb-4 text-xl font-semibold">Stores</h1>
       <div className="overflow-hidden rounded-lg border bg-background">
-        <div className="overflow-x-auto">
+        <TableScroll>
         <table className="w-full min-w-[640px] text-sm">
           <thead className="border-b bg-muted/40 text-left text-xs uppercase text-muted-foreground">
             <tr>
@@ -54,7 +55,7 @@ export default async function StoresPage() {
             )}
           </tbody>
         </table>
-        </div>
+        </TableScroll>
       </div>
     </div>
   );

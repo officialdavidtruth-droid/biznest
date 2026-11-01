@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import { createCoupon } from "@/lib/actions/coupon";
 import { currencySymbol, moneyFormatter } from "@/lib/utils/format-money";
+import { TableScroll } from "@/components/ui/table-scroll";
 
 export async function CouponsSection({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
@@ -26,7 +27,7 @@ export async function CouponsSection({ params }: { params: Promise<{ slug: strin
         <button className="rounded-md bg-primary px-3 py-1.5 text-sm font-medium text-primary-foreground">Create coupon</button>
       </form>
 
-      <div className="overflow-x-auto rounded-lg border bg-background">
+      <TableScroll className="rounded-lg border bg-background">
         <table className="min-w-[640px] w-full text-sm">
           <thead className="border-b bg-muted/40 text-left text-xs uppercase text-muted-foreground">
             <tr><th className="px-4 py-2">Code</th><th className="px-4 py-2">Discount</th><th className="px-4 py-2">Used</th><th className="px-4 py-2">Status</th></tr>
@@ -49,7 +50,7 @@ export async function CouponsSection({ params }: { params: Promise<{ slug: strin
             )}
           </tbody>
         </table>
-      </div>
+      </TableScroll>
     </div>
   );
 }

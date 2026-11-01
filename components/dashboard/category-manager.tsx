@@ -21,6 +21,7 @@ import {
 import { StatCard, ListToolbar } from "@/components/dashboard/list-toolbar";
 import type { BusinessTerminology } from "@/lib/business-terminology";
 import { formatDate } from "@/lib/i18n/locale";
+import { TableScroll } from "@/components/ui/table-scroll";
 
 type Category = {
   id: string;
@@ -162,7 +163,7 @@ export function CategoryManager({
               }}
             />
 
-            <div className="overflow-x-auto">
+            <TableScroll>
               <table className="w-full text-sm">
                 <thead>
                   <tr className="border-b text-left text-xs text-muted-foreground">
@@ -228,7 +229,7 @@ export function CategoryManager({
                   )}
                 </tbody>
               </table>
-            </div>
+            </TableScroll>
           </div>
         </section>
 

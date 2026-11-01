@@ -106,6 +106,11 @@ export default async function StoreLayout({
 }) {
   const { slug } = await params;
 
+  // /admin/** is nested under this layout, but none of the customer-facing extras
+  // below (install banner, WhatsApp button, promo pop-up, order-push prompt,
+  // analytics pixels) belong on the owner's dashboard.
+  const isAdminRoute = ((await headers()).get("x-bn-store-subpath") ?? "/").startsWith("/admin");
+
   // If this slug doesn't match any store directly, it might be one an
   // owner retired by shortening/renaming their store URL (see
   // updateStoreSlug in lib/actions/store.ts). Only one extra query, and
@@ -167,7 +172,7 @@ export default async function StoreLayout({
   // renderers): the popup lives in the layout and takes its look from the
   // resolved theme, so new templates are covered automatically.
   const promo = exists ? readPromoPopup(exists.storefrontConfig) : null;
-  let showPromo = !!exists && exists.status === "ACTIVE" && !!promo && isPromoLive(promo);
+  let showPromo = !isAdminRoute && !!exists && exists.status === "ACTIVE" && !!promo && isPromoLive(promo);
   if (showPromo) {
     // Promo pop-up belongs to the Marketing tool (CRM & Sales app). If the app is
     // uninstalled or the plan lapses, stop showing the card. Only runs when a
@@ -190,11 +195,11 @@ export default async function StoreLayout({
 
   // Opt-in floating chat button -> the vendor's own WhatsApp number.
   const social = (exists?.socialLinks && typeof exists.socialLinks === "object" ? exists.socialLinks : {}) as Record<string, string | undefined>;
-  const chatHref = exists && exists.status === "ACTIVE" && social.whatsappFloat === "on" ? whatsappLink(social.whatsapp, `Hi ${exists.name}!`) : null;
+  const chatHref = !isAdminRoute && exists && exists.status === "ACTIVE" && social.whatsappFloat === "on" ? whatsappLink(social.whatsapp, `Hi ${exists.name}!`) : null;
 
   // Install-as-app banner (customers on the storefront, not the admin).
   const pwaBase = storeBasePath((await headers()).get("host"), slug);
-  const installable = !!exists && exists.status === "ACTIVE";
+  const installable = !isAdminRoute && !!exists && exists.status === "ACTIVE";
   // Order-update push opt-in is only offered to a signed-in customer of this store.
   const pushEligible = installable && !!(await requireStoreCustomer(slug));
 
@@ -205,7 +210,7 @@ export default async function StoreLayout({
   const subpath = (await headers()).get("x-bn-store-subpath") ?? "/";
   const tracking = exists ? sanitizeStoredTrackingIds(exists) : null;
   const trackingOn =
-    !!exists && !!tracking && exists.status === "ACTIVE" && !exists.marketingOnly && isTrackablePath(subpath) && hasAnyTracking(tracking);
+    !isAdminRoute && !!exists && !!tracking && exists.status === "ACTIVE" && !exists.marketingOnly && isTrackablePath(subpath) && hasAnyTracking(tracking);
 
   return (
     <>

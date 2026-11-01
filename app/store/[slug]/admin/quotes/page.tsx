@@ -4,6 +4,7 @@ import { QuoteForm } from "@/components/dashboard/quote-form";
 import { QuoteRowActions } from "@/components/dashboard/quote-row-actions";
 import { formatDate, formatNumber } from "@/lib/i18n/locale";
 import { effectiveQuoteStatus } from "@/lib/quotes/expiry";
+import { TableScroll } from "@/components/ui/table-scroll";
 
 const STATUS_STYLES: Record<string, string> = {
   DRAFT: "bg-[var(--bn-admin-surface-2)] text-[var(--bn-admin-orange)]",
@@ -35,7 +36,7 @@ export default async function QuotesPage({ params }: { params: Promise<{ slug: s
       <QuoteForm storeSlug={slug} />
 
       <div className="overflow-hidden rounded-xl border bg-background">
-        <div className="overflow-x-auto">
+        <TableScroll>
           <table className="w-full min-w-[820px] text-sm">
             <thead className="border-b bg-muted/40 text-left text-xs uppercase text-muted-foreground">
               <tr>
@@ -90,7 +91,7 @@ export default async function QuotesPage({ params }: { params: Promise<{ slug: s
               )}
             </tbody>
           </table>
-        </div>
+        </TableScroll>
       </div>
     </div>
   );

@@ -6,6 +6,7 @@ import { assertStorePermission } from "@/lib/access/assert-store-access";
 import { ReferralSettingsForm } from "@/components/dashboard/referral-settings-form";
 import { ReferralRowActions } from "@/components/dashboard/referral-row-actions";
 import { formatDate } from "@/lib/i18n/locale";
+import { TableScroll } from "@/components/ui/table-scroll";
 
 const PAGE_SIZE = 25;
 
@@ -69,7 +70,7 @@ export default async function ReferralsPage({
       <p className="text-sm text-muted-foreground">
         {total} referral{total === 1 ? "" : "s"}, {rewarded} rewarded, {waiting} waiting.
       </p>
-      <div className="overflow-x-auto rounded-lg border bg-background">
+      <TableScroll className="rounded-lg border bg-background">
         <table className="w-full text-sm">
           <thead className="border-b bg-muted/40 text-left text-xs uppercase text-muted-foreground">
             <tr><th className="px-4 py-2">Referred by</th><th className="px-4 py-2">New customer</th><th className="px-4 py-2">Status</th><th className="px-4 py-2">Points</th><th className="px-4 py-2">Joined</th><th className="px-4 py-2" /></tr>
@@ -99,7 +100,7 @@ export default async function ReferralsPage({
             )}
           </tbody>
         </table>
-      </div>
+      </TableScroll>
       {pages > 1 && (
         <div className="flex items-center justify-between text-sm">
           {page > 1 ? <Link href={`?page=${page - 1}`} className="rounded-md border px-3 py-1.5">Previous</Link> : <span />}

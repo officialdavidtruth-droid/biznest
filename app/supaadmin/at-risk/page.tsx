@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { listAtRiskStores } from "@/lib/actions/admin";
 import { formatDate } from "@/lib/i18n/locale";
+import { TableScroll } from "@/components/ui/table-scroll";
 
 export const dynamic = "force-dynamic";
 
@@ -22,7 +23,7 @@ export default async function AtRiskPage() {
         Stores showing early warning signs. Owners were already nudged once in-app and by email, so a personal message from you lands next.
       </p>
       <div className="overflow-hidden rounded-lg border bg-background">
-        <div className="overflow-x-auto">
+        <TableScroll>
           <table className="w-full min-w-[640px] text-sm">
             <thead className="border-b bg-muted/40 text-left text-xs uppercase text-muted-foreground">
               <tr>
@@ -59,7 +60,7 @@ export default async function AtRiskPage() {
               )}
             </tbody>
           </table>
-        </div>
+        </TableScroll>
       </div>
     </div>
   );

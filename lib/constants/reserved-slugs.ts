@@ -89,4 +89,22 @@ export const RESERVED_SLUGS = new Set([
   // route folder yet but are reserved for future use
   "admin",
   "dashboard",
+  // Official-looking words a vendor must not be able to claim (phishing risk,
+  // and future route collisions): biznest.space/pay, /support, /help ...
+  "pay",
+  "payment",
+  "payments",
+  "checkout",
+  "cart",
+  "pricing",
+  "about",
+  "help",
+  "support",
+  "blog",
+  "contact",
+  "billing",
+  "security",
+  "official",
+  "verify",
+  "wallet",
 ]);

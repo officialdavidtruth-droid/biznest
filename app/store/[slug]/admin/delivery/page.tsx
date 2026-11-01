@@ -2,6 +2,7 @@
 import { prisma } from "@/lib/prisma";
 import { DeliveryZoneForm } from "@/components/dashboard/delivery-zone-form";
 import { DeliveryZoneRow } from "@/components/dashboard/delivery-zone-row";
+import { TableScroll } from "@/components/ui/table-scroll";
 
 export default async function DeliveryPage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
@@ -28,7 +29,7 @@ export default async function DeliveryPage({ params }: { params: Promise<{ slug:
 
       <DeliveryZoneForm storeSlug={slug} currency={currency} />
 
-      <div className="overflow-x-auto rounded-lg border bg-background">
+      <TableScroll className="rounded-lg border bg-background">
         <table className="min-w-[640px] w-full text-sm">
           <thead className="border-b bg-muted/40 text-left text-xs uppercase text-muted-foreground">
             <tr>
@@ -48,7 +49,7 @@ export default async function DeliveryPage({ params }: { params: Promise<{ slug:
             )}
           </tbody>
         </table>
-      </div>
+      </TableScroll>
     </div>
   );
 }

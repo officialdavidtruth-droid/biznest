@@ -8,6 +8,7 @@ import { LeadDrawer } from "@/components/dashboard/crm-lead-drawer";
 import { SOURCES, STAGES, followUpState, initials, isClosed, money, nextStage, shortDate, sourceLabel, stageOf, type Lead } from "@/components/dashboard/crm-types";
 import { currencySymbol } from "@/lib/utils/format-money";
 import { formatNumber } from "@/lib/i18n/locale";
+import { TableScroll } from "@/components/ui/table-scroll";
 
 type Notice = { tone: "ok" | "error"; text: string } | null;
 
@@ -166,7 +167,7 @@ export function CrmWorkspace({
         </div>
       ) : (
         <div className="overflow-hidden rounded-2xl border bg-background">
-          <div className="overflow-x-auto">
+          <TableScroll>
             <table className="w-full min-w-[720px] text-left text-sm">
               <thead><tr className="border-b text-xs text-muted-foreground"><th className="px-4 py-3 font-medium">Lead</th><th className="px-4 py-3 font-medium">Stage</th><th className="px-4 py-3 font-medium">Source</th><th className="px-4 py-3 text-right font-medium">Value</th><th className="px-4 py-3 font-medium">Follow-up</th></tr></thead>
               <tbody>
@@ -185,7 +186,7 @@ export function CrmWorkspace({
                 })}
               </tbody>
             </table>
-          </div>
+          </TableScroll>
           {!filtered.length && <p className="p-10 text-center text-sm text-muted-foreground">No leads match these filters.</p>}
         </div>
       )}

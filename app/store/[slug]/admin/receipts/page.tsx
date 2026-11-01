@@ -6,6 +6,7 @@ import { prisma } from "@/lib/prisma";
 import { assertAnyStorePermission } from "@/lib/access/assert-store-access";
 import { formatDate } from "@/lib/i18n/locale";
 import { moneyFormatter } from "@/lib/utils/format-money";
+import { TableScroll } from "@/components/ui/table-scroll";
 
 const PAID_ORDER = ["PAID", "IN_PROGRESS", "DELIVERED", "COMPLETED"] as const;
 const TABS = [
@@ -114,7 +115,7 @@ export default async function ReceiptsPage({
         ))}
       </div>
 
-      <div className="overflow-x-auto rounded-lg border bg-background">
+      <TableScroll className="rounded-lg border bg-background">
         <table className="w-full min-w-[640px] text-sm">
           <thead className="border-b bg-muted/40 text-left text-xs uppercase text-muted-foreground">
             <tr>
@@ -155,7 +156,7 @@ export default async function ReceiptsPage({
             )}
           </tbody>
         </table>
-      </div>
+      </TableScroll>
       {rows.length === 50 && <p className="mt-2 text-xs text-muted-foreground">Showing the latest 50.</p>}
     </div>
   );

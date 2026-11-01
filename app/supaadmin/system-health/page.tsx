@@ -3,6 +3,7 @@ import type { HealthStatus } from "@/lib/actions/system-health";
 import type { SystemEvent } from "@prisma/client";
 import { formatDate } from "@/lib/i18n/locale";
 import { checkCronHealth } from "@/lib/observability/cron";
+import { TableScroll } from "@/components/ui/table-scroll";
 
 export const dynamic = "force-dynamic"; // always live — never cache a health page
 
@@ -88,7 +89,7 @@ export default async function SystemHealthPage() {
         <p className="text-xs text-muted-foreground">Last successful run per cron</p>
       </div>
       <div className="mb-6 overflow-hidden rounded-lg border bg-background">
-        <div className="overflow-x-auto">
+        <TableScroll>
           <table className="w-full min-w-[480px] text-sm">
             <tbody>
               {crons.map((c) => (
@@ -104,7 +105,7 @@ export default async function SystemHealthPage() {
               ))}
             </tbody>
           </table>
-        </div>
+        </TableScroll>
       </div>
 
       <div className="mb-2 flex items-center justify-between">
@@ -112,7 +113,7 @@ export default async function SystemHealthPage() {
         <p className="text-xs text-muted-foreground">Most recent 100, all categories</p>
       </div>
       <div className="overflow-hidden rounded-lg border bg-background">
-        <div className="overflow-x-auto">
+        <TableScroll>
         <table className="w-full min-w-[640px] text-sm">
           <thead className="border-b bg-muted/40 text-left text-xs uppercase text-muted-foreground">
             <tr>
@@ -157,7 +158,7 @@ export default async function SystemHealthPage() {
             )}
           </tbody>
         </table>
-        </div>
+        </TableScroll>
       </div>
     </div>
   );

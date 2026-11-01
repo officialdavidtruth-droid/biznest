@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { Printer } from "lucide-react";
 import type { ReceiptData } from "@/lib/receipts/load";
+import { TableScroll } from "@/components/ui/table-scroll";
 
 type Paper = "thermal" | "a4";
 
@@ -75,7 +76,7 @@ export function ReceiptSheet({ receipt, backHref }: { receipt: ReceiptData; back
           <span className={`rounded border-2 px-2 py-1 text-xs font-bold uppercase ${TONE[receipt.status.tone]}`}>{receipt.status.label}</span>
         </div>
 
-        <table className="w-full">
+        <TableScroll><table className="w-full">
           <thead>
             <tr className="border-b border-gray-400 text-left text-[10px] uppercase text-gray-500">
               <th className="py-1 font-semibold">Item</th>
@@ -94,7 +95,7 @@ export function ReceiptSheet({ receipt, backHref }: { receipt: ReceiptData; back
               </tr>
             ))}
           </tbody>
-        </table>
+        </table></TableScroll>
 
         <dl className={`mt-3 space-y-1 ${thermal ? "" : "ml-auto max-w-xs"}`}>
           {receipt.totals.map((row) => (

@@ -5,6 +5,7 @@ import { ArrowLeft } from "lucide-react";
 import { getInventoryItem, listStockHistory } from "@/lib/actions/inventory";
 import { StockAdjustForm } from "@/components/dashboard/stock-adjust-form";
 import { formatDate, formatNumber } from "@/lib/i18n/locale";
+import { TableScroll } from "@/components/ui/table-scroll";
 
 const MOVEMENT_LABELS: Record<string, string> = {
   RESTOCK: "Restock",
@@ -77,7 +78,7 @@ export default async function InventoryItemPage({
 
       <div className="rounded-lg border bg-background">
         <h2 className="border-b px-4 py-3 text-sm font-semibold">Stock history</h2>
-        <table className="w-full text-sm">
+        <TableScroll><table className="w-full text-sm">
           <thead className="border-b bg-muted/40 text-left text-xs uppercase text-muted-foreground">
             <tr>
               <th className="px-4 py-2">Date</th>
@@ -108,7 +109,7 @@ export default async function InventoryItemPage({
               </tr>
             )}
           </tbody>
-        </table>
+        </table></TableScroll>
       </div>
     </div>
   );

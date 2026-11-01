@@ -3,6 +3,7 @@ import { getPayoutCounts, getPayoutWallet, listPayouts, type PayoutTab } from "@
 import { PayoutRowActions } from "@/components/dashboard/payout-row-actions";
 import { PayoutWalletPanel } from "@/components/dashboard/payout-wallet-panel";
 import { formatDate, formatNumber } from "@/lib/i18n/locale";
+import { TableScroll } from "@/components/ui/table-scroll";
 
 export const dynamic = "force-dynamic";
 // Releasing a batch sends transfers one by one.
@@ -65,7 +66,7 @@ export default async function PayoutsPage({ searchParams }: { searchParams: Prom
       </div>
 
       <div className="overflow-hidden rounded-lg border bg-background">
-        <div className="overflow-x-auto">
+        <TableScroll>
           <table className="w-full min-w-[820px] text-sm">
             <thead className="border-b bg-muted/40 text-left text-xs uppercase text-muted-foreground">
               <tr>
@@ -109,7 +110,7 @@ export default async function PayoutsPage({ searchParams }: { searchParams: Prom
               })}
             </tbody>
           </table>
-        </div>
+        </TableScroll>
       </div>
     </div>
   );

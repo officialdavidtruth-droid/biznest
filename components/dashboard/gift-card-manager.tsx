@@ -6,6 +6,7 @@ import { toast } from "sonner";
 import { issueGiftCardAction, redeemGiftCardInStoreAction, setGiftCardStatusAction } from "@/lib/actions/gift-card";
 import { currencySymbol, formatMoney } from "@/lib/utils/format-money";
 import { formatDate } from "@/lib/i18n/locale";
+import { TableScroll } from "@/components/ui/table-scroll";
 
 export type GiftCardRow = {
   id: string;
@@ -102,7 +103,7 @@ export function GiftCardManager({ slug, cards }: { slug: string; cards: GiftCard
         <button disabled={pending} className="rounded-md border px-3 py-1.5 text-sm font-medium disabled:opacity-50">Deduct</button>
       </form>
 
-      <div className="overflow-x-auto rounded-lg border bg-background">
+      <TableScroll className="rounded-lg border bg-background">
         <table className="w-full text-sm">
           <thead className="border-b bg-muted/40 text-left text-xs uppercase text-muted-foreground">
             <tr>
@@ -134,7 +135,7 @@ export function GiftCardManager({ slug, cards }: { slug: string; cards: GiftCard
             )}
           </tbody>
         </table>
-      </div>
+      </TableScroll>
     </div>
   );
 }

@@ -3,6 +3,7 @@
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { releaseAllPayouts, releaseStorePayouts, type PayoutWallet, type ReleaseSummary } from "@/lib/actions/admin-payouts";
+import { TableScroll } from "@/components/ui/table-scroll";
 
 const naira = (n: number) => `₦${n.toLocaleString("en-NG", { maximumFractionDigits: 2 })}`;
 const GATEWAY_LABEL = { PAYSTACK: "Paystack", FLUTTERWAVE: "Flutterwave", KORAPAY: "Korapay" } as const;
@@ -78,7 +79,7 @@ export function PayoutWalletPanel({ wallet }: { wallet: PayoutWallet }) {
       {message && <p className={`mt-3 text-xs ${message.ok ? "text-emerald-700" : "text-red-600"}`}>{message.text}</p>}
 
       {wallet.stores.length > 0 && (
-        <div className="mt-4 overflow-x-auto">
+        <TableScroll className="mt-4">
           <table className="w-full min-w-[480px] text-sm">
             <thead className="border-b text-left text-xs uppercase text-muted-foreground">
               <tr>
@@ -107,7 +108,7 @@ export function PayoutWalletPanel({ wallet }: { wallet: PayoutWallet }) {
               ))}
             </tbody>
           </table>
-        </div>
+        </TableScroll>
       )}
     </section>
   );

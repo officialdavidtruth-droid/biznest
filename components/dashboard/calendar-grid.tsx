@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { createUnitBooking, updateBookingGuestInfo, updateUnitStatus, checkOutUnitBooking } from "@/lib/actions/service-unit";
 import { SingleImageUpload } from "@/components/forms/single-image-upload";
 import { formatDate } from "@/lib/i18n/locale";
+import { TableScroll } from "@/components/ui/table-scroll";
 
 type Booking = {
   id: string;
@@ -105,7 +106,7 @@ export function CalendarGrid({
       {services.map((service) => (
         <div key={service.id} className="overflow-hidden rounded-2xl border">
           <div className="border-b bg-muted/40 px-4 py-2.5 text-sm font-semibold">{service.name}</div>
-          <div className="overflow-x-auto">
+          <TableScroll>
             <table className="w-full border-collapse text-xs">
               <thead>
                 <tr className="border-b bg-background">
@@ -199,7 +200,7 @@ export function CalendarGrid({
                 })}
               </tbody>
             </table>
-          </div>
+          </TableScroll>
         </div>
       ))}
 

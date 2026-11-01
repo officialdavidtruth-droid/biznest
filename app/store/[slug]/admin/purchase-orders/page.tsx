@@ -2,6 +2,7 @@
 import Link from "next/link";
 import { listPurchaseOrders } from "@/lib/actions/purchase-order";
 import { formatNumber } from "@/lib/i18n/locale";
+import { TableScroll } from "@/components/ui/table-scroll";
 
 const STATUS_STYLES: Record<string, string> = {
   DRAFT: "bg-muted text-muted-foreground",
@@ -27,7 +28,7 @@ export default async function PurchaseOrdersListPage({ params }: { params: Promi
         </Link>
       </div>
 
-      <div className="overflow-x-auto rounded-lg border bg-background">
+      <TableScroll className="rounded-lg border bg-background">
         <table className="min-w-[640px] w-full text-sm">
           <thead className="border-b bg-muted/40 text-left text-xs uppercase text-muted-foreground">
             <tr>
@@ -67,7 +68,7 @@ export default async function PurchaseOrdersListPage({ params }: { params: Promi
             )}
           </tbody>
         </table>
-      </div>
+      </TableScroll>
     </div>
   );
 }

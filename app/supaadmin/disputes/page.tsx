@@ -3,6 +3,7 @@ import { listDisputes } from "@/lib/actions/admin";
 import { DISPUTE_STATUS_CONFIG } from "@/lib/constants/dispute";
 import type { DisputeStatus } from "@prisma/client";
 import { formatDate, formatNumber } from "@/lib/i18n/locale";
+import { TableScroll } from "@/components/ui/table-scroll";
 
 const TABS: { label: string; value: DisputeStatus | "ALL" }[] = [
   { label: "Open", value: "OPEN" },
@@ -54,7 +55,7 @@ export default async function DisputesPage({
       </div>
 
       <div className="overflow-hidden rounded-lg border bg-background">
-        <div className="overflow-x-auto">
+        <TableScroll>
         <table className="w-full min-w-[640px] text-sm">
           <thead className="border-b bg-muted/40 text-left text-xs uppercase text-muted-foreground">
             <tr>
@@ -100,7 +101,7 @@ export default async function DisputesPage({
             )}
           </tbody>
         </table>
-        </div>
+        </TableScroll>
       </div>
     </div>
   );

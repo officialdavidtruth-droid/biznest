@@ -13,6 +13,7 @@ import {
 } from "@/lib/actions/booking";
 import { BookingStatusBadge } from "@/components/dashboard/booking-status-badge";
 import { formatDate } from "@/lib/i18n/locale";
+import { TableScroll } from "@/components/ui/table-scroll";
 
 type Unit = {
   id: string;
@@ -245,7 +246,7 @@ export function ReservationsWorkspace({
             className="mb-4 w-full rounded-lg border px-3 py-2 text-sm"
           />
 
-          <div className="overflow-x-auto rounded-lg border">
+          <TableScroll className="rounded-lg border">
             <table className="w-full min-w-[640px] text-sm">
               <thead className="border-b bg-muted/40 text-left text-xs uppercase text-muted-foreground">
                 <tr>
@@ -290,7 +291,7 @@ export function ReservationsWorkspace({
                 })}
               </tbody>
             </table>
-          </div>
+          </TableScroll>
         </section>
 
         <aside className="space-y-4">

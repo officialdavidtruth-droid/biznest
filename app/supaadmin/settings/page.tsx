@@ -1,6 +1,7 @@
 import { getMaintenanceSetting, getAnnouncementSetting, getGatewayAvailability, getLoyaltyRates, getFreeTrialSetting, getMarketingFreeTrialSetting } from "@/lib/actions/site-settings";
 import { listPlans } from "@/lib/actions/admin";
 import { MaintenanceForm, AnnouncementForm, GatewayToggle, PlanPricingRow, LoyaltyRatesForm, FreeTrialForm } from "@/components/dashboard/settings-forms";
+import { TableScroll } from "@/components/ui/table-scroll";
 
 export default async function SupaAdminSettingsPage() {
   const [maintenance, announcement, gatewayAvailability, plans, loyaltyRates, freeTrial, marketingFreeTrial] = await Promise.all([
@@ -68,7 +69,7 @@ export default async function SupaAdminSettingsPage() {
           These prices feed the landing page pricing section and every store owner&apos;s upgrade screen directly — there&apos;s nowhere else to edit them.
         </p>
         <div className="overflow-hidden rounded-lg border bg-background">
-          <div className="overflow-x-auto">
+          <TableScroll>
           <table className="w-full min-w-[560px] text-sm">
             <thead className="border-b bg-muted/40 text-left text-xs uppercase text-muted-foreground">
               <tr>
@@ -106,7 +107,7 @@ export default async function SupaAdminSettingsPage() {
               )}
             </tbody>
           </table>
-          </div>
+          </TableScroll>
         </div>
       </section>
     </div>

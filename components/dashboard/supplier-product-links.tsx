@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { linkSupplierProduct, unlinkSupplierProduct } from "@/lib/actions/supplier";
 import { formatNumber } from "@/lib/i18n/locale";
+import { TableScroll } from "@/components/ui/table-scroll";
 
 type Product = { id: string; name: string };
 type Link = { productId: string; productName: string; supplierSku: string | null; costPrice: number | null };
@@ -85,7 +86,7 @@ export function SupplierProductLinks({
         </button>
       </div>
 
-      <div className="overflow-x-auto rounded-lg border bg-background">
+      <TableScroll className="rounded-lg border bg-background">
         <table className="min-w-[640px] w-full text-sm">
           <thead className="border-b bg-muted/40 text-left text-xs uppercase text-muted-foreground">
             <tr>
@@ -115,7 +116,7 @@ export function SupplierProductLinks({
             )}
           </tbody>
         </table>
-      </div>
+      </TableScroll>
     </div>
   );
 }

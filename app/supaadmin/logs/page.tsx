@@ -1,5 +1,6 @@
 import { listActivityLogs, listDistinctLogActions } from "@/lib/actions/admin";
 import { formatDate } from "@/lib/i18n/locale";
+import { TableScroll } from "@/components/ui/table-scroll";
 
 export default async function ActivityLogPage({
   searchParams,
@@ -42,7 +43,7 @@ export default async function ActivityLogPage({
       </form>
 
       <div className="overflow-hidden rounded-lg border bg-background">
-        <div className="overflow-x-auto">
+        <TableScroll>
         <table className="w-full min-w-[640px] text-sm">
           <thead className="border-b bg-muted/40 text-left text-xs uppercase text-muted-foreground">
             <tr>
@@ -87,7 +88,7 @@ export default async function ActivityLogPage({
             )}
           </tbody>
         </table>
-        </div>
+        </TableScroll>
       </div>
 
       {totalPages > 1 && (

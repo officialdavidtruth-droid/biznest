@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import { getCanonicalBusinessType } from "@/lib/business-identity";
-import { hasBankPayoutDestination, needsPayoutReconnect } from "@/lib/payments/payout-target";
+import { manualPayInfoFromStore, manualPayReady } from "@/lib/payments/manual-transfer";
+import { resolveStoreGateway } from "@/lib/payments/store-gateway";
 import { storeUrl } from "@/lib/seo";
 import {
   buildChecklist,
@@ -34,10 +35,14 @@ export async function loadFirstSaleChecklist(storeId: string): Promise<FirstSale
       onboardingProfile: true,
       customDomain: true,
       customDomainStatus: true,
-      payoutBankCode: true,
-      payoutAccountNumber: true,
-      paystackSubaccountCode: true,
-      flutterwaveSubaccountId: true,
+      manualPayEnabled: true,
+      manualBankName: true,
+      manualAccountName: true,
+      manualAccountNumber: true,
+      manualPayNote: true,
+      whatsappNumber: true,
+      contactPhone: true,
+      socialLinks: true,
       business: { select: { category: true, sellsProducts: true, offersServices: true } },
     },
   });
@@ -63,8 +68,9 @@ export async function loadFirstSaleChecklist(storeId: string): Promise<FirstSale
   const state = buildChecklist({
     logoUrl: store.logoUrl,
     realListingCount: countRealListings(publishedNames) + roomCount,
-    hasBankPayout: hasBankPayoutDestination(store),
-    needsPayoutReconnect: needsPayoutReconnect(store),
+    // Checkout works once the store has its published bank details OR its own gateway keys switched on.
+    hasBankPayout: manualPayReady(manualPayInfoFromStore(store)) || (await resolveStoreGateway(storeId)).status === "ok",
+    needsPayoutReconnect: false,
     linkShared: Boolean(meta.linkSharedAt),
     category,
     ...caps,

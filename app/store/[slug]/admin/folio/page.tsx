@@ -6,6 +6,7 @@ import { assertAnyStorePermission } from "@/lib/access/assert-store-access";
 import { formatDate } from "@/lib/i18n/locale";
 import { moneyFormatter } from "@/lib/utils/format-money";
 import { SettleFolioButton, VoidChargeButton } from "@/components/dashboard/folio-actions";
+import { TableScroll } from "@/components/ui/table-scroll";
 
 export default async function FolioPage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
@@ -61,7 +62,7 @@ export default async function FolioPage({ params }: { params: Promise<{ slug: st
               </div>
 
               {r.folioCharges.length > 0 ? (
-                <table className="w-full text-sm">
+                <TableScroll><table className="w-full text-sm">
                   <tbody>
                     {r.folioCharges.map((c) => (
                       <tr key={c.id} className="border-b last:border-0">
@@ -77,7 +78,7 @@ export default async function FolioPage({ params }: { params: Promise<{ slug: st
                       </tr>
                     ))}
                   </tbody>
-                </table>
+                </table></TableScroll>
               ) : (
                 <p className="p-4 text-sm text-muted-foreground">Nothing charged to this room yet.</p>
               )}

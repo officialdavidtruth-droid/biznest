@@ -5,6 +5,7 @@ import { InvoiceRowActions } from "@/components/dashboard/invoice-row-actions";
 import { prisma } from "@/lib/prisma";
 import { formatDate, formatNumber } from "@/lib/i18n/locale";
 import { getInHouseReservations } from "@/lib/actions/folio";
+import { TableScroll } from "@/components/ui/table-scroll";
 
 const STATUS_STYLES: Record<string, string> = {
   DRAFT: "bg-[var(--bn-admin-surface)] text-[var(--bn-admin-text)]",
@@ -41,7 +42,7 @@ export default async function InvoicesPage({ params }: { params: Promise<{ slug:
 
       <InvoiceForm storeSlug={slug} currency={currency} />
 
-      <div className="overflow-x-auto rounded-lg border bg-background">
+      <TableScroll className="rounded-lg border bg-background">
         <table className="min-w-[640px] w-full text-sm">
           <thead className="border-b bg-muted/40 text-left text-xs uppercase text-muted-foreground">
             <tr>
@@ -83,7 +84,7 @@ export default async function InvoicesPage({ params }: { params: Promise<{ slug:
             )}
           </tbody>
         </table>
-      </div>
+      </TableScroll>
     </div>
   );
         }

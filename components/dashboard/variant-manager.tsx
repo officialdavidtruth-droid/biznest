@@ -5,6 +5,7 @@ import { toast } from "sonner";
 import { Layers3, Minus, Plus, Trash2 } from "lucide-react";
 import { setVariantOptions, updateVariant, deleteVariant } from "@/lib/actions/variant";
 import { currencySymbol } from "@/lib/utils/format-money";
+import { TableScroll } from "@/components/ui/table-scroll";
 
 type MenuItem = { id: string; name: string; hasVariants: boolean; variantOptions: { name: string; values: string[] }[] | null };
 type Variant = {
@@ -163,7 +164,7 @@ export function VariantManager({
           {variants.length === 0 ? (
             <p className="text-sm text-muted-foreground">No variants yet — set up options above.</p>
           ) : (
-            <div className="overflow-x-auto rounded-lg border">
+            <TableScroll className="rounded-lg border">
               <table className="min-w-[640px] w-full text-sm">
                 <thead className="border-b bg-muted/40 text-left text-xs uppercase text-muted-foreground">
                   <tr>
@@ -207,7 +208,7 @@ export function VariantManager({
                   ))}
                 </tbody>
               </table>
-            </div>
+            </TableScroll>
           )}
         </div>
       </section>

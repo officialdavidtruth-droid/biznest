@@ -1,6 +1,7 @@
 // Route: /store/[slug]/admin/suppliers
 import Link from "next/link";
 import { listSuppliers } from "@/lib/actions/supplier";
+import { TableScroll } from "@/components/ui/table-scroll";
 
 export default async function SuppliersListPage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
@@ -18,7 +19,7 @@ export default async function SuppliersListPage({ params }: { params: Promise<{ 
         </Link>
       </div>
 
-      <div className="overflow-x-auto rounded-lg border bg-background">
+      <TableScroll className="rounded-lg border bg-background">
         <table className="min-w-[640px] w-full text-sm">
           <thead className="border-b bg-muted/40 text-left text-xs uppercase text-muted-foreground">
             <tr>
@@ -52,7 +53,7 @@ export default async function SuppliersListPage({ params }: { params: Promise<{ 
             )}
           </tbody>
         </table>
-      </div>
+      </TableScroll>
     </div>
   );
 }

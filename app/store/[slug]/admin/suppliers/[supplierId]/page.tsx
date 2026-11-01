@@ -6,6 +6,7 @@ import { listProducts } from "@/lib/actions/product";
 import { SupplierForm } from "@/components/dashboard/supplier-form";
 import { SupplierProductLinks } from "@/components/dashboard/supplier-product-links";
 import { formatNumber } from "@/lib/i18n/locale";
+import { TableScroll } from "@/components/ui/table-scroll";
 
 export default async function SupplierDetailPage({
   params,
@@ -58,7 +59,7 @@ export default async function SupplierDetailPage({
             New purchase order
           </Link>
         </div>
-        <div className="overflow-x-auto rounded-lg border bg-background">
+        <TableScroll className="rounded-lg border bg-background">
           <table className="min-w-[640px] w-full text-sm">
             <thead className="border-b bg-muted/40 text-left text-xs uppercase text-muted-foreground">
               <tr>
@@ -88,7 +89,7 @@ export default async function SupplierDetailPage({
               )}
             </tbody>
           </table>
-        </div>
+        </TableScroll>
       </div>
     </div>
   );

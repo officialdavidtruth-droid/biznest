@@ -2,6 +2,7 @@ import { listUsers, listPlans } from "@/lib/actions/admin";
 import { UserPlanSelect, UserTrialControl, UserActionButtons } from "@/components/dashboard/user-plan-controls";
 import { Search } from "lucide-react";
 import { formatDate } from "@/lib/i18n/locale";
+import { TableScroll } from "@/components/ui/table-scroll";
 
 export default async function UsersPage({
   searchParams,
@@ -30,7 +31,7 @@ export default async function UsersPage({
       </div>
 
       <div className="overflow-hidden rounded-2xl" style={{ background: "hsl(var(--muted))", border: "1px solid hsl(var(--border))" }}>
-        <div className="overflow-x-auto">
+        <TableScroll>
         <table className="w-full min-w-[720px] text-sm">
           <thead>
             <tr style={{ borderBottom: "1px solid hsl(var(--border))" }}>
@@ -99,7 +100,7 @@ export default async function UsersPage({
             )}
           </tbody>
         </table>
-        </div>
+        </TableScroll>
       </div>
     </div>
   );

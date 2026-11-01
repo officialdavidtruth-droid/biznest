@@ -3,6 +3,7 @@ import { getStoreBranding } from "@/lib/actions/store-branding";
 import { getMyReferralInfo } from "@/lib/actions/referral";
 import { ReferralPanel } from "@/components/account/referral-panel";
 import { formatDate, formatNumber } from "@/lib/i18n/locale";
+import { TableScroll } from "@/components/ui/table-scroll";
 
 export default async function Page({ params, searchParams }: { params: Promise<{ slug: string }>; searchParams: Promise<{ ref?: string }> }) {
   const { slug } = await params;
@@ -35,7 +36,7 @@ export default async function Page({ params, searchParams }: { params: Promise<{
           />
           <section>
             <h2 className="mb-2 text-sm font-semibold">Your referrals</h2>
-            <div className="overflow-x-auto rounded-lg border">
+            <TableScroll className="rounded-lg border">
               <table className="w-full text-sm">
                 <thead className="border-b bg-muted/40 text-left text-xs uppercase text-muted-foreground">
                   <tr><th className="px-4 py-2">Friend</th><th className="px-4 py-2">Status</th><th className="px-4 py-2">Points</th><th className="px-4 py-2">Date</th></tr>
@@ -54,7 +55,7 @@ export default async function Page({ params, searchParams }: { params: Promise<{
                   )}
                 </tbody>
               </table>
-            </div>
+            </TableScroll>
           </section>
         </>
       )}

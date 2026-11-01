@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import { markDomainVerifiedManually } from "@/lib/actions/admin";
+import { TableScroll } from "@/components/ui/table-scroll";
 
 const STATUS_STYLE: Record<string, string> = {
   VERIFIED: "bg-[var(--bn-admin-surface-2)] text-[var(--bn-admin-orange)]",
@@ -34,7 +35,7 @@ export default async function DomainsOverview() {
       </p>
 
       <div className="overflow-hidden rounded-lg border bg-background">
-        <div className="overflow-x-auto">
+        <TableScroll>
         <table className="w-full min-w-[640px] text-sm">
           <thead className="border-b bg-muted/40 text-left text-xs uppercase text-muted-foreground">
             <tr><th className="px-4 py-2">Store</th><th className="px-4 py-2">Domain</th><th className="px-4 py-2">Plan</th><th className="px-4 py-2">Status</th><th className="px-4 py-2"></th></tr>
@@ -62,7 +63,7 @@ export default async function DomainsOverview() {
             )}
           </tbody>
         </table>
-        </div>
+        </TableScroll>
       </div>
     </div>
   );

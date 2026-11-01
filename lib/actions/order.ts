@@ -28,6 +28,7 @@ import { PLATFORM_COMMISSION_PERCENT } from "@/lib/constants/commission";
 import { buildStoreUrl } from "@/lib/store-url";
 import { manualPayInfoFromStore, manualPayReady } from "@/lib/payments/manual-transfer";
 import { resolveStoreGateway } from "@/lib/payments/store-gateway";
+import { getTransferHolds } from "@/lib/payments/stock-holds";
 import { getOrderPayableNaira } from "@/lib/payments/order-payable";
 import { settlePrepaidQuoteOrder } from "@/lib/payments/settle-prepaid-order";
 import { revalidatePath } from "next/cache";
@@ -443,6 +444,8 @@ export async function startCheckout(
   const mixed = findMixedCurrencies(products.map((p) => p.currency));
   if (mixed) return { success: false, error: mixedCurrencyMessage(mixed) };
 
+  // Units already promised to other customers' unpaid bank-transfer orders are not available to this one.
+  const holds = await getTransferHolds(store.id, { productIds, variantIds, excludeBuyerId: session.user.id });
   const lines: { unitPrice: number; quantity: number }[] = [];
   for (const item of data.items) {
     const product = products.find((p) => p.id === item.productId);
@@ -463,13 +466,15 @@ export async function startCheckout(
       if (recipeNeeds.some((n) => { const s = stock.find((x) => x.id === n.inventoryItemId); return s && s.quantity < n.quantity; })) {
         return { success: false, error: `${product.name} is not available in that quantity right now.` };
       }
-    } else if (variant && variant.quantity < item.quantity) {
-      return { success: false, error: `Only ${variant.quantity} of ${variant.label} is available.` };
+    } else if (variant && variant.quantity - (holds.byVariant.get(variant.id) ?? 0) < item.quantity) {
+      const left = Math.max(0, variant.quantity - (holds.byVariant.get(variant.id) ?? 0));
+      return { success: false, error: `Only ${left} of ${variant.label} is available right now.` };
     }
     if (!variant && !recipeNeeds && product.type === "PHYSICAL") {
       const inventory = await prisma.inventoryItem.findFirst({ where: { productId: product.id, storeId: store.id }, select: { quantity: true } });
-      if (inventory && inventory.quantity < item.quantity) {
-        return { success: false, error: `Only ${inventory.quantity} of ${product.name} is available.` };
+      const free = inventory ? inventory.quantity - (holds.byProduct.get(product.id) ?? 0) : 0;
+      if (inventory && free < item.quantity) {
+        return { success: false, error: `Only ${Math.max(0, free)} of ${product.name} is available right now.` };
       }
     }
     lines.push({ unitPrice: variant?.price == null ? Number(product.price) : Number(variant.price), quantity: item.quantity });
