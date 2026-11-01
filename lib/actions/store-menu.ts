@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { revalidatePath } from "next/cache";
 import { assertStorePermission } from "@/lib/access/assert-store-access";
 import { sanitizeCustomUrl, MENU_PAGE_OPTIONS, type MenuLinkType } from "@/lib/storefront-menu";
+import { hasPageContent } from "@/lib/storefront/page-blocks";
 import { filterAvailablePages, isStorePageAvailable, type StoreIdentity } from "@/lib/store-pages";
 import type { ActionResult } from "@/types/actions";
 
@@ -24,6 +25,11 @@ async function getStoreIdentity(storeId: string): Promise<StoreIdentity> {
     select: { businessType: true, business: { select: { category: true } }, template: { select: { name: true } } },
   });
   return { businessCategory: s?.business?.category ?? null, storeBusinessType: s?.businessType ?? null, templateName: s?.template?.name ?? null };
+}
+
+/** Slugs of published pages that have real owner-written text. */
+function writtenPageSet(rows: { slug: string; content: unknown }[]): Set<string> {
+  return new Set(rows.filter((r) => hasPageContent(r.content)).map((r) => r.slug));
 }
 
 async function access(slug: string) {
@@ -50,12 +56,15 @@ export async function getMenuEditorData(slug: string) {
     prisma.storePage.findMany({
       where: { storeId: a.store.id, isPublished: true },
       orderBy: { title: "asc" },
-      select: { slug: true, title: true },
+      select: { slug: true, title: true, content: true },
     }),
   ]);
   // Pages the owner created in the Pages panel that aren't already built-in options.
   const builtIn = new Set(MENU_PAGE_OPTIONS.map((p) => p.path));
-  const pages = storePages.filter((p: { slug: string }) => !builtIn.has(`/${p.slug}`) && p.slug !== "home");
+  // Only pages with real owner-written content: template content rows and empty placeholders are not pages.
+  const pages = storePages
+    .filter((p: { slug: string; content: unknown }) => !builtIn.has(`/${p.slug}`) && p.slug !== "home" && hasPageContent(p.content))
+    .map((p: { slug: string; title: string }) => ({ slug: p.slug, title: p.title }));
 
   const tree: MenuNodeInput[] = rows
     .filter((r) => !r.parentId)
@@ -69,19 +78,21 @@ export async function getMenuEditorData(slug: string) {
         .map((c) => ({ label: c.label, linkType: c.linkType as MenuLinkType, target: c.target, openInNewTab: c.openInNewTab })),
     }));
 
-  // Only offer built-in pages this store's skin actually serves.
-  const pageOptions = filterAvailablePages(MENU_PAGE_OPTIONS, await getStoreIdentity(a.store.id));
+  // Only offer built-in pages this store really has: its skin serves them, or the owner wrote and published them
+  // (Blog and a non-template Gallery exist only once written).
+  const written = writtenPageSet(storePages);
+  const pageOptions = filterAvailablePages(MENU_PAGE_OPTIONS, await getStoreIdentity(a.store.id), written);
 
   return { tree, categories, pages, pageOptions, hasCustomMenu: rows.length > 0, storeName: a.store.name };
 }
 
-function validateNode(n: MenuNodeInput, categoryIds: Set<string>, pagePaths: Set<string>, identity: StoreIdentity): string | null {
+function validateNode(n: MenuNodeInput, categoryIds: Set<string>, pagePaths: Set<string>, identity: StoreIdentity, written: ReadonlySet<string>): string | null {
   const label = n.label?.trim();
   if (!label) return "Every menu item needs a label.";
   if (label.length > 40) return `"${label.slice(0, 20)}…" is too long (max 40 characters).`;
   if (n.linkType === "PAGE") {
     if (!MENU_PAGE_OPTIONS.some((p) => p.path === (n.target || "/")) && !pagePaths.has(n.target || "/")) return `"${label}" points to an unknown page.`;
-    if (!isStorePageAvailable(n.target || "/", identity)) return `"${label}" links to a page your store doesn't have. Remove it or pick another page.`;
+    if (!isStorePageAvailable(n.target || "/", identity, written)) return `"${label}" links to a page your store doesn't have. Remove it or pick another page.`;
   } else if (n.linkType === "CATEGORY") {
     if (!n.target || !categoryIds.has(n.target)) return `"${label}" points to a category that no longer exists.`;
   } else if (n.linkType === "CUSTOM") {
@@ -98,16 +109,17 @@ export async function saveStoreMenu(slug: string, tree: MenuNodeInput[]): Promis
 
   const cats = await prisma.category.findMany({ where: { storeId: a.store.id }, select: { id: true } });
   const categoryIds = new Set<string>(cats.map((c: { id: string }) => c.id));
-  const pageRows = await prisma.storePage.findMany({ where: { storeId: a.store.id, isPublished: true }, select: { slug: true } });
-  const pagePaths = new Set<string>(pageRows.map((p: { slug: string }) => `/${p.slug}`));
+  const pageRows = await prisma.storePage.findMany({ where: { storeId: a.store.id, isPublished: true }, select: { slug: true, content: true } });
+  const written = writtenPageSet(pageRows);
+  const pagePaths = new Set<string>(pageRows.filter((p: { content: unknown }) => hasPageContent(p.content)).map((p: { slug: string }) => `/${p.slug}`));
 
   const identity = await getStoreIdentity(a.store.id);
   for (const n of tree) {
-    const err = validateNode(n, categoryIds, pagePaths, identity);
+    const err = validateNode(n, categoryIds, pagePaths, identity, written);
     if (err) return { success: false, error: err };
     if ((n.children?.length ?? 0) > MAX_CHILDREN) return { success: false, error: `"${n.label}" has too many dropdown items (max ${MAX_CHILDREN}).` };
     for (const c of n.children ?? []) {
-      const cerr = validateNode(c, categoryIds, pagePaths, identity);
+      const cerr = validateNode(c, categoryIds, pagePaths, identity, written);
       if (cerr) return { success: false, error: cerr };
     }
   }

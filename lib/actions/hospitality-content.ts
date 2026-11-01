@@ -59,7 +59,7 @@ function normalizeContent(value: unknown): HospitalityGalleryContent {
 export async function getHospitalityGallery(slug: string): Promise<HospitalityGalleryContent> {
   const store = await prisma.store.findUnique({ where: { slug } });
   if (!store) return EMPTY_HOSPITALITY_GALLERY;
-  const page = await prisma.storePage.findUnique({ where: { storeId_slug: { storeId: store.id, slug: "gallery" } } });
+  const page = await prisma.storePage.findUnique({ where: { storeId_slug: { storeId: store.id, slug: "template-gallery" } } });
   return normalizeContent(page?.content);
 }
 
@@ -68,9 +68,9 @@ export async function saveHospitalityGallery(slug: string, content: HospitalityG
   if (!result.success) return result;
   const safe = normalizeContent(content);
   await prisma.storePage.upsert({
-    where: { storeId_slug: { storeId: result.store.id, slug: "gallery" } },
+    where: { storeId_slug: { storeId: result.store.id, slug: "template-gallery" } },
     update: { title: "Gallery", content: safe, isPublished: true },
-    create: { storeId: result.store.id, slug: "gallery", title: "Gallery", content: safe, isPublished: true },
+    create: { storeId: result.store.id, slug: "template-gallery", title: "Gallery", content: safe, isPublished: true },
   });
   revalidatePath(`/${slug}/hotel/gallery`);
   revalidatePath(`/${slug}`);

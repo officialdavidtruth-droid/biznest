@@ -1,5 +1,6 @@
 import { readBuilderConfig } from "@/lib/builder-config";
 import { templateThemeToBuilderConfig } from "@/lib/template-builder-config";
+import { ensureReadableDesign } from "@/lib/storefront/readable-design";
 import type { TemplateTheme } from "@/lib/template-themes";
 
 type StoreRow = {
@@ -12,7 +13,7 @@ type StoreRow = {
 export function catalogDesign(store: StoreRow, theme: TemplateTheme) {
   const overrides = store.sectionOverrides as { builderVersion?: number; builder?: unknown } | null;
   const saved = overrides?.builderVersion === 1 ? readBuilderConfig(overrides.builder) : null;
-  return (saved ?? templateThemeToBuilderConfig(theme, store.name, store.business?.description, store.bannerUrl)).design;
+  return ensureReadableDesign((saved ?? templateThemeToBuilderConfig(theme, store.name, store.business?.description, store.bannerUrl)).design);
 }
 
 /** Only plain, serialisable fields may cross into a client component (Prisma rows hold Decimals and Dates). */

@@ -8,6 +8,7 @@ import { getBusinessExperience } from "@/lib/business-experience";
 import { useCart } from "@/lib/cart-context";
 import { BuilderFooter, BuilderHeader, ItemCard } from "@/components/storefront/builder-renderer";
 import { formatNumber } from "@/lib/i18n/locale";
+import { readableOn } from "@/lib/storefront/readable-design";
 
 export type CatalogEntry = {
   id: string; kind: "product" | "service"; name: string; price: number; currency: string;
@@ -116,7 +117,7 @@ export function CatalogExperience({
   const chip = (active: boolean): React.CSSProperties => ({
     flex: "0 0 auto", cursor: "pointer", fontSize: 13, fontWeight: 650, padding: "8px 15px", borderRadius: 999,
     border: `1px solid ${active ? d.primary : line}`, background: active ? d.primary : "transparent",
-    color: active ? (d.primary.toLowerCase() === "#ffffff" ? d.text : "#fff") : d.text,
+    color: active ? readableOn(d.primary) : d.text,
   });
   const control: React.CSSProperties = { background: d.surface, border: `1px solid ${line}`, color: d.text, borderRadius: Math.min(radius, 12), padding: "10px 12px", fontSize: 14, fontFamily: "inherit" };
 
@@ -130,15 +131,19 @@ export function CatalogExperience({
       <BuilderHeader store={store} d={d} experience={experience} visible={[]} />
 
       {/* Title band */}
-      <section style={{ background: d.surface, borderBottom: `1px solid ${line}` }}>
-        <div className="bn-wrap" style={{ padding: "44px 0 34px" }}>
-          <nav aria-label="Breadcrumb" style={{ fontSize: 13, color: d.muted, marginBottom: 14 }}>
-            <Link href={base}>Home</Link> / {mode === "catalog" ? <span style={{ color: d.text }}>{title}</span> : <><Link href={`${base}/catalog`}>{title}</Link> / <span style={{ color: d.text }}>{mode === "search" ? "Search" : heading}</span></>}
+      <section style={{ background: `linear-gradient(135deg, ${d.primary}18, ${d.accent}12), ${d.surface}`, borderBottom: `1px solid ${line}` }}>
+        <div className="bn-wrap" style={{ padding: "40px 0 36px" }}>
+          <nav aria-label="Breadcrumb" style={{ fontSize: 14, color: d.muted, marginBottom: 18, display: "flex", flexWrap: "wrap", gap: 8 }}>
+            <Link href={base} style={{ textDecoration: "underline", textUnderlineOffset: 3 }}>Home</Link><span aria-hidden>/</span>
+            {mode === "catalog" ? <span style={{ color: d.text, fontWeight: 650 }}>{title}</span> : <><Link href={`${base}/catalog`} style={{ textDecoration: "underline", textUnderlineOffset: 3 }}>{title}</Link><span aria-hidden>/</span><span style={{ color: d.text, fontWeight: 650 }}>{mode === "search" ? "Search" : heading}</span></>}
           </nav>
-          <h1 style={{ fontFamily: d.headingFont, fontSize: "clamp(34px,5vw,60px)", lineHeight: 1.03, letterSpacing: "-.035em", margin: 0 }}>{pageTitle}</h1>
-          <p style={{ margin: "12px 0 0", color: d.muted, lineHeight: 1.6, maxWidth: 560 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
+            <span aria-hidden style={{ width: 6, alignSelf: "stretch", minHeight: 44, borderRadius: 4, background: d.accent }} />
+            <h1 style={{ fontFamily: d.headingFont, fontSize: "clamp(32px,5vw,52px)", lineHeight: 1.08, letterSpacing: "-.03em", margin: 0, color: d.text }}>{pageTitle}</h1>
+          </div>
+          <p style={{ margin: "16px 0 0", color: d.muted, fontSize: 17, lineHeight: 1.6, maxWidth: 620 }}>
             {items.length === 0
-              ? "Nothing has been published yet. Check back soon."
+              ? mode === "category" ? `We're adding items to ${heading ?? "this category"}. Check back soon.` : "New items are on the way. Check back soon."
               : mode === "search" && q.trim()
                 ? `${results.length} ${results.length === 1 ? "result" : "results"} found.`
                 : `${items.length} ${items.length === 1 ? "item" : "items"} to browse${lowest > 0 ? `, starting from ${currency} ${formatNumber(lowest)}` : ""}.`}
@@ -147,7 +152,7 @@ export function CatalogExperience({
       </section>
 
       <div className="bn-wrap" style={{ padding: "28px 0 24px" }}>
-        {/* Search, sort, view */}
+        {items.length > 0 && <>
         <div className="cx-tools" style={{ display: "flex", gap: 12, alignItems: "center", flexWrap: "wrap" }}>
           <label style={{ position: "relative", flex: "1 1 260px", maxWidth: 440 }}>
             <span className="sr-only" style={{ position: "absolute", width: 1, height: 1, overflow: "hidden", clip: "rect(0 0 0 0)" }}>Search {title.toLowerCase()}</span>
@@ -194,12 +199,20 @@ export function CatalogExperience({
           {hasFilters && <button type="button" onClick={reset} style={{ border: 0, background: "transparent", color: d.accent, fontWeight: 700, cursor: "pointer", fontSize: 13 }}>Clear filters</button>}
         </div>
 
+        </>}
         {/* Results */}
         {results.length === 0 ? (
-          <div style={{ textAlign: "center", padding: "72px 16px", border: `1px dashed ${line}`, borderRadius: radius }}>
-            <h2 style={{ fontFamily: d.headingFont, fontSize: 26, margin: 0 }}>{items.length === 0 ? "Nothing here yet" : "No matches"}</h2>
-            <p style={{ color: d.muted, margin: "10px auto 20px", maxWidth: 380, lineHeight: 1.6 }}>{items.length === 0 ? "This store hasn't published anything yet." : "Try a different word, another category or a higher price limit."}</p>
-            {hasFilters && <button type="button" onClick={reset} style={{ border: 0, cursor: "pointer", padding: "12px 22px", borderRadius: d.buttonStyle === "pill" ? 999 : Math.min(radius, 12), background: d.primary, color: "#fff", fontWeight: 800 }}>Show everything</button>}
+          <div style={{ textAlign: "center", padding: "64px 20px", background: d.surface, border: `1px solid ${line}`, borderRadius: radius }}>
+            <div aria-hidden style={{ width: 64, height: 64, margin: "0 auto 18px", borderRadius: 999, display: "grid", placeItems: "center", background: `${d.primary}1f`, color: d.accent }}><Search size={28} /></div>
+            <h2 style={{ fontFamily: d.headingFont, fontSize: 26, margin: 0, color: d.text }}>{items.length === 0 ? (mode === "category" ? `Nothing in ${heading ?? "this category"} yet` : "Nothing here yet") : "No matches"}</h2>
+            <p style={{ color: d.muted, fontSize: 16, margin: "10px auto 24px", maxWidth: 420, lineHeight: 1.6 }}>{items.length === 0 ? "This section is being stocked. Have a look at everything else the store offers." : "Try a different word, another category or a higher price limit."}</p>
+            <div style={{ display: "flex", gap: 10, justifyContent: "center", flexWrap: "wrap" }}>
+              {hasFilters && <button type="button" onClick={reset} style={{ border: 0, cursor: "pointer", padding: "12px 22px", borderRadius: d.buttonStyle === "pill" ? 999 : Math.min(radius, 12), background: d.primary, color: readableOn(d.primary), fontWeight: 800, fontSize: 14 }}>Show everything</button>}
+              {items.length === 0 && <>
+                <Link href={`${base}/catalog`} style={{ padding: "12px 22px", borderRadius: d.buttonStyle === "pill" ? 999 : Math.min(radius, 12), background: d.primary, color: readableOn(d.primary), fontWeight: 800, fontSize: 14 }}>Browse all {isService ? "services" : "products"}</Link>
+                <Link href={base} style={{ padding: "12px 22px", borderRadius: d.buttonStyle === "pill" ? 999 : Math.min(radius, 12), border: `1px solid ${d.text}55`, color: d.text, fontWeight: 800, fontSize: 14 }}>Back to home</Link>
+              </>}
+            </div>
           </div>
         ) : view === "grid" ? (
           <div className="bn-grid" style={{ gridTemplateColumns: "repeat(auto-fill, minmax(230px, 1fr))", gap: 24 }}>
@@ -259,7 +272,7 @@ function QuickAdd({ item, slug, base, d, radius, serviceLabel }: { item: Catalog
   if (item.kind === "service") return <Link href={`${base}/service/${item.id}`} style={outline}>{serviceLabel}</Link>;
   if (item.hasVariants) return <Link href={`${base}/product/${item.id}`} style={outline}>Choose options</Link>;
   return (
-    <button type="button" aria-live="polite" style={{ ...shape, border: 0, background: d.primary, color: "#fff" }}
+    <button type="button" aria-live="polite" style={{ ...shape, border: 0, background: d.primary, color: readableOn(d.primary) }}
       onClick={() => { addItem(slug, { productId: item.id, name: item.name, price: item.price, currency: item.currency, image: item.image }); setAdded(true); }}>
       {added ? "Added to cart" : "Add to cart"}
     </button>

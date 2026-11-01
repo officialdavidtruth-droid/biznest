@@ -10,6 +10,8 @@ import { getBusinessExperience } from "@/lib/business-experience";
 import { BuilderFooter, BuilderHeader } from "@/components/storefront/builder-renderer";
 import { ContactEnquiryForm } from "@/components/storefront/contact-enquiry-form";
 import { parseBlogPosts, parseGalleryBody } from "@/lib/storefront/owner-page-format";
+import { PageBlocks } from "@/components/storefront/page-blocks";
+import type { PageBlock } from "@/lib/storefront/page-blocks";
 
 type Design = BuilderConfig["design"];
 export type SubpageStore = {
@@ -23,7 +25,7 @@ export type SubpageData = {
 };
 export type SubpageKind = "about" | "contact" | "categories" | "gallery" | "blog";
 /** The owner's own text for this page (Customize > Pages). When present it replaces the page's default copy. */
-export type OwnerContent = { title: string; body: string };
+export type OwnerContent = { title: string; body: string; blocks?: PageBlock[] };
 
 const COPY: Record<SubpageKind, { title: string; subtitle: string }> = {
   about: { title: "About us", subtitle: "Who we are and what we stand for." },
@@ -69,7 +71,9 @@ export function BuilderSubpage({ kind, store, design: designIn, data, owner }: {
           <div>
             <small style={{ color: d.accent, fontWeight: 800, letterSpacing: ".14em", textTransform: "uppercase" }}>Our story</small>
             <h2 style={{ fontFamily: d.headingFont, fontSize: 34, lineHeight: 1.15, margin: "10px 0 16px" }}>Built around what matters</h2>
-            <p style={{ color: d.muted, lineHeight: 1.8, fontSize: 16, whiteSpace: "pre-line" }}>{desc}</p>
+            {owner?.blocks?.length
+              ? <PageBlocks blocks={owner.blocks} slug={store.slug} tokens={{ text: d.muted, accent: d.accent, primary: d.primary, line, radius: d.radius, headingFont: d.headingFont }} />
+              : <p style={{ color: d.muted, lineHeight: 1.8, fontSize: 16, whiteSpace: "pre-line" }}>{desc}</p>}
             <div style={{ display: "flex", gap: 12, flexWrap: "wrap", marginTop: 24 }}>
               <Link href={`${base}/catalog`} style={btn(true)}>{isService ? "See our services" : "Shop now"}</Link>
               <Link href={`${base}/contact`} style={btn(false)}>Contact us</Link>
@@ -117,7 +121,9 @@ export function BuilderSubpage({ kind, store, design: designIn, data, owner }: {
     };
     body = (
       <>
-      {owner && <p style={{ color: d.muted, lineHeight: 1.8, fontSize: 16, whiteSpace: "pre-line", maxWidth: 760, margin: "0 0 32px" }}>{owner.body}</p>}
+      {owner && (owner.blocks?.length
+        ? <div style={{ margin: "0 0 32px" }}><PageBlocks blocks={owner.blocks} slug={store.slug} tokens={{ text: d.muted, accent: d.accent, primary: d.primary, line, radius: d.radius, headingFont: d.headingFont }} /></div>
+        : <p style={{ color: d.muted, lineHeight: 1.8, fontSize: 16, whiteSpace: "pre-line", maxWidth: 760, margin: "0 0 32px" }}>{owner.body}</p>)}
       <div className="bn-grid" style={{ gridTemplateColumns: "1.3fr .9fr", gap: 28, alignItems: "start" }}>
         {/* The form's own stylesheet (.bn-contact-form in globals.css) is light; keep its text dark on any design. */}
         <div style={{ color: "#111" }}>

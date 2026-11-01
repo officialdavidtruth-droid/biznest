@@ -1,3 +1,5 @@
+import { ownerPageBody } from "@/lib/storefront/page-registry";
+import { ownerPageBlocks } from "@/lib/storefront/page-blocks";
 import { getCanonicalBusinessType } from "@/lib/business-identity";
 // Route: /store/[slug]/admin/customize
 import { prisma } from "@/lib/prisma";
@@ -55,13 +57,18 @@ export default async function CustomizePage({ params }: { params: Promise<{ slug
       templateHasOwnHomepage={resolveHomeRenderer(store.template?.name).kind !== "builder"}
       homeKind={resolveHomeRenderer(store.template?.name).kind}
       builderPublished={!!getSavedBuilder(store.sectionOverrides)}
-      pages={pages.map((p) => ({
-        id: p.id,
-        slug: p.slug,
-        title: p.title,
-        body: (p.content as { body?: string } | null)?.body ?? "",
-        isPublished: p.isPublished,
-      }))}
+      // Only owner-written text pages. Template content rows (hotel-*, events ...) and legacy empty
+      // placeholders (Home, Products, Testimonials ...) are not pages the owner can edit here.
+      pages={pages
+        .filter((p) => ownerPageBody(p.content) !== null)
+        .map((p) => ({
+          id: p.id,
+          slug: p.slug,
+          title: p.title,
+          body: ownerPageBody(p.content) ?? "",
+          blocks: ownerPageBlocks(p.content),
+          isPublished: p.isPublished,
+        }))}
     />
   );
     }

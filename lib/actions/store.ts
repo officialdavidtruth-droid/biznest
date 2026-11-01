@@ -120,15 +120,9 @@ export async function createStore(
       },
     });
 
-    const websitePages = getBusinessExperience(business.category, { sellsProducts: business.sellsProducts, offersServices: business.offersServices }, business.businessSubcategory).pageSlugs;
-    await tx.storePage.createMany({
-      data: websitePages.map((p) => ({
-        storeId: created.id,
-        slug: p.slug,
-        title: p.title,
-        content: { blocks: [] },
-      })),
-    });
+    // Pages are NOT seeded. Home, Products and Testimonials are drawn by the platform, and the written pages
+    // (About, FAQ, Contact ...) are created the first time the owner saves one in Customize > Pages.
+    // Seeding empty rows used to make blank pages look "created" and published.
 
     // Create store-owned category trees from the selected business type.
     // These are real rows owned by this store, not shared platform categories.

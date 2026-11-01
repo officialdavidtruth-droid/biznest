@@ -7,6 +7,7 @@ import { StoreMenuProvider } from "@/components/storefront/store-menu";
 import { StoreCategoriesProvider } from "@/components/storefront/store-categories";
 import { resolveMenuRows } from "@/lib/storefront-menu";
 import { isStorePageAvailable } from "@/lib/store-pages";
+import { hasPageContent } from "@/lib/storefront/page-blocks";
 import { resolveStoreTheme } from "@/lib/template-themes";
 import { PromoPopup } from "@/components/storefront/promo-popup";
 import { buildPromoPalette, isPromoLive, readPromoPopup } from "@/lib/storefront/promo-popup";
@@ -143,6 +144,8 @@ export default async function StoreLayout({
         orderBy: [{ sortOrder: "asc" }, { name: "asc" }],
         select: { id: true, name: true, parentId: true, description: true, imageUrl: true, _count: { select: { products: { where: { isPublished: true } }, services: { where: { isPublished: true } } } } },
       },
+      // Blog and Gallery exist only once the owner has written them, so menu links to them need this.
+      pages: { where: { isPublished: true, slug: { in: ["blog", "gallery"] } }, select: { slug: true, content: true } },
       // Owner-built header menu (Dashboard > Menus). Empty = templates use their own default links.
       menuItems: {
         where: { location: "header", isActive: true },
@@ -221,7 +224,7 @@ export default async function StoreLayout({
         rel="stylesheet"
       />
       <StoreCategoriesProvider categories={(exists?.categories ?? []).map((c) => ({ id: c.id, name: c.name, parentId: c.parentId, description: c.description, imageUrl: c.imageUrl, count: c._count.products + c._count.services }))}>
-        <StoreMenuProvider menu={exists?.menuItems?.length ? resolveMenuRows(exists.menuItems.filter((m) => m.linkType !== "PAGE" || isStorePageAvailable(m.target || "/", { businessCategory: exists.business?.category ?? null, storeBusinessType: exists.businessType, templateName: exists.template?.name ?? null })), slug) : null}>{children}</StoreMenuProvider>
+        <StoreMenuProvider menu={exists?.menuItems?.length ? resolveMenuRows(exists.menuItems.filter((m) => m.linkType !== "PAGE" || isStorePageAvailable(m.target || "/", { businessCategory: exists.business?.category ?? null, storeBusinessType: exists.businessType, templateName: exists.template?.name ?? null }, new Set(exists.pages.filter((p) => hasPageContent(p.content)).map((p) => p.slug)))), slug) : null}>{children}</StoreMenuProvider>
       </StoreCategoriesProvider>
       {installable && exists && (
         <InstallStoreApp slug={slug} storeName={exists.name} base={pwaBase} iconSrc={`${pwaBase}/pwa-icon/192`} />

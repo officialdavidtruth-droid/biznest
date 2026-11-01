@@ -44,11 +44,23 @@ const PAGE_RULES: Record<string, (i: StoreIdentity) => boolean> = {
   "/book": isHotelStore,
 };
 
-export function isStorePageAvailable(path: string, identity: StoreIdentity): boolean {
+/**
+ * Slugs of the pages the owner has written AND published in Customize > Pages (only /blog and /gallery matter here).
+ * Pass it when the answer must reflect what the store really has; leave it out for the template-only rules.
+ */
+export type WrittenPages = ReadonlySet<string>;
+
+export function isStorePageAvailable(path: string, identity: StoreIdentity, written?: WrittenPages): boolean {
   const rule = PAGE_RULES[path];
-  return rule ? rule(identity) : true;
+  const base = rule ? rule(identity) : true;
+  if (!written) return base;
+  // Blog exists only once the owner wrote it. Gallery is a template page for hotels and restaurants and
+  // otherwise exists only once the owner wrote it.
+  if (path === "/blog") return written.has("blog");
+  if (path === "/gallery") return base || written.has("gallery");
+  return base;
 }
 
-export function filterAvailablePages<T extends { path: string }>(options: T[], identity: StoreIdentity): T[] {
-  return options.filter((o) => isStorePageAvailable(o.path, identity));
+export function filterAvailablePages<T extends { path: string }>(options: T[], identity: StoreIdentity, written?: WrittenPages): T[] {
+  return options.filter((o) => isStorePageAvailable(o.path, identity, written));
 }

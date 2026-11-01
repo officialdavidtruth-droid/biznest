@@ -17,9 +17,12 @@ import { resetTemplateColors, saveTemplateColors } from "@/lib/actions/theme";
 import { BUILDER_SECTION_TYPES, readBuilderConfig, type BuilderConfig, type BuilderSection, type BuilderSectionItem, type BuilderSectionType } from "@/lib/builder-config";
 import { defaultFaqItems, defaultFeatureItems } from "@/lib/builder-defaults";
 import { PAGE_FORMAT_HINTS } from "@/lib/storefront/owner-page-format";
+import { PageBlockEditor } from "@/components/dashboard/page-block-editor";
+import { blocksToPlainText, pageUsesBlocks, textToBlocks, type PageBlock } from "@/lib/storefront/page-blocks";
 import { buildIndustryHomepage, getBusinessExperience } from "@/lib/business-experience";
 
-export type StorePageRow = { id: string; slug: string; title: string; body: string; isPublished: boolean };
+export type StorePageRow = { id: string; slug: string; title: string; body: string; blocks: PageBlock[]; isPublished: boolean };
+const rowHasContent = (p: StorePageRow) => p.body.trim() !== "" || p.blocks.length > 0;
 
 type PreviewSection = { key: string; label: string; hidden: boolean };
 type Device = "desktop" | "tablet" | "mobile";
@@ -98,6 +101,8 @@ export function CustomizerClient({
   const [seoDescriptionState, setSeoDescriptionState] = useState(seoDescription);
   const experience = getBusinessExperience(businessCategory, { sellsProducts, offersServices });
   const [editingSlug, setEditingSlug] = useState<string | null>(null);
+  // Which page of the store the preview shows ("" = homepage), like the page picker in Shopify's theme editor.
+  const [previewPath, setPreviewPath] = useState("");
   const iframeRef = useRef<HTMLIFrameElement>(null);
   // Fixed-layout templates: the preview reports which sections it drew; the owner reorders / hides them here.
   const [previewSections, setPreviewSections] = useState<PreviewSection[]>([]);
@@ -156,7 +161,34 @@ export function CustomizerClient({
     setRestoredDraft(false);
   }
 
-  const previewUrl = useMemo(() => (inTemplateMode ? `/store/${slug}?preview=template` : `/store/${slug}?preview=1`), [slug, inTemplateMode]);
+  const previewUrl = useMemo(
+    () => (previewPath ? `/store/${slug}${previewPath}` : inTemplateMode ? `/store/${slug}?preview=template` : `/store/${slug}?preview=1`),
+    [slug, inTemplateMode, previewPath],
+  );
+
+  // Pages the preview can show: the platform pages every store has, plus whatever the owner has written and published.
+  const previewPages = useMemo(() => {
+    const written = pages.filter((p) => p.isPublished && rowHasContent(p));
+    const has = (s: string) => written.some((p) => p.slug === s);
+    const list: { path: string; label: string }[] = [{ path: "", label: "Home" }];
+    if (experience.mode !== "service") list.push({ path: "/catalog", label: "Shop" });
+    if (experience.mode !== "commerce") list.push({ path: "/services", label: "Services" });
+    list.push({ path: "/about", label: "About" }, { path: "/contact", label: "Contact" }, { path: "/faq", label: "FAQ" }, { path: "/policies", label: "Policies" });
+    if (has("gallery")) list.push({ path: "/gallery", label: "Gallery" });
+    if (has("blog")) list.push({ path: "/blog", label: "Blog" });
+    for (const p of written) {
+      if (!(SUGGESTED_PAGE_SLUGS as readonly string[]).includes(p.slug)) list.push({ path: `/${p.slug}`, label: p.title });
+    }
+    return list;
+  }, [pages, experience.mode]);
+
+  // Opening a written page in the Pages panel shows it in the preview.
+  useEffect(() => {
+    if (!editingSlug) return;
+    const p = pages.find((x) => x.slug === editingSlug);
+    if (p && p.isPublished && rowHasContent(p)) setPreviewPath(`/${p.slug}`);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [editingSlug]);
 
   function pushPreview(config: BuilderConfig = builderRef.current) {
     const target = iframeRef.current?.contentWindow;
@@ -636,6 +668,18 @@ export function CustomizerClient({
             </button>
           </div>
 
+          <label className="flex items-center gap-1.5 text-xs text-muted-foreground">
+            <span className="hidden sm:inline">Previewing</span>
+            <select
+              value={previewPages.some((p) => p.path === previewPath) ? previewPath : ""}
+              onChange={(e) => setPreviewPath(e.target.value)}
+              className="max-w-[9rem] rounded-md border border-border bg-background px-2 py-1.5 text-xs text-foreground"
+              aria-label="Page shown in the preview"
+            >
+              {previewPages.map((p) => <option key={p.path || "home"} value={p.path}>{p.label}</option>)}
+            </select>
+          </label>
+
           <button
             onClick={refreshPreview}
             className="flex items-center gap-1.5 rounded-md border border-border px-2.5 py-1.5 text-xs text-muted-foreground hover:bg-muted"
@@ -907,7 +951,7 @@ function PagesPanel({
     <div className="flex-1 overflow-y-auto p-4">
       <p className="mb-3 text-xs text-muted-foreground">
         Extra pages (About, Gallery, FAQ, Blog, Contact, Policies) beyond the homepage. Each is live at{" "}
-        <span className="font-mono">{slug}.biznest.space/&lt;page&gt;</span> (or your custom domain) once published.
+        <span className="font-mono">biznest.space/{slug}/&lt;page&gt;</span> (or your custom domain) once published. A page appears here once you write and save it.
       </p>
 
       <div className="space-y-1.5">
@@ -995,6 +1039,9 @@ function PageEditor({
   const [customSlug, setCustomSlug] = useState("");
   const [title, setTitle] = useState(initial?.title ?? SUGGESTED_PAGE_TITLES[pageSlug] ?? "");
   const [body, setBody] = useState(initial?.body ?? "");
+  // Block pages open with their saved blocks; a page written as plain text opens as one text block per paragraph.
+  const [blocks, setBlocks] = useState<PageBlock[]>(() => (initial?.blocks?.length ? initial.blocks : textToBlocks(initial?.body ?? "")));
+  const blockMode = pageUsesBlocks(allowSlugEdit ? customSlug || "custom" : pageSlug);
   const [isPublished, setIsPublished] = useState(initial?.isPublished ?? true);
   const [isSaving, setIsSaving] = useState(false);
 
@@ -1009,7 +1056,8 @@ function PageEditor({
       const formData = new FormData();
       formData.set("pageSlug", effectiveSlug);
       formData.set("title", title);
-      formData.set("body", body);
+      if (blockMode) formData.set("blocks", JSON.stringify(blocks));
+      else formData.set("body", body);
       if (isPublished) formData.set("isPublished", "on");
       const result = await saveStorePage(slug, formData);
       if (!result.success) {
@@ -1023,7 +1071,8 @@ function PageEditor({
         id: result.data.id,
         slug: result.data.slug,
         title,
-        body,
+        body: blockMode ? blocksToPlainText(blocks) : body,
+        blocks: blockMode ? blocks : [],
         isPublished,
       });
     } catch {
@@ -1054,16 +1103,22 @@ function PageEditor({
           className="w-full rounded-md border border-input bg-background px-2.5 py-1.5 text-sm"
         />
       </label>
-      <label className="block text-xs">
+      <div className="block text-xs">
         <span className="mb-1 block text-muted-foreground">Content</span>
-        {PAGE_FORMAT_HINTS[pageSlug] && <span className="mb-1 block text-[10px] text-muted-foreground">{PAGE_FORMAT_HINTS[pageSlug]}</span>}
-        <textarea
-          value={body}
-          onChange={(e) => setBody(e.target.value)}
-          rows={6}
-          className="w-full resize-y rounded-md border border-input bg-background px-2.5 py-1.5 text-sm"
-        />
-      </label>
+        {blockMode ? (
+          <PageBlockEditor blocks={blocks} onChange={setBlocks} ImageField={ImageField} />
+        ) : (
+          <>
+            {PAGE_FORMAT_HINTS[pageSlug] && <span className="mb-1 block text-[10px] text-muted-foreground">{PAGE_FORMAT_HINTS[pageSlug]}</span>}
+            <textarea
+              value={body}
+              onChange={(e) => setBody(e.target.value)}
+              rows={6}
+              className="w-full resize-y rounded-md border border-input bg-background px-2.5 py-1.5 text-sm"
+            />
+          </>
+        )}
+      </div>
       <label className="flex items-center gap-1.5 text-xs text-muted-foreground">
         <input type="checkbox" checked={isPublished} onChange={(e) => setIsPublished(e.target.checked)} />
         Published

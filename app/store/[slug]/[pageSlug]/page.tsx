@@ -1,5 +1,8 @@
 import { prisma } from "@/lib/prisma";
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
+import { SYSTEM_PAGE_REDIRECTS, ownerPageBody } from "@/lib/storefront/page-registry";
+import { hasPageContent, ownerPageBlocks } from "@/lib/storefront/page-blocks";
+import { PageBlocks } from "@/components/storefront/page-blocks";
 import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
 import { resolveStoreTheme } from "@/lib/template-themes";
@@ -60,11 +63,17 @@ export default async function StorePagePage({
     return <UniversalSectionPage store={store} slug={slug} pageSlug={pageSlug} items={items} reviews={store.reviews} theme={theme} social={social} policy={policy} faq={faq} />;
   }
 
-  if (!page) notFound();
+  // Owner-written text only. Template content rows and legacy empty placeholders are not pages.
+  const body = (ownerPageBody(page?.content) ?? "").trim();
+  const blocks = ownerPageBlocks(page?.content);
+  const isLive = !!page && page.isPublished && hasPageContent(page.content);
 
-  const body = String((page.content as { body?: string } | null)?.body ?? "").trim();
+  // Home, Products and Testimonials are drawn by the platform. Send visitors to where that content really
+  // lives instead of an empty page. A page the owner actually wrote and published under that slug still wins.
+  const systemTarget = SYSTEM_PAGE_REDIRECTS[pageSlug.toLowerCase()];
+  if (systemTarget !== undefined && !isLive) redirect(`/store/${slug}${systemTarget}`);
 
-  if (!page.isPublished) notFound();
+  if (!page || !isLive) notFound();
 
   return (
     <div style={{ background: theme.bg, color: theme.ink, fontFamily: theme.font, minHeight: "100vh" }}>
@@ -80,7 +89,9 @@ export default async function StorePagePage({
           {page.title}
         </h1>
 
-        {body ? (
+        {blocks.length > 0 ? (
+          <PageBlocks blocks={blocks} slug={slug} tokens={{ text: theme.ink, accent: theme.accent, primary: theme.accent, line: `${theme.ink}22`, radius: 8, headingFont: theme.font }} />
+        ) : body ? (
           <div className="space-y-4 text-base leading-relaxed whitespace-pre-line">{body}</div>
         ) : (
           <p className="text-sm italic opacity-60">This page is coming soon.</p>
