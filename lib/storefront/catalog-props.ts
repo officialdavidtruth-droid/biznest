@@ -6,6 +6,8 @@ import type { TemplateTheme } from "@/lib/template-themes";
 type StoreRow = {
   name: string; logoUrl: string | null; contactEmail: string | null; contactPhone: string | null;
   bannerUrl: string | null; sectionOverrides: unknown;
+  /** Optional: callers that have the full store row pass it so the owner's button style and page width apply. */
+  themeColors?: unknown;
   business: { description: string | null; category: string | null; businessSubcategory: string | null; sellsProducts: boolean | null; offersServices: boolean | null; email: string | null; phone: string | null } | null;
 };
 
