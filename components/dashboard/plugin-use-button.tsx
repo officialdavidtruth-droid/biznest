@@ -10,7 +10,8 @@ export function PluginUseButton({ slug, pluginKey, isFree, installed, renewalDue
 
   if (installed) {
     const standalone = pluginKey === "pms" || pluginKey === "fnb-operations";
-    const open = <button onClick={() => standalone ? window.location.assign(pluginKey === "pms" ? `/store/${slug}/admin/pms` : `/store/${slug}/admin/fnb`) : router.push(pluginKey === "pms" ? `/store/${slug}/admin/pms` : pluginKey === "fnb-operations" ? `/store/${slug}/admin/fnb` : `/store/${slug}/admin/apps/${pluginKey}`)} className="rounded-xl bg-primary px-4 py-2 text-xs font-bold text-primary-foreground">Open app</button>;
+    const dedicatedHref = pluginKey === "pms" ? `/store/${slug}/admin/pms` : pluginKey === "fnb-operations" ? `/store/${slug}/admin/fnb` : pluginKey === "travel-agency" ? `/store/${slug}/admin/travel` : null;
+    const open = <button onClick={() => standalone && dedicatedHref ? window.location.assign(dedicatedHref) : router.push(dedicatedHref ?? `/store/${slug}/admin/apps/${pluginKey}`)} className="rounded-xl bg-primary px-4 py-2 text-xs font-bold text-primary-foreground">Open app</button>;
     if (!renewalDue) return open;
     return (
       <div className="flex items-center gap-2">

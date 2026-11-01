@@ -192,6 +192,16 @@ export const PAGE_GUIDES: Record<string, PageGuide> = {
     s("Handle reservations", "Create and manage bookings, check guests in and out."),
     s("Housekeeping and billing", "Track room cleaning and add charges to a guest's bill."),
   ]),
+  "/apps/travel-agency": g("BizNest Travel", "Run your travel agency.", [
+    s("Add clients and suppliers", "Save passport details and the airlines, hotels and operators you book through."),
+    s("Build a trip file", "Create a trip, add services with cost and selling price, and move it from enquiry to ticketed."),
+    s("Collect payments", "Record deposits and schedule instalments so you always know who owes what."),
+  ]),
+  "/travel": g("BizNest Travel", "Run your travel agency.", [
+    s("Add clients and suppliers", "Save passport details and the airlines, hotels and operators you book through."),
+    s("Build a trip file", "Create a trip, add services with cost and selling price, and move it from enquiry to ticketed."),
+    s("Collect payments", "Record deposits and schedule instalments so you always know who owes what."),
+  ]),
   "/fnb": g("FnB", "Restaurant tools for kitchen and service.", [
     s("Manage the menu", "Add or hide dishes and set prices."),
     s("Watch live orders", "Orders move from new to preparing to ready."),

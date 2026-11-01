@@ -1056,6 +1056,11 @@ model Store {
   approvalRequests ApprovalRequest[]
   reportDefinitions ReportDefinition[]
   realEstateProperties RealEstateProperty[]
+  travelClients   TravelClient[]
+  travelSuppliers TravelSupplier[]
+  travelTrips     TravelTrip[]
+  travelPackages  TravelPackage[]
+  travelVisaCases TravelVisaCase[]
   autoVehicles AutoVehicle[]
   photoShoots PhotoShoot[]
   tailoringJobs TailoringJob[]
@@ -4438,4 +4443,168 @@ model SupportRequest {
   @@index([status, createdAt])
   @@index([storeId])
   @@index([userId, createdAt])
+}
+
+// ----------------------------------------------------------------------------
+// BIZNEST TRAVEL (travel agency workspace: /store/[slug]/admin/travel)
+// All rows are store-scoped. Status fields are plain strings validated in lib/travel.ts.
+// ----------------------------------------------------------------------------
+
+model TravelClient {
+  id          String   @id @default(cuid())
+  storeId     String
+  store       Store    @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  fullName    String
+  email       String?
+  phone       String?
+  nationality String?
+  passportNo  String?
+  passportExpiry DateTime?
+  dateOfBirth DateTime?
+  notes       String?  @db.Text
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  trips       TravelTrip[]
+  visaCases   TravelVisaCase[]
+
+  @@index([storeId, fullName])
+  @@index([storeId, phone])
+}
+
+model TravelSupplier {
+  id          String   @id @default(cuid())
+  storeId     String
+  store       Store    @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  name        String
+  kind        String   @default("OTHER") // AIRLINE | HOTEL | TOUR_OPERATOR | TRANSPORT | INSURER | CONSOLIDATOR | OTHER
+  contactName String?
+  email       String?
+  phone       String?
+  notes       String?  @db.Text
+  isArchived  Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  items       TravelTripItem[]
+
+  @@index([storeId, isArchived])
+}
+
+model TravelPackage {
+  id          String   @id @default(cuid())
+  storeId     String
+  store       Store    @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  name        String
+  destination String
+  durationDays Int     @default(1)
+  pricePerPerson Decimal @db.Decimal(12, 2)
+  currency    String   @default("NGN")
+  departureDate DateTime?
+  seats       Int      @default(0) // 0 = unlimited
+  inclusions  String?  @db.Text
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  trips       TravelTrip[]
+
+  @@index([storeId, isActive])
+}
+
+model TravelTrip {
+  id          String   @id @default(cuid())
+  storeId     String
+  store       Store    @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  reference   String
+  clientId    String
+  client      TravelClient @relation(fields: [clientId], references: [id], onDelete: Restrict)
+  packageId   String?
+  package     TravelPackage? @relation(fields: [packageId], references: [id], onDelete: SetNull)
+  title       String
+  destination String
+  status      String   @default("ENQUIRY") // ENQUIRY | QUOTED | CONFIRMED | TICKETED | TRAVELLING | COMPLETED | CANCELLED
+  departDate  DateTime?
+  returnDate  DateTime?
+  currency    String   @default("NGN")
+  totalPrice  Decimal  @default(0) @db.Decimal(12, 2)
+  totalCost   Decimal  @default(0) @db.Decimal(12, 2)
+  notes       String?  @db.Text
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  travellers  TravelTraveler[]
+  items       TravelTripItem[]
+  payments    TravelPayment[]
+
+  @@unique([storeId, reference])
+  @@index([storeId, status])
+  @@index([storeId, departDate])
+  @@index([clientId])
+}
+
+model TravelTraveler {
+  id          String   @id @default(cuid())
+  tripId      String
+  trip        TravelTrip @relation(fields: [tripId], references: [id], onDelete: Cascade)
+  fullName    String
+  passportNo  String?
+  passportExpiry DateTime?
+  dateOfBirth DateTime?
+  nationality String?
+  isLead      Boolean  @default(false)
+
+  @@index([tripId])
+}
+
+model TravelTripItem {
+  id          String   @id @default(cuid())
+  tripId      String
+  trip        TravelTrip @relation(fields: [tripId], references: [id], onDelete: Cascade)
+  supplierId  String?
+  supplier    TravelSupplier? @relation(fields: [supplierId], references: [id], onDelete: SetNull)
+  kind        String   @default("OTHER") // FLIGHT | HOTEL | TRANSFER | TOUR | VISA | INSURANCE | OTHER
+  description String
+  startDate   DateTime?
+  endDate     DateTime?
+  confirmationRef String?
+  status      String   @default("PENDING") // PENDING | CONFIRMED | CANCELLED
+  costPrice   Decimal  @default(0) @db.Decimal(12, 2)
+  sellPrice   Decimal  @default(0) @db.Decimal(12, 2)
+  createdAt   DateTime @default(now())
+
+  @@index([tripId])
+  @@index([supplierId])
+}
+
+model TravelPayment {
+  id          String   @id @default(cuid())
+  tripId      String
+  trip        TravelTrip @relation(fields: [tripId], references: [id], onDelete: Cascade)
+  amount      Decimal  @db.Decimal(12, 2)
+  method      String   @default("TRANSFER") // CASH | TRANSFER | CARD | POS | OTHER
+  status      String   @default("RECEIVED") // DUE | RECEIVED | VOID
+  dueDate     DateTime?
+  paidAt      DateTime?
+  reference   String?
+  note        String?
+  createdAt   DateTime @default(now())
+
+  @@index([tripId, status])
+}
+
+model TravelVisaCase {
+  id          String   @id @default(cuid())
+  storeId     String
+  store       Store    @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  clientId    String
+  client      TravelClient @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  country     String
+  visaType    String   @default("TOURIST")
+  status      String   @default("DOCUMENTS") // DOCUMENTS | SUBMITTED | APPOINTMENT | DECISION_PENDING | APPROVED | REFUSED
+  checklist   Json?    // [{ label: string, done: boolean }]
+  appointmentAt DateTime?
+  submittedAt DateTime?
+  fee         Decimal  @default(0) @db.Decimal(12, 2)
+  notes       String?  @db.Text
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([storeId, status])
+  @@index([clientId])
 }

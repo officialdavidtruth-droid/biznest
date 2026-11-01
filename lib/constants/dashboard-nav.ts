@@ -124,7 +124,7 @@ export function buildNavGroups(business: { sellsProducts: boolean; offersService
 
   const installedAppItems: NavItem[] = (business.installedApps ?? [])
     .filter((app) => app.key !== "pms")
-    .map((app) => ({ label: app.name, href: app.key === "fnb-operations" ? "/fnb" : `/apps/${app.key}`, icon: Puzzle, permission: `plugin:${app.key}` as StaffPermissionId }));
+    .map((app) => ({ label: app.name, href: app.key === "fnb-operations" ? "/fnb" : app.key === "travel-agency" ? "/travel" : `/apps/${app.key}`, icon: Puzzle, permission: `plugin:${app.key}` as StaffPermissionId }));
 
   return [
     {

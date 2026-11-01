@@ -116,6 +116,18 @@ export const PLUGIN_CATALOG: PluginSeed[] = [
     plans: ["Business Mogul"],
   },
   {
+    key: "travel-agency",
+    name: "BizNest Travel",
+    description: "A travel agency operating workspace: client and passport records, trip files from enquiry to ticketing, service lines with supplier cost and margin, instalment payments, group packages with seat limits, visa case checklists and supplier directory.",
+    category: "Industry",
+    icon: "Plane",
+    price: 0, // set by the super admin (/supaadmin/apps)
+    billingInterval: "MONTHLY",
+    eligibleBusinessTypes: ["Travel & Tourism"],
+    sortOrder: 66,
+    plans: ["Growth Store", "Business Mogul"],
+  },
+  {
     key: "helpdesk",
     name: "Customer Support",
     description: "A support inbox over customer conversations: see what needs a reply, what has waited over 24 hours, and your median first-response time.",
