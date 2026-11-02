@@ -2,13 +2,15 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const m = vi.hoisted(() => ({
   perm: vi.fn(), entitlement: vi.fn(), tripFind: vi.fn(), clientFind: vi.fn(), storeFind: vi.fn(), charge: vi.fn(), tripUpdate: vi.fn(), paymentCreate: vi.fn(),
+  refund: vi.fn(), tpFind: vi.fn(), tpUpdateMany: vi.fn(), payFind: vi.fn(),
 }));
 
 vi.mock("@/lib/prisma", () => ({
   prisma: {
     travelTrip: { findFirst: m.tripFind, update: m.tripUpdate },
     travelClient: { findFirst: m.clientFind },
-    travelPayment: { create: m.paymentCreate },
+    travelPayment: { create: m.paymentCreate, findFirst: m.tpFind, updateMany: m.tpUpdateMany },
+    payment: { findFirst: m.payFind },
     store: { findUnique: m.storeFind },
   },
 }));
@@ -16,8 +18,10 @@ vi.mock("next/cache", () => ({ revalidatePath: vi.fn() }));
 vi.mock("@/lib/access/assert-store-access", () => ({ assertStorePermission: m.perm }));
 vi.mock("@/lib/plugins", () => ({ getPluginEntitlement: m.entitlement }));
 vi.mock("@/lib/payments/travel-charge", () => ({ startTravelCharge: m.charge }));
+vi.mock("@/lib/payments/refund-travel", () => ({ refundTravelPayment: m.refund }));
+vi.mock("@/lib/auth", () => ({ auth: vi.fn().mockResolvedValue({ user: { email: "owner@wander.test" } }) }));
 
-import { createTravelPaymentLink, createTravelTrip, recordTravelPayment } from "@/lib/actions/travel";
+import { createTravelPaymentLink, createTravelTrip, recordTravelPayment, requestTravelRefund, voidTravelPayment } from "@/lib/actions/travel";
 
 const storeA = { id: "storeA", currency: "NGN", businessType: "Travel & Tourism", business: { category: "Travel & Tourism" } };
 const trip = (over: Record<string, unknown> = {}) => ({ id: "trip1", status: "CONFIRMED", currency: "NGN", totalPrice: "200000", totalCost: "0", payments: [], client: { fullName: "Ada", email: "a@x.com" }, ...over });
@@ -80,5 +84,45 @@ describe("createTravelPaymentLink", () => {
     m.tripFind.mockResolvedValue(trip({ status: "CANCELLED" }));
     expect((await createTravelPaymentLink("wander", "trip1", 1000)).success).toBe(false);
     expect(m.charge).not.toHaveBeenCalled();
+  });
+});
+
+describe("requestTravelRefund", () => {
+  it("is gated by the plugin permission and never reaches the refund code without it", async () => {
+    m.perm.mockResolvedValue({ success: false, error: "Forbidden" });
+    expect(await requestTravelRefund("wander", "trip1", "tp1", { amount: 100, reason: "x" })).toEqual({ success: false, error: "Forbidden" });
+    expect(m.refund).not.toHaveBeenCalled();
+  });
+
+  it("passes the caller's own store and email to the refund code", async () => {
+    m.refund.mockResolvedValue({ success: true, data: { mode: "gateway", amount: 100, full: false } });
+    await requestTravelRefund("wander", "trip1", "tp1", { amount: 100, reason: "Visa refused" });
+    expect(m.refund.mock.calls[0][0]).toMatchObject({ store: { id: "storeA" }, actorEmail: "owner@wander.test", tripId: "trip1", travelPaymentId: "tp1", amount: 100, reason: "Visa refused" });
+  });
+});
+
+describe("voidTravelPayment", () => {
+  it("refuses to void money that was taken online (it must be refunded instead)", async () => {
+    m.tripFind.mockResolvedValue(trip());
+    m.tpFind.mockResolvedValue({ reference: "TVL-trip1-abc", status: "RECEIVED", refundedAmount: "0" });
+    m.payFind.mockResolvedValue({ id: "pay1" });
+    const r = await voidTravelPayment("wander", "trip1", "tp1");
+    expect(r.success).toBe(false);
+    expect(m.tpUpdateMany).not.toHaveBeenCalled();
+  });
+
+  it("refuses to void a refunded payment", async () => {
+    m.tripFind.mockResolvedValue(trip());
+    m.tpFind.mockResolvedValue({ reference: null, status: "RECEIVED", refundedAmount: "50000" });
+    expect((await voidTravelPayment("wander", "trip1", "tp1")).success).toBe(false);
+    expect(m.tpUpdateMany).not.toHaveBeenCalled();
+  });
+
+  it("still voids a manual entry made by mistake", async () => {
+    m.tripFind.mockResolvedValue(trip());
+    m.tpFind.mockResolvedValue({ reference: null, status: "RECEIVED", refundedAmount: "0" });
+    m.tpUpdateMany.mockResolvedValue({ count: 1 });
+    expect((await voidTravelPayment("wander", "trip1", "tp1")).success).toBe(true);
+    expect(m.tpUpdateMany.mock.calls[0][0]).toMatchObject({ where: { id: "tp1", tripId: "trip1" }, data: { status: "VOID" } });
   });
 });

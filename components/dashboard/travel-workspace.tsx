@@ -175,10 +175,11 @@ function NewTripForm({ data, pending, onCreate }: { data: Data; pending: boolean
 function TripDetail({ slug, trip, data, money, pending, run, back, start }: { start: (fn: () => void) => void; slug: string; trip: Trip; data: Data; money: (n: unknown, c?: string) => string; pending: boolean; run: Run; back: () => void }) {
   const m = trip.money;
   const closed = ["COMPLETED", "CANCELLED"].includes(trip.status);
-  const [item, setItem] = useState({ kind: "FLIGHT", description: "", supplierId: "", costPrice: "", sellPrice: "", confirmationRef: "" });
+  const [item, setItem] = useState({ kind: "FLIGHT", description: "", supplierId: "", costPrice: "", sellPrice: "", confirmationRef: "", startDate: "", endDate: "" });
   const [pay, setPay] = useState({ amount: "", method: "TRANSFER", reference: "", dueDate: "" });
   const [trav, setTrav] = useState({ fullName: "", passportNo: "", passportExpiry: "" });
   const [price, setPrice] = useState(String(m.total));
+  const [refund, setRefund] = useState<{ id: string; amount: string; reason: string } | null>(null);
   const next = TRIP_STATUSES.filter((s) => s !== trip.status && s !== "CANCELLED");
   return (
     <section className="space-y-4">
@@ -187,6 +188,11 @@ function TripDetail({ slug, trip, data, money, pending, run, back, start }: { st
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div><h2 className="text-xl font-bold">{trip.title}</h2><p className="text-sm text-muted-foreground">{trip.reference} · {trip.client.fullName}{trip.client.phone ? ` · ${trip.client.phone}` : ""} · {fmtDate(trip.departDate)} → {fmtDate(trip.returnDate)}</p></div>
           <Badge s={trip.status} />
+        </div>
+        <div className="flex flex-wrap items-center gap-2">
+          {([["quote", "Quote PDF"], ["invoice", "Invoice PDF"], ["itinerary", "Itinerary PDF"]] as const).map(([type, label]) => (
+            <a key={type} className={btn2} href={`/api/store/${slug}/travel/${trip.id}/document?type=${type}`} target="_blank" rel="noopener noreferrer">{label}</a>
+          ))}
         </div>
         {!closed && (
           <div className="flex flex-wrap items-center gap-2">
@@ -197,7 +203,7 @@ function TripDetail({ slug, trip, data, money, pending, run, back, start }: { st
           </div>
         )}
         <div className="grid grid-cols-2 gap-3 md:grid-cols-5">
-          {[["Price", money(m.total, trip.currency)], ["Paid", money(m.paid, trip.currency)], ["Balance", money(m.balance, trip.currency)], ["Cost", money(m.cost, trip.currency)], ["Margin", money(m.margin, trip.currency)]].map(([k, v]) => <div key={k} className="rounded-xl bg-muted/50 p-3"><div className="text-[11px] text-muted-foreground">{k}</div><div className="font-bold">{v}</div></div>)}
+          {[["Price", money(m.total, trip.currency)], ["Paid", money(m.paid, trip.currency)], ...(m.refunded > 0 ? [["Refunded", money(m.refunded, trip.currency)]] : []), ["Balance", money(m.balance, trip.currency)], ["Cost", money(m.cost, trip.currency)], ["Margin", money(m.margin, trip.currency)]].map(([k, v]) => <div key={k} className="rounded-xl bg-muted/50 p-3"><div className="text-[11px] text-muted-foreground">{k}</div><div className="font-bold">{v}</div></div>)}
         </div>
         {!closed && !trip.items.length && (
           <div className="flex items-end gap-2"><Field label="Set price (when no service lines)"><input type="number" min={0} className={inp} value={price} onChange={(e) => setPrice(e.target.value)} /></Field><button className={btn} disabled={pending} onClick={() => run(() => A.updateTravelTrip(slug, trip.id, { totalPrice: Number(price) }), "Price saved")}>Save</button></div>
@@ -208,9 +214,9 @@ function TripDetail({ slug, trip, data, money, pending, run, back, start }: { st
         <h3 className="mb-2 text-sm font-bold">Services</h3>
         {trip.items.map((i) => (
           <div key={i.id} className="flex flex-wrap items-center justify-between gap-2 border-b py-2 text-sm last:border-0">
-            <div><b>{i.kind}</b> · {i.description}<div className="text-xs text-muted-foreground">{i.supplierName ?? "No supplier"}{i.confirmationRef ? ` · Ref ${i.confirmationRef}` : ""} · {i.status}</div></div>
+            <div><b>{i.kind}</b> · {i.description}<div className="text-xs text-muted-foreground">{i.startDate ? `${fmtDate(i.startDate)}${i.endDate ? ` → ${fmtDate(i.endDate)}` : ""} · ` : ""}{i.supplierName ?? "No supplier"}{i.confirmationRef ? ` · Ref ${i.confirmationRef}` : ""} · {i.status}</div></div>
             <div className="flex items-center gap-2"><span className="text-xs text-muted-foreground">cost {money(i.costPrice, trip.currency)}</span><b>{money(i.sellPrice, trip.currency)}</b>
-              {!closed && i.status !== "CONFIRMED" && <button className={btn2} disabled={pending} onClick={() => run(() => A.saveTravelItem(slug, trip.id, { id: i.id, kind: i.kind, description: i.description, supplierId: i.supplierId ?? undefined, confirmationRef: i.confirmationRef ?? undefined, status: "CONFIRMED", costPrice: i.costPrice, sellPrice: i.sellPrice }), "Marked confirmed")}>Confirm</button>}
+              {!closed && i.status !== "CONFIRMED" && <button className={btn2} disabled={pending} onClick={() => run(() => A.saveTravelItem(slug, trip.id, { id: i.id, kind: i.kind, description: i.description, supplierId: i.supplierId ?? undefined, confirmationRef: i.confirmationRef ?? undefined, startDate: i.startDate ? i.startDate.slice(0, 10) : undefined, endDate: i.endDate ? i.endDate.slice(0, 10) : undefined, status: "CONFIRMED", costPrice: i.costPrice, sellPrice: i.sellPrice }), "Marked confirmed")}>Confirm</button>}
               {!closed && <button className={`${btn2} text-red-600`} disabled={pending} onClick={() => run(() => A.removeTravelItem(slug, trip.id, i.id))}>Remove</button>}</div>
           </div>
         ))}
@@ -222,7 +228,9 @@ function TripDetail({ slug, trip, data, money, pending, run, back, start }: { st
             <select className={inp} value={item.supplierId} onChange={(e) => setItem({ ...item, supplierId: e.target.value })}><option value="">Supplier…</option>{data.suppliers.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}</select>
             <input type="number" min={0} className={inp} placeholder="Cost" value={item.costPrice} onChange={(e) => setItem({ ...item, costPrice: e.target.value })} />
             <input type="number" min={0} className={inp} placeholder="Sell" value={item.sellPrice} onChange={(e) => setItem({ ...item, sellPrice: e.target.value })} />
-            <button className={`${btn} md:col-span-6`} disabled={pending} onClick={() => run(() => A.saveTravelItem(slug, trip.id, { ...item, supplierId: item.supplierId || undefined, confirmationRef: item.confirmationRef || undefined, costPrice: Number(item.costPrice || 0), sellPrice: Number(item.sellPrice || 0) }), "Service added", () => setItem({ ...item, description: "", costPrice: "", sellPrice: "" }))}>Add service</button>
+            <label className="text-xs text-muted-foreground md:col-span-3">Start date (for the itinerary)<input type="date" className={`${inp} mt-1`} value={item.startDate} onChange={(e) => setItem({ ...item, startDate: e.target.value })} /></label>
+            <label className="text-xs text-muted-foreground md:col-span-3">End date (optional)<input type="date" className={`${inp} mt-1`} value={item.endDate} onChange={(e) => setItem({ ...item, endDate: e.target.value })} /></label>
+            <button className={`${btn} md:col-span-6`} disabled={pending} onClick={() => run(() => A.saveTravelItem(slug, trip.id, { ...item, supplierId: item.supplierId || undefined, confirmationRef: item.confirmationRef || undefined, startDate: item.startDate || undefined, endDate: item.endDate || undefined, costPrice: Number(item.costPrice || 0), sellPrice: Number(item.sellPrice || 0) }), "Service added", () => setItem({ ...item, description: "", costPrice: "", sellPrice: "", startDate: "", endDate: "" }))}>Add service</button>
           </div>
         )}
       </div>
@@ -230,15 +238,43 @@ function TripDetail({ slug, trip, data, money, pending, run, back, start }: { st
       <div className="grid gap-4 md:grid-cols-2">
         <div className={card}>
           <h3 className="mb-2 text-sm font-bold">Payments</h3>
-          {trip.payments.filter((p) => p.status !== "VOID").map((p) => (
-            <div key={p.id} className="flex items-center justify-between gap-2 border-b py-2 text-sm last:border-0">
-              <div><b>{money(p.amount, trip.currency)}</b> <span className={`text-xs ${p.status === "DUE" ? "text-amber-700" : "text-green-700"}`}>{p.status === "DUE" ? `due ${fmtDate(p.dueDate)}` : `received ${fmtDate(p.paidAt)}`}</span><div className="text-xs text-muted-foreground">{p.method}{p.reference ? ` · ${p.reference}` : ""}</div></div>
-              <div className="flex gap-1">
-                {p.status === "DUE" && <button className={btn2} disabled={pending} onClick={() => run(() => A.markTravelPaymentReceived(slug, trip.id, p.id, { method: "TRANSFER" }), "Payment recorded")}>Mark paid</button>}
-                <button className={`${btn2} text-red-600`} disabled={pending} onClick={() => confirm("Void this payment?") && run(() => A.voidTravelPayment(slug, trip.id, p.id))}>Void</button>
+          {trip.payments.filter((p) => p.status !== "VOID").map((p) => {
+            const refunded = p.refundedAmount > 0;
+            const canRefund = p.status === "RECEIVED" && !refunded;
+            const open = refund && refund.id === p.id ? refund : null;
+            return (
+              <div key={p.id} className="border-b py-2 text-sm last:border-0">
+                <div className="flex items-center justify-between gap-2">
+                  <div><b>{money(p.amount, trip.currency)}</b> <span className={`text-xs ${p.status === "DUE" ? "text-amber-700" : "text-green-700"}`}>{p.status === "DUE" ? `due ${fmtDate(p.dueDate)}` : `received ${fmtDate(p.paidAt)}`}</span>
+                    {refunded && <span className="ml-1 text-xs font-semibold text-red-600">{p.status === "REFUNDED" ? "fully refunded" : `${money(p.refundedAmount, trip.currency)} refunded`}</span>}
+                    <div className="text-xs text-muted-foreground">{p.method}{p.reference ? ` · ${p.reference}` : ""}{refunded && p.refundReason ? ` · ${p.refundReason}` : ""}</div></div>
+                  <div className="flex gap-1">
+                    {p.status === "DUE" && <button className={btn2} disabled={pending} onClick={() => run(() => A.markTravelPaymentReceived(slug, trip.id, p.id, { method: "TRANSFER" }), "Payment recorded")}>Mark paid</button>}
+                    {canRefund && <button className={btn2} disabled={pending} onClick={() => setRefund(open ? null : { id: p.id, amount: String(p.amount), reason: "" })}>Refund</button>}
+                    {p.status !== "REFUNDED" && !refunded && <button className={`${btn2} text-red-600`} disabled={pending} onClick={() => confirm("Void this payment? Use Refund instead if the money was actually received.") && run(() => A.voidTravelPayment(slug, trip.id, p.id))}>Void</button>}
+                  </div>
+                </div>
+                {open && (
+                  <div className="mt-2 grid gap-2 rounded-lg bg-muted/50 p-3 md:grid-cols-3">
+                    <Field label={`Refund amount (max ${money(p.amount, trip.currency)})`}><input type="number" min={0} max={p.amount} className={inp} value={open.amount} onChange={(e) => setRefund({ ...open, amount: e.target.value })} /></Field>
+                    <div className="md:col-span-2"><Field label="Reason (kept on the record)"><input className={inp} placeholder="e.g. Trip cancelled, visa refused" value={open.reason} onChange={(e) => setRefund({ ...open, reason: e.target.value })} /></Field></div>
+                    <p className="text-xs text-muted-foreground md:col-span-3">Refund less than the full amount to keep a cancellation fee. Only one refund can be made per payment. Payments taken online go back to the traveller through the gateway; for cash or transfers BizNest only records the refund, so you repay the traveller yourself.</p>
+                    <div className="flex gap-2 md:col-span-3">
+                      <button className={btn} disabled={pending || !(Number(open.amount) > 0) || open.reason.trim().length < 3} onClick={() => {
+                        if (!confirm(`Refund ${money(Number(open.amount), trip.currency)} to the traveller? This can't be undone.`)) return;
+                        run(async () => {
+                          const r = await A.requestTravelRefund(slug, trip.id, p.id, { amount: Number(open.amount), reason: open.reason });
+                          if (r.success) toast.success(r.data.mode === "gateway" ? "Refund sent through the payment gateway." : "Refund recorded. Repay the traveller yourself, BizNest did not move any money.");
+                          return r;
+                        }, undefined, () => setRefund(null));
+                      }}>Confirm refund</button>
+                      <button className={btn2} onClick={() => setRefund(null)}>Cancel</button>
+                    </div>
+                  </div>
+                )}
               </div>
-            </div>
-          ))}
+            );
+          })}
           {!trip.payments.some((p) => p.status !== "VOID") && <p className="text-sm text-muted-foreground">No payments yet.</p>}
           {trip.status !== "CANCELLED" && (
             <div className="mt-3 grid gap-2 md:grid-cols-2">

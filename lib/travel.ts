@@ -42,12 +42,41 @@ export function newTripReference(now = new Date(), seq = 0): string {
   return `TRV-${y}${m}-${rand}${seq ? seq : ""}`;
 }
 
-export type TripMoney = { total: number; paid: number; balance: number; cost: number; margin: number };
-export function tripMoney(trip: { totalPrice: unknown; totalCost: unknown }, payments: { amount: unknown; status: string }[]): TripMoney {
+export type TripMoney = { total: number; paid: number; balance: number; cost: number; margin: number; refunded: number };
+
+/** What the agency actually holds from one payment: the amount minus anything refunded. Only RECEIVED payments count. */
+export function netReceived(p: { amount: unknown; status: string; refundedAmount?: unknown }): number {
+  if (p.status !== "RECEIVED") return 0;
+  return Math.max(0, Math.round(((Number(p.amount) || 0) - (Number(p.refundedAmount) || 0)) * 100) / 100);
+}
+
+export function tripMoney(trip: { totalPrice: unknown; totalCost: unknown }, payments: { amount: unknown; status: string; refundedAmount?: unknown }[]): TripMoney {
   const total = Number(trip.totalPrice) || 0;
   const cost = Number(trip.totalCost) || 0;
-  const paid = payments.filter((p) => p.status === "RECEIVED").reduce((s, p) => s + (Number(p.amount) || 0), 0);
-  return { total, paid, cost, balance: Math.max(0, total - paid), margin: total - cost };
+  const paid = payments.reduce((s, p) => s + netReceived(p), 0);
+  const refunded = payments.filter((p) => p.status === "RECEIVED" || p.status === "REFUNDED").reduce((s, p) => s + (Number(p.refundedAmount) || 0), 0);
+  return { total, paid, cost, balance: Math.max(0, total - paid), margin: total - cost, refunded };
+}
+
+/**
+ * Validates a refund request against one payment. One refund per payment: partial refunds are allowed
+ * (the agency keeps the rest, e.g. a cancellation fee) but a second refund on the same payment is not.
+ */
+export function checkRefundAmount(payment: { amount: unknown; status: string; refundedAmount?: unknown }, requested: unknown): { ok: true; amount: number; full: boolean } | { ok: false; error: string } {
+  if (payment.status !== "RECEIVED") return { ok: false, error: "Only a received payment can be refunded." };
+  if ((Number(payment.refundedAmount) || 0) > 0) return { ok: false, error: "This payment has already been refunded." };
+  const n = Number(requested);
+  if (!Number.isFinite(n) || n <= 0) return { ok: false, error: "Enter a refund amount greater than zero." };
+  const amount = Math.round(n * 100) / 100;
+  const paid = Math.round((Number(payment.amount) || 0) * 100) / 100;
+  if (amount > paid + 0.005) return { ok: false, error: "A refund can't be more than the payment it came from." };
+  return { ok: true, amount: Math.min(amount, paid), full: amount >= paid - 0.005 };
+}
+
+/** Share of a vendor payout affected by a refund of `refund` out of a `payment` charge (the gateway fee is not refunded, so scale pro rata). */
+export function payoutShareOfRefund(payoutAmount: number, payment: number, refund: number): number {
+  if (!(payment > 0) || !(payoutAmount > 0) || !(refund > 0)) return 0;
+  return Math.round(payoutAmount * Math.min(1, refund / payment) * 100) / 100;
 }
 
 /** Days until a date (negative = past). Null when no date. */

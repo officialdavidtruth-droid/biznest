@@ -7,6 +7,8 @@ import { getPluginEntitlement } from "@/lib/plugins";
 import { getCanonicalBusinessType } from "@/lib/business-identity";
 import type { ActionResult } from "@/types/actions";
 import { startTravelCharge } from "@/lib/payments/travel-charge";
+import { refundTravelPayment } from "@/lib/payments/refund-travel";
+import { auth } from "@/lib/auth";
 import {
   TRAVEL_PLUGIN_KEY, TRAVEL_BUSINESS_TYPE, TRIP_STATUSES, ITEM_KINDS, ITEM_STATUSES, PAYMENT_METHODS,
   SUPPLIER_KINDS, SEAT_HOLDING_STATUSES, VISA_STATUSES, VISA_TYPES, DEFAULT_VISA_CHECKLIST, canPayOnline, canMoveTrip, newTripReference, tripMoney,
@@ -78,8 +80,8 @@ export async function getTravelDashboard(slug: string) {
       currency: t.currency, notes: t.notes, packageId: t.packageId, createdAt: t.createdAt.toISOString(),
       client: t.client, money: m,
       travellers: t.travellers.map((x) => ({ id: x.id, fullName: x.fullName, passportNo: x.passportNo, passportExpiry: x.passportExpiry?.toISOString() ?? null, nationality: x.nationality, isLead: x.isLead })),
-      items: t.items.map((i) => ({ id: i.id, kind: i.kind, description: i.description, status: i.status, confirmationRef: i.confirmationRef, startDate: i.startDate?.toISOString() ?? null, supplierId: i.supplierId, supplierName: i.supplier?.name ?? null, costPrice: Number(i.costPrice), sellPrice: Number(i.sellPrice) })),
-      payments: t.payments.map((p) => ({ id: p.id, amount: Number(p.amount), method: p.method, status: p.status, dueDate: p.dueDate?.toISOString() ?? null, paidAt: p.paidAt?.toISOString() ?? null, reference: p.reference, note: p.note })),
+      items: t.items.map((i) => ({ id: i.id, kind: i.kind, description: i.description, status: i.status, confirmationRef: i.confirmationRef, startDate: i.startDate?.toISOString() ?? null, endDate: i.endDate?.toISOString() ?? null, supplierId: i.supplierId, supplierName: i.supplier?.name ?? null, costPrice: Number(i.costPrice), sellPrice: Number(i.sellPrice) })),
+      payments: t.payments.map((p) => ({ id: p.id, amount: Number(p.amount), refundedAmount: Number(p.refundedAmount), refundedAt: p.refundedAt?.toISOString() ?? null, refundReason: p.refundReason, method: p.method, status: p.status, dueDate: p.dueDate?.toISOString() ?? null, paidAt: p.paidAt?.toISOString() ?? null, reference: p.reference, note: p.note })),
     };
   });
 
@@ -228,7 +230,7 @@ export async function removeTravelTraveler(slug: string, tripId: string, travele
 
 // ---------------------------------------------------------------- service lines
 
-export async function saveTravelItem(slug: string, tripId: string, input: { id?: string; kind: string; description: string; supplierId?: string; startDate?: string; confirmationRef?: string; status?: string; costPrice: number; sellPrice: number }): Promise<ActionResult> {
+export async function saveTravelItem(slug: string, tripId: string, input: { id?: string; kind: string; description: string; supplierId?: string; startDate?: string; endDate?: string; confirmationRef?: string; status?: string; costPrice: number; sellPrice: number }): Promise<ActionResult> {
   const a = await access(slug); if (!a.success) return fail(a.error);
   const trip = await ownTrip(a, tripId); if (!trip) return fail("Trip not found.");
   if (["COMPLETED", "CANCELLED"].includes(trip.status)) return fail("This trip is closed.");
@@ -240,7 +242,11 @@ export async function saveTravelItem(slug: string, tripId: string, input: { id?:
     const s = await prisma.travelSupplier.findFirst({ where: { id: input.supplierId, storeId: a.store.id }, select: { id: true } });
     if (!s) return fail("Supplier not found."); supplierId = s.id;
   }
-  const data = { kind: oneOf(ITEM_KINDS, input.kind, "OTHER"), description, supplierId, startDate: optDate(input.startDate), confirmationRef: optStr(input.confirmationRef, 60), status: oneOf(ITEM_STATUSES, input.status, "PENDING"), costPrice: cost, sellPrice: sell };
+  const startDate = input.startDate === undefined ? undefined : optDate(input.startDate);
+  const endDate = input.endDate === undefined ? undefined : optDate(input.endDate);
+  if (startDate && endDate && endDate < startDate) return fail("The end date can't be before the start date.");
+  // startDate/endDate are only written when the caller sent them, so actions like "Confirm" can't erase saved dates.
+  const data = { kind: oneOf(ITEM_KINDS, input.kind, "OTHER"), description, supplierId, ...(startDate !== undefined ? { startDate } : {}), ...(endDate !== undefined ? { endDate } : {}), confirmationRef: optStr(input.confirmationRef, 60), status: oneOf(ITEM_STATUSES, input.status, "PENDING"), costPrice: cost, sellPrice: sell };
   if (input.id) {
     const it = await prisma.travelTripItem.findFirst({ where: { id: input.id, tripId: trip.id } });
     if (!it) return fail("Service line not found.");
@@ -289,8 +295,28 @@ export async function markTravelPaymentReceived(slug: string, tripId: string, pa
 export async function voidTravelPayment(slug: string, tripId: string, paymentId: string): Promise<ActionResult> {
   const a = await access(slug); if (!a.success) return fail(a.error);
   const trip = await ownTrip(a, tripId); if (!trip) return fail("Trip not found.");
-  await prisma.travelPayment.updateMany({ where: { id: paymentId, tripId: trip.id, status: { not: "VOID" } }, data: { status: "VOID" } });
+  const tp = await prisma.travelPayment.findFirst({ where: { id: paymentId, tripId: trip.id }, select: { reference: true, status: true, refundedAmount: true } });
+  if (!tp) return fail("Payment not found.");
+  // Voiding is for entries made by mistake. Money that was actually taken must be refunded so the record shows where it went.
+  if (tp.status === "REFUNDED" || Number(tp.refundedAmount) > 0) return fail("This payment has been refunded and can't be voided.");
+  if (tp.status === "RECEIVED" && tp.reference) {
+    const online = await prisma.payment.findFirst({ where: { reference: tp.reference, travelTripId: trip.id, status: { in: ["SUCCESSFUL", "REFUND_PENDING"] } }, select: { id: true } });
+    if (online) return fail("This payment was taken online. Use Refund to return it to the traveller instead of voiding it.");
+  }
+  await prisma.travelPayment.updateMany({ where: { id: paymentId, tripId: trip.id, status: { in: ["DUE", "RECEIVED"] }, refundedAmount: 0 }, data: { status: "VOID" } });
   refresh(slug); return { success: true, data: undefined };
+}
+
+/**
+ * Refund (all or part of) a received payment. Online payments go back through the gateway that took them;
+ * manual payments are recorded only (the agency repays the traveller itself). One refund per payment.
+ */
+export async function requestTravelRefund(slug: string, tripId: string, paymentId: string, input: { amount: number; reason: string }): Promise<ActionResult<{ mode: "gateway" | "recorded"; amount: number; full: boolean }>> {
+  const a = await access(slug); if (!a.success) return fail(a.error);
+  const session = await auth();
+  const res = await refundTravelPayment({ store: { id: a.store.id, slug: a.store.slug }, actorEmail: session?.user?.email ?? "unknown", tripId, travelPaymentId: paymentId, amount: Number(input.amount), reason: input.reason });
+  if (res.success) refresh(slug);
+  return res;
 }
 
 // ---------------------------------------------------------------- suppliers & packages

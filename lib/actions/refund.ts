@@ -18,6 +18,7 @@ import { formatNumber } from "@/lib/i18n/locale";
 import { logActivity } from "@/lib/activity-log";
 import { reverseReferralForOrderSafely } from "@/lib/payments/referral-award";
 import { postOrderRefundToLedger, postPaymentRefundToLedger } from "@/lib/financial/order-ledger";
+import { recordTravelPayoutRefundEffect } from "@/lib/payments/refund-travel";
 
 // Order statuses a refund can be issued from. PENDING_PAYMENT/CANCELLED
 // never had money move; REFUNDED is already done; DISPUTED is left out
@@ -418,24 +419,26 @@ export async function reconcileRefundPendingPayment(slug: string, paymentId: str
   if (!store) return { success: false, error: "Store not found." };
   const payment = await prisma.payment.findFirst({ where: { id: paymentId, storeId: store.id, status: "REFUND_PENDING" }, include: { order: true, booking: true, reservation: true } });
   if (!payment) return { success: false, error: "Refund-pending payment not found." };
+  // Travel refunds can be partial: the intended amount was stored on the payment when the refund was claimed.
+  const expectedRefund = Number(payment.refundedAmount ?? payment.amount);
 
   let gatewayStatus: "REFUNDED" | "FAILED" | "STILL_PENDING" = "STILL_PENDING";
   let refundReference: string | null = null;
   if (payment.provider === "PAYSTACK") {
     const result = await listPaystackRefundsForTransaction(payment.reference, await secretKeyForPayment(payment));
     if (!result.status) return { success: false, error: result.message || "Couldn't query Paystack refund status." };
-    const refund = result.data.filter((r: any) => Number(r.amount ?? 0) === Math.round(Number(payment.amount) * 100)).sort((a: any, b: any) => new Date(b.createdAt ?? 0).getTime() - new Date(a.createdAt ?? 0).getTime())[0];
+    const refund = result.data.filter((r: any) => Number(r.amount ?? 0) === Math.round(expectedRefund * 100)).sort((a: any, b: any) => new Date(b.createdAt ?? 0).getTime() - new Date(a.createdAt ?? 0).getTime())[0];
     if (refund) { refundReference = refund.id != null ? String(refund.id) : null; if (refund.status === "processed") gatewayStatus = "REFUNDED"; else if (refund.status === "failed") gatewayStatus = "FAILED"; }
   } else if (payment.provider === "FLUTTERWAVE") {
     const rawId = (payment.rawPayload as { data?: { id?: number } } | null)?.data?.id;
     if (!rawId) return { success: false, error: "Missing Flutterwave transaction id; cannot reconcile this refund safely." };
     const result = await listFlutterwaveRefundsForTransaction(String(rawId), await secretKeyForPayment(payment));
     if (result.status !== "success") return { success: false, error: result.message || "Couldn't query Flutterwave refund status." };
-    const refund = result.data.filter((r: any) => Number(r.amount_refunded ?? r.amount ?? 0) === Number(payment.amount)).sort((a: any, b: any) => new Date(b.updatedAt ?? b.createdAt ?? 0).getTime() - new Date(a.updatedAt ?? a.createdAt ?? 0).getTime())[0];
+    const refund = result.data.filter((r: any) => Number(r.amount_refunded ?? r.amount ?? 0) === expectedRefund).sort((a: any, b: any) => new Date(b.updatedAt ?? b.createdAt ?? 0).getTime() - new Date(a.updatedAt ?? a.createdAt ?? 0).getTime())[0];
     if (refund) { refundReference = refund.id != null ? String(refund.id) : null; const status = String(refund.status ?? "").toLowerCase(); if (status.startsWith("completed")) gatewayStatus = "REFUNDED"; else if (status === "failed") gatewayStatus = "FAILED"; }
   } else if (payment.provider === "KORAPAY") {
     // Refund references are derived from the payment reference + amount (see refundKorapayTransaction), so we can read it back.
-    const result = await getKorapayRefund(korapayRefundReference(payment.reference, Number(payment.amount)), await secretKeyForPayment(payment));
+    const result = await getKorapayRefund(korapayRefundReference(payment.reference, expectedRefund), await secretKeyForPayment(payment));
     if (!result.status && !result.notFound) return { success: false, error: result.message || "Couldn't query Korapay refund status." };
     if (result.data) {
       refundReference = result.data.reference ?? null;
@@ -447,7 +450,7 @@ export async function reconcileRefundPendingPayment(slug: string, paymentId: str
 
   if (gatewayStatus === "STILL_PENDING") return { success: true, data: { status: "STILL_PENDING" } };
   if (gatewayStatus === "FAILED") {
-    const result = await prisma.payment.updateMany({ where: { id: payment.id, status: "REFUND_PENDING" }, data: { status: "SUCCESSFUL", refundReason: null, refundedByEmail: null } });
+    const result = await prisma.payment.updateMany({ where: { id: payment.id, status: "REFUND_PENDING" }, data: { status: "SUCCESSFUL", refundedAmount: null, refundReason: null, refundedByEmail: null } });
     if (!result.count) return { success: false, error: "Payment changed while reconciliation was running." };
     return { success: true, data: { status: "FAILED" } };
   }
@@ -455,8 +458,16 @@ export async function reconcileRefundPendingPayment(slug: string, paymentId: str
 
   try {
     await prisma.$transaction(async (tx) => {
-      const result = await tx.payment.updateMany({ where: { id: payment.id, status: "REFUND_PENDING" }, data: { status: "REFUNDED", refundReference, refundedAmount: payment.amount, refundedAt: new Date() } });
+      const result = await tx.payment.updateMany({ where: { id: payment.id, status: "REFUND_PENDING" }, data: { status: "REFUNDED", refundReference, refundedAmount: expectedRefund, refundedAt: new Date() } });
       if (!result.count) throw new Error("PAYMENT_CHANGED");
+      if (payment.travelTripId) {
+        const refundedFull = expectedRefund >= Number(payment.amount) - 0.005;
+        await tx.travelPayment.updateMany({
+          where: { tripId: payment.travelTripId, reference: payment.reference, status: "RECEIVED", refundedAmount: 0 },
+          data: { ...(refundedFull ? { status: "REFUNDED" } : {}), refundedAmount: expectedRefund, refundedAt: new Date(), refundReference, refundReason: payment.refundReason, refundedByEmail: payment.refundedByEmail },
+        });
+        await recordTravelPayoutRefundEffect(tx, payment.id, Number(payment.amount), expectedRefund);
+      }
       if (payment.order) { await tx.order.update({ where: { id: payment.order.id }, data: { status: "REFUNDED" } }); await tx.orderStatusEvent.create({ data: { orderId: payment.order.id, status: "REFUNDED", note: payment.refundReason ?? "Refund reconciled from gateway" } }); await restoreInventoryForRefund(tx, payment.order.id, store.id); await recordRefundClawbackIfSettled(tx, store, payment); }
       if (payment.booking) await tx.booking.update({ where: { id: payment.booking.id }, data: { paymentStatus: "REFUNDED" } });
       if (payment.reservation) await tx.propertyReservation.update({ where: { id: payment.reservation.id }, data: { paymentStatus: "REFUNDED" } });
@@ -464,9 +475,9 @@ export async function reconcileRefundPendingPayment(slug: string, paymentId: str
   } catch { return { success: false, error: "The gateway confirms the refund, but BizNest could not finalize the local record. It remains refund-pending and is safe to reconcile again." }; }
   if (payment.order) { await postOrderRefundToLedger(payment.order.id); await reverseReferralForOrderSafely(payment.order.id); }
   else await postPaymentRefundToLedger(payment.id);
-  await logActivity({ storeId: store.id, action: "payment.refund_reconciled", target: payment.id, metadata: { amount: Number(payment.amount) } });
-  await emitWebhookEvent("PAYMENT_REFUNDED", store.id, { paymentId: payment.id, amount: Number(payment.amount), currency: payment.currency, reason: payment.refundReason ?? "Refund reconciled from gateway" });
-  revalidatePath(`/store/${slug}/admin/payments`); revalidatePath(`/store/${slug}/admin/orders`); revalidatePath(`/store/${slug}/admin/bookings`); revalidatePath(`/store/${slug}/admin/pms`);
+  await logActivity({ storeId: store.id, action: "payment.refund_reconciled", target: payment.id, metadata: { amount: expectedRefund } });
+  await emitWebhookEvent("PAYMENT_REFUNDED", store.id, { paymentId: payment.id, amount: expectedRefund, currency: payment.currency, reason: payment.refundReason ?? "Refund reconciled from gateway" });
+  revalidatePath(`/store/${slug}/admin/payments`); revalidatePath(`/store/${slug}/admin/orders`); revalidatePath(`/store/${slug}/admin/bookings`); revalidatePath(`/store/${slug}/admin/pms`); revalidatePath(`/store/${slug}/admin/travel`);
   return { success: true, data: { status: "REFUNDED" } };
 }
 

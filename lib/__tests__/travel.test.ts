@@ -18,7 +18,7 @@ describe("tripMoney", () => {
     const m = tripMoney({ totalPrice: "1000", totalCost: "700" }, [
       { amount: "400", status: "RECEIVED" }, { amount: "300", status: "DUE" }, { amount: "100", status: "VOID" },
     ]);
-    expect(m).toEqual({ total: 1000, cost: 700, paid: 400, balance: 600, margin: 300 });
+    expect(m).toEqual({ total: 1000, cost: 700, paid: 400, balance: 600, margin: 300, refunded: 0 });
     expect(tripMoney({ totalPrice: 100, totalCost: 0 }, [{ amount: 150, status: "RECEIVED" }]).balance).toBe(0);
   });
 });

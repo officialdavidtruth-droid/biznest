@@ -6,6 +6,7 @@ import { logError } from "@/lib/observability/log";
 import { formatNumber } from "@/lib/i18n/locale";
 import { notifyUser } from "@/lib/notifications/notify";
 import { APP_URL } from "@/lib/constants/app-url";
+import { netReceived } from "@/lib/travel";
 
 const esc = (v: string) => v.replace(/[&<>'"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", "'": "&#39;", '"': "&quot;" }[c]!));
 
@@ -18,7 +19,7 @@ export async function sendTravelPaymentEmail(reference: string): Promise<{ sent:
   try {
     const payment = await prisma.payment.findUnique({
       where: { reference },
-      include: { travelTrip: { include: { client: true, store: true, travellers: { select: { id: true } }, payments: { select: { amount: true, status: true } } } } },
+      include: { travelTrip: { include: { client: true, store: true, travellers: { select: { id: true } }, payments: { select: { amount: true, status: true, refundedAmount: true } } } } },
     });
     if (!payment || payment.purpose !== "TRAVEL_BOOKING" || payment.status !== "SUCCESSFUL" || !payment.travelTrip) return { sent: false, reason: "not a settled travel payment" };
     const trip = payment.travelTrip;
@@ -26,7 +27,7 @@ export async function sendTravelPaymentEmail(reference: string): Promise<{ sent:
     if (!to) return { sent: false, reason: "traveller has no email address" };
 
     const confirmed = ["CONFIRMED", "TICKETED", "TRAVELLING", "COMPLETED"].includes(trip.status);
-    const paid = trip.payments.filter((p) => p.status === "RECEIVED").reduce((s, p) => s + Number(p.amount), 0);
+    const paid = trip.payments.reduce((s, p) => s + netReceived(p), 0);
     const total = Number(trip.totalPrice);
     const balance = Math.max(0, total - paid);
     const money = (n: number) => `${esc(payment.currency)} ${formatNumber(n)}`;
@@ -52,6 +53,34 @@ export async function sendTravelPaymentEmail(reference: string): Promise<{ sent:
     return { sent: true };
   } catch (err) {
     void logError("EMAIL", "Travel payment email failed", { reference, error: err instanceof Error ? err.message : String(err) });
+    return { sent: false, reason: "send failed" };
+  }
+}
+
+/**
+ * Tells the traveller a refund has been recorded. Online refunds go back to the original payment method; for payments
+ * the agency collected itself, the agency arranges the repayment. Never throws.
+ */
+export async function sendTravelRefundEmail(tripId: string, amount: number, full: boolean, mode: "gateway" | "recorded"): Promise<{ sent: boolean; reason?: string }> {
+  try {
+    const trip = await prisma.travelTrip.findUnique({ where: { id: tripId }, include: { client: true, store: true } });
+    if (!trip) return { sent: false, reason: "trip not found" };
+    const to = trip.client.email?.trim();
+    if (!to) return { sent: false, reason: "traveller has no email address" };
+    const money = `${esc(trip.currency)} ${formatNumber(amount)}`;
+    const how = mode === "gateway"
+      ? "It is being returned to the card or bank account you paid with. Banks usually take a few working days to show it."
+      : "Your agency will arrange the repayment with you directly.";
+    const lines = [
+      `Hi ${esc(trip.client.fullName.split(" ")[0] || "there")},`,
+      `A ${full ? "full" : "partial"} refund of <strong>${money}</strong> has been recorded for <strong>${esc(trip.title)}</strong> (booking reference ${esc(trip.reference)}).`,
+      how,
+      `If you have any questions, please reply to the agency directly.`,
+    ];
+    await sendOrderNotificationEmail(to, `Refund recorded: ${trip.title}`, lines.join("<br/><br/>"), storeEmailBrand(trip.store));
+    return { sent: true };
+  } catch (err) {
+    void logError("EMAIL", "Travel refund email failed", { tripId, error: err instanceof Error ? err.message : String(err) });
     return { sent: false, reason: "send failed" };
   }
 }
@@ -97,7 +126,7 @@ export async function notifyAgencyOfTravelPayment(reference: string): Promise<{ 
       `<strong>${esc(title)}</strong><br/><br/>` +
       (kind === "normal" ? `${who} paid <strong>${money}</strong> for <strong>${esc(trip.title)}</strong> (${esc(trip.destination)}). The trip is now ${esc(trip.status.toLowerCase())}.`
         : kind === "sold_out" ? `${who} paid <strong>${money}</strong> for <strong>${esc(trip.title)}</strong>, but the tour had no seats left when the payment arrived, so the trip was <strong>not confirmed</strong>.<br/><br/>Refund the traveller from your payment gateway (or move them to another departure), then void the payment on the trip.`
-        : `${who} paid <strong>${money}</strong> for <strong>${esc(trip.title)}</strong>, which is cancelled. A refund is probably due: refund from your payment gateway, then void the payment on the trip.`) +
+        : `${who} paid <strong>${money}</strong> for <strong>${esc(trip.title)}</strong>, which is cancelled. A refund is probably due: open the trip in BizNest Travel and use Refund on the payment.`) +
       `<br/><br/>Booking reference: ${esc(trip.reference)}<br/>Payment reference: ${esc(reference)}<br/><br/><a href="${esc(link)}">Open BizNest Travel</a>`;
 
     await Promise.allSettled([

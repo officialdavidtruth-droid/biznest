@@ -4602,11 +4602,18 @@ model TravelPayment {
   trip        TravelTrip @relation(fields: [tripId], references: [id], onDelete: Cascade)
   amount      Decimal  @db.Decimal(12, 2)
   method      String   @default("TRANSFER") // CASH | TRANSFER | CARD | POS | OTHER
-  status      String   @default("RECEIVED") // DUE | RECEIVED | VOID
+  status      String   @default("RECEIVED") // DUE | RECEIVED | VOID | REFUNDED (fully refunded)
   dueDate     DateTime?
   paidAt      DateTime?
   reference   String?
   note        String?
+  // One refund per payment. Partial refunds keep status RECEIVED (the agency retains the rest, e.g. a cancellation fee);
+  // a full refund moves it to REFUNDED. See lib/payments/refund-travel.ts.
+  refundedAmount  Decimal  @default(0) @db.Decimal(12, 2)
+  refundedAt      DateTime?
+  refundReference String?
+  refundReason    String?
+  refundedByEmail String?
   createdAt   DateTime @default(now())
 
   @@unique([tripId, reference])

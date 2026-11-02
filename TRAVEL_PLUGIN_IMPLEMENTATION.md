@@ -63,3 +63,25 @@ When a tour payment settles, `lib/payments/travel-confirmation.ts` emails the tr
 
 ## Agency alerts
 When a tour payment settles, the agency owner gets a dashboard notification (type `TRAVEL_PAID`) and an email (`notifyAgencyOfTravelPayment` in `lib/payments/travel-confirmation.ts`). Payments that need a human are titled "Action needed": the tour was full when the payment arrived (trip left unconfirmed; refund or move the traveller, then void the payment on the trip), or the trip was already cancelled (refund likely due). Sent once per settled payment, never throws.
+
+## Client PDFs and refunds (added after the first review)
+
+**PDF quote / invoice / itinerary.** `GET /api/store/[slug]/travel/[tripId]/document?type=quote|invoice|itinerary`
+(staff only, same checks as the workspace). Built in `lib/travel-documents.ts`. Never prints cost, margin, supplier
+names, passport numbers or internal notes. The itinerary groups service lines by their start date, so lines need dates
+(the Add service form now has Start and End date).
+
+**Refunds.** `requestTravelRefund` (lib/actions/travel.ts) -> `refundTravelPayment` (lib/payments/refund-travel.ts).
+- One refund per payment. Partial refunds are allowed (the agency keeps the rest, e.g. a cancellation fee); the
+  payment stays RECEIVED with `refundedAmount` set. A full refund moves it to REFUNDED. `tripMoney().paid` is net of refunds.
+- Online payments (a gateway `Payment` shares the `TravelPayment.reference`): the gateway `Payment` is claimed
+  (SUCCESSFUL -> REFUND_PENDING, with the intended amount) before the gateway is called, then the refund goes back through
+  the provider that took the money. A decline releases the claim. If the gateway accepts but local recording fails, the
+  payment stays REFUND_PENDING; a platform admin finishes it with `reconcileRefundPendingPayment`, which is now
+  partial-refund and travel aware.
+- Vendor payouts follow the refund: unsent payouts are cancelled (full) or reduced pro rata (partial); sent payouts
+  create a clawback for the refunded share.
+- Manual payments (cash, transfer, POS): the refund is recorded only. BizNest moves no money and the UI says so.
+- Voiding a payment that was taken online is blocked; use Refund. A refunded payment can't be voided.
+- Travel payments are not posted to the Financial Control ledger today, so refunds are not either.
+- Migration: `20261116090000_travel_payment_refunds` (adds columns to TravelPayment, no data changes).
