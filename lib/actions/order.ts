@@ -1,5 +1,7 @@
 "use server";
 
+import { canPreorder, preorderSpotsLeft } from "@/lib/preorder";
+import { preorderUnitsTaken } from "@/lib/preorder-server";
 import { isGatewayChargeable } from "@/lib/store-currency";
 import { findMixedCurrencies, mixedCurrencyMessage } from "@/lib/currency-guard";
 import { reverseReferralForOrderSafely } from "@/lib/payments/referral-award";
@@ -447,6 +449,8 @@ export async function startCheckout(
   // Units already promised to other customers' unpaid bank-transfer orders are not available to this one.
   const holds = await getTransferHolds(store.id, { productIds, variantIds, excludeBuyerId: session.user.id });
   const lines: { unitPrice: number; quantity: number }[] = [];
+  // Units of each pre-order product asked for in this cart (a product can appear on several variant lines).
+  const preorderAsk = new Map<string, number>();
   for (const item of data.items) {
     const product = products.find((p) => p.id === item.productId);
     if (!product) return { success: false, error: "One or more products are no longer available." };
@@ -456,6 +460,20 @@ export async function startCheckout(
     const variant = item.variantId ? variants.find((v) => v.id === item.variantId) : null;
     if (item.variantId && (!variant || variant.productId !== product.id)) {
       return { success: false, error: `The selected option for ${product.name} is no longer available.` };
+    }
+    // Pre-order products sell ahead of stock: skip every stock check, enforce only the pre-order cap.
+    if (product.type === "PHYSICAL" && product.preorderEnabled) {
+      const asked = (preorderAsk.get(product.id) ?? 0) + item.quantity;
+      preorderAsk.set(product.id, asked);
+      if (product.preorderLimit != null) {
+        const taken = await preorderUnitsTaken(product.id);
+        if (!canPreorder(product.preorderLimit, taken, asked)) {
+          const left = preorderSpotsLeft(product.preorderLimit, taken) ?? 0;
+          return { success: false, error: left > 0 ? `Only ${left} pre-order spot${left === 1 ? "" : "s"} left for ${product.name}.` : `Pre-orders for ${product.name} are full.` };
+        }
+      }
+      lines.push({ unitPrice: variant?.price == null ? Number(product.price) : Number(variant.price), quantity: item.quantity });
+      continue;
     }
     // A dish with a recipe is limited by its ingredients, not its own count.
     const recipeNeeds = computeRecipeRequirements(product.attributes, item.quantity);
@@ -649,6 +667,7 @@ export async function startCheckout(
                   unitPrice: item.variantId
                     ? (variants.find((v) => v.id === item.variantId)?.price ?? product.price)
                     : product.price,
+                  ...(product.type === "PHYSICAL" && product.preorderEnabled ? { preorder: true, preorderShipsOn: product.preorderShipsOn } : {}),
                 };
               }
             ),

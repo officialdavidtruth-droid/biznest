@@ -17,3 +17,20 @@ describe("Recruitment (applicant tracking) plugin", () => {
     for (const s of PIPELINE_STAGES) expect(RECRUIT_STAGES).toContain(s);
   });
 });
+
+import { toHrEmploymentType, nextEmployeeNo } from "@/lib/recruitment-constants";
+
+describe("Hired → HR & Payroll employee", () => {
+  it("maps job employment types onto HR's", () => {
+    expect(toHrEmploymentType("INTERNSHIP")).toBe("INTERN");
+    expect(toHrEmploymentType("CONTRACT")).toBe("CONTRACT");
+    expect(toHrEmploymentType("PART_TIME")).toBe("PART_TIME");
+    expect(toHrEmploymentType("nonsense")).toBe("FULL_TIME");
+    expect(toHrEmploymentType(null)).toBe("FULL_TIME");
+  });
+  it("generates the next sequential employee number", () => {
+    expect(nextEmployeeNo([])).toBe("EMP-001");
+    expect(nextEmployeeNo(["EMP-001", "EMP-009", "A-12"])).toBe("EMP-010");
+    expect(nextEmployeeNo(["emp-099"])).toBe("EMP-100");
+  });
+});

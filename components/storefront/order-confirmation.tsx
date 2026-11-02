@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { formatShipsOn } from "@/lib/preorder";
 import { CheckCircle2 } from "lucide-react";
 import { DEFAULT_STORE_PALETTE, type StorePalette } from "@/lib/store-palette-defaults";
 import { formatMoney } from "@/lib/utils/format-money";
@@ -32,7 +33,7 @@ export function OrderConfirmation({
         <section style={{ background: card, border: `1px solid ${ink}14` }} className="mt-10 rounded-2xl p-6">
           {lines.map((i) => (
             <div key={i.id} className="flex justify-between gap-4 py-2 text-sm">
-              <span>{i.product?.name || i.service?.name || "Item"} × {i.quantity}</span>
+              <span>{i.product?.name || i.service?.name || "Item"} × {i.quantity}{i.preorder && <small style={{ display: "block", opacity: 0.7 }}>Pre-order{i.preorderShipsOn ? ` · ships by ${formatShipsOn(i.preorderShipsOn)}` : ""}</small>}</span>
               <b>{formatMoney(Number(i.unitPrice) * i.quantity, order.currency)}</b>
             </div>
           ))}

@@ -24,6 +24,7 @@ export async function getTransferHolds(
 
   const items = await prisma.orderItem.findMany({
     where: {
+      preorder: false, // pre-order lines never reserve real stock
       OR: [
         ...(opts.productIds.length ? [{ productId: { in: opts.productIds }, variantId: null }] : []),
         ...(opts.variantIds.length ? [{ variantId: { in: opts.variantIds } }] : []),

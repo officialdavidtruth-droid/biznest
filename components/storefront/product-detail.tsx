@@ -37,6 +37,7 @@ export function ProductDetail({
   rentalUnit,
   inStock,
   stock = null,
+  preorder = null,
   variants = [],
   related = [],
   accent,
@@ -60,6 +61,8 @@ export function ProductDetail({
   inStock: boolean;
   /** Units left for a PHYSICAL product without variants; null when untracked. */
   stock?: number | null;
+  /** Set when the product is sold as a pre-order: stock is ignored; spotsLeft null = no cap. */
+  preorder?: { shipsOn: string | null; spotsLeft: number | null } | null;
   variants?: { id: string; label: string; optionValues: Record<string, string>; price: number | null; quantity: number; images: string[] }[];
   related?: RelatedProduct[];
   accent: string;
@@ -107,13 +110,13 @@ export function ProductDetail({
   // rentals/digital, and checkout only enforces stock for PHYSICAL), so only they
   // get an In stock / Out of stock badge.
   const tracksStock = type === "PHYSICAL";
-  const canBuy = variants.length > 0 ? Boolean(selectedVariant && selectedVariant.quantity > 0) : (tracksStock ? inStock : true);
+  const canBuy = preorder ? (variants.length > 0 ? Boolean(selectedVariant) : true) : variants.length > 0 ? Boolean(selectedVariant && selectedVariant.quantity > 0) : (tracksStock ? inStock : true);
   // How many the shopper can add: the selected variant's stock, or the product's stock
   // when it has no variants. null = no cap (digital/rental, or no variant chosen yet).
-  const maxQty = tracksStock ? (variants.length > 0 ? (selectedVariant ? selectedVariant.quantity : null) : stock) : null;
+  const maxQty = preorder ? preorder.spotsLeft : tracksStock ? (variants.length > 0 ? (selectedVariant ? selectedVariant.quantity : null) : stock) : null;
   // Derived, so the count also shrinks when a variant with less stock is selected.
   const quantity = maxQty != null && maxQty > 0 ? Math.min(qty, maxQty) : qty;
-  const lowStock = maxQty != null && maxQty > 0 && maxQty <= 5;
+  const lowStock = !preorder && maxQty != null && maxQty > 0 && maxQty <= 5;
   // compareAtPrice belongs to the product, and variants have no compare-at of their
   // own. A variant with its own price is a different price point, so comparing it to
   // the product's compare-at would show a made-up discount (or hide a real one).
@@ -145,7 +148,8 @@ export function ProductDetail({
     if (thenCheckout) router.push(`${base}/checkout`);
   }
 
-  const outOfStock = !inStock && tracksStock;
+  const preorderFull = Boolean(preorder && preorder.spotsLeft === 0);
+  const outOfStock = preorderFull || (!preorder && !inStock && tracksStock);
 
   return (
     <div className="pd-wrap" style={{ ["--pd-accent" as string]: accent, ["--pd-ink" as string]: ink, ["--pd-radius" as string]: radius, ["--pd-bg" as string]: bg ?? "#fff", ["--pd-on-accent" as string]: readableOn(accent) }}>
@@ -183,7 +187,7 @@ export function ProductDetail({
           <div className="pd-meta">
             {categoryName && <span className="pd-cat">{categoryName}</span>}
             {tracksStock && (
-              <span className={`pd-stock ${outOfStock ? "out" : "in"}`}><i />{outOfStock ? "Out of stock" : lowStock && variants.length === 0 ? `Only ${maxQty} left` : "In stock"}</span>
+              <span className={`pd-stock ${outOfStock ? "out" : "in"}`}><i />{preorderFull ? "Pre-orders full" : preorder ? `Pre-order${preorder.shipsOn ? ` · ships by ${preorder.shipsOn}` : ""}` : outOfStock ? "Out of stock" : lowStock && variants.length === 0 ? `Only ${maxQty} left` : "In stock"}</span>
             )}
           </div>
           <h1 className="pd-title">{name}</h1>
@@ -217,12 +221,12 @@ export function ProductDetail({
                   </div>
                 </div>
               ))}
-              {selectedVariant && <div className="pd-avail">{selectedVariant.label} · {selectedVariant.quantity} available</div>}
+              {selectedVariant && <div className="pd-avail">{selectedVariant.label} · {preorder ? "available to pre-order" : `${selectedVariant.quantity} available`}</div>}
             </div>
           )}
 
           {outOfStock ? (
-            <div className="pd-oos">This item is currently out of stock.</div>
+            <div className="pd-oos">{preorderFull ? "Pre-orders for this item are full." : "This item is currently out of stock."}</div>
           ) : (
             <>
               <div className="pd-buy">
@@ -232,10 +236,10 @@ export function ProductDetail({
                   <button type="button" onClick={() => setQty(maxQty != null ? Math.min(maxQty, quantity + 1) : quantity + 1)} disabled={maxQty != null && quantity >= maxQty} aria-label="Increase quantity"><Plus size={16} /></button>
                 </div>
                 <button type="button" className="pd-add" onClick={() => handleAdd(false)} disabled={!canBuy}>
-                  <ShoppingBag size={18} /> Add to cart · {currency} {formatNumber((effectivePrice * quantity))}
+                  <ShoppingBag size={18} /> {preorder ? "Pre-order" : "Add to cart"} · {currency} {formatNumber((effectivePrice * quantity))}
                 </button>
               </div>
-              <button type="button" className="pd-now" onClick={() => handleAdd(true)} disabled={!canBuy}>Buy it now</button>
+              <button type="button" className="pd-now" onClick={() => handleAdd(true)} disabled={!canBuy}>{preorder ? "Pre-order now" : "Buy it now"}</button>
 
               {added && (
                 <div className="pd-added" role="status">

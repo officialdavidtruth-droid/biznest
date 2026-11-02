@@ -96,6 +96,8 @@ export async function decrementStockForOrder(
   const orderedItems = [...order.items].sort((a, b) => (a.variantId ?? a.productId ?? "").localeCompare(b.variantId ?? b.productId ?? ""));
 
   for (const item of orderedItems) {
+    // Pre-order lines are sold ahead of stock: nothing to consume until the goods exist.
+    if (item.preorder) continue;
     // Dishes with a recipe consume their ingredients instead of their own
     // stock count. Paid orders (allowOversell) take what exists and log any
     // shortfall; otherwise a short ingredient aborts the transition.

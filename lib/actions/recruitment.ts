@@ -5,7 +5,8 @@ import { prisma } from "@/lib/prisma";
 import { assertAnyStorePermission } from "@/lib/access/assert-store-access";
 import { getPluginEntitlement } from "@/lib/plugins";
 import { logStoreActivity } from "@/lib/activity-log";
-import { RECRUIT_STAGES, JOB_STATUSES, EMPLOYMENT_TYPES } from "@/lib/recruitment-constants";
+import { RECRUIT_STAGES, JOB_STATUSES, EMPLOYMENT_TYPES, toHrEmploymentType, nextEmployeeNo } from "@/lib/recruitment-constants";
+import { validateCvValue } from "@/lib/recruitment-cv";
 import type { ActionResult } from "@/types/actions";
 
 const PLUGIN_KEY = "recruitment-ats";
@@ -66,7 +67,7 @@ export async function getRecruitmentDashboard(slug: string) {
   const jobs = jobRows.map((j) => ({
     id: j.id, title: j.title, clientName: j.clientName, department: j.department, location: j.location,
     employmentType: j.employmentType, salaryMin: money(j.salaryMin), salaryMax: money(j.salaryMax),
-    openings: j.openings, description: j.description, requirements: j.requirements, status: j.status, closesAt: j.closesAt,
+    openings: j.openings, showSalary: j.showSalary, description: j.description, requirements: j.requirements, status: j.status, closesAt: j.closesAt,
     applicants: countByJob.get(j.id) ?? 0, hired: hiredByJob.get(j.id) ?? 0,
   }));
   const candidates = candidateRows.map((c) => ({
@@ -109,7 +110,7 @@ export async function createRecruitJob(slug: string, form: FormData): Promise<Ac
       storeId: a.store.id, title, clientName: text(form, "clientName") || null, department: text(form, "department") || null,
       location: text(form, "location") || null, employmentType, salaryMin, salaryMax, openings,
       description: text(form, "description") || null, requirements: text(form, "requirements") || null,
-      status: status as never, closesAt: closes ? new Date(closes) : null,
+      status: status as never, closesAt: closes ? new Date(closes) : null, showSalary: form.get("showSalary") === "on",
     },
   });
   await log(a.store.id, "recruitment.job_created", job.title);
@@ -123,6 +124,16 @@ export async function setRecruitJobStatus(slug: string, jobId: string, status: s
   if (!job) return { success: false, error: "Job not found." };
   await prisma.recruitJob.update({ where: { id: job.id }, data: { status: status as never } });
   await log(a.store.id, "recruitment.job_status", `${job.title} → ${status}`);
+  return { success: true, data: undefined };
+}
+
+export async function setRecruitJobShowSalary(slug: string, jobId: string, show: boolean): Promise<ActionResult<void>> {
+  const a = await access(slug); if (!a.ok) return { success: false, error: a.error };
+  const job = await prisma.recruitJob.findFirst({ where: { id: jobId, storeId: a.store.id } });
+  if (!job) return { success: false, error: "Job not found." };
+  if (show && job.salaryMin == null && job.salaryMax == null) return { success: false, error: "Add a salary range to this job before showing it publicly." };
+  await prisma.recruitJob.update({ where: { id: job.id }, data: { showSalary: show } });
+  await log(a.store.id, "recruitment.job_salary_visibility", `${job.title} → ${show ? "shown" : "hidden"}`);
   return { success: true, data: undefined };
 }
 
@@ -142,7 +153,8 @@ export async function createRecruitCandidate(slug: string, form: FormData): Prom
   const email = text(form, "email").toLowerCase() || null;
   if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return { success: false, error: "Enter a valid email address." };
   const cvUrl = text(form, "cvUrl");
-  if (cvUrl && !/^https?:\/\//i.test(cvUrl)) return { success: false, error: "The CV link must start with http:// or https://." };
+  const cvError = validateCvValue(cvUrl, a.store.id);
+  if (cvError) return { success: false, error: cvError };
   if (email) {
     const dup = await prisma.recruitCandidate.findFirst({ where: { storeId: a.store.id, email }, select: { firstName: true, lastName: true } });
     if (dup) return { success: false, error: `${dup.firstName} ${dup.lastName} is already in your talent pool with that email.` };
@@ -188,15 +200,68 @@ export async function applyCandidateToJob(slug: string, candidateId: string, job
   return { success: true, data: undefined };
 }
 
+/**
+ * When a candidate is hired, create their HR & Payroll employee record — if HR & Payroll is
+ * installed. Never throws: the hire itself must stand even if the HR side can't be created.
+ * Pay is deliberately left at 0: the offer amount is recorded in the notes rather than guessed
+ * as monthly/annual, so payroll can't silently be wrong.
+ */
+async function createEmployeeForHire(
+  storeId: string,
+  app: { id: string; hrEmployeeId: string | null; offerAmount: unknown; candidate: { firstName: string; lastName: string; email: string | null; phone: string | null }; job: { title: string; department: string | null; employmentType: string } },
+  startDate: Date,
+): Promise<string> {
+  if (app.hrEmployeeId) return "Already linked to an HR & Payroll employee record.";
+  const hr = await getPluginEntitlement(storeId, "hr-payroll");
+  if (!hr.allowed || !hr.installed) return "HR & Payroll isn't installed, so no employee record was created.";
+  try {
+    const c = app.candidate;
+    // Same person already on the books (e.g. re-hired, or added by hand)? Link instead of duplicating.
+    if (c.email) {
+      const existing = await prisma.hrEmployee.findFirst({ where: { storeId, email: c.email, status: { not: "EXITED" } }, select: { id: true, employeeNo: true } });
+      if (existing) {
+        await prisma.recruitApplication.update({ where: { id: app.id }, data: { hrEmployeeId: existing.id } });
+        return `Linked to existing employee ${existing.employeeNo} in HR & Payroll.`;
+      }
+    }
+    const offer = app.offerAmount == null ? null : Number(app.offerAmount);
+    for (let attempt = 0; attempt < 3; attempt++) {
+      const nos = await prisma.hrEmployee.findMany({ where: { storeId }, select: { employeeNo: true } });
+      const employeeNo = nextEmployeeNo(nos.map((n) => n.employeeNo));
+      try {
+        const emp = await prisma.hrEmployee.create({
+          data: {
+            storeId, employeeNo, firstName: c.firstName, lastName: c.lastName, email: c.email, phone: c.phone,
+            department: app.job.department, position: app.job.title, employmentType: toHrEmploymentType(app.job.employmentType) as never,
+            hireDate: startDate,
+            notes: `Hired via Recruitment${offer != null ? ` · offer ${offer.toLocaleString("en-NG")} (set pay in HR & Payroll)` : " · set pay in HR & Payroll"}`,
+          },
+        });
+        await prisma.recruitApplication.update({ where: { id: app.id }, data: { hrEmployeeId: emp.id } });
+        await log(storeId, "hr.employee_created", `${emp.employeeNo} (from recruitment)`);
+        return `Employee record ${emp.employeeNo} created in HR & Payroll — set their pay there.`;
+      } catch (e) {
+        if ((e as { code?: string }).code !== "P2002") throw e; // employee number raced; retry with the next one
+      }
+    }
+    return "Hired, but the employee record couldn't be created — please add them in HR & Payroll.";
+  } catch {
+    return "Hired, but the employee record couldn't be created — please add them in HR & Payroll.";
+  }
+}
+
 export async function moveApplicationStage(
   slug: string, applicationId: string, stage: string,
-  opts: { interviewAt?: string; offerAmount?: string; rejectionReason?: string } = {},
-): Promise<ActionResult<void>> {
+  opts: { interviewAt?: string; offerAmount?: string; rejectionReason?: string; startDate?: string } = {},
+): Promise<ActionResult<{ note?: string }>> {
   const a = await access(slug); if (!a.ok) return { success: false, error: a.error };
   if (!(RECRUIT_STAGES as readonly string[]).includes(stage)) return { success: false, error: "Invalid stage." };
   const app = await prisma.recruitApplication.findFirst({
     where: { id: applicationId, storeId: a.store.id },
-    include: { candidate: { select: { firstName: true, lastName: true } }, job: { select: { title: true } } },
+    include: {
+      candidate: { select: { firstName: true, lastName: true, email: true, phone: true } },
+      job: { select: { title: true, department: true, employmentType: true } },
+    },
   });
   if (!app) return { success: false, error: "Application not found." };
   const data: Record<string, unknown> = { stage, stageChangedAt: new Date() };
@@ -211,9 +276,15 @@ export async function moveApplicationStage(
     data.offerAmount = n;
   }
   if (stage === "REJECTED") data.rejectionReason = (opts.rejectionReason || "").trim() || null;
+  let startDate = new Date();
+  if (stage === "HIRED" && opts.startDate) {
+    startDate = new Date(opts.startDate);
+    if (Number.isNaN(startDate.getTime())) return { success: false, error: "Enter a valid start date." };
+  }
   await prisma.recruitApplication.update({ where: { id: app.id }, data });
   await log(a.store.id, "recruitment.stage_changed", `${app.candidate.firstName} ${app.candidate.lastName} · ${app.job.title} → ${stage}`);
-  return { success: true, data: undefined };
+  const note = stage === "HIRED" && app.stage !== "HIRED" ? await createEmployeeForHire(a.store.id, app, startDate) : undefined;
+  return { success: true, data: { note } };
 }
 
 export async function updateApplicationReview(slug: string, applicationId: string, rating: number | null, notes: string): Promise<ActionResult<void>> {

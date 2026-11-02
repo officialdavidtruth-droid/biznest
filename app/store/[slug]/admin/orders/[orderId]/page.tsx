@@ -1,4 +1,5 @@
 // Route: /store/[slug]/admin/orders/[orderId]
+import { formatShipsOn } from "@/lib/preorder";
 import { isImageProofUrl } from "@/lib/payments/manual-transfer";
 import { getOrder } from "@/lib/actions/order";
 import { notFound } from "next/navigation";
@@ -74,7 +75,7 @@ export default async function StoreOrderDetailPage({
         <h2 className="mb-3 text-sm font-semibold">Items</h2>
         {order.items.map((item) => (
           <div key={item.id} className="flex justify-between py-1 text-sm">
-            <span>{item.product?.name ?? item.service?.name} × {item.quantity}</span>
+            <span>{item.product?.name ?? item.service?.name} × {item.quantity}{item.preorder && <span className="ml-2 rounded-full bg-amber-500/10 px-2 py-0.5 text-[11px] font-semibold text-amber-700">Pre-order{item.preorderShipsOn ? ` · ships by ${formatShipsOn(item.preorderShipsOn)}` : ""}</span>}</span>
             <span>{order.currency} {formatNumber((Number(item.unitPrice) * item.quantity))}</span>
           </div>
         ))}

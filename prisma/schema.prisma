@@ -1302,6 +1302,11 @@ model Product {
   // variants only kick in once the merchant opts in, so nothing about
   // simple products has to change.
   hasVariants  Boolean     @default(false)
+  // Pre-order mode: sells without touching stock, with an optional expected ship date and unit cap.
+  // See lib/preorder.ts. Dedicated columns (not `attributes`) because the product form rewrites attributes wholesale.
+  preorderEnabled  Boolean   @default(false)
+  preorderShipsOn  DateTime? @db.Date
+  preorderLimit    Int?
   // Defines the option axes for this product's variants, e.g.
   // [{ "name": "Size", "values": ["S","M","L"] }, { "name": "Color", "values": ["Red","Blue"] }].
   // Purely descriptive -- used to render the variant matrix in the editor;
@@ -2233,6 +2238,9 @@ model OrderItem {
 
   quantity  Int      @default(1)
   unitPrice Decimal  @db.Decimal(12, 2)
+  // Pre-order snapshot: the line was sold as a pre-order (no stock consumed) with this expected ship date.
+  preorder        Boolean   @default(false)
+  preorderShipsOn DateTime? @db.Date
   // Snapshot of the kitchen station at order creation time.
   fnbStation String?
 }
@@ -4182,6 +4190,7 @@ model HrEmployee {
   attendance      HrAttendance[]
   leaveRequests   HrLeaveRequest[]
   payrollItems    HrPayrollItem[]
+  recruitApplications RecruitApplication[]
   createdAt       DateTime           @default(now())
   updatedAt       DateTime           @updatedAt
   @@unique([storeId, employeeNo])
@@ -4723,6 +4732,7 @@ model RecruitJob {
   requirements   String?
   status         RecruitJobStatus @default(OPEN)
   closesAt       DateTime?        @db.Date
+  showSalary     Boolean          @default(false)
   applications   RecruitApplication[]
   createdAt      DateTime         @default(now())
   updatedAt      DateTime         @updatedAt
@@ -4766,10 +4776,13 @@ model RecruitApplication {
   offerAmount    Decimal?         @db.Decimal(14,2)
   rejectionReason String?
   notes          String?
+  hrEmployeeId   String?
+  hrEmployee     HrEmployee?      @relation(fields: [hrEmployeeId], references: [id], onDelete: SetNull)
   stageChangedAt DateTime         @default(now())
   createdAt      DateTime         @default(now())
   updatedAt      DateTime         @updatedAt
   @@unique([jobId, candidateId])
+  @@index([hrEmployeeId])
   @@index([storeId, stage])
   @@index([candidateId])
 }

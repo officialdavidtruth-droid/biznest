@@ -1,11 +1,13 @@
 "use client";
 
+import { CV_ACCEPT, CV_ALLOWED_TYPES, CV_MAX_BYTES, CV_TYPE_HINT, cvViewHref } from "@/lib/recruitment-cv";
+import { careersPath } from "@/lib/recruitment-public";
 import { useState, useTransition, type FormEvent, type ReactNode } from "react";
 import { Briefcase, CalendarClock, Plus, Trash2, UserCheck, UserPlus, Users, X } from "lucide-react";
 import {
   getRecruitmentDashboard, createRecruitJob, setRecruitJobStatus, deleteRecruitJob,
   createRecruitCandidate, deleteRecruitCandidate, applyCandidateToJob,
-  moveApplicationStage, updateApplicationReview,
+  moveApplicationStage, updateApplicationReview, setRecruitJobShowSalary,
 } from "@/lib/actions/recruitment";
 import { PIPELINE_STAGES, JOB_STATUSES, EMPLOYMENT_TYPES, RECRUIT_STAGES } from "@/lib/recruitment-constants";
 import { formatMoney } from "@/lib/utils/format-money";
@@ -57,6 +59,7 @@ export function RecruitmentWorkspace({ slug, data }: { slug: string; data: Data 
   const [jobFilter, setJobFilter] = useState("");
   const [pending, start] = useTransition();
   const [msg, setMsg] = useState("");
+  const [notice, setNotice] = useState("");
   // Stage changes that need extra detail (interview time, offer, rejection reason).
   const [stageDraft, setStageDraft] = useState<{ id: string; stage: string } | null>(null);
 
@@ -64,11 +67,12 @@ export function RecruitmentWorkspace({ slug, data }: { slug: string; data: Data 
     const r = await getRecruitmentDashboard(slug);
     if ("error" in r) setMsg(r.error ?? "Could not refresh"); else setD(r);
   };
-  const run = (fn: () => Promise<{ success: boolean; error?: string }>, onOk?: () => void) =>
+  const run = (fn: () => Promise<{ success: boolean; error?: string; data?: unknown }>, onOk?: () => void) =>
     start(async () => {
       const r = await fn();
       if (!r.success) { setMsg(r.error || "Something went wrong"); return; }
-      setMsg(""); onOk?.(); await refresh();
+      const note = (r.data as { note?: string } | undefined)?.note;
+      setMsg(""); setNotice(note ?? ""); onOk?.(); await refresh();
     });
 
   const pipelineApps = d.applications.filter((a) => !jobFilter || a.jobId === jobFilter);
@@ -79,20 +83,40 @@ export function RecruitmentWorkspace({ slug, data }: { slug: string; data: Data 
     e.preventDefault(); const form = e.currentTarget;
     run(() => createRecruitJob(slug, new FormData(form)), () => { setModal(null); form.reset(); });
   };
+  // Private (uploaded) CVs open through the staff-only viewer; plain links open directly.
+  const cvHref = (c: { id: string; cvUrl: string | null }) => (c.cvUrl && /^https?:\/\//i.test(c.cvUrl) ? c.cvUrl : cvViewHref(slug, c.id));
   const submitCandidate = (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault(); const form = e.currentTarget;
-    run(() => createRecruitCandidate(slug, new FormData(form)), () => { setModal(null); form.reset(); });
+    const fd = new FormData(form);
+    const file = fd.get("cvFile");
+    fd.delete("cvFile");
+    start(async () => {
+      if (file instanceof File && file.size > 0) {
+        if (!CV_ALLOWED_TYPES.has(file.type)) { setMsg(`Unsupported CV type. Use ${CV_TYPE_HINT}.`); return; }
+        if (file.size > CV_MAX_BYTES) { setMsg("The CV must be 4MB or smaller."); return; }
+        const up = new FormData(); up.set("file", file);
+        try {
+          const res = await fetch(`/api/store/${slug}/recruitment/cv-upload`, { method: "POST", body: up });
+          const j = await res.json().catch(() => ({}));
+          if (!res.ok || !j.url) { setMsg(j.error || "The CV couldn't be uploaded."); return; }
+          fd.set("cvUrl", j.url); // an uploaded file wins over a pasted link
+        } catch { setMsg("The CV couldn't be uploaded. Check your connection and try again."); return; }
+      }
+      const r = await createRecruitCandidate(slug, fd);
+      if (!r.success) { setMsg(r.error || "Something went wrong"); return; }
+      setMsg(""); setNotice(""); setModal(null); form.reset(); await refresh();
+    });
   };
   const changeStage = (a: App, stage: string) => {
     if (stage === a.stage) return;
-    if (stage === "INTERVIEW" || stage === "OFFER" || stage === "REJECTED") { setStageDraft({ id: a.id, stage }); return; }
+    if (stage === "INTERVIEW" || stage === "OFFER" || stage === "REJECTED" || stage === "HIRED") { setStageDraft({ id: a.id, stage }); return; }
     run(() => moveApplicationStage(slug, a.id, stage));
   };
   const submitStageDraft = (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault(); if (!stageDraft) return; const f = new FormData(e.currentTarget);
     run(
       () => moveApplicationStage(slug, stageDraft.id, stageDraft.stage, {
-        interviewAt: String(f.get("interviewAt") || ""), offerAmount: String(f.get("offerAmount") || ""), rejectionReason: String(f.get("rejectionReason") || ""),
+        interviewAt: String(f.get("interviewAt") || ""), offerAmount: String(f.get("offerAmount") || ""), rejectionReason: String(f.get("rejectionReason") || ""), startDate: String(f.get("startDate") || ""),
       }),
       () => setStageDraft(null),
     );
@@ -115,6 +139,12 @@ export function RecruitmentWorkspace({ slug, data }: { slug: string; data: Data 
       {msg && (
         <div className="flex items-center justify-between rounded-lg border border-[var(--bn-admin-danger-line)] bg-[var(--bn-admin-danger-soft)] p-2.5 text-xs text-[var(--bn-admin-danger)]">
           <span>{msg}</span><button onClick={() => setMsg("")} aria-label="Dismiss"><X className="h-3.5 w-3.5" /></button>
+        </div>
+      )}
+
+      {notice && (
+        <div className="flex items-center justify-between rounded-lg border border-emerald-500/30 bg-emerald-500/10 p-2.5 text-xs text-emerald-700">
+          <span>{notice}</span><button onClick={() => setNotice("")} aria-label="Dismiss"><X className="h-3.5 w-3.5" /></button>
         </div>
       )}
 
@@ -198,7 +228,10 @@ export function RecruitmentWorkspace({ slug, data }: { slug: string; data: Data 
       {tab === "jobs" && (
         <section className="rounded-xl border p-4">
           <div className="flex items-center justify-between gap-3">
-            <h2 className="text-sm font-bold">Job openings</h2>
+            <div>
+              <h2 className="text-sm font-bold">Job openings</h2>
+              <p className="mt-0.5 text-[11px] text-muted-foreground">Open jobs are published on your <a href={careersPath(slug)} target="_blank" rel="noopener noreferrer" className="font-semibold text-primary underline">public careers page</a>; applicants land in your pipeline as Applied.</p>
+            </div>
             <button onClick={() => setModal("job")} className="rounded-lg bg-primary px-3 py-2 text-xs font-bold text-primary-foreground">Add job</button>
           </div>
           {d.jobs.length ? (
@@ -210,7 +243,12 @@ export function RecruitmentWorkspace({ slug, data }: { slug: string; data: Data 
                     <tr key={j.id} className="border-t">
                       <td className="py-2.5 pr-3 font-semibold">{j.title}<span className="block font-normal text-muted-foreground">{label(j.employmentType)}{j.closesAt ? ` · closes ${day(j.closesAt)}` : ""}</span></td>
                       <td className="pr-3">{j.clientName || "—"}</td><td className="pr-3">{j.location || "—"}</td>
-                      <td className="pr-3">{j.salaryMin != null || j.salaryMax != null ? `${j.salaryMin != null ? formatMoney(j.salaryMin) : "…"} – ${j.salaryMax != null ? formatMoney(j.salaryMax) : "…"}` : "—"}</td>
+                      <td className="pr-3">{j.salaryMin != null || j.salaryMax != null ? (
+                        <>
+                          {`${j.salaryMin != null ? formatMoney(j.salaryMin) : "…"} – ${j.salaryMax != null ? formatMoney(j.salaryMax) : "…"}`}
+                          <label className="mt-1 flex items-center gap-1 text-[10px] text-muted-foreground"><input type="checkbox" disabled={pending} checked={j.showSalary} onChange={(e) => run(() => setRecruitJobShowSalary(slug, j.id, e.target.checked))} className="h-3 w-3" />Show on careers page</label>
+                        </>
+                      ) : "—"}</td>
                       <td className="pr-3">{j.applicants}</td><td className="pr-3">{j.hired}/{j.openings}</td>
                       <td>
                         <div className="flex items-center gap-2">
@@ -249,7 +287,7 @@ export function RecruitmentWorkspace({ slug, data }: { slug: string; data: Data 
                         {c.skills && <p className="mt-1">{c.skills}</p>}
                       </div>
                       <div className="ml-auto flex items-center gap-2">
-                        {c.cvUrl && <a href={c.cvUrl} target="_blank" rel="noopener noreferrer" className="rounded border px-2 py-1 text-[11px] font-semibold">CV</a>}
+                        {c.cvUrl && <a href={cvHref(c)} target="_blank" rel="noopener noreferrer" className="rounded border px-2 py-1 text-[11px] font-semibold">CV</a>}
                         <button onClick={() => setModal({ kind: "apply", candidateId: c.id })} className="rounded border px-2 py-1 text-[11px] font-semibold">Add to job</button>
                         <button aria-label="Delete candidate" disabled={pending} onClick={() => { if (confirm(`Remove ${c.firstName} ${c.lastName} and all their applications?`)) run(() => deleteRecruitCandidate(slug, c.id)); }}><Trash2 className="h-3.5 w-3.5 text-muted-foreground" /></button>
                       </div>
@@ -278,6 +316,7 @@ export function RecruitmentWorkspace({ slug, data }: { slug: string; data: Data 
               <Field l="Type"><select name="employmentType" className={input}>{EMPLOYMENT_TYPES.map((t) => <option key={t} value={t}>{label(t)}</option>)}</select></Field>
               <Field l="Minimum salary"><input name="salaryMin" type="number" min="0" step="0.01" className={input} /></Field>
               <Field l="Maximum salary"><input name="salaryMax" type="number" min="0" step="0.01" className={input} /></Field>
+              <label className="flex items-center gap-2 text-xs sm:col-span-2"><input type="checkbox" name="showSalary" className="h-3.5 w-3.5" />Show the salary range on the public careers page</label>
               <Field l="Openings"><input name="openings" type="number" min="1" defaultValue={1} className={input} /></Field>
               <Field l="Closing date"><input name="closesAt" type="date" className={input} /></Field>
             </div>
@@ -303,7 +342,8 @@ export function RecruitmentWorkspace({ slug, data }: { slug: string; data: Data 
               <Field l="Source"><input name="source" className={input} placeholder="Referral, LinkedIn, walk-in…" /></Field>
             </div>
             <Field l="Skills"><input name="skills" className={input} placeholder="Comma separated" /></Field>
-            <Field l="CV link"><input name="cvUrl" type="url" className={input} placeholder="https://…" /></Field>
+            <Field l={`CV file (${CV_TYPE_HINT})`}><input name="cvFile" type="file" accept={CV_ACCEPT} className={input} /></Field>
+            <Field l="…or CV link"><input name="cvUrl" type="url" className={input} placeholder="https://…" /></Field>
             <Field l="Attach to job (optional)"><select name="jobId" className={input}><option value="">Talent pool only</option>{openJobs.map((j) => <option key={j.id} value={j.id}>{j.title}{j.clientName ? ` · ${j.clientName}` : ""}</option>)}</select></Field>
             <Field l="Notes"><textarea name="notes" rows={3} className={input} /></Field>
             <button disabled={pending} className="rounded-lg bg-primary px-3 py-2 text-xs font-bold text-primary-foreground disabled:opacity-60">Add candidate</button>
@@ -331,10 +371,16 @@ export function RecruitmentWorkspace({ slug, data }: { slug: string; data: Data 
       )}
 
       {stageDraft && (
-        <Dialog title={stageDraft.stage === "INTERVIEW" ? "Schedule interview" : stageDraft.stage === "OFFER" ? "Make an offer" : "Reject application"} onClose={() => setStageDraft(null)}>
+        <Dialog title={stageDraft.stage === "INTERVIEW" ? "Schedule interview" : stageDraft.stage === "OFFER" ? "Make an offer" : stageDraft.stage === "HIRED" ? "Mark as hired" : "Reject application"} onClose={() => setStageDraft(null)}>
           <form onSubmit={submitStageDraft} className="mt-4 grid gap-3">
             {stageDraft.stage === "INTERVIEW" && <Field l="Interview date and time"><input name="interviewAt" type="datetime-local" className={input} /></Field>}
             {stageDraft.stage === "OFFER" && <Field l="Offer amount (optional)"><input name="offerAmount" type="number" min="0" step="0.01" className={input} /></Field>}
+            {stageDraft.stage === "HIRED" && (
+              <>
+                <Field l="Start date (optional, defaults to today)"><input name="startDate" type="date" className={input} /></Field>
+                <p className="text-xs text-muted-foreground">If HR &amp; Payroll is installed, an employee record is created automatically — you'll set their pay there.</p>
+              </>
+            )}
             {stageDraft.stage === "REJECTED" && <Field l="Reason (optional)"><textarea name="rejectionReason" rows={3} className={input} /></Field>}
             <button disabled={pending} className="rounded-lg bg-primary px-3 py-2 text-xs font-bold text-primary-foreground disabled:opacity-60">Confirm</button>
           </form>

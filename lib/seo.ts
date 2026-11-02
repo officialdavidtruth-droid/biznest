@@ -81,7 +81,8 @@ export function parseKeywords(raw: string | null | undefined): string[] | undefi
 }
 
 /** schema.org availability URL */
-export function availability(inStock: boolean): string {
+export function availability(inStock: boolean, preorder = false): string {
+  if (preorder) return "https://schema.org/PreOrder";
   return inStock ? "https://schema.org/InStock" : "https://schema.org/OutOfStock";
 }
 

@@ -1,4 +1,6 @@
 import { prisma } from "@/lib/prisma";
+import { formatShipsOn, preorderSpotsLeft } from "@/lib/preorder";
+import { preorderUnitsTaken } from "@/lib/preorder-server";
 import { cache } from "react";
 import { notFound } from "next/navigation";
 import { headers } from "next/headers";
@@ -61,6 +63,9 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
   after(() => writeStoreVisit(visit));
   const theme = resolveStoreTheme(store.template?.category, store.name, store.themeColors as any, store.fontFamily, store.template?.name);
   const inStock = product.type !== "PHYSICAL" || (product.hasVariants ? product.variants.some(v => v.quantity > 0) : !product.inventory || product.inventory.quantity > 0);
+  const isPreorder = product.type === "PHYSICAL" && product.preorderEnabled;
+  const preorderTaken = isPreorder && product.preorderLimit != null ? await preorderUnitsTaken(product.id) : 0;
+  const preorderView = isPreorder ? { shipsOn: formatShipsOn(product.preorderShipsOn), spotsLeft: preorderSpotsLeft(product.preorderLimit, preorderTaken) } : null;
   const url = storeUrl(store, `/product/${product.id}`);
   // A variant with no price of its own uses the product price (same rule as the page and checkout).
   const offerPrices = product.variants.length > 0 ? product.variants.map((v) => (v.price != null ? Number(v.price) : Number(product.price))) : [Number(product.price)];
@@ -80,7 +85,7 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
       url,
       ...(offerLow === offerHigh ? { price: offerLow.toFixed(2) } : { lowPrice: offerLow.toFixed(2), highPrice: offerHigh.toFixed(2), offerCount: product.variants.length }),
       priceCurrency: product.currency,
-      availability: availability(inStock),
+      availability: availability(inStock, isPreorder && preorderView?.spotsLeft !== 0),
       seller: { "@type": "Organization", name: store.name, url: storeUrl(store) },
     },
   };
@@ -94,5 +99,5 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
     ],
   };
   const slots = await buildSystemSlots(store, "product", { text: theme.ink, accent: theme.accent, primary: theme.accent, line: `${theme.ink}22`, radius: 8, headingFont: theme.font });
-  return <><JsonLd data={store.seoNoIndex ? [] : [productLd, breadcrumbLd]}/><TrackViewItem slug={slug} currency={product.currency} item={{ id: product.id, name: product.name, price: Number(product.price) }}/><main style={{minHeight:"100vh",background:theme.bg,color:theme.ink,fontFamily:theme.font,padding:"3rem 1.25rem 4rem"}}>{slots.top}<ProductDetail storeSlug={slug} productId={product.id} name={product.name} price={Number(product.price)} compareAtPrice={product.compareAtPrice ? Number(product.compareAtPrice) : null} currency={product.currency} images={product.images} description={product.description} detailedDescription={typeof (product.attributes as Record<string, unknown> | null)?.detailedDescription === "string" ? ((product.attributes as Record<string, unknown>).detailedDescription as string) : ""} categoryName={product.category?.name ?? null} type={product.type} rentalUnit={product.rentalPeriodUnit} inStock={inStock} stock={product.type === "PHYSICAL" && !product.hasVariants ? (product.inventory?.quantity ?? null) : null} variants={product.variants.map(v => ({ id: v.id, label: v.label, optionValues: v.optionValues as Record<string,string>, price: v.price ? Number(v.price) : null, quantity: v.quantity, images: v.images }))} accent={theme.accent} ink={theme.ink} bg={theme.bg} radius={theme.radius} related={relatedRows.map(r => ({ id: r.id, name: r.name, price: Number(r.price), currency: r.currency, image: r.images[0] ?? null }))}/>{slots.bottom}</main></>;
+  return <><JsonLd data={store.seoNoIndex ? [] : [productLd, breadcrumbLd]}/><TrackViewItem slug={slug} currency={product.currency} item={{ id: product.id, name: product.name, price: Number(product.price) }}/><main style={{minHeight:"100vh",background:theme.bg,color:theme.ink,fontFamily:theme.font,padding:"3rem 1.25rem 4rem"}}>{slots.top}<ProductDetail storeSlug={slug} productId={product.id} name={product.name} price={Number(product.price)} compareAtPrice={product.compareAtPrice ? Number(product.compareAtPrice) : null} currency={product.currency} images={product.images} description={product.description} detailedDescription={typeof (product.attributes as Record<string, unknown> | null)?.detailedDescription === "string" ? ((product.attributes as Record<string, unknown>).detailedDescription as string) : ""} categoryName={product.category?.name ?? null} type={product.type} rentalUnit={product.rentalPeriodUnit} inStock={inStock || isPreorder} preorder={preorderView} stock={product.type === "PHYSICAL" && !product.hasVariants ? (product.inventory?.quantity ?? null) : null} variants={product.variants.map(v => ({ id: v.id, label: v.label, optionValues: v.optionValues as Record<string,string>, price: v.price ? Number(v.price) : null, quantity: v.quantity, images: v.images }))} accent={theme.accent} ink={theme.ink} bg={theme.bg} radius={theme.radius} related={relatedRows.map(r => ({ id: r.id, name: r.name, price: Number(r.price), currency: r.currency, image: r.images[0] ?? null }))}/>{slots.bottom}</main></>;
 }
