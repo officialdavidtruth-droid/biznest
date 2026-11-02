@@ -11,6 +11,7 @@ import { NextResponse } from "next/server";
 import { settleWalletFunding } from "@/lib/payments/settle-wallet-funding";
 import { settleServiceBookingPayment } from "@/lib/payments/settle-service-booking";
 import { settleReservationPayment } from "@/lib/payments/settle-reservation";
+import { settleTravelPayment } from "@/lib/payments/settle-travel";
 
 /**
  * Server-to-server payment confirmation from Flutterwave.
@@ -179,6 +180,12 @@ export async function POST(req: Request) {
     } else {
       await settleServiceBookingPayment(txRef, "FLUTTERWAVE", amount, verification as object);
     }
+    return NextResponse.json({ received: true });
+  }
+
+  if (txRef.startsWith("TVL-")) {
+    const amount = verification.data ? Number(verification.data.amount) : 0;
+    await settleTravelPayment(txRef, "FLUTTERWAVE", amount, verification as object);
     return NextResponse.json({ received: true });
   }
 

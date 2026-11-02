@@ -46,3 +46,22 @@ describe("helpers", () => {
     expect(daysUntil(null)).toBeNull();
   });
 });
+
+import { depositFor, canPayOnline } from "@/lib/travel";
+describe("depositFor / canPayOnline", () => {
+  it("rounds a percentage deposit up and never exceeds the total", () => {
+    expect(depositFor(200000, 30)).toBe(60000);
+    expect(depositFor(100001, 30)).toBe(30001);
+    expect(depositFor(500, 100)).toBe(500);
+    expect(depositFor(1000, 150)).toBe(1000);
+  });
+  it("is zero for no price or no deposit", () => {
+    expect(depositFor(0, 30)).toBe(0);
+    expect(depositFor(1000, 0)).toBe(0);
+    expect(depositFor(1000, Number.NaN)).toBe(0);
+  });
+  it("allows online payment only in NGN", () => {
+    expect(canPayOnline("NGN")).toBe(true);
+    expect(canPayOnline("usd")).toBe(false);
+  });
+});

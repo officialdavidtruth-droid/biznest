@@ -7,9 +7,10 @@
  */
 export function confirmationPath(
   slug: string,
-  p: { purpose: string; orderId?: string | null; bookingId?: string | null }
+  p: { purpose: string; orderId?: string | null; bookingId?: string | null; reference?: string }
 ): string | null {
   if (p.purpose === "ORDER" && p.orderId) return `/store/${slug}/orders/${p.orderId}/confirmation`;
   if (p.purpose === "SERVICE_BOOKING" && p.bookingId) return `/store/${slug}/booking/${p.bookingId}/confirmation`;
+  if (p.purpose === "TRAVEL_BOOKING" && p.reference) return `/store/${slug}/travel/${p.reference}`;
   return null;
 }

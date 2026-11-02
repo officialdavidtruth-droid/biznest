@@ -12,6 +12,7 @@ import { NextResponse } from "next/server";
 import { settleWalletFunding } from "@/lib/payments/settle-wallet-funding";
 import { settleServiceBookingPayment } from "@/lib/payments/settle-service-booking";
 import { settleReservationPayment } from "@/lib/payments/settle-reservation";
+import { settleTravelPayment } from "@/lib/payments/settle-travel";
 import { settlePluginPurchase } from "@/lib/payments/settle-plugin-purchase";
 import { flagPaymentForReview } from "@/lib/payments/review";
 import { logError, logWarn } from "@/lib/observability/log";
@@ -127,6 +128,17 @@ export async function GET(req: Request) {
       return NextResponse.redirect(bookingUrl(gatewayStatus === "abandoned" ? "failed" : "pending"));
     }
     return NextResponse.redirect(`${APP_URL}/?payment=${gatewayStatus === "failed" ? "failed" : "pending"}`);
+  }
+
+  if (reference.startsWith("TVL-")) {
+    const verification = await verifyPaystackTransaction(reference, storeSecretKey);
+    const amount = verification.data ? Number(verification.data.amount) / 100 : 0;
+    if (verification.status && verification.data?.status === "success") {
+      const result = await settleTravelPayment(reference, "PAYSTACK", amount, verification as object);
+      if (result.success) return NextResponse.redirect(`${APP_URL}/store/${result.data.storeSlug}/travel/${reference}?payment=success`);
+      await flagPaymentForReview(reference, `Paystack verified success but travel settlement refused: ${result.error}`, verification);
+    }
+    return NextResponse.redirect(`${APP_URL}/?payment=failed`);
   }
 
   if (reference.startsWith("RES-")) {

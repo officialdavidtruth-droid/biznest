@@ -2267,6 +2267,10 @@ model Payment {
   reservationId String?
   reservation   PropertyReservation? @relation(fields: [reservationId], references: [id])
 
+  // A BizNest Travel deposit/balance payment (see lib/payments/settle-travel.ts).
+  travelTripId  String?
+  travelTrip    TravelTrip? @relation(fields: [travelTripId], references: [id], onDelete: SetNull)
+
   purpose     PaymentPurpose
   provider    PaymentProvider
   // The value passed to the gateway as reference/tx_ref, and the value both
@@ -2342,6 +2346,7 @@ model Payment {
   @@index([bookingId])
   @@index([walletId])
   @@index([reservationId])
+  @@index([travelTripId])
 }
 
 // Money owed to a vendor for one successful customer payment, paid out with
@@ -2406,6 +2411,7 @@ enum PaymentPurpose {
   WALLET_FUNDING
   PMS_RESERVATION
   PLUGIN_PURCHASE
+  TRAVEL_BOOKING
 }
 
 enum PaymentStatus {
@@ -4499,6 +4505,7 @@ model TravelPackage {
   currency    String   @default("NGN")
   departureDate DateTime?
   seats       Int      @default(0) // 0 = unlimited
+  depositPercent Int    @default(30) // share of the total paid online to book (100 = full payment, 0 = enquiry only)
   inclusions  String?  @db.Text
   isActive    Boolean  @default(true)
   createdAt   DateTime @default(now())
@@ -4531,6 +4538,7 @@ model TravelTrip {
   travellers  TravelTraveler[]
   items       TravelTripItem[]
   payments    TravelPayment[]
+  gatewayPayments Payment[]
 
   @@unique([storeId, reference])
   @@index([storeId, status])
@@ -4585,6 +4593,7 @@ model TravelPayment {
   note        String?
   createdAt   DateTime @default(now())
 
+  @@unique([tripId, reference])
   @@index([tripId, status])
 }
 

@@ -90,7 +90,7 @@ export function TravelWorkspace({ slug, data }: { slug: string; data: Data }) {
           </div>
         </section>
       )}
-      {tab === "trips" && trip && <TripDetail key={trip.id} slug={slug} trip={trip} data={data} money={money} pending={pending} run={run} back={() => setTripId(null)} />}
+      {tab === "trips" && trip && <TripDetail key={trip.id} slug={slug} trip={trip} data={data} money={money} pending={pending} run={run} back={() => setTripId(null)} start={start} />}
 
       {tab === "clients" && <Clients slug={slug} data={data} pending={pending} run={run} />}
       {tab === "packages" && <Packages slug={slug} data={data} pending={pending} run={run} money={money} />}
@@ -172,7 +172,7 @@ function NewTripForm({ data, pending, onCreate }: { data: Data; pending: boolean
   );
 }
 
-function TripDetail({ slug, trip, data, money, pending, run, back }: { slug: string; trip: Trip; data: Data; money: (n: unknown, c?: string) => string; pending: boolean; run: Run; back: () => void }) {
+function TripDetail({ slug, trip, data, money, pending, run, back, start }: { start: (fn: () => void) => void; slug: string; trip: Trip; data: Data; money: (n: unknown, c?: string) => string; pending: boolean; run: Run; back: () => void }) {
   const m = trip.money;
   const closed = ["COMPLETED", "CANCELLED"].includes(trip.status);
   const [item, setItem] = useState({ kind: "FLIGHT", description: "", supplierId: "", costPrice: "", sellPrice: "", confirmationRef: "" });
@@ -248,6 +248,7 @@ function TripDetail({ slug, trip, data, money, pending, run, back }: { slug: str
               <input type="date" className={inp} value={pay.dueDate} onChange={(e) => setPay({ ...pay, dueDate: e.target.value })} title="Due date (for instalments)" />
               <button className={btn} disabled={pending} onClick={() => run(() => A.recordTravelPayment(slug, trip.id, { amount: Number(pay.amount), method: pay.method, reference: pay.reference }), "Payment recorded", () => setPay({ ...pay, amount: "", reference: "" }))}>Record received</button>
               <button className={btn2} disabled={pending} onClick={() => run(() => A.recordTravelPayment(slug, trip.id, { amount: Number(pay.amount), method: pay.method, dueDate: pay.dueDate, scheduleOnly: true }), "Instalment scheduled", () => setPay({ ...pay, amount: "", dueDate: "" }))}>Schedule instalment</button>
+              {trip.currency === "NGN" && <button className={`${btn2} md:col-span-2`} disabled={pending} onClick={() => start(async () => { const r = await A.createTravelPaymentLink(slug, trip.id, Number(pay.amount)); if (!r.success) { toast.error(r.error); return; } try { await navigator.clipboard.writeText(r.data.url); toast.success("Payment link copied. Send it to the traveller."); } catch { window.prompt("Copy this payment link", r.data.url); } })}>Create online payment link for this amount</button>}
             </div>
           )}
         </div>
@@ -302,7 +303,7 @@ function Clients({ slug, data, pending, run }: { slug: string; data: Data; pendi
 }
 
 function Packages({ slug, data, pending, run, money }: { slug: string; data: Data; pending: boolean; run: Run; money: (n: unknown, c?: string) => string }) {
-  const blank = { id: "", name: "", destination: "", durationDays: 7, pricePerPerson: "", departureDate: "", seats: 0, inclusions: "", isActive: true };
+  const blank = { id: "", name: "", destination: "", durationDays: 7, pricePerPerson: "", departureDate: "", seats: 0, depositPercent: 30, inclusions: "", isActive: true };
   const [f, setF] = useState(blank);
   return (
     <section className="space-y-4">
@@ -315,6 +316,7 @@ function Packages({ slug, data, pending, run, money }: { slug: string; data: Dat
           <input type="number" min={0} className={inp} placeholder="Price per person" value={f.pricePerPerson} onChange={(e) => setF({ ...f, pricePerPerson: e.target.value })} />
           <input type="date" className={inp} value={f.departureDate} onChange={(e) => setF({ ...f, departureDate: e.target.value })} title="Departure" />
           <input type="number" min={0} className={inp} placeholder="Seats (0 = unlimited)" value={f.seats} onChange={(e) => setF({ ...f, seats: Number(e.target.value) })} />
+          <label className="flex items-center gap-2 text-sm md:col-span-3">Deposit to book online <input type="number" min={0} max={100} className={`${inp} max-w-[6rem]`} value={f.depositPercent} onChange={(e) => setF({ ...f, depositPercent: Number(e.target.value) })} /> % of the price (0 = enquiry only, 100 = pay in full)</label>
           <textarea className={`${inp} md:col-span-3`} placeholder="What's included" value={f.inclusions} onChange={(e) => setF({ ...f, inclusions: e.target.value })} />
         </div>
         <div className="flex items-center gap-3"><label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={f.isActive} onChange={(e) => setF({ ...f, isActive: e.target.checked })} />Open for booking</label>
@@ -326,7 +328,7 @@ function Packages({ slug, data, pending, run, money }: { slug: string; data: Dat
             <div className="flex items-start justify-between"><div><b>{p.name}</b> {!p.isActive && <span className="text-xs text-muted-foreground">(closed)</span>}<div className="text-xs text-muted-foreground">{p.destination} · {p.durationDays} days · departs {fmtDate(p.departureDate)}</div></div><b>{money(p.pricePerPerson, p.currency)}</b></div>
             <div className="mt-2 text-xs">{p.seats ? `${p.booked}/${p.seats} seats booked` : `${p.booked} booked`}</div>
             {p.seats > 0 && <div className="mt-1 h-1.5 rounded bg-muted"><div className="h-1.5 rounded bg-primary" style={{ width: `${Math.min(100, (p.booked / p.seats) * 100)}%` }} /></div>}
-            <button className={`${btn2} mt-3`} onClick={() => setF({ id: p.id, name: p.name, destination: p.destination, durationDays: p.durationDays, pricePerPerson: String(p.pricePerPerson), departureDate: dateInput(p.departureDate), seats: p.seats, inclusions: p.inclusions ?? "", isActive: p.isActive })}>Edit</button>
+            <button className={`${btn2} mt-3`} onClick={() => setF({ id: p.id, name: p.name, destination: p.destination, durationDays: p.durationDays, pricePerPerson: String(p.pricePerPerson), departureDate: dateInput(p.departureDate), seats: p.seats, depositPercent: p.depositPercent, inclusions: p.inclusions ?? "", isActive: p.isActive })}>Edit</button>
           </div>
         ))}
         {!data.packages.length && <Empty text="No packages yet. Create a group tour or pilgrimage with seats and a fixed price." />}

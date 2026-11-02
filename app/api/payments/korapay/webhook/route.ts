@@ -9,6 +9,7 @@ import { NextResponse } from "next/server";
 import { settleWalletFunding } from "@/lib/payments/settle-wallet-funding";
 import { settleServiceBookingPayment } from "@/lib/payments/settle-service-booking";
 import { settleReservationPayment } from "@/lib/payments/settle-reservation";
+import { settleTravelPayment } from "@/lib/payments/settle-travel";
 import { settleSubscriptionUpgrade } from "@/lib/payments/settle-subscription";
 import { settlePluginPurchase } from "@/lib/payments/settle-plugin-purchase";
 
@@ -98,6 +99,10 @@ export async function POST(req: Request) {
   }
   if (reference.startsWith("BK-")) {
     await settleServiceBookingPayment(reference, "KORAPAY", amount, verification as object);
+    return NextResponse.json({ received: true });
+  }
+  if (reference.startsWith("TVL-")) {
+    await settleTravelPayment(reference, "KORAPAY", amount, verification as object);
     return NextResponse.json({ received: true });
   }
   if (reference.startsWith("RES-")) {

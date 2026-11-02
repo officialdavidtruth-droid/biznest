@@ -70,3 +70,20 @@ export function passportWarning(expiry: Date | string | null | undefined, travel
   if (e.getTime() < needed.getTime()) return "Passport valid for under 6 months at travel";
   return null;
 }
+
+/** Statuses that hold seats on a group package. Enquiries and quotes are non-binding, so spam can't block a tour. */
+export const SEAT_HOLDING_STATUSES = ["CONFIRMED", "TICKETED", "TRAVELLING", "COMPLETED"] as const;
+
+/** Payment-reference prefix for online travel payments. Webhooks and callbacks route settlement on it. */
+export const TRAVEL_PAY_PREFIX = "TVL";
+
+/** Deposit due to book: percent of the total, rounded up to the next whole currency unit, never above the total. */
+export function depositFor(total: number, percent: number): number {
+  const pct = Math.max(0, Math.min(100, Math.floor(Number(percent) || 0)));
+  if (!(total > 0) || pct === 0) return 0;
+  if (pct === 100) return Math.round(total * 100) / 100;
+  return Math.min(total, Math.ceil((total * pct) / 100));
+}
+
+/** Gateways here charge in Naira only; other currencies stay enquiry-only. */
+export const canPayOnline = (currency: string) => currency.toUpperCase() === "NGN";

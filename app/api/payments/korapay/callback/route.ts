@@ -11,6 +11,7 @@ import { flagPaymentForReview } from "@/lib/payments/review";
 import { settleWalletFunding } from "@/lib/payments/settle-wallet-funding";
 import { settleServiceBookingPayment } from "@/lib/payments/settle-service-booking";
 import { settleReservationPayment } from "@/lib/payments/settle-reservation";
+import { settleTravelPayment } from "@/lib/payments/settle-travel";
 
 import { APP_URL } from "@/lib/constants/app-url";
 
@@ -104,6 +105,16 @@ export async function GET(req: Request) {
     }
     if (booking) return NextResponse.redirect(bookingUrl("pending"));
     return NextResponse.redirect(`${APP_URL}/?payment=${explicitlyFailed ? "failed" : "pending"}`);
+  }
+
+  if (txRef.startsWith("TVL-")) {
+    const verification = await verifyBound(txRef);
+    const amount = verification.data ? Number(verification.data.amount) : 0;
+    if (verification.status === "success" && verification.data?.status === "successful") {
+      const result = await settleTravelPayment(txRef, "KORAPAY", amount, verification as object);
+      if (result.success) return NextResponse.redirect(`${APP_URL}/store/${result.data.storeSlug}/travel/${txRef}?payment=success`);
+    }
+    return NextResponse.redirect(`${APP_URL}/?payment=failed`);
   }
 
   if (txRef.startsWith("RES-")) {

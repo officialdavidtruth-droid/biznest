@@ -9,6 +9,7 @@ import { settleInvoicePayment } from "@/lib/payments/settle-invoice";
 import { settleQuoteDeposit } from "@/lib/payments/settle-quote-deposit";
 import { settleServiceBookingPayment } from "@/lib/payments/settle-service-booking";
 import { settleReservationPayment } from "@/lib/payments/settle-reservation";
+import { settleTravelPayment } from "@/lib/payments/settle-travel";
 
 /**
  * Bank transfer is how customers pay a store unless the owner has added their
@@ -37,13 +38,14 @@ export async function resolvePayRoute(storeId: string): Promise<PayRoute> {
   return { mode: "manual" };
 }
 
-export type ManualPurpose = "INVOICE" | "QUOTE_DEPOSIT" | "SERVICE_BOOKING" | "PMS_RESERVATION";
+export type ManualPurpose = "INVOICE" | "QUOTE_DEPOSIT" | "SERVICE_BOOKING" | "PMS_RESERVATION" | "TRAVEL_BOOKING";
 
 const PREFIX: Record<ManualPurpose, string> = {
   INVOICE: "INV",
   QUOTE_DEPOSIT: "QDEP",
   SERVICE_BOOKING: "BK",
   PMS_RESERVATION: "RES",
+  TRAVEL_BOOKING: "TVL",
 };
 
 export const MANUAL_PURPOSE_LABEL: Record<ManualPurpose, string> = {
@@ -51,6 +53,7 @@ export const MANUAL_PURPOSE_LABEL: Record<ManualPurpose, string> = {
   QUOTE_DEPOSIT: "Quote deposit",
   SERVICE_BOOKING: "Booking",
   PMS_RESERVATION: "Reservation deposit",
+  TRAVEL_BOOKING: "Tour booking",
 };
 
 export function isManualPurpose(p: string): p is ManualPurpose {
@@ -70,6 +73,7 @@ export async function startManualTransfer(input: {
   currency: string;
   bookingId?: string;
   reservationId?: string;
+  travelTripId?: string;
 }): Promise<{ reference: string; payUrl: string }> {
   const prefix = `${PREFIX[input.purpose]}-${input.entityId}-`;
   const open = await prisma.payment.findFirst({
@@ -94,6 +98,7 @@ export async function startManualTransfer(input: {
       currency: input.currency,
       bookingId: input.bookingId,
       reservationId: input.reservationId,
+      travelTripId: input.travelTripId,
     });
   }
   return { reference: reference!, payUrl: buildStoreUrl(input.store, `/pay/${reference}`) };
@@ -127,6 +132,9 @@ export async function settleManualTransfer(input: { reference: string; storeId: 
       break;
     case "PMS_RESERVATION":
       await settleReservationPayment(payment.reference, "CASH", amount, raw);
+      break;
+    case "TRAVEL_BOOKING":
+      await settleTravelPayment(payment.reference, "CASH", amount, raw);
       break;
   }
 

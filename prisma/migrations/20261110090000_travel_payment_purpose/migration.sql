@@ -1,0 +1,1 @@
+ALTER TYPE "PaymentPurpose" ADD VALUE 'TRAVEL_BOOKING';

@@ -6,9 +6,11 @@ import { storeHref as href } from "@/lib/utils/store-href";
 import { formatMoney } from "@/lib/utils/format-money";
 import type { LegacyCatalogItem } from "@/components/storefront/legacy-template-renderer";
 import { formatNumber } from "@/lib/i18n/locale";
+import type { PublicTravelPackage } from "@/lib/travel-public";
+import { TravelEnquiryForm } from "@/components/storefront/travel-enquiry-form";
 
 type Review = { id: string; rating: number; comment: string | null; author: { name: string | null } };
-export type RefProps = { store: any; slug: string; catalogItems: LegacyCatalogItem[]; goodReviews: Review[]; avgRating: number | null; completedOrders: number; social?: Record<string, string> };
+export type RefProps = { store: any; slug: string; catalogItems: LegacyCatalogItem[]; goodReviews: Review[]; avgRating: number | null; completedOrders: number; social?: Record<string, string>; travelPackages?: PublicTravelPackage[] };
 
 const T = [
   "photo-1507525428034-b723cf961d3e", "photo-1533105079780-92b9be482077", "photo-1537996194471-e657df975ab4",
@@ -51,6 +53,8 @@ export function WanderlyHome({ p }: { p: RefProps }) {
 .wd .nl{margin:50px 5% 0;border-radius:18px;padding:46px;color:#fff;background:linear-gradient(90deg,rgba(15,42,67,.88),rgba(15,42,67,.3)),url(${T[3]}) center/cover}
 .wd .nl h2{font-size:30px;max-width:420px}.wd .nl form{display:flex;max-width:460px;background:#fff;border-radius:999px;padding:5px;margin-top:16px}.wd .nl input{flex:1;border:0;background:none;padding:0 18px;font-size:13px;outline:0}.wd .nl button{background:#0f2a43;color:#fff;border:0;border-radius:999px;padding:12px 22px;font-weight:600}
 .wd footer{background:#0f2a43;color:#cfe0ea;margin-top:-40px;padding:90px 5% 26px;border-radius:40px 40px 0 0;display:flex;justify-content:space-between;gap:30px;font-size:12.5px;flex-wrap:wrap}
+.wd .gt{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:18px}.wd .gc{border:1px solid #e6eef2;border-radius:16px;padding:18px;display:flex;flex-direction:column;gap:8px}.wd .gc h3{margin:0;font-size:17px}.wd .gc small{color:#6b8191;font-size:12px}.wd .gc .gp{font-size:22px;font-weight:700}.wd .gc .gs{font-size:12px;font-weight:600;color:#0b7189}.wd .gc .gs.lo{color:#b45309}.wd .gc a.gb{margin-top:auto;background:#0f2a43;color:#fff;text-align:center;padding:12px;border-radius:999px;font-size:13px;font-weight:600}
+.wd .te,.wd .te-ok{margin:26px 0 0;border:1px solid #e6eef2;border-radius:16px;padding:22px;display:grid;gap:10px;max-width:560px}.wd .te h3{margin:0 0 4px}.wd .te input,.wd .te select,.wd .te textarea{border:1px solid #d8e4ea;border-radius:10px;padding:11px 14px;font:inherit;font-size:13px;width:100%}.wd .te textarea{min-height:80px}.wd .te button{background:#0f2a43;color:#fff;border:0;border-radius:999px;padding:13px;font-weight:600;cursor:pointer}.wd .te button:disabled{opacity:.6}.wd .te button.te-alt{background:#fff;color:#0f2a43;border:1px solid #0f2a43}.wd .te .te-hp{position:absolute;left:-9999px;width:1px;height:1px;opacity:0}.wd .te-err{color:#b91c1c;font-size:13px;margin:0}.wd .te-ok{background:#f0f9fb}.wd .te-ok span{font-size:13px;color:#5a727f}
 @media(max-width:900px){.wd nav{display:none}.wd .sb,.wd .dg,.wd .pg,.wd .tg,.wd .st{grid-template-columns:1fr 1fr}.wd .pg,.wd .tg{grid-template-columns:1fr}}`;
   return <div className="wd"><style>{css}</style>
     <section className="hero"><div className="hd"><Link href={href(slug, "/")} className="logo">{store.logoUrl && <img src={store.logoUrl} alt={`${store.name} logo`} />}{store.name}</Link>
@@ -63,6 +67,13 @@ export function WanderlyHome({ p }: { p: RefProps }) {
     <section className="s"><div className="sh"><div><h2>Curated Travel Packages</h2><p>Handpicked journeys designed for unforgettable moments.</p></div><Link href={href(slug, "/catalog")}>View All Packages →</Link></div>
       <div className="pg">{pk.map((d, i) => <Link key={i} href={itemHref(slug, d)} className="pc"><div className="im"><img src={pick(d?.image, T, i + 1)} alt={d?.name || "Travel package"} /><span className="bd"><Star size={12} />{["Bestseller", "Honeymoon", "Cultural"][i]}</span></div>
         <div className="tx"><h3>{d?.name || ["Italian Escape", "Maldives Getaway", "Bali Explorer"][i]}</h3><p>{(d?.description || "Handpicked stays, guides and experiences.").slice(0, 70)}</p><div className="pr"><span>{d ? formatMoney(d.price, d.currency) : "—"} <small>/ person</small></span><ArrowRight size={18} /></div></div></Link>)}</div></section>
+    {(p.travelPackages?.length ?? 0) > 0 && <section className="s" id="tours"><div className="sh"><div><h2>Group Tours &amp; Departures</h2><p>Fixed-price departures with limited seats.</p></div></div>
+      <div className="gt">{p.travelPackages!.map((g) => <div key={g.id} className="gc"><h3>{g.name}</h3><small>{g.destination} · {g.durationDays} day{g.durationDays === 1 ? "" : "s"}{g.departureDate ? ` · departs ${new Date(g.departureDate).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })}` : ""}</small>
+        <div className="gp">{formatMoney(g.pricePerPerson, g.currency)}<small> per person</small></div>
+        {g.inclusions && <small>{g.inclusions.slice(0, 110)}</small>}
+        {g.seatsLeft !== null && <span className={`gs${g.seatsLeft <= 5 ? " lo" : ""}`}>{g.seatsLeft === 0 ? "Fully booked" : `${g.seatsLeft} seat${g.seatsLeft === 1 ? "" : "s"} left`}</span>}
+        <a className="gb" href="#enquire">{g.bookable ? `Book now · ${g.depositPercent}% deposit` : "Enquire about this tour"}</a></div>)}</div>
+      <TravelEnquiryForm slug={slug} packages={p.travelPackages!.map((g) => ({ id: g.id, name: g.name, seatsLeft: g.seatsLeft, bookable: g.bookable, depositPercent: g.depositPercent, depositPerPerson: g.depositPerPerson, currency: g.currency }))} /></section>}
     {(() => { const stats: any[] = [[Globe2, formatNumber(items.length), "Experiences Listed"]]; if (p.completedOrders > 0) stats.unshift([Users, formatNumber(p.completedOrders), "Completed Bookings"]); if (p.avgRating != null) stats.push([Star, `${p.avgRating.toFixed(1)}/5`, "Customer Rating"]); return <div className="st">{stats.map(([I, n, l]: any) => <div key={l}><I size={32} strokeWidth={1.3} /><span><b>{n}</b>{l}</span></div>)}</div>; })()}
     {realReviews(goodReviews).length > 0 && <section className="s"><div className="sh"><h2>What Our Travelers Say</h2></div><div className="tg">{realReviews(goodReviews).map((q, i) => <div className="tc" key={i}><div style={{ color: "#f0a62a" }}>★★★★★</div>“{q.t}”<b>{q.n}</b></div>)}</div></section>}
     <div className="nl"><small className="k">STAY INSPIRED</small><h2>Get Travel Inspiration Straight to Your Inbox</h2><form><input placeholder="Enter your email address" /><button type="button">Subscribe →</button></form></div>

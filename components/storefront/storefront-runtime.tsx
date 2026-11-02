@@ -1,5 +1,6 @@
 import { cache, type ReactNode } from "react";
 import { notFound } from "next/navigation";
+import { getPublicTravelPackages } from "@/lib/travel-public";
 import { prisma } from "@/lib/prisma";
 import { recordStoreVisit } from "@/lib/actions/analytics";
 import { defaultBuilderConfig } from "@/lib/builder-config";
@@ -75,7 +76,7 @@ export async function renderStorefront(slug:string,opts?:{preview?:boolean}){
 
  const arrangement=getTemplateArrangement(store.sectionOverrides);
  const arranged=(node:ReactNode)=><SectionArranger arrangement={arrangement}>{node}</SectionArranger>;
- if(home.kind==="legacy") return arranged(<LegacyTemplateHome name={home.name} p={{store,slug,catalogItems,navCategories,goodReviews,avgRating,completedOrders,trustScore:null,trustChecklist:null,social,theme:resolveStoreTheme(store.template?.category,store.name,themeOverrides,store.fontFamily,store.template?.name)}}/>);
+ if(home.kind==="legacy") return arranged(<LegacyTemplateHome name={home.name} p={{store,slug,catalogItems,travelPackages:home.name==="Wanderly Travel"?await getPublicTravelPackages(store.id).catch(()=>[]):undefined,navCategories,goodReviews,avgRating,completedOrders,trustScore:null,trustChecklist:null,social,theme:resolveStoreTheme(store.template?.category,store.name,themeOverrides,store.fontFamily,store.template?.name)}}/>);
  if(home.kind==="screenshot") return arranged(<SignatureScreenshotHome store={store} slug={slug} items={catalogItems as any} reviews={store.reviews} avgRating={avgRating} completedOrders={completedOrders} social={social} mode={home.mode} {...home.palette}/>);
  if(home.kind==="example") return arranged(<ExampleStorefront store={store} slug={slug} items={catalogItems} mode="home" content={await getExampleContent(slug) as any}/>);
  if(home.kind==="hotel") return arranged(<ThelusoHotel store={store} slug={slug} content={await getHotelContent(slug)}/>);

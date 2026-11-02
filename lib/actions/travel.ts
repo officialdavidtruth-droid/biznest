@@ -6,9 +6,10 @@ import { assertStorePermission } from "@/lib/access/assert-store-access";
 import { getPluginEntitlement } from "@/lib/plugins";
 import { getCanonicalBusinessType } from "@/lib/business-identity";
 import type { ActionResult } from "@/types/actions";
+import { startTravelCharge } from "@/lib/payments/travel-charge";
 import {
   TRAVEL_PLUGIN_KEY, TRAVEL_BUSINESS_TYPE, TRIP_STATUSES, ITEM_KINDS, ITEM_STATUSES, PAYMENT_METHODS,
-  SUPPLIER_KINDS, VISA_STATUSES, VISA_TYPES, DEFAULT_VISA_CHECKLIST, canMoveTrip, newTripReference, tripMoney,
+  SUPPLIER_KINDS, SEAT_HOLDING_STATUSES, VISA_STATUSES, VISA_TYPES, DEFAULT_VISA_CHECKLIST, canPayOnline, canMoveTrip, newTripReference, tripMoney,
   type TripStatus,
 } from "@/lib/travel";
 
@@ -42,6 +43,11 @@ async function recalcTrip(tripId: string) {
   await prisma.travelTrip.update({ where: { id: tripId }, data: { totalPrice, totalCost } });
 }
 
+/** Travellers holding seats on a package (committed trips only), optionally ignoring one trip. */
+async function seatsTaken(packageId: string, excludeTripId?: string) {
+  return prisma.travelTraveler.count({ where: { trip: { packageId, status: { in: [...SEAT_HOLDING_STATUSES] }, ...(excludeTripId ? { id: { not: excludeTripId } } : {}) } } });
+}
+
 async function ownTrip(a: Extract<Access, { success: true }>, tripId: string) {
   return prisma.travelTrip.findFirst({ where: { id: tripId, storeId: a.store.id }, select: { id: true, status: true, totalPrice: true, totalCost: true } });
 }
@@ -60,7 +66,7 @@ export async function getTravelDashboard(slug: string) {
     }),
     prisma.travelClient.findMany({ where: { storeId }, orderBy: { fullName: "asc" }, take: 500, include: { _count: { select: { trips: true } } } }),
     prisma.travelSupplier.findMany({ where: { storeId, isArchived: false }, orderBy: { name: "asc" }, take: 200 }),
-    prisma.travelPackage.findMany({ where: { storeId }, orderBy: [{ isActive: "desc" }, { departureDate: "asc" }], take: 100, include: { trips: { where: { status: { not: "CANCELLED" } }, select: { travellers: { select: { id: true } } } } } }),
+    prisma.travelPackage.findMany({ where: { storeId }, orderBy: [{ isActive: "desc" }, { departureDate: "asc" }], take: 100, include: { trips: { select: { status: true, travellers: { select: { id: true } } } } } }),
     prisma.travelVisaCase.findMany({ where: { storeId }, orderBy: { createdAt: "desc" }, take: 200, include: { client: { select: { fullName: true } } } }),
   ]);
 
@@ -94,7 +100,7 @@ export async function getTravelDashboard(slug: string) {
     trips: serialTrips,
     clients: clients.map((c) => ({ id: c.id, fullName: c.fullName, email: c.email, phone: c.phone, nationality: c.nationality, passportNo: c.passportNo, passportExpiry: c.passportExpiry?.toISOString() ?? null, notes: c.notes, tripCount: c._count.trips })),
     suppliers: suppliers.map((s) => ({ id: s.id, name: s.name, kind: s.kind, contactName: s.contactName, email: s.email, phone: s.phone })),
-    packages: packages.map((p) => ({ id: p.id, name: p.name, destination: p.destination, durationDays: p.durationDays, pricePerPerson: Number(p.pricePerPerson), currency: p.currency, departureDate: p.departureDate?.toISOString() ?? null, seats: p.seats, booked: p.trips.reduce((s, t) => s + t.travellers.length, 0), inclusions: p.inclusions, isActive: p.isActive })),
+    packages: packages.map((p) => ({ id: p.id, name: p.name, destination: p.destination, durationDays: p.durationDays, pricePerPerson: Number(p.pricePerPerson), currency: p.currency, departureDate: p.departureDate?.toISOString() ?? null, seats: p.seats, depositPercent: p.depositPercent, booked: p.trips.filter((t) => (SEAT_HOLDING_STATUSES as readonly string[]).includes(t.status)).reduce((s, t) => s + t.travellers.length, 0), inclusions: p.inclusions, isActive: p.isActive })),
     visas: visas.map((v) => ({ id: v.id, clientName: v.client.fullName, clientId: v.clientId, country: v.country, visaType: v.visaType, status: v.status, checklist: (Array.isArray(v.checklist) ? v.checklist : []) as { label: string; done: boolean }[], appointmentAt: v.appointmentAt?.toISOString() ?? null, fee: Number(v.fee), notes: v.notes })),
   };
 }
@@ -136,10 +142,10 @@ export async function createTravelTrip(slug: string, input: { clientId: string; 
   let currency = a.store.currency || "NGN";
   let finalDepart = departDate, finalReturn = returnDate;
   if (input.packageId) {
-    const pkg = await prisma.travelPackage.findFirst({ where: { id: input.packageId, storeId: a.store.id, isActive: true }, include: { trips: { where: { status: { not: "CANCELLED" } }, select: { travellers: { select: { id: true } } } } } });
+    const pkg = await prisma.travelPackage.findFirst({ where: { id: input.packageId, storeId: a.store.id, isActive: true }, });
     if (!pkg) return fail("That package is no longer available.");
     if (pkg.seats > 0) {
-      const taken = pkg.trips.reduce((s, t) => s + t.travellers.length, 0);
+      const taken = await seatsTaken(pkg.id);
       if (taken + count > pkg.seats) return fail(`Only ${Math.max(0, pkg.seats - taken)} seat(s) left on this package.`);
     }
     packageId = pkg.id; currency = pkg.currency;
@@ -183,6 +189,13 @@ export async function setTravelTripStatus(slug: string, tripId: string, status: 
   if (!trip) return fail("Trip not found.");
   if (!canMoveTrip(trip.status as TripStatus, status as TripStatus)) return fail(trip.status === "CANCELLED" || trip.status === "COMPLETED" ? `A ${trip.status.toLowerCase()} trip can't be changed.` : "That status change isn't allowed.");
   if (["CONFIRMED", "TICKETED", "TRAVELLING"].includes(status) && Number(trip.totalPrice) <= 0) return fail("Set a price before confirming this trip.");
+  if ((SEAT_HOLDING_STATUSES as readonly string[]).includes(status) && trip.packageId && !(SEAT_HOLDING_STATUSES as readonly string[]).includes(trip.status)) {
+    const pkg = await prisma.travelPackage.findUnique({ where: { id: trip.packageId }, select: { seats: true, name: true } });
+    if (pkg && pkg.seats > 0) {
+      const left = pkg.seats - (await seatsTaken(trip.packageId, trip.id));
+      if (trip.travellers.length > left) return fail(`Only ${Math.max(0, left)} seat(s) left on ${pkg.name}; this trip has ${trip.travellers.length} traveller(s).`);
+    }
+  }
   if (status === "TICKETED" && tripMoney(trip, trip.payments).paid <= 0) return fail("Record at least a deposit before ticketing.");
   if (status === "COMPLETED" && tripMoney(trip, trip.payments).balance > 0) return fail("There is still an outstanding balance. Record the payment before completing the trip.");
   await prisma.travelTrip.update({ where: { id: trip.id }, data: { status } });
@@ -301,14 +314,16 @@ export async function archiveTravelSupplier(slug: string, supplierId: string): P
   refresh(slug); return { success: true, data: undefined };
 }
 
-export async function saveTravelPackage(slug: string, input: { id?: string; name: string; destination: string; durationDays: number; pricePerPerson: number; departureDate?: string; seats?: number; inclusions?: string; isActive?: boolean }): Promise<ActionResult> {
+export async function saveTravelPackage(slug: string, input: { id?: string; name: string; destination: string; durationDays: number; pricePerPerson: number; departureDate?: string; seats?: number; inclusions?: string; depositPercent?: number; isActive?: boolean }): Promise<ActionResult> {
   const a = await access(slug); if (!a.success) return fail(a.error);
   const name = str(input.name, 140), destination = str(input.destination, 120);
   if (!name || !destination) return fail("Name and destination are required.");
   const price = money(input.pricePerPerson); if (Number.isNaN(price) || price <= 0) return fail("Enter a price per person.");
   const days = Math.floor(Number(input.durationDays)); if (!(days >= 1 && days <= 365)) return fail("Duration must be between 1 and 365 days.");
   const seats = Math.max(0, Math.floor(Number(input.seats) || 0));
-  const data = { name, destination, durationDays: days, pricePerPerson: price, departureDate: optDate(input.departureDate), seats, inclusions: optStr(input.inclusions, 3000), isActive: input.isActive !== false, currency: a.store.currency || "NGN" };
+  const depositPercent = Math.floor(Number(input.depositPercent ?? 30));
+  if (!(depositPercent >= 0 && depositPercent <= 100)) return fail("Deposit must be between 0% and 100%.");
+  const data = { depositPercent, name, destination, durationDays: days, pricePerPerson: price, departureDate: optDate(input.departureDate), seats, inclusions: optStr(input.inclusions, 3000), isActive: input.isActive !== false, currency: a.store.currency || "NGN" };
   if (input.id) {
     const res = await prisma.travelPackage.updateMany({ where: { id: input.id, storeId: a.store.id }, data });
     if (!res.count) return fail("Package not found.");
@@ -350,4 +365,25 @@ export async function updateTravelVisaCase(slug: string, caseId: string, input: 
   if (input.appointmentAt !== undefined) data.appointmentAt = optDate(input.appointmentAt);
   await prisma.travelVisaCase.update({ where: { id: c.id }, data });
   refresh(slug); return { success: true, data: undefined };
+}
+
+// ---------------------------------------------------------------- payment links
+
+/** Creates an online payment link for (part of) a trip's balance, to send to the traveller. */
+export async function createTravelPaymentLink(slug: string, tripId: string, amount: number): Promise<ActionResult<{ url: string }>> {
+  const a = await access(slug); if (!a.success) return fail(a.error);
+  const trip = await prisma.travelTrip.findFirst({ where: { id: tripId, storeId: a.store.id }, include: { payments: true, client: true } });
+  if (!trip) return fail("Trip not found.");
+  if (["CANCELLED", "COMPLETED"].includes(trip.status)) return fail("This trip is closed.");
+  if (!canPayOnline(trip.currency)) return fail("Online payment links are only available for trips priced in NGN.");
+  const m = tripMoney(trip, trip.payments);
+  if (!(m.total > 0)) return fail("Set a price before requesting payment.");
+  const amt = money(amount);
+  if (Number.isNaN(amt) || amt <= 0) return fail("Enter an amount greater than zero.");
+  if (amt > m.balance + 0.005) return fail(`That is more than the outstanding balance (${m.balance.toLocaleString()}).`);
+  const store = await prisma.store.findUnique({ where: { id: a.store.id }, select: { id: true, slug: true, customDomain: true, customDomainStatus: true, paystackSubaccountCode: true, flutterwaveSubaccountId: true } });
+  if (!store) return fail("Store not found.");
+  const r = await startTravelCharge({ store, tripId: trip.id, amountNaira: amt, currency: trip.currency, email: trip.client.email, customerName: trip.client.fullName });
+  if (!r.success) return fail(r.error);
+  return { success: true, data: { url: r.url } };
 }

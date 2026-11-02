@@ -13,7 +13,7 @@ export type LegacyCatalogItem = {
 };
 type Review={id:string;rating:number;comment:string|null;author:{name:string|null}};
 type Store={name:string;logoUrl:string|null;bannerUrl:string|null;contactEmail:string|null;contactPhone:string|null;sellsProducts:boolean;heroOverrides?:any;storyOverrides?:any;socialLinks?:any;business:{category?:string|null;description:string|null;phone?:string|null;email?:string|null;city?:string|null;state?:string|null;country?:string|null}};
-type Props={store:Store;slug:string;catalogItems:LegacyCatalogItem[];navCategories:CategoryTreeNode[];goodReviews:Review[];avgRating:number|null;completedOrders:number;trustScore?:number|null;trustChecklist?:any;social?:Record<string,string>;theme?:any};
+type Props={travelPackages?:import("@/lib/travel-public").PublicTravelPackage[];store:Store;slug:string;catalogItems:LegacyCatalogItem[];navCategories:CategoryTreeNode[];goodReviews:Review[];avgRating:number|null;completedOrders:number;trustScore?:number|null;trustChecklist?:any;social?:Record<string,string>;theme?:any};
 
 const heroHeadline=(st:Store)=>String(st.heroOverrides?.headline||"").trim()||null;
 const heroSub=(p:Props)=>String(p.store.heroOverrides?.subtitle||"").trim()||p.store.business.description||p.theme?.sub||`Welcome to ${p.store.name}.`;
