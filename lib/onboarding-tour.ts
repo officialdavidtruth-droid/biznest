@@ -75,7 +75,7 @@ const GROUP_COPY: Record<string, string> = {
 
 export function buildTourSteps(opts: {
   storeName: string;
-  business: { sellsProducts: boolean; offersServices: boolean; category?: string | null; subscriptionName?: string | null; installedApps?: InstalledAppNav[] };
+  business: { sellsProducts: boolean; offersServices: boolean; category?: string | null; subcategory?: string | null; subscriptionName?: string | null; installedApps?: InstalledAppNav[] };
 }): TourStep[] {
   const groups = filterNavGroupsForRole(buildNavGroups(opts.business), { canManageOwnerOnly: true });
   const steps: TourStep[] = [

@@ -222,6 +222,7 @@ export function findNavItemForPath(business: {
   sellsProducts: boolean;
   offersServices: boolean;
   category?: string | null;
+  subcategory?: string | null;
   subscriptionName?: string | null;
   installedApps?: InstalledAppNav[];
 }, subpath: string): NavItem | undefined {
@@ -239,7 +240,7 @@ export function findNavItemForPath(business: {
 // away, not two taps deep in a drawer. The 5th slot is always "Menu" (opens
 // the full drawer with everything else), not a nav item itself.
 export function buildBottomTabItems(
-  business: { sellsProducts: boolean; offersServices: boolean; category?: string | null; subscriptionName?: string | null },
+  business: { sellsProducts: boolean; offersServices: boolean; category?: string | null; subcategory?: string | null; subscriptionName?: string | null },
   opts?: { canManageOwnerOnly: boolean; permissions?: string[] | null }
 ): NavItem[] {
   const groups = buildNavGroups(business);
