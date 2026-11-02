@@ -223,6 +223,18 @@ export const PLUGIN_CATALOG: PluginSeed[] = [
     sortOrder: 127,
     plans: [],
   },
+  {
+    key: "blog",
+    name: "BizNest Blog",
+    description: "Publish dated blog posts and guides on your storefront: a writing editor with categories, tags, featured images, scheduling, search settings and an RSS feed.",
+    category: "Growth",
+    icon: "Newspaper",
+    price: 0,
+    isFree: true,
+    eligibleBusinessTypes: ["Travel & Tourism", "Real Estate", "Professional Services", "Agency", "Software Development", "Photography", "Health", "Health & Fitness", "Beauty", "Salon", "Event Planning", "Church", "Construction", "Automotive", "Agriculture"],
+    sortOrder: 128,
+    plans: ["Growth Store", "Business Mogul"],
+  },
 ];
 
 export async function ensureSystemPlugins() {

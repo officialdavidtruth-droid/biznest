@@ -1061,6 +1061,8 @@ model Store {
   travelTrips     TravelTrip[]
   travelPackages  TravelPackage[]
   travelVisaCases TravelVisaCase[]
+  blogPosts       BlogPost[]
+  blogCategories  BlogCategory[]
   autoVehicles AutoVehicle[]
   photoShoots PhotoShoot[]
   tailoringJobs TailoringJob[]
@@ -4616,4 +4618,66 @@ model TravelVisaCase {
 
   @@index([storeId, status])
   @@index([clientId])
+}
+
+
+// ----------------------------------------------------------------------------
+// BLOG (BizNest Blog app): dated posts, categories and tags, separate from the timeless StorePage rows
+// ----------------------------------------------------------------------------
+
+enum BlogPostStatus {
+  DRAFT
+  SCHEDULED
+  PUBLISHED
+}
+
+model BlogCategory {
+  id          String   @id @default(cuid())
+  storeId     String
+  store       Store    @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  name        String
+  slug        String
+  description String?
+  createdAt   DateTime @default(now())
+
+  posts BlogPost[]
+
+  @@unique([storeId, slug])
+}
+
+model BlogPost {
+  id         String        @id @default(cuid())
+  storeId    String
+  store      Store         @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  categoryId String?
+  category   BlogCategory? @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+
+  title    String
+  slug     String
+  excerpt  String?
+  body     String   @db.Text // Markdown. Rendered to React nodes (never raw HTML) on the storefront.
+  tags     String[] @default([])
+
+  featuredImage    String?
+  featuredImageAlt String?
+
+  authorId   String?
+  authorName String
+
+  status      BlogPostStatus @default(DRAFT)
+  // Published: when it went live. Scheduled: when it goes live. A post is public once status != DRAFT and publishedAt <= now.
+  publishedAt DateTime?
+  isFeatured  Boolean        @default(false)
+
+  seoTitle       String?
+  seoDescription String?
+
+  readingMinutes Int @default(1)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([storeId, slug])
+  @@index([storeId, status, publishedAt])
+  @@index([storeId, categoryId])
 }

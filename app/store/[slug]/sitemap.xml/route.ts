@@ -1,5 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import { buildSitemapXml, storeUrl, type SitemapEntry } from "@/lib/seo";
+import { publicPostWhere } from "@/lib/blog";
+import { isBlogActive } from "@/lib/blog-public";
 
 export const revalidate = 3600;
 
@@ -22,11 +24,17 @@ export async function GET(_req: Request, { params }: { params: Promise<{ slug: s
     prisma.category.findMany({ where: { storeId: store.id, isActive: true }, select: { id: true, updatedAt: true }, take: 5000 }),
   ]);
 
+  const blogPosts = (await isBlogActive(store.id))
+    ? await prisma.blogPost.findMany({ where: publicPostWhere(store.id), select: { slug: true, updatedAt: true }, orderBy: { publishedAt: "desc" }, take: 5000 })
+    : [];
+
   const entries: SitemapEntry[] = [
     { url: storeUrl(store), lastModified: store.updatedAt, changeFrequency: "daily", priority: 1 },
     ...categories.map((c) => ({ url: storeUrl(store, `/category/${c.id}`), lastModified: c.updatedAt, changeFrequency: "weekly" as const, priority: 0.6 })),
     ...products.map((p) => ({ url: storeUrl(store, `/product/${p.id}`), lastModified: p.updatedAt, changeFrequency: "weekly" as const, priority: 0.7 })),
     ...services.map((s) => ({ url: storeUrl(store, `/service/${s.id}`), lastModified: s.updatedAt, changeFrequency: "weekly" as const, priority: 0.7 })),
+    ...(blogPosts.length ? [{ url: storeUrl(store, "/blog"), lastModified: blogPosts[0].updatedAt, changeFrequency: "daily" as const, priority: 0.6 }] : []),
+    ...blogPosts.map((b) => ({ url: storeUrl(store, `/blog/${b.slug}`), lastModified: b.updatedAt, changeFrequency: "monthly" as const, priority: 0.6 })),
   ];
 
   return new Response(buildSitemapXml(entries), {
