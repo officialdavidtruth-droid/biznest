@@ -94,7 +94,7 @@ export const POST = withObservability("careers-apply", async (req: Request, cont
     });
   } catch (err) {
     if ((err as { code?: string }).code === "P2002") return fail("You've already applied for this role — we have your application.", 409);
-    void logError("RECRUITMENT", "Careers application failed", { storeId: store.id, message: err instanceof Error ? err.message : String(err) });
+    void logError("API", "Careers application failed", { storeId: store.id, message: err instanceof Error ? err.message : String(err) });
     return fail("We couldn't submit your application. Please try again.", 500);
   }
 
