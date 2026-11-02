@@ -48,7 +48,7 @@ function relevantToBusiness(href: string, business: { sellsProducts: boolean; of
 // than showing every module to every store regardless of niche.
 export type InstalledAppNav = { key: string; name: string; icon?: string | null };
 
-export function buildNavGroups(business: { sellsProducts: boolean; offersServices: boolean; category?: string | null; subscriptionName?: string | null; installedApps?: InstalledAppNav[] }): Array<{
+export function buildNavGroups(business: { sellsProducts: boolean; offersServices: boolean; category?: string | null; subcategory?: string | null; subscriptionName?: string | null; installedApps?: InstalledAppNav[] }): Array<{
   label: string;
   items: NavItem[];
 }> {
@@ -56,7 +56,7 @@ export function buildNavGroups(business: { sellsProducts: boolean; offersService
   // the same catalog. A service-only business gets service operations here;
   // it should never open its dashboard and feel like an online shop.
   const canonicalType = canonicalizeBusinessType(business.category);
-  const terminology = getBusinessTerminology(canonicalType);
+  const terminology = getBusinessTerminology(canonicalType, business.subcategory);
   const sellNavItems: NavItem[] = [];
   const categoriesLabel = isRestaurantBusiness(canonicalType) ? "Menu Categories" : terminology.category + "s";
   const categoriesChild: NavItem = { label: categoriesLabel, href: "/categories", icon: Boxes, permission: "products" };
@@ -95,7 +95,7 @@ export function buildNavGroups(business: { sellsProducts: boolean; offersService
   // The category picked at onboarding can add one more trade-specific tool
   // (e.g. "Bookings" for a salon, "Delivery zones" for a restaurant) — but
   // only if it isn't already present above.
-  const adaptiveConfig = getAdaptiveDashboardConfig(business.category, undefined, business);
+  const adaptiveConfig = getAdaptiveDashboardConfig(business.category, business.subcategory, business);
   const categoryExtraNavItems = (adaptiveConfig.modules ?? [])
     .filter((i) => i.href !== "/pms")
     .filter((i) => !["", "/products", "/services", "/orders", "/bookings", "/calendar", "/customers", "/payments", "/invoices", "/analytics", "/settings", "/inventory", "/delivery", "/gallery", "/reviews"].includes(i.href))

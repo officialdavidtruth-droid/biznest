@@ -37,7 +37,7 @@ import { canonicalizeBusinessType } from "@/lib/business-identity";
 import {
   Shirt, Cpu, Utensils, Sparkles, Sofa, HeartPulse, Briefcase, Car, Tractor,
   Store as StoreIcon, Truck, CalendarClock, Wrench, Building2, Camera, Hotel,
-  Code, PartyPopper, Package,
+  Code, PartyPopper, Package, Plane,
 } from "lucide-react";
 
 /**
@@ -187,6 +187,13 @@ const CATEGORY_PRESETS: Record<string, DefaultCategoryConfig[]> = {
   "Software Development": [{ name: "Software Services", type: "SERVICE", subcategories: ["Web Development", "Mobile Apps", "APIs", "Consulting"] }],
   "Event Planning": [{ name: "Event Services", type: "SERVICE", subcategories: ["Weddings", "Corporate", "Birthdays", "Coordination"] }],
   "Logistics": [{ name: "Logistics", type: "SERVICE", subcategories: ["Same Day", "Interstate", "Business Delivery"] }],
+  "Travel & Tourism": [
+    { name: "Flights & Tickets", type: "SERVICE", subcategories: ["Domestic Flights", "International Flights", "Group Tickets"] },
+    { name: "Holiday Packages", type: "SERVICE", subcategories: ["Local Getaways", "International Tours", "Honeymoon", "Group Tours"] },
+    { name: "Visa & Documentation", type: "SERVICE", subcategories: ["Visa Assistance", "Travel Insurance", "Passport Support"] },
+    { name: "Hotels & Transfers", type: "SERVICE", subcategories: ["Hotel Booking", "Airport Transfer", "Car Hire"] },
+    { name: "Religious Travel", type: "SERVICE", subcategories: ["Hajj & Umrah", "Holy Land Pilgrimage"] },
+  ],
 };
 
 function defaultCategoriesFor(type: string, capabilities: Capability[]): DefaultCategoryConfig[] {
@@ -444,6 +451,20 @@ export const BUSINESS_TYPES: Record<string, BusinessTypeConfig> = {
       { label: "Manage bookings", href: "/orders" },
     ],
     extraNavItems: [{ label: "Delivery zones", href: "/delivery", icon: Truck }],
+  },
+  "Travel & Tourism": {
+    icon: Plane,
+    tagline: "Travel agency storefront",
+    capabilities: ["services", "packages", "bookings", "gallery", "reviews"],
+    defaultCategories: defaultCategoriesFor("Travel & Tourism", ["services", "packages", "bookings", "gallery", "reviews"]),
+    navigation: navigationFor("Travel & Tourism", ["services", "packages", "bookings", "gallery", "reviews"]),
+    homepageSections: homepageFor("Travel & Tourism", ["services", "packages", "bookings", "gallery", "reviews"]),
+    quickActions: [
+      { label: "Add a package", href: "/services/new" },
+      { label: "Open BizNest Travel", href: "/travel" },
+      { label: "Manage bookings", href: "/orders" },
+    ],
+    extraNavItems: [{ label: "Bookings", href: "/calendar", icon: CalendarClock }],
   },
   "Church": {
     icon: Building2,

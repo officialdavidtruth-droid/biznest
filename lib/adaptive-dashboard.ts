@@ -6,6 +6,7 @@ import {
   ShoppingBag, Sparkles, Star, Truck, Users, Utensils, Wrench, Boxes, Building2, ChefHat,
 } from "lucide-react";
 import { getBusinessTypeConfig, type Capability } from "@/lib/capabilities";
+import { getSpecialtyProfile, type SpecialtyModuleId } from "@/lib/specialty-profiles";
 
 export type DashboardModule = {
   id: string;
@@ -116,6 +117,17 @@ function subcategoryProfile(category: string, subcategory?: string | null): Omit
     if (/architect|engineer|construction/.test(s)) return { label: "Technical Services", primaryEntity: "Project", terminology: { customer: "Client", transaction: "Project", catalog: "Services" }, quickActions: [core.projects, core.quotes, core.clients, core.invoices] };
     if (/marketing|social/.test(s)) return { label: "Marketing Services", primaryEntity: "Campaign", terminology: { customer: "Client", transaction: "Campaign", catalog: "Services" }, quickActions: [core.projects, core.marketing, core.analytics, core.clients] };
   }
+  const specialty = getSpecialtyProfile(category, subcategory);
+  if (specialty) {
+    const actions = specialty.actions.map((id) => core[id]);
+    return {
+      label: specialty.label,
+      primaryEntity: specialty.primaryEntity,
+      terminology: { customer: specialty.customer, transaction: specialty.transaction, catalog: specialty.catalog },
+      quickActions: actions,
+      widgets: [{ id: "specialty", title: subcategory || specialty.label, description: specialty.blurb, href: actions[0]?.href, type: "operations" }],
+    };
+  }
   return {};
 }
 
@@ -135,7 +147,13 @@ export function getAdaptiveDashboardConfig(category?: string | null, subcategory
   if (caps.has("reviews")) modules.push(core.reviews);
   if (caps.has("packages")) modules.push(core.services);
   if (caps.has("pms")) modules.push(core.pms);
-  const profile = { ...(CATEGORY_OVERRIDES[configLabel(category)] ?? {}), ...subcategoryProfile(configLabel(category), subcategory) };
+  const categoryProfile = CATEGORY_OVERRIDES[configLabel(category)] ?? {};
+  const specialtyOverride = subcategoryProfile(configLabel(category), subcategory);
+  // Specialty wins on labels/actions, but both sets of widgets are kept.
+  const profile = { ...categoryProfile, ...specialtyOverride, widgets: [...(categoryProfile.widgets ?? []), ...(specialtyOverride.widgets ?? [])] };
+  // A specialty can bring modules the category alone wouldn't show
+  // (e.g. Delivery for a cloud kitchen, Inventory for event rentals).
+  for (const id of getSpecialtyProfile(configLabel(category), subcategory)?.extraModules ?? []) modules.push(core[id as SpecialtyModuleId]);
   const baseKpis: DashboardKpi[] = configLabel(category) === "Hotel & Lodging" ? [
     { id: "revenue", label: "Revenue", source: "revenue", format: "money" },
     { id: "bookings", label: "Reservations", source: "bookings", format: "number" },
@@ -156,7 +174,7 @@ export function getAdaptiveDashboardConfig(category?: string | null, subcategory
     businessType: configLabel(category), subcategory, label: profile.label ?? config.tagline,
     tagline: config.tagline, primaryEntity: profile.primaryEntity ?? (product ? "Order" : "Booking"),
     terminology: { ...terminology, catalogSingular: terminology.catalogSingular ?? singularize(terminology.catalog) },
-    kpis: profile.kpis ?? baseKpis, quickActions: clean(profile.quickActions ?? defaultActions), modules: clean(modules), widgets: profile.widgets ? [...widgets, ...profile.widgets] : widgets,
+    kpis: profile.kpis ?? baseKpis, quickActions: clean(profile.quickActions ?? defaultActions), modules: clean(modules), widgets: profile.widgets.length ? [...widgets, ...profile.widgets] : widgets,
   };
 }
 

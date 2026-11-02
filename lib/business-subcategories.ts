@@ -239,6 +239,16 @@ export const BUSINESS_SUBCATEGORIES: Record<string, SubcategoryConfig> = {
       o("Warehousing & Fulfilment", "Storage, pick-and-pack and fulfilment.", "storage, pick and pack, fulfilment", "State storage rates and minimums", "Show the facility", "Add a fulfilment enquiry"),
     ],
   },
+  "Travel & Tourism": {
+    label: "Type of travel business",
+    options: [
+      o("Travel Agency", "Flights, hotels, visas and packages booked for clients.", "flights, hotels, packages, visas", "List your core services with clear fees", "Publish popular destinations and packages", "Make enquiries and booking requests easy"),
+      o("Tour Operator", "Organised tours and group trips you run yourself.", "group tours, city tours, safaris", "Show itineraries day by day", "State what is and isn't included", "Open departure dates for booking"),
+      o("Visa & Documentation", "Visa applications, travel insurance and document support.", "visa assistance, insurance, passports", "List countries and requirements", "State processing times honestly", "Explain your fees up front"),
+      o("Hajj, Umrah & Pilgrimage", "Religious travel packages and group pilgrimages.", "Hajj, Umrah, Holy Land tours", "Publish package tiers and dates", "Show accommodation and inclusions", "Explain payment instalments"),
+      o("Car Hire & Transfers", "Airport pickups, chauffeur and vehicle hire.", "airport transfer, chauffeur, car hire", "List vehicles with rates", "State pickup areas and times", "Add a booking request form"),
+    ],
+  },
   "Church": {
     label: "Type of ministry",
     options: [

@@ -107,7 +107,7 @@ export default async function StoreAdminLayout({
       }
     }
     const navItem = findNavItemForPath(
-      { sellsProducts: store.business.sellsProducts, offersServices: store.business.offersServices, category: getCanonicalBusinessType({ businessCategory: store.business?.category, storeBusinessType: store.businessType }), subscriptionName: store.subscription?.name, installedApps: installedAppNav },
+      { sellsProducts: store.business.sellsProducts, offersServices: store.business.offersServices, category: getCanonicalBusinessType({ businessCategory: store.business?.category, storeBusinessType: store.businessType }), subcategory: store.business?.businessSubcategory, subscriptionName: store.subscription?.name, installedApps: installedAppNav },
       subpath
     );
     const blocked =
@@ -167,6 +167,7 @@ export default async function StoreAdminLayout({
                 sellsProducts: store.business.sellsProducts,
                 offersServices: store.business.offersServices,
                 category: getCanonicalBusinessType({ businessCategory: store.business?.category, storeBusinessType: store.businessType }),
+                subcategory: store.business?.businessSubcategory,
                 subscriptionName: store.subscription?.name,
                 installedApps: installedAppNav,
               },
@@ -186,6 +187,7 @@ export default async function StoreAdminLayout({
             sellsProducts={store.business.sellsProducts}
             offersServices={store.business.offersServices}
             category={getCanonicalBusinessType({ businessCategory: store.business?.category, storeBusinessType: store.businessType })}
+            subcategory={store.business?.businessSubcategory}
             staffRole={role}
             staffPermissions={staffPermissions}
             subscriptionName={store.subscription?.name}
@@ -202,6 +204,7 @@ export default async function StoreAdminLayout({
             sellsProducts={store.business.sellsProducts}
             offersServices={store.business.offersServices}
             category={getCanonicalBusinessType({ businessCategory: store.business?.category, storeBusinessType: store.businessType })}
+            subcategory={store.business?.businessSubcategory}
             notifications={notifications}
             unreadCount={unreadCount}
             themeColor={(store.themeColors as { primary?: string } | null)?.primary}

@@ -45,6 +45,7 @@ export function MobileDashboardChrome({
   sellsProducts,
   offersServices,
   category,
+  subcategory,
   notifications,
   unreadCount,
   staffRole,
@@ -60,6 +61,7 @@ export function MobileDashboardChrome({
   sellsProducts: boolean;
   offersServices: boolean;
   category?: string | null;
+  subcategory?: string | null;
   notifications: NotificationItem[];
   unreadCount: number;
   staffRole?: StoreAccessRole;
@@ -84,7 +86,7 @@ export function MobileDashboardChrome({
     window.addEventListener(TOUR_DRAWER_EVENT, onTour);
     return () => window.removeEventListener(TOUR_DRAWER_EVENT, onTour);
   }, []);
-  const business = { sellsProducts, offersServices, category, subscriptionName, installedApps };
+  const business = { sellsProducts, offersServices, category, subcategory, subscriptionName, installedApps };
   const canManageOwnerOnly = staffRole === undefined || staffRole === "OWNER" || staffRole === "PLATFORM_STAFF";
   const navGroups = filterNavGroupsForRole(buildNavGroups(business), {
     canManageOwnerOnly,

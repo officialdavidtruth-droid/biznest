@@ -1,3 +1,4 @@
+import { getSpecialtyProfile } from "@/lib/specialty-profiles";
 import { canonicalizeBusinessType } from "@/lib/business-identity";
 
 export type BusinessTerminology = {
@@ -34,6 +35,7 @@ const CATALOG_TERMS: Record<string, { customer: string; transaction: string; cat
   Logistics: { customer: "Client", transaction: "Delivery", catalog: "Services" },
   Automotive: { customer: "Customer", transaction: "Job", catalog: "Parts & Services" },
   "Event Planning": { customer: "Client", transaction: "Event", catalog: "Packages" },
+  "Travel & Tourism": { customer: "Traveller", transaction: "Trip", catalog: "Packages" },
   Cleaning: { customer: "Client", transaction: "Job", catalog: "Services" },
   "Health & Fitness": { customer: "Member", transaction: "Booking", catalog: "Programs & Services" },
   Health: { customer: "Patient", transaction: "Appointment", catalog: "Services" },
@@ -69,11 +71,17 @@ function singularize(catalog: string): string {
   return catalog;
 }
 
-export function getBusinessTerminology(category?: string | null): BusinessTerminology {
+export function getBusinessTerminology(category?: string | null, subcategory?: string | null): BusinessTerminology {
   // Callers pass raw Business.category / Store.businessType values; normalise so
   // aliases and casing ("professional", "agency") resolve to the same entry.
   const canonical = canonicalizeBusinessType(category);
-  const base = (category && (CATALOG_TERMS[category] ?? CATALOG_TERMS[canonical])) || { customer: "Customer", transaction: "Order", catalog: "Products" };
+  const categoryBase = (category && (CATALOG_TERMS[category] ?? CATALOG_TERMS[canonical])) || { customer: "Customer", transaction: "Order", catalog: "Products" };
+  // The vendor's specialty (e.g. Short-let vs Hotel, Cloud Kitchen vs Dine-in)
+  // changes how the business is run, so it changes the words too.
+  const specialty = getSpecialtyProfile(canonical, subcategory);
+  const base: typeof categoryBase = specialty
+    ? { customer: specialty.customer, transaction: specialty.transaction, catalog: specialty.catalog, reservationLabel: specialty.reservationLabel ?? categoryBase.reservationLabel, unitLabel: specialty.unitLabel ?? categoryBase.unitLabel }
+    : categoryBase;
   const catalogSingular = singularize(base.catalog);
 
   return {

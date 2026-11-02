@@ -19,6 +19,7 @@ export function DashboardSidebar({
   sellsProducts,
   offersServices,
   category,
+  subcategory,
   staffRole,
   staffPermissions,
   subscriptionName,
@@ -34,6 +35,8 @@ export function DashboardSidebar({
   offersServices: boolean;
   // The category chosen at onboarding — adds one trade-specific nav item.
   category?: string | null;
+  // The specialty chosen at onboarding — changes labels and modules for the vendor.
+  subcategory?: string | null;
   // Undefined/OWNER/PLATFORM_STAFF shows everything; MANAGER/STAFF hides
   // billing + staff-management links (see filterNavGroupsForRole) and,
   // via staffPermissions, anything they weren't individually granted.
@@ -50,7 +53,7 @@ export function DashboardSidebar({
   const pathname = usePathname();
   const base = `/${slug}/admin`;
   const canManageOwnerOnly = staffRole === undefined || staffRole === "OWNER" || staffRole === "PLATFORM_STAFF";
-  const NAV_GROUPS = filterNavGroupsForRole(buildNavGroups({ sellsProducts, offersServices, category, subscriptionName, installedApps }), {
+  const NAV_GROUPS = filterNavGroupsForRole(buildNavGroups({ sellsProducts, offersServices, category, subcategory, subscriptionName, installedApps }), {
     canManageOwnerOnly,
     permissions: staffPermissions,
   });

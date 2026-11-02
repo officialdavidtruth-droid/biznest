@@ -44,7 +44,7 @@ export default async function StoreAdminOverviewPage({
 
   if (!store) notFound();
 
-  const config = getAdaptiveDashboardConfig(getCanonicalBusinessType({ businessCategory: store.business?.category, storeBusinessType: store.businessType }), getOnboardingSubcategory(store.onboardingProfile), {
+  const config = getAdaptiveDashboardConfig(getCanonicalBusinessType({ businessCategory: store.business?.category, storeBusinessType: store.businessType }), store.business?.businessSubcategory ?? getOnboardingSubcategory(store.onboardingProfile), {
     sellsProducts: store.business.sellsProducts,
     offersServices: store.business.offersServices,
   });
