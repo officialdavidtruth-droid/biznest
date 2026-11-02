@@ -6,17 +6,18 @@ import { toast } from "sonner";
 import { formatMoney } from "@/lib/utils/format-money";
 import {
   TRIP_STATUSES, TRIP_STATUS_LABEL, ITEM_KINDS, PAYMENT_METHODS, SUPPLIER_KINDS, VISA_STATUSES, VISA_STATUS_LABEL, VISA_TYPES,
-  daysUntil, passportWarning, canPayOnline, whatsappLink, type TripStatus,
+  COMMISSION_BASES, COMMISSION_BASIS_LABEL, daysUntil, passportWarning, canPayOnline, whatsappLink, roomingGroups, manifestIssues, ROOM_TYPES, GENDERS, type TripStatus, type ManifestRow,
 } from "@/lib/travel";
 import * as A from "@/lib/actions/travel";
+import { ATTACHMENT_ACCEPT, ATTACHMENT_KINDS, ATTACHMENT_KIND_LABEL, ATTACHMENT_MAX_BYTES, ATTACHMENT_TYPE_HINT, attachmentHref, formatBytes, type AttachmentKind } from "@/lib/travel-files";
 
 type Data = NonNullable<Awaited<ReturnType<typeof A.getTravelDashboard>>>;
 type Trip = Data["trips"][number];
-type Tab = "overview" | "trips" | "clients" | "packages" | "visas" | "suppliers";
+type Tab = "overview" | "trips" | "clients" | "packages" | "visas" | "suppliers" | "agents";
 
 const TABS: { id: Tab; label: string }[] = [
   { id: "overview", label: "Overview" }, { id: "trips", label: "Trips" }, { id: "clients", label: "Clients" },
-  { id: "packages", label: "Packages" }, { id: "visas", label: "Visas" }, { id: "suppliers", label: "Suppliers" },
+  { id: "packages", label: "Packages" }, { id: "visas", label: "Visas" }, { id: "suppliers", label: "Suppliers" }, { id: "agents", label: "Agents" },
 ];
 const inp = "w-full rounded-lg border bg-background px-3 py-2 text-sm";
 const btn = "rounded-lg bg-primary px-3 py-2 text-xs font-bold text-primary-foreground disabled:opacity-50";
@@ -96,6 +97,7 @@ export function TravelWorkspace({ slug, data }: { slug: string; data: Data }) {
       {tab === "packages" && <Packages slug={slug} data={data} pending={pending} run={run} money={money} />}
       {tab === "visas" && <Visas slug={slug} data={data} pending={pending} run={run} money={money} />}
       {tab === "suppliers" && <Suppliers slug={slug} data={data} pending={pending} run={run} />}
+      {tab === "agents" && <Agents slug={slug} data={data} pending={pending} run={run} />}
     </div>
   );
 }
@@ -117,7 +119,7 @@ function Overview({ data, money, openTrip }: { data: Data; money: (n: unknown, c
         {stat("Open trips", s.openTrips)}{stat("Enquiries & quotes", s.enquiries, "to follow up")}
         {stat("Departing in 14 days", s.departingSoon)}{stat("Outstanding balances", money(s.outstanding), "confirmed trips")}
         {stat("Booked revenue", money(s.revenue))}{stat("Gross margin", money(s.margin))}
-        {stat("Open visa cases", s.openVisas)}{stat("Overdue instalments", data.overduePayments.length)}
+        {stat("Open visa cases", s.openVisas)}{stat("Owed to suppliers", money(s.owedToSuppliers), "cost of booked services, less paid")}{stat("Commission owed", money(s.owedToAgents), "earned by agents, less paid")}{stat("Overdue instalments", data.overduePayments.length)}
       </div>
       <div className={card}>
         <h2 className="mb-3 text-sm font-bold">Pipeline</h2>
@@ -197,6 +199,9 @@ function TripDetail({ slug, trip, data, money, pending, run, back, start }: { st
           ))}
           {wa && <a className={btn2} href={wa} target="_blank" rel="noopener noreferrer" title="Opens a chat with the client. Download the PDF first, then attach it in WhatsApp.">WhatsApp client</a>}
         </div>
+        {trip.status !== "CANCELLED" && (data.agents.length > 0 || trip.agentId) && (
+          <TripAgent slug={slug} trip={trip} data={data} pending={pending} run={run} />
+        )}
         {!closed && (
           <div className="flex flex-wrap items-center gap-2">
             <select className={`${inp} max-w-[12rem]`} value="" disabled={pending} onChange={(e) => e.target.value && run(() => A.setTravelTripStatus(slug, trip.id, e.target.value), "Status updated")}>
@@ -211,6 +216,11 @@ function TripDetail({ slug, trip, data, money, pending, run, back, start }: { st
         {!closed && !trip.items.length && (
           <div className="flex items-end gap-2"><Field label="Set price (when no service lines)"><input type="number" min={0} className={inp} value={price} onChange={(e) => setPrice(e.target.value)} /></Field><button className={btn} disabled={pending} onClick={() => run(() => A.updateTravelTrip(slug, trip.id, { totalPrice: Number(price) }), "Price saved")}>Save</button></div>
         )}
+      </div>
+
+      <div className={card}>
+        <h3 className="mb-2 text-sm font-bold">Documents</h3>
+        <Attachments slug={slug} parent={{ tripId: trip.id }} files={trip.attachments} travellers={trip.travellers} pending={pending} />
       </div>
 
       <div className={card}>
@@ -370,6 +380,9 @@ function Clients({ slug, data, pending, run }: { slug: string; data: Data; pendi
 function Packages({ slug, data, pending, run, money }: { slug: string; data: Data; pending: boolean; run: Run; money: (n: unknown, c?: string) => string }) {
   const blank = { id: "", name: "", destination: "", durationDays: 7, pricePerPerson: "", departureDate: "", seats: 0, depositPercent: 30, inclusions: "", isActive: true };
   const [f, setF] = useState(blank);
+  const [depId, setDepId] = useState<string | null>(null);
+  const depPkg = data.packages.find((p) => p.id === depId) ?? null;
+  if (depPkg) return <Departure key={depPkg.id} slug={slug} pkg={depPkg} pending={pending} run={run} back={() => setDepId(null)} />;
   return (
     <section className="space-y-4">
       <div className={`${card} space-y-3`}>
@@ -393,12 +406,115 @@ function Packages({ slug, data, pending, run, money }: { slug: string; data: Dat
             <div className="flex items-start justify-between"><div><b>{p.name}</b> {!p.isActive && <span className="text-xs text-muted-foreground">(closed)</span>}<div className="text-xs text-muted-foreground">{p.destination} · {p.durationDays} days · departs {fmtDate(p.departureDate)}</div></div><b>{money(p.pricePerPerson, p.currency)}</b></div>
             <div className="mt-2 text-xs">{p.seats ? `${p.booked}/${p.seats} seats booked` : `${p.booked} booked`}</div>
             {p.seats > 0 && <div className="mt-1 h-1.5 rounded bg-muted"><div className="h-1.5 rounded bg-primary" style={{ width: `${Math.min(100, (p.booked / p.seats) * 100)}%` }} /></div>}
+            <button className={`${btn} mt-3 mr-2`} onClick={() => setDepId(p.id)}>Manifest &amp; rooming</button>
             <button className={`${btn2} mt-3`} onClick={() => setF({ id: p.id, name: p.name, destination: p.destination, durationDays: p.durationDays, pricePerPerson: String(p.pricePerPerson), departureDate: dateInput(p.departureDate), seats: p.seats, depositPercent: p.depositPercent, inclusions: p.inclusions ?? "", isActive: p.isActive })}>Edit</button>
           </div>
         ))}
         {!data.packages.length && <Empty text="No packages yet. Create a group tour or pilgrimage with seats and a fixed price." />}
       </div>
     </section>
+  );
+}
+
+type Departure = NonNullable<Awaited<ReturnType<typeof A.getTravelDeparture>>>;
+
+/** Group departure: one list of every confirmed traveller on the package, with room assignment and downloads. */
+function Departure({ slug, pkg, pending, run, back }: { slug: string; pkg: Data["packages"][number]; pending: boolean; run: Run; back: () => void }) {
+  const router = useRouter();
+  const [dep, setDep] = useState<Departure | null | undefined>(undefined);
+  const [view, setView] = useState<"manifest" | "rooming">("manifest");
+  const load = () => A.getTravelDeparture(slug, pkg.id).then(setDep);
+  useMemo(() => { void load(); }, [pkg.id]); // eslint-disable-line react-hooks/exhaustive-deps
+  const save = (r: ManifestRow, patch: Partial<Pick<ManifestRow, "roomLabel" | "roomType" | "gender" | "requests">>) => {
+    const next = { roomLabel: r.roomLabel, roomType: r.roomType, gender: r.gender, requests: r.requests, ...patch };
+    run(() => A.saveTravelerGroupInfo(slug, r.travelerId, { roomLabel: next.roomLabel ?? "", roomType: next.roomType ?? "", gender: next.gender ?? "", requests: next.requests ?? "" }), undefined, () => { void load(); router.refresh(); });
+  };
+  const csv = (type: "manifest" | "rooming") => `/api/store/${slug}/travel/package/${pkg.id}/manifest?type=${type}`;
+  const rows = dep?.rows ?? [];
+  const { rooms, unassigned } = useMemo(() => roomingGroups(rows), [rows]);
+  const issueCount = rows.filter((r) => manifestIssues(r, pkg.departureDate).length).length;
+
+  return (
+    <section className="space-y-4 print:space-y-2">
+      <div className="flex flex-wrap items-center gap-2 print:hidden">
+        <button className={btn2} onClick={back}>← Packages</button>
+        <a className={btn2} href={csv("manifest")}>Download manifest (CSV)</a>
+        <a className={btn2} href={csv("rooming")}>Download rooming list (CSV)</a>
+        <button className={btn2} onClick={() => window.print()}>Print</button>
+      </div>
+      <div className={card}>
+        <h2 className="text-lg font-bold">{pkg.name}</h2>
+        <p className="text-xs text-muted-foreground">{pkg.destination} · departs {fmtDate(pkg.departureDate)} · {rows.length} travellers{pkg.seats ? ` of ${pkg.seats} seats` : ""} · {rooms.length} rooms{unassigned.length ? ` · ${unassigned.length} not roomed` : ""}{issueCount ? ` · ${issueCount} with missing or expiring documents` : ""}</p>
+        <p className="mt-1 text-xs text-muted-foreground">Only confirmed, ticketed, travelling and completed bookings are listed. Enquiries and quotes do not hold seats.</p>
+      </div>
+      <div className="flex gap-1 print:hidden">
+        {(["manifest", "rooming"] as const).map((v) => <button key={v} onClick={() => setView(v)} className={`rounded-lg px-3 py-1.5 text-xs font-bold ${view === v ? "bg-primary text-primary-foreground" : "border"}`}>{v === "manifest" ? "Passenger manifest" : "Rooming list"}</button>)}
+      </div>
+      {dep === undefined && <Empty text="Loading…" />}
+      {dep === null && <Empty text="Package not found." />}
+      {dep && !rows.length && <Empty text="No confirmed travellers yet. Bookings appear here once confirmed." />}
+
+      {dep && rows.length > 0 && view === "manifest" && (
+        <div className={`${card} overflow-x-auto p-0`}>
+          <table className="w-full min-w-[900px] text-left text-xs">
+            <thead className="border-b bg-muted/50 font-bold"><tr>{["#", "Name", "Sex", "DOB", "Passport", "Expiry", "Booking", "Room", "Requests", "Check"].map((h) => <th key={h} className="px-2 py-2">{h}</th>)}</tr></thead>
+            <tbody>{rows.map((r, i) => {
+              const issues = manifestIssues(r, pkg.departureDate);
+              return (
+                <tr key={r.travelerId} className="border-b last:border-0 align-top">
+                  <td className="px-2 py-2">{i + 1}</td>
+                  <td className="px-2 py-2 font-semibold">{r.fullName}{r.isLead && <span className="ml-1 text-[10px] text-muted-foreground">lead</span>}<div className="font-normal text-muted-foreground">{r.nationality ?? ""}</div></td>
+                  <td className="px-2 py-2">{r.gender ?? "—"}</td>
+                  <td className="px-2 py-2">{fmtDate(r.dateOfBirth)}</td>
+                  <td className="px-2 py-2 font-mono">{r.passportNo ?? "—"}</td>
+                  <td className="px-2 py-2">{fmtDate(r.passportExpiry)}</td>
+                  <td className="px-2 py-2">{r.tripReference}<div className="text-muted-foreground">{r.contactName}</div></td>
+                  <td className="px-2 py-2">{r.roomLabel ?? "—"}{r.roomType ? ` (${r.roomType.toLowerCase()})` : ""}</td>
+                  <td className="px-2 py-2">{r.requests ?? ""}</td>
+                  <td className="px-2 py-2 text-amber-700">{issues.join("; ")}</td>
+                </tr>
+              );
+            })}</tbody>
+          </table>
+        </div>
+      )}
+
+      {dep && rows.length > 0 && view === "rooming" && (
+        <div className="space-y-4">
+          <p className="text-xs text-muted-foreground print:hidden">Type the same room name or number for everyone sharing a room (for example “201”). Warnings are suggestions, not blocks.</p>
+          <div className={`${card} overflow-x-auto p-0`}>
+            <table className="w-full min-w-[760px] text-left text-xs">
+              <thead className="border-b bg-muted/50 font-bold"><tr>{["Guest", "Sex", "Room", "Type", "Requests"].map((h) => <th key={h} className="px-2 py-2">{h}</th>)}</tr></thead>
+              <tbody>{rows.map((r) => <RoomRow key={r.travelerId + (r.roomLabel ?? "") + (r.roomType ?? "") + (r.gender ?? "") + (r.requests ?? "")} r={r} pending={pending} save={save} />)}</tbody>
+            </table>
+          </div>
+          <div className="grid gap-2 md:grid-cols-2 lg:grid-cols-3">
+            {rooms.map((room) => (
+              <div key={room.label} className={card}>
+                <div className="flex items-center justify-between"><b>Room {room.label}</b><span className="text-xs text-muted-foreground">{room.type ? room.type.toLowerCase() : "type not set"}{room.capacity ? ` · ${room.members.length}/${room.capacity}` : ""}</span></div>
+                <ul className="mt-1 text-sm">{room.members.map((m) => <li key={m.travelerId}>{m.fullName}{m.gender ? ` (${m.gender})` : ""}</li>)}</ul>
+                {room.problems.map((p) => <div key={p} className="mt-1 text-xs font-semibold text-amber-700">⚠ {p}</div>)}
+              </div>
+            ))}
+            {unassigned.length > 0 && <div className={`${card} border-dashed`}><b>Not roomed yet ({unassigned.length})</b><ul className="mt-1 text-sm">{unassigned.map((m) => <li key={m.travelerId}>{m.fullName}</li>)}</ul></div>}
+          </div>
+        </div>
+      )}
+    </section>
+  );
+}
+
+function RoomRow({ r, pending, save }: { r: ManifestRow; pending: boolean; save: (r: ManifestRow, patch: Partial<Pick<ManifestRow, "roomLabel" | "roomType" | "gender" | "requests">>) => void }) {
+  const [label, setLabel] = useState(r.roomLabel ?? "");
+  const [req, setReq] = useState(r.requests ?? "");
+  return (
+    <tr className="border-b last:border-0">
+      <td className="px-2 py-1.5 font-semibold">{r.fullName}</td>
+      <td className="px-2 py-1.5"><select className={`${inp} py-1`} disabled={pending} value={r.gender ?? ""} onChange={(e) => save(r, { gender: e.target.value || null })}><option value="">—</option>{GENDERS.map((g) => <option key={g}>{g}</option>)}</select></td>
+      <td className="px-2 py-1.5"><input className={`${inp} py-1`} value={label} placeholder="Room" onChange={(e) => setLabel(e.target.value)} onBlur={() => label.trim() !== (r.roomLabel ?? "") && save(r, { roomLabel: label.trim() || null })} /></td>
+      <td className="px-2 py-1.5"><select className={`${inp} py-1`} disabled={pending} value={r.roomType ?? ""} onChange={(e) => save(r, { roomType: e.target.value || null })}><option value="">—</option>{ROOM_TYPES.map((t) => <option key={t} value={t}>{t.toLowerCase()}</option>)}</select></td>
+      <td className="px-2 py-1.5"><input className={`${inp} py-1`} value={req} placeholder="Diet, mobility…" onChange={(e) => setReq(e.target.value)} onBlur={() => req.trim() !== (r.requests ?? "") && save(r, { requests: req.trim() || null })} /></td>
+    </tr>
   );
 }
 
@@ -424,11 +540,212 @@ function Visas({ slug, data, pending, run, money }: { slug: string; data: Data; 
               <select className={`${inp} max-w-[11rem]`} value={v.status} disabled={pending} onChange={(e) => run(() => A.updateTravelVisaCase(slug, v.id, { status: e.target.value }), "Status updated")}>{VISA_STATUSES.map((s) => <option key={s} value={s}>{VISA_STATUS_LABEL[s]}</option>)}</select></div>
             <div className="mt-2 space-y-1">{v.checklist.map((c, i) => <label key={i} className="flex items-center gap-2 text-sm"><input type="checkbox" checked={c.done} disabled={pending} onChange={() => run(() => A.updateTravelVisaCase(slug, v.id, { toggleChecklistIndex: i }))} /><span className={c.done ? "text-muted-foreground line-through" : ""}>{c.label}</span></label>)}</div>
             <div className="mt-2 text-xs text-muted-foreground">{v.checklist.filter((c) => c.done).length}/{v.checklist.length} documents ready</div>
+            <div className="mt-3 border-t pt-3"><div className="mb-1 text-xs font-bold">Files</div><Attachments slug={slug} parent={{ visaCaseId: v.id }} files={v.attachments} pending={pending} defaultKind="VISA" /></div>
           </div>
         ))}
         {!data.visas.length && <Empty text="No visa cases yet." />}
       </div>
     </section>
+  );
+}
+
+type AttachmentView = { id: string; kind: string; fileName: string; mimeType: string; sizeBytes: number; note: string | null; travelerId: string | null; createdAt: string };
+
+/** Private files on a trip or visa case: upload, open (signed, staff-only link) and delete. */
+function Attachments({ slug, parent, files, travellers, pending, defaultKind = "PASSPORT" }: { slug: string; parent: { tripId?: string; visaCaseId?: string }; files: AttachmentView[]; travellers?: { id: string; fullName: string }[]; pending: boolean; defaultKind?: AttachmentKind }) {
+  const router = useRouter();
+  const [busy, setBusy] = useState(false);
+  const [kind, setKind] = useState<string>(defaultKind);
+  const [travelerId, setTravelerId] = useState("");
+  const [note, setNote] = useState("");
+  const [fileInputKey, setFileInputKey] = useState(0);
+  const nameOf = (id: string | null) => travellers?.find((t) => t.id === id)?.fullName;
+
+  async function upload(file: File | undefined) {
+    if (!file) return;
+    if (file.size > ATTACHMENT_MAX_BYTES) { toast.error("File must be 4MB or smaller."); setFileInputKey((k) => k + 1); return; }
+    setBusy(true);
+    try {
+      const fd = new FormData();
+      fd.set("file", file); fd.set("kind", kind); fd.set("note", note);
+      if (parent.tripId) { fd.set("tripId", parent.tripId); if (travelerId) fd.set("travelerId", travelerId); }
+      if (parent.visaCaseId) fd.set("visaCaseId", parent.visaCaseId);
+      const res = await fetch(`/api/store/${slug}/travel/attachments`, { method: "POST", body: fd });
+      const body = await res.json().catch(() => ({}));
+      if (!res.ok) { toast.error(body.error || "Upload failed."); return; }
+      toast.success("File uploaded"); setNote(""); router.refresh();
+    } catch { toast.error("Upload failed. Check your connection and try again."); }
+    finally { setBusy(false); setFileInputKey((k) => k + 1); }
+  }
+  async function remove(id: string) {
+    if (!confirm("Delete this file? This can't be undone.")) return;
+    setBusy(true);
+    try {
+      const res = await fetch(`/api/store/${slug}/travel/attachments/${id}`, { method: "DELETE" });
+      if (!res.ok) { toast.error((await res.json().catch(() => ({}))).error || "Couldn't delete the file."); return; }
+      toast.success("File deleted"); router.refresh();
+    } catch { toast.error("Couldn't delete the file."); }
+    finally { setBusy(false); }
+  }
+
+  return (
+    <div className="space-y-2">
+      {files.map((f) => (
+        <div key={f.id} className="flex flex-wrap items-center justify-between gap-2 border-b py-1.5 text-sm last:border-0">
+          <div className="min-w-0">
+            <a className="font-semibold text-primary underline-offset-2 hover:underline" href={attachmentHref(slug, f.id)} target="_blank" rel="noopener noreferrer">{f.fileName}</a>
+            <div className="text-xs text-muted-foreground">{ATTACHMENT_KIND_LABEL[f.kind as AttachmentKind] ?? f.kind}{nameOf(f.travelerId) ? ` · ${nameOf(f.travelerId)}` : ""} · {formatBytes(f.sizeBytes)} · {fmtDate(f.createdAt)}{f.note ? ` · ${f.note}` : ""}</div>
+          </div>
+          <button className={`${btn2} text-red-600`} disabled={busy || pending} onClick={() => remove(f.id)}>Delete</button>
+        </div>
+      ))}
+      {!files.length && <p className="text-sm text-muted-foreground">No files yet. Keep passport scans, tickets and visa approvals here. Only your staff can open them.</p>}
+      <div className="grid gap-2 pt-1 md:grid-cols-5">
+        <select className={inp} value={kind} onChange={(e) => setKind(e.target.value)}>{ATTACHMENT_KINDS.map((k) => <option key={k} value={k}>{ATTACHMENT_KIND_LABEL[k]}</option>)}</select>
+        {travellers && travellers.length > 0 ? <select className={inp} value={travelerId} onChange={(e) => setTravelerId(e.target.value)}><option value="">Whole booking</option>{travellers.map((t) => <option key={t.id} value={t.id}>{t.fullName}</option>)}</select> : <span />}
+        <input className={`${inp} md:col-span-1`} placeholder="Note (optional)" value={note} maxLength={300} onChange={(e) => setNote(e.target.value)} />
+        <input key={fileInputKey} type="file" accept={ATTACHMENT_ACCEPT} disabled={busy || pending} className={`${inp} md:col-span-2 text-xs`} onChange={(e) => void upload(e.target.files?.[0])} />
+      </div>
+      <p className="text-[11px] text-muted-foreground">{busy ? "Working…" : ATTACHMENT_TYPE_HINT}</p>
+    </div>
+  );
+}
+
+type Supplier = Data["suppliers"][number];
+
+/** One supplier: what we owe them per currency, the service lines behind it, and payments made. */
+function SupplierCard({ slug, s, pending, run, onEdit }: { slug: string; s: Supplier; pending: boolean; run: Run; onEdit: () => void }) {
+  const [open, setOpen] = useState(false);
+  const [p, setP] = useState({ currency: s.balances[0]?.currency ?? "NGN", amount: "", method: "TRANSFER", reference: "", paidAt: "" });
+  const fmt = (n: number, c: string) => formatMoney(n, c, {});
+  const owing = s.balances.filter((b) => b.outstanding > 0);
+  const cur = s.balances.find((b) => b.currency === p.currency);
+  return (
+    <div className={card}>
+      <div className="flex items-center justify-between gap-2">
+        <div><b>{s.name}</b> <span className="text-xs text-muted-foreground">{s.kind}</span><div className="text-xs text-muted-foreground">{[s.contactName, s.phone, s.email].filter(Boolean).join(" · ")}</div></div>
+        <div className="flex flex-wrap items-center justify-end gap-1">
+          {owing.length ? owing.map((b) => <span key={b.currency} className="rounded-full bg-amber-100 px-2 py-0.5 text-[11px] font-bold text-amber-800">Owe {fmt(b.outstanding, b.currency)}</span>) : s.balances.length ? <span className="rounded-full bg-green-100 px-2 py-0.5 text-[11px] font-bold text-green-800">Settled</span> : null}
+          <button className={btn2} onClick={() => setOpen(!open)}>{open ? "Hide" : "Payables"}</button>
+          <button className={btn2} onClick={onEdit}>Edit</button>
+          <button className={`${btn2} text-red-600`} disabled={pending} onClick={() => confirm("Archive this supplier?") && run(() => A.archiveTravelSupplier(slug, s.id), "Supplier archived")}>Archive</button>
+        </div>
+      </div>
+      {open && (
+        <div className="mt-3 space-y-3 border-t pt-3 text-xs">
+          {s.balances.map((b) => <div key={b.currency} className="flex justify-between"><span>{b.currency}: owed {fmt(b.owed, b.currency)} · paid {fmt(b.paid, b.currency)}</span><b className={b.outstanding > 0 ? "text-amber-700" : b.outstanding < 0 ? "text-blue-700" : ""}>{b.outstanding < 0 ? `Credit ${fmt(-b.outstanding, b.currency)}` : `Outstanding ${fmt(b.outstanding, b.currency)}`}</b></div>)}
+          {!s.balances.length && <p className="text-muted-foreground">Nothing owed yet. Attach this supplier to a trip's service lines to track what you owe them.</p>}
+          {s.lines.length > 0 && (
+            <div><div className="mb-1 font-bold">Booked services (earliest first)</div>
+              {s.lines.map((l) => <div key={l.id} className="flex justify-between border-b py-1 last:border-0"><span>{l.reference} · {l.description}{l.startDate ? ` · ${fmtDate(l.startDate)}` : ""}</span><span>{fmt(l.cost, l.currency)}</span></div>)}
+            </div>
+          )}
+          {s.balances.some((b) => b.outstanding > 0) && (
+            <div className="grid gap-2 md:grid-cols-6">
+              <select className={inp} value={p.currency} onChange={(e) => setP({ ...p, currency: e.target.value })}>{Array.from(new Set<string>(s.balances.map((b) => b.currency as string))).map((c) => <option key={c}>{c}</option>)}</select>
+              <input type="number" min={0} className={inp} placeholder={cur ? `Max ${cur.outstanding}` : "Amount"} value={p.amount} onChange={(e) => setP({ ...p, amount: e.target.value })} />
+              <select className={inp} value={p.method} onChange={(e) => setP({ ...p, method: e.target.value })}>{PAYMENT_METHODS.map((m) => <option key={m}>{m}</option>)}</select>
+              <input className={inp} placeholder="Reference" value={p.reference} onChange={(e) => setP({ ...p, reference: e.target.value })} />
+              <input type="date" className={inp} value={p.paidAt} onChange={(e) => setP({ ...p, paidAt: e.target.value })} title="Date paid" />
+              <button className={btn} disabled={pending} onClick={() => run(() => A.recordSupplierPayment(slug, s.id, { amount: Number(p.amount), currency: p.currency, method: p.method, reference: p.reference || undefined, paidAt: p.paidAt || undefined }), "Payment recorded", () => setP({ ...p, amount: "", reference: "" }))}>Record payment</button>
+            </div>
+          )}
+          {s.payments.length > 0 && (
+            <div><div className="mb-1 font-bold">Payments made</div>
+              {s.payments.map((x) => <div key={x.id} className={`flex items-center justify-between border-b py-1 last:border-0 ${x.status === "VOID" ? "text-muted-foreground line-through" : ""}`}><span>{fmtDate(x.paidAt)} · {x.method}{x.reference ? ` · ${x.reference}` : ""}</span><span className="flex items-center gap-2">{fmt(x.amount, x.currency)}{x.status === "RECORDED" && <button className="text-red-600 no-underline" disabled={pending} onClick={() => confirm("Void this payment?") && run(() => A.voidSupplierPayment(slug, x.id), "Payment voided")}>Void</button>}</span></div>)}
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+/** Agent + commission on one trip. Rate and basis start from the agent's defaults and can be changed for this trip. */
+function TripAgent({ slug, trip, data, pending, run }: { slug: string; trip: Trip; data: Data; pending: boolean; run: Run }) {
+  const [agentId, setAgentId] = useState(trip.agentId ?? "");
+  const [rate, setRate] = useState(String(trip.commissionRate));
+  const [basis, setBasis] = useState(trip.commissionBasis);
+  const line = data.agents.find((g) => g.id === trip.agentId)?.lines.find((l) => l.tripId === trip.id);
+  const pick = (id: string) => { setAgentId(id); const g = data.agents.find((x) => x.id === id); if (g) { setRate(String(g.defaultRate)); setBasis(g.defaultBasis); } };
+  return (
+    <div className="flex flex-wrap items-end gap-2 rounded-xl bg-muted/40 p-3">
+      <Field label="Agent"><select className={`${inp} max-w-[13rem]`} value={agentId} onChange={(e) => pick(e.target.value)}><option value="">No agent</option>{data.agents.map((g) => <option key={g.id} value={g.id}>{g.name}</option>)}</select></Field>
+      {agentId && <>
+        <Field label="Commission %"><input type="number" min={0} max={100} step="0.5" className={`${inp} max-w-[6rem]`} value={rate} onChange={(e) => setRate(e.target.value)} /></Field>
+        <Field label="Of"><select className={`${inp} max-w-[11rem]`} value={basis} onChange={(e) => setBasis(e.target.value)}>{COMMISSION_BASES.map((b) => <option key={b} value={b}>{COMMISSION_BASIS_LABEL[b]}</option>)}</select></Field>
+      </>}
+      <button className={btn2} disabled={pending} onClick={() => run(() => A.setTravelTripAgent(slug, trip.id, agentId ? { agentId, rate: Number(rate), basis } : { agentId: null }), "Agent saved")}>Save agent</button>
+      {line && line.earned > 0 && <span className="text-xs text-muted-foreground">Commission earned {formatMoney(line.earned, line.currency, {})}, releasable now {formatMoney(line.releasable, line.currency, {})}</span>}
+      {line && line.earned === 0 && trip.agentId && <span className="text-xs text-muted-foreground">Earned once the trip is confirmed.</span>}
+    </div>
+  );
+}
+
+type AgentRow = Data["agents"][number];
+
+function Agents({ slug, data, pending, run }: { slug: string; data: Data; pending: boolean; run: Run }) {
+  const blank = { id: "", name: "", email: "", phone: "", defaultRate: "10", defaultBasis: "SELL" };
+  const [f, setF] = useState(blank);
+  return (
+    <section className="space-y-4">
+      <div className={`${card} space-y-3`}>
+        <h2 className="text-sm font-bold">{f.id ? "Edit agent" : "Add agent or referrer"}</h2>
+        <p className="text-xs text-muted-foreground">Sub-agents and referrers who bring you bookings. Commission is earned once a trip is confirmed and is released in proportion to what the client has paid.</p>
+        <div className="grid gap-2 md:grid-cols-3">
+          <input className={inp} placeholder="Name" value={f.name} onChange={(e) => setF({ ...f, name: e.target.value })} />
+          <input className={inp} placeholder="Phone" value={f.phone} onChange={(e) => setF({ ...f, phone: e.target.value })} />
+          <input className={inp} placeholder="Email" value={f.email} onChange={(e) => setF({ ...f, email: e.target.value })} />
+          <input type="number" min={0} max={100} step="0.5" className={inp} placeholder="Default commission %" value={f.defaultRate} onChange={(e) => setF({ ...f, defaultRate: e.target.value })} />
+          <select className={inp} value={f.defaultBasis} onChange={(e) => setF({ ...f, defaultBasis: e.target.value })}>{COMMISSION_BASES.map((b) => <option key={b} value={b}>{COMMISSION_BASIS_LABEL[b]}</option>)}</select>
+        </div>
+        <div className="flex gap-2"><button className={btn} disabled={pending} onClick={() => run(() => A.saveTravelAgent(slug, { ...f, id: f.id || undefined, defaultRate: Number(f.defaultRate) }), "Agent saved", () => setF(blank))}>Save agent</button>{f.id && <button className={btn2} onClick={() => setF(blank)}>Cancel</button>}</div>
+      </div>
+      <div className="grid gap-2">
+        {data.agents.map((g) => <AgentCard key={g.id} slug={slug} g={g} pending={pending} run={run} onEdit={() => setF({ id: g.id, name: g.name, email: g.email ?? "", phone: g.phone ?? "", defaultRate: String(g.defaultRate), defaultBasis: g.defaultBasis })} />)}
+        {!data.agents.length && <Empty text="No agents yet. Add a sub-agent or referrer, then assign them on a trip to track commission." />}
+      </div>
+    </section>
+  );
+}
+
+function AgentCard({ slug, g, pending, run, onEdit }: { slug: string; g: AgentRow; pending: boolean; run: Run; onEdit: () => void }) {
+  const [open, setOpen] = useState(false);
+  const [p, setP] = useState({ currency: g.balances[0]?.currency ?? "NGN", amount: "", method: "TRANSFER", reference: "", paidAt: "" });
+  const fmt = (n: number, c: string) => formatMoney(n, c, {});
+  const owing = g.balances.filter((b) => b.outstanding > 0);
+  const releasable = (c: string) => g.lines.filter((l) => l.currency === c).reduce((sum, l) => sum + l.releasable, 0);
+  const cur = g.balances.find((b) => b.currency === p.currency);
+  return (
+    <div className={card}>
+      <div className="flex items-center justify-between gap-2">
+        <div><b>{g.name}</b> <span className="text-xs text-muted-foreground">{g.defaultRate}% {g.defaultBasis === "MARGIN" ? "of margin" : "of price"}</span><div className="text-xs text-muted-foreground">{[g.phone, g.email].filter(Boolean).join(" · ")}</div></div>
+        <div className="flex flex-wrap items-center justify-end gap-1">
+          {owing.length ? owing.map((b) => <span key={b.currency} className="rounded-full bg-amber-100 px-2 py-0.5 text-[11px] font-bold text-amber-800">Owe {fmt(b.outstanding, b.currency)}</span>) : g.balances.length ? <span className="rounded-full bg-green-100 px-2 py-0.5 text-[11px] font-bold text-green-800">Settled</span> : null}
+          <button className={btn2} onClick={() => setOpen(!open)}>{open ? "Hide" : "Commission"}</button>
+          <button className={btn2} onClick={onEdit}>Edit</button>
+          <button className={`${btn2} text-red-600`} disabled={pending} onClick={() => confirm("Archive this agent? Their trips keep the commission already set.") && run(() => A.archiveTravelAgent(slug, g.id), "Agent archived")}>Archive</button>
+        </div>
+      </div>
+      {open && (
+        <div className="mt-3 space-y-3 border-t pt-3 text-xs">
+          {g.balances.map((b) => <div key={b.currency} className="flex justify-between"><span>{b.currency}: earned {fmt(b.owed, b.currency)} · paid {fmt(b.paid, b.currency)} · releasable now {fmt(Math.max(0, releasable(b.currency) - b.paid), b.currency)}</span><b className={b.outstanding > 0 ? "text-amber-700" : ""}>{b.outstanding < 0 ? `Overpaid ${fmt(-b.outstanding, b.currency)}` : `Outstanding ${fmt(b.outstanding, b.currency)}`}</b></div>)}
+          {!g.balances.length && <p className="text-muted-foreground">No commission earned yet. It starts once a trip with this agent is confirmed.</p>}
+          {g.lines.length > 0 && <div><div className="mb-1 font-bold">Trips</div>{g.lines.map((l) => <div key={l.tripId} className="flex justify-between border-b py-1 last:border-0"><span>{l.reference} · {l.client} · {l.rate}% {l.basis === "MARGIN" ? "of margin" : "of price"} · {TRIP_STATUS_LABEL[l.status as TripStatus] ?? l.status}</span><span>{l.earned > 0 ? fmt(l.earned, l.currency) : "not yet earned"}</span></div>)}</div>}
+          {g.balances.some((b) => b.outstanding > 0) && (
+            <div className="grid gap-2 md:grid-cols-6">
+              <select className={inp} value={p.currency} onChange={(e) => setP({ ...p, currency: e.target.value })}>{Array.from(new Set<string>(g.balances.map((b) => b.currency as string))).map((c) => <option key={c}>{c}</option>)}</select>
+              <input type="number" min={0} className={inp} placeholder={cur ? `Max ${cur.outstanding}` : "Amount"} value={p.amount} onChange={(e) => setP({ ...p, amount: e.target.value })} />
+              <select className={inp} value={p.method} onChange={(e) => setP({ ...p, method: e.target.value })}>{PAYMENT_METHODS.map((m) => <option key={m}>{m}</option>)}</select>
+              <input className={inp} placeholder="Reference" value={p.reference} onChange={(e) => setP({ ...p, reference: e.target.value })} />
+              <input type="date" className={inp} value={p.paidAt} onChange={(e) => setP({ ...p, paidAt: e.target.value })} title="Date paid" />
+              <button className={btn} disabled={pending} onClick={() => run(() => A.recordAgentPayment(slug, g.id, { amount: Number(p.amount), currency: p.currency, method: p.method, reference: p.reference || undefined, paidAt: p.paidAt || undefined }), "Commission payment recorded", () => setP({ ...p, amount: "", reference: "" }))}>Record payment</button>
+            </div>
+          )}
+          {g.payments.length > 0 && <div><div className="mb-1 font-bold">Payments made</div>{g.payments.map((x) => <div key={x.id} className={`flex items-center justify-between border-b py-1 last:border-0 ${x.status === "VOID" ? "text-muted-foreground line-through" : ""}`}><span>{fmtDate(x.paidAt)} · {x.method}{x.reference ? ` · ${x.reference}` : ""}</span><span className="flex items-center gap-2">{fmt(x.amount, x.currency)}{x.status === "RECORDED" && <button className="text-red-600 no-underline" disabled={pending} onClick={() => confirm("Void this payment?") && run(() => A.voidAgentPayment(slug, x.id), "Payment voided")}>Void</button>}</span></div>)}</div>}
+        </div>
+      )}
+    </div>
   );
 }
 
@@ -450,10 +767,7 @@ function Suppliers({ slug, data, pending, run }: { slug: string; data: Data; pen
       </div>
       <div className="grid gap-2">
         {data.suppliers.map((s) => (
-          <div key={s.id} className={`${card} flex items-center justify-between`}>
-            <div><b>{s.name}</b> <span className="text-xs text-muted-foreground">{s.kind}</span><div className="text-xs text-muted-foreground">{[s.contactName, s.phone, s.email].filter(Boolean).join(" · ")}</div></div>
-            <div className="flex gap-1"><button className={btn2} onClick={() => setF({ id: s.id, name: s.name, kind: s.kind, contactName: s.contactName ?? "", email: s.email ?? "", phone: s.phone ?? "" })}>Edit</button><button className={`${btn2} text-red-600`} disabled={pending} onClick={() => confirm("Archive this supplier?") && run(() => A.archiveTravelSupplier(slug, s.id), "Supplier archived")}>Archive</button></div>
-          </div>
+          <SupplierCard key={s.id} slug={slug} s={s} pending={pending} run={run} onEdit={() => setF({ id: s.id, name: s.name, kind: s.kind, contactName: s.contactName ?? "", email: s.email ?? "", phone: s.phone ?? "" })} />
         ))}
         {!data.suppliers.length && <Empty text="No suppliers yet. Add airlines, hotels and tour operators you book through." />}
       </div>

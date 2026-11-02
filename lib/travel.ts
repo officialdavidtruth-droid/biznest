@@ -150,3 +150,111 @@ export function whatsappLink(phone: string | null | undefined, text?: string): s
   if (digits.length < 8 || digits.length > 15) return null;
   return `https://wa.me/${digits}${text ? `?text=${encodeURIComponent(text)}` : ""}`;
 }
+
+
+// ---------------------------------------------------------------- group departures: manifest + rooming list
+
+export const ROOM_TYPES = ["SINGLE", "DOUBLE", "TWIN", "TRIPLE", "QUAD"] as const;
+export type RoomType = (typeof ROOM_TYPES)[number];
+export const ROOM_CAPACITY: Record<RoomType, number> = { SINGLE: 1, DOUBLE: 2, TWIN: 2, TRIPLE: 3, QUAD: 4 };
+export const GENDERS = ["M", "F"] as const;
+
+export type ManifestRow = {
+  travelerId: string; tripId: string; tripReference: string; tripStatus: string; fullName: string; isLead: boolean;
+  gender: string | null; passportNo: string | null; passportExpiry: string | null; dateOfBirth: string | null; nationality: string | null;
+  roomType: string | null; roomLabel: string | null; requests: string | null; contactName: string; contactPhone: string | null;
+};
+
+export type RoomGroup = { label: string; type: RoomType | null; capacity: number | null; members: ManifestRow[]; problems: string[] };
+
+/**
+ * Group the manifest into rooms by label (case-insensitive). Flags rooms that are over capacity, mix room types,
+ * or pair different genders in a 2-person room (agencies usually want to check that by eye, so it is a warning, not a block).
+ * Travellers with no label are returned separately as `unassigned`.
+ */
+export function roomingGroups(rows: ManifestRow[]): { rooms: RoomGroup[]; unassigned: ManifestRow[] } {
+  const byLabel = new Map<string, ManifestRow[]>();
+  const unassigned: ManifestRow[] = [];
+  for (const r of rows) {
+    const key = r.roomLabel?.trim().toLowerCase();
+    if (!key) { unassigned.push(r); continue; }
+    byLabel.set(key, [...(byLabel.get(key) ?? []), r]);
+  }
+  const rooms: RoomGroup[] = [...byLabel.values()].map((members) => {
+    const types = [...new Set(members.map((m) => m.roomType).filter((t): t is string => !!t))];
+    const type = (types.length === 1 && (ROOM_TYPES as readonly string[]).includes(types[0]) ? types[0] : null) as RoomType | null;
+    const capacity = type ? ROOM_CAPACITY[type] : null;
+    const problems: string[] = [];
+    if (types.length > 1) problems.push("Mixed room types");
+    if (capacity !== null && members.length > capacity) problems.push(`Over capacity (${members.length}/${capacity})`);
+    const genders = new Set(members.map((m) => m.gender).filter(Boolean));
+    if (members.length > 1 && genders.size > 1) problems.push("Mixed genders in one room");
+    return { label: members[0].roomLabel!.trim(), type, capacity, members, problems };
+  }).sort((a, b) => a.label.localeCompare(b.label, undefined, { numeric: true }));
+  return { rooms, unassigned };
+}
+
+/** Per-traveller problems an agent should fix before the list goes to an airline or hotel. */
+export function manifestIssues(row: ManifestRow, departDate: Date | string | null | undefined): string[] {
+  const out: string[] = [];
+  if (!row.passportNo) out.push("No passport number");
+  const w = passportWarning(row.passportExpiry, departDate);
+  if (row.passportExpiry && w) out.push(w);
+  if (!row.passportExpiry && row.passportNo) out.push("No passport expiry");
+  if (!row.dateOfBirth) out.push("No date of birth");
+  return out;
+}
+
+
+// ---------------------------------------------------------------- supplier payables
+
+export type PayableLine = { supplierId: string; currency: string; cost: number };
+export type SupplierPaymentLite = { supplierId: string; currency: string; amount: number; status: string };
+export type SupplierBalance = { supplierId: string; currency: string; owed: number; paid: number; outstanding: number };
+
+const r2 = (n: number) => Math.round(n * 100) / 100;
+
+/**
+ * What the agency owes each supplier, per currency: the cost of their service lines minus payments recorded
+ * (void payments ignored). Callers pass only non-cancelled lines on non-cancelled trips. Outstanding can go
+ * negative only if lines were cancelled after paying (a credit with the supplier), which is shown, not hidden.
+ */
+export function supplierBalances(lines: PayableLine[], payments: SupplierPaymentLite[]): SupplierBalance[] {
+  const map = new Map<string, SupplierBalance>();
+  const get = (supplierId: string, currency: string) => {
+    const k = `${supplierId}|${currency}`;
+    let b = map.get(k);
+    if (!b) { b = { supplierId, currency, owed: 0, paid: 0, outstanding: 0 }; map.set(k, b); }
+    return b;
+  };
+  for (const l of lines) get(l.supplierId, l.currency).owed += l.cost;
+  for (const p of payments) if (p.status === "RECORDED") get(p.supplierId, p.currency).paid += p.amount;
+  return [...map.values()].map((b) => ({ ...b, owed: r2(b.owed), paid: r2(b.paid), outstanding: r2(b.owed - b.paid) })).filter((b) => b.owed !== 0 || b.paid !== 0);
+}
+
+
+// ---------------------------------------------------------------- agent commission
+
+export const COMMISSION_BASES = ["SELL", "MARGIN"] as const;
+export type CommissionBasis = (typeof COMMISSION_BASES)[number];
+export const COMMISSION_BASIS_LABEL: Record<CommissionBasis, string> = { SELL: "% of selling price", MARGIN: "% of margin" };
+
+/**
+ * Commission on a trip. Earned once the trip holds a seat (confirmed or later) and not cancelled; zero before that.
+ * "Releasable" is the earned amount scaled by how much of the trip price the client has actually paid (net of refunds),
+ * so an agent is not paid ahead of the money coming in. Margin basis never goes below zero.
+ */
+export function commissionFor(
+  trip: { status: string; totalPrice: unknown; totalCost: unknown },
+  payments: { amount: unknown; status: string; refundedAmount?: unknown }[],
+  rate: unknown,
+  basis: string,
+): { earned: number; releasable: number } {
+  const pct = Number(rate);
+  if (!(pct > 0) || !(SEAT_HOLDING_STATUSES as readonly string[]).includes(trip.status)) return { earned: 0, releasable: 0 };
+  const m = tripMoney(trip, payments);
+  const base = basis === "MARGIN" ? Math.max(0, m.total - m.cost) : m.total;
+  const earned = Math.round(base * pct) / 100;
+  const share = m.total > 0 ? Math.min(1, Math.max(0, m.paid / m.total)) : 0;
+  return { earned, releasable: Math.round(earned * share * 100) / 100 };
+}

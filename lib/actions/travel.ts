@@ -9,9 +9,10 @@ import type { ActionResult } from "@/types/actions";
 import { startTravelCharge, travelOnlinePaymentError } from "@/lib/payments/travel-charge";
 import { refundTravelPayment } from "@/lib/payments/refund-travel";
 import { auth } from "@/lib/auth";
+import { loadDeparture } from "@/lib/travel-manifest";
 import {
   TRAVEL_PLUGIN_KEY, TRAVEL_BUSINESS_TYPE, TRIP_STATUSES, ITEM_KINDS, ITEM_STATUSES, PAYMENT_METHODS,
-  SUPPLIER_KINDS, SEAT_HOLDING_STATUSES, VISA_STATUSES, VISA_TYPES, DEFAULT_VISA_CHECKLIST, canMoveTrip, newTripReference, tripMoney,
+  SUPPLIER_KINDS, SEAT_HOLDING_STATUSES, ROOM_TYPES, GENDERS, supplierBalances, commissionFor, COMMISSION_BASES, VISA_STATUSES, VISA_TYPES, DEFAULT_VISA_CHECKLIST, canMoveTrip, newTripReference, tripMoney,
   type TripStatus,
 } from "@/lib/travel";
 
@@ -35,6 +36,9 @@ const money = (v: unknown) => { const n = Number(v); return Number.isFinite(n) &
 const optDate = (v: unknown) => { if (!v) return null; const d = new Date(String(v)); return Number.isNaN(d.getTime()) ? null : d; };
 const oneOf = <T extends readonly string[]>(list: T, v: unknown, fallback: T[number]): T[number] => (list as readonly string[]).includes(String(v)) ? (String(v) as T[number]) : fallback;
 const refresh = (slug: string) => revalidatePath(`/store/${slug}/admin/travel`);
+
+type AttachmentRow = { id: string; kind: string; fileName: string; mimeType: string; sizeBytes: number; note: string | null; travelerId: string | null; createdAt: Date };
+const serialAttachment = (x: AttachmentRow) => ({ id: x.id, kind: x.kind, fileName: x.fileName, mimeType: x.mimeType, sizeBytes: x.sizeBytes, note: x.note, travelerId: x.travelerId, createdAt: x.createdAt.toISOString() });
 
 /** Recompute a trip's selling price/cost from its non-cancelled service lines (when it has any). */
 async function recalcTrip(tripId: string) {
@@ -61,16 +65,33 @@ export async function getTravelDashboard(slug: string) {
   if (!a.success) return null;
   const storeId = a.store.id;
   const now = new Date();
-  const [trips, clients, suppliers, packages, visas] = await Promise.all([
+  const [trips, clients, suppliers, packages, visas, payableItems, supplierPayments, agents, agentPayments] = await Promise.all([
     prisma.travelTrip.findMany({
       where: { storeId }, orderBy: { createdAt: "desc" }, take: 300,
-      include: { client: { select: { id: true, fullName: true, phone: true, email: true } }, travellers: true, items: { orderBy: { createdAt: "asc" }, include: { supplier: { select: { name: true } } } }, payments: { orderBy: { createdAt: "desc" } }, itineraryDays: { orderBy: { dayNumber: "asc" } } },
+      include: { client: { select: { id: true, fullName: true, phone: true, email: true } }, travellers: true, items: { orderBy: { createdAt: "asc" }, include: { supplier: { select: { name: true } } } }, payments: { orderBy: { createdAt: "desc" } }, itineraryDays: { orderBy: { dayNumber: "asc" } }, attachments: { orderBy: { createdAt: "desc" } } },
     }),
     prisma.travelClient.findMany({ where: { storeId }, orderBy: { fullName: "asc" }, take: 500, include: { _count: { select: { trips: true } } } }),
     prisma.travelSupplier.findMany({ where: { storeId, isArchived: false }, orderBy: { name: "asc" }, take: 200 }),
     prisma.travelPackage.findMany({ where: { storeId }, orderBy: [{ isActive: "desc" }, { departureDate: "asc" }], take: 100, include: { trips: { select: { status: true, travellers: { select: { id: true } } } } } }),
-    prisma.travelVisaCase.findMany({ where: { storeId }, orderBy: { createdAt: "desc" }, take: 200, include: { client: { select: { fullName: true } } } }),
+    prisma.travelVisaCase.findMany({ where: { storeId }, orderBy: { createdAt: "desc" }, take: 200, include: { client: { select: { fullName: true } }, attachments: { orderBy: { createdAt: "desc" } } } }),
+    prisma.travelTripItem.findMany({ where: { supplierId: { not: null }, status: { not: "CANCELLED" }, trip: { storeId, status: { not: "CANCELLED" } } }, orderBy: { startDate: "asc" }, select: { id: true, supplierId: true, description: true, kind: true, startDate: true, costPrice: true, trip: { select: { id: true, reference: true, currency: true } } } }),
+    prisma.travelSupplierPayment.findMany({ where: { storeId }, orderBy: { paidAt: "desc" }, take: 1000 }),
+    prisma.travelAgent.findMany({ where: { storeId, isArchived: false }, orderBy: { name: "asc" }, take: 200 }),
+    prisma.travelAgentPayment.findMany({ where: { storeId }, orderBy: { paidAt: "desc" }, take: 1000 }),
   ]);
+  // Commission per trip (only trips that have an agent). Computed from the already-loaded trips and their payments.
+  const commissionLines = trips.filter((t) => t.agentId).map((t) => {
+    const c = commissionFor(t, t.payments, Number(t.commissionRate), t.commissionBasis);
+    return { agentId: t.agentId!, tripId: t.id, reference: t.reference, client: t.client.fullName, status: t.status, currency: t.currency, rate: Number(t.commissionRate), basis: t.commissionBasis, earned: c.earned, releasable: c.releasable };
+  });
+  const agentBalances = supplierBalances(
+    commissionLines.filter((l) => l.earned > 0).map((l) => ({ supplierId: l.agentId, currency: l.currency, cost: l.earned })),
+    agentPayments.map((p) => ({ supplierId: p.agentId, currency: p.currency, amount: Number(p.amount), status: p.status })),
+  );
+  const balances = supplierBalances(
+    payableItems.map((i) => ({ supplierId: i.supplierId!, currency: i.trip.currency, cost: Number(i.costPrice) })),
+    supplierPayments.map((p) => ({ supplierId: p.supplierId, currency: p.currency, amount: Number(p.amount), status: p.status })),
+  );
 
   const serialTrips = trips.map((t) => {
     const m = tripMoney(t, t.payments);
@@ -78,9 +99,11 @@ export async function getTravelDashboard(slug: string) {
       id: t.id, reference: t.reference, title: t.title, destination: t.destination, status: t.status as TripStatus,
       departDate: t.departDate?.toISOString() ?? null, returnDate: t.returnDate?.toISOString() ?? null,
       currency: t.currency, notes: t.notes, packageId: t.packageId, createdAt: t.createdAt.toISOString(),
+      agentId: t.agentId, commissionRate: Number(t.commissionRate), commissionBasis: t.commissionBasis,
       client: t.client, money: m,
       travellers: t.travellers.map((x) => ({ id: x.id, fullName: x.fullName, passportNo: x.passportNo, passportExpiry: x.passportExpiry?.toISOString() ?? null, nationality: x.nationality, isLead: x.isLead })),
       items: t.items.map((i) => ({ id: i.id, kind: i.kind, description: i.description, status: i.status, confirmationRef: i.confirmationRef, startDate: i.startDate?.toISOString() ?? null, endDate: i.endDate?.toISOString() ?? null, supplierId: i.supplierId, supplierName: i.supplier?.name ?? null, costPrice: Number(i.costPrice), sellPrice: Number(i.sellPrice) })),
+      attachments: t.attachments.map(serialAttachment),
       itineraryDays: t.itineraryDays.map((d) => ({ id: d.id, dayNumber: d.dayNumber, title: d.title, description: d.description })),
       payments: t.payments.map((p) => ({ id: p.id, amount: Number(p.amount), refundedAmount: Number(p.refundedAmount), refundedAt: p.refundedAt?.toISOString() ?? null, refundReason: p.refundReason, method: p.method, status: p.status, dueDate: p.dueDate?.toISOString() ?? null, paidAt: p.paidAt?.toISOString() ?? null, reference: p.reference, note: p.note })),
     };
@@ -96,15 +119,28 @@ export async function getTravelDashboard(slug: string) {
     revenue: serialTrips.filter((t) => !["ENQUIRY", "QUOTED", "CANCELLED"].includes(t.status)).reduce((s, t) => s + t.money.total, 0),
     margin: serialTrips.filter((t) => !["ENQUIRY", "QUOTED", "CANCELLED"].includes(t.status)).reduce((s, t) => s + t.money.margin, 0),
     openVisas: visas.filter((v) => !["APPROVED", "REFUSED"].includes(v.status)).length,
+    owedToAgents: agentBalances.filter((b) => b.currency === (a.store.currency || "NGN")).reduce((sum, b) => sum + Math.max(0, b.outstanding), 0),
+    owedToSuppliers: balances.filter((b) => b.currency === (a.store.currency || "NGN")).reduce((sum, b) => sum + Math.max(0, b.outstanding), 0),
   };
 
   return {
     currency: a.store.currency || "NGN", locale: a.store.locale ?? null, stats, overduePayments,
     trips: serialTrips,
     clients: clients.map((c) => ({ id: c.id, fullName: c.fullName, email: c.email, phone: c.phone, nationality: c.nationality, passportNo: c.passportNo, passportExpiry: c.passportExpiry?.toISOString() ?? null, notes: c.notes, tripCount: c._count.trips })),
-    suppliers: suppliers.map((s) => ({ id: s.id, name: s.name, kind: s.kind, contactName: s.contactName, email: s.email, phone: s.phone })),
+    agents: agents.map((g) => ({
+      id: g.id, name: g.name, email: g.email, phone: g.phone, defaultRate: Number(g.defaultRate), defaultBasis: g.defaultBasis,
+      balances: agentBalances.filter((b) => b.supplierId === g.id),
+      lines: commissionLines.filter((l) => l.agentId === g.id),
+      payments: agentPayments.filter((p) => p.agentId === g.id).slice(0, 25).map((p) => ({ id: p.id, amount: Number(p.amount), currency: p.currency, method: p.method, status: p.status, paidAt: p.paidAt.toISOString(), reference: p.reference, note: p.note })),
+    })),
+    suppliers: suppliers.map((s) => ({
+      id: s.id, name: s.name, kind: s.kind, contactName: s.contactName, email: s.email, phone: s.phone,
+      balances: balances.filter((b) => b.supplierId === s.id),
+      lines: payableItems.filter((i) => i.supplierId === s.id).map((i) => ({ id: i.id, tripId: i.trip.id, reference: i.trip.reference, currency: i.trip.currency, kind: i.kind, description: i.description, startDate: i.startDate?.toISOString() ?? null, cost: Number(i.costPrice) })),
+      payments: supplierPayments.filter((p) => p.supplierId === s.id).slice(0, 25).map((p) => ({ id: p.id, amount: Number(p.amount), currency: p.currency, method: p.method, status: p.status, paidAt: p.paidAt.toISOString(), reference: p.reference, note: p.note })),
+    })),
     packages: packages.map((p) => ({ id: p.id, name: p.name, destination: p.destination, durationDays: p.durationDays, pricePerPerson: Number(p.pricePerPerson), currency: p.currency, departureDate: p.departureDate?.toISOString() ?? null, seats: p.seats, depositPercent: p.depositPercent, booked: p.trips.filter((t) => (SEAT_HOLDING_STATUSES as readonly string[]).includes(t.status)).reduce((s, t) => s + t.travellers.length, 0), inclusions: p.inclusions, isActive: p.isActive })),
-    visas: visas.map((v) => ({ id: v.id, clientName: v.client.fullName, clientId: v.clientId, country: v.country, visaType: v.visaType, status: v.status, checklist: (Array.isArray(v.checklist) ? v.checklist : []) as { label: string; done: boolean }[], appointmentAt: v.appointmentAt?.toISOString() ?? null, fee: Number(v.fee), notes: v.notes })),
+    visas: visas.map((v) => ({ attachments: v.attachments.map(serialAttachment), id: v.id, clientName: v.client.fullName, clientId: v.clientId, country: v.country, visaType: v.visaType, status: v.status, checklist: (Array.isArray(v.checklist) ? v.checklist : []) as { label: string; done: boolean }[], appointmentAt: v.appointmentAt?.toISOString() ?? null, fee: Number(v.fee), notes: v.notes })),
   };
 }
 
@@ -396,6 +432,120 @@ export async function saveTravelPackage(slug: string, input: { id?: string; name
   } else {
     await prisma.travelPackage.create({ data: { ...data, storeId: a.store.id } });
   }
+  refresh(slug); return { success: true, data: undefined };
+}
+
+// ---------------------------------------------------------------- group departures (manifest + rooming)
+
+export async function getTravelDeparture(slug: string, packageId: string) {
+  const a = await access(slug);
+  if (!a.success) return null;
+  return loadDeparture(a.store.id, packageId);
+}
+
+/** Set a traveller's room, gender and special requests. The traveller must belong to a trip of this store. */
+export async function saveTravelerGroupInfo(slug: string, travelerId: string, input: { roomLabel?: string; roomType?: string; gender?: string; requests?: string }): Promise<ActionResult> {
+  const a = await access(slug); if (!a.success) return fail(a.error);
+  const roomType = input.roomType ? oneOf(ROOM_TYPES, input.roomType, "DOUBLE") : null;
+  const gender = input.gender ? oneOf(GENDERS, input.gender, "M") : null;
+  const res = await prisma.travelTraveler.updateMany({
+    where: { id: travelerId, trip: { storeId: a.store.id } },
+    data: { roomLabel: optStr(input.roomLabel, 40), roomType, gender, requests: optStr(input.requests, 300) },
+  });
+  if (!res.count) return fail("Traveller not found.");
+  refresh(slug); return { success: true, data: undefined };
+}
+
+// ---------------------------------------------------------------- supplier payables
+
+/** Record money paid to a supplier. Rejected if it exceeds what is outstanding in that currency (no silent overpayment). */
+export async function recordSupplierPayment(slug: string, supplierId: string, input: { amount: number; currency: string; method: string; paidAt?: string; reference?: string; note?: string }): Promise<ActionResult> {
+  const a = await access(slug); if (!a.success) return fail(a.error);
+  const supplier = await prisma.travelSupplier.findFirst({ where: { id: supplierId, storeId: a.store.id }, select: { id: true } });
+  if (!supplier) return fail("Supplier not found.");
+  const amount = money(input.amount); if (Number.isNaN(amount) || amount <= 0) return fail("Enter the amount paid.");
+  const currency = str(input.currency, 3).toUpperCase(); if (!/^[A-Z]{3}$/.test(currency)) return fail("Choose a currency.");
+  const [lines, pays] = await Promise.all([
+    prisma.travelTripItem.findMany({ where: { supplierId, status: { not: "CANCELLED" }, trip: { storeId: a.store.id, status: { not: "CANCELLED" }, currency } }, select: { costPrice: true } }),
+    prisma.travelSupplierPayment.findMany({ where: { storeId: a.store.id, supplierId, currency, status: "RECORDED" }, select: { amount: true } }),
+  ]);
+  const outstanding = lines.reduce((s, l) => s + Number(l.costPrice), 0) - pays.reduce((s, p) => s + Number(p.amount), 0);
+  if (amount > Math.round(outstanding * 100) / 100) return fail(`That is more than the ${currency} balance owed to this supplier.`);
+  await prisma.travelSupplierPayment.create({ data: { storeId: a.store.id, supplierId, amount, currency, method: oneOf(PAYMENT_METHODS, input.method, "TRANSFER"), paidAt: optDate(input.paidAt) ?? new Date(), reference: optStr(input.reference, 80), note: optStr(input.note, 300) } });
+  refresh(slug); return { success: true, data: undefined };
+}
+
+export async function voidSupplierPayment(slug: string, paymentId: string): Promise<ActionResult> {
+  const a = await access(slug); if (!a.success) return fail(a.error);
+  const res = await prisma.travelSupplierPayment.updateMany({ where: { id: paymentId, storeId: a.store.id, status: "RECORDED" }, data: { status: "VOID" } });
+  if (!res.count) return fail("Payment not found or already voided.");
+  refresh(slug); return { success: true, data: undefined };
+}
+
+// ---------------------------------------------------------------- agents and commission
+
+export async function saveTravelAgent(slug: string, input: { id?: string; name: string; email?: string; phone?: string; defaultRate: number; defaultBasis: string }): Promise<ActionResult> {
+  const a = await access(slug); if (!a.success) return fail(a.error);
+  const name = str(input.name, 120); if (name.length < 2) return fail("Enter the agent's name.");
+  const email = optStr(input.email, 160);
+  if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return fail("Enter a valid email address.");
+  const rate = Number(input.defaultRate); if (!(rate >= 0 && rate <= 100)) return fail("Commission must be between 0% and 100%.");
+  const data = { name, email, phone: optStr(input.phone, 40), defaultRate: Math.round(rate * 100) / 100, defaultBasis: oneOf(COMMISSION_BASES, input.defaultBasis, "SELL") };
+  if (input.id) {
+    const res = await prisma.travelAgent.updateMany({ where: { id: input.id, storeId: a.store.id }, data });
+    if (!res.count) return fail("Agent not found.");
+  } else {
+    await prisma.travelAgent.create({ data: { ...data, storeId: a.store.id } });
+  }
+  refresh(slug); return { success: true, data: undefined };
+}
+
+export async function archiveTravelAgent(slug: string, agentId: string): Promise<ActionResult> {
+  const a = await access(slug); if (!a.success) return fail(a.error);
+  const res = await prisma.travelAgent.updateMany({ where: { id: agentId, storeId: a.store.id }, data: { isArchived: true } });
+  if (!res.count) return fail("Agent not found.");
+  refresh(slug); return { success: true, data: undefined };
+}
+
+/** Assign (or clear) the agent on a trip. Rate/basis default to the agent's and can be overridden for this trip. */
+export async function setTravelTripAgent(slug: string, tripId: string, input: { agentId: string | null; rate?: number; basis?: string }): Promise<ActionResult> {
+  const a = await access(slug); if (!a.success) return fail(a.error);
+  const trip = await ownTrip(a, tripId); if (!trip) return fail("Trip not found.");
+  if (trip.status === "CANCELLED") return fail("This trip is cancelled.");
+  if (!input.agentId) {
+    await prisma.travelTrip.update({ where: { id: trip.id }, data: { agentId: null, commissionRate: 0, commissionBasis: "SELL" } });
+    refresh(slug); return { success: true, data: undefined };
+  }
+  const agent = await prisma.travelAgent.findFirst({ where: { id: input.agentId, storeId: a.store.id, isArchived: false } });
+  if (!agent) return fail("Agent not found.");
+  const rate = input.rate === undefined ? Number(agent.defaultRate) : Number(input.rate);
+  if (!(rate >= 0 && rate <= 100)) return fail("Commission must be between 0% and 100%.");
+  await prisma.travelTrip.update({ where: { id: trip.id }, data: { agentId: agent.id, commissionRate: Math.round(rate * 100) / 100, commissionBasis: oneOf(COMMISSION_BASES, input.basis ?? agent.defaultBasis, "SELL") } });
+  refresh(slug); return { success: true, data: undefined };
+}
+
+/** Pay out commission. Rejected above the commission earned (minus already paid) in that currency. */
+export async function recordAgentPayment(slug: string, agentId: string, input: { amount: number; currency: string; method: string; paidAt?: string; reference?: string; note?: string }): Promise<ActionResult> {
+  const a = await access(slug); if (!a.success) return fail(a.error);
+  const agent = await prisma.travelAgent.findFirst({ where: { id: agentId, storeId: a.store.id }, select: { id: true } });
+  if (!agent) return fail("Agent not found.");
+  const amount = money(input.amount); if (Number.isNaN(amount) || amount <= 0) return fail("Enter the amount paid.");
+  const currency = str(input.currency, 3).toUpperCase(); if (!/^[A-Z]{3}$/.test(currency)) return fail("Choose a currency.");
+  const [trips, pays] = await Promise.all([
+    prisma.travelTrip.findMany({ where: { storeId: a.store.id, agentId, currency }, include: { payments: true } }),
+    prisma.travelAgentPayment.findMany({ where: { storeId: a.store.id, agentId, currency, status: "RECORDED" }, select: { amount: true } }),
+  ]);
+  const earned = trips.reduce((sum, t) => sum + commissionFor(t, t.payments, Number(t.commissionRate), t.commissionBasis).earned, 0);
+  const outstanding = Math.round((earned - pays.reduce((sum, p) => sum + Number(p.amount), 0)) * 100) / 100;
+  if (amount > outstanding) return fail(`That is more than the ${currency} commission owed to this agent.`);
+  await prisma.travelAgentPayment.create({ data: { storeId: a.store.id, agentId, amount, currency, method: oneOf(PAYMENT_METHODS, input.method, "TRANSFER"), paidAt: optDate(input.paidAt) ?? new Date(), reference: optStr(input.reference, 80), note: optStr(input.note, 300) } });
+  refresh(slug); return { success: true, data: undefined };
+}
+
+export async function voidAgentPayment(slug: string, paymentId: string): Promise<ActionResult> {
+  const a = await access(slug); if (!a.success) return fail(a.error);
+  const res = await prisma.travelAgentPayment.updateMany({ where: { id: paymentId, storeId: a.store.id, status: "RECORDED" }, data: { status: "VOID" } });
+  if (!res.count) return fail("Payment not found or already voided.");
   refresh(slug); return { success: true, data: undefined };
 }
 
