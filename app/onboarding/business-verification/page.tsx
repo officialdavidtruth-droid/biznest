@@ -2,6 +2,7 @@ import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { redirect } from "next/navigation";
 import { BusinessVerificationForm } from "@/components/forms/business-verification-form";
+import { VerificationPending } from "@/components/onboarding/verification-pending";
 import { ShieldCheck, Clock3, Lock } from "lucide-react";
 
 const CHECKLIST = [
@@ -18,18 +19,14 @@ export default async function BusinessVerificationPage() {
 
   if (existing?.verificationStatus === "PENDING") {
     return (
-      <div className="bg-muted px-6 py-24 text-center">
-        <div className="w-full max-w-md rounded-2xl border border-border bg-white p-10 text-center shadow-[0_1px_2px_rgba(20,37,28,.04),0_12px_32px_-16px_rgba(20,37,28,.18)]">
-          <div className="mx-auto mb-5 flex h-12 w-12 items-center justify-center rounded-full bg-primary/10">
-            <Clock3 className="h-5 w-5 text-primary" strokeWidth={2} />
-          </div>
-          <h1 className="mb-2 text-lg font-semibold text-foreground">Your application is being reviewed</h1>
-          <p className="text-sm leading-relaxed text-muted-foreground">
-            We're checking your business details and documents. This usually takes 1–3 business
-            days, and we'll email you as soon as a decision is made.
-          </p>
-        </div>
-      </div>
+      <VerificationPending
+        businessName={existing.businessName}
+        category={existing.category}
+        specialty={existing.businessSubcategory}
+        location={[existing.city, existing.state].filter(Boolean).join(", ")}
+        submittedAt={existing.updatedAt}
+        email={existing.email}
+      />
     );
   }
 
