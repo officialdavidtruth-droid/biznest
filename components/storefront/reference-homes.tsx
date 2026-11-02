@@ -2,6 +2,7 @@
 import Link from "next/link";
 import { ArrowRight, Globe2, Heart, Home, KeyRound, Search, ShieldCheck, Sparkles, Star, Headphones, Users, MapPin, Calendar, Tag } from "lucide-react";
 import { defaultPhoto } from "@/lib/default-images";
+import { DESTINATION_GUIDES, destinationPhoto } from "@/lib/travel-destinations";
 import { storeHref as href } from "@/lib/utils/store-href";
 import { formatMoney } from "@/lib/utils/format-money";
 import type { LegacyCatalogItem } from "@/components/storefront/legacy-template-renderer";
@@ -62,8 +63,12 @@ export function WanderlyHome({ p }: { p: RefProps }) {
       <div className="hc"><small className="k">{String(store.business?.category || store.name).replace(/[_-]+/g, " ").toUpperCase()}</small><h1>{store.heroOverrides?.headline || store.name}</h1><p>{store.heroOverrides?.subtitle || store.business?.description || `Welcome to ${store.name}.`}</p><Link className="cta" href={href(slug, "/catalog")}>{store.heroOverrides?.ctaLabel || "Explore Destinations"} <ArrowRight size={16} /></Link>
         {p.completedOrders > 0 && <div className="trust">★ {formatNumber(p.completedOrders)} completed bookings</div>}</div></section>
     <div className="sb">{[["Where to?", "Search destinations"], ["Travel Dates", "Select dates"], ["Travelers", "2 travelers"], ["Trip Type", "All types"]].map(([a, b]) => <div key={a}><b>{a}</b>{b}</div>)}<Link href={href(slug, "/catalog")}>Search Now →</Link></div>
-    <section className="s"><div className="sh"><div><h2>Featured Destinations</h2><p>Iconic places. Unforgettable experiences.</p></div><Link href={href(slug, "/catalog")}>View All Destinations →</Link></div>
-      <div className="dg">{dest.map((d, i) => <Link key={i} href={itemHref(slug, d)} className="dc"><img src={pick(d?.image, T, i)} alt={d?.name || "Destination"} /><div><span><b>{d?.name || ["Santorini", "Bali", "Maldives", "Phuket"][i]}</b><small>{d?.categoryName || ["Greece", "Indonesia", "Indian Ocean", "Thailand"][i]}</small></span><i><ArrowRight size={14} /></i></div></Link>)}</div></section>
+    <section className="s"><div className="sh"><div><h2>Featured Destinations</h2><p>Iconic places. Unforgettable experiences.</p></div><Link href={href(slug, items.length ? "/catalog" : "/destinations")}>View All Destinations →</Link></div>
+      <div className="dg">{dest.map((d, i) => {
+        // Real catalog item -> its own page. No item yet -> the built-in destination guide (never a dead link).
+        const g = DESTINATION_GUIDES[i % DESTINATION_GUIDES.length];
+        return <Link key={i} href={d ? itemHref(slug, d) : href(slug, `/destinations/${g.slug}`)} className="dc"><img src={d ? pick(d.image, T, i) : destinationPhoto(g, 900)} alt={d?.name || `${g.name}, ${g.region}`} /><div><span><b>{d?.name || g.name}</b><small>{d?.categoryName || g.region}</small></span><i><ArrowRight size={14} /></i></div></Link>;
+      })}</div></section>
     <section className="s"><div className="sh"><div><h2>Curated Travel Packages</h2><p>Handpicked journeys designed for unforgettable moments.</p></div><Link href={href(slug, "/catalog")}>View All Packages →</Link></div>
       <div className="pg">{pk.map((d, i) => <Link key={i} href={itemHref(slug, d)} className="pc"><div className="im"><img src={pick(d?.image, T, i + 1)} alt={d?.name || "Travel package"} /><span className="bd"><Star size={12} />{["Bestseller", "Honeymoon", "Cultural"][i]}</span></div>
         <div className="tx"><h3>{d?.name || ["Italian Escape", "Maldives Getaway", "Bali Explorer"][i]}</h3><p>{(d?.description || "Handpicked stays, guides and experiences.").slice(0, 70)}</p><div className="pr"><span>{d ? formatMoney(d.price, d.currency) : "—"} <small>/ person</small></span><ArrowRight size={18} /></div></div></Link>)}</div></section>
