@@ -22,7 +22,9 @@ export async function settleTravelPayment(
   reference: string,
   provider: "PAYSTACK" | "FLUTTERWAVE" | "KORAPAY" | "CASH",
   verifiedAmountNaira: number,
-  rawPayload: object
+  rawPayload: object,
+  /** Currency the gateway reports it collected. Must match the payment's currency; required for anything but NGN. */
+  verifiedCurrency?: string | null
 ): Promise<ActionResult<{ storeSlug: string; tripId: string }>> {
   const payment = await prisma.payment.findUnique({ where: { reference }, include: { travelTrip: { include: { store: true, travellers: { select: { id: true } } } } } });
   if (!payment || payment.purpose !== "TRAVEL_BOOKING" || !payment.travelTrip) return { success: false, error: "Travel payment not found." };
@@ -30,6 +32,8 @@ export async function settleTravelPayment(
   if (payment.provider !== provider) return { success: false, error: "Payment provider mismatch." };
   if (payment.status === "SUCCESSFUL") return { success: true, data: { storeSlug: trip.store.slug, tripId: trip.id } };
   if (payment.status !== "PENDING" && payment.status !== "FAILED") return { success: false, error: "Travel payment is not pending." };
+  const expectedCurrency = String(payment.currency ?? "NGN").toUpperCase();
+  if (verifiedCurrency ? verifiedCurrency.toUpperCase() !== expectedCurrency : expectedCurrency !== "NGN") return { success: false, error: "Payment currency mismatch." };
   if (!amountCoversExpected(Number(verifiedAmountNaira), Number(payment.amount))) return { success: false, error: "Payment amount mismatch." };
 
   let soldOut = false;

@@ -47,7 +47,7 @@ describe("helpers", () => {
   });
 });
 
-import { depositFor, canPayOnline } from "@/lib/travel";
+import { depositFor, canPayOnline, gatewayCurrencyError, whatsappLink } from "@/lib/travel";
 describe("depositFor / canPayOnline", () => {
   it("rounds a percentage deposit up and never exceeds the total", () => {
     expect(depositFor(200000, 30)).toBe(60000);
@@ -60,8 +60,29 @@ describe("depositFor / canPayOnline", () => {
     expect(depositFor(1000, 0)).toBe(0);
     expect(depositFor(1000, Number.NaN)).toBe(0);
   });
-  it("allows online payment only in NGN", () => {
+  it("allows online payment in NGN and in currencies a gateway can charge", () => {
     expect(canPayOnline("NGN")).toBe(true);
-    expect(canPayOnline("usd")).toBe(false);
+    expect(canPayOnline("usd")).toBe(true);
+    expect(canPayOnline("GBP")).toBe(true);
+    expect(canPayOnline("JPY")).toBe(false);
+    expect(canPayOnline("")).toBe(false);
+  });
+  it("checks the exact gateway once it is known", () => {
+    expect(gatewayCurrencyError("USD", "PAYSTACK")).toBeNull();
+    expect(gatewayCurrencyError("gbp", "FLUTTERWAVE")).toBeNull();
+    expect(gatewayCurrencyError("GBP", "PAYSTACK")).not.toBeNull();
+    expect(gatewayCurrencyError("USD", "KORAPAY")).not.toBeNull();
+  });
+});
+
+describe("whatsappLink", () => {
+  it("converts Nigerian local numbers and keeps international ones", () => {
+    expect(whatsappLink("0801 234 5678")).toBe("https://wa.me/2348012345678");
+    expect(whatsappLink("+44 7700 900123", "Hi there")).toBe("https://wa.me/447700900123?text=Hi%20there");
+    expect(whatsappLink("00971501234567")).toBe("https://wa.me/971501234567");
+  });
+  it("returns null for missing or implausible numbers", () => {
+    expect(whatsappLink(null)).toBeNull();
+    expect(whatsappLink("12345")).toBeNull();
   });
 });

@@ -6,7 +6,7 @@ import { PDFDocument, StandardFonts, rgb, type PDFFont, type PDFPage } from "pdf
 import { formatNumber } from "@/lib/i18n/locale";
 import { netReceived } from "@/lib/travel";
 
-export const TRAVEL_DOC_KINDS = ["quote", "invoice", "itinerary"] as const;
+export const TRAVEL_DOC_KINDS = ["quote", "invoice", "itinerary", "receipt"] as const;
 export type TravelDocKind = (typeof TRAVEL_DOC_KINDS)[number];
 
 export type TravelDocInput = {
@@ -17,6 +17,10 @@ export type TravelDocInput = {
   travellers: { fullName: string; isLead?: boolean }[];
   items: { kind: string; description: string; startDate?: Date | null; endDate?: Date | null; confirmationRef?: string | null; status: string; sellPrice: number }[];
   payments: { amount: number; status: string; method: string; paidAt?: Date | null; dueDate?: Date | null; reference?: string | null; refundedAmount?: number }[];
+  /** Hand-written day-by-day programme. When present, the itinerary is built from it and dated service lines are merged in by date. */
+  itineraryDays?: { dayNumber: number; title: string; description?: string | null }[];
+  /** The one payment a "receipt" document is for. */
+  receiptPayment?: { number: string; amount: number; method: string; paidAt?: Date | null; reference?: string | null; refundedAmount?: number };
   locale?: string | null;
   now?: Date;
 };
@@ -119,7 +123,7 @@ export async function buildTravelDocumentPdf(input: TravelDocInput): Promise<Uin
   const heading = (s: string) => { ensure(60); y -= 8; text(s.toUpperCase(), left, 9, { b: true, color: accent }); y -= 6; rule(); y -= 16; };
 
   // ---- header
-  const title = kind === "quote" ? "QUOTATION" : kind === "invoice" ? "INVOICE" : "TRAVEL ITINERARY";
+  const title = kind === "quote" ? "QUOTATION" : kind === "invoice" ? "INVOICE" : kind === "receipt" ? "PAYMENT RECEIPT" : "TRAVEL ITINERARY";
   text(store.name, left, 18, { b: true });
   textRight(title, right, 18, true, accent);
   y -= 16;
@@ -145,8 +149,33 @@ export async function buildTravelDocumentPdf(input: TravelDocInput): Promise<Uin
   if (trip.departDate || trip.returnDate) { text(`${dateFmt(trip.departDate) || "TBC"} to ${dateFmt(trip.returnDate) || "TBC"}`, col2, 10); y -= 13; }
   y = Math.min(y, leftEnd) - 10;
 
+  // ---- receipt (one payment): this replaces travellers, itinerary and pricing
+  if (kind === "receipt") {
+    const rp = input.receiptPayment;
+    heading("Payment received");
+    const row = (label: string, value: string, b = false) => { ensure(18); text(label, left, 10, { color: muted }); textRight(value, right, b ? 11 : 10, b); y -= 16; };
+    if (rp) {
+      row("Receipt no.", rp.number);
+      row("Date received", dateFmt(rp.paidAt) || dateFmt(now));
+      row("Payment method", rp.method);
+      if (rp.reference) row("Payment reference", rp.reference);
+      row("Amount received", money(rp.amount), true);
+      if ((rp.refundedAmount ?? 0) > 0) {
+        row("Refunded since", `-${money(rp.refundedAmount!)}`);
+        row("Net kept", money(Math.max(0, rp.amount - rp.refundedAmount!)), true);
+      }
+    }
+    const paidTotal = input.payments.filter((p) => p.status === "RECEIVED").reduce((s, p) => s + netReceived(p), 0);
+    heading("Trip account");
+    row("Trip total", money(trip.totalPrice));
+    row("Paid to date", money(paidTotal));
+    row("Balance due", money(Math.max(0, trip.totalPrice - paidTotal)), true);
+    ensure(40); y -= 6;
+    for (const l of wrap("This receipt confirms the payment above. It is not a ticket or a visa. Thank you for travelling with us.", right - left, 9)) { text(l, left, 9, { color: muted }); y -= 12; }
+  }
+
   // ---- travellers
-  if (input.travellers.length) {
+  if (kind !== "receipt" && input.travellers.length) {
     heading(`Travellers (${input.travellers.length})`);
     for (const t of input.travellers) {
       ensure(16);
@@ -157,8 +186,38 @@ export async function buildTravelDocumentPdf(input: TravelDocInput): Promise<Uin
 
   // ---- itinerary (all kinds; this is the whole document for "itinerary")
   const { days, undated } = buildItinerary(items, trip.departDate);
-  const showItinerary = days.length > 0 || (kind === "itinerary" && undated.length > 0);
-  if (showItinerary) {
+  const builder = [...(input.itineraryDays ?? [])].sort((a, b) => a.dayNumber - b.dayNumber);
+  const showItinerary = kind !== "receipt" && (builder.length > 0 || days.length > 0 || (kind === "itinerary" && undated.length > 0));
+  if (showItinerary && builder.length) {
+    heading("Itinerary");
+    const baseMs = trip.departDate ? Date.UTC(trip.departDate.getUTCFullYear(), trip.departDate.getUTCMonth(), trip.departDate.getUTCDate()) : null;
+    const used = new Set<(typeof items)[number]>();
+    const bullet = (it: (typeof items)[number], withDate = false) => {
+      const range = it.endDate && it.startDate && dayKey(it.endDate) !== dayKey(it.startDate) ? ` (until ${dateFmt(it.endDate)})` : "";
+      const label = `${withDate && it.startDate ? `${dateFmt(it.startDate)}: ` : ""}${KIND_LABEL[it.kind] ?? "Service"}: ${it.description}${range}${it.confirmationRef && kind !== "quote" ? `  [Conf. ${it.confirmationRef}]` : ""}`;
+      const lines = wrap(label, right - left - 14, 10);
+      ensure(lines.length * 13 + 4);
+      lines.forEach((l, idx) => { text(idx === 0 ? `- ${l}` : `  ${l}`, left + 8, 10); y -= 13; });
+    };
+    for (const bd of builder) {
+      ensure(60);
+      const date = baseMs !== null ? new Date(baseMs + (bd.dayNumber - 1) * 86_400_000) : null;
+      text(`Day ${bd.dayNumber}${date ? `  -  ${longDateFmt(date)}` : ""}`, left, 9, { b: true, color: accent }); y -= 14;
+      for (const l of wrap(bd.title, right - left, 11, bold)) { ensure(16); text(l, left, 11, { b: true }); y -= 14; }
+      for (const para of String(bd.description ?? "").split(/\n+/)) {
+        if (!para.trim()) continue;
+        for (const l of wrap(para, right - left - 8, 10)) { ensure(14); text(l, left + 8, 10); y -= 13; }
+      }
+      if (date) for (const it of items) if (it.startDate && dayKey(it.startDate) === dayKey(date)) { used.add(it); bullet(it); }
+      y -= 8;
+    }
+    const rest = items.filter((i) => !used.has(i) && (i.startDate || kind === "itinerary"));
+    if (rest.length) {
+      ensure(30);
+      text("Other bookings", left, 10, { b: true }); y -= 14;
+      for (const it of rest) bullet(it, true);
+    }
+  } else if (showItinerary) {
     heading("Itinerary");
     for (const d of days) {
       ensure(40);
@@ -187,7 +246,7 @@ export async function buildTravelDocumentPdf(input: TravelDocInput): Promise<Uin
   if (kind === "itinerary") {
     ensure(40); y -= 10;
     for (const l of wrap("Please keep your passport valid for at least 6 months beyond your return date and carry this itinerary with you. Times and details may be updated by the airline or suppliers.", right - left, 9)) { text(l, left, 9, { color: muted }); y -= 12; }
-  } else {
+  } else if (kind !== "receipt") {
     // ---- services and pricing
     heading("Services and pricing");
     const amountX = right;

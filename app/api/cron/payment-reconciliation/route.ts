@@ -81,7 +81,7 @@ async function settle(provider: "PAYSTACK" | "FLUTTERWAVE" | "KORAPAY", referenc
   if (reference.startsWith("WAL-")) return settleWalletFunding(reference, provider, amount, payload);
   if (reference.startsWith("BK-")) return settleServiceBookingPayment(reference, provider, amount, payload);
   if (reference.startsWith("RES-")) return settleReservationPayment(reference, provider, amount, payload);
-  if (reference.startsWith("TVL-")) return settleTravelPayment(reference, provider, amount, payload);
+  if (reference.startsWith("TVL-")) return settleTravelPayment(reference, provider, amount, payload, g.currency);
   if (reference.startsWith("SUBUP-")) return settleSubscriptionUpgrade(reference, amount, payload);
   if (reference.startsWith("PLUG-")) return settlePluginPurchase(reference, amount, payload);
   return settleOrderPayment({ orderId: reference, reference, provider, verifiedAmountNaira: amount, verifiedCurrency: g.currency, payload });

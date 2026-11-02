@@ -185,7 +185,7 @@ export async function POST(req: Request) {
 
   if (txRef.startsWith("TVL-")) {
     const amount = verification.data ? Number(verification.data.amount) : 0;
-    await settleTravelPayment(txRef, "FLUTTERWAVE", amount, verification as object);
+    await settleTravelPayment(txRef, "FLUTTERWAVE", amount, verification as object, verification.data?.currency);
     return NextResponse.json({ received: true });
   }
 

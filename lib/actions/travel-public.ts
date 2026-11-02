@@ -4,8 +4,8 @@ import { headers } from "next/headers";
 import { prisma } from "@/lib/prisma";
 import { checkRateLimit, getClientIp } from "@/lib/rate-limit";
 import { getPluginEntitlement } from "@/lib/plugins";
-import { newTripReference, TRAVEL_PLUGIN_KEY, SEAT_HOLDING_STATUSES, depositFor, canPayOnline } from "@/lib/travel";
-import { startTravelCharge } from "@/lib/payments/travel-charge";
+import { newTripReference, TRAVEL_PLUGIN_KEY, SEAT_HOLDING_STATUSES, depositFor } from "@/lib/travel";
+import { startTravelCharge, travelOnlinePaymentError } from "@/lib/payments/travel-charge";
 import type { ActionResult } from "@/types/actions";
 
 const clean = (v: unknown, max: number) => String(v ?? "").replace(/[\u0000-\u001f]/g, " ").trim().slice(0, max);
@@ -78,7 +78,7 @@ async function handle(slug: string, input: EnquiryInput, book: boolean): Promise
   const client = existing ?? (await prisma.travelClient.create({ data: { storeId: store.id, fullName, phone, email } }));
 
   if (book) {
-    if (!pkg || !canPayOnline(pkg.currency) || pkg.depositPercent <= 0) return { success: false, error: "Online booking isn't available for this tour. Please send an enquiry instead." };
+    if (!pkg || pkg.depositPercent <= 0 || (await travelOnlinePaymentError(store.id, pkg.currency))) return { success: false, error: "Online booking isn't available for this tour. Please send an enquiry instead." };
   }
   const message = clean(input.message, 1000);
   const total = pkg ? Math.round(Number(pkg.pricePerPerson) * count * 100) / 100 : 0;

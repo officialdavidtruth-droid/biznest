@@ -6,7 +6,7 @@ import { toast } from "sonner";
 import { formatMoney } from "@/lib/utils/format-money";
 import {
   TRIP_STATUSES, TRIP_STATUS_LABEL, ITEM_KINDS, PAYMENT_METHODS, SUPPLIER_KINDS, VISA_STATUSES, VISA_STATUS_LABEL, VISA_TYPES,
-  daysUntil, passportWarning, type TripStatus,
+  daysUntil, passportWarning, canPayOnline, whatsappLink, type TripStatus,
 } from "@/lib/travel";
 import * as A from "@/lib/actions/travel";
 
@@ -180,6 +180,8 @@ function TripDetail({ slug, trip, data, money, pending, run, back, start }: { st
   const [trav, setTrav] = useState({ fullName: "", passportNo: "", passportExpiry: "" });
   const [price, setPrice] = useState(String(m.total));
   const [refund, setRefund] = useState<{ id: string; amount: string; reason: string } | null>(null);
+  const [day, setDay] = useState({ dayNumber: String(Math.max(0, ...trip.itineraryDays.map((d) => d.dayNumber)) + 1), title: "", description: "" });
+  const wa = whatsappLink(trip.client.phone, `Hi ${trip.client.fullName.split(" ")[0]}, here are the details for your trip: ${trip.title} (${trip.reference}).`);
   const next = TRIP_STATUSES.filter((s) => s !== trip.status && s !== "CANCELLED");
   return (
     <section className="space-y-4">
@@ -193,6 +195,7 @@ function TripDetail({ slug, trip, data, money, pending, run, back, start }: { st
           {([["quote", "Quote PDF"], ["invoice", "Invoice PDF"], ["itinerary", "Itinerary PDF"]] as const).map(([type, label]) => (
             <a key={type} className={btn2} href={`/api/store/${slug}/travel/${trip.id}/document?type=${type}`} target="_blank" rel="noopener noreferrer">{label}</a>
           ))}
+          {wa && <a className={btn2} href={wa} target="_blank" rel="noopener noreferrer" title="Opens a chat with the client. Download the PDF first, then attach it in WhatsApp.">WhatsApp client</a>}
         </div>
         {!closed && (
           <div className="flex flex-wrap items-center gap-2">
@@ -235,6 +238,31 @@ function TripDetail({ slug, trip, data, money, pending, run, back, start }: { st
         )}
       </div>
 
+      <div className={card}>
+        <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
+          <h3 className="text-sm font-bold">Itinerary (day by day)</h3>
+          {!closed && <button className={btn2} disabled={pending} onClick={() => run(async () => { const r = await A.generateTravelItineraryDays(slug, trip.id); if (r.success) toast.success(r.data.created ? `${r.data.created} day(s) added. Edit their titles.` : "All days already exist."); return r; })}>Generate days from trip dates</button>}
+        </div>
+        {trip.itineraryDays.map((d) => (
+          <div key={d.id} className="flex flex-wrap items-start justify-between gap-2 border-b py-2 text-sm last:border-0">
+            <div><b>Day {d.dayNumber}</b> · {d.title}{d.description && <div className="whitespace-pre-line text-xs text-muted-foreground">{d.description}</div>}</div>
+            {!closed && <div className="flex gap-1">
+              <button className={btn2} onClick={() => setDay({ dayNumber: String(d.dayNumber), title: d.title, description: d.description ?? "" })}>Edit</button>
+              <button className={`${btn2} text-red-600`} disabled={pending} onClick={() => run(() => A.removeTravelItineraryDay(slug, trip.id, d.id))}>Remove</button>
+            </div>}
+          </div>
+        ))}
+        {!trip.itineraryDays.length && <p className="text-sm text-muted-foreground">No days yet. The itinerary PDF uses these days and slots your dated services into the matching day.</p>}
+        {!closed && (
+          <div className="mt-3 grid gap-2 md:grid-cols-6">
+            <input type="number" min={1} max={120} className={inp} placeholder="Day" value={day.dayNumber} onChange={(e) => setDay({ ...day, dayNumber: e.target.value })} />
+            <input className={`${inp} md:col-span-5`} placeholder="Title, e.g. Desert safari and BBQ dinner" value={day.title} onChange={(e) => setDay({ ...day, title: e.target.value })} />
+            <textarea className={`${inp} md:col-span-6`} rows={3} placeholder="What happens this day (pickup times, meals, notes for the traveller)" value={day.description} onChange={(e) => setDay({ ...day, description: e.target.value })} />
+            <button className={`${btn} md:col-span-6`} disabled={pending || !day.title.trim()} onClick={() => run(() => A.saveTravelItineraryDay(slug, trip.id, { dayNumber: Number(day.dayNumber), title: day.title, description: day.description }), "Day saved", () => setDay({ dayNumber: String(Number(day.dayNumber) + 1), title: "", description: "" }))}>Save day (replaces that day number if it exists)</button>
+          </div>
+        )}
+      </div>
+
       <div className="grid gap-4 md:grid-cols-2">
         <div className={card}>
           <h3 className="mb-2 text-sm font-bold">Payments</h3>
@@ -249,6 +277,7 @@ function TripDetail({ slug, trip, data, money, pending, run, back, start }: { st
                     {refunded && <span className="ml-1 text-xs font-semibold text-red-600">{p.status === "REFUNDED" ? "fully refunded" : `${money(p.refundedAmount, trip.currency)} refunded`}</span>}
                     <div className="text-xs text-muted-foreground">{p.method}{p.reference ? ` · ${p.reference}` : ""}{refunded && p.refundReason ? ` · ${p.refundReason}` : ""}</div></div>
                   <div className="flex gap-1">
+                    {(p.status === "RECEIVED" || p.status === "REFUNDED") && <a className={btn2} href={`/api/store/${slug}/travel/${trip.id}/document?type=receipt&payment=${p.id}`} target="_blank" rel="noopener noreferrer">Receipt</a>}
                     {p.status === "DUE" && <button className={btn2} disabled={pending} onClick={() => run(() => A.markTravelPaymentReceived(slug, trip.id, p.id, { method: "TRANSFER" }), "Payment recorded")}>Mark paid</button>}
                     {canRefund && <button className={btn2} disabled={pending} onClick={() => setRefund(open ? null : { id: p.id, amount: String(p.amount), reason: "" })}>Refund</button>}
                     {p.status !== "REFUNDED" && !refunded && <button className={`${btn2} text-red-600`} disabled={pending} onClick={() => confirm("Void this payment? Use Refund instead if the money was actually received.") && run(() => A.voidTravelPayment(slug, trip.id, p.id))}>Void</button>}
@@ -284,7 +313,7 @@ function TripDetail({ slug, trip, data, money, pending, run, back, start }: { st
               <input type="date" className={inp} value={pay.dueDate} onChange={(e) => setPay({ ...pay, dueDate: e.target.value })} title="Due date (for instalments)" />
               <button className={btn} disabled={pending} onClick={() => run(() => A.recordTravelPayment(slug, trip.id, { amount: Number(pay.amount), method: pay.method, reference: pay.reference }), "Payment recorded", () => setPay({ ...pay, amount: "", reference: "" }))}>Record received</button>
               <button className={btn2} disabled={pending} onClick={() => run(() => A.recordTravelPayment(slug, trip.id, { amount: Number(pay.amount), method: pay.method, dueDate: pay.dueDate, scheduleOnly: true }), "Instalment scheduled", () => setPay({ ...pay, amount: "", dueDate: "" }))}>Schedule instalment</button>
-              {trip.currency === "NGN" && <button className={`${btn2} md:col-span-2`} disabled={pending} onClick={() => start(async () => { const r = await A.createTravelPaymentLink(slug, trip.id, Number(pay.amount)); if (!r.success) { toast.error(r.error); return; } try { await navigator.clipboard.writeText(r.data.url); toast.success("Payment link copied. Send it to the traveller."); } catch { window.prompt("Copy this payment link", r.data.url); } })}>Create online payment link for this amount</button>}
+              {canPayOnline(trip.currency) && <button className={`${btn2} md:col-span-2`} disabled={pending} onClick={() => start(async () => { const r = await A.createTravelPaymentLink(slug, trip.id, Number(pay.amount)); if (!r.success) { toast.error(r.error); return; } try { await navigator.clipboard.writeText(r.data.url); toast.success("Payment link copied. Send it to the traveller."); } catch { window.prompt("Copy this payment link", r.data.url); } })}>Create online payment link for this amount</button>}
             </div>
           )}
         </div>

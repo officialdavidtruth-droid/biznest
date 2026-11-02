@@ -4555,6 +4555,7 @@ model TravelTrip {
   items       TravelTripItem[]
   payments    TravelPayment[]
   gatewayPayments Payment[]
+  itineraryDays TravelItineraryDay[]
 
   @@unique([storeId, reference])
   @@index([storeId, status])
@@ -4618,6 +4619,20 @@ model TravelPayment {
 
   @@unique([tripId, reference])
   @@index([tripId, status])
+}
+
+// Hand-written day-by-day programme shown on the client itinerary PDF (dated service lines are merged in by date).
+model TravelItineraryDay {
+  id          String   @id @default(cuid())
+  tripId      String
+  trip        TravelTrip @relation(fields: [tripId], references: [id], onDelete: Cascade)
+  dayNumber   Int
+  title       String
+  description String?  @db.Text
+  createdAt   DateTime @default(now())
+
+  @@unique([tripId, dayNumber])
+  @@index([tripId])
 }
 
 model TravelVisaCase {

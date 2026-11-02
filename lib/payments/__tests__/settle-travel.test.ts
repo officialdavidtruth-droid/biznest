@@ -53,6 +53,20 @@ describe("settleTravelPayment", () => {
     expect(m.payout).not.toHaveBeenCalled();
   });
 
+  it("refuses a currency mismatch, and any non-NGN payment the gateway did not confirm a currency for", async () => {
+    m.paymentFind.mockResolvedValue(payment({ currency: "USD", amount: "500" }));
+    expect(await settleTravelPayment("TVL-trip1-abc", "PAYSTACK", 500, {}, "NGN")).toEqual({ success: false, error: "Payment currency mismatch." });
+    expect(await settleTravelPayment("TVL-trip1-abc", "PAYSTACK", 500, {})).toEqual({ success: false, error: "Payment currency mismatch." });
+    expect(m.tx.payment.updateMany).not.toHaveBeenCalled();
+  });
+
+  it("settles a USD payment when the gateway confirms USD", async () => {
+    m.paymentFind.mockResolvedValue(payment({ currency: "USD", amount: "500" }));
+    const r = await settleTravelPayment("TVL-trip1-abc", "PAYSTACK", 500, {}, "usd");
+    expect(r.success).toBe(true);
+    expect(m.tx.travelPayment.create.mock.calls[0][0].data).toMatchObject({ amount: "500", status: "RECEIVED" });
+  });
+
   it("accepts an overpayment (gateway fee on top) but records the agreed amount on the trip", async () => {
     m.paymentFind.mockResolvedValue(payment());
     const r = await settleTravelPayment("TVL-trip1-abc", "PAYSTACK", 61250, { fee: true });

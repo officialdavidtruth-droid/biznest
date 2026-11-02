@@ -132,6 +132,8 @@ export async function queuePayoutForPayment(reference: string): Promise<{ payout
   if (!(PAYOUT_PURPOSES as readonly string[]).includes(payment.purpose)) return { skipped: "not a vendor payment" };
   if (payment.splitSubaccountCode) return { skipped: "already split to the vendor by the gateway" };
   if (payment.provider === "CASH") return { skipped: "settled outside the platform" };
+  // Transfers are NGN. Never send a USD/GBP/... amount out as Naira; such money should only exist on a store's own gateway.
+  if (String(payment.currency ?? "NGN").toUpperCase() !== "NGN") return { skipped: "payment is not in NGN; settle with the store manually" };
 
   const gross = roundMoney(Number(payment.amount) - Number(payment.order?.commission ?? 0));
   // A wallet payment has no gateway fee of its own: the gateway took it when the

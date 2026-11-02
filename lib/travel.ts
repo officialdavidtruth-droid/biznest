@@ -114,5 +114,39 @@ export function depositFor(total: number, percent: number): number {
   return Math.min(total, Math.ceil((total * pct) / 100));
 }
 
-/** Gateways here charge in Naira only; other currencies stay enquiry-only. */
-export const canPayOnline = (currency: string) => currency.toUpperCase() === "NGN";
+/**
+ * Currencies each gateway can charge. BizNest's own gateway accounts settle in NGN only; any other
+ * currency is charged on the store's OWN Paystack/Flutterwave keys, so the money lands in the agency's
+ * account and BizNest never holds or converts it. Add a code here once that gateway account supports it.
+ */
+export const GATEWAY_CURRENCIES = {
+  PAYSTACK: ["NGN", "USD", "GHS", "ZAR", "KES"],
+  FLUTTERWAVE: ["NGN", "USD", "GBP", "EUR", "GHS", "KES", "ZAR"],
+  KORAPAY: ["NGN"],
+} as const;
+export type OnlineGateway = keyof typeof GATEWAY_CURRENCIES;
+
+/** True when online payment can exist for this currency at all (NGN anywhere, others only on a store's own gateway). */
+export const canPayOnline = (currency: string) => {
+  const c = String(currency ?? "").toUpperCase();
+  return c === "NGN" || Object.values(GATEWAY_CURRENCIES).some((list) => (list as readonly string[]).includes(c));
+};
+
+/** Exact check once the gateway is known. Returns an error message, or null when the gateway can charge it. */
+export function gatewayCurrencyError(currency: string, gateway: OnlineGateway): string | null {
+  const c = String(currency ?? "").toUpperCase();
+  return (GATEWAY_CURRENCIES[gateway] as readonly string[]).includes(c) ? null : `${gateway.charAt(0)}${gateway.slice(1).toLowerCase()} can't charge ${c} here.`;
+}
+
+/**
+ * wa.me chat link for a client's phone, with an optional prefilled message. Nigerian local numbers
+ * (0801...) are converted to 234801.... Returns null when the number is too short to be real.
+ * WhatsApp links can't attach files: staff download the PDF and attach it in the chat.
+ */
+export function whatsappLink(phone: string | null | undefined, text?: string): string | null {
+  let digits = String(phone ?? "").replace(/\D/g, "");
+  if (digits.startsWith("00")) digits = digits.slice(2);
+  else if (digits.length === 11 && digits.startsWith("0")) digits = `234${digits.slice(1)}`;
+  if (digits.length < 8 || digits.length > 15) return null;
+  return `https://wa.me/${digits}${text ? `?text=${encodeURIComponent(text)}` : ""}`;
+}

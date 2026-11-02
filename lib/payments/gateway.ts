@@ -17,7 +17,9 @@ export type PaymentGatewayId = "PAYSTACK" | "FLUTTERWAVE" | "KORAPAY";
 
 type ChargeParams = {
   email: string;
-  amountNaira: number; // always pass the real-world Naira amount; each adapter converts as needed
+  amountNaira: number; // the amount in `currency` (major units); named for its NGN origin. Each adapter converts as needed
+  /** ISO code. Defaults to NGN. Anything else is only allowed on a store's own gateway keys. */
+  currency?: string;
   reference: string;
   callbackUrl: string;
   customerName?: string;
@@ -93,6 +95,9 @@ export async function chargeCustomer(params: ChargeParams): Promise<ChargeResult
   }
   const usesStoreGateway = Boolean(own);
   const gateway = own?.provider ?? params.gateway ?? (await getActiveGateway());
+  const currency = (params.currency ?? "NGN").toUpperCase();
+  // The platform's gateway accounts settle in NGN. Never charge another currency into them.
+  if (currency !== "NGN" && !own) return { success: false, error: `Online payment in ${currency} needs the store's own Paystack or Flutterwave keys.` };
 
   if (gateway === "KORAPAY") {
     // In-page popup when the caller asked for it and a Kora public key is configured
@@ -161,6 +166,7 @@ export async function chargeCustomer(params: ChargeParams): Promise<ChargeResult
       callbackUrl: params.callbackUrl,
       customerName: params.customerName,
       secretKey: own?.secretKey,
+      currency,
     });
     if (init.status !== "success" || !init.data) {
       void logError("PAYMENTS", "Flutterwave charge init failed", { reference: params.reference, message: init.message });
@@ -181,6 +187,7 @@ export async function chargeCustomer(params: ChargeParams): Promise<ChargeResult
     reference: params.reference,
     callbackUrl: params.callbackUrl,
     secretKey: own?.secretKey,
+    currency,
   });
   if (!init.status || !init.data) {
     void logError("PAYMENTS", "Paystack charge init failed", { reference: params.reference, message: init.message });

@@ -57,3 +57,25 @@ describe("buildTravelDocumentPdf", () => {
     expect(await pageCount(bytes)).toBeGreaterThan(1);
   });
 });
+
+describe("receipt and builder itinerary", () => {
+  const rp = { number: "RCT-ABC123", amount: 500_000, method: "TRANSFER", paidAt: d("2026-11-01"), reference: "TRF-1" };
+  it("renders a one-page receipt, with and without a refund", async () => {
+    const a = await buildTravelDocumentPdf(base({ kind: "receipt", receiptPayment: rp }));
+    expect(Buffer.from(a.slice(0, 5)).toString()).toBe("%PDF-");
+    expect(await pageCount(a)).toBe(1);
+    const b = await buildTravelDocumentPdf(base({ kind: "receipt", receiptPayment: { ...rp, refundedAmount: 100_000 } }));
+    expect(await pageCount(b)).toBe(1);
+  });
+  it("renders an itinerary from hand-written days and merges dated lines by date", async () => {
+    const bytes = await buildTravelDocumentPdf(base({
+      kind: "itinerary",
+      itineraryDays: [{ dayNumber: 2, title: "City tour", description: "Pickup 8am.\nLunch included." }, { dayNumber: 1, title: "Arrival", description: null }],
+    }));
+    expect(await pageCount(bytes)).toBeGreaterThanOrEqual(1);
+  });
+  it("paginates a long builder itinerary", async () => {
+    const itineraryDays = Array.from({ length: 40 }, (_, i) => ({ dayNumber: i + 1, title: `Day ${i + 1} programme`, description: "Breakfast at the hotel. ".repeat(12) }));
+    expect(await pageCount(await buildTravelDocumentPdf(base({ kind: "itinerary", itineraryDays })))).toBeGreaterThan(1);
+  });
+});

@@ -12,6 +12,8 @@ type InitializeParams = {
   customerName?: string;
   /** A store's own secret key (bring-your-own gateway). Omit to use the platform's. */
   secretKey?: string | null;
+  /** ISO code. Defaults to NGN. */
+  currency?: string;
 };
 
 type InitializeResponse = {
@@ -23,7 +25,7 @@ type InitializeResponse = {
 type VerifyResponse = {
   status: "success" | "error";
   message: string;
-  data?: { status: "successful" | "failed" | "pending"; tx_ref: string; amount: number };
+  data?: { status: "successful" | "failed" | "pending"; tx_ref: string; amount: number; currency?: string };
 };
 
 export async function initializeFlutterwaveTransaction(params: InitializeParams): Promise<InitializeResponse> {
@@ -41,7 +43,7 @@ export async function initializeFlutterwaveTransaction(params: InitializeParams)
     body: JSON.stringify({
       tx_ref: params.reference,
       amount: params.amountNaira,
-      currency: "NGN",
+      currency: (params.currency ?? "NGN").toUpperCase(),
       redirect_url: params.callbackUrl,
       customer: { email: params.email, name: params.customerName ?? params.email },
       ...(params.subaccountId ? { subaccounts: [{ id: params.subaccountId }] } : {}),

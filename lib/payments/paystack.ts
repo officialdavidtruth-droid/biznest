@@ -27,6 +27,8 @@ type InitializeParams = {
   channels?: PaystackChannel[];
   /** A store's own secret key (bring-your-own gateway). Omit to use the platform's. */
   secretKey?: string | null;
+  /** ISO code; omitted = the Paystack account's default (NGN). amountKobo is then in that currency's minor unit. */
+  currency?: string;
 };
 
 type InitializeResponse = {
@@ -82,6 +84,7 @@ export async function initializePaystackTransaction(params: InitializeParams): P
       amount: params.amountKobo,
       reference: params.reference,
       callback_url: params.callbackUrl,
+      ...(params.currency && params.currency.toUpperCase() !== "NGN" ? { currency: params.currency.toUpperCase() } : {}),
       ...(channels ? { channels } : {}),
       ...(params.subaccountCode
         ? {

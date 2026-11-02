@@ -209,7 +209,7 @@ export async function POST(req: Request) {
 
   if (reference.startsWith("TVL-")) {
     const amount = verification.data ? Number(verification.data.amount) / 100 : 0;
-    const result = await settleTravelPayment(reference, "PAYSTACK", amount, verification as object);
+    const result = await settleTravelPayment(reference, "PAYSTACK", amount, verification as object, verification.data?.currency);
     if (!result.success) await flagPaymentForReview(reference, `Paystack verified success but travel settlement refused: ${result.error}`, verification);
     return NextResponse.json({ received: true });
   }

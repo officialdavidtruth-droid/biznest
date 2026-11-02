@@ -102,7 +102,7 @@ export async function POST(req: Request) {
     return NextResponse.json({ received: true });
   }
   if (reference.startsWith("TVL-")) {
-    await settleTravelPayment(reference, "KORAPAY", amount, verification as object);
+    await settleTravelPayment(reference, "KORAPAY", amount, verification as object, verification.data?.currency);
     return NextResponse.json({ received: true });
   }
   if (reference.startsWith("RES-")) {

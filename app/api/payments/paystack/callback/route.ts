@@ -134,7 +134,7 @@ export async function GET(req: Request) {
     const verification = await verifyPaystackTransaction(reference, storeSecretKey);
     const amount = verification.data ? Number(verification.data.amount) / 100 : 0;
     if (verification.status && verification.data?.status === "success") {
-      const result = await settleTravelPayment(reference, "PAYSTACK", amount, verification as object);
+      const result = await settleTravelPayment(reference, "PAYSTACK", amount, verification as object, verification.data?.currency);
       if (result.success) return NextResponse.redirect(`${APP_URL}/store/${result.data.storeSlug}/travel/${reference}?payment=success`);
       await flagPaymentForReview(reference, `Paystack verified success but travel settlement refused: ${result.error}`, verification);
     }

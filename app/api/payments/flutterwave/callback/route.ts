@@ -115,7 +115,7 @@ export async function GET(req: Request) {
     const verification = await verifyBound(transactionId, txRef);
     const amount = verification.data ? Number(verification.data.amount) : 0;
     if (verification.status === "success" && verification.data?.status === "successful") {
-      const result = await settleTravelPayment(txRef, "FLUTTERWAVE", amount, verification as object);
+      const result = await settleTravelPayment(txRef, "FLUTTERWAVE", amount, verification as object, verification.data?.currency);
       if (result.success) return NextResponse.redirect(`${APP_URL}/store/${result.data.storeSlug}/travel/${txRef}?payment=success`);
     }
     return NextResponse.redirect(`${APP_URL}/?payment=failed`);

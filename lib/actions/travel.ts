@@ -6,12 +6,12 @@ import { assertStorePermission } from "@/lib/access/assert-store-access";
 import { getPluginEntitlement } from "@/lib/plugins";
 import { getCanonicalBusinessType } from "@/lib/business-identity";
 import type { ActionResult } from "@/types/actions";
-import { startTravelCharge } from "@/lib/payments/travel-charge";
+import { startTravelCharge, travelOnlinePaymentError } from "@/lib/payments/travel-charge";
 import { refundTravelPayment } from "@/lib/payments/refund-travel";
 import { auth } from "@/lib/auth";
 import {
   TRAVEL_PLUGIN_KEY, TRAVEL_BUSINESS_TYPE, TRIP_STATUSES, ITEM_KINDS, ITEM_STATUSES, PAYMENT_METHODS,
-  SUPPLIER_KINDS, SEAT_HOLDING_STATUSES, VISA_STATUSES, VISA_TYPES, DEFAULT_VISA_CHECKLIST, canPayOnline, canMoveTrip, newTripReference, tripMoney,
+  SUPPLIER_KINDS, SEAT_HOLDING_STATUSES, VISA_STATUSES, VISA_TYPES, DEFAULT_VISA_CHECKLIST, canMoveTrip, newTripReference, tripMoney,
   type TripStatus,
 } from "@/lib/travel";
 
@@ -64,7 +64,7 @@ export async function getTravelDashboard(slug: string) {
   const [trips, clients, suppliers, packages, visas] = await Promise.all([
     prisma.travelTrip.findMany({
       where: { storeId }, orderBy: { createdAt: "desc" }, take: 300,
-      include: { client: { select: { id: true, fullName: true, phone: true, email: true } }, travellers: true, items: { orderBy: { createdAt: "asc" }, include: { supplier: { select: { name: true } } } }, payments: { orderBy: { createdAt: "desc" } } },
+      include: { client: { select: { id: true, fullName: true, phone: true, email: true } }, travellers: true, items: { orderBy: { createdAt: "asc" }, include: { supplier: { select: { name: true } } } }, payments: { orderBy: { createdAt: "desc" } }, itineraryDays: { orderBy: { dayNumber: "asc" } } },
     }),
     prisma.travelClient.findMany({ where: { storeId }, orderBy: { fullName: "asc" }, take: 500, include: { _count: { select: { trips: true } } } }),
     prisma.travelSupplier.findMany({ where: { storeId, isArchived: false }, orderBy: { name: "asc" }, take: 200 }),
@@ -81,6 +81,7 @@ export async function getTravelDashboard(slug: string) {
       client: t.client, money: m,
       travellers: t.travellers.map((x) => ({ id: x.id, fullName: x.fullName, passportNo: x.passportNo, passportExpiry: x.passportExpiry?.toISOString() ?? null, nationality: x.nationality, isLead: x.isLead })),
       items: t.items.map((i) => ({ id: i.id, kind: i.kind, description: i.description, status: i.status, confirmationRef: i.confirmationRef, startDate: i.startDate?.toISOString() ?? null, endDate: i.endDate?.toISOString() ?? null, supplierId: i.supplierId, supplierName: i.supplier?.name ?? null, costPrice: Number(i.costPrice), sellPrice: Number(i.sellPrice) })),
+      itineraryDays: t.itineraryDays.map((d) => ({ id: d.id, dayNumber: d.dayNumber, title: d.title, description: d.description })),
       payments: t.payments.map((p) => ({ id: p.id, amount: Number(p.amount), refundedAmount: Number(p.refundedAmount), refundedAt: p.refundedAt?.toISOString() ?? null, refundReason: p.refundReason, method: p.method, status: p.status, dueDate: p.dueDate?.toISOString() ?? null, paidAt: p.paidAt?.toISOString() ?? null, reference: p.reference, note: p.note })),
     };
   });
@@ -267,6 +268,45 @@ export async function removeTravelItem(slug: string, tripId: string, itemId: str
   refresh(slug); return { success: true, data: undefined };
 }
 
+// ---------------------------------------------------------------- day-by-day itinerary
+
+export async function saveTravelItineraryDay(slug: string, tripId: string, input: { dayNumber: number; title: string; description?: string }): Promise<ActionResult> {
+  const a = await access(slug); if (!a.success) return fail(a.error);
+  const trip = await ownTrip(a, tripId); if (!trip) return fail("Trip not found.");
+  if (["COMPLETED", "CANCELLED"].includes(trip.status)) return fail("This trip is closed.");
+  const dayNumber = Math.floor(Number(input.dayNumber));
+  if (!Number.isFinite(dayNumber) || dayNumber < 1 || dayNumber > 120) return fail("Day number must be between 1 and 120.");
+  const title = str(input.title, 120); if (!title) return fail("Give the day a title (e.g. Arrival and city tour).");
+  const description = optStr(input.description, 2000);
+  await prisma.travelItineraryDay.upsert({ where: { tripId_dayNumber: { tripId: trip.id, dayNumber } }, create: { tripId: trip.id, dayNumber, title, description }, update: { title, description } });
+  refresh(slug); return { success: true, data: undefined };
+}
+
+export async function removeTravelItineraryDay(slug: string, tripId: string, dayId: string): Promise<ActionResult> {
+  const a = await access(slug); if (!a.success) return fail(a.error);
+  const trip = await ownTrip(a, tripId); if (!trip) return fail("Trip not found.");
+  if (["COMPLETED", "CANCELLED"].includes(trip.status)) return fail("This trip is closed.");
+  await prisma.travelItineraryDay.deleteMany({ where: { id: dayId, tripId: trip.id } });
+  refresh(slug); return { success: true, data: undefined };
+}
+
+/** Adds any missing days between the trip's depart and return dates (existing days are never overwritten). */
+export async function generateTravelItineraryDays(slug: string, tripId: string): Promise<ActionResult<{ created: number }>> {
+  const a = await access(slug); if (!a.success) return fail(a.error);
+  const trip = await prisma.travelTrip.findFirst({ where: { id: tripId, storeId: a.store.id }, select: { id: true, status: true, departDate: true, returnDate: true } });
+  if (!trip) return fail("Trip not found.");
+  if (["COMPLETED", "CANCELLED"].includes(trip.status)) return fail("This trip is closed.");
+  if (!trip.departDate || !trip.returnDate) return fail("Set the depart and return dates first.");
+  const n = Math.round((trip.returnDate.getTime() - trip.departDate.getTime()) / 86_400_000) + 1;
+  if (!(n >= 1)) return fail("The return date can't be before the departure date.");
+  const days = Math.min(n, 60);
+  const r = await prisma.travelItineraryDay.createMany({
+    data: Array.from({ length: days }, (_, i) => ({ tripId: trip.id, dayNumber: i + 1, title: days === 1 ? "Day trip" : i === 0 ? "Arrival" : i === days - 1 ? "Departure" : "At leisure" })),
+    skipDuplicates: true,
+  });
+  refresh(slug); return { success: true, data: { created: r.count } };
+}
+
 // ---------------------------------------------------------------- payments
 
 export async function recordTravelPayment(slug: string, tripId: string, input: { amount: number; method: string; reference?: string; note?: string; dueDate?: string; scheduleOnly?: boolean }): Promise<ActionResult> {
@@ -401,7 +441,8 @@ export async function createTravelPaymentLink(slug: string, tripId: string, amou
   const trip = await prisma.travelTrip.findFirst({ where: { id: tripId, storeId: a.store.id }, include: { payments: true, client: true } });
   if (!trip) return fail("Trip not found.");
   if (["CANCELLED", "COMPLETED"].includes(trip.status)) return fail("This trip is closed.");
-  if (!canPayOnline(trip.currency)) return fail("Online payment links are only available for trips priced in NGN.");
+  const unavailable = await travelOnlinePaymentError(a.store.id, trip.currency);
+  if (unavailable) return fail(unavailable);
   const m = tripMoney(trip, trip.payments);
   if (!(m.total > 0)) return fail("Set a price before requesting payment.");
   const amt = money(amount);
