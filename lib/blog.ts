@@ -8,7 +8,7 @@ export type BlogStatus = (typeof BLOG_STATUSES)[number];
 /** Business types that publish content to attract customers. Super admin can widen this in /supaadmin/apps. */
 export const BLOG_BUSINESS_TYPES = [
   "Travel & Tourism", "Real Estate", "Professional Services", "Agency", "Software Development", "Photography",
-  "Health", "Health & Fitness", "Beauty", "Salon", "Event Planning", "Church", "Construction", "Automotive", "Agriculture",
+  "Health", "Health & Fitness", "Beauty", "Salon", "Event Planning", "Church", "Construction", "Automotive", "Agriculture", "HR & Recruitment",
 ];
 
 export const BLOG_PAGE_SIZE = 9;

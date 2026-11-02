@@ -292,6 +292,11 @@ const IDEAS: Partial<Record<CanonicalBusinessType, IdeaSeed[]>> = {
     s("Interstate Parcel Delivery", "Reliable parcel delivery to major cities across Nigeria.", 8000),
     s("Bulk Cargo Pickup", "Pickup and transport of larger loads, priced by size.", 25000),
   ],
+  "HR & Recruitment": [
+    s("Permanent Placement", "We source, screen and shortlist candidates for your open role.", 250000),
+    s("HR Policy & Handbook Review", "A review of your HR policies with clear recommendations.", 150000),
+    s("Monthly Payroll Processing", "Accurate monthly payroll, payslips and statutory deductions.", 100000),
+  ],
 };
 
 const GENERIC_PRODUCTS: IdeaSeed[] = [

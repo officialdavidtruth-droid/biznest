@@ -231,7 +231,7 @@ export const PLUGIN_CATALOG: PluginSeed[] = [
     icon: "Newspaper",
     price: 0,
     isFree: true,
-    eligibleBusinessTypes: ["Travel & Tourism", "Real Estate", "Professional Services", "Agency", "Software Development", "Photography", "Health", "Health & Fitness", "Beauty", "Salon", "Event Planning", "Church", "Construction", "Automotive", "Agriculture"],
+    eligibleBusinessTypes: ["Travel & Tourism", "Real Estate", "Professional Services", "Agency", "Software Development", "Photography", "Health", "Health & Fitness", "Beauty", "Salon", "Event Planning", "Church", "Construction", "Automotive", "Agriculture", "HR & Recruitment"],
     sortOrder: 128,
     plans: ["Growth Store", "Business Mogul"],
   },

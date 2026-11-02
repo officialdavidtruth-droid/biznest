@@ -37,7 +37,7 @@ import { canonicalizeBusinessType } from "@/lib/business-identity";
 import {
   Shirt, Cpu, Utensils, Sparkles, Sofa, HeartPulse, Briefcase, Car, Tractor,
   Store as StoreIcon, Truck, CalendarClock, Wrench, Building2, Camera, Hotel,
-  Code, PartyPopper, Package, Plane,
+  Code, PartyPopper, Package, Plane, Users,
 } from "lucide-react";
 
 /**
@@ -187,6 +187,10 @@ const CATEGORY_PRESETS: Record<string, DefaultCategoryConfig[]> = {
   "Software Development": [{ name: "Software Services", type: "SERVICE", subcategories: ["Web Development", "Mobile Apps", "APIs", "Consulting"] }],
   "Event Planning": [{ name: "Event Services", type: "SERVICE", subcategories: ["Weddings", "Corporate", "Birthdays", "Coordination"] }],
   "Logistics": [{ name: "Logistics", type: "SERVICE", subcategories: ["Same Day", "Interstate", "Business Delivery"] }],
+  "HR & Recruitment": [
+    { name: "Recruitment & Staffing", type: "SERVICE", subcategories: ["Permanent Placement", "Temporary & Contract Staffing", "Executive Search", "Bulk Hiring"] },
+    { name: "HR Services", type: "SERVICE", subcategories: ["HR Consulting", "Payroll Outsourcing", "Policy & Compliance", "Training & Development"] },
+  ],
   "Travel & Tourism": [
     { name: "Flights & Tickets", type: "SERVICE", subcategories: ["Domestic Flights", "International Flights", "Group Tickets"] },
     { name: "Holiday Packages", type: "SERVICE", subcategories: ["Local Getaways", "International Tours", "Honeymoon", "Group Tours"] },
@@ -465,6 +469,21 @@ export const BUSINESS_TYPES: Record<string, BusinessTypeConfig> = {
       { label: "Manage bookings", href: "/orders" },
     ],
     extraNavItems: [{ label: "Bookings", href: "/calendar", icon: CalendarClock }],
+  },
+  "HR & Recruitment": {
+    icon: Users,
+    tagline: "Recruitment and HR services storefront",
+    capabilities: ["services", "bookings", "packages", "reviews"],
+    defaultCategories: defaultCategoriesFor("HR & Recruitment", ["services", "bookings", "packages", "reviews"]),
+    navigation: navigationFor("HR & Recruitment", ["services", "bookings", "packages", "reviews"]),
+    homepageSections: homepageFor("HR & Recruitment", ["services", "bookings", "packages", "reviews"]),
+    quickActions: [
+      { label: "Add a service", href: "/services/new" },
+      { label: "Create a quote", href: "/quotes" },
+      { label: "Open HR & Payroll", href: "/apps/hr-payroll" },
+      { label: "Manage consultations", href: "/orders" },
+    ],
+    extraNavItems: [{ label: "HR & Payroll", href: "/apps/hr-payroll", icon: Users }, { label: "Bookings", href: "/calendar", icon: CalendarClock }],
   },
   "Church": {
     icon: Building2,

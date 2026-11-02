@@ -3,7 +3,7 @@ import type { LucideIcon } from "lucide-react";
 import {
   Activity, BarChart3, BedDouble, BriefcaseBusiness, CalendarDays, Camera, Car, ClipboardList,
   CreditCard, FileSignature, Image, LayoutDashboard, Megaphone, Package, Receipt, Settings,
-  ShoppingBag, Sparkles, Star, Truck, Users, Utensils, Wrench, Boxes, Building2, ChefHat,
+  ShoppingBag, Sparkles, Star, Truck, Users, Utensils, Wrench, Boxes, Building2, ChefHat, Scissors,
 } from "lucide-react";
 import { getBusinessTypeConfig, type Capability } from "@/lib/capabilities";
 import { getSpecialtyProfile, type SpecialtyModuleId } from "@/lib/specialty-profiles";
@@ -66,6 +66,9 @@ const core = {
   delivery: { id: "delivery", label: "Delivery", href: "/delivery", icon: Truck },
   settings: { id: "settings", label: "Settings", href: "/settings", icon: Settings },
   pms: { id: "pms", label: "BizNest PMS", href: "/pms", icon: BedDouble },
+  tailoring: { id: "tailoring", label: "Tailoring", href: "/fashion", icon: Scissors },
+  // Quick-action only (installed HR & Payroll already lists itself under Installed Apps).
+  hr: { id: "hr", label: "HR & Payroll", href: "/apps/hr-payroll", icon: Users, permission: "hr" },
 };
 
 const commerceKpis: DashboardKpi[] = [
@@ -105,6 +108,7 @@ const CATEGORY_OVERRIDES: Record<string, Omit<Partial<AdaptiveDashboardConfig>, 
   "Home & Furniture": { label: "Furniture Operations", primaryEntity: "Order", terminology: { customer: "Customer", transaction: "Order", catalog: "Products" }, quickActions: [core.products, core.orders, core.inventory, core.delivery] },
   Agriculture: { label: "Agriculture Operations", primaryEntity: "Order", terminology: { customer: "Customer", transaction: "Order", catalog: "Products" }, quickActions: [core.products, core.orders, core.inventory, core.delivery] },
   Electronics: { label: "Electronics Operations", primaryEntity: "Order", terminology: { customer: "Customer", transaction: "Order", catalog: "Products" }, quickActions: [core.products, core.orders, core.inventory, core.customers] },
+  "HR & Recruitment": { label: "Recruitment & HR Operations", primaryEntity: "Engagement", terminology: { customer: "Client", transaction: "Engagement", catalog: "Services" }, quickActions: [core.services, core.quotes, core.hr, core.customers], widgets: [{ id: "engagements", title: "Client pipeline", description: "Follow client requests, quotes and active engagements from first call to placement.", href: "/quotes", type: "operations" }] },
   Fashion: { label: "Fashion Operations", primaryEntity: "Order", terminology: { customer: "Customer", transaction: "Order", catalog: "Collections" }, quickActions: [core.products, core.orders, core.inventory, core.marketing] },
 };
 
@@ -147,6 +151,8 @@ export function getAdaptiveDashboardConfig(category?: string | null, subcategory
   if (caps.has("reviews")) modules.push(core.reviews);
   if (caps.has("packages")) modules.push(core.services);
   if (caps.has("pms")) modules.push(core.pms);
+  // Made-to-measure jobs: for fashion stores with no specialty chosen yet, or a tailoring/bespoke one.
+  if (configLabel(category) === "Fashion" && (!subcategory || /tailor|bespoke/i.test(subcategory))) modules.push(core.tailoring);
   const categoryProfile = CATEGORY_OVERRIDES[configLabel(category)] ?? {};
   const specialtyOverride = subcategoryProfile(configLabel(category), subcategory);
   // Specialty wins on labels/actions, but both sets of widgets are kept.

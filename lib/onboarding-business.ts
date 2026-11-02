@@ -13,6 +13,7 @@ import {
   Truck,
   Wrench,
   Briefcase,
+  Users,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { getProfessionalServiceSubNicheByName } from "@/lib/professional-services";
@@ -242,6 +243,16 @@ const PLANS: Record<string, Partial<BusinessOnboardingPlan>> = {
       { key: "serviceArea", label: "Coverage area", placeholder: "e.g. Lagos, Abuja and interstate" },
     ],
     recommendations: ["Define service zones", "Explain delivery timelines", "Make quote requests easy"],
+  },
+  "HR & Recruitment": {
+    icon: Users,
+    eyebrow: "Recruitment & HR setup",
+    title: "Make it easy for employers to work with you",
+    fields: [
+      { key: "serviceFocus", label: "Services you offer", placeholder: "e.g. permanent placement, temporary staffing, HR consulting" },
+      { key: "clientType", label: "Who you serve", placeholder: "e.g. SMEs, banks, NGOs, startups" },
+    ],
+    recommendations: ["List your placement and HR packages", "Explain your hiring process and timelines", "Add a request-a-quote call to action"],
   },
 };
 

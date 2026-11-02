@@ -3529,6 +3529,7 @@ model TailoringJob {
   store       Store    @relation(fields: [storeId], references: [id], onDelete: Cascade)
   jobNo       String
   customerName String
+  customerPhone String?
   garmentType String
   stage       String   @default("MEASUREMENTS")
   dueDate     DateTime?
@@ -4170,6 +4171,7 @@ model HrEmployee {
   housingAllowance Decimal            @db.Decimal(14,2) @default(0)
   transportAllowance Decimal          @db.Decimal(14,2) @default(0)
   otherAllowance  Decimal            @db.Decimal(14,2) @default(0)
+  annualRent      Decimal            @db.Decimal(14,2) @default(0)
   bankName        String?
   accountName     String?
   accountNumber   String?

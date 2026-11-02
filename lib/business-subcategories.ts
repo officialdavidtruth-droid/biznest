@@ -249,6 +249,17 @@ export const BUSINESS_SUBCATEGORIES: Record<string, SubcategoryConfig> = {
       o("Car Hire & Transfers", "Airport pickups, chauffeur and vehicle hire.", "airport transfer, chauffeur, car hire", "List vehicles with rates", "State pickup areas and times", "Add a booking request form"),
     ],
   },
+  "HR & Recruitment": {
+    label: "HR specialty",
+    options: [
+      o("Recruitment & Staffing", "Find, screen and place permanent staff for employers.", "permanent hires, shortlisting, candidate screening", "List the roles and industries you recruit for", "Explain your screening and placement process", "State your replacement guarantee period"),
+      o("Temporary & Contract Staffing", "Supply short-term, contract and seasonal workers.", "temps, contract staff, seasonal workers", "Show lead times for supplying staff", "Explain rates and how you handle payroll", "Add a request-staff form"),
+      o("Executive Search", "Confidential search for senior and specialist roles.", "C-suite, directors, senior managers", "Describe your search method and discretion", "Show sectors and seniority you cover", "Make enquiries private and simple"),
+      o("HR Consulting", "Policies, handbooks, compliance and people-strategy advice.", "HR policies, handbooks, compliance reviews", "Package audits and policy reviews", "Show sample deliverables", "Add a consultation booking option"),
+      o("Payroll & HR Outsourcing", "Run payroll, records and HR admin for other businesses.", "monthly payroll, payslips, statutory remittances", "Price by headcount or monthly plan", "Explain what you handle and what you need", "Show your data-security approach"),
+      o("Training & Development", "Workshops and programmes that build staff skills.", "workshops, onboarding programmes, leadership training", "List programmes with duration and format", "Show upcoming sessions", "Offer in-house and group options"),
+    ],
+  },
   "Church": {
     label: "Type of ministry",
     options: [

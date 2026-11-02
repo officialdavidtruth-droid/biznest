@@ -33,6 +33,7 @@ const CATALOG_TERMS: Record<string, { customer: string; transaction: string; cat
   "Real Estate": { customer: "Client", transaction: "Enquiry", catalog: "Properties" },
   Construction: { customer: "Client", transaction: "Project", catalog: "Services" },
   Logistics: { customer: "Client", transaction: "Delivery", catalog: "Services" },
+  "HR & Recruitment": { customer: "Client", transaction: "Engagement", catalog: "Services" },
   Automotive: { customer: "Customer", transaction: "Job", catalog: "Parts & Services" },
   "Event Planning": { customer: "Client", transaction: "Event", catalog: "Packages" },
   "Travel & Tourism": { customer: "Traveller", transaction: "Trip", catalog: "Packages" },

@@ -5,7 +5,7 @@ import { getPluginEntitlement } from "@/lib/plugins";
 import { getHrDashboard } from "@/lib/actions/hr-payroll";
 import { HrPayrollWorkspace } from "@/components/dashboard/hr-payroll-workspace";
 import { auth } from "@/lib/auth";
-import { assertStorePermission } from "@/lib/access/assert-store-access";
+import { assertAnyStorePermission } from "@/lib/access/assert-store-access";
 import { PluginInstallGate } from "@/components/dashboard/plugin-install-gate";
 
 export default async function HrPayrollPage({ params }: { params: Promise<{ slug: string }> }) {
@@ -14,7 +14,7 @@ export default async function HrPayrollPage({ params }: { params: Promise<{ slug
   // navigation redirect (to sign-in), not the "app not installed" case below.
   const session = await auth();
   if (!session?.user?.id) redirect(`/login?callbackUrl=/store/${slug}/admin/apps/hr-payroll`);
-  const access = await assertStorePermission(slug, "hr");
+  const access = await assertAnyStorePermission(slug, ["hr", "plugin:hr-payroll"]);
   if (!access.success) return <PluginInstallGate slug={slug} title="HR & Payroll" message={access.error} icon={BriefcaseBusiness} />;
   const store = await prisma.store.findUnique({ where: { slug }, select: { id: true } });
   if (!store) notFound();

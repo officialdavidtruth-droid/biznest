@@ -12,7 +12,7 @@ export const PLAYBOOK_FOR_TYPE: Record<CanonicalBusinessType, PlaybookKey> = {
   Fashion: "retail", Electronics: "retail", Retail: "retail", "Home & Furniture": "retail", Agriculture: "retail", Automotive: "retail",
   Beauty: "beauty", Salon: "beauty", Health: "beauty", "Health & Fitness": "beauty",
   "Hotel & Lodging": "stay", "Travel & Tourism": "stay",
-  "Professional Services": "services", Agency: "services", Cleaning: "services", Construction: "services", "Software Development": "services", Logistics: "services",
+  "Professional Services": "services", Agency: "services", Cleaning: "services", Construction: "services", "Software Development": "services", Logistics: "services", "HR & Recruitment": "services",
   Photography: "creative", "Event Planning": "creative",
   "Real Estate": "property",
   Church: "community",

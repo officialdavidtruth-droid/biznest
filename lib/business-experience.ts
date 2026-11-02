@@ -19,7 +19,7 @@ export type BusinessExperience = {
 };
 
 const COMMERCE = ["Fashion", "Electronics", "Food & Groceries", "Home & Furniture", "Agriculture", "Real Estate"];
-const SERVICE = ["Restaurant", "Hotel & Lodging", "Beauty", "Salon", "Health", "Health & Fitness", "Professional Services", "Photography", "Software Development", "Event Planning", "Logistics", "Church", "Cleaning", "Construction", "Agency"];
+const SERVICE = ["Restaurant", "Hotel & Lodging", "Beauty", "Salon", "Health", "Health & Fitness", "Professional Services", "Photography", "Software Development", "Event Planning", "Logistics", "HR & Recruitment", "Church", "Cleaning", "Construction", "Agency"];
 
 export function resolveBusinessMode(category?: string | null, model?: BusinessModelInput): BusinessMode {
   if (model?.sellsProducts || model?.offersServices) {

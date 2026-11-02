@@ -114,6 +114,14 @@ const RULES: Record<string, Array<[RegExp, SpecialtyProfile]>> = {
     [/warehous|fulfil/i, p("Warehouse Operations", "Order", "Client", "Order", "Warehousing", ["inventory", "orders", "customers", "invoices"], "Stock in, orders out, storage billing.", { extraModules: ["inventory"] })],
     [/business|e-?commerce/i, p("Business Delivery", "Delivery", "Client", "Delivery", "Delivery Plans", ["delivery", "customers", "invoices", "analytics"], "Recurring deliveries for business clients.", { extraModules: ["delivery"] })],
   ],
+  "HR & Recruitment": [
+    [/temporary|contract/i, p("Contract Staffing", "Placement", "Client", "Placement", "Staffing Services", ["quotes", "bookings", "customers", "invoices"], "Staffing requests, quotes and invoicing per client.")],
+    [/executive|search/i, p("Executive Search", "Search", "Client", "Search", "Search Services", ["quotes", "projects", "customers", "invoices"], "Each search as a project with a quote and invoice.")],
+    [/payroll|outsourc/i, p("Payroll & HR Outsourcing", "Engagement", "Client", "Engagement", "Outsourcing Plans", ["quotes", "invoices", "customers", "payments"], "Recurring client plans, invoices and payments.")],
+    [/consult/i, p("HR Consulting", "Engagement", "Client", "Engagement", "Consulting Services", ["bookings", "quotes", "calendar", "customers"], "Consultations, quotes and client follow-up.")],
+    [/training|development/i, p("Training & Development", "Programme", "Client", "Programme", "Programmes", ["bookings", "calendar", "quotes", "customers"], "Programmes, sessions and group bookings.")],
+    [/recruit|staffing/i, p("Recruitment Operations", "Placement", "Client", "Placement", "Recruitment Services", ["quotes", "projects", "customers", "invoices"], "Client requests, quotes and placements in one place.")],
+  ],
   "Photography": [
     [/wedding|event/i, p("Wedding & Event Photography", "Shoot", "Client", "Shoot", "Packages", ["bookings", "calendar", "gallery", "customers"], "Shoot dates, packages and galleries.")],
     [/print|album/i, p("Prints & Albums", "Order", "Customer", "Order", "Prints & Albums", ["orders", "products", "gallery", "invoices"], "Print orders from proof to delivery.")],
