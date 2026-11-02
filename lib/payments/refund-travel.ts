@@ -72,8 +72,9 @@ async function recordLegacyClawbackIfSettled(
 ) {
   if (payment.provider !== "PAYSTACK" || !payment.splitSubaccountCode || !payment.verifiedAt) return;
   if (Date.now() - payment.verifiedAt.getTime() <= SETTLEMENT_LIKELY_DAYS * 86_400_000) return;
-  const sub = await tx.subscription.findUnique({ where: { storeId }, select: { commissionRate: true } }).catch(() => null);
-  const rate = Number(sub?.commissionRate ?? 8);
+  // Subscription is the plan, not a per-store row: reach it through the store's plan.
+  const store = await tx.store.findUnique({ where: { id: storeId }, select: { subscription: { select: { commissionRate: true } } } }).catch(() => null);
+  const rate = Number(store?.subscription?.commissionRate ?? 8);
   const merchantShare = Math.round(refund * (100 - rate)) / 100;
   if (!(merchantShare > 0) || !(paymentAmount > 0)) return;
   await tx.storeRefundClawback.create({ data: { storeId, paymentId: payment.id, amount: merchantShare, reason: "Merchant share already settled before this travel refund. Platform fronted it." } });
