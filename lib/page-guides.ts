@@ -163,6 +163,11 @@ export const PAGE_GUIDES: Record<string, PageGuide> = {
     s("Run payroll", "Pick the period, review the amounts and approve the run."),
     s("Keep records", "Payslips and history are kept for each employee."),
   ]),
+  "/apps/recruitment-ats": g("Recruitment", "Track jobs, candidates and hires.", [
+    s("Add a job opening", "Create each role you are recruiting for, with the client who is hiring."),
+    s("Build your talent pool", "Add candidates and attach them to the jobs they fit."),
+    s("Move people through the pipeline", "Update each application as it goes from applied to interview, offer and hired."),
+  ]),
   "/apps/procurement": g("Procurement & Vendors", "Buy from vendors in an organised way.", [
     s("Add vendors", "Save the companies you buy from."),
     s("Raise purchase requests", "Create an order with items and prices, then send it for approval."),

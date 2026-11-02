@@ -68,6 +68,18 @@ export const PLUGIN_CATALOG: PluginSeed[] = [
     plans: ["Business Mogul"],
   },
   {
+    key: "recruitment-ats",
+    name: "Recruitment",
+    description: "Applicant tracking: job openings, a talent pool of candidates, and a hiring pipeline from application to placement.",
+    category: "Operations",
+    icon: "UserSearch",
+    price: 0, // set by the super admin (/supaadmin/apps)
+    billingInterval: "MONTHLY",
+    eligibleBusinessTypes: ["HR & Recruitment"],
+    sortOrder: 41,
+    plans: ["Growth Store", "Business Mogul"],
+  },
+  {
     key: "requisition",
     name: "Requisitions",
     description: "Controlled internal requests for stock, supplies, equipment and services, with priorities, approvals and purchasing handoff.",

@@ -7,6 +7,7 @@ import { PluginInstallGate } from "@/components/dashboard/plugin-install-gate";
 import FinancialControlPage from "../financial-control/page";
 import RequisitionPage from "../requisition/page";
 import HrPayrollPage from "../hr-payroll/page";
+import RecruitmentPage from "../recruitment-ats/page";
 import QrCodesPage from "../qr-codes/page";
 import CouponsGiftCardsPage from "../coupons-gift-cards/page";
 import { supportsAbandonedCheckout } from "@/lib/business-identity";
@@ -45,6 +46,7 @@ export default async function PluginPage({ params, searchParams }: { params: Pro
   if (pluginKey === "coupons-gift-cards") return <CouponsGiftCardsPage params={Promise.resolve({ slug })} />;
   if (pluginKey === "qr-codes") return <QrCodesPage params={Promise.resolve({ slug })} />;
   if (pluginKey === "hr-payroll") return <HrPayrollPage params={Promise.resolve({ slug })} />;
+  if (pluginKey === "recruitment-ats") return <RecruitmentPage params={Promise.resolve({ slug })} />;
   if (pluginKey === "advanced-analytics") {
     const rangeDays = ["7", "30", "90"].includes(range ?? "") ? Number(range) : 30;
     const fullStore = await prisma.store.findUnique({ where: { id: store.id }, include: { business: true } });

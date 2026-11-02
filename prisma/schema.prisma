@@ -895,6 +895,9 @@ model Store {
   hrAttendance HrAttendance[]
   hrLeaveRequests HrLeaveRequest[]
   hrPayrollRuns HrPayrollRun[]
+  recruitJobs RecruitJob[]
+  recruitCandidates RecruitCandidate[]
+  recruitApplications RecruitApplication[]
   financialAssets FinancialAsset[]
   crmLeads      CrmLead[]
 
@@ -4682,4 +4685,91 @@ model BlogPost {
   @@unique([storeId, slug])
   @@index([storeId, status, publishedAt])
   @@index([storeId, categoryId])
+}
+
+
+// ── Applicant tracking (Recruitment plugin) ───────────────────────────────
+enum RecruitJobStatus {
+  DRAFT
+  OPEN
+  ON_HOLD
+  FILLED
+  CLOSED
+}
+
+enum RecruitStage {
+  APPLIED
+  SCREENING
+  INTERVIEW
+  OFFER
+  HIRED
+  REJECTED
+  WITHDRAWN
+}
+
+model RecruitJob {
+  id             String           @id @default(cuid())
+  storeId        String
+  store          Store            @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  title          String
+  clientName     String?
+  department     String?
+  location       String?
+  employmentType String           @default("FULL_TIME")
+  salaryMin      Decimal?         @db.Decimal(14,2)
+  salaryMax      Decimal?         @db.Decimal(14,2)
+  openings       Int              @default(1)
+  description    String?
+  requirements   String?
+  status         RecruitJobStatus @default(OPEN)
+  closesAt       DateTime?        @db.Date
+  applications   RecruitApplication[]
+  createdAt      DateTime         @default(now())
+  updatedAt      DateTime         @updatedAt
+  @@index([storeId, status])
+  @@index([storeId, createdAt])
+}
+
+model RecruitCandidate {
+  id             String     @id @default(cuid())
+  storeId        String
+  store          Store      @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  firstName      String
+  lastName       String
+  email          String?
+  phone          String?
+  currentRole    String?
+  currentCompany String?
+  location       String?
+  skills         String?
+  source         String?
+  cvUrl          String?
+  notes          String?
+  applications   RecruitApplication[]
+  createdAt      DateTime   @default(now())
+  updatedAt      DateTime   @updatedAt
+  @@unique([storeId, email])
+  @@index([storeId, lastName])
+}
+
+model RecruitApplication {
+  id             String           @id @default(cuid())
+  storeId        String
+  store          Store            @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  jobId          String
+  job            RecruitJob       @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  candidateId    String
+  candidate      RecruitCandidate @relation(fields: [candidateId], references: [id], onDelete: Cascade)
+  stage          RecruitStage     @default(APPLIED)
+  rating         Int?
+  interviewAt    DateTime?
+  offerAmount    Decimal?         @db.Decimal(14,2)
+  rejectionReason String?
+  notes          String?
+  stageChangedAt DateTime         @default(now())
+  createdAt      DateTime         @default(now())
+  updatedAt      DateTime         @updatedAt
+  @@unique([jobId, candidateId])
+  @@index([storeId, stage])
+  @@index([candidateId])
 }

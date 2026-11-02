@@ -481,9 +481,10 @@ export const BUSINESS_TYPES: Record<string, BusinessTypeConfig> = {
       { label: "Add a service", href: "/services/new" },
       { label: "Create a quote", href: "/quotes" },
       { label: "Open HR & Payroll", href: "/apps/hr-payroll" },
+      { label: "Track applicants", href: "/apps/recruitment-ats" },
       { label: "Manage consultations", href: "/orders" },
     ],
-    extraNavItems: [{ label: "HR & Payroll", href: "/apps/hr-payroll", icon: Users }, { label: "Bookings", href: "/calendar", icon: CalendarClock }],
+    extraNavItems: [{ label: "HR & Payroll", href: "/apps/hr-payroll", icon: Users }, { label: "Recruitment", href: "/apps/recruitment-ats", icon: Users }, { label: "Bookings", href: "/calendar", icon: CalendarClock }],
   },
   "Church": {
     icon: Building2,
