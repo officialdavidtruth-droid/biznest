@@ -1444,3 +1444,32 @@ html[data-app]:not([data-tabbar]) .bn-tabbar { display: none; }
 .bn-admin-app main section { min-width: 0; }
 .bn-admin-app main { min-width: 0; max-width: 100%; }
 .bn-admin-app main .overflow-x-auto { -webkit-overflow-scrolling: touch; overscroll-behavior-x: contain; }
+
+/* Inner pages wear the template's own look. components/storefront/universal-section-pages.tsx wraps every inner page in
+   .bn-skin and sets the --u-* variables from the template theme (lib/storefront/inner-skin.ts). Fallbacks keep the old look. */
+.bn-skin{background:var(--u-bg,#fff);color:var(--u-ink,#111);font-family:var(--u-font,inherit)}
+.bn-skin h1,.bn-skin h2,.bn-skin h3,.bn-skin h4,.bn-skin .bn-universal-brand,.bn-skin .bn-price{font-family:var(--u-head,inherit)}
+.bn-skin[data-serif] h1,.bn-skin[data-serif] h2,.bn-skin[data-serif] h3,.bn-skin[data-serif] .bn-universal-brand{font-weight:700;letter-spacing:-.01em}
+.bn-skin[data-serif] .bn-universal-hero h1{line-height:1.04}
+.bn-skin .bn-universal-header{background:color-mix(in srgb,var(--u-bg,#fff) 94%,transparent);border-bottom-color:var(--u-line,#0b17240f);color:var(--u-ink,#111)}
+.bn-skin .bn-universal-brand,.bn-skin .bn-universal-nav nav a,.bn-skin .bn-universal-actions>a{color:var(--u-ink,#111)}
+.bn-skin .bn-universal-nav nav a.active{color:var(--u-accent,#1473ea)}
+.bn-skin .bn-universal-logo{background:var(--u-soft,#eef3f8);color:var(--u-accent,inherit)}
+.bn-skin .bn-universal-quote{color:#fff!important;border-radius:var(--u-btn,7px)}
+.bn-skin .bn-primary,.bn-skin .bn-secondary,.bn-skin .bn-book-btn,.bn-skin .bn-band>a,.bn-skin .bn-pricing-strip>a{border-radius:var(--u-btn,7px)}
+.bn-skin .bn-universal-main{background:var(--u-bg,#fff);color:var(--u-ink,#111)}
+.bn-skin .bn-universal-section-title small,.bn-skin .bn-about-intro>div>small,.bn-skin .bn-contact-form>small,.bn-skin .bn-location small,.bn-skin .bn-pricing-strip small,.bn-skin .bn-check svg{color:var(--u-accent,#1473ea)}
+.bn-skin .bn-universal-section-title p,.bn-skin .bn-about-intro p,.bn-skin .bn-service-body p,.bn-skin .bn-service-body small,.bn-skin .bn-service-row p,.bn-skin .bn-service-row small,.bn-skin .bn-portfolio-card p,.bn-skin .bn-price-body p,.bn-skin .bn-price-body small,.bn-skin .bn-price-row p,.bn-skin .bn-values-grid p,.bn-skin .bn-contact-form>p,.bn-skin .bn-contact-side p,.bn-skin .bn-contact-side small,.bn-skin .bn-consent,.bn-skin .bn-policy-grid p,.bn-skin .bn-pricing-strip p{color:var(--u-muted,#607084)}
+.bn-skin .bn-check,.bn-skin .bn-service-card,.bn-skin .bn-service-row,.bn-skin .bn-portfolio-card,.bn-skin .bn-contact-side>a,.bn-skin .bn-contact-side>div>div{color:var(--u-ink,#111)}
+.bn-skin .bn-service-card,.bn-skin .bn-price-card,.bn-skin .bn-price-row,.bn-skin .bn-values-grid article,.bn-skin .bn-contact-form,.bn-skin .bn-contact-side>div,.bn-skin .bn-hours,.bn-skin .bn-policy-grid article,.bn-skin .bn-faq details,.bn-skin .bn-faq-grid details{background:var(--u-card,#fff);border-color:var(--u-line,#10243b12);border-radius:var(--u-radius,8px)}
+.bn-skin .bn-service-grid.corporate,.bn-skin .bn-service-row,.bn-skin .bn-hours>div{border-color:var(--u-line,#10243b14)}
+.bn-skin .bn-service-image,.bn-skin .bn-price-image,.bn-skin .bn-portfolio-image,.bn-skin .bn-about-image{border-radius:var(--u-radius,8px)}
+.bn-skin .bn-form-grid input,.bn-skin .bn-form-grid select,.bn-skin .bn-contact-form textarea{background:var(--u-bg,#fff);color:var(--u-ink,#253446);border-color:var(--u-line,#bfc9d5);border-radius:min(var(--u-radius,6px),12px)}
+.bn-skin .bn-values,.bn-skin .bn-pricing-strip{background:color-mix(in srgb,var(--u-accent,#1473ea) 7%,var(--u-bg,#fff))}
+.bn-skin .bn-band.light{background:color-mix(in srgb,var(--u-accent,#1473ea) 10%,var(--u-bg,#fff));color:var(--u-ink,#0b1a2a)}
+.bn-skin .bn-band.light p{color:var(--u-muted,#506175)}
+.bn-skin .bn-value-icon{background:var(--u-soft,#eef5ff)}
+.bn-skin .bn-universal-footer{background:var(--u-dark,#06131e)}
+.bn-skin[data-footer="round"] .bn-universal-footer{border-radius:40px 40px 0 0;padding-top:64px}
+.bn-skin .bn-universal-hero.corporate{background-color:var(--u-dark,#071522)}
+.bn-skin .bn-universal-hero:not(.technical):not(.corporate){background-color:var(--u-dark,#071522)}

@@ -29,9 +29,12 @@ which described earlier states of the catalog.
 ## Compatibility rule
 Niche never blocks a template. Any business can preview, select and create a store with any template (`setStoreTemplate`, `createStore`, the gallery and the setup wizard no longer reject or grey out by niche). `isTemplateCompatibleWithBusiness` is used only to rank "best fit" templates first and for the optional "Only show <niche> templates" filter. Plan tier is still enforced.
 
-## Known gap
-Inner pages (About, Contact, FAQ, Policies, Services, Pricing, Portfolio) render through `UniversalSectionPage` with the store
-theme, not per-template chrome (see `app/store/[slug]/[pageSlug]/page.tsx`). Only hotel and TasteHouse journeys have their own.
+## Inner pages
+About, Contact, FAQ, Policies, Services, Pricing, Portfolio and Reviews render through `UniversalSectionPage`. It is wrapped in `.bn-skin`,
+whose `--u-*` variables (bg, ink, card, accent, dark, fonts, radius, button radius) come from the store's resolved template theme
+(`lib/storefront/inner-skin.ts`, rules at the end of `app/globals.css`). So every template's inner pages carry its colours, fonts and corners.
+A template whose home page hard-codes its look (Wanderly, Nestoria) has an entry in `HOME_MATCHED` there, which also sets its nav, CTA and footer shape.
+Hotel, TasteHouse and Builder templates still have their own inner-page journeys.
 
 ## Shared helpers (do not re-define per template)
 - `lib/utils/format-money.ts`: `formatMoney(amount, currency)` for every price shown to customers.

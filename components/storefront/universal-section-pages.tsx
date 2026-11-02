@@ -17,6 +17,7 @@ import { ContactEnquiryForm } from "@/components/storefront/contact-enquiry-form
 import { isCreativeText, nicheFor, resolveServicesListing, servicesNavLink, type Archetype, type NicheIcon, type NicheProfile } from "@/lib/storefront-niche";
 import { formatDate, formatNumber } from "@/lib/i18n/locale";
 import { starEmpty, starFill } from "@/lib/utils/stars";
+import { innerSkinVars, skinFor } from "@/lib/storefront/inner-skin";
 
 const NICHE_ICONS: Record<NicheIcon, LucideIcon> = {
   shield: ShieldCheck, check: Check, clock: Clock3, sparkles: Sparkles, calendar: CalendarCheck, map: MapPin, heart: Heart,
@@ -65,7 +66,8 @@ function secondaryCta(store:any, slug:string){
 export const SERVICES_LIST_ID = "services-list";
 function ctasFor(store:any, slug:string, active:string){
   const here = `/store/${slug}/${active}`;
-  let primary = primaryCta(store, slug);
+  const skin = skinFor(store.template?.name);
+  let primary = skin?.cta ? { label: skin.cta.label, href: `/store/${slug}/${skin.cta.path}` } : primaryCta(store, slug);
   let secondary = secondaryCta(store, slug);
   if (primary.href === here) primary = { ...primary, href: `${here}#${SERVICES_LIST_ID}` };
   if (secondary.href === here) secondary = { label: "Contact Us", href: `/store/${slug}/contact` };
@@ -95,7 +97,7 @@ function Band({store,slug,accent,page,light}:{store:any;slug:string;accent:strin
   const copy=legacy&&page==="about"?{eyebrow:"READY TO WORK TOGETHER?",heading:"Let’s bring your ideas to life.",body:"Tell us what you’re building and our team will help with the next step.",cta:"Get a Quote"}
     :legacy&&page==="portfolio"?{eyebrow:"HAVE A PROJECT IN MIND?",heading:"Let’s bring it to life.",body:"Whether it’s a small request or a larger project, we’re ready to help.",cta:"Get a Quote"}
     :{eyebrow:niche.band.eyebrow,heading:niche.band.heading,body:niche.band.body,cta:label};
-  return <section className={`bn-band${light?" light":""}`} style={light?undefined:{background:`linear-gradient(100deg,#061525,${accent})`}}><div><small>{copy.eyebrow}</small><h2>{copy.heading}</h2><p>{copy.body}</p></div><Link href={href} style={light?{background:accent,color:"#fff"}:undefined}>{copy.cta} <ArrowRight size={17}/></Link></section>
+  return <section className={`bn-band${light?" light":""}`} style={light?undefined:{background:`linear-gradient(100deg,var(--u-dark,#061525),${accent})`}}><div><small>{copy.eyebrow}</small><h2>{copy.heading}</h2><p>{copy.body}</p></div><Link href={href} style={light?{background:accent,color:"#fff"}:undefined}>{copy.cta} <ArrowRight size={17}/></Link></section>
 }
 
 function text(store:any, mode:"creative"|"business"){
@@ -123,6 +125,9 @@ function text(store:any, mode:"creative"|"business"){
 
 /** Header/footer links. The services slot follows the niche (Rooms, Menu, ...) and becomes "Shop" for product-only stores. */
 function navLinksFor(store:any):string[][]{
+  // Templates with a dedicated home page keep the nav that home page shows (lib/storefront/inner-skin.ts).
+  const skinNav=skinFor(store.template?.name)?.nav;
+  if(skinNav) return skinNav;
   const niche=nicheOf(store);
   const svc=servicesNavLink(niche,(store.services?.length??0)>0,(store.products?.length??0)>0);
   return [['Home',''],[svc[0],svc[1]],['About','about'],['Portfolio','portfolio'],['Pricing','pricing'],['Contact','contact']];
@@ -157,7 +162,7 @@ function Hero({store,slug,active,copy,accent,hero,archetype="editorial",children
  if(archetype==="technical"){
   return <section className="bn-universal-hero technical"><div className="bn-universal-hero-inner"><div className="bn-universal-eyebrow mono">&gt; {copy.eyebrow}</div><h1>{children}</h1><p>{copy.description}</p><div className="bn-universal-hero-actions"><Link href={primary.href} className="bn-primary square" style={{background:accent}}>{primary.label} <ArrowRight size={16}/></Link><Link href={secondary.href} className="bn-secondary square">{secondary.label} <ArrowRight size={16}/></Link></div><div className="bn-hero-trust mono">{badges.map(b=><span key={b.label}>// {b.label}</span>)}</div></div></section>
  }
- return <section className="bn-universal-hero" style={hero?{backgroundImage:`linear-gradient(90deg,rgba(4,13,23,.94) 0%,rgba(4,13,23,.76) 46%,rgba(4,13,23,.22) 100%),url(${hero})`}:{backgroundImage:"radial-gradient(circle at 78% 42%,rgba(20,115,234,.34),transparent 28%),linear-gradient(135deg,#061525 0%,#071522 52%,#102b46 100%)"}}><div className={`bn-universal-hero-inner${archetype==="built"?" built":""}`}><div className="bn-universal-eyebrow">{copy.eyebrow}</div><h1>{children}</h1><p>{copy.description}</p><div className="bn-universal-hero-actions"><Link href={primary.href} className="bn-primary" style={{background:accent}}>{primary.label} <ArrowRight size={16}/></Link><Link href={secondary.href} className="bn-secondary">{secondary.label} <ArrowRight size={16}/></Link></div><div className="bn-hero-trust">{badges.map(b=><span key={b.label}><NicheGlyph name={b.icon} size={20}/>{b.label}</span>)}</div></div></section>
+ return <section className="bn-universal-hero" style={hero?{backgroundImage:`linear-gradient(90deg,color-mix(in srgb,var(--u-dark,#040d17) 94%,transparent) 0%,color-mix(in srgb,var(--u-dark,#040d17) 76%,transparent) 46%,color-mix(in srgb,var(--u-dark,#040d17) 22%,transparent) 100%),url(${hero})`}:{backgroundImage:"radial-gradient(circle at 78% 42%,color-mix(in srgb,var(--u-accent,#1473ea) 34%,transparent),transparent 28%),linear-gradient(135deg,var(--u-dark,#061525) 0%,color-mix(in srgb,var(--u-dark,#061525) 88%,var(--u-accent,#1473ea)) 100%)"}}><div className={`bn-universal-hero-inner${archetype==="built"?" built":""}`}><div className="bn-universal-eyebrow">{copy.eyebrow}</div><h1>{children}</h1><p>{copy.description}</p><div className="bn-universal-hero-actions"><Link href={primary.href} className="bn-primary" style={{background:accent}}>{primary.label} <ArrowRight size={16}/></Link><Link href={secondary.href} className="bn-secondary">{secondary.label} <ArrowRight size={16}/></Link></div><div className="bn-hero-trust">{badges.map(b=><span key={b.label}><NicheGlyph name={b.icon} size={20}/>{b.label}</span>)}</div></div></section>
 }
 
 function SectionTitle({eyebrow,title,sub}:{eyebrow:string;title:string;sub?:string}){return <div className="bn-universal-section-title"><small>{eyebrow}</small><h2>{title}</h2>{sub&&<p>{sub}</p>}</div>}
@@ -266,7 +271,13 @@ function Reviews({p}:{p:Props}){
    </>}
  </section></main><Footer store={store} slug={slug} accent={accent}/></>}
 
+function Skinned({p,children}:{p:Props;children:React.ReactNode}){
+ const name=p.store.template?.name as string|undefined;
+ const skin=skinFor(name);
+ return <div className="bn-skin" data-serif={skin?.serif?"1":undefined} data-footer={skin?.footer} style={innerSkinVars(p.theme,name) as React.CSSProperties}>{children}</div>
+}
 export function UniversalSectionPage(p:Props){
  const normalized=p;
- switch(p.pageSlug.toLowerCase()){case"services":return <Services p={normalized}/>;case"about":return <About p={normalized}/>;case"portfolio":return <Portfolio p={normalized}/>;case"pricing":return <Pricing p={normalized}/>;case"contact":return <Contact p={normalized}/>;case"faq":return <Faq p={normalized}/>;case"policies":return <Policies p={normalized}/>;case"reviews":return <Reviews p={normalized}/>;default:return null;}
+ const page=(()=>{switch(p.pageSlug.toLowerCase()){case"services":return <Services p={normalized}/>;case"about":return <About p={normalized}/>;case"portfolio":return <Portfolio p={normalized}/>;case"pricing":return <Pricing p={normalized}/>;case"contact":return <Contact p={normalized}/>;case"faq":return <Faq p={normalized}/>;case"policies":return <Policies p={normalized}/>;case"reviews":return <Reviews p={normalized}/>;default:return null;}})();
+ return page?<Skinned p={p}>{page}</Skinned>:null;
 }
