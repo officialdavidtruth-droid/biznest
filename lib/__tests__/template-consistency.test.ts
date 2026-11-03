@@ -65,10 +65,14 @@ describe("compatibility", () => {
     expect(offered).not.toContain("Kinetic — Sneaker Drop");
   });
   it("business types nobody targets still see the whole catalog (no empty gallery)", () => {
-    for (const b of ["Church", "Logistics", "Health"]) expect(TEMPLATE_REGISTRY.filter((t) => isTemplateCompatibleWithBusiness(t, b)).length, b).toBe(TEMPLATE_REGISTRY.length);
+    for (const b of ["Church"]) expect(TEMPLATE_REGISTRY.filter((t) => isTemplateCompatibleWithBusiness(t, b)).length, b).toBe(TEMPLATE_REGISTRY.length);
+  });
+  it("health, fitness, events, logistics and HR businesses are offered only their own template", () => {
+    const expected: Record<string, string> = { Health: "Vitalis — Clinic & Care", "Health & Fitness": "Pulse — Fitness & Wellness", "Event Planning": "Gala — Events & Celebrations", Logistics: "Transit — Logistics & Delivery", "HR & Recruitment": "Talent — Recruitment & HR" };
+    for (const [b, name] of Object.entries(expected)) expect(sig.filter((t) => isTemplateCompatibleWithBusiness(t, b)).map((t) => t.name), b).toEqual([name]);
   });
   it("every canonical business type has at least one template", () => {
-    for (const b of ["Restaurant", "Fashion", "Retail", "Beauty", "Salon", "Photography", "Agency", "Cleaning", "Construction", "Real Estate", "Electronics", "Other"])
+    for (const b of ["Restaurant", "Fashion", "Retail", "Beauty", "Salon", "Photography", "Agency", "Cleaning", "Construction", "Real Estate", "Electronics", "Health", "Health & Fitness", "Event Planning", "Logistics", "HR & Recruitment", "Other"])
       expect(TEMPLATE_REGISTRY.some((t) => isTemplateCompatibleWithBusiness(t, b)), b).toBe(true);
   });
 });

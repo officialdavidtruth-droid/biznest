@@ -831,6 +831,11 @@ export const SIGNATURE_CHROME: Record<string, TemplateChrome> = {
   north: C("classic", "columns", "bordered"),
   pure: C("bar", "centered", "minimal"),
   forge: C("classic", "minimal", "tall"),
+  vitalis: C("classic", "centered", "bordered"),
+  pulse: C("stripe", "columns", "bordered"),
+  gala: C("overlay", "minimal", "bordered"),
+  transit: C("bar", "cta", "bordered"),
+  talent: C("classic", "centered", "overlay"),
 };
 /**
  * Each builder-rendered signature template owns one hero composition. The pair (header, heroVariant)
@@ -841,6 +846,7 @@ export const HERO_VARIANT_BY_MODE: Readonly<Record<string, HeroVariant>> = {
   ember: "menu", muse: "arch", frame: "frame", north: "ledger", pure: "quiet", forge: "poster",
   // Dedicated-renderer templates (bloom, maison, hotel) never reach the Builder; listed so the map is complete.
   bloom: "arch", maison: "splitcard", hotel: "splitcard",
+  vitalis: "quiet", pulse: "tiles", gala: "editorial", transit: "frame", talent: "banner",
 };
 /** Templates that used to reuse another template's renderer. They now render through the Builder with their own identity. */
 export const NAMED_TEMPLATE_IDENTITY: Record<string, { chrome: TemplateChrome; heroStyle?: HeroStyle; heroVariant?: HeroVariant }> = {
@@ -976,6 +982,11 @@ const SIGNATURE_SECTIONS: Record<string, Section[]> = {
   north: ["hero", "features", "about", "catalog", "testimonials", "contact"],
   pure: ["hero", "features", "catalog", "about", "testimonials", "contact"],
   forge: ["hero", "about", "features", "catalog", "testimonials", "contact"],
+  vitalis: ["hero", "features", "about", "catalog", "testimonials", "contact"],
+  pulse: ["hero", "catalog", "features", "about", "testimonials", "newsletter", "contact"],
+  gala: ["hero", "about", "catalog", "testimonials", "newsletter", "contact"],
+  transit: ["hero", "features", "catalog", "about", "contact"],
+  talent: ["hero", "about", "features", "catalog", "testimonials", "contact"],
 };
 
 const c = (eyebrow: string, heading: string) => ({ eyebrow, heading });
@@ -994,6 +1005,11 @@ export const SIGNATURE_SECTION_COPY: Readonly<Record<string, SectionCopy>> = {
   north: { features: c("Services", "What we do"), about: c("The studio", "How we work"), testimonials: c("Clients", "Client feedback"), contact: c("Start a project", "Tell us what you are building") },
   pure: { features: c("Services", "What we clean"), about: c("Our approach", "How a visit works"), testimonials: c("Reviews", "Words from our customers"), contact: c("Book a clean", "Request a booking") },
   forge: { about: c("Who we are", "Our approach to building"), features: c("Services", "What we build"), testimonials: c("Clients", "Client feedback"), contact: c("Request a quote", "Tell us about your project") },
+  vitalis: { features: c("Care", "How we look after you"), about: c("The practice", "Care that listens"), testimonials: c("Patients", "Notes from our patients"), contact: c("Appointments", "Book a visit or ask a question") },
+  pulse: { features: c("Training", "Ways to train with us"), about: c("The space", "Built for consistency"), testimonials: c("Members", "Member stories"), newsletter: c("Stay in the loop", "Class updates and offers"), contact: c("Join", "Ask about membership") },
+  gala: { about: c("The studio", "Celebrations, thoughtfully planned"), testimonials: c("Hosts", "Words from our hosts"), newsletter: c("Ideas", "Inspiration for your next event"), contact: c("Plan with us", "Tell us about your event") },
+  transit: { features: c("Coverage", "How we move your goods"), about: c("Operations", "Reliable by design"), contact: c("Get a quote", "Book a pickup or ask about rates") },
+  talent: { about: c("Who we are", "People-first hiring"), features: c("What we do", "Recruitment and HR support"), testimonials: c("Partners", "Feedback from employers and candidates"), contact: c("Talk to us", "Hiring or looking for work?") },
 };
 
 // Per-template typography + corner style. These used to come ONLY from SIGNATURE_BASE, so every
@@ -1013,6 +1029,11 @@ const SIGNATURE_STYLE: Record<string, { font?: string; headlineFont?: string; ra
   atelier: { headlineFont: "'Playfair Display', Georgia, serif", radius: "2px" },
   bloom: { font: "'Plus Jakarta Sans', sans-serif", headlineFont: "'Playfair Display', Georgia, serif", radius: "24px" },
   kinetic: { headlineFont: "'Space Grotesk', sans-serif", radius: "4px" },
+  vitalis: { font: "'Plus Jakarta Sans', sans-serif", headlineFont: "'Plus Jakarta Sans', sans-serif", radius: "16px" },
+  pulse: { font: "'Inter', sans-serif", headlineFont: "'Space Grotesk', Impact, sans-serif", radius: "6px" },
+  gala: { font: "'Inter', sans-serif", headlineFont: "'Playfair Display', Georgia, serif", radius: "14px" },
+  transit: { font: "'Inter', sans-serif", headlineFont: "'Inter', sans-serif", radius: "8px" },
+  talent: { font: "'Plus Jakarta Sans', sans-serif", headlineFont: "'Space Grotesk', sans-serif", radius: "12px" },
 };
 
 function signatureTheme(data: Omit<TemplateTheme, "font" | "headlineFont" | "radius" | "sections"> & { signatureMode: string }): TemplateTheme & { signatureMode: string } {
@@ -1034,6 +1055,11 @@ export const SIGNATURE_TEMPLATES = [
   signatureTheme({ signatureMode: "north", bg: "#EEF2F6", ink: "#0D1B2A", card: "#FFFFFF", accent: "#176B87", accentSoft: "#76B7C7", muted: "#617080", border: "#D9E1E8", eyebrow: "Strategy with substance", headline: "Clarity that compounds.", sub: "Explore our services and how we work, then start a conversation.", cta: "Start a project", layout: "list", heroStyle: "split", catalogLabel: "Capabilities", density: "relaxed", surfaceDark: "#0D1B2A" }),
   signatureTheme({ signatureMode: "pure", bg: "#F2F7F5", ink: "#17352D", card: "#FFFFFF", accent: "#2B8A70", accentSoft: "#8BC9B6", muted: "#60736d", border: "#D9E8E2", eyebrow: "A cleaner space starts here", headline: "Clean you can count on.", sub: "Choose a cleaning service, see the areas we cover and book online.", cta: "Book a clean", layout: "grid", heroStyle: "split", catalogLabel: "Cleaning services", density: "relaxed", surfaceDark: "#17352D" }),
   signatureTheme({ signatureMode: "forge", bg: "#F1F0EC", ink: "#202321", card: "#FFFFFF", accent: "#C86B2A", accentSoft: "#D9A276", muted: "#696c6a", border: "#DCDDD8", eyebrow: "Built for the long run", headline: "Serious work. Properly built.", sub: "Explore our services and projects, then request a quote.", cta: "Request a quote", layout: "grid", heroStyle: "fullbleed", catalogLabel: "Projects & services", density: "relaxed", surfaceDark: "#202321" }),
+  signatureTheme({ signatureMode: "vitalis", bg: "#F3F8FB", ink: "#10263A", card: "#FFFFFF", accent: "#1D6FA5", accentSoft: "#9CC8E4", muted: "#5B7083", border: "#D8E5EE", eyebrow: "Care you can talk to", headline: "Your health, in good hands.", sub: "See our services, meet the team and book your appointment online.", cta: "Book an appointment", layout: "grid", heroStyle: "split", catalogLabel: "Services & consultations", density: "relaxed", surfaceDark: "#10263A" }),
+  signatureTheme({ signatureMode: "pulse", bg: "#0F1115", ink: "#F4F5F7", card: "#171A20", accent: "#FF5A4E", accentSoft: "#8F2E28", muted: "#A0A6B1", border: "#272B33", eyebrow: "Train. Recover. Repeat.", headline: "Show up. We will do the rest.", sub: "Browse classes, memberships and sessions, then join online.", cta: "See memberships", layout: "grid", heroStyle: "fullbleed", catalogLabel: "Classes & memberships", density: "compact", surfaceDark: "#08090B" }),
+  signatureTheme({ signatureMode: "gala", bg: "#FBF7F1", ink: "#241C2E", card: "#FFFFFF", accent: "#A9812F", accentSoft: "#E3CFA0", muted: "#756B7C", border: "#EBE1D2", eyebrow: "Moments worth marking", headline: "Make the day unforgettable.", sub: "Weddings, parties and corporate events, planned with care. Explore our packages and tell us your date.", cta: "Plan your event", layout: "grid", heroStyle: "fullbleed", catalogLabel: "Packages & services", density: "relaxed", surfaceDark: "#1E1726" }),
+  signatureTheme({ signatureMode: "transit", bg: "#F2F5F9", ink: "#0B2545", card: "#FFFFFF", accent: "#E09B00", accentSoft: "#F6D58A", muted: "#5D6B7E", border: "#D9E0EA", eyebrow: "Moving things forward", headline: "Pickup to doorstep, handled.", sub: "Choose a delivery or freight service, get a quote and book a pickup online.", cta: "Get a quote", layout: "grid", heroStyle: "split", catalogLabel: "Delivery services", density: "relaxed", surfaceDark: "#0B2545" }),
+  signatureTheme({ signatureMode: "talent", bg: "#F5F6FB", ink: "#1B1D3A", card: "#FFFFFF", accent: "#4F46E5", accentSoft: "#B6B2F5", muted: "#666A8A", border: "#DEE0F0", eyebrow: "Hiring, made human", headline: "The right people. The right fit.", sub: "Explore our recruitment and HR services, or get in touch about a role.", cta: "Talk to us", layout: "list", heroStyle: "split", catalogLabel: "Our services", density: "relaxed", surfaceDark: "#1B1D3A" }),
 ] as const;
 
 export type SignatureTemplate = TemplateTheme & { signatureMode: string; variationName: string };
@@ -1047,6 +1073,8 @@ for (const t of SIGNATURE_TEMPLATES as unknown as any[]) {
       bloom: "Bloom — Beauty Boutique", haven: "Haven — Home & Furniture", harvest: "Harvest — Grocery Market",
       maison: "Maison — Hotel & Stay", hotel: "Grand — Hotel & Hospitality", ember: "Ember — Restaurant", muse: "Muse — Salon & Beauty",
       frame: "Frame — Photography Studio", north: "North — Creative Agency", pure: "Pure — Cleaning Services", forge: "Forge — Construction",
+      vitalis: "Vitalis — Clinic & Care", pulse: "Pulse — Fitness & Wellness", gala: "Gala — Events & Celebrations",
+      transit: "Transit — Logistics & Delivery", talent: "Talent — Recruitment & HR",
     } as Record<string,string>)[t.signatureMode] });
   }
 }
@@ -1086,6 +1114,7 @@ export const SIGNATURE_CATEGORY_BY_MODE: Readonly<Record<string, string>> = {
   electra: "Electronics", atelier: "Fashion", kinetic: "Fashion", bloom: "Beauty", haven: "Home & Furniture",
   harvest: "Food & Groceries", maison: "Hotel & Lodging", hotel: "Hotel & Lodging", ember: "Restaurant",
   muse: "Salon", frame: "Photography", north: "Agency", pure: "Cleaning", forge: "Construction",
+  vitalis: "Health", pulse: "Health & Fitness", gala: "Event Planning", transit: "Logistics", talent: "HR & Recruitment",
 };
 
 /**
@@ -1099,4 +1128,5 @@ export const SIGNATURE_SUPPORTS_BY_MODE: Readonly<Record<string, readonly string
   maison: ["Hotel & Lodging"], hotel: ["Hotel & Lodging"], ember: ["Restaurant"], muse: ["Salon", "Beauty"],
   frame: ["Photography", "Agency"], north: ["Agency", "Professional Services", "Software Development"],
   pure: ["Cleaning"], forge: ["Construction", "Real Estate"],
+  vitalis: ["Health"], pulse: ["Health & Fitness"], gala: ["Event Planning"], transit: ["Logistics"], talent: ["HR & Recruitment"],
 };

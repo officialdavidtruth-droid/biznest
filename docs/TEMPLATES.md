@@ -5,8 +5,9 @@ SIGNATURE_TEMPLATE_REBUILD.md, IMPLEMENTATION_NOTES_SIGNATURE_TEMPLATES.md and D
 which described earlier states of the catalog.
 
 ## Catalog
-33 registry entries (`lib/template-registry.ts`): 15 legacy + 14 signature + 4 compatibility
-(Grandeur, Veloura Hotel, TasteHouse, Example). The 29 legacy + signature entries are public in the gallery.
+49 registry entries (`lib/template-registry.ts`), 45 of them public in the gallery: 11 reference + 15 legacy/variant + 19 signature,
+plus 4 compatibility entries (Grandeur, Veloura Hotel, TasteHouse, Example) kept only for stores already using them.
+Run `lib/__tests__/template-consistency.test.ts` for the authoritative list; counts in older docs are out of date.
 
 ## Single sources of truth
 | Question | Where |

@@ -20,7 +20,16 @@ export function BuilderClient({
   const [isSaving, setIsSaving] = useState(false);
 
   async function handleSelect(id: string) {
-    setSelected(id);
+    if (isSaving || id === selected) return;
+    // Switching to a different template resets the store's colors and font and removes any saved
+    // Website Builder layout (see setStoreTemplate), so ask first. Same wording as the Templates page.
+    if (selected) {
+      const next = templates.find((t) => t.id === id);
+      const ok = window.confirm(
+        `Switch to "${next?.name ?? "this template"}"?\n\nThis resets your store's colors and font and removes any layout you saved in the Website Builder. Your products, text content and settings are kept.\n\nThis can't be undone.`,
+      );
+      if (!ok) return;
+    }
     setIsSaving(true);
     const result = await setStoreTemplate(slug, id);
     setIsSaving(false);
@@ -29,6 +38,8 @@ export function BuilderClient({
       toast.error(result.error);
       return;
     }
+    // Only mark it selected once the server has actually applied it.
+    setSelected(id);
     toast.success("Template applied");
   }
 
