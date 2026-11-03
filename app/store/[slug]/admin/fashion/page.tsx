@@ -21,9 +21,9 @@ export default async function FashionPage({ params }: { params: Promise<{ slug: 
     <div className="space-y-6">
       <div>
         <h1 className="text-2xl font-bold">Fashion & Tailoring Workspace</h1>
-        <p className="mt-1 text-sm text-muted-foreground">Track made-to-measure jobs from first measurements to delivery.</p>
+        <p className="mt-1 text-sm text-muted-foreground">Track made-to-measure jobs from first measurements to delivery, with deposits, balances and a status link for your customers.</p>
       </div>
-      <TailoringWorkspace slug={slug} initial={result.jobs} />
+      <TailoringWorkspace slug={slug} initial={result.jobs} currency={result.currency} />
     </div>
   );
 }

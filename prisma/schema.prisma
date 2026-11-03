@@ -1073,6 +1073,7 @@ model Store {
   autoVehicles AutoVehicle[]
   photoShoots PhotoShoot[]
   tailoringJobs TailoringJob[]
+  tailoringClients TailoringClient[]
   websiteConnections MarketingWebsiteConnection[]
   marketingCatalogItems MarketingCatalogItem[]
 
@@ -3551,10 +3552,34 @@ model TailoringJob {
   measurements Json?
   fabric       Json?
   notes       String?
+  // Money: agreed price and what the customer has paid so far (deposit + later payments). Balance = price - amountPaid.
+  price       Decimal? @db.Decimal(12, 2)
+  amountPaid  Decimal  @default(0) @db.Decimal(12, 2)
+  // Unguessable token for the customer's public status page (/store/<slug>/tailoring/<token>). Never shown to other customers.
+  trackingToken String @unique @default(dbgenerated("replace((gen_random_uuid())::text, '-', '')"))
+  clientId    String?
+  client      TailoringClient? @relation(fields: [clientId], references: [id], onDelete: SetNull)
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
   @@unique([storeId, jobNo])
   @@index([storeId, stage, dueDate])
+  @@index([clientId])
+}
+
+// A returning customer's saved measurements, keyed by phone number (digits only, country code included), so the
+// next job for the same person is pre-filled instead of re-measured.
+model TailoringClient {
+  id           String   @id @default(cuid())
+  storeId      String
+  store        Store    @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  name         String
+  phone        String?
+  phoneKey     String?
+  measurements Json?
+  jobs         TailoringJob[]
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  @@unique([storeId, phoneKey])
 }
 
 // ----------------------------------------------------------------------------
