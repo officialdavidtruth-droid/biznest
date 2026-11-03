@@ -11,6 +11,7 @@ import { settleWalletFunding } from "@/lib/payments/settle-wallet-funding";
 import { settleServiceBookingPayment } from "@/lib/payments/settle-service-booking";
 import { settleReservationPayment } from "@/lib/payments/settle-reservation";
 import { settleTravelPayment } from "@/lib/payments/settle-travel";
+import { settleTailoringPayment } from "@/lib/payments/settle-tailoring";
 import { settlePluginPurchase } from "@/lib/payments/settle-plugin-purchase";
 import { applyTransferWebhookEvent, isTransferEvent } from "@/lib/payments/payout";
 import { loadStoreCredentials } from "@/lib/payments/store-gateway";
@@ -204,6 +205,13 @@ export async function POST(req: Request) {
       : await settleServiceBookingPayment(reference, "PAYSTACK", amount, verification as object);
     // Paystack confirmed the money but we refused to apply it: never drop that silently.
     if (!result.success) await flagPaymentForReview(reference, `Paystack verified success but settlement refused: ${result.error}`, verification);
+    return NextResponse.json({ received: true });
+  }
+
+  if (reference.startsWith("TLR-")) {
+    const amount = verification.data ? Number(verification.data.amount) / 100 : 0;
+    const result = await settleTailoringPayment(reference, "PAYSTACK", amount, verification as object, verification.data?.currency);
+    if (!result.success) await flagPaymentForReview(reference, `Paystack verified success but tailoring settlement refused: ${result.error}`, verification);
     return NextResponse.json({ received: true });
   }
 

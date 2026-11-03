@@ -9,20 +9,22 @@ import { resolveStorePalette } from "@/lib/store-palette";
 import { formatMoney } from "@/lib/utils/format-money";
 import { whatsappLink } from "@/lib/utils/whatsapp-link";
 import { NO_INDEX } from "@/lib/seo";
-import { TAILORING_STAGES, TAILORING_STAGE_BLURB, isTailoringStage, isTailoringToken, tailoringBalance } from "@/lib/tailoring";
+import { TAILORING_STAGES, TAILORING_STAGE_BLURB, isTailoringStage, isTailoringToken, parseTailoringPhotos, tailoringBalance } from "@/lib/tailoring";
+import { TailoringPayButton } from "@/components/storefront/tailoring-pay-button";
 
 export const dynamic = "force-dynamic";
 export const metadata: Metadata = { title: "Order status", robots: NO_INDEX };
 
-export default async function TailoringStatusPage({ params }: { params: Promise<{ slug: string; token: string }> }) {
+export default async function TailoringStatusPage({ params, searchParams }: { params: Promise<{ slug: string; token: string }>; searchParams: Promise<{ payment?: string }> }) {
   const { slug, token } = await params;
+  const { payment: paymentFlag } = await searchParams;
   if (!isTailoringToken(token)) notFound();
 
   const store = await prisma.store.findUnique({ where: { slug }, include: { template: true } });
   if (!store || store.status !== "ACTIVE") notFound();
   const job = await prisma.tailoringJob.findUnique({
     where: { trackingToken: token },
-    select: { storeId: true, jobNo: true, customerName: true, garmentType: true, stage: true, dueDate: true, price: true, amountPaid: true },
+    select: { storeId: true, jobNo: true, customerName: true, garmentType: true, stage: true, dueDate: true, price: true, amountPaid: true, photos: true },
   });
   if (!job || job.storeId !== store.id) notFound();
 
@@ -34,6 +36,9 @@ export default async function TailoringStatusPage({ params }: { params: Promise<
   const paid = Number(job.amountPaid);
   const balance = tailoringBalance(price, paid);
   const money = (n: number) => formatMoney(n, store.currency);
+  // Only progress photos are shown to the customer; reference photos stay with the tailor.
+  const progressPhotos = parseTailoringPhotos(job.photos).filter((p) => p.kind === "progress");
+  const owing = balance != null && balance > 0;
 
   const social = (store.socialLinks && typeof store.socialLinks === "object" ? store.socialLinks : {}) as Record<string, string | undefined>;
   const chat = whatsappLink(social.whatsapp || store.contactPhone, `Hi ${store.name}, about my ${job.garmentType} (${job.jobNo}).`);
@@ -68,13 +73,38 @@ export default async function TailoringStatusPage({ params }: { params: Promise<
           {due && stage !== "DELIVERED" && <p className="mt-5 text-sm" style={{ opacity: 0.8 }}>Expected by <b>{due}</b></p>}
         </section>
 
+        {paymentFlag === "success" && (
+          <p role="status" className="mt-4 rounded-2xl p-4 text-sm font-semibold" style={card}>Payment received. Thank you!</p>
+        )}
+        {paymentFlag === "failed" && (
+          <p role="alert" className="mt-4 rounded-2xl p-4 text-sm" style={card}>That payment didn&rsquo;t go through. You haven&rsquo;t been charged. You can try again below.</p>
+        )}
+
         {price != null && (
           <section className="mt-4 rounded-2xl p-6 text-sm" style={card} aria-label="Payment">
             <div className="flex justify-between"><span style={{ opacity: 0.7 }}>Price</span><b>{money(price)}</b></div>
             <div className="mt-2 flex justify-between"><span style={{ opacity: 0.7 }}>Paid</span><b>{money(paid)}</b></div>
             <div className="mt-3 flex justify-between border-t pt-3" style={{ borderColor: `${palette.ink}14` }}>
               <span style={{ opacity: 0.7 }}>Balance</span>
-              <b>{balance && balance > 0 ? money(balance) : "Paid in full"}</b>
+              <b>{owing ? money(balance!) : "Paid in full"}</b>
+            </div>
+            {owing && (
+              <TailoringPayButton slug={slug} token={token} balance={balance!} currencyLabel={store.currency} colors={{ accent: palette.accent, onAccent: palette.onAccent, ink: palette.ink }} />
+            )}
+          </section>
+        )}
+
+        {progressPhotos.length > 0 && (
+          <section className="mt-4 rounded-2xl p-6" style={card} aria-label="Progress photos">
+            <p className="text-sm font-bold">Progress photos</p>
+            <div className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-3">
+              {progressPhotos.map((p) => (
+                <figure key={p.url} className="m-0">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src={p.url} alt={p.caption || "Progress photo"} loading="lazy" className="aspect-square w-full rounded-xl object-cover" />
+                  {p.caption && <figcaption className="mt-1 text-xs" style={{ opacity: 0.7 }}>{p.caption}</figcaption>}
+                </figure>
+              ))}
             </div>
           </section>
         )}

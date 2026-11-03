@@ -44,7 +44,7 @@ import { vendorPayoutAmount, walletEffectiveFeeRate } from "@/lib/payments/gatew
  * the gateway itself and are skipped. New charges are never split.
  */
 
-const PAYOUT_PURPOSES = ["ORDER", "SERVICE_BOOKING", "PMS_RESERVATION", "TRAVEL_BOOKING", "INVOICE", "QUOTE_DEPOSIT"] as const;
+const PAYOUT_PURPOSES = ["ORDER", "SERVICE_BOOKING", "PMS_RESERVATION", "TRAVEL_BOOKING", "TAILORING_BALANCE", "INVOICE", "QUOTE_DEPOSIT"] as const;
 const MAX_ATTEMPTS = 8;
 const BALANCE_RETRY_MS = 15 * 60_000;
 const NO_ACCOUNT_RETRY_MS = 60 * 60_000;

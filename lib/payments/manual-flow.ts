@@ -10,6 +10,7 @@ import { settleQuoteDeposit } from "@/lib/payments/settle-quote-deposit";
 import { settleServiceBookingPayment } from "@/lib/payments/settle-service-booking";
 import { settleReservationPayment } from "@/lib/payments/settle-reservation";
 import { settleTravelPayment } from "@/lib/payments/settle-travel";
+import { settleTailoringPayment } from "@/lib/payments/settle-tailoring";
 
 /**
  * Bank transfer is how customers pay a store unless the owner has added their
@@ -38,7 +39,7 @@ export async function resolvePayRoute(storeId: string): Promise<PayRoute> {
   return { mode: "manual" };
 }
 
-export type ManualPurpose = "INVOICE" | "QUOTE_DEPOSIT" | "SERVICE_BOOKING" | "PMS_RESERVATION" | "TRAVEL_BOOKING";
+export type ManualPurpose = "INVOICE" | "QUOTE_DEPOSIT" | "SERVICE_BOOKING" | "PMS_RESERVATION" | "TRAVEL_BOOKING" | "TAILORING_BALANCE";
 
 const PREFIX: Record<ManualPurpose, string> = {
   INVOICE: "INV",
@@ -46,6 +47,7 @@ const PREFIX: Record<ManualPurpose, string> = {
   SERVICE_BOOKING: "BK",
   PMS_RESERVATION: "RES",
   TRAVEL_BOOKING: "TVL",
+  TAILORING_BALANCE: "TLR",
 };
 
 export const MANUAL_PURPOSE_LABEL: Record<ManualPurpose, string> = {
@@ -54,6 +56,7 @@ export const MANUAL_PURPOSE_LABEL: Record<ManualPurpose, string> = {
   SERVICE_BOOKING: "Booking",
   PMS_RESERVATION: "Reservation deposit",
   TRAVEL_BOOKING: "Tour booking",
+  TAILORING_BALANCE: "Tailoring balance",
 };
 
 export function isManualPurpose(p: string): p is ManualPurpose {
@@ -74,6 +77,7 @@ export async function startManualTransfer(input: {
   bookingId?: string;
   reservationId?: string;
   travelTripId?: string;
+  tailoringJobId?: string;
 }): Promise<{ reference: string; payUrl: string }> {
   const prefix = `${PREFIX[input.purpose]}-${input.entityId}-`;
   const open = await prisma.payment.findFirst({
@@ -99,6 +103,7 @@ export async function startManualTransfer(input: {
       bookingId: input.bookingId,
       reservationId: input.reservationId,
       travelTripId: input.travelTripId,
+      tailoringJobId: input.tailoringJobId,
     });
   }
   return { reference: reference!, payUrl: buildStoreUrl(input.store, `/pay/${reference}`) };
@@ -135,6 +140,9 @@ export async function settleManualTransfer(input: { reference: string; storeId: 
       break;
     case "TRAVEL_BOOKING":
       await settleTravelPayment(payment.reference, "CASH", amount, raw);
+      break;
+    case "TAILORING_BALANCE":
+      await settleTailoringPayment(payment.reference, "CASH", amount, raw);
       break;
   }
 

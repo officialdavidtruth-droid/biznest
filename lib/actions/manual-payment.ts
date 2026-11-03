@@ -109,7 +109,7 @@ export async function getPendingTransfers(slug: string): Promise<PendingTransfer
   const access = await assertStorePermission(slug, "payments");
   if (!access.success) return [];
   const rows = await prisma.payment.findMany({
-    where: { storeId: access.store.id, provider: "CASH", status: "PENDING", purpose: { in: ["INVOICE", "QUOTE_DEPOSIT", "SERVICE_BOOKING", "PMS_RESERVATION", "TRAVEL_BOOKING"] } },
+    where: { storeId: access.store.id, provider: "CASH", status: "PENDING", purpose: { in: ["INVOICE", "QUOTE_DEPOSIT", "SERVICE_BOOKING", "PMS_RESERVATION", "TRAVEL_BOOKING", "TAILORING_BALANCE"] } },
     orderBy: [{ proofAt: { sort: "desc", nulls: "last" } }, { createdAt: "desc" }],
     take: 100,
   });

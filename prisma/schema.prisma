@@ -755,6 +755,8 @@ model Store {
   // Owner opt-in: also email the end-of-day summary (sales, stock risks, unpaid
   // checkouts). The in-app notification + push are always sent. See app/api/cron/daily-summary.
   dailySummaryEmail Boolean @default(false)
+  // Owner opt-in: message the customer (WhatsApp, then SMS) automatically when a tailoring job changes stage.
+  tailoringAutoNotify Boolean @default(false)
   // Display currency and locale for everything this store shows (prices, receipts, emails).
   // Existing stores keep NGN / the deployment default locale (en-NG); set locale to e.g. "en-GH".
   currency      String      @default("NGN")
@@ -1074,6 +1076,7 @@ model Store {
   photoShoots PhotoShoot[]
   tailoringJobs TailoringJob[]
   tailoringClients TailoringClient[]
+  tailoringRequests TailoringRequest[]
   websiteConnections MarketingWebsiteConnection[]
   marketingCatalogItems MarketingCatalogItem[]
 
@@ -2289,6 +2292,10 @@ model Payment {
   travelTripId  String?
   travelTrip    TravelTrip? @relation(fields: [travelTripId], references: [id], onDelete: SetNull)
 
+  // A tailoring job balance paid online from the customer's status page (see lib/payments/settle-tailoring.ts).
+  tailoringJobId String?
+  tailoringJob   TailoringJob? @relation(fields: [tailoringJobId], references: [id], onDelete: SetNull)
+
   purpose     PaymentPurpose
   provider    PaymentProvider
   // The value passed to the gateway as reference/tx_ref, and the value both
@@ -2365,6 +2372,7 @@ model Payment {
   @@index([walletId])
   @@index([reservationId])
   @@index([travelTripId])
+  @@index([tailoringJobId])
 }
 
 // Money owed to a vendor for one successful customer payment, paid out with
@@ -2430,6 +2438,7 @@ enum PaymentPurpose {
   PMS_RESERVATION
   PLUGIN_PURCHASE
   TRAVEL_BOOKING
+  TAILORING_BALANCE
 }
 
 enum PaymentStatus {
@@ -3559,9 +3568,15 @@ model TailoringJob {
   trackingToken String @unique @default(dbgenerated("replace((gen_random_uuid())::text, '-', '')"))
   clientId    String?
   client      TailoringClient? @relation(fields: [clientId], references: [id], onDelete: SetNull)
+  // Who is making it (free text: a staff member, a freelancer, a team).
+  tailorName  String?
+  // Reference and progress photos: [{ url, kind: "reference" | "progress", caption?, at }]. Only "progress" shows on the customer's status page.
+  photos      Json?
+  payments    Payment[]
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
   @@unique([storeId, jobNo])
+  @@index([storeId, tailorName])
   @@index([storeId, stage, dueDate])
   @@index([clientId])
 }
@@ -3580,6 +3595,27 @@ model TailoringClient {
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
   @@unique([storeId, phoneKey])
+}
+
+// A made-to-measure request a customer sends from the storefront order form (/store/<slug>/order-request).
+// The tailor reviews it in the Fashion workspace and either turns it into a TailoringJob or dismisses it.
+model TailoringRequest {
+  id            String   @id @default(cuid())
+  storeId       String
+  store         Store    @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  customerName  String
+  customerPhone String
+  customerEmail String?
+  garmentType   String
+  details       String?
+  neededBy      DateTime?
+  photos        Json?
+  // NEW | CONVERTED | DISMISSED
+  status        String   @default("NEW")
+  jobId         String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  @@index([storeId, status, createdAt])
 }
 
 // ----------------------------------------------------------------------------
