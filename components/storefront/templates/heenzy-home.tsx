@@ -129,7 +129,7 @@ export function HeenzyStorefront({
           )}
 
           <div className="hz-trust-strip">
-            <div className="hz-trust-item">🚚 Free Shipping</div>
+            <div className="hz-trust-item">🚚 Delivery at checkout</div>
             <div className="hz-trust-item">↩️ Easy Returns</div>
             <div className="hz-trust-item">🔒 Secure Checkout</div>
           </div>

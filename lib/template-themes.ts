@@ -568,7 +568,7 @@ export const MARKETPLACE_THEME: TemplateTheme = {
   font: MARKETPLACE.font,
   headlineFont: MARKETPLACE.headlineFont,
   radius: MARKETPLACE.radius,
-  eyebrow: "Special promotions and free delivery on selected orders",
+  eyebrow: "Special promotions on selected orders",
   headline: "Everything you need, all in one place",
   sub: "Browse the full catalog and shop by category.",
   cta: "Shop Now",
@@ -867,8 +867,12 @@ export function buildReferenceTheme(d: ReferenceThemeData): GeneratedTemplate {
     HOTEL: HOTEL_THEME, MARKETPLACE: MARKETPLACE_THEME, EXAMPLE: EXAMPLE_THEME, PREMIUM: PREMIUM_THEME,
     VIOLET: VIOLET_THEME, NOVA: NOVA_THEME, HOMEVISTA: HOMEVISTA_THEME,
   };
+  const base = bases[d.base];
+  // The EXAMPLE base carries a "deal" section that only the dedicated Example renderer can draw. Reference templates
+  // built on it render through the Builder, which has no deal block and used to drop it silently, so remove it here.
+  const sections = d.base === "EXAMPLE" ? base.sections.filter((s) => s !== "deal") : base.sections;
   return {
-    ...bases[d.base], ...d.colors, variationName: d.name, tierRank: d.tier, eyebrow: d.category.toUpperCase(),
+    ...base, sections, ...d.colors, variationName: d.name, tierRank: d.tier, eyebrow: d.category.toUpperCase(),
     headline: d.headline, sub: d.sub, ...(d.sectionCopy ? { sectionCopy: d.sectionCopy } : {}),
   } as GeneratedTemplate;
 }

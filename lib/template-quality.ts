@@ -14,5 +14,6 @@ export const FORBIDDEN_DEMO_CLAIMS = [
   /\b\d+\+?\s+countries?\s+served\b/i,
   /\b100%\s+(fresh|cruelty[- ]free|secure|guaranteed)\b/i,
   /\b(licensed|insured|certified)\b/i,
+  /\bfree\s+(shipping|delivery)\b/i,
 ];
 export function containsDemoClaim(text: string) { return FORBIDDEN_DEMO_CLAIMS.some((pattern) => pattern.test(text)); }
