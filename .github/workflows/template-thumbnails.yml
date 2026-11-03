@@ -1,0 +1,107 @@
+name: Template thumbnails
+
+# Rebuilds the template gallery thumbnails (public/template-reference-previews/generated/) whenever a theme
+# or a template renderer changes, by screenshotting the real /template-preview/<name> route, then commits
+# the images back to main. Vercel builds from this repo, so the commit is what ships them.
+#
+# Pull requests only run `thumbnails:check` (no browser), which fails if a thumbnail is missing or stale.
+#
+# Repo secrets needed for the build + preview render (read-only use; the preview route only looks up a
+# store that does not exist): DATABASE_URL, DIRECT_URL, AUTH_SECRET.
+# If main is branch-protected, allow github-actions[bot] to push, or switch the commit step to open a PR.
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "lib/template-*.ts"
+      - "lib/storefront/**"
+      - "lib/hotel-skin.ts"
+      - "components/storefront/**"
+      - "app/template-preview/**"
+      - "scripts/generate-template-thumbnails.ts"
+  pull_request:
+    paths:
+      - "lib/template-*.ts"
+      - "lib/storefront/**"
+      - "lib/hotel-skin.ts"
+      - "components/storefront/**"
+      - "app/template-preview/**"
+      - "scripts/generate-template-thumbnails.ts"
+  workflow_dispatch:
+    inputs:
+      force:
+        description: "Regenerate every thumbnail, not just stale ones"
+        type: boolean
+        default: false
+
+concurrency:
+  group: template-thumbnails-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  check:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 20, cache: npm }
+      - run: npm ci
+      # The template registry imports the Prisma client, so it must be generated (no database needed).
+      - run: npx prisma generate
+      - run: npm run thumbnails:check
+
+  generate:
+    if: github.event_name != 'pull_request'
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    permissions:
+      contents: write
+    env:
+      DATABASE_URL: ${{ secrets.DATABASE_URL }}
+      DIRECT_URL: ${{ secrets.DIRECT_URL }}
+      AUTH_SECRET: ${{ secrets.AUTH_SECRET }}
+      AUTH_URL: http://localhost:3000
+      NEXT_PUBLIC_APP_URL: http://localhost:3000
+      THUMBNAIL_BASE_URL: http://localhost:3000
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 20, cache: npm }
+      - run: npm ci
+      - run: npx prisma generate
+
+      - name: Stop early if nothing is stale
+        id: stale
+        run: |
+          if [ "${{ inputs.force }}" = "true" ]; then echo "needed=true" >> "$GITHUB_OUTPUT"
+          elif npm run --silent thumbnails:check; then echo "needed=false" >> "$GITHUB_OUTPUT"
+          else echo "needed=true" >> "$GITHUB_OUTPUT"; fi
+
+      - name: Install Chromium
+        if: steps.stale.outputs.needed == 'true'
+        run: npx playwright install --with-deps chromium
+
+      # Not `npm run build`: that also runs `prisma migrate deploy`, which must never run from here.
+      - name: Build and start the app
+        if: steps.stale.outputs.needed == 'true'
+        run: |
+          npx next build
+          nohup npx next start -p 3000 > next.log 2>&1 &
+          for i in $(seq 1 60); do curl -fs -o /dev/null http://localhost:3000/templates && exit 0; sleep 2; done
+          cat next.log; exit 1
+
+      - name: Generate thumbnails
+        if: steps.stale.outputs.needed == 'true'
+        run: npm run thumbnails:generate -- ${{ inputs.force && '--force' || '' }}
+
+      - name: Commit changes
+        if: steps.stale.outputs.needed == 'true'
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add public/template-reference-previews/generated lib/template-thumbnails.generated.json
+          git diff --cached --quiet && { echo "No thumbnail changes."; exit 0; }
+          git commit -m "chore: regenerate template thumbnails [skip ci]"
+          git push

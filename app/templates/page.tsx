@@ -4,6 +4,7 @@ import { Space_Grotesk, Inter } from "next/font/google";
 import { PUBLIC_TEMPLATE_REGISTRY } from "@/lib/template-registry";
 import type { TemplateTheme } from "@/lib/template-themes";
 import { TemplateCover } from "@/components/storefront/template-cover";
+import { getTemplateThumbnail } from "@/lib/template-thumbnails";
 
 const display = Space_Grotesk({ subsets: ["latin"], variable: "--font-display", weight: ["500", "700"] });
 const body = Inter({ subsets: ["latin"], variable: "--font-body" });
@@ -65,10 +66,17 @@ export default async function TemplatesPage() {
               style={{ borderColor: "var(--bn-ink-line)", background: "var(--bn-ink-raised)" }}
             >
               <div className="relative h-44 overflow-hidden" style={{ background: theme.bg }}>
-                {/* Static facsimile built from the template's own theme
-                    tokens (WordPress-style theme thumbnail) — always
-                    renders correctly, not dependent on a seeded demo store. */}
-                <TemplateCover theme={theme} />
+                {/* Generated screenshot of the real preview when one exists; otherwise a static facsimile
+                    built from the template's own theme tokens, which never depends on a seeded demo store. */}
+                {(() => {
+                  const thumb = getTemplateThumbnail(t.name);
+                  return thumb ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img src={thumb} alt={`${t.name} template front page`} loading="lazy" decoding="async" width={640} height={400} className="h-full w-full object-cover object-top" />
+                  ) : (
+                    <TemplateCover theme={theme} />
+                  );
+                })()}
               </div>
 
               <div className="p-5">

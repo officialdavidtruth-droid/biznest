@@ -5,6 +5,7 @@ import { Check, Lock, Search, Eye, X, ShoppingBag, CalendarDays } from "lucide-r
 import type { TemplateTheme } from "@/lib/template-themes";
 import { getBusinessExperience } from "@/lib/business-experience";
 import { isTemplateCompatible } from "@/lib/template-compatibility";
+import { getTemplateThumbnail } from "@/lib/template-thumbnails";
 
 
 export type TemplateOption = {
@@ -226,9 +227,19 @@ export function TemplateGallery({
               }`}
             >
               <div className="relative h-40 w-full overflow-hidden bg-muted">
-                {/* Always the live render (same resolver as the real storefront), never a static screenshot,
-                    so the card can't drift from what the page actually shows. */}
-                <LazyPreview title={`${t.name} live front page preview`} src={`/template-preview/${encodeURIComponent(t.name)}`} />
+                {/* Card cover = a screenshot of the real /template-preview route, produced by
+                    scripts/generate-template-thumbnails.ts (hashed against the theme and renderer source, and
+                    checked in CI by `npm run thumbnails:check`, so it can't drift). A template with no
+                    thumbnail yet falls back to the live render. The Preview button always opens the live one. */}
+                {(() => {
+                  const thumb = getTemplateThumbnail(t.name);
+                  return thumb ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img src={thumb} alt={`${t.name} template front page`} loading="lazy" decoding="async" width={640} height={400} className="absolute inset-0 h-full w-full object-cover object-top" />
+                  ) : (
+                    <LazyPreview title={`${t.name} live front page preview`} src={`/template-preview/${encodeURIComponent(t.name)}`} />
+                  );
+                })()}
 
                 <button
                   type="button"

@@ -156,3 +156,209 @@ describe("reference templates resolve to their own theme", () => {
     }
   });
 });
+
+// ---------------------------------------------------------------------------
+// One chrome per template: home, product, category, contact and cart share a header and footer
+// ---------------------------------------------------------------------------
+import { STOREFRONT_PAGES, homeChrome, pageChrome, type StoreChromeInput, type StorefrontPage } from "@/lib/storefront/chrome";
+
+/** Business situations a merchant can be in with ANY template picked: the same template must look the same in all of them. */
+const BUSINESS_CONTEXTS: Record<string, Pick<StoreChromeInput, "businessCategory" | "storeBusinessType">> = {
+  neutral: { businessCategory: "Retail", storeBusinessType: "Retail" },
+  restaurant: { businessCategory: "Restaurant", storeBusinessType: "Restaurant" },
+  hotel: { businessCategory: "Hotel & Lodging", storeBusinessType: "Hotel & Lodging" },
+};
+const OWNER_STATES: Record<string, Pick<StoreChromeInput, "publishedBuilder" | "ownerContactPage">> = {
+  "template as shipped": {},
+  "owner published a builder layout": { publishedBuilder: true },
+  "owner wrote their own contact page": { ownerContactPage: true },
+};
+const STATE_TAG: Record<string, string> = { "template as shipped": "", "owner published a builder layout": "[published builder] ", "owner wrote their own contact page": "[owner contact page] " };
+const INNER_PAGES = STOREFRONT_PAGES.filter((p) => p !== "home");
+
+/** Every (template, business, owner state, page) whose chrome differs from that template's homepage chrome. */
+const family = (chrome: string) => (chrome.startsWith("legacy:") ? "legacy" : chrome);
+function chromeDivergences() {
+  const out: { key: string; label: string }[] = [];
+  for (const t of TEMPLATE_REGISTRY) {
+    for (const [biz, b] of Object.entries(BUSINESS_CONTEXTS)) {
+      for (const [state, s] of Object.entries(OWNER_STATES)) {
+        const input: StoreChromeInput = { templateName: t.name, ...b, ...s };
+        const home = homeChrome(input);
+        for (const page of INNER_PAGES) {
+          const inner = pageChrome(page, input);
+          if (inner !== home) out.push({ key: `${STATE_TAG[state]}${family(home)} -> ${page}: ${family(inner)}`, label: `${t.name} | ${biz} | ${state} | ${page}: home=${home}, page=${inner}` });
+        }
+      }
+    }
+  }
+  return out;
+}
+
+/**
+ * Today's gaps, listed once per distinct "home chrome -> page: page chrome" so the list stays readable.
+ * This is a RATCHET, not a blessing: every entry is a place where a shopper clicking from the homepage lands
+ * in a different header/footer. The test below fails if a NEW kind of divergence appears, and also if an entry
+ * here stops happening (so fixing one forces deleting its line and the list can only shrink).
+ * To fix a gap, make that page draw the home chrome; do not add lines.
+ */
+const KNOWN_CHROME_GAPS: readonly string[] = [
+  "[owner contact page] builder -> cart: cart-inline",
+  "[owner contact page] builder -> cart: grandeur",
+  "[owner contact page] builder -> category: grandeur",
+  "[owner contact page] builder -> category: hotel",
+  "[owner contact page] builder -> product: universal",
+  "[owner contact page] example -> category: grandeur",
+  "[owner contact page] example -> category: hotel",
+  "[owner contact page] example -> category: universal",
+  "[owner contact page] example -> contact: builder",
+  "[owner contact page] example -> product: universal",
+  "[owner contact page] hotel -> cart: grandeur",
+  "[owner contact page] hotel -> cart: universal",
+  "[owner contact page] hotel -> contact: builder",
+  "[owner contact page] hotel -> product: universal",
+  "[owner contact page] legacy -> cart: grandeur",
+  "[owner contact page] legacy -> cart: universal",
+  "[owner contact page] legacy -> category: grandeur",
+  "[owner contact page] legacy -> category: hotel",
+  "[owner contact page] legacy -> category: universal",
+  "[owner contact page] legacy -> contact: builder",
+  "[owner contact page] legacy -> product: universal",
+  "[owner contact page] signature:belora -> cart: grandeur",
+  "[owner contact page] signature:belora -> cart: universal",
+  "[owner contact page] signature:belora -> category: grandeur",
+  "[owner contact page] signature:belora -> category: hotel",
+  "[owner contact page] signature:belora -> category: universal",
+  "[owner contact page] signature:belora -> contact: builder",
+  "[owner contact page] signature:belora -> product: universal",
+  "[owner contact page] signature:flavora-restaurant -> cart: grandeur",
+  "[owner contact page] signature:flavora-restaurant -> cart: universal",
+  "[owner contact page] signature:flavora-restaurant -> category: grandeur",
+  "[owner contact page] signature:flavora-restaurant -> category: hotel",
+  "[owner contact page] signature:flavora-restaurant -> category: universal",
+  "[owner contact page] signature:flavora-restaurant -> contact: builder",
+  "[owner contact page] signature:flavora-restaurant -> product: universal",
+  "[owner contact page] signature:tastehouse -> cart: tastehouse",
+  "[owner contact page] signature:tastehouse -> category: grandeur",
+  "[owner contact page] signature:tastehouse -> category: hotel",
+  "[owner contact page] signature:tastehouse -> category: universal",
+  "[owner contact page] signature:tastehouse -> contact: builder",
+  "[owner contact page] signature:tastehouse -> product: universal",
+  "[published builder] builder -> cart: cart-inline",
+  "[published builder] builder -> cart: example",
+  "[published builder] builder -> cart: grandeur",
+  "[published builder] builder -> cart: tastehouse",
+  "[published builder] builder -> cart: universal",
+  "[published builder] builder -> category: grandeur",
+  "[published builder] builder -> category: hotel",
+  "[published builder] builder -> category: universal",
+  "[published builder] builder -> product: universal",
+  "builder -> cart: cart-inline",
+  "builder -> cart: grandeur",
+  "builder -> category: grandeur",
+  "builder -> category: hotel",
+  "builder -> contact: grandeur",
+  "builder -> contact: hotel",
+  "builder -> product: universal",
+  "example -> category: grandeur",
+  "example -> category: hotel",
+  "example -> category: universal",
+  "example -> contact: grandeur",
+  "example -> contact: hotel",
+  "example -> contact: universal",
+  "example -> product: universal",
+  "hotel -> cart: grandeur",
+  "hotel -> cart: universal",
+  "hotel -> product: universal",
+  "legacy -> cart: grandeur",
+  "legacy -> cart: universal",
+  "legacy -> category: grandeur",
+  "legacy -> category: hotel",
+  "legacy -> category: universal",
+  "legacy -> contact: grandeur",
+  "legacy -> contact: hotel",
+  "legacy -> contact: universal",
+  "legacy -> product: universal",
+  "signature:belora -> cart: grandeur",
+  "signature:belora -> cart: universal",
+  "signature:belora -> category: grandeur",
+  "signature:belora -> category: hotel",
+  "signature:belora -> category: universal",
+  "signature:belora -> contact: grandeur",
+  "signature:belora -> contact: hotel",
+  "signature:belora -> contact: universal",
+  "signature:belora -> product: universal",
+  "signature:flavora-restaurant -> cart: grandeur",
+  "signature:flavora-restaurant -> cart: universal",
+  "signature:flavora-restaurant -> category: grandeur",
+  "signature:flavora-restaurant -> category: hotel",
+  "signature:flavora-restaurant -> category: universal",
+  "signature:flavora-restaurant -> contact: grandeur",
+  "signature:flavora-restaurant -> contact: hotel",
+  "signature:flavora-restaurant -> product: universal",
+  "signature:tastehouse -> cart: tastehouse",
+  "signature:tastehouse -> category: grandeur",
+  "signature:tastehouse -> category: hotel",
+  "signature:tastehouse -> category: universal",
+  "signature:tastehouse -> contact: grandeur",
+  "signature:tastehouse -> contact: hotel",
+  "signature:tastehouse -> contact: universal",
+  "signature:tastehouse -> product: universal",
+];
+
+describe("every template uses one header and footer across home, product, category, contact and cart", () => {
+  it("the chrome model gives every template a chrome on every page", () => {
+    for (const t of TEMPLATE_REGISTRY) for (const page of STOREFRONT_PAGES) {
+      expect(pageChrome(page, { templateName: t.name, ...BUSINESS_CONTEXTS.neutral }), `${t.name} ${page}`).toBeTruthy();
+    }
+  });
+
+  it("no NEW home-vs-inner chrome divergence (the known list may only shrink)", () => {
+    const seen = new Set(chromeDivergences().map((d) => d.key));
+    const unexpected = [...seen].filter((k) => !KNOWN_CHROME_GAPS.includes(k));
+    expect(unexpected, `New header/footer mismatch between the homepage and an inner page:\n${unexpected.join("\n")}`).toEqual([]);
+  });
+
+  it("KNOWN_CHROME_GAPS has no stale entries (a fixed gap must be deleted from the list)", () => {
+    const seen = new Set(chromeDivergences().map((d) => d.key));
+    const stale = KNOWN_CHROME_GAPS.filter((k) => !seen.has(k));
+    expect(stale, `These gaps no longer occur; remove them from KNOWN_CHROME_GAPS:\n${stale.join("\n")}`).toEqual([]);
+  });
+
+  // Strictest form of the requirement, kept as a to-do until KNOWN_CHROME_GAPS is empty.
+  it.todo("strict: with KNOWN_CHROME_GAPS empty, chromeDivergences() is empty for all 49 templates");
+});
+
+describe("the chrome model still matches the routes it mirrors", () => {
+  const route = (p: string) => read(`app/store/[slug]/${p}/page.tsx`);
+  it("product always wraps in TemplateShell", () => {
+    const src = route("product/[productId]");
+    expect(src).toContain("<TemplateShell");
+    expect(src).not.toContain("usesTemplateChrome");
+  });
+  it("category: hotel redirect, restaurant category -> Grandeur, otherwise usesTemplateChrome", () => {
+    const src = route("category/[categoryId]");
+    expect(src).toContain("isHotelStore(");
+    expect(src).toContain('toLowerCase()===\"restaurant\"');
+    expect(src).toContain("GrandeurMenu");
+    expect(src).toContain("usesTemplateChrome(");
+  });
+  it("cart: Example and TasteHouse by template name, Grandeur by restaurant category, otherwise usesTemplateChrome", () => {
+    const src = route("cart");
+    expect(src).toContain("EXAMPLE_TEMPLATE_NAME");
+    expect(src).toContain("TASTEHOUSE_TEMPLATE_NAME");
+    expect(src).toContain('toLowerCase() === \"restaurant\"');
+    expect(src).toContain("GrandeurCart");
+    expect(src).toContain("usesTemplateChrome(");
+  });
+  it("contact: owner page first, then hotel, Grandeur, builder subpage, universal section page", () => {
+    const src = route("contact");
+    const order = ["onlyIfCustomised:true", "isHotelStore(", "getGrandeurRestaurantData(", 'renderBuilderSubpage(slug,"contact")', 'renderUniversalSectionPage(slug,"contact")'].map((m) => src.indexOf(m));
+    expect(order.every((i) => i >= 0), "a branch the model relies on is missing from contact/page.tsx").toBe(true);
+    expect([...order].sort((a, b) => a - b)).toEqual(order);
+  });
+  it("home: a published builder beats every template, and builder subpages are native-only", () => {
+    expect(read("components/storefront/storefront-runtime.tsx")).toMatch(/savedBuilder\)\s*\{[\s\S]*?BuilderStorefront/);
+    expect(read("lib/storefront/builder-subpage.tsx")).toContain('resolveHomeRenderer(raw.template?.name).kind === "builder"');
+  });
+});
