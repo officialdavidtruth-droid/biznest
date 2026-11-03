@@ -142,7 +142,7 @@ export default async function StoreLayout({
       categories: {
         where: { isActive: true },
         orderBy: [{ sortOrder: "asc" }, { name: "asc" }],
-        select: { id: true, name: true, parentId: true, description: true, imageUrl: true, _count: { select: { products: { where: { isPublished: true } }, services: { where: { isPublished: true } } } } },
+        select: { id: true, name: true, slug: true, parentId: true, description: true, imageUrl: true, _count: { select: { products: { where: { isPublished: true } }, services: { where: { isPublished: true } } } } },
       },
       // Blog and Gallery exist only once the owner has written them, so menu links to them need this.
       pages: { where: { isPublished: true, slug: { in: ["blog", "gallery"] } }, select: { slug: true, content: true } },
@@ -223,8 +223,8 @@ export default async function StoreLayout({
         href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Inter:wght@400;500;600;700&family=Playfair+Display:wght@600;700&family=Space+Grotesk:wght@500;600;700&family=Poppins:wght@400;500;600;700&family=DM+Sans:wght@400;500;600;700&family=Lora:wght@500;600;700&family=Montserrat:wght@500;600;700&family=Raleway:wght@500;600;700&display=swap"
         rel="stylesheet"
       />
-      <StoreCategoriesProvider categories={(exists?.categories ?? []).map((c) => ({ id: c.id, name: c.name, parentId: c.parentId, description: c.description, imageUrl: c.imageUrl, count: c._count.products + c._count.services }))}>
-        <StoreMenuProvider menu={exists?.menuItems?.length ? resolveMenuRows(exists.menuItems.filter((m) => m.linkType !== "PAGE" || isStorePageAvailable(m.target || "/", { businessCategory: exists.business?.category ?? null, storeBusinessType: exists.businessType, templateName: exists.template?.name ?? null }, new Set(exists.pages.filter((p) => hasPageContent(p.content)).map((p) => p.slug)))), slug) : null}>{children}</StoreMenuProvider>
+      <StoreCategoriesProvider categories={(exists?.categories ?? []).map((c) => ({ id: c.id, name: c.name, slug: c.slug, parentId: c.parentId, description: c.description, imageUrl: c.imageUrl, count: c._count.products + c._count.services }))}>
+        <StoreMenuProvider menu={exists?.menuItems?.length ? resolveMenuRows(exists.menuItems.filter((m) => m.linkType !== "PAGE" || isStorePageAvailable(m.target || "/", { businessCategory: exists.business?.category ?? null, storeBusinessType: exists.businessType, templateName: exists.template?.name ?? null }, new Set(exists.pages.filter((p) => hasPageContent(p.content)).map((p) => p.slug)))), slug, exists.categories) : null}>{children}</StoreMenuProvider>
       </StoreCategoriesProvider>
       {installable && exists && (
         <InstallStoreApp slug={slug} storeName={exists.name} base={pwaBase} iconSrc={`${pwaBase}/pwa-icon/192`} />

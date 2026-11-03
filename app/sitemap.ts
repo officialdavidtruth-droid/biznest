@@ -53,7 +53,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       }),
       prisma.category.findMany({
         where: { isActive: true, store: storeWhere },
-        select: { id: true, updatedAt: true, store: { select: { slug: true } } },
+        select: { id: true, slug: true, updatedAt: true, store: { select: { slug: true } } },
         orderBy: { updatedAt: "desc" },
         take: LIMITS.categories,
       }),
@@ -64,7 +64,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     }
     for (const c of categories) {
       if (!c.store) continue;
-      entries.push({ url: `${SITE_URL}/${c.store.slug}/category/${c.id}`, lastModified: c.updatedAt, changeFrequency: "weekly", priority: 0.6 });
+      entries.push({ url: `${SITE_URL}/${c.store.slug}/category/${c.slug || c.id}`, lastModified: c.updatedAt, changeFrequency: "weekly", priority: 0.6 });
     }
     for (const p of products) {
       entries.push({ url: `${SITE_URL}/${p.store.slug}/product/${p.id}`, lastModified: p.updatedAt, changeFrequency: "weekly", priority: 0.7 });

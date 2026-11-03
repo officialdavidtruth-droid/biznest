@@ -22,11 +22,13 @@ import { StatCard, ListToolbar } from "@/components/dashboard/list-toolbar";
 import type { BusinessTerminology } from "@/lib/business-terminology";
 import { formatDate } from "@/lib/i18n/locale";
 import { TableScroll } from "@/components/ui/table-scroll";
+import { slugifyCategory } from "@/lib/category-slug";
 
 type Category = {
   id: string;
   storeId: string | null;
   name: string;
+  slug?: string | null;
   description: string | null;
   type: "PRODUCT" | "SERVICE";
   parentId: string | null;
@@ -342,15 +344,16 @@ function CategoryFormModal({
   const [description, setDescription] = useState(category?.description ?? "");
   const [type, setType] = useState<"PRODUCT" | "SERVICE">(category?.type ?? "PRODUCT");
   const [parentId, setParentId] = useState(category?.parentId ?? "");
+  const [address, setAddress] = useState(category?.slug ?? "");
 
   async function save() {
     if (!name.trim()) return toast.error(`${terminology.category} name is required.`);
     setSavingId(category?.id ?? "new");
     if (category) {
-      const r = await updateCategory(slug, category.id, { name, description, parentId: parentId || null });
+      const r = await updateCategory(slug, category.id, { name, description, parentId: parentId || null, ...(address.trim() && address.trim() !== (category.slug ?? "") ? { slug: address } : {}) });
       setSavingId(null);
       if (!r.success) return toast.error(r.error);
-      onSaved({ ...category, name: name.trim(), description: description.trim() || null, parentId: parentId || null }, false);
+      onSaved({ ...category, name: name.trim(), slug: address.trim() ? slugifyCategory(address) : category.slug, description: description.trim() || null, parentId: parentId || null }, false);
       toast.success(`${terminology.category} updated`);
     } else {
       const r = await createCategory(slug, { name, description, type, parentId: parentId || null });
@@ -360,6 +363,7 @@ function CategoryFormModal({
         {
           id: r.data.id,
           storeId: null,
+          slug: r.data.slug,
           name: name.trim(),
           description: description.trim() || null,
           type,
@@ -404,6 +408,21 @@ function CategoryFormModal({
               className="w-full rounded-lg border bg-background px-3 py-2 text-sm"
             />
           </div>
+          {category && (
+            <div>
+              <label className="mb-1 block text-xs font-medium text-muted-foreground">Web address</label>
+              <div className="flex items-center overflow-hidden rounded-lg border bg-background text-sm">
+                <span className="shrink-0 bg-muted px-2.5 py-2.5 text-xs text-muted-foreground">/category/</span>
+                <input
+                  value={address}
+                  onChange={(e) => setAddress(e.target.value)}
+                  placeholder="auto-generated from the name"
+                  className="h-10 min-w-0 flex-1 bg-background px-2 outline-none"
+                />
+              </div>
+              <p className="mt-1 text-xs text-muted-foreground">Renaming the {terminology.category.toLowerCase()} keeps this address. Changing it breaks links you already shared, so only edit it on purpose.</p>
+            </div>
+          )}
           {!category && (
             <div>
               <label className="mb-1 block text-xs font-medium text-muted-foreground">Type</label>

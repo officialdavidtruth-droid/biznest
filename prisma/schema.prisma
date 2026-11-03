@@ -1229,6 +1229,10 @@ model Category {
   storeId  String?
   store    Store?     @relation(fields: [storeId], references: [id], onDelete: Cascade)
   name     String
+  // URL segment for /store/[slug]/category/[slug]. Unique within a store, stays the same when the category is
+  // renamed (like WordPress), and is nullable only so legacy platform categories (storeId null) need no value.
+  // Old /category/<id> links keep working: the route accepts either and redirects ids to the slug URL.
+  slug     String?
   description String?
   type     CategoryType
   sortOrder Int      @default(0)
@@ -1251,6 +1255,7 @@ model Category {
   products Product[]
   services Service[]
 
+  @@unique([storeId, slug])
   @@index([storeId])
   @@index([storeId, parentId])
 }

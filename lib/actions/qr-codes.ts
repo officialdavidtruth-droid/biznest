@@ -59,7 +59,7 @@ export async function getQrCodesData(slug: string): Promise<QrCodesData | { erro
       where: { storeId, isActive: true },
       orderBy: [{ sortOrder: "asc" }, { name: "asc" }],
       take: LIMIT + 1,
-      select: { id: true, name: true, imageUrl: true },
+      select: { id: true, name: true, slug: true, imageUrl: true },
     }),
   ]);
 
@@ -73,6 +73,6 @@ export async function getQrCodesData(slug: string): Promise<QrCodesData | { erro
     truncated,
     products: products.slice(0, LIMIT).map((p) => ({ kind: "product", id: p.id, name: p.name, url: url(`/product/${p.id}`), image: p.images[0] ?? null })),
     services: services.slice(0, LIMIT).map((s) => ({ kind: "service", id: s.id, name: s.name, url: url(`/service/${s.id}`), image: s.images[0] ?? null })),
-    categories: categories.slice(0, LIMIT).map((c) => ({ kind: "category", id: c.id, name: c.name, url: url(`/category/${c.id}`), image: c.imageUrl })),
+    categories: categories.slice(0, LIMIT).map((c) => ({ kind: "category", id: c.id, name: c.name, url: url(`/category/${c.slug || c.id}`), image: c.imageUrl })),
   };
 }

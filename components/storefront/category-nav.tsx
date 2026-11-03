@@ -58,7 +58,7 @@ export function CategoryNav({
             style={{ position: "relative", flexShrink: 0 }}
           >
             <a
-              href={`/store/${slug}/category/${c.id}`}
+              href={`/store/${slug}/category/${c.slug || c.id}`}
               onClick={(e) => {
                 if (c.children.length > 0 && openId !== c.id) {
                   e.preventDefault();
@@ -83,7 +83,7 @@ export function CategoryNav({
                 {c.children.map((child) => (
                   <a
                     key={child.id}
-                    href={`/store/${slug}/category/${child.id}`}
+                    href={`/store/${slug}/category/${child.slug || child.id}`}
                     style={{ display: "flex", justifyContent: "space-between", gap: 12, padding: "8px 10px", borderRadius: 8, fontSize: 13, color: ink, textDecoration: "none" }}
                   >
                     <span>{child.name}</span>

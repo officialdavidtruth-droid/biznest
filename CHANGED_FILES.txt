@@ -1,0 +1,6 @@
+components/dashboard/menu-manager.tsx
+components/storefront/store-menu.tsx
+lib/__tests__/menu-active.test.ts
+lib/__tests__/store-menu-save.test.ts
+lib/actions/store-menu.ts
+lib/storefront-menu.ts

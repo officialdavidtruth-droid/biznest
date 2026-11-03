@@ -2,7 +2,7 @@
 
 import { createContext, useContext, useMemo, type ReactNode } from "react";
 
-export type StoreCategory = { id: string; name: string; parentId: string | null; count: number; description?: string | null; imageUrl?: string | null };
+export type StoreCategory = { id: string; name: string; slug?: string | null; parentId: string | null; count: number; description?: string | null; imageUrl?: string | null };
 export type CategoryNode = StoreCategory & { total: number; children: StoreCategory[] };
 
 // null = no provider (e.g. the public template-preview route), which falls back

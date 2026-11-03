@@ -95,7 +95,7 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
     "@type": "BreadcrumbList",
     itemListElement: [
       { "@type": "ListItem", position: 1, name: store.name, item: storeUrl(store) },
-      ...(product.category ? [{ "@type": "ListItem", position: 2, name: product.category.name, item: storeUrl(store, `/category/${product.category.id}`) }] : []),
+      ...(product.category ? [{ "@type": "ListItem", position: 2, name: product.category.name, item: storeUrl(store, `/category/${product.category.slug || product.category.id}`) }] : []),
       { "@type": "ListItem", position: product.category ? 3 : 2, name: product.name, item: url },
     ],
   };

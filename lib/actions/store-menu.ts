@@ -9,6 +9,8 @@ import { filterAvailablePages, isStorePageAvailable, type StoreIdentity } from "
 import type { ActionResult } from "@/types/actions";
 
 export type MenuNodeInput = {
+  /** Present for items that already exist; keeps their id stable across saves. Unknown ids are ignored. */
+  id?: string;
   label: string;
   linkType: MenuLinkType;
   target?: string | null;
@@ -69,13 +71,14 @@ export async function getMenuEditorData(slug: string) {
   const tree: MenuNodeInput[] = rows
     .filter((r) => !r.parentId)
     .map((r) => ({
+      id: r.id,
       label: r.label,
       linkType: r.linkType as MenuLinkType,
       target: r.target,
       openInNewTab: r.openInNewTab,
       children: rows
         .filter((c) => c.parentId === r.id)
-        .map((c) => ({ label: c.label, linkType: c.linkType as MenuLinkType, target: c.target, openInNewTab: c.openInNewTab })),
+        .map((c) => ({ id: c.id, label: c.label, linkType: c.linkType as MenuLinkType, target: c.target, openInNewTab: c.openInNewTab })),
     }));
 
   // Only offer built-in pages this store really has: its skin serves them, or the owner wrote and published them
@@ -101,7 +104,7 @@ function validateNode(n: MenuNodeInput, categoryIds: Set<string>, pagePaths: Set
   return null;
 }
 
-export async function saveStoreMenu(slug: string, tree: MenuNodeInput[]): Promise<ActionResult> {
+export async function saveStoreMenu(slug: string, tree: MenuNodeInput[]): Promise<ActionResult<MenuNodeInput[]>> {
   const a = await access(slug);
   if (!a.success) return { success: false, error: a.error };
   if (!Array.isArray(tree) || tree.length === 0) return { success: false, error: "Add at least one menu item, or use Reset to go back to the template default." };
@@ -124,32 +127,50 @@ export async function saveStoreMenu(slug: string, tree: MenuNodeInput[]): Promis
     }
   }
 
-  await prisma.$transaction(async (tx) => {
-    await tx.storeMenuItem.deleteMany({ where: { storeId: a.store.id, location: "header" } });
+  // Update in place instead of wiping and recreating: an item the owner kept keeps its id (and createdAt), only
+  // genuinely new items are inserted, and only items the owner removed are deleted. Ids from the request are trusted
+  // only if they are this store's header items, and each id can be claimed once.
+  const saved = await prisma.$transaction(async (tx) => {
+    const existing = await tx.storeMenuItem.findMany({ where: { storeId: a.store.id, location: "header" }, select: { id: true } });
+    const existingIds = new Set(existing.map((e) => e.id));
+    const kept = new Set<string>();
     let order = 0;
-    for (const n of tree) {
-      const parent = await tx.storeMenuItem.create({
-        data: {
-          storeId: a.store.id, location: "header", label: n.label.trim(), linkType: n.linkType,
-          target: n.linkType === "CUSTOM" ? sanitizeCustomUrl(n.target ?? "") : n.target || (n.linkType === "PAGE" ? "/" : null),
-          openInNewTab: !!n.openInNewTab, sortOrder: order++,
-        },
-        select: { id: true },
-      });
-      for (const c of n.children ?? []) {
-        await tx.storeMenuItem.create({
-          data: {
-            storeId: a.store.id, location: "header", label: c.label.trim(), linkType: c.linkType,
-            target: c.linkType === "CUSTOM" ? sanitizeCustomUrl(c.target ?? "") : c.target || (c.linkType === "PAGE" ? "/" : null),
-            openInNewTab: !!c.openInNewTab, parentId: parent.id, sortOrder: order++,
-          },
-        });
+
+    const write = async (n: MenuNodeInput, parentId: string | null): Promise<MenuNodeInput> => {
+      const data = {
+        label: n.label.trim(),
+        linkType: n.linkType,
+        target: n.linkType === "CUSTOM" ? sanitizeCustomUrl(n.target ?? "") : n.target || (n.linkType === "PAGE" ? "/" : null),
+        openInNewTab: !!n.openInNewTab,
+        parentId,
+        sortOrder: order++,
+        isActive: true,
+      };
+      let id: string;
+      if (n.id && existingIds.has(n.id) && !kept.has(n.id)) {
+        await tx.storeMenuItem.update({ where: { id: n.id }, data });
+        id = n.id;
+      } else {
+        id = (await tx.storeMenuItem.create({ data: { storeId: a.store.id, location: "header", ...data }, select: { id: true } })).id;
       }
+      kept.add(id);
+      return { id, label: data.label, linkType: n.linkType, target: data.target, openInNewTab: data.openInNewTab };
+    };
+
+    const out: MenuNodeInput[] = [];
+    for (const n of tree) {
+      const top = await write(n, null);
+      const children: MenuNodeInput[] = [];
+      for (const c of n.children ?? []) children.push(await write(c, top.id as string));
+      out.push({ ...top, children });
     }
+    // Children the owner kept were re-parented above, so deleting a removed parent cannot cascade onto them.
+    await tx.storeMenuItem.deleteMany({ where: { storeId: a.store.id, location: "header", id: { notIn: [...kept] } } });
+    return out;
   });
 
   revalidatePath(`/store/${slug}`, "layout");
-  return { success: true, data: undefined };
+  return { success: true, data: saved };
 }
 
 export async function resetStoreMenu(slug: string): Promise<ActionResult> {

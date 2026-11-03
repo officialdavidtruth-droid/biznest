@@ -89,7 +89,7 @@ export function HeenzyStorefront({
                 {navCategories.slice(0, 4).map((cat) => {
                   const sample = catalogItems.find((i) => i.categoryName === cat.name && i.image);
                   return (
-                    <a key={cat.id} href={`/store/${slug}/category/${cat.id}`} className="hz-cat-card" style={{ textDecoration: "none", color: "inherit" }}>
+                    <a key={cat.id} href={`/store/${slug}/category/${cat.slug || cat.id}`} className="hz-cat-card" style={{ textDecoration: "none", color: "inherit" }}>
                       <div className="hz-cat-thumb">
                         {sample?.image ? <img src={sample.image} alt={cat.name} /> : null}
                       </div>
@@ -214,7 +214,7 @@ export function HeenzyStorefront({
             <div>
               <h4>Shop</h4>
               <ul>
-                {navCategories.slice(0, 4).map((c) => <li key={c.id}><a href={`/store/${slug}/category/${c.id}`}>{c.name}</a></li>)}
+                {navCategories.slice(0, 4).map((c) => <li key={c.id}><a href={`/store/${slug}/category/${c.slug || c.id}`}>{c.name}</a></li>)}
               </ul>
             </div>
             <div>

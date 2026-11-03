@@ -1,5 +1,6 @@
 "use server";
 
+import { pickUniqueSlug, slugifyCategory } from "@/lib/category-slug";
 import { isSafeImageUrl } from "@/lib/builder-safe";
 import { resolveStoreCurrency } from "@/lib/store-currency";
 import { getStoreConfiguration } from "@/lib/capabilities";
@@ -128,10 +129,14 @@ export async function createStore(
     // These are real rows owned by this store, not shared platform categories.
     const businessConfig = getStoreConfiguration(business.category, { sellsProducts: business.sellsProducts, offersServices: business.offersServices });
     const categoryIds = new Map<string, string>();
+    // Slugs are unique per store: track the ones handed out in this loop (a new store has no other categories).
+    const usedCategorySlugs = new Set<string>();
+    const nextCategorySlug = (name: string) => { const v = pickUniqueSlug(slugifyCategory(name), usedCategorySlugs); usedCategorySlugs.add(v); return v; };
     for (const [categoryIndex, category] of businessConfig.defaultCategories.entries()) {
       const parent = await tx.category.create({
         data: {
           storeId: created.id,
+          slug: nextCategorySlug(category.name),
           name: category.name,
           type: category.type,
           sortOrder: categoryIndex,
@@ -142,6 +147,7 @@ export async function createStore(
         await tx.category.create({
           data: {
             storeId: created.id,
+            slug: nextCategorySlug(subcategory),
             name: subcategory,
             type: category.type,
             parentId: parent.id,

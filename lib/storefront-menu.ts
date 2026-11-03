@@ -67,11 +67,24 @@ export function sanitizeCustomUrl(raw: string): string | null {
   return null;
 }
 
-export function resolveMenuRows(rows: StoredMenuRow[], slug: string): ResolvedMenuItem[] {
+/**
+ * `categories` is the store's ACTIVE categories. It does two things for CATEGORY menu items:
+ *  - links them to the readable /category/<slug> address (the menu stores the category id, so renaming a category
+ *    never breaks the menu);
+ *  - hides items whose category was deleted or switched off, instead of showing a link that 404s. If such an item
+ *    has dropdown children, those move up to the top level so the owner's other links don't vanish with it.
+ * Leave `categories` undefined to skip both (previews, tests); pass [] for a store that has no active categories.
+ */
+export function resolveMenuRows(rows: StoredMenuRow[], slug: string, categories?: { id: string; slug?: string | null }[]): ResolvedMenuItem[] {
+  const categorySlugById = categories ? new Map(categories.map((c) => [c.id, c.slug || c.id])) : null;
   const toItem = (r: StoredMenuRow): ResolvedMenuItem | null => {
     let href: string | null = null;
     let external = false;
-    if (r.linkType === "CATEGORY" && r.target) href = `/store/${slug}/category/${r.target}`;
+    if (r.linkType === "CATEGORY" && r.target) {
+      const segment = categorySlugById ? categorySlugById.get(r.target) : r.target;
+      if (!segment) return null; // category deleted or inactive
+      href = `/store/${slug}/category/${segment}`;
+    }
     else if (r.linkType === "PAGE") href = storePath(slug, r.target || "/");
     else if (r.linkType === "CUSTOM" && r.target) {
       href = sanitizeCustomUrl(r.target);
@@ -90,9 +103,44 @@ export function resolveMenuRows(rows: StoredMenuRow[], slug: string): ResolvedMe
   const out: ResolvedMenuItem[] = [];
   for (const r of sorted.filter((x) => !x.parentId)) {
     const item = toItem(r);
-    if (!item) continue;
+    if (!item) {
+      // Dead parent: keep its still-valid dropdown links by promoting them to the top level.
+      for (const c of byParent.get(r.id) ?? []) {
+        const promoted = toItem(c);
+        if (promoted) out.push(promoted);
+      }
+      continue;
+    }
     item.children = (byParent.get(r.id) ?? []).map(toItem).filter((x): x is ResolvedMenuItem => !!x);
     out.push(item);
   }
   return out;
+}
+
+/**
+ * A path relative to the store ("/about"), whichever way the page is reached: /store/<slug>/about (internal),
+ * /<slug>/about (root URL) or /about (custom domain). Query, hash, case and trailing slash are ignored.
+ */
+export function storeRelativePath(input: string, storeSlug: string): string {
+  let p = input.split("#")[0].split("?")[0].toLowerCase();
+  for (const prefix of [`/store/${storeSlug.toLowerCase()}`, `/${storeSlug.toLowerCase()}`]) {
+    if (p === prefix || p.startsWith(`${prefix}/`)) { p = p.slice(prefix.length); break; }
+  }
+  p = p.replace(/\/+$/g, "");
+  return p === "" ? "/" : p.startsWith("/") ? p : `/${p}`;
+}
+
+/**
+ * Is this menu link the page the visitor is on? Matches the exact page, or a parent section of it
+ * (the "Shop" link stays lit on /shop/shoes). Home only matches the home page. External links, anchors, mailto: and tel: never match.
+ * A top-level link with a dropdown is also lit when one of its children is.
+ */
+export function isMenuItemActive(item: { href: string; external: boolean; children?: { href: string; external: boolean }[] }, pathname: string, storeSlug: string): boolean {
+  const here = storeRelativePath(pathname, storeSlug);
+  const matches = (l: { href: string; external: boolean }) => {
+    if (l.external || !l.href.startsWith("/")) return false;
+    const target = storeRelativePath(l.href, storeSlug);
+    return target === here || (target !== "/" && here.startsWith(`${target}/`));
+  };
+  return matches(item) || (item.children ?? []).some(matches);
 }

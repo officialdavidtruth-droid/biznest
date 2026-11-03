@@ -65,7 +65,7 @@ export function MenuManager({
   const save = () =>
     start(async () => {
       const res = await saveStoreMenu(slug, strip(tree));
-      if (res.success) { setCustom(true); toast.success("Menu saved. Your storefront now uses it."); }
+      if (res.success) { setTree(withKeys(res.data)); setCustom(true); toast.success("Menu saved. Your storefront now uses it."); }
       else toast.error(res.error);
     });
 

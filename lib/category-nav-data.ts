@@ -35,11 +35,12 @@ export async function buildCategoryNav(categoryIdCounts: Map<string, number>, st
 
   return topLevel
     .map((c) => {
-      const children = (byParent.get(c.id) ?? []).map((sub) => ({ id: sub.id, name: sub.name, count: categoryIdCounts.get(sub.id) ?? 0 }));
+      const children = (byParent.get(c.id) ?? []).map((sub) => ({ id: sub.id, name: sub.name, slug: sub.slug, count: categoryIdCounts.get(sub.id) ?? 0 }));
       const childCount = children.reduce((sum, sub) => sum + (categoryIdCounts.get(sub.id) ?? 0), 0);
       return {
         id: c.id,
         name: c.name,
+        slug: c.slug,
         count: (categoryIdCounts.get(c.id) ?? 0) + childCount,
         children,
       };

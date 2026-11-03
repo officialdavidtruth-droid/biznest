@@ -1,5 +1,5 @@
 import { prisma } from "@/lib/prisma";
-import { notFound, redirect } from "next/navigation";
+import { notFound, permanentRedirect, redirect } from "next/navigation";
 import { isHotelStore } from "@/lib/storefront-routing";
 import type { Metadata } from "next";
 import { CatalogExperience } from "@/components/storefront/catalog-experience";
@@ -8,16 +8,19 @@ import { usesTemplateChrome } from "@/lib/storefront/template-chrome";
 import { catalogDesign, catalogStoreInfo } from "@/lib/storefront/catalog-props";
 import { NO_INDEX, absoluteUrl, cleanDescription, storeUrl } from "@/lib/seo";
 import { resolveStoreTheme } from "@/lib/template-themes";
+import { findStoreCategory } from "@/lib/category-lookup";
+import { categorySegment } from "@/lib/category-slug";
 
 export async function generateMetadata({ params }: { params: Promise<{ slug: string; categoryId: string }> }): Promise<Metadata> {
   const { slug, categoryId } = await params;
   const store = await prisma.store.findUnique({ where: { slug }, select: { id: true, slug: true, name: true, status: true, logoUrl: true, bannerUrl: true, customDomain: true, customDomainStatus: true, seoNoIndex: true } });
-  const category = store && store.status === "ACTIVE" ? await prisma.category.findFirst({ where: { id: categoryId, storeId: store.id, isActive: true } }) : null;
+  const found = store && store.status === "ACTIVE" ? await findStoreCategory(store.id, categoryId) : null;
+  const category = found?.isActive ? found : null;
   if (!store || !category) return { title: "Category", robots: NO_INDEX };
 
   const title = `${category.name} — ${store.name}`;
   const description = cleanDescription(category.description) ?? `Browse ${category.name} from ${store.name} on BizNest.`;
-  const canonical = storeUrl(store, `/category/${categoryId}`);
+  const canonical = storeUrl(store, `/category/${categorySegment(category)}`); // always the slug URL, even when reached by an old id link
   const image = absoluteUrl(category.imageUrl) ?? absoluteUrl(store.bannerUrl) ?? absoluteUrl(store.logoUrl);
   return {
     title,
@@ -33,8 +36,10 @@ export default async function CategoryPage({ params }: { params: Promise<{ slug:
   const { slug, categoryId } = await params;
   const store = await prisma.store.findUnique({ where: { slug }, include: { template: true, business: true } });
   if (!store || store.status !== "ACTIVE") notFound();
-  const category = await prisma.category.findFirst({ where: { id: categoryId, storeId: store.id }, include: { children: true } });
+  const category = await findStoreCategory(store.id, categoryId);
   if (!category) notFound();
+  // Reached by id (an old link) or by a differently-cased address: send everyone, and search engines, to the one slug URL.
+  if (category.slug && categoryId !== category.slug) permanentRedirect(`/store/${slug}/category/${category.slug}`);
 
   // Hotel stores have dedicated pages (Amenities, Dining, Gallery...). Their
   // header categories are just nav labels with no products, so the generic

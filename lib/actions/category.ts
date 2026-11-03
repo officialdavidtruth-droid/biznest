@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { revalidatePath } from "next/cache";
 import { assertStorePermission } from "@/lib/access/assert-store-access";
 import type { ActionResult } from "@/types/actions";
+import { cleanCategorySlug, uniqueCategorySlug } from "@/lib/category-slug";
 
 async function access(slug: string) {
   return assertStorePermission(slug, "products");
@@ -32,7 +33,7 @@ export async function getStoreCategories(slug: string) {
   return prisma.category.findMany({
     where: { storeId: a.store.id },
     orderBy: [{ parentId: "asc" }, { name: "asc" }],
-    select: { id: true, storeId: true, name: true, description: true, type: true, parentId: true, sortOrder: true, isActive: true, imageUrl: true, icon: true, createdAt: true, updatedAt: true },
+    select: { id: true, storeId: true, name: true, slug: true, description: true, type: true, parentId: true, sortOrder: true, isActive: true, imageUrl: true, icon: true, createdAt: true, updatedAt: true },
   });
 }
 
@@ -51,7 +52,7 @@ export async function getCategoryItemCounts(slug: string): Promise<Record<string
   return counts;
 }
 
-export async function createCategory(slug: string, input: { name: string; type: "PRODUCT" | "SERVICE"; parentId?: string | null; imageUrl?: string | null; icon?: string | null; description?: string | null }): Promise<ActionResult<{ id: string }>> {
+export async function createCategory(slug: string, input: { name: string; type: "PRODUCT" | "SERVICE"; parentId?: string | null; imageUrl?: string | null; icon?: string | null; description?: string | null }): Promise<ActionResult<{ id: string; slug: string }>> {
   const a = await assertMenuEditor(slug);
   if (!a.success) return { success: false, error: a.error };
   const name = input.name.trim();
@@ -65,13 +66,24 @@ export async function createCategory(slug: string, input: { name: string; type: 
   }
   const duplicate = await prisma.category.findFirst({ where: { storeId: a.store.id, name, parentId: input.parentId ?? null } });
   if (duplicate) return { success: false, error: "A category with this name already exists here." };
-  const row = await prisma.category.create({ data: { storeId: a.store.id, name, type: input.type, parentId: input.parentId ?? null, imageUrl: input.imageUrl?.trim() || null, icon: input.icon?.trim() || null, description: input.description?.trim() || null } });
+  // The slug is picked first, then inserted; if two owners/tabs create the same name at the same instant the unique
+  // index rejects the second insert (P2002) and we simply pick again.
+  let row: { id: string; slug: string | null } | null = null;
+  for (let attempt = 0; attempt < 3 && !row; attempt++) {
+    const categorySlug = await uniqueCategorySlug(prisma, a.store.id, name);
+    try {
+      row = await prisma.category.create({ data: { storeId: a.store.id, slug: categorySlug, name, type: input.type, parentId: input.parentId ?? null, imageUrl: input.imageUrl?.trim() || null, icon: input.icon?.trim() || null, description: input.description?.trim() || null }, select: { id: true, slug: true } });
+    } catch (e) {
+      if ((e as { code?: string })?.code !== "P2002" || attempt === 2) throw e;
+    }
+  }
+  if (!row) return { success: false, error: "Could not create the category. Please try again." };
   revalidatePath(`/store/${slug}/admin/categories`);
   revalidatePath(`/store/${slug}`);
-  return { success: true, data: { id: row.id } };
+  return { success: true, data: { id: row.id, slug: row.slug ?? row.id } };
 }
 
-export async function updateCategory(slug: string, id: string, input: { name: string; parentId?: string | null; imageUrl?: string | null; icon?: string | null; isActive?: boolean; description?: string | null }): Promise<ActionResult> {
+export async function updateCategory(slug: string, id: string, input: { name: string; slug?: string; parentId?: string | null; imageUrl?: string | null; icon?: string | null; isActive?: boolean; description?: string | null }): Promise<ActionResult> {
   const a = await assertMenuEditor(slug);
   if (!a.success) return { success: false, error: a.error };
   const row = await prisma.category.findFirst({ where: { id, storeId: a.store.id } });
@@ -93,9 +105,23 @@ export async function updateCategory(slug: string, id: string, input: { name: st
   }
   const duplicate = await prisma.category.findFirst({ where: { storeId: a.store.id, name, parentId: input.parentId ?? null, NOT: { id } } });
   if (duplicate) return { success: false, error: "A category with this name already exists here." };
-  await prisma.category.update({ where: { id }, data: { name, parentId: input.parentId ?? null, imageUrl: input.imageUrl?.trim() || null, icon: input.icon?.trim() || null, ...(input.description === undefined ? {} : { description: input.description?.trim() || null }), ...(input.isActive === undefined ? {} : { isActive: input.isActive }) } });
+  // Slug rules: renaming never changes the URL (links, bookmarks and Google keep working). The owner can change it on
+  // purpose by passing `slug`; a legacy category with no slug yet gets one the first time it is saved.
+  let nextSlug: string | null = null;
+  if (input.slug !== undefined) {
+    const cleaned = cleanCategorySlug(input.slug);
+    if (!cleaned) return { success: false, error: "The web address needs at least one letter or number." };
+    if (cleaned !== row.slug) {
+      const taken = await prisma.category.findFirst({ where: { storeId: a.store.id, slug: cleaned, NOT: { id } }, select: { id: true } });
+      if (taken) return { success: false, error: `The web address "${cleaned}" is already used by another category.` };
+      nextSlug = cleaned;
+    }
+  } else if (!row.slug) {
+    nextSlug = await uniqueCategorySlug(prisma, a.store.id, name, id);
+  }
+  await prisma.category.update({ where: { id }, data: { name, ...(nextSlug ? { slug: nextSlug } : {}), parentId: input.parentId ?? null, imageUrl: input.imageUrl?.trim() || null, icon: input.icon?.trim() || null, ...(input.description === undefined ? {} : { description: input.description?.trim() || null }), ...(input.isActive === undefined ? {} : { isActive: input.isActive }) } });
   revalidatePath(`/store/${slug}/admin/categories`);
-  revalidatePath(`/store/${slug}`);
+  revalidatePath(`/store/${slug}`, "layout");
   return { success: true, data: undefined };
 }
 
@@ -110,9 +136,18 @@ export async function deleteCategory(slug: string, id: string): Promise<ActionRe
   ]);
   if (products || services) return { success: false, error: "Move or uncategorize its listings before deleting this category." };
   if (row.children.length) return { success: false, error: "Delete or move its subcategories first." };
-  await prisma.category.delete({ where: { id } });
+  // Menu links to this category would 404, so remove them with it (WordPress does the same). A removed link's
+  // dropdown children are kept: they move up to the level the removed link was on.
+  await prisma.$transaction(async (tx) => {
+    const links = await tx.storeMenuItem.findMany({ where: { storeId: a.store.id, linkType: "CATEGORY", target: id }, select: { id: true, parentId: true } });
+    for (const link of links) {
+      await tx.storeMenuItem.updateMany({ where: { storeId: a.store.id, parentId: link.id }, data: { parentId: link.parentId } });
+      await tx.storeMenuItem.delete({ where: { id: link.id } });
+    }
+    await tx.category.delete({ where: { id } });
+  });
   revalidatePath(`/store/${slug}/admin/categories`);
-  revalidatePath(`/store/${slug}`);
+  revalidatePath(`/store/${slug}`, "layout"); // the header menu lives in the store layout
   return { success: true, data: undefined };
 }
 
@@ -121,7 +156,7 @@ export async function setCategoryActive(slug: string, id: string, isActive: bool
   const row = await prisma.category.findFirst({ where: { id, storeId: a.store.id } });
   if (!row) return { success: false, error: "Category not found." };
   await prisma.category.update({ where: { id }, data: { isActive } });
-  revalidatePath(`/store/${slug}/admin/categories`); revalidatePath(`/store/${slug}`);
+  revalidatePath(`/store/${slug}/admin/categories`); revalidatePath(`/store/${slug}`, "layout");
   return { success: true, data: undefined };
 }
 

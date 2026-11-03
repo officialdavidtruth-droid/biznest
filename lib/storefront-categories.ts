@@ -1,6 +1,6 @@
 import { prisma } from "@/lib/prisma";
 
-export type CategoryNode = { id: string; name: string; count: number };
+export type CategoryNode = { id: string; name: string; slug?: string | null; count: number };
 export type CategoryTreeNode = CategoryNode & { children: CategoryNode[] };
 
 /**
@@ -20,11 +20,11 @@ export async function getStoreCategoryTree(storeId: string): Promise<CategoryTre
   const [products, services] = await Promise.all([
     prisma.product.findMany({
       where: { storeId, isPublished: true, categoryId: { not: null } },
-      select: { categoryId: true, category: { select: { id: true, name: true, parentId: true, parent: { select: { id: true, name: true } } } } },
+      select: { categoryId: true, category: { select: { id: true, name: true, slug: true, parentId: true, parent: { select: { id: true, name: true, slug: true } } } } },
     }),
     prisma.service.findMany({
       where: { storeId, isPublished: true, categoryId: { not: null } },
-      select: { categoryId: true, category: { select: { id: true, name: true, parentId: true, parent: { select: { id: true, name: true } } } } },
+      select: { categoryId: true, category: { select: { id: true, name: true, slug: true, parentId: true, parent: { select: { id: true, name: true, slug: true } } } } },
     }),
   ]);
 
@@ -36,18 +36,18 @@ export async function getStoreCategoryTree(storeId: string): Promise<CategoryTre
     if (cat.parentId && cat.parent) {
       // This item's category is a subcategory — count it under both the
       // subcategory itself and its parent.
-      const parent: CategoryTreeNode = topLevel.get(cat.parentId) ?? { id: cat.parent.id, name: cat.parent.name, count: 0, children: [] };
+      const parent: CategoryTreeNode = topLevel.get(cat.parentId) ?? { id: cat.parent.id, name: cat.parent.name, slug: cat.parent.slug, count: 0, children: [] };
       parent.count += 1;
       let child = parent.children.find((c) => c.id === cat.id);
       if (!child) {
-        child = { id: cat.id, name: cat.name, count: 0 };
+        child = { id: cat.id, name: cat.name, slug: cat.slug, count: 0 };
         parent.children.push(child);
       }
       child.count += 1;
       topLevel.set(cat.parentId, parent);
     } else {
       // Top-level category with no parent.
-      const node: CategoryTreeNode = topLevel.get(cat.id) ?? { id: cat.id, name: cat.name, count: 0, children: [] };
+      const node: CategoryTreeNode = topLevel.get(cat.id) ?? { id: cat.id, name: cat.name, slug: cat.slug, count: 0, children: [] };
       node.count += 1;
       topLevel.set(cat.id, node);
     }

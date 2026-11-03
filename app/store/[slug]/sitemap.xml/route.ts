@@ -21,7 +21,7 @@ export async function GET(_req: Request, { params }: { params: Promise<{ slug: s
   const [products, services, categories] = await Promise.all([
     prisma.product.findMany({ where: { storeId: store.id, isPublished: true }, select: { id: true, updatedAt: true }, orderBy: { updatedAt: "desc" }, take: 20000 }),
     prisma.service.findMany({ where: { storeId: store.id, isPublished: true }, select: { id: true, updatedAt: true }, orderBy: { updatedAt: "desc" }, take: 10000 }),
-    prisma.category.findMany({ where: { storeId: store.id, isActive: true }, select: { id: true, updatedAt: true }, take: 5000 }),
+    prisma.category.findMany({ where: { storeId: store.id, isActive: true }, select: { id: true, slug: true, updatedAt: true }, take: 5000 }),
   ]);
 
   const blogPosts = (await isBlogActive(store.id))
@@ -30,7 +30,7 @@ export async function GET(_req: Request, { params }: { params: Promise<{ slug: s
 
   const entries: SitemapEntry[] = [
     { url: storeUrl(store), lastModified: store.updatedAt, changeFrequency: "daily", priority: 1 },
-    ...categories.map((c) => ({ url: storeUrl(store, `/category/${c.id}`), lastModified: c.updatedAt, changeFrequency: "weekly" as const, priority: 0.6 })),
+    ...categories.map((c) => ({ url: storeUrl(store, `/category/${c.slug || c.id}`), lastModified: c.updatedAt, changeFrequency: "weekly" as const, priority: 0.6 })),
     ...products.map((p) => ({ url: storeUrl(store, `/product/${p.id}`), lastModified: p.updatedAt, changeFrequency: "weekly" as const, priority: 0.7 })),
     ...services.map((s) => ({ url: storeUrl(store, `/service/${s.id}`), lastModified: s.updatedAt, changeFrequency: "weekly" as const, priority: 0.7 })),
     ...(blogPosts.length ? [{ url: storeUrl(store, "/blog"), lastModified: blogPosts[0].updatedAt, changeFrequency: "daily" as const, priority: 0.6 }] : []),

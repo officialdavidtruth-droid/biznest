@@ -1,8 +1,9 @@
 "use client";
 
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { createContext, Fragment, useContext, useState, type CSSProperties, type ReactNode } from "react";
-import { storePath, type ResolvedMenuItem } from "@/lib/storefront-menu";
+import { isMenuItemActive, storePath, type ResolvedMenuItem } from "@/lib/storefront-menu";
 
 const MenuContext = createContext<ResolvedMenuItem[] | null>(null);
 
@@ -56,6 +57,7 @@ export function MenuLinks({
   wrap?: "li";
 }) {
   const custom = useContext(MenuContext);
+  const pathname = usePathname();
   const [openId, setOpenId] = useState<string | null>(null);
   const fmt = (s: string) => (upper ? s.toUpperCase() : s);
   const wrapIt = (key: string, node: ReactNode) => (wrap === "li" ? <li key={key}>{node}</li> : <Fragment key={key}>{node}</Fragment>);
@@ -89,10 +91,12 @@ export function MenuLinks({
     <>
       <style>{MENU_CSS}</style>
       {custom.map((item) => {
-        const isActive = !!active && active.toLowerCase() === item.label.toLowerCase();
+        // Highlight by the page the visitor is on (not by label text, which two items can share). Only if the
+        // router gives no pathname do we fall back to the template's `active` label.
+        const isActive = pathname != null ? isMenuItemActive(item, pathname, slug) : !!active && active.toLowerCase() === item.label.toLowerCase();
         if (item.children.length === 0) {
           return wrapIt(item.id,
-            <Link href={item.href} className={cls(isActive)} style={linkStyle} onClick={onNavigate} {...linkProps(item)}>
+            <Link href={item.href} className={cls(isActive)} style={linkStyle} aria-current={isActive ? "page" : undefined} onClick={onNavigate} {...linkProps(item)}>
               {fmt(item.label)}
             </Link>
           );
@@ -109,6 +113,7 @@ export function MenuLinks({
               className={cls(isActive)}
               style={linkStyle}
               aria-haspopup="true"
+              aria-current={isActive ? "page" : undefined}
               aria-expanded={open}
               onClick={(e) => {
                 // Touch devices have no hover: first tap opens the dropdown, second tap follows the link.
@@ -122,11 +127,14 @@ export function MenuLinks({
               {fmt(item.label)} <span className="bn-menu-caret" aria-hidden>▾</span>
             </Link>
             <span className="bn-menu-sub" role="menu">
-              {item.children.map((c) => (
-                <Link key={c.id} href={c.href} role="menuitem" className="bn-menu-sublink" onClick={onNavigate} {...linkProps(c)}>
+              {item.children.map((c) => {
+                const childActive = pathname != null && isMenuItemActive(c, pathname, slug);
+                return (
+                <Link key={c.id} href={c.href} role="menuitem" className={childActive ? "bn-menu-sublink is-active" : "bn-menu-sublink"} aria-current={childActive ? "page" : undefined} onClick={onNavigate} {...linkProps(c)}>
                   {c.label}
                 </Link>
-              ))}
+                );
+              })}
             </span>
           </span>
         );
@@ -145,7 +153,7 @@ const MENU_CSS = `
 .bn-menu-item.is-open .bn-menu-sub{display:flex}
 .bn-menu .bn-menu-sub a.bn-menu-sublink,.bn-menu-item .bn-menu-sub a.bn-menu-sublink{display:block;padding:9px 12px;border-radius:8px;
  color:#1a1a1a;font-size:13px;font-weight:600;letter-spacing:0;text-transform:none;white-space:nowrap;text-decoration:none;background:transparent;border:0}
-.bn-menu-item .bn-menu-sub a.bn-menu-sublink:hover{background:rgba(0,0,0,.06)}
+.bn-menu-item .bn-menu-sub a.bn-menu-sublink:hover,.bn-menu-item .bn-menu-sub a.bn-menu-sublink.is-active{background:rgba(0,0,0,.06)}
 @media (max-width:900px){
  .bn-menu-item{display:flex;flex-direction:column;align-items:flex-start;width:100%}
  .bn-menu-item .bn-menu-sub{position:static;box-shadow:none;border:0;background:transparent;padding:0 0 0 14px;min-width:0}
