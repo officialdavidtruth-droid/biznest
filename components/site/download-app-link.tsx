@@ -21,7 +21,8 @@ export function DownloadAppLink({
   children: React.ReactNode;
   icon?: boolean;
 }) {
-  const [hide, setHide] = useState(false);
+  // Start hidden and reveal after the check, so installed-app users never see it flash in and out.
+  const [hide, setHide] = useState(true);
   useEffect(() => setHide(isRunningAsApp()), []);
   if (hide) return null;
   return (

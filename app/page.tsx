@@ -21,6 +21,16 @@ const display = Space_Grotesk({ subsets: ["latin"], variable: "--font-display", 
 const body = Inter({ subsets: ["latin"], variable: "--font-body" });
 const mono = JetBrains_Mono({ subsets: ["latin"], variable: "--font-mono", weight: ["500"] });
 
+// Shared keyboard-focus ring for header/hero links (the page had none, so tabbing was invisible).
+const FOCUS =
+  "focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[var(--bn-accent-text)]";
+
+// Filled CTA: light-green fill + dark text. The old dark-green gradient was 1.6-2.2:1 against
+// the page background, so the primary button barely separated from the hero.
+const CTA_FILL = { background: "var(--bn-accent-text)", color: "var(--bn-ink)" } as const;
+// Outlined CTA: the old --bn-ink-line border was 1.96:1 (WCAG 1.4.11 wants 3:1).
+const CTA_OUTLINE = { border: "1px solid rgba(255,255,255,0.45)", color: "var(--bn-ivory)" } as const;
+
 const STEPS = [
   {
     n: "01",
@@ -207,40 +217,76 @@ export default async function HomePage() {
           },
         ]}
       />
+      <a
+        href="#main"
+        className="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-50 focus:rounded-full focus:px-4 focus:py-2 focus:text-sm focus:font-medium"
+        style={CTA_FILL}
+      >
+        Skip to content
+      </a>
+
       {/* Nav */}
       <header
-        className="sticky top-0 z-30 flex items-center justify-between gap-4 px-4 py-4 backdrop-blur-md sm:px-10"
-        style={{ background: "rgba(10, 28, 18, 0.72)", borderBottom: "1px solid var(--bn-ink-line)" }}
+        className="sticky top-0 z-30 flex items-center justify-between gap-4 px-6 py-4 backdrop-blur-md sm:px-10"
+        style={{ background: "rgba(10, 36, 11, 0.8)", borderBottom: "1px solid var(--bn-ink-line)" }}
       >
-        <span className="shrink-0 text-lg tracking-tight" style={{ fontFamily: "var(--font-display)", fontWeight: 700 }}>
+        <Link
+          href="/"
+          aria-label="BizNest home"
+          className={`shrink-0 text-lg tracking-tight ${FOCUS}`}
+          style={{ fontFamily: "var(--font-display)", fontWeight: 700 }}
+        >
           BizNest
-        </span>
-        <nav className="flex min-w-0 items-center gap-4 whitespace-nowrap text-sm sm:gap-6">
-          <Link href="/search" className="opacity-80 transition hover:opacity-100">
+        </Link>
+        <nav aria-label="Primary" className="flex min-w-0 items-center gap-4 whitespace-nowrap text-sm sm:gap-6">
+          <Link href="/search" className={`hidden opacity-80 transition hover:opacity-100 sm:inline ${FOCUS}`}>
             Browse
           </Link>
-          <a href="#pricing" className="hidden opacity-80 transition hover:opacity-100 sm:inline">
+          <a href="#pricing" className={`hidden opacity-80 transition hover:opacity-100 sm:inline ${FOCUS}`}>
             Pricing
           </a>
-          <DownloadAppLink className="hidden opacity-80 transition hover:opacity-100 md:inline">
+          <DownloadAppLink className={`hidden opacity-80 transition hover:opacity-100 md:inline ${FOCUS}`}>
             Get the app
           </DownloadAppLink>
+          {/* Mobile menu: Browse and Pricing used to be unreachable from the header below 640px. */}
+          <details className="relative sm:hidden">
+            <summary
+              aria-label="Menu"
+              className={`flex h-9 w-9 cursor-pointer list-none items-center justify-center rounded-full border border-white/30 [&::-webkit-details-marker]:hidden ${FOCUS}`}
+            >
+              <span aria-hidden className="text-base leading-none">☰</span>
+            </summary>
+            <div
+              className="absolute right-0 top-11 flex w-44 flex-col gap-1 rounded-2xl p-2 text-sm shadow-xl"
+              style={{ background: "var(--bn-ink-raised)", border: "1px solid var(--bn-ink-line)" }}
+            >
+              <Link href="/search" className={`rounded-lg px-3 py-2 hover:bg-white/10 ${FOCUS}`}>Browse</Link>
+              <a href="#pricing" className={`rounded-lg px-3 py-2 hover:bg-white/10 ${FOCUS}`}>Pricing</a>
+              <Link href="/download" className={`rounded-lg px-3 py-2 hover:bg-white/10 ${FOCUS}`}>Get the app</Link>
+            </div>
+          </details>
           {session?.user ? (
             <>
-              <Link href={dashboardHref} className="opacity-80 transition hover:opacity-100">
+              <SignOutButton
+                className={`rounded-full border border-white/40 px-4 py-2 text-sm font-medium opacity-90 transition hover:opacity-100 ${FOCUS}`}
+              />
+              <Link
+                href={dashboardHref}
+                className={`rounded-full px-4 py-2 text-sm font-medium transition hover:brightness-110 ${FOCUS}`}
+                style={CTA_FILL}
+              >
                 Dashboard
               </Link>
-              <SignOutButton className="rounded-full px-4 py-2 text-sm font-medium transition hover:brightness-110" />
             </>
           ) : (
             <>
-              <Link href="/login" className="opacity-80 transition hover:opacity-100">
+              <Link href="/login" className={`opacity-80 transition hover:opacity-100 ${FOCUS}`}>
                 Sign in
               </Link>
               <Link
                 href="/register"
-                className="rounded-full px-3 py-2 text-sm font-medium shadow-[0_4px_20px_-6px_rgba(52,211,153,0.6)] transition hover:brightness-110 sm:px-4"
-                style={{ background: "var(--bn-accent-gradient)", color: "var(--bn-ivory)" }}
+                className={`rounded-full px-3 py-2 text-sm font-medium transition hover:brightness-110 sm:px-4 ${FOCUS}`}
+                style={CTA_FILL}
               >
                 <span className="sm:hidden">Get started</span>
                 <span className="hidden sm:inline">Open your store</span>
@@ -250,13 +296,14 @@ export default async function HomePage() {
         </nav>
       </header>
 
+      <main id="main">
       {/* Hero */}
       <section className="relative grid gap-10 overflow-hidden px-6 pb-16 pt-8 sm:px-10 lg:grid-cols-2 lg:items-center lg:gap-6 lg:pt-16"
         style={{ background: "var(--bn-hero-gradient)" }}>
-        <div className="bn-glow-orb h-72 w-72" style={{ background: "rgba(52,211,153,0.22)", top: "-6rem", left: "-6rem" }} />
+        <div className="bn-glow-orb hidden h-72 w-72 sm:block" style={{ background: "rgba(52,211,153,0.22)", top: "-6rem", left: "-6rem" }} />
         <div className="bn-glow-orb h-64 w-64" style={{ background: "rgba(16,150,122,0.2)", top: "8rem", right: "-4rem" }} />
 
-        <div className="bn-fade-up relative z-10">
+        <div className="relative z-10">
           <p
             className="mb-4 text-xs uppercase tracking-[0.2em]"
             style={{ color: "var(--bn-accent-text)", fontFamily: "var(--font-mono)" }}
@@ -267,20 +314,21 @@ export default async function HomePage() {
             className="text-4xl leading-[1.05] tracking-tight sm:text-5xl lg:text-6xl"
             style={{ fontFamily: "var(--font-display)", fontWeight: 700 }}
           >
-            Your BUSINESS belongs
-            <br />
-            in the <span style={{ color: "var(--bn-accent-text)" }}>nest</span>.
+            <span className="block">Your business belongs</span>
+            <span className="block">
+              in the <span style={{ color: "var(--bn-accent-text)" }}>nest</span>.
+            </span>
           </h1>
-          <p className="mt-5 max-w-md text-base leading-relaxed" style={{ color: "var(--bn-mute)" }}>
+          <p className="bn-fade-up mt-5 max-w-md text-base leading-relaxed" style={{ color: "var(--bn-mute)" }}>
             BizNest is where sellers of products, services, and bookings get a real storefront,
             a real dashboard, and real payments — verified, protected, and built to grow with you.
           </p>
-          <div className="mt-8 flex flex-wrap gap-3">
+          <div className="mt-8 flex flex-wrap items-center gap-3">
             {session?.user ? (
               <Link
                 href={dashboardHref}
-                className="rounded-full px-6 py-3 text-sm font-medium transition hover:brightness-110"
-                style={{ background: "var(--bn-accent-gradient)", color: "var(--bn-ivory)" }}
+                className={`rounded-full px-6 py-3 text-sm font-medium transition hover:brightness-110 ${FOCUS}`}
+                style={CTA_FILL}
               >
                 Go to your dashboard
               </Link>
@@ -288,57 +336,55 @@ export default async function HomePage() {
               <>
                 <Link
                   href="/register"
-                  className="rounded-full px-6 py-3 text-sm font-medium transition hover:brightness-110"
-                  style={{ background: "var(--bn-accent-gradient)", color: "var(--bn-ivory)" }}
+                  className={`rounded-full px-6 py-3 text-sm font-medium transition hover:brightness-110 ${FOCUS}`}
+                  style={CTA_FILL}
                 >
-                  Start selling — it's free
+                  Open your store
                 </Link>
                 <Link
                   href="/login"
-                  className="rounded-full px-6 py-3 text-sm font-medium transition"
-                  style={{ border: "1px solid var(--bn-ink-line)", color: "var(--bn-ivory)" }}
+                  className={`rounded-full px-6 py-3 text-sm font-medium transition hover:bg-white/10 ${FOCUS}`}
+                  style={CTA_OUTLINE}
                 >
                   I already have a store
                 </Link>
               </>
             )}
+          </div>
+          <div className="mt-5 flex flex-wrap items-center gap-x-6 gap-y-2 text-sm">
+            <a href="#pricing" className={`underline-offset-4 opacity-80 transition hover:underline hover:opacity-100 ${FOCUS}`}>
+              See pricing
+            </a>
             <DownloadAppLink
               icon
-              className="rounded-full px-6 py-3 text-sm font-medium transition hover:brightness-110"
-              style={{ background: "var(--bn-ivory)", color: "var(--bn-ink)" }}
+              className={`underline-offset-4 opacity-80 transition hover:underline hover:opacity-100 ${FOCUS}`}
             >
               Download the app
             </DownloadAppLink>
-          </div>
-          <div
-            className="mt-10 flex gap-8 text-sm"
-            style={{ fontFamily: "var(--font-mono)", color: "var(--bn-mute)" }}
-          >
-            <div>
-              <span className="block text-xl" style={{ color: "var(--bn-ivory)" }}>{CATEGORIES.length}+</span>
-              product & service categories
-            </div>
-            <div>
-              <span className="block text-xl" style={{ color: "var(--bn-ivory)" }}>2</span>
-              payment providers, your account
-            </div>
           </div>
         </div>
 
         {/* Signature element: two rows of storefront tiles drifting past each other,
             like walking down a market alley of many different stores. Pulled from
             real, currently-open stores (see `stalls` above) — nothing invented. */}
-        {stalls.length > 0 && (
+        {stalls.length > 0 ? (
           <div
-            className="relative z-10 -mx-6 overflow-hidden py-2 sm:-mx-10 lg:mx-0 lg:rounded-2xl"
+            className="group relative z-10 -mx-6 overflow-hidden py-2 sm:-mx-10 lg:mx-0 lg:rounded-2xl"
+            role="region"
+            aria-label="Stores currently open on BizNest"
             style={{
               background: "var(--bn-ink-raised)",
               border: "1px solid var(--bn-ink-line)",
               maskImage: "linear-gradient(90deg, transparent, black 8%, black 92%, transparent)",
+              WebkitMaskImage: "linear-gradient(90deg, transparent, black 8%, black 92%, transparent)",
             }}
           >
             <Row stalls={stalls} direction="left" />
             {stalls.length > 1 && <Row stalls={[...stalls].reverse()} direction="right" />}
+          </div>
+        ) : (
+          <div className="relative z-10">
+            <StorefrontPreviewMock />
           </div>
         )}
       </section>
@@ -409,7 +455,7 @@ export default async function HomePage() {
       </section>
 
       {/* Categories */}
-      <section id="categories" className="px-6 py-16 sm:px-10 lg:py-20" style={{ background: "var(--bn-ink)" }}>
+      <section id="categories" className="scroll-mt-20 px-6 py-16 sm:px-10 lg:py-20" style={{ background: "var(--bn-ink)" }}>
         <h2 className="mb-8 text-2xl sm:text-3xl" style={{ fontFamily: "var(--font-display)", fontWeight: 700 }}>
           Whatever you sell, there's a stall for it
         </h2>
@@ -428,7 +474,7 @@ export default async function HomePage() {
 
       {/* Pricing — pulled live from the Subscription table, not hardcoded copy,
           so this page can never drift out of sync with what a store actually gets. */}
-      <section id="pricing" className="px-6 py-16 sm:px-10 lg:py-24" style={{ background: "var(--bn-ink)" }}>
+      <section id="pricing" className="scroll-mt-20 px-6 py-16 sm:px-10 lg:py-24" style={{ background: "var(--bn-ink)" }}>
         <h2 className="mb-3 text-2xl sm:text-3xl" style={{ fontFamily: "var(--font-display)", fontWeight: 700 }}>
           Simple pricing, real ownership
         </h2>
@@ -457,8 +503,8 @@ export default async function HomePage() {
                 )}
                 <p className="text-sm font-semibold">{p.name}</p>
                 <p className="mt-2 text-3xl font-bold" style={{ fontFamily: "var(--font-display)" }}>
-                  {Number(p.price) === 0 ? "Free" : `${formatMoney(Number(p.price))}`}
-                  {Number(p.price) > 0 && <span className="text-sm font-normal opacity-70">/mo</span>}
+                  {formatMoney(Number(p.price))}
+                  <span className="text-sm font-normal opacity-70">/mo</span>
                 </p>
                 <ul className="mt-5 space-y-2 text-sm" style={{ opacity: featured ? 0.85 : 0.75 }}>
                   <li>{Number(p.commissionRate)}% commission per sale</li>
@@ -475,7 +521,7 @@ export default async function HomePage() {
                     color: "var(--bn-ivory)",
                   }}
                 >
-                  {Number(p.price) === 0 ? "Start free" : "Get started"}
+                  Get started
                 </Link>
               </div>
             );
@@ -548,6 +594,8 @@ export default async function HomePage() {
         </div>
       </section>
 
+      </main>
+
       <footer style={{ background: "var(--bn-ink)", borderTop: "1px solid var(--bn-ink-line)" }}>
         <div className="mx-auto grid max-w-6xl gap-10 px-6 py-14 sm:grid-cols-2 sm:px-10 lg:grid-cols-4">
           <div>
@@ -602,28 +650,40 @@ export default async function HomePage() {
 type Stall = { name: string; cat: string; slug: string };
 
 function Row({ stalls, direction }: { stalls: Stall[]; direction: "left" | "right" }) {
-  // Loop the real store list so the strip reads as continuous, but each
-  // tile still links to that store's actual live storefront.
-  const loop = [...stalls, ...stalls];
+  // Repeat enough that one half always overfills the panel (a store or two would otherwise
+  // leave a visible gap and a jump at the loop point), then duplicate that half for the
+  // -50% seamless loop. Every copy after the first is aria-hidden and out of the tab order,
+  // so keyboard and screen-reader users meet each store once, not 2-8 times.
+  const half = Array.from({ length: Math.max(1, Math.ceil(8 / stalls.length)) }).flatMap(() => stalls);
+  const loop = [...half, ...half];
   return (
-    <div className={`flex w-max gap-3 px-3 py-1.5 ${direction === "left" ? "bn-marquee-left" : "bn-marquee-right"}`}>
-      {loop.map((s, i) => (
-        <Link
-          href={`/${s.slug}`}
-          key={`${s.slug}-${i}`}
-          className="flex w-44 shrink-0 flex-col rounded-xl px-4 py-3 transition hover:border-[var(--bn-marigold)]"
-          style={{ background: "var(--bn-ink)", border: "1px solid var(--bn-ink-line)" }}
-        >
-          <span
-            className="h-1.5 w-6 rounded-full"
-            style={{ background: i % 3 === 0 ? "var(--bn-marigold)" : "var(--bn-jade)" }}
-          />
-          <span className="mt-2 truncate text-sm font-medium">{s.name}</span>
-          <span className="truncate text-xs" style={{ color: "var(--bn-mute)" }}>
-            {s.cat}
-          </span>
-        </Link>
-      ))}
+    <div
+      className={`flex w-max gap-3 px-3 py-1.5 group-hover:[animation-play-state:paused] group-focus-within:[animation-play-state:paused] ${
+        direction === "left" ? "bn-marquee-left" : "bn-marquee-right"
+      }`}
+    >
+      {loop.map((s, i) => {
+        const duplicate = i >= stalls.length;
+        return (
+          <Link
+            href={`/${s.slug}`}
+            key={`${s.slug}-${i}`}
+            aria-hidden={duplicate || undefined}
+            tabIndex={duplicate ? -1 : undefined}
+            className={`flex w-44 shrink-0 flex-col rounded-xl px-4 py-3 transition hover:border-[var(--bn-accent-text)] ${FOCUS}`}
+            style={{ background: "var(--bn-ink)", border: "1px solid var(--bn-ink-line)" }}
+          >
+            <span
+              className="h-1.5 w-6 rounded-full"
+              style={{ background: i % 3 === 0 ? "var(--bn-accent-text)" : "var(--bn-marigold)" }}
+            />
+            <span className="mt-2 truncate text-sm font-medium">{s.name}</span>
+            <span className="truncate text-xs" style={{ color: "var(--bn-mute)" }}>
+              {s.cat}
+            </span>
+          </Link>
+        );
+      })}
     </div>
   );
 }

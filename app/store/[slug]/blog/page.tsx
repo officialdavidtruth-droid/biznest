@@ -4,7 +4,6 @@ import { isHotelStore } from "@/lib/storefront-routing";
 import { prisma } from "@/lib/prisma";
 import { ThelusoHotel } from "@/components/storefront/theluso-hotel";
 import { getHotelContent } from "@/lib/hotel-content";
-import { renderUniversalSectionPage } from "@/components/storefront/universal-section-page-route";
 import { renderBuilderSubpage } from "@/lib/storefront/builder-subpage";
 import { getBlogStoreIfActive, loadBlogIndex, renderBlogIndex, type BlogSearch } from "@/lib/storefront/blog-page";
 import { cleanDescription, NO_INDEX, storeUrl } from "@/lib/seo";
@@ -49,5 +48,7 @@ export default async function BlogPage({ params, searchParams }: Props) {
   const store = await prisma.store.findUnique({ where: { slug }, select: { id: true, status: true, name: true, logoUrl: true, bannerUrl: true, businessType: true, template: { select: { name: true } }, business: { select: { category: true } } } });
   if (!store || store.status !== "ACTIVE") notFound();
   if (isHotelStore({ businessCategory: store.business?.category, storeBusinessType: store.businessType, templateName: store.template?.name })) { const raw = await prisma.store.findUniqueOrThrow({ where: { slug }, select: { id: true, slug: true, name: true, logoUrl: true, bannerUrl: true, storyImage: true, contactPhone: true, contactEmail: true, socialLinks: true, business: { select: { description: true, city: true, state: true, phone: true, email: true } } } }); const hotelStore = { ...raw, address: [raw.business?.city, raw.business?.state].filter(Boolean).join(", ") || null, phone: raw.contactPhone ?? raw.business?.phone ?? null, email: raw.contactEmail ?? raw.business?.email ?? null }; return <ThelusoHotel store={hotelStore} slug={slug} content={await getHotelContent(slug)} />; }
-  return renderUniversalSectionPage(slug, "blog");
+  // No Blog app, no published Customize > Pages blog, not a hotel: there is no blog to show. The universal
+  // section renderer has no "blog" case and returns null, which rendered a blank white page. A real 404 instead.
+  notFound();
 }
