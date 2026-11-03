@@ -1,5 +1,6 @@
 "use client";
 
+import { businessAddress, businessEmail, businessPhone } from "@/lib/storefront/business-details";
 import { formatMoney } from "@/lib/utils/format-money";
 import { MenuLinks } from "@/components/storefront/store-menu";
 import { useEffect, useMemo, useState, useTransition } from "react";
@@ -135,7 +136,7 @@ export function PhotographyBookingClient({
       `}} />
 
       <div style={{ background: "#080808", color: "#fff", fontSize: 11, padding: "9px 5vw", display: "flex", justifyContent: "space-between", gap: 20, flexWrap: "wrap" }}>
-        <div>⌖ {store.address || "2464 Royal Ln. Mesa, New Jersey 45463"} &nbsp;&nbsp; ☎ {store.phone || "(000) 123-0000"} &nbsp;&nbsp; ✉ {store.email || "hello@verestudio.com"}</div>
+        <div>⌖ {businessAddress(store) || "Address not published"} &nbsp;&nbsp; ☎ {businessPhone(store) || "Phone not published"} &nbsp;&nbsp; ✉ {businessEmail(store) || "hello@verestudio.com"}</div>
         <div>Follow Us: &nbsp; ● &nbsp; ◎ &nbsp; ◉ &nbsp; ♪ &nbsp; ▶</div>
       </div>
       <header style={{ borderBottom: "1px solid #eee", background: "#fff" }}>
@@ -220,11 +221,11 @@ export function PhotographyBookingClient({
 
         <section className="bn-2col" style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:18,marginTop:22}}>
           <div style={{background:'#faf9f7',padding:20}}><h3 style={{fontFamily:theme.headlineFont||'Georgia, serif',fontSize:15,marginTop:0}}>Important Information</h3><ul style={{fontSize:10.5,lineHeight:2,paddingLeft:17}}><li>A non-refundable deposit may be required to secure your booking.</li><li>Please arrive 10-15 minutes before your scheduled time.</li><li>Rescheduling is allowed up to 48 hours before the session.</li><li>Raw/unedited photos are not included.</li></ul></div>
-          <div style={{background:goldSoft,padding:20}}><h3 style={{fontFamily:theme.headlineFont||'Georgia, serif',fontSize:15,marginTop:0}}>Have Questions?</h3><p style={{fontSize:11,lineHeight:1.6}}>We&apos;re here to help! Contact us for any inquiries or custom requests.</p><div style={{fontSize:11}}>☎ {store.phone || '(000) 123-0000'}</div><div style={{fontSize:11,marginTop:5}}>✉ {store.email || 'hello@verestudio.com'}</div></div>
+          <div style={{background:goldSoft,padding:20}}><h3 style={{fontFamily:theme.headlineFont||'Georgia, serif',fontSize:15,marginTop:0}}>Have Questions?</h3><p style={{fontSize:11,lineHeight:1.6}}>We&apos;re here to help! Contact us for any inquiries or custom requests.</p><div style={{fontSize:11}}>☎ {businessPhone(store) || 'Phone not published'}</div><div style={{fontSize:11,marginTop:5}}>✉ {businessEmail(store) || 'hello@verestudio.com'}</div></div>
         </section>
       </main>
 
-      <footer style={{background:'#090909',color:'#fff',padding:'45px 5vw 18px'}}><div className="bn-2col" style={{maxWidth:1180,margin:'auto',display:'grid',gridTemplateColumns:'1.3fr 1fr 1fr 1.2fr',gap:35}}><div><h3 style={{fontFamily:theme.headlineFont||'Georgia, serif',margin:'0 0 3px',fontSize:20}}>{store.name || 'VERE STUDIO'}</h3><small style={{letterSpacing:'.25em'}}>PHOTOGRAPHY</small><p style={{fontSize:11,lineHeight:1.7,color:'#bbb'}}>We capture moments that tell your story. Professional photography services for every occasion.</p><div>◯　◎　◉　♪　▶</div></div><div><b>Quick Links</b><div style={{fontSize:11,lineHeight:2,marginTop:10}}>Home<br/>About Us<br/>Services<br/>Portfolio<br/>Packages<br/>Blog<br/>Contact Us</div></div><div><b>Services</b><div style={{fontSize:11,lineHeight:2,marginTop:10}}>Portrait Photography<br/>Wedding Photography<br/>Event Photography<br/>Commercial Photography<br/>Family Photography<br/>Product Photography</div></div><div><b>Contact Us</b><div style={{fontSize:11,lineHeight:2,marginTop:10}}>⌖ {store.address || '2464 Royal Ln. Mesa, New Jersey 45463'}<br/>☎ {store.phone || '(000) 123-0000'}<br/>✉ {store.email || 'hello@verestudio.com'}</div><input className="photo-field" style={{marginTop:12}} placeholder="Enter your email" /></div></div><div style={{maxWidth:1180,margin:'30px auto 0',paddingTop:15,borderTop:'1px solid #333',fontSize:10,color:'#aaa'}}>© 2024 {store.name || 'Vere Studio Photography'}. All Rights Reserved.</div></footer>
+      <footer style={{background:'#090909',color:'#fff',padding:'45px 5vw 18px'}}><div className="bn-2col" style={{maxWidth:1180,margin:'auto',display:'grid',gridTemplateColumns:'1.3fr 1fr 1fr 1.2fr',gap:35}}><div><h3 style={{fontFamily:theme.headlineFont||'Georgia, serif',margin:'0 0 3px',fontSize:20}}>{store.name || 'VERE STUDIO'}</h3><small style={{letterSpacing:'.25em'}}>PHOTOGRAPHY</small><p style={{fontSize:11,lineHeight:1.7,color:'#bbb'}}>We capture moments that tell your story. Professional photography services for every occasion.</p><div>◯　◎　◉　♪　▶</div></div><div><b>Quick Links</b><div style={{fontSize:11,lineHeight:2,marginTop:10}}>Home<br/>About Us<br/>Services<br/>Portfolio<br/>Packages<br/>Blog<br/>Contact Us</div></div><div><b>Services</b><div style={{fontSize:11,lineHeight:2,marginTop:10}}>Portrait Photography<br/>Wedding Photography<br/>Event Photography<br/>Commercial Photography<br/>Family Photography<br/>Product Photography</div></div><div><b>Contact Us</b><div style={{fontSize:11,lineHeight:2,marginTop:10}}>⌖ {businessAddress(store) || '2464 Royal Ln. Mesa, New Jersey 45463'}<br/>☎ {businessPhone(store) || 'Phone not published'}<br/>✉ {businessEmail(store) || 'hello@verestudio.com'}</div><input className="photo-field" style={{marginTop:12}} placeholder="Enter your email" /></div></div><div style={{maxWidth:1180,margin:'30px auto 0',paddingTop:15,borderTop:'1px solid #333',fontSize:10,color:'#aaa'}}>© 2024 {store.name || 'Vere Studio Photography'}. All Rights Reserved.</div></footer>
     </div>
   );
             }

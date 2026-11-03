@@ -765,6 +765,10 @@ model Store {
   // editors (menus, layout, sections); "ADVANCED" shows everything. Display-only: both modes
   // read and write the same saved settings, so switching never loses anything. See lib/site-mode.ts.
   siteMode      String      @default("SIMPLE")
+  // Public contact details shown in every template's header/footer, set once on the
+  // "Business details" screen. Free text; blank falls back to the business city/state.
+  address       String?
+  openingHours  String?
   id            String      @id @default(cuid())
   businessId    String      @unique
   business      Business    @relation(fields: [businessId], references: [id], onDelete: Cascade)

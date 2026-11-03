@@ -1,5 +1,6 @@
 "use client";
 
+import { businessAddress, businessEmail, businessPhone } from "@/lib/storefront/business-details";
 import { MenuLinks } from "@/components/storefront/store-menu";
 import Link from "next/link";
 import { useMemo, useState } from "react";
@@ -46,7 +47,7 @@ export function HotelCatalog({ store, slug, content }: { store: Store; slug: str
 
   const featured = content.rooms.filter((r) => r.featured).slice(0, 3);
   const amenities = content.amenities.slice(0, 6);
-  const address = store.address || "Abuja, Nigeria";
+  const address = businessAddress(store) || "Address not published";
 
   return (
     <div className="hotel-catalog-page">
@@ -115,7 +116,7 @@ export function HotelCatalog({ store, slug, content }: { store: Store; slug: str
         </section>
       </main>
 
-      <footer className="hc-footer"><div><div className="hc-brand footer-brand"><span className="hc-mark">L</span><span><b>{store.name}</b><small>HOTEL &amp; SUITES</small></span></div><p>A higher standard of hospitality.</p></div><div><b>Explore</b><Link href={`/store/${slug}/catalog`}>Rooms &amp; Suites</Link><Link href={`/store/${slug}/amenities`}>Amenities</Link>{content.hasDining&&<Link href={`/store/${slug}/dining`}>Dining</Link>}</div><div><b>Contact</b><span>{address}</span><span>{store.phone || "Contact the hotel"}</span><span>{store.email || "Email available"}</span></div><div><b>Reservations</b><p>For availability and special requests, our team is ready to help.</p><Link href={`/store/${slug}/contact`} className="hc-footer-link">Contact Us <ArrowRight size={14} /></Link></div></footer>
+      <footer className="hc-footer"><div><div className="hc-brand footer-brand"><span className="hc-mark">L</span><span><b>{store.name}</b><small>HOTEL &amp; SUITES</small></span></div><p>A higher standard of hospitality.</p></div><div><b>Explore</b><Link href={`/store/${slug}/catalog`}>Rooms &amp; Suites</Link><Link href={`/store/${slug}/amenities`}>Amenities</Link>{content.hasDining&&<Link href={`/store/${slug}/dining`}>Dining</Link>}</div><div><b>Contact</b><span>{address}</span><span>{businessPhone(store) || "Contact the hotel"}</span><span>{businessEmail(store) || "Email available"}</span></div><div><b>Reservations</b><p>For availability and special requests, our team is ready to help.</p><Link href={`/store/${slug}/contact`} className="hc-footer-link">Contact Us <ArrowRight size={14} /></Link></div></footer>
     </div>
   );
 }

@@ -1,7 +1,8 @@
 import Link from "next/link";
-import { Mail, Phone, MessageCircle, Instagram, Facebook, Twitter, ArrowRight } from "lucide-react";
+import { Mail, Phone, MapPin, Clock3, MessageCircle, Instagram, Facebook, Twitter, ArrowRight } from "lucide-react";
 import type { StoreBranding } from "@/lib/actions/store-branding";
 import { whatsappLink } from "@/lib/utils/whatsapp-link";
+import { businessAddress, businessHours } from "@/lib/storefront/business-details";
 
 // Every template's *-chrome.tsx wraps its own themed footer around
 // home/product/cart/checkout pages. This is for the generic, non-template
@@ -13,6 +14,8 @@ export function StoreFooter({ store, slug }: { store: NonNullable<StoreBranding>
   const accent = store.themeColors?.primary || "#0f172a";
   const social = store.socialLinks ?? {};
   const waHref = whatsappLink(social.whatsapp);
+  const address = businessAddress({ address: store.address, business: { city: store.city, state: store.state } });
+  const hours = businessHours(store);
 
   const quickLinks = [
     { href: `/${slug}`, label: "Home" },
@@ -98,7 +101,19 @@ export function StoreFooter({ store, slug }: { store: NonNullable<StoreBranding>
                   </a>
                 </li>
               )}
-              {!store.contactPhone && !store.contactEmail && (
+              {address && (
+                <li className="flex items-start gap-2">
+                  <MapPin className="mt-0.5 h-3.5 w-3.5 shrink-0 text-slate-400" />
+                  <span>{address}</span>
+                </li>
+              )}
+              {hours && (
+                <li className="flex items-start gap-2">
+                  <Clock3 className="mt-0.5 h-3.5 w-3.5 shrink-0 text-slate-400" />
+                  <span>{hours}</span>
+                </li>
+              )}
+              {!store.contactPhone && !store.contactEmail && !address && (
                 <li className="text-slate-400">Contact details not added yet.</li>
               )}
             </ul>

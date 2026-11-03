@@ -10,6 +10,8 @@ export type StoreBranding = {
   fontFamily: string | null;
   contactEmail: string | null;
   contactPhone: string | null;
+  address: string | null;
+  openingHours: string | null;
   socialLinks: SocialLinks | null;
   // Onboarding-sourced content, used to make the auth-shell copy (tagline +
   // benefit bullets) reflect this specific business instead of generic
@@ -45,6 +47,8 @@ export async function getStoreBranding(slug: string | undefined): Promise<StoreB
       fontFamily: true,
       contactEmail: true,
       contactPhone: true,
+      address: true,
+      openingHours: true,
       socialLinks: true,
       businessType: true,
       heroOverrides: true,
@@ -64,6 +68,8 @@ export async function getStoreBranding(slug: string | undefined): Promise<StoreB
     fontFamily: store.fontFamily,
     contactEmail: store.contactEmail,
     contactPhone: store.contactPhone,
+    address: store.address,
+    openingHours: store.openingHours,
     socialLinks: store.socialLinks as SocialLinks | null,
     businessType: store.businessType,
     heroSubtitle: heroOverrides?.subtitle ?? null,

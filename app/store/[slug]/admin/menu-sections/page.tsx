@@ -2,10 +2,14 @@
 import { getStoreCategories } from "@/lib/actions/category";
 import { MenuSectionsManager } from "@/components/dashboard/menu-sections-manager";
 import { prisma } from "@/lib/prisma";
+import { redirect } from "next/navigation";
+import { normalizeSiteMode } from "@/lib/site-mode";
 
 export default async function MenuSectionsPage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
-  const store = await prisma.store.findUnique({ where: { slug }, select: { id: true } });
+  const store = await prisma.store.findUnique({ where: { slug }, select: { id: true, siteMode: true } });
+  // Sections are the same categories shown a second way. Simple mode uses the one plain Categories list.
+  if (normalizeSiteMode(store?.siteMode) === "SIMPLE") redirect(`/${slug}/admin/categories`);
   const categories = await getStoreCategories(slug);
   const topLevel = categories
     .filter((c) => !c.parentId && c.type === "PRODUCT")

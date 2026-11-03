@@ -1,6 +1,7 @@
 "use client";
 // Dedicated home layouts for the reference hotel templates (Aspire, Larita, Skyview).
 // Each one follows its reference design's structure; content comes from the store's own data.
+import { businessAddress, businessEmail, businessPhone } from "@/lib/storefront/business-details";
 import Link from "next/link";
 import { ArrowRight, BedDouble, CalendarDays, Check, MapPin, Phone, Play, ShieldCheck, Sparkles, Star, User, Utensils, Waves, Wifi, Car, Dumbbell } from "lucide-react";
 import { defaultPhoto } from "@/lib/default-images";
@@ -62,7 +63,7 @@ export function RefHeader({ layout, store, slug, active = "", solid = false, has
 /* ───────────────────────── ASPIRE ───────────────────────── */
 function Aspire({ store, slug, content }: P) {
   const rs = rooms(content).slice(0, 3); const hero = ph(store.bannerUrl, 0);
-  const phone = store.contactPhone || store.phone || "—";
+  const phone = store.contactPhone || businessPhone(store) || "—";
   return <div className="rh-aspire">
     <style>{`
 .rh-aspire{background:#21150f;color:#f7e8ce;font-family:var(--lux-sans,Inter,sans-serif)}
@@ -97,7 +98,7 @@ function Aspire({ store, slug, content }: P) {
     </section>
     <div className="strip">
       <div><CalendarDays color="#e2c28a" /><div style={{ padding: 0, border: 0, display: "block" }}><small>CHECK-IN / OUT</small><span>3:00 PM / 11:00 AM</span></div></div>
-      <div><MapPin color="#e2c28a" /><div style={{ padding: 0, border: 0, display: "block" }}><small>LOCATION</small><span>{store.address || "Visit us"}</span></div></div>
+      <div><MapPin color="#e2c28a" /><div style={{ padding: 0, border: 0, display: "block" }}><small>LOCATION</small><span>{businessAddress(store) || "Visit us"}</span></div></div>
       <div><Phone color="#e2c28a" /><div style={{ padding: 0, border: 0, display: "block" }}><small>CUSTOMER SUPPORT</small><span>{phone}</span></div></div>
     </div>
     <section className="rooms">{rs.map((r, i) => <div key={r.id}><h3>{r.name}</h3><p className="d">{r.description.slice(0, 110)}</p>
@@ -195,7 +196,7 @@ function Skyview({ store, slug, content }: P) {
     <section className="hero">
       <RefHeader layout="skyview" store={store} slug={slug} active="Home" hasDining={!!content.hasDining} />
       <div className="hc"><small>LUXURY STAYS. UNFORGETTABLE JOURNEYS.</small><h1>{content.skin?.headline || "Your Perfect Getaway Awaits"}</h1><p>{content.skin?.sub || content.home.subtitle}</p>
-        <div className="bar"><div><b>Destination</b>{first(store.address || "Where are you going?")}</div><div><b>Check In</b>Select date</div><div><b>Guests</b>2 Adults</div><Link href={href(slug, "/book")}>Search Rooms →</Link></div></div>
+        <div className="bar"><div><b>Destination</b>{first(businessAddress(store) || "Where are you going?")}</div><div><b>Check In</b>Select date</div><div><b>Guests</b>2 Adults</div><Link href={href(slug, "/book")}>Search Rooms →</Link></div></div>
     </section>
     <section className="feats">{[[BedDouble, "Rooms & Suites", "Browse available rooms"], [Sparkles, "Amenities", "See what the property offers"], ...(content.hasDining ? [[Utensils, "Dining", "See the menu"]] : [[Wifi, "Stay Details", "Room facilities and rates"]]), [MapPin, "Location", "Find us and plan your visit"], [ShieldCheck, "Direct Booking", "Reserve straight from the property"]].map(([I, t, s]: any) => <div key={t}><I /><span><b>{t}</b><small>{s}</small></span></div>)}</section>
     <section className="rm"><div><small className="e">Featured stays</small><h2>Exquisite Rooms &amp; Suites</h2><p>Thoughtfully designed for your comfort, our rooms blend modern luxury with natural beauty.</p><Link className="ol" href={href(slug, "/rooms")}>View All Rooms →</Link></div>
@@ -234,8 +235,8 @@ export function RefFooter({ layout, store, slug, content }: { layout: "aspire" |
   const raw = (store as any).socialLinks;
   const social = raw && typeof raw === "object" && !Array.isArray(raw) ? (raw as Record<string, string>) : null;
   const hasSocial = !!social && Object.values(social).some(Boolean);
-  const phone = store.contactPhone || store.phone;
-  const email = store.contactEmail || store.email;
+  const phone = store.contactPhone || businessPhone(store);
+  const email = store.contactEmail || businessEmail(store);
   const links: [string, string][] = [["Home", "/"], ["Rooms", "/rooms"], ...(content.hasDining ? [["Dining", "/dining"] as [string, string]] : []), ["Facilities", "/facilities"], ["Experiences", "/experiences"], ["Gallery", "/gallery"], ["About", "/about"], ["Contact", "/contact"]];
   const desc = (store as any).business?.description as string | undefined;
   return <footer className={`rhf rhf-${layout}`}><style>{FOOT_CSS}</style>
@@ -244,7 +245,7 @@ export function RefFooter({ layout, store, slug, content }: { layout: "aspire" |
         {hasSocial && <FooterSocial className="rhf-social" social={social} />}</div>
       <div className="rhf-col"><h4>Quick Links</h4>{links.map(([l, h]) => <Link key={l} href={href(slug, h)}>{l}</Link>)}</div>
       <div className="rhf-col"><h4>Contact</h4>
-        <span>{store.address || "Address not published"}</span>
+        <span>{businessAddress(store) || "Address not published"}</span>
         {phone ? <a href={`tel:${phone}`}>{phone}</a> : null}
         {email ? <a href={`mailto:${email}`}>{email}</a> : null}
         <Link href={href(slug, "/book")}>Book your stay →</Link></div>

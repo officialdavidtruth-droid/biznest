@@ -176,3 +176,25 @@ export async function reorderCategory(slug: string, id: string, direction: "up" 
   revalidatePath(`/store/${slug}/admin/categories`); revalidatePath(`/store/${slug}`);
   return { success: true, data: undefined };
         }
+
+/**
+ * Rename only. Unlike updateCategory this never touches the picture, icon, description or parent, so the
+ * plain Categories list can offer a rename without risking anything else the owner set in Advanced options.
+ * The web address (slug) never changes on rename, exactly as updateCategory behaves.
+ */
+export async function renameCategory(slug: string, id: string, newName: string): Promise<ActionResult> {
+  const a = await assertMenuEditor(slug);
+  if (!a.success) return { success: false, error: a.error };
+  const row = await prisma.category.findFirst({ where: { id, storeId: a.store.id } });
+  if (!row) return { success: false, error: "Category not found." };
+  const name = String(newName ?? "").trim();
+  if (name.length < 2 || name.length > 80) return { success: false, error: "The name must be 2–80 characters." };
+  const duplicate = await prisma.category.findFirst({ where: { storeId: a.store.id, name, parentId: row.parentId, NOT: { id } } });
+  if (duplicate) return { success: false, error: "You already have a category with this name." };
+  // A very old category with no web address gets one the first time it is saved.
+  const nextSlug = row.slug ? null : await uniqueCategorySlug(prisma, a.store.id, name, id);
+  await prisma.category.update({ where: { id }, data: { name, ...(nextSlug ? { slug: nextSlug } : {}) } });
+  revalidatePath(`/store/${slug}/admin/categories`);
+  revalidatePath(`/store/${slug}`, "layout");
+  return { success: true, data: undefined };
+}

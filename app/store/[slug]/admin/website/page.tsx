@@ -3,7 +3,7 @@
 // Simple mode owners start here and never need to see the technical editors.
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { ExternalLink, LayoutTemplate, Store as StoreIcon, FileText, ListTree } from "lucide-react";
+import { ExternalLink, LayoutTemplate, Store as StoreIcon, FileText, ListTree, Boxes } from "lucide-react";
 import { prisma } from "@/lib/prisma";
 import { assertStorePermission } from "@/lib/access/assert-store-access";
 import { normalizeSiteMode } from "@/lib/site-mode";
@@ -31,10 +31,10 @@ export default async function MyWebsitePage({ params }: { params: Promise<{ slug
       text: store.template ? `Your website uses the “${store.template.name}” design. You can switch any time.` : "Pick how your website looks. You can change it any time.",
     },
     {
-      href: `${base}/settings`,
+      href: `${base}/business-details`,
       icon: StoreIcon,
       title: "Your business details",
-      text: "Your business name, logo, phone number and address.",
+      text: "Your name, logo, phone number, address and social links. They fill the top and bottom of every page.",
     },
     {
       href: `${base}/customize`,
@@ -43,10 +43,16 @@ export default async function MyWebsitePage({ params }: { params: Promise<{ slug
       text: "Change the words and pictures on your website.",
     },
     {
-      href: `${base}/menus`,
+      href: `${base}/menu-pages`,
       icon: ListTree,
       title: "Pages shown in your menu",
       text: "Choose which pages customers can click to from the top of your website.",
+    },
+    {
+      href: `${base}/categories`,
+      icon: Boxes,
+      title: "Your categories",
+      text: "Group what you offer so customers can browse it easily.",
     },
   ];
 
