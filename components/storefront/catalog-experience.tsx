@@ -39,8 +39,10 @@ const SORTS: { value: Sort; label: string }[] = [
  * a price ceiling, sorting, grid or list view and "show more".
  */
 export function CatalogExperience({
-  store, design: d, items, initialCategory, initialQuery, mode = "catalog", heading, topSlot, bottomSlot,
+  store, design: d, items, initialCategory, initialQuery, mode = "catalog", heading, topSlot, bottomSlot, externalChrome,
 }: {
+  /** The page already sits inside the template's own header and footer (TemplateShell), so skip the Builder's. */
+  externalChrome?: boolean;
   /** Owner blocks above and below the product grid (Customize > Pages > Shop page). */
   topSlot?: ReactNode; bottomSlot?: ReactNode;
   store: StoreInfo; design: BuilderConfig["design"]; items: CatalogEntry[]; initialCategory?: string; initialQuery?: string;
@@ -124,13 +126,13 @@ export function CatalogExperience({
   const control: React.CSSProperties = { background: d.surface, border: `1px solid ${line}`, color: d.text, borderRadius: Math.min(radius, 12), padding: "10px 12px", fontSize: 14, fontFamily: "inherit" };
 
   return (
-    <main style={{ background: d.background, color: d.text, fontFamily: d.font, minHeight: "100vh" }}>
+    <main style={{ background: d.background, color: d.text, fontFamily: d.font, minHeight: externalChrome ? undefined : "100vh" }}>
       <style>{`a{text-decoration:none;color:inherit}.bn-wrap{width:min(${width}px,calc(100% - 32px));margin:0 auto}.bn-grid{display:grid;gap:20px}
 .cx-chips{display:flex;gap:8px;overflow-x:auto;padding:2px 0 6px;scrollbar-width:thin}
 .cx-focus:focus-visible,.cx-chips button:focus-visible,.cx-row:focus-visible{outline:2px solid ${d.accent};outline-offset:2px}
 @media(max-width:720px){.bn-nav-links{display:none!important}.cx-tools{flex-direction:column;align-items:stretch!important}.cx-row{grid-template-columns:84px 1fr!important}.cx-row>div:last-child{grid-column:1/-1}}`}</style>
 
-      <BuilderHeader store={store} d={d} experience={experience} visible={[]} />
+      {!externalChrome && <BuilderHeader store={store} d={d} experience={experience} visible={[]} />}
       {topSlot}
 
       {/* Title band */}
@@ -255,7 +257,7 @@ export function CatalogExperience({
       </div>
 
       {bottomSlot}
-      <BuilderFooter store={store} d={d} visible={[]} storeLinks={storeLinks} />
+      {!externalChrome && <BuilderFooter store={store} d={d} visible={[]} storeLinks={storeLinks} />}
     </main>
   );
 }

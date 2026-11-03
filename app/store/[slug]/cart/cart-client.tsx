@@ -15,7 +15,10 @@ export function CartClient({
   palette = DEFAULT_STORE_PALETTE,
   topSlot,
   bottomSlot,
+  externalChrome,
 }: {
+  /** Inside the template's own header and footer (TemplateShell): skip this page's small store bar. */
+  externalChrome?: boolean;
   slug: string;
   storeName?: string;
   logoUrl?: string | null;
@@ -39,9 +42,9 @@ export function CartClient({
   ];
 
   return (
-    <div style={{ background: SURFACE, color: INK, minHeight: "100vh", fontFamily: palette.font }} className="storefront-root">
+    <div style={{ background: SURFACE, color: INK, minHeight: externalChrome ? undefined : "100vh", fontFamily: palette.font }} className="storefront-root">
       {/* Store bar: the cart used to be an unbranded page with no way back */}
-      <header style={{ background: CARD, borderBottom: `1px solid ${INK}14` }}>
+      {!externalChrome && <header style={{ background: CARD, borderBottom: `1px solid ${INK}14` }}>
         <div style={{ maxWidth: 1280 }} className="mx-auto flex items-center justify-between gap-4 px-6 py-4">
           <Link href={`/store/${slug}`} className="flex items-center gap-3 no-underline" style={{ color: INK }}>
             {logoUrl ? (
@@ -60,7 +63,7 @@ export function CartClient({
             <span className="sm:hidden">Shop</span>
           </Link>
         </div>
-      </header>
+      </header>}
       {topSlot}
 
       <div style={{ maxWidth: 1280 }} className="mx-auto px-6 pb-32 pt-10 lg:pb-14">

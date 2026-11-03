@@ -3,6 +3,8 @@ import { notFound, redirect } from "next/navigation";
 import { isHotelStore } from "@/lib/storefront-routing";
 import type { Metadata } from "next";
 import { CatalogExperience } from "@/components/storefront/catalog-experience";
+import { TemplateShell } from "@/components/storefront/template-shell";
+import { usesTemplateChrome } from "@/lib/storefront/template-chrome";
 import { catalogDesign, catalogStoreInfo } from "@/lib/storefront/catalog-props";
 import { NO_INDEX, absoluteUrl, cleanDescription, storeUrl } from "@/lib/seo";
 import { resolveStoreTheme } from "@/lib/template-themes";
@@ -62,8 +64,10 @@ export default async function CategoryPage({ params }: { params: Promise<{ slug:
     return <GrandeurMenu store={{...store,sellsProducts:store.business?.sellsProducts??true} as any} slug={slug} items={items.map(i=>({...i,description:null,type:i.kind,rentalUnit:null,isBookable:false})) as any}/>;
   }
   const theme=resolveStoreTheme(store.template?.category,store.name,store.themeColors as any,store.fontFamily,store.template?.name);
-  return (
+  const chrome = usesTemplateChrome(store.template?.name);
+  const page = (
     <CatalogExperience
+      externalChrome={chrome}
       mode="category"
       heading={category.name}
       store={catalogStoreInfo(store, slug)}
@@ -71,4 +75,5 @@ export default async function CategoryPage({ params }: { params: Promise<{ slug:
       items={items}
     />
   );
+  return chrome ? <TemplateShell store={store} slug={slug} theme={theme}>{page}</TemplateShell> : page;
 }

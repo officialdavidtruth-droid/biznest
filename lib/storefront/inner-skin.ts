@@ -39,7 +39,7 @@ export const HOME_MATCHED: Record<string, Skin> = {
   "Nestoria Real Estate": {
     bg: "#ffffff", ink: "#20194a", accent: "#6554d9", dark: "#20194a", font: PLUS_JAKARTA, head: PLUS_JAKARTA,
     btn: "10px", card: "14px",
-    nav: [["Home", ""], ["Properties", "catalog"], ["About", "about"], ["Contact", "contact"]],
+    nav: [["Home", ""], ["Listings", "catalog"], ["Services", "services"], ["Favorites", "account"], ["Blog", "blog"], ["About Us", "about"]],
     cta: { label: "Get Started", path: "contact" },
   },
 };
@@ -60,6 +60,22 @@ const lum = (c: string) => {
   return 0.2126 * r + 0.7152 * g + 0.0722 * b;
 };
 
+const contrast = (a: string, b: string) => { const x = lum(a), y = lum(b); const [hi, lo] = x > y ? [x, y] : [y, x]; return (hi + 0.05) / (lo + 0.05); };
+/** Black or white, whichever reads better on `bg` (button labels on a template's accent colour). */
+const onColor = (bg: string) => (contrast("#ffffff", bg) >= contrast("#111111", bg) ? "#ffffff" : "#111111");
+const toHex = (rgb: number[]) => "#" + rgb.map((v) => Math.round(Math.max(0, Math.min(255, v))).toString(16).padStart(2, "0")).join("");
+/** The accent colour made readable as small text on `bg` (a pale yellow accent would be invisible on white). */
+function readableAccent(accent: string, bg: string, min = 4.5): string {
+  const a = hex(accent), b = hex(bg);
+  if (!a || !b || contrast(accent, bg) >= min) return accent;
+  const toward = lum(bg) > 0.5 ? [0, 0, 0] : [255, 255, 255];
+  for (let t = 0.1; t <= 1.001; t += 0.1) {
+    const mixed = toHex(a.map((v, i) => v + (toward[i] - v) * t));
+    if (contrast(mixed, bg) >= min) return mixed;
+  }
+  return toHex(toward);
+}
+
 /** CSS variables the shared inner-page layout reads. Everything has a sensible fallback in globals.css. */
 export function innerSkinVars(theme: TemplateTheme, templateName: string | null | undefined): Record<string, string> {
   const s = skinFor(templateName);
@@ -76,6 +92,8 @@ export function innerSkinVars(theme: TemplateTheme, templateName: string | null 
     "--u-ink": ink,
     "--u-card": s ? "#ffffff" : theme.card || bg,
     "--u-accent": accent,
+    "--u-on-accent": onColor(accent),
+    "--u-accent-text": readableAccent(accent, bg),
     "--u-soft": theme.accentSoft || `color-mix(in srgb, ${accent} 14%, ${bg})`,
     "--u-muted": s ? `color-mix(in srgb, ${ink} 62%, ${bg})` : theme.muted || `color-mix(in srgb, ${ink} 62%, ${bg})`,
     "--u-line": s ? `color-mix(in srgb, ${ink} 12%, ${bg})` : theme.border || `color-mix(in srgb, ${ink} 14%, ${bg})`,

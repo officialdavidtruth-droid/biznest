@@ -36,6 +36,8 @@ type Props = {
    * storefrontConfig.unitBooking.stayTimes) is used.
    */
   stayTimes?: { checkIn?: string | null; checkOut?: string | null } | null;
+  /** The page already sits inside the template's own header and footer (TemplateShell), so skip this component's own. */
+  externalChrome?: boolean;
 };
 
 // A price of 0 means "no fixed price", not "free": quote-based items show
@@ -71,7 +73,7 @@ function itemImages(service: any) {
  * the shared BookingWidget (handles both unit-based and appointment-based
  * services) rather than the hotel-only reservation form.
  */
-export function CatalogItemDetail({ store, slug, service, reviewStats, theme, businessCategory, hotelMode, stayTimes }: Props) {
+export function CatalogItemDetail({ store, slug, service, reviewStats, theme, businessCategory, hotelMode, stayTimes, externalChrome }: Props) {
   const images = itemImages(service);
   const [selectedImage, setSelectedImage] = useState(0);
   const address = [store.business?.city, store.business?.state, store.business?.country].filter(Boolean).join(", ");
@@ -131,7 +133,7 @@ export function CatalogItemDetail({ store, slug, service, reviewStats, theme, bu
 
   return (
     <div className="hotel-room-reference" style={{ "--hr-bg": theme.bg, "--hr-ink": theme.ink, "--hr-card": theme.card, "--hr-accent": accent, "--hr-dark": dark, "--hr-border": theme.border || "#E7E3D9", "--hr-muted": theme.muted || "#74736D", "--hr-head": theme.headlineFont, "--hr-font": theme.font } as React.CSSProperties}>
-      {(phone || email || address || hasSocial) && (
+      {!externalChrome && (phone || email || address || hasSocial) && (
         <div className="hr-topbar">
           {phone && <a href={`tel:${phone}`}>☎ {phone}</a>}
           {email && <a href={`mailto:${email}`}>✉ {email}</a>}
@@ -139,7 +141,7 @@ export function CatalogItemDetail({ store, slug, service, reviewStats, theme, bu
           {hasSocial && <FooterSocial social={social} className="hr-top-social" iconSize={14} />}
         </div>
       )}
-      <header className="hr-header">
+      {!externalChrome && <header className="hr-header">
         <Link href={`/store/${slug}`} className="hr-brand">
           {store.logoUrl ? <img src={store.logoUrl} alt="" /> : <span>{store.name?.[0] || "S"}</span>}
           <strong>{store.name}</strong>
@@ -158,7 +160,7 @@ export function CatalogItemDetail({ store, slug, service, reviewStats, theme, bu
           <AccountLink storeSlug={slug} ink={theme.ink} />
         </div>
         <Link href={catalogHref} className="hr-book-top">{isUnitBased ? "Book Now" : "View " + terminology.catalog}</Link>
-      </header>
+      </header>}
 
       <section className="hr-hero" style={{ backgroundImage: `linear-gradient(90deg, rgba(0,0,0,.57), rgba(0,0,0,.24)), url(${images[0] || store.bannerUrl || ""})` }}>
         <div>
@@ -307,12 +309,12 @@ export function CatalogItemDetail({ store, slug, service, reviewStats, theme, bu
         </section>
       </main>
 
-      <footer className="hr-footer">
+      {!externalChrome && <footer className="hr-footer">
         <div><div className="hr-footer-brand"><span>{store.name?.[0] || "S"}</span><b>{store.name}</b></div><p>Quality, care and exceptional service designed around you.</p></div>
         <div><b>Quick Links</b><Link href={`/store/${slug}`}>Home</Link><Link href={catalogHref}>{terminology.catalog}</Link><Link href={`/store/${slug}/account`}>Account</Link></div>
         <div><b>Contact</b>{phone && <a href={`tel:${phone}`}>{phone}</a>}{email && <a href={`mailto:${email}`}>{email}</a>}{!phone && !email && <Link href={`/store/${slug}/contact`}>Contact us</Link>}</div>
         <div><b>Newsletter</b><span>Get updates, offers and new arrivals.</span><NewsletterInlineForm slug={slug} inputPlaceholder="Your email">Subscribe</NewsletterInlineForm></div>
-      </footer>
+      </footer>}
     </div>
   );
 }

@@ -130,6 +130,10 @@ function navLinksFor(store:any):string[][]{
   if(skinNav) return skinNav;
   const niche=nicheOf(store);
   const svc=servicesNavLink(niche,(store.services?.length??0)>0,(store.products?.length??0)>0);
+  // A product store has no portfolio or price list: show the links its own home header shows (Home, Catalog, About)
+  // plus Contact. Service niches (agencies, cleaners, salons...) keep Services / Portfolio / Pricing.
+  const mode=resolveBusinessMode(store.business?.category,{sellsProducts:store.sellsProducts??store.business?.sellsProducts,offersServices:store.offersServices??store.business?.offersServices});
+  if(mode==="commerce") return [['Home',''],['Catalog','catalog'],['About','about'],['Contact','contact']];
   return [['Home',''],[svc[0],svc[1]],['About','about'],['Portfolio','portfolio'],['Pricing','pricing'],['Contact','contact']];
 }
 
@@ -145,7 +149,7 @@ export function Header({store,slug,active,accent,dark=false,radius}:{store:any;s
  </div></header>
 }
 
-function Footer({store,slug,accent}:{store:any;slug:string;accent:string}){
+export function Footer({store,slug,accent}:{store:any;slug:string;accent:string}){
  return <footer className="bn-universal-footer"><div className="bn-universal-footer-grid"><div><div className="bn-universal-footer-brand"><span className="bn-universal-logo">{store.logoUrl?<img src={store.logoUrl} alt=""/>:<span>{store.name?.[0] || "B"}</span>}</span><strong>{store.name}</strong></div><p>{store.business?.description || "Professional solutions for people and businesses."}</p><div className="bn-footer-social">{Object.entries((store.socialLinks||{}) as Record<string,string>).slice(0,5).map(([k,v])=>v?<a key={k} href={String(v)} target="_blank" rel="noreferrer">{k.slice(0,2).toUpperCase()}</a>:null)}</div></div>
  <div><h4>Quick Links</h4>{navLinksFor(store).map(([l,p])=><Link key={l} href={`/store/${slug}${p?`/${p}`:''}`}>{l}</Link>)}</div>
  <div><h4>Contact Us</h4>{store.contactPhone&&<a href={`tel:${store.contactPhone}`}><Phone size={14}/>{store.contactPhone}</a>}{store.contactEmail&&<a href={`mailto:${store.contactEmail}`}><Mail size={14}/>{store.contactEmail}</a>}<span><MapPin size={14}/>{[store.business?.city,store.business?.state,store.business?.country].filter(Boolean).join(", ") || "Online business"}</span></div>
@@ -271,7 +275,7 @@ function Reviews({p}:{p:Props}){
    </>}
  </section></main><Footer store={store} slug={slug} accent={accent}/></>}
 
-function Skinned({p,children}:{p:Props;children:React.ReactNode}){
+export function Skinned({p,children}:{p:Props;children:React.ReactNode}){
  const name=p.store.template?.name as string|undefined;
  const skin=skinFor(name);
  return <div className="bn-skin" data-serif={skin?.serif?"1":undefined} data-footer={skin?.footer} style={innerSkinVars(p.theme,name) as React.CSSProperties}>{children}</div>

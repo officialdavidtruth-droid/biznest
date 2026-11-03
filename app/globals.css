@@ -1453,12 +1453,14 @@ html[data-app]:not([data-tabbar]) .bn-tabbar { display: none; }
 .bn-skin[data-serif] .bn-universal-hero h1{line-height:1.04}
 .bn-skin .bn-universal-header{background:color-mix(in srgb,var(--u-bg,#fff) 94%,transparent);border-bottom-color:var(--u-line,#0b17240f);color:var(--u-ink,#111)}
 .bn-skin .bn-universal-brand,.bn-skin .bn-universal-nav nav a,.bn-skin .bn-universal-actions>a{color:var(--u-ink,#111)}
-.bn-skin .bn-universal-nav nav a.active{color:var(--u-accent,#1473ea)}
+.bn-skin .bn-universal-nav nav a.active{color:var(--u-accent-text,#1473ea)}
 .bn-skin .bn-universal-logo{background:var(--u-soft,#eef3f8);color:var(--u-accent,inherit)}
-.bn-skin .bn-universal-quote{color:#fff!important;border-radius:var(--u-btn,7px)}
+.bn-skin .bn-universal-quote,.bn-skin .bn-primary,.bn-skin .bn-book-btn,.bn-skin .bn-popular,.bn-skin .bn-newsletter button{color:var(--u-on-accent,#fff)!important}
+.bn-skin .bn-universal-quote{border-radius:var(--u-btn,7px)}
+.bn-skin .bn-band.light>a,.bn-skin .bn-pricing-strip>a{color:var(--u-on-accent,#fff)!important}
 .bn-skin .bn-primary,.bn-skin .bn-secondary,.bn-skin .bn-book-btn,.bn-skin .bn-band>a,.bn-skin .bn-pricing-strip>a{border-radius:var(--u-btn,7px)}
 .bn-skin .bn-universal-main{background:var(--u-bg,#fff);color:var(--u-ink,#111)}
-.bn-skin .bn-universal-section-title small,.bn-skin .bn-about-intro>div>small,.bn-skin .bn-contact-form>small,.bn-skin .bn-location small,.bn-skin .bn-pricing-strip small,.bn-skin .bn-check svg{color:var(--u-accent,#1473ea)}
+.bn-skin .bn-universal-section-title small,.bn-skin .bn-about-intro>div>small,.bn-skin .bn-contact-form>small,.bn-skin .bn-location small,.bn-skin .bn-pricing-strip small,.bn-skin .bn-check svg{color:var(--u-accent-text,#1473ea)}
 .bn-skin .bn-universal-section-title p,.bn-skin .bn-about-intro p,.bn-skin .bn-service-body p,.bn-skin .bn-service-body small,.bn-skin .bn-service-row p,.bn-skin .bn-service-row small,.bn-skin .bn-portfolio-card p,.bn-skin .bn-price-body p,.bn-skin .bn-price-body small,.bn-skin .bn-price-row p,.bn-skin .bn-values-grid p,.bn-skin .bn-contact-form>p,.bn-skin .bn-contact-side p,.bn-skin .bn-contact-side small,.bn-skin .bn-consent,.bn-skin .bn-policy-grid p,.bn-skin .bn-pricing-strip p{color:var(--u-muted,#607084)}
 .bn-skin .bn-check,.bn-skin .bn-service-card,.bn-skin .bn-service-row,.bn-skin .bn-portfolio-card,.bn-skin .bn-contact-side>a,.bn-skin .bn-contact-side>div>div{color:var(--u-ink,#111)}
 .bn-skin .bn-service-card,.bn-skin .bn-price-card,.bn-skin .bn-price-row,.bn-skin .bn-values-grid article,.bn-skin .bn-contact-form,.bn-skin .bn-contact-side>div,.bn-skin .bn-hours,.bn-skin .bn-policy-grid article,.bn-skin .bn-faq details,.bn-skin .bn-faq-grid details{background:var(--u-card,#fff);border-color:var(--u-line,#10243b12);border-radius:var(--u-radius,8px)}

@@ -1,4 +1,7 @@
 import { resolveStorePalette } from "@/lib/store-palette";
+import { TemplateShell } from "@/components/storefront/template-shell";
+import { usesTemplateChrome } from "@/lib/storefront/template-chrome";
+import { resolveStoreTheme } from "@/lib/template-themes";
 import { prisma } from "@/lib/prisma";
 import { notFound } from "next/navigation";
 import { CartClient } from "./cart-client";
@@ -22,5 +25,9 @@ export default async function CartPage({ params }: { params: Promise<{ slug: str
   }
   const palette = resolveStorePalette(store);
   const slots = await buildSystemSlots(store, "cart", { text: palette.ink, accent: palette.accent, primary: palette.accent, line: `${palette.ink}22`, radius: 8, headingFont: palette.headlineFont });
-  return <CartClient slug={slug} storeName={store.name} logoUrl={store.logoUrl ?? null} palette={palette} topSlot={slots.top} bottomSlot={slots.bottom} />;
+  const chrome = usesTemplateChrome(store.template?.name);
+  const cart = <CartClient slug={slug} storeName={store.name} logoUrl={store.logoUrl ?? null} palette={palette} topSlot={slots.top} bottomSlot={slots.bottom} externalChrome={chrome} />;
+  if (!chrome) return cart;
+  const theme = resolveStoreTheme(store.template?.category, store.name, store.themeColors as any, store.fontFamily, store.template?.name);
+  return <TemplateShell store={store} slug={slug} theme={theme}>{cart}</TemplateShell>;
 }

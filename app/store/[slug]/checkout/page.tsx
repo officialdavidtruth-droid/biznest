@@ -1,4 +1,7 @@
 import { resolveStorePalette } from "@/lib/store-palette";
+import { TemplateShell } from "@/components/storefront/template-shell";
+import { usesTemplateChrome } from "@/lib/storefront/template-chrome";
+import { resolveStoreTheme } from "@/lib/template-themes";
 import { isHotelStore } from "@/lib/storefront-routing"; import { prisma } from "@/lib/prisma";
 import { redirect, notFound } from "next/navigation";
 import { getStoreCustomerSessionForStore } from "@/lib/store-customer-auth";
@@ -37,5 +40,8 @@ async function renderCheckout(slug: string) {
     const data = await getGrandeurRestaurantData(slug);
     if (data) return <GrandeurCheckout store={data.store} slug={slug} />;
   }
-  return <CheckoutClient slug={slug} palette={resolveStorePalette(rawStore)} />;
+  const checkout = <CheckoutClient slug={slug} palette={resolveStorePalette(rawStore)} />;
+  if (!usesTemplateChrome(rawStore.template?.name)) return checkout;
+  const theme = resolveStoreTheme(rawStore.template?.category, rawStore.name, rawStore.themeColors as any, rawStore.fontFamily, rawStore.template?.name);
+  return <TemplateShell store={rawStore} slug={slug} theme={theme}>{checkout}</TemplateShell>;
 }

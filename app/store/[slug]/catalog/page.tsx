@@ -13,6 +13,8 @@ import { ThelusoHotel } from "@/components/storefront/theluso-hotel";
 import { getHotelContent } from "@/lib/hotel-content";
 import { buildSystemSlots } from "@/components/storefront/system-slots";
 import { fontStack } from "@/lib/builder-safe";
+import { TemplateShell } from "@/components/storefront/template-shell";
+import { usesTemplateChrome } from "@/lib/storefront/template-chrome";
 
 export default async function CatalogPage({ params, searchParams }: { params: Promise<{ slug: string }>; searchParams?: Promise<{ category?: string; q?: string }> }) {
   const { slug } = await params;
@@ -33,8 +35,10 @@ export default async function CatalogPage({ params, searchParams }: { params: Pr
   const theme = resolveStoreTheme(store.template?.category, store.name, store.themeColors as any, store.fontFamily, store.template?.name);
   const design = catalogDesign(store, theme);
   const slots = await buildSystemSlots(store, "shop", { text: design.text, accent: design.accent, primary: design.primary, line: `${design.text}1f`, radius: design.radius, headingFont: fontStack(design.headingFont) });
-  return (
+  const chrome = usesTemplateChrome(store.template?.name);
+  const page = (
     <CatalogExperience
+      externalChrome={chrome}
       topSlot={slots.top}
       bottomSlot={slots.bottom}
       store={catalogStoreInfo(store, slug)}
@@ -44,4 +48,5 @@ export default async function CatalogPage({ params, searchParams }: { params: Pr
       initialQuery={query?.q}
     />
   );
+  return chrome ? <TemplateShell store={store} slug={slug} theme={theme}>{page}</TemplateShell> : page;
 }
