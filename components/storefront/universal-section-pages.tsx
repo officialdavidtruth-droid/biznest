@@ -18,6 +18,9 @@ import { isCreativeText, nicheFor, resolveServicesListing, servicesNavLink, type
 import { formatDate, formatNumber } from "@/lib/i18n/locale";
 import { starEmpty, starFill } from "@/lib/utils/stars";
 import { innerSkinVars, skinFor } from "@/lib/storefront/inner-skin";
+import { beloraNavFor, builderHomeNav } from "@/lib/storefront/home-nav";
+import { getSavedBuilder } from "@/lib/storefront/saved-builder";
+import { resolveHomeRenderer } from "@/lib/storefront/resolve-renderer";
 
 const NICHE_ICONS: Record<NicheIcon, LucideIcon> = {
   shield: ShieldCheck, check: Check, clock: Clock3, sparkles: Sparkles, calendar: CalendarCheck, map: MapPin, heart: Heart,
@@ -123,6 +126,22 @@ function text(store:any, mode:"creative"|"business"){
   };
 }
 
+/**
+ * Header links only (the footer keeps its fuller list). Mirrors the links the store's own home page shows, so the header
+ * does not change as a shopper clicks from the home page into About, Contact and so on. Home pages are not modified.
+ */
+function headerLinksFor(store:any):string[][]{
+  const skinNav=skinFor(store.template?.name)?.nav;
+  if(skinNav) return skinNav;
+  const belora=beloraNavFor(store.template?.name);
+  if(belora) return belora;
+  if(resolveHomeRenderer(store.template?.name).kind==="builder"||getSavedBuilder(store.sectionOverrides)){
+    const mode=resolveBusinessMode(store.business?.category,{sellsProducts:store.sellsProducts??store.business?.sellsProducts,offersServices:store.offersServices??store.business?.offersServices});
+    return builderHomeNav(mode==="service");
+  }
+  return navLinksFor(store);
+}
+
 /** Header/footer links. The services slot follows the niche (Rooms, Menu, ...) and becomes "Shop" for product-only stores. */
 function navLinksFor(store:any):string[][]{
   // Templates with a dedicated home page keep the nav that home page shows (lib/storefront/inner-skin.ts).
@@ -139,7 +158,7 @@ function navLinksFor(store:any):string[][]{
 
 export function Header({store,slug,active,accent,dark=false,radius}:{store:any;slug:string;active:string;accent:string;dark?:boolean;radius?:string}){
  const cta=ctasFor(store,slug,active).primary;
- const links=navLinksFor(store);
+ const links=headerLinksFor(store);
  const ink = dark ? "#fff" : "#111";
  const vars = { ...(radius?{"--u-radius":radius}:{}) } as React.CSSProperties;
  return <header className={`bn-universal-header${dark?" dark":""}`} style={vars}><div className="bn-universal-nav">
