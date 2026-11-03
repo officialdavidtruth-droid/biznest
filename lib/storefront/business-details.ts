@@ -13,7 +13,7 @@ type Loose = {
   email?: string | null;
   address?: string | null;
   openingHours?: string | null;
-  business?: { phone?: string | null; email?: string | null; city?: string | null; state?: string | null } | null;
+  business?: { description?: string | null; phone?: string | null; email?: string | null; city?: string | null; state?: string | null } | null;
 } | null | undefined;
 
 const clean = (v: unknown) => (typeof v === "string" ? v.trim() : "");
