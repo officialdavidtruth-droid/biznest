@@ -16,6 +16,8 @@ type Loose = {
   business?: { description?: string | null; phone?: string | null; email?: string | null; city?: string | null; state?: string | null } | null;
 } | null | undefined;
 
+export const BUSINESS_DETAILS_LIMITS = { name: 120, phone: 30, email: 180, address: 300, openingHours: 300 } as const;
+
 const clean = (v: unknown) => (typeof v === "string" ? v.trim() : "");
 
 export function businessPhone(store: Loose): string {

@@ -3,7 +3,8 @@
 import { notFound } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { assertStorePermission } from "@/lib/access/assert-store-access";
-import { saveBusinessDetails, BUSINESS_DETAILS_LIMITS as L } from "@/lib/actions/business-details";
+import { saveBusinessDetails } from "@/lib/actions/business-details";
+import { BUSINESS_DETAILS_LIMITS as L } from "@/lib/storefront/business-details";
 import { StoreSettingsForm } from "@/components/dashboard/store-settings-form";
 import { BusinessLogoField } from "@/components/dashboard/business-logo-field";
 

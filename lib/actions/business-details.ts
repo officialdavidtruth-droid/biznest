@@ -6,10 +6,9 @@ import { z } from "zod";
 import { assertStorePermission } from "@/lib/access/assert-store-access";
 import { normalizeWhatsAppNumber } from "@/lib/utils/whatsapp-link";
 import { sanitizeHttpUrl } from "@/lib/validations/store-settings";
-import { SOCIAL_KEYS, normalizeSocialLink } from "@/lib/storefront/business-details";
+import { BUSINESS_DETAILS_LIMITS, SOCIAL_KEYS, normalizeSocialLink } from "@/lib/storefront/business-details";
 import type { ActionResult } from "@/types/actions";
 
-export const BUSINESS_DETAILS_LIMITS = { name: 120, phone: 30, email: 180, address: 300, openingHours: 300 } as const;
 
 const SOCIAL_LABEL = { instagram: "Instagram", facebook: "Facebook", tiktok: "TikTok", twitter: "X (Twitter)" } as const;
 
