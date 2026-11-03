@@ -10,6 +10,7 @@ import { buildNavGroups, filterNavGroupsForRole, type NavItem, type InstalledApp
 import type { StoreAccessRole } from "@/lib/access/store-access";
 import { SignOutButton } from "@/components/forms/sign-out-button";
 import { StoreLogo } from "@/components/dashboard/store-logo";
+import type { SiteMode } from "@/lib/site-mode";
 import { PlaybookCard } from "@/components/dashboard/playbook-card";
 
 export function DashboardSidebar({
@@ -24,6 +25,7 @@ export function DashboardSidebar({
   staffPermissions,
   subscriptionName,
   installedApps,
+  siteMode,
   themeColor,
 }: {
   slug: string;
@@ -44,6 +46,8 @@ export function DashboardSidebar({
   staffPermissions?: string[] | null;
   subscriptionName?: string | null;
   installedApps?: InstalledAppNav[];
+  // Simple (default) hides the technical website editors; Advanced lists them. See lib/site-mode.ts.
+  siteMode?: SiteMode;
   // The store's own brand color (store.themeColors.primary). Overrides
   // --bn-ink for just this subtree so the sidebar reflects the store's
   // theme instead of the fixed admin navy (#111827 from .bn-admin-app).
@@ -53,7 +57,7 @@ export function DashboardSidebar({
   const pathname = usePathname();
   const base = `/${slug}/admin`;
   const canManageOwnerOnly = staffRole === undefined || staffRole === "OWNER" || staffRole === "PLATFORM_STAFF";
-  const NAV_GROUPS = filterNavGroupsForRole(buildNavGroups({ sellsProducts, offersServices, category, subcategory, subscriptionName, installedApps }), {
+  const NAV_GROUPS = filterNavGroupsForRole(buildNavGroups({ sellsProducts, offersServices, category, subcategory, subscriptionName, installedApps, siteMode }), {
     canManageOwnerOnly,
     permissions: staffPermissions,
   });

@@ -2,13 +2,14 @@ import {
   LayoutDashboard, ShoppingCart, Package, Wrench, Users, Boxes,
   CreditCard, BarChart3, Star, MessageSquare,
   Settings, BadgeCheck, Wallet, LifeBuoy, Truck, Wand2,
-  LayoutTemplate, FileText, FileSignature, MailWarning, Calculator, CalendarDays, Images,
+  LayoutTemplate, Globe, FileText, FileSignature, MailWarning, Calculator, CalendarDays, Images,
   ClipboardList, Receipt, PlusCircle, Layers, Rows3, Puzzle, ListTree, Share2,
 } from "lucide-react";
 import { getAdaptiveDashboardConfig } from "@/lib/adaptive-dashboard";
 import { getBusinessTerminology } from "@/lib/business-terminology";
 import { canonicalizeBusinessType, isRestaurantBusiness, isHotelBusiness, supportsAbandonedCheckout } from "@/lib/business-identity";
 import type { StaffPermissionId } from "@/lib/access/staff-permissions";
+import type { SiteMode } from "@/lib/site-mode";
 
 export type NavItem = {
   label: string;
@@ -48,7 +49,20 @@ function relevantToBusiness(href: string, business: { sellsProducts: boolean; of
 // than showing every module to every store regardless of niche.
 export type InstalledAppNav = { key: string; name: string; icon?: string | null };
 
-export function buildNavGroups(business: { sellsProducts: boolean; offersServices: boolean; category?: string | null; subcategory?: string | null; subscriptionName?: string | null; installedApps?: InstalledAppNav[] }): Array<{
+// `siteMode` decides how much website tooling is listed (see lib/site-mode.ts). Left undefined it
+// means "show everything", so callers that only need the full list of destinations (staff
+// permission lookups, the permission checklist) keep working exactly as before.
+export type NavBusiness = {
+  sellsProducts: boolean;
+  offersServices: boolean;
+  category?: string | null;
+  subcategory?: string | null;
+  subscriptionName?: string | null;
+  installedApps?: InstalledAppNav[];
+  siteMode?: SiteMode;
+};
+
+export function buildNavGroups(business: NavBusiness): Array<{
   label: string;
   items: NavItem[];
 }> {
@@ -57,6 +71,7 @@ export function buildNavGroups(business: { sellsProducts: boolean; offersService
   // it should never open its dashboard and feel like an online shop.
   const canonicalType = canonicalizeBusinessType(business.category);
   const terminology = getBusinessTerminology(canonicalType, business.subcategory);
+  const showAdvanced = business.siteMode !== "SIMPLE";
   const sellNavItems: NavItem[] = [];
   const categoriesLabel = isRestaurantBusiness(canonicalType) ? "Menu Categories" : terminology.category + "s";
   const categoriesChild: NavItem = { label: categoriesLabel, href: "/categories", icon: Boxes, permission: "products" };
@@ -69,7 +84,8 @@ export function buildNavGroups(business: { sellsProducts: boolean; offersService
     categoriesChild,
     { label: "Add-ons & Extras", href: "/addons", icon: PlusCircle, permission: "products" },
     { label: `${terminology.catalogSingular} Variants`, href: "/variants", icon: Layers, permission: "products" },
-    { label: `${terminology.catalogSingular} Sections`, href: "/menu-sections", icon: Rows3, permission: "products" },
+    // Display sections are a layout tool; Simple mode keeps just categories.
+    ...(showAdvanced ? [{ label: `${terminology.catalogSingular} Sections`, href: "/menu-sections", icon: Rows3, permission: "products" as StaffPermissionId }] : []),
   ];
   const fnbInstalled = ["Restaurant", "Food & Groceries"].includes(canonicalType) && !!business.installedApps?.some((app) => app.key === "fnb-operations");
   if (business.sellsProducts) {
@@ -157,9 +173,14 @@ export function buildNavGroups(business: { sellsProducts: boolean; offersService
     {
       label: "Website",
       items: [
-        { label: "Templates", href: "/templates", icon: LayoutTemplate, permission: "settings" },
-        { label: "Website Builder", href: "/customize", icon: Wand2, permission: "settings" },
-        { label: "Menus", href: "/menus", icon: ListTree, permission: "settings" },
+        // One friendly front door for everyone. Simple mode shows only this; Advanced adds the
+        // individual editors back beneath it.
+        { label: "My Website", href: "/website", icon: Globe, permission: "settings" },
+        ...(showAdvanced ? [
+          { label: "Templates", href: "/templates", icon: LayoutTemplate, permission: "settings" as StaffPermissionId },
+          { label: "Website Builder", href: "/customize", icon: Wand2, permission: "settings" as StaffPermissionId },
+          { label: "Menus", href: "/menus", icon: ListTree, permission: "settings" as StaffPermissionId },
+        ] : []),
         ...(isHotelBusiness(canonicalType) ? [{ label: "Hotel Website", href: "/hotel", icon: Images, permission: "settings" as StaffPermissionId }] : []),
         ...(String(business.category||"").toLowerCase().includes("retail") || String(business.category||"").toLowerCase().includes("electronics") ? [{ label: "Example Website", href: "/example", icon: Wand2, permission: "settings" as StaffPermissionId }] : []),
         ...(isRestaurantBusiness(canonicalType) ? [
@@ -218,14 +239,7 @@ export function filterNavGroupsForRole<T extends { items: NavItem[] }>(
  * gated section (e.g. "/products/123/edit") inherit that section's
  * permission requirement without needing their own NavItem entry.
  */
-export function findNavItemForPath(business: {
-  sellsProducts: boolean;
-  offersServices: boolean;
-  category?: string | null;
-  subcategory?: string | null;
-  subscriptionName?: string | null;
-  installedApps?: InstalledAppNav[];
-}, subpath: string): NavItem | undefined {
+export function findNavItemForPath(business: NavBusiness, subpath: string): NavItem | undefined {
   const items = buildNavGroups(business).flatMap((g) => g.items.flatMap((i) => [i, ...(i.children ?? [])]));
   const normalized = subpath === "" ? "/" : subpath;
   const exact = items.find((i) => (i.href || "/") === normalized);
@@ -240,7 +254,7 @@ export function findNavItemForPath(business: {
 // away, not two taps deep in a drawer. The 5th slot is always "Menu" (opens
 // the full drawer with everything else), not a nav item itself.
 export function buildBottomTabItems(
-  business: { sellsProducts: boolean; offersServices: boolean; category?: string | null; subcategory?: string | null; subscriptionName?: string | null },
+  business: NavBusiness,
   opts?: { canManageOwnerOnly: boolean; permissions?: string[] | null }
 ): NavItem[] {
   const groups = buildNavGroups(business);

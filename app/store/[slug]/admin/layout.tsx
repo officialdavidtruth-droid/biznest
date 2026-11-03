@@ -17,6 +17,7 @@ import { OnboardingTour, TourLauncherButton } from "@/components/dashboard/onboa
 import { buildTourSteps } from "@/lib/onboarding-tour";
 import { PageGuideButton } from "@/components/app/page-guide";
 import { isTrialLapsed, expireLapsedTrial } from "@/lib/billing/trial";
+import { normalizeSiteMode } from "@/lib/site-mode";
 
 export default async function StoreAdminLayout({
   children,
@@ -116,6 +117,8 @@ export default async function StoreAdminLayout({
     if (blocked) redirect(`/${slug}/admin`);
   }
 
+  const siteMode = normalizeSiteMode(store.siteMode);
+
   if (isPluginWorkspaceRoute) {
     const scopeId = isPmsRoute ? "bn-pms-theme-scope" : isFnbRoute ? "bn-fnb-theme-scope" : "bn-plugin-theme-scope";
     return (
@@ -170,6 +173,7 @@ export default async function StoreAdminLayout({
                 subcategory: store.business?.businessSubcategory,
                 subscriptionName: store.subscription?.name,
                 installedApps: installedAppNav,
+                siteMode,
               },
             })}
           />
@@ -192,6 +196,7 @@ export default async function StoreAdminLayout({
             staffPermissions={staffPermissions}
             subscriptionName={store.subscription?.name}
             installedApps={installedAppNav}
+            siteMode={siteMode}
             themeColor={(store.themeColors as { primary?: string } | null)?.primary}
           />
 
@@ -213,6 +218,7 @@ export default async function StoreAdminLayout({
             staffPosition={session.user.staffPosition}
             subscriptionName={store.subscription?.name}
             installedApps={installedAppNav}
+            siteMode={siteMode}
           />
 
           <div className="flex min-w-0 flex-1 flex-col">

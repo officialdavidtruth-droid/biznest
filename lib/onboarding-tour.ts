@@ -1,4 +1,4 @@
-import { buildNavGroups, filterNavGroupsForRole, type InstalledAppNav } from "@/lib/constants/dashboard-nav";
+import { buildNavGroups, filterNavGroupsForRole, type NavBusiness } from "@/lib/constants/dashboard-nav";
 
 /**
  * Steps for the first-run "pointer" tour of the store dashboard.
@@ -47,6 +47,7 @@ const ITEM_COPY: Record<string, string> = {
   "/reviews": "See what customers are saying about your business.",
   "/messages": "Conversations with customers who contact your store.",
   "/analytics": "Sales, customer and performance reports to show what's working.",
+  "/website": "Everything about your public website in one place: your design, business details, pages and menu.",
   "/templates": "Pick the design of your online store. You can switch whenever you like.",
   "/customize": "Edit your website visually: hero, story, colours and your own pages built from blocks.",
   "/menus": "Choose which links appear in your website's header menu.",
@@ -75,7 +76,7 @@ const GROUP_COPY: Record<string, string> = {
 
 export function buildTourSteps(opts: {
   storeName: string;
-  business: { sellsProducts: boolean; offersServices: boolean; category?: string | null; subcategory?: string | null; subscriptionName?: string | null; installedApps?: InstalledAppNav[] };
+  business: NavBusiness;
 }): TourStep[] {
   const groups = filterNavGroupsForRole(buildNavGroups(opts.business), { canManageOwnerOnly: true });
   const steps: TourStep[] = [

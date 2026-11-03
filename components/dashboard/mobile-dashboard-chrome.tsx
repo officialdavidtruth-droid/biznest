@@ -8,6 +8,7 @@ import { FloatingTabBar } from "@/components/app/floating-tab-bar";
 import { TourLauncherButton, TOUR_DRAWER_EVENT } from "@/components/dashboard/onboarding-tour";
 import { buildNavGroups, buildBottomTabItems, filterNavGroupsForRole, type InstalledAppNav, type NavItem } from "@/lib/constants/dashboard-nav";
 import type { StoreAccessRole } from "@/lib/access/store-access";
+import type { SiteMode } from "@/lib/site-mode";
 import { PlaybookCard } from "@/components/dashboard/playbook-card";
 import { NotificationBell } from "@/components/dashboard/notification-bell";
 import { PushSubscribePrompt } from "@/components/dashboard/push-subscribe-prompt";
@@ -53,6 +54,7 @@ export function MobileDashboardChrome({
   staffPosition,
   subscriptionName,
   installedApps = [],
+  siteMode,
   themeColor,
 }: {
   slug: string;
@@ -71,6 +73,7 @@ export function MobileDashboardChrome({
   themeColor?: string | null;
   subscriptionName?: string | null;
   installedApps?: InstalledAppNav[];
+  siteMode?: SiteMode;
   // Only set for staff who signed in with "Position@store" (see
   // authorize() in lib/auth.ts) — shown next to the store name so it's
   // clear which title they're signed in under, e.g. "Cashier - Velox Space".
@@ -86,7 +89,7 @@ export function MobileDashboardChrome({
     window.addEventListener(TOUR_DRAWER_EVENT, onTour);
     return () => window.removeEventListener(TOUR_DRAWER_EVENT, onTour);
   }, []);
-  const business = { sellsProducts, offersServices, category, subcategory, subscriptionName, installedApps };
+  const business = { sellsProducts, offersServices, category, subcategory, subscriptionName, installedApps, siteMode };
   const canManageOwnerOnly = staffRole === undefined || staffRole === "OWNER" || staffRole === "PLATFORM_STAFF";
   const navGroups = filterNavGroupsForRole(buildNavGroups(business), {
     canManageOwnerOnly,
