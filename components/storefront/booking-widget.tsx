@@ -15,7 +15,7 @@ import { useShopAuthGate } from "@/lib/hooks/use-shop-auth-gate";
 import { toast } from "sonner";
 import { formatDate, formatNumber } from "@/lib/i18n/locale";
 
-function localISODate(d: Date) {
+export function localISODate(d: Date) {
   const y = d.getFullYear();
   const m = String(d.getMonth() + 1).padStart(2, "0");
   const day = String(d.getDate()).padStart(2, "0");
@@ -28,7 +28,7 @@ function addDays(iso: string, amount: number) {
   return localISODate(d);
 }
 
-function dateLabel(iso: string) {
+export function dateLabel(iso: string) {
   return formatDate(new Date(`${iso}T12:00:00`), {
     weekday: "short",
     day: "numeric",
@@ -46,7 +46,7 @@ function monthKey(iso: string) {
  * further out than two weeks -- the way they would on any hotel or
  * appointment site.
  */
-function MiniCalendar({
+export function MiniCalendar({
   selected,
   minDate,
   accent,

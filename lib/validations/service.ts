@@ -13,8 +13,9 @@ export const serviceSchema = z.object({
 
   // Booking setup -- see ServiceBookingModeField. "none" = plain, unbookable
   // service; "appointment" = single time-slot against weekly hours;
-  // "units" = N identical units (rooms, tables, fleet) booked by date range.
-  bookingMode: z.enum(["none", "appointment", "units"]).default("none"),
+  // "units" = N identical units (rooms, tables, fleet) booked by date range;
+  // "trip" = a package/tour booked for a travel date by a number of travelers.
+  bookingMode: z.enum(["none", "appointment", "units", "trip"]).default("none"),
   durationMins: z.coerce.number().int().min(5).optional(),
   availability: z.record(z.array(DAY_RANGE)).optional(),
   totalUnits: z.coerce.number().int().min(1).optional(),

@@ -17,6 +17,7 @@ import type { ActionResult } from "@/types/actions";
 import { generateUniqueBookingReference } from "@/lib/booking-reference";
 import { assertStorePermission } from "@/lib/access/assert-store-access";
 import { busyUnitIds, getBusyIntervals } from "@/lib/stay-availability";
+import { readTripConfig, tripTotal, TRIP_MAX_TRAVELERS } from "@/lib/trip-booking";
 
 // Shared by createBooking/createStayBooking: what to tell the shopper when
 // the database rejects the write because someone else just took the slot.
@@ -1244,4 +1245,171 @@ export async function updateBookingStatus(
     success: true,
     data: undefined,
   };
+}
+/* ───────────────────────── Trip (travel package) bookings ───────────────────────── */
+
+async function tripSeatsTaken(
+  db: Pick<typeof prisma, "booking">,
+  serviceId: string,
+  dayStart: Date,
+  dayEnd: Date
+): Promise<number> {
+  const rows = await db.booking.findMany({
+    where: {
+      serviceId,
+      scheduledAt: { gte: dayStart, lt: dayEnd },
+      OR: [
+        { status: { in: ["CONFIRMED", "COMPLETED", "CHECKED_IN", "SEATED"] } },
+        // Unpaid online holds only reserve seats for the checkout window.
+        { status: "PENDING", createdAt: { gte: getOnlineBookingHoldCutoff() } },
+      ],
+    },
+    select: { partySize: true },
+  });
+  return rows.reduce((sum, r) => sum + (r.partySize ?? 1), 0);
+}
+
+/** Seats still open on a departure date for a trip package (0 when not a trip / date not offered). */
+export async function getTripSeatsLeft(serviceId: string, dateISO: string): Promise<number> {
+  const service = await prisma.service.findUnique({ where: { id: serviceId }, include: { store: { select: { timezone: true } } } });
+  if (!service || !/^\d{4}-\d{2}-\d{2}$/.test(dateISO)) return 0;
+  const trip = readTripConfig(service.attributes, service.isBookable, service.totalUnits);
+  if (!trip) return 0;
+  if (trip.departures.length > 0 && !trip.departures.includes(dateISO)) return 0;
+  const timezone = service.store.timezone || "Africa/Lagos";
+  const dayStart = localDateStartUtc(dateISO, timezone);
+  if (Number.isNaN(dayStart.getTime())) return 0;
+  const dayEnd = localDateStartUtc(addLocalDays(dateISO, 1), timezone);
+  const taken = await tripSeatsTaken(prisma, serviceId, dayStart, dayEnd);
+  return Math.max(0, trip.seats - taken);
+}
+
+export async function createTripBooking(
+  storeSlug: string,
+  serviceId: string,
+  dateISO: string,
+  travelers: number,
+  notes: string,
+  guest?: { name: string; email: string; phone: string }
+): Promise<ActionResult<{ bookingId: string }>> {
+  const customerSession = await getStoreCustomerSession();
+  const initialSession = customerSession
+    ? {
+        user: {
+          id: customerSession.user.id,
+          role: "CUSTOMER" as const,
+          customerStoreId: customerSession.user.customerStoreId,
+          email: customerSession.user.email,
+          name: customerSession.user.name,
+        },
+      }
+    : await auth();
+
+  if (!initialSession?.user?.id && !guest) {
+    return { success: false, error: "Enter your name, email and phone to book as a guest." };
+  }
+  const guestCheck = validateGuest(guest);
+  const normalizedGuest = guestCheck.ok ? guestCheck.guest : null;
+  const notesCheck = validateNotes(notes);
+  if (!notesCheck.ok) return { success: false, error: notesCheck.error };
+  if (!initialSession?.user?.id && !guestCheck.ok) return { success: false, error: guestCheck.error };
+
+  const people = Math.floor(Number(travelers));
+  if (!Number.isFinite(people) || people < 1 || people > TRIP_MAX_TRAVELERS) {
+    return { success: false, error: `Choose between 1 and ${TRIP_MAX_TRAVELERS} travelers.` };
+  }
+
+  const rateKey = initialSession?.user?.id ? `booking:${initialSession.user.id}` : `booking-guest:${normalizedGuest!.email}:${serviceId}`;
+  const rate = await checkRateLimit(rateKey, 10, 5 * 60 * 1000);
+  if (!rate.allowed) return { success: false, error: "Too many booking attempts — please wait a few minutes and try again." };
+
+  const service = await prisma.service.findUnique({ where: { id: serviceId }, include: { store: { select: { timezone: true } } } });
+  const trip = service ? readTripConfig(service.attributes, service.isBookable, service.totalUnits) : null;
+  if (!service || !trip || !service.isPublished) return { success: false, error: "This package isn't bookable online." };
+
+  let session = initialSession;
+  if (session?.user?.role === "CUSTOMER") {
+    const membership = await requireStoreCustomerByStoreId(service.storeId);
+    const belongs = Boolean(membership) && session.user.customerStoreId === service.storeId;
+    if (!belongs) {
+      if (normalizedGuest?.name && normalizedGuest.email && normalizedGuest.phone) session = null;
+      else {
+        return {
+          success: false,
+          error: "This customer account belongs to another store. Enter your name, email and phone below to continue as a guest, or sign up for this store to save it to your account.",
+        };
+      }
+    }
+  }
+
+  if (!session?.user?.id && normalizedGuest) {
+    const guestLimit = await enforceGuestBookingLimits({
+      storeId: service.storeId,
+      ip: getClientIp(await headers()),
+      guest: normalizedGuest,
+      holdCutoff: getOnlineBookingHoldCutoff(),
+    });
+    if (!guestLimit.ok) return { success: false, error: guestLimit.error };
+  }
+
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(dateISO)) return { success: false, error: "Invalid travel date." };
+  const timezone = service.store.timezone || "Africa/Lagos";
+  const travelDate = localDateStartUtc(dateISO, timezone);
+  if (Number.isNaN(travelDate.getTime())) return { success: false, error: "Invalid travel date." };
+  if (dateISO < getLocalDateKey(new Date(), timezone)) return { success: false, error: "That travel date is in the past." };
+  if (trip.departures.length > 0 && !trip.departures.includes(dateISO)) {
+    return { success: false, error: "This package doesn't depart on that date — pick one of the listed departures." };
+  }
+  const dayEnd = localDateStartUtc(addLocalDays(dateISO, 1), timezone);
+
+  // Server-side price: never trust the browser's total.
+  const total = Math.round(tripTotal(Number(service.price), trip.pricing, people));
+
+  const MAX_ATTEMPTS = 3;
+  for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
+    try {
+      const booking = await prisma.$transaction(async (tx) => {
+        const taken = await tripSeatsTaken(tx, serviceId, travelDate, dayEnd);
+        if (taken + people > trip.seats) throw new Error("NO_SEATS");
+        return tx.booking.create({
+          data: {
+            referenceCode: await referenceCodeForNewBooking(),
+            storeId: service.storeId,
+            serviceId,
+            buyerId: session?.user?.id ?? null,
+            scheduledAt: travelDate,
+            durationMins: 24 * 60,
+            partySize: people,
+            paymentAmount: total,
+            paymentCurrency: service.currency,
+            notes: formatBookingNotes(notes) || null,
+            source: "Online",
+            guestName: normalizedGuest?.name ?? null,
+            guestEmail: normalizedGuest?.email ?? null,
+            guestPhone: normalizedGuest?.phone ?? null,
+          },
+        });
+      }, { isolationLevel: "Serializable" });
+
+      await emitWebhookEvent("BOOKING_CREATED", service.storeId, {
+        bookingId: booking.id,
+        serviceId,
+        scheduledAt: booking.scheduledAt,
+        durationMins: booking.durationMins,
+      });
+      revalidatePath(`/store/${storeSlug}`);
+      return { success: true, data: { bookingId: booking.id } };
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "";
+      if (message === "NO_SEATS") {
+        return { success: false, error: "Not enough seats left on that date — try fewer travelers or another departure." };
+      }
+      const serialization =
+        error instanceof Prisma.PrismaClientKnownRequestError && (error.code === "P2034" || error.meta?.code === "40001");
+      if (serialization && attempt < MAX_ATTEMPTS) continue;
+      if (serialization) return { success: false, error: "Those seats were just taken — please try again." };
+      throw error;
+    }
+  }
+  return { success: false, error: "Could not complete your booking. Please try again." };
 }

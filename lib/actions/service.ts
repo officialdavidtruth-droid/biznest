@@ -1,6 +1,7 @@
 "use server";
 
 import { prisma } from "@/lib/prisma";
+import { parseDepartureDates, readTripConfig } from "@/lib/trip-booking";
 import { Prisma } from "@prisma/client";
 import { revalidatePath } from "next/cache";
 import slugify from "slugify";
@@ -60,6 +61,10 @@ export async function createService(slug: string, input: ServiceInput): Promise<
   if (data.bookingMode === "units" && !data.totalUnits) {
     return { success: false, error: "Set the number of units for this service." };
   }
+  if (data.bookingMode === "trip" && !readTripConfig({ ...data.attributes, bookingKind: "trip" })) {
+    return { success: false, error: "Set how many seats are available for each departure." };
+  }
+  const attributes = tripAttributes(data.bookingMode, data.attributes);
 
   const totalUnits = data.bookingMode === "units" ? data.totalUnits! : null;
   const isBookable = data.bookingMode !== "none";
@@ -82,7 +87,7 @@ export async function createService(slug: string, input: ServiceInput): Promise<
       availability,
       isPublished: data.isPublished,
       totalUnits,
-      attributes: data.attributes ?? {},
+      attributes,
     },
   });
 
@@ -125,6 +130,10 @@ export async function updateService(slug: string, serviceId: string, input: Serv
   if (data.bookingMode === "units" && !data.totalUnits) {
     return { success: false, error: "Set the number of units for this service." };
   }
+  if (data.bookingMode === "trip" && !readTripConfig({ ...data.attributes, bookingKind: "trip" })) {
+    return { success: false, error: "Set how many seats are available for each departure." };
+  }
+  const attributes = tripAttributes(data.bookingMode, data.attributes);
 
   const totalUnits = data.bookingMode === "units" ? data.totalUnits! : null;
   const isBookable = data.bookingMode !== "none";
@@ -185,7 +194,7 @@ export async function updateService(slug: string, serviceId: string, input: Serv
       availability,
       isPublished: data.isPublished,
       totalUnits,
-      attributes: data.attributes ?? {},
+      attributes,
     },
   });
 
@@ -239,4 +248,12 @@ function parseAvailability(formData: FormData) {
     }
   }
   return out;
+}
+
+/** Keep trip keys only for trip packages, and always stamp the kind server-side. */
+function tripAttributes(mode: string, input: Record<string, string | number | boolean | string[]> | undefined) {
+  const { bookingKind: _k, tripSeats, tripPricing, tripDepartures, ...rest } = input ?? {};
+  void _k;
+  if (mode !== "trip") return rest;
+  return { ...rest, bookingKind: "trip", tripSeats: Number(tripSeats), tripPricing: tripPricing === "group" ? "group" : "person", tripDepartures: parseDepartureDates(tripDepartures).join(",") };
 }

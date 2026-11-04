@@ -1,5 +1,6 @@
 "use client";
 
+import { parseDepartureDates, readTripConfig } from "@/lib/trip-booking";
 import { useForm, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { serviceSchema, type ServiceInput } from "@/lib/validations/service";
@@ -83,11 +84,18 @@ export function ServiceForm({
   const [isSubmitting, setIsSubmitting] = useState<"draft" | "publish" | null>(null);
   const preset = useMemo(() => getCatalogItemPreset(businessCategory), [businessCategory]);
 
-  const initialMode: ServiceInput["bookingMode"] = service?.totalUnits ? "units" : service?.isBookable ? "appointment" : "none";
-  const [bookingMode, setBookingMode] = useState<ServiceInput["bookingMode"]>(initialMode);
-
   const rawAttrs = service?.attributes;
   const attrs = (rawAttrs && typeof rawAttrs === "object" && !Array.isArray(rawAttrs) ? rawAttrs : {}) as Record<string, unknown>;
+  const savedTrip = readTripConfig(attrs, Boolean(service?.isBookable), service?.totalUnits);
+  const isTravelBusiness = /travel|tour/i.test(businessCategory ?? "");
+  // A new package on a travel business starts bookable (travel date × travelers) instead of "Not bookable".
+  const initialMode: ServiceInput["bookingMode"] = service
+    ? savedTrip ? "trip" : service.totalUnits ? "units" : service.isBookable ? "appointment" : "none"
+    : isTravelBusiness ? "trip" : "none";
+  const [bookingMode, setBookingMode] = useState<ServiceInput["bookingMode"]>(initialMode);
+  const [tripSeats, setTripSeats] = useState(savedTrip ? String(savedTrip.seats) : "20");
+  const [tripPricing, setTripPricing] = useState<"person" | "group">(savedTrip?.pricing ?? "person");
+  const [tripDepartures, setTripDepartures] = useState(savedTrip ? savedTrip.departures.join(", ") : "");
   const [tags, setTags] = useState<string[]>(Array.isArray(attrs.tags) ? (attrs.tags as string[]) : []);
   const [tagDraft, setTagDraft] = useState("");
   const [featured, setFeatured] = useState<boolean>(Boolean(attrs.featured));
@@ -196,6 +204,13 @@ export function ServiceForm({
         const wh = workingHours[d.key];
         if (wh.enabled && wh.start < wh.end) availability[d.key] = [[wh.start, wh.end]];
       }
+    }
+
+    if (bookingMode === "trip") {
+      attributes.bookingKind = "trip";
+      attributes.tripSeats = Number(tripSeats);
+      attributes.tripPricing = tripPricing;
+      attributes.tripDepartures = parseDepartureDates(tripDepartures).join(",");
     }
 
     const payload: ServiceInput = { ...values, isPublished: publish, bookingMode, availability, attributes };
@@ -381,9 +396,11 @@ export function ServiceForm({
             <div className="mb-4 flex flex-wrap gap-2">
               {([
                 { key: "none", label: "Not bookable" },
+                ...(isTravelBusiness ? [{ key: "trip", label: "Trip / package" }] : []),
                 { key: "appointment", label: "Appointment" },
                 { key: "units", label: "Multiple units" },
-              ] as const).map((opt) => (
+                ...(!isTravelBusiness ? [{ key: "trip", label: "Trip / package" }] : []),
+              ] as { key: ServiceInput["bookingMode"]; label: string }[]).map((opt) => (
                 <button
                   key={opt.key}
                   type="button"
@@ -397,6 +414,32 @@ export function ServiceForm({
 
             {bookingMode === "none" && (
               <p className="text-xs text-muted-foreground">Customers won't be able to book a time or date for this {entityLabel.toLowerCase()}.</p>
+            )}
+
+            {bookingMode === "trip" && (
+              <>
+                <p className="mb-3 text-xs text-muted-foreground">
+                  Customers pick a travel date, choose how many travelers, and pay online. Seats are counted per departure date so you never oversell.
+                </p>
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <div>
+                    <label className="mb-1 block text-sm font-medium">Seats per departure</label>
+                    <input type="number" min={1} step={1} className="input" value={tripSeats} onChange={(e) => setTripSeats(e.target.value)} />
+                  </div>
+                  <div>
+                    <label className="mb-1 block text-sm font-medium">The price above is…</label>
+                    <select className="input" value={tripPricing} onChange={(e) => setTripPricing(e.target.value as "person" | "group")}>
+                      <option value="person">per person</option>
+                      <option value="group">for the whole group</option>
+                    </select>
+                  </div>
+                </div>
+                <div className="mt-4">
+                  <label className="mb-1 block text-sm font-medium">Departure dates <span className="font-normal text-muted-foreground">(optional)</span></label>
+                  <input className="input" placeholder="2026-12-20, 2027-01-10, 2027-02-14" value={tripDepartures} onChange={(e) => setTripDepartures(e.target.value)} />
+                  <p className="mt-1 text-xs text-muted-foreground">Format YYYY-MM-DD, separated by commas. Leave empty to let customers choose any future date.</p>
+                </div>
+              </>
             )}
 
             {bookingMode === "appointment" && (

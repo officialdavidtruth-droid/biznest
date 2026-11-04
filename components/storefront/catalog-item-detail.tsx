@@ -12,6 +12,8 @@ import { MenuLinks } from "@/components/storefront/store-menu";
 import { CartLink } from "@/components/storefront/cart-link";
 import { AccountLink } from "@/components/storefront/account-link";
 import { BookingWidget } from "@/components/storefront/booking-widget";
+import { TripBookingWidget } from "@/components/storefront/trip-booking-widget";
+import { readTripConfig } from "@/lib/trip-booking";
 import { getCatalogItemPreset } from "@/lib/catalog-item-presets";
 import { getBusinessTerminology } from "@/lib/business-terminology";
 import { getUnitBookingNiche, resolveBookingRules } from "@/lib/storefront/unit-booking-niche";
@@ -86,6 +88,7 @@ export function CatalogItemDetail({ store, slug, service, reviewStats, theme, bu
   const terminology = getBusinessTerminology(businessCategory);
   const category = service.category?.name || preset.sectionLabel;
   const attrs = (service.attributes && typeof service.attributes === "object" && !Array.isArray(service.attributes) ? service.attributes : {}) as Record<string, unknown>;
+  const trip = readTripConfig(attrs, service.isBookable, service.totalUnits);
 
   // Amenities/specs grid -- quick specs + spec fields the merchant filled
   // in on ServiceForm, e.g. bed type & Wi-Fi for a room, skill level &
@@ -202,7 +205,25 @@ export function CatalogItemDetail({ store, slug, service, reviewStats, theme, bu
               <ShareButton title={service.name} />
             </div>
 
-            {service.isBookable ? (
+            {trip ? (
+              <TripBookingWidget
+                storeSlug={slug}
+                serviceId={service.id}
+                serviceName={service.name}
+                servicePrice={Number(service.price)}
+                currency={service.currency}
+                seats={trip.seats}
+                pricing={trip.pricing}
+                departures={trip.departures}
+                accent={accent}
+                ink={theme.ink}
+                bg={theme.bg}
+                radius={theme.radius}
+                card={theme.card}
+                headlineFont={theme.headlineFont}
+                startOpen
+              />
+            ) : service.isBookable ? (
               <BookingWidget
                 storeSlug={slug}
                 serviceId={service.id}
