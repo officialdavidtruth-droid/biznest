@@ -1,8 +1,8 @@
 "use client";
 
-import { useEffect, useMemo, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import Link from "next/link";
-import { ArrowRight, Compass, LayoutGrid, List, MessageCircle, Search, X } from "lucide-react";
+import { ArrowRight, ChevronDown, ChevronRight, Compass, LayoutGrid, List, MessageCircle, Search, SlidersHorizontal, X } from "lucide-react";
 import { useStoreCategories } from "@/components/storefront/store-categories";
 import type { BuilderConfig } from "@/lib/builder-config";
 import { getBusinessExperience } from "@/lib/business-experience";
@@ -105,6 +105,18 @@ export function CatalogExperience({
     } catch { /* non-critical */ }
   }, [cat, q]);
 
+  const [filterOpen, setFilterOpen] = useState(false);
+  const filterRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (!filterOpen) return;
+    const onDown = (e: MouseEvent) => { if (filterRef.current && !filterRef.current.contains(e.target as Node)) setFilterOpen(false); };
+    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") setFilterOpen(false); };
+    document.addEventListener("mousedown", onDown);
+    document.addEventListener("keydown", onKey);
+    return () => { document.removeEventListener("mousedown", onDown); document.removeEventListener("keydown", onKey); };
+  }, [filterOpen]);
+  const activeCount = (cat ? 1 : 0) + (kind !== "all" ? 1 : 0) + (priceLimited ? 1 : 0);
+
   const pageTitle = mode === "search" ? (q.trim() ? `Results for “${q.trim()}”` : "Search") : mode === "category" && heading ? (cat ?? heading) : (cat ?? (isService ? "All services" : "All products"));
 
   function reset() { setQ(""); setCat(null); setKind("all"); setMaxPrice(null); }
@@ -124,56 +136,99 @@ export function CatalogExperience({
     border: `1px solid ${active ? d.primary : line}`, background: active ? d.primary : "transparent",
     color: active ? readableOn(d.primary) : d.text,
   });
-  const control: React.CSSProperties = { background: d.surface, border: `1px solid ${line}`, color: d.text, borderRadius: Math.min(radius, 12), padding: "10px 12px", fontSize: 14, fontFamily: "inherit" };
+  const control: React.CSSProperties = { boxSizing: "border-box", background: d.background, border: `1px solid ${line}`, color: d.text, borderRadius: Math.min(radius, 12), padding: "10px 12px", fontSize: 14, fontFamily: "inherit" };
 
   return (
     <main style={{ background: d.background, color: d.text, fontFamily: d.font, minHeight: externalChrome ? undefined : "100vh" }}>
       <style>{`a{text-decoration:none;color:inherit}.bn-wrap{width:min(${width}px,calc(100% - 32px));margin:0 auto}.bn-grid{display:grid;gap:20px}
+.cx-card{transition:transform .22s ease,filter .22s ease}.cx-card:hover{transform:translateY(-4px);filter:drop-shadow(0 14px 22px rgba(0,0,0,.10))}@media(prefers-reduced-motion:reduce){.cx-card{transition:none}.cx-card:hover{transform:none}}
 .cx-chips{display:flex;gap:8px;overflow-x:auto;padding:2px 0 6px;scrollbar-width:thin}
 .cx-focus:focus-visible,.cx-chips button:focus-visible,.cx-row:focus-visible{outline:2px solid ${d.accent};outline-offset:2px}
-@media(max-width:720px){.cx-empty{grid-template-columns:1fr!important}.cx-art{display:none}.bn-nav-links{display:none!important}.cx-tools{flex-direction:column;align-items:stretch!important}.cx-row{grid-template-columns:84px 1fr!important}.cx-row>div:last-child{grid-column:1/-1}}`}</style>
+@media(max-width:720px){.cx-filterwrap{position:static!important}.cx-drop{left:0!important;right:0!important;width:auto!important}.cx-empty{grid-template-columns:1fr!important}.cx-art{display:none}.bn-nav-links{display:none!important}.cx-tools{flex-direction:column;align-items:stretch!important}.cx-search{flex:0 0 auto!important;max-width:none!important;width:100%}.cx-filterbtn{width:100%;justify-content:center}.cx-right{margin-left:0!important;justify-content:space-between}.cx-row{grid-template-columns:84px 1fr!important}.cx-row>div:last-child{grid-column:1/-1}}`}</style>
 
       {!externalChrome && <BuilderHeader store={store} d={d} experience={experience} visible={[]} />}
       {topSlot}
 
       {/* Title band */}
-      <section style={{ background: `linear-gradient(135deg, ${d.primary}18, ${d.accent}12), ${d.surface}`, borderBottom: `1px solid ${line}` }}>
-        <div className="bn-wrap" style={{ padding: "40px 0 36px" }}>
-          <nav aria-label="Breadcrumb" style={{ fontSize: 14, color: d.muted, marginBottom: 18, display: "flex", flexWrap: "wrap", gap: 8 }}>
-            <Link href={base} style={{ textDecoration: "underline", textUnderlineOffset: 3 }}>Home</Link><span aria-hidden>/</span>
-            {mode === "catalog" ? <span style={{ color: d.text, fontWeight: 650 }}>{title}</span> : <><Link href={`${base}/catalog`} style={{ textDecoration: "underline", textUnderlineOffset: 3 }}>{title}</Link><span aria-hidden>/</span><span style={{ color: d.text, fontWeight: 650 }}>{mode === "search" ? "Search" : heading}</span></>}
+      <section style={{ position: "relative", overflow: "hidden", background: `linear-gradient(120deg, ${d.primary}1a 0%, ${d.accent}14 55%, ${d.surface} 100%), ${d.surface}`, borderBottom: `1px solid ${line}` }}>
+        <span aria-hidden style={{ position: "absolute", right: -80, top: -120, width: 360, height: 360, borderRadius: "50%", background: `radial-gradient(circle at 30% 30%, ${d.accent}30, transparent 70%)` }} />
+        <span aria-hidden style={{ position: "absolute", right: 140, bottom: -150, width: 260, height: 260, borderRadius: "50%", background: `radial-gradient(circle at 40% 40%, ${d.primary}22, transparent 70%)` }} />
+        <div className="bn-wrap cx-band" style={{ position: "relative", padding: "44px 0 40px" }}>
+          <nav aria-label="Breadcrumb" style={{ fontSize: 13, color: d.muted, marginBottom: 22, display: "inline-flex", alignItems: "center", flexWrap: "wrap", gap: 6, padding: "6px 14px", borderRadius: 999, background: `${d.surface}cc`, border: `1px solid ${line}` }}>
+            <Link href={base} style={{ fontWeight: 600 }}>Home</Link><ChevronRight size={14} aria-hidden />
+            {mode === "catalog" ? <span style={{ color: d.text, fontWeight: 700 }}>{title}</span> : <><Link href={`${base}/catalog`} style={{ fontWeight: 600 }}>{title}</Link><ChevronRight size={14} aria-hidden /><span style={{ color: d.text, fontWeight: 700 }}>{mode === "search" ? "Search" : heading}</span></>}
           </nav>
-          <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
-            <span aria-hidden style={{ width: 6, alignSelf: "stretch", minHeight: 44, borderRadius: 4, background: d.accent }} />
-            <h1 style={{ fontFamily: d.headingFont, fontSize: "clamp(32px,5vw,52px)", lineHeight: 1.08, letterSpacing: "-.03em", margin: 0, color: d.text }}>{pageTitle}</h1>
+          <div style={{ display: "flex", alignItems: "center", gap: 10, fontSize: 12, fontWeight: 800, letterSpacing: ".16em", textTransform: "uppercase", color: d.accent, marginBottom: 12 }}>
+            <span aria-hidden style={{ width: 28, height: 2, background: d.accent, borderRadius: 2 }} />
+            {mode === "search" ? "Search" : mode === "category" ? "Category" : isService ? "Our services" : "The collection"}
           </div>
-          <p style={{ margin: "16px 0 0", color: d.muted, fontSize: 17, lineHeight: 1.6, maxWidth: 620 }}>
+          <h1 style={{ fontFamily: d.headingFont, fontSize: "clamp(34px,5.4vw,60px)", lineHeight: 1.05, letterSpacing: "-.035em", margin: 0, color: d.text, maxWidth: 900 }}>{pageTitle}</h1>
+          <p style={{ margin: "14px 0 0", color: d.muted, fontSize: 17, lineHeight: 1.6, maxWidth: 620 }}>
             {items.length === 0
               ? mode === "category" ? `No listings in ${heading ?? "this category"} yet.` : "New items are on the way."
               : mode === "search" && q.trim()
                 ? `${results.length} ${results.length === 1 ? "result" : "results"} found.`
-                : `${items.length} ${items.length === 1 ? "item" : "items"} to browse${lowest > 0 ? `, starting from ${currency} ${formatNumber(lowest)}` : ""}.`}
+                : mode === "category" ? `Browse everything in ${heading ?? "this category"}.` : `Browse the full ${isService ? "list of services" : "collection"} from ${store.name}.`}
           </p>
         </div>
       </section>
 
       <div className="bn-wrap" style={{ padding: "28px 0 24px" }}>
-        {items.length > 0 && <>
+        {items.length > 0 && <div className="cx-bar" style={{ position: "relative", marginBottom: 26 }}>
         <div className="cx-tools" style={{ display: "flex", gap: 12, alignItems: "center", flexWrap: "wrap" }}>
-          <label style={{ position: "relative", flex: "1 1 260px", maxWidth: 440 }}>
+          <label className="cx-search" style={{ position: "relative", flex: "1 1 260px", maxWidth: 440 }}>
             <span className="sr-only" style={{ position: "absolute", width: 1, height: 1, overflow: "hidden", clip: "rect(0 0 0 0)" }}>Search {title.toLowerCase()}</span>
             <Search size={16} aria-hidden style={{ position: "absolute", left: 13, top: 13, color: d.muted }} />
             <input className="cx-focus" value={q} onChange={(e) => setQ(e.target.value)} placeholder={`Search ${isService ? "services" : "products"}`} style={{ ...control, width: "100%", paddingLeft: 38, paddingRight: q ? 38 : 12 }} />
             {q && <button type="button" aria-label="Clear search" onClick={() => setQ("")} style={{ position: "absolute", right: 8, top: 8, border: 0, background: "transparent", color: d.muted, cursor: "pointer", padding: 4 }}><X size={16} /></button>}
           </label>
 
-          {hasProducts && hasServices && (
-            <div role="group" aria-label="Type" style={{ display: "flex", gap: 6 }}>
-              {(["all", "product", "service"] as const).map((k) => <button key={k} type="button" aria-pressed={kind === k} onClick={() => setKind(k)} style={chip(kind === k)}>{k === "all" ? "Everything" : k === "product" ? "Products" : "Services"}</button>)}
-            </div>
-          )}
+          {/* Filter button + dropdown */}
+          <div ref={filterRef} className="cx-filterwrap" style={{ position: "relative" }}>
+            <button type="button" className="cx-focus cx-filterbtn" aria-haspopup="dialog" aria-expanded={filterOpen} onClick={() => setFilterOpen((o) => !o)}
+              style={{ ...control, display: "inline-flex", alignItems: "center", gap: 8, cursor: "pointer", fontWeight: 700, borderColor: filterOpen || activeCount ? d.primary : undefined }}>
+              <SlidersHorizontal size={16} aria-hidden /> Filter
+              {activeCount > 0 && <span style={{ minWidth: 20, height: 20, padding: "0 6px", borderRadius: 999, background: d.primary, color: readableOn(d.primary), fontSize: 11, fontWeight: 800, display: "grid", placeItems: "center" }}>{activeCount}</span>}
+              <ChevronDown size={16} aria-hidden style={{ transition: "transform .18s", transform: filterOpen ? "rotate(180deg)" : "none" }} />
+            </button>
+            {filterOpen && (
+              <div role="dialog" aria-label="Filter" className="cx-drop" style={{ position: "absolute", zIndex: 40, top: "calc(100% + 8px)", left: 0, width: "min(380px, calc(100vw - 32px))", background: d.surface, border: `1px solid ${line}`, borderRadius: Math.max(Math.min(radius, 16), 10), boxShadow: `0 24px 60px ${d.text}26`, padding: 18, display: "grid", gap: 18 }}>
+                {categories.length > 0 && (
+                  <fieldset style={{ border: 0, padding: 0, margin: 0 }}>
+                    <legend style={{ fontSize: 12, fontWeight: 800, letterSpacing: ".08em", textTransform: "uppercase", color: d.muted, marginBottom: 10, padding: 0 }}>Category</legend>
+                    <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+                      <button type="button" aria-pressed={!cat} onClick={() => setCat(null)} style={chip(!cat)}>All ({items.length})</button>
+                      {categories.map(([name, n]) => <button key={name} type="button" aria-pressed={cat === name} onClick={() => setCat(cat === name ? null : name)} style={chip(cat === name)}>{name} ({n})</button>)}
+                    </div>
+                  </fieldset>
+                )}
+                {hasProducts && hasServices && (
+                  <fieldset style={{ border: 0, padding: 0, margin: 0 }}>
+                    <legend style={{ fontSize: 12, fontWeight: 800, letterSpacing: ".08em", textTransform: "uppercase", color: d.muted, marginBottom: 10, padding: 0 }}>Type</legend>
+                    <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+                      {(["all", "product", "service"] as const).map((k) => <button key={k} type="button" aria-pressed={kind === k} onClick={() => setKind(k)} style={chip(kind === k)}>{k === "all" ? "Everything" : k === "product" ? "Products" : "Services"}</button>)}
+                    </div>
+                  </fieldset>
+                )}
+                {highest > lowest && (
+                  <div>
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: 10 }}>
+                      <span style={{ fontSize: 12, fontWeight: 800, letterSpacing: ".08em", textTransform: "uppercase", color: d.muted }}>Max price</span>
+                      <strong style={{ color: d.text, fontSize: 14 }}>{currency} {formatNumber(maxPrice ?? highest)}</strong>
+                    </div>
+                    <input aria-label="Maximum price" className="cx-focus" type="range" min={lowest} max={highest} step={Math.max(1, Math.round((highest - lowest) / 100))} value={maxPrice ?? highest} onChange={(e) => setMaxPrice(Number(e.target.value))} style={{ accentColor: d.accent, width: "100%" }} />
+                    <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12, color: d.muted, marginTop: 4 }}><span>{currency} {formatNumber(lowest)}</span><span>{currency} {formatNumber(highest)}</span></div>
+                  </div>
+                )}
+                <div style={{ display: "flex", gap: 10, alignItems: "center", paddingTop: 14, borderTop: `1px solid ${line}` }}>
+                  <button type="button" onClick={reset} disabled={!hasFilters} style={{ border: 0, background: "transparent", color: hasFilters ? d.accent : d.muted, fontWeight: 700, cursor: hasFilters ? "pointer" : "default", fontSize: 13, padding: "8px 4px" }}>Clear all</button>
+                  <button type="button" onClick={() => setFilterOpen(false)} style={{ marginLeft: "auto", border: 0, cursor: "pointer", padding: "11px 20px", borderRadius: d.buttonStyle === "pill" ? 999 : Math.min(radius, 12), background: d.primary, color: readableOn(d.primary), fontWeight: 800, fontSize: 14 }}>Show {results.length} {results.length === 1 ? "result" : "results"}</button>
+                </div>
+              </div>
+            )}
+          </div>
 
-          <div style={{ display: "flex", gap: 10, alignItems: "center", marginLeft: "auto" }}>
+          <div className="cx-right" style={{ display: "flex", gap: 10, alignItems: "center", marginLeft: "auto" }}>
             <label style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13, color: d.muted }}>Sort
               <select className="cx-focus" value={sort} onChange={(e) => setSort(e.target.value as Sort)} style={control}>{SORTS.map((s) => <option key={s.value} value={s.value}>{s.label}</option>)}</select>
             </label>
@@ -185,27 +240,15 @@ export function CatalogExperience({
           </div>
         </div>
 
-        {/* Categories */}
-        {categories.length > 0 && (
-          <div className="cx-chips" role="group" aria-label="Categories" style={{ marginTop: 18 }}>
-            <button type="button" aria-pressed={!cat} onClick={() => setCat(null)} style={chip(!cat)}>All ({items.length})</button>
-            {categories.map(([name, n]) => <button key={name} type="button" aria-pressed={cat === name} onClick={() => setCat(cat === name ? null : name)} style={chip(cat === name)}>{name} ({n})</button>)}
-          </div>
-        )}
-
-        {/* Price ceiling + result summary */}
-        <div style={{ display: "flex", flexWrap: "wrap", gap: 16, alignItems: "center", margin: "16px 0 26px", paddingTop: 16, borderTop: `1px solid ${line}`, fontSize: 13, color: d.muted }}>
-          {highest > lowest && (
-            <label style={{ display: "flex", alignItems: "center", gap: 10 }}>Up to
-              <input className="cx-focus" type="range" min={lowest} max={highest} step={Math.max(1, Math.round((highest - lowest) / 100))} value={maxPrice ?? highest} onChange={(e) => setMaxPrice(Number(e.target.value))} style={{ accentColor: d.accent, width: 160 }} />
-              <strong style={{ color: d.text, minWidth: 90 }}>{currency} {formatNumber((maxPrice ?? highest))}</strong>
-            </label>
-          )}
+        {/* Applied filters + count */}
+        <div style={{ display: "flex", flexWrap: "wrap", gap: 8, alignItems: "center", marginTop: 14, fontSize: 13, color: d.muted }}>
+          {cat && <Applied label={cat} onRemove={() => setCat(null)} d={d} line={line} />}
+          {kind !== "all" && <Applied label={kind === "product" ? "Products" : "Services"} onRemove={() => setKind("all")} d={d} line={line} />}
+          {priceLimited && <Applied label={`Up to ${currency} ${formatNumber(maxPrice as number)}`} onRemove={() => setMaxPrice(null)} d={d} line={line} />}
+          {hasFilters && <button type="button" onClick={reset} style={{ border: 0, background: "transparent", color: d.accent, fontWeight: 700, cursor: "pointer", fontSize: 13 }}>Clear all</button>}
           <span aria-live="polite" style={{ marginLeft: "auto" }}>Showing {Math.min(shown, results.length)} of {results.length}</span>
-          {hasFilters && <button type="button" onClick={reset} style={{ border: 0, background: "transparent", color: d.accent, fontWeight: 700, cursor: "pointer", fontSize: 13 }}>Clear filters</button>}
         </div>
-
-        </>}
+        </div>}
         {/* Results */}
         {results.length === 0 && items.length === 0 ? (
           <EmptyCategory d={d} base={base} radius={radius} line={line} heading={mode === "category" ? heading : undefined} isService={isService} storeName={store.name} />
@@ -219,9 +262,9 @@ export function CatalogExperience({
             </div>
           </div>
         ) : view === "grid" ? (
-          <div className="bn-grid" style={{ gridTemplateColumns: "repeat(auto-fill, minmax(230px, 1fr))", gap: 24 }}>
+          <div className="bn-grid" style={{ gridTemplateColumns: "repeat(auto-fill, minmax(240px, 1fr))", gap: 28 }}>
             {results.slice(0, shown).map((item) => (
-              <div key={`${item.kind}-${item.id}`}>
+              <div key={`${item.kind}-${item.id}`} className="cx-card">
                 <ItemCard item={item} store={store} d={d} radius={radius} actionLabel={item.kind === "service" ? experience.primaryAction : "View product"} />
                 <QuickAdd item={item} slug={store.slug} base={base} d={d} radius={radius} serviceLabel={experience.primaryAction} />
               </div>
@@ -340,5 +383,15 @@ function EmptyCategory({ d, base, radius, line, heading, isService, storeName }:
         </section>
       )}
     </div>
+  );
+}
+
+
+function Applied({ label, onRemove, d, line }: { label: string; onRemove: () => void; d: BuilderConfig["design"]; line: string }) {
+  return (
+    <span style={{ display: "inline-flex", alignItems: "center", gap: 6, padding: "5px 6px 5px 12px", borderRadius: 999, border: `1px solid ${line}`, background: d.surface, color: d.text, fontWeight: 650, fontSize: 13 }}>
+      {label}
+      <button type="button" aria-label={`Remove filter ${label}`} onClick={onRemove} style={{ border: 0, background: `${d.text}10`, color: d.text, cursor: "pointer", width: 20, height: 20, borderRadius: 999, display: "grid", placeItems: "center", padding: 0 }}><X size={12} aria-hidden /></button>
+    </span>
   );
 }
