@@ -1,6 +1,7 @@
 "use client";
 import { isRestaurantBusiness } from "@/lib/business-identity";
 
+import Link from "next/link";
 import { useMemo, useState } from "react";
 import { createCategory, updateCategory, deleteCategory, setCategoryActive, reorderCategory } from "@/lib/actions/category";
 import { toast } from "sonner";
@@ -263,6 +264,23 @@ export function CategoryManager({
                   <div className="flex items-center justify-between"><dt className="text-muted-foreground">Created</dt><dd className="font-medium">{fmtDate(selected.createdAt)}</dd></div>
                   <div className="flex items-center justify-between"><dt className="text-muted-foreground">Last updated</dt><dd className="font-medium">{fmtDate(selected.updatedAt)}</dd></div>
                 </dl>
+                {(() => {
+                  const area = selected.type === "SERVICE" ? "services" : "products";
+                  const noun = selected.type === "SERVICE" ? "service" : terminology.catalogSingular.toLowerCase();
+                  return (
+                    <div className="space-y-2 rounded-lg border border-dashed p-3">
+                      <p className="text-xs text-muted-foreground">
+                        {itemsFor(selected) > 0 ? `${itemsFor(selected)} ${itemsFor(selected) === 1 ? "item is" : "items are"} in this ${terminology.category.toLowerCase()}.` : `Nothing in this ${terminology.category.toLowerCase()} yet, so visitors see an empty page.`} {selected.type === "SERVICE" ? "Items here are managed under Services." : "Items here are managed under Products."}
+                      </p>
+                      <Link href={`/store/${slug}/admin/${area}/new?category=${selected.id}`} className="flex w-full items-center justify-center gap-2 rounded-lg bg-primary px-3 py-2 text-sm font-semibold text-primary-foreground hover:opacity-90">
+                        <Plus className="h-3.5 w-3.5" /> Add {noun} to {selected.name}
+                      </Link>
+                      {itemsFor(selected) > 0 && (
+                        <Link href={`/store/${slug}/admin/${area}?category=${selected.id}`} className="block text-center text-xs font-medium underline underline-offset-2">View items in {selected.name}</Link>
+                      )}
+                    </div>
+                  );
+                })()}
                 <button
                   onClick={() => setFormOpen(selected.id)}
                   className="flex w-full items-center justify-center gap-2 rounded-lg border px-3 py-2 text-sm font-medium hover:bg-muted"
@@ -430,6 +448,7 @@ function CategoryFormModal({
                 <option value="PRODUCT">{terminology.catalogSingular}</option>
                 <option value="SERVICE">Service</option>
               </select>
+              <p className="mt-1 text-[11px] text-muted-foreground">Pick where items in this {terminology.category.toLowerCase()} will be added: {terminology.catalogSingular} items go under Products, bookable or enquiry-based offers go under Services. This cannot be changed later.</p>
             </div>
           )}
           <div>

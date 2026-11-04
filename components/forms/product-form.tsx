@@ -81,11 +81,14 @@ export function ProductForm({
   categoryLabel = "Category",
   businessCategory,
   storeCurrency,
+  defaultCategoryId,
 }: {
   storeSlug: string;
   categories: Category[];
   entityLabel?: string;
   categoryLabel?: string;
+  /** Pre-selects the category when the form is opened from a category ("Add to this category"). */
+  defaultCategoryId?: string;
   // Business niche (Store.business.category / businessType) -- drives which
   // optional fields, wording, and tips this form shows. See
   // lib/catalog-item-presets.ts. Unrecognized/omitted niches fall back to a
@@ -159,7 +162,7 @@ export function ProductForm({
     resolver: zodResolver(productSchema),
     defaultValues: {
       name: product?.name ?? "",
-      categoryId: product?.categoryId ?? "",
+      categoryId: product?.categoryId ?? defaultCategoryId ?? "",
       type: product?.type ?? "PHYSICAL",
       description: product?.description ?? "",
       price: product ? Number(product.price) : undefined,

@@ -6,13 +6,14 @@ import { ServicesTable } from "@/components/dashboard/services-table";
 import { StatCard } from "@/components/dashboard/stat-card";
 import { Wrench, CheckCircle2, CalendarClock, Plus } from "lucide-react";
 
-export default async function ServicesPage({ params }: { params: Promise<{ slug: string }> }) {
+export default async function ServicesPage({ params, searchParams }: { params: Promise<{ slug: string }>; searchParams: Promise<{ category?: string }> }) {
   const { slug } = await params;
+  const { category: categoryFilter } = await searchParams;
   const store = await prisma.store.findUnique({ where: { slug }, include: { business: { select: { category: true } } } });
   if (!store) return null;
   const terminology = getBusinessTerminology(store.business.category);
 
-  const services = await prisma.service.findMany({ where: { storeId: store.id }, orderBy: { createdAt: "desc" } });
+  const services = await prisma.service.findMany({ where: { storeId: store.id, ...(categoryFilter ? { categoryId: categoryFilter } : {}) }, orderBy: { createdAt: "desc" } });
   const activeCount = services.filter((s) => s.isPublished).length;
   const bookableCount = services.filter((s) => s.isBookable).length;
 

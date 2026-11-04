@@ -47,11 +47,14 @@ export function ServiceForm({
   entityLabel = "Service",
   categoryLabel = "Category",
   businessCategory,
+  defaultCategoryId,
 }: {
   storeSlug: string;
   categories: Category[];
   entityLabel?: string;
   categoryLabel?: string;
+  /** Pre-selects the category when the form is opened from a category ("Add to this category"). */
+  defaultCategoryId?: string;
   // Business niche (Store.business.category) -- drives which optional
   // fields, wording, and tips this form shows, exactly like ProductForm.
   // A hotel niche renders room-style quick specs (guests/size/bed type);
@@ -127,7 +130,7 @@ export function ServiceForm({
     resolver: zodResolver(serviceSchema),
     defaultValues: {
       name: service?.name ?? "",
-      categoryId: service?.categoryId ?? "",
+      categoryId: service?.categoryId ?? defaultCategoryId ?? "",
       description: service?.description ?? "",
       price: service ? Number(service.price) : undefined,
       currency: service?.currency ?? "NGN",
