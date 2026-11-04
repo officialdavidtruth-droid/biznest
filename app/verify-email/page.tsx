@@ -1,7 +1,17 @@
-import Link from "next/link";
 import { prisma } from "@/lib/prisma";
 import { reconcileReferralsForReferee } from "@/lib/payments/referral-award";
 import { ResendVerification } from "@/components/forms/resend-verification";
+import { StoreNotice, StoreButtonLink, pickStoreColor, type NoticeStore } from "@/components/auth/store-notice";
+
+async function storeForUser(userId: string): Promise<NoticeStore> {
+  const u = await prisma.user.findUnique({ where: { id: userId }, select: { customerScopeStoreId: true } });
+  if (!u?.customerScopeStoreId) return null;
+  const st = await prisma.store.findUnique({
+    where: { id: u.customerScopeStoreId },
+    select: { name: true, slug: true, logoUrl: true, themeColors: true },
+  });
+  return st ? { name: st.name, slug: st.slug, logoUrl: st.logoUrl, color: pickStoreColor(st.themeColors) } : null;
+}
 
 /**
  * Consumes the token from sendVerificationEmail (lib/email/send.ts). This
@@ -20,6 +30,7 @@ export default async function VerifyEmailPage({
   if (!token) {
     return (
       <Message
+        store={null}
         title="Missing verification link"
         body="This link is missing its token. Please use the link from your verification email."
       />
@@ -31,6 +42,7 @@ export default async function VerifyEmailPage({
   if (!record || record.type !== "EMAIL") {
     return (
       <Message
+        store={null}
         title="Invalid verification link"
         body="This link is invalid. It may have already been used — if your email is already verified, you can just sign in. Otherwise, request a new link below."
         cta
@@ -38,6 +50,8 @@ export default async function VerifyEmailPage({
       />
     );
   }
+
+  const store = await storeForUser(record.identifier);
 
   if (record.expires < new Date()) {
     // Look the account up first so the resend control below can be pre-filled
@@ -54,6 +68,7 @@ export default async function VerifyEmailPage({
     await prisma.verificationToken.delete({ where: { token } }).catch(() => {});
     return (
       <Message
+        store={store}
         title="Link expired"
         body="This verification link has expired. Request a new one below."
         resend={{ email: owner?.email, storeSlug: ownerStore?.slug }}
@@ -74,6 +89,7 @@ export default async function VerifyEmailPage({
 
   return (
     <Message
+      store={store}
       title="Email verified"
       body="Your email address has been confirmed. You're all set — sign in to continue."
       cta
@@ -82,33 +98,30 @@ export default async function VerifyEmailPage({
 }
 
 function Message({
+  store,
   title,
   body,
   cta,
   resend,
 }: {
+  store: NoticeStore;
   title: string;
   body: string;
   cta?: boolean;
   resend?: { email?: string | null; storeSlug?: string | null };
 }) {
   return (
-    <div className="mx-auto flex min-h-[60vh] max-w-md flex-col items-center justify-center px-6 text-center">
-      <h1 className="text-xl font-semibold">{title}</h1>
-      <p className="mt-2 text-sm text-muted-foreground">{body}</p>
+    <StoreNotice store={store} title={title} body={body} tone={cta ? "ok" : "warn"}>
       {resend && (
-        <div className="mt-6 w-full">
+        <div className="mt-6 w-full text-left">
           <ResendVerification defaultEmail={resend.email ?? undefined} storeSlug={resend.storeSlug ?? undefined} heading="Send me a new verification link" />
         </div>
       )}
       {cta && (
-        <Link
-          href="/login"
-          className="mt-6 inline-block rounded-md bg-primary px-5 py-2 text-sm font-medium text-primary-foreground"
-        >
+        <StoreButtonLink href={store ? `/login?store=${encodeURIComponent(store.slug)}` : "/login"} color={store?.color ?? null}>
           Go to sign in
-        </Link>
+        </StoreButtonLink>
       )}
-    </div>
+    </StoreNotice>
   );
 }

@@ -1,6 +1,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { ShieldCheck, Sparkles, Zap } from "lucide-react";
+import { isDarkColor, mix, readableOn } from "@/lib/storefront/readable-design";
 
 /**
  * Shared visual frame for every app/(auth)/** page (login, register,
@@ -23,6 +24,52 @@ function toTagline(description: string | null | undefined): string | null {
   const firstSentence = description.split(/(?<=[.!?])\s/)[0]?.trim() ?? description.trim();
   if (firstSentence.length <= 90) return firstSentence.replace(/[.!?]+$/, "");
   return firstSentence.slice(0, 87).trim() + "...";
+}
+
+const HEX = /^#(?:[0-9a-f]{3}|[0-9a-f]{6})$/i;
+const normHex = (c: string | null | undefined): string | null => {
+  if (!c || !HEX.test(c.trim())) return null;
+  const v = c.trim().toLowerCase();
+  return v.length === 4 ? `#${v[1]}${v[1]}${v[2]}${v[2]}${v[3]}${v[3]}` : v;
+};
+
+/** "#rrggbb" -> "H S% L%", the format the shared --primary token uses. */
+function hexToHslTriplet(hex: string): string {
+  const r = parseInt(hex.slice(1, 3), 16) / 255, g = parseInt(hex.slice(3, 5), 16) / 255, b = parseInt(hex.slice(5, 7), 16) / 255;
+  const max = Math.max(r, g, b), min = Math.min(r, g, b), l = (max + min) / 2;
+  const d = max - min;
+  let h = 0, sat = 0;
+  if (d) {
+    sat = d / (1 - Math.abs(2 * l - 1));
+    h = max === r ? ((g - b) / d) % 6 : max === g ? (b - r) / d + 2 : (r - g) / d + 4;
+    h = Math.round(h * 60); if (h < 0) h += 360;
+  }
+  return `${h} ${Math.round(sat * 100)}% ${Math.round(l * 100)}%`;
+}
+
+/** Up to two initials, for stores that have not uploaded a logo yet. */
+function initialsOf(name: string): string {
+  const words = name.trim().split(/\s+/).filter(Boolean);
+  const letters = words.length > 1 ? words[0][0] + words[1][0] : (words[0] ?? "S").slice(0, 2);
+  return letters.toUpperCase();
+}
+
+/** The store's logo, or its initials in the store colour -- never the platform's mark inside a store. */
+function StoreMark({ name, logoUrl, size, accent, onAccent }: { name: string; logoUrl?: string | null; size: number; accent: string; onAccent: string }) {
+  if (logoUrl) {
+    return (
+      <Image src={logoUrl} alt={name} width={size} height={size} style={{ width: size, height: size }} className="rounded-lg bg-white object-cover ring-1 ring-black/10" />
+    );
+  }
+  return (
+    <span
+      aria-label={name}
+      className="flex items-center justify-center rounded-lg font-bold ring-1 ring-black/10"
+      style={{ width: size, height: size, background: accent, color: onAccent, fontSize: size * 0.4 }}
+    >
+      {initialsOf(name)}
+    </span>
+  );
 }
 
 export function AuthShell({
@@ -58,7 +105,28 @@ export function AuthShell({
   children: React.ReactNode;
 }) {
   const isStoreContext = Boolean(storeName);
-  const accentColor = accent || "#0f6410"; // BizNest logo green, when a store has no accent of its own
+  // A store's own colour when it has one; a neutral slate (not BizNest green) when it has not set any yet.
+  const storeAccent = normHex(accent) ?? "#1f2937";
+  const accentColor = isStoreContext ? storeAccent : accent || "#0f6410"; // platform pages keep the BizNest green
+  const onAccent = readableOn(accentColor);
+  // Brand panel: a deep shade of the store colour, with a lighter glow, so the page reads as the store's own.
+  const panelDeep = mix(accentColor, "#000000", isDarkColor(accentColor) ? 0.45 : 0.62);
+  const panelMid = mix(accentColor, "#000000", isDarkColor(accentColor) ? 0.2 : 0.45);
+  const onPanel = "#ffffff";
+  // Accent used for text/icons on the dark panel: lifted when the store colour is too dark to read there.
+  const highlight = isStoreContext && isDarkColor(accentColor) ? mix(accentColor, "#ffffff", 0.6) : accentColor;
+  const formBg = isStoreContext ? mix(accentColor, "#ffffff", 0.965) : "#ffffff";
+  // These tokens are what the shared inputs and buttons already read, so every field on the page follows the store.
+  const brandVars = isStoreContext
+    ? ({
+        "--bn-accent-gradient": `linear-gradient(135deg, ${accentColor} 0%, ${mix(accentColor, "#000000", 0.16)} 100%)`,
+        "--bn-on-accent": onAccent,
+        "--bn-marigold": accentColor,
+        "--primary": hexToHslTriplet(accentColor),
+        "--primary-foreground": hexToHslTriplet(onAccent === "#ffffff" ? "#ffffff" : "#111111"),
+        "--bn-ink": mix(accentColor, "#000000", 0.82),
+      } as React.CSSProperties)
+    : undefined;
 
   // Vendor's own click-to-edit hero subtitle wins; otherwise fall back to a
   // trimmed version of their onboarding business description; otherwise the
@@ -81,7 +149,18 @@ export function AuthShell({
   ];
 
   return (
-    <div className="flex min-h-screen bg-white">
+    <div className="flex min-h-screen flex-col md:flex-row" style={{ background: formBg, ...brandVars }}>
+      {/* Phones: the store's logo and name on its own colour, across the top. */}
+      {isStoreContext && (
+        <div
+          className="flex items-center gap-3 px-6 py-5 sm:px-10 md:hidden"
+          style={{ background: `linear-gradient(135deg, ${accentColor} 0%, ${mix(accentColor, "#000000", 0.25)} 100%)`, color: onAccent }}
+        >
+          <StoreMark name={storeName ?? "Store"} logoUrl={storeLogoUrl} size={40} accent={onAccent} onAccent={accentColor} />
+          <span className="text-base font-semibold">{storeName}</span>
+        </div>
+      )}
+
       {/* Brand panel — hidden below md, this is the "signature" half of
           the layout: the receipt-strip benefit list ties back to
           BizNest's commerce/POS identity instead of generic bullet
@@ -90,7 +169,7 @@ export function AuthShell({
         className="relative hidden w-[44%] flex-col justify-between overflow-hidden px-12 py-12 md:flex lg:px-16"
         style={{
           background: isStoreContext
-            ? `radial-gradient(120% 90% at 12% -10%, ${accentColor}29 0%, transparent 55%), linear-gradient(165deg, #0e2b1c 0%, #0a1c12 45%, #05100a 100%)`
+            ? `radial-gradient(120% 90% at 12% -10%, ${mix(accentColor, "#ffffff", 0.18)}55 0%, transparent 55%), linear-gradient(165deg, ${panelMid} 0%, ${panelDeep} 100%)`
             : "var(--bn-hero-gradient)",
         }}
       >
@@ -101,14 +180,8 @@ export function AuthShell({
         />
 
         <div className="relative z-10 flex items-center gap-3">
-          {storeLogoUrl ? (
-            <Image
-              src={storeLogoUrl}
-              alt={storeName ?? "Store"}
-              width={40}
-              height={40}
-              className="h-10 w-10 rounded-lg object-cover ring-1 ring-white/15"
-            />
+          {isStoreContext ? (
+            <StoreMark name={storeName ?? "Store"} logoUrl={storeLogoUrl} size={40} accent={accentColor} onAccent={onAccent} />
           ) : (
             <span
               className="flex h-10 w-10 items-center justify-center rounded-lg text-sm font-bold text-[#05100a]"
@@ -117,7 +190,7 @@ export function AuthShell({
               BN
             </span>
           )}
-          <span className="text-sm font-semibold tracking-wide text-white">
+          <span className="text-sm font-semibold tracking-wide" style={{ color: onPanel }}>
             {storeName ?? "BizNest"}
           </span>
         </div>
@@ -125,7 +198,7 @@ export function AuthShell({
         <div className="relative z-10 max-w-sm bn-fade-up">
           <p
             className="mb-4 text-xs font-semibold uppercase tracking-[0.2em]"
-            style={{ color: accentColor }}
+            style={{ color: highlight }}
           >
             {eyebrow}
           </p>
@@ -133,13 +206,13 @@ export function AuthShell({
             {isStoreContext ? (
               <>
                 Everything you love from{" "}
-                <span style={{ color: accentColor }}>{storeName}</span>, one sign-in away.
+                <span style={{ color: highlight }}>{storeName}</span>, one sign-in away.
               </>
             ) : (
               <>
                 Run your business.
                 <br />
-                <span style={{ color: accentColor }}>Not your errands.</span>
+                <span style={{ color: highlight }}>Not your errands.</span>
               </>
             )}
           </h1>
@@ -160,7 +233,7 @@ export function AuthShell({
               ]
           ).map(({ icon: Icon, text }) => (
             <div key={text} className="bn-receipt-row text-sm text-white/85">
-              <Icon className="h-4 w-4 shrink-0" style={{ color: accentColor }} />
+              <Icon className="h-4 w-4 shrink-0" style={{ color: highlight }} />
               <span>{text}</span>
             </div>
           ))}
@@ -172,27 +245,17 @@ export function AuthShell({
         <div className="mx-auto w-full max-w-sm bn-fade-up">
           {/* Compact brand mark shown only on mobile, where the left
               panel is hidden entirely. */}
-          <Link href="/" className="mb-8 flex items-center gap-2 md:hidden">
-            {storeLogoUrl ? (
-              <Image
-                src={storeLogoUrl}
-                alt={storeName ?? "Store"}
-                width={32}
-                height={32}
-                className="h-8 w-8 rounded-lg object-cover"
-              />
-            ) : (
+          {!isStoreContext && (
+            <Link href="/" className="mb-8 flex items-center gap-2 md:hidden">
               <span
                 className="flex h-8 w-8 items-center justify-center rounded-lg text-xs font-bold"
                 style={{ background: "var(--bn-accent-gradient)", color: "var(--bn-ivory)" }}
               >
                 BN
               </span>
-            )}
-            <span className="text-sm font-semibold text-[var(--bn-ink)]">
-              {storeName ?? "BizNest"}
-            </span>
-          </Link>
+              <span className="text-sm font-semibold text-[var(--bn-ink)]">BizNest</span>
+            </Link>
+          )}
 
           <h2 className="text-2xl font-semibold tracking-tight text-[var(--bn-ink)]">{title}</h2>
           <p className="mt-1.5 text-sm text-muted-foreground">{subtitle}</p>

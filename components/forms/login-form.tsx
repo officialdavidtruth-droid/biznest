@@ -158,7 +158,7 @@ export function LoginForm({
         <div>
           <div className="mb-1.5 flex items-center justify-between">
             <label className="block text-sm font-medium text-[var(--bn-ink)]">Password</label>
-            <Link href={storeSlug ? `/forgot-password?store=${encodeURIComponent(storeSlug)}` : "/forgot-password"} className="text-xs text-muted-foreground hover:underline">
+            <Link href={storeSlug ? `/forgot-password?store=${encodeURIComponent(storeSlug)}` : "/forgot-password"} className="text-xs text-muted-foreground hover:underline" style={isStoreContext ? { color: "hsl(var(--primary))" } : undefined}>
               Forgot password?
             </Link>
           </div>
@@ -182,6 +182,7 @@ export function LoginForm({
         <Link
           href={storeSlug ? `/register?store=${encodeURIComponent(storeSlug)}` : "/register"}
           className="font-medium text-[var(--bn-ink)] hover:underline"
+          style={isStoreContext ? { color: "hsl(var(--primary))" } : undefined}
         >
           Sign up
         </Link>

@@ -1,6 +1,7 @@
 import { Resend } from "resend";
 import { logError } from "@/lib/observability/log";
 import { APP_URL } from "@/lib/constants/app-url";
+import { readableOn } from "@/lib/storefront/readable-design";
 import { formatNumber } from "@/lib/i18n/locale";
 import {
   abandonedCheckoutSubject,
@@ -106,6 +107,7 @@ function emailShell(opts: {
 }) {
   const headerColor = opts.headerColor ?? "#0b6413";
   const logoSrc = opts.headerLogoUrl ?? `${APP_URL}/email-logo.png`;
+  const headerText = readableOn(headerColor);
   const logoAlt = escapeHtml(opts.brand?.name ?? opts.headerLogoAlt ?? "BizNest");
   return `<!DOCTYPE html>
 <html>
@@ -121,22 +123,11 @@ function emailShell(opts: {
                   <tr>
                     <td valign="middle">
                       ${
-                        opts.brand && !opts.headerLogoUrl
-                          ? `<span style="display:block;color:#ffffff;font-size:20px;font-weight:700;line-height:32px;">${logoAlt}</span>`
-                          : opts.headerLogoUrl
-                          ? `<img
-                              src="${logoSrc}"
-                              alt="${logoAlt}"
-                              height="32"
-                              style="display:block;height:32px;max-width:160px;width:auto;border:0;outline:none;"
-                            />`
-                          : `<img
-                              src="${logoSrc}"
-                              alt="${logoAlt}"
-                              width="70"
-                              height="32"
-                              style="display:block;height:32px;width:70px;border:0;outline:none;"
-                            />`
+                        opts.brand && opts.headerLogoUrl
+                          ? `<img src="${logoSrc}" alt="${logoAlt}" height="32" style="display:inline-block;vertical-align:middle;height:32px;max-width:160px;width:auto;border:0;outline:none;" /><span style="display:inline-block;vertical-align:middle;margin-left:12px;color:${headerText};font-size:18px;font-weight:700;line-height:32px;">${logoAlt}</span>`
+                          : opts.brand
+                          ? `<span style="display:block;color:${headerText};font-size:20px;font-weight:700;line-height:32px;">${logoAlt}</span>`
+                          : `<img src="${logoSrc}" alt="${logoAlt}" width="70" height="32" style="display:block;height:32px;width:70px;border:0;outline:none;" />`
                       }
                     </td>
                   </tr>

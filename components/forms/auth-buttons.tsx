@@ -11,8 +11,8 @@ export function AuthSubmitButton({
     <button
       type="submit"
       disabled={disabled}
-      className="w-full rounded-xl py-2.5 text-sm font-semibold text-[#05100a] shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-md hover:brightness-105 active:translate-y-0 disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:translate-y-0 disabled:hover:shadow-sm"
-      style={{ background: "var(--bn-accent-gradient)" }}
+      className="w-full rounded-xl py-2.5 text-sm font-semibold shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-md hover:brightness-105 active:translate-y-0 disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:translate-y-0 disabled:hover:shadow-sm"
+      style={{ background: "var(--bn-accent-gradient)", color: "var(--bn-on-accent, #05100a)" }}
     >
       {children}
     </button>
