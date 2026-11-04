@@ -24,7 +24,10 @@ Templates with their own hard-coded home (Wanderly, Nestoria, hotel and others) 
 - **Horizon** is the model (suggested to every business type).
 - **Every template drawn by the Builder** (about 25) is neutral at render time: `storefront-runtime.tsx` and the template preview pass `neutral: true`, so wording comes from the business and the template keeps only its look (colours, header, footer, cards, hero).
 - Their `supports` list is unchanged: it only decides which templates the gallery *suggests* for a business. Any template can already be picked with "Show all" in the gallery.
-- Not converted yet: templates with a hard-coded home page (Wanderly, Nestoria, the hotel templates, Example, TasteHouse, Grandeur and the legacy homes).
+- **Wanderly Travel and Nestoria Real Estate** now render through the Builder (their old home components are deleted). Their colours, header, footer, cards and hero style are kept; their wording comes from the business.
+- Open group departures and the enquiry/booking form (BizNest Travel) are drawn by the Builder after the catalog (`components/storefront/builder-departures.tsx`) for ANY template, when the agency has open departures.
+- **The 12 legacy templates** (Fresh & Co., Heenzy Sneaker Co., Nova Studio Noir, Violet, Premium Marketplace, HomeVista, rRW Premium Rental, Marketplace Hub, Arcova Architecture, Rivora Fresh, JuiceLife, Fabtex) now render through the Builder. The legacy renderer (`legacy-template-renderer.tsx`) and `templates/heenzy-home.tsx` are deleted, and the `"legacy"` home kind no longer exists.
+- Not converted yet: the hotel templates (Aspire, Larita, Skyview, Maison, Grand, Veloura), Example, TasteHouse and Grandeur. They have their own journeys (room booking, menus, reservations).
 
 ## Empty sections
 Catalog, gallery, map, stats, testimonials and categories are left out on the live site when they have nothing to show. The editor still shows them.

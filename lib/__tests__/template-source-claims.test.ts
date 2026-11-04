@@ -4,9 +4,9 @@ import { resolve } from "node:path";
 
 // Reference-template home components render on live merchant stores, so they must never invent
 // social proof. containsDemoClaim only covers theme copy; this guards the component source too.
-const FILES = ["components/storefront/reference-homes.tsx", "components/storefront/hotel-reference-homes.tsx"];
+const FILES = ["components/storefront/hotel-reference-homes.tsx"];
 // Shipping promises belong to the merchant, so no template may hard-code them.
-const SHIPPING_FILES = ["components/storefront/example-store.tsx", "components/storefront/templates/heenzy-home.tsx", "components/storefront/tastehouse.tsx", "lib/template-themes.ts"];
+const SHIPPING_FILES = ["components/storefront/example-store.tsx", "components/storefront/tastehouse.tsx", "lib/template-themes.ts"];
 const FORBIDDEN: [RegExp, string][] = [
   [/Math\.max\([^)]*completedOrders\s*,\s*\d{2,}/, "floors a real count with a made-up number"],
   [/Verified (customer|guest)/i, "invented reviewer attribution"],

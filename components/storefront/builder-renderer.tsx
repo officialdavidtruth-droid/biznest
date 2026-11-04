@@ -4,8 +4,10 @@ import { starFill, starEmpty } from "@/lib/utils/stars";
 import { readableAccentText } from "@/lib/utils/readable-accent";
 import { MenuLinks, useFooterMenu, type FallbackLink } from "@/components/storefront/store-menu";
 import { useStoreCategories } from "@/components/storefront/store-categories";
+import { BuilderDepartures } from "@/components/storefront/builder-departures";
+import type { PublicTravelPackage } from "@/lib/travel-public";
 import type React from "react";
-import { useEffect, useMemo, useState } from "react";
+import { Fragment, useEffect, useMemo, useState } from "react";
 import { createPortal } from "react-dom";
 import Link from "next/link";
 import { CartLink } from "@/components/storefront/cart-link";
@@ -44,7 +46,7 @@ function isInOwnPreview(): boolean {
 }
 
 export function BuilderStorefront({
-  store, config: initialConfig, catalogItems, reviews, avgRating, completedOrders, fallbackFaq, categoryList,
+  store, config: initialConfig, catalogItems, reviews, avgRating, completedOrders, fallbackFaq, categoryList, departures,
 }: {
   store: BuilderStore;
   config: BuilderConfig;
@@ -56,6 +58,8 @@ export function BuilderStorefront({
   fallbackFaq?: BuilderSectionItem[];
   /** The owner's real categories (Dashboard > Categories), empty ones included. Without it, categories are read off the items. */
   categoryList?: { id: string; name: string; slug?: string | null }[];
+  /** Open group departures from BizNest Travel. Drawn after the catalog only when the agency has some. */
+  departures?: PublicTravelPackage[];
 }) {
   const [liveConfig, setLiveConfig] = useState<BuilderConfig>(initialConfig);
   // True only when this storefront is rendered inside the customizer's
@@ -102,6 +106,8 @@ export function BuilderStorefront({
   // so changing that image updates a published builder homepage instead of being ignored.
   const visible = config.sections.filter((s) => s.visible).map((s) => s.type === "hero" && !s.settings.image && store.bannerUrl && isSafeImageUrl(store.bannerUrl) ? { ...s, settings: { ...s.settings, image: store.bannerUrl } } : s);
   const featured = catalogItems.slice(0, 8);
+  // Departures sit right after the catalog; a layout with no catalog shows them after its first section.
+  const departuresAnchor = (visible.find((s) => s.type === "catalog") ?? visible[0])?.id;
   const categories = Array.from(new Set(catalogItems.map((i) => i.categoryName).filter(Boolean))) as string[];
   // Owner's categories first (so a store with categories but no items still shows them), else the ones its items name.
   const realCategories = (categoryList ?? []).filter((c) => c.id && !String(c.id).startsWith("cat-"));
@@ -143,7 +149,7 @@ export function BuilderStorefront({
       <style>{`a{text-decoration:none;color:inherit}.bn-wrap{width:min(${width}px,calc(100% - 32px));margin:0 auto}.bn-grid{display:grid;gap:20px}@media(max-width:720px){.bn-grid{grid-template-columns:1fr!important}.bn-hero{grid-template-columns:1fr!important}.bn-section{padding-top:56px!important;padding-bottom:56px!important}.bn-nav-links{display:none!important}}${isEditMode ? `.bn-section{cursor:pointer;transition:outline .12s ease}.bn-section:hover{outline:2px dashed ${d.accent};outline-offset:-2px}` : ""}`}</style>
       <BuilderHeader store={store} d={d} experience={experience} visible={visible} />
 
-      {visible.map((section) => <BuilderSectionView key={section.id} section={section} store={store} config={config} catalogItems={featured} categories={categories} categoryLinks={categoryLinks} experience={experience} reviews={reviews} avgRating={avgRating} completedOrders={completedOrders} fallbackFaq={fallbackFaq} isEditMode={isEditMode} catalogTotal={catalogItems.length} />)}
+      {visible.map((section) => <Fragment key={section.id}><BuilderSectionView section={section} store={store} config={config} catalogItems={featured} categories={categories} categoryLinks={categoryLinks} experience={experience} reviews={reviews} avgRating={avgRating} completedOrders={completedOrders} fallbackFaq={fallbackFaq} isEditMode={isEditMode} catalogTotal={catalogItems.length} />{section.id === departuresAnchor && departures?.length ? <BuilderDepartures slug={store.slug} packages={departures} d={d} /> : null}</Fragment>)}
 
       <BuilderFooter store={store} d={d} visible={visible} />
     </main>

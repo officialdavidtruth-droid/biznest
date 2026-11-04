@@ -1,6 +1,6 @@
 import {
   GRANDEUR_TEMPLATE_NAME, TASTEHOUSE_TEMPLATE_NAME, HOTEL_TEMPLATE_NAME, EXAMPLE_TEMPLATE_NAME,
-  LEGACY_TEMPLATE_NAMES, NAMED_TEMPLATE_IDENTITY,
+  NAMED_TEMPLATE_IDENTITY,
 } from "@/lib/template-themes";
 import { SIGNATURE_DEDICATED_RENDERER } from "@/lib/storefront/signature-renderers";
 
@@ -21,7 +21,6 @@ export type ScreenshotPalette = {
 };
 
 export type HomeRenderer =
-  | { kind: "legacy"; name: string }
   | { kind: "screenshot"; mode: ScreenshotMode; palette: ScreenshotPalette }
   | { kind: "hotel" }
   | { kind: "example" }
@@ -48,13 +47,13 @@ export function resolveHomeRenderer(templateName: string | null | undefined): Ho
   // Maison / Grand: homepage and every inner page (rooms, booking, contact...) must share ONE chrome. Inner pages are
   // always the hotel journey (isHotelStore), so the homepage is the hotel renderer too, skinned from the same palette (lib/hotel-skin.ts).
   if (name === "Maison — Hotel & Stay" || name === "Grand — Hotel & Hospitality") return { kind: "hotel" };
-  // One renderer, one owner: only these two reference templates have their own dedicated home component.
+  // Wanderly and Nestoria used to have their own home components with travel / property wording written into the code.
+  // They now render through the Builder like every other template (NAMED_TEMPLATE_IDENTITY), so their wording and
+  // content come from the merchant. Open group departures are drawn by the Builder when the agency has some.
   // The other reference templates (Emarket, ShopNova, Electra Blue, TechNova, TechVerse, ShopEase) and the colour
   // variants (Violet — Sunset, Nova Ivory, Heenzy Boutique Rose) used to reuse another template's component,
   // so picking them looked identical. They now render through the Builder with their own identity (NAMED_TEMPLATE_IDENTITY).
-  if (["Wanderly Travel", "Nestoria Real Estate"].includes(name)) return { kind: "legacy", name };
   if (NAMED_TEMPLATE_IDENTITY[name]) return { kind: "builder" };
-  if (LEGACY_TEMPLATE_NAMES.has(name)) return { kind: "legacy", name };
   if (name === GRANDEUR_TEMPLATE_NAME) return { kind: "screenshot", mode: "flavora-restaurant", palette: SCREENSHOT_PALETTES["flavora-restaurant"] };
   if (name === TASTEHOUSE_TEMPLATE_NAME) return { kind: "screenshot", mode: "tastehouse", palette: SCREENSHOT_PALETTES.tastehouse };
   const dedicated = SIGNATURE_DEDICATED_RENDERER[name];

@@ -4,7 +4,6 @@ import React from "react";
 import { MenuLinks } from "@/components/storefront/store-menu";
 import Link from "next/link";
 import { HeenzyStorefront } from "@/components/storefront/templates/heenzy-home";
-import { WanderlyHome, NestoriaHome } from "@/components/storefront/reference-homes";
 import type { CategoryTreeNode } from "@/lib/storefront-categories";
 
 export type LegacyCatalogItem = {
@@ -69,8 +68,6 @@ function JuiceLife({p}:{p:Props}){return <div className="lt-root juicelife"><Hea
 function Fabtex({p}:{p:Props}){return <div className="lt-root fabtex"><Header p={p} variant="fabtex"/><section className="fab-hero"><div><small>{eyebrow(p)}</small><h1>{heroHeadline(p.store)||p.store.name}</h1><p>{heroSub(p)}</p><Link href={href(p.slug,"/catalog")} className="fab-btn">{heroCta(p)}</Link></div><div style={image(p.store.bannerUrl||p.catalogItems[0]?.image)}/></section><section className="fab-marquee">{Array(4).fill(p.store.name.toUpperCase()).join(" · ")}</section><section className="lt-section"><div className="lt-section-head"><div><small>THE EDIT</small><h2>Featured pieces</h2></div><Link href={href(p.slug,"/catalog")}>Shop all →</Link></div><Cards p={p} items={p.catalogItems} className="fab-cards"/></section><section className="fab-editorial"><div><small>ABOUT</small><h2>{p.store.name}</h2>{p.store.business.description&&<p>{p.store.business.description}</p>}</div><div style={image(p.catalogItems[1]?.image||p.store.bannerUrl)}/></section><Footer p={p}/></div>}
 
 export function LegacyTemplateHome({name,p}:{name:string;p:Props}){
- if(name === "Wanderly Travel") return <WanderlyHome p={p as any}/>;
- if(name === "Nestoria Real Estate") return <NestoriaHome p={p as any}/>;
  if(name==="Heenzy Sneaker Co.") return <HeenzyStorefront {...p as any} catalogCategories={[]} />;
  if(name==="Fresh & Co.") return <Fresh p={p}/>;
  if(name.startsWith("Nova Studio") && name!=="Nova Studio — Ivory Minimal") return <Nova p={p}/>;

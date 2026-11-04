@@ -5,7 +5,7 @@
  *   1. "Fresh & Co." — forest green / leaf green / citrus service theme.
  *   2. "Heenzy Sneaker Co." — black / white / yellow retail/catalog theme
  *      (see styles/heenzy-template.css and
- *      components/storefront/templates/heenzy-home.tsx).
+ *      (renders through the Builder now).
  *   3. "Nova Studio" — dark, editorial/magazine layout with a sticky side
  *      nav and serif display type (see
  *      components/storefront/templates/nova-home.tsx). Structurally
@@ -864,6 +864,20 @@ export const NAMED_TEMPLATE_IDENTITY: Record<string, { chrome: TemplateChrome; h
   "Violet — Sunset": { chrome: C("centered", "minimal", "tall"), heroStyle: "centered", heroVariant: "banner" },
   "Nova Studio — Ivory Minimal": { chrome: C("bar", "columns", "minimal"), heroStyle: "split", heroVariant: "ledger" },
   "Heenzy — Boutique Rose": { chrome: C("overlay", "columns", "tall"), heroStyle: "fullbleed", heroVariant: "lookbook" },
+  "Wanderly Travel": { chrome: C("overlay", "cta", "tall"), heroStyle: "fullbleed", heroVariant: "poster" },
+  "Nestoria Real Estate": { chrome: C("stripe", "cta", "tall"), heroStyle: "split", heroVariant: "splitcard" },
+  "Fresh & Co.": { chrome: C("classic", "columns", "overlay"), heroStyle: "fullbleed", heroVariant: "tiles" },
+  "Heenzy Sneaker Co.": { chrome: C("stripe", "centered", "overlay"), heroStyle: "fullbleed", heroVariant: "lookbook" },
+  "Nova Studio — Noir": { chrome: C("bar", "minimal", "minimal"), heroStyle: "split", heroVariant: "editorial" },
+  "Violet": { chrome: C("centered", "minimal", "overlay"), heroStyle: "centered", heroVariant: "lookbook" },
+  "Premium Marketplace": { chrome: C("bar", "columns", "tall"), heroStyle: "split", heroVariant: "lookbook" },
+  "HomeVista": { chrome: C("classic", "centered", "tall"), heroStyle: "split", heroVariant: "lookbook" },
+  "rRW Premium Rental": { chrome: C("overlay", "columns", "overlay"), heroStyle: "fullbleed", heroVariant: "ledger" },
+  "Marketplace Hub": { chrome: C("bar", "centered", "bordered"), heroStyle: "centered", heroVariant: "arch" },
+  "Arcova Architecture": { chrome: C("stripe", "columns", "tall"), heroStyle: "split", heroVariant: "ledger" },
+  "Rivora Fresh": { chrome: C("centered", "centered", "bordered"), heroStyle: "split", heroVariant: "frame" },
+  "JuiceLife": { chrome: C("overlay", "minimal", "tall"), heroStyle: "centered", heroVariant: "arch" },
+  "Fabtex": { chrome: C("classic", "cta", "overlay"), heroStyle: "fullbleed", heroVariant: "arch" },
   "Horizon": { chrome: C("stripe", "columns", "minimal"), heroStyle: "centered", heroVariant: "banner" },
 };
 

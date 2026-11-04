@@ -28,12 +28,11 @@ describe("renderer resolution is shared", () => {
   it("every dedicated signature renderer has a palette", () => {
     for (const mode of Object.values(SIGNATURE_DEDICATED_RENDERER)) expect(SCREENSHOT_PALETTES, mode).toHaveProperty(mode);
   });
-  it("every legacy template resolves to the legacy renderer", () => {
-    // Colour variants (Violet — Sunset, Nova Ivory, Heenzy Boutique Rose) deliberately render through the Builder with
-    // their own identity (NAMED_TEMPLATE_IDENTITY); every other legacy template owns a dedicated legacy component.
+  it("every legacy template now renders through the Builder with its own identity", () => {
+    // The old dedicated legacy home components (and their niche wording) are gone: wording comes from the merchant.
     for (const t of RESTORED_LEGACY_TEMPLATE_CATALOG) {
-      const expected = NAMED_TEMPLATE_IDENTITY[t.variationName] ? "builder" : "legacy";
-      expect(resolveHomeRenderer(t.variationName).kind, t.variationName).toBe(expected);
+      expect(NAMED_TEMPLATE_IDENTITY[t.variationName], `${t.variationName} needs a NAMED_TEMPLATE_IDENTITY entry`).toBeTruthy();
+      expect(resolveHomeRenderer(t.variationName).kind, t.variationName).toBe("builder");
     }
   });
 });
@@ -101,6 +100,8 @@ describe("builder templates are not one page in different colours", () => {
   it("no two builder templates share the same set of section headings", () => {
     const seen = new Map<string, string>();
     for (const t of builderTemplates()) {
+      // A template with no copy of its own takes its headings from the merchant's business (neutral templates), so it cannot repeat another template's wording.
+      if (!resolveStoreTheme(undefined, "Demo", null, null, t.name).sectionCopy) continue;
       const key = sectionsOf(t.name).filter((s) => s.type !== "hero" && s.type !== "catalog").map((s) => `${s.type}:${s.settings.heading}`).join("|");
       expect(seen.get(key), `${t.name} duplicates the headings of ${seen.get(key)}`).toBeUndefined();
       seen.set(key, t.name);
@@ -124,9 +125,9 @@ describe("builder templates are not one page in different colours", () => {
   });
 });
 
-describe("no hardcoded promotional claims in legacy templates", () => {
-  it("legacy renderer contains none of the known unverifiable phrases", () => {
-    const src = read("components/storefront/legacy-template-renderer.tsx");
+describe("no hardcoded promotional claims in the Builder", () => {
+  it("builder renderer contains none of the known unverifiable phrases", () => {
+    const src = read("components/storefront/builder-renderer.tsx");
     for (const phrase of ["Fast delivery", "Buyer protection", "Verified sellers", "Up to 40% off", "FLASH SALE", "Secure payments", "Secure checkout", "Airport pickup", "Secure booking", "Verified listings", "verified properties"])
       expect(src, phrase).not.toContain(phrase);
   });
@@ -211,11 +212,6 @@ const KNOWN_CHROME_GAPS: readonly string[] = [
   "[owner contact page] hotel -> cart: universal",
   "[owner contact page] hotel -> contact: builder",
   "[owner contact page] hotel -> product: universal",
-  "[owner contact page] legacy -> cart: universal",
-  "[owner contact page] legacy -> category: hotel",
-  "[owner contact page] legacy -> category: universal",
-  "[owner contact page] legacy -> contact: builder",
-  "[owner contact page] legacy -> product: universal",
   "[owner contact page] signature:belora -> cart: universal",
   "[owner contact page] signature:belora -> category: hotel",
   "[owner contact page] signature:belora -> category: universal",
@@ -245,12 +241,6 @@ const KNOWN_CHROME_GAPS: readonly string[] = [
   "example -> product: universal",
   "hotel -> cart: universal",
   "hotel -> product: universal",
-  "legacy -> cart: universal",
-  "legacy -> category: hotel",
-  "legacy -> category: universal",
-  "legacy -> contact: hotel",
-  "legacy -> contact: universal",
-  "legacy -> product: universal",
   "signature:belora -> cart: universal",
   "signature:belora -> category: hotel",
   "signature:belora -> category: universal",

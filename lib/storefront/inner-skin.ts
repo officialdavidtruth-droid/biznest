@@ -25,23 +25,9 @@ type Skin = {
   cta?: { label: string; path: string };
 };
 
-const PLUS_JAKARTA = "'Plus Jakarta Sans', Inter, sans-serif";
-const PLAYFAIR = "'Playfair Display', Georgia, serif";
 
-/** Templates whose dedicated home page (components/storefront/reference-homes.tsx) draws its own header, fonts and footer. */
+/** Templates whose dedicated home page draws its own header, fonts and footer. Empty now that Wanderly and Nestoria render through the Builder; add an entry only for a template whose home hard-codes a look that differs from its theme. */
 export const HOME_MATCHED: Record<string, Skin> = {
-  "Wanderly Travel": {
-    bg: "#ffffff", ink: "#12334a", accent: "#0b7189", dark: "#0f2a43", font: PLUS_JAKARTA, head: PLAYFAIR,
-    btn: "999px", card: "16px", footer: "round", serif: true,
-    nav: [["Home", ""], ["Destinations", "destinations"], ["Tours", "catalog"], ["About", "about"], ["Blog", "blog"], ["Contact", "contact"]],
-    cta: { label: "Plan Your Trip", path: "contact" },
-  },
-  "Nestoria Real Estate": {
-    bg: "#ffffff", ink: "#20194a", accent: "#6554d9", dark: "#20194a", font: PLUS_JAKARTA, head: PLUS_JAKARTA,
-    btn: "10px", card: "14px",
-    nav: [["Home", ""], ["Listings", "catalog"], ["Services", "services"], ["Favorites", "account"], ["Blog", "blog"], ["About Us", "about"]],
-    cta: { label: "Get Started", path: "contact" },
-  },
 };
 
 export const skinFor = (templateName: string | null | undefined): Skin | undefined => (templateName ? HOME_MATCHED[templateName] : undefined);

@@ -16,7 +16,6 @@ import { EXAMPLE_TEMPLATE_NAME, TASTEHOUSE_TEMPLATE_NAME } from "@/lib/template-
  *   tastehouse    Shell / Footer in tastehouse.tsx
  *   example       ExampleHeader / ExampleFooter (example-store.tsx)
  *   signature:<m> Shell / Footer in signature-screenshot-home.tsx for mode <m>
- *   legacy:<name> the template's own header/footer in legacy-template-renderer.tsx / reference-homes.tsx
  *
  * THIS MODEL MIRRORS THE ROUTES; it does not drive them yet. Each branch below is the decision the matching route
  * makes today (app/store/[slug]/{product,category,contact,cart}/page.tsx, storefront-runtime.tsx,
@@ -46,7 +45,6 @@ export function homeChrome(i: StoreChromeInput): ChromeId {
     case "builder": return "builder";
     case "hotel": return "hotel";
     case "example": return "example";
-    case "legacy": return `legacy:${home.name}`;
     case "screenshot": return `signature:${home.mode}`;
   }
 }

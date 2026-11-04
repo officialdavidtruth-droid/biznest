@@ -41,7 +41,9 @@ describe("template uniqueness", () => {
   });
 
   it("a dedicated home component is owned by exactly one template", () => {
-    const legacy = PUBLIC_TEMPLATE_REGISTRY.filter((t) => resolveHomeRenderer(t.name).kind === "legacy").map((t) => t.name);
+    // No template has a hand-written legacy home any more; every Builder template owns its identity instead.
+    const legacy = PUBLIC_TEMPLATE_REGISTRY.filter((t) => (resolveHomeRenderer(t.name).kind as string) === "legacy").map((t) => t.name);
+    expect(legacy).toEqual([]);
     // Colour-variant names must not be rendered by a sibling's component any more.
     for (const variant of ["Violet — Sunset", "Nova Studio — Ivory Minimal", "Heenzy — Boutique Rose", "ShopEase General Store", "ShopNova Marketplace", "Emarket Furniture & Home", "Electra Blue Electronics", "TechNova Mobile Store", "TechVerse Gadgets"]) {
       expect(legacy).not.toContain(variant);
