@@ -2,6 +2,10 @@ const { withSentryConfig } = require("@sentry/nextjs/config");
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  // Vercel's 8 GB build machine ran out of memory in the "Linting and checking validity of types" step
+  // (ESLint + tsc in one process, right after webpack). Linting now runs in CI (.github/workflows/ci.yml)
+  // instead of inside `next build`; type-checking still gates the build.
+  eslint: { ignoreDuringBuilds: true },
   images: {
     remotePatterns: [
       { protocol: "https", hostname: "res.cloudinary.com" },
@@ -9,6 +13,8 @@ const nextConfig = {
     ],
   },
   experimental: {
+    // Lets webpack release memory between compilations (Next 15).
+    webpackMemoryOptimizations: true,
     serverActions: {
       bodySizeLimit: "10mb",
     },
