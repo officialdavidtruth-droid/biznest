@@ -12,7 +12,10 @@ import { cleanupTestStore, createTestProduct, createTestStoreWithOwner, type Tes
  * way via vitest.setup.ts; this just adds the one extra external boundary
  * this particular action has.
  */
-vi.mock("@/lib/payments/gateway", () => ({
+// Only the outbound charge is faked; everything else in the module (e.g.
+// paymentCallbackUrl) stays real so the mock can't drift from the real API.
+vi.mock("@/lib/payments/gateway", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/lib/payments/gateway")>()),
   chargeCustomer: vi.fn(async () => ({
     success: true as const,
     authorizationUrl: "https://checkout.example/pay/test",
