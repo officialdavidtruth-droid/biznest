@@ -215,11 +215,11 @@ export function BlogEditor({ slug, storeName, blogs, tagSuggestions, defaultBlog
             <h3 className="mb-3 text-sm font-bold">Organization</h3>
             <label className={label}>Author</label>
             <input value={author} onChange={(e) => touch(setAuthor)(e.target.value)} maxLength={80} placeholder={storeName} className={field} />
-            <label className={`${label} mt-4`}>Blog</label>
+            <label className={`${label} mt-4`}>Category</label>
             <select value={blogId} onChange={(e) => touch(setBlogId)(e.target.value)} className={field}>
               {blogs.map((b) => <option key={b.id} value={b.id}>{b.title}</option>)}
             </select>
-            <p className="mt-1 text-[11px] text-muted-foreground"><Link href={`/store/${slug}/admin/blog/blogs`} className="underline">Manage blogs</Link></p>
+            <p className="mt-1 text-[11px] text-muted-foreground"><Link href={`/store/${slug}/admin/blog/blogs`} className="underline">Manage categories</Link></p>
             <label className={`${label} mt-4`}>Tags</label>
             <div className="mb-2 flex flex-wrap gap-1.5">
               {tags.map((t) => <span key={t} className="inline-flex items-center gap-1 rounded-full bg-muted px-2.5 py-1 text-xs font-medium">{t}<button type="button" aria-label={`Remove ${t}`} onClick={() => touch(setTags)(tags.filter((x) => x !== t))}><X className="h-3 w-3" /></button></span>)}

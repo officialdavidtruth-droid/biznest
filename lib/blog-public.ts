@@ -1,13 +1,9 @@
 import { cache } from "react";
 import { prisma } from "@/lib/prisma";
-import { getPluginEntitlement } from "@/lib/plugins";
-import { BLOG_PAGE_SIZE, BLOG_PLUGIN_KEY, excerptFor, formatPostDate, publicArticleWhere } from "@/lib/blog";
+import { BLOG_PAGE_SIZE, excerptFor, formatPostDate, publicArticleWhere } from "@/lib/blog";
 
-/** True when this store has the Blog app installed on a plan that includes it. Visitors see the blog only then. */
-export const isBlogActive = cache(async (storeId: string): Promise<boolean> => {
-  const e = await getPluginEntitlement(storeId, BLOG_PLUGIN_KEY).catch(() => null);
-  return !!e && e.allowed && e.installed;
-});
+/** Posts are core to every store (no app install needed). Kept as a function so callers stay unchanged. */
+export const isBlogActive = cache(async (_storeId: string): Promise<boolean> => true);
 
 const card = {
   id: true, title: true, handle: true, excerpt: true, body: true, imageUrl: true, imageAlt: true,

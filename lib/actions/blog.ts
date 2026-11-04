@@ -4,21 +4,16 @@ import { revalidatePath } from "next/cache";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { assertStorePermission } from "@/lib/access/assert-store-access";
-import { getPluginEntitlement } from "@/lib/plugins";
 import { checkRateLimit } from "@/lib/rate-limit";
 import type { ActionResult } from "@/types/actions";
 import {
-  BLOG_PLUGIN_KEY, DEFAULT_BLOG, blogHandle, normaliseTags, readingMinutes, resolvePublishedAt, visibilityOf, type Visibility,
+  DEFAULT_BLOG, blogHandle, normaliseTags, readingMinutes, resolvePublishedAt, visibilityOf, type Visibility,
 } from "@/lib/blog";
 import { safeSrc } from "@/lib/blog-markdown";
 
 async function access(slug: string) {
-  const a = await assertStorePermission(slug, `plugin:${BLOG_PLUGIN_KEY}`);
-  if (!a.success) return a;
-  const ent = await getPluginEntitlement(a.store.id, BLOG_PLUGIN_KEY);
-  if (!ent.allowed) return { success: false as const, error: ent.reason };
-  if (!ent.installed) return { success: false as const, error: "Install the Blog app from Apps to publish articles." };
-  return a;
+  // Posts are core: any owner, or staff who can manage marketing, may write them.
+  return assertStorePermission(slug, "marketing");
 }
 
 const fail = (error: string): ActionResult<never> => ({ success: false, error });

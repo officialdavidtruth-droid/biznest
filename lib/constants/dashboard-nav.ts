@@ -3,7 +3,7 @@ import {
   CreditCard, BarChart3, Star, MessageSquare,
   Settings, BadgeCheck, Wallet, LifeBuoy, Truck, Wand2,
   LayoutTemplate, Globe, FileText, FileSignature, MailWarning, Calculator, CalendarDays, Images,
-  ClipboardList, Receipt, PlusCircle, Layers, Rows3, Puzzle, ListTree, Share2,
+  ClipboardList, Receipt, PlusCircle, Layers, Rows3, Puzzle, ListTree, Share2, Newspaper,
 } from "lucide-react";
 import { getAdaptiveDashboardConfig } from "@/lib/adaptive-dashboard";
 import { getBusinessTerminology } from "@/lib/business-terminology";
@@ -139,7 +139,7 @@ export function buildNavGroups(business: NavBusiness): Array<{
   const moneyItems: NavItem[] = allMoneyItems.filter((item) => relevantToBusiness(item.href, business));
 
   const installedAppItems: NavItem[] = (business.installedApps ?? [])
-    .filter((app) => app.key !== "pms")
+    .filter((app) => app.key !== "pms" && app.key !== "blog")
     .map((app) => ({ label: app.name, href: app.key === "fnb-operations" ? "/fnb" : app.key === "travel-agency" ? "/travel" : app.key === "blog" ? "/blog" : `/apps/${app.key}`, icon: Puzzle, permission: `plugin:${app.key}` as StaffPermissionId }));
 
   return [
@@ -176,6 +176,8 @@ export function buildNavGroups(business: NavBusiness): Array<{
         // One friendly front door for everyone. Simple mode shows only this; Advanced adds the
         // individual editors back beneath it.
         { label: "My Website", href: "/website", icon: Globe, permission: "settings" },
+        // Posts: articles, news and guides for any business — independent of products, services or bookings.
+        { label: "Posts", href: "/blog", icon: Newspaper, permission: "marketing" },
         ...(showAdvanced ? [
           { label: "Templates", href: "/templates", icon: LayoutTemplate, permission: "settings" as StaffPermissionId },
           { label: "Website Builder", href: "/customize", icon: Wand2, permission: "settings" as StaffPermissionId },

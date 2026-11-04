@@ -38,6 +38,16 @@ function writtenPageSet(rows: { slug: string; content: unknown }[]): Set<string>
   return new Set(rows.filter((r) => hasPageContent(r.content)).map((r) => r.slug));
 }
 
+/** Posts are core: one published post is enough for /blog to be a real page the menu may link to. */
+async function hasPublishedPosts(storeId: string): Promise<boolean> {
+  try {
+    const n = await prisma.article.count({ where: { storeId, publishedAt: { not: null, lte: new Date() } }, take: 1 });
+    return n > 0;
+  } catch {
+    return false; // never block saving a menu over this check
+  }
+}
+
 async function access(slug: string) {
   const a = await assertStorePermission(slug, "settings");
   if (!a.success) return a;
@@ -89,6 +99,7 @@ export async function getMenuEditorData(slug: string, locationIn: MenuLocation =
   // Only offer built-in pages this store really has: its skin serves them, or the owner wrote and published them
   // (Blog and a non-template Gallery exist only once written).
   const written = writtenPageSet(storePages);
+  if (await hasPublishedPosts(a.store.id)) written.add("blog");
   const pageOptions = filterAvailablePages(MENU_PAGE_OPTIONS, await getStoreIdentity(a.store.id), written);
 
   // Shopify opens Navigation with the current menu already in it. Until the owner saves a custom menu, offer the
@@ -147,6 +158,7 @@ export async function saveStoreMenu(slug: string, treeIn: MenuNodeInput[], locat
   const categoryIds = new Set<string>(cats.map((c: { id: string }) => c.id));
   const pageRows = await prisma.storePage.findMany({ where: { storeId: a.store.id, isPublished: true }, select: { slug: true, content: true } });
   const written = writtenPageSet(pageRows);
+  if (await hasPublishedPosts(a.store.id)) written.add("blog");
   const pagePaths = new Set<string>(pageRows.filter((p: { content: unknown }) => hasPageContent(p.content)).map((p: { slug: string }) => `/${p.slug}`));
 
   const identity = await getStoreIdentity(a.store.id);

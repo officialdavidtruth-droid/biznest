@@ -27,8 +27,8 @@ export function BlogManager({ slug, data }: { slug: string; data: Data }) {
     <div className="space-y-6">
       <div>
         <Link href={`/store/${slug}/admin/blog`} className="inline-flex items-center gap-1.5 text-sm font-semibold text-muted-foreground hover:text-foreground"><ArrowLeft className="h-4 w-4" />Blog posts</Link>
-        <h1 className="mt-2 text-3xl font-bold tracking-tight">Blogs</h1>
-        <p className="mt-1 max-w-2xl text-sm text-muted-foreground">Each blog has its own address, like /blogs/news. Your first blog is also shown at /blog.</p>
+        <h1 className="mt-2 text-3xl font-bold tracking-tight">Post categories</h1>
+        <p className="mt-1 max-w-2xl text-sm text-muted-foreground">Group posts into categories, e.g. News or Travel guides. Each has its own page, like /blogs/news; your first category is also shown at /blog.</p>
       </div>
 
       <section className="rounded-2xl border bg-background">
@@ -47,7 +47,7 @@ export function BlogManager({ slug, data }: { slug: string; data: Data }) {
           ))}
         </ul>
         <form className="flex gap-2 border-t p-4" onSubmit={(e) => { e.preventDefault(); const n = title.trim(); if (!n) return; run(() => createBlog(slug, n), "Blog created"); setTitle(""); }}>
-          <input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="New blog title, e.g. Guides" maxLength={60} className="min-w-0 flex-1 rounded-xl border bg-background px-3 py-2 text-sm outline-none" />
+          <input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="New category, e.g. Travel guides" maxLength={60} className="min-w-0 flex-1 rounded-xl border bg-background px-3 py-2 text-sm outline-none" />
           <button type="submit" disabled={pending || !title.trim()} className="rounded-xl bg-primary px-4 text-xs font-semibold text-primary-foreground disabled:opacity-50">Add blog</button>
         </form>
       </section>

@@ -57,14 +57,14 @@ export function BlogWorkspace({ slug, data }: { slug: string; data: Data }) {
       <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
         <div>
           <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-primary"><Newspaper className="h-3.5 w-3.5" />BizNest App</div>
-          <h1 className="mt-1 text-3xl font-bold tracking-tight">Blog posts</h1>
-          <p className="mt-1 max-w-2xl text-sm text-muted-foreground">Articles live inside blogs. Organise them with tags, and choose whether each is visible, hidden or scheduled.</p>
+          <h1 className="mt-1 text-3xl font-bold tracking-tight">Posts</h1>
+          <p className="mt-1 max-w-2xl text-sm text-muted-foreground">Write news, guides and stories for your website. Put each post in a category, organise it with tags, and choose whether each is visible, hidden or scheduled.</p>
         </div>
         <div className="flex flex-wrap gap-2">
-          {first && <Link href={`/store/${slug}/blogs/${first.handle}`} target="_blank" className="inline-flex items-center gap-2 rounded-xl border px-4 py-2.5 text-xs font-semibold"><ExternalLink className="h-4 w-4" />View blog</Link>}
+          {first && <Link href={`/store/${slug}/blogs/${first.handle}`} target="_blank" className="inline-flex items-center gap-2 rounded-xl border px-4 py-2.5 text-xs font-semibold"><ExternalLink className="h-4 w-4" />View posts</Link>}
           <Link href={`/store/${slug}/blog/rss.xml`} target="_blank" className="inline-flex items-center gap-2 rounded-xl border px-4 py-2.5 text-xs font-semibold"><Rss className="h-4 w-4" />RSS</Link>
-          <Link href={`/store/${slug}/admin/blog/blogs`} className="inline-flex items-center gap-2 rounded-xl border px-4 py-2.5 text-xs font-semibold">Manage blogs</Link>
-          <Link href={`/store/${slug}/admin/blog/new`} className="inline-flex items-center gap-2 rounded-xl bg-primary px-4 py-2.5 text-xs font-semibold text-primary-foreground"><Plus className="h-4 w-4" />Add blog post</Link>
+          <Link href={`/store/${slug}/admin/blog/blogs`} className="inline-flex items-center gap-2 rounded-xl border px-4 py-2.5 text-xs font-semibold">Categories</Link>
+          <Link href={`/store/${slug}/admin/blog/new`} className="inline-flex items-center gap-2 rounded-xl bg-primary px-4 py-2.5 text-xs font-semibold text-primary-foreground"><Plus className="h-4 w-4" />Add post</Link>
         </div>
       </div>
 
@@ -76,7 +76,7 @@ export function BlogWorkspace({ slug, data }: { slug: string; data: Data }) {
           <div className="flex flex-wrap gap-2">
             {data.blogs.length > 1 && (
               <select value={blogId} onChange={(e) => setBlogId(e.target.value)} className="rounded-xl border bg-background px-3 py-1.5 text-sm" aria-label="Filter by blog">
-                <option value="">All blogs</option>
+                <option value="">All categories</option>
                 {data.blogs.map((b) => <option key={b.id} value={b.id}>{b.title}</option>)}
               </select>
             )}
@@ -102,7 +102,7 @@ export function BlogWorkspace({ slug, data }: { slug: string; data: Data }) {
         {rows.length === 0 ? (
           <div className="p-12 text-center">
             <Newspaper className="mx-auto h-9 w-9 text-muted-foreground" />
-            <h2 className="mt-3 font-semibold">{data.articles.length ? "No articles match" : "Write your first blog post"}</h2>
+            <h2 className="mt-3 font-semibold">{data.articles.length ? "No articles match" : "Write your first post"}</h2>
             <p className="mx-auto mt-1 max-w-sm text-sm text-muted-foreground">{data.articles.length ? "Try another tab, filter or search." : "Share a guide, an update or a story. Customers and search engines find it on your blog."}</p>
             {!data.articles.length && <Link href={`/store/${slug}/admin/blog/new`} className="mt-4 inline-flex rounded-xl bg-primary px-4 py-2.5 text-sm font-semibold text-primary-foreground">Add blog post</Link>}
           </div>
@@ -113,7 +113,7 @@ export function BlogWorkspace({ slug, data }: { slug: string; data: Data }) {
                 <tr>
                   <th className="w-10 p-3"><input type="checkbox" aria-label="Select all" checked={allSelected} onChange={() => setSelected(allSelected ? [] : rows.map((r) => r.id))} /></th>
                   <th className="p-3">Title</th>
-                  <th className="p-3">Blog</th>
+                  <th className="p-3">Category</th>
                   <th className="p-3">Author</th>
                   <th className="p-3">Visibility</th>
                   <th className="p-3">Tags</th>

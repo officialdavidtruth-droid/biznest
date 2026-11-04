@@ -146,6 +146,8 @@ export default async function StoreLayout({
       },
       // Blog and Gallery exist only once the owner has written them, so menu links to them need this.
       pages: { where: { isPublished: true, slug: { in: ["blog", "gallery"] } }, select: { slug: true, content: true } },
+      // Any published post makes /blog a real page too (posts are core, no page needs to be "written").
+      articles: { where: { publishedAt: { not: null, lte: new Date() } }, take: 1, select: { id: true } },
       // Owner-built header menu (Dashboard > Menus). Empty = templates use their own default links.
       menuItems: {
         where: { location: { in: ["header", "footer"] }, isActive: true },
@@ -217,6 +219,7 @@ export default async function StoreLayout({
 
   // Owner-built menus (Dashboard > Menus). Empty = templates keep their own default links.
   const writtenPages = new Set<string>((exists?.pages ?? []).filter((p: { content: unknown }) => hasPageContent(p.content)).map((p: { slug: string }) => p.slug));
+  if (exists?.articles?.length) writtenPages.add("blog");
   const menuFor = (location: string) => {
     if (!exists) return null;
     const rows = exists.menuItems.filter((m) => m.location === location);
