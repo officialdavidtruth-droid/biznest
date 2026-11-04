@@ -17,7 +17,7 @@ import { readBuilderConfig, type BuilderConfig, type BuilderSection } from "@/li
 import { getBusinessExperience } from "@/lib/business-experience";
 import { HeroVariantView } from "@/components/storefront/hero-variants";
 import { formatNumber } from "@/lib/i18n/locale";
-import { defaultFaqItems, defaultFeatureItems, mapDirectionsUrl, mapEmbedUrl, mapQuery, whatsappLink } from "@/lib/builder-defaults";
+import { ownText, mapDirectionsUrl, mapEmbedUrl, mapQuery, whatsappLink } from "@/lib/builder-defaults";
 import type { BuilderSectionItem } from "@/lib/builder-config";
 
 type CatalogItem = {
@@ -104,7 +104,9 @@ export function BuilderStorefront({
   const width = d.containerWidth === "compact" ? 960 : d.containerWidth === "wide" ? 1320 : 1160;
   // A hero with no image of its own shows the store's banner (Customize > Content > Background image),
   // so changing that image updates a published builder homepage instead of being ignored.
-  const visible = config.sections.filter((s) => s.visible).map((s) => s.type === "hero" && !s.settings.image && store.bannerUrl && isSafeImageUrl(store.bannerUrl) ? { ...s, settings: { ...s.settings, image: store.bannerUrl } } : s);
+  const visible = config.sections.filter((s) => s.visible).map((s) => s.type === "hero" && !s.settings.image && store.bannerUrl && isSafeImageUrl(store.bannerUrl) ? { ...s, settings: { ...s.settings, image: store.bannerUrl } } : s)
+    // Only the owner's own words reach visitors: platform filler text is dropped.
+    .map((s) => (s.settings.body && !ownText(s.settings.body) ? { ...s, settings: { ...s.settings, body: undefined } } : s));
   const featured = catalogItems.slice(0, 8);
   // Departures sit right after the catalog; a layout with no catalog shows them after its first section.
   const departuresAnchor = (visible.find((s) => s.type === "catalog") ?? visible[0])?.id;
@@ -237,9 +239,11 @@ function BuilderSectionView({ section, store, config, catalogItems, categories, 
     </section>
   );
 
+  if ((section.type === "about" || section.type === "imageText") && !s.body && !ownText(store.business.description) && !s.image && !isEditMode) return null;
+  if (section.type === "text" && !s.body && !isEditMode) return null;
   if (section.type === "about" || section.type === "imageText") return (
     <section id={section.id} data-bn-type={section.type} className="bn-section" style={{ padding, background: bg }}><div className="bn-wrap bn-hero" style={{ display: "grid", gridTemplateColumns: s.image ? "1fr 1fr" : "1fr", gap: 50, alignItems: "center" }}>
-      <div><SectionIntro section={section} config={config} /><p style={{ color: d.muted, lineHeight: 1.8, maxWidth: 650 }}>{s.body || store.business.description}</p></div>
+      <div><SectionIntro section={section} config={config} /><p style={{ color: d.muted, lineHeight: 1.8, maxWidth: 650 }}>{s.body || ownText(store.business.description) || (isEditMode ? "Write about your business in the editor. Visitors do not see this section until you do." : "")}</p></div>
       {s.image && <div style={{ minHeight: 360, borderRadius: s.radius ?? d.radius, background: `url(${cssUrl(s.image)}) center/cover` }} />}
     </div></section>
   );
@@ -259,7 +263,9 @@ function BuilderSectionView({ section, store, config, catalogItems, categories, 
   }
 
   if (section.type === "features") {
-    const items = s.items?.length ? s.items : defaultFeatureItems(experience.mode);
+    // Only points the owner wrote. The platform no longer invents claims ("Every item is checked...") on a merchant's behalf.
+    const items = (s.items ?? []).filter((i) => i.title.trim());
+    if (!items.length && !isEditMode) return null;
     return <section id={section.id} data-bn-type={section.type} className="bn-section" style={{ padding, background: bg }}><div className="bn-wrap"><SectionIntro section={section} config={config} /><div className="bn-grid" style={{ gridTemplateColumns: `repeat(${Math.min(cols,4)},1fr)` }}>{items.map((item, i) => <div key={`${item.title}-${i}`} style={{ padding: 24, background: d.surface, borderRadius: s.radius ?? d.radius, border: `1px solid ${d.text}12` }}><div style={{ color: d.accent, fontWeight: 900, fontSize: 12 }}>{String(i + 1).padStart(2, "0")}</div><h3 style={{ margin: "10px 0 7px", fontFamily: d.headingFont, fontSize: 18 }}>{item.title}</h3>{item.body && <p style={{ color: d.muted, fontSize: 13, lineHeight: 1.7, whiteSpace: "pre-line" }}>{item.body}</p>}</div>)}</div></div></section>;
   }
 
@@ -305,8 +311,9 @@ function BuilderSectionView({ section, store, config, catalogItems, categories, 
   }
 
   if (section.type === "faq") {
-    const contact = store.contactEmail || store.contactPhone;
-    const items = s.items?.length ? s.items : fallbackFaq?.length ? fallbackFaq : defaultFaqItems(experience.mode, contact);
+    // The owner's own questions, else the store's own FAQ (e.g. written by the AI store builder). Nothing is invented.
+    const items = (s.items ?? []).filter((i) => i.title.trim()).length ? (s.items ?? []) : fallbackFaq?.length ? fallbackFaq : [];
+    if (!items.length && !isEditMode) return null;
     return <section id={section.id} data-bn-type={section.type} className="bn-section" style={{ padding, background: bg }}><div className="bn-wrap" style={{ maxWidth: 850 }}><SectionIntro section={section} config={config} />{items.map((item, i) => <details key={`${item.title}-${i}`} style={{ borderTop: `1px solid ${d.text}14`, padding: "18px 0" }}><summary style={{ cursor: "pointer", fontWeight: 750 }}>{item.title}</summary>{item.body && <p style={{ color: d.muted, lineHeight: 1.7, whiteSpace: "pre-line" }}>{item.body}</p>}</details>)}</div></section>;
   }
 

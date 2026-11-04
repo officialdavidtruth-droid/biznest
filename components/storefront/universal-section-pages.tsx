@@ -18,7 +18,7 @@ import { isCreativeText, nicheFor, resolveServicesListing, servicesNavLink, type
 import { formatDate, formatNumber } from "@/lib/i18n/locale";
 import { starEmpty, starFill } from "@/lib/utils/stars";
 import { innerSkinVars, skinFor } from "@/lib/storefront/inner-skin";
-import { beloraNavFor, builderHomeNav } from "@/lib/storefront/home-nav";
+import { builderHomeNav } from "@/lib/storefront/home-nav";
 import { getSavedBuilder } from "@/lib/storefront/saved-builder";
 import { resolveHomeRenderer } from "@/lib/storefront/resolve-renderer";
 
@@ -133,8 +133,6 @@ function text(store:any, mode:"creative"|"business"){
 function headerLinksFor(store:any):string[][]{
   const skinNav=skinFor(store.template?.name)?.nav;
   if(skinNav) return skinNav;
-  const belora=beloraNavFor(store.template?.name);
-  if(belora) return belora;
   if(resolveHomeRenderer(store.template?.name).kind==="builder"||getSavedBuilder(store.sectionOverrides)){
     const mode=resolveBusinessMode(store.business?.category,{sellsProducts:store.sellsProducts??store.business?.sellsProducts,offersServices:store.offersServices??store.business?.offersServices});
     return builderHomeNav(mode==="service");

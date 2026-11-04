@@ -11,7 +11,8 @@ import { SUGGESTED_PAGE_SLUGS, SUGGESTED_PAGE_TITLES } from "@/lib/actions/pages
 import type { TemplateTheme } from "@/lib/template-themes";
 import type { HeroOverrides, StoryOverrides } from "@/lib/actions/store";
 import { ContentPanel } from "@/components/dashboard/content-panel";
-import { saveBuilderConfig, updateStoreSeo, resetBuilderToTemplate, saveTemplateArrangement } from "@/lib/actions/builder";
+import { saveBuilderConfig, updateStoreSeo, resetBuilderToTemplate, saveTemplateArrangement, saveSectionHeadings } from "@/lib/actions/builder";
+import { EDITABLE_HEADING_SECTIONS, type SectionHeadings } from "@/lib/storefront/section-headings";
 import { BUILDER_CONFLICT_ERROR } from "@/lib/builder-config";
 import { resetTemplateColors, saveTemplateColors } from "@/lib/actions/theme";
 import { BUILDER_SECTION_TYPES, readBuilderConfig, type BuilderConfig, type BuilderSection, type BuilderSectionItem, type BuilderSectionType } from "@/lib/builder-config";
@@ -48,6 +49,7 @@ export function CustomizerClient({
   currentTemplateName,
   theme,
   savedLook,
+  initialHeadings,
   heroImage,
   heroOverrides,
   storyImage,
@@ -72,6 +74,7 @@ export function CustomizerClient({
   currentTemplateName: string | null;
   theme: TemplateTheme;
   savedLook?: { buttonStyle?: string; containerWidth?: string };
+  initialHeadings?: SectionHeadings;
   heroImage: string | null;
   heroOverrides: HeroOverrides;
   storyImage: string | null;
@@ -292,6 +295,21 @@ export function CustomizerClient({
       toast.success(reset ? "Original layout restored." : "Section order saved.");
       arrangeRef.current = null;
       setArrangeDirty(false);
+      refreshPreview();
+    } finally { setIsSaving(false); }
+  }
+
+  const [headings, setHeadings] = useState<SectionHeadings>(initialHeadings ?? {});
+  function setHeadingField(type: string, field: "heading" | "eyebrow", value: string) {
+    setHeadings((h) => ({ ...h, [type]: { ...h[type], [field]: value } }));
+  }
+  async function saveHeadings(reset = false) {
+    setIsSaving(true);
+    try {
+      const result = await saveSectionHeadings(slug, reset ? {} : headings);
+      if (!result.success) { toast.error(result.error ?? "Could not save the headings."); return; }
+      if (reset) setHeadings({});
+      toast.success(reset ? "Template wording restored." : "Headings saved.");
       refreshPreview();
     } finally { setIsSaving(false); }
   }
@@ -587,6 +605,23 @@ export function CustomizerClient({
                       ))}
                     </div>
                   )}
+                  <div className="mt-5 border-t pt-4">
+                    <p className="mb-2 text-xs font-semibold">Section headings</p>
+                    <p className="mb-3 text-[11px] text-muted-foreground">Change the title shown above each section. Leave a box empty to keep the default wording.</p>
+                    <div className="space-y-2.5">
+                      {EDITABLE_HEADING_SECTIONS.map((sec) => (
+                        <div key={sec.type} className="space-y-1">
+                          <label className="text-[11px] font-medium text-muted-foreground">{sec.label}</label>
+                          <input value={headings[sec.type]?.heading ?? ""} onChange={(e) => setHeadingField(sec.type, "heading", e.target.value)} maxLength={120} placeholder="Heading" className="w-full rounded-md border border-border bg-background px-2.5 py-1.5 text-sm" />
+                          <input value={headings[sec.type]?.eyebrow ?? ""} onChange={(e) => setHeadingField(sec.type, "eyebrow", e.target.value)} maxLength={120} placeholder="Small label above (optional)" className="w-full rounded-md border border-border bg-background px-2.5 py-1.5 text-sm" />
+                        </div>
+                      ))}
+                    </div>
+                    <div className="mt-3 flex gap-2">
+                      <button type="button" onClick={() => saveHeadings(true)} disabled={isSaving} className="rounded-md border border-border px-3 py-2 text-xs font-medium hover:bg-muted disabled:opacity-50">Reset wording</button>
+                      <button type="button" onClick={() => saveHeadings()} disabled={isSaving} className="flex-1 rounded-md bg-primary px-3 py-2 text-xs font-semibold text-primary-foreground disabled:opacity-50">Save headings</button>
+                    </div>
+                  </div>
                 </div>
                 <div className="flex gap-2 border-t p-3">
                   <button type="button" onClick={() => saveArrangement(true)} disabled={isSaving} className="rounded-md border border-border px-3 py-2.5 text-xs font-medium hover:bg-muted disabled:opacity-50">Restore default</button>

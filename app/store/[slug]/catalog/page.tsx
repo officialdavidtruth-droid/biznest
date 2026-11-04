@@ -2,8 +2,6 @@ import { prisma } from "@/lib/prisma";
 import { notFound } from "next/navigation";
 import { GrandeurMenu } from "@/components/storefront/grandeur-restaurant";
 import { TasteHouseMenu } from "@/components/storefront/tastehouse";
-import { TASTEHOUSE_TEMPLATE_NAME } from "@/lib/template-themes";
-import { EXAMPLE_TEMPLATE_NAME } from "@/lib/example-content";
 import { ExampleStorefront } from "@/components/storefront/example-store";
 import { CatalogExperience } from "@/components/storefront/catalog-experience";
 import { catalogDesign, catalogStoreInfo } from "@/lib/storefront/catalog-props";
@@ -30,8 +28,6 @@ export default async function CatalogPage({ params, searchParams }: { params: Pr
   if (store.template?.name === "Veloura — Superior Luxury Hotel" || isHotelBusiness(store.business?.category)) {
     return <ThelusoHotel store={{...store,address:[store.business?.city,store.business?.state].filter(Boolean).join(", ")||null,phone:store.contactPhone??store.business?.phone??null,email:store.contactEmail??store.business?.email??null}} slug={slug} content={await getHotelContent(slug)} />;
   }
-  if (store.template?.name === EXAMPLE_TEMPLATE_NAME) return <ExampleStorefront store={store} slug={slug} items={items.map(i=>({...i,description:null,type:i.kind,rentalUnit:null,isBookable:false})) as any} mode="catalog" />;
-  if (store.template?.name === TASTEHOUSE_TEMPLATE_NAME) return <TasteHouseMenu store={store} slug={slug} initialCategory={query?.category} items={items.map(i=>({...i,description:null,type:i.kind,isBookable:false})) as any} />;
   if (usesGrandeurSkin({ businessCategory: store.business?.category, storeBusinessType: store.businessType, templateName: store.template?.name })) return <GrandeurMenu store={store} slug={slug} items={items.map(i=>({...i,description:null,type:i.kind,isBookable:false})) as any} />;
   const theme = resolveStoreTheme(store.template?.category, store.name, store.themeColors as any, store.fontFamily, store.template?.name);
   const design = catalogDesign(store, theme);

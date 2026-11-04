@@ -1,5 +1,5 @@
 import {
-  GRANDEUR_TEMPLATE_NAME, TASTEHOUSE_TEMPLATE_NAME, HOTEL_TEMPLATE_NAME, EXAMPLE_TEMPLATE_NAME,
+  HOTEL_TEMPLATE_NAME,
   NAMED_TEMPLATE_IDENTITY,
 } from "@/lib/template-themes";
 import { SIGNATURE_DEDICATED_RENDERER } from "@/lib/storefront/signature-renderers";
@@ -54,11 +54,8 @@ export function resolveHomeRenderer(templateName: string | null | undefined): Ho
   // variants (Violet — Sunset, Nova Ivory, Heenzy Boutique Rose) used to reuse another template's component,
   // so picking them looked identical. They now render through the Builder with their own identity (NAMED_TEMPLATE_IDENTITY).
   if (NAMED_TEMPLATE_IDENTITY[name]) return { kind: "builder" };
-  if (name === GRANDEUR_TEMPLATE_NAME) return { kind: "screenshot", mode: "flavora-restaurant", palette: SCREENSHOT_PALETTES["flavora-restaurant"] };
-  if (name === TASTEHOUSE_TEMPLATE_NAME) return { kind: "screenshot", mode: "tastehouse", palette: SCREENSHOT_PALETTES.tastehouse };
   const dedicated = SIGNATURE_DEDICATED_RENDERER[name];
   if (isScreenshotMode(dedicated)) return { kind: "screenshot", mode: dedicated, palette: SCREENSHOT_PALETTES[dedicated] };
   if (name === HOTEL_TEMPLATE_NAME) return { kind: "hotel" };
-  if (name === EXAMPLE_TEMPLATE_NAME) return { kind: "example" };
   return { kind: "builder" };
 }

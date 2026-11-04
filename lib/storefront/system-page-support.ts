@@ -1,6 +1,4 @@
 import { isHotelBusiness, isRestaurantBusiness } from "@/lib/business-identity";
-import { TASTEHOUSE_TEMPLATE_NAME } from "@/lib/template-themes";
-import { EXAMPLE_TEMPLATE_NAME } from "@/lib/example-content";
 import type { SystemPageKey } from "@/lib/storefront/system-sections";
 
 /**
@@ -10,7 +8,7 @@ import type { SystemPageKey } from "@/lib/storefront/system-sections";
  */
 export function systemPageSupport(store: { templateName?: string | null; businessCategory?: string | null }): Record<SystemPageKey, boolean> {
   const name = store.templateName ?? "";
-  const ownCatalog = name === "Veloura — Superior Luxury Hotel" || isHotelBusiness(store.businessCategory) || name === EXAMPLE_TEMPLATE_NAME || name === TASTEHOUSE_TEMPLATE_NAME || isRestaurantBusiness(store.businessCategory);
-  const ownCart = name === EXAMPLE_TEMPLATE_NAME || name === TASTEHOUSE_TEMPLATE_NAME || String(store.businessCategory ?? "").toLowerCase() === "restaurant";
+  const ownCatalog = name === "Veloura — Superior Luxury Hotel" || isHotelBusiness(store.businessCategory) || isRestaurantBusiness(store.businessCategory);
+  const ownCart = String(store.businessCategory ?? "").toLowerCase() === "restaurant";
   return { shop: !ownCatalog, product: true, cart: !ownCart };
 }

@@ -34,3 +34,23 @@ Catalog, gallery, map, stats, testimonials and categories are left out on the li
 
 ## Default header menu
 Until the owner saves a menu, the Builder header shows Home, Shop/Services, up to three of the owner's categories, About, Contact.
+
+## Only the owner's words reach visitors
+The Builder no longer writes content on a merchant's behalf:
+- Features ("Why choose us") and FAQ show only entries the owner wrote (or the store's own FAQ). The invented defaults ("Every item is checked before it reaches you", "Experienced team"...) are gone from the live site. They remain only as starter text inside the editor.
+- About, text and hero body show only the owner's description. Filler such as "Tell customers what makes this business different." or the generic business descriptions is recognised by `ownText()` (`lib/builder-defaults.ts`) and never shown, including in layouts saved earlier.
+- A section with nothing to show is left out on the live site; the editor still shows it.
+
+
+## Update (v15)
+- **Bloom** now renders through the Builder (own header/footer/card/hero identity in `NAMED_TEMPLATE_IDENTITY`). Its fixed "Skin Care / Makeup / Hair Care" menu was removed (`home-nav.ts`); the menu now comes from the owner's categories and menu like every other template.
+- **Editable section headings:** owners can rename the heading / small label of Categories, Products, About, Reviews, Newsletter and Contact from Customize → Arrange sections → "Section headings", without publishing a custom layout. Stored in `sectionOverrides.sectionHeadings`, applied in `storefront-runtime.tsx` (`lib/storefront/section-headings.ts`).
+- **Still own-home:** 6 hotels (Veloura, Aspire, Larita, Skyview, Maison, Grand), Grandeur, TasteHouse, Example. They carry their own booking / ordering / reservation journeys, so converting them means rebuilding those journeys as Builder blocks first.
+
+
+## Update (v16)
+- **Grandeur, TasteHouse and Example** now render through the Builder (registry `renderer: "builder"`, own look in `NAMED_TEMPLATE_IDENTITY`). Their template-name branches were removed from cart, checkout, catalog, orders, order tracking, confirmation, account layout, `system-page-support.ts` and `chrome.ts`. Orders now run through the standard cart/checkout like every other template.
+- About, Contact and order confirmation only draw the restaurant skin for a template that is itself a restaurant-skin template (`getGrandeurRestaurantData(slug, { skinOnly: true })`), so a restaurant owner on a Builder template keeps one header and footer. Reservations, events, gallery and payment remain restaurant-business features.
+- **Display names:** `lib/template-display-name.ts` drops niche words in galleries/previews ("Ember", "Muse", "Wanderly"). Stored names are unchanged so existing stores keep their template.
+- **Hotels (Veloura, Aspire, Larita, Skyview, Maison, Grand)** still use the hotel journey: rooms, booking and PMS are a real feature, not template wording, and their text comes from the hotel admin. Making rooms/booking a Builder block is the remaining design task.
+- Left in place (now unused by routing, safe to delete later): TasteHouse/Example/Grandeur home and journey components.

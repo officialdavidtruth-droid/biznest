@@ -130,7 +130,7 @@ export function buildIndustryHomepage(category: string | null | undefined, store
   const common = {
     eyebrow: experience.label,
     heading: storeName,
-    body: description || experience.description,
+    body: description || undefined,
     ctaLabel: experience.primaryAction,
     ctaHref: category === "Professional Services" && (subcategory ?? "").toLowerCase().includes("graphic design") ? "/start-project" : "#catalog",
     image: heroImage || undefined,
@@ -144,10 +144,10 @@ export function buildIndustryHomepage(category: string | null | undefined, store
     if (type === "gallery") return section("gallery", type, { eyebrow: experience.mode === "service" ? "Our work" : "See more", heading: experience.mode === "service" ? "A look at what we do" : "A closer look", columns: 4, padding: "spacious" });
     if (type === "stats") return section("stats", type, { eyebrow: "At a glance", heading: experience.primaryAction, padding: "normal" });
     if (type === "map") return section("map", type, { eyebrow: "Find us", heading: "Visit or contact us", padding: "normal" });
-    if (type === "about") return section("about", type, { eyebrow: "About the business", heading: "Built around what matters", body: description || "Tell customers what makes this business different.", padding: "spacious" });
+    if (type === "about") return section("about", type, { eyebrow: "About the business", heading: "Built around what matters", body: description || undefined, padding: "spacious" });
     if (type === "testimonials") return section("testimonials", type, { eyebrow: "Client feedback", heading: "What customers say", columns: 3, padding: "spacious" });
     if (type === "newsletter") return section("newsletter", type, { eyebrow: "Stay in the loop", heading: "Get updates from us", padding: "normal" });
-    if (type === "text") return section(`section-${index}`, type, { eyebrow: "More", heading: experience.primaryAction, body: "Add your current promotion, message or business information here.", ctaLabel: experience.primaryAction, ctaHref: "#catalog", padding: "normal" });
+    if (type === "text") return section(`section-${index}`, type, { eyebrow: "More", heading: experience.primaryAction, body: undefined, ctaLabel: experience.primaryAction, ctaHref: "#catalog", padding: "normal" });
     return section(`section-${index}`, type, { padding: "normal" });
   });
   return { version: 1, design: { primary: experience.mode === "service" ? "#172554" : "#123524", accent: experience.mode === "service" ? "#2563eb" : "#3aab61", background: "#ffffff", surface: "#f7f8f6", text: "#16211c", muted: "#67766d", font: "Inter", headingFont: "Plus Jakarta Sans", radius: 16, containerWidth: "standard", buttonStyle: experience.mode === "service" ? "pill" : "solid" }, sections };

@@ -7,6 +7,7 @@ import { getCanonicalBusinessType } from "@/lib/business-identity";
 // Route: /store/[slug]/admin/customize
 import { prisma } from "@/lib/prisma";
 import { notFound, redirect } from "next/navigation";
+import { getSectionHeadings } from "@/lib/storefront/section-headings";
 import { CustomizerClient } from "@/components/dashboard/customizer-client";
 import { resolveStoreTheme } from "@/lib/template-themes";
 import type { HeroOverrides, StoryOverrides } from "@/lib/actions/store";
@@ -51,6 +52,7 @@ export default async function CustomizePage({ params }: { params: Promise<{ slug
       theme={theme}
       savedLook={{ buttonStyle: (store.themeColors as { buttonStyle?: string } | null)?.buttonStyle, containerWidth: (store.themeColors as { containerWidth?: string } | null)?.containerWidth }}
       heroImage={heroImage}
+      initialHeadings={getSectionHeadings(store.sectionOverrides)}
       heroOverrides={(store.heroOverrides as HeroOverrides | null) ?? {}}
       storyImage={storyImage}
       storyOverrides={(store.storyOverrides as StoryOverrides | null) ?? {}}

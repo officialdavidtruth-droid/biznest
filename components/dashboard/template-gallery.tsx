@@ -1,5 +1,6 @@
 "use client";
 
+import { templateDisplayName } from "@/lib/template-display-name";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Check, Lock, Search, Eye, X, ShoppingBag, CalendarDays } from "lucide-react";
 import type { TemplateTheme } from "@/lib/template-themes";
@@ -99,7 +100,7 @@ export function TemplateGallery({
 
   const filtered = templates.filter((t) => {
     const q = query.toLowerCase();
-    const haystack = `${t.name} ${t.category}`.toLowerCase();
+    const haystack = `${t.name} ${templateDisplayName(t.name)} ${t.category}`.toLowerCase();
     const matchesQuery = !q || haystack.includes(q);
     const matchesCategory = !activeCategory || t.category === activeCategory;
     const serviceLike = /hotel|restaurant|salon|beauty|agency|clean|construction|studio|service|rental|real estate|photography/i.test(haystack);
@@ -245,7 +246,7 @@ export function TemplateGallery({
                   type="button"
                   onClick={() => !isUnavailable && onSelect(t.id)}
                   disabled={isUnavailable}
-                  aria-label={isLocked ? `Locked template: ${t.name}` : `Use ${t.name} template`}
+                  aria-label={isLocked ? `Locked template: ${templateDisplayName(t.name)}` : `Use ${templateDisplayName(t.name)} template`}
                   className={`absolute inset-0 z-10 ${isUnavailable ? "cursor-not-allowed" : "cursor-pointer"}`}
                 />
 
@@ -264,7 +265,7 @@ export function TemplateGallery({
                 </div>
 
                 <p className="pointer-events-none absolute bottom-2 left-3 right-3 z-30 truncate text-left text-xs font-semibold text-white drop-shadow">
-                  {t.name}
+                  {templateDisplayName(t.name)}
                 </p>
               </div>
 
@@ -310,7 +311,7 @@ export function TemplateGallery({
           <div className="flex h-[90vh] w-full max-w-6xl flex-col overflow-hidden rounded-2xl bg-background shadow-2xl" onClick={(e) => e.stopPropagation()}>
             <div className="flex items-center justify-between border-b border-border px-4 py-3">
               <div>
-                <p className="text-sm font-semibold">{preview.name}</p>
+                <p className="text-sm font-semibold">{templateDisplayName(preview.name)}</p>
                 <p className="text-[11px] text-muted-foreground">Live storefront preview. Product and service content should come from your store catalog; reference images are used only as visual inspiration.</p>
               </div>
               <button type="button" aria-label="Close preview" autoFocus onClick={() => setPreview(null)} className="rounded-md p-2 hover:bg-muted"><X className="h-4 w-4" /></button>

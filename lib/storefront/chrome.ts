@@ -1,7 +1,6 @@
 import { resolveHomeRenderer } from "@/lib/storefront/resolve-renderer";
 import { isHotelStore } from "@/lib/storefront-routing";
 import { usesGrandeurSkin } from "@/lib/store-pages";
-import { EXAMPLE_TEMPLATE_NAME, TASTEHOUSE_TEMPLATE_NAME } from "@/lib/template-themes";
 
 /**
  * Which header + footer a customer sees on each core storefront page, as a plain function.
@@ -72,8 +71,6 @@ export function pageChrome(page: StorefrontPage, i: StoreChromeInput): ChromeId 
 
     // cart/page.tsx
     case "cart":
-      if (i.templateName === EXAMPLE_TEMPLATE_NAME) return "example";
-      if (i.templateName === TASTEHOUSE_TEMPLATE_NAME) return "tastehouse";
       if (usesGrandeurSkin(identity)) return "grandeur";
       return sharedPagesUseBuilder(i) ? "builder" : "universal"; // always inside StorefrontShell now (no bare inline header)
 

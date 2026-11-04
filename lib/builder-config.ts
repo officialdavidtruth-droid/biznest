@@ -141,7 +141,7 @@ export function defaultBuilderConfig(storeName: string, description?: string | n
     sections: [
       { id: "hero", type: "hero", visible: true, settings: { eyebrow: "Welcome", heading: storeName, body: description || "Welcome to our business. Explore our products, services and information below.", ctaLabel: "Explore", ctaHref: "#catalog", image: heroImage || undefined, align: "left", padding: "spacious" } },
       { id: "catalog", type: "catalog", visible: true, settings: { eyebrow: "Explore", heading: "Our products and services", body: "Discover what this business currently offers.", columns: 4, padding: "spacious" } },
-      { id: "about", type: "about", visible: true, settings: { eyebrow: "Our story", heading: "Built around what matters", body: description || "Tell customers why your business is different.", padding: "spacious" } },
+      { id: "about", type: "about", visible: true, settings: { eyebrow: "Our story", heading: "Built around what matters", body: description || undefined, padding: "spacious" } },
       { id: "stats", type: "stats", visible: true, settings: { padding: "normal" } },
       { id: "testimonials", type: "testimonials", visible: true, settings: { eyebrow: "Customer love", heading: "What customers say", padding: "spacious" } },
       { id: "contact", type: "contact", visible: true, settings: { eyebrow: "Contact", heading: "Let's work together", padding: "spacious" } },

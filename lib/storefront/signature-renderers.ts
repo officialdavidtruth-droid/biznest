@@ -14,7 +14,6 @@
  *  - "tastehouse" is owned by "TasteHouse — Food Delivery".
  */
 export const SIGNATURE_DEDICATED_RENDERER: Readonly<Record<string, string>> = {
-  "Bloom — Beauty Boutique": "belora",
 };
 
 export const RENDERERS_OWNED_ELSEWHERE: readonly string[] = [

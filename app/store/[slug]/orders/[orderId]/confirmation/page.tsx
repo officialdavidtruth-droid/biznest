@@ -1,5 +1,5 @@
 import {redirect} from "next/navigation"; import {OrderConfirmation} from "@/components/storefront/order-confirmation"; import {resolveStorePalette} from "@/lib/store-palette";
-import {getOrderForBuyer} from "@/lib/actions/order"; import {notFound} from "next/navigation"; import {getGrandeurRestaurantData} from "@/lib/grandeur-restaurant"; import {TasteHouseConfirmation} from "@/components/storefront/tastehouse"; import {GrandeurConfirmation} from "@/components/storefront/grandeur-restaurant"; import {ExampleConfirmation} from "@/components/storefront/example-confirmation"; import {prisma} from "@/lib/prisma"; import {TASTEHOUSE_TEMPLATE_NAME, EXAMPLE_TEMPLATE_NAME} from "@/lib/template-themes";
+import {getOrderForBuyer} from "@/lib/actions/order"; import {notFound} from "next/navigation"; import {getGrandeurRestaurantData} from "@/lib/grandeur-restaurant"; import {GrandeurConfirmation} from "@/components/storefront/grandeur-restaurant"; import {prisma} from "@/lib/prisma";
 import {TrackPurchase} from "@/components/storefront/store-tracking";
 import {OrderStatusNotice, NOTICE_STATUSES} from "@/components/storefront/order-status-notice";
 
@@ -43,9 +43,7 @@ async function renderNotice(slug:string,order:NonNullable<Awaited<ReturnType<typ
 
 async function renderConfirmation(slug:string,order:NonNullable<Awaited<ReturnType<typeof getOrderForBuyer>>>){
   const s=await prisma.store.findUnique({where:{slug},include:{template:true,business:true}});
-  if(s?.template?.name===EXAMPLE_TEMPLATE_NAME)return <ExampleConfirmation store={{...s,sellsProducts:s.business?.sellsProducts??true}} slug={slug} order={order}/>;
-  if(s?.template?.name===TASTEHOUSE_TEMPLATE_NAME)return <TasteHouseConfirmation store={{...s,sellsProducts:s.business?.sellsProducts??true}} slug={slug} order={order}/>;
-  const data=await getGrandeurRestaurantData(slug);
+  const data=await getGrandeurRestaurantData(slug,{skinOnly:true});
   if(data)return <GrandeurConfirmation store={data.store} slug={slug} order={order}/>;
   if(!s||s.status!=="ACTIVE")notFound();
   return <OrderConfirmation slug={slug} storeName={s.name} order={order} palette={resolveStorePalette(s)}/>;

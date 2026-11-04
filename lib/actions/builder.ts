@@ -7,6 +7,7 @@ import type { ActionResult } from "@/types/actions";
 import { assertStorePermission } from "@/lib/access/assert-store-access";
 import { updateSectionOverridesJson } from "@/lib/store-overrides";
 import { ARRANGEMENT_KEY, normalizeArrangement } from "@/lib/storefront/arrangement";
+import { HEADINGS_KEY, normalizeHeadings, type SectionHeadings } from "@/lib/storefront/section-headings";
 
 // Website Builder lives under "settings" in the nav (dashboard-nav.ts), so
 // a MANAGER/STAFF granted "settings" should be able to actually save
@@ -113,5 +114,20 @@ export async function saveTemplateArrangement(slug: string, input: { order: stri
   revalidatePath(`/store/${slug}`);
   revalidatePath(`/${slug}`);
   // The Customize page is not revalidated here: the editor reloads its own preview, and re-rendering it made saves slow.
+  return { success: true, data: undefined };
+}
+
+/** Saves the owner's section headings for a template-mode store. Empty input removes them (template wording returns). */
+export async function saveSectionHeadings(slug: string, input: SectionHeadings): Promise<ActionResult> {
+  const access = await assertStoreAccess(slug);
+  if (!access.success) return { success: false, error: access.error };
+  const headings = normalizeHeadings(input);
+  await updateSectionOverridesJson(access.store.id, (current) => {
+    const { [HEADINGS_KEY]: _old, ...rest } = current;
+    void _old;
+    return Object.keys(headings).length === 0 ? rest : { ...rest, [HEADINGS_KEY]: headings };
+  });
+  revalidatePath(`/store/${slug}`);
+  revalidatePath(`/${slug}`);
   return { success: true, data: undefined };
 }

@@ -44,10 +44,10 @@ const referenceTemplates: TemplateDefinition[] = REFERENCE_TEMPLATE_CATALOG.map(
 }));
 
 const compatibility: TemplateDefinition[] = [
-  {id:"grandeur-restaurant",name:GRANDEUR_TEMPLATE_NAME,category:"Restaurant",theme:GRANDEUR_THEME,renderer:"grandeur",home:resolveHomeRenderer(GRANDEUR_TEMPLATE_NAME).kind,aliases:["__grandeur__"],supports:["Restaurant"]},
+  {id:"grandeur-restaurant",name:GRANDEUR_TEMPLATE_NAME,category:"Restaurant",theme:GRANDEUR_THEME,renderer:"builder",home:resolveHomeRenderer(GRANDEUR_TEMPLATE_NAME).kind,aliases:["__grandeur__"],supports:["Restaurant"]},
   {id:"veloura-hotel",name:HOTEL_TEMPLATE_NAME,category:"Hotel & Lodging",theme:HOTEL_THEME,renderer:"hotel",home:resolveHomeRenderer(HOTEL_TEMPLATE_NAME).kind,aliases:["__theluso__"],supports:["Hotel & Lodging"]},
-  {id:"tastehouse-food",name:TASTEHOUSE_TEMPLATE_NAME,category:"Restaurant",theme:TASTEHOUSE_THEME,renderer:"tastehouse",home:resolveHomeRenderer(TASTEHOUSE_TEMPLATE_NAME).kind,aliases:["__tastehouse__"],supports:["Restaurant","Food & Groceries"]},
-  {id:"example-electronics",name:EXAMPLE_TEMPLATE_NAME,category:"Electronics & Retail",theme:EXAMPLE_THEME,renderer:"example",home:resolveHomeRenderer(EXAMPLE_TEMPLATE_NAME).kind,aliases:["__example__"],supports:["Electronics","Fashion","Home & Furniture","Retail"]},
+  {id:"tastehouse-food",name:TASTEHOUSE_TEMPLATE_NAME,category:"Restaurant",theme:TASTEHOUSE_THEME,renderer:"builder",home:resolveHomeRenderer(TASTEHOUSE_TEMPLATE_NAME).kind,aliases:["__tastehouse__"],supports:["Restaurant","Food & Groceries"]},
+  {id:"example-electronics",name:EXAMPLE_TEMPLATE_NAME,category:"Electronics & Retail",theme:EXAMPLE_THEME,renderer:"builder",home:resolveHomeRenderer(EXAMPLE_TEMPLATE_NAME).kind,aliases:["__example__"],supports:["Electronics","Fashion","Home & Furniture","Retail"]},
 ];
 
 export const TEMPLATE_REGISTRY: readonly TemplateDefinition[] = [...compatibility, ...referenceTemplates, ...publicLegacy, ...publicSignature];

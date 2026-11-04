@@ -879,6 +879,10 @@ export const NAMED_TEMPLATE_IDENTITY: Record<string, { chrome: TemplateChrome; h
   "JuiceLife": { chrome: C("overlay", "minimal", "tall"), heroStyle: "centered", heroVariant: "arch" },
   "Fabtex": { chrome: C("classic", "cta", "overlay"), heroStyle: "fullbleed", heroVariant: "arch" },
   "Horizon": { chrome: C("stripe", "columns", "minimal"), heroStyle: "centered", heroVariant: "banner" },
+  "Grandeur — Fine Dining Restaurant": { chrome: C("centered", "cta", "tall"), heroStyle: "fullbleed", heroVariant: "frame" },
+  "TasteHouse — Food Delivery": { chrome: C("bar", "cta", "overlay"), heroStyle: "split", heroVariant: "tiles" },
+  "Example — Modern Electronics Store": { chrome: C("classic", "minimal", "bordered"), heroStyle: "split", heroVariant: "splitcard" },
+  "Bloom — Beauty Boutique": { chrome: C("stripe", "centered", "bordered"), heroStyle: "split", heroVariant: "quiet" },
 };
 
 /** Assembles a reference template's theme from its plain data + the shared base theme it builds on. */

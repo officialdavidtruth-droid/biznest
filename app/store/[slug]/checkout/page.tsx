@@ -13,7 +13,6 @@ import { getHotelContent } from "@/lib/hotel-content";
 import { GrandeurCheckout } from "@/components/storefront/grandeur-restaurant";
 import { getGrandeurRestaurantData } from "@/lib/grandeur-restaurant";
 import { TasteHouseCheckout } from "@/components/storefront/tastehouse";
-import { TASTEHOUSE_TEMPLATE_NAME, EXAMPLE_TEMPLATE_NAME } from "@/lib/template-themes";
 import { ExampleStorefront } from "@/components/storefront/example-store";
 import { TrackBeginCheckout } from "@/components/storefront/store-tracking";
 
@@ -33,10 +32,6 @@ async function renderCheckout(slug: string) {
   if (isHotel) return <HotelCheckout store={rawStore} slug={slug} content={await getHotelContent(slug)} />;
   const session = await getStoreCustomerSessionForStore(slug);
   if (!session?.user?.id) redirect(`/login?callbackUrl=${encodeURIComponent(`/store/${slug}/checkout`)}&store=${encodeURIComponent(slug)}`);
-  if (rawStore.template?.name === EXAMPLE_TEMPLATE_NAME) { return <ExampleStorefront store={{...rawStore,sellsProducts:rawStore.business?.sellsProducts??true}} slug={slug} items={[]} mode="checkout"/>; }
-  if (rawStore.template?.name === TASTEHOUSE_TEMPLATE_NAME) {
-    return <TasteHouseCheckout store={{...rawStore,sellsProducts:rawStore.business?.sellsProducts??true}} slug={slug}/>;
-  }
   if (usesGrandeurSkin({ businessCategory: rawStore.business?.category, storeBusinessType: rawStore.businessType, templateName: rawStore.template?.name })) {
     const data = await getGrandeurRestaurantData(slug);
     if (data) return <GrandeurCheckout store={data.store} slug={slug} />;

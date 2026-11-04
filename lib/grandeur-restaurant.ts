@@ -1,7 +1,8 @@
 import { prisma } from "@/lib/prisma";
-import { isGrandeurStore } from "@/lib/store-pages";
+import { isGrandeurStore, usesGrandeurSkin } from "@/lib/store-pages";
 
-export async function getGrandeurRestaurantData(slug: string) {
+/** `skinOnly`: for pages every template has (About, Contact, order confirmation) - only draw the restaurant skin when the store's template is a restaurant-skin template, so a Builder template keeps its own header and footer. */
+export async function getGrandeurRestaurantData(slug: string, opts?: { skinOnly?: boolean }) {
   // Grandeur is the restaurant skin only. This helper used to return data for ANY
   // active store, so /about, /contact, /events, /gallery, /reservations, /payment
   // and order confirmation rendered the restaurant template on electronics,
@@ -13,7 +14,7 @@ export async function getGrandeurRestaurantData(slug: string) {
     select: { status: true, businessType: true, business: { select: { category: true } }, template: { select: { name: true } } },
   });
   if (!gate || gate.status !== "ACTIVE") return null;
-  const isGrandeur = isGrandeurStore({ businessCategory: gate.business?.category ?? null, storeBusinessType: gate.businessType, templateName: gate.template?.name });
+  const isGrandeur = (opts?.skinOnly ? usesGrandeurSkin : isGrandeurStore)({ businessCategory: gate.business?.category ?? null, storeBusinessType: gate.businessType, templateName: gate.template?.name });
   if (!isGrandeur) return null;
 
   const rawStore = await prisma.store.findUnique({

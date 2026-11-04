@@ -21,7 +21,7 @@ export default async function AboutPage({ params }: { params: Promise<{ slug: st
     const store = { ...raw, address: [raw.business?.city, raw.business?.state].filter(Boolean).join(", ") || null, phone: raw.contactPhone ?? raw.business?.phone ?? null, email: raw.contactEmail ?? raw.business?.email ?? null };
     return <ThelusoHotel store={store} slug={slug} content={await getHotelContent(slug)} />;
   }
-  const data = await getGrandeurRestaurantData(slug);
+  const data = await getGrandeurRestaurantData(slug,{skinOnly:true});
   if (data) return <GrandeurAbout store={data.store} slug={slug} items={data.items} reviews={data.reviews} />;
   const builder = await renderBuilderSubpage(slug, "about");
   if (builder) return builder;

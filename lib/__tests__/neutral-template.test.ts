@@ -4,6 +4,8 @@ import { resolveStoreTheme } from "@/lib/template-themes";
 import { templateThemeToBuilderConfig } from "@/lib/template-builder-config";
 import { getBusinessExperience } from "@/lib/business-experience";
 import { resolveHomeRenderer } from "@/lib/storefront/resolve-renderer";
+import { ownText } from "@/lib/builder-defaults";
+import { buildIndustryHomepage } from "@/lib/business-experience";
 
 /**
  * The model template. A neutral template carries no niche wording: whatever a merchant sells, the headings, button
@@ -95,5 +97,35 @@ describe("sections with nothing to show are left out on the live site", () => {
     const src = readFileSync("components/storefront/builder-renderer.tsx", "utf8");
     expect(src).toContain("useStoreCategories()");
     expect(src).toContain("`/category/${c.slug || c.id}`");
+  });
+});
+
+describe("a visitor only ever reads what the owner entered", () => {
+  it("platform filler text is not treated as the owner's words", () => {
+    expect(ownText("Tell customers what makes this business different.")).toBeUndefined();
+    expect(ownText("Add your current promotion, message or business information here.")).toBeUndefined();
+    expect(ownText(getBusinessExperience("Fashion", { sellsProducts: true }).description)).toBeUndefined();
+    expect(ownText("  We sell good things.  ")).toBe("We sell good things.");
+    expect(ownText("")).toBeUndefined();
+    expect(ownText(null)).toBeUndefined();
+  });
+
+  it("with no description entered, no section is given invented body text", () => {
+    for (const business of [{ category: "Fashion", sellsProducts: true }, { category: "Salon", offersServices: true }, { category: "Other", sellsProducts: true, offersServices: true }, { category: "Professional Services", offersServices: true }]) {
+      for (const sec of buildIndustryHomepage(business.category, "Acme", null, null, business).sections) expect(ownText(sec.settings.body), `${business.category} / ${sec.type} has filler body "${sec.settings.body}"`).toBe(sec.settings.body);
+    }
+  });
+
+  it("the default builder layout no longer writes filler either", async () => {
+    const { readFileSync } = await import("node:fs");
+    expect(readFileSync("lib/builder-config.ts", "utf8")).not.toContain("Tell customers why your business is different.");
+  });
+
+  it("features and FAQ show only owner-written entries on the live site", async () => {
+    const { readFileSync } = await import("node:fs");
+    const src = readFileSync("components/storefront/builder-renderer.tsx", "utf8");
+    expect(src).not.toContain("defaultFeatureItems(experience.mode)");
+    expect(src).not.toContain("defaultFaqItems(experience.mode");
+    expect(src).toContain('section.type === "text" && !s.body && !isEditMode');
   });
 });

@@ -12,6 +12,7 @@ import { getHotelContent } from "@/lib/hotel-content";
 import { getTemplateDefinition } from "@/lib/template-registry";
 import { resolveHomeRenderer } from "@/lib/storefront/resolve-renderer";
 import { getSavedBuilder } from "@/lib/storefront/saved-builder";
+import { applySectionHeadings, getSectionHeadings } from "@/lib/storefront/section-headings";
 import { faqFromStoreOverrides } from "@/lib/builder-defaults";
 import { assertStorePermission } from "@/lib/access/assert-store-access";
 import { getCanonicalBusinessType, isHotelBusiness, isRestaurantBusiness } from "@/lib/business-identity";
@@ -86,7 +87,7 @@ export async function renderStorefront(slug:string,opts?:{preview?:boolean}){
    const baseConfig=templateThemeToBuilderConfig(template?.home==="builder"?{...theme,neutral:true}:theme,store.name,store.business?.description,store.bannerUrl,{category:store.business?.category,subcategory:store.business?.businessSubcategory,sellsProducts:store.business?.sellsProducts,offersServices:store.business?.offersServices});
    // The owner's Content-panel hero text (headline / subtitle / button) wins over the template defaults.
    const ho=(store.heroOverrides??{}) as {headline?:string;subtitle?:string;ctaLabel?:string};
-   const config={...baseConfig,sections:baseConfig.sections.map((sec:any)=>sec.type!=="hero"?sec:{...sec,settings:{...sec.settings,...(ho.headline?.trim()?{heading:ho.headline.trim()}:{}),...(ho.subtitle?.trim()?{body:ho.subtitle.trim()}:{}),...(ho.ctaLabel?.trim()?{ctaLabel:ho.ctaLabel.trim()}:{})}})};
+   const config={...baseConfig,sections:applySectionHeadings(baseConfig.sections,getSectionHeadings(store.sectionOverrides)).map((sec:any)=>sec.type!=="hero"?sec:{...sec,settings:{...sec.settings,...(ho.headline?.trim()?{heading:ho.headline.trim()}:{}),...(ho.subtitle?.trim()?{body:ho.subtitle.trim()}:{}),...(ho.ctaLabel?.trim()?{ctaLabel:ho.ctaLabel.trim()}:{})}})};
    return <BuilderStorefront categoryList={navCategories} departures={departures} store={store} config={config} catalogItems={catalogItems} reviews={store.reviews} avgRating={store.business?.avgRating??null} completedOrders={completedOrders} fallbackFaq={fallbackFaq}/>;
  }
 

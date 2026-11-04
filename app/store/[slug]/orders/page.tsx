@@ -7,7 +7,6 @@ import { notFound } from "next/navigation";
 import { ArrowLeft } from "lucide-react";
 import { StoreFooter } from "@/components/storefront/store-footer";
 import { TasteHouseOrders } from "@/components/storefront/tastehouse";
-import { TASTEHOUSE_TEMPLATE_NAME } from "@/lib/template-themes";
 import { OrdersListContent } from "./orders-list-content";
 
 export default async function StoreOrdersPage({ params }: { params: Promise<{ slug: string }> }) {
@@ -23,10 +22,6 @@ export default async function StoreOrdersPage({ params }: { params: Promise<{ sl
   const templateName = record?.template?.name ?? null;
   const copy = getAccountCopy(undefined, store.businessCategory);
 
-  if (templateName === TASTEHOUSE_TEMPLATE_NAME) {
-    const themedOrders = await listOrdersForBuyerAtStore(slug);
-    return <TasteHouseOrders store={{ ...store, sellsProducts: record?.business?.sellsProducts ?? true }} slug={slug} orders={themedOrders} />;
-  }
   return (
     <div className="min-h-screen bg-slate-50">
       {/* ---------- STICKY HEADER ---------- */}

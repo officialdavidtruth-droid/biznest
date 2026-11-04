@@ -1,3 +1,4 @@
+import { templateDisplayName } from "@/lib/template-display-name";
 import Link from "next/link";
 import type { Metadata } from "next";
 import { Space_Grotesk, Inter } from "next/font/google";
@@ -82,7 +83,7 @@ export default async function TemplatesPage() {
               <div className="p-5">
                 <div className="flex items-center justify-between">
                   <h2 style={{ fontFamily: "var(--font-display)", fontWeight: 700 }} className="text-lg">
-                    {t.name}
+                    {templateDisplayName(t.name)}
                   </h2>
                   <span className="rounded-full px-2.5 py-1 text-[11px] font-semibold" style={{ background: "var(--bn-accent-gradient)", color: "var(--bn-ivory)" }}>
                     {TIER_LABEL[t.tierRank] ?? "Free"}

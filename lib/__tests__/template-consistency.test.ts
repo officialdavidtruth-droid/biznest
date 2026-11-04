@@ -205,60 +205,14 @@ function chromeDivergences() {
  */
 const KNOWN_CHROME_GAPS: readonly string[] = [
   "[owner contact page] builder -> category: hotel",
-  "[owner contact page] example -> category: hotel",
-  "[owner contact page] example -> category: universal",
-  "[owner contact page] example -> contact: builder",
-  "[owner contact page] example -> product: universal",
   "[owner contact page] hotel -> cart: universal",
   "[owner contact page] hotel -> contact: builder",
   "[owner contact page] hotel -> product: universal",
-  "[owner contact page] signature:belora -> cart: universal",
-  "[owner contact page] signature:belora -> category: hotel",
-  "[owner contact page] signature:belora -> category: universal",
-  "[owner contact page] signature:belora -> contact: builder",
-  "[owner contact page] signature:belora -> product: universal",
-  "[owner contact page] signature:flavora-restaurant -> cart: grandeur",
-  "[owner contact page] signature:flavora-restaurant -> category: grandeur",
-  "[owner contact page] signature:flavora-restaurant -> category: hotel",
-  "[owner contact page] signature:flavora-restaurant -> contact: builder",
-  "[owner contact page] signature:flavora-restaurant -> product: universal",
-  "[owner contact page] signature:tastehouse -> cart: tastehouse",
-  "[owner contact page] signature:tastehouse -> category: hotel",
-  "[owner contact page] signature:tastehouse -> category: universal",
-  "[owner contact page] signature:tastehouse -> contact: builder",
-  "[owner contact page] signature:tastehouse -> product: universal",
-  "[published builder] builder -> cart: example",
-  "[published builder] builder -> cart: grandeur",
-  "[published builder] builder -> cart: tastehouse",
-  "[published builder] builder -> category: grandeur",
   "[published builder] builder -> category: hotel",
   "builder -> category: hotel",
   "builder -> contact: hotel",
-  "example -> category: hotel",
-  "example -> category: universal",
-  "example -> contact: hotel",
-  "example -> contact: universal",
-  "example -> product: universal",
   "hotel -> cart: universal",
   "hotel -> product: universal",
-  "signature:belora -> cart: universal",
-  "signature:belora -> category: hotel",
-  "signature:belora -> category: universal",
-  "signature:belora -> contact: hotel",
-  "signature:belora -> contact: universal",
-  "signature:belora -> product: universal",
-  "signature:flavora-restaurant -> cart: grandeur",
-  "signature:flavora-restaurant -> category: grandeur",
-  "signature:flavora-restaurant -> category: hotel",
-  "signature:flavora-restaurant -> contact: grandeur",
-  "signature:flavora-restaurant -> contact: hotel",
-  "signature:flavora-restaurant -> product: universal",
-  "signature:tastehouse -> cart: tastehouse",
-  "signature:tastehouse -> category: hotel",
-  "signature:tastehouse -> category: universal",
-  "signature:tastehouse -> contact: hotel",
-  "signature:tastehouse -> contact: universal",
-  "signature:tastehouse -> product: universal",
 ];
 
 describe("every template uses one header and footer across home, product, category, contact and cart", () => {
@@ -299,10 +253,10 @@ describe("the chrome model still matches the routes it mirrors", () => {
     expect(src).toContain("GrandeurMenu");
     expect(src).toContain("usesTemplateChromeFor(");
   });
-  it("cart: Example and TasteHouse by template name, Grandeur only for the Grandeur template, otherwise StorefrontShell", () => {
+  it("cart: no template-name branches; Grandeur skin only for unregistered restaurant stores, otherwise StorefrontShell", () => {
     const src = route("cart");
-    expect(src).toContain("EXAMPLE_TEMPLATE_NAME");
-    expect(src).toContain("TASTEHOUSE_TEMPLATE_NAME");
+    expect(src).not.toContain("EXAMPLE_TEMPLATE_NAME");
+    expect(src).not.toContain("TASTEHOUSE_TEMPLATE_NAME");
     expect(src).toContain("usesGrandeurSkin(");
     expect(src).toContain("GrandeurCart");
     expect(src).toContain("<StorefrontShell");

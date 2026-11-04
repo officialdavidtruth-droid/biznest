@@ -1,4 +1,5 @@
 import type { BuilderSectionItem } from "@/lib/builder-config";
+import { getBusinessExperience } from "@/lib/business-experience";
 
 type Mode = "commerce" | "service" | "hybrid" | string;
 
@@ -68,4 +69,24 @@ export function whatsappLink(raw: string | null | undefined): string | null {
   if (digits.startsWith("00")) digits = digits.slice(2);
   if (digits.length === 11 && digits.startsWith("0")) digits = `234${digits.slice(1)}`;
   return digits.length >= 10 && digits.length <= 15 ? `https://wa.me/${digits}` : null;
+}
+
+/**
+ * Text the platform used to write into a section when the owner had not (the "Tell customers..." prompts and the
+ * generic business descriptions). It is never the merchant's own words, so a visitor must never see it: the live site
+ * shows only what the owner entered in the admin, the way a WordPress theme shows only the site's own content.
+ */
+const PLACEHOLDER_TEXTS = new Set<string>([
+  "Tell customers why your business is different.",
+  "Tell customers what makes this business different.",
+  "Tell customers what makes your business special.",
+  "Add your current promotion, message or business information here.",
+  ...["Other", "Fashion", "Electronics", "Restaurant", "Hotel & Lodging", "Salon", "Beauty", "Health", "Health & Fitness", "Photography", "Event Planning", "Professional Services", "Software Development", "Agency", "Construction", "Real Estate", "Logistics", "Church", "Agriculture", "Food & Groceries", "Home & Furniture"]
+    .flatMap((c) => [getBusinessExperience(c).description, getBusinessExperience(c, { sellsProducts: true }).description, getBusinessExperience(c, { offersServices: true }).description, getBusinessExperience(c, { sellsProducts: true, offersServices: true }).description]),
+]);
+
+/** The owner's own text, or undefined when the field is empty or still holds platform filler. */
+export function ownText(text: string | null | undefined): string | undefined {
+  const t = (text ?? "").trim();
+  return t && !PLACEHOLDER_TEXTS.has(t) ? t : undefined;
 }

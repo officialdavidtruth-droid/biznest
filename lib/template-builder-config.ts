@@ -46,7 +46,7 @@ export function templateThemeToBuilderConfig(theme: TemplateTheme, storeName: st
     const fromBusiness = industry?.find((s) => s.type === type);
     if (!own || !fromBusiness) return own;
     // Business wording and calls to action, template look (hero composition, padding rhythm).
-    return { ...own, settings: { ...own.settings, ...fromBusiness.settings, ...(type === "hero" ? { heroStyle: own.settings.heroStyle, heroVariant: own.settings.heroVariant, image: heroImage || undefined } : {}) } };
+    return { ...own, settings: { ...own.settings, ...fromBusiness.settings, ...(type === "hero" ? { heroStyle: own.settings.heroStyle, heroVariant: own.settings.heroVariant, image: heroImage || undefined, eyebrow: undefined } : {}) } };
   }).filter(Boolean) as BuilderSection[];
   if (!sections.some((s) => s.type === "hero")) sections.unshift(sectionFor(theme, "hero", 0, storeName, description, heroImage)!);
   if (!sections.some((s) => s.type === "catalog")) sections.push(sectionFor(theme, "catalog", sections.length, storeName, description, heroImage)!);

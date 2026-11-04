@@ -10,8 +10,8 @@ describe("template registry consistency", () => {
     for (const template of PUBLIC_TEMPLATE_REGISTRY) expect(getTemplateDefinition(template.name)?.id).toBe(template.id);
   });
   it("keeps compatibility templates registered", () => {
-    expect(getTemplateDefinition("Grandeur — Fine Dining Restaurant")?.renderer).toBe("grandeur");
-    expect(getTemplateDefinition("TasteHouse — Food Delivery")?.renderer).toBe("tastehouse");
-    expect(getTemplateDefinition("Example — Modern Electronics Store")?.renderer).toBe("example");
+    expect(getTemplateDefinition("Grandeur — Fine Dining Restaurant")?.renderer).toBe("builder");
+    expect(getTemplateDefinition("TasteHouse — Food Delivery")?.renderer).toBe("builder");
+    expect(getTemplateDefinition("Example — Modern Electronics Store")?.renderer).toBe("builder");
   });
 });
