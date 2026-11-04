@@ -93,6 +93,11 @@ describe("checkRateLimit", () => {
 });
 
 describe("getClientIp", () => {
+  it("trusts the platform-set x-vercel-forwarded-for over a client-supplied x-forwarded-for", () => {
+    const h = new Headers({ "x-vercel-forwarded-for": "9.9.9.9", "x-forwarded-for": "1.2.3.4" });
+    expect(getClientIp(h)).toBe("9.9.9.9");
+  });
+
   it("prefers the first x-forwarded-for entry", () => {
     const headers = new Headers({ "x-forwarded-for": "1.2.3.4, 5.6.7.8" });
     expect(getClientIp(headers)).toBe("1.2.3.4");

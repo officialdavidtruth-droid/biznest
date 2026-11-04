@@ -7,7 +7,7 @@ import { describe, expect, it, vi } from "vitest";
 (globalThis as { React?: typeof React }).React = React;
 
 vi.mock("@prisma/client", () => ({ PrismaClient: class { $on() {} }, Prisma: {} }));
-vi.mock("@/components/storefront/store-menu", () => ({ MenuLinks: () => null }));
+vi.mock("@/components/storefront/store-menu", () => ({ MenuLinks: () => null, useFooterMenu: () => null, useStoreMenu: () => null }));
 vi.mock("@/components/storefront/cart-link", () => ({ CartLink: () => null }));
 vi.mock("@/components/storefront/builder-newsletter-form", () => ({ BuilderNewsletterForm: () => null }));
 vi.mock("next/link", () => ({ default: (p: { href: string; children?: unknown }) => createElement("a", { href: p.href }, p.children as never) }));
@@ -35,18 +35,20 @@ describe("builder sections show real, editable content", () => {
     expect(own).toContain("Free repairs");
     expect(own).toContain("For a year");
     expect(own).not.toContain("Quality you can trust");
+    // Visitors never see invented text: an empty Features section stays hidden (the editor seeds
+    // starter wording instead, see defaultFeatureItems).
     const starter = render([sec("features")]);
-    expect(starter).toContain("Quality you can trust");
+    expect(starter).not.toContain("Quality you can trust");
     expect(starter).not.toContain("configured by the business");
   });
 
-  it("faq: owner items beat the store's own FAQ, which beats the generic starter", () => {
+  it("faq: owner items beat the store's own FAQ, and there is no invented fallback", () => {
     const fallback = [{ title: "Do you ship abroad?", body: "Yes." }];
     expect(render([sec("faq", { items: [{ title: "Own question", body: "Own answer" }] })], fallback)).toContain("Own question");
     const viaStore = render([sec("faq")], fallback);
     expect(viaStore).toContain("Do you ship abroad?");
     expect(viaStore).not.toContain("How do I place an order?");
-    expect(render([sec("faq")])).toContain("How do I place an order?");
+    expect(render([sec("faq")])).not.toContain("How do I place an order?");
   });
 
   it("gallery: uses the owner's uploads, else falls back to catalogue photos", () => {
@@ -67,6 +69,6 @@ describe("builder sections show real, editable content", () => {
       config: { ...defaultBuilderConfig("Acme"), sections: [sec("map")] }, reviews: [], avgRating: null, completedOrders: 0, catalogItems: [],
     }));
     expect(noLocation).not.toContain("<iframe");
-    expect(noLocation).toContain("Add an address");
+    expect(noLocation).not.toContain("Add an address"); // that hint is for the owner in the editor, not visitors
   });
 });

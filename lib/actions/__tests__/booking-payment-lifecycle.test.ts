@@ -1,3 +1,4 @@
+import { describe, expect, it } from "vitest";
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 
@@ -11,8 +12,11 @@ describe("booking payment lifecycle hardening", () => {
   });
 
   it("does not pay a cancelled booking from a delayed gateway callback", () => {
-    expect(walletSource).toContain('status: { not: "CANCELLED" },');
-    expect(walletSource).toContain('paymentStatus: { not: "PAID" }');
+    // Settlement of gateway-paid service bookings lives in lib/payments/settle-service-booking.ts.
+    const settle = readFileSync(resolve(process.cwd(), "lib/payments/settle-service-booking.ts"), "utf8");
+    expect(settle).toContain('status: { not: "CANCELLED" },');
+    expect(settle).toContain('paymentStatus: { not: "PAID" }');
+    expect(walletSource).toContain('booking.status === "CANCELLED"');
   });
 
   it("expires only storefront online booking holds", () => {

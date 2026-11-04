@@ -2,7 +2,8 @@
 
 import { cookies } from "next/headers";
 import { prisma } from "@/lib/prisma";
-import { ADMIN_COOKIE_NAME, verifyAdminToken } from "@/lib/admin-pin-auth";
+import { ADMIN_COOKIE_NAME } from "@/lib/admin-pin-auth";
+import { verifyAdminSession } from "@/lib/admin-session";
 import type { EventCategory } from "@prisma/client";
 
 // Same gate as lib/actions/admin.ts's assertPlatformStaff — duplicated
@@ -11,7 +12,7 @@ import type { EventCategory } from "@prisma/client";
 async function assertPlatformStaff() {
   const cookieStore = await cookies();
   const token = cookieStore.get(ADMIN_COOKIE_NAME)?.value;
-  const valid = await verifyAdminToken(token);
+  const valid = await verifyAdminSession(token);
   if (!valid) return { success: false as const };
   return { success: true as const };
 }

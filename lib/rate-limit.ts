@@ -79,6 +79,9 @@ export async function checkRateLimit(
 
 /** Best-effort client IP extraction behind Vercel's proxy. */
 export function getClientIp(headers: Headers): string {
+  // On Vercel the platform sets this itself; a client cannot forge it, unlike the first x-forwarded-for entry.
+  const vercel = headers.get("x-vercel-forwarded-for");
+  if (vercel) return vercel.split(",")[0].trim();
   const forwarded = headers.get("x-forwarded-for");
   if (forwarded) return forwarded.split(",")[0].trim();
   return headers.get("x-real-ip") ?? "unknown";

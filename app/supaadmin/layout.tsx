@@ -1,5 +1,9 @@
 import type { Metadata, Viewport } from "next";
+import { cookies, headers } from "next/headers";
+import { redirect } from "next/navigation";
 import { getAdminBadgeCounts } from "@/lib/actions/admin";
+import { ADMIN_COOKIE_NAME } from "@/lib/admin-pin-auth";
+import { verifyAdminSession } from "@/lib/admin-session";
 import { SupaAdminMobileShell } from "@/components/dashboard/supaadmin-mobile-shell";
 import { ThemeProvider, ThemeFlashGuard } from "@/components/theme/theme-provider";
 
@@ -28,6 +32,11 @@ export const viewport: Viewport = {
 };
 
 export default async function SupaAdminLayout({ children }: { children: React.ReactNode }) {
+  // Middleware only checks the cookie's signature/expiry; this also honours "Sign out" (revoked session).
+  // Skip the login page itself (it renders inside this layout) to avoid a redirect loop.
+  const onLogin = (await headers()).get("x-bn-pathname") === "/supaadmin/login";
+  const token = (await cookies()).get(ADMIN_COOKIE_NAME)?.value;
+  if (!onLogin && token && !(await verifyAdminSession(token))) redirect("/supaadmin/login");
   const counts = await getAdminBadgeCounts();
 
   return (

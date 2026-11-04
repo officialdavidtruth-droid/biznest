@@ -11,6 +11,6 @@ describe("refund concurrency guard", () => {
   });
   it("defines the durable refund-pending payment state", () => {
     const schema = fs.readFileSync("prisma/schema.prisma", "utf8");
-    expect(schema).toMatch(/enum PaymentStatus[\\s\\S]*REFUND_PENDING[\\s\\S]*REFUNDED/);
+    expect(schema).toMatch(/enum PaymentStatus[\s\S]*REFUND_PENDING[\s\S]*REFUNDED/);
   });
 });

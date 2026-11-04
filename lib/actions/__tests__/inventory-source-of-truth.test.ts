@@ -24,7 +24,7 @@ describe("inventory source of truth", () => {
   it("uses variant stock in the admin product list", () => {
     const source = read("app/store/[slug]/admin/products/page.tsx");
     expect(source).toContain("p.variants.reduce");
-    expect(source).toContain("p.variants.some");
+    expect(source).toContain("variant.isActive ? variant.quantity : 0");
   });
 
   it("includes variants in dashboard low-stock calculations", () => {

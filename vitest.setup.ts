@@ -36,7 +36,13 @@ vi.mock("@/lib/auth", () => ({
 
 vi.mock("next/cache", () => ({
   revalidatePath: vi.fn(),
+  revalidateTag: vi.fn(),
+  // Run the wrapped function directly -- no cache layer in tests.
+  unstable_cache: <T extends (...args: never[]) => unknown>(fn: T) => fn,
 }));
+
+// Modules that construct the Resend client at import time throw without a key.
+process.env.RESEND_API_KEY ||= "re_test_key";
 
 // emitWebhookEvent is safe to leave real in most cases (it's a no-op when
 // a store has no subscribed endpoints, which test fixtures never create),

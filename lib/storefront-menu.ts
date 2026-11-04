@@ -47,6 +47,7 @@ export const MENU_PAGE_OPTIONS: { label: string; path: string }[] = [
   { label: "Reservations", path: "/reservations" },
   { label: "Support", path: "/support" },
   { label: "Book now", path: "/book" },
+  { label: "Order a custom outfit", path: "/order-request" },
   { label: "Contact", path: "/contact" },
   { label: "Cart", path: "/cart" },
   { label: "Orders", path: "/orders" },

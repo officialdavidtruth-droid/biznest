@@ -6,7 +6,8 @@ import { prisma } from "@/lib/prisma";
 import { revalidatePath } from "next/cache";
 import type { ActionResult } from "@/types/actions";
 import type { VerificationStatus, UserRole, DisputeStatus } from "@prisma/client";
-import { ADMIN_COOKIE_NAME, verifyAdminToken } from "@/lib/admin-pin-auth";
+import { ADMIN_COOKIE_NAME } from "@/lib/admin-pin-auth";
+import { verifyAdminSession } from "@/lib/admin-session";
 import { recomputeAndPersistTrustScore } from "@/lib/actions/trust-score";
 
 // Platform-admin access is gated by the shared ADMIN_PIN cookie now, not by
@@ -16,7 +17,7 @@ import { recomputeAndPersistTrustScore } from "@/lib/actions/trust-score";
 async function assertPlatformStaff() {
   const cookieStore = await cookies();
   const token = cookieStore.get(ADMIN_COOKIE_NAME)?.value;
-  const valid = await verifyAdminToken(token);
+  const valid = await verifyAdminSession(token);
   if (!valid) return { success: false as const, error: "Admin PIN session expired or invalid. Please sign in again." };
   return { success: true as const, userId: null as string | null };
 }

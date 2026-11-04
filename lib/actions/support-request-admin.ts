@@ -3,13 +3,14 @@
 import { cookies } from "next/headers";
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
-import { ADMIN_COOKIE_NAME, verifyAdminToken } from "@/lib/admin-pin-auth";
+import { ADMIN_COOKIE_NAME } from "@/lib/admin-pin-auth";
+import { verifyAdminSession } from "@/lib/admin-session";
 import type { ActionResult } from "@/types/actions";
 
 // Same shared-PIN gate as lib/actions/review-reports.ts.
 async function assertPlatformStaff() {
   const token = (await cookies()).get(ADMIN_COOKIE_NAME)?.value;
-  const valid = await verifyAdminToken(token);
+  const valid = await verifyAdminSession(token);
   if (!valid) return { success: false as const, error: "Admin PIN session expired or invalid. Please sign in again." };
   return { success: true as const };
 }

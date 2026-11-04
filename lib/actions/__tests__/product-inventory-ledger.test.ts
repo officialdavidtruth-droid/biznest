@@ -9,14 +9,17 @@ describe("product edit inventory integrity", () => {
   });
 
   it("creates a correction movement when a product edit changes quantity", () => {
-    expect(source).toContain('type: "CORRECTION"');
+    const stock = fs.readFileSync("lib/catalog/stock.ts", "utf8");
+    expect(stock).toContain('type: "CORRECTION"');
+    expect(stock).toContain("quantityChange: delta");
+    expect(source).toContain("correctInventoryQuantityTx(tx");
     expect(source).toContain('note: "Product edit"');
-    expect(source).toContain("quantityChange: delta");
-    expect(source).toContain("quantityAfter: nextQuantity");
   });
 
   it("guards the inventory update against stale quantity overwrites", () => {
-    expect(source).toContain("quantity: current.inventory.quantity");
-    expect(source).toContain("if (updated.count !== 1) throw new Error(\"INVENTORY_CONFLICT\")");
+    const stock = fs.readFileSync("lib/catalog/stock.ts", "utf8");
+    expect(source).toMatch(/guard: \{ quantity: /);
+    expect(stock).toContain("...args.guard");
+    expect(stock).toContain("if (updated.count !== 1) throw new Error(\"INVENTORY_CONFLICT\")");
   });
 });

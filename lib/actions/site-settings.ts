@@ -5,12 +5,13 @@ import { prisma } from "@/lib/prisma";
 import { revalidatePath, revalidateTag, unstable_cache } from "next/cache";
 import type { ActionResult } from "@/types/actions";
 import { SETTING_KEYS } from "@/lib/constants/site-settings";
-import { ADMIN_COOKIE_NAME, verifyAdminToken } from "@/lib/admin-pin-auth";
+import { ADMIN_COOKIE_NAME } from "@/lib/admin-pin-auth";
+import { verifyAdminSession } from "@/lib/admin-session";
 
 async function assertPlatformAdmin() {
   const cookieStore = await cookies();
   const token = cookieStore.get(ADMIN_COOKIE_NAME)?.value;
-  const valid = await verifyAdminToken(token);
+  const valid = await verifyAdminSession(token);
   if (!valid) return { success: false as const, error: "Admin PIN session expired or invalid. Please sign in again." };
   return { success: true as const, userId: null as string | null };
 }

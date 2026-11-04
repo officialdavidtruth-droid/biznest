@@ -3,13 +3,14 @@
 import { cookies } from "next/headers";
 import { prisma } from "@/lib/prisma";
 import { revalidatePath } from "next/cache";
-import { ADMIN_COOKIE_NAME, verifyAdminToken } from "@/lib/admin-pin-auth";
+import { ADMIN_COOKIE_NAME } from "@/lib/admin-pin-auth";
+import { verifyAdminSession } from "@/lib/admin-session";
 import { ensureSystemPlugins } from "@/lib/plugins";
 import type { ActionResult } from "@/types/actions";
 
 async function assertPlatform() {
   const token = (await cookies()).get(ADMIN_COOKIE_NAME)?.value;
-  if (!(await verifyAdminToken(token))) return { success: false as const, error: "Admin PIN session expired or invalid." };
+  if (!(await verifyAdminSession(token))) return { success: false as const, error: "Admin PIN session expired or invalid." };
   return { success: true as const };
 }
 

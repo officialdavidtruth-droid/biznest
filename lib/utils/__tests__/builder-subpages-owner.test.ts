@@ -7,7 +7,7 @@ import { describe, expect, it, vi } from "vitest";
 (globalThis as { React?: typeof React }).React = React;
 
 vi.mock("@prisma/client", () => ({ PrismaClient: class { $on() {} }, Prisma: {} }));
-vi.mock("@/components/storefront/store-menu", () => ({ MenuLinks: () => null }));
+vi.mock("@/components/storefront/store-menu", () => ({ MenuLinks: () => null, useFooterMenu: () => null, useStoreMenu: () => null }));
 vi.mock("@/components/storefront/cart-link", () => ({ CartLink: () => null }));
 vi.mock("@/components/storefront/builder-newsletter-form", () => ({ BuilderNewsletterForm: () => null }));
 vi.mock("@/components/storefront/contact-enquiry-form", () => ({ ContactEnquiryForm: () => createElement("form", { id: "enquiry-form" }) }));

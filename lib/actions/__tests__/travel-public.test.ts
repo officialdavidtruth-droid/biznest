@@ -17,7 +17,7 @@ vi.mock("@/lib/prisma", () => ({
 vi.mock("next/headers", () => ({ headers: async () => new Headers({ "x-forwarded-for": "1.2.3.4" }) }));
 vi.mock("@/lib/rate-limit", () => ({ checkRateLimit: m.rate, getClientIp: () => "1.2.3.4" }));
 vi.mock("@/lib/plugins", () => ({ getPluginEntitlement: m.entitlement }));
-vi.mock("@/lib/payments/travel-charge", () => ({ startTravelCharge: m.charge }));
+vi.mock("@/lib/payments/travel-charge", () => ({ startTravelCharge: m.charge, travelOnlinePaymentError: vi.fn(async (_s: string, cur: string) => (cur === "NGN" ? null : "Online payment isn't available.")) }));
 
 import { submitTravelEnquiry, startTravelBooking } from "@/lib/actions/travel-public";
 

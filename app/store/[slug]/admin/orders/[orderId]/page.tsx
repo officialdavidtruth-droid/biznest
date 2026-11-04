@@ -10,6 +10,7 @@ import { RefundControl } from "@/components/dashboard/refund-control";
 import { ConfirmManualPaymentButton } from "@/components/dashboard/confirm-manual-payment-button";
 import { DISPUTE_STATUS_CONFIG } from "@/lib/constants/dispute";
 import { formatDate, formatNumber } from "@/lib/i18n/locale";
+import { whatsappLink } from "@/lib/builder-defaults";
 import { prisma } from "@/lib/prisma";
 import { getInHouseReservations } from "@/lib/actions/folio";
 import { PostToRoomButton } from "@/components/dashboard/post-to-room-button";
@@ -123,6 +124,17 @@ export default async function StoreOrderDetailPage({
         {address && (
           <div className="mt-3 border-t pt-3 text-sm">
             <p>{address.fullName} · {address.phone}</p>
+            {(() => {
+              // Click-to-chat (no WhatsApp Business API needed): opens the merchant's own WhatsApp with a ready message.
+              const wa = whatsappLink(address.phone);
+              if (!wa) return null;
+              const text = `Hello ${address.fullName}, this is about your order #${order.id.slice(-8).toUpperCase()}.`;
+              return (
+                <a href={`${wa}?text=${encodeURIComponent(text)}`} target="_blank" rel="noopener noreferrer" className="mt-2 inline-flex items-center gap-1.5 rounded-md border px-3 py-1.5 text-xs font-medium hover:bg-muted">
+                  Message on WhatsApp
+                </a>
+              );
+            })()}
             <p className="text-muted-foreground">
               {address.address}, {address.city}, {address.state}, {address.country}
             </p>

@@ -17,7 +17,7 @@ vi.mock("@/lib/prisma", () => ({
 vi.mock("next/cache", () => ({ revalidatePath: vi.fn() }));
 vi.mock("@/lib/access/assert-store-access", () => ({ assertStorePermission: m.perm }));
 vi.mock("@/lib/plugins", () => ({ getPluginEntitlement: m.entitlement }));
-vi.mock("@/lib/payments/travel-charge", () => ({ startTravelCharge: m.charge }));
+vi.mock("@/lib/payments/travel-charge", () => ({ startTravelCharge: m.charge, travelOnlinePaymentError: vi.fn(async (_s: string, cur: string) => (cur === "NGN" ? null : "Online payment isn't available.")) }));
 vi.mock("@/lib/payments/refund-travel", () => ({ refundTravelPayment: m.refund }));
 vi.mock("@/lib/auth", () => ({ auth: vi.fn().mockResolvedValue({ user: { email: "owner@wander.test" } }) }));
 

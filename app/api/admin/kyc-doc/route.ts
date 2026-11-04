@@ -1,7 +1,8 @@
 import { NextResponse } from "next/server";
 import { cookies } from "next/headers";
 import { prisma } from "@/lib/prisma";
-import { ADMIN_COOKIE_NAME, verifyAdminToken } from "@/lib/admin-pin-auth";
+import { ADMIN_COOKIE_NAME } from "@/lib/admin-pin-auth";
+import { verifyAdminSession } from "@/lib/admin-session";
 import { parseKycUrl, signedKycDownloadUrl } from "@/lib/kyc-storage";
 import { withObservability } from "@/lib/observability/api-wrapper";
 
@@ -18,7 +19,7 @@ import { withObservability } from "@/lib/observability/api-wrapper";
  */
 export const GET = withObservability("admin-kyc-doc", async (req: Request) => {
   const token = (await cookies()).get(ADMIN_COOKIE_NAME)?.value;
-  if (!(await verifyAdminToken(token))) {
+  if (!(await verifyAdminSession(token))) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 

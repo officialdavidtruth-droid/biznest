@@ -43,7 +43,7 @@ describe("invoice and quote state guards", () => {
     expect(read("lib/actions/invoice.ts")).toContain('invoice.status !== "SENT"');
     const quote = read("lib/actions/quote.ts");
     expect(quote).toContain('quote.status !== "SENT"');
-    expect(quote).toContain('where: { id: quoteId, status: "SENT" }');
+    expect(quote).toMatch(/where: \{ id: quoteId, status: "SENT"/);
   });
 
   it("merchant 'Copy link' uses the tokenised quote link", () => {

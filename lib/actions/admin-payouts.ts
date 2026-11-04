@@ -1,10 +1,12 @@
 "use server";
 
-import { cookies } from "next/headers";
+import { cookies, headers } from "next/headers";
 import { revalidatePath } from "next/cache";
 import type { PayoutStatus } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
-import { ADMIN_COOKIE_NAME, verifyAdminToken } from "@/lib/admin-pin-auth";
+import { ADMIN_COOKIE_NAME, adminSessionIdFromToken } from "@/lib/admin-pin-auth";
+import { verifyAdminSession } from "@/lib/admin-session";
+import { getClientIp } from "@/lib/rate-limit";
 import { markPayoutPaidManually, releaseHeldPayouts, retryPayout } from "@/lib/payments/payout";
 import { getGatewayBalanceKobo } from "@/lib/payments/payout-gateway";
 import { getActiveGateway, getPayoutMode, type PayoutMode } from "@/lib/actions/site-settings";
@@ -13,8 +15,13 @@ import type { ActionResult } from "@/types/actions";
 // Same ADMIN_PIN cookie gate as lib/actions/admin.ts.
 async function assertPlatformStaff() {
   const cookieStore = await cookies();
-  const valid = await verifyAdminToken(cookieStore.get(ADMIN_COOKIE_NAME)?.value);
-  return valid ? { success: true as const } : { success: false as const, error: "Admin PIN session expired or invalid. Please sign in again." };
+  const token = cookieStore.get(ADMIN_COOKIE_NAME)?.value;
+  const valid = await verifyAdminSession(token);
+  if (!valid) return { success: false as const, error: "Admin PIN session expired or invalid. Please sign in again." };
+  // There is one shared PIN, so no person to record -- log which sign-in and
+  // which IP did it so a payout action can still be traced.
+  const actor = { adminSession: adminSessionIdFromToken(token), ip: getClientIp(await headers()) };
+  return { success: true as const, actor };
 }
 
 export type PayoutTab = "NEEDS_ATTENTION" | "HELD" | "QUEUED" | "PROCESSING" | "PAID" | "ALL";
@@ -54,7 +61,7 @@ export async function retryFailedPayout(payoutId: string): Promise<ActionResult>
 
   const result = await retryPayout(payoutId);
   await prisma.auditLog.create({
-    data: { userId: null, action: "PAYOUT_RETRIED", entity: "Payout", entityId: payoutId, metadata: { ok: result.ok, message: result.message } },
+    data: { userId: null, action: "PAYOUT_RETRIED", entity: "Payout", entityId: payoutId, metadata: { ok: result.ok, message: result.message, ...access.actor } },
   });
   revalidatePath("/supaadmin/payouts");
   return result.ok ? { success: true, data: undefined } : { success: false, error: result.message };
@@ -67,7 +74,7 @@ export async function markPayoutPaid(payoutId: string, note: string): Promise<Ac
   const result = await markPayoutPaidManually(payoutId, note);
   if (result.ok) {
     await prisma.auditLog.create({
-      data: { userId: null, action: "PAYOUT_MARKED_PAID_MANUALLY", entity: "Payout", entityId: payoutId, metadata: { note: note.trim() } },
+      data: { userId: null, action: "PAYOUT_MARKED_PAID_MANUALLY", entity: "Payout", entityId: payoutId, metadata: { note: note.trim(), ...access.actor } },
     });
   }
   revalidatePath("/supaadmin/payouts");
@@ -137,7 +144,7 @@ async function release(storeId: string | undefined): Promise<ActionResult<Releas
 
   const summary = await releaseHeldPayouts(storeId ? { storeId } : {});
   await prisma.auditLog.create({
-    data: { userId: null, action: storeId ? "PAYOUTS_RELEASED_STORE" : "PAYOUTS_RELEASED_ALL", entity: storeId ? "Store" : "Payout", entityId: storeId ?? "all", metadata: summary },
+    data: { userId: null, action: storeId ? "PAYOUTS_RELEASED_STORE" : "PAYOUTS_RELEASED_ALL", entity: storeId ? "Store" : "Payout", entityId: storeId ?? "all", metadata: { ...summary, ...access.actor } },
   });
   revalidatePath("/supaadmin/payouts");
   return { success: true, data: summary };

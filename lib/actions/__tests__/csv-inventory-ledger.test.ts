@@ -29,7 +29,7 @@ describe("CSV inventory integrity", () => {
   });
 
   it("scopes category lookup to the current store", () => {
-    expect(source).toContain('where: { name: r.category.trim(), storeId: access.store.id }');
+    expect(source).toMatch(/findFirst\(\{ where: \{ name: r\.category\.trim\(\), storeId: access\.store\.id\b/);
   });
 
   it("rejects stale CSV inventory snapshots", () => {

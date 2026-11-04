@@ -25,7 +25,7 @@ export async function POST(req: Request) {
       { status: 500 }
     );
   }
-  if (!pin || !constantTimeEquals(pin, process.env.ADMIN_PIN)) {
+  if (!pin || !(await constantTimeEquals(pin, process.env.ADMIN_PIN))) {
     return NextResponse.json({ error: "Incorrect PIN." }, { status: 401 });
   }
 

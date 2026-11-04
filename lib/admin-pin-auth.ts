@@ -39,12 +39,25 @@ async function hmac(data: string, secret: string): Promise<string> {
   return Buffer.from(sig).toString("base64url");
 }
 
-/** Issues a signed token: `${expiryTimestamp}.${signature}`. */
+/**
+ * Issues a signed token: `${expiryTimestamp}:${sessionId}.${signature}`.
+ * The random sessionId carries no authority; it only lets the audit log tell
+ * one admin sign-in from another (there is a single shared PIN, so there is no
+ * per-person identity to record).
+ */
 export async function createAdminToken(): Promise<string> {
   const expires = Date.now() + TOKEN_TTL_MS;
-  const payload = String(expires);
+  const sessionId = crypto.randomUUID().slice(0, 8);
+  const payload = `${expires}:${sessionId}`;
   const sig = await hmac(payload, getSecret());
   return `${payload}.${sig}`;
+}
+
+/** Short id of the admin sign-in a token belongs to (for audit logs). */
+export function adminSessionIdFromToken(token: string | undefined | null): string | null {
+  const payload = token?.split(".")[0];
+  const id = payload?.split(":")[1];
+  return id || null;
 }
 
 /** Verifies a token's signature and expiry. Never throws — returns boolean. */
@@ -52,7 +65,7 @@ export async function verifyAdminToken(token: string | undefined | null): Promis
   if (!token) return false;
   const [payload, sig] = token.split(".");
   if (!payload || !sig) return false;
-  const expires = Number(payload);
+  const expires = Number(payload.split(":")[0]);
   if (!Number.isFinite(expires) || Date.now() > expires) return false;
   try {
     const expectedSig = await hmac(payload, getSecret());
@@ -71,9 +84,11 @@ export async function verifyAdminToken(token: string | undefined | null): Promis
   }
 }
 
-export function constantTimeEquals(a: string, b: string): boolean {
-  if (a.length !== b.length) return false;
+/** Compares two secrets in time that does not depend on where (or whether) they differ, or on their length. */
+export async function constantTimeEquals(a: string, b: string): Promise<boolean> {
+  const sha = async (v: string) => new Uint8Array(await crypto.subtle.digest("SHA-256", new TextEncoder().encode(v)));
+  const [x, y] = await Promise.all([sha(a), sha(b)]);
   let diff = 0;
-  for (let i = 0; i < a.length; i++) diff |= a.charCodeAt(i) ^ b.charCodeAt(i);
+  for (let i = 0; i < x.length; i++) diff |= x[i] ^ y[i];
   return diff === 0;
 }

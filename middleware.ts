@@ -146,6 +146,7 @@ async function resolveCustomDomain(host: string, origin: string): Promise<string
 function passThroughSupaAdmin(req: NextRequest) {
   const headers = new Headers(req.headers);
   headers.set("x-bn-skip-maintenance", "1");
+  headers.set("x-bn-pathname", req.nextUrl.pathname);
   return NextResponse.next({ request: { headers } });
 }
 

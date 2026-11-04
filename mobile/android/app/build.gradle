@@ -4,14 +4,14 @@ def bnVersionCode = Integer.parseInt(System.getenv("BN_VERSION_CODE") ?: "1")
 def bnVersionName = System.getenv("BN_VERSION_NAME") ?: "1.0.0"
 
 android {
-    namespace "space.biznest.app"
-    compileSdk rootProject.ext.compileSdkVersion
+    namespace = "space.biznest.app"
+    compileSdk = rootProject.ext.compileSdkVersion
     defaultConfig {
-        applicationId "space.biznest.app"
-        minSdkVersion rootProject.ext.minSdkVersion
-        targetSdkVersion rootProject.ext.targetSdkVersion
-        versionCode bnVersionCode
-        versionName bnVersionName
+        applicationId = "space.biznest.app"
+        minSdk = rootProject.ext.minSdkVersion
+        targetSdk = rootProject.ext.targetSdkVersion
+        versionCode = bnVersionCode
+        versionName = bnVersionName
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         aaptOptions {
              // Files and dirs to omit from the packaged assets dir, modified to accommodate modern web apps.
@@ -23,19 +23,19 @@ android {
         release {
             def ksPath = System.getenv("BN_KEYSTORE_PATH")
             if (ksPath && file(ksPath).exists()) {
-                storeFile file(ksPath)
-                storePassword System.getenv("BN_KEYSTORE_PASSWORD")
-                keyAlias System.getenv("BN_KEY_ALIAS")
-                keyPassword System.getenv("BN_KEY_PASSWORD")
+                storeFile = file(ksPath)
+                storePassword = System.getenv("BN_KEYSTORE_PASSWORD")
+                keyAlias = System.getenv("BN_KEY_ALIAS")
+                keyPassword = System.getenv("BN_KEY_PASSWORD")
             }
         }
     }
     buildTypes {
         release {
             if (System.getenv("BN_KEYSTORE_PATH")) {
-                signingConfig signingConfigs.release
+                signingConfig = signingConfigs.release
             }
-            minifyEnabled false
+            minifyEnabled = false
             proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
         }
     }

@@ -7,6 +7,9 @@ import { notFound } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { resolveStorePalette } from "@/lib/store-palette";
 import { TailoringOrderForm } from "@/components/storefront/tailoring-order-form";
+import { TemplateShell } from "@/components/storefront/template-shell";
+import { resolveStoreTheme } from "@/lib/template-themes";
+import { usesTemplateChromeFor } from "@/lib/storefront/template-chrome";
 
 export const dynamic = "force-dynamic";
 
@@ -18,12 +21,15 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
 
 export default async function TailoringOrderRequestPage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
-  const store = await prisma.store.findUnique({ where: { slug }, include: { template: true } });
+  const store = await prisma.store.findUnique({ where: { slug }, include: { template: true, business: true } });
   if (!store || store.status !== "ACTIVE") notFound();
 
   const palette = resolveStorePalette(store);
-  return (
-    <div style={{ background: palette.surface, color: palette.ink, minHeight: "100vh", fontFamily: palette.font }} className="storefront-root">
+  // Same header and footer as the rest of the site (template chrome), so the page doesn't look like a different website.
+  const chrome = usesTemplateChromeFor(store.template?.name, store.sectionOverrides, { businessCategory: store.business?.category, storeBusinessType: store.businessType });
+  const theme = resolveStoreTheme(store.template?.category, store.name, store.themeColors as any, store.fontFamily, store.template?.name);
+  const page = (
+    <div style={{ background: palette.surface, color: palette.ink, minHeight: chrome ? "60vh" : "100vh", fontFamily: palette.font }} className="storefront-root">
       <main style={{ maxWidth: 640 }} className="mx-auto px-6 py-12">
         <Link href={`/store/${slug}`} className="text-sm font-semibold no-underline" style={{ opacity: 0.7, color: "inherit" }}>← {store.name}</Link>
         <h1 style={{ fontFamily: palette.headlineFont }} className="mt-4 text-3xl font-extrabold">Order a custom outfit</h1>
@@ -34,4 +40,5 @@ export default async function TailoringOrderRequestPage({ params }: { params: Pr
       </main>
     </div>
   );
+  return chrome ? <TemplateShell store={store} slug={slug} theme={theme}>{page}</TemplateShell> : page;
 }

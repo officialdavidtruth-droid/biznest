@@ -1,3 +1,4 @@
+import { describe, expect, it } from "vitest";
 import { getSampleListingsForBusinessType } from "@/lib/sample-listings";
 
 describe("starter listing resolution", () => {

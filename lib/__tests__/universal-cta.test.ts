@@ -4,9 +4,9 @@ import { primaryCta } from "@/components/storefront/universal-section-pages";
 const theme = { accent: "#1473ea" } as any;
 
 describe("universal storefront primary CTA", () => {
-  it("routes hotels to rooms", () => {
+  it("routes hotels to the catalog (rooms are listed there)", () => {
     expect(primaryCta({ business: { category: "Hotel & Lodging" }, sellsProducts: false, offersServices: true }, "demo", theme))
-      .toEqual({ label: "Book a Stay", href: "/store/demo/hotel/rooms" });
+      .toEqual({ label: "Book a Stay", href: "/store/demo/catalog" });
   });
 
   it("routes restaurants to the catalog/menu", () => {

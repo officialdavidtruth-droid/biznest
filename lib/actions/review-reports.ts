@@ -9,7 +9,8 @@ import type { ReviewReportStatus } from "@prisma/client";
 import { assertStorePermission } from "@/lib/access/assert-store-access";
 import { checkRateLimit } from "@/lib/rate-limit";
 import { notifyUser } from "@/lib/notifications/notify";
-import { ADMIN_COOKIE_NAME, verifyAdminToken } from "@/lib/admin-pin-auth";
+import { ADMIN_COOKIE_NAME } from "@/lib/admin-pin-auth";
+import { verifyAdminSession } from "@/lib/admin-session";
 import { recomputeBusinessRating } from "@/lib/reviews/rating";
 import { REVIEW_REPORT_MAX_DETAILS, REVIEW_REPORT_REASONS } from "@/lib/constants/review-report";
 
@@ -18,7 +19,7 @@ import { REVIEW_REPORT_MAX_DETAILS, REVIEW_REPORT_REASONS } from "@/lib/constant
 async function assertPlatformStaff() {
   const cookieStore = await cookies();
   const token = cookieStore.get(ADMIN_COOKIE_NAME)?.value;
-  const valid = await verifyAdminToken(token);
+  const valid = await verifyAdminSession(token);
   if (!valid) return { success: false as const, error: "Admin PIN session expired or invalid. Please sign in again." };
   return { success: true as const };
 }
