@@ -41,6 +41,29 @@ vi.mock("next/cache", () => ({
   unstable_cache: <T extends (...args: never[]) => unknown>(fn: T) => fn,
 }));
 
+// `cookies()` / `headers()` throw outside a Next.js request scope. Server
+// actions read them (store-customer session, rate limiting, IP lookups), so
+// give every test an empty, writable cookie jar and empty headers. A test
+// file that needs specific values can still vi.mock("next/headers") itself.
+vi.mock("next/headers", () => {
+  const jar = new Map<string, string>();
+  const cookieStore = {
+    get: (name: string) => (jar.has(name) ? { name, value: jar.get(name)! } : undefined),
+    getAll: () => [...jar].map(([name, value]) => ({ name, value })),
+    has: (name: string) => jar.has(name),
+    set: (name: string, value?: string) => {
+      jar.set(name, String(value ?? ""));
+    },
+    delete: (name: string) => {
+      jar.delete(name);
+    },
+  };
+  return {
+    cookies: vi.fn(async () => cookieStore),
+    headers: vi.fn(async () => new Headers()),
+  };
+});
+
 // Modules that construct the Resend client at import time throw without a key.
 process.env.RESEND_API_KEY ||= "re_test_key";
 

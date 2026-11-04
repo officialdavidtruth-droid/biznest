@@ -47,8 +47,8 @@ describe("startCheckout", () => {
 
   afterEach(async () => {
     clearSession();
-    await prisma.user.deleteMany({ where: { id: buyerId } });
     await cleanupTestStore(fixture);
+    await prisma.user.deleteMany({ where: { id: buyerId } });
   });
 
   it("creates a PENDING_PAYMENT order, charges the gateway, and records a PENDING payment", async () => {
@@ -256,8 +256,8 @@ describe("decrementStockForOrder", () => {
   });
 
   afterEach(async () => {
-    await prisma.user.deleteMany({ where: { id: buyerId } });
     await cleanupTestStore(fixture);
+    await prisma.user.deleteMany({ where: { id: buyerId } });
   });
 
   async function createPaidOrder(productId: string, quantity: number) {
