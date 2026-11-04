@@ -3,7 +3,9 @@ import { PUBLIC_TEMPLATE_REGISTRY } from "@/lib/template-registry";
 import { resolveHomeRenderer } from "@/lib/storefront/resolve-renderer";
 import { resolveStoreTheme } from "@/lib/template-themes";
 
-const builderTemplates = PUBLIC_TEMPLATE_REGISTRY.filter((t) => resolveHomeRenderer(t.name).kind === "builder");
+// Every public template, hotel ones included: a hotel template drawn for a non-hotel store looks like a builder one,
+// so it must not duplicate another template's header, footer, card or hero either.
+const builderTemplates = PUBLIC_TEMPLATE_REGISTRY.filter((t) => ["builder", "hotel"].includes(resolveHomeRenderer(t.name).kind));
 
 describe("template uniqueness", () => {
   it("every builder-rendered template declares its own header/footer/card identity", () => {

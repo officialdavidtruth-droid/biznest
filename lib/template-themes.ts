@@ -855,10 +855,15 @@ export const HERO_VARIANT_BY_MODE: Readonly<Record<string, HeroVariant>> = {
 };
 /** Templates that used to reuse another template's renderer. They now render through the Builder with their own identity. */
 export const NAMED_TEMPLATE_IDENTITY: Record<string, { chrome: TemplateChrome; heroStyle?: HeroStyle; heroVariant?: HeroVariant }> = {
+  // Signature-collection templates that used to borrow the same header + hero as a hotel template.
+  "Transit — Logistics & Delivery": { chrome: C("centered", "cta", "minimal"), heroStyle: "split", heroVariant: "ledger" },
+  "Vitalis — Clinic & Care": { chrome: C("centered", "columns", "bordered"), heroStyle: "split", heroVariant: "splitcard" },
+  "Atelier — Modern Fashion": { chrome: C("stripe", "centered", "tall"), heroStyle: "fullbleed", heroVariant: "editorial" },
+  "Electra — Smart Commerce": { chrome: C("overlay", "columns", "minimal"), heroStyle: "split", heroVariant: "tiles" },
   "Emarket Furniture & Home": { chrome: C("classic", "columns", "tall"), heroStyle: "split", heroVariant: "splitcard" },
   "ShopNova Marketplace": { chrome: C("bar", "minimal", "bordered"), heroStyle: "centered", heroVariant: "banner" },
   "Electra Blue Electronics": { chrome: C("centered", "minimal", "bordered"), heroStyle: "fullbleed", heroVariant: "quiet" },
-  "TechNova Mobile Store": { chrome: C("overlay", "cta", "bordered"), heroStyle: "split", heroVariant: "splitcard" },
+  "TechNova Mobile Store": { chrome: C("overlay", "columns", "bordered"), heroStyle: "split", heroVariant: "banner" },
   "TechVerse Gadgets": { chrome: C("bar", "centered", "overlay"), heroStyle: "centered", heroVariant: "poster" },
   "ShopEase General Store": { chrome: C("centered", "columns", "minimal"), heroStyle: "fullbleed", heroVariant: "tiles" },
   "Violet — Sunset": { chrome: C("centered", "minimal", "tall"), heroStyle: "centered", heroVariant: "banner" },

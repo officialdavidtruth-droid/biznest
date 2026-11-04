@@ -184,11 +184,9 @@ export function buildNavGroups(business: NavBusiness): Array<{
           { label: "Menus", href: "/menus", icon: ListTree, permission: "settings" as StaffPermissionId },
         ] : []),
         ...(isHotelBusiness(canonicalType) ? [{ label: "Hotel Website", href: "/hotel", icon: Images, permission: "settings" as StaffPermissionId }] : []),
-        ...(String(business.category||"").toLowerCase().includes("retail") || String(business.category||"").toLowerCase().includes("electronics") ? [{ label: "Example Website", href: "/example", icon: Wand2, permission: "settings" as StaffPermissionId }] : []),
         ...(isRestaurantBusiness(canonicalType) ? [
           { label: "Events", href: "/events", icon: CalendarDays, permission: "settings" as StaffPermissionId },
           { label: "Gallery & Videos", href: "/gallery", icon: Images, permission: "settings" as StaffPermissionId },
-          { label: "TasteHouse Website", href: "/tastehouse", icon: Wand2, permission: "settings" as StaffPermissionId },
         ] : []),
       ],
     },

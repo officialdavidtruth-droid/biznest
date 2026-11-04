@@ -6,7 +6,6 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ArrowLeft } from "lucide-react";
 import { StoreFooter } from "@/components/storefront/store-footer";
-import { TasteHouseOrders } from "@/components/storefront/tastehouse";
 import { OrdersListContent } from "./orders-list-content";
 
 export default async function StoreOrdersPage({ params }: { params: Promise<{ slug: string }> }) {
@@ -14,12 +13,6 @@ export default async function StoreOrdersPage({ params }: { params: Promise<{ sl
   const store = await getStoreBranding(slug);
   if (!store) notFound();
 
-  // One lookup for everything this page needs from the store record.
-  const record = await prisma.store.findUnique({
-    where: { slug },
-    select: { template: { select: { name: true } }, business: { select: { sellsProducts: true } } },
-  });
-  const templateName = record?.template?.name ?? null;
   const copy = getAccountCopy(undefined, store.businessCategory);
 
   return (

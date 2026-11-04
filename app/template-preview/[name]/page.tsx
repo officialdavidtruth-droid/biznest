@@ -2,7 +2,6 @@ import { defaultPhoto } from "@/lib/default-images";
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { SignatureScreenshotHome } from "@/components/storefront/signature-screenshot-home";
-import { ExampleStorefront } from "@/components/storefront/example-store";
 import { getTemplateDefinition } from "@/lib/template-registry";
 import { resolveHomeRenderer } from "@/lib/storefront/resolve-renderer";
 import { BuilderStorefront } from "@/components/storefront/builder-renderer";
@@ -93,7 +92,6 @@ export default async function TemplatePreviewPage({ params }: { params: Promise<
   const sampleItems = isFashion ? fashionItems(tpl) : items;
   const p:any = { store: previewStore, slug:"__biznest-template-preview", catalogItems:sampleItems, items:sampleItems, navCategories:isFashion ? fashionCategories : categories, goodReviews:[], reviews:[], avgRating:null, completedOrders:0, trustScore:null, trustChecklist:null, social:{} };
   if (home.kind === "screenshot") return <SignatureScreenshotHome {...p} mode={home.mode} {...home.palette}/>;
-  if (home.kind === "example") return <ExampleStorefront store={previewStore} slug={p.slug} items={sampleItems as any} mode="home"/>;
   if (home.kind === "hotel") return <ThelusoHotel store={previewStore as any} slug={p.slug} content={await getHotelContent(p.slug, definition.name)}/>;
   const theme = resolveStoreTheme(definition.category, previewStore.name, null, null, definition.name);
   const config = templateThemeToBuilderConfig({ ...theme, neutral: true }, previewStore.name, previewStore.business.description, previewStore.bannerUrl, previewStore.business as any);

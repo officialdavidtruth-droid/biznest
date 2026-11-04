@@ -1,2 +1,11 @@
-import {notFound,redirect} from "next/navigation"; import {prisma} from "@/lib/prisma"; import {ExampleStorefront} from "@/components/storefront/example-store"; import {EXAMPLE_TEMPLATE_NAME} from "@/lib/example-content";
-export default async function Page({params}:{params:Promise<{slug:string}>}){const {slug}=await params; const s=await prisma.store.findUnique({where:{slug},include:{template:true,business:true}}); if(!s||s.status!=="ACTIVE")notFound(); if(s.template?.name!==EXAMPLE_TEMPLATE_NAME)redirect(`/store/${slug}/checkout`); return <ExampleStorefront store={{...s,sellsProducts:s.business?.sellsProducts??true}} slug={slug} items={[]} mode="review"/>;}
+// Route: /store/[slug]/review
+// There is no separate review step: checkout is the review.
+import { notFound, redirect } from "next/navigation";
+import { prisma } from "@/lib/prisma";
+
+export default async function ReviewPage({ params }: { params: Promise<{ slug: string }> }) {
+  const { slug } = await params;
+  const store = await prisma.store.findUnique({ where: { slug }, select: { status: true } });
+  if (!store || store.status !== "ACTIVE") notFound();
+  redirect(`/store/${slug}/checkout`);
+}

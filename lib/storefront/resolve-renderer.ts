@@ -24,7 +24,6 @@ export type ScreenshotPalette = {
 export type HomeRenderer =
   | { kind: "screenshot"; mode: ScreenshotMode; palette: ScreenshotPalette }
   | { kind: "hotel" }
-  | { kind: "example" }
   | { kind: "builder" };
 
 export type HomeRendererKind = HomeRenderer["kind"];

@@ -1,2 +1,11 @@
-import {notFound} from "next/navigation"; import {prisma} from "@/lib/prisma"; import {ExampleStorefront} from "@/components/storefront/example-store"; import {EXAMPLE_TEMPLATE_NAME} from "@/lib/example-content";
-export default async function Page({params}:{params:Promise<{slug:string}>}){const {slug}=await params; const s=await prisma.store.findUnique({where:{slug},include:{template:true,business:true,products:{where:{isPublished:true},take:30,include:{category:true}}}}); if(!s||s.status!=="ACTIVE"||s.template?.name!==EXAMPLE_TEMPLATE_NAME)notFound(); const items=s.products.map(p=>({id:p.id,kind:"product" as const,name:p.name,description:p.description,price:Number(p.price),currency:p.currency,image:p.images[0]??null,categoryName:p.category?.name??null,type:p.type,rentalUnit:p.rentalPeriodUnit,isBookable:false})); return <ExampleStorefront store={{...s,sellsProducts:s.business?.sellsProducts??true}} slug={slug} items={items} mode="deals"/>;}
+// Route: /store/[slug]/deals
+// "Deals" is the catalog: it lives in the template's own header/footer like every other shop page.
+import { notFound, redirect } from "next/navigation";
+import { prisma } from "@/lib/prisma";
+
+export default async function DealsPage({ params }: { params: Promise<{ slug: string }> }) {
+  const { slug } = await params;
+  const store = await prisma.store.findUnique({ where: { slug }, select: { status: true } });
+  if (!store || store.status !== "ACTIVE") notFound();
+  redirect(`/store/${slug}/catalog`);
+}

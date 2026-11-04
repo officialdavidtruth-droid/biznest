@@ -1,8 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import { notFound } from "next/navigation";
 import { GrandeurMenu } from "@/components/storefront/grandeur-restaurant";
-import { TasteHouseMenu } from "@/components/storefront/tastehouse";
-import { ExampleStorefront } from "@/components/storefront/example-store";
 import { CatalogExperience } from "@/components/storefront/catalog-experience";
 import { catalogDesign, catalogStoreInfo } from "@/lib/storefront/catalog-props";
 import { resolveStoreTheme } from "@/lib/template-themes";

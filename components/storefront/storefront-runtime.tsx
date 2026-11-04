@@ -6,8 +6,6 @@ import { recordStoreVisit } from "@/lib/actions/analytics";
 import { defaultBuilderConfig } from "@/lib/builder-config";
 import { BuilderStorefront } from "@/components/storefront/builder-renderer";
 import { ThelusoHotel } from "@/components/storefront/theluso-hotel";
-import { ExampleStorefront } from "@/components/storefront/example-store";
-import { getExampleContent } from "@/lib/example-content";
 import { getHotelContent } from "@/lib/hotel-content";
 import { getTemplateDefinition } from "@/lib/template-registry";
 import { resolveHomeRenderer } from "@/lib/storefront/resolve-renderer";
@@ -79,7 +77,6 @@ export async function renderStorefront(slug:string,opts?:{preview?:boolean}){
  const arrangement=getTemplateArrangement(store.sectionOverrides);
  const arranged=(node:ReactNode)=><SectionArranger arrangement={arrangement}>{node}</SectionArranger>;
  if(home.kind==="screenshot") return arranged(<SignatureScreenshotHome store={store} slug={slug} items={catalogItems as any} reviews={store.reviews} avgRating={avgRating} completedOrders={completedOrders} social={social} mode={home.mode} {...home.palette}/>);
- if(home.kind==="example") return arranged(<ExampleStorefront store={store} slug={slug} items={catalogItems} mode="home" content={await getExampleContent(slug) as any}/>);
  if(home.kind==="hotel") return arranged(<ThelusoHotel store={store} slug={slug} content={await getHotelContent(slug)}/>);
 
  if(home.kind==="builder") {

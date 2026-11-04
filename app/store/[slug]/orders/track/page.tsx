@@ -1,2 +1,11 @@
-import {notFound,redirect} from "next/navigation"; import {prisma} from "@/lib/prisma"; import {listOrdersForBuyerAtStore} from "@/lib/actions/order"; import {TasteHouseTrack} from "@/components/storefront/tastehouse"; import {TASTEHOUSE_TEMPLATE_NAME} from "@/lib/template-themes"; import {EXAMPLE_TEMPLATE_NAME} from "@/lib/example-content"; import {ExampleStorefront} from "@/components/storefront/example-store";
-export default async function Page({params}:{params:Promise<{slug:string}>}){const {slug}=await params; const s=await prisma.store.findUnique({where:{slug},include:{template:true,business:true,products:{where:{isPublished:true},take:20,include:{category:true}}}}); if(!s||s.status!=="ACTIVE")notFound(); const orders=await listOrdersForBuyerAtStore(slug); const latest=orders[0]; if(s.template?.name===EXAMPLE_TEMPLATE_NAME)return <ExampleStorefront store={{...s,sellsProducts:s.business?.sellsProducts??true}} slug={slug} items={[]} mode="track" order={latest}/>; if(s.template?.name===TASTEHOUSE_TEMPLATE_NAME)return <TasteHouseTrack store={{...s,sellsProducts:s.business?.sellsProducts??true}} slug={slug} order={latest||null}/>; redirect(`/store/${slug}/orders`);}
+// Route: /store/[slug]/orders/track
+// Order tracking is the orders list (each order opens its own tracking page), drawn by the shared pages.
+import { notFound, redirect } from "next/navigation";
+import { prisma } from "@/lib/prisma";
+
+export default async function OrderTrackPage({ params }: { params: Promise<{ slug: string }> }) {
+  const { slug } = await params;
+  const store = await prisma.store.findUnique({ where: { slug }, select: { status: true } });
+  if (!store || store.status !== "ACTIVE") notFound();
+  redirect(`/store/${slug}/orders`);
+}

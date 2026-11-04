@@ -12,8 +12,6 @@ import { HOTEL_TEMPLATE_NAME } from "@/lib/hotel-content";
 import { getHotelContent } from "@/lib/hotel-content";
 import { GrandeurCheckout } from "@/components/storefront/grandeur-restaurant";
 import { getGrandeurRestaurantData } from "@/lib/grandeur-restaurant";
-import { TasteHouseCheckout } from "@/components/storefront/tastehouse";
-import { ExampleStorefront } from "@/components/storefront/example-store";
 import { TrackBeginCheckout } from "@/components/storefront/store-tracking";
 
 // One wrapper for every checkout skin (default, hotel, restaurant, TasteHouse,

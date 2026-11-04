@@ -48,7 +48,9 @@ export function getStoreKind(i: StoreIdentity): StoreKind {
 const PAGE_RULES: Record<string, (i: StoreIdentity) => boolean> = {
   "/gallery": (i) => isHotelStore(i) || isGrandeurStore(i),
   "/events": (i) => isHotelStore(i) || isGrandeurStore(i),
-  "/reservations": (i) => isGrandeurStore(i) || resolveStorefrontRenderer(i) === "tastehouse",
+  "/reservations": (i) => isGrandeurStore(i),
+  // Made-to-measure order form (Fashion & Tailoring workspace): only fashion businesses have it.
+  "/order-request": (i) => /^fashion$/i.test(String(getCanonicalBusinessType({ businessCategory: i.businessCategory, storeBusinessType: i.storeBusinessType }) ?? "")),
   "/rooms": isHotelStore,
   "/amenities": isHotelStore,
   "/dining": isHotelStore,

@@ -1,2 +1,11 @@
-import { isStorefrontRenderer } from "@/lib/storefront-routing"; import {notFound} from "next/navigation"; import {prisma} from "@/lib/prisma"; import {TasteHouseCategories} from "@/components/storefront/tastehouse";
-export default async function Page({params}:{params:Promise<{slug:string}>}){const {slug}=await params; const s=await prisma.store.findUnique({where:{slug},include:{template:true,business:true,products:{where:{isPublished:true},take:20,include:{category:true}}}}); if(!s||s.status!=="ACTIVE"||!isStorefrontRenderer({ templateName:s.template?.name }, "tastehouse"))notFound(); const items=s.products.map(p=>({id:p.id,kind:"product" as const,name:p.name,description:null,price:Number(p.price),currency:p.currency,image:p.images[0]??null,categoryName:p.category?.name??null})); return <TasteHouseCategories store={{...s,sellsProducts:s.business?.sellsProducts??true}} slug={slug} items={items}/>;}
+// Route: /store/[slug]/favorites
+// Saved items live in the customer account.
+import { notFound, redirect } from "next/navigation";
+import { prisma } from "@/lib/prisma";
+
+export default async function Page({ params }: { params: Promise<{ slug: string }> }) {
+  const { slug } = await params;
+  const store = await prisma.store.findUnique({ where: { slug }, select: { status: true } });
+  if (!store || store.status !== "ACTIVE") notFound();
+  redirect(`/store/${slug}/account`);
+}

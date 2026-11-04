@@ -7,8 +7,6 @@ import { notFound } from "next/navigation";
 import { CartClient } from "./cart-client";
 import { GrandeurCart } from "@/components/storefront/grandeur-restaurant";
 import { getGrandeurRestaurantData } from "@/lib/grandeur-restaurant";
-import { TasteHouseCart } from "@/components/storefront/tastehouse";
-import { ExampleStorefront } from "@/components/storefront/example-store";
 import { buildSystemSlots } from "@/components/storefront/system-slots";
 
 export default async function CartPage({ params }: { params: Promise<{ slug: string }> }) {

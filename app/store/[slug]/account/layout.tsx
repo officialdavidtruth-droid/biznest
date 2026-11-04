@@ -3,7 +3,6 @@ import { requireStoreCustomer } from "@/lib/actions/store-customer";
 import { getUnreadStoreMessageCount } from "@/lib/actions/account";
 import { redirect, notFound } from "next/navigation";
 import { StoreAccountLegacyShell } from "@/components/storefront/store-account-legacy-shell";
-import { ExampleAccountShell } from "@/components/storefront/example-account-shell";
 import { VelouraAccountShell } from "@/components/storefront/veloura-account-shell";
 import { HOTEL_TEMPLATE_NAME } from "@/lib/hotel-content";
 import { prisma } from "@/lib/prisma";
