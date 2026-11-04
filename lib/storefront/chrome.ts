@@ -12,8 +12,6 @@ import { usesGrandeurSkin } from "@/lib/store-pages";
  *   cart-inline   (retired) the bare <header> that used to sit in cart-client.tsx; the cart is now wrapped like every other page
  *   hotel         ThelusoHotel's Header / Footer (RefHeader / RefFooter for the reference-hotel skins)
  *   grandeur      GrandeurHeader / GrandeurFooter (grandeur-restaurant.tsx)
- *   tastehouse    Shell / Footer in tastehouse.tsx
- *   example       ExampleHeader / ExampleFooter (example-store.tsx)
  *   signature:<m> Shell / Footer in signature-screenshot-home.tsx for mode <m>
  *
  * THIS MODEL MIRRORS THE ROUTES; it does not drive them yet. Each branch below is the decision the matching route
@@ -43,7 +41,6 @@ export function homeChrome(i: StoreChromeInput): ChromeId {
   switch (home.kind) {
     case "builder": return "builder";
     case "hotel": return "hotel";
-    case "example": return "example";
     case "screenshot": return `signature:${home.mode}`;
   }
 }
