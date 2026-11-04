@@ -46,7 +46,7 @@ export async function renderStorefront(slug:string,opts?:{preview?:boolean}){
  const completedOrders=await prisma.order.count({where:{storeId:store.id,status:"COMPLETED"}}).catch(()=>0);
  const avgRating=store.business?.avgRating??null;
  // One resolver decides the homepage component for runtime AND preview.
- const home=resolveHomeRenderer(templateName);
+ const home=resolveHomeRenderer(templateName,{businessCategory:store.business?.category,storeBusinessType:store.businessType});
  const themeOverrides = store.themeColors as {primary?:string;secondary?:string;accent?:string}|null;
  const sectionOverridesRaw = store.sectionOverrides as { faq?: unknown } | null;
  const fallbackFaq = faqFromStoreOverrides(sectionOverridesRaw?.faq);
@@ -59,7 +59,7 @@ export async function renderStorefront(slug:string,opts?:{preview?:boolean}){
    // Keep the user's saved section order/content, but guarantee a visible
    // homepage hero using the active template's own hero settings as fallback.
    const theme=resolveStoreTheme(store.template?.category,store.name,themeOverrides,store.fontFamily,store.template?.name);
-   const templateConfig=templateThemeToBuilderConfig(template?.home==="builder"?{...theme,neutral:true}:theme,store.name,store.business?.description,store.bannerUrl,{category:store.business?.category,subcategory:store.business?.businessSubcategory,sellsProducts:store.business?.sellsProducts,offersServices:store.business?.offersServices});
+   const templateConfig=templateThemeToBuilderConfig(home.kind==="builder"?{...theme,neutral:true}:theme,store.name,store.business?.description,store.bannerUrl,{category:store.business?.category,subcategory:store.business?.businessSubcategory,sellsProducts:store.business?.sellsProducts,offersServices:store.business?.offersServices});
    const fallbackHero=templateConfig.sections.find((section)=>section.type==="hero");
    const heroIndex=savedBuilder.sections.findIndex((section)=>section.type==="hero");
    const sections=[...savedBuilder.sections];
@@ -82,9 +82,9 @@ export async function renderStorefront(slug:string,opts?:{preview?:boolean}){
  if(home.kind==="example") return arranged(<ExampleStorefront store={store} slug={slug} items={catalogItems} mode="home" content={await getExampleContent(slug) as any}/>);
  if(home.kind==="hotel") return arranged(<ThelusoHotel store={store} slug={slug} content={await getHotelContent(slug)}/>);
 
- if(template?.home==="builder") {
+ if(home.kind==="builder") {
    const theme=resolveStoreTheme(store.template?.category,store.name,themeOverrides,store.fontFamily,store.template?.name);
-   const baseConfig=templateThemeToBuilderConfig(template?.home==="builder"?{...theme,neutral:true}:theme,store.name,store.business?.description,store.bannerUrl,{category:store.business?.category,subcategory:store.business?.businessSubcategory,sellsProducts:store.business?.sellsProducts,offersServices:store.business?.offersServices});
+   const baseConfig=templateThemeToBuilderConfig(home.kind==="builder"?{...theme,neutral:true}:theme,store.name,store.business?.description,store.bannerUrl,{category:store.business?.category,subcategory:store.business?.businessSubcategory,sellsProducts:store.business?.sellsProducts,offersServices:store.business?.offersServices});
    // The owner's Content-panel hero text (headline / subtitle / button) wins over the template defaults.
    const ho=(store.heroOverrides??{}) as {headline?:string;subtitle?:string;ctaLabel?:string};
    const config={...baseConfig,sections:applySectionHeadings(baseConfig.sections,getSectionHeadings(store.sectionOverrides)).map((sec:any)=>sec.type!=="hero"?sec:{...sec,settings:{...sec.settings,...(ho.headline?.trim()?{heading:ho.headline.trim()}:{}),...(ho.subtitle?.trim()?{body:ho.subtitle.trim()}:{}),...(ho.ctaLabel?.trim()?{ctaLabel:ho.ctaLabel.trim()}:{})}})};

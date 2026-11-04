@@ -882,6 +882,12 @@ export const NAMED_TEMPLATE_IDENTITY: Record<string, { chrome: TemplateChrome; h
   "Grandeur — Fine Dining Restaurant": { chrome: C("centered", "cta", "tall"), heroStyle: "fullbleed", heroVariant: "frame" },
   "TasteHouse — Food Delivery": { chrome: C("bar", "cta", "overlay"), heroStyle: "split", heroVariant: "tiles" },
   "Example — Modern Electronics Store": { chrome: C("classic", "minimal", "bordered"), heroStyle: "split", heroVariant: "splitcard" },
+  "Veloura — Superior Luxury Hotel": { chrome: C("overlay", "centered", "tall"), heroStyle: "fullbleed", heroVariant: "poster" },
+  "Aspire Resort": { chrome: C("classic", "minimal", "overlay"), heroStyle: "fullbleed", heroVariant: "quiet" },
+  "Larita Luxury Hotel": { chrome: C("centered", "columns", "tall"), heroStyle: "split", heroVariant: "editorial" },
+  "Skyview Hotels & Resorts": { chrome: C("bar", "cta", "bordered"), heroStyle: "fullbleed", heroVariant: "tiles" },
+  "Maison — Hotel & Stay": { chrome: C("stripe", "minimal", "tall"), heroStyle: "centered", heroVariant: "frame" },
+  "Grand — Hotel & Hospitality": { chrome: C("overlay", "cta", "bordered"), heroStyle: "split", heroVariant: "splitcard" },
   "Bloom — Beauty Boutique": { chrome: C("stripe", "centered", "bordered"), heroStyle: "split", heroVariant: "quiet" },
 };
 

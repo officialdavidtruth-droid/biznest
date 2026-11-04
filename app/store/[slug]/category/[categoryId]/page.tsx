@@ -70,7 +70,7 @@ export default async function CategoryPage({ params }: { params: Promise<{ slug:
     return <GrandeurMenu store={{...store,sellsProducts:store.business?.sellsProducts??true} as any} slug={slug} items={items.map(i=>({...i,description:null,type:i.kind,rentalUnit:null,isBookable:false})) as any}/>;
   }
   const theme=resolveStoreTheme(store.template?.category,store.name,store.themeColors as any,store.fontFamily,store.template?.name);
-  const chrome = usesTemplateChromeFor(store.template?.name, store.sectionOverrides);
+  const chrome = usesTemplateChromeFor(store.template?.name, store.sectionOverrides, { businessCategory: store.business?.category, storeBusinessType: store.businessType });
   const page = (
     <CatalogExperience
       externalChrome={chrome}

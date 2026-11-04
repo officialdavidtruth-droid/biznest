@@ -30,7 +30,7 @@ function look(raw: NonNullable<Awaited<ReturnType<typeof getBlogStore>>>, slug: 
   const theme = resolveStoreTheme(raw.template?.category, raw.name, raw.themeColors as any, raw.fontFamily, raw.template?.name);
   // Same rule as the home page: Builder stores (or a published Customize layout) use the Builder header and footer,
   // every other template keeps its own, so the blog never looks like a different site.
-  const templateChrome = usesTemplateChromeFor(raw.template?.name, raw.sectionOverrides);
+  const templateChrome = usesTemplateChromeFor(raw.template?.name, raw.sectionOverrides, { businessCategory: raw.business?.category, storeBusinessType: raw.businessType });
   const wrap = (node: ReactNode) => (templateChrome ? <TemplateShell store={raw} slug={slug} theme={theme}>{node}</TemplateShell> : node);
   return { store: catalogStoreInfo(raw, slug), design: catalogDesign(raw, theme), templateChrome, wrap };
 }

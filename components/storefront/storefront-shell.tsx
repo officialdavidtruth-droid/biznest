@@ -11,6 +11,6 @@ import { usesTemplateChromeFor } from "@/lib/storefront/template-chrome";
  * gets its own skin. This is what keeps the site from changing look between the home page and the last page.
  */
 export async function StorefrontShell({ store, slug, theme, children }: { store: any; slug: string; theme: TemplateTheme; children: ReactNode }) {
-  if (usesTemplateChromeFor(store.template?.name, store.sectionOverrides)) return <TemplateShell store={store} slug={slug} theme={theme}>{children}</TemplateShell>;
+  if (usesTemplateChromeFor(store.template?.name, store.sectionOverrides, { businessCategory: store.business?.category, storeBusinessType: store.businessType })) return <TemplateShell store={store} slug={slug} theme={theme}>{children}</TemplateShell>;
   return <BuilderPageShell store={catalogStoreInfo(store, slug) as any} design={catalogDesign(store, theme)}>{children}</BuilderPageShell>;
 }

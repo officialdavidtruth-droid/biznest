@@ -32,7 +32,7 @@ export default async function CatalogPage({ params, searchParams }: { params: Pr
   const theme = resolveStoreTheme(store.template?.category, store.name, store.themeColors as any, store.fontFamily, store.template?.name);
   const design = catalogDesign(store, theme);
   const slots = await buildSystemSlots(store, "shop", { text: design.text, accent: design.accent, primary: design.primary, line: `${design.text}1f`, radius: design.radius, headingFont: fontStack(design.headingFont) });
-  const chrome = usesTemplateChromeFor(store.template?.name, store.sectionOverrides);
+  const chrome = usesTemplateChromeFor(store.template?.name, store.sectionOverrides, { businessCategory: store.business?.category, storeBusinessType: store.businessType });
   const page = (
     <CatalogExperience
       externalChrome={chrome}

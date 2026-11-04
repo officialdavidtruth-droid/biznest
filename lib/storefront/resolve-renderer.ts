@@ -1,3 +1,4 @@
+import { getCanonicalBusinessType, isHotelBusiness } from "@/lib/business-identity";
 import {
   HOTEL_TEMPLATE_NAME,
   NAMED_TEMPLATE_IDENTITY,
@@ -41,9 +42,30 @@ export const SCREENSHOT_PALETTES: Readonly<Record<ScreenshotMode, ScreenshotPale
 
 const isScreenshotMode = (m: string | undefined): m is ScreenshotMode => !!m && m in SCREENSHOT_PALETTES;
 
-export function resolveHomeRenderer(templateName: string | null | undefined): HomeRenderer {
+/** The business the template is being used for. Optional: callers that only know the template name get the template's own home. */
+export type HomeBusiness = { businessCategory?: string | null; storeBusinessType?: string | null };
+
+/**
+ * A template is a look, not a business type. The hotel templates draw rooms / booking, which only makes sense for a hotel,
+ * so when the owner's business is known and is NOT a hotel (a travel agency on "Veloura", say) the home is drawn by the
+ * Builder in that template's look instead, with wording from the owner's own data. Unknown business keeps the hotel home.
+ */
+export function isKnownNonHotelBusiness(b?: HomeBusiness | null): boolean {
+  if (!b) return false;
+  const raw = String(b.businessCategory ?? "").trim() || String(b.storeBusinessType ?? "").trim();
+  if (!raw) return false;
+  return !isHotelBusiness(getCanonicalBusinessType({ businessCategory: b.businessCategory, storeBusinessType: b.storeBusinessType }));
+}
+
+export function resolveHomeRenderer(templateName: string | null | undefined, business?: HomeBusiness | null): HomeRenderer {
+  const base = baseHomeRenderer(templateName);
+  if (base.kind === "hotel" && isKnownNonHotelBusiness(business)) return { kind: "builder" };
+  return base;
+}
+
+function baseHomeRenderer(templateName: string | null | undefined): HomeRenderer {
   const name = templateName ?? "";
-  if (name === "Aspire Resort" || name === "Larita Luxury Hotel" || name === "Skyview Hotels & Resorts") return { kind: "hotel" };
+  if (name === HOTEL_TEMPLATE_NAME || name === "Aspire Resort" || name === "Larita Luxury Hotel" || name === "Skyview Hotels & Resorts") return { kind: "hotel" };
   // Maison / Grand: homepage and every inner page (rooms, booking, contact...) must share ONE chrome. Inner pages are
   // always the hotel journey (isHotelStore), so the homepage is the hotel renderer too, skinned from the same palette (lib/hotel-skin.ts).
   if (name === "Maison — Hotel & Stay" || name === "Grand — Hotel & Hospitality") return { kind: "hotel" };
@@ -56,6 +78,5 @@ export function resolveHomeRenderer(templateName: string | null | undefined): Ho
   if (NAMED_TEMPLATE_IDENTITY[name]) return { kind: "builder" };
   const dedicated = SIGNATURE_DEDICATED_RENDERER[name];
   if (isScreenshotMode(dedicated)) return { kind: "screenshot", mode: dedicated, palette: SCREENSHOT_PALETTES[dedicated] };
-  if (name === HOTEL_TEMPLATE_NAME) return { kind: "hotel" };
   return { kind: "builder" };
 }

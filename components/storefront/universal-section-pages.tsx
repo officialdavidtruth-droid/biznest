@@ -133,7 +133,7 @@ function text(store:any, mode:"creative"|"business"){
 function headerLinksFor(store:any):string[][]{
   const skinNav=skinFor(store.template?.name)?.nav;
   if(skinNav) return skinNav;
-  if(resolveHomeRenderer(store.template?.name).kind==="builder"||getSavedBuilder(store.sectionOverrides)){
+  if(resolveHomeRenderer(store.template?.name,{businessCategory:store.business?.category,storeBusinessType:store.businessType}).kind==="builder"||getSavedBuilder(store.sectionOverrides)){
     const mode=resolveBusinessMode(store.business?.category,{sellsProducts:store.sellsProducts??store.business?.sellsProducts,offersServices:store.offersServices??store.business?.offersServices});
     return builderHomeNav(mode==="service");
   }

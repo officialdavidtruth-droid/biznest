@@ -1,4 +1,4 @@
-import { resolveHomeRenderer } from "@/lib/storefront/resolve-renderer";
+import { resolveHomeRenderer, type HomeBusiness } from "@/lib/storefront/resolve-renderer";
 import { isHotelStore } from "@/lib/storefront-routing";
 import { usesGrandeurSkin } from "@/lib/store-pages";
 
@@ -39,7 +39,7 @@ export type StoreChromeInput = {
 export function homeChrome(i: StoreChromeInput): ChromeId {
   // storefront-runtime.tsx: a published builder layout beats every template's own homepage.
   if (i.publishedBuilder) return "builder";
-  const home = resolveHomeRenderer(i.templateName);
+  const home = resolveHomeRenderer(i.templateName, i);
   switch (home.kind) {
     case "builder": return "builder";
     case "hotel": return "hotel";
@@ -50,7 +50,7 @@ export function homeChrome(i: StoreChromeInput): ChromeId {
 
 /** Mirrors usesTemplateChromeFor(): the shared pages wear the Builder chrome when the home page is drawn by the Builder. */
 function sharedPagesUseBuilder(i: StoreChromeInput): boolean {
-  return Boolean(i.publishedBuilder) || resolveHomeRenderer(i.templateName).kind === "builder";
+  return Boolean(i.publishedBuilder) || resolveHomeRenderer(i.templateName, i).kind === "builder";
 }
 
 export function pageChrome(page: StorefrontPage, i: StoreChromeInput): ChromeId {
@@ -80,7 +80,7 @@ export function pageChrome(page: StorefrontPage, i: StoreChromeInput): ChromeId 
       if (i.publishedBuilder || i.ownerContactPage) return "builder"; // renderBuilderSubpage(..., { onlyIfCustomised: true })
       if (isHotelStore({ storeBusinessType: i.storeBusinessType, templateName: i.templateName })) return "hotel";
       if (usesGrandeurSkin(identity)) return "grandeur";
-      if (resolveHomeRenderer(i.templateName).kind === "builder") return "builder"; // renderBuilderSubpage, native template
+      if (resolveHomeRenderer(i.templateName, i).kind === "builder") return "builder"; // renderBuilderSubpage, native template
       return "universal"; // renderUniversalSectionPage
   }
 }

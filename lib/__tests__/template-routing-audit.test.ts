@@ -8,9 +8,14 @@ import { GRANDEUR_TEMPLATE_NAME, TEMPLATE_NAME } from "@/lib/template-themes";
 const read = (p: string) => readFileSync(resolve(process.cwd(), p), "utf8");
 
 describe("template audit regressions", () => {
-  it("every hotel-home template gets hotel inner pages regardless of business type", () => {
-    for (const t of TEMPLATE_REGISTRY.filter((x) => x.home === "hotel"))
-      expect(isHotelStore({ templateName: t.name, businessCategory: "Retail", storeBusinessType: "Retail" }), t.name).toBe(true);
+  it("a hotel template gives hotel pages to a hotel or an unknown business, never to a known non-hotel business", () => {
+    for (const t of TEMPLATE_REGISTRY.filter((x) => x.home === "hotel")) {
+      expect(isHotelStore({ templateName: t.name, businessCategory: "Hotel & Lodging" }), t.name).toBe(true);
+      expect(isHotelStore({ templateName: t.name }), `${t.name} (unknown business)`).toBe(true);
+      expect(isHotelStore({ templateName: t.name, businessCategory: "Travel & Tourism", storeBusinessType: "Travel & Tourism" }), `${t.name} (travel)`).toBe(false);
+      expect(resolveHomeRenderer(t.name, { businessCategory: "Travel & Tourism" }).kind, `${t.name} home (travel)`).toBe("builder");
+      expect(resolveHomeRenderer(t.name, { businessCategory: "Hotel & Lodging" }).kind, `${t.name} home (hotel)`).toBe("hotel");
+    }
   });
   it("seed upserts Grandeur under its own name, never under another template's", () => {
     const seed = read("prisma/seed.ts");

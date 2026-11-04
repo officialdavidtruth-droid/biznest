@@ -63,8 +63,8 @@ export default async function CustomizePage({ params }: { params: Promise<{ slug
       offersServices={store.business.offersServices}
       seoTitle={store.seoTitle ?? store.name}
       seoDescription={store.seoDescription ?? ""}
-      templateHasOwnHomepage={resolveHomeRenderer(store.template?.name).kind !== "builder"}
-      homeKind={resolveHomeRenderer(store.template?.name).kind}
+      templateHasOwnHomepage={resolveHomeRenderer(store.template?.name, { businessCategory: store.business?.category, storeBusinessType: store.businessType }).kind !== "builder"}
+      homeKind={resolveHomeRenderer(store.template?.name, { businessCategory: store.business?.category, storeBusinessType: store.businessType }).kind}
       builderPublished={!!getSavedBuilder(store.sectionOverrides)}
       catalogOptions={catalogOptions}
       systemSections={readAllSystemSections(store.sectionOverrides)}

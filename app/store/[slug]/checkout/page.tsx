@@ -37,7 +37,7 @@ async function renderCheckout(slug: string) {
     if (data) return <GrandeurCheckout store={data.store} slug={slug} />;
   }
   const checkout = <CheckoutClient slug={slug} palette={resolveStorePalette(rawStore)} />;
-  if (!usesTemplateChromeFor(rawStore.template?.name, rawStore.sectionOverrides)) return checkout;
+  if (!usesTemplateChromeFor(rawStore.template?.name, rawStore.sectionOverrides, { businessCategory: rawStore.business?.category, storeBusinessType: rawStore.businessType })) return checkout;
   const theme = resolveStoreTheme(rawStore.template?.category, rawStore.name, rawStore.themeColors as any, rawStore.fontFamily, rawStore.template?.name);
   return <TemplateShell store={rawStore} slug={slug} theme={theme}>{checkout}</TemplateShell>;
 }

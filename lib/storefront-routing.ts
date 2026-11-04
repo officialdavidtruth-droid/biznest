@@ -1,3 +1,4 @@
+import { isKnownNonHotelBusiness } from "@/lib/storefront/resolve-renderer";
 import { getCanonicalBusinessType, isHotelBusiness, isRestaurantBusiness } from "@/lib/business-identity";
 import { getTemplateDefinition, type StorefrontRenderer } from "@/lib/template-registry";
 export function resolveStorefrontRenderer(input:{businessCategory?:string|null;storeBusinessType?:string|null;templateName?:string|null}):StorefrontRenderer{
@@ -9,6 +10,8 @@ export function isHotelStore(input:{businessCategory?:string|null;storeBusinessT
  // A selected hotel template is authoritative even when legacy business metadata is stale.
  // The registry is the source of truth: any template whose homepage is the hotel renderer
  // (e.g. "Aspire Resort", which has no "hotel" in its name) must also get the hotel inner pages.
+ // ...unless the owner's business is known and is not a hotel: then the template is only a look (see resolveHomeRenderer).
+ if(isKnownNonHotelBusiness(input)) return false;
  if(getTemplateDefinition(input.templateName)?.home==="hotel") return true;
  const name=String(input.templateName??"").toLowerCase();
  if(name.includes("hotel") || name.includes("lodging") || name.includes("grand-vere") || name.includes("grand vere") || name.includes("veloura")) return true;

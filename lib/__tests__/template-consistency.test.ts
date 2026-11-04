@@ -280,6 +280,6 @@ describe("the chrome model still matches the routes it mirrors", () => {
   });
   it("home: a published builder beats every template, and builder subpages are native-only", () => {
     expect(read("components/storefront/storefront-runtime.tsx")).toMatch(/savedBuilder\)\s*\{[\s\S]*?BuilderStorefront/);
-    expect(read("lib/storefront/builder-subpage.tsx")).toContain('resolveHomeRenderer(raw.template?.name).kind === "builder"');
+    expect(read("lib/storefront/builder-subpage.tsx")).toContain('resolveHomeRenderer(raw.template?.name, {');
   });
 });

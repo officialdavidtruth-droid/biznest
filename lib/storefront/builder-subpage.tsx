@@ -32,7 +32,7 @@ export async function renderBuilderSubpage(slug: string, kind: SubpageKind, opts
     },
   });
   if (!raw || raw.status !== "ACTIVE") notFound();
-  const native = resolveHomeRenderer(raw.template?.name).kind === "builder";
+  const native = resolveHomeRenderer(raw.template?.name, { businessCategory: raw.business?.category, storeBusinessType: raw.businessType }).kind === "builder";
   const saved = !!getSavedBuilder(raw.sectionOverrides);
   const owner = OWNER_KINDS.has(kind) ? await getOwnerPage(raw.id, kind as OwnerPageSlug) : null;
   // Gallery and Blog have no default page: they exist only when the owner wrote them.
