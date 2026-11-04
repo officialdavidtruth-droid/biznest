@@ -2,7 +2,8 @@
 
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 import Link from "next/link";
-import { LayoutGrid, List, Search, X } from "lucide-react";
+import { ArrowRight, Compass, LayoutGrid, List, MessageCircle, Search, X } from "lucide-react";
+import { useStoreCategories } from "@/components/storefront/store-categories";
 import type { BuilderConfig } from "@/lib/builder-config";
 import { getBusinessExperience } from "@/lib/business-experience";
 import { useCart } from "@/lib/cart-context";
@@ -130,7 +131,7 @@ export function CatalogExperience({
       <style>{`a{text-decoration:none;color:inherit}.bn-wrap{width:min(${width}px,calc(100% - 32px));margin:0 auto}.bn-grid{display:grid;gap:20px}
 .cx-chips{display:flex;gap:8px;overflow-x:auto;padding:2px 0 6px;scrollbar-width:thin}
 .cx-focus:focus-visible,.cx-chips button:focus-visible,.cx-row:focus-visible{outline:2px solid ${d.accent};outline-offset:2px}
-@media(max-width:720px){.bn-nav-links{display:none!important}.cx-tools{flex-direction:column;align-items:stretch!important}.cx-row{grid-template-columns:84px 1fr!important}.cx-row>div:last-child{grid-column:1/-1}}`}</style>
+@media(max-width:720px){.cx-empty{grid-template-columns:1fr!important}.cx-art{display:none}.bn-nav-links{display:none!important}.cx-tools{flex-direction:column;align-items:stretch!important}.cx-row{grid-template-columns:84px 1fr!important}.cx-row>div:last-child{grid-column:1/-1}}`}</style>
 
       {!externalChrome && <BuilderHeader store={store} d={d} experience={experience} visible={[]} />}
       {topSlot}
@@ -148,7 +149,7 @@ export function CatalogExperience({
           </div>
           <p style={{ margin: "16px 0 0", color: d.muted, fontSize: 17, lineHeight: 1.6, maxWidth: 620 }}>
             {items.length === 0
-              ? mode === "category" ? `We're adding items to ${heading ?? "this category"}. Check back soon.` : "New items are on the way. Check back soon."
+              ? mode === "category" ? `No listings in ${heading ?? "this category"} yet.` : "New items are on the way."
               : mode === "search" && q.trim()
                 ? `${results.length} ${results.length === 1 ? "result" : "results"} found.`
                 : `${items.length} ${items.length === 1 ? "item" : "items"} to browse${lowest > 0 ? `, starting from ${currency} ${formatNumber(lowest)}` : ""}.`}
@@ -206,17 +207,15 @@ export function CatalogExperience({
 
         </>}
         {/* Results */}
-        {results.length === 0 ? (
+        {results.length === 0 && items.length === 0 ? (
+          <EmptyCategory d={d} base={base} radius={radius} line={line} heading={mode === "category" ? heading : undefined} isService={isService} storeName={store.name} />
+        ) : results.length === 0 ? (
           <div style={{ textAlign: "center", padding: "64px 20px", background: d.surface, border: `1px solid ${line}`, borderRadius: radius }}>
             <div aria-hidden style={{ width: 64, height: 64, margin: "0 auto 18px", borderRadius: 999, display: "grid", placeItems: "center", background: `${d.primary}1f`, color: d.accent }}><Search size={28} /></div>
-            <h2 style={{ fontFamily: d.headingFont, fontSize: 26, margin: 0, color: d.text }}>{items.length === 0 ? (mode === "category" ? `Nothing in ${heading ?? "this category"} yet` : "Nothing here yet") : "No matches"}</h2>
-            <p style={{ color: d.muted, fontSize: 16, margin: "10px auto 24px", maxWidth: 420, lineHeight: 1.6 }}>{items.length === 0 ? "This section is being stocked. Have a look at everything else the store offers." : "Try a different word, another category or a higher price limit."}</p>
+            <h2 style={{ fontFamily: d.headingFont, fontSize: 26, margin: 0, color: d.text }}>No matches</h2>
+            <p style={{ color: d.muted, fontSize: 16, margin: "10px auto 24px", maxWidth: 420, lineHeight: 1.6 }}>Try a different word, another category or a higher price limit.</p>
             <div style={{ display: "flex", gap: 10, justifyContent: "center", flexWrap: "wrap" }}>
               {hasFilters && <button type="button" onClick={reset} style={{ border: 0, cursor: "pointer", padding: "12px 22px", borderRadius: d.buttonStyle === "pill" ? 999 : Math.min(radius, 12), background: d.primary, color: readableOn(d.primary), fontWeight: 800, fontSize: 14 }}>Show everything</button>}
-              {items.length === 0 && <>
-                <Link href={`${base}/catalog`} style={{ padding: "12px 22px", borderRadius: d.buttonStyle === "pill" ? 999 : Math.min(radius, 12), background: d.primary, color: readableOn(d.primary), fontWeight: 800, fontSize: 14 }}>Browse all {isService ? "services" : "products"}</Link>
-                <Link href={base} style={{ padding: "12px 22px", borderRadius: d.buttonStyle === "pill" ? 999 : Math.min(radius, 12), border: `1px solid ${d.text}55`, color: d.text, fontWeight: 800, fontSize: 14 }}>Back to home</Link>
-              </>}
             </div>
           </div>
         ) : view === "grid" ? (
@@ -282,5 +281,64 @@ function QuickAdd({ item, slug, base, d, radius, serviceLabel }: { item: Catalog
       onClick={() => { addItem(slug, { productId: item.id, name: item.name, price: item.price, currency: item.currency, image: item.image }); setAdded(true); }}>
       {added ? "Added to cart" : "Add to cart"}
     </button>
+  );
+}
+
+
+/**
+ * Shown when a category (or the whole shop) has nothing published yet. Instead of a dead end it tells the visitor what
+ * is going on, offers a way to ask the owner, and lists the store's other categories so they can keep browsing.
+ */
+function EmptyCategory({ d, base, radius, line, heading, isService, storeName }: {
+  d: BuilderConfig["design"]; base: string; radius: number; line: string; heading?: string; isService: boolean; storeName: string;
+}) {
+  const others = useStoreCategories()
+    .filter((c) => !c.parentId && !/^d\d/.test(c.id) && c.name !== heading)
+    .slice(0, 6);
+  const btn = (primary: boolean): React.CSSProperties => ({
+    display: "inline-flex", alignItems: "center", gap: 8, padding: "13px 22px", fontWeight: 800, fontSize: 14,
+    borderRadius: d.buttonStyle === "pill" ? 999 : Math.min(radius, 12),
+    background: primary ? d.primary : "transparent", color: primary ? readableOn(d.primary) : d.text,
+    border: primary ? `1px solid ${d.primary}` : `1px solid ${d.text}33`,
+  });
+  return (
+    <div style={{ display: "grid", gap: 28 }}>
+      <div style={{ position: "relative", overflow: "hidden", display: "grid", gridTemplateColumns: "minmax(0,1.2fr) minmax(0,.8fr)", alignItems: "center", gap: 24, padding: "clamp(28px,5vw,56px)", background: `linear-gradient(135deg, ${d.primary}10, ${d.accent}18), ${d.surface}`, border: `1px solid ${line}`, borderRadius: Math.max(radius, 14) }} className="cx-empty">
+        <div>
+          <span style={{ display: "inline-flex", alignItems: "center", gap: 8, fontSize: 12, fontWeight: 800, letterSpacing: ".1em", textTransform: "uppercase", color: d.accent, background: `${d.accent}1a`, padding: "6px 12px", borderRadius: 999 }}><Compass size={14} aria-hidden /> Coming soon</span>
+          <h2 style={{ fontFamily: d.headingFont, fontSize: "clamp(26px,3.6vw,40px)", lineHeight: 1.1, letterSpacing: "-.02em", margin: "16px 0 12px", color: d.text }}>{heading ? `${heading} are on the way` : "New listings are on the way"}</h2>
+          <p style={{ color: d.muted, fontSize: 16, lineHeight: 1.7, margin: "0 0 26px", maxWidth: 480 }}>
+            {heading ? `${storeName} hasn't published anything under ${heading} yet.` : `${storeName} hasn't published anything here yet.`} You can ask the team directly, or look through the rest of what is available.
+          </p>
+          <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+            <Link href={`${base}/contact`} style={btn(true)}><MessageCircle size={16} aria-hidden /> {heading ? `Ask about ${heading}` : "Contact us"}</Link>
+            <Link href={`${base}/catalog`} style={btn(false)}>Browse all {isService ? "services" : "products"} <ArrowRight size={16} aria-hidden /></Link>
+          </div>
+        </div>
+        <svg aria-hidden viewBox="0 0 240 200" style={{ width: "100%", maxWidth: 300, justifySelf: "center" }} className="cx-art">
+          <circle cx="120" cy="100" r="86" fill={d.accent} opacity=".10" />
+          <circle cx="120" cy="100" r="58" fill={d.primary} opacity=".10" />
+          <rect x="62" y="64" width="116" height="78" rx="12" fill={d.surface} stroke={d.text} strokeOpacity=".18" />
+          <rect x="74" y="78" width="46" height="8" rx="4" fill={d.accent} opacity=".7" />
+          <rect x="74" y="94" width="92" height="6" rx="3" fill={d.text} opacity=".14" />
+          <rect x="74" y="108" width="70" height="6" rx="3" fill={d.text} opacity=".14" />
+          <rect x="74" y="122" width="34" height="10" rx="5" fill={d.primary} opacity=".8" />
+          <circle cx="182" cy="62" r="5" fill={d.accent} /><circle cx="52" cy="150" r="4" fill={d.primary} opacity=".6" /><circle cx="196" cy="140" r="3" fill={d.accent} opacity=".6" />
+        </svg>
+      </div>
+      {others.length > 0 && (
+        <section aria-label="Other categories">
+          <h3 style={{ fontFamily: d.headingFont, fontSize: 20, margin: "0 0 14px", color: d.text }}>Explore other categories</h3>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(210px, 1fr))", gap: 12 }}>
+            {others.map((c) => (
+              <Link key={c.id} href={`${base}/category/${c.slug || c.id}`} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, padding: "16px 18px", background: d.surface, border: `1px solid ${line}`, borderRadius: Math.min(radius, 14), color: d.text, fontWeight: 700 }}>
+                <span>{c.name}{c.count > 0 && <small style={{ display: "block", color: d.muted, fontWeight: 500, marginTop: 2 }}>{c.count} {c.count === 1 ? "item" : "items"}</small>}</span>
+                <ArrowRight size={16} aria-hidden style={{ color: d.accent, flex: "none" }} />
+              </Link>
+            ))}
+          </div>
+        </section>
+      )}
+    </div>
   );
 }
