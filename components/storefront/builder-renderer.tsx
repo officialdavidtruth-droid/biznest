@@ -11,6 +11,7 @@ import { Fragment, useEffect, useMemo, useState } from "react";
 import { createPortal } from "react-dom";
 import Link from "next/link";
 import { CartLink } from "@/components/storefront/cart-link";
+import { AccountLink } from "@/components/storefront/account-link";
 import { BuilderNewsletterForm } from "@/components/storefront/builder-newsletter-form";
 import { cssUrl, fontStack, isSafeImageUrl, safeHref } from "@/lib/builder-safe";
 import { readBuilderConfig, type BuilderConfig, type BuilderSection } from "@/lib/builder-config";
@@ -394,7 +395,13 @@ export function BuilderHeader({ store, d, experience, visible }: { store: Builde
       )}
     </>
   );
-  const cart = experience.mode !== "service" ? <CartLink storeSlug={store.slug} accent={d.accent} /> : null;
+  // Customer sign-in / account sits beside the cart on EVERY store, services included (service stores have no cart).
+  const cart = (
+    <span style={{ display: "inline-flex", alignItems: "center", gap: 14 }}>
+      <AccountLink storeSlug={store.slug} ink={style === "stripe" ? "#ffffff" : d.text} />
+      {experience.mode !== "service" ? <CartLink storeSlug={store.slug} accent={d.accent} /> : null}
+    </span>
+  );
   const linkRow = (justify: string): React.CSSProperties => ({ display: "flex", gap: 22, fontSize: 13, color: d.muted, justifyContent: justify });
 
   if (style === "centered") return (
@@ -541,7 +548,7 @@ export function ItemCard({ item, store, d, radius, actionLabel }: { item: Catalo
     </Link>
   );
   return (
-    <Link href={href} style={{ border: `1px solid ${d.text}12`, borderRadius: radius, overflow: "hidden", background: d.surface }}>
+    <Link href={href} style={{ display: "block", border: `1px solid ${d.text}12`, borderRadius: radius, overflow: "hidden", background: d.surface }}>
       <div style={img("1/1")} />
       <div style={{ padding: 16 }}>
         <div style={{ fontWeight: 750, marginBottom: 7 }}>{item.name}</div>
