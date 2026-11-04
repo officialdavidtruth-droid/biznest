@@ -171,6 +171,13 @@ export async function issueRefund(
   });
   if (!order) return { success: false, error: "Order not found." };
 
+  // Check "already refunded" first: a refunded order's status (REFUNDED) is not
+  // in the refundable list, so without this a duplicate attempt would get a
+  // confusing "can't be refunded from here" message.
+  if (order.status === "REFUNDED" || order.payments.some((p) => p.purpose === "ORDER" && (p.status === "REFUNDED" || p.refundedAt))) {
+    return { success: false, error: "This payment has already been refunded." };
+  }
+
   if (!REFUNDABLE_ORDER_STATUSES.includes(order.status as (typeof REFUNDABLE_ORDER_STATUSES)[number])) {
     return { success: false, error: `Orders in ${order.status.replace("_", " ").toLowerCase()} status can't be refunded from here.` };
   }

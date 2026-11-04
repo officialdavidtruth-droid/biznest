@@ -1,9 +1,15 @@
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { prisma } from "@/lib/prisma";
 import { setSession, clearSession } from "@/vitest.setup";
 import { createPosSale } from "@/lib/actions/pos";
 import { issueRefund } from "@/lib/actions/refund";
 import { cleanupTestStore, createTestProduct, createTestStoreWithOwner, type TestStoreFixture } from "./fixtures";
+
+// Production commission is 0% by design (lib/constants/commission.ts). These
+// tests exercise the commission accrual/settlement/refund mechanics, so they
+// pin the rate to 10%, matching the fixtures' subscription commissionRate.
+vi.mock("@/lib/constants/commission", () => ({ PLATFORM_COMMISSION_PERCENT: 10 }));
+
 
 /**
  * issueRefund's CASH/POS branch — the online-gateway branches (Paystack/

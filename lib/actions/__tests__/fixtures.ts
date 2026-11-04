@@ -1,5 +1,6 @@
 import { nanoid } from "nanoid";
 import { prisma } from "@/lib/prisma";
+import { encryptSecret } from "@/lib/payments/store-gateway";
 
 /**
  * Test fixtures for the DB-backed integration tests in this directory.
@@ -24,6 +25,8 @@ export type TestStoreFixture = {
 
 export async function createTestStoreWithOwner(opts?: {
   commissionRate?: number;
+  /** Give the store its own (fake) Paystack keys so checkout takes the gateway route; otherwise it falls back to bank transfer. */
+  ownGateway?: boolean;
 }): Promise<TestStoreFixture> {
   const suffix = nanoid(8).toLowerCase();
 
@@ -75,6 +78,14 @@ export async function createTestStoreWithOwner(opts?: {
       businessType: business.category,
       enabledModules: { capabilities: [] },
       subscriptionId,
+      ...(opts?.ownGateway
+        ? {
+            ownGatewayEnabled: true,
+            ownGatewayProvider: "PAYSTACK" as const,
+            ownPaystackSecretKey: encryptSecret("sk_test_fixture_key"),
+            ownPaystackPublicKey: "pk_test_fixture_key",
+          }
+        : {}),
     },
   });
 

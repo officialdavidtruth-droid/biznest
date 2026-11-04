@@ -1,5 +1,5 @@
 import crypto from "crypto";
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { prisma } from "@/lib/prisma";
 import { createPosSale, getPosCommissionBalance, recordPosCommissionSettlement } from "@/lib/actions/pos";
 import { clearSession, setSession } from "@/vitest.setup";
@@ -10,6 +10,12 @@ import {
   createTestStoreWithOwner,
   type TestStoreFixture,
 } from "./fixtures";
+
+// Production commission is 0% by design (lib/constants/commission.ts). These
+// tests exercise the commission accrual/settlement/refund mechanics, so they
+// pin the rate to 10%, matching the fixtures' subscription commissionRate.
+vi.mock("@/lib/constants/commission", () => ({ PLATFORM_COMMISSION_PERCENT: 10 }));
+
 
 /**
  * Integration tests against a real database (see TESTING.md) — these

@@ -25,6 +25,12 @@ import { chargeCustomer } from "@/lib/payments/gateway";
 import { startCheckout } from "@/lib/actions/order";
 import { decrementStockForOrder } from "@/lib/payments/stock";
 
+// Production commission is 0% by design (lib/constants/commission.ts). These
+// tests exercise the commission accrual/settlement/refund mechanics, so they
+// pin the rate to 10%, matching the fixtures' subscription commissionRate.
+vi.mock("@/lib/constants/commission", () => ({ PLATFORM_COMMISSION_PERCENT: 10 }));
+
+
 function shippingAddress() {
   return { fullName: "Ada Lovelace", phone: "+2348000000000", address: "1 Analytical Engine Rd", city: "Lagos", state: "Lagos", country: "Nigeria" };
 }
@@ -38,7 +44,7 @@ describe("startCheckout", () => {
   let buyerId: string;
 
   beforeEach(async () => {
-    fixture = await createTestStoreWithOwner({ commissionRate: 10 });
+    fixture = await createTestStoreWithOwner({ commissionRate: 10, ownGateway: true });
     const buyer = await prisma.user.create({ data: { email: `buyer-${fixture.suffix}@test.biznest.internal`, role: "CUSTOMER" } });
     buyerId = buyer.id;
     setSession({ id: buyerId, email: buyer.email, role: "CUSTOMER" });
@@ -296,7 +302,8 @@ describe("decrementStockForOrder", () => {
     const product = await createTestProduct(fixture.store.id, { price: 1000, quantity: 2 });
     const order = await createPaidOrder(product.id, 5); // more than the 2 in stock
 
-    await prisma.$transaction((tx) => decrementStockForOrder(tx, order.id));
+    // Payment paths pass allowOversell (the customer has already paid).
+    await prisma.$transaction((tx) => decrementStockForOrder(tx, order.id, { allowOversell: true }));
 
     const inventory = await prisma.inventoryItem.findUnique({ where: { productId: product.id } });
     expect(inventory?.quantity).toBe(0);
@@ -310,7 +317,7 @@ describe("decrementStockForOrder", () => {
 
   it("is a no-op for a product with no tracked inventory", async () => {
     const product = await prisma.product.create({
-      data: { storeId: fixture.store.id, name: "Digital thing", slug: `digital-${fixture.suffix}`, price: 500, type: "DIGITAL" },
+      data: { storeId: fixture.store.id, name: "Digital thing", description: "Fixture digital product.", slug: `digital-${fixture.suffix}`, price: 500, type: "DIGITAL" },
     });
     const order = await createPaidOrder(product.id, 1);
 

@@ -35,4 +35,4 @@ export const posSaleSchema = z.object({
   idempotencyKey: z.string().uuid().optional(),
 });
 
-export type PosSaleInput = z.infer<typeof posSaleSchema>;
+export type PosSaleInput = z.input<typeof posSaleSchema>;
