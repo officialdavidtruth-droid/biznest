@@ -15,6 +15,8 @@ export type MockSessionUser = {
   email: string;
   name?: string | null;
   role: string;
+  /** Set for store-scoped customer accounts (see requireStoreCustomerByStoreId). */
+  customerStoreId?: string | null;
 };
 
 // Mutable holder so individual tests can swap the "logged in as" user via

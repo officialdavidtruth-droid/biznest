@@ -35,6 +35,13 @@ function shippingAddress() {
   return { fullName: "Ada Lovelace", phone: "+2348000000000", address: "1 Analytical Engine Rd", city: "Lagos", state: "Lagos", country: "Nigeria" };
 }
 
+/** A customer account scoped to one store (the only kind that can check out), with its membership row. */
+async function createStoreCustomer(storeId: string, email: string) {
+  const user = await prisma.user.create({ data: { email, role: "CUSTOMER", customerScopeStoreId: storeId } });
+  await prisma.storeCustomer.create({ data: { userId: user.id, storeId } });
+  return user;
+}
+
 function newKey() {
   return `test-key-${Math.random().toString(36).slice(2)}-${Date.now()}`;
 }
@@ -45,9 +52,9 @@ describe("startCheckout", () => {
 
   beforeEach(async () => {
     fixture = await createTestStoreWithOwner({ commissionRate: 10, ownGateway: true });
-    const buyer = await prisma.user.create({ data: { email: `buyer-${fixture.suffix}@test.biznest.internal`, role: "CUSTOMER" } });
+    const buyer = await createStoreCustomer(fixture.store.id, `buyer-${fixture.suffix}@test.biznest.internal`);
     buyerId = buyer.id;
-    setSession({ id: buyerId, email: buyer.email, role: "CUSTOMER" });
+    setSession({ id: buyerId, email: buyer.email, role: "CUSTOMER", customerStoreId: fixture.store.id });
     vi.mocked(chargeCustomer).mockClear();
   });
 
@@ -228,8 +235,8 @@ describe("startCheckout", () => {
       idempotencyKey: key,
     });
 
-    const otherBuyer = await prisma.user.create({ data: { email: `other-buyer-${fixture.suffix}@test.biznest.internal`, role: "CUSTOMER" } });
-    setSession({ id: otherBuyer.id, email: otherBuyer.email, role: "CUSTOMER" });
+    const otherBuyer = await createStoreCustomer(fixture.store.id, `other-buyer-${fixture.suffix}@test.biznest.internal`);
+    setSession({ id: otherBuyer.id, email: otherBuyer.email, role: "CUSTOMER", customerStoreId: fixture.store.id });
 
     const result = await startCheckout(fixture.store.slug, {
       items: [{ productId: product.id, quantity: 1 }],
