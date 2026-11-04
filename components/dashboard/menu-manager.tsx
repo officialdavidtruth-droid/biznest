@@ -28,8 +28,9 @@ function move<T>(arr: T[], i: number, dir: -1 | 1): T[] {
 }
 
 export function MenuManager({
-  slug, initialTree, categories, pages, pageOptions, hasCustomMenu,
-}: { slug: string; initialTree: MenuNodeInput[]; categories: Category[]; pages: CustomPage[]; pageOptions?: { label: string; path: string }[]; hasCustomMenu: boolean }) {
+  slug, initialTree, categories, pages, pageOptions, hasCustomMenu, suggested = false, location = "header",
+}: { slug: string; initialTree: MenuNodeInput[]; categories: Category[]; pages: CustomPage[]; pageOptions?: { label: string; path: string }[]; hasCustomMenu: boolean; suggested?: boolean; location?: "header" | "footer" }) {
+  const footer = location === "footer";
   const [tree, setTree] = useState<MNode[]>(() => withKeys(initialTree));
   const [custom, setCustom] = useState(hasCustomMenu);
   const [pending, start] = useTransition();
@@ -64,7 +65,7 @@ export function MenuManager({
 
   const save = () =>
     start(async () => {
-      const res = await saveStoreMenu(slug, strip(tree));
+      const res = await saveStoreMenu(slug, strip(tree), location);
       if (res.success) { setTree(withKeys(res.data)); setCustom(true); toast.success("Menu saved. Your storefront now uses it."); }
       else toast.error(res.error);
     });
@@ -72,13 +73,18 @@ export function MenuManager({
   const reset = () => {
     if (!confirm("Remove your custom menu and go back to the template's default links?")) return;
     start(async () => {
-      const res = await resetStoreMenu(slug);
+      const res = await resetStoreMenu(slug, location);
       if (res.success) { setTree([]); setCustom(false); toast.success("Menu reset to the template default."); }
       else toast.error(res.error);
     });
   };
 
   const loadStarter = () => {
+    if (footer) {
+      const avail = new Set((pageOptions ?? MENU_PAGE_OPTIONS).map((o) => o.path));
+      setTree(withKeys(["/about", "/contact", "/faq", "/policies"].filter((p) => avail.has(p)).map((p) => ({ label: MENU_PAGE_OPTIONS.find((o) => o.path === p)?.label ?? p, linkType: "PAGE" as const, target: p }))));
+      return;
+    }
     setTree(withKeys([
       { label: "Home", linkType: "PAGE", target: "/" },
       { label: "About", linkType: "PAGE", target: "/about" },
@@ -132,7 +138,7 @@ export function MenuManager({
         </div>
         <div className="mt-2 flex flex-wrap items-center gap-4 text-xs text-muted-foreground">
           <label className="flex items-center gap-1.5"><input type="checkbox" checked={!!n.openInNewTab} onChange={(e) => update(path, (x) => ({ ...x, openInNewTab: e.target.checked }))} /> Open in new tab</label>
-          {!isChild && <button type="button" onClick={() => addChild(path[0])} className="flex items-center gap-1 font-semibold text-primary"><Plus size={12} /> Add dropdown item</button>}
+          {!isChild && !footer && <button type="button" onClick={() => addChild(path[0])} className="flex items-center gap-1 font-semibold text-primary"><Plus size={12} /> Add dropdown item</button>}
         </div>
         {n.children.map((c, j) => row(c, [path[0], j], n.children.length))}
       </div>
@@ -143,19 +149,30 @@ export function MenuManager({
     <div className="space-y-5">
       <div>
         <h1 className="text-2xl font-bold">Menus</h1>
+        <div className="mt-3 inline-flex rounded-xl bg-muted p-1 text-sm font-semibold">
+          <a href="?menu=header" className={`rounded-lg px-4 py-1.5 ${!footer ? "bg-background shadow-sm" : "text-muted-foreground"}`}>Header menu</a>
+          <a href="?menu=footer" className={`rounded-lg px-4 py-1.5 ${footer ? "bg-background shadow-sm" : "text-muted-foreground"}`}>Footer menu</a>
+        </div>
         <p className="mt-1 max-w-2xl text-sm text-muted-foreground">
-          Build the navigation shown at the top of your website. Add pages, categories or custom links, and nest items under a parent to make a dropdown.
-          {custom ? " Your website is using this custom menu." : " Until you save one, your website uses its template's default links."}
+          {footer ? "Build the links shown at the bottom of your website, like About, Contact and Policies. Footer links are a simple list." : "Build the navigation shown at the top of your website. Add pages, categories or custom links, and nest items under a parent to make a dropdown."}
+          {custom ? " Your website is using this custom menu." : " Until you save one, your website uses its template's own links."}
         </p>
       </div>
 
       {tree.length === 0 && (
         <div className="rounded-2xl border border-dashed p-8 text-center">
-          <p className="text-sm text-muted-foreground">No custom menu yet.</p>
+          <p className="text-sm text-muted-foreground">{footer ? "No footer menu yet. Your template shows its own footer links." : "No custom menu yet."}</p>
           <div className="mt-3 flex justify-center gap-2">
             <button type="button" onClick={addTop} className="rounded-lg bg-primary px-4 py-2 text-xs font-bold text-primary-foreground">Start from scratch</button>
-            <button type="button" onClick={loadStarter} className="rounded-lg border px-4 py-2 text-xs font-bold">Start from my categories</button>
+            <button type="button" onClick={loadStarter} className="rounded-lg border px-4 py-2 text-xs font-bold">{footer ? "Start with About, Contact, Policies" : "Start from my categories"}</button>
           </div>
+        </div>
+      )}
+
+      {suggested && !custom && tree.length > 0 && (
+        <div className="rounded-xl border border-primary/30 bg-primary/5 p-4 text-sm">
+          <p className="font-bold">Here is a starting menu for your store</p>
+          <p className="mt-1 text-xs text-muted-foreground">Change the names, reorder, add categories or dropdowns, then press Save menu. Your website keeps its current menu until you save.</p>
         </div>
       )}
 

@@ -8,5 +8,5 @@ export default async function NewBlogPostPage({ params }: { params: Promise<{ sl
   await requireBlogApp(slug);
   const data = await getBlogEditorData(slug);
   if (!data) notFound();
-  return <BlogEditor slug={slug} storeName={data.storeName} categories={data.categories} post={null} />;
+  return <BlogEditor slug={slug} storeName={data.storeName} blogs={data.blogs} tagSuggestions={data.tagSuggestions} defaultBlogId={data.defaultBlogId} article={null} />;
 }

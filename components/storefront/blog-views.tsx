@@ -8,7 +8,7 @@ import type { BuilderConfig } from "@/lib/builder-config";
 import { getBusinessExperience } from "@/lib/business-experience";
 import { BuilderFooter, BuilderHeader } from "@/components/storefront/builder-renderer";
 import type { SubpageStore } from "@/components/storefront/builder-subpages";
-import type { BlogCardView } from "@/lib/blog-public";
+import type { ArticleCardView } from "@/lib/blog-public";
 
 type Design = BuilderConfig["design"];
 
@@ -56,20 +56,20 @@ function Shell({ store, design, children, title, subtitle, crumbs }: { store: Su
   );
 }
 
-function PostCard({ post, base, design, large }: { post: BlogCardView; base: string; design: Design; large?: boolean }) {
+function PostCard({ post, base, design }: { post: ArticleCardView; base: string; design: Design }) {
   const { d, line, card } = useTokens(design);
-  const href = `${base}/blog/${post.slug}`;
+  const href = `${base}/blogs/${post.blogHandle}/${post.handle}`;
   const image = post.image && (
-    <div style={{ overflow: "hidden", aspectRatio: large ? "16/10" : "16/10", background: `${d.text}0d` }}>
+    <div style={{ overflow: "hidden", aspectRatio: "16/10", background: `${d.text}0d` }}>
       <div className="bn-post-img" role="img" aria-label={post.imageAlt} style={{ width: "100%", height: "100%", background: `url(${cssUrl(post.image)}) center/cover` }} />
     </div>
   );
   return (
-    <article className="bn-post-card" style={{ ...card, display: large ? "grid" : "block", gridTemplateColumns: large && post.image ? "1.2fr 1fr" : undefined }}>
+    <article className="bn-post-card" style={card}>
       {image && <Link href={href} tabIndex={-1} aria-hidden>{image}</Link>}
-      <div style={{ padding: large ? 32 : 22, display: "flex", flexDirection: "column", justifyContent: "center" }}>
-        {post.category && <Link href={`${base}/blog?category=${post.category.slug}`} style={{ color: d.accent, fontSize: 12, fontWeight: 800, letterSpacing: ".1em", textTransform: "uppercase" }}>{post.category.name}</Link>}
-        <h2 style={{ fontFamily: d.headingFont, fontSize: large ? 30 : 21, lineHeight: 1.2, margin: "8px 0 0" }}><Link href={href}>{post.title}</Link></h2>
+      <div style={{ padding: 22, display: "flex", flexDirection: "column", justifyContent: "center" }}>
+        {post.tags[0] && <Link href={`${base}/blogs/${post.blogHandle}?tag=${encodeURIComponent(post.tags[0])}`} style={{ color: d.accent, fontSize: 12, fontWeight: 800, letterSpacing: ".1em", textTransform: "uppercase" }}>{post.tags[0]}</Link>}
+        <h2 style={{ fontFamily: d.headingFont, fontSize: 21, lineHeight: 1.2, margin: "8px 0 0" }}><Link href={href}>{post.title}</Link></h2>
         <p style={{ color: d.muted, lineHeight: 1.7, fontSize: 15, margin: "10px 0 0" }}>{post.excerpt}</p>
         <div style={{ color: d.muted, fontSize: 13, marginTop: 16, paddingTop: 14, borderTop: `1px solid ${line}`, display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
           <span>{post.date}</span><span aria-hidden>·</span><span style={{ display: "inline-flex", alignItems: "center", gap: 4 }}><Clock size={13} />{post.minutes} min read</span>
@@ -80,47 +80,48 @@ function PostCard({ post, base, design, large }: { post: BlogCardView; base: str
 }
 
 export type BlogIndexProps = {
-  store: SubpageStore; design: Design; featured: BlogCardView | null; posts: BlogCardView[]; page: number; totalPages: number; total: number;
-  categories: { name: string; slug: string; count: number }[]; tags: string[]; activeCategory: { name: string; slug: string } | null; activeTag: string | null; query: string;
+  store: SubpageStore; design: Design; blog: { title: string; handle: string }; blogs: { title: string; handle: string }[];
+  articles: ArticleCardView[]; page: number; totalPages: number; total: number; tags: string[]; activeTag: string | null; query: string;
 };
 
 export function BlogIndexView(p: BlogIndexProps) {
   const { d, line, chip } = useTokens(p.design);
   const base = `/store/${p.store.slug}`;
+  const blogBase = `${base}/blogs/${p.blog.handle}`;
   const qs = (over: Record<string, string | number | null>) => {
-    const cur: Record<string, string | number | null> = { category: p.activeCategory?.slug ?? null, tag: p.activeTag, q: p.query || null, page: p.page > 1 ? p.page : null };
+    const cur: Record<string, string | number | null> = { tag: p.activeTag, q: p.query || null, page: p.page > 1 ? p.page : null };
     const u = new URLSearchParams();
     for (const [k, v] of Object.entries({ ...cur, ...over })) if (v !== null && v !== "" && v !== undefined) u.set(k, String(v));
     const s = u.toString();
-    return `${base}/blog${s ? `?${s}` : ""}`;
+    return `${blogBase}${s ? `?${s}` : ""}`;
   };
-  const filtered = !!(p.activeCategory || p.activeTag || p.query);
-  const title = p.activeCategory ? p.activeCategory.name : p.activeTag ? `#${p.activeTag}` : "Blog";
-  const subtitle = p.query ? `Results for “${p.query}”` : p.activeCategory || p.activeTag ? `${p.total} ${p.total === 1 ? "post" : "posts"}` : `News, guides and stories from ${p.store.name}.`;
+  const filtered = !!(p.activeTag || p.query);
+  const title = p.activeTag ? `${p.blog.title}: ${p.activeTag}` : p.blog.title;
+  const subtitle = p.query ? `Results for “${p.query}”` : p.activeTag ? `${p.total} ${p.total === 1 ? "article" : "articles"}` : `News, guides and stories from ${p.store.name}.`;
   return (
-    <Shell store={p.store} design={p.design} title={title} subtitle={subtitle} crumbs={filtered ? [{ label: "Home", href: base }, { label: "Blog", href: `${base}/blog` }, { label: title }] : undefined}>
+    <Shell store={p.store} design={p.design} title={title} subtitle={subtitle} crumbs={[{ label: "Home", href: base }, ...(filtered ? [{ label: p.blog.title, href: blogBase }, { label: p.activeTag ?? "Search" }] : [{ label: p.blog.title }])]}>
       <div className="bn-wrap" style={{ padding: "36px 0 8px" }}>
         <div style={{ display: "flex", gap: 14, flexWrap: "wrap", alignItems: "center", justifyContent: "space-between", marginBottom: 28 }}>
           <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-            <Link href={`${base}/blog`} style={chip(!p.activeCategory && !p.activeTag && !p.query)}>All</Link>
-            {p.categories.map((c) => <Link key={c.slug} href={`${base}/blog?category=${c.slug}`} style={chip(p.activeCategory?.slug === c.slug)}>{c.name} · {c.count}</Link>)}
+            {p.blogs.length > 1
+              ? p.blogs.map((b) => <Link key={b.handle} href={`${base}/blogs/${b.handle}`} style={chip(b.handle === p.blog.handle && !filtered)}>{b.title}</Link>)
+              : <Link href={blogBase} style={chip(!filtered)}>All</Link>}
           </div>
-          <form action={`${base}/blog`} method="get" role="search" style={{ display: "flex", alignItems: "center", gap: 8, border: `1px solid ${line}`, borderRadius: 999, padding: "6px 14px", background: d.surface }}>
+          <form action={blogBase} method="get" role="search" style={{ display: "flex", alignItems: "center", gap: 8, border: `1px solid ${line}`, borderRadius: 999, padding: "6px 14px", background: d.surface }}>
             <Search size={15} color={d.muted} />
-            <input name="q" defaultValue={p.query} placeholder="Search posts" aria-label="Search posts" maxLength={80} style={{ border: 0, outline: 0, background: "transparent", color: d.text, fontSize: 14, width: 150 }} />
+            <input name="q" defaultValue={p.query} placeholder="Search articles" aria-label="Search articles" maxLength={80} style={{ border: 0, outline: 0, background: "transparent", color: d.text, fontSize: 14, width: 150 }} />
           </form>
         </div>
 
         {p.total === 0 ? (
           <div style={{ background: d.surface, border: `1px solid ${line}`, borderRadius: d.radius, padding: 48, textAlign: "center" }}>
-            <h2 style={{ fontFamily: d.headingFont, fontSize: 22, margin: 0 }}>{filtered ? "No posts found" : "No posts yet"}</h2>
-            <p style={{ color: d.muted, margin: "8px 0 0" }}>{filtered ? "Try another category or search." : "Check back soon."}</p>
-            {filtered && <Link href={`${base}/blog`} style={{ display: "inline-block", marginTop: 18, color: d.accent, fontWeight: 700 }}>View all posts</Link>}
+            <h2 style={{ fontFamily: d.headingFont, fontSize: 22, margin: 0 }}>{filtered ? "No articles found" : "No articles yet"}</h2>
+            <p style={{ color: d.muted, margin: "8px 0 0" }}>{filtered ? "Try another tag or search." : "Check back soon."}</p>
+            {filtered && <Link href={blogBase} style={{ display: "inline-block", marginTop: 18, color: d.accent, fontWeight: 700 }}>View all articles</Link>}
           </div>
         ) : (
           <>
-            {p.featured && <div style={{ marginBottom: 24 }}><PostCard post={p.featured} base={base} design={p.design} large /></div>}
-            <div className="bn-grid bn-blog-cols">{p.posts.map((post) => <PostCard key={post.id} post={post} base={base} design={p.design} />)}</div>
+            <div className="bn-grid bn-blog-cols">{p.articles.map((a) => <PostCard key={a.id} post={a} base={base} design={p.design} />)}</div>
             {p.totalPages > 1 && (
               <nav aria-label="Pagination" style={{ display: "flex", justifyContent: "center", alignItems: "center", gap: 14, margin: "36px 0 0", fontSize: 14 }}>
                 {p.page > 1 ? <Link href={qs({ page: p.page - 1 > 1 ? p.page - 1 : null })} style={chip(false)}>← Newer</Link> : <span />}
@@ -131,14 +132,12 @@ export function BlogIndexView(p: BlogIndexProps) {
           </>
         )}
 
-        {(
-          <div style={{ marginTop: 48, paddingTop: 24, borderTop: `1px solid ${line}`, display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center", justifyContent: "space-between" }}>
-            <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
-              {p.tags.map((t) => <Link key={t} href={`${base}/blog?tag=${encodeURIComponent(t)}`} style={{ ...chip(p.activeTag === t), fontSize: 12, padding: "5px 11px" }}>#{t}</Link>)}
-            </div>
-            <a href={`${base}/blog/rss.xml`} style={{ display: "inline-flex", alignItems: "center", gap: 6, color: d.muted, fontSize: 13 }}><Rss size={14} />RSS feed</a>
+        <div style={{ marginTop: 48, paddingTop: 24, borderTop: `1px solid ${line}`, display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center", justifyContent: "space-between" }}>
+          <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
+            {p.tags.map((t) => <Link key={t} href={`${blogBase}?tag=${encodeURIComponent(t)}`} style={{ ...chip(p.activeTag === t), fontSize: 12, padding: "5px 11px" }}>#{t}</Link>)}
           </div>
-        )}
+          <a href={`${base}/blog/rss.xml`} style={{ display: "inline-flex", alignItems: "center", gap: 6, color: d.muted, fontSize: 13 }}><Rss size={14} />RSS feed</a>
+        </div>
       </div>
       <div style={{ height: 48 }} />
     </Shell>
@@ -146,8 +145,8 @@ export function BlogIndexView(p: BlogIndexProps) {
 }
 
 export type BlogPostViewProps = {
-  store: SubpageStore; design: Design; post: BlogCardView & { updatedLabel: string }; url: string; children: ReactNode;
-  related: BlogCardView[]; newer: { title: string; slug: string } | null; older: { title: string; slug: string } | null;
+  store: SubpageStore; design: Design; blog: { title: string; handle: string }; post: ArticleCardView & { updatedLabel: string }; url: string; children: ReactNode;
+  related: ArticleCardView[]; newer: { title: string; handle: string } | null; older: { title: string; handle: string } | null;
   toc: { id: string; text: string; level: number }[]; ctaHref: string; ctaLabel: string;
 };
 
@@ -164,7 +163,7 @@ export function BlogPostView(p: BlogPostViewProps) {
         <header style={{ background: d.surface, borderBottom: `1px solid ${line}` }}>
           <div style={{ width: "min(780px,calc(100% - 32px))", margin: "0 auto", padding: "44px 0 32px" }}>
             <nav aria-label="Breadcrumb" style={{ fontSize: 13, color: d.muted, marginBottom: 16 }}>
-              <Link href={base}>Home</Link> / <Link href={`${base}/blog`}>Blog</Link>{p.post.category && <> / <Link href={`${base}/blog?category=${p.post.category.slug}`}>{p.post.category.name}</Link></>}
+              <Link href={base}>Home</Link> / <Link href={`${base}/blogs/${p.blog.handle}`}>{p.blog.title}</Link>
             </nav>
             <h1 style={{ fontFamily: d.headingFont, fontSize: 42, lineHeight: 1.12, margin: 0 }}>{p.post.title}</h1>
             {p.post.excerpt && <p style={{ color: d.muted, fontSize: 19, lineHeight: 1.6, margin: "14px 0 0" }}>{p.post.excerpt}</p>}
@@ -177,8 +176,8 @@ export function BlogPostView(p: BlogPostViewProps) {
         <div style={{ width: "min(780px,calc(100% - 32px))", margin: "0 auto", padding: "32px 0 0" }}>
           {p.post.image && <div role="img" aria-label={p.post.imageAlt} style={{ aspectRatio: "16/9", borderRadius: d.radius, background: `url(${cssUrl(p.post.image)}) center/cover`, border: `1px solid ${line}`, marginBottom: 36 }} />}
           {p.toc.length >= 3 && (
-            <nav aria-label="In this post" style={{ ...card, padding: "16px 20px", marginBottom: 32 }}>
-              <strong style={{ fontSize: 13, textTransform: "uppercase", letterSpacing: ".1em", color: d.muted }}>In this post</strong>
+            <nav aria-label="In this article" style={{ ...card, padding: "16px 20px", marginBottom: 32 }}>
+              <strong style={{ fontSize: 13, textTransform: "uppercase", letterSpacing: ".1em", color: d.muted }}>In this article</strong>
               <ol style={{ margin: "10px 0 0", paddingLeft: 18, display: "grid", gap: 6, fontSize: 15 }}>
                 {p.toc.map((t) => <li key={t.id} style={{ marginLeft: t.level === 3 ? 16 : 0 }}><a href={`#${t.id}`} style={{ color: d.accent }}>{t.text}</a></li>)}
               </ol>
@@ -186,7 +185,7 @@ export function BlogPostView(p: BlogPostViewProps) {
           )}
           {p.children}
 
-          {p.post.tags.length > 0 && <div style={{ display: "flex", gap: 8, flexWrap: "wrap", margin: "36px 0 0" }}>{p.post.tags.map((t) => <Link key={t} href={`${base}/blog?tag=${encodeURIComponent(t)}`} style={{ ...chip(false), fontSize: 12, padding: "5px 11px" }}>#{t}</Link>)}</div>}
+          {p.post.tags.length > 0 && <div style={{ display: "flex", gap: 8, flexWrap: "wrap", margin: "36px 0 0" }}>{p.post.tags.map((t) => <Link key={t} href={`${base}/blogs/${p.blog.handle}?tag=${encodeURIComponent(t)}`} style={{ ...chip(false), fontSize: 12, padding: "5px 11px" }}>#{t}</Link>)}</div>}
 
           <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap", margin: "28px 0 0", paddingTop: 22, borderTop: `1px solid ${line}` }}>
             <strong style={{ fontSize: 14 }}>Share</strong>
@@ -199,14 +198,14 @@ export function BlogPostView(p: BlogPostViewProps) {
 
           <div style={{ ...card, padding: 28, margin: "36px 0 0", textAlign: "center" }}>
             <h2 style={{ fontFamily: d.headingFont, fontSize: 24, margin: 0 }}>Talk to {p.store.name}</h2>
-            <p style={{ color: d.muted, margin: "8px 0 18px" }}>Questions about this post? We’re happy to help.</p>
+            <p style={{ color: d.muted, margin: "8px 0 18px" }}>Questions about this article? We’re happy to help.</p>
             <Link href={p.ctaHref} style={{ display: "inline-block", padding: "12px 24px", fontWeight: 750, fontSize: 14, borderRadius: d.buttonStyle === "pill" ? 999 : d.radius, background: d.primary, color: "#fff" }}>{p.ctaLabel}</Link>
           </div>
 
           {(p.newer || p.older) && (
             <nav aria-label="More posts" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16, margin: "36px 0 0" }}>
-              {p.older ? <Link href={`${base}/blog/${p.older.slug}`} style={{ ...card, padding: 16 }}><small style={{ color: d.muted }}>← Older</small><div style={{ fontWeight: 700, marginTop: 4 }}>{p.older.title}</div></Link> : <span />}
-              {p.newer ? <Link href={`${base}/blog/${p.newer.slug}`} style={{ ...card, padding: 16, textAlign: "right" }}><small style={{ color: d.muted }}>Newer →</small><div style={{ fontWeight: 700, marginTop: 4 }}>{p.newer.title}</div></Link> : <span />}
+              {p.older ? <Link href={`${base}/blogs/${p.blog.handle}/${p.older.handle}`} style={{ ...card, padding: 16 }}><small style={{ color: d.muted }}>← Older</small><div style={{ fontWeight: 700, marginTop: 4 }}>{p.older.title}</div></Link> : <span />}
+              {p.newer ? <Link href={`${base}/blogs/${p.blog.handle}/${p.newer.handle}`} style={{ ...card, padding: 16, textAlign: "right" }}><small style={{ color: d.muted }}>Newer →</small><div style={{ fontWeight: 700, marginTop: 4 }}>{p.newer.title}</div></Link> : <span />}
             </nav>
           )}
         </div>

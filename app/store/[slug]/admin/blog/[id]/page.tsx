@@ -7,6 +7,6 @@ export default async function EditBlogPostPage({ params }: { params: Promise<{ s
   const { slug, id } = await params;
   await requireBlogApp(slug);
   const data = await getBlogEditorData(slug, id);
-  if (!data || !data.post) notFound();
-  return <BlogEditor key={data.post.id} slug={slug} storeName={data.storeName} categories={data.categories} post={data.post} />;
+  if (!data || !data.article) notFound();
+  return <BlogEditor key={data.article.id} slug={slug} storeName={data.storeName} blogs={data.blogs} tagSuggestions={data.tagSuggestions} defaultBlogId={data.defaultBlogId} article={data.article} />;
 }

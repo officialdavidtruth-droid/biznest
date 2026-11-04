@@ -1078,8 +1078,8 @@ model Store {
   travelTrips     TravelTrip[]
   travelPackages  TravelPackage[]
   travelVisaCases TravelVisaCase[]
-  blogPosts       BlogPost[]
-  blogCategories  BlogCategory[]
+  blogs           Blog[]
+  articles        Article[]
   autoVehicles AutoVehicle[]
   photoShoots PhotoShoot[]
   tailoringJobs TailoringJob[]
@@ -4831,52 +4831,47 @@ model TravelAttachment {
 
 
 // ----------------------------------------------------------------------------
-// BLOG (BizNest Blog app): dated posts, categories and tags, separate from the timeless StorePage rows
+// BLOG (BizNest Blog app), modelled on Shopify: a store has one or more BLOGS (e.g. "News"), each holding
+// ARTICLES. There is no category tree; articles are organised by blog and by tags. Visibility is
+// publishedAt: null = hidden, a past/now date = visible, a future date = scheduled.
 // ----------------------------------------------------------------------------
 
-enum BlogPostStatus {
-  DRAFT
-  SCHEDULED
-  PUBLISHED
+model Blog {
+  id        String   @id @default(cuid())
+  storeId   String
+  store     Store    @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  title     String
+  handle    String   // URL segment: /blogs/<handle>. Stays the same when the title is renamed unless edited.
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  articles Article[]
+
+  @@unique([storeId, handle])
+  @@index([storeId, createdAt])
 }
 
-model BlogCategory {
-  id          String   @id @default(cuid())
-  storeId     String
-  store       Store    @relation(fields: [storeId], references: [id], onDelete: Cascade)
-  name        String
-  slug        String
-  description String?
-  createdAt   DateTime @default(now())
+model Article {
+  id      String @id @default(cuid())
+  storeId String
+  store   Store  @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  blogId  String
+  blog    Blog   @relation(fields: [blogId], references: [id], onDelete: Cascade)
 
-  posts BlogPost[]
+  title   String
+  handle  String   // unique within its blog
+  excerpt String?
+  body    String   @db.Text // Markdown. Rendered to React nodes (never raw HTML) on the storefront.
+  tags    String[] @default([])
 
-  @@unique([storeId, slug])
-}
-
-model BlogPost {
-  id         String        @id @default(cuid())
-  storeId    String
-  store      Store         @relation(fields: [storeId], references: [id], onDelete: Cascade)
-  categoryId String?
-  category   BlogCategory? @relation(fields: [categoryId], references: [id], onDelete: SetNull)
-
-  title    String
-  slug     String
-  excerpt  String?
-  body     String   @db.Text // Markdown. Rendered to React nodes (never raw HTML) on the storefront.
-  tags     String[] @default([])
-
-  featuredImage    String?
-  featuredImageAlt String?
+  imageUrl String?
+  imageAlt String?
 
   authorId   String?
   authorName String
 
-  status      BlogPostStatus @default(DRAFT)
-  // Published: when it went live. Scheduled: when it goes live. A post is public once status != DRAFT and publishedAt <= now.
+  // null = Hidden. <= now = Visible. > now = Scheduled (goes live by itself, no cron needed).
   publishedAt DateTime?
-  isFeatured  Boolean        @default(false)
 
   seoTitle       String?
   seoDescription String?
@@ -4886,9 +4881,9 @@ model BlogPost {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  @@unique([storeId, slug])
-  @@index([storeId, status, publishedAt])
-  @@index([storeId, categoryId])
+  @@unique([blogId, handle])
+  @@index([storeId, publishedAt])
+  @@index([blogId, publishedAt])
 }
 
 

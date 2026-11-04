@@ -5,8 +5,10 @@
  * The goal is to get a new vendor from "store created" to "first sale" fast:
  *   1. add a logo
  *   2. add 3 real listings (products / services / rooms)
- *   3. connect a payout account
- *   4. share the store link
+ *   3. make the website look like theirs (Customize)
+ *   4. set up the navigation menu
+ *   5. connect a payout account
+ *   6. share the store link
  *
  * Data comes from the database (see lib/onboarding-checklist-data.ts); the only
  * state this feature stores itself lives under Store.onboardingProfile.checklist
@@ -17,7 +19,7 @@ import type { CanonicalBusinessType } from "@/lib/business-identity";
 
 export const LISTINGS_TARGET = 3;
 
-export type ChecklistStepId = "logo" | "listings" | "payout" | "share";
+export type ChecklistStepId = "logo" | "listings" | "look" | "menu" | "payout" | "share";
 
 export type ChecklistStep = {
   id: ChecklistStepId;
@@ -114,6 +116,10 @@ export type ChecklistInput = {
   /** Store only has a legacy subaccount and must re-enter bank details. */
   needsPayoutReconnect: boolean;
   linkShared: boolean;
+  /** The owner changed colours, fonts or sections in Customize (or the AI builder did it for them). */
+  lookCustomized?: boolean;
+  /** The owner saved a header or footer menu. */
+  menuSaved?: boolean;
   category: CanonicalBusinessType;
   sellsProducts: boolean;
   offersServices: boolean;
@@ -149,6 +155,22 @@ export function buildChecklist(input: ChecklistInput): ChecklistState {
       href: isHotel ? "/pms" : servicesOnly ? "/services/new" : "/products/new",
       cta: `Add ${isHotel ? "rooms" : noun}`,
       hardLink: isHotel,
+    },
+    {
+      id: "look",
+      title: "Make the website yours",
+      description: "Choose your colours and fonts, and reorder the sections on your home page, with a live preview.",
+      done: Boolean(input.lookCustomized),
+      href: "/customize",
+      cta: "Customize website",
+    },
+    {
+      id: "menu",
+      title: "Set up your menu",
+      description: "Choose the links at the top and bottom of your website. A starting menu is already filled in for you.",
+      done: Boolean(input.menuSaved),
+      href: "/menus",
+      cta: "Edit menus",
     },
     {
       id: "payout",

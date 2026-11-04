@@ -2,7 +2,7 @@
 
 import { starFill, starEmpty } from "@/lib/utils/stars";
 import { readableAccentText } from "@/lib/utils/readable-accent";
-import { MenuLinks, type FallbackLink } from "@/components/storefront/store-menu";
+import { MenuLinks, useFooterMenu, type FallbackLink } from "@/components/storefront/store-menu";
 import type React from "react";
 import { useEffect, useMemo, useState } from "react";
 import { createPortal } from "react-dom";
@@ -427,7 +427,8 @@ export function BuilderFooter({ store, d, visible, storeLinks }: { store: Builde
   const desc = store.business?.description || "Built with BizNest.";
   const contact = store.contactEmail || store.contactPhone || "Online business";
   const anchors = visible.filter((s) => ["catalog", "about", "contact", "testimonials", "features"].includes(s.type)).slice(0, 5);
-  const navLinks = storeLinks ?? anchors.map((s) => ({ label: s.settings.heading || label(s.type), href: `#${s.id}` }));
+  const ownerFooter = useFooterMenu(); // the footer menu the owner built wins over the template's own links
+  const navLinks = ownerFooter ?? storeLinks ?? anchors.map((s) => ({ label: s.settings.heading || label(s.type), href: `#${s.id}` }));
   const link = { color: "inherit", opacity: .78, fontSize: 13 } as React.CSSProperties;
   const base: React.CSSProperties = { marginTop: 60, background: d.primary, color: "#fff" };
 

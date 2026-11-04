@@ -1,45 +1,38 @@
 import { describe, expect, it } from "vitest";
-import { blogSlug, effectiveStatus, excerptFor, normaliseTags, publicPostWhere, readingMinutes, resolveStatus } from "@/lib/blog";
+import { blogHandle, excerptFor, normaliseTags, publicArticleWhere, readingMinutes, resolvePublishedAt, visibilityOf } from "@/lib/blog";
 import { outline, parseInline, parseMarkdown, safeHref, safeSrc } from "@/lib/blog-markdown";
 
 const NOW = new Date("2026-11-02T10:00:00Z");
 const PAST = new Date("2026-11-01T10:00:00Z");
 const FUTURE = new Date("2026-11-05T10:00:00Z");
 
-describe("blogSlug", () => {
-  it("makes clean url slugs", () => expect(blogSlug("  10 Best Beaches in Lagos! ")).toBe("10-best-beaches-in-lagos"));
-  it("caps the length", () => expect(blogSlug("a ".repeat(200)).length).toBeLessThanOrEqual(80));
+describe("blogHandle", () => {
+  it("makes clean url handles", () => expect(blogHandle("  10 Best Beaches in Lagos! ")).toBe("10-best-beaches-in-lagos"));
+  it("caps the length", () => expect(blogHandle("a ".repeat(200)).length).toBeLessThanOrEqual(80));
 });
 
-describe("resolveStatus", () => {
-  it("drafts have no publish date", () => expect(resolveStatus("DRAFT", null, null, NOW)).toEqual({ status: "DRAFT", publishedAt: null }));
-  it("publishing now stamps the time", () => expect(resolveStatus("PUBLISHED", null, null, NOW)).toEqual({ status: "PUBLISHED", publishedAt: NOW }));
-  it("keeps the original date when a live post is edited", () => {
-    expect(resolveStatus("PUBLISHED", null, { status: "PUBLISHED", publishedAt: PAST }, NOW)).toEqual({ status: "PUBLISHED", publishedAt: PAST });
-  });
-  it("a scheduled post whose time has passed counts as live and keeps its date", () => {
-    expect(resolveStatus("PUBLISHED", null, { status: "SCHEDULED", publishedAt: PAST }, NOW)).toEqual({ status: "PUBLISHED", publishedAt: PAST });
-  });
-  it("publishing a still-scheduled post goes live now", () => {
-    expect(resolveStatus("PUBLISHED", null, { status: "SCHEDULED", publishedAt: FUTURE }, NOW)).toEqual({ status: "PUBLISHED", publishedAt: NOW });
-  });
-  it("scheduling needs a future time", () => {
-    expect(resolveStatus("SCHEDULED", null, null, NOW)).toHaveProperty("error");
-    expect(resolveStatus("SCHEDULED", PAST, null, NOW)).toHaveProperty("error");
-    expect(resolveStatus("SCHEDULED", FUTURE, null, NOW)).toEqual({ status: "SCHEDULED", publishedAt: FUTURE });
-  });
+describe("visibilityOf", () => {
+  it("null is hidden", () => expect(visibilityOf(null, NOW)).toBe("HIDDEN"));
+  it("a past date is visible", () => expect(visibilityOf(PAST, NOW)).toBe("VISIBLE"));
+  it("a future date is scheduled", () => expect(visibilityOf(FUTURE, NOW)).toBe("SCHEDULED"));
 });
 
-describe("effectiveStatus / publicPostWhere", () => {
-  it("shows a due scheduled post as published", () => {
-    expect(effectiveStatus({ status: "SCHEDULED", publishedAt: PAST }, NOW)).toBe("PUBLISHED");
-    expect(effectiveStatus({ status: "SCHEDULED", publishedAt: FUTURE }, NOW)).toBe("SCHEDULED");
+describe("resolvePublishedAt", () => {
+  it("hidden has no date", () => expect(resolvePublishedAt("HIDDEN", FUTURE, PAST, NOW)).toEqual({ publishedAt: null }));
+  it("visible with no date stamps now", () => expect(resolvePublishedAt("VISIBLE", null, null, NOW)).toEqual({ publishedAt: NOW }));
+  it("editing a live article keeps its original date", () => expect(resolvePublishedAt("VISIBLE", null, PAST, NOW)).toEqual({ publishedAt: PAST }));
+  it("an explicit date wins, so it can be back-dated or scheduled", () => {
+    expect(resolvePublishedAt("SCHEDULED", FUTURE, null, NOW)).toEqual({ publishedAt: FUTURE });
+    expect(resolvePublishedAt("VISIBLE", PAST, null, NOW)).toEqual({ publishedAt: PAST });
   });
-  it("never lets drafts through and bounds by time", () => {
-    const w = publicPostWhere("s1", NOW);
-    expect(w.status.in).not.toContain("DRAFT");
-    expect(w.publishedAt).toEqual({ not: null, lte: NOW });
+  it("a still-scheduled article made visible without a date goes live now", () => expect(resolvePublishedAt("VISIBLE", null, FUTURE, NOW)).toEqual({ publishedAt: NOW }));
+});
+
+describe("publicArticleWhere", () => {
+  it("never lets hidden articles through and bounds by time", () => {
+    const w = publicArticleWhere("s1", NOW);
     expect(w.storeId).toBe("s1");
+    expect(w.publishedAt).toEqual({ not: null, lte: NOW });
   });
 });
 

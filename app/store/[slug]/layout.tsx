@@ -148,9 +148,9 @@ export default async function StoreLayout({
       pages: { where: { isPublished: true, slug: { in: ["blog", "gallery"] } }, select: { slug: true, content: true } },
       // Owner-built header menu (Dashboard > Menus). Empty = templates use their own default links.
       menuItems: {
-        where: { location: "header", isActive: true },
+        where: { location: { in: ["header", "footer"] }, isActive: true },
         orderBy: { sortOrder: "asc" },
-        select: { id: true, label: true, linkType: true, target: true, openInNewTab: true, parentId: true, sortOrder: true },
+        select: { id: true, label: true, linkType: true, target: true, openInNewTab: true, parentId: true, sortOrder: true, location: true },
       },
     },
   });
@@ -215,6 +215,18 @@ export default async function StoreLayout({
   const trackingOn =
     !isAdminRoute && !!exists && !!tracking && exists.status === "ACTIVE" && !exists.marketingOnly && isTrackablePath(subpath) && hasAnyTracking(tracking);
 
+  // Owner-built menus (Dashboard > Menus). Empty = templates keep their own default links.
+  const writtenPages = new Set<string>((exists?.pages ?? []).filter((p: { content: unknown }) => hasPageContent(p.content)).map((p: { slug: string }) => p.slug));
+  const menuFor = (location: string) => {
+    if (!exists) return null;
+    const rows = exists.menuItems.filter((m) => m.location === location);
+    if (!rows.length) return null;
+    const identity = { businessCategory: exists.business?.category ?? null, storeBusinessType: exists.businessType, templateName: exists.template?.name ?? null };
+    return resolveMenuRows(rows.filter((m) => m.linkType !== "PAGE" || isStorePageAvailable(m.target || "/", identity, writtenPages)), slug, exists.categories);
+  };
+  const headerMenu = menuFor("header");
+  const footerMenu = menuFor("footer");
+
   return (
     <>
       <link rel="preconnect" href="https://fonts.googleapis.com" />
@@ -224,7 +236,7 @@ export default async function StoreLayout({
         rel="stylesheet"
       />
       <StoreCategoriesProvider categories={(exists?.categories ?? []).map((c) => ({ id: c.id, name: c.name, slug: c.slug, parentId: c.parentId, description: c.description, imageUrl: c.imageUrl, count: c._count.products + c._count.services }))}>
-        <StoreMenuProvider menu={exists?.menuItems?.length ? resolveMenuRows(exists.menuItems.filter((m) => m.linkType !== "PAGE" || isStorePageAvailable(m.target || "/", { businessCategory: exists.business?.category ?? null, storeBusinessType: exists.businessType, templateName: exists.template?.name ?? null }, new Set(exists.pages.filter((p) => hasPageContent(p.content)).map((p) => p.slug)))), slug, exists.categories) : null}>{children}</StoreMenuProvider>
+        <StoreMenuProvider menu={headerMenu} footerMenu={footerMenu}>{children}</StoreMenuProvider>
       </StoreCategoriesProvider>
       {installable && exists && (
         <InstallStoreApp slug={slug} storeName={exists.name} base={pwaBase} iconSrc={`${pwaBase}/pwa-icon/192`} />

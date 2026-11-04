@@ -8,8 +8,20 @@ import { isMenuItemActive, storePath, type ResolvedMenuItem } from "@/lib/storef
 const MenuContext = createContext<ResolvedMenuItem[] | null>(null);
 
 /** Supplies the owner's custom header menu (or null = use template defaults). */
-export function StoreMenuProvider({ menu, children }: { menu: ResolvedMenuItem[] | null; children: ReactNode }) {
-  return <MenuContext.Provider value={menu && menu.length ? menu : null}>{children}</MenuContext.Provider>;
+export function StoreMenuProvider({ menu, footerMenu = null, children }: { menu: ResolvedMenuItem[] | null; footerMenu?: ResolvedMenuItem[] | null; children: ReactNode }) {
+  return (
+    <MenuContext.Provider value={menu && menu.length ? menu : null}>
+      <FooterMenuContext.Provider value={footerMenu && footerMenu.length ? footerMenu : null}>{children}</FooterMenuContext.Provider>
+    </MenuContext.Provider>
+  );
+}
+
+const FooterMenuContext = createContext<ResolvedMenuItem[] | null>(null);
+
+/** The owner's footer menu (Dashboard > Menus > Footer) as plain links, or null = the template keeps its own footer links. */
+export function useFooterMenu(): { label: string; href: string; external: boolean; newTab: boolean }[] | null {
+  const m = useContext(FooterMenuContext);
+  return m ? m.map((i) => ({ label: i.label, href: i.href, external: i.external, newTab: i.newTab })) : null;
 }
 
 /** [label, path]. `path` is relative to the store ("/about"), an in-page anchor ("#catalog") or a full URL. */

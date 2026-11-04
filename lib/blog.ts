@@ -1,9 +1,7 @@
 import slugify from "slugify";
 
-/** The BizNest Blog app. Dated posts with categories, tags, scheduling, SEO fields and an RSS feed. */
+/** The BizNest Blog app, modelled on Shopify: blogs hold articles, organised by tags, with Visible / Hidden / Scheduled. */
 export const BLOG_PLUGIN_KEY = "blog";
-export const BLOG_STATUSES = ["DRAFT", "SCHEDULED", "PUBLISHED"] as const;
-export type BlogStatus = (typeof BLOG_STATUSES)[number];
 
 /** Business types that publish content to attract customers. Super admin can widen this in /supaadmin/apps. */
 export const BLOG_BUSINESS_TYPES = [
@@ -14,7 +12,7 @@ export const BLOG_BUSINESS_TYPES = [
 export const BLOG_PAGE_SIZE = 9;
 export const BLOG_MAX_TAGS = 10;
 
-export function blogSlug(input: string): string {
+export function blogHandle(input: string): string {
   return slugify(input, { lower: true, strict: true, trim: true }).slice(0, 80);
 }
 
@@ -64,33 +62,37 @@ export function normaliseTags(input: unknown): string[] {
   return out;
 }
 
-/** What visitors see: published, or scheduled and now due. Scheduling needs no cron job. */
-export function publicPostWhere(storeId: string, now = new Date()) {
-  return { storeId, status: { in: ["PUBLISHED", "SCHEDULED"] as ("PUBLISHED" | "SCHEDULED")[] }, publishedAt: { not: null, lte: now } };
+export type Visibility = "VISIBLE" | "HIDDEN" | "SCHEDULED";
+export const DEFAULT_BLOG = { title: "News", handle: "news" } as const;
+
+/** What visitors see: a publish date that has arrived. Hidden (null) and future-dated articles stay out. */
+export function publicArticleWhere(storeId: string, now = new Date()) {
+  return { storeId, publishedAt: { not: null, lte: now } };
 }
 
-/** The state to show the owner: a scheduled post whose time has passed is live. */
-export function effectiveStatus(post: { status: BlogStatus; publishedAt: Date | string | null }, now = new Date()): BlogStatus {
-  if (post.status === "SCHEDULED" && post.publishedAt && new Date(post.publishedAt) <= now) return "PUBLISHED";
-  return post.status;
+/** Shopify's three states from one field: null = Hidden, future = Scheduled, otherwise Visible. */
+export function visibilityOf(publishedAt: Date | string | null | undefined, now = new Date()): Visibility {
+  if (!publishedAt) return "HIDDEN";
+  return new Date(publishedAt) > now ? "SCHEDULED" : "VISIBLE";
 }
 
-/** Decide status and publishedAt from what the owner asked for. */
-export function resolveStatus(
-  intent: BlogStatus,
-  scheduledFor: Date | null,
-  existing: { status: BlogStatus; publishedAt: Date | null } | null,
+/**
+ * Turn what the owner chose into a publishedAt value.
+ * Visible keeps an existing past date (so editing a live article never changes its date), otherwise now.
+ */
+export function resolvePublishedAt(
+  visibility: Visibility,
+  publishDate: Date | null,
+  existing: Date | null,
   now = new Date(),
-): { status: BlogStatus; publishedAt: Date | null } | { error: string } {
-  if (intent === "DRAFT") return { status: "DRAFT", publishedAt: null };
-  if (intent === "SCHEDULED") {
-    if (!scheduledFor) return { error: "Choose a date and time to schedule this post." };
-    if (scheduledFor.getTime() <= now.getTime()) return { error: "The scheduled time must be in the future." };
-    return { status: "SCHEDULED", publishedAt: scheduledFor };
+): { publishedAt: Date | null } | { error: string } {
+  if (visibility === "HIDDEN") return { publishedAt: null };
+  if (publishDate) {
+    if (Number.isNaN(publishDate.getTime())) return { error: "That publish date is not valid." };
+    return { publishedAt: publishDate };
   }
-  // Publish now. Keep the original date when a post that is already live is edited.
-  if (existing && effectiveStatus(existing, now) === "PUBLISHED" && existing.publishedAt) return { status: "PUBLISHED", publishedAt: existing.publishedAt };
-  return { status: "PUBLISHED", publishedAt: now };
+  if (existing && existing <= now) return { publishedAt: existing };
+  return { publishedAt: now };
 }
 
 export function formatPostDate(d: Date | string | null | undefined): string {
@@ -98,6 +100,7 @@ export function formatPostDate(d: Date | string | null | undefined): string {
   return new Date(d).toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric" });
 }
 
-export function blogPath(storeSlug: string, postSlug?: string) {
-  return `/store/${storeSlug}/blog${postSlug ? `/${postSlug}` : ""}`;
+/** Shopify-style address: /blogs/<blog>/<article>. */
+export function articlePath(storeSlug: string, blog: string, articleHandle?: string) {
+  return `/store/${storeSlug}/blogs/${blog}${articleHandle ? `/${articleHandle}` : ""}`;
 }

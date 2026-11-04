@@ -26,7 +26,7 @@ type Props = {
 const naira = (n: number) => `₦${n.toLocaleString("en-NG")}`;
 
 /**
- * "Get your first sale" card shown at the top of the owner dashboard. Four steps
+ * "Get your first sale" card shown at the top of the owner dashboard. Six steps
  * (logo, 3 listings, payout, share link); each links to the place that completes it.
  * Progress is computed on the server from real data, so it can't drift: this component
  * only triggers actions and refreshes.
@@ -101,9 +101,9 @@ export function FirstSaleChecklist({ slug, storeName, publicUrl, steps, doneCoun
     <section className="mb-5 rounded-xl border border-[var(--bn-admin-border)] bg-[var(--bn-admin-surface)] p-4 shadow-[0_1px_2px_rgba(15,23,42,0.03)] sm:p-5" data-tour="first-sale-checklist">
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
-          <h2 className="text-[16px] font-bold">Get your first sale</h2>
+          <h2 className="text-[16px] font-bold">Set up your store</h2>
           <p className="mt-0.5 text-xs text-[var(--bn-admin-muted)]">
-            {doneCount} of {total} done. Finish these four steps and you&apos;re ready to take orders.
+            {doneCount} of {total} done. Finish these steps and youFinish these four steps and you&apos;re ready to take orders.apos;re ready to take your first order.
           </p>
         </div>
         <button type="button" onClick={dismiss} disabled={pending} aria-label="Hide checklist" className="shrink-0 rounded-md p-1.5 text-[var(--bn-admin-muted)] hover:bg-muted">

@@ -36,17 +36,17 @@ describe("placeholder listings", () => {
 });
 
 describe("buildChecklist", () => {
-  it("starts at 0/4 for a brand-new store and lists steps in the agreed order", () => {
+  it("starts at 0/6 for a brand-new store and lists steps in the agreed order", () => {
     const c = buildChecklist(base);
-    expect(c.steps.map((s) => s.id)).toEqual(["logo", "listings", "payout", "share"]);
+    expect(c.steps.map((s) => s.id)).toEqual(["logo", "listings", "look", "menu", "payout", "share"]);
     expect(c.doneCount).toBe(0);
     expect(c.complete).toBe(false);
   });
 
-  it("completes only when all four steps are done", () => {
-    const c = buildChecklist({ ...base, logoUrl: "https://x/logo.png", realListingCount: LISTINGS_TARGET, hasBankPayout: true, linkShared: true });
+  it("completes only when all six steps are done", () => {
+    const c = buildChecklist({ ...base, logoUrl: "https://x/logo.png", realListingCount: LISTINGS_TARGET, hasBankPayout: true, linkShared: true, lookCustomized: true, menuSaved: true });
     expect(c.complete).toBe(true);
-    expect(c.doneCount).toBe(4);
+    expect(c.doneCount).toBe(6);
   });
 
   it("requires 3 real listings, and caps the progress text", () => {
@@ -68,9 +68,21 @@ describe("buildChecklist", () => {
   });
 
   it("asks legacy-subaccount stores to reconnect instead of 'connect'", () => {
-    const step = buildChecklist({ ...base, needsPayoutReconnect: true }).steps[2];
+    const step = buildChecklist({ ...base, needsPayoutReconnect: true }).steps[4];
     expect(step.title).toMatch(/Reconnect/);
     expect(step.done).toBe(false);
+  });
+});
+
+describe("look and menu steps", () => {
+  it("are not done until the owner customizes the website and saves a menu", () => {
+    const c = buildChecklist(base);
+    expect(c.steps.find((x) => x.id === "look")?.done).toBe(false);
+    expect(c.steps.find((x) => x.id === "menu")?.done).toBe(false);
+    const d = buildChecklist({ ...base, lookCustomized: true, menuSaved: true });
+    expect(d.steps.find((x) => x.id === "look")?.href).toBe("/customize");
+    expect(d.steps.find((x) => x.id === "menu")?.href).toBe("/menus");
+    expect(d.doneCount).toBe(2);
   });
 });
 

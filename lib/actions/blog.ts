@@ -8,7 +8,7 @@ import { getPluginEntitlement } from "@/lib/plugins";
 import { checkRateLimit } from "@/lib/rate-limit";
 import type { ActionResult } from "@/types/actions";
 import {
-  BLOG_PLUGIN_KEY, BLOG_STATUSES, blogSlug, effectiveStatus, normaliseTags, readingMinutes, resolveStatus, type BlogStatus,
+  BLOG_PLUGIN_KEY, DEFAULT_BLOG, blogHandle, normaliseTags, readingMinutes, resolvePublishedAt, visibilityOf, type Visibility,
 } from "@/lib/blog";
 import { safeSrc } from "@/lib/blog-markdown";
 
@@ -17,7 +17,7 @@ async function access(slug: string) {
   if (!a.success) return a;
   const ent = await getPluginEntitlement(a.store.id, BLOG_PLUGIN_KEY);
   if (!ent.allowed) return { success: false as const, error: ent.reason };
-  if (!ent.installed) return { success: false as const, error: "Install the Blog app from Apps to publish posts." };
+  if (!ent.installed) return { success: false as const, error: "Install the Blog app from Apps to publish articles." };
   return a;
 }
 
@@ -25,19 +25,44 @@ const fail = (error: string): ActionResult<never> => ({ success: false, error })
 const str = (v: unknown, max: number) => String(v ?? "").trim().slice(0, max);
 const optStr = (v: unknown, max: number) => str(v, max) || null;
 
-function refresh(slug: string, postSlug?: string) {
+function refresh(slug: string, blog?: string, article?: string) {
   revalidatePath(`/store/${slug}/admin/blog`);
   revalidatePath(`/store/${slug}/blog`);
-  if (postSlug) revalidatePath(`/store/${slug}/blog/${postSlug}`);
+  revalidatePath(`/store/${slug}/blogs`, "layout");
+  if (blog) revalidatePath(`/store/${slug}/blogs/${blog}`);
+  if (blog && article) revalidatePath(`/store/${slug}/blogs/${blog}/${article}`);
+  if (article) revalidatePath(`/store/${slug}/blog/${article}`);
   revalidatePath(`/store/${slug}/blog/rss.xml`);
   revalidatePath(`/store/${slug}/sitemap.xml`);
 }
 
-async function uniqueSlug(storeId: string, base: string, excludeId?: string) {
-  const root = base || "post";
+/** Every store with the Blog app has at least one blog, like Shopify's default "News". Created on first use. */
+async function ensureDefaultBlog(storeId: string) {
+  const first = await prisma.blog.findFirst({ where: { storeId }, orderBy: { createdAt: "asc" }, select: { id: true } });
+  if (first) return first;
+  return prisma.blog.upsert({
+    where: { storeId_handle: { storeId, handle: DEFAULT_BLOG.handle } },
+    update: {},
+    create: { storeId, title: DEFAULT_BLOG.title, handle: DEFAULT_BLOG.handle },
+    select: { id: true },
+  });
+}
+
+async function uniqueArticleHandle(blogId: string, base: string, excludeId?: string) {
+  const root = base || "article";
   for (let n = 0; n < 50; n++) {
     const candidate = n === 0 ? root : `${root.slice(0, 74)}-${n + 1}`;
-    const clash = await prisma.blogPost.findFirst({ where: { storeId, slug: candidate, ...(excludeId ? { id: { not: excludeId } } : {}) }, select: { id: true } });
+    const clash = await prisma.article.findFirst({ where: { blogId, handle: candidate, ...(excludeId ? { id: { not: excludeId } } : {}) }, select: { id: true } });
+    if (!clash) return candidate;
+  }
+  return `${root.slice(0, 60)}-${Date.now().toString(36)}`;
+}
+
+async function uniqueBlogHandle(storeId: string, base: string, excludeId?: string) {
+  const root = base || "blog";
+  for (let n = 0; n < 50; n++) {
+    const candidate = n === 0 ? root : `${root.slice(0, 74)}-${n + 1}`;
+    const clash = await prisma.blog.findFirst({ where: { storeId, handle: candidate, ...(excludeId ? { id: { not: excludeId } } : {}) }, select: { id: true } });
     if (!clash) return candidate;
   }
   return `${root.slice(0, 60)}-${Date.now().toString(36)}`;
@@ -45,56 +70,64 @@ async function uniqueSlug(storeId: string, base: string, excludeId?: string) {
 
 // ---------------------------------------------------------------- reads
 
+/** "Blog posts" list: every article across the store's blogs, plus the blogs themselves for filtering. */
 export async function getBlogWorkspace(slug: string) {
   const a = await access(slug);
   if (!a.success) return null;
   const storeId = a.store.id;
-  const [posts, categories] = await Promise.all([
-    prisma.blogPost.findMany({
+  await ensureDefaultBlog(storeId);
+  const [articles, blogs] = await Promise.all([
+    prisma.article.findMany({
       where: { storeId }, orderBy: [{ updatedAt: "desc" }], take: 500,
-      select: { id: true, title: true, slug: true, status: true, publishedAt: true, updatedAt: true, isFeatured: true, readingMinutes: true, featuredImage: true, authorName: true, tags: true, category: { select: { id: true, name: true } } },
+      select: { id: true, title: true, handle: true, publishedAt: true, updatedAt: true, readingMinutes: true, imageUrl: true, authorName: true, tags: true, blog: { select: { id: true, title: true, handle: true } } },
     }),
-    prisma.blogCategory.findMany({ where: { storeId }, orderBy: { name: "asc" }, include: { _count: { select: { posts: true } } } }),
+    prisma.blog.findMany({ where: { storeId }, orderBy: { createdAt: "asc" }, include: { _count: { select: { articles: true } } } }),
   ]);
   const now = new Date();
   return {
     store: { slug: a.store.slug, name: a.store.name },
-    posts: posts.map((p) => ({
-      id: p.id, title: p.title, slug: p.slug, status: effectiveStatus({ status: p.status as BlogStatus, publishedAt: p.publishedAt }, now), scheduled: p.status === "SCHEDULED" && !!p.publishedAt && p.publishedAt > now,
-      publishedAt: p.publishedAt?.toISOString() ?? null, updatedAt: p.updatedAt.toISOString(), isFeatured: p.isFeatured,
-      readingMinutes: p.readingMinutes, featuredImage: p.featuredImage, authorName: p.authorName, tags: p.tags, category: p.category,
+    articles: articles.map((p) => ({
+      id: p.id, title: p.title, handle: p.handle, visibility: visibilityOf(p.publishedAt, now),
+      publishedAt: p.publishedAt?.toISOString() ?? null, updatedAt: p.updatedAt.toISOString(),
+      readingMinutes: p.readingMinutes, imageUrl: p.imageUrl, authorName: p.authorName, tags: p.tags, blog: p.blog,
     })),
-    categories: categories.map((c) => ({ id: c.id, name: c.name, slug: c.slug, count: c._count.posts })),
+    blogs: blogs.map((b) => ({ id: b.id, title: b.title, handle: b.handle, count: b._count.articles })),
   };
 }
 
-export async function getBlogEditorData(slug: string, postId?: string) {
+export async function getBlogEditorData(slug: string, articleId?: string) {
   const a = await access(slug);
   if (!a.success) return null;
-  const categories = await prisma.blogCategory.findMany({ where: { storeId: a.store.id }, orderBy: { name: "asc" }, select: { id: true, name: true } });
-  if (!postId) return { storeSlug: a.store.slug, storeName: a.store.name, categories, post: null };
-  const p = await prisma.blogPost.findFirst({ where: { id: postId, storeId: a.store.id } });
+  const defaultBlog = await ensureDefaultBlog(a.store.id);
+  const [blogs, allTags] = await Promise.all([
+    prisma.blog.findMany({ where: { storeId: a.store.id }, orderBy: { createdAt: "asc" }, select: { id: true, title: true, handle: true } }),
+    prisma.article.findMany({ where: { storeId: a.store.id }, select: { tags: true }, take: 500 }),
+  ]);
+  const tagSuggestions = [...new Set(allTags.flatMap((t) => t.tags))].sort((x, y) => x.localeCompare(y)).slice(0, 100);
+  const base = { storeSlug: a.store.slug, storeName: a.store.name, blogs, tagSuggestions, defaultBlogId: defaultBlog.id };
+  if (!articleId) return { ...base, article: null };
+  const p = await prisma.article.findFirst({ where: { id: articleId, storeId: a.store.id }, include: { blog: { select: { handle: true } } } });
   if (!p) return null;
   return {
-    storeSlug: a.store.slug, storeName: a.store.name, categories,
-    post: {
-      id: p.id, title: p.title, slug: p.slug, excerpt: p.excerpt ?? "", body: p.body, tags: p.tags, categoryId: p.categoryId ?? "",
-      featuredImage: p.featuredImage ?? "", featuredImageAlt: p.featuredImageAlt ?? "", isFeatured: p.isFeatured,
-      status: effectiveStatus({ status: p.status as BlogStatus, publishedAt: p.publishedAt }), publishedAt: p.publishedAt?.toISOString() ?? null,
+    ...base,
+    article: {
+      id: p.id, blogId: p.blogId, blogHandle: p.blog.handle, title: p.title, handle: p.handle, excerpt: p.excerpt ?? "", body: p.body, tags: p.tags,
+      imageUrl: p.imageUrl ?? "", imageAlt: p.imageAlt ?? "", authorName: p.authorName,
+      visibility: visibilityOf(p.publishedAt), publishedAt: p.publishedAt?.toISOString() ?? null,
       seoTitle: p.seoTitle ?? "", seoDescription: p.seoDescription ?? "",
     },
   };
 }
 
-// ---------------------------------------------------------------- posts
+// ---------------------------------------------------------------- articles
 
-export type BlogPostInput = {
-  id?: string; title: string; slug?: string; excerpt?: string; body: string; tags?: string[] | string; categoryId?: string;
-  featuredImage?: string; featuredImageAlt?: string; isFeatured?: boolean; seoTitle?: string; seoDescription?: string;
-  intent: BlogStatus; scheduledFor?: string | null;
+export type ArticleInput = {
+  id?: string; blogId: string; title: string; handle?: string; excerpt?: string; body: string; tags?: string[] | string;
+  imageUrl?: string; imageAlt?: string; authorName?: string; seoTitle?: string; seoDescription?: string;
+  visibility: Visibility; /** ISO date. With Visible it back-dates or schedules the article; with Scheduled it is required. */ publishDate?: string | null;
 };
 
-export async function saveBlogPost(slug: string, input: BlogPostInput): Promise<ActionResult<{ id: string; slug: string; status: BlogStatus }>> {
+export async function saveArticle(slug: string, input: ArticleInput): Promise<ActionResult<{ id: string; handle: string; blogHandle: string; visibility: Visibility; publishedAt: string | null }>> {
   const a = await access(slug);
   if (!a.success) return fail(a.error);
   const session = await auth();
@@ -103,83 +136,87 @@ export async function saveBlogPost(slug: string, input: BlogPostInput): Promise<
   if (!rl.allowed) return fail("You're saving too quickly. Wait a moment and try again.");
 
   const title = str(input.title, 150);
-  if (!title) return fail("Give the post a title.");
+  if (!title) return fail("Give the article a title.");
   const body = String(input.body ?? "").slice(0, 120_000);
-  if (input.intent !== "DRAFT" && body.trim().length < 20) return fail("Write something in the post before publishing it.");
-  if (!BLOG_STATUSES.includes(input.intent)) return fail("Unknown post status.");
+  if (input.visibility !== "HIDDEN" && body.trim().length < 20) return fail("Write something in the article before making it visible.");
+  if (!["VISIBLE", "HIDDEN", "SCHEDULED"].includes(input.visibility)) return fail("Unknown visibility.");
 
-  let categoryId: string | null = null;
-  if (input.categoryId) {
-    const cat = await prisma.blogCategory.findFirst({ where: { id: input.categoryId, storeId: a.store.id }, select: { id: true } });
-    if (!cat) return fail("That category no longer exists.");
-    categoryId = cat.id;
+  const blog = await prisma.blog.findFirst({ where: { id: input.blogId, storeId: a.store.id }, select: { id: true, handle: true } });
+  if (!blog) return fail("Choose a blog for this article.");
+
+  const image = str(input.imageUrl, 600);
+  if (image && !safeSrc(image)) return fail("The image must be an https link or an uploaded image.");
+
+  const existing = input.id ? await prisma.article.findFirst({ where: { id: input.id, storeId: a.store.id }, select: { id: true, handle: true, blogId: true, publishedAt: true } }) : null;
+  if (input.id && !existing) return fail("Article not found.");
+
+  const publishDate = input.publishDate ? new Date(input.publishDate) : null;
+  if (input.visibility === "SCHEDULED") {
+    if (!publishDate || Number.isNaN(publishDate.getTime())) return fail("Choose a date and time to schedule this article.");
+    if (publishDate.getTime() <= Date.now()) return fail("The scheduled time must be in the future.");
   }
-
-  const image = str(input.featuredImage, 600);
-  if (image && !safeSrc(image)) return fail("The featured image must be an https link or an uploaded image.");
-
-  const existing = input.id ? await prisma.blogPost.findFirst({ where: { id: input.id, storeId: a.store.id }, select: { id: true, slug: true, status: true, publishedAt: true } }) : null;
-  if (input.id && !existing) return fail("Post not found.");
-
-  const scheduledFor = input.scheduledFor ? new Date(input.scheduledFor) : null;
-  if (scheduledFor && Number.isNaN(scheduledFor.getTime())) return fail("That scheduled date is not valid.");
-  const resolved = resolveStatus(input.intent, scheduledFor, existing ? { status: existing.status as BlogStatus, publishedAt: existing.publishedAt } : null);
+  const resolved = resolvePublishedAt(input.visibility, publishDate, existing?.publishedAt ?? null);
   if ("error" in resolved) return fail(resolved.error);
 
-  const wanted = blogSlug(str(input.slug, 120) || title);
-  let postSlug: string;
-  if (existing && wanted === existing.slug) postSlug = existing.slug;
-  else if (existing && input.slug?.trim()) {
-    // The owner typed this address on purpose, so a clash is an error rather than a silent rename.
-    const clash = await prisma.blogPost.findFirst({ where: { storeId: a.store.id, slug: wanted, id: { not: existing.id } }, select: { id: true } });
-    if (clash) return fail("Another post already uses that address. Choose a different one.");
-    postSlug = wanted;
-  } else postSlug = await uniqueSlug(a.store.id, wanted, existing?.id);
+  const wanted = blogHandle(str(input.handle, 120) || title);
+  const moved = !!existing && existing.blogId !== blog.id;
+  let handle: string;
+  if (existing && !moved && wanted === existing.handle) handle = existing.handle;
+  else if (existing && input.handle?.trim()) {
+    // The owner typed this URL handle on purpose, so a clash is an error rather than a silent rename.
+    const clash = await prisma.article.findFirst({ where: { blogId: blog.id, handle: wanted, id: { not: existing.id } }, select: { id: true } });
+    if (clash) return fail("Another article in this blog already uses that URL handle.");
+    handle = wanted;
+  } else handle = await uniqueArticleHandle(blog.id, wanted, existing?.id);
 
   const data = {
-    title, slug: postSlug, excerpt: optStr(input.excerpt, 300), body, tags: normaliseTags(input.tags), categoryId,
-    featuredImage: image || null, featuredImageAlt: optStr(input.featuredImageAlt, 160), isFeatured: !!input.isFeatured,
+    blogId: blog.id, title, handle, excerpt: optStr(input.excerpt, 300), body, tags: normaliseTags(input.tags),
+    imageUrl: image || null, imageAlt: optStr(input.imageAlt, 160),
     seoTitle: optStr(input.seoTitle, 70), seoDescription: optStr(input.seoDescription, 170),
-    status: resolved.status, publishedAt: resolved.publishedAt, readingMinutes: readingMinutes(body),
+    publishedAt: resolved.publishedAt, readingMinutes: readingMinutes(body),
   };
+  const author = str(input.authorName, 80);
 
   try {
     const saved = existing
-      ? await prisma.blogPost.update({ where: { id: existing.id }, data, select: { id: true, slug: true } })
-      : await prisma.blogPost.create({ data: { ...data, storeId: a.store.id, authorId: session?.user?.id ?? null, authorName: str(session?.user?.name, 80) || a.store.name }, select: { id: true, slug: true } });
-    refresh(slug, saved.slug);
-    if (existing && existing.slug !== saved.slug) revalidatePath(`/store/${slug}/blog/${existing.slug}`);
-    return { success: true, data: { id: saved.id, slug: saved.slug, status: resolved.status } };
+      ? await prisma.article.update({ where: { id: existing.id }, data: { ...data, ...(author ? { authorName: author } : {}) }, select: { id: true, handle: true } })
+      : await prisma.article.create({ data: { ...data, storeId: a.store.id, authorId: session?.user?.id ?? null, authorName: author || str(session?.user?.name, 80) || a.store.name }, select: { id: true, handle: true } });
+    refresh(slug, blog.handle, saved.handle);
+    if (existing && (existing.handle !== saved.handle || moved)) refresh(slug, undefined, existing.handle);
+    return { success: true, data: { id: saved.id, handle: saved.handle, blogHandle: blog.handle, visibility: visibilityOf(resolved.publishedAt), publishedAt: resolved.publishedAt?.toISOString() ?? null } };
   } catch (e: any) {
-    if (e?.code === "P2002") return fail("Another post already uses that address. Choose a different one.");
-    return fail("The post could not be saved. Please try again.");
+    if (e?.code === "P2002") return fail("Another article in this blog already uses that URL handle.");
+    return fail("The article could not be saved. Please try again.");
   }
 }
 
-export async function setBlogPostStatus(slug: string, id: string, intent: "PUBLISHED" | "DRAFT"): Promise<ActionResult> {
+/** Bulk "Make visible / Make hidden" from the list. */
+export async function setArticlesVisibility(slug: string, ids: string[], visibility: "VISIBLE" | "HIDDEN"): Promise<ActionResult<{ updated: number }>> {
   const a = await access(slug);
   if (!a.success) return fail(a.error);
-  const p = await prisma.blogPost.findFirst({ where: { id, storeId: a.store.id }, select: { id: true, slug: true, body: true, status: true, publishedAt: true } });
-  if (!p) return fail("Post not found.");
-  if (intent === "PUBLISHED" && p.body.trim().length < 20) return fail("Write something in the post before publishing it.");
-  const r = resolveStatus(intent, null, { status: p.status as BlogStatus, publishedAt: p.publishedAt });
-  if ("error" in r) return fail(r.error);
-  await prisma.blogPost.update({ where: { id: p.id }, data: { status: r.status, publishedAt: r.publishedAt } });
-  refresh(slug, p.slug);
-  return { success: true, data: undefined };
+  const rows = await prisma.article.findMany({ where: { id: { in: ids.slice(0, 200) }, storeId: a.store.id }, select: { id: true, body: true, publishedAt: true } });
+  let updated = 0;
+  for (const r of rows) {
+    if (visibility === "VISIBLE" && r.body.trim().length < 20) continue;
+    const next = visibility === "HIDDEN" ? null : r.publishedAt && r.publishedAt <= new Date() ? r.publishedAt : new Date();
+    await prisma.article.update({ where: { id: r.id }, data: { publishedAt: next } });
+    updated++;
+  }
+  refresh(slug);
+  return { success: true, data: { updated } };
 }
 
-export async function duplicateBlogPost(slug: string, id: string): Promise<ActionResult<{ id: string }>> {
+export async function duplicateArticle(slug: string, id: string): Promise<ActionResult<{ id: string }>> {
   const a = await access(slug);
   if (!a.success) return fail(a.error);
-  const p = await prisma.blogPost.findFirst({ where: { id, storeId: a.store.id } });
-  if (!p) return fail("Post not found.");
+  const p = await prisma.article.findFirst({ where: { id, storeId: a.store.id } });
+  if (!p) return fail("Article not found.");
   const session = await auth();
-  const copy = await prisma.blogPost.create({
+  const copy = await prisma.article.create({
     data: {
-      storeId: a.store.id, categoryId: p.categoryId, title: `${p.title} (copy)`.slice(0, 150), slug: await uniqueSlug(a.store.id, blogSlug(`${p.title} copy`)),
-      excerpt: p.excerpt, body: p.body, tags: p.tags, featuredImage: p.featuredImage, featuredImageAlt: p.featuredImageAlt,
-      authorId: session?.user?.id ?? null, authorName: str(session?.user?.name, 80) || a.store.name, status: "DRAFT", publishedAt: null,
+      storeId: a.store.id, blogId: p.blogId, title: `${p.title} (copy)`.slice(0, 150), handle: await uniqueArticleHandle(p.blogId, blogHandle(`${p.title} copy`)),
+      excerpt: p.excerpt, body: p.body, tags: p.tags, imageUrl: p.imageUrl, imageAlt: p.imageAlt,
+      authorId: session?.user?.id ?? null, authorName: str(session?.user?.name, 80) || p.authorName, publishedAt: null,
       seoTitle: p.seoTitle, seoDescription: p.seoDescription, readingMinutes: p.readingMinutes,
     },
     select: { id: true },
@@ -188,52 +225,60 @@ export async function duplicateBlogPost(slug: string, id: string): Promise<Actio
   return { success: true, data: { id: copy.id } };
 }
 
-export async function deleteBlogPost(slug: string, id: string): Promise<ActionResult> {
+export async function deleteArticles(slug: string, ids: string[]): Promise<ActionResult<{ deleted: number }>> {
   const a = await access(slug);
   if (!a.success) return fail(a.error);
-  const p = await prisma.blogPost.findFirst({ where: { id, storeId: a.store.id }, select: { id: true, slug: true } });
-  if (!p) return fail("Post not found.");
-  await prisma.blogPost.delete({ where: { id: p.id } });
-  refresh(slug, p.slug);
-  return { success: true, data: undefined };
+  const rows = await prisma.article.findMany({ where: { id: { in: ids.slice(0, 200) }, storeId: a.store.id }, select: { id: true } });
+  await prisma.article.deleteMany({ where: { id: { in: rows.map((r) => r.id) } } });
+  refresh(slug);
+  return { success: true, data: { deleted: rows.length } };
 }
 
-// ---------------------------------------------------------------- categories
+// ---------------------------------------------------------------- blogs ("Manage blogs")
 
-export async function createBlogCategory(slug: string, name: string): Promise<ActionResult<{ id: string; name: string }>> {
+export async function createBlog(slug: string, title: string): Promise<ActionResult<{ id: string; title: string; handle: string }>> {
   const a = await access(slug);
   if (!a.success) return fail(a.error);
-  const clean = str(name, 60);
-  if (!clean) return fail("Give the category a name.");
-  const catSlug = blogSlug(clean) || "category";
-  const existing = await prisma.blogCategory.findUnique({ where: { storeId_slug: { storeId: a.store.id, slug: catSlug } }, select: { id: true, name: true } });
-  if (existing) return { success: true, data: existing };
-  const created = await prisma.blogCategory.create({ data: { storeId: a.store.id, name: clean, slug: catSlug }, select: { id: true, name: true } });
-  refresh(slug);
+  const clean = str(title, 60);
+  if (!clean) return fail("Give the blog a title.");
+  const created = await prisma.blog.create({ data: { storeId: a.store.id, title: clean, handle: await uniqueBlogHandle(a.store.id, blogHandle(clean)) }, select: { id: true, title: true, handle: true } });
+  refresh(slug, created.handle);
   return { success: true, data: created };
 }
 
-export async function renameBlogCategory(slug: string, id: string, name: string): Promise<ActionResult> {
+/** Rename a blog. Its URL handle only changes when `handle` is given, so existing links keep working. */
+export async function updateBlog(slug: string, id: string, patch: { title?: string; handle?: string }): Promise<ActionResult> {
   const a = await access(slug);
   if (!a.success) return fail(a.error);
-  const clean = str(name, 60);
-  if (!clean) return fail("Give the category a name.");
-  const cat = await prisma.blogCategory.findFirst({ where: { id, storeId: a.store.id }, select: { id: true } });
-  if (!cat) return fail("Category not found.");
-  const catSlug = blogSlug(clean) || "category";
-  const clash = await prisma.blogCategory.findFirst({ where: { storeId: a.store.id, slug: catSlug, id: { not: id } }, select: { id: true } });
-  if (clash) return fail("A category with that name already exists.");
-  await prisma.blogCategory.update({ where: { id }, data: { name: clean, slug: catSlug } });
-  refresh(slug);
+  const blog = await prisma.blog.findFirst({ where: { id, storeId: a.store.id }, select: { id: true, handle: true } });
+  if (!blog) return fail("Blog not found.");
+  const data: { title?: string; handle?: string } = {};
+  if (patch.title !== undefined) {
+    const t = str(patch.title, 60);
+    if (!t) return fail("Give the blog a title.");
+    data.title = t;
+  }
+  if (patch.handle !== undefined) {
+    const h = blogHandle(patch.handle);
+    if (!h) return fail("Enter a URL handle.");
+    const clash = await prisma.blog.findFirst({ where: { storeId: a.store.id, handle: h, id: { not: id } }, select: { id: true } });
+    if (clash) return fail("Another blog already uses that URL handle.");
+    data.handle = h;
+  }
+  await prisma.blog.update({ where: { id }, data });
+  refresh(slug, blog.handle);
+  if (data.handle) refresh(slug, data.handle);
   return { success: true, data: undefined };
 }
 
-export async function deleteBlogCategory(slug: string, id: string): Promise<ActionResult> {
+/** Deleting a blog deletes its articles (as in Shopify). The last remaining blog cannot be deleted. */
+export async function deleteBlog(slug: string, id: string): Promise<ActionResult> {
   const a = await access(slug);
   if (!a.success) return fail(a.error);
-  const cat = await prisma.blogCategory.findFirst({ where: { id, storeId: a.store.id }, select: { id: true } });
-  if (!cat) return fail("Category not found.");
-  await prisma.blogCategory.delete({ where: { id } }); // posts keep existing, uncategorised (onDelete: SetNull)
-  refresh(slug);
+  const blog = await prisma.blog.findFirst({ where: { id, storeId: a.store.id }, select: { id: true, handle: true } });
+  if (!blog) return fail("Blog not found.");
+  if ((await prisma.blog.count({ where: { storeId: a.store.id } })) <= 1) return fail("A store needs at least one blog. Rename this one instead.");
+  await prisma.blog.delete({ where: { id } });
+  refresh(slug, blog.handle);
   return { success: true, data: undefined };
 }

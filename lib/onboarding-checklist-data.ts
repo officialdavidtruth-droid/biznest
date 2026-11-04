@@ -40,6 +40,9 @@ export async function loadFirstSaleChecklist(storeId: string): Promise<FirstSale
       manualAccountName: true,
       manualAccountNumber: true,
       manualPayNote: true,
+      themeColors: true,
+      fontFamily: true,
+      sectionOverrides: true,
       whatsappNumber: true,
       contactPhone: true,
       socialLinks: true,
@@ -54,12 +57,15 @@ export async function loadFirstSaleChecklist(storeId: string): Promise<FirstSale
   const category = getCanonicalBusinessType({ businessCategory: store.business?.category, storeBusinessType: store.businessType });
   const caps = { sellsProducts: store.business?.sellsProducts ?? true, offersServices: store.business?.offersServices ?? false };
 
-  const [products, services, roomCount] = await Promise.all([
+  const [products, services, roomCount, menuCount] = await Promise.all([
     prisma.product.findMany({ where: { storeId }, select: { name: true, isPublished: true }, take: 500 }),
     prisma.service.findMany({ where: { storeId }, select: { name: true, isPublished: true }, take: 500 }),
     // Hotels manage rooms in the PMS, not as products/services.
     category === "Hotel & Lodging" ? prisma.propertyRoom.count({ where: { storeId } }) : Promise.resolve(0),
+    prisma.storeMenuItem.count({ where: { storeId } }),
   ]);
+  const so = store.sectionOverrides;
+  const lookCustomized = store.themeColors != null || !!store.fontFamily || (!!so && typeof so === "object" && !Array.isArray(so) && Object.keys(so as object).length > 0);
 
   const all = [...products, ...services];
   // Only published listings count: a draft isn't visible to customers yet.
@@ -72,6 +78,8 @@ export async function loadFirstSaleChecklist(storeId: string): Promise<FirstSale
     hasBankPayout: manualPayReady(manualPayInfoFromStore(store)) || (await resolveStoreGateway(storeId)).status === "ok",
     needsPayoutReconnect: false,
     linkShared: Boolean(meta.linkSharedAt),
+    lookCustomized,
+    menuSaved: menuCount > 0,
     category,
     ...caps,
   });

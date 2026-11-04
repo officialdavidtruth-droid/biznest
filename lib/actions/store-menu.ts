@@ -5,8 +5,12 @@ import { revalidatePath } from "next/cache";
 import { assertStorePermission } from "@/lib/access/assert-store-access";
 import { sanitizeCustomUrl, MENU_PAGE_OPTIONS, type MenuLinkType } from "@/lib/storefront-menu";
 import { hasPageContent } from "@/lib/storefront/page-blocks";
+import { getBusinessExperience } from "@/lib/business-experience";
 import { filterAvailablePages, isStorePageAvailable, type StoreIdentity } from "@/lib/store-pages";
 import type { ActionResult } from "@/types/actions";
+
+export type MenuLocation = "header" | "footer";
+const asLocation = (v: unknown): MenuLocation => (v === "footer" ? "footer" : "header");
 
 export type MenuNodeInput = {
   /** Present for items that already exist; keeps their id stable across saves. Unknown ids are ignored. */
@@ -41,12 +45,13 @@ async function access(slug: string) {
   return a;
 }
 
-export async function getMenuEditorData(slug: string) {
+export async function getMenuEditorData(slug: string, locationIn: MenuLocation = "header") {
+  const location = asLocation(locationIn);
   const a = await access(slug);
   if (!a.success) return { error: a.error };
   const [rows, categories, storePages] = await Promise.all([
     prisma.storeMenuItem.findMany({
-      where: { storeId: a.store.id, location: "header" },
+      where: { storeId: a.store.id, location },
       orderBy: { sortOrder: "asc" },
       select: { id: true, label: true, linkType: true, target: true, openInNewTab: true, parentId: true, sortOrder: true },
     }),
@@ -68,7 +73,7 @@ export async function getMenuEditorData(slug: string) {
     .filter((p: { slug: string; content: unknown }) => !builtIn.has(`/${p.slug}`) && p.slug !== "home" && hasPageContent(p.content))
     .map((p: { slug: string; title: string }) => ({ slug: p.slug, title: p.title }));
 
-  const tree: MenuNodeInput[] = rows
+  const storedTree: MenuNodeInput[] = rows
     .filter((r) => !r.parentId)
     .map((r) => ({
       id: r.id,
@@ -86,7 +91,32 @@ export async function getMenuEditorData(slug: string) {
   const written = writtenPageSet(storePages);
   const pageOptions = filterAvailablePages(MENU_PAGE_OPTIONS, await getStoreIdentity(a.store.id), written);
 
-  return { tree, categories, pages, pageOptions, hasCustomMenu: rows.length > 0, storeName: a.store.name };
+  // Shopify opens Navigation with the current menu already in it. Until the owner saves a custom menu, offer the
+  // template's own links as an editable starting point. Nothing is stored (and the storefront does not change)
+  // until they press Save. Links that point at a section of the home page (/#gallery) are left out: a menu link
+  // can only point at a page, a category or a full URL.
+  let tree = storedTree;
+  let suggested = false;
+  if (rows.length === 0 && location === "header") {
+    const biz = await prisma.store.findUnique({
+      where: { id: a.store.id },
+      select: { business: { select: { category: true, sellsProducts: true, offersServices: true, businessSubcategory: true } } },
+    });
+    if (biz?.business) {
+      const exp = getBusinessExperience(biz.business.category, { sellsProducts: biz.business.sellsProducts, offersServices: biz.business.offersServices }, biz.business.businessSubcategory);
+      const allowed = new Map(pageOptions.map((o) => [o.path, o.label]));
+      const seen = new Set<string>();
+      const starter: MenuNodeInput[] = [];
+      for (const n of exp.navigation) {
+        if (!allowed.has(n.href) || seen.has(n.href)) continue;
+        seen.add(n.href);
+        starter.push({ label: n.label, linkType: "PAGE", target: n.href, openInNewTab: false, children: [] });
+      }
+      if (starter.length) { tree = starter; suggested = true; }
+    }
+  }
+
+  return { tree, categories, pages, pageOptions, hasCustomMenu: rows.length > 0, suggested, location, storeName: a.store.name };
 }
 
 function validateNode(n: MenuNodeInput, categoryIds: Set<string>, pagePaths: Set<string>, identity: StoreIdentity, written: ReadonlySet<string>): string | null {
@@ -104,10 +134,13 @@ function validateNode(n: MenuNodeInput, categoryIds: Set<string>, pagePaths: Set
   return null;
 }
 
-export async function saveStoreMenu(slug: string, tree: MenuNodeInput[]): Promise<ActionResult<MenuNodeInput[]>> {
+export async function saveStoreMenu(slug: string, treeIn: MenuNodeInput[], locationIn: MenuLocation = "header"): Promise<ActionResult<MenuNodeInput[]>> {
+  const location = asLocation(locationIn);
+  // The footer is a flat list of links (no dropdowns), like Shopify's footer menu.
+  const tree = location === "footer" && Array.isArray(treeIn) ? treeIn.map((n) => ({ ...n, children: [] })) : treeIn;
   const a = await access(slug);
   if (!a.success) return { success: false, error: a.error };
-  if (!Array.isArray(tree) || tree.length === 0) return { success: false, error: "Add at least one menu item, or use Reset to go back to the template default." };
+  if (!Array.isArray(tree) || tree.length === 0) return { success: false, error: "Add at least one menu item, or use Reset to go back to the default." };
   if (tree.length > MAX_TOP) return { success: false, error: `A menu can have at most ${MAX_TOP} top-level items.` };
 
   const cats = await prisma.category.findMany({ where: { storeId: a.store.id }, select: { id: true } });
@@ -131,7 +164,7 @@ export async function saveStoreMenu(slug: string, tree: MenuNodeInput[]): Promis
   // genuinely new items are inserted, and only items the owner removed are deleted. Ids from the request are trusted
   // only if they are this store's header items, and each id can be claimed once.
   const saved = await prisma.$transaction(async (tx) => {
-    const existing = await tx.storeMenuItem.findMany({ where: { storeId: a.store.id, location: "header" }, select: { id: true } });
+    const existing = await tx.storeMenuItem.findMany({ where: { storeId: a.store.id, location }, select: { id: true } });
     const existingIds = new Set(existing.map((e) => e.id));
     const kept = new Set<string>();
     let order = 0;
@@ -151,7 +184,7 @@ export async function saveStoreMenu(slug: string, tree: MenuNodeInput[]): Promis
         await tx.storeMenuItem.update({ where: { id: n.id }, data });
         id = n.id;
       } else {
-        id = (await tx.storeMenuItem.create({ data: { storeId: a.store.id, location: "header", ...data }, select: { id: true } })).id;
+        id = (await tx.storeMenuItem.create({ data: { storeId: a.store.id, location, ...data }, select: { id: true } })).id;
       }
       kept.add(id);
       return { id, label: data.label, linkType: n.linkType, target: data.target, openInNewTab: data.openInNewTab };
@@ -165,7 +198,7 @@ export async function saveStoreMenu(slug: string, tree: MenuNodeInput[]): Promis
       out.push({ ...top, children });
     }
     // Children the owner kept were re-parented above, so deleting a removed parent cannot cascade onto them.
-    await tx.storeMenuItem.deleteMany({ where: { storeId: a.store.id, location: "header", id: { notIn: [...kept] } } });
+    await tx.storeMenuItem.deleteMany({ where: { storeId: a.store.id, location, id: { notIn: [...kept] } } });
     return out;
   });
 
@@ -173,10 +206,10 @@ export async function saveStoreMenu(slug: string, tree: MenuNodeInput[]): Promis
   return { success: true, data: saved };
 }
 
-export async function resetStoreMenu(slug: string): Promise<ActionResult> {
+export async function resetStoreMenu(slug: string, locationIn: MenuLocation = "header"): Promise<ActionResult> {
   const a = await access(slug);
   if (!a.success) return { success: false, error: a.error };
-  await prisma.storeMenuItem.deleteMany({ where: { storeId: a.store.id, location: "header" } });
+  await prisma.storeMenuItem.deleteMany({ where: { storeId: a.store.id, location: asLocation(locationIn) } });
   revalidatePath(`/store/${slug}`, "layout");
   return { success: true, data: undefined };
 }

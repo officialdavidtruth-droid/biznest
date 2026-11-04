@@ -4,7 +4,7 @@ import { useEffect, useMemo, useRef, useState, type Dispatch, type SetStateActio
 import { toast } from "sonner";
 import {
   X, Monitor, Tablet, Smartphone, LayoutTemplate, Rows3, ChevronRight,
-  ArrowUp, ArrowDown, RotateCw, PenSquare, FileText, Trash2, Eye, EyeOff, Plus, ChevronDown,
+  ArrowUp, ArrowDown, RotateCw, PenSquare, FileText, Trash2, Eye, EyeOff, Plus, ChevronDown, Menu as MenuIcon, FolderTree,
 } from "lucide-react";
 import { saveStorePage, toggleStorePagePublished, deleteStorePage } from "@/lib/actions/pages";
 import { SUGGESTED_PAGE_SLUGS, SUGGESTED_PAGE_TITLES } from "@/lib/actions/pages-constants";
@@ -432,52 +432,40 @@ export function CustomizerClient({
               <div className="mb-2 rounded-md border border-amber-300 bg-amber-50 px-3 py-2 text-[11px] text-amber-900">Restored your unpublished draft from this browser. Publish to make it live, or Discard to go back.</div>
             )}
             {inTemplateMode && (
-              <div className="mb-2 rounded-md border border-emerald-300 bg-emerald-50 px-3 py-3 text-[11px] text-emerald-900">
-                <p className="font-semibold">You&apos;re editing your real {currentTemplateName ?? "template"} homepage</p>
-                <p className="mt-1">The preview on the right is the live design. Text, images, colours and pages you change here show up straight away.</p>
-                <button type="button" onClick={() => setPanel("arrange")} className="mt-2 inline-block font-semibold underline">Reorder or hide sections</button>
+              <div className="mb-2 rounded-md border border-emerald-300 bg-emerald-50 px-3 py-2.5 text-[11px] text-emerald-900">
+                <p className="font-semibold">Editing your live {currentTemplateName ?? "template"} homepage</p>
+                <p className="mt-0.5">Changes show in the preview straight away.</p>
               </div>
             )}
             {templateHasOwnHomepage && !inTemplateMode && (
-              <div className="mb-2 rounded-md border border-amber-300 bg-amber-50 px-3 py-3 text-[11px] text-amber-900">
+              <div className="mb-2 rounded-md border border-amber-300 bg-amber-50 px-3 py-2.5 text-[11px] text-amber-900">
                 {published ? (
                   <>
-                    <p className="font-semibold">Your visual website replaces this template&apos;s homepage</p>
-                    <p className="mt-1">{currentTemplateName ?? "This template"} has its own homepage design, but the layout you published here is what visitors see now.</p>
-                    <button type="button" disabled={isSaving} onClick={restoreTemplateHomepage} className="mt-2 inline-block font-semibold underline disabled:opacity-50">Restore the {currentTemplateName ?? "template"} homepage</button>
+                    <p className="font-semibold">You are using a custom home page</p>
+                    <p className="mt-0.5">It replaces the {currentTemplateName ?? "template"}&apos;s own home page.</p>
+                    <button type="button" disabled={isSaving} onClick={restoreTemplateHomepage} className="mt-1.5 inline-block font-semibold underline disabled:opacity-50">Go back to the {currentTemplateName ?? "template"} home page</button>
                   </>
                 ) : (
                   <>
-                    <p className="font-semibold">You&apos;re designing a visual-builder homepage</p>
-                    <p className="mt-1">The preview shows your builder draft. Nothing changes on your live homepage until you publish; publishing replaces {currentTemplateName ?? "the template"}&apos;s homepage with this layout.</p>
-                    <button type="button" onClick={() => { setTemplateMode("template"); setPanel(null); }} className="mt-2 inline-block font-semibold underline">Back to my real {currentTemplateName ?? "template"} homepage</button>
+                    <p className="font-semibold">You are designing a new home page (not live yet)</p>
+                    <p className="mt-0.5">Your live home page changes only when you press Publish.</p>
+                    <button type="button" onClick={() => { setTemplateMode("template"); setPanel(null); }} className="mt-1.5 inline-block font-semibold underline">Back to my {currentTemplateName ?? "template"} home page</button>
                   </>
                 )}
               </div>
             )}
-            {!inTemplateMode && (<>
-            <div className="mb-2 rounded-md border border-primary/20 bg-primary/5 px-3 py-3">
-              <div className="flex items-start justify-between gap-3">
-                <div>
-                  <p className="text-xs font-semibold">Industry homepage</p>
-                  <p className="mt-1 text-[11px] text-muted-foreground">{experience.description}</p>
-                </div>
-                <span className="shrink-0 rounded-full bg-background px-2 py-1 text-[10px] font-medium">{experience.label}</span>
-              </div>
-              <div className="mt-2 flex flex-wrap gap-1">{experience.journey.map((step) => <span key={step} className="rounded-full border border-border bg-background px-2 py-1 text-[10px] text-muted-foreground">{step}</span>)}</div>
-              <button
-                onClick={() => { if (!confirm("Replace your current draft with the recommended homepage? Unpublished edits will be lost.")) return; const next = buildIndustryHomepage(businessCategory, storeName, storyDescription, heroImage, { sellsProducts, offersServices }); setBuilder(next); setSelectedSectionId(next.sections[0]?.id ?? null); setPanel("sections"); }}
-                className="mt-3 w-full rounded-md border border-primary/30 bg-background px-3 py-2 text-xs font-semibold hover:bg-muted"
-              >
-                Use recommended homepage
-              </button>
-            </div>
-            <div className="mb-2 rounded-md border border-primary/20 bg-primary/5 px-3 py-3">
-              <p className="text-xs font-semibold">Visual Builder</p>
-              <p className="mt-1 text-[11px] text-muted-foreground">Build the actual published homepage from sections, settings and responsive styles.</p>
-              <button onClick={() => setPanel("sections")} className="mt-2 w-full rounded-md bg-primary px-3 py-2 text-xs font-semibold text-primary-foreground">Open visual builder</button>
-            </div>
-            </>)}
+            {!inTemplateMode && (
+              <details className="mb-2 rounded-md border border-border px-3 py-2 text-xs">
+                <summary className="cursor-pointer font-semibold text-muted-foreground">Advanced</summary>
+                <p className="mt-2 text-[11px] text-muted-foreground">{experience.description}</p>
+                <button
+                  onClick={() => { if (!confirm("Replace your current draft with the recommended homepage? Unpublished edits will be lost.")) return; const next = buildIndustryHomepage(businessCategory, storeName, storyDescription, heroImage, { sellsProducts, offersServices }); setBuilder(next); setSelectedSectionId(next.sections[0]?.id ?? null); setPanel("sections"); }}
+                  className="mt-2 w-full rounded-md border border-border bg-background px-3 py-2 text-xs font-semibold hover:bg-muted"
+                >
+                  Start again from the recommended home page
+                </button>
+              </details>
+            )}
             <button
               onClick={() => setPanel("design")}
               className="flex w-full items-center justify-between rounded-md px-3 py-3 text-left text-sm font-medium hover:bg-muted"
@@ -501,17 +489,15 @@ export function CustomizerClient({
               </span>
               <ChevronRight className="h-4 w-4 text-muted-foreground" />
             </button>
-            {!inTemplateMode && (
             <button
-              onClick={() => setPanel("sections")}
+              onClick={() => setPanel(inTemplateMode ? "arrange" : "sections")}
               className="flex w-full items-center justify-between rounded-md px-3 py-3 text-left text-sm font-medium hover:bg-muted"
             >
               <span className="flex items-center gap-2">
-                <Rows3 className="h-4 w-4" /> Sections & Layout
+                <Rows3 className="h-4 w-4" /> Home page sections
               </span>
               <ChevronRight className="h-4 w-4 text-muted-foreground" />
             </button>
-            )}
             <button
               onClick={() => setPanel("pages")}
               className="flex w-full items-center justify-between rounded-md px-3 py-3 text-left text-sm font-medium hover:bg-muted"
@@ -521,12 +507,15 @@ export function CustomizerClient({
               </span>
               <ChevronRight className="h-4 w-4 text-muted-foreground" />
             </button>
-            {inTemplateMode && (
-              <button type="button" onClick={() => setPanel("arrange")} className="flex w-full items-center justify-between rounded-md px-3 py-3 text-left text-sm font-medium hover:bg-muted">
-                <span className="flex items-center gap-2"><Rows3 className="h-4 w-4" /> Reorder sections</span>
-                <ChevronRight className="h-4 w-4 text-muted-foreground" />
-              </button>
-            )}
+            {/* Shopify's theme editor links to Navigation from the same place; plain <a> because leaving this live-preview page needs a full reload. */}
+            <a href={`/${slug}/admin/menus`} className="flex w-full items-center justify-between rounded-md px-3 py-3 text-left text-sm font-medium hover:bg-muted">
+              <span className="flex items-center gap-2"><MenuIcon className="h-4 w-4" /> Menus (header & footer)</span>
+              <ChevronRight className="h-4 w-4 text-muted-foreground" />
+            </a>
+            <a href={`/${slug}/admin/categories`} className="flex w-full items-center justify-between rounded-md px-3 py-3 text-left text-sm font-medium hover:bg-muted">
+              <span className="flex items-center gap-2"><FolderTree className="h-4 w-4" /> Categories</span>
+              <ChevronRight className="h-4 w-4 text-muted-foreground" />
+            </a>
             {inTemplateMode && homeKind === "hotel" && (
               <a href={`/${slug}/admin/hotel`} className="flex w-full items-center justify-between rounded-md px-3 py-3 text-left text-sm font-medium hover:bg-muted">
                 <span className="flex items-center gap-2"><PenSquare className="h-4 w-4" /> Rooms, dining & amenities</span>
@@ -583,8 +572,8 @@ export function CustomizerClient({
                   <p className="mb-3 text-xs text-muted-foreground">Move sections up or down, or hide the ones you don&apos;t need. The preview updates as you go. The menu bar and footer stay where they are.</p>
                   {previewSections.length === 0 ? (
                     <div className="rounded-md border bg-muted/30 p-3 text-[11px] text-muted-foreground">
-                      <p>No movable sections were found yet. Wait for the preview to finish loading, then tap Refresh preview. If none appear, use the visual builder.</p>
-                      <button type="button" onClick={() => { setTemplateMode("builder"); setPanel(null); }} className="mt-2 font-semibold underline">Use the visual builder instead</button>
+                      <p>No movable sections were found yet. Wait for the preview to finish loading, then tap Refresh preview. If none appear, switch to the custom home page editor.</p>
+                      <button type="button" onClick={() => { setTemplateMode("builder"); setPanel(null); }} className="mt-2 font-semibold underline">Switch to the custom home page editor</button>
                     </div>
                   ) : (
                     <div className="space-y-1.5">
