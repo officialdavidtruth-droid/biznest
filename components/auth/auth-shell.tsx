@@ -145,7 +145,6 @@ export function AuthShell({
           ? `Your ${businessCategory.toLowerCase()} orders and history, saved to your account`
           : "Your orders and history, saved to your account",
     },
-    { icon: Sparkles, text: "This account only works on this store, by design" },
   ];
 
   return (
