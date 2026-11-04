@@ -2,6 +2,7 @@
 
 import { prisma } from "@/lib/prisma";
 import { parseDepartureDates, readTripConfig } from "@/lib/trip-booking";
+import { SERVICE_CONTENT_KEY, normalizeServiceContent, serializeServiceContent } from "@/lib/service-content";
 import { Prisma } from "@prisma/client";
 import { revalidatePath } from "next/cache";
 import slugify from "slugify";
@@ -252,8 +253,12 @@ function parseAvailability(formData: FormData) {
 
 /** Keep trip keys only for trip packages, and always stamp the kind server-side. */
 function tripAttributes(mode: string, input: Record<string, string | number | boolean | string[]> | undefined) {
-  const { bookingKind: _k, tripSeats, tripPricing, tripDepartures, ...rest } = input ?? {};
+  const { bookingKind: _k, tripSeats, tripPricing, tripDepartures, [SERVICE_CONTENT_KEY]: pageBlocks, ...base } = input ?? {};
   void _k;
+  // Page content is re-normalised and size-capped server-side, whatever the browser sent.
+  let content = "";
+  try { content = typeof pageBlocks === "string" && pageBlocks ? serializeServiceContent(normalizeServiceContent(JSON.parse(pageBlocks))) : ""; } catch { content = ""; }
+  const rest = content ? { ...base, [SERVICE_CONTENT_KEY]: content } : base;
   if (mode !== "trip") return rest;
   return { ...rest, bookingKind: "trip", tripSeats: Number(tripSeats), tripPricing: tripPricing === "group" ? "group" : "person", tripDepartures: parseDepartureDates(tripDepartures).join(",") };
 }

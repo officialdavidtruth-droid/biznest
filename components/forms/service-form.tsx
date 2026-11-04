@@ -1,6 +1,8 @@
 "use client";
 
 import { parseDepartureDates, readTripConfig } from "@/lib/trip-booking";
+import { ServiceContentEditor } from "@/components/forms/service-content-editor";
+import { readServiceContent, serializeServiceContent, type ServiceContent } from "@/lib/service-content";
 import { useForm, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { serviceSchema, type ServiceInput } from "@/lib/validations/service";
@@ -25,7 +27,7 @@ type AttrPair = { key: string; value: string };
 // Same reserved-key convention as ProductForm: everything the styled
 // sections below own is excluded from the free-form "Additional Details"
 // list so nothing already saved is silently dropped on re-render.
-const RESERVED_ATTR_KEYS = ["tags", "featured", "allowSpecialRequests", "taxable"] as const;
+const RESERVED_ATTR_KEYS = ["tags", "featured", "allowSpecialRequests", "taxable", "bookingKind", "tripSeats", "tripPricing", "tripDepartures", "pageBlocks"] as const;
 
 const ICON_MAP: Record<string, LucideIcon> = {
   Clock3, Flame, Soup, Users, Ruler, BedDouble, Bath, Sparkles, Star, MessageSquare, Receipt,
@@ -49,6 +51,7 @@ export function ServiceForm({
   categoryLabel = "Category",
   businessCategory,
   defaultCategoryId,
+  articles = [],
 }: {
   storeSlug: string;
   categories: Category[];
@@ -56,6 +59,8 @@ export function ServiceForm({
   categoryLabel?: string;
   /** Pre-selects the category when the form is opened from a category ("Add to this category"). */
   defaultCategoryId?: string;
+  /** Published blog articles the merchant can link from this page ("blogHandle/articleHandle"). */
+  articles?: { value: string; label: string }[];
   // Business niche (Store.business.category) -- drives which optional
   // fields, wording, and tips this form shows, exactly like ProductForm.
   // A hotel niche renders room-style quick specs (guests/size/bed type);
@@ -96,6 +101,10 @@ export function ServiceForm({
   const [tripSeats, setTripSeats] = useState(savedTrip ? String(savedTrip.seats) : "20");
   const [tripPricing, setTripPricing] = useState<"person" | "group">(savedTrip?.pricing ?? "person");
   const [tripDepartures, setTripDepartures] = useState(savedTrip ? savedTrip.departures.join(", ") : "");
+  const [content, setContent] = useState<ServiceContent>(() => {
+    const saved = readServiceContent(attrs);
+    return { ...saved, enquiry: saved.enquiry ?? initialMode === "none" };
+  });
   const [tags, setTags] = useState<string[]>(Array.isArray(attrs.tags) ? (attrs.tags as string[]) : []);
   const [tagDraft, setTagDraft] = useState("");
   const [featured, setFeatured] = useState<boolean>(Boolean(attrs.featured));
@@ -212,6 +221,9 @@ export function ServiceForm({
       attributes.tripPricing = tripPricing;
       attributes.tripDepartures = parseDepartureDates(tripDepartures).join(",");
     }
+
+    const pageBlocks = serializeServiceContent(content);
+    if (pageBlocks) attributes.pageBlocks = pageBlocks;
 
     const payload: ServiceInput = { ...values, isPublished: publish, bookingMode, availability, attributes };
     const result = service ? await updateService(storeSlug, service.id, payload) : await createService(storeSlug, payload);
@@ -497,6 +509,14 @@ export function ServiceForm({
               </>
             )}
           </section>
+
+          <ServiceContentEditor
+            value={content}
+            onChange={setContent}
+            noun={entityLabel.toLowerCase()}
+            itineraryLabel={isTravelBusiness ? "Itinerary" : "Step by step"}
+            articles={articles}
+          />
 
           <section className="rounded-xl border bg-white p-5 shadow-sm">
             <div className="mb-1 flex items-center justify-between">

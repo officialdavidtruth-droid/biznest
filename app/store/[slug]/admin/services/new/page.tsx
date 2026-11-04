@@ -8,6 +8,10 @@ export default async function NewServicePage({ params, searchParams }: { params:
   const { category: presetCategory } = await searchParams;
   const store = await prisma.store.findUnique({ where: { slug }, select: { id: true, business: { select: { category: true } } } });
   const terminology = getBusinessTerminology(store?.business?.category);
+  const articleRows = store
+    ? await prisma.article.findMany({ where: { storeId: store.id, publishedAt: { not: null, lte: new Date() } }, orderBy: { publishedAt: "desc" }, take: 100, select: { title: true, handle: true, blog: { select: { handle: true } } } })
+    : [];
+  const articles = articleRows.map((a) => ({ value: `${a.blog.handle}/${a.handle}`, label: a.title }));
   const categories = store ? await prisma.category.findMany({ where: { storeId: store.id, type: "SERVICE" }, orderBy: { name: "asc" } }) : [];
 
   return (
@@ -19,6 +23,7 @@ export default async function NewServicePage({ params, searchParams }: { params:
         entityLabel={terminology.catalogSingular}
         categoryLabel={terminology.category}
         businessCategory={store?.business?.category}
+        articles={articles}
       />
     </div>
   );

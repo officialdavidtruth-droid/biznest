@@ -14,6 +14,8 @@ import { AccountLink } from "@/components/storefront/account-link";
 import { BookingWidget } from "@/components/storefront/booking-widget";
 import { TripBookingWidget } from "@/components/storefront/trip-booking-widget";
 import { readTripConfig } from "@/lib/trip-booking";
+import { readServiceContent } from "@/lib/service-content";
+import { ServiceContentSections, ServiceEnquiryForm, StoryText } from "@/components/storefront/service-content-sections";
 import { getCatalogItemPreset } from "@/lib/catalog-item-presets";
 import { getBusinessTerminology } from "@/lib/business-terminology";
 import { getUnitBookingNiche, resolveBookingRules } from "@/lib/storefront/unit-booking-niche";
@@ -78,7 +80,7 @@ function itemImages(service: any) {
 export function CatalogItemDetail({ store, slug, service, reviewStats, theme, businessCategory, hotelMode, stayTimes, externalChrome }: Props) {
   const images = itemImages(service);
   const [selectedImage, setSelectedImage] = useState(0);
-  const address = [store.business?.city, store.business?.state, store.business?.country].filter(Boolean).join(", ");
+  const businessAddress = [store.business?.city, store.business?.state, store.business?.country].filter(Boolean).join(", ");
   const reviews = Array.isArray(service.reviews) ? service.reviews : [];
   const reviewCount = reviewStats ? reviewStats.count : reviews.length;
   const rating = reviewStats
@@ -89,6 +91,8 @@ export function CatalogItemDetail({ store, slug, service, reviewStats, theme, bu
   const category = service.category?.name || preset.sectionLabel;
   const attrs = (service.attributes && typeof service.attributes === "object" && !Array.isArray(service.attributes) ? service.attributes : {}) as Record<string, unknown>;
   const trip = readTripConfig(attrs, service.isBookable, service.totalUnits);
+  const content = readServiceContent(attrs);
+  const address = content.location || businessAddress;
 
   // Amenities/specs grid -- quick specs + spec fields the merchant filled
   // in on ServiceForm, e.g. bed type & Wi-Fi for a room, skill level &
@@ -98,7 +102,9 @@ export function CatalogItemDetail({ store, slug, service, reviewStats, theme, bu
   const specEntries = [...preset.quickSpecs, ...preset.specFields]
     .map((f) => ({ label: f.label.replace(/\s*\(Optional\)$/, ""), value: attrs[f.key] }))
     .filter((f) => f.value !== undefined && f.value !== "");
-  const amenities = specEntries.length > 0 ? specEntries : [{ label: "Quality service", value: "Guaranteed" }, { label: "Support", value: "Responsive" }];
+  // Only what the merchant actually entered (key details + preset spec fields). No invented filler.
+  const amenities: { label: string; value: unknown }[] = [...content.highlights, ...specEntries.filter((s) => !content.highlights.some((h) => h.label.toLowerCase() === s.label.toLowerCase()))];
+  const showEnquiry = content.enquiry ?? !service.isBookable;
 
   const isUnitBased = Boolean(service.totalUnits);
   const isHotel = isHotelBusiness(businessCategory);
@@ -120,7 +126,7 @@ export function CatalogItemDetail({ store, slug, service, reviewStats, theme, bu
   const hasSocial = (["instagram", "facebook", "twitter", "tiktok", "whatsapp"] as const).some((k) => typeof social[k] === "string" && String(social[k]).trim());
   const lat = Number(attrs.lat), lng = Number(attrs.lng);
   const hasCoords = typeof attrs.lat === "number" && typeof attrs.lng === "number" && Number.isFinite(lat) && Number.isFinite(lng);
-  const mapsHref = address ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${store.name}, ${address}`)}` : "";
+  const mapsHref = address ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(content.location ? address : `${store.name}, ${address}`)}` : "";
   const itemLabel = terminology.catalogSingular.toLowerCase();
   const enquiryText = `Hi ${store.name}, I'm interested in "${service.name}". Could you share details and next steps?`;
   const whatsappHref = whatsappLink(whatsappRaw, /^https?:/i.test(whatsappRaw) ? undefined : enquiryText) ?? "";
@@ -136,11 +142,11 @@ export function CatalogItemDetail({ store, slug, service, reviewStats, theme, bu
 
   return (
     <div className="hotel-room-reference" style={{ "--hr-bg": theme.bg, "--hr-ink": theme.ink, "--hr-card": theme.card, "--hr-accent": accent, "--hr-dark": dark, "--hr-border": theme.border || "#E7E3D9", "--hr-muted": theme.muted || "#74736D", "--hr-head": theme.headlineFont, "--hr-font": theme.font } as React.CSSProperties}>
-      {!externalChrome && (phone || email || address || hasSocial) && (
+      {!externalChrome && (phone || email || businessAddress || hasSocial) && (
         <div className="hr-topbar">
           {phone && <a href={`tel:${phone}`}>☎ {phone}</a>}
           {email && <a href={`mailto:${email}`}>✉ {email}</a>}
-          {address && <span>⌖ {address}</span>}
+          {businessAddress && <span>⌖ {businessAddress}</span>}
           {hasSocial && <FooterSocial social={social} className="hr-top-social" iconSize={14} />}
         </div>
       )}
@@ -262,19 +268,26 @@ export function CatalogItemDetail({ store, slug, service, reviewStats, theme, bu
                 )}
               </div>
             )}
+            {showEnquiry && <ServiceEnquiryForm slug={slug} serviceName={service.name} accent={accent} />}
           </div>
         </section>
 
         <section className="hr-info-grid">
           <div className="hr-info-copy">
             <h2>Overview</h2>
-            <p>{service.description || `Enjoy ${service.name}, thoughtfully delivered with attentive service and everything you need.`}</p>
+            {service.description && <p>{service.description}</p>}
+            <StoryText text={content.story} />
 
-            <h2>{isHotel ? "Room Amenities" : "Details"}</h2>
-            <p className="hr-small-copy">Everything you need to know before you book.</p>
-            <div className="hr-amenities">
-              {amenities.map((a) => <div key={a.label}><span>●</span><b>{a.label}: {String(a.value)}</b></div>)}
-            </div>
+            {amenities.length > 0 && (
+              <>
+                <h2>{isHotel ? "Room Amenities" : "Details"}</h2>
+                <div className="hr-amenities">
+                  {amenities.map((a) => <div key={a.label}><span>●</span><b>{a.label}: {String(a.value)}</b></div>)}
+                </div>
+              </>
+            )}
+
+            <ServiceContentSections content={content} slug={slug} accent={accent} itineraryTitle={/travel|tour/i.test(businessCategory ?? "") ? "Itinerary" : "Step by step"} />
 
             {bookingRules && (
               <>
@@ -292,8 +305,9 @@ export function CatalogItemDetail({ store, slug, service, reviewStats, theme, bu
                 <h2>Location</h2>
                 {hasCoords && <PropertyMap properties={[{ id: service.id, name: service.name, priceLabel: money(service), lat, lng }]} accent={accent} />}
                 {address && (
-                  <p className="hr-small-copy">
-                    <MapPin size={14} style={{ verticalAlign: "-2px" }} /> {address}{" "}
+                  <p className="hr-small-copy" style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
+                    <MapPin size={15} style={{ flex: "none", display: "inline-block" }} />
+                    <span>{address}</span>
                     <a href={mapsHref} target="_blank" rel="noopener noreferrer" style={{ color: accent, fontWeight: 700 }}>Get directions</a>
                   </p>
                 )}
