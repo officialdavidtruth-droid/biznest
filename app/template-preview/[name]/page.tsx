@@ -98,6 +98,6 @@ export default async function TemplatePreviewPage({ params }: { params: Promise<
   if (home.kind === "example") return <ExampleStorefront store={previewStore} slug={p.slug} items={sampleItems as any} mode="home"/>;
   if (home.kind === "hotel") return <ThelusoHotel store={previewStore as any} slug={p.slug} content={await getHotelContent(p.slug, definition.name)}/>;
   const theme = resolveStoreTheme(definition.category, previewStore.name, null, null, definition.name);
-  const config = templateThemeToBuilderConfig(theme, previewStore.name, previewStore.business.description, previewStore.bannerUrl);
+  const config = templateThemeToBuilderConfig({ ...theme, neutral: true }, previewStore.name, previewStore.business.description, previewStore.bannerUrl, previewStore.business as any);
   return <BuilderStorefront store={previewStore as any} config={config} catalogItems={sampleItems as any} reviews={[]} avgRating={null} completedOrders={0}/>;
 }

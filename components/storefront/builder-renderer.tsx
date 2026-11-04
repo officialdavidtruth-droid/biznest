@@ -3,6 +3,7 @@
 import { starFill, starEmpty } from "@/lib/utils/stars";
 import { readableAccentText } from "@/lib/utils/readable-accent";
 import { MenuLinks, useFooterMenu, type FallbackLink } from "@/components/storefront/store-menu";
+import { useStoreCategories } from "@/components/storefront/store-categories";
 import type React from "react";
 import { useEffect, useMemo, useState } from "react";
 import { createPortal } from "react-dom";
@@ -43,7 +44,7 @@ function isInOwnPreview(): boolean {
 }
 
 export function BuilderStorefront({
-  store, config: initialConfig, catalogItems, reviews, avgRating, completedOrders, fallbackFaq,
+  store, config: initialConfig, catalogItems, reviews, avgRating, completedOrders, fallbackFaq, categoryList,
 }: {
   store: BuilderStore;
   config: BuilderConfig;
@@ -53,6 +54,8 @@ export function BuilderStorefront({
   completedOrders: number;
   /** The store's own FAQ (e.g. written by the AI store builder), shown when the FAQ section has no entries of its own. */
   fallbackFaq?: BuilderSectionItem[];
+  /** The owner's real categories (Dashboard > Categories), empty ones included. Without it, categories are read off the items. */
+  categoryList?: { id: string; name: string; slug?: string | null }[];
 }) {
   const [liveConfig, setLiveConfig] = useState<BuilderConfig>(initialConfig);
   // True only when this storefront is rendered inside the customizer's
@@ -100,6 +103,11 @@ export function BuilderStorefront({
   const visible = config.sections.filter((s) => s.visible).map((s) => s.type === "hero" && !s.settings.image && store.bannerUrl && isSafeImageUrl(store.bannerUrl) ? { ...s, settings: { ...s.settings, image: store.bannerUrl } } : s);
   const featured = catalogItems.slice(0, 8);
   const categories = Array.from(new Set(catalogItems.map((i) => i.categoryName).filter(Boolean))) as string[];
+  // Owner's categories first (so a store with categories but no items still shows them), else the ones its items name.
+  const realCategories = (categoryList ?? []).filter((c) => c.id && !String(c.id).startsWith("cat-"));
+  const categoryLinks = realCategories.length
+    ? realCategories.map((c) => ({ name: c.name, href: `/store/${store.slug}/category/${c.slug || c.id}` }))
+    : categories.map((c) => ({ name: c, href: `/store/${store.slug}/search?q=${encodeURIComponent(c)}` }));
 
   // Every rendered section carries a plain `id={section.id}` (see
   // BuilderSectionView below) and nothing else in this component sets an
@@ -135,15 +143,15 @@ export function BuilderStorefront({
       <style>{`a{text-decoration:none;color:inherit}.bn-wrap{width:min(${width}px,calc(100% - 32px));margin:0 auto}.bn-grid{display:grid;gap:20px}@media(max-width:720px){.bn-grid{grid-template-columns:1fr!important}.bn-hero{grid-template-columns:1fr!important}.bn-section{padding-top:56px!important;padding-bottom:56px!important}.bn-nav-links{display:none!important}}${isEditMode ? `.bn-section{cursor:pointer;transition:outline .12s ease}.bn-section:hover{outline:2px dashed ${d.accent};outline-offset:-2px}` : ""}`}</style>
       <BuilderHeader store={store} d={d} experience={experience} visible={visible} />
 
-      {visible.map((section) => <BuilderSectionView key={section.id} section={section} store={store} config={config} catalogItems={featured} categories={categories} experience={experience} reviews={reviews} avgRating={avgRating} completedOrders={completedOrders} fallbackFaq={fallbackFaq} isEditMode={isEditMode} catalogTotal={catalogItems.length} />)}
+      {visible.map((section) => <BuilderSectionView key={section.id} section={section} store={store} config={config} catalogItems={featured} categories={categories} categoryLinks={categoryLinks} experience={experience} reviews={reviews} avgRating={avgRating} completedOrders={completedOrders} fallbackFaq={fallbackFaq} isEditMode={isEditMode} catalogTotal={catalogItems.length} />)}
 
       <BuilderFooter store={store} d={d} visible={visible} />
     </main>
   );
 }
 
-function BuilderSectionView({ section, store, config, catalogItems, categories, experience, reviews, avgRating, completedOrders, fallbackFaq, isEditMode, catalogTotal }: {
-  section: BuilderSection; store: BuilderStore; config: BuilderConfig; catalogItems: CatalogItem[]; categories: string[]; experience: ReturnType<typeof getBusinessExperience>; reviews: Review[]; avgRating: number | null; completedOrders: number; fallbackFaq?: BuilderSectionItem[]; isEditMode?: boolean; catalogTotal?: number;
+function BuilderSectionView({ section, store, config, catalogItems, categories, categoryLinks, experience, reviews, avgRating, completedOrders, fallbackFaq, isEditMode, catalogTotal }: {
+  section: BuilderSection; store: BuilderStore; config: BuilderConfig; catalogItems: CatalogItem[]; categories: string[]; categoryLinks: { name: string; href: string }[]; experience: ReturnType<typeof getBusinessExperience>; reviews: Review[]; avgRating: number | null; completedOrders: number; fallbackFaq?: BuilderSectionItem[]; isEditMode?: boolean; catalogTotal?: number;
 }) {
   const d = config.design;
   const s = section.settings;
@@ -213,6 +221,8 @@ function BuilderSectionView({ section, store, config, catalogItems, categories, 
     );
   }
 
+  // Nothing to show: leave the section out on the live site (the editor still shows it so it can be filled in).
+  if (section.type === "catalog" && !catalogItems.length && !isEditMode) return null;
   if (section.type === "catalog") return (
     <section id={section.id} data-bn-type={section.type} className="bn-section" style={{ padding, background: bg }}>
       <div className="bn-wrap"><SectionIntro section={section} config={config} />
@@ -247,7 +257,9 @@ function BuilderSectionView({ section, store, config, catalogItems, categories, 
     return <section id={section.id} data-bn-type={section.type} className="bn-section" style={{ padding, background: bg }}><div className="bn-wrap"><SectionIntro section={section} config={config} /><div className="bn-grid" style={{ gridTemplateColumns: `repeat(${Math.min(cols,4)},1fr)` }}>{items.map((item, i) => <div key={`${item.title}-${i}`} style={{ padding: 24, background: d.surface, borderRadius: s.radius ?? d.radius, border: `1px solid ${d.text}12` }}><div style={{ color: d.accent, fontWeight: 900, fontSize: 12 }}>{String(i + 1).padStart(2, "0")}</div><h3 style={{ margin: "10px 0 7px", fontFamily: d.headingFont, fontSize: 18 }}>{item.title}</h3>{item.body && <p style={{ color: d.muted, fontSize: 13, lineHeight: 1.7, whiteSpace: "pre-line" }}>{item.body}</p>}</div>)}</div></div></section>;
   }
 
-  if (section.type === "categories") return <section id={section.id} data-bn-type={section.type} className="bn-section" style={{ padding, background: bg }}><div className="bn-wrap"><SectionIntro section={section} config={config} /><div className="bn-grid" style={{ gridTemplateColumns: `repeat(${Math.min(cols,4)},1fr)` }}>{categories.map((c) => <a key={c} href={`/store/${store.slug}/search?q=${encodeURIComponent(c)}`} style={{ padding: 22, borderRadius: s.radius ?? d.radius, background: d.surface, border: `1px solid ${d.text}12`, fontWeight: 750 }}>{c}</a>)}</div></div></section>;
+  // A section with nothing to show is left out on the live site (the editor still shows it so it can be configured).
+  if (section.type === "categories" && !categoryLinks.length && !isEditMode) return null;
+  if (section.type === "categories") return <section id={section.id} data-bn-type={section.type} className="bn-section" style={{ padding, background: bg }}><div className="bn-wrap"><SectionIntro section={section} config={config} /><div className="bn-grid" style={{ gridTemplateColumns: `repeat(${Math.min(cols,4)},1fr)` }}>{categoryLinks.map((c) => <a key={c.href} href={c.href} style={{ padding: 22, borderRadius: s.radius ?? d.radius, background: d.surface, border: `1px solid ${d.text}12`, fontWeight: 750 }}>{c.name}</a>)}</div></div></section>;
 
   if (section.type === "testimonials") {
     // Real reviews first, then testimonials the owner typed in. Capped so the grid stays tidy.
@@ -273,11 +285,13 @@ function BuilderSectionView({ section, store, config, catalogItems, categories, 
     // The owner's own uploads win; with none, fall back to catalogue photos so the section is never blank.
     const own = (s.images ?? []).filter(Boolean);
     const tiles: { key: string; image: string | null }[] = own.length ? own.slice(0, 24).map((image, i) => ({ key: `img-${i}`, image })) : catalogItems.slice(0, 8).map((item) => ({ key: `${item.kind}-${item.id}`, image: item.image }));
+    if (!tiles.length && !isEditMode) return null;
     return <section id={section.id} data-bn-type={section.type} className="bn-section" style={{ padding, background: bg }}><div className="bn-wrap"><SectionIntro section={section} config={config} /><div className="bn-grid" style={{ gridTemplateColumns: `repeat(${Math.min(cols,4)},1fr)` }}>{tiles.map((t) => <div key={t.key} style={{ aspectRatio: "1/1", borderRadius: s.radius ?? d.radius, background: t.image ? `url(${cssUrl(t.image)}) center/cover` : d.surface }} />)}</div></div></section>;
   }
 
   if (section.type === "map") {
     const query = mapQuery(s.address, store.business);
+    if (!query && !isEditMode) return null;
     return <section id={section.id} data-bn-type={section.type} className="bn-section" style={{ padding, background: bg }}><div className="bn-wrap"><SectionIntro section={section} config={config} />{query ? <>
       <iframe title={`Map of ${query}`} src={mapEmbedUrl(query)} loading="lazy" referrerPolicy="no-referrer-when-downgrade" style={{ width: "100%", height: 340, border: 0, borderRadius: s.radius ?? d.radius, background: d.surface, display: "block" }} />
       <p style={{ marginTop: 14, color: d.muted, fontSize: 14 }}>{query} · <a href={mapDirectionsUrl(query)} target="_blank" rel="noopener noreferrer" style={{ color: d.accent, fontWeight: 750 }}>Get directions</a></p>
@@ -322,10 +336,15 @@ export function BuilderHeader({ store, d, experience, visible }: { store: Builde
   const brand = <Link href={`/store/${store.slug}`} style={{ display: "flex", alignItems: "center", gap: 10, fontWeight: 800, fontFamily: d.headingFont }}>{mark}{store.name}</Link>;
   // Default header menu (used until the owner builds one in Dashboard > Menus). It used to list only the
   // homepage sections that happened to exist, so a simple store showed a single "Featured Products" link.
+  // The owner's own top-level categories come first (up to three), so the menu says what this business sells.
+  // With none yet, a store that sells products gets a single "Categories" link as before.
+  const ownCategories = useStoreCategories().filter((c) => !c.parentId).slice(0, 3);
   const defaultMenu: FallbackLink[] = [
     ["Home", "/"],
     [experience.mode === "service" ? "Services" : "Shop", "/catalog"],
-    ...(experience.mode === "service" ? [] : ([["Categories", "/categories"]] as FallbackLink[])),
+    ...(ownCategories.length
+      ? ownCategories.map((c): FallbackLink => [c.name, `/category/${c.slug || c.id}`])
+      : experience.mode === "service" ? [] : ([["Categories", "/categories"]] as FallbackLink[])),
     ["About", "/about"],
     ["Contact", "/contact"],
   ];

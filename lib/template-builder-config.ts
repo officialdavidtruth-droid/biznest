@@ -1,5 +1,9 @@
 import type { BuilderConfig, BuilderSection, BuilderSectionType } from "@/lib/builder-config";
 import type { TemplateTheme } from "@/lib/template-themes";
+import { buildIndustryHomepage } from "@/lib/business-experience";
+
+/** What a neutral template needs to know about the business to write its own headings and labels. */
+export type NeutralBusiness = { category?: string | null; subcategory?: string | null; sellsProducts?: boolean | null; offersServices?: boolean | null };
 
 function radiusPx(value: string | undefined) {
   if (!value) return 16;
@@ -16,10 +20,11 @@ function sectionFor(theme: TemplateTheme, type: string, index: number, storeName
   const supported = new Set(["hero","catalog","about","stats","features","categories","testimonials","newsletter","contact","gallery","map"]);
   if (!supported.has(type)) return null;
   const id = `${type}-${index}`;
-  const copy = theme.sectionCopy?.[type as keyof NonNullable<TemplateTheme["sectionCopy"]>];
+  // A neutral template never uses a niche heading, even if the theme still carries one.
+  const copy = theme.neutral ? undefined : theme.sectionCopy?.[type as keyof NonNullable<TemplateTheme["sectionCopy"]>];
   const base = { id, type: type as BuilderSectionType, visible: true, settings: {} as BuilderSection["settings"] };
-  if (type === "hero") base.settings = { eyebrow: undefined, heading: storeName, body: description || theme.sub || undefined, ctaLabel: theme.cta, ctaHref: "#catalog", image: heroImage || undefined, heroStyle: theme.heroStyle, heroVariant: theme.heroVariant, align: theme.heroStyle === "centered" ? "center" : "left", padding: theme.density === "compact" ? "normal" : "spacious" };
-  else if (type === "catalog") base.settings = { eyebrow: theme.catalogLabel, heading: theme.catalogLabel, columns: theme.layout === "list" ? 3 : 4, padding: theme.density === "compact" ? "normal" : "spacious" };
+  if (type === "hero") base.settings = { eyebrow: undefined, heading: storeName, body: description || (theme.neutral ? undefined : theme.sub) || undefined, ctaLabel: theme.neutral ? "Explore" : theme.cta, ctaHref: "#catalog", image: heroImage || undefined, heroStyle: theme.heroStyle, heroVariant: theme.heroVariant, align: theme.heroStyle === "centered" ? "center" : "left", padding: theme.density === "compact" ? "normal" : "spacious" };
+  else if (type === "catalog") base.settings = { eyebrow: theme.neutral ? undefined : theme.catalogLabel, heading: theme.neutral ? "Featured" : theme.catalogLabel, columns: theme.layout === "list" ? 3 : 4, padding: theme.density === "compact" ? "normal" : "spacious" };
   else if (type === "about") base.settings = { eyebrow: copy?.eyebrow ?? "Our story", heading: copy?.heading ?? "Built around what matters", body: description || theme.sub, padding: theme.density === "compact" ? "normal" : "spacious" };
   else if (type === "stats") base.settings = { padding: "normal" };
   else if (type === "features") base.settings = { eyebrow: copy?.eyebrow ?? "Why choose us", heading: copy?.heading ?? "Designed around your needs", columns: 3, padding: theme.density === "compact" ? "normal" : "spacious" };
@@ -32,9 +37,17 @@ function sectionFor(theme: TemplateTheme, type: string, index: number, storeName
   return base;
 }
 
-export function templateThemeToBuilderConfig(theme: TemplateTheme, storeName: string, description?: string | null, heroImage?: string | null): BuilderConfig {
+export function templateThemeToBuilderConfig(theme: TemplateTheme, storeName: string, description?: string | null, heroImage?: string | null, business?: NeutralBusiness | null): BuilderConfig {
   const sectionNames = theme.sections.length ? theme.sections : ["hero", "catalog", "about", "testimonials", "contact"];
-  const sections = sectionNames.map((type, index) => sectionFor(theme, type, index, storeName, description, heroImage)).filter(Boolean) as BuilderSection[];
+  // A neutral template takes its wording from the business: a salon gets "Book", a shop gets "Shop", a mixed store "Explore".
+  const industry = theme.neutral && business ? buildIndustryHomepage(business.category, storeName, description, heroImage, { sellsProducts: business.sellsProducts, offersServices: business.offersServices }, business.subcategory).sections : null;
+  const sections = sectionNames.map((type, index) => {
+    const own = sectionFor(theme, type, index, storeName, description, heroImage);
+    const fromBusiness = industry?.find((s) => s.type === type);
+    if (!own || !fromBusiness) return own;
+    // Business wording and calls to action, template look (hero composition, padding rhythm).
+    return { ...own, settings: { ...own.settings, ...fromBusiness.settings, ...(type === "hero" ? { heroStyle: own.settings.heroStyle, heroVariant: own.settings.heroVariant, image: heroImage || undefined } : {}) } };
+  }).filter(Boolean) as BuilderSection[];
   if (!sections.some((s) => s.type === "hero")) sections.unshift(sectionFor(theme, "hero", 0, storeName, description, heroImage)!);
   if (!sections.some((s) => s.type === "catalog")) sections.push(sectionFor(theme, "catalog", sections.length, storeName, description, heroImage)!);
   return {

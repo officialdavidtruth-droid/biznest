@@ -93,6 +93,11 @@ export type TemplateTheme = {
   sections: Section[];
   /** Optional niche-specific section headings (falls back to generic headings in template-builder-config.ts). */
   sectionCopy?: SectionCopy;
+  /**
+   * A neutral template carries no niche wording of its own. Its headings, button labels and section choice come from the
+   * merchant's business (lib/business-experience.ts), so any business can use it.
+   */
+  neutral?: boolean;
   /** Secondary/body text color. Falls back to a muted version of `ink` when unset. */
   muted?: string;
   /** Divider / hairline border color. Falls back to a low-opacity `ink` when unset. */
@@ -859,6 +864,7 @@ export const NAMED_TEMPLATE_IDENTITY: Record<string, { chrome: TemplateChrome; h
   "Violet — Sunset": { chrome: C("centered", "minimal", "tall"), heroStyle: "centered", heroVariant: "banner" },
   "Nova Studio — Ivory Minimal": { chrome: C("bar", "columns", "minimal"), heroStyle: "split", heroVariant: "ledger" },
   "Heenzy — Boutique Rose": { chrome: C("overlay", "columns", "tall"), heroStyle: "fullbleed", heroVariant: "lookbook" },
+  "Horizon": { chrome: C("stripe", "columns", "minimal"), heroStyle: "centered", heroVariant: "banner" },
 };
 
 /** Assembles a reference template's theme from its plain data + the shared base theme it builds on. */
@@ -870,10 +876,10 @@ export function buildReferenceTheme(d: ReferenceThemeData): GeneratedTemplate {
   const base = bases[d.base];
   // The EXAMPLE base carries a "deal" section that only the dedicated Example renderer can draw. Reference templates
   // built on it render through the Builder, which has no deal block and used to drop it silently, so remove it here.
-  const sections = d.base === "EXAMPLE" ? base.sections.filter((s) => s !== "deal") : base.sections;
+  const sections = d.sections ?? (d.base === "EXAMPLE" ? base.sections.filter((s) => s !== "deal") : base.sections);
   return {
     ...base, sections, ...d.colors, variationName: d.name, tierRank: d.tier, eyebrow: d.category.toUpperCase(),
-    headline: d.headline, sub: d.sub, ...(d.sectionCopy ? { sectionCopy: d.sectionCopy } : {}),
+    headline: d.headline, sub: d.sub, ...(d.sectionCopy ? { sectionCopy: d.sectionCopy } : {}), ...(d.neutral ? { neutral: true } : {}),
   } as GeneratedTemplate;
 }
 

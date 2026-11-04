@@ -12,7 +12,8 @@ export type TemplateCandidate = { name: string; category?: string | null };
 
 export function getTemplateBusinessType(template: TemplateCandidate): string | null {
   const definition = getTemplateDefinition(template.name);
-  if (definition) return definition.supports[0] ?? null;
+  // A neutral template ("*") is suited to every business; its starter listings fall back to its own category.
+  if (definition) return definition.supports[0] === "*" ? definition.category : definition.supports[0] ?? null;
   if (template.name === GRANDEUR_TEMPLATE_NAME || template.name === TASTEHOUSE_TEMPLATE_NAME) return "Restaurant";
   if (template.name === EXAMPLE_TEMPLATE_NAME) return "Retail";
   if (template.name === HOTEL_TEMPLATE_NAME) return "Hotel & Lodging";

@@ -38,7 +38,9 @@ const publicSignature: TemplateDefinition[] = SIGNATURE_TEMPLATE_CATALOG.map((th
 const referenceTemplates: TemplateDefinition[] = REFERENCE_TEMPLATE_CATALOG.map((theme) => ({
   id: `reference-${theme.variationName.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "")}`,
   name: theme.variationName, category: REFERENCE_TEMPLATE_CATEGORY[theme.variationName] || "Retail", theme, renderer: "builder",
-  home: resolveHomeRenderer(theme.variationName).kind, aliases: [], supports: [REFERENCE_TEMPLATE_CATEGORY[theme.variationName] || "Retail"],
+  home: resolveHomeRenderer(theme.variationName).kind, aliases: [],
+  // A neutral template works for every business type; the others target the one they were drawn for.
+  supports: (theme as { neutral?: boolean }).neutral ? ["*"] : [REFERENCE_TEMPLATE_CATEGORY[theme.variationName] || "Retail"],
 }));
 
 const compatibility: TemplateDefinition[] = [

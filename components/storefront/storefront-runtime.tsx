@@ -57,13 +57,13 @@ export async function renderStorefront(slug:string,opts?:{preview?:boolean}){
    // Keep the user's saved section order/content, but guarantee a visible
    // homepage hero using the active template's own hero settings as fallback.
    const theme=resolveStoreTheme(store.template?.category,store.name,themeOverrides,store.fontFamily,store.template?.name);
-   const templateConfig=templateThemeToBuilderConfig(theme,store.name,store.business?.description,store.bannerUrl);
+   const templateConfig=templateThemeToBuilderConfig(template?.home==="builder"?{...theme,neutral:true}:theme,store.name,store.business?.description,store.bannerUrl,{category:store.business?.category,subcategory:store.business?.businessSubcategory,sellsProducts:store.business?.sellsProducts,offersServices:store.business?.offersServices});
    const fallbackHero=templateConfig.sections.find((section)=>section.type==="hero");
    const heroIndex=savedBuilder.sections.findIndex((section)=>section.type==="hero");
    const sections=[...savedBuilder.sections];
    if(heroIndex<0 && fallbackHero) sections.unshift(fallbackHero);
    else if(heroIndex>=0 && !sections[heroIndex].visible) sections[heroIndex]={...sections[heroIndex],visible:true};
-   return <BuilderStorefront store={store} config={{...savedBuilder,sections}} catalogItems={catalogItems} reviews={store.reviews} avgRating={store.business?.avgRating??null} completedOrders={completedOrders} fallbackFaq={fallbackFaq}/>;
+   return <BuilderStorefront categoryList={navCategories} store={store} config={{...savedBuilder,sections}} catalogItems={catalogItems} reviews={store.reviews} avgRating={store.business?.avgRating??null} completedOrders={completedOrders} fallbackFaq={fallbackFaq}/>;
  }
 
  // The Customize editor's live preview (/store/<slug>?preview=1) must show the builder draft even for a template
@@ -71,7 +71,7 @@ export async function renderStorefront(slug:string,opts?:{preview?:boolean}){
  // Only for signed-in people with access to this store, so the public never sees a different homepage.
  if(opts?.preview && home.kind!=="builder") {
    const access=await assertStorePermission(slug,"settings").catch(()=>({success:false as const}));
-   if(access.success) return <BuilderStorefront store={store} config={defaultBuilderConfig(store.name,store.business?.description,store.bannerUrl,store.business?.category,{sellsProducts:store.business?.sellsProducts,offersServices:store.business?.offersServices})} catalogItems={catalogItems} reviews={store.reviews} avgRating={store.business?.avgRating??null} completedOrders={completedOrders} fallbackFaq={fallbackFaq}/>;
+   if(access.success) return <BuilderStorefront categoryList={navCategories} store={store} config={defaultBuilderConfig(store.name,store.business?.description,store.bannerUrl,store.business?.category,{sellsProducts:store.business?.sellsProducts,offersServices:store.business?.offersServices})} catalogItems={catalogItems} reviews={store.reviews} avgRating={store.business?.avgRating??null} completedOrders={completedOrders} fallbackFaq={fallbackFaq}/>;
  }
 
  const arrangement=getTemplateArrangement(store.sectionOverrides);
@@ -83,13 +83,13 @@ export async function renderStorefront(slug:string,opts?:{preview?:boolean}){
 
  if(template?.home==="builder") {
    const theme=resolveStoreTheme(store.template?.category,store.name,themeOverrides,store.fontFamily,store.template?.name);
-   const baseConfig=templateThemeToBuilderConfig(theme,store.name,store.business?.description,store.bannerUrl);
+   const baseConfig=templateThemeToBuilderConfig(template?.home==="builder"?{...theme,neutral:true}:theme,store.name,store.business?.description,store.bannerUrl,{category:store.business?.category,subcategory:store.business?.businessSubcategory,sellsProducts:store.business?.sellsProducts,offersServices:store.business?.offersServices});
    // The owner's Content-panel hero text (headline / subtitle / button) wins over the template defaults.
    const ho=(store.heroOverrides??{}) as {headline?:string;subtitle?:string;ctaLabel?:string};
    const config={...baseConfig,sections:baseConfig.sections.map((sec:any)=>sec.type!=="hero"?sec:{...sec,settings:{...sec.settings,...(ho.headline?.trim()?{heading:ho.headline.trim()}:{}),...(ho.subtitle?.trim()?{body:ho.subtitle.trim()}:{}),...(ho.ctaLabel?.trim()?{ctaLabel:ho.ctaLabel.trim()}:{})}})};
-   return <BuilderStorefront store={store} config={config} catalogItems={catalogItems} reviews={store.reviews} avgRating={store.business?.avgRating??null} completedOrders={completedOrders} fallbackFaq={fallbackFaq}/>;
+   return <BuilderStorefront categoryList={navCategories} store={store} config={config} catalogItems={catalogItems} reviews={store.reviews} avgRating={store.business?.avgRating??null} completedOrders={completedOrders} fallbackFaq={fallbackFaq}/>;
  }
 
- return <BuilderStorefront store={store} config={defaultBuilderConfig(store.name,store.business?.description,store.bannerUrl,store.business?.category,{sellsProducts:store.business?.sellsProducts,offersServices:store.business?.offersServices})} catalogItems={catalogItems} reviews={store.reviews} avgRating={store.business?.avgRating??null} completedOrders={completedOrders} fallbackFaq={fallbackFaq}/>;
+ return <BuilderStorefront categoryList={navCategories} store={store} config={defaultBuilderConfig(store.name,store.business?.description,store.bannerUrl,store.business?.category,{sellsProducts:store.business?.sellsProducts,offersServices:store.business?.offersServices})} catalogItems={catalogItems} reviews={store.reviews} avgRating={store.business?.avgRating??null} completedOrders={completedOrders} fallbackFaq={fallbackFaq}/>;
 }
 export default renderStorefront;

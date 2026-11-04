@@ -12,10 +12,16 @@ export type ReferenceBase = "HOTEL" | "MARKETPLACE" | "EXAMPLE" | "PREMIUM" | "V
 export type ReferenceThemeData = {
   base: ReferenceBase; name: string; category: string; colors: Record<string, string>;
   headline: string; sub: string; tier: 2 | 3 | 4; sectionCopy?: SectionCopy;
+  /** No niche wording: copy and section choice come from the merchant's business. Works for any business type. */
+  neutral?: boolean;
+  /** Overrides the base theme's section list. */
+  sections?: import("@/lib/template-themes").Section[];
 };
 const c = (eyebrow: string, heading: string) => ({ eyebrow, heading });
 
 export const REFERENCE_THEME_DATA: readonly ReferenceThemeData[] = [
+  // The model template. It is the pattern for every other template: no niche words, all content from the merchant.
+  { base: "VIOLET", name: "Horizon", category: "Retail", neutral: true, sections: ["hero", "categories", "catalog", "about", "testimonials", "newsletter", "contact"], colors: { bg: "#FFFFFF", ink: "#111111", card: "#FFFFFF", accent: "#1F1F1F", accentSoft: "#F2F2F2", muted: "#6B6B6B", border: "#E7E7E7", surfaceDark: "#111111", font: "'Inter', sans-serif", headlineFont: "'Inter', sans-serif" }, headline: "", sub: "", tier: 3 },
   { base: "HOTEL", name: "Aspire Resort", category: "Hotel & Lodging", colors: { bg: "#21150F", ink: "#F7E8CE", card: "#2C1E16", accent: "#C69A52", accentSoft: "#E2C28A", muted: "#C5B5A2", border: "#5A4030", headlineFont: "'Playfair Display', Georgia, serif", font: "'Inter', sans-serif", surfaceDark: "#160E09" }, headline: "Experience Comfort and Hospitality", sub: "Unmatched comfort and elegance tailored to your stay.", tier: 4 },
   { base: "HOTEL", name: "Larita Luxury Hotel", category: "Hotel & Lodging", colors: { bg: "#FFFFFF", ink: "#181716", card: "#FFFFFF", accent: "#B58A69", accentSoft: "#E4D0BC", muted: "#77716D", border: "#E8E3DE", headlineFont: "Georgia, 'Times New Roman', serif", font: "'Plus Jakarta Sans', sans-serif", surfaceDark: "#24201D" }, headline: "Luxury hotel in the heart of the city", sub: "Discover modern rooms, thoughtful amenities and personalized hospitality.", tier: 4 },
   { base: "MARKETPLACE", name: "Emarket Furniture & Home", category: "Home & Furniture", colors: { bg: "#FFFFFF", ink: "#20242A", card: "#FFFFFF", accent: "#E64B3D", accentSoft: "#F9D6D1", muted: "#6B7280", border: "#E5E7EB", surfaceDark: "#202B3B" }, headline: "Make room for better living", sub: "Explore furniture, decor and everyday essentials from this store.", tier: 3, sectionCopy: { categories: c("Rooms", "Shop by room"), testimonials: c("Reviews", "From our customers"), newsletter: c("Home updates", "New arrivals in your inbox"), contact: c("Visit or call", "Talk to us about your space") } },
