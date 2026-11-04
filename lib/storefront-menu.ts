@@ -144,3 +144,13 @@ export function isMenuItemActive(item: { href: string; external: boolean; childr
   };
   return matches(item) || (item.children ?? []).some(matches);
 }
+
+/**
+ * A custom menu whose links mostly point at pages this store no longer has (rooms or offers left over from a hotel
+ * template, say) shrinks to one or two stray links, e.g. a header that says only "Blogs". When pages were dropped and at
+ * most one top-level link survives, the menu is treated as stale and the template's default menu (home, shop, the
+ * owner's categories, about, contact) is drawn instead. Nothing is deleted: the owner can still edit the menu.
+ */
+export function isStaleMenu(totalRows: number, keptRows: number, resolvedTopLevel: number): boolean {
+  return totalRows > 0 && keptRows < totalRows && resolvedTopLevel <= 1;
+}
