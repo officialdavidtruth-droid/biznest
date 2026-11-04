@@ -1,7 +1,6 @@
 import { resolveHomeRenderer } from "@/lib/storefront/resolve-renderer";
-import { usesTemplateChrome } from "@/lib/storefront/template-chrome";
 import { isHotelStore } from "@/lib/storefront-routing";
-import { isGrandeurStore } from "@/lib/store-pages";
+import { usesGrandeurSkin } from "@/lib/store-pages";
 import { EXAMPLE_TEMPLATE_NAME, TASTEHOUSE_TEMPLATE_NAME } from "@/lib/template-themes";
 
 /**
@@ -11,7 +10,7 @@ import { EXAMPLE_TEMPLATE_NAME, TASTEHOUSE_TEMPLATE_NAME } from "@/lib/template-
  *
  *   builder       BuilderHeader / BuilderFooter (components/storefront/builder-renderer.tsx)
  *   universal     Header / Footer inside TemplateShell (universal-section-pages.tsx), skinned by the theme
- *   cart-inline   the bare <header> in app/store/[slug]/cart/cart-client.tsx (no footer)
+ *   cart-inline   (retired) the bare <header> that used to sit in cart-client.tsx; the cart is now wrapped like every other page
  *   hotel         ThelusoHotel's Header / Footer (RefHeader / RefFooter for the reference-hotel skins)
  *   grandeur      GrandeurHeader / GrandeurFooter (grandeur-restaurant.tsx)
  *   tastehouse    Shell / Footer in tastehouse.tsx
@@ -52,36 +51,40 @@ export function homeChrome(i: StoreChromeInput): ChromeId {
   }
 }
 
+/** Mirrors usesTemplateChromeFor(): the shared pages wear the Builder chrome when the home page is drawn by the Builder. */
+function sharedPagesUseBuilder(i: StoreChromeInput): boolean {
+  return Boolean(i.publishedBuilder) || resolveHomeRenderer(i.templateName).kind === "builder";
+}
+
 export function pageChrome(page: StorefrontPage, i: StoreChromeInput): ChromeId {
   const identity = { businessCategory: i.businessCategory, storeBusinessType: i.storeBusinessType, templateName: i.templateName };
-  const restaurantCategory = String(i.businessCategory ?? "").toLowerCase() === "restaurant";
   switch (page) {
     case "home":
       return homeChrome(i);
 
-    // product/[productId]/page.tsx wraps every template, Builder included, in TemplateShell.
+    // product/[productId]/page.tsx wraps the item in StorefrontShell: Builder chrome for Builder stores, template skin otherwise.
     case "product":
-      return "universal";
+      return sharedPagesUseBuilder(i) ? "builder" : "universal";
 
     // category/[categoryId]/page.tsx
     case "category":
       if (isHotelStore(identity)) return "hotel"; // redirects to the hotel's own pages
-      if (restaurantCategory) return "grandeur"; // GrandeurMenu, chosen by business category, not by template
-      return usesTemplateChrome(i.templateName) ? "universal" : "builder";
+      if (usesGrandeurSkin(identity)) return "grandeur"; // GrandeurMenu: only for the Grandeur template (or a store with no template of its own)
+      return sharedPagesUseBuilder(i) ? "builder" : "universal";
 
     // cart/page.tsx
     case "cart":
       if (i.templateName === EXAMPLE_TEMPLATE_NAME) return "example";
       if (i.templateName === TASTEHOUSE_TEMPLATE_NAME) return "tastehouse";
-      if (restaurantCategory && isGrandeurStore(identity)) return "grandeur";
-      return usesTemplateChrome(i.templateName) ? "universal" : "cart-inline";
+      if (usesGrandeurSkin(identity)) return "grandeur";
+      return sharedPagesUseBuilder(i) ? "builder" : "universal"; // always inside StorefrontShell now (no bare inline header)
 
     // contact/page.tsx. Note its hotel check passes only storeBusinessType + templateName (no businessCategory),
     // unlike the category route, so a hotel known only by Business.category is not "hotel" here.
     case "contact":
       if (i.publishedBuilder || i.ownerContactPage) return "builder"; // renderBuilderSubpage(..., { onlyIfCustomised: true })
       if (isHotelStore({ storeBusinessType: i.storeBusinessType, templateName: i.templateName })) return "hotel";
-      if (isGrandeurStore(identity)) return "grandeur"; // getGrandeurRestaurantData is non-null for any Grandeur store
+      if (usesGrandeurSkin(identity)) return "grandeur";
       if (resolveHomeRenderer(i.templateName).kind === "builder") return "builder"; // renderBuilderSubpage, native template
       return "universal"; // renderUniversalSectionPage
   }

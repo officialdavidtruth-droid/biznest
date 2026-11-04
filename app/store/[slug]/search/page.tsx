@@ -3,7 +3,7 @@ import { notFound } from "next/navigation";
 import type { Metadata } from "next";
 import { CatalogExperience } from "@/components/storefront/catalog-experience";
 import { TemplateShell } from "@/components/storefront/template-shell";
-import { usesTemplateChrome } from "@/lib/storefront/template-chrome";
+import { usesTemplateChromeFor } from "@/lib/storefront/template-chrome";
 import { catalogDesign, catalogStoreInfo } from "@/lib/storefront/catalog-props";
 import { resolveStoreTheme } from "@/lib/template-themes";
 
@@ -30,7 +30,7 @@ export default async function SearchPage({ params, searchParams }: { params: Pro
   ];
   const theme = resolveStoreTheme(store.template?.category, store.name, store.themeColors as any, store.fontFamily, store.template?.name);
 
-  const chrome = usesTemplateChrome(store.template?.name);
+  const chrome = usesTemplateChromeFor(store.template?.name, store.sectionOverrides);
   const page = <CatalogExperience mode="search" externalChrome={chrome} store={catalogStoreInfo(store, slug)} design={catalogDesign(store, theme)} items={items} initialQuery={query} />;
   return chrome ? <TemplateShell store={store} slug={slug} theme={theme}>{page}</TemplateShell> : page;
 }

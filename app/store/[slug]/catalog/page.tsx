@@ -8,13 +8,14 @@ import { ExampleStorefront } from "@/components/storefront/example-store";
 import { CatalogExperience } from "@/components/storefront/catalog-experience";
 import { catalogDesign, catalogStoreInfo } from "@/lib/storefront/catalog-props";
 import { resolveStoreTheme } from "@/lib/template-themes";
-import { isRestaurantBusiness, isHotelBusiness } from "@/lib/business-identity";
+import { isHotelBusiness } from "@/lib/business-identity";
 import { ThelusoHotel } from "@/components/storefront/theluso-hotel";
 import { getHotelContent } from "@/lib/hotel-content";
 import { buildSystemSlots } from "@/components/storefront/system-slots";
 import { fontStack } from "@/lib/builder-safe";
 import { TemplateShell } from "@/components/storefront/template-shell";
-import { usesTemplateChrome } from "@/lib/storefront/template-chrome";
+import { usesTemplateChromeFor } from "@/lib/storefront/template-chrome";
+import { usesGrandeurSkin } from "@/lib/store-pages";
 
 export default async function CatalogPage({ params, searchParams }: { params: Promise<{ slug: string }>; searchParams?: Promise<{ category?: string; q?: string }> }) {
   const { slug } = await params;
@@ -31,11 +32,11 @@ export default async function CatalogPage({ params, searchParams }: { params: Pr
   }
   if (store.template?.name === EXAMPLE_TEMPLATE_NAME) return <ExampleStorefront store={store} slug={slug} items={items.map(i=>({...i,description:null,type:i.kind,rentalUnit:null,isBookable:false})) as any} mode="catalog" />;
   if (store.template?.name === TASTEHOUSE_TEMPLATE_NAME) return <TasteHouseMenu store={store} slug={slug} initialCategory={query?.category} items={items.map(i=>({...i,description:null,type:i.kind,isBookable:false})) as any} />;
-  if (isRestaurantBusiness(store.business?.category)) return <GrandeurMenu store={store} slug={slug} items={items.map(i=>({...i,description:null,type:i.kind,isBookable:false})) as any} />;
+  if (usesGrandeurSkin({ businessCategory: store.business?.category, storeBusinessType: store.businessType, templateName: store.template?.name })) return <GrandeurMenu store={store} slug={slug} items={items.map(i=>({...i,description:null,type:i.kind,isBookable:false})) as any} />;
   const theme = resolveStoreTheme(store.template?.category, store.name, store.themeColors as any, store.fontFamily, store.template?.name);
   const design = catalogDesign(store, theme);
   const slots = await buildSystemSlots(store, "shop", { text: design.text, accent: design.accent, primary: design.primary, line: `${design.text}1f`, radius: design.radius, headingFont: fontStack(design.headingFont) });
-  const chrome = usesTemplateChrome(store.template?.name);
+  const chrome = usesTemplateChromeFor(store.template?.name, store.sectionOverrides);
   const page = (
     <CatalogExperience
       externalChrome={chrome}

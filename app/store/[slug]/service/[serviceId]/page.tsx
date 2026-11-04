@@ -5,7 +5,7 @@ import { headers } from "next/headers";
 import type { Metadata } from "next";
 import { resolveStoreTheme } from "@/lib/template-themes";
 import { CatalogItemDetail } from "@/components/storefront/catalog-item-detail";
-import { TemplateShell } from "@/components/storefront/template-shell";
+import { StorefrontShell } from "@/components/storefront/storefront-shell";
 import { isHotelStore } from "@/lib/storefront-routing";
 import { JsonLd } from "@/components/seo/json-ld";
 import { NO_INDEX, absoluteUrl as absUrl, cleanDescription, storeUrl } from "@/lib/seo";
@@ -91,5 +91,5 @@ export default async function ServicePage({ params }: { params: Promise<{ slug: 
   };
   return <><JsonLd data={store.seoNoIndex ? [] : [serviceLd, breadcrumbLd]} /><TrackViewItem slug={slug} currency={service.currency} item={{ id: service.id, name: service.name, price: Number(service.price) }} />{isHotelStore({ templateName: store.template?.name, businessCategory: store.business?.category, storeBusinessType: store.businessType })
     ? <CatalogItemDetail store={{...store,sellsProducts:store.business?.sellsProducts??true} as any} slug={slug} service={service} reviewStats={reviewStats} theme={theme} businessCategory={getCanonicalBusinessType({ businessCategory: store.business?.category, storeBusinessType: store.businessType })} />
-    : <TemplateShell store={store} slug={slug} theme={theme}><CatalogItemDetail externalChrome store={{...store,sellsProducts:store.business?.sellsProducts??true} as any} slug={slug} service={service} reviewStats={reviewStats} theme={theme} businessCategory={getCanonicalBusinessType({ businessCategory: store.business?.category, storeBusinessType: store.businessType })} /></TemplateShell>}</>;
+    : <StorefrontShell store={store} slug={slug} theme={theme}><CatalogItemDetail externalChrome store={{...store,sellsProducts:store.business?.sellsProducts??true} as any} slug={slug} service={service} reviewStats={reviewStats} theme={theme} businessCategory={getCanonicalBusinessType({ businessCategory: store.business?.category, storeBusinessType: store.businessType })} /></StorefrontShell>}</>;
 }

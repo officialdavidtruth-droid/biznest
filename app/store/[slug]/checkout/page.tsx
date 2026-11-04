@@ -1,6 +1,7 @@
 import { resolveStorePalette } from "@/lib/store-palette";
 import { TemplateShell } from "@/components/storefront/template-shell";
-import { usesTemplateChrome } from "@/lib/storefront/template-chrome";
+import { usesTemplateChromeFor } from "@/lib/storefront/template-chrome";
+import { usesGrandeurSkin } from "@/lib/store-pages";
 import { resolveStoreTheme } from "@/lib/template-themes";
 import { isHotelStore } from "@/lib/storefront-routing"; import { prisma } from "@/lib/prisma";
 import { redirect, notFound } from "next/navigation";
@@ -36,12 +37,12 @@ async function renderCheckout(slug: string) {
   if (rawStore.template?.name === TASTEHOUSE_TEMPLATE_NAME) {
     return <TasteHouseCheckout store={{...rawStore,sellsProducts:rawStore.business?.sellsProducts??true}} slug={slug}/>;
   }
-  if (String(rawStore.business?.category || "").toLowerCase() === "restaurant") {
+  if (usesGrandeurSkin({ businessCategory: rawStore.business?.category, storeBusinessType: rawStore.businessType, templateName: rawStore.template?.name })) {
     const data = await getGrandeurRestaurantData(slug);
     if (data) return <GrandeurCheckout store={data.store} slug={slug} />;
   }
   const checkout = <CheckoutClient slug={slug} palette={resolveStorePalette(rawStore)} />;
-  if (!usesTemplateChrome(rawStore.template?.name)) return checkout;
+  if (!usesTemplateChromeFor(rawStore.template?.name, rawStore.sectionOverrides)) return checkout;
   const theme = resolveStoreTheme(rawStore.template?.category, rawStore.name, rawStore.themeColors as any, rawStore.fontFamily, rawStore.template?.name);
   return <TemplateShell store={rawStore} slug={slug} theme={theme}>{checkout}</TemplateShell>;
 }

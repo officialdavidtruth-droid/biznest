@@ -203,104 +203,69 @@ function chromeDivergences() {
  * To fix a gap, make that page draw the home chrome; do not add lines.
  */
 const KNOWN_CHROME_GAPS: readonly string[] = [
-  "[owner contact page] builder -> cart: cart-inline",
-  "[owner contact page] builder -> cart: grandeur",
-  "[owner contact page] builder -> category: grandeur",
   "[owner contact page] builder -> category: hotel",
-  "[owner contact page] builder -> product: universal",
-  "[owner contact page] example -> category: grandeur",
   "[owner contact page] example -> category: hotel",
   "[owner contact page] example -> category: universal",
   "[owner contact page] example -> contact: builder",
   "[owner contact page] example -> product: universal",
-  "[owner contact page] hotel -> cart: grandeur",
   "[owner contact page] hotel -> cart: universal",
   "[owner contact page] hotel -> contact: builder",
   "[owner contact page] hotel -> product: universal",
-  "[owner contact page] legacy -> cart: grandeur",
   "[owner contact page] legacy -> cart: universal",
-  "[owner contact page] legacy -> category: grandeur",
   "[owner contact page] legacy -> category: hotel",
   "[owner contact page] legacy -> category: universal",
   "[owner contact page] legacy -> contact: builder",
   "[owner contact page] legacy -> product: universal",
-  "[owner contact page] signature:belora -> cart: grandeur",
   "[owner contact page] signature:belora -> cart: universal",
-  "[owner contact page] signature:belora -> category: grandeur",
   "[owner contact page] signature:belora -> category: hotel",
   "[owner contact page] signature:belora -> category: universal",
   "[owner contact page] signature:belora -> contact: builder",
   "[owner contact page] signature:belora -> product: universal",
   "[owner contact page] signature:flavora-restaurant -> cart: grandeur",
-  "[owner contact page] signature:flavora-restaurant -> cart: universal",
   "[owner contact page] signature:flavora-restaurant -> category: grandeur",
   "[owner contact page] signature:flavora-restaurant -> category: hotel",
-  "[owner contact page] signature:flavora-restaurant -> category: universal",
   "[owner contact page] signature:flavora-restaurant -> contact: builder",
   "[owner contact page] signature:flavora-restaurant -> product: universal",
   "[owner contact page] signature:tastehouse -> cart: tastehouse",
-  "[owner contact page] signature:tastehouse -> category: grandeur",
   "[owner contact page] signature:tastehouse -> category: hotel",
   "[owner contact page] signature:tastehouse -> category: universal",
   "[owner contact page] signature:tastehouse -> contact: builder",
   "[owner contact page] signature:tastehouse -> product: universal",
-  "[published builder] builder -> cart: cart-inline",
   "[published builder] builder -> cart: example",
   "[published builder] builder -> cart: grandeur",
   "[published builder] builder -> cart: tastehouse",
-  "[published builder] builder -> cart: universal",
   "[published builder] builder -> category: grandeur",
   "[published builder] builder -> category: hotel",
-  "[published builder] builder -> category: universal",
-  "[published builder] builder -> product: universal",
-  "builder -> cart: cart-inline",
-  "builder -> cart: grandeur",
-  "builder -> category: grandeur",
   "builder -> category: hotel",
-  "builder -> contact: grandeur",
   "builder -> contact: hotel",
-  "builder -> product: universal",
-  "example -> category: grandeur",
   "example -> category: hotel",
   "example -> category: universal",
-  "example -> contact: grandeur",
   "example -> contact: hotel",
   "example -> contact: universal",
   "example -> product: universal",
-  "hotel -> cart: grandeur",
   "hotel -> cart: universal",
   "hotel -> product: universal",
-  "legacy -> cart: grandeur",
   "legacy -> cart: universal",
-  "legacy -> category: grandeur",
   "legacy -> category: hotel",
   "legacy -> category: universal",
-  "legacy -> contact: grandeur",
   "legacy -> contact: hotel",
   "legacy -> contact: universal",
   "legacy -> product: universal",
-  "signature:belora -> cart: grandeur",
   "signature:belora -> cart: universal",
-  "signature:belora -> category: grandeur",
   "signature:belora -> category: hotel",
   "signature:belora -> category: universal",
-  "signature:belora -> contact: grandeur",
   "signature:belora -> contact: hotel",
   "signature:belora -> contact: universal",
   "signature:belora -> product: universal",
   "signature:flavora-restaurant -> cart: grandeur",
-  "signature:flavora-restaurant -> cart: universal",
   "signature:flavora-restaurant -> category: grandeur",
   "signature:flavora-restaurant -> category: hotel",
-  "signature:flavora-restaurant -> category: universal",
   "signature:flavora-restaurant -> contact: grandeur",
   "signature:flavora-restaurant -> contact: hotel",
   "signature:flavora-restaurant -> product: universal",
   "signature:tastehouse -> cart: tastehouse",
-  "signature:tastehouse -> category: grandeur",
   "signature:tastehouse -> category: hotel",
   "signature:tastehouse -> category: universal",
-  "signature:tastehouse -> contact: grandeur",
   "signature:tastehouse -> contact: hotel",
   "signature:tastehouse -> contact: universal",
   "signature:tastehouse -> product: universal",
@@ -331,25 +296,37 @@ describe("every template uses one header and footer across home, product, catego
 
 describe("the chrome model still matches the routes it mirrors", () => {
   const route = (p: string) => read(`app/store/[slug]/${p}/page.tsx`);
-  it("product always wraps in TemplateShell", () => {
+  it("product wraps in StorefrontShell (Builder chrome for Builder stores, template skin otherwise)", () => {
     const src = route("product/[productId]");
-    expect(src).toContain("<TemplateShell");
-    expect(src).not.toContain("usesTemplateChrome");
+    expect(src).toContain("<StorefrontShell");
+    expect(src).not.toContain("<TemplateShell");
+    expect(read("components/storefront/storefront-shell.tsx")).toContain("usesTemplateChromeFor(");
   });
-  it("category: hotel redirect, restaurant category -> Grandeur, otherwise usesTemplateChrome", () => {
+  it("category: hotel redirect, Grandeur skin only for the Grandeur template, otherwise usesTemplateChromeFor", () => {
     const src = route("category/[categoryId]");
     expect(src).toContain("isHotelStore(");
-    expect(src).toContain('toLowerCase()===\"restaurant\"');
+    expect(src).toContain("usesGrandeurSkin(");
     expect(src).toContain("GrandeurMenu");
-    expect(src).toContain("usesTemplateChrome(");
+    expect(src).toContain("usesTemplateChromeFor(");
   });
-  it("cart: Example and TasteHouse by template name, Grandeur by restaurant category, otherwise usesTemplateChrome", () => {
+  it("cart: Example and TasteHouse by template name, Grandeur only for the Grandeur template, otherwise StorefrontShell", () => {
     const src = route("cart");
     expect(src).toContain("EXAMPLE_TEMPLATE_NAME");
     expect(src).toContain("TASTEHOUSE_TEMPLATE_NAME");
-    expect(src).toContain('toLowerCase() === \"restaurant\"');
+    expect(src).toContain("usesGrandeurSkin(");
     expect(src).toContain("GrandeurCart");
-    expect(src).toContain("usesTemplateChrome(");
+    expect(src).toContain("<StorefrontShell");
+  });
+  it("Ember (a Builder restaurant template) never switches to Grandeur", () => {
+    const ember = TEMPLATE_REGISTRY.find((t) => /^Ember/.test(t.name));
+    expect(ember, "Ember template missing from the registry").toBeTruthy();
+    const input = { templateName: ember!.name, businessCategory: "Restaurant", storeBusinessType: "Restaurant" };
+    for (const page of INNER_PAGES) expect(pageChrome(page, input), `Ember ${page}`).toBe(homeChrome(input));
+  });
+  it("blog pages follow the same rule as the home page", () => {
+    const src = read("lib/storefront/blog-page.tsx");
+    expect(src).toContain("usesTemplateChromeFor(");
+    expect(src).toContain("<TemplateShell");
   });
   it("contact: owner page first, then hotel, Grandeur, builder subpage, universal section page", () => {
     const src = route("contact");

@@ -10,9 +10,10 @@ import { formatNumber } from "@/lib/i18n/locale";
 import type { PublicTravelPackage } from "@/lib/travel-public";
 import { TravelEnquiryForm } from "@/components/storefront/travel-enquiry-form";
 import { NewsletterInlineForm } from "@/components/storefront/newsletter-inline-form";
+import { MenuLinks } from "@/components/storefront/store-menu";
 
 type Review = { id: string; rating: number; comment: string | null; author: { name: string | null } };
-export type RefProps = { store: any; slug: string; catalogItems: LegacyCatalogItem[]; goodReviews: Review[]; avgRating: number | null; completedOrders: number; social?: Record<string, string>; travelPackages?: PublicTravelPackage[] };
+export type RefProps = { navCategories?: { id: string; name: string; slug?: string | null }[]; store: any; slug: string; catalogItems: LegacyCatalogItem[]; goodReviews: Review[]; avgRating: number | null; completedOrders: number; social?: Record<string, string>; travelPackages?: PublicTravelPackage[] };
 
 const T = [
   "photo-1507525428034-b723cf961d3e", "photo-1533105079780-92b9be482077", "photo-1537996194471-e657df975ab4",
@@ -25,11 +26,15 @@ const R = [
 const pick = (u: string | null | undefined, set: string[], i: number) => u || set[i % set.length];
 const fill = (items: LegacyCatalogItem[], n: number): (LegacyCatalogItem | null)[] => Array.from({ length: n }, (_, i) => items[i] ?? null);
 const itemHref = (slug: string, i: LegacyCatalogItem | null) => i ? href(slug, `/${i.kind}/${i.id}`) : href(slug, "/");
+/** The owner's real categories (Dashboard > Categories), never the placeholder ones made up from item names. */
+const realCategories = (p: RefProps) => (p.navCategories ?? []).filter((c) => c.id && !String(c.id).startsWith("cat-")).slice(0, 8);
+const categoryHref = (slug: string, c: { id: string; slug?: string | null }) => href(slug, `/category/${c.slug || c.id}`);
 const realReviews = (rs: Review[]) => rs.filter((r) => r.comment && r.comment.trim()).slice(0, 3).map((r) => ({ t: r.comment as string, n: r.author.name || "Customer" }));
 
 /* ───────────── WANDERLY ───────────── */
 export function WanderlyHome({ p }: { p: RefProps }) {
   const { store, slug, catalogItems: items, goodReviews } = p;
+  const cats = realCategories(p);
   const dest = fill(items, 4), pk = (items.slice(4).length >= 3 ? items.slice(4) : items).slice(0, 3);
   const hero = store.bannerUrl || T[0];
   const css = `
@@ -51,6 +56,7 @@ export function WanderlyHome({ p }: { p: RefProps }) {
 .wd .pc .tx{padding:18px}.wd .pc h3{margin:0 0 6px;font-size:17px}.wd .pc p{margin:0 0 14px;font-size:12.5px;color:#6b8191}.wd .pc .pr{display:flex;justify-content:space-between;align-items:center;font-size:22px;font-weight:700}.wd .pc .pr small{font-size:12px;font-weight:400;color:#6b8191}
 .wd .st{margin:50px 0 0;background:linear-gradient(rgba(240,248,252,.92),rgba(240,248,252,.92)),url(${T[4]}) center/cover;display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));padding:36px 5%;gap:20px;text-align:left}
 .wd .st div{display:flex;gap:14px;align-items:center}.wd .st b{font-size:26px;display:block}.wd .st span{font-size:12px;color:#6b8191}
+.wd .cg{display:flex;flex-wrap:wrap;gap:12px}.wd .cg a{display:inline-flex;gap:8px;align-items:center;border:1px solid #e6eef2;border-radius:999px;padding:13px 22px;font-size:14px;font-weight:600;background:#fff;color:#0f2a43}.wd .cg a:hover{border-color:#0b7189;color:#0b7189}
 .wd .tg{display:grid;grid-template-columns:repeat(3,1fr);gap:18px}.wd .tc{border:1px solid #e6eef2;border-radius:14px;padding:20px;font-size:13px;line-height:1.7}.wd .tc b{display:block;margin-top:10px}
 .wd .nl{margin:50px 5% 0;border-radius:18px;padding:46px;color:#fff;background:linear-gradient(90deg,rgba(15,42,67,.88),rgba(15,42,67,.3)),url(${T[3]}) center/cover}
 .wd .nl h2{font-size:30px;max-width:420px}.wd .nl form{display:flex;max-width:460px;background:#fff;border-radius:999px;padding:5px;margin-top:16px}.wd .nl input{flex:1;border:0;background:none;padding:0 18px;font-size:13px;outline:0}.wd .nl button{background:#0f2a43;color:#fff;border:0;border-radius:999px;padding:12px 22px;font-weight:600}
@@ -60,10 +66,12 @@ export function WanderlyHome({ p }: { p: RefProps }) {
 @media(max-width:900px){.wd nav{display:none}.wd .sb,.wd .dg,.wd .pg,.wd .tg,.wd .st{grid-template-columns:1fr 1fr}.wd .pg,.wd .tg{grid-template-columns:1fr}}`;
   return <div className="wd"><style>{css}</style>
     <section className="hero"><div className="hd"><Link href={href(slug, "/")} className="logo">{store.logoUrl && <img src={store.logoUrl} alt={`${store.name} logo`} />}{store.name}</Link>
-      <nav>{[["Destinations", "/"], ["Tours", "/catalog"], ["About", "/about"], ["Blog", "/blog"], ["Contact", "/contact"]].map(([l, h]) => <Link key={l} href={href(slug, h)}>{l}</Link>)}</nav><Link className="plan" href={href(slug, "/contact")}>Plan Your Trip</Link></div>
+      <nav><MenuLinks slug={slug} fallback={[["Destinations", "/"], ["Tours", "/catalog"], ...cats.slice(0, 2).map((c): [string, string] => [c.name, `/category/${c.slug || c.id}`]), ["About", "/about"], ["Blog", "/blog"], ["Contact", "/contact"]]} /></nav><Link className="plan" href={href(slug, "/contact")}>Plan Your Trip</Link></div>
       <div className="hc"><small className="k">{String(store.business?.category || store.name).replace(/[_-]+/g, " ").toUpperCase()}</small><h1>{store.heroOverrides?.headline || store.name}</h1><p>{store.heroOverrides?.subtitle || store.business?.description || `Welcome to ${store.name}.`}</p><Link className="cta" href={href(slug, "/catalog")}>{store.heroOverrides?.ctaLabel || "Explore Destinations"} <ArrowRight size={16} /></Link>
         {p.completedOrders > 0 && <div className="trust">★ {formatNumber(p.completedOrders)} completed bookings</div>}</div></section>
     <form className="sb" action={href(slug, "/catalog")} method="get"><div><b>Where to?</b><input name="q" placeholder="Search destinations and tours" aria-label="Search destinations and tours" /></div><button type="submit">Search Now →</button></form>
+    {cats.length > 0 && <section className="s"><div className="sh"><div><h2>Browse by category</h2><p>Find the right trip, ticket or service.</p></div><Link href={href(slug, "/catalog")}>View everything →</Link></div>
+      <div className="cg">{cats.map((c) => <Link key={c.id} href={categoryHref(slug, c)}>{c.name}</Link>)}</div></section>}
     <section className="s"><div className="sh"><div><h2>Featured Destinations</h2><p>Iconic places. Unforgettable experiences.</p></div><Link href={href(slug, items.length ? "/catalog" : "/destinations")}>View All Destinations →</Link></div>
       <div className="dg">{dest.map((d, i) => {
         // Real catalog item -> its own page. No item yet -> the built-in destination guide (never a dead link).
@@ -89,7 +97,7 @@ export function WanderlyHome({ p }: { p: RefProps }) {
 /* ───────────── NESTORIA ───────────── */
 export function NestoriaHome({ p }: { p: RefProps }) {
   const { store, slug, catalogItems: items, goodReviews } = p;
-  const props = items.slice(0, 3); const hero = store.bannerUrl || R[0];
+  const props = items.slice(0, 3); const hero = store.bannerUrl || R[0]; const cats = realCategories(p);
   const css = `
 .ns{--ac:#6554d9;--dk:#20194a;font-family:'Plus Jakarta Sans',Inter,sans-serif;color:var(--dk);background:linear-gradient(#f4f1ff,#fff 40%);padding:12px}
 .ns a{color:inherit;text-decoration:none}.ns .wrap{background:#fff;border-radius:22px;max-width:1280px;margin:0 auto;padding:18px 30px 40px;box-shadow:0 6px 40px rgba(101,84,217,.08)}
@@ -115,14 +123,16 @@ export function NestoriaHome({ p }: { p: RefProps }) {
 .ns .hg div{border:1px solid #ece9fb;border-radius:16px;padding:18px;display:flex;gap:14px;align-items:center}.ns .hg i{width:54px;height:54px;border-radius:50%;background:linear-gradient(135deg,#8b7bf0,#6554d9);color:#fff;display:flex;align-items:center;justify-content:center;flex:none}.ns .hg b{display:block;font-size:14px}.ns .hg span{font-size:12px;color:#7c78a0}
 .ns .tg{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}.ns .tc{border:1px solid #ece9fb;border-radius:14px;padding:16px;font-size:12.5px;line-height:1.6;color:#6c688f}.ns .tc b{display:block;color:var(--dk);margin-bottom:6px}
 .ns .cta{margin-top:30px;border-radius:18px;padding:34px 40px;color:#fff;background:linear-gradient(90deg,#20194a,#6554d9);display:flex;justify-content:space-between;align-items:center}.ns .cta b{font-size:22px;display:block}.ns .cta a{background:#fff;color:var(--dk);padding:14px 26px;border-radius:10px;font-weight:700;font-size:13px}
+.ns .cg{display:flex;flex-wrap:wrap;gap:12px;margin:0 0 8px}.ns .cg a{border:1px solid #e3e1f1;border-radius:999px;padding:12px 20px;font-size:14px;font-weight:600;background:#fff}
 @media(max-width:900px){.ns nav{display:none}.ns .fg,.ns .pg,.ns .hg,.ns .tg,.ns .why{grid-template-columns:1fr}.ns .sr{position:static;transform:none;grid-template-columns:1fr;border-radius:20px;margin-top:20px}}`;
   return <div className="ns"><style>{css}</style><div className="wrap">
     <div className="hd"><Link href={href(slug, "/")} className="logo">{store.logoUrl ? <img src={store.logoUrl} alt={`${store.name} logo`} /> : <i><Home size={18} /></i>}{store.name}</Link>
-      <nav>{[["Home", "/"], ["Listings", "/catalog"], ["Services", "/services"], ["Favorites", "/account"], ["Blog", "/blog"], ["About Us", "/about"]].map(([l, h]) => <Link key={l} href={href(slug, h)}>{l}</Link>)}</nav><Link className="gs" href={href(slug, "/contact")}>Get Started</Link></div>
+      <nav><MenuLinks slug={slug} fallback={[["Home", "/"], ["Listings", "/catalog"], ["Services", "/services"], ["Favorites", "/account"], ["Blog", "/blog"], ["About Us", "/about"]]} /></nav><Link className="gs" href={href(slug, "/contact")}>Get Started</Link></div>
     <section className="hero">{p.completedOrders > 0 && <span className="tr">★ {formatNumber(p.completedOrders)} completed transactions</span>}<span className="pill"><Home size={14} /> Dream • Search • Own</span>
       <h1>{store.heroOverrides?.headline || store.name}</h1><p>{store.heroOverrides?.subtitle || store.business?.description || `Welcome to ${store.name}.`}</p>
       <form className="sr" action={href(slug, "/catalog")} method="get"><div><b>Find a property</b><input name="q" placeholder={store.business?.city ? `Search listings in ${store.business.city}` : "Search listings"} aria-label="Search listings" /></div><button type="submit">Search</button></form></section>
     <div className="fg">{[[ShieldCheck, "Clear Listings", "Details shown as the owner provides them"], [Sparkles, "Easy Enquiries", "Ask about any property directly"], [Headphones, "Direct Contact", "Reach the team from the contact page"], [Tag, "Transparent Pricing", "Prices shown exactly as listed"]].map(([I, a, b]: any) => <div className="fc" key={a}><i><I size={22} /></i><span><b>{a}</b>{b}</span></div>)}</div>
+    {cats.length > 0 && <><h3 className="t">Browse by category <Link href={href(slug, "/catalog")}>View everything →</Link></h3><div className="cg">{cats.map((c) => <Link key={c.id} href={categoryHref(slug, c)}>{c.name}</Link>)}</div></>}
     <section className="why"><div><small>WHY CHOOSE {store.name.toUpperCase()}</small><h2>More Than Just A Property</h2>{store.business?.description && <p>{store.business.description}</p>}<ul style={{ padding: 0 }}>{[items.length > 0 && `${formatNumber(items.length)} listing${items.length === 1 ? "" : "s"} available`, store.business?.city && `Based in ${store.business.city}`, p.completedOrders > 0 && `${formatNumber(p.completedOrders)} completed transactions`, (store.contactPhone || store.contactEmail || store.business?.phone || store.business?.email) && "Contact the team directly"].filter(Boolean).map((t) => <li key={String(t)}>{t}</li>)}</ul><Link className="lm" href={href(slug, "/about")}>Learn More →</Link></div><img src={R[3]} alt="" /></section>
     {props.length > 0 && <><h3 className="t">Featured Properties <Link href={href(slug, "/catalog")}>View All Properties →</Link></h3>
     <div className="pg">{props.map((d, i) => <Link key={d.id} href={itemHref(slug, d)} className="pc"><div className="im"><img src={pick(d.image, R, i)} alt={d.name} />{d.categoryName && <span className="tag" style={{ background: "#e6defc", color: "#6554d9" }}>{d.categoryName}</span>}<span className="hr"><Heart size={14} /></span></div>

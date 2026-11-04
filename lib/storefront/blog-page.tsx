@@ -1,4 +1,4 @@
-import { cache } from "react";
+import { cache, type ReactNode } from "react";
 import { notFound } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { resolveStoreTheme } from "@/lib/template-themes";
@@ -9,6 +9,8 @@ import { getBlogIndex, getArticle, isBlogActive, toCardView } from "@/lib/blog-p
 import { outline, parseMarkdown } from "@/lib/blog-markdown";
 import { MarkdownView } from "@/components/blog/markdown-view";
 import { BlogIndexView, BlogPostView } from "@/components/storefront/blog-views";
+import { TemplateShell } from "@/components/storefront/template-shell";
+import { usesTemplateChromeFor } from "@/lib/storefront/template-chrome";
 
 /** Cached per request so generateMetadata and the page share one store query. */
 export const getBlogStore = cache(async (slug: string) => {
@@ -26,7 +28,11 @@ export const getBlogStoreIfActive = cache(async (slug: string) => {
 
 function look(raw: NonNullable<Awaited<ReturnType<typeof getBlogStore>>>, slug: string) {
   const theme = resolveStoreTheme(raw.template?.category, raw.name, raw.themeColors as any, raw.fontFamily, raw.template?.name);
-  return { store: catalogStoreInfo(raw, slug), design: catalogDesign(raw, theme) };
+  // Same rule as the home page: Builder stores (or a published Customize layout) use the Builder header and footer,
+  // every other template keeps its own, so the blog never looks like a different site.
+  const templateChrome = usesTemplateChromeFor(raw.template?.name, raw.sectionOverrides);
+  const wrap = (node: ReactNode) => (templateChrome ? <TemplateShell store={raw} slug={slug} theme={theme}>{node}</TemplateShell> : node);
+  return { store: catalogStoreInfo(raw, slug), design: catalogDesign(raw, theme), templateChrome, wrap };
 }
 
 export type BlogSearch = { page?: string; tag?: string; q?: string };
@@ -42,9 +48,9 @@ export async function loadBlogIndex(slug: string, blogHandle: string | null, sp:
 
 export function renderBlogIndex(slug: string, loaded: NonNullable<Awaited<ReturnType<typeof loadBlogIndex>>>, sp: BlogSearch) {
   const { raw, data } = loaded;
-  const { store, design } = look(raw, slug);
-  return (
-    <BlogIndexView
+  const { store, design, templateChrome, wrap } = look(raw, slug);
+  return wrap(
+    <BlogIndexView externalChrome={templateChrome}
       store={store} design={design} blog={data.blog} blogs={data.blogs} articles={data.articles.map(toCardView)}
       page={data.page} totalPages={data.totalPages} total={data.total} tags={data.tags}
       activeTag={sp.tag?.slice(0, 40) || null} query={sp.q?.trim().slice(0, 80) ?? ""}
@@ -58,7 +64,7 @@ export async function renderArticlePage(slug: string, blogHandle: string | null,
   const found = await getArticle(raw.id, blogHandle, articleHandle);
   if (!found) notFound();
   const { blog, article, related, newer, older } = found;
-  const { store, design } = look(raw, slug);
+  const { store, design, templateChrome, wrap } = look(raw, slug);
   const blocks = parseMarkdown(article.body);
   const url = storeUrl(raw, `/blogs/${blog.handle}/${article.handle}`);
   const card = toCardView(article);
@@ -82,10 +88,10 @@ export async function renderArticlePage(slug: string, blogHandle: string | null,
       },
     ],
   };
-  return (
+  return wrap(
     <>
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: jsonLdString(jsonLd) }} />
-      <BlogPostView
+      <BlogPostView externalChrome={templateChrome}
         store={store} design={design} blog={blog} post={{ ...card, updatedLabel: formatPostDate(article.updatedAt) }} url={url} related={related.map(toCardView)}
         newer={newer} older={older} toc={outline(blocks)} ctaHref={`/store/${slug}/contact`} ctaLabel="Contact us"
       >

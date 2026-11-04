@@ -21,7 +21,7 @@ function useTokens(designIn: Design) {
   return { d, line, width, card, chip };
 }
 
-function Shell({ store, design, children, title, subtitle, crumbs }: { store: SubpageStore; design: Design; children: ReactNode; title?: string; subtitle?: string; crumbs?: { label: string; href?: string }[] }) {
+export function Shell({ store, design, children, title, subtitle, crumbs, externalChrome }: { store: SubpageStore; design: Design; children: ReactNode; title?: string; subtitle?: string; crumbs?: { label: string; href?: string }[]; externalChrome?: boolean }) {
   const { d, line, width } = useTokens(design);
   const experience = getBusinessExperience(store.business.category, { sellsProducts: store.business.sellsProducts, offersServices: store.business.offersServices }, store.business.businessSubcategory);
   const base = `/store/${store.slug}`;
@@ -34,9 +34,9 @@ function Shell({ store, design, children, title, subtitle, crumbs }: { store: Su
     { label: "Contact", href: `${base}/contact` },
   ];
   return (
-    <main style={{ background: d.background, color: d.text, fontFamily: d.font, minHeight: "100vh" }}>
+    <main style={{ background: d.background, color: d.text, fontFamily: d.font, minHeight: externalChrome ? undefined : "100vh" }}>
       <style>{`a{text-decoration:none;color:inherit}.bn-wrap{width:min(${width}px,calc(100% - 32px));margin:0 auto}.bn-grid{display:grid;gap:22px}.bn-blog-cols{grid-template-columns:repeat(3,1fr)}.bn-post-img{transition:transform .35s}.bn-post-card:hover .bn-post-img{transform:scale(1.04)}@media(max-width:900px){.bn-blog-cols{grid-template-columns:repeat(2,1fr)!important}}@media(max-width:720px){.bn-nav-links{display:none!important}.bn-grid,.bn-blog-cols{grid-template-columns:1fr!important}.bn-feature{grid-template-columns:1fr!important}}`}</style>
-      <BuilderHeader store={store} d={d} experience={experience} visible={[]} />
+      {!externalChrome && <BuilderHeader store={store} d={d} experience={experience} visible={[]} />}
       {title && (
         <section style={{ background: d.surface, borderBottom: `1px solid ${line}` }}>
           <div className="bn-wrap" style={{ padding: "44px 0 34px" }}>
@@ -51,7 +51,7 @@ function Shell({ store, design, children, title, subtitle, crumbs }: { store: Su
         </section>
       )}
       {children}
-      <BuilderFooter store={store} d={d} visible={[]} storeLinks={storeLinks} />
+      {!externalChrome && <BuilderFooter store={store} d={d} visible={[]} storeLinks={storeLinks} />}
     </main>
   );
 }
@@ -82,6 +82,8 @@ function PostCard({ post, base, design }: { post: ArticleCardView; base: string;
 export type BlogIndexProps = {
   store: SubpageStore; design: Design; blog: { title: string; handle: string }; blogs: { title: string; handle: string }[];
   articles: ArticleCardView[]; page: number; totalPages: number; total: number; tags: string[]; activeTag: string | null; query: string;
+  /** The page is drawn inside the template's own header and footer, so skip the Builder ones. */
+  externalChrome?: boolean;
 };
 
 export function BlogIndexView(p: BlogIndexProps) {
@@ -99,7 +101,7 @@ export function BlogIndexView(p: BlogIndexProps) {
   const title = p.activeTag ? `${p.blog.title}: ${p.activeTag}` : p.blog.title;
   const subtitle = p.query ? `Results for “${p.query}”` : p.activeTag ? `${p.total} ${p.total === 1 ? "article" : "articles"}` : `News, guides and stories from ${p.store.name}.`;
   return (
-    <Shell store={p.store} design={p.design} title={title} subtitle={subtitle} crumbs={[{ label: "Home", href: base }, ...(filtered ? [{ label: p.blog.title, href: blogBase }, { label: p.activeTag ?? "Search" }] : [{ label: p.blog.title }])]}>
+    <Shell externalChrome={p.externalChrome} store={p.store} design={p.design} title={title} subtitle={subtitle} crumbs={[{ label: "Home", href: base }, ...(filtered ? [{ label: p.blog.title, href: blogBase }, { label: p.activeTag ?? "Search" }] : [{ label: p.blog.title }])]}>
       <div className="bn-wrap" style={{ padding: "36px 0 8px" }}>
         <div style={{ display: "flex", gap: 14, flexWrap: "wrap", alignItems: "center", justifyContent: "space-between", marginBottom: 28 }}>
           <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
@@ -148,6 +150,7 @@ export type BlogPostViewProps = {
   store: SubpageStore; design: Design; blog: { title: string; handle: string }; post: ArticleCardView & { updatedLabel: string }; url: string; children: ReactNode;
   related: ArticleCardView[]; newer: { title: string; handle: string } | null; older: { title: string; handle: string } | null;
   toc: { id: string; text: string; level: number }[]; ctaHref: string; ctaLabel: string;
+  externalChrome?: boolean;
 };
 
 export function BlogPostView(p: BlogPostViewProps) {
@@ -158,7 +161,7 @@ export function BlogPostView(p: BlogPostViewProps) {
   const text = encodeURIComponent(p.post.title);
   const shareBtn: React.CSSProperties = { width: 38, height: 38, borderRadius: 999, border: `1px solid ${line}`, display: "grid", placeItems: "center", background: "transparent", color: d.text, cursor: "pointer" };
   return (
-    <Shell store={p.store} design={p.design} crumbs={[]}>
+    <Shell externalChrome={p.externalChrome} store={p.store} design={p.design} crumbs={[]}>
       <article>
         <header style={{ background: d.surface, borderBottom: `1px solid ${line}` }}>
           <div style={{ width: "min(780px,calc(100% - 32px))", margin: "0 auto", padding: "44px 0 32px" }}>

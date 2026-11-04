@@ -4,7 +4,8 @@ import { isHotelStore } from "@/lib/storefront-routing";
 import type { Metadata } from "next";
 import { CatalogExperience } from "@/components/storefront/catalog-experience";
 import { TemplateShell } from "@/components/storefront/template-shell";
-import { usesTemplateChrome } from "@/lib/storefront/template-chrome";
+import { usesTemplateChromeFor } from "@/lib/storefront/template-chrome";
+import { usesGrandeurSkin } from "@/lib/store-pages";
 import { catalogDesign, catalogStoreInfo } from "@/lib/storefront/catalog-props";
 import { NO_INDEX, absoluteUrl, cleanDescription, storeUrl } from "@/lib/seo";
 import { resolveStoreTheme } from "@/lib/template-themes";
@@ -64,12 +65,12 @@ export default async function CategoryPage({ params }: { params: Promise<{ slug:
     prisma.service.findMany({where:{storeId:store.id,categoryId:{in:ids},isPublished:true},include:{category:true}}),
   ]);
   const items = [...products.map(p=>({id:p.id,kind:"product" as const,name:p.name,price:Number(p.price),currency:p.currency,image:p.images[0]??null,categoryName:p.category?.name??null,hasVariants:p.hasVariants})), ...services.map(s=>({id:s.id,kind:"service" as const,name:s.name,price:Number(s.price),currency:s.currency,image:s.images[0]??null,categoryName:s.category?.name??null}))];
-  if (String(store.business?.category||"").toLowerCase()==="restaurant") {
+  if (usesGrandeurSkin({ businessCategory: store.business?.category, storeBusinessType: store.businessType, templateName: store.template?.name })) {
     const { GrandeurMenu } = await import("@/components/storefront/grandeur-restaurant");
     return <GrandeurMenu store={{...store,sellsProducts:store.business?.sellsProducts??true} as any} slug={slug} items={items.map(i=>({...i,description:null,type:i.kind,rentalUnit:null,isBookable:false})) as any}/>;
   }
   const theme=resolveStoreTheme(store.template?.category,store.name,store.themeColors as any,store.fontFamily,store.template?.name);
-  const chrome = usesTemplateChrome(store.template?.name);
+  const chrome = usesTemplateChromeFor(store.template?.name, store.sectionOverrides);
   const page = (
     <CatalogExperience
       externalChrome={chrome}

@@ -1,6 +1,6 @@
 import { resolveStorePalette } from "@/lib/store-palette";
-import { TemplateShell } from "@/components/storefront/template-shell";
-import { usesTemplateChrome } from "@/lib/storefront/template-chrome";
+import { StorefrontShell } from "@/components/storefront/storefront-shell";
+import { usesGrandeurSkin } from "@/lib/store-pages";
 import { resolveStoreTheme } from "@/lib/template-themes";
 import { prisma } from "@/lib/prisma";
 import { notFound } from "next/navigation";
@@ -19,15 +19,13 @@ export default async function CartPage({ params }: { params: Promise<{ slug: str
   const store = { ...rawStore, sellsProducts: rawStore.business?.sellsProducts ?? true };
   if (store.template?.name === EXAMPLE_TEMPLATE_NAME) return <ExampleStorefront store={store} slug={slug} items={[]} mode="cart" />;
   if (store.template?.name === TASTEHOUSE_TEMPLATE_NAME) return <TasteHouseCart store={store} slug={slug} />;
-  if (String(store.business?.category || "").toLowerCase() === "restaurant") {
+  if (usesGrandeurSkin({ businessCategory: store.business?.category, storeBusinessType: store.businessType, templateName: store.template?.name })) {
     const data = await getGrandeurRestaurantData(slug);
     if (data) return <GrandeurCart store={data.store} slug={slug} />;
   }
   const palette = resolveStorePalette(store);
   const slots = await buildSystemSlots(store, "cart", { text: palette.ink, accent: palette.accent, primary: palette.accent, line: `${palette.ink}22`, radius: 8, headingFont: palette.headlineFont });
-  const chrome = usesTemplateChrome(store.template?.name);
-  const cart = <CartClient slug={slug} storeName={store.name} logoUrl={store.logoUrl ?? null} palette={palette} topSlot={slots.top} bottomSlot={slots.bottom} externalChrome={chrome} />;
-  if (!chrome) return cart;
+  const cart = <CartClient slug={slug} storeName={store.name} logoUrl={store.logoUrl ?? null} palette={palette} topSlot={slots.top} bottomSlot={slots.bottom} externalChrome />;
   const theme = resolveStoreTheme(store.template?.category, store.name, store.themeColors as any, store.fontFamily, store.template?.name);
-  return <TemplateShell store={store} slug={slug} theme={theme}>{cart}</TemplateShell>;
+  return <StorefrontShell store={store} slug={slug} theme={theme}>{cart}</StorefrontShell>;
 }

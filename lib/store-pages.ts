@@ -1,5 +1,6 @@
 import { getCanonicalBusinessType, isRestaurantBusiness } from "@/lib/business-identity";
 import { isHotelStore, resolveStorefrontRenderer } from "@/lib/storefront-routing";
+import { getTemplateDefinition } from "@/lib/template-registry";
 
 /**
  * Single source of truth for "which built-in pages does this store actually have?"
@@ -20,6 +21,18 @@ export type StoreKind = "hotel" | "restaurant" | "other";
 export function isGrandeurStore(i: StoreIdentity): boolean {
   if (resolveStorefrontRenderer(i) === "grandeur") return true;
   return isRestaurantBusiness(getCanonicalBusinessType({ businessCategory: i.businessCategory, storeBusinessType: i.storeBusinessType }));
+}
+
+/**
+ * True when the shop-flow pages (menu, category, cart, checkout, contact) should wear the Grandeur restaurant skin.
+ * A registered template decides for itself: Ember is a restaurant template that is drawn by the Builder, so its inner
+ * pages must stay Builder too (switching to Grandeur half way through the site was the "two templates" bug). Only a
+ * store with no registered template falls back to its business category.
+ */
+export function usesGrandeurSkin(i: StoreIdentity): boolean {
+  const def = getTemplateDefinition(i.templateName);
+  if (def) return def.renderer === "grandeur";
+  return isGrandeurStore(i);
 }
 
 export function getStoreKind(i: StoreIdentity): StoreKind {
