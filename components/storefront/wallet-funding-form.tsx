@@ -5,7 +5,7 @@ import { startWalletFunding } from "@/lib/actions/customer-wallet";
 import { toast } from "sonner";
 import { currencySymbol } from "@/lib/utils/format-money";
 
-export function WalletFundingForm({ slug }: { slug: string }) {
+export function WalletFundingForm({ slug, modern = false }: { slug: string; modern?: boolean }) {
   const [amount, setAmount] = useState("10000");
   const [pending, startTransition] = useTransition();
 
@@ -16,6 +16,22 @@ export function WalletFundingForm({ slug }: { slug: string }) {
       if (!result.success) { toast.error(result.error); return; }
       window.location.assign(result.data.authorizationUrl);
     });
+  }
+
+  if (modern) {
+    return (
+      <section className="acx-card acx-fund" aria-label="Add money">
+        <h2>Add money</h2>
+        <p>You&apos;ll be taken to our secure payment page to complete the top-up.</p>
+        <div className="acx-fund-row">
+          <div className="acx-money"><span>{currencySymbol()}</span><input inputMode="numeric" value={amount} onChange={(e) => setAmount(e.target.value.replace(/[^0-9]/g, ""))} placeholder="10000" aria-label="Amount to add" /></div>
+          <button type="button" onClick={submit} disabled={pending || !amount} className="acx-btn">{pending ? "Starting…" : "Fund wallet"}</button>
+        </div>
+        <div className="acx-presets" aria-label="Quick amounts">
+          {[5000, 10000, 20000, 50000].map((v) => <button key={v} type="button" onClick={() => setAmount(String(v))}>{currencySymbol()}{v.toLocaleString("en-NG")}</button>)}
+        </div>
+      </section>
+    );
   }
 
   return (

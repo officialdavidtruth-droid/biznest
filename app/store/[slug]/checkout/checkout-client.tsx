@@ -186,7 +186,7 @@ export function CheckoutClient({ slug, palette = DEFAULT_STORE_PALETTE }: { slug
 
   return (
     <div style={{ background: SURFACE, color: INK, minHeight: "100vh", fontFamily: palette.font }} className="storefront-root">
-      <div style={{ maxWidth: 1280 }} className="mx-auto px-6 py-14">
+      <div style={{ maxWidth: 1280 }} className="mx-auto px-5 pb-28 pt-10 sm:px-6 lg:py-14">
         {/* ---------- HEADER + STEP INDICATOR ---------- */}
         <div className="mb-8">
           <Link href={`/store/${slug}/cart`} style={{ color: INK, opacity: 0.6 }} className="mb-4 inline-flex items-center gap-1 text-xs font-semibold no-underline hover:opacity-100">
@@ -194,13 +194,15 @@ export function CheckoutClient({ slug, palette = DEFAULT_STORE_PALETTE }: { slug
           </Link>
           <div style={{ borderBottom: `1px solid ${INK}1a` }} className="flex items-baseline justify-between pb-4">
             <h1 style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }} className="text-3xl font-extrabold sm:text-4xl">Checkout</h1>
-            <div className="flex items-center gap-2 text-xs font-semibold" style={{ opacity: 0.55 }}>
-              <span style={{ color: ACCENT, opacity: 1 }}>Cart</span>
-              <span>→</span>
-              <span style={{ color: ACCENT, opacity: 1 }}>Checkout</span>
-              <span>→</span>
-              <span>Payment</span>
-            </div>
+            <ol className="hidden items-center gap-2 text-xs font-semibold sm:flex" aria-label="Checkout steps">
+              {([["Cart", true], ["Details", true], ["Payment", false]] as const).map(([label, done], i) => (
+                <li key={label} className="flex items-center gap-2" style={{ opacity: done ? 1 : 0.55 }}>
+                  <span style={{ background: done ? ACCENT : "transparent", color: done ? palette.onAccent : INK, border: `1.5px solid ${done ? ACCENT : `${INK}55`}` }} className="flex h-5 w-5 items-center justify-center rounded-full text-[10px]">{i + 1}</span>
+                  <span>{label}</span>
+                  {i < 2 && <span style={{ background: `${INK}33` }} className="mx-1 h-px w-6" />}
+                </li>
+              ))}
+            </ol>
           </div>
         </div>
 
@@ -248,40 +250,6 @@ export function CheckoutClient({ slug, palette = DEFAULT_STORE_PALETTE }: { slug
               </div>
             )}
 
-            {walletOffered && (
-              <div style={{ background: CARD, borderRadius: "1rem", boxShadow: "0 1px 3px rgba(18,18,18,0.06)" }} className="mb-5 p-6">
-                <div className="mb-3 flex items-center gap-2">
-                  <Wallet className="h-4 w-4" style={{ color: ACCENT }} />
-                  <h2 style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }} className="text-base font-bold">Payment method</h2>
-                </div>
-                <div className="grid grid-cols-2 gap-2" role="radiogroup" aria-label="Payment method">
-                  {([["card", "Card / bank"], ["wallet", "Store wallet"]] as const).map(([mode, label]) => {
-                    const disabled = mode === "wallet" && !walletCovers;
-                    return (
-                      <button
-                        key={mode}
-                        type="button"
-                        role="radio"
-                        aria-checked={payWith === mode && !disabled}
-                        disabled={disabled}
-                        onClick={() => setPayWith(mode)}
-                        style={{ border: `1px solid ${payWith === mode && !disabled ? ACCENT : `${INK}22`}`, background: payWith === mode && !disabled ? `${ACCENT}14` : SURFACE, color: INK, opacity: disabled ? 0.5 : 1 }}
-                        className="rounded-lg px-4 py-2.5 text-sm font-semibold"
-                      >
-                        {label}
-                      </button>
-                    );
-                  })}
-                </div>
-                <p style={{ opacity: 0.6 }} className="mt-3 text-sm">
-                  {walletCovers
-                    ? `Wallet balance: ${currency} ${formatNumber(walletBalance ?? 0)}. Paying from it is instant.`
-                    : `Wallet balance: ${currency} ${formatNumber(walletBalance ?? 0)}, not enough for this order.`}{" "}
-                  <Link href={`/store/${slug}/account/wallet`} style={{ color: ACCENT }} className="font-semibold no-underline hover:opacity-80">Add funds</Link>
-                </p>
-              </div>
-            )}
-
             <div style={{ background: CARD, borderRadius: "1rem", boxShadow: "0 1px 3px rgba(18,18,18,0.06)" }} className="p-6">
               <div className="mb-4 flex items-center gap-2">
                 <ShieldCheck className="h-4 w-4" style={{ color: ACCENT }} />
@@ -317,6 +285,47 @@ export function CheckoutClient({ slug, palette = DEFAULT_STORE_PALETTE }: { slug
                 </Field>
               </form>
             </div>
+
+            {walletOffered && (
+              <div style={{ background: CARD, borderRadius: "1rem", boxShadow: "0 1px 3px rgba(18,18,18,0.06)" }} className="mt-5 p-6">
+                <div className="mb-4 flex items-center gap-2">
+                  <Wallet className="h-4 w-4" style={{ color: ACCENT }} />
+                  <h2 style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }} className="text-base font-bold">Payment method</h2>
+                </div>
+                <div className="grid gap-3 sm:grid-cols-2" role="radiogroup" aria-label="Payment method">
+                  {([
+                    ["card", "Card or bank transfer", "Pay securely with your card or bank", CreditCard],
+                    ["wallet", "Store wallet", walletCovers ? `Balance ${currency} ${formatNumber(walletBalance ?? 0)}` : `Balance ${currency} ${formatNumber(walletBalance ?? 0)} (not enough)`, Wallet],
+                  ] as const).map(([mode, label, hint, Icon]) => {
+                    const disabled = mode === "wallet" && !walletCovers;
+                    const on = payWith === mode && !disabled;
+                    return (
+                      <button
+                        key={mode}
+                        type="button"
+                        role="radio"
+                        aria-checked={on}
+                        disabled={disabled}
+                        onClick={() => setPayWith(mode)}
+                        style={{ border: `1.5px solid ${on ? ACCENT : `${INK}22`}`, background: on ? `${ACCENT}12` : SURFACE, color: INK, opacity: disabled ? 0.55 : 1 }}
+                        className="flex items-start gap-3 rounded-xl p-4 text-left transition"
+                      >
+                        <span style={{ background: on ? ACCENT : `${INK}12`, color: on ? palette.onAccent : INK }} className="mt-0.5 flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-lg"><Icon className="h-4 w-4" /></span>
+                        <span className="min-w-0">
+                          <span className="block text-sm font-semibold">{label}</span>
+                          <span style={{ opacity: 0.65 }} className="mt-0.5 block text-xs">{hint}</span>
+                        </span>
+                      </button>
+                    );
+                  })}
+                </div>
+                {!walletCovers && (
+                  <p style={{ opacity: 0.7 }} className="mt-3 text-xs">
+                    Need to top up? <Link href={`/store/${slug}/account/wallet`} style={{ color: ACCENT }} className="font-semibold no-underline hover:opacity-80">Add funds to your wallet</Link>
+                  </p>
+                )}
+              </div>
+            )}
 
             <div className="mt-5 flex flex-wrap items-center gap-x-6 gap-y-2 text-xs" style={{ opacity: 0.6 }}>
               <span className="flex items-center gap-1.5"><Lock className="h-3.5 w-3.5" /> Encrypted checkout</span>
@@ -381,6 +390,23 @@ export function CheckoutClient({ slug, palette = DEFAULT_STORE_PALETTE }: { slug
             </div>
           </div>
         </div>
+      </div>
+
+      {/* Phones: keep the total and the pay button in reach without scrolling to the summary. */}
+      <div style={{ background: CARD, borderTop: `1px solid ${INK}1a`, boxShadow: "0 -8px 24px rgba(0,0,0,0.08)" }} className="fixed inset-x-0 bottom-0 z-20 flex items-center gap-3 px-4 py-3 lg:hidden">
+        <div className="min-w-0 flex-1">
+          <p style={{ opacity: 0.6 }} className="text-[11px] font-semibold uppercase tracking-wide">Total</p>
+          <p className="truncate text-lg font-extrabold leading-tight">{currency} {formatNumber(total)}</p>
+        </div>
+        <button
+          type="submit"
+          form="checkout-form"
+          disabled={isSubmitting}
+          style={{ background: ACCENT, color: palette.onAccent }}
+          className="rounded-xl px-6 py-3 text-sm font-semibold disabled:opacity-50"
+        >
+          {isSubmitting ? "Please wait…" : usingWallet ? "Pay from wallet" : "Pay now"}
+        </button>
       </div>
 
       <style jsx global>{`

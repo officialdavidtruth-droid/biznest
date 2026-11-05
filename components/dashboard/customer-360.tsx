@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState, useTransition } from "react";
+import { useMemo, useRef, useState, useTransition } from "react";
 import { whatsappLink } from "@/lib/utils/whatsapp-link";
 import { phoneKey } from "@/lib/phone";
 import { Mail, MessageCircle, Phone, Search, ShoppingBag, UserRound, Users, Wallet, Repeat } from "lucide-react";
@@ -113,6 +113,12 @@ export function Customer360View({
   const [selectedId, setSelectedId] = useState(hinted?.id ?? customers[0]?.id ?? null);
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(8);
+  const detailRef = useRef<HTMLElement | null>(null);
+  // On phones the profile sits below the list: bring it into view when a customer is picked.
+  const pick = (id: string) => {
+    setSelectedId(id);
+    if (typeof window !== "undefined" && window.matchMedia("(max-width: 1023px)").matches) requestAnimationFrame(() => detailRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }));
+  };
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -166,9 +172,9 @@ export function Customer360View({
               <input value={query} onChange={(e) => { setQuery(e.target.value); setPage(1); }} placeholder="Search name, phone or email" className="w-full rounded-lg border bg-background py-2 pl-9 pr-3 text-sm outline-none focus:ring-2 focus:ring-primary/30" />
             </div>
           </div>
-          <div className="max-h-[560px] overflow-y-auto p-2">
+          <div className="max-h-72 overflow-y-auto p-2 lg:max-h-[560px]">
             {paged.map((customer) => (
-              <button key={customer.id} onClick={() => setSelectedId(customer.id)} className={`mb-1 flex w-full items-center gap-3 rounded-lg p-3 text-left transition-colors ${selected?.id === customer.id ? "bg-primary/10" : "hover:bg-muted"}`}>
+              <button key={customer.id} onClick={() => pick(customer.id)} className={`mb-1 flex w-full items-center gap-3 rounded-lg p-3 text-left transition-colors ${selected?.id === customer.id ? "bg-primary/10" : "hover:bg-muted"}`}>
                 <div className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-primary/10 text-xs font-semibold text-primary">{initials(customer.name)}</div>
                 <div className="min-w-0 flex-1"><p className="truncate text-sm font-medium">{customer.name}</p><p className="truncate text-xs text-muted-foreground">{customer.phone || customer.email || "No contact"}</p></div>
                 <div className="text-right"><p className="text-xs font-semibold">{money(customer.spent)}</p><p className="text-[10px] text-muted-foreground">{customer.orders} order{customer.orders === 1 ? "" : "s"}</p></div>
@@ -186,7 +192,7 @@ export function Customer360View({
           />
         </section>
 
-        {selected ? <section className="space-y-4">
+        {selected ? <section ref={detailRef} className="scroll-mt-20 space-y-4">
           <div className="rounded-xl border bg-background p-5 shadow-sm">
             <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
               <div className="flex items-center gap-3"><div className="grid h-12 w-12 place-items-center rounded-full bg-primary/10 font-semibold text-primary">{initials(selected.name)}</div><div><h2 className="text-lg font-semibold">{selected.name}</h2><div className="mt-1 flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted-foreground"><span>{selected.email || "No email"}</span><span>{selected.phone || "No phone"}</span></div></div></div>

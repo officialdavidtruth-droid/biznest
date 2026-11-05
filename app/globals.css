@@ -5,6 +5,7 @@
 /* Template 2 — "Heenzy" storefront design. Scoped under .hz-root so it
    never affects Template 1 (Fresh & Co.) or the dashboard. */
 @import "./SIGNATURE_CUSTOMER_EXPERIENCE.css";
+@import "./account-ui.css";
 @import "./legacy-template.css";
 @import "../styles/heenzy-template.css";
 

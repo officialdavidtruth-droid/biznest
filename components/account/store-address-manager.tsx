@@ -31,7 +31,7 @@ export function StoreAddressManager({ storeSlug, initialAddresses }: { storeSlug
         <p className="bn-account-address-copy">{a.line1}{a.line2 ? `, ${a.line2}` : ""}<br />{a.city}, {a.state}<br />{a.phone}</p>
         <div className="bn-account-address-actions">
           {!a.isDefault && <button onClick={async()=>{const r=await setDefaultStoreAddress(storeSlug,a.id); if(r.success){setAddresses((x)=>x.map((v)=>({...v,isDefault:v.id===a.id})));toast.success("Default address updated")}else toast.error(r.error)}} className="make-default">Make default</button>}
-          <button onClick={async()=>{const r=await deleteStoreAddress(storeSlug,a.id); if(r.success){setAddresses((x)=>x.filter((v)=>v.id!==a.id));toast.success("Address removed")}else toast.error(r.error)}} className="remove">Remove</button>
+          <button onClick={async()=>{const r=await deleteStoreAddress(storeSlug,a.id); if(r.success){toast.success("Address removed");if(a.isDefault)window.location.reload();else setAddresses((x)=>x.filter((v)=>v.id!==a.id))}else toast.error(r.error)}} className="remove">Remove</button>
         </div>
       </div>)}
       {addresses.length===0 && <div className="bn-account-address-empty">No addresses saved for this store yet.</div>}

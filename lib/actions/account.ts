@@ -462,7 +462,9 @@ export async function updateStoreCustomerPreferences(storeSlug: string, preferen
   const jsonPreferences = sanitizePreferences(preferences) as Prisma.InputJsonValue;
   // Reuses a profile that already exists for this email (e.g. from a POS sale)
   // rather than creating a duplicate, and writes the preferences onto it.
-  await ensureAccountProfile(prisma, { storeId: ctx.storeId, userId: ctx.userId, name: user?.name || user?.email || "Customer", email: user?.email ?? null, phone: user?.phone, preferences: jsonPreferences, emailVerified: !!user?.emailVerified });
+  const ensured = await ensureAccountProfile(prisma, { storeId: ctx.storeId, userId: ctx.userId, name: user?.name || user?.email || "Customer", email: user?.email ?? null, phone: user?.phone, preferences: jsonPreferences, emailVerified: !!user?.emailVerified });
+  // An unverified email can't be attached to an existing profile yet, so nothing was saved: say so instead of pretending.
+  if (ensured.deferred) return { success: false, error: "Verify your email address first, then your preferences can be saved." };
   revalidatePath(`/store/${storeSlug}/account/preferences`);
   revalidatePath(`/store/${storeSlug}/account`);
   return { success: true, data: undefined };
@@ -477,21 +479,44 @@ export async function listStoreAddresses(storeSlug: string) {
   });
 }
 
+const MAX_STORE_ADDRESSES = 10;
+const cleanText = (v: unknown, max: number) => String(v ?? "").replace(/[\u0000-\u001f\u007f]/g, " ").replace(/\s+/g, " ").trim().slice(0, max);
+
 export async function addStoreAddress(storeSlug: string, input: {
   label?: string; fullName: string; phone: string; line1: string; line2?: string;
   city: string; state: string; country?: string; isDefault?: boolean;
 }): Promise<ActionResult<{ id: string }>> {
   const ctx = await getStoreCustomerContext(storeSlug);
   if (!ctx) return { success: false, error: "You don't have a customer account with this store." };
-  if (!input.fullName || !input.phone || !input.line1 || !input.city || !input.state) {
+  // Only known fields are stored (the input comes straight from the browser), each trimmed and capped.
+  const data = {
+    label: cleanText(input?.label, 40) || null,
+    fullName: cleanText(input?.fullName, 80),
+    phone: cleanText(input?.phone, 25),
+    line1: cleanText(input?.line1, 200),
+    line2: cleanText(input?.line2, 200) || null,
+    city: cleanText(input?.city, 80),
+    state: cleanText(input?.state, 80),
+    country: cleanText(input?.country, 80) || "Nigeria",
+  };
+  if (!data.fullName || !data.phone || !data.line1 || !data.city || !data.state) {
     return { success: false, error: "Please fill in all required fields." };
   }
-  if (input.isDefault) {
-    await prisma.storeCustomerAddress.updateMany({ where: { userId: ctx.userId, storeId: ctx.storeId }, data: { isDefault: false } });
-  }
-  const address = await prisma.storeCustomerAddress.create({ data: { ...input, userId: ctx.userId, storeId: ctx.storeId } });
+  if (!/^[+\d\s().-]{7,25}$/.test(data.phone)) return { success: false, error: "Enter a valid phone number." };
+  const limit = await checkRateLimit(`customer-address:${ctx.userId}`, 30, 60 * 60 * 1000);
+  if (!limit.allowed) return { success: false, error: "Too many changes. Please try again later." };
+
+  const created = await prisma.$transaction(async (tx) => {
+    const existing = await tx.storeCustomerAddress.count({ where: { userId: ctx.userId, storeId: ctx.storeId } });
+    if (existing >= MAX_STORE_ADDRESSES) return null;
+    // The first address is the default; otherwise only when asked.
+    const makeDefault = existing === 0 || input?.isDefault === true;
+    if (makeDefault) await tx.storeCustomerAddress.updateMany({ where: { userId: ctx.userId, storeId: ctx.storeId }, data: { isDefault: false } });
+    return tx.storeCustomerAddress.create({ data: { ...data, isDefault: makeDefault, userId: ctx.userId, storeId: ctx.storeId } });
+  });
+  if (!created) return { success: false, error: `You can save up to ${MAX_STORE_ADDRESSES} addresses. Delete one to add another.` };
   revalidatePath(`/store/${storeSlug}/account/addresses`);
-  return { success: true, data: { id: address.id } };
+  return { success: true, data: { id: created.id } };
 }
 
 export async function deleteStoreAddress(storeSlug: string, addressId: string): Promise<ActionResult> {
@@ -499,7 +524,14 @@ export async function deleteStoreAddress(storeSlug: string, addressId: string): 
   if (!ctx) return { success: false, error: "You don't have a customer account with this store." };
   const address = await prisma.storeCustomerAddress.findFirst({ where: { id: addressId, userId: ctx.userId, storeId: ctx.storeId } });
   if (!address) return { success: false, error: "Address not found." };
-  await prisma.storeCustomerAddress.delete({ where: { id: address.id } });
+  await prisma.$transaction(async (tx) => {
+    await tx.storeCustomerAddress.delete({ where: { id: address.id } });
+    // Deleting the default must not leave the customer with no default: promote the newest remaining one.
+    if (address.isDefault) {
+      const next = await tx.storeCustomerAddress.findFirst({ where: { userId: ctx.userId, storeId: ctx.storeId }, orderBy: { createdAt: "desc" }, select: { id: true } });
+      if (next) await tx.storeCustomerAddress.update({ where: { id: next.id }, data: { isDefault: true }, select: { id: true } });
+    }
+  });
   revalidatePath(`/store/${storeSlug}/account/addresses`);
   return { success: true, data: undefined };
 }

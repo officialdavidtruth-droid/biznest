@@ -1,0 +1,226 @@
+/* Customer account area (every store except the hotel "Veloura" skin).
+   Everything is scoped under .acx so it can't leak into storefronts or the hotel account.
+   Only the store's accent colour is themed; surfaces stay neutral so contrast is always safe. */
+
+.acx {
+  --acx-accent: #111827;
+  --acx-on-accent: #fff;
+  --acx-ink-accent: var(--acx-accent);
+  --acx-tint: color-mix(in srgb, var(--acx-accent) 9%, #fff);
+  --acx-tint-strong: color-mix(in srgb, var(--acx-accent) 16%, #fff);
+  --acx-bg: #f5f6f8;
+  --acx-card: #fff;
+  --acx-ink: #0f172a;
+  --acx-muted: #64748b;
+  --acx-line: #e6e9ef;
+  --acx-good: #15803d;
+  --acx-bad: #b42318;
+  --acx-radius: 16px;
+  --acx-shadow: 0 1px 2px rgba(15,23,42,.04), 0 6px 20px rgba(15,23,42,.04);
+  min-height: 100vh;
+  background: var(--acx-bg);
+  color: var(--acx-ink);
+  font-family: var(--acx-font, Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif);
+  -webkit-font-smoothing: antialiased;
+}
+.acx *, .acx *::before, .acx *::after { box-sizing: border-box; }
+.acx a { color: inherit; }
+
+/* ---------- top bar ---------- */
+.acx-top { position: sticky; top: 0; z-index: 30; background: rgba(255,255,255,.88); backdrop-filter: saturate(1.4) blur(14px); border-bottom: 1px solid var(--acx-line); }
+.acx-top-in { max-width: 1180px; margin: 0 auto; padding: 12px 20px; display: flex; align-items: center; justify-content: space-between; gap: 16px; }
+.acx-brand { display: flex; align-items: center; gap: 12px; min-width: 0; text-decoration: none; }
+.acx-logo { width: 38px; height: 38px; border-radius: 11px; object-fit: cover; flex: none; background: var(--acx-tint); }
+.acx-logo-fallback { width: 38px; height: 38px; border-radius: 11px; flex: none; display: grid; place-items: center; background: var(--acx-accent); color: var(--acx-on-accent); font-weight: 700; font-size: 16px; }
+.acx-brand b { display: block; font-size: 14px; font-weight: 650; letter-spacing: -.01em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.acx-brand small { display: block; font-size: 12px; color: var(--acx-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.acx-back { display: inline-flex; align-items: center; gap: 7px; height: 38px; padding: 0 14px; border-radius: 999px; border: 1px solid var(--acx-line); background: #fff; font-size: 13px; font-weight: 550; text-decoration: none; color: var(--acx-ink); white-space: nowrap; transition: background .15s, border-color .15s; }
+.acx-back:hover { background: var(--acx-tint); border-color: var(--acx-tint-strong); }
+
+/* ---------- layout ---------- */
+.acx-wrap { max-width: 1180px; margin: 0 auto; padding: 28px 20px 64px; display: grid; grid-template-columns: 236px minmax(0, 1fr); gap: 28px; align-items: start; }
+.acx-main { min-width: 0; }
+.acx .veloura-account-content { max-width: none !important; margin: 0 !important; padding: 0 !important; display: grid; gap: 16px; }
+
+/* ---------- navigation ---------- */
+.acx-nav { min-width: 0; position: sticky; top: 84px; background: var(--acx-card); border: 1px solid var(--acx-line); border-radius: var(--acx-radius); padding: 12px; box-shadow: var(--acx-shadow); }
+.acx-nav-group + .acx-nav-group { margin-top: 10px; padding-top: 10px; border-top: 1px solid var(--acx-line); }
+.acx-nav-label { margin: 4px 10px 6px; font-size: 11px; font-weight: 650; letter-spacing: .08em; text-transform: uppercase; color: var(--acx-muted); }
+.acx-nav a, .acx-nav button.acx-signout { display: flex; align-items: center; gap: 11px; width: 100%; padding: 9px 10px; border: 0; border-radius: 10px; background: transparent; font: var(--acx-font, Inter, system-ui, sans-serif); font-size: 14px; font-weight: 500; color: #334155; text-decoration: none; cursor: pointer; transition: background .15s, color .15s; }
+.acx-nav a:hover, .acx-nav button.acx-signout:hover { background: #f1f4f8; color: var(--acx-ink); }
+.acx-nav a.active { background: var(--acx-tint); color: var(--acx-ink-accent); font-weight: 650; }
+.acx-nav a svg, .acx-nav .acx-signout svg { flex: none; opacity: .85; }
+.acx-nav a.active svg { opacity: 1; }
+.acx-badge { margin-left: auto; min-width: 20px; height: 20px; padding: 0 6px; border-radius: 999px; background: var(--acx-accent); color: var(--acx-on-accent); font-size: 11px; font-weight: 700; display: inline-grid; place-items: center; }
+.acx-signout { color: #64748b !important; }
+
+/* ---------- page header (also restyles the old hotel-style hero used by sub pages) ---------- */
+.acx .bn-account-hero { min-height: 0 !important; padding: 4px 2px 6px !important; border-radius: 0 !important; background: none !important; background-image: none !important; box-shadow: none !important; color: var(--acx-ink) !important; display: block !important; overflow: visible !important; }
+.acx .bn-account-hero::after, .acx .bn-account-hero-mark { display: none !important; }
+.acx .bn-account-eyebrow { display: none !important; }
+.acx .bn-account-hero h1, .acx-title { margin: 0 !important; font: 700 clamp(24px, 3vw, 30px)/1.15 var(--acx-font, Inter, system-ui, sans-serif) !important; letter-spacing: -.02em; color: var(--acx-ink) !important; }
+.acx .bn-account-hero p, .acx-sub { margin: 6px 0 0 !important; font-size: 14px !important; color: var(--acx-muted) !important; max-width: 60ch; }
+
+/* ---------- cards ---------- */
+.acx .veloura-panel, .acx .veloura-wallet, .acx .veloura-security, .acx .veloura-support-card, .acx .veloura-form-card, .acx-card {
+  background: var(--acx-card) !important; border: 1px solid var(--acx-line) !important; border-radius: var(--acx-radius) !important; box-shadow: var(--acx-shadow) !important; padding: 22px !important; margin: 0 !important;
+}
+.acx .veloura-panel-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; margin: 0 0 16px !important; }
+.acx .veloura-panel-head h2, .acx-card h2 { margin: 0 !important; font: 650 17px/1.3 var(--acx-font, Inter, system-ui, sans-serif) !important; letter-spacing: -.01em; color: var(--acx-ink) !important; }
+.acx .veloura-panel-head p, .acx .veloura-panel-head span { margin: 3px 0 0; font-size: 13px !important; color: var(--acx-muted) !important; }
+.acx .veloura-panel-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
+.acx .veloura-panel + .veloura-panel { margin-top: 0 !important; }
+
+.acx .veloura-detail-list { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px 20px; margin: 0; }
+.acx .veloura-detail-list dt { font-size: 12px; font-weight: 550; color: var(--acx-muted); margin: 0 0 3px; }
+.acx .veloura-detail-list dd { margin: 0; font-size: 14px; font-weight: 550; color: var(--acx-ink); overflow-wrap: anywhere; }
+
+/* ---------- stats ---------- */
+.acx .veloura-stat-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; padding: 0 !important; }
+.acx .veloura-stat { background: var(--acx-card) !important; border: 1px solid var(--acx-line) !important; border-radius: 14px !important; padding: 16px 18px !important; box-shadow: var(--acx-shadow); }
+.acx .veloura-stat h3 { margin: 0; font: 700 24px/1.1 var(--acx-font, Inter, system-ui, sans-serif); letter-spacing: -.02em; }
+.acx .veloura-stat p { margin: 6px 0 0 !important; font-size: 13px !important; color: var(--acx-muted); }
+
+/* ---------- buttons / inputs ---------- */
+.acx .veloura-gold-btn, .acx-btn, .acx .bn-account-save-button { display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-height: 42px; padding: 0 18px !important; border: 0 !important; border-radius: 12px !important; background: var(--acx-accent) !important; color: var(--acx-on-accent) !important; font: 600 14px/1 var(--acx-font, Inter, system-ui, sans-serif) !important; cursor: pointer; text-decoration: none; transition: filter .15s, transform .15s; }
+.acx .veloura-gold-btn:hover, .acx-btn:hover, .acx .bn-account-save-button:hover { filter: brightness(1.08); }
+.acx .veloura-gold-btn:disabled, .acx-btn:disabled, .acx .bn-account-save-button:disabled { opacity: .55; cursor: not-allowed; }
+.acx .veloura-search, .acx-btn-ghost { display: inline-flex; align-items: center; gap: 8px; min-height: 42px; padding: 0 16px; border: 1px solid var(--acx-line); border-radius: 12px; background: #fff; color: var(--acx-ink); font: 550 14px/1 var(--acx-font, Inter, system-ui, sans-serif); cursor: pointer; }
+.acx .veloura-search:hover, .acx-btn-ghost:hover { background: #f8fafc; }
+.acx .veloura-search input { border: 0; outline: 0; background: transparent; width: 100%; font: var(--acx-font, Inter, system-ui, sans-serif); }
+.acx input:not([type="checkbox"]):not([type="radio"]), .acx select, .acx textarea, .acx .bn-account-input { width: 100%; min-height: 44px; padding: 10px 13px; border: 1px solid #d5dae3; border-radius: 12px; background: #fff; color: var(--acx-ink); font: 400 14px/1.4 var(--acx-font, Inter, system-ui, sans-serif); outline: none; transition: border-color .15s, box-shadow .15s; }
+.acx input:focus, .acx select:focus, .acx textarea:focus { border-color: var(--acx-accent); box-shadow: 0 0 0 3px color-mix(in srgb, var(--acx-accent) 18%, transparent); }
+.acx input:disabled { background: #f4f6f9; color: var(--acx-muted); }
+.acx label { color: #334155; }
+
+.acx .veloura-tabs { display: flex; gap: 6px; flex-wrap: wrap; margin: 0 !important; }
+.acx .veloura-tabs a, .acx .veloura-tabs button { padding: 8px 14px; border: 1px solid var(--acx-line); border-radius: 999px; background: #fff; font-size: 13px; font-weight: 550; text-decoration: none; color: #334155; cursor: pointer; }
+.acx .veloura-tabs .active { background: var(--acx-accent) !important; border-color: var(--acx-accent) !important; color: var(--acx-on-accent) !important; }
+.acx .veloura-page-tools { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin: 0 !important; }
+.acx .veloura-page-tools h2 { margin: 0; font: 650 17px/1.3 var(--acx-font, Inter, system-ui, sans-serif); }
+
+/* ---------- lists, badges, empty ---------- */
+.acx .veloura-list-card { display: grid; grid-template-columns: 150px minmax(0, 1fr) auto; gap: 18px; align-items: center; padding: 16px !important; margin: 0 !important; background: var(--acx-card) !important; border: 1px solid var(--acx-line) !important; border-radius: 14px !important; box-shadow: var(--acx-shadow); transition: border-color .15s, box-shadow .15s; }
+.acx a.veloura-list-card:hover { border-color: var(--acx-tint-strong) !important; box-shadow: 0 8px 24px rgba(15,23,42,.07); }
+.acx .veloura-list-card > img { width: 150px; height: 104px; border-radius: 10px; object-fit: cover; }
+.acx .veloura-list-card h2 { margin: 0 0 6px !important; font: 650 16px/1.3 var(--acx-font, Inter, system-ui, sans-serif) !important; }
+.acx .veloura-badge { display: inline-flex; align-items: center; min-height: 24px; padding: 3px 10px; border-radius: 999px; background: #ecfdf3; color: var(--acx-good); font-size: 12px; font-weight: 600; text-transform: capitalize; }
+.acx .veloura-empty { min-height: 180px; display: grid; place-items: center; align-content: center; gap: 8px; padding: 32px; text-align: center; color: var(--acx-muted); background: var(--acx-card); border: 1px dashed #d5dae3; border-radius: var(--acx-radius); }
+.acx .veloura-empty a { color: var(--acx-ink-accent); font-weight: 650; }
+
+.acx .veloura-table-wrap { overflow-x: auto; }
+.acx .veloura-table { width: 100%; border-collapse: collapse; font-size: 14px; }
+.acx .veloura-table th { text-align: left; padding: 10px 12px; font-size: 12px; font-weight: 600; color: var(--acx-muted); border-bottom: 1px solid var(--acx-line); white-space: nowrap; }
+.acx .veloura-table td { padding: 13px 12px; border-bottom: 1px solid #f0f2f6; }
+
+/* ---------- overview ---------- */
+.acx-hero { position: relative; overflow: hidden; display: flex; align-items: center; gap: 20px; padding: 26px; border-radius: 20px; color: var(--acx-on-accent); background: linear-gradient(135deg, var(--acx-accent), color-mix(in srgb, var(--acx-accent) 70%, #000)); box-shadow: 0 12px 32px color-mix(in srgb, var(--acx-accent) 28%, transparent); }
+.acx-hero::after { content: ""; position: absolute; right: -60px; top: -60px; width: 220px; height: 220px; border-radius: 50%; background: rgba(255,255,255,.1); pointer-events: none; }
+.acx-avatar { width: 64px; height: 64px; flex: none; border-radius: 50%; display: grid; place-items: center; background: rgba(255,255,255,.2); border: 2px solid rgba(255,255,255,.35); font-size: 24px; font-weight: 700; letter-spacing: .02em; }
+.acx-hero-copy { min-width: 0; position: relative; z-index: 1; }
+.acx-hero-copy small { font-size: 12px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; opacity: .8; }
+.acx-hero-copy h1 { margin: 4px 0 6px; font: 700 clamp(22px, 3vw, 28px)/1.15 var(--acx-font, Inter, system-ui, sans-serif); letter-spacing: -.02em; overflow-wrap: anywhere; }
+.acx-chips { display: flex; flex-wrap: wrap; gap: 8px; }
+.acx-chip { display: inline-flex; align-items: center; gap: 6px; padding: 5px 11px; border-radius: 999px; background: rgba(255,255,255,.18); font-size: 12px; font-weight: 550; }
+.acx-tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; }
+.acx-tile { display: flex; align-items: center; gap: 14px; padding: 16px 18px; background: var(--acx-card); border: 1px solid var(--acx-line); border-radius: 14px; box-shadow: var(--acx-shadow); text-decoration: none; }
+.acx-tile-ico { width: 42px; height: 42px; flex: none; border-radius: 12px; display: grid; place-items: center; background: var(--acx-tint); color: var(--acx-ink-accent); }
+.acx-tile b { display: block; font-size: 22px; font-weight: 700; letter-spacing: -.02em; line-height: 1.1; }
+.acx-tile div span { font-size: 13px; color: var(--acx-muted); }
+.acx-actions { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 12px; }
+.acx-action { display: flex; align-items: center; gap: 13px; padding: 14px 16px; border: 1px solid var(--acx-line); border-radius: 14px; background: #fff; text-decoration: none; transition: border-color .15s, box-shadow .15s, transform .15s; }
+.acx-action:hover { border-color: var(--acx-tint-strong); box-shadow: 0 8px 22px rgba(15,23,42,.07); transform: translateY(-1px); }
+.acx-action .acx-tile-ico { width: 38px; height: 38px; border-radius: 10px; }
+.acx-action div strong { display: block; font-size: 14px; font-weight: 600; }
+.acx-action div span { display: block; font-size: 12.5px; color: var(--acx-muted); margin-top: 1px; }
+.acx-action > svg:last-child { margin-left: auto; flex: none; color: #94a3b8; }
+.acx-edit { font-family: inherit; font-size: 13px; font-weight: 600; color: var(--acx-ink-accent); background: none; border: 0; cursor: pointer; padding: 4px 2px; }
+.acx-form { display: grid; gap: 14px; }
+.acx-field { display: grid; gap: 6px; font-size: 13px; font-weight: 550; }
+.acx-field small { font-weight: 400; color: var(--acx-muted); font-size: 12px; }
+.acx-row { display: flex; gap: 10px; flex-wrap: wrap; }
+.acx-msg { margin: 0 0 12px; padding: 10px 13px; border-radius: 10px; font-size: 13px; }
+.acx-msg.ok { background: #ecfdf3; color: var(--acx-good); }
+.acx-msg.bad { background: #fef3f2; color: var(--acx-bad); }
+
+/* ---------- wallet ---------- */
+.acx-wallet { display: grid; grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr); gap: 16px; }
+.acx-balance { position: relative; overflow: hidden; padding: 26px; border-radius: 20px; color: var(--acx-on-accent); background: linear-gradient(135deg, var(--acx-accent), color-mix(in srgb, var(--acx-accent) 65%, #000)); box-shadow: 0 12px 32px color-mix(in srgb, var(--acx-accent) 28%, transparent); display: flex; flex-direction: column; justify-content: space-between; min-height: 190px; }
+.acx-balance::after { content: ""; position: absolute; right: -50px; bottom: -70px; width: 220px; height: 220px; border-radius: 50%; background: rgba(255,255,255,.1); }
+.acx-balance small { font-size: 12px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; opacity: .8; }
+.acx-balance strong { display: block; margin-top: 8px; font: 700 clamp(30px, 5vw, 40px)/1.05 var(--acx-font, Inter, system-ui, sans-serif); letter-spacing: -.03em; position: relative; z-index: 1; }
+.acx-balance p { margin: 14px 0 0; font-size: 13px; opacity: .85; position: relative; z-index: 1; }
+.acx-fund h2 { margin: 0 0 4px !important; }
+.acx-fund p { margin: 0 0 14px; font-size: 13px; color: var(--acx-muted); }
+.acx-fund-row { display: flex; gap: 10px; }
+.acx-money { position: relative; flex: 1; }
+.acx-money > span { position: absolute; left: 13px; top: 50%; transform: translateY(-50%); color: var(--acx-muted); font-size: 14px; pointer-events: none; }
+.acx-money input { padding-left: 32px !important; }
+.acx-presets { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
+.acx-presets button { font-family: inherit; padding: 6px 12px; border: 1px solid var(--acx-line); border-radius: 999px; background: #fff; font-size: 13px; font-weight: 550; cursor: pointer; }
+.acx-presets button:hover { background: var(--acx-tint); border-color: var(--acx-tint-strong); }
+.acx-txn { list-style: none; margin: 0; padding: 0; }
+.acx-txn li { display: flex; align-items: center; gap: 14px; padding: 13px 0; border-bottom: 1px solid #f0f2f6; }
+.acx-txn li:last-child { border-bottom: 0; }
+.acx-txn-ico { width: 38px; height: 38px; flex: none; border-radius: 50%; display: grid; place-items: center; background: #f1f4f8; color: #475569; }
+.acx-txn-ico.in { background: #ecfdf3; color: var(--acx-good); }
+.acx-txn-main { min-width: 0; flex: 1; }
+.acx-txn-main b { display: block; font-size: 14px; font-weight: 600; }
+.acx-txn-main span { display: block; font-size: 12px; color: var(--acx-muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.acx-txn-amt { text-align: right; flex: none; }
+.acx-txn-amt b { display: block; font-size: 14px; font-weight: 650; font-variant-numeric: tabular-nums; }
+.acx-txn-amt b.in { color: var(--acx-good); }
+.acx-txn-amt span { display: block; font-size: 12px; color: var(--acx-muted); }
+
+/* ---------- addresses ---------- */
+.acx .bn-account-addresses-intro, .acx .bn-account-address-form-head span { display: none; }
+.acx .bn-account-address-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 12px; margin-bottom: 16px; }
+.acx .bn-account-address-card { padding: 18px; background: var(--acx-card); border: 1px solid var(--acx-line); border-radius: 14px; box-shadow: var(--acx-shadow); display: grid; gap: 8px; align-content: start; }
+.acx .bn-account-address-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 8px; }
+.acx .bn-account-address-head strong { display: block; font-size: 15px; }
+.acx .bn-account-address-head span { font-size: 13px; color: var(--acx-muted); }
+.acx .bn-account-address-head b { padding: 3px 9px; border-radius: 999px; background: var(--acx-tint); color: var(--acx-ink-accent); font-size: 11px; font-weight: 650; }
+.acx .bn-account-address-copy { margin: 0; font-size: 13.5px; line-height: 1.55; color: #475569; }
+.acx .bn-account-address-actions { display: flex; gap: 14px; margin-top: 4px; }
+.acx .bn-account-address-actions button { font-family: inherit; padding: 0; border: 0; background: none; font-size: 13px; font-weight: 600; cursor: pointer; }
+.acx .bn-account-address-actions .make-default { color: var(--acx-ink-accent); }
+.acx .bn-account-address-actions .remove { color: var(--acx-bad); }
+.acx .bn-account-address-empty { grid-column: 1 / -1; padding: 28px; text-align: center; color: var(--acx-muted); border: 1px dashed #d5dae3; border-radius: 14px; background: #fff; }
+.acx .bn-account-address-form { padding: 22px; background: var(--acx-card); border: 1px solid var(--acx-line); border-radius: var(--acx-radius); box-shadow: var(--acx-shadow); display: grid; gap: 16px; }
+.acx .bn-account-address-form-head h2 { margin: 0; font: 650 17px/1.3 var(--acx-font, Inter, system-ui, sans-serif); }
+.acx .bn-account-address-form-head p { margin: 4px 0 0; font-size: 13px; color: var(--acx-muted); }
+.acx .bn-account-form-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+.acx .bn-account-input-wide { grid-column: 1 / -1; }
+.acx .bn-account-check { grid-column: 1 / -1; display: flex; align-items: center; gap: 9px; font-size: 14px; }
+.acx .bn-account-check input { width: 18px; height: 18px; min-height: 0; accent-color: var(--acx-accent); }
+.acx .bn-account-save-button { justify-self: start; }
+
+.acx .bn-account-subpage-heading { display: flex; justify-content: flex-end; margin: 0; }
+.acx .bn-account-subpage-heading > div { display: none; }
+.acx .bn-account-subpage-heading a { font-size: 13px; font-weight: 600; color: var(--acx-ink-accent); text-decoration: none; }
+
+/* ---------- small screens ----------
+@media (max-width: 900px) {
+  .acx-wrap { grid-template-columns: minmax(0, 1fr); gap: 16px; padding: 16px 14px 56px; }
+  .acx-nav { position: static; padding: 6px; border-radius: 14px; }
+  .acx-nav-group { display: contents; }
+  .acx-nav-group + .acx-nav-group { margin: 0; padding: 0; border: 0; }
+  .acx-nav-label { display: none; }
+  .acx-nav-scroll { display: flex; gap: 4px; overflow-x: auto; scrollbar-width: none; -webkit-overflow-scrolling: touch; }
+  .acx-nav-scroll::-webkit-scrollbar { display: none; }
+  .acx-nav a, .acx-nav button.acx-signout { width: auto; flex: none; white-space: nowrap; padding: 9px 13px; border-radius: 999px; }
+  .acx-top-in { padding: 10px 14px; }
+  .acx-back span { display: none; }
+  .acx-back { padding: 0 12px; }
+}
+@media (max-width: 700px) {
+  .acx-wallet, .acx .veloura-panel-grid, .acx .veloura-detail-list, .acx .bn-account-form-grid { grid-template-columns: 1fr; }
+  .acx .veloura-list-card { grid-template-columns: 1fr; }
+  .acx .veloura-list-card > img { width: 100%; height: 160px; }
+  .acx-hero { flex-direction: column; align-items: flex-start; padding: 22px; }
+  .acx-tile { flex-direction: column; align-items: flex-start; gap: 10px; padding: 14px; }
+  .acx-tiles { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .acx .veloura-panel, .acx .veloura-wallet, .acx-card { padding: 18px !important; }
+  .acx-fund-row { flex-direction: column; }
+}
+@media (prefers-reduced-motion: reduce) { .acx * { transition: none !important; } }

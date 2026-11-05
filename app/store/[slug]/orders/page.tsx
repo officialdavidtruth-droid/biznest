@@ -3,7 +3,8 @@ import { getStoreBranding } from "@/lib/actions/store-branding";
 import { getAccountCopy } from "@/lib/account-copy";
 import { prisma } from "@/lib/prisma";
 import Link from "next/link";
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
+import { isHotelAccount } from "@/lib/account-skin";
 import { ArrowLeft } from "lucide-react";
 import { StoreFooter } from "@/components/storefront/store-footer";
 import { OrdersListContent } from "./orders-list-content";
@@ -12,6 +13,8 @@ export default async function StoreOrdersPage({ params }: { params: Promise<{ sl
   const { slug } = await params;
   const store = await getStoreBranding(slug);
   if (!store) notFound();
+  // Orders live inside the account area (sidebar, same design as the rest). Only the hotel skin keeps this standalone page.
+  if (!(await isHotelAccount(slug))) redirect(`/store/${slug}/account/orders`);
 
   const copy = getAccountCopy(undefined, store.businessCategory);
 

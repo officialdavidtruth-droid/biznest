@@ -8,6 +8,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Package, CheckCircle2, XCircle, RotateCcw, AlertTriangle, ArrowUpRight, ShoppingBag, ShieldAlert, Wallet, Layers } from "lucide-react";
 import { formatDate, formatNumber } from "@/lib/i18n/locale";
+import { accountAccent } from "@/lib/account-theme";
 
 // Store-scoped order history. A customer account only ever belongs to one
 // store (see StoreCustomer), so this is simply "my orders here" — themed
@@ -46,7 +47,7 @@ export async function OrdersListContent({ slug }: { slug: string }) {
     listOrdersForBuyerAtStore(slug),
     listAwaitingTransferOrdersForBuyer(slug),
   ]);
-  const accent = store.themeColors?.primary || "#4f46e5"; // sensible fallback, still per-store when set
+  const accent = accountAccent(store.themeColors); // per-store colour, never too pale to read
   // getAccountCopy only varies by business category; the template name is ignored.
   const copy = getAccountCopy(undefined, store.businessCategory);
   const orderWord = copy.orders.toLowerCase();
