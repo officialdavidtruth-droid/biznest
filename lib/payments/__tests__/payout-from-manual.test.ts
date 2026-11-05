@@ -16,13 +16,13 @@ vi.mock("@/lib/observability/log", () => ({ logError: vi.fn(), logInfo: vi.fn() 
 
 import { adoptManualBankForPayout } from "../payout-from-manual";
 
-const store = { id: "s1", payoutBankCode: null, payoutAccountNumber: null, manualBankName: "OPay", manualAccountName: "DESTINY SIDI", manualAccountNumber: "7019429664" };
+const store = { id: "s1", payoutBankCode: null, payoutAccountNumber: null, manualBankName: "OPay", manualAccountName: "ADA OKAFOR", manualAccountNumber: "1234567890" };
 
 beforeEach(() => {
   vi.clearAllMocks();
   m.findUnique.mockResolvedValue(store);
   m.listPaystackBanks.mockResolvedValue({ status: true, banks: [{ name: "Access Bank", code: "044" }, { name: "OPay Digital Services Limited", code: "999992" }] });
-  m.resolvePaystackAccount.mockResolvedValue({ status: true, data: { account_name: "SIDI DESTINY OLUWA" } });
+  m.resolvePaystackAccount.mockResolvedValue({ status: true, data: { account_name: "OKAFOR ADA CHIOMA" } });
   m.updateMany.mockResolvedValue({ count: 1 });
 });
 
@@ -30,8 +30,8 @@ describe("adoptManualBankForPayout", () => {
   it("connects the bank-transfer account once the bank confirms the holder name", async () => {
     const r = await adoptManualBankForPayout("s1", "PAYSTACK");
     expect(r).toEqual({ ok: true, alreadyConnected: false });
-    expect(m.resolvePaystackAccount).toHaveBeenCalledWith("7019429664", "999992");
-    expect(m.updateMany).toHaveBeenCalledWith(expect.objectContaining({ where: { id: "s1", payoutBankCode: null }, data: expect.objectContaining({ payoutBankCode: "999992", payoutAccountNumber: "7019429664" }) }));
+    expect(m.resolvePaystackAccount).toHaveBeenCalledWith("1234567890", "999992");
+    expect(m.updateMany).toHaveBeenCalledWith(expect.objectContaining({ where: { id: "s1", payoutBankCode: null }, data: expect.objectContaining({ payoutBankCode: "999992", payoutAccountNumber: "1234567890" }) }));
   });
 
   it("refuses when the bank returns a different name (never sends money to an unverified account)", async () => {

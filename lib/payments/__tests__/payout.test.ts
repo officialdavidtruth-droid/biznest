@@ -146,7 +146,7 @@ describe("queuePayoutForPayment", () => {
 
   it("uses the store's verified bank-transfer details when it has no payout account", async () => {
     m.adopt.mockResolvedValue({ ok: true, alreadyConnected: false });
-    m.storeFindUnique.mockResolvedValue({ payoutBankCode: "999992", payoutAccountNumber: "7019429664", payoutDetails: { accountName: "SIDI DESTINY" } });
+    m.storeFindUnique.mockResolvedValue({ payoutBankCode: "999992", payoutAccountNumber: "1234567890", payoutDetails: { accountName: "OKAFOR ADA" } });
     m.paymentFind.mockResolvedValue({ ...payment, store: { ...payment.store, payoutBankCode: null, payoutAccountNumber: null } });
     await queuePayoutForPayment("o1");
     expect(m.payoutCreate).toHaveBeenCalledWith({ data: expect.objectContaining({ status: "QUEUED", lastError: null }) });
