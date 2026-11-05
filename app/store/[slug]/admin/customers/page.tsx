@@ -14,6 +14,7 @@ export default async function CustomersPage({
   const { customers, sellsProducts, offersServices, walkIn, currency, locale, mixedCurrencies } = await getCustomer360(slug);
   return (
     <Customer360View
+      slug={slug}
       customers={customers}
       sellsProducts={sellsProducts}
       offersServices={offersServices}

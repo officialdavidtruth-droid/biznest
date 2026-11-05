@@ -1,6 +1,6 @@
 import { formatMoney } from "@/lib/utils/format-money";
 import Link from "next/link";
-import { CalendarDays, Camera, Check, ChevronRight, Edit3, Gift, Heart, Headphones, Star, WalletCards } from "lucide-react";
+import { CalendarDays, Check, ChevronRight, Edit3, Gift, Heart, Headphones, Star, WalletCards } from "lucide-react";
 import { formatDate, formatNumber } from "@/lib/i18n/locale";
 
 function money(value: number, currency = "NGN") {
@@ -36,7 +36,7 @@ export function VelouraAccountProfile({ slug, store, user, overview, bookings, s
         <section className="bn-account-card bn-account-personal-card">
           <div className="bn-account-card-heading"><div><span className="bn-account-kicker">PROFILE</span><h2>Personal information</h2></div><Link href={`/store/${slug}/account/preferences`}><Edit3 size={15}/> Edit</Link></div>
           <div className="bn-account-person">
-            <div className="bn-account-large-avatar">{user?.image ? <img src={user.image} alt=""/> : <span>{name.slice(0,1).toUpperCase()}</span>}<button aria-label="Profile photo"><Camera size={14}/></button></div>
+            <div className="bn-account-large-avatar">{user?.image ? <img src={user.image} alt=""/> : <span>{name.slice(0,1).toUpperCase()}</span>}</div>
             <div><strong>{name}</strong><span>{user?.email || "—"}</span><span>{user?.phone || "Phone number not set"}</span></div>
           </div>
           <dl className="bn-account-detail-grid">

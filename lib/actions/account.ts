@@ -9,6 +9,8 @@ import { requireStoreCustomer, requireStoreCustomerByStoreId } from "@/lib/actio
 import type { Prisma } from "@prisma/client";
 import { notifyStoreOfCustomerMessage } from "@/lib/notifications/notify";
 import { checkRateLimit } from "@/lib/rate-limit";
+import { sanitizePreferences } from "@/lib/customer-preferences";
+import { canonicalPhone, phoneKey } from "@/lib/phone";
 import { CUSTOMER_MESSAGE_LIMIT, validateMessageContent } from "@/lib/message-limits";
 
 // ============ ADDRESSES ============
@@ -455,7 +457,7 @@ export async function updateStoreCustomerPreferences(storeSlug: string, preferen
   const ctx = await getStoreCustomerContext(storeSlug);
   if (!ctx) return { success: false, error: "You don't have a customer account with this store." };
   const user = await prisma.user.findUnique({ where: { id: ctx.userId }, select: { name: true, email: true, phone: true } });
-  const jsonPreferences = preferences as Prisma.InputJsonValue;
+  const jsonPreferences = sanitizePreferences(preferences) as Prisma.InputJsonValue;
   // Reuses a profile that already exists for this email (e.g. from a POS sale)
   // rather than creating a duplicate, and writes the preferences onto it.
   await ensureAccountProfile(prisma, { storeId: ctx.storeId, userId: ctx.userId, name: user?.name || user?.email || "Customer", email: user?.email ?? null, phone: user?.phone, preferences: jsonPreferences });
@@ -740,4 +742,30 @@ export async function getStoreBookingDetails(storeSlug: string, bookingId: strin
       unit: { select: { label: true, status: true } },
     },
   });
+}
+
+/** Lets a store customer edit their own name and phone. Updates the account and this store's customer profile together. */
+export async function updateStoreCustomerDetails(storeSlug: string, input: { name: string; phone?: string }): Promise<ActionResult> {
+  const ctx = await getStoreCustomerContext(storeSlug);
+  if (!ctx) return { success: false, error: "You don't have a customer account with this store." };
+  const name = String(input.name ?? "").replace(/[\u0000-\u001f\u007f]/g, " ").trim().slice(0, 80);
+  if (name.length < 2) return { success: false, error: "Enter your full name." };
+  const rawPhone = String(input.phone ?? "").trim();
+  if (rawPhone && !/^[+\d\s().-]{7,25}$/.test(rawPhone)) return { success: false, error: "Enter a valid phone number." };
+  const phone = rawPhone ? canonicalPhone(rawPhone) : null;
+  if (rawPhone && !phoneKey(rawPhone)) return { success: false, error: "Enter a valid phone number." };
+  const limit = await checkRateLimit(`customer-details:${ctx.userId}`, 20, 60 * 60 * 1000);
+  if (!limit.allowed) return { success: false, error: "Too many changes. Please try again later." };
+
+  const user = await prisma.user.findUnique({ where: { id: ctx.userId }, select: { email: true } });
+  const { id: profileId } = await ensureAccountProfile(prisma, { storeId: ctx.storeId, userId: ctx.userId, name, email: user?.email ?? null });
+  try {
+    await prisma.storeCustomerProfile.update({ where: { id: profileId }, data: { name, phone }, select: { id: true } });
+  } catch (err) {
+    if ((err as { code?: string } | null)?.code === "P2002") return { success: false, error: "We couldn't save that phone number. Try a different one." };
+    throw err;
+  }
+  await prisma.user.update({ where: { id: ctx.userId }, data: { name, phone }, select: { id: true } });
+  revalidatePath(`/store/${storeSlug}/account`);
+  return { success: true, data: undefined };
 }

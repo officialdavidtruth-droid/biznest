@@ -6,6 +6,8 @@ import { SELLER_VISIBLE_ORDER_STATUSES } from "@/lib/constants/order";
 import { walkInEmail } from "@/lib/walk-in-customer";
 import { phoneKey } from "@/lib/phone";
 import { findMixedCurrencies } from "@/lib/currency-guard";
+import { revalidatePath } from "next/cache";
+import type { ActionResult } from "@/types/actions";
 
 export type Customer360Order = {
   id: string;
@@ -304,4 +306,16 @@ export async function getCustomer360(slug: string): Promise<Customer360Result> {
   return { customers, sellsProducts, offersServices, walkIn: { orders: walkIn.orders, spent: Math.round(walkIn.spent * 100) / 100 },
     currency: storeCurrency, locale: access.store.locale ?? null,
     mixedCurrencies: findMixedCurrencies([storeCurrency, ...currenciesSeen]) };
+}
+
+
+/** Saves the merchant's private notes on a customer profile of this store. An empty note clears it. */
+export async function saveCustomerNotes(slug: string, profileId: string, notes: string): Promise<ActionResult> {
+  const access = await assertStorePermission(slug, "customers");
+  if (!access.success) return access;
+  const clean = String(notes ?? "").replace(/[\u0000-\u0008\u000b\u000c\u000e-\u001f\u007f]/g, "").trim().slice(0, 2000);
+  const res = await prisma.storeCustomerProfile.updateMany({ where: { id: profileId, storeId: access.store.id }, data: { notes: clean || null } });
+  if (!res.count) return { success: false, error: "Customer not found." };
+  revalidatePath(`/store/${slug}/admin/customers`);
+  return { success: true, data: undefined };
 }

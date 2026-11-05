@@ -1,10 +1,11 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useState, useTransition } from "react";
 import { whatsappLink } from "@/lib/utils/whatsapp-link";
 import { phoneKey } from "@/lib/phone";
 import { Mail, MessageCircle, Phone, Search, ShoppingBag, UserRound, Users, Wallet, Repeat } from "lucide-react";
 import type { Customer360 } from "@/lib/actions/customers";
+import { saveCustomerNotes } from "@/lib/actions/customers";
 import { ListPagination, StatCard } from "@/components/dashboard/list-toolbar";
 import { formatMoney } from "@/lib/utils/format-money";
 import { formatDate as formatLocaleDate } from "@/lib/i18n/locale";
@@ -52,7 +53,30 @@ function formatDate(value: string | null) {
   return formatLocaleDate(value);
 }
 
+function NotesEditor({ slug, profileId, initial, label }: { slug: string; profileId: string; initial: string | null; label: string }) {
+  const [value, setValue] = useState(initial ?? "");
+  const [saved, setSaved] = useState(initial ?? "");
+  const [msg, setMsg] = useState<string | null>(null);
+  const [pending, start] = useTransition();
+  const save = () => start(async () => {
+    const r = await saveCustomerNotes(slug, profileId, value);
+    if (r.success) { setSaved(value.trim()); setMsg("Saved"); } else setMsg(r.error);
+  });
+  return (
+    <div className="rounded-xl border bg-primary/5 p-4 text-sm">
+      <p className="font-medium">{label} notes</p>
+      <p className="text-[11px] text-muted-foreground">Private to your team. The customer never sees these.</p>
+      <textarea value={value} onChange={(e) => { setValue(e.target.value); setMsg(null); }} maxLength={2000} rows={3} placeholder="Preferences, sizes, allergies, follow-ups…" className="mt-2 w-full rounded-lg border bg-background px-3 py-2 text-sm" />
+      <div className="mt-2 flex items-center gap-3">
+        <button type="button" onClick={save} disabled={pending || value.trim() === saved} className="rounded-lg bg-primary px-3 py-1.5 text-xs font-semibold text-primary-foreground disabled:opacity-50">{pending ? "Saving…" : "Save notes"}</button>
+        {msg && <span role="status" className="text-xs text-muted-foreground">{msg}</span>}
+      </div>
+    </div>
+  );
+}
+
 export function Customer360View({
+  slug,
   customers,
   openHint,
   sellsProducts = true,
@@ -62,6 +86,7 @@ export function Customer360View({
   locale = null,
   mixedCurrencies = null,
 }: {
+  slug: string;
   customers: Customer360[];
   openHint?: OpenHint;
   // Set once at onboarding (see lib/actions/customers.ts). A pure-service
@@ -197,7 +222,8 @@ export function Customer360View({
 
           {(selected.bills?.length > 0 || selected.roomChargesPaid > 0 || selected.roomChargesOpen > 0) && <div className="rounded-xl border bg-background p-4 shadow-sm"><div className="mb-3 flex items-center justify-between"><div><h3 className="text-sm font-semibold">Hotel bills & room charges</h3><p className="mt-1 text-xs text-muted-foreground">Charges posted to this guest's room folio from PMS. Voided charges are hidden and room charges are not counted in lifetime value above.</p></div><Wallet className="h-4 w-4 text-muted-foreground" /></div><div className="mb-3 grid grid-cols-2 gap-3"><div className="rounded-lg bg-muted/40 p-3"><p className="text-[11px] text-muted-foreground">Room charges paid</p><p className="mt-1 text-base font-semibold">{money(selected.roomChargesPaid)}</p></div><div className="rounded-lg bg-muted/40 p-3"><p className="text-[11px] text-muted-foreground">Open balance</p><p className="mt-1 text-base font-semibold">{money(selected.roomChargesOpen)}</p></div></div><TableScroll><table className="w-full text-sm"><thead className="border-b text-left text-[11px] uppercase text-muted-foreground"><tr><th className="px-2 py-2">Charge</th><th className="px-2 py-2">Room</th><th className="px-2 py-2">Status</th><th className="px-2 py-2 text-right">Amount</th><th className="px-2 py-2">Date</th></tr></thead><tbody>{selected.bills.map((b) => <tr key={b.id} className="border-b last:border-0"><td className="px-2 py-3"><p className="font-medium">{b.description}</p><p className="text-[11px] text-muted-foreground">{b.category || "General"}</p></td><td className="px-2 py-3 text-xs text-muted-foreground">{b.room || "—"}</td><td className="px-2 py-3"><span className="rounded-full bg-muted px-2 py-1 text-[10px]">{b.status}</span></td><td className="px-2 py-3 text-right font-medium">{money(b.amount, b.currency)}</td><td className="px-2 py-3 text-xs text-muted-foreground">{formatDate(b.postedAt)}</td></tr>)}</tbody></table></TableScroll></div>}
 
-          {selected.notes && <div className="rounded-xl border bg-primary/5 p-4 text-sm"><p className="font-medium">{personLabel} notes</p><p className="mt-1 text-sm text-muted-foreground">{selected.notes}</p></div>}
+          {selected.profileId ? <NotesEditor key={selected.profileId} slug={slug} profileId={selected.profileId} initial={selected.notes} label={personLabel} />
+            : selected.notes && <div className="rounded-xl border bg-primary/5 p-4 text-sm"><p className="font-medium">{personLabel} notes</p><p className="mt-1 text-sm text-muted-foreground">{selected.notes}</p></div>}
         </section> : <section className="grid min-h-[420px] place-items-center rounded-xl border bg-background"><div className="text-center"><UserRound className="mx-auto h-8 w-8 text-muted-foreground/50" /><p className="mt-3 text-sm font-medium">Select a {personLabel.toLowerCase()}</p><p className="mt-1 text-xs text-muted-foreground">Their complete {isServiceOnly ? "booking" : "sales"} history will appear here.</p></div></section>}
       </div>
     </div>
