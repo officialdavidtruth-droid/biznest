@@ -12,6 +12,7 @@ import { settleWalletFunding } from "@/lib/payments/settle-wallet-funding";
 import { settleServiceBookingPayment } from "@/lib/payments/settle-service-booking";
 import { settleReservationPayment } from "@/lib/payments/settle-reservation";
 import { settleTravelPayment } from "@/lib/payments/settle-travel";
+import { settleRentPayment } from "@/lib/payments/settle-rent";
 import { settleTailoringPayment } from "@/lib/payments/settle-tailoring";
 
 /**
@@ -181,6 +182,12 @@ export async function POST(req: Request) {
     } else {
       await settleServiceBookingPayment(txRef, "FLUTTERWAVE", amount, verification as object);
     }
+    return NextResponse.json({ received: true });
+  }
+
+  if (txRef.startsWith("RNT-")) {
+    const amount = verification.data ? Number(verification.data.amount) : 0;
+    await settleRentPayment(txRef, "FLUTTERWAVE", amount, verification as object, verification.data?.currency);
     return NextResponse.json({ received: true });
   }
 

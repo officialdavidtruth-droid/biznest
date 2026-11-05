@@ -32,7 +32,7 @@ export function BuilderDepartures({ slug, packages, d }: { slug: string; package
         <h2 style={{ fontFamily: d.headingFont, fontSize: 32, lineHeight: 1.15, margin: "8px 0 24px" }}>Upcoming departures</h2>
         <div className="bn-grid" style={{ gridTemplateColumns: "repeat(auto-fit,minmax(260px,1fr))" }}>
           {packages.map((g) => (
-            <div key={g.id} style={{ border: `1px solid ${line}`, borderRadius: d.radius, background: d.surface, padding: 20, display: "flex", flexDirection: "column", gap: 8 }}>
+            <div key={`${g.id}-${g.departureId ?? "main"}`} style={{ border: `1px solid ${line}`, borderRadius: d.radius, background: d.surface, padding: 20, display: "flex", flexDirection: "column", gap: 8 }}>
               <h3 style={{ margin: 0, fontFamily: d.headingFont, fontSize: 18 }}>{g.name}</h3>
               <small style={{ color: d.muted }}>{g.destination} · {g.durationDays} day{g.durationDays === 1 ? "" : "s"}{g.departureDate ? ` · departs ${new Date(g.departureDate).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })}` : ""}</small>
               <div style={{ fontSize: 22, fontWeight: 800 }}>{formatMoney(g.pricePerPerson, g.currency)}<small style={{ fontSize: 12, fontWeight: 500, color: d.muted }}> per person</small></div>
@@ -42,7 +42,7 @@ export function BuilderDepartures({ slug, packages, d }: { slug: string; package
             </div>
           ))}
         </div>
-        <TravelEnquiryForm slug={slug} packages={packages.map((g) => ({ id: g.id, name: g.name, seatsLeft: g.seatsLeft, bookable: g.bookable, depositPercent: g.depositPercent, depositPerPerson: g.depositPerPerson, currency: g.currency }))} />
+        <TravelEnquiryForm slug={slug} packages={packages.map((g) => ({ id: g.id, departureId: g.departureId, departureDate: g.departureDate, name: g.name, seatsLeft: g.seatsLeft, bookable: g.bookable, depositPercent: g.depositPercent, depositPerPerson: g.depositPerPerson, currency: g.currency }))} />
       </div>
     </section>
   );

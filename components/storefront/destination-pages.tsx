@@ -109,7 +109,7 @@ export function DestinationDetail({ store, slug, guide, packages }: { store: Sto
       {packages.length > 0 && (
         <section className="sec"><h2>Upcoming {guide.name} tours</h2><p className="sub">Open departures from {store.name}.</p>
           <div className="pk">{packages.map((p) => (
-            <div className="pc" key={p.id}>
+            <div className="pc" key={`${p.id}-${p.departureId ?? "main"}`}>
               <h3>{p.name}</h3><small>{p.durationDays} days{p.departureDate ? ` · departs ${new Date(p.departureDate).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })}` : ""}</small>
               <div className="pr">{formatMoney(p.pricePerPerson, p.currency)}<small> per person</small></div>
               {p.seatsLeft !== null && <small>{p.seatsLeft === 0 ? "Fully booked" : `${p.seatsLeft} seat${p.seatsLeft === 1 ? "" : "s"} left`}</small>}

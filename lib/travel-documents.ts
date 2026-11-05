@@ -5,6 +5,7 @@
 import { PDFDocument, StandardFonts, rgb, type PDFFont, type PDFPage } from "pdf-lib";
 import { formatNumber } from "@/lib/i18n/locale";
 import { netReceived } from "@/lib/travel";
+import { flightClientLines, type Flight } from "@/lib/travel-flight";
 
 export const TRAVEL_DOC_KINDS = ["quote", "invoice", "itinerary", "receipt"] as const;
 export type TravelDocKind = (typeof TRAVEL_DOC_KINDS)[number];
@@ -15,7 +16,7 @@ export type TravelDocInput = {
   trip: { reference: string; title: string; destination: string; departDate?: Date | null; returnDate?: Date | null; currency: string; totalPrice: number };
   client: { fullName: string; email?: string | null; phone?: string | null };
   travellers: { fullName: string; isLead?: boolean }[];
-  items: { kind: string; description: string; startDate?: Date | null; endDate?: Date | null; confirmationRef?: string | null; status: string; sellPrice: number }[];
+  items: { kind: string; description: string; startDate?: Date | null; endDate?: Date | null; confirmationRef?: string | null; status: string; sellPrice: number; flight?: Flight | null }[];
   payments: { amount: number; status: string; method: string; paidAt?: Date | null; dueDate?: Date | null; reference?: string | null; refundedAmount?: number }[];
   /** Hand-written day-by-day programme. When present, the itinerary is built from it and dated service lines are merged in by date. */
   itineraryDays?: { dayNumber: number; title: string; description?: string | null }[];
@@ -187,6 +188,13 @@ export async function buildTravelDocumentPdf(input: TravelDocInput): Promise<Uin
   // ---- itinerary (all kinds; this is the whole document for "itinerary")
   const { days, undated } = buildItinerary(items, trip.departDate);
   const builder = [...(input.itineraryDays ?? [])].sort((a, b) => a.dayNumber - b.dayNumber);
+  // Flight lines under a service. Booking reference and tickets are printed on the itinerary the traveller carries, not on quotes or invoices.
+  const flightExtra = (it: { flight?: Flight | null }) => {
+    if (!it.flight) return;
+    for (const raw of flightClientLines(it.flight, kind === "itinerary")) {
+      for (const l of wrap(raw.replace(/\u2192/g, "to"), right - left - 30, 9)) { ensure(12); text(l, left + 20, 9, { color: muted }); y -= 11.5; }
+    }
+  };
   const showItinerary = kind !== "receipt" && (builder.length > 0 || days.length > 0 || (kind === "itinerary" && undated.length > 0));
   if (showItinerary && builder.length) {
     heading("Itinerary");
@@ -198,6 +206,7 @@ export async function buildTravelDocumentPdf(input: TravelDocInput): Promise<Uin
       const lines = wrap(label, right - left - 14, 10);
       ensure(lines.length * 13 + 4);
       lines.forEach((l, idx) => { text(idx === 0 ? `- ${l}` : `  ${l}`, left + 8, 10); y -= 13; });
+      flightExtra(it);
     };
     for (const bd of builder) {
       ensure(60);
@@ -229,6 +238,7 @@ export async function buildTravelDocumentPdf(input: TravelDocInput): Promise<Uin
         const lines = wrap(label, right - left - 14, 10);
         ensure(lines.length * 13 + 4);
         lines.forEach((l, idx) => { text(idx === 0 ? `- ${l}` : `  ${l}`, left + 8, 10); y -= 13; });
+        flightExtra(it);
       }
       y -= 6;
     }
@@ -239,6 +249,7 @@ export async function buildTravelDocumentPdf(input: TravelDocInput): Promise<Uin
         const lines = wrap(`${KIND_LABEL[it.kind] ?? "Service"}: ${it.description}`, right - left - 14, 10);
         ensure(lines.length * 13 + 4);
         lines.forEach((l, idx) => { text(idx === 0 ? `- ${l}` : `  ${l}`, left + 8, 10); y -= 13; });
+        flightExtra(it);
       }
     }
   }

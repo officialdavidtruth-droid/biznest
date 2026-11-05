@@ -5,6 +5,7 @@ const m = vi.hoisted(() => ({
   refund: vi.fn(), tpFind: vi.fn(), tpUpdateMany: vi.fn(), payFind: vi.fn(),
 }));
 
+vi.mock("@prisma/client", () => ({ Prisma: { DbNull: "DB_NULL" } }));
 vi.mock("@/lib/prisma", () => ({
   prisma: {
     travelTrip: { findFirst: m.tripFind, update: m.tripUpdate },

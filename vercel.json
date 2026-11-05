@@ -67,6 +67,14 @@
     {
       "path": "/api/cron/review-requests",
       "schedule": "30 13 * * *"
+    },
+    {
+      "path": "/api/cron/rent-reminders",
+      "schedule": "20 7 * * *"
+    },
+    {
+      "path": "/api/cron/travel-followups",
+      "schedule": "15 8 * * *"
     }
   ]
 }

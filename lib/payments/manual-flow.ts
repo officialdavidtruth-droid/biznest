@@ -11,6 +11,7 @@ import { settleServiceBookingPayment } from "@/lib/payments/settle-service-booki
 import { settleReservationPayment } from "@/lib/payments/settle-reservation";
 import { settleTravelPayment } from "@/lib/payments/settle-travel";
 import { settleTailoringPayment } from "@/lib/payments/settle-tailoring";
+import { settleRentPayment } from "@/lib/payments/settle-rent";
 
 /**
  * Bank transfer is how customers pay a store unless the owner has added their
@@ -39,7 +40,7 @@ export async function resolvePayRoute(storeId: string): Promise<PayRoute> {
   return { mode: "manual" };
 }
 
-export type ManualPurpose = "INVOICE" | "QUOTE_DEPOSIT" | "SERVICE_BOOKING" | "PMS_RESERVATION" | "TRAVEL_BOOKING" | "TAILORING_BALANCE";
+export type ManualPurpose = "INVOICE" | "QUOTE_DEPOSIT" | "SERVICE_BOOKING" | "PMS_RESERVATION" | "TRAVEL_BOOKING" | "TAILORING_BALANCE" | "RENT_PAYMENT";
 
 const PREFIX: Record<ManualPurpose, string> = {
   INVOICE: "INV",
@@ -48,6 +49,7 @@ const PREFIX: Record<ManualPurpose, string> = {
   PMS_RESERVATION: "RES",
   TRAVEL_BOOKING: "TVL",
   TAILORING_BALANCE: "TLR",
+  RENT_PAYMENT: "RNT",
 };
 
 export const MANUAL_PURPOSE_LABEL: Record<ManualPurpose, string> = {
@@ -57,6 +59,7 @@ export const MANUAL_PURPOSE_LABEL: Record<ManualPurpose, string> = {
   PMS_RESERVATION: "Reservation deposit",
   TRAVEL_BOOKING: "Tour booking",
   TAILORING_BALANCE: "Tailoring balance",
+  RENT_PAYMENT: "Rent",
 };
 
 export function isManualPurpose(p: string): p is ManualPurpose {
@@ -78,6 +81,7 @@ export async function startManualTransfer(input: {
   reservationId?: string;
   travelTripId?: string;
   tailoringJobId?: string;
+  rentChargeId?: string;
 }): Promise<{ reference: string; payUrl: string }> {
   const prefix = `${PREFIX[input.purpose]}-${input.entityId}-`;
   const open = await prisma.payment.findFirst({
@@ -104,6 +108,7 @@ export async function startManualTransfer(input: {
       reservationId: input.reservationId,
       travelTripId: input.travelTripId,
       tailoringJobId: input.tailoringJobId,
+      rentChargeId: input.rentChargeId,
     });
   }
   return { reference: reference!, payUrl: buildStoreUrl(input.store, `/pay/${reference}`) };
@@ -143,6 +148,9 @@ export async function settleManualTransfer(input: { reference: string; storeId: 
       break;
     case "TAILORING_BALANCE":
       await settleTailoringPayment(payment.reference, "CASH", amount, raw);
+      break;
+    case "RENT_PAYMENT":
+      await settleRentPayment(payment.reference, "CASH", amount, raw);
       break;
   }
 

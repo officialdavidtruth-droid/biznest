@@ -24,6 +24,8 @@ export const CRONS: CronDef[] = [
   { name: "webhooks", path: "/api/cron/webhooks", schedule: "0 18 * * *", maxAgeHours: 26 },
   { name: "crm-followups", path: "/api/cron/crm-followups", schedule: "0 7 * * *", maxAgeHours: 26 },
   { name: "quote-expiry", path: "/api/cron/quote-expiry", schedule: "45 0 * * *", maxAgeHours: 26 },
+  { name: "travel-followups", path: "/api/cron/travel-followups", schedule: "15 8 * * *", maxAgeHours: 26 },
+  { name: "rent-reminders", path: "/api/cron/rent-reminders", schedule: "20 7 * * *", maxAgeHours: 26 },
   { name: "daily-summary", path: "/api/cron/daily-summary", schedule: "0 20 * * *", maxAgeHours: 26 },
 ];
 

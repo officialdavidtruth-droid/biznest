@@ -5,6 +5,7 @@ import { getPluginEntitlement } from "@/lib/plugins";
 import { getCanonicalBusinessType } from "@/lib/business-identity";
 import { TRAVEL_BUSINESS_TYPE, TRAVEL_PLUGIN_KEY } from "@/lib/travel";
 import { TRAVEL_DOC_KINDS, buildTravelDocumentPdf, type TravelDocKind, type TravelDocInput } from "@/lib/travel-documents";
+import { readFlight } from "@/lib/travel-flight";
 
 /**
  * Client-facing PDF for a trip: ?type=quote | invoice | itinerary | receipt (default quote). A receipt also needs &payment=<TravelPayment id>.
@@ -54,7 +55,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ slug: st
     trip: { reference: trip.reference, title: trip.title, destination: trip.destination, departDate: trip.departDate, returnDate: trip.returnDate, currency: trip.currency, totalPrice: Number(trip.totalPrice) },
     client: trip.client,
     travellers: trip.travellers,
-    items: trip.items.map((i) => ({ kind: i.kind, description: i.description, startDate: i.startDate, endDate: i.endDate, confirmationRef: i.confirmationRef, status: i.status, sellPrice: Number(i.sellPrice) })),
+    items: trip.items.map((i) => ({ kind: i.kind, description: i.description, startDate: i.startDate, endDate: i.endDate, confirmationRef: i.confirmationRef, status: i.status, sellPrice: Number(i.sellPrice), flight: i.kind === "FLIGHT" ? readFlight(i.flightDetails) : null })),
     payments: trip.payments.map((p) => ({ amount: Number(p.amount), status: p.status, method: p.method, paidAt: p.paidAt, dueDate: p.dueDate, reference: p.reference, refundedAmount: Number(p.refundedAmount) })),
     itineraryDays: trip.itineraryDays,
     receiptPayment,

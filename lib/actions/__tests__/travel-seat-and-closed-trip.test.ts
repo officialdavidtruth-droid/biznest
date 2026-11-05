@@ -5,6 +5,7 @@ const m = vi.hoisted(() => ({
   travelerCount: vi.fn(), travelerCreate: vi.fn(), itemFindMany: vi.fn(), itemDeleteMany: vi.fn(),
 }));
 
+vi.mock("@prisma/client", () => ({ Prisma: { DbNull: "DB_NULL" } }));
 vi.mock("@/lib/prisma", () => ({
   prisma: {
     travelTrip: { findFirst: m.tripFind, update: m.tripUpdate },

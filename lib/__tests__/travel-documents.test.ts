@@ -31,6 +31,21 @@ describe("buildItinerary", () => {
   });
 });
 
+const flight = { airline: "Emirates", flightNumber: "EK783", origin: "LOS", destination: "DXB", departAt: "2026-12-20T08:30", arriveAt: "2026-12-20T19:45", pnr: "X7K2PQ", cabin: "Economy", baggage: "2 x 23kg", tickets: [{ name: "Adaeze Okafor", number: "176-1234567890" }, { name: "Chidi Okafor", number: "176-1234567891" }] };
+const withFlight = (kind: TravelDocInput["kind"]) => { const b = base({ kind }); return { ...b, items: [{ ...b.items[0], flight }, b.items[1]] }; };
+
+describe("flight details in documents", () => {
+  it.each(["quote", "invoice", "itinerary"] as const)("renders a %s with flight lines without error", async (kind) => {
+    const bytes = await buildTravelDocumentPdf(withFlight(kind));
+    expect(Buffer.from(bytes.slice(0, 5)).toString()).toBe("%PDF-");
+  });
+  it("copes with a flight with no details beyond the airline", async () => {
+    const b = base({ kind: "itinerary" });
+    const bytes = await buildTravelDocumentPdf({ ...b, items: [{ ...b.items[0], flight: { ...flight, tickets: [], pnr: "", baggage: "", cabin: "", departAt: "", arriveAt: "" } }] });
+    expect(await pageCount(bytes)).toBe(1);
+  });
+});
+
 describe("buildTravelDocumentPdf", () => {
   it.each(["quote", "invoice", "itinerary"] as const)("renders a valid %s PDF", async (kind) => {
     const bytes = await buildTravelDocumentPdf(base({ kind }));

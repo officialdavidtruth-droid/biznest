@@ -5,12 +5,14 @@ import { submitTravelEnquiry, startTravelBooking } from "@/lib/actions/travel-pu
 import { formatMoney } from "@/lib/utils/format-money";
 
 /** Enquiry form shown under the group tours on the Wanderly storefront. */
-export function TravelEnquiryForm({ slug, packages }: { slug: string; packages: { id: string; name: string; seatsLeft: number | null; bookable?: boolean; depositPercent?: number; depositPerPerson?: number; currency?: string }[] }) {
+export function TravelEnquiryForm({ slug, packages }: { slug: string; packages: { id: string; departureId?: string | null; departureDate?: string | null; name: string; seatsLeft: number | null; bookable?: boolean; depositPercent?: number; depositPerPerson?: number; currency?: string }[] }) {
   const [pending, start] = useTransition();
   const [done, setDone] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [f, setF] = useState({ packageId: "", fullName: "", phone: "", email: "", travellers: 1, message: "", website: "" });
-  const sel = packages.find((p) => p.id === f.packageId);
+  const [f, setF] = useState({ packageId: "", departureId: "", fullName: "", phone: "", email: "", travellers: 1, message: "", website: "" });
+  const keyOf = (p: { id: string; departureId?: string | null }) => `${p.id}|${p.departureId ?? ""}`;
+  const sel = packages.find((p) => keyOf(p) === `${f.packageId}|${f.departureId}`);
+  const dateLabel = (d?: string | null) => (d ? ` · ${new Date(d).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })}` : "");
   const canBook = Boolean(sel?.bookable);
   const deposit = sel ? (sel.depositPerPerson ?? 0) * Math.max(1, f.travellers) : 0;
   const book = () => { setError(null); start(async () => { const r = await startTravelBooking(slug, f); if (r.success) window.location.assign(r.data.paymentUrl); else setError(r.error); }); };
@@ -21,9 +23,9 @@ export function TravelEnquiryForm({ slug, packages }: { slug: string; packages: 
   return (
     <form id="enquire" className="te" onSubmit={(e) => { e.preventDefault(); setError(null); start(async () => { const r = await submitTravelEnquiry(slug, f); if (r.success) setDone(r.data.reference); else setError(r.error); }); }}>
       <h3>Enquire about a tour</h3>
-      <select value={f.packageId} onChange={(e) => set("packageId", e.target.value)} aria-label="Tour">
-        <option value="">General enquiry</option>
-        {packages.map((p) => <option key={p.id} value={p.id} disabled={p.seatsLeft === 0}>{p.name}{p.seatsLeft === 0 ? " (fully booked)" : ""}</option>)}
+      <select value={`${f.packageId}|${f.departureId}`} onChange={(e) => { const [pid, did] = e.target.value.split("|"); setF((p) => ({ ...p, packageId: pid, departureId: did ?? "" })); }} aria-label="Tour">
+        <option value="|">General enquiry</option>
+        {packages.map((p) => <option key={keyOf(p)} value={keyOf(p)} disabled={p.seatsLeft === 0}>{p.name}{dateLabel(p.departureDate)}{p.seatsLeft === 0 ? " (fully booked)" : ""}</option>)}
       </select>
       <input required placeholder="Full name" value={f.fullName} onChange={(e) => set("fullName", e.target.value)} />
       <input required placeholder="Phone / WhatsApp" inputMode="tel" value={f.phone} onChange={(e) => set("phone", e.target.value)} />

@@ -2,13 +2,14 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const m = vi.hoisted(() => ({
   storeFind: vi.fn(), pkgFind: vi.fn(), travelerCount: vi.fn(), clientFind: vi.fn(), clientCreate: vi.fn(), tripCount: vi.fn(), tripCreate: vi.fn(),
-  rate: vi.fn(), entitlement: vi.fn(), charge: vi.fn(),
+  rate: vi.fn(), entitlement: vi.fn(), charge: vi.fn(), depFind: vi.fn(), depUnique: vi.fn(),
 }));
 
 vi.mock("@/lib/prisma", () => ({
   prisma: {
     store: { findUnique: m.storeFind },
-    travelPackage: { findFirst: m.pkgFind },
+    travelPackage: { findFirst: m.pkgFind, findUnique: (...a: unknown[]) => m.pkgFind(...a) },
+    travelDeparture: { findFirst: m.depFind, findUnique: m.depUnique },
     travelTraveler: { count: m.travelerCount },
     travelClient: { findFirst: m.clientFind, create: m.clientCreate },
     travelTrip: { count: m.tripCount, create: m.tripCreate },
@@ -151,5 +152,46 @@ describe("startTravelBooking", () => {
     const r = await startTravelBooking("wander", good);
     expect(r.success).toBe(false);
     if (!r.success) expect(r.error).toContain("TRV-2611-ABCD");
+  });
+
+  describe("with several departure dates", () => {
+    const dep = (over: Record<string, unknown> = {}) => ({ id: "dep1", departureDate: new Date("2027-06-01"), pricePerPerson: "150000", cutoffDays: 0, ...over });
+    beforeEach(() => { m.depUnique.mockResolvedValue({ seats: 4, departureDate: new Date("2027-06-01"), packageId: "pkg1" }); });
+
+    it("books the chosen date at that date's price and records which departure it is", async () => {
+      m.depFind.mockResolvedValue(dep());
+      const r = await startTravelBooking("wander", { ...good, departureId: "dep1" }); // 2 x 150,000 x 30%
+      expect(r.success).toBe(true);
+      expect(m.tripCreate.mock.calls[0][0].data).toMatchObject({ departureId: "dep1", totalPrice: 300000, departDate: new Date("2027-06-01") });
+      expect(m.charge.mock.calls[0][0].amountNaira).toBe(90000);
+    });
+
+    it("counts seats against the departure's own limit, not the package's", async () => {
+      m.depFind.mockResolvedValue(dep());
+      m.travelerCount.mockResolvedValue(3); // 3 of 4 taken on this date, package allows 10
+      const r = await startTravelBooking("wander", { ...good, departureId: "dep1" });
+      expect(r.success).toBe(false);
+      if (!r.success) expect(r.error).toContain("1 seat");
+      expect(m.travelerCount.mock.calls[0][0].where.trip).toMatchObject({ packageId: "pkg1", departureId: "dep1" });
+      expect(m.tripCreate).not.toHaveBeenCalled();
+    });
+
+    it("closes online booking inside the cut-off window but still takes an enquiry", async () => {
+      m.depFind.mockResolvedValue(dep({ departureDate: new Date(Date.now() + 3 * 86_400_000), cutoffDays: 7 }));
+      const book = await startTravelBooking("wander", { ...good, departureId: "dep1" });
+      expect(book.success).toBe(false);
+      if (!book.success) expect(book.error).toMatch(/closed/i);
+      expect(m.charge).not.toHaveBeenCalled();
+      const enquiry = await submitTravelEnquiry("wander", { ...good, departureId: "dep1" });
+      expect(enquiry.success).toBe(true);
+    });
+
+    it("rejects a departure that belongs to another package or store", async () => {
+      m.depFind.mockResolvedValue(null);
+      const r = await submitTravelEnquiry("wander", { ...good, departureId: "other" });
+      expect(r.success).toBe(false);
+      expect(m.depFind.mock.calls[0][0].where).toMatchObject({ id: "other", packageId: "pkg1", storeId: "storeA" });
+      expect(m.tripCreate).not.toHaveBeenCalled();
+    });
   });
 });

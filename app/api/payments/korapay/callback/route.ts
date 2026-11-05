@@ -12,6 +12,7 @@ import { settleWalletFunding } from "@/lib/payments/settle-wallet-funding";
 import { settleServiceBookingPayment } from "@/lib/payments/settle-service-booking";
 import { settleReservationPayment } from "@/lib/payments/settle-reservation";
 import { settleTravelPayment } from "@/lib/payments/settle-travel";
+import { settleRentPayment } from "@/lib/payments/settle-rent";
 import { settleTailoringPayment } from "@/lib/payments/settle-tailoring";
 
 import { APP_URL } from "@/lib/constants/app-url";
@@ -106,6 +107,16 @@ export async function GET(req: Request) {
     }
     if (booking) return NextResponse.redirect(bookingUrl("pending"));
     return NextResponse.redirect(`${APP_URL}/?payment=${explicitlyFailed ? "failed" : "pending"}`);
+  }
+
+  if (txRef.startsWith("RNT-")) {
+    const verification = await verifyBound(txRef);
+    const amount = verification.data ? Number(verification.data.amount) : 0;
+    if (verification.status === "success" && verification.data?.status === "successful") {
+      const result = await settleRentPayment(txRef, "KORAPAY", amount, verification as object, verification.data?.currency);
+      if (result.success) return NextResponse.redirect(`${APP_URL}/store/${result.data.storeSlug}/rent/${result.data.portalToken ?? ""}?payment=success`);
+    }
+    return NextResponse.redirect(`${APP_URL}/?payment=failed`);
   }
 
   if (txRef.startsWith("TLR-")) {

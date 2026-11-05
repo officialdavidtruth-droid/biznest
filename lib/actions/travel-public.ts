@@ -4,7 +4,9 @@ import { headers } from "next/headers";
 import { prisma } from "@/lib/prisma";
 import { checkRateLimit, getClientIp } from "@/lib/rate-limit";
 import { getPluginEntitlement } from "@/lib/plugins";
-import { newTripReference, TRAVEL_PLUGIN_KEY, SEAT_HOLDING_STATUSES, depositFor } from "@/lib/travel";
+import { newTripReference, TRAVEL_PLUGIN_KEY, depositFor } from "@/lib/travel";
+import { seatCapacity, seatsHeld } from "@/lib/travel-seats";
+import { bookingClosedByCutoff } from "@/lib/travel-growth";
 import { startTravelCharge, travelOnlinePaymentError } from "@/lib/payments/travel-charge";
 import type { ActionResult } from "@/types/actions";
 
@@ -15,7 +17,7 @@ const clean = (v: unknown, max: number) => String(v ?? "").replace(/[\u0000-\u00
  * follows up. Price always comes from the package, never from the browser. Seats are not held until the
  * agency confirms, so enquiries cannot block a tour.
  */
-type EnquiryInput = { packageId?: string; fullName: string; phone: string; email?: string; travellers?: number; message?: string; website?: string };
+type EnquiryInput = { packageId?: string; departureId?: string; fullName: string; phone: string; email?: string; travellers?: number; message?: string; website?: string };
 
 export async function submitTravelEnquiry(slug: string, input: EnquiryInput): Promise<ActionResult<{ reference: string }>> {
   const r = await handle(slug, input, false);
@@ -59,12 +61,19 @@ async function handle(slug: string, input: EnquiryInput, book: boolean): Promise
 
   if (book && !input.packageId) return { success: false, error: "Choose a tour to book, or send a general enquiry." };
   let pkg: { id: string; name: string; destination: string; durationDays: number; pricePerPerson: unknown; currency: string; departureDate: Date | null; seats: number; depositPercent: number } | null = null;
+  let dep: { id: string; departureDate: Date; pricePerPerson: unknown; cutoffDays: number } | null = null;
   if (input.packageId) {
     pkg = await prisma.travelPackage.findFirst({ where: { id: String(input.packageId), storeId: store.id, isActive: true } });
     if (!pkg) return { success: false, error: "That tour is no longer available." };
-    if (pkg.seats > 0) {
-      const taken = await prisma.travelTraveler.count({ where: { trip: { packageId: pkg.id, status: { in: [...SEAT_HOLDING_STATUSES] } } } });
-      if (count > pkg.seats - taken) return { success: false, error: `Only ${Math.max(0, pkg.seats - taken)} seat(s) left on this tour.` };
+    if (input.departureId) {
+      dep = await prisma.travelDeparture.findFirst({ where: { id: String(input.departureId), packageId: pkg.id, storeId: store.id, isActive: true }, select: { id: true, departureDate: true, pricePerPerson: true, cutoffDays: true } });
+      if (!dep) return { success: false, error: "That departure is no longer available." };
+    }
+    if (book && bookingClosedByCutoff(dep?.departureDate ?? pkg.departureDate, dep?.cutoffDays ?? 0)) return { success: false, error: "Online booking has closed for this departure. Please send an enquiry and we will help you." };
+    const pool = await seatCapacity(prisma, pkg.id, dep?.id ?? null);
+    if (pool && pool.capacity > 0) {
+      const taken = await seatsHeld(prisma, pkg.id, dep?.id ?? null);
+      if (count > pool.capacity - taken) return { success: false, error: `Only ${Math.max(0, pool.capacity - taken)} seat(s) left on this tour.` };
     }
   }
 
@@ -81,15 +90,17 @@ async function handle(slug: string, input: EnquiryInput, book: boolean): Promise
     if (!pkg || pkg.depositPercent <= 0 || (await travelOnlinePaymentError(store.id, pkg.currency))) return { success: false, error: "Online booking isn't available for this tour. Please send an enquiry instead." };
   }
   const message = clean(input.message, 1000);
-  const total = pkg ? Math.round(Number(pkg.pricePerPerson) * count * 100) / 100 : 0;
+  const unitPrice = pkg ? Number(dep?.pricePerPerson ?? pkg.pricePerPerson) : 0;
+  const startsOn = dep?.departureDate ?? pkg?.departureDate ?? null;
+  const total = pkg ? Math.round(unitPrice * count * 100) / 100 : 0;
   for (let attempt = 0; attempt < 4; attempt++) {
     try {
       const trip = await prisma.travelTrip.create({
         data: {
-          storeId: store.id, reference: newTripReference(new Date(), attempt), clientId: client.id, packageId: pkg?.id ?? null,
+          storeId: store.id, reference: newTripReference(new Date(), attempt), clientId: client.id, packageId: pkg?.id ?? null, departureId: dep?.id ?? null,
           title: pkg ? pkg.name : "Website enquiry", destination: pkg ? pkg.destination : "To be confirmed",
-          departDate: pkg?.departureDate ?? null,
-          returnDate: pkg?.departureDate ? new Date(pkg.departureDate.getTime() + (pkg.durationDays - 1) * 86_400_000) : null,
+          departDate: startsOn,
+          returnDate: startsOn && pkg ? new Date(startsOn.getTime() + (pkg.durationDays - 1) * 86_400_000) : null,
           currency: pkg?.currency ?? store.currency ?? "NGN", totalPrice: total,
           notes: `Website enquiry from ${fullName}${message ? `: ${message}` : ""}`,
           travellers: { create: Array.from({ length: count }, (_, i) => ({ fullName: i === 0 ? client.fullName : `Traveller ${i + 1}`, isLead: i === 0 })) },

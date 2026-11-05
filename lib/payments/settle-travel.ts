@@ -5,7 +5,8 @@ import { logWarn } from "@/lib/observability/log";
 import { amountCoversExpected } from "@/lib/payments/amount";
 import { postPaymentToLedgerByReference } from "@/lib/financial/order-ledger";
 import { revalidatePath } from "next/cache";
-import { SEAT_HOLDING_STATUSES } from "@/lib/travel";
+import { seatCapacity, seatsHeld } from "@/lib/travel-seats";
+import { allocateAgainstDue } from "@/lib/travel-growth";
 import { sendTravelPaymentEmail, notifyAgencyOfTravelPayment } from "@/lib/payments/travel-confirmation";
 import type { ActionResult } from "@/types/actions";
 
@@ -46,15 +47,21 @@ export async function settleTravelPayment(
     const already = await tx.travelPayment.findFirst({ where: { tripId: trip.id, reference } });
     if (!already) {
       await tx.travelPayment.create({ data: { tripId: trip.id, amount: payment.amount, method: provider === "CASH" ? "TRANSFER" : "CARD", status: "RECEIVED", paidAt: new Date(), reference, note: "Paid online" } });
+      // Money that arrives online pays off the oldest scheduled instalments, so they stop showing as due/overdue.
+      const dues = await tx.travelPayment.findMany({ where: { tripId: trip.id, status: "DUE" }, select: { id: true, amount: true, dueDate: true } });
+      for (const m of allocateAgainstDue(dues.map((d) => ({ id: d.id, amount: Number(d.amount), dueDate: d.dueDate })), Number(payment.amount))) {
+        if (m.action === "settle") await tx.travelPayment.update({ where: { id: m.id }, data: { status: "VOID", note: `Paid online (${reference})` } });
+        else await tx.travelPayment.update({ where: { id: m.id }, data: { amount: m.newAmount } });
+      }
     }
 
     if ((trip.status === "ENQUIRY" || trip.status === "QUOTED") && Number(trip.totalPrice) > 0) {
       let hasSeats = true;
       if (trip.packageId) {
-        const pkg = await tx.travelPackage.findUnique({ where: { id: trip.packageId }, select: { seats: true } });
-        if (pkg && pkg.seats > 0) {
-          const taken = await tx.travelTraveler.count({ where: { trip: { packageId: trip.packageId, id: { not: trip.id }, status: { in: [...SEAT_HOLDING_STATUSES] } } } });
-          hasSeats = trip.travellers.length <= pkg.seats - taken;
+        const pool = await seatCapacity(tx, trip.packageId, trip.departureId);
+        if (pool && pool.capacity > 0) {
+          const taken = await seatsHeld(tx, trip.packageId, trip.departureId, trip.id);
+          hasSeats = trip.travellers.length <= pool.capacity - taken;
         }
       }
       if (hasSeats) await tx.travelTrip.update({ where: { id: trip.id }, data: { status: "CONFIRMED" } });

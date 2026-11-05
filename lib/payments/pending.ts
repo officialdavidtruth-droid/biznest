@@ -14,6 +14,7 @@ export async function createPendingPayment(input: {
   reservationId?: string;
   travelTripId?: string;
   tailoringJobId?: string;
+  rentChargeId?: string;
   walletId?: string;
   splitSubaccountCode?: string | null;
   /** Charged with the store's own gateway keys (see lib/payments/store-gateway.ts). */
@@ -39,6 +40,7 @@ export async function createPendingPayment(input: {
       reservationId: input.reservationId,
       travelTripId: input.travelTripId,
       tailoringJobId: input.tailoringJobId,
+      rentChargeId: input.rentChargeId,
       walletId: input.walletId,
       splitSubaccountCode: input.splitSubaccountCode,
       usesStoreGateway: input.usesStoreGateway ?? false,

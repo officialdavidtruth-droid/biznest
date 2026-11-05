@@ -1,6 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { assertStorePermission } from "@/lib/access/assert-store-access";
 import { getPluginEntitlement } from "@/lib/plugins";
@@ -10,6 +11,9 @@ import { startTravelCharge, travelOnlinePaymentError } from "@/lib/payments/trav
 import { refundTravelPayment } from "@/lib/payments/refund-travel";
 import { auth } from "@/lib/auth";
 import { loadDeparture } from "@/lib/travel-manifest";
+import { seatsHeld, seatCapacity } from "@/lib/travel-seats";
+import { convertCost } from "@/lib/travel-growth";
+import { sanitizeFlight, readFlight } from "@/lib/travel-flight";
 import {
   TRAVEL_PLUGIN_KEY, TRAVEL_BUSINESS_TYPE, TRIP_STATUSES, ITEM_KINDS, ITEM_STATUSES, PAYMENT_METHODS,
   SUPPLIER_KINDS, SEAT_HOLDING_STATUSES, ROOM_TYPES, GENDERS, supplierBalances, commissionFor, COMMISSION_BASES, VISA_STATUSES, VISA_TYPES, DEFAULT_VISA_CHECKLIST, canMoveTrip, newTripReference, tripMoney,
@@ -51,12 +55,12 @@ async function recalcTrip(tripId: string) {
 }
 
 /** Travellers holding seats on a package (committed trips only), optionally ignoring one trip. */
-async function seatsTaken(packageId: string, excludeTripId?: string) {
-  return prisma.travelTraveler.count({ where: { trip: { packageId, status: { in: [...SEAT_HOLDING_STATUSES] }, ...(excludeTripId ? { id: { not: excludeTripId } } : {}) } } });
+async function seatsTaken(packageId: string, excludeTripId?: string, departureId: string | null = null) {
+  return seatsHeld(prisma, packageId, departureId, excludeTripId);
 }
 
 async function ownTrip(a: Extract<Access, { success: true }>, tripId: string) {
-  return prisma.travelTrip.findFirst({ where: { id: tripId, storeId: a.store.id }, select: { id: true, status: true, totalPrice: true, totalCost: true } });
+  return prisma.travelTrip.findFirst({ where: { id: tripId, storeId: a.store.id }, select: { id: true, status: true, totalPrice: true, totalCost: true, currency: true } });
 }
 
 // ---------------------------------------------------------------- dashboard
@@ -66,19 +70,20 @@ export async function getTravelDashboard(slug: string) {
   if (!a.success) return null;
   const storeId = a.store.id;
   const now = new Date();
-  const [trips, clients, suppliers, packages, visas, payableItems, supplierPayments, agents, agentPayments] = await Promise.all([
+  const [trips, clients, suppliers, packages, visas, payableItems, supplierPayments, agents, agentPayments, settings] = await Promise.all([
     prisma.travelTrip.findMany({
       where: { storeId }, orderBy: { createdAt: "desc" }, take: 300,
       include: { client: { select: { id: true, fullName: true, phone: true, email: true } }, travellers: true, items: { orderBy: { createdAt: "asc" }, include: { supplier: { select: { name: true } } } }, payments: { orderBy: { createdAt: "desc" } }, itineraryDays: { orderBy: { dayNumber: "asc" } }, attachments: { orderBy: { createdAt: "desc" } } },
     }),
     prisma.travelClient.findMany({ where: { storeId }, orderBy: { fullName: "asc" }, take: 500, include: { _count: { select: { trips: true } } } }),
     prisma.travelSupplier.findMany({ where: { storeId, isArchived: false }, orderBy: { name: "asc" }, take: 200 }),
-    prisma.travelPackage.findMany({ where: { storeId }, orderBy: [{ isActive: "desc" }, { departureDate: "asc" }], take: 100, include: { trips: { select: { status: true, travellers: { select: { id: true } } } } } }),
+    prisma.travelPackage.findMany({ where: { storeId }, orderBy: [{ isActive: "desc" }, { departureDate: "asc" }], take: 100, include: { trips: { select: { status: true, departureId: true, travellers: { select: { id: true } } } }, departures: { orderBy: { departureDate: "asc" } } } }),
     prisma.travelVisaCase.findMany({ where: { storeId }, orderBy: { createdAt: "desc" }, take: 200, include: { client: { select: { fullName: true } }, attachments: { orderBy: { createdAt: "desc" } } } }),
     prisma.travelTripItem.findMany({ where: { supplierId: { not: null }, status: { not: "CANCELLED" }, trip: { storeId, status: { not: "CANCELLED" } } }, orderBy: { startDate: "asc" }, select: { id: true, supplierId: true, description: true, kind: true, startDate: true, costPrice: true, trip: { select: { id: true, reference: true, currency: true } } } }),
     prisma.travelSupplierPayment.findMany({ where: { storeId }, orderBy: { paidAt: "desc" }, take: 1000 }),
     prisma.travelAgent.findMany({ where: { storeId, isArchived: false }, orderBy: { name: "asc" }, take: 200 }),
     prisma.travelAgentPayment.findMany({ where: { storeId }, orderBy: { paidAt: "desc" }, take: 1000 }),
+    prisma.travelSettings.findUnique({ where: { storeId } }),
   ]);
   // Commission per trip (only trips that have an agent). Computed from the already-loaded trips and their payments.
   const commissionLines = trips.filter((t) => t.agentId).map((t) => {
@@ -101,9 +106,11 @@ export async function getTravelDashboard(slug: string) {
       departDate: t.departDate?.toISOString() ?? null, returnDate: t.returnDate?.toISOString() ?? null,
       currency: t.currency, notes: t.notes, packageId: t.packageId, createdAt: t.createdAt.toISOString(),
       agentId: t.agentId, commissionRate: Number(t.commissionRate), commissionBasis: t.commissionBasis,
+      departureId: t.departureId, shareToken: t.shareToken, proposalNote: t.proposalNote, proposalValidUntil: t.proposalValidUntil?.toISOString() ?? null,
+      proposalSentAt: t.proposalSentAt?.toISOString() ?? null, termsText: t.termsText, acceptedAt: t.acceptedAt?.toISOString() ?? null, acceptedName: t.acceptedName,
       client: t.client, money: m,
       travellers: t.travellers.map((x) => ({ id: x.id, fullName: x.fullName, passportNo: x.passportNo, passportExpiry: x.passportExpiry?.toISOString() ?? null, nationality: x.nationality, isLead: x.isLead })),
-      items: t.items.map((i) => ({ id: i.id, kind: i.kind, description: i.description, status: i.status, confirmationRef: i.confirmationRef, startDate: i.startDate?.toISOString() ?? null, endDate: i.endDate?.toISOString() ?? null, supplierId: i.supplierId, supplierName: i.supplier?.name ?? null, costPrice: Number(i.costPrice), sellPrice: Number(i.sellPrice) })),
+      items: t.items.map((i) => ({ id: i.id, kind: i.kind, description: i.description, status: i.status, confirmationRef: i.confirmationRef, startDate: i.startDate?.toISOString() ?? null, endDate: i.endDate?.toISOString() ?? null, supplierId: i.supplierId, supplierName: i.supplier?.name ?? null, costPrice: Number(i.costPrice), sellPrice: Number(i.sellPrice), costCurrency: i.costCurrency, costAmount: i.costAmount === null ? null : Number(i.costAmount), fxRate: i.fxRate === null ? null : Number(i.fxRate), flight: i.kind === "FLIGHT" ? readFlight(i.flightDetails) : null, ticketingDeadline: i.ticketingDeadline?.toISOString() ?? null })),
       attachments: t.attachments.map(serialAttachment),
       itineraryDays: t.itineraryDays.map((d) => ({ id: d.id, dayNumber: d.dayNumber, title: d.title, description: d.description })),
       payments: t.payments.map((p) => ({ id: p.id, amount: Number(p.amount), refundedAmount: Number(p.refundedAmount), refundedAt: p.refundedAt?.toISOString() ?? null, refundReason: p.refundReason, method: p.method, status: p.status, dueDate: p.dueDate?.toISOString() ?? null, paidAt: p.paidAt?.toISOString() ?? null, reference: p.reference, note: p.note })),
@@ -140,7 +147,9 @@ export async function getTravelDashboard(slug: string) {
       lines: payableItems.filter((i) => i.supplierId === s.id).map((i) => ({ id: i.id, tripId: i.trip.id, reference: i.trip.reference, currency: i.trip.currency, kind: i.kind, description: i.description, startDate: i.startDate?.toISOString() ?? null, cost: Number(i.costPrice) })),
       payments: supplierPayments.filter((p) => p.supplierId === s.id).slice(0, 25).map((p) => ({ id: p.id, amount: Number(p.amount), currency: p.currency, method: p.method, status: p.status, paidAt: p.paidAt.toISOString(), reference: p.reference, note: p.note })),
     })),
-    packages: packages.map((p) => ({ id: p.id, name: p.name, destination: p.destination, durationDays: p.durationDays, pricePerPerson: Number(p.pricePerPerson), currency: p.currency, departureDate: p.departureDate?.toISOString() ?? null, seats: p.seats, depositPercent: p.depositPercent, booked: p.trips.filter((t) => (SEAT_HOLDING_STATUSES as readonly string[]).includes(t.status)).reduce((s, t) => s + t.travellers.length, 0), inclusions: p.inclusions, isActive: p.isActive })),
+    packages: packages.map((p) => ({ id: p.id, name: p.name, destination: p.destination, durationDays: p.durationDays, pricePerPerson: Number(p.pricePerPerson), currency: p.currency, departureDate: p.departureDate?.toISOString() ?? null, seats: p.seats, depositPercent: p.depositPercent, booked: p.trips.filter((t) => !t.departureId && (SEAT_HOLDING_STATUSES as readonly string[]).includes(t.status)).reduce((s, t) => s + t.travellers.length, 0), inclusions: p.inclusions, isActive: p.isActive,
+      departures: p.departures.map((d) => ({ id: d.id, departureDate: d.departureDate.toISOString(), seats: d.seats, cutoffDays: d.cutoffDays, pricePerPerson: d.pricePerPerson === null ? null : Number(d.pricePerPerson), isActive: d.isActive, booked: p.trips.filter((t) => t.departureId === d.id && (SEAT_HOLDING_STATUSES as readonly string[]).includes(t.status)).reduce((s, t) => s + t.travellers.length, 0) })) })),
+    settings: { termsText: settings?.termsText ?? "", remindersEnabled: settings?.remindersEnabled ?? true, reviewUrl: settings?.reviewUrl ?? "", hasPartnerKey: !!settings?.partnerKeyHash, partnerKeyHint: settings?.partnerKeyHint ?? null },
     visas: visas.map((v) => ({ attachments: v.attachments.map(serialAttachment), id: v.id, clientName: v.client.fullName, clientId: v.clientId, country: v.country, visaType: v.visaType, status: v.status, checklist: (Array.isArray(v.checklist) ? v.checklist : []) as { label: string; done: boolean }[], appointmentAt: v.appointmentAt?.toISOString() ?? null, fee: Number(v.fee), notes: v.notes })),
   };
 }
@@ -166,7 +175,7 @@ export async function saveTravelClient(slug: string, input: { id?: string; fullN
 
 // ---------------------------------------------------------------- trips
 
-export async function createTravelTrip(slug: string, input: { clientId: string; title: string; destination: string; departDate?: string; returnDate?: string; packageId?: string; travellerCount?: number; totalPrice?: number; notes?: string }): Promise<ActionResult<{ id: string; reference: string }>> {
+export async function createTravelTrip(slug: string, input: { clientId: string; title: string; destination: string; departDate?: string; returnDate?: string; packageId?: string; departureId?: string; travellerCount?: number; totalPrice?: number; notes?: string }): Promise<ActionResult<{ id: string; reference: string }>> {
   const a = await access(slug); if (!a.success) return fail(a.error);
   const client = await prisma.travelClient.findFirst({ where: { id: input.clientId, storeId: a.store.id } });
   if (!client) return fail("Choose a client for this trip.");
@@ -179,24 +188,33 @@ export async function createTravelTrip(slug: string, input: { clientId: string; 
   if (Number.isNaN(totalPrice)) return fail("Enter a valid price.");
   const count = Math.max(1, Math.min(60, Math.floor(Number(input.travellerCount) || 1)));
   let packageId: string | null = null;
+  let departureId: string | null = null;
   let currency = a.store.currency || "NGN";
   let finalDepart = departDate, finalReturn = returnDate;
   if (input.packageId) {
     const pkg = await prisma.travelPackage.findFirst({ where: { id: input.packageId, storeId: a.store.id, isActive: true }, });
     if (!pkg) return fail("That package is no longer available.");
-    if (pkg.seats > 0) {
-      const taken = await seatsTaken(pkg.id);
-      if (taken + count > pkg.seats) return fail(`Only ${Math.max(0, pkg.seats - taken)} seat(s) left on this package.`);
+    let dep: { id: string; departureDate: Date; pricePerPerson: unknown } | null = null;
+    if (input.departureId) {
+      dep = await prisma.travelDeparture.findFirst({ where: { id: input.departureId, packageId: pkg.id, storeId: a.store.id, isActive: true }, select: { id: true, departureDate: true, pricePerPerson: true } });
+      if (!dep) return fail("That departure is no longer available.");
+    }
+    departureId = dep?.id ?? null;
+    const pool = await seatCapacity(prisma, pkg.id, departureId);
+    if (pool && pool.capacity > 0) {
+      const taken = await seatsTaken(pkg.id, undefined, departureId);
+      if (taken + count > pool.capacity) return fail(`Only ${Math.max(0, pool.capacity - taken)} seat(s) left on ${pool.label}.`);
     }
     packageId = pkg.id; currency = pkg.currency;
-    if (!totalPrice) totalPrice = Number(pkg.pricePerPerson) * count;
-    if (!finalDepart && pkg.departureDate) { finalDepart = pkg.departureDate; finalReturn = finalReturn ?? new Date(pkg.departureDate.getTime() + (pkg.durationDays - 1) * 86_400_000); }
+    if (!totalPrice) totalPrice = Number(dep?.pricePerPerson ?? pkg.pricePerPerson) * count;
+    const startsOn = dep?.departureDate ?? pkg.departureDate;
+    if (!finalDepart && startsOn) { finalDepart = startsOn; finalReturn = finalReturn ?? new Date(startsOn.getTime() + (pkg.durationDays - 1) * 86_400_000); }
   }
   for (let attempt = 0; attempt < 4; attempt++) {
     try {
       const trip = await prisma.travelTrip.create({
         data: {
-          storeId: a.store.id, reference: newTripReference(new Date(), attempt), clientId: client.id, packageId, title, destination, departDate: finalDepart, returnDate: finalReturn, currency, totalPrice, notes: optStr(input.notes, 2000),
+          storeId: a.store.id, reference: newTripReference(new Date(), attempt), clientId: client.id, packageId, departureId, title, destination, departDate: finalDepart, returnDate: finalReturn, currency, totalPrice, notes: optStr(input.notes, 2000),
           travellers: { create: Array.from({ length: count }, (_, i) => ({ fullName: i === 0 ? client.fullName : `Traveller ${i + 1}`, isLead: i === 0, passportNo: i === 0 ? client.passportNo : null, passportExpiry: i === 0 ? client.passportExpiry : null, nationality: i === 0 ? client.nationality : null })) },
         },
         select: { id: true, reference: true },
@@ -234,10 +252,10 @@ export async function setTravelTripStatus(slug: string, tripId: string, status: 
   if (!canMoveTrip(trip.status as TripStatus, status as TripStatus)) return fail(trip.status === "CANCELLED" || trip.status === "COMPLETED" ? `A ${trip.status.toLowerCase()} trip can't be changed.` : "That status change isn't allowed.");
   if (["CONFIRMED", "TICKETED", "TRAVELLING"].includes(status) && Number(trip.totalPrice) <= 0) return fail("Set a price before confirming this trip.");
   if ((SEAT_HOLDING_STATUSES as readonly string[]).includes(status) && trip.packageId && !(SEAT_HOLDING_STATUSES as readonly string[]).includes(trip.status)) {
-    const pkg = await prisma.travelPackage.findUnique({ where: { id: trip.packageId }, select: { seats: true, name: true } });
-    if (pkg && pkg.seats > 0) {
-      const left = pkg.seats - (await seatsTaken(trip.packageId, trip.id));
-      if (trip.travellers.length > left) return fail(`Only ${Math.max(0, left)} seat(s) left on ${pkg.name}; this trip has ${trip.travellers.length} traveller(s).`);
+    const pool = await seatCapacity(prisma, trip.packageId, trip.departureId);
+    if (pool && pool.capacity > 0) {
+      const left = pool.capacity - (await seatsTaken(trip.packageId, trip.id, trip.departureId));
+      if (trip.travellers.length > left) return fail(`Only ${Math.max(0, left)} seat(s) left on ${pool.label}; this trip has ${trip.travellers.length} traveller(s).`);
     }
   }
   if (status === "TICKETED" && tripMoney(trip, trip.payments).paid <= 0) return fail("Record at least a deposit before ticketing.");
@@ -248,7 +266,7 @@ export async function setTravelTripStatus(slug: string, tripId: string, status: 
 
 export async function saveTravelTraveler(slug: string, tripId: string, input: { id?: string; fullName: string; passportNo?: string; passportExpiry?: string; dateOfBirth?: string; nationality?: string }): Promise<ActionResult> {
   const a = await access(slug); if (!a.success) return fail(a.error);
-  const trip = await prisma.travelTrip.findFirst({ where: { id: tripId, storeId: a.store.id }, select: { id: true, status: true, packageId: true } });
+  const trip = await prisma.travelTrip.findFirst({ where: { id: tripId, storeId: a.store.id }, select: { id: true, status: true, packageId: true, departureId: true } });
   if (!trip) return fail("Trip not found.");
   if (["COMPLETED", "CANCELLED"].includes(trip.status)) return fail("This trip is closed.");
   const fullName = str(input.fullName, 120); if (fullName.length < 2) return fail("Enter the traveller's name.");
@@ -260,8 +278,8 @@ export async function saveTravelTraveler(slug: string, tripId: string, input: { 
   } else {
     // A trip that already holds seats on a limited package can't grow past the seats left.
     if (trip.packageId && (SEAT_HOLDING_STATUSES as readonly string[]).includes(trip.status)) {
-      const pkg = await prisma.travelPackage.findUnique({ where: { id: trip.packageId }, select: { seats: true, name: true } });
-      if (pkg && pkg.seats > 0 && (await seatsTaken(trip.packageId)) + 1 > pkg.seats) return fail(`${pkg.name} is full. Raise the seat limit before adding another traveller.`);
+      const pool = await seatCapacity(prisma, trip.packageId, trip.departureId);
+      if (pool && pool.capacity > 0 && (await seatsTaken(trip.packageId, undefined, trip.departureId)) + 1 > pool.capacity) return fail(`${pool.label} is full. Raise the seat limit before adding another traveller.`);
     }
     await prisma.travelTraveler.create({ data: { ...data, tripId: trip.id } });
   }
@@ -279,12 +297,23 @@ export async function removeTravelTraveler(slug: string, tripId: string, travele
 
 // ---------------------------------------------------------------- service lines
 
-export async function saveTravelItem(slug: string, tripId: string, input: { id?: string; kind: string; description: string; supplierId?: string; startDate?: string; endDate?: string; confirmationRef?: string; status?: string; costPrice: number; sellPrice: number }): Promise<ActionResult> {
+export async function saveTravelItem(slug: string, tripId: string, input: { id?: string; kind: string; description: string; supplierId?: string; startDate?: string; endDate?: string; confirmationRef?: string; status?: string; costPrice: number; sellPrice: number; costCurrency?: string; costAmount?: number | string; fxRate?: number | string; flight?: unknown; ticketingDeadline?: string | null }): Promise<ActionResult> {
   const a = await access(slug); if (!a.success) return fail(a.error);
   const trip = await ownTrip(a, tripId); if (!trip) return fail("Trip not found.");
   if (["COMPLETED", "CANCELLED"].includes(trip.status)) return fail("This trip is closed.");
   const description = str(input.description, 200); if (!description) return fail("Describe the service (e.g. Lagos–Dubai return flight).");
-  const cost = money(input.costPrice), sell = money(input.sellPrice);
+  let cost = money(input.costPrice);
+  const sell = money(input.sellPrice);
+  // A supplier that charges in another currency: the cost in the trip's currency is their price × the rate entered.
+  const costCurrency = optStr(input.costCurrency, 3)?.toUpperCase() ?? null;
+  let fx: { costCurrency: string | null; costAmount: number | null; fxRate: number | null } = { costCurrency: null, costAmount: null, fxRate: null };
+  if (costCurrency && costCurrency !== trip.currency) {
+    if (!/^[A-Z]{3}$/.test(costCurrency)) return fail("Choose a valid currency for the supplier price.");
+    const converted = convertCost(input.costAmount, input.fxRate);
+    if (converted === null) return fail(`Enter the supplier's price in ${costCurrency} and the exchange rate (${trip.currency} per 1 ${costCurrency}).`);
+    cost = converted;
+    fx = { costCurrency, costAmount: Math.round(Number(input.costAmount) * 100) / 100, fxRate: Number(input.fxRate) };
+  }
   if (Number.isNaN(cost) || Number.isNaN(sell)) return fail("Enter valid cost and selling prices.");
   let supplierId: string | null = null;
   if (input.supplierId) {
@@ -294,8 +323,25 @@ export async function saveTravelItem(slug: string, tripId: string, input: { id?:
   const startDate = input.startDate === undefined ? undefined : optDate(input.startDate);
   const endDate = input.endDate === undefined ? undefined : optDate(input.endDate);
   if (startDate && endDate && endDate < startDate) return fail("The end date can't be before the start date.");
+  // Flight details and the ticketing deadline are only touched when the caller sent them (a "Confirm" click sends neither),
+  // and only on FLIGHT lines. Changing the deadline re-arms the reminder.
+  const kind = oneOf(ITEM_KINDS, input.kind, "OTHER");
+  let flightData: { flightDetails?: object | typeof Prisma.DbNull; ticketingDeadline?: Date | null; ticketingAlertedAt?: null } = {};
+  if (kind !== "FLIGHT") {
+    if (input.id) flightData = { flightDetails: Prisma.DbNull, ticketingDeadline: null, ticketingAlertedAt: null };
+  } else {
+    if (input.flight !== undefined) {
+      const f = sanitizeFlight(input.flight); if (!f.ok) return fail(f.error);
+      flightData.flightDetails = f.flight ?? Prisma.DbNull;
+    }
+    if (input.ticketingDeadline !== undefined) {
+      const d = input.ticketingDeadline ? optDate(input.ticketingDeadline) : null;
+      if (input.ticketingDeadline && !d) return fail("Enter a valid ticketing deadline.");
+      flightData.ticketingDeadline = d; flightData.ticketingAlertedAt = null;
+    }
+  }
   // startDate/endDate are only written when the caller sent them, so actions like "Confirm" can't erase saved dates.
-  const data = { kind: oneOf(ITEM_KINDS, input.kind, "OTHER"), description, supplierId, ...(startDate !== undefined ? { startDate } : {}), ...(endDate !== undefined ? { endDate } : {}), confirmationRef: optStr(input.confirmationRef, 60), status: oneOf(ITEM_STATUSES, input.status, "PENDING"), costPrice: cost, sellPrice: sell };
+  const data = { kind: kind, description, supplierId, ...(startDate !== undefined ? { startDate } : {}), ...(endDate !== undefined ? { endDate } : {}), confirmationRef: optStr(input.confirmationRef, 60), status: oneOf(ITEM_STATUSES, input.status, "PENDING"), costPrice: cost, sellPrice: sell, ...fx, ...flightData };
   if (input.id) {
     const it = await prisma.travelTripItem.findFirst({ where: { id: input.id, tripId: trip.id } });
     if (!it) return fail("Service line not found.");

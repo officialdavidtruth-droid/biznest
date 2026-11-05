@@ -3,7 +3,8 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 const m = vi.hoisted(() => {
   const tx = {
     payment: { updateMany: vi.fn() },
-    travelPayment: { findFirst: vi.fn(), create: vi.fn() },
+    travelPayment: { findFirst: vi.fn(), create: vi.fn(), findMany: vi.fn(), update: vi.fn() },
+    travelDeparture: { findUnique: vi.fn() },
     travelPackage: { findUnique: vi.fn() },
     travelTraveler: { count: vi.fn() },
     travelTrip: { update: vi.fn() },
@@ -32,6 +33,7 @@ beforeEach(() => {
   vi.clearAllMocks();
   m.tx.payment.updateMany.mockResolvedValue({ count: 1 });
   m.tx.travelPayment.findFirst.mockResolvedValue(null);
+  m.tx.travelPayment.findMany.mockResolvedValue([]);
   m.tx.travelPackage.findUnique.mockResolvedValue({ seats: 10 });
   m.tx.travelTraveler.count.mockResolvedValue(0);
 });
@@ -139,5 +141,35 @@ describe("settleTravelPayment", () => {
     m.paymentFind.mockResolvedValue(payment({ provider: "CASH" }));
     await settleTravelPayment("TVL-trip1-abc", "CASH", 60000, {});
     expect(m.tx.travelPayment.create.mock.calls[0][0].data.method).toBe("TRANSFER");
+  });
+
+  it("pays off the oldest scheduled instalments with an online payment", async () => {
+    m.paymentFind.mockResolvedValue(payment({ amount: "70000" }, { status: "CONFIRMED" }));
+    m.tx.travelPayment.findMany.mockResolvedValue([
+      { id: "d2", amount: "50000", dueDate: new Date("2027-02-01") },
+      { id: "d1", amount: "40000", dueDate: new Date("2027-01-01") },
+    ]);
+    await settleTravelPayment("TVL-trip1-abc", "PAYSTACK", 70000, {});
+    const updates = m.tx.travelPayment.update.mock.calls.map((c) => c[0]);
+    expect(updates[0]).toMatchObject({ where: { id: "d1" }, data: { status: "VOID" } }); // fully covered → closed
+    expect(updates[1]).toMatchObject({ where: { id: "d2" }, data: { amount: 20000 } }); // partly covered → reduced
+  });
+
+  it("does not touch instalments when the payment was already recorded", async () => {
+    m.paymentFind.mockResolvedValue(payment({}, { status: "CONFIRMED" }));
+    m.tx.travelPayment.findFirst.mockResolvedValue({ id: "existing" });
+    await settleTravelPayment("TVL-trip1-abc", "PAYSTACK", 60000, {});
+    expect(m.tx.travelPayment.findMany).not.toHaveBeenCalled();
+    expect(m.tx.travelPayment.update).not.toHaveBeenCalled();
+  });
+
+  it("checks seats on the trip's own departure, not the whole package", async () => {
+    m.paymentFind.mockResolvedValue(payment({}, { departureId: "dep1" }));
+    m.tx.travelDeparture.findUnique.mockResolvedValue({ seats: 2, departureDate: new Date("2027-06-01"), packageId: "pkg1" });
+    m.tx.travelTraveler.count.mockResolvedValue(1); // 1 of 2 taken on this date; this trip needs 2
+    await settleTravelPayment("TVL-trip1-abc", "PAYSTACK", 60000, {});
+    expect(m.tx.travelTraveler.count.mock.calls[0][0].where.trip).toMatchObject({ packageId: "pkg1", departureId: "dep1" });
+    expect(m.tx.travelTrip.update).not.toHaveBeenCalled(); // sold out → stays an enquiry
+    expect(m.warn).toHaveBeenCalled();
   });
 });

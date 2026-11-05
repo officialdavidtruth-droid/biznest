@@ -9,15 +9,18 @@ import {
   COMMISSION_BASES, COMMISSION_BASIS_LABEL, daysUntil, passportWarning, canPayOnline, whatsappLink, roomingGroups, manifestIssues, ROOM_TYPES, GENDERS, type TripStatus, type ManifestRow,
 } from "@/lib/travel";
 import * as A from "@/lib/actions/travel";
+import { FlightFields, FlightLine, draftFrom, draftPayload, emptyDraft, type FlightDraft } from "@/components/dashboard/travel-flight-editor";
+import { ProposalPanel, InstalmentPanel, FxFields, DepartureManager, ReportsTab, SettingsTab } from "@/components/dashboard/travel-growth-panels";
 import { ATTACHMENT_ACCEPT, ATTACHMENT_KINDS, ATTACHMENT_KIND_LABEL, ATTACHMENT_MAX_BYTES, ATTACHMENT_TYPE_HINT, attachmentHref, formatBytes, type AttachmentKind } from "@/lib/travel-files";
 
 type Data = NonNullable<Awaited<ReturnType<typeof A.getTravelDashboard>>>;
 type Trip = Data["trips"][number];
-type Tab = "overview" | "trips" | "clients" | "packages" | "visas" | "suppliers" | "agents";
+type Tab = "overview" | "trips" | "clients" | "packages" | "visas" | "suppliers" | "agents" | "reports" | "settings";
 
 const TABS: { id: Tab; label: string }[] = [
   { id: "overview", label: "Overview" }, { id: "trips", label: "Trips" }, { id: "clients", label: "Clients" },
   { id: "packages", label: "Packages" }, { id: "visas", label: "Visas" }, { id: "suppliers", label: "Suppliers" }, { id: "agents", label: "Agents" },
+  { id: "reports", label: "Reports" }, { id: "settings", label: "Settings" },
 ];
 const inp = "w-full rounded-lg border bg-background px-3 py-2 text-sm";
 const btn = "rounded-lg bg-primary px-3 py-2 text-xs font-bold text-primary-foreground disabled:opacity-50";
@@ -98,6 +101,8 @@ export function TravelWorkspace({ slug, data }: { slug: string; data: Data }) {
       {tab === "visas" && <Visas slug={slug} data={data} pending={pending} run={run} money={money} />}
       {tab === "suppliers" && <Suppliers slug={slug} data={data} pending={pending} run={run} />}
       {tab === "agents" && <Agents slug={slug} data={data} pending={pending} run={run} />}
+      {tab === "reports" && <ReportsTab slug={slug} />}
+      {tab === "settings" && <SettingsTab slug={slug} data={data} pending={pending} run={run} />}
     </div>
   );
 }
@@ -162,7 +167,7 @@ function TripRow({ t, money, onOpen }: { t: Trip; money: (n: unknown, c?: string
 
 function NewTripForm({ data, pending, onCreate }: { data: Data; pending: boolean; onCreate: (v: any) => void }) {
   const [open, setOpen] = useState(false);
-  const [f, setF] = useState({ clientId: "", destination: "", title: "", departDate: "", returnDate: "", packageId: "", travellerCount: 1, totalPrice: "" });
+  const [f, setF] = useState({ clientId: "", destination: "", title: "", departDate: "", returnDate: "", packageId: "", departureId: "", travellerCount: 1, totalPrice: "" });
   const set = (k: string, v: any) => setF((p) => ({ ...p, [k]: v }));
   if (!open) return <button className={btn} onClick={() => setOpen(true)}>+ New trip</button>;
   const pkgs = data.packages.filter((p) => p.isActive);
@@ -171,7 +176,13 @@ function NewTripForm({ data, pending, onCreate }: { data: Data; pending: boolean
       {!data.clients.length && <p className="text-sm text-amber-700">Add a client first (Clients tab).</p>}
       <div className="grid gap-3 md:grid-cols-3">
         <Field label="Client"><select className={inp} value={f.clientId} onChange={(e) => set("clientId", e.target.value)}><option value="">Select…</option>{data.clients.map((c) => <option key={c.id} value={c.id}>{c.fullName}</option>)}</select></Field>
-        <Field label="Group package (optional)"><select className={inp} value={f.packageId} onChange={(e) => { const p = pkgs.find((x) => x.id === e.target.value); setF((s) => ({ ...s, packageId: e.target.value, destination: p ? p.destination : s.destination, title: p ? p.name : s.title })); }}><option value="">None — custom trip</option>{pkgs.map((p) => <option key={p.id} value={p.id}>{p.name}{p.seats ? ` (${Math.max(0, p.seats - p.booked)} seats left)` : ""}</option>)}</select></Field>
+        <Field label="Group package (optional)"><select className={inp} value={f.packageId} onChange={(e) => { const p = pkgs.find((x) => x.id === e.target.value); setF((s) => ({ ...s, packageId: e.target.value, departureId: "", destination: p ? p.destination : s.destination, title: p ? p.name : s.title })); }}><option value="">None — custom trip</option>{pkgs.map((p) => <option key={p.id} value={p.id}>{p.name}{p.seats ? ` (${Math.max(0, p.seats - p.booked)} seats left)` : ""}</option>)}</select></Field>
+        {(pkgs.find((x) => x.id === f.packageId)?.departures.filter((d) => d.isActive).length ?? 0) > 0 && (
+          <Field label="Departure date"><select className={inp} value={f.departureId} onChange={(e) => set("departureId", e.target.value)}>
+            <option value="">Main departure{pkgs.find((x) => x.id === f.packageId)?.departureDate ? ` (${fmtDate(pkgs.find((x) => x.id === f.packageId)!.departureDate)})` : ""}</option>
+            {pkgs.find((x) => x.id === f.packageId)!.departures.filter((d) => d.isActive).map((d) => <option key={d.id} value={d.id}>{fmtDate(d.departureDate)}</option>)}
+          </select></Field>
+        )}
         <Field label="Destination"><input className={inp} value={f.destination} onChange={(e) => set("destination", e.target.value)} /></Field>
         <Field label="Trip title"><input className={inp} value={f.title} onChange={(e) => set("title", e.target.value)} placeholder="e.g. Dubai family holiday" /></Field>
         <Field label="Depart"><input type="date" className={inp} value={f.departDate} onChange={(e) => set("departDate", e.target.value)} /></Field>
@@ -179,7 +190,7 @@ function NewTripForm({ data, pending, onCreate }: { data: Data; pending: boolean
         <Field label="Travellers"><input type="number" min={1} max={60} className={inp} value={f.travellerCount} onChange={(e) => set("travellerCount", Number(e.target.value))} /></Field>
         <Field label="Quoted price (optional)"><input type="number" min={0} className={inp} value={f.totalPrice} onChange={(e) => set("totalPrice", e.target.value)} /></Field>
       </div>
-      <div className="flex gap-2"><button disabled={pending} className={btn} onClick={() => { onCreate({ ...f, totalPrice: f.totalPrice === "" ? undefined : Number(f.totalPrice) }); setOpen(false); }}>Create trip</button><button className={btn2} onClick={() => setOpen(false)}>Cancel</button></div>
+      <div className="flex gap-2"><button disabled={pending} className={btn} onClick={() => { onCreate({ ...f, departureId: f.departureId || undefined, totalPrice: f.totalPrice === "" ? undefined : Number(f.totalPrice) }); setOpen(false); }}>Create trip</button><button className={btn2} onClick={() => setOpen(false)}>Cancel</button></div>
     </div>
   );
 }
@@ -187,7 +198,10 @@ function NewTripForm({ data, pending, onCreate }: { data: Data; pending: boolean
 function TripDetail({ slug, trip, data, money, pending, run, back, start }: { start: (fn: () => void) => void; slug: string; trip: Trip; data: Data; money: (n: unknown, c?: string) => string; pending: boolean; run: Run; back: () => void }) {
   const m = trip.money;
   const closed = ["COMPLETED", "CANCELLED"].includes(trip.status);
-  const [item, setItem] = useState({ kind: "FLIGHT", description: "", supplierId: "", costPrice: "", sellPrice: "", confirmationRef: "", startDate: "", endDate: "" });
+  const [item, setItem] = useState({ kind: "FLIGHT", description: "", supplierId: "", costPrice: "", sellPrice: "", confirmationRef: "", startDate: "", endDate: "", costCurrency: "", costAmount: "", fxRate: "" });
+  const [flightDraft, setFlightDraft] = useState<FlightDraft>(emptyDraft());
+  const [flightOpen, setFlightOpen] = useState(false);
+  const [editFlight, setEditFlight] = useState<{ id: string; draft: FlightDraft } | null>(null);
   const [pay, setPay] = useState({ amount: "", method: "TRANSFER", reference: "", dueDate: "" });
   const [trav, setTrav] = useState({ fullName: "", passportNo: "", passportExpiry: "" });
   const [price, setPrice] = useState(String(m.total));
@@ -228,6 +242,8 @@ function TripDetail({ slug, trip, data, money, pending, run, back, start }: { st
         )}
       </div>
 
+      <ProposalPanel slug={slug} trip={trip} data={data} pending={pending} run={run} />
+
       <div className={card}>
         <h3 className="mb-2 text-sm font-bold">Documents</h3>
         <Attachments slug={slug} parent={{ tripId: trip.id }} files={trip.attachments} travellers={trip.travellers} pending={pending} />
@@ -237,10 +253,18 @@ function TripDetail({ slug, trip, data, money, pending, run, back, start }: { st
         <h3 className="mb-2 text-sm font-bold">Services</h3>
         {trip.items.map((i) => (
           <div key={i.id} className="flex flex-wrap items-center justify-between gap-2 border-b py-2 text-sm last:border-0">
-            <div><b>{i.kind}</b> · {i.description}<div className="text-xs text-muted-foreground">{i.startDate ? `${fmtDate(i.startDate)}${i.endDate ? ` → ${fmtDate(i.endDate)}` : ""} · ` : ""}{i.supplierName ?? "No supplier"}{i.confirmationRef ? ` · Ref ${i.confirmationRef}` : ""} · {i.status}</div></div>
+            <div><b>{i.kind}</b> · {i.description}<div className="text-xs text-muted-foreground">{i.startDate ? `${fmtDate(i.startDate)}${i.endDate ? ` → ${fmtDate(i.endDate)}` : ""} · ` : ""}{i.supplierName ?? "No supplier"}{i.confirmationRef ? ` · Ref ${i.confirmationRef}` : ""} · {i.status}</div>
+              <FlightLine flight={i.flight} deadline={i.ticketingDeadline} travellerCount={trip.travellers.length} /></div>
             <div className="flex items-center gap-2"><span className="text-xs text-muted-foreground">cost {money(i.costPrice, trip.currency)}</span><b>{money(i.sellPrice, trip.currency)}</b>
-              {!closed && i.status !== "CONFIRMED" && <button className={btn2} disabled={pending} onClick={() => run(() => A.saveTravelItem(slug, trip.id, { id: i.id, kind: i.kind, description: i.description, supplierId: i.supplierId ?? undefined, confirmationRef: i.confirmationRef ?? undefined, startDate: i.startDate ? i.startDate.slice(0, 10) : undefined, endDate: i.endDate ? i.endDate.slice(0, 10) : undefined, status: "CONFIRMED", costPrice: i.costPrice, sellPrice: i.sellPrice }), "Marked confirmed")}>Confirm</button>}
+              {!closed && i.status !== "CONFIRMED" && <button className={btn2} disabled={pending} onClick={() => run(() => A.saveTravelItem(slug, trip.id, { id: i.id, kind: i.kind, description: i.description, supplierId: i.supplierId ?? undefined, confirmationRef: i.confirmationRef ?? undefined, startDate: i.startDate ? i.startDate.slice(0, 10) : undefined, endDate: i.endDate ? i.endDate.slice(0, 10) : undefined, status: "CONFIRMED", costPrice: i.costPrice, sellPrice: i.sellPrice, costCurrency: i.costCurrency ?? undefined, costAmount: i.costAmount ?? undefined, fxRate: i.fxRate ?? undefined }), "Marked confirmed")}>Confirm</button>}
+              {!closed && i.kind === "FLIGHT" && <button className={btn2} disabled={pending} onClick={() => setEditFlight(editFlight?.id === i.id ? null : { id: i.id, draft: draftFrom(i.flight, i.ticketingDeadline) })}>Flight details</button>}
               {!closed && <button className={`${btn2} text-red-600`} disabled={pending} onClick={() => run(() => A.removeTravelItem(slug, trip.id, i.id))}>Remove</button>}</div>
+            {editFlight?.id === i.id && (
+              <div className="w-full space-y-2">
+                <FlightFields draft={editFlight!.draft} setDraft={(d) => setEditFlight({ id: i.id, draft: d })} travellerNames={trip.travellers.map((t) => t.fullName)} />
+                <button className={btn} disabled={pending} onClick={() => run(() => A.saveTravelItem(slug, trip.id, { id: i.id, kind: i.kind, description: i.description, supplierId: i.supplierId ?? undefined, confirmationRef: i.confirmationRef ?? undefined, startDate: i.startDate ? i.startDate.slice(0, 10) : undefined, endDate: i.endDate ? i.endDate.slice(0, 10) : undefined, status: i.status, costPrice: i.costPrice, sellPrice: i.sellPrice, costCurrency: i.costCurrency ?? undefined, costAmount: i.costAmount ?? undefined, fxRate: i.fxRate ?? undefined, ...draftPayload(editFlight!.draft) }), "Flight details saved", () => setEditFlight(null))}>Save flight details</button>
+              </div>
+            )}
           </div>
         ))}
         {!trip.items.length && <p className="text-sm text-muted-foreground">No service lines yet. Adding lines makes the trip price and cost calculate automatically.</p>}
@@ -251,9 +275,16 @@ function TripDetail({ slug, trip, data, money, pending, run, back, start }: { st
             <select className={inp} value={item.supplierId} onChange={(e) => setItem({ ...item, supplierId: e.target.value })}><option value="">Supplier…</option>{data.suppliers.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}</select>
             <input type="number" min={0} className={inp} placeholder="Cost" value={item.costPrice} onChange={(e) => setItem({ ...item, costPrice: e.target.value })} />
             <input type="number" min={0} className={inp} placeholder="Sell" value={item.sellPrice} onChange={(e) => setItem({ ...item, sellPrice: e.target.value })} />
+            {item.kind === "FLIGHT" && (
+              <div className="md:col-span-6">
+                <button type="button" className={btn2} onClick={() => setFlightOpen(!flightOpen)}>{flightOpen ? "Hide flight details" : "Add flight details (optional)"}</button>
+                {flightOpen && <div className="mt-2"><FlightFields draft={flightDraft} setDraft={setFlightDraft} travellerNames={trip.travellers.map((t) => t.fullName)} /></div>}
+              </div>
+            )}
+            <FxFields item={item} setItem={(v) => setItem({ ...item, ...v })} tripCurrency={trip.currency} />
             <label className="text-xs text-muted-foreground md:col-span-3">Start date (for the itinerary)<input type="date" className={`${inp} mt-1`} value={item.startDate} onChange={(e) => setItem({ ...item, startDate: e.target.value })} /></label>
             <label className="text-xs text-muted-foreground md:col-span-3">End date (optional)<input type="date" className={`${inp} mt-1`} value={item.endDate} onChange={(e) => setItem({ ...item, endDate: e.target.value })} /></label>
-            <button className={`${btn} md:col-span-6`} disabled={pending} onClick={() => run(() => A.saveTravelItem(slug, trip.id, { ...item, supplierId: item.supplierId || undefined, confirmationRef: item.confirmationRef || undefined, startDate: item.startDate || undefined, endDate: item.endDate || undefined, costPrice: Number(item.costPrice || 0), sellPrice: Number(item.sellPrice || 0) }), "Service added", () => setItem({ ...item, description: "", costPrice: "", sellPrice: "", startDate: "", endDate: "" }))}>Add service</button>
+            <button className={`${btn} md:col-span-6`} disabled={pending} onClick={() => run(() => A.saveTravelItem(slug, trip.id, { ...item, supplierId: item.supplierId || undefined, confirmationRef: item.confirmationRef || undefined, startDate: item.startDate || undefined, endDate: item.endDate || undefined, costPrice: Number(item.costPrice || 0), sellPrice: Number(item.sellPrice || 0), costCurrency: item.costCurrency || undefined, costAmount: item.costAmount || undefined, fxRate: item.fxRate || undefined, ...(item.kind === "FLIGHT" && flightOpen ? draftPayload(flightDraft) : {}) }), "Service added", () => { setFlightDraft(emptyDraft()); setFlightOpen(false); setItem({ ...item, description: "", costPrice: "", sellPrice: "", startDate: "", endDate: "", costCurrency: "", costAmount: "", fxRate: "" }); })}>Add service</button>
           </div>
         )}
       </div>
@@ -337,6 +368,7 @@ function TripDetail({ slug, trip, data, money, pending, run, back, start }: { st
             </div>
           )}
         </div>
+        <InstalmentPanel slug={slug} trip={trip} pending={pending} run={run} money={money} />
         <div className={card}>
           <h3 className="mb-2 text-sm font-bold">Travellers</h3>
           {trip.travellers.map((t) => { const w = passportWarning(t.passportExpiry, trip.departDate); return (
@@ -418,6 +450,7 @@ function Packages({ slug, data, pending, run, money }: { slug: string; data: Dat
             {p.seats > 0 && <div className="mt-1 h-1.5 rounded bg-muted"><div className="h-1.5 rounded bg-primary" style={{ width: `${Math.min(100, (p.booked / p.seats) * 100)}%` }} /></div>}
             <button className={`${btn} mt-3 mr-2`} onClick={() => setDepId(p.id)}>Manifest &amp; rooming</button>
             <button className={`${btn2} mt-3`} onClick={() => setF({ id: p.id, name: p.name, destination: p.destination, durationDays: p.durationDays, pricePerPerson: String(p.pricePerPerson), departureDate: dateInput(p.departureDate), seats: p.seats, depositPercent: p.depositPercent, inclusions: p.inclusions ?? "", isActive: p.isActive })}>Edit</button>
+            <DepartureManager slug={slug} pkg={p} pending={pending} run={run} money={money} />
           </div>
         ))}
         {!data.packages.length && <Empty text="No packages yet. Create a group tour or pilgrimage with seats and a fixed price." />}
