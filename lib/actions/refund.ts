@@ -270,6 +270,63 @@ export async function issueRefund(
     return { success: true, data: undefined };
   }
 
+  // Paid from the customer's store wallet: no gateway to call. The refund goes
+  // straight back into that wallet, in the same transaction that flips the payment,
+  // so the money can neither be returned twice nor lost between the two steps.
+  if (payment.provider === "WALLET") {
+    if (!payment.walletId) return { success: false, error: "This wallet payment has no wallet attached." };
+    const walletId = payment.walletId;
+    const trimmedReason = reason.trim();
+    try {
+      await prisma.$transaction(async (tx) => {
+        const claimed = await tx.payment.updateMany({
+          where: { id: payment.id, status: "SUCCESSFUL" },
+          data: {
+            status: "REFUNDED",
+            refundReference: `WALLET-REFUND-${payment.id}`,
+            refundedAmount: payment.amount,
+            refundReason: trimmedReason,
+            refundedByEmail: access.actorEmail,
+            refundedAt: new Date(),
+          },
+        });
+        if (!claimed.count) throw new Error("ALREADY_REFUNDED");
+        const wallet = await tx.storeWallet.findUnique({ where: { id: walletId } });
+        if (!wallet) throw new Error("WALLET_NOT_FOUND");
+        const updatedWallet = await tx.storeWallet.update({ where: { id: wallet.id }, data: { balance: { increment: payment.amount } } });
+        await tx.walletTransaction.create({
+          data: {
+            walletId: wallet.id,
+            type: "REFUND",
+            amount: payment.amount,
+            balanceAfter: updatedWallet.balance,
+            reference: `REFUND-${payment.reference}`,
+            paymentId: payment.id,
+            orderId: order.id,
+            note: `Refund for order ${order.id.slice(-8).toUpperCase()}: ${trimmedReason}`,
+          },
+        });
+        await recordPayoutRefundEffect(tx, payment.id);
+        await tx.order.update({ where: { id: order.id }, data: { status: "REFUNDED" } });
+        await tx.orderStatusEvent.create({ data: { orderId: order.id, status: "REFUNDED", note: `Refunded to wallet: ${trimmedReason}` } });
+        await restoreInventoryForRefund(tx, order.id, access.store.id);
+      }, { isolationLevel: "Serializable" });
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "";
+      if (message === "ALREADY_REFUNDED") return { success: false, error: "This payment was already refunded by another request." };
+      return { success: false, error: "Couldn't return the wallet payment." };
+    }
+    await postOrderRefundToLedger(order.id);
+    await reverseReferralForOrderSafely(order.id);
+    await logActivity({ storeId: access.store.id, action: "order.refunded", target: orderId, metadata: { amount: Number(payment.amount), method: "wallet", reason: trimmedReason.slice(0, 200) } });
+    await emitWebhookEvent("PAYMENT_REFUNDED", access.store.id, { orderId: order.id, paymentId: payment.id, amount: Number(payment.amount), currency: payment.currency, reason: trimmedReason });
+    revalidatePath(`/store/${slug}/admin/orders/${orderId}`);
+    revalidatePath(`/store/${slug}/admin/orders`);
+    revalidatePath(`/store/${slug}/admin/payments`);
+    revalidatePath(`/store/${slug}/account/wallet`);
+    return { success: true, data: undefined };
+  }
+
   // Flutterwave's refund endpoint takes their own numeric transaction id,
   // not our tx_ref (Payment.reference) — pull it back out of the raw
   // verification payload saved when the charge was confirmed.

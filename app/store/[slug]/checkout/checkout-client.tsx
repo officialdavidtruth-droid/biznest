@@ -7,10 +7,11 @@ import Link from "next/link";
 import { useCart } from "@/lib/cart-context";
 import { submitCheckout } from "@/lib/checkout/client";
 import { listActiveDeliveryZones } from "@/lib/actions/delivery-zone";
+import { getCheckoutWalletBalance } from "@/lib/actions/customer-wallet";
 import { DeliveryZoneOptions } from "@/components/checkout/delivery-zone-options";
 import { toast } from "sonner";
 import { openKorapayInline } from "@/lib/checkout/korapay-inline";
-import { ShieldCheck, Lock, Truck, ChevronLeft, CreditCard } from "lucide-react";
+import { ShieldCheck, Lock, Truck, ChevronLeft, CreditCard, Wallet } from "lucide-react";
 import { formatNumber } from "@/lib/i18n/locale";
 
 declare global {
@@ -70,10 +71,21 @@ export function CheckoutClient({ slug, palette = DEFAULT_STORE_PALETTE }: { slug
     listActiveDeliveryZones(slug).then(setZones);
   }, [slug]);
 
+  // Spendable store-wallet balance (null = signed out / no wallet). The server
+  // re-checks everything at payment time; this only decides what to offer.
+  const [walletBalance, setWalletBalance] = useState<number | null>(null);
+  const [payWith, setPayWith] = useState<"card" | "wallet">("card");
+  useEffect(() => {
+    getCheckoutWalletBalance(slug).then((w) => setWalletBalance(w ? w.balance : null)).catch(() => setWalletBalance(null));
+  }, [slug]);
+
   const selectedZone = fulfillment === "delivery" ? zones.find((z) => z.id === zoneId) : undefined;
   const deliveryFee = selectedZone ? Number(selectedZone.fee) : 0;
   const total = subtotal + deliveryFee;
   const currency = cartItems[0]?.currency ?? "NGN";
+  const walletOffered = walletBalance !== null && currency === "NGN";
+  const walletCovers = walletOffered && walletBalance >= total;
+  const usingWallet = payWith === "wallet" && walletCovers;
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -91,6 +103,7 @@ export function CheckoutClient({ slug, palette = DEFAULT_STORE_PALETTE }: { slug
       fulfillment: zones.length > 0 ? fulfillment : undefined,
       shippingAddress: form,
       idempotencyKey,
+      paymentMethod: usingWallet ? "wallet" : "card",
     });
     setIsSubmitting(false);
 
@@ -235,6 +248,40 @@ export function CheckoutClient({ slug, palette = DEFAULT_STORE_PALETTE }: { slug
               </div>
             )}
 
+            {walletOffered && (
+              <div style={{ background: CARD, borderRadius: "1rem", boxShadow: "0 1px 3px rgba(18,18,18,0.06)" }} className="mb-5 p-6">
+                <div className="mb-3 flex items-center gap-2">
+                  <Wallet className="h-4 w-4" style={{ color: ACCENT }} />
+                  <h2 style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }} className="text-base font-bold">Payment method</h2>
+                </div>
+                <div className="grid grid-cols-2 gap-2" role="radiogroup" aria-label="Payment method">
+                  {([["card", "Card / bank"], ["wallet", "Store wallet"]] as const).map(([mode, label]) => {
+                    const disabled = mode === "wallet" && !walletCovers;
+                    return (
+                      <button
+                        key={mode}
+                        type="button"
+                        role="radio"
+                        aria-checked={payWith === mode && !disabled}
+                        disabled={disabled}
+                        onClick={() => setPayWith(mode)}
+                        style={{ border: `1px solid ${payWith === mode && !disabled ? ACCENT : `${INK}22`}`, background: payWith === mode && !disabled ? `${ACCENT}14` : SURFACE, color: INK, opacity: disabled ? 0.5 : 1 }}
+                        className="rounded-lg px-4 py-2.5 text-sm font-semibold"
+                      >
+                        {label}
+                      </button>
+                    );
+                  })}
+                </div>
+                <p style={{ opacity: 0.6 }} className="mt-3 text-sm">
+                  {walletCovers
+                    ? `Wallet balance: ${currency} ${formatNumber(walletBalance ?? 0)}. Paying from it is instant.`
+                    : `Wallet balance: ${currency} ${formatNumber(walletBalance ?? 0)}, not enough for this order.`}{" "}
+                  <Link href={`/store/${slug}/account/wallet`} style={{ color: ACCENT }} className="font-semibold no-underline hover:opacity-80">Add funds</Link>
+                </p>
+              </div>
+            )}
+
             <div style={{ background: CARD, borderRadius: "1rem", boxShadow: "0 1px 3px rgba(18,18,18,0.06)" }} className="p-6">
               <div className="mb-4 flex items-center gap-2">
                 <ShieldCheck className="h-4 w-4" style={{ color: ACCENT }} />
@@ -328,7 +375,7 @@ export function CheckoutClient({ slug, palette = DEFAULT_STORE_PALETTE }: { slug
                 style={{ background: ACCENT, color: palette.onAccent, boxShadow: `0 8px 20px ${ACCENT}4d` }}
                 className="mt-1 flex items-center justify-center gap-2 rounded-xl py-3.5 text-sm font-semibold transition-transform hover:-translate-y-0.5 disabled:opacity-50 disabled:hover:translate-y-0"
               >
-                {isSubmitting ? "Opening secure card checkout…" : `Pay ${currency} ${formatNumber(total)}`}
+                {isSubmitting ? (usingWallet ? "Paying from wallet…" : "Opening secure card checkout…") : usingWallet ? `Pay ${currency} ${formatNumber(total)} from wallet` : `Pay ${currency} ${formatNumber(total)}`}
               </button>
               <p className="flex items-center justify-center gap-2 text-center text-[11px] uppercase tracking-widest" style={{ opacity: 0.55 }}><CreditCard className="h-3.5 w-3.5" /> Visa · Mastercard · Verve · Secure card checkout</p>
             </div>

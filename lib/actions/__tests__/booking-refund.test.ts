@@ -17,6 +17,19 @@ describe("booking refund lifecycle", () => {
     expect(refund).toContain('type: "REFUND"');
   });
 
+  it("refunds wallet-paid ORDERS back into the wallet, never to a gateway", () => {
+    const orderRefund = refund.slice(refund.indexOf("export async function issueRefund("), refund.indexOf("Refund clawback ledger"));
+    const walletBranch = orderRefund.indexOf('payment.provider === "WALLET"');
+    expect(walletBranch).toBeGreaterThan(-1);
+    // The wallet branch must come before the gateway call so a wallet payment can never reach refundPayment().
+    expect(walletBranch).toBeLessThan(orderRefund.indexOf("refundPayment("));
+    const branch = orderRefund.slice(walletBranch, orderRefund.indexOf("refundPayment("));
+    expect(branch).toContain("balance: { increment: payment.amount }");
+    expect(branch).toContain("orderId: order.id");
+    expect(branch).toContain("recordPayoutRefundEffect(tx, payment.id)");
+    expect(branch).toContain('isolationLevel: "Serializable"');
+  });
+
   it("records gateway refunds idempotently", () => {
     expect(refund).toContain('status: "REFUNDED"');
     expect(refund).toContain('where: { id: payment.id, status: "SUCCESSFUL" }');

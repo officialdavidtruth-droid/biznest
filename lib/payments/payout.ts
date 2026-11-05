@@ -573,13 +573,13 @@ export async function markPayoutPaidManually(payoutId: string, note: string): Pr
 
 /**
  * One-off catch-up for wallet payments made before wallet bookings triggered a
- * payout. Finds successful, unrefunded wallet booking payments with no Payout
+ * payout. Finds successful, unrefunded wallet booking and order payments with no Payout
  * row and (unless dryRun) queues + sends them. Idempotent: Payout.paymentId is unique.
  */
 export async function backfillWalletPayouts(opts: { dryRun?: boolean; limit?: number } = {}): Promise<{ found: number; totalNaira: number; queued: number }> {
   const dryRun = opts.dryRun ?? true;
   const payments = await prisma.payment.findMany({
-    where: { provider: "WALLET", purpose: "SERVICE_BOOKING", status: "SUCCESSFUL", payout: { is: null }, storeId: { not: null } },
+    where: { provider: "WALLET", purpose: { in: ["SERVICE_BOOKING", "ORDER"] }, status: "SUCCESSFUL", payout: { is: null }, storeId: { not: null } },
     select: { reference: true, amount: true },
     orderBy: { createdAt: "asc" },
     take: opts.limit ?? 100,

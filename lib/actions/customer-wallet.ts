@@ -45,6 +45,22 @@ export async function getWallet(storeSlug: string) {
   });
 }
 
+/**
+ * Read-only: the signed-in customer's spendable balance at this store, for the
+ * "pay from wallet" option at checkout. Null when signed out or the wallet is
+ * missing/frozen, so the option simply doesn't appear. Never creates a wallet.
+ */
+export async function getCheckoutWalletBalance(storeSlug: string): Promise<{ balance: number } | null> {
+  const customer = await getCustomer(storeSlug);
+  if (!customer) return null;
+  const wallet = await prisma.storeWallet.findFirst({
+    where: { userId: customer.userId, store: { slug: storeSlug } },
+    select: { balance: true, status: true, currency: true },
+  });
+  if (!wallet || wallet.status !== "ACTIVE" || String(wallet.currency).toUpperCase() !== "NGN") return null;
+  return { balance: Number(wallet.balance) };
+}
+
 export async function startWalletFunding(
   storeSlug: string,
   amountNaira: number

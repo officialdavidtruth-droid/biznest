@@ -32,6 +32,7 @@ import { manualPayInfoFromStore, manualPayReady } from "@/lib/payments/manual-tr
 import { resolveStoreGateway } from "@/lib/payments/store-gateway";
 import { getTransferHolds } from "@/lib/payments/stock-holds";
 import { getOrderPayableNaira } from "@/lib/payments/order-payable";
+import { payOrderFromWallet } from "@/lib/payments/pay-order-wallet";
 import { settlePrepaidQuoteOrder } from "@/lib/payments/settle-prepaid-order";
 import { revalidatePath } from "next/cache";
 import { checkRateLimit } from "@/lib/rate-limit";
@@ -111,6 +112,23 @@ async function prepareManualTransferOrder(
     data: { status: "PENDING_PAYMENT", paymentProvider: "CASH", checkoutUrl: payUrl },
   });
   return { success: true, data: { authorizationUrl: payUrl } };
+}
+
+/**
+ * Pays an order from the buyer's wallet and returns the same shape as a charge,
+ * so callers can treat "paid already" like any other redirect target.
+ */
+async function payOrderWithWalletResult(
+  order: { id: string },
+  store: { slug: string; customDomain: string | null; customDomainStatus: string },
+  userId: string
+): Promise<ActionResult<{ authorizationUrl: string }>> {
+  const paid = await payOrderFromWallet({ orderId: order.id, userId });
+  if (!paid.ok) {
+    return { success: false, error: paid.message };
+  }
+  revalidatePath(`/store/${store.slug}/account/wallet`);
+  return { success: true, data: { authorizationUrl: buildStoreUrl(store, `/orders/${order.id}/confirmation`) } };
 }
 
 /**
@@ -596,9 +614,13 @@ export async function startCheckout(
         success: true,
         data: {
           authorizationUrl:
-            `${APP_URL}/${store.slug}/orders/${existing.id}/confirmation`,
+            `${APP_URL}/store/${store.slug}/orders/${existing.id}/confirmation`,
         },
       };
+    }
+
+    if (data.paymentMethod === "wallet") {
+      return payOrderWithWalletResult(existing, store, session.user.id);
     }
 
     if (
@@ -678,6 +700,7 @@ export async function startCheckout(
     if (error?.code === "P2002") {
       const raced = await prisma.order.findUnique({ where: { idempotencyKey: data.idempotencyKey } });
       if (raced && raced.storeId === store.id && raced.buyerId === session.user.id) {
+        if (data.paymentMethod === "wallet" && (raced.status === "PENDING_PAYMENT" || raced.status === "CANCELLED")) return payOrderWithWalletResult(raced, store, session.user.id);
         if (raced.status === "PENDING_PAYMENT" && raced.checkoutUrl) return { success: true, data: { authorizationUrl: raced.checkoutUrl } };
         if (raced.status !== "PENDING_PAYMENT" && raced.status !== "CANCELLED") return { success: true, data: { authorizationUrl: `${APP_URL}/store/${store.slug}/orders/${raced.id}/confirmation` } };
         return chargeExistingOrder(raced, store, data.shippingAddress.fullName, session.user.email);
@@ -686,14 +709,16 @@ export async function startCheckout(
     return { success: false, error: "We couldn't create your order safely. Please try again." };
   }
 
-  const chargeResult =
-    await chargeExistingOrder(
-      order,
-      store,
-      data.shippingAddress
-        .fullName,
-      session.user.email
-    );
+  const chargeResult: Awaited<ReturnType<typeof chargeExistingOrder>> =
+    data.paymentMethod === "wallet"
+      ? await payOrderWithWalletResult(order, store, session.user.id)
+      : await chargeExistingOrder(
+          order,
+          store,
+          data.shippingAddress
+            .fullName,
+          session.user.email
+        );
 
   if (!chargeResult.success) {
     return chargeResult;
