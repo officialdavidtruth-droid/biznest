@@ -17,12 +17,20 @@ const base = { phone: "0803 123 4567", firstName: "Ada Obi", storeName: "Zara Fa
 beforeEach(() => {
   vi.clearAllMocks();
   delete process.env.WHATSAPP_CUSTOMER_TEMPLATE;
+  process.env.CUSTOMER_MESSAGING_ENABLED = "true";
   m.rate.mockResolvedValue({ allowed: true });
   m.wa.mockResolvedValue({ success: true });
   m.sms.mockResolvedValue({ success: true });
 });
 
 describe("messageCustomer", () => {
+  it("is dormant unless CUSTOMER_MESSAGING_ENABLED=true", async () => {
+    delete process.env.CUSTOMER_MESSAGING_ENABLED;
+    expect(await messageCustomer(base)).toEqual({ sent: false, reason: "not_configured" });
+    expect(m.wa).not.toHaveBeenCalled();
+    expect(m.sms).not.toHaveBeenCalled();
+  });
+
   it("sends on WhatsApp first, to the normalised international number", async () => {
     const out = await messageCustomer(base);
     expect(out).toEqual({ sent: true, channel: "WHATSAPP" });

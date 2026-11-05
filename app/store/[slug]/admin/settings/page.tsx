@@ -1,4 +1,5 @@
 // Route: /store/[slug]/admin/settings
+import { customerMessagingEnabled } from "@/lib/customer-messaging";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { updateStoreSettings } from "@/lib/actions/store";
@@ -23,6 +24,7 @@ export default async function SettingsPage({ params }: { params: Promise<{ slug:
 
   const session = await auth();
   const isOwner = session?.user?.id === store.business.userId;
+  const messagingOn = customerMessagingEnabled();
   // Store URL and custom domain are owner/platform-support only (see assertStoreOwnerAccess).
   const accessRole = session?.user?.id ? await getStoreAccessRole(session.user.id, session.user.role, store) : null;
   const canManageIdentity = accessRole === "OWNER" || accessRole === "PLATFORM_STAFF";
@@ -89,21 +91,27 @@ export default async function SettingsPage({ params }: { params: Promise<{ slug:
 
         {isOwner && (
           <div className="rounded-lg border bg-background p-4">
-            <p className="mb-1 text-sm font-medium">Customer messages</p>
+            <p className="mb-1 text-sm font-medium">{messagingOn ? "Customer messages" : "Review requests"}</p>
             <p className="mb-3 text-xs text-muted-foreground">
-              Automatic WhatsApp messages to your customers, with SMS as the backup. Every message names your store. Each one is sent only once per order, and only to the phone number the customer gave at checkout. SMS uses credit, so these are off until you switch them on.
+              {messagingOn
+                ? "Automatic WhatsApp messages to your customers, with SMS as the backup. Every message names your store. Each one is sent only once per order, and only to the phone number the customer gave at checkout. SMS uses credit, so these are off until you switch them on."
+                : "Automatically email customers asking for a review. Sent once, under your store's name."}
             </p>
-            <label className="mb-3 flex items-start gap-2 text-sm">
-              <input type="checkbox" name="msgOrderUpdates" defaultChecked={store.msgOrderUpdates} className="mt-1" />
-              <span>Order and delivery updates<span className="block text-xs text-muted-foreground">Payment received, being prepared, ready or on its way (with the tracking link), completed, cancelled.</span></span>
-            </label>
-            <label className="mb-3 flex items-start gap-2 text-sm">
-              <input type="checkbox" name="msgAbandonedCart" defaultChecked={store.msgAbandonedCart} className="mt-1" />
-              <span>Abandoned cart reminders<span className="block text-xs text-muted-foreground">One reminder when a customer starts checkout but doesn&apos;t pay, with a link back to their cart.</span></span>
-            </label>
+            {messagingOn && (
+              <>
+                <label className="mb-3 flex items-start gap-2 text-sm">
+                  <input type="checkbox" name="msgOrderUpdates" defaultChecked={store.msgOrderUpdates} className="mt-1" />
+                  <span>Order and delivery updates<span className="block text-xs text-muted-foreground">Payment received, being prepared, ready or on its way (with the tracking link), completed, cancelled.</span></span>
+                </label>
+                <label className="mb-3 flex items-start gap-2 text-sm">
+                  <input type="checkbox" name="msgAbandonedCart" defaultChecked={store.msgAbandonedCart} className="mt-1" />
+                  <span>Abandoned cart reminders<span className="block text-xs text-muted-foreground">One reminder when a customer starts checkout but doesn&apos;t pay, with a link back to their cart.</span></span>
+                </label>
+              </>
+            )}
             <label className="flex items-start gap-2 text-sm">
               <input type="checkbox" name="msgReviewRequests" defaultChecked={store.msgReviewRequests} className="mt-1" />
-              <span>Review requests<span className="block text-xs text-muted-foreground">Ask for a review about 3 days after an order is delivered or a booking is completed (by message, and by email when there is one).</span></span>
+              <span>Review requests<span className="block text-xs text-muted-foreground">Ask for a review about 3 days after an order is delivered or a booking is completed{messagingOn ? " (by message, and by email when there is one)" : ""}.</span></span>
             </label>
           </div>
         )}

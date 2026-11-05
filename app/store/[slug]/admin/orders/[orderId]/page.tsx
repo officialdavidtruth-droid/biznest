@@ -1,4 +1,5 @@
 // Route: /store/[slug]/admin/orders/[orderId]
+import { customerMessagingEnabled } from "@/lib/customer-messaging";
 import { formatShipsOn } from "@/lib/preorder";
 import { isImageProofUrl } from "@/lib/payments/manual-transfer";
 import { getOrder } from "@/lib/actions/order";
@@ -42,7 +43,7 @@ export default async function StoreOrderDetailPage({
       })
     : null;
 
-  const messagesOn = !!(await prisma.store.findUnique({ where: { id: order.storeId }, select: { msgOrderUpdates: true } }))?.msgOrderUpdates;
+  const messagesOn = customerMessagingEnabled() && !!(await prisma.store.findUnique({ where: { id: order.storeId }, select: { msgOrderUpdates: true } }))?.msgOrderUpdates;
 
   const address = order.shippingAddress as {
     fullName: string; phone: string; address: string; city: string; state: string; country: string;

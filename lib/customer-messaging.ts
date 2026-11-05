@@ -5,6 +5,15 @@ import { normalizeWhatsAppNumber } from "@/lib/utils/whatsapp-link";
 import { checkRateLimit } from "@/lib/rate-limit";
 import { logError, errorMeta } from "@/lib/observability/log";
 
+/**
+ * Master switch for automatic WhatsApp/SMS customer messages. OFF unless CUSTOMER_MESSAGING_ENABLED=true,
+ * so the feature can be shipped dormant and turned on later by setting that one variable (plus the
+ * Termii / WhatsApp keys). Read at call time, not import time.
+ */
+export function customerMessagingEnabled(): boolean {
+  return process.env.CUSTOMER_MESSAGING_ENABLED === "true";
+}
+
 export type CustomerMessageOutcome =
   | { sent: true; channel: "WHATSAPP" | "SMS" }
   | { sent: false; reason: "no_phone" | "bad_phone" | "throttled" | "not_configured" | "failed"; detail?: string };
@@ -30,6 +39,7 @@ export async function messageCustomer(args: {
   perHour?: number;
 }): Promise<CustomerMessageOutcome> {
   try {
+    if (!customerMessagingEnabled()) return { sent: false, reason: "not_configured" };
     if (!args.phone) return { sent: false, reason: "no_phone" };
     const to = normalizeWhatsAppNumber(args.phone);
     if (!to) return { sent: false, reason: "bad_phone" };
