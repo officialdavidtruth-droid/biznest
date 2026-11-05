@@ -20,6 +20,7 @@ const STORE_LOGIN_ERROR_MESSAGES: Record<string, string> = {
   ACCOUNT_LOCKED: "Too many failed attempts. Try again in 15 minutes.",
   ACCOUNT_BANNED: "This account has been suspended. Contact support.",
   RATE_LIMITED: "Too many sign-in attempts. Please wait a few minutes and try again.",
+  EMAIL_NOT_VERIFIED: "Please verify your email before signing in. Check your inbox for the link.",
   STORE_ACCOUNT_NOT_FOUND: "We couldn't find an account with this store. Please sign up first.",
 };
 

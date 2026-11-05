@@ -76,8 +76,8 @@ export async function findOrCreatePosProfile(
  */
 export async function ensureAccountProfile(
   db: ProfileDb,
-  input: { storeId: string; userId: string; name: string; email: string | null; phone?: string | null; preferences?: unknown },
-): Promise<{ id: string; created: boolean }> {
+  input: { storeId: string; userId: string; name: string; email: string | null; phone?: string | null; preferences?: unknown; /** Pass false for an account whose email isn't verified yet: it then can't take over an existing profile (e.g. from a POS sale) just by typing that email. Omitted = trusted. */ emailVerified?: boolean },
+): Promise<{ id: string; created: boolean; deferred?: boolean }> {
   const { storeId, userId } = input;
   const email = input.email?.trim().toLowerCase() || null;
   const phone = canonicalPhone(input.phone);
@@ -91,6 +91,9 @@ export async function ensureAccountProfile(
     }
 
     const byEmail = email ? await db.storeCustomerProfile.findFirst({ where: { storeId, email }, select: SELECT }) : null;
+    // An unverified email proves nothing: leave the existing profile alone until the address is confirmed
+    // (verification calls this again with emailVerified: true and the profile is linked then).
+    if (byEmail && !byEmail.userId && input.emailVerified === false) return { id: "", created: false, deferred: true };
     if (byEmail && !byEmail.userId) {
       const data: Record<string, unknown> = { userId, ...prefs };
       if (!byEmail.name || byEmail.name === byEmail.email || byEmail.name === byEmail.phone || byEmail.name === "Customer") data.name = input.name;

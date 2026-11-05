@@ -300,14 +300,13 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           // the generic login.
         }
 
-        // TEMPORARILY DISABLED: email verification is required in principle,
-        // but Resend is still in sandbox mode (only delivers to the
-        // account's own email), so real users can't yet complete it. Add
-        // this check back once a verified sending domain is configured —
-        // see EMAIL_FROM in .env.example.
-        // if (!user.emailVerified) {
-        //   throw new Error("EMAIL_NOT_VERIFIED");
-        // }
+        // Email verification at sign-in is OFF by default so existing accounts are never locked out
+        // (and while the sending domain is still being set up). Turn it on once EMAIL_FROM is a verified
+        // domain by setting REQUIRE_EMAIL_VERIFICATION=true. Regardless of this switch, an unverified
+        // email can't be linked to an existing customer profile (see ensureAccountProfile).
+        if (process.env.REQUIRE_EMAIL_VERIFICATION === "true" && !user.emailVerified) {
+          throw new Error("EMAIL_NOT_VERIFIED");
+        }
 
         return {
           id: user.id,

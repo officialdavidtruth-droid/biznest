@@ -289,6 +289,7 @@ export async function signInStoreCustomer(
         | "ACCOUNT_LOCKED"
         | "ACCOUNT_BANNED"
         | "RATE_LIMITED"
+        | "EMAIL_NOT_VERIFIED"
         | "STORE_ACCOUNT_NOT_FOUND";
     }
 > {
@@ -347,6 +348,7 @@ export async function signInStoreCustomer(
       email: true,
       passwordHash: true,
       isBanned: true,
+      emailVerified: true,
       lockedUntil: true,
       failedLoginAttempts: true,
       storeMemberships: {
@@ -430,6 +432,11 @@ export async function signInStoreCustomer(
           ? "ACCOUNT_LOCKED"
           : "INVALID_CREDENTIALS",
     };
+  }
+
+  // Off unless REQUIRE_EMAIL_VERIFICATION=true, so existing customers are never locked out before the sending domain is ready.
+  if (process.env.REQUIRE_EMAIL_VERIFICATION === "true" && !user.emailVerified) {
+    return { success: false, code: "EMAIL_NOT_VERIFIED" };
   }
 
   await prisma.user.update({

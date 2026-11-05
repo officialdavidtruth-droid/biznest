@@ -11,6 +11,8 @@ import { notifyStoreOfCustomerMessage } from "@/lib/notifications/notify";
 import { checkRateLimit } from "@/lib/rate-limit";
 import { sanitizePreferences } from "@/lib/customer-preferences";
 import { canonicalPhone, phoneKey } from "@/lib/phone";
+import { deleteStoreCustomerAccount } from "@/lib/customer-privacy";
+import { signOutStoreCustomer } from "@/lib/store-customer-auth";
 import { CUSTOMER_MESSAGE_LIMIT, validateMessageContent } from "@/lib/message-limits";
 
 // ============ ADDRESSES ============
@@ -456,11 +458,11 @@ export async function getStoreCustomerPreferences(storeSlug: string) {
 export async function updateStoreCustomerPreferences(storeSlug: string, preferences: Record<string, unknown>): Promise<ActionResult> {
   const ctx = await getStoreCustomerContext(storeSlug);
   if (!ctx) return { success: false, error: "You don't have a customer account with this store." };
-  const user = await prisma.user.findUnique({ where: { id: ctx.userId }, select: { name: true, email: true, phone: true } });
+  const user = await prisma.user.findUnique({ where: { id: ctx.userId }, select: { name: true, email: true, phone: true, emailVerified: true } });
   const jsonPreferences = sanitizePreferences(preferences) as Prisma.InputJsonValue;
   // Reuses a profile that already exists for this email (e.g. from a POS sale)
   // rather than creating a duplicate, and writes the preferences onto it.
-  await ensureAccountProfile(prisma, { storeId: ctx.storeId, userId: ctx.userId, name: user?.name || user?.email || "Customer", email: user?.email ?? null, phone: user?.phone, preferences: jsonPreferences });
+  await ensureAccountProfile(prisma, { storeId: ctx.storeId, userId: ctx.userId, name: user?.name || user?.email || "Customer", email: user?.email ?? null, phone: user?.phone, preferences: jsonPreferences, emailVerified: !!user?.emailVerified });
   revalidatePath(`/store/${storeSlug}/account/preferences`);
   revalidatePath(`/store/${storeSlug}/account`);
   return { success: true, data: undefined };
@@ -757,15 +759,30 @@ export async function updateStoreCustomerDetails(storeSlug: string, input: { nam
   const limit = await checkRateLimit(`customer-details:${ctx.userId}`, 20, 60 * 60 * 1000);
   if (!limit.allowed) return { success: false, error: "Too many changes. Please try again later." };
 
-  const user = await prisma.user.findUnique({ where: { id: ctx.userId }, select: { email: true } });
-  const { id: profileId } = await ensureAccountProfile(prisma, { storeId: ctx.storeId, userId: ctx.userId, name, email: user?.email ?? null });
-  try {
-    await prisma.storeCustomerProfile.update({ where: { id: profileId }, data: { name, phone }, select: { id: true } });
-  } catch (err) {
-    if ((err as { code?: string } | null)?.code === "P2002") return { success: false, error: "We couldn't save that phone number. Try a different one." };
-    throw err;
+  const user = await prisma.user.findUnique({ where: { id: ctx.userId }, select: { email: true, emailVerified: true } });
+  const ensured = await ensureAccountProfile(prisma, { storeId: ctx.storeId, userId: ctx.userId, name, email: user?.email ?? null, emailVerified: !!user?.emailVerified });
+  if (!ensured.deferred) {
+    try {
+      await prisma.storeCustomerProfile.update({ where: { id: ensured.id }, data: { name, phone }, select: { id: true } });
+    } catch (err) {
+      if ((err as { code?: string } | null)?.code === "P2002") return { success: false, error: "We couldn't save that phone number. Try a different one." };
+      throw err;
+    }
   }
   await prisma.user.update({ where: { id: ctx.userId }, data: { name, phone }, select: { id: true } });
   revalidatePath(`/store/${storeSlug}/account`);
+  return { success: true, data: undefined };
+}
+
+
+/** Permanently deletes the signed-in customer's account with this store (personal details removed, order records kept anonymously). */
+export async function deleteMyStoreAccount(storeSlug: string, password: string): Promise<ActionResult> {
+  const membership = await getStoreCustomerContext(storeSlug);
+  if (!membership) return { success: false, error: "You don't have a customer account with this store." };
+  const limit = await checkRateLimit(`customer-delete:${membership.userId}`, 5, 60 * 60 * 1000);
+  if (!limit.allowed) return { success: false, error: "Too many attempts. Please try again later." };
+  const r = await deleteStoreCustomerAccount(membership.userId, membership.storeId, password);
+  if (!r.success) return { success: false, error: r.error };
+  await signOutStoreCustomer();
   return { success: true, data: undefined };
 }

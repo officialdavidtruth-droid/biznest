@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/prisma";
+import { ensureAccountProfile } from "@/lib/customer-profile-store";
 import { reconcileReferralsForReferee } from "@/lib/payments/referral-award";
 import { ResendVerification } from "@/components/forms/resend-verification";
 import { StoreNotice, StoreButtonLink, pickStoreColor, type NoticeStore } from "@/components/auth/store-notice";
@@ -86,6 +87,12 @@ export default async function VerifyEmailPage({
   await prisma.verificationToken.delete({ where: { token } }).catch(() => {});
   // A referral reward may have been waiting on this verification.
   await reconcileReferralsForReferee(record.identifier);
+  // Now that the address is proven, a store customer can be linked to the profile the store already
+  // holds for it (e.g. from a POS sale). Signup deliberately did not do this while it was unverified.
+  const verified = await prisma.user.findUnique({ where: { id: record.identifier }, select: { name: true, email: true, role: true, customerScopeStoreId: true } });
+  if (verified?.role === "CUSTOMER" && verified.customerScopeStoreId) {
+    await ensureAccountProfile(prisma, { storeId: verified.customerScopeStoreId, userId: record.identifier, name: verified.name || verified.email, email: verified.email, emailVerified: true }).catch(() => {});
+  }
 
   return (
     <Message

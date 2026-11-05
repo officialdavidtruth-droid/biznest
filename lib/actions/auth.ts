@@ -105,7 +105,7 @@ export async function registerUser(
   let referralNotice: string | undefined;
   if (storeForCustomer) {
     await prisma.storeCustomer.create({ data: { userId: user.id, storeId: storeForCustomer.id } });
-    await ensureAccountProfile(prisma, { userId: user.id, storeId: storeForCustomer.id, name: parsed.data.name, email: normalizedEmail });
+    await ensureAccountProfile(prisma, { userId: user.id, storeId: storeForCustomer.id, name: parsed.data.name, email: normalizedEmail, emailVerified: false });
 
     // Arrived through a friend's referral link (?ref=CODE). Best-effort: an
     // invalid/expired code or a program that's been switched off must never

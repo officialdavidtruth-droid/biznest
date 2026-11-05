@@ -73,6 +73,27 @@ describe("findOrCreatePosProfile", () => {
   });
 });
 
+describe("ensureAccountProfile with an unverified email", () => {
+  it("does not take over the profile a POS sale created for that email", async () => {
+    const f = fakeDb([row("POS", { email: "ada@x.com", name: "Ada Obi" })]);
+    const r = await ensureAccountProfile(f.db, { storeId: "s1", userId: "attacker", name: "Mallory", email: "ada@x.com", emailVerified: false });
+    expect(r.deferred).toBe(true);
+    expect(f.rows).toHaveLength(1);
+    expect(f.rows[0].userId).toBeNull();
+  });
+  it("links that profile once the email is verified", async () => {
+    const f = fakeDb([row("POS", { email: "ada@x.com", name: "Ada Obi" })]);
+    const r = await ensureAccountProfile(f.db, { storeId: "s1", userId: "u1", name: "Ada Obi", email: "ada@x.com", emailVerified: true });
+    expect(r).toMatchObject({ id: "POS", created: false });
+    expect(f.rows[0].userId).toBe("u1");
+  });
+  it("still creates a fresh profile when no profile uses that email", async () => {
+    const f = fakeDb();
+    const r = await ensureAccountProfile(f.db, { storeId: "s1", userId: "u1", name: "Ada", email: "ada@x.com", emailVerified: false });
+    expect(r.created).toBe(true);
+  });
+});
+
 describe("ensureAccountProfile", () => {
   it("links the profile a POS sale already created for the same email instead of duplicating it", async () => {
     const f = fakeDb([row("POS", { name: "ada@x.com", email: "ada@x.com" })]);

@@ -2,6 +2,7 @@ import { formatMoney } from "@/lib/utils/format-money";
 import Link from "next/link";
 import { CalendarDays, Check, ChevronRight, Edit3, Gift, Heart, Headphones, Star, WalletCards } from "lucide-react";
 import { formatDate, formatNumber } from "@/lib/i18n/locale";
+import { PrivacyPanel } from "@/components/account/privacy-panel";
 
 function money(value: number, currency = "NGN") {
   return formatMoney(value, currency);
@@ -73,6 +74,7 @@ export function VelouraAccountProfile({ slug, store, user, overview, bookings, s
         <Link href={`/store/${slug}/account/wallet`} className="bn-account-wallet-card"><div className="bn-account-wallet-icon"><WalletCards/></div><div><span>WALLET</span><strong>{wallet ? money(Number(wallet.balance), wallet.currency || "NGN") : money(0)}</strong><small>Available balance</small></div><ChevronRight/></Link>
         <Link href={`/store/${slug}/account/messages`} className="bn-account-help-card"><div><span>CONCIERGE</span><h2>Need a hand?</h2><p>Message the hotel team about your stay, requests or questions.</p><strong>Contact the team <ChevronRight size={15}/></strong></div><Headphones/></Link>
       </div>
+      <PrivacyPanel slug={slug} storeName={store?.name || "this hotel"} />
     </div>
   );
 }

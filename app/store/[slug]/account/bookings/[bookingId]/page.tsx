@@ -1,3 +1,4 @@
+import { isHotelStore } from "@/lib/account-voice";
 import { formatMoney } from "@/lib/utils/format-money";
 import { BookingNotes } from "@/components/shared/booking-notes";
 import Link from "next/link";
@@ -28,6 +29,7 @@ export default async function BookingDetailsPage({ params }: { params: Promise<{
   ]);
   const booking: any = bookingResult;
   if (!store || !booking) notFound();
+  const isHotel = await isHotelStore(slug);
   const hero = hotel.rooms.find((r: any) => r.featured)?.image || hotel.rooms[0]?.image || null;
   const nights = booking.checkIn && booking.checkOut
     ? Math.max(1, Math.ceil((new Date(booking.checkOut).getTime() - new Date(booking.checkIn).getTime()) / 86400000))
@@ -36,7 +38,7 @@ export default async function BookingDetailsPage({ params }: { params: Promise<{
 
   return (
     <div className="veloura-account-content">
-      <VelouraAccountHero title="Booking Details" subtitle="Everything you need for your reservation, in one place." image={hero} />
+      <VelouraAccountHero title="Booking Details" subtitle={isHotel ? "Everything you need for your reservation, in one place." : "Everything about your booking, in one place."} image={hero} />
       <div className="veloura-detail-back"><Link href={`/store/${slug}/account/bookings`}><ArrowLeft size={16} /> Back to bookings</Link></div>
 
       <section className="veloura-booking-detail-head">
@@ -54,19 +56,19 @@ export default async function BookingDetailsPage({ params }: { params: Promise<{
 
       <div className="veloura-booking-detail-grid">
         <section className="veloura-panel">
-          <div className="veloura-panel-head"><h2>Stay information</h2><CheckCircle2 size={19} /></div>
+          <div className="veloura-panel-head"><h2>{isHotel ? "Stay information" : "Booking information"}</h2><CheckCircle2 size={19} /></div>
           <div className="veloura-detail-cards">
-            <div><CalendarDays /><span>Check-in</span><strong>{date(booking.checkIn || booking.scheduledAt, true)}</strong></div>
-            <div><CalendarDays /><span>Check-out</span><strong>{date(booking.checkOut, true)}</strong></div>
+            <div><CalendarDays /><span>{isHotel ? "Check-in" : "Date"}</span><strong>{date(booking.checkIn || booking.scheduledAt, true)}</strong></div>
+            {(isHotel || booking.checkOut) && <div><CalendarDays /><span>{isHotel ? "Check-out" : "Ends"}</span><strong>{date(booking.checkOut, true)}</strong></div>}
             <div><Clock3 /><span>Duration</span><strong>{nights ? `${nights} night${nights === 1 ? "" : "s"}` : `${booking.durationMins} minutes`}</strong></div>
-            <div><Users /><span>Guests</span><strong>{booking.partySize || "—"}</strong></div>
+            <div><Users /><span>{isHotel ? "Guests" : "People"}</span><strong>{booking.partySize || "—"}</strong></div>
           </div>
-          {booking.unit?.label && <div className="veloura-detail-note"><strong>Room</strong><span>{booking.unit.label}</span></div>}
+          {booking.unit?.label && <div className="veloura-detail-note"><strong>{isHotel ? "Room" : "Unit"}</strong><span>{booking.unit.label}</span></div>}
           {staff && <div className="veloura-detail-note"><strong>Assigned to</strong><span>{staff}{booking.staff?.position ? ` · ${booking.staff.position}` : ""}</span></div>}
         </section>
 
         <aside className="veloura-panel">
-          <div className="veloura-panel-head"><h2>Guest details</h2></div>
+          <div className="veloura-panel-head"><h2>{isHotel ? "Guest details" : "Your details"}</h2></div>
           <div className="veloura-detail-stack">
             <div><strong>Name</strong><span>{booking.guestName || "Account holder"}</span></div>
             {booking.guestEmail && <div><Mail /><span>{booking.guestEmail}</span></div>}
@@ -85,7 +87,7 @@ export default async function BookingDetailsPage({ params }: { params: Promise<{
       )}
 
       <div className="veloura-detail-actions">
-        <Link className="veloura-gold-btn" href={`/store/${slug}/account/messages`}>Contact the hotel</Link>
+        <Link className="veloura-gold-btn" href={`/store/${slug}/account/messages`}>{isHotel ? "Contact the hotel" : `Contact ${store.name}`}</Link>
         <Link className="veloura-secondary-btn" href={`/store/${slug}/account/bookings`}>Back to bookings</Link>
       </div>
     </div>

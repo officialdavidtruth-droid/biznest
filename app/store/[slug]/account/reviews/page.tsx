@@ -35,7 +35,7 @@ export default async function Page({ params }: { params: Promise<{ slug: string 
         <div className="veloura-panel-head">
           <div>
             <h2>Your reviews</h2>
-            <p>Keep track of the feedback you have shared with this hotel.</p>
+            <p>Keep track of the feedback you have shared with {store.name}.</p>
           </div>
           <span>{reviews.length} {reviews.length === 1 ? "review" : "reviews"}</span>
         </div>
@@ -43,7 +43,7 @@ export default async function Page({ params }: { params: Promise<{ slug: string 
         {reviews.length ? (
           <div className="veloura-review-list">
             {reviews.map((review: any) => {
-              const subject = review.product?.name ?? review.service?.name ?? "Your stay";
+              const subject = review.product?.name ?? review.service?.name ?? "Your purchase";
               return (
                 <article className="veloura-review-item" key={review.id}>
                   <div className="veloura-review-item-top">

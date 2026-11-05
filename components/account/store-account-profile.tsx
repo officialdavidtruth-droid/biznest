@@ -3,6 +3,7 @@
 import { useState, useTransition } from "react";
 import Link from "next/link";
 import { updateStoreCustomerDetails } from "@/lib/actions/account";
+import { PrivacyPanel } from "@/components/account/privacy-panel";
 
 type Props = {
   slug: string;
@@ -89,6 +90,7 @@ export function StoreAccountProfile({ slug, storeName, user, stats, links, locat
           </div>
         </section>
       </div>
+      <PrivacyPanel slug={slug} storeName={storeName} />
     </div>
   );
 }
