@@ -16,13 +16,15 @@ const m = vi.hoisted(() => ({
   flwFind: vi.fn(),
   flwBalance: vi.fn(),
   payoutMode: vi.fn(),
+  adopt: vi.fn(),
+  storeFindUnique: vi.fn(),
 }));
 
 vi.mock("@/lib/prisma", () => ({
   prisma: {
     payment: { findUnique: m.paymentFind },
     payout: { create: m.payoutCreate, findUnique: m.payoutFind, findMany: m.payoutFindMany, update: m.payoutUpdate, updateMany: m.payoutUpdateMany },
-    store: { update: m.storeUpdate },
+    store: { update: m.storeUpdate, findUnique: m.storeFindUnique },
   },
 }));
 vi.mock("@/lib/payments/paystack", () => ({
@@ -40,6 +42,7 @@ vi.mock("@/lib/actions/site-settings", () => ({
   getPayoutMode: m.payoutMode,
   getActiveGateway: async () => "PAYSTACK",
 }));
+vi.mock("@/lib/payments/payout-from-manual", () => ({ adoptManualBankForPayout: (...a: unknown[]) => m.adopt(...a) }));
 vi.mock("@/lib/observability/log", () => ({ logError: vi.fn(), logInfo: vi.fn() }));
 vi.mock("@prisma/client", () => ({
   Prisma: { PrismaClientKnownRequestError: class extends Error { code = "P2002"; } },
@@ -135,9 +138,18 @@ describe("queuePayoutForPayment", () => {
   });
 
   it("keeps the payout queued (not lost) when the store has no bank account yet", async () => {
+    m.adopt.mockResolvedValue({ ok: false, reason: "no" });
     m.paymentFind.mockResolvedValue({ ...payment, store: { ...payment.store, payoutBankCode: null, payoutAccountNumber: null } });
     await queuePayoutForPayment("o1");
     expect(m.payoutCreate).toHaveBeenCalledWith({ data: expect.objectContaining({ status: "QUEUED", lastError: expect.stringMatching(/bank account/) }) });
+  });
+
+  it("uses the store's verified bank-transfer details when it has no payout account", async () => {
+    m.adopt.mockResolvedValue({ ok: true, alreadyConnected: false });
+    m.storeFindUnique.mockResolvedValue({ payoutBankCode: "999992", payoutAccountNumber: "7019429664", payoutDetails: { accountName: "SIDI DESTINY" } });
+    m.paymentFind.mockResolvedValue({ ...payment, store: { ...payment.store, payoutBankCode: null, payoutAccountNumber: null } });
+    await queuePayoutForPayment("o1");
+    expect(m.payoutCreate).toHaveBeenCalledWith({ data: expect.objectContaining({ status: "QUEUED", lastError: null }) });
   });
 
   it("queues Flutterwave payments for an automated Flutterwave transfer", async () => {

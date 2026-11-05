@@ -5,13 +5,14 @@ import { decrementStockForOrder } from "@/lib/payments/stock";
 import { emitWebhookEvent } from "@/lib/webhooks/dispatch";
 import { notifyStoreOwnerOfPaidOrder, notifyCustomerOfPaidOrder } from "@/lib/notifications/notify";
 import { postOrderSaleToLedger } from "@/lib/financial/order-ledger";
-import { settleAndPayout } from "@/lib/payments/payout";
+import { settleAndPayout, activeTransferGateway } from "@/lib/payments/payout";
+import { adoptManualBankForPayout } from "@/lib/payments/payout-from-manual";
 import { logError } from "@/lib/observability/log";
 import { getOrderPayableNaira } from "@/lib/payments/order-payable";
 
 export type WalletOrderPayment =
   | { ok: true; alreadyPaid: boolean }
-  | { ok: false; code: "NOT_FOUND" | "NOT_PAYABLE" | "CURRENCY" | "INSUFFICIENT_FUNDS" | "WALLET_UNAVAILABLE" | "BUSY"; message: string };
+  | { ok: false; code: "NOT_FOUND" | "NOT_PAYABLE" | "CURRENCY" | "INSUFFICIENT_FUNDS" | "WALLET_UNAVAILABLE" | "BUSY" | "STORE_NOT_PAYABLE"; message: string };
 
 export const walletOrderReference = (orderId: string) => `WALPAY-${orderId}`;
 
@@ -31,7 +32,7 @@ const fail = (code: Exclude<WalletOrderPayment, { ok: true }>["code"], message: 
 export async function payOrderFromWallet(input: { orderId: string; userId: string }): Promise<WalletOrderPayment> {
   const order = await prisma.order.findFirst({
     where: { id: input.orderId, buyerId: input.userId },
-    select: { id: true, storeId: true, total: true, currency: true, status: true, paymentProvider: true, paymentProofUrl: true },
+    select: { id: true, storeId: true, total: true, currency: true, status: true, paymentProvider: true, paymentProofUrl: true, store: { select: { payoutBankCode: true, payoutAccountNumber: true } } },
   });
   if (!order) return fail("NOT_FOUND", "Order not found.");
   const reference = walletOrderReference(order.id);
@@ -43,6 +44,15 @@ export async function payOrderFromWallet(input: { orderId: string; userId: strin
   }
   // A bank transfer the customer already has proof for is the vendor's to confirm; paying twice would double-charge them.
   if (order.paymentProvider === "CASH" && order.paymentProofUrl) return fail("NOT_PAYABLE", "You've already sent proof of a bank transfer for this order. Wait for the store to confirm it.");
+  // Wallet money sits with the platform and reaches the vendor by payout. A store that only
+  // takes manual bank transfers has no payout account yet; use its verified transfer details,
+  // and if that can't be done refuse before charging anything.
+  if (!(order.store.payoutBankCode && order.store.payoutAccountNumber)) {
+    const adopted = await adoptManualBankForPayout(order.storeId, await activeTransferGateway());
+    if (!adopted.ok) {
+      return fail("STORE_NOT_PAYABLE", "This store can't receive wallet payments yet. Please pay by bank transfer instead; your wallet has not been charged.");
+    }
+  }
   // Wallets hold naira only.
   if (String(order.currency ?? "NGN").toUpperCase() !== "NGN") return fail("CURRENCY", "Wallets hold naira only. Pay this order another way.");
 

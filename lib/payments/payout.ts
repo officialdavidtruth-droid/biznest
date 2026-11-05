@@ -1,4 +1,5 @@
 import "server-only";
+import { adoptManualBankForPayout } from "@/lib/payments/payout-from-manual";
 import { randomUUID } from "node:crypto";
 import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
@@ -88,7 +89,7 @@ function roundMoney(n: number) {
 }
 
 /** Wallet payouts follow the platform's active gateway. Falls back to Paystack if the setting can't be read. */
-async function activeTransferGateway(): Promise<TransferGateway> {
+export async function activeTransferGateway(): Promise<TransferGateway> {
   try {
     const { getActiveGateway } = await import("@/lib/actions/site-settings");
     const active = await getActiveGateway();
@@ -105,6 +106,23 @@ async function currentPayoutMode(): Promise<"AUTO" | "HOLD"> {
     return await getPayoutMode();
   } catch {
     return "AUTO";
+  }
+}
+
+async function notifyStoreOwnerPayoutBlocked(storeId: string, amount: number): Promise<void> {
+  try {
+    const store = await prisma.store.findUnique({ where: { id: storeId }, select: { slug: true, name: true, business: { select: { userId: true } } } });
+    if (!store) return;
+    const { notifyUser } = await import("@/lib/notifications/notify");
+    await notifyUser({
+      userId: store.business.userId,
+      type: "PAYOUT_BLOCKED",
+      title: "Money is waiting for you",
+      body: `A customer paid NGN ${amount.toLocaleString("en-NG")} from their wallet, but ${store.name} has no payout account. Connect one and it will be sent automatically.`,
+      url: `/store/${store.slug}/admin/payments`,
+    });
+  } catch (error) {
+    void logError("PAYMENTS", "Couldn't notify store of blocked payout", { storeId, message: error instanceof Error ? error.message : String(error) });
   }
 }
 
@@ -151,8 +169,8 @@ export async function queuePayoutForPayment(reference: string): Promise<{ payout
   const { amount, feeAmount } = vendorPayoutAmount(payment.provider, payment.rawPayload, gross, walletFeeRate);
   if (amount <= 0) return { skipped: "nothing to pay out" };
 
-  const hasAccount = Boolean(payment.store.payoutBankCode && payment.store.payoutAccountNumber);
-  const details = (payment.store.payoutDetails ?? null) as { bankName?: string; accountName?: string; maskedAccountNumber?: string } | null;
+  let hasAccount = Boolean(payment.store.payoutBankCode && payment.store.payoutAccountNumber);
+  let details = (payment.store.payoutDetails ?? null) as { bankName?: string; accountName?: string; maskedAccountNumber?: string } | null;
 
   // Paystack, Flutterwave and Korapay collections are paid out from that same gateway's balance.
   // Wallet payments have no single source gateway: the customer's money reached the platform
@@ -169,6 +187,16 @@ export async function queuePayoutForPayment(reference: string): Promise<{ payout
           : "PAYSTACK";
 
   const hold = !unsupported && (await currentPayoutMode()) === "HOLD";
+
+  // A store that only set up "Accept payment by bank transfer" has no payout account: use those details once the gateway confirms them.
+  if (!hasAccount && !unsupported) {
+    const adopted = await adoptManualBankForPayout(payment.storeId, transferGateway);
+    if (adopted.ok) {
+      const fresh = await prisma.store.findUnique({ where: { id: payment.storeId }, select: { payoutBankCode: true, payoutAccountNumber: true, payoutDetails: true } });
+      hasAccount = Boolean(fresh?.payoutBankCode && fresh?.payoutAccountNumber);
+      details = (fresh?.payoutDetails ?? null) as typeof details;
+    }
+  }
 
   // Id is generated up front so the transfer reference can be derived from it in the same insert.
   const payoutId = randomUUID().replace(/-/g, "");
@@ -198,6 +226,10 @@ export async function queuePayoutForPayment(reference: string): Promise<{ payout
     });
     if (unsupported) {
       void logError("PAYMENTS", "Payout needs manual handling (gateway not automated)", { paymentId: payment.id, provider: payment.provider });
+    }
+    if (!unsupported && !hold && !hasAccount) {
+      // Money is waiting but can't be sent. Tell the owner, otherwise a bank-transfer-only store never finds out.
+      void notifyStoreOwnerPayoutBlocked(payment.storeId, amount);
     }
     return { payoutId };
   } catch (err) {
@@ -311,7 +343,15 @@ export async function processPayout(
       if (existing.found) return await applyTransferResult(payout.id, existing.data, existing.raw);
     }
 
-    const store = payout.store;
+    let store = payout.store;
+    if (!store.payoutBankCode || !store.payoutAccountNumber) {
+      // A bank-transfer-only store never connected a payout account: use its verified transfer details.
+      const adopted = await adoptManualBankForPayout(store.id, gateway);
+      if (adopted.ok) {
+        const fresh = await prisma.store.findUnique({ where: { id: store.id }, select: { id: true, name: true, payoutBankCode: true, payoutAccountNumber: true, paystackRecipientCode: true, payoutDetails: true } });
+        if (fresh) store = fresh;
+      }
+    }
     if (!store.payoutBankCode || !store.payoutAccountNumber) {
       await requeue(payout.id, NO_ACCOUNT_RETRY_MS, "Store has not connected a bank account yet.", { refundAttempt: true });
       return { state: "QUEUED", message: "no bank account" };

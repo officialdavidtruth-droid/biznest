@@ -10,6 +10,7 @@ const m = vi.hoisted(() => {
   return {
     tx,
     prisma: { order: { findFirst: vi.fn() }, payment: { findUnique: vi.fn() }, $transaction: vi.fn() },
+    adopt: vi.fn(),
     decrementStockForOrder: vi.fn(),
     emitWebhookEvent: vi.fn(),
     postOrderSaleToLedger: vi.fn(),
@@ -27,13 +28,14 @@ vi.mock("@/lib/payments/stock", () => ({ decrementStockForOrder: m.decrementStoc
 vi.mock("@/lib/webhooks/dispatch", () => ({ emitWebhookEvent: m.emitWebhookEvent }));
 vi.mock("@/lib/notifications/notify", () => ({ notifyStoreOwnerOfPaidOrder: m.notifyOwner, notifyCustomerOfPaidOrder: m.notifyCustomer }));
 vi.mock("@/lib/financial/order-ledger", () => ({ postOrderSaleToLedger: m.postOrderSaleToLedger }));
-vi.mock("@/lib/payments/payout", () => ({ settleAndPayout: m.settleAndPayout }));
+vi.mock("@/lib/payments/payout", () => ({ settleAndPayout: m.settleAndPayout, activeTransferGateway: async () => "PAYSTACK" }));
+vi.mock("@/lib/payments/payout-from-manual", () => ({ adoptManualBankForPayout: (...a: unknown[]) => m.adopt(...a) }));
 vi.mock("@/lib/observability/log", () => ({ logError: vi.fn() }));
 vi.mock("@/lib/payments/order-payable", () => ({ getOrderPayableNaira: m.payable }));
 
 import { payOrderFromWallet } from "../pay-order-wallet";
 
-const order = { id: "ord1", storeId: "s1", total: 5000, currency: "NGN", status: "PENDING_PAYMENT", paymentProvider: null, paymentProofUrl: null };
+const order = { id: "ord1", storeId: "s1", total: 5000, currency: "NGN", status: "PENDING_PAYMENT", paymentProvider: null, paymentProofUrl: null, store: { payoutBankCode: "058", payoutAccountNumber: "0123456789" } };
 
 beforeEach(() => {
   vi.clearAllMocks();
@@ -83,6 +85,20 @@ describe("payOrderFromWallet", () => {
     expect(await payOrderFromWallet({ orderId: "ord1", userId: "u1" })).toMatchObject({ ok: false, code: "WALLET_UNAVAILABLE" });
     m.tx.storeWallet.findUnique.mockResolvedValue(null);
     expect(await payOrderFromWallet({ orderId: "ord1", userId: "u1" })).toMatchObject({ ok: false, code: "WALLET_UNAVAILABLE" });
+  });
+
+  it("takes a payout account from the vendor's bank-transfer details, then pays", async () => {
+    m.prisma.order.findFirst.mockResolvedValue({ ...order, store: { payoutBankCode: null, payoutAccountNumber: null } });
+    m.adopt.mockResolvedValue({ ok: true, alreadyConnected: false });
+    expect(await payOrderFromWallet({ orderId: "ord1", userId: "u1" })).toMatchObject({ ok: true });
+    expect(m.adopt).toHaveBeenCalledWith("s1", "PAYSTACK");
+  });
+
+  it("refuses, and charges nothing, when the store's bank details can't be confirmed", async () => {
+    m.prisma.order.findFirst.mockResolvedValue({ ...order, store: { payoutBankCode: null, payoutAccountNumber: null } });
+    m.adopt.mockResolvedValue({ ok: false, reason: "no" });
+    expect(await payOrderFromWallet({ orderId: "ord1", userId: "u1" })).toMatchObject({ ok: false, code: "STORE_NOT_PAYABLE" });
+    expect(m.prisma.$transaction).not.toHaveBeenCalled();
   });
 
   it("refuses non-naira orders", async () => {
