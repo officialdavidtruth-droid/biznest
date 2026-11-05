@@ -2,6 +2,7 @@
 
 import { prisma } from "@/lib/prisma";
 import { assertStorePermission } from "@/lib/access/assert-store-access";
+import { getPluginEntitlement } from "@/lib/plugins";
 import { formatDate } from "@/lib/i18n/locale";
 import { addLocalDays, getLocalDateKey, localDateStartUtc } from "@/lib/timezone";
 
@@ -297,7 +298,10 @@ function totalsFromSeries(series: DailyPoint[]): PeriodTotals {
 }
 
 export async function getAdvancedAnalytics(storeId: string, rangeDays = 30): Promise<AdvancedAnalytics> {
-  // getStoreAnalytics enforces store access + the analytics permission.
+  // getStoreAnalytics enforces store access + the analytics permission; the app itself
+  // must also be entitled and installed (this is a callable server action).
+  const entitlement = await getPluginEntitlement(storeId, "advanced-analytics");
+  if (!entitlement.allowed || !entitlement.installed) throw new Error("Install the Advanced Analytics app to view this report.");
   const [current, doubled] = await Promise.all([
     getStoreAnalytics(storeId, rangeDays),
     getStoreAnalytics(storeId, rangeDays * 2),

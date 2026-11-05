@@ -82,6 +82,7 @@ export async function installFreePlugin(slug: string, pluginKey: string): Promis
   await ensureSystemPlugins();
   const entitlement = await getPluginEntitlement(access.store.id, pluginKey);
   if (!entitlement.allowed) return { success: false, error: entitlement.reason };
+  if (entitlement.plugin.isComingSoon) return { success: false, error: "This app is coming soon and can't be installed yet." };
   if (!entitlement.plugin.isFree) return { success: false, error: "This app requires payment." };
 
   await prisma.storePlugin.upsert({
@@ -100,6 +101,7 @@ export async function startPluginPurchase(slug: string, pluginKey: string, optio
   await ensureSystemPlugins();
   const entitlement = await getPluginEntitlement(access.store.id, pluginKey);
   if (!entitlement.allowed) return { success: false, error: entitlement.reason };
+  if (entitlement.plugin.isComingSoon) return { success: false, error: "This app is coming soon and can't be purchased yet." };
   if (entitlement.plugin.isFree) return { success: false, error: "This app is free; install it directly." };
   if (Number(entitlement.plugin.price) <= 0) return { success: false, error: "This app does not have a valid price configured." };
   if (entitlement.installed && !options.renew) return { success: false, error: "This app is already installed." };

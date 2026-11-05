@@ -172,6 +172,8 @@ export async function addCrmActivity(slug: string, id: string, input: { type: st
 
 export async function saveStoreSeo(slug:string,input:{title:string;description:string;keywords?:string;canonicalUrl?:string;ogImage?:string;noIndex:boolean;googleVerification?:string}){
   const access=await assertStorePermission(slug,"settings"); if(!access.success) return access;
+  const seoEntitlement=await getPluginEntitlement(access.store.id,"seo");
+  if(!seoEntitlement.allowed||!seoEntitlement.installed) return {success:false,error:"Install the SEO app to manage search settings."};
   const title=input.title.trim().slice(0,180), description=input.description.trim().slice(0,320);
   if(!title || !description) return {success:false,error:"SEO title and description are required."};
   const url=(input.canonicalUrl||"").trim();
