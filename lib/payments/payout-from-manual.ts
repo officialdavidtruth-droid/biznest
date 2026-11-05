@@ -11,7 +11,7 @@ export type AdoptResult = { ok: true; alreadyConnected: boolean } | { ok: false;
 
 async function resolveOn(gateway: TransferGateway, accountNumber: string, bankCode: string): Promise<string | null> {
   if (gateway === "KORAPAY") {
-    const r = await resolveKorapayAccount(accountNumber, bankCode);
+    const r = await resolveKorapayAccount(accountNumber, bankCode, { fixedIp: true });
     return r.status && r.data ? r.data.account_name : null;
   }
   if (gateway === "FLUTTERWAVE") {
@@ -46,7 +46,7 @@ export async function adoptManualBankForPayout(storeId: string, gateway: Transfe
   }
 
   try {
-    const list = gateway === "FLUTTERWAVE" ? await listFlutterwaveBanks() : gateway === "KORAPAY" ? await listKorapayBanks() : await listPaystackBanks();
+    const list = gateway === "FLUTTERWAVE" ? await listFlutterwaveBanks() : gateway === "KORAPAY" ? await listKorapayBanks({ fixedIp: true }) : await listPaystackBanks();
     if (!list.status) return { ok: false, reason: "Couldn't load the bank list." };
 
     for (const candidate of candidateBanks(store.manualBankName, list.banks)) {

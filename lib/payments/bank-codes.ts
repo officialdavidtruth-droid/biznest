@@ -75,7 +75,7 @@ const GATEWAY_NAME: Record<TransferGateway, string> = { PAYSTACK: "Paystack", FL
 
 async function resolveOn(gateway: TransferGateway, accountNumber: string, bankCode: string): Promise<string | null> {
   if (gateway === "KORAPAY") {
-    const r = await resolveKorapayAccount(accountNumber, bankCode);
+    const r = await resolveKorapayAccount(accountNumber, bankCode, { fixedIp: true });
     return r.status && r.data ? r.data.account_name : null;
   }
   if (gateway === "FLUTTERWAVE") {
@@ -104,7 +104,7 @@ export async function resolveBankCodeForGateway(
   if (!bankName) return { error: `Can't match this bank on ${GATEWAY_NAME[gateway]}: reconnect the bank account.` };
 
   const list =
-    gateway === "FLUTTERWAVE" ? await listFlutterwaveBanks() : gateway === "KORAPAY" ? await listKorapayBanks() : await listPaystackBanks();
+    gateway === "FLUTTERWAVE" ? await listFlutterwaveBanks() : gateway === "KORAPAY" ? await listKorapayBanks({ fixedIp: true }) : await listPaystackBanks();
   if (!list.status) return { error: `Couldn't load the ${GATEWAY_NAME[gateway]} bank list: ${list.message}` };
 
   const expectedName = details?.accountName ?? "";

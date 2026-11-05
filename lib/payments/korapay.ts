@@ -243,17 +243,33 @@ export function verifyKorapayWebhookSignature(signature: string | null, data: un
 /* Bank utilities                                                              */
 /* -------------------------------------------------------------------------- */
 
-export async function resolveKorapayAccount(accountNumber: string, bankCode: string) {
+/**
+ * Bank lookups (list + resolve) accept either Kora key, and some accounts only accept one of them
+ * ("Invalid authentication token" on the other). Try the secret key first, and when Kora rejects
+ * it for authentication, retry once with the public key. `fixedIp` routes through the payout
+ * proxy, for the payout path where the server IP must be the whitelisted one.
+ */
+async function koraBankLookup<T>(path: string, init: { method?: "GET" | "POST"; body?: unknown; fixedIp?: boolean } = {}) {
+  const first = await koraFetch<T>(path, init);
+  if (first.status || !/authenticat|unauthori[sz]ed|invalid .*token/i.test(first.message)) return first;
+  const publicKey = process.env.NEXT_PUBLIC_KORAPAY_PUBLIC_KEY || process.env.KORAPAY_PUBLIC_KEY;
+  if (!publicKey) return first;
+  const second = await koraFetch<T>(path, { ...init, secretKey: publicKey });
+  return second.status ? second : first;
+}
+
+export async function resolveKorapayAccount(accountNumber: string, bankCode: string, opts: { fixedIp?: boolean } = {}) {
   // Kora's resolve endpoint takes a currency code, not a country code: "NGN" ("NG" is rejected).
-  const res = await koraFetch<{ account_name: string; bank_name?: string }>("/misc/banks/resolve", {
+  const res = await koraBankLookup<{ account_name: string; bank_name?: string }>("/misc/banks/resolve", {
     method: "POST",
     body: { bank: bankCode, account: accountNumber, currency: "NGN" },
+    fixedIp: opts.fixedIp,
   });
   return { status: res.status, message: res.message, data: res.data };
 }
 
-export async function listKorapayBanks(): Promise<{ status: boolean; message: string; banks: { name: string; code: string }[] }> {
-  const res = await koraFetch<{ name: string; code: string }[]>("/misc/banks?countryCode=NG");
+export async function listKorapayBanks(opts: { fixedIp?: boolean } = {}): Promise<{ status: boolean; message: string; banks: { name: string; code: string }[] }> {
+  const res = await koraBankLookup<{ name: string; code: string }[]>("/misc/banks?countryCode=NG", { fixedIp: opts.fixedIp });
   const banks = Array.isArray(res.data) ? res.data.map((b) => ({ name: b.name, code: b.code })) : [];
   return { status: res.status, message: res.message, banks };
 }

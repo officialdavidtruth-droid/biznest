@@ -7,6 +7,7 @@ vi.mock("@prisma/client", () => ({ Prisma: {} }));
 vi.mock("@/lib/observability/log", () => ({ logError: vi.fn(), logInfo: vi.fn(), logWarn: vi.fn() }));
 
 import {
+  listKorapayBanks,
   initiateKorapayTransfer,
   initializeKorapayTransaction,
   korapayRefundReference,
@@ -150,5 +151,25 @@ describe("payouts", () => {
     expect(gatewayForPayout("KORAPAY", null)).toBe("KORAPAY");
     expect(gatewayForPayout("WALLET", { transferGateway: "KORAPAY" })).toBe("KORAPAY");
     expect(gatewayForPayout("PAYSTACK", null)).toBe("PAYSTACK");
+  });
+});
+
+describe("bank list", () => {
+  it("retries with the public key when Kora rejects the secret key for authentication", async () => {
+    process.env.KORAPAY_PUBLIC_KEY = "pk_test_korapay_public";
+    reply({ status: false, message: "Invalid authentication token" }, 401);
+    reply({ status: true, message: "ok", data: [{ name: "Opay", code: "100004" }] });
+    const r = await listKorapayBanks();
+    delete process.env.KORAPAY_PUBLIC_KEY;
+    expect(r.status).toBe(true);
+    expect(r.banks).toEqual([{ name: "Opay", code: "100004" }]);
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    expect((fetchMock.mock.calls[1][1] as { headers: Record<string, string> }).headers.Authorization).toBe("Bearer pk_test_korapay_public");
+  });
+
+  it("does not retry other errors, or when there is no public key", async () => {
+    reply({ status: false, message: "Invalid authentication token" }, 401);
+    expect((await listKorapayBanks()).status).toBe(false);
+    expect(fetchMock).toHaveBeenCalledTimes(1);
   });
 });
