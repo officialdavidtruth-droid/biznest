@@ -199,7 +199,7 @@
 .acx .bn-account-subpage-heading > div { display: none; }
 .acx .bn-account-subpage-heading a { font-size: 13px; font-weight: 600; color: var(--acx-ink-accent); text-decoration: none; }
 
-/* ---------- small screens ----------
+/* ---------- small screens ---------- */
 @media (max-width: 900px) {
   .acx-wrap { grid-template-columns: minmax(0, 1fr); gap: 16px; padding: 16px 14px 56px; }
   .acx-nav { position: static; padding: 6px; border-radius: 14px; }
