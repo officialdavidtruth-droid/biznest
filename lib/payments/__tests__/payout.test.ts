@@ -17,12 +17,14 @@ const m = vi.hoisted(() => ({
   flwBalance: vi.fn(),
   payoutMode: vi.fn(),
   adopt: vi.fn(),
+  paymentFindFirst: vi.fn(),
+  paymentFindMany: vi.fn(),
   storeFindUnique: vi.fn(),
 }));
 
 vi.mock("@/lib/prisma", () => ({
   prisma: {
-    payment: { findUnique: m.paymentFind },
+    payment: { findUnique: m.paymentFind, findFirst: m.paymentFindFirst, findMany: m.paymentFindMany },
     payout: { create: m.payoutCreate, findUnique: m.payoutFind, findMany: m.payoutFindMany, update: m.payoutUpdate, updateMany: m.payoutUpdateMany },
     store: { update: m.storeUpdate, findUnique: m.storeFindUnique },
   },
@@ -77,6 +79,7 @@ const queued = (over: Record<string, unknown> = {}) => ({
 
 beforeEach(() => {
   vi.clearAllMocks();
+  m.paymentFindMany.mockResolvedValue([]);
   m.payoutMode.mockResolvedValue("AUTO");
   m.payoutCreate.mockResolvedValue({});
   m.payoutUpdate.mockResolvedValue({});
@@ -247,6 +250,28 @@ describe("wallet payments", () => {
     const r = await queuePayoutForPayment("WALPAY-b1");
     expect(r.payoutId).toBeTruthy();
     expect(m.payoutCreate).toHaveBeenCalledWith({ data: expect.objectContaining({ provider: "WALLET", status: "QUEUED", amount: 12500 }) });
+  });
+
+  it("pays a wallet payment out of the gateway the wallet was topped up through, not the active one", async () => {
+    m.paymentFindFirst.mockResolvedValue({ provider: "FLUTTERWAVE" });
+    m.paymentFind.mockResolvedValue({ ...payment, purpose: "ORDER", provider: "WALLET", walletId: "w1", order: null });
+    await queuePayoutForPayment("WALPAY-o1");
+    expect(m.payoutCreate).toHaveBeenCalledWith({ data: expect.objectContaining({ destination: expect.objectContaining({ transferGateway: "FLUTTERWAVE" }) }) });
+  });
+
+  it("moves an unsent wallet payout pinned to the wrong gateway onto the gateway that holds the money", async () => {
+    m.paymentFindFirst.mockResolvedValue({ provider: "FLUTTERWAVE" });
+    m.payoutFind.mockResolvedValue(queued({ provider: "WALLET", gatewayTransferId: null, destination: { transferGateway: "PAYSTACK" }, payment: { status: "SUCCESSFUL", walletId: "w1" } }));
+    m.flwBalance.mockResolvedValue({ status: true, message: "ok", balanceNaira: 1 });
+    await processPayout("p1");
+    expect(m.payoutUpdateMany).toHaveBeenCalledWith({ where: { id: "p1", status: "QUEUED", attempts: 0 }, data: { destination: { transferGateway: "FLUTTERWAVE" } } });
+  });
+
+  it("never moves a payout that has already been attempted", async () => {
+    m.paymentFindFirst.mockResolvedValue({ provider: "FLUTTERWAVE" });
+    m.payoutFind.mockResolvedValue(queued({ provider: "WALLET", attempts: 1, gatewayTransferId: null, destination: { transferGateway: "PAYSTACK" }, payment: { status: "SUCCESSFUL", walletId: "w1" } }));
+    await processPayout("p1");
+    expect(m.payoutUpdateMany).not.toHaveBeenCalledWith(expect.objectContaining({ data: { destination: expect.anything() } }));
   });
 
   it("ignores cash/POS payments: nothing for the platform to transfer", async () => {

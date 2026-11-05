@@ -99,6 +99,23 @@ export async function activeTransferGateway(): Promise<TransferGateway> {
   }
 }
 
+/**
+ * The gateway a wallet's money actually sits in: wallets are topped up through one
+ * gateway (Korapay today), so a payout for a wallet payment must be sent from that
+ * gateway's balance. Falls back to the active gateway only when the wallet has no
+ * successful top-up on record.
+ */
+async function walletSourceGateway(walletId: string): Promise<TransferGateway> {
+  const last = await prisma.payment.findFirst({
+    where: { walletId, purpose: "WALLET_FUNDING", status: "SUCCESSFUL" },
+    orderBy: { createdAt: "desc" },
+    select: { provider: true },
+  });
+  const p = last?.provider;
+  if (p === "PAYSTACK" || p === "FLUTTERWAVE" || p === "KORAPAY") return p;
+  return activeTransferGateway();
+}
+
 /** HOLD parks new payouts in the wallet (status HELD) until SupaAdmin releases them. Any read failure means AUTO, so a settings hiccup never blocks sales. */
 async function currentPayoutMode(): Promise<"AUTO" | "HOLD"> {
   try {
@@ -183,7 +200,9 @@ export async function queuePayoutForPayment(reference: string): Promise<{ payout
       : payment.provider === "KORAPAY"
         ? "KORAPAY"
         : payment.provider === "WALLET"
-          ? await activeTransferGateway()
+          ? payment.walletId
+            ? await walletSourceGateway(payment.walletId)
+            : await activeTransferGateway()
           : "PAYSTACK";
 
   const hold = !unsupported && (await currentPayoutMode()) === "HOLD";
@@ -297,7 +316,7 @@ export async function processPayout(
     where: { id: payoutId },
     include: {
       store: { select: { id: true, name: true, payoutBankCode: true, payoutAccountNumber: true, paystackRecipientCode: true, payoutDetails: true } },
-      payment: { select: { status: true } },
+      payment: { select: { status: true, walletId: true } },
     },
   });
   if (!payout) return { state: "SKIPPED", message: "not found" };
@@ -325,6 +344,18 @@ export async function processPayout(
 
   if (payout.status !== "QUEUED") return { state: "SKIPPED", message: `status ${payout.status}` };
   if (payout.nextAttemptAt && payout.nextAttemptAt.getTime() > Date.now()) return { state: "SKIPPED", message: "not due yet" };
+
+  // Earlier wallet payouts were pinned to the active gateway even when the customer's top-up sat in a
+  // different one, so they waited forever on an empty balance. While nothing has been sent yet
+  // (attempts is 0: balance waits don't count), move the payout to the gateway that holds the money.
+  if (payout.provider === "WALLET" && payout.attempts === 0 && !payout.gatewayTransferId && payout.payment?.walletId) {
+    const source = await walletSourceGateway(payout.payment.walletId);
+    if (source !== gatewayForPayout(payout.provider, payout.destination)) {
+      const destination = { ...((payout.destination ?? {}) as object), transferGateway: source } as Prisma.InputJsonValue;
+      const moved = await prisma.payout.updateMany({ where: { id: payout.id, status: "QUEUED", attempts: 0 }, data: { destination } });
+      if (moved.count > 0) payout.destination = destination;
+    }
+  }
 
   // Atomically claim this attempt.
   const claimed = await prisma.payout.updateMany({
