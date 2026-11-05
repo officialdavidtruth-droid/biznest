@@ -353,7 +353,7 @@ export async function processPayout(
     if (source !== gatewayForPayout(payout.provider, payout.destination)) {
       const destination = { ...((payout.destination ?? {}) as object), transferGateway: source } as Prisma.InputJsonValue;
       const moved = await prisma.payout.updateMany({ where: { id: payout.id, status: "QUEUED", attempts: 0 }, data: { destination } });
-      if (moved.count > 0) payout.destination = destination;
+      if (moved.count > 0) payout.destination = destination as typeof payout.destination;
     }
   }
 
