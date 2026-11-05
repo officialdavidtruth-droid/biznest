@@ -113,6 +113,15 @@ function Overview({ data, money, openTrip }: { data: Data; money: (n: unknown, c
   const departing = data.trips.filter((t) => !["COMPLETED", "CANCELLED"].includes(t.status) && t.departDate && (daysUntil(t.departDate) ?? -1) >= 0).sort((a, b) => +new Date(a.departDate!) - +new Date(b.departDate!)).slice(0, 6);
   const pipeline = TRIP_STATUSES.filter((x) => x !== "CANCELLED").map((st) => ({ st, n: data.trips.filter((t) => t.status === st).length }));
   const alerts = data.trips.flatMap((t) => ["CANCELLED", "COMPLETED"].includes(t.status) ? [] : t.travellers.map((tr) => ({ t, tr, w: passportWarning(tr.passportExpiry, t.departDate) })).filter((x) => x.w));
+  // Money that needs a human: paid but never confirmed (tour sold out), paid on a cancelled trip, or paid beyond the price.
+  const moneyIssues = data.trips.flatMap((t) => {
+    const paid = t.money.paid;
+    if (paid <= 0) return [];
+    if (t.status === "CANCELLED") return [{ t, label: `Cancelled · ${money(paid, t.currency)} held, refund due?` }];
+    if (t.status === "ENQUIRY" || t.status === "QUOTED") return [{ t, label: `Paid ${money(paid, t.currency)} but not confirmed (tour full?)` }];
+    if (t.money.total > 0 && paid - t.money.total > 0.005 && t.status !== "COMPLETED") return [{ t, label: `Overpaid by ${money(paid - t.money.total, t.currency)}` }];
+    return [];
+  });
   return (
     <section className="space-y-5">
       <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
@@ -133,8 +142,9 @@ function Overview({ data, money, openTrip }: { data: Data; money: (n: unknown, c
         <div className={card}>
           <h2 className="mb-2 text-sm font-bold">Needs attention</h2>
           {data.overduePayments.map((p) => <button key={p.id} onClick={() => openTrip(p.tripId)} className="flex w-full justify-between border-b py-2 text-left text-sm"><span>{p.client} · {p.reference}</span><span className="text-xs font-semibold text-red-600">{money(p.amount, p.currency)} due {fmtDate(p.dueDate)}</span></button>)}
+          {moneyIssues.slice(0, 8).map(({ t, label }) => <button key={`m-${t.id}`} onClick={() => openTrip(t.id)} className="flex w-full justify-between gap-3 border-b py-2 text-left text-sm"><span>{t.client.fullName} · {t.reference}</span><span className="text-right text-xs font-semibold text-red-600">{label}</span></button>)}
           {alerts.slice(0, 8).map(({ t, tr, w }) => <button key={tr.id} onClick={() => openTrip(t.id)} className="flex w-full justify-between border-b py-2 text-left text-sm"><span>{tr.fullName} · {t.reference}</span><span className="text-xs font-semibold text-amber-700">{w}</span></button>)}
-          {!data.overduePayments.length && !alerts.length && <p className="text-sm text-muted-foreground">All clear.</p>}
+          {!data.overduePayments.length && !alerts.length && !moneyIssues.length && <p className="text-sm text-muted-foreground">All clear.</p>}
         </div>
       </div>
     </section>

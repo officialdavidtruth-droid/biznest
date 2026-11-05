@@ -43,7 +43,8 @@ const serialAttachment = (x: AttachmentRow) => ({ id: x.id, kind: x.kind, fileNa
 /** Recompute a trip's selling price/cost from its non-cancelled service lines (when it has any). */
 async function recalcTrip(tripId: string) {
   const items = await prisma.travelTripItem.findMany({ where: { tripId, status: { not: "CANCELLED" } }, select: { costPrice: true, sellPrice: true } });
-  if (!items.length) return;
+  // No live service lines left: the cost is item-derived so it resets; the price may be a package/manual price, so it stays editable.
+  if (!items.length) { await prisma.travelTrip.update({ where: { id: tripId }, data: { totalCost: 0 } }); return; }
   const totalPrice = items.reduce((s, i) => s + Number(i.sellPrice), 0);
   const totalCost = items.reduce((s, i) => s + Number(i.costPrice), 0);
   await prisma.travelTrip.update({ where: { id: tripId }, data: { totalPrice, totalCost } });
@@ -208,13 +209,17 @@ export async function createTravelTrip(slug: string, input: { clientId: string; 
 
 export async function updateTravelTrip(slug: string, tripId: string, input: { title?: string; destination?: string; departDate?: string | null; returnDate?: string | null; totalPrice?: number; notes?: string }): Promise<ActionResult> {
   const a = await access(slug); if (!a.success) return fail(a.error);
-  const trip = await ownTrip(a, tripId); if (!trip) return fail("Trip not found.");
+  const trip = await prisma.travelTrip.findFirst({ where: { id: tripId, storeId: a.store.id }, select: { id: true, status: true, departDate: true, returnDate: true } });
+  if (!trip) return fail("Trip not found.");
+  if (["COMPLETED", "CANCELLED"].includes(trip.status)) return fail("This trip is closed.");
   const data: Record<string, unknown> = {};
   if (input.title !== undefined) { const t = str(input.title, 160); if (!t) return fail("Title can't be empty."); data.title = t; }
   if (input.destination !== undefined) { const d = str(input.destination, 120); if (!d) return fail("Destination can't be empty."); data.destination = d; }
   if (input.departDate !== undefined) data.departDate = optDate(input.departDate);
   if (input.returnDate !== undefined) data.returnDate = optDate(input.returnDate);
-  if (data.departDate && data.returnDate && (data.returnDate as Date) < (data.departDate as Date)) return fail("The return date can't be before the departure date.");
+  const nextDepart = (data.departDate !== undefined ? data.departDate : trip.departDate) as Date | null;
+  const nextReturn = (data.returnDate !== undefined ? data.returnDate : trip.returnDate) as Date | null;
+  if (nextDepart && nextReturn && nextReturn < nextDepart) return fail("The return date can't be before the departure date.");
   if (input.notes !== undefined) data.notes = optStr(input.notes, 2000);
   if (input.totalPrice !== undefined) { const p = money(input.totalPrice); if (Number.isNaN(p)) return fail("Enter a valid price."); data.totalPrice = p; }
   await prisma.travelTrip.update({ where: { id: trip.id }, data });
@@ -243,7 +248,9 @@ export async function setTravelTripStatus(slug: string, tripId: string, status: 
 
 export async function saveTravelTraveler(slug: string, tripId: string, input: { id?: string; fullName: string; passportNo?: string; passportExpiry?: string; dateOfBirth?: string; nationality?: string }): Promise<ActionResult> {
   const a = await access(slug); if (!a.success) return fail(a.error);
-  const trip = await ownTrip(a, tripId); if (!trip) return fail("Trip not found.");
+  const trip = await prisma.travelTrip.findFirst({ where: { id: tripId, storeId: a.store.id }, select: { id: true, status: true, packageId: true } });
+  if (!trip) return fail("Trip not found.");
+  if (["COMPLETED", "CANCELLED"].includes(trip.status)) return fail("This trip is closed.");
   const fullName = str(input.fullName, 120); if (fullName.length < 2) return fail("Enter the traveller's name.");
   const data = { fullName, passportNo: optStr(input.passportNo, 30)?.toUpperCase() ?? null, passportExpiry: optDate(input.passportExpiry), dateOfBirth: optDate(input.dateOfBirth), nationality: optStr(input.nationality, 60) };
   if (input.id) {
@@ -251,6 +258,11 @@ export async function saveTravelTraveler(slug: string, tripId: string, input: { 
     if (!t) return fail("Traveller not found.");
     await prisma.travelTraveler.update({ where: { id: t.id }, data });
   } else {
+    // A trip that already holds seats on a limited package can't grow past the seats left.
+    if (trip.packageId && (SEAT_HOLDING_STATUSES as readonly string[]).includes(trip.status)) {
+      const pkg = await prisma.travelPackage.findUnique({ where: { id: trip.packageId }, select: { seats: true, name: true } });
+      if (pkg && pkg.seats > 0 && (await seatsTaken(trip.packageId)) + 1 > pkg.seats) return fail(`${pkg.name} is full. Raise the seat limit before adding another traveller.`);
+    }
     await prisma.travelTraveler.create({ data: { ...data, tripId: trip.id } });
   }
   refresh(slug); return { success: true, data: undefined };
@@ -427,6 +439,10 @@ export async function saveTravelPackage(slug: string, input: { id?: string; name
   if (!(depositPercent >= 0 && depositPercent <= 100)) return fail("Deposit must be between 0% and 100%.");
   const data = { depositPercent, name, destination, durationDays: days, pricePerPerson: price, departureDate: optDate(input.departureDate), seats, inclusions: optStr(input.inclusions, 3000), isActive: input.isActive !== false, currency: a.store.currency || "NGN" };
   if (input.id) {
+    if (seats > 0) {
+      const taken = await seatsTaken(input.id);
+      if (taken > seats) return fail(`${taken} seat(s) are already held on this package; the limit can't be lower than that.`);
+    }
     const res = await prisma.travelPackage.updateMany({ where: { id: input.id, storeId: a.store.id }, data });
     if (!res.count) return fail("Package not found.");
   } else {
