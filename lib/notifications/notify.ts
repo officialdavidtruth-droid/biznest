@@ -1,3 +1,4 @@
+import { messageOrderStatus } from "@/lib/order-messaging";
 import { prisma } from "@/lib/prisma";
 import { sendPushToUser } from "@/lib/push/send";
 import { sendOrderConfirmationEmail, storeEmailBrand } from "@/lib/email/send";
@@ -126,6 +127,9 @@ export async function notifyCustomerOfPaidOrder(orderId: string): Promise<void> 
   });
   if (!order) return;
 
+  // WhatsApp/SMS payment confirmation (no-op unless the store opted in).
+  await messageOrderStatus(orderId, "PAID");
+
   const email = order.buyer.email;
   if (!email) return;
 
@@ -176,6 +180,9 @@ const CUSTOMER_ORDER_PUSH: Record<string, { title: string; body: (store: string)
  * a custom domain). Never throws -- it must not break a status update.
  */
 export async function notifyCustomerOfOrderStatus(orderId: string, status: string): Promise<void> {
+  // WhatsApp/SMS runs independently of the push: a customer without push should still hear about it.
+  // (messageOrderStatus is a no-op unless the store opted in, and never throws.)
+  await messageOrderStatus(orderId, status);
   try {
     const copy = CUSTOMER_ORDER_PUSH[status];
     if (!copy) return;

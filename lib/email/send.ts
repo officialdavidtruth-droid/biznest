@@ -362,6 +362,61 @@ export async function sendVerificationEmail(
   );
 }
 
+/**
+ * "How was it?" email sent a few days after an order is delivered or a booking is completed.
+ * Sent AS the store (name, logo and colour; replies go to the store). The link is the store's own
+ * reviews page, which asks the customer to sign in and only offers things they actually bought.
+ */
+export async function sendReviewRequestEmail(params: {
+  to: string;
+  recipientName?: string | null;
+  brand: StoreEmailBrand;
+  reviewUrl: string;
+  kind: "order" | "booking";
+}) {
+  const { brand, reviewUrl } = params;
+  const color = brand.color ?? "#0f6410";
+  const first = (params.recipientName ?? "").trim().split(/\s+/)[0];
+  const storeName = escapeHtml(brand.name);
+  const html = emailShell({
+    preheader: `Tell ${brand.name} how it went`,
+    ...brandShellOpts(brand),
+    body: `
+      <p style="margin:0 0 16px;color:#111827;font-size:16px;line-height:24px;">
+        Hi${first ? ` ${escapeHtml(first)}` : ""} 👋
+      </p>
+      <p style="margin:0 0 24px;color:#374151;font-size:15px;line-height:24px;">
+        ${params.kind === "booking" ? `Thanks for visiting ${storeName}.` : `Your order from ${storeName} should have arrived by now.`}
+        How was it? A quick review takes under a minute and helps ${storeName} and other customers.
+      </p>
+      <table role="presentation" cellpadding="0" cellspacing="0" style="margin:0 auto 24px;">
+        <tr>
+          <td align="center" style="border-radius:8px;background-color:${color};">
+            <a href="${escapeHtml(reviewUrl)}" style="display:inline-block;padding:12px 28px;color:${readableOn(color)};font-size:15px;font-weight:600;text-decoration:none;border-radius:8px;">
+              Leave a review
+            </a>
+          </td>
+        </tr>
+      </table>
+      <p style="margin:0;color:#9ca3af;font-size:13px;line-height:20px;">
+        If the button doesn't work, copy this link into your browser:<br>
+        <a href="${escapeHtml(reviewUrl)}" style="color:${color};word-break:break-all;">${escapeHtml(reviewUrl)}</a>
+      </p>
+    `,
+    footer: `You're receiving this one-time email because you recently bought from ${storeName}.`,
+  });
+  return send(
+    {
+      from: fromFor(brand),
+      reply_to: brand.contactEmail ?? undefined,
+      to: params.to,
+      subject: `How was your experience with ${brand.name}?`,
+      html,
+    },
+    { kind: "review-request", to: params.to }
+  );
+}
+
 export async function sendPasswordResetEmail(
   email: string,
   token: string,

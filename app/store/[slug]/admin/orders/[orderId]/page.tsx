@@ -14,6 +14,7 @@ import { whatsappLink } from "@/lib/builder-defaults";
 import { prisma } from "@/lib/prisma";
 import { getInHouseReservations } from "@/lib/actions/folio";
 import { PostToRoomButton } from "@/components/dashboard/post-to-room-button";
+import { DeliveryPanel } from "@/components/dashboard/delivery-panel";
 
 const REFUNDABLE_STATUSES = ["PAID", "IN_PROGRESS", "DELIVERED", "COMPLETED"];
 
@@ -40,6 +41,8 @@ export default async function StoreOrderDetailPage({
         select: { reservation: { select: { room: { select: { name: true } } } } },
       })
     : null;
+
+  const messagesOn = !!(await prisma.store.findUnique({ where: { id: order.storeId }, select: { msgOrderUpdates: true } }))?.msgOrderUpdates;
 
   const address = order.shippingAddress as {
     fullName: string; phone: string; address: string; city: string; state: string; country: string;
@@ -171,6 +174,18 @@ export default async function StoreOrderDetailPage({
         <h2 className="mb-3 text-sm font-semibold">Status</h2>
         <OrderStatusControl storeSlug={slug} orderId={order.id} currentStatus={order.status} />
       </div>
+
+      {order.channel !== "POS" && ["PAID", "IN_PROGRESS", "DELIVERED"].includes(order.status) && (
+        <div className="mb-6 rounded-lg border bg-background p-4">
+          <h2 className="mb-3 text-sm font-semibold">Delivery</h2>
+          <DeliveryPanel
+            storeSlug={slug}
+            orderId={order.id}
+            messagesOn={messagesOn}
+            initial={{ status: order.deliveryStatus, trackingUrl: order.trackingUrl, riderName: order.riderName, riderPhone: order.riderPhone }}
+          />
+        </div>
+      )}
 
       {order.dispute && (
         <div className="mb-6 rounded-lg border border-[var(--bn-admin-danger-line)] bg-[var(--bn-admin-danger-soft)] p-4">

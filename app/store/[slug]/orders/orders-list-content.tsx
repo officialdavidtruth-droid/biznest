@@ -1,3 +1,4 @@
+import { deliveryStatusLabel } from "@/lib/delivery";
 import { listAwaitingTransferOrdersForBuyer, listOrdersForBuyerAtStore } from "@/lib/actions/order";
 import { getStoreBranding } from "@/lib/actions/store-branding";
 import { requireStoreCustomer } from "@/lib/actions/store-customer";
@@ -195,6 +196,15 @@ export async function OrdersListContent({ slug }: { slug: string }) {
 
                       <ArrowUpRight className="h-4 w-4 flex-shrink-0 text-slate-300 opacity-0 transition-opacity group-hover:opacity-100" />
                     </Link>
+
+                    {order.trackingUrl && /^https?:\/\//i.test(order.trackingUrl) && (
+                      <div className="border-t border-slate-100 bg-slate-50/60 py-2 pl-5 pr-4 text-[11px] font-semibold">
+                        <a href={order.trackingUrl} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:text-blue-700">
+                          Track delivery{order.deliveryStatus ? ` · ${deliveryStatusLabel(order.deliveryStatus)}` : ""} →
+                        </a>
+                        {order.riderName && <span className="ml-2 font-normal text-slate-500">Rider: {order.riderName}</span>}
+                      </div>
+                    )}
 
                     {(hasDispute || canDispute) && (
                       <div className="border-t border-slate-100 bg-slate-50/60 py-2 pl-5 pr-4">

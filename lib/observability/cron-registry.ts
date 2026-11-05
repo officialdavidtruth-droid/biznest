@@ -19,6 +19,7 @@ export const CRONS: CronDef[] = [
   { name: "weekly-recap", path: "/api/cron/weekly-recap", schedule: "30 6 * * 1", maxAgeHours: 170 },
   { name: "month-end-export", path: "/api/cron/month-end-export", schedule: "0 8 1 * *", maxAgeHours: 746 },
   { name: "abandoned-checkout-alerts", path: "/api/cron/abandoned-checkout-alerts", schedule: "0 12 * * *", maxAgeHours: 26 },
+  { name: "review-requests", path: "/api/cron/review-requests", schedule: "30 13 * * *", maxAgeHours: 26 },
   { name: "transfer-order-followup", path: "/api/cron/transfer-order-followup", schedule: "0 11 * * *", maxAgeHours: 26 },
   { name: "webhooks", path: "/api/cron/webhooks", schedule: "0 18 * * *", maxAgeHours: 26 },
   { name: "crm-followups", path: "/api/cron/crm-followups", schedule: "0 7 * * *", maxAgeHours: 26 },

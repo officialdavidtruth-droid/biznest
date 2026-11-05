@@ -1274,7 +1274,8 @@ export async function updateOrderStatus(
   }
 
   if (status !== order.status) {
-    void notifyCustomerOfOrderStatus(orderId, status);
+    // Awaited (it never throws): on serverless the function can be frozen before a floating promise finishes.
+    await notifyCustomerOfOrderStatus(orderId, status);
   }
 
   if (

@@ -399,6 +399,11 @@ export async function updateStoreSettings(slug: string, formData: FormData): Pro
   const whatsappFloat = formData.get("whatsappFloat") === "on" ? "on" : "";
   // Owner-only opt-in. Managers/staff saving this form leave the owner's choice untouched.
   const dailySummaryEmail = access.role === "OWNER" ? formData.get("dailySummaryEmail") === "on" : undefined;
+  // Same owner-only rule for the automatic customer messages (they cost SMS credit and speak for the store).
+  const ownerFlag = (k: string) => (access.role === "OWNER" ? formData.get(k) === "on" : undefined);
+  const msgOrderUpdates = ownerFlag("msgOrderUpdates");
+  const msgAbandonedCart = ownerFlag("msgAbandonedCart");
+  const msgReviewRequests = ownerFlag("msgReviewRequests");
 
   await prisma.$transaction([
     prisma.store.update({
@@ -408,6 +413,9 @@ export async function updateStoreSettings(slug: string, formData: FormData): Pro
         contactEmail,
         contactPhone,
         ...(dailySummaryEmail === undefined ? {} : { dailySummaryEmail }),
+        ...(msgOrderUpdates === undefined ? {} : { msgOrderUpdates }),
+        ...(msgAbandonedCart === undefined ? {} : { msgAbandonedCart }),
+        ...(msgReviewRequests === undefined ? {} : { msgReviewRequests }),
         logoUrl,
         bannerUrl,
         themeColors: { primary, secondary, accent },

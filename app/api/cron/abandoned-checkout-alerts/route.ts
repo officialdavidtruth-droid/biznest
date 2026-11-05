@@ -7,6 +7,9 @@ import { NextResponse } from "next/server";
 import { logInfo, logError, errorMeta } from "@/lib/observability/log";
 import { formatNumber } from "@/lib/i18n/locale";
 import { HOTEL_CATEGORY_ALIASES } from "@/lib/business-identity";
+import { messageCustomer } from "@/lib/customer-messaging";
+import { abandonedCartText } from "@/lib/customer-messages";
+import { buildStoreUrl } from "@/lib/store-url";
 
 /**
  * Alerts a merchant once one of their buyers' checkouts crosses the
@@ -24,9 +27,10 @@ import { HOTEL_CATEGORY_ALIASES } from "@/lib/business-identity";
  * Pro (or any host without the daily-cron cap) can just tighten the
  * schedule in vercel.json, e.g. every 15 minutes, with no code change.
  *
- * Does NOT message the buyer -- that's still a manual merchant action
- * (lib/actions/abandoned-checkout.ts) so a merchant isn't auto-spamming
- * customers on channels they didn't choose.
+ * Messages the buyer (WhatsApp, then SMS) ONLY for stores that switched on
+ * "abandoned cart reminders" (Store.msgAbandonedCart, off by default), once per
+ * cart and never when the merchant already sent a recovery message by hand
+ * (lib/actions/abandoned-checkout.ts). Everyone else keeps the manual flow.
  */
 export const GET = withCronMonitor("abandoned-checkout-alerts", async () => {
 
@@ -41,7 +45,7 @@ export const GET = withCronMonitor("abandoned-checkout-alerts", async () => {
       // Cart-checkout businesses only: no alerts for hotels (reservations) or service-only stores.
       store: { business: { sellsProducts: true, NOT: { category: { in: HOTEL_CATEGORY_ALIASES, mode: "insensitive" } } } },
     },
-    include: { store: { include: { business: true } }, items: { include: { product: true, service: true } }, buyer: { select: { name: true, email: true } } },
+    include: { store: { include: { business: true } }, items: { include: { product: true, service: true } }, buyer: { select: { name: true, email: true } }, abandonedNotifications: { select: { status: true } } },
     take: 200, // batch cap so one sweep can't run indefinitely
   });
 
@@ -55,6 +59,7 @@ export const GET = withCronMonitor("abandoned-checkout-alerts", async () => {
   }
 
   let failures = 0;
+  let customerReminders = 0;
   for (const orders of groups.values()) {
     // newest first, so the alert describes the cart they most recently left
     orders.sort((x, y) => y.createdAt.getTime() - x.createdAt.getTime());
@@ -74,6 +79,23 @@ export const GET = withCronMonitor("abandoned-checkout-alerts", async () => {
         url: `/store/${latest.store.slug}/admin/abandoned-checkouts?order=${latest.id}`,
       });
       await prisma.order.updateMany({ where: { id: { in: orders.map((o) => o.id) } }, data: { merchantAlertedAt: new Date() } });
+      if (latest.store.msgAbandonedCart && !orders.some((o) => o.abandonedNotifications.some((n) => n.status === "SENT"))) {
+        const ship = latest.shippingAddress as { fullName?: string; phone?: string } | null;
+        const outcome = await messageCustomer({
+          phone: ship?.phone,
+          firstName: ship?.fullName ?? latest.buyer?.name,
+          storeName: latest.store.name,
+          text: abandonedCartText({ storeName: latest.store.name, itemLabel: `${first}${extra}`, cartUrl: buildStoreUrl(latest.store, "/cart") }),
+          dedupeKey: `abandoned:${latest.id}`,
+          perHour: 2,
+        });
+        if (outcome.sent) {
+          customerReminders++;
+          await prisma.abandonedCheckoutNotification.create({ data: { orderId: latest.id, channel: outcome.channel, status: "SENT" } });
+        } else if (outcome.reason === "failed") {
+          await prisma.abandonedCheckoutNotification.create({ data: { orderId: latest.id, channel: "SMS", status: "FAILED", error: outcome.detail ?? null } });
+        }
+      }
       if (latest.buyer?.email) {
         await runAutomationsForEvent({ type: "CHECKOUT_ABANDONED", storeId: latest.storeId, data: { orderId: latest.id, email: latest.buyer.email } });
       }
@@ -86,9 +108,9 @@ export const GET = withCronMonitor("abandoned-checkout-alerts", async () => {
   void logInfo(
     "JOBS",
     "abandoned-checkout-alerts completed",
-    { processed: newlyAbandoned.length, notified: groups.size, failures },
+    { processed: newlyAbandoned.length, notified: groups.size, customerReminders, failures },
     Date.now() - start
   );
 
-  return NextResponse.json({ processed: newlyAbandoned.length, notified: groups.size, failures });
+  return NextResponse.json({ processed: newlyAbandoned.length, notified: groups.size, customerReminders, failures });
 });
