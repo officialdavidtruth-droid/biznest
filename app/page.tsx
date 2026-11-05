@@ -100,14 +100,17 @@ const FAQS = [
   },
 ];
 
+// Shorter copy for link previews (WhatsApp, Facebook, X): the long SEO title/description get cut off there.
+const SHARE_TITLE = "BizNest: Create an Online Store in Nigeria";
+const SHARE_DESCRIPTION = "Sell products, take bookings and get paid, all in one place. No code needed.";
 const HOME_TITLE = "BizNest — Create an Online Store in Nigeria | Sell, Book & Get Paid";
 
 export const metadata: Metadata = {
   title: { absolute: HOME_TITLE },
   description: SITE_DESCRIPTION,
   alternates: { canonical: SITE_URL },
-  openGraph: { type: "website", url: SITE_URL, siteName: SITE_NAME, title: HOME_TITLE, description: SITE_DESCRIPTION, locale: "en_NG" },
-  twitter: { card: "summary_large_image", title: HOME_TITLE, description: SITE_DESCRIPTION },
+  openGraph: { type: "website", url: SITE_URL, siteName: SITE_NAME, title: SHARE_TITLE, description: SHARE_DESCRIPTION, locale: "en_NG" },
+  twitter: { card: "summary_large_image", title: SHARE_TITLE, description: SHARE_DESCRIPTION },
 };
 
 export default async function HomePage() {
