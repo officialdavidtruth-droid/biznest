@@ -34,6 +34,8 @@ export const RESERVED_SLUGS = new Set([
   "icon-maskable-512.png",
   // /download page (app/download) + public/downloads/ (the Android APK)
   "download",
+  // Public social feed (app/browse)
+  "browse",
   "downloads",
   // Service worker script (public/sw.js) -- same failure mode as the
   // manifest above: missing here meant middleware served a 404 page in

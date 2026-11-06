@@ -12,7 +12,11 @@ import { settleServiceBookingPayment } from "@/lib/payments/settle-service-booki
 import { settleReservationPayment } from "@/lib/payments/settle-reservation";
 import { settleTravelPayment } from "@/lib/payments/settle-travel";
 import { settleRentPayment } from "@/lib/payments/settle-rent";
+import { settleMemberPayment } from "@/lib/payments/settle-member";
+import { settleTicketPayment } from "@/lib/payments/settle-ticket";
+import { settleJobPayment } from "@/lib/payments/settle-job";
 import { settleTailoringPayment } from "@/lib/payments/settle-tailoring";
+import { settleAdPayment } from "@/lib/payments/settle-ad";
 import { settlePluginPurchase } from "@/lib/payments/settle-plugin-purchase";
 import { applyTransferWebhookEvent, isTransferEvent } from "@/lib/payments/payout";
 import { loadStoreCredentials } from "@/lib/payments/store-gateway";
@@ -185,6 +189,12 @@ export async function POST(req: Request) {
     return NextResponse.json({ received: true });
   }
 
+  if (reference.startsWith("ADS-")) {
+    const adResult = await settleAdPayment(reference, Number(verification.data?.amount ?? 0) / 100, verification as object);
+    if (!adResult.success) await flagPaymentForReview(reference, `Paystack verified success but ad settlement refused: ${adResult.error}`, verification);
+    return NextResponse.json({ received: true });
+  }
+
   // Invoice payments ("INV-{invoiceId}-{random}") and quote deposits
   // ("QDEP-{quoteId}-{random}") are settled by their own action files
   // rather than inline here, since each has its own idempotent
@@ -213,6 +223,25 @@ export async function POST(req: Request) {
     const amount = verification.data ? Number(verification.data.amount) / 100 : 0;
     const result = await settleRentPayment(reference, "PAYSTACK", amount, verification as object, verification.data?.currency);
     if (!result.success) await flagPaymentForReview(reference, `Paystack verified success but rent settlement refused: ${result.error}`, verification);
+    return NextResponse.json({ received: true });
+  }
+
+  if (reference.startsWith("MBR-")) {
+    const amount = verification.data ? Number(verification.data.amount) / 100 : 0;
+    const result = await settleMemberPayment(reference, "PAYSTACK", amount, verification as object, verification.data?.currency);
+    if (!result.success) await flagPaymentForReview(reference, `Paystack verified success but member settlement refused: ${result.error}`, verification);
+    return NextResponse.json({ received: true });
+  }
+  if (reference.startsWith("JBC-")) {
+    const amount = verification.data ? Number(verification.data.amount) / 100 : 0;
+    const result = await settleJobPayment(reference, "PAYSTACK", amount, verification as object, verification.data?.currency);
+    if (!result.success) await flagPaymentForReview(reference, `Paystack verified success but job settlement refused: ${result.error}`, verification);
+    return NextResponse.json({ received: true });
+  }
+  if (reference.startsWith("TKT-")) {
+    const amount = verification.data ? Number(verification.data.amount) / 100 : 0;
+    const result = await settleTicketPayment(reference, "PAYSTACK", amount, verification as object, verification.data?.currency);
+    if (!result.success) await flagPaymentForReview(reference, `Paystack verified success but ticket settlement refused: ${result.error}`, verification);
     return NextResponse.json({ received: true });
   }
 

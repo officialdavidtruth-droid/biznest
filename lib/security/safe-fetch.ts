@@ -191,6 +191,10 @@ export type SafeFetchOptions = {
   maxRedirects?: number;
   /** Set false to read headers only (probes). Default true. */
   readBody?: boolean;
+  /** HTTP method. Default GET. A POST never follows redirects (the body would be replayed to a new host). */
+  method?: 'GET' | 'POST';
+  /** Request body (POST only). */
+  body?: string;
 };
 
 export type SafeFetchResult = {
@@ -217,7 +221,7 @@ function flattenHeaders(h: http.IncomingHttpHeaders): Record<string, string> {
 
 function requestOnce(
   url: URL,
-  o: { headers: Record<string, string>; timeoutMs: number; maxBytes: number; readBody: boolean; lookup: LookupFunction },
+  o: { headers: Record<string, string>; timeoutMs: number; maxBytes: number; readBody: boolean; lookup: LookupFunction; method: 'GET' | 'POST'; body?: string },
 ): Promise<RawResponse> {
   return new Promise<RawResponse>((resolve, reject) => {
     let settled = false;
@@ -234,7 +238,7 @@ function requestOnce(
     const lib = url.protocol === 'https:' ? https : http;
     const req = lib.request(
       url,
-      { method: 'GET', headers: o.headers, lookup: o.lookup, agent: false },
+      { method: o.method, headers: o.headers, lookup: o.lookup, agent: false },
       (res) => {
         const status = res.statusCode ?? 0;
         const headers = flattenHeaders(res.headers);
@@ -279,6 +283,7 @@ function requestOnce(
       },
     );
     req.on('error', (err) => finish(() => reject(err)));
+    if (o.method === 'POST' && o.body !== undefined) req.write(o.body);
     req.end();
   });
 }
@@ -287,8 +292,11 @@ export function createSafeFetch(deps: { isBlockedIp?: (ip: string) => boolean } 
   const blocked = deps.isBlockedIp ?? isBlockedIp;
 
   return async function safeFetch(input: string | URL, opts: SafeFetchOptions = {}): Promise<SafeFetchResult> {
-    const { timeoutMs = 15_000, maxBytes = 2_000_000, maxRedirects = 5, readBody = true } = opts;
-    const headers = { 'accept-encoding': 'gzip, deflate, br', ...(opts.headers ?? {}) };
+    const { timeoutMs = 15_000, maxBytes = 2_000_000, readBody = true } = opts;
+    const method = opts.method ?? 'GET';
+    const maxRedirects = method === 'POST' ? 0 : (opts.maxRedirects ?? 5);
+    const headers: Record<string, string> = { 'accept-encoding': 'gzip, deflate, br', ...(opts.headers ?? {}) };
+    if (method === 'POST' && opts.body !== undefined) headers['content-length'] = String(Buffer.byteLength(opts.body));
     const deadline = Date.now() + timeoutMs;
     const state = { blocked: false };
 
@@ -313,7 +321,7 @@ export function createSafeFetch(deps: { isBlockedIp?: (ip: string) => boolean } 
 
       let raw: RawResponse;
       try {
-        raw = await requestOnce(current, { headers, timeoutMs: remaining, maxBytes, readBody, lookup });
+        raw = await requestOnce(current, { headers, timeoutMs: remaining, maxBytes, readBody, lookup, method, body: opts.body });
       } catch (err) {
         if (state.blocked) throw new SafeFetchError(BLOCKED_MESSAGE, 'BLOCKED', { cause: err });
         if (err instanceof SafeFetchError) throw err;

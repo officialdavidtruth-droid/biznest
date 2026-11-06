@@ -15,6 +15,7 @@ import type { ActionResult } from "@/types/actions";
 import crypto from "crypto";
 import { shortToken } from "@/lib/payments/reference";
 import { findChannelBlockOverlap } from "@/lib/channels/sync";
+import { notifyRoomChanged, refreshRoomChannels } from "@/lib/channels/push";
 import { formatDate } from "@/lib/i18n/locale";
 
 
@@ -279,6 +280,9 @@ export async function createReservation(slug:string,input:{guestId:string;roomId
  if(checkOut<=new Date())return{success:false,error:"Check-out must be in the future."};
  if(room.status==="OUT_OF_SERVICE")return{success:false,error:"This room is out of service and can't be reserved."};
 
+ // Read any OTA calendar that is more than a few minutes old first, so the check below sees fresh sales.
+ await refreshRoomChannels(room.id);
+
  // The overlap check and the insert used to be two separate round-trips,
  // so two concurrent booking attempts for the same room/dates could both
  // pass the check before either row existed, double-booking the room.
@@ -320,6 +324,7 @@ export async function createReservation(slug:string,input:{guestId:string;roomId
  if(!result)return{success:false,error:"That room was just taken. Please pick other dates or try again."};
 
  if(!result.success)return result;
+ await notifyRoomChanged(room.id);
  revalidatePath(`/store/${slug}/admin/pms`);return result;
 }
 
@@ -371,6 +376,7 @@ export async function checkOutReservation(slug:string,id:string):Promise<ActionR
   prisma.propertyRoom.update({where:{id:r.roomId},data:{status:"DIRTY"}}),
   prisma.roomAccessCard.updateMany({where:{storeId:a.store.id,reservationId:id,status:"ACTIVE"},data:{status:"REVOKED",revokedAt:new Date(),revokedReason:"Reservation checked out"}}),
  ]);
+ await notifyRoomChanged(r.roomId);
  revalidatePath(`/store/${slug}/admin/pms`);return{success:true,data:undefined};
 }
 
@@ -397,6 +403,7 @@ export async function cancelReservation(slug:string,id:string,reason?:string):Pr
   await releaseRoomIfNoOtherStay(tx,r.roomId,id);
   await tx.roomAccessCard.updateMany({where:{storeId:a.store.id,reservationId:id,status:"ACTIVE"},data:{status:"REVOKED",revokedAt:new Date(),revokedReason:"Reservation cancelled"}});
  });
+ await notifyRoomChanged(r.roomId);
  revalidatePath(`/store/${slug}/admin/pms`);return{success:true,data:undefined};
 }
 
@@ -415,6 +422,7 @@ export async function markReservationNoShow(slug:string,id:string):Promise<Actio
   await releaseRoomIfNoOtherStay(tx,r.roomId,id);
   await tx.roomAccessCard.updateMany({where:{storeId:a.store.id,reservationId:id,status:"ACTIVE"},data:{status:"REVOKED",revokedAt:new Date(),revokedReason:"Reservation marked no-show"}});
  });
+ await notifyRoomChanged(r.roomId);
  revalidatePath(`/store/${slug}/admin/pms`);return{success:true,data:undefined};
 }
 

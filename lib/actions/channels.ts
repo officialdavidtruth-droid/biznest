@@ -8,6 +8,8 @@ import { hasCapability } from "@/lib/capabilities";
 import { getPluginEntitlement } from "@/lib/plugins";
 import { assertSafeUrl } from "@/lib/security/safe-fetch";
 import { syncConnection } from "@/lib/channels/sync";
+import { deliverPush, enqueueConnectionPush } from "@/lib/channels/push";
+import { newLiveCredentials, safePushUrl } from "@/lib/channels/live";
 import type { ActionResult } from "@/types/actions";
 
 const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? "https://biznest.space";
@@ -50,6 +52,18 @@ export type ChannelConnectionView = {
   lastSyncStatus: string | null;
   lastSyncMessage: string | null;
   blockCount: number;
+  live: {
+    enabled: boolean;
+    hookUrl: string | null;
+    secret: string | null;
+    pushUrl: string | null;
+    lastPushAt: string | null;
+    lastPushStatus: string | null;
+    lastPushMessage: string | null;
+    lastHookAt: string | null;
+    pending: number;
+    failed: number;
+  };
 };
 
 export type ChannelManagerRequestView = { id: string; provider: string; propertyCode: string | null; status: string; createdAt: string };
@@ -60,7 +74,7 @@ export async function getChannelData(slug: string) {
   const [connections, requests] = await Promise.all([
     prisma.channelConnection.findMany({
       where: { storeId: a.store.id },
-      include: { room: { select: { name: true } } },
+      include: { room: { select: { name: true } }, pushes: { where: { status: { in: ["PENDING", "FAILED"] } }, select: { status: true } } },
       orderBy: { createdAt: "desc" },
     }),
     prisma.channelManagerRequest.findMany({ where: { storeId: a.store.id }, orderBy: { createdAt: "desc" }, take: 20 }),
@@ -79,6 +93,18 @@ export async function getChannelData(slug: string) {
     lastSyncStatus: c.lastSyncStatus,
     lastSyncMessage: c.lastSyncMessage,
     blockCount: c.lastBlockCount,
+    live: {
+      enabled: !!(c.hookToken && c.liveSecret),
+      hookUrl: c.hookToken ? `${APP_URL}/api/channels/hook/${c.hookToken}` : null,
+      secret: c.liveSecret,
+      pushUrl: c.pushUrl,
+      lastPushAt: c.lastPushAt?.toISOString() ?? null,
+      lastPushStatus: c.lastPushStatus,
+      lastPushMessage: c.lastPushMessage,
+      lastHookAt: c.lastHookAt?.toISOString() ?? null,
+      pending: c.pushes.filter((p) => p.status === "PENDING").length,
+      failed: c.pushes.filter((p) => p.status === "FAILED").length,
+    },
   }));
   const requestViews: ChannelManagerRequestView[] = requests.map((r) => ({
     id: r.id,
@@ -168,6 +194,74 @@ export async function deleteChannelConnection(slug: string, connectionId: string
   if (res.count === 0) return { success: false, error: "Connection not found." };
   revalidatePath(`/store/${slug}/admin/pms`);
   return { success: true, data: undefined };
+}
+
+/* ------------------------------ live two-way link ------------------------------ */
+
+async function ownConnection(slug: string, connectionId: string) {
+  const a = await access(slug);
+  if (!a.success) return { error: a.error } as const;
+  const conn = await prisma.channelConnection.findFirst({ where: { id: connectionId, storeId: a.store.id } });
+  if (!conn) return { error: "Connection not found." } as const;
+  return { a, conn } as const;
+}
+
+/** Create the inbound webhook address and the signing secret (once). */
+export async function enableLiveChannel(slug: string, connectionId: string): Promise<ActionResult> {
+  const r = await ownConnection(slug, connectionId);
+  if ("error" in r) return { success: false, error: r.error };
+  if (r.conn.hookToken && r.conn.liveSecret) return { success: true, data: undefined };
+  await prisma.channelConnection.update({ where: { id: r.conn.id }, data: newLiveCredentials() });
+  revalidatePath(`/store/${slug}/admin/pms`);
+  return { success: true, data: undefined };
+}
+
+/** Set (or clear, with an empty string) the https address we POST availability to. */
+export async function saveChannelPushUrl(slug: string, connectionId: string, rawUrl: string): Promise<ActionResult> {
+  const r = await ownConnection(slug, connectionId);
+  if ("error" in r) return { success: false, error: r.error };
+  const trimmed = rawUrl.trim();
+  let pushUrl: string | null = null;
+  if (trimmed) {
+    pushUrl = safePushUrl(trimmed);
+    if (!pushUrl) return { success: false, error: "The push address must be a valid https:// link." };
+    try { assertSafeUrl(pushUrl); } catch { return { success: false, error: "That address is not allowed." }; }
+  }
+  await prisma.channelConnection.update({
+    where: { id: r.conn.id },
+    data: { pushUrl, ...(pushUrl && !(r.conn.hookToken && r.conn.liveSecret) ? newLiveCredentials() : {}) },
+  });
+  if (pushUrl) {
+    const id = await enqueueConnectionPush(r.conn.id);
+    if (id) await deliverPush(id).catch(() => undefined);
+  } else {
+    await prisma.channelPush.deleteMany({ where: { connectionId: r.conn.id, status: "PENDING" } });
+  }
+  revalidatePath(`/store/${slug}/admin/pms`);
+  return { success: true, data: undefined };
+}
+
+/** New secret and webhook address. The old ones stop working immediately. */
+export async function rotateLiveSecret(slug: string, connectionId: string): Promise<ActionResult> {
+  const r = await ownConnection(slug, connectionId);
+  if ("error" in r) return { success: false, error: r.error };
+  await prisma.channelConnection.update({ where: { id: r.conn.id }, data: newLiveCredentials() });
+  revalidatePath(`/store/${slug}/admin/pms`);
+  return { success: true, data: undefined };
+}
+
+/** Send a full availability snapshot now (also retries anything that failed). */
+export async function sendChannelPushNow(slug: string, connectionId: string, kind: "test" | "retry" = "retry"): Promise<ActionResult<{ message: string }>> {
+  const r = await ownConnection(slug, connectionId);
+  if ("error" in r) return { success: false, error: r.error };
+  if (!r.conn.pushUrl || !r.conn.liveSecret) return { success: false, error: "Add a push address first." };
+  const id = await enqueueConnectionPush(r.conn.id, kind === "test" ? "test" : "availability.updated");
+  if (!id) return { success: false, error: "Live push is not set up for this channel." };
+  const ok = await deliverPush(id);
+  revalidatePath(`/store/${slug}/admin/pms`);
+  if (ok) return { success: true, data: { message: "Delivered." } };
+  const fresh = await prisma.channelConnection.findUnique({ where: { id: r.conn.id }, select: { lastPushMessage: true } });
+  return { success: false, error: fresh?.lastPushMessage ?? "Delivery failed." };
 }
 
 /** Hotel asks BizNest to connect it to a certified channel manager such as RateTiger. */

@@ -12,6 +12,9 @@ import { settleReservationPayment } from "@/lib/payments/settle-reservation";
 import { settleTravelPayment } from "@/lib/payments/settle-travel";
 import { settleTailoringPayment } from "@/lib/payments/settle-tailoring";
 import { settleRentPayment } from "@/lib/payments/settle-rent";
+import { settleMemberPayment } from "@/lib/payments/settle-member";
+import { settleTicketPayment } from "@/lib/payments/settle-ticket";
+import { settleJobPayment } from "@/lib/payments/settle-job";
 
 /**
  * Bank transfer is how customers pay a store unless the owner has added their
@@ -40,7 +43,7 @@ export async function resolvePayRoute(storeId: string): Promise<PayRoute> {
   return { mode: "manual" };
 }
 
-export type ManualPurpose = "INVOICE" | "QUOTE_DEPOSIT" | "SERVICE_BOOKING" | "PMS_RESERVATION" | "TRAVEL_BOOKING" | "TAILORING_BALANCE" | "RENT_PAYMENT";
+export type ManualPurpose = "INVOICE" | "QUOTE_DEPOSIT" | "SERVICE_BOOKING" | "PMS_RESERVATION" | "TRAVEL_BOOKING" | "TAILORING_BALANCE" | "RENT_PAYMENT" | "MEMBER_PAYMENT" | "TICKET_PURCHASE" | "JOB_PAYMENT";
 
 const PREFIX: Record<ManualPurpose, string> = {
   INVOICE: "INV",
@@ -50,6 +53,9 @@ const PREFIX: Record<ManualPurpose, string> = {
   TRAVEL_BOOKING: "TVL",
   TAILORING_BALANCE: "TLR",
   RENT_PAYMENT: "RNT",
+  MEMBER_PAYMENT: "MBR",
+  TICKET_PURCHASE: "TKT",
+  JOB_PAYMENT: "JBC",
 };
 
 export const MANUAL_PURPOSE_LABEL: Record<ManualPurpose, string> = {
@@ -60,6 +66,9 @@ export const MANUAL_PURPOSE_LABEL: Record<ManualPurpose, string> = {
   TRAVEL_BOOKING: "Tour booking",
   TAILORING_BALANCE: "Tailoring balance",
   RENT_PAYMENT: "Rent",
+  MEMBER_PAYMENT: "Member payment",
+  TICKET_PURCHASE: "Event tickets",
+  JOB_PAYMENT: "Job payment",
 };
 
 export function isManualPurpose(p: string): p is ManualPurpose {
@@ -82,6 +91,9 @@ export async function startManualTransfer(input: {
   travelTripId?: string;
   tailoringJobId?: string;
   rentChargeId?: string;
+  memberChargeId?: string;
+  ticketOrderId?: string;
+  jobChargeId?: string;
 }): Promise<{ reference: string; payUrl: string }> {
   const prefix = `${PREFIX[input.purpose]}-${input.entityId}-`;
   const open = await prisma.payment.findFirst({
@@ -109,6 +121,9 @@ export async function startManualTransfer(input: {
       travelTripId: input.travelTripId,
       tailoringJobId: input.tailoringJobId,
       rentChargeId: input.rentChargeId,
+      memberChargeId: input.memberChargeId,
+      ticketOrderId: input.ticketOrderId,
+      jobChargeId: input.jobChargeId,
     });
   }
   return { reference: reference!, payUrl: buildStoreUrl(input.store, `/pay/${reference}`) };
@@ -151,6 +166,15 @@ export async function settleManualTransfer(input: { reference: string; storeId: 
       break;
     case "RENT_PAYMENT":
       await settleRentPayment(payment.reference, "CASH", amount, raw);
+      break;
+    case "MEMBER_PAYMENT":
+      await settleMemberPayment(payment.reference, "CASH", amount, raw);
+      break;
+    case "TICKET_PURCHASE":
+      await settleTicketPayment(payment.reference, "CASH", amount, raw);
+      break;
+    case "JOB_PAYMENT":
+      await settleJobPayment(payment.reference, "CASH", amount, raw);
       break;
   }
 

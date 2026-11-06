@@ -3,10 +3,11 @@
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { MoreVertical, Pencil, Eye, EyeOff, Trash2 } from "lucide-react";
+import { MoreVertical, Pencil, Eye, EyeOff, Trash2, Rss } from "lucide-react";
 import { toast } from "sonner";
 import { bulkUpdateProducts } from "@/lib/actions/bulk";
 import { deleteProduct } from "@/lib/actions/product";
+import { shareProductToBrowse } from "@/lib/actions/browse-vendor";
 
 export function ProductRowActions({
   storeSlug,
@@ -42,6 +43,17 @@ export function ProductRowActions({
     if (!result.success) return toast.error(result.error);
     toast.success(archived ? "Restored" : isPublished ? "Marked inactive" : "Marked active");
     router.refresh();
+  }
+
+  async function shareToBrowse() {
+    const caption = window.prompt("Share this product on Browse. Add a caption (optional):", "");
+    if (caption === null) return;
+    setBusy(true);
+    const result = await shareProductToBrowse(storeSlug, productId, caption);
+    setBusy(false);
+    setOpen(false);
+    if (!result.success) return toast.error(result.error);
+    toast.success("Shared to Browse");
   }
 
   async function handleDelete() {
@@ -80,6 +92,9 @@ export function ProductRowActions({
               {isPublished ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
               {archived ? "Restore" : isPublished ? "Mark inactive" : "Mark active"}
             </button>
+            {!archived && isPublished && <button onClick={shareToBrowse} className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm hover:bg-muted/50">
+              <Rss className="h-3.5 w-3.5" /> Share to Browse
+            </button>}
             {!archived && <button onClick={handleDelete} className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-destructive hover:bg-destructive/10">
               <Trash2 className="h-3.5 w-3.5" /> Delete
             </button>}

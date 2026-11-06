@@ -242,7 +242,7 @@ export default async function HomePage() {
           BizNest
         </Link>
         <nav aria-label="Primary" className="flex min-w-0 items-center gap-4 whitespace-nowrap text-sm sm:gap-6">
-          <Link href="/search" className={`hidden opacity-80 transition hover:opacity-100 sm:inline ${FOCUS}`}>
+          <Link href="/browse" className={`hidden opacity-80 transition hover:opacity-100 sm:inline ${FOCUS}`}>
             Browse
           </Link>
           <a href="#pricing" className={`hidden opacity-80 transition hover:opacity-100 sm:inline ${FOCUS}`}>
@@ -263,7 +263,7 @@ export default async function HomePage() {
               className="absolute right-0 top-11 flex w-44 flex-col gap-1 rounded-2xl p-2 text-sm shadow-xl"
               style={{ background: "var(--bn-ink-raised)", border: "1px solid var(--bn-ink-line)" }}
             >
-              <Link href="/search" className={`rounded-lg px-3 py-2 hover:bg-white/10 ${FOCUS}`}>Browse</Link>
+              <Link href="/browse" className={`rounded-lg px-3 py-2 hover:bg-white/10 ${FOCUS}`}>Browse</Link>
               <a href="#pricing" className={`rounded-lg px-3 py-2 hover:bg-white/10 ${FOCUS}`}>Pricing</a>
               <Link href="/download" className={`rounded-lg px-3 py-2 hover:bg-white/10 ${FOCUS}`}>Get the app</Link>
             </div>

@@ -56,7 +56,7 @@ export default async function ReceiptsPage({
     const payments = await prisma.payment.findMany({
       where: {
         status: "SUCCESSFUL",
-        purpose: { notIn: ["SUBSCRIPTION_UPGRADE", "SUBSCRIPTION_RENEWAL", "PLUGIN_PURCHASE"] },
+        purpose: { notIn: ["SUBSCRIPTION_UPGRADE", "SUBSCRIPTION_RENEWAL", "PLUGIN_PURCHASE", "AD_CAMPAIGN"] },
         OR: [
           { storeId: store.id },
           { order: { storeId: store.id } },

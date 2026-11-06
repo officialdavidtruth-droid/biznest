@@ -11,8 +11,12 @@ import { settleServiceBookingPayment } from "@/lib/payments/settle-service-booki
 import { settleReservationPayment } from "@/lib/payments/settle-reservation";
 import { settleTravelPayment } from "@/lib/payments/settle-travel";
 import { settleRentPayment } from "@/lib/payments/settle-rent";
+import { settleMemberPayment } from "@/lib/payments/settle-member";
+import { settleTicketPayment } from "@/lib/payments/settle-ticket";
+import { settleJobPayment } from "@/lib/payments/settle-job";
 import { settleTailoringPayment } from "@/lib/payments/settle-tailoring";
 import { settleSubscriptionUpgrade } from "@/lib/payments/settle-subscription";
+import { settleAdPayment } from "@/lib/payments/settle-ad";
 import { settlePluginPurchase } from "@/lib/payments/settle-plugin-purchase";
 
 /**
@@ -107,6 +111,18 @@ export async function POST(req: Request) {
     await settleRentPayment(reference, "KORAPAY", amount, verification as object, verification.data?.currency);
     return NextResponse.json({ received: true });
   }
+  if (reference.startsWith("MBR-")) {
+    await settleMemberPayment(reference, "KORAPAY", amount, verification as object, verification.data?.currency);
+    return NextResponse.json({ received: true });
+  }
+  if (reference.startsWith("JBC-")) {
+    await settleJobPayment(reference, "KORAPAY", amount, verification as object, verification.data?.currency);
+    return NextResponse.json({ received: true });
+  }
+  if (reference.startsWith("TKT-")) {
+    await settleTicketPayment(reference, "KORAPAY", amount, verification as object, verification.data?.currency);
+    return NextResponse.json({ received: true });
+  }
   if (reference.startsWith("TLR-")) {
     await settleTailoringPayment(reference, "KORAPAY", amount, verification as object, verification.data?.currency);
     return NextResponse.json({ received: true });
@@ -127,6 +143,11 @@ export async function POST(req: Request) {
   // App purchases and renewals are paid through Korapay too.
   if (reference.startsWith("PLUG-")) {
     await settlePluginPurchase(reference, amount, verification as object);
+    return NextResponse.json({ received: true });
+  }
+  // Ad campaigns are platform-collected too.
+  if (reference.startsWith("ADS-")) {
+    await settleAdPayment(reference, amount, verification as object);
     return NextResponse.json({ received: true });
   }
 

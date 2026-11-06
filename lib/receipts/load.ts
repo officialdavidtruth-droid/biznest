@@ -170,7 +170,7 @@ async function loadPayment(store: StoreLike, id: string, money: Money, when: Whe
     where: {
       id,
       // Platform-side charges (subscriptions, plugins) are BizNest's receipts, not the vendor's.
-      purpose: { notIn: ["SUBSCRIPTION_UPGRADE", "SUBSCRIPTION_RENEWAL", "PLUGIN_PURCHASE"] },
+      purpose: { notIn: ["SUBSCRIPTION_UPGRADE", "SUBSCRIPTION_RENEWAL", "PLUGIN_PURCHASE", "AD_CAMPAIGN"] },
       OR: [
         { storeId: store.id },
         { order: { storeId: store.id } },

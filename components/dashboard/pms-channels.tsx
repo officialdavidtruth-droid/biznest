@@ -3,12 +3,16 @@
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { Copy, Link2, Pause, Play, RefreshCw, Trash2 } from "lucide-react";
+import { Copy, Link2, Pause, Play, RefreshCw, Trash2, Zap } from "lucide-react";
 import { formatDate } from "@/lib/i18n/locale";
 import {
   createChannelConnection,
   deleteChannelConnection,
+  enableLiveChannel,
   requestChannelManager,
+  rotateLiveSecret,
+  saveChannelPushUrl,
+  sendChannelPushNow,
   setChannelActive,
   syncChannelNow,
   type ChannelConnectionView,
@@ -36,6 +40,79 @@ function when(iso: string | null) {
 
 function copy(text: string) {
   navigator.clipboard?.writeText(text).then(() => toast.success("Link copied"), () => toast.error("Could not copy"));
+}
+
+function LivePanel({ slug, c, pending, run }: { slug: string; c: ChannelConnectionView; pending: boolean; run: (fn: () => Promise<{ success: boolean; error?: string }>, ok: string, after?: () => void) => void }) {
+  const [open, setOpen] = useState(false);
+  const [reveal, setReveal] = useState(false);
+  const [url, setUrl] = useState(c.live.pushUrl ?? "");
+  const l = c.live;
+  const status = !l.pushUrl ? null : l.lastPushStatus === "OK" ? `Last delivered ${when(l.lastPushAt)}` : l.lastPushStatus === "ERROR" ? `Problem: ${l.lastPushMessage}` : "Waiting for first delivery";
+  return (
+    <div className="mt-3 rounded-xl border border-[color-mix(in_srgb,var(--bn-admin-border)_10%,transparent)] px-3 py-2">
+      <button className="flex w-full items-center justify-between text-left text-xs font-semibold" onClick={() => setOpen((v) => !v)} aria-expanded={open}>
+        <span className="inline-flex items-center gap-1.5"><Zap className="h-3.5 w-3.5" /> Live sync (instant, two-way){l.pushUrl ? <span className={`font-normal ${l.lastPushStatus === "ERROR" ? "text-red-400" : "text-emerald-400"}`}> · {status}</span> : null}</span>
+        <span className="font-normal text-white">{open ? "Hide" : "Set up"}</span>
+      </button>
+      {open && (
+        <div className="mt-3 space-y-3 text-xs">
+          {!l.enabled ? (
+            <div>
+              <p className="text-white">Calendars are read every few hours by the channel. Live sync adds a signed webhook in each direction so a booking made here reaches the channel manager the moment it happens, and a sale on the channel reaches BizNest the same way. Use it with a channel manager, Zapier, Make or your own server.</p>
+              <button disabled={pending} className={`${btn} mt-2`} onClick={() => run(() => enableLiveChannel(slug, c.id), "Live sync enabled")}>Enable live sync</button>
+            </div>
+          ) : (
+            <>
+              <div>
+                <p className="font-semibold">1. Send our bookings to the channel (push)</p>
+                <p className="mt-0.5 text-white">We POST the dates this room is unavailable to this https address whenever a booking is made, changed or cancelled, signed with your secret. Failed deliveries retry for hours.</p>
+                <div className="mt-1.5 flex gap-2">
+                  <input className={input} placeholder="https://hooks.example.com/…" value={url} onChange={(e) => setUrl(e.target.value)} aria-label="Push address" />
+                  <button disabled={pending || url.trim() === (l.pushUrl ?? "")} className={btn} onClick={() => run(() => saveChannelPushUrl(slug, c.id, url), url.trim() ? "Saved. Sent a first update." : "Push switched off")}>Save</button>
+                </div>
+                {l.pushUrl && (
+                  <div className="mt-1.5 flex flex-wrap items-center gap-2">
+                    <button disabled={pending} className={btn} onClick={() => run(() => sendChannelPushNow(slug, c.id, "test"), "Test delivered")}>Send test</button>
+                    {(l.failed > 0 || l.lastPushStatus === "ERROR") && <button disabled={pending} className={btn} onClick={() => run(() => sendChannelPushNow(slug, c.id, "retry"), "Delivered")}>Retry now</button>}
+                    {l.pending > 0 && <span className="text-white">{l.pending} waiting to send</span>}
+                    {l.lastPushStatus === "ERROR" && <span className="text-red-400">{l.lastPushMessage}</span>}
+                  </div>
+                )}
+              </div>
+              <div>
+                <p className="font-semibold">2. Receive channel bookings instantly (webhook)</p>
+                <p className="mt-0.5 text-white">Have the channel manager POST JSON events to this address. Empty POST = &ldquo;read the calendar now&rdquo;. {l.lastHookAt ? `Last received ${when(l.lastHookAt)}.` : "Nothing received yet."}</p>
+                <div className="mt-1.5 flex items-center gap-2 rounded-xl bg-[var(--bn-admin-surface)]/[0.04] px-3 py-2">
+                  <code className="min-w-0 flex-1 truncate text-[11px]">{l.hookUrl}</code>
+                  <button className={btn} onClick={() => l.hookUrl && copy(l.hookUrl)}><Copy className="h-3.5 w-3.5" /> Copy</button>
+                </div>
+              </div>
+              <div>
+                <p className="font-semibold">Signing secret</p>
+                <p className="mt-0.5 text-white">Used in both directions: we sign what we push; you sign what you send. Header <code>x-biznest-signature: sha256=HMAC(secret, timestamp + &quot;.&quot; + body)</code> with <code>x-biznest-timestamp</code> (unix seconds, valid 5 minutes).</p>
+                <div className="mt-1.5 flex items-center gap-2 rounded-xl bg-[var(--bn-admin-surface)]/[0.04] px-3 py-2">
+                  <code className="min-w-0 flex-1 truncate text-[11px]">{reveal ? l.secret : "•".repeat(24)}</code>
+                  <button className={btn} onClick={() => setReveal((v) => !v)}>{reveal ? "Hide" : "Show"}</button>
+                  <button className={btn} onClick={() => l.secret && copy(l.secret)}><Copy className="h-3.5 w-3.5" /> Copy</button>
+                  <button disabled={pending} className={btn} onClick={() => { if (confirm("Create a new secret and webhook address? The old ones stop working immediately.")) run(() => rotateLiveSecret(slug, c.id), "New secret created"); }}>Rotate</button>
+                </div>
+              </div>
+              <details>
+                <summary className="cursor-pointer font-semibold">Event format</summary>
+                <pre className="mt-1.5 overflow-x-auto rounded-xl bg-[var(--bn-admin-surface)]/[0.04] p-3 text-[11px] leading-relaxed">{`POST ${l.hookUrl ?? ""}
+{ "events": [
+  { "type": "booking.created",   "uid": "ABC123", "start": "2026-12-20", "end": "2026-12-23", "summary": "Reserved" },
+  { "type": "booking.updated",   "uid": "ABC123", "start": "2026-12-21", "end": "2026-12-23" },
+  { "type": "booking.cancelled", "uid": "ABC123" }
+] }
+// dates are YYYY-MM-DD; end is the check-out day (free again).`}</pre>
+              </details>
+            </>
+          )}
+        </div>
+      )}
+    </div>
+  );
 }
 
 export function PmsChannels({
@@ -148,10 +225,11 @@ export function PmsChannels({
                 <button className={btn} onClick={() => copy(c.exportUrl)}><Copy className="h-3.5 w-3.5" /> Copy</button>
               </div>
               <p className="mt-1.5 text-[11px] text-white">Paste this BizNest link into {c.providerLabel} as the calendar to import for this room. It shows dates only, never guest details.</p>
+              <LivePanel slug={slug} c={c} pending={pending} run={run} />
             </div>
           );
         })}
-        <p className="text-xs text-white">Calendars refresh daily automatically and instantly when you press Sync now. Channels fetch your BizNest link on their own schedule (often every few hours), so overlapping sales are possible inside that window; for tight inventory, sync often.</p>
+        <p className="text-xs text-white">Calendars are also re-read just before a booking is accepted, and instantly when you press Sync now. Channels fetch your BizNest link on their own schedule (often every few hours), so overlapping sales are possible inside that window. Turn on Live sync on a channel to close that gap through a channel manager. If a channel booking ever overlaps one of yours, you get an alert.</p>
       </section>
 
       <section className={card}>

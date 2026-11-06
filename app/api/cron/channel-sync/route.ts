@@ -2,13 +2,14 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { withCronMonitor } from "@/lib/observability/cron";
 import { syncConnection } from "@/lib/channels/sync";
+import { flushDuePushes } from "@/lib/channels/push";
 import { logError, errorMeta } from "@/lib/observability/log";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
 
 /**
- * Pulls every active OTA calendar. Vercel's own schedule is daily; for
+ * Pulls every active OTA calendar and delivers queued live pushes. Vercel's own schedule is daily; for
  * near-real-time availability point an external pinger (e.g. cron-job.org,
  * every 15 minutes) at this URL with `Authorization: Bearer $CRON_SECRET`.
  * Least-recently-synced connections go first so a slow channel can't starve the rest.
@@ -35,5 +36,10 @@ export const GET = withCronMonitor("channel-sync", async () => {
       void logError("JOBS", "Channel sync crashed", errorMeta(err, { connectionId: c.id }));
     }
   }
-  return NextResponse.json({ synced: ok, failed, remaining: Math.max(0, due.length - ok - failed) });
+  // Live push: deliver due/retrying snapshots and refresh stale ones.
+  const push = await flushDuePushes({ deadlineMs: Math.max(5_000, deadline + 8_000 - Date.now()) }).catch((err) => {
+    void logError("JOBS", "Channel push flush crashed", errorMeta(err));
+    return null;
+  });
+  return NextResponse.json({ synced: ok, failed, remaining: Math.max(0, due.length - ok - failed), push });
 });

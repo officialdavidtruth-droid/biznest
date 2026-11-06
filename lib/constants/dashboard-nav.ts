@@ -3,7 +3,7 @@ import {
   CreditCard, BarChart3, Star, MessageSquare,
   Settings, BadgeCheck, Wallet, LifeBuoy, Truck, Wand2,
   LayoutTemplate, Globe, FileText, FileSignature, MailWarning, Calculator, CalendarDays, Images,
-  ClipboardList, Receipt, PlusCircle, Layers, Rows3, Puzzle, ListTree, Share2, Newspaper,
+  ClipboardList, Receipt, PlusCircle, Layers, Rows3, Puzzle, ListTree, Share2, Newspaper, Rss, Megaphone,
 } from "lucide-react";
 import { getAdaptiveDashboardConfig } from "@/lib/adaptive-dashboard";
 import { getBusinessTerminology } from "@/lib/business-terminology";
@@ -165,6 +165,8 @@ export function buildNavGroups(business: NavBusiness): Array<{
       items: [
         { label: "Referrals", href: "/referrals", icon: Share2, permission: "marketing" },
         ...(supportsAbandonedCheckout(business.category, business) ? [{ label: "Abandoned checkouts", href: "/abandoned-checkouts", icon: MailWarning, permission: "marketing" as StaffPermissionId }] : []),
+        { label: "Browse posts", href: "/browse", icon: Rss, permission: "marketing" },
+        { label: "Ads", href: "/ads", icon: Megaphone, permission: "marketing" },
         { label: "Reviews", href: "/reviews", icon: Star, permission: "reviews" },
         { label: "Messages", href: "/messages", icon: MessageSquare, permission: "messages" },
         { label: "Analytics & Reports", href: "/analytics", icon: BarChart3, permission: "analytics" },

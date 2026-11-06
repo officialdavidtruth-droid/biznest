@@ -73,6 +73,14 @@
       "schedule": "20 7 * * *"
     },
     {
+      "path": "/api/cron/member-renewals",
+      "schedule": "35 6 * * *"
+    },
+    {
+      "path": "/api/cron/ticket-holds",
+      "schedule": "50 3 * * *"
+    },
+    {
       "path": "/api/cron/travel-followups",
       "schedule": "15 8 * * *"
     }

@@ -17,8 +17,12 @@ import { settleServiceBookingPayment } from "@/lib/payments/settle-service-booki
 import { settleReservationPayment } from "@/lib/payments/settle-reservation";
 import { settleTravelPayment } from "@/lib/payments/settle-travel";
 import { settleRentPayment } from "@/lib/payments/settle-rent";
+import { settleMemberPayment } from "@/lib/payments/settle-member";
+import { settleTicketPayment } from "@/lib/payments/settle-ticket";
+import { settleJobPayment } from "@/lib/payments/settle-job";
 import { settleTailoringPayment } from "@/lib/payments/settle-tailoring";
 import { settleSubscriptionUpgrade } from "@/lib/payments/settle-subscription";
+import { settleAdPayment } from "@/lib/payments/settle-ad";
 import { settlePluginPurchase } from "@/lib/payments/settle-plugin-purchase";
 
 /**
@@ -85,9 +89,13 @@ async function settle(provider: "PAYSTACK" | "FLUTTERWAVE" | "KORAPAY", referenc
   if (reference.startsWith("RES-")) return settleReservationPayment(reference, provider, amount, payload);
   if (reference.startsWith("TVL-")) return settleTravelPayment(reference, provider, amount, payload, g.currency);
   if (reference.startsWith("RNT-")) return settleRentPayment(reference, provider, amount, payload, g.currency);
+  if (reference.startsWith("MBR-")) return settleMemberPayment(reference, provider, amount, payload, g.currency);
+  if (reference.startsWith("TKT-")) return settleTicketPayment(reference, provider, amount, payload, g.currency);
+  if (reference.startsWith("JBC-")) return settleJobPayment(reference, provider, amount, payload, g.currency);
   if (reference.startsWith("TLR-")) return settleTailoringPayment(reference, provider, amount, payload, g.currency);
   if (reference.startsWith("SUBUP-")) return settleSubscriptionUpgrade(reference, amount, payload);
   if (reference.startsWith("PLUG-")) return settlePluginPurchase(reference, amount, payload);
+  if (reference.startsWith("ADS-")) return settleAdPayment(reference, amount, payload);
   return settleOrderPayment({ orderId: reference, reference, provider, verifiedAmountNaira: amount, verifiedCurrency: g.currency, payload });
 }
 

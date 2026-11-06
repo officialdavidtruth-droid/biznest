@@ -2,6 +2,7 @@ import type { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { safeFetch, SafeFetchError } from "@/lib/security/safe-fetch";
 import { buildIcs, looksLikeIcs, parseIcs, type ExportRange } from "@/lib/channels/ical";
+import { onlineHoldCutoff } from "@/lib/stay-availability";
 
 /** Reservation statuses that occupy a room (same set createReservation checks). */
 export const ACTIVE_RESERVATION_STATUSES = ["PENDING", "CONFIRMED", "CHECKED_IN"] as const;
@@ -12,6 +13,70 @@ function describeError(err: unknown): string {
   if (err instanceof SafeFetchError) return err.message;
   if (err instanceof Error) return err.message.slice(0, 300);
   return "Unknown error";
+}
+
+type BusyClient = Pick<Prisma.TransactionClient, "propertyReservation" | "channelBlock" | "booking" | "propertyRoom">;
+export type RoomBusy = { id: string; start: Date; end: Date; source: "direct" | "online" | "other_channel" };
+
+/**
+ * Everything that makes a room unsellable on a channel: front-desk reservations, online/storefront
+ * bookings of the linked unit, and sales on OTHER channels. `excludeConnectionId` leaves out that
+ * channel's own blocks (it must never be told about its own bookings or they could never be released).
+ */
+export async function collectRoomBusy(client: BusyClient, roomId: string, excludeConnectionId?: string): Promise<RoomBusy[]> {
+  const horizon = new Date(Date.now() - 2 * 86_400_000);
+  const room = await client.propertyRoom.findUnique({ where: { id: roomId }, select: { serviceUnitId: true } });
+  const [reservations, otherBlocks, online] = await Promise.all([
+    client.propertyReservation.findMany({
+      where: { roomId, status: { in: [...ACTIVE_RESERVATION_STATUSES] }, checkOut: { gt: horizon } },
+      select: { id: true, checkIn: true, checkOut: true },
+      take: 2000,
+    }),
+    client.channelBlock.findMany({
+      where: { roomId, ...(excludeConnectionId ? { connectionId: { not: excludeConnectionId } } : {}), endDate: { gt: horizon }, connection: { isActive: true } },
+      select: { id: true, startDate: true, endDate: true },
+      take: 2000,
+    }),
+    room?.serviceUnitId
+      ? client.booking.findMany({
+          where: {
+            unitId: room.serviceUnitId,
+            checkIn: { not: null }, checkOut: { gt: horizon },
+            AND: [{ status: { not: "CANCELLED" } }, { status: { not: "NO_SHOW" } }, { OR: [{ status: { not: "PENDING" } }, { createdAt: { gte: onlineHoldCutoff() } }] }],
+          },
+          select: { id: true, checkIn: true, checkOut: true },
+          take: 2000,
+        })
+      : Promise.resolve([] as Array<{ id: string; checkIn: Date | null; checkOut: Date | null }>),
+  ]);
+  return [
+    ...reservations.map((r) => ({ id: r.id, start: r.checkIn, end: r.checkOut, source: "direct" as const })),
+    ...online.filter((b) => b.checkIn && b.checkOut).map((b) => ({ id: b.id, start: b.checkIn as Date, end: b.checkOut as Date, source: "online" as const })),
+    ...otherBlocks.map((b) => ({ id: b.id, start: b.startDate, end: b.endDate, source: "other_channel" as const })),
+  ];
+}
+
+/** Our own stays (front desk + online) in [now-1d, ...) that a channel booking would collide with. */
+export async function ownStays(client: BusyClient, roomId: string): Promise<Array<{ start: Date; end: Date }>> {
+  const all = await collectRoomBusy(client, roomId);
+  return all.filter((b) => b.source !== "other_channel").map((b) => ({ start: b.start, end: b.end }));
+}
+
+/**
+ * Tell the owner about channel bookings that overlap one of their own stays, and tell the other
+ * channels the dates changed. Only called for events that are NEW, so a standing overlap doesn't nag.
+ */
+export async function afterBlocksChanged(conn: { id: string; storeId: string; roomId: string; provider: string; label: string | null }, info: { changed: boolean; newConflicts: number }) {
+  const { notifyRoomChanged, alertChannelOwner } = await import("@/lib/channels/push");
+  if (info.newConflicts > 0) {
+    const room = await prisma.propertyRoom.findUnique({ where: { id: conn.roomId }, select: { name: true } });
+    await alertChannelOwner(
+      conn.storeId,
+      "Channel booking overlaps a stay",
+      `${info.newConflicts} ${conn.label || conn.provider.replace(/_/g, " ")} booking(s) overlap your own reservations for ${room?.name ?? "a room"}. Resolve them in Reservations.`,
+    ).catch(() => undefined);
+  }
+  if (info.changed) await notifyRoomChanged(conn.roomId, { exceptConnectionId: conn.id });
 }
 
 /**
@@ -62,8 +127,12 @@ export async function syncConnection(connectionId: string): Promise<SyncResult> 
     const byUid = new Map(events.map((e) => [e.uid, e]));
     const unique = [...byUid.values()];
 
+    const before = await prisma.channelBlock.findMany({ where: { connectionId: conn.id, uid: { not: { startsWith: "hook:" } } }, select: { uid: true, startDate: true, endDate: true } });
+    const beforeKey = new Map(before.map((b) => [b.uid, `${b.startDate.toISOString()}|${b.endDate.toISOString()}`]));
+
     await prisma.$transaction([
-      prisma.channelBlock.deleteMany({ where: { connectionId: conn.id } }),
+      // Blocks pushed in through the live webhook (uid "hook:...") are not in the calendar and must survive.
+      prisma.channelBlock.deleteMany({ where: { connectionId: conn.id, uid: { not: { startsWith: "hook:" } } } }),
       prisma.channelBlock.createMany({
         data: unique.map((e) => ({
           storeId: conn.storeId,
@@ -78,18 +147,20 @@ export async function syncConnection(connectionId: string): Promise<SyncResult> 
       }),
     ]);
 
-    // Surface (never auto-cancel) any direct reservation the OTA's booking now overlaps.
-    const active = await prisma.propertyReservation.findMany({
-      where: { roomId: conn.roomId, status: { in: [...ACTIVE_RESERVATION_STATUSES] }, checkOut: { gt: new Date() } },
-      select: { checkIn: true, checkOut: true },
-    });
-    const conflicts = unique.filter((e) => active.some((r) => r.checkIn < e.end && r.checkOut > e.start)).length;
+    // Surface (never auto-cancel) any own stay (front desk or online) the OTA's booking now overlaps.
+    const active = await ownStays(prisma, conn.roomId);
+    const overlapping = unique.filter((e) => active.some((r) => r.start < e.end && r.end > e.start));
+    const conflicts = overlapping.length;
+    const keyOf = (e: { start: Date; end: Date }) => `${e.start.toISOString()}|${e.end.toISOString()}`;
+    const newConflicts = overlapping.filter((e) => beforeKey.get(e.uid) !== keyOf(e)).length;
+    const changed = unique.length !== before.length || unique.some((e) => beforeKey.get(e.uid) !== keyOf(e));
 
     await finish({
       status: "OK",
       message: conflicts > 0 ? `${conflicts} overlap(s) with your own reservations. Resolve them in Reservations.` : null,
       blocks: unique.length,
     });
+    if (changed || newConflicts > 0) await afterBlocksChanged(conn, { changed, newConflicts }).catch(() => undefined);
     return { ok: true, blocks: unique.length, conflicts };
   } catch (err) {
     const error = describeError(err);
@@ -111,24 +182,14 @@ export async function buildExportFeedForToken(token: string): Promise<string | n
   });
   if (!conn || !conn.isActive) return null;
 
-  const horizon = new Date(Date.now() - 2 * 86_400_000);
-  const [reservations, otherBlocks] = await Promise.all([
-    prisma.propertyReservation.findMany({
-      where: { roomId: conn.roomId, status: { in: [...ACTIVE_RESERVATION_STATUSES] }, checkOut: { gt: horizon } },
-      select: { id: true, checkIn: true, checkOut: true },
-      take: 2000,
-    }),
-    prisma.channelBlock.findMany({
-      where: { roomId: conn.roomId, connectionId: { not: conn.id }, endDate: { gt: horizon }, connection: { isActive: true } },
-      select: { id: true, startDate: true, endDate: true },
-      take: 2000,
-    }),
-  ]);
-
-  const ranges: ExportRange[] = [
-    ...reservations.map((r) => ({ uid: `res-${r.id}@biznest.space`, checkIn: r.checkIn, checkOut: r.checkOut, summary: "Reserved" })),
-    ...otherBlocks.map((b) => ({ uid: `blk-${b.id}@biznest.space`, checkIn: b.startDate, checkOut: b.endDate, summary: "Unavailable" })),
-  ];
+  const busy = await collectRoomBusy(prisma, conn.roomId, conn.id);
+  const prefix = { direct: "res", online: "bkg", other_channel: "blk" } as const;
+  const ranges: ExportRange[] = busy.map((b) => ({
+    uid: `${prefix[b.source]}-${b.id}@biznest.space`,
+    checkIn: b.start,
+    checkOut: b.end,
+    summary: b.source === "other_channel" ? "Unavailable" : "Reserved",
+  }));
 
   return buildIcs({ calendarName: `${conn.store.name} - ${conn.room.name}`, ranges, timeZone: conn.store.timezone || "Africa/Lagos" });
 }

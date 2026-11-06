@@ -13,6 +13,9 @@ import { settleServiceBookingPayment } from "@/lib/payments/settle-service-booki
 import { settleReservationPayment } from "@/lib/payments/settle-reservation";
 import { settleTravelPayment } from "@/lib/payments/settle-travel";
 import { settleRentPayment } from "@/lib/payments/settle-rent";
+import { settleMemberPayment } from "@/lib/payments/settle-member";
+import { settleTicketPayment } from "@/lib/payments/settle-ticket";
+import { settleJobPayment } from "@/lib/payments/settle-job";
 import { settleTailoringPayment } from "@/lib/payments/settle-tailoring";
 
 /**
@@ -188,6 +191,21 @@ export async function POST(req: Request) {
   if (txRef.startsWith("RNT-")) {
     const amount = verification.data ? Number(verification.data.amount) : 0;
     await settleRentPayment(txRef, "FLUTTERWAVE", amount, verification as object, verification.data?.currency);
+    return NextResponse.json({ received: true });
+  }
+  if (txRef.startsWith("MBR-")) {
+    const amount = verification.data ? Number(verification.data.amount) : 0;
+    await settleMemberPayment(txRef, "FLUTTERWAVE", amount, verification as object, verification.data?.currency);
+    return NextResponse.json({ received: true });
+  }
+  if (txRef.startsWith("JBC-")) {
+    const amount = verification.data ? Number(verification.data.amount) : 0;
+    await settleJobPayment(txRef, "FLUTTERWAVE", amount, verification as object, verification.data?.currency);
+    return NextResponse.json({ received: true });
+  }
+  if (txRef.startsWith("TKT-")) {
+    const amount = verification.data ? Number(verification.data.amount) : 0;
+    await settleTicketPayment(txRef, "FLUTTERWAVE", amount, verification as object, verification.data?.currency);
     return NextResponse.json({ received: true });
   }
 

@@ -14,7 +14,11 @@ import { settleServiceBookingPayment } from "@/lib/payments/settle-service-booki
 import { settleReservationPayment } from "@/lib/payments/settle-reservation";
 import { settleTravelPayment } from "@/lib/payments/settle-travel";
 import { settleRentPayment } from "@/lib/payments/settle-rent";
+import { settleMemberPayment } from "@/lib/payments/settle-member";
+import { settleTicketPayment } from "@/lib/payments/settle-ticket";
+import { settleJobPayment } from "@/lib/payments/settle-job";
 import { settleTailoringPayment } from "@/lib/payments/settle-tailoring";
+import { settleAdPayment } from "@/lib/payments/settle-ad";
 import { settlePluginPurchase } from "@/lib/payments/settle-plugin-purchase";
 import { flagPaymentForReview } from "@/lib/payments/review";
 import { logError, logWarn } from "@/lib/observability/log";
@@ -66,6 +70,16 @@ export async function GET(req: Request) {
     const storeId = reference.split("-")[1];
     const store = await prisma.store.findUnique({ where: { id: storeId }, select: { slug: true } });
     return NextResponse.redirect(store ? `${APP_URL}/store/${store.slug}/admin/apps?payment=failed` : `${APP_URL}/?payment=failed`);
+  }
+
+  if (reference.startsWith("ADS-")) {
+    const verification = await verifyPaystackTransaction(reference, storeSecretKey);
+    if (verification.status && verification.data?.status === "success") {
+      const result = await settleAdPayment(reference, Number(verification.data?.amount ?? 0) / 100, verification as object);
+      if (result.success) return NextResponse.redirect(`${APP_URL}/store/${result.data.slug}/admin/ads?payment=success`);
+      await flagPaymentForReview(reference, `Paystack verified success but ad settlement refused: ${result.error}`, verification);
+    }
+    return NextResponse.redirect(`${APP_URL}/?payment=failed`);
   }
 
   // Invoice payments and quote deposits use their own reference prefixes
@@ -139,6 +153,37 @@ export async function GET(req: Request) {
       const result = await settleRentPayment(reference, "PAYSTACK", amount, verification as object, verification.data?.currency);
       if (result.success) return NextResponse.redirect(`${APP_URL}/store/${result.data.storeSlug}/rent/${result.data.portalToken ?? ""}?payment=success`);
       await flagPaymentForReview(reference, `Paystack verified success but rent settlement refused: ${result.error}`, verification);
+    }
+    return NextResponse.redirect(`${APP_URL}/?payment=failed`);
+  }
+
+  if (reference.startsWith("MBR-")) {
+    const verification = await verifyPaystackTransaction(reference, storeSecretKey);
+    const amount = verification.data ? Number(verification.data.amount) / 100 : 0;
+    if (verification.status && verification.data?.status === "success") {
+      const result = await settleMemberPayment(reference, "PAYSTACK", amount, verification as object, verification.data?.currency);
+      if (result.success) return NextResponse.redirect(`${APP_URL}${result.data.redirectPath}?payment=success`);
+      await flagPaymentForReview(reference, `Paystack verified success but member settlement refused: ${result.error}`, verification);
+    }
+    return NextResponse.redirect(`${APP_URL}/?payment=failed`);
+  }
+  if (reference.startsWith("JBC-")) {
+    const verification = await verifyPaystackTransaction(reference, storeSecretKey);
+    const amount = verification.data ? Number(verification.data.amount) / 100 : 0;
+    if (verification.status && verification.data?.status === "success") {
+      const result = await settleJobPayment(reference, "PAYSTACK", amount, verification as object, verification.data?.currency);
+      if (result.success) return NextResponse.redirect(`${APP_URL}${result.data.redirectPath}?payment=success`);
+      await flagPaymentForReview(reference, `Paystack verified success but job settlement refused: ${result.error}`, verification);
+    }
+    return NextResponse.redirect(`${APP_URL}/?payment=failed`);
+  }
+  if (reference.startsWith("TKT-")) {
+    const verification = await verifyPaystackTransaction(reference, storeSecretKey);
+    const amount = verification.data ? Number(verification.data.amount) / 100 : 0;
+    if (verification.status && verification.data?.status === "success") {
+      const result = await settleTicketPayment(reference, "PAYSTACK", amount, verification as object, verification.data?.currency);
+      if (result.success) return NextResponse.redirect(`${APP_URL}${result.data.redirectPath}?payment=success`);
+      await flagPaymentForReview(reference, `Paystack verified success but ticket settlement refused: ${result.error}`, verification);
     }
     return NextResponse.redirect(`${APP_URL}/?payment=failed`);
   }

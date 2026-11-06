@@ -302,7 +302,7 @@ export const BUSINESS_TYPES: Record<string, BusinessTypeConfig> = {
       { label: "Manage bookings", href: "/orders" },
       { label: "Collect reviews", href: "/reviews" },
     ],
-    extraNavItems: [{ label: "Bookings", href: "/calendar", icon: CalendarClock }],
+    extraNavItems: [{ label: "Bookings", href: "/calendar", icon: CalendarClock }, { label: "Clients & packages", href: "/members", icon: Users }],
   },
   "Home & Furniture": {
     icon: Sofa,
@@ -343,7 +343,7 @@ export const BUSINESS_TYPES: Record<string, BusinessTypeConfig> = {
       { label: "Manage bookings", href: "/orders" },
       { label: "Update your credentials", href: "/verification" },
     ],
-    extraNavItems: [{ label: "Bookings", href: "/calendar", icon: CalendarClock }],
+    extraNavItems: [{ label: "Bookings", href: "/calendar", icon: CalendarClock }, { label: "Members", href: "/members", icon: Users }],
   },
   "Professional Services": {
     icon: Briefcase,
@@ -358,7 +358,7 @@ export const BUSINESS_TYPES: Record<string, BusinessTypeConfig> = {
       { label: "Create a quote", href: "/quotes" },
       { label: "Open marketing studio", href: "/apps/crm/marketing" },
     ],
-    extraNavItems: [{ label: "Projects", href: "/projects", icon: Briefcase }, { label: "Bookings", href: "/calendar", icon: CalendarClock }],
+    extraNavItems: [{ label: "Projects", href: "/projects", icon: Briefcase }, { label: "Job cards", href: "/jobs", icon: Wrench }, { label: "Bookings", href: "/calendar", icon: CalendarClock }],
   },
   "Automotive": {
     icon: Car,
@@ -372,7 +372,7 @@ export const BUSINESS_TYPES: Record<string, BusinessTypeConfig> = {
       { label: "Manage bookings", href: "/orders" },
       { label: "Track parts inventory", href: "/inventory" },
     ],
-    extraNavItems: [{ label: "Bookings", href: "/calendar", icon: Wrench }],
+    extraNavItems: [{ label: "Job cards", href: "/jobs", icon: Wrench }, { label: "Bookings", href: "/calendar", icon: Wrench }],
   },
     "Agriculture": {
     icon: Tractor,
@@ -399,6 +399,7 @@ export const BUSINESS_TYPES: Record<string, BusinessTypeConfig> = {
       { label: "Set bedrooms, bathrooms & type", href: "/products" },
       { label: "Set the listing's location", href: "/products" },
     ],
+    extraNavItems: [{ label: "Properties & rent", href: "/real-estate", icon: Building2 }],
   },
   "Photography": {
     icon: Camera,
@@ -412,7 +413,7 @@ export const BUSINESS_TYPES: Record<string, BusinessTypeConfig> = {
       { label: "Set up a package", href: "/products/new" },
       { label: "Manage bookings", href: "/orders" },
     ],
-    extraNavItems: [{ label: "Bookings", href: "/calendar", icon: CalendarClock }],
+    extraNavItems: [{ label: "Job cards", href: "/jobs", icon: Briefcase }, { label: "Bookings", href: "/calendar", icon: CalendarClock }],
   },
   "Software Development": {
     icon: Code,
@@ -440,7 +441,7 @@ export const BUSINESS_TYPES: Record<string, BusinessTypeConfig> = {
       { label: "Manage bookings", href: "/orders" },
       { label: "Upload past event photos", href: "/products/new" },
     ],
-    extraNavItems: [{ label: "Bookings", href: "/calendar", icon: CalendarClock }],
+    extraNavItems: [{ label: "Bookings", href: "/calendar", icon: CalendarClock }, { label: "Event tickets", href: "/tickets", icon: PartyPopper }],
   },
   "Logistics": {
     icon: Package,
@@ -454,7 +455,7 @@ export const BUSINESS_TYPES: Record<string, BusinessTypeConfig> = {
       { label: "Set delivery zones", href: "/delivery" },
       { label: "Manage bookings", href: "/orders" },
     ],
-    extraNavItems: [{ label: "Delivery zones", href: "/delivery", icon: Truck }],
+    extraNavItems: [{ label: "Dispatch", href: "/dispatch", icon: Truck }, { label: "Delivery zones", href: "/delivery", icon: Truck }],
   },
   "Travel & Tourism": {
     icon: Plane,
@@ -493,7 +494,8 @@ export const BUSINESS_TYPES: Record<string, BusinessTypeConfig> = {
     defaultCategories: defaultCategoriesFor("Church", ["services","gallery","reviews"]),
     navigation: navigationFor("Church", ["services","gallery","reviews"]),
     homepageSections: homepageFor("Church", ["services","gallery","reviews"]),
-    quickActions: [{ label: "Add a ministry service", href: "/services/new" }, { label: "Manage events", href: "/services" }],
+    quickActions: [{ label: "Add a ministry service", href: "/services/new" }, { label: "Manage events", href: "/services" }, { label: "Members & giving", href: "/members" }],
+    extraNavItems: [{ label: "Members & giving", href: "/members", icon: Users }],
   },
   "Other": {
     icon: StoreIcon,

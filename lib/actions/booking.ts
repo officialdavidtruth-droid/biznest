@@ -17,6 +17,7 @@ import type { ActionResult } from "@/types/actions";
 import { generateUniqueBookingReference } from "@/lib/booking-reference";
 import { assertStorePermission } from "@/lib/access/assert-store-access";
 import { busyUnitIds, getBusyIntervals } from "@/lib/stay-availability";
+import { notifyUnitChanged, refreshChannelsForService } from "@/lib/channels/push";
 import { readTripConfig, tripTotal, TRIP_MAX_TRAVELERS } from "@/lib/trip-booking";
 
 // Shared by createBooking/createStayBooking: what to tell the shopper when
@@ -800,6 +801,8 @@ export async function createStayBooking(
   // surface to the shopper as a raw 500 even though the fix is just "try
   // again" -- so we retry a couple of times before giving up.
   const MAX_ATTEMPTS = 3;
+  // Pull any OTA calendar that is a few minutes old so the availability check sees fresh channel sales.
+  await refreshChannelsForService(serviceId);
   for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
     try {
       const booking = await prisma.$transaction(async (tx) => {
@@ -846,6 +849,7 @@ export async function createStayBooking(
         scheduledAt: booking.scheduledAt,
         durationMins: booking.durationMins,
       });
+      await notifyUnitChanged(booking.unitId);
 
       revalidatePath(`/store/${storeSlug}`);
       return { success: true, data: { bookingId: booking.id } };
@@ -1211,6 +1215,7 @@ export async function updateBookingStatus(
       status,
     },
   });
+  if (booking.unitId && booking.checkIn) await notifyUnitChanged(booking.unitId);
 
   if (status === "CONFIRMED") {
     await emitWebhookEvent(
