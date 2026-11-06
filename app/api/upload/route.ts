@@ -1,4 +1,5 @@
 import { auth } from "@/lib/auth";
+import { isPlatformStaff } from "@/lib/admin-guard";
 import { checkRateLimit } from "@/lib/rate-limit";
 import { NextResponse } from "next/server";
 import { v2 as cloudinary } from "cloudinary";
@@ -18,14 +19,18 @@ const ALLOWED_TYPES = new Set(["image/jpeg", "image/png", "image/webp", "applica
 
 export const POST = withObservability("upload", async (req: Request) => {
   const session = await auth();
-  if (!session?.user?.id) {
+  // SupaAdmin staff sign in with a PIN, not a user account. They may upload plain public images
+  // (BizNest's official Browse account); identity documents and digital files still need a real account.
+  const staffOnly = !session?.user?.id && (await isPlatformStaff());
+  if (!session?.user?.id && !staffOnly) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
+  const uploaderId = session?.user?.id ?? "platform-admin";
 
   // 20 uploads / 10 minutes per user — keyed on user ID since this route is
   // already auth-gated, rather than IP (which is unreliable behind shared
   // networks/proxies anyway).
-  const rate = await checkRateLimit(`upload:${session.user.id}`, 20, 10 * 60 * 1000);
+  const rate = await checkRateLimit(`upload:${uploaderId}`, 20, 10 * 60 * 1000);
   if (!rate.allowed) {
     return NextResponse.json(
       { error: "Too many uploads — please wait a bit before trying again." },
@@ -40,6 +45,9 @@ export const POST = withObservability("upload", async (req: Request) => {
     return NextResponse.json({ error: "No file provided" }, { status: 400 });
   }
   const isDigital = formData.get("purpose") === "digital";
+  if (staffOnly && (isDigital || formData.get("purpose") === "kyc")) {
+    return NextResponse.json({ error: "Not allowed for admin sessions" }, { status: 403 });
+  }
   if (!(isDigital ? DIGITAL_ALLOWED_TYPES : ALLOWED_TYPES).has(file.type)) {
     return NextResponse.json({ error: "Unsupported file type" }, { status: 400 });
   }
@@ -60,10 +68,10 @@ export const POST = withObservability("upload", async (req: Request) => {
     const result = await new Promise<{ secure_url: string; public_id: string }>((resolve, reject) => {
       const uploadStream = cloudinary.uploader.upload_stream(
         isDigital
-          ? { folder: `biznest/${session.user.id}/digital`, resource_type: "raw", type: "authenticated", use_filename: true, unique_filename: true }
+          ? { folder: `biznest/${uploaderId}/digital`, resource_type: "raw", type: "authenticated", use_filename: true, unique_filename: true }
           : isKyc
-          ? { folder: kycFolderFor(session.user.id), resource_type: "auto", type: "authenticated" }
-          : { folder: `biznest/${session.user.id}`, resource_type: "auto" },
+          ? { folder: kycFolderFor(uploaderId), resource_type: "auto", type: "authenticated" }
+          : { folder: `biznest/${staffOnly ? "official" : uploaderId}`, resource_type: "auto" },
         (error, result) => {
           if (error || !result) reject(error);
           else resolve(result);
@@ -79,7 +87,7 @@ export const POST = withObservability("upload", async (req: Request) => {
       err instanceof Error
         ? err.message
         : "Upload provider isn't configured correctly. Check CLOUDINARY_* environment variables.";
-    void logError("STORAGE", "Cloudinary upload failed", { userId: session.user.id, message });
+    void logError("STORAGE", "Cloudinary upload failed", { userId: uploaderId, message });
     return NextResponse.json({ error: message }, { status: 502 });
   }
 });

@@ -49,8 +49,7 @@ export function OfficialProfileForm({ initial }: { initial: { name: string; bio:
         <textarea id="off-bio" className={input} rows={3} value={bio} onChange={(e) => setBio(e.target.value)} maxLength={BIO_MAX} />
       </div>
       <div>
-        <p className="mb-1 text-xs font-medium">Logo</p>
-        <MultiImageUpload value={logo} onChange={setLogo} max={1} />
+        <MultiImageUpload value={logo} onChange={setLogo} max={1} label="Logo" />
       </div>
       {msg && <p role={msg.ok ? "status" : "alert"} className={`text-sm ${msg.ok ? "text-emerald-700" : "text-destructive"}`}>{msg.text}</p>}
       <button className={btn} disabled={pending}>{pending ? "Saving…" : "Save profile"}</button>
