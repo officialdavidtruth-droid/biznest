@@ -1,16 +1,17 @@
 import Link from "next/link";
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
-import { BadgeCheck, MapPin, Store, Tag } from "lucide-react";
+import { Crown, MapPin, Tag } from "lucide-react";
 import { getViewer } from "@/lib/browse-viewer";
 import { loadStorePosts, loadStoreProfile, loadStoreStories } from "@/lib/browse-data";
-import { compactCount, storeBrowsePath } from "@/lib/browse";
+import { storeBrowsePath } from "@/lib/browse";
 import { storeHref } from "@/lib/utils/store-href";
 import { StoryRings } from "@/components/browse/story-rings";
 import { StorePostsGrid } from "@/components/browse/store-posts-grid";
 import { BrowseShell } from "@/components/browse/browse-shell";
 import { Awning } from "@/components/browse/awning";
-import { ShareProfile } from "@/components/browse/share-profile";
+import { ProfileActions } from "@/components/browse/profile-actions";
+import { StoreBadges } from "@/components/browse/store-badges";
 
 export const dynamic = "force-dynamic";
 
@@ -24,7 +25,7 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
   if (!p) return { title: "Not found", robots: { index: false } };
   return {
     title: `${p.name} on BizNest: posts and updates`,
-    description: `See what ${p.name}${p.city ? ` in ${p.city}` : ""} has been posting on BizNest.`,
+    description: (p.bio ? p.bio.slice(0, 160) : `See what ${p.name}${p.city ? ` in ${p.city}` : ""} has been posting on BizNest.`),
     alternates: { canonical: `/browse/s/${p.slug}` },
   };
 }
@@ -32,9 +33,9 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
 export default async function StoreBrowsePage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
   if (!SLUG_RE.test(slug)) notFound();
-  const profile = await loadStoreProfile(slug);
-  if (!profile) notFound();
   const viewer = await getViewer();
+  const profile = await loadStoreProfile(slug, viewer?.key);
+  if (!profile) notFound();
   const [story, grid] = await Promise.all([loadStoreStories(profile.id, viewer?.key), loadStorePosts(profile.id)]);
 
   return (
@@ -54,25 +55,23 @@ export default async function StoreBrowsePage({ params }: { params: Promise<{ sl
               <div className="min-w-0">
                 <h1 className={`${display} flex items-center gap-2 text-2xl font-extrabold leading-tight tracking-tight sm:text-3xl`}>
                   <span className="min-w-0 break-words">{profile.name}</span>
-                  {profile.verified && <BadgeCheck className="h-6 w-6 shrink-0 text-sky-600" aria-label="Verified business" />}
+                  <StoreBadges verified={profile.verified} mogul={profile.mogul} size="lg" />
                 </h1>
                 <div className="mt-2 flex flex-wrap gap-2 text-xs font-medium">
                   {profile.category && <span className="inline-flex items-center gap-1 rounded-full bg-[#14301A]/[0.08] px-2.5 py-1"><Tag className="h-3 w-3" aria-hidden />{profile.category}</span>}
                   {profile.city && <span className="inline-flex items-center gap-1 rounded-full bg-[#14301A]/[0.08] px-2.5 py-1"><MapPin className="h-3 w-3" aria-hidden />{profile.city}</span>}
                 </div>
+                {profile.mogul && <p className="mt-2 inline-flex items-center gap-1 rounded-full bg-gradient-to-r from-[#FFE08A] to-[#F5B82E] px-2.5 py-1 text-xs font-semibold text-[#4a3000]"><Crown className="h-3 w-3" aria-hidden /> Business Mogul</p>}
                 {story && <p className="mt-2 text-xs text-[#14301A]/60">Tap the photo to watch their story.</p>}
               </div>
             </div>
 
-            <dl className="mt-6 grid grid-cols-2 gap-3 text-center">
-              <div className="rounded-2xl bg-[#14301A]/[0.06] py-3"><dd className={`${display} text-2xl font-extrabold`}>{compactCount(profile.postCount)}</dd><dt className="text-xs text-[#14301A]/65">{profile.postCount === 1 ? "Post" : "Posts"}</dt></div>
-              <div className="rounded-2xl bg-[#14301A]/[0.06] py-3"><dd className={`${display} text-2xl font-extrabold`}>{compactCount(profile.likeCount)}</dd><dt className="text-xs text-[#14301A]/65">{profile.likeCount === 1 ? "Like" : "Likes"}</dt></div>
-            </dl>
+            {profile.bio && <p className="mt-5 whitespace-pre-line break-words text-[15px] leading-relaxed text-[#14301A]/85">{profile.bio}</p>}
 
-            <div className="mt-5 grid gap-3 sm:grid-cols-[1fr_auto]">
-              <Link href={storeHref(profile.slug)} className="inline-flex items-center justify-center gap-2 rounded-full bg-[#14301A] px-6 py-3 text-sm font-semibold text-[#FBF6E9] hover:bg-[#0c1f11] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#14301A]"><Store className="h-4 w-4" aria-hidden /> Visit store</Link>
-              <ShareProfile name={profile.name} path={storeBrowsePath(profile.slug)} />
-            </div>
+            <ProfileActions
+              slug={profile.slug} name={profile.name} path={storeBrowsePath(profile.slug)} storeUrl={storeHref(profile.slug)}
+              initialFollowing={profile.following} initialCount={profile.followerCount} postCount={profile.postCount} likeCount={profile.likeCount}
+            />
           </div>
         </section>
 

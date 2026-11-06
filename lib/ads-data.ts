@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import type { StoryRing } from "@/lib/browse-data";
+import { isMogulStore } from "@/lib/browse";
 import { AD_CTA_LABEL, AD_FREQ_WINDOW_MS, AD_STATUS_LABEL, ctr, isAdLive, overFrequencyCap, pickAds, spentNaira, type AdCta, type AdPlacement, type AdStatus } from "@/lib/ads";
 
 /** What a viewer needs to render a sponsored item. No budget or stats. */
@@ -11,20 +12,20 @@ export type AdPublic = {
   bgColor: string | null;
   ctaLabel: string;
   product: { id: string; name: string; price: number | null; currency: string } | null;
-  store: { slug: string; name: string; logoUrl: string | null; verified: boolean };
+  store: { slug: string; name: string; logoUrl: string | null; verified: boolean; mogul: boolean };
 };
 
 type AdRow = {
   id: string; placement: string; caption: string | null; imageUrl: string | null; bgColor: string | null; ctaLabel: string;
   productId: string | null; productName: string | null; productPrice: unknown; productCurrency: string | null;
-  store: { slug: string; name: string; logoUrl: string | null; business: { verificationBadge: boolean } | null };
+  store: { slug: string; name: string; logoUrl: string | null; business: { verificationBadge: boolean } | null; subscription?: { name: string } | null; subscriptionPastDueSince?: Date | null };
 };
 
 export function toAdPublic(r: AdRow): AdPublic {
   return {
     id: r.id, placement: r.placement === "STORY" ? "STORY" : "FEED", caption: r.caption, imageUrl: r.imageUrl, bgColor: r.bgColor, ctaLabel: r.ctaLabel,
     product: r.productId && r.productName ? { id: r.productId, name: r.productName, price: r.productPrice == null ? null : Number(r.productPrice), currency: r.productCurrency ?? "NGN" } : null,
-    store: { slug: r.store.slug, name: r.store.name, logoUrl: r.store.logoUrl, verified: !!r.store.business?.verificationBadge },
+    store: { slug: r.store.slug, name: r.store.name, logoUrl: r.store.logoUrl, verified: !!r.store.business?.verificationBadge, mogul: isMogulStore(r.store) },
   };
 }
 
@@ -39,7 +40,7 @@ export async function loadLiveAds(placement: AdPlacement, viewerKey: string | nu
     },
     orderBy: { createdAt: "asc" },
     take: 80,
-    include: { store: { select: { slug: true, name: true, logoUrl: true, business: { select: { verificationBadge: true } } } } },
+    include: { store: { select: { slug: true, name: true, logoUrl: true, business: { select: { verificationBadge: true } }, subscription: { select: { name: true } }, subscriptionPastDueSince: true } } },
   });
   const inBudget = rows.filter((c) => isAdLive(c, now));
   if (inBudget.length === 0) return [];
@@ -84,7 +85,7 @@ export const FREQ_WINDOW_MS = AD_FREQ_WINDOW_MS;
 /** A sponsored story as a one-story ring so the existing viewer can play it. */
 export function adToRing(ad: AdPublic): StoryRing {
   return {
-    storeSlug: ad.store.slug, storeName: ad.store.name, logoUrl: ad.store.logoUrl, verified: ad.store.verified, allSeen: false, latestAt: new Date().toISOString(), sponsored: true,
+    storeSlug: ad.store.slug, storeName: ad.store.name, logoUrl: ad.store.logoUrl, verified: ad.store.verified, mogul: ad.store.mogul, allSeen: false, latestAt: new Date().toISOString(), sponsored: true,
     stories: [{
       id: `ad:${ad.id}`, kind: ad.imageUrl ? "IMAGE" : "TEXT", imageUrl: ad.imageUrl, text: ad.caption, bgColor: ad.bgColor, createdAt: new Date().toISOString(), seen: false,
       ad: { id: ad.id, cta: AD_CTA_LABEL[ad.ctaLabel as AdCta] ?? "Learn more" }, product: ad.product,

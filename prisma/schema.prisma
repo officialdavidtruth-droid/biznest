@@ -1107,6 +1107,8 @@ model Store {
   browsePosts    BrowsePost[]
   browseStories  BrowseStory[]
   adCampaigns    AdCampaign[]
+  browseFollows  BrowseFollow[]
+  followerCount  Int            @default(0)
   jobCharges     JobCharge[]
   tailoringClients TailoringClient[]
   tailoringRequests TailoringRequest[]
@@ -5699,4 +5701,18 @@ model AdReport {
 
   @@unique([campaignId, viewerKey])
   @@index([campaignId])
+}
+
+
+/// Someone following a business on Browse. viewerKey: "u:<userId>" for a signed-in account, otherwise "d:<device id>".
+/// Store.followerCount is the running total so the feed never has to count rows.
+model BrowseFollow {
+  id        String   @id @default(cuid())
+  storeId   String
+  store     Store    @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  viewerKey String
+  createdAt DateTime @default(now())
+
+  @@unique([storeId, viewerKey])
+  @@index([viewerKey, createdAt])
 }

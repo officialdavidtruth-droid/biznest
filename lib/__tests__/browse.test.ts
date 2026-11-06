@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   BROWSE_CAPTION_MAX, BROWSE_COMMENT_MAX, BROWSE_MAX_IMAGES, compactCount, containsLink, decodeCursor, defaultProductCaption, encodeCursor,
-  isStoryLive, isViewerKey, orderRings, popularityScore, safeHttpsImage, sanitizeComment, sanitizePost, sanitizeStory, STORY_BG_COLORS, STORY_TEXT_MAX, STORY_TTL_MS, storyExpiry, timeAgo,
+  isMogulStore, toBio, BIO_MAX, isStoryLive, isViewerKey, orderRings, popularityScore, safeHttpsImage, sanitizeComment, sanitizePost, sanitizeStory, STORY_BG_COLORS, STORY_TEXT_MAX, STORY_TTL_MS, storyExpiry, timeAgo,
 } from "@/lib/browse";
 
 describe("links", () => {
@@ -111,5 +111,25 @@ describe("stories", () => {
       { id: "d", allSeen: true, latestAt: "2026-12-01T09:30:00Z" },
     ]);
     expect(out.map((r) => r.id)).toEqual(["c", "b", "d", "a"]);
+  });
+});
+
+describe("Mogul badge and bio", () => {
+  it("shows the Mogul badge only on an up-to-date Business Mogul plan", () => {
+    expect(isMogulStore({ subscription: { name: "Business Mogul" } })).toBe(true);
+    expect(isMogulStore({ subscription: { name: " business mogul " } })).toBe(true);
+    expect(isMogulStore({ subscription: { name: "Enterprise" } })).toBe(false);
+    expect(isMogulStore({ subscription: { name: "Business Mogul" }, subscriptionPastDueSince: new Date() })).toBe(false);
+    expect(isMogulStore({ subscription: null })).toBe(false);
+    expect(isMogulStore(null)).toBe(false);
+  });
+  it("tidies the description into a bio and shortens long ones at a word", () => {
+    expect(toBio("  We sell  fresh bread.\r\n\n\n\nCome by!  ")).toBe("We sell fresh bread.\n\nCome by!");
+    expect(toBio(undefined)).toBe("");
+    const long = "word ".repeat(300);
+    const out = toBio(long);
+    expect(out.length).toBeLessThanOrEqual(BIO_MAX + 1);
+    expect(out.endsWith("…")).toBe(true);
+    expect(out.endsWith(" …")).toBe(false);
   });
 });

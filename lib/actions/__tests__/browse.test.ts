@@ -6,6 +6,8 @@ const m = vi.hoisted(() => {
     browsePost: { update: vi.fn(), findUnique: vi.fn() },
     browseStoryView: { create: vi.fn() },
     browseStory: { update: vi.fn() },
+    browseFollow: { deleteMany: vi.fn(), create: vi.fn() },
+    store: { update: vi.fn(), findUnique: vi.fn() },
   };
   return {
     tx,
@@ -15,6 +17,7 @@ const m = vi.hoisted(() => {
       browseReport: { create: vi.fn(), count: vi.fn() },
       browseStory: { findFirst: vi.fn(), create: vi.fn(), count: vi.fn(), updateMany: vi.fn(), deleteMany: vi.fn() },
       product: { findFirst: vi.fn() },
+      store: { findFirst: vi.fn() },
       $transaction: vi.fn(async (arg: unknown) => (typeof arg === "function" ? (arg as (t: typeof tx) => unknown)(tx) : Promise.all(arg as unknown[]))),
     },
     getViewer: vi.fn(),
@@ -37,7 +40,7 @@ vi.mock("@/lib/browse-viewer", () => ({ getViewer: m.getViewer }));
 vi.mock("@/lib/access/assert-store-access", () => ({ assertStorePermission: m.assertStorePermission }));
 
 import { Prisma } from "@prisma/client";
-import { addBrowseComment, markStoryViewed, reportBrowse, toggleBrowseLike } from "@/lib/actions/browse";
+import { addBrowseComment, markStoryViewed, reportBrowse, toggleBrowseLike, toggleFollowStore } from "@/lib/actions/browse";
 import { createBrowseStory, setBrowsePostHidden, shareProductToBrowse } from "@/lib/actions/browse-vendor";
 
 const guest = { key: "d:abcdefghijklmnop", userId: null, name: null };
@@ -223,5 +226,42 @@ describe("stories", () => {
     m.prisma.browseReport.count.mockResolvedValue(3);
     await reportBrowse({ storyId: "st1", reason: "SPAM" });
     expect(m.prisma.browseStory.updateMany).toHaveBeenCalledWith({ where: { id: "st1", status: "ACTIVE" }, data: { status: "HIDDEN" } });
+  });
+});
+
+describe("toggleFollowStore", () => {
+  beforeEach(() => {
+    m.prisma.store.findFirst.mockResolvedValue({ id: "s1", business: { user: { id: "owner1" } } });
+    m.tx.browseFollow.deleteMany.mockResolvedValue({ count: 0 });
+    m.tx.browseFollow.create.mockResolvedValue({});
+    m.tx.store.update.mockResolvedValue({ followerCount: 7 });
+  });
+  it("follows and counts", async () => {
+    expect(await toggleFollowStore("acme-test")).toEqual({ success: true, data: { following: true, followerCount: 7 } });
+    expect(m.tx.browseFollow.create).toHaveBeenCalledWith({ data: { storeId: "s1", viewerKey: guest.key } });
+    expect(m.tx.store.update).toHaveBeenCalledWith({ where: { id: "s1" }, data: { followerCount: { increment: 1 } }, select: { followerCount: true } });
+  });
+  it("unfollows when already following", async () => {
+    m.tx.browseFollow.deleteMany.mockResolvedValue({ count: 1 });
+    m.tx.store.update.mockResolvedValue({ followerCount: 6 });
+    expect(await toggleFollowStore("acme-test")).toEqual({ success: true, data: { following: false, followerCount: 6 } });
+    expect(m.tx.browseFollow.create).not.toHaveBeenCalled();
+  });
+  it("treats a parallel duplicate tap as already following", async () => {
+    m.tx.browseFollow.create.mockRejectedValue(dupError());
+    m.tx.store.findUnique.mockResolvedValue({ followerCount: 9 });
+    expect(await toggleFollowStore("acme-test")).toEqual({ success: true, data: { following: true, followerCount: 9 } });
+  });
+  it("won't let owners follow themselves, or follow hidden or missing businesses", async () => {
+    m.getViewer.mockResolvedValue({ key: "u:owner1xxxxxxxx", userId: "owner1", name: "Owner" });
+    expect((await toggleFollowStore("acme-test")).success).toBe(false);
+    m.getViewer.mockResolvedValue(guest);
+    m.prisma.store.findFirst.mockResolvedValue(null);
+    expect((await toggleFollowStore("nope")).success).toBe(false);
+    expect(m.tx.browseFollow.create).not.toHaveBeenCalled();
+  });
+  it("is rate limited", async () => {
+    m.checkRateLimit.mockResolvedValue({ allowed: false });
+    expect((await toggleFollowStore("acme-test")).success).toBe(false);
   });
 });

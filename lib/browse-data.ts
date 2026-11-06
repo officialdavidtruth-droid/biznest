@@ -1,5 +1,5 @@
 import { prisma } from "@/lib/prisma";
-import { BROWSE_PAGE_SIZE, decodeCursor, encodeCursor, orderRings, popularityScore } from "@/lib/browse";
+import { BROWSE_PAGE_SIZE, decodeCursor, encodeCursor, isMogulStore, orderRings, popularityScore, toBio } from "@/lib/browse";
 
 export type BrowsePostView = {
   id: string;
@@ -11,7 +11,7 @@ export type BrowsePostView = {
   commentCount: number;
   liked: boolean;
   product: { id: string; name: string; price: number | null; currency: string } | null;
-  store: { slug: string; name: string; logoUrl: string | null; category: string | null; city: string | null; verified: boolean };
+  store: { slug: string; name: string; logoUrl: string | null; category: string | null; city: string | null; verified: boolean; mogul: boolean };
 };
 
 export type BrowseCommentView = { id: string; authorName: string; body: string; createdAt: string; mine: boolean; hidden?: boolean };
@@ -23,12 +23,14 @@ export type FeedPage = { posts: BrowsePostView[]; nextCursor: string | null };
 const storeSelect = {
   slug: true, name: true, logoUrl: true,
   business: { select: { category: true, city: true, verificationBadge: true } },
+  subscription: { select: { name: true } },
+  subscriptionPastDueSince: true,
 } as const;
 
 type Row = {
   id: string; kind: string; caption: string; images: string[]; createdAt: Date; likeCount: number; commentCount: number;
   productId: string | null; productName: string | null; productPrice: unknown; productCurrency: string | null;
-  store: { slug: string; name: string; logoUrl: string | null; business: { category: string; city: string; verificationBadge: boolean } | null };
+  store: { slug: string; name: string; logoUrl: string | null; business: { category: string; city: string; verificationBadge: boolean } | null; subscription?: { name: string } | null; subscriptionPastDueSince?: Date | null };
 };
 
 export function toPostView(r: Row, liked: boolean): BrowsePostView {
@@ -36,7 +38,7 @@ export function toPostView(r: Row, liked: boolean): BrowsePostView {
     id: r.id, kind: r.kind, caption: r.caption, images: r.images, createdAt: r.createdAt.toISOString(),
     likeCount: r.likeCount, commentCount: r.commentCount, liked,
     product: r.productId && r.productName ? { id: r.productId, name: r.productName, price: r.productPrice == null ? null : Number(r.productPrice), currency: r.productCurrency ?? "NGN" } : null,
-    store: { slug: r.store.slug, name: r.store.name, logoUrl: r.store.logoUrl, category: r.store.business?.category ?? null, city: r.store.business?.city ?? null, verified: !!r.store.business?.verificationBadge },
+    store: { slug: r.store.slug, name: r.store.name, logoUrl: r.store.logoUrl, category: r.store.business?.category ?? null, city: r.store.business?.city ?? null, verified: !!r.store.business?.verificationBadge, mogul: isMogulStore(r.store) },
   };
 }
 
@@ -163,6 +165,7 @@ export type StoryRing = {
   storeName: string;
   logoUrl: string | null;
   verified: boolean;
+  mogul?: boolean;
   allSeen: boolean;
   latestAt: string;
   sponsored?: boolean;
@@ -179,7 +182,7 @@ const liveStoryWhere = (extra: Record<string, unknown> = {}) => ({
 type StoryRow = {
   id: string; kind: string; imageUrl: string | null; text: string | null; bgColor: string | null; createdAt: Date;
   productId: string | null; productName: string | null; productPrice: unknown; productCurrency: string | null;
-  store: { slug: string; name: string; logoUrl: string | null; business: { verificationBadge: boolean } | null };
+  store: { slug: string; name: string; logoUrl: string | null; business: { verificationBadge: boolean } | null; subscription?: { name: string } | null; subscriptionPastDueSince?: Date | null };
 };
 
 function ringsFrom(rows: StoryRow[], seen: Set<string>): StoryRing[] {
@@ -187,7 +190,7 @@ function ringsFrom(rows: StoryRow[], seen: Set<string>): StoryRing[] {
   for (const r of rows) {
     let ring = byStore.get(r.store.slug);
     if (!ring) {
-      ring = { storeSlug: r.store.slug, storeName: r.store.name, logoUrl: r.store.logoUrl, verified: !!r.store.business?.verificationBadge, allSeen: true, latestAt: r.createdAt.toISOString(), stories: [] };
+      ring = { storeSlug: r.store.slug, storeName: r.store.name, logoUrl: r.store.logoUrl, verified: !!r.store.business?.verificationBadge, mogul: isMogulStore(r.store), allSeen: true, latestAt: r.createdAt.toISOString(), stories: [] };
       byStore.set(r.store.slug, ring);
     }
     const isSeen = seen.has(r.id);
@@ -207,7 +210,7 @@ async function seenSet(ids: string[], viewerKey?: string | null) {
   return new Set<string>(rows.map((r: { storyId: string }) => r.storyId));
 }
 
-const storyStoreSelect = { slug: true, name: true, logoUrl: true, business: { select: { verificationBadge: true } } } as const;
+const storyStoreSelect = { slug: true, name: true, logoUrl: true, business: { select: { verificationBadge: true } }, subscription: { select: { name: true } }, subscriptionPastDueSince: true } as const;
 
 /** The ring row above the feed. */
 export async function loadStoryRings(viewerKey?: string | null, limit = 30): Promise<StoryRing[]> {
@@ -236,20 +239,27 @@ export async function loadStoreStories(storeId: string, viewerKey?: string | nul
 // ------------------------------------------------------------- store profile
 
 export type StoreProfile = {
-  id: string; slug: string; name: string; logoUrl: string | null; category: string | null; city: string | null; verified: boolean;
-  postCount: number; likeCount: number;
+  id: string; slug: string; name: string; logoUrl: string | null; category: string | null; city: string | null; verified: boolean; mogul: boolean;
+  bio: string; followerCount: number; following: boolean; postCount: number; likeCount: number;
 };
 
-export async function loadStoreProfile(slug: string): Promise<StoreProfile | null> {
+export async function loadStoreProfile(slug: string, viewerKey?: string | null): Promise<StoreProfile | null> {
   const store = await prisma.store.findFirst({
     where: { slug, status: "ACTIVE", business: { is: { searchVisible: true } } },
-    select: { id: true, slug: true, name: true, logoUrl: true, business: { select: { category: true, city: true, verificationBadge: true } } },
+    select: {
+      id: true, slug: true, name: true, logoUrl: true, followerCount: true, subscriptionPastDueSince: true, subscription: { select: { name: true } },
+      business: { select: { category: true, city: true, verificationBadge: true, description: true } },
+    },
   });
   if (!store) return null;
-  const agg = await prisma.browsePost.aggregate({ where: { storeId: store.id, status: "PUBLISHED" }, _count: { _all: true }, _sum: { likeCount: true } });
+  const [agg, follow] = await Promise.all([
+    prisma.browsePost.aggregate({ where: { storeId: store.id, status: "PUBLISHED" }, _count: { _all: true }, _sum: { likeCount: true } }),
+    viewerKey ? prisma.browseFollow.findUnique({ where: { storeId_viewerKey: { storeId: store.id, viewerKey } }, select: { id: true } }) : Promise.resolve(null),
+  ]);
   return {
     id: store.id, slug: store.slug, name: store.name, logoUrl: store.logoUrl, category: store.business?.category ?? null, city: store.business?.city ?? null,
-    verified: !!store.business?.verificationBadge, postCount: agg._count._all, likeCount: agg._sum.likeCount ?? 0,
+    verified: !!store.business?.verificationBadge, mogul: isMogulStore(store), bio: toBio(store.business?.description),
+    followerCount: Math.max(0, store.followerCount), following: !!follow, postCount: agg._count._all, likeCount: agg._sum.likeCount ?? 0,
   };
 }
 
@@ -279,21 +289,21 @@ export async function loadVendorStories(storeId: string): Promise<VendorStoryVie
 
 // ------------------------------------------------------------------ discover
 
-export type DiscoverShop = { slug: string; name: string; logoUrl: string | null; category: string | null; city: string | null; verified: boolean; postCount: number };
+export type DiscoverShop = { slug: string; name: string; logoUrl: string | null; category: string | null; city: string | null; verified: boolean; mogul: boolean; followerCount: number; postCount: number };
 
 /** Public shops, most active first. Fills the sidebar and the empty feed so a new visitor always has somewhere to go. */
 export async function loadDiscoverShops(limit = 6): Promise<DiscoverShop[]> {
   const rows = await prisma.store.findMany({
     where: { status: "ACTIVE", business: { is: { searchVisible: true } } },
-    orderBy: [{ browsePosts: { _count: "desc" } }, { createdAt: "desc" }],
+    orderBy: [{ followerCount: "desc" }, { browsePosts: { _count: "desc" } }, { createdAt: "desc" }],
     take: Math.min(Math.max(limit, 1), 12),
     select: {
-      slug: true, name: true, logoUrl: true,
+      slug: true, name: true, logoUrl: true, followerCount: true, subscriptionPastDueSince: true, subscription: { select: { name: true } },
       business: { select: { category: true, city: true, verificationBadge: true } },
       _count: { select: { browsePosts: { where: { status: "PUBLISHED" } } } },
     },
   });
-  return rows.map((r: { slug: string; name: string; logoUrl: string | null; business: { category: string; city: string; verificationBadge: boolean } | null; _count: { browsePosts: number } }) => ({
-    slug: r.slug, name: r.name, logoUrl: r.logoUrl, category: r.business?.category ?? null, city: r.business?.city ?? null, verified: !!r.business?.verificationBadge, postCount: r._count.browsePosts,
+  return rows.map((r: { slug: string; name: string; logoUrl: string | null; followerCount: number; subscriptionPastDueSince: Date | null; subscription: { name: string } | null; business: { category: string; city: string; verificationBadge: boolean } | null; _count: { browsePosts: number } }) => ({
+    slug: r.slug, name: r.name, logoUrl: r.logoUrl, category: r.business?.category ?? null, city: r.business?.city ?? null, verified: !!r.business?.verificationBadge, mogul: isMogulStore(r), followerCount: Math.max(0, r.followerCount), postCount: r._count.browsePosts,
   }));
 }

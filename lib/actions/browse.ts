@@ -51,6 +51,41 @@ export async function toggleBrowseLike(postId: string): Promise<ActionResult<{ l
   return { success: true, data: result };
 }
 
+/** Follow / unfollow a business. Anyone can follow (signed in or not); the owner can't follow their own business. */
+export async function toggleFollowStore(slug: string): Promise<ActionResult<{ following: boolean; followerCount: number }>> {
+  const viewer = await getViewer({ create: true });
+  if (!viewer) return { success: false, error: "Could not identify your browser. Enable cookies and try again." };
+  const rl = await checkRateLimit(`browse-follow:${await ip()}`, 120, 3_600_000);
+  if (!rl.allowed) return { success: false, error: "You're following very fast. Try again in a bit." };
+  const store = await prisma.store.findFirst({
+    where: { slug: String(slug).slice(0, 80), status: "ACTIVE", business: { is: { searchVisible: true } } },
+    select: { id: true, business: { select: { user: { select: { id: true } } } } },
+  });
+  if (!store) return { success: false, error: "This business is no longer available." };
+  if (viewer.userId && store.business?.user?.id === viewer.userId) return { success: false, error: "You can't follow your own business." };
+
+  const result = await prisma.$transaction(async (tx) => {
+    const removed = await tx.browseFollow.deleteMany({ where: { storeId: store.id, viewerKey: viewer.key } });
+    if (removed.count > 0) {
+      const s = await tx.store.update({ where: { id: store.id }, data: { followerCount: { decrement: 1 } }, select: { followerCount: true } });
+      return { following: false, followerCount: Math.max(0, s.followerCount) };
+    }
+    try {
+      await tx.browseFollow.create({ data: { storeId: store.id, viewerKey: viewer.key } });
+    } catch (e) {
+      if (e instanceof Prisma.PrismaClientKnownRequestError && e.code === "P2002") {
+        const s = await tx.store.findUnique({ where: { id: store.id }, select: { followerCount: true } });
+        return { following: true, followerCount: s?.followerCount ?? 0 }; // a parallel tap already followed
+      }
+      throw e;
+    }
+    const s = await tx.store.update({ where: { id: store.id }, data: { followerCount: { increment: 1 } }, select: { followerCount: true } });
+    return { following: true, followerCount: s.followerCount };
+  });
+  revalidatePath(`/browse/s/${slug}`);
+  return { success: true, data: result };
+}
+
 export async function addBrowseComment(postId: string, input: { name?: string; body: string }): Promise<ActionResult<{ comment: BrowseCommentView; commentCount: number }>> {
   const viewer = await getViewer({ create: true });
   if (!viewer) return { success: false, error: "Could not identify your browser. Enable cookies and try again." };

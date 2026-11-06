@@ -2,11 +2,12 @@
 
 import { useEffect, useRef, useState, useTransition } from "react";
 import Link from "next/link";
-import { BadgeCheck, Flag, Heart, MessageCircle, Share2, ShoppingBag, Store } from "lucide-react";
+import { Flag, Heart, MessageCircle, Share2, ShoppingBag, Store } from "lucide-react";
 import { toast } from "sonner";
 import { addBrowseComment, deleteMyBrowseComment, loadPostComments, reportBrowse, toggleBrowseLike } from "@/lib/actions/browse";
 import type { BrowseCommentView, BrowsePostView } from "@/lib/browse-data";
 import { BROWSE_COMMENT_MAX, REPORT_REASONS, REPORT_REASON_LABEL, compactCount, postPath, storeBrowsePath, timeAgo, type ReportReason } from "@/lib/browse";
+import { StoreBadges } from "@/components/browse/store-badges";
 import { formatMoney } from "@/lib/utils/format-money";
 import { storeHref } from "@/lib/utils/store-href";
 
@@ -160,7 +161,7 @@ export function PostCard({ post: initial, openComments = false }: { post: Browse
             {post.store.logoUrl ? /* eslint-disable-next-line @next/next/no-img-element */ <img src={post.store.logoUrl} alt="" className="h-full w-full object-cover" /> : post.store.name.slice(0, 1).toUpperCase()}
           </span>
           <span className="min-w-0">
-            <span className={`${display} flex items-center gap-1 truncate text-[15px] font-bold leading-tight`}>{post.store.name}{post.store.verified && <BadgeCheck className="h-4 w-4 shrink-0 text-sky-600" aria-label="Verified business" />}</span>
+            <span className={`${display} flex items-center gap-1 truncate text-[15px] font-bold leading-tight`}>{post.store.name}<StoreBadges verified={post.store.verified} mogul={post.store.mogul} /></span>
             <span className="block truncate text-xs text-[#14301A]/60">{[post.store.category, post.store.city].filter(Boolean).join(", ")}{(post.store.category || post.store.city) ? ", " : ""}{timeAgo(new Date(post.createdAt))}</span>
           </span>
         </Link>

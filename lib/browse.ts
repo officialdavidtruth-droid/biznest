@@ -142,3 +142,24 @@ export function sanitizeStory(input: { imageUrl?: unknown; text?: unknown; bgCol
 export function orderRings<T extends { allSeen: boolean; latestAt: string }>(rings: T[]): T[] {
   return [...rings].sort((a, b) => (a.allSeen === b.allSeen ? (a.latestAt < b.latestAt ? 1 : a.latestAt > b.latestAt ? -1 : 0) : a.allSeen ? 1 : -1));
 }
+
+// ------------------------------------------------------------ badges and bio
+
+export const MOGUL_PLAN_NAME = "Business Mogul";
+export const BIO_MAX = 500;
+
+/** A business shows the Mogul badge while it is on the Business Mogul plan and the plan is not lapsed. */
+export function isMogulStore(store: { subscription?: { name: string } | null; subscriptionPastDueSince?: Date | null } | null | undefined): boolean {
+  if (!store?.subscription) return false;
+  return store.subscription.name.trim().toLowerCase() === MOGUL_PLAN_NAME.toLowerCase() && !store.subscriptionPastDueSince;
+}
+
+/** The business description, tidied for use as a profile bio: plain text, short, no runs of blank lines. */
+export function toBio(description: unknown, max = BIO_MAX): string {
+  if (typeof description !== "string") return "";
+  const t = description.replace(/\r/g, "").replace(/[ \t]+/g, " ").replace(/\n{3,}/g, "\n\n").trim();
+  if (t.length <= max) return t;
+  const cut = t.slice(0, max);
+  const at = Math.max(cut.lastIndexOf(" "), max - 40);
+  return `${cut.slice(0, at).trimEnd()}…`;
+}
