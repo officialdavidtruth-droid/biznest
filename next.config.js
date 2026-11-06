@@ -2,10 +2,13 @@ const { withSentryConfig } = require("@sentry/nextjs/config");
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  // Vercel's 8 GB build machine ran out of memory in the "Linting and checking validity of types" step
-  // (ESLint + tsc in one process, right after webpack). Linting now runs in CI (.github/workflows/ci.yml)
-  // instead of inside `next build`; type-checking still gates the build.
+  // Vercel's 8 GB build machine ran out of memory twice in the "checking validity of types" step, because
+  // `next build` type-checks in the same process that just ran webpack (and still holds its heap).
+  // Linting runs in CI (.github/workflows/ci.yml). Type-checking now runs as its own `tsc --noEmit`
+  // process BEFORE `next build` (see the "build" script in package.json), so it still gates every deploy
+  // but gets a fresh heap; Next's own duplicate pass is switched off.
   eslint: { ignoreDuringBuilds: true },
+  typescript: { ignoreBuildErrors: true },
   images: {
     remotePatterns: [
       { protocol: "https", hostname: "res.cloudinary.com" },
