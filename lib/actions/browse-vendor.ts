@@ -68,7 +68,7 @@ export async function shareProductToBrowse(slug: string, productId: string, capt
   const parsed = sanitizePost({ caption: caption?.trim() || defaultProductCaption(product.name), images }, { requireImage: true });
   if (!parsed.ok) return { success: false, error: parsed.error };
   const post = await prisma.browsePost.create({
-    data: { storeId: a.store.id, kind: "PRODUCT", caption: parsed.caption, images: parsed.images, productId: product.id, productName: product.name, productPrice: product.price as number, productCurrency: product.currency },
+    data: { storeId: a.store.id, kind: "PRODUCT", caption: parsed.caption, images: parsed.images, productId: product.id, productName: product.name, productPrice: product.price, productCurrency: product.currency },
     select: { id: true },
   });
   refresh(slug);
