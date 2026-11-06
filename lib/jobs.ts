@@ -92,7 +92,7 @@ export function splitCharges(total: number, depositPct: number): { label: string
   return [{ label: `Deposit (${pct}%)`, amount: deposit }, { label: "Balance", amount: balance }];
 }
 
-export type ChargeLike = { status: string; amount: number | string };
+export type ChargeLike = { status: string; amount: number | string | { toString(): string } };
 export function outstanding(charges: ChargeLike[]): number {
   return Math.round(charges.filter((c) => c.status === "DUE").reduce((s, c) => s + Number(c.amount), 0) * 100) / 100;
 }
