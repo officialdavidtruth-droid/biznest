@@ -200,16 +200,16 @@ export async function deleteChannelConnection(slug: string, connectionId: string
 
 async function ownConnection(slug: string, connectionId: string) {
   const a = await access(slug);
-  if (!a.success) return { error: a.error ?? "You don't have access to this store." } as const;
+  if (!a.success) return { ok: false, error: String(a.error ?? "You don't have access to this store.") } as const;
   const conn = await prisma.channelConnection.findFirst({ where: { id: connectionId, storeId: a.store.id } });
-  if (!conn) return { error: "Connection not found." } as const;
-  return { a, conn } as const;
+  if (!conn) return { ok: false, error: "Connection not found." } as const;
+  return { ok: true, a, conn } as const;
 }
 
 /** Create the inbound webhook address and the signing secret (once). */
 export async function enableLiveChannel(slug: string, connectionId: string): Promise<ActionResult> {
   const r = await ownConnection(slug, connectionId);
-  if ("error" in r) return { success: false, error: r.error };
+  if (!r.ok) return { success: false, error: r.error };
   if (r.conn.hookToken && r.conn.liveSecret) return { success: true, data: undefined };
   await prisma.channelConnection.update({ where: { id: r.conn.id }, data: newLiveCredentials() });
   revalidatePath(`/store/${slug}/admin/pms`);
@@ -219,7 +219,7 @@ export async function enableLiveChannel(slug: string, connectionId: string): Pro
 /** Set (or clear, with an empty string) the https address we POST availability to. */
 export async function saveChannelPushUrl(slug: string, connectionId: string, rawUrl: string): Promise<ActionResult> {
   const r = await ownConnection(slug, connectionId);
-  if ("error" in r) return { success: false, error: r.error };
+  if (!r.ok) return { success: false, error: r.error };
   const trimmed = rawUrl.trim();
   let pushUrl: string | null = null;
   if (trimmed) {
@@ -244,7 +244,7 @@ export async function saveChannelPushUrl(slug: string, connectionId: string, raw
 /** New secret and webhook address. The old ones stop working immediately. */
 export async function rotateLiveSecret(slug: string, connectionId: string): Promise<ActionResult> {
   const r = await ownConnection(slug, connectionId);
-  if ("error" in r) return { success: false, error: r.error };
+  if (!r.ok) return { success: false, error: r.error };
   await prisma.channelConnection.update({ where: { id: r.conn.id }, data: newLiveCredentials() });
   revalidatePath(`/store/${slug}/admin/pms`);
   return { success: true, data: undefined };
@@ -253,7 +253,7 @@ export async function rotateLiveSecret(slug: string, connectionId: string): Prom
 /** Send a full availability snapshot now (also retries anything that failed). */
 export async function sendChannelPushNow(slug: string, connectionId: string, kind: "test" | "retry" = "retry"): Promise<ActionResult<{ message: string }>> {
   const r = await ownConnection(slug, connectionId);
-  if ("error" in r) return { success: false, error: r.error };
+  if (!r.ok) return { success: false, error: r.error };
   if (!r.conn.pushUrl || !r.conn.liveSecret) return { success: false, error: "Add a push address first." };
   const id = await enqueueConnectionPush(r.conn.id, kind === "test" ? "test" : "availability.updated");
   if (!id) return { success: false, error: "Live push is not set up for this channel." };
