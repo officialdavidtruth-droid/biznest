@@ -4,6 +4,32 @@ import { useState } from "react";
 import { X, Plus } from "lucide-react";
 import { toast } from "sonner";
 
+const MAX_UPLOAD_BYTES = 3 * 1024 * 1024; // stay well under the host's ~4.5 MB request limit
+const MAX_SIDE = 2000;
+
+/** Phone photos are often 4-10 MB. Re-encode big JPEG/PNG/WebP images as a ~2000px JPEG before sending; small files and PDFs go as they are. */
+async function shrinkImage(file: File): Promise<File> {
+  if (!/^image\/(jpeg|png|webp)$/.test(file.type) || file.size <= MAX_UPLOAD_BYTES) return file;
+  try {
+    const bitmap = await createImageBitmap(file);
+    const scale = Math.min(1, MAX_SIDE / Math.max(bitmap.width, bitmap.height));
+    const canvas = document.createElement("canvas");
+    canvas.width = Math.round(bitmap.width * scale);
+    canvas.height = Math.round(bitmap.height * scale);
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return file;
+    ctx.fillStyle = "#fff";
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    ctx.drawImage(bitmap, 0, 0, canvas.width, canvas.height);
+    bitmap.close?.();
+    for (const quality of [0.85, 0.7, 0.55]) {
+      const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, "image/jpeg", quality));
+      if (blob && blob.size <= MAX_UPLOAD_BYTES) return new File([blob], file.name.replace(/\.\w+$/, "") + ".jpg", { type: "image/jpeg" });
+    }
+  } catch { /* fall back to the original file */ }
+  return file;
+}
+
 export function MultiImageUpload({
   value,
   onChange,
@@ -27,10 +53,14 @@ export function MultiImageUpload({
     setIsUploading(true);
     try {
       const formData = new FormData();
-      formData.append("file", file);
+      formData.append("file", await shrinkImage(file));
       const res = await fetch("/api/upload", { method: "POST", body: formData });
       const body = await res.json().catch(() => null);
-      if (!res.ok) throw new Error(body?.error ?? "Upload failed");
+      if (!res.ok) {
+        // A plain-text reply (no JSON) means the host rejected the request before the app saw it, usually because the file was too big.
+        if (!body?.error) throw new Error(res.status === 413 ? "That photo is too large. Try a smaller one." : `Upload failed (error ${res.status}). Try a smaller photo.`);
+        throw new Error(body.error);
+      }
       onChange([...value, body.url]);
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Upload failed");
