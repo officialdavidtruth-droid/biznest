@@ -21,8 +21,8 @@ function Avatar({ ring, size }: { ring: StoryRing; size: number }) {
 
 function RingFrame({ seen, children }: { seen: boolean; children: React.ReactNode }) {
   return (
-    <span className={`rounded-full p-[3px] ${seen ? "bg-white/25" : "bg-gradient-to-tr from-amber-400 via-rose-500 to-fuchsia-600"}`}>
-      <span className="block rounded-full bg-[#0b240d] p-[2px]">{children}</span>
+    <span className={`rounded-full p-[3px] transition group-hover:scale-105 ${seen ? "bg-white/25" : "bg-gradient-to-tr from-[#F5B82E] via-[#F2704B] to-[#E5484D]"}`}>
+      <span className="block rounded-full bg-[#0A2012] p-[3px]">{children}</span>
     </span>
   );
 }
@@ -148,14 +148,14 @@ export function StoryRings({ rings: initial, size = "sm" }: { rings: StoryRing[]
   }, []);
 
   if (rings.length === 0) return null;
-  const px = size === "lg" ? 96 : 64;
+  const px = size === "lg" ? 104 : 68;
   return (
     <>
-      <div className={size === "lg" ? "" : "mb-5 flex gap-4 overflow-x-auto pb-1 [scrollbar-width:none]"} aria-label="Stories">
+      <div className={size === "lg" ? "" : "mb-5 flex gap-5 overflow-x-auto rounded-[28px] border border-white/10 bg-black/20 px-5 py-4 [scrollbar-width:none]"} aria-label="Stories">
         {rings.map((rg, i) => (
-          <button key={rg.sponsored ? `ad:${rg.stories[0]?.id}` : rg.storeSlug} onClick={() => setOpen(i)} className="flex shrink-0 flex-col items-center gap-1.5" aria-label={`${rg.storeName}: ${rg.stories.length} stor${rg.stories.length === 1 ? "y" : "ies"}${rg.allSeen ? "" : ", new"}`}>
+          <button key={rg.sponsored ? `ad:${rg.stories[0]?.id}` : rg.storeSlug} onClick={() => setOpen(i)} className="group flex shrink-0 flex-col items-center gap-2 rounded-2xl focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#F5B82E]" aria-label={`${rg.storeName}: ${rg.stories.length} stor${rg.stories.length === 1 ? "y" : "ies"}${rg.allSeen ? "" : ", new"}`}>
             <RingFrame seen={rg.allSeen}><Avatar ring={rg} size={px} /></RingFrame>
-            {size === "sm" && <span className="w-[72px] truncate text-center text-xs opacity-80">{rg.sponsored ? "Sponsored" : rg.storeName}</span>}
+            {size === "sm" && <span className="w-[76px] truncate text-center text-xs font-medium text-[#FBF6E9]/85">{rg.sponsored ? "Sponsored" : rg.storeName}</span>}
           </button>
         ))}
       </div>

@@ -42,12 +42,12 @@ export function BrowseFeed({ initialPosts, initialCursor, initialAds = [], sort,
   }, [more, cursor, failed]);
 
   return (
-    <div className="space-y-5">
+    <div className="space-y-6">
       {injectAds(posts, ads).map((item) => item.type === "post" ? <PostCard key={item.post.id} post={item.post} /> : <AdCard key={`ad-${item.ad.id}`} ad={item.ad} />)}
       <div ref={sentinel} aria-hidden className="h-1" />
-      {loading && <p className="py-4 text-center text-sm opacity-60" role="status">Loading more…</p>}
-      {failed && <div className="py-4 text-center"><button className="rounded-full border border-white/25 px-4 py-2 text-sm" onClick={() => void more()}>Couldn&apos;t load. Tap to retry</button></div>}
-      {!cursor && posts.length > 0 && <p className="py-6 text-center text-sm opacity-60">You&apos;re all caught up.</p>}
+      {loading && <p className="py-4 text-center text-sm text-[#FBF6E9]/70" role="status">Loading more posts…</p>}
+      {failed && <div className="py-4 text-center"><button className="rounded-full bg-white/10 px-5 py-2.5 text-sm font-medium hover:bg-white/15" onClick={() => void more()}>Couldn&apos;t load. Tap to retry</button></div>}
+      {!cursor && posts.length > 0 && <p className="py-8 text-center text-sm text-[#FBF6E9]/60">You&apos;ve seen everything for now. Check back later for new posts.</p>}
     </div>
   );
 }

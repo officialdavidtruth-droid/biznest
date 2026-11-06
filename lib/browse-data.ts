@@ -276,3 +276,24 @@ export async function loadVendorStories(storeId: string): Promise<VendorStoryVie
   const now = Date.now();
   return rows.map((s) => ({ id: s.id, kind: s.kind, imageUrl: s.imageUrl, text: s.text, bgColor: s.bgColor, createdAt: s.createdAt.toISOString(), expiresAt: s.expiresAt.toISOString(), viewCount: s.viewCount, live: s.expiresAt.getTime() > now }));
 }
+
+// ------------------------------------------------------------------ discover
+
+export type DiscoverShop = { slug: string; name: string; logoUrl: string | null; category: string | null; city: string | null; verified: boolean; postCount: number };
+
+/** Public shops, most active first. Fills the sidebar and the empty feed so a new visitor always has somewhere to go. */
+export async function loadDiscoverShops(limit = 6): Promise<DiscoverShop[]> {
+  const rows = await prisma.store.findMany({
+    where: { status: "ACTIVE", business: { is: { searchVisible: true } } },
+    orderBy: [{ browsePosts: { _count: "desc" } }, { createdAt: "desc" }],
+    take: Math.min(Math.max(limit, 1), 12),
+    select: {
+      slug: true, name: true, logoUrl: true,
+      business: { select: { category: true, city: true, verificationBadge: true } },
+      _count: { select: { browsePosts: { where: { status: "PUBLISHED" } } } },
+    },
+  });
+  return rows.map((r: { slug: string; name: string; logoUrl: string | null; business: { category: string; city: string; verificationBadge: boolean } | null; _count: { browsePosts: number } }) => ({
+    slug: r.slug, name: r.name, logoUrl: r.logoUrl, category: r.business?.category ?? null, city: r.business?.city ?? null, verified: !!r.business?.verificationBadge, postCount: r._count.browsePosts,
+  }));
+}

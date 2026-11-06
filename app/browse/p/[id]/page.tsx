@@ -1,9 +1,9 @@
-import Link from "next/link";
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { getViewer } from "@/lib/browse-viewer";
 import { loadBrowsePost } from "@/lib/browse-data";
 import { PostCard } from "@/components/browse/post-card";
+import { BrowseShell } from "@/components/browse/browse-shell";
 
 export const dynamic = "force-dynamic";
 
@@ -31,11 +31,10 @@ export default async function BrowsePostPage({ params }: { params: Promise<{ id:
   const post = await loadBrowsePost(id, viewer?.key);
   if (!post) notFound();
   return (
-    <div className="bn-dark-surface min-h-screen">
-      <div className="mx-auto max-w-xl px-4 pb-16 pt-6">
-        <Link href="/browse" className="mb-4 inline-block text-sm opacity-70 hover:opacity-100">← Back to Browse</Link>
+    <BrowseShell back={{ href: "/browse", label: "Browse" }}>
+      <main className="mx-auto max-w-xl px-4 pb-20 pt-6">
         <PostCard post={post} openComments />
-      </div>
-    </div>
+      </main>
+    </BrowseShell>
   );
 }
