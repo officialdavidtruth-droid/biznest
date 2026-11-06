@@ -7,7 +7,7 @@ import { toast } from "sonner";
 import { markStoryViewed, reportBrowse } from "@/lib/actions/browse";
 import { recordAdClick, recordAdImpression, reportAd } from "@/lib/actions/ads";
 import type { StoryRing } from "@/lib/browse-data";
-import { REPORT_REASONS, REPORT_REASON_LABEL, STORY_SECONDS, storeBrowsePath, timeAgo, type ReportReason } from "@/lib/browse";
+import { REPORT_REASONS, REPORT_REASON_LABEL, STORY_SECONDS, isOfficialSlug, storeBrowsePath, timeAgo, type ReportReason } from "@/lib/browse";
 import { StoreBadges } from "@/components/browse/store-badges";
 import { formatMoney } from "@/lib/utils/format-money";
 import { storeHref } from "@/lib/utils/store-href";
@@ -90,7 +90,7 @@ function Viewer({ rings, start, onClose, onSeen }: { rings: StoryRing[]; start: 
         <div className="absolute left-0 right-0 top-5 z-20 flex items-center gap-3 px-3 text-white">
           <Link href={storeBrowsePath(ring.storeSlug)} className="flex min-w-0 flex-1 items-center gap-2">
             <Avatar ring={ring} size={36} />
-            <span className="min-w-0 truncate text-sm font-semibold drop-shadow">{ring.storeName}<span className="ml-1 inline-flex align-middle"><StoreBadges verified={ring.verified} mogul={ring.mogul} dark /></span><span className="ml-2 font-normal opacity-70">{story.ad ? "Sponsored" : timeAgo(new Date(story.createdAt))}</span></span>
+            <span className="min-w-0 truncate text-sm font-semibold drop-shadow">{ring.storeName}<span className="ml-1 inline-flex align-middle"><StoreBadges verified={ring.verified} mogul={ring.mogul} official={isOfficialSlug(ring.storeSlug)} dark /></span><span className="ml-2 font-normal opacity-70">{story.ad ? "Sponsored" : timeAgo(new Date(story.createdAt))}</span></span>
           </Link>
           {paused && <Pause className="h-4 w-4 opacity-70" aria-label="Paused" />}
           <button onClick={() => setReporting((v) => !v)} aria-label="Report this story" className="p-1 opacity-80 hover:opacity-100"><Flag className="h-5 w-5" /></button>

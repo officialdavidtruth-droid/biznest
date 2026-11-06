@@ -7,7 +7,7 @@ import { toast } from "sonner";
 import { recordAdClick, recordAdImpression, reportAd } from "@/lib/actions/ads";
 import type { AdPublic } from "@/lib/ads-data";
 import { AD_CTA_LABEL, type AdCta } from "@/lib/ads";
-import { REPORT_REASONS, REPORT_REASON_LABEL, storeBrowsePath, type ReportReason } from "@/lib/browse";
+import { REPORT_REASONS, REPORT_REASON_LABEL, isOfficialSlug, storeBrowsePath, type ReportReason } from "@/lib/browse";
 import { StoreBadges } from "@/components/browse/store-badges";
 import { formatMoney } from "@/lib/utils/format-money";
 import { storeHref } from "@/lib/utils/store-href";
@@ -49,7 +49,7 @@ export function AdCard({ ad }: { ad: AdPublic }) {
             {ad.store.logoUrl ? /* eslint-disable-next-line @next/next/no-img-element */ <img src={ad.store.logoUrl} alt="" className="h-full w-full object-cover" /> : ad.store.name.slice(0, 1).toUpperCase()}
           </span>
           <span className="min-w-0">
-            <span className="flex items-center gap-1 truncate font-[family-name:var(--font-browse-display)] text-[15px] font-bold leading-tight">{ad.store.name}<StoreBadges verified={ad.store.verified} mogul={ad.store.mogul} /></span>
+            <span className="flex items-center gap-1 truncate font-[family-name:var(--font-browse-display)] text-[15px] font-bold leading-tight">{ad.store.name}<StoreBadges verified={ad.store.verified} mogul={ad.store.mogul} official={isOfficialSlug(ad.store.slug)} /></span>
             <span className="mt-0.5 inline-block rounded-full border border-[#14301A]/25 px-2 py-px text-[11px] font-medium text-[#14301A]/70">Sponsored</span>
           </span>
         </Link>

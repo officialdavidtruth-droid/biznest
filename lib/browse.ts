@@ -18,6 +18,12 @@ export const FOLLOW_NEEDS_ACCOUNT = "Create a free account to follow businesses.
 /** Returned by like and comment actions when nobody is signed in. */
 export const INTERACT_NEEDS_ACCOUNT = "Create a free account to like and comment.";
 
+/** BizNest's own Browse account. It is a real (store-less) store row so posts, stories, follows and the badge all work unchanged. */
+export const OFFICIAL_SLUG = "biznest-official";
+export const isOfficialSlug = (slug: string | null | undefined) => slug === OFFICIAL_SLUG;
+export const OFFICIAL_NAME = "BizNest";
+export const OFFICIAL_BIO = "The official BizNest account. Product news, tips and updates for Nigerian businesses, straight from the team.";
+
 export const postPath = (id: string) => `/browse/p/${id}`;
 
 // ------------------------------------------------------------------ text

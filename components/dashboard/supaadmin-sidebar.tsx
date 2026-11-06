@@ -41,6 +41,7 @@ const GROUPS: Group[] = [
       { href: "/supaadmin/disputes", label: "Disputes", icon: Gavel, badgeKey: "openDisputes" },
       { href: "/supaadmin/review-reports", label: "Review reports", icon: Flag },
       { href: "/supaadmin/browse-reports", label: "Browse reports", icon: Flag },
+      { href: "/supaadmin/official", label: "BizNest account", icon: Megaphone },
       { href: "/supaadmin/ads", label: "Browse ads", icon: Megaphone },
       { href: "/supaadmin/support-requests", label: "Support requests", icon: LifeBuoy },
     ],

@@ -4,7 +4,7 @@ import { notFound } from "next/navigation";
 import { Crown, MapPin, Tag } from "lucide-react";
 import { getViewer } from "@/lib/browse-viewer";
 import { loadStorePosts, loadStoreProfile, loadStoreStories } from "@/lib/browse-data";
-import { storeBrowsePath } from "@/lib/browse";
+import { isOfficialSlug, storeBrowsePath } from "@/lib/browse";
 import { storeHref } from "@/lib/utils/store-href";
 import { StoryRings } from "@/components/browse/story-rings";
 import { StorePostsGrid } from "@/components/browse/store-posts-grid";
@@ -55,12 +55,13 @@ export default async function StoreBrowsePage({ params }: { params: Promise<{ sl
               <div className="min-w-0">
                 <h1 className={`${display} flex items-center gap-2 text-2xl font-extrabold leading-tight tracking-tight sm:text-3xl`}>
                   <span className="min-w-0 break-words">{profile.name}</span>
-                  <StoreBadges verified={profile.verified} mogul={profile.mogul} size="lg" />
+                  <StoreBadges verified={profile.verified} mogul={profile.mogul} official={isOfficialSlug(profile.slug)} size="lg" />
                 </h1>
                 <div className="mt-2 flex flex-wrap gap-2 text-xs font-medium">
                   {profile.category && <span className="inline-flex items-center gap-1 rounded-full bg-[#14301A]/[0.08] px-2.5 py-1"><Tag className="h-3 w-3" aria-hidden />{profile.category}</span>}
                   {profile.city && <span className="inline-flex items-center gap-1 rounded-full bg-[#14301A]/[0.08] px-2.5 py-1"><MapPin className="h-3 w-3" aria-hidden />{profile.city}</span>}
                 </div>
+                {isOfficialSlug(profile.slug) && <p className="mt-2 inline-flex items-center gap-1 rounded-full bg-[#14301A] px-2.5 py-1 text-xs font-semibold text-[#FFE08A] ring-1 ring-[#F5B82E]">The official BizNest account</p>}
                 {profile.mogul && <p className="mt-2 inline-flex items-center gap-1 rounded-full bg-gradient-to-r from-[#FFE08A] to-[#F5B82E] px-2.5 py-1 text-xs font-semibold text-[#4a3000]"><Crown className="h-3 w-3" aria-hidden /> Business Mogul</p>}
                 {story && <p className="mt-2 text-xs text-[#14301A]/60">Tap the photo to watch their story.</p>}
               </div>

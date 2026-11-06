@@ -133,3 +133,12 @@ describe("Mogul badge and bio", () => {
     expect(out.endsWith(" …")).toBe(false);
   });
 });
+
+describe("official account", () => {
+  it("recognises only the BizNest slug", async () => {
+    const { isOfficialSlug, OFFICIAL_SLUG } = await import("@/lib/browse");
+    expect(isOfficialSlug(OFFICIAL_SLUG)).toBe(true);
+    expect(isOfficialSlug("acme-test")).toBe(false);
+    expect(isOfficialSlug(null)).toBe(false);
+  });
+});

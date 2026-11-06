@@ -6,6 +6,7 @@ import { loadBrowseFeed, loadDiscoverShops, loadFollowedShops, loadFollowedStore
 import { BrowseFeed } from "@/components/browse/browse-feed";
 import { BrowseShell } from "@/components/browse/browse-shell";
 import { DiscoverShops } from "@/components/browse/discover-shops";
+import { isOfficialSlug } from "@/lib/browse";
 import { StoreBadges } from "@/components/browse/store-badges";
 
 export const dynamic = "force-dynamic";
@@ -38,7 +39,7 @@ export default async function FollowingPage() {
                     ? <img src={s.logoUrl} alt="" className="h-14 w-14 rounded-full object-cover" />
                     : <span className="grid h-14 w-14 place-items-center rounded-full bg-[#F5B82E] text-lg font-extrabold text-[#14301A]">{s.name.slice(0, 1).toUpperCase()}</span>}
                   <span className="line-clamp-2 text-xs font-medium leading-tight">{s.name}</span>
-                  <StoreBadges verified={s.verified} mogul={s.mogul} />
+                  <StoreBadges verified={s.verified} mogul={s.mogul} official={isOfficialSlug(s.slug)} />
                 </Link>
               </li>
             ))}

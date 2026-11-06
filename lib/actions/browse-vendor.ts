@@ -3,11 +3,19 @@
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
 import { assertStorePermission } from "@/lib/access/assert-store-access";
-import { BROWSE_DAILY_POST_LIMIT, BROWSE_MAX_IMAGES, STORY_DAILY_LIMIT, defaultProductCaption, sanitizePost, sanitizeStory, storyExpiry } from "@/lib/browse";
+import { isPlatformStaff } from "@/lib/admin-guard";
+import { BROWSE_DAILY_POST_LIMIT, OFFICIAL_SLUG, BROWSE_MAX_IMAGES, STORY_DAILY_LIMIT, defaultProductCaption, sanitizePost, sanitizeStory, storyExpiry } from "@/lib/browse";
 import { loadBrowseComments, type BrowseCommentView } from "@/lib/browse-data";
 import type { ActionResult } from "@/types/actions";
 
 async function access(slug: string) {
+  // BizNest's own account has no owner who signs in: SupaAdmin staff manage it with the same tools vendors use.
+  if (slug === OFFICIAL_SLUG) {
+    if (!(await isPlatformStaff())) return { success: false as const, error: "Admin PIN session expired or invalid. Please sign in again." };
+    const store = await prisma.store.findUnique({ where: { slug }, select: { id: true, status: true } });
+    if (!store) return { success: false as const, error: "Set up the BizNest official account first." };
+    return { success: true as const, store };
+  }
   const a = await assertStorePermission(slug, "marketing");
   if (!a.success) return a;
   if (a.store.status !== "ACTIVE") return { success: false as const, error: "Your store must be active to post on Browse." };
@@ -19,7 +27,7 @@ async function underDailyLimit(storeId: string) {
   return n < BROWSE_DAILY_POST_LIMIT;
 }
 
-const refresh = (slug: string) => { revalidatePath(`/store/${slug}/admin/browse`); revalidatePath("/browse"); };
+const refresh = (slug: string) => { revalidatePath(`/store/${slug}/admin/browse`); revalidatePath("/supaadmin/official"); revalidatePath("/browse"); };
 
 /** A free-form update: text and/or up to four photos, optionally tagging one of the store's products. */
 export async function createBrowsePost(slug: string, input: { caption?: string; images?: string[]; productId?: string | null }): Promise<ActionResult<{ id: string }>> {

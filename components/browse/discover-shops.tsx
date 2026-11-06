@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { ChevronRight } from "lucide-react";
 import type { DiscoverShop } from "@/lib/browse-data";
-import { compactCount, storeBrowsePath } from "@/lib/browse";
+import { compactCount, isOfficialSlug, storeBrowsePath } from "@/lib/browse";
 import { StoreBadges } from "@/components/browse/store-badges";
 
 const display = "font-[family-name:var(--font-browse-display)]";
@@ -19,7 +19,7 @@ export function DiscoverShops({ shops, title = "Shops to visit" }: { shops: Disc
                 {s.logoUrl ? /* eslint-disable-next-line @next/next/no-img-element */ <img src={s.logoUrl} alt="" className="h-full w-full object-cover" /> : s.name.slice(0, 1).toUpperCase()}
               </span>
               <span className="min-w-0 flex-1">
-                <span className="flex items-center gap-1 truncate text-sm font-semibold">{s.name}<StoreBadges verified={s.verified} mogul={s.mogul} /></span>
+                <span className="flex items-center gap-1 truncate text-sm font-semibold">{s.name}<StoreBadges verified={s.verified} mogul={s.mogul} official={isOfficialSlug(s.slug)} /></span>
                 <span className="block truncate text-xs text-[#14301A]/60">{[s.category, s.city].filter(Boolean).join(", ")}{s.followerCount > 0 ? `${s.category || s.city ? ", " : ""}${compactCount(s.followerCount)} follower${s.followerCount === 1 ? "" : "s"}` : ""}</span>
               </span>
               <ChevronRight className="h-4 w-4 shrink-0 text-[#14301A]/40 transition group-hover:translate-x-0.5" aria-hidden />
