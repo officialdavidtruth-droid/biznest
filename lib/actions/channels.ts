@@ -200,7 +200,7 @@ export async function deleteChannelConnection(slug: string, connectionId: string
 
 async function ownConnection(slug: string, connectionId: string) {
   const a = await access(slug);
-  if (!a.success) return { error: a.error } as const;
+  if (!a.success) return { error: a.error ?? "You don't have access to this store." } as const;
   const conn = await prisma.channelConnection.findFirst({ where: { id: connectionId, storeId: a.store.id } });
   if (!conn) return { error: "Connection not found." } as const;
   return { a, conn } as const;
