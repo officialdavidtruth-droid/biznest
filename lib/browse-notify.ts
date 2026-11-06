@@ -17,7 +17,7 @@ const snippet = (s: string, n: number) => { const t = s.replace(/\s+/g, " ").tri
 
 /** Runs after the response is sent when possible, and never lets a failure reach the person who posted. */
 function background(job: () => Promise<void>) {
-  const run = () => job().catch((err: unknown) => { void logError("BROWSE", "Follower notification failed", { message: err instanceof Error ? err.message : String(err) }); });
+  const run = () => job().catch((err: unknown) => { void logError("MESSAGING", "Follower notification failed", { message: err instanceof Error ? err.message : String(err) }); });
   try { after(run); } catch { void run(); }
 }
 
