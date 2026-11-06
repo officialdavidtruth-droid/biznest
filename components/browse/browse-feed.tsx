@@ -9,7 +9,7 @@ import { AdCard } from "@/components/browse/ad-card";
 import type { BrowsePostView, FeedSort } from "@/lib/browse-data";
 import { PostCard } from "@/components/browse/post-card";
 
-export function BrowseFeed({ initialPosts, initialCursor, initialAds = [], sort, category }: { initialPosts: BrowsePostView[]; initialCursor: string | null; initialAds?: AdPublic[]; sort: FeedSort; category: string | null }) {
+export function BrowseFeed({ initialPosts, initialCursor, initialAds = [], sort, category, following = false }: { initialPosts: BrowsePostView[]; initialCursor: string | null; initialAds?: AdPublic[]; sort: FeedSort; category: string | null; following?: boolean }) {
   const [posts, setPosts] = useState(initialPosts);
   const [ads, setAds] = useState<AdPublic[]>(initialAds);
   const [cursor, setCursor] = useState(initialCursor);
@@ -22,7 +22,7 @@ export function BrowseFeed({ initialPosts, initialCursor, initialAds = [], sort,
     if (busy.current || !cursor) return;
     busy.current = true; setLoading(true); setFailed(false);
     try {
-      const [r, moreAds] = await Promise.all([loadMoreBrowse({ sort, category, cursor }), loadMoreFeedAds(Math.ceil(8 / AD_FEED_EVERY)).catch(() => null)]);
+      const [r, moreAds] = await Promise.all([loadMoreBrowse({ sort, category, cursor, following }), following ? Promise.resolve(null) : loadMoreFeedAds(Math.ceil(8 / AD_FEED_EVERY)).catch(() => null)]);
       if (!r.success) throw new Error(r.error);
       if (moreAds?.success) setAds((cur) => { const have = new Set(cur.map((a) => a.id)); return [...cur, ...moreAds.data.filter((a) => !have.has(a.id))]; });
       setPosts((cur) => {
@@ -31,7 +31,7 @@ export function BrowseFeed({ initialPosts, initialCursor, initialAds = [], sort,
       });
       setCursor(r.data.nextCursor);
     } catch { setFailed(true); } finally { busy.current = false; setLoading(false); }
-  }, [cursor, sort, category]);
+  }, [cursor, sort, category, following]);
 
   useEffect(() => {
     const el = sentinel.current;

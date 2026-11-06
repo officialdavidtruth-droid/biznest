@@ -8,6 +8,8 @@ import { prisma } from "@/lib/prisma";
 export default async function LegacyAccountBoundary({ children }: { children: React.ReactNode }) {
   const session = await auth();
   if (!session?.user?.id) redirect("/login");
+  // A plain member has no store account or dashboard: their home is Browse.
+  if (session.user.role === "MEMBER") redirect("/browse/following");
   const memberships = await prisma.storeCustomer.findMany({ where: { userId: session.user.id }, select: { store: { select: { slug: true } } }, take: 2 });
   if (memberships.length === 1) redirect(`/store/${memberships[0].store.slug}/account`);
   // A customer with more than one membership must never see a combined

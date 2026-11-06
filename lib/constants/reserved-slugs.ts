@@ -36,6 +36,7 @@ export const RESERVED_SLUGS = new Set([
   "download",
   // Public social feed (app/browse)
   "browse",
+  "join",
   "downloads",
   // Service worker script (public/sw.js) -- same failure mode as the
   // manifest above: missing here meant middleware served a 404 page in

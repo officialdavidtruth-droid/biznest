@@ -19,7 +19,7 @@ import { CUSTOMER_MESSAGE_LIMIT, validateMessageContent } from "@/lib/message-li
 
 export async function listAddresses() {
   const session = await auth();
-  if (!session?.user?.id || session.user.role === "CUSTOMER") return [];
+  if (!session?.user?.id || session.user.role === "CUSTOMER" || session.user.role === "MEMBER") return [];
 
   return prisma.address.findMany({
     where: { userId: session.user.id },
@@ -40,7 +40,7 @@ export async function addAddress(input: {
 }): Promise<ActionResult<{ id: string }>> {
   const session = await auth();
   if (!session?.user?.id) return { success: false, error: "You need to sign in first." };
-  if (session.user.role === "CUSTOMER") return { success: false, error: "Customer accounts must use a store account." };
+  if (session.user.role === "CUSTOMER" || session.user.role === "MEMBER") return { success: false, error: "Customer accounts must use a store account." };
 
   if (!input.fullName || !input.phone || !input.line1 || !input.city || !input.state) {
     return { success: false, error: "Please fill in all required fields." };
@@ -64,7 +64,7 @@ export async function addAddress(input: {
 export async function deleteAddress(addressId: string): Promise<ActionResult> {
   const session = await auth();
   if (!session?.user?.id) return { success: false, error: "You need to sign in first." };
-  if (session.user.role === "CUSTOMER") return { success: false, error: "Customer accounts must use a store-scoped account." };
+  if (session.user.role === "CUSTOMER" || session.user.role === "MEMBER") return { success: false, error: "Customer accounts must use a store-scoped account." };
 
   const address = await prisma.address.findUnique({ where: { id: addressId } });
   if (!address || address.userId !== session.user.id) {
@@ -79,7 +79,7 @@ export async function deleteAddress(addressId: string): Promise<ActionResult> {
 export async function setDefaultAddress(addressId: string): Promise<ActionResult> {
   const session = await auth();
   if (!session?.user?.id) return { success: false, error: "You need to sign in first." };
-  if (session.user.role === "CUSTOMER") return { success: false, error: "Customer accounts must use a store-scoped account." };
+  if (session.user.role === "CUSTOMER" || session.user.role === "MEMBER") return { success: false, error: "Customer accounts must use a store-scoped account." };
 
   const address = await prisma.address.findUnique({ where: { id: addressId } });
   if (!address || address.userId !== session.user.id) {
@@ -100,7 +100,7 @@ export async function setDefaultAddress(addressId: string): Promise<ActionResult
 export async function listWishlist() {
   const session = await auth();
   if (!session?.user?.id) return [];
-  if (session.user.role === "CUSTOMER") return [];
+  if (session.user.role === "CUSTOMER" || session.user.role === "MEMBER") return [];
 
   return prisma.wishlistItem.findMany({
     where: { userId: session.user.id },
@@ -199,7 +199,7 @@ export async function recordRecentlyViewed(input: {
 export async function listRecentlyViewed(limit = 20) {
   const session = await auth();
   if (!session?.user?.id) return [];
-  if (session.user.role === "CUSTOMER") return [];
+  if (session.user.role === "CUSTOMER" || session.user.role === "MEMBER") return [];
 
   return prisma.recentlyViewed.findMany({
     where: { userId: session.user.id },
@@ -217,7 +217,7 @@ export async function listRecentlyViewed(limit = 20) {
 export async function listFavoriteBusinesses() {
   const session = await auth();
   if (!session?.user?.id) return [];
-  if (session.user.role === "CUSTOMER") return [];
+  if (session.user.role === "CUSTOMER" || session.user.role === "MEMBER") return [];
 
   return prisma.favoriteBusiness.findMany({
     where: { userId: session.user.id },
@@ -278,7 +278,7 @@ export async function saveCart(
 export async function listSavedCarts() {
   const session = await auth();
   if (!session?.user?.id) return [];
-  if (session.user.role === "CUSTOMER") return [];
+  if (session.user.role === "CUSTOMER" || session.user.role === "MEMBER") return [];
 
   return prisma.savedCart.findMany({
     where: { userId: session.user.id },
@@ -290,7 +290,7 @@ export async function listSavedCarts() {
 export async function deleteSavedCart(cartId: string): Promise<ActionResult> {
   const session = await auth();
   if (!session?.user?.id) return { success: false, error: "You need to sign in first." };
-  if (session.user.role === "CUSTOMER") return { success: false, error: "Customer accounts must use a store-scoped account." };
+  if (session.user.role === "CUSTOMER" || session.user.role === "MEMBER") return { success: false, error: "Customer accounts must use a store-scoped account." };
 
   const cart = await prisma.savedCart.findUnique({ where: { id: cartId } });
   if (!cart || cart.userId !== session.user.id) {
@@ -310,7 +310,7 @@ export async function deleteSavedCart(cartId: string): Promise<ActionResult> {
 export async function listBookingsForBuyer() {
   const session = await auth();
   if (!session?.user?.id) return [];
-  if (session.user.role === "CUSTOMER") return [];
+  if (session.user.role === "CUSTOMER" || session.user.role === "MEMBER") return [];
 
   return prisma.booking.findMany({
     where: { buyerId: session.user.id },
@@ -325,7 +325,7 @@ export async function listBookingsForBuyer() {
 export async function listConversationsForUser() {
   const session = await auth();
   if (!session?.user?.id) return [];
-  if (session.user.role === "CUSTOMER") return [];
+  if (session.user.role === "CUSTOMER" || session.user.role === "MEMBER") return [];
 
   return prisma.conversation.findMany({
     where: { participants: { some: { userId: session.user.id } } },
@@ -340,7 +340,7 @@ export async function listConversationsForUser() {
 export async function listReviewsForUser() {
   const session = await auth();
   if (!session?.user?.id) return [];
-  if (session.user.role === "CUSTOMER") return [];
+  if (session.user.role === "CUSTOMER" || session.user.role === "MEMBER") return [];
 
   return prisma.review.findMany({
     where: { authorId: session.user.id },

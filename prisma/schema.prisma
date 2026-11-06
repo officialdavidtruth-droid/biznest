@@ -22,6 +22,7 @@ datasource db {
 
 enum UserRole {
   CUSTOMER
+  MEMBER // a plain BizNest account for browsing and following businesses: no store, no dashboard, no profile
   STORE_OWNER
   PLATFORM_ADMIN
   SUPPORT_MODERATOR

@@ -121,6 +121,9 @@ export function LoginForm({
         const session = await getSession();
         if (session?.user?.storeSlug) {
           target = `/${session.user.storeSlug}/admin`;
+        } else if (session?.user?.role === "MEMBER") {
+          // A plain member has no business to onboard: send them to Browse, not business verification.
+          target = "/browse";
         }
       }
 

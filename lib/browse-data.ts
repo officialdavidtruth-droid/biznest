@@ -17,7 +17,7 @@ export type BrowsePostView = {
 export type BrowseCommentView = { id: string; authorName: string; body: string; createdAt: string; mine: boolean; hidden?: boolean };
 
 export type FeedSort = "latest" | "popular";
-export type FeedQuery = { sort?: FeedSort; category?: string | null; cursor?: string | null; viewerKey?: string | null; limit?: number };
+export type FeedQuery = { sort?: FeedSort; category?: string | null; cursor?: string | null; viewerKey?: string | null; limit?: number; storeIds?: string[] };
 export type FeedPage = { posts: BrowsePostView[]; nextCursor: string | null };
 
 const storeSelect = {
@@ -56,7 +56,9 @@ async function likedSet(ids: string[], viewerKey?: string | null): Promise<Set<s
 
 export async function loadBrowseFeed(q: FeedQuery = {}): Promise<FeedPage> {
   const limit = Math.min(Math.max(q.limit ?? BROWSE_PAGE_SIZE, 1), 20);
-  const where = publicPostWhere(q.category);
+  if (q.storeIds && q.storeIds.length === 0) return { posts: [], nextCursor: null };
+  const base = publicPostWhere(q.category);
+  const where = q.storeIds ? { ...base, storeId: { in: q.storeIds } } : base;
 
   if (q.sort === "popular") {
     // Rank the last two weeks in memory (bounded), page by offset.
@@ -88,6 +90,31 @@ export async function loadBrowseFeed(q: FeedQuery = {}): Promise<FeedPage> {
     posts: page.map((p) => toPostView(p as unknown as Row, liked.has(p.id))),
     nextCursor: rows.length > limit ? encodeCursor(page[page.length - 1]) : null,
   };
+}
+
+/** Store ids a signed-in viewer follows (newest follow first, capped). */
+export async function loadFollowedStoreIds(viewerKey: string): Promise<string[]> {
+  const rows = await prisma.browseFollow.findMany({ where: { viewerKey }, orderBy: { createdAt: "desc" }, take: 500, select: { storeId: true } });
+  return rows.map((r: { storeId: string }) => r.storeId);
+}
+
+/** The shops a viewer follows, for the Following page header. Only shops still public. */
+export async function loadFollowedShops(viewerKey: string, limit = 24): Promise<DiscoverShop[]> {
+  const rows = await prisma.browseFollow.findMany({
+    where: { viewerKey, store: { status: "ACTIVE", business: { is: { searchVisible: true } } } },
+    orderBy: { createdAt: "desc" },
+    take: Math.min(Math.max(limit, 1), 60),
+    select: { store: { select: {
+      slug: true, name: true, logoUrl: true, followerCount: true, subscriptionPastDueSince: true, subscription: { select: { name: true } },
+      business: { select: { category: true, city: true, verificationBadge: true } },
+      _count: { select: { browsePosts: { where: { status: "PUBLISHED" } } } },
+    } } },
+  });
+  type R = { slug: string; name: string; logoUrl: string | null; followerCount: number; subscriptionPastDueSince: Date | null; subscription: { name: string } | null; business: { category: string; city: string; verificationBadge: boolean } | null; _count: { browsePosts: number } };
+  return rows.map((x: { store: R }) => {
+    const r = x.store;
+    return { slug: r.slug, name: r.name, logoUrl: r.logoUrl, category: r.business?.category ?? null, city: r.business?.city ?? null, verified: !!r.business?.verificationBadge, mogul: isMogulStore(r), followerCount: Math.max(0, r.followerCount), postCount: r._count.browsePosts };
+  });
 }
 
 export async function loadBrowsePost(id: string, viewerKey?: string | null): Promise<BrowsePostView | null> {

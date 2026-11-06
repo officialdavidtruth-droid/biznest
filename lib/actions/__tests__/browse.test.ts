@@ -40,6 +40,7 @@ vi.mock("@/lib/browse-viewer", () => ({ getViewer: m.getViewer }));
 vi.mock("@/lib/access/assert-store-access", () => ({ assertStorePermission: m.assertStorePermission }));
 
 import { Prisma } from "@prisma/client";
+import { FOLLOW_NEEDS_ACCOUNT } from "@/lib/browse";
 import { addBrowseComment, markStoryViewed, reportBrowse, toggleBrowseLike, toggleFollowStore } from "@/lib/actions/browse";
 import { createBrowseStory, setBrowsePostHidden, shareProductToBrowse } from "@/lib/actions/browse-vendor";
 
@@ -230,7 +231,9 @@ describe("stories", () => {
 });
 
 describe("toggleFollowStore", () => {
+  const member = { key: "u:member1xxxxxxxx", userId: "member1", name: "Amaka" };
   beforeEach(() => {
+    m.getViewer.mockResolvedValue(member);
     m.prisma.store.findFirst.mockResolvedValue({ id: "s1", business: { user: { id: "owner1" } } });
     m.tx.browseFollow.deleteMany.mockResolvedValue({ count: 0 });
     m.tx.browseFollow.create.mockResolvedValue({});
@@ -238,7 +241,7 @@ describe("toggleFollowStore", () => {
   });
   it("follows and counts", async () => {
     expect(await toggleFollowStore("acme-test")).toEqual({ success: true, data: { following: true, followerCount: 7 } });
-    expect(m.tx.browseFollow.create).toHaveBeenCalledWith({ data: { storeId: "s1", viewerKey: guest.key } });
+    expect(m.tx.browseFollow.create).toHaveBeenCalledWith({ data: { storeId: "s1", viewerKey: member.key } });
     expect(m.tx.store.update).toHaveBeenCalledWith({ where: { id: "s1" }, data: { followerCount: { increment: 1 } }, select: { followerCount: true } });
   });
   it("unfollows when already following", async () => {
@@ -258,6 +261,14 @@ describe("toggleFollowStore", () => {
     m.getViewer.mockResolvedValue(guest);
     m.prisma.store.findFirst.mockResolvedValue(null);
     expect((await toggleFollowStore("nope")).success).toBe(false);
+    expect(m.tx.browseFollow.create).not.toHaveBeenCalled();
+  });
+  it("needs an account: guests are turned away before any database work", async () => {
+    m.getViewer.mockResolvedValue(guest);
+    expect(await toggleFollowStore("acme-test")).toEqual({ success: false, error: FOLLOW_NEEDS_ACCOUNT });
+    m.getViewer.mockResolvedValue(null);
+    expect((await toggleFollowStore("acme-test")).success).toBe(false);
+    expect(m.prisma.store.findFirst).not.toHaveBeenCalled();
     expect(m.tx.browseFollow.create).not.toHaveBeenCalled();
   });
   it("is rate limited", async () => {

@@ -12,6 +12,9 @@ export const REPORT_REASONS = ["SPAM", "SCAM", "OFFENSIVE", "ILLEGAL", "OTHER"] 
 export type ReportReason = (typeof REPORT_REASONS)[number];
 export const REPORT_REASON_LABEL: Record<ReportReason, string> = { SPAM: "Spam", SCAM: "Scam or fake", OFFENSIVE: "Offensive", ILLEGAL: "Illegal item", OTHER: "Something else" };
 
+/** Returned by toggleFollowStore when nobody is signed in; the client turns it into a "Create account" prompt. */
+export const FOLLOW_NEEDS_ACCOUNT = "Create a free account to follow businesses.";
+
 export const postPath = (id: string) => `/browse/p/${id}`;
 
 // ------------------------------------------------------------------ text

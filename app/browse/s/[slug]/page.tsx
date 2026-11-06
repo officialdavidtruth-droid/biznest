@@ -69,6 +69,7 @@ export default async function StoreBrowsePage({ params }: { params: Promise<{ sl
             {profile.bio && <p className="mt-5 whitespace-pre-line break-words text-[15px] leading-relaxed text-[#14301A]/85">{profile.bio}</p>}
 
             <ProfileActions
+              signedIn={!!viewer?.userId}
               slug={profile.slug} name={profile.name} path={storeBrowsePath(profile.slug)} storeUrl={storeHref(profile.slug)}
               initialFollowing={profile.following} initialCount={profile.followerCount} postCount={profile.postCount} likeCount={profile.likeCount}
             />

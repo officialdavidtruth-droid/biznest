@@ -7,8 +7,8 @@ import { prisma } from "@/lib/prisma";
 import { checkRateLimit, getClientIp } from "@/lib/rate-limit";
 import { notifyUser } from "@/lib/notifications/notify";
 import { getViewer } from "@/lib/browse-viewer";
-import { BROWSE_REPORT_HIDE_AT, REPORT_REASONS, sanitizeComment, type ReportReason } from "@/lib/browse";
-import { loadBrowseComments, loadBrowseFeed, loadStorePosts, loadStoreProfile, type BrowseCommentView, type FeedPage, type FeedSort, type GridPost } from "@/lib/browse-data";
+import { BROWSE_REPORT_HIDE_AT, FOLLOW_NEEDS_ACCOUNT, REPORT_REASONS, sanitizeComment, type ReportReason } from "@/lib/browse";
+import { loadBrowseComments, loadBrowseFeed, loadFollowedStoreIds, loadStorePosts, loadStoreProfile, type BrowseCommentView, type FeedPage, type FeedSort, type GridPost } from "@/lib/browse-data";
 import type { ActionResult } from "@/types/actions";
 
 async function ip() {
@@ -51,10 +51,10 @@ export async function toggleBrowseLike(postId: string): Promise<ActionResult<{ l
   return { success: true, data: result };
 }
 
-/** Follow / unfollow a business. Anyone can follow (signed in or not); the owner can't follow their own business. */
+/** Follow / unfollow a business. Following needs a BizNest account (a plain member account is enough); the owner can't follow their own business. */
 export async function toggleFollowStore(slug: string): Promise<ActionResult<{ following: boolean; followerCount: number }>> {
-  const viewer = await getViewer({ create: true });
-  if (!viewer) return { success: false, error: "Could not identify your browser. Enable cookies and try again." };
+  const viewer = await getViewer();
+  if (!viewer?.userId) return { success: false, error: FOLLOW_NEEDS_ACCOUNT };
   const rl = await checkRateLimit(`browse-follow:${await ip()}`, 120, 3_600_000);
   if (!rl.allowed) return { success: false, error: "You're following very fast. Try again in a bit." };
   const store = await prisma.store.findFirst({
@@ -62,7 +62,7 @@ export async function toggleFollowStore(slug: string): Promise<ActionResult<{ fo
     select: { id: true, business: { select: { user: { select: { id: true } } } } },
   });
   if (!store) return { success: false, error: "This business is no longer available." };
-  if (viewer.userId && store.business?.user?.id === viewer.userId) return { success: false, error: "You can't follow your own business." };
+  if (store.business?.user?.id === viewer.userId) return { success: false, error: "You can't follow your own business." };
 
   const result = await prisma.$transaction(async (tx) => {
     const removed = await tx.browseFollow.deleteMany({ where: { storeId: store.id, viewerKey: viewer.key } });
@@ -217,10 +217,15 @@ export async function loadMoreStorePosts(slug: string, cursor: string | null): P
   return { success: true, data: await loadStorePosts(profile.id, cursor) };
 }
 
-export async function loadMoreBrowse(input: { sort?: FeedSort; category?: string | null; cursor?: string | null }): Promise<ActionResult<FeedPage>> {
+export async function loadMoreBrowse(input: { sort?: FeedSort; category?: string | null; cursor?: string | null; following?: boolean }): Promise<ActionResult<FeedPage>> {
   const sort: FeedSort = input.sort === "popular" ? "popular" : "latest";
   const viewer = await getViewer();
-  const page = await loadBrowseFeed({ sort, category: input.category?.slice(0, 80) || null, cursor: input.cursor ?? null, viewerKey: viewer?.key });
+  let storeIds: string[] | undefined;
+  if (input.following) {
+    if (!viewer?.userId) return { success: false, error: FOLLOW_NEEDS_ACCOUNT };
+    storeIds = await loadFollowedStoreIds(viewer.key);
+  }
+  const page = await loadBrowseFeed({ sort, category: input.category?.slice(0, 80) || null, cursor: input.cursor ?? null, viewerKey: viewer?.key, storeIds });
   return { success: true, data: page };
 }
 

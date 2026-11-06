@@ -51,7 +51,7 @@ const PLATFORM_ADMIN_PATTERN = /^\/admin/;
 // /store/<slug>/login — a route that doesn't exist — instead of ever
 // reaching the actual login page. Keep in sync with RESERVED_SLUGS' own
 // "app/(auth)" section.
-const AUTH_PATHS = ["/login", "/register", "/forgot-password", "/reset-password"];
+const AUTH_PATHS = ["/login", "/register", "/join", "/forgot-password", "/reset-password"];
 
 const ROOT_DOMAIN = "biznest.space";
 const SUPAADMIN_HOST = `supaadmin.${ROOT_DOMAIN}`;
