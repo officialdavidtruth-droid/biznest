@@ -6,7 +6,7 @@ import { Flag, Heart, MessageCircle, Share2, ShoppingBag, Store } from "lucide-r
 import { toast } from "sonner";
 import { addBrowseComment, deleteMyBrowseComment, loadPostComments, reportBrowse, toggleBrowseLike } from "@/lib/actions/browse";
 import type { BrowseCommentView, BrowsePostView } from "@/lib/browse-data";
-import { BROWSE_COMMENT_MAX, REPORT_REASONS, REPORT_REASON_LABEL, compactCount, postPath, storeBrowsePath, timeAgo, type ReportReason } from "@/lib/browse";
+import { BROWSE_COMMENT_MAX, INTERACT_NEEDS_ACCOUNT, REPORT_REASONS, REPORT_REASON_LABEL, compactCount, postPath, storeBrowsePath, timeAgo, type ReportReason } from "@/lib/browse";
 import { StoreBadges } from "@/components/browse/store-badges";
 import { formatMoney } from "@/lib/utils/format-money";
 import { storeHref } from "@/lib/utils/store-href";
@@ -74,6 +74,13 @@ function Images({ post }: { post: BrowsePostView }) {
   );
 }
 
+/** Guests get a toast with a sign-up shortcut that returns them to this page; other errors show as-is. */
+function needAccountToast(error: string) {
+  if (error !== INTERACT_NEEDS_ACCOUNT) { toast.error(error); return; }
+  const back = encodeURIComponent(window.location.pathname + window.location.search);
+  toast(error, { description: "It's free and only takes a minute.", action: { label: "Create account", onClick: () => window.location.assign(`/join?callbackUrl=${back}`) } });
+}
+
 function Comments({ post, onCount }: { post: BrowsePostView; onCount: (n: number) => void }) {
   const [comments, setComments] = useState<BrowseCommentView[] | null>(null);
   const [older, setOlder] = useState<string | null>(null);
@@ -91,7 +98,7 @@ function Comments({ post, onCount }: { post: BrowsePostView; onCount: (n: number
   function submit() {
     start(async () => {
       const res = await addBrowseComment(post.id, { name, body });
-      if (!res.success) { toast.error(res.error); return; }
+      if (!res.success) { needAccountToast(res.error); return; }
       try { if (name.trim()) localStorage.setItem(NAME_KEY, name.trim()); } catch { /* ignore */ }
       setComments((c) => [...(c ?? []), res.data.comment]);
       onCount(res.data.commentCount);
@@ -141,7 +148,7 @@ export function PostCard({ post: initial, openComments = false }: { post: Browse
     start(async () => {
       const r = await toggleBrowseLike(post.id);
       if (r.success) setPost((p) => ({ ...p, liked: r.data.liked, likeCount: r.data.likeCount }));
-      else { setPost(prev); toast.error(r.error); }
+      else { setPost(prev); needAccountToast(r.error); }
     });
   }
 

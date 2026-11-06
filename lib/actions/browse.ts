@@ -7,7 +7,7 @@ import { prisma } from "@/lib/prisma";
 import { checkRateLimit, getClientIp } from "@/lib/rate-limit";
 import { notifyUser } from "@/lib/notifications/notify";
 import { getViewer } from "@/lib/browse-viewer";
-import { BROWSE_REPORT_HIDE_AT, FOLLOW_NEEDS_ACCOUNT, REPORT_REASONS, sanitizeComment, type ReportReason } from "@/lib/browse";
+import { BROWSE_REPORT_HIDE_AT, FOLLOW_NEEDS_ACCOUNT, INTERACT_NEEDS_ACCOUNT, REPORT_REASONS, sanitizeComment, type ReportReason } from "@/lib/browse";
 import { loadBrowseComments, loadBrowseFeed, loadFollowedStoreIds, loadStorePosts, loadStoreProfile, type BrowseCommentView, type FeedPage, type FeedSort, type GridPost } from "@/lib/browse-data";
 import type { ActionResult } from "@/types/actions";
 
@@ -22,10 +22,10 @@ async function livePost(postId: string) {
   });
 }
 
-/** Like / unlike. Anyone can like; one like per viewer per post. */
+/** Like / unlike. Needs a BizNest account; one like per account per post. */
 export async function toggleBrowseLike(postId: string): Promise<ActionResult<{ liked: boolean; likeCount: number }>> {
-  const viewer = await getViewer({ create: true });
-  if (!viewer) return { success: false, error: "Could not identify your browser. Enable cookies and try again." };
+  const viewer = await getViewer();
+  if (!viewer?.userId) return { success: false, error: INTERACT_NEEDS_ACCOUNT };
   const rl = await checkRateLimit(`browse-like:${await ip()}`, 150, 3_600_000);
   if (!rl.allowed) return { success: false, error: "You're liking very fast. Try again in a bit." };
   if (!(await livePost(postId))) return { success: false, error: "This post is no longer available." };
@@ -87,8 +87,8 @@ export async function toggleFollowStore(slug: string): Promise<ActionResult<{ fo
 }
 
 export async function addBrowseComment(postId: string, input: { name?: string; body: string }): Promise<ActionResult<{ comment: BrowseCommentView; commentCount: number }>> {
-  const viewer = await getViewer({ create: true });
-  if (!viewer) return { success: false, error: "Could not identify your browser. Enable cookies and try again." };
+  const viewer = await getViewer();
+  if (!viewer?.userId) return { success: false, error: INTERACT_NEEDS_ACCOUNT };
   const parsed = sanitizeComment(input, { signedInName: viewer.name });
   if (!parsed.ok) return { success: false, error: parsed.error };
 

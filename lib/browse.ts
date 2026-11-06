@@ -15,6 +15,9 @@ export const REPORT_REASON_LABEL: Record<ReportReason, string> = { SPAM: "Spam",
 /** Returned by toggleFollowStore when nobody is signed in; the client turns it into a "Create account" prompt. */
 export const FOLLOW_NEEDS_ACCOUNT = "Create a free account to follow businesses.";
 
+/** Returned by like and comment actions when nobody is signed in. */
+export const INTERACT_NEEDS_ACCOUNT = "Create a free account to like and comment.";
+
 export const postPath = (id: string) => `/browse/p/${id}`;
 
 // ------------------------------------------------------------------ text

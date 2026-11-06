@@ -40,20 +40,33 @@ vi.mock("@/lib/browse-viewer", () => ({ getViewer: m.getViewer }));
 vi.mock("@/lib/access/assert-store-access", () => ({ assertStorePermission: m.assertStorePermission }));
 
 import { Prisma } from "@prisma/client";
-import { FOLLOW_NEEDS_ACCOUNT } from "@/lib/browse";
+import { FOLLOW_NEEDS_ACCOUNT, INTERACT_NEEDS_ACCOUNT } from "@/lib/browse";
 import { addBrowseComment, markStoryViewed, reportBrowse, toggleBrowseLike, toggleFollowStore } from "@/lib/actions/browse";
 import { createBrowseStory, setBrowsePostHidden, shareProductToBrowse } from "@/lib/actions/browse-vendor";
 
 const guest = { key: "d:abcdefghijklmnop", userId: null, name: null };
+const member = { key: "u:member1xxxxxxxx", userId: "member1", name: "Amaka" };
 const post = { id: "p1", caption: "hi", store: { id: "s1", slug: "acme-test", name: "Acme Test", business: { user: { id: "owner1" } } } };
 
 beforeEach(() => {
   vi.clearAllMocks();
   m.prisma.$transaction.mockImplementation(async (arg: unknown) => (typeof arg === "function" ? (arg as (t: typeof m.tx) => unknown)(m.tx) : Promise.all(arg as unknown[])));
-  m.getViewer.mockResolvedValue(guest);
+  m.getViewer.mockResolvedValue(member);
   m.checkRateLimit.mockResolvedValue({ allowed: true });
   m.notifyUser.mockResolvedValue(undefined);
   m.prisma.browsePost.findFirst.mockResolvedValue(post);
+});
+
+describe("guests", () => {
+  it("can't like or comment; nothing is written", async () => {
+    m.getViewer.mockResolvedValue(guest);
+    expect(await toggleBrowseLike("p1")).toEqual({ success: false, error: INTERACT_NEEDS_ACCOUNT });
+    expect(await addBrowseComment("p1", { name: "Tunde", body: "nice" })).toEqual({ success: false, error: INTERACT_NEEDS_ACCOUNT });
+    m.getViewer.mockResolvedValue(null);
+    expect((await toggleBrowseLike("p1")).success).toBe(false);
+    expect(m.prisma.$transaction).not.toHaveBeenCalled();
+    expect(m.prisma.browseComment.create).not.toHaveBeenCalled();
+  });
 });
 
 describe("toggleBrowseLike", () => {
@@ -81,7 +94,7 @@ describe("toggleBrowseLike", () => {
     expect((await toggleBrowseLike("p1")).success).toBe(false);
     m.getViewer.mockResolvedValue(null);
     expect((await toggleBrowseLike("p1")).success).toBe(false);
-    m.getViewer.mockResolvedValue(guest);
+    m.getViewer.mockResolvedValue(member);
     m.checkRateLimit.mockResolvedValue({ allowed: false });
     expect((await toggleBrowseLike("p1")).success).toBe(false);
   });
@@ -206,7 +219,7 @@ describe("stories", () => {
   it("counts a view once and not for the owner", async () => {
     m.prisma.browseStory.findFirst.mockResolvedValue({ id: "st1", store: { business: { user: { id: "owner1" } } } });
     await markStoryViewed("st1");
-    expect(m.tx.browseStoryView.create).toHaveBeenCalledWith({ data: { storyId: "st1", viewerKey: guest.key } });
+    expect(m.tx.browseStoryView.create).toHaveBeenCalledWith({ data: { storyId: "st1", viewerKey: member.key } });
     expect(m.tx.browseStory.update).toHaveBeenCalledWith({ where: { id: "st1" }, data: { viewCount: { increment: 1 } } });
 
     m.tx.browseStory.update.mockClear();
@@ -214,7 +227,7 @@ describe("stories", () => {
     await markStoryViewed("st1");
     expect(m.tx.browseStory.update).not.toHaveBeenCalled();
 
-    m.getViewer.mockResolvedValue(guest);
+    m.getViewer.mockResolvedValue(member);
     m.tx.browseStoryView.create.mockRejectedValue(dupError());
     expect((await markStoryViewed("st1")).success).toBe(true);
   });
@@ -231,7 +244,6 @@ describe("stories", () => {
 });
 
 describe("toggleFollowStore", () => {
-  const member = { key: "u:member1xxxxxxxx", userId: "member1", name: "Amaka" };
   beforeEach(() => {
     m.getViewer.mockResolvedValue(member);
     m.prisma.store.findFirst.mockResolvedValue({ id: "s1", business: { user: { id: "owner1" } } });
@@ -258,7 +270,7 @@ describe("toggleFollowStore", () => {
   it("won't let owners follow themselves, or follow hidden or missing businesses", async () => {
     m.getViewer.mockResolvedValue({ key: "u:owner1xxxxxxxx", userId: "owner1", name: "Owner" });
     expect((await toggleFollowStore("acme-test")).success).toBe(false);
-    m.getViewer.mockResolvedValue(guest);
+    m.getViewer.mockResolvedValue(member);
     m.prisma.store.findFirst.mockResolvedValue(null);
     expect((await toggleFollowStore("nope")).success).toBe(false);
     expect(m.tx.browseFollow.create).not.toHaveBeenCalled();
