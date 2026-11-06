@@ -90,7 +90,7 @@ export async function startWalletFunding(
   if (wallet.status !== "ACTIVE") return { success: false, error: "Your wallet is currently unavailable." };
 
   const reference = `WAL-${wallet.id}-${shortToken()}`;
-  // Wallet top-ups are platform-owned money: always Korapay.
+  // Wallet top-ups are platform-owned money: they follow the platform billing gateway (BILLING_GATEWAY), never the store-checkout toggle.
   const gateway = PLATFORM_BILLING_GATEWAY;
   const callbackUrl = paymentCallbackUrl(gateway);
 

@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { isValidCountry } from "@/lib/geo";
 import { getSubcategoryConfig, isValidSubcategory } from "@/lib/business-subcategories";
+import { isComingSoonBusinessType } from "@/lib/business-type-status";
 
 export const guarantorSchema = z.object({
   fullName: z.string().min(2),
@@ -56,6 +57,9 @@ export const businessVerificationSchema = z
         message: "Select at least one: you sell products, offer services, or both",
         path: ["sellsProducts"],
       });
+    }
+    if (isComingSoonBusinessType(data.category)) {
+      ctx.addIssue({ code: z.ZodIssueCode.custom, message: `${data.category} businesses are coming soon. Pick another category for now.`, path: ["category"] });
     }
     // Categories with a specialty list (see lib/business-subcategories.ts)
     // must pick one of its options; the stored value is the option name.

@@ -310,7 +310,7 @@ describe("decrementStockForOrder", () => {
 
   it("is a no-op for a product with no tracked inventory", async () => {
     const product = await prisma.product.create({
-      data: { storeId: fixture.store.id, name: "Digital thing", slug: `digital-${fixture.suffix}`, price: 500, type: "DIGITAL" },
+      data: { storeId: fixture.store.id, name: "Digital thing", description: "A downloadable item", slug: `digital-${fixture.suffix}`, price: 500, type: "DIGITAL" },
     });
     const order = await createPaidOrder(product.id, 1);
 

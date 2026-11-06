@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
 import { assertStorePermission } from "@/lib/access/assert-store-access";
 import { isPlatformStaff } from "@/lib/admin-guard";
+import { notifyFollowersOfPost, notifyFollowersOfStory } from "@/lib/browse-notify";
 import { BROWSE_DAILY_POST_LIMIT, OFFICIAL_SLUG, BROWSE_MAX_IMAGES, STORY_DAILY_LIMIT, defaultProductCaption, sanitizePost, sanitizeStory, storyExpiry } from "@/lib/browse";
 import { loadBrowseComments, type BrowseCommentView } from "@/lib/browse-data";
 import type { ActionResult } from "@/types/actions";
@@ -25,6 +26,20 @@ async function access(slug: string) {
 async function underDailyLimit(storeId: string) {
   const n = await prisma.browsePost.count({ where: { storeId, createdAt: { gte: new Date(Date.now() - 86_400_000) } } });
   return n < BROWSE_DAILY_POST_LIMIT;
+}
+
+/** Alerts the business's signed-in followers. Looks up the display name here so callers stay simple; never throws. */
+async function tellFollowersOfPost(slug: string, storeId: string, postId: string, caption: string, productName?: string | null) {
+  try {
+    const store = await prisma.store.findUnique({ where: { id: storeId }, select: { name: true } });
+    if (store) notifyFollowersOfPost({ storeId, storeName: store.name, storeSlug: slug, postId, caption, productName });
+  } catch { /* a notification problem must never fail the post */ }
+}
+async function tellFollowersOfStory(slug: string, storeId: string) {
+  try {
+    const store = await prisma.store.findUnique({ where: { id: storeId }, select: { name: true } });
+    if (store) notifyFollowersOfStory({ storeId, storeName: store.name, storeSlug: slug });
+  } catch { /* a notification problem must never fail the story */ }
 }
 
 const refresh = (slug: string) => { revalidatePath(`/store/${slug}/admin/browse`); revalidatePath("/supaadmin/official"); revalidatePath("/browse"); };
@@ -50,6 +65,7 @@ export async function createBrowsePost(slug: string, input: { caption?: string; 
     select: { id: true },
   });
   refresh(slug);
+  await tellFollowersOfPost(slug, a.store.id, post.id, parsed.caption, product?.name);
   return { success: true, data: { id: post.id } };
 }
 
@@ -80,6 +96,7 @@ export async function shareProductToBrowse(slug: string, productId: string, capt
     select: { id: true },
   });
   refresh(slug);
+  await tellFollowersOfPost(slug, a.store.id, post.id, parsed.caption, product.name);
   return { success: true, data: { id: post.id } };
 }
 
@@ -152,6 +169,7 @@ export async function createBrowseStory(slug: string, input: { imageUrl?: string
   // Tidy this store's old expired stories while we're here (cheap, bounded).
   await prisma.browseStory.deleteMany({ where: { storeId: a.store.id, expiresAt: { lt: new Date(Date.now() - 3 * 86_400_000) } } }).catch(() => undefined);
   refresh(slug);
+  await tellFollowersOfStory(slug, a.store.id);
   return { success: true, data: { id: story.id } };
 }
 

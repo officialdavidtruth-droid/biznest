@@ -29,6 +29,7 @@ const GROUPS: Group[] = [
       { href: "/supaadmin/at-risk", label: "At-risk stores", icon: AlertTriangle },
       { href: "/supaadmin/users", label: "Users", icon: Users },
       { href: "/supaadmin/subscriptions", label: "Subscriptions", icon: CreditCard },
+      { href: "/supaadmin/paystack", label: "Paystack go-live", icon: ShieldCheck },
       { href: "/supaadmin/payouts", label: "Payouts", icon: Banknote, badgeKey: "failedPayouts" },
       { href: "/supaadmin/apps", label: "Apps & Plugins", icon: Puzzle },
       { href: "/supaadmin/domains", label: "Domains", icon: Globe },

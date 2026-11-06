@@ -142,3 +142,17 @@ describe("official account", () => {
     expect(isOfficialSlug(null)).toBe(false);
   });
 });
+
+describe("link previews", () => {
+  it("crops Cloudinary photos to 1200x630 and leaves other hosts alone", async () => {
+    const { ogImageUrl } = await import("@/lib/browse");
+    expect(ogImageUrl("https://res.cloudinary.com/demo/image/upload/v1/biznest/u1/a.jpg")).toBe("https://res.cloudinary.com/demo/image/upload/c_fill,g_auto,w_1200,h_630,q_auto:good,f_jpg/v1/biznest/u1/a.jpg");
+    expect(ogImageUrl("https://example.com/a.jpg")).toBe("https://example.com/a.jpg");
+  });
+  it("formats the price line", async () => {
+    const { previewPrice } = await import("@/lib/browse");
+    expect(previewPrice(2500, "NGN")).toBe("₦2,500");
+    expect(previewPrice(0, "NGN")).toBeNull();
+    expect(previewPrice(null, "NGN")).toBeNull();
+  });
+});

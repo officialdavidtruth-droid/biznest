@@ -11,7 +11,7 @@ const tx = () => ({
   product: {
     findFirst: vi.fn(async () => ({ id: "p1", price: 100, isPublished: true, hasVariants: s.hasVariants, inventory: { id: "i1", quantity: 5, autoUnpublished: false, sku: "OLD", barcode: null, costPrice: null, lowStockThreshold: 5, updatedAt: new Date("2026-01-01") } })),
     update: (...a: unknown[]) => productUpdate(...a),
-    create: (...a: unknown[]) => productCreate(...a),
+    create: (...a: Parameters<typeof productCreate>) => productCreate(...a),
   },
   inventoryItem: { updateMany: vi.fn(async () => ({ count: 1 })) },
   stockMovement: { create: vi.fn(async () => ({ id: "m1" })) },

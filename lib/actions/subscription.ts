@@ -2,13 +2,12 @@
 
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { chargeCustomer, PLATFORM_BILLING_GATEWAY } from "@/lib/payments/gateway";
+import { billingCallbackUrl, chargeCustomer, PLATFORM_BILLING_GATEWAY } from "@/lib/payments/gateway";
 import { getFreeTrialSetting, getMarketingFreeTrialSetting } from "@/lib/actions/site-settings";
 import { buildSubscriptionReference } from "@/lib/payments/subscription-reference";
 import type { ActionResult } from "@/types/actions";
 import { createPendingPayment, markPaymentFailed } from "@/lib/payments/pending";
 
-const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? "https://www.biznest.space";
 
 /**
  * Reference encodes storeId + subscriptionId directly rather than needing a
@@ -67,11 +66,11 @@ export async function initiatePlanUpgrade(
   const reference = buildSubscriptionReference(store.id, plan.id);
   await createPendingPayment({ storeId: store.id, purpose: "SUBSCRIPTION_UPGRADE", provider: PLATFORM_BILLING_GATEWAY, reference, amount: Number(plan.price), currency: "NGN" });
 
-  // Platform-billing (BizNest plan payments) always goes through Korapay,
+  // Platform-billing (BizNest plan payments) goes through the platform billing gateway (BILLING_GATEWAY),
   // regardless of whichever gateway supaadmin has toggled "active" for
   // store checkout — see the `gateway` override on chargeCustomer. This is
   // deliberate: the two purposes must never share the same switch again.
-  const callbackUrl = `${APP_URL}/api/payments/korapay/subscription-callback`;
+  const callbackUrl = billingCallbackUrl("subscription");
 
   // No subaccount passed — this charge goes straight to the platform
   // account, unlike order payments which split to the vendor's subaccount.

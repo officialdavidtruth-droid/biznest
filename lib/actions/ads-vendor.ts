@@ -5,9 +5,8 @@ import { nanoid } from "nanoid";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { assertStorePermission } from "@/lib/access/assert-store-access";
-import { chargeCustomer, PLATFORM_BILLING_GATEWAY } from "@/lib/payments/gateway";
+import { billingCallbackUrl, chargeCustomer, PLATFORM_BILLING_GATEWAY } from "@/lib/payments/gateway";
 import { createPendingPayment, markPaymentFailed } from "@/lib/payments/pending";
-import { APP_URL } from "@/lib/constants/app-url";
 import { AD_MAX_ACTIVE_PER_STORE, adReference, sanitizeAd, type AdInput } from "@/lib/ads";
 import type { ActionResult } from "@/types/actions";
 
@@ -30,7 +29,7 @@ async function startCheckout(slug: string, store: { id: string; slug: string }, 
     email: session?.user?.email ?? `${store.slug}@biznest.space`,
     amountNaira: amount,
     reference,
-    callbackUrl: `${APP_URL}/api/payments/korapay/ad-callback?slug=${encodeURIComponent(slug)}`,
+    callbackUrl: billingCallbackUrl("ad", { slug }),
     gateway: PLATFORM_BILLING_GATEWAY,
   });
   if (!charge.success) {

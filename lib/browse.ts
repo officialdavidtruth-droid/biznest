@@ -24,6 +24,23 @@ export const isOfficialSlug = (slug: string | null | undefined) => slug === OFFI
 export const OFFICIAL_NAME = "BizNest";
 export const OFFICIAL_BIO = "The official BizNest account. Product news, tips and updates for Nigerian businesses, straight from the team.";
 
+/**
+ * A 1200x630 version of an image for link previews (WhatsApp, Instagram, X). Cloudinary photos are cropped
+ * and compressed on the fly so the preview loads fast; other hosts are returned as they are.
+ */
+export function ogImageUrl(url: string): string {
+  const marker = "/image/upload/";
+  if (!/^https:\/\/res\.cloudinary\.com\//.test(url) || !url.includes(marker)) return url;
+  return url.replace(marker, `${marker}c_fill,g_auto,w_1200,h_630,q_auto:good,f_jpg/`);
+}
+
+/** "₦2,500" for a tagged product, or null. Used in link-preview text. */
+export function previewPrice(price: number | null | undefined, currency: string | null | undefined): string | null {
+  if (price == null || !Number.isFinite(price) || price <= 0) return null;
+  const symbol = !currency || currency === "NGN" ? "₦" : `${currency} `;
+  return `${symbol}${price.toLocaleString("en-NG", { maximumFractionDigits: 2 })}`;
+}
+
 export const postPath = (id: string) => `/browse/p/${id}`;
 
 // ------------------------------------------------------------------ text

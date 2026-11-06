@@ -4,13 +4,12 @@ import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { assertStorePermission } from "@/lib/access/assert-store-access";
 import { canManageBillingAndStaff, getStoreAccessRole } from "@/lib/access/store-access";
-import { chargeCustomer, PLATFORM_BILLING_GATEWAY } from "@/lib/payments/gateway";
+import { billingCallbackUrl, chargeCustomer, PLATFORM_BILLING_GATEWAY } from "@/lib/payments/gateway";
 import { revalidatePath } from "next/cache";
 import { nanoid } from "nanoid";
 import type { ActionResult } from "@/types/actions";
 import { createPendingPayment, markPaymentFailed } from "@/lib/payments/pending";
 import { ensureSystemPlugins, getPluginEntitlement } from "@/lib/plugins";
-import { APP_URL } from "@/lib/constants/app-url";
 
 export async function getStoreApps(slug: string) {
   const access = await assertStorePermission(slug, "settings");
@@ -123,7 +122,7 @@ export async function startPluginPurchase(slug: string, pluginKey: string, optio
     email: session?.user?.email ?? `${access.store.slug}@biznest.space`,
     amountNaira: Number(entitlement.plugin.price),
     reference,
-    callbackUrl: `${APP_URL}/api/payments/korapay/plugin-callback?slug=${encodeURIComponent(slug)}`,
+    callbackUrl: billingCallbackUrl("plugin", { slug }),
     gateway: PLATFORM_BILLING_GATEWAY,
   });
   if (!charge.success) {

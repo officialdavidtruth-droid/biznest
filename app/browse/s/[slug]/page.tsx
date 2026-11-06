@@ -27,6 +27,9 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
     title: `${p.name} on BizNest: posts and updates`,
     description: (p.bio ? p.bio.slice(0, 160) : `See what ${p.name}${p.city ? ` in ${p.city}` : ""} has been posting on BizNest.`),
     alternates: { canonical: `/browse/s/${p.slug}` },
+    // The preview image comes from opengraph-image.tsx next to this file.
+    openGraph: { type: "profile", siteName: "BizNest", title: `${p.name} on BizNest`, description: p.bio ? p.bio.slice(0, 200) : `Posts and updates from ${p.name} on BizNest.` },
+    twitter: { card: "summary_large_image", title: `${p.name} on BizNest` },
   };
 }
 

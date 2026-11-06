@@ -9,6 +9,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { ALL_BUSINESS_TYPE_NAMES, getBusinessTypeConfig } from "@/lib/capabilities";
+import { businessTypeLabel, isComingSoonBusinessType } from "@/lib/business-type-status";
 import { getSubcategoryConfig, getSubcategoryOption } from "@/lib/business-subcategories";
 import { SearchableSelect } from "@/components/forms/searchable-select";
 import { COUNTRIES, DEFAULT_COUNTRY, getStatesForCountry } from "@/lib/geo";
@@ -152,7 +153,7 @@ export function BusinessVerificationForm({
             >
               <option value="">Select a category</option>
               {CATEGORIES.map((c) => (
-                <option key={c} value={c}>{c}</option>
+                <option key={c} value={c} disabled={isComingSoonBusinessType(c)}>{businessTypeLabel(c)}</option>
               ))}
             </select>
           </Field>

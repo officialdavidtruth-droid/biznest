@@ -178,7 +178,7 @@ describe("queuePayoutForPayment", () => {
     m.paymentFind.mockResolvedValue(payment);
     m.payoutFind.mockResolvedValue({ id: "existing" });
     const { Prisma } = await import("@prisma/client");
-    m.payoutCreate.mockRejectedValue(new Prisma.PrismaClientKnownRequestError("dup"));
+    m.payoutCreate.mockRejectedValue(new Prisma.PrismaClientKnownRequestError("dup", { code: "P2002", clientVersion: "5.22.0" }));
     const r = await queuePayoutForPayment("o1");
     expect(r).toEqual({ payoutId: "existing", skipped: "payout already exists" });
   });

@@ -13,7 +13,7 @@ const makeTx = () => ({
     findFirst: vi.fn(async () => ({ id: "p1", hasVariants: false, isPublished: state.wasPublished, inventory: { id: "i1", quantity: state.qty, autoUnpublished: state.auto, costPrice: null } })),
     update: (...a: unknown[]) => productUpdate(...a),
   },
-  inventoryItem: { updateMany: (...a: unknown[]) => invUpdateMany(...a), findUnique: vi.fn() },
+  inventoryItem: { updateMany: (...a: Parameters<typeof invUpdateMany>) => invUpdateMany(...a), findUnique: vi.fn() },
   stockMovement: { create: vi.fn(async () => ({ id: "m1" })) },
 });
 

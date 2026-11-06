@@ -12,7 +12,7 @@ const tx = () => ({
   category: { findFirst: vi.fn(async () => null) },
   inventoryItem: {
     findFirst: vi.fn(async () => ({ id: "i1", quantity: state.live, autoUnpublished: state.autoUnpublished })),
-    updateMany: (...a: unknown[]) => invUpdateMany(...a),
+    updateMany: (...a: Parameters<typeof invUpdateMany>) => invUpdateMany(...a),
   },
   stockMovement: { create: vi.fn(async () => ({ id: "m1" })) },
 });

@@ -23,7 +23,7 @@ vi.mock("@/lib/browse-viewer", () => ({ getViewer: m.getViewer }));
 vi.mock("@/lib/access/assert-store-access", () => ({ assertStorePermission: m.assertStorePermission }));
 vi.mock("@/lib/auth", () => ({ auth: async () => ({ user: { email: "owner@example.com" } }) }));
 vi.mock("@/lib/payments/pending", () => ({ createPendingPayment: m.pending, markPaymentFailed: m.failed }));
-vi.mock("@/lib/payments/gateway", () => ({ chargeCustomer: m.charge, PLATFORM_BILLING_GATEWAY: "KORAPAY" }));
+vi.mock("@/lib/payments/gateway", () => ({ chargeCustomer: m.charge, PLATFORM_BILLING_GATEWAY: "KORAPAY", billingCallbackUrl: (kind: string, q?: Record<string, string>) => `https://test.example/api/payments/korapay/${kind}-callback${q ? "?" + new URLSearchParams(q) : ""}` }));
 vi.mock("@/lib/constants/app-url", () => ({ APP_URL: "https://app.example.com" }));
 vi.mock("nanoid", () => ({ nanoid: () => "nonce123" }));
 
@@ -131,7 +131,7 @@ describe("createAdCampaign", () => {
     expect(m.prisma.adCampaign.create.mock.calls[0][0].data).toMatchObject({ storeId: "s1", placement: "FEED", budget: 5000, impressionsBought: 3333, durationDays: 7 });
     expect(m.prisma.adCampaign.create.mock.calls[0][0].data.status).toBeUndefined(); // defaults to PENDING_PAYMENT
     expect(m.pending).toHaveBeenCalledWith(expect.objectContaining({ purpose: "AD_CAMPAIGN", reference: "ADS-cmp1-nonce123", amount: 5000, storeId: "s1" }));
-    expect(m.charge).toHaveBeenCalledWith(expect.objectContaining({ amountNaira: 5000, callbackUrl: "https://app.example.com/api/payments/korapay/ad-callback?slug=acme-test" }));
+    expect(m.charge).toHaveBeenCalledWith(expect.objectContaining({ amountNaira: 5000, callbackUrl: "https://test.example/api/payments/korapay/ad-callback?slug=acme-test" }));
   });
   it("discards the campaign when the gateway refuses", async () => {
     m.charge.mockResolvedValue({ success: false, error: "Gateway down" });

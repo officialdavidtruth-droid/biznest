@@ -10,7 +10,7 @@ import { APP_URL } from "@/lib/constants/app-url";
 import { resolveStoreGateway, type StoreGatewayCredentials } from "@/lib/payments/store-gateway";
 
 /** Gateway for every platform-owned in-app payment: plan purchases/renewals, app purchases/renewals, wallet top-ups. Never follows the active-gateway toggle. */
-export const PLATFORM_BILLING_GATEWAY = "KORAPAY" as const;
+export { PLATFORM_BILLING_GATEWAY, billingCallbackUrl } from "@/lib/payments/billing-gateway";
 
 /** Every gateway a platform charge can go through. SupaAdmin picks the active one. */
 export type PaymentGatewayId = "PAYSTACK" | "FLUTTERWAVE" | "KORAPAY";
