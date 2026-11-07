@@ -15,6 +15,21 @@ async function ip() {
   return getClientIp(await headers());
 }
 
+/**
+ * Tells a business owner about a like or follow. Skipped for their own actions, and while an unread alert with the same
+ * text is still waiting, so one popular post doesn't flood the bell. Never throws: a failed alert must not fail the tap.
+ */
+async function notifyOwnerOnce(n: { ownerId?: string | null; actorId?: string | null; type: "BROWSE_LIKE" | "BROWSE_FOLLOW"; title: string; body: string; url: string }) {
+  try {
+    if (!n.ownerId || n.ownerId === n.actorId) return;
+    const waiting = await prisma.notification.findFirst({ where: { userId: n.ownerId, type: n.type, readAt: null, title: n.title, body: n.body }, select: { id: true } });
+    if (waiting) return;
+    await notifyUser({ userId: n.ownerId, type: n.type, title: n.title, body: n.body, url: n.url });
+  } catch {
+    /* best effort */
+  }
+}
+
 async function livePost(postId: string) {
   return prisma.browsePost.findFirst({
     where: { id: postId, status: "PUBLISHED", store: { status: "ACTIVE" } },
@@ -28,7 +43,8 @@ export async function toggleBrowseLike(postId: string): Promise<ActionResult<{ l
   if (!viewer?.userId) return { success: false, error: INTERACT_NEEDS_ACCOUNT };
   const rl = await checkRateLimit(`browse-like:${await ip()}`, 150, 3_600_000);
   if (!rl.allowed) return { success: false, error: "You're liking very fast. Try again in a bit." };
-  if (!(await livePost(postId))) return { success: false, error: "This post is no longer available." };
+  const likedPost = await livePost(postId);
+  if (!likedPost) return { success: false, error: "This post is no longer available." };
 
   const result = await prisma.$transaction(async (tx) => {
     const removed = await tx.browseLike.deleteMany({ where: { postId, viewerKey: viewer.key } });
@@ -48,6 +64,14 @@ export async function toggleBrowseLike(postId: string): Promise<ActionResult<{ l
     const p = await tx.browsePost.update({ where: { id: postId }, data: { likeCount: { increment: 1 } }, select: { likeCount: true } });
     return { liked: true, likeCount: p.likeCount };
   });
+  if (result.liked) {
+    await notifyOwnerOnce({
+      ownerId: likedPost.store.business?.user?.id, actorId: viewer.userId, type: "BROWSE_LIKE",
+      title: `${viewer.name || "Someone"} liked your Browse post`,
+      body: likedPost.caption ? `"${likedPost.caption.replace(/\s+/g, " ").trim().slice(0, 80)}"` : "Your post",
+      url: `/store/${likedPost.store.slug}/admin/browse/activity`,
+    });
+  }
   return { success: true, data: result };
 }
 
@@ -59,7 +83,7 @@ export async function toggleFollowStore(slug: string): Promise<ActionResult<{ fo
   if (!rl.allowed) return { success: false, error: "You're following very fast. Try again in a bit." };
   const store = await prisma.store.findFirst({
     where: { slug: String(slug).slice(0, 80), status: "ACTIVE", business: { is: { searchVisible: true } } },
-    select: { id: true, business: { select: { user: { select: { id: true } } } } },
+    select: { id: true, name: true, slug: true, business: { select: { user: { select: { id: true } } } } },
   });
   if (!store) return { success: false, error: "This business is no longer available." };
   if (store.business?.user?.id === viewer.userId) return { success: false, error: "You can't follow your own business." };
@@ -82,6 +106,14 @@ export async function toggleFollowStore(slug: string): Promise<ActionResult<{ fo
     const s = await tx.store.update({ where: { id: store.id }, data: { followerCount: { increment: 1 } }, select: { followerCount: true } });
     return { following: true, followerCount: s.followerCount };
   });
+  if (result.following) {
+    await notifyOwnerOnce({
+      ownerId: store.business?.user?.id, actorId: viewer.userId, type: "BROWSE_FOLLOW",
+      title: `${viewer.name || "Someone"} started following ${store.name}`,
+      body: "They'll see your new posts in their Following feed.",
+      url: `/store/${store.slug}/admin/browse/activity`,
+    });
+  }
   revalidatePath(`/browse/s/${slug}`);
   return { success: true, data: result };
 }
@@ -109,7 +141,7 @@ export async function addBrowseComment(postId: string, input: { name?: string; b
   if (ownerId && ownerId !== viewer.userId) {
     await notifyUser({
       userId: ownerId, type: "BROWSE_COMMENT", title: `${parsed.name} commented on your Browse post`,
-      body: parsed.body.slice(0, 120), url: `/store/${post.store.slug}/admin/browse`,
+      body: parsed.body.slice(0, 120), url: `/store/${post.store.slug}/admin/browse/activity`,
     }).catch(() => undefined);
   }
   return {

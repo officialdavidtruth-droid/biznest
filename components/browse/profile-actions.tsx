@@ -64,7 +64,7 @@ export function ProfileActions({ slug, name, path, storeUrl, initialFollowing, i
         )}
         <div className="grid gap-3 sm:grid-cols-[1fr_auto]">
           <Link href={storeUrl} className="inline-flex items-center justify-center gap-2 rounded-full bg-[#14301A] px-6 py-3 text-sm font-semibold text-[#FBF6E9] hover:bg-[#0c1f11] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#14301A]"><Store className="h-4 w-4" aria-hidden /> Visit store</Link>
-          <ShareProfile name={name} path={path} />
+          <ShareProfile name={name} path={path} slug={slug} />
         </div>
       </div>
     </>

@@ -18,6 +18,7 @@ const m = vi.hoisted(() => {
       browseStory: { findFirst: vi.fn(), create: vi.fn(), count: vi.fn(), updateMany: vi.fn(), deleteMany: vi.fn() },
       product: { findFirst: vi.fn() },
       store: { findFirst: vi.fn() },
+      notification: { findFirst: vi.fn() },
       $transaction: vi.fn(async (arg: unknown) => (typeof arg === "function" ? (arg as (t: typeof tx) => unknown)(tx) : Promise.all(arg as unknown[]))),
     },
     getViewer: vi.fn(),
@@ -55,6 +56,7 @@ beforeEach(() => {
   m.checkRateLimit.mockResolvedValue({ allowed: true });
   m.notifyUser.mockResolvedValue(undefined);
   m.prisma.browsePost.findFirst.mockResolvedValue(post);
+  m.prisma.notification.findFirst.mockResolvedValue(null);
 });
 
 describe("guests", () => {
@@ -66,6 +68,34 @@ describe("guests", () => {
     expect((await toggleBrowseLike("p1")).success).toBe(false);
     expect(m.prisma.$transaction).not.toHaveBeenCalled();
     expect(m.prisma.browseComment.create).not.toHaveBeenCalled();
+  });
+});
+
+describe("like and follow alerts for the business owner", () => {
+  beforeEach(() => {
+    m.tx.browseLike.deleteMany.mockResolvedValue({ count: 0 });
+    m.tx.browseLike.create.mockResolvedValue({});
+    m.tx.browsePost.update.mockResolvedValue({ likeCount: 1 });
+  });
+  it("tells the owner when someone likes a post", async () => {
+    await toggleBrowseLike("p1");
+    expect(m.notifyUser).toHaveBeenCalledWith(expect.objectContaining({ userId: "owner1", type: "BROWSE_LIKE", title: "Amaka liked your Browse post", url: "/store/acme-test/admin/browse/activity" }));
+  });
+  it("stays quiet for an unlike, the owner's own like, and an alert still waiting unread", async () => {
+    m.tx.browseLike.deleteMany.mockResolvedValue({ count: 1 });
+    m.tx.browsePost.update.mockResolvedValue({ likeCount: 0 });
+    await toggleBrowseLike("p1");
+    m.tx.browseLike.deleteMany.mockResolvedValue({ count: 0 });
+    m.getViewer.mockResolvedValue({ key: "u:owner1xxxxxxxx", userId: "owner1", name: "Owner" });
+    await toggleBrowseLike("p1");
+    m.getViewer.mockResolvedValue(member);
+    m.prisma.notification.findFirst.mockResolvedValue({ id: "n1" });
+    await toggleBrowseLike("p1");
+    expect(m.notifyUser).not.toHaveBeenCalled();
+  });
+  it("still completes the like when the alert can't be written", async () => {
+    m.notifyUser.mockRejectedValue(new Error("push down"));
+    expect((await toggleBrowseLike("p1")).success).toBe(true);
   });
 });
 
@@ -109,7 +139,7 @@ describe("addBrowseComment", () => {
   it("posts a comment and tells the store owner", async () => {
     const r = await addBrowseComment("p1", { name: "Ada", body: "Lovely" });
     expect(r).toMatchObject({ success: true, data: { commentCount: 2, comment: { id: "c1", mine: true } } });
-    expect(m.notifyUser).toHaveBeenCalledWith(expect.objectContaining({ userId: "owner1", type: "BROWSE_COMMENT", url: "/store/acme-test/admin/browse" }));
+    expect(m.notifyUser).toHaveBeenCalledWith(expect.objectContaining({ userId: "owner1", type: "BROWSE_COMMENT", url: "/store/acme-test/admin/browse/activity" }));
   });
   it("does not notify owners about their own comments", async () => {
     m.getViewer.mockResolvedValue({ key: "u:owner1xxxxxxxx", userId: "owner1", name: "Owner" });

@@ -1107,6 +1107,7 @@ model Store {
   deliveries     Delivery[]
   jobCards       JobCard[]
   browsePosts    BrowsePost[]
+  browseStats    BrowseStat[]
   browseStories  BrowseStory[]
   adCampaigns    AdCampaign[]
   browseFollows  BrowseFollow[]
@@ -5739,6 +5740,20 @@ model AdReport {
 
 /// Someone following a business on Browse. viewerKey: "u:<userId>" for a signed-in account, otherwise "d:<device id>".
 /// Store.followerCount is the running total so the feed never has to count rows.
+/// Daily Browse counters for a store: PROFILE_VIEW, POST_IMPRESSION and SHARE. postId is "" for store-level rows.
+model BrowseStat {
+  id      String   @id @default(cuid())
+  storeId String
+  store   Store    @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  day     DateTime @db.Date
+  kind    String
+  postId  String   @default("")
+  count   Int      @default(0)
+
+  @@unique([storeId, day, kind, postId])
+  @@index([storeId, day])
+}
+
 model BrowseFollow {
   id        String   @id @default(cuid())
   storeId   String

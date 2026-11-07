@@ -11,6 +11,7 @@ import { StorePostsGrid } from "@/components/browse/store-posts-grid";
 import { BrowseShell } from "@/components/browse/browse-shell";
 import { Awning } from "@/components/browse/awning";
 import { ProfileActions } from "@/components/browse/profile-actions";
+import { ProfileViewBeacon } from "@/components/browse/profile-view-beacon";
 import { StoreBadges } from "@/components/browse/store-badges";
 
 export const dynamic = "force-dynamic";
@@ -72,6 +73,7 @@ export default async function StoreBrowsePage({ params }: { params: Promise<{ sl
 
             {profile.bio && <p className="mt-5 whitespace-pre-line break-words text-[15px] leading-relaxed text-[#14301A]/85">{profile.bio}</p>}
 
+            <ProfileViewBeacon slug={slug} />
             <ProfileActions
               signedIn={!!viewer?.userId}
               slug={profile.slug} name={profile.name} path={storeBrowsePath(profile.slug)} storeUrl={storeHref(profile.slug)}

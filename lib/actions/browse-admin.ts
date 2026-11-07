@@ -101,7 +101,7 @@ export async function resolveBrowseReport(targetKey: string, decision: "UPHOLD" 
         select: { store: { select: { slug: true, business: { select: { user: { select: { id: true } } } } } } },
       });
       const ownerId = post.store.business?.user?.id;
-      if (ownerId) await notifyUser({ userId: ownerId, type: "BROWSE_REMOVED", title: "A Browse post was removed", body: "It was reported and BizNest staff found it broke the rules.", url: `/store/${post.store.slug}/admin/browse` }).catch(() => undefined);
+      if (ownerId) await notifyUser({ userId: ownerId, type: "BROWSE_REMOVED", title: "A Browse post was removed", body: "It was reported and BizNest staff found it broke the rules.", url: `/store/${post.store.slug}/admin/browse/activity` }).catch(() => undefined);
     }
   } else if (!commentId) {
     await prisma.browsePost.updateMany({ where: { id: postId, status: "HIDDEN", hiddenReason: "REPORTS" }, data: { status: "PUBLISHED", hiddenReason: null } });

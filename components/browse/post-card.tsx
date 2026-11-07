@@ -9,6 +9,7 @@ import type { BrowseCommentView, BrowsePostView } from "@/lib/browse-data";
 import { BROWSE_COMMENT_MAX, INTERACT_NEEDS_ACCOUNT, isOfficialSlug, REPORT_REASONS, REPORT_REASON_LABEL, compactCount, postPath, storeBrowsePath, timeAgo, type ReportReason } from "@/lib/browse";
 import { StoreBadges } from "@/components/browse/store-badges";
 import { formatMoney } from "@/lib/utils/format-money";
+import { trackBrowse, trackImpression } from "@/components/browse/browse-track";
 import { storeHref } from "@/lib/utils/store-href";
 
 const NAME_KEY = "bn-browse-name";
@@ -140,6 +141,17 @@ export function PostCard({ post: initial, openComments = false }: { post: Browse
   const [more, setMore] = useState(false);
   const [pending, start] = useTransition();
   const storeUrl = storeHref(post.store.slug);
+  const cardRef = useRef<HTMLElement>(null);
+  // An impression is counted when at least half the post has been on screen.
+  useEffect(() => {
+    const el = cardRef.current;
+    if (!el || typeof IntersectionObserver === "undefined") return;
+    const io = new IntersectionObserver((entries) => {
+      if (entries.some((e) => e.isIntersecting)) { trackImpression(initial.id); io.disconnect(); }
+    }, { threshold: 0.5 });
+    io.observe(el);
+    return () => io.disconnect();
+  }, [initial.id]);
   const long = post.caption.length > 140 || post.caption.split("\n").length > 3;
 
   function like() {
@@ -157,11 +169,12 @@ export function PostCard({ post: initial, openComments = false }: { post: Browse
     try {
       if (navigator.share) await navigator.share({ title: post.store.name, text: post.caption.slice(0, 100), url });
       else { await navigator.clipboard.writeText(url); toast.success("Link copied"); }
+      trackBrowse({ kind: "SHARE", postId: post.id });
     } catch { /* cancelled */ }
   }
 
   return (
-    <article className="overflow-hidden rounded-[28px] bg-[#FBF6E9] pb-1 text-[#14301A] shadow-[0_18px_40px_-20px_rgba(0,0,0,.65)]" aria-label={`Post by ${post.store.name}`}>
+    <article ref={cardRef} className="overflow-hidden rounded-[28px] bg-[#FBF6E9] pb-1 text-[#14301A] shadow-[0_18px_40px_-20px_rgba(0,0,0,.65)]" aria-label={`Post by ${post.store.name}`}>
       <header className="flex items-center gap-3 px-4 pb-3 pt-4">
         <Link href={storeBrowsePath(post.store.slug)} className="flex min-w-0 flex-1 items-center gap-3 rounded-2xl focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#14301A]">
           <span className="grid h-11 w-11 shrink-0 place-items-center overflow-hidden rounded-full bg-[#14301A]/10 text-sm font-bold ring-2 ring-[#F5B82E] ring-offset-2 ring-offset-[#FBF6E9]">
