@@ -6,6 +6,7 @@ export type BrowsePostView = {
   kind: string;
   caption: string;
   images: string[];
+  videoUrl: string | null;
   createdAt: string;
   likeCount: number;
   commentCount: number;
@@ -28,14 +29,14 @@ const storeSelect = {
 } as const;
 
 type Row = {
-  id: string; kind: string; caption: string; images: string[]; createdAt: Date; likeCount: number; commentCount: number;
+  id: string; kind: string; caption: string; images: string[]; videoUrl?: string | null; createdAt: Date; likeCount: number; commentCount: number;
   productId: string | null; productName: string | null; productPrice: unknown; productCurrency: string | null;
   store: { slug: string; name: string; logoUrl: string | null; business: { category: string; city: string; verificationBadge: boolean } | null; subscription?: { name: string } | null; subscriptionPastDueSince?: Date | null };
 };
 
 export function toPostView(r: Row, liked: boolean): BrowsePostView {
   return {
-    id: r.id, kind: r.kind, caption: r.caption, images: r.images, createdAt: r.createdAt.toISOString(),
+    id: r.id, kind: r.kind, caption: r.caption, images: r.images, videoUrl: r.videoUrl ?? null, createdAt: r.createdAt.toISOString(),
     likeCount: r.likeCount, commentCount: r.commentCount, liked,
     product: r.productId && r.productName ? { id: r.productId, name: r.productName, price: r.productPrice == null ? null : Number(r.productPrice), currency: r.productCurrency ?? "NGN" } : null,
     store: { slug: r.store.slug, name: r.store.name, logoUrl: r.store.logoUrl, category: r.store.business?.category ?? null, city: r.store.business?.city ?? null, verified: !!r.store.business?.verificationBadge, mogul: isMogulStore(r.store) },
@@ -146,7 +147,7 @@ export async function loadBrowseComments(postId: string, opts: { before?: string
 }
 
 export type VendorPostView = {
-  id: string; kind: string; caption: string; images: string[]; createdAt: string; status: string; hiddenReason: string | null;
+  id: string; kind: string; caption: string; images: string[]; hasVideo: boolean; createdAt: string; status: string; hiddenReason: string | null;
   likeCount: number; commentCount: number; productName: string | null;
 };
 
@@ -156,7 +157,7 @@ export async function loadVendorBrowse(storeId: string) {
     prisma.browsePost.count({ where: { storeId, createdAt: { gte: new Date(Date.now() - 86_400_000) } } }),
   ]);
   const views: VendorPostView[] = posts.map((p) => ({
-    id: p.id, kind: p.kind, caption: p.caption, images: p.images, createdAt: p.createdAt.toISOString(), status: p.status, hiddenReason: p.hiddenReason,
+    id: p.id, kind: p.kind, caption: p.caption, images: p.images, hasVideo: !!p.videoUrl, createdAt: p.createdAt.toISOString(), status: p.status, hiddenReason: p.hiddenReason,
     likeCount: p.likeCount, commentCount: p.commentCount, productName: p.productName,
   }));
   const totals = posts.reduce((a, p) => ({ likes: a.likes + p.likeCount, comments: a.comments + p.commentCount }), { likes: 0, comments: 0 });

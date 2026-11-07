@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState, useTransition } from "react";
 import Link from "next/link";
-import { Flag, Heart, MessageCircle, Share2, ShoppingBag, Store } from "lucide-react";
+import { Flag, Heart, MessageCircle, Play, Share2, ShoppingBag, Store, Volume2, VolumeX } from "lucide-react";
 import { toast } from "sonner";
 import { addBrowseComment, deleteMyBrowseComment, loadPostComments, reportBrowse, toggleBrowseLike } from "@/lib/actions/browse";
 import type { BrowseCommentView, BrowsePostView } from "@/lib/browse-data";
@@ -11,6 +11,7 @@ import { StoreBadges } from "@/components/browse/store-badges";
 import { formatMoney } from "@/lib/utils/format-money";
 import { trackBrowse, trackImpression } from "@/components/browse/browse-track";
 import { storeHref } from "@/lib/utils/store-href";
+import { playableVideoUrl } from "@/lib/browse-video";
 
 const NAME_KEY = "bn-browse-name";
 const display = "font-[family-name:var(--font-browse-display)]";
@@ -41,14 +42,58 @@ function ReportMenu({ postId, commentId, label }: { postId: string; commentId?: 
   );
 }
 
+/** Plays (muted) while it is mostly on screen and pauses when scrolled away. Tap to pause or play; the speaker button turns sound on. */
+function FeedVideo({ post }: { post: BrowsePostView }) {
+  const ref = useRef<HTMLVideoElement>(null);
+  const [muted, setMuted] = useState(true);
+  const [paused, setPaused] = useState(true);
+  const byUserRef = useRef(false);
+  useEffect(() => {
+    const el = ref.current;
+    if (!el || typeof IntersectionObserver === "undefined") return;
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+    const io = new IntersectionObserver(([e]) => {
+      if (e.isIntersecting && e.intersectionRatio >= 0.6) { if (!byUserRef.current) el.play().catch(() => {}); }
+      else el.pause();
+    }, { threshold: [0, 0.6] });
+    io.observe(el);
+    return () => io.disconnect();
+  }, []);
+  function toggle() {
+    const el = ref.current; if (!el) return;
+    if (el.paused) { byUserRef.current = false; el.play().catch(() => {}); }
+    else { byUserRef.current = true; el.pause(); }
+  }
+  return (
+    <div className="relative aspect-[4/5] w-full overflow-hidden rounded-[22px] bg-black">
+      <video
+        ref={ref} src={playableVideoUrl(post.videoUrl!)} poster={post.images[0]} muted={muted} loop playsInline preload="metadata"
+        onPlay={() => setPaused(false)} onPause={() => setPaused(true)} onClick={toggle}
+        className="h-full w-full cursor-pointer object-contain" aria-label={`Video from ${post.store.name}. Tap to ${paused ? "play" : "pause"}.`}
+      />
+      {paused && (
+        <button type="button" onClick={toggle} aria-label="Play video" className="absolute inset-0 m-auto flex h-14 w-14 items-center justify-center rounded-full bg-black/55 text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-white">
+          <Play className="h-6 w-6 fill-white" aria-hidden />
+        </button>
+      )}
+      <button type="button" onClick={() => setMuted((m) => !m)} aria-label={muted ? "Turn sound on" : "Mute"} className="absolute bottom-3 right-3 flex h-9 w-9 items-center justify-center rounded-full bg-black/55 text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-white">
+        {muted ? <VolumeX className="h-4 w-4" aria-hidden /> : <Volume2 className="h-4 w-4" aria-hidden />}
+      </button>
+    </div>
+  );
+}
+
 function Images({ post }: { post: BrowsePostView }) {
   const [idx, setIdx] = useState(0);
   const ref = useRef<HTMLDivElement>(null);
-  if (post.images.length === 0) return null;
+  if (post.images.length === 0 && !post.videoUrl) return null;
   const storeUrl = storeHref(post.store.slug);
   const dest = post.product ? storeHref(post.store.slug, `/product/${post.product.id}`) : storeUrl;
   return (
     <div className="relative px-3">
+      {post.videoUrl ? (
+        <FeedVideo post={post} />
+      ) : (
       <div
         ref={ref}
         className="flex snap-x snap-mandatory overflow-x-auto scroll-smooth rounded-[22px] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
@@ -61,14 +106,15 @@ function Images({ post }: { post: BrowsePostView }) {
           </Link>
         ))}
       </div>
+      )}
       {post.product && (
-        <Link href={dest} className="absolute bottom-4 left-6 flex max-w-[78%] items-center gap-2 rounded-full bg-[#F5B82E] py-2 pl-3 pr-4 text-[#14301A] shadow-lg ring-1 ring-black/10 hover:bg-[#ffc94d] focus-visible:outline focus-visible:outline-2 focus-visible:outline-white">
+        <Link href={dest} className={`absolute ${post.videoUrl ? "top-3" : "bottom-4"} left-6 flex max-w-[78%] items-center gap-2 rounded-full bg-[#F5B82E] py-2 pl-3 pr-4 text-[#14301A] shadow-lg ring-1 ring-black/10 hover:bg-[#ffc94d] focus-visible:outline focus-visible:outline-2 focus-visible:outline-white`}>
           <ShoppingBag className="h-4 w-4 shrink-0" aria-hidden />
           <span className="truncate text-sm font-semibold">{post.product.name}</span>
           {post.product.price != null && <span className={`${display} shrink-0 text-sm font-extrabold`}>{formatMoney(post.product.price, post.product.currency)}</span>}
         </Link>
       )}
-      {post.images.length > 1 && (
+      {!post.videoUrl && post.images.length > 1 && (
         <div className="pointer-events-none absolute right-6 top-3 rounded-full bg-black/55 px-2.5 py-1 text-xs font-medium text-white" aria-hidden>{idx + 1}/{post.images.length}</div>
       )}
     </div>

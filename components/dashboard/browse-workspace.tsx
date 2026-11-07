@@ -3,8 +3,9 @@
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { MultiImageUpload } from "@/components/forms/multi-image-upload";
+import { BrowseVideoUpload } from "@/components/dashboard/browse-video-upload";
 import { createBrowsePost, createBrowseStory, deleteBrowsePost, deleteBrowseStory, listPostCommentsForOwner, setBrowseCommentHidden, setBrowsePostHidden } from "@/lib/actions/browse-vendor";
-import { BROWSE_CAPTION_MAX, BROWSE_MAX_IMAGES, STORY_BG_COLORS, STORY_TEXT_MAX, postPath, storeBrowsePath, timeAgo } from "@/lib/browse";
+import { BROWSE_CAPTION_MAX, BROWSE_MAX_IMAGES, OFFICIAL_SLUG, STORY_BG_COLORS, STORY_TEXT_MAX, postPath, storeBrowsePath, timeAgo } from "@/lib/browse";
 import type { BrowseCommentView, VendorPostView, VendorStoryView } from "@/lib/browse-data";
 
 type Result = { success: boolean; error?: string };
@@ -27,9 +28,9 @@ function PostRow({ slug, p, run, pending }: { slug: string; p: VendorPostView; r
       <div className="flex gap-3">
         {p.images[0] && /* eslint-disable-next-line @next/next/no-img-element */ <img src={p.images[0]} alt="" className="h-20 w-20 shrink-0 rounded-lg object-cover" />}
         <div className="min-w-0 flex-1">
-          <p className="line-clamp-2 whitespace-pre-line text-sm">{p.caption || <span className="text-muted-foreground">(photo only)</span>}</p>
+          <p className="line-clamp-2 whitespace-pre-line text-sm">{p.caption || <span className="text-muted-foreground">({p.hasVideo ? "video only" : "photo only"})</span>}</p>
           <p className="mt-1 text-xs text-muted-foreground">
-            {timeAgo(new Date(p.createdAt))} · {p.likeCount} like{p.likeCount === 1 ? "" : "s"} · {p.commentCount} comment{p.commentCount === 1 ? "" : "s"}{p.productName ? ` · ${p.productName}` : ""} ·{" "}
+            {timeAgo(new Date(p.createdAt))}{p.hasVideo ? " · Video" : ""} · {p.likeCount} like{p.likeCount === 1 ? "" : "s"} · {p.commentCount} comment{p.commentCount === 1 ? "" : "s"}{p.productName ? ` · ${p.productName}` : ""} ·{" "}
             <span className={p.status === "PUBLISHED" ? "text-emerald-700" : "text-amber-700"}>{underReview ? "Held for review" : STATUS[p.status] ?? p.status}</span>
           </p>
           <div className="mt-2 flex flex-wrap gap-2">
@@ -62,6 +63,7 @@ export function BrowseWorkspace({ slug, data, stories, products, dailyLimit }: {
   const [note, setNote] = useState("");
   const [caption, setCaption] = useState("");
   const [images, setImages] = useState<string[]>([]);
+  const [videoUrl, setVideoUrl] = useState<string | null>(null);
   const [productId, setProductId] = useState("");
   const [storyMode, setStoryMode] = useState<"photo" | "text">("photo");
   const [storyImage, setStoryImage] = useState<string[]>([]);
@@ -92,7 +94,8 @@ export function BrowseWorkspace({ slug, data, stories, products, dailyLimit }: {
         <h2 className="text-sm font-semibold">New post</h2>
         <div className="mt-3 space-y-3">
           <textarea className={input} rows={3} maxLength={BROWSE_CAPTION_MAX} placeholder="What's new today? A fresh batch, a promo, a finished job…" value={caption} onChange={(e) => setCaption(e.target.value)} aria-label="Caption" />
-          <MultiImageUpload value={images} onChange={setImages} max={BROWSE_MAX_IMAGES} label={`Photos (up to ${BROWSE_MAX_IMAGES})`} />
+          {!videoUrl && <MultiImageUpload value={images} onChange={setImages} max={BROWSE_MAX_IMAGES} label={`Photos (up to ${BROWSE_MAX_IMAGES})`} />}
+          {images.length === 0 && <BrowseVideoUpload slug={slug} value={videoUrl} onChange={setVideoUrl} unlimited={slug === OFFICIAL_SLUG} />}
           <label className="block text-xs">Tag a product (optional)
             <select className={`${input} mt-1`} value={productId} onChange={(e) => setProductId(e.target.value)}>
               <option value="">None</option>
@@ -100,7 +103,7 @@ export function BrowseWorkspace({ slug, data, stories, products, dailyLimit }: {
             </select>
           </label>
           <div className="flex items-center gap-3">
-            <button className={btn} disabled={pending || (!caption.trim() && images.length === 0)} onClick={() => run(() => createBrowsePost(slug, { caption, images, productId: productId || null }), "Posted to Browse.", () => { setCaption(""); setImages([]); setProductId(""); })}>{pending ? "Posting…" : "Post to Browse"}</button>
+            <button className={btn} disabled={pending || (!caption.trim() && images.length === 0 && !videoUrl)} onClick={() => run(() => createBrowsePost(slug, { caption, images, videoUrl, productId: productId || null }), "Posted to Browse.", () => { setCaption(""); setImages([]); setVideoUrl(null); setProductId(""); })}>{pending ? "Posting…" : "Post to Browse"}</button>
             <span className="text-xs text-muted-foreground">{caption.length}/{BROWSE_CAPTION_MAX}</span>
           </div>
           {error && <p role="alert" className="text-xs text-red-600">{error}</p>}

@@ -13,7 +13,7 @@ describe("links", () => {
 
 describe("sanitizePost", () => {
   it("needs text or a photo and keeps only https images, max four", () => {
-    expect(sanitizePost({ caption: "  ", images: [] })).toEqual({ ok: false, error: "Write something or add a photo." });
+    expect(sanitizePost({ caption: "  ", images: [] })).toEqual({ ok: false, error: "Write something or add a photo or video." });
     const imgs = Array.from({ length: 6 }, (_, i) => `https://img.example.com/${i}.jpg`);
     const r = sanitizePost({ caption: "Hi", images: [...imgs, "http://bad.example.com/x.jpg", "javascript:alert(1)", 5] });
     expect(r.ok && r.images).toHaveLength(BROWSE_MAX_IMAGES);

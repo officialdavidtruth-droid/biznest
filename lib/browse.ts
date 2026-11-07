@@ -64,14 +64,15 @@ export function safeHttpsImage(raw: unknown): string | null {
   } catch { return null; }
 }
 
-export type PostInput = { caption?: unknown; images?: unknown };
+export type PostInput = { caption?: unknown; images?: unknown; videoUrl?: unknown };
 
-export function sanitizePost(input: PostInput, opts: { requireImage?: boolean } = {}): { ok: true; caption: string; images: string[] } | { ok: false; error: string } {
+export function sanitizePost(input: PostInput, opts: { requireImage?: boolean } = {}): { ok: true; caption: string; images: string[]; videoUrl: string | null } | { ok: false; error: string } {
   const caption = cleanMultiline(input.caption, BROWSE_CAPTION_MAX);
   const images = (Array.isArray(input.images) ? input.images : []).map(safeHttpsImage).filter((x): x is string => !!x).slice(0, BROWSE_MAX_IMAGES);
-  if (!caption && images.length === 0) return { ok: false, error: "Write something or add a photo." };
+  const videoUrl = safeHttpsImage(input.videoUrl);
+  if (!caption && images.length === 0 && !videoUrl) return { ok: false, error: "Write something or add a photo or video." };
   if (opts.requireImage && images.length === 0) return { ok: false, error: "Add at least one photo." };
-  return { ok: true, caption, images };
+  return { ok: true, caption, images, videoUrl };
 }
 
 export function sanitizeComment(input: { body?: unknown; name?: unknown }, opts: { signedInName?: string | null } = {}): { ok: true; body: string; name: string } | { ok: false; error: string } {

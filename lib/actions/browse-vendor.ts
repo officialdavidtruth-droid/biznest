@@ -7,6 +7,7 @@ import { isPlatformStaff } from "@/lib/admin-guard";
 import { notifyFollowersOfPost, notifyFollowersOfStory } from "@/lib/browse-notify";
 import { BROWSE_DAILY_POST_LIMIT, OFFICIAL_SLUG, BROWSE_MAX_IMAGES, STORY_DAILY_LIMIT, defaultProductCaption, sanitizePost, sanitizeStory, storyExpiry } from "@/lib/browse";
 import { loadBrowseComments, type BrowseCommentView } from "@/lib/browse-data";
+import { isBrowseVideoUrl, videoFolder, videoPosterUrl } from "@/lib/browse-video";
 import type { ActionResult } from "@/types/actions";
 
 async function access(slug: string) {
@@ -45,11 +46,20 @@ async function tellFollowersOfStory(slug: string, storeId: string) {
 const refresh = (slug: string) => { revalidatePath(`/store/${slug}/admin/browse`); revalidatePath("/supaadmin/official"); revalidatePath("/browse"); };
 
 /** A free-form update: text and/or up to four photos, optionally tagging one of the store's products. */
-export async function createBrowsePost(slug: string, input: { caption?: string; images?: string[]; productId?: string | null }): Promise<ActionResult<{ id: string }>> {
+export async function createBrowsePost(slug: string, input: { caption?: string; images?: string[]; videoUrl?: string | null; productId?: string | null }): Promise<ActionResult<{ id: string }>> {
   const a = await access(slug);
   if (!a.success) return { success: false, error: a.error };
   const parsed = sanitizePost(input);
   if (!parsed.ok) return { success: false, error: parsed.error };
+  // A video must be one we signed for this store (that signature is what applies the 60-second trim). Its poster frame becomes the cover image.
+  let videoUrl: string | null = null;
+  let images = parsed.images;
+  if (parsed.videoUrl) {
+    if (process.env.BROWSE_VIDEO === "off") return { success: false, error: "Video posting is switched off right now." };
+    if (!isBrowseVideoUrl(parsed.videoUrl, videoFolder(a.store.id, slug === OFFICIAL_SLUG))) return { success: false, error: "That video wasn't uploaded here. Upload it again." };
+    videoUrl = parsed.videoUrl;
+    images = [videoPosterUrl(videoUrl)];
+  }
   if (!(await underDailyLimit(a.store.id))) return { success: false, error: `You can post up to ${BROWSE_DAILY_POST_LIMIT} times a day.` };
 
   let product: { id: string; name: string; price: unknown; currency: string } | null = null;
@@ -59,7 +69,7 @@ export async function createBrowsePost(slug: string, input: { caption?: string; 
   }
   const post = await prisma.browsePost.create({
     data: {
-      storeId: a.store.id, kind: product ? "PRODUCT" : "UPDATE", caption: parsed.caption, images: parsed.images,
+      storeId: a.store.id, kind: product ? "PRODUCT" : "UPDATE", caption: parsed.caption, images, videoUrl,
       ...(product ? { productId: product.id, productName: product.name, productPrice: product.price as number, productCurrency: product.currency } : {}),
     },
     select: { id: true },

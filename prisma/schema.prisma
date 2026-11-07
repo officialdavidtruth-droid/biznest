@@ -4677,6 +4677,8 @@ model BrowsePost {
   kind            String   @default("UPDATE") // UPDATE | PRODUCT
   caption         String   @db.Text
   images          String[]
+  // Public Cloudinary video (compressed at upload). images[0] is its poster frame.
+  videoUrl        String?
   // Snapshot of the shared product (no FK: the post stays readable if the product is later deleted or edited).
   productId       String?
   productName     String?
