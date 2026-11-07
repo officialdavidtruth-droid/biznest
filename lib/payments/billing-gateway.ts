@@ -1,14 +1,10 @@
 import { APP_URL } from "@/lib/constants/app-url";
 
-export const PLATFORM_BILLING_GATEWAY: "PAYSTACK" | "KORAPAY" = (() => {
-  // Switch with BILLING_GATEWAY=PAYSTACK in the environment and a redeploy. Anything else keeps Korapay.
-  // (Flutterwave has no plan/app/ads return routes, so it is not offered for billing.)
-  return process.env.BILLING_GATEWAY?.trim().toUpperCase() === "PAYSTACK" ? "PAYSTACK" : "KORAPAY";
-})();
+export type BillingGatewayId = "PAYSTACK" | "FLUTTERWAVE" | "KORAPAY";
 
-/** Where the billing gateway sends the customer back after paying for a plan, an app or an ad campaign. */
-export function billingCallbackUrl(kind: "subscription" | "plugin" | "ad", query?: Record<string, string>): string {
-  const gateway = PLATFORM_BILLING_GATEWAY === "PAYSTACK" ? "paystack" : "korapay";
+/** Where the gateway sends the customer back after paying for a plan, an app or an ad campaign. */
+export function billingCallbackUrl(kind: "subscription" | "plugin" | "ad", query?: Record<string, string>, gateway: BillingGatewayId = "KORAPAY"): string {
+  const path = gateway === "PAYSTACK" ? "paystack" : gateway === "FLUTTERWAVE" ? "flutterwave" : "korapay";
   const qs = query && Object.keys(query).length ? `?${new URLSearchParams(query).toString()}` : "";
-  return `${APP_URL}/api/payments/${gateway}/${kind}-callback${qs}`;
+  return `${APP_URL}/api/payments/${path}/${kind}-callback${qs}`;
 }

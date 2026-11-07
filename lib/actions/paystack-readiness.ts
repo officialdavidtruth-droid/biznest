@@ -2,7 +2,6 @@
 
 import { isPlatformStaff } from "@/lib/admin-guard";
 import { getActiveGateway } from "@/lib/actions/site-settings";
-import { PLATFORM_BILLING_GATEWAY } from "@/lib/payments/gateway";
 import { getPaystackBalanceKobo } from "@/lib/payments/paystack";
 import { evaluatePaystackReadiness, type ReadinessCheck } from "@/lib/payments/paystack-readiness";
 import { APP_URL } from "@/lib/constants/app-url";
@@ -26,7 +25,7 @@ export async function loadPaystackReadiness(): Promise<ActionResult<{ checks: Re
     serverPublicKey: process.env.PAYSTACK_PUBLIC_KEY,
     appUrl: APP_URL,
     activeGateway: await getActiveGateway(),
-    billingGateway: PLATFORM_BILLING_GATEWAY,
+    billingGateway: await getActiveGateway(),
     balance,
   });
   return { success: true, data: result };

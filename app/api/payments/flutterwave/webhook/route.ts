@@ -1,4 +1,6 @@
-import { resolveSubscriptionId } from "@/lib/payments/subscription-reference";
+import { settleSubscriptionUpgrade } from "@/lib/payments/settle-subscription";
+import { settlePluginPurchase } from "@/lib/payments/settle-plugin-purchase";
+import { settleAdPayment } from "@/lib/payments/settle-ad";
 import { prisma } from "@/lib/prisma";
 import { verifyFlutterwaveTransaction, verifyFlutterwaveTransfer, verifyFlutterwaveWebhookSignature } from "@/lib/payments/flutterwave";
 import { applyFlutterwaveTransferWebhookEvent } from "@/lib/payments/payout";
@@ -135,30 +137,15 @@ export async function POST(req: Request) {
   // (see lib/actions/subscription.ts) — distinct from order references,
   // which are just the order's cuid.
   if (txRef.startsWith("SUBUP-")) {
-    const [, storeId, planToken] = txRef.split("-");
-  const subscriptionId = await resolveSubscriptionId(planToken);
-    const store = await prisma.store.findUnique({ where: { id: storeId } });
-    // txRef and transactionId both come from this same signed webhook
-    // payload, so they're already bound to one real event — this amount
-    // check is defense in depth, matching the browser callback, in case a
-    // reference is ever replayed against a different plan.
-    const [plan, payment] = await Promise.all([
-      subscriptionId ? prisma.subscription.findUnique({ where: { id: subscriptionId } }) : null,
-      prisma.payment.findUnique({ where: { reference: txRef } }),
-    ]);
-    const amountNaira = Number(verification.data?.amount ?? 0);
-    const amountMatches = Boolean(plan && amountNaira >= Number(plan.price));
-    const paymentMatches = Boolean(payment && Math.abs(Number(payment.amount) - amountNaira) <= 0.01);
-    if (!store || !plan || !payment || payment.storeId !== store.id || !amountMatches || !paymentMatches) {
-      return NextResponse.json({ received: true });
-    }
-    if (store.subscriptionId !== subscriptionId || store.trialEndsAt) {
-      await prisma.store.update({ where: { id: store.id }, data: { subscriptionId, trialEndsAt: null } });
-    }
-    await prisma.payment.updateMany({
-      where: { reference: txRef, status: "PENDING" },
-      data: { status: "SUCCESSFUL", rawPayload: verification as object, verifiedAt: new Date() },
-    });
+    await settleSubscriptionUpgrade(txRef, Number(verification.data?.amount ?? 0), verification as object);
+    return NextResponse.json({ received: true });
+  }
+  if (txRef.startsWith("PLUG-")) {
+    await settlePluginPurchase(txRef, Number(verification.data?.amount ?? 0), verification as object);
+    return NextResponse.json({ received: true });
+  }
+  if (txRef.startsWith("ADS-")) {
+    await settleAdPayment(txRef, Number(verification.data?.amount ?? 0), verification as object);
     return NextResponse.json({ received: true });
   }
 

@@ -71,7 +71,7 @@ export function evaluatePaystackReadiness(i: ReadinessInput): { checks: Readines
   );
   checks.push(
     i.billingGateway === "PAYSTACK" ? { id: "billing", label: "Plan, app, ads and wallet payments", status: "ok", detail: "These use Paystack." }
-    : { id: "billing", label: "Plan, app, ads and wallet payments", status: "warn", detail: `These use ${i.billingGateway}.`, fix: "Set BILLING_GATEWAY=PAYSTACK in Vercel and redeploy to move them to Paystack." },
+    : { id: "billing", label: "Plan, app, ads and wallet payments", status: "warn", detail: `These use ${i.billingGateway}.`, fix: "Pick Paystack under Payment gateway in SupaAdmin. Plan, app and ad payments follow that switch." },
   );
 
   const manual = (id: string, label: string, detail: string): ReadinessCheck => ({ id, label, status: "manual", detail });

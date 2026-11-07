@@ -1,10 +1,12 @@
 /**
- * Gateway fees are charged to the vendor, not to BizNest.
+ * Who bears the gateway fee.
  *
- * The customer pays exactly the order total. The gateway keeps its fee out of
- * that, so the platform balance only ever receives (total - fee). The vendor
- * payout is therefore (total - fee - transfer fee): the balance covers every
- * payout exactly and never drains.
+ * Current rule: the CUSTOMER pays it. Checkout adds the fee on top of the price (see customer-fee.ts), the
+ * gateway keeps it out of the larger amount, and the vendor is paid the full price.
+ *
+ * Older payments (made before that rule, with no fee added) still follow the previous rule: the gateway keeps
+ * its fee out of the price, so the vendor payout is (price - fee). A payment is "customer-covered" when the
+ * gateway collected more than the price.
  *
  * The fee is read from the gateway's own verify response (stored on
  * Payment.rawPayload), not estimated, so it matches what the gateway really took.
@@ -72,6 +74,21 @@ export function customerPaidFeeNaira(provider: string, rawPayload: unknown, paym
   return round2(Math.max(0, Math.min(collected - requested, fee)));
 }
 
+/** Naira the gateway actually collected from the customer, from its verify response. 0 when unknown. */
+export function collectedAmountNaira(provider: string, rawPayload: unknown): number {
+  const root = asRecord(rawPayload);
+  const data = asRecord(root?.data) ?? root;
+  if (!data) return 0;
+  if (provider === "PAYSTACK") return round2(num(data.amount) / 100);
+  return round2(num(data.amount)); // Flutterwave and Korapay report naira
+}
+
+/** Did the customer pay the gateway fee on top of the price (collected more than the price)? */
+export function customerCoveredFee(provider: string, rawPayload: unknown, priceNaira: number): boolean {
+  const collected = collectedAmountNaira(provider, rawPayload);
+  return collected > 0 && priceNaira > 0 && collected > priceNaira + 0.009 && extractGatewayFeeNaira(provider, rawPayload) > 0;
+}
+
 /** Flat fee BizNest pays the gateway per payout transfer, passed on to the vendor. Default 0. */
 export function transferFeeNaira(): number {
   return round2(num(process.env.PAYOUT_TRANSFER_FEE_NAIRA));
@@ -90,9 +107,16 @@ export function vendorPayoutAmount(
    * taken when the customer topped up. Callers pass that wallet's real effective
    * fee rate (fee / topped-up amount, 0..1) so the vendor still bears it.
    */
-  effectiveFeeRate?: number
+  effectiveFeeRate?: number,
+  /** What the customer was asked to pay for the goods (Payment.amount), before commission. Defaults to paymentAmount. */
+  priceNaira?: number
 ): { amount: number; feeAmount: number } {
   if (!VENDOR_BEARS_GATEWAY_FEE) return { amount: round2(paymentAmount), feeAmount: 0 };
+  // The customer already paid the gateway's fee on top of the price: the vendor gets the full price and bears nothing.
+  // (Any small gap between the estimate and the real fee is BizNest's, never the vendor's.)
+  if (customerCoveredFee(provider, rawPayload, priceNaira ?? paymentAmount)) {
+    return { amount: round2(Math.max(0, paymentAmount - transferFeeNaira())), feeAmount: Math.min(transferFeeNaira(), round2(paymentAmount)) };
+  }
 
   let collectionFee = extractGatewayFeeNaira(provider, rawPayload);
   // The vendor only bears the part of the fee that came out of the price itself.
@@ -123,6 +147,7 @@ export function walletEffectiveFeeRate(fundings: Array<{ provider: string; amoun
     if (!Number.isFinite(amount) || amount <= 0) continue;
     funded += amount;
     // A fee the customer paid on top of the top-up is not a cost to the vendor.
+    if (customerCoveredFee(f.provider, f.rawPayload, amount)) continue;
     fees += Math.max(0, extractGatewayFeeNaira(f.provider, f.rawPayload) - customerPaidFeeNaira(f.provider, f.rawPayload, amount));
   }
   if (funded <= 0 || fees <= 0) return 0;

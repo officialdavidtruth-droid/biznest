@@ -44,19 +44,12 @@ describe("evaluatePaystackReadiness", () => {
   });
 });
 
-describe("billing callbacks follow the billing gateway", () => {
-  it("defaults to Korapay's return routes and moves to Paystack's with BILLING_GATEWAY=PAYSTACK", async () => {
-    vi.resetModules();
-    delete process.env.BILLING_GATEWAY;
-    let g = await import("@/lib/payments/billing-gateway");
-    expect(g.PLATFORM_BILLING_GATEWAY).toBe("KORAPAY");
+describe("billing callbacks follow the gateway picked in SupaAdmin", () => {
+  it("points each gateway's return routes at its own folder", async () => {
+    const g = await import("@/lib/payments/billing-gateway");
     expect(g.billingCallbackUrl("subscription")).toMatch(/\/api\/payments\/korapay\/subscription-callback$/);
-    vi.resetModules();
-    process.env.BILLING_GATEWAY = "paystack";
-    g = await import("@/lib/payments/billing-gateway");
-    expect(g.PLATFORM_BILLING_GATEWAY).toBe("PAYSTACK");
-    expect(g.billingCallbackUrl("ad", { slug: "acme-test" })).toMatch(/\/api\/payments\/paystack\/ad-callback\?slug=acme-test$/);
-    expect(g.billingCallbackUrl("plugin", { slug: "a b" })).toMatch(/plugin-callback\?slug=a\+b$/);
-    delete process.env.BILLING_GATEWAY;
+    expect(g.billingCallbackUrl("subscription", undefined, "FLUTTERWAVE")).toMatch(/\/api\/payments\/flutterwave\/subscription-callback$/);
+    expect(g.billingCallbackUrl("ad", { slug: "acme-test" }, "PAYSTACK")).toMatch(/\/api\/payments\/paystack\/ad-callback\?slug=acme-test$/);
+    expect(g.billingCallbackUrl("plugin", { slug: "a b" }, "FLUTTERWAVE")).toMatch(/flutterwave\/plugin-callback\?slug=a\+b$/);
   });
 });

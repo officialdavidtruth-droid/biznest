@@ -1,11 +1,12 @@
 "use server";
 
+import { acquirePaymentInitLock, PAYMENT_ALREADY_STARTING } from "@/lib/payments/init-lock";
 import { revalidatePath } from "next/cache";
 import { nanoid } from "nanoid";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { assertStorePermission } from "@/lib/access/assert-store-access";
-import { billingCallbackUrl, chargeCustomer, PLATFORM_BILLING_GATEWAY } from "@/lib/payments/gateway";
+import { billingCallbackUrl, chargeCustomer, getBillingGateway } from "@/lib/payments/gateway";
 import { createPendingPayment, markPaymentFailed } from "@/lib/payments/pending";
 import { AD_MAX_ACTIVE_PER_STORE, adReference, sanitizeAd, type AdInput } from "@/lib/ads";
 import type { ActionResult } from "@/types/actions";
@@ -23,14 +24,16 @@ const refresh = (slug: string) => { revalidatePath(`/store/${slug}/admin/ads`); 
 async function startCheckout(slug: string, store: { id: string; slug: string }, campaignId: string, amount: number): Promise<ActionResult<{ authorizationUrl: string }>> {
   const reference = adReference(campaignId, nanoid(8));
   await prisma.adCampaign.update({ where: { id: campaignId }, data: { paymentReference: reference } });
-  await createPendingPayment({ storeId: store.id, purpose: "AD_CAMPAIGN", provider: PLATFORM_BILLING_GATEWAY, reference, amount, currency: "NGN" });
+  if (!(await acquirePaymentInitLock(`ads:${store.id}`))) return { success: false, error: PAYMENT_ALREADY_STARTING };
+  const billingGateway = await getBillingGateway();
+  await createPendingPayment({ storeId: store.id, purpose: "AD_CAMPAIGN", provider: billingGateway, reference, amount, currency: "NGN" });
   const session = await auth();
   const charge = await chargeCustomer({
     email: session?.user?.email ?? `${store.slug}@biznest.space`,
     amountNaira: amount,
     reference,
-    callbackUrl: billingCallbackUrl("ad", { slug }),
-    gateway: PLATFORM_BILLING_GATEWAY,
+    callbackUrl: billingCallbackUrl("ad", { slug }, billingGateway),
+    gateway: billingGateway,
   });
   if (!charge.success) {
     await markPaymentFailed(reference);

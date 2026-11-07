@@ -183,7 +183,7 @@ export async function queuePayoutForPayment(reference: string): Promise<{ payout
     });
     walletFeeRate = walletEffectiveFeeRate(fundings);
   }
-  const { amount, feeAmount } = vendorPayoutAmount(payment.provider, payment.rawPayload, gross, walletFeeRate);
+  const { amount, feeAmount } = vendorPayoutAmount(payment.provider, payment.rawPayload, gross, walletFeeRate, Number(payment.amount));
   if (amount <= 0) return { skipped: "nothing to pay out" };
 
   let hasAccount = Boolean(payment.store.payoutBankCode && payment.store.payoutAccountNumber);

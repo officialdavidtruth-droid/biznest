@@ -12,7 +12,7 @@ vi.mock("@/lib/prisma", () => ({
 }));
 vi.mock("@/lib/access/assert-store-access", () => ({ assertStorePermission: vi.fn() }));
 vi.mock("@/lib/access/store-access", () => ({ getStoreAccessRole: vi.fn(async () => "OWNER"), canManageBillingAndStaff: () => true }));
-vi.mock("@/lib/payments/gateway", () => ({ chargeCustomer: vi.fn(), PLATFORM_BILLING_GATEWAY: "korapay", billingCallbackUrl: (kind: string, q?: Record<string, string>) => `https://test.example/api/payments/korapay/${kind}-callback${q ? "?" + new URLSearchParams(q) : ""}` }));
+vi.mock("@/lib/payments/gateway", () => ({ chargeCustomer: vi.fn(), getBillingGateway: async () => "KORAPAY", billingCallbackUrl: (kind: string, q?: Record<string, string>) => `https://test.example/api/payments/korapay/${kind}-callback${q ? "?" + new URLSearchParams(q) : ""}` }));
 vi.mock("@/lib/payments/pending", () => ({ createPendingPayment: vi.fn(), markPaymentFailed: vi.fn() }));
 vi.mock("next/cache", () => ({ revalidatePath: vi.fn() }));
 vi.mock("@/lib/plugins", () => ({ ensureSystemPlugins: vi.fn(), getPluginEntitlement: (...a: unknown[]) => entitlement(...a) }));

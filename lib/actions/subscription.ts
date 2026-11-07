@@ -1,8 +1,9 @@
 "use server";
 
+import { acquirePaymentInitLock, PAYMENT_ALREADY_STARTING } from "@/lib/payments/init-lock";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { billingCallbackUrl, chargeCustomer, PLATFORM_BILLING_GATEWAY } from "@/lib/payments/gateway";
+import { billingCallbackUrl, chargeCustomer, getBillingGateway } from "@/lib/payments/gateway";
 import { getFreeTrialSetting, getMarketingFreeTrialSetting } from "@/lib/actions/site-settings";
 import { buildSubscriptionReference } from "@/lib/payments/subscription-reference";
 import type { ActionResult } from "@/types/actions";
@@ -63,14 +64,13 @@ export async function initiatePlanUpgrade(
     return { success: true, data: { trialStarted: true } };
   }
 
+  if (!(await acquirePaymentInitLock(`sub:${store.id}`))) return { success: false, error: PAYMENT_ALREADY_STARTING };
   const reference = buildSubscriptionReference(store.id, plan.id);
-  await createPendingPayment({ storeId: store.id, purpose: "SUBSCRIPTION_UPGRADE", provider: PLATFORM_BILLING_GATEWAY, reference, amount: Number(plan.price), currency: "NGN" });
+  const billingGateway = await getBillingGateway();
+  await createPendingPayment({ storeId: store.id, purpose: "SUBSCRIPTION_UPGRADE", provider: billingGateway, reference, amount: Number(plan.price), currency: "NGN" });
 
-  // Platform-billing (BizNest plan payments) goes through the platform billing gateway (BILLING_GATEWAY),
-  // regardless of whichever gateway supaadmin has toggled "active" for
-  // store checkout — see the `gateway` override on chargeCustomer. This is
-  // deliberate: the two purposes must never share the same switch again.
-  const callbackUrl = billingCallbackUrl("subscription");
+  // Plan payments follow the gateway chosen in SupaAdmin, same as store checkout.
+  const callbackUrl = billingCallbackUrl("subscription", undefined, billingGateway);
 
   // No subaccount passed — this charge goes straight to the platform
   // account, unlike order payments which split to the vendor's subaccount.
@@ -79,7 +79,7 @@ export async function initiatePlanUpgrade(
     amountNaira: Number(plan.price),
     reference,
     callbackUrl,
-    gateway: PLATFORM_BILLING_GATEWAY,
+    gateway: billingGateway,
   });
 
   if (!charge.success) {

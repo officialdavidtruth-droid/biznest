@@ -13,6 +13,7 @@ import { toast } from "sonner";
 import { openKorapayInline } from "@/lib/checkout/korapay-inline";
 import { ShieldCheck, Lock, Truck, ChevronLeft, CreditCard, Wallet } from "lucide-react";
 import { formatNumber } from "@/lib/i18n/locale";
+import { grossUpForGatewayFee, type FeeConfig } from "@/lib/payments/customer-fee";
 
 declare global {
   interface Window {
@@ -43,7 +44,7 @@ async function loadExternalScript(src: string) {
 
 type Zone = { id: string; name: string; city: string | null; fee: unknown; estimatedMinutes: number | null };
 
-export function CheckoutClient({ slug, palette = DEFAULT_STORE_PALETTE }: { slug: string; palette?: StorePalette }) {
+export function CheckoutClient({ slug, palette = DEFAULT_STORE_PALETTE, feeConfig }: { slug: string; palette?: StorePalette; feeConfig?: FeeConfig }) {
   const ACCENT = palette.accent, INK = palette.ink, SURFACE = palette.surface, CARD = palette.card, CARD_ALT = palette.cardAlt, INVERSE = palette.inverse, INVERSE_INK = palette.inverseInk;
   const inputStyle = { color: INK };
   const { items, storeSlug, subtotal } = useCart();
@@ -86,6 +87,10 @@ export function CheckoutClient({ slug, palette = DEFAULT_STORE_PALETTE }: { slug
   const walletOffered = walletBalance !== null && currency === "NGN";
   const walletCovers = walletOffered && walletBalance >= total;
   const usingWallet = payWith === "wallet" && walletCovers;
+  // The customer covers the gateway's processing fee so the seller receives the full price. Paying from the wallet has none.
+  const gatewayFee = feeConfig && currency === "NGN" && !usingWallet
+    ? grossUpForGatewayFee(feeConfig.gateway, total, feeConfig.schedule, feeConfig.vatPercent, feeConfig.enabled)
+    : { totalNaira: total, feeNaira: 0 };
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -375,6 +380,19 @@ export function CheckoutClient({ slug, palette = DEFAULT_STORE_PALETTE }: { slug
                 <span className="text-base font-semibold">Total</span>
                 <span className="text-2xl font-extrabold leading-none">{currency} {formatNumber(total)}</span>
               </div>
+              {gatewayFee.feeNaira > 0 && (
+                <div className="flex flex-col gap-1.5 pt-1 text-sm">
+                  <div className="flex items-center justify-between">
+                    <span style={{ opacity: 0.8 }}>Payment processing fee</span>
+                    <span className="font-semibold">{currency} {formatNumber(gatewayFee.feeNaira)}</span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span style={{ opacity: 0.8 }}>You pay</span>
+                    <span className="font-bold">{currency} {formatNumber(gatewayFee.totalNaira)}</span>
+                  </div>
+                  <p className="text-[11px]" style={{ opacity: 0.6 }}>The fee goes to the payment provider, so the seller receives the full price.</p>
+                </div>
+              )}
               <ApproxPrice amount={total} currency={currency} />
 
               <button
@@ -384,7 +402,7 @@ export function CheckoutClient({ slug, palette = DEFAULT_STORE_PALETTE }: { slug
                 style={{ background: ACCENT, color: palette.onAccent, boxShadow: `0 8px 20px ${ACCENT}4d` }}
                 className="mt-1 flex items-center justify-center gap-2 rounded-xl py-3.5 text-sm font-semibold transition-transform hover:-translate-y-0.5 disabled:opacity-50 disabled:hover:translate-y-0"
               >
-                {isSubmitting ? (usingWallet ? "Paying from wallet…" : "Opening secure card checkout…") : usingWallet ? `Pay ${currency} ${formatNumber(total)} from wallet` : `Pay ${currency} ${formatNumber(total)}`}
+                {isSubmitting ? (usingWallet ? "Paying from wallet…" : "Opening secure card checkout…") : usingWallet ? `Pay ${currency} ${formatNumber(total)} from wallet` : `Pay ${currency} ${formatNumber(gatewayFee.totalNaira)}`}
               </button>
               <p className="flex items-center justify-center gap-2 text-center text-[11px] uppercase tracking-widest" style={{ opacity: 0.55 }}><CreditCard className="h-3.5 w-3.5" /> Visa · Mastercard · Verve · Secure card checkout</p>
             </div>

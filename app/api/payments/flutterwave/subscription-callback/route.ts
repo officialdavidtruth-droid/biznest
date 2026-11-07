@@ -1,11 +1,12 @@
 import { resolveSubscriptionId } from "@/lib/payments/subscription-reference";
 import { prisma } from "@/lib/prisma";
 import { verifyFlutterwaveTransaction } from "@/lib/payments/flutterwave";
+import { settleSubscriptionUpgrade } from "@/lib/payments/settle-subscription";
 import { checkRateLimit, getClientIp } from "@/lib/rate-limit";
 import { NextResponse } from "next/server";
-
 import { APP_URL } from "@/lib/constants/app-url";
 
+/** Browser return from Flutterwave after paying for a BizNest plan ("SUBUP-..."). Re-verified with Flutterwave; the webhook is the backstop. */
 export async function GET(req: Request) {
   const { searchParams } = new URL(req.url);
   const txRef = searchParams.get("tx_ref");
@@ -16,67 +17,33 @@ export async function GET(req: Request) {
     return NextResponse.redirect(`${APP_URL}/?payment=missing_reference`);
   }
 
-  const ip = getClientIp(req.headers);
-  const rate = await checkRateLimit(`payment-callback:${ip}`, 30, 60 * 1000);
-  if (!rate.allowed) {
-    return NextResponse.redirect(`${APP_URL}/?payment=rate_limited`);
-  }
+  const rate = await checkRateLimit(`payment-callback:${getClientIp(req.headers)}`, 30, 60 * 1000);
+  if (!rate.allowed) return NextResponse.redirect(`${APP_URL}/?payment=rate_limited`);
 
   // Reference shape: SUBUP-{storeId}-{subscriptionId}-{random}
-  const [, storeId, planToken] = txRef.split("-");
-  const subscriptionId = await resolveSubscriptionId(planToken);
-  const store = await prisma.store.findUnique({ where: { id: storeId } });
+  const [, storeId] = txRef.split("-");
+  const store = storeId ? await prisma.store.findUnique({ where: { id: storeId } }) : null;
   if (!store) return NextResponse.redirect(`${APP_URL}/?payment=store_not_found`);
+  const back = `${APP_URL}/store/${store.slug}/admin/subscription`;
 
   if (status === "cancelled") {
-    await prisma.payment.updateMany({
-      where: { reference: txRef, status: "PENDING" },
-      data: { status: "FAILED" },
-    });
-    return NextResponse.redirect(`${APP_URL}/store/${store.slug}/admin/subscription?payment=failed`);
+    await prisma.payment.updateMany({ where: { reference: txRef, status: "PENDING" }, data: { status: "FAILED" } });
+    return NextResponse.redirect(`${back}?payment=failed`);
   }
 
   const verification = await verifyFlutterwaveTransaction(transactionId);
-
-  // transaction_id and tx_ref are two independently-controllable query
-  // params on this GET redirect — verifying transaction_id alone proves
-  // *some* payment succeeded, not that it was payment for *this* tx_ref.
-  // Without this check, anyone with any successful Flutterwave
-  // transaction_id (e.g. from paying for the cheapest plan on their own
-  // store) could redirect here with a forged tx_ref encoding any other
-  // store's id and any plan's id and get it applied for free. Requiring
-  // the verified transaction's own tx_ref to equal the one in the URL
-  // ties the two together the way Paystack's reference-keyed verify
-  // endpoint already does implicitly.
-  const verifiedTxRefMatches = verification.data?.tx_ref === txRef;
-
-  if (
-    verification.status === "success" &&
-    verification.data?.status === "successful" &&
-    verifiedTxRefMatches
-  ) {
-    // Defense in depth: also confirm the verified amount actually covers
-    // the plan being granted, in case tx_ref/amount ever become
-    // decoupled some other way (e.g. a manually-replayed reference).
-    const plan = await prisma.subscription.findUnique({ where: { id: subscriptionId } });
-    const amountMatches = plan && Number(verification.data.amount) >= Number(plan.price);
-
-    if (plan && amountMatches) {
-      await prisma.store.update({ where: { id: store.id }, data: { subscriptionId, trialEndsAt: null } });
-      await prisma.payment.updateMany({
-        where: { reference: txRef, status: "PENDING" },
-        data: { status: "SUCCESSFUL", rawPayload: verification as object, verifiedAt: new Date() },
-      });
-      return NextResponse.redirect(`${APP_URL}/store/${store.slug}/admin/subscription?upgraded=1`);
-    }
+  // transaction_id and tx_ref are two independent query params: the verified transaction must be the one this tx_ref names,
+  // otherwise any successful payment id could be used to claim a plan for another store.
+  if (verification.status === "success" && verification.data?.status === "successful" && verification.data.tx_ref === txRef) {
+    const result = await settleSubscriptionUpgrade(txRef, Number(verification.data.amount ?? 0), verification as object);
+    if (result.outcome === "upgraded" || result.outcome === "already") return NextResponse.redirect(`${back}?upgraded=1`);
+    return NextResponse.redirect(`${back}?payment=${result.outcome === "review" ? "review" : "failed"}`);
   }
 
-  // Only an explicit gateway "failed" is a failure; pending/unknown stays PENDING.
+  // Only an explicit gateway "failed" is a failure; pending/unknown stays PENDING for the webhook and reconciliation job.
   if (verification.status === "success" && verification.data?.status === "failed") {
-    await prisma.payment.updateMany({
-      where: { reference: txRef, status: "PENDING" },
-      data: { status: "FAILED", rawPayload: verification as object },
-    });
+    await prisma.payment.updateMany({ where: { reference: txRef, status: "PENDING" }, data: { status: "FAILED", rawPayload: verification as object } });
+    return NextResponse.redirect(`${back}?payment=failed`);
   }
-  return NextResponse.redirect(`${APP_URL}/store/${store.slug}/admin/subscription?payment=failed`);
+  return NextResponse.redirect(`${back}?payment=pending`);
 }

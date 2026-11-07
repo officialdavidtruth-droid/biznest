@@ -8,9 +8,17 @@ import type { PaymentProvider } from "@prisma/client";
 import { logError } from "@/lib/observability/log";
 import { APP_URL } from "@/lib/constants/app-url";
 import { resolveStoreGateway, type StoreGatewayCredentials } from "@/lib/payments/store-gateway";
+import { grossUpForGatewayFee } from "@/lib/payments/customer-fee";
 
-/** Gateway for every platform-owned in-app payment: plan purchases/renewals, app purchases/renewals, wallet top-ups. Never follows the active-gateway toggle. */
-export { PLATFORM_BILLING_GATEWAY, billingCallbackUrl } from "@/lib/payments/billing-gateway";
+export { billingCallbackUrl } from "@/lib/payments/billing-gateway";
+
+/**
+ * Gateway for platform-owned in-app payments: plan purchases, app purchases, ads, wallet top-ups.
+ * It follows the same SupaAdmin switch as store checkout, so one click moves everything.
+ */
+export async function getBillingGateway(): Promise<PaymentGatewayId> {
+  return getActiveGateway();
+}
 
 /** Every gateway a platform charge can go through. SupaAdmin picks the active one. */
 export type PaymentGatewayId = "PAYSTACK" | "FLUTTERWAVE" | "KORAPAY";
@@ -52,6 +60,12 @@ type ChargeParams = {
    * and customer wallet funding must never pass this.
    */
   storeId?: string | null;
+  /**
+   * Add the gateway's transaction fee on top of `amountNaira`, so the vendor receives the full price.
+   * Always on for a store's own checkout (when `storeId` is given); pass true for other customer-paid flows
+   * such as wallet top-ups. BizNest's own charges (plans, apps, ads) leave it off.
+   */
+  coverGatewayFee?: boolean;
 };
 
 type ChargeResult =
@@ -59,6 +73,10 @@ type ChargeResult =
       success: true;
       authorizationUrl: string;
       gateway: PaymentGatewayId;
+      /** What the customer is actually charged (price + gateway fee). Equals the price when no fee is added. */
+      chargedNaira: number;
+      /** The gateway fee added on top of the price, 0 when none. */
+      gatewayFeeNaira: number;
       /** True when the charge was made with the store's own gateway keys. Persist it on the Payment row. */
       usesStoreGateway?: boolean;
       /** Always null now: charges are not split. Kept so existing callers that
@@ -99,6 +117,13 @@ export async function chargeCustomer(params: ChargeParams): Promise<ChargeResult
   // The platform's gateway accounts settle in NGN. Never charge another currency into them.
   if (currency !== "NGN" && !own) return { success: false, error: `Online payment in ${currency} needs the store's own Paystack or Flutterwave keys.` };
 
+  // Customer pays the gateway's fee: charge price + fee so the vendor is paid the full price.
+  // Only for naira (the fee schedules are naira) and only for customer-paid flows.
+  const addFee = currency === "NGN" && (params.coverGatewayFee === true || Boolean(params.storeId));
+  const fee = addFee ? grossUpForGatewayFee(gateway, params.amountNaira) : { totalNaira: params.amountNaira, feeNaira: 0 };
+  const chargeNaira = fee.totalNaira;
+  const feeFields = { chargedNaira: chargeNaira, gatewayFeeNaira: fee.feeNaira };
+
   if (gateway === "KORAPAY") {
     // In-page popup when the caller asked for it and a Kora public key is configured
     // (platform gateway only: stores can't bring their own Kora keys). The popup
@@ -110,19 +135,20 @@ export async function chargeCustomer(params: ChargeParams): Promise<ChargeResult
         authorizationUrl: params.callbackUrl,
         gateway: "KORAPAY",
         usesStoreGateway,
+        ...feeFields,
         splitSubaccountCode: null,
         inline: {
           provider: "KORAPAY",
           publicKey: koraPublicKey,
           email: params.email,
-          amountNaira: params.amountNaira,
+          amountNaira: chargeNaira,
           reference: params.reference,
         },
       };
     }
     const init = await initializeKorapayTransaction({
       email: params.email,
-      amountNaira: params.amountNaira,
+      amountNaira: chargeNaira,
       reference: params.reference,
       callbackUrl: params.callbackUrl,
       notificationUrl: `${APP_URL}/api/payments/korapay/webhook`,
@@ -137,6 +163,7 @@ export async function chargeCustomer(params: ChargeParams): Promise<ChargeResult
       authorizationUrl: init.data.checkout_url,
       gateway: "KORAPAY",
       usesStoreGateway,
+      ...feeFields,
       splitSubaccountCode: null,
     };
   }
@@ -149,19 +176,20 @@ export async function chargeCustomer(params: ChargeParams): Promise<ChargeResult
         authorizationUrl: params.callbackUrl,
         gateway: "FLUTTERWAVE",
         usesStoreGateway,
+        ...feeFields,
         splitSubaccountCode: null,
         inline: {
           provider: "FLUTTERWAVE",
           publicKey,
           email: params.email,
-          amountNaira: params.amountNaira,
+          amountNaira: chargeNaira,
           reference: params.reference,
         },
       };
     }
     const init = await initializeFlutterwaveTransaction({
       email: params.email,
-      amountNaira: params.amountNaira,
+      amountNaira: chargeNaira,
       reference: params.reference,
       callbackUrl: params.callbackUrl,
       customerName: params.customerName,
@@ -177,13 +205,14 @@ export async function chargeCustomer(params: ChargeParams): Promise<ChargeResult
       authorizationUrl: init.data.link,
       gateway: "FLUTTERWAVE",
       usesStoreGateway,
+      ...feeFields,
       splitSubaccountCode: null,
     };
   }
 
   const init = await initializePaystackTransaction({
     email: params.email,
-    amountKobo: Math.round(params.amountNaira * 100),
+    amountKobo: Math.round(chargeNaira * 100),
     reference: params.reference,
     callbackUrl: params.callbackUrl,
     secretKey: own?.secretKey,
@@ -199,6 +228,7 @@ export async function chargeCustomer(params: ChargeParams): Promise<ChargeResult
     authorizationUrl: init.data.authorization_url,
     gateway: "PAYSTACK",
     usesStoreGateway,
+    ...feeFields,
     splitSubaccountCode: null,
     ...(params.inline && publicKey
       ? {
@@ -206,7 +236,7 @@ export async function chargeCustomer(params: ChargeParams): Promise<ChargeResult
             provider: "PAYSTACK" as const,
             publicKey,
             email: params.email,
-            amountNaira: params.amountNaira,
+            amountNaira: chargeNaira,
             accessCode: init.data.access_code,
             reference: init.data.reference || params.reference,
           },

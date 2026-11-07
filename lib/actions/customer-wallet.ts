@@ -1,10 +1,11 @@
 "use server";
 
+import { acquirePaymentInitLock, PAYMENT_ALREADY_STARTING } from "@/lib/payments/init-lock";
 import { auth } from "@/lib/auth";
 import { getStoreCustomerSessionForStore } from "@/lib/store-customer-auth";
 import { requireStoreCustomer } from "@/lib/actions/store-customer";
 import { prisma } from "@/lib/prisma";
-import { chargeCustomer, paymentCallbackUrl, PLATFORM_BILLING_GATEWAY } from "@/lib/payments/gateway";
+import { chargeCustomer, getBillingGateway, paymentCallbackUrl } from "@/lib/payments/gateway";
 import { checkRateLimit, getClientIp } from "@/lib/rate-limit";
 import { safeEqualEmail } from "@/lib/safe-equal";
 import { headers } from "next/headers";
@@ -89,9 +90,10 @@ export async function startWalletFunding(
   });
   if (wallet.status !== "ACTIVE") return { success: false, error: "Your wallet is currently unavailable." };
 
+  if (!(await acquirePaymentInitLock(`wal:${wallet.id}`))) return { success: false, error: PAYMENT_ALREADY_STARTING };
   const reference = `WAL-${wallet.id}-${shortToken()}`;
-  // Wallet top-ups are platform-owned money: they follow the platform billing gateway (BILLING_GATEWAY), never the store-checkout toggle.
-  const gateway = PLATFORM_BILLING_GATEWAY;
+  // Wallet top-ups are platform-owned money: they follow the gateway chosen in SupaAdmin.
+  const gateway = await getBillingGateway();
   const callbackUrl = paymentCallbackUrl(gateway);
 
   // Persist the pending charge before calling the provider. If the provider
@@ -119,6 +121,8 @@ export async function startWalletFunding(
     gateway,
     // The wallet form only follows authorizationUrl (no popup handling), so ask for the hosted redirect.
     inline: false,
+    // The customer covers the gateway fee, so their wallet is credited the full amount they typed.
+    coverGatewayFee: true,
   });
   if (!charge.success) {
     await prisma.payment.updateMany({ where: { reference, status: "PENDING" }, data: { status: "FAILED" } });

@@ -23,7 +23,7 @@ vi.mock("@/lib/browse-viewer", () => ({ getViewer: m.getViewer }));
 vi.mock("@/lib/access/assert-store-access", () => ({ assertStorePermission: m.assertStorePermission }));
 vi.mock("@/lib/auth", () => ({ auth: async () => ({ user: { email: "owner@example.com" } }) }));
 vi.mock("@/lib/payments/pending", () => ({ createPendingPayment: m.pending, markPaymentFailed: m.failed }));
-vi.mock("@/lib/payments/gateway", () => ({ chargeCustomer: m.charge, PLATFORM_BILLING_GATEWAY: "KORAPAY", billingCallbackUrl: (kind: string, q?: Record<string, string>) => `https://test.example/api/payments/korapay/${kind}-callback${q ? "?" + new URLSearchParams(q) : ""}` }));
+vi.mock("@/lib/payments/gateway", () => ({ chargeCustomer: m.charge, getBillingGateway: async () => "KORAPAY", billingCallbackUrl: (kind: string, q?: Record<string, string>) => `https://test.example/api/payments/korapay/${kind}-callback${q ? "?" + new URLSearchParams(q) : ""}` }));
 vi.mock("@/lib/constants/app-url", () => ({ APP_URL: "https://app.example.com" }));
 vi.mock("nanoid", () => ({ nanoid: () => "nonce123" }));
 
