@@ -197,7 +197,11 @@ export function toBio(description: unknown, max = BIO_MAX): string {
 
 // ------------------------------------------------------------- composer: stickers and hashtags
 
-export type Sticker = { e: string; x: number; y: number; s: number };
+/** An emoji, or (k = "text") a short line of text laid over the cover. x/y are percentages, s a size multiplier. */
+export type Sticker = { e: string; x: number; y: number; s: number; k?: "text" };
+export const BROWSE_TEXT_MAX = 40;
+export const BROWSE_MAX_TAGS = 10;
+export const BROWSE_LOCATION_MAX = 60;
 export const BROWSE_MAX_STICKERS = 8;
 export const STICKER_CHOICES = ["🔥", "😍", "✨", "🎉", "💯", "❤️", "👏", "🛍️", "🆕", "💸", "🙌", "😂", "📍", "⭐", "🎁", "👀"];
 export const HASHTAG_SUGGESTIONS = ["NewArrival", "Promo", "MadeInNigeria", "ShopLocal", "Lagos", "Abuja", "BackInStock", "LimitedOffer"];
@@ -210,11 +214,17 @@ export function sanitizeStickers(input: unknown): Sticker[] {
   const out: Sticker[] = [];
   for (const raw of input) {
     if (out.length >= BROWSE_MAX_STICKERS) break;
-    const r = raw as { e?: unknown; x?: unknown; y?: unknown; s?: unknown } | null;
+    const r = raw as { e?: unknown; x?: unknown; y?: unknown; s?: unknown; k?: unknown } | null;
     if (!r || typeof r.e !== "string") continue;
+    const pos = { x: num(r.x, 0, 100, 50), y: num(r.y, 0, 100, 50), s: num(r.s, 0.5, 4, 1) };
+    if (r.k === "text") {
+      const t = r.e.replace(/[<>]/g, "").replace(/\s+/g, " ").trim().slice(0, BROWSE_TEXT_MAX);
+      if (t && !containsLink(t)) out.push({ e: t, ...pos, k: "text" });
+      continue;
+    }
     const e = [...r.e.trim()].slice(0, 6).join("");
     if (!e || /[A-Za-z0-9<>&"'\\]/.test(e)) continue;
-    out.push({ e, x: num(r.x, 0, 100, 50), y: num(r.y, 0, 100, 50), s: num(r.s, 0.5, 4, 1) });
+    out.push({ e, ...pos });
   }
   return out;
 }
@@ -226,4 +236,36 @@ export function splitHashtags(text: string): Array<{ text: string; tag: boolean 
 }
 export function extractHashtags(text: string): string[] {
   return [...new Set((text.match(HASHTAG_RE) ?? []).map((t) => t.slice(1).toLowerCase()))];
+}
+
+
+/** "Ada Obi" -> "Ada O." so a tagged customer is recognisable to friends without publishing their full name. */
+export function shortPersonName(name: string | null | undefined): string {
+  const parts = (name ?? "").trim().split(/\s+/).filter(Boolean);
+  if (parts.length === 0) return "A customer";
+  if (parts.length === 1) return parts[0].slice(0, 20);
+  return `${parts[0].slice(0, 20)} ${[...parts[parts.length - 1]][0].toUpperCase()}.`;
+}
+
+export type TagInput = { kind: "store" | "user"; id: string };
+export function sanitizeTags(input: unknown): TagInput[] {
+  if (!Array.isArray(input)) return [];
+  const seen = new Set<string>();
+  const out: TagInput[] = [];
+  for (const raw of input) {
+    const r = raw as { kind?: unknown; id?: unknown } | null;
+    if (!r || (r.kind !== "store" && r.kind !== "user") || typeof r.id !== "string" || !/^[A-Za-z0-9_-]{8,40}$/.test(r.id)) continue;
+    const key = `${r.kind}:${r.id}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    out.push({ kind: r.kind, id: r.id });
+    if (out.length >= BROWSE_MAX_TAGS) break;
+  }
+  return out;
+}
+
+export function sanitizeLocation(v: unknown): string | null {
+  if (typeof v !== "string") return null;
+  const t = v.replace(/[<>]/g, "").replace(/\s+/g, " ").trim().slice(0, BROWSE_LOCATION_MAX);
+  return t && !containsLink(t) ? t : null;
 }

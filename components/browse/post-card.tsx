@@ -47,13 +47,34 @@ function StickerLayer({ stickers }: { stickers: Sticker[] }) {
   if (stickers.length === 0) return null;
   return (
     <div className="pointer-events-none absolute inset-0 overflow-hidden" style={{ containerType: "inline-size" }} aria-hidden>
-      {stickers.map((st, i) => <span key={i} className="absolute -translate-x-1/2 -translate-y-1/2" style={{ left: `${st.x}%`, top: `${st.y}%`, fontSize: `${st.s * 9.4}cqw`, lineHeight: 1 }}>{st.e}</span>)}
+      {stickers.map((st, i) => <span key={i} className={`absolute -translate-x-1/2 -translate-y-1/2 ${st.k === "text" ? "whitespace-nowrap rounded-[0.4em] bg-black/55 px-[0.4em] font-bold text-white" : ""}`} style={{ left: `${st.x}%`, top: `${st.y}%`, fontSize: `${st.s * (st.k === "text" ? 5.5 : 9.4)}cqw`, lineHeight: st.k === "text" ? 1.5 : 1 }}>{st.e}</span>)}
     </div>
   );
 }
 
 function CaptionText({ text }: { text: string }) {
   return <>{splitHashtags(text).map((p, i) => (p.tag ? <Link key={i} href={`/browse/tag/${encodeURIComponent(p.text.slice(1).toLowerCase())}`} className="font-medium text-[#1d6b3a] hover:underline">{p.text}</Link> : <span key={i}>{p.text}</span>))}</>;
+}
+
+function PostMeta({ post }: { post: BrowsePostView }) {
+  if (!post.location && !post.aiGenerated && post.tags.length === 0) return null;
+  return (
+    <div className="space-y-1 px-4 pb-3 text-[13px] text-[#14301A]/70">
+      {(post.location || post.aiGenerated) && (
+        <p>{post.location && <span>📍 {post.location}</span>}{post.location && post.aiGenerated ? " · " : ""}{post.aiGenerated && <span>AI-generated</span>}</p>
+      )}
+      {post.tags.length > 0 && (
+        <p>With{" "}
+          {post.tags.map((t, i) => (
+            <span key={`${t.kind}${t.name}${i}`}>
+              {i > 0 && ", "}
+              {t.slug ? <Link href={storeBrowsePath(t.slug)} className="font-semibold text-[#14301A] hover:underline">{t.name}</Link> : <span className="font-semibold text-[#14301A]">{t.name}</span>}
+            </span>
+          ))}
+        </p>
+      )}
+    </div>
+  );
 }
 
 function FeedVideo({ post }: { post: BrowsePostView }) {
@@ -271,6 +292,7 @@ export function PostCard({ post: initial, openComments = false }: { post: Browse
         </div>
       )}
       {!post.caption && <div className="pb-3" />}
+      <PostMeta post={post} />
 
       {showComments && <Comments post={post} onCount={(n) => setPost((p) => ({ ...p, commentCount: n }))} />}
     </article>

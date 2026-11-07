@@ -5,7 +5,7 @@ import { prisma } from "@/lib/prisma";
 import { assertStorePermission } from "@/lib/access/assert-store-access";
 import { isPlatformStaff } from "@/lib/admin-guard";
 import { notifyFollowersOfPost, notifyFollowersOfStory } from "@/lib/browse-notify";
-import { sanitizeStickers, BROWSE_DAILY_POST_LIMIT, OFFICIAL_SLUG, BROWSE_MAX_IMAGES, STORY_DAILY_LIMIT, defaultProductCaption, sanitizePost, sanitizeStory, storyExpiry } from "@/lib/browse";
+import { sanitizeLocation, sanitizeTags, sanitizeStickers, BROWSE_DAILY_POST_LIMIT, OFFICIAL_SLUG, BROWSE_MAX_IMAGES, STORY_DAILY_LIMIT, defaultProductCaption, sanitizePost, sanitizeStory, storyExpiry } from "@/lib/browse";
 import { loadBrowseComments, type BrowseCommentView } from "@/lib/browse-data";
 import { isBrowseVideoUrl, videoFolder, videoPosterUrl } from "@/lib/browse-video";
 import type { ActionResult } from "@/types/actions";
@@ -46,7 +46,7 @@ async function tellFollowersOfStory(slug: string, storeId: string) {
 const refresh = (slug: string) => { revalidatePath(`/store/${slug}/admin/browse`); revalidatePath("/supaadmin/official"); revalidatePath("/browse"); };
 
 /** A free-form update: text and/or up to four photos, optionally tagging one of the store's products. */
-export async function createBrowsePost(slug: string, input: { caption?: string; images?: string[]; videoUrl?: string | null; coverTime?: number; stickers?: unknown; tagKind?: "PRODUCT" | "SERVICE"; productId?: string | null }): Promise<ActionResult<{ id: string }>> {
+export async function createBrowsePost(slug: string, input: { caption?: string; images?: string[]; videoUrl?: string | null; coverTime?: number; stickers?: unknown; tagKind?: "PRODUCT" | "SERVICE"; productId?: string | null; tags?: unknown; location?: string | null; aiGenerated?: boolean }): Promise<ActionResult<{ id: string }>> {
   const a = await access(slug);
   if (!a.success) return { success: false, error: a.error };
   const parsed = sanitizePost(input);
@@ -71,16 +71,41 @@ export async function createBrowsePost(slug: string, input: { caption?: string; 
     if (!product) return { success: false, error: `That ${tagKind === "SERVICE" ? "service" : "product"} isn't available to tag.` };
   }
   const stickers = sanitizeStickers(input.stickers);
+
+  // People tags: another visible business, or one of this store's own customers. Anything else is dropped.
+  const wanted = sanitizeTags(input.tags);
+  const storeIds = wanted.filter((t) => t.kind === "store").map((t) => t.id);
+  const userIds = wanted.filter((t) => t.kind === "user").map((t) => t.id);
+  const [tagStores, tagUsers] = await Promise.all([
+    storeIds.length ? prisma.store.findMany({ where: { id: { in: storeIds, not: a.store.id }, status: "ACTIVE", business: { is: { searchVisible: true } } }, select: { id: true, name: true, business: { select: { userId: true } } } }) : [],
+    userIds.length && slug !== OFFICIAL_SLUG ? prisma.user.findMany({ where: { id: { in: userIds }, customerScopeStoreId: a.store.id }, select: { id: true } }) : [],
+  ]);
   const post = await prisma.browsePost.create({
     data: {
-      storeId: a.store.id, kind: product ? "PRODUCT" : "UPDATE", caption: parsed.caption, images, videoUrl, tagKind, ...(stickers.length ? { stickers } : {}),
+      storeId: a.store.id, kind: product ? "PRODUCT" : "UPDATE", caption: parsed.caption, images, videoUrl, tagKind, location: sanitizeLocation(input.location), aiGenerated: input.aiGenerated === true, ...(stickers.length ? { stickers } : {}),
+      tags: { create: [...tagStores.map((t: { id: string }) => ({ tagStoreId: t.id })), ...tagUsers.map((u: { id: string }) => ({ tagUserId: u.id }))] },
       ...(product ? { productId: product.id, productName: product.name, productPrice: product.price as number, productCurrency: product.currency } : {}),
     },
     select: { id: true },
   });
   refresh(slug);
   await tellFollowersOfPost(slug, a.store.id, post.id, parsed.caption, product?.name);
+  await tellTagged(a.store.id, post.id, tagStores, tagUsers);
   return { success: true, data: { id: post.id } };
+}
+
+/** Lets tagged businesses and customers know. Best effort: a failed alert never fails the post. */
+async function tellTagged(storeId: string, postId: string, stores: Array<{ business: { userId: string } | null }>, users: Array<{ id: string }>) {
+  try {
+    const me = await prisma.store.findUnique({ where: { id: storeId }, select: { name: true } });
+    if (!me) return;
+    const url = `/browse/p/${postId}`;
+    const rows = [
+      ...stores.flatMap((t) => (t.business ? [{ userId: t.business.userId, type: "BROWSE_TAG", title: `${me.name} tagged your business`, body: "Tap to see the post.", url }] : [])),
+      ...users.map((u) => ({ userId: u.id, type: "BROWSE_TAG", title: `${me.name} tagged you in a post`, body: "Tap to see the post.", url })),
+    ];
+    if (rows.length) await prisma.notification.createMany({ data: rows });
+  } catch { /* best effort */ }
 }
 
 /** One tap from the products list: posts the product's photos, name and price. */

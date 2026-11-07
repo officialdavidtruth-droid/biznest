@@ -1,5 +1,5 @@
 import { prisma } from "@/lib/prisma";
-import { sanitizeStickers, type Sticker, BROWSE_PAGE_SIZE, decodeCursor, encodeCursor, isMogulStore, orderRings, popularityScore, toBio } from "@/lib/browse";
+import { sanitizeStickers, shortPersonName, type Sticker, BROWSE_PAGE_SIZE, decodeCursor, encodeCursor, isMogulStore, orderRings, popularityScore, toBio } from "@/lib/browse";
 
 export type BrowsePostView = {
   id: string;
@@ -8,6 +8,9 @@ export type BrowsePostView = {
   images: string[];
   videoUrl: string | null;
   stickers: Sticker[];
+  location: string | null;
+  aiGenerated: boolean;
+  tags: Array<{ kind: "store" | "user"; name: string; slug: string | null }>;
   createdAt: string;
   likeCount: number;
   commentCount: number;
@@ -22,6 +25,8 @@ export type FeedSort = "latest" | "popular";
 export type FeedQuery = { sort?: FeedSort; category?: string | null; cursor?: string | null; viewerKey?: string | null; limit?: number; storeIds?: string[] };
 export type FeedPage = { posts: BrowsePostView[]; nextCursor: string | null };
 
+const tagsInclude = { select: { tagStore: { select: { name: true, slug: true } }, tagUser: { select: { name: true } } }, take: 10 } as const;
+
 const storeSelect = {
   slug: true, name: true, logoUrl: true,
   business: { select: { category: true, city: true, verificationBadge: true } },
@@ -30,14 +35,16 @@ const storeSelect = {
 } as const;
 
 type Row = {
-  id: string; kind: string; caption: string; images: string[]; videoUrl?: string | null; stickers?: unknown; tagKind?: string; createdAt: Date; likeCount: number; commentCount: number;
+  id: string; kind: string; caption: string; images: string[]; videoUrl?: string | null; stickers?: unknown; tagKind?: string; location?: string | null; aiGenerated?: boolean; tags?: Array<{ tagStore: { name: string; slug: string } | null; tagUser: { name: string | null } | null }>; createdAt: Date; likeCount: number; commentCount: number;
   productId: string | null; productName: string | null; productPrice: unknown; productCurrency: string | null;
   store: { slug: string; name: string; logoUrl: string | null; business: { category: string; city: string; verificationBadge: boolean } | null; subscription?: { name: string } | null; subscriptionPastDueSince?: Date | null };
 };
 
 export function toPostView(r: Row, liked: boolean): BrowsePostView {
   return {
-    id: r.id, kind: r.kind, caption: r.caption, images: r.images, videoUrl: r.videoUrl ?? null, stickers: sanitizeStickers(r.stickers), createdAt: r.createdAt.toISOString(),
+    id: r.id, kind: r.kind, caption: r.caption, images: r.images, videoUrl: r.videoUrl ?? null, stickers: sanitizeStickers(r.stickers), location: r.location ?? null, aiGenerated: !!r.aiGenerated,
+    tags: (r.tags ?? []).flatMap((t): BrowsePostView["tags"] => (t.tagStore ? [{ kind: "store" as const, name: t.tagStore.name, slug: t.tagStore.slug }] : t.tagUser ? [{ kind: "user" as const, name: shortPersonName(t.tagUser.name), slug: null }] : [])),
+    createdAt: r.createdAt.toISOString(),
     likeCount: r.likeCount, commentCount: r.commentCount, liked,
     product: r.productId && r.productName ? { id: r.productId, name: r.productName, price: r.productPrice == null ? null : Number(r.productPrice), currency: r.productCurrency ?? "NGN", kind: r.tagKind === "SERVICE" ? "SERVICE" : "PRODUCT" } : null,
     store: { slug: r.store.slug, name: r.store.name, logoUrl: r.store.logoUrl, category: r.store.business?.category ?? null, city: r.store.business?.city ?? null, verified: !!r.store.business?.verificationBadge, mogul: isMogulStore(r.store) },
@@ -70,7 +77,7 @@ export async function loadBrowseFeed(q: FeedQuery = {}): Promise<FeedPage> {
       where: { ...where, createdAt: { gte: since } },
       orderBy: { createdAt: "desc" },
       take: 120,
-      include: { store: { select: storeSelect } },
+      include: { store: { select: storeSelect }, tags: tagsInclude },
     });
     const now = new Date();
     const ranked = pool.sort((a, b) => popularityScore(b, now) - popularityScore(a, now));
@@ -84,7 +91,7 @@ export async function loadBrowseFeed(q: FeedQuery = {}): Promise<FeedPage> {
     where: cur ? { ...where, OR: [{ createdAt: { lt: cur.createdAt } }, { createdAt: cur.createdAt, id: { lt: cur.id } }] } : where,
     orderBy: [{ createdAt: "desc" }, { id: "desc" }],
     take: limit + 1,
-    include: { store: { select: storeSelect } },
+    include: { store: { select: storeSelect }, tags: tagsInclude },
   });
   const page = rows.slice(0, limit);
   const liked = await likedSet(page.map((p) => p.id), q.viewerKey);
@@ -120,7 +127,7 @@ export async function loadFollowedShops(viewerKey: string, limit = 24): Promise<
 }
 
 export async function loadBrowsePost(id: string, viewerKey?: string | null): Promise<BrowsePostView | null> {
-  const row = await prisma.browsePost.findFirst({ where: { id, ...publicPostWhere() }, include: { store: { select: storeSelect } } });
+  const row = await prisma.browsePost.findFirst({ where: { id, ...publicPostWhere() }, include: { store: { select: storeSelect }, tags: tagsInclude } });
   if (!row) return null;
   const liked = await likedSet([row.id], viewerKey);
   return toPostView(row as unknown as Row, liked.has(row.id));
@@ -344,7 +351,7 @@ export async function loadHashtagPosts(tag: string, viewerKey?: string | null, l
   if (clean.length < 2) return [];
   const rows = await prisma.browsePost.findMany({
     where: { ...publicPostWhere(), caption: { contains: `#${clean}`, mode: "insensitive" } },
-    orderBy: { createdAt: "desc" }, take: limit * 3, include: { store: { select: storeSelect } },
+    orderBy: { createdAt: "desc" }, take: limit * 3, include: { store: { select: storeSelect }, tags: tagsInclude },
   });
   const exact = new RegExp(`#${clean}(?![\\p{L}\\p{N}_])`, "iu");
   const hits = rows.filter((r: { caption: string }) => exact.test(r.caption)).slice(0, limit);

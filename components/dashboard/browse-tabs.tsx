@@ -8,7 +8,7 @@ import { BrowseFeed } from "@/components/browse/browse-feed";
 import { StoryRings } from "@/components/browse/story-rings";
 
 /** What a business owner is told about their Browse presence. */
-export const ACTIVITY_TYPES = ["BROWSE_COMMENT", "BROWSE_LIKE", "BROWSE_FOLLOW", "BROWSE_REMOVED"];
+export const ACTIVITY_TYPES = ["BROWSE_COMMENT", "BROWSE_LIKE", "BROWSE_FOLLOW", "BROWSE_REMOVED", "BROWSE_TAG"];
 
 export async function FeedTab({ base, sort }: { base: string; sort: FeedSort }) {
   const viewer = await getViewer();

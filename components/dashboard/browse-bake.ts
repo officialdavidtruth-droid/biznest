@@ -14,8 +14,20 @@ function drawStickers(ctx: CanvasRenderingContext2D, stickers: Sticker[]) {
   ctx.textAlign = "center";
   ctx.textBaseline = "middle";
   for (const st of stickers) {
-    ctx.font = `${Math.round(st.s * 0.094 * COVER_W)}px ${EMOJI_FONT}`;
-    ctx.fillText(st.e, (st.x / 100) * COVER_W, (st.y / 100) * COVER_H);
+    const x = (st.x / 100) * COVER_W, y = (st.y / 100) * COVER_H;
+    if (st.k === "text") {
+      const size = Math.round(st.s * 0.055 * COVER_W);
+      ctx.font = `700 ${size}px system-ui, "Segoe UI", Roboto, sans-serif`;
+      const w = ctx.measureText(st.e).width + size * 0.8, h = size * 1.5;
+      ctx.fillStyle = "rgba(0,0,0,0.55)";
+      ctx.beginPath(); ctx.roundRect(x - w / 2, y - h / 2, w, h, size * 0.4); ctx.fill();
+      ctx.fillStyle = "#fff";
+      ctx.fillText(st.e, x, y);
+    } else {
+      ctx.fillStyle = "#fff";
+      ctx.font = `${Math.round(st.s * 0.094 * COVER_W)}px ${EMOJI_FONT}`;
+      ctx.fillText(st.e, x, y);
+    }
   }
 }
 
@@ -53,4 +65,25 @@ export async function bakeVideoCover(videoUrl: string, time: number, stickers: S
   ctx.drawImage(v, (COVER_W - w) / 2, (COVER_H - h) / 2, w, h);
   drawStickers(ctx, stickers);
   return new File([await toBlob(canvas)], "cover.jpg", { type: "image/jpeg" });
+}
+
+/** Small preview frames spread across a stretch of a video, for the cover picker's filmstrip. */
+export async function videoFrames(videoUrl: string, start: number, end: number, count = 8): Promise<string[]> {
+  const v = document.createElement("video");
+  v.muted = true; v.preload = "auto"; v.playsInline = true; v.src = videoUrl;
+  await new Promise<void>((res, rej) => { v.onloadeddata = () => res(); v.onerror = () => rej(new Error("Couldn't read the video.")); });
+  const out: string[] = [];
+  const c = document.createElement("canvas");
+  c.width = 72; c.height = 96;
+  const ctx = c.getContext("2d");
+  if (!ctx) return out;
+  const scale = Math.min(72 / v.videoWidth, 96 / v.videoHeight);
+  for (let i = 0; i < count; i++) {
+    const t = start + ((end - start) * i) / Math.max(1, count - 1);
+    await new Promise<void>((res) => { v.onseeked = () => res(); v.currentTime = Math.min(t, Math.max(0, v.duration - 0.05)); });
+    ctx.fillStyle = "#000"; ctx.fillRect(0, 0, 72, 96);
+    ctx.drawImage(v, (72 - v.videoWidth * scale) / 2, (96 - v.videoHeight * scale) / 2, v.videoWidth * scale, v.videoHeight * scale);
+    out.push(c.toDataURL("image/jpeg", 0.6));
+  }
+  return out;
 }

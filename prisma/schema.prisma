@@ -49,6 +49,7 @@ model User {
   // any account of the same email at any other store.
   customerScopeStoreId String?
   customerScopeStore   Store?  @relation("UserCustomerScope", fields: [customerScopeStoreId], references: [id], onDelete: Cascade)
+  browseTaggedIn       BrowsePostTag[] @relation("BrowseTaggedUser")
   // Splits the scope-null (platform) identity space in two: false = a main
   // BizNest account (store owner, staff, platform admin, or a pending
   // signup awaiting business verification -- see registerUser in
@@ -1108,6 +1109,7 @@ model Store {
   jobCards       JobCard[]
   browsePosts    BrowsePost[]
   browseStats    BrowseStat[]
+  browseTagged   BrowsePostTag[] @relation("BrowseTaggedStore")
   browseStories  BrowseStory[]
   adCampaigns    AdCampaign[]
   browseFollows  BrowseFollow[]
@@ -4683,6 +4685,8 @@ model BrowsePost {
   stickers        Json?
   // What productId points at: PRODUCT or SERVICE.
   tagKind         String   @default("PRODUCT")
+  location        String?
+  aiGenerated     Boolean  @default(false)
   // Snapshot of the shared product (no FK: the post stays readable if the product is later deleted or edited).
   productId       String?
   productName     String?
@@ -4698,10 +4702,28 @@ model BrowsePost {
   likes    BrowseLike[]
   comments BrowseComment[]
   reports  BrowseReport[]
+  tags     BrowsePostTag[]
 
   @@index([status, createdAt])
   @@index([status, likeCount])
   @@index([storeId, createdAt])
+}
+
+/// A business or one of the posting store's own customers tagged in a post. Exactly one of tagStoreId / tagUserId is set.
+model BrowsePostTag {
+  id         String     @id @default(cuid())
+  postId     String
+  post       BrowsePost @relation(fields: [postId], references: [id], onDelete: Cascade)
+  tagStoreId String?
+  tagStore   Store?     @relation("BrowseTaggedStore", fields: [tagStoreId], references: [id], onDelete: Cascade)
+  tagUserId  String?
+  tagUser    User?      @relation("BrowseTaggedUser", fields: [tagUserId], references: [id], onDelete: Cascade)
+  createdAt  DateTime   @default(now())
+
+  @@unique([postId, tagStoreId])
+  @@unique([postId, tagUserId])
+  @@index([tagStoreId])
+  @@index([tagUserId])
 }
 
 /// viewerKey: "u:<userId>" for a signed-in BizNest account, otherwise "d:<random device id>".

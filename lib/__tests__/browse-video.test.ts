@@ -69,3 +69,26 @@ describe("composer helpers", () => {
     expect(splitHashtags("Hi #Promo now").map((p) => p.tag)).toEqual([false, true, false]);
   });
 });
+
+import { sanitizeLocation, sanitizeTags, shortPersonName } from "@/lib/browse";
+
+describe("text items and tags", () => {
+  it("keeps short text items and rejects links", () => {
+    const r = sanitizeStickers([{ e: "  50% off today  ", x: 10, y: 20, s: 1.5, k: "text" }, { e: "visit shop.com", x: 1, y: 1, s: 1, k: "text" }, { e: "<b>hi</b>", x: 1, y: 1, s: 1, k: "text" }]);
+    expect(r[0]).toEqual({ e: "50% off today", x: 10, y: 20, s: 1.5, k: "text" });
+    expect(r.length).toBe(2);
+    expect(r[1].e).toBe("bhi/b");
+  });
+  it("shortens customer names", () => {
+    expect(shortPersonName("Ada Obi")).toBe("Ada O.");
+    expect(shortPersonName("Ngozi")).toBe("Ngozi");
+    expect(shortPersonName(null)).toBe("A customer");
+  });
+  it("cleans tag lists and locations", () => {
+    const t = sanitizeTags([{ kind: "store", id: "abcdefgh12" }, { kind: "store", id: "abcdefgh12" }, { kind: "user", id: "short" }, { kind: "x", id: "abcdefgh12" }, "no"]);
+    expect(t).toEqual([{ kind: "store", id: "abcdefgh12" }]);
+    expect(sanitizeTags(Array.from({ length: 30 }, (_, i) => ({ kind: "user", id: `user_id_${i}_abc` }))).length).toBe(10);
+    expect(sanitizeLocation("  Lekki   Phase 1 ")).toBe("Lekki Phase 1");
+    expect(sanitizeLocation("see www.spam.com")).toBeNull();
+  });
+});
