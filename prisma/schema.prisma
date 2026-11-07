@@ -1090,6 +1090,7 @@ model Store {
   articles        Article[]
   autoVehicles AutoVehicle[]
   photoShoots PhotoShoot[]
+  portfolioAlbums PortfolioAlbum[]
   tailoringJobs TailoringJob[]
   rentCharges RentCharge[]
   maintenanceRequests MaintenanceRequest[]
@@ -3635,6 +3636,37 @@ model PhotoShoot {
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
   @@index([storeId, status, shootDate])
+}
+
+// A photographer's (or any creative's) public portfolio: albums such as "Weddings" or "Portraits", each holding images.
+// Images are display copies hosted on Cloudinary. Final client deliveries stay as pasted links (JobCard.deliverableUrl).
+model PortfolioAlbum {
+  id          String   @id @default(cuid())
+  storeId     String
+  store       Store    @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  title       String
+  slug        String
+  category    String?
+  description String?
+  coverUrl    String?
+  isPublished Boolean  @default(true)
+  sortOrder   Int      @default(0)
+  images      PortfolioImage[]
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  @@unique([storeId, slug])
+  @@index([storeId, isPublished, sortOrder])
+}
+
+model PortfolioImage {
+  id        String   @id @default(cuid())
+  albumId   String
+  album     PortfolioAlbum @relation(fields: [albumId], references: [id], onDelete: Cascade)
+  url       String
+  caption   String?
+  sortOrder Int      @default(0)
+  createdAt DateTime @default(now())
+  @@index([albumId, sortOrder])
 }
 
 model TailoringJob {

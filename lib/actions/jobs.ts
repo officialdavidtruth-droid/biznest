@@ -88,7 +88,8 @@ export async function requestEstimateApproval(slug: string, jobId: string): Prom
   if (job.items.length === 0) return fail("Add at least one item to the estimate first.");
   await prisma.jobCard.update({ where: { id: job.id }, data: { estimateStatus: "PENDING", estimateRespondedAt: null } });
   await prisma.jobUpdate.create({ data: { jobId: job.id, message: "Estimate sent for your approval." } });
-  void emailJobUpdate(job.id, "ESTIMATE");
+  // Awaited: un-awaited sends are dropped when the serverless invocation returns. The helper never throws.
+  await emailJobUpdate(job.id, "ESTIMATE");
   refresh(slug);
   return { success: true, data: undefined };
 }
@@ -103,7 +104,7 @@ export async function setJobStage(slug: string, jobId: string, stage: string, me
   const done = stage === lastStage(job.niche);
   await prisma.jobCard.update({ where: { id: job.id }, data: { stage, ...(done ? { status: "DONE", completedAt: new Date() } : {}) } });
   await prisma.jobUpdate.create({ data: { jobId: job.id, stage, message: message?.trim().slice(0, 500) || "", imageUrl: img } });
-  void emailJobUpdate(job.id, "STAGE", message?.trim());
+  await emailJobUpdate(job.id, "STAGE", message?.trim());
   refresh(slug);
   return { success: true, data: undefined };
 }
@@ -116,7 +117,7 @@ export async function postJobUpdate(slug: string, jobId: string, message: string
   if (imageUrl?.trim() && !img) return fail("The photo link must start with https://");
   if (!text && !img) return fail("Write a message or add a photo link.");
   await prisma.jobUpdate.create({ data: { jobId: job.id, message: text, imageUrl: img } });
-  void emailJobUpdate(job.id, "NOTE", text);
+  await emailJobUpdate(job.id, "NOTE", text);
   refresh(slug);
   return { success: true, data: undefined };
 }

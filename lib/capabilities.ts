@@ -409,11 +409,11 @@ export const BUSINESS_TYPES: Record<string, BusinessTypeConfig> = {
     navigation: navigationFor("Photography", ["portfolio", "gallery", "packages", "bookings"]),
     homepageSections: homepageFor("Photography", ["portfolio", "gallery", "packages", "bookings"]),
     quickActions: [
-      { label: "Upload to your portfolio", href: "/products/new" },
+      { label: "Upload to your portfolio", href: "/portfolio" },
       { label: "Set up a package", href: "/products/new" },
       { label: "Manage bookings", href: "/orders" },
     ],
-    extraNavItems: [{ label: "Job cards", href: "/jobs", icon: Briefcase }, { label: "Bookings", href: "/calendar", icon: CalendarClock }],
+    extraNavItems: [{ label: "Portfolio", href: "/portfolio", icon: Camera }, { label: "Job cards", href: "/jobs", icon: Briefcase }, { label: "Bookings", href: "/calendar", icon: CalendarClock }],
   },
   "Software Development": {
     icon: Code,

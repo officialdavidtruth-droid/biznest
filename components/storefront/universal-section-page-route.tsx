@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { resolveStoreTheme, type TemplateTheme } from "@/lib/template-themes";
 import { UniversalSectionPage, type ReviewsView } from "@/components/storefront/universal-section-pages";
+import type { PortfolioAlbumView } from "@/components/storefront/portfolio-albums";
 
 // Shared by /about, /services, /portfolio, /pricing and /contact — each of
 // those route files just calls this with its own pageSlug. Mirrors the
@@ -24,7 +25,7 @@ const getStoreForSection = cache((slug: string) =>
 export const SERVICES_PAGE_SIZE = 12;
 export const REVIEWS_PAGE_SIZE = 12;
 
-export async function renderUniversalSectionPage(slug: string, pageSlug: string, opts?: { page?: number }) {
+export async function renderUniversalSectionPage(slug: string, pageSlug: string, opts?: { page?: number; albumSlug?: string }) {
   const rawStore = await getStoreForSection(slug);
   if (!rawStore || rawStore.status !== "ACTIVE") notFound();
 
@@ -86,6 +87,26 @@ export async function renderUniversalSectionPage(slug: string, pageSlug: string,
     };
   }
 
+  // /portfolio shows the store's published albums when it has any (and one album at /portfolio/<album>).
+  let albums: PortfolioAlbumView[] | undefined;
+  let album: PortfolioAlbumView | null = null;
+  if (pageSlug === "portfolio") {
+    const rows = await prisma.portfolioAlbum.findMany({
+      where: { storeId: rawStore.id, isPublished: true },
+      orderBy: [{ sortOrder: "asc" }, { createdAt: "asc" }],
+      select: { id: true, title: true, slug: true, category: true, description: true, coverUrl: true, _count: { select: { images: true } } },
+    });
+    albums = rows.map((r) => ({ id: r.id, title: r.title, slug: r.slug, category: r.category, description: r.description, coverUrl: r.coverUrl, images: [], imageCount: r._count.images }));
+    if (opts?.albumSlug) {
+      const hit = rows.find((r) => r.slug === opts.albumSlug);
+      if (!hit) notFound();
+      const images = await prisma.portfolioImage.findMany({
+        where: { albumId: hit.id }, orderBy: [{ sortOrder: "asc" }, { createdAt: "asc" }], select: { id: true, url: true, caption: true },
+      });
+      album = { id: hit.id, title: hit.title, slug: hit.slug, category: hit.category, description: hit.description, coverUrl: hit.coverUrl, images, imageCount: images.length };
+    }
+  }
+
   const store = { ...rawStore, services, sellsProducts: rawStore.business?.sellsProducts ?? true };
 
   const themeOverrides = store.themeColors as { primary?: string; secondary?: string; accent?: string } | null;
@@ -134,6 +155,8 @@ export async function renderUniversalSectionPage(slug: string, pageSlug: string,
       social={social}
       pagination={pagination}
       reviewsView={reviewsView}
+      albums={albums}
+      album={album}
     />
   );
 }
