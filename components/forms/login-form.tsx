@@ -10,6 +10,7 @@ import { useSearchParams } from "next/navigation";
 import { toast } from "sonner";
 import { Mail } from "lucide-react";
 import { PasswordInput } from "@/components/forms/password-input";
+import { safeRedirectPath } from "@/lib/safe-redirect";
 import { AuthInput } from "@/components/forms/auth-input";
 import { AuthSubmitButton, GoogleButton, AuthDivider } from "@/components/forms/auth-buttons";
 import { loginStoreCustomer } from "@/lib/actions/store-customer";
@@ -36,7 +37,9 @@ export function LoginForm({
   storeSlug?: string;
 } = {}) {
   const searchParams = useSearchParams();
-  const explicitCallbackUrl = searchParams.get("callbackUrl");
+  const rawCallbackUrl = searchParams.get("callbackUrl");
+  // Only same-site paths are accepted; anything else is ignored as if it was not given.
+  const explicitCallbackUrl = rawCallbackUrl && safeRedirectPath(rawCallbackUrl, "") ? safeRedirectPath(rawCallbackUrl, "") : null;
   const callbackUrl = explicitCallbackUrl ?? (storeSlug ? `/store/${encodeURIComponent(storeSlug)}/account` : "/onboarding/business-verification");
   const prefillEmail = searchParams.get("email") ?? undefined;
   const marketingStoreSlug = searchParams.get("marketingStore") ?? undefined;

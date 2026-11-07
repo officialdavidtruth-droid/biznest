@@ -68,7 +68,8 @@ const RULES: Record<string, Array<[RegExp, SpecialtyProfile]>> = {
     [/fast food|takeaway/i, p("Takeaway Operations", "Order", "Customer", "Order", "Menu", ["orders", "pos", "delivery", "products"], "Speed matters: orders, delivery and counter sales.")],
   ],
   "Fashion": [
-    [/tailor|bespoke|native|traditional|uniform/i, p("Tailoring & Custom Orders", "Custom Order", "Client", "Custom Order", "Designs", ["orders", "quotes", "customers", "products"], "Measurements, fittings, deposits and delivery dates per client.", { extraModules: ["quotes"] })],
+    [/uniform|corporate/i, p("Uniforms & Bulk Orders", "Bulk Order", "Client", "Bulk Order", "Products", ["quotes", "orders", "customers", "products"], "Quote bulk orders, list sizes and lead times, track deliveries.", { extraModules: ["quotes"] })],
+    [/tailor|bespoke|native|traditional/i, p("Tailoring & Custom Orders", "Custom Order", "Client", "Custom Order", "Designs", ["orders", "quotes", "customers", "products"], "Measurements, fittings, deposits and delivery dates per client.", { extraModules: ["quotes"] })],
     [/thrift|pre-owned/i, p("Thrift Store", "Order", "Customer", "Order", "Items", ["products", "orders", "inventory", "marketing"], "One-of-one stock: mark sold items and drop new stock.")],
     [/fabric|material/i, p("Fabric Store", "Order", "Customer", "Order", "Fabrics", ["products", "inventory", "orders", "quotes"], "Sell by the yard and keep roll stock accurate.")],
   ],

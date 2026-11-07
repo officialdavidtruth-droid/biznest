@@ -28,9 +28,9 @@ const MAX_CHILDREN = 20;
 async function getStoreIdentity(storeId: string): Promise<StoreIdentity> {
   const s = await prisma.store.findUnique({
     where: { id: storeId },
-    select: { businessType: true, business: { select: { category: true } }, template: { select: { name: true } } },
+    select: { businessType: true, business: { select: { category: true, businessSubcategory: true } }, template: { select: { name: true } } },
   });
-  return { businessCategory: s?.business?.category ?? null, storeBusinessType: s?.businessType ?? null, templateName: s?.template?.name ?? null };
+  return { businessCategory: s?.business?.category ?? null, businessSubcategory: s?.business?.businessSubcategory ?? null, storeBusinessType: s?.businessType ?? null, templateName: s?.template?.name ?? null };
 }
 
 /** Slugs of published pages that have real owner-written text. */

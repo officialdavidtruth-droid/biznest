@@ -1,4 +1,6 @@
 import { auth } from "@/lib/auth";
+import { prisma } from "@/lib/prisma";
+import { usesTailoring } from "@/lib/tailoring-eligibility";
 import { redirect } from "next/navigation";
 import { assertStorePermission } from "@/lib/access/assert-store-access";
 import { listTailoringJobs } from "@/lib/actions/tailoring";
@@ -15,6 +17,12 @@ export default async function FashionPage({ params }: { params: Promise<{ slug: 
     return <div className="rounded-xl border border-dashed p-8 text-center text-sm text-muted-foreground">{access.error}</div>;
   }
   const result = await listTailoringJobs(slug);
+  const biz = await prisma.store.findUnique({ where: { slug }, select: { business: { select: { category: true, businessSubcategory: true } } } });
+  const enabled = usesTailoring(biz?.business?.category, biz?.business?.businessSubcategory);
+  const hasJobs = "jobs" in result && (result.jobs.length > 0 || result.requests.length > 0);
+  if (!enabled && !hasJobs) {
+    return <div className="rounded-xl border border-dashed p-8 text-center text-sm text-muted-foreground">Made-to-measure work isn't part of your {biz?.business?.businessSubcategory ?? "shop"} setup. If you also sew to order, change your specialty to Tailoring & Bespoke in Settings.</div>;
+  }
   if ("error" in result) return <div className="rounded-xl border border-dashed p-8 text-center text-sm text-muted-foreground">{result.error}</div>;
 
   return (

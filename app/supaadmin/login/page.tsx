@@ -3,11 +3,12 @@
 import { useState, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Shield, Eye, EyeOff, Lock, RefreshCw } from "lucide-react";
+import { safeRedirectPath } from "@/lib/safe-redirect";
 
 function LoginInner() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const callbackUrl = searchParams.get("callbackUrl") || "/supaadmin";
+  const callbackUrl = safeRedirectPath(searchParams.get("callbackUrl"), "/supaadmin");
 
   const [pin, setPin] = useState("");
   const [showPin, setShowPin] = useState(false);

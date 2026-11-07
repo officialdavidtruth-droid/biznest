@@ -6,6 +6,7 @@ import {
   ShoppingBag, Sparkles, Star, Truck, Users, Utensils, Wrench, Boxes, Building2, ChefHat, Scissors,
 } from "lucide-react";
 import { getBusinessTypeConfig, type Capability } from "@/lib/capabilities";
+import { usesTailoring } from "@/lib/tailoring-eligibility";
 import { getSpecialtyProfile, type SpecialtyModuleId } from "@/lib/specialty-profiles";
 
 export type DashboardModule = {
@@ -151,8 +152,8 @@ export function getAdaptiveDashboardConfig(category?: string | null, subcategory
   if (caps.has("reviews")) modules.push(core.reviews);
   if (caps.has("packages")) modules.push(core.services);
   if (caps.has("pms")) modules.push(core.pms);
-  // Made-to-measure jobs: for fashion stores with no specialty chosen yet, or a tailoring/bespoke one.
-  if (configLabel(category) === "Fashion" && (!subcategory || /tailor|bespoke/i.test(subcategory))) modules.push(core.tailoring);
+  // Made-to-measure jobs: only for fashion specialties that sew to order (or no specialty saved yet).
+  if (usesTailoring(configLabel(category), subcategory)) modules.push(core.tailoring);
   const categoryProfile = CATEGORY_OVERRIDES[configLabel(category)] ?? {};
   const specialtyOverride = subcategoryProfile(configLabel(category), subcategory);
   // Specialty wins on labels/actions, but both sets of widgets are kept.

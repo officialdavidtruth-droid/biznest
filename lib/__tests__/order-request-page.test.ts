@@ -1,4 +1,5 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
+vi.mock("@/lib/prisma", () => ({ prisma: {} }));
 import { isStorePageAvailable } from "@/lib/store-pages";
 import { MENU_PAGE_OPTIONS } from "@/lib/storefront-menu";
 

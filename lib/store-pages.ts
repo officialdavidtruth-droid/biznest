@@ -1,6 +1,7 @@
 import { getCanonicalBusinessType, isRestaurantBusiness } from "@/lib/business-identity";
 import { isHotelStore, resolveStorefrontRenderer } from "@/lib/storefront-routing";
 import { getTemplateDefinition } from "@/lib/template-registry";
+import { usesTailoring } from "@/lib/tailoring-eligibility";
 
 /**
  * Single source of truth for "which built-in pages does this store actually have?"
@@ -14,6 +15,7 @@ export type StoreIdentity = {
   businessCategory?: string | null;
   storeBusinessType?: string | null;
   templateName?: string | null;
+  businessSubcategory?: string | null;
 };
 export type StoreKind = "hotel" | "restaurant" | "other";
 
@@ -49,8 +51,8 @@ const PAGE_RULES: Record<string, (i: StoreIdentity) => boolean> = {
   "/gallery": (i) => isHotelStore(i) || isGrandeurStore(i),
   "/events": (i) => isHotelStore(i) || isGrandeurStore(i),
   "/reservations": (i) => isGrandeurStore(i),
-  // Made-to-measure order form (Fashion & Tailoring workspace): only fashion businesses have it.
-  "/order-request": (i) => /^fashion$/i.test(String(getCanonicalBusinessType({ businessCategory: i.businessCategory, storeBusinessType: i.storeBusinessType }) ?? "")),
+  // Made-to-measure order form (Fashion & Tailoring workspace): only fashion specialties that sew to order.
+  "/order-request": (i) => usesTailoring(String(getCanonicalBusinessType({ businessCategory: i.businessCategory, storeBusinessType: i.storeBusinessType }) ?? ""), i.businessSubcategory),
   "/rooms": isHotelStore,
   "/amenities": isHotelStore,
   "/dining": isHotelStore,

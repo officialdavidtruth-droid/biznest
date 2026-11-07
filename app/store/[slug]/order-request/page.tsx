@@ -5,6 +5,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { prisma } from "@/lib/prisma";
+import { isStorePageAvailable } from "@/lib/store-pages";
 import { resolveStorePalette } from "@/lib/store-palette";
 import { TailoringOrderForm } from "@/components/storefront/tailoring-order-form";
 import { TemplateShell } from "@/components/storefront/template-shell";
@@ -23,6 +24,8 @@ export default async function TailoringOrderRequestPage({ params }: { params: Pr
   const { slug } = await params;
   const store = await prisma.store.findUnique({ where: { slug }, include: { template: true, business: true } });
   if (!store || store.status !== "ACTIVE") notFound();
+  // Clothing, footwear, jewellery etc. shops don't sew to order, so they have no made-to-measure form.
+  if (!isStorePageAvailable("/order-request", { businessCategory: store.business?.category, storeBusinessType: store.businessType, businessSubcategory: store.business?.businessSubcategory })) notFound();
 
   const palette = resolveStorePalette(store);
   // Same header and footer as the rest of the site (template chrome), so the page doesn't look like a different website.

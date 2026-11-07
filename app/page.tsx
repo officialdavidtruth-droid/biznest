@@ -16,6 +16,11 @@ import { isAppRequest } from "@/lib/app-mode";
 import { AppWelcome } from "@/components/app/app-welcome";
 import { formatMoney } from "@/lib/utils/format-money";
 import { formatNumber } from "@/lib/i18n/locale";
+import { Reveal } from "@/components/motion/reveal";
+import { CountUp } from "@/components/motion/count-up";
+import { RotatingWord } from "@/components/motion/rotating-word";
+import { NestGraphic } from "@/components/motion/nest-graphic";
+import "./landing-motion.css";
 
 const display = Space_Grotesk({ subsets: ["latin"], variable: "--font-display", weight: ["500", "700"] });
 const body = Inter({ subsets: ["latin"], variable: "--font-body" });
@@ -30,6 +35,19 @@ const FOCUS =
 const CTA_FILL = { background: "var(--bn-accent-text)", color: "var(--bn-ink)" } as const;
 // Outlined CTA: the old --bn-ink-line border was 1.96:1 (WCAG 1.4.11 wants 3:1).
 const CTA_OUTLINE = { border: "1px solid rgba(255,255,255,0.45)", color: "var(--bn-ivory)" } as const;
+
+/** Splits a headline into words that rise in one after another (see landing-motion.css). */
+function Words({ text, from = 0, accent = false }: { text: string; from?: number; accent?: boolean }) {
+  return (
+    <>
+      {text.split(" ").map((w, i) => (
+        <span key={`${w}-${i}`}>
+          <span className="bn-word"><span style={{ ["--i" as string]: from + i, ...(accent ? { color: "var(--bn-accent-text)" } : {}) }}>{w}</span></span>{" "}
+        </span>
+      ))}
+    </>
+  );
+}
 
 const STEPS = [
   {
@@ -305,21 +323,27 @@ export default async function HomePage() {
         style={{ background: "var(--bn-hero-gradient)" }}>
         <div className="bn-glow-orb hidden h-72 w-72 sm:block" style={{ background: "rgba(52,211,153,0.22)", top: "-6rem", left: "-6rem" }} />
         <div className="bn-glow-orb h-64 w-64" style={{ background: "rgba(16,150,122,0.2)", top: "8rem", right: "-4rem" }} />
+        <NestGraphic />
 
         <div className="relative z-10">
           <p
             className="mb-4 text-xs uppercase tracking-[0.2em]"
             style={{ color: "var(--bn-accent-text)", fontFamily: "var(--font-mono)" }}
           >
-            One marketplace, every kind of business
+            One marketplace for <RotatingWord words={CATEGORIES.slice(0, 6).map((c) => c.toLowerCase())} />
           </p>
           <h1
             className="text-4xl leading-[1.05] tracking-tight sm:text-5xl lg:text-6xl"
             style={{ fontFamily: "var(--font-display)", fontWeight: 700 }}
           >
-            <span className="block">Your business belongs</span>
+            <span className="block"><Words text="Your business belongs" /></span>
             <span className="block">
-              in the <span style={{ color: "var(--bn-accent-text)" }}>nest</span>.
+              <Words text="in the" from={3} />
+              <span className="bn-underline">
+                <Words text="nest" from={5} accent />
+                <svg viewBox="0 0 100 12" preserveAspectRatio="none" aria-hidden="true"><path d="M2 8 C 22 2, 44 11, 66 5 S 92 4, 98 7" fill="none" stroke="var(--bn-accent-text)" strokeWidth="2.4" strokeLinecap="round" pathLength={1} /></svg>
+              </span>
+              .
             </span>
           </h1>
           <p className="bn-fade-up mt-5 max-w-md text-base leading-relaxed" style={{ color: "var(--bn-mute)" }}>
@@ -330,19 +354,19 @@ export default async function HomePage() {
             {session?.user ? (
               <Link
                 href={dashboardHref}
-                className={`rounded-full px-6 py-3 text-sm font-medium transition hover:brightness-110 ${FOCUS}`}
+                className={`bn-cta rounded-full px-6 py-3 text-sm font-medium ${FOCUS}`}
                 style={CTA_FILL}
               >
-                Go to your dashboard
+                Go to your dashboard <ArrowRight className="h-4 w-4" aria-hidden />
               </Link>
             ) : (
               <>
                 <Link
                   href="/register"
-                  className={`rounded-full px-6 py-3 text-sm font-medium transition hover:brightness-110 ${FOCUS}`}
+                  className={`bn-cta rounded-full px-6 py-3 text-sm font-medium ${FOCUS}`}
                   style={CTA_FILL}
                 >
-                  Open your store
+                  Open your store <ArrowRight className="h-4 w-4" aria-hidden />
                 </Link>
                 <Link
                   href="/login"
@@ -396,11 +420,11 @@ export default async function HomePage() {
           rather than invented traction numbers, so it never overclaims. */}
       <section className="px-6 py-10 sm:px-10" style={{ background: "var(--bn-ink)", borderTop: "1px solid var(--bn-ink-line)", borderBottom: "1px solid var(--bn-ink-line)" }}>
         <div className="mx-auto grid max-w-5xl gap-x-10 gap-y-4 sm:grid-cols-2 lg:grid-cols-4">
-          {STATS.map((s) => (
-            <div key={s.label} className="bn-receipt-row" style={{ fontFamily: "var(--font-mono)" }}>
+          {STATS.map((s, i) => (
+            <Reveal key={s.label} delay={i * 120} className="bn-receipt-row" style={{ fontFamily: "var(--font-mono)" }}>
               <span className="text-xs" style={{ color: "var(--bn-mute)" }}>{s.label}</span>
-              <span className="text-sm font-semibold" style={{ color: "var(--bn-accent-text)" }}>{s.value}</span>
-            </div>
+              <span className="text-sm font-semibold" style={{ color: "var(--bn-accent-text)" }}><CountUp value={s.value} /></span>
+            </Reveal>
           ))}
         </div>
       </section>
@@ -411,8 +435,9 @@ export default async function HomePage() {
           From idea to open for business
         </h2>
         <div className="grid gap-8 sm:grid-cols-3">
-          {STEPS.map((s) => (
-            <div key={s.n}>
+          {STEPS.map((s, i) => (
+            <Reveal key={s.n} delay={i * 140}>
+              <span className="bn-step-line" aria-hidden />
               <span
                 className="text-sm"
                 style={{ fontFamily: "var(--font-mono)", color: "var(--bn-accent-text)" }}
@@ -423,7 +448,7 @@ export default async function HomePage() {
               <p className="mt-2 text-sm leading-relaxed" style={{ color: "var(--bn-mute)" }}>
                 {s.body}
               </p>
-            </div>
+            </Reveal>
           ))}
         </div>
       </section>
@@ -466,7 +491,7 @@ export default async function HomePage() {
           {CATEGORIES.map((c) => (
             <span
               key={c}
-              className="rounded-full px-4 py-2 text-sm transition hover:border-[var(--bn-marigold)] hover:text-[var(--bn-ivory)]"
+              className="bn-pill rounded-full px-4 py-2 text-sm hover:border-[var(--bn-marigold)] hover:text-[var(--bn-ivory)]"
               style={{ border: "1px solid var(--bn-ink-line)", color: "var(--bn-mute)" }}
             >
               {c}
@@ -538,12 +563,14 @@ export default async function HomePage() {
           Built for trust, not just transactions
         </h2>
         <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
-          {TRUST.map((f) => (
-            <div key={f.title} className="rounded-2xl p-6" style={{ background: "var(--bn-ink)", border: "1px solid var(--bn-ink-line)" }}>
-              <f.icon className="h-6 w-6" style={{ color: "var(--bn-accent-text)" }} strokeWidth={1.75} />
-              <h3 className="mt-3 text-base font-semibold">{f.title}</h3>
-              <p className="mt-2 text-sm leading-relaxed" style={{ color: "var(--bn-mute)" }}>{f.body}</p>
-            </div>
+          {TRUST.map((f, i) => (
+            <Reveal key={f.title} delay={i * 110}>
+              <div className="bn-card h-full rounded-2xl p-6" style={{ background: "var(--bn-ink)", border: "1px solid var(--bn-ink-line)" }}>
+                <f.icon className="h-6 w-6" style={{ color: "var(--bn-accent-text)" }} strokeWidth={1.75} />
+                <h3 className="mt-3 text-base font-semibold">{f.title}</h3>
+                <p className="mt-2 text-sm leading-relaxed" style={{ color: "var(--bn-mute)" }}>{f.body}</p>
+              </div>
+            </Reveal>
           ))}
         </div>
       </section>

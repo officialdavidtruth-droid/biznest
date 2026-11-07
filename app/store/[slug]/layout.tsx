@@ -137,7 +137,7 @@ export default async function StoreLayout({
       fontFamily: true,
       template: { select: { name: true, category: true } },
       businessType: true,
-      business: { select: { category: true } },
+      business: { select: { category: true, businessSubcategory: true } },
       // Real categories for storefront navigation (mega menu, category pages).
       categories: {
         where: { isActive: true },
@@ -224,7 +224,7 @@ export default async function StoreLayout({
     if (!exists) return null;
     const rows = exists.menuItems.filter((m) => m.location === location);
     if (!rows.length) return null;
-    const identity = { businessCategory: exists.business?.category ?? null, storeBusinessType: exists.businessType, templateName: exists.template?.name ?? null };
+    const identity = { businessCategory: exists.business?.category ?? null, businessSubcategory: exists.business?.businessSubcategory ?? null, storeBusinessType: exists.businessType, templateName: exists.template?.name ?? null };
     const kept = rows.filter((m) => m.linkType !== "PAGE" || isStorePageAvailable(m.target || "/", identity, writtenPages));
     const resolved = resolveMenuRows(kept, slug, exists.categories);
     return isStaleMenu(rows.length, kept.length, resolved.length) ? null : resolved;
