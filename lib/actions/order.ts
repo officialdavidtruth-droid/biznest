@@ -1,5 +1,6 @@
 "use server";
 
+import { isStoreLocked, STORE_LOCKED_MESSAGE } from "@/lib/billing/store-lock";
 import { canPreorder, preorderSpotsLeft } from "@/lib/preorder";
 import { preorderUnitsTaken } from "@/lib/preorder-server";
 import { isGatewayChargeable } from "@/lib/store-currency";
@@ -391,6 +392,8 @@ export async function startCheckout(
         "This store isn't available.",
     };
   }
+
+  if (isStoreLocked(store)) return { success: false, error: STORE_LOCKED_MESSAGE };
 
   // Payment is taken through the store's own gateway keys, the SupaAdmin gateway (BizNest pays the vendor out),
   // or, as a fallback, bank transfer. A store with none of these can't take an order.

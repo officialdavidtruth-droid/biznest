@@ -15,6 +15,7 @@ import { getPluginEntitlement } from "@/lib/plugins";
 import { WhatsAppChatButton } from "@/components/storefront/whatsapp-chat-button";
 import { whatsappLink } from "@/lib/utils/whatsapp-link";
 import { NO_INDEX } from "@/lib/seo";
+import { isStoreLocked } from "@/lib/billing/store-lock";
 import { InstallStoreApp } from "@/components/storefront/install-store-app";
 import { OrderPushPrompt } from "@/components/storefront/order-push-prompt";
 import { requireStoreCustomer } from "@/lib/actions/store-customer";
@@ -126,6 +127,7 @@ export default async function StoreLayout({
       // card is painted in whichever template this store uses.
       status: true,
       marketingOnly: true,
+      subscriptionId: true,
       // Owner-configured analytics / ad-conversion IDs (Settings > Tracking & analytics).
       trackingGaId: true,
       trackingMetaPixelId: true,
@@ -171,6 +173,19 @@ export default async function StoreLayout({
       const subpath = (await headers()).get("x-bn-store-subpath") ?? "/";
       redirect(`/${retired.store.slug}${subpath === "/" ? "" : subpath}`);
     }
+  }
+
+  // No plan = locked: customers see a notice instead of the store. The owner dashboard has its own gate.
+  if (exists && !isAdminRoute && exists.status === "ACTIVE" && isStoreLocked({ subscriptionId: exists.subscriptionId, marketingOnly: exists.marketingOnly, slug })) {
+    return (
+      <main style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", padding: 24, textAlign: "center", fontFamily: "system-ui, sans-serif" }}>
+        <div style={{ maxWidth: 420 }}>
+          <h1 style={{ fontSize: 22, fontWeight: 700, margin: 0 }}>{exists.name} is temporarily unavailable</h1>
+          <p style={{ marginTop: 10, color: "#555", lineHeight: 1.5 }}>This store isn&apos;t taking orders right now. Please check back soon.</p>
+          <a href={`/onboarding/select-plan?slug=${encodeURIComponent(slug)}`} style={{ display: "inline-block", marginTop: 18, fontSize: 13, color: "#777" }}>Store owner? Choose a plan</a>
+        </div>
+      </main>
+    );
   }
 
   // One mount point for every template (builder, legacy, signature, dedicated

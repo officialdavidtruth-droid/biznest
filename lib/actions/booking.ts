@@ -1,5 +1,6 @@
 "use server";
 
+import { isStoreLocked, STORE_LOCKED_MESSAGE } from "@/lib/billing/store-lock";
 import { zonedTimeToUtc, localDateStartUtc, localDateEndUtc, getLocalDateKey, getLocalMinutes, getLocalWeekday, addLocalDays } from "@/lib/timezone";
 import { formatBookingNotes } from "@/lib/booking-notes";
 import { auth } from "@/lib/auth";
@@ -316,8 +317,10 @@ export async function createBooking(
   const service =
     await prisma.service.findUnique({
       where: { id: serviceId },
-      include: { store: { select: { timezone: true } } },
+      include: { store: { select: { timezone: true, subscriptionId: true, marketingOnly: true, slug: true } } },
     });
+
+  if (service && isStoreLocked(service.store)) return { success: false, error: STORE_LOCKED_MESSAGE };
 
   if (
     !service ||
@@ -673,7 +676,8 @@ export async function createStayBooking(
     return { success: false, error: "Too many booking attempts — please wait a few minutes and try again." };
   }
 
-  const service = await prisma.service.findUnique({ where: { id: serviceId }, include: { store: { select: { timezone: true } } } });
+  const service = await prisma.service.findUnique({ where: { id: serviceId }, include: { store: { select: { timezone: true, subscriptionId: true, marketingOnly: true, slug: true } } } });
+  if (service && isStoreLocked(service.store)) return { success: false, error: STORE_LOCKED_MESSAGE };
   if (!service || !service.isBookable || !service.totalUnits) {
     return { success: false, error: "This service isn't bookable." };
   }

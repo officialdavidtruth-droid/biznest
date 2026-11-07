@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { getStoreAccessRole, hasStorePermission, canManageBillingAndStaff, type StoreAccessRole } from "@/lib/access/store-access";
 import type { StaffPermissionId } from "@/lib/access/staff-permissions";
 import type { Store, Business } from "@prisma/client";
+import { isStoreLocked } from "@/lib/billing/store-lock";
 
 export type StoreAccessResult =
   | { success: true; store: Store & { business: Business }; role: StoreAccessRole }
@@ -34,6 +35,11 @@ export async function assertStorePermission(
 
   const role = await getStoreAccessRole(session.user.id, session.user.role, store);
   if (role === null) return { success: false, error: "You don't have access to this store." };
+
+  // The dashboard pages are gated in the admin layout; this stops the same actions being called directly.
+  if (role !== "PLATFORM_STAFF" && isStoreLocked(store)) {
+    return { success: false, error: "Choose a plan to keep using your dashboard." };
+  }
 
   if (role === "MANAGER" || role === "STAFF") {
     const membership = await prisma.storeStaff.findFirst({
