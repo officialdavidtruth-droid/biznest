@@ -2,14 +2,14 @@
 
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { releaseAllPayouts, releaseStorePayouts, type PayoutWallet, type ReleaseSummary } from "@/lib/actions/admin-payouts";
+import { releaseAllPayouts, releaseStorePayouts, retryQueuedPayouts, type PayoutWallet, type ReleaseSummary } from "@/lib/actions/admin-payouts";
 import { TableScroll } from "@/components/ui/table-scroll";
 
 const naira = (n: number) => `₦${n.toLocaleString("en-NG", { maximumFractionDigits: 2 })}`;
 const GATEWAY_LABEL = { PAYSTACK: "Paystack", FLUTTERWAVE: "Flutterwave", KORAPAY: "Korapay" } as const;
 
 function describe(s: ReleaseSummary) {
-  if (s.released === 0) return "Nothing to release.";
+  if (s.released === 0) return "Nothing to send.";
   const parts = [`${s.released} queued`];
   if (s.paid) parts.push(`${s.paid} paid`);
   if (s.processing) parts.push(`${s.processing} sending`);
@@ -58,7 +58,7 @@ export function PayoutWalletPanel({ wallet }: { wallet: PayoutWallet }) {
           <p className="text-lg font-semibold">{wallet.gatewayBalance === null ? "Unavailable" : naira(wallet.gatewayBalance)}</p>
           <p className={`text-[11px] ${short ? "text-red-600" : "text-muted-foreground"}`}>{short ? "Less than what is held" : "Payouts are sent from this"}</p>
         </div>
-        <div className="flex items-center">
+        <div className="flex flex-col justify-center gap-2">
           <button
             disabled={pending || wallet.heldCount === 0}
             onClick={() => {
@@ -68,6 +68,14 @@ export function PayoutWalletPanel({ wallet }: { wallet: PayoutWallet }) {
           >
             {busyStore === "ALL" ? "Paying out…" : "Pay out all stores"}
           </button>
+          <button
+            disabled={pending || wallet.queuedCount === 0}
+            onClick={() => run(null, retryQueuedPayouts)}
+            className="w-full rounded-md border px-3 py-2 text-sm font-medium hover:bg-muted disabled:opacity-50"
+          >
+            {busyStore === "ALL" ? "Retrying…" : `Retry queued payouts (${wallet.queuedCount})`}
+          </button>
+          {wallet.heldCount === 0 && wallet.queuedCount === 0 && <p className="text-[11px] text-muted-foreground">Nothing is waiting to be paid.</p>}
         </div>
       </div>
 

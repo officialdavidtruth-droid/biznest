@@ -588,6 +588,41 @@ export async function releaseHeldPayouts(opts: { storeId?: string } = {}): Promi
   return summary;
 }
 
+/**
+ * Admin "Retry queued payouts": sends QUEUED payouts now instead of waiting for the next sweep or their retry timer
+ * (a gateway error such as "merchant is not enabled to make transfers" pushes the timer out). Uses the same pipeline
+ * as the sweep, so the claim step (QUEUED -> PROCESSING) still stops a double click or a concurrent sweep paying twice.
+ * Pass storeId to retry one store.
+ */
+export async function retryQueuedPayoutsNow(opts: { storeId?: string } = {}): Promise<{ released: number; paid: number; processing: number; stillQueued: number; failed: number }> {
+  const queued = await prisma.payout.findMany({
+    where: { status: "QUEUED", ...(opts.storeId ? { storeId: opts.storeId } : {}) },
+    orderBy: { createdAt: "asc" },
+    take: RELEASE_BATCH,
+    select: { id: true, provider: true, destination: true },
+  });
+  const summary = { released: queued.length, paid: 0, processing: 0, stillQueued: 0, failed: 0 };
+  if (queued.length === 0) return summary;
+
+  // Clear the retry timer only on rows still QUEUED; anything a sweep just claimed is left alone.
+  await prisma.payout.updateMany({ where: { id: { in: queued.map((q) => q.id) }, status: "QUEUED" }, data: { nextAttemptAt: null } });
+
+  const balances: Partial<Record<TransferGateway, number | null>> = {};
+  for (const { id, provider, destination } of queued) {
+    const gateway = gatewayForPayout(provider, destination);
+    if (!(gateway in balances)) balances[gateway] = await getGatewayBalanceKobo(gateway).catch(() => null);
+    const balanceKobo = balances[gateway] ?? null;
+    const result = await processPayout(id, { balanceKobo });
+    if (result.spentKobo && balanceKobo !== null) balances[gateway] = balanceKobo - result.spentKobo;
+    if (result.state === "PAID") summary.paid++;
+    else if (result.state === "PROCESSING") summary.processing++;
+    else if (result.state === "FAILED" || result.state === "REVERSED" || result.state === "OTP") summary.failed++;
+  }
+  summary.stillQueued = summary.released - summary.paid - summary.processing - summary.failed;
+  void logInfo("JOBS", "Queued payouts retried by admin", { ...summary, storeId: opts.storeId ?? "all" });
+  return summary;
+}
+
 /* -------------------------------------------------------------------------- */
 /* ADMIN RECOVERY                                                              */
 /* -------------------------------------------------------------------------- */

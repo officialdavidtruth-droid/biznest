@@ -7,7 +7,7 @@ import { prisma } from "@/lib/prisma";
 import { ADMIN_COOKIE_NAME, adminSessionIdFromToken } from "@/lib/admin-pin-auth";
 import { verifyAdminSession } from "@/lib/admin-session";
 import { getClientIp } from "@/lib/rate-limit";
-import { markPayoutPaidManually, releaseHeldPayouts, retryPayout } from "@/lib/payments/payout";
+import { markPayoutPaidManually, releaseHeldPayouts, retryPayout, retryQueuedPayoutsNow } from "@/lib/payments/payout";
 import { getGatewayBalanceKobo } from "@/lib/payments/payout-gateway";
 import { getActiveGateway, getPayoutMode, type PayoutMode } from "@/lib/actions/site-settings";
 import type { ActionResult } from "@/types/actions";
@@ -88,6 +88,8 @@ export type PayoutWallet = {
   gatewayBalance: number | null;
   heldTotal: number;
   heldCount: number;
+  /** Payouts already queued (waiting for balance, bank details or a gateway fix). */
+  queuedCount: number;
   /** Held money that no connected bank account can receive yet. */
   heldNoBank: number;
   stores: { storeId: string; name: string; slug: string; count: number; total: number; hasBank: boolean }[];
@@ -98,10 +100,11 @@ export async function getPayoutWallet(): Promise<PayoutWallet | null> {
   const access = await assertPlatformStaff();
   if (!access.success) return null;
 
-  const [mode, gateway, grouped] = await Promise.all([
+  const [mode, gateway, grouped, queuedCount] = await Promise.all([
     getPayoutMode(),
     getActiveGateway(),
     prisma.payout.groupBy({ by: ["storeId"], where: { status: "HELD" }, _sum: { amount: true }, _count: { _all: true } }),
+    prisma.payout.count({ where: { status: "QUEUED" } }),
   ]);
   const stores = grouped.length
     ? await prisma.store.findMany({
@@ -131,6 +134,7 @@ export async function getPayoutWallet(): Promise<PayoutWallet | null> {
     gatewayBalance: balanceKobo === null ? null : balanceKobo / 100,
     heldTotal: rows.reduce((n, r) => n + r.total, 0),
     heldCount: rows.reduce((n, r) => n + r.count, 0),
+    queuedCount,
     heldNoBank: rows.filter((r) => !r.hasBank).reduce((n, r) => n + r.total, 0),
     stores: rows,
   };
@@ -159,4 +163,17 @@ export async function releaseStorePayouts(storeId: string): Promise<ActionResult
 /** One click: queue and send everything held for every store. */
 export async function releaseAllPayouts(): Promise<ActionResult<ReleaseSummary>> {
   return release(undefined);
+}
+
+/** One click: retry every queued payout now (skips the retry timer). Held payouts are released with the buttons above. */
+export async function retryQueuedPayouts(): Promise<ActionResult<ReleaseSummary>> {
+  const access = await assertPlatformStaff();
+  if (!access.success) return { success: false, error: access.error };
+
+  const summary = await retryQueuedPayoutsNow();
+  await prisma.auditLog.create({
+    data: { userId: null, action: "PAYOUTS_QUEUED_RETRIED", entity: "Payout", entityId: "all", metadata: { ...summary, ...access.actor } },
+  });
+  revalidatePath("/supaadmin/payouts");
+  return { success: true, data: summary };
 }
