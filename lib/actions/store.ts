@@ -903,6 +903,39 @@ export async function disconnectPayoutAccount(slug: string): Promise<ActionResul
 
 
 /**
+ * Looks up the account holder's name as the owner types, before anything is saved, using the gateway picked
+ * in SupaAdmin. Owner-only and rate-limited, since each lookup is a call to the gateway.
+ */
+export async function lookupPayoutAccountName(
+  slug: string,
+  input: { provider: "PAYSTACK" | "FLUTTERWAVE" | "KORAPAY"; bankCode: string; accountNumber: string }
+): Promise<ActionResult<{ accountName: string }>> {
+  const access = await assertStoreOwner(slug);
+  if (!access.success) return { success: false, error: access.error };
+  if (!/^\d{10}$/.test(input.accountNumber) || !input.bankCode) return { success: false, error: "Enter a 10-digit account number and pick your bank." };
+  const { checkRateLimit } = await import("@/lib/rate-limit");
+  const rate = await checkRateLimit(`payout-lookup:${access.store.id}`, 20, 10 * 60 * 1000);
+  if (!rate.allowed) return { success: false, error: "Too many lookups. Wait a few minutes and try again." };
+  try {
+    if (input.provider === "PAYSTACK") {
+      const r = await resolvePaystackAccount(input.accountNumber, input.bankCode);
+      if (r.status && r.data?.account_name) return { success: true, data: { accountName: r.data.account_name } };
+      return { success: false, error: r.message || "We couldn't find that account. Check the number and bank." };
+    }
+    if (input.provider === "KORAPAY") {
+      const r = await resolveKorapayAccount(input.accountNumber, input.bankCode);
+      if (r.status && r.data?.account_name) return { success: true, data: { accountName: r.data.account_name } };
+      return { success: false, error: r.message || "We couldn't find that account. Check the number and bank." };
+    }
+    const r = await resolveFlutterwaveAccount(input.accountNumber, input.bankCode);
+    if (r.status === "success" && r.data?.account_name) return { success: true, data: { accountName: r.data.account_name } };
+    return { success: false, error: r.message || "We couldn't find that account. Check the number and bank." };
+  } catch {
+    return { success: false, error: "Couldn't reach the bank right now. Try again." };
+  }
+}
+
+/**
  * Banks (name + code) for the payout form, from the gateway that will verify
  * and pay the account. Codes differ between gateways, so a hardcoded list
  * breaks on some banks ("Unknown Bank Code"). Public reference data, no auth.

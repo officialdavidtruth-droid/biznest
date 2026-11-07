@@ -23,7 +23,9 @@ import {
 } from "@/lib/validations/order";
 import {
   chargeCustomer,
+  getActiveGateway,
   paymentCallbackUrl,
+  platformGatewayReady,
 } from "@/lib/payments/gateway";
 import { calculateOrderTotals } from "@/lib/utils/pricing";
 import { PLATFORM_COMMISSION_PERCENT } from "@/lib/constants/commission";
@@ -171,18 +173,18 @@ async function chargeExistingOrder(
   const totalNaira = await getOrderPayableNaira(order.id, order.total);
   if (!(totalNaira > 0)) return { success: false, error: "Nothing is left to pay on this order." };
 
-  // A store charges customers only through ITS OWN Paystack/Flutterwave keys (when the
-  // owner has switched them on). Otherwise the customer pays the vendor's bank account
-  // directly and uploads proof: BizNest no longer collects store payments itself.
+  // The store's own gateway keys when switched on; otherwise the gateway picked in SupaAdmin, with BizNest
+  // paying the vendor out to their connected bank account. Bank transfer is only a fallback when the platform
+  // gateway has no keys.
   const ownGateway = await resolveStoreGateway(store.id);
   if (ownGateway.status === "error") return { success: false, error: ownGateway.message };
-  if (ownGateway.status === "none") return prepareManualTransferOrder(order, store, totalNaira);
   // Gateway charges are NGN-only today. An order in any other currency goes to
   // bank transfer instead of being charged as if the amount were naira.
   if (!isGatewayChargeable(order.currency)) return prepareManualTransferOrder(order, store, totalNaira);
+  if (ownGateway.status === "none" && !(await platformGatewayReady())) return prepareManualTransferOrder(order, store, totalNaira);
 
-  const gateway = ownGateway.credentials.provider;
-  const usesStoreGateway = true;
+  const gateway = ownGateway.status === "ok" ? ownGateway.credentials.provider : await getActiveGateway();
+  const usesStoreGateway = ownGateway.status === "ok";
   const callbackUrl = paymentCallbackUrl(gateway);
 
   const pendingPayment = await prisma.payment.findUnique({ where: { reference: order.id }, select: { id: true, status: true } });
@@ -390,15 +392,13 @@ export async function startCheckout(
     };
   }
 
-  // Payment is taken either through the store's OWN gateway keys, or by bank
-  // transfer to the vendor's own account. Either way the money never passes
-  // through BizNest, so there is no payout target to wait on. A store that has
-  // neither set up can't take an order: say so before the customer fills a cart.
+  // Payment is taken through the store's own gateway keys, the SupaAdmin gateway (BizNest pays the vendor out),
+  // or, as a fallback, bank transfer. A store with none of these can't take an order.
   const ownGateway = await resolveStoreGateway(store.id);
   if (ownGateway.status === "error") {
     return { success: false, error: ownGateway.message };
   }
-  if (ownGateway.status === "none" && !manualPayReady(manualPayInfoFromStore(store))) {
+  if (ownGateway.status === "none" && !(await platformGatewayReady()) && !manualPayReady(manualPayInfoFromStore(store))) {
     return {
       success: false,
       error: "This store hasn't finished setting up how to receive payments yet. Please contact the store.",

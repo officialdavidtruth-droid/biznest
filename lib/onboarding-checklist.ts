@@ -174,13 +174,13 @@ export function buildChecklist(input: ChecklistInput): ChecklistState {
     },
     {
       id: "payout",
-      title: input.needsPayoutReconnect ? "Reconnect your payout account" : "Set up how customers pay you",
+      title: input.needsPayoutReconnect ? "Reconnect your payout account" : "Connect your bank account",
       description: input.needsPayoutReconnect
         ? "Your payout setup needs a quick update. Re-enter your bank details."
-        : "Add your bank account details. Customers pay you by bank transfer and you confirm it. Without this, checkout is blocked.",
+        : "Connect the bank account your sales are paid into. Customers pay by card or transfer at checkout, and the money is sent to this account.",
       done: input.hasBankPayout,
       href: "/payments",
-      cta: input.needsPayoutReconnect ? "Reconnect" : "Add bank details",
+      cta: input.needsPayoutReconnect ? "Reconnect" : "Connect bank account",
     },
     {
       id: "share",

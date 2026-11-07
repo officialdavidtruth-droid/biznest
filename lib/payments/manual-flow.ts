@@ -31,11 +31,20 @@ export type PayRoute =
   | { mode: "manual" } // bank transfer into the vendor's own account
   | { mode: "error"; error: string };
 
-/** Own keys win; otherwise bank transfer, provided the vendor has published a complete account. */
+/**
+ * How a store's customers pay:
+ *  1. the store's own gateway keys, when switched on;
+ *  2. otherwise the gateway picked in SupaAdmin. BizNest collects the money and pays the vendor out to the bank
+ *     account they connected under Payments (see lib/payments/payout.ts);
+ *  3. bank transfer only as a last resort, if the platform gateway has no keys and the store still has old
+ *     bank-transfer details saved.
+ */
 export async function resolvePayRoute(storeId: string): Promise<PayRoute> {
   const own = await resolveStoreGateway(storeId);
   if (own.status === "error") return { mode: "error", error: own.message };
   if (own.status === "ok") return { mode: "gateway" };
+  const { platformGatewayReady } = await import("@/lib/payments/gateway");
+  if (await platformGatewayReady()) return { mode: "gateway" };
   const store = await prisma.store.findUnique({ where: { id: storeId } });
   if (!store || !manualPayReady(manualPayInfoFromStore(store))) {
     return { mode: "error", error: "This store hasn't finished setting up how to receive payments yet. Please contact the store." };

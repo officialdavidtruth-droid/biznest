@@ -318,3 +318,10 @@ export function paymentCallbackUrl(gateway: PaymentGatewayId): string {
   if (gateway === "KORAPAY") return `${APP_URL}/api/payments/korapay/callback`;
   return gateway === "FLUTTERWAVE" ? `${APP_URL}/api/payments/flutterwave/callback` : `${APP_URL}/api/payments/paystack/callback`;
 }
+
+/** Does the gateway picked in SupaAdmin have its secret key set, so BizNest can take card payments for stores? */
+export async function platformGatewayReady(): Promise<boolean> {
+  const gateway = await getActiveGateway();
+  const key = gateway === "PAYSTACK" ? process.env.PAYSTACK_SECRET_KEY : gateway === "FLUTTERWAVE" ? process.env.FLUTTERWAVE_SECRET_KEY : process.env.KORAPAY_SECRET_KEY;
+  return Boolean(key && key.trim());
+}

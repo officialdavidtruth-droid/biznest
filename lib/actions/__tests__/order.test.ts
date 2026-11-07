@@ -22,6 +22,8 @@ vi.mock("@/lib/payments/gateway", async (importOriginal) => ({
     gateway: "PAYSTACK" as const,
   })),
   getActiveGateway: vi.fn(async () => "PAYSTACK" as const),
+  // These tests cover the own-gateway and bank-transfer routes; the platform gateway is off here.
+  platformGatewayReady: vi.fn(async () => false),
 }));
 
 import { chargeCustomer } from "@/lib/payments/gateway";
