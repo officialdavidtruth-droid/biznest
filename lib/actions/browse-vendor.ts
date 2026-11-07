@@ -5,7 +5,7 @@ import { prisma } from "@/lib/prisma";
 import { assertStorePermission } from "@/lib/access/assert-store-access";
 import { isPlatformStaff } from "@/lib/admin-guard";
 import { notifyFollowersOfPost, notifyFollowersOfStory } from "@/lib/browse-notify";
-import { BROWSE_DAILY_POST_LIMIT, OFFICIAL_SLUG, BROWSE_MAX_IMAGES, STORY_DAILY_LIMIT, defaultProductCaption, sanitizePost, sanitizeStory, storyExpiry } from "@/lib/browse";
+import { sanitizeStickers, BROWSE_DAILY_POST_LIMIT, OFFICIAL_SLUG, BROWSE_MAX_IMAGES, STORY_DAILY_LIMIT, defaultProductCaption, sanitizePost, sanitizeStory, storyExpiry } from "@/lib/browse";
 import { loadBrowseComments, type BrowseCommentView } from "@/lib/browse-data";
 import { isBrowseVideoUrl, videoFolder, videoPosterUrl } from "@/lib/browse-video";
 import type { ActionResult } from "@/types/actions";
@@ -46,7 +46,7 @@ async function tellFollowersOfStory(slug: string, storeId: string) {
 const refresh = (slug: string) => { revalidatePath(`/store/${slug}/admin/browse`); revalidatePath("/supaadmin/official"); revalidatePath("/browse"); };
 
 /** A free-form update: text and/or up to four photos, optionally tagging one of the store's products. */
-export async function createBrowsePost(slug: string, input: { caption?: string; images?: string[]; videoUrl?: string | null; productId?: string | null }): Promise<ActionResult<{ id: string }>> {
+export async function createBrowsePost(slug: string, input: { caption?: string; images?: string[]; videoUrl?: string | null; coverTime?: number; stickers?: unknown; tagKind?: "PRODUCT" | "SERVICE"; productId?: string | null }): Promise<ActionResult<{ id: string }>> {
   const a = await access(slug);
   if (!a.success) return { success: false, error: a.error };
   const parsed = sanitizePost(input);
@@ -58,18 +58,22 @@ export async function createBrowsePost(slug: string, input: { caption?: string; 
     if (process.env.BROWSE_VIDEO === "off") return { success: false, error: "Video posting is switched off right now." };
     if (!isBrowseVideoUrl(parsed.videoUrl, videoFolder(a.store.id, slug === OFFICIAL_SLUG))) return { success: false, error: "That video wasn't uploaded here. Upload it again." };
     videoUrl = parsed.videoUrl;
-    images = [videoPosterUrl(videoUrl)];
+    images = parsed.images.length > 0 ? parsed.images.slice(0, 1) : [videoPosterUrl(videoUrl, typeof input.coverTime === "number" ? input.coverTime : 0)];
   }
   if (!(await underDailyLimit(a.store.id))) return { success: false, error: `You can post up to ${BROWSE_DAILY_POST_LIMIT} times a day.` };
 
   let product: { id: string; name: string; price: unknown; currency: string } | null = null;
+  const tagKind = input.tagKind === "SERVICE" ? "SERVICE" : "PRODUCT";
   if (input.productId) {
-    product = await prisma.product.findFirst({ where: { id: input.productId, storeId: a.store.id, isPublished: true, archivedAt: null }, select: { id: true, name: true, price: true, currency: true } });
-    if (!product) return { success: false, error: "That product isn't available to tag." };
+    product = tagKind === "SERVICE"
+      ? await prisma.service.findFirst({ where: { id: input.productId, storeId: a.store.id, isPublished: true }, select: { id: true, name: true, price: true, currency: true } })
+      : await prisma.product.findFirst({ where: { id: input.productId, storeId: a.store.id, isPublished: true, archivedAt: null }, select: { id: true, name: true, price: true, currency: true } });
+    if (!product) return { success: false, error: `That ${tagKind === "SERVICE" ? "service" : "product"} isn't available to tag.` };
   }
+  const stickers = sanitizeStickers(input.stickers);
   const post = await prisma.browsePost.create({
     data: {
-      storeId: a.store.id, kind: product ? "PRODUCT" : "UPDATE", caption: parsed.caption, images, videoUrl,
+      storeId: a.store.id, kind: product ? "PRODUCT" : "UPDATE", caption: parsed.caption, images, videoUrl, tagKind, ...(stickers.length ? { stickers } : {}),
       ...(product ? { productId: product.id, productName: product.name, productPrice: product.price as number, productCurrency: product.currency } : {}),
     },
     select: { id: true },

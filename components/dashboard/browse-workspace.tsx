@@ -3,9 +3,9 @@
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { MultiImageUpload } from "@/components/forms/multi-image-upload";
-import { BrowseVideoUpload } from "@/components/dashboard/browse-video-upload";
-import { createBrowsePost, createBrowseStory, deleteBrowsePost, deleteBrowseStory, listPostCommentsForOwner, setBrowseCommentHidden, setBrowsePostHidden } from "@/lib/actions/browse-vendor";
-import { BROWSE_CAPTION_MAX, BROWSE_MAX_IMAGES, OFFICIAL_SLUG, STORY_BG_COLORS, STORY_TEXT_MAX, postPath, storeBrowsePath, timeAgo } from "@/lib/browse";
+import { BrowseComposer } from "@/components/dashboard/browse-composer";
+import { createBrowseStory, deleteBrowsePost, deleteBrowseStory, listPostCommentsForOwner, setBrowseCommentHidden, setBrowsePostHidden } from "@/lib/actions/browse-vendor";
+import { OFFICIAL_SLUG, STORY_BG_COLORS, STORY_TEXT_MAX, postPath, storeBrowsePath, timeAgo } from "@/lib/browse";
 import type { BrowseCommentView, VendorPostView, VendorStoryView } from "@/lib/browse-data";
 
 type Result = { success: boolean; error?: string };
@@ -56,15 +56,12 @@ function PostRow({ slug, p, run, pending }: { slug: string; p: VendorPostView; r
   );
 }
 
-export function BrowseWorkspace({ slug, data, stories, products, dailyLimit }: { slug: string; data: { posts: VendorPostView[]; postedToday: number; totals: { likes: number; comments: number } }; stories: VendorStoryView[]; products: Array<{ id: string; name: string }>; dailyLimit: number }) {
+export function BrowseWorkspace({ slug, data, stories, products, services = [], dailyLimit }: { slug: string; data: { posts: VendorPostView[]; postedToday: number; totals: { likes: number; comments: number } }; stories: VendorStoryView[]; products: Array<{ id: string; name: string }>; services?: Array<{ id: string; name: string }>; dailyLimit: number }) {
   const router = useRouter();
   const [pending, start] = useTransition();
   const [error, setError] = useState("");
   const [note, setNote] = useState("");
-  const [caption, setCaption] = useState("");
-  const [images, setImages] = useState<string[]>([]);
-  const [videoUrl, setVideoUrl] = useState<string | null>(null);
-  const [productId, setProductId] = useState("");
+  const [composing, setComposing] = useState(false);
   const [storyMode, setStoryMode] = useState<"photo" | "text">("photo");
   const [storyImage, setStoryImage] = useState<string[]>([]);
   const [storyText, setStoryText] = useState("");
@@ -84,6 +81,7 @@ export function BrowseWorkspace({ slug, data, stories, products, dailyLimit }: {
 
   return (
     <div className="space-y-6">
+      {composing && <BrowseComposer slug={slug} products={products} services={services} unlimited={slug === OFFICIAL_SLUG} onClose={() => setComposing(false)} />}
       <div className="grid grid-cols-3 gap-3 text-center">
         <div className="rounded-xl border p-4"><p className="text-2xl font-bold">{data.totals.likes}</p><p className="text-xs text-muted-foreground">Likes</p></div>
         <div className="rounded-xl border p-4"><p className="text-2xl font-bold">{data.totals.comments}</p><p className="text-xs text-muted-foreground">Comments</p></div>
@@ -93,19 +91,8 @@ export function BrowseWorkspace({ slug, data, stories, products, dailyLimit }: {
       <section className="rounded-xl border p-5">
         <h2 className="text-sm font-semibold">New post</h2>
         <div className="mt-3 space-y-3">
-          <textarea className={input} rows={3} maxLength={BROWSE_CAPTION_MAX} placeholder="What's new today? A fresh batch, a promo, a finished job…" value={caption} onChange={(e) => setCaption(e.target.value)} aria-label="Caption" />
-          {!videoUrl && <MultiImageUpload value={images} onChange={setImages} max={BROWSE_MAX_IMAGES} label={`Photos (up to ${BROWSE_MAX_IMAGES})`} />}
-          {images.length === 0 && <BrowseVideoUpload slug={slug} value={videoUrl} onChange={setVideoUrl} unlimited={slug === OFFICIAL_SLUG} />}
-          <label className="block text-xs">Tag a product (optional)
-            <select className={`${input} mt-1`} value={productId} onChange={(e) => setProductId(e.target.value)}>
-              <option value="">None</option>
-              {products.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
-            </select>
-          </label>
-          <div className="flex items-center gap-3">
-            <button className={btn} disabled={pending || (!caption.trim() && images.length === 0 && !videoUrl)} onClick={() => run(() => createBrowsePost(slug, { caption, images, videoUrl, productId: productId || null }), "Posted to Browse.", () => { setCaption(""); setImages([]); setVideoUrl(null); setProductId(""); })}>{pending ? "Posting…" : "Post to Browse"}</button>
-            <span className="text-xs text-muted-foreground">{caption.length}/{BROWSE_CAPTION_MAX}</span>
-          </div>
+          <p className="text-sm text-muted-foreground">Pick photos or a video from your gallery, trim and decorate it, then add a caption, hashtags and a product or service tag.</p>
+          <button className={btn} onClick={() => setComposing(true)}>Create post</button>
           {error && <p role="alert" className="text-xs text-red-600">{error}</p>}
           {note && <p role="status" className="text-xs text-emerald-700">{note}</p>}
           <p className="text-xs text-muted-foreground">Tip: you can also share a product in one tap from Products, using the ⋮ menu.</p>

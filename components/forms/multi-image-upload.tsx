@@ -8,7 +8,7 @@ const MAX_UPLOAD_BYTES = 3 * 1024 * 1024; // stay well under the host's ~4.5 MB 
 const MAX_SIDE = 2000;
 
 /** Phone photos are often 4-10 MB. Re-encode big JPEG/PNG/WebP images as a ~2000px JPEG before sending; small files and PDFs go as they are. */
-async function shrinkImage(file: File): Promise<File> {
+export async function shrinkImage(file: File): Promise<File> {
   if (!/^image\/(jpeg|png|webp)$/.test(file.type) || file.size <= MAX_UPLOAD_BYTES) return file;
   try {
     const bitmap = await createImageBitmap(file);

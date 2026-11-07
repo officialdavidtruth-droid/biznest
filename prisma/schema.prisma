@@ -4679,6 +4679,10 @@ model BrowsePost {
   images          String[]
   // Public Cloudinary video (compressed at upload). images[0] is its poster frame.
   videoUrl        String?
+  // Emoji stickers placed on the cover: [{ e, x, y, s }] (x/y are percentages, s is a size multiplier).
+  stickers        Json?
+  // What productId points at: PRODUCT or SERVICE.
+  tagKind         String   @default("PRODUCT")
   // Snapshot of the shared product (no FK: the post stays readable if the product is later deleted or edited).
   productId       String?
   productName     String?

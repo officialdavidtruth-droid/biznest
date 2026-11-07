@@ -1,0 +1,3 @@
+-- AlterTable
+ALTER TABLE "BrowsePost" ADD COLUMN "stickers" JSONB,
+ADD COLUMN "tagKind" TEXT NOT NULL DEFAULT 'PRODUCT';

@@ -20,6 +20,10 @@ export const POST = withObservability("browse-video-sign", async (req: Request) 
   if (!(BROWSE_VIDEO_TYPES as readonly string[]).includes(contentType)) return NextResponse.json({ error: "Use an MP4, MOV or WebM video." }, { status: 400 });
   if (size <= 0 || size > BROWSE_VIDEO_MAX_BYTES) return NextResponse.json({ error: `Video is too large (${BROWSE_VIDEO_MAX_BYTES / 1048576} MB max).` }, { status: 400 });
 
+  const start = typeof body?.start === "number" && Number.isFinite(body.start) ? Math.max(0, body.start) : null;
+  const end = typeof body?.end === "number" && Number.isFinite(body.end) ? body.end : null;
+  const trim = start !== null && end !== null && end > start ? { start, end } : null;
+
   const official = slug === OFFICIAL_SLUG;
   let storeId: string;
   if (official) {
@@ -38,5 +42,5 @@ export const POST = withObservability("browse-video-sign", async (req: Request) 
   if (!rate.allowed) {
     return NextResponse.json({ error: "Too many video uploads. Wait a few minutes and try again." }, { status: 429, headers: rate.retryAfterSeconds ? { "Retry-After": String(rate.retryAfterSeconds) } : undefined });
   }
-  return NextResponse.json(signBrowseVideoUpload(storeId, { official }));
+  return NextResponse.json(signBrowseVideoUpload(storeId, { official, trim }));
 });

@@ -38,3 +38,34 @@ describe("browse video", () => {
     expect(sanitizePost({ caption: "", images: [] }).ok).toBe(false);
   });
 });
+
+import { adjustTrim } from "@/lib/browse-video";
+import { extractHashtags, sanitizeStickers, splitHashtags } from "@/lib/browse";
+
+describe("composer helpers", () => {
+  it("trims by start and length", () => {
+    expect(incomingTransformation(false, { start: 12, end: 52 })).toMatch(/so_12,du_40$/);
+    expect(incomingTransformation(false, { start: 0, end: 200 })).toContain("du_60");
+    expect(incomingTransformation(true, { start: 10, end: 400 })).toMatch(/so_10,du_390$/);
+    expect(incomingTransformation(true, null)).not.toContain("du_");
+  });
+  it("keeps vendor clips to 60 seconds when moving handles", () => {
+    expect(adjustTrim({ start: 0, end: 60 }, "end", 100, 120, false)).toEqual({ start: 40, end: 100 });
+    expect(adjustTrim({ start: 40, end: 100 }, "start", 10, 120, false)).toEqual({ start: 10, end: 70 });
+    expect(adjustTrim({ start: 0, end: 60 }, "end", 100, 120, true)).toEqual({ start: 0, end: 100 });
+    expect(adjustTrim({ start: 5, end: 10 }, "start", 50, 120, true).start).toBeLessThanOrEqual(9.5);
+  });
+  it("picks a cover frame", () => {
+    expect(videoPosterUrl(url, 3.26)).toContain("so_3.3,");
+  });
+  it("cleans stickers", () => {
+    const r = sanitizeStickers([{ e: "🔥", x: 150, y: -5, s: 9 }, { e: "<script>", x: 1, y: 1, s: 1 }, { e: "", x: 1, y: 1, s: 1 }, "x"]);
+    expect(r).toEqual([{ e: "🔥", x: 100, y: 0, s: 4 }]);
+    expect(sanitizeStickers(Array.from({ length: 20 }, () => ({ e: "🎉", x: 1, y: 1, s: 1 }))).length).toBe(8);
+    expect(sanitizeStickers(null)).toEqual([]);
+  });
+  it("finds hashtags", () => {
+    expect(extractHashtags("New #Shoes in #lagos #shoes")).toEqual(["shoes", "lagos"]);
+    expect(splitHashtags("Hi #Promo now").map((p) => p.tag)).toEqual([false, true, false]);
+  });
+});

@@ -6,7 +6,7 @@ import { Flag, Heart, MessageCircle, Play, Share2, ShoppingBag, Store, Volume2, 
 import { toast } from "sonner";
 import { addBrowseComment, deleteMyBrowseComment, loadPostComments, reportBrowse, toggleBrowseLike } from "@/lib/actions/browse";
 import type { BrowseCommentView, BrowsePostView } from "@/lib/browse-data";
-import { BROWSE_COMMENT_MAX, INTERACT_NEEDS_ACCOUNT, isOfficialSlug, REPORT_REASONS, REPORT_REASON_LABEL, compactCount, postPath, storeBrowsePath, timeAgo, type ReportReason } from "@/lib/browse";
+import { BROWSE_COMMENT_MAX, INTERACT_NEEDS_ACCOUNT, isOfficialSlug, REPORT_REASONS, REPORT_REASON_LABEL, splitHashtags, compactCount, postPath, storeBrowsePath, timeAgo, type ReportReason, type Sticker } from "@/lib/browse";
 import { StoreBadges } from "@/components/browse/store-badges";
 import { formatMoney } from "@/lib/utils/format-money";
 import { trackBrowse, trackImpression } from "@/components/browse/browse-track";
@@ -43,10 +43,24 @@ function ReportMenu({ postId, commentId, label }: { postId: string; commentId?: 
 }
 
 /** Plays (muted) while it is mostly on screen and pauses when scrolled away. Tap to pause or play; the speaker button turns sound on. */
+function StickerLayer({ stickers }: { stickers: Sticker[] }) {
+  if (stickers.length === 0) return null;
+  return (
+    <div className="pointer-events-none absolute inset-0 overflow-hidden" style={{ containerType: "inline-size" }} aria-hidden>
+      {stickers.map((st, i) => <span key={i} className="absolute -translate-x-1/2 -translate-y-1/2" style={{ left: `${st.x}%`, top: `${st.y}%`, fontSize: `${st.s * 9.4}cqw`, lineHeight: 1 }}>{st.e}</span>)}
+    </div>
+  );
+}
+
+function CaptionText({ text }: { text: string }) {
+  return <>{splitHashtags(text).map((p, i) => (p.tag ? <Link key={i} href={`/browse/tag/${encodeURIComponent(p.text.slice(1).toLowerCase())}`} className="font-medium text-[#1d6b3a] hover:underline">{p.text}</Link> : <span key={i}>{p.text}</span>))}</>;
+}
+
 function FeedVideo({ post }: { post: BrowsePostView }) {
   const ref = useRef<HTMLVideoElement>(null);
   const [muted, setMuted] = useState(true);
   const [paused, setPaused] = useState(true);
+  const [started, setStarted] = useState(false); // stickers are already in the poster; show them live once it plays
   const byUserRef = useRef(false);
   useEffect(() => {
     const el = ref.current;
@@ -68,9 +82,10 @@ function FeedVideo({ post }: { post: BrowsePostView }) {
     <div className="relative aspect-[4/5] w-full overflow-hidden rounded-[22px] bg-black">
       <video
         ref={ref} src={playableVideoUrl(post.videoUrl!)} poster={post.images[0]} muted={muted} loop playsInline preload="metadata"
-        onPlay={() => setPaused(false)} onPause={() => setPaused(true)} onClick={toggle}
+        onPlay={() => { setPaused(false); setStarted(true); }} onPause={() => setPaused(true)} onClick={toggle}
         className="h-full w-full cursor-pointer object-contain" aria-label={`Video from ${post.store.name}. Tap to ${paused ? "play" : "pause"}.`}
       />
+      {started && <StickerLayer stickers={post.stickers} />}
       {paused && (
         <button type="button" onClick={toggle} aria-label="Play video" className="absolute inset-0 m-auto flex h-14 w-14 items-center justify-center rounded-full bg-black/55 text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-white">
           <Play className="h-6 w-6 fill-white" aria-hidden />
@@ -88,7 +103,7 @@ function Images({ post }: { post: BrowsePostView }) {
   const ref = useRef<HTMLDivElement>(null);
   if (post.images.length === 0 && !post.videoUrl) return null;
   const storeUrl = storeHref(post.store.slug);
-  const dest = post.product ? storeHref(post.store.slug, `/product/${post.product.id}`) : storeUrl;
+  const dest = post.product ? storeHref(post.store.slug, `/${post.product.kind === "SERVICE" ? "service" : "product"}/${post.product.id}`) : storeUrl;
   return (
     <div className="relative px-3">
       {post.videoUrl ? (
@@ -103,6 +118,7 @@ function Images({ post }: { post: BrowsePostView }) {
           <Link key={src + i} href={dest} className="relative aspect-[4/5] w-full shrink-0 snap-center bg-[#14301A]/10 focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#F5B82E]" aria-label={`Open ${post.store.name}`}>
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img src={src} alt={i === 0 ? `${post.store.name}: ${post.caption.slice(0, 80)}` : ""} loading={i === 0 ? "eager" : "lazy"} className="h-full w-full object-cover" />
+            {i === 0 && <StickerLayer stickers={post.stickers} />}
           </Link>
         ))}
       </div>
@@ -250,7 +266,7 @@ export function PostCard({ post: initial, openComments = false }: { post: Browse
 
       {post.caption && (
         <div className="px-4 pb-4 pt-1 text-[15px] leading-relaxed">
-          <p className={`whitespace-pre-line break-words ${!more && long ? "line-clamp-3" : ""}`}><Link href={storeUrl} className={`${display} font-bold hover:underline`}>{post.store.name}</Link> {post.caption}</p>
+          <p className={`whitespace-pre-line break-words ${!more && long ? "line-clamp-3" : ""}`}><Link href={storeUrl} className={`${display} font-bold hover:underline`}>{post.store.name}</Link> <CaptionText text={post.caption} /></p>
           {long && <button className="mt-1 text-xs font-medium text-[#14301A]/60 hover:text-[#14301A]" onClick={() => setMore((v) => !v)}>{more ? "Show less" : "Read more"}</button>}
         </div>
       )}

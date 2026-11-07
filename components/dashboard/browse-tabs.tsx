@@ -30,13 +30,13 @@ export async function FeedTab({ base, sort }: { base: string; sort: FeedSort }) 
   );
 }
 
-export async function PostsTab({ slug, store }: { slug: string; store: { id: string; status: string; business: { searchVisible: boolean } | null; products: { id: string; name: string }[] } }) {
+export async function PostsTab({ slug, store }: { slug: string; store: { id: string; status: string; business: { searchVisible: boolean } | null; products: { id: string; name: string }[]; services?: { id: string; name: string }[] } }) {
   const [data, stories] = await Promise.all([loadVendorBrowse(store.id), loadVendorStories(store.id)]);
   return (
     <>
       {store.status !== "ACTIVE" && <p role="alert" className="mb-4 rounded-lg border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900">Your store isn&apos;t active, so new posts are paused.</p>}
       {store.business?.searchVisible === false && <p className="mb-4 rounded-lg border bg-muted/40 p-3 text-sm">Your business is hidden from public discovery, so your posts won&apos;t appear in the feed. Turn this on in Settings to be listed.</p>}
-      <BrowseWorkspace slug={slug} data={data} stories={stories} products={store.products} dailyLimit={BROWSE_DAILY_POST_LIMIT} />
+      <BrowseWorkspace slug={slug} data={data} stories={stories} products={store.products} services={store.services ?? []} dailyLimit={BROWSE_DAILY_POST_LIMIT} />
     </>
   );
 }

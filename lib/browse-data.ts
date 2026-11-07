@@ -1,5 +1,5 @@
 import { prisma } from "@/lib/prisma";
-import { BROWSE_PAGE_SIZE, decodeCursor, encodeCursor, isMogulStore, orderRings, popularityScore, toBio } from "@/lib/browse";
+import { sanitizeStickers, type Sticker, BROWSE_PAGE_SIZE, decodeCursor, encodeCursor, isMogulStore, orderRings, popularityScore, toBio } from "@/lib/browse";
 
 export type BrowsePostView = {
   id: string;
@@ -7,11 +7,12 @@ export type BrowsePostView = {
   caption: string;
   images: string[];
   videoUrl: string | null;
+  stickers: Sticker[];
   createdAt: string;
   likeCount: number;
   commentCount: number;
   liked: boolean;
-  product: { id: string; name: string; price: number | null; currency: string } | null;
+  product: { id: string; name: string; price: number | null; currency: string; kind: "PRODUCT" | "SERVICE" } | null;
   store: { slug: string; name: string; logoUrl: string | null; category: string | null; city: string | null; verified: boolean; mogul: boolean };
 };
 
@@ -29,16 +30,16 @@ const storeSelect = {
 } as const;
 
 type Row = {
-  id: string; kind: string; caption: string; images: string[]; videoUrl?: string | null; createdAt: Date; likeCount: number; commentCount: number;
+  id: string; kind: string; caption: string; images: string[]; videoUrl?: string | null; stickers?: unknown; tagKind?: string; createdAt: Date; likeCount: number; commentCount: number;
   productId: string | null; productName: string | null; productPrice: unknown; productCurrency: string | null;
   store: { slug: string; name: string; logoUrl: string | null; business: { category: string; city: string; verificationBadge: boolean } | null; subscription?: { name: string } | null; subscriptionPastDueSince?: Date | null };
 };
 
 export function toPostView(r: Row, liked: boolean): BrowsePostView {
   return {
-    id: r.id, kind: r.kind, caption: r.caption, images: r.images, videoUrl: r.videoUrl ?? null, createdAt: r.createdAt.toISOString(),
+    id: r.id, kind: r.kind, caption: r.caption, images: r.images, videoUrl: r.videoUrl ?? null, stickers: sanitizeStickers(r.stickers), createdAt: r.createdAt.toISOString(),
     likeCount: r.likeCount, commentCount: r.commentCount, liked,
-    product: r.productId && r.productName ? { id: r.productId, name: r.productName, price: r.productPrice == null ? null : Number(r.productPrice), currency: r.productCurrency ?? "NGN" } : null,
+    product: r.productId && r.productName ? { id: r.productId, name: r.productName, price: r.productPrice == null ? null : Number(r.productPrice), currency: r.productCurrency ?? "NGN", kind: r.tagKind === "SERVICE" ? "SERVICE" : "PRODUCT" } : null,
     store: { slug: r.store.slug, name: r.store.name, logoUrl: r.store.logoUrl, category: r.store.business?.category ?? null, city: r.store.business?.city ?? null, verified: !!r.store.business?.verificationBadge, mogul: isMogulStore(r.store) },
   };
 }
@@ -334,4 +335,19 @@ export async function loadDiscoverShops(limit = 6): Promise<DiscoverShop[]> {
   return rows.map((r: { slug: string; name: string; logoUrl: string | null; followerCount: number; subscriptionPastDueSince: Date | null; subscription: { name: string } | null; business: { category: string; city: string; verificationBadge: boolean } | null; _count: { browsePosts: number } }) => ({
     slug: r.slug, name: r.name, logoUrl: r.logoUrl, category: r.business?.category ?? null, city: r.business?.city ?? null, verified: !!r.business?.verificationBadge, mogul: isMogulStore(r), followerCount: Math.max(0, r.followerCount), postCount: r._count.browsePosts,
   }));
+}
+
+
+/** Newest public posts whose caption uses #tag. The database narrows by text; the exact-word check happens here so #tag doesn't match #tagging. */
+export async function loadHashtagPosts(tag: string, viewerKey?: string | null, limit = 40): Promise<BrowsePostView[]> {
+  const clean = tag.toLowerCase().replace(/[^\p{L}\p{N}_]/gu, "").slice(0, 30);
+  if (clean.length < 2) return [];
+  const rows = await prisma.browsePost.findMany({
+    where: { ...publicPostWhere(), caption: { contains: `#${clean}`, mode: "insensitive" } },
+    orderBy: { createdAt: "desc" }, take: limit * 3, include: { store: { select: storeSelect } },
+  });
+  const exact = new RegExp(`#${clean}(?![\\p{L}\\p{N}_])`, "iu");
+  const hits = rows.filter((r: { caption: string }) => exact.test(r.caption)).slice(0, limit);
+  const liked = await likedSet(hits.map((h: { id: string }) => h.id), viewerKey);
+  return hits.map((h: { id: string }) => toPostView(h as unknown as Row, liked.has(h.id)));
 }

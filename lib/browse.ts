@@ -193,3 +193,37 @@ export function toBio(description: unknown, max = BIO_MAX): string {
   const at = Math.max(cut.lastIndexOf(" "), max - 40);
   return `${cut.slice(0, at).trimEnd()}…`;
 }
+
+
+// ------------------------------------------------------------- composer: stickers and hashtags
+
+export type Sticker = { e: string; x: number; y: number; s: number };
+export const BROWSE_MAX_STICKERS = 8;
+export const STICKER_CHOICES = ["🔥", "😍", "✨", "🎉", "💯", "❤️", "👏", "🛍️", "🆕", "💸", "🙌", "😂", "📍", "⭐", "🎁", "👀"];
+export const HASHTAG_SUGGESTIONS = ["NewArrival", "Promo", "MadeInNigeria", "ShopLocal", "Lagos", "Abuja", "BackInStock", "LimitedOffer"];
+
+const num = (v: unknown, min: number, max: number, fallback: number) => (typeof v === "number" && Number.isFinite(v) ? Math.min(max, Math.max(min, v)) : fallback);
+
+/** Keeps only short emoji-like stickers with positions inside the picture. Safe to call on anything, including stored JSON. */
+export function sanitizeStickers(input: unknown): Sticker[] {
+  if (!Array.isArray(input)) return [];
+  const out: Sticker[] = [];
+  for (const raw of input) {
+    if (out.length >= BROWSE_MAX_STICKERS) break;
+    const r = raw as { e?: unknown; x?: unknown; y?: unknown; s?: unknown } | null;
+    if (!r || typeof r.e !== "string") continue;
+    const e = [...r.e.trim()].slice(0, 6).join("");
+    if (!e || /[A-Za-z0-9<>&"'\\]/.test(e)) continue;
+    out.push({ e, x: num(r.x, 0, 100, 50), y: num(r.y, 0, 100, 50), s: num(r.s, 0.5, 4, 1) });
+  }
+  return out;
+}
+
+const HASHTAG_RE = /(#[\p{L}\p{N}_]{2,30})/gu;
+/** Splits caption text into plain and #hashtag parts so hashtags can be styled. */
+export function splitHashtags(text: string): Array<{ text: string; tag: boolean }> {
+  return text.split(HASHTAG_RE).filter((t) => t !== "").map((t) => ({ text: t, tag: t.startsWith("#") && t.length > 2 }));
+}
+export function extractHashtags(text: string): string[] {
+  return [...new Set((text.match(HASHTAG_RE) ?? []).map((t) => t.slice(1).toLowerCase()))];
+}
