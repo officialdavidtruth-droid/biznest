@@ -1,5 +1,6 @@
 "use server";
 
+import { staffLimitFor, type PlanFeatures } from "@/lib/entitlements/plan-limits";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { nanoid } from "nanoid";
@@ -199,6 +200,11 @@ export async function inviteStaffMember(
   const passwordHash = await bcrypt.hash(password, 12);
   const token = nanoid(32);
 
+  // The plan decides how many staff accounts a store may have (never more than the platform-wide cap).
+  const plan = await prisma.store.findUnique({ where: { id: store.id }, select: { subscription: { select: { name: true, features: true } } } });
+  const planLimit = staffLimitFor(plan?.subscription?.features as PlanFeatures);
+  const staffCap = planLimit === -1 ? MAX_STAFF_PER_STORE : Math.min(planLimit, MAX_STAFF_PER_STORE);
+
   // Cap check, account and staff row are one Serializable transaction so
   // concurrent invites can't overshoot the cap, and a failed staff insert
   // can't leave an orphan login account behind.
@@ -210,7 +216,7 @@ export async function inviteStaffMember(
           const existingCount = await tx.storeStaff.count({
             where: { storeId: store.id, status: { in: ["PENDING", "ACTIVE"] } },
           });
-          if (existingCount >= MAX_STAFF_PER_STORE) throw new Error("STAFF_LIMIT");
+          if (existingCount >= staffCap) throw new Error("STAFF_LIMIT");
 
           const staffUser = await tx.user.create({
             data: {
@@ -246,7 +252,12 @@ export async function inviteStaffMember(
       break;
     } catch (err) {
       if (err instanceof Error && err.message === "STAFF_LIMIT") {
-        return { success: false, error: `You've reached the ${MAX_STAFF_PER_STORE}-staff limit for one store.` };
+        return {
+          success: false,
+          error: staffCap < MAX_STAFF_PER_STORE
+            ? `The ${plan?.subscription?.name ?? "current"} plan includes up to ${staffCap} staff accounts. Upgrade your plan to add more.`
+            : `You've reached the ${MAX_STAFF_PER_STORE}-staff limit for one store.`,
+        };
       }
       const code = err instanceof Prisma.PrismaClientKnownRequestError ? err.code : undefined;
       if (code === "P2034" && attempt < MAX_ATTEMPTS) continue;

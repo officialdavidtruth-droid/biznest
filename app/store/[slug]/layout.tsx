@@ -16,6 +16,7 @@ import { WhatsAppChatButton } from "@/components/storefront/whatsapp-chat-button
 import { whatsappLink } from "@/lib/utils/whatsapp-link";
 import { NO_INDEX } from "@/lib/seo";
 import { isStoreLocked } from "@/lib/billing/store-lock";
+import { PoweredByBizNest } from "@/components/storefront/powered-by-biznest";
 import { InstallStoreApp } from "@/components/storefront/install-store-app";
 import { OrderPushPrompt } from "@/components/storefront/order-push-prompt";
 import { requireStoreCustomer } from "@/lib/actions/store-customer";
@@ -128,6 +129,8 @@ export default async function StoreLayout({
       status: true,
       marketingOnly: true,
       subscriptionId: true,
+      trialEndsAt: true,
+      subscriptionRenewsAt: true,
       // Owner-configured analytics / ad-conversion IDs (Settings > Tracking & analytics).
       trackingGaId: true,
       trackingMetaPixelId: true,
@@ -247,6 +250,9 @@ export default async function StoreLayout({
   const headerMenu = menuFor("header");
   const footerMenu = menuFor("footer");
 
+  // Free trial: no card billing yet and the trial end is still ahead.
+  const onFreeTrial = !!exists && !!exists.subscriptionId && !!exists.trialEndsAt && exists.trialEndsAt > new Date() && !exists.subscriptionRenewsAt;
+
   return (
     <>
       <link rel="preconnect" href="https://fonts.googleapis.com" />
@@ -264,6 +270,7 @@ export default async function StoreLayout({
       {trackingOn && tracking && (
         <StoreTracking slug={slug} gaId={tracking.gaId} metaPixelId={tracking.metaPixelId} plausibleDomain={tracking.plausibleDomain} />
       )}
+      {onFreeTrial && !isAdminRoute && exists?.status === "ACTIVE" && <PoweredByBizNest />}
       {pushEligible && <OrderPushPrompt slug={slug} base={pwaBase} />}
       {chatHref && exists && <WhatsAppChatButton href={chatHref} storeName={exists.name} />}
       {showPromo && promo && promoPalette && <PromoPopup slug={slug} config={promo} palette={promoPalette} />}

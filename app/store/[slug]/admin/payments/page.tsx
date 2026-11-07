@@ -14,6 +14,7 @@ import { RefundPendingCard } from "@/components/dashboard/refund-pending-card";
 import { RefundClawbackCard } from "@/components/dashboard/refund-clawback-card";
 import { moneyFormatter } from "@/lib/utils/format-money";
 import { getPendingTransfers } from "@/lib/actions/manual-payment";
+import { CustomerPaymentMessage } from "@/components/dashboard/customer-payment-message";
 import { PendingTransfersList } from "@/components/dashboard/pending-transfers-list";
 
 export default async function PaymentsPage({ params }: { params: Promise<{ slug: string }> }) {
@@ -77,6 +78,8 @@ export default async function PaymentsPage({ params }: { params: Promise<{ slug:
         </div>
         <PosCommissionCard slug={slug} balance={posCommission} />
       </div>
+
+      <CustomerPaymentMessage storeName={store.name} />
 
       <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-muted-foreground">Payout account</h2>
       <p className="mb-3 max-w-xl text-sm text-muted-foreground">

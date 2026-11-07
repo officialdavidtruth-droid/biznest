@@ -44,7 +44,7 @@ async function loadExternalScript(src: string) {
 
 type Zone = { id: string; name: string; city: string | null; fee: unknown; estimatedMinutes: number | null };
 
-export function CheckoutClient({ slug, palette = DEFAULT_STORE_PALETTE, feeConfig }: { slug: string; palette?: StorePalette; feeConfig?: FeeConfig }) {
+export function CheckoutClient({ slug, palette = DEFAULT_STORE_PALETTE, feeConfig, storeName }: { slug: string; palette?: StorePalette; feeConfig?: FeeConfig; storeName?: string }) {
   const ACCENT = palette.accent, INK = palette.ink, SURFACE = palette.surface, CARD = palette.card, CARD_ALT = palette.cardAlt, INVERSE = palette.inverse, INVERSE_INK = palette.inverseInk;
   const inputStyle = { color: INK };
   const { items, storeSlug, subtotal } = useCart();
@@ -404,6 +404,9 @@ export function CheckoutClient({ slug, palette = DEFAULT_STORE_PALETTE, feeConfi
               >
                 {isSubmitting ? (usingWallet ? "Paying from wallet…" : "Opening secure card checkout…") : usingWallet ? `Pay ${currency} ${formatNumber(total)} from wallet` : `Pay ${currency} ${formatNumber(gatewayFee.totalNaira)}`}
               </button>
+              {feeConfig?.viaPlatform && !usingWallet && (
+                <p className="text-center text-[11px] leading-relaxed" style={{ opacity: 0.65 }}>You are paying {storeName ?? "this store"}. Payments are collected securely by BizNest on the store&apos;s behalf, so the payment page may show BizNest or our payment partner. The money goes to {storeName ?? "the store"}.</p>
+              )}
               <p className="flex items-center justify-center gap-2 text-center text-[11px] uppercase tracking-widest" style={{ opacity: 0.55 }}><CreditCard className="h-3.5 w-3.5" /> Visa · Mastercard · Verve · Secure card checkout</p>
             </div>
           </div>

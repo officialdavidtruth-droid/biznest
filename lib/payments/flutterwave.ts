@@ -14,6 +14,9 @@ type InitializeParams = {
   secretKey?: string | null;
   /** ISO code. Defaults to NGN. */
   currency?: string;
+  /** Who the customer is paying, shown on Flutterwave's payment page. */
+  payeeName?: string;
+  payeeLogoUrl?: string | null;
 };
 
 type InitializeResponse = {
@@ -47,6 +50,9 @@ export async function initializeFlutterwaveTransaction(params: InitializeParams)
       redirect_url: params.callbackUrl,
       customer: { email: params.email, name: params.customerName ?? params.email },
       ...(params.subaccountId ? { subaccounts: [{ id: params.subaccountId }] } : {}),
+      ...(params.payeeName
+        ? { customizations: { title: params.payeeName, description: `Payment to ${params.payeeName}`, ...(params.payeeLogoUrl ? { logo: params.payeeLogoUrl } : {}) } }
+        : {}),
     }),
   });
 

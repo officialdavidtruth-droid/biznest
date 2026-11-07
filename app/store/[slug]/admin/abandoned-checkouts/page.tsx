@@ -1,3 +1,5 @@
+import { growthToolsGate } from "@/lib/entitlements/plan-features";
+import { PlanUpgradeNotice } from "@/components/dashboard/plan-upgrade-notice";
 // Route: /store/[slug]/admin/abandoned-checkouts
 import { notFound } from "next/navigation";
 import { prisma } from "@/lib/prisma";
@@ -20,6 +22,8 @@ export default async function AbandonedCheckoutsPage({
   // Hotels (reservations) and service-only businesses have no cart checkout to abandon.
   const store = await prisma.store.findUnique({ where: { slug }, select: { business: { select: { category: true, sellsProducts: true } } } });
   if (!store || !supportsAbandonedCheckout(store.business.category, store.business)) notFound();
+  const gate = await growthToolsGate(slug, "Abandoned checkout recovery");
+  if (!gate.ok) return <PlanUpgradeNotice slug={slug} title="Abandoned checkouts" message={gate.message} />;
   const checkouts = await listAbandonedCheckouts(slug);
 
   return (

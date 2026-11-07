@@ -8,6 +8,7 @@ import type { PaymentProvider } from "@prisma/client";
 import { logError } from "@/lib/observability/log";
 import { APP_URL } from "@/lib/constants/app-url";
 import { resolveStoreGateway, type StoreGatewayCredentials } from "@/lib/payments/store-gateway";
+import { prisma } from "@/lib/prisma";
 import { feeSchedule, grossUpForGatewayFee, payoutTransferFee, transferFeeConfigFor } from "@/lib/payments/customer-fee";
 
 export { billingCallbackUrl } from "@/lib/payments/billing-gateway";
@@ -127,6 +128,8 @@ export async function chargeCustomer(params: ChargeParams): Promise<ChargeResult
     ? grossUpForGatewayFee(gateway, params.amountNaira, feeSchedule(gateway), undefined, undefined, transferFee)
     : { totalNaira: params.amountNaira, feeNaira: 0 };
   const chargeNaira = fee.totalNaira;
+  // The payment page should name the store being paid, not just the platform that collects for it.
+  const payee = params.storeId ? await prisma.store.findUnique({ where: { id: params.storeId }, select: { name: true, logoUrl: true } }).catch(() => null) : null;
   const feeFields = { chargedNaira: chargeNaira, gatewayFeeNaira: fee.feeNaira };
 
   if (gateway === "KORAPAY") {
@@ -158,6 +161,7 @@ export async function chargeCustomer(params: ChargeParams): Promise<ChargeResult
       callbackUrl: params.callbackUrl,
       notificationUrl: `${APP_URL}/api/payments/korapay/webhook`,
       customerName: params.customerName,
+      ...(payee ? { narration: `Payment to ${payee.name}` } : {}),
     });
     if (!init.status || !init.data?.checkout_url) {
       void logError("PAYMENTS", "Korapay charge init failed", { reference: params.reference, message: init.message });
@@ -200,6 +204,8 @@ export async function chargeCustomer(params: ChargeParams): Promise<ChargeResult
       customerName: params.customerName,
       secretKey: own?.secretKey,
       currency,
+      payeeName: payee?.name,
+      payeeLogoUrl: payee?.logoUrl,
     });
     if (init.status !== "success" || !init.data) {
       void logError("PAYMENTS", "Flutterwave charge init failed", { reference: params.reference, message: init.message });
@@ -222,6 +228,7 @@ export async function chargeCustomer(params: ChargeParams): Promise<ChargeResult
     callbackUrl: params.callbackUrl,
     secretKey: own?.secretKey,
     currency,
+    payeeName: payee?.name,
   });
   if (!init.status || !init.data) {
     void logError("PAYMENTS", "Paystack charge init failed", { reference: params.reference, message: init.message });

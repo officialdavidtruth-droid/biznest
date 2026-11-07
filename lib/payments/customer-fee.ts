@@ -132,12 +132,13 @@ export function grossUpForGatewayFee(
 }
 
 /** Everything the browser needs to show the fee before paying (it cannot read server environment variables). */
-export type FeeConfig = { gateway: FeeGateway; schedule: FeeSchedule; vatPercent: number; enabled: boolean; transfer: TransferFeeConfig };
+export type FeeConfig = { gateway: FeeGateway; schedule: FeeSchedule; vatPercent: number; enabled: boolean; transfer: TransferFeeConfig; /** True when BizNest collects the payment (the customer's payment page names the payment provider, not the store). */ viaPlatform: boolean };
 
 /** `transferFeeApplies` is false when the store collects into its own gateway account: BizNest sends no payout there. */
 export function feeConfigFor(gateway: FeeGateway, transferFeeApplies = true): FeeConfig {
   return {
     gateway, schedule: feeSchedule(gateway), vatPercent: envNum("GATEWAY_FEE_VAT_PERCENT", 0), enabled: customerPaysGatewayFee(),
     transfer: transferFeeConfigFor(gateway, transferFeeApplies && customerPaysTransferFee()),
+    viaPlatform: transferFeeApplies,
   };
 }

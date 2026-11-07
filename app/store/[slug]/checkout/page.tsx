@@ -37,7 +37,7 @@ async function renderCheckout(slug: string) {
   }
   // The gateway this store's customers will pay through, so checkout can show the processing fee up front.
   const feeConfig = await getCheckoutFeeConfig(rawStore.id);
-  const checkout = <CheckoutClient slug={slug} palette={resolveStorePalette(rawStore)} feeConfig={feeConfig} />;
+  const checkout = <CheckoutClient slug={slug} palette={resolveStorePalette(rawStore)} feeConfig={feeConfig} storeName={rawStore.name} />;
   if (!usesTemplateChromeFor(rawStore.template?.name, rawStore.sectionOverrides, { businessCategory: rawStore.business?.category, storeBusinessType: rawStore.businessType })) return checkout;
   const theme = resolveStoreTheme(rawStore.template?.category, rawStore.name, rawStore.themeColors as any, rawStore.fontFamily, rawStore.template?.name);
   return <TemplateShell store={rawStore} slug={slug} theme={theme}>{checkout}</TemplateShell>;

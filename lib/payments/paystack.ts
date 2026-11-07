@@ -9,6 +9,8 @@ type InitializeParams = {
   reference: string;
   callbackUrl: string;
   subaccountCode?: string | null;
+  /** Who the customer is paying; recorded on the transaction so it shows in the Paystack dashboard and receipts. */
+  payeeName?: string;
   /**
    * Who eats Paystack's transaction fee when this charge is split to a
    * subaccount. "account" = platform's main balance (we absorb it — what
@@ -84,6 +86,7 @@ export async function initializePaystackTransaction(params: InitializeParams): P
       amount: params.amountKobo,
       reference: params.reference,
       callback_url: params.callbackUrl,
+      ...(params.payeeName ? { metadata: { custom_fields: [{ display_name: "Paying", variable_name: "store", value: params.payeeName }] } } : {}),
       ...(params.currency && params.currency.toUpperCase() !== "NGN" ? { currency: params.currency.toUpperCase() } : {}),
       ...(channels ? { channels } : {}),
       ...(params.subaccountCode

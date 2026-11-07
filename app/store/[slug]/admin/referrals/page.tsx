@@ -1,3 +1,5 @@
+import { growthToolsGate } from "@/lib/entitlements/plan-features";
+import { PlanUpgradeNotice } from "@/components/dashboard/plan-upgrade-notice";
 // Route: /store/[slug]/admin/referrals
 import Link from "next/link";
 import { redirect } from "next/navigation";
@@ -24,6 +26,8 @@ export default async function ReferralsPage({
   const access = await assertStorePermission(slug, "marketing");
   if (!access.success) redirect(`/store/${slug}/admin`);
   const store = access.store;
+  const gate = await growthToolsGate(slug, "Referrals");
+  if (!gate.ok) return <PlanUpgradeNotice slug={slug} title="Referrals" message={gate.message} />;
 
   const [total, rewarded, waiting] = await Promise.all([
     prisma.referral.count({ where: { storeId: store.id } }),
