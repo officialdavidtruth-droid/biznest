@@ -1,33 +1,25 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { ArrowLeft, ArrowRight, Camera, ChevronRight, Hash, Image as ImageIcon, MapPin, Minus, Play, Plus, Scissors, Smile, Sparkles, Tag, Trash2, Type, UserRound, X } from "lucide-react";
+import { ArrowLeft, ArrowRight, Camera, ChevronRight, Hash, Image as ImageIcon, MapPin, Minus, Pause, Play, Plus, Scissors, Smile, Sparkles, Tag, Trash2, Type, UserRound, X } from "lucide-react";
 import { toast } from "sonner";
 import { createBrowsePost } from "@/lib/actions/browse-vendor";
 import { BROWSE_CAPTION_MAX, BROWSE_LOCATION_MAX, BROWSE_MAX_IMAGES, BROWSE_MAX_STICKERS, BROWSE_MAX_TAGS, BROWSE_TEXT_MAX, HASHTAG_SUGGESTIONS, STICKER_CHOICES, type Sticker } from "@/lib/browse";
 import { BROWSE_VIDEO_MAX_SECONDS, adjustTrim, videoErrorFor } from "@/lib/browse-video";
 import { uploadBrowseImage, uploadBrowseVideo } from "@/components/dashboard/browse-upload";
-import { bakePhotoCover, bakeVideoCover, videoFrames } from "@/components/dashboard/browse-bake";
+import { bakePhotoCover, bakeVideoCover, readVideoLength, videoFrames } from "@/components/dashboard/browse-bake";
 
 type Tagged = { id: string; name: string };
 type Person = { kind: "store" | "user"; id: string; name: string; sub: string; logoUrl: string | null };
 type Screen = "pick" | "edit" | "details" | "cover";
 type Sheet = "trim" | "stickers" | "text" | null;
 
-const ACCENT = "bg-[#4c5dff]";
+const ACCENT = "bg-[#F5B82E] text-[#14301A]";
 const fmt = (s: number) => `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).padStart(2, "0")}`;
+const topPad = "pt-[max(env(safe-area-inset-top),1rem)] max-sm:pt-[max(env(safe-area-inset-top),3rem)]";
+const botPad = "pb-[max(env(safe-area-inset-bottom),1.25rem)]";
 const ghostBtn = "rounded-full bg-white/10 px-4 py-2.5 text-sm font-semibold text-white disabled:opacity-50";
-
-function readDuration(url: string): Promise<number | null> {
-  return new Promise((resolve) => {
-    const v = document.createElement("video");
-    v.preload = "metadata";
-    v.onloadedmetadata = () => resolve(Number.isFinite(v.duration) ? v.duration : null);
-    v.onerror = () => resolve(null);
-    v.src = url;
-  });
-}
 
 /** The picture area. Emoji and text items sit on top and can be dragged; sizes are a share of the width so they match the feed. */
 function Stage({ children, items, setItems, sel, setSel, interactive, className = "" }: {
@@ -74,16 +66,17 @@ export function BrowseComposer({ slug, products, services, unlimited, onClose }:
   const [screen, setScreen] = useState<Screen>("pick");
   const [files, setFiles] = useState<File[]>([]);
   const [isVideo, setIsVideo] = useState(false);
-  const urls = useMemo(() => files.map((f) => URL.createObjectURL(f)), [files]);
-  useEffect(() => () => urls.forEach((u) => URL.revokeObjectURL(u)), [urls]);
+  const [urls, setUrls] = useState<string[]>([]);
+  useEffect(() => { const u = files.map((f) => URL.createObjectURL(f)); setUrls(u); return () => u.forEach((x) => URL.revokeObjectURL(x)); }, [files]);
 
   const [duration, setDuration] = useState<number | null>(null);
   const [trim, setTrim] = useState({ start: 0, end: 0 });
   const [coverRel, setCoverRel] = useState(0);
   const [customCover, setCustomCover] = useState<File | null>(null);
-  const customUrl = useMemo(() => (customCover ? URL.createObjectURL(customCover) : null), [customCover]);
-  useEffect(() => () => { if (customUrl) URL.revokeObjectURL(customUrl); }, [customUrl]);
+  const [customUrl, setCustomUrl] = useState<string | null>(null);
+  useEffect(() => { if (!customCover) { setCustomUrl(null); return; } const u = URL.createObjectURL(customCover); setCustomUrl(u); return () => URL.revokeObjectURL(u); }, [customCover]);
   const [cur, setCur] = useState(0);
+  const [playing, setPlaying] = useState(false);
   const [items, setItems] = useState<Sticker[]>([]);
   const [sel, setSel] = useState<number | null>(null);
   const [sheet, setSheet] = useState<Sheet>(null);
@@ -149,7 +142,7 @@ export function BrowseComposer({ slug, products, services, unlimited, onClose }:
       const problem = videoErrorFor(vid, null, true);
       if (problem) { setError(problem); return; }
       const url = URL.createObjectURL(vid);
-      const d = await readDuration(url);
+      const d = await readVideoLength(url);
       URL.revokeObjectURL(url);
       setFiles([vid]); setIsVideo(true); setDuration(d); setCur(0); setItems([]); setSel(null); setCustomCover(null);
       const end = d == null ? 0 : unlimited ? d : Math.min(d, BROWSE_VIDEO_MAX_SECONDS);
@@ -179,6 +172,7 @@ export function BrowseComposer({ slug, products, services, unlimited, onClose }:
     if (mainVideo.current) { mainVideo.current.pause(); mainVideo.current.currentTime = which === "start" ? next.start : Math.max(next.start, next.end - 0.3); }
   }
   const span = trim.end - trim.start;
+  function togglePlay() { const v = mainVideo.current; if (!v) return; if (v.paused) { if (v.currentTime >= trim.end - 0.1 || v.currentTime < trim.start) v.currentTime = trim.start; void v.play().catch(() => {}); } else v.pause(); }
 
   function addEmoji(e: string) { if (items.length >= BROWSE_MAX_STICKERS) return; setItems((s) => [...s, { e, x: 50, y: 50, s: 1 }]); setSel(items.length); setSheet(null); }
   function addText() {
@@ -211,8 +205,10 @@ export function BrowseComposer({ slug, products, services, unlimited, onClose }:
         setProgress(0);
         videoUrl = await uploadBrowseVideo(slug, files[0], duration != null ? { start: trim.start, end: trim.end } : null, setProgress);
         // Burn the items into the cover so link previews and the paused poster show them.
-        if (customCover) images = [await uploadBrowseImage(await bakePhotoCover(customCover, items))];
-        else if (items.length > 0) images = [await uploadBrowseImage(await bakeVideoCover(urls[0], trim.start + coverRel, items))];
+        try {
+          if (customCover) images = [await uploadBrowseImage(await bakePhotoCover(customCover, items))];
+          else if (items.length > 0) images = [await uploadBrowseImage(await bakeVideoCover(urls[0], trim.start + coverRel, items))];
+        } catch { images = []; /* the server makes a plain poster instead */ }
       } else {
         for (let i = 0; i < files.length; i++) {
           setProgress(Math.round((i / files.length) * 100));
@@ -243,22 +239,24 @@ export function BrowseComposer({ slug, products, services, unlimited, onClose }:
     ? <img src={customUrl} alt="" className="h-full w-full object-cover" draggable={false} />
     : isVideo
       // eslint-disable-next-line jsx-a11y/media-has-caption
-      ? <video ref={coverVideo} src={urls[0]} muted playsInline preload="auto" className={`h-full w-full ${fit === "contain" ? "object-contain" : "object-contain"}`} onLoadedMetadata={() => { if (coverVideo.current) coverVideo.current.currentTime = trim.start + coverRel; }} />
+      ? <video ref={coverVideo} src={`${urls[0]}#t=0.1`} muted playsInline preload="auto" className="h-full w-full object-contain" onLoadedMetadata={() => { if (coverVideo.current) coverVideo.current.currentTime = trim.start + coverRel; }} />
       // eslint-disable-next-line @next/next/no-img-element
       : <img src={urls[0]} alt="" className="h-full w-full object-cover" draggable={false} />;
 
   const taggedLabel = tag ? [...products.map((p) => ({ ...p, k: "product" })), ...services.map((p) => ({ ...p, k: "service" }))].find((p) => `${p.k}:${p.id}` === tag)?.name : null;
   const canShare = !busy && (caption.trim().length > 0 || files.length > 0);
   const shell = "fixed inset-0 z-50 flex items-stretch justify-center bg-black sm:p-6";
-  const panel = "relative flex h-full w-full max-w-lg flex-col overflow-hidden bg-[#0c1017] text-white sm:h-[min(92vh,860px)] sm:rounded-2xl";
+  const panel = "relative flex h-full w-full max-w-lg flex-col overflow-hidden bg-[#0F2A17] text-white sm:h-[min(92vh,860px)] sm:rounded-2xl";
   const header = (left: React.ReactNode, title: string, right?: React.ReactNode) => (
-    <header className="flex h-14 shrink-0 items-center border-b border-white/10 px-3">
-      <div className="w-20">{left}</div>
-      <h2 className="flex-1 text-center text-base font-semibold">{title}</h2>
-      <div className="flex w-20 justify-end">{right}</div>
+    <header className={`shrink-0 border-b border-white/10 px-3 pb-2 ${topPad}`}>
+      <div className="flex min-h-14 items-center">
+        <div className="flex w-16 justify-start">{left}</div>
+        <h2 className="flex-1 text-center text-lg font-semibold">{title}</h2>
+        <div className="flex w-16 justify-end">{right}</div>
+      </div>
     </header>
   );
-  const sheetBox = "absolute inset-x-0 bottom-0 z-10 max-h-[70%] overflow-y-auto rounded-t-2xl bg-[#171c26] p-4 shadow-2xl";
+  const sheetBox = "absolute inset-x-0 bottom-0 z-10 max-h-[70%] overflow-y-auto rounded-t-2xl bg-[#1B3A24] p-4 shadow-2xl";
 
   // ------------------------------------------------------------ 1. gallery
   if (screen === "pick") {
@@ -267,9 +265,8 @@ export function BrowseComposer({ slug, products, services, unlimited, onClose }:
       <div role="dialog" aria-modal="true" aria-label="New post" className={shell}>
         <div className={panel}>
           {header(
-            <button type="button" aria-label="Close" className="rounded-full p-2 hover:bg-white/10" onClick={onClose}><X className="h-6 w-6" /></button>,
+            <button type="button" aria-label="Close" className="flex h-12 w-12 items-center justify-center rounded-full bg-white/10 hover:bg-white/20" onClick={onClose}><X className="h-6 w-6" /></button>,
             "New post",
-            <button type="button" disabled={files.length === 0} className="px-2 text-base font-semibold text-[#6f7dff] disabled:opacity-40" onClick={() => setScreen("edit")}>Next</button>,
           )}
           <div className="flex-1 overflow-y-auto">
             <div className="mx-auto flex h-[46vh] items-center justify-center bg-black">
@@ -277,22 +274,21 @@ export function BrowseComposer({ slug, products, services, unlimited, onClose }:
                 <div className="relative aspect-[4/5] h-full">
                   {isVideo
                     // eslint-disable-next-line jsx-a11y/media-has-caption
-                    ? <video src={urls[0]} muted playsInline preload="metadata" className="h-full w-full object-contain" />
+                    ? <video src={`${urls[0]}#t=0.1`} controls playsInline preload="metadata" className="h-full w-full object-contain" />
                     // eslint-disable-next-line @next/next/no-img-element
                     : <img src={urls[Math.min(cur, urls.length - 1)]} alt="" className="h-full w-full object-cover" />}
-                  {isVideo && <Play className="absolute inset-0 m-auto h-14 w-14 fill-white text-white" aria-hidden />}
-                </div>
-              ) : <p className="px-8 text-center text-sm text-white/60">Pick photos or a video from your gallery to start.</p>}
+                                </div>
+              ) : <div className="px-8 text-center"><p className="text-sm text-white/70">Choose photos or a video from your phone.</p><button type="button" onClick={() => galleryMany.current?.click()} className={`${ACCENT} mt-4 rounded-full px-6 py-3.5 text-base font-semibold`}>Open my photos and videos</button></div>}
             </div>
             <div className="flex items-center justify-between px-4 py-3">
-              <button type="button" className="flex items-center gap-1 text-lg font-bold" onClick={() => galleryOne.current?.click()}>Gallery<ChevronRight className="h-5 w-5" aria-hidden /></button>
-              <button type="button" className="flex items-center gap-2 rounded-full bg-white/10 px-4 py-2 text-sm font-semibold" onClick={() => galleryMany.current?.click()}><ImageIcon className="h-4 w-4" aria-hidden />Select</button>
+              <button type="button" className="flex min-h-11 items-center gap-1 text-lg font-bold" onClick={() => galleryOne.current?.click()}>Photos and videos<ChevronRight className="h-5 w-5" aria-hidden /></button>
+              <button type="button" className="flex items-center gap-2 rounded-full bg-white/10 px-4 py-2 text-sm font-semibold" onClick={() => galleryMany.current?.click()}><ImageIcon className="h-4 w-4" aria-hidden />Pick several</button>
             </div>
             <div className="grid grid-cols-4 gap-0.5 px-0.5 pb-6">
               <button type="button" aria-label="Take a photo or video" className="flex aspect-square items-center justify-center bg-white/10" onClick={() => camera.current?.click()}><Camera className="h-8 w-8" aria-hidden /></button>
               <button type="button" aria-label="Add from gallery" className="flex aspect-square items-center justify-center bg-white/5" onClick={() => galleryMany.current?.click()}><Plus className="h-8 w-8" aria-hidden /></button>
               {files.map((f, i) => (
-                <div key={urls[i]} className={`relative aspect-square overflow-hidden bg-white/10 ${cur === i ? "ring-2 ring-inset ring-[#6f7dff]" : ""}`}>
+                <div key={`${i}-${f.name}`} className={`relative aspect-square overflow-hidden bg-white/10 ${cur === i ? "ring-2 ring-inset ring-[#F5B82E]" : ""}`}>
                   <button type="button" className="h-full w-full" aria-label={`Preview ${f.name}`} onClick={() => setCur(i)}>
                     {isVideo
                       // eslint-disable-next-line @next/next/no-img-element
@@ -301,14 +297,17 @@ export function BrowseComposer({ slug, products, services, unlimited, onClose }:
                       : <img src={urls[i]} alt="" className="h-full w-full object-cover" />}
                   </button>
                   {isVideo && duration != null && <span className="absolute bottom-1 right-1.5 text-sm font-bold text-white drop-shadow">{fmt(duration)}</span>}
-                  {!isVideo && files.length > 1 && <span className="absolute right-1 top-1 flex h-5 w-5 items-center justify-center rounded-full bg-[#4c5dff] text-xs font-bold">{i + 1}</span>}
+                  {!isVideo && files.length > 1 && <span className="absolute right-1 top-1 flex h-5 w-5 items-center justify-center rounded-full bg-[#F5B82E] text-xs font-bold text-[#14301A]">{i + 1}</span>}
                   <button type="button" aria-label="Remove" className="absolute left-1 top-1 rounded-full bg-black/60 p-0.5" onClick={() => removeFile(i)}><X className="h-3.5 w-3.5" /></button>
                 </div>
               ))}
             </div>
             {error && <p role="alert" className="px-4 pb-4 text-sm text-red-400">{error}</p>}
           </div>
-          <p className="border-t border-white/10 px-4 py-2 text-center text-xs text-white/50">Up to {BROWSE_MAX_IMAGES} photos, or one video{unlimited ? "" : ` up to ${BROWSE_VIDEO_MAX_SECONDS} seconds`}.</p>
+          <div className={`shrink-0 border-t border-white/10 px-4 pt-3 ${botPad}`}>
+            <p className="mb-2 text-center text-xs text-white/60">Up to {BROWSE_MAX_IMAGES} photos, or one video{unlimited ? "" : ` up to ${BROWSE_VIDEO_MAX_SECONDS} seconds`}.</p>
+            <button type="button" disabled={files.length === 0} onClick={() => setScreen("edit")} className={`${ACCENT} flex w-full items-center justify-center gap-2 rounded-full py-4 text-base font-semibold disabled:opacity-40`}>Continue<ArrowRight className="h-5 w-5" aria-hidden /></button>
+          </div>
           <input ref={galleryOne} type="file" accept="image/*,video/*" className="sr-only" onChange={(e) => void addFiles(e.target.files)} />
           <input ref={galleryMany} type="file" multiple accept="image/*,video/*" className="sr-only" onChange={(e) => void addFiles(e.target.files)} />
           <input ref={camera} type="file" accept="image/*,video/*" capture="environment" className="sr-only" onChange={(e) => void addFiles(e.target.files)} />
@@ -322,20 +321,26 @@ export function BrowseComposer({ slug, products, services, unlimited, onClose }:
     return (
       <div role="dialog" aria-modal="true" aria-label="Edit" className={shell}>
         <div className={`${panel} bg-black`}>
-          <div className="flex h-16 shrink-0 items-center px-3">
-            <button type="button" aria-label="Back" className="flex h-11 w-11 items-center justify-center rounded-full bg-white/15" onClick={() => { mainVideo.current?.pause(); setScreen("pick"); }}><X className="h-6 w-6" /></button>
+          <div className={`flex shrink-0 items-center px-3 pb-2 ${topPad}`}>
+            <button type="button" aria-label="Back" className="flex h-12 w-12 items-center justify-center rounded-full bg-white/15" onClick={() => { mainVideo.current?.pause(); setScreen("pick"); }}><X className="h-6 w-6" /></button>
           </div>
           <div className="flex min-h-0 flex-1 items-center justify-center px-2">
             <Stage items={items} setItems={setItems} sel={sel} setSel={setSel} interactive className="aspect-[4/5] h-full max-w-full rounded-2xl">
               <div className="h-full w-full">
                 {isVideo
                   // eslint-disable-next-line jsx-a11y/media-has-caption
-                  ? <video ref={mainVideo} src={urls[0]} className="h-full w-full object-contain" playsInline muted autoPlay onTimeUpdate={onTime} onClick={(e) => { const v = e.currentTarget; if (v.paused) void v.play(); else v.pause(); }} />
+                  ? <video ref={mainVideo} src={`${urls[0]}#t=0.1`} className="h-full w-full object-contain" playsInline muted autoPlay preload="auto" onTimeUpdate={onTime} onPlay={() => setPlaying(true)} onPause={() => setPlaying(false)} onClick={() => togglePlay()} />
                   // eslint-disable-next-line @next/next/no-img-element
                   : <img src={urls[cur]} alt="" className="h-full w-full object-cover" draggable={false} />}
               </div>
             </Stage>
           </div>
+          {isVideo && (
+            <div className="flex items-center justify-center gap-3 pt-2">
+              <button type="button" onClick={togglePlay} aria-label={playing ? "Pause" : "Play"} className="flex h-12 items-center gap-2 rounded-full bg-white/15 px-5 text-sm font-semibold">{playing ? <Pause className="h-5 w-5" aria-hidden /> : <Play className="h-5 w-5 fill-white" aria-hidden />}{playing ? "Pause" : "Play"}</button>
+              {duration == null && !unlimited && <p className="max-w-[55%] text-xs text-white/70">We couldn&apos;t read this video&apos;s length, so only the first {BROWSE_VIDEO_MAX_SECONDS} seconds will be posted.</p>}
+            </div>
+          )}
           {sel != null && items[sel] && (
             <div className="flex justify-center gap-2 py-2">
               <button type="button" className="rounded-full bg-white/15 p-2.5" aria-label="Smaller" onClick={() => resize(-0.25)}><Minus className="h-4 w-4" /></button>
@@ -364,16 +369,16 @@ export function BrowseComposer({ slug, products, services, unlimited, onClose }:
               <span className="flex h-14 w-full items-center justify-center rounded-2xl bg-white/12"><ImageIcon className="h-6 w-6" aria-hidden /></span>Cover
             </button>
           </div>
-          <div className="flex shrink-0 items-center justify-between px-4 pb-5 pt-2">
+          <div className={`flex shrink-0 items-center justify-between px-4 pt-2 ${botPad}`}>
             {isVideo && duration != null
-              ? <button type="button" className={`${ghostBtn} flex items-center gap-2 bg-[#23262e] px-5 py-3`} onClick={() => { setSheet("trim"); mainVideo.current?.play().catch(() => {}); }}><Scissors className="h-4 w-4" aria-hidden />Edit video</button>
+              ? <button type="button" className={`${ghostBtn} flex items-center gap-2 bg-[#23262e] px-5 py-3`} onClick={() => { setSheet("trim"); mainVideo.current?.play().catch(() => {}); }}><Scissors className="h-4 w-4" aria-hidden />Trim video</button>
               : <span />}
-            <button type="button" className={`${ACCENT} flex items-center gap-2 rounded-full px-6 py-3 text-base font-semibold`} onClick={() => { mainVideo.current?.pause(); setScreen("details"); }}>Next<ArrowRight className="h-5 w-5" aria-hidden /></button>
+            <button type="button" className={`${ACCENT} flex items-center gap-2 rounded-full px-7 py-3.5 text-base font-semibold`} onClick={() => { mainVideo.current?.pause(); setScreen("details"); }}>Continue<ArrowRight className="h-5 w-5" aria-hidden /></button>
           </div>
 
           {sheet === "trim" && isVideo && duration != null && (
-            <div className={sheetBox} role="dialog" aria-label="Edit video">
-              <div className="mb-3 flex items-center justify-between"><h3 className="text-sm font-semibold">Trim video</h3><button type="button" className="text-sm font-semibold text-[#6f7dff]" onClick={() => setSheet(null)}>Done</button></div>
+            <div className={sheetBox} role="dialog" aria-label="Trim video">
+              <div className="mb-3 flex items-center justify-between"><h3 className="text-sm font-semibold">Trim video</h3><button type="button" className="min-h-11 px-2 text-sm font-semibold text-[#F5B82E]" onClick={() => setSheet(null)}>Done</button></div>
               <p className="mb-2 text-xs">Clip: <b>{fmt(trim.start)}</b> to <b>{fmt(trim.end)}</b> · {fmt(span)} long{!unlimited && ` (max ${BROWSE_VIDEO_MAX_SECONDS} seconds)`}</p>
               <label className="block text-xs">Start<input type="range" className="mt-1 w-full" min={0} max={duration} step={0.1} value={trim.start} onChange={(e) => moveTrim("start", +e.target.value)} /></label>
               <label className="mt-2 block text-xs">End<input type="range" className="mt-1 w-full" min={0} max={duration} step={0.1} value={trim.end} onChange={(e) => moveTrim("end", +e.target.value)} /></label>
@@ -382,7 +387,7 @@ export function BrowseComposer({ slug, products, services, unlimited, onClose }:
           )}
           {sheet === "stickers" && (
             <div className={sheetBox} role="dialog" aria-label="Stickers">
-              <div className="mb-3 flex items-center justify-between"><h3 className="text-sm font-semibold">Stickers</h3><button type="button" className="text-sm font-semibold text-[#6f7dff]" onClick={() => setSheet(null)}>Close</button></div>
+              <div className="mb-3 flex items-center justify-between"><h3 className="text-sm font-semibold">Stickers</h3><button type="button" className="min-h-11 px-2 text-sm font-semibold text-[#F5B82E]" onClick={() => setSheet(null)}>Close</button></div>
               {!isVideo && cur !== 0 && <p className="mb-2 text-xs text-white/60">Stickers go on the cover photo. Select the first photo to place them.</p>}
               <div className="grid grid-cols-8 gap-1.5">
                 {STICKER_CHOICES.map((e) => <button key={e} type="button" disabled={!isVideo && cur !== 0} onClick={() => addEmoji(e)} aria-label={`Add ${e}`} className="rounded-lg py-1.5 text-2xl hover:bg-white/10 disabled:opacity-40">{e}</button>)}
@@ -391,7 +396,7 @@ export function BrowseComposer({ slug, products, services, unlimited, onClose }:
           )}
           {sheet === "text" && (
             <div className={sheetBox} role="dialog" aria-label="Add text">
-              <div className="mb-3 flex items-center justify-between"><h3 className="text-sm font-semibold">Add text</h3><button type="button" className="text-sm font-semibold text-[#6f7dff]" onClick={() => setSheet(null)}>Close</button></div>
+              <div className="mb-3 flex items-center justify-between"><h3 className="text-sm font-semibold">Add text</h3><button type="button" className="min-h-11 px-2 text-sm font-semibold text-[#F5B82E]" onClick={() => setSheet(null)}>Close</button></div>
               <input autoFocus className="w-full rounded-xl bg-white/10 px-3 py-3 text-base outline-none" maxLength={BROWSE_TEXT_MAX} placeholder="Type something…" value={textDraft} onChange={(e) => setTextDraft(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") addText(); }} />
               <button type="button" className={`${ACCENT} mt-3 w-full rounded-full py-3 text-sm font-semibold disabled:opacity-50`} disabled={!textDraft.trim()} onClick={addText}>Add to picture</button>
             </div>
@@ -404,15 +409,11 @@ export function BrowseComposer({ slug, products, services, unlimited, onClose }:
   // ------------------------------------------------------------ 4. cover
   if (screen === "cover") {
     return (
-      <div role="dialog" aria-modal="true" aria-label="Edit cover" className={shell}>
+      <div role="dialog" aria-modal="true" aria-label="Choose cover" className={shell}>
         <div className={panel}>
-          {header(
-            <button type="button" className="px-2 text-base text-[#6f7dff]" onClick={cancelCover}>Cancel</button>,
-            "Edit cover",
-            <button type="button" className="px-2 text-base font-semibold text-[#6f7dff]" onClick={() => setScreen("details")}>Done</button>,
-          )}
+          {header(<span />, "Choose cover")}
           <div className="grid grid-cols-2 border-b border-white/10 text-center text-sm font-semibold">
-            {(["cover", "grid"] as const).map((t) => <button key={t} type="button" onClick={() => setCoverTab(t)} className={`py-3 ${coverTab === t ? "border-b-2 border-white" : "text-white/50"}`}>{t === "cover" ? "Cover" : "Profile grid"}</button>)}
+            {(["cover", "grid"] as const).map((t) => <button key={t} type="button" onClick={() => setCoverTab(t)} className={`py-3 ${coverTab === t ? "border-b-2 border-white" : "text-white/50"}`}>{t === "cover" ? "Cover" : "Profile tile"}</button>)}
           </div>
           <div className="flex-1 overflow-y-auto">
             <p className="px-6 py-4 text-center text-sm text-white/70">{coverTab === "cover" ? "Select a cover image from your video or camera roll and add text." : "This is how your post is cropped on your profile."}</p>
@@ -440,7 +441,7 @@ export function BrowseComposer({ slug, products, services, unlimited, onClose }:
                       const rel = (span * i) / Math.max(1, arr.length - 1);
                       const on = Math.abs(rel - coverRel) < span / (arr.length * 2);
                       return (
-                        <button key={i} type="button" aria-label={`Frame ${i + 1}`} onClick={() => setCoverRel(Math.min(rel, Math.max(0, span - 0.1)))} className={`h-full min-w-0 flex-1 bg-white/10 ${on ? "outline outline-2 -outline-offset-2 outline-[#6f7dff]" : ""}`}>
+                        <button key={i} type="button" aria-label={`Frame ${i + 1}`} onClick={() => setCoverRel(Math.min(rel, Math.max(0, span - 0.1)))} className={`h-full min-w-0 flex-1 bg-white/10 ${on ? "outline outline-2 -outline-offset-2 outline-[#F5B82E]" : ""}`}>
                           {/* eslint-disable-next-line @next/next/no-img-element */}
                           {f && <img src={f} alt="" className="h-full w-full object-cover" />}
                         </button>
@@ -453,7 +454,7 @@ export function BrowseComposer({ slug, products, services, unlimited, onClose }:
               {!isVideo && files.length > 1 && (
                 <div className="flex justify-center gap-2">
                   {urls.map((u, i) => (
-                    <button key={u} type="button" onClick={() => makeCover(i)} aria-label={`Use photo ${i + 1} as cover`} className={`h-16 w-12 overflow-hidden rounded-lg ${i === 0 ? "ring-2 ring-[#6f7dff]" : "opacity-60"}`}>
+                    <button key={u} type="button" onClick={() => makeCover(i)} aria-label={`Use photo ${i + 1} as cover`} className={`h-16 w-12 overflow-hidden rounded-lg ${i === 0 ? "ring-2 ring-[#F5B82E]" : "opacity-60"}`}>
                       {/* eslint-disable-next-line @next/next/no-img-element */}
                       <img src={u} alt="" className="h-full w-full object-cover" />
                     </button>
@@ -462,16 +463,20 @@ export function BrowseComposer({ slug, products, services, unlimited, onClose }:
               )}
               {isVideo && (
                 <>
-                  <button type="button" className={`${ACCENT} mt-4 w-full rounded-full py-3.5 text-base font-semibold`} onClick={() => coverPicker.current?.click()}>Add from camera roll</button>
+                  <button type="button" className={`${ACCENT} mt-4 w-full rounded-full py-3.5 text-base font-semibold`} onClick={() => coverPicker.current?.click()}>Use my own image</button>
                   {customCover && <button type="button" className="mt-2 w-full py-2 text-sm text-white/70" onClick={() => setCustomCover(null)}>Use a frame from the video instead</button>}
                   <input ref={coverPicker} type="file" accept="image/*" className="sr-only" onChange={(e) => { const f = e.target.files?.[0]; if (f) setCustomCover(f); e.target.value = ""; }} />
                 </>
               )}
             </div>
           </div>
+          <div className={`flex shrink-0 gap-3 border-t border-white/10 px-4 pt-3 ${botPad}`}>
+            <button type="button" className={`${ghostBtn} flex-1 py-3.5`} onClick={cancelCover}>Cancel</button>
+            <button type="button" className={`${ACCENT} flex-1 rounded-full py-3.5 text-base font-semibold`} onClick={() => setScreen("details")}>Use this cover</button>
+          </div>
           {sheet === "text" && (
             <div className={sheetBox} role="dialog" aria-label="Add text">
-              <div className="mb-3 flex items-center justify-between"><h3 className="text-sm font-semibold">Add text</h3><button type="button" className="text-sm font-semibold text-[#6f7dff]" onClick={() => setSheet(null)}>Close</button></div>
+              <div className="mb-3 flex items-center justify-between"><h3 className="text-sm font-semibold">Add text</h3><button type="button" className="min-h-11 px-2 text-sm font-semibold text-[#F5B82E]" onClick={() => setSheet(null)}>Close</button></div>
               <input autoFocus className="w-full rounded-xl bg-white/10 px-3 py-3 text-base outline-none" maxLength={BROWSE_TEXT_MAX} placeholder="Type something…" value={textDraft} onChange={(e) => setTextDraft(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") addText(); }} />
               <button type="button" className={`${ACCENT} mt-3 w-full rounded-full py-3 text-sm font-semibold disabled:opacity-50`} disabled={!textDraft.trim()} onClick={addText}>Add to cover</button>
             </div>
@@ -486,12 +491,12 @@ export function BrowseComposer({ slug, products, services, unlimited, onClose }:
   return (
     <div role="dialog" aria-modal="true" aria-label="Post details" className={shell}>
       <div className={panel}>
-        {header(<button type="button" disabled={busy} aria-label="Back" className="rounded-full p-2 hover:bg-white/10 disabled:opacity-50" onClick={() => setScreen("edit")}><ArrowLeft className="h-6 w-6" /></button>, "New post")}
+        {header(<button type="button" disabled={busy} aria-label="Back" className="flex h-12 w-12 items-center justify-center rounded-full bg-white/10 hover:bg-white/20 disabled:opacity-50" onClick={() => setScreen("edit")}><ArrowLeft className="h-6 w-6" /></button>, "Post details")}
         <div className="flex-1 overflow-y-auto">
           <div className="relative mx-auto my-5 w-40">
             <Stage items={items} setItems={setItems} sel={null} setSel={() => {}} interactive={false} className="aspect-[4/5] rounded-3xl border border-white/15">{coverMedia("contain")}</Stage>
-            <button type="button" onClick={() => setPreview(true)} className="absolute left-2.5 top-2.5 rounded-xl bg-black/65 px-3 py-1.5 text-sm font-semibold">Preview</button>
-            <button type="button" onClick={openCover} className="absolute bottom-2.5 left-2.5 rounded-xl bg-black/65 px-3 py-1.5 text-sm font-semibold">Edit cover</button>
+            <button type="button" onClick={() => setPreview(true)} className="absolute left-2.5 top-2.5 rounded-xl bg-black/65 px-3 py-1.5 text-sm font-semibold">Play preview</button>
+            <button type="button" onClick={openCover} className="absolute bottom-2.5 left-2.5 rounded-xl bg-black/65 px-3 py-1.5 text-sm font-semibold">Choose cover</button>
           </div>
           <div className="px-4">
             <textarea className="h-28 w-full resize-none bg-transparent text-base outline-none placeholder:text-white/45" maxLength={BROWSE_CAPTION_MAX} placeholder="Add a caption…" value={caption} onChange={(e) => setCaption(e.target.value)} aria-label="Caption" />
@@ -507,33 +512,33 @@ export function BrowseComposer({ slug, products, services, unlimited, onClose }:
             </div>
           )}
           <div className="border-t border-white/10">
-            <button type="button" className={row} onClick={() => setPeopleOpen(true)}><UserRound className="h-6 w-6" aria-hidden /><span className="flex-1">Tag people</span><span className="text-sm text-white/55">{people.length ? `${people.length} tagged` : ""}</span><ChevronRight className="h-5 w-5 text-white/60" aria-hidden /></button>
+            <button type="button" className={row} onClick={() => setPeopleOpen(true)}><UserRound className="h-6 w-6" aria-hidden /><span className="flex-1">Tag businesses and customers</span><span className="text-sm text-white/55">{people.length ? `${people.length} tagged` : ""}</span><ChevronRight className="h-5 w-5 text-white/60" aria-hidden /></button>
             <button type="button" className={row} onClick={() => setTagOpen(true)}><Tag className="h-6 w-6" aria-hidden /><span className="flex-1">Tag a product or service</span><span className="max-w-[40%] truncate text-sm text-white/55">{taggedLabel ?? ""}</span><ChevronRight className="h-5 w-5 text-white/60" aria-hidden /></button>
             <button type="button" className={row} onClick={() => setLocationOpen((v) => !v)}><MapPin className="h-6 w-6" aria-hidden /><span className="flex-1">Add location</span><span className="max-w-[40%] truncate text-sm text-white/55">{location}</span><ChevronRight className="h-5 w-5 text-white/60" aria-hidden /></button>
             {locationOpen && <div className="border-b border-white/10 px-4 py-3"><input className="w-full rounded-xl bg-white/10 px-3 py-3 text-base outline-none" maxLength={BROWSE_LOCATION_MAX} placeholder="e.g. Lekki Phase 1, Lagos" value={location} onChange={(e) => setLocation(e.target.value)} aria-label="Location" /></div>}
             <div className={row}>
               <Sparkles className="h-6 w-6 shrink-0" aria-hidden />
-              <div className="flex-1"><p>Add AI label</p><p className="mt-1 text-sm text-white/55">Use this for realistic photos and videos made with AI. People will see it on your post.</p></div>
-              <button type="button" role="switch" aria-checked={ai} aria-label="AI label" onClick={() => setAi((v) => !v)} className={`relative h-8 w-14 shrink-0 rounded-full transition ${ai ? "bg-[#4c5dff]" : "bg-white/25"}`}><span className={`absolute top-1 h-6 w-6 rounded-full bg-white transition-all ${ai ? "left-7" : "left-1"}`} /></button>
+              <div className="flex-1"><p>Made with AI</p><p className="mt-1 text-sm text-white/55">Turn this on for realistic photos or videos created with AI. It shows on your post.</p></div>
+              <button type="button" role="switch" aria-checked={ai} aria-label="AI label" onClick={() => setAi((v) => !v)} className={`relative h-8 w-14 shrink-0 rounded-full transition ${ai ? "bg-[#F5B82E]" : "bg-white/25"}`}><span className={`absolute top-1 h-6 w-6 rounded-full bg-white transition-all ${ai ? "left-7" : "left-1"}`} /></button>
             </div>
           </div>
           {progress !== null && (
             <div role="status" aria-live="polite" className="px-4 pt-4">
-              <div className="h-2 overflow-hidden rounded-full bg-white/15"><div className="h-full bg-[#4c5dff] transition-all" style={{ width: `${progress}%` }} /></div>
+              <div className="h-2 overflow-hidden rounded-full bg-white/15"><div className="h-full bg-[#F5B82E] transition-all" style={{ width: `${progress}%` }} /></div>
               <p className="mt-1 text-xs text-white/60">Uploading… {progress}%</p>
             </div>
           )}
           {error && <p role="alert" className="px-4 pt-4 text-sm text-red-400">{error}</p>}
           <div className="h-6" />
         </div>
-        <div className="shrink-0 border-t border-white/10 px-4 py-4">
-          <button type="button" disabled={!canShare} onClick={share} className={`${ACCENT} w-full rounded-full py-3.5 text-base font-semibold disabled:opacity-50`}>{busy ? "Posting…" : "Share"}</button>
+        <div className={`shrink-0 border-t border-white/10 px-4 pt-3 ${botPad}`}>
+          <button type="button" disabled={!canShare} onClick={share} className={`${ACCENT} w-full rounded-full py-3.5 text-base font-semibold disabled:opacity-50`}>{busy ? "Posting…" : "Post now"}</button>
         </div>
 
         {peopleOpen && <PeopleSheet slug={slug} unlimited={unlimited} selected={people} onChange={setPeople} onClose={() => setPeopleOpen(false)} />}
         {tagOpen && (
           <div className={sheetBox} role="dialog" aria-label="Tag a product or service">
-            <div className="mb-3 flex items-center justify-between"><h3 className="text-sm font-semibold">Tag a product or service</h3><button type="button" className="text-sm font-semibold text-[#6f7dff]" onClick={() => setTagOpen(false)}>Done</button></div>
+            <div className="mb-3 flex items-center justify-between"><h3 className="text-sm font-semibold">Tag a product or service</h3><button type="button" className="min-h-11 px-2 text-sm font-semibold text-[#F5B82E]" onClick={() => setTagOpen(false)}>Done</button></div>
             <p className="mb-3 text-xs text-white/55">Tagged items show a buy or book button on your post.</p>
             <ul className="space-y-1">
               <li><button type="button" onClick={() => { setTag(""); setTagOpen(false); }} className={`w-full rounded-lg px-3 py-3 text-left text-sm ${tag === "" ? "bg-white/15" : "hover:bg-white/10"}`}>None</button></li>
@@ -547,13 +552,13 @@ export function BrowseComposer({ slug, products, services, unlimited, onClose }:
         )}
         {preview && (
           <div role="dialog" aria-modal="true" aria-label="Preview" className="absolute inset-0 z-20 flex flex-col bg-black">
-            <div className="flex h-14 items-center px-3"><button type="button" aria-label="Close preview" className="flex h-10 w-10 items-center justify-center rounded-full bg-white/15" onClick={() => setPreview(false)}><X className="h-5 w-5" /></button></div>
+            <div className={`flex items-center px-3 pb-2 ${topPad}`}><button type="button" aria-label="Close preview" className="flex h-12 w-12 items-center justify-center rounded-full bg-white/15" onClick={() => setPreview(false)}><X className="h-5 w-5" /></button></div>
             <div className="flex min-h-0 flex-1 items-center justify-center px-2 pb-6">
               <Stage items={items} setItems={setItems} sel={null} setSel={() => {}} interactive={false} className="aspect-[4/5] h-full max-w-full rounded-2xl">
                 <div className="h-full w-full">
                   {isVideo
                     // eslint-disable-next-line jsx-a11y/media-has-caption
-                    ? <video ref={previewVideo} src={urls[0]} className="h-full w-full object-contain" playsInline autoPlay controls={false} muted onLoadedMetadata={() => { if (previewVideo.current) previewVideo.current.currentTime = trim.start; }} onTimeUpdate={() => { const v = previewVideo.current; if (v && (v.currentTime >= trim.end - 0.05)) v.currentTime = trim.start; }} />
+                    ? <video ref={previewVideo} src={`${urls[0]}#t=0.1`} className="h-full w-full object-contain" playsInline autoPlay controls muted onLoadedMetadata={() => { if (previewVideo.current) previewVideo.current.currentTime = trim.start; }} onTimeUpdate={() => { const v = previewVideo.current; if (v && (v.currentTime >= trim.end - 0.05)) v.currentTime = trim.start; }} />
                     // eslint-disable-next-line @next/next/no-img-element
                     : <img src={urls[0]} alt="" className="h-full w-full object-cover" />}
                 </div>
@@ -587,17 +592,17 @@ function PeopleSheet({ slug, unlimited, selected, onChange, onClose }: { slug: s
   const has = (p: Person) => selected.some((s) => s.kind === p.kind && s.id === p.id);
   const toggle = (p: Person) => onChange(has(p) ? selected.filter((s) => !(s.kind === p.kind && s.id === p.id)) : selected.length >= BROWSE_MAX_TAGS ? selected : [...selected, p]);
   return (
-    <div className="absolute inset-0 z-20 flex flex-col bg-[#0c1017]" role="dialog" aria-label="Tag people">
-      <header className="flex h-14 shrink-0 items-center border-b border-white/10 px-3">
-        <button type="button" aria-label="Back" className="w-20 text-left" onClick={onClose}><ArrowLeft className="h-6 w-6" /></button>
-        <h2 className="flex-1 text-center text-base font-semibold">Tag people</h2>
-        <button type="button" className="w-20 pr-2 text-right text-base font-semibold text-[#6f7dff]" onClick={onClose}>Done</button>
+    <div className="absolute inset-0 z-20 flex flex-col bg-[#0F2A17]" role="dialog" aria-label="Tag businesses and customers">
+      <header className={`flex shrink-0 items-center border-b border-white/10 px-3 pb-2 ${topPad}`}>
+        <button type="button" aria-label="Back" className="flex h-12 w-12 items-center justify-center rounded-full bg-white/10" onClick={onClose}><ArrowLeft className="h-6 w-6" /></button>
+        <h2 className="flex-1 text-center text-base font-semibold">Tag businesses and customers</h2>
+        <button type="button" className="min-h-12 w-16 pr-2 text-right text-base font-semibold text-[#F5B82E]" onClick={onClose}>Done</button>
       </header>
       <div className="p-4">
         <input autoFocus className="w-full rounded-xl bg-white/10 px-3 py-3 text-base outline-none placeholder:text-white/45" placeholder={unlimited ? "Search businesses" : "Search businesses and your customers"} value={q} onChange={(e) => setQ(e.target.value)} aria-label="Search people" />
         {selected.length > 0 && (
           <div className="mt-3 flex flex-wrap gap-1.5">
-            {selected.map((p) => <button key={`${p.kind}:${p.id}`} type="button" onClick={() => toggle(p)} className="flex items-center gap-1 rounded-full bg-[#4c5dff]/30 py-1 pl-3 pr-2 text-sm">{p.name}<X className="h-3.5 w-3.5" aria-label={`Remove ${p.name}`} /></button>)}
+            {selected.map((p) => <button key={`${p.kind}:${p.id}`} type="button" onClick={() => toggle(p)} className="flex items-center gap-1 rounded-full bg-[#F5B82E]/30 py-1 pl-3 pr-2 text-sm">{p.name}<X className="h-3.5 w-3.5" aria-label={`Remove ${p.name}`} /></button>)}
           </div>
         )}
         <p className="mt-2 text-xs text-white/50">Up to {BROWSE_MAX_TAGS}. Tagged people are notified. Customers appear as first name and initial.</p>
@@ -611,7 +616,7 @@ function PeopleSheet({ slug, unlimited, selected, onChange, onClose }: { slug: s
                 {p.logoUrl ? <img src={p.logoUrl} alt="" className="h-full w-full object-cover" /> : p.name.slice(0, 1).toUpperCase()}
               </span>
               <span className="min-w-0 flex-1"><span className="block truncate text-base">{p.name}</span><span className="text-xs text-white/55">{p.sub}</span></span>
-              <span className={`flex h-6 w-6 items-center justify-center rounded-full border ${has(p) ? "border-[#4c5dff] bg-[#4c5dff]" : "border-white/30"}`}>{has(p) && <span className="text-xs">✓</span>}</span>
+              <span className={`flex h-6 w-6 items-center justify-center rounded-full border ${has(p) ? "border-[#F5B82E] bg-[#F5B82E]" : "border-white/30"}`}>{has(p) && <span className="text-xs">✓</span>}</span>
             </button>
           </li>
         ))}
