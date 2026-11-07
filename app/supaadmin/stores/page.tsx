@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { listStores } from "@/lib/actions/admin";
 import { StoreStatusButton } from "@/components/dashboard/store-status-button";
+import { DeleteStoreButton } from "@/components/dashboard/delete-store-button";
 import { TableScroll } from "@/components/ui/table-scroll";
 
 export default async function StoresPage() {
@@ -43,6 +44,7 @@ export default async function StoresPage() {
                 </td>
                 <td className="px-4 py-3 text-right">
                   <StoreStatusButton storeId={s.id} status={s.status} />
+                  <DeleteStoreButton storeId={s.id} slug={s.slug} name={s.name} />
                 </td>
               </tr>
             ))}

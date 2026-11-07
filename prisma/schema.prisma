@@ -5749,3 +5749,18 @@ model BrowseFollow {
   @@unique([storeId, viewerKey])
   @@index([viewerKey, createdAt])
 }
+
+// Daily page-view counts for BizNest itself (seller dashboard, storefronts, platform pages), shown to the
+// super admin under "Page usage". One row per day and page name, never per visit, so it stays tiny and a
+// view costs a single upsert. Page names are grouped (see lib/page-usage.ts): "/[store]/admin/orders".
+model PlatformPageStat {
+  id            String   @id @default(cuid())
+  day           DateTime @db.Date
+  path          String
+  area          String
+  views         Int      @default(0)
+  signedInViews Int      @default(0)
+
+  @@unique([day, path])
+  @@index([day])
+}
