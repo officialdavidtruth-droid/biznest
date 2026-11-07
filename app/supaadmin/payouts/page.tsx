@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { getPayoutCounts, getPayoutWallet, listPayouts, type PayoutTab } from "@/lib/actions/admin-payouts";
 import { PayoutRowActions } from "@/components/dashboard/payout-row-actions";
+import { CloseTestPayouts } from "@/components/dashboard/close-test-payouts";
 import { PayoutWalletPanel } from "@/components/dashboard/payout-wallet-panel";
 import { formatDate, formatNumber } from "@/lib/i18n/locale";
 import { TableScroll } from "@/components/ui/table-scroll";
@@ -49,6 +50,7 @@ export default async function PayoutsPage({ searchParams }: { searchParams: Prom
       </p>
 
       <PayoutWalletPanel wallet={wallet} />
+      <CloseTestPayouts openCount={counts.queued + counts.needsAttention} />
 
       <div className="mb-4 flex gap-1 overflow-x-auto border-b">
         {TABS.map((t) => (

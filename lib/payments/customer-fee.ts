@@ -10,6 +10,12 @@
  *   GATEWAY_FEE_<PAYSTACK|FLUTTERWAVE|KORAPAY>_PERCENT / _FLAT / _CAP / _FLAT_WAIVED_BELOW
  *   GATEWAY_FEE_VAT_PERCENT    VAT charged on top of the fee, if the gateway adds it (default 0)
  *   CUSTOMER_PAYS_GATEWAY_FEE  set to "false" to stop adding the fee (BizNest absorbs it)
+ *
+ * The customer also covers the gateway's fee for the payout TRANSFER that sends the vendor their money
+ * (Flutterwave and Paystack: NGN 10 up to 5,000, NGN 25 up to 50,000, NGN 50 above; Flutterwave adds 7.5% VAT):
+ *   CUSTOMER_PAYS_TRANSFER_FEE   set to "false" to stop adding it (BizNest absorbs it)
+ *   PAYOUT_TRANSFER_FEE_NAIRA    a fixed transfer fee in naira that replaces the tiers (default: use the tiers)
+ *   PAYOUT_TRANSFER_FEE_VAT_PERCENT  VAT on the tier fee (default 7.5 for Flutterwave, 0 for the others)
  */
 export type FeeGateway = "PAYSTACK" | "FLUTTERWAVE" | "KORAPAY";
 
@@ -26,7 +32,8 @@ export type FeeSchedule = {
 
 const DEFAULTS: Record<FeeGateway, FeeSchedule> = {
   PAYSTACK: { percent: 1.5, flat: 100, flatWaivedAtOrBelow: 2500, cap: 2000 },
-  FLUTTERWAVE: { percent: 1.4, flat: 0, flatWaivedAtOrBelow: 0, cap: 2000 },
+  // Flutterwave's Nigeria pricing page: 2% on local payments (1.4% transaction fee + 0.6% platform fee).
+  FLUTTERWAVE: { percent: 2, flat: 0, flatWaivedAtOrBelow: 0, cap: 2000 },
   KORAPAY: { percent: 1.5, flat: 0, flatWaivedAtOrBelow: 0, cap: 2000 },
 };
 
@@ -55,6 +62,28 @@ export function feeSchedule(gateway: FeeGateway): FeeSchedule {
   };
 }
 
+export type TransferFeeConfig = { enabled: boolean; override: number; vatPercent: number };
+
+export function customerPaysTransferFee(): boolean {
+  return process.env.CUSTOMER_PAYS_TRANSFER_FEE?.trim().toLowerCase() !== "false";
+}
+
+export function transferFeeConfigFor(gateway: FeeGateway, enabled: boolean = customerPaysTransferFee()): TransferFeeConfig {
+  return {
+    enabled,
+    override: envNum("PAYOUT_TRANSFER_FEE_NAIRA", 0),
+    vatPercent: envNum("PAYOUT_TRANSFER_FEE_VAT_PERCENT", gateway === "FLUTTERWAVE" ? 7.5 : 0),
+  };
+}
+
+/** What the gateway charges BizNest to send a vendor a payout of `payoutNaira`, added to the customer's charge. 0 when off. */
+export function payoutTransferFee(payoutNaira: number, cfg: TransferFeeConfig): number {
+  if (!cfg.enabled || !Number.isFinite(payoutNaira) || payoutNaira <= 0) return 0;
+  if (cfg.override > 0) return round2(cfg.override);
+  const base = payoutNaira <= 5000 ? 10 : payoutNaira <= 50000 ? 25 : 50;
+  return round2(base * (1 + cfg.vatPercent / 100));
+}
+
 /** What the gateway would take from a charge of `chargedNaira`. */
 export function gatewayFeeOn(chargedNaira: number, s: FeeSchedule, vatPercent = envNum("GATEWAY_FEE_VAT_PERCENT", 0)): number {
   const flat = s.flatWaivedAtOrBelow > 0 && chargedNaira <= s.flatWaivedAtOrBelow ? 0 : s.flat;
@@ -73,10 +102,14 @@ export function grossUpForGatewayFee(
   schedule: FeeSchedule = feeSchedule(gateway),
   vatPercent: number = envNum("GATEWAY_FEE_VAT_PERCENT", 0),
   enabled: boolean = customerPaysGatewayFee(),
+  /** Extra naira the platform must keep after the gateway's fee, e.g. the payout transfer fee. Part of the fee shown. */
+  extraNetNaira: number = 0,
 ): { totalNaira: number; feeNaira: number } {
   if (!Number.isFinite(priceNaira) || priceNaira <= 0 || !enabled) {
     return { totalNaira: round2(Number.isFinite(priceNaira) ? priceNaira : 0), feeNaira: 0 };
   }
+  const price = priceNaira;
+  priceNaira = price + (Number.isFinite(extraNetNaira) && extraNetNaira > 0 ? extraNetNaira : 0);
   const k = (schedule.percent / 100) * (1 + vatPercent / 100);
   const flatWith = schedule.flat * (1 + vatPercent / 100);
   const cap = schedule.cap > 0 ? schedule.cap : Number.POSITIVE_INFINITY;
@@ -95,12 +128,16 @@ export function grossUpForGatewayFee(
   // Guard against rounding: make sure the price really is left after the fee.
   let guard = 0;
   while (total - gatewayFeeOn(total, schedule, vatPercent) < priceNaira - 0.001 && guard++ < 5) total = round2(total + 0.01);
-  return { totalNaira: total, feeNaira: round2(total - priceNaira) };
+  return { totalNaira: total, feeNaira: round2(total - price) };
 }
 
 /** Everything the browser needs to show the fee before paying (it cannot read server environment variables). */
-export type FeeConfig = { gateway: FeeGateway; schedule: FeeSchedule; vatPercent: number; enabled: boolean };
+export type FeeConfig = { gateway: FeeGateway; schedule: FeeSchedule; vatPercent: number; enabled: boolean; transfer: TransferFeeConfig };
 
-export function feeConfigFor(gateway: FeeGateway): FeeConfig {
-  return { gateway, schedule: feeSchedule(gateway), vatPercent: envNum("GATEWAY_FEE_VAT_PERCENT", 0), enabled: customerPaysGatewayFee() };
+/** `transferFeeApplies` is false when the store collects into its own gateway account: BizNest sends no payout there. */
+export function feeConfigFor(gateway: FeeGateway, transferFeeApplies = true): FeeConfig {
+  return {
+    gateway, schedule: feeSchedule(gateway), vatPercent: envNum("GATEWAY_FEE_VAT_PERCENT", 0), enabled: customerPaysGatewayFee(),
+    transfer: transferFeeConfigFor(gateway, transferFeeApplies && customerPaysTransferFee()),
+  };
 }

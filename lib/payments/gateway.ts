@@ -8,7 +8,7 @@ import type { PaymentProvider } from "@prisma/client";
 import { logError } from "@/lib/observability/log";
 import { APP_URL } from "@/lib/constants/app-url";
 import { resolveStoreGateway, type StoreGatewayCredentials } from "@/lib/payments/store-gateway";
-import { grossUpForGatewayFee } from "@/lib/payments/customer-fee";
+import { feeSchedule, grossUpForGatewayFee, payoutTransferFee, transferFeeConfigFor } from "@/lib/payments/customer-fee";
 
 export { billingCallbackUrl } from "@/lib/payments/billing-gateway";
 
@@ -120,7 +120,12 @@ export async function chargeCustomer(params: ChargeParams): Promise<ChargeResult
   // Customer pays the gateway's fee: charge price + fee so the vendor is paid the full price.
   // Only for naira (the fee schedules are naira) and only for customer-paid flows.
   const addFee = currency === "NGN" && (params.coverGatewayFee === true || Boolean(params.storeId));
-  const fee = addFee ? grossUpForGatewayFee(gateway, params.amountNaira) : { totalNaira: params.amountNaira, feeNaira: 0 };
+  // A store charge that BizNest pays out (platform gateway, not the store's own keys) also carries the gateway's
+  // payout transfer fee, so sending the vendor their money costs the platform nothing.
+  const transferFee = addFee && params.storeId && !usesStoreGateway ? payoutTransferFee(params.amountNaira, transferFeeConfigFor(gateway)) : 0;
+  const fee = addFee
+    ? grossUpForGatewayFee(gateway, params.amountNaira, feeSchedule(gateway), undefined, undefined, transferFee)
+    : { totalNaira: params.amountNaira, feeNaira: 0 };
   const chargeNaira = fee.totalNaira;
   const feeFields = { chargedNaira: chargeNaira, gatewayFeeNaira: fee.feeNaira };
 

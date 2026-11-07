@@ -13,9 +13,7 @@ import { getHotelContent } from "@/lib/hotel-content";
 import { GrandeurCheckout } from "@/components/storefront/grandeur-restaurant";
 import { getGrandeurRestaurantData } from "@/lib/grandeur-restaurant";
 import { TrackBeginCheckout } from "@/components/storefront/store-tracking";
-import { getActiveGateway } from "@/lib/payments/gateway";
-import { resolveStoreGateway } from "@/lib/payments/store-gateway";
-import { feeConfigFor, type FeeConfig } from "@/lib/payments/customer-fee";
+import { getCheckoutFeeConfig } from "@/lib/payments/checkout-fee-config";
 
 // One wrapper for every checkout skin (default, hotel, restaurant, TasteHouse,
 // Example): the begin-checkout event fires once the buyer's cart is loaded,
@@ -35,17 +33,10 @@ async function renderCheckout(slug: string) {
   if (!session?.user?.id) redirect(`/login?callbackUrl=${encodeURIComponent(`/store/${slug}/checkout`)}&store=${encodeURIComponent(slug)}`);
   if (usesGrandeurSkin({ businessCategory: rawStore.business?.category, storeBusinessType: rawStore.businessType, templateName: rawStore.template?.name })) {
     const data = await getGrandeurRestaurantData(slug);
-    if (data) return <GrandeurCheckout store={data.store} slug={slug} />;
+    if (data) return <GrandeurCheckout store={data.store} slug={slug} feeConfig={await getCheckoutFeeConfig(rawStore.id)} />;
   }
   // The gateway this store's customers will pay through, so checkout can show the processing fee up front.
-  let feeConfig: FeeConfig | undefined;
-  try {
-    const own = await resolveStoreGateway(rawStore.id);
-    const gateway = own.status === "ok" ? own.credentials.provider : await getActiveGateway();
-    feeConfig = feeConfigFor(gateway);
-  } catch {
-    feeConfig = undefined;
-  }
+  const feeConfig = await getCheckoutFeeConfig(rawStore.id);
   const checkout = <CheckoutClient slug={slug} palette={resolveStorePalette(rawStore)} feeConfig={feeConfig} />;
   if (!usesTemplateChromeFor(rawStore.template?.name, rawStore.sectionOverrides, { businessCategory: rawStore.business?.category, storeBusinessType: rawStore.businessType })) return checkout;
   const theme = resolveStoreTheme(rawStore.template?.category, rawStore.name, rawStore.themeColors as any, rawStore.fontFamily, rawStore.template?.name);

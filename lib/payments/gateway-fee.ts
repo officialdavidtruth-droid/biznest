@@ -114,8 +114,9 @@ export function vendorPayoutAmount(
   if (!VENDOR_BEARS_GATEWAY_FEE) return { amount: round2(paymentAmount), feeAmount: 0 };
   // The customer already paid the gateway's fee on top of the price: the vendor gets the full price and bears nothing.
   // (Any small gap between the estimate and the real fee is BizNest's, never the vendor's.)
+  // The customer's charge also included the payout transfer fee, so nothing more comes off the vendor.
   if (customerCoveredFee(provider, rawPayload, priceNaira ?? paymentAmount)) {
-    return { amount: round2(Math.max(0, paymentAmount - transferFeeNaira())), feeAmount: Math.min(transferFeeNaira(), round2(paymentAmount)) };
+    return { amount: round2(Math.max(0, paymentAmount)), feeAmount: 0 };
   }
 
   let collectionFee = extractGatewayFeeNaira(provider, rawPayload);

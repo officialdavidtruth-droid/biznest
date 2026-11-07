@@ -13,7 +13,7 @@ import { toast } from "sonner";
 import { openKorapayInline } from "@/lib/checkout/korapay-inline";
 import { ShieldCheck, Lock, Truck, ChevronLeft, CreditCard, Wallet } from "lucide-react";
 import { formatNumber } from "@/lib/i18n/locale";
-import { grossUpForGatewayFee, type FeeConfig } from "@/lib/payments/customer-fee";
+import { grossUpForGatewayFee, payoutTransferFee, type FeeConfig } from "@/lib/payments/customer-fee";
 
 declare global {
   interface Window {
@@ -89,7 +89,7 @@ export function CheckoutClient({ slug, palette = DEFAULT_STORE_PALETTE, feeConfi
   const usingWallet = payWith === "wallet" && walletCovers;
   // The customer covers the gateway's processing fee so the seller receives the full price. Paying from the wallet has none.
   const gatewayFee = feeConfig && currency === "NGN" && !usingWallet
-    ? grossUpForGatewayFee(feeConfig.gateway, total, feeConfig.schedule, feeConfig.vatPercent, feeConfig.enabled)
+    ? grossUpForGatewayFee(feeConfig.gateway, total, feeConfig.schedule, feeConfig.vatPercent, feeConfig.enabled, payoutTransferFee(total, feeConfig.transfer))
     : { totalNaira: total, feeNaira: 0 };
 
   async function handleSubmit(e: React.FormEvent) {
@@ -383,14 +383,14 @@ export function CheckoutClient({ slug, palette = DEFAULT_STORE_PALETTE, feeConfi
               {gatewayFee.feeNaira > 0 && (
                 <div className="flex flex-col gap-1.5 pt-1 text-sm">
                   <div className="flex items-center justify-between">
-                    <span style={{ opacity: 0.8 }}>Payment processing fee</span>
+                    <span style={{ opacity: 0.8 }}>Payment and payout fees</span>
                     <span className="font-semibold">{currency} {formatNumber(gatewayFee.feeNaira)}</span>
                   </div>
                   <div className="flex items-center justify-between">
                     <span style={{ opacity: 0.8 }}>You pay</span>
                     <span className="font-bold">{currency} {formatNumber(gatewayFee.totalNaira)}</span>
                   </div>
-                  <p className="text-[11px]" style={{ opacity: 0.6 }}>The fee goes to the payment provider, so the seller receives the full price.</p>
+                  <p className="text-[11px]" style={{ opacity: 0.6 }}>The fees go to the payment provider, so the seller receives the full price.</p>
                 </div>
               )}
               <ApproxPrice amount={total} currency={currency} />

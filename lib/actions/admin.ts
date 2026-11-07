@@ -9,6 +9,7 @@ import type { VerificationStatus, UserRole, DisputeStatus } from "@prisma/client
 import { ADMIN_COOKIE_NAME } from "@/lib/admin-pin-auth";
 import { verifyAdminSession } from "@/lib/admin-session";
 import { recomputeAndPersistTrustScore } from "@/lib/actions/trust-score";
+import { purgeWithDependents } from "@/lib/admin/purge-prisma";
 
 // Platform-admin access is gated by the shared ADMIN_PIN cookie now, not by
 // a signed-in user's role — see lib/admin-pin-auth.ts. There's only one
@@ -420,6 +421,9 @@ export async function deleteUser(userId: string): Promise<ActionResult> {
  * cascade clean up everything else. Requires the caller to pass back the
  * business's exact name as confirmation so this can't be fat-fingered.
  */
+/** Records that belong to a store but are only "unlinked" by the database when it goes (payments, mostly). */
+const STORE_OWNED_LINKS = ["Payment.storeId", "Payment.orderId"];
+
 export async function forceDeleteUserAndBusiness(
   userId: string,
   confirmBusinessName: string
@@ -443,40 +447,15 @@ export async function forceDeleteUserAndBusiness(
 
   const summary = { email: target.email, businessName: business?.businessName ?? null, storeSlug: store?.slug ?? null };
 
-  await prisma.$transaction(async (tx) => {
-    if (store) {
-      const orders = await tx.order.findMany({ where: { storeId: store.id }, select: { id: true } });
-      const orderIds = orders.map((o) => o.id);
-
-      if (orderIds.length) {
-        await tx.disputeEvidence.deleteMany({ where: { dispute: { orderId: { in: orderIds } } } });
-        await tx.dispute.deleteMany({ where: { orderId: { in: orderIds } } });
-        await tx.payment.deleteMany({ where: { orderId: { in: orderIds } } });
-      }
-      await tx.payment.deleteMany({ where: { storeId: store.id } }); // subscription/upgrade payments not tied to an order
-
-      await tx.invoiceItem.deleteMany({ where: { invoice: { storeId: store.id } } });
-      await tx.invoice.deleteMany({ where: { storeId: store.id } });
-
-      await tx.quoteItem.deleteMany({ where: { quote: { storeId: store.id } } });
-      await tx.quote.deleteMany({ where: { storeId: store.id } });
-
-      await tx.purchaseOrderItem.deleteMany({ where: { purchaseOrder: { storeId: store.id } } });
-      await tx.purchaseOrder.deleteMany({ where: { storeId: store.id } });
-
-      // OrderItem/OrderStatusEvent cascade off Order, so this clears the rest.
-      await tx.order.deleteMany({ where: { storeId: store.id } });
-    }
-
-    // Deleting the Business cascades to Store (and everything storeId-scoped
-    // that cascades: products, staff, categories, coupons, reviews, etc),
-    // Guarantor, and PosCommissionSettlement. Deleting the User last cascades
-    // Account/Session/StoreCustomer/etc for the user itself.
-    if (business) {
-      await tx.business.delete({ where: { id: business.id } });
-    }
-    await tx.user.delete({ where: { id: userId } });
-  });
+  // One transaction: either everything goes or nothing does. The walk follows the database's own foreign keys,
+  // so payouts, clawbacks, reviews, messages and anything added later no longer block the delete.
+  await prisma.$transaction(
+    async (tx) => {
+      if (business) await purgeWithDependents(tx, "Business", [business.id], STORE_OWNED_LINKS);
+      await purgeWithDependents(tx, "User", [userId], STORE_OWNED_LINKS);
+    },
+    { timeout: 120_000, maxWait: 10_000 },
+  );
 
   await prisma.auditLog.create({
     data: {
@@ -491,6 +470,56 @@ export async function forceDeleteUserAndBusiness(
   revalidatePath("/supaadmin/users");
   revalidatePath("/supaadmin/businesses");
   revalidatePath("/supaadmin/stores");
+  return { success: true, data: undefined };
+}
+
+/**
+ * Permanently deletes one store, its business and every record that belongs to them (products, orders, payments,
+ * payouts, invoices, reviews, messages...). The owner's login stays, so they can sign in and start over; use the
+ * Users page to remove the account as well. The caller must type the store's address as confirmation.
+ */
+export async function deleteStoreCompletely(storeId: string, confirmSlug: string): Promise<ActionResult> {
+  const access = await assertPlatformAdmin();
+  if (!access.success) return { success: false, error: access.error };
+
+  const store = await prisma.store.findUnique({
+    where: { id: storeId },
+    select: { id: true, slug: true, name: true, businessId: true, business: { select: { userId: true } } },
+  });
+  if (!store) return { success: false, error: "Store not found. It may already be deleted." };
+  if (confirmSlug.trim().toLowerCase() !== store.slug.toLowerCase()) {
+    return { success: false, error: "The store address didn't match. Nothing was deleted." };
+  }
+
+  try {
+    await prisma.$transaction(
+      async (tx) => {
+        await purgeWithDependents(tx, "Store", [store.id], STORE_OWNED_LINKS);
+        // The business exists only for this store; remove it too so the owner isn't left with an empty shell.
+        await purgeWithDependents(tx, "Business", [store.businessId], STORE_OWNED_LINKS);
+      },
+      { timeout: 120_000, maxWait: 10_000 },
+    );
+  } catch (err) {
+    console.error("[deleteStoreCompletely]", err);
+    // Platform admins only: show the database's own message so a blocked delete can be diagnosed from the screen.
+    const detail = err instanceof Error ? err.message.replace(/\s+/g, " ").trim().slice(-400) : "Unknown error";
+    return { success: false, error: `Couldn't delete this store. Nothing was changed. Database said: ${detail}` };
+  }
+
+  await prisma.auditLog.create({
+    data: {
+      userId: access.userId,
+      action: "STORE_DELETED",
+      entity: "Store",
+      entityId: store.id,
+      metadata: { slug: store.slug, name: store.name, ownerUserId: store.business.userId },
+    },
+  });
+
+  revalidatePath("/supaadmin/stores");
+  revalidatePath("/supaadmin/businesses");
+  revalidatePath("/supaadmin/users");
   return { success: true, data: undefined };
 }
 
@@ -933,4 +962,49 @@ export async function listAtRiskStores() {
   }
   // Most warning signs first, then the longest-standing.
   return [...byStore.values()].sort((a, b) => b.signals.length - a.signals.length || a.signals[0].firstDetectedAt.getTime() - b.signals[0].firstDetectedAt.getTime());
+}
+
+// --- Page usage (which pages of the app people use most) -----------------------
+
+export type PageUsageRow = { path: string; area: string; views: number; signedInViews: number };
+export type PageUsageReport = {
+  days: number;
+  totalViews: number;
+  byArea: { area: string; views: number }[];
+  pages: PageUsageRow[];
+  daily: { day: string; views: number }[];
+};
+
+export async function getPageUsage(days: number, area?: string): Promise<PageUsageReport> {
+  const access = await assertPlatformStaff();
+  if (!access.success) return { days, totalViews: 0, byArea: [], pages: [], daily: [] };
+  const span = Math.min(Math.max(Math.floor(days) || 7, 1), 90);
+  const since = new Date(Date.now() + 3_600_000 - (span - 1) * 86_400_000);
+  since.setUTCHours(0, 0, 0, 0);
+
+  const [areaRows, pageRows, dayRows] = await Promise.all([
+    prisma.platformPageStat.groupBy({ by: ["area"], where: { day: { gte: since } }, _sum: { views: true } }),
+    prisma.platformPageStat.groupBy({
+      by: ["path", "area"],
+      where: { day: { gte: since }, ...(area ? { area } : {}) },
+      _sum: { views: true, signedInViews: true },
+      orderBy: { _sum: { views: "desc" } },
+      take: 60,
+    }),
+    prisma.platformPageStat.groupBy({
+      by: ["day"],
+      where: { day: { gte: since }, ...(area ? { area } : {}) },
+      _sum: { views: true },
+      orderBy: { day: "asc" },
+    }),
+  ]);
+
+  const byArea = areaRows.map((r) => ({ area: r.area, views: r._sum.views ?? 0 })).sort((a, b) => b.views - a.views);
+  return {
+    days: span,
+    totalViews: byArea.reduce((n, r) => n + r.views, 0),
+    byArea,
+    pages: pageRows.map((r) => ({ path: r.path, area: r.area, views: r._sum.views ?? 0, signedInViews: r._sum.signedInViews ?? 0 })),
+    daily: dayRows.map((r) => ({ day: r.day.toISOString().slice(0, 10), views: r._sum.views ?? 0 })),
+  };
 }

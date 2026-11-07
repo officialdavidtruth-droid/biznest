@@ -1476,3 +1476,5 @@ html[data-app]:not([data-tabbar]) .bn-tabbar { display: none; }
 .bn-skin[data-footer="round"] .bn-universal-footer{border-radius:40px 40px 0 0;padding-top:64px}
 .bn-skin .bn-universal-hero.corporate{background-color:var(--u-dark,#071522)}
 .bn-skin .bn-universal-hero:not(.technical):not(.corporate){background-color:var(--u-dark,#071522)}
+
+.gr-fee-note{display:block;margin-top:8px;font-size:12px;line-height:1.45;color:var(--gr-muted)}

@@ -1,9 +1,9 @@
 import { afterEach, describe, expect, it } from "vitest";
-import { feeSchedule, gatewayFeeOn, grossUpForGatewayFee } from "@/lib/payments/customer-fee";
+import { feeSchedule, feeConfigFor, gatewayFeeOn, grossUpForGatewayFee, payoutTransferFee, transferFeeConfigFor } from "@/lib/payments/customer-fee";
 import { vendorPayoutAmount } from "@/lib/payments/gateway-fee";
 
 afterEach(() => {
-  for (const k of Object.keys(process.env)) if (k.startsWith("GATEWAY_FEE_") || k === "CUSTOMER_PAYS_GATEWAY_FEE") delete process.env[k];
+  for (const k of Object.keys(process.env)) if (k.startsWith("GATEWAY_FEE_") || k.startsWith("PAYOUT_TRANSFER_FEE") || k === "CUSTOMER_PAYS_GATEWAY_FEE" || k === "CUSTOMER_PAYS_TRANSFER_FEE") delete process.env[k];
 });
 
 /** After the gateway keeps its fee out of what the customer paid, at least the price must be left. */
@@ -23,8 +23,8 @@ describe("grossUpForGatewayFee", () => {
     }
   });
   it("matches hand-worked figures", () => {
-    // Flutterwave 1.4%: price 10,000 -> 10,000 / 0.986 = 10,141.99 (fee 141.99)
-    expect(grossUpForGatewayFee("FLUTTERWAVE", 10000)).toEqual({ totalNaira: 10141.99, feeNaira: 141.99 });
+    // Flutterwave 2% (1.4% + 0.6% platform fee): price 10,000 -> 10,000 / 0.98 = 10,204.09 (fee 204.09)
+    expect(grossUpForGatewayFee("FLUTTERWAVE", 10000)).toEqual({ totalNaira: 10204.09, feeNaira: 204.09 });
     // Paystack 1.5% + 100: (10,000 + 100) / 0.985 = 10,253.81
     expect(grossUpForGatewayFee("PAYSTACK", 10000).totalNaira).toBe(10253.81);
   });
@@ -43,8 +43,8 @@ describe("grossUpForGatewayFee", () => {
     expect(grossUpForGatewayFee("FLUTTERWAVE", 10000)).toEqual({ totalNaira: 10000, feeNaira: 0 });
   });
   it("environment overrides change the rate (negotiated pricing, VAT)", () => {
-    process.env.GATEWAY_FEE_FLUTTERWAVE_PERCENT = "2";
-    expect(grossUpForGatewayFee("FLUTTERWAVE", 10000).totalNaira).toBe(10204.09);
+    process.env.GATEWAY_FEE_FLUTTERWAVE_PERCENT = "1.4";
+    expect(grossUpForGatewayFee("FLUTTERWAVE", 10000).totalNaira).toBe(10141.99);
     process.env.GATEWAY_FEE_VAT_PERCENT = "7.5";
     const { left } = leftAfterFee("FLUTTERWAVE", 10000);
     expect(left).toBeGreaterThanOrEqual(9999.995);
@@ -67,5 +67,44 @@ describe("vendor payout when the customer covered the fee", () => {
   });
   it("older payments with no fee added keep the old rule", () => {
     expect(vendorPayoutAmount("KORAPAY", { data: { amount: 10000, raw: { fee: 150 } } }, 10000, 0, 10000)).toEqual({ amount: 9850, feeAmount: 150 });
+  });
+});
+
+describe("payout transfer fee paid by the customer", () => {
+  it("follows the published tiers (Paystack has no VAT by default)", () => {
+    const cfg = transferFeeConfigFor("PAYSTACK");
+    expect(payoutTransferFee(100, cfg)).toBe(10);
+    expect(payoutTransferFee(5000, cfg)).toBe(10);
+    expect(payoutTransferFee(5001, cfg)).toBe(25);
+    expect(payoutTransferFee(50000, cfg)).toBe(25);
+    expect(payoutTransferFee(50001, cfg)).toBe(50);
+  });
+  it("adds 7.5% VAT for Flutterwave", () => {
+    const cfg = transferFeeConfigFor("FLUTTERWAVE");
+    expect(payoutTransferFee(100, cfg)).toBe(10.75);
+    expect(payoutTransferFee(100000, cfg)).toBe(53.75);
+  });
+  it("can be replaced by a fixed amount or switched off", () => {
+    process.env.PAYOUT_TRANSFER_FEE_NAIRA = "30";
+    expect(payoutTransferFee(100, transferFeeConfigFor("FLUTTERWAVE"))).toBe(30);
+    expect(payoutTransferFee(100, transferFeeConfigFor("FLUTTERWAVE", false))).toBe(0);
+    delete process.env.PAYOUT_TRANSFER_FEE_NAIRA;
+    process.env.CUSTOMER_PAYS_TRANSFER_FEE = "false";
+    expect(feeConfigFor("FLUTTERWAVE").transfer.enabled).toBe(false);
+  });
+  it("is off for a store collecting into its own gateway account", () => {
+    expect(feeConfigFor("FLUTTERWAVE", false).transfer.enabled).toBe(false);
+    expect(payoutTransferFee(5000, feeConfigFor("FLUTTERWAVE", false).transfer)).toBe(0);
+  });
+  it("is grossed up like the rest, so the platform keeps price + transfer fee after the gateway's cut", () => {
+    const transfer = payoutTransferFee(100, transferFeeConfigFor("FLUTTERWAVE"));
+    const { totalNaira, feeNaira } = grossUpForGatewayFee("FLUTTERWAVE", 100, undefined, undefined, undefined, transfer);
+    expect(feeNaira).toBeCloseTo(totalNaira - 100, 2);
+    expect(totalNaira - gatewayFeeOn(totalNaira, feeSchedule("FLUTTERWAVE"))).toBeGreaterThanOrEqual(100 + transfer - 0.005);
+  });
+  it("a customer-covered payment pays the vendor the full price even if a flat transfer fee is configured", () => {
+    process.env.PAYOUT_TRANSFER_FEE_NAIRA = "50";
+    const raw = { data: { amount: 113.01, app_fee: 2.26 } };
+    expect(vendorPayoutAmount("FLUTTERWAVE", raw, 100, 0, 100)).toEqual({ amount: 100, feeAmount: 0 });
   });
 });

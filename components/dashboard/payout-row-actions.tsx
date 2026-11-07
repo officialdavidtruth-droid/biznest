@@ -8,6 +8,8 @@ export function PayoutRowActions({ payoutId, canRetry }: { payoutId: string; can
   const router = useRouter();
   const [pending, start] = useTransition();
   const [error, setError] = useState<string | null>(null);
+  const [noting, setNoting] = useState(false);
+  const [note, setNote] = useState("");
 
   function run(fn: () => ReturnType<typeof retryFailedPayout>) {
     setError(null);
@@ -32,16 +34,29 @@ export function PayoutRowActions({ payoutId, canRetry }: { payoutId: string; can
         )}
         <button
           disabled={pending}
-          onClick={() => {
-            const note = window.prompt("Mark as paid manually. Enter the bank transfer reference or a note:");
-            if (note === null) return;
-            run(() => markPayoutPaid(payoutId, note));
-          }}
+          onClick={() => setNoting((v) => !v)}
           className="rounded-md border px-2.5 py-1 text-xs font-medium hover:bg-muted disabled:opacity-50"
         >
           Mark paid
         </button>
       </div>
+      {noting && (
+        <div className="flex items-center gap-1">
+          <input
+            value={note}
+            onChange={(e) => setNote(e.target.value)}
+            placeholder="Bank reference or note"
+            className="w-44 rounded-md border bg-background px-2 py-1 text-xs"
+          />
+          <button
+            disabled={pending || !note.trim()}
+            onClick={() => run(() => markPayoutPaid(payoutId, note))}
+            className="rounded-md bg-primary px-2.5 py-1 text-xs font-medium text-primary-foreground disabled:opacity-50"
+          >
+            Save
+          </button>
+        </div>
+      )}
       {error && <p className="max-w-[220px] text-right text-[11px] text-red-600">{error}</p>}
     </div>
   );

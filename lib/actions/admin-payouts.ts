@@ -7,7 +7,7 @@ import { prisma } from "@/lib/prisma";
 import { ADMIN_COOKIE_NAME, adminSessionIdFromToken } from "@/lib/admin-pin-auth";
 import { verifyAdminSession } from "@/lib/admin-session";
 import { getClientIp } from "@/lib/rate-limit";
-import { markPayoutPaidManually, releaseHeldPayouts, retryPayout, retryQueuedPayoutsNow } from "@/lib/payments/payout";
+import { closeOpenPayouts, markPayoutPaidManually, releaseHeldPayouts, retryPayout, retryQueuedPayoutsNow } from "@/lib/payments/payout";
 import { getGatewayBalanceKobo } from "@/lib/payments/payout-gateway";
 import { getActiveGateway, getPayoutMode, type PayoutMode } from "@/lib/actions/site-settings";
 import type { ActionResult } from "@/types/actions";
@@ -79,6 +79,19 @@ export async function markPayoutPaid(payoutId: string, note: string): Promise<Ac
   }
   revalidatePath("/supaadmin/payouts");
   return result.ok ? { success: true, data: undefined } : { success: false, error: result.message };
+}
+
+/** Settles all queued / failed / reversed payouts as test payments, so cron retries and alerts stop. */
+export async function closeTestPayouts(note: string): Promise<ActionResult<{ closed: number }>> {
+  const access = await assertPlatformStaff();
+  if (!access.success) return { success: false, error: access.error };
+  const result = await closeOpenPayouts(note);
+  if (!result.ok) return { success: false, error: result.message };
+  await prisma.auditLog.create({
+    data: { userId: null, action: "PAYOUTS_TEST_CLOSED", entity: "Payout", entityId: "bulk", metadata: { note: note.trim(), closed: result.closed, ...access.actor } },
+  });
+  revalidatePath("/supaadmin/payouts");
+  return { success: true, data: { closed: result.closed } };
 }
 
 export type PayoutWallet = {

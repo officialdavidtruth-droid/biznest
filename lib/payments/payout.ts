@@ -678,6 +678,21 @@ export async function markPayoutPaidManually(payoutId: string, note: string): Pr
 }
 
 /**
+ * Admin "Close test payouts": settles every open payout that is waiting, failed or reversed (never HELD or
+ * PROCESSING) so the cron stops retrying it and the alerts stop. Meant for test payments whose money is not owed
+ * to anyone. Records the note and a testClosed flag in rawPayload.
+ */
+export async function closeOpenPayouts(note: string, opts: { storeId?: string } = {}): Promise<{ ok: boolean; closed: number; message: string }> {
+  const trimmed = note.trim();
+  if (!trimmed) return { ok: false, closed: 0, message: "A note is required, for example: test payments." };
+  const updated = await prisma.payout.updateMany({
+    where: { status: { in: ["QUEUED", "FAILED", "REVERSED"] }, ...(opts.storeId ? { storeId: opts.storeId } : {}) },
+    data: { status: "PAID", paidAt: new Date(), lastError: null, nextAttemptAt: null, rawPayload: { manual: true, testClosed: true, note: trimmed, at: new Date().toISOString() } as Prisma.InputJsonValue },
+  });
+  return { ok: true, closed: updated.count, message: updated.count ? `Closed ${updated.count} payout${updated.count === 1 ? "" : "s"}.` : "Nothing to close." };
+}
+
+/**
  * One-off catch-up for wallet payments made before wallet bookings triggered a
  * payout. Finds successful, unrefunded wallet booking and order payments with no Payout
  * row and (unless dryRun) queues + sends them. Idempotent: Payout.paymentId is unique.

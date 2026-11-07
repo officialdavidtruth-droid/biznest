@@ -35,10 +35,16 @@ export default function SellerAgreementPage() {
         change with notice; continued use of your store after a rate change takes effect
         constitutes acceptance.
         <br /><br />
-        Payment processing fees. The payment gateway that processes a customer&apos;s payment charges a
-        processing fee on that payment. BizNest does not keep this fee: it is deducted from the amount
-        paid out to you, and the fee for each payout is recorded on that payout. The customer pays only
-        the price shown at checkout.
+        Payment processing and payout fees. The payment gateway that processes a customer&apos;s payment
+        charges a processing fee on that payment, and charges a transfer fee to send your payout. BizNest
+        does not keep these fees. They are shown to the customer at checkout and added to what the customer
+        pays, so you receive the full price of the order, less any commission above. The customer therefore
+        pays more than the listed price. If a customer is refunded, the price is returned; these fees are
+        not refundable because the gateway keeps them. Orders made before this change, and any payment where
+        the gateway&apos;s fee was not added to the customer&apos;s charge, are paid out as the price less the
+        gateway&apos;s fee, and the fee for each payout is recorded on that payout. If you connect your own
+        payment gateway account, the gateway&apos;s fees are charged to your account under your agreement
+        with that gateway.
       </Section>
 
       <Section title="4. Listing standards">

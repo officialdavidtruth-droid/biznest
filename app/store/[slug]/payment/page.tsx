@@ -5,6 +5,7 @@ import { prisma } from "@/lib/prisma";
 import { GrandeurPayment } from "@/components/storefront/grandeur-restaurant";
 import { getGrandeurRestaurantData } from "@/lib/grandeur-restaurant";
 import { isGrandeurStore } from "@/lib/store-pages";
+import { getCheckoutFeeConfig } from "@/lib/payments/checkout-fee-config";
 
 export default async function PaymentPage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
@@ -13,5 +14,5 @@ export default async function PaymentPage({ params }: { params: Promise<{ slug: 
   if (!isGrandeurStore({ businessCategory: store.business?.category, storeBusinessType: store.businessType, templateName: store.template?.name })) redirect(`/store/${slug}/checkout`);
   const data = await getGrandeurRestaurantData(slug, { skinOnly: true });
   if (!data) notFound();
-  return <GrandeurPayment store={data.store} slug={slug} />;
+  return <GrandeurPayment store={data.store} slug={slug} feeConfig={await getCheckoutFeeConfig(store.id)} />;
 }
