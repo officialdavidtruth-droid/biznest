@@ -242,7 +242,7 @@ export function AdaptiveDashboardHome({
 
   return (
     <div className="bn-adaptive-dashboard min-h-full bg-[var(--bn-admin-surface-2)] text-[var(--bn-admin-text)]">
-      <div className="bn-dashboard-content mx-auto w-full max-w-[1440px] px-4 py-5 sm:px-6 lg:px-7 lg:py-7">
+      <div className="bn-dashboard-content mx-auto w-full max-w-[1440px] px-4 pb-32 pt-5 sm:px-6 sm:pb-7 lg:px-7 lg:py-7">
         <div className="mb-6 flex flex-wrap items-start justify-between gap-4">
           <div>
             <h1 className="text-[24px] font-bold tracking-[-0.02em] text-[var(--bn-admin-text)]">Welcome back{userName ? `, ${userName.split(" ")[0]}` : ""}! <span aria-hidden>👋</span></h1>
@@ -259,16 +259,16 @@ export function AdaptiveDashboardHome({
           </div>
         </div>
 
-        <div className="mb-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
+        <div className="mb-6 grid grid-cols-2 gap-2.5 sm:gap-3 lg:grid-cols-5">
           {finalKpis.map((kpi, index) => (
-            <div key={kpi.id} className="bn-dashboard-kpi rounded-xl border border-[var(--bn-admin-border)] bg-[var(--bn-admin-surface)] px-4 py-4 shadow-[0_1px_2px_rgba(15,23,42,0.03)]">
-              <div className="mb-3 flex items-start justify-between">
+            <div key={kpi.id} className="bn-dashboard-kpi rounded-xl border border-[var(--bn-admin-border)] bg-[var(--bn-admin-surface)] px-3 py-3 shadow-[0_1px_2px_rgba(15,23,42,0.03)] last:odd:col-span-2 sm:px-4 sm:py-4 lg:last:odd:col-span-1">
+              <div className="mb-2 flex items-start justify-between sm:mb-3">
                 <span className={`flex h-9 w-9 items-center justify-center rounded-xl ${index % 4 === 0 ? "bg-[var(--bn-admin-surface-2)] text-[var(--bn-admin-muted)]" : index % 4 === 1 ? "bg-[var(--bn-admin-surface-2)] text-[var(--bn-admin-orange)]" : index % 4 === 2 ? "bg-[var(--bn-admin-surface-2)] text-[var(--bn-admin-text)]" : "bg-[var(--bn-admin-surface-2)] text-[var(--bn-admin-muted)]"}`}>
                   {index === 0 ? <WalletCards className="h-4.5 w-4.5" /> : index === 1 ? <ShoppingBag className="h-4.5 w-4.5" /> : index === 2 ? <TrendingUp className="h-4.5 w-4.5" /> : index === 3 ? <Users className="h-4.5 w-4.5" /> : <BarChart3 className="h-4.5 w-4.5" />}
                 </span>
               </div>
               <p className="text-[13px] font-medium text-[var(--bn-admin-text)]">{kpi.label}</p>
-              <p className="mt-1 text-[25px] font-bold tracking-[-0.02em] text-[var(--bn-admin-text)]">{kpi.value}</p>
+              <p className="mt-1 text-[22px] font-bold sm:text-[25px] tracking-[-0.02em] text-[var(--bn-admin-text)]">{kpi.value}</p>
               <div className="mt-1 flex items-center gap-1 text-[11px]">
                 {kpi.sub.direction ? (
                   <span className={`flex items-center gap-0.5 font-semibold ${kpi.sub.direction === "up" ? "text-[var(--bn-admin-text)]" : "text-[var(--bn-admin-orange)]"}`}>
@@ -388,7 +388,7 @@ function RevenueChart({ hourly, currentHour }: { hourly: number[]; currentHour: 
   const total = hourly.reduce((sum, v) => sum + v, 0);
 
   return (
-    <div className="h-[235px] border-b border-l border-[var(--bn-admin-border)]">
+    <div className="h-[150px] border-b sm:h-[235px] border-l border-[var(--bn-admin-border)]">
       <svg viewBox={`0 0 ${width} ${height}`} preserveAspectRatio="none" className="h-full w-full overflow-visible" role="img" aria-label={total > 0 ? "Revenue so far today, by hour" : "No revenue recorded yet today"}>
         <defs>
           <linearGradient id="revenue-fill" x1="0" y1="0" x2="0" y2="1">
