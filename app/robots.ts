@@ -24,6 +24,8 @@ export default function robots(): MetadataRoute.Robots {
     "/verify-email",
     "/unsubscribe",
     "/template-preview",
+    "/browse/notifications",
+    "/browse/following",
   ];
   // "/*/admin" etc. -- on biznest.space a store lives at /<slug>/..., so the
   // store-level private pages sit one segment deep. Google and Bing both

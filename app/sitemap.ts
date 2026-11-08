@@ -1,13 +1,14 @@
 import type { MetadataRoute } from "next";
 import { prisma } from "@/lib/prisma";
 import { SITE_URL } from "@/lib/seo";
+import { extractHashtags } from "@/lib/browse";
 
 // Rebuilt at most hourly so new stores/listings are discovered quickly
 // without hitting the database on every crawler request.
 export const revalidate = 3600;
 
 // The sitemap protocol allows 50,000 URLs per file; stay safely under it.
-const LIMITS = { stores: 5000, products: 25000, services: 10000, categories: 5000 };
+const LIMITS = { stores: 5000, products: 25000, services: 10000, categories: 5000, posts: 5000, tags: 1000 };
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const now = new Date();
@@ -33,7 +34,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       NOT: { customDomainStatus: "VERIFIED" as const },
     };
 
-    const [stores, products, services, categories] = await Promise.all([
+    const [stores, products, services, categories, posts] = await Promise.all([
       prisma.store.findMany({
         where: storeWhere,
         select: { slug: true, updatedAt: true },
@@ -58,7 +59,29 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
         orderBy: { updatedAt: "desc" },
         take: LIMITS.categories,
       }),
+      prisma.browsePost.findMany({
+        where: { status: "PUBLISHED", store: storeWhere },
+        select: { id: true, caption: true, updatedAt: true },
+        orderBy: { createdAt: "desc" },
+        take: LIMITS.posts,
+      }),
     ]);
+
+    // Browse: every store profile, recent posts, and every hashtag that has posts.
+    const tagCount = new Map<string, { n: number; at: Date }>();
+    for (const p of posts) {
+      entries.push({ url: `${SITE_URL}/browse/p/${p.id}`, lastModified: p.updatedAt, changeFrequency: "weekly", priority: 0.5 });
+      for (const t of extractHashtags(p.caption)) {
+        const cur = tagCount.get(t);
+        tagCount.set(t, { n: (cur?.n ?? 0) + 1, at: cur && cur.at > p.updatedAt ? cur.at : p.updatedAt });
+      }
+    }
+    for (const [t, v] of [...tagCount].sort((a, b) => b[1].n - a[1].n).slice(0, LIMITS.tags)) {
+      entries.push({ url: `${SITE_URL}/browse/tag/${encodeURIComponent(t)}`, lastModified: v.at, changeFrequency: "daily", priority: 0.5 });
+    }
+    for (const s of stores) {
+      entries.push({ url: `${SITE_URL}/browse/s/${s.slug}`, lastModified: s.updatedAt, changeFrequency: "daily", priority: 0.6 });
+    }
 
     for (const s of stores) {
       entries.push({ url: `${SITE_URL}/${s.slug}`, lastModified: s.updatedAt, changeFrequency: "daily", priority: 0.9 });

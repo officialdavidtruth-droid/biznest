@@ -1,4 +1,6 @@
-import { ogImageUrl, previewPrice } from "@/lib/browse";
+import { extractHashtags, ogImageUrl, previewPrice } from "@/lib/browse";
+import { JsonLd } from "@/components/seo/json-ld";
+import { SITE_URL } from "@/lib/seo";
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { getViewer } from "@/lib/browse-viewer";
@@ -24,6 +26,7 @@ export async function generateMetadata({ params }: { params: Promise<{ id: strin
   return {
     title,
     description,
+    keywords: [...extractHashtags(post.caption), post.store.category, post.store.city, post.store.name, post.product?.name].filter((k): k is string => !!k).slice(0, 15),
     alternates: { canonical: `/browse/p/${post.id}` },
     openGraph: { type: "article", siteName: "BizNest", title, description, ...(image ? { images: image } : {}) },
     twitter: { card: "summary_large_image", title, description, ...(image ? { images: image.map((i) => i.url) } : {}) },
@@ -38,6 +41,18 @@ export default async function BrowsePostPage({ params }: { params: Promise<{ id:
   if (!post) notFound();
   return (
     <BrowseShell back={{ href: "/browse", label: "Browse" }}>
+      <JsonLd data={{
+        "@context": "https://schema.org", "@type": "SocialMediaPosting", url: `${SITE_URL}/browse/p/${post.id}`,
+        headline: (post.caption || post.store.name).slice(0, 110), articleBody: post.caption, datePublished: post.createdAt,
+        keywords: extractHashtags(post.caption).join(", ") || undefined,
+        ...(post.images[0] ? { image: post.images.map(ogImageUrl) } : {}),
+        author: { "@type": "Organization", name: post.store.name, url: `${SITE_URL}/browse/s/${post.store.slug}` },
+        ...(post.location ? { contentLocation: { "@type": "Place", name: post.location } } : {}),
+        interactionStatistic: [
+          { "@type": "InteractionCounter", interactionType: "https://schema.org/LikeAction", userInteractionCount: post.likeCount },
+          { "@type": "InteractionCounter", interactionType: "https://schema.org/CommentAction", userInteractionCount: post.commentCount },
+        ],
+      }} />
       <main className="mx-auto max-w-xl px-4 pb-20 pt-6">
         <PostCard post={post} openComments />
       </main>

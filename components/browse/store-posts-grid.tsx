@@ -13,9 +13,9 @@ export function StorePostsGrid({ slug, initial, initialCursor }: { slug: string;
   const [pending, start] = useTransition();
   return (
     <div>
-      <ul className="grid grid-cols-3 gap-2 sm:gap-3">
+      <ul className="grid grid-cols-3 gap-1 sm:gap-2">
         {posts.map((p) => (
-          <li key={p.id} className="group relative aspect-square overflow-hidden rounded-2xl bg-[#FBF6E9]">
+          <li key={p.id} className="group relative aspect-square overflow-hidden rounded-lg bg-[#FBF6E9] sm:rounded-xl">
             <Link href={postPath(p.id)} className="block h-full w-full focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#F5B82E]" aria-label={p.caption.slice(0, 80) || "Open post"}>
               {p.image ? /* eslint-disable-next-line @next/next/no-img-element */ <img src={p.image} alt="" loading="lazy" className="h-full w-full object-cover" /> : (
                 <span className="grid h-full w-full place-items-center p-3 text-center text-xs font-medium leading-snug text-[#14301A]">{p.caption.slice(0, 90)}</span>

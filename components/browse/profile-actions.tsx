@@ -32,28 +32,32 @@ export function ProfileActions({ slug, name, path, storeUrl, initialFollowing, i
   }
 
   const stat = (value: number, one: string, many: string) => (
-    <div className="rounded-2xl bg-[#14301A]/[0.06] py-3">
-      <dd className={`${display} text-2xl font-extrabold`}>{compactCount(value)}</dd>
-      <dt className="text-xs text-[#14301A]/65">{value === 1 ? one : many}</dt>
+    <div className="flex-1 text-center">
+      <dd className={`${display} text-lg font-extrabold leading-none`}>{compactCount(value)}</dd>
+      <dt className="mt-1 text-[11px] text-[#14301A]/65">{value === 1 ? one : many}</dt>
     </div>
   );
 
   return (
     <>
-      <dl className="mt-6 grid grid-cols-3 gap-3 text-center">
+      <dl className="mt-3 flex divide-x divide-[#14301A]/10 rounded-xl bg-[#14301A]/[0.05] py-2">
         {stat(postCount, "Post", "Posts")}
         {stat(count, "Follower", "Followers")}
         {stat(likeCount, "Like", "Likes")}
       </dl>
-      <div className="mt-5 grid gap-3">
+      <div className="mt-3">
+        <div className="grid grid-cols-[1fr_1fr_auto] gap-2">
         <button
           type="button" onClick={toggle} disabled={pending} aria-pressed={following}
-          className={`inline-flex items-center justify-center gap-2 rounded-full px-6 py-3 text-sm font-semibold transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#14301A] disabled:opacity-70 ${following ? "border border-[#14301A]/30 text-[#14301A] hover:bg-[#14301A]/5" : "bg-[#F5B82E] text-[#14301A] hover:bg-[#ffc94d]"}`}
+          className={`inline-flex items-center justify-center gap-2 rounded-full px-3 py-2.5 text-sm font-semibold transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#14301A] disabled:opacity-70 ${following ? "border border-[#14301A]/30 text-[#14301A] hover:bg-[#14301A]/5" : "bg-[#F5B82E] text-[#14301A] hover:bg-[#ffc94d]"}`}
         >
           {following ? <><Check className="h-4 w-4" aria-hidden /> Following</> : <><UserPlus className="h-4 w-4" aria-hidden /> Follow</>}
         </button>
+            <Link href={storeUrl} className="inline-flex items-center justify-center gap-2 rounded-full bg-[#14301A] px-3 py-2.5 text-sm font-semibold text-[#FBF6E9] hover:bg-[#0c1f11] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#14301A]"><Store className="h-4 w-4" aria-hidden /> Visit store</Link>
+          <ShareProfile name={name} path={path} slug={slug} />
+        </div>
         {needAccount && (
-          <div role="alert" className="rounded-2xl bg-[#14301A]/[0.06] p-4 text-center">
+          <div role="alert" className="mt-2 rounded-2xl bg-[#14301A]/[0.06] p-4 text-center">
             <p className="text-sm font-medium">Create a free account to follow {name}.</p>
             <p className="mt-1 text-xs text-[#14301A]/65">It&apos;s for browsing only. No store or dashboard is created.</p>
             <div className="mt-3 flex justify-center gap-2">
@@ -62,10 +66,6 @@ export function ProfileActions({ slug, name, path, storeUrl, initialFollowing, i
             </div>
           </div>
         )}
-        <div className="grid gap-3 sm:grid-cols-[1fr_auto]">
-          <Link href={storeUrl} className="inline-flex items-center justify-center gap-2 rounded-full bg-[#14301A] px-6 py-3 text-sm font-semibold text-[#FBF6E9] hover:bg-[#0c1f11] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#14301A]"><Store className="h-4 w-4" aria-hidden /> Visit store</Link>
-          <ShareProfile name={name} path={path} slug={slug} />
-        </div>
       </div>
     </>
   );
