@@ -2,7 +2,8 @@
 
 import { useEffect, useRef, useState, useTransition } from "react";
 import Link from "next/link";
-import { Flag, Heart, MessageCircle, Play, Share2, ShoppingBag, Store, Volume2, VolumeX } from "lucide-react";
+import { createPortal } from "react-dom";
+import { Flag, Heart, MessageCircle, Play, Share2, ShoppingBag, Store, Volume2, VolumeX, X } from "lucide-react";
 import { toast } from "sonner";
 import { addBrowseComment, deleteMyBrowseComment, loadPostComments, reportBrowse, toggleBrowseLike } from "@/lib/actions/browse";
 import type { BrowseCommentView, BrowsePostView } from "@/lib/browse-data";
@@ -118,14 +119,14 @@ function FeedVideo({ post }: { post: BrowsePostView }) {
   );
 }
 
-function Images({ post }: { post: BrowsePostView }) {
+function Images({ post, wrapClass }: { post: BrowsePostView; wrapClass?: string }) {
   const [idx, setIdx] = useState(0);
   const ref = useRef<HTMLDivElement>(null);
   if (post.images.length === 0 && !post.videoUrl) return null;
   const storeUrl = storeHref(post.store.slug);
   const dest = post.product ? storeHref(post.store.slug, `/${post.product.kind === "SERVICE" ? "service" : "product"}/${post.product.id}`) : storeUrl;
   return (
-    <div className="relative px-2.5 lg:mx-auto lg:w-[min(100%,max(340px,calc((100svh-250px)*0.8+1.25rem)))]">
+    <div className={wrapClass ?? "relative px-2.5 lg:mx-auto lg:w-[min(100%,max(340px,calc((100svh-250px)*0.8+1.25rem)))]"}>
       {post.videoUrl ? (
         <FeedVideo post={post} />
       ) : (
@@ -164,17 +165,35 @@ function needAccountToast(error: string) {
   toast(error, { description: "It's free and only takes a minute.", action: { label: "Create account", onClick: () => window.location.assign(`/join?callbackUrl=${back}`) } });
 }
 
-function Comments({ post, onCount }: { post: BrowsePostView; onCount: (n: number) => void }) {
+/**
+ * The comments view. On a laptop it opens as a window: the post on the left and the
+ * conversation on the right. On a phone it rises as a sheet from the bottom, with the
+ * comment box pinned above the keyboard.
+ */
+function PostModal({ post, onClose, onCount, onLike, onShare, liking }: {
+  post: BrowsePostView; onClose: () => void; onCount: (n: number) => void; onLike: () => void; onShare: () => void; liking: boolean;
+}) {
   const [comments, setComments] = useState<BrowseCommentView[] | null>(null);
   const [older, setOlder] = useState<string | null>(null);
   const [body, setBody] = useState("");
   const [pending, start] = useTransition();
+  const listRef = useRef<HTMLDivElement>(null);
+  const storeUrl = storeHref(post.store.slug);
+  const hasMedia = post.images.length > 0 || !!post.videoUrl;
 
   useEffect(() => {
     let live = true;
     loadPostComments(post.id).then((r) => { if (live && r.success) { setComments(r.data.comments); setOlder(r.data.nextCursor); } });
     return () => { live = false; };
   }, [post.id]);
+
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") onClose(); };
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    window.addEventListener("keydown", onKey);
+    return () => { window.removeEventListener("keydown", onKey); document.body.style.overflow = prev; };
+  }, [onClose]);
 
   function submit() {
     start(async () => {
@@ -183,39 +202,94 @@ function Comments({ post, onCount }: { post: BrowsePostView; onCount: (n: number
       setComments((c) => [...(c ?? []), res.data.comment]);
       onCount(res.data.commentCount);
       setBody("");
+      requestAnimationFrame(() => listRef.current?.scrollTo({ top: listRef.current.scrollHeight, behavior: "smooth" }));
     });
   }
 
-  return (
-    <div className="mx-3 mb-3 rounded-2xl bg-[#14301A]/[0.05] px-4 pb-4 pt-3">
-      {older && (
-        <button className="mb-2 text-xs text-[#14301A]/70 hover:text-[#14301A]" onClick={async () => { const r = await loadPostComments(post.id, older); if (r.success) { setComments((c) => [...r.data.comments, ...(c ?? [])]); setOlder(r.data.nextCursor); } }}>View earlier comments</button>
-      )}
-      {comments === null ? <p className="text-xs text-[#14301A]/60">Loading…</p> : comments.length === 0 ? <p className="text-xs text-[#14301A]/60">No comments yet. Be the first.</p> : (
-        <ul className="space-y-2.5">
-          {comments.map((c) => (
-            <li key={c.id} className="flex items-start justify-between gap-3 text-sm">
-              <p className="min-w-0 break-words"><b className="font-semibold">{c.authorName}</b> <span className="opacity-90">{c.body}</span> <span className="text-xs text-[#14301A]/50">{timeAgo(new Date(c.createdAt))}</span></p>
-              {c.mine ? (
-                <button className="shrink-0 text-xs text-[#14301A]/50 hover:text-[#14301A]" onClick={async () => { const r = await deleteMyBrowseComment(c.id); if (r.success) { setComments((x) => (x ?? []).filter((y) => y.id !== c.id)); onCount(Math.max(0, post.commentCount - 1)); } else toast.error(r.error); }}>Delete</button>
-              ) : <ReportMenu postId={post.id} commentId={c.id} label="Report this comment" />}
-            </li>
-          ))}
-        </ul>
-      )}
-      <form className="mt-3" onSubmit={(e) => { e.preventDefault(); submit(); }}>
-        <div className="flex gap-2">
-          <input className={input} placeholder="Add a comment…" value={body} onChange={(e) => setBody(e.target.value)} maxLength={BROWSE_COMMENT_MAX} aria-label="Comment" />
-          <button type="submit" disabled={pending || !body.trim()} className="shrink-0 rounded-xl bg-[#14301A] px-4 text-sm font-semibold text-[#FBF6E9] disabled:opacity-40">Post</button>
+  const avatar = (name: string, url: string | null, size: string) => (
+    <span className={`grid ${size} shrink-0 place-items-center overflow-hidden rounded-full bg-[#14301A]/10 text-xs font-bold`}>
+      {url ? /* eslint-disable-next-line @next/next/no-img-element */ <img src={url} alt="" className="h-full w-full object-cover" /> : name.slice(0, 1).toUpperCase()}
+    </span>
+  );
+
+  return createPortal(
+    <div className="fixed inset-0 z-[100] flex items-end justify-center bg-black/70 lg:items-center lg:p-6" role="dialog" aria-modal="true" aria-label={`Post by ${post.store.name}`} onMouseDown={(e) => { if (e.target === e.currentTarget) onClose(); }}>
+      <button type="button" onClick={onClose} aria-label="Close" className="absolute right-3 top-[max(0.75rem,env(safe-area-inset-top))] z-10 hidden h-10 w-10 items-center justify-center rounded-full bg-white/10 text-white hover:bg-white/20 lg:flex">
+        <X className="h-5 w-5" aria-hidden />
+      </button>
+      <div className={`flex h-[88svh] w-full flex-col overflow-hidden rounded-t-3xl bg-[#FBF6E9] text-[#14301A] lg:h-[min(86svh,760px)] lg:rounded-3xl ${hasMedia ? "lg:max-w-[1000px] lg:flex-row" : "lg:max-w-[460px]"}`}>
+        {hasMedia && (
+          <div className="hidden min-w-0 flex-1 items-center justify-center bg-black lg:flex">
+            <div className="w-full"><Images post={post} wrapClass="relative mx-auto w-[min(100%,calc(min(86svh,760px)*0.8))] px-0" /></div>
+          </div>
+        )}
+        <div className="flex min-h-0 w-full flex-col lg:w-[380px] lg:shrink-0 lg:border-l lg:border-[#14301A]/10">
+          <div className="mx-auto mt-2 h-1 w-10 rounded-full bg-[#14301A]/20 lg:hidden" aria-hidden />
+          <header className="flex items-center gap-2.5 border-b border-[#14301A]/10 px-4 py-3">
+            <Link href={storeBrowsePath(post.store.slug)} className="flex min-w-0 flex-1 items-center gap-2.5">
+              <span className="rounded-full ring-2 ring-[#F5B82E] ring-offset-1 ring-offset-[#FBF6E9]">{avatar(post.store.name, post.store.logoUrl, "h-9 w-9")}</span>
+              <span className={`${display} flex min-w-0 items-center gap-1 truncate text-sm font-bold`}>{post.store.name}<StoreBadges verified={post.store.verified} mogul={post.store.mogul} official={isOfficialSlug(post.store.slug)} /></span>
+            </Link>
+            <Link href={storeUrl} className="inline-flex shrink-0 items-center gap-1.5 rounded-full bg-[#14301A] px-3 py-1.5 text-xs font-semibold text-[#FBF6E9] hover:bg-[#0c1f11]"><Store className="h-3.5 w-3.5" aria-hidden /> Visit store</Link>
+            <button type="button" onClick={onClose} aria-label="Close comments" className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full hover:bg-[#14301A]/5 lg:hidden"><X className="h-5 w-5" aria-hidden /></button>
+          </header>
+
+          <div ref={listRef} className="min-h-0 flex-1 space-y-4 overflow-y-auto overscroll-contain px-4 py-4">
+            {post.caption && (
+              <div className="flex gap-3">
+                {avatar(post.store.name, post.store.logoUrl, "h-8 w-8")}
+                <div className="min-w-0 text-sm leading-snug">
+                  <p className="whitespace-pre-line break-words"><Link href={storeUrl} className={`${display} font-bold hover:underline`}>{post.store.name}</Link> <CaptionText text={post.caption} /></p>
+                  <p className="mt-1 text-xs text-[#14301A]/50">{timeAgo(new Date(post.createdAt))}</p>
+                </div>
+              </div>
+            )}
+            {older && (
+              <button className="text-xs font-medium text-[#14301A]/70 hover:text-[#14301A]" onClick={async () => { const r = await loadPostComments(post.id, older); if (r.success) { setComments((c) => [...r.data.comments, ...(c ?? [])]); setOlder(r.data.nextCursor); } }}>View earlier comments</button>
+            )}
+            {comments === null ? <p className="text-sm text-[#14301A]/60">Loading comments…</p> : comments.length === 0 ? (
+              <div className="py-10 text-center"><p className="font-semibold">No comments yet</p><p className="mt-1 text-sm text-[#14301A]/60">Start the conversation.</p></div>
+            ) : comments.map((c) => (
+              <div key={c.id} className="flex gap-3">
+                <span className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-[#F5B82E]/30 text-xs font-bold">{c.authorName.slice(0, 1).toUpperCase()}</span>
+                <div className="min-w-0 flex-1 text-sm leading-snug">
+                  <p className="break-words"><b className="font-semibold">{c.authorName}</b> <span className="opacity-90">{c.body}</span></p>
+                  <p className="mt-1 flex items-center gap-3 text-xs text-[#14301A]/50">
+                    <span>{timeAgo(new Date(c.createdAt))}</span>
+                    {c.mine ? (
+                      <button className="hover:text-[#14301A]" onClick={async () => { const r = await deleteMyBrowseComment(c.id); if (r.success) { setComments((x) => (x ?? []).filter((y) => y.id !== c.id)); onCount(Math.max(0, post.commentCount - 1)); } else toast.error(r.error); }}>Delete</button>
+                    ) : <ReportMenu postId={post.id} commentId={c.id} label="Report this comment" />}
+                  </p>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          <div className="border-t border-[#14301A]/10">
+            <div className="flex items-center gap-1 px-2.5 pt-1.5">
+              <button onClick={onLike} disabled={liking} aria-pressed={post.liked} aria-label={post.liked ? "Unlike" : "Like"} className={iconBtn}>
+                <Heart className={`h-6 w-6 transition ${post.liked ? "fill-rose-500 text-rose-500" : ""}`} aria-hidden />
+              </button>
+              <span className={`${iconBtn} pointer-events-none`} aria-hidden><MessageCircle className="h-6 w-6" /></span>
+              <button onClick={onShare} aria-label="Share" className={`${iconBtn} ml-auto`}><Share2 className="h-5 w-5" aria-hidden /></button>
+            </div>
+            <p className="px-4 text-sm font-semibold">{post.likeCount === 1 ? "1 like" : `${compactCount(post.likeCount)} likes`}</p>
+            <p className="px-4 pb-2 text-xs text-[#14301A]/50">{timeAgo(new Date(post.createdAt))}</p>
+            <form className="flex items-center gap-2 border-t border-[#14301A]/10 px-3 py-2 pb-[max(0.5rem,env(safe-area-inset-bottom))]" onSubmit={(e) => { e.preventDefault(); if (body.trim()) submit(); }}>
+              <input className="min-w-0 flex-1 bg-transparent px-1 py-2 text-base text-[#14301A] outline-none placeholder:text-[#14301A]/45 sm:text-sm" placeholder="Add a comment…" value={body} onChange={(e) => setBody(e.target.value)} maxLength={BROWSE_COMMENT_MAX} aria-label="Comment" />
+              <button type="submit" disabled={pending || !body.trim()} className="shrink-0 px-2 text-sm font-semibold text-[#1d6b3a] disabled:text-[#14301A]/30">Post</button>
+            </form>
+          </div>
         </div>
-      </form>
-    </div>
+      </div>
+    </div>,
+    document.body,
   );
 }
 
-export function PostCard({ post: initial, openComments = false }: { post: BrowsePostView; openComments?: boolean }) {
+export function PostCard({ post: initial }: { post: BrowsePostView }) {
   const [post, setPost] = useState(initial);
-  const [showComments, setShowComments] = useState(openComments);
+  const [showComments, setShowComments] = useState(false);
   const [more, setMore] = useState(false);
   const [pending, start] = useTransition();
   const storeUrl = storeHref(post.store.slug);
@@ -289,7 +363,7 @@ export function PostCard({ post: initial, openComments = false }: { post: Browse
       {!post.caption && <div className="pb-2" />}
       <PostMeta post={post} />
 
-      {showComments && <Comments post={post} onCount={(n) => setPost((p) => ({ ...p, commentCount: n }))} />}
+      {showComments && <PostModal post={post} onClose={() => setShowComments(false)} onCount={(n) => setPost((p) => ({ ...p, commentCount: n }))} onLike={like} onShare={share} liking={pending} />}
     </article>
   );
 }

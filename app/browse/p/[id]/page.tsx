@@ -54,7 +54,7 @@ export default async function BrowsePostPage({ params }: { params: Promise<{ id:
         ],
       }} />
       <main className="mx-auto max-w-xl px-4 pb-20 pt-6">
-        <PostCard post={post} openComments />
+        <PostCard post={post} />
       </main>
     </BrowseShell>
   );
