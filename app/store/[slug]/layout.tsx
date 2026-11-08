@@ -17,6 +17,7 @@ import { whatsappLink } from "@/lib/utils/whatsapp-link";
 import { NO_INDEX } from "@/lib/seo";
 import { isStoreLocked } from "@/lib/billing/store-lock";
 import { PoweredByBizNest } from "@/components/storefront/powered-by-biznest";
+import { showBizNestBranding } from "@/lib/branding";
 import { InstallStoreApp } from "@/components/storefront/install-store-app";
 import { OrderPushPrompt } from "@/components/storefront/order-push-prompt";
 import { requireStoreCustomer } from "@/lib/actions/store-customer";
@@ -270,7 +271,7 @@ export default async function StoreLayout({
       {trackingOn && tracking && (
         <StoreTracking slug={slug} gaId={tracking.gaId} metaPixelId={tracking.metaPixelId} plausibleDomain={tracking.plausibleDomain} />
       )}
-      {onFreeTrial && !isAdminRoute && exists?.status === "ACTIVE" && <PoweredByBizNest />}
+      {!!exists && showBizNestBranding({ slug, subscriptionRenewsAt: exists.subscriptionRenewsAt }) && !isAdminRoute && exists.status === "ACTIVE" && <PoweredByBizNest slug={slug} />}
       {pushEligible && <OrderPushPrompt slug={slug} base={pwaBase} />}
       {chatHref && exists && <WhatsAppChatButton href={chatHref} storeName={exists.name} />}
       {showPromo && promo && promoPalette && <PromoPopup slug={slug} config={promo} palette={promoPalette} />}

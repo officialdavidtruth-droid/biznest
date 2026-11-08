@@ -1,5 +1,6 @@
 "use server";
 
+import { APP_URL } from "@/lib/constants/app-url";
 import { auth } from "@/lib/auth";
 import { whatsappLink } from "@/lib/utils/whatsapp-link";
 import { prisma } from "@/lib/prisma";
@@ -17,7 +18,6 @@ import { isCustomerOfStore } from "@/lib/access/store-customer";
 import { effectiveQuoteStatus, expireLapsedQuotes, isQuoteLapsed, notLapsedWhere } from "@/lib/quotes/expiry";
 import { cleanLines, parseOptionalDate, validateContact, validateLines, validateOptionalAmount } from "@/lib/utils/document-validation";
 
-const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? "https://biznest.vercel.app";
 
 const quoteToken = (quoteId: string) => signDocToken("quote", quoteId);
 const verifyQuoteToken = (quoteId: string, token: string) => verifyDocToken("quote", quoteId, token);

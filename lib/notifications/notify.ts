@@ -1,3 +1,4 @@
+import { showBizNestBranding } from "@/lib/branding";
 import { messageOrderStatus } from "@/lib/order-messaging";
 import { prisma } from "@/lib/prisma";
 import { sendPushToUser } from "@/lib/push/send";
@@ -142,6 +143,7 @@ export async function notifyCustomerOfPaidOrder(orderId: string): Promise<void> 
       storeColor: storeEmailBrand(order.store).color,
       storeContactEmail: order.store.contactEmail,
       storeContactPhone: order.store.contactPhone,
+      storePoweredBy: showBizNestBranding(order.store) ? { slug: order.store.slug } : null,
       currency: order.currency,
       subtotal: Number(order.subtotal),
       deliveryFee: Number(order.deliveryFee),

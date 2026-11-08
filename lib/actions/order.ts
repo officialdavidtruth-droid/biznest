@@ -1,5 +1,6 @@
 "use server";
 
+import { APP_URL } from "@/lib/constants/app-url";
 import { isStoreLocked, STORE_LOCKED_MESSAGE } from "@/lib/billing/store-lock";
 import { canPreorder, preorderSpotsLeft } from "@/lib/preorder";
 import { preorderUnitsTaken } from "@/lib/preorder-server";
@@ -67,9 +68,6 @@ import {
   canMerchantTransition,
 } from "@/lib/constants/order";
 
-const APP_URL =
-  process.env.NEXT_PUBLIC_APP_URL ??
-  "https://biznest.vercel.app";
 
 /**
  * What a vendor may see. Normal rule (see SELLER_VISIBLE_ORDER_STATUSES): never an

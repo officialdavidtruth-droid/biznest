@@ -1,5 +1,6 @@
 "use server";
 
+import { APP_URL } from "@/lib/constants/app-url";
 import { acquirePaymentInitLock, PAYMENT_ALREADY_STARTING } from "@/lib/payments/init-lock";
 import { auth } from "@/lib/auth";
 import { getStoreCustomerSessionForStore } from "@/lib/store-customer-auth";
@@ -18,7 +19,6 @@ import { settleAndPayout } from "@/lib/payments/payout";
 import { formatMoney } from "@/lib/utils/format-money";
 import { postPaymentToLedgerByReference } from "@/lib/financial/order-ledger";
 
-const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? "https://biznest.vercel.app";
 
 async function getCustomer(storeSlug: string) {
   const customerSession = await getStoreCustomerSessionForStore(storeSlug);

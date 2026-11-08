@@ -1,5 +1,6 @@
 "use server";
 
+import { APP_URL } from "@/lib/constants/app-url";
 import crypto from "crypto";
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
@@ -12,7 +13,6 @@ import { deliverPush, enqueueConnectionPush } from "@/lib/channels/push";
 import { newLiveCredentials, safePushUrl } from "@/lib/channels/live";
 import type { ActionResult } from "@/types/actions";
 
-const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? "https://biznest.space";
 
 const CHANNEL_PROVIDERS = {
   BOOKING_COM: "Booking.com",

@@ -1,4 +1,5 @@
 import { Resend } from "resend";
+import { biznestPromoUrl, showBizNestBranding } from "@/lib/branding";
 import { logError } from "@/lib/observability/log";
 import { APP_URL } from "@/lib/constants/app-url";
 import { readableOn } from "@/lib/storefront/readable-design";
@@ -45,6 +46,8 @@ export type StoreEmailBrand = {
   color?: string | null;
   contactEmail?: string | null;
   contactPhone?: string | null;
+  /** Adds the "Powered by BizNest" line to the footer (stores that have not started paying). */
+  poweredBy?: { slug: string } | null;
 };
 
 function escapeHtml(value: string) {
@@ -63,6 +66,8 @@ export function storeEmailBrand(store: {
   themeColors?: unknown;
   contactEmail?: string | null;
   contactPhone?: string | null;
+  slug?: string | null;
+  subscriptionRenewsAt?: Date | string | null;
 }): StoreEmailBrand {
   const theme = (store.themeColors ?? null) as { primary?: string } | null;
   return {
@@ -71,6 +76,8 @@ export function storeEmailBrand(store: {
     color: /^#[0-9a-f]{3}([0-9a-f]{3})?$/i.test(theme?.primary ?? "") ? theme!.primary! : null,
     contactEmail: store.contactEmail ?? null,
     contactPhone: store.contactPhone ?? null,
+    // Only when the caller loaded the plan fields, so a paying store is never branded by mistake.
+    poweredBy: store.slug && "subscriptionRenewsAt" in store && showBizNestBranding(store) ? { slug: store.slug } : null,
   };
 }
 
@@ -162,6 +169,7 @@ function emailShell(opts: {
                     : ""
                 }
                 <p style="margin:0;color:#c4cbd4;font-size:10px;">© ${new Date().getFullYear()} ${escapeHtml(opts.brand.name)}. All rights reserved.</p>
+                ${opts.brand.poweredBy ? `<p style="margin:10px 0 0;color:#9ca3af;font-size:11px;">Powered by BizNest · <a href="${escapeHtml(biznestPromoUrl(opts.brand.poweredBy.slug, "email"))}" style="color:#0f6410;font-weight:600;text-decoration:none;">Open your free store</a></p>` : ""}
               </td>
             </tr>`
                 : `<tr>
@@ -589,6 +597,7 @@ export async function sendOrderConfirmationEmail(
     storeColor?: string | null;
     storeContactEmail?: string | null;
     storeContactPhone?: string | null;
+    storePoweredBy?: { slug: string } | null;
     currency: string;
     subtotal: number;
     deliveryFee: number;
@@ -626,6 +635,7 @@ export async function sendOrderConfirmationEmail(
     color: order.storeColor,
     contactEmail: order.storeContactEmail,
     contactPhone: order.storeContactPhone,
+    poweredBy: order.storePoweredBy ?? null,
   };
   const buttonColor = brand.color ?? "#0f6410";
 
@@ -707,6 +717,7 @@ export type BookingStoreBranding = {
   primaryColor?: string | null; // from store.themeColors.primary
   contactEmail?: string | null;
   contactPhone?: string | null;
+  poweredBy?: boolean;
 };
 
 /**
@@ -762,6 +773,7 @@ export async function sendBookingConfirmationEmail(
     color: store.primaryColor,
     contactEmail: store.contactEmail,
     contactPhone: store.contactPhone,
+    poweredBy: store.poweredBy ? { slug: store.slug } : null,
   };
 
   const html = emailShell({

@@ -1,4 +1,6 @@
 "use server";
+
+import { APP_URL } from "@/lib/constants/app-url";
 import { findOrCreateOpenLead } from "@/lib/crm-leads";
 import { prisma } from "@/lib/prisma";
 import { assertStorePermission } from "@/lib/access/assert-store-access";
@@ -11,7 +13,6 @@ import { revalidatePath } from "next/cache";
 import type { ActionResult } from "@/types/actions";
 import type { CreativeProjectStatus } from "@prisma/client";
 
-const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? "https://biznest.space";
 
 // Design previews must come from our own upload pipeline (Cloudinary via
 // /api/upload), not an arbitrary attacker-supplied URL rendered back as

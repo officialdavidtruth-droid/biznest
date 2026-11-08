@@ -1,6 +1,7 @@
 import "server-only";
 
 import { prisma } from "@/lib/prisma";
+import { showBizNestBranding } from "@/lib/branding";
 import { sendBookingConfirmationEmail, type BookingStoreBranding } from "@/lib/email/send";
 
 export function escapeHtml(value: string) {
@@ -11,7 +12,7 @@ export function escapeHtml(value: string) {
  * Builds the store-branding payload (logo/name/color) that the booking
  * confirmation email renders in place of the hardcoded BizNest identity.
  */
-function toStoreBranding(store: { name: string; slug: string; logoUrl: string | null; themeColors: unknown; contactEmail: string | null; contactPhone: string | null }): BookingStoreBranding {
+function toStoreBranding(store: { name: string; slug: string; logoUrl: string | null; themeColors: unknown; contactEmail: string | null; contactPhone: string | null; subscriptionRenewsAt?: Date | null }): BookingStoreBranding {
   const theme = (store.themeColors ?? null) as { primary?: string } | null;
   return {
     name: store.name,
@@ -20,6 +21,7 @@ function toStoreBranding(store: { name: string; slug: string; logoUrl: string | 
     primaryColor: theme?.primary ?? null,
     contactEmail: store.contactEmail,
     contactPhone: store.contactPhone,
+    poweredBy: showBizNestBranding(store),
   };
 }
 

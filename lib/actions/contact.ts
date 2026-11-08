@@ -1,5 +1,6 @@
 "use server";
 
+import { APP_URL } from "@/lib/constants/app-url";
 import { prisma } from "@/lib/prisma";
 import { checkRateLimit } from "@/lib/rate-limit";
 import { notifyUser } from "@/lib/notifications/notify";
@@ -11,7 +12,6 @@ import { findOrCreateOpenLead } from "@/lib/crm-leads";
 import { validateContactEnquiry, type ContactEnquiryInput } from "@/lib/contact-enquiry";
 import type { ActionResult } from "@/types/actions";
 
-const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? "https://biznest.space";
 
 async function clientIpKey() {
   const { headers } = await import("next/headers");

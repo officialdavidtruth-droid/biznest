@@ -1,3 +1,4 @@
+import { APP_URL } from "@/lib/constants/app-url";
 import { prisma } from "@/lib/prisma";
 import { sendBrandedHtmlEmail } from "@/lib/email/send";
 import { buildMarketingBrand } from "@/lib/email/marketing-brand";
@@ -5,7 +6,6 @@ import { defaultMarketingContent, renderMarketingEmail, type MarketingTemplateId
 import { createUnsubscribeToken } from "@/lib/email/unsubscribe-token";
 import { formatDate } from "@/lib/i18n/locale";
 
-const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? "https://biznest.space";
 
 type Event = { type: string; storeId: string; data?: Record<string, unknown> };
 type Action = {

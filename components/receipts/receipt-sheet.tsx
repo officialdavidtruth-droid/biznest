@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { Printer } from "lucide-react";
+import { biznestPromoUrl } from "@/lib/branding";
 import type { ReceiptData } from "@/lib/receipts/load";
 import { TableScroll } from "@/components/ui/table-scroll";
 
@@ -120,6 +121,12 @@ export function ReceiptSheet({ receipt, backHref }: { receipt: ReceiptData; back
         {receipt.note && <p className="mt-3 text-gray-600">{receipt.note}</p>}
 
         <p className="mt-6 text-center text-gray-500">Thank you for your business.</p>
+        {receipt.store.poweredBy && (
+          <p className="mt-3 text-center text-xs text-gray-400 print:text-gray-500">
+            Powered by BizNest ·{" "}
+            <a href={biznestPromoUrl(receipt.store.slug, "receipt")} target="_blank" rel="noopener" className="font-medium text-gray-500 underline">Open your free store</a>
+          </p>
+        )}
       </div>
     </div>
   );

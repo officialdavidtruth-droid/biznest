@@ -1,3 +1,4 @@
+import { APP_URL } from "@/lib/constants/app-url";
 /**
  * BizNest email marketing templates.
  *
@@ -157,7 +158,6 @@ export type MarketingCampaignInput = MarketingContent & {
 
 export type MarketingDefaults = MarketingContent & { subject: string };
 
-const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? "https://biznest.space";
 
 /* -------------------------------------------------------------------------- */
 /*  Template catalogue                                                         */

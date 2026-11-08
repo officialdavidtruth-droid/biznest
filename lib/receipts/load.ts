@@ -1,3 +1,4 @@
+import { showBizNestBranding } from "@/lib/branding";
 import "server-only";
 import { prisma } from "@/lib/prisma";
 import { assertAnyStorePermission } from "@/lib/access/assert-store-access";
@@ -31,7 +32,7 @@ export type ReceiptData = {
   heading: string;
   number: string;
   issuedAt: string;
-  store: { name: string; logoUrl: string | null; email: string | null; phone: string | null };
+  store: { name: string; slug: string; logoUrl: string | null; email: string | null; phone: string | null; poweredBy: boolean };
   customer: { name: string | null; email: string | null; phone: string | null; address: string | null };
   lines: Array<{ description: string; qty: number; unit: string; amount: string }>;
   totals: Array<{ label: string; value: string; strong?: boolean }>;
@@ -61,6 +62,8 @@ const ORDER_PAID = ["PAID", "IN_PROGRESS", "DELIVERED", "COMPLETED"];
 
 type StoreLike = {
   id: string;
+  slug: string;
+  subscriptionRenewsAt?: Date | null;
   name: string;
   logoUrl: string | null;
   contactEmail: string | null;
@@ -71,7 +74,7 @@ type StoreLike = {
 };
 
 function storeBlock(store: StoreLike): ReceiptData["store"] {
-  return { name: store.name, logoUrl: store.logoUrl, email: store.contactEmail, phone: store.contactPhone };
+  return { name: store.name, slug: store.slug, logoUrl: store.logoUrl, email: store.contactEmail, phone: store.contactPhone, poweredBy: showBizNestBranding(store) };
 }
 
 function addressText(raw: unknown): string | null {
