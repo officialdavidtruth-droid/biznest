@@ -63,7 +63,7 @@ describe("guests", () => {
   it("can't like or comment; nothing is written", async () => {
     m.getViewer.mockResolvedValue(guest);
     expect(await toggleBrowseLike("p1")).toEqual({ success: false, error: INTERACT_NEEDS_ACCOUNT });
-    expect(await addBrowseComment("p1", { name: "Tunde", body: "nice" })).toEqual({ success: false, error: INTERACT_NEEDS_ACCOUNT });
+    expect(await addBrowseComment("p1", { body: "nice" })).toEqual({ success: false, error: INTERACT_NEEDS_ACCOUNT });
     m.getViewer.mockResolvedValue(null);
     expect((await toggleBrowseLike("p1")).success).toBe(false);
     expect(m.prisma.$transaction).not.toHaveBeenCalled();
@@ -137,7 +137,7 @@ describe("addBrowseComment", () => {
     m.prisma.browsePost.update.mockResolvedValue({ commentCount: 2 });
   });
   it("posts a comment and tells the store owner", async () => {
-    const r = await addBrowseComment("p1", { name: "Ada", body: "Lovely" });
+    const r = await addBrowseComment("p1", { body: "Lovely" });
     expect(r).toMatchObject({ success: true, data: { commentCount: 2, comment: { id: "c1", mine: true } } });
     expect(m.notifyUser).toHaveBeenCalledWith(expect.objectContaining({ userId: "owner1", type: "BROWSE_COMMENT", url: "/store/acme-test/admin/browse/activity" }));
   });
@@ -147,11 +147,11 @@ describe("addBrowseComment", () => {
     expect(m.notifyUser).not.toHaveBeenCalled();
   });
   it("rejects links, duplicates and rate-limited senders before writing", async () => {
-    expect((await addBrowseComment("p1", { name: "Ada", body: "visit www.spam.ng" })).success).toBe(false);
+    expect((await addBrowseComment("p1", { body: "visit www.spam.ng" })).success).toBe(false);
     m.prisma.browseComment.findFirst.mockResolvedValue({ id: "old" });
-    expect(await addBrowseComment("p1", { name: "Ada", body: "Lovely" })).toEqual({ success: false, error: "You already posted that." });
+    expect(await addBrowseComment("p1", { body: "Lovely" })).toEqual({ success: false, error: "You already posted that." });
     m.checkRateLimit.mockResolvedValue({ allowed: false });
-    expect((await addBrowseComment("p1", { name: "Ada", body: "Another" })).success).toBe(false);
+    expect((await addBrowseComment("p1", { body: "Another" })).success).toBe(false);
     expect(m.prisma.browseComment.create).not.toHaveBeenCalled();
   });
 });

@@ -13,7 +13,6 @@ import { trackBrowse, trackImpression } from "@/components/browse/browse-track";
 import { storeHref } from "@/lib/utils/store-href";
 import { playableVideoUrl } from "@/lib/browse-video";
 
-const NAME_KEY = "bn-browse-name";
 const display = "font-[family-name:var(--font-browse-display)]";
 const input = "w-full rounded-xl border border-[#14301A]/15 bg-white px-3 py-2 text-sm text-[#14301A] outline-none placeholder:text-[#14301A]/40 focus:border-[#14301A]/50 focus-visible:ring-2 focus-visible:ring-[#F5B82E]";
 const iconBtn = "inline-flex items-center gap-1.5 rounded-full px-2.5 py-1.5 text-sm font-medium hover:bg-[#14301A]/5 focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#14301A] disabled:opacity-60";
@@ -168,12 +167,10 @@ function needAccountToast(error: string) {
 function Comments({ post, onCount }: { post: BrowsePostView; onCount: (n: number) => void }) {
   const [comments, setComments] = useState<BrowseCommentView[] | null>(null);
   const [older, setOlder] = useState<string | null>(null);
-  const [name, setName] = useState("");
   const [body, setBody] = useState("");
   const [pending, start] = useTransition();
 
   useEffect(() => {
-    try { setName(localStorage.getItem(NAME_KEY) ?? ""); } catch { /* private mode */ }
     let live = true;
     loadPostComments(post.id).then((r) => { if (live && r.success) { setComments(r.data.comments); setOlder(r.data.nextCursor); } });
     return () => { live = false; };
@@ -181,9 +178,8 @@ function Comments({ post, onCount }: { post: BrowsePostView; onCount: (n: number
 
   function submit() {
     start(async () => {
-      const res = await addBrowseComment(post.id, { name, body });
+      const res = await addBrowseComment(post.id, { body });
       if (!res.success) { needAccountToast(res.error); return; }
-      try { if (name.trim()) localStorage.setItem(NAME_KEY, name.trim()); } catch { /* ignore */ }
       setComments((c) => [...(c ?? []), res.data.comment]);
       onCount(res.data.commentCount);
       setBody("");
@@ -207,8 +203,7 @@ function Comments({ post, onCount }: { post: BrowsePostView; onCount: (n: number
           ))}
         </ul>
       )}
-      <form className="mt-3 space-y-2" onSubmit={(e) => { e.preventDefault(); submit(); }}>
-        <input className={input} placeholder="Your name" value={name} onChange={(e) => setName(e.target.value)} maxLength={40} aria-label="Your name" autoComplete="given-name" />
+      <form className="mt-3" onSubmit={(e) => { e.preventDefault(); submit(); }}>
         <div className="flex gap-2">
           <input className={input} placeholder="Add a comment…" value={body} onChange={(e) => setBody(e.target.value)} maxLength={BROWSE_COMMENT_MAX} aria-label="Comment" />
           <button type="submit" disabled={pending || !body.trim()} className="shrink-0 rounded-xl bg-[#14301A] px-4 text-sm font-semibold text-[#FBF6E9] disabled:opacity-40">Post</button>

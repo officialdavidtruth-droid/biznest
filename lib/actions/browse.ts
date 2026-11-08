@@ -118,16 +118,27 @@ export async function toggleFollowStore(slug: string): Promise<ActionResult<{ fo
   return { success: true, data: result };
 }
 
-export async function addBrowseComment(postId: string, input: { name?: string; body: string }): Promise<ActionResult<{ comment: BrowseCommentView; commentCount: number }>> {
+export async function addBrowseComment(postId: string, input: { body: string }): Promise<ActionResult<{ comment: BrowseCommentView; commentCount: number }>> {
   const viewer = await getViewer();
   if (!viewer?.userId) return { success: false, error: INTERACT_NEEDS_ACCOUNT };
-  const parsed = sanitizeComment(input, { signedInName: viewer.name });
-  if (!parsed.ok) return { success: false, error: parsed.error };
-
   const rl = await checkRateLimit(`browse-comment:${await ip()}:${viewer.key}`, 6, 10 * 60_000);
   if (!rl.allowed) return { success: false, error: "You're commenting too fast. Wait a few minutes." };
   const post = await livePost(postId);
   if (!post) return { success: false, error: "This post is no longer available." };
+
+  // Signed-in people never type a name: a vendor comments as their store, anyone else as their account name.
+  let displayName = viewer.name?.trim() || "";
+  if (post.store.business?.user?.id === viewer.userId) displayName = post.store.name;
+  else {
+    const own = await prisma.store.findFirst({ where: { business: { userId: viewer.userId } }, orderBy: { createdAt: "asc" }, select: { name: true } });
+    if (own?.name) displayName = own.name;
+  }
+  if (displayName.trim().length < 2) {
+    const u = await prisma.user.findUnique({ where: { id: viewer.userId }, select: { email: true } });
+    displayName = u?.email.split("@")[0] || "BizNest member";
+  }
+  const parsed = sanitizeComment({ body: input.body }, { signedInName: displayName });
+  if (!parsed.ok) return { success: false, error: parsed.error };
 
   const dup = await prisma.browseComment.findFirst({ where: { postId, viewerKey: viewer.key, body: parsed.body, createdAt: { gte: new Date(Date.now() - 2 * 60_000) } }, select: { id: true } });
   if (dup) return { success: false, error: "You already posted that." };
