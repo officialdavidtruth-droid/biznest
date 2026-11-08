@@ -28,7 +28,7 @@ export async function collectRoomBusy(client: BusyClient, roomId: string, exclud
   const room = await client.propertyRoom.findUnique({ where: { id: roomId }, select: { serviceUnitId: true } });
   const [reservations, otherBlocks, online] = await Promise.all([
     client.propertyReservation.findMany({
-      where: { roomId, status: { in: [...ACTIVE_RESERVATION_STATUSES] }, checkOut: { gt: horizon } },
+      where: { roomId, bookingId: null, status: { in: [...ACTIVE_RESERVATION_STATUSES] }, checkOut: { gt: horizon } },
       select: { id: true, checkIn: true, checkOut: true },
       take: 2000,
     }),

@@ -56,7 +56,7 @@ export async function getBusyIntervals(client: Client, serviceId: string, from: 
   const roomIds = [...unitByRoom.keys()];
   const [reservations, blocks] = await Promise.all([
     client.propertyReservation.findMany({
-      where: { roomId: { in: roomIds }, status: { in: [...ACTIVE_PMS_STATUSES] }, checkIn: { lt: to }, checkOut: { gt: from } },
+      where: { roomId: { in: roomIds }, bookingId: null, status: { in: [...ACTIVE_PMS_STATUSES] }, checkIn: { lt: to }, checkOut: { gt: from } },
       select: { roomId: true, checkIn: true, checkOut: true },
     }),
     client.channelBlock.findMany({
@@ -101,7 +101,7 @@ export async function findPmsConflictForUnit(
   if (!room) return null;
   const [reservation, block] = await Promise.all([
     client.propertyReservation.findFirst({
-      where: { roomId: room.id, status: { in: [...ACTIVE_PMS_STATUSES] }, checkIn: { lt: checkOut }, checkOut: { gt: checkIn } },
+      where: { roomId: room.id, bookingId: null, status: { in: [...ACTIVE_PMS_STATUSES] }, checkIn: { lt: checkOut }, checkOut: { gt: checkIn } },
       select: { id: true },
     }),
     client.channelBlock.findFirst({

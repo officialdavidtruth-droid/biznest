@@ -657,6 +657,8 @@ model PropertyReservation {
   paymentCurrency String?
   paymentStatus   PropertyPaymentStatus @default(UNPAID)
   paymentReference String? @unique
+  // Set when this reservation mirrors an online (storefront) Booking, see lib/pms-online-sync.ts.
+  bookingId       String? @unique
   payments        Payment[]
   accessCards     RoomAccessCard[]
   folioCharges    PropertyFolioCharge[]

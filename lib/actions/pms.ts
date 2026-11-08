@@ -1,5 +1,6 @@
 "use server";
 
+import { syncOnlineStaysIntoPms } from "@/lib/pms-online-sync";
 import { prisma } from "@/lib/prisma";
 import { findBookingOverlapForUnit } from "@/lib/stay-availability";
 import { Prisma } from "@prisma/client";
@@ -93,6 +94,7 @@ export async function getPmsAccessStatus(slug: string) {
 
 export async function getPmsData(slug: string) {
   const a = await access(slug); if (!a.success) return null;
+  await syncOnlineStaysIntoPms(a.store.id).catch(() => {}); // online rooms + bookings appear in the PMS
   await syncRoomStatuses(a.store.id).catch(() => {}); // best effort: never block the workspace on a sync failure
   const [rooms, guests, reservations, cards, units, tickets] = await Promise.all([
     prisma.propertyRoom.findMany({ where: { storeId: a.store.id }, orderBy: { name: "asc" } }),
