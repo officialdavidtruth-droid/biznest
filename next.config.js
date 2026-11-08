@@ -79,7 +79,11 @@ const nextConfig = {
               // matter how correct the scanned URL is server-side. Scoped to
               // https: only (never a blanket http:/data:-everywhere image-src)
               // so this stays a real restriction, just not a fixed host list.
-              "img-src 'self' data: https:",
+              // blob: lets the post composer preview the photos picked from a phone before they upload.
+              "img-src 'self' data: blob: https:",
+              // Without a media-src, videos fall back to default-src 'self' and the browser silently refuses to play
+              // both a just-picked video (blob:) and every Cloudinary video in the Browse feed.
+              "media-src 'self' blob: https:",
               "font-src 'self' data: https://fonts.gstatic.com",
               "connect-src 'self' https://*.sentry.io https://api.cloudinary.com https://accounts.google.com https://*.paystack.co https://*.paystack.com https://*.flutterwave.com https://*.korapay.com https://korablobstorage.blob.core.windows.net",
               "frame-src 'self' https://checkout.paystack.com https://js.paystack.co https://*.paystack.com https://checkout.flutterwave.com https://*.flutterwave.com https://*.korapay.com https://www.google.com/maps https://maps.google.com/maps",
