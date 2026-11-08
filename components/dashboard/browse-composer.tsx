@@ -19,6 +19,7 @@ const ACCENT = "bg-[#F5B82E] text-[#14301A]";
 const fmt = (s: number) => `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).padStart(2, "0")}`;
 const topPad = "pt-[max(env(safe-area-inset-top),1rem)] max-sm:pt-[max(env(safe-area-inset-top),3rem)]";
 const botPad = "pb-[max(env(safe-area-inset-bottom),1.25rem)]";
+const field = "text-white placeholder:text-white/50 caret-[#F5B82E] [color-scheme:dark]";
 const ghostBtn = "rounded-full bg-white/10 px-4 py-2.5 text-sm font-semibold text-white disabled:opacity-50";
 
 /** The picture area. Emoji and text items sit on top and can be dragged; sizes are a share of the width so they match the feed. */
@@ -36,26 +37,28 @@ function Stage({ children, items, setItems, sel, setSel, interactive, className 
     setItems((s) => s.map((it, k) => (k === i ? { ...it, x, y } : it)));
   }
   return (
-    <div
-      ref={box} style={{ containerType: "inline-size" }}
-      className={`relative touch-none select-none overflow-hidden bg-black ${className}`}
-      onPointerMove={move} onPointerUp={() => { drag.current = null; }} onPointerCancel={() => { drag.current = null; }}
-      onPointerDown={(e) => { if (e.target === e.currentTarget) setSel(null); }}
-    >
-      {children}
-      {items.map((it, i) => {
-        const style = { left: `${it.x}%`, top: `${it.y}%`, fontSize: `${it.s * (it.k === "text" ? 5.5 : 9.4)}cqw`, lineHeight: it.k === "text" ? 1.5 : 1 } as const;
-        const look = it.k === "text" ? "whitespace-nowrap rounded-[0.4em] bg-black/55 px-[0.4em] font-bold text-white" : "";
-        return interactive ? (
-          <button
-            key={i} type="button" aria-label={`Move ${it.e}`} style={style}
-            onPointerDown={(e) => { e.stopPropagation(); (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId); drag.current = i; setSel(i); }}
-            className={`absolute -translate-x-1/2 -translate-y-1/2 cursor-grab touch-none ${look} ${sel === i ? "outline outline-2 outline-white/80" : ""}`}
-          >{it.e}</button>
-        ) : (
-          <span key={i} style={style} className={`pointer-events-none absolute -translate-x-1/2 -translate-y-1/2 ${look}`}>{it.e}</span>
-        );
-      })}
+    <div className={`relative overflow-hidden bg-black ${className}`}>
+      <div
+        ref={box} style={{ containerType: "inline-size" }}
+        className="absolute inset-0 touch-none select-none"
+        onPointerMove={move} onPointerUp={() => { drag.current = null; }} onPointerCancel={() => { drag.current = null; }}
+        onPointerDown={(e) => { if (e.target === e.currentTarget) setSel(null); }}
+      >
+        {children}
+        {items.map((it, i) => {
+          const style = { left: `${it.x}%`, top: `${it.y}%`, fontSize: `${it.s * (it.k === "text" ? 5.5 : 9.4)}cqw`, lineHeight: it.k === "text" ? 1.5 : 1 } as const;
+          const look = it.k === "text" ? "whitespace-nowrap rounded-[0.4em] bg-black/55 px-[0.4em] font-bold text-white" : "";
+          return interactive ? (
+            <button
+              key={i} type="button" aria-label={`Move ${it.e}`} style={style}
+              onPointerDown={(e) => { e.stopPropagation(); (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId); drag.current = i; setSel(i); }}
+              className={`absolute -translate-x-1/2 -translate-y-1/2 cursor-grab touch-none ${look} ${sel === i ? "outline outline-2 outline-white/80" : ""}`}
+            >{it.e}</button>
+          ) : (
+            <span key={i} style={style} className={`pointer-events-none absolute -translate-x-1/2 -translate-y-1/2 ${look}`}>{it.e}</span>
+          );
+        })}
+      </div>
     </div>
   );
 }
@@ -380,8 +383,8 @@ export function BrowseComposer({ slug, products, services, unlimited, onClose }:
             <div className={sheetBox} role="dialog" aria-label="Trim video">
               <div className="mb-3 flex items-center justify-between"><h3 className="text-sm font-semibold">Trim video</h3><button type="button" className="min-h-11 px-2 text-sm font-semibold text-[#F5B82E]" onClick={() => setSheet(null)}>Done</button></div>
               <p className="mb-2 text-xs">Clip: <b>{fmt(trim.start)}</b> to <b>{fmt(trim.end)}</b> · {fmt(span)} long{!unlimited && ` (max ${BROWSE_VIDEO_MAX_SECONDS} seconds)`}</p>
-              <label className="block text-xs">Start<input type="range" className="mt-1 w-full" min={0} max={duration} step={0.1} value={trim.start} onChange={(e) => moveTrim("start", +e.target.value)} /></label>
-              <label className="mt-2 block text-xs">End<input type="range" className="mt-1 w-full" min={0} max={duration} step={0.1} value={trim.end} onChange={(e) => moveTrim("end", +e.target.value)} /></label>
+              <label className="block text-xs">Start<input type="range" className="mt-1 w-full accent-[#F5B82E]" min={0} max={duration} step={0.1} value={trim.start} onChange={(e) => moveTrim("start", +e.target.value)} /></label>
+              <label className="mt-2 block text-xs">End<input type="range" className="mt-1 w-full accent-[#F5B82E]" min={0} max={duration} step={0.1} value={trim.end} onChange={(e) => moveTrim("end", +e.target.value)} /></label>
               {!unlimited && duration > BROWSE_VIDEO_MAX_SECONDS && <p className="mt-2 text-xs text-white/60">This video is {fmt(duration)}. Pick the {BROWSE_VIDEO_MAX_SECONDS} seconds you want to keep.</p>}
             </div>
           )}
@@ -397,7 +400,7 @@ export function BrowseComposer({ slug, products, services, unlimited, onClose }:
           {sheet === "text" && (
             <div className={sheetBox} role="dialog" aria-label="Add text">
               <div className="mb-3 flex items-center justify-between"><h3 className="text-sm font-semibold">Add text</h3><button type="button" className="min-h-11 px-2 text-sm font-semibold text-[#F5B82E]" onClick={() => setSheet(null)}>Close</button></div>
-              <input autoFocus className="w-full rounded-xl bg-white/10 px-3 py-3 text-base outline-none" maxLength={BROWSE_TEXT_MAX} placeholder="Type something…" value={textDraft} onChange={(e) => setTextDraft(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") addText(); }} />
+              <input autoFocus className={`w-full rounded-xl bg-white/10 px-3 py-3 text-base outline-none ${field}`} maxLength={BROWSE_TEXT_MAX} placeholder="Type something…" value={textDraft} onChange={(e) => setTextDraft(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") addText(); }} />
               <button type="button" className={`${ACCENT} mt-3 w-full rounded-full py-3 text-sm font-semibold disabled:opacity-50`} disabled={!textDraft.trim()} onClick={addText}>Add to picture</button>
             </div>
           )}
@@ -448,7 +451,7 @@ export function BrowseComposer({ slug, products, services, unlimited, onClose }:
                       );
                     })}
                   </div>
-                  <input type="range" aria-label="Pick the cover frame" className="mt-3 w-full" min={0} max={Math.max(0.1, span - 0.1)} step={0.1} value={coverRel} onChange={(e) => setCoverRel(+e.target.value)} />
+                  <input type="range" aria-label="Pick the cover frame" className="mt-3 w-full accent-[#F5B82E]" min={0} max={Math.max(0.1, span - 0.1)} step={0.1} value={coverRel} onChange={(e) => setCoverRel(+e.target.value)} />
                 </>
               )}
               {!isVideo && files.length > 1 && (
@@ -477,7 +480,7 @@ export function BrowseComposer({ slug, products, services, unlimited, onClose }:
           {sheet === "text" && (
             <div className={sheetBox} role="dialog" aria-label="Add text">
               <div className="mb-3 flex items-center justify-between"><h3 className="text-sm font-semibold">Add text</h3><button type="button" className="min-h-11 px-2 text-sm font-semibold text-[#F5B82E]" onClick={() => setSheet(null)}>Close</button></div>
-              <input autoFocus className="w-full rounded-xl bg-white/10 px-3 py-3 text-base outline-none" maxLength={BROWSE_TEXT_MAX} placeholder="Type something…" value={textDraft} onChange={(e) => setTextDraft(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") addText(); }} />
+              <input autoFocus className={`w-full rounded-xl bg-white/10 px-3 py-3 text-base outline-none ${field}`} maxLength={BROWSE_TEXT_MAX} placeholder="Type something…" value={textDraft} onChange={(e) => setTextDraft(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") addText(); }} />
               <button type="button" className={`${ACCENT} mt-3 w-full rounded-full py-3 text-sm font-semibold disabled:opacity-50`} disabled={!textDraft.trim()} onClick={addText}>Add to cover</button>
             </div>
           )}
@@ -499,7 +502,7 @@ export function BrowseComposer({ slug, products, services, unlimited, onClose }:
             <button type="button" onClick={openCover} className="absolute bottom-2.5 left-2.5 rounded-xl bg-black/65 px-3 py-1.5 text-sm font-semibold">Choose cover</button>
           </div>
           <div className="px-4">
-            <textarea className="h-28 w-full resize-none bg-transparent text-base outline-none placeholder:text-white/45" maxLength={BROWSE_CAPTION_MAX} placeholder="Add a caption…" value={caption} onChange={(e) => setCaption(e.target.value)} aria-label="Caption" />
+            <textarea className={`h-28 w-full resize-none bg-transparent text-base outline-none ${field}`} maxLength={BROWSE_CAPTION_MAX} placeholder="Add a caption…" value={caption} onChange={(e) => setCaption(e.target.value)} aria-label="Caption" />
             <p className="text-right text-xs text-white/40">{caption.length}/{BROWSE_CAPTION_MAX}</p>
           </div>
           <div className="flex gap-2 overflow-x-auto px-4 pb-4 pt-1">
@@ -515,7 +518,7 @@ export function BrowseComposer({ slug, products, services, unlimited, onClose }:
             <button type="button" className={row} onClick={() => setPeopleOpen(true)}><UserRound className="h-6 w-6" aria-hidden /><span className="flex-1">Tag businesses and customers</span><span className="text-sm text-white/55">{people.length ? `${people.length} tagged` : ""}</span><ChevronRight className="h-5 w-5 text-white/60" aria-hidden /></button>
             <button type="button" className={row} onClick={() => setTagOpen(true)}><Tag className="h-6 w-6" aria-hidden /><span className="flex-1">Tag a product or service</span><span className="max-w-[40%] truncate text-sm text-white/55">{taggedLabel ?? ""}</span><ChevronRight className="h-5 w-5 text-white/60" aria-hidden /></button>
             <button type="button" className={row} onClick={() => setLocationOpen((v) => !v)}><MapPin className="h-6 w-6" aria-hidden /><span className="flex-1">Add location</span><span className="max-w-[40%] truncate text-sm text-white/55">{location}</span><ChevronRight className="h-5 w-5 text-white/60" aria-hidden /></button>
-            {locationOpen && <div className="border-b border-white/10 px-4 py-3"><input className="w-full rounded-xl bg-white/10 px-3 py-3 text-base outline-none" maxLength={BROWSE_LOCATION_MAX} placeholder="e.g. Lekki Phase 1, Lagos" value={location} onChange={(e) => setLocation(e.target.value)} aria-label="Location" /></div>}
+            {locationOpen && <div className="border-b border-white/10 px-4 py-3"><input className={`w-full rounded-xl bg-white/10 px-3 py-3 text-base outline-none ${field}`} maxLength={BROWSE_LOCATION_MAX} placeholder="e.g. Lekki Phase 1, Lagos" value={location} onChange={(e) => setLocation(e.target.value)} aria-label="Location" /></div>}
             <div className={row}>
               <Sparkles className="h-6 w-6 shrink-0" aria-hidden />
               <div className="flex-1"><p>Made with AI</p><p className="mt-1 text-sm text-white/55">Turn this on for realistic photos or videos created with AI. It shows on your post.</p></div>
@@ -599,7 +602,7 @@ function PeopleSheet({ slug, unlimited, selected, onChange, onClose }: { slug: s
         <button type="button" className="min-h-12 w-16 pr-2 text-right text-base font-semibold text-[#F5B82E]" onClick={onClose}>Done</button>
       </header>
       <div className="p-4">
-        <input autoFocus className="w-full rounded-xl bg-white/10 px-3 py-3 text-base outline-none placeholder:text-white/45" placeholder={unlimited ? "Search businesses" : "Search businesses and your customers"} value={q} onChange={(e) => setQ(e.target.value)} aria-label="Search people" />
+        <input autoFocus className={`w-full rounded-xl bg-white/10 px-3 py-3 text-base outline-none ${field}`} placeholder={unlimited ? "Search businesses" : "Search businesses and your customers"} value={q} onChange={(e) => setQ(e.target.value)} aria-label="Search people" />
         {selected.length > 0 && (
           <div className="mt-3 flex flex-wrap gap-1.5">
             {selected.map((p) => <button key={`${p.kind}:${p.id}`} type="button" onClick={() => toggle(p)} className="flex items-center gap-1 rounded-full bg-[#F5B82E]/30 py-1 pl-3 pr-2 text-sm">{p.name}<X className="h-3.5 w-3.5" aria-label={`Remove ${p.name}`} /></button>)}
