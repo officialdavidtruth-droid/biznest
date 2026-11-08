@@ -152,7 +152,7 @@ export function StoryRings({ rings: initial, size = "sm" }: { rings: StoryRing[]
   const px = size === "lg" ? 104 : size === "md" ? 72 : 68;
   return (
     <>
-      <div className={size === "lg" || size === "md" ? "" : "mb-5 flex gap-5 overflow-x-auto rounded-[28px] border border-white/10 bg-black/20 px-5 py-4 [scrollbar-width:none]"} aria-label="Stories">
+      <div className={size === "lg" || size === "md" ? "" : "mb-3 flex gap-4 overflow-x-auto rounded-3xl border border-white/10 bg-black/20 px-4 py-3 [scrollbar-width:none]"} aria-label="Stories">
         {rings.map((rg, i) => (
           <button key={rg.sponsored ? `ad:${rg.stories[0]?.id}` : rg.storeSlug} onClick={() => setOpen(i)} className="group flex shrink-0 flex-col items-center gap-2 rounded-2xl focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#F5B82E]" aria-label={`${rg.storeName}: ${rg.stories.length} stor${rg.stories.length === 1 ? "y" : "ies"}${rg.allSeen ? "" : ", new"}`}>
             <RingFrame seen={rg.allSeen}><Avatar ring={rg} size={px} /></RingFrame>

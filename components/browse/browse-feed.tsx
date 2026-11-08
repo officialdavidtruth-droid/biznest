@@ -42,7 +42,7 @@ export function BrowseFeed({ initialPosts, initialCursor, initialAds = [], sort,
   }, [more, cursor, failed]);
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       {injectAds(posts, ads).map((item) => item.type === "post" ? <PostCard key={item.post.id} post={item.post} /> : <AdCard key={`ad-${item.ad.id}`} ad={item.ad} />)}
       <div ref={sentinel} aria-hidden className="h-1" />
       {loading && <p className="py-4 text-center text-sm text-[#FBF6E9]/70" role="status">Loading more posts…</p>}

@@ -39,24 +39,24 @@ export default async function BrowsePage({ searchParams }: { searchParams: Promi
     const qs = q.toString();
     return qs ? `/browse?${qs}` : "/browse";
   };
-  const seg = (active: boolean) => `rounded-full px-5 py-2 text-sm font-semibold transition ${focus} ${active ? "bg-[#FBF6E9] text-[#14301A] shadow" : "text-[#FBF6E9]/80 hover:text-white"}`;
-  const chip = (active: boolean) => `shrink-0 rounded-full px-4 py-2 text-sm font-medium transition ${focus} ${active ? "bg-[#F5B82E] text-[#14301A]" : "bg-white/10 text-[#FBF6E9]/90 hover:bg-white/15"}`;
+  const seg = (active: boolean) => `rounded-full px-4 py-1.5 text-sm font-semibold transition ${focus} ${active ? "bg-[#FBF6E9] text-[#14301A] shadow" : "text-[#FBF6E9]/80 hover:text-white"}`;
+  const chip = (active: boolean) => `shrink-0 rounded-full px-3.5 py-1.5 text-sm font-medium transition ${focus} ${active ? "bg-[#F5B82E] text-[#14301A]" : "bg-white/10 text-[#FBF6E9]/90 hover:bg-white/15"}`;
 
   return (
     <BrowseShell>
-      <main className="mx-auto grid max-w-6xl gap-8 px-4 pb-20 pt-6 lg:grid-cols-[minmax(0,600px)_340px] lg:justify-center">
+      <main className="mx-auto grid max-w-6xl gap-8 px-4 pb-20 pt-4 lg:grid-cols-[minmax(0,500px)_320px] lg:gap-10 lg:justify-center">
         <div className="min-w-0">
-          <h1 className={`${display} mb-5 text-3xl font-extrabold leading-[1.05] tracking-tight sm:text-4xl`}>New from shops<br className="sm:hidden" /> across Nigeria</h1>
+          <h1 className={`${display} mb-3 text-3xl font-extrabold leading-[1.05] tracking-tight sm:text-4xl lg:mb-3 lg:text-3xl`}>New from shops<br className="sm:hidden" /> across Nigeria</h1>
 
           <StoryRings rings={rings} />
 
-          <div className="sticky top-14 z-20 -mx-4 mb-5 space-y-3 bg-gradient-to-b from-[#0A2012] via-[#0A2012]/95 to-transparent px-4 pb-4 pt-3">
+          <div className="sticky top-14 z-20 -mx-4 mb-3 flex flex-wrap items-center gap-2 bg-gradient-to-b from-[#0A2012] via-[#0A2012]/95 to-transparent px-4 pb-3 pt-2">
             <div className="inline-flex rounded-full bg-black/25 p-1 ring-1 ring-white/10" role="tablist" aria-label="Sort posts">
               <Link role="tab" aria-selected={sort === "latest"} href={href({ sort: "latest" })} className={seg(sort === "latest")}>Latest</Link>
               <Link role="tab" aria-selected={sort === "popular"} href={href({ sort: "popular" })} className={seg(sort === "popular")}>Popular</Link>
             </div>
             {categories.length > 0 && (
-              <div className="flex gap-2 overflow-x-auto pb-1 [scrollbar-width:none]" aria-label="Categories">
+              <div className="flex min-w-0 flex-1 gap-2 overflow-x-auto [scrollbar-width:none]" aria-label="Categories">
                 <Link href={href({ category: null })} className={chip(!category)}>All</Link>
                 {categories.map((c) => <Link key={c} href={href({ category: c })} className={chip(category === c)}>{c}</Link>)}
               </div>
@@ -87,7 +87,7 @@ export default async function BrowsePage({ searchParams }: { searchParams: Promi
         </div>
 
         <aside className="hidden lg:block" aria-label="Discover">
-          <div className="sticky top-20 space-y-5">
+          <div className="sticky top-20 space-y-4">
             <DiscoverShops shops={shops} />
             <SellCta />
           </div>

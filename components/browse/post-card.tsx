@@ -16,7 +16,7 @@ import { playableVideoUrl } from "@/lib/browse-video";
 const NAME_KEY = "bn-browse-name";
 const display = "font-[family-name:var(--font-browse-display)]";
 const input = "w-full rounded-xl border border-[#14301A]/15 bg-white px-3 py-2 text-sm text-[#14301A] outline-none placeholder:text-[#14301A]/40 focus:border-[#14301A]/50 focus-visible:ring-2 focus-visible:ring-[#F5B82E]";
-const iconBtn = "inline-flex items-center gap-1.5 rounded-full px-3 py-2 text-sm font-medium hover:bg-[#14301A]/5 focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#14301A] disabled:opacity-60";
+const iconBtn = "inline-flex items-center gap-1.5 rounded-full px-2.5 py-1.5 text-sm font-medium hover:bg-[#14301A]/5 focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#14301A] disabled:opacity-60";
 
 function ReportMenu({ postId, commentId, label }: { postId: string; commentId?: string; label: string }) {
   const [open, setOpen] = useState(false);
@@ -59,7 +59,7 @@ function CaptionText({ text }: { text: string }) {
 function PostMeta({ post }: { post: BrowsePostView }) {
   if (!post.location && !post.aiGenerated && post.tags.length === 0) return null;
   return (
-    <div className="space-y-1 px-4 pb-3 text-[13px] text-[#14301A]/70">
+    <div className="space-y-1 px-3.5 pb-3 text-xs text-[#14301A]/70">
       {(post.location || post.aiGenerated) && (
         <p>{post.location && <span>📍 {post.location}</span>}{post.location && post.aiGenerated ? " · " : ""}{post.aiGenerated && <span>AI-generated</span>}</p>
       )}
@@ -100,7 +100,7 @@ function FeedVideo({ post }: { post: BrowsePostView }) {
     else { byUserRef.current = true; el.pause(); }
   }
   return (
-    <div className="relative aspect-[4/5] w-full overflow-hidden rounded-[22px] bg-black">
+    <div className="relative aspect-[4/5] w-full overflow-hidden rounded-2xl bg-black">
       <video
         ref={ref} src={playableVideoUrl(post.videoUrl!)} poster={post.images[0]} muted={muted} loop playsInline preload="metadata"
         onPlay={() => { setPaused(false); setStarted(true); }} onPause={() => setPaused(true)} onClick={toggle}
@@ -126,13 +126,13 @@ function Images({ post }: { post: BrowsePostView }) {
   const storeUrl = storeHref(post.store.slug);
   const dest = post.product ? storeHref(post.store.slug, `/${post.product.kind === "SERVICE" ? "service" : "product"}/${post.product.id}`) : storeUrl;
   return (
-    <div className="relative px-3">
+    <div className="relative px-2.5 lg:mx-auto lg:w-[min(100%,max(340px,calc((100svh-250px)*0.8+1.25rem)))]">
       {post.videoUrl ? (
         <FeedVideo post={post} />
       ) : (
       <div
         ref={ref}
-        className="flex snap-x snap-mandatory overflow-x-auto scroll-smooth rounded-[22px] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+        className="flex snap-x snap-mandatory overflow-x-auto scroll-smooth rounded-2xl [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
         onScroll={(e) => { const el = e.currentTarget; setIdx(Math.round(el.scrollLeft / Math.max(1, el.clientWidth))); }}
       >
         {post.images.map((src, i) => (
@@ -257,24 +257,24 @@ export function PostCard({ post: initial, openComments = false }: { post: Browse
   }
 
   return (
-    <article ref={cardRef} className="overflow-hidden rounded-[28px] bg-[#FBF6E9] pb-1 text-[#14301A] shadow-[0_18px_40px_-20px_rgba(0,0,0,.65)]" aria-label={`Post by ${post.store.name}`}>
-      <header className="flex items-center gap-3 px-4 pb-3 pt-4">
-        <Link href={storeBrowsePath(post.store.slug)} className="flex min-w-0 flex-1 items-center gap-3 rounded-2xl focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#14301A]">
-          <span className="grid h-11 w-11 shrink-0 place-items-center overflow-hidden rounded-full bg-[#14301A]/10 text-sm font-bold ring-2 ring-[#F5B82E] ring-offset-2 ring-offset-[#FBF6E9]">
+    <article ref={cardRef} className="overflow-hidden rounded-3xl bg-[#FBF6E9] text-[#14301A] shadow-[0_14px_32px_-20px_rgba(0,0,0,.65)]" aria-label={`Post by ${post.store.name}`}>
+      <header className="flex items-center gap-2.5 px-3.5 pb-2.5 pt-3">
+        <Link href={storeBrowsePath(post.store.slug)} className="flex min-w-0 flex-1 items-center gap-2.5 rounded-2xl focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#14301A]">
+          <span className="grid h-9 w-9 shrink-0 place-items-center overflow-hidden rounded-full bg-[#14301A]/10 text-sm font-bold ring-2 ring-[#F5B82E] ring-offset-1 ring-offset-[#FBF6E9]">
             {post.store.logoUrl ? /* eslint-disable-next-line @next/next/no-img-element */ <img src={post.store.logoUrl} alt="" className="h-full w-full object-cover" /> : post.store.name.slice(0, 1).toUpperCase()}
           </span>
           <span className="min-w-0">
-            <span className={`${display} flex items-center gap-1 truncate text-[15px] font-bold leading-tight`}>{post.store.name}<StoreBadges verified={post.store.verified} mogul={post.store.mogul} official={isOfficialSlug(post.store.slug)} /></span>
-            <span className="block truncate text-xs text-[#14301A]/60">{[post.store.category, post.store.city].filter(Boolean).join(", ")}{(post.store.category || post.store.city) ? ", " : ""}{timeAgo(new Date(post.createdAt))}</span>
+            <span className={`${display} flex items-center gap-1 truncate text-sm font-bold leading-tight`}>{post.store.name}<StoreBadges verified={post.store.verified} mogul={post.store.mogul} official={isOfficialSlug(post.store.slug)} /></span>
+            <span className="block truncate text-[11px] text-[#14301A]/60">{[post.store.category, post.store.city].filter(Boolean).join(", ")}{(post.store.category || post.store.city) ? ", " : ""}{timeAgo(new Date(post.createdAt))}</span>
           </span>
         </Link>
-        <Link href={storeUrl} className="hidden shrink-0 items-center gap-1.5 rounded-full bg-[#14301A] px-3.5 py-2 text-xs font-semibold text-[#FBF6E9] hover:bg-[#0c1f11] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#14301A] sm:inline-flex"><Store className="h-3.5 w-3.5" aria-hidden /> Visit store</Link>
+        <Link href={storeUrl} className="hidden shrink-0 items-center gap-1.5 rounded-full bg-[#14301A] px-3 py-1.5 text-xs font-semibold text-[#FBF6E9] hover:bg-[#0c1f11] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#14301A] sm:inline-flex"><Store className="h-3.5 w-3.5" aria-hidden /> Visit store</Link>
         <ReportMenu postId={post.id} label="Report this post" />
       </header>
 
       <Images post={post} />
 
-      <div className="flex items-center gap-1 px-2.5 pt-2.5">
+      <div className="flex items-center gap-0.5 px-2 pt-1.5">
         <button onClick={like} disabled={pending} aria-pressed={post.liked} aria-label={post.liked ? "Unlike" : "Like"} className={iconBtn}>
           <Heart className={`h-6 w-6 transition ${post.liked ? "fill-rose-500 text-rose-500" : ""}`} aria-hidden />
           <span>{compactCount(post.likeCount)}</span>
@@ -286,12 +286,12 @@ export function PostCard({ post: initial, openComments = false }: { post: Browse
       </div>
 
       {post.caption && (
-        <div className="px-4 pb-4 pt-1 text-[15px] leading-relaxed">
+        <div className="px-3.5 pb-3 pt-0.5 text-sm leading-snug">
           <p className={`whitespace-pre-line break-words ${!more && long ? "line-clamp-3" : ""}`}><Link href={storeUrl} className={`${display} font-bold hover:underline`}>{post.store.name}</Link> <CaptionText text={post.caption} /></p>
           {long && <button className="mt-1 text-xs font-medium text-[#14301A]/60 hover:text-[#14301A]" onClick={() => setMore((v) => !v)}>{more ? "Show less" : "Read more"}</button>}
         </div>
       )}
-      {!post.caption && <div className="pb-3" />}
+      {!post.caption && <div className="pb-2" />}
       <PostMeta post={post} />
 
       {showComments && <Comments post={post} onCount={(n) => setPost((p) => ({ ...p, commentCount: n }))} />}
