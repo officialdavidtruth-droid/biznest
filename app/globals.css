@@ -1478,3 +1478,35 @@ html[data-app]:not([data-tabbar]) .bn-tabbar { display: none; }
 .bn-skin .bn-universal-hero:not(.technical):not(.corporate){background-color:var(--u-dark,#071522)}
 
 .gr-fee-note{display:block;margin-top:8px;font-size:12px;line-height:1.45;color:var(--gr-muted)}
+
+
+/* ---- SupaAdmin on phones -------------------------------------------------
+   Tables become one card per row (cell labels are filled in by SupaAdminStackTables),
+   and form fields stop triggering iOS's zoom-on-focus. */
+@media (max-width: 639px) {
+  .bn-admin-main { font-size: 15px; }
+  .bn-admin-main input:not([type="checkbox"]):not([type="radio"]):not([type="range"]),
+  .bn-admin-main select,
+  .bn-admin-main textarea { font-size: 16px; min-height: 2.75rem; }
+  .bn-admin-main button, .bn-admin-main a[role="button"] { min-height: 2.5rem; }
+
+  .bn-admin-main table.bn-stack { min-width: 0 !important; width: 100%; display: block; }
+  .bn-admin-main table.bn-stack thead { display: none; }
+  .bn-admin-main table.bn-stack tbody { display: block; }
+  .bn-admin-main table.bn-stack tr {
+    display: block; margin-bottom: 0.75rem; padding: 0.375rem 0;
+    border: 1px solid hsl(var(--border)); border-radius: 0.875rem; background: hsl(var(--card, var(--background)) / 0.6);
+  }
+  .bn-admin-main table.bn-stack td {
+    display: flex; align-items: flex-start; justify-content: space-between; gap: 1rem;
+    padding: 0.4rem 0.875rem !important; border: 0 !important; text-align: right; word-break: break-word;
+  }
+  .bn-admin-main table.bn-stack td::before {
+    content: attr(data-label); flex: 0 0 38%; max-width: 38%; text-align: left;
+    font-size: 0.7rem; font-weight: 600; color: hsl(var(--muted-foreground));
+  }
+  .bn-admin-main table.bn-stack td:not([data-label])::before { content: none; }
+  .bn-admin-main table.bn-stack td[colspan] { display: block; text-align: center; }
+  /* wrappers that existed only to scroll a wide table sideways */
+  .bn-admin-main .overflow-x-auto:has(> table.bn-stack) { overflow-x: visible; border: 0; background: transparent; }
+}

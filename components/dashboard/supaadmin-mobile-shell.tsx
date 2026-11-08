@@ -6,6 +6,7 @@ import Link from "next/link";
 import { Menu, X, ShieldAlert, LayoutDashboard, Store, Banknote, Gavel } from "lucide-react";
 import { SupaAdminInstall } from "@/components/dashboard/supaadmin-install";
 import { SupaAdminSidebarNav } from "@/components/dashboard/supaadmin-sidebar";
+import { SupaAdminStackTables } from "@/components/dashboard/supaadmin-stack-tables";
 import { SupaAdminLogoutButton } from "@/components/dashboard/supaadmin-logout-button";
 
 
@@ -68,7 +69,7 @@ export function SupaAdminMobileShell({
         {/* Close button only shows inside the mobile drawer (parent hides it on lg via lg:hidden below) */}
         <button
           onClick={() => setOpen(false)}
-          className="ml-2 shrink-0 rounded-lg p-1.5 lg:hidden"
+          className="ml-2 flex h-11 w-11 shrink-0 items-center justify-center rounded-lg lg:hidden"
           style={{ color: "hsl(var(--muted-foreground))" }}
           aria-label="Close menu"
         >
@@ -124,7 +125,7 @@ export function SupaAdminMobileShell({
           <div className="flex min-w-0 items-center gap-2">
             <button
               onClick={() => setOpen(true)}
-              className="shrink-0 rounded-lg p-1.5 lg:hidden"
+              className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg lg:hidden"
               style={{ color: "hsl(var(--foreground))" }}
               aria-label="Open menu"
             >
@@ -146,7 +147,8 @@ export function SupaAdminMobileShell({
             </span>
           </div>
         </header>
-        <main className="min-h-0 min-w-0 flex-1 overflow-y-auto overflow-x-auto p-4 sm:p-6">{children}</main>
+        <main className="bn-admin-main min-h-0 min-w-0 flex-1 overflow-y-auto overflow-x-hidden p-3 sm:p-6">{children}</main>
+        <SupaAdminStackTables rootSelector=".bn-admin-main" />
 
         {/* Phone-only app tab bar (the full menu stays in the drawer via "More").
             A flex sibling rather than position:fixed, so it can never cover
@@ -167,7 +169,7 @@ export function SupaAdminMobileShell({
               <Link
                 key={tab.href}
                 href={tab.href}
-                className="relative flex flex-col items-center gap-0.5 py-2 text-[10px] font-medium"
+                className="relative flex min-h-14 flex-col items-center justify-center gap-0.5 py-2 text-[11px] font-medium"
                 style={{ color: active ? "var(--bn-marigold)" : "hsl(var(--muted-foreground))" }}
                 aria-current={active ? "page" : undefined}
               >
@@ -188,7 +190,7 @@ export function SupaAdminMobileShell({
           })}
           <button
             onClick={() => setOpen(true)}
-            className="flex flex-col items-center gap-0.5 py-2 text-[10px] font-medium"
+            className="flex min-h-14 flex-col items-center justify-center gap-0.5 py-2 text-[11px] font-medium"
             style={{ color: "hsl(var(--muted-foreground))" }}
             aria-label="Open full menu"
           >

@@ -86,7 +86,7 @@ export function SupaAdminSidebarNav({
                 <Link
                   key={item.href}
                   href={item.href}
-                  className="group relative flex items-center gap-2.5 rounded-xl px-3 py-2 text-xs font-semibold transition-all"
+                  className="group relative flex items-center gap-2.5 rounded-xl px-3 py-2 text-xs font-semibold transition-all max-lg:min-h-11 max-lg:py-3 max-lg:text-sm"
                   style={{
                     color: active ? "hsl(var(--primary-foreground))" : "hsl(var(--muted-foreground))",
                     background: active ? "var(--bn-accent-gradient)" : "transparent",
