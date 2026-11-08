@@ -29,9 +29,9 @@ export type BrowseReportGroup = {
   firstAt: string;
 };
 
-export async function listBrowseReports(status: "OPEN" | "RESOLVED" = "OPEN"): Promise<BrowseReportGroup[]> {
+export async function listBrowseReports(status: "OPEN" | "RESOLVED" = "OPEN"): Promise<BrowseReportGroup[] | null> {
   const g = await assertPlatformStaff();
-  if (!g.success) return [];
+  if (!g.success) return null; // signed out of the admin PIN session
   const reports = await prisma.browseReport.findMany({
     where: status === "OPEN" ? { status: "OPEN" } : { status: { not: "OPEN" } },
     orderBy: { createdAt: "desc" },

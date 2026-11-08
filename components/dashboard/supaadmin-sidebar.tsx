@@ -13,7 +13,7 @@ type Group = {
     href: string;
     label: string;
     icon: typeof LayoutDashboard;
-    badgeKey?: "pendingBusinesses" | "openDisputes" | "failedPayouts";
+    badgeKey?: "pendingBusinesses" | "openDisputes" | "failedPayouts" | "openBrowseReports";
   }[];
 };
 
@@ -41,7 +41,7 @@ const GROUPS: Group[] = [
       { href: "/supaadmin/businesses", label: "Business verification", icon: ShieldCheck, badgeKey: "pendingBusinesses" },
       { href: "/supaadmin/disputes", label: "Disputes", icon: Gavel, badgeKey: "openDisputes" },
       { href: "/supaadmin/review-reports", label: "Review reports", icon: Flag },
-      { href: "/supaadmin/browse-reports", label: "Browse reports", icon: Flag },
+      { href: "/supaadmin/browse-reports", label: "Browse reports", icon: Flag, badgeKey: "openBrowseReports" },
       { href: "/supaadmin/official", label: "BizNest account", icon: Megaphone },
       { href: "/supaadmin/ads", label: "Browse ads", icon: Megaphone },
       { href: "/supaadmin/support-requests", label: "Support requests", icon: LifeBuoy },
@@ -61,7 +61,7 @@ const GROUPS: Group[] = [
 export function SupaAdminSidebarNav({
   counts,
 }: {
-  counts: { pendingBusinesses: number; openDisputes: number; failedPayouts: number };
+  counts: { pendingBusinesses: number; openDisputes: number; failedPayouts: number; openBrowseReports: number };
 }) {
   const pathname = usePathname();
 

@@ -9,7 +9,9 @@ export const dynamic = "force-dynamic";
 export default async function BrowseReportsPage({ searchParams }: { searchParams: Promise<{ status?: string }> }) {
   const { status } = await searchParams;
   const tab = status === "RESOLVED" ? "RESOLVED" : "OPEN";
-  const groups = await listBrowseReports(tab);
+  const loaded = await listBrowseReports(tab);
+  if (loaded === null) return <div className="rounded-lg border bg-background p-10 text-center text-sm text-muted-foreground">Your admin session has expired, so reports can't be shown. <Link href="/supaadmin" className="font-medium text-primary underline">Sign in again</Link> and reload this page.</div>;
+  const groups = loaded;
   return (
     <div>
       <h1 className="mb-1 text-xl font-semibold">Browse reports</h1>

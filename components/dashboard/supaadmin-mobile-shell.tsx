@@ -28,7 +28,7 @@ export function SupaAdminMobileShell({
   counts,
   children,
 }: {
-  counts: { pendingBusinesses: number; openDisputes: number; failedPayouts: number };
+  counts: { pendingBusinesses: number; openDisputes: number; failedPayouts: number; openBrowseReports: number };
   children: React.ReactNode;
 }) {
   const [open, setOpen] = useState(false);
@@ -40,7 +40,7 @@ export function SupaAdminMobileShell({
     setOpen(false);
   }, [pathname]);
 
-  const attentionCount = counts.pendingBusinesses + counts.openDisputes + counts.failedPayouts;
+  const attentionCount = counts.pendingBusinesses + counts.openDisputes + counts.failedPayouts + counts.openBrowseReports;
 
   const sidebarInner = (
     <>
