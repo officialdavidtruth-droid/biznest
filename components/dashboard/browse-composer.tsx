@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { useRouter } from "next/navigation";
 import { ArrowLeft, ArrowRight, Camera, ChevronRight, Hash, Image as ImageIcon, MapPin, Minus, Pause, Play, Plus, Scissors, Smile, Sparkles, Tag, Trash2, Type, UserRound, X } from "lucide-react";
 import { toast } from "sonner";
@@ -64,7 +65,16 @@ function Stage({ children, items, setItems, sel, setSel, interactive, className 
 }
 
 /** Full-screen "new post" flow: gallery, edit, details (caption, hashtags, people, product or service, location), cover. */
-export function BrowseComposer({ slug, products, services, unlimited, onClose }: { slug: string; products: Tagged[]; services: Tagged[]; unlimited: boolean; onClose: () => void }) {
+type ComposerProps = { slug: string; products: Tagged[]; services: Tagged[]; unlimited: boolean; onClose: () => void };
+
+/** Rendered straight into <body> so it always covers the whole screen, whatever page it was opened from. */
+export function BrowseComposer(props: ComposerProps) {
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
+  return mounted ? createPortal(<ComposerInner {...props} />, document.body) : null;
+}
+
+function ComposerInner({ slug, products, services, unlimited, onClose }: ComposerProps) {
   const router = useRouter();
   const [screen, setScreen] = useState<Screen>("pick");
   const [files, setFiles] = useState<File[]>([]);
@@ -80,6 +90,7 @@ export function BrowseComposer({ slug, products, services, unlimited, onClose }:
   useEffect(() => { if (!customCover) { setCustomUrl(null); return; } const u = URL.createObjectURL(customCover); setCustomUrl(u); return () => URL.revokeObjectURL(u); }, [customCover]);
   const [cur, setCur] = useState(0);
   const [playing, setPlaying] = useState(false);
+  const [videoProblem, setVideoProblem] = useState<number | null>(null);
   const [items, setItems] = useState<Sticker[]>([]);
   const [sel, setSel] = useState<number | null>(null);
   const [sheet, setSheet] = useState<Sheet>(null);
@@ -147,7 +158,7 @@ export function BrowseComposer({ slug, products, services, unlimited, onClose }:
       const url = URL.createObjectURL(vid);
       const d = await readVideoLength(url);
       URL.revokeObjectURL(url);
-      setFiles([vid]); setIsVideo(true); setDuration(d); setCur(0); setItems([]); setSel(null); setCustomCover(null);
+      setVideoProblem(null); setFiles([vid]); setIsVideo(true); setDuration(d); setCur(0); setItems([]); setSel(null); setCustomCover(null);
       const end = d == null ? 0 : unlimited ? d : Math.min(d, BROWSE_VIDEO_MAX_SECONDS);
       setTrim({ start: 0, end }); setCoverRel(0);
     } else {
@@ -242,19 +253,19 @@ export function BrowseComposer({ slug, products, services, unlimited, onClose }:
     ? <img src={customUrl} alt="" className="h-full w-full object-cover" draggable={false} />
     : isVideo
       // eslint-disable-next-line jsx-a11y/media-has-caption
-      ? <video ref={coverVideo} src={`${urls[0]}#t=0.1`} muted playsInline preload="auto" className="h-full w-full object-contain" onLoadedMetadata={() => { if (coverVideo.current) coverVideo.current.currentTime = trim.start + coverRel; }} />
+      ? <video ref={coverVideo} src={urls[0]} muted playsInline preload="auto" className="h-full w-full object-contain" onLoadedMetadata={() => { if (coverVideo.current) coverVideo.current.currentTime = trim.start + coverRel; }} />
       // eslint-disable-next-line @next/next/no-img-element
       : <img src={urls[0]} alt="" className="h-full w-full object-cover" draggable={false} />;
 
   const taggedLabel = tag ? [...products.map((p) => ({ ...p, k: "product" })), ...services.map((p) => ({ ...p, k: "service" }))].find((p) => `${p.k}:${p.id}` === tag)?.name : null;
   const canShare = !busy && (caption.trim().length > 0 || files.length > 0);
-  const shell = "fixed inset-0 z-50 flex items-stretch justify-center bg-black sm:p-6";
+  const shell = "fixed inset-0 z-[100] flex items-stretch justify-center bg-black sm:p-6";
   const panel = "relative flex h-full w-full max-w-lg flex-col overflow-hidden bg-[#0F2A17] text-white sm:h-[min(92vh,860px)] sm:rounded-2xl";
   const header = (left: React.ReactNode, title: string, right?: React.ReactNode) => (
     <header className={`shrink-0 border-b border-white/10 px-3 pb-2 ${topPad}`}>
       <div className="flex min-h-14 items-center">
         <div className="flex w-16 justify-start">{left}</div>
-        <h2 className="flex-1 text-center text-lg font-semibold">{title}</h2>
+        <h2 className="flex-1 text-center text-lg font-semibold text-white">{title}</h2>
         <div className="flex w-16 justify-end">{right}</div>
       </div>
     </header>
@@ -277,12 +288,15 @@ export function BrowseComposer({ slug, products, services, unlimited, onClose }:
                 <div className="relative aspect-[4/5] h-full">
                   {isVideo
                     // eslint-disable-next-line jsx-a11y/media-has-caption
-                    ? <video src={`${urls[0]}#t=0.1`} controls playsInline preload="metadata" className="h-full w-full object-contain" />
+                    ? <video src={urls[0]} controls playsInline preload="metadata" className="h-full w-full object-contain" onLoadedMetadata={(e) => { e.currentTarget.currentTime = 0.05; }} onError={(e) => setVideoProblem(e.currentTarget.error?.code ?? 0)} onLoadedData={() => setVideoProblem(null)} />
                     // eslint-disable-next-line @next/next/no-img-element
                     : <img src={urls[Math.min(cur, urls.length - 1)]} alt="" className="h-full w-full object-cover" />}
                                 </div>
               ) : <div className="px-8 text-center"><p className="text-sm text-white/70">Choose photos or a video from your phone.</p><button type="button" onClick={() => galleryMany.current?.click()} className={`${ACCENT} mt-4 rounded-full px-6 py-3.5 text-base font-semibold`}>Open my photos and videos</button></div>}
             </div>
+            {videoProblem !== null && isVideo && (
+              <p role="alert" className="mx-4 mb-2 rounded-xl bg-red-500/15 px-3 py-2 text-xs text-red-200">This phone&apos;s browser can&apos;t play a preview of this video (error {videoProblem}). It is probably a format Safari can&apos;t decode here. You can still continue: it is converted to a standard video when it uploads and will play normally in Browse.</p>
+            )}
             <div className="flex items-center justify-between px-4 py-3">
               <button type="button" className="flex min-h-11 items-center gap-1 text-lg font-bold" onClick={() => galleryOne.current?.click()}>Photos and videos<ChevronRight className="h-5 w-5" aria-hidden /></button>
               <button type="button" className="flex items-center gap-2 rounded-full bg-white/10 px-4 py-2 text-sm font-semibold" onClick={() => galleryMany.current?.click()}><ImageIcon className="h-4 w-4" aria-hidden />Pick several</button>
@@ -332,12 +346,13 @@ export function BrowseComposer({ slug, products, services, unlimited, onClose }:
               <div className="h-full w-full">
                 {isVideo
                   // eslint-disable-next-line jsx-a11y/media-has-caption
-                  ? <video ref={mainVideo} src={`${urls[0]}#t=0.1`} className="h-full w-full object-contain" playsInline muted autoPlay preload="auto" onTimeUpdate={onTime} onPlay={() => setPlaying(true)} onPause={() => setPlaying(false)} onClick={() => togglePlay()} />
+                  ? <video ref={mainVideo} src={urls[0]} className="h-full w-full object-contain" playsInline muted autoPlay preload="auto" onLoadedMetadata={(e) => { e.currentTarget.currentTime = trim.start + 0.05; }} onError={(e) => setVideoProblem(e.currentTarget.error?.code ?? 0)} onLoadedData={() => setVideoProblem(null)} onTimeUpdate={onTime} onPlay={() => setPlaying(true)} onPause={() => setPlaying(false)} onClick={() => togglePlay()} />
                   // eslint-disable-next-line @next/next/no-img-element
                   : <img src={urls[cur]} alt="" className="h-full w-full object-cover" draggable={false} />}
               </div>
             </Stage>
           </div>
+          {videoProblem !== null && isVideo && <p role="alert" className="mx-4 mt-2 rounded-xl bg-red-500/15 px-3 py-2 text-xs text-red-200">The preview can&apos;t play on this browser (error {videoProblem}). Trim and cover pick are unavailable, but you can still continue and post.</p>}
           {isVideo && (
             <div className="flex items-center justify-center gap-3 pt-2">
               <button type="button" onClick={togglePlay} aria-label={playing ? "Pause" : "Play"} className="flex h-12 items-center gap-2 rounded-full bg-white/15 px-5 text-sm font-semibold">{playing ? <Pause className="h-5 w-5" aria-hidden /> : <Play className="h-5 w-5 fill-white" aria-hidden />}{playing ? "Pause" : "Play"}</button>
@@ -381,7 +396,7 @@ export function BrowseComposer({ slug, products, services, unlimited, onClose }:
 
           {sheet === "trim" && isVideo && duration != null && (
             <div className={sheetBox} role="dialog" aria-label="Trim video">
-              <div className="mb-3 flex items-center justify-between"><h3 className="text-sm font-semibold">Trim video</h3><button type="button" className="min-h-11 px-2 text-sm font-semibold text-[#F5B82E]" onClick={() => setSheet(null)}>Done</button></div>
+              <div className="mb-3 flex items-center justify-between"><h3 className="text-sm font-semibold text-white">Trim video</h3><button type="button" className="min-h-11 px-2 text-sm font-semibold text-[#F5B82E]" onClick={() => setSheet(null)}>Done</button></div>
               <p className="mb-2 text-xs">Clip: <b>{fmt(trim.start)}</b> to <b>{fmt(trim.end)}</b> · {fmt(span)} long{!unlimited && ` (max ${BROWSE_VIDEO_MAX_SECONDS} seconds)`}</p>
               <label className="block text-xs">Start<input type="range" className="mt-1 w-full accent-[#F5B82E]" min={0} max={duration} step={0.1} value={trim.start} onChange={(e) => moveTrim("start", +e.target.value)} /></label>
               <label className="mt-2 block text-xs">End<input type="range" className="mt-1 w-full accent-[#F5B82E]" min={0} max={duration} step={0.1} value={trim.end} onChange={(e) => moveTrim("end", +e.target.value)} /></label>
@@ -390,7 +405,7 @@ export function BrowseComposer({ slug, products, services, unlimited, onClose }:
           )}
           {sheet === "stickers" && (
             <div className={sheetBox} role="dialog" aria-label="Stickers">
-              <div className="mb-3 flex items-center justify-between"><h3 className="text-sm font-semibold">Stickers</h3><button type="button" className="min-h-11 px-2 text-sm font-semibold text-[#F5B82E]" onClick={() => setSheet(null)}>Close</button></div>
+              <div className="mb-3 flex items-center justify-between"><h3 className="text-sm font-semibold text-white">Stickers</h3><button type="button" className="min-h-11 px-2 text-sm font-semibold text-[#F5B82E]" onClick={() => setSheet(null)}>Close</button></div>
               {!isVideo && cur !== 0 && <p className="mb-2 text-xs text-white/60">Stickers go on the cover photo. Select the first photo to place them.</p>}
               <div className="grid grid-cols-8 gap-1.5">
                 {STICKER_CHOICES.map((e) => <button key={e} type="button" disabled={!isVideo && cur !== 0} onClick={() => addEmoji(e)} aria-label={`Add ${e}`} className="rounded-lg py-1.5 text-2xl hover:bg-white/10 disabled:opacity-40">{e}</button>)}
@@ -399,7 +414,7 @@ export function BrowseComposer({ slug, products, services, unlimited, onClose }:
           )}
           {sheet === "text" && (
             <div className={sheetBox} role="dialog" aria-label="Add text">
-              <div className="mb-3 flex items-center justify-between"><h3 className="text-sm font-semibold">Add text</h3><button type="button" className="min-h-11 px-2 text-sm font-semibold text-[#F5B82E]" onClick={() => setSheet(null)}>Close</button></div>
+              <div className="mb-3 flex items-center justify-between"><h3 className="text-sm font-semibold text-white">Add text</h3><button type="button" className="min-h-11 px-2 text-sm font-semibold text-[#F5B82E]" onClick={() => setSheet(null)}>Close</button></div>
               <input autoFocus className={`w-full rounded-xl bg-white/10 px-3 py-3 text-base outline-none ${field}`} maxLength={BROWSE_TEXT_MAX} placeholder="Type something…" value={textDraft} onChange={(e) => setTextDraft(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") addText(); }} />
               <button type="button" className={`${ACCENT} mt-3 w-full rounded-full py-3 text-sm font-semibold disabled:opacity-50`} disabled={!textDraft.trim()} onClick={addText}>Add to picture</button>
             </div>
@@ -479,7 +494,7 @@ export function BrowseComposer({ slug, products, services, unlimited, onClose }:
           </div>
           {sheet === "text" && (
             <div className={sheetBox} role="dialog" aria-label="Add text">
-              <div className="mb-3 flex items-center justify-between"><h3 className="text-sm font-semibold">Add text</h3><button type="button" className="min-h-11 px-2 text-sm font-semibold text-[#F5B82E]" onClick={() => setSheet(null)}>Close</button></div>
+              <div className="mb-3 flex items-center justify-between"><h3 className="text-sm font-semibold text-white">Add text</h3><button type="button" className="min-h-11 px-2 text-sm font-semibold text-[#F5B82E]" onClick={() => setSheet(null)}>Close</button></div>
               <input autoFocus className={`w-full rounded-xl bg-white/10 px-3 py-3 text-base outline-none ${field}`} maxLength={BROWSE_TEXT_MAX} placeholder="Type something…" value={textDraft} onChange={(e) => setTextDraft(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") addText(); }} />
               <button type="button" className={`${ACCENT} mt-3 w-full rounded-full py-3 text-sm font-semibold disabled:opacity-50`} disabled={!textDraft.trim()} onClick={addText}>Add to cover</button>
             </div>
@@ -541,7 +556,7 @@ export function BrowseComposer({ slug, products, services, unlimited, onClose }:
         {peopleOpen && <PeopleSheet slug={slug} unlimited={unlimited} selected={people} onChange={setPeople} onClose={() => setPeopleOpen(false)} />}
         {tagOpen && (
           <div className={sheetBox} role="dialog" aria-label="Tag a product or service">
-            <div className="mb-3 flex items-center justify-between"><h3 className="text-sm font-semibold">Tag a product or service</h3><button type="button" className="min-h-11 px-2 text-sm font-semibold text-[#F5B82E]" onClick={() => setTagOpen(false)}>Done</button></div>
+            <div className="mb-3 flex items-center justify-between"><h3 className="text-sm font-semibold text-white">Tag a product or service</h3><button type="button" className="min-h-11 px-2 text-sm font-semibold text-[#F5B82E]" onClick={() => setTagOpen(false)}>Done</button></div>
             <p className="mb-3 text-xs text-white/55">Tagged items show a buy or book button on your post.</p>
             <ul className="space-y-1">
               <li><button type="button" onClick={() => { setTag(""); setTagOpen(false); }} className={`w-full rounded-lg px-3 py-3 text-left text-sm ${tag === "" ? "bg-white/15" : "hover:bg-white/10"}`}>None</button></li>
@@ -561,7 +576,7 @@ export function BrowseComposer({ slug, products, services, unlimited, onClose }:
                 <div className="h-full w-full">
                   {isVideo
                     // eslint-disable-next-line jsx-a11y/media-has-caption
-                    ? <video ref={previewVideo} src={`${urls[0]}#t=0.1`} className="h-full w-full object-contain" playsInline autoPlay controls muted onLoadedMetadata={() => { if (previewVideo.current) previewVideo.current.currentTime = trim.start; }} onTimeUpdate={() => { const v = previewVideo.current; if (v && (v.currentTime >= trim.end - 0.05)) v.currentTime = trim.start; }} />
+                    ? <video ref={previewVideo} src={urls[0]} className="h-full w-full object-contain" playsInline autoPlay controls muted onLoadedMetadata={() => { if (previewVideo.current) previewVideo.current.currentTime = trim.start; }} onTimeUpdate={() => { const v = previewVideo.current; if (v && (v.currentTime >= trim.end - 0.05)) v.currentTime = trim.start; }} />
                     // eslint-disable-next-line @next/next/no-img-element
                     : <img src={urls[0]} alt="" className="h-full w-full object-cover" />}
                 </div>
@@ -598,7 +613,7 @@ function PeopleSheet({ slug, unlimited, selected, onChange, onClose }: { slug: s
     <div className="absolute inset-0 z-20 flex flex-col bg-[#0F2A17]" role="dialog" aria-label="Tag businesses and customers">
       <header className={`flex shrink-0 items-center border-b border-white/10 px-3 pb-2 ${topPad}`}>
         <button type="button" aria-label="Back" className="flex h-12 w-12 items-center justify-center rounded-full bg-white/10" onClick={onClose}><ArrowLeft className="h-6 w-6" /></button>
-        <h2 className="flex-1 text-center text-base font-semibold">Tag businesses and customers</h2>
+        <h2 className="flex-1 text-center text-base font-semibold text-white">Tag businesses and customers</h2>
         <button type="button" className="min-h-12 w-16 pr-2 text-right text-base font-semibold text-[#F5B82E]" onClick={onClose}>Done</button>
       </header>
       <div className="p-4">

@@ -21,7 +21,7 @@ export async function loadVideo(url: string, timeoutMs = 8000): Promise<{ v: HTM
       const t = setTimeout(() => rej(new Error("The video took too long to load.")), timeoutMs);
       v.onloadeddata = () => { clearTimeout(t); res(); };
       v.onerror = () => { clearTimeout(t); rej(new Error("Couldn't read the video.")); };
-      v.src = `${url}#t=0.1`;
+      v.src = url;
       v.load();
     });
   } catch (e) { dispose(); throw e; }
