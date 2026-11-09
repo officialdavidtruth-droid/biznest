@@ -6,7 +6,7 @@
 // loading.tsx, which takes precedence over this one.
 export default function StoreLoading() {
   return (
-    <div className="flex min-h-[60vh] items-center justify-center" role="status" aria-label="Loading">
+    <div className="flex min-h-[60vh] items-center justify-center" role="status" aria-label="Loading" data-store-loading>
       <div className="h-10 w-10 animate-spin rounded-full border-[3px] border-current border-t-transparent opacity-30" />
       <span className="sr-only">Loading</span>
     </div>

@@ -3,7 +3,10 @@ import { biznestPromoUrl, BIZNEST_PROMO_CTA, BIZNEST_PROMO_TEXT } from "@/lib/br
 /** Small credit in the page footer of stores that have not started paying. It sits at the very bottom of the page, not floating. Removed automatically once the owner subscribes. */
 export function PoweredByBizNest({ slug }: { slug?: string }) {
   return (
-    <footer style={{ width: "100%", background: "#111", textAlign: "center", padding: "12px 16px calc(12px + env(safe-area-inset-bottom))" }}>
+    <>
+    {/* Hidden while the page spinner (data-store-loading) is showing, so the credit only appears once the page has loaded. */}
+    <style>{"body:has([data-store-loading]) .bn-powered{display:none}"}</style>
+    <footer className="bn-powered" style={{ width: "100%", background: "#111", textAlign: "center", padding: "12px 16px calc(12px + env(safe-area-inset-bottom))" }}>
       <a
         href={biznestPromoUrl(slug, "storefront")}
         target="_blank"
@@ -14,5 +17,6 @@ export function PoweredByBizNest({ slug }: { slug?: string }) {
         {BIZNEST_PROMO_TEXT} · <span style={{ color: "#F5B82E", fontWeight: 600 }}>{BIZNEST_PROMO_CTA}</span>
       </a>
     </footer>
+    </>
   );
 }
