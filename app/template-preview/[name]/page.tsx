@@ -127,6 +127,9 @@ export default async function TemplatePreviewPage({ params }: { params: Promise<
   if (home.kind === "screenshot") return withPreviewMenu(definition.category, <SignatureScreenshotHome {...p} mode={home.mode} {...home.palette}/>);
   if (home.kind === "hotel") return <ThelusoHotel store={previewStore as any} slug={p.slug} content={await getHotelContent(p.slug, definition.name)}/>;
   const theme = resolveStoreTheme(definition.category, previewStore.name, null, null, definition.name);
-  const config = templateThemeToBuilderConfig({ ...theme, neutral: true }, previewStore.name, previewStore.business.description, previewStore.bannerUrl, previewStore.business as any);
+  const baseConfig = templateThemeToBuilderConfig({ ...theme, neutral: true }, previewStore.name, previewStore.business.description, previewStore.bannerUrl, previewStore.business as any);
+  // Sample copy for the demo only: a real store shows just what its owner types in the editor.
+  const sampleChips = [{ title: "Free delivery", body: "On every order" }, { title: "Secure payment", body: "Pay your way" }, { title: "Easy returns", body: "No stress" }];
+  const config = { ...baseConfig, sections: baseConfig.sections.map((sec) => sec.type === "hero" && ["spotlight", "voyage"].includes(sec.settings.heroVariant ?? "") ? { ...sec, settings: { ...sec.settings, items: sampleChips } } : sec.type === "promo" ? { ...sec, settings: { ...sec.settings, eyebrow: "Limited offer", heading: "Amazing deals. This week only.", body: "Selected items at special prices while stock lasts.", ctaLabel: "Shop the offer" } } : sec.type === "features" ? { ...sec, settings: { ...sec.settings, items: sampleChips } } : sec) };
   return withPreviewMenu(definition.category, <BuilderStorefront store={previewStore as any} config={config} catalogItems={sampleItems as any} reviews={[]} avgRating={null} completedOrders={0}/>);
 }

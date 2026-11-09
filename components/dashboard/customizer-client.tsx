@@ -770,7 +770,7 @@ export function CustomizerClient({
 function pretty(value: string) { return value.replace(/([A-Z])/g, " $1").replace(/[-_]/g, " ").replace(/^./, (c) => c.toUpperCase()); }
 
 function defaultSectionSettings(type: BuilderSectionType) {
-  const headings: Record<string,string> = { hero: "Welcome", catalog: "Shop our collection", about: "Built around what matters", stats: "At a glance", features: "Why choose us", categories: "Categories", testimonials: "What customers say", newsletter: "Get updates from us", contact: "Let's work together", gallery: "Gallery", map: "Find us", faq: "Frequently asked questions", text: "More about us", imageText: "Our story" };
+  const headings: Record<string,string> = { hero: "Welcome", catalog: "Shop our collection", about: "Built around what matters", stats: "At a glance", features: "Why choose us", categories: "Categories", testimonials: "What customers say", newsletter: "Get updates from us", contact: "Let's work together", gallery: "Gallery", map: "Find us", faq: "Frequently asked questions", text: "More about us", imageText: "Our story", promo: "Limited-time offer" };
   return { eyebrow: type === "hero" ? "Welcome" : undefined, heading: headings[type], body: type === "hero" ? "Tell customers what makes your business special." : undefined, align: type === "hero" ? "left" as const : "left" as const, padding: "spacious" as const, columns: type === "catalog" ? 4 as const : 3 as const, showButton: true };
 }
 
@@ -786,6 +786,10 @@ function SectionSettingsEditor({ section, mode, onChange }: { section: BuilderSe
     {section.type === "stats" && <ItemsEditor label="Your own numbers" titleLabel="Number (e.g. 500+)" bodyLabel="Label (e.g. Happy customers)" items={s.items} defaults={[]} emptyNote="Live numbers from your store are shown (products, orders, rating). Add your own to replace them." onChange={(items) => update({ items })} />}
     {section.type === "testimonials" && <ItemsEditor label="Your own testimonials" titleLabel="Customer name" bodyLabel="What they said" items={s.items} defaults={[]} emptyNote="Real reviews from your store are shown. Only add testimonials a customer actually gave you; they appear after your real reviews." onChange={(items) => update({ items })} />}
     {section.type === "faq" && <ItemsEditor label="Questions" titleLabel="Question" bodyLabel="Answer" items={s.items} defaults={defaultFaqItems(mode)} onChange={(items) => update({ items })} />}
+    {section.type === "hero" && ["spotlight", "voyage"].includes(s.heroVariant ?? "") && <ItemsEditor label="Highlights under the headline" titleLabel="Highlight (e.g. Free delivery)" bodyLabel="Detail (optional)" items={s.items} defaults={[]} emptyNote="Add short points you can honestly stand behind, such as your delivery or return policy." onChange={(items) => update({ items })} />}
+    {section.type === "promo" && <ItemsEditor label="Offer details" titleLabel="Short detail (e.g. Ends Sunday)" bodyLabel="Note (optional)" items={s.items} defaults={[]} emptyNote="Optional chips shown under the offer text." onChange={(items) => update({ items })} />}
+    {section.type === "features" && <SelectField label="Layout" value={s.style || "cards"} options={["cards", "strip"]} onChange={(v) => update({ style: v as "cards" | "strip" })} />}
+    {section.type === "categories" && <SelectField label="Layout" value={s.style || "cards"} options={["cards", "tiles"]} onChange={(v) => update({ style: v as "cards" | "tiles" })} />}
     {section.type === "gallery" && <GalleryImagesEditor images={s.images} onChange={(images) => update({ images })} />}
     {section.type === "map" && <TextField label="Address or place name" value={s.address || ""} onChange={(v) => update({ address: v })} />}
     {section.type === "map" && <p className="text-[10px] text-muted-foreground">Leave blank to use your business city and state.</p>}

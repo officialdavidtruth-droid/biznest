@@ -14,7 +14,7 @@ import { formatNumber } from "@/lib/i18n/locale";
  */
 type D = BuilderConfig["design"];
 export type HeroItem = { id: string; name: string; price: number; currency: string; image: string | null; categoryName: string | null };
-type Props = { section: BuilderSection; d: D; items: HeroItem[]; categories: string[] };
+type Props = { section: BuilderSection; d: D; items: HeroItem[]; categories: string[]; slug?: string };
 
 function lum(hex: string): number {
   const m = hex.trim().match(/^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})/i);
@@ -46,7 +46,7 @@ function Tile({ item, d, ratio, r }: { item?: HeroItem; d: D; ratio: string; r: 
   );
 }
 
-export function HeroVariantView({ variant, section, d, items, categories }: Props & { variant: HeroVariant }) {
+export function HeroVariantView({ variant, section, d, items, categories, slug }: Props & { variant: HeroVariant }) {
   const s = section.settings;
   const heading = s.heading || "Welcome";
   const r = s.radius ?? d.radius;
@@ -54,6 +54,94 @@ export function HeroVariantView({ variant, section, d, items, categories }: Prop
   const id = section.id;
 
   switch (variant) {
+    /* Soft gradient panel: headline, trust chips, and a round photo with a price badge. Electronics, gadgets, lifestyle retail. */
+    case "spotlight": {
+      const chips = (s.items ?? []).filter((i) => i.title.trim()).slice(0, 4);
+      const lowest = items.length ? items.reduce((a, b) => (b.price < a.price ? b : a)) : null;
+      const photo = s.image || items.find((i) => i.image)?.image;
+      return (
+        <section id={id} data-bn-type="hero" className="bn-section" style={{ background: d.background, padding: "28px 0 20px" }}>
+          <div className="bn-wrap">
+            <div className="bn-hero" style={{ position: "relative", overflow: "hidden", display: "grid", gridTemplateColumns: "1.1fr .9fr", alignItems: "center", gap: 24, padding: "clamp(28px,5vw,64px)", borderRadius: r + 14, background: `linear-gradient(120deg, ${d.accent}1f 0%, ${d.surface} 55%, ${d.accent}33 100%)` }}>
+              <div>
+                {s.eyebrow && <span style={{ display: "inline-block", padding: "6px 14px", borderRadius: 999, background: `${d.accent}22`, color: d.primary, fontWeight: 800, fontSize: 12, marginBottom: 18 }}>{s.eyebrow}</span>}
+                <h1 style={{ fontFamily: d.headingFont, fontWeight: 800, fontSize: "clamp(36px,5.2vw,68px)", lineHeight: 1.04, letterSpacing: "-.035em", margin: 0 }}>{heading}</h1>
+                {s.body && <p style={{ color: d.muted, lineHeight: 1.7, maxWidth: 440, margin: "18px 0 26px", fontSize: 16 }}>{s.body}</p>}
+                <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
+                  <Cta s={s} d={d} bg={d.primary} fg={on(d.primary)} />
+                  <a href="#catalog" style={{ display: "inline-block", padding: "13px 22px", borderRadius: d.buttonStyle === "pill" ? 999 : Math.min(d.radius, 14), border: `1px solid ${d.text}26`, background: d.background, fontWeight: 750, fontSize: 14 }}>Explore more</a>
+                </div>
+                {chips.length > 0 && <div style={{ display: "flex", gap: 10, flexWrap: "wrap", marginTop: 26 }}>{chips.map((c, i) => <div key={i} style={{ padding: "9px 14px", borderRadius: 14, background: `${d.background}cc`, border: `1px solid ${d.text}0f`, fontSize: 12 }}><strong style={{ display: "block", fontSize: 12.5 }}>{c.title}</strong>{c.body && <span style={{ color: d.muted }}>{c.body}</span>}</div>)}</div>}
+              </div>
+              <div style={{ position: "relative", justifySelf: "center", width: "min(100%,440px)" }}>
+                <div aria-hidden style={{ aspectRatio: "1/1", borderRadius: "50%", ...bgImg(photo, `linear-gradient(160deg, ${d.accent}66, ${d.primary}44)`), boxShadow: `0 30px 70px ${d.primary}2e` }} />
+                {lowest && <div style={{ position: "absolute", left: "-4%", bottom: "10%", padding: "14px 18px", borderRadius: 22, background: d.accent, color: on(d.accent), boxShadow: `0 14px 34px ${d.accent}66`, textAlign: "center", lineHeight: 1.15 }}><div style={{ fontSize: 11, fontWeight: 700, opacity: .85 }}>From</div><div style={{ fontFamily: d.headingFont, fontWeight: 800, fontSize: 19 }}>{money(lowest)}</div></div>}
+              </div>
+            </div>
+          </div>
+        </section>
+      );
+    }
+
+    /* Full-bleed photograph with a search card overlapping its bottom edge. Travel, car hire and rentals, property. */
+    case "voyage": {
+      const chips = (s.items ?? []).filter((i) => i.title.trim()).slice(0, 4);
+      const options = Array.from(new Set([...categories, ...items.map((i) => i.name)])).slice(0, 12);
+      const action = slug ? `/store/${slug}/search` : "#catalog";
+      return (
+        <section id={id} data-bn-type="hero" className="bn-section" style={{ background: d.background, paddingBottom: 36 }}>
+          <div style={{ position: "relative", color: "#fff", padding: "clamp(64px,9vw,120px) 0 clamp(96px,12vw,150px)", ...bgImg(s.image ? `${s.image}` : null, `linear-gradient(135deg, ${d.primary}, ${d.accent})`) }}>
+            <div aria-hidden style={{ position: "absolute", inset: 0, background: `linear-gradient(90deg, ${d.primary}e6 0%, ${d.primary}99 42%, ${d.primary}1a 100%)` }} />
+            <div className="bn-wrap" style={{ position: "relative" }}>
+              {s.eyebrow && <span style={{ display: "inline-block", padding: "6px 14px", borderRadius: 999, background: "rgba(255,255,255,.16)", border: "1px solid rgba(255,255,255,.28)", fontWeight: 750, fontSize: 12, marginBottom: 18 }}>{s.eyebrow}</span>}
+              <h1 style={{ fontFamily: d.headingFont, fontWeight: 800, fontSize: "clamp(38px,6vw,80px)", lineHeight: 1.02, letterSpacing: "-.035em", margin: 0, maxWidth: 760 }}>{heading}</h1>
+              {s.body && <p style={{ opacity: .9, lineHeight: 1.7, maxWidth: 520, margin: "18px 0 26px", fontSize: 17 }}>{s.body}</p>}
+              <Cta s={s} d={d} bg={d.accent} fg={on(d.accent)} />
+            </div>
+          </div>
+          <div className="bn-wrap" style={{ position: "relative", marginTop: -54 }}>
+            <form action={action} method="get" role="search" style={{ display: "flex", gap: 12, alignItems: "center", flexWrap: "wrap", padding: 16, borderRadius: r + 8, background: d.surface, border: `1px solid ${d.text}10`, boxShadow: "0 24px 60px rgba(0,0,0,.16)" }}>
+              <label style={{ flex: "1 1 260px", display: "block" }}>
+                <span style={{ display: "block", fontSize: 11, fontWeight: 800, color: d.muted, margin: "0 0 4px 4px" }}>What are you looking for?</span>
+                <input name="q" list="bn-hero-search" placeholder="Search by name or category" autoComplete="off" style={{ width: "100%", padding: "13px 16px", borderRadius: Math.min(r, 16), border: `1px solid ${d.text}1f`, background: d.background, color: d.text, fontSize: 15 }} />
+                <datalist id="bn-hero-search">{options.map((o) => <option key={o} value={o} />)}</datalist>
+              </label>
+              <button type="submit" style={{ alignSelf: "flex-end", padding: "14px 28px", borderRadius: Math.min(r, 16), border: 0, background: d.primary, color: on(d.primary), fontWeight: 800, fontSize: 14, cursor: "pointer" }}>Search</button>
+            </form>
+            {chips.length > 0 && <div style={{ display: "flex", gap: 28, flexWrap: "wrap", marginTop: 22 }}>{chips.map((c, i) => <div key={i} style={{ display: "flex", gap: 10, alignItems: "center" }}><span aria-hidden style={{ width: 36, height: 36, borderRadius: 12, display: "grid", placeItems: "center", background: `${d.accent}1f`, color: d.accent, fontWeight: 900 }}>✓</span><span style={{ fontSize: 13 }}><strong style={{ display: "block" }}>{c.title}</strong>{c.body && <span style={{ color: d.muted }}>{c.body}</span>}</span></div>)}</div>}
+          </div>
+        </section>
+      );
+    }
+
+    /* Dark glow stage: headline left, one product lit on a plinth. Premium tech, audio, watches. */
+    case "aurora": {
+      const star = items.find((i) => i.image);
+      const photo = s.image || star?.image;
+      const stage = on(d.primary) === "#fff";
+      return (
+        <section id={id} data-bn-type="hero" className="bn-section" style={{ background: d.background, padding: "24px 0" }}>
+          <div className="bn-wrap">
+            <div className="bn-hero" style={{ position: "relative", overflow: "hidden", display: "grid", gridTemplateColumns: "1.05fr .95fr", alignItems: "center", gap: 20, padding: "clamp(28px,5vw,64px)", borderRadius: r + 14, color: stage ? "#fff" : d.text, background: `radial-gradient(ellipse at 78% 55%, ${d.accent}66 0%, transparent 55%), linear-gradient(135deg, ${d.primary} 0%, ${d.primary} 40%, ${d.accent}55 100%)`, border: `1px solid ${d.accent}33` }}>
+              <div>
+                {s.eyebrow && <span style={{ display: "inline-block", padding: "5px 13px", borderRadius: 999, border: `1px solid ${d.accent}66`, color: d.accent, fontWeight: 750, fontSize: 12, marginBottom: 18 }}>{s.eyebrow}</span>}
+                <h1 style={{ fontFamily: d.headingFont, fontWeight: 600, fontSize: "clamp(38px,5.4vw,72px)", lineHeight: 1.04, letterSpacing: "-.035em", margin: 0 }}>{heading}</h1>
+                {s.body && <p style={{ opacity: .8, lineHeight: 1.7, maxWidth: 430, margin: "18px 0 26px" }}>{s.body}</p>}
+                <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
+                  <Cta s={s} d={d} bg={d.accent} fg={on(d.accent)} />
+                  <a href="#catalog" style={{ display: "inline-block", padding: "13px 22px", borderRadius: d.buttonStyle === "pill" ? 999 : Math.min(d.radius, 14), border: "1px solid rgba(255,255,255,.28)", fontWeight: 750, fontSize: 14 }}>Explore collection</a>
+                </div>
+              </div>
+              <div style={{ position: "relative", justifySelf: "center", width: "min(100%,420px)", aspectRatio: "1/1" }}>
+                <div aria-hidden style={{ position: "absolute", left: "8%", right: "8%", bottom: "2%", height: "18%", borderRadius: "50%", background: `radial-gradient(ellipse, ${d.accent}aa, transparent 70%)`, filter: "blur(6px)" }} />
+                <div aria-hidden style={{ position: "absolute", inset: "4% 6% 12%", borderRadius: 28, ...bgImg(photo, `linear-gradient(160deg, ${d.accent}55, transparent)`), boxShadow: `0 30px 80px ${d.accent}40` }} />
+              </div>
+            </div>
+          </div>
+        </section>
+      );
+    }
+
     /* Oversized type on a dark field with an accent slab cutting in from the right. Drops, sport, streetwear. */
     case "poster": {
       const bg = d.primary, fg = on(bg);

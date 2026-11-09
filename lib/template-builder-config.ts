@@ -17,9 +17,10 @@ function softenInk(ink: string) {
 }
 
 function sectionFor(theme: TemplateTheme, type: string, index: number, storeName: string, description?: string | null, heroImage?: string | null): BuilderSection | null {
-  const supported = new Set(["hero","catalog","about","stats","features","categories","testimonials","newsletter","contact","gallery","map"]);
+  const supported = new Set(["hero","catalog","about","stats","features","categories","testimonials","newsletter","contact","gallery","map","promo"]);
   if (!supported.has(type)) return null;
   const id = `${type}-${index}`;
+  const modern = theme.heroVariant === "spotlight" || theme.heroVariant === "voyage" || theme.heroVariant === "aurora";
   // A neutral template never uses a niche heading, even if the theme still carries one.
   const copy = theme.neutral ? undefined : theme.sectionCopy?.[type as keyof NonNullable<TemplateTheme["sectionCopy"]>];
   const base = { id, type: type as BuilderSectionType, visible: true, settings: {} as BuilderSection["settings"] };
@@ -27,12 +28,13 @@ function sectionFor(theme: TemplateTheme, type: string, index: number, storeName
   else if (type === "catalog") base.settings = { eyebrow: theme.neutral ? undefined : theme.catalogLabel, heading: theme.neutral ? "Featured" : theme.catalogLabel, columns: theme.layout === "list" ? 3 : 4, padding: theme.density === "compact" ? "normal" : "spacious" };
   else if (type === "about") base.settings = { eyebrow: copy?.eyebrow ?? "Our story", heading: copy?.heading ?? "Built around what matters", body: description || theme.sub, padding: theme.density === "compact" ? "normal" : "spacious" };
   else if (type === "stats") base.settings = { padding: "normal" };
-  else if (type === "features") base.settings = { eyebrow: copy?.eyebrow ?? "Why choose us", heading: copy?.heading ?? "Designed around your needs", columns: 3, padding: theme.density === "compact" ? "normal" : "spacious" };
-  else if (type === "categories") base.settings = { eyebrow: copy?.eyebrow ?? "Explore", heading: copy?.heading ?? "Browse categories", columns: 4, padding: theme.density === "compact" ? "normal" : "spacious" };
+  else if (type === "features") base.settings = { style: modern ? "strip" : undefined, eyebrow: copy?.eyebrow ?? "Why choose us", heading: copy?.heading ?? "Designed around your needs", columns: 3, padding: theme.density === "compact" ? "normal" : "spacious" };
+  else if (type === "categories") base.settings = { style: modern ? "tiles" : undefined, eyebrow: copy?.eyebrow ?? "Explore", heading: copy?.heading ?? "Browse categories", columns: 4, padding: theme.density === "compact" ? "normal" : "spacious" };
   else if (type === "testimonials") base.settings = { eyebrow: copy?.eyebrow ?? "Customer love", heading: copy?.heading ?? "What customers say", columns: 3, padding: theme.density === "compact" ? "normal" : "spacious" };
   else if (type === "newsletter") base.settings = { eyebrow: copy?.eyebrow ?? "Stay in the loop", heading: copy?.heading ?? "Get updates from us", padding: "normal", background: theme.surfaceDark || theme.ink };
   else if (type === "contact") base.settings = { eyebrow: copy?.eyebrow ?? "Contact", heading: copy?.heading ?? "Let's work together", columns: 2, padding: theme.density === "compact" ? "normal" : "spacious" };
   else if (type === "gallery") base.settings = { eyebrow: copy?.eyebrow ?? "Gallery", heading: copy?.heading ?? "A closer look", columns: 4, padding: "spacious" };
+  else if (type === "promo") base.settings = { eyebrow: undefined, heading: undefined, ctaLabel: theme.cta, ctaHref: "#catalog", showButton: true, padding: "normal" };
   else if (type === "map") base.settings = { eyebrow: copy?.eyebrow ?? "Find us", heading: copy?.heading ?? "Visit us", padding: "normal" };
   return base;
 }

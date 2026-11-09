@@ -115,9 +115,10 @@ export function BuilderStorefront({
   const categories = Array.from(new Set(catalogItems.map((i) => i.categoryName).filter(Boolean))) as string[];
   // Owner's categories first (so a store with categories but no items still shows them), else the ones its items name.
   const realCategories = (categoryList ?? []).filter((c) => c.id && !String(c.id).startsWith("cat-"));
+  const imageOf = (name: string) => catalogItems.find((i) => i.categoryName === name && i.image)?.image ?? null;
   const categoryLinks = realCategories.length
-    ? realCategories.map((c) => ({ name: c.name, href: `/store/${store.slug}/category/${c.slug || c.id}` }))
-    : categories.map((c) => ({ name: c, href: `/store/${store.slug}/search?q=${encodeURIComponent(c)}` }));
+    ? realCategories.map((c) => ({ name: c.name, href: `/store/${store.slug}/category/${c.slug || c.id}`, image: imageOf(c.name) }))
+    : categories.map((c) => ({ name: c, href: `/store/${store.slug}/search?q=${encodeURIComponent(c)}`, image: imageOf(c) }));
 
   // Every rendered section carries a plain `id={section.id}` (see
   // BuilderSectionView below) and nothing else in this component sets an
@@ -161,7 +162,7 @@ export function BuilderStorefront({
 }
 
 function BuilderSectionView({ section, store, config, catalogItems, categories, categoryLinks, experience, reviews, avgRating, completedOrders, fallbackFaq, isEditMode, catalogTotal }: {
-  section: BuilderSection; store: BuilderStore; config: BuilderConfig; catalogItems: CatalogItem[]; categories: string[]; categoryLinks: { name: string; href: string }[]; experience: ReturnType<typeof getBusinessExperience>; reviews: Review[]; avgRating: number | null; completedOrders: number; fallbackFaq?: BuilderSectionItem[]; isEditMode?: boolean; catalogTotal?: number;
+  section: BuilderSection; store: BuilderStore; config: BuilderConfig; catalogItems: CatalogItem[]; categories: string[]; categoryLinks: { name: string; href: string; image?: string | null }[]; experience: ReturnType<typeof getBusinessExperience>; reviews: Review[]; avgRating: number | null; completedOrders: number; fallbackFaq?: BuilderSectionItem[]; isEditMode?: boolean; catalogTotal?: number;
 }) {
   const d = config.design;
   const s = section.settings;
@@ -174,7 +175,7 @@ function BuilderSectionView({ section, store, config, catalogItems, categories, 
 
   if (section.type === "hero") {
     // A template's own hero composition wins over the generic split / centered / fullbleed layouts.
-    if (s.heroVariant) return <HeroVariantView variant={s.heroVariant} section={section} d={d} items={catalogItems} categories={categories} />;
+    if (s.heroVariant) return <HeroVariantView variant={s.heroVariant} section={section} d={d} items={catalogItems} categories={categories} slug={store.slug} />;
     const heroStyle = s.heroStyle || "split";
     const eyebrowEl = (color: string) => s.eyebrow && <div style={{ color, fontSize: 12, fontWeight: 800, letterSpacing: ".12em", textTransform: "uppercase", marginBottom: 12 }}>{s.eyebrow}</div>;
     const h1Style: React.CSSProperties = { fontFamily: d.headingFont, fontSize: "clamp(40px,6vw,72px)", lineHeight: 1.03, margin: 0, letterSpacing: "-.04em" };
@@ -287,11 +288,32 @@ function BuilderSectionView({ section, store, config, catalogItems, categories, 
     // Only points the owner wrote. The platform no longer invents claims ("Every item is checked...") on a merchant's behalf.
     const items = (s.items ?? []).filter((i) => i.title.trim());
     if (!items.length && !isEditMode) return null;
+    if (s.style === "strip") return <section id={section.id} data-bn-type={section.type} className="bn-section" style={{ padding: "28px 0", background: bg }}><div className="bn-wrap"><div className="bn-grid" style={{ gridTemplateColumns: `repeat(${Math.min(Math.max(items.length, 1), 4)},1fr)`, gap: 12, padding: 14, background: d.surface, borderRadius: (s.radius ?? d.radius) + 4, border: `1px solid ${d.text}0f` }}>{items.map((item, i) => <div key={`${item.title}-${i}`} style={{ display: "flex", alignItems: "center", gap: 12, padding: "6px 10px" }}><span aria-hidden style={{ flex: "none", width: 38, height: 38, borderRadius: 12, display: "grid", placeItems: "center", background: `${d.accent}1f`, color: d.accent, fontWeight: 900, fontSize: 15 }}>✓</span><span><span style={{ display: "block", fontWeight: 750, fontSize: 14 }}>{item.title}</span>{item.body && <span style={{ display: "block", color: d.muted, fontSize: 12, marginTop: 2 }}>{item.body}</span>}</span></div>)}</div></div></section>;
     return <section id={section.id} data-bn-type={section.type} className="bn-section" style={{ padding, background: bg }}><div className="bn-wrap"><SectionIntro section={section} config={config} /><div className="bn-grid" style={{ gridTemplateColumns: `repeat(${Math.min(cols,4)},1fr)` }}>{items.map((item, i) => <div key={`${item.title}-${i}`} style={{ padding: 24, background: d.surface, borderRadius: s.radius ?? d.radius, border: `1px solid ${d.text}12` }}><div style={{ color: d.accent, fontWeight: 900, fontSize: 12 }}>{String(i + 1).padStart(2, "0")}</div><h3 style={{ margin: "10px 0 7px", fontFamily: d.headingFont, fontSize: 18 }}>{item.title}</h3>{item.body && <p style={{ color: d.muted, fontSize: 13, lineHeight: 1.7, whiteSpace: "pre-line" }}>{item.body}</p>}</div>)}</div></div></section>;
   }
 
   // A section with nothing to show is left out on the live site (the editor still shows it so it can be configured).
   if (section.type === "categories" && !categoryLinks.length && !isEditMode) return null;
+  if (section.type === "categories" && s.style === "tiles") {
+    const tints = [`${d.accent}1c`, `${d.primary}14`, `${d.accent}33`, `${d.primary}0d`];
+    return <section id={section.id} data-bn-type={section.type} className="bn-section" style={{ padding, background: bg }}><div className="bn-wrap"><SectionIntro section={section} config={config} />{categoryLinks.length ? <div className="bn-grid" style={{ gridTemplateColumns: `repeat(${Math.min(Math.max(categoryLinks.length, 2), cols === 3 ? 4 : cols)},minmax(0,1fr))`, gap: 14 }}>{categoryLinks.slice(0, 8).map((c, i) => <a key={c.href} href={c.href} style={{ position: "relative", display: "flex", flexDirection: "column", justifyContent: "space-between", minHeight: 170, padding: 18, overflow: "hidden", borderRadius: s.radius ?? d.radius, background: tints[i % tints.length], border: `1px solid ${d.text}0d` }}><span style={{ position: "relative", zIndex: 1, fontWeight: 800, fontSize: 15, fontFamily: d.headingFont }}>{c.name}<span style={{ display: "block", color: readableAccentText(d.accent, d.surface), fontSize: 12, fontWeight: 700, marginTop: 4 }}>Shop now →</span></span>{c.image && <span aria-hidden style={{ position: "absolute", right: -14, bottom: -14, width: "64%", aspectRatio: "1/1", borderRadius: "50%", background: `url(${cssUrl(c.image)}) center/cover`, boxShadow: `0 10px 30px ${d.primary}33` }} />}</a>)}</div> : <EmptyState text="Your categories appear here once you add them in Dashboard > Categories." />}</div></section>;
+  }
+  if (section.type === "promo") {
+    if (!s.heading && !isEditMode) return null;
+    const fg = s.textColor || "#fff";
+    const base = s.background || `linear-gradient(110deg, ${d.primary}, ${d.accent})`;
+    const items = (s.items ?? []).filter((i) => i.title.trim());
+    return <section id={section.id} data-bn-type={section.type} className="bn-section" style={{ padding: "36px 0", background: d.background }}><div className="bn-wrap"><div className="bn-hero" style={{ position: "relative", overflow: "hidden", display: "grid", gridTemplateColumns: s.image ? "1.25fr .75fr" : "1fr", alignItems: "center", gap: 28, padding: "40px 44px", borderRadius: (s.radius ?? d.radius) + 6, background: base, color: fg }}>
+      <div style={{ textAlign: s.align === "center" ? "center" : "left" }}>
+        {s.eyebrow && <span style={{ display: "inline-block", padding: "5px 12px", borderRadius: 999, background: "rgba(255,255,255,.18)", fontSize: 12, fontWeight: 800, marginBottom: 14 }}>{s.eyebrow}</span>}
+        <h2 style={{ fontFamily: d.headingFont, fontSize: "clamp(26px,3.6vw,44px)", lineHeight: 1.08, letterSpacing: "-.03em", margin: 0 }}>{s.heading}</h2>
+        {s.body && <p style={{ opacity: .85, lineHeight: 1.7, maxWidth: 520, margin: "12px 0 0" }}>{s.body}</p>}
+        {items.length > 0 && <ul style={{ listStyle: "none", padding: 0, margin: "16px 0 0", display: "flex", gap: 10, flexWrap: "wrap" }}>{items.map((i, n) => <li key={n} style={{ padding: "6px 12px", borderRadius: 999, background: "rgba(255,255,255,.16)", fontSize: 12, fontWeight: 750 }}>{i.title}</li>)}</ul>}
+        {s.showButton !== false && s.ctaLabel && <a href={safeHref(s.ctaHref, "#catalog")} style={{ display: "inline-block", marginTop: 22, padding: "13px 24px", borderRadius: d.buttonStyle === "pill" ? 999 : (s.radius ?? d.radius), background: "#fff", color: d.primary, fontWeight: 800, fontSize: 14 }}>{s.ctaLabel}</a>}
+      </div>
+      {s.image && <div aria-hidden style={{ minHeight: 190, borderRadius: s.radius ?? d.radius, background: `url(${cssUrl(s.image)}) center/cover` }} />}
+    </div></div></section>;
+  }
   if (section.type === "categories") return <section id={section.id} data-bn-type={section.type} className="bn-section" style={{ padding, background: bg }}><div className="bn-wrap"><SectionIntro section={section} config={config} /><div className="bn-grid" style={{ gridTemplateColumns: `repeat(${Math.min(cols,4)},1fr)` }}>{categoryLinks.map((c) => <a key={c.href} href={c.href} style={{ padding: 22, borderRadius: s.radius ?? d.radius, background: d.surface, border: `1px solid ${d.text}12`, fontWeight: 750 }}>{c.name}</a>)}</div></div></section>;
 
   if (section.type === "testimonials") {
@@ -352,7 +374,7 @@ function SectionIntro({ section, config, inverse = false }: { section: BuilderSe
   </div>;
 }
 
-function label(type: string) { return ({ hero: "Welcome", catalog: "Shop", about: "About us", stats: "At a glance", features: "Why choose us", categories: "Categories", testimonials: "Testimonials", newsletter: "Newsletter", contact: "Contact", gallery: "Gallery", map: "Location", faq: "FAQ", text: "More about us", imageText: "Our story" } as Record<string,string>)[type] || "Section"; }
+function label(type: string) { return ({ hero: "Welcome", catalog: "Shop", about: "About us", stats: "At a glance", features: "Why choose us", categories: "Categories", testimonials: "Testimonials", newsletter: "Newsletter", contact: "Contact", gallery: "Gallery", map: "Location", faq: "FAQ", text: "More about us", imageText: "Our story", promo: "Special offer" } as Record<string,string>)[type] || "Section"; }
 function buttonStyle(d: BuilderConfig["design"], radius?: number, inverse = false): React.CSSProperties { return { display: "inline-block", padding: "12px 20px", borderRadius: d.buttonStyle === "pill" ? 999 : radius ?? d.radius, background: d.buttonStyle === "outline" ? "transparent" : (inverse ? "#fff" : d.primary), color: inverse ? d.primary : (d.buttonStyle === "outline" ? d.primary : "#fff"), fontWeight: 800, fontSize: 13, border: d.buttonStyle === "outline" ? `1px solid ${inverse ? "#fff" : d.primary}` : "none" }; }
 function Stat({ value, label, d }: { value: string; label: string; d: BuilderConfig["design"] }) { return <div><div style={{ fontFamily: d.headingFont, fontSize: 30, fontWeight: 800 }}>{value}</div><div style={{ color: d.muted, fontSize: 12 }}>{label}</div></div>; }
 function EmptyState({ text }: { text: string }) { return <div style={{ padding: 28, border: "1px dashed currentColor", opacity: .6, borderRadius: 12, gridColumn: "1/-1" }}>{text}</div>; }
@@ -549,6 +571,19 @@ export function ItemCard({ item, store, d, radius, actionLabel }: { item: Catalo
       <div style={{ position: "absolute", inset: "auto 0 0 0", padding: 16, color: "#fff", background: "linear-gradient(0deg,rgba(0,0,0,.78),rgba(0,0,0,0))" }}>
         <div style={{ fontWeight: 750, fontFamily: d.headingFont }}>{item.name}</div>
         <div style={{ fontWeight: 800, marginTop: 4, color: d.accent }}>{price}</div>
+      </div>
+    </Link>
+  );
+  if (style === "soft") return (
+    <Link href={href} style={{ position: "relative", display: "flex", flexDirection: "column", borderRadius: radius + 4, background: d.surface, padding: 14, border: `1px solid ${d.text}0d`, boxShadow: `0 1px 0 ${d.text}08` }}>
+      <div style={{ ...img("1/1", Math.max(radius - 2, 6)), backgroundColor: `${d.primary}0d` }} />
+      <div style={{ padding: "12px 2px 2px", display: "flex", alignItems: "flex-end", justifyContent: "space-between", gap: 10 }}>
+        <div style={{ minWidth: 0 }}>
+          {item.categoryName && <div style={{ fontSize: 10, letterSpacing: ".08em", textTransform: "uppercase", color: d.muted, fontWeight: 700, marginBottom: 3, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{item.categoryName}</div>}
+          <div style={{ fontWeight: 750, lineHeight: 1.25 }}>{item.name}</div>
+          <div style={{ marginTop: 6, fontWeight: 800, color: readableAccentText(d.accent, d.surface) }}>{price}</div>
+        </div>
+        <span aria-hidden style={{ flex: "none", width: 36, height: 36, borderRadius: 999, display: "grid", placeItems: "center", background: `${d.accent}22`, color: readableAccentText(d.accent, d.surface), fontSize: 15, fontWeight: 900 }}>{item.kind === "service" ? "→" : "+"}</span>
       </div>
     </Link>
   );

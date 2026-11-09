@@ -3,7 +3,7 @@ import { isSafeColor, isSafeHref, isSafeImageUrl, isSecureImageUrl } from "@/lib
 
 export const BUILDER_SECTION_TYPES = [
   "hero", "catalog", "about", "stats", "features", "categories", "testimonials",
-  "newsletter", "contact", "gallery", "map", "faq", "text", "imageText",
+  "newsletter", "contact", "gallery", "map", "faq", "text", "imageText", "promo",
 ] as const;
 
 export type BuilderSectionType = typeof BUILDER_SECTION_TYPES[number];
@@ -30,13 +30,15 @@ export type BuilderSectionSettings = {
   items?: BuilderSectionItem[];
   /** Gallery section: the owner's own uploaded images. Falls back to catalogue photos when empty. */
   images?: string[];
+  /** Features / Categories layout: "cards" (default), "strip" (compact icon-style row) or "tiles" (image tiles, categories only). */
+  style?: "cards" | "strip" | "tiles";
   /** Map section: street address or place name to show. Falls back to the business city / state / country. */
   address?: string;
 };
 
 export type BuilderSectionItem = { title: string; body?: string };
 
-export const HERO_VARIANTS = ["poster", "editorial", "lookbook", "tiles", "arch", "ledger", "frame", "splitcard", "menu", "banner", "quiet"] as const;
+export const HERO_VARIANTS = ["poster", "editorial", "lookbook", "tiles", "arch", "ledger", "frame", "splitcard", "menu", "banner", "quiet", "spotlight", "voyage", "aurora"] as const;
 export type HeroVariant = (typeof HERO_VARIANTS)[number];
 
 export type BuilderSection = {
@@ -61,7 +63,7 @@ export type BuilderDesign = {
   /** Structural identity of a template (so templates differ in layout, not just colours). All optional. */
   headerStyle?: "classic" | "centered" | "overlay" | "bar" | "stripe";
   footerStyle?: "columns" | "centered" | "cta" | "minimal";
-  cardStyle?: "bordered" | "overlay" | "minimal" | "tall";
+  cardStyle?: "bordered" | "overlay" | "minimal" | "tall" | "soft";
 };
 
 export type BuilderConfig = {
@@ -103,6 +105,7 @@ const settingsSchema = z.object({
   items: z.array(z.object({ title: z.string().max(160), body: z.string().max(1200).optional() })).max(12).optional(),
   images: z.array(z.string().max(2000).refine(isSafeImageUrl, "Image must be an http(s) URL or a site path.")).max(24).optional(),
   address: z.string().max(300).optional(),
+  style: z.enum(["cards", "strip", "tiles"]).optional(),
 });
 
 const colorField = z.string().max(100).refine(isSafeColor, "Invalid colour.");
@@ -124,7 +127,7 @@ export const builderConfigSchema = z.object({
     buttonStyle: z.enum(["solid", "outline", "pill"]),
     headerStyle: z.enum(["classic", "centered", "overlay", "bar", "stripe"]).optional(),
     footerStyle: z.enum(["columns", "centered", "cta", "minimal"]).optional(),
-    cardStyle: z.enum(["bordered", "overlay", "minimal", "tall"]).optional(),
+    cardStyle: z.enum(["bordered", "overlay", "minimal", "tall", "soft"]).optional(),
   }),
   sections: z.array(sectionSchema).min(1).max(30),
 });

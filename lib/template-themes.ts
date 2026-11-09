@@ -45,7 +45,7 @@ export type HeroStyle = "centered" | "split" | "fullbleed";
 // added for lib/capabilities.ts — a business type's capabilities determine
 // which of these a template is expected to render. Additive only: no
 // existing template's `sections` array needs to change to keep working.
-export type Section = "hero" | "catalog" | "about" | "testimonials" | "contact" | "stats" | "features" | "newsletter" | "categories" | "deal" | "gallery" | "amenities" | "availability" | "map" | "packages";
+export type Section = "hero" | "catalog" | "about" | "testimonials" | "contact" | "stats" | "features" | "newsletter" | "categories" | "deal" | "gallery" | "amenities" | "availability" | "map" | "packages" | "promo";
 
 export const FRESH = {
   forest: "#123524",
@@ -117,7 +117,7 @@ export type TemplateTheme = {
 export type TemplateChrome = {
   header: "classic" | "centered" | "overlay" | "bar" | "stripe";
   footer: "columns" | "centered" | "cta" | "minimal";
-  card: "bordered" | "overlay" | "minimal" | "tall";
+  card: "bordered" | "overlay" | "minimal" | "tall" | "soft";
 };
 
 export type GeneratedTemplate = TemplateTheme & {
@@ -847,7 +847,7 @@ export const SIGNATURE_CHROME: Record<string, TemplateChrome> = {
  * must be unique across ALL builder templates -- enforced by lib/__tests__/template-uniqueness.test.ts.
  */
 export const HERO_VARIANT_BY_MODE: Readonly<Record<string, HeroVariant>> = {
-  electra: "tiles", atelier: "editorial", kinetic: "poster", haven: "frame", harvest: "splitcard",
+  electra: "spotlight", atelier: "editorial", kinetic: "poster", haven: "frame", harvest: "splitcard",
   ember: "menu", muse: "arch", frame: "frame", north: "ledger", pure: "quiet", forge: "poster",
   // Dedicated-renderer templates (bloom, maison, hotel) never reach the Builder; listed so the map is complete.
   bloom: "arch", maison: "splitcard", hotel: "splitcard",
@@ -859,17 +859,17 @@ export const NAMED_TEMPLATE_IDENTITY: Record<string, { chrome: TemplateChrome; h
   "Transit — Logistics & Delivery": { chrome: C("centered", "cta", "minimal"), heroStyle: "split", heroVariant: "ledger" },
   "Vitalis — Clinic & Care": { chrome: C("centered", "columns", "bordered"), heroStyle: "split", heroVariant: "splitcard" },
   "Atelier — Modern Fashion": { chrome: C("stripe", "centered", "tall"), heroStyle: "fullbleed", heroVariant: "editorial" },
-  "Electra — Smart Commerce": { chrome: C("overlay", "columns", "minimal"), heroStyle: "split", heroVariant: "tiles" },
+  "Electra — Smart Commerce": { chrome: C("overlay", "columns", "soft"), heroStyle: "split", heroVariant: "spotlight" },
   "Emarket Furniture & Home": { chrome: C("classic", "columns", "tall"), heroStyle: "split", heroVariant: "splitcard" },
   "ShopNova Marketplace": { chrome: C("bar", "minimal", "bordered"), heroStyle: "centered", heroVariant: "banner" },
   "Electra Blue Electronics": { chrome: C("centered", "minimal", "bordered"), heroStyle: "fullbleed", heroVariant: "quiet" },
   "TechNova Mobile Store": { chrome: C("overlay", "columns", "bordered"), heroStyle: "split", heroVariant: "banner" },
-  "TechVerse Gadgets": { chrome: C("bar", "centered", "overlay"), heroStyle: "centered", heroVariant: "poster" },
+  "TechVerse Gadgets": { chrome: C("bar", "centered", "soft"), heroStyle: "centered", heroVariant: "aurora" },
   "ShopEase General Store": { chrome: C("centered", "columns", "minimal"), heroStyle: "fullbleed", heroVariant: "tiles" },
   "Violet — Sunset": { chrome: C("centered", "minimal", "tall"), heroStyle: "centered", heroVariant: "banner" },
   "Nova Studio — Ivory Minimal": { chrome: C("bar", "columns", "minimal"), heroStyle: "split", heroVariant: "ledger" },
   "Heenzy — Boutique Rose": { chrome: C("overlay", "columns", "tall"), heroStyle: "fullbleed", heroVariant: "lookbook" },
-  "Wanderly Travel": { chrome: C("overlay", "cta", "tall"), heroStyle: "fullbleed", heroVariant: "poster" },
+  "Wanderly Travel": { chrome: C("overlay", "cta", "soft"), heroStyle: "fullbleed", heroVariant: "voyage" },
   "Nestoria Real Estate": { chrome: C("stripe", "cta", "tall"), heroStyle: "split", heroVariant: "splitcard" },
   "Fresh & Co.": { chrome: C("classic", "columns", "overlay"), heroStyle: "fullbleed", heroVariant: "tiles" },
   "Heenzy Sneaker Co.": { chrome: C("stripe", "centered", "overlay"), heroStyle: "fullbleed", heroVariant: "lookbook" },
@@ -1007,7 +1007,7 @@ const SIGNATURE_BASE = {
 // copy they all rendered the identical layout -- picking a different template looked like
 // nothing had changed. Only section types the Builder renders without extra data are used.
 const SIGNATURE_SECTIONS: Record<string, Section[]> = {
-  electra: ["hero", "categories", "catalog", "features", "testimonials", "newsletter", "contact"],
+  electra: ["hero", "features", "categories", "catalog", "promo", "testimonials", "newsletter", "contact"],
   atelier: ["hero", "catalog", "about", "categories", "testimonials", "newsletter"],
   kinetic: ["hero", "catalog", "categories", "newsletter", "features", "contact"],
   bloom: ["hero", "about", "catalog", "features", "testimonials", "newsletter"],
