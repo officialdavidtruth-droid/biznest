@@ -29,6 +29,7 @@ export const CRONS: CronDef[] = [
   { name: "ticket-holds", path: "/api/cron/ticket-holds", schedule: "50 3 * * *", maxAgeHours: 26 },
   { name: "member-renewals", path: "/api/cron/member-renewals", schedule: "35 6 * * *", maxAgeHours: 26 },
   { name: "onboarding-reminders", path: "/api/cron/onboarding-reminders", schedule: "0 9 * * *", maxAgeHours: 26 },
+  { name: "referral-maturity", path: "/api/cron/referral-maturity", schedule: "30 9 * * *", maxAgeHours: 26 },
   { name: "daily-summary", path: "/api/cron/daily-summary", schedule: "0 20 * * *", maxAgeHours: 26 },
 ];
 

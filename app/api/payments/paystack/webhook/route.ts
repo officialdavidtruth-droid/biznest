@@ -1,3 +1,4 @@
+import { creditVendorReferralForPlanPayment } from "@/lib/referrals/vendor-referral";
 import { resolveSubscriptionId } from "@/lib/payments/subscription-reference";
 import { prisma } from "@/lib/prisma";
 import { verifyPaystackTransaction, verifyPaystackWebhookSignature } from "@/lib/payments/paystack";
@@ -179,6 +180,7 @@ export async function POST(req: Request) {
         trialEndsAt: null, // converted: no longer a trial
       },
     });
+    await creditVendorReferralForPlanPayment({ storeId: store.id, planId: plan.id, paymentReference: reference });
     return NextResponse.json({ received: true });
   }
 

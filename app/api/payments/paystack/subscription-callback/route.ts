@@ -1,3 +1,4 @@
+import { creditVendorReferralForPlanPayment } from "@/lib/referrals/vendor-referral";
 import { resolveSubscriptionId } from "@/lib/payments/subscription-reference";
 import { prisma } from "@/lib/prisma";
 import { verifyPaystackTransaction } from "@/lib/payments/paystack";
@@ -81,6 +82,7 @@ export async function GET(req: Request) {
         trialEndsAt: null, // converted: no longer a trial
       },
     });
+    await creditVendorReferralForPlanPayment({ storeId: store.id, planId: plan.id, paymentReference: reference });
     return NextResponse.redirect(`${APP_URL}/store/${store.slug}/admin/subscription?upgraded=1`);
   }
 

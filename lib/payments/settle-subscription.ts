@@ -3,6 +3,7 @@ import "server-only";
 import { prisma } from "@/lib/prisma";
 import { amountCoversExpected } from "@/lib/payments/amount";
 import { flagPaymentForReview } from "@/lib/payments/review";
+import { creditVendorReferralForPlanPayment } from "@/lib/referrals/vendor-referral";
 
 /**
  * Subscription (BizNest plan) payment settlement for gateways that have no saved-card
@@ -52,5 +53,6 @@ export async function settleSubscriptionUpgrade(reference: string, verifiedAmoun
       // Plan payments are now one-off Korapay payments: drop any old Paystack saved card so it is not auto-charged as well.
       paystackAuthorizationCode: null },
   });
+  await creditVendorReferralForPlanPayment({ storeId: store.id, planId: plan.id, paymentReference: reference });
   return { outcome: "upgraded", storeSlug: store.slug };
 }

@@ -10,6 +10,7 @@ import { sendVerificationEmail, sendPasswordResetEmail, storeEmailBrand, type St
 import { checkRateLimit, getClientIp } from "@/lib/rate-limit";
 import { emitPlatformWebhookEvent } from "@/lib/webhooks/dispatch";
 import { attachReferral } from "@/lib/referrals/attach";
+import { attachVendorReferralAtSignup } from "@/lib/referrals/vendor-referral";
 import type { ActionResult } from "@/types/actions";
 
 export async function registerUser(
@@ -95,6 +96,16 @@ export async function registerUser(
       customerScopeStoreId: scopeStoreId,
     },
   });
+
+  // Platform signup (not through a store) with a vendor's referral link: fix the referrer now.
+  // Best-effort: a bad or unknown code never blocks account creation.
+  if (!storeForCustomer && referralCode) {
+    try {
+      await attachVendorReferralAtSignup({ refereeId: user.id, refereeEmail: normalizedEmail, refereePhone: user.phone, code: referralCode, ip });
+    } catch (err) {
+      console.error("Failed to attach vendor referral at signup:", err);
+    }
+  }
 
   // Signing up "through" a store (arrived via that store's AccountLink)
   // makes this a customer account for that store specifically -- it does

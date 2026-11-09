@@ -30,6 +30,7 @@ const GROUPS: Group[] = [
       { href: "/supaadmin/users", label: "Users", icon: Users },
       { href: "/supaadmin/subscriptions", label: "Subscriptions", icon: CreditCard },
       { href: "/supaadmin/campaigns", label: "Emails to users", icon: Megaphone },
+      { href: "/supaadmin/referrals", label: "Vendor referrals", icon: Users },
       { href: "/supaadmin/paystack", label: "Paystack go-live", icon: ShieldCheck },
       { href: "/supaadmin/payouts", label: "Payouts", icon: Banknote, badgeKey: "failedPayouts" },
       { href: "/supaadmin/apps", label: "Apps & Plugins", icon: Puzzle },

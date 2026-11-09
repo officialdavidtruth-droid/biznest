@@ -1,3 +1,4 @@
+import { applyVendorReferralTransferWebhook } from "@/lib/referrals/vendor-referral";
 import { settleSubscriptionUpgrade } from "@/lib/payments/settle-subscription";
 import { settlePluginPurchase } from "@/lib/payments/settle-plugin-purchase";
 import { settleAdPayment } from "@/lib/payments/settle-ad";
@@ -78,6 +79,10 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Verification unavailable, retry" }, { status: 502 });
     }
     if (verified.data.reference !== reference) return NextResponse.json({ received: true });
+    if (reference.startsWith("REFWD-")) {
+      await applyVendorReferralTransferWebhook(verified.data);
+      return NextResponse.json({ received: true });
+    }
     await applyFlutterwaveTransferWebhookEvent(verified.data, event);
     return NextResponse.json({ received: true });
   }

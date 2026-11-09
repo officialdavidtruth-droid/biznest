@@ -206,6 +206,7 @@ export function buildNavGroups(business: NavBusiness): Array<{
         { label: "Settings", href: "/settings", icon: Settings, permission: "settings" },
         { label: "Verification", href: "/verification", icon: BadgeCheck, permission: "settings" },
         { label: "Subscription", href: "/subscription", icon: Wallet, ownerOnly: true },
+        { label: "Refer & earn", href: "/refer-and-earn", icon: Share2, ownerOnly: true },
         { label: "Activity log", href: "/activity", icon: FileText, ownerOnly: true },
         { label: "Support", href: "/support", icon: LifeBuoy },
       ],

@@ -87,6 +87,11 @@ export const PAGE_GUIDES: Record<string, PageGuide> = {
     s("Issue a card", "Enter an amount (and a recipient email if it is a gift). You get a code to hand over."),
     s("Take it in store", "When a customer pays with a card, enter the code and amount to deduct it."),
   ]),
+  "/refer-and-earn": g("Refer & earn", "Earn cash when vendors you refer pay for a plan.", [
+    s("Share your link", "Copy your personal link and send it to people who want to open a store."),
+    s("They pay, you earn", "You earn when a person you referred pays for a plan. The reward waits 14 days in case of a refund."),
+    s("Withdraw", "Once you reach the number of paying referrals for a plan, the money unlocks and you can withdraw it to your bank."),
+  ]),
   "/referrals": g("Referrals", "Reward customers who bring friends.", [
     s("Set the rewards", "Choose how many points the referrer and the new customer each get."),
     s("Switch it on", "Customers then see a personal link in their account. Rewards are paid on the friend's first completed order."),
