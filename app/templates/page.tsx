@@ -1,14 +1,12 @@
 import { templateDisplayName } from "@/lib/template-display-name";
 import Link from "next/link";
 import type { Metadata } from "next";
-import { Space_Grotesk, Inter } from "next/font/google";
+import { spaceGrotesk as display, inter as body } from "@/lib/fonts";
 import { PUBLIC_TEMPLATE_REGISTRY } from "@/lib/template-registry";
 import type { TemplateTheme } from "@/lib/template-themes";
 import { TemplateCover } from "@/components/storefront/template-cover";
 import { getTemplateThumbnail } from "@/lib/template-thumbnails";
 
-const display = Space_Grotesk({ subsets: ["latin"], variable: "--font-display", weight: ["500", "700"] });
-const body = Inter({ subsets: ["latin"], variable: "--font-body" });
 
 export const metadata: Metadata = {
   title: "Templates — BizNest",

@@ -1,4 +1,9 @@
-import { Bricolage_Grotesque } from "next/font/google";
+import localFont from "next/font/local";
 
-/** Display face for the Browse pages (shop names, headings). Body text uses the app font. */
-export const browseDisplay = Bricolage_Grotesque({ subsets: ["latin"], display: "swap", variable: "--font-browse-display", weight: ["600", "700", "800"] });
+/** Display face for the Browse pages (shop names, headings). Body text uses the app font. Bundled, not fetched from Google. */
+export const browseDisplay = localFont({
+  src: "../app/fonts/bricolage-grotesque-latin-wght-normal.woff2",
+  weight: "200 800",
+  display: "swap",
+  variable: "--font-browse-display",
+});

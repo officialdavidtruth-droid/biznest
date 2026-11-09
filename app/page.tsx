@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { JsonLd } from "@/components/seo/json-ld";
 import { SITE_DESCRIPTION, SITE_NAME, SITE_URL } from "@/lib/seo";
-import { Space_Grotesk, Inter, JetBrains_Mono } from "next/font/google";
+import { spaceGrotesk as display, inter as body, jetBrainsMono as mono } from "@/lib/fonts";
 import { ShieldCheck, Landmark, KeyRound, LifeBuoy, ArrowRight } from "lucide-react";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
@@ -22,9 +22,6 @@ import { RotatingWord } from "@/components/motion/rotating-word";
 import { NestGraphic } from "@/components/motion/nest-graphic";
 import "./landing-motion.css";
 
-const display = Space_Grotesk({ subsets: ["latin"], variable: "--font-display", weight: ["500", "700"] });
-const body = Inter({ subsets: ["latin"], variable: "--font-body" });
-const mono = JetBrains_Mono({ subsets: ["latin"], variable: "--font-mono", weight: ["500"] });
 
 // Shared keyboard-focus ring for header/hero links (the page had none, so tabbing was invisible).
 const FOCUS =
