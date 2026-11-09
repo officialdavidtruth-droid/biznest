@@ -40,18 +40,18 @@ const swatch = (a: string, b: string, label: string) => {
   const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="800" height="1000" viewBox="0 0 800 1000"><defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="${a}"/><stop offset="1" stop-color="${b}"/></linearGradient></defs><rect width="800" height="1000" fill="url(#g)"/><text x="400" y="520" text-anchor="middle" font-family="Georgia,serif" font-size="46" fill="#ffffff" fill-opacity="0.85" letter-spacing="6">${label}</text></svg>`;
   return `data:image/svg+xml;base64,${Buffer.from(svg).toString("base64")}`;
 };
-function fashionItems(tpl: any) {
+function fashionItems(tpl: any, off = 0) {
   const hex = /^#[0-9a-f]{3,8}$/i;
   const a = hex.test(tpl?.accent) ? tpl.accent : "#B56B45";
   const b = hex.test(tpl?.accentSoft) ? tpl.accentSoft : hex.test(tpl?.ink) ? tpl.ink : "#211C1A";
   const base = { kind: "product" as const, currency: "NGN", type: "PRODUCT", rentalUnit: null, isBookable: false };
   return [
-    { ...base, id: "preview-1", name: "Linen Co-ord Set", description: "Relaxed two-piece in breathable linen.", price: 48000, image: nicheSamplePhoto("Fashion", 0) ?? swatch(a, b, "CO-ORD"), categoryName: "Women" },
-    { ...base, id: "preview-2", name: "Ankara Wrap Dress", description: "Bold print, flattering wrap fit.", price: 36500, image: nicheSamplePhoto("Fashion", 1) ?? swatch(b, a, "DRESS"), categoryName: "Women" },
-    { ...base, id: "preview-3", name: "Tailored Blazer", description: "Sharp shoulders, soft lining.", price: 72000, image: nicheSamplePhoto("Fashion", 2) ?? swatch(a, "#1b1b1d", "BLAZER"), categoryName: "Men" },
-    { ...base, id: "preview-4", name: "Leather Tote Bag", description: "Roomy everyday carry in full-grain leather.", price: 95000, image: nicheSamplePhoto("Fashion", 3) ?? swatch("#1b1b1d", a, "TOTE"), categoryName: "Accessories" },
-    { ...base, id: "preview-5", name: "Classic Low Sneakers", description: "Clean silhouette, cushioned sole.", price: 54000, image: nicheSamplePhoto("Fashion", 4) ?? swatch(b, "#1b1b1d", "SNEAKER"), categoryName: "Footwear" },
-    { ...base, id: "preview-6", name: "Silk Head Wrap", description: "Hand-finished silk in a rich tone.", price: 15000, image: nicheSamplePhoto("Fashion", 5) ?? swatch(a, b, "WRAP"), categoryName: "Accessories" },
+    { ...base, id: "preview-1", name: "Linen Co-ord Set", description: "Relaxed two-piece in breathable linen.", price: 48000, image: nicheSamplePhoto("Fashion", 0 + off) ?? swatch(a, b, "CO-ORD"), categoryName: "Women" },
+    { ...base, id: "preview-2", name: "Ankara Wrap Dress", description: "Bold print, flattering wrap fit.", price: 36500, image: nicheSamplePhoto("Fashion", 1 + off) ?? swatch(b, a, "DRESS"), categoryName: "Women" },
+    { ...base, id: "preview-3", name: "Tailored Blazer", description: "Sharp shoulders, soft lining.", price: 72000, image: nicheSamplePhoto("Fashion", 2 + off) ?? swatch(a, "#1b1b1d", "BLAZER"), categoryName: "Men" },
+    { ...base, id: "preview-4", name: "Leather Tote Bag", description: "Roomy everyday carry in full-grain leather.", price: 95000, image: nicheSamplePhoto("Fashion", 3 + off) ?? swatch("#1b1b1d", a, "TOTE"), categoryName: "Accessories" },
+    { ...base, id: "preview-5", name: "Classic Low Sneakers", description: "Clean silhouette, cushioned sole.", price: 54000, image: nicheSamplePhoto("Fashion", 4 + off) ?? swatch(b, "#1b1b1d", "SNEAKER"), categoryName: "Footwear" },
+    { ...base, id: "preview-6", name: "Silk Head Wrap", description: "Hand-finished silk in a rich tone.", price: 15000, image: nicheSamplePhoto("Fashion", 5 + off) ?? swatch(a, b, "WRAP"), categoryName: "Accessories" },
   ];
 }
 const fashionCategories = ["Women", "Men", "Accessories", "Footwear"].map((name, i) => ({ id: `cat-${i + 1}`, name, children: [] })) as any;
@@ -117,14 +117,16 @@ export default async function TemplatePreviewPage({ params }: { params: Promise<
   const home = resolveHomeRenderer(definition.name);
   // Give each preview its own identity (name, description, hero photo for hotels) so templates are distinguishable.
   const tpl = definition.theme as any;
+  // Each template starts its sample photos at a different point in the niche set, so previews side by side never show the same picture.
+  const photoOffset = [...definition.name].reduce((a, ch) => (a * 31 + ch.charCodeAt(0)) >>> 0, 7) % 6;
   const previewStore = {
     ...store,
     name: definition.name.split(" — ")[0],
-    bannerUrl: PREVIEW_HERO_PHOTOS[definition.name] ?? nicheHeroPhoto(definition.category),
+    bannerUrl: PREVIEW_HERO_PHOTOS[definition.name] ?? nicheSamplePhoto(definition.category, photoOffset, 1800) ?? nicheHeroPhoto(definition.category),
     business: { description: tpl.sub || store.business.description },
   };
   const isFashion = definition.category === "Fashion";
-  const sampleItems = isFashion ? fashionItems(tpl) : items.map((it, i) => { const menu = PREVIEW_MENU[definition.category]; return { ...it, image: nicheSamplePhoto(definition.category, i) ?? it.image, ...(menu ? { categoryName: menu[i % menu.length] } : {}) }; });
+  const sampleItems = isFashion ? fashionItems(tpl, photoOffset) : items.map((it, i) => { const menu = PREVIEW_MENU[definition.category]; return { ...it, image: nicheSamplePhoto(definition.category, i + photoOffset) ?? it.image, ...(menu ? { categoryName: menu[i % menu.length] } : {}) }; });
   const p:any = { store: previewStore, slug:"__biznest-template-preview", catalogItems:sampleItems, items:sampleItems, navCategories:isFashion ? fashionCategories : categories, goodReviews:[], reviews:[], avgRating:null, completedOrders:0, trustScore:null, trustChecklist:null, social:{} };
   if (home.kind === "screenshot") return withPreviewMenu(definition.category, <SignatureScreenshotHome {...p} mode={home.mode} {...home.palette}/>);
   if (home.kind === "hotel") return <ThelusoHotel store={previewStore as any} slug={p.slug} content={await getHotelContent(p.slug, definition.name)}/>;
