@@ -7,8 +7,9 @@ import { prisma } from "@/lib/prisma";
 import { checkRateLimit, getClientIp } from "@/lib/rate-limit";
 import { notifyUser } from "@/lib/notifications/notify";
 import { getViewer } from "@/lib/browse-viewer";
+import { bumpBrowseStat } from "@/lib/browse-stat";
 import { BROWSE_REPORT_HIDE_AT, FOLLOW_NEEDS_ACCOUNT, INTERACT_NEEDS_ACCOUNT, REPORT_REASONS, sanitizeComment, type ReportReason } from "@/lib/browse";
-import { loadBrowseComments, loadBrowseFeed, loadFollowedStoreIds, loadStorePosts, loadStoreProfile, type BrowseCommentView, type FeedPage, type FeedSort, type GridPost } from "@/lib/browse-data";
+import { loadBrowseComments, loadBrowseFeed, loadFollowedStoreIds, loadPostReviews, loadSavedPosts, type PostReviews, loadStorePosts, loadStoreProfile, type BrowseCommentView, type FeedPage, type FeedSort, type GridPost } from "@/lib/browse-data";
 import type { ActionResult } from "@/types/actions";
 
 async function ip() {
@@ -118,6 +119,53 @@ export async function toggleFollowStore(slug: string): Promise<ActionResult<{ fo
   return { success: true, data: result };
 }
 
+/** Save / unsave a post to the viewer's Saved list. Needs a BizNest account. */
+export async function toggleBrowseSave(postId: string): Promise<ActionResult<{ saved: boolean; saveCount: number }>> {
+  const viewer = await getViewer();
+  if (!viewer?.userId) return { success: false, error: "Sign in or join BizNest to save posts." };
+  const rl = await checkRateLimit(`browse-save:${await ip()}`, 150, 3_600_000);
+  if (!rl.allowed) return { success: false, error: "You're saving very fast. Try again in a bit." };
+  const post = await livePost(postId);
+  if (!post) return { success: false, error: "This post is no longer available." };
+
+  const result = await prisma.$transaction(async (tx) => {
+    const removed = await tx.browseSave.deleteMany({ where: { postId, viewerKey: viewer.key } });
+    if (removed.count > 0) {
+      const p = await tx.browsePost.update({ where: { id: postId }, data: { saveCount: { decrement: 1 } }, select: { saveCount: true } });
+      return { saved: false, saveCount: Math.max(0, p.saveCount) };
+    }
+    try {
+      await tx.browseSave.create({ data: { postId, viewerKey: viewer.key } });
+    } catch (e) {
+      if (e instanceof Prisma.PrismaClientKnownRequestError && e.code === "P2002") {
+        const p = await tx.browsePost.findUnique({ where: { id: postId }, select: { saveCount: true } });
+        return { saved: true, saveCount: p?.saveCount ?? 0 };
+      }
+      throw e;
+    }
+    const p = await tx.browsePost.update({ where: { id: postId }, data: { saveCount: { increment: 1 } }, select: { saveCount: true } });
+    return { saved: true, saveCount: p.saveCount };
+  });
+  if (result.saved && post.store.business?.user?.id !== viewer.userId) await bumpBrowseStat(post.store.id, "SAVE", postId, 1).catch(() => undefined);
+  return { success: true, data: result };
+}
+
+/** The store that owns a post can pin one comment to the top (one at a time) or unpin it. */
+export async function pinBrowseComment(commentId: string, pinned: boolean): Promise<ActionResult> {
+  const viewer = await getViewer();
+  if (!viewer?.userId) return { success: false, error: "Not allowed." };
+  const c = await prisma.browseComment.findFirst({
+    where: { id: commentId, status: "VISIBLE" },
+    select: { id: true, postId: true, post: { select: { store: { select: { business: { select: { userId: true } } } } } } },
+  });
+  if (!c || c.post.store.business?.userId !== viewer.userId) return { success: false, error: "Only the store that posted this can pin comments." };
+  await prisma.$transaction([
+    prisma.browseComment.updateMany({ where: { postId: c.postId, pinned: true }, data: { pinned: false } }),
+    ...(pinned ? [prisma.browseComment.update({ where: { id: c.id }, data: { pinned: true } })] : []),
+  ]);
+  return { success: true, data: undefined };
+}
+
 export async function addBrowseComment(postId: string, input: { body: string }): Promise<ActionResult<{ comment: BrowseCommentView; commentCount: number }>> {
   const viewer = await getViewer();
   if (!viewer?.userId) return { success: false, error: INTERACT_NEEDS_ACCOUNT };
@@ -128,7 +176,8 @@ export async function addBrowseComment(postId: string, input: { body: string }):
 
   // Signed-in people never type a name: a vendor comments as their store, anyone else as their account name.
   let displayName = viewer.name?.trim() || "";
-  if (post.store.business?.user?.id === viewer.userId) displayName = post.store.name;
+  const byStore = post.store.business?.user?.id === viewer.userId;
+  if (byStore) displayName = post.store.name;
   else {
     const own = await prisma.store.findFirst({ where: { business: { userId: viewer.userId } }, orderBy: { createdAt: "asc" }, select: { name: true } });
     if (own?.name) displayName = own.name;
@@ -144,7 +193,7 @@ export async function addBrowseComment(postId: string, input: { body: string }):
   if (dup) return { success: false, error: "You already posted that." };
 
   const [comment, updated] = await prisma.$transaction([
-    prisma.browseComment.create({ data: { postId, viewerKey: viewer.key, authorName: parsed.name, body: parsed.body } }),
+    prisma.browseComment.create({ data: { postId, viewerKey: viewer.key, authorName: parsed.name, body: parsed.body, byStore } }),
     prisma.browsePost.update({ where: { id: postId }, data: { commentCount: { increment: 1 } }, select: { commentCount: true } }),
   ]);
 
@@ -157,7 +206,7 @@ export async function addBrowseComment(postId: string, input: { body: string }):
   }
   return {
     success: true,
-    data: { comment: { id: comment.id, authorName: comment.authorName, body: comment.body, createdAt: comment.createdAt.toISOString(), mine: true }, commentCount: updated.commentCount },
+    data: { comment: { id: comment.id, authorName: comment.authorName, body: comment.body, createdAt: comment.createdAt.toISOString(), mine: true, byStore }, commentCount: updated.commentCount },
   };
 }
 
@@ -260,21 +309,33 @@ export async function loadMoreStorePosts(slug: string, cursor: string | null): P
   return { success: true, data: await loadStorePosts(profile.id, cursor) };
 }
 
-export async function loadMoreBrowse(input: { sort?: FeedSort; category?: string | null; cursor?: string | null; following?: boolean }): Promise<ActionResult<FeedPage>> {
+export async function loadMoreBrowse(input: { sort?: FeedSort; category?: string | null; cursor?: string | null; following?: boolean; saved?: boolean; videoOnly?: boolean }): Promise<ActionResult<FeedPage>> {
   const sort: FeedSort = input.sort === "popular" ? "popular" : "latest";
   const viewer = await getViewer();
+  if (input.saved) {
+    if (!viewer?.userId) return { success: false, error: "Sign in to see your saved posts." };
+    return { success: true, data: await loadSavedPosts(viewer.key, input.cursor ?? null) };
+  }
   let storeIds: string[] | undefined;
   if (input.following) {
     if (!viewer?.userId) return { success: false, error: FOLLOW_NEEDS_ACCOUNT };
     storeIds = await loadFollowedStoreIds(viewer.key);
   }
-  const page = await loadBrowseFeed({ sort, category: input.category?.slice(0, 80) || null, cursor: input.cursor ?? null, viewerKey: viewer?.key, storeIds });
+  const page = await loadBrowseFeed({ sort, category: input.category?.slice(0, 80) || null, cursor: input.cursor ?? null, viewerKey: viewer?.key, storeIds, videoOnly: !!input.videoOnly });
   return { success: true, data: page };
 }
 
-export async function loadPostComments(postId: string, before?: string | null): Promise<ActionResult<{ comments: BrowseCommentView[]; nextCursor: string | null }>> {
-  const post = await prisma.browsePost.findFirst({ where: { id: postId, status: "PUBLISHED", store: { status: "ACTIVE" } }, select: { id: true } });
+export async function loadPostComments(postId: string, before?: string | null): Promise<ActionResult<{ comments: BrowseCommentView[]; nextCursor: string | null; isOwner: boolean }>> {
+  const post = await prisma.browsePost.findFirst({ where: { id: postId, status: "PUBLISHED", store: { status: "ACTIVE" } }, select: { id: true, store: { select: { business: { select: { userId: true } } } } } });
   if (!post) return { success: false, error: "This post is no longer available." };
   const viewer = await getViewer();
-  return { success: true, data: await loadBrowseComments(postId, { before, viewerKey: viewer?.key }) };
+  const page = await loadBrowseComments(postId, { before, viewerKey: viewer?.key });
+  return { success: true, data: { ...page, isOwner: !!viewer?.userId && post.store.business?.userId === viewer.userId } };
+}
+
+/** Reviews of the product or service a post shows, for the post window. */
+export async function loadPostReviewSummary(postId: string): Promise<ActionResult<PostReviews | null>> {
+  const post = await prisma.browsePost.findFirst({ where: { id: postId, status: "PUBLISHED", store: { status: "ACTIVE" } }, select: { storeId: true, productId: true, tagKind: true } });
+  if (!post?.productId) return { success: true, data: null };
+  return { success: true, data: await loadPostReviews(post.storeId, post.tagKind === "SERVICE" ? "SERVICE" : "PRODUCT", post.productId).catch(() => null) };
 }

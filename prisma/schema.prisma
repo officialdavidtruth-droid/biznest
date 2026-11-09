@@ -4698,9 +4698,13 @@ model BrowsePost {
   hiddenReason    String?  // OWNER | REPORTS | ADMIN
   likeCount       Int      @default(0)
   commentCount    Int      @default(0)
+  saveCount       Int      @default(0)
+  // Taps on the "Shop now / Book now" bar. Counted for ranking and the seller's Insights.
+  shopTapCount    Int      @default(0)
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
 
+  saves    BrowseSave[]
   likes    BrowseLike[]
   comments BrowseComment[]
   reports  BrowseReport[]
@@ -4740,6 +4744,18 @@ model BrowseLike {
   @@index([viewerKey])
 }
 
+/// A post saved to the viewer's own "Saved" list. viewerKey as in BrowseLike (needs a BizNest account to create).
+model BrowseSave {
+  id        String     @id @default(cuid())
+  postId    String
+  post      BrowsePost @relation(fields: [postId], references: [id], onDelete: Cascade)
+  viewerKey String
+  createdAt DateTime   @default(now())
+
+  @@unique([postId, viewerKey])
+  @@index([viewerKey, createdAt])
+}
+
 model BrowseComment {
   id         String     @id @default(cuid())
   postId     String
@@ -4748,6 +4764,9 @@ model BrowseComment {
   authorName String
   body       String     @db.Text
   status     String     @default("VISIBLE") // VISIBLE | HIDDEN
+  // Written by the store that owns the post (shows a "Store" mark), and pinned to the top by that store.
+  byStore    Boolean    @default(false)
+  pinned     Boolean    @default(false)
   createdAt  DateTime   @default(now())
 
   @@index([postId, status, createdAt])

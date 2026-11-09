@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   BROWSE_CAPTION_MAX, BROWSE_COMMENT_MAX, BROWSE_MAX_IMAGES, compactCount, containsLink, decodeCursor, defaultProductCaption, encodeCursor,
-  isMogulStore, toBio, BIO_MAX, isStoryLive, isViewerKey, orderRings, popularityScore, safeHttpsImage, sanitizeComment, sanitizePost, sanitizeStory, STORY_BG_COLORS, STORY_TEXT_MAX, STORY_TTL_MS, storyExpiry, timeAgo,
+  isMogulStore, toBio, BIO_MAX, isStoryLive, isViewerKey, orderRings, popularityScore, spreadStores, isTrustedSeller, bestPostingHour, safeHttpsImage, sanitizeComment, sanitizePost, sanitizeStory, STORY_BG_COLORS, STORY_TEXT_MAX, STORY_TTL_MS, storyExpiry, timeAgo,
 } from "@/lib/browse";
 
 describe("links", () => {
@@ -154,5 +154,36 @@ describe("link previews", () => {
     expect(previewPrice(2500, "NGN")).toBe("₦2,500");
     expect(previewPrice(0, "NGN")).toBeNull();
     expect(previewPrice(null, "NGN")).toBeNull();
+  });
+});
+
+describe("ranking v2", () => {
+  const now = new Date("2026-11-09T12:00:00Z");
+  const base = { likeCount: 5, commentCount: 1, createdAt: new Date("2026-11-09T10:00:00Z") };
+  it("ranks saves and shop taps above likes", () => {
+    expect(popularityScore({ ...base, shopTapCount: 3, saveCount: 2 }, now)).toBeGreaterThan(popularityScore({ ...base, likeCount: 20 }, now));
+  });
+  it("sinks reported posts", () => {
+    expect(popularityScore({ ...base, openReports: 2 }, now)).toBeLessThan(popularityScore(base, now) / 3);
+  });
+  it("gives verified stores a small lift", () => {
+    expect(popularityScore({ ...base, verified: true }, now)).toBeGreaterThan(popularityScore(base, now));
+  });
+  it("spreads one store's posts apart", () => {
+    const out = spreadStores([{ storeId: "a" }, { storeId: "a" }, { storeId: "b" }, { storeId: "a" }]);
+    expect(out.map((p) => p.storeId)).toEqual(["a", "b", "a", "a"]);
+  });
+  it("trusted seller needs volume and rating", () => {
+    expect(isTrustedSeller({ avg: 4.8, count: 5 })).toBe(true);
+    expect(isTrustedSeller({ avg: 4.9, count: 2 })).toBe(false);
+    expect(isTrustedSeller({ avg: 4.2, count: 40 })).toBe(false);
+  });
+});
+
+describe("best posting hour", () => {
+  const at = (h: number, score: number) => ({ createdAt: new Date(Date.UTC(2026, 10, 1, h - 1, 0)), score }); // h is the Lagos hour
+  it("needs at least 5 posts", () => { expect(bestPostingHour([at(9, 5), at(9, 5)])).toBeNull(); });
+  it("picks the Lagos hour with the best average", () => {
+    expect(bestPostingHour([at(9, 2), at(9, 4), at(19, 20), at(19, 10), at(12, 1), at(12, 1)])).toBe(19);
   });
 });

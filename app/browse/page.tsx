@@ -1,7 +1,9 @@
+import { BrowseTabs } from "@/components/browse/browse-tabs";
+import { TagSearch } from "@/components/browse/tag-search";
 import Link from "next/link";
 import type { Metadata } from "next";
 import { getViewer } from "@/lib/browse-viewer";
-import { loadBrowseCategories, loadBrowseFeed, loadDiscoverShops, loadStoryRings, type FeedSort } from "@/lib/browse-data";
+import { loadBrowseCategories, loadBrowseFeed, loadTrendingTags, loadDiscoverShops, loadStoryRings, type FeedSort } from "@/lib/browse-data";
 import { loadLiveAds, adToRing } from "@/lib/ads-data";
 import { injectRingAds } from "@/lib/ads";
 import { BrowseFeed } from "@/components/browse/browse-feed";
@@ -26,9 +28,9 @@ export default async function BrowsePage({ searchParams }: { searchParams: Promi
   const sort: FeedSort = sp.sort === "popular" ? "popular" : "latest";
   const category = sp.category?.trim().slice(0, 80) || null;
   const viewer = await getViewer();
-  const [feed, categories, organicRings, feedAds, storyAds, shops] = await Promise.all([
+  const [feed, categories, organicRings, feedAds, storyAds, shops, trending] = await Promise.all([
     loadBrowseFeed({ sort, category, viewerKey: viewer?.key }), loadBrowseCategories(), loadStoryRings(viewer?.key),
-    loadLiveAds("FEED", viewer?.key, 2), loadLiveAds("STORY", viewer?.key, 2), loadDiscoverShops(6),
+    loadLiveAds("FEED", viewer?.key, 2), loadLiveAds("STORY", viewer?.key, 2), loadDiscoverShops(6), loadTrendingTags(12).catch(() => []),
   ]);
   const rings = injectRingAds(organicRings, storyAds).map((x) => x.ring ?? adToRing(x.ad!));
   const href = (next: { sort?: FeedSort; category?: string | null }) => {
@@ -48,7 +50,11 @@ export default async function BrowsePage({ searchParams }: { searchParams: Promi
         <div className="min-w-0">
           <h1 className={`${display} mb-3 text-3xl font-extrabold leading-[1.05] tracking-tight sm:text-4xl lg:mb-3 lg:text-3xl`}>New from shops<br className="sm:hidden" /> across Nigeria</h1>
 
+          <BrowseTabs active="foryou" />
+
           <StoryRings rings={rings} />
+
+          <TagSearch trending={trending} />
 
           <div className="sticky top-14 z-20 -mx-4 mb-3 flex flex-wrap items-center gap-2 bg-gradient-to-b from-[#0A2012] via-[#0A2012]/95 to-transparent px-4 pb-3 pt-2">
             <div className="inline-flex rounded-full bg-black/25 p-1 ring-1 ring-white/10" role="tablist" aria-label="Sort posts">

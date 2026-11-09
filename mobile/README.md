@@ -26,3 +26,15 @@ Without the secrets you still get an installable debug-signed APK.
 - Google sign-in is blocked by Google inside any embedded WebView. Email/password login works.
 - Web push (`sw.js`) doesn't run in Android WebView. Native push needs Firebase (`google-services.json`).
 - iOS needs a Mac + Apple developer account. iPhone users install via Safari → Add to Home Screen.
+
+## Native features (added v124)
+
+The Android app now uses three native plugins when running inside the app. In a normal browser the site falls back to its web behaviour.
+
+- **Gallery** (`@capawesome/capacitor-file-picker`): the Browse composer opens the phone's own gallery. If the picked file cannot be read, it falls back to the normal file picker.
+- **Share sheet** (`@capacitor/share`): sharing a Browse post opens the phone's share sheet.
+- **Haptics** (`@capacitor/haptics`): available through `lib/native.ts` (`haptic()`).
+
+To get these, rebuild the APK: run the "Build Android app" GitHub Action (it runs `npm install` and `npx cap sync android`). Not tested on a device yet, so test the gallery picker after the first build.
+
+Still needed for native push notifications: a Firebase `google-services.json`. Web push does not run inside the WebView. iOS needs a Mac to build.

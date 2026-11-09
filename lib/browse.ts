@@ -113,9 +113,58 @@ export function decodeCursor(raw: string | null | undefined): { createdAt: Date;
 // -------------------------------------------------------------- ranking
 
 /** "Popular": likes and comments, decaying over a week. Pure so it can be tested and reused in-memory. */
-export function popularityScore(p: { likeCount: number; commentCount: number; createdAt: Date }, now: Date = new Date()): number {
+export type RankInput = {
+  likeCount: number; commentCount: number; createdAt: Date;
+  saveCount?: number; shopTapCount?: number;
+  /** Open reports against the post. Each one cuts its score hard, so doubtful posts sink before staff decide. */
+  openReports?: number;
+  /** Verified businesses get a small lift. */
+  verified?: boolean;
+};
+
+/**
+ * Popular-feed score. Saves and "Shop now" taps count for more than likes because they show real buying
+ * interest. Time decay keeps the feed fresh; open reports and nothing else push a post down.
+ */
+export function popularityScore(p: RankInput, now: Date = new Date()): number {
   const ageH = Math.max(0, (now.getTime() - p.createdAt.getTime()) / 3_600_000);
-  return (p.likeCount + 2 * p.commentCount + 1) / Math.pow(ageH + 2, 1.3);
+  const engagement = p.likeCount + 2 * p.commentCount + 3 * (p.saveCount ?? 0) + 4 * (p.shopTapCount ?? 0) + 1;
+  const trust = (p.verified ? 1.1 : 1) / (1 + 2 * (p.openReports ?? 0));
+  return (engagement * trust) / Math.pow(ageH + 2, 1.3);
+}
+
+/** Spreads one store's posts apart: never more than `gap` posts from the same store in a row where avoidable. */
+export function spreadStores<T extends { storeId: string }>(ranked: T[], gap = 1): T[] {
+  const rest = [...ranked];
+  const out: T[] = [];
+  while (rest.length) {
+    const recent = new Set(out.slice(-gap).map((p) => p.storeId));
+    const i = rest.findIndex((p) => !recent.has(p.storeId));
+    out.push(...rest.splice(i === -1 ? 0 : i, 1));
+  }
+  return out;
+}
+
+/** "Trusted seller": at least 5 reviews averaging 4.5 stars or better. */
+export function isTrustedSeller(r: { avg: number; count: number }): boolean {
+  return r.count >= 5 && r.avg >= 4.5;
+}
+
+/** The Lagos hour whose posts earned the most engagement on average. Needs at least 5 posts, else null. */
+export function bestPostingHour(posts: Array<{ createdAt: Date; score: number }>): number | null {
+  if (posts.length < 5) return null;
+  const by = new Map<number, { sum: number; n: number }>();
+  for (const p of posts) {
+    const h = new Date(p.createdAt.getTime() + 3_600_000).getUTCHours();
+    const e = by.get(h) ?? { sum: 0, n: 0 };
+    e.sum += p.score; e.n += 1; by.set(h, e);
+  }
+  let best: number | null = null; let bestAvg = -1;
+  for (const [h, e] of [...by.entries()].sort((a, b) => a[0] - b[0])) {
+    const avg = e.sum / e.n;
+    if (avg > bestAvg) { bestAvg = avg; best = h; }
+  }
+  return best;
 }
 
 // ----------------------------------------------------------------- time

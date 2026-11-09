@@ -4,7 +4,7 @@
  * Fire-and-forget Browse analytics for the seller's Insights page. Post impressions are queued and sent
  * together; each post counts once per page load.
  */
-type Payload = { kind: "PROFILE_VIEW"; slug: string } | { kind: "SHARE"; slug?: string; postId?: string };
+type Payload = { kind: "PROFILE_VIEW"; slug: string } | { kind: "SHARE"; slug?: string; postId?: string } | { kind: "SHOP_TAP"; postId: string };
 
 function send(body: unknown) {
   try {

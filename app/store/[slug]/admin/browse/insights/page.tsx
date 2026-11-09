@@ -18,6 +18,8 @@ function Stat({ label, value, hint }: { label: string; value: string; hint?: str
   );
 }
 
+const hourLabel = (h: number) => `${h % 12 === 0 ? 12 : h % 12}${h < 12 ? "am" : "pm"}`;
+
 export default async function Page({ params, searchParams }: { params: Promise<{ slug: string }>; searchParams: Promise<{ range?: string }> }) {
   const { slug } = await params;
   const { range } = await searchParams;
@@ -56,7 +58,12 @@ export default async function Page({ params, searchParams }: { params: Promise<{
           <Stat label="Followers" value={n(d.followers)} hint={d.newFollowers > 0 ? `${n(d.newFollowers)} new in ${days} days` : `None new in ${days} days`} />
           <Stat label="Likes" value={n(d.likes)} hint="On your published posts" />
           <Stat label="Comments" value={n(d.comments)} hint="On your published posts" />
+          <Stat label="Saves" value={n(d.saves)} hint="Times people saved your posts" />
+          <Stat label="Shop now taps" value={n(d.shopTaps)} hint="People who tapped through to buy or book" />
         </div>
+        {d.bestHour !== null && (
+          <p className="mt-3 rounded-xl border bg-muted/30 px-4 py-3 text-sm">Your posts do best around <b>{hourLabel(d.bestHour)}</b> (Lagos time). Try posting then.</p>
+        )}
       </section>
 
       <section aria-labelledby="ads">
@@ -82,9 +89,9 @@ export default async function Page({ params, searchParams }: { params: Promise<{
           <p className="rounded-xl border border-dashed p-6 text-sm text-muted-foreground">Nothing yet. Post an update from the My posts tab and its numbers show up here.</p>
         ) : (
           <TableScroll className="rounded-lg border bg-background">
-            <table className="w-full min-w-[640px] text-sm">
+            <table className="w-full min-w-[760px] text-sm">
               <thead className="border-b bg-muted/40 text-left text-xs text-muted-foreground">
-                <tr><th className="px-4 py-2">Post</th><th className="px-4 py-2">Impressions</th><th className="px-4 py-2">Shares</th><th className="px-4 py-2">Likes</th><th className="px-4 py-2">Comments</th></tr>
+                <tr><th className="px-4 py-2">Post</th><th className="px-4 py-2">Impressions</th><th className="px-4 py-2">Shares</th><th className="px-4 py-2">Saves</th><th className="px-4 py-2">Shop taps</th><th className="px-4 py-2">Likes</th><th className="px-4 py-2">Comments</th></tr>
               </thead>
               <tbody>
                 {d.posts.map((p) => (
@@ -92,6 +99,8 @@ export default async function Page({ params, searchParams }: { params: Promise<{
                     <td className="max-w-[320px] px-4 py-3"><p className="truncate">{p.caption || "Photo post"}</p><p className="text-xs text-muted-foreground">{timeAgo(new Date(p.createdAt))}</p></td>
                     <td className="px-4 py-3">{n(p.impressions)}</td>
                     <td className="px-4 py-3">{n(p.shares)}</td>
+                    <td className="px-4 py-3">{n(p.saves)}</td>
+                    <td className="px-4 py-3">{n(p.shopTaps)}</td>
                     <td className="px-4 py-3">{n(p.likes)}</td>
                     <td className="px-4 py-3">{n(p.comments)}</td>
                   </tr>

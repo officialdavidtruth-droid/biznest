@@ -3,6 +3,7 @@ import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { getViewer } from "@/lib/browse-viewer";
 import { loadBrowseFeed, loadDiscoverShops, loadFollowedShops, loadFollowedStoreIds } from "@/lib/browse-data";
+import { BrowseTabs } from "@/components/browse/browse-tabs";
 import { BrowseFeed } from "@/components/browse/browse-feed";
 import { BrowseShell } from "@/components/browse/browse-shell";
 import { DiscoverShops } from "@/components/browse/discover-shops";
@@ -27,6 +28,7 @@ export default async function FollowingPage() {
   return (
     <BrowseShell back={{ href: "/browse", label: "Browse" }}>
       <main className="mx-auto max-w-[600px] px-4 pb-20 pt-6">
+        <BrowseTabs active="following" />
         <h1 className={`${display} mb-5 text-3xl font-extrabold leading-[1.05] tracking-tight sm:text-4xl`}>Following</h1>
 
         {shops.length > 0 && (

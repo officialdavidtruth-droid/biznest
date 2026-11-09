@@ -1,5 +1,7 @@
 "use client";
 
+import { pickNativeMedia } from "@/lib/native";
+import { clearDraft, loadDraft, saveDraft, type BrowseDraft } from "@/lib/browse-draft";
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { useRouter } from "next/navigation";
@@ -113,6 +115,25 @@ function ComposerInner({ slug, products, services, unlimited, onClose }: Compose
   const [busy, setBusy] = useState(false);
   const [progress, setProgress] = useState<number | null>(null);
   const [error, setError] = useState("");
+  const [saved, setSaved] = useState<BrowseDraft | null>(null);
+  const [askClose, setAskClose] = useState(false);
+
+  useEffect(() => { let alive = true; void loadDraft(slug).then((d) => { if (alive) setSaved(d); }); return () => { alive = false; }; }, [slug]);
+
+  const hasWork = files.length > 0 || caption.trim().length > 0;
+  function requestClose() { if (busy) return; if (hasWork) setAskClose(true); else onClose(); }
+  async function keepDraft() {
+    const ok = await saveDraft(slug, { files, isVideo, duration, trim, coverRel, customCover, items, caption, tag, location, ai, people });
+    if (ok) toast.success("Draft saved. Open New post to continue."); else toast.error("Couldn't save the draft on this device.");
+    onClose();
+  }
+  async function discardDraft() { await clearDraft(slug); setSaved(null); onClose(); }
+  function resumeDraft() {
+    if (!saved) return;
+    setFiles(saved.files); setIsVideo(saved.isVideo); setDuration(saved.duration); setTrim(saved.trim); setCoverRel(saved.coverRel);
+    setCustomCover(saved.customCover); setItems(saved.items); setCaption(saved.caption); setTag(saved.tag); setLocation(saved.location);
+    setAi(saved.ai); setPeople(saved.people); setCur(0); setVideoProblem(null); setSaved(null);
+  }
 
   const mainVideo = useRef<HTMLVideoElement>(null);
   const coverVideo = useRef<HTMLVideoElement>(null);
@@ -123,12 +144,13 @@ function ComposerInner({ slug, products, services, unlimited, onClose }: Compose
   const coverPicker = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
-    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape" && !busy) onClose(); };
+    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape" && !busy) requestClose(); };
     document.addEventListener("keydown", onKey);
     const prev = document.body.style.overflow;
     document.body.style.overflow = "hidden";
     return () => { document.removeEventListener("keydown", onKey); document.body.style.overflow = prev; };
-  }, [busy, onClose]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [busy, onClose, hasWork]);
 
   // A small thumbnail for the picked video, and the filmstrip for the cover screen.
   useEffect(() => {
@@ -147,7 +169,14 @@ function ComposerInner({ slug, products, services, unlimited, onClose }: Compose
     if (screen === "cover" && coverVideo.current) coverVideo.current.currentTime = trim.start + coverRel;
   }, [screen, coverRel, trim.start, coverTab]);
 
-  async function addFiles(list: FileList | null) {
+  // Inside the BizNest Android app this opens the phone's own gallery; elsewhere it falls back to the file picker.
+  async function openGallery(multiple: boolean) {
+    const picked = await pickNativeMedia(multiple ? 10 : 1);
+    if (picked) { if (picked.length) await addFiles(picked); return; }
+    (multiple ? galleryMany : galleryOne).current?.click();
+  }
+
+  async function addFiles(list: ArrayLike<File> | null) {
     setError("");
     const all = Array.from(list ?? []);
     if (all.length === 0) return;
@@ -238,6 +267,7 @@ function ComposerInner({ slug, products, services, unlimited, onClose }: Compose
       });
       if (!r.success) { setError(r.error ?? "Couldn't post. Try again."); return; }
       toast.success("Posted to Browse.");
+      void clearDraft(slug);
       router.refresh();
       onClose();
     } catch (e) {
@@ -259,6 +289,17 @@ function ComposerInner({ slug, products, services, unlimited, onClose }: Compose
 
   const taggedLabel = tag ? [...products.map((p) => ({ ...p, k: "product" })), ...services.map((p) => ({ ...p, k: "service" }))].find((p) => `${p.k}:${p.id}` === tag)?.name : null;
   const canShare = !busy && (caption.trim().length > 0 || files.length > 0);
+  const closeDialog = askClose ? (
+    <div role="alertdialog" aria-label="Save this post as a draft?" className="absolute inset-0 z-30 flex items-end justify-center bg-black/60 p-4 sm:items-center">
+      <div className="w-full max-w-sm rounded-2xl bg-[#1B3A24] p-5 text-center shadow-2xl">
+        <p className="text-base font-semibold text-white">Save this as a draft?</p>
+        <p className="mt-1 text-sm text-white/70">Your photos and caption stay on this device so you can finish later.</p>
+        <button type="button" onClick={() => void keepDraft()} className={`${ACCENT} mt-4 w-full rounded-full py-3 text-sm font-semibold`}>Save draft</button>
+        <button type="button" onClick={() => void discardDraft()} className="mt-2 w-full rounded-full py-3 text-sm font-semibold text-red-300 hover:bg-white/5">Discard</button>
+        <button type="button" onClick={() => setAskClose(false)} className="w-full rounded-full py-3 text-sm font-semibold text-white/80 hover:bg-white/5">Keep editing</button>
+      </div>
+    </div>
+  ) : null;
   const shell = "fixed inset-0 z-[100] flex items-stretch justify-center bg-black sm:p-6";
   const panel = "relative flex h-full w-full max-w-lg flex-col overflow-hidden bg-[#0F2A17] text-white sm:h-[min(92vh,860px)] sm:rounded-2xl";
   const header = (left: React.ReactNode, title: string, right?: React.ReactNode) => (
@@ -278,11 +319,21 @@ function ComposerInner({ slug, products, services, unlimited, onClose }: Compose
     return (
       <div role="dialog" aria-modal="true" aria-label="New post" className={shell}>
         <div className={panel}>
+          {closeDialog}
           {header(
-            <button type="button" aria-label="Close" className="flex h-12 w-12 items-center justify-center rounded-full bg-white/10 hover:bg-white/20" onClick={onClose}><X className="h-6 w-6" /></button>,
+            <button type="button" aria-label="Close" className="flex h-12 w-12 items-center justify-center rounded-full bg-white/10 hover:bg-white/20" onClick={requestClose}><X className="h-6 w-6" /></button>,
             "New post",
           )}
           <div className="flex-1 overflow-y-auto">
+            {saved && files.length === 0 && (
+              <div className="mx-4 mt-3 flex items-center justify-between gap-3 rounded-2xl bg-[#F5B82E]/15 px-3 py-2.5">
+                <p className="text-sm text-white/90">You have a saved draft{saved.caption ? `: ${saved.caption.slice(0, 40)}${saved.caption.length > 40 ? "…" : ""}` : ""}</p>
+                <div className="flex shrink-0 gap-2">
+                  <button type="button" onClick={() => { void clearDraft(slug); setSaved(null); }} className="rounded-full px-3 py-1.5 text-xs font-semibold text-white/70 hover:bg-white/10">Delete</button>
+                  <button type="button" onClick={resumeDraft} className="rounded-full bg-[#F5B82E] px-3 py-1.5 text-xs font-bold text-[#14301A]">Continue</button>
+                </div>
+              </div>
+            )}
             <div className="mx-auto flex h-[46vh] items-center justify-center bg-black">
               {shown ? (
                 <div className="relative aspect-[4/5] h-full">
@@ -292,18 +343,18 @@ function ComposerInner({ slug, products, services, unlimited, onClose }: Compose
                     // eslint-disable-next-line @next/next/no-img-element
                     : <img src={urls[Math.min(cur, urls.length - 1)]} alt="" className="h-full w-full object-cover" />}
                                 </div>
-              ) : <div className="px-8 text-center"><p className="text-sm text-white/70">Choose photos or a video from your phone.</p><button type="button" onClick={() => galleryMany.current?.click()} className={`${ACCENT} mt-4 rounded-full px-6 py-3.5 text-base font-semibold`}>Open my photos and videos</button></div>}
+              ) : <div className="px-8 text-center"><p className="text-sm text-white/70">Choose photos or a video from your phone.</p><button type="button" onClick={() => void openGallery(true)} className={`${ACCENT} mt-4 rounded-full px-6 py-3.5 text-base font-semibold`}>Open my photos and videos</button></div>}
             </div>
             {videoProblem !== null && isVideo && (
               <p role="alert" className="mx-4 mb-2 rounded-xl bg-red-500/15 px-3 py-2 text-xs text-red-200">This phone&apos;s browser can&apos;t play a preview of this video (error {videoProblem}). It is probably a format Safari can&apos;t decode here. You can still continue: it is converted to a standard video when it uploads and will play normally in Browse.</p>
             )}
             <div className="flex items-center justify-between px-4 py-3">
-              <button type="button" className="flex min-h-11 items-center gap-1 text-lg font-bold" onClick={() => galleryOne.current?.click()}>Photos and videos<ChevronRight className="h-5 w-5" aria-hidden /></button>
-              <button type="button" className="flex items-center gap-2 rounded-full bg-white/10 px-4 py-2 text-sm font-semibold" onClick={() => galleryMany.current?.click()}><ImageIcon className="h-4 w-4" aria-hidden />Pick several</button>
+              <button type="button" className="flex min-h-11 items-center gap-1 text-lg font-bold" onClick={() => void openGallery(false)}>Photos and videos<ChevronRight className="h-5 w-5" aria-hidden /></button>
+              <button type="button" className="flex items-center gap-2 rounded-full bg-white/10 px-4 py-2 text-sm font-semibold" onClick={() => void openGallery(true)}><ImageIcon className="h-4 w-4" aria-hidden />Pick several</button>
             </div>
             <div className="grid grid-cols-4 gap-0.5 px-0.5 pb-6">
               <button type="button" aria-label="Take a photo or video" className="flex aspect-square items-center justify-center bg-white/10" onClick={() => camera.current?.click()}><Camera className="h-8 w-8" aria-hidden /></button>
-              <button type="button" aria-label="Add from gallery" className="flex aspect-square items-center justify-center bg-white/5" onClick={() => galleryMany.current?.click()}><Plus className="h-8 w-8" aria-hidden /></button>
+              <button type="button" aria-label="Add from gallery" className="flex aspect-square items-center justify-center bg-white/5" onClick={() => void openGallery(true)}><Plus className="h-8 w-8" aria-hidden /></button>
               {files.map((f, i) => (
                 <div key={`${i}-${f.name}`} className={`relative aspect-square overflow-hidden bg-white/10 ${cur === i ? "ring-2 ring-inset ring-[#F5B82E]" : ""}`}>
                   <button type="button" className="h-full w-full" aria-label={`Preview ${f.name}`} onClick={() => setCur(i)}>
@@ -429,6 +480,7 @@ function ComposerInner({ slug, products, services, unlimited, onClose }: Compose
     return (
       <div role="dialog" aria-modal="true" aria-label="Choose cover" className={shell}>
         <div className={panel}>
+          {closeDialog}
           {header(<span />, "Choose cover")}
           <div className="grid grid-cols-2 border-b border-white/10 text-center text-sm font-semibold">
             {(["cover", "grid"] as const).map((t) => <button key={t} type="button" onClick={() => setCoverTab(t)} className={`py-3 ${coverTab === t ? "border-b-2 border-white" : "text-white/50"}`}>{t === "cover" ? "Cover" : "Profile tile"}</button>)}
@@ -509,6 +561,7 @@ function ComposerInner({ slug, products, services, unlimited, onClose }: Compose
   return (
     <div role="dialog" aria-modal="true" aria-label="Post details" className={shell}>
       <div className={panel}>
+          {closeDialog}
         {header(<button type="button" disabled={busy} aria-label="Back" className="flex h-12 w-12 items-center justify-center rounded-full bg-white/10 hover:bg-white/20 disabled:opacity-50" onClick={() => setScreen("edit")}><ArrowLeft className="h-6 w-6" /></button>, "Post details")}
         <div className="flex-1 overflow-y-auto">
           <div className="relative mx-auto my-5 w-40">

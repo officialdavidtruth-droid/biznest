@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
-import { randomUUID } from "node:crypto";
 import { prisma } from "@/lib/prisma";
 import { auth } from "@/lib/auth";
+import { bumpBrowseStat as bump } from "@/lib/browse-stat";
 import { checkRateLimit, getClientIp } from "@/lib/rate-limit";
 
 export const runtime = "nodejs";
@@ -12,18 +12,6 @@ const ID_RE = /^[a-z0-9]{10,40}$/i;
 const MAX_POSTS = 20;
 
 type Body = { kind?: unknown; slug?: unknown; postId?: unknown; postIds?: unknown };
-
-/** The Lagos calendar day (UTC+1, no daylight saving). */
-const today = () => new Date(Date.now() + 3_600_000).toISOString().slice(0, 10);
-
-async function bump(storeId: string, kind: string, postId: string, by: number) {
-  const day = today();
-  await prisma.$executeRaw`
-    INSERT INTO "BrowseStat" ("id", "storeId", "day", "kind", "postId", "count")
-    VALUES (${randomUUID()}, ${storeId}, ${day}::date, ${kind}, ${postId}, ${by})
-    ON CONFLICT ("storeId", "day", "kind", "postId")
-    DO UPDATE SET "count" = "BrowseStat"."count" + ${by}`;
-}
 
 /**
  * Counts Browse activity for the seller's Insights page: profile views, post impressions and shares.
@@ -56,6 +44,13 @@ export async function POST(req: Request) {
       const post = await prisma.browsePost.findUnique({ where: { id: body.postId }, select: { id: true, storeId: true, status: true } });
       if (!post || post.status !== "PUBLISHED" || post.storeId === ownStoreId) return done;
       await bump(post.storeId, "SHARE", post.id, 1);
+      return done;
+    }
+
+    if (body.kind === "SHOP_TAP" && typeof body.postId === "string" && ID_RE.test(body.postId)) {
+      const post = await prisma.browsePost.findUnique({ where: { id: body.postId }, select: { id: true, storeId: true, status: true, productId: true } });
+      if (!post || post.status !== "PUBLISHED" || !post.productId || post.storeId === ownStoreId) return done;
+      await Promise.all([bump(post.storeId, "SHOP_TAP", post.id, 1), prisma.browsePost.update({ where: { id: post.id }, data: { shopTapCount: { increment: 1 } } })]);
       return done;
     }
 

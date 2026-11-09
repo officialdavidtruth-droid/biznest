@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import { ctr, spentNaira } from "@/lib/ads";
+import { bestPostingHour } from "@/lib/browse";
 
 export type InsightRange = 7 | 30 | 90;
 export const INSIGHT_RANGES: InsightRange[] = [7, 30, 90];
@@ -12,7 +13,7 @@ function lagosDay(daysBack: number): Date {
   return d;
 }
 
-export type PostInsight = { id: string; caption: string; createdAt: string; impressions: number; shares: number; likes: number; comments: number };
+export type PostInsight = { id: string; caption: string; createdAt: string; impressions: number; shares: number; likes: number; comments: number; saves: number; shopTaps: number };
 
 export type BrowseInsights = {
   days: InsightRange;
@@ -24,6 +25,10 @@ export type BrowseInsights = {
   likes: number;
   comments: number;
   storyViews: number;
+  saves: number;
+  shopTaps: number;
+  /** Lagos hour (0-23) when posts earned the most engagement per post, or null with too few posts. */
+  bestHour: number | null;
   posts: PostInsight[];
   ads: { campaigns: number; active: number; impressions: number; clicks: number; ctr: number; spent: number };
 };
@@ -39,7 +44,7 @@ export async function loadBrowseInsights(storeId: string, days: InsightRange): P
     prisma.browseFollow.count({ where: { storeId } }),
     prisma.browseFollow.count({ where: { storeId, createdAt: { gte: sinceInstant } } }),
     prisma.browseStoryView.count({ where: { story: { storeId }, createdAt: { gte: sinceInstant } } }),
-    prisma.browsePost.findMany({ where: { storeId, status: "PUBLISHED" }, orderBy: { createdAt: "desc" }, take: 15, select: { id: true, caption: true, createdAt: true, likeCount: true, commentCount: true } }),
+    prisma.browsePost.findMany({ where: { storeId, status: "PUBLISHED" }, orderBy: { createdAt: "desc" }, take: 60, select: { id: true, caption: true, createdAt: true, likeCount: true, commentCount: true, saveCount: true, shopTapCount: true } }),
     prisma.adCampaign.findMany({ where: { storeId, status: { not: "REMOVED" } }, select: { status: true, impressions: true, clicks: true, rateNaira: true, budget: true } }),
   ]);
 
@@ -50,6 +55,7 @@ export async function loadBrowseInsights(storeId: string, days: InsightRange): P
 
   const allPosts = await prisma.browsePost.aggregate({ where: { storeId, status: "PUBLISHED" }, _sum: { likeCount: true, commentCount: true } });
 
+  const bestHour = bestPostingHour(posts.map((p) => ({ createdAt: p.createdAt, score: p.likeCount + 2 * p.commentCount + 3 * p.saveCount + 4 * p.shopTapCount })));
   const adImpressions = campaigns.reduce((a, c) => a + c.impressions, 0);
   const adClicks = campaigns.reduce((a, c) => a + c.clicks, 0);
 
@@ -64,7 +70,10 @@ export async function loadBrowseInsights(storeId: string, days: InsightRange): P
     likes: allPosts._sum.likeCount ?? 0,
     comments: allPosts._sum.commentCount ?? 0,
     storyViews,
-    posts: posts.map((p) => ({
+    saves: storeLevel("SAVE") + perPost.filter((s) => s.kind === "SAVE").reduce((a, s) => a + (s._sum.count ?? 0), 0),
+    shopTaps: perPost.filter((s) => s.kind === "SHOP_TAP").reduce((a, s) => a + (s._sum.count ?? 0), 0),
+    bestHour,
+    posts: posts.slice(0, 15).map((p) => ({
       id: p.id,
       caption: p.caption,
       createdAt: p.createdAt.toISOString(),
@@ -72,6 +81,8 @@ export async function loadBrowseInsights(storeId: string, days: InsightRange): P
       shares: postLevel(p.id, "SHARE"),
       likes: p.likeCount,
       comments: p.commentCount,
+      saves: postLevel(p.id, "SAVE"),
+      shopTaps: postLevel(p.id, "SHOP_TAP"),
     })),
     ads: {
       campaigns: campaigns.length,

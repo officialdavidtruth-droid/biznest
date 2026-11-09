@@ -1,5 +1,6 @@
+import { unstable_cache } from "next/cache";
 import { prisma } from "@/lib/prisma";
-import { sanitizeStickers, shortPersonName, type Sticker, BROWSE_PAGE_SIZE, decodeCursor, encodeCursor, isMogulStore, orderRings, popularityScore, toBio } from "@/lib/browse";
+import { extractHashtags, sanitizeStickers, shortPersonName, type Sticker, BROWSE_PAGE_SIZE, decodeCursor, encodeCursor, isMogulStore, orderRings, popularityScore, spreadStores, toBio } from "@/lib/browse";
 
 export type BrowsePostView = {
   id: string;
@@ -15,14 +16,16 @@ export type BrowsePostView = {
   likeCount: number;
   commentCount: number;
   liked: boolean;
+  saved: boolean;
+  saveCount: number;
   product: { id: string; name: string; price: number | null; currency: string; kind: "PRODUCT" | "SERVICE" } | null;
   store: { slug: string; name: string; logoUrl: string | null; category: string | null; city: string | null; verified: boolean; mogul: boolean };
 };
 
-export type BrowseCommentView = { id: string; authorName: string; body: string; createdAt: string; mine: boolean; hidden?: boolean };
+export type BrowseCommentView = { id: string; authorName: string; body: string; createdAt: string; mine: boolean; hidden?: boolean; byStore?: boolean; pinned?: boolean };
 
 export type FeedSort = "latest" | "popular";
-export type FeedQuery = { sort?: FeedSort; category?: string | null; cursor?: string | null; viewerKey?: string | null; limit?: number; storeIds?: string[] };
+export type FeedQuery = { videoOnly?: boolean; sort?: FeedSort; category?: string | null; cursor?: string | null; viewerKey?: string | null; limit?: number; storeIds?: string[] };
 export type FeedPage = { posts: BrowsePostView[]; nextCursor: string | null };
 
 const tagsInclude = { select: { tagStore: { select: { name: true, slug: true } }, tagUser: { select: { name: true } } }, take: 10 } as const;
@@ -35,17 +38,18 @@ const storeSelect = {
 } as const;
 
 type Row = {
+  saveCount?: number;
   id: string; kind: string; caption: string; images: string[]; videoUrl?: string | null; stickers?: unknown; tagKind?: string; location?: string | null; aiGenerated?: boolean; tags?: Array<{ tagStore: { name: string; slug: string } | null; tagUser: { name: string | null } | null }>; createdAt: Date; likeCount: number; commentCount: number;
   productId: string | null; productName: string | null; productPrice: unknown; productCurrency: string | null;
   store: { slug: string; name: string; logoUrl: string | null; business: { category: string; city: string; verificationBadge: boolean } | null; subscription?: { name: string } | null; subscriptionPastDueSince?: Date | null };
 };
 
-export function toPostView(r: Row, liked: boolean): BrowsePostView {
+export function toPostView(r: Row, liked: boolean, saved = false): BrowsePostView {
   return {
     id: r.id, kind: r.kind, caption: r.caption, images: r.images, videoUrl: r.videoUrl ?? null, stickers: sanitizeStickers(r.stickers), location: r.location ?? null, aiGenerated: !!r.aiGenerated,
     tags: (r.tags ?? []).flatMap((t): BrowsePostView["tags"] => (t.tagStore ? [{ kind: "store" as const, name: t.tagStore.name, slug: t.tagStore.slug }] : t.tagUser ? [{ kind: "user" as const, name: shortPersonName(t.tagUser.name), slug: null }] : [])),
     createdAt: r.createdAt.toISOString(),
-    likeCount: r.likeCount, commentCount: r.commentCount, liked,
+    likeCount: r.likeCount, commentCount: r.commentCount, liked, saved, saveCount: r.saveCount ?? 0,
     product: r.productId && r.productName ? { id: r.productId, name: r.productName, price: r.productPrice == null ? null : Number(r.productPrice), currency: r.productCurrency ?? "NGN", kind: r.tagKind === "SERVICE" ? "SERVICE" : "PRODUCT" } : null,
     store: { slug: r.store.slug, name: r.store.name, logoUrl: r.store.logoUrl, category: r.store.business?.category ?? null, city: r.store.business?.city ?? null, verified: !!r.store.business?.verificationBadge, mogul: isMogulStore(r.store) },
   };
@@ -63,11 +67,18 @@ async function likedSet(ids: string[], viewerKey?: string | null): Promise<Set<s
   return new Set(rows.map((r) => r.postId));
 }
 
+async function savedSet(ids: string[], viewerKey?: string | null): Promise<Set<string>> {
+  if (!viewerKey || ids.length === 0) return new Set();
+  const rows = await prisma.browseSave.findMany({ where: { viewerKey, postId: { in: ids } }, select: { postId: true } });
+  return new Set(rows.map((r) => r.postId));
+}
+
 export async function loadBrowseFeed(q: FeedQuery = {}): Promise<FeedPage> {
   const limit = Math.min(Math.max(q.limit ?? BROWSE_PAGE_SIZE, 1), 20);
   if (q.storeIds && q.storeIds.length === 0) return { posts: [], nextCursor: null };
   const base = publicPostWhere(q.category);
-  const where = q.storeIds ? { ...base, storeId: { in: q.storeIds } } : base;
+  const withStores = q.storeIds ? { ...base, storeId: { in: q.storeIds } } : base;
+  const where = q.videoOnly ? { ...withStores, videoUrl: { not: null } } : withStores;
 
   if (q.sort === "popular") {
     // Rank the last two weeks in memory (bounded), page by offset.
@@ -77,13 +88,15 @@ export async function loadBrowseFeed(q: FeedQuery = {}): Promise<FeedPage> {
       where: { ...where, createdAt: { gte: since } },
       orderBy: { createdAt: "desc" },
       take: 120,
-      include: { store: { select: storeSelect }, tags: tagsInclude },
+      include: { store: { select: storeSelect }, tags: tagsInclude, _count: { select: { reports: { where: { status: "OPEN" } } } } },
     });
     const now = new Date();
-    const ranked = pool.sort((a, b) => popularityScore(b, now) - popularityScore(a, now));
+    const score = (p: (typeof pool)[number]) => popularityScore({ ...p, openReports: p._count.reports, verified: !!p.store.business?.verificationBadge }, now);
+    const ranked = spreadStores([...pool].sort((a, b) => score(b) - score(a)));
     const slice = ranked.slice(offset, offset + limit);
-    const liked = await likedSet(slice.map((p) => p.id), q.viewerKey);
-    return { posts: slice.map((p) => toPostView(p as unknown as Row, liked.has(p.id))), nextCursor: offset + limit < ranked.length ? String(offset + limit) : null };
+    const ids = slice.map((p) => p.id);
+    const [liked, saved] = await Promise.all([likedSet(ids, q.viewerKey), savedSet(ids, q.viewerKey)]);
+    return { posts: slice.map((p) => toPostView(p as unknown as Row, liked.has(p.id), saved.has(p.id))), nextCursor: offset + limit < ranked.length ? String(offset + limit) : null };
   }
 
   const cur = decodeCursor(q.cursor);
@@ -94,9 +107,10 @@ export async function loadBrowseFeed(q: FeedQuery = {}): Promise<FeedPage> {
     include: { store: { select: storeSelect }, tags: tagsInclude },
   });
   const page = rows.slice(0, limit);
-  const liked = await likedSet(page.map((p) => p.id), q.viewerKey);
+  const pageIds = page.map((p) => p.id);
+  const [liked, saved] = await Promise.all([likedSet(pageIds, q.viewerKey), savedSet(pageIds, q.viewerKey)]);
   return {
-    posts: page.map((p) => toPostView(p as unknown as Row, liked.has(p.id))),
+    posts: page.map((p) => toPostView(p as unknown as Row, liked.has(p.id), saved.has(p.id))),
     nextCursor: rows.length > limit ? encodeCursor(page[page.length - 1]) : null,
   };
 }
@@ -129,29 +143,67 @@ export async function loadFollowedShops(viewerKey: string, limit = 24): Promise<
 export async function loadBrowsePost(id: string, viewerKey?: string | null): Promise<BrowsePostView | null> {
   const row = await prisma.browsePost.findFirst({ where: { id, ...publicPostWhere() }, include: { store: { select: storeSelect }, tags: tagsInclude } });
   if (!row) return null;
-  const liked = await likedSet([row.id], viewerKey);
-  return toPostView(row as unknown as Row, liked.has(row.id));
+  const [liked, saved] = await Promise.all([likedSet([row.id], viewerKey), savedSet([row.id], viewerKey)]);
+  return toPostView(row as unknown as Row, liked.has(row.id), saved.has(row.id));
 }
 
-/** Newest `take` comments, returned oldest-first, with a cursor to older ones. */
+/** Newest `take` comments, returned oldest-first, with a cursor to older ones. A pinned comment is listed first on the first page. */
 export async function loadBrowseComments(postId: string, opts: { before?: string | null; viewerKey?: string | null; take?: number; includeHidden?: boolean } = {}) {
   const take = Math.min(opts.take ?? 20, 50);
   const cur = decodeCursor(opts.before);
-  const rows = await prisma.browseComment.findMany({
-    where: {
-      postId,
-      ...(opts.includeHidden ? {} : { status: "VISIBLE" }),
-      ...(cur ? { OR: [{ createdAt: { lt: cur.createdAt } }, { createdAt: cur.createdAt, id: { lt: cur.id } }] } : {}),
-    },
-    orderBy: [{ createdAt: "desc" }, { id: "desc" }],
-    take: take + 1,
-  });
+  const visible = opts.includeHidden ? {} : { status: "VISIBLE" };
+  const [rows, pinnedRow] = await Promise.all([
+    prisma.browseComment.findMany({
+      where: {
+        postId, ...visible, pinned: false,
+        ...(cur ? { OR: [{ createdAt: { lt: cur.createdAt } }, { createdAt: cur.createdAt, id: { lt: cur.id } }] } : {}),
+      },
+      orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+      take: take + 1,
+    }),
+    cur ? Promise.resolve(null) : prisma.browseComment.findFirst({ where: { postId, ...visible, pinned: true } }),
+  ]);
   const page = rows.slice(0, take);
-  const comments: BrowseCommentView[] = page.reverse().map((c) => ({
+  const toView = (c: (typeof rows)[number]): BrowseCommentView => ({
     id: c.id, authorName: c.authorName, body: c.body, createdAt: c.createdAt.toISOString(),
-    mine: !!opts.viewerKey && c.viewerKey === opts.viewerKey, hidden: c.status !== "VISIBLE",
-  }));
+    mine: !!opts.viewerKey && c.viewerKey === opts.viewerKey, hidden: c.status !== "VISIBLE", byStore: c.byStore, pinned: c.pinned,
+  });
+  const comments = page.reverse().map(toView);
+  if (pinnedRow) comments.unshift(toView(pinnedRow));
   return { comments, nextCursor: rows.length > take ? encodeCursor(rows[take - 1]) : null };
+}
+
+export type PostReviews = { avg: number; count: number; photos: string[]; latest: Array<{ rating: number; comment: string; author: string; images: string[] }> };
+
+/** Buyer reviews for the product or service a post points at, with photos first. Null when there are none. */
+export async function loadPostReviews(storeId: string, kind: "PRODUCT" | "SERVICE", itemId: string): Promise<PostReviews | null> {
+  const where = { storeId, ...(kind === "SERVICE" ? { serviceId: itemId } : { productId: itemId }) };
+  const [agg, withPhotos, recent] = await Promise.all([
+    prisma.review.aggregate({ where, _avg: { rating: true }, _count: true }),
+    prisma.review.findMany({ where: { ...where, NOT: { images: { equals: [] } } }, orderBy: { createdAt: "desc" }, take: 6, select: { images: true } }),
+    prisma.review.findMany({ where: { ...where, comment: { not: null } }, orderBy: { createdAt: "desc" }, take: 3, select: { rating: true, comment: true, images: true, author: { select: { name: true } } } }),
+  ]);
+  if (agg._count === 0) return null;
+  return {
+    avg: Math.round((agg._avg.rating ?? 0) * 10) / 10,
+    count: agg._count,
+    photos: withPhotos.flatMap((r) => r.images.slice(0, 1)).slice(0, 6),
+    latest: recent.map((r) => ({ rating: r.rating, comment: (r.comment ?? "").slice(0, 220), author: shortPersonName(r.author.name ?? "Customer"), images: r.images.slice(0, 3) })),
+  };
+}
+
+/** The viewer's saved posts, newest save first. */
+export async function loadSavedPosts(viewerKey: string, cursor?: string | null, limit = 12): Promise<FeedPage> {
+  const offset = Math.max(0, Number(cursor) || 0);
+  const rows = await prisma.browseSave.findMany({
+    where: { viewerKey, post: publicPostWhere() },
+    orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+    skip: offset, take: limit + 1,
+    include: { post: { include: { store: { select: storeSelect }, tags: tagsInclude } } },
+  });
+  const page = rows.slice(0, limit);
+  const liked = await likedSet(page.map((r) => r.postId), viewerKey);
+  return { posts: page.map((r) => toPostView(r.post as unknown as Row, liked.has(r.postId), true)), nextCursor: rows.length > limit ? String(offset + limit) : null };
 }
 
 export type VendorPostView = {
@@ -358,3 +410,21 @@ export async function loadHashtagPosts(tag: string, viewerKey?: string | null, l
   const liked = await likedSet(hits.map((h: { id: string }) => h.id), viewerKey);
   return hits.map((h: { id: string }) => toPostView(h as unknown as Row, liked.has(h.id)));
 }
+
+
+/** Hashtags used most in the last 30 days, with how many posts use each. Cached for 10 minutes. */
+export const loadTrendingTags = unstable_cache(
+  async (limit = 12): Promise<{ tag: string; posts: number }[]> => {
+    const rows = await prisma.browsePost.findMany({
+      where: { ...publicPostWhere(), createdAt: { gte: new Date(Date.now() - 30 * 86_400_000) }, caption: { contains: "#" } },
+      select: { caption: true },
+      orderBy: { createdAt: "desc" },
+      take: 800,
+    });
+    const counts = new Map<string, number>();
+    for (const r of rows as { caption: string }[]) for (const t of new Set(extractHashtags(r.caption))) counts.set(t, (counts.get(t) ?? 0) + 1);
+    return [...counts].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0])).slice(0, limit).map(([tag, posts]) => ({ tag, posts }));
+  },
+  ["browse-trending-tags"],
+  { revalidate: 600 },
+);
