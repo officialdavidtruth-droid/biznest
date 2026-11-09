@@ -122,7 +122,7 @@ export default async function TemplatePreviewPage({ params }: { params: Promise<
     business: { description: tpl.sub || store.business.description },
   };
   const isFashion = definition.category === "Fashion";
-  const sampleItems = isFashion ? fashionItems(tpl) : items.map((it, i) => ({ ...it, image: nicheSamplePhoto(definition.category, i) ?? it.image }));
+  const sampleItems = isFashion ? fashionItems(tpl) : items.map((it, i) => { const menu = PREVIEW_MENU[definition.category]; return { ...it, image: nicheSamplePhoto(definition.category, i) ?? it.image, ...(menu ? { categoryName: menu[i % menu.length] } : {}) }; });
   const p:any = { store: previewStore, slug:"__biznest-template-preview", catalogItems:sampleItems, items:sampleItems, navCategories:isFashion ? fashionCategories : categories, goodReviews:[], reviews:[], avgRating:null, completedOrders:0, trustScore:null, trustChecklist:null, social:{} };
   if (home.kind === "screenshot") return withPreviewMenu(definition.category, <SignatureScreenshotHome {...p} mode={home.mode} {...home.palette}/>);
   if (home.kind === "hotel") return <ThelusoHotel store={previewStore as any} slug={p.slug} content={await getHotelContent(p.slug, definition.name)}/>;
