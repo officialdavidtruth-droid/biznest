@@ -54,11 +54,13 @@ export default async function BookingsPage({ params }: { params: Promise<{ slug:
   const confirmedCount = bookings.filter((b) => b.status === "CONFIRMED").length;
   const completedCount = bookings.filter((b) => b.status === "COMPLETED").length;
 
+  const flowTerms = getBusinessTerminology(getCanonicalBusinessType({ businessCategory: store?.business?.category, storeBusinessType: store?.businessType }));
+  const flowPlural = `${flowTerms.transaction.toLowerCase()}s`;
   return (
     <div className="bn-admin-page space-y-5">
       <div>
         <h1 className="text-2xl font-bold">Bookings</h1>
-        <p className="mt-1 text-sm text-muted-foreground">Manage appointments and reservations</p>
+        <p className="mt-1 text-sm text-muted-foreground">Manage {flowPlural}</p>
       </div>
 
       {occupancy && <OccupancyCards stats={occupancy} />}

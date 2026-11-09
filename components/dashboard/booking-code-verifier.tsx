@@ -47,7 +47,7 @@ export function BookingCodeVerifier({ slug }: { slug: string }) {
         toast.error(result.error);
         return;
       }
-      toast.success(status === "CONFIRMED" ? "Booking confirmed" : "Guest checked in");
+      toast.success(status === "CONFIRMED" ? "Booking confirmed" : "Checked in");
       setMatch({ ...match, status });
       router.refresh();
     });
@@ -61,7 +61,7 @@ export function BookingCodeVerifier({ slug }: { slug: string }) {
         <BadgeCheck className="h-4 w-4 text-primary" />
         <h2 className="text-base font-bold">Verify booking code</h2>
       </div>
-      <p className="mt-1 text-xs text-muted-foreground">Enter the code from the guest&apos;s confirmation email to confirm their reservation. Older bookings work with their original booking ID.</p>
+      <p className="mt-1 text-xs text-muted-foreground">Enter the code from the customer&apos;s confirmation email to confirm their booking. Older bookings work with their original booking ID.</p>
 
       <form onSubmit={lookup} className="mt-3 flex flex-wrap gap-2">
         <input
@@ -91,7 +91,7 @@ export function BookingCodeVerifier({ slug }: { slug: string }) {
             {match.legacy && <span className="text-[11px] text-muted-foreground">Older booking ID</span>}
           </div>
           <dl className="mt-3 grid gap-x-6 gap-y-1.5 sm:grid-cols-2">
-            <div><dt className="text-xs text-muted-foreground">Guest</dt><dd className="font-medium">{match.guestName}</dd></div>
+            <div><dt className="text-xs text-muted-foreground">Name</dt><dd className="font-medium">{match.guestName}</dd></div>
             <div><dt className="text-xs text-muted-foreground">Contact</dt><dd>{[match.guestPhone, match.guestEmail].filter(Boolean).join(" · ") || "—"}</dd></div>
             <div><dt className="text-xs text-muted-foreground">Service</dt><dd>{match.serviceName}{match.unitLabel ? ` · ${match.unitLabel}` : ""}</dd></div>
             <div><dt className="text-xs text-muted-foreground">{match.checkIn ? "Stay" : "When"}</dt><dd>{match.checkIn ? `${fmt(match.checkIn)} → ${fmt(match.checkOut)}` : fmt(match.scheduledAt)}</dd></div>
@@ -110,10 +110,10 @@ export function BookingCodeVerifier({ slug }: { slug: string }) {
             )}
             {match.status === "CONFIRMED" && (
               <button onClick={() => move("CHECKED_IN")} disabled={pending} className="rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground disabled:opacity-50">
-                Check in guest
+                Check in
               </button>
             )}
-            {match.status === "CHECKED_IN" && <span className="text-xs font-semibold text-emerald-700">Guest already checked in.</span>}
+            {match.status === "CHECKED_IN" && <span className="text-xs font-semibold text-emerald-700">Already checked in.</span>}
           </div>
         </div>
       )}
