@@ -112,12 +112,15 @@ export type TemplateTheme = {
   chrome?: TemplateChrome;
   /** This template's own hero composition (components/storefront/hero-variants.tsx). Unique per header. */
   heroVariant?: HeroVariant;
+  /** Layout of the Categories / Features sections (see BuilderSectionSettings.style). */
+  categoriesStyle?: "cards" | "tiles" | "circles" | "pills" | "photo";
+  featuresStyle?: "cards" | "strip";
 };
 
 export type TemplateChrome = {
   header: "classic" | "centered" | "overlay" | "bar" | "stripe";
   footer: "columns" | "centered" | "cta" | "minimal";
-  card: "bordered" | "overlay" | "minimal" | "tall" | "soft";
+  card: "bordered" | "overlay" | "minimal" | "tall" | "soft" | "lifted";
 };
 
 export type GeneratedTemplate = TemplateTheme & {
@@ -848,29 +851,29 @@ export const SIGNATURE_CHROME: Record<string, TemplateChrome> = {
  * must be unique across ALL builder templates -- enforced by lib/__tests__/template-uniqueness.test.ts.
  */
 export const HERO_VARIANT_BY_MODE: Readonly<Record<string, HeroVariant>> = {
-  electra: "spotlight", atelier: "editorial", kinetic: "poster", haven: "frame", harvest: "spotlight",
+  electra: "spotlight", atelier: "editorial", kinetic: "poster", haven: "frame", harvest: "market",
   ember: "menu", muse: "arch", frame: "frame", north: "ledger", pure: "quiet", forge: "poster",
   // Dedicated-renderer templates (bloom, maison, hotel) never reach the Builder; listed so the map is complete.
   bloom: "arch", maison: "splitcard", hotel: "splitcard",
-  vitalis: "quiet", pulse: "tiles", gala: "editorial", transit: "frame", talent: "banner", drive: "voyage",
+  vitalis: "quiet", pulse: "tiles", gala: "editorial", transit: "frame", talent: "banner", drive: "showroom",
 };
 /** Templates that used to reuse another template's renderer. They now render through the Builder with their own identity. */
-export const NAMED_TEMPLATE_IDENTITY: Record<string, { chrome: TemplateChrome; heroStyle?: HeroStyle; heroVariant?: HeroVariant }> = {
+export const NAMED_TEMPLATE_IDENTITY: Record<string, { chrome: TemplateChrome; heroStyle?: HeroStyle; heroVariant?: HeroVariant; categoriesStyle?: TemplateTheme["categoriesStyle"]; featuresStyle?: TemplateTheme["featuresStyle"] }> = {
   // Signature-collection templates that used to borrow the same header + hero as a hotel template.
   "Transit — Logistics & Delivery": { chrome: C("centered", "cta", "minimal"), heroStyle: "split", heroVariant: "ledger" },
   "Vitalis — Clinic & Care": { chrome: C("centered", "columns", "bordered"), heroStyle: "split", heroVariant: "splitcard" },
   "Atelier — Modern Fashion": { chrome: C("stripe", "centered", "tall"), heroStyle: "fullbleed", heroVariant: "editorial" },
-  "Electra — Smart Commerce": { chrome: C("overlay", "columns", "soft"), heroStyle: "split", heroVariant: "spotlight" },
+  "Electra — Smart Commerce": { chrome: C("overlay", "columns", "soft"), heroStyle: "split", heroVariant: "spotlight", categoriesStyle: "tiles", featuresStyle: "strip" },
   "Emarket Furniture & Home": { chrome: C("classic", "columns", "tall"), heroStyle: "split", heroVariant: "splitcard" },
   "ShopNova Marketplace": { chrome: C("bar", "minimal", "bordered"), heroStyle: "centered", heroVariant: "banner" },
   "Electra Blue Electronics": { chrome: C("centered", "minimal", "bordered"), heroStyle: "fullbleed", heroVariant: "quiet" },
   "TechNova Mobile Store": { chrome: C("overlay", "columns", "bordered"), heroStyle: "split", heroVariant: "banner" },
-  "TechVerse Gadgets": { chrome: C("bar", "centered", "soft"), heroStyle: "centered", heroVariant: "aurora" },
+  "TechVerse Gadgets": { chrome: C("bar", "centered", "soft"), heroStyle: "centered", heroVariant: "aurora", categoriesStyle: "pills" },
   "ShopEase General Store": { chrome: C("centered", "columns", "minimal"), heroStyle: "fullbleed", heroVariant: "tiles" },
   "Violet — Sunset": { chrome: C("centered", "minimal", "tall"), heroStyle: "centered", heroVariant: "banner" },
   "Nova Studio — Ivory Minimal": { chrome: C("bar", "columns", "minimal"), heroStyle: "split", heroVariant: "ledger" },
   "Heenzy — Boutique Rose": { chrome: C("overlay", "columns", "tall"), heroStyle: "fullbleed", heroVariant: "lookbook" },
-  "Wanderly Travel": { chrome: C("overlay", "cta", "soft"), heroStyle: "fullbleed", heroVariant: "voyage" },
+  "Wanderly Travel": { chrome: C("overlay", "cta", "overlay"), heroStyle: "fullbleed", heroVariant: "voyage", categoriesStyle: "photo", featuresStyle: "strip" },
   "Nestoria Real Estate": { chrome: C("stripe", "cta", "tall"), heroStyle: "split", heroVariant: "splitcard" },
   "Fresh & Co.": { chrome: C("classic", "columns", "overlay"), heroStyle: "fullbleed", heroVariant: "tiles" },
   "Heenzy Sneaker Co.": { chrome: C("stripe", "centered", "overlay"), heroStyle: "fullbleed", heroVariant: "lookbook" },
@@ -894,9 +897,9 @@ export const NAMED_TEMPLATE_IDENTITY: Record<string, { chrome: TemplateChrome; h
   "Skyview Hotels & Resorts": { chrome: C("bar", "cta", "bordered"), heroStyle: "fullbleed", heroVariant: "tiles" },
   "Maison — Hotel & Stay": { chrome: C("stripe", "minimal", "tall"), heroStyle: "centered", heroVariant: "frame" },
   "Grand — Hotel & Hospitality": { chrome: C("overlay", "cta", "bordered"), heroStyle: "split", heroVariant: "splitcard" },
-  "Bloom — Beauty Boutique": { chrome: C("stripe", "centered", "soft"), heroStyle: "split", heroVariant: "spotlight" },
-  "Harvest — Grocery Market": { chrome: C("bar", "cta", "soft"), heroStyle: "split", heroVariant: "spotlight" },
-  "Drive — Cars & Rentals": { chrome: C("stripe", "columns", "soft"), heroStyle: "fullbleed", heroVariant: "voyage" },
+  "Bloom — Beauty Boutique": { chrome: C("stripe", "centered", "tall"), heroStyle: "split", heroVariant: "glow", categoriesStyle: "photo", featuresStyle: "strip" },
+  "Harvest — Grocery Market": { chrome: C("bar", "cta", "lifted"), heroStyle: "split", heroVariant: "market", categoriesStyle: "circles", featuresStyle: "strip" },
+  "Drive — Cars & Rentals": { chrome: C("stripe", "columns", "lifted"), heroStyle: "fullbleed", heroVariant: "showroom", categoriesStyle: "tiles" },
 };
 
 /** Assembles a reference template's theme from its plain data + the shared base theme it builds on. */
@@ -977,7 +980,7 @@ export function resolveStoreTheme(
   const changedBg = !!overrides?.secondary && overrides.secondary !== base.bg;
   return {
     ...base,
-    ...(identity ? { chrome: identity.chrome, ...(identity.heroStyle ? { heroStyle: identity.heroStyle } : {}), ...(identity.heroVariant ? { heroVariant: identity.heroVariant } : {}) } : {}),
+    ...(identity ? { chrome: identity.chrome, ...(identity.heroStyle ? { heroStyle: identity.heroStyle } : {}), ...(identity.heroVariant ? { heroVariant: identity.heroVariant } : {}), ...(identity.categoriesStyle ? { categoriesStyle: identity.categoriesStyle } : {}), ...(identity.featuresStyle ? { featuresStyle: identity.featuresStyle } : {}) } : {}),
     bg,
     ink: readable.ink,
     ...(changedBg || overrides?.muted ? { muted: readable.muted } : {}),
@@ -1015,7 +1018,7 @@ const SIGNATURE_SECTIONS: Record<string, Section[]> = {
   kinetic: ["hero", "catalog", "categories", "newsletter", "features", "contact"],
   bloom: ["hero", "features", "categories", "promo", "catalog", "about", "testimonials", "newsletter"],
   haven: ["hero", "categories", "about", "catalog", "features", "contact"],
-  harvest: ["hero", "features", "categories", "promo", "catalog", "newsletter", "contact"],
+  harvest: ["hero", "features", "promo", "catalog", "newsletter", "contact"],
   maison: ["hero", "about", "catalog", "features", "testimonials", "contact"],
   hotel: ["hero", "about", "catalog", "features", "testimonials", "newsletter", "contact"],
   ember: ["hero", "catalog", "about", "testimonials", "contact"],

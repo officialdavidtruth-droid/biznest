@@ -31,14 +31,14 @@ export type BuilderSectionSettings = {
   /** Gallery section: the owner's own uploaded images. Falls back to catalogue photos when empty. */
   images?: string[];
   /** Features / Categories layout: "cards" (default), "strip" (compact icon-style row) or "tiles" (image tiles, categories only). */
-  style?: "cards" | "strip" | "tiles";
+  style?: "cards" | "strip" | "tiles" | "circles" | "pills" | "photo";
   /** Map section: street address or place name to show. Falls back to the business city / state / country. */
   address?: string;
 };
 
 export type BuilderSectionItem = { title: string; body?: string };
 
-export const HERO_VARIANTS = ["poster", "editorial", "lookbook", "tiles", "arch", "ledger", "frame", "splitcard", "menu", "banner", "quiet", "spotlight", "voyage", "aurora"] as const;
+export const HERO_VARIANTS = ["poster", "editorial", "lookbook", "tiles", "arch", "ledger", "frame", "splitcard", "menu", "banner", "quiet", "spotlight", "voyage", "aurora", "market", "glow", "showroom"] as const;
 export type HeroVariant = (typeof HERO_VARIANTS)[number];
 
 export type BuilderSection = {
@@ -63,7 +63,7 @@ export type BuilderDesign = {
   /** Structural identity of a template (so templates differ in layout, not just colours). All optional. */
   headerStyle?: "classic" | "centered" | "overlay" | "bar" | "stripe";
   footerStyle?: "columns" | "centered" | "cta" | "minimal";
-  cardStyle?: "bordered" | "overlay" | "minimal" | "tall" | "soft";
+  cardStyle?: "bordered" | "overlay" | "minimal" | "tall" | "soft" | "lifted";
 };
 
 export type BuilderConfig = {
@@ -105,7 +105,7 @@ const settingsSchema = z.object({
   items: z.array(z.object({ title: z.string().max(160), body: z.string().max(1200).optional() })).max(12).optional(),
   images: z.array(z.string().max(2000).refine(isSafeImageUrl, "Image must be an http(s) URL or a site path.")).max(24).optional(),
   address: z.string().max(300).optional(),
-  style: z.enum(["cards", "strip", "tiles"]).optional(),
+  style: z.enum(["cards", "strip", "tiles", "circles", "pills", "photo"]).optional(),
 });
 
 const colorField = z.string().max(100).refine(isSafeColor, "Invalid colour.");
@@ -127,7 +127,7 @@ export const builderConfigSchema = z.object({
     buttonStyle: z.enum(["solid", "outline", "pill"]),
     headerStyle: z.enum(["classic", "centered", "overlay", "bar", "stripe"]).optional(),
     footerStyle: z.enum(["columns", "centered", "cta", "minimal"]).optional(),
-    cardStyle: z.enum(["bordered", "overlay", "minimal", "tall", "soft"]).optional(),
+    cardStyle: z.enum(["bordered", "overlay", "minimal", "tall", "soft", "lifted"]).optional(),
   }),
   sections: z.array(sectionSchema).min(1).max(30),
 });

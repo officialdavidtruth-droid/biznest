@@ -294,6 +294,13 @@ function BuilderSectionView({ section, store, config, catalogItems, categories, 
 
   // A section with nothing to show is left out on the live site (the editor still shows it so it can be configured).
   if (section.type === "categories" && !categoryLinks.length && !isEditMode) return null;
+  if (section.type === "categories" && (s.style === "circles" || s.style === "pills" || s.style === "photo")) {
+    const list = categoryLinks.slice(0, 10);
+    const wrapIn = (body: React.ReactNode) => <section id={section.id} data-bn-type={section.type} className="bn-section" style={{ padding, background: bg }}><div className="bn-wrap"><SectionIntro section={section} config={config} />{list.length ? body : <EmptyState text="Your categories appear here once you add them in Dashboard > Categories." />}</div></section>;
+    if (s.style === "circles") return wrapIn(<div style={{ display: "flex", gap: 22, flexWrap: "wrap", justifyContent: s.align === "center" ? "center" : "flex-start" }}>{list.map((c) => <a key={c.href} href={c.href} style={{ width: 112, textAlign: "center" }}><span aria-hidden style={{ display: "block", width: 112, height: 112, borderRadius: "50%", background: c.image ? `url(${cssUrl(c.image)}) center/cover` : `${d.accent}22`, border: `3px solid ${d.background}`, boxShadow: `0 0 0 1px ${d.text}14, 0 10px 24px ${d.primary}1f` }} /><span style={{ display: "block", marginTop: 10, fontWeight: 750, fontSize: 13 }}>{c.name}</span></a>)}</div>);
+    if (s.style === "pills") return wrapIn(<div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>{list.map((c) => <a key={c.href} href={c.href} style={{ display: "inline-flex", alignItems: "center", gap: 10, padding: "8px 18px 8px 8px", borderRadius: 999, background: d.surface, border: `1px solid ${d.text}14`, fontWeight: 750, fontSize: 14 }}><span aria-hidden style={{ width: 34, height: 34, borderRadius: "50%", background: c.image ? `url(${cssUrl(c.image)}) center/cover` : `${d.accent}33` }} />{c.name}</a>)}</div>);
+    return wrapIn(<div className="bn-grid" style={{ gridTemplateColumns: `repeat(${Math.min(Math.max(list.length, 2), 4)},minmax(0,1fr))`, gap: 16 }}>{list.slice(0, 8).map((c) => <a key={c.href} href={c.href} style={{ position: "relative", display: "block", aspectRatio: "3/4", overflow: "hidden", borderRadius: s.radius ?? d.radius, background: c.image ? `url(${cssUrl(c.image)}) center/cover` : `linear-gradient(160deg, ${d.accent}66, ${d.primary}55)` }}><span aria-hidden style={{ position: "absolute", inset: 0, background: "linear-gradient(0deg, rgba(0,0,0,.66), rgba(0,0,0,0) 55%)" }} /><span style={{ position: "absolute", left: 16, right: 16, bottom: 14, color: "#fff", fontWeight: 800, fontFamily: d.headingFont, fontSize: 18 }}>{c.name}<span style={{ display: "block", fontSize: 12, fontWeight: 650, opacity: .85, marginTop: 3 }}>Explore →</span></span></a>)}</div>);
+  }
   if (section.type === "categories" && s.style === "tiles") {
     const tints = [`${d.accent}1c`, `${d.primary}14`, `${d.accent}33`, `${d.primary}0d`];
     return <section id={section.id} data-bn-type={section.type} className="bn-section" style={{ padding, background: bg }}><div className="bn-wrap"><SectionIntro section={section} config={config} />{categoryLinks.length ? <div className="bn-grid" style={{ gridTemplateColumns: `repeat(${Math.min(Math.max(categoryLinks.length, 2), cols === 3 ? 4 : cols)},minmax(0,1fr))`, gap: 14 }}>{categoryLinks.slice(0, 8).map((c, i) => <a key={c.href} href={c.href} style={{ position: "relative", display: "flex", flexDirection: "column", justifyContent: "space-between", minHeight: 170, padding: 18, overflow: "hidden", borderRadius: s.radius ?? d.radius, background: tints[i % tints.length], border: `1px solid ${d.text}0d` }}><span style={{ position: "relative", zIndex: 1, fontWeight: 800, fontSize: 15, fontFamily: d.headingFont }}>{c.name}<span style={{ display: "block", color: readableAccentText(d.accent, d.surface), fontSize: 12, fontWeight: 700, marginTop: 4 }}>Shop now →</span></span>{c.image && <span aria-hidden style={{ position: "absolute", right: -14, bottom: -14, width: "64%", aspectRatio: "1/1", borderRadius: "50%", background: `url(${cssUrl(c.image)}) center/cover`, boxShadow: `0 10px 30px ${d.primary}33` }} />}</a>)}</div> : <EmptyState text="Your categories appear here once you add them in Dashboard > Categories." />}</div></section>;
@@ -586,6 +593,19 @@ export function ItemCard({ item, store, d, radius, actionLabel }: { item: Catalo
         <span aria-hidden style={{ flex: "none", width: 36, height: 36, borderRadius: 999, display: "grid", placeItems: "center", background: `${d.accent}22`, color: readableAccentText(d.accent, d.surface), fontSize: 15, fontWeight: 900 }}>{item.kind === "service" ? "→" : "+"}</span>
       </div>
     </Link>
+  );
+  if (style === "lifted") return (
+    <div style={{ display: "flex", flexDirection: "column", borderRadius: radius, background: d.surface, boxShadow: `0 1px 2px ${d.text}10, 0 12px 28px ${d.text}0f`, overflow: "hidden" }}>
+      <Link href={href} style={{ display: "block", position: "relative" }}>
+        <div style={{ ...img("1/1"), backgroundColor: `${d.primary}0d` }} />
+        {item.categoryName && <span style={{ position: "absolute", top: 10, left: 10, padding: "4px 10px", borderRadius: 999, background: d.background, fontSize: 11, fontWeight: 800 }}>{item.categoryName}</span>}
+      </Link>
+      <div style={{ padding: "14px 16px 16px", display: "flex", flexDirection: "column", gap: 4, flex: 1 }}>
+        <Link href={href} style={{ fontWeight: 750, lineHeight: 1.25 }}>{item.name}</Link>
+        <div style={{ fontWeight: 850, fontSize: 17, color: readableAccentText(d.accent, d.surface) }}>{price}</div>
+        <Link href={href} style={{ marginTop: "auto", paddingTop: 10 }}><span style={{ display: "block", textAlign: "center", padding: "10px 12px", borderRadius: Math.min(radius, 12), border: `1.5px solid ${d.accent}`, color: readableAccentText(d.accent, d.surface), fontWeight: 800, fontSize: 13 }}>{actionLabel}</span></Link>
+      </div>
+    </div>
   );
   if (style === "minimal") return (
     <Link href={href} style={{ display: "block" }}>
