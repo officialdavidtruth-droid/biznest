@@ -1,3 +1,4 @@
+import { loadPluginSales, PLUGIN_SALE_LABEL, type PluginSale } from "@/lib/dashboard-sales";
 import { getCanonicalBusinessType } from "@/lib/business-identity";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
@@ -101,6 +102,8 @@ export default async function StoreAdminOverviewPage({
     topProductGroups,
     topServiceGroups,
     kitchenGroups,
+    pluginSalesToday,
+    pmsArrivals,
   ] = await Promise.all([
     insightsPromise,
     prisma.product.count({ where: { storeId: store.id, isPublished: true } }),
@@ -192,6 +195,17 @@ export default async function StoreAdminOverviewPage({
           _count: { _all: true },
         })
       : Promise.resolve([]),
+    // Latest money that came in through plugins, shown beside shop orders in "recent activity".
+    analyticsAccessPromise.then((a) => (a.success ? loadPluginSales(store.id, since30d, new Date(now.getTime() + 60_000), 8).catch((): PluginSale[] => []) : ([] as PluginSale[]))),
+    // Front-desk reservations arriving today. Ones copied from online bookings are skipped: the booking is already counted.
+    isHotel
+      ? prisma.propertyReservation.findMany({
+          where: { storeId: store.id, bookingId: null, checkIn: { gte: dayStart, lt: dayEnd }, status: { notIn: ["CANCELLED", "NO_SHOW"] } },
+          select: { id: true, checkIn: true, guest: { select: { fullName: true } }, room: { select: { name: true } } },
+          orderBy: { checkIn: "asc" },
+          take: 50,
+        })
+      : Promise.resolve([]),
   ]);
 
   const kitchenCount = (...statuses: string[]) =>
@@ -275,7 +289,7 @@ export default async function StoreAdminOverviewPage({
     conversionRate: insights.conversionRate,
     productCount,
     serviceCount,
-    bookingCount: todayBookingCount,
+    bookingCount: todayBookingCount + pmsArrivals.length,
     customerCount,
     roomCount,
     roomAttentionCount,
@@ -285,16 +299,26 @@ export default async function StoreAdminOverviewPage({
       : productCapability
         ? productCount
         : serviceCount,
-    recentOrders: recentOrders.map((order): DashboardOrder => ({
-      id: order.id,
-      customer: order.channel === "POS"
-        ? order.posCustomerName || "Walk-in customer"
-        : order.buyer.name || order.buyer.email || "Customer",
-      type: order.channel === "POS" ? "POS" : "Online",
-      amount: Number(order.total),
-      status: formatOrderStatus(order.status),
-      time: formatStoreTime(order.createdAt, tz),
-    })),
+    // Shop orders and plugin payments (invoices, rent, tickets, trips...) in one feed, newest first.
+    recentOrders: [
+      ...recentOrders.map((order) => ({
+        at: order.createdAt,
+        row: {
+          id: order.id,
+          customer: order.channel === "POS"
+            ? order.posCustomerName || "Walk-in customer"
+            : order.buyer.name || order.buyer.email || "Customer",
+          type: order.channel === "POS" ? "POS" : "Online",
+          amount: Number(order.total),
+          status: formatOrderStatus(order.status),
+          time: formatStoreTime(order.createdAt, tz),
+        } satisfies DashboardOrder,
+      })),
+      ...(pluginSalesToday as PluginSale[]).map((sale) => ({
+        at: sale.at,
+        row: { id: sale.reference || sale.id, customer: "—", type: PLUGIN_SALE_LABEL[sale.purpose], amount: sale.amount, status: "Paid", time: formatStoreTime(sale.at, tz) } satisfies DashboardOrder,
+      })),
+    ].sort((a, b) => b.at.getTime() - a.at.getTime()).slice(0, 5).map((x) => x.row),
     topProducts: topCatalog,
     bookings: todayBookings.map((booking): DashboardBooking => ({
       id: booking.id,
@@ -302,7 +326,13 @@ export default async function StoreAdminOverviewPage({
       customer: booking.guestName || "Walk-in guest",
       detail: booking.service.name,
       guests: booking.partySize ?? undefined,
-    })),
+    })).concat(pmsArrivals.map((a): DashboardBooking => ({
+      id: a.id,
+      time: formatStoreTime(a.checkIn, tz),
+      customer: a.guest.fullName,
+      detail: `Room ${a.room.name}`,
+      guests: undefined,
+    }))).slice(0, 5),
     revenueYesterday: insights.revenueYesterday,
     ordersYesterday: insights.ordersYesterday,
     newCustomersToday: insights.newCustomersToday,

@@ -1,5 +1,6 @@
 "use server";
 
+import { loadPluginSales } from "@/lib/dashboard-sales";
 import { headers } from "next/headers";
 import { prisma } from "@/lib/prisma";
 import { assertStorePermission } from "@/lib/access/assert-store-access";
@@ -191,16 +192,29 @@ export async function getDashboardInsights(
     }),
   ]);
 
-  const revenueToday = Number(revenueAgg._sum.total ?? 0);
-  const revenueYesterday = Number(revenueYesterdayAgg._sum.total ?? 0);
-  const avgOrderValueToday = ordersToday > 0 ? revenueToday / ordersToday : 0;
-  const avgOrderValueYesterday = ordersYesterday > 0 ? revenueYesterday / ordersYesterday : 0;
+  // Money that came in through plugins (invoices, hotel stays, rent, memberships, tickets, travel, jobs...)
+  // counts exactly like an order, so the dashboard reflects the whole business and not just the shop.
+  const [pluginToday, pluginYesterday] = await Promise.all([
+    loadPluginSales(storeId, since24h, new Date(nowDate.getTime() + 60_000)),
+    loadPluginSales(storeId, since48h, yesterdayEnd),
+  ]);
+  const sum = (rows: Array<{ amount: number }>) => rows.reduce((t, x) => t + x.amount, 0);
+  const revenueToday = Number(revenueAgg._sum.total ?? 0) + sum(pluginToday);
+  const revenueYesterday = Number(revenueYesterdayAgg._sum.total ?? 0) + sum(pluginYesterday);
+  const ordersTodayAll = ordersToday + pluginToday.length;
+  const ordersYesterdayAll = ordersYesterday + pluginYesterday.length;
+  const avgOrderValueToday = ordersTodayAll > 0 ? revenueToday / ordersTodayAll : 0;
+  const avgOrderValueYesterday = ordersYesterdayAll > 0 ? revenueYesterday / ordersYesterdayAll : 0;
 
   // 24 buckets = local hours 00-23 of the store's day, real paid totals.
   const hourlyRevenue = new Array(24).fill(0) as number[];
   for (const order of hourlyOrders) {
     const hour = Math.min(23, Math.max(0, Math.floor(getLocalMinutes(order.createdAt, tz) / 60)));
     hourlyRevenue[hour] += Number(order.total);
+  }
+  for (const sale of pluginToday) {
+    const hour = Math.min(23, Math.max(0, Math.floor(getLocalMinutes(sale.at, tz) / 60)));
+    hourlyRevenue[hour] += sale.amount;
   }
 
   let bestProduct: DashboardInsights["bestProduct"] = null;
@@ -221,7 +235,7 @@ export async function getDashboardInsights(
     returningCustomerRate = Math.round((returning / counts.size) * 100);
   }
 
-  const conversionRate = visitorsToday >= 20 ? Math.round((ordersToday / visitorsToday) * 1000) / 10 : null;
+  const conversionRate = visitorsToday >= 20 ? Math.round((ordersTodayAll / visitorsToday) * 1000) / 10 : null;
 
   const recommendations: Recommendation[] = [];
   if (wantRecs) {
@@ -287,14 +301,14 @@ export async function getDashboardInsights(
 
   return {
     revenueToday,
-    ordersToday,
+    ordersToday: ordersTodayAll,
     visitorsToday,
     conversionRate,
     bestProduct,
     returningCustomerRate,
     recommendations,
     revenueYesterday,
-    ordersYesterday,
+    ordersYesterday: ordersYesterdayAll,
     newCustomersToday,
     newCustomersYesterday,
     avgOrderValueToday,
