@@ -460,7 +460,7 @@ export function BuilderHeader({ store, d, experience, visible }: { store: Builde
     <div style={{ position: "sticky", top: 0, zIndex: 20 }}>
       <div style={{ background: d.primary, color: "#fff", fontSize: 12, padding: "8px 0" }}>
         <div className="bn-wrap" style={{ display: "flex", justifyContent: "space-between", gap: 12, flexWrap: "wrap" }}>
-          <span style={{ opacity: .9 }}>{store.business?.description ? String(store.business.description).slice(0, 70) : `Welcome to ${store.name}`}</span>
+          <span style={{ opacity: .9 }}>{store.business?.description ? (() => { const t = String(store.business.description); if (t.length <= 70) return t; const cut = t.slice(0, 70); return cut.slice(0, Math.max(cut.lastIndexOf(" "), 40)).replace(/[.,;:\s]+$/, "") + "…"; })() : `Welcome to ${store.name}`}</span>
           <span style={{ opacity: .8 }}>{store.contactPhone || store.contactEmail || ""}</span>
         </div>
       </div>
