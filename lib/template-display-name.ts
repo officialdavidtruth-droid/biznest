@@ -25,6 +25,7 @@ const DISPLAY: Readonly<Record<string, string>> = {
   "Gala — Events & Celebrations": "Gala",
   "Transit — Logistics & Delivery": "Transit",
   "Talent — Recruitment & HR": "Talent",
+  "Drive — Cars & Rentals": "Drive",
   "Wanderly Travel": "Wanderly",
   "Nestoria Real Estate": "Nestoria",
   "Emarket Furniture & Home": "Emarket",

@@ -841,17 +841,18 @@ export const SIGNATURE_CHROME: Record<string, TemplateChrome> = {
   gala: C("overlay", "minimal", "bordered"),
   transit: C("bar", "cta", "bordered"),
   talent: C("classic", "centered", "overlay"),
+  drive: C("stripe", "columns", "soft"),
 };
 /**
  * Each builder-rendered signature template owns one hero composition. The pair (header, heroVariant)
  * must be unique across ALL builder templates -- enforced by lib/__tests__/template-uniqueness.test.ts.
  */
 export const HERO_VARIANT_BY_MODE: Readonly<Record<string, HeroVariant>> = {
-  electra: "spotlight", atelier: "editorial", kinetic: "poster", haven: "frame", harvest: "splitcard",
+  electra: "spotlight", atelier: "editorial", kinetic: "poster", haven: "frame", harvest: "spotlight",
   ember: "menu", muse: "arch", frame: "frame", north: "ledger", pure: "quiet", forge: "poster",
   // Dedicated-renderer templates (bloom, maison, hotel) never reach the Builder; listed so the map is complete.
   bloom: "arch", maison: "splitcard", hotel: "splitcard",
-  vitalis: "quiet", pulse: "tiles", gala: "editorial", transit: "frame", talent: "banner",
+  vitalis: "quiet", pulse: "tiles", gala: "editorial", transit: "frame", talent: "banner", drive: "voyage",
 };
 /** Templates that used to reuse another template's renderer. They now render through the Builder with their own identity. */
 export const NAMED_TEMPLATE_IDENTITY: Record<string, { chrome: TemplateChrome; heroStyle?: HeroStyle; heroVariant?: HeroVariant }> = {
@@ -893,7 +894,9 @@ export const NAMED_TEMPLATE_IDENTITY: Record<string, { chrome: TemplateChrome; h
   "Skyview Hotels & Resorts": { chrome: C("bar", "cta", "bordered"), heroStyle: "fullbleed", heroVariant: "tiles" },
   "Maison — Hotel & Stay": { chrome: C("stripe", "minimal", "tall"), heroStyle: "centered", heroVariant: "frame" },
   "Grand — Hotel & Hospitality": { chrome: C("overlay", "cta", "bordered"), heroStyle: "split", heroVariant: "splitcard" },
-  "Bloom — Beauty Boutique": { chrome: C("stripe", "centered", "bordered"), heroStyle: "split", heroVariant: "quiet" },
+  "Bloom — Beauty Boutique": { chrome: C("stripe", "centered", "soft"), heroStyle: "split", heroVariant: "spotlight" },
+  "Harvest — Grocery Market": { chrome: C("bar", "cta", "soft"), heroStyle: "split", heroVariant: "spotlight" },
+  "Drive — Cars & Rentals": { chrome: C("stripe", "columns", "soft"), heroStyle: "fullbleed", heroVariant: "voyage" },
 };
 
 /** Assembles a reference template's theme from its plain data + the shared base theme it builds on. */
@@ -1010,9 +1013,9 @@ const SIGNATURE_SECTIONS: Record<string, Section[]> = {
   electra: ["hero", "features", "categories", "catalog", "promo", "testimonials", "newsletter", "contact"],
   atelier: ["hero", "catalog", "about", "categories", "testimonials", "newsletter"],
   kinetic: ["hero", "catalog", "categories", "newsletter", "features", "contact"],
-  bloom: ["hero", "about", "catalog", "features", "testimonials", "newsletter"],
+  bloom: ["hero", "features", "categories", "promo", "catalog", "about", "testimonials", "newsletter"],
   haven: ["hero", "categories", "about", "catalog", "features", "contact"],
-  harvest: ["hero", "categories", "catalog", "features", "newsletter", "contact"],
+  harvest: ["hero", "features", "categories", "promo", "catalog", "newsletter", "contact"],
   maison: ["hero", "about", "catalog", "features", "testimonials", "contact"],
   hotel: ["hero", "about", "catalog", "features", "testimonials", "newsletter", "contact"],
   ember: ["hero", "catalog", "about", "testimonials", "contact"],
@@ -1026,6 +1029,7 @@ const SIGNATURE_SECTIONS: Record<string, Section[]> = {
   gala: ["hero", "about", "catalog", "testimonials", "newsletter", "contact"],
   transit: ["hero", "features", "catalog", "about", "contact"],
   talent: ["hero", "about", "features", "catalog", "testimonials", "contact"],
+  drive: ["hero", "features", "catalog", "categories", "promo", "about", "testimonials", "newsletter", "contact"],
 };
 
 const c = (eyebrow: string, heading: string) => ({ eyebrow, heading });
@@ -1048,6 +1052,7 @@ export const SIGNATURE_SECTION_COPY: Readonly<Record<string, SectionCopy>> = {
   pulse: { features: c("Training", "Ways to train with us"), about: c("The space", "Built for consistency"), testimonials: c("Members", "Member stories"), newsletter: c("Stay in the loop", "Class updates and offers"), contact: c("Join", "Ask about membership") },
   gala: { about: c("The studio", "Celebrations, thoughtfully planned"), testimonials: c("Hosts", "Words from our hosts"), newsletter: c("Ideas", "Inspiration for your next event"), contact: c("Plan with us", "Tell us about your event") },
   transit: { features: c("Coverage", "How we move your goods"), about: c("Operations", "Reliable by design"), contact: c("Get a quote", "Book a pickup or ask about rates") },
+  drive: { features: c("Why us", "Every car, checked and ready"), categories: c("Browse", "Find the right ride"), about: c("The showroom", "Drive with confidence"), testimonials: c("Drivers", "What customers say"), newsletter: c("New arrivals", "Be first to see new cars"), contact: c("Visit or call", "Talk to the team") },
   talent: { about: c("Who we are", "People-first hiring"), features: c("What we do", "Recruitment and HR support"), testimonials: c("Partners", "Feedback from employers and candidates"), contact: c("Talk to us", "Hiring or looking for work?") },
 };
 
@@ -1073,6 +1078,7 @@ const SIGNATURE_STYLE: Record<string, { font?: string; headlineFont?: string; ra
   gala: { font: "'Inter', sans-serif", headlineFont: "'Playfair Display', Georgia, serif", radius: "14px" },
   transit: { font: "'Inter', sans-serif", headlineFont: "'Inter', sans-serif", radius: "8px" },
   talent: { font: "'Plus Jakarta Sans', sans-serif", headlineFont: "'Space Grotesk', sans-serif", radius: "12px" },
+  drive: { font: "'Inter', sans-serif", headlineFont: "'Plus Jakarta Sans', sans-serif", radius: "16px" },
 };
 
 function signatureTheme(data: Omit<TemplateTheme, "font" | "headlineFont" | "radius" | "sections"> & { signatureMode: string }): TemplateTheme & { signatureMode: string } {
@@ -1099,6 +1105,7 @@ export const SIGNATURE_TEMPLATES = [
   signatureTheme({ signatureMode: "gala", bg: "#FBF7F1", ink: "#241C2E", card: "#FFFFFF", accent: "#A9812F", accentSoft: "#E3CFA0", muted: "#756B7C", border: "#EBE1D2", eyebrow: "Moments worth marking", headline: "Make the day unforgettable.", sub: "Weddings, parties and corporate events, planned with care. Explore our packages and tell us your date.", cta: "Plan your event", layout: "grid", heroStyle: "fullbleed", catalogLabel: "Packages & services", density: "relaxed", surfaceDark: "#1E1726" }),
   signatureTheme({ signatureMode: "transit", bg: "#F2F5F9", ink: "#0B2545", card: "#FFFFFF", accent: "#E09B00", accentSoft: "#F6D58A", muted: "#5D6B7E", border: "#D9E0EA", eyebrow: "Moving things forward", headline: "Pickup to doorstep, handled.", sub: "Choose a delivery or freight service, get a quote and book a pickup online.", cta: "Get a quote", layout: "grid", heroStyle: "split", catalogLabel: "Delivery services", density: "relaxed", surfaceDark: "#0B2545" }),
   signatureTheme({ signatureMode: "talent", bg: "#F5F6FB", ink: "#1B1D3A", card: "#FFFFFF", accent: "#4F46E5", accentSoft: "#B6B2F5", muted: "#666A8A", border: "#DEE0F0", eyebrow: "Hiring, made human", headline: "The right people. The right fit.", sub: "Explore our recruitment and HR services, or get in touch about a role.", cta: "Talk to us", layout: "list", heroStyle: "split", catalogLabel: "Our services", density: "relaxed", surfaceDark: "#1B1D3A" }),
+  signatureTheme({ signatureMode: "drive", bg: "#F4F7FB", ink: "#0B1B33", card: "#FFFFFF", accent: "#1D4ED8", accentSoft: "#BFD2FB", muted: "#5B6B82", border: "#DCE4F0", eyebrow: "Cars, rentals and test drives", headline: "Find the car. Drive it home.", sub: "Browse cars for sale and rent, then book a test drive or reserve online.", cta: "Browse cars", layout: "grid", heroStyle: "fullbleed", catalogLabel: "Available now", density: "relaxed", surfaceDark: "#0B1B33" }),
 ] as const;
 
 export type SignatureTemplate = TemplateTheme & { signatureMode: string; variationName: string };
@@ -1113,7 +1120,7 @@ for (const t of SIGNATURE_TEMPLATES as unknown as any[]) {
       maison: "Maison — Hotel & Stay", hotel: "Grand — Hotel & Hospitality", ember: "Ember — Restaurant", muse: "Muse — Salon & Beauty",
       frame: "Frame — Photography Studio", north: "North — Creative Agency", pure: "Pure — Cleaning Services", forge: "Forge — Construction",
       vitalis: "Vitalis — Clinic & Care", pulse: "Pulse — Fitness & Wellness", gala: "Gala — Events & Celebrations",
-      transit: "Transit — Logistics & Delivery", talent: "Talent — Recruitment & HR",
+      transit: "Transit — Logistics & Delivery", talent: "Talent — Recruitment & HR", drive: "Drive — Cars & Rentals",
     } as Record<string,string>)[t.signatureMode] });
   }
 }
@@ -1153,7 +1160,7 @@ export const SIGNATURE_CATEGORY_BY_MODE: Readonly<Record<string, string>> = {
   electra: "Electronics", atelier: "Fashion", kinetic: "Fashion", bloom: "Beauty", haven: "Home & Furniture",
   harvest: "Food & Groceries", maison: "Hotel & Lodging", hotel: "Hotel & Lodging", ember: "Restaurant",
   muse: "Salon", frame: "Photography", north: "Agency", pure: "Cleaning", forge: "Construction",
-  vitalis: "Health", pulse: "Health & Fitness", gala: "Event Planning", transit: "Logistics", talent: "HR & Recruitment",
+  vitalis: "Health", pulse: "Health & Fitness", gala: "Event Planning", transit: "Logistics", talent: "HR & Recruitment", drive: "Automotive",
 };
 
 /**
@@ -1167,5 +1174,5 @@ export const SIGNATURE_SUPPORTS_BY_MODE: Readonly<Record<string, readonly string
   maison: ["Hotel & Lodging"], hotel: ["Hotel & Lodging"], ember: ["Restaurant"], muse: ["Salon", "Beauty"],
   frame: ["Photography", "Agency"], north: ["Agency", "Professional Services", "Software Development"],
   pure: ["Cleaning"], forge: ["Construction", "Real Estate"],
-  vitalis: ["Health"], pulse: ["Health & Fitness"], gala: ["Event Planning"], transit: ["Logistics"], talent: ["HR & Recruitment"],
+  vitalis: ["Health"], pulse: ["Health & Fitness"], gala: ["Event Planning"], transit: ["Logistics"], talent: ["HR & Recruitment"], drive: ["Automotive"],
 };
