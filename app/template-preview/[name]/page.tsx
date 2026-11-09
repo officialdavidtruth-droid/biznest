@@ -81,6 +81,8 @@ const PREVIEW_HERO_PHOTOS: Record<string, string> = {
 // which looked wrong on a salon or law-firm template. Give each preview menu names that fit its own niche.
 const PREVIEW_MENU: Record<string, string[]> = {
   Beauty: ["Skincare", "Makeup", "Hair", "Services"],
+  Electronics: ["Audio", "Phones", "Laptops", "Accessories"],
+  Retail: ["New in", "Best sellers", "Deals", "Gifts"],
   Salon: ["Hair", "Nails", "Skin", "Services"],
   Photography: ["Portraits", "Weddings", "Events", "Prints"],
   Agency: ["Services", "Work", "Process", "Pricing"],
