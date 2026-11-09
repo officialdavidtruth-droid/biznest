@@ -10,6 +10,7 @@ import { resolveStoreTheme } from "@/lib/template-themes";
 import { templateThemeToBuilderConfig } from "@/lib/template-builder-config";
 import { ThelusoHotel } from "@/components/storefront/theluso-hotel";
 import { getHotelContent } from "@/lib/hotel-content";
+import { nicheHeroPhoto, nicheSamplePhoto } from "@/lib/niche-imagery";
 import { StoreCategoriesProvider } from "@/components/storefront/store-categories";
 
 export const revalidate = 3600;
@@ -117,11 +118,11 @@ export default async function TemplatePreviewPage({ params }: { params: Promise<
   const previewStore = {
     ...store,
     name: definition.name.split(" — ")[0],
-    bannerUrl: PREVIEW_HERO_PHOTOS[definition.name] ?? null,
+    bannerUrl: PREVIEW_HERO_PHOTOS[definition.name] ?? nicheHeroPhoto(definition.category),
     business: { description: tpl.sub || store.business.description },
   };
   const isFashion = definition.category === "Fashion";
-  const sampleItems = isFashion ? fashionItems(tpl) : items;
+  const sampleItems = isFashion ? fashionItems(tpl) : items.map((it, i) => ({ ...it, image: nicheSamplePhoto(definition.category, i) ?? it.image }));
   const p:any = { store: previewStore, slug:"__biznest-template-preview", catalogItems:sampleItems, items:sampleItems, navCategories:isFashion ? fashionCategories : categories, goodReviews:[], reviews:[], avgRating:null, completedOrders:0, trustScore:null, trustChecklist:null, social:{} };
   if (home.kind === "screenshot") return withPreviewMenu(definition.category, <SignatureScreenshotHome {...p} mode={home.mode} {...home.palette}/>);
   if (home.kind === "hotel") return <ThelusoHotel store={previewStore as any} slug={p.slug} content={await getHotelContent(p.slug, definition.name)}/>;

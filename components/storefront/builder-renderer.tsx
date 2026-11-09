@@ -1,6 +1,7 @@
 "use client";
 
 import { starFill, starEmpty } from "@/lib/utils/stars";
+import { nicheHeroPhoto } from "@/lib/niche-imagery";
 import { readableAccentText } from "@/lib/utils/readable-accent";
 import { MenuLinks, useFooterMenu, type FallbackLink } from "@/components/storefront/store-menu";
 import { useStoreCategories } from "@/components/storefront/store-categories";
@@ -105,7 +106,7 @@ export function BuilderStorefront({
   const width = d.containerWidth === "compact" ? 960 : d.containerWidth === "wide" ? 1320 : 1160;
   // A hero with no image of its own shows the store's banner (Customize > Content > Background image),
   // so changing that image updates a published builder homepage instead of being ignored.
-  const visible = config.sections.filter((s) => s.visible).map((s) => s.type === "hero" && !s.settings.image && store.bannerUrl && isSafeImageUrl(store.bannerUrl) ? { ...s, settings: { ...s.settings, image: store.bannerUrl } } : s)
+  const visible = config.sections.filter((s) => s.visible).map((s) => s.type === "hero" && !s.settings.image && store.bannerUrl && isSafeImageUrl(store.bannerUrl) ? { ...s, settings: { ...s.settings, image: store.bannerUrl } } : s.type === "hero" && !s.settings.image && !store.bannerUrl && nicheHeroPhoto(store.business.category) ? { ...s, settings: { ...s.settings, image: nicheHeroPhoto(store.business.category)! } } : s)
     // Only the owner's own words reach visitors: platform filler text is dropped.
     .map((s) => (s.settings.body && !ownText(s.settings.body) ? { ...s, settings: { ...s.settings, body: undefined } } : s));
   const featured = catalogItems.slice(0, 8);
