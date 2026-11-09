@@ -44,7 +44,7 @@ export function AccountLink({
     return (
       <Link
         href={`/${storeSlug}/account`}
-        className="flex items-center"
+        className="flex h-10 w-10 items-center justify-center"
         aria-label="My account"
         title="My account"
       >
@@ -64,7 +64,7 @@ export function AccountLink({
   return (
     <Link
       href={`/login?callbackUrl=${encodeURIComponent(callbackUrl)}&store=${encodeURIComponent(storeSlug)}`}
-      className="flex items-center"
+      className="flex h-10 w-10 items-center justify-center"
       aria-label="Sign in"
       title="Sign in"
     >

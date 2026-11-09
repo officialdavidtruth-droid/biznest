@@ -19,11 +19,11 @@ export function CartLink({
   const count = cartStoreSlug === storeSlug ? items.reduce((n, i) => n + i.quantity, 0) : 0;
 
   return (
-    <Link href={`/${storeSlug}/cart`} className="relative flex items-center" aria-label="Cart">
+    <Link href={`/${storeSlug}/cart`} className="relative flex h-10 w-10 items-center justify-center" aria-label="Cart">
       <ShoppingBag className="h-5 w-5 transition-colors" style={{ color: ink, opacity: 0.85 }} />
       {count > 0 && (
         <span
-          className="absolute -right-2 -top-2 flex h-4 w-4 items-center justify-center rounded-full text-[10px] font-bold"
+          className="absolute right-0 top-0 flex h-4 w-4 items-center justify-center rounded-full text-[10px] font-bold"
           style={{ background: accent, color: onAccent }}
         >
           {count}

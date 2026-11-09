@@ -637,27 +637,27 @@ export default async function HomePage() {
           <div>
             <p className="mb-3 text-xs font-semibold uppercase tracking-wider" style={{ color: "var(--bn-ivory)" }}>Platform</p>
             <ul className="space-y-2 text-sm" style={{ color: "var(--bn-mute)" }}>
-              <li><Link href="/register" className="hover:opacity-80">Open a store</Link></li>
-              <li><Link href="/login" className="hover:opacity-80">Sign in</Link></li>
-              <li><Link href="/download" className="hover:opacity-80">Download the app</Link></li>
-              <li><a href="#pricing" className="hover:opacity-80">Pricing</a></li>
-              <li><a href="#categories" className="hover:opacity-80">Categories</a></li>
+              <li><Link href="/register" className="inline-block py-1.5 hover:opacity-80">Open a store</Link></li>
+              <li><Link href="/login" className="inline-block py-1.5 hover:opacity-80">Sign in</Link></li>
+              <li><Link href="/download" className="inline-block py-1.5 hover:opacity-80">Download the app</Link></li>
+              <li><a href="#pricing" className="inline-block py-1.5 hover:opacity-80">Pricing</a></li>
+              <li><a href="#categories" className="inline-block py-1.5 hover:opacity-80">Categories</a></li>
             </ul>
           </div>
 
           <div>
             <p className="mb-3 text-xs font-semibold uppercase tracking-wider" style={{ color: "var(--bn-ivory)" }}>Legal</p>
             <ul className="space-y-2 text-sm" style={{ color: "var(--bn-mute)" }}>
-              <li><Link href="/privacy" className="hover:opacity-80">Privacy Policy</Link></li>
-              <li><Link href="/terms" className="hover:opacity-80">Terms of Service</Link></li>
-              <li><Link href="/seller-agreement" className="hover:opacity-80">Seller Agreement</Link></li>
+              <li><Link href="/privacy" className="inline-block py-1.5 hover:opacity-80">Privacy Policy</Link></li>
+              <li><Link href="/terms" className="inline-block py-1.5 hover:opacity-80">Terms of Service</Link></li>
+              <li><Link href="/seller-agreement" className="inline-block py-1.5 hover:opacity-80">Seller Agreement</Link></li>
             </ul>
           </div>
 
           <div>
             <p className="mb-3 text-xs font-semibold uppercase tracking-wider" style={{ color: "var(--bn-ivory)" }}>Support</p>
             <ul className="space-y-2 text-sm" style={{ color: "var(--bn-mute)" }}>
-              <li><a href="mailto:support@biznest.space" className="hover:opacity-80">support@biznest.space</a></li>
+              <li><a href="mailto:support@biznest.space" className="inline-block py-1.5 hover:opacity-80">support@biznest.space</a></li>
             </ul>
           </div>
         </div>
