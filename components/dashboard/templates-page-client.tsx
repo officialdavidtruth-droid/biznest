@@ -34,18 +34,9 @@ export function TemplatesPageClient({
   const [templateName, setTemplateName] = useState<string | null>(currentTemplateName);
   const [isSaving, setIsSaving] = useState(false);
 
-  async function handleSelect(id: string) {
-    if (isSaving) return;
-    // Switching to a different template resets the store's colors and font and
-    // removes any saved Website Builder layout (see setStoreTemplate), so ask first.
-    // Re-selecting the template already in use changes nothing and needs no prompt.
-    const next = templates.find((t) => t.id === id);
-    if (templateId && id !== templateId) {
-      const ok = window.confirm(
-        `Switch to "${next?.name ?? "this template"}"?\n\nThis resets your store's colors and font and removes any layout you saved in the Website Builder. Your products, text content and settings are kept.\n\nThis can't be undone.`
-      );
-      if (!ok) return;
-    }
+  const [pendingId, setPendingId] = useState<string | null>(null);
+
+  async function applyTemplate(id: string) {
     setIsSaving(true);
     const result = await setStoreTemplate(slug, id);
     setIsSaving(false);
@@ -57,6 +48,20 @@ export function TemplatesPageClient({
     setTemplateName(templates.find((t) => t.id === id)?.name ?? null);
     toast.success("Template applied to your store");
   }
+
+  function handleSelect(id: string) {
+    if (isSaving) return;
+    // Switching to a different template resets the store's colors and font and
+    // removes any saved Website Builder layout (see setStoreTemplate), so ask first.
+    // Re-selecting the template already in use changes nothing and needs no prompt.
+    if (templateId && id !== templateId) {
+      setPendingId(id);
+      return;
+    }
+    void applyTemplate(id);
+  }
+
+  const pendingName = pendingId ? templates.find((t) => t.id === pendingId)?.name ?? "this template" : null;
 
   return (
     <div className="max-w-6xl">
@@ -90,6 +95,21 @@ export function TemplatesPageClient({
         planRank={planRank}
         businessCategory={businessCategory}
       />
+
+      {pendingId && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/50 p-4" role="dialog" aria-modal="true" aria-label="Switch template">
+          <div className="w-full max-w-md rounded-xl bg-background p-5 shadow-xl">
+            <h2 className="text-base font-semibold">Switch to &ldquo;{pendingName}&rdquo;?</h2>
+            <p className="mt-2 text-sm text-muted-foreground">
+              This resets your store&apos;s colors and font and removes any layout you saved in the Website Builder. Your products, text content and settings are kept. This can&apos;t be undone.
+            </p>
+            <div className="mt-4 flex justify-end gap-2">
+              <button type="button" onClick={() => setPendingId(null)} className="rounded-md border border-border px-3 py-2 text-xs font-medium">Keep current template</button>
+              <button type="button" onClick={() => { const id = pendingId; setPendingId(null); void applyTemplate(id); }} className="rounded-md bg-primary px-3 py-2 text-xs font-medium text-primary-foreground">Switch template</button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {isSaving && <p className="mt-4 text-xs text-muted-foreground">Applying template…</p>}
     </div>
