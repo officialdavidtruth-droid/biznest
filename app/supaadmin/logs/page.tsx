@@ -26,14 +26,14 @@ export default async function ActivityLogPage({
         </div>
       </div>
 
-      <form className="mb-4 flex gap-2">
+      <form className="mb-4 flex flex-wrap gap-2">
         <input
           name="q"
           defaultValue={q}
           placeholder="Search by user email, entity, or ID…"
-          className="flex-1 rounded-md border px-3 py-2 text-sm"
+          className="min-w-[12rem] flex-1 rounded-md border px-3 py-2 text-sm"
         />
-        <select name="action" defaultValue={action ?? ""} className="rounded-md border px-3 py-2 text-sm">
+        <select name="action" defaultValue={action ?? ""} className="min-w-0 max-w-full rounded-md border px-3 py-2 text-sm">
           <option value="">All actions</option>
           {actions.map((a) => (
             <option key={a} value={a}>{a}</option>

@@ -25,7 +25,7 @@ export default async function BusinessesReviewPage({
     <div>
       <h1 className="mb-4 text-xl font-semibold">Business verification</h1>
 
-      <div className="mb-4 flex gap-1 border-b">
+      <div className="mb-4 flex gap-1 overflow-x-auto whitespace-nowrap border-b">
         {TABS.map((t) => (
           <Link
             key={t.value}
