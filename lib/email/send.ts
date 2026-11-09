@@ -973,3 +973,47 @@ export async function sendSupportRequestEmail(input: {
     { kind: "support-request", to: input.to }
   );
 }
+
+/**
+ * BizNest's own email to one of its users (signup reminders, curated and
+ * promotional campaigns). Every message carries a personal unsubscribe link and
+ * the one-click List-Unsubscribe headers. Receipts, verification and security
+ * mail are separate and never use this.
+ */
+export async function sendPlatformEmail(params: {
+  userId: string;
+  email: string;
+  subject: string;
+  preheader?: string;
+  bodyHtml: string;
+  kind: string;
+}) {
+  const { createPlatformUnsubscribeToken } = await import("@/lib/email/platform-unsubscribe");
+  const token = encodeURIComponent(createPlatformUnsubscribeToken(params.userId));
+  const unsubscribeUrl = `${APP_URL}/unsubscribe/platform?token=${token}`;
+  const oneClickUrl = `${APP_URL}/api/unsubscribe/platform?token=${token}`;
+
+  const html = emailShell({
+    preheader: params.preheader ? escapeHtml(params.preheader) : undefined,
+    headerLogoAlt: "BizNest",
+    body: params.bodyHtml,
+    footer: `You're getting this because you have a BizNest account (${escapeHtml(params.email)}).
+      <a href="${unsubscribeUrl}" style="color:#6b7280;">Unsubscribe from reminders and promotions</a>. You'll still get account emails such as receipts and security alerts.`,
+  });
+
+  const result = await send(
+    {
+      from: FROM,
+      to: params.email,
+      subject: params.subject,
+      html,
+      headers: {
+        "List-Unsubscribe": `<${oneClickUrl}>`,
+        "List-Unsubscribe-Post": "List-Unsubscribe=One-Click",
+      },
+    },
+    { kind: params.kind, to: params.email }
+  );
+  if (result.error) return { success: false as const, error: result.error.message };
+  return { success: true as const };
+}

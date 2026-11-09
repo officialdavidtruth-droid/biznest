@@ -85,8 +85,13 @@ model User {
   // Read by the churn-watch cron ("no logins for 7 days"). Null = never
   // signed in since this column was added.
   lastLoginAt       DateTime?
+  // Set when the person unsubscribes from BizNest's own reminder and
+  // promotional emails (not store newsletters, receipts or security mail).
+  platformEmailOptOutAt DateTime?
   createdAt         DateTime  @default(now())
   updatedAt         DateTime  @updatedAt
+
+  platformEmailLogs PlatformEmailLog[]
 
   accounts          Account[]
   sessions          Session[]
@@ -5827,4 +5832,37 @@ model PlatformPageStat {
 
   @@unique([day, path])
   @@index([day])
+}
+
+
+// --- BizNest's own emails to its users (signup reminders, curated/promo campaigns) ---
+// One row per email sent. The unique key makes every send idempotent: a
+// reminder stage or a campaign can only ever reach a given user once.
+model PlatformEmailLog {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  // "REMINDER_1" | "REMINDER_2" | "REMINDER_3" | "CAMPAIGN:<campaignId>"
+  kind      String
+  createdAt DateTime @default(now())
+
+  @@unique([userId, kind])
+  @@index([kind])
+}
+
+model PlatformCampaign {
+  id         String    @id @default(cuid())
+  subject    String
+  body       String    @db.Text
+  ctaLabel   String?
+  ctaUrl     String?
+  // NO_BUSINESS | BUSINESS_NO_STORE | STORE_OWNERS | ALL
+  audience   String
+  // DRAFT | SENDING | SENT
+  status     String    @default("DRAFT")
+  sentCount  Int       @default(0)
+  createdAt  DateTime  @default(now())
+  sentAt     DateTime?
+
+  @@index([status])
 }
