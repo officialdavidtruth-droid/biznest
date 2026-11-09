@@ -1,3 +1,4 @@
+import { readableAccentText } from "@/lib/utils/readable-accent";
 import type React from "react";
 import { cssUrl, safeHref } from "@/lib/builder-safe";
 import type { BuilderConfig, BuilderSection, HeroVariant } from "@/lib/builder-config";
@@ -38,8 +39,8 @@ function Tile({ item, d, ratio, r }: { item?: HeroItem; d: D; ratio: string; r: 
   return (
     <div style={{ position: "relative", aspectRatio: ratio, borderRadius: r, overflow: "hidden", ...bgImg(item?.image, `linear-gradient(135deg, ${d.accent}33, ${d.primary}22)`) }}>
       {item && (
-        <div style={{ position: "absolute", left: 10, right: 10, bottom: 10, background: `${d.background}ee`, color: d.text, borderRadius: Math.min(r, 10), padding: "8px 10px", display: "flex", justifyContent: "space-between", gap: 8, fontSize: 12, fontWeight: 700 }}>
-          <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{item.name}</span><span style={{ whiteSpace: "nowrap", color: d.accent }}>{money(item)}</span>
+        <div style={{ position: "absolute", left: 10, right: 10, bottom: 10, background: `${d.background}ee`, color: d.text, borderRadius: Math.min(r, 10), padding: "8px 10px", display: "flex", flexWrap: "wrap", justifyContent: "space-between", alignItems: "baseline", columnGap: 8, rowGap: 2, fontSize: 12, fontWeight: 700 }}>
+          <span style={{ flex: "1 1 60px", minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{item.name}</span><span style={{ whiteSpace: "nowrap", color: readableAccentText(d.accent, d.background) }}>{money(item)}</span>
         </div>
       )}
     </div>

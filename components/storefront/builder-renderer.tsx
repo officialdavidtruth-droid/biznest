@@ -590,9 +590,9 @@ export function ItemCard({ item, store, d, radius, actionLabel }: { item: Catalo
   if (style === "overlay") return (
     <Link href={href} style={{ position: "relative", display: "block", borderRadius: radius, overflow: "hidden" }}>
       <div style={img("4/5")} />
-      <div style={{ position: "absolute", inset: "auto 0 0 0", padding: 16, color: "#fff", background: "linear-gradient(0deg,rgba(0,0,0,.78),rgba(0,0,0,0))" }}>
-        <div style={{ fontWeight: 750, fontFamily: d.headingFont }}>{item.name}</div>
-        <div style={{ fontWeight: 800, marginTop: 4, color: d.accent }}>{price}</div>
+      <div style={{ position: "absolute", inset: "auto 0 0 0", padding: "44px 14px 14px", color: "#fff", background: "linear-gradient(0deg,rgba(0,0,0,.86),rgba(0,0,0,.55) 55%,rgba(0,0,0,0))" }}>
+        <div style={{ fontWeight: 750, fontFamily: d.headingFont, overflowWrap: "anywhere", display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden" }}>{item.name}</div>
+        <div style={{ fontWeight: 800, marginTop: 4, color: "#fff" }}>{price}</div>
       </div>
     </Link>
   );
