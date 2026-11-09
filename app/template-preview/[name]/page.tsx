@@ -1,5 +1,6 @@
 import { defaultPhoto } from "@/lib/default-images";
 import type { Metadata } from "next";
+import type { ReactNode } from "react";
 import { notFound } from "next/navigation";
 import { SignatureScreenshotHome } from "@/components/storefront/signature-screenshot-home";
 import { getTemplateDefinition } from "@/lib/template-registry";
@@ -9,6 +10,7 @@ import { resolveStoreTheme } from "@/lib/template-themes";
 import { templateThemeToBuilderConfig } from "@/lib/template-builder-config";
 import { ThelusoHotel } from "@/components/storefront/theluso-hotel";
 import { getHotelContent } from "@/lib/hotel-content";
+import { StoreCategoriesProvider } from "@/components/storefront/store-categories";
 
 export const revalidate = 3600;
 export const metadata: Metadata = { title: "BizNest Template Preview", robots: { index: false, follow: false } };
@@ -73,6 +75,36 @@ const PREVIEW_HERO_PHOTOS: Record<string, string> = {
   "Skyview Hotels & Resorts": defaultPhoto("photo-1520250497591-112f2f40a3f4", 1800),
 };
 
+
+// Without a provider the storefront nav falls back to a retail demo list (Electronics / Fashion / Home & Living),
+// which looked wrong on a salon or law-firm template. Give each preview menu names that fit its own niche.
+const PREVIEW_MENU: Record<string, string[]> = {
+  Beauty: ["Skincare", "Makeup", "Hair", "Services"],
+  Salon: ["Hair", "Nails", "Skin", "Services"],
+  Photography: ["Portraits", "Weddings", "Events", "Prints"],
+  Agency: ["Services", "Work", "Process", "Pricing"],
+  "Professional Services": ["Services", "Packages", "Resources", "Pricing"],
+  Cleaning: ["Home", "Office", "Deep clean", "Packages"],
+  Construction: ["Residential", "Commercial", "Renovation", "Quotes"],
+  Restaurant: ["Starters", "Mains", "Desserts", "Drinks"],
+  "Food & Groceries": ["Fresh produce", "Pantry", "Drinks", "Bakery"],
+  Health: ["Consultations", "Checkups", "Lab tests", "Pharmacy"],
+  "Health & Fitness": ["Classes", "Memberships", "Coaching", "Shop"],
+  "Event Planning": ["Weddings", "Corporate", "Birthdays", "Packages"],
+  Logistics: ["Delivery", "Freight", "Pickup", "Track"],
+  "HR & Recruitment": ["Hiring", "Talent pool", "Payroll", "Training"],
+  "Real Estate": ["Buy", "Rent", "Land", "Shortlets"],
+  "Travel & Tourism": ["Flights", "Hotels", "Tours", "Visas"],
+  Automotive: ["Cars", "Parts", "Service", "Rentals"],
+  "Home & Furniture": ["Living room", "Bedroom", "Kitchen", "Decor"],
+  Fashion: ["Women", "Men", "Accessories", "Footwear"],
+};
+function withPreviewMenu(category: string, node: ReactNode) {
+  const names = PREVIEW_MENU[category];
+  if (!names) return node;
+  return <StoreCategoriesProvider categories={names.map((name, i) => ({ id: `pm-${i}`, name, parentId: null, count: 6 }))}>{node}</StoreCategoriesProvider>;
+}
+
 export default async function TemplatePreviewPage({ params }: { params: Promise<{ name:string }> }) {
   let name: string;
   try { name = decodeURIComponent((await params).name); } catch { notFound(); }
@@ -91,9 +123,9 @@ export default async function TemplatePreviewPage({ params }: { params: Promise<
   const isFashion = definition.category === "Fashion";
   const sampleItems = isFashion ? fashionItems(tpl) : items;
   const p:any = { store: previewStore, slug:"__biznest-template-preview", catalogItems:sampleItems, items:sampleItems, navCategories:isFashion ? fashionCategories : categories, goodReviews:[], reviews:[], avgRating:null, completedOrders:0, trustScore:null, trustChecklist:null, social:{} };
-  if (home.kind === "screenshot") return <SignatureScreenshotHome {...p} mode={home.mode} {...home.palette}/>;
+  if (home.kind === "screenshot") return withPreviewMenu(definition.category, <SignatureScreenshotHome {...p} mode={home.mode} {...home.palette}/>);
   if (home.kind === "hotel") return <ThelusoHotel store={previewStore as any} slug={p.slug} content={await getHotelContent(p.slug, definition.name)}/>;
   const theme = resolveStoreTheme(definition.category, previewStore.name, null, null, definition.name);
   const config = templateThemeToBuilderConfig({ ...theme, neutral: true }, previewStore.name, previewStore.business.description, previewStore.bannerUrl, previewStore.business as any);
-  return <BuilderStorefront store={previewStore as any} config={config} catalogItems={sampleItems as any} reviews={[]} avgRating={null} completedOrders={0}/>;
+  return withPreviewMenu(definition.category, <BuilderStorefront store={previewStore as any} config={config} catalogItems={sampleItems as any} reviews={[]} avgRating={null} completedOrders={0}/>);
 }
