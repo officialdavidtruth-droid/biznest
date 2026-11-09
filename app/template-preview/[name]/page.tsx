@@ -121,6 +121,7 @@ export default async function TemplatePreviewPage({ params }: { params: Promise<
   const photoOffset = [...definition.name].reduce((a, ch) => (a * 31 + ch.charCodeAt(0)) >>> 0, 7) % 6;
   const previewStore = {
     ...store,
+    slug: "__biznest-template-preview",
     name: definition.name.split(" — ")[0],
     bannerUrl: PREVIEW_HERO_PHOTOS[definition.name] ?? nicheSamplePhoto(definition.category, photoOffset, 1800) ?? nicheHeroPhoto(definition.category),
     business: { description: tpl.sub || store.business.description },

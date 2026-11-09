@@ -37,6 +37,21 @@ export default async function SupaAdminLayout({ children }: { children: React.Re
   const onLogin = (await headers()).get("x-bn-pathname") === "/supaadmin/login";
   const token = (await cookies()).get(ADMIN_COOKIE_NAME)?.value;
   if (!onLogin && token && !(await verifyAdminSession(token))) redirect("/supaadmin/login");
+  // The sign-in page stands alone: no sidebar (it would show the admin menu to anyone who finds the URL)
+  // and no badge-count queries for a visitor who has not signed in.
+  if (onLogin) {
+    return (
+      <>
+        <ThemeFlashGuard scopeId="bn-supaadmin-theme-scope" defaultTheme="dark" />
+        <ThemeProvider scopeId="bn-supaadmin-theme-scope" defaultTheme="dark">
+          <div className="flex min-h-0 flex-1 overflow-y-auto" style={{ background: "hsl(var(--background))" }}>
+            <div className="w-full">{children}</div>
+          </div>
+        </ThemeProvider>
+      </>
+    );
+  }
+
   const counts = await getAdminBadgeCounts();
 
   return (
