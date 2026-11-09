@@ -20,7 +20,7 @@ export default async function AppsPage({ params }: { params: Promise<{ slug: str
       </div>
 
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-        {data.plugins.map((plugin) => {
+        {data.plugins.filter((plugin) => plugin.eligible || plugin.installed).map((plugin) => {
           const Icon = ICONS[plugin.icon ?? ""] ?? Puzzle;
           const unavailable = !plugin.eligible || !plugin.planAllowed;
           const unpriced = !plugin.isFree && plugin.price <= 0 && !plugin.installed;
@@ -35,7 +35,7 @@ export default async function AppsPage({ params }: { params: Promise<{ slug: str
               <div className="mt-4 flex items-end justify-between gap-3 border-t pt-4">
                 <div>
                   {plugin.isFree ? <p className="text-sm font-bold text-primary">Included in plan</p> : unpriced ? <p className="text-sm font-bold text-muted-foreground">Price not set</p> : <p className="text-sm font-bold">{formatMoney(plugin.price)}<span className="text-[10px] font-normal text-muted-foreground">/{plugin.billingInterval === "YEARLY" ? "year" : plugin.billingInterval === "ONE_TIME" ? "one time" : "month"}</span></p>}
-                  <p className="mt-1 text-[10px] text-muted-foreground">{plugin.supportedPlans.length ? `Available on ${plugin.supportedPlans.join(" / ")}` : "Plan access not configured"}</p>
+                  <p className="mt-1 text-[10px] text-muted-foreground">{plugin.supportedPlans.length ? `Available on ${plugin.supportedPlans.join(" / ")}` : plugin.isFree ? "Included on every plan" : "Contact support for plan access"}</p>
                 </div>
                 {plugin.isComingSoon ? <span className="rounded-xl border px-4 py-2 text-xs font-semibold text-muted-foreground">Coming soon</span> : unpriced ? <span className="rounded-xl border px-4 py-2 text-xs font-semibold text-muted-foreground">Not available yet</span> : unavailable ? (
                   <Link href={`/store/${slug}/admin/subscription?apps=${encodeURIComponent(plugin.key)}`} className="flex items-center gap-1.5 rounded-xl border px-3 py-2 text-xs font-bold"><LockKeyhole size={13} /> Upgrade</Link>
