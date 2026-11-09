@@ -4,8 +4,7 @@ import type { Metadata } from "next";
 import { spaceGrotesk as display, inter as body } from "@/lib/fonts";
 import { PUBLIC_TEMPLATE_REGISTRY } from "@/lib/template-registry";
 import type { TemplateTheme } from "@/lib/template-themes";
-import { TemplateCover } from "@/components/storefront/template-cover";
-import { getTemplateThumbnail } from "@/lib/template-thumbnails";
+import { LazyPreviewFrame } from "@/components/storefront/lazy-preview-frame";
 
 
 export const metadata: Metadata = {
@@ -64,18 +63,8 @@ export default async function TemplatesPage() {
               className="overflow-hidden rounded-2xl border"
               style={{ borderColor: "var(--bn-ink-line)", background: "var(--bn-ink-raised)" }}
             >
-              <div className="relative h-44 overflow-hidden" style={{ background: theme.bg }}>
-                {/* Generated screenshot of the real preview when one exists; otherwise a static facsimile
-                    built from the template's own theme tokens, which never depends on a seeded demo store. */}
-                {(() => {
-                  const thumb = getTemplateThumbnail(t.name);
-                  return thumb ? (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img src={thumb} alt={`${t.name} template front page`} loading="lazy" decoding="async" width={640} height={400} className="h-full w-full object-cover object-top" />
-                  ) : (
-                    <TemplateCover theme={theme} />
-                  );
-                })()}
+              <div className="relative overflow-hidden" style={{ background: theme.bg, aspectRatio: "16 / 10" }}>
+                <LazyPreviewFrame src={`/template-preview/${encodeURIComponent(t.name)}`} title={`${templateDisplayName(t.name)} template preview`} />
               </div>
 
               <div className="p-5">
@@ -88,7 +77,6 @@ export default async function TemplatesPage() {
                   </span>
                 </div>
                 <p className="mt-2 text-sm opacity-70">{t.category}</p>
-                <p className="mt-1 text-xs opacity-60">Layout: {theme.heroStyle}</p>
 
                 <div className="mt-5 flex items-center gap-3">
                   <Link
