@@ -4,7 +4,8 @@ import { useState, useTransition } from "react";
 import { Plus, Trash2, Save, Image as ImageIcon, CalendarDays, Tag, Sparkles, Home, Utensils, Compass, Info, Mail } from "lucide-react";
 import { saveHotelSection } from "@/lib/actions/hotel-content";
 import { SingleImageUpload } from "@/components/forms/single-image-upload";
-import { HOTEL_GALLERY_CATEGORIES, HOTEL_OFFER_CATEGORIES, HOTEL_AMENITY_CATEGORIES, type HotelContent, type HotelOffer, type HotelGalleryItem, type HotelEvent, type HotelAmenity, type HotelPageContent } from "@/lib/hotel-content";
+import { HOTEL_GALLERY_CATEGORIES, HOTEL_OFFER_CATEGORIES, HOTEL_AMENITY_CATEGORIES } from "@/lib/hotel-constants";
+import type { HotelContent, HotelOffer, HotelGalleryItem, HotelEvent, HotelAmenity, HotelPageContent } from "@/lib/hotel-content";
 
 type Tab="home"|"dining"|"facilities"|"experiences"|"about"|"contact"|"gallery"|"amenities"|"events"|"offers";
 const blankPage:HotelPageContent={eyebrow:"",title:"",subtitle:"",image:"",body:"",ctaLabel:"",ctaHref:"",cards:[],features:[],stats:[]};

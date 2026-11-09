@@ -1,11 +1,9 @@
+import { HOTEL_TEMPLATE_NAME } from "./hotel-constants";
 import { defaultPhoto } from "@/lib/default-images";
 import type { HotelSkin } from "./hotel-skin";
 import { prisma } from "@/lib/prisma";
 
-export const HOTEL_TEMPLATE_NAME = "Veloura — Superior Luxury Hotel";
-export const HOTEL_GALLERY_CATEGORIES = ["All", "Hotel Interior", "Rooms", "Dining", "Amenities", "Events", "Meetings & Conferences", "Outdoor Spaces", "Our People"] as const;
-export const HOTEL_OFFER_CATEGORIES = ["All Offers", "Room Packages", "Dining Offers", "Spa & Wellness", "Business Travel", "Long Stay", "Seasonal"] as const;
-export const HOTEL_AMENITY_CATEGORIES = ["All Amenities", "Wellness & Fitness", "Business & Events", "Dining & Leisure", "Guest Services", "Convenience"] as const;
+export { HOTEL_TEMPLATE_NAME, HOTEL_GALLERY_CATEGORIES, HOTEL_OFFER_CATEGORIES, HOTEL_AMENITY_CATEGORIES } from "./hotel-constants";
 
 export type HotelRoom = { id:string; slug:string; name:string; description:string; price:number; image:string; badge?:string; bed:string; guests:number; area:string; view:string; amenities:string[]; featured?:boolean };
 export type HotelOffer = { id:string; title:string; category:string; description:string; price:number; image:string; badge:string; benefits:string[] };

@@ -2,7 +2,8 @@
 import { useState, useTransition } from "react";
 import { Plus, Trash2, Save, Image as ImageIcon, Video, CalendarDays } from "lucide-react";
 import { saveGrandeurEvents, saveGrandeurGallery } from "@/lib/actions/grandeur-content";
-import { EVENT_CATEGORIES, GALLERY_CATEGORIES, type GrandeurEvent, type GrandeurGalleryItem, type GrandeurVideo } from "@/lib/grandeur-content";
+import { EVENT_CATEGORIES, GALLERY_CATEGORIES } from "@/lib/grandeur-constants";
+import type { GrandeurEvent, GrandeurGalleryItem, GrandeurVideo } from "@/lib/grandeur-content";
 
 export function GrandeurContentManager({slug,initial}:{slug:string;initial:{events:{events:GrandeurEvent[]};gallery:{items:GrandeurGalleryItem[];videos:GrandeurVideo[]}}}){
  const [tab,setTab]=useState<"events"|"gallery">("events"); const [events,setEvents]=useState(initial.events.events); const [items,setItems]=useState(initial.gallery.items); const [videos,setVideos]=useState(initial.gallery.videos); const [busy,start]=useTransition(); const [msg,setMsg]=useState("");

@@ -1,7 +1,7 @@
+import { EVENT_CATEGORIES, GALLERY_CATEGORIES } from "./grandeur-constants";
 import { prisma } from "@/lib/prisma";
 
-export const EVENT_CATEGORIES = ["Wine Dinners","Live Music","Themed Nights","Private Events","Corporate Events","Seasonal Events"] as const;
-export const GALLERY_CATEGORIES = ["Restaurant Interior","Food & Drinks","Private Dining","Events","Outdoor Terrace","Our People"] as const;
+export { EVENT_CATEGORIES, GALLERY_CATEGORIES } from "./grandeur-constants";
 
 export type GrandeurEvent = {
   id:string; slug:string; title:string; category:string; date:string; time:string; venue:string; description:string; details:string; image:string; featured?:boolean;

@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/prisma";
 
-export const TASTEHOUSE_TEMPLATE_NAME = "TasteHouse — Food Delivery";
+import { TASTEHOUSE_TEMPLATE_NAME } from "./tastehouse-constants";
+export { TASTEHOUSE_TEMPLATE_NAME };
 export type TasteHouseContent = {
   heroTitle:string; heroAccent:string; heroSubtitle:string; heroImage:string;
   firstOfferTitle:string; firstOfferText:string; firstOfferImage:string;

@@ -130,11 +130,11 @@ export type GeneratedTemplate = TemplateTheme & {
 };
 
 // Backward-compatible templates retained for existing stores.
-import { HOTEL_TEMPLATE_NAME } from "./hotel-content";
+import { HOTEL_TEMPLATE_NAME } from "./hotel-constants";
 import type { HeroVariant } from "./builder-config";
 import { THELUSO_THEME } from "./hotel-theme";
-import { TASTEHOUSE_TEMPLATE_NAME } from "./tastehouse-content";
-import { EXAMPLE_TEMPLATE_NAME } from "./example-content";
+import { TASTEHOUSE_TEMPLATE_NAME } from "./tastehouse-constants";
+import { EXAMPLE_TEMPLATE_NAME } from "./example-constants";
 
 // Re-exported: template-registry.ts, template-compatibility.ts, prisma/seed.ts
 // and several storefront pages import these template names from this module

@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/prisma";
 
-export const EXAMPLE_TEMPLATE_NAME = "Example — Modern Electronics Store";
+import { EXAMPLE_TEMPLATE_NAME } from "./example-constants";
+export { EXAMPLE_TEMPLATE_NAME };
 
 export type ExampleContent = {
   heroEyebrow: string; heroTitle: string; heroAccent: string; heroSubtitle: string; heroImage: string;
