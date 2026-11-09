@@ -142,6 +142,7 @@ export function CatalogExperience({
     <main style={{ background: d.background, color: d.text, fontFamily: d.font, minHeight: externalChrome ? undefined : "100vh" }}>
       <style>{`a{text-decoration:none;color:inherit}.bn-wrap{width:min(${width}px,calc(100% - 32px));margin:0 auto}.bn-grid{display:grid;gap:20px}
 .cx-card{transition:transform .22s ease,filter .22s ease}.cx-card:hover{transform:translateY(-4px);filter:drop-shadow(0 14px 22px rgba(0,0,0,.10))}@media(prefers-reduced-motion:reduce){.cx-card{transition:none}.cx-card:hover{transform:none}}
+@media(max-width:600px){.cx-products{grid-template-columns:repeat(2,minmax(0,1fr))!important;gap:12px!important}}
 .cx-chips{display:flex;gap:8px;overflow-x:auto;padding:2px 0 6px;scrollbar-width:thin}
 .cx-focus:focus-visible,.cx-chips button:focus-visible,.cx-row:focus-visible{outline:2px solid ${d.accent};outline-offset:2px}
 @media(max-width:720px){.cx-filterwrap{position:static!important}.cx-drop{left:0!important;right:0!important;width:auto!important}.cx-empty{grid-template-columns:1fr!important}.cx-art{display:none}.bn-nav-links{display:none!important}.cx-tools{flex-direction:column;align-items:stretch!important}.cx-search{flex:0 0 auto!important;max-width:none!important;width:100%}.cx-filterbtn{width:100%;justify-content:center}.cx-right{margin-left:0!important;justify-content:space-between}.cx-row{grid-template-columns:84px 1fr!important}.cx-row>div:last-child{grid-column:1/-1}}`}</style>
@@ -262,7 +263,7 @@ export function CatalogExperience({
             </div>
           </div>
         ) : view === "grid" ? (
-          <div className="bn-grid" style={{ gridTemplateColumns: "repeat(auto-fill, minmax(240px, 1fr))", gap: 28 }}>
+          <div className="bn-grid cx-products" style={{ gridTemplateColumns: "repeat(auto-fill, minmax(240px, 1fr))", gap: 28 }}>
             {results.slice(0, shown).map((item) => (
               <div key={`${item.kind}-${item.id}`} className="cx-card">
                 <ItemCard item={item} store={store} d={d} radius={radius} actionLabel={item.kind === "service" ? experience.primaryAction : "View product"} />

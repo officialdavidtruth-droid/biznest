@@ -299,7 +299,7 @@ export function HeroVariantView({ variant, section, d, items, categories, slug }
               {s.body && <p style={{ color: d.muted, lineHeight: 1.7, margin: "18px 0 26px", maxWidth: 480 }}>{s.body}</p>}
               <Cta s={s} d={d} bg={d.accent} fg={on(d.accent)} />
             </div>
-            <div className="bn-grid" style={{ gridTemplateColumns: "1fr 1fr", gap: 12, padding: 14, background: d.surface, borderRadius: r + 6 }}>
+            <div className="bn-grid bn-g2" style={{ gridTemplateColumns: "1fr 1fr", gap: 12, padding: 14, background: d.surface, borderRadius: r + 6 }}>
               {[0, 1, 2, 3].map((i) => <Tile key={i} item={items[i]} d={d} ratio="1/1" r={Math.max(r - 2, 4)} />)}
             </div>
           </div>
