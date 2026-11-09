@@ -1,0 +1,3 @@
+-- AlterTable
+ALTER TABLE "VendorReferralWithdrawal" ADD COLUMN "feeAmount" DECIMAL(12,2) NOT NULL DEFAULT 0,
+ADD COLUMN "gateway" TEXT NOT NULL DEFAULT 'FLUTTERWAVE';

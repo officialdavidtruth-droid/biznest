@@ -26,11 +26,11 @@ export function CopyReferralLink({ link }: { link: string }) {
   );
 }
 
-export function WithdrawButton({ slug, amount, disabled }: { slug: string; amount: number; disabled: boolean }) {
+export function WithdrawButton({ slug, amount, fee, disabled }: { slug: string; amount: number; fee: number; disabled: boolean }) {
   const router = useRouter();
   const [busy, setBusy] = useState(false);
   async function go() {
-    if (!window.confirm(`Withdraw ₦${amount.toLocaleString()} to your connected bank account?`)) return;
+    if (!window.confirm(`Withdraw ₦${amount.toLocaleString()}? The bank transfer fee (about ₦${fee.toLocaleString()}) comes out of it, so about ₦${(amount - fee).toLocaleString()} reaches your bank account.`)) return;
     setBusy(true);
     const r = await withdrawReferralRewards(slug);
     setBusy(false);

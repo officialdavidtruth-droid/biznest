@@ -1,7 +1,9 @@
 import "server-only";
 import crypto from "node:crypto";
 import { prisma } from "@/lib/prisma";
-import { initiateFlutterwaveTransfer, findFlutterwaveTransferByReference } from "@/lib/payments/flutterwave";
+import { sendGatewayTransfer, lookupGatewayTransfer } from "@/lib/payments/payout-gateway";
+import { resolveReferralTransferFee } from "@/lib/referrals/transfer-fee";
+import { getActiveGateway } from "@/lib/actions/site-settings";
 import { getVendorReferralConfig, ruleForPlan } from "@/lib/referrals/vendor-config";
 import { buildWallet, type Wallet } from "@/lib/referrals/wallet";
 
@@ -197,7 +199,7 @@ export async function getWallet(userId: string): Promise<Wallet> {
 // Withdrawals
 // ---------------------------------------------------------------------------
 
-export type WithdrawResult = { ok: true; amount: number; status: string } | { ok: false; error: string };
+export type WithdrawResult = { ok: true; amount: number; fee: number; net: number; status: string } | { ok: false; error: string };
 
 export async function requestVendorReferralWithdrawal(userId: string): Promise<WithdrawResult> {
   const config = await getVendorReferralConfig();
@@ -213,6 +215,10 @@ export async function requestVendorReferralWithdrawal(userId: string): Promise<W
   if (!store?.payoutBankCode || !store.payoutAccountNumber) return { ok: false, error: "Connect your bank account in Payouts first, then withdraw." };
   const details = (store.payoutDetails ?? {}) as { bankName?: string; accountName?: string };
 
+  // The gateway that is switched on in SupaAdmin moves the money (Flutterwave or Korapay; Paystack falls back to Flutterwave).
+  const active = await getActiveGateway();
+  const gateway: "FLUTTERWAVE" | "KORAPAY" = active === "KORAPAY" ? "KORAPAY" : "FLUTTERWAVE";
+
   const open = await prisma.vendorReferralWithdrawal.count({ where: { userId, status: { in: ["REVIEW", "QUEUED", "PROCESSING"] } } });
   if (open > 0) return { ok: false, error: "You already have a withdrawal in progress. Wait for it to finish." };
 
@@ -227,10 +233,15 @@ export async function requestVendorReferralWithdrawal(userId: string): Promise<W
       const ids = wallet.groups.flatMap((g) => g.ids);
       if (ids.length === 0 || wallet.withdrawable <= 0) throw new Error("LOCKED");
       const needsReview = wallet.withdrawable > config.reviewAbove;
+      // The transfer fee comes out of the vendor's own reward, never from BizNest's gateway balance.
+      const feeAmount = await resolveReferralTransferFee(gateway, wallet.withdrawable);
+      if (wallet.withdrawable - feeAmount <= 0) throw new Error("LOCKED");
       const w = await tx.vendorReferralWithdrawal.create({
         data: {
           userId,
           amount: wallet.withdrawable,
+          feeAmount,
+          gateway,
           status: needsReview ? "REVIEW" : "QUEUED",
           reference: `REFWD-${crypto.randomBytes(10).toString("hex")}`,
           bankCode: store.payoutBankCode!,
@@ -246,7 +257,7 @@ export async function requestVendorReferralWithdrawal(userId: string): Promise<W
     });
     if (created.status === "QUEUED") await processVendorReferralWithdrawal(created.id);
     const fresh = await prisma.vendorReferralWithdrawal.findUnique({ where: { id: created.id }, select: { status: true } });
-    return { ok: true, amount: Number(created.amount), status: fresh?.status ?? created.status };
+    return { ok: true, amount: Number(created.amount), fee: Number(created.feeAmount), net: Number(created.amount) - Number(created.feeAmount), status: fresh?.status ?? created.status };
   } catch (err) {
     const m = err instanceof Error ? err.message : "";
     if (m === "LOCKED") return { ok: false, error: "Nothing is unlocked yet. Withdrawals open once you reach the number of paying referrals for a plan." };
@@ -281,28 +292,40 @@ export async function processVendorReferralWithdrawal(id: string) {
   };
 
   try {
-    // If an earlier attempt already reached Flutterwave (timeout after sending), never send twice.
-    const existing = await findFlutterwaveTransferByReference(w.reference);
-    let data = existing.data[0];
-    if (!data) {
-      const res = await initiateFlutterwaveTransfer({
-        bankCode: w.bankCode,
-        accountNumber: w.accountNumber,
-        amountNaira: Number(w.amount),
+    const gateway = w.gateway === "KORAPAY" ? "KORAPAY" : "FLUTTERWAVE";
+    // If an earlier attempt already reached the gateway (timeout after sending), never send twice.
+    const found = await lookupGatewayTransfer(gateway, w.reference);
+    let transfer = found.found ? found.data : null;
+    if (!found.found && !found.notFound) return fail(found.message || "Couldn't check the earlier transfer, will retry");
+    if (!transfer) {
+      const net = Number(w.amount) - Number(w.feeAmount);
+      const res = await sendGatewayTransfer(gateway, {
+        amountKobo: Math.round(net * 100),
         reference: w.reference,
         narration: "BizNest referral reward",
+        bankCode: w.bankCode,
+        accountNumber: w.accountNumber,
         beneficiaryName: w.accountName ?? undefined,
       });
-      if (res.status !== "success" || !res.data) return fail(res.message || "Transfer was not accepted");
-      data = res.data;
+      if (!res.ok) return fail(res.message || "Transfer was not accepted");
+      transfer = res.data;
     }
-    await applyTransferState(id, data.status, data.id, data.complete_message);
+    await applyTransferState(id, transfer.status ?? "", transfer.transfer_code);
   } catch (err) {
     await fail(err instanceof Error ? err.message : "Transfer failed");
   }
 }
 
-async function applyTransferState(id: string, state: string, transferId: number | string | undefined, message?: string) {
+/** Gateways word outcomes differently (SUCCESSFUL / success / failed / reversed...). */
+function normalizeState(raw: string): "SUCCESSFUL" | "FAILED" | "PROCESSING" {
+  const s = raw.toLowerCase();
+  if (s === "successful" || s === "success" || s === "completed") return "SUCCESSFUL";
+  if (s.includes("fail") || s === "reversed" || s === "declined" || s === "rejected") return "FAILED";
+  return "PROCESSING";
+}
+
+async function applyTransferState(id: string, rawState: string, transferId: number | string | undefined, message?: string) {
+  const state = normalizeState(rawState);
   if (state === "SUCCESSFUL") {
     await prisma.vendorReferralWithdrawal.updateMany({
       where: { id, status: { in: ["QUEUED", "PROCESSING"] } },
@@ -339,14 +362,13 @@ export async function retryVendorReferralWithdrawals() {
   }
   const stuck = await prisma.vendorReferralWithdrawal.findMany({
     where: { status: "PROCESSING", updatedAt: { lt: new Date(Date.now() - 60 * 60 * 1000) } },
-    select: { id: true, reference: true },
+    select: { id: true, reference: true, gateway: true },
     take: 50,
   });
   for (const s of stuck) {
     try {
-      const found = await findFlutterwaveTransferByReference(s.reference);
-      const d = found.data[0];
-      if (d) await applyTransferState(s.id, d.status, d.id, d.complete_message);
+      const found = await lookupGatewayTransfer(s.gateway === "KORAPAY" ? "KORAPAY" : "FLUTTERWAVE", s.reference);
+      if (found.found) await applyTransferState(s.id, found.data.status ?? "", found.data.transfer_code);
     } catch {
       /* try again tomorrow */
     }

@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import { verifyKorapayTransaction, verifyKorapayTransfer, verifyKorapayWebhookSignature } from "@/lib/payments/korapay";
+import { applyVendorReferralTransferWebhook } from "@/lib/referrals/vendor-referral";
 import { applyKorapayTransferWebhookEvent } from "@/lib/payments/payout";
 import { settleInvoicePayment } from "@/lib/payments/settle-invoice";
 import { settleQuoteDeposit } from "@/lib/payments/settle-quote-deposit";
@@ -57,6 +58,10 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Verification unavailable, retry" }, { status: 502 });
     }
     if (verified.data.reference && verified.data.reference !== reference) return NextResponse.json({ received: true });
+    if (reference.startsWith("REFWD-")) {
+      await applyVendorReferralTransferWebhook({ id: 0, reference, status: String(verified.data.status ?? ""), complete_message: undefined });
+      return NextResponse.json({ received: true });
+    }
     await applyKorapayTransferWebhookEvent(verified.data, { event, verified });
     return NextResponse.json({ received: true });
   }

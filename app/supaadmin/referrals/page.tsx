@@ -82,6 +82,7 @@ export default async function SupaAdminReferralsPage() {
               <li key={w.id} className="flex flex-wrap items-center justify-between gap-3 px-4 py-3">
                 <div>
                   <div className="font-medium">{naira(Number(w.amount))} to {w.bankName ?? "bank"} ••••{w.accountNumber.slice(-4)}</div>
+                  <div className="text-xs text-muted-foreground">Vendor receives {naira(Number(w.amount) - Number(w.feeAmount))} after the transfer fee</div>
                   <div className="text-xs text-muted-foreground">{who(w.user)} · {formatDate(w.createdAt)}</div>
                 </div>
                 <WithdrawalReviewButtons id={w.id} />
@@ -191,7 +192,7 @@ export default async function SupaAdminReferralsPage() {
           <ul className="divide-y rounded-lg border text-sm">
             {recentWithdrawals.map((w) => (
               <li key={w.id} className="flex flex-wrap items-center justify-between gap-2 px-4 py-3">
-                <span className="font-medium">{naira(Number(w.amount))} · {who(w.user)}</span>
+                <span className="font-medium">{naira(Number(w.amount))} (fee {naira(Number(w.feeAmount))}) · {who(w.user)}</span>
                 <span className="text-muted-foreground">{w.status}{w.lastError && w.status !== "PAID" ? ` · ${w.lastError}` : ""}</span>
                 <span className="text-xs text-muted-foreground">{formatDate(w.createdAt)}</span>
               </li>

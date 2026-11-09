@@ -5,6 +5,7 @@ import { prisma } from "@/lib/prisma";
 import { assertStoreOwnerAccess } from "@/lib/access/assert-store-access";
 import { APP_URL } from "@/lib/constants/app-url";
 import { ensureVendorReferralCode, getWallet } from "@/lib/referrals/vendor-referral";
+import { estimateReferralTransferFee } from "@/lib/referrals/fee-estimate";
 import { getVendorReferralConfig, defaultRuleForPrice, ruleForPlan } from "@/lib/referrals/vendor-config";
 import { CopyReferralLink, WithdrawButton } from "@/components/dashboard/vendor-referral-client";
 import { formatDate } from "@/lib/i18n/locale";
@@ -46,12 +47,13 @@ export default async function ReferAndEarnPage({ params }: { params: Promise<{ s
       take: 50,
       select: { id: true, status: true, planName: true, reward: true, createdAt: true, confirmAt: true, referee: { select: { name: true } } },
     }),
-    prisma.vendorReferralWithdrawal.findMany({ where: { userId }, orderBy: { createdAt: "desc" }, take: 10, select: { id: true, amount: true, status: true, createdAt: true, lastError: true } }),
+    prisma.vendorReferralWithdrawal.findMany({ where: { userId }, orderBy: { createdAt: "desc" }, take: 10, select: { id: true, amount: true, feeAmount: true, status: true, createdAt: true, lastError: true } }),
     prisma.subscription.findMany({ where: { isActive: true, isMarketingPlan: false, price: { gt: 0 } }, orderBy: { price: "asc" }, select: { id: true, name: true, price: true } }),
   ]);
   const link = code ? `${APP_URL}/register?ref=${code}` : null;
   const store = await prisma.store.findUnique({ where: { slug }, select: { payoutBankCode: true, payoutAccountNumber: true } });
   const hasBank = Boolean(store?.payoutBankCode && store.payoutAccountNumber);
+  const estFee = wallet.withdrawable > 0 ? estimateReferralTransferFee(wallet.withdrawable) : 0;
 
   return (
     <div className="space-y-8">
@@ -71,7 +73,7 @@ export default async function ReferAndEarnPage({ params }: { params: Promise<{ s
       <section className="space-y-4 rounded-lg border bg-background p-4">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <h2 className="text-sm font-semibold">Referral wallet</h2>
-          <WithdrawButton slug={slug} amount={wallet.withdrawable} disabled={wallet.withdrawable <= 0 || !hasBank || wallet.inFlight > 0} />
+          <WithdrawButton slug={slug} amount={wallet.withdrawable} fee={estFee} disabled={wallet.withdrawable <= 0 || !hasBank || wallet.inFlight > 0} />
         </div>
         <dl className="grid grid-cols-2 gap-3 md:grid-cols-4">
           {[
@@ -86,6 +88,7 @@ export default async function ReferAndEarnPage({ params }: { params: Promise<{ s
             </div>
           ))}
         </dl>
+        {wallet.withdrawable > 0 && <p className="text-xs text-muted-foreground">The bank transfer fee (about {naira(estFee)}) is taken from your reward when you withdraw, so you receive about {naira(wallet.withdrawable - estFee)}.</p>}
         {!hasBank && <p className="text-xs text-amber-600">Connect your bank account in Payouts so you can withdraw.</p>}
         {wallet.inFlight > 0 && <p className="text-xs text-muted-foreground">A withdrawal of {naira(wallet.inFlight)} is in progress.</p>}
       </section>
@@ -167,7 +170,7 @@ export default async function ReferAndEarnPage({ params }: { params: Promise<{ s
           <ul className="divide-y rounded-lg border text-sm">
             {withdrawals.map((w) => (
               <li key={w.id} className="flex flex-wrap items-center justify-between gap-2 px-4 py-3">
-                <span className="font-medium">{naira(Number(w.amount))}</span>
+                <span className="font-medium">{naira(Number(w.amount))}{Number(w.feeAmount) > 0 ? <span className="block text-xs font-normal text-muted-foreground">{naira(Number(w.amount) - Number(w.feeAmount))} sent after a {naira(Number(w.feeAmount))} transfer fee</span> : null}</span>
                 <span className="text-muted-foreground">{WITHDRAWAL_LABEL[w.status] ?? w.status}</span>
                 <span className="text-xs text-muted-foreground">{formatDate(w.createdAt)}</span>
               </li>

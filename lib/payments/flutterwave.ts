@@ -312,6 +312,16 @@ export async function findFlutterwaveTransferByReference(reference: string) {
   return { status: json.status, message: json.message, data: json.data ?? [] };
 }
 
+/** Flutterwave's own fee for one NGN bank transfer of this amount, or null when it couldn't be read. */
+export async function getFlutterwaveTransferFeeNaira(amountNaira: number): Promise<number | null> {
+  const secretKey = process.env.FLUTTERWAVE_SECRET_KEY;
+  if (!secretKey) return null;
+  const res = await fixedIpFetch(`${FLW_BASE}/transfers/fee?amount=${encodeURIComponent(String(amountNaira))}&currency=NGN&type=account`, { headers: { Authorization: `Bearer ${secretKey}` } });
+  const json = (await res.json()) as { status?: string; data?: { fee?: number }[] };
+  const fee = json.status === "success" ? json.data?.[0]?.fee : undefined;
+  return typeof fee === "number" && fee >= 0 ? fee : null;
+}
+
 /** Platform's available Flutterwave NGN balance in naira. */
 export async function getFlutterwaveBalanceNaira(): Promise<{ status: boolean; message: string; balanceNaira?: number }> {
   const secretKey = process.env.FLUTTERWAVE_SECRET_KEY;

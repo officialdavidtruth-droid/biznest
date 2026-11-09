@@ -5925,7 +5925,11 @@ model VendorReferralWithdrawal {
   id                String   @id @default(cuid())
   userId            String
   user              User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  // Rewards withdrawn (gross). The vendor is sent amount - feeAmount; the transfer fee comes out of their reward.
   amount            Decimal  @db.Decimal(12, 2)
+  feeAmount         Decimal  @default(0) @db.Decimal(12, 2)
+  // FLUTTERWAVE | KORAPAY: fixed when the withdrawal is created so retries never switch gateway.
+  gateway           String   @default("FLUTTERWAVE")
   // REVIEW (large, waiting for admin) | QUEUED | PROCESSING | PAID | FAILED | CANCELLED
   status            String   @default("QUEUED")
   reference         String   @unique
