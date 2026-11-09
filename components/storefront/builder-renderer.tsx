@@ -1,7 +1,7 @@
 "use client";
 
 import { starFill, starEmpty } from "@/lib/utils/stars";
-import { nicheHeroPhoto } from "@/lib/niche-imagery";
+import { nicheHeroPhoto, nicheSamplePhoto } from "@/lib/niche-imagery";
 import { readableAccentText } from "@/lib/utils/readable-accent";
 import { MenuLinks, useFooterMenu, type FallbackLink } from "@/components/storefront/store-menu";
 import { useStoreCategories } from "@/components/storefront/store-categories";
@@ -199,6 +199,23 @@ function BuilderSectionView({ section, store, config, catalogItems, categories, 
     }
 
     // Centered: stacked and centred, image as a wide banner underneath.
+    if (heroStyle === "centered" && s.image) {
+      // With a photo, the photo is the hero: full-bleed behind centred text so it is visible above the fold.
+      const inverseButton = s.showButton === false ? null : s.ctaLabel ? <a href={safeHref(s.ctaHref, "#catalog")} style={buttonStyle(d, s.radius, true)}>{s.ctaLabel}</a> : null;
+      return (
+        <section id={section.id} data-bn-type={section.type} className="bn-section" style={{ padding: s.padding === "compact" ? "110px 0" : "150px 0", background: `linear-gradient(180deg, rgba(0,0,0,.42), rgba(0,0,0,.62)), url(${cssUrl(s.image)}) center/cover`, color: "#fff" }}>
+          <div className="bn-wrap bn-hero" style={{ display: "grid", gridTemplateColumns: "1fr" }}>
+            <div style={{ textAlign: "center" }}>
+              {eyebrowEl("rgba(255,255,255,.85)")}
+              <h1 style={{ ...h1Style, color: "#fff", maxWidth: 880, marginLeft: "auto", marginRight: "auto" }}>{heading}</h1>
+              {bodyEl("rgba(255,255,255,.9)", "center")}
+              {inverseButton}
+            </div>
+          </div>
+        </section>
+      );
+    }
+
     if (heroStyle === "centered") {
       return (
         <section id={section.id} data-bn-type={section.type} className="bn-section" style={{ padding, background: bg }}>
@@ -236,17 +253,19 @@ function BuilderSectionView({ section, store, config, catalogItems, categories, 
   if (section.type === "catalog") return (
     <section id={section.id} data-bn-type={section.type} className="bn-section" style={{ padding, background: bg }}>
       <div className="bn-wrap"><SectionIntro section={section} config={config} />
-        {catalogItems.length ? <div className="bn-grid" style={{ gridTemplateColumns: `repeat(${Math.min(cols,4)}, minmax(0,1fr))` }}>{catalogItems.map((item) => <ItemCard key={`${item.kind}-${item.id}`} item={item} store={store} d={d} radius={s.radius ?? d.radius} actionLabel={item.kind === "service" ? experience.primaryAction : "View product"} />)}</div> : <EmptyState text="Your published products and services will appear here." />}
+        {catalogItems.length ? <div className="bn-grid" style={{ gridTemplateColumns: `repeat(${[3,5,6].includes(catalogItems.length) ? Math.min(cols,3) : Math.min(cols,4)}, minmax(0,1fr))` }}>{catalogItems.map((item) => <ItemCard key={`${item.kind}-${item.id}`} item={item} store={store} d={d} radius={s.radius ?? d.radius} actionLabel={item.kind === "service" ? experience.primaryAction : "View product"} />)}</div> : <EmptyState text="Your published products and services will appear here." />}
       </div>
     </section>
   );
 
-  if ((section.type === "about" || section.type === "imageText") && !s.body && !ownText(store.business.description) && !s.image && !isEditMode) return null;
+  const aboutImage = s.image || (section.type === "about" ? nicheSamplePhoto(store.business.category, 1, 1000) : null);
+  if ((section.type === "about" || section.type === "imageText") && !s.body && !ownText(store.business.description) && !aboutImage && !isEditMode) return null;
   if (section.type === "text" && !s.body && !isEditMode) return null;
   if (section.type === "about" || section.type === "imageText") return (
-    <section id={section.id} data-bn-type={section.type} className="bn-section" style={{ padding, background: bg }}><div className="bn-wrap bn-hero" style={{ display: "grid", gridTemplateColumns: s.image ? "1fr 1fr" : "1fr", gap: 50, alignItems: "center" }}>
-      <div><SectionIntro section={section} config={config} /><p style={{ color: d.muted, lineHeight: 1.8, maxWidth: 650 }}>{s.body || ownText(store.business.description) || (isEditMode ? "Write about your business in the editor. Visitors do not see this section until you do." : "")}</p></div>
-      {s.image && <div style={{ minHeight: 360, borderRadius: s.radius ?? d.radius, background: `url(${cssUrl(s.image)}) center/cover` }} />}
+    <section id={section.id} data-bn-type={section.type} className="bn-section" style={{ padding, background: bg }}><div className="bn-wrap bn-hero" style={{ display: "grid", gridTemplateColumns: aboutImage ? "1fr 1fr" : "1fr", gap: 50, alignItems: "center" }}>
+      {/* SectionIntro already prints s.body, so the paragraph below only fills in when there is no body of its own. */}
+      <div><SectionIntro section={section} config={config} />{!s.body && <p style={{ color: d.muted, lineHeight: 1.8, maxWidth: 650 }}>{ownText(store.business.description) || (isEditMode ? "Write about your business in the editor. Visitors do not see this section until you do." : "")}</p>}</div>
+      {aboutImage && <div style={{ minHeight: 360, borderRadius: s.radius ?? d.radius, background: `url(${cssUrl(aboutImage)}) center/cover`, boxShadow: `0 24px 60px ${d.primary}1f` }} />}
     </div></section>
   );
 
