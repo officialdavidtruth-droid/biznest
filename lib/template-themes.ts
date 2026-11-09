@@ -168,13 +168,13 @@ export const FRESH_THEME: TemplateTheme = {
   font: FRESH.font,
   headlineFont: FRESH.headlineFont,
   radius: FRESH.radius,
-  eyebrow: "Professional Cleaning Agency",
-  headline: "Professional Cleaning Services",
-  sub: "Professional cleaning services for offices, homes, and commercial spaces — done right, every time.",
-  cta: "Our Services",
+  eyebrow: "New this week",
+  headline: "Everyday essentials, made easy",
+  sub: "Browse the catalog, add what you like to your cart and check out in minutes.",
+  cta: "Shop now",
   layout: "grid",
   heroStyle: "fullbleed",
-  catalogLabel: "Services",
+  catalogLabel: "Shop",
   sections: ["hero", "features", "catalog", "about", "testimonials", "contact"],
 };
 
