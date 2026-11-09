@@ -254,7 +254,22 @@ function BuilderSectionView({ section, store, config, catalogItems, categories, 
   if (section.type === "catalog") return (
     <section id={section.id} data-bn-type={section.type} className="bn-section" style={{ padding, background: bg }}>
       <div className="bn-wrap"><SectionIntro section={section} config={config} />
-        {catalogItems.length ? <div className="bn-grid" style={{ gridTemplateColumns: `repeat(${[3,5,6].includes(catalogItems.length) ? Math.min(cols,3) : Math.min(cols,4)}, minmax(0,1fr))` }}>{catalogItems.map((item) => <ItemCard key={`${item.kind}-${item.id}`} item={item} store={store} d={d} radius={s.radius ?? d.radius} actionLabel={item.kind === "service" ? experience.primaryAction : "View product"} />)}</div> : <EmptyState text="Your published products and services will appear here." />}
+        {catalogItems.length ? (() => {
+          const label = (item: CatalogItem) => (item.kind === "service" ? experience.primaryAction : "View product");
+          const rad = s.radius ?? d.radius;
+          const href = (item: CatalogItem) => `/store/${store.slug}/${item.kind}/${item.id}`;
+          const price = (item: CatalogItem) => `${item.currency} ${formatNumber(item.price)}`;
+          if (s.style === "list") return <div style={{ display: "grid", gap: 12 }}>{catalogItems.map((item) => <Link key={`${item.kind}-${item.id}`} href={href(item)} style={{ display: "grid", gridTemplateColumns: "104px 1fr auto", alignItems: "center", gap: 18, padding: 12, borderRadius: rad, background: d.surface, border: `1px solid ${d.text}10` }}><span aria-hidden style={{ aspectRatio: "1/1", borderRadius: Math.max(rad - 4, 6), background: item.image ? `url(${cssUrl(item.image)}) center/cover` : `${d.primary}12` }} /><span style={{ minWidth: 0 }}>{item.categoryName && <span style={{ display: "block", fontSize: 11, color: d.muted, fontWeight: 700, letterSpacing: ".06em", textTransform: "uppercase", marginBottom: 3 }}>{item.categoryName}</span>}<span style={{ display: "block", fontWeight: 780, fontSize: 17, fontFamily: d.headingFont }}>{item.name}</span><span style={{ display: "block", marginTop: 4, color: readableAccentText(d.accent, d.surface), fontWeight: 800 }}>{price(item)}</span></span><span style={{ padding: "10px 16px", borderRadius: d.buttonStyle === "pill" ? 999 : Math.min(rad, 12), background: d.primary, color: "#fff", fontWeight: 800, fontSize: 13, whiteSpace: "nowrap" }}>{label(item)}</span></Link>)}</div>;
+          if (s.style === "rail") return <div style={{ display: "flex", gap: 18, overflowX: "auto", scrollSnapType: "x mandatory", paddingBottom: 14, margin: "0 -4px", paddingLeft: 4 }}>{catalogItems.map((item) => <div key={`${item.kind}-${item.id}`} style={{ flex: "0 0 min(280px,72vw)", scrollSnapAlign: "start" }}><ItemCard item={item} store={store} d={d} radius={rad} actionLabel={label(item)} /></div>)}</div>;
+          if (s.style === "feature" && catalogItems.length >= 3) {
+            const [first, ...rest] = catalogItems;
+            return <div className="bn-grid" style={{ gridTemplateColumns: "1.15fr 1fr 1fr", gridAutoRows: "auto", gap: 18 }}>
+              <Link href={href(first)} style={{ gridRow: `span ${Math.min(Math.ceil(Math.min(rest.length, 4) / 2), 2) || 1}`, position: "relative", display: "block", minHeight: 420, borderRadius: rad, overflow: "hidden", background: first.image ? `url(${cssUrl(first.image)}) center/cover` : `${d.primary}18` }}><span aria-hidden style={{ position: "absolute", inset: 0, background: "linear-gradient(0deg, rgba(0,0,0,.72), rgba(0,0,0,0) 55%)" }} /><span style={{ position: "absolute", left: 22, right: 22, bottom: 20, color: "#fff" }}><span style={{ display: "block", fontSize: 11, fontWeight: 800, letterSpacing: ".1em", textTransform: "uppercase", opacity: .85 }}>Featured</span><span style={{ display: "block", fontFamily: d.headingFont, fontWeight: 800, fontSize: 26, margin: "4px 0" }}>{first.name}</span><span style={{ fontWeight: 800 }}>{price(first)}</span></span></Link>
+              {rest.slice(0, 4).map((item) => <ItemCard key={`${item.kind}-${item.id}`} item={item} store={store} d={d} radius={rad} actionLabel={label(item)} />)}
+            </div>;
+          }
+          return <div className="bn-grid" style={{ gridTemplateColumns: `repeat(${[3,5,6].includes(catalogItems.length) ? Math.min(cols,3) : Math.min(cols,4)}, minmax(0,1fr))` }}>{catalogItems.map((item) => <ItemCard key={`${item.kind}-${item.id}`} item={item} store={store} d={d} radius={rad} actionLabel={label(item)} />)}</div>;
+        })() : <EmptyState text="Your published products and services will appear here." />}
       </div>
     </section>
   );

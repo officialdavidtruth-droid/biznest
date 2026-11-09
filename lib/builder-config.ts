@@ -30,8 +30,8 @@ export type BuilderSectionSettings = {
   items?: BuilderSectionItem[];
   /** Gallery section: the owner's own uploaded images. Falls back to catalogue photos when empty. */
   images?: string[];
-  /** Features / Categories layout: "cards" (default), "strip" (compact icon-style row) or "tiles" (image tiles, categories only). */
-  style?: "cards" | "strip" | "tiles" | "circles" | "pills" | "photo";
+  /** Catalog layout: "grid" (default), "feature" (one large hero item + grid), "rail" (horizontal scroller) or "list" (rows). Features / Categories layout: "cards" (default), "strip" (compact icon-style row) or "tiles" (image tiles, categories only). */
+  style?: "cards" | "strip" | "tiles" | "circles" | "pills" | "photo" | "grid" | "feature" | "rail" | "list";
   /** Map section: street address or place name to show. Falls back to the business city / state / country. */
   address?: string;
 };
@@ -105,7 +105,7 @@ const settingsSchema = z.object({
   items: z.array(z.object({ title: z.string().max(160), body: z.string().max(1200).optional() })).max(12).optional(),
   images: z.array(z.string().max(2000).refine(isSafeImageUrl, "Image must be an http(s) URL or a site path.")).max(24).optional(),
   address: z.string().max(300).optional(),
-  style: z.enum(["cards", "strip", "tiles", "circles", "pills", "photo"]).optional(),
+  style: z.enum(["cards", "strip", "tiles", "circles", "pills", "photo", "grid", "feature", "rail", "list"]).optional(),
 });
 
 const colorField = z.string().max(100).refine(isSafeColor, "Invalid colour.");

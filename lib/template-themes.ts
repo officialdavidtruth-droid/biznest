@@ -115,6 +115,7 @@ export type TemplateTheme = {
   /** Layout of the Categories / Features sections (see BuilderSectionSettings.style). */
   categoriesStyle?: "cards" | "tiles" | "circles" | "pills" | "photo";
   featuresStyle?: "cards" | "strip";
+  catalogStyle?: "grid" | "feature" | "rail" | "list";
 };
 
 export type TemplateChrome = {
@@ -926,6 +927,56 @@ function lookupReferenceTheme(name: string | null | undefined): TemplateTheme | 
   return data ? buildReferenceTheme(data) : null;
 }
 
+/**
+ * Page layout per template, on top of its header / hero / card identity: how the catalogue is laid out
+ * (grid, one big feature + grid, horizontal rail, rows) and how Categories and Features are drawn.
+ * This is what makes two templates with similar colours still read as different pages.
+ */
+type LayoutStyle = Pick<TemplateTheme, "catalogStyle" | "categoriesStyle" | "featuresStyle">;
+export const TEMPLATE_LAYOUT_STYLES: Readonly<Record<string, LayoutStyle>> = {
+  "Transit — Logistics & Delivery": { catalogStyle: "list", categoriesStyle: "pills", featuresStyle: "strip" },
+  "Vitalis — Clinic & Care": { catalogStyle: "list", categoriesStyle: "pills", featuresStyle: "strip" },
+  "Atelier — Modern Fashion": { catalogStyle: "feature", categoriesStyle: "photo" },
+  "Electra — Smart Commerce": { catalogStyle: "grid", categoriesStyle: "tiles", featuresStyle: "strip" },
+  "Emarket Furniture & Home": { catalogStyle: "feature", categoriesStyle: "photo" },
+  "ShopNova Marketplace": { catalogStyle: "rail", categoriesStyle: "pills", featuresStyle: "strip" },
+  "Electra Blue Electronics": { catalogStyle: "rail", categoriesStyle: "tiles" },
+  "TechNova Mobile Store": { catalogStyle: "feature", categoriesStyle: "circles", featuresStyle: "strip" },
+  "TechVerse Gadgets": { catalogStyle: "rail", categoriesStyle: "pills" },
+  "ShopEase General Store": { catalogStyle: "grid", categoriesStyle: "circles", featuresStyle: "strip" },
+  "Violet — Sunset": { catalogStyle: "feature", categoriesStyle: "pills" },
+  "Nova Studio — Ivory Minimal": { catalogStyle: "list", categoriesStyle: "cards" },
+  "Heenzy — Boutique Rose": { catalogStyle: "feature", categoriesStyle: "photo" },
+  "Wanderly Travel": { catalogStyle: "rail", categoriesStyle: "photo", featuresStyle: "strip" },
+  "Nestoria Real Estate": { catalogStyle: "feature", categoriesStyle: "photo" },
+  "Fresh & Co.": { catalogStyle: "grid", categoriesStyle: "circles", featuresStyle: "strip" },
+  "Heenzy Sneaker Co.": { catalogStyle: "rail", categoriesStyle: "pills" },
+  "Nova Studio — Noir": { catalogStyle: "list", categoriesStyle: "cards" },
+  "Violet": { catalogStyle: "grid", categoriesStyle: "pills" },
+  "Premium Marketplace": { catalogStyle: "rail", categoriesStyle: "tiles", featuresStyle: "strip" },
+  "HomeVista": { catalogStyle: "feature", categoriesStyle: "photo" },
+  "rRW Premium Rental": { catalogStyle: "rail", categoriesStyle: "tiles" },
+  "Marketplace Hub": { catalogStyle: "grid", categoriesStyle: "circles", featuresStyle: "strip" },
+  "Arcova Architecture": { catalogStyle: "list", categoriesStyle: "photo" },
+  "Rivora Fresh": { catalogStyle: "grid", categoriesStyle: "circles" },
+  "JuiceLife": { catalogStyle: "rail", categoriesStyle: "pills" },
+  "Fabtex": { catalogStyle: "feature", categoriesStyle: "tiles" },
+  "Bloom — Beauty Boutique": { catalogStyle: "feature", categoriesStyle: "photo", featuresStyle: "strip" },
+  "Harvest — Grocery Market": { catalogStyle: "grid", categoriesStyle: "circles", featuresStyle: "strip" },
+  "Drive — Cars & Rentals": { catalogStyle: "rail", categoriesStyle: "tiles" },
+  "Kinetic — Sneaker Drop": { catalogStyle: "rail", categoriesStyle: "pills" },
+  "Haven — Home & Furniture": { catalogStyle: "feature", categoriesStyle: "photo" },
+  "Ember — Restaurant": { catalogStyle: "list", categoriesStyle: "pills" },
+  "Muse — Salon & Beauty": { catalogStyle: "list", categoriesStyle: "circles", featuresStyle: "strip" },
+  "Frame — Photography Studio": { catalogStyle: "feature", categoriesStyle: "photo" },
+  "North — Creative Agency": { catalogStyle: "list", categoriesStyle: "cards" },
+  "Pure — Cleaning Services": { catalogStyle: "grid", categoriesStyle: "pills", featuresStyle: "strip" },
+  "Forge — Construction": { catalogStyle: "feature", categoriesStyle: "tiles" },
+  "Pulse — Fitness & Wellness": { catalogStyle: "rail", categoriesStyle: "tiles" },
+  "Gala — Events & Celebrations": { catalogStyle: "feature", categoriesStyle: "photo" },
+  "Talent — Recruitment & HR": { catalogStyle: "list", categoriesStyle: "cards", featuresStyle: "strip" },
+};
+
 export function resolveStoreTheme(
   _templateCategory: string | undefined,
   _storeName: string,
@@ -981,6 +1032,7 @@ export function resolveStoreTheme(
   return {
     ...base,
     ...(identity ? { chrome: identity.chrome, ...(identity.heroStyle ? { heroStyle: identity.heroStyle } : {}), ...(identity.heroVariant ? { heroVariant: identity.heroVariant } : {}), ...(identity.categoriesStyle ? { categoriesStyle: identity.categoriesStyle } : {}), ...(identity.featuresStyle ? { featuresStyle: identity.featuresStyle } : {}) } : {}),
+    ...(templateName ? TEMPLATE_LAYOUT_STYLES[templateName] ?? {} : {}),
     bg,
     ink: readable.ink,
     ...(changedBg || overrides?.muted ? { muted: readable.muted } : {}),
