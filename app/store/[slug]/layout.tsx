@@ -265,13 +265,13 @@ export default async function StoreLayout({
       <StoreCategoriesProvider categories={(exists?.categories ?? []).map((c) => ({ id: c.id, name: c.name, slug: c.slug, parentId: c.parentId, description: c.description, imageUrl: c.imageUrl, count: c._count.products + c._count.services }))}>
         <StoreMenuProvider menu={headerMenu} footerMenu={footerMenu}>{children}</StoreMenuProvider>
       </StoreCategoriesProvider>
+      {!!exists && showBizNestBranding({ slug, subscriptionRenewsAt: exists.subscriptionRenewsAt }) && !isAdminRoute && exists.status === "ACTIVE" && <PoweredByBizNest slug={slug} />}
       {installable && exists && (
         <InstallStoreApp slug={slug} storeName={exists.name} base={pwaBase} iconSrc={`${pwaBase}/pwa-icon/192`} />
       )}
       {trackingOn && tracking && (
         <StoreTracking slug={slug} gaId={tracking.gaId} metaPixelId={tracking.metaPixelId} plausibleDomain={tracking.plausibleDomain} />
       )}
-      {!!exists && showBizNestBranding({ slug, subscriptionRenewsAt: exists.subscriptionRenewsAt }) && !isAdminRoute && exists.status === "ACTIVE" && <PoweredByBizNest slug={slug} />}
       {pushEligible && <OrderPushPrompt slug={slug} base={pwaBase} />}
       {chatHref && exists && <WhatsAppChatButton href={chatHref} storeName={exists.name} />}
       {showPromo && promo && promoPalette && <PromoPopup slug={slug} config={promo} palette={promoPalette} />}
