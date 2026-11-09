@@ -27,7 +27,10 @@ export async function fixedIpFetch(input: string, init: RequestInit = {}): Promi
   if (!proxyUrl) return fetch(input, init);
   try {
     const dispatcher = await getDispatcher(proxyUrl);
-    return await fetch(input, { ...init, dispatcher } as RequestInit);
+    // Must be undici's OWN fetch: handing the npm package's ProxyAgent to Node's built-in fetch
+    // fails with UND_ERR_INVALID_ARG ("invalid onError method") when the two undici versions differ.
+    const { fetch: undiciFetch } = await import("undici");
+    return (await undiciFetch(input, { ...init, dispatcher } as never)) as unknown as Response;
   } catch (err) {
     // Node's "fetch failed" hides the real reason in err.cause. Surface it, plus the proxy host
     // (never the password), so a bad/unreachable proxy is obvious in the payout's error column.
