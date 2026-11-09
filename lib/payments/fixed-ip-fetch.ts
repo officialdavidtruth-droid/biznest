@@ -25,6 +25,20 @@ async function getDispatcher(proxyUrl: string): Promise<ProxyDispatcher> {
 export async function fixedIpFetch(input: string, init: RequestInit = {}): Promise<Response> {
   const proxyUrl = process.env.PAYOUT_PROXY_URL?.trim();
   if (!proxyUrl) return fetch(input, init);
-  const dispatcher = await getDispatcher(proxyUrl);
-  return fetch(input, { ...init, dispatcher } as RequestInit);
+  try {
+    const dispatcher = await getDispatcher(proxyUrl);
+    return await fetch(input, { ...init, dispatcher } as RequestInit);
+  } catch (err) {
+    // Node's "fetch failed" hides the real reason in err.cause. Surface it, plus the proxy host
+    // (never the password), so a bad/unreachable proxy is obvious in the payout's error column.
+    const cause = (err as { cause?: { code?: string; message?: string } })?.cause;
+    const detail = [cause?.code, cause?.message ?? (err instanceof Error ? err.message : String(err))].filter(Boolean).join(": ");
+    let host = "invalid proxy URL";
+    try {
+      host = new URL(proxyUrl).host;
+    } catch {
+      /* keep the placeholder */
+    }
+    throw new Error(`Payout proxy (${host}) failed: ${detail}`);
+  }
 }
