@@ -19,8 +19,8 @@ export type TemplateOption = {
 };
 
 const TIER_LABEL: Record<number, string> = {
-  1: "Free",
-  2: "Entrepreneur",
+  1: "Starters",
+  2: "Entrepreneurship",
   3: "Enterprise",
   4: "Business Mogul",
 };

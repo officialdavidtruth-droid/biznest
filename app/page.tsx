@@ -99,15 +99,15 @@ const FAQS = [
   },
   {
     q: "Who actually holds my money?",
-    a: "You do. Every store connects its own Paystack or Flutterwave subaccount, so customer payments settle straight to your bank. BizNest takes its commission at the point of settlement — we never sit on your balance.",
+    a: "You do. Every store connects its own Paystack or Flutterwave subaccount, so customer payments settle straight to your bank. Any commission on your plan is taken at the point of settlement — we never sit on your balance.",
   },
   {
     q: "Can I use my own domain name?",
-    a: "Yes, on paid plans. Your store starts on a free biznest.space/yourname address and you can point a custom domain at it once you upgrade.",
+    a: "Yes, on paid plans. Your store starts on a biznest.space/yourname address included in your plan and you can point a custom domain at it once you upgrade.",
   },
   {
     q: "What can I actually sell?",
-    a: "Physical products, digital downloads, rentals, services, and bookable appointments — all from the same store, across more than 50 business categories.",
+    a: `Physical products, digital downloads, rentals, services, and bookable appointments — all from the same store, across ${CATEGORIES.length} business categories.`,
   },
   {
     q: "How much design work do I have to do myself?",
@@ -197,8 +197,8 @@ export default async function HomePage() {
 
   const STATS = [
     { label: "Products & services listed", value: `${formatNumber(listingCount)}${listingCount >= 50 ? "+" : ""}` },
-    { label: "Business categories", value: `${CATEGORIES.length}+` },
-    { label: "Payment providers, your account", value: "2" },
+    { label: "Business categories", value: `${CATEGORIES.length}` },
+    { label: "Payment providers supported", value: "2" },
   ];
 
   return (
@@ -504,13 +504,12 @@ export default async function HomePage() {
           Simple pricing, real ownership
         </h2>
         <p className="mb-10 max-w-lg text-sm" style={{ color: "var(--bn-mute)" }}>
-          Every plan is paid monthly — no free tier. Higher tiers unlock the AI Store
-          Builder, a lower commission, and your own domain name.
+          Every plan is paid monthly — no free tier. Higher tiers raise your product and service limits and unlock your own domain name.
         </p>
-        <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
-          {plans.map((p) => {
+        <div className={`grid gap-5 sm:grid-cols-2 ${plans.length === 3 ? "lg:grid-cols-3" : "lg:grid-cols-4"}`}>
+          {plans.map((p, planIndex) => {
             const features = p.features as { products?: number; services?: number; customDomain?: boolean; aiStoreBuilder?: boolean };
-            const featured = p.name === "Growth Store";
+            const featured = plans.length >= 3 && planIndex === Math.floor(plans.length / 2);
             return (
               <div
                 key={p.id}
@@ -532,7 +531,7 @@ export default async function HomePage() {
                   <span className="text-sm font-normal opacity-70">/mo</span>
                 </p>
                 <ul className="mt-5 space-y-2 text-sm" style={{ opacity: featured ? 0.85 : 0.75 }}>
-                  <li>{Number(p.commissionRate)}% commission per sale</li>
+                  <li>{Number(p.commissionRate) === 0 ? "No commission per sale" : `${Number(p.commissionRate)}% commission per sale`}</li>
                   <li>{features.products === -1 ? "Unlimited products" : `Up to ${features.products ?? 0} products`}</li>
                   <li>{features.services === -1 ? "Unlimited services" : `Up to ${features.services ?? 0} services`}</li>
                   
