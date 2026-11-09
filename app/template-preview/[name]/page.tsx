@@ -46,12 +46,12 @@ function fashionItems(tpl: any) {
   const b = hex.test(tpl?.accentSoft) ? tpl.accentSoft : hex.test(tpl?.ink) ? tpl.ink : "#211C1A";
   const base = { kind: "product" as const, currency: "NGN", type: "PRODUCT", rentalUnit: null, isBookable: false };
   return [
-    { ...base, id: "preview-1", name: "Linen Co-ord Set", description: "Relaxed two-piece in breathable linen.", price: 48000, image: swatch(a, b, "CO-ORD"), categoryName: "Women" },
-    { ...base, id: "preview-2", name: "Ankara Wrap Dress", description: "Bold print, flattering wrap fit.", price: 36500, image: swatch(b, a, "DRESS"), categoryName: "Women" },
-    { ...base, id: "preview-3", name: "Tailored Blazer", description: "Sharp shoulders, soft lining.", price: 72000, image: swatch(a, "#1b1b1d", "BLAZER"), categoryName: "Men" },
-    { ...base, id: "preview-4", name: "Leather Tote Bag", description: "Roomy everyday carry in full-grain leather.", price: 95000, image: swatch("#1b1b1d", a, "TOTE"), categoryName: "Accessories" },
-    { ...base, id: "preview-5", name: "Classic Low Sneakers", description: "Clean silhouette, cushioned sole.", price: 54000, image: swatch(b, "#1b1b1d", "SNEAKER"), categoryName: "Footwear" },
-    { ...base, id: "preview-6", name: "Silk Head Wrap", description: "Hand-finished silk in a rich tone.", price: 15000, image: swatch(a, b, "WRAP"), categoryName: "Accessories" },
+    { ...base, id: "preview-1", name: "Linen Co-ord Set", description: "Relaxed two-piece in breathable linen.", price: 48000, image: nicheSamplePhoto("Fashion", 0) ?? swatch(a, b, "CO-ORD"), categoryName: "Women" },
+    { ...base, id: "preview-2", name: "Ankara Wrap Dress", description: "Bold print, flattering wrap fit.", price: 36500, image: nicheSamplePhoto("Fashion", 1) ?? swatch(b, a, "DRESS"), categoryName: "Women" },
+    { ...base, id: "preview-3", name: "Tailored Blazer", description: "Sharp shoulders, soft lining.", price: 72000, image: nicheSamplePhoto("Fashion", 2) ?? swatch(a, "#1b1b1d", "BLAZER"), categoryName: "Men" },
+    { ...base, id: "preview-4", name: "Leather Tote Bag", description: "Roomy everyday carry in full-grain leather.", price: 95000, image: nicheSamplePhoto("Fashion", 3) ?? swatch("#1b1b1d", a, "TOTE"), categoryName: "Accessories" },
+    { ...base, id: "preview-5", name: "Classic Low Sneakers", description: "Clean silhouette, cushioned sole.", price: 54000, image: nicheSamplePhoto("Fashion", 4) ?? swatch(b, "#1b1b1d", "SNEAKER"), categoryName: "Footwear" },
+    { ...base, id: "preview-6", name: "Silk Head Wrap", description: "Hand-finished silk in a rich tone.", price: 15000, image: nicheSamplePhoto("Fashion", 5) ?? swatch(a, b, "WRAP"), categoryName: "Accessories" },
   ];
 }
 const fashionCategories = ["Women", "Men", "Accessories", "Footwear"].map((name, i) => ({ id: `cat-${i + 1}`, name, children: [] })) as any;
