@@ -6,6 +6,9 @@ import { updateStoreSettings } from "@/lib/actions/store";
 import { setCustomDomain, recheckDomainStatus, removeCustomDomain } from "@/lib/actions/domain";
 import { LogoBannerFields } from "@/components/forms/logo-banner-fields";
 import { StoreSlugEditor } from "@/components/dashboard/store-slug-editor";
+import { NicheTestSwitcher } from "@/components/dashboard/niche-test-switcher";
+import { isNicheTestStore } from "@/lib/niche-test";
+import { CANONICAL_BUSINESS_TYPES, getCanonicalBusinessType } from "@/lib/business-identity";
 import { BusinessCapabilitiesEditor } from "@/components/dashboard/business-capabilities-editor";
 import { WebhooksPanel } from "@/components/dashboard/webhooks-panel";
 import { listWebhookEndpoints, availableWebhookEvents } from "@/lib/actions/webhook";
@@ -172,6 +175,11 @@ export default async function SettingsPage({ params }: { params: Promise<{ slug:
         </div>
       )}
 
+      {isOwner && isNicheTestStore(slug) && (
+        <div className="mt-6">
+          <NicheTestSwitcher slug={slug} current={getCanonicalBusinessType({ businessCategory: store.business.category, storeBusinessType: store.businessType })} options={[...CANONICAL_BUSINESS_TYPES]} />
+        </div>
+      )}
       {isOwner && (
         <div className="mt-6">
           <BusinessCapabilitiesEditor
