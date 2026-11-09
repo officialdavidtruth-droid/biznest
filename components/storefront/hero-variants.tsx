@@ -224,7 +224,7 @@ export function HeroVariantView({ variant, section, d, items, categories }: Prop
     case "menu": {
       const rows = items.slice(0, 4);
       return (
-        <section id={id} data-bn-type="hero" className="bn-section" style={{ background: d.background, padding: "80px 0" }}>
+        <section id={id} data-bn-type="hero" className="bn-section" style={{ background: s.image ? `linear-gradient(90deg, ${d.background}f2 0%, ${d.background}cc 55%, ${d.background}99 100%), url(${cssUrl(s.image)}) center/cover` : d.background, padding: "80px 0" }}>
           <div className={wrap} style={{ display: "grid", gridTemplateColumns: "1.1fr .9fr", gap: 56, alignItems: "center" }}>
             <div>
               <h1 style={{ fontFamily: d.headingFont, fontWeight: 600, fontSize: "clamp(42px,6vw,88px)", lineHeight: 1, letterSpacing: "-.03em", margin: 0 }}>{heading}</h1>
