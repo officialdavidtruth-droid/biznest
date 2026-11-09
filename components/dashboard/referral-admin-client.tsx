@@ -102,16 +102,18 @@ export function ReferralConfigForm({ initial, plans }: { initial: { enabled: boo
       <div className="space-y-2">
         <p className="text-xs text-muted-foreground">Reward and referrals needed, per plan the referred person pays for:</p>
         {rows.map((p, i) => (
-          <div key={p.id} className="grid grid-cols-[1fr_7rem_7rem] items-end gap-2">
-            <span className="pb-2 text-sm font-medium">{p.name} <span className="text-xs text-muted-foreground">(₦{p.price.toLocaleString()})</span></span>
-            <label className="text-xs text-muted-foreground">
-              Reward ₦
-              <input className={`${field} mt-1`} type="number" min={0} value={p.reward} onChange={(e) => setRows((rs) => rs.map((x, j) => (j === i ? { ...x, reward: e.target.value } : x)))} />
-            </label>
-            <label className="text-xs text-muted-foreground">
-              Needed
-              <input className={`${field} mt-1`} type="number" min={1} value={p.unlockCount} onChange={(e) => setRows((rs) => rs.map((x, j) => (j === i ? { ...x, unlockCount: e.target.value } : x)))} />
-            </label>
+          <div key={p.id} className="space-y-1">
+            <div className="text-sm font-medium">{p.name} <span className="text-xs text-muted-foreground">(₦{p.price.toLocaleString()})</span></div>
+            <div className="grid grid-cols-2 gap-2">
+              <label className="text-xs text-muted-foreground">
+                Reward ₦
+                <input className={`${field} mt-1`} type="number" min={0} value={p.reward} onChange={(e) => setRows((rs) => rs.map((x, j) => (j === i ? { ...x, reward: e.target.value } : x)))} />
+              </label>
+              <label className="text-xs text-muted-foreground">
+                Referrals needed
+                <input className={`${field} mt-1`} type="number" min={1} value={p.unlockCount} onChange={(e) => setRows((rs) => rs.map((x, j) => (j === i ? { ...x, unlockCount: e.target.value } : x)))} />
+              </label>
+            </div>
           </div>
         ))}
       </div>

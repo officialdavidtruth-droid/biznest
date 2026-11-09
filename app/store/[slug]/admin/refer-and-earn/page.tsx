@@ -97,12 +97,12 @@ export default async function ReferAndEarnPage({ params }: { params: Promise<{ s
         <h2 className="text-sm font-semibold">How rewards work</h2>
         <div className="overflow-hidden rounded-lg border">
           <TableScroll>
-            <table className="w-full min-w-[520px] text-sm">
+            <table className="w-full text-sm">
               <thead>
                 <tr className="border-b text-left text-xs text-muted-foreground">
-                  <th className="px-4 py-2 font-medium">When they pay for</th>
-                  <th className="px-4 py-2 font-medium">You earn</th>
-                  <th className="px-4 py-2 font-medium">Withdraw after</th>
+                  <th className="px-3 py-2 font-medium">They pay for</th>
+                  <th className="px-3 py-2 font-medium">You earn</th>
+                  <th className="px-3 py-2 font-medium">Unlocks at</th>
                 </tr>
               </thead>
               <tbody>
@@ -112,10 +112,10 @@ export default async function ReferAndEarnPage({ params }: { params: Promise<{ s
                   const mine = wallet.groups.find((g) => g.planName === p.name);
                   return (
                     <tr key={p.id} className="border-b last:border-0">
-                      <td className="px-4 py-3 font-medium">{p.name}</td>
-                      <td className="px-4 py-3">{naira(rule.reward)} each</td>
-                      <td className="px-4 py-3">
-                        {rule.unlockCount} paying referrals
+                      <td className="px-3 py-3 font-medium">{p.name}</td>
+                      <td className="px-3 py-3">{naira(rule.reward)} each</td>
+                      <td className="px-3 py-3">
+                        {rule.unlockCount} referrals
                         {mine ? <span className="block text-xs text-muted-foreground">{mine.withdrawableCount > 0 ? "Unlocked" : `${mine.confirmed} of ${rule.unlockCount} so far`}</span> : null}
                       </td>
                     </tr>
