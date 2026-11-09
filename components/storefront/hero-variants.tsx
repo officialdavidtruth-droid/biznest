@@ -70,7 +70,7 @@ export function HeroVariantView({ variant, section, d, items, categories, slug }
                 {s.eyebrow && <span style={{ display: "inline-block", padding: "5px 12px", borderRadius: 999, background: `${d.accent}`, color: on(d.accent), fontWeight: 800, fontSize: 12, marginBottom: 16 }}>{s.eyebrow}</span>}
                 <h1 style={{ fontFamily: d.headingFont, fontWeight: 700, fontSize: "clamp(36px,5vw,66px)", lineHeight: 1.04, letterSpacing: "-.03em", margin: 0 }}>{heading}</h1>
                 {s.body && <p style={{ opacity: .85, lineHeight: 1.7, maxWidth: 440, margin: "16px 0 24px" }}>{s.body}</p>}
-                <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}><Cta s={s} d={d} bg={d.accent} fg={on(d.accent)} /><a href="#catalog" style={{ display: "inline-block", padding: "13px 22px", borderRadius: d.buttonStyle === "pill" ? 999 : Math.min(d.radius, 14), border: `1.5px solid ${fg}55`, fontWeight: 750, fontSize: 14 }}>See deals</a></div>
+                <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}><Cta s={s} d={d} bg={d.accent} fg={on(d.accent)} /><a href="#catalog" style={{ display: "inline-block", padding: "13px 22px", borderRadius: d.buttonStyle === "pill" ? 999 : Math.min(d.radius, 14), border: `1.5px solid ${fg === "#fff" ? "rgba(255,255,255,.5)" : "rgba(0,0,0,.35)"}`, fontWeight: 750, fontSize: 14 }}>See deals</a></div>
                 {chips.length > 0 && <div style={{ display: "flex", gap: 18, flexWrap: "wrap", marginTop: 24, fontSize: 12.5, opacity: .9 }}>{chips.map((c, i) => <span key={i}>✓ {c.title}</span>)}</div>}
               </div>
               <div style={{ position: "relative", justifySelf: "center", width: "min(100%,440px)" }}>
