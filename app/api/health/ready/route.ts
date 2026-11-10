@@ -13,8 +13,6 @@ export async function GET() {
       service: "biznest",
       database: "ready",
       latencyMs: Date.now() - started,
-      dbRegion: (process.env.DATABASE_URL ?? "").match(/aws-\d+-([a-z0-9-]+)\.pooler/)?.[1] ?? "unknown", // TEMP diagnostic
-      fnRegion: process.env.VERCEL_REGION,
       timestamp: new Date().toISOString(),
     });
   } catch {
